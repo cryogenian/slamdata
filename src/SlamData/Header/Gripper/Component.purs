@@ -18,6 +18,8 @@ module SlamData.Header.Gripper.Component where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Rec.Class (forever)
 
 import Data.Nullable as N
 import DOM.Event.EventTarget as Etr
@@ -45,6 +47,8 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Effects (Slam)
+import SlamData.SignIn.Bus (SignInBusR)
+
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -70,10 +74,10 @@ initialState = Closed
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
 
-comp ∷ String → H.Component State Query Slam
-comp querySelector = H.lifecycleComponent
+comp ∷ ∀ r. SignInBusR r → String → H.Component State Query Slam
+comp bus querySelector = H.lifecycleComponent
   { render: render querySelector
-  , eval: eval querySelector
+  , eval: eval querySelector bus
   , initializer: Just (H.action Init)
   , finalizer: Nothing
   }
@@ -147,8 +151,8 @@ mkAnimation sel marginFrom marginTo = do
       normalAnimationDirection
       forwards
 
-eval ∷ String → (Query ~> DSL)
-eval sel (Init next) = do
+eval ∷ ∀ r. String → SignInBusR r → (Query ~> DSL)
+eval sel bus (Init next) = do
   doc ←
     H.fromEff
       $ window
@@ -187,15 +191,17 @@ eval sel (Init next) = do
         pure $ H.action Animated
     in
       H.subscribe $ H.eventSource attachAnimationEnd handleAnimationEnd
+
+  forever $ const (H.set $ Closing maxMargin) =<< H.fromAff (Bus.read bus)
   pure next
-eval _ (StartDragging pos next) = do
+eval _ _ (StartDragging pos next) = do
   astate ← H.get
   case astate of
     Closed → H.set (Dragging Down pos pos)
     Opened → H.set (Dragging Up (pos - maxMargin) pos)
     _ → pure unit
   pure next
-eval _ (StopDragging next) = do
+eval _ _ (StopDragging next) = do
   astate ← H.get
   case astate of
     Dragging dir s current →
@@ -206,7 +212,7 @@ eval _ (StopDragging next) = do
         H.set (nextState dir $ current - s)
     _ → pure unit
   pure next
-eval _ (ChangePosition num next) = do
+eval _ _ (ChangePosition num next) = do
   astate ← H.get
   let
     toSet s =
@@ -219,7 +225,7 @@ eval _ (ChangePosition num next) = do
       H.set (Dragging (direction old oldDir) s $ toSet s)
     _ → pure unit
   pure next
-eval _ (Animated next) = do
+eval _ _ (Animated next) = do
   astate ← H.get
   case astate of
     Opening _ → H.set Opened

@@ -25,6 +25,7 @@ module SlamData.Workspace.Card.Eval.CardEvalT
   , runCardEvalT
   , runCardEvalT_
   , temporaryOutputResource
+  , liftQ
   ) where
 
 import SlamData.Prelude
@@ -38,7 +39,11 @@ import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
 import Control.Monad.Writer.Class as WC
 import Control.Monad.Writer.Trans as WT
+import Control.Parallel.Class as Par
 
+import Quasar.Error (QError)
+
+import SlamData.GlobalError as GE
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.DeckId as DID
@@ -54,7 +59,7 @@ type CardEvalInput =
   , urlVarMaps ∷ Map.Map DID.DeckId Port.URLVarMap
   }
 
-type CardEvalTP m = ET.ExceptT String (WT.WriterT (Set.Set AdditionalSource) m)
+type CardEvalTP m = ET.ExceptT QError (WT.WriterT (Set.Set AdditionalSource) m)
 
 newtype CardEvalT m a = CardEvalT (CardEvalTP m a)
 
@@ -84,18 +89,27 @@ instance monadWriterCardEvalT
   listen = getCardEvalT ⋙ WC.listen ⋙ CardEvalT
   pass = getCardEvalT ⋙ WC.pass ⋙ CardEvalT
 
-instance monadErrorCardEvalT ∷ Monad m ⇒ EC.MonadError String (CardEvalT m) where
+instance monadErrorCardEvalT ∷ Monad m ⇒ EC.MonadError QError (CardEvalT m) where
   throwError = EC.throwError ⋙ CardEvalT
   catchError (CardEvalT m) = CardEvalT ∘ EC.catchError m ∘ (getCardEvalT ∘ _)
+
+instance monadParCardEvalT ∷ Par.MonadPar m ⇒ Par.MonadPar (CardEvalT m) where
+  par f (CardEvalT ma) (CardEvalT mb) = CardEvalT (Par.par f ma mb)
 
 runCardEvalT
   ∷ ∀ m
   . Functor m
   ⇒ CardEvalT m Port.Port
-  → m (Port.Port × (Set.Set AdditionalSource))
+  → m (Either GE.GlobalError (Port.Port × (Set.Set AdditionalSource)))
 runCardEvalT (CardEvalT m) =
   WT.runWriterT (ET.runExceptT m) <#> \(r × ms) →
-    (either Port.CardError id r) × ms
+    case r of
+      Left err →
+        case GE.fromQError err of
+          Left msg → Right $ Port.CardError msg × ms
+          Right ge → Left ge
+      Right r' →
+        Right $ r' × ms
 
 runCardEvalT_
   ∷ ∀ m
@@ -148,3 +162,6 @@ temporaryOutputResource { path, cardCoord: deckId × cardId } =
     </> Path.dir ".tmp"
     </> Path.dir (DID.deckIdToString deckId)
     </> Path.file ("out" ⊕ CID.cardIdToString cardId)
+
+liftQ ∷ ∀ m a. Monad m ⇒ m (Either QError a) → CardEvalT m a
+liftQ = either EC.throwError pure <=< lift

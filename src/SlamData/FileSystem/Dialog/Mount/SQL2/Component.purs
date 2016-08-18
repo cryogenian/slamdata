@@ -45,6 +45,7 @@ import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State (State, _initialQuery, _vars, emptyVar, initialState, isEmptyVar, processState, rxEmpty, stateFromViewInfo)
 import SlamData.FileSystem.Resource as R
+import SlamData.FileSystem.Wiring (Wiring)
 import SlamData.Quasar.Query as API
 
 type Query = SettingsQuery State
@@ -53,10 +54,10 @@ type QueryP = Coproduct Query (H.ChildF Unit AceQuery)
 type SQLMountDSL = H.ParentDSL State AceState Query AceQuery Slam Unit
 type SQLMountHTML = H.ParentHTML AceState Query AceQuery Slam Unit
 
-comp :: H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Nothing }
+comp ∷ Wiring → H.Component StateP QueryP Slam
+comp wiring = H.parentComponent { render, eval: eval wiring, peek: Nothing }
 
-render :: State -> SQLMountHTML
+render ∷ State → SQLMountHTML
 render state@{ initialQuery } =
   HH.div
     [ HP.key "mount-sql2" ]
@@ -65,21 +66,21 @@ render state@{ initialQuery } =
     , section "Query variables" [ propList _vars state ]
     ]
 
-eval :: Query ~> SQLMountDSL
-eval (ModifyState f next) = H.modify (processState <<< f) $> next
-eval (Validate k) = do
+eval ∷ Wiring → Query ~> SQLMountDSL
+eval _ (ModifyState f next) = H.modify (processState <<< f) $> next
+eval _ (Validate k) = do
   sql <- fromMaybe "" <$> H.query unit (H.request GetText)
   pure $ k if sql == "" then Just "Please enter a query" else Nothing
-eval (Submit parent name k) = do
+eval wiring (Submit parent name k) = do
   sql <- fromMaybe "" <$> H.query unit (H.request GetText)
   vars <- Sm.fromFoldable <<< filter (not isEmptyVar) <$> H.gets _.vars
   let destPath = parent Pt.</> Pt.file name
       view = R.View $ destPath
       dest = R.Mount view
-  result <- API.viewQuery (Left parent) destPath sql vars
+  result <- API.viewQuery wiring (Left parent) destPath sql vars
   pure $ k $ map (const view) result
 
-aceSetup :: Maybe String -> Editor -> Slam Unit
+aceSetup ∷ Maybe String → Editor → Slam Unit
 aceSetup initialQuery editor = liftEff do
   Editor.setMinLines 6 editor
   Editor.setMaxLines 10000 editor
@@ -90,5 +91,5 @@ aceSetup initialQuery editor = liftEff do
   session <- Editor.getSession editor
   Session.setMode "ace/mode/sql" session
   case initialQuery of
-    Just q -> void $ Editor.setValue q Nothing editor
-    Nothing -> pure unit
+    Just q → void $ Editor.setValue q Nothing editor
+    Nothing → pure unit

@@ -26,6 +26,7 @@ import Control.Monad.Eff.Timer (TIMER)
 import Control.UI.File (READ_FILE)
 import Data.JSDate (LOCALE)
 import ECharts.Types (ECHARTS)
+import OIDC.Crypt (RSASIGNTIME)
 import Halogen (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
 import ZClipboard (ZCLIPBOARD)
@@ -44,6 +45,7 @@ type SlamDataRawEffects =
   , now ∷ NOW
   , ref ∷ REF
   , timer ∷ TIMER
+  , rsaSignTime ∷ RSASIGNTIME
   , zClipboard ∷ ZCLIPBOARD
   , locale ∷ LOCALE
   )

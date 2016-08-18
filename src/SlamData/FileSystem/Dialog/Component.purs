@@ -18,6 +18,7 @@ module SlamData.FileSystem.Dialog.Component where
 
 import SlamData.Prelude
 
+
 import Data.Array (singleton)
 
 import Halogen as H
@@ -30,12 +31,13 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Dialog.Download.Component as Download
+import SlamData.FileSystem.Dialog.Explore.Component as Explore
 import SlamData.FileSystem.Dialog.Mount.Component (MountSettings)
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
-import SlamData.FileSystem.Dialog.Explore.Component as Explore
 import SlamData.FileSystem.Resource (Resource)
+import SlamData.FileSystem.Wiring (Wiring)
 import SlamData.Render.Common (fadeWhen)
 
 import Utils.Path (DirPath, FilePath)
@@ -129,11 +131,19 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Query ⨁ (H.ChildF ChildSlot ChildQuery)
 type DialogDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Just (peek <<< H.runChildF) }
+comp ∷ Wiring → H.Component StateP QueryP Slam
+comp wiring =
+  H.parentComponent
+    { render: render wiring
+    , eval
+    , peek: Just (peek <<< H.runChildF)
+    }
 
-render ∷ State → H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
-render state =
+render
+  ∷ Wiring
+  → State
+  → H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+render wiring state =
   HH.div
     [ HP.classes ([B.modal] <> fadeWhen (isNothing state))
     , HE.onMouseDown (HE.input_ Dismiss)
@@ -152,7 +162,7 @@ render state =
       }
   dialog (Rename res) =
     HH.slot' cpRename unit \_ →
-      { component: Rename.comp
+      { component: Rename.comp wiring
       , initialState: Rename.initialState res
       }
   dialog (Download res) =
@@ -162,7 +172,7 @@ render state =
       }
   dialog (Mount parent name settings) =
     HH.slot' cpMount unit \_ →
-      { component: Mount.comp
+      { component: Mount.comp wiring
       , initialState: H.parentState (Mount.initialState parent name settings)
       }
   dialog (Explore fp) =

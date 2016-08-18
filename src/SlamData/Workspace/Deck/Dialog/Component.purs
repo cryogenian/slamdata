@@ -49,6 +49,7 @@ import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Deck.Dialog.Share.Component as Share
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Dialog.Unshare.Component as Unshare
+import SlamData.Workspace.Wiring (Wiring)
 
 data Dialog
   = Error String
@@ -166,11 +167,12 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
+comp ∷ Wiring → H.Component StateP QueryP Slam
+comp wiring =
+  H.parentComponent { render: render wiring, eval, peek: Just (peek ∘ H.runChildF) }
 
-render ∷ State → HTML
-render state =
+render ∷ Wiring → State → HTML
+render wiring state =
   HH.div
     [ HP.classes [ HH.className "deck-dialog" ] ]
     $ foldMap (pure ∘ dialog) state
@@ -190,7 +192,7 @@ render state =
 
   dialog (Embed sharingInput varMaps) =
     HH.slot' cpEmbed unit \_ →
-      { component: Export.comp
+      { component: Export.comp wiring
       , initialState:
           (Export.initialState sharingInput)
             { presentingAs = Export.IFrame
@@ -210,7 +212,7 @@ render state =
       }
   dialog (Publish sharingInput varMaps) =
     HH.slot' cpPublish unit \_ →
-      { component: Export.comp
+      { component: Export.comp wiring
       , initialState:
           (Export.initialState sharingInput)
             { presentingAs = Export.URI
@@ -219,13 +221,13 @@ render state =
       }
   dialog (Share deckPath) =
     HH.slot' cpShare unit \_ →
-      { component: Share.comp
+      { component: Share.comp wiring
       , initialState: Share.initialState deckPath
       }
 
   dialog (Unshare deckPath) =
     HH.slot' cpUnshare unit \_ →
-      { component: Unshare.comp
+      { component: Unshare.comp wiring
       , initialState: Unshare.initialState deckPath
       }
 

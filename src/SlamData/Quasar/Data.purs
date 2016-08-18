@@ -23,62 +23,60 @@ module SlamData.Quasar.Data
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Aff.Free (class Affable)
 
 import Data.Argonaut as JS
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (QData(..), JSONMode(..))
-import Quasar.Error (lowerQError)
+import Quasar.Error (QError)
 import Quasar.Types (FilePath, AnyPath)
 
-import SlamData.Quasar.Aff (QEff, runQuasarF)
+import SlamData.Quasar.Aff (QEff, runQuasarF, Wiring)
+import SlamData.Quasar.Error (throw)
 
 makeFile
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . Affable (QEff eff) m
-  ⇒ FilePath
+  ⇒ Wiring r
+  → FilePath
   → QData
-  → m (Either Exn.Error Unit)
-makeFile path content =
-  runQuasarF $ lmap lowerQError <$>
-    QF.writeFile path content
+  → m (Either QError Unit)
+makeFile wiring path = runQuasarF wiring ∘ QF.writeFile path
 
 -- | Saves a single JSON value to a file.
 -- |
 -- | Even though the path is expected to be absolute it should not include the
 -- | `/data/fs` part of the path for the API.
 save
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . Affable (QEff eff) m
-  ⇒ FilePath
+  ⇒ Wiring r
+  → FilePath
   → JS.Json
-  → m (Either Exn.Error Unit)
-save path json =
-  runQuasarF $ lmap lowerQError <$>
-    QF.writeFile path (JSON Readable [json])
+  → m (Either QError Unit)
+save wiring path json = runQuasarF wiring $ QF.writeFile path (JSON Readable [json])
 
 -- | Loads a single JSON value from a file.
 -- |
 -- | Even though the path is expected to be absolute it should not include the
 -- | `/data/fs` part of the path for the API.
 load
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ FilePath
-  → m (Either String JS.Json)
-load file =
-  runQuasarF (QF.readFile Readable file Nothing) <#> case _ of
+  ⇒ Wiring r
+  → FilePath
+  → m (Either QError JS.Json)
+load wiring file =
+  runQuasarF wiring (QF.readFile Readable file Nothing) <#> case _ of
     Right [file] → Right file
-    Right _ → Left "Unexpected result when loading value from file"
-    Left err → Left (QF.printQError err)
+    Right _ → throw "Unexpected result when loading value from file"
+    Left err → Left err
 
 delete
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ AnyPath
-  → m (Either Exn.Error Unit)
-delete path =
-  runQuasarF $ lmap lowerQError <$>
-    QF.deleteData path
+  ⇒ Wiring r
+  → AnyPath
+  → m (Either QError Unit)
+delete wiring = runQuasarF wiring ∘ QF.deleteData

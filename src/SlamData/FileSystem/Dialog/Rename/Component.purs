@@ -18,8 +18,8 @@ module SlamData.FileSystem.Dialog.Rename.Component where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Eff.Exception (message)
 import Control.UI.Browser (reload)
 
 import Data.Array (elemIndex, singleton, sort, nub)
@@ -41,24 +41,26 @@ import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
+import SlamData.FileSystem.Wiring (Wiring)
+import SlamData.GlobalError as GE
 import SlamData.Quasar.FS as API
-import SlamData.Render.Common (fadeWhen, formGroup)
 import SlamData.Render.CSS as Rc
+import SlamData.Render.Common (fadeWhen, formGroup)
 
 import Utils.Path (DirPath, dropWorkspaceExt)
 
 type State =
-  { showList :: Boolean
-  , initial :: R.Resource
-  , name :: String
-  , dirs :: Array R.Resource
-  , dir :: DirPath
-  , typedDir :: String
-  , siblings :: Array R.Resource
-  , error :: Maybe String
+  { showList ∷ Boolean
+  , initial ∷ R.Resource
+  , name ∷ String
+  , dirs ∷ Array R.Resource
+  , dir ∷ DirPath
+  , typedDir ∷ String
+  , siblings ∷ Array R.Resource
+  , error ∷ Maybe String
   }
 
-initialState :: R.Resource -> State
+initialState ∷ R.Resource → State
 initialState resource =
   { showList: false
   , initial: resource
@@ -72,31 +74,31 @@ initialState resource =
   , error: Nothing
   }
 
-_showList :: LensP State Boolean
+_showList ∷ LensP State Boolean
 _showList = lens _.showList (_ { showList = _ })
 
-_initial :: LensP State R.Resource
+_initial ∷ LensP State R.Resource
 _initial = lens _.initial (_ { initial = _ })
 
-_name :: LensP State String
+_name ∷ LensP State String
 _name = lens _.name (_ { name = _ })
 
-_typedDir :: LensP State String
+_typedDir ∷ LensP State String
 _typedDir = lens _.typedDir (_ { typedDir = _ })
 
-_dirs :: LensP State (Array R.Resource)
+_dirs ∷ LensP State (Array R.Resource)
 _dirs = lens _.dirs (_ { dirs = _ })
 
-_dir :: LensP State DirPath
+_dir ∷ LensP State DirPath
 _dir = lens _.dir (_ { dir = _ })
 
-_siblings :: LensP State (Array R.Resource)
+_siblings ∷ LensP State (Array R.Resource)
 _siblings = lens _.siblings (_ { siblings = _ })
 
-_error :: LensP State (Maybe String)
+_error ∷ LensP State (Maybe String)
 _error = lens _.error (_ { error = _ })
 
-renameSlam :: State -> R.Resource
+renameSlam ∷ State → R.Resource
 renameSlam r =
   let initial = r.initial
       name = r.name
@@ -106,7 +108,7 @@ renameSlam r =
   in initial # (R._name .~ nameWithExt)
            <<< (R._root .~ r.dir)
 
-validate :: State -> State
+validate ∷ State → State
 validate r
   | r.initial == renameSlam r = r # _error .~ Nothing
   | otherwise = r # _error .~ either Just (const Nothing) do
@@ -143,16 +145,16 @@ data Query a
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
 
-comp :: H.Component State Query Slam
-comp =
+comp :: Wiring -> H.Component State Query Slam
+comp wiring =
   H.lifecycleComponent
     { render
-    , eval
+    , eval: eval wiring
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
 
-render :: State -> HTML
+render ∷ State → HTML
 render dialog =
   modalDialog
   [ modalHeader "Move/rename"
@@ -160,7 +162,7 @@ render dialog =
     $ HH.form
         [ HP.classes [ Rc.renameDialogForm ]
         , Cp.nonSubmit
-        , HE.onClick \_ ->
+        , HE.onClick \_ →
             HEH.stopPropagation $> Just (H.action (SetShowList false))
         ]
         [ nameInput
@@ -183,7 +185,7 @@ render dialog =
       ]
   ]
   where
-  nameInput :: HTML
+  nameInput ∷ HTML
   nameInput =
     formGroup [ HH.input [ HP.classes [ B.formControl ]
                         , HP.value (dialog.name)
@@ -192,7 +194,7 @@ render dialog =
                         ]
               ]
 
-  dirDropdownField :: HTML
+  dirDropdownField ∷ HTML
   dirDropdownField =
     HH.div
       [ HP.classes [ B.inputGroup ] ]
@@ -206,7 +208,7 @@ render dialog =
           [ HP.classes [ B.inputGroupBtn ] ]
           [ HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
-              , HE.onClick \_ ->
+              , HE.onClick \_ →
                   HEH.stopPropagation $> Just (H.action ToggleShowList)
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
@@ -214,19 +216,19 @@ render dialog =
               [ HH.span [ HP.classes [ B.caret ] ] [ ] ]
           ]
       ]
-  dirDropdownList :: HTML
+  dirDropdownList ∷ HTML
   dirDropdownList =
     HH.ul [ HP.classes $ [ B.listGroup, Rc.fileListGroup ]
            <> fadeWhen (not $ dialog.showList) ]
     $ renameItem <$> dialog.dirs
 
-  errorMessage :: HTML
+  errorMessage ∷ HTML
   errorMessage =
     HH.div [ HP.classes $ [ B.alert, B.alertDanger ]
             <> fadeWhen (isNothing (dialog.error)) ]
     $ maybe [ ] (pure <<< HH.text) (dialog.error)
 
-  renameItem :: R.Resource -> HTML
+  renameItem ∷ R.Resource → HTML
   renameItem res =
     HH.button [ HP.classes ([ B.listGroupItem ]
                           <> (if R.isHidden res
@@ -236,17 +238,17 @@ render dialog =
              ]
     [ HH.text (R.resourcePath res) ]
 
-eval :: Query ~> DSL
-eval (Dismiss next) = pure next
-eval (SetShowList bool next) = do
+eval :: Wiring -> Query ~> DSL
+eval _ (Dismiss next) = pure next
+eval _ (SetShowList bool next) = do
   H.modify (_showList .~ bool)
   H.modify validate
   pure next
-eval (ToggleShowList next) = do
+eval _ (ToggleShowList next) = do
   H.modify (_showList %~ not)
   H.modify validate
   pure next
-eval (Submit next) = do
+eval wiring (Submit next) = do
   dirStr <- endingInSlash <$> H.gets _.typedDir
   maybe presentDirNotExistError moveIfDirAccessible (parsedDir dirStr)
   pure next
@@ -261,20 +263,24 @@ eval (Submit next) = do
     H.modify $ _error .~ Just "Target directory does not exist."
 
   presentError e =
-    H.modify $ _error .~ Just e
+    case GE.fromQError e of
+      Left msg → H.modify $ _error .~ Just msg
+      Right ge → H.fromAff $ Bus.write ge wiring.globalError
 
   moveIfDirAccessible dir =
-    maybe (move dir) presentError =<< API.dirNotAccessible dir
+    maybe (move dir) presentError =<< API.dirNotAccessible wiring dir
 
   move dir = do
     H.modify $ (_dir .~ dir) <<< (_showList .~ false)
-    state <- H.get
+    state ← H.get
     let src = state.initial
         tgt = R.getPath $ renameSlam state
-    result <- API.move src tgt
+    result ← API.move wiring src tgt
     case result of
       Left e ->
-        H.modify (_error ?~ message e)
+        case GE.fromQError e of
+          Left msg -> H.modify (_error ?~ msg)
+          Right ge -> H.fromAff $ Bus.write ge wiring.globalError
       Right x ->
         maybe
           presentSourceMissingError
@@ -286,33 +292,33 @@ eval (Submit next) = do
 
   endingInSlash s = if lastChar s == "/" then s else s <> "/"
 
-eval (NameTyped str next) = do
+eval _ (NameTyped str next) = do
   H.modify (_name .~ str)
   H.modify validate
   pure next
-eval (DirTyped str next) = do
+eval _ (DirTyped str next) = do
   H.modify $ _typedDir .~ str
   pure next
-eval (DirClicked res next) = do
-  dirItemClicked res
+eval wiring (DirClicked res next) = do
+  dirItemClicked wiring res
   pure next
-eval (SetSiblings ss next) = do
+eval _ (SetSiblings ss next) = do
   H.modify (_siblings .~ ss)
   pure next
-eval (AddDirs ds next) = do
+eval _ (AddDirs ds next) = do
   H.modify (_dirs %~ append ds >>> nub >>> sort)
   pure next
-eval (Init next) = do
+eval wiring (Init next) = do
   state <- H.get
-  dirItemClicked $ R.parent $ state.initial
+  dirItemClicked wiring $ R.parent $ state.initial
   pure next
 
-dirItemClicked :: R.Resource -> DSL Unit
-dirItemClicked res = do
+dirItemClicked ∷ Wiring → R.Resource → DSL Unit
+dirItemClicked wiring res = do
   case R.getPath res of
-    Right _ -> pure unit
-    Left dir -> do
-      siblings <- API.children dir
+    Right _ → pure unit
+    Left dir → do
+      siblings ← API.children wiring dir
       H.modify
         $ (_dir .~ dir)
         <<< (_showList .~ false)

@@ -38,7 +38,6 @@ import Control.Monad.Aff.AVar (AVar, makeVar', takeVar, putVar, modifyVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Aff.Promise (Promise, wait, defer)
-import Control.Monad.Eff.Exception (message)
 import Control.Monad.Eff.Ref (Ref, newRef)
 
 import Data.Map as Map
@@ -46,15 +45,19 @@ import Data.Set as Set
 
 import SlamData.Analytics.Event as AE
 import SlamData.Effects (SlamDataEffects)
+import SlamData.GlobalError as GE
 import SlamData.Notification as N
+import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Data as Quasar
-import SlamData.Workspace.Card.Model as Card
+import SlamData.Quasar.Error as QE
+import SlamData.SignIn.Bus (SignInBus)
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.Deck.Model (Deck, deckIndex, decode, encode)
-import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
+import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Model (Deck, deckIndex, decode, encode)
 
 import Utils.Path (DirPath)
 
@@ -64,7 +67,7 @@ type CardEval =
   , output ∷ Maybe (Promise (Port × (Set.Set AdditionalSource)))
   }
 
-type DeckRef = Promise (Either String Deck)
+type DeckRef = Promise (Either QE.QError Deck)
 
 type Cache k v = AVar (Map.Map k v)
 
@@ -89,8 +92,11 @@ type Wiring =
   , pending ∷ Bus.BusRW PendingMessage
   , messaging ∷ Bus.BusRW DeckMessage
   , notify ∷ Bus.BusRW N.NotificationOptions
+  , globalError ∷ Bus.BusRW GE.GlobalError
   , analytics ∷ Bus.BusRW AE.Event
+  , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
   , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
+  , signInBus ∷ SignInBus
   }
 
 makeWiring
@@ -104,8 +110,11 @@ makeWiring = fromAff do
   pending ← Bus.make
   messaging ← Bus.make
   notify ← Bus.make
+  globalError ← Bus.make
   analytics ← Bus.make
+  requestNewIdTokenBus ← Auth.authentication
   urlVarMaps ← fromEff (newRef mempty)
+  signInBus ← Bus.make
   let
     wiring =
       { decks
@@ -114,8 +123,11 @@ makeWiring = fromAff do
       , pending
       , messaging
       , notify
+      , globalError
       , analytics
+      , requestNewIdTokenBus
       , urlVarMaps
+      , signInBus
       }
   pure wiring
 
@@ -131,15 +143,15 @@ putDeck
   ⇒ DirPath
   → DeckId
   → Deck
-  → Cache DeckId DeckRef
-  → m (Either String Unit)
-putDeck path deckId deck cache = fromAff do
+  → Wiring
+  → m (Either QE.QError Unit)
+putDeck path deckId deck wiring = fromAff do
   ref ← defer do
-    res ← Quasar.save (deckIndex path deckId) $ encode deck
+    res ← Quasar.save wiring (deckIndex path deckId) $ encode deck
     when (isLeft res) do
-      modifyVar (Map.delete deckId) cache
-    pure $ bimap message (const deck) res
-  modifyVar (Map.insert deckId ref) cache
+      modifyVar (Map.delete deckId) wiring.decks
+    pure $ const deck <$> res
+  putCache deckId ref wiring.decks
   rmap (const unit) <$> wait ref
 
 putDeck'
@@ -157,21 +169,21 @@ getDeck
   . (Affable SlamDataEffects m)
   ⇒ DirPath
   → DeckId
-  → Cache DeckId DeckRef
-  → m (Either String Deck)
-getDeck path deckId cache = fromAff do
-  decks ← takeVar cache
+  → Wiring
+  → m (Either QE.QError Deck)
+getDeck path deckId wiring = fromAff do
+  decks ← takeVar wiring.decks
   case Map.lookup deckId decks of
     Just ref → do
-      putVar cache decks
+      putVar wiring.decks decks
       wait ref
     Nothing → do
       ref ← defer do
-        res ← (decode =<< _) <$> Quasar.load (deckIndex path deckId)
+        res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load wiring (deckIndex path deckId)
         when (isLeft res) do
-          modifyVar (Map.delete deckId) cache
+          modifyVar (Map.delete deckId) wiring.decks
         pure res
-      putVar cache (Map.insert deckId ref decks)
+      putVar wiring.decks (Map.insert deckId ref decks)
       wait ref
 
 getCache

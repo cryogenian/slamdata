@@ -43,6 +43,7 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Slider as Slider
+import SlamData.Workspace.Wiring (Wiring)
 
 renderError ∷ String → DeckHTML
 renderError err =
@@ -80,14 +81,14 @@ renderDeck opts deckComponent st =
       [ HP.classes $ [CSS.dialogWrapper] ⊕ (guard (not visible) $> CSS.invisible)
       , ARIA.hidden $ show $ not visible
       ]
-      [ dialogSlot ]
+      [ dialogSlot opts.wiring ]
 
   renderBackside visible =
     HH.div
       [ HP.classes $ [CSS.cardSlider] ⊕ (guard (not visible) $> CSS.invisible)
       , ARIA.hidden $ show $ not visible
       ]
-      [ backside ]
+      [ backside opts.wiring ]
 
 deckClasses ∷ ∀ r. DCS.State → Array (HP.IProp (HP.InteractiveEvents (HP.GlobalProperties r)) (Query Unit))
 deckClasses st =
@@ -131,19 +132,19 @@ childFrameElements =
   , deckIndicator
   ]
 
-dialogSlot ∷ DeckHTML
-dialogSlot =
+dialogSlot ∷ Wiring → DeckHTML
+dialogSlot wiring =
   HH.slot' cpDialog unit \_ →
-    { component: Dialog.comp
+    { component: Dialog.comp wiring
     , initialState: H.parentState Dialog.initialState
     }
 
-backside ∷ DeckHTML
-backside =
+backside ∷ Wiring → DeckHTML
+backside wiring =
   HH.div
     [ HP.classes [ CSS.card ] ]
     [ HH.slot' cpBackSide unit \_ →
-        { component: Back.comp
+        { component: Back.comp wiring
         , initialState: Back.initialState
         }
     ]

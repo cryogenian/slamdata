@@ -19,14 +19,15 @@ module SlamData.Workspace.Card.Cache.Eval where
 import SlamData.Prelude
 
 import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as EC
 
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 
 import Quasar.Types (FilePath)
+
 import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Aff (Wiring)
+import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -35,32 +36,34 @@ import SlamData.Workspace.Card.Port as Port
 import Utils.Path as PU
 
 eval
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Wiring r
+  → CET.CardEvalInput
   → Maybe String
   → FilePath
   → CET.CardEvalT m Port.TaggedResourcePort
-eval info mfp resource =
+eval wiring info mfp resource =
   case mfp of
-    Nothing -> eval' (CET.temporaryOutputResource info) resource
+    Nothing -> eval' wiring (CET.temporaryOutputResource info) resource
     Just pt ->
       case PU.parseAnyPath pt of
-        Just (Right fp) → eval' fp resource
-        _ → EC.throwError $ pt ⊕ " is not a valid file path"
+        Just (Right fp) → eval' wiring fp resource
+        _ → QE.throw $ pt ⊕ " is not a valid file path"
 
 eval'
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ PU.FilePath
+  ⇒ Wiring r
+  → PU.FilePath
   → FilePath
   → CET.CardEvalT m Port.TaggedResourcePort
-eval' fp resource = do
+eval' wiring fp resource = do
 
-  outputResource ← liftQ $
-    QQ.fileQuery resource fp "select * from {{path}}" SM.empty
+  outputResource ← CET.liftQ $
+    QQ.fileQuery wiring resource fp "select * from {{path}}" SM.empty
 
-  liftQ $ QFS.messageIfFileNotFound
+  CET.liftQ $ QFS.messageIfFileNotFound wiring
     outputResource
     "Error saving file, please try another location"
 
@@ -72,11 +75,8 @@ eval' fp resource = do
   -- in the expected location, and the rest of the deck can run as the Save
   -- failing has not effect on the output. -gb
   when (fp /= outputResource)
-    $ EC.throwError
+    $ QE.throw
     $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
   CET.addSource resource
   CET.addCache outputResource
   pure { resource: outputResource, tag: Nothing }
-
-liftQ ∷ ∀ m a. Monad m ⇒ m (Either Exn.Error a) → CET.CardEvalT m a
-liftQ = either (EC.throwError ∘ Exn.message) pure <=< lift

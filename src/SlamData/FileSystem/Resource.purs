@@ -236,7 +236,7 @@ parent = Directory ∘ resourceDir
 
 -- GETTERS
 resourceTag ∷ Resource → String
-resourceTag r = case r of
+resourceTag = case _ of
   File _ → "file"
   Workspace _ → "workspace"
   Directory _ → "directory"
@@ -244,12 +244,12 @@ resourceTag r = case r of
   Mount (Database _) → "directory"
 
 resourceMount ∷ Resource → Maybe Mount
-resourceMount r = case r of
+resourceMount = case _ of
   Mount m → Just m
   _ → Nothing
 
 mountTypeTag ∷ Mount → String
-mountTypeTag r = case r of
+mountTypeTag = case _ of
   View _ → "view"
   Database _ → "mongodb"
 
@@ -263,7 +263,7 @@ resourcePath ∷ Resource → String
 resourcePath r = either P.printPath P.printPath $ getPath r
 
 getPath ∷ Resource → PU.AnyPath
-getPath r = case r of
+getPath = case _ of
   File p → Right p
   Workspace p → Left p
   Directory p → Left p

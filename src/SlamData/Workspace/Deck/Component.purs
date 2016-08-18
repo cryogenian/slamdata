@@ -59,6 +59,8 @@ import SlamData.Analytics.Event as AE
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
+import SlamData.GlobalError as GE
+import SlamData.Quasar.Error as QE
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
@@ -118,6 +120,9 @@ eval opts@{ wiring } = case _ of
     pb ← subscribeToBus' (H.action ∘ RunPendingCards) wiring.pending
     mb ← subscribeToBus' (H.action ∘ HandleMessage) wiring.messaging
     H.modify $ DCS._breakers .~ [pb, mb]
+    when (L.null opts.cursor) do
+      eb ← subscribeToBus' (H.action ∘ HandleError) wiring.globalError
+      H.modify $ DCS._breakers %~ (Array.cons eb)
     updateCardSize
     pure next
   Finish next → do
@@ -276,6 +281,9 @@ eval opts@{ wiring } = case _ of
     k <$> getDeckModel
   GetSharingInput k →
     k <$> getSharingInput
+  HandleError ge next → do
+    showDialog $ Dialog.Error $ GE.print ge
+    pure next
 
   where
   getBoundingClientWidth =
@@ -305,12 +313,12 @@ getVarMaps path wiring =
     → DeckDSL (L.List (DeckId × Port.VarMap))
   goDeck acc deckId = do
     res ← runExceptT do
-      deck ← ExceptT $ getDeck path deckId wiring.decks
+      deck ← ExceptT $ getDeck path deckId wiring
       mirroredCards ← ExceptT $ loadMirroredCards wiring path deck.mirror
       pure $ mirroredCards <> (Tuple deckId <$> deck.cards)
     case res of
       Left err → do
-        Notify.loadDeckFail err wiring.notify wiring.analytics
+        Notify.loadDeckFail err wiring
         pure acc
       Right cards ->
         Array.foldM goCard acc cards
@@ -324,7 +332,7 @@ peek opts (H.ChildF s q) =
    $ q
 
 peekDialog ∷ ∀ a. DeckOptions → Dialog.Query a → DeckDSL Unit
-peekDialog _ (Dialog.Show _ _) =
+peekDialog _ (Dialog.Show _ _) = do
   H.modify (DCS._displayMode .~ DCS.Dialog)
 peekDialog _ (Dialog.Dismiss _) =
   H.modify (DCS._displayMode .~ DCS.Backside)
@@ -350,18 +358,16 @@ peekBackSide opts (Back.DoAction action _) =
           ErrorCardId → do
             showDialog
               $ Dialog.Error "You cannot delete the error card. Please, fix errors or slide to previous card."
-            H.modify (DCS._displayMode .~ DCS.Dialog)
           NextActionCardId → do
             showDialog
               $ Dialog.Error "You cannot delete the next action card. Please, slide to previous card."
-            H.modify (DCS._displayMode .~ DCS.Dialog)
           PendingCardId → do
             showDialog
               $ Dialog.Error "You cannot delete the pending card. Please, wait till card evaluation is finished."
           CardId _ → do
             let rem = DCS.removeCard trashId state
             DBC.childDeckIds (snd <$> fst rem)
-              # (H.fromAff :: Slam ~> DeckDSL) ∘ runParallel ∘ traverse_ (parallel ∘ DBC.deleteGraph state.path)
+              # (H.fromAff :: Slam ~> DeckDSL) ∘ runParallel ∘ traverse_ (parallel ∘ DBC.deleteGraph opts.wiring state.path)
             H.set $ snd rem
             triggerSave Nothing
             updateActiveCardAndIndicator opts.wiring
@@ -372,36 +378,29 @@ peekBackSide opts (Back.DoAction action _) =
     Back.Rename → do
       name ← H.gets _.name
       showDialog $ Dialog.Rename name
-      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Share → do
       sharingInput ← getSharingInput
       showDialog $ Dialog.Share sharingInput
-      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Unshare → do
       sharingInput ← getSharingInput
       showDialog $ Dialog.Unshare sharingInput
-      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Embed → do
       st ← H.get
       AE.track (AE.Embed st.id) opts.wiring.analytics
       sharingInput ← getSharingInput
       varMaps ← getVarMaps (DCS.deckPath st) opts.wiring
       showDialog $ Dialog.Embed sharingInput varMaps
-      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Publish → do
       st ← H.get
       AE.track (AE.Publish st.id) opts.wiring.analytics
       sharingInput ← getSharingInput
       varMaps ← getVarMaps (DCS.deckPath st) opts.wiring
       showDialog $ Dialog.Publish sharingInput varMaps
-      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.DeleteDeck → do
       cards ← H.gets _.modelCards
       if Array.null cards
         then raise' $ H.action $ DoAction DeleteDeck
-        else do
-          showDialog Dialog.DeleteDeck
-          H.modify (DCS._displayMode .~ DCS.Dialog)
+        else showDialog Dialog.DeleteDeck
     Back.Mirror → do
       H.modify $ DCS._displayMode .~ DCS.Normal
       raise' $ H.action $ DoAction Mirror
@@ -415,10 +414,9 @@ peekCards ∷ ∀ a. Wiring → CardSlot → CardQueryP a → DeckDSL Unit
 peekCards wiring (CardSlot cardId) = (const $ pure unit) ⨁ peekCardInner wiring cardId
 
 showDialog ∷ Dialog.Dialog → DeckDSL Unit
-showDialog =
-  queryDialog
-    ∘ H.action
-    ∘ Dialog.Show
+showDialog dlg = do
+  queryDialog $ H.action $ Dialog.Show dlg
+  H.modify (DCS._displayMode .~ DCS.Dialog)
 
 queryDialog ∷ Dialog.Query Unit → DeckDSL Unit
 queryDialog q = H.query' cpDialog unit (left q) *> pure unit
@@ -530,7 +528,7 @@ peekAnyCard wiring cardCoord q = do
 
 presentReason ∷ (Maybe Port.Port) -> CT.CardType → DeckDSL Unit
 presentReason input cardType =
-  traverse_ showDialog dialog *> H.modify (DCS._displayMode .~ DCS.Dialog)
+  traverse_ showDialog dialog
   where
   insertableCardType = ICT.fromCardType cardType
   ioType = ICT.fromMaybePort input
@@ -606,7 +604,7 @@ runPendingCards opts source pendingCard pendingCards = do
           Just ev → pure ev
           Nothing → do
             urlVarMaps ← H.fromEff $ Ref.readRef opts.wiring.urlVarMaps
-            ev ← evalCard opts.wiring.analytics st.path urlVarMaps input c
+            ev ← evalCard opts.wiring st.path urlVarMaps input c
             putCardEval ev pendingCards
             putCardEval ev opts.wiring.cards
             pure ev
@@ -635,32 +633,39 @@ runInitialEval wiring = do
 
 -- | Evaluates a card given an input and model.
 evalCard
-  ∷ ∀ r
-  . Bus.Bus (write ∷ Bus.Cap | r) AE.Event
+  ∷ Wiring
   → DirPath
   → Map.Map DeckId Port.URLVarMap
   → Maybe (Pr.Promise Port)
   → DeckId × Card.Model
   → DeckDSL CardEval
-evalCard bus path urlVarMaps input card = do
+evalCard wiring path urlVarMaps input card = do
   output ← H.fromAff $ Pr.defer do
     input' ← for input Pr.wait
     let model = (snd card).model
     case Card.modelToEval model of
       Left err → do
-        AE.track (AE.ErrorInCardEval $ Card.modelCardType model) bus
+        AE.track (AE.ErrorInCardEval $ Card.modelCardType model) wiring.analytics
         pure $ (Port.CardError $ "Could not evaluate card: " <> err) × mempty
-      Right cmd → do
-        out@(Tuple p _) ← flip Eval.runEvalCard cmd
-          { path
-          , urlVarMaps
-          , cardCoord: DCS.coordModelToCoord card
-          , input: input'
-          }
-        case p of
-          Port.CardError _ → AE.track (AE.ErrorInCardEval $ Card.modelCardType model) bus
-          _ → pure unit
-        pure out
+      Right cmd →
+        let
+          args =
+            { path
+            , urlVarMaps
+            , cardCoord: DCS.coordModelToCoord card
+            , input: input'
+            }
+        in
+          Eval.runEvalCard wiring args cmd >>= case _ of
+            Left ge → do
+              Bus.write ge wiring.globalError
+              pure $ (Port.CardError $ "Could not evaluate card") × mempty
+            Right out@(Tuple p _) → do
+              case p of
+                Port.CardError _ →
+                  AE.track (AE.ErrorInCardEval $ Card.modelCardType model) wiring.analytics
+                _ → pure unit
+              pure out
   pure { input, card, output: Just output }
 
 -- | Interprets a list of pending card evaluations into updates for the
@@ -808,13 +813,13 @@ saveDeck { accessType, wiring, cursor } coord = do
 
     when (isNothing st.parent) do
       let index = st.path </> Pathy.file "index"
-      WM.getRoot index >>= case _ of
-        Left _ → void $ WM.setRoot index st.id
+      WM.getRoot wiring index >>= case _ of
+        Left _ → void $ WM.setRoot wiring index st.id
         Right _ → pure unit
 
-    putDeck st.path st.id model wiring.decks >>= case _ of
+    putDeck st.path st.id model wiring >>= case _ of
       Left err →
-        Notify.saveDeckFail err wiring.notify wiring.analytics
+        Notify.saveDeckFail err wiring
       Right _ → do
         when (L.null cursor) $ do
           path' ← H.gets DCS.deckPath
@@ -823,13 +828,13 @@ saveDeck { accessType, wiring, cursor } coord = do
           H.fromEff $ locationObject >>= Location.setHash deckHash
 
   saveMirroredCard st (deckId × card) =
-    getDeck st.path deckId wiring.decks >>= case _ of
+    getDeck st.path deckId wiring >>= case _ of
       Left err →
-        Notify.saveMirrorFail err wiring.notify wiring.analytics
+        Notify.saveMirrorFail err wiring
       Right deck → do
         let cards = deck.cards <#> \c → if c.cardId == card.cardId then card else c
             model = deck { cards = cards }
-        void $ putDeck st.path deckId model wiring.decks
+        void $ putDeck st.path deckId model wiring
 
 loadDeck ∷ DeckOptions → DirPath → DeckId → DeckDSL Unit
 loadDeck opts path deckId = do
@@ -838,7 +843,7 @@ loadDeck opts path deckId = do
     ∘ (DCS._displayCards .~ [ deckId × pendingEvalCard ])
 
   res ← runExceptT do
-    deck ← ExceptT $ getDeck path deckId opts.wiring.decks
+    deck ← ExceptT $ getDeck path deckId opts.wiring
     mirroredCards ← ExceptT $ loadMirroredCards opts.wiring path deck.mirror
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
 
@@ -858,19 +863,19 @@ loadMirroredCards
   :: Wiring
   -> DirPath
   -> Array (DeckId × CardId)
-  -> DeckDSL (Either String (Array (DeckId × Card.Model)))
+  -> DeckDSL (Either QE.QError (Array (DeckId × Card.Model)))
 loadMirroredCards wiring path coords = (H.fromAff :: Slam ~> DeckDSL) do
   let deckIds = Array.nub (fst <$> coords)
-  res ← sequence <$> runParallel (traverse (parallel ∘ flip (getDeck path) wiring.decks) deckIds)
+  res ← sequence <$> runParallel (traverse (parallel ∘ flip (getDeck path) wiring) deckIds)
   pure $ hydrateCards coords =<< map (Array.zip deckIds) res
   where
   hydrateCards coords decks =
     for coords \(deckId × cardId) →
       case find (eq deckId ∘ fst) decks of
-        Nothing → Left "Deck not found"
+        Nothing → Left (QE.msgToQError "Deck not found")
         Just (_ × deck) →
           case find (eq cardId ∘ _.cardId) deck.cards of
-            Nothing → Left "Card not found"
+            Nothing → Left (QE.msgToQError "Card not found")
             Just card → Right (deckId × card)
 
 setModel

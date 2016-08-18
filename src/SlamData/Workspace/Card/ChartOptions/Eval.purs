@@ -19,8 +19,6 @@ module SlamData.Workspace.Card.ChartOptions.Eval where
 import SlamData.Prelude
 
 import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as EC
 
 import Data.Argonaut (JCursor)
 import Data.Array (cons, length, null, catMaybes)
@@ -30,57 +28,57 @@ import Data.Set as Set
 import Data.Map as Map
 
 import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Aff (Wiring)
+import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
+import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
+import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Port as Port
 
 eval
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Wiring r
+  → CET.CardEvalInput
   → ChartOptions.Model
   → CET.CardEvalT m Port.ChartPort
-eval info model = do
+eval wiring info model = do
   resource ←
     info.input
       ^? Lens._Just ∘ Port._Resource
-      # maybe (EC.throwError "Expected Resource input") pure
+      # maybe (QE.throw "Expected Resource input") pure
 
-  numRecords ←
-    QQ.count resource
-      # lift
-      >>= either (EC.throwError ∘ Exn.message) pure
+  numRecords ← CET.liftQ $ QQ.count wiring resource
 
   when (numRecords > 10000)
-    $ EC.throwError
+    $ QE.throw
       $ "The 10000 record limit for visualizations has been exceeded - the current dataset contains "
       ⊕ show numRecords
       ⊕ " records. "
       ⊕ "Please consider using a 'limit' or 'group by' clause in the query to reduce the result size."
 
   recordSample ←
-    QQ.sample resource 0 20
+    QQ.sample wiring resource 0 20
       # lift
-      >>= either (const $ EC.throwError "Error getting input resource") pure
+      >>= either (const $ QE.throw "Error getting input resource") pure
 
   when (null recordSample)
-    $ EC.throwError "Input resource is empty"
+    $ QE.throw "Input resource is empty"
 
   let
     sample = analyzeJArray recordSample
     axes = getAxes sample
     available =
-      catMaybes $ map (\x → x axes) 
+      catMaybes $ map (\x → x axes)
         [ getMaybePie, getMaybeBar, getMaybeLine
         , getMaybeArea, getMaybeScatter, getMaybeRadar
         , getMaybeFunnel ]
 
   when (null available)
-    $ EC.throwError "There is no available chart types for this data"
+    $ QE.throw "There is no available chart types for this data"
 
   let
     availableChartTypes = foldMap Set.singleton available

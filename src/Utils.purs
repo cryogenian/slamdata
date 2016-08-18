@@ -16,23 +16,20 @@ limitations under the License.
 
 module Utils where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Argonaut as J
-import Data.Either (Either(..), either)
-import Data.Foldable (class Foldable, foldr)
-import Data.Maybe (Maybe(..), maybe)
 
 import Global (readFloat, isNaN)
 
-stringToNumber :: String -> Maybe Number
+stringToNumber ∷ String → Maybe Number
 stringToNumber s =
   let n = readFloat s in
   if isNaN n
   then Nothing
   else Just n
 
-singletonValue' :: ∀ a m. (Foldable m) ⇒ m a → Either Int (Maybe a)
+singletonValue' ∷ ∀ a m. (Foldable m) ⇒ m a → Either Int (Maybe a)
 singletonValue' =
   foldr f initial
   where
@@ -41,8 +38,12 @@ singletonValue' =
   f x (Left i) = Left $ i + 1
   initial = Right Nothing
 
-singletonValue :: ∀ a m n. (Applicative m, Foldable n) ⇒ m a → (Int → m a) → n a → m a
+singletonValue ∷ ∀ a m n. (Applicative m, Foldable n) ⇒ m a → (Int → m a) → n a → m a
 singletonValue noElements tooManyElements =
   either tooManyElements (maybe noElements pure) <<< singletonValue'
 
-foreign import prettyJson :: J.Json → String
+passover ∷ ∀ a b m. (Applicative m) ⇒ (a → m b) → a → m a
+passover f x =
+  f x *> pure x
+
+foreign import prettyJson ∷ J.Json → String

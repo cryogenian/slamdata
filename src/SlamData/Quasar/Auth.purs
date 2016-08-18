@@ -16,115 +16,46 @@ limitations under the License.
 
 module SlamData.Quasar.Auth
   ( authed
-  , retrieveIdToken
-  , storeIdToken
-  , retrieveKeyString
-  , retrieveNonce
-  , retrieveClientID
-  , storeKeyString
-  , storeNonce
-  , storeClientId
-  , clearIdToken
   , authHeaders
   , module OIDC
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable, fromEff)
-import Control.Monad.Eff (Eff)
+import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.Free (class Affable, fromEff, fromAff)
+import Control.Monad.Eff.Class (liftEff)
 
 import Data.Array as A
-import Data.Either as E
 import Data.Maybe as M
-
-import DOM (DOM)
 
 import Network.HTTP.RequestHeader (RequestHeader)
 
-import OIDC.Crypt.Types as OIDC
+import OIDC.Crypt.Types as OIDCT
+import OIDC.Crypt as OIDC
 
 import SlamData.Quasar.Auth.Permission as P
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus, AuthEffects)
+import SlamData.Quasar.Auth.Authentication as AuthRetrieve
 
 import Quasar.Advanced.QuasarAF.Interpreter.Affjax (authHeader, permissionsHeader)
 
-import Utils.LocalStorage as LS
-
-idTokenLocalStorageKey ∷ String
-idTokenLocalStorageKey = "sd-auth-id-token"
-
-keyStringLocalStorageKey ∷ String
-keyStringLocalStorageKey = "csrf"
-
-nonceLocalStorageKey ∷ String
-nonceLocalStorageKey = "replay"
-
-clientIDLocalStorageKey ∷ String
-clientIDLocalStorageKey = "sd-auth-client-id"
-
-retrieveIdToken
-  ∷ ∀ e. Eff (dom ∷ DOM | e) (M.Maybe OIDC.IdToken)
-retrieveIdToken =
-  LS.getLocalStorage idTokenLocalStorageKey <#>
-    E.either (\_ → M.Nothing) (M.Just <<< OIDC.IdToken)
-
-retrieveKeyString ∷ ∀ e. Eff (dom ∷ DOM | e) (M.Maybe OIDC.KeyString)
-retrieveKeyString =
-  LS.getLocalStorage keyStringLocalStorageKey <#>
-    E.either (\_ → M.Nothing) (M.Just <<< OIDC.KeyString)
-
-retrieveNonce ∷ ∀ e. Eff (dom ∷ DOM | e) (M.Maybe OIDC.UnhashedNonce)
-retrieveNonce =
-  LS.getLocalStorage nonceLocalStorageKey <#>
-    E.either (\_ → M.Nothing) (M.Just <<< OIDC.UnhashedNonce)
-
-retrieveClientID ∷ ∀ e. Eff (dom ∷ DOM | e) (M.Maybe OIDC.ClientID)
-retrieveClientID =
-  LS.getLocalStorage clientIDLocalStorageKey <#>
-    E.either (\_ → M.Nothing) (M.Just <<< OIDC.ClientID)
-
-storeIdToken ∷ ∀ e. OIDC.IdToken → Eff (dom ∷ DOM | e) Unit
-storeIdToken (OIDC.IdToken idToken) =
-  LS.setLocalStorage
-    idTokenLocalStorageKey
-    idToken
-
-storeKeyString ∷ ∀ e. OIDC.KeyString → Eff (dom ∷ DOM |e) Unit
-storeKeyString (OIDC.KeyString ks) =
-  LS.setLocalStorage
-    keyStringLocalStorageKey
-    ks
-
-storeNonce ∷ ∀ e. OIDC.UnhashedNonce → Eff (dom ∷ DOM |e) Unit
-storeNonce (OIDC.UnhashedNonce n) =
-  LS.setLocalStorage
-    nonceLocalStorageKey
-    n
-
-storeClientId ∷ ∀ e. OIDC.ClientID → Eff (dom ∷ DOM |e) Unit
-storeClientId (OIDC.ClientID cid) =
-  LS.setLocalStorage
-    clientIDLocalStorageKey
-    cid
-
-clearIdToken ∷ ∀ e. Eff (dom ∷ DOM |e) Unit
-clearIdToken =
-  LS.removeLocalStorage idTokenLocalStorageKey
-
 authed
   ∷ ∀ a eff m
-  . (Bind m, Affable (dom ∷ DOM | eff) m)
-  ⇒ (M.Maybe OIDC.IdToken → Array P.TokenHash → m a)
+  . (Bind m, Affable (AuthEffects eff) m)
+  ⇒ RequestIdTokenBus
+  → (M.Maybe OIDCT.IdToken → Array P.TokenHash → m a)
   → m a
-authed f = do
-  idToken ← fromEff retrieveIdToken
+authed requestNewIdTokenBus f = do
+  idToken ← fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken requestNewIdTokenBus
   perms ← fromEff P.retrieveTokenHashes
   f idToken perms
 
 authHeaders
-  ∷ ∀ e
-  . Eff (dom ∷ DOM|e) (Array RequestHeader)
-authHeaders = do
-  idToken ← retrieveIdToken
-  hashes ← P.retrieveTokenHashes
+  ∷ ∀ eff
+  . RequestIdTokenBus
+  → Aff (AuthEffects eff) (Array RequestHeader)
+authHeaders requestNewIdTokenBus = do
+  idToken ← AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken requestNewIdTokenBus
+  hashes ← liftEff P.retrieveTokenHashes
   pure $ A.catMaybes [ map authHeader idToken, permissionsHeader hashes ]

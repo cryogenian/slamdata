@@ -14,17 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery where
+module SlamData.Quasar.Auth.Keys where
 
-import SlamData.Prelude
+idTokenLocalStorageKey ∷ String
+idTokenLocalStorageKey = "sd-auth-id-token"
 
-import Quasar.Error (QError)
+keyStringLocalStorageKey ∷ String
+keyStringLocalStorageKey = "sd-auth-csrf"
 
-import SlamData.FileSystem.Resource (Mount)
+nonceLocalStorageKey ∷ String
+nonceLocalStorageKey = "sd-auth-replay"
 
-import Utils.Path (DirPath)
+providerLocalStorageKey ∷ String
+providerLocalStorageKey = "sd-auth-provider"
 
-data SettingsQuery s a
-  = ModifyState (s -> s) a
-  | Validate (Maybe String -> a)
-  | Submit DirPath String (Either QError Mount -> a)
+gettingIdTokenUntilKey ∷ String
+gettingIdTokenUntilKey = "sd-getting-id-token-until"
