@@ -35,7 +35,7 @@ import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 
 import DOM (DOM)
 
-import Halogen.Component (parentState)
+import Halogen.Component (parentState, interpret)
 import Halogen.Driver (Driver, runUI)
 import Halogen.Query (action)
 import Halogen.Util (runHalogenAff, awaitBody)
@@ -47,7 +47,7 @@ import Routing (matchesAff)
 import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Config.Version (slamDataVersion)
-import SlamData.Effects (SlamDataEffects, SlamDataRawEffects)
+import SlamData.Effects (SlamDataEffects, SlamDataRawEffects, unSlamF)
 import SlamData.FileSystem.Component (QueryP, Query(..), toListing, toDialog, toSearch, toFs, initialState, comp)
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
@@ -76,7 +76,8 @@ main = do
   runHalogenAff do
     forkAff Analytics.enableAnalytics
     wiring ← makeWiring
-    driver ← runUI (comp wiring) (parentState initialState) =<< awaitBody
+    let ui = interpret unSlamF $ comp wiring
+    driver ← runUI ui (parentState initialState) =<< awaitBody
     forkAff do
       setSlamDataTitle slamDataVersion
       driver (left $ action $ SetVersion slamDataVersion)

@@ -35,12 +35,12 @@ import DOM.HTML.Window (document)
 import DOM.Node.Element (setClassName)
 import DOM.HTML.Types (htmlElementToElement)
 
-import Halogen (Driver, runUI, parentState)
+import Halogen (Driver, runUI, parentState, interpret)
 import Halogen.Util (runHalogenAff, awaitBody)
 
 import SlamData.Analytics as Analytics
 import SlamData.Config as Config
-import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
+import SlamData.Effects (SlamDataRawEffects, SlamDataEffects, unSlamF)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
@@ -64,7 +64,8 @@ main = do
     let st = Workspace.initialState (Just "3.0")
     wiring ← makeWiring
     forkAff (Analytics.consumeEvents wiring.analytics)
-    driver ← runUI (Workspace.comp wiring) (parentState st) =<< awaitBody
+    let ui = interpret unSlamF $ Workspace.comp wiring
+    driver ← runUI ui (parentState st) =<< awaitBody
     forkAff (routeSignal driver)
   StyleLoader.loadStyles
 

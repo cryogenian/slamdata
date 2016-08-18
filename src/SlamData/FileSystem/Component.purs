@@ -24,8 +24,6 @@ module SlamData.FileSystem.Component
 import SlamData.Prelude
 
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Eff.Exception (error)
-import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser.Event as Be
@@ -223,9 +221,11 @@ eval wiring (FileListChanged el next) = do
   H.fromEff $ clearValue el
   case head fileArr of
     Nothing →
-      let err ∷ Slam Unit
-          err = throwError $ error "empty filelist"
-      in H.fromAff err
+      -- TODO: notification? this shouldn't be a runtime exception anyway!
+      -- let err ∷ Slam Unit
+      --     err = throwError $ error "empty filelist"
+      -- in H.fromAff err
+      pure unit
     Just f → uploadFileSelected wiring f
   pure next
 

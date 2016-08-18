@@ -25,11 +25,9 @@ module SlamData.Workspace.Card.Ace.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Class (liftEff)
-
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceQuery(..), AceState, Autocomplete(..), aceConstructor)
+import Ace.Halogen.Component as AC
 import Ace.Types (Editor)
 
 import Data.Lens ((.~))
@@ -57,8 +55,8 @@ import SlamData.Workspace.Wiring (Wiring)
 
 import Utils.Ace (getRangeRecs, readOnly)
 
-type DSL = H.ParentDSL State AceState CC.CardEvalQuery AceQuery Slam Unit
-type HTML = H.ParentHTML AceState CC.CardEvalQuery AceQuery Slam Unit
+type DSL = H.ParentDSL State AC.AceState CC.CardEvalQuery AC.AceQuery Slam Unit
+type HTML = H.ParentHTML AC.AceState CC.CardEvalQuery AC.AceQuery Slam Unit
 type AceEval = CC.CardEvalInput → DSL Unit
 
 type AceConfig =
@@ -85,7 +83,7 @@ eval cfg (CC.EvalCard info output next) = do
   cfg.eval info
   pure next
 eval cfg (CC.Activate next) = do
-  mbEditor ← H.query unit $ H.request GetEditor
+  mbEditor ← H.query unit $ H.request AC.GetEditor
   for_ (join mbEditor) $ H.fromEff ∘ Editor.focus
   pure next
 eval cfg (CC.Deactivate next) = do
@@ -96,8 +94,8 @@ eval cfg (CC.Deactivate next) = do
   pure next
 eval cfg (CC.Save k) = do
   status ← H.gets _.status
-  content ← fromMaybe "" <$> H.query unit (H.request GetText)
-  mbEditor ← H.query unit (H.request GetEditor)
+  content ← fromMaybe "" <$> H.query unit (H.request AC.GetText)
+  mbEditor ← H.query unit (H.request AC.GetEditor)
   rrs ← H.fromEff $ maybe (pure []) getRangeRecs $ join mbEditor
   pure ∘ k
     $ Card.Ace cfg.mode
@@ -110,9 +108,9 @@ eval _ (CC.Load card next) = do
       -- We don't want the Ace component to trigger a TextChanged event when we
       -- initially set the text, so we use this nasty state to filter it out.
       H.modify $ _status .~ Loading
-      H.query unit $ H.action (SetText text)
+      H.query unit $ H.action (AC.SetText text)
       H.modify $ _status .~ Ready
-      mbEditor ← H.query unit $ H.request GetEditor
+      mbEditor ← H.query unit $ H.request AC.GetEditor
       H.fromEff $ for_ (join mbEditor) \editor → do
         traverse_ (readOnly editor) ranges
         Editor.navigateFileEnd editor
@@ -125,7 +123,7 @@ eval _ (CC.SetDimensions dims next) = do
   H.modify
     $ _levelOfDetails
     .~ if dims.width < 240.0 then Low else High
-  mbEditor ← H.query unit $ H.request GetEditor
+  mbEditor ← H.query unit $ H.request AC.GetEditor
   for_ (join mbEditor) $ H.fromEff ∘ Editor.resize Nothing
   pure next
 eval _ (CC.ModelUpdated _ next) = do
@@ -134,13 +132,13 @@ eval _ (CC.ModelUpdated _ next) = do
 eval _ (CC.ZoomIn next) =
   pure next
 
-peek ∷ ∀ x. AceQuery x → DSL Unit
+peek ∷ ∀ x. AC.AceQuery x → DSL Unit
 peek = case _ of
-  TextChanged _ → H.modify _ { dirty = true }
+  AC.TextChanged _ → H.modify _ { dirty = true }
   _ → pure unit
 
 aceSetup ∷ AceConfig → Editor → Slam Unit
-aceSetup cfg editor = liftEff do
+aceSetup cfg editor = H.fromEff do
   Editor.setTheme "ace/theme/chrome" editor
   Editor.setEnableLiveAutocompletion true editor
   Editor.setEnableBasicAutocompletion true editor
@@ -174,5 +172,8 @@ renderHighLOD cfg state =
             , HH.text "Run Query"
             ]
         ]
-    , HH.Slot (aceConstructor unit (aceSetup cfg) (Just Live) )
+    , HH.slot unit \_ →
+        { component: AC.aceComponent (aceSetup cfg) (Just AC.Live)
+        , initialState: AC.initialAceState
+        }
     ]

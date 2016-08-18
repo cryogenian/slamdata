@@ -172,7 +172,6 @@ eval (Typed str next) = do
     Nothing → do
       t' ←
         debouncedEventSource
-          H.fromEff
           H.subscribe
           (Milliseconds Config.searchTimeout)
       H.modify (_trigger .~ pure t')

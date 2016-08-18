@@ -22,6 +22,7 @@ module SlamData.Workspace.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
@@ -254,7 +255,7 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       wrapper = (wrappedDeck defaultPosition oldId) { parent = deck.parent }
 
     error ← lift $ runExceptT do
-      ExceptT $ map (errors "; ") $ (H.fromAff :: Slam ~> WorkspaceDSL) $ runParallel $ traverse parallel
+      ExceptT $ map (errors "; ") $ (H.fromAff :: Aff SlamDataEffects ~> WorkspaceDSL) $ runParallel $ traverse parallel
         [ putDeck path oldId deck' wiring
         , putDeck path newId wrapper wiring
         ]
@@ -320,7 +321,7 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
           }
         }
     error ← lift $ runExceptT do
-      ExceptT $ map (errors "; ") $ (H.fromAff :: Slam ~> WorkspaceDSL) $ runParallel $ traverse parallel
+      ExceptT $ map (errors "; ") $ (H.fromAff :: Aff SlamDataEffects ~> WorkspaceDSL) $ runParallel $ traverse parallel
         if Array.null oldModel.cards
         then
           let

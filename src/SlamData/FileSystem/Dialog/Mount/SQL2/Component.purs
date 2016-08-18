@@ -25,15 +25,13 @@ module SlamData.FileSystem.Dialog.Mount.SQL2.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Class (liftEff)
-
 import Data.Array (filter)
 import Data.Path.Pathy as Pt
 import Data.StrMap as Sm
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceQuery(..), AceState, Autocomplete(..), aceConstructor)
+import Ace.Halogen.Component (AceQuery(..), AceState, Autocomplete(..), aceComponent, initialAceState)
 import Ace.Types (Editor)
 
 import Halogen as H
@@ -62,7 +60,11 @@ render state@{ initialQuery } =
   HH.div
     [ HP.key "mount-sql2" ]
     [ section "SQL² query"
-        [ HH.Slot (aceConstructor unit (aceSetup initialQuery) (Just Live)) ]
+        [ HH.slot unit \_ →
+            { component: aceComponent (aceSetup initialQuery) (Just Live)
+            , initialState: initialAceState
+            }
+        ]
     , section "Query variables" [ propList _vars state ]
     ]
 
@@ -81,7 +83,7 @@ eval wiring (Submit parent name k) = do
   pure $ k $ map (const view) result
 
 aceSetup ∷ Maybe String → Editor → Slam Unit
-aceSetup initialQuery editor = liftEff do
+aceSetup initialQuery editor = H.fromEff do
   Editor.setMinLines 6 editor
   Editor.setMaxLines 10000 editor
   Editor.setAutoScrollEditorIntoView true editor

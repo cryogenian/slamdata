@@ -18,12 +18,8 @@ module Utils.Debounced where
 
 import Prelude
 
-import Control.Bind ((=<<))
-import Control.Coroutine.Stalling (producerToStallingProducer)
-import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
 import Control.Monad.Eff.Timer (TIMER, setTimeout, clearTimeout)
 
@@ -32,9 +28,7 @@ import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
 import Data.Time.Duration (Milliseconds(..))
 
-import Halogen.Query.EventSource (EventSource(..))
-
-import Utils.AffableProducer (produce)
+import Halogen.Query.EventSource as ES
 
 type DebounceEffects eff = (ref :: REF, avar :: AVAR, timer :: TIMER | eff)
 
@@ -48,20 +42,18 @@ type DebounceEffects eff = (ref :: REF, avar :: AVAR, timer :: TIMER | eff)
 -- | - The second returned function will enqueue an new emission, interrupting
 -- |   any existing pending emission.
 debouncedEventSource
-  :: forall f g eff
-   . (Monad g)
-  => (Eff (DebounceEffects eff) ~> g)
-  -> (EventSource f (Aff (DebounceEffects eff)) -> g Unit)
+  :: forall f g h eff
+   . (Monad g, Affable (DebounceEffects eff) g, Affable (DebounceEffects eff) h, Functor h)
+  => (ES.EventSource f h -> g Unit)
   -> Milliseconds
-  -> g (f Unit -> Aff (DebounceEffects eff) Unit)
-debouncedEventSource lift subscribe (Milliseconds ms) = do
-  timeoutRef <- lift (newRef Nothing)
-  emitRef <- lift (newRef Nothing)
+  -> g (f Unit -> h Unit)
+debouncedEventSource subscribe (Milliseconds ms) = do
+  timeoutRef <- fromEff (newRef Nothing)
+  emitRef <- fromEff (newRef Nothing)
 
-  subscribe $ EventSource $ producerToStallingProducer $ produce
-    \emit -> writeRef emitRef (Just emit)
+  subscribe $ ES.EventSource $ ES.produce \emit -> writeRef emitRef (Just emit)
 
-  pure \act -> liftEff do
+  pure \act -> fromEff do
     maybe (pure unit) clearTimeout =<< readRef timeoutRef
     timeoutId <- setTimeout (Int.floor ms) $
       maybe (pure unit) (_ $ (Left act)) =<< readRef emitRef

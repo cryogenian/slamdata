@@ -18,8 +18,8 @@ module SlamData.Workspace.Card.Chart.Component (chartComponent) where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff (Aff)
 
-import Data.Argonaut (JArray)
 import Data.Array as A
 import Data.Foreign (Foreign, ForeignError(TypeMismatch), readInt, readString)
 import Data.Foreign.Class (readProp)
@@ -43,9 +43,8 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.Quasar.Aff (Wiring)
-import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
@@ -136,7 +135,7 @@ eval wiring = case _ of
         -- Basically something equivalent to the old `needsToUpdate`. -gb
         records ←
           either (const []) id
-            <$> H.fromAff (Quasar.all wiring options.resource ∷ Slam (Either QE.QError JArray))
+            <$> (H.fromAff ∷ Aff SlamDataEffects ~> ChartDSL) (Quasar.all wiring options.resource)
         let optionDSL = BO.buildOptions opts config records
         H.query unit $ H.action $ HEC.Set optionDSL
         H.query unit $ H.action HEC.Resize

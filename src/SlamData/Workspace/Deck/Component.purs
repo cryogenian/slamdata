@@ -25,6 +25,7 @@ module SlamData.Workspace.Deck.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Promise as Pr
@@ -56,7 +57,7 @@ import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Indexed as HH
 
 import SlamData.Analytics.Event as AE
-import SlamData.Effects (Slam)
+import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
@@ -367,7 +368,7 @@ peekBackSide opts (Back.DoAction action _) =
           CardId _ → do
             let rem = DCS.removeCard trashId state
             DBC.childDeckIds (snd <$> fst rem)
-              # (H.fromAff :: Slam ~> DeckDSL) ∘ runParallel ∘ traverse_ (parallel ∘ DBC.deleteGraph opts.wiring state.path)
+              # (H.fromAff :: Aff SlamDataEffects ~> DeckDSL) ∘ runParallel ∘ traverse_ (parallel ∘ DBC.deleteGraph opts.wiring state.path)
             H.set $ snd rem
             triggerSave Nothing
             updateActiveCardAndIndicator opts.wiring
@@ -864,7 +865,7 @@ loadMirroredCards
   -> DirPath
   -> Array (DeckId × CardId)
   -> DeckDSL (Either QE.QError (Array (DeckId × Card.Model)))
-loadMirroredCards wiring path coords = (H.fromAff :: Slam ~> DeckDSL) do
+loadMirroredCards wiring path coords = (H.fromAff :: Aff SlamDataEffects ~> DeckDSL) do
   let deckIds = Array.nub (fst <$> coords)
   res ← sequence <$> runParallel (traverse (parallel ∘ flip (getDeck path) wiring) deckIds)
   pure $ hydrateCards coords =<< map (Array.zip deckIds) res

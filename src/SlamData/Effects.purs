@@ -16,8 +16,11 @@ limitations under the License.
 
 module SlamData.Effects where
 
+import SlamData.Prelude
+
 import Ace.Types (ACE)
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Eff.Random (RANDOM)
@@ -31,7 +34,29 @@ import Halogen (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
 import ZClipboard (ZCLIPBOARD)
 
-type Slam = Aff SlamDataEffects
+type Slam = SlamF SlamDataEffects
+
+newtype SlamF eff a = SlamF (Aff eff a)
+
+unSlamF ∷ ∀ eff. SlamF eff ~> Aff eff
+unSlamF (SlamF a) = a
+
+instance functorSlamF ∷ Functor (SlamF eff) where
+  map f (SlamF a) = SlamF (map f a)
+
+instance applySlamF ∷ Apply (SlamF eff) where
+  apply (SlamF a) (SlamF b) = SlamF (a <*> b)
+
+instance applicativeSlamF ∷ Applicative (SlamF eff) where
+  pure = SlamF ∘ pure
+
+instance bindSlamF ∷ Bind (SlamF eff) where
+  bind (SlamF a) f = SlamF (a >>= unSlamF ∘ f)
+
+instance monadSlamF ∷ Monad (SlamF eff)
+
+instance affableSlam ∷ Affable eff (SlamF eff) where
+  fromAff = SlamF
 
 type SlamDataEffects = HalogenEffects SlamDataRawEffects
 
