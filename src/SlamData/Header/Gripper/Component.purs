@@ -19,9 +19,7 @@ module SlamData.Header.Gripper.Component where
 import SlamData.Prelude
 
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Aff as Aff
 import Control.Monad.Rec.Class (forever)
-import Control.Coroutine.Stalling as StallingCoroutine
 
 import Data.Nullable as N
 import DOM.Event.EventTarget as Etr
@@ -47,12 +45,10 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Query.EventSource as EventSource
 
 import SlamData.Effects (Slam)
 import SlamData.SignIn.Bus (SignInBusR)
 
-import Utils.AffableProducer (produceAff)
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -61,7 +57,6 @@ data Query a
   | StartDragging Number a
   | StopDragging a
   | ChangePosition Number a
-  | SetState State a
   | Animated a
 
 data Direction = Up | Down
@@ -196,15 +191,9 @@ eval sel bus (Init next) = do
         pure $ H.action Animated
     in
       H.subscribe $ H.eventSource attachAnimationEnd handleAnimationEnd
-  H.subscribe
-    $ EventSource.EventSource
-    $ StallingCoroutine.producerToStallingProducer
-    $ produceAff \emit →
-        forever $ (const $ Aff.later' 500 $ emit $ Left $ SetState (Closing maxMargin) unit)
-        =<< Bus.read bus
+
+  forever $ const (H.set $ Closing maxMargin) =<< H.fromAff (Bus.read bus)
   pure next
-eval _ _ (SetState state next) =
-  H.set state $> next
 eval _ _ (StartDragging pos next) = do
   astate ← H.get
   case astate of
