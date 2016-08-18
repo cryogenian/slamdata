@@ -44,9 +44,10 @@ import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
 import SlamData.Workspace.Card.Variables.Component (variablesComponent)
+import SlamData.Workspace.Deck.DeckId (DeckId)
 
-cardComponent ∷ Card.Model → CardOptions → CardComponent
-cardComponent card opts =
+cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
+cardComponent deckId card opts =
   case card.model of
     Card.Ace mode _ →
       aceComponent
@@ -57,7 +58,7 @@ cardComponent card opts =
     Card.Search _ → searchComponent
     Card.ChartOptions _ → chartOptionsComponent
     Card.Chart → chartComponent opts.deck.wiring
-    Card.Markdown _ → markdownComponent card.cardId
+    Card.Markdown _ → markdownComponent deckId opts
     Card.Table _ → tableComponent opts.deck.wiring
     Card.Download → downloadComponent opts.deck.wiring
     Card.Variables _ → variablesComponent
