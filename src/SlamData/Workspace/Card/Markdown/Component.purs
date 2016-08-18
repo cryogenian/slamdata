@@ -24,6 +24,7 @@ import SlamData.Prelude
 
 import Data.StrMap as SM
 
+import Data.List ((:))
 import Data.Lens as Lens
 import Data.Lens ((^?))
 
@@ -34,10 +35,12 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Effects (Slam)
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Common (CardOptions)
+import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Card.Markdown.Component.Query (Query(..), QueryP)
 import SlamData.Workspace.Card.Markdown.Component.State (State, StateP, initialState, formStateToVarMap)
 import SlamData.Workspace.Card.Port as Port
@@ -46,13 +49,14 @@ import SlamData.Render.CSS as CSS
 import Text.Markdown.SlamDown.Halogen.Component as SD
 
 markdownComponent
-  :: CID.CardId
-  -> H.Component CC.CardStateP CC.CardQueryP Slam
-markdownComponent cardId = CC.makeCardComponent
+  ∷ DID.DeckId
+  → CardOptions
+  → H.Component CC.CardStateP CC.CardQueryP Slam
+markdownComponent deckId opts = CC.makeCardComponent
   { cardType: CT.Markdown
   , component:
       H.lifecycleParentComponent
-        { render: render ("card-" <> CID.cardIdToString cardId)
+        { render: render ("card-" <> uniqueCardId)
         , eval
         , peek: Just (peek ∘ H.runChildF)
         , initializer: Just $ right (H.action Init)
@@ -62,6 +66,12 @@ markdownComponent cardId = CC.makeCardComponent
   , _State: CC._MarkdownState
   , _Query: CC.makeQueryPrism' CC._MarkdownQuery
   }
+  where
+  uniqueCardId
+    = foldMap
+        DID.deckIdToString
+        (deckId : opts.deckId : opts.deck.cursor)
+    <> CID.cardIdToString opts.cardId
 
 type MarkdownHTML a =
   H.ParentHTML

@@ -182,7 +182,7 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
-      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type NOT IN :type[_] AND gender IN :gender[_] AND year > :year AND country IN :country[_]"
+      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender[_] AND year > :year AND country = :country"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertTableCardInLastDeck
@@ -209,7 +209,7 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
-      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type NOT IN :type[_] AND gender IN :gender[_] AND year > :year AND country IN :country[_]"
+      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender[_] AND year > :year AND country = :country"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertTableCardInLastDeck
@@ -243,7 +243,7 @@ test = do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard $
       "city = ___"
-      <> "(!``select city from `/test-mount/testDb/zips` where state = :state[0] order by asc limit 1``)"
+      <> "(!``select city from `/test-mount/testDb/zips` where state = :state order by asc limit 1``)"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck

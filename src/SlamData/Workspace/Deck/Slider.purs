@@ -264,6 +264,6 @@ renderCard opts deckComponent st (deckId × card) index =
     }
 
   cardComponent =
-    { component: Factory.cardComponent card cardOpts
+    { component: Factory.cardComponent st.id card cardOpts
     , initialState: H.parentState CardC.initialCardState
     }
