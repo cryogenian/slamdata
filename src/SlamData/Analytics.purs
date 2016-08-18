@@ -16,8 +16,10 @@ limitations under the License.
 
 module SlamData.Analytics
   ( enableAnalytics
-  , identify
   , consumeEvents
+  , identify
+  , trackEvent
+  , module SlamData.Analytics.Class
   , module SlamData.Analytics.Event
   ) where
 
@@ -28,7 +30,7 @@ import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Reader.Trans as CMR
+import Control.Monad.Reader (runReaderT)
 import Control.Monad.Rec.Class (forever)
 
 import Data.Argonaut (Json, (:=), (~>), jsonEmptyObject)
@@ -45,7 +47,8 @@ import OIDC.Crypt.Types as OIDC
 import Quasar.QuasarF as QF
 import Quasar.QuasarF.Interpreter.Aff as QA
 
-import SlamData.Analytics.Event (Event(..), track)
+import SlamData.Analytics.Class (class AnalyticsDSL, track)
+import SlamData.Analytics.Event (Event(..))
 import SlamData.Config as Config
 import SlamData.Workspace.AccessType as AT
 
@@ -54,7 +57,7 @@ foreign import _track ∷ ∀ eff. String → Json → Eff (dom ∷ DOM | eff) U
 
 isAdvanced ∷ ∀ eff. Aff (ajax ∷ AX.AJAX | eff) Boolean
 isAdvanced
-  = flip CMR.runReaderT { basePath: Config.baseUrl }
+  = flip runReaderT { basePath: Config.baseUrl }
   $ QA.eval
   $ either (const false) (\{ name } → name == "Quasar-Advanced")
   <$> QF.serverInfo

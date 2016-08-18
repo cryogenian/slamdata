@@ -33,7 +33,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Sort (Sort)
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt)

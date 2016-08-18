@@ -29,7 +29,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Form.Select as S
 
 data Query s a

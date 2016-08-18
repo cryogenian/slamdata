@@ -22,8 +22,6 @@ module SlamData.Workspace.Card.Draftboard.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
-
 import Data.Array as Array
 import Data.Function (on)
 import Data.Lens ((.~), (?~))
@@ -44,9 +42,10 @@ import Halogen.HTML.Properties.Indexed as HP
 
 import Math (round, floor)
 
-import SlamData.Analytics.Event as AE
+import SlamData.Analytics as SA
 import SlamData.Config as Config
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
+import SlamData.Quasar.Error as QE
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
@@ -65,10 +64,11 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString, freshDeckId)
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Notification as Notify
-import SlamData.Workspace.Wiring (putDeck)
+import SlamData.Wiring as W
 
 import Utils.CSS (zIndex)
 import Utils.DOM (elementEq, scrollTop, scrollLeft, getOffsetClientRect)
+import Utils.Path (DirPath)
 
 type DraftboardDSL = H.ParentDSL State DNS.State QueryC DNQ.QueryP Slam DeckId
 
@@ -262,19 +262,19 @@ peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
     DCQ.GrabDeck ev _ → startDragging deckId ev Grabbing
     DCQ.ResizeDeck ev _ → startDragging deckId ev Resizing
     DCQ.DoAction DCQ.DeleteDeck _ → do
-      AE.track (AE.Delete deckId) opts.deck.wiring.analytics
+      SA.track (SA.Delete deckId)
       deleteDeck opts deckId
       CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction DCQ.Wrap _ → do
-      AE.track (AE.Wrap deckId) opts.deck.wiring.analytics
+      SA.track (SA.Wrap deckId)
       wrapDeck opts deckId
       CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction (DCQ.Unwrap decks) _ → do
-      AE.track (AE.Collapse deckId) opts.deck.wiring.analytics
+      SA.track (SA.Collapse deckId)
       unwrapDeck opts deckId decks
       CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction DCQ.Mirror _ → do
-      AE.track (AE.Mirror deckId) opts.deck.wiring.analytics
+      SA.track (SA.Mirror deckId)
       mirrorDeck opts deckId
       CC.raiseUpdatedP' CC.EvalModelUpdate
     _ → pure unit
@@ -422,10 +422,10 @@ addDeckAt { deck: opts, deckId: parentId, cardId } deck deckPos = do
   let deck' = deck { parent = Just (parentId × cardId) }
   H.modify $ _inserting .~ true
   deckId ← H.fromEff freshDeckId
-  putDeck opts.path deckId deck' opts.wiring >>= case _ of
+  putDeck opts.path deckId deck' >>= case _ of
     Left err → do
       H.modify $ _inserting .~ false
-      Notify.saveDeckFail err opts.wiring
+      Notify.saveDeckFail err
     Right _ → void do
       H.modify \s → s
         { decks = Map.insert deckId deckPos s.decks
@@ -435,10 +435,10 @@ addDeckAt { deck: opts, deckId: parentId, cardId } deck deckPos = do
 
 deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 deleteDeck { deck } deckId = do
-  res ← deleteGraph deck.wiring deck.path deckId
+  res ← H.liftH $ H.liftH $ deleteGraph deck.path deckId
   case res of
     Left err →
-      Notify.deleteDeckFail err deck.wiring
+      H.liftH $ H.liftH $ Notify.deleteDeckFail err
     Right _ →
       H.modify \s → s { decks = Map.delete deckId s.decks }
 
@@ -449,9 +449,9 @@ wrapDeck { cardId, deckId: parentId, deck } oldId = do
       deckPos' = deckPos { x = 1.0, y = 1.0 }
       newDeck = (wrappedDeck deckPos' oldId) { parent = Just (parentId × cardId) }
     newId ← H.fromEff freshDeckId
-    putDeck deck.path newId newDeck deck.wiring >>= case _ of
+    putDeck deck.path newId newDeck >>= case _ of
       Left err →
-        Notify.saveDeckFail err deck.wiring
+        Notify.saveDeckFail err
       Right _ → void do
         traverse_ (queryDeck oldId ∘ H.action)
           [ DCQ.SetParent (newId × CID.CardId 0)
@@ -482,7 +482,7 @@ unwrapDeck { deckId, cardId, deck: opts } oldId decks = void $ runMaybeT do
       s { decks = foldl (reinsert offset) (Map.delete oldId s.decks) deckList }
     for_ deckList \(deckId × (_ × deck)) → do
       let deck' = deck { parent = Just coord }
-      putDeck opts.path deckId deck' opts.wiring
+      putDeck opts.path deckId deck'
       queryDeck deckId
         $ H.action
         $ DCQ.Load opts.path deckId
@@ -512,9 +512,9 @@ mirrorDeck opts oldId = do
             , name: ""
             }
         newId ← H.fromEff freshDeckId
-        putDeck opts.deck.path newId newDeck opts.deck.wiring >>= case _ of
+        putDeck opts.deck.path newId newDeck >>= case _ of
           Left err →
-            Notify.saveDeckFail err opts.deck.wiring
+            Notify.saveDeckFail err
           Right _ → do
             let modelCards'' = modelCards'.init <> map (lmap (const newId)) modelCards'.rest
             queryDeck oldId $ H.action $ DCQ.SetModelCards modelCards''
@@ -539,7 +539,7 @@ groupDecks { cardId, deckId, deck } deckFrom deckTo = do
               rectFrom { x = 1.0, y = 1.0 }
           decks' = Map.insert deckFrom rectFrom' decks
           card = { cardId, model: Card.Draftboard { decks: decks' } }
-        unsafeUpdateCachedDraftboard deck.wiring deckId' card
+        H.liftH $ H.liftH $ unsafeUpdateCachedDraftboard deckId' card
         H.modify \s → s { decks = Map.delete deckFrom s.decks }
         queryDeck deckTo
           $ H.action
@@ -562,9 +562,9 @@ groupDecks { cardId, deckId, deck } deckFrom deckTo = do
               }
             }
         newId ← H.fromEff freshDeckId
-        putDeck deck.path newId newDeck deck.wiring >>= case _ of
+        putDeck deck.path newId newDeck >>= case _ of
           Left err →
-            Notify.saveDeckFail err deck.wiring
+            Notify.saveDeckFail err
           Right _ → void do
             H.modify \s → s
               { decks
@@ -584,3 +584,11 @@ loadAndFocus opts deckId =
     [ DCQ.Load opts.path deckId
     , DCQ.Focus
     ]
+
+putDeck
+  ∷ DirPath
+  → DeckId
+  → DM.Deck
+  → DraftboardDSL (Either QE.QError Unit)
+putDeck path deckId deck =
+  H.liftH $ H.liftH $ W.putDeck path deckId deck

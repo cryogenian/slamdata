@@ -46,7 +46,7 @@ import DOM.HTML.Types (HTMLElement)
 
 import Halogen (ParentState)
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Ace.Component.State as Ace
 import SlamData.Workspace.Card.Variables.Component.State as Variables
 import SlamData.Workspace.Card.Troubleshoot.Component.State as Troubleshoot

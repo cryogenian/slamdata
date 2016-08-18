@@ -15,23 +15,19 @@ limitations under the License.
 -}
 
 module SlamData.Quasar.Auth
-  ( authed
-  , authHeaders
+  ( authHeaders
   , module OIDC
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.Free (class Affable, fromEff, fromAff)
 import Control.Monad.Eff.Class (liftEff)
 
 import Data.Array as A
-import Data.Maybe as M
 
 import Network.HTTP.RequestHeader (RequestHeader)
 
-import OIDC.Crypt.Types as OIDCT
 import OIDC.Crypt as OIDC
 
 import SlamData.Quasar.Auth.Permission as P
@@ -39,17 +35,6 @@ import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus, AuthEffects)
 import SlamData.Quasar.Auth.Authentication as AuthRetrieve
 
 import Quasar.Advanced.QuasarAF.Interpreter.Affjax (authHeader, permissionsHeader)
-
-authed
-  ∷ ∀ a eff m
-  . (Bind m, Affable (AuthEffects eff) m)
-  ⇒ RequestIdTokenBus
-  → (M.Maybe OIDCT.IdToken → Array P.TokenHash → m a)
-  → m a
-authed requestNewIdTokenBus f = do
-  idToken ← fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken requestNewIdTokenBus
-  perms ← fromEff P.retrieveTokenHashes
-  f idToken perms
 
 authHeaders
   ∷ ∀ eff

@@ -17,19 +17,22 @@ limitations under the License.
 module SlamData.Notification
   ( Notification(..)
   , NotificationOptions
-  , notify_
-  , info_
-  , warn_
-  , error_
+  , Detail
+  , class NotifyDSL
+  , notify
+  , info
+  , warn
+  , error
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Bus (Bus, Cap, write)
-import Control.Monad.Aff.Free (class Affable, fromAff)
+import Control.Monad.Free (Free, liftF)
 
 import Data.Time.Duration (Milliseconds)
+
+import Halogen.Query.EventSource as ES
+import Halogen.Query.HalogenF as HF
 
 data Notification
   = Info String
@@ -38,47 +41,53 @@ data Notification
 
 type NotificationOptions =
   { notification ∷ Notification
-  , detail ∷ Maybe String
+  , detail ∷ Maybe Detail
   , timeout ∷ Maybe Milliseconds
   }
 
-notify_
-  ∷ ∀ m r eff
-  . (Affable (avar ∷ AVAR | eff) m)
-  ⇒ Notification
-  → Maybe String
-  → Maybe Milliseconds
-  → Bus (write ∷ Cap | r) NotificationOptions
-  → m Unit
-notify_ notification detail timeout bus =
-  fromAff $ write { notification, detail, timeout } bus
+type Detail = String
 
-info_
-  ∷ ∀ m r eff
-  . (Affable (avar ∷ AVAR | eff) m)
+class NotifyDSL m where
+  notify ∷ Notification → Maybe Detail → Maybe Milliseconds → m Unit
+
+instance notifyDSLFree ∷ NotifyDSL m ⇒ NotifyDSL (Free m) where
+  notify n d m = liftF $ notify n d m
+
+instance notifyDSLMaybeT ∷ (Monad m, NotifyDSL m) ⇒ NotifyDSL (MaybeT m) where
+  notify n d m = lift $ notify n d m
+
+instance notifyDSLExceptT ∷ (Monad m, NotifyDSL m) ⇒ NotifyDSL (ExceptT e m) where
+  notify n d m = lift $ notify n d m
+
+instance notifyDSLHFC ∷ NotifyDSL g ⇒ NotifyDSL (HF.HalogenFP ES.EventSource s f g) where
+  notify n d m = HF.QueryHF $ notify n d m
+
+instance notifyDSLHFP ∷ NotifyDSL g ⇒ NotifyDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
+  notify n d m = HF.QueryHF $ notify n d m
+
+info
+  ∷ ∀ m
+  . NotifyDSL m
   ⇒ String
   → Maybe String
   → Maybe Milliseconds
-  → Bus (write ∷ Cap | r) NotificationOptions
   → m Unit
-info_ = notify_ <<< Info
+info = notify <<< Info
 
-warn_
-  ∷ ∀ m r eff
-  . (Affable (avar ∷ AVAR | eff) m)
+warn
+  ∷ ∀ m
+  . NotifyDSL m
   ⇒ String
   → Maybe String
   → Maybe Milliseconds
-  → Bus (write ∷ Cap | r) NotificationOptions
   → m Unit
-warn_ = notify_ <<< Warning
+warn = notify <<< Warning
 
-error_
-  ∷ ∀ m r eff
-  . (Affable (avar ∷ AVAR | eff) m)
+error
+  ∷ ∀ m
+  . NotifyDSL m
   ⇒ String
   → Maybe String
   → Maybe Milliseconds
-  → Bus (write ∷ Cap | r) NotificationOptions
   → m Unit
-error_ = notify_ <<< Error
+error = notify <<< Error

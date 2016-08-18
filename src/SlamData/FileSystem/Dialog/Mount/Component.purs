@@ -27,10 +27,6 @@ module SlamData.FileSystem.Dialog.Mount.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except.Trans (ExceptT, runExceptT)
-
 import Data.Argonaut (jsonParser, decodeJson, (.?))
 import Data.Lens (set, (.~), (?~))
 
@@ -45,7 +41,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.GlobalError as GE
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as SQ
 import SlamData.FileSystem.Dialog.Mount.Component.Query (Query(..))
@@ -53,7 +49,6 @@ import SlamData.FileSystem.Dialog.Mount.Component.State (MountSettings, State, _
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme(..), schemes, schemeToString, schemeFromString)
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
-import SlamData.FileSystem.Wiring (Wiring)
 import SlamData.Quasar.FS as Api
 import SlamData.Render.CSS as Rc
 
@@ -73,16 +68,16 @@ type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 
-comp :: Wiring -> H.Component StateP QueryP Slam
-comp wiring =
+comp :: H.Component StateP QueryP Slam
+comp =
   H.parentComponent
-    { render: render wiring
-    , eval: eval wiring
+    { render
+    , eval
     , peek: Just (peek <<< H.runChildF)
     }
 
-render :: Wiring → State → HTML
-render wiring state@{ new } =
+render :: State → HTML
+render state@{ new } =
   modalDialog
     [ modalHeader "Mount"
     , modalBody $
@@ -103,10 +98,10 @@ render wiring state@{ new } =
   settings ss = case ss of
     Left initialState ->
       HH.slot' cpMongoDB unit \_ ->
-        { component: MongoDB.comp wiring, initialState }
+        { component: MongoDB.comp, initialState }
     Right initialState ->
       HH.slot' cpSQL unit \_ ->
-        { component: SQL2.comp wiring, initialState: H.parentState initialState }
+        { component: SQL2.comp, initialState: H.parentState initialState }
 
 fldName :: State -> HTML
 fldName state =
@@ -167,45 +162,41 @@ progressSpinner :: State -> HTML
 progressSpinner { saving } =
   HH.img [ HP.src "img/spin.gif", HP.class_ (Rc.mountProgressSpinner saving) ]
 
-eval :: Wiring -> Query ~> DSL
-eval _ (ModifyState f next) = H.modify f *> validateInput $> next
-eval _ (SelectScheme newScheme next) = do
+eval :: Query ~> DSL
+eval (ModifyState f next) = H.modify f *> validateInput $> next
+eval (SelectScheme newScheme next) = do
   currentScheme <- map scheme <$> H.gets _.settings
   when (currentScheme /= newScheme) do
     H.modify (_settings .~ map initialSettings newScheme)
     validateInput
   pure next
-eval _ (Dismiss next) = pure next
-eval _ (NotifySave next) = pure next
-eval wiring (Save k) = do
+eval (Dismiss next) = pure next
+eval (NotifySave next) = pure next
+eval (Save k) = do
   { parent, name, new } <- H.get
   H.modify (_saving .~ true)
   newName <-
-    if new then Api.getNewName wiring parent name else pure (pure name)
+    if new then Api.getNewName parent name else pure (pure name)
   case newName of
     Left err → do
-      handleQError wiring.globalError err
+      handleQError err
       pure $ k Nothing
     Right newName' -> do
       result <- querySettings (H.request (SQ.Submit parent newName'))
       mount <- case result of
         Just (Right m) -> pure (Just m)
         Just (Left err) -> do
-          handleQError wiring.globalError err
+          handleQError err
           pure Nothing
         Nothing -> pure Nothing
       H.modify (_saving .~ false)
       pure $ k mount
 
-handleQError
-  :: forall r
-   . Bus.Bus (write :: Bus.Cap | r) GE.GlobalError
-  -> Api.QError
-  -> DSL Unit
-handleQError bus err =
+handleQError :: Api.QError -> DSL Unit
+handleQError err =
   case GE.fromQError err of
     Left msg -> H.modify (_message ?~ formatError msg)
-    Right ge -> H.fromAff $ Bus.write ge bus
+    Right ge -> GE.raiseGlobalError ge
 
 peek :: forall x. ChildQuery x -> DSL Unit
 peek = coproduct (coproduct peekSQ (peekAce <<< H.runChildF)) peekSQ

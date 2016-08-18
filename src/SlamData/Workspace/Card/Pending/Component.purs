@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Pending.Component where
 
 import SlamData.Prelude
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card

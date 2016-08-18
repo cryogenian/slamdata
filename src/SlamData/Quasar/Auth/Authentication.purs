@@ -42,7 +42,6 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Ref (Ref, REF)
 import Control.Monad.Eff.Ref as Ref
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Rec.Class (forever)
 import Control.Parallel.Class (race)
 import Control.UI.Browser as Browser

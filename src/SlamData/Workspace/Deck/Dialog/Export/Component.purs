@@ -43,8 +43,7 @@ import Halogen.Component.Utils (raise)
 import OIDC.Crypt as OIDC
 
 import SlamData.Config as Config
-import SlamData.Effects (Slam)
-import SlamData.Quasar.Aff (Wiring)
+import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.CSS as Rc
@@ -56,6 +55,7 @@ import SlamData.Workspace.Deck.Component.State (deckPath')
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
 import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL, encodeVarMaps)
+import SlamData.Wiring (Wiring(..))
 
 import Quasar.Advanced.Types as QTA
 
@@ -112,8 +112,8 @@ data Query a
   | TextAreaHovered a
   | TextAreaLeft a
 
-comp ∷ ∀ r. Wiring r → H.Component State Query Slam
-comp wiring = H.component { render, eval: eval wiring }
+comp ∷ H.Component State Query Slam
+comp = H.component { render, eval }
 
 render ∷ State → H.ComponentHTML Query
 render state
@@ -344,9 +344,9 @@ renderPublishIFrame state =
         ]
 
 
-eval ∷ ∀ r. Wiring r → Query ~> DSL
-eval _ (Dismiss next) = pure next
-eval wiring (Init mbEl next) = next <$ do
+eval ∷ Query ~> DSL
+eval (Dismiss next) = pure next
+eval (Init mbEl next) = next <$ do
   state ← H.get
 
   copyRef ← H.fromEff $ newRef ""
@@ -360,6 +360,7 @@ eval wiring (Init mbEl next) = next <$ do
       Z.setData "text/plain" val z
 
   -- To know if user is authed
+  Wiring wiring ← H.liftH ask
   mbAuthToken ← H.fromAff $ Auth.fromEither <$> Auth.getIdToken wiring.requestNewIdTokenBus
   case mbAuthToken of
     Nothing →
@@ -370,7 +371,7 @@ eval wiring (Init mbEl next) = next <$ do
                 }
     Just oidcToken → do
       H.modify _{isLoggedIn = true, canRevoke = true}
-      tokensRes ← Q.tokenList wiring
+      tokensRes ← Q.tokenList
       H.modify _{loading = false}
       case tokensRes of
         Left _ → H.modify _{errored = true}
@@ -391,7 +392,6 @@ eval wiring (Init mbEl next) = next <$ do
                 H.modify _{submitting = true}
                 createdRes ←
                   Q.createToken
-                    wiring
                     tokenName
                     (sharingActions state.sharingInput View)
                 H.modify _{submitting = false}
@@ -403,23 +403,24 @@ eval wiring (Init mbEl next) = next <$ do
                       }
   updateCopyVal
 
-eval _ (SelectElement el next) = next <$ H.fromEff (select el)
-eval wiring (Revoke next) = do
+eval (SelectElement el next) = next <$ H.fromEff (select el)
+eval (Revoke next) = do
   mbPermToken ← H.gets _.permToken
   for_ mbPermToken \tok → do
     H.modify _{submitting = true}
-    deleteRes ← Q.deleteToken wiring tok.id
+    deleteRes ← Q.deleteToken tok.id
     H.modify _{submitting = false}
     case deleteRes of
       Left _ → H.modify _{ errored = true }
       Right _ → raise $ Dismiss unit
   pure next
 
-eval wiring (ToggleShouldGenerateToken next) = next <$ do
+eval (ToggleShouldGenerateToken next) = next <$ do
   state ← H.get
   case state.permToken of
     Nothing →
       unless state.shouldGenerateToken do
+        Wiring wiring ← H.liftH ask
         mbOIDC ← H.fromAff $ Auth.getIdToken wiring.requestNewIdTokenBus
         workspacePath ← H.gets (_.workspacePath ∘ _.sharingInput)
         for_ mbOIDC \oidc → do
@@ -427,7 +428,7 @@ eval wiring (ToggleShouldGenerateToken next) = next <$ do
             actions = sharingActions state.sharingInput View
             tokenName = Just $ workspaceTokenName workspacePath oidc
           H.modify _{submitting = true}
-          recreatedRes ← Q.createToken wiring tokenName actions
+          recreatedRes ← Q.createToken tokenName actions
           H.modify _{submitting = false}
           H.modify case recreatedRes of
             Left _ →
@@ -440,16 +441,16 @@ eval wiring (ToggleShouldGenerateToken next) = next <$ do
                 }
     Just tok → do
       H.modify _{submitting = true}
-      deleteRes ← Q.deleteToken wiring tok.id
+      deleteRes ← Q.deleteToken tok.id
       H.modify _{submitting = false}
       H.modify case deleteRes of
         Left _ → _ { errored = true }
         Right _ → _ { errored = false, permToken = Nothing }
   H.modify _{shouldGenerateToken = not state.shouldGenerateToken}
   updateCopyVal
-eval _ (TextAreaHovered next) =
+eval (TextAreaHovered next) =
   next <$ H.modify _{hovered = true}
-eval _ (TextAreaLeft next) =
+eval (TextAreaLeft next) =
   next <$ H.modify _{hovered = false}
 
 workspaceTokenName ∷ UP.DirPath → OIDC.IdToken → QTA.TokenName

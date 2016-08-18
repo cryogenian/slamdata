@@ -29,8 +29,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
-import SlamData.Quasar.Aff (Wiring)
+import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth.Authentication (fromEither, getIdToken)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
@@ -39,6 +38,7 @@ import SlamData.Workspace.Card.Component.CSS as CCSS
 import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck)
+import SlamData.Wiring (Wiring(..))
 
 data Query a
   = UpdateFilter String a
@@ -141,11 +141,11 @@ actionGlyph = case _ of
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
 
-comp ∷ ∀ r. Wiring r → H.Component State Query Slam
-comp wiring =
+comp ∷ H.Component State Query Slam
+comp =
   H.lifecycleComponent
     { render
-    , eval: eval wiring
+    , eval
     , finalizer: Nothing
     , initializer: Just (H.action Init)
     }
@@ -204,14 +204,15 @@ render state =
       lbl = labelAction action ⊕ if enabled then "" else " disabled"
       icon = actionGlyph action
 
-eval ∷ ∀ r. Wiring r → Query ~> DSL
-eval _ (DoAction _ next) = pure next
-eval _ (UpdateFilter str next) =
+eval ∷ Query ~> DSL
+eval (DoAction _ next) = pure next
+eval (UpdateFilter str next) =
   H.modify (_ { filterString = str }) $> next
-eval _ (UpdateCardType cty ctys next) =
+eval (UpdateCardType cty ctys next) =
   H.modify (_ { activeCardType = cty, cardTypes = ctys, unwrappableDecks = Map.empty :: DeckMap }) $> next
-eval wiring (Init next) = next <$ do
+eval (Init next) = next <$ do
+  Wiring wiring ← H.liftH ask
   isLogged ← map isJust $ H.fromAff $ fromEither <$> (getIdToken wiring.requestNewIdTokenBus)
   H.modify (_ { isLogged = isLogged })
-eval _ (SetUnwrappable decks next) =
+eval (SetUnwrappable decks next) =
   H.modify (_ { unwrappableDecks = decks }) $> next

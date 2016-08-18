@@ -48,7 +48,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Form.Select (Select)
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P

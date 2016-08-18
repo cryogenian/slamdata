@@ -40,7 +40,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
@@ -51,7 +51,6 @@ import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Wiring (Wiring)
 
 import Utils.Ace (getRangeRecs, readOnly)
 
@@ -62,7 +61,6 @@ type AceEval = CC.CardEvalInput → DSL Unit
 type AceConfig =
   { mode ∷ CT.AceMode
   , eval ∷ AceEval
-  , wiring ∷ Wiring
   }
 
 aceComponent ∷ AceConfig → H.Component CC.CardStateP CC.CardQueryP Slam
@@ -82,15 +80,15 @@ eval ∷ AceConfig → CC.CardEvalQuery ~> DSL
 eval cfg (CC.EvalCard info output next) = do
   cfg.eval info
   pure next
-eval cfg (CC.Activate next) = do
+eval _ (CC.Activate next) = do
   mbEditor ← H.query unit $ H.request AC.GetEditor
   for_ (join mbEditor) $ H.fromEff ∘ Editor.focus
   pure next
-eval cfg (CC.Deactivate next) = do
+eval _ (CC.Deactivate next) = do
   st ← H.get
   when st.dirty do
-    N.info_ "Don't forget to run your query to see the latest result."
-      Nothing (Just $ Milliseconds 3000.0) cfg.wiring.notify
+    N.info "Don't forget to run your query to see the latest result."
+      Nothing (Just $ Milliseconds 3000.0)
   pure next
 eval cfg (CC.Save k) = do
   status ← H.gets _.status

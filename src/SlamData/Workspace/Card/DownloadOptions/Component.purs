@@ -29,7 +29,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Download.Model as DL
 import SlamData.Download.Render as DLR
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType (CardType(DownloadOptions))
 import SlamData.Workspace.Card.CardType as CT

@@ -18,8 +18,6 @@ module SlamData.Workspace.Deck.Model where
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class (throwError)
-
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy

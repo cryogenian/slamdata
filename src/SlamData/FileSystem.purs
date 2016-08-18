@@ -20,11 +20,12 @@ import SlamData.Prelude
 
 import Ace.Config as AceConfig
 
-import Control.Monad.Aff (Aff, Canceler, cancel, forkAff)
-import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar)
-import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.Free (fromAff, fromEff)
+import Control.Monad.Aff.AVar (AVAR, makeVar', takeVar, putVar, modifyVar, AVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Fork (fork, Canceler, cancel)
 import Control.Monad.Eff.Exception (error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
@@ -47,7 +48,7 @@ import Routing (matchesAff)
 import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Config.Version (slamDataVersion)
-import SlamData.Effects (SlamDataEffects, SlamDataRawEffects, unSlamF)
+import SlamData.Effects (SlamDataEffects, SlamDataRawEffects)
 import SlamData.FileSystem.Component (QueryP, Query(..), toListing, toDialog, toSearch, toFs, initialState, comp)
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
@@ -58,8 +59,9 @@ import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
-import SlamData.FileSystem.Wiring (Wiring, makeWiring)
+import SlamData.Wiring (makeWiring)
 import SlamData.GlobalError as GE
+import SlamData.Monad (Slam, runSlam)
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
 
@@ -74,142 +76,137 @@ main = do
   AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
-    forkAff Analytics.enableAnalytics
+    fork Analytics.enableAnalytics
     wiring ← makeWiring
-    let ui = interpret unSlamF $ comp wiring
+    let ui = interpret (runSlam wiring) comp
     driver ← runUI ui (parentState initialState) =<< awaitBody
-    forkAff do
+    fork do
       setSlamDataTitle slamDataVersion
       driver (left $ action $ SetVersion slamDataVersion)
-    forkAff $ routeSignal wiring driver
+    runSlam wiring $ fork $ routeSignal driver
 
 setSlamDataTitle ∷ ∀ e. String → Aff (dom ∷ DOM|e) Unit
 setSlamDataTitle version =
   liftEff $ setTitle $ "SlamData " ⊕ version
 
-initialAVar ∷ Tuple (Canceler SlamDataEffects) (M.Map Int Int)
+initialAVar ∷ Tuple (Canceler Slam) (M.Map Int Int)
 initialAVar = Tuple mempty M.empty
 
-routeSignal
-  ∷ Wiring
-  → Driver QueryP SlamDataRawEffects
-  → Aff SlamDataEffects Unit
-routeSignal wiring driver = do
-  avar ← makeVar' initialAVar
-  routeTpl ← matchesAff routing
-  pure unit
-  uncurry (redirects wiring driver avar) routeTpl
-
+routeSignal ∷ Driver QueryP SlamDataRawEffects → Slam Unit
+routeSignal driver = do
+  avar ← (fromAff :: forall eff. Aff (avar :: AVAR | eff) ~> Slam) $ makeVar' initialAVar
+  routeTpl ← (fromAff :: Aff SlamDataEffects ~> Slam) $ matchesAff routing
+  uncurry (redirects driver avar) routeTpl
 
 redirects
-  ∷ Wiring
-  → Driver QueryP SlamDataRawEffects
-  → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
+  ∷ Driver QueryP SlamDataRawEffects
+  → AVar (Tuple (Canceler Slam) (M.Map Int Int))
   → Maybe Routes → Routes
-  → Aff SlamDataEffects Unit
-redirects _ _ _ _ Index = updateURL Nothing Asc Nothing rootDir
-redirects _ _ _ _ (Sort sort) = updateURL Nothing sort Nothing rootDir
-redirects _ _ _ _ (SortAndQ sort query) =
-  let queryParts = splitQuery query
-  in updateURL queryParts.query sort Nothing queryParts.path
-redirects wiring driver var mbOld (Salted sort query salt) = do
-  Tuple canceler _ ← takeVar var
-  cancel canceler $ error "cancel search"
-  putVar var initialAVar
-  driver $ toListing $ Listing.SetIsSearching $ isSearchQuery query
-  if isNewPage
-    then do
-    driver $ toListing Listing.Reset
-    driver $ toFs $ SetPath queryParts.path
-    driver $ toFs $ SetSort sort
-    driver $ toFs $ SetSalt salt
-    driver $ toFs $ SetIsMount false
-    driver $ toSearch $ Search.SetLoading true
-    driver $ toSearch $ Search.SetValue $ fromMaybe "" queryParts.query
-    driver $ toSearch $ Search.SetValid true
-    driver $ toSearch $ Search.SetPath queryParts.path
-    listPath wiring query zero var queryParts.path driver
-    maybe (checkMount wiring queryParts.path driver) (const $ pure unit) queryParts.query
-    else
-    driver $ toSearch $ Search.SetLoading false
-  where
-
-  queryParts = splitQuery query
-  isNewPage = fromMaybe true do
-    old ← mbOld
-    Tuple oldQuery oldSalt ← case old of
-      Salted _ oldQuery' oldSalt' → pure $ Tuple oldQuery' oldSalt'
-      _ → Nothing
-    pure $ oldQuery ≠ query ∨ oldSalt ≡ salt
+  → Slam Unit
+redirects driver var mbOld = case _ of
+  Index →
+    updateURL Nothing Asc Nothing rootDir
+  Sort sort →
+    updateURL Nothing sort Nothing rootDir
+  SortAndQ sort query →
+    let queryParts = splitQuery query
+    in updateURL queryParts.query sort Nothing queryParts.path
+  Salted sort query salt → do
+    Tuple canceler _ ← fromAff $ takeVar var
+    cancel (error "cancel search") canceler
+    fromAff $ putVar var initialAVar
+    fromAff $ driver $ toListing $ Listing.SetIsSearching $ isSearchQuery query
+    let queryParts = splitQuery query
+    let
+      isNewPage = fromMaybe true do
+        old ← mbOld
+        Tuple oldQuery oldSalt ← case old of
+          Salted _ oldQuery' oldSalt' → pure $ Tuple oldQuery' oldSalt'
+          _ → Nothing
+        pure $ oldQuery ≠ query ∨ oldSalt ≡ salt
+    if isNewPage
+      then do
+        fromAff do
+          driver $ toListing Listing.Reset
+          driver $ toFs $ SetPath queryParts.path
+          driver $ toFs $ SetSort sort
+          driver $ toFs $ SetSalt salt
+          driver $ toFs $ SetIsMount false
+          driver $ toSearch $ Search.SetLoading true
+          driver $ toSearch $ Search.SetValue $ fromMaybe "" queryParts.query
+          driver $ toSearch $ Search.SetValid true
+          driver $ toSearch $ Search.SetPath queryParts.path
+        listPath query zero var queryParts.path driver
+        maybe (checkMount queryParts.path driver) (const $ pure unit) queryParts.query
+      else
+        fromAff $ driver $ toSearch $ Search.SetLoading false
 
 checkMount
-  ∷ Wiring
-  → DirPath
+  ∷ DirPath
   → Driver QueryP SlamDataRawEffects
-  → Aff SlamDataEffects Unit
-checkMount wiring path driver = do
-  result ← Quasar.mountInfo wiring path
+  → Slam Unit
+checkMount path driver = do
+  result ← Quasar.mountInfo path
   for_ result \_ →
-    driver $ left $ action $ SetIsMount true
+    fromAff $ driver $ left $ action $ SetIsMount true
 
 listPath
-  ∷ Wiring
-  → SearchQuery
+  ∷ SearchQuery
   → Int
-  → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
+  → AVar (Tuple (Canceler Slam) (M.Map Int Int))
   → DirPath
   → Driver QueryP SlamDataRawEffects
-  → Aff SlamDataEffects Unit
-listPath wiring query deep var dir driver = do
-  modifyVar (_2 %~ M.alter (pure ∘ maybe 1 (_ + 1)) deep) var
-  canceler ← forkAff goDeeper
-  modifyVar (_1 <>~ canceler) var
+  → Slam Unit
+listPath query deep var dir driver = do
+  fromAff $ modifyVar (_2 %~ M.alter (pure ∘ maybe 1 (_ + 1)) deep) var
+  canceler ← fork goDeeper
+  fromAff $ modifyVar (_1 <>~ canceler) var
   where
   goDeeper = do
-    Quasar.children wiring dir >>= either sendError getChildren
-    modifyVar (_2 %~ M.update (\v → guard (v > one) $> (v - one)) deep) var
-    Tuple c r ← takeVar var
-    if (foldl (+) zero $ M.values r) ≡ zero
-      then do
-      driver $ toSearch $ Search.SetLoading false
-      putVar var initialAVar
-      else
-      putVar var (Tuple c r)
+    Quasar.children dir >>= either sendError getChildren
+    fromAff do
+      modifyVar (_2 %~ M.update (\v → guard (v > one) $> (v - one)) deep) var
+      Tuple c r ← takeVar var
+      if (foldl (+) zero $ M.values r) ≡ zero
+        then do
+        driver $ toSearch $ Search.SetLoading false
+        putVar var initialAVar
+        else
+        putVar var (Tuple c r)
 
-  sendError ∷ QE.QError → Aff SlamDataEffects Unit
+  sendError ∷ QE.QError → Slam Unit
   sendError err =
     case GE.fromQError err of
       Left msg →
         presentError $
           "There was a problem accessing this directory listing. " <> msg
       Right ge →
-        Bus.write ge wiring.globalError
+        GE.raiseGlobalError ge
 
   presentError message =
     when ((not $ isSearchQuery query) ∨ deep ≡ zero)
-    $ driver $ toDialog $ Dialog.Show
-    $ Dialog.Error message
+      $ fromAff
+      $ driver
+      $ toDialog $ Dialog.Show
+      $ Dialog.Error message
 
-  getChildren ∷ Array Resource → Aff SlamDataEffects Unit
+  getChildren ∷ Array Resource → Slam Unit
   getChildren ress = do
     let next = mapMaybe (either Just (const Nothing) <<< getPath) ress
         toAdd = map Item $ filter (filterByQuery query) ress
-
-    driver $ toListing $ Listing.Adds toAdd
-    traverse_ (\n → listPath wiring query (deep + one) var n driver)
+    fromAff $ driver $ toListing $ Listing.Adds toAdd
+    traverse_ (\n → listPath query (deep + one) var n driver)
       (guard (isSearchQuery query) *> next)
-
 
 updateURL
   ∷ Maybe String
   → Sort
   → Maybe Salt
   → DirPath
-  → Aff SlamDataEffects Unit
-updateURL query sort salt path = liftEff do
+  → Slam Unit
+updateURL query sort salt path = fromEff do
   salt' ← maybe newSalt pure salt
   replaceLocation $ browseURL query sort salt' path
-
 
 splitQuery
   ∷ SearchQuery

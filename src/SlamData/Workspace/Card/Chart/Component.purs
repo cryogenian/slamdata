@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.Chart.Component (chartComponent) where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff)
-
 import Data.Array as A
 import Data.Foreign (Foreign, ForeignError(TypeMismatch), readInt, readString)
 import Data.Foreign.Class (readProp)
@@ -43,8 +41,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam, SlamDataEffects)
-import SlamData.Quasar.Aff (Wiring)
+import SlamData.Monad (Slam)
 import SlamData.Quasar.Query as Quasar
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
@@ -59,10 +56,10 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type ChartHTML = H.ParentHTML HEC.EChartsState CC.CardEvalQuery HEC.EChartsQuery Slam Unit
 type ChartDSL = H.ParentDSL State HEC.EChartsState CC.CardEvalQuery HEC.EChartsQuery Slam Unit
 
-chartComponent ∷ ∀ r. Wiring r → H.Component CC.CardStateP CC.CardQueryP Slam
-chartComponent wiring = CC.makeCardComponent
+chartComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
+chartComponent = CC.makeCardComponent
   { cardType: CT.Chart
-  , component: H.parentComponent { render, eval: eval wiring, peek: Nothing }
+  , component: H.parentComponent { render, eval, peek: Nothing }
   , initialState: H.parentState initialState
   , _State: CC._ChartState
   , _Query: CC.makeQueryPrism CC._ChartQuery
@@ -125,17 +122,15 @@ renderButton ct =
   src Radar = "img/radar-black.svg"
   src Funnel = "img/funnel-black.svg"
 
-eval ∷ ∀ r. Wiring r → CC.CardEvalQuery ~> ChartDSL
-eval wiring = case _ of
+eval ∷ CC.CardEvalQuery ~> ChartDSL
+eval = case _ of
   CC.EvalCard value output next → do
     case value.input of
       Just (Chart options@{ options: opts, chartConfig: Just config }) → do
         -- TODO: this could possibly be optimised by caching records in the state,
         -- but we'd need to know when the input dataset going into ChartOptions changes.
         -- Basically something equivalent to the old `needsToUpdate`. -gb
-        records ←
-          either (const []) id
-            <$> (H.fromAff ∷ Aff SlamDataEffects ~> ChartDSL) (Quasar.all wiring options.resource)
+        records ← either (const []) id <$> Quasar.all options.resource
         let optionDSL = BO.buildOptions opts config records
         H.query unit $ H.action $ HEC.Set optionDSL
         H.query unit $ H.action HEC.Resize

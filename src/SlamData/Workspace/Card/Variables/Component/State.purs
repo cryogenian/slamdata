@@ -25,7 +25,7 @@ import SlamData.Prelude
 import Halogen (ParentState)
 
 import SlamData.Workspace.Card.Common.EvalQuery as NC
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Workspace.FormBuilder.Component as FB
 
 type State = {}

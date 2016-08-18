@@ -37,7 +37,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import Math as Math
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, darkCardGlyph)
 import SlamData.Workspace.Card.Component.CSS as CSS
 import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')

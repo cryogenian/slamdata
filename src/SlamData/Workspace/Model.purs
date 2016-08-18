@@ -25,18 +25,14 @@ module SlamData.Workspace.Model
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
-
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 
 import Quasar.Types (FilePath)
 
-import SlamData.Quasar.Aff (QEff)
 import SlamData.Quasar.Data as QD
 import SlamData.Quasar.Error as QE
+import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Wiring (Wiring)
 
 type Workspace =
   { root ∷ Maybe DeckId
@@ -56,22 +52,20 @@ decode = decodeJson >=> \obj ->
   } <$> obj .? "root"
 
 getRoot
-  ∷ ∀ eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring
-  → FilePath
+  ∷ ∀ m
+  . (Monad m, QuasarDSL m)
+  ⇒ FilePath
   → m (Either QE.QError DeckId)
-getRoot wiring file = runExceptT do
-  json ← ExceptT $ QD.load wiring file
+getRoot file = runExceptT do
+  json ← ExceptT $ QD.load file
   ws ← ExceptT $ pure $ lmap QE.msgToQError $ decode json
   maybe (ExceptT $ pure $ Left (QE.msgToQError "No root")) pure ws.root
 
 setRoot
-  ∷ ∀ eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring
-  → FilePath
+  ∷ ∀ m
+  . (Monad m, QuasarDSL m)
+  ⇒ FilePath
   → DeckId
   → m (Either QE.QError Unit)
-setRoot wiring file root =
-  QD.save wiring file $ encode { root: Just root }
+setRoot file root =
+  QD.save file $ encode { root: Just root }

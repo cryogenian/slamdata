@@ -53,11 +53,11 @@ type Wiring r =
 -- | Runs a `QuasarF` request in `Aff`, using the `QError` type for errors that
 -- | may arise, which allows for convenient catching of 404 errors.
 runQuasarF
-  ∷ ∀ r eff m e a
+  ∷ ∀ r eff m a
   . Affable (QEff eff) m
   ⇒ Wiring r
-  → QF.QuasarAFC (Either e a)
-  → m (Either e a)
+  → QF.QuasarAFC a
+  → m a
 runQuasarF wiring qf = (fromAff ∷ ∀ x. Aff (QEff eff) x → m x) do
   idToken ← fromEither <$> getIdToken wiring.requestNewIdTokenBus
   permissions ← fromEff retrieveTokenHashes

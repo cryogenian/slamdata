@@ -24,9 +24,8 @@ import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Header.Gripper.Component as Gripper
-import SlamData.Quasar.Aff (Wiring)
 import SlamData.Render.Common (logo)
 import SlamData.Render.CSS as Rc
 import SlamData.SignIn.Component as SignIn
@@ -71,12 +70,11 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. Wiring r → H.Component StateP QueryP Slam
-comp wiring =
-  H.parentComponent { render: render wiring, eval, peek: Nothing }
+comp ∷ H.Component StateP QueryP Slam
+comp = H.parentComponent { render, eval, peek: Nothing }
 
-render ∷ ∀ r. Wiring r → Unit → HTML
-render wiring _ =
+render ∷ Unit → HTML
+render _ =
   HH.nav_
     [ HH.div_
         [ HH.div_
@@ -85,12 +83,12 @@ render wiring _ =
                 , HH.div
                     [ HP.classes [ B.pullRight ] ]
                     [ HH.slot' cpSignIn unit \_ →
-                         { component: SignIn.comp wiring
+                         { component: SignIn.comp
                          , initialState: H.parentState SignIn.initialState
                          }
                     ]
                 , HH.slot' cpGripper unit \_ →
-                      { component: Gripper.comp wiring.signInBus "nav"
+                      { component: Gripper.comp "nav"
                       , initialState: Gripper.initialState
                       }
                 ]

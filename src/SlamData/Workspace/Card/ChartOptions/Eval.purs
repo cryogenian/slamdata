@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.ChartOptions.Eval where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
-
 import Data.Argonaut (JCursor)
 import Data.Array (cons, length, null, catMaybes)
 import Data.Lens ((^?))
@@ -27,10 +25,9 @@ import Data.Lens as Lens
 import Data.Set as Set
 import Data.Map as Map
 
-import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Aff (Wiring)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as QQ
+import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
@@ -39,19 +36,18 @@ import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
 eval
-  ∷ ∀ r m
-  . (Monad m, Affable SlamDataEffects m)
-  ⇒ Wiring r
-  → CET.CardEvalInput
+  ∷ ∀ m
+  . (Monad m, QuasarDSL m)
+  ⇒ CET.CardEvalInput
   → ChartOptions.Model
   → CET.CardEvalT m Port.ChartPort
-eval wiring info model = do
+eval info model = do
   resource ←
     info.input
       ^? Lens._Just ∘ Port._Resource
       # maybe (QE.throw "Expected Resource input") pure
 
-  numRecords ← CET.liftQ $ QQ.count wiring resource
+  numRecords ← CET.liftQ $ QQ.count resource
 
   when (numRecords > 10000)
     $ QE.throw
@@ -61,7 +57,7 @@ eval wiring info model = do
       ⊕ "Please consider using a 'limit' or 'group by' clause in the query to reduce the result size."
 
   recordSample ←
-    QQ.sample wiring resource 0 20
+    QQ.sample resource 0 20
       # lift
       >>= either (const $ QE.throw "Error getting input resource") pure
 

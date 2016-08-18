@@ -32,7 +32,8 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource as HE
 
-import SlamData.Effects (SlamDataEffects, Slam, unSlamF)
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Monad (Slam, runSlam)
 import SlamData.Workspace.Deck.Common (DeckOptions)
 import SlamData.Workspace.Deck.Component as DC
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
@@ -89,7 +90,8 @@ comp opts deckState =
             void $ runAff (const (pure unit)) (const (pure unit)) $
               putVar emitter (emit <<< Left)
       emitter' ← H.fromAff $ takeVar emitter
-      let ui = H.interpret unSlamF $ deckComponent' (emitter' ∘ right)
+      wiring ← H.liftH ask
+      let ui = H.interpret (runSlam wiring) $ deckComponent' (emitter' ∘ right)
       driver ← H.fromAff $ H.runUI ui deckState el
       H.modify _ { driver = Just (DNS.Driver driver) }
       pure next

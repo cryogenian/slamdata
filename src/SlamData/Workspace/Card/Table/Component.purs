@@ -28,8 +28,7 @@ import Data.Lens ((.~), (?~))
 
 import Halogen as H
 
-import SlamData.Effects (Slam)
-import SlamData.Quasar.Aff (Wiring)
+import SlamData.Monad (Slam)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.CardType as CT
@@ -45,21 +44,21 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = H.ComponentDSL JTS.State QueryP Slam
 
-tableComponent ∷ ∀ r. Wiring r → H.Component CC.CardStateP CC.CardQueryP Slam
-tableComponent wiring =
+tableComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
+tableComponent =
   CC.makeCardComponent
     { cardType: CT.Table
-    , component: H.component { render, eval: evalCard wiring ⨁ evalTable wiring }
+    , component: H.component { render, eval: evalCard ⨁ evalTable }
     , initialState: JTS.initialState
     , _State: CC._TableState
     , _Query: CC.makeQueryPrism CC._TableQuery
     }
 
 -- | Evaluates generic card queries.
-evalCard ∷ ∀ r. Wiring r → CC.CardEvalQuery ~> DSL
-evalCard wiring = case _ of
+evalCard ∷ CC.CardEvalQuery ~> DSL
+evalCard = case _ of
   CC.EvalCard info output next → do
-    for_ info.input $ CEQ.runCardEvalT_ ∘ runTable wiring
+    for_ info.input $ CEQ.runCardEvalT_ ∘ runTable
     pure next
   CC.Activate next →
     pure next
@@ -84,33 +83,27 @@ evalCard wiring = case _ of
   CC.ZoomIn next →
     pure next
 
-runTable
-  ∷ ∀ r
-  . Wiring r
-  → Port.Port
-  → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
-runTable wiring =
+runTable ∷ Port.Port → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
+runTable =
   case _ of
-    Port.TaggedResource trp → updateTable wiring trp
+    Port.TaggedResource trp → updateTable trp
     _ → QE.throw "Expected a TaggedResource input"
 
 updateTable
-  ∷ ∀ r
-  . Wiring r
-  → Port.TaggedResourcePort
+  ∷ Port.TaggedResourcePort
   → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
-updateTable wiring { resource, tag } = do
+updateTable { resource, tag } = do
   oldInput ← lift $ H.gets _.input
   when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
     $ lift $ resetState
 
-  size ← CET.liftQ $ Quasar.count wiring resource
+  size ← CET.liftQ $ Quasar.count resource
 
   lift $ H.modify $ JTS._input ?~ { resource, size, tag }
   p ← lift $ H.gets JTS.pendingPageInfo
 
   items ← CET.liftQ $
-    Quasar.sample wiring resource ((p.page - 1) * p.pageSize) p.pageSize
+    Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
 
   lift $
     H.modify
@@ -126,15 +119,15 @@ resetState ∷ DSL Unit
 resetState = H.modify (JTS._result .~ Nothing)
 
 -- | Evaluates table-specific card queries.
-evalTable ∷ ∀ r. Wiring r → Query ~> (H.ComponentDSL JTS.State QueryP Slam)
-evalTable wiring = case _ of
+evalTable ∷ Query ~> (H.ComponentDSL JTS.State QueryP Slam)
+evalTable = case _ of
   StepPage step next → do
     H.modify (JTS.stepPage step)
-    refresh wiring
+    refresh
     pure next
   ChangePageSize pageSize next → do
     for_ (Int.fromString pageSize) (H.modify ∘ JTS.resizePage)
-    refresh wiring
+    refresh
     pure next
   StartEnterCustomPageSize next →
     H.modify (JTS._isEnteringPageSize .~ true) $> next
@@ -143,11 +136,11 @@ evalTable wiring = case _ of
   SetCustomPage page next →
     H.modify (JTS.setPage page) $> next
   Update next →
-    refresh wiring $> next
+    refresh $> next
 
-refresh ∷ ∀ r. Wiring r → DSL Unit
-refresh wiring = do
+refresh ∷ DSL Unit
+refresh = do
   input ← H.gets _.input
   for_ input \{ resource, tag } →
-    CEQ.runCardEvalT_ $ updateTable wiring { resource, tag }
+    CEQ.runCardEvalT_ $ updateTable { resource, tag }
   CC.raiseUpdatedC' CC.StateOnlyUpdate

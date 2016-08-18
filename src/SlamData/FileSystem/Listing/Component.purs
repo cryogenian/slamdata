@@ -26,7 +26,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item (Item)
 import SlamData.FileSystem.Listing.Item.Component as Item
 import SlamData.Render.CSS as Rc

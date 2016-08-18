@@ -31,7 +31,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils as HU
 
 import SlamData.Config as Config
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.FileSystem.Search.Component.CSS as CSS
 import SlamData.Render.Common (glyph)
 

@@ -26,7 +26,7 @@ import Halogen.ECharts (EChartsState, EChartsQuery)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 
 type State =
   { width ∷ Int

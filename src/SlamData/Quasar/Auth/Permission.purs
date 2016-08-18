@@ -21,11 +21,7 @@ module SlamData.Quasar.Auth.Permission
 
 import SlamData.Prelude
 
-import Control.Monad.Aff as Aff
-import Control.Monad.Aff.Free (fromAff)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Random (random)
 
 import Data.Array as Arr
 import Data.NonEmpty as Ne
@@ -43,14 +39,12 @@ import Network.HTTP.RequestHeader (RequestHeader(..))
 
 import Quasar.Advanced.Types (TokenHash(..), runTokenHash)
 
-import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.FileSystem.Resource as R
 
-import Utils.Path (FilePath, parseFilePath)
+import Utils.Path (FilePath)
 
 type Permissions =
-  {
-    add :: Boolean
+  { add :: Boolean
   , read :: Boolean
   , modify :: Boolean
   , delete :: Boolean
@@ -126,33 +120,3 @@ retrieveTokenHashes =
     fromMaybe []
       $ Str.split ","
       <$> extractTokenHashsString s
-
--- A mock for generating new tokens
-genToken :: Slam TokenHash
-genToken =
-  later 1000 $ liftEff $ TokenHash <$> show <$> random
-
--- One more mock
-doPermissionShareRequest
-  :: PermissionShareRequest
-  -> Slam Unit
-doPermissionShareRequest _ =
-  later 1000 $ pure unit
-
-permissionsForResource
-  :: R.Resource
-  -> Slam Permissions
-permissionsForResource _ =
-  later 1000 $ pure {add: true, read: true, modify: true, delete: true}
-
-getGroups
-  :: Slam (Array Group)
-getGroups =
-  later 1000
-    $ pure
-    $ map Group
-    $ Arr.catMaybes
-    $ map parseFilePath ["/foo", "/foo/bar", "/foo/bar/baz", "/foo/quux" ]
-
-later ∷ ∀ a. Int → Aff.Aff SlamDataEffects a → Slam a
-later n = fromAff ∘ Aff.later' n

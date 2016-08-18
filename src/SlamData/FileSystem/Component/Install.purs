@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Halogen (ChildF(..), ParentState, Action, action)
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>), injSlot, injQuery)
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.Query (Query)
 import SlamData.FileSystem.Component.State (State)

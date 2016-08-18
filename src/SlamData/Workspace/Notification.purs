@@ -27,59 +27,52 @@ module SlamData.Workspace.Notification
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Aff.Free (class Affable, fromAff)
-
-import SlamData.Analytics.Event as AE
+import SlamData.Analytics as SA
 import SlamData.GlobalError as GE
 import SlamData.Notification as N
 import SlamData.Quasar.Error as QE
-import SlamData.Workspace.Wiring (Wiring)
 
 type DetailedError =
-  ∀ m eff
-  . (Bind m, Affable (avar ∷ AVAR | eff) m)
+  ∀ m
+  . (Monad m, N.NotifyDSL m, SA.AnalyticsDSL m, GE.GlobalErrorDSL m)
   ⇒ QE.QError
-  → Wiring
   → m Unit
 
 notifyError
-  ∷ ∀ m eff
-  . (Bind m, Affable (avar ∷ AVAR | eff) m)
+  ∷ ∀ m
+  . (Monad m, N.NotifyDSL m, SA.AnalyticsDSL m, GE.GlobalErrorDSL m)
   ⇒ String
-  → AE.Event
+  → SA.Event
   → QE.QError
-  → Wiring
   → m Unit
-notifyError msg event err wiring = do
+notifyError msg event err = do
   case GE.fromQError err of
     Left msg -> do
-      N.error_ msg (Just msg) Nothing wiring.notify
-      AE.track event wiring.analytics
+      N.error msg (Just msg) Nothing
+      SA.track event
     Right ge ->
-      fromAff $ Bus.write ge wiring.globalError
+      GE.raiseGlobalError ge
 
 loadDeckFail ∷ DetailedError
 loadDeckFail =
-  notifyError "Failed to load your deck." AE.ErrorLoadingDeck
+  notifyError "Failed to load your deck." SA.ErrorLoadingDeck
 
 loadParentFail ∷ DetailedError
 loadParentFail =
-  notifyError "Failed to load a parent deck." AE.ErrorLoadingDeck
+  notifyError "Failed to load a parent deck." SA.ErrorLoadingDeck
 
 saveDeckFail ∷ DetailedError
 saveDeckFail =
-  notifyError "Failed to save your deck." AE.ErrorSavingDeck
+  notifyError "Failed to save your deck." SA.ErrorSavingDeck
 
 saveMirrorFail ∷ DetailedError
 saveMirrorFail =
-  notifyError "Failed to save a mirrored card." AE.ErrorSavingMirror
+  notifyError "Failed to save a mirrored card." SA.ErrorSavingMirror
 
 deleteDeckFail ∷ DetailedError
 deleteDeckFail =
-  notifyError "Failed to delete your deck." AE.ErrorDeletingDeck
+  notifyError "Failed to delete your deck." SA.ErrorDeletingDeck
 
 setRootFail ∷ DetailedError
 setRootFail =
-  notifyError "Failed to update your workspace root." AE.ErrorUpdatingRoot
+  notifyError "Failed to update your workspace root." SA.ErrorUpdatingRoot
