@@ -69,8 +69,8 @@ formFieldEmptyValue field =
           SD.Time _ _ → EJSON.null
           SD.DateTime _ _ → EJSON.null
       SD.CheckBoxes _ _ → EJSON.array []
-      SD.RadioButtons _ _ → EJSON.array []
-      SD.DropDown _ _ → EJSON.array []
+      SD.RadioButtons _ _ → EJSON.null
+      SD.DropDown _ _ → EJSON.null
 
 formFieldValueToVarMapValue
   ∷ ∀ m
@@ -92,10 +92,10 @@ formFieldValueToVarMapValue v =
       SD.CheckBoxes (Identity sel) _ →
         pure ∘ EJSON.array ∘ A.fromFoldable $ L.mapMaybe getLiteral sel
       SD.RadioButtons (Identity x) _ →
-        pure ∘ EJSON.array $ getLiteral x
+        getLiteral x
       SD.DropDown mx _ → do
         Identity x ← liftMaybe mx
-        pure ∘ EJSON.array $ getLiteral x
+        getLiteral x
 
   where
     liftMaybe
