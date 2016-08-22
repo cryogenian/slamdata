@@ -25,51 +25,57 @@ module SlamData.Workspace.Card.ChartOptions.Model
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
+import Data.Argonaut (Json, (.?), decodeJson, jsonNull, jsonEmptyObject, (~>), (:=), isNull)
 
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 import SlamData.Workspace.Card.Chart.BuildOptions as CO
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 
-type Model =
-  { chartConfig ∷ Maybe CC.ChartConfiguration
+type Model = Maybe
+  { chartConfig ∷ CC.ChartConfiguration
   , options ∷ CO.BuildOptions
   }
 
 eqModel ∷ Model → Model → Boolean
-eqModel m1 m2 =
+eqModel Nothing Nothing = true
+eqModel (Just m1) (Just m2) =
   CO.eqBuildOptions m1.options m2.options
-  && case m1.chartConfig × m2.chartConfig of
-    Nothing × Nothing → true
-    (Just o1) × (Just o2) → CC.eqChartConfiguration o1 o2
-    _  → false
+  && CC.eqChartConfiguration m1.chartConfig m2.chartConfig
+eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
 genModel = do
-  needCC ← arbitrary
-  chartConfig ← if needCC then Just <$> CC.genChartConfiguration else pure Nothing
-  options ← CO.genBuildOptions
-  pure { chartConfig, options }
+  produceNothing ← arbitrary
+  if produceNothing
+    then pure Nothing
+    else do
+    chartConfig ← CC.genChartConfiguration
+    options ← CO.genBuildOptions
+    pure $ Just { chartConfig, options}
 
 encode ∷ Model → Json
-encode m
-   = "options" := CO.encode m.options
-  ~> case m.chartConfig of
-    Nothing → jsonEmptyObject
-    Just cc → ("chartConfig" := CC.encode cc
-               ~> jsonEmptyObject)
+encode Nothing
+  = jsonNull
+encode (Just m)
+  = "options" := CO.encode m.options
+  ~> "chartConfig" := CC.encode m.chartConfig
+  ~> jsonEmptyObject
 
 decode ∷ Json → Either String Model
-decode = decodeJson >=> \obj →
-  { chartConfig: _, options: _ }
-    <$> (((obj .? "chartConfig") >>= CC.decode <#> Just) <|> pure Nothing)
-    <*> (CO.decode =<< obj .? "options")
+decode js
+  | isNull js = pure Nothing
+  | otherwise = do
+    obj ← decodeJson js
+    mbCC ←
+      (((obj .? "chartConfig") >>= CC.decode <#> Just) <|> pure Nothing)
+    options ←
+      (obj .? "options") >>= CO.decode
+    pure $ map {options, chartConfig: _} mbCC
 
 initialModel ∷ Model
-initialModel =
-  { chartConfig: Nothing
+initialModel = Nothing
+{-  { chartConfig: Nothing
   , options:
       { chartType: Pie
       , axisLabelFontSize: 12
@@ -82,3 +88,4 @@ initialModel =
       , funnelAlign: "center"
       }
   }
+-}

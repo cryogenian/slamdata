@@ -36,22 +36,23 @@ runArbModel (ArbModel m) = m
 
 instance arbitraryArbModel ∷ Arbitrary ArbModel where
   arbitrary = do
-    options ← runArbBuildOptions <$> arbitrary
-    needCC ← arbitrary
-    chartConfig ←
-      if needCC then Just <$> runArbChartConfiguration <$> arbitrary else pure Nothing
-    pure $ ArbModel { options, chartConfig }
-
+    produceNothing ← arbitrary
+    if produceNothing
+      then pure $ ArbModel Nothing
+      else do
+      options ← map runArbBuildOptions arbitrary
+      chartConfig ← map runArbChartConfiguration arbitrary
+      pure $ ArbModel $ Just {options, chartConfig}
 
 check ∷ forall eff. SC eff Unit
-check = quickCheck $ runArbModel >>> \model →
+check = quickCheck $ runArbModel ⋙ \model →
   case M.decode (M.encode model) of
     Left err → Failed $ "Decode failed: " <> err
-    Right model' →
-      fold
-       [ checkBuildOptionsEquality model.options model'.options
-       , case model.chartConfig × model'.chartConfig of
-           Nothing × Nothing → Success
-           (Just opts) × (Just opts') →  checkChartConfigEquality opts opts'
-           _ → Failed "models mismatch"
-       ]
+    Right model' → case model × model' of
+      Nothing × Nothing → Success
+      (Just m) × (Just m') →
+        fold
+          [ checkBuildOptionsEquality m.options m'.options
+          , checkChartConfigEquality m.chartConfig m'.chartConfig
+          ]
+      _ → Failed "models mismatch"

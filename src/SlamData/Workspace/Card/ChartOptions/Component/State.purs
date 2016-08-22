@@ -126,7 +126,8 @@ type StateP =
     Slam ChartType
 
 fromModel ∷ Model → State
-fromModel { options } =
+fromModel Nothing = initialState
+fromModel (Just { options }) =
   initialState
     { chartType = options.chartType
     , axisLabelFontSize = options.axisLabelFontSize

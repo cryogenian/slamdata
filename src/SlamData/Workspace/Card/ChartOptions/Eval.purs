@@ -72,10 +72,17 @@ eval wiring info model = do
     sample = analyzeJArray recordSample
     axes = getAxes sample
     available =
-      catMaybes $ map (\x → x axes)
-        [ getMaybePie, getMaybeBar, getMaybeLine
-        , getMaybeArea, getMaybeScatter, getMaybeRadar
-        , getMaybeFunnel ]
+      catMaybes
+        $ map (\x → x axes)
+        [ getMaybePie
+        , getMaybeBar
+        , getMaybeLine
+        , getMaybeArea
+        , getMaybeScatter
+        , getMaybeRadar
+        , getMaybeFunnel
+        , getMaybeGraph
+        ]
 
   when (null available)
     $ QE.throw "There is no available chart types for this data"
@@ -89,11 +96,10 @@ eval wiring info model = do
   --    $ EC.throwError "Please select axes"
 
   pure
-    { options: model.options
-    , chartConfig: model.chartConfig
-    , resource
+    { resource
     , availableChartTypes
     , axes
+    , config: model
     }
   where
   getAxes ∷ Map.Map JCursor Axis → Axes
@@ -141,3 +147,12 @@ eval wiring info model = do
   getMaybeFunnel axes = do
     guard $ (not $ null axes.value) ∧ ((not $ null axes.category) || (not $ null axes.time))
     pure Funnel
+
+  getMaybeGraph ∷ Axes → Maybe ChartType
+  getMaybeGraph axes = do
+    -- We need at least two axes: one for source and one for target.
+    -- If there is only one category and one value axis then value axis is used as index
+    -- I.e. [{cat: "foo", val: 1}, {cat: "bar", val: 2}] will produce two points
+    -- "foo" <--- "bar"
+    guard $ (length axes.category + length axes.value > 1)
+    pure Graph

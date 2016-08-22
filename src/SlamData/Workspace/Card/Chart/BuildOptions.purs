@@ -127,3 +127,4 @@ buildOptions args conf records =
     Scatter → buildScatter mp args.bubbleMinSize args.bubbleMaxSize conf
     Radar → buildRadar mp conf
     Funnel → buildFunnel mp args.funnelOrder args.funnelAlign conf
+    Graph → buildRadar mp conf

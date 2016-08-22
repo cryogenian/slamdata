@@ -16,10 +16,7 @@ limitations under the License.
 
 module Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration where
 
-import Prelude
-
-import Data.Either (Either(..))
-import Data.Foldable (fold)
+import SlamData.Prelude
 
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 
@@ -31,28 +28,28 @@ import Test.SlamData.Property.Workspace.Card.Chart.Aggregation (runArbAggregatio
 
 newtype ArbChartConfiguration = ArbChartConfiguration CC.ChartConfiguration
 
-runArbChartConfiguration :: ArbChartConfiguration -> CC.ChartConfiguration
+runArbChartConfiguration :: ArbChartConfiguration → CC.ChartConfiguration
 runArbChartConfiguration (ArbChartConfiguration m) = m
 
 instance arbitraryArbChartConfiguration :: Arbitrary ArbChartConfiguration where
   arbitrary = do
-    series <- map (map runArbJCursor <<< runArbSelect) <$> arbitrary
-    dimensions <- map (map runArbJCursor <<< runArbSelect) <$> arbitrary
-    measures <- map (map runArbJCursor <<< runArbSelect) <$> arbitrary
-    aggregations <- map (map runArbAggregation <<< runArbSelect) <$> arbitrary
+    series ← map (map runArbJCursor ∘ runArbSelect) <$> arbitrary
+    dimensions ← map (map runArbJCursor ∘ runArbSelect) <$> arbitrary
+    measures ← map (map runArbJCursor ∘ runArbSelect) <$> arbitrary
+    aggregations ← map (map runArbAggregation ∘ runArbSelect) <$> arbitrary
     pure $ ArbChartConfiguration { series, dimensions, measures, aggregations }
 
 check :: forall eff. SC eff Unit
-check = quickCheck $ runArbChartConfiguration >>> \cc ->
+check = quickCheck $ runArbChartConfiguration ⋙ \cc →
   case CC.decode (CC.encode cc) of
-    Left err -> Failed $ "Decode failed: " <> err
-    Right cc' -> checkChartConfigEquality cc cc'
+    Left err → Failed $ "Decode failed: " <> err
+    Right cc' → checkChartConfigEquality cc cc'
 
-checkChartConfigEquality :: CC.ChartConfiguration -> CC.ChartConfiguration -> Result
+checkChartConfigEquality :: CC.ChartConfiguration → CC.ChartConfiguration → Result
 checkChartConfigEquality cc cc' =
   fold
-   [ cc.series == cc'.series <?> "series mismatch"
-   , cc.dimensions == cc'.dimensions <?> "dimensions mismatch"
-   , cc.measures == cc'.measures <?> "measures mismatch"
-   , cc.aggregations == cc'.aggregations <?> "aggregations mismatch"
+   [ cc.series ≡ cc'.series <?> "series mismatch"
+   , cc.dimensions ≡ cc'.dimensions <?> "dimensions mismatch"
+   , cc.measures ≡ cc'.measures <?> "measures mismatch"
+   , cc.aggregations ≡ cc'.aggregations <?> "aggregations mismatch"
    ]

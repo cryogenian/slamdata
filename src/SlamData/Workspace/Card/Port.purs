@@ -46,11 +46,10 @@ import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
 type ChartPort =
-  { options ∷ BuildOptions
-  , chartConfig ∷ Maybe ChartConfiguration
-  , resource ∷ PU.FilePath
+  { resource ∷ PU.FilePath
   , availableChartTypes ∷ Set.Set ChartType
   , axes ∷ Axes
+  , config ∷ Maybe { options ∷ BuildOptions, chartConfig ∷ ChartConfiguration }
   }
 
 type DownloadPort =

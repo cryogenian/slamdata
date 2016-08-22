@@ -177,6 +177,7 @@ renderChartTypeSelector state =
   src Scatter = "img/scatter.svg"
   src Radar = "img/radar.svg"
   src Funnel = "img/funnel.svg"
+  src Graph = "img/pie.svg"
 
   cls ∷ ChartType → HH.ClassName
   cls Pie = CSS.pieChartIcon
@@ -186,6 +187,7 @@ renderChartTypeSelector state =
   cls Scatter = CSS.scatterChartIcon
   cls Radar = CSS.radarChartIcon
   cls Funnel = CSS.funnelChartIcon
+  cls Graph = CSS.pieChartIcon
 
 
 renderChartConfiguration ∷ VCS.State → HTML
@@ -199,6 +201,7 @@ renderChartConfiguration state =
     , renderTab Scatter
     , renderTab Radar
     , renderTab Funnel
+    , renderTab Graph
     , renderDimensions state
     ]
   where
@@ -220,14 +223,14 @@ renderDimensions state =
   row
   [ intChartInput CSS.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel
-        (isPie state.chartType 
-          || isScatter state.chartType 
+        (isPie state.chartType
+          || isScatter state.chartType
           || isRadar state.chartType
           || isFunnel state.chartType)
   , intChartInput CSS.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize
-        (isPie state.chartType 
-          || isScatter state.chartType 
+        (isPie state.chartType
+          || isScatter state.chartType
           || isRadar state.chartType
           || isFunnel state.chartType)
   , boolChartInput CSS.chartDetailParam "If stack"
@@ -241,9 +244,9 @@ renderDimensions state =
       (_.bubbleMaxSize) LowerBoundaryCtrl (_.bubbleMinSize) SetBubbleMaxSize
         (not $ isScatter state.chartType)
   , optionSelect CSS.funnelChartOrderParam "Order" ["ascending", "descending"]
-      (_.funnelOrder) SetFunnelOrder (not $ isFunnel state.chartType) 
+      (_.funnelOrder) SetFunnelOrder (not $ isFunnel state.chartType)
   , optionSelect CSS.funnelChartAlignParam "Alignment" ["right", "left", "center"]
-      (_.funnelAlign) SetFunnelAlign (not $ isFunnel state.chartType)   
+      (_.funnelAlign) SetFunnelAlign (not $ isFunnel state.chartType)
   ]
   where
   optionSelect
@@ -383,7 +386,7 @@ eval = coproduct cardEval chartEval
 
 chartEval ∷ Query ~> DSL
 chartEval q = do
-  next <- case q of
+  next ← case q of
     SetChartType ct n → H.modify (VCS._chartType .~ ct) $> n
     RotateAxisLabel angle n → H.modify (VCS._axisLabelAngle .~ angle) $> n
     SetAxisFontSize size n → H.modify (VCS._axisLabelFontSize .~ size) $> n
@@ -421,7 +424,7 @@ cardEval = case _ of
     conf ← H.query st.chartType $ left $ H.request Form.GetConfiguration
     let
       rawConfig = fromMaybe Form.initialConfiguration conf
-      chartConfig = case st.chartType of
+      mbChartCfg = case st.chartType of
         Pie | not $ F.any isSelected rawConfig.series → Nothing
         Pie | not $ F.any isSelected rawConfig.measures → Nothing
         Bar | not $ F.any isSelected rawConfig.series → Nothing
@@ -437,30 +440,29 @@ cardEval = case _ of
         Funnel | not $ F.any isSelected rawConfig.measures → Nothing
         _ → Just rawConfig
 
-    pure ∘ k $ Card.ChartOptions
-      { chartConfig
-      , options:
-          { chartType: st.chartType
-          , axisLabelFontSize: st.axisLabelFontSize
-          , axisLabelAngle: st.axisLabelAngle
-          , areaStacked: st.areaStacked
-          , smooth: st.smooth
-          , bubbleMinSize: st.bubbleMinSize
-          , bubbleMaxSize: st.bubbleMaxSize
-          , funnelOrder: st.funnelOrder
-          , funnelAlign: st.funnelAlign
+    pure ∘ k $ Card.ChartOptions $ mbChartCfg
+      <#> { chartConfig: _
+          , options:
+            { chartType: st.chartType
+            , axisLabelFontSize: st.axisLabelFontSize
+            , axisLabelAngle: st.axisLabelAngle
+            , areaStacked: st.areaStacked
+            , smooth: st.smooth
+            , bubbleMinSize: st.bubbleMinSize
+            , bubbleMaxSize: st.bubbleMaxSize
+            , funnelOrder: st.funnelOrder
+            , funnelAlign: st.funnelAlign
+            }
           }
-      }
   CC.Load card next → do
     case card of
       Card.ChartOptions model → do
         let st = VCS.fromModel model
         H.set st
-        for_ model.chartConfig \conf →
+        for_ model \{chartConfig} →
           H.query st.chartType
             $ left
-            $ H.action $ Form.SetConfiguration conf
-        pure unit
+            $ H.action $ Form.SetConfiguration chartConfig
       _ → pure unit
     pure next
   CC.SetDimensions dims next → do

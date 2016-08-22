@@ -125,24 +125,25 @@ renderButton ct =
   src Scatter = "img/scatter-black.svg"
   src Radar = "img/radar-black.svg"
   src Funnel = "img/funnel-black.svg"
+  src Graph = "img/pie-black.svg"
 
 eval ∷ ∀ r. Wiring r → CC.CardEvalQuery ~> ChartDSL
 eval wiring = case _ of
   CC.EvalCard value output next → do
     case value.input of
-      Just (Chart options@{ options: opts, chartConfig: Just config }) → do
+      Just (Chart options@{ config: Just config }) → do
         -- TODO: this could possibly be optimised by caching records in the state,
         -- but we'd need to know when the input dataset going into ChartOptions changes.
         -- Basically something equivalent to the old `needsToUpdate`. -gb
         records ←
           either (const []) id
             <$> H.fromAff (Quasar.all wiring options.resource ∷ Slam (Either QE.QError JArray))
-        let optionDSL = BO.buildOptions opts config records
+        let optionDSL = BO.buildOptions config.options config.chartConfig records
         -- This _must_ be `Reset`. `Set` is for updating existing opts, not setting new.
         H.query unit $ H.action $ HEC.Reset optionDSL
         H.query unit $ H.action HEC.Resize
         setLevelOfDetails $ buildObj optionDSL
-        H.modify (_chartType ?~ opts.chartType)
+        H.modify (_chartType ?~ config.options.chartType)
       _ → do
         H.query unit $ H.action HEC.Clear
         pure unit
