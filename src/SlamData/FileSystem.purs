@@ -116,8 +116,8 @@ redirects driver var mbOld = case _ of
     cancel (error "cancel search") canceler
     fromAff $ putVar var initialAVar
     fromAff $ driver $ toListing $ Listing.SetIsSearching $ isSearchQuery query
-    let queryParts = splitQuery query
     let
+      queryParts = splitQuery query
       isNewPage = fromMaybe true do
         old ← mbOld
         Tuple oldQuery oldSalt ← case old of
