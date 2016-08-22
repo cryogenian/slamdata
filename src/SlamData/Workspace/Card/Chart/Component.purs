@@ -138,7 +138,8 @@ eval wiring = case _ of
           either (const []) id
             <$> H.fromAff (Quasar.all wiring options.resource ∷ Slam (Either QE.QError JArray))
         let optionDSL = BO.buildOptions opts config records
-        H.query unit $ H.action $ HEC.Set optionDSL
+        -- This _must_ be `Reset`. `Set` is for updating existing opts, not setting new.
+        H.query unit $ H.action $ HEC.Reset optionDSL
         H.query unit $ H.action HEC.Resize
         setLevelOfDetails $ buildObj optionDSL
         H.modify (_chartType ?~ opts.chartType)
