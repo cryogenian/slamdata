@@ -26,10 +26,6 @@ import Test.SlamData.Property.Form.Select as Test.SlamData.Property.Form.Select
 import Test.SlamData.Property.Workspace.Card.Ace.Model as Test.SlamData.Property.Workspace.Card.Ace.Model
 import Test.SlamData.Property.Workspace.Card.CardId as Test.SlamData.Property.Workspace.Card.CardId
 import Test.SlamData.Property.Workspace.Card.CardType as Test.SlamData.Property.Workspace.Card.CardType
-import Test.SlamData.Property.Workspace.Card.Chart.Aggregation as Test.SlamData.Property.Workspace.Card.Chart.Aggregation
-import Test.SlamData.Property.Workspace.Card.Chart.BuildOptions as Test.SlamData.Property.Workspace.Card.Chart.BuildOptions
-import Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration as Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration
-import Test.SlamData.Property.Workspace.Card.Chart.ChartType as Test.SlamData.Property.Workspace.Card.Chart.ChartType
 import Test.SlamData.Property.Workspace.Card.ChartOptions.Model as Test.SlamData.Property.Workspace.Card.ChartOptions.Model
 import Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State as Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State
 import Test.SlamData.Property.Workspace.Card.Markdown.Model as Test.SlamData.Property.Workspace.Card.Markdown.Model
@@ -42,7 +38,7 @@ import Test.SlamData.Property.Workspace.FormBuilder.Model as Test.SlamData.Prope
 
 import Test.StrongCheck (SC)
 
-main :: forall eff. SC eff Unit
+main ∷ ∀ eff. SC eff Unit
 main = do
   log "Check SlamData.Download.Model..."
   Test.SlamData.Property.Download.Model.check
@@ -64,18 +60,6 @@ main = do
 
   log "Check SlamData.Workspace.Card.Ace.Model..."
   Test.SlamData.Property.Workspace.Card.Ace.Model.check
-
-  log "Check SlamData.Workspace.Card.Chart.Aggregation..."
-  Test.SlamData.Property.Workspace.Card.Chart.Aggregation.check
-
-  log "Check SlamData.Workspace.Card.Chart.ChartConfiguration..."
-  Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration.check
-
-  log "Check SlamData.Workspace.Card.Chart.BuildOptions..."
-  Test.SlamData.Property.Workspace.Card.Chart.BuildOptions.check
-
-  log "Check SlamData.Workspace.Card.Chart.ChartType..."
-  Test.SlamData.Property.Workspace.Card.Chart.ChartType.check
 
   log "Check SlamData.Workspace.Card.DownloadOptions.Component.State..."
   Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State.check

@@ -38,6 +38,7 @@ import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
+
 eval
   ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)

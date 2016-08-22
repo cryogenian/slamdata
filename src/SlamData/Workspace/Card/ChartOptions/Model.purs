@@ -25,67 +25,25 @@ module SlamData.Workspace.Card.ChartOptions.Model
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json, (.?), decodeJson, jsonNull, jsonEmptyObject, (~>), (:=), isNull)
+import Data.Argonaut (Json, (.?), encodeJson, decodeJson, (~>), (:=))
 
-import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
-import SlamData.Workspace.Card.Chart.BuildOptions as CO
+import SlamData.Workspace.Card.Chart.Config as CC
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 
-type Model = Maybe
-  { chartConfig ∷ CC.ChartConfiguration
-  , options ∷ CO.BuildOptions
-  }
+type Model = Maybe CC.ChartConfig
 
 eqModel ∷ Model → Model → Boolean
-eqModel Nothing Nothing = true
-eqModel (Just m1) (Just m2) =
-  CO.eqBuildOptions m1.options m2.options
-  && CC.eqChartConfiguration m1.chartConfig m2.chartConfig
-eqModel _ _ = false
+eqModel = eq
 
 genModel ∷ Gen.Gen Model
-genModel = do
-  produceNothing ← arbitrary
-  if produceNothing
-    then pure Nothing
-    else do
-    chartConfig ← CC.genChartConfiguration
-    options ← CO.genBuildOptions
-    pure $ Just { chartConfig, options}
+genModel = arbitrary
 
 encode ∷ Model → Json
-encode Nothing
-  = jsonNull
-encode (Just m)
-  = "options" := CO.encode m.options
-  ~> "chartConfig" := CC.encode m.chartConfig
-  ~> jsonEmptyObject
+encode = encodeJson
 
 decode ∷ Json → Either String Model
-decode js
-  | isNull js = pure Nothing
-  | otherwise = do
-    obj ← decodeJson js
-    mbCC ←
-      (((obj .? "chartConfig") >>= CC.decode <#> Just) <|> pure Nothing)
-    options ←
-      (obj .? "options") >>= CO.decode
-    pure $ map {options, chartConfig: _} mbCC
+decode js = (decodeJson js) <|> (pure Nothing)
 
 initialModel ∷ Model
 initialModel = Nothing
-{-  { chartConfig: Nothing
-  , options:
-      { chartType: Pie
-      , axisLabelFontSize: 12
-      , axisLabelAngle: 0
-      , areaStacked: false
-      , smooth: false
-      , bubbleMinSize: 1.0
-      , bubbleMaxSize: 50.0
-      , funnelOrder: "descending"
-      , funnelAlign: "center"
-      }
-  }
--}

@@ -47,6 +47,7 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.ChartOptions.Component.Query (Query)
 import SlamData.Workspace.Card.ChartOptions.Form.Component as Form
 import SlamData.Workspace.Card.ChartOptions.Model (Model)
+import SlamData.Workspace.Card.Chart.Config (ChartConfig(..))
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 
@@ -126,8 +127,7 @@ type StateP =
     Slam ChartType
 
 fromModel ∷ Model → State
-fromModel Nothing = initialState
-fromModel (Just { options }) =
+fromModel (Just (Legacy {options})) =
   initialState
     { chartType = options.chartType
     , axisLabelFontSize = options.axisLabelFontSize
@@ -139,3 +139,4 @@ fromModel (Just { options }) =
     , funnelOrder = options.funnelOrder
     , funnelAlign = options.funnelAlign
     }
+fromModel _ = initialState

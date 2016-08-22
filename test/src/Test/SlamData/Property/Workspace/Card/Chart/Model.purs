@@ -15,44 +15,24 @@ limitations under the License.
 -}
 
 module Test.SlamData.Property.Workspace.Card.ChartOptions.Model
-  ( ArbModel
-  , runArbModel
-  , check
+  ( check
   ) where
 
 import SlamData.Prelude
 
+import Data.Argonaut as J
+
 import SlamData.Workspace.Card.ChartOptions.Model as M
 
-import Test.SlamData.Property.Workspace.Card.Chart.BuildOptions (runArbBuildOptions, checkBuildOptionsEquality)
-import Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration (runArbChartConfiguration, checkChartConfigEquality)
 import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
-import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
-newtype ArbModel = ArbModel M.Model
-
-runArbModel ∷ ArbModel → M.Model
-runArbModel (ArbModel m) = m
-
-instance arbitraryArbModel ∷ Arbitrary ArbModel where
-  arbitrary = do
-    produceNothing ← arbitrary
-    if produceNothing
-      then pure $ ArbModel Nothing
-      else do
-      options ← map runArbBuildOptions arbitrary
-      chartConfig ← map runArbChartConfiguration arbitrary
-      pure $ ArbModel $ Just {options, chartConfig}
-
-check ∷ forall eff. SC eff Unit
-check = quickCheck $ runArbModel ⋙ \model →
+check ∷ ∀ eff. SC eff Unit
+check = quickCheck \(model ∷ M.Model) →
   case M.decode (M.encode model) of
     Left err → Failed $ "Decode failed: " <> err
-    Right model' → case model × model' of
-      Nothing × Nothing → Success
-      (Just m) × (Just m') →
-        fold
-          [ checkBuildOptionsEquality m.options m'.options
-          , checkChartConfigEquality m.chartConfig m'.chartConfig
-          ]
-      _ → Failed "models mismatch"
+    Right model' →
+      model ≡ model'
+      <?> ( "models mismatch\n"
+            <> show (J.encodeJson model)
+            <> "\n" <> show (J.encodeJson model')
+          )
