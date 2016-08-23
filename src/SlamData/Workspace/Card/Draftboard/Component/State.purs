@@ -17,79 +17,124 @@ limitations under the License.
 module SlamData.Workspace.Card.Draftboard.Component.State
   ( State
   , StateP
+  , SplitOpts
+  , SplitLocation
+  , ResizeLocation
   , initialState
-  , stateFromModel
+  , initialRect
   , modelFromState
-  , _decks
-  , _moving
-  , _grouping
-  , _inserting
-  , module Model
+  , stateFromModel
+  , childSlots
+  , recalc
+  , updateRect
+  , updateLayout
   ) where
 
 import SlamData.Prelude
-
+import Data.List as List
+import Data.Map as Map
+import Data.Rational (Rational)
 import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 
-import Data.Lens (LensP, lens)
-import Data.Map as Map
-
 import SlamData.Monad (Slam)
-
 import SlamData.Workspace.Card.Draftboard.Component.Query (QueryC)
+import SlamData.Workspace.Card.Draftboard.Layout (SplitBias, Rect, Edge, Cell)
+import SlamData.Workspace.Card.Draftboard.Layout as Layout
+import SlamData.Workspace.Card.Draftboard.Model (Model)
+import SlamData.Workspace.Card.Draftboard.Orientation (Orientation)
+import SlamData.Workspace.Card.Draftboard.Pane (Pane(..), Cursor, walkWithCursor)
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Nested.State as DNS
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
-import SlamData.Workspace.Card.Draftboard.Model as Model
+type StateP = H.ParentState State DNS.State QueryC DNQ.QueryP Slam DeckId
 
 type State =
-  { decks ∷ Map.Map DeckId Model.DeckPosition
-  , moving ∷ Maybe (Tuple DeckId Model.DeckPosition)
-  , canvas ∷ Maybe HTMLElement
-  , grouping ∷ Maybe DeckId
+  { layout ∷ Pane (Maybe DeckId)
+  , splitOpts ∷ Maybe SplitOpts
+  , splitLocation ∷ Maybe SplitLocation
+  , resizeLocation ∷ Maybe ResizeLocation
+  , root ∷ Maybe HTMLElement
+  , rootRect ∷ Rect Number
+  , cellLayout ∷ List.List (Cell (Maybe DeckId) Number)
+  , edgeLayout ∷ List.List (Edge Number)
+  , cursors ∷ Map.Map DeckId Cursor
   , inserting ∷ Boolean
+  , movingLocation ∷ Maybe (Either (Number × Number) (Cell (Maybe DeckId) Number))
   }
 
-type StateP =
-  H.ParentState
-    State DNS.State
-    QueryC DNQ.QueryP
-    Slam DeckId
+type SplitOpts =
+  { orientation ∷ Orientation
+  , bias ∷ SplitBias
+  , root ∷ Boolean
+  }
+
+type SplitLocation =
+  { orientation ∷ Orientation
+  , bias ∷ SplitBias
+  , cursor ∷ Cursor
+  , ratio ∷ Rational
+  , x ∷ Number
+  , y ∷ Number
+  , z ∷ Number
+  }
+
+type ResizeLocation =
+  { edge ∷ Edge Number
+  , ratio ∷ Rational
+  , collapse ∷ Maybe SplitBias
+  , initial ∷ Number
+  , offset ∷ Number
+  }
 
 initialState ∷ State
 initialState =
-  { decks: Map.empty
-  , moving: Nothing
-  , canvas: Nothing
-  , grouping: Nothing
+  { layout: Cell Nothing
+  , splitOpts: Nothing
+  , splitLocation: Nothing
+  , resizeLocation: Nothing
+  , root: Nothing
+  , rootRect: initialRect
+  , cellLayout: mempty
+  , edgeLayout: mempty
+  , cursors: mempty
   , inserting: false
+  , movingLocation: Nothing
   }
 
-stateFromModel
-  ∷ Model.Model
-  → State
-stateFromModel { decks } =
-  initialState
-    { decks = decks }
+initialRect ∷ Rect Number
+initialRect =
+  { top: 0.0
+  , left: 0.0
+  , width: 0.0
+  , height: 0.0
+  }
 
-modelFromState
-  ∷ State
-  → Model.Model
-modelFromState { decks } =
-  { decks }
+modelFromState ∷ State → Model
+modelFromState { layout } = { layout }
 
--- | An array of positioned decks.
-_decks ∷ LensP State (Map.Map DeckId Model.DeckPosition)
-_decks = lens _.decks _{ decks = _ }
+stateFromModel ∷ Model → State
+stateFromModel { layout } = initialState { layout = layout }
 
-_moving ∷ LensP State (Maybe (Tuple DeckId Model.DeckPosition))
-_moving = lens _.moving _{ moving = _ }
+childSlots ∷ State → List.List DeckId
+childSlots = Map.keys ∘ _.cursors
 
-_grouping ∷ LensP State (Maybe DeckId)
-_grouping = lens _.grouping _{ grouping = _ }
+recalc ∷ Rect Number → Pane (Maybe DeckId) → State → State
+recalc rect layout = _
+  { rootRect = rect
+  , layout = layout
+  , cellLayout = Layout.absoluteCells rect (Layout.cells layout)
+  , edgeLayout = Layout.absoluteEdges rect (Layout.edges layout)
+  , cursors = walkWithCursor goCursors mempty layout
+  }
+  where
+  goCursors c m (Cell (Just deckId)) = Map.insert deckId c m
+  goCursors _ m _ = m
 
-_inserting ∷ LensP State Boolean
-_inserting = lens _.inserting _{ inserting = _ }
+updateRect ∷ Rect Number → State → State
+updateRect rect st = recalc rect st.layout st
+
+updateLayout ∷ Pane (Maybe DeckId) → State → State
+updateLayout layout st = recalc st.rootRect layout st

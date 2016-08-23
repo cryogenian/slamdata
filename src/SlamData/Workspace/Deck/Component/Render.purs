@@ -57,10 +57,15 @@ renderDeck ∷ DeckOptions → (DeckOptions → DeckComponent) → DCS.State →
 renderDeck opts deckComponent st =
   HH.div
     (deckClasses st
-     ⊕ deckProperties
+     ⊕ deckProperties opts
      ⊕ Slider.containerProperties st)
     [ HH.div
-        [ HP.class_ CSS.deckFrame ]
+        [ HP.class_ CSS.deckFrame
+        , HE.onMouseDown \ev →
+            if st.focused && (not (L.null opts.cursor))
+              then HEH.stopPropagation *> pure (Just (Defocus ev unit))
+              else pure Nothing
+        ]
         $ frameElements opts ⊕ [ renderName st.name ]
     , HH.div
         [ HP.class_ CSS.deck
@@ -70,7 +75,6 @@ renderDeck opts deckComponent st =
         , renderBackside $ st.displayMode ≡ DCS.Backside
         , renderDialog $ st.displayMode ≡ DCS.Dialog
         ]
-    , HH.div [ HP.class_ CSS.deckShadow ] []
     ]
 
   where
@@ -96,12 +100,12 @@ deckClasses st =
     , HH.className (responsiveSize st.responsiveSize)
     ] ⊕ (guard st.focused $> CSS.focused)
 
-deckProperties ∷ ∀ r. Array (HP.IProp (HP.InteractiveEvents (HP.GlobalProperties r)) (Query Unit))
-deckProperties =
+deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp (HP.InteractiveEvents (HP.GlobalProperties r)) (Query Unit))
+deckProperties opts =
   [ HP.key "deck-container"
-  , HE.onMouseDown \_ → HEH.stopPropagation $> Just (H.action Focus)
   , HP.ref (H.action ∘ SetCardElement)
-  ]
+  ] ⊕ (guard (L.length opts.cursor <= 1) $>
+        HE.onMouseDown \_ → HEH.stopPropagation $> Just (H.action Focus))
 
 renderName ∷ String → DeckHTML
 renderName name =
@@ -127,7 +131,6 @@ childFrameElements =
   [ zoomInButton
   , flipButton
   , moveGripper
-  , resizeGripper
   , deckIndicator
   ]
 
@@ -172,16 +175,6 @@ moveGripper =
     , HE.onMouseDown (HE.input GrabDeck)
     , ARIA.label "Grab deck"
     , HP.title "Grab deck"
-    ]
-    []
-
-resizeGripper ∷ DeckHTML
-resizeGripper =
-  HH.button
-    [ HP.classes [ CSS.resizeDeck ]
-    , HE.onMouseDown (HE.input ResizeDeck)
-    , ARIA.label "Resize deck"
-    , HP.title "Resize deck"
     ]
     []
 

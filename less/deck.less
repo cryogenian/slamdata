@@ -8,20 +8,23 @@
 
 .sd-deck-container {
   position: absolute;
-  top: 1px;
+  top: 0;
+  left: 0;
   right: 0;
-  left: 1px;
   bottom: 0;
-
-  transition: 0.2s ease-out box-shadow;
+  background: #fff;
 
   .sd-deck-frame {
     .noselect;
     position: absolute;
-    width: 100%;
-    height: 100%;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
     background: #fff;
     z-index: 2;
+
     > * {
       opacity: 0;
       pointer-events: none;
@@ -29,65 +32,90 @@
     }
   }
 
-  .sd-deck-shadow {
-    .noselect;
-    pointer-events: none;
-    position: absolute;
-    left: 0px;
-    top: 0px;
-    width: 100%;
-    height: 100%;
-    box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.25);
-    z-index: 1;
-  }
-
-  & > .loading {
-    position: absolute;
-    top: @grid-size;
-    bottom: @grid-size;
-    width: 100%;
-    background-color: #fff;
-    background-image:
-      linear-gradient(to left, #bbb @grid-size, transparent @grid-size),
-      linear-gradient(to right, #bbb @grid-size, transparent @grid-size);
-  }
-
   &.sd-focused {
+    top: -@grid-size;
+    left: -@grid-size;
+    right: -@grid-size;
+    bottom: -@grid-size;
     z-index: 10;
-    box-shadow: 0px 0px 16px rgba(0, 0, 0, 0.25);
+    box-shadow:
+      0 0 1px rgba(0,0,0,.4),
+      0 0 8px rgba(0,0,0,.2);
 
-    > div.sd-deck-frame {
+    > .sd-deck-frame {
+      display: block;
       z-index: 12;
+
       > * {
         opacity: 1;
         pointer-events: auto;
       }
     }
 
-    > div.sd-deck {
+    > .sd-deck {
       z-index: 12;
+      top: @grid-size;
+      bottom: @grid-size;
+
+      > .sd-card-slider {
+        left: @grid-size;
+        right: @grid-size;
+      }
+    }
+  }
+}
+
+.sd-deck-level-1 {
+  pointer-events: none;
+
+  > .sd-deck-container {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+
+    > .sd-deck-frame {
+      display: block;
+      background: transparent;
     }
 
-    > div.sd-deck-shadow {
-      z-index: 11;
+    > .sd-deck {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+
+    > .sd-deck > .sd-card-slider {
+      top: @grid-size;
+      left: @grid-size;
+      right: @grid-size;
+      height: ~"calc(100% - 3rem)";
     }
   }
 }
 
 .sd-deck {
   position: absolute;
-  top: @grid-size;
-  bottom: @grid-size;
-  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   overflow: hidden;
   z-index: 2;
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
 }
 
 .sd-card-slider {
   position: absolute;
   height: 100%;
-  left: @grid-size;
-  right: @grid-size;
+  left: 0;
+  right: 0;
 }
 
 .sd-card {
@@ -177,17 +205,6 @@
   background: url(../img/gripper.svg) repeat-x center
 }
 
-.sd-resize-deck {
-  height: @grid-size;
-  width: @grid-size;
-  background: url(../img/gripper-resize.svg) no-repeat center;
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  border: none;
-  margin: 0;
-}
-
 button.sd-zoom-deck {
   height: @grid-size;
   width: @grid-size;
@@ -204,8 +221,18 @@ button.sd-zoom-deck {
 
 .sd-deck-card {
   height: 100%;
-  overflow: auto;
   position: relative;
+
+  > div {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+  }
+
+  > .sd-card-draftboard {
+    overflow: visible;
+  }
 }
 
 *[aria-hidden="true"] {

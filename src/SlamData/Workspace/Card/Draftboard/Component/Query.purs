@@ -14,32 +14,41 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Draftboard.Component.Query where
+module SlamData.Workspace.Card.Draftboard.Component.Query
+  ( Query(..)
+  , QueryP
+  , QueryC
+  ) where
 
 import SlamData.Prelude
-
 import Data.Map as Map
 import DOM.HTML.Types (HTMLElement)
-
 import Halogen as H
 import Halogen.Component.Utils.Drag (DragEvent)
-import Halogen.HTML.Events.Types (Event, MouseEvent)
-
+import Halogen.HTML.Events.Types as HET
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
+import SlamData.Workspace.Card.Draftboard.Layout (SplitBias, Edge)
+import SlamData.Workspace.Card.Draftboard.Orientation (Orientation)
+import SlamData.Workspace.Card.Draftboard.Pane (Pane, Cursor)
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Model (Deck)
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
+import SlamData.Workspace.Deck.Model (Deck)
 
 data Query a
-  = Grabbing DeckId DragEvent a
-  | Resizing DeckId DragEvent a
-  | SetElement (Maybe HTMLElement) a
-  | AddDeck (Event MouseEvent) a
+  = Init a
+  | Recalc a
+  | SetRoot (Maybe HTMLElement) a
+  | SplitStart Orientation SplitBias Boolean (HET.Event HET.MouseEvent) a
+  | Splitting DragEvent a
+  | ResizeStart (Edge Number) (HET.Event HET.MouseEvent) a
+  | Resizing DragEvent a
   | LoadDeck DeckId a
-  | GetDecks (Map.Map DeckId (DeckPosition × Deck) → a)
+  | AddDeck Cursor a
+  | DeleteCell Cursor a
+  | GetDecks (Pane (Maybe (DeckId × Deck)) → a)
   | GetDecksSharingInput (Map.Map DeckId SharingInput → a)
+  | Grabbing (DeckId × Cursor) DragEvent a
 
 type QueryC = Coproduct CardEvalQuery Query
 

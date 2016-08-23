@@ -15,10 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Draftboard.Model
-  ( DeckPosition
-  , encodeDeckPosition
-  , decodeDeckPosition
-  , Model
+  ( Model
   , eqModel
   , genModel
   , emptyModel
@@ -29,44 +26,18 @@ module SlamData.Workspace.Card.Draftboard.Model
 import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
-import Data.Map as Map
+import Data.Int (toNumber)
+import Data.List as List
+import Data.Ratio as Ratio
+import Data.Rational (Rational(..), (%))
+import SlamData.Workspace.Card.Draftboard.Orientation as Orn
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
-type DeckPosition =
-  { x ∷ Number
-  , y ∷ Number
-  , width ∷ Number
-  , height ∷ Number
-  }
-
-eqDeckPosition
-  ∷ DeckPosition
-  → DeckPosition
-  → Boolean
-eqDeckPosition p1 p2 =
-  p1.x ≡ p2.x
-    && p1.y ≡ p2.y
-    && p1.width ≡ p2.width
-    && p1.height ≡ p2.height
-
-genDeckPosition ∷ Gen.Gen DeckPosition
-genDeckPosition = do
-  x ← SC.arbitrary
-  y ← SC.arbitrary
-  width ← SC.arbitrary
-  height ← SC.arbitrary
-  pure { x, y, width, height }
-
-newtype DeckPositionP = DeckPositionP DeckPosition
-
-instance eqDeckPositionP ∷ Eq DeckPositionP where
-  eq (DeckPositionP x) (DeckPositionP y) =
-    eqDeckPosition x y
-
 type Model =
-  { decks ∷ Map.Map DeckId DeckPosition
+  { layout ∷ Pane.Pane (Maybe DeckId)
   }
 
 eqModel
@@ -74,22 +45,20 @@ eqModel
   → Model
   → Boolean
 eqModel m1 m2 =
-  DeckPositionP <$> m1.decks
-    ≡ DeckPositionP <$> m2.decks
+  m1.layout ≡ m2.layout
 
 genModel ∷ Gen.Gen Model
-genModel = do
-  decks ← Map.fromFoldable <$> Gen.arrayOf (Tuple <$> SC.arbitrary <*> genDeckPosition)
-  pure { decks }
+genModel =
+  { layout: _ } <$> genPane
 
 emptyModel ∷ Model
-emptyModel = { decks: Map.empty }
+emptyModel = { layout: Pane.Cell Nothing }
 
 encode
   ∷ Model
   → J.Json
 encode m =
-  "decks" := map encodeDeckPosition m.decks
+  "layout" := encodePane m.layout
     ~> J.jsonEmptyObject
 
 decode
@@ -97,26 +66,84 @@ decode
   → Either String Model
 decode =
   J.decodeJson >=> \obj → do
-    decks ← traverse decodeDeckPosition =<< obj .? "decks"
-    pure { decks }
+    layout ← decodePane =<< obj .? "layout"
+    pure { layout }
 
-encodeDeckPosition
-  ∷ DeckPosition
+encodePane
+  ∷ ∀ a
+  . J.EncodeJson a
+  ⇒ Pane.Pane a
   → J.Json
-encodeDeckPosition pos =
-  "x" := pos.x
-    ~> "y" := pos.y
-    ~> "width" := pos.width
-    ~> "height" := pos.height
+encodePane = case _ of
+  Pane.Cell a →
+    "type" := "cell"
+    ~> "value" := J.encodeJson a
     ~> J.jsonEmptyObject
+  Pane.Split orn ps →
+    "type" := "split"
+      ~> "orientation" := encodeOrientation orn
+      ~> "panes" := map encodeSplit ps
+      ~> J.jsonEmptyObject
+  where
+  encodeSplit (Rational r × p) =
+    "ratio" := J.encodeJson (Ratio.numerator r × Ratio.denominator r)
+      ~> "pane" :=  encodePane p
+      ~> J.jsonEmptyObject
 
-decodeDeckPosition
-  ∷ J.Json
-  → Either String DeckPosition
-decodeDeckPosition =
+decodePane
+  ∷ ∀ a
+  . J.DecodeJson a
+  ⇒ J.Json
+  → Either String (Pane.Pane a)
+decodePane =
   J.decodeJson >=> \obj → do
-    x ← obj .? "x"
-    y ← obj .? "y"
-    width ← obj .? "width"
-    height ← obj .? "height"
-    pure { x, y, width, height }
+    ty ← obj .? "type"
+    case ty of
+      "cell" → do
+        value ← obj .? "value"
+        pure (Pane.Cell value)
+      "split" → do
+        orn ← decodeOrientation =<< obj .? "orientation"
+        ps ← traverse decodeSplits =<< obj .? "panes"
+        pure (Pane.Split orn ps)
+      _ →
+        Left ("Not a valid Pane tag: " <> ty)
+  where
+  decodeSplits obj = do
+    n × d ← obj .? "ratio"
+    pane ← decodePane =<< obj .? "pane"
+    pure (n%d × pane)
+
+genPane
+  ∷ ∀ a
+  . SC.Arbitrary a
+  ⇒ Gen.Gen (Pane.Pane a)
+genPane = genOrientation >>= goGen
+  where
+  goGen orn =
+    SC.arbitrary >>=
+    if _
+      then Pane.Cell <$> SC.arbitrary
+      else Pane.Split orn <$> genSplit orn 16 List.Nil
+
+  genSplit orn range ps = do
+    num ← Gen.chooseInt 1.0 (toNumber range)
+    pane ← goGen (Orn.reverse orn)
+    let
+      ps' = List.Cons ((num%16) × pane) ps
+      range' = range - num
+    if range' ≡ 0
+      then pure ps'
+      else genSplit orn range' ps'
+
+encodeOrientation ∷ Orn.Orientation → J.Json
+encodeOrientation = J.encodeJson ∘ Orn.toString
+
+decodeOrientation ∷ J.Json → Either String Orn.Orientation
+decodeOrientation = J.decodeJson >=> case _ of
+  "vertical" → pure Orn.Vertical
+  "horizontal" → pure Orn.Horizontal
+  s → Left ("Invalid orientation: " <> s)
+
+genOrientation ∷ Gen.Gen Orn.Orientation
+genOrientation = SC.arbitrary <#> if _ then Orn.Vertical else Orn.Horizontal
