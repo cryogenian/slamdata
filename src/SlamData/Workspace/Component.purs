@@ -22,10 +22,8 @@ module SlamData.Workspace.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Fork (class MonadFork)
 import Control.UI.Browser (setHref, locationObject)
 
@@ -60,11 +58,13 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.SignIn.Component as SignIn
+import SlamData.Wiring (Wiring, putDeck, getDeck)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Class (class WorkspaceDSL, putURLVarMaps, getURLVarMaps)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
 import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, initialState)
@@ -77,7 +77,6 @@ import SlamData.Workspace.Model as Model
 import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash)
 import SlamData.Workspace.StateMode (StateMode(..))
-import SlamData.Wiring (DeckMessage(..), Wiring(..), putDeck, getDeck)
 
 import Utils.Path as UP
 import Utils.DOM (onResize)
@@ -158,11 +157,7 @@ eval (Init next) = do
     $ pure (H.action Resize)
   pure next
 eval (SetVarMaps urlVarMaps next) = do
-  Wiring wiring ← H.liftH $ H.liftH ask
-  currVarMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
-  when (currVarMaps /= urlVarMaps) do
-    H.fromEff $ Ref.writeRef wiring.urlVarMaps urlVarMaps
-    H.fromAff $ Bus.write URLVarMapsUpdated wiring.messaging
+  putURLVarMaps urlVarMaps
   pure next
 eval (DismissAll next) = do
   querySignIn $ H.action SignIn.DismissSubmenu
@@ -406,14 +401,13 @@ updateParentPointer path oldId newId = case _ of
 
 updateHash
   ∷ ∀ m
-  . (Affable SlamDataEffects m, MonadReader Wiring m)
+  . (Bind m, Affable SlamDataEffects m, WorkspaceDSL m)
   ⇒ UP.DirPath
   → AT.AccessType
   → DeckId
   → m Unit
 updateHash path accessType newId = do
-  Wiring wiring ← ask
+  varMaps ← getURLVarMaps
   H.fromEff do
-    varMaps ← Ref.readRef wiring.urlVarMaps
     let deckHash = mkWorkspaceHash (Deck.deckPath' path newId) (WA.Load accessType) varMaps
     locationObject >>= Location.setHash deckHash

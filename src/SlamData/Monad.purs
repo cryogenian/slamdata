@@ -19,14 +19,17 @@ module SlamData.Monad where
 import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Eff.Ref (readRef, writeRef)
 import Control.Monad.Fork (class MonadFork, Canceler, cancelWith, fork, hoistCanceler)
 import Control.Monad.Free (Free, liftF, foldFree)
 import Control.Monad.Reader (ReaderT, runReaderT, local)
 import Control.Parallel.Class (par)
+
+import Data.Map as Map
 
 import OIDC.Crypt.Types as OIDC
 
@@ -40,7 +43,10 @@ import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Wiring (Wiring(..))
+import SlamData.Wiring (Wiring(..), DeckMessage(..))
+import SlamData.Workspace.Card.Port.VarMap as Port
+import SlamData.Workspace.Class (class WorkspaceDSL)
+import SlamData.Workspace.Deck.DeckId (DeckId)
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -74,6 +80,8 @@ data SlamF eff a
   = Aff (Aff eff a)
   | GetAuthIdToken (Maybe OIDC.IdToken → a)
   | Quasar (QSlamF.QuasarAFC a)
+  | GetURLVarMaps (Map.Map DeckId Port.URLVarMap → a)
+  | PutURLVarMaps (Map.Map DeckId Port.URLVarMap) a
   | Track A.Event a
   | Notify N.NotificationOptions a
   | Halt GE.GlobalError a
@@ -138,6 +146,10 @@ instance notifyDSLSlamM ∷ N.NotifyDSL (SlamM eff) where
 instance globalErrorDSLSlamM ∷ GE.GlobalErrorDSL (SlamM eff) where
   raiseGlobalError = SlamM ∘ liftF ∘ flip Halt unit
 
+instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
+  getURLVarMaps = SlamM $ liftF $ GetURLVarMaps id
+  putURLVarMaps = SlamM ∘ liftF ∘ flip PutURLVarMaps unit
+
 --------------------------------------------------------------------------------
 
 runSlam :: Wiring -> Slam ~> Aff SlamDataEffects
@@ -158,6 +170,17 @@ unSlam = foldFree go ∘ unSlamM
       Wiring { requestNewIdTokenBus } ← ask
       idToken ← lift $ Auth.fromEither <$> Auth.getIdToken requestNewIdTokenBus
       lift $ runQuasarF idToken qf
+    GetURLVarMaps k → do
+      Wiring { urlVarMaps } ← ask
+      lift $ liftEff $ k <$> readRef urlVarMaps
+    PutURLVarMaps urlVarMaps a → do
+      Wiring wiring ← ask
+      currVarMaps ← lift $ liftEff $ readRef wiring.urlVarMaps
+      when (currVarMaps /= urlVarMaps) do
+        lift $ liftAff $ do
+          liftEff $ writeRef wiring.urlVarMaps urlVarMaps
+          Bus.write URLVarMapsUpdated wiring.messaging
+      pure a
     Track e a → do
       liftEff $ A.trackEvent e
       pure a

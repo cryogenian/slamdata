@@ -28,7 +28,6 @@ import SlamData.Prelude
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Promise as Pr
-import Control.Monad.Eff.Ref as Ref
 import Control.UI.Browser (locationObject, setHref, newTab)
 
 import Data.Array as Array
@@ -57,6 +56,8 @@ import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
 import SlamData.Quasar.Error as QE
+import SlamData.Wiring (Wiring(..), CardEval, Cache, DeckMessage(..), putCardEval, putCache, getCache, makeCache)
+import SlamData.Wiring as W
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
@@ -73,6 +74,7 @@ import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Variables.Eval as Variables
+import SlamData.Workspace.Class (getURLVarMaps)
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
@@ -91,8 +93,6 @@ import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
-import SlamData.Wiring (Wiring(..), CardEval, Cache, DeckMessage(..), putCardEval, putCache, getCache, makeCache)
-import SlamData.Wiring as W
 
 import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath)
@@ -220,8 +220,7 @@ eval opts = case _ of
     pure next
   ZoomIn next → do
     st ← H.get
-    Wiring wiring ← H.liftH $ H.liftH ask
-    varMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+    varMaps ← getURLVarMaps
     let deckHash = mkWorkspaceHash (DCS.deckPath st) (WA.Load opts.accessType) varMaps
     H.fromEff $ locationObject >>= Location.setHash deckHash
     pure next
@@ -229,8 +228,7 @@ eval opts = case _ of
     st ← H.get
     case st.parent of
       Just (Tuple deckId _) → do
-        Wiring wiring ← H.liftH $ H.liftH ask
-        varMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+        varMaps ← getURLVarMaps
         let deckHash = mkWorkspaceHash (DCS.deckPath' st.path deckId) (WA.Load opts.accessType) varMaps
         H.fromEff $ locationObject >>= Location.setHash deckHash
       Nothing →
@@ -605,7 +603,7 @@ runPendingCards opts source pendingCard pendingCards = do
         getCache (DCS.coordModelToCoord c) pendingCards >>= case _ of
           Just ev → pure ev
           Nothing → do
-            urlVarMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+            urlVarMaps ← getURLVarMaps
             ev ← evalCard st.path urlVarMaps input c
             putCardEval ev pendingCards
             putCardEval ev wiring.cards
@@ -755,8 +753,7 @@ runCardUpdates opts source steps = do
   updateCard st source loadedCards step = void do
     input ← for step.input (H.liftH ∘ H.liftH ∘ Pr.wait)
     output ← for step.output (H.liftH ∘ H.liftH ∘ Pr.wait)
-    Wiring wiring ← H.liftH $ H.liftH ask
-    urlVarMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+    urlVarMaps ← getURLVarMaps
     let
       cardCoord = DCS.coordModelToCoord step.card
       evalInput = { path: st.path, urlVarMaps, input, cardCoord }
@@ -826,8 +823,7 @@ saveDeck { accessType, cursor } coord = do
       Right _ → do
         when (L.null cursor) $ do
           path' ← H.gets DCS.deckPath
-          Wiring wiring ← H.liftH $ H.liftH ask
-          varMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+          varMaps ← getURLVarMaps
           let deckHash = mkWorkspaceHash path' (WA.Load accessType) varMaps
           H.fromEff $ locationObject >>= Location.setHash deckHash
 
