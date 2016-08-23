@@ -23,7 +23,7 @@ import Data.Map as Map
 
 import Halogen as H
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.CardId (CardId(..))
 import SlamData.Workspace.Card.Draftboard.Component.State as DBS
@@ -33,7 +33,6 @@ import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck, emptyDeck)
-import SlamData.Workspace.Wiring (Wiring)
 
 import Utils.Path (DirPath)
 
@@ -44,7 +43,6 @@ type DeckDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 type DeckOptions =
   { path ∷ DirPath
   , accessType ∷ AccessType
-  , wiring ∷ Wiring
   , cursor ∷ L.List DeckId
   }
 

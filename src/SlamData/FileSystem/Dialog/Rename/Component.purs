@@ -18,8 +18,6 @@ module SlamData.FileSystem.Dialog.Rename.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Error.Class (throwError)
 import Control.UI.Browser (reload)
 
 import Data.Array (elemIndex, singleton, sort, nub)
@@ -38,10 +36,9 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config as Config
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
-import SlamData.FileSystem.Wiring (Wiring)
 import SlamData.GlobalError as GE
 import SlamData.Quasar.FS as API
 import SlamData.Render.CSS as Rc
@@ -145,11 +142,11 @@ data Query a
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
 
-comp :: Wiring -> H.Component State Query Slam
-comp wiring =
+comp :: H.Component State Query Slam
+comp =
   H.lifecycleComponent
     { render
-    , eval: eval wiring
+    , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
@@ -238,17 +235,17 @@ render dialog =
              ]
     [ HH.text (R.resourcePath res) ]
 
-eval :: Wiring -> Query ~> DSL
-eval _ (Dismiss next) = pure next
-eval _ (SetShowList bool next) = do
+eval :: Query ~> DSL
+eval (Dismiss next) = pure next
+eval (SetShowList bool next) = do
   H.modify (_showList .~ bool)
   H.modify validate
   pure next
-eval _ (ToggleShowList next) = do
+eval (ToggleShowList next) = do
   H.modify (_showList %~ not)
   H.modify validate
   pure next
-eval wiring (Submit next) = do
+eval (Submit next) = do
   dirStr <- endingInSlash <$> H.gets _.typedDir
   maybe presentDirNotExistError moveIfDirAccessible (parsedDir dirStr)
   pure next
@@ -265,22 +262,22 @@ eval wiring (Submit next) = do
   presentError e =
     case GE.fromQError e of
       Left msg → H.modify $ _error .~ Just msg
-      Right ge → H.fromAff $ Bus.write ge wiring.globalError
+      Right ge → GE.raiseGlobalError ge
 
   moveIfDirAccessible dir =
-    maybe (move dir) presentError =<< API.dirNotAccessible wiring dir
+    maybe (move dir) presentError =<< API.dirNotAccessible dir
 
   move dir = do
     H.modify $ (_dir .~ dir) <<< (_showList .~ false)
     state ← H.get
     let src = state.initial
         tgt = R.getPath $ renameSlam state
-    result ← API.move wiring src tgt
+    result ← H.liftH $ API.move src tgt
     case result of
       Left e ->
         case GE.fromQError e of
           Left msg -> H.modify (_error ?~ msg)
-          Right ge -> H.fromAff $ Bus.write ge wiring.globalError
+          Right ge -> GE.raiseGlobalError ge
       Right x ->
         maybe
           presentSourceMissingError
@@ -292,33 +289,33 @@ eval wiring (Submit next) = do
 
   endingInSlash s = if lastChar s == "/" then s else s <> "/"
 
-eval _ (NameTyped str next) = do
+eval (NameTyped str next) = do
   H.modify (_name .~ str)
   H.modify validate
   pure next
-eval _ (DirTyped str next) = do
+eval (DirTyped str next) = do
   H.modify $ _typedDir .~ str
   pure next
-eval wiring (DirClicked res next) = do
-  dirItemClicked wiring res
+eval (DirClicked res next) = do
+  dirItemClicked res
   pure next
-eval _ (SetSiblings ss next) = do
+eval (SetSiblings ss next) = do
   H.modify (_siblings .~ ss)
   pure next
-eval _ (AddDirs ds next) = do
+eval (AddDirs ds next) = do
   H.modify (_dirs %~ append ds >>> nub >>> sort)
   pure next
-eval wiring (Init next) = do
+eval (Init next) = do
   state <- H.get
-  dirItemClicked wiring $ R.parent $ state.initial
+  dirItemClicked $ R.parent $ state.initial
   pure next
 
-dirItemClicked ∷ Wiring → R.Resource → DSL Unit
-dirItemClicked wiring res = do
+dirItemClicked ∷ R.Resource → DSL Unit
+dirItemClicked res = do
   case R.getPath res of
     Right _ → pure unit
     Left dir → do
-      siblings ← API.children wiring dir
+      siblings ← API.children dir
       H.modify
         $ (_dir .~ dir)
         <<< (_showList .~ false)

@@ -35,12 +35,13 @@ import DOM.HTML.Window (document)
 import DOM.Node.Element (setClassName)
 import DOM.HTML.Types (htmlElementToElement)
 
-import Halogen (Driver, runUI, parentState)
+import Halogen (Driver, runUI, parentState, interpret)
 import Halogen.Util (runHalogenAff, awaitBody)
 
 import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
+import SlamData.Monad (runSlam)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
@@ -48,7 +49,7 @@ import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
-import SlamData.Workspace.Wiring (makeWiring)
+import SlamData.Wiring (Wiring(..), makeWiring)
 
 import Routing as Routing
 
@@ -62,9 +63,10 @@ main = do
   runHalogenAff do
     forkAff Analytics.enableAnalytics
     let st = Workspace.initialState (Just "3.0")
-    wiring ← makeWiring
-    forkAff (Analytics.consumeEvents wiring.analytics)
-    driver ← runUI (Workspace.comp wiring) (parentState st) =<< awaitBody
+    wiring@(Wiring { analytics }) ← makeWiring
+    forkAff (Analytics.consumeEvents analytics)
+    let ui = interpret (runSlam wiring) Workspace.comp
+    driver ← runUI ui (parentState st) =<< awaitBody
     forkAff (routeSignal driver)
   StyleLoader.loadStyles
 

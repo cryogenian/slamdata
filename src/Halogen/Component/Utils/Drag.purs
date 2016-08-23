@@ -20,7 +20,6 @@ import Prelude
 
 import Control.Monad.Aff (Canceler(..), forkAff, launchAff, runAff)
 import Control.Monad.Aff.AVar (makeVar, makeVar', takeVar, putVar, AVAR)
-import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -124,7 +123,6 @@ begin ev = fromAff do
 subscribe'
   ∷ ∀ s s' f f' g p eff
   . ( Affable (DragEffects eff) g
-    , MonadAff (DragEffects eff) g
     , Monad g
     )
   ⇒ Event MouseEvent

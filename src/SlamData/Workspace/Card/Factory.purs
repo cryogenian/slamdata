@@ -49,23 +49,18 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
 cardComponent deckId card opts =
   case card.model of
-    Card.Ace mode _ →
-      aceComponent
-        { mode
-        , eval: aceEval mode
-        , wiring: opts.deck.wiring
-        }
+    Card.Ace mode _ → aceComponent { mode, eval: aceEval mode }
     Card.Search _ → searchComponent
     Card.ChartOptions _ → chartOptionsComponent
-    Card.Chart → chartComponent opts.deck.wiring
+    Card.Chart → chartComponent
     Card.Markdown _ → markdownComponent deckId opts
-    Card.Table _ → tableComponent opts.deck.wiring
-    Card.Download → downloadComponent opts.deck.wiring
+    Card.Table _ → tableComponent
+    Card.Download → downloadComponent
     Card.Variables _ → variablesComponent
     Card.Troubleshoot → troubleshootComponent
     Card.NextAction → nextCardComponent
     Card.Cache _ → cacheCardComponent
-    Card.Open mres → openComponent opts.deck.wiring mres
+    Card.Open mres → openComponent mres
     Card.DownloadOptions _ → DOpts.comp
     Card.ErrorCard → Error.comp
     Card.PendingCard → Pending.comp

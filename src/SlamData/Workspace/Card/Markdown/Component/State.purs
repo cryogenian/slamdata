@@ -23,7 +23,7 @@ import SlamData.Prelude
 
 import Halogen (ParentState)
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Markdown.Component.Query (Query)
 import SlamData.Workspace.Card.Port.VarMap as VM

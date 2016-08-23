@@ -24,8 +24,13 @@ module SlamData.Prelude
   , module Control.Apply
   , module Control.Bind
   , module Control.Monad
+  , module Control.Monad.Error.Class
+  , module Control.Monad.Except
+  , module Control.Monad.Maybe.Trans
+  , module Control.Monad.Reader
   , module Control.Monad.Trans
   , module Control.MonadPlus
+  , module Control.Parallel.Class
   , module Control.Plus
   , module Data.Bifoldable
   , module Data.Bifunctor
@@ -53,8 +58,13 @@ import Control.Apply ((*>), (<*))
 import Control.Bind (join, (>=>), (<=<))
 import Control.Bind as CB
 import Control.Monad (when, unless)
+import Control.Monad.Error.Class (class MonadError, throwError, catchError)
+import Control.Monad.Except (ExceptT(..), runExcept, runExceptT, except)
+import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
+import Control.Monad.Reader (class MonadReader, ask)
 import Control.Monad.Trans (class MonadTrans, lift)
 import Control.MonadPlus (class MonadPlus, guard)
+import Control.Parallel.Class (class MonadPar, parTraverse, parTraverse_)
 import Control.Plus (class Plus, empty)
 
 import Data.Bifoldable (class Bifoldable, bitraverse_, bifor_)

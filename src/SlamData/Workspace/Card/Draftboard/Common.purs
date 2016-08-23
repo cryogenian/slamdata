@@ -15,9 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Draftboard.Common
-  ( transitiveGraphProducer
-  , transitiveChildren
-  , childDeckIds
+  ( childDeckIds
   , deleteGraph
   , replacePointer
   , unsafeUpdateCachedDraftboard
@@ -25,89 +23,44 @@ module SlamData.Workspace.Card.Draftboard.Common
 
 import SlamData.Prelude
 
-import Control.Coroutine (Producer, runProcess, ($$), await)
-import Control.Monad.Aff (Aff, runAff)
-import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Eff.Ref as Ref
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
-import Control.Parallel.Class (parallel, runParallel)
+import Control.Monad.Aff.Free (class Affable)
 
 import Data.Array as Array
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
-import Data.Set as Set
 
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Aff (QEff)
+import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.Model as DM
-import SlamData.Workspace.Wiring (Wiring, getCache, putCardEval)
+import SlamData.Wiring (Wiring(..), putCardEval, getCache)
 
-import Utils.AffableProducer (produce)
 import Utils.Path (DirPath)
 
-transitiveGraphProducer
-  ∷ ∀ eff m
-  . (Functor m, Affable (QEff eff) m)
-  ⇒ Wiring
-  → DirPath
-  → DeckId
-  → Producer (Tuple DeckId (Either QE.QError (Array DeckId))) m Unit
-transitiveGraphProducer wiring path deckId = produce \emit → do
-  pending ← Ref.newRef $ Set.singleton deckId
-  void $ runAff Exn.throwException (const (pure unit)) $
-    go emit pending deckId
-
-  where
-  go emit pending parentId = do
-    fromEff $ Ref.modifyRef pending (Set.insert parentId)
-
-    loadChildIds parentId >>= case _ of
-      Left err →
-        fromEff $ emit (Left (Tuple parentId (Left err)))
-      Right cids → do
-        fromEff $ emit (Left (Tuple parentId (Right cids)))
-        runParallel $ traverse_ (parallel ∘ go emit pending) cids
-
-    fromEff $ Ref.modifyRef pending (Set.delete parentId)
-    remaining ← fromEff $ Ref.readRef pending
-
-    when (Set.isEmpty remaining) do
-      fromEff $ emit (Right unit)
-
-  loadChildIds parentId = runExceptT do
-    json ← ExceptT $ Quasar.load wiring (DM.deckIndex path parentId)
-    ExceptT $ pure $ childDeckIds ∘ _.cards <$> lmap QE.msgToQError (DM.decode json)
-
 transitiveChildren
-  ∷ ∀ eff m
-  . Affable (QEff eff) m
-  ⇒ Wiring
-  → DirPath
+  ∷ ∀ m
+  . (MonadPar m, QuasarDSL m)
+  ⇒ DirPath
   → DeckId
-  → m (Either QE.QError (Array DeckId))
-transitiveChildren wiring path deckId = fromAff go
+  → ExceptT QE.QError m (Array DeckId)
+transitiveChildren path = go
   where
-  go ∷ Aff (QEff eff) (Either QE.QError (Array DeckId))
-  go = do
-    ref ← fromEff $ Ref.newRef (Right [])
-    runProcess (transitiveGraphProducer wiring path deckId $$ collectIds ref)
-    fromEff $ Ref.readRef ref
+  go ∷ DeckId → ExceptT QE.QError m (Array DeckId)
+  go parentId = do
+    cids ← loadChildIds parentId
+    ccids ← parTraverse go cids
+    pure $ cids <> join ccids
 
-  collectIds ref = do
-    Tuple _ cids ← await
-    case cids of
-      Left err →
-        lift $ fromEff (Ref.modifyRef ref (const (Left err)))
-      Right cids' → do
-        lift $ fromEff (Ref.modifyRef ref (map (_ <> cids')))
-        collectIds ref
+  loadChildIds ∷ DeckId → ExceptT QE.QError m (Array DeckId)
+  loadChildIds parentId = do
+    json ← ExceptT $ Quasar.load (DM.deckIndex path parentId)
+    ExceptT $ pure $
+      childDeckIds ∘ _.cards <$> lmap QE.msgToQError (DM.decode json)
 
 childDeckIds ∷ Array (CM.Model) → Array DeckId
 childDeckIds = (_ >>= getDeckIds ∘ _.model)
@@ -118,24 +71,22 @@ childDeckIds = (_ >>= getDeckIds ∘ _.model)
       _ → []
 
 deleteGraph
-  ∷ ∀ eff m
-  . Affable (QEff eff) m
-  ⇒ Wiring
-  → DirPath
+  ∷ ∀ m
+  . (MonadPar m, QuasarDSL m)
+  ⇒ DirPath
   → DeckId
   → m (Either QE.QError Unit)
-deleteGraph wiring path parentId = (fromAff :: Aff (QEff eff) ~> m) $ runExceptT do
-  cids ← ExceptT $ transitiveChildren wiring path parentId
+deleteGraph path parentId = runExceptT do
+  cids ← transitiveChildren path parentId
   void
     $ ExceptT
     $ map sequence
-    $ runParallel
-    $ traverse (parallel ∘ delete)
+    $ parTraverse delete
     $ Array.cons parentId cids
 
   where
   delete deckId =
-    Quasar.delete wiring $ Left $ path </> Pathy.dir (deckIdToString deckId)
+    Quasar.delete $ Left $ path </> Pathy.dir (deckIdToString deckId)
 
 replacePointer
   ∷ DeckId
@@ -163,12 +114,12 @@ replacePointer from to cid = map replace
 -- | outputs it's OK to just swap out the model for the cached card eval.
 unsafeUpdateCachedDraftboard
   ∷ ∀ m
-  . (Monad m, Affable SlamDataEffects m)
-  ⇒ Wiring
-  → DeckId
+  . (Monad m, Affable SlamDataEffects m, MonadReader Wiring m)
+  ⇒ DeckId
   → CM.Model
   → m Unit
-unsafeUpdateCachedDraftboard wiring deckId model =
+unsafeUpdateCachedDraftboard deckId model = do
+  Wiring wiring ← ask
   case model of
     { cardId, model: CM.Draftboard db } → do
       let coord = deckId × cardId

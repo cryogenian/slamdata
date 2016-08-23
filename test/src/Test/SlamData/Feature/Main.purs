@@ -11,7 +11,6 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console as Ec
 import Control.Monad.Eff.Exception (EXCEPTION, Error, message)
 import Control.Monad.Eff.Ref (REF, newRef, modifyRef, readRef)
-import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Trans (runReaderT)
 
 import Data.Array as Arr

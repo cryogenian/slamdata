@@ -34,10 +34,9 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
-import SlamData.Quasar.Aff (Wiring)
 import SlamData.Quasar.FS as Quasar
 import SlamData.Render.CSS as RC
 import SlamData.Render.Common (glyph)
@@ -52,13 +51,13 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
 
-openComponent ∷ ∀ r. Wiring r → Maybe R.Resource → H.Component CC.CardStateP CC.CardQueryP Slam
-openComponent wiring mres =
+openComponent ∷ Maybe R.Resource → H.Component CC.CardStateP CC.CardQueryP Slam
+openComponent mres =
   CC.makeCardComponent
     { cardType: CT.Open
     , component: H.lifecycleComponent
         { render
-        , eval: eval wiring
+        , eval
         , initializer: Just (H.action (right ∘ Init mres))
         , finalizer: Nothing
         }
@@ -147,11 +146,11 @@ glyphForResource = case _ of
   R.Mount (R.Database _) → glyph B.glyphiconHdd
   R.Mount (R.View _) → glyph B.glyphiconFile
 
-eval ∷ ∀ r. Wiring r → QueryP ~> DSL
-eval wiring = cardEval wiring ⨁ openEval wiring
+eval ∷ QueryP ~> DSL
+eval = cardEval ⨁ openEval
 
-cardEval ∷ ∀ r. Wiring r → CC.CardEvalQuery ~> DSL
-cardEval wiring = case _ of
+cardEval ∷ CC.CardEvalQuery ~> DSL
+cardEval = case _ of
   CC.EvalCard info output next →
     pure next
   CC.Activate next →
@@ -168,7 +167,7 @@ cardEval wiring = case _ of
           pure ∘ Just $ R.Directory br
   CC.Load card next → do
     case card of
-      Card.Open (Just (res @ R.File _)) → resourceSelected wiring res
+      Card.Open (Just (res @ R.File _)) → resourceSelected res
       _ → pure unit
     pure next
   CC.SetDimensions dims next → do
@@ -183,36 +182,36 @@ cardEval wiring = case _ of
   CC.ZoomIn next →
     pure next
 
-openEval ∷ ∀ r. Wiring r → Query ~> DSL
-openEval wiring (ResourceSelected r next) = do
-  resourceSelected wiring r
+openEval ∷ Query ~> DSL
+openEval (ResourceSelected r next) = do
+  resourceSelected r
   CC.raiseUpdatedC' CC.EvalModelUpdate
   pure next
-openEval wiring (Init mres next) = do
-  updateItems wiring *> rearrangeItems
-  traverse_ (resourceSelected wiring) mres
+openEval (Init mres next) = do
+  updateItems *> rearrangeItems
+  traverse_ resourceSelected mres
   pure next
 
-resourceSelected ∷ ∀ r. Wiring r → R.Resource → DSL Unit
-resourceSelected wiring r = do
+resourceSelected ∷ R.Resource → DSL Unit
+resourceSelected r = do
   case R.getPath r of
     Right fp → do
       for_ (fst <$> peel fp) \dp → do
         oldBrowsing ← H.gets _.browsing
         unless (oldBrowsing ≡ dp) do
           H.modify (_browsing .~ dp)
-          updateItems wiring
+          updateItems
       H.modify (_selected ?~ fp)
     Left dp → do
       H.modify
         $ (_browsing .~ dp)
         ∘ (_selected .~ Nothing)
-      updateItems wiring
+      updateItems
   rearrangeItems
 
-updateItems ∷ ∀ r. Wiring r → DSL Unit
-updateItems wiring = do
-  cs ← Quasar.children wiring =<< H.gets _.browsing
+updateItems ∷ DSL Unit
+updateItems = do
+  cs ← Quasar.children =<< H.gets _.browsing
   mbSel ← H.gets _.selected
   H.modify (_items .~ foldMap id cs)
 

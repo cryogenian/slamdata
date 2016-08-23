@@ -39,7 +39,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Form.Select (Select, autoSelect, newSelect, (⊝), ifSelected, trySelect', _value, isSelected)
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType (CardType(ChartOptions))

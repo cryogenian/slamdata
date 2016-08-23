@@ -22,7 +22,7 @@ module Halogen.Component.Utils.Debounced
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.Free (class Affable)
 
 import Data.Lens (LensP, view, (?~))
 import Data.Maybe (Maybe(..))
@@ -38,16 +38,17 @@ type DebounceTrigger f g = f Unit → g Unit
 -- | function also handles constructing the initial trigger if it has not yet
 -- | been created.
 fireDebouncedQuery'
-  ∷ ∀ s s' f f' p eff
-  . Milliseconds
-  → LensP s (Maybe (DebounceTrigger f (Aff (DebounceEffects eff))))
+  ∷ ∀ s s' f f' g p eff
+  . (Functor g, Affable (DebounceEffects eff) g)
+  ⇒ Milliseconds
+  → LensP s (Maybe (DebounceTrigger f g))
   → H.Action f
-  → H.ParentDSL s s' f f' (Aff (DebounceEffects eff)) p Unit
+  → H.ParentDSL s s' f f' g p Unit
 fireDebouncedQuery' ms lens act = do
   t ← H.gets (view lens) >>= \mbt → case mbt of
     Just t' → pure t'
     Nothing → do
-      t' ← debouncedEventSource H.fromEff H.subscribe' ms
+      t' ← debouncedEventSource H.subscribe' ms
       H.modify (lens ?~ t')
       pure t'
   H.liftH $ H.liftH $ t $ H.action $ act

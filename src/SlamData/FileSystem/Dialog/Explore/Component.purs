@@ -29,7 +29,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Render.Common (formGroup)
 import SlamData.Config as Config
 

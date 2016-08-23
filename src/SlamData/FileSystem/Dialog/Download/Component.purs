@@ -30,7 +30,7 @@ import Data.String as Str
 import Halogen as H
 
 import SlamData.Download.Model as D
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Download.Component.Render (render)
 import SlamData.FileSystem.Dialog.Download.Component.State (State, _authHeaders,  _compress, _error, _options, _source, _targetName, checkExists, initialState, validate)

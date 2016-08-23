@@ -21,10 +21,8 @@ module Halogen.Component.Utils.Throttled
 
 import Prelude
 
-import Control.Coroutine.Aff (produce')
-import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
 import Control.Monad.Eff.Timer (TIMER, setTimeout)
@@ -33,20 +31,20 @@ import Data.Either (Either(..))
 import Data.Int as Int
 import Data.Time.Duration (Milliseconds(..))
 
-import Halogen.Query.EventSource (EventSource(..))
+import Halogen.Query.EventSource as ES
 
 type ThrottleEffects eff = (ref :: REF, avar :: AVAR, timer :: TIMER | eff)
 
 throttledEventSource_
   ∷ forall eff f g
-  . (Monad g, MonadAff (ThrottleEffects eff) g)
+  . (Monad g, Affable (ThrottleEffects eff) g)
   ⇒ Milliseconds
   → (Eff (ThrottleEffects eff) Unit -> Eff (ThrottleEffects eff) Unit)
   → Eff (ThrottleEffects eff) (f Unit)
-  → EventSource f g
+  → ES.EventSource f g
 throttledEventSource_ (Milliseconds ms) attach handle =
-  EventSource $
-    producerToStallingProducer $ produce' \emit -> do
+  ES.EventSource $
+    ES.produce \emit -> do
       throttled ← newRef false
       attach do
         readRef throttled >>= if _

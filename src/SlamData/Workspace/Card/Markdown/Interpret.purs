@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Control.Monad.Eff (runPure)
 import Control.Monad.Eff.Exception (try)
-import Control.Monad.Maybe.Trans as MT
 
 import Data.Array as A
 import Data.Functor.Compose (decompose)
@@ -78,7 +77,7 @@ formFieldValueToVarMapValue
   ⇒ SDS.FormFieldValue VM.VarMapValue
   → m (M.Maybe VM.VarMapValue)
 formFieldValueToVarMapValue v =
-  MT.runMaybeT ∘ map VM.Literal $
+  runMaybeT ∘ map VM.Literal $
     case v of
       SD.TextBox tb → do
         tb' ← liftMaybe $ SD.traverseTextBox decompose tb
@@ -102,9 +101,9 @@ formFieldValueToVarMapValue v =
       ∷ ∀ n a
       . (Applicative n)
       ⇒ Maybe a
-      → MT.MaybeT n a
+      → MaybeT n a
     liftMaybe =
-      MT.MaybeT ∘ pure
+      MaybeT ∘ pure
 
     mkdate localDateTime = runPure $ try $
       JSD.toISOString $

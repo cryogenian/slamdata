@@ -40,7 +40,7 @@ import Data.Set as Set
 
 import Halogen (ParentState)
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)

@@ -35,8 +35,6 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Path
 import Data.Set as Set
 
-import Control.Monad.Error.Class as EC
-import Control.Monad.Except.Trans as ET
 import Control.Monad.Writer.Class as WC
 import Control.Monad.Writer.Trans as WT
 import Control.Parallel.Class as Par
@@ -59,7 +57,7 @@ type CardEvalInput =
   , urlVarMaps ∷ Map.Map DID.DeckId Port.URLVarMap
   }
 
-type CardEvalTP m = ET.ExceptT QError (WT.WriterT (Set.Set AdditionalSource) m)
+type CardEvalTP m = ExceptT QError (WT.WriterT (Set.Set AdditionalSource) m)
 
 newtype CardEvalT m a = CardEvalT (CardEvalTP m a)
 
@@ -89,9 +87,9 @@ instance monadWriterCardEvalT
   listen = getCardEvalT ⋙ WC.listen ⋙ CardEvalT
   pass = getCardEvalT ⋙ WC.pass ⋙ CardEvalT
 
-instance monadErrorCardEvalT ∷ Monad m ⇒ EC.MonadError QError (CardEvalT m) where
-  throwError = EC.throwError ⋙ CardEvalT
-  catchError (CardEvalT m) = CardEvalT ∘ EC.catchError m ∘ (getCardEvalT ∘ _)
+instance monadErrorCardEvalT ∷ Monad m ⇒ MonadError QError (CardEvalT m) where
+  throwError = throwError ⋙ CardEvalT
+  catchError (CardEvalT m) = CardEvalT ∘ catchError m ∘ (getCardEvalT ∘ _)
 
 instance monadParCardEvalT ∷ Par.MonadPar m ⇒ Par.MonadPar (CardEvalT m) where
   par f (CardEvalT ma) (CardEvalT mb) = CardEvalT (Par.par f ma mb)
@@ -102,7 +100,7 @@ runCardEvalT
   ⇒ CardEvalT m Port.Port
   → m (Either GE.GlobalError (Port.Port × (Set.Set AdditionalSource)))
 runCardEvalT (CardEvalT m) =
-  WT.runWriterT (ET.runExceptT m) <#> \(r × ms) →
+  WT.runWriterT (runExceptT m) <#> \(r × ms) →
     case r of
       Left err →
         case GE.fromQError err of
@@ -116,7 +114,7 @@ runCardEvalT_
   . Functor m
   ⇒ CardEvalT m Unit → m Unit
 runCardEvalT_ (CardEvalT m) =
-  WT.runWriterT (ET.runExceptT m) <#> \(x × _) → either (const unit) id x
+  WT.runWriterT (runExceptT m) <#> \(x × _) → either (const unit) id x
 
 addSource
   ∷ ∀ m
@@ -164,4 +162,4 @@ temporaryOutputResource { path, cardCoord: deckId × cardId } =
     </> Path.file ("out" ⊕ CID.cardIdToString cardId)
 
 liftQ ∷ ∀ m a. Monad m ⇒ m (Either QError a) → CardEvalT m a
-liftQ = either EC.throwError pure <=< lift
+liftQ = either throwError pure <=< lift

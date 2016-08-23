@@ -32,7 +32,7 @@ import Halogen.Themes.Bootstrap3 as B
 import CSS.Geometry (marginBottom)
 import CSS.Size (px)
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
 import SlamData.FileSystem.Listing.Item.Component.CSS as CSS
 import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, resourcePath, isMount, isFile, isWorkspace, isViewMount, hiddenTopLevel, root)

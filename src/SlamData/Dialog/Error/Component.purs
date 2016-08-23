@@ -25,7 +25,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 
 newtype State = State String
 

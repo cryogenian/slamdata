@@ -15,8 +15,6 @@ module SlamData.SignIn.Bus where
 
 import Control.Monad.Aff.Bus
 
-type SignInBusW r = Bus (write :: Cap | r) SignInMessage
-type SignInBusR r = Bus (read :: Cap | r) SignInMessage
 type SignInBus = BusRW SignInMessage
 
 data SignInMessage = SignInSuccess
