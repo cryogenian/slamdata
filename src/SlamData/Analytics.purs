@@ -25,7 +25,7 @@ module SlamData.Analytics
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff, apathize)
+import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff (Eff)
@@ -34,14 +34,11 @@ import Control.Monad.Reader (runReaderT)
 import Control.Monad.Rec.Class (forever)
 
 import Data.Argonaut (Json, (:=), (~>), jsonEmptyObject)
-import Data.String as Str
 
 import DOM (DOM)
-import DOM.HTML (window)
-import DOM.HTML.Location as Location
-import DOM.HTML.Window as Window
 
 import Network.HTTP.Affjax as AX
+
 import OIDC.Crypt.Types as OIDC
 
 import Quasar.QuasarF as QF
@@ -52,7 +49,9 @@ import SlamData.Analytics.Event (Event(..))
 import SlamData.Config as Config
 import SlamData.Workspace.AccessType as AT
 
-foreign import _enableAnalytics ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
+-- | Enables the segment.io analyics API.
+foreign import enableAnalytics ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
+
 foreign import _track ∷ ∀ eff. String → Json → Eff (dom ∷ DOM | eff) Unit
 
 isAdvanced ∷ ∀ eff. Aff (ajax ∷ AX.AJAX | eff) Boolean
@@ -61,22 +60,6 @@ isAdvanced
   $ QA.eval
   $ either (const false) (\{ name } → name == "Quasar-Advanced")
   <$> QF.serverInfo
-
-isHosted ∷ ∀ eff. Eff (dom ∷ DOM | eff) Boolean
-isHosted = do
-  host ← Location.host =<< Window.location =<< window
-  pure $ isJust $ Str.stripSuffix "slamdata.com" host
-
--- | Enables the segment.io analyics API.
-enableAnalytics ∷ ∀ eff. Aff (dom ∷ DOM, ajax ∷ AX.AJAX | eff) Unit
-enableAnalytics = apathize $
-  liftEff isHosted >>=
-    if _
-    then liftEff _enableAnalytics
-    else isAdvanced >>=
-      if _
-      then pure unit
-      else liftEff _enableAnalytics
 
 -- | Identifies a user in the segment.io analytics API. This will have no effect
 -- | if `enableAnalytics` has not previously been run.

@@ -76,7 +76,7 @@ main = do
   AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
-    fork Analytics.enableAnalytics
+    liftEff Analytics.enableAnalytics
     wiring ← makeWiring
     let ui = interpret (runSlam wiring) comp
     driver ← runUI ui (parentState initialState) =<< awaitBody
