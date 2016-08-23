@@ -32,7 +32,7 @@ import DOM (DOM)
 
 import Network.HTTP.Affjax as AX
 
-import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus, getIdToken, fromEither)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Quasar.Auth.Permission (retrieveTokenHashes)
 
 import Quasar.Advanced.QuasarAF as QF
@@ -53,12 +53,12 @@ type Wiring r =
 -- | Runs a `QuasarF` request in `Aff`, using the `QError` type for errors that
 -- | may arise, which allows for convenient catching of 404 errors.
 runQuasarF
-  ∷ ∀ r eff m a
-  . Affable (QEff eff) m
-  ⇒ Wiring r
+  ∷ ∀ eff m a
+  . (Monad m, Affable (QEff eff) m)
+  ⇒ Maybe OIDC.IdToken
   → QF.QuasarAFC a
   → m a
-runQuasarF wiring qf = (fromAff ∷ ∀ x. Aff (QEff eff) x → m x) do
-  idToken ← fromEither <$> getIdToken wiring.requestNewIdTokenBus
-  permissions ← fromEff retrieveTokenHashes
-  runReaderT (QFA.eval qf) { basePath: "", idToken, permissions }
+runQuasarF idToken qf = do
+  (fromAff ∷ ∀ x. Aff (QEff eff) x → m x) do
+    permissions ← fromEff retrieveTokenHashes
+    runReaderT (QFA.eval qf) { basePath: "", idToken, permissions }

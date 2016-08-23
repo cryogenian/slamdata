@@ -44,7 +44,7 @@ import OIDC.Crypt as OIDC
 
 import SlamData.Config as Config
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Auth.Authentication as Auth
+import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (glyph, fadeWhen)
@@ -55,7 +55,6 @@ import SlamData.Workspace.Deck.Component.State (deckPath')
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
 import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL, encodeVarMaps)
-import SlamData.Wiring (Wiring(..))
 
 import Quasar.Advanced.Types as QTA
 
@@ -360,8 +359,7 @@ eval (Init mbEl next) = next <$ do
       Z.setData "text/plain" val z
 
   -- To know if user is authed
-  Wiring wiring ← H.liftH ask
-  mbAuthToken ← H.fromAff $ Auth.fromEither <$> Auth.getIdToken wiring.requestNewIdTokenBus
+  mbAuthToken ← H.liftH Auth.getIdToken
   case mbAuthToken of
     Nothing →
       H.modify _{ permToken = Nothing
@@ -420,8 +418,7 @@ eval (ToggleShouldGenerateToken next) = next <$ do
   case state.permToken of
     Nothing →
       unless state.shouldGenerateToken do
-        Wiring wiring ← H.liftH ask
-        mbOIDC ← H.fromAff $ Auth.getIdToken wiring.requestNewIdTokenBus
+        mbOIDC ← H.liftH Auth.getIdToken
         workspacePath ← H.gets (_.workspacePath ∘ _.sharingInput)
         for_ mbOIDC \oidc → do
           let

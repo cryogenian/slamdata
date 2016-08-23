@@ -47,7 +47,6 @@ import SlamData.Workspace.Card.Download.Component.State (State, _fileName, _leve
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Wiring (Wiring(..))
 
 import Utils.Path as UP
 import Utils.DOM (getTextWidthPure)
@@ -119,8 +118,7 @@ cardEval = case _ of
 
 handleDownloadPort ∷ Port.DownloadPort → DSL Unit
 handleDownloadPort opts = do
-  Wiring wiring ← H.liftH ask
-  hs ← H.fromAff $ API.authHeaders wiring.requestNewIdTokenBus
+  hs ← H.liftH API.authHeaders
   H.modify $ _url .~ url hs
   let
     fileName = UP.getNameStr $ Right opts.resource

@@ -19,22 +19,27 @@ module SlamData.Monad where
 import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Fork (class MonadFork, Canceler, cancelWith, fork, hoistCanceler)
 import Control.Monad.Free (Free, liftF, foldFree)
 import Control.Monad.Reader (ReaderT, runReaderT, local)
 import Control.Parallel.Class (par)
 
+import OIDC.Crypt.Types as OIDC
+
 import Quasar.Advanced.QuasarAF as QSlamF
 
 import SlamData.Analytics as A
-import SlamData.Notification as N
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Aff (runQuasarF)
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.GlobalError as GE
+import SlamData.Notification as N
+import SlamData.Quasar.Aff (runQuasarF)
+import SlamData.Quasar.Auth (class QuasarAuthDSL)
+import SlamData.Quasar.Auth.Authentication as Auth
+import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Wiring (Wiring(..))
 
 import Unsafe.Coerce (unsafeCoerce)
@@ -67,6 +72,7 @@ unFork = unsafeCoerce
 
 data SlamF eff a
   = Aff (Aff eff a)
+  | GetAuthIdToken (Maybe OIDC.IdToken → a)
   | Quasar (QSlamF.QuasarAFC a)
   | Track A.Event a
   | Notify N.NotificationOptions a
@@ -96,6 +102,12 @@ instance bindSlamM ∷ Bind (SlamM eff) where
 
 instance monadSlamM ∷ Monad (SlamM eff)
 
+instance monadEffSlamM ∷ MonadEff eff (SlamM eff) where
+  liftEff = SlamM ∘ liftF ∘ Aff ∘ liftEff
+
+instance monadAffSlamM ∷ MonadAff eff (SlamM eff) where
+  liftAff = SlamM ∘ liftF ∘ Aff
+
 instance affableSlamM ∷ Affable eff (SlamM eff) where
   fromAff = SlamM ∘ liftF ∘ Aff
 
@@ -109,6 +121,9 @@ instance monadForkSlamM ∷ MonadFork (SlamM eff) where
 instance monadReaderSlamM ∷ MonadReader Wiring (SlamM eff) where
   ask = SlamM $ liftF $ Ask id
   local f a = SlamM $ liftF $ Local f a
+
+instance quasarAuthDSLSlamM ∷ QuasarAuthDSL (SlamM eff) where
+  getIdToken = SlamM $ liftF $ GetAuthIdToken id
 
 instance quasarDSLSlamM ∷ QuasarDSL (SlamM eff) where
   liftQuasar = SlamM ∘ liftF ∘ Quasar
@@ -136,9 +151,13 @@ unSlam = foldFree go ∘ unSlamM
   go = case _ of
     Aff aff →
       lift aff
+    GetAuthIdToken k → do
+      Wiring { requestNewIdTokenBus } ← ask
+      lift $ k ∘ Auth.fromEither <$> Auth.getIdToken requestNewIdTokenBus
     Quasar qf → do
-      Wiring wiring ← ask
-      lift $ runQuasarF wiring qf
+      Wiring { requestNewIdTokenBus } ← ask
+      idToken ← lift $ Auth.fromEither <$> Auth.getIdToken requestNewIdTokenBus
+      lift $ runQuasarF idToken qf
     Track e a → do
       liftEff $ A.trackEvent e
       pure a

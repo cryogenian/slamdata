@@ -30,7 +30,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Auth.Authentication (fromEither, getIdToken)
+import SlamData.Quasar.Auth (getIdToken)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as CT
@@ -38,7 +38,6 @@ import SlamData.Workspace.Card.Component.CSS as CCSS
 import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck)
-import SlamData.Wiring (Wiring(..))
 
 data Query a
   = UpdateFilter String a
@@ -211,8 +210,7 @@ eval (UpdateFilter str next) =
 eval (UpdateCardType cty ctys next) =
   H.modify (_ { activeCardType = cty, cardTypes = ctys, unwrappableDecks = Map.empty :: DeckMap }) $> next
 eval (Init next) = next <$ do
-  Wiring wiring ← H.liftH ask
-  isLogged ← map isJust $ H.fromAff $ fromEither <$> (getIdToken wiring.requestNewIdTokenBus)
+  isLogged ← map isJust $ H.liftH getIdToken
   H.modify (_ { isLogged = isLogged })
 eval (SetUnwrappable decks next) =
   H.modify (_ { unwrappableDecks = decks }) $> next

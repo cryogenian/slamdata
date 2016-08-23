@@ -44,13 +44,13 @@ import Quasar.Advanced.Types (ProviderR, Provider(..))
 import SlamData.Analytics as Analytics
 import SlamData.Monad (Slam)
 import SlamData.Quasar as Api
-import SlamData.Quasar.Auth.Authentication as AuthRetrieve
+import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Auth.Store as AuthStore
 import SlamData.SignIn.Bus (SignInMessage(..))
 import SlamData.SignIn.Component.State (State, initialState)
 import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
 import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu
-import SlamData.Wiring (Wiring(..), WiringRec)
+import SlamData.Wiring (Wiring(..))
 
 import Utils (passover)
 
@@ -102,11 +102,10 @@ eval (Init next) = update $> next
 
 update ∷ SignInDSL Unit
 update = do
-  Wiring wiring ← H.liftH $ H.liftH ask
-  mbIdToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken wiring.requestNewIdTokenBus
+  mbIdToken ← H.liftH $ H.liftH $ Auth.getIdToken
   traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
   maybe
-    (retrieveProvidersAndUpdateMenu wiring)
+    retrieveProvidersAndUpdateMenu
     putEmailToMenu
     mbIdToken
   where
@@ -131,9 +130,9 @@ update = do
         ]
     H.modify (_{loggedIn = true})
 
-  retrieveProvidersAndUpdateMenu ∷ WiringRec → SignInDSL Unit
-  retrieveProvidersAndUpdateMenu wiring = do
-    eProviders ← H.fromAff $ Api.retrieveAuthProviders wiring
+  retrieveProvidersAndUpdateMenu ∷ SignInDSL Unit
+  retrieveProvidersAndUpdateMenu = do
+    eProviders ← Api.retrieveAuthProviders
     case eProviders of
       Left _ → H.modify (_{hidden = true})
       Right Nothing → H.modify (_{hidden = true})

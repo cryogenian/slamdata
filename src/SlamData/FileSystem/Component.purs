@@ -483,8 +483,7 @@ configure (R.Database path) = do
 
 download ∷ R.Resource → DSL Unit
 download res = do
-  Wiring wiring ← H.liftH $ H.liftH ask
-  hs ← H.fromAff $ API.authHeaders wiring.requestNewIdTokenBus
+  hs ← H.liftH $ H.liftH API.authHeaders
   showDialog (Dialog.Download res)
   queryDialog Dialog.cpDownload (H.action $ Download.SetAuthHeaders hs)
   pure unit

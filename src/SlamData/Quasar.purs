@@ -18,7 +18,6 @@ module SlamData.Quasar where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Exception as Exn
 
 import Data.Argonaut ((~>), (:=))
@@ -34,7 +33,7 @@ import Network.HTTP.RequestHeader (RequestHeader(..))
 import Quasar.Advanced.Types (ProviderR) as Auth
 import Quasar.Advanced.QuasarAF as QF
 
-import SlamData.Quasar.Aff (QEff, runQuasarF, Wiring)
+import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
 ldJSON ∷ MediaType
 ldJSON = MediaType "application/ldjson"
@@ -97,11 +96,11 @@ reqHeadersToJSON = foldl go JS.jsonEmptyObject
 -- | Returns `Nothing` in case the authorization service is not available, and `Just` in case
 -- | Quasar responded with a valid array of OIDC providers.
 retrieveAuthProviders
-  ∷ ∀ r eff
-  . Wiring r
-  → Aff (QEff eff) (Exn.Error ⊹ (Maybe (Array Auth.ProviderR)))
-retrieveAuthProviders wiring =
-  runQuasarF wiring QF.authProviders <#> case _ of
+  ∷ ∀ m
+  . (Functor m, QuasarDSL m)
+  ⇒ m (Exn.Error ⊹ (Maybe (Array Auth.ProviderR)))
+retrieveAuthProviders =
+  liftQuasar QF.authProviders <#> case _ of
     Left (QF.Error err) → Left err
     Left _ → Right Nothing
     Right providers → Right (Just providers)

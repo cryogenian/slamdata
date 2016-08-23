@@ -15,8 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Wiring
-  ( WiringRec
-  , Wiring(..)
+  ( Wiring(..)
   , Cache
   , CardEval
   , DeckRef
@@ -87,21 +86,20 @@ type ActiveState =
   { cardIndex ∷ Int
   }
 
-type WiringRec =
-  { decks ∷ Cache DeckId DeckRef
-  , activeState ∷ Cache DeckId ActiveState
-  , cards ∷ Cache (DeckId × CardId) CardEval
-  , pending ∷ Bus.BusRW PendingMessage
-  , messaging ∷ Bus.BusRW DeckMessage
-  , notify ∷ Bus.BusRW N.NotificationOptions
-  , globalError ∷ Bus.BusRW GE.GlobalError
-  , analytics ∷ Bus.BusRW AE.Event
-  , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
-  , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
-  , signInBus ∷ SignInBus
-  }
-
-newtype Wiring = Wiring WiringRec
+newtype Wiring =
+  Wiring
+    { decks ∷ Cache DeckId DeckRef
+    , activeState ∷ Cache DeckId ActiveState
+    , cards ∷ Cache (DeckId × CardId) CardEval
+    , pending ∷ Bus.BusRW PendingMessage
+    , messaging ∷ Bus.BusRW DeckMessage
+    , notify ∷ Bus.BusRW N.NotificationOptions
+    , globalError ∷ Bus.BusRW GE.GlobalError
+    , analytics ∷ Bus.BusRW AE.Event
+    , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
+    , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
+    , signInBus ∷ SignInBus
+    }
 
 makeWiring
   ∷ ∀ m
@@ -119,8 +117,8 @@ makeWiring = fromAff do
   requestNewIdTokenBus ← Auth.authentication
   urlVarMaps ← fromEff (newRef mempty)
   signInBus ← Bus.make
-  let
-    wiring =
+  pure $
+    Wiring
       { decks
       , activeState
       , cards
@@ -133,7 +131,6 @@ makeWiring = fromAff do
       , urlVarMaps
       , signInBus
       }
-  pure $ Wiring wiring
 
 makeCache
   ∷ ∀ m k v

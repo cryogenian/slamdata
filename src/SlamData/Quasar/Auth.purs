@@ -15,14 +15,15 @@ limitations under the License.
 -}
 
 module SlamData.Quasar.Auth
-  ( authHeaders
+  ( class QuasarAuthDSL
+  , getIdToken
+  , authHeaders
   , module OIDC
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff)
-import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
 
 import Data.Array as A
 
@@ -31,16 +32,18 @@ import Network.HTTP.RequestHeader (RequestHeader)
 import OIDC.Crypt as OIDC
 
 import SlamData.Quasar.Auth.Permission as P
-import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus, AuthEffects)
-import SlamData.Quasar.Auth.Authentication as AuthRetrieve
+import SlamData.Quasar.Auth.Authentication (AuthEffects)
 
 import Quasar.Advanced.QuasarAF.Interpreter.Affjax (authHeader, permissionsHeader)
 
+class QuasarAuthDSL m where
+  getIdToken :: m (Maybe OIDC.IdToken)
+
 authHeaders
-  ∷ ∀ eff
-  . RequestIdTokenBus
-  → Aff (AuthEffects eff) (Array RequestHeader)
-authHeaders requestNewIdTokenBus = do
-  idToken ← AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken requestNewIdTokenBus
+  ∷ ∀ m eff
+  . (MonadEff (AuthEffects eff) m, QuasarAuthDSL m)
+  ⇒ m (Array RequestHeader)
+authHeaders = do
+  idToken ← getIdToken
   hashes ← liftEff P.retrieveTokenHashes
   pure $ A.catMaybes [ map authHeader idToken, permissionsHeader hashes ]
