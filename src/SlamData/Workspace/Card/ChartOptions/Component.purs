@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect, aggregation
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel)
-import SlamData.Workspace.Card.Chart.Config (ChartConfig(..), _Legacy)
+import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
 import SlamData.Workspace.Card.ChartOptions.Component.State as VCS
@@ -455,14 +455,14 @@ cardEval = case _ of
             , funnelAlign: st.funnelAlign
             }
           }
-      <#> Legacy
+      <#> CH.Legacy
 
   CC.Load card next → do
     case card of
       Card.ChartOptions model → do
         let st = VCS.fromModel model
         H.set st
-        for_ (model >>= Lens.preview _Legacy) \{chartConfig} →
+        for_ (model >>= Lens.preview CH._Legacy) \{chartConfig} →
           H.query st.chartType
             $ left
             $ H.action $ Form.SetConfiguration chartConfig
