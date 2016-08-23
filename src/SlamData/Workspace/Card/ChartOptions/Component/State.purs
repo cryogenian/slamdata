@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.ChartOptions.Component.State
   ( State
+  , StateP
   , initialState
   , _chartType
   , _availableChartTypes
@@ -29,7 +30,6 @@ module SlamData.Workspace.Card.ChartOptions.Component.State
   , _bubbleMaxSize
   , _funnelOrder
   , _funnelAlign
-  , StateP
   , fromModel
   ) where
 
@@ -50,6 +50,7 @@ import SlamData.Workspace.Card.ChartOptions.Model (Model)
 import SlamData.Workspace.Card.Chart.Config (ChartConfig(..))
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
+import SlamData.Workspace.Card.ChartOptions.Component.Install (ChildQuery, ChildSlot, ChildState)
 
 type State =
   { chartType ∷ ChartType
@@ -118,14 +119,6 @@ _funnelOrder = lens _.funnelOrder _{funnelOrder = _}
 _funnelAlign ∷ ∀ a r. LensP {funnelAlign ∷ a | r} a
 _funnelAlign = lens _.funnelAlign _{funnelAlign = _}
 
-type StateP =
-  ParentState
-    State
-    Form.StateP
-    (Coproduct CardEvalQuery Query)
-    Form.QueryP
-    Slam ChartType
-
 fromModel ∷ Model → State
 fromModel (Just (Legacy {options})) =
   initialState
@@ -140,3 +133,6 @@ fromModel (Just (Legacy {options})) =
     , funnelAlign = options.funnelAlign
     }
 fromModel _ = initialState
+
+
+type StateP = ParentState State ChildState Query ChildQuery Slam ChildSlot

@@ -16,9 +16,11 @@ limitations under the License.
 
 module SlamData.Workspace.Card.ChartOptions.Component.Query where
 
-import Data.Functor.Coproduct (Coproduct)
+import SlamData.Prelude
 
 import Halogen (ChildF)
+
+import SlamData.Workspace.Card.ChartOptions.Component.Install (ChildSlot, ChildQuery)
 
 import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
@@ -35,6 +37,6 @@ data Query a
   | SetFunnelOrder String a
   | SetFunnelAlign String a
 
-type QueryC = Coproduct CardEvalQuery Query
+type QueryC = CardEvalQuery ⨁ Query
 
-type QueryP = Coproduct QueryC (ChildF ChartType Form.QueryP)
+type QueryP = QueryC ⨁ (ChildF ChildSlot ChildQuery)

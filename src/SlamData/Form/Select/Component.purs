@@ -47,8 +47,8 @@ type SelectConfig r =
   }
 
 primarySelect
-  ∷ forall a
-   . (S.OptionVal a)
+  ∷ ∀ a
+  . (S.OptionVal a)
   ⇒ Maybe String
   → H.Component (S.Select a) (Query a) Slam
 primarySelect mbLabel =
@@ -56,22 +56,22 @@ primarySelect mbLabel =
 
 secondarySelect
   ∷ forall a
-   . (S.OptionVal a)
+  . (S.OptionVal a)
   ⇒ Maybe String
   → H.Component (S.Select a) (Query a) Slam
 secondarySelect mbLabel =
   select { disableWhen: (_ < 1), defaultWhen: const true, ariaLabel: mbLabel }
 
 select
-  ∷ forall a r
-   . S.OptionVal a
+  ∷ ∀ a r
+  . S.OptionVal a
   ⇒ SelectConfig r
   → H.Component (S.Select a) (Query a) Slam
 select config =
   H.component { render: render config, eval }
 
 render
-  ∷ forall a r
+  ∷ ∀ a r
   . S.OptionVal a
   ⇒ SelectConfig r
   → S.Select a
@@ -80,7 +80,7 @@ render config state =
   HH.select
     ([ HP.classes [ B.formControl ]
        -- `fromJust` is safe here because we know that value are `show`n ints
-     , HE.onValueChange (HE.input (Choose <<< unsafePartial fromJust <<< Int.fromString))
+     , HE.onValueChange (HE.input (Choose ∘ unsafePartial fromJust <<< Int.fromString))
      , HP.disabled $ config.disableWhen len
      ]
     <> maybe [] (singleton <<< ARIA.label) config.ariaLabel)
@@ -117,7 +117,7 @@ render config state =
       ]
       [ HH.text (S.stringVal val) ]
 
-eval ∷ forall a. Eq a ⇒ Query a ~> H.ComponentDSL (S.Select a) (Query a) Slam
+eval ∷ ∀ a. Eq a ⇒ Query a ~> H.ComponentDSL (S.Select a) (Query a) Slam
 eval (Choose i next) = H.modify (S.trySelect i) $> next
 eval (SetSelect s next) = H.set s $> next
 eval (GetValue continue) = map continue $ H.gets (_ ^. S._value)

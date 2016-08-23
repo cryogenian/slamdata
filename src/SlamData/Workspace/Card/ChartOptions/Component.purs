@@ -59,9 +59,12 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.Card.ChartOptions.Graph.Component as Graph
+import SlamData.Workspace.Card.ChartOptions.Component.Install (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph)
 
-type HTML = H.ParentHTML Form.StateP QueryC Form.QueryP Slam ChartType
-type DSL = H.ParentDSL VCS.State Form.StateP QueryC Form.QueryP Slam ChartType
+type DSL = H.ParentDSL VCS.State ChildState Query ChildQuery Slam ChildSlot
+type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+
 
 -- | How does this module work?
 -- | + Take a TaggedResource case of Port
@@ -209,7 +212,7 @@ renderChartConfiguration state =
   renderTab ∷ ChartType → HTML
   renderTab ty =
     showIf (state.chartType ≡ ty)
-    [ HH.slot ty \_ →
+    [ HH.slot' cpForm ty \_ →
         { component: formComponent
         , initialState: H.parentState $ Form.getInitialState ty
         }
@@ -383,7 +386,7 @@ data BoundaryCtrl
 
 -- Note: need to put running to state
 eval ∷ QueryC ~> DSL
-eval = coproduct cardEval chartEval
+eval = cardEval ⨁ chartEval
 
 chartEval ∷ Query ~> DSL
 chartEval q = do
@@ -422,7 +425,7 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    conf ← H.query st.chartType $ left $ H.request Form.GetConfiguration
+    conf ← H.query' cpForm st.chartType $ left $ H.request Form.GetConfiguration
     let
       rawConfig = fromMaybe Form.initialConfiguration conf
       mbChartCfg = case st.chartType of
@@ -463,7 +466,7 @@ cardEval = case _ of
         let st = VCS.fromModel model
         H.set st
         for_ (model >>= Lens.preview CH._Legacy) \{chartConfig} →
-          H.query st.chartType
+          H.query' cpForm st.chartType
             $ left
             $ H.action $ Form.SetConfiguration chartConfig
       _ → pure unit
@@ -501,12 +504,12 @@ configure = void do
   getOrInitial ∷ ChartType → DSL ChartConfiguration
   getOrInitial ty =
     map (fromMaybe Form.initialConfiguration)
-      $ H.query ty
+      $ H.query' cpForm ty
       $ left (H.request Form.GetConfiguration)
 
   setConfigFor ∷ ChartType → ChartConfiguration → DSL Unit
   setConfigFor ty conf =
-    void $ H.query ty $ left $ H.action $ Form.SetConfiguration conf
+    void $ H.query' cpForm ty $ left $ H.action $ Form.SetConfiguration conf
 
   setPreviousValueFrom
     ∷ ∀ a. (Eq a) ⇒ Maybe (Select a) → Select a → Select a
@@ -688,5 +691,11 @@ configure = void do
        , aggregations: [firstAggregation]
        }
 
-peek ∷ ∀ a. H.ChildF ChartType Form.QueryP a → DSL Unit
-peek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate
+peek ∷ ∀ a. ChildQuery a → DSL Unit
+peek = formPeek ⨁ graphPeek
+
+formPeek ∷ ∀ a. Form.QueryP a → DSL Unit
+formPeek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate
+
+graphPeek ∷ ∀ a. Graph.Query a → DSL Unit
+graphPeek _ = pure unit
