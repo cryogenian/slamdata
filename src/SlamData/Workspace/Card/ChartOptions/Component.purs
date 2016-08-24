@@ -47,7 +47,7 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect, aggregationSelectWithNone)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel, isGraph)
 import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
@@ -62,8 +62,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.ChartOptions.Graph.Component as Graph
 import SlamData.Workspace.Card.ChartOptions.Component.Install (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph)
 
-type DSL = H.ParentDSL VCS.State ChildState Query ChildQuery Slam ChildSlot
-type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+type DSL = H.ParentDSL VCS.State ChildState QueryC ChildQuery Slam ChildSlot
+type HTML = H.ParentHTML ChildState QueryC ChildQuery Slam ChildSlot
 
 
 -- | How does this module work?
@@ -108,7 +108,7 @@ type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 chartOptionsComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 chartOptionsComponent = CC.makeCardComponent
   { cardType: ChartOptions
-  , component: H.parentComponent { render, eval, peek: Just peek }
+  , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   , initialState: H.parentState VCS.initialState
   , _State: CC._ChartOptionsState
   , _Query: CC.makeQueryPrism' CC._ChartOptionsQuery
@@ -170,6 +170,7 @@ renderChartTypeSelector state =
         , HP.classes
             $ [ cls state.chartType ]
             ⊕ (guard (selected ≡ current) $> B.active)
+
         , HE.onClick (HE.input_ (right ∘ SetChartType current))
         ]
 
@@ -181,7 +182,7 @@ renderChartTypeSelector state =
   src Scatter = "img/scatter.svg"
   src Radar = "img/radar.svg"
   src Funnel = "img/funnel.svg"
-  src Graph = "img/pie.svg"
+  src Graph = "img/graph.svg"
 
   cls ∷ ChartType → HH.ClassName
   cls Pie = CSS.pieChartIcon
@@ -210,6 +211,13 @@ renderChartConfiguration state =
     ]
   where
   renderTab ∷ ChartType → HTML
+  renderTab Graph =
+    showIf (state.chartType ≡ Graph)
+    [ HH.slot' cpGraph unit \_ →
+         { component: Graph.comp
+         , initialState: H.parentState Graph.initialState
+         }
+    ]
   renderTab ty =
     showIf (state.chartType ≡ ty)
     [ HH.slot' cpForm ty \_ →
@@ -227,16 +235,10 @@ renderDimensions state =
   row
   [ intChartInput CSS.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel
-        (isPie state.chartType
-          || isScatter state.chartType
-          || isRadar state.chartType
-          || isFunnel state.chartType)
+      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph ] )
   , intChartInput CSS.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize
-        (isPie state.chartType
-          || isScatter state.chartType
-          || isRadar state.chartType
-          || isFunnel state.chartType)
+      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph ] )
   , boolChartInput CSS.chartDetailParam "If stack"
       (_.areaStacked) ToggleSetStacked (not $ isArea state.chartType)
   , boolChartInput CSS.chartDetailParam "If smooth"
@@ -426,6 +428,9 @@ cardEval = case _ of
   CC.Save k → do
     st ← H.get
     conf ← H.query' cpForm st.chartType $ left $ H.request Form.GetConfiguration
+    when (st.chartType ≡ Graph) do
+      graphConf ← H.query' cpGraph unit $ left $ H.request Graph.GetChartConfig
+      traceAnyA graphConf
     let
       rawConfig = fromMaybe Form.initialConfiguration conf
       mbChartCfg = case st.chartType of
@@ -486,18 +491,27 @@ cardEval = case _ of
 configure ∷ DSL Unit
 configure = void do
   axes ← H.gets _.axes
+
+  H.query' cpGraph unit $ left $ H.action $ Graph.UpdateAxes axes
+
   pieConf ← getOrInitial Pie
   setConfigFor Pie $ pieBarConfiguration axes pieConf
+
   lineConf ← getOrInitial Line
   setConfigFor Line $ lineConfiguration axes lineConf
+
   barConf ← getOrInitial Bar
   setConfigFor Bar $ pieBarConfiguration axes barConf
+
   areaConf ← getOrInitial Area
   setConfigFor Area $ areaConfiguration axes areaConf
+
   scatterConf ← getOrInitial Scatter
   setConfigFor Scatter $ scatterConfiguration axes scatterConf
+
   radarConf ← getOrInitial Radar
   setConfigFor Radar $ radarConfiguration axes radarConf
+
   funnelConf ← getOrInitial Funnel
   setConfigFor Funnel $ funnelConfiguration axes funnelConf
   where
@@ -692,10 +706,10 @@ configure = void do
        }
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
-peek = formPeek ⨁ graphPeek
+peek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate --formPeek ⨁ graphPeek
 
-formPeek ∷ ∀ a. Form.QueryP a → DSL Unit
-formPeek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate
+--formPeek ∷ ∀ a. Form.QueryP a → DSL Unit
+--formPeek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
-graphPeek ∷ ∀ a. Graph.Query a → DSL Unit
-graphPeek _ = pure unit
+--graphPeek ∷ ∀ a. Graph.Query a → DSL Unit
+--graphPeek _ = CC.raiseUpdatedP' CC.EvalModelUpdate

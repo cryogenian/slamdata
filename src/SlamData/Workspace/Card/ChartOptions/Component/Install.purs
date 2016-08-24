@@ -8,8 +8,8 @@ import SlamData.Workspace.Card.ChartOptions.Graph.Component as Graph
 import SlamData.Workspace.Card.ChartOptions.Form.Component as Form
 import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 
-type ChildState = Form.StateP ⊹ Graph.State
-type ChildQuery = Form.QueryP ⨁ Graph.Query
+type ChildState = Form.StateP ⊹ Graph.StateP
+type ChildQuery = Form.QueryP ⨁ Graph.QueryP
 type ChildSlot = ChartType ⊹ Unit
 
 cpForm
@@ -21,7 +21,7 @@ cpForm = cpL
 
 cpGraph
   ∷ ChildPath
-      Graph.State ChildState
-      Graph.Query ChildQuery
+      Graph.StateP ChildState
+      Graph.QueryP ChildQuery
       Unit ChildSlot
 cpGraph = cpR

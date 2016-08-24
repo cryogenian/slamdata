@@ -23,6 +23,7 @@ module SlamData.Workspace.Card.Chart.ChartType
   , isScatter
   , isRadar
   , isFunnel
+  , isGraph
   , parseChartType
   , printChartType
   ) where

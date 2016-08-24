@@ -43,9 +43,7 @@ import Halogen (ParentState)
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.ChartOptions.Component.Query (Query)
-import SlamData.Workspace.Card.ChartOptions.Form.Component as Form
+import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC)
 import SlamData.Workspace.Card.ChartOptions.Model (Model)
 import SlamData.Workspace.Card.Chart.Config (ChartConfig(..))
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -135,4 +133,4 @@ fromModel (Just (Legacy {options})) =
 fromModel _ = initialState
 
 
-type StateP = ParentState State ChildState Query ChildQuery Slam ChildSlot
+type StateP = ParentState State ChildState QueryC ChildQuery Slam ChildSlot

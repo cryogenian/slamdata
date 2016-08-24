@@ -24,7 +24,6 @@ import SlamData.Workspace.Card.ChartOptions.Component.Install (ChildSlot, ChildQ
 
 import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.ChartOptions.Form.Component as Form
 
 data Query a
   = SetChartType ChartType a
@@ -36,6 +35,8 @@ data Query a
   | SetBubbleMaxSize Number a
   | SetFunnelOrder String a
   | SetFunnelAlign String a
+
+
 
 type QueryC = CardEvalQuery ⨁ Query
 

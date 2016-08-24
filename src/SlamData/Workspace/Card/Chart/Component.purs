@@ -126,7 +126,7 @@ renderButton ct =
   src Scatter = "img/scatter-black.svg"
   src Radar = "img/radar-black.svg"
   src Funnel = "img/funnel-black.svg"
-  src Graph = "img/pie-black.svg"
+  src Graph = "img/graph-black.svg"
 
 eval ∷ ∀ r. Wiring r → CC.CardEvalQuery ~> ChartDSL
 eval wiring = case _ of
