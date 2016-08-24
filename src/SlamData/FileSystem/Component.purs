@@ -279,7 +279,10 @@ uploadFileSelected f = do
     -- Or check if its first/last characters are [/]
     | otherwise =
         let trimmed = S.trim content'
-        in F.all isJust [S.stripPrefix "[" trimmed, S.stripSuffix "]" trimmed]
+        in (startsWithEndsWith "[" "]" trimmed) || (startsWithEndsWith "{" "}" trimmed)
+
+  startsWithEndsWith startsWith endsWith s =
+    F.all isJust [S.stripPrefix startsWith s, S.stripSuffix endsWith s]
 
   handleError err =
     case GE.fromQError err of
