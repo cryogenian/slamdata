@@ -71,7 +71,7 @@ eval info model = do
       catMaybes $ map (\x → x axes)
         [ getMaybePie, getMaybeBar, getMaybeLine
         , getMaybeArea, getMaybeScatter, getMaybeRadar
-        , getMaybeFunnel ]
+        , getMaybeFunnel, getMaybeHeatmap ]
 
   when (null available)
     $ QE.throw "There is no available chart types for this data"
@@ -137,3 +137,8 @@ eval info model = do
   getMaybeFunnel axes = do
     guard $ (not $ null axes.value) ∧ ((not $ null axes.category) || (not $ null axes.time))
     pure Funnel
+
+  getMaybeHeatmap ∷ Axes → Maybe ChartType
+  getMaybeHeatmap axes = do
+    guard $ (not $ null axes.value) ∧ (((length axes.category) + (length axes.time) + (length axes.value)) > 2)
+    pure Heatmap

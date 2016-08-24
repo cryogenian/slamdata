@@ -121,6 +121,7 @@ renderButton ct =
   src Scatter = "img/scatter-black.svg"
   src Radar = "img/radar-black.svg"
   src Funnel = "img/funnel-black.svg"
+  src Heatmap = "img/heatmap-black.svg"
 
 eval ∷ CC.CardEvalQuery ~> ChartDSL
 eval = case _ of

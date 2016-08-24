@@ -29,6 +29,10 @@ module SlamData.Workspace.Card.ChartOptions.Component.State
   , _bubbleMaxSize
   , _funnelOrder
   , _funnelAlign
+  , _minColorVal
+  , _maxColorVal
+  , _colorScheme
+  , _colorReversed
   , StateP
   , fromModel
   ) where
@@ -63,6 +67,10 @@ type State =
   , bubbleMaxSize :: Number
   , funnelOrder :: String
   , funnelAlign :: String
+  , minColorVal :: Number
+  , maxColorVal :: Number
+  , colorScheme :: String
+  , colorReversed :: Boolean
   }
 
 initialState ∷ State
@@ -79,6 +87,10 @@ initialState =
   , bubbleMaxSize: 50.0
   , funnelOrder: "descending"
   , funnelAlign: "center"
+  , minColorVal: 0.0
+  , maxColorVal: 1.0
+  , colorScheme: "diverging: red-blue"
+  , colorReversed: false
   }
 
 _chartType ∷ ∀ a r. LensP {chartType ∷ a |r} a
@@ -117,6 +129,18 @@ _funnelOrder = lens _.funnelOrder _{funnelOrder = _}
 _funnelAlign ∷ ∀ a r. LensP {funnelAlign ∷ a | r} a
 _funnelAlign = lens _.funnelAlign _{funnelAlign = _}
 
+_minColorVal ∷ ∀ a r. LensP {minColorVal ∷ a | r} a
+_minColorVal = lens _.minColorVal _{minColorVal = _}
+
+_maxColorVal ∷ ∀ a r. LensP {maxColorVal ∷ a | r} a
+_maxColorVal = lens _.maxColorVal _{maxColorVal = _}
+
+_colorScheme ∷ ∀ a r. LensP {colorScheme ∷ a | r} a
+_colorScheme = lens _.colorScheme _{colorScheme = _}
+
+_colorReversed ∷ ∀ a r. LensP {colorReversed ∷ a | r} a
+_colorReversed = lens _.colorReversed _{colorReversed = _}
+
 type StateP =
   ParentState
     State
@@ -137,4 +161,8 @@ fromModel { options } =
     , bubbleMaxSize = options.bubbleMaxSize
     , funnelOrder = options.funnelOrder
     , funnelAlign = options.funnelAlign
-    }
+    , minColorVal = options.minColorVal
+    , maxColorVal = options.maxColorVal
+    , colorScheme = options.colorScheme
+    , colorReversed = options.colorReversed
+    } 

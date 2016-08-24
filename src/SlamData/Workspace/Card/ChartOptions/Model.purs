@@ -80,5 +80,9 @@ initialModel =
       , bubbleMaxSize: 50.0
       , funnelOrder: "descending"
       , funnelAlign: "center"
+      , minColorVal: 0.0
+      , maxColorVal: 1.0
+      , colorScheme: "diverging: red-blue"
+      , colorReversed: false
       }
   }

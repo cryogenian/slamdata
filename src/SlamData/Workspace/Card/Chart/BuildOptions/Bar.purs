@@ -38,7 +38,8 @@ import Math as Math
 
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, commonNameMap, keyCategory, colors, addAxisLabelAngleAndFontSize, buildChartAxes, buildPieBarData)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, commonNameMap, keyCategory, addAxisLabelAngleAndFontSize, buildChartAxes, buildPieBarData)
+import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 
 import Utils.DOM (getTextWidthPure)
 

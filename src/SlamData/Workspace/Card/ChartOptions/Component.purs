@@ -46,8 +46,9 @@ import SlamData.Workspace.Card.CardType (CardType(ChartOptions))
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect, aggregationSelectWithNone)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
+import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colorSchemes, printColorScheme)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel, isHeatmap)
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
 import SlamData.Workspace.Card.ChartOptions.Component.State as VCS
@@ -177,6 +178,7 @@ renderChartTypeSelector state =
   src Scatter = "img/scatter.svg"
   src Radar = "img/radar.svg"
   src Funnel = "img/funnel.svg"
+  src Heatmap = "img/heatmap.svg"
 
   cls ∷ ChartType → HH.ClassName
   cls Pie = CSS.pieChartIcon
@@ -186,7 +188,7 @@ renderChartTypeSelector state =
   cls Scatter = CSS.scatterChartIcon
   cls Radar = CSS.radarChartIcon
   cls Funnel = CSS.funnelChartIcon
-
+  cls Heatmap = CSS.heatmapChartIcon
 
 renderChartConfiguration ∷ VCS.State → HTML
 renderChartConfiguration state =
@@ -199,6 +201,7 @@ renderChartConfiguration state =
     , renderTab Scatter
     , renderTab Radar
     , renderTab Funnel
+    , renderTab Heatmap
     , renderDimensions state
     ]
   where
@@ -220,30 +223,42 @@ renderDimensions state =
   row
   [ intChartInput CSS.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel
-        (isPie state.chartType 
-          || isScatter state.chartType 
+        (isPie state.chartType
+          || isScatter state.chartType
           || isRadar state.chartType
-          || isFunnel state.chartType)
+          || isFunnel state.chartType
+          || isHeatmap state.chartType)
   , intChartInput CSS.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize
-        (isPie state.chartType 
-          || isScatter state.chartType 
+        (isPie state.chartType
+          || isScatter state.chartType
           || isRadar state.chartType
-          || isFunnel state.chartType)
+          || isFunnel state.chartType
+          || isHeatmap state.chartType)
   , boolChartInput CSS.chartDetailParam "If stack"
       (_.areaStacked) ToggleSetStacked (not $ isArea state.chartType)
   , boolChartInput CSS.chartDetailParam "If smooth"
       (_.smooth) ToggleSetSmooth (not $ isArea state.chartType)
   , numChartInput CSS.axisLabelParam "Min size of circle"
-      (_.bubbleMinSize) UpperBoundaryCtrl (_.bubbleMaxSize) SetBubbleMinSize
-        (not $ isScatter state.chartType)
+      (_.bubbleMinSize) Nothing (Just _.bubbleMaxSize) (Just 0.0) Nothing
+        SetBubbleMinSize (not $ isScatter state.chartType)
   , numChartInput CSS.axisLabelParam "Max size of circle"
-      (_.bubbleMaxSize) LowerBoundaryCtrl (_.bubbleMinSize) SetBubbleMaxSize
-        (not $ isScatter state.chartType)
+      (_.bubbleMaxSize) (Just _.bubbleMinSize) Nothing Nothing Nothing
+        SetBubbleMaxSize (not $ isScatter state.chartType)
   , optionSelect CSS.funnelChartOrderParam "Order" ["ascending", "descending"]
-      (_.funnelOrder) SetFunnelOrder (not $ isFunnel state.chartType) 
+      (_.funnelOrder) SetFunnelOrder (not $ isFunnel state.chartType)
   , optionSelect CSS.funnelChartAlignParam "Alignment" ["right", "left", "center"]
-      (_.funnelAlign) SetFunnelAlign (not $ isFunnel state.chartType)   
+      (_.funnelAlign) SetFunnelAlign (not $ isFunnel state.chartType)
+  , numChartInput CSS.axisLabelParam "Min color rendering value"
+      (_.minColorVal) Nothing (Just _.maxColorVal) Nothing Nothing
+        SetMinColorVal (not $ isHeatmap state.chartType)
+  , numChartInput CSS.axisLabelParam "Max color rendering value"
+      (_.maxColorVal) (Just _.minColorVal) Nothing Nothing Nothing
+        SetMaxColorVal (not $ isHeatmap state.chartType)
+  , optionSelect CSS.axisLabelParam "Color scheme" (map printColorScheme colorSchemes)
+      (_.colorScheme) SetColorScheme (not $ isHeatmap state.chartType)
+  , boolChartInput CSS.chartDetailParam "If reverse color"
+      (_.colorReversed) SetColorReversed (not $ isHeatmap state.chartType)
   ]
   where
   optionSelect
@@ -302,16 +317,41 @@ renderDimensions state =
               $ pure ∘ map (right ∘ flip queryCtor unit) ∘ stringToInt
           ]
       ]
+    where
+    stringToInt ∷ String → Maybe Int
+    stringToInt s = if s ≡ "" then Just 0 else Int.fromString s
 
   numChartInput
     ∷ HH.ClassName
     → String
     → (VCS.State → Number)
-    → BoundaryCtrl
-    → (VCS.State → Number)
+    → Maybe (VCS.State → Number)
+    → Maybe (VCS.State → Number)
+    → Maybe Number
+    → Maybe Number
     → (Number → Unit → Query Unit)
     → Boolean → HTML
-  numChartInput cls labelText getCurrentVal bc getBoudary queryCtor isHidden =
+  numChartInput
+    cls
+    labelText
+    getCurrentVal
+    getLowerBoudary
+    getUpperBoudary
+    minVal
+    maxVal
+    queryCtor
+    isHidden = do
+    let
+      lowerBoudary = case getLowerBoudary × minVal of
+        Just func × Just v → if (func state) < v then Just $ func state else Just v
+        Nothing × Just v → Just v
+        Just func × Nothing → Just $ func state
+        _ → Nothing
+      uppperBoudary = case getUpperBoudary × maxVal of
+        Just func × Just v → if (func state) > v then Just $ func state else Just v
+        Nothing × Just v → Just v
+        Just func × Nothing → Just $ func state
+        _ → Nothing
     HH.form
       [ HP.classes
           $ [ B.colXs6, cls ]
@@ -325,9 +365,24 @@ renderDimensions state =
           , ARIA.label labelText
           , HE.onValueChange
               $ pure ∘ map (right ∘ flip queryCtor unit) ∘
-                stringToNum (getCurrentVal state) bc (getBoudary state)
+                stringToNum (getCurrentVal state) lowerBoudary uppperBoudary
           ]
       ]
+    where
+    stringToNum
+      ∷ Number
+      → Maybe Number
+      → Maybe Number
+      → String
+      → Maybe Number
+    stringToNum currentVal lowerBoudary uppperBoudary s = do
+      let newVal = readFloat s
+      if isNaN $ newVal then Just currentVal
+        else case lowerBoudary × uppperBoudary of
+          Just l × Just u → if (newVal >= l ∧ newVal <= u) then Just newVal else Just currentVal
+          Nothing × Just u → if newVal <= u then Just newVal else Just currentVal
+          Just l × Nothing → if newVal >= l then Just newVal else Just currentVal
+          _ → Just newVal
 
   boolChartInput
     ∷ HH.ClassName
@@ -358,25 +413,6 @@ renderDimensions state =
   showIfNeqZero ∷ ∀ a. (Eq a, Show a, Semiring a) ⇒ a → String
   showIfNeqZero a = if zero ≡ a then "" else show a
 
-  stringToInt ∷ String → Maybe Int
-  stringToInt s = if s ≡ "" then Just 0 else Int.fromString s
-
-  stringToNum ∷ Number → BoundaryCtrl → Number → String → Maybe Number
-  stringToNum currentVal bc boundary s =
-    if (isNaN $ readFloat s) || ((readFloat s) < 0.0)
-    then Just currentVal
-    else case bc of
-      LowerBoundaryCtrl → if (readFloat s) < boundary
-          then Just boundary
-          else Just $ readFloat s
-      UpperBoundaryCtrl → if (readFloat s) > boundary
-          then Just boundary
-          else Just $ readFloat s
-
-data BoundaryCtrl
-  = LowerBoundaryCtrl
-  | UpperBoundaryCtrl
-
 -- Note: need to put running to state
 eval ∷ QueryC ~> DSL
 eval = coproduct cardEval chartEval
@@ -393,6 +429,10 @@ chartEval q = do
     SetBubbleMaxSize bubbleMaxSize n → H.modify (VCS._bubbleMaxSize .~ bubbleMaxSize) $> n
     SetFunnelOrder funnelOrder n → H.modify (VCS._funnelOrder .~ funnelOrder) $> n
     SetFunnelAlign funnelAlign n → H.modify (VCS._funnelAlign .~ funnelAlign) $> n
+    SetMinColorVal minColorVal n → H.modify (VCS._minColorVal .~ minColorVal) $> n
+    SetMaxColorVal maxColorVal n → H.modify (VCS._maxColorVal .~ maxColorVal) $> n
+    SetColorScheme colorScheme n → H.modify (VCS._colorScheme .~ colorScheme) $> n
+    SetColorReversed colorReversed n → H.modify (VCS._colorReversed .~ colorReversed) $> n
   configure
   CC.raiseUpdatedP' CC.EvalModelUpdate
   pure next
@@ -435,6 +475,8 @@ cardEval = case _ of
         Radar | not $ F.any isSelected rawConfig.measures → Nothing
         Funnel | not $ F.any isSelected rawConfig.dimensions → Nothing
         Funnel | not $ F.any isSelected rawConfig.measures → Nothing
+        Heatmap | not $ F.any isSelected rawConfig.dimensions → Nothing
+        Heatmap | not $ F.any isSelected rawConfig.measures → Nothing
         _ → Just rawConfig
 
     pure ∘ k $ Card.ChartOptions
@@ -449,6 +491,10 @@ cardEval = case _ of
           , bubbleMaxSize: st.bubbleMaxSize
           , funnelOrder: st.funnelOrder
           , funnelAlign: st.funnelAlign
+          , minColorVal: st.minColorVal
+          , maxColorVal: st.maxColorVal
+          , colorScheme: st.colorScheme
+          , colorReversed: st.colorReversed
           }
       }
   CC.Load card next → do
@@ -492,6 +538,8 @@ configure = void do
   setConfigFor Radar $ radarConfiguration axes radarConf
   funnelConf ← getOrInitial Funnel
   setConfigFor Funnel $ funnelConfiguration axes funnelConf
+  heatmapConf ← getOrInitial Heatmap
+  setConfigFor Heatmap $ heatmapConfiguration axes heatmapConf
   where
   getOrInitial ∷ ChartType → DSL ChartConfiguration
   getOrInitial ty =
@@ -681,6 +729,31 @@ configure = void do
        , dimensions: [dimensions]
        , measures: [firstMeasures]
        , aggregations: [firstAggregation]
+       }
+
+  heatmapConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
+  heatmapConfiguration axes current =
+    let allAxises = (axes.category ⊕ axes.time ⊕ axes.value)
+        firstDimensions =
+          setPreviousValueFrom (index current.dimensions 0)
+          $ autoSelect $ newSelect $ allAxises
+        secondDimensions =
+          setPreviousValueFrom (index current.dimensions 1)
+          $ autoSelect $ newSelect $ allAxises
+        measures =
+          setPreviousValueFrom (index current.measures 0)
+          $ autoSelect $ newSelect $ ifSelected [firstDimensions, secondDimensions]
+          $ axes.value ⊝ firstDimensions ⊝ secondDimensions
+        series =
+          setPreviousValueFrom (index current.series 0)
+          $ newSelect $ ifSelected [firstDimensions, secondDimensions, measures]
+          $ allAxises ⊝ firstDimensions ⊝ secondDimensions ⊝ measures
+        aggregation =
+          setPreviousValueFrom (index current.aggregations 0) aggregationSelect
+    in { series: [series]
+       , dimensions: [firstDimensions, secondDimensions]
+       , measures: [measures]
+       , aggregations: [aggregation]
        }
 
 peek ∷ ∀ a. H.ChildF ChartType Form.QueryP a → DSL Unit

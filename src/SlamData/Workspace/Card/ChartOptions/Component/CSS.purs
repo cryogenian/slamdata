@@ -48,6 +48,9 @@ radarChartIcon = className "radar-chart-icon"
 funnelChartIcon ∷ ClassName
 funnelChartIcon = className "funnel-chart-icon"
 
+heatmapChartIcon ∷ ClassName
+heatmapChartIcon = className "heatmap-chart-icon"
+
 areaChartIcon ∷ ClassName
 areaChartIcon = className "area-chart-icon"
 

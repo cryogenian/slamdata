@@ -43,9 +43,14 @@ instance arbitraryArbBuildOptions :: Arbitrary ArbBuildOptions where
     bubbleMaxSize <- arbitrary
     funnelOrder <- arbitrary
     funnelAlign <- arbitrary
+    minColorVal <- arbitrary
+    maxColorVal <- arbitrary
+    colorScheme <- arbitrary
+    colorReversed <- arbitrary
     pure $ ArbBuildOptions 
       { chartType, axisLabelAngle, axisLabelFontSize, areaStacked
       , smooth, bubbleMinSize, bubbleMaxSize, funnelOrder, funnelAlign
+      , minColorVal, maxColorVal, colorScheme, colorReversed
       }
 
 check :: forall eff. SC eff Unit
@@ -66,4 +71,8 @@ checkBuildOptionsEquality co co' =
    , co.bubbleMaxSize == co'.bubbleMaxSize <?> "bubbleMaxSize mismatch"
    , co.funnelOrder == co'.funnelOrder <?> "funnelOrder mismatch"
    , co.funnelAlign == co'.funnelAlign <?> "funnelAlign mismatch"
+   , co.minColorVal == co'.minColorVal <?> "minColorVal mismatch"
+   , co.maxColorVal == co'.maxColorVal <?> "maxColorVal mismatch"
+   , co.colorScheme == co'.colorScheme <?> "colorScheme mismatch"
+   , co.colorReversed == co'.colorReversed <?> "colorReversed mismatch"
    ]
