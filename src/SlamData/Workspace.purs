@@ -61,7 +61,7 @@ main = do
   AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
-    liftEff Analytics.enableAnalytics
+    forkAff Analytics.enableAnalytics
     let st = Workspace.initialState (Just "3.0")
     wiring@(Wiring { analytics }) ← makeWiring
     forkAff (Analytics.consumeEvents analytics)
