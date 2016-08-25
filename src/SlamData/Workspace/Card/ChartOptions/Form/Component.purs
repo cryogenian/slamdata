@@ -48,7 +48,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Form.Select (Select)
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
@@ -141,7 +141,17 @@ render state = case state.chartType of
         ⊕ foldMap (renderSeries 1) (state.chartConfiguration.series !! 1)
       , hr
       ]
-  _ -> HH.div
+  Heatmap → HH.div
+    [ HP.classes [ CSS.chartEditor ] ]
+    $ fold
+      [ foldMap (renderDimension 0) (state.chartConfiguration.dimensions !! 0)
+      , foldMap (renderDimension 1) (state.chartConfiguration.dimensions !! 1)
+      , foldMap (renderMeasure 0 aggregationSelect) (state.chartConfiguration.measures !! 0)
+      , hr
+      , foldMap (renderSeries 0) (state.chartConfiguration.series !! 0)
+      , hr
+      ]
+  _ → HH.div
     [ HP.classes [ CSS.chartEditor ] ]
     $ fold
       [ if null state.chartConfiguration.dimensions

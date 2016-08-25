@@ -16,12 +16,6 @@ limitations under the License.
 
 module SlamData.Analytics.Event where
 
-import SlamData.Prelude
-
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Free (class Affable, fromAff)
-import Control.Monad.Aff.Bus as Bus
-
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.AccessType (AccessType)
@@ -42,11 +36,3 @@ data Event
   | ErrorUpdatingRoot
   | ErrorDeletingDeck
   | ErrorInCardEval CardType
-
-track
-  ∷ ∀ m r eff
-  . (Affable (avar ∷ AVAR | eff) m)
-  ⇒ Event
-  → Bus.Bus (write ∷ Bus.Cap | r) Event
-  → m Unit
-track e = fromAff ∘ Bus.write e

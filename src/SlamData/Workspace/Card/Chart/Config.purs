@@ -2,8 +2,6 @@ module SlamData.Workspace.Card.Chart.Config where
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class (throwError)
-
 import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, (.?), (:=), (~>), jsonEmptyObject, JArray)
 import Data.Lens (PrismP, prism')
 
@@ -17,7 +15,6 @@ import SlamData.Workspace.Card.Chart.BuildOptions.Graph (GraphR, buildGraph)
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.Property.ArbJson (runArbJCursor)
-import Test.Property.ArbAggregation (runArbAggregation)
 
 type LegacyR =
   { chartConfig ∷ CC.ChartConfiguration
@@ -75,31 +72,8 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
                   , maxSize
                   }
       _ → do
-        chartConfig ← do
-          series ← map (map runArbJCursor) <$> arbitrary
-          dimensions ← map (map runArbJCursor) <$> arbitrary
-          measures ← map (map runArbJCursor) <$> arbitrary
-          aggregations ← map (map runArbAggregation) <$> arbitrary
-          pure { series, dimensions, measures, aggregations }
-        options ← do
-          axisLabelAngle ← arbitrary
-          axisLabelFontSize ← arbitrary
-          areaStacked ← arbitrary
-          smooth ← arbitrary
-          bubbleMinSize ← arbitrary
-          bubbleMaxSize ← arbitrary
-          funnelOrder ← arbitrary
-          funnelAlign ← arbitrary
-          pure { chartType
-               , axisLabelAngle
-               , axisLabelFontSize
-               , areaStacked
-               , smooth
-               , bubbleMinSize
-               , bubbleMaxSize
-               , funnelOrder
-               , funnelAlign
-               }
+        chartConfig ← CC.genChartConfiguration
+        options ← CO.genBuildOptions
         pure $ Legacy { options, chartConfig }
 
 instance encodeJsonChartConfig ∷ EncodeJson ChartConfig where

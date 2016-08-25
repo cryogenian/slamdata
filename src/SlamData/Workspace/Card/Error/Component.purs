@@ -17,7 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.Error.Component where
 
 import SlamData.Prelude
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 
 import Data.Lens ((^?))
 import Data.Lens as Lens

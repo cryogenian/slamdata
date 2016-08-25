@@ -23,8 +23,6 @@ module SlamData.FileSystem.Dialog.Mount.MongoDB.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Except.Trans (ExceptT(..), except, runExceptT)
-
 import Data.Array ((..), length)
 import Data.Lens (TraversalP, (^.), (.~))
 import Data.Lens.Index (ix)
@@ -38,12 +36,11 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State (MountHost, MountProp, State, _host, _hosts, _password, _path, _port, _props, _user, initialState, processState, fromConfig, toConfig)
 import SlamData.FileSystem.Resource (Mount(..))
-import SlamData.FileSystem.Wiring (Wiring)
 import SlamData.Quasar.Mount as API
 import SlamData.Quasar.Error as QE
 import SlamData.Render.CSS as Rc
@@ -52,8 +49,8 @@ type Query = SettingsQuery State
 
 type HTML = H.ComponentHTML Query
 
-comp ∷ Wiring → H.Component State Query Slam
-comp wiring = H.component { render, eval: eval wiring }
+comp ∷ H.Component State Query Slam
+comp = H.component { render, eval }
 
 render ∷ State → HTML
 render state =
@@ -66,16 +63,16 @@ render state =
     , section "Settings" [ propList _props state ]
     ]
 
-eval :: Wiring → Query ~> H.ComponentDSL State Query Slam
-eval _ (ModifyState f next) = H.modify (processState <<< f) $> next
-eval _ (Validate k) =
+eval :: Query ~> H.ComponentDSL State Query Slam
+eval (ModifyState f next) = H.modify (processState <<< f) $> next
+eval (Validate k) =
   k <<< either Just (const Nothing) <<< toConfig <$> H.get
-eval wiring (Submit parent name k) = do
+eval (Submit parent name k) = do
   k <$> runExceptT do
     st <- lift H.get
     config <- except $ lmap QE.msgToQError $ toConfig st
     let path = parent </> dir name
-    ExceptT $ API.saveMount wiring path config
+    ExceptT $ API.saveMount path config
     pure $ Database path
 
 hosts ∷ State → H.ComponentHTML Query

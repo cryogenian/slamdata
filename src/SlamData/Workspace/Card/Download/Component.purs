@@ -36,9 +36,8 @@ import Global as Global
 import Quasar.Paths as Paths
 
 import SlamData.Download.Model as D
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Quasar (reqHeadersToJSON, encodeURI)
-import SlamData.Quasar.Aff (Wiring)
 import SlamData.Quasar.Auth as API
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.CardType as CT
@@ -55,10 +54,10 @@ import Utils.DOM (getTextWidthPure)
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
 
-downloadComponent ∷ ∀ r. Wiring r → CC.CardComponent
-downloadComponent wiring = CC.makeCardComponent
+downloadComponent ∷ CC.CardComponent
+downloadComponent = CC.makeCardComponent
   { cardType: CT.Download
-  , component: H.component { render, eval: eval wiring }
+  , component: H.component { render, eval }
   , initialState: initialState
   , _State: CC._DownloadState
   , _Query: CC.makeQueryPrism CC._DownloadQuery
@@ -84,13 +83,13 @@ buttonText state
 fullDownloadString ∷ State → String
 fullDownloadString state = "Download " ⊕ state.fileName
 
-eval ∷ ∀ r. Wiring r → QueryP ~> DSL
-eval wiring = coproduct (cardEval wiring) (absurd ∘ getConst)
+eval ∷ QueryP ~> DSL
+eval = coproduct cardEval (absurd ∘ getConst)
 
-cardEval ∷ ∀ r. Wiring r → CC.CardEvalQuery ~> DSL
-cardEval wiring = case _ of
+cardEval ∷ CC.CardEvalQuery ~> DSL
+cardEval = case _ of
   CC.EvalCard info output next → do
-    for_ (info.input ^? Lens._Just ∘ Port._DownloadOptions) $ handleDownloadPort wiring
+    for_ (info.input ^? Lens._Just ∘ Port._DownloadOptions) $ handleDownloadPort
     pure next
   CC.Activate next →
     pure next
@@ -117,9 +116,9 @@ cardEval wiring = case _ of
   CC.ZoomIn next →
     pure next
 
-handleDownloadPort ∷ ∀ r. Wiring r → Port.DownloadPort → DSL Unit
-handleDownloadPort wiring opts = do
-  hs ← H.fromAff $ API.authHeaders wiring.requestNewIdTokenBus
+handleDownloadPort ∷ Port.DownloadPort → DSL Unit
+handleDownloadPort opts = do
+  hs ← H.liftH API.authHeaders
   H.modify $ _url .~ url hs
   let
     fileName = UP.getNameStr $ Right opts.resource

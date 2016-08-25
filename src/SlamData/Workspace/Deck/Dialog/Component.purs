@@ -38,7 +38,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Component.Utils (raise')
 
 import SlamData.Dialog.Error.Component as Error
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -49,7 +49,6 @@ import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Deck.Dialog.Share.Component as Share
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Dialog.Unshare.Component as Unshare
-import SlamData.Workspace.Wiring (Wiring)
 
 data Dialog
   = Error String
@@ -167,12 +166,12 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ Wiring → H.Component StateP QueryP Slam
-comp wiring =
-  H.parentComponent { render: render wiring, eval, peek: Just (peek ∘ H.runChildF) }
+comp ∷ H.Component StateP QueryP Slam
+comp =
+  H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
 
-render ∷ Wiring → State → HTML
-render wiring state =
+render ∷ State → HTML
+render state =
   HH.div
     [ HP.classes [ HH.className "deck-dialog" ] ]
     $ foldMap (pure ∘ dialog) state
@@ -192,7 +191,7 @@ render wiring state =
 
   dialog (Embed sharingInput varMaps) =
     HH.slot' cpEmbed unit \_ →
-      { component: Export.comp wiring
+      { component: Export.comp
       , initialState:
           (Export.initialState sharingInput)
             { presentingAs = Export.IFrame
@@ -212,7 +211,7 @@ render wiring state =
       }
   dialog (Publish sharingInput varMaps) =
     HH.slot' cpPublish unit \_ →
-      { component: Export.comp wiring
+      { component: Export.comp
       , initialState:
           (Export.initialState sharingInput)
             { presentingAs = Export.URI
@@ -221,13 +220,13 @@ render wiring state =
       }
   dialog (Share deckPath) =
     HH.slot' cpShare unit \_ →
-      { component: Share.comp wiring
+      { component: Share.comp
       , initialState: Share.initialState deckPath
       }
 
   dialog (Unshare deckPath) =
     HH.slot' cpUnshare unit \_ →
-      { component: Unshare.comp wiring
+      { component: Unshare.comp
       , initialState: Unshare.initialState deckPath
       }
 

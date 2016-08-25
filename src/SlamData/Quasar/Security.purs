@@ -18,7 +18,6 @@ module SlamData.Quasar.Security where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
 
 import Quasar.Advanced.QuasarAF as QF
@@ -26,84 +25,76 @@ import Quasar.Error (lowerQError)
 import Quasar.Types as QT
 import Quasar.Advanced.Types as QTA
 
-import SlamData.Quasar.Aff (QEff, runQuasarF, Wiring)
+import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
 sharePermission
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → QTA.ShareRequestR
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ QTA.ShareRequestR
   → m (Exn.Error ⊹ (Array QTA.PermissionR))
-sharePermission wiring req = do
-  runQuasarF wiring $ lmap lowerQError
+sharePermission req = do
+  liftQuasar $ lmap lowerQError
     <$> QF.sharePermission req
 
 groupInfo
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → QT.FilePath
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ QT.FilePath
   → m (Exn.Error ⊹ QTA.GroupInfoR)
-groupInfo wiring groupPath =
-  runQuasarF wiring $ lmap lowerQError
+groupInfo groupPath =
+  liftQuasar $ lmap lowerQError
     <$> QF.groupInfo groupPath
 
 createToken
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → Maybe QTA.TokenName
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ Maybe QTA.TokenName
   → Array QTA.ActionR
   → m (Exn.Error ⊹ QTA.TokenR)
-createToken wiring mbName actions =
-  runQuasarF wiring $ lmap lowerQError
+createToken mbName actions =
+  liftQuasar $ lmap lowerQError
     <$> QF.createToken mbName actions
 
 tokenList
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → m (Exn.Error ⊹ (Array QTA.TokenR))
-tokenList wiring =
-  runQuasarF wiring $ lmap lowerQError
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ m (Exn.Error ⊹ (Array QTA.TokenR))
+tokenList =
+  liftQuasar $ lmap lowerQError
     <$> QF.tokenList
 
 deleteToken
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → QTA.TokenId
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ QTA.TokenId
   → m (Exn.Error ⊹ Unit)
-deleteToken wiring tid =
-  runQuasarF wiring $ lmap lowerQError
+deleteToken tid =
+  liftQuasar $ lmap lowerQError
     <$> QF.deleteToken tid
 
 tokenInfo
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → QTA.TokenId
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ QTA.TokenId
   → m (Exn.Error ⊹ QTA.TokenR)
-tokenInfo wiring tid =
-  runQuasarF wiring $ lmap lowerQError
+tokenInfo tid =
+  liftQuasar $ lmap lowerQError
     <$> QF.tokenInfo tid
 
 permissionList
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → Boolean
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ Boolean
   → m (Exn.Error ⊹ (Array QTA.PermissionR))
-permissionList wiring isTransitive =
-  runQuasarF wiring $ lmap lowerQError
+permissionList isTransitive =
+  liftQuasar $ lmap lowerQError
     <$> QF.permissionList isTransitive
 
 deletePermission
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → QTA.PermissionId
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ QTA.PermissionId
   → m (Exn.Error ⊹ Unit)
-deletePermission wiring pid =
-  runQuasarF wiring $ lmap lowerQError
+deletePermission pid =
+  liftQuasar $ lmap lowerQError
     <$> QF.deletePermission pid

@@ -16,64 +16,50 @@ limitations under the License.
 
 module SlamData.Analytics
   ( enableAnalytics
-  , identify
   , consumeEvents
+  , identify
+  , trackEvent
+  , module SlamData.Analytics.Class
   , module SlamData.Analytics.Event
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff, apathize)
+import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Reader.Trans as CMR
+import Control.Monad.Reader (runReaderT)
 import Control.Monad.Rec.Class (forever)
 
 import Data.Argonaut (Json, (:=), (~>), jsonEmptyObject)
-import Data.String as Str
 
 import DOM (DOM)
-import DOM.HTML (window)
-import DOM.HTML.Location as Location
-import DOM.HTML.Window as Window
 
 import Network.HTTP.Affjax as AX
+
 import OIDC.Crypt.Types as OIDC
 
 import Quasar.QuasarF as QF
 import Quasar.QuasarF.Interpreter.Aff as QA
 
-import SlamData.Analytics.Event (Event(..), track)
+import SlamData.Analytics.Class (class AnalyticsDSL, track)
+import SlamData.Analytics.Event (Event(..))
 import SlamData.Config as Config
 import SlamData.Workspace.AccessType as AT
 
-foreign import _enableAnalytics ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
+-- | Enables the segment.io analyics API.
+foreign import enableAnalytics ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
+
 foreign import _track ∷ ∀ eff. String → Json → Eff (dom ∷ DOM | eff) Unit
 
 isAdvanced ∷ ∀ eff. Aff (ajax ∷ AX.AJAX | eff) Boolean
 isAdvanced
-  = flip CMR.runReaderT { basePath: Config.baseUrl }
+  = flip runReaderT { basePath: Config.baseUrl }
   $ QA.eval
   $ either (const false) (\{ name } → name == "Quasar-Advanced")
   <$> QF.serverInfo
-
-isHosted ∷ ∀ eff. Eff (dom ∷ DOM | eff) Boolean
-isHosted = do
-  host ← Location.host =<< Window.location =<< window
-  pure $ isJust $ Str.stripSuffix "slamdata.com" host
-
--- | Enables the segment.io analyics API.
-enableAnalytics ∷ ∀ eff. Aff (dom ∷ DOM, ajax ∷ AX.AJAX | eff) Unit
-enableAnalytics = apathize $
-  liftEff isHosted >>=
-    if _
-    then liftEff _enableAnalytics
-    else isAdvanced >>=
-      if _
-      then pure unit
-      else liftEff _enableAnalytics
 
 -- | Identifies a user in the segment.io analytics API. This will have no effect
 -- | if `enableAnalytics` has not previously been run.

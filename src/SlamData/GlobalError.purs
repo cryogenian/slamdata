@@ -19,11 +19,34 @@ module SlamData.GlobalError where
 
 import SlamData.Prelude
 
+import Control.Monad.Free (Free, liftF)
+
+import Halogen.Query.EventSource as ES
+import Halogen.Query.HalogenF as HF
+
 import Quasar.Error as QE
 
 data GlobalError
   = PaymentRequired
   | Unauthorized
+
+class GlobalErrorDSL m where
+  raiseGlobalError ∷ GlobalError → m Unit
+
+instance globalErrorDSLMaybeT ∷ (Monad m, GlobalErrorDSL m) ⇒ GlobalErrorDSL (MaybeT m) where
+  raiseGlobalError = lift ∘ raiseGlobalError
+
+instance globalErrorDSLExceptT ∷ (Monad m, GlobalErrorDSL m) ⇒ GlobalErrorDSL (ExceptT e m) where
+  raiseGlobalError = lift ∘ raiseGlobalError
+
+instance globalErrorDSLFree ∷ GlobalErrorDSL m ⇒ GlobalErrorDSL (Free m) where
+  raiseGlobalError = liftF ∘ raiseGlobalError
+
+instance globalErrorDSLHFC ∷ GlobalErrorDSL g ⇒ GlobalErrorDSL (HF.HalogenFP ES.EventSource s f g) where
+  raiseGlobalError = HF.QueryHF ∘ raiseGlobalError
+
+instance globalErrorDSLHFP ∷ GlobalErrorDSL g ⇒ GlobalErrorDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
+  raiseGlobalError = HF.QueryHF ∘ raiseGlobalError
 
 fromQError ∷ QE.QError → Either String GlobalError
 fromQError = case _ of

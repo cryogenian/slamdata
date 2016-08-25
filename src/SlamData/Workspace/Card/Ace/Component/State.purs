@@ -36,7 +36,7 @@ import Halogen (ParentState)
 
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 
 data Status
   = New

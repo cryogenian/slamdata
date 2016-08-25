@@ -31,8 +31,8 @@ import Data.String as S
 import Data.StrMap as SM
 
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Aff (Wiring)
 import SlamData.Quasar.Error as QE
+import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
@@ -49,20 +49,19 @@ import Text.Parsing.Parser.String as PS
 import Utils.Path (DirPath)
 
 markdownEval
-  ∷ ∀ r m
-  . (Monad m, AffF.Affable SlamDataEffects m)
-  ⇒ Wiring r
-  → CET.CardEvalInput
+  ∷ ∀ m
+  . (Monad m, AffF.Affable SlamDataEffects m, QuasarDSL m)
+  ⇒ CET.CardEvalInput
   → String
   → CET.CardEvalT m Port.Port
-markdownEval wiring { input, path } str =
+markdownEval { input, path } str =
   case SDP.parseMd str of
     Left e → QE.throw e
     Right sd → do
       let
         vm = fromMaybe Port.emptyVarMap $ input ^? _Just ∘ Port._VarMap
         sm = map Port.renderVarMapValue vm
-      doc ← evalEmbeddedQueries wiring sm path sd
+      doc ← evalEmbeddedQueries sm path sd
       pure $ Port.SlamDown (vm × doc)
 
 findFields
@@ -76,14 +75,13 @@ findFields = SDT.everything (const mempty) extractField
   extractField _ = mempty
 
 evalEmbeddedQueries
-  ∷ forall r m
-  . (Monad m, AffF.Affable SlamDataEffects m)
-  ⇒ Wiring r
-  → SM.StrMap String
+  ∷ ∀ m
+  . (Monad m, AffF.Affable SlamDataEffects m, QuasarDSL m)
+  ⇒ SM.StrMap String
   → DirPath
   → SD.SlamDownP Port.VarMapValue
   → CET.CardEvalT m (SD.SlamDownP Port.VarMapValue)
-evalEmbeddedQueries wiring sm dir =
+evalEmbeddedQueries sm dir =
   SDE.eval
     { code: evalCode
     , textBox: evalTextBox
@@ -180,9 +178,9 @@ evalEmbeddedQueries wiring sm dir =
     ∷ String
     → CET.CardEvalT m (Array EJSON.EJson)
   runQuery code = do
-    {inputs} ← CET.liftQ $ Quasar.compile wiring (Left dir) code sm
+    {inputs} ← CET.liftQ $ Quasar.compile (Left dir) code sm
     CET.addSources inputs
-    CET.liftQ $ Quasar.queryEJsonVM wiring dir code sm
+    CET.liftQ $ Quasar.queryEJsonVM dir code sm
 
 parseDigit ∷ P.Parser String Int
 parseDigit =

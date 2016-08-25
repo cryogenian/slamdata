@@ -33,8 +33,6 @@ module SlamData.Quasar.Query
 import SlamData.Prelude
 
 import Control.Apply (lift2)
-import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
 import Data.Argonaut as JS
 import Data.Array as Arr
@@ -50,8 +48,8 @@ import Quasar.Error (QError)
 import Quasar.Mount as QM
 import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
 
-import SlamData.Quasar.Aff (QEff, runQuasarF, Wiring)
 import SlamData.Quasar.Error (throw)
+import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
@@ -67,68 +65,63 @@ templated res = S.replace "{{path}}" ("`" <> P.printPath res <> "`")
 -- | {{path}} template syntax to have the file's path inserted, and the file's
 -- | parent directory will be used to determine the backend to use in Quasar.
 compile
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → AnyPath
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ AnyPath
   → SQL
   → SM.StrMap String
   → m (Either QError CompileResultR)
-compile wiring path sql varMap =
+compile path sql varMap =
   let
     backendPath = either id (fromMaybe P.rootDir <<< P.parentDir) path
     sql' = maybe sql (flip templated sql) $ either (const Nothing) Just path
   in
-    runQuasarF wiring $ QF.compileQuery backendPath sql' varMap
+    liftQuasar $ QF.compileQuery backendPath sql' varMap
 
 query
-  ∷ ∀ r eff m
-  . (Functor m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → DirPath
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ DirPath
   → SQL
   → m (Either QError JS.JArray)
-query wiring path sql =
-  runQuasarF wiring $ QF.readQuery Readable path sql SM.empty Nothing
+query path sql =
+  liftQuasar $ QF.readQuery Readable path sql SM.empty Nothing
 
 queryEJson
-  ∷ ∀ r eff m
-  . (Functor m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → DirPath
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ DirPath
   → SQL
   → m (Either QError (Array EJS.EJson))
-queryEJson wiring path sql =
-  runQuasarF wiring $ QF.readQueryEJson path sql SM.empty Nothing
+queryEJson path sql =
+  liftQuasar $ QF.readQueryEJson path sql SM.empty Nothing
 
 queryEJsonVM
-  ∷ ∀ r eff m
-  . (Functor m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → DirPath
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ DirPath
   → SQL
   → SM.StrMap String
   → m (Either QError (Array EJS.EJson))
-queryEJsonVM wiring path sql vm =
-  runQuasarF wiring $ QF.readQueryEJson path sql vm Nothing
+queryEJsonVM path sql vm =
+  liftQuasar $ QF.readQueryEJson path sql vm Nothing
 
 -- | Runs a query creating a view mount for the query.
 -- |
 -- | If a file path is provided for the input path the query can use the
 -- | {{path}} template syntax to have the file's path inserted.
 viewQuery
-  ∷ ∀ r eff m
-  . (Affable (QEff eff) m, Monad m)
-  ⇒ Wiring r
-  → AnyPath
+  ∷ ∀ m
+  . (QuasarDSL m, Monad m)
+  ⇒ AnyPath
   → FilePath
   → SQL
   → SM.StrMap String
   → m (Either QError Unit)
-viewQuery wiring path dest sql vars = do
-  runQuasarF wiring $
+viewQuery path dest sql vars = do
+  liftQuasar $
     QF.deleteMount (Right dest)
-  runQuasarF wiring $
+  liftQuasar $
     QF.updateMount (Right dest) (QM.ViewConfig
       { query: maybe sql (flip templated sql) $ either (const Nothing) Just path
       , vars
@@ -141,49 +134,45 @@ viewQuery wiring path dest sql vars = do
 -- | The returned value is the output path returned by Quasar. For some queries
 -- | this will be the input file rather than the specified destination.
 fileQuery
-  ∷ ∀ r eff m
-  . Affable (QEff eff) m
-  ⇒ Wiring r
-  → FilePath
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ FilePath
   → FilePath
   → SQL
   → SM.StrMap String
   → m (Either QError FilePath)
-fileQuery wiring file dest sql vars =
+fileQuery file dest sql vars =
   let backendPath = fromMaybe P.rootDir (P.parentDir file)
-  in runQuasarF wiring $ map _.out <$>
+  in liftQuasar $ map _.out <$>
     QF.writeQuery backendPath dest (templated file sql) vars
 
 all
-  ∷ ∀ r eff m
-  . Affable (QEff eff) m
-  ⇒ Wiring r
-  → FilePath
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ FilePath
   → m (Either QError JS.JArray)
-all wiring file =
-  runQuasarF wiring $ QF.readFile Readable file Nothing
+all file =
+  liftQuasar $ QF.readFile Readable file Nothing
 
 sample
-  ∷ ∀ r eff m
-  . Affable (QEff eff) m
-  ⇒ Wiring r
-  → FilePath
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ FilePath
   → Int
   → Int
   → m (Either QError JS.JArray)
-sample wiring file offset limit =
-  runQuasarF wiring $ QF.readFile Readable file (Just { limit, offset })
+sample file offset limit =
+  liftQuasar $ QF.readFile Readable file (Just { limit, offset })
 
 count
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → FilePath
+  ∷ ∀ m
+  . (Monad m, QuasarDSL m)
+  ⇒ FilePath
   → m (Either QError Int)
-count wiring file = runExceptT do
+count file = runExceptT do
   let backendPath = fromMaybe P.rootDir (P.parentDir file)
       sql = templated file "SELECT COUNT(*) as total FROM {{path}}"
-  result ← ExceptT $ runQuasarF wiring $
+  result ← ExceptT $ liftQuasar $
     QF.readQuery Readable backendPath sql SM.empty Nothing
   pure $ fromMaybe 0 (readTotal result)
   where
@@ -196,13 +185,12 @@ count wiring file = runExceptT do
       <=< Arr.head
 
 fields
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → FilePath
+  ∷ ∀ m
+  . (Monad m, QuasarDSL m)
+  ⇒ FilePath
   → m (Either QError (Array String))
-fields wiring file = runExceptT do
-  jarr ← ExceptT $ sample wiring file 0 100
+fields file = runExceptT do
+  jarr ← ExceptT $ sample file 0 100
   case jarr of
     [] → throw "empty file"
     _ → pure $ Arr.nub $ getFields =<< jarr

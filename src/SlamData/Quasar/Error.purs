@@ -22,7 +22,6 @@ module SlamData.Quasar.Error
 import SlamData.Prelude
 
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class (class MonadError, throwError)
 
 import Quasar.Error (QError(..), printQError)
 

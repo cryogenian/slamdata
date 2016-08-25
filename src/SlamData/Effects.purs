@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Effects where
 
 import Ace.Types (ACE)
-import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Eff.Random (RANDOM)
@@ -26,12 +25,10 @@ import Control.Monad.Eff.Timer (TIMER)
 import Control.UI.File (READ_FILE)
 import Data.JSDate (LOCALE)
 import ECharts.Types (ECHARTS)
-import OIDC.Crypt (RSASIGNTIME)
 import Halogen (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
+import OIDC.Crypt (RSASIGNTIME)
 import ZClipboard (ZCLIPBOARD)
-
-type Slam = Aff SlamDataEffects
 
 type SlamDataEffects = HalogenEffects SlamDataRawEffects
 

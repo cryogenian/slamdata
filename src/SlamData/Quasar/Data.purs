@@ -23,8 +23,6 @@ module SlamData.Quasar.Data
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
-
 import Data.Argonaut as JS
 
 import Quasar.Advanced.QuasarAF as QF
@@ -32,51 +30,47 @@ import Quasar.Data (QData(..), JSONMode(..))
 import Quasar.Error (QError)
 import Quasar.Types (FilePath, AnyPath)
 
-import SlamData.Quasar.Aff (QEff, runQuasarF, Wiring)
 import SlamData.Quasar.Error (throw)
+import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
 makeFile
-  ∷ ∀ r eff m
-  . Affable (QEff eff) m
-  ⇒ Wiring r
-  → FilePath
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ FilePath
   → QData
   → m (Either QError Unit)
-makeFile wiring path = runQuasarF wiring ∘ QF.writeFile path
+makeFile path = liftQuasar ∘ QF.writeFile path
 
 -- | Saves a single JSON value to a file.
 -- |
 -- | Even though the path is expected to be absolute it should not include the
 -- | `/data/fs` part of the path for the API.
 save
-  ∷ ∀ r eff m
-  . Affable (QEff eff) m
-  ⇒ Wiring r
-  → FilePath
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ FilePath
   → JS.Json
   → m (Either QError Unit)
-save wiring path json = runQuasarF wiring $ QF.writeFile path (JSON Readable [json])
+save path json = liftQuasar $ QF.writeFile path (JSON Readable [json])
 
 -- | Loads a single JSON value from a file.
 -- |
 -- | Even though the path is expected to be absolute it should not include the
 -- | `/data/fs` part of the path for the API.
 load
-  ∷ ∀ r eff m
-  . (Functor m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → FilePath
+  ∷ ∀ m
+  . (Functor m, QuasarDSL m)
+  ⇒ FilePath
   → m (Either QError JS.Json)
-load wiring file =
-  runQuasarF wiring (QF.readFile Readable file Nothing) <#> case _ of
+load file =
+  liftQuasar (QF.readFile Readable file Nothing) <#> case _ of
     Right [file] → Right file
     Right _ → throw "Unexpected result when loading value from file"
     Left err → Left err
 
 delete
-  ∷ ∀ r eff m
-  . (Functor m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → AnyPath
+  ∷ ∀ m
+  . (Functor m, QuasarDSL m)
+  ⇒ AnyPath
   → m (Either QError Unit)
-delete wiring = runQuasarF wiring ∘ QF.deleteData
+delete = liftQuasar ∘ QF.deleteData

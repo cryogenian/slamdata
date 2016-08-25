@@ -36,7 +36,7 @@ import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Render.Common (glyph)
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 
 import ZClipboard as Z
 

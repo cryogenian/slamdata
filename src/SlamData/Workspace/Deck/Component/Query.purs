@@ -37,7 +37,7 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Deck.Model (Deck)
-import SlamData.Workspace.Wiring (DeckMessage, PendingMessage)
+import SlamData.Wiring (DeckMessage, PendingMessage)
 
 import Utils.Path as UP
 

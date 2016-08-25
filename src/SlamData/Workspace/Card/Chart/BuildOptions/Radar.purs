@@ -38,7 +38,8 @@ import ECharts.Types.Phantom as ETP
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation(..), runAggregation)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxes, colors, buildChartAxes, keyName)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxes, buildChartAxes, keyName)
+import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 
 --sample data:
 -- Tuple ['dimA', 'dimB']

@@ -23,8 +23,6 @@ module SlamData.Notification.Component
   ) where
 
 import SlamData.Prelude
-import SlamData.Effects (Slam)
-import SlamData.Notification as N
 
 import Control.Monad.Aff (later', forkAff)
 import Control.Monad.Aff.AVar (AVar, makeVar, takeVar, putVar)
@@ -40,6 +38,10 @@ import Halogen.Component.Utils (raise)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+
+import SlamData.Monad (Slam)
+import SlamData.Notification as N
+import SlamData.Wiring (Wiring(..))
 
 type State =
   { tick ∷ Int
@@ -77,14 +79,11 @@ type NotifyHTML = H.ComponentHTML Query
 
 type NotifyDSL = H.ComponentDSL State Query Slam
 
-comp
-  ∷ ∀ r
-  . Bus.Bus (read ∷ Bus.Cap | r) N.NotificationOptions
-  → H.Component State Query Slam
-comp bus =
+comp ∷ H.Component State Query Slam
+comp =
   H.lifecycleComponent
     { render
-    , eval: eval bus
+    , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
@@ -152,13 +151,11 @@ render st =
     N.Warning s → s
     N.Error s → s
 
-eval
-  ∷ ∀ r
-  . Bus.Bus (read ∷ Bus.Cap | r) N.NotificationOptions
-  → Query ~> NotifyDSL
-eval bus = case _ of
-  Init next →
-    forever (raise <<< H.action <<< Push =<< H.fromAff (Bus.read bus))
+eval ∷ Query ~> NotifyDSL
+eval = case _ of
+  Init next → do
+    Wiring wiring ← H.liftH ask
+    forever (raise <<< H.action <<< Push =<< H.fromAff (Bus.read wiring.notify))
   Push options next → do
     st ← H.get
     dismiss ← H.fromAff makeVar

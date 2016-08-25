@@ -31,6 +31,9 @@ accessWorkspaceWithModifiedURL modifier =
 
 mountTestDatabase ∷ SlamFeature Unit
 mountTestDatabase = do
+  -- If we don't wait for "Configure database" to appear in the toolbar the
+  -- wrong item will be clicked for "Mount database" due to a timing issue. Yay.
+  Feature.expectPresented (XPath.anywhere XPaths.accessConfigureMount)
   Feature.click (XPath.anywhere XPaths.accessMountDatabase)
   Feature.provideFieldValue (XPath.anywhere XPaths.mountName) "test-mount"
   Feature.selectFromDropdown (XPath.anywhere XPaths.mountType) "MongoDB"

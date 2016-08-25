@@ -32,8 +32,6 @@ module SlamData.Workspace.Card.CardType
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class (throwError)
-
 import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson)
 
 import Halogen.HTML as H

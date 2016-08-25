@@ -26,7 +26,7 @@ module SlamData.Workspace.Card.Common.EvalQuery
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Aff.AVar (AVAR)
 
 import Halogen as H
@@ -80,31 +80,35 @@ data ModelUpdateType
 -- | Raises a `ModelUpdateType` self-query for a card that is a standalone
 -- | component.
 raiseUpdatedC
-  ∷ ∀ s eff
-  . ModelUpdateType
-  → H.ComponentDSL s CardEvalQuery (Aff (avar ∷ AVAR | eff)) Unit
+  ∷ ∀ s g eff
+  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ⇒ ModelUpdateType
+  → H.ComponentDSL s CardEvalQuery g Unit
 raiseUpdatedC updateType = raise $ H.action $ ModelUpdated updateType
 
 -- | Raises a `ModelUpdateType` self-query for a card that is a standalone
 -- | component with an expanded query algebra.
 raiseUpdatedC'
-  ∷ ∀ f s eff
-  . ModelUpdateType
-  → H.ComponentDSL s (CardEvalQuery ⨁ f) (Aff (avar ∷ AVAR | eff)) Unit
+  ∷ ∀ f s g eff
+  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ⇒ ModelUpdateType
+  → H.ComponentDSL s (CardEvalQuery ⨁ f) g Unit
 raiseUpdatedC' updateType = raise $ left $ H.action $ ModelUpdated updateType
 
 -- | Raises a `ModelUpdateType` self-query for a card that is a parent
 -- | component.
 raiseUpdatedP
-  ∷ ∀ s s' f' p eff
-  . ModelUpdateType
-  → H.ParentDSL s s' CardEvalQuery f' (Aff (avar ∷ AVAR | eff)) p Unit
+  ∷ ∀ s s' f' p g eff
+  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ⇒ ModelUpdateType
+  → H.ParentDSL s s' CardEvalQuery f' g p Unit
 raiseUpdatedP updateType = raise' $ H.action $ ModelUpdated updateType
 
 -- | Raises a `ModelUpdateType` self-query for a card that is a parent
 -- | component with an expanded query algebra.
 raiseUpdatedP'
-  ∷ ∀ s s' f f' p eff
-  . ModelUpdateType
-  → H.ParentDSL s s' (CardEvalQuery ⨁ f) f' (Aff (avar ∷ AVAR | eff)) p Unit
+  ∷ ∀ s s' f f' p g eff
+  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ⇒ ModelUpdateType
+  → H.ParentDSL s s' (CardEvalQuery ⨁ f) f' g p Unit
 raiseUpdatedP' updateType = raise' $ left $ H.action $ ModelUpdated updateType

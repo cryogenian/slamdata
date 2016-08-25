@@ -24,6 +24,7 @@ module SlamData.Workspace.Card.Chart.ChartType
   , isRadar
   , isFunnel
   , isGraph
+  , isHeatmap
   , parseChartType
   , printChartType
   ) where
@@ -43,6 +44,7 @@ data ChartType
   | Radar
   | Funnel
   | Graph
+  | Heatmap
 
 isPie ∷ ChartType → Boolean
 isPie Pie = true
@@ -76,6 +78,10 @@ isGraph ∷ ChartType → Boolean
 isGraph Graph = true
 isGraph _ = false
 
+isHeatmap :: ChartType -> Boolean
+isHeatmap Heatmap = true
+isHeatmap _ = false
+
 parseChartType ∷ String → Either String ChartType
 parseChartType "pie" = pure Pie
 parseChartType "line" = pure Line
@@ -85,6 +91,7 @@ parseChartType "scatter" = pure Scatter
 parseChartType "radar" = pure Radar
 parseChartType "funnel" = pure Funnel
 parseChartType "graph" = pure Graph
+parseChartType "heatmap" = pure Heatmap
 parseChartType _ = Left "incorrect chartType"
 
 printChartType ∷ ChartType → String
@@ -96,6 +103,7 @@ printChartType Scatter = "scatter"
 printChartType Radar = "radar"
 printChartType Funnel = "funnel"
 printChartType Graph = "graph"
+printChartType Heatmap = "heatmap"
 
 derive instance genericChartType ∷ Generic ChartType
 derive instance eqChartType ∷ Eq ChartType
@@ -117,4 +125,5 @@ instance arbitraryChartType ∷ SC.Arbitrary ChartType where
     , Radar
     , Funnel
     , Graph
+    , Heatmap
     ]

@@ -13,7 +13,7 @@ import ECharts.Types.Phantom (OptionI)
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Chart.VisualMapColor (VisualMapColor)
 import SlamData.Workspace.Card.Chart.Axis (analyzeJArray)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (colors)
+import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 
 type GraphR =
   { source ∷ JCursor

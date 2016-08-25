@@ -22,7 +22,6 @@ module SlamData.Workspace.Deck.Component.Nested
 
 import SlamData.Prelude
 
-import Control.Coroutine.Stalling as SCR
 import Control.Monad.Aff (runAff)
 import Control.Monad.Aff.AVar (makeVar, putVar, takeVar)
 import Control.Monad.Eff (Eff)
@@ -33,15 +32,14 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource as HE
 
-import SlamData.Effects (SlamDataEffects, Slam)
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Monad (Slam, runSlam)
 import SlamData.Workspace.Deck.Common (DeckOptions)
 import SlamData.Workspace.Deck.Component as DC
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Nested.State as DNS
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
-
-import Utils.AffableProducer (produce)
 
 type DSL = H.ComponentDSL DNS.State DNQ.QueryP Slam
 type HTML = H.ComponentHTML DNQ.QueryP
@@ -88,11 +86,13 @@ comp opts deckState =
       emitter ← H.fromAff makeVar
       H.subscribe $
         HE.EventSource $
-          SCR.producerToStallingProducer $ produce \emit →
+          HE.produce \emit →
             void $ runAff (const (pure unit)) (const (pure unit)) $
               putVar emitter (emit <<< Left)
       emitter' ← H.fromAff $ takeVar emitter
-      driver ← H.fromAff $ H.runUI (deckComponent' (emitter' ∘ right)) deckState el
+      wiring ← H.liftH ask
+      let ui = H.interpret (runSlam wiring) $ deckComponent' (emitter' ∘ right)
+      driver ← H.fromAff $ H.runUI ui deckState el
       H.modify _ { driver = Just (DNS.Driver driver) }
       pure next
     DNQ.Finish next → do

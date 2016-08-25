@@ -39,6 +39,7 @@ import SlamData.Workspace.Card.Chart.BuildOptions.Area (buildArea)
 import SlamData.Workspace.Card.Chart.BuildOptions.Scatter (buildScatter)
 import SlamData.Workspace.Card.Chart.BuildOptions.Radar (buildRadar)
 import SlamData.Workspace.Card.Chart.BuildOptions.Funnel (buildFunnel)
+import SlamData.Workspace.Card.Chart.BuildOptions.Heatmap (buildHeatmap)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
 import Test.StrongCheck.Arbitrary as SC
@@ -54,6 +55,10 @@ type BuildOptions =
   , bubbleMaxSize ∷ Number
   , funnelOrder ∷ String
   , funnelAlign ∷ String
+  , minColorVal ∷ Number
+  , maxColorVal ∷ Number
+  , colorScheme ∷ String
+  , colorReversed ∷ Boolean
   }
 
 eqBuildOptions ∷ BuildOptions → BuildOptions → Boolean
@@ -67,6 +72,10 @@ eqBuildOptions o1 o2 =
     && o1.bubbleMaxSize ≡ o2.bubbleMaxSize
     && o1.funnelOrder ≡ o2.funnelOrder
     && o1.funnelAlign ≡ o2.funnelAlign
+    && o1.minColorVal ≡ o2.minColorVal
+    && o1.maxColorVal ≡ o2.maxColorVal
+    && o1.colorScheme ≡ o2.colorScheme
+    && o1.colorReversed ≡ o2.colorReversed
 
 genBuildOptions ∷ Gen.Gen BuildOptions
 genBuildOptions = do
@@ -79,9 +88,14 @@ genBuildOptions = do
   bubbleMaxSize ← SC.arbitrary
   funnelOrder ← SC.arbitrary
   funnelAlign ← SC.arbitrary
+  minColorVal ← SC.arbitrary
+  maxColorVal ← SC.arbitrary
+  colorScheme ← SC.arbitrary
+  colorReversed ← SC.arbitrary
   pure { chartType, axisLabelAngle, axisLabelFontSize
        , areaStacked, smooth, bubbleMinSize, bubbleMaxSize
-       , funnelOrder, funnelAlign }
+       , funnelOrder, funnelAlign, minColorVal, maxColorVal
+       , colorScheme, colorReversed }
 
 encode ∷ BuildOptions → Json
 encode m
@@ -94,13 +108,18 @@ encode m
   ~> "bubbleMaxSize" := m.bubbleMaxSize
   ~> "funnelOrder" := m.funnelOrder
   ~> "funnelAlign" := m.funnelAlign
+  ~> "minColorVal" := m.minColorVal
+  ~> "maxColorVal" := m.maxColorVal
+  ~> "colorScheme" := m.colorScheme
+  ~> "colorReversed" := m.colorReversed
   ~> jsonEmptyObject
 
 decode ∷ Json → Either String BuildOptions
 decode = decodeJson >=> \obj →
   { chartType: _, axisLabelAngle: _, axisLabelFontSize: _
   , areaStacked: _, smooth: _, bubbleMinSize:_, bubbleMaxSize: _
-  , funnelOrder: _, funnelAlign: _ }
+  , funnelOrder: _, funnelAlign: _, minColorVal: _, maxColorVal: _
+  , colorScheme: _, colorReversed: _ }
     <$> (obj .? "chartType")
     <*> (obj .? "axisLabelAngle")
     <*> (obj .? "axisLabelFontSize")
@@ -110,6 +129,10 @@ decode = decodeJson >=> \obj →
     <*> ((obj .? "bubbleMaxSize") <|> (pure 50.0))
     <*> ((obj .? "funnelOrder") <|> (pure "descending"))
     <*> ((obj .? "funnelAlign") <|> (pure "center"))
+    <*> ((obj .? "minColorVal") <|> (pure 0.0))
+    <*> ((obj .? "maxColorVal") <|> (pure 1.0))
+    <*> ((obj .? "colorScheme") <|> (pure "diverging: red-blue"))
+    <*> ((obj .? "colorReversed") <|> (pure false))
 
 buildOptionsLegacy
   ∷ BuildOptions
@@ -127,4 +150,5 @@ buildOptionsLegacy args conf records =
     Scatter → buildScatter mp args.bubbleMinSize args.bubbleMaxSize conf
     Radar → buildRadar mp conf
     Funnel → buildFunnel mp args.funnelOrder args.funnelAlign conf
-    Graph → buildRadar mp conf
+    Heatmap → buildHeatmap mp args.minColorVal args.maxColorVal args.colorScheme args.colorReversed conf
+    Graph → pure unit

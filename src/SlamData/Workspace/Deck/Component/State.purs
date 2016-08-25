@@ -85,7 +85,7 @@ import Data.Map as Map
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
 import Halogen.Component.Utils.Debounced (DebounceTrigger)
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 
 import SlamData.Workspace.Card.CardId (CardId(..))
 import SlamData.Workspace.Card.CardId as CID

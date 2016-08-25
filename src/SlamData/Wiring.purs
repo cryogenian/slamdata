@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Wiring
-  ( Wiring
+module SlamData.Wiring
+  ( Wiring(..)
   , Cache
   , CardEval
   , DeckRef
@@ -25,7 +25,6 @@ module SlamData.Workspace.Wiring
   , makeWiring
   , makeCache
   , putDeck
-  , putDeck'
   , getDeck
   , putCache
   , getCache
@@ -39,6 +38,7 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Aff.Promise (Promise, wait, defer)
 import Control.Monad.Eff.Ref (Ref, newRef)
+import Control.Monad.Fork (class MonadFork)
 
 import Data.Map as Map
 import Data.Set as Set
@@ -49,6 +49,7 @@ import SlamData.GlobalError as GE
 import SlamData.Notification as N
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Data as Quasar
+import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.SignIn.Bus (SignInBus)
 import SlamData.Workspace.Card.CardId (CardId)
@@ -85,19 +86,20 @@ type ActiveState =
   { cardIndex ∷ Int
   }
 
-type Wiring =
-  { decks ∷ Cache DeckId DeckRef
-  , activeState ∷ Cache DeckId ActiveState
-  , cards ∷ Cache (DeckId × CardId) CardEval
-  , pending ∷ Bus.BusRW PendingMessage
-  , messaging ∷ Bus.BusRW DeckMessage
-  , notify ∷ Bus.BusRW N.NotificationOptions
-  , globalError ∷ Bus.BusRW GE.GlobalError
-  , analytics ∷ Bus.BusRW AE.Event
-  , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
-  , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
-  , signInBus ∷ SignInBus
-  }
+newtype Wiring =
+  Wiring
+    { decks ∷ Cache DeckId DeckRef
+    , activeState ∷ Cache DeckId ActiveState
+    , cards ∷ Cache (DeckId × CardId) CardEval
+    , pending ∷ Bus.BusRW PendingMessage
+    , messaging ∷ Bus.BusRW DeckMessage
+    , notify ∷ Bus.BusRW N.NotificationOptions
+    , globalError ∷ Bus.BusRW GE.GlobalError
+    , analytics ∷ Bus.BusRW AE.Event
+    , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
+    , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
+    , signInBus ∷ SignInBus
+    }
 
 makeWiring
   ∷ ∀ m
@@ -115,8 +117,8 @@ makeWiring = fromAff do
   requestNewIdTokenBus ← Auth.authentication
   urlVarMaps ← fromEff (newRef mempty)
   signInBus ← Bus.make
-  let
-    wiring =
+  pure $
+    Wiring
       { decks
       , activeState
       , cards
@@ -129,7 +131,6 @@ makeWiring = fromAff do
       , urlVarMaps
       , signInBus
       }
-  pure wiring
 
 makeCache
   ∷ ∀ m k v
@@ -139,51 +140,41 @@ makeCache = fromAff (makeVar' mempty)
 
 putDeck
   ∷ ∀ m
-  . (Affable SlamDataEffects m)
+  . (Affable SlamDataEffects m, MonadFork m, QuasarDSL m, MonadReader Wiring m)
   ⇒ DirPath
   → DeckId
   → Deck
-  → Wiring
   → m (Either QE.QError Unit)
-putDeck path deckId deck wiring = fromAff do
+putDeck path deckId deck = do
+  Wiring wiring ← ask
   ref ← defer do
-    res ← Quasar.save wiring (deckIndex path deckId) $ encode deck
+    res ← Quasar.save (deckIndex path deckId) $ encode deck
     when (isLeft res) do
-      modifyVar (Map.delete deckId) wiring.decks
+      fromAff $ modifyVar (Map.delete deckId) wiring.decks
     pure $ const deck <$> res
   putCache deckId ref wiring.decks
   rmap (const unit) <$> wait ref
 
-putDeck'
-  ∷ ∀ m
-  . (Affable SlamDataEffects m)
-  ⇒ DeckId
-  → Deck
-  → Cache DeckId DeckRef
-  → m Unit
-putDeck' deckId deck =
-  putCache deckId (pure (Right deck))
-
 getDeck
   ∷ ∀ m
-  . (Affable SlamDataEffects m)
+  . (Affable SlamDataEffects m, MonadFork m, QuasarDSL m, MonadReader Wiring m)
   ⇒ DirPath
   → DeckId
-  → Wiring
   → m (Either QE.QError Deck)
-getDeck path deckId wiring = fromAff do
-  decks ← takeVar wiring.decks
+getDeck path deckId = do
+  Wiring wiring ← ask
+  decks ← fromAff $ takeVar wiring.decks
   case Map.lookup deckId decks of
     Just ref → do
-      putVar wiring.decks decks
+      fromAff $ putVar wiring.decks decks
       wait ref
     Nothing → do
       ref ← defer do
-        res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load wiring (deckIndex path deckId)
+        res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load (deckIndex path deckId)
         when (isLeft res) do
-          modifyVar (Map.delete deckId) wiring.decks
+          fromAff $ modifyVar (Map.delete deckId) wiring.decks
         pure res
-      putVar wiring.decks (Map.insert deckId ref decks)
+      fromAff $ putVar wiring.decks (Map.insert deckId ref decks)
       wait ref
 
 getCache

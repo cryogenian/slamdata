@@ -195,6 +195,9 @@ mdField = aceEditor
 accessMountDatabase ∷ String
 accessMountDatabase = XPath.anyWithExactAriaLabel "Mount database"
 
+accessConfigureMount ∷ String
+accessConfigureMount = XPath.anyWithExactAriaLabel "Configure mount"
+
 mountName ∷ String
 mountName = "input" `XPath.withLabelWithExactText` "Name"
 

@@ -36,7 +36,7 @@ import Halogen as H
 import Data.Lens (LensP, lens)
 import Data.Map as Map
 
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 
 import SlamData.Workspace.Card.Draftboard.Component.Query (QueryC)
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ

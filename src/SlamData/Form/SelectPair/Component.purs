@@ -30,7 +30,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Form.Select as S
 import SlamData.Form.Select.Component (Query(..), select)
 import SlamData.Render.CSS as Rc
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 
 import Utils.Array (enumerate)
 

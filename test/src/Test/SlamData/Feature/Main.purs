@@ -11,7 +11,6 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console as Ec
 import Control.Monad.Eff.Exception (EXCEPTION, Error, message)
 import Control.Monad.Eff.Ref (REF, newRef, modifyRef, readRef)
-import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Trans (runReaderT)
 
 import Data.Array as Arr
@@ -182,7 +181,7 @@ main = do
   void $ runAff errHandler (const $ Process.exit 0) do
     log $ gray "Creating data folder for MongoDB"
     cleanMkDir "tmp/data"
-    log $ gray "Empting test folder"
+    log $ gray "Emptying test folder"
     cleanMkDir "tmp/test"
     cleanMkDir "tmp/test/image"
     cleanMkDir "tmp/test/downloads"

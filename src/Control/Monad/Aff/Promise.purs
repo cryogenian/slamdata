@@ -21,30 +21,39 @@ module Control.Monad.Aff.Promise
   ) where
 
 import Prelude
+
 import Control.Apply (lift2)
-import Control.Monad.Aff (Aff, forkAll, forkAff)
+import Control.Monad.Aff (Aff, forkAll)
 import Control.Monad.Aff.AVar (AVAR, makeVar', makeVar, takeVar, putVar, modifyVar)
+import Control.Monad.Aff.Free (class Affable, fromAff)
+import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Rec.Class (class MonadRec, tailRecM)
+
 import Data.Foldable (foldl)
+import Data.List ((:))
 import Data.Maybe (Maybe(..))
 import Data.Monoid (class Monoid, mempty)
-import Data.List ((:))
 
 newtype Promise a = Promise (∀ eff. Aff (avar ∷ AVAR | eff) a)
 
 -- | Forks an asynchronous computation, returning a Promise that will block
 -- | until completed. Promise results are shared among consumers (one-to-many
 -- | resolution).
-defer ∷ ∀ eff a . Aff (avar ∷ AVAR | eff) a → Aff (avar ∷ AVAR | eff) (Promise a)
+defer
+  ∷ ∀ m eff a
+  . (Affable (avar ∷ AVAR | eff) m, MonadFork m)
+  ⇒ m a
+  → m (Promise a)
 defer run = do
-  cell ← makeVar' Nothing
-  consumers ← makeVar' mempty
-  forkAff do
+  cell ← fromAff $ makeVar' Nothing
+  consumers ← fromAff $ makeVar' mempty
+  fork do
     res ← run
-    fns ← takeVar consumers
-    modifyVar (const (Just res)) cell
-    putVar consumers mempty
-    forkAll (foldl (\xs f → f res : xs) mempty fns)
+    fromAff do
+      fns ← takeVar consumers
+      modifyVar (const (Just res)) cell
+      putVar consumers mempty
+      forkAll (foldl (\xs f → f res : xs) mempty fns)
   pure $ Promise do
     res ← takeVar cell
     putVar cell res
@@ -57,8 +66,11 @@ defer run = do
 
 -- | Blocks until a Promise is resolved. If the Promise has already resolved,
 -- | then it will yield immediately.
-wait ∷ ∀ eff a . Promise a → Aff (avar ∷ AVAR | eff) a
-wait (Promise run) = run
+wait
+  ∷ ∀ m eff a
+  . (Affable (avar ∷ AVAR | eff) m)
+  ⇒ Promise a → m a
+wait (Promise run) = fromAff run
 
 instance functorPromise ∷ Functor Promise where
   map f (Promise run) = Promise (f <$> run)

@@ -35,6 +35,10 @@ data Query a
   | SetBubbleMaxSize Number a
   | SetFunnelOrder String a
   | SetFunnelAlign String a
+  | SetMinColorVal Number a
+  | SetMaxColorVal Number a
+  | SetColorScheme String a
+  | SetColorReversed Boolean a
 
 
 

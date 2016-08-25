@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Quasar.FS
   ( children
-  , transitiveChildrenProducer
+  , transitiveChildren
   , getNewName
   , move
   , listing
@@ -29,23 +29,11 @@ module SlamData.Quasar.FS
 
 import SlamData.Prelude
 
-import Control.Coroutine as CR
-import Control.Monad.Aff as Aff
-import Control.Monad.Aff.Free (class Affable, fromAff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Eff.Ref as Ref
-import Control.Monad.Error.Class (catchError)
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
-import Control.Monad.Free.Trans as FT
-import Control.Monad.Rec.Class as MR
-
 import Data.Array as Arr
 import Data.Foldable as F
 import Data.Lens ((.~), (^.), (^?), _Left)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
-import Data.Set as Set
 import Data.String as S
 
 import Quasar.Advanced.QuasarAF as QF
@@ -56,58 +44,44 @@ import Quasar.Types (AnyPath, DirPath, FilePath)
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
-import SlamData.Quasar.Aff (QEff, runQuasarF, Wiring)
-
-import Utils.AffableProducer as AP
-import Utils.Completions (memoizeCompletionStrs)
+import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
 children
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → DirPath
+  ∷ ∀ m
+  . (Monad m, QuasarDSL m)
+  ⇒ DirPath
   → m (Either QError (Array R.Resource))
-children wiring dir = runExceptT do
-  cs ← ExceptT $ listing wiring dir
+children dir = runExceptT do
+  cs ← ExceptT $ listing dir
   let result = (R._root .~ dir) <$> cs
-  lift $ fromAff $ memoizeCompletionStrs dir result
+  -- TODO: do this somewhere more appropriate
+  -- lift $ fromAff $ memoizeCompletionStrs dir result
   pure result
 
--- | Produces a stream of the transitive children of a path
-transitiveChildrenProducer
-  ∷ ∀ r eff m
-  . (Functor m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → DirPath
-  → CR.Producer (Array R.Resource) m Unit
-transitiveChildrenProducer wiring dirPath = do
-  AP.produce \emit → do
-    activeRequests ← Ref.newRef $ Set.singleton $ P.printPath dirPath
-    void $ Aff.runAff Exn.throwException (const (pure unit)) $
-      go emit activeRequests dirPath
+transitiveChildren
+  ∷ ∀ m
+  . (MonadPar m, QuasarDSL m)
+  ⇒ DirPath
+  → m (Either QError (Array R.Resource))
+transitiveChildren start = runExceptT do
+  rs ← ExceptT $ children start
+  cs ← parTraverse go rs
+  pure $ rs <> join cs
   where
-  go emit activeRequests start = do
-    let strPath = P.printPath start
-    eitherChildren ← children wiring start
-    liftEff $ Ref.modifyRef activeRequests $ Set.delete strPath
-    for_ eitherChildren \items → do
-      liftEff $ emit $ Left items
-      let parents = Arr.mapMaybe (either Just (const Nothing) ∘ R.getPath) items
-      for_ parents $ \p →
-        liftEff $ Ref.modifyRef activeRequests $ Set.insert $ P.printPath p
-      for_ parents $ go emit activeRequests
-    remainingRequests ← liftEff $ Ref.readRef activeRequests
-    when (Set.isEmpty remainingRequests) $
-      liftEff ∘ emit $ Right unit
+  go :: R.Resource → ExceptT QError m (Array R.Resource)
+  go r = case R.getPath r of
+    Left dir → do
+      crs ← ExceptT $ transitiveChildren dir
+      pure $ [r] <> crs
+    Right _ → pure [r]
 
 listing
-  ∷ ∀ r eff m
-  . (Functor m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → DirPath
+  ∷ ∀ m
+  . (Functor m, QuasarDSL m)
+  ⇒ DirPath
   → m (Either QError (Array R.Resource))
-listing wiring p =
-  map (map toResource) <$> runQuasarF wiring (QF.dirMetadata p)
+listing p =
+  map (map toResource) <$> liftQuasar (QF.dirMetadata p)
   where
   toResource ∷ QFS.Resource → R.Resource
   toResource res = case res of
@@ -126,14 +100,13 @@ listing wiring p =
 -- | resource. If the name already exists in the path a number is appended to
 -- | the end of the name.
 getNewName
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → DirPath
+  ∷ ∀ m
+  . (Monad m, QuasarDSL m)
+  ⇒ DirPath
   → String
   → m (Either QError String)
-getNewName wiring parent name = do
-  result ← runQuasarF wiring (QF.dirMetadata parent)
+getNewName parent name = do
+  result ← liftQuasar (QF.dirMetadata parent)
   pure case result of
     Right items
       | exists name items → Right (getNewName' items 1)
@@ -162,17 +135,16 @@ getNewName wiring parent name = do
 -- | Will return `Just` in case the resource was successfully moved, and
 -- | `Nothing` in case no resource existed at the requested source path.
 move
-  ∷ ∀ r eff m
-  . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → R.Resource
+  ∷ ∀ m
+  . (MonadPar m, QuasarDSL m)
+  ⇒ R.Resource
   → AnyPath
   → m (Either QError (Maybe AnyPath))
-move wiring src tgt = do
+move src tgt = do
   let srcPath = R.getPath src
-  runExceptT ∘ traverse (cleanViewMounts wiring) $ srcPath ^? _Left
+  runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
   result ←
-    runQuasarF wiring case src of
+    liftQuasar case src of
       R.Mount _ → QF.moveMount srcPath tgt
       _ → QF.moveData srcPath tgt
   pure
@@ -182,19 +154,18 @@ move wiring src tgt = do
       Left err → Left err
 
 delete
-  ∷ ∀ r eff m
-  . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → R.Resource
+  ∷ ∀ m
+  . (MonadPar m, QuasarDSL m)
+  ⇒ R.Resource
   → m (Either QError (Maybe R.Resource))
-delete wiring resource =
+delete resource =
   runExceptT $
     if R.isMount resource || alreadyInTrash resource
     then
-      forceDelete wiring resource $> Nothing
+      forceDelete resource $> Nothing
     else
       moveToTrash resource `catchError` \(err ∷ QError) →
-        forceDelete wiring resource $> Nothing
+        forceDelete resource $> Nothing
 
   where
   msg ∷ String
@@ -207,8 +178,8 @@ delete wiring resource =
     let
       d = (res ^. R._root) </> P.dir Config.trashFolder
       path = (res # R._root .~ d) ^. R._path
-    name ← ExceptT $ getNewName wiring d (res ^. R._name)
-    ExceptT $ move wiring res (path # R._nameAnyPath .~ name)
+    name ← ExceptT $ getNewName d (res ^. R._name)
+    ExceptT $ move res (path # R._nameAnyPath .~ name)
     pure ∘ Just $ R.Directory d
 
   alreadyInTrash ∷ R.Resource → Boolean
@@ -234,67 +205,42 @@ delete wiring resource =
           else alreadyInTrash' d
 
 forceDelete
-  ∷ ∀ r eff m
-  . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → R.Resource
+  ∷ ∀ m
+  . (MonadPar m, QuasarDSL m)
+  ⇒ R.Resource
   → ExceptT QError m Unit
-forceDelete wiring res =
+forceDelete res =
   case res of
     R.Mount _ →
-      ExceptT ∘ runQuasarF wiring $ QF.deleteMount (R.getPath res)
+      ExceptT ∘ liftQuasar $ QF.deleteMount (R.getPath res)
     _ → do
       let path = R.getPath res
-      traverse (cleanViewMounts wiring) $ path ^? _Left
-      ExceptT ∘ runQuasarF wiring $ QF.deleteData path
+      traverse cleanViewMounts $ path ^? _Left
+      ExceptT ∘ liftQuasar $ QF.deleteData path
 
 cleanViewMounts
-  ∷ ∀ r eff m
-  . (Affable (QEff eff) m)
-  ⇒ Wiring r
-  → DirPath
+  ∷ ∀ m
+  . (MonadPar m, QuasarDSL m)
+  ⇒ DirPath
   → ExceptT QError m Unit
-cleanViewMounts wiring path =
-  hoistExceptT fromAff $ CR.runProcess (producer CR.$$ consumer)
-
+cleanViewMounts =
+  parTraverse_ deleteViewMount <=< ExceptT ∘ transitiveChildren
   where
-
-  hoistExceptT
-    ∷ ∀ e a
-    . (Aff.Aff (QEff eff) ~> m)
-    → ExceptT e (Aff.Aff (QEff eff)) a
-    → ExceptT e m a
-  hoistExceptT nat (ExceptT m) = ExceptT (nat m)
-
-  producer ∷ CR.Producer (Array R.Resource) (ExceptT QError (Aff.Aff (QEff eff))) Unit
-  producer =
-    FT.hoistFreeT lift $
-      transitiveChildrenProducer wiring path
-
-  consumer ∷ CR.Consumer (Array R.Resource) (ExceptT QError (Aff.Aff (QEff eff))) Unit
-  consumer =
-    CR.consumer \fs → do
-      traverse_ deleteViewMount fs
-      pure Nothing
-
-  deleteViewMount
-    ∷ R.Resource
-    → ExceptT QError (Aff.Aff (QEff eff)) Unit
+  deleteViewMount ∷ R.Resource → ExceptT QError m Unit
   deleteViewMount =
     case _ of
       R.Mount (R.View vp) →
-        ExceptT ∘ runQuasarF wiring $ QF.deleteMount (Right vp)
+        ExceptT ∘ liftQuasar $ QF.deleteMount (Right vp)
       _ → pure unit
 
 messageIfFileNotFound
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → FilePath
+  ∷ ∀ m
+  . (Functor m, QuasarDSL m)
+  ⇒ FilePath
   → String
   → m (Either QError (Maybe String))
-messageIfFileNotFound wiring path defaultMsg =
-  handleResult <$> runQuasarF wiring (QF.fileMetadata path)
+messageIfFileNotFound path defaultMsg =
+  handleResult <$> liftQuasar (QF.fileMetadata path)
   where
   handleResult ∷ ∀ a. Either QF.QError a → Either QError (Maybe String)
   handleResult (Left QF.NotFound) = Right (Just defaultMsg)
@@ -302,19 +248,17 @@ messageIfFileNotFound wiring path defaultMsg =
   handleResult (Right _) = Right Nothing
 
 dirNotAccessible
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → DirPath
+  ∷ ∀ m
+  . (Functor m, QuasarDSL m)
+  ⇒ DirPath
   → m (Maybe QF.QError)
-dirNotAccessible wiring path =
-  either Just (const Nothing) <$> runQuasarF wiring (QF.dirMetadata path)
+dirNotAccessible path =
+  either Just (const Nothing) <$> liftQuasar (QF.dirMetadata path)
 
 fileNotAccessible
-  ∷ ∀ r eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Wiring r
-  → FilePath
+  ∷ ∀ m
+  . (Functor m, QuasarDSL m)
+  ⇒ FilePath
   → m (Maybe QF.QError)
-fileNotAccessible wiring path =
-  either Just (const Nothing) <$> runQuasarF wiring (QF.fileMetadata path)
+fileNotAccessible path =
+  either Just (const Nothing) <$> liftQuasar (QF.fileMetadata path)

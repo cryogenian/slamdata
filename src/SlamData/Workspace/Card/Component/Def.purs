@@ -30,7 +30,7 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Component.Query (AnyCardQuery)
 import SlamData.Workspace.Card.Component.State (AnyCardState)
 import SlamData.Workspace.Card.CardType (CardType())
-import SlamData.Effects (Slam)
+import SlamData.Monad (Slam)
 
 -- | The properties required by both types of card definition.
 type CardDef s f r =

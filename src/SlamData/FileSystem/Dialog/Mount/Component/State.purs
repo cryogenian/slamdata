@@ -18,9 +18,6 @@ module SlamData.FileSystem.Dialog.Mount.Component.State where
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except (runExcept)
-
 import Data.Lens (LensP, lens)
 
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB

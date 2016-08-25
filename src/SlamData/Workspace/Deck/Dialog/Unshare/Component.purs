@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.AVar (makeVar, takeVar, putVar)
 import Control.Monad.Eff.Ref (newRef, modifyRef, readRef)
-import Control.Parallel.Class (parallel, runParallel)
 import Control.UI.Browser (select)
 
 import Data.Array as Arr
@@ -44,8 +43,7 @@ import Halogen.CustomProps as Cp
 
 import Quasar.Advanced.Types as QTA
 
-import SlamData.Effects (Slam)
-import SlamData.Quasar.Aff (Wiring)
+import SlamData.Monad (Slam)
 import SlamData.Quasar.Security as Q
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), printShareResume)
@@ -154,11 +152,11 @@ type AdjustedPermissions =
   , groups ∷ SM.StrMap Permission
   }
 
-comp ∷ ∀ r. Wiring r → H.Component State Query Slam
-comp wiring =
+comp ∷ H.Component State Query Slam
+comp =
   H.lifecycleComponent
     { render
-    , eval: eval wiring
+    , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
@@ -376,9 +374,9 @@ renderToken token =
     ]
 
 
-eval ∷ ∀ r. Wiring r → Query ~> DSL
-eval wiring (Init next) = next <$ do
-  tokensRes ← Q.tokenList wiring
+eval ∷ Query ~> DSL
+eval (Init next) = next <$ do
+  tokensRes ← Q.tokenList
   sharingInput ← H.gets _.sharingInput
   case tokensRes of
     Left e → H.modify (_{errored = true})
@@ -388,7 +386,7 @@ eval wiring (Init next) = next <$ do
       in
         H.modify (_{tokenPermissions = tokenPerms})
 
-  permsRes ← Q.permissionList wiring false
+  permsRes ← Q.permissionList false
   case permsRes of
     Left e → H.modify (_{errored = true})
     Right ps →
@@ -399,14 +397,14 @@ eval wiring (Init next) = next <$ do
                    , groupPermissions = adjusted.groups
                    })
   H.modify (_{ loading = false})
-eval _ (InitZClipboard token mbEl next) =
+eval (InitZClipboard token mbEl next) =
   next <$ for_ mbEl \el → do
     H.fromEff $ Z.make (htmlElementToElement el)
       >>= Z.onCopy (Z.setData "text/plain" token)
-eval _ (Dismiss next) = pure next
-eval _ (SelectElement el next) =
+eval (Dismiss next) = pure next
+eval (SelectElement el next) =
   next <$ H.fromEff (select el)
-eval wiring (PermissionResumeChanged name string next) = next <$ do
+eval (PermissionResumeChanged name string next) = next <$ do
   state ← H.get
   H.modify (_{errored = false})
   let
@@ -424,7 +422,7 @@ eval wiring (PermissionResumeChanged name string next) = next <$ do
       $ (_userPermissions ∘ ix name ∘ _state ?~ Modifying)
       ∘ (_userPermissions ∘ ix name ∘ _resume .~ newResume)
     (succeeded × actionMap) ←
-      changePermissionResumeForUser wiring name state.sharingInput newResume perms
+      changePermissionResumeForUser name state.sharingInput newResume perms
     H.modify
       $ (_userPermissions ∘ ix name ∘ _actions .~ actionMap)
       ∘ if succeeded
@@ -440,7 +438,7 @@ eval wiring (PermissionResumeChanged name string next) = next <$ do
       ∘ (_groupPermissions ∘ ix name ∘ _resume .~ newResume)
 
     (succeeded × actionMap)  ←
-      changePermissionResumeForGroup wiring name state.sharingInput newResume perms
+      changePermissionResumeForGroup name state.sharingInput newResume perms
     H.modify
       $ (_groupPermissions ∘ ix name ∘ _actions .~ actionMap)
       ∘ if succeeded
@@ -451,7 +449,7 @@ eval wiring (PermissionResumeChanged name string next) = next <$ do
           ∘ (_groupPermissions ∘ ix name ∘ _resume .~ oldResume)
 
 
-eval wiring (UnshareToken tokenId next) = next <$ do
+eval (UnshareToken tokenId next) = next <$ do
   state ← H.get
   let
     mtix = Arr.findIndex (\x → x.tokenId ≡ tokenId) state.tokenPermissions
@@ -459,7 +457,7 @@ eval wiring (UnshareToken tokenId next) = next <$ do
   for_ mtix \tix → do
     H.modify $ _tokenPermissions ∘ ix tix ∘ _state ?~ Unsharing
 
-    Q.deleteToken wiring tokenId >>= case _ of
+    Q.deleteToken tokenId >>= case _ of
       Left _ →
         H.modify
           $ (_tokenPermissions ∘ ix tix ∘ _state ?~ RevokeError)
@@ -469,7 +467,7 @@ eval wiring (UnshareToken tokenId next) = next <$ do
         H.modify
           $ _tokenPermissions %~ Arr.filter (\x → x.tokenId ≠ tokenId)
 
-eval wiring (Unshare name next) = next <$ do
+eval (Unshare name next) = next <$ do
   state ← H.get
   H.modify (_{errored = false})
   let
@@ -478,7 +476,7 @@ eval wiring (Unshare name next) = next <$ do
 
   for_ mbUserPerms \userPerms → do
     H.modify $ _userPermissions ∘ ix name ∘ _state ?~ Unsharing
-    leftPids ← deletePermission wiring userPerms.actions
+    leftPids ← deletePermission userPerms.actions
     H.modify
       if Map.isEmpty leftPids
         then
@@ -491,7 +489,7 @@ eval wiring (Unshare name next) = next <$ do
 
   for_ mbGroupPerms \groupPerms → do
     H.modify $ _groupPermissions ∘ ix name ∘ _state ?~ Unsharing
-    leftPids ← deletePermission wiring groupPerms.actions
+    leftPids ← deletePermission groupPerms.actions
     H.modify
       if Map.isEmpty leftPids
         then
@@ -503,15 +501,13 @@ eval wiring (Unshare name next) = next <$ do
 
 
 changePermissionResumeForUser
-  ∷ ∀ r
-  . Wiring r
-  → String
+  ∷ String
   → Model.SharingInput
   → ShareResume
   → Permission
   → DSL (Boolean × (Map.Map QTA.PermissionId QTA.ActionR))
-changePermissionResumeForUser wiring name sharingInput res perm = do
-  leftPids ← deletePermission wiring perm.actions
+changePermissionResumeForUser name sharingInput res perm = do
+  leftPids ← deletePermission perm.actions
   if not $ Map.isEmpty leftPids
     then
     pure $ false × leftPids
@@ -523,25 +519,23 @@ changePermissionResumeForUser wiring name sharingInput res perm = do
         , groups: [ ]
         , actions
         }
-    shareRes ← Q.sharePermission wiring shareRequest
+    shareRes ← Q.sharePermission shareRequest
     case shareRes of
       Left _ → pure $ false × Map.empty
       Right ps → pure $ true × foldMap (\p → Map.singleton p.id p.action) ps
 
 
 changePermissionResumeForGroup
-  ∷ ∀ r
-  . Wiring r
-  → String
+  ∷ String
   → Model.SharingInput
   → ShareResume
   → Permission
   → DSL (Boolean × (Map.Map QTA.PermissionId QTA.ActionR))
-changePermissionResumeForGroup wiring name sharingInput res perm =
+changePermissionResumeForGroup name sharingInput res perm =
   case parseFilePath name of
     Nothing → pure $ false × perm.actions
     Just groupPath → do
-      leftPids ← deletePermission wiring perm.actions
+      leftPids ← deletePermission perm.actions
       if not $ Map.isEmpty leftPids
         then
         pure $ false × leftPids
@@ -553,29 +547,28 @@ changePermissionResumeForGroup wiring name sharingInput res perm =
             , groups: [ groupPath ]
             , actions
             }
-        shareRes ← Q.sharePermission wiring shareRequest
+        shareRes ← Q.sharePermission shareRequest
         case shareRes of
           Left _ → pure $ false × Map.empty
           Right ps → pure $ true × foldMap (\p → Map.singleton p.id p.action) ps
 
 deletePermission
-  ∷ ∀ r
-  . Wiring r
-  → Map.Map QTA.PermissionId QTA.ActionR
+  ∷ Map.Map QTA.PermissionId QTA.ActionR
   → DSL (Map.Map QTA.PermissionId QTA.ActionR)
-deletePermission wiring permissionMap = do
+deletePermission permissionMap = do
   r ← H.fromEff $ newRef $ Map.empty × Map.size permissionMap
   resultVar ← H.fromAff makeVar
-  H.fromAff $ runParallel $ for_ (Map.toList permissionMap) $ parallel ∘ \(pid × act) → do
-    result ← Q.deletePermission wiring pid
+  H.liftH $ parTraverse (go r resultVar) (Map.toList permissionMap)
+  H.fromAff $ takeVar resultVar
+  where
+  go r resultVar (pid × act) = do
+    result ← Q.deletePermission pid
     H.fromEff $ modifyRef r \(acc × count) → acc × (count - 1)
     case result of
       Left _ → H.fromEff $ modifyRef r \(acc × count) → (Map.insert pid act acc) × count
       Right _ → pure unit
     (acc × count) ← H.fromEff $ readRef r
-    when (count ≡ 0)
-      $ putVar resultVar acc
-  H.fromAff $ takeVar resultVar
+    when (count ≡ 0) $ H.fromAff $ putVar resultVar acc
 
 
 adjustPermissions ∷ Array QTA.PermissionR → Model.SharingInput → AdjustedPermissions
