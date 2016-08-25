@@ -27,6 +27,8 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
 
+import Global (readFloat, isNaN)
+
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 import Halogen.HTML.Indexed as HH
@@ -45,7 +47,7 @@ import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Form.Component.CSS as FCSS
 
-import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
+import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, aggregationSelectWithNone)
 
 data VisualMapColor
   = Blue
@@ -230,26 +232,38 @@ renderTarget state =
 renderSize ∷ State → HTML
 renderSize state =
   HH.form
-    [ HP.classes [ ]
+    [ HP.classes [ FCSS.withAggregation, FCSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Node size" ]
-    , HH.slot' cpSource unit \_ →
-       { component: S.primarySelect (pure "Node size")
-       , initialState: state.size
+    , HH.slot' cpSize unit \_ →
+       { component:
+           P.selectPair { disableWhen: (_ < 1)
+                        , defaultWhen: (const true)
+                        , mainState: state.size
+                        , ariaLabel: Just "Node size"
+                        , classes: [ B.btnPrimary, FCSS.aggregation]
+                        }
+       , initialState: H.parentState $ P.initialState aggregationSelectWithNone
        }
     ]
 
 renderColor ∷ State → HTML
 renderColor state =
   HH.form
-    [ HP.classes [ ]
+    [ HP.classes [ FCSS.withAggregation, FCSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Color mapping" ]
-    , HH.slot' cpSource unit \_ →
-       { component: S.primarySelect (pure "Color mapping")
-       , initialState: state.size
+    , HH.slot' cpColor unit \_ →
+       { component:
+           P.selectPair { disableWhen: (_ < 1)
+                        , defaultWhen: (const true)
+                        , mainState: state.color
+                        , ariaLabel: Just "Color mapping"
+                        , classes: [ B.btnPrimary, FCSS.aggregation]
+                        }
+       , initialState: H.parentState $ P.initialState aggregationSelectWithNone
        }
     ]
 
@@ -327,13 +341,63 @@ eval (ToggleCircularLayout next) =
   next <$ H.modify \x → x{circular = not x.circular}
 eval (GetChartConfig continue) =
   pure $  continue $ CH.Graph {}
-eval (UpdateAxes axes next) =
+eval (UpdateAxes axes next) = do
+  traceAnyA axes
+  H.modify _{ source = newSelect (axes.category ⊕ axes.value)
+            , target = newSelect (axes.category ⊕ axes.value)
+            , size = newSelect axes.value
+            , color = newSelect axes.value
+            }
+  H.query' cpSource unit $ H.action $ S.SetSelect $ newSelect (axes.category ⊕ axes.value)
+  H.query' cpTarget unit $ H.action $ S.SetSelect $ newSelect (axes.category ⊕ axes.value)
+  H.query' cpSize unit $ right $ H.ChildF unit $ H.action $ S.SetSelect $ newSelect axes.value
+  H.query' cpColor unit $ right $ H.ChildF unit $ H.action $ S.SetSelect $ newSelect axes.value
   pure next
-eval (SetMaxNodeSize str next) =
+eval (SetMaxNodeSize str next) = do
+  let fl = readFloat str
+  unless (isNaN fl) $ H.modify _{maxSize = fl}
   pure next
-eval (SetMinNodeSize str next) =
+eval (SetMinNodeSize str next) = do
+  let fl = readFloat str
+  unless (isNaN fl) $ H.modify _{minSize = fl}
   pure next
 
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
-peek _ = pure unit
+peek =
+  peekSource
+  ⨁ peekTarget
+  ⨁ (peekSizeAgg ⨁ (peekSizeSel ∘ H.runChildF))
+  ⨁ (peekColorAgg ⨁ (peekColorSel ∘ H.runChildF))
+  ⨁ peekVMStart
+  ⨁ peekVMEnd
+
+peekSource ∷ ∀ a. SourceQuery a → DSL Unit
+peekSource (S.Choose i _) = pure unit
+peekSource _ = pure unit
+
+peekTarget ∷ ∀ a. TargetQuery a → DSL Unit
+peekTarget (S.Choose i _) = pure unit
+peekTarget _ = pure unit
+
+peekVMStart ∷ ∀ a. VMStartQuery a → DSL Unit
+peekVMStart (S.Choose i _) = pure unit
+peekVMStart _ = pure unit
+
+peekVMEnd ∷ ∀ a. VMEndQuery a → DSL Unit
+peekVMEnd (S.Choose i _) = pure unit
+peekVMEnd _ = pure unit
+
+peekSizeSel ∷ ∀ a. SizeSelQuery a → DSL Unit
+peekSizeSel (S.Choose i _) = pure unit
+peekSizeSel _ = pure unit
+
+peekSizeAgg ∷ ∀ a. SizeAggQuery a → DSL Unit
+peekSizeAgg _ = pure unit
+
+peekColorSel ∷ ∀ a. ColorSelQuery a → DSL Unit
+peekColorSel (S.Choose i _) = pure unit
+peekColorSel _ = pure unit
+
+peekColorAgg ∷ ∀ a. ColorAggQuery a → DSL Unit
+peekColorAgg _ = pure unit
