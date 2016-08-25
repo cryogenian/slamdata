@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Chart.BuildOptions
   ( BuildOptions
   , encode
   , decode
-  , buildOptions
+  , buildOptionsLegacy
   , eqBuildOptions
   , genBuildOptions
   ) where
@@ -111,12 +111,12 @@ decode = decodeJson >=> \obj →
     <*> ((obj .? "funnelOrder") <|> (pure "descending"))
     <*> ((obj .? "funnelAlign") <|> (pure "center"))
 
-buildOptions
+buildOptionsLegacy
   ∷ BuildOptions
   → ChartConfiguration
   → JArray
   → DSL OptionI
-buildOptions args conf records =
+buildOptionsLegacy args conf records =
   let
     mp = analyzeJArray records
   in case args.chartType of

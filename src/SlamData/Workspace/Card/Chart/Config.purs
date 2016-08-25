@@ -4,14 +4,16 @@ import SlamData.Prelude
 
 import Control.Monad.Error.Class (throwError)
 
-import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, (.?), (:=), (~>), jsonEmptyObject, JCursor)
+import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, (.?), (:=), (~>), jsonEmptyObject, JArray)
 import Data.Lens (PrismP, prism')
+
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Workspace.Card.Chart.ChartType as CT
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 import SlamData.Workspace.Card.Chart.BuildOptions as CO
-import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Chart.VisualMapColor (VisualMapColor)
+import SlamData.Workspace.Card.Chart.BuildOptions.Graph (GraphR, buildGraph)
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.Property.ArbJson (runArbJCursor)
@@ -20,19 +22,6 @@ import Test.Property.ArbAggregation (runArbAggregation)
 type LegacyR =
   { chartConfig ∷ CC.ChartConfiguration
   , options ∷ CO.BuildOptions
-  }
-
-type GraphR =
-  { source ∷ JCursor
-  , target ∷ JCursor
-  , size ∷ Maybe JCursor
-  , color ∷ Maybe JCursor
-  , sizeAggregation ∷ Maybe Aggregation
-  , colorAggregation ∷ Maybe Aggregation
-  , vmStart ∷ Maybe VisualMapColor
-  , vmEnd ∷ Maybe VisualMapColor
-  , minSize ∷ Number
-  , maxSize ∷ Number
   }
 
 data ChartConfig
@@ -169,3 +158,10 @@ instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
                    , minSize
                    , maxSize
                    }
+
+buildOptions
+  ∷ ChartConfig
+  → JArray
+  → DSL OptionI
+buildOptions (Legacy r) records = CO.buildOptionsLegacy r.options r.chartConfig records
+buildOptions (Graph r) records = buildGraph r records

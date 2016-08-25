@@ -49,7 +49,6 @@ import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Chart.BuildOptions as BO
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
 import SlamData.Workspace.Card.Component as CC
@@ -132,19 +131,23 @@ eval ∷ ∀ r. Wiring r → CC.CardEvalQuery ~> ChartDSL
 eval wiring = case _ of
   CC.EvalCard value output next → do
     case value.input of
-      Just (Chart options@{ config: Just (CH.Legacy config) }) → do
+      Just (Chart options@{ config: Just config }) → do
         -- TODO: this could possibly be optimised by caching records in the state,
         -- but we'd need to know when the input dataset going into ChartOptions changes.
         -- Basically something equivalent to the old `needsToUpdate`. -gb
         records ←
           either (const []) id
             <$> H.fromAff (Quasar.all wiring options.resource ∷ Slam (Either QE.QError JArray))
-        let optionDSL = BO.buildOptions config.options config.chartConfig records
+        let optionDSL = CH.buildOptions config records --config.options config.chartConfig records
         -- This _must_ be `Reset`. `Set` is for updating existing opts, not setting new.
         H.query unit $ H.action $ HEC.Reset optionDSL
         H.query unit $ H.action HEC.Resize
         setLevelOfDetails $ buildObj optionDSL
-        H.modify (_chartType ?~ config.options.chartType)
+        case config of
+          CH.Legacy r →
+            H.modify (_chartType ?~ r.options.chartType)
+          CH.Graph _ →
+            H.modify (_chartType ?~ Graph)
       _ → do
         H.query unit $ H.action HEC.Clear
         pure unit
