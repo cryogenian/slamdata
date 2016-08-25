@@ -43,6 +43,7 @@ type SelectConfig r =
   { disableWhen ∷ Int → Boolean
   , defaultWhen ∷ Int → Boolean
   , ariaLabel ∷ Maybe String
+  , defaultOption ∷ String
   | r
   }
 
@@ -52,7 +53,10 @@ primarySelect
   ⇒ Maybe String
   → H.Component (S.Select a) (Query a) Slam
 primarySelect mbLabel =
-  select { disableWhen: (_ < 2), defaultWhen: (_ > 1), ariaLabel: mbLabel }
+  select { disableWhen: (_ < 2)
+         , defaultWhen: (_ > 1)
+         , ariaLabel: mbLabel
+         , defaultOption: "Select axis source" }
 
 secondarySelect
   ∷ forall a
@@ -60,7 +64,10 @@ secondarySelect
   ⇒ Maybe String
   → H.Component (S.Select a) (Query a) Slam
 secondarySelect mbLabel =
-  select { disableWhen: (_ < 1), defaultWhen: const true, ariaLabel: mbLabel }
+  select { disableWhen: (_ < 1)
+         , defaultWhen: const true
+         , ariaLabel: mbLabel
+         , defaultOption: "Select axis source" }
 
 select
   ∷ ∀ a r
@@ -107,7 +114,7 @@ render config state =
       [ HP.selected (val == Nothing)
       , HP.value "-1"
       ]
-      [ HH.text "Select axis source" ]
+      [ HH.text config.defaultOption ]
 
   option ∷ Maybe a → a → Int → H.ComponentHTML (Query a)
   option currentVal val i =

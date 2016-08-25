@@ -4,12 +4,14 @@ import SlamData.Prelude
 
 import Control.Monad.Error.Class (throwError)
 
-import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, (.?), (:=), (~>), jsonEmptyObject)
+import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, (.?), (:=), (~>), jsonEmptyObject, JCursor)
 import Data.Lens (PrismP, prism')
 
 import SlamData.Workspace.Card.Chart.ChartType as CT
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 import SlamData.Workspace.Card.Chart.BuildOptions as CO
+import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
+import SlamData.Workspace.Card.Chart.VisualMapColor (VisualMapColor)
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.Property.ArbJson (runArbJCursor)
@@ -21,7 +23,16 @@ type LegacyR =
   }
 
 type GraphR =
-  {
+  { source ∷ JCursor
+  , target ∷ JCursor
+  , size ∷ Maybe JCursor
+  , color ∷ Maybe JCursor
+  , sizeAggregation ∷ Maybe Aggregation
+  , colorAggregation ∷ Maybe Aggregation
+  , vmStart ∷ Maybe VisualMapColor
+  , vmEnd ∷ Maybe VisualMapColor
+  , minSize ∷ Number
+  , maxSize ∷ Number
   }
 
 data ChartConfig
@@ -51,7 +62,29 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
   arbitrary = do
     chartType ← arbitrary
     case chartType of
-      CT.Graph → pure $ Graph {}
+      CT.Graph → do
+        source ← map runArbJCursor arbitrary
+        target ← map runArbJCursor arbitrary
+        size ← map (map runArbJCursor) arbitrary
+        color ← map (map runArbJCursor) arbitrary
+        sizeAggregation ← arbitrary
+        colorAggregation ← arbitrary
+        vmStart ← arbitrary
+        vmEnd ← arbitrary
+        minSize ← arbitrary
+        maxSize ← arbitrary
+        pure
+          $ Graph { source
+                  , target
+                  , size
+                  , color
+                  , sizeAggregation
+                  , colorAggregation
+                  , vmStart
+                  , vmEnd
+                  , minSize
+                  , maxSize
+                  }
       _ → do
         chartConfig ← do
           series ← map (map runArbJCursor) <$> arbitrary
@@ -87,6 +120,16 @@ instance encodeJsonChartConfig ∷ EncodeJson ChartConfig where
     ~> jsonEmptyObject
   encodeJson (Graph r) =
     "configType" := "graph"
+    ~> "source" := r.source
+    ~> "target" := r.target
+    ~> "size" := r.size
+    ~> "color" := r.color
+    ~> "sizeAggregation" := r.sizeAggregation
+    ~> "colorAggregation" := r.colorAggregation
+    ~> "vmStart" := r.vmStart
+    ~> "vmEnd" := r.vmEnd
+    ~> "minSize" := r.minSize
+    ~> "maxSize" := r.maxSize
     ~> jsonEmptyObject
 
 instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
@@ -105,4 +148,24 @@ instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
       configType ← obj .? "configType"
       unless (configType ≡ "graph")
         $ throwError "This config is not graph"
-      pure $ Graph { }
+      source ← obj .? "source"
+      target ← obj .? "target"
+      size ← obj .? "size"
+      color ← obj .? "color"
+      sizeAggregation ← obj .? "sizeAggregation"
+      colorAggregation ← obj .? "colorAggregation"
+      vmStart ← obj .? "vmStart"
+      vmEnd ← obj .? "vmEnd"
+      minSize ← obj .? "minSize"
+      maxSize ← obj .? "maxSize"
+      pure $ Graph { source
+                   , target
+                   , size
+                   , color
+                   , sizeAggregation
+                   , colorAggregation
+                   , vmStart
+                   , vmEnd
+                   , minSize
+                   , maxSize
+                   }

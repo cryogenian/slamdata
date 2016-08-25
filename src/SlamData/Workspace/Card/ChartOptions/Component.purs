@@ -40,7 +40,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
-import SlamData.Form.Select (Select, autoSelect, newSelect, (⊝), ifSelected, trySelect', _value, isSelected)
+import SlamData.Form.Select (autoSelect, newSelect, (⊝), ifSelected, isSelected, setPreviousValueFrom)
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType (CardType(ChartOptions))
 import SlamData.Workspace.Card.CardType as CT
@@ -427,43 +427,47 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    conf ← H.query' cpForm st.chartType $ left $ H.request Form.GetConfiguration
-    when (st.chartType ≡ Graph) do
-      graphConf ← H.query' cpGraph unit $ left $ H.request Graph.GetChartConfig
-      traceAnyA graphConf
-    let
-      rawConfig = fromMaybe Form.initialConfiguration conf
-      mbChartCfg = case st.chartType of
-        Pie | not $ F.any isSelected rawConfig.series → Nothing
-        Pie | not $ F.any isSelected rawConfig.measures → Nothing
-        Bar | not $ F.any isSelected rawConfig.series → Nothing
-        Bar | not $ F.any isSelected rawConfig.measures → Nothing
-        Line | not $ F.any isSelected rawConfig.dimensions → Nothing
-        Line | not $ F.any isSelected rawConfig.measures → Nothing
-        Area | not $ F.any isSelected rawConfig.dimensions → Nothing
-        Area | not $ F.any isSelected rawConfig.measures → Nothing
-        Scatter | not $ F.any isSelected rawConfig.measures → Nothing
-        Radar | not $ F.any isSelected rawConfig.dimensions → Nothing
-        Radar | not $ F.any isSelected rawConfig.measures → Nothing
-        Funnel | not $ F.any isSelected rawConfig.dimensions → Nothing
-        Funnel | not $ F.any isSelected rawConfig.measures → Nothing
-        _ → Just rawConfig
 
-    pure ∘ k $ Card.ChartOptions $ mbChartCfg
-      <#> { chartConfig: _
-          , options:
-            { chartType: st.chartType
-            , axisLabelFontSize: st.axisLabelFontSize
-            , axisLabelAngle: st.axisLabelAngle
-            , areaStacked: st.areaStacked
-            , smooth: st.smooth
-            , bubbleMinSize: st.bubbleMinSize
-            , bubbleMaxSize: st.bubbleMaxSize
-            , funnelOrder: st.funnelOrder
-            , funnelAlign: st.funnelAlign
-            }
-          }
-      <#> CH.Legacy
+    chartConfig ← case st.chartType of
+      Graph →
+        map join $ H.query' cpGraph unit $ left $ H.request Graph.GetChartConfig
+      _ → do
+        conf ← H.query' cpForm st.chartType $ left $ H.request Form.GetConfiguration
+        let
+          rawConfig = fromMaybe Form.initialConfiguration conf
+          mbChartCfg = case st.chartType of
+            Pie | not $ F.any isSelected rawConfig.series → Nothing
+            Pie | not $ F.any isSelected rawConfig.measures → Nothing
+            Bar | not $ F.any isSelected rawConfig.series → Nothing
+            Bar | not $ F.any isSelected rawConfig.measures → Nothing
+            Line | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Line | not $ F.any isSelected rawConfig.measures → Nothing
+            Area | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Area | not $ F.any isSelected rawConfig.measures → Nothing
+            Scatter | not $ F.any isSelected rawConfig.measures → Nothing
+            Radar | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Radar | not $ F.any isSelected rawConfig.measures → Nothing
+            Funnel | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Funnel | not $ F.any isSelected rawConfig.measures → Nothing
+            _ → Just rawConfig
+        pure
+          $ mbChartCfg
+          <#> { chartConfig: _
+              , options:
+                 { chartType: st.chartType
+                 , axisLabelFontSize: st.axisLabelFontSize
+                 , axisLabelAngle: st.axisLabelAngle
+                 , areaStacked: st.areaStacked
+                 , smooth: st.smooth
+                 , bubbleMinSize: st.bubbleMinSize
+                 , bubbleMaxSize: st.bubbleMaxSize
+                 , funnelOrder: st.funnelOrder
+                 , funnelAlign: st.funnelAlign
+                 }
+              }
+          <#> CH.Legacy
+
+    pure ∘ k $ Card.ChartOptions chartConfig
 
   CC.Load card next → do
     case card of
@@ -525,10 +529,7 @@ configure = void do
   setConfigFor ty conf =
     void $ H.query' cpForm ty $ left $ H.action $ Form.SetConfiguration conf
 
-  setPreviousValueFrom
-    ∷ ∀ a. (Eq a) ⇒ Maybe (Select a) → Select a → Select a
-  setPreviousValueFrom mbSel target  =
-    (maybe id trySelect' $ mbSel >>= Lens.view _value) $ target
+
 
   pieBarConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
   pieBarConfiguration axes current =
@@ -706,10 +707,4 @@ configure = void do
        }
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
-peek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate --formPeek ⨁ graphPeek
-
---formPeek ∷ ∀ a. Form.QueryP a → DSL Unit
---formPeek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate
-
---graphPeek ∷ ∀ a. Graph.Query a → DSL Unit
---graphPeek _ = CC.raiseUpdatedP' CC.EvalModelUpdate
+peek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate

@@ -18,7 +18,6 @@ module SlamData.Workspace.Card.ChartOptions.Graph.Component
   , VMStartQuery
   , VMEndState
   , VMEndQuery
-  , VisualMapColor(..)
   , comp
   , initialState
   ) where
@@ -26,6 +25,7 @@ module SlamData.Workspace.Card.ChartOptions.Graph.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
+import Data.Lens (view)
 
 import Global (readFloat, isNaN)
 
@@ -39,51 +39,21 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
-import SlamData.Form.Select (Select, class OptionVal, newSelect, emptySelect)
+import SlamData.Render.Common (row)
+import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value)
+import SlamData.Workspace.Card.Chart.ChartConfiguration (depends, dependsOnArr)
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Form.Component.CSS as FCSS
+import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Chart.VisualMapColor (VisualMapColor, allVisualMapColors)
 
-import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, aggregationSelectWithNone)
-
-data VisualMapColor
-  = Blue
-  | Purple
-  | Orange
-  | Red
-  | Green
-  | Yellow
-  | White
-  | Black
-
-allVisualMapColors ∷ Array VisualMapColor
-allVisualMapColors =
-  [ Blue
-  , Purple
-  , Orange
-  , Red
-  , Green
-  , Yellow
-  , White
-  , Black
-  ]
-
-derive instance eqVisualMapColor ∷ Eq VisualMapColor
-instance optionValVisualMapColor ∷ OptionVal VisualMapColor where
-  stringVal Blue = "Blue"
-  stringVal Purple = "Purple"
-  stringVal Orange = "Orange"
-  stringVal Red = "Red"
-  stringVal Green = "Green"
-  stringVal Yellow = "Yellow"
-  stringVal White = "White"
-  stringVal Black = "Black"
 
 data Query a
-  = GetChartConfig (CH.ChartConfig → a)
+  = GetChartConfig (Maybe CH.ChartConfig → a)
   | UpdateAxes Axes a
   | ToggleCircularLayout a
   | SetMinNodeSize String a
@@ -93,10 +63,7 @@ type State =
   { circular ∷ Boolean
   , maxSize ∷ Number
   , minSize ∷ Number
-  , source ∷ Select JCursor
-  , target ∷ Select JCursor
-  , size ∷ Select JCursor
-  , color ∷ Select JCursor
+  , axes ∷ Axes
   }
 
 initialState ∷ State
@@ -104,10 +71,7 @@ initialState =
   { circular: false
   , maxSize: 50.0
   , minSize: 1.0
-  , source: emptySelect
-  , target: emptySelect
-  , size: emptySelect
-  , color: emptySelect
+  , axes: { value: [], category: [], time: [] }
   }
 
 type ChildSlot =
@@ -115,8 +79,8 @@ type ChildSlot =
 
 type SourceState = Select JCursor
 type TargetState = Select JCursor
-type SizeState = P.StateP (Maybe Aggregation) JCursor
-type ColorState = P.StateP (Maybe Aggregation) JCursor
+type SizeState = P.StateP Aggregation JCursor
+type ColorState = P.StateP Aggregation JCursor
 type VMStartState = Select VisualMapColor
 type VMEndState = Select VisualMapColor
 
@@ -126,11 +90,11 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 
 type SourceQuery = S.Query JCursor
 type TargetQuery = S.Query JCursor
-type SizeQuery = P.QueryP (Maybe Aggregation) JCursor
-type SizeAggQuery = S.Query (Maybe Aggregation)
+type SizeQuery = P.QueryP Aggregation JCursor
+type SizeAggQuery = S.Query Aggregation
 type SizeSelQuery = S.Query JCursor
-type ColorQuery = P.QueryP (Maybe Aggregation) JCursor
-type ColorAggQuery = S.Query (Maybe Aggregation)
+type ColorQuery = P.QueryP Aggregation JCursor
+type ColorAggQuery = S.Query Aggregation
 type ColorSelQuery = S.Query JCursor
 type VMStartQuery = S.Query VisualMapColor
 type VMEndQuery = S.Query VisualMapColor
@@ -194,38 +158,40 @@ render state =
   HH.div [ HP.classes [ FCSS.chartEditor ] ]
     [ renderSource state
     , renderTarget state
+    , HH.hr_
     , renderSize state
+    , HH.hr_
     , renderColor state
     , renderVMStart state
     , renderVMEnd state
-    , renderMaxSize state
-    , renderMinSize state
-    , renderCircular state
+    , HH.hr_
+    , row [ renderMaxSize state, renderMinSize state ]
+    , row [ renderCircular state ]
     ]
 
 renderSource ∷ State → HTML
 renderSource state =
   HH.form
-    [ HP.classes [ ]
+    [ HP.classes [ FCSS.chartConfigureForm]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Edge source" ]
     , HH.slot' cpSource unit \_ →
        { component: S.primarySelect (pure "Edge source")
-       , initialState: state.source
+       , initialState: emptySelect
        }
     ]
 
 renderTarget ∷ State → HTML
 renderTarget state =
   HH.form
-    [ HP.classes [ ]
+    [ HP.classes [ FCSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Edge target" ]
-    , HH.slot' cpSource unit \_ →
-       { component: S.primarySelect (pure "Edge target")
-       , initialState: state.source
+    , HH.slot' cpTarget unit \_ →
+       { component: S.secondarySelect (pure "Edge target")
+       , initialState: emptySelect
        }
     ]
 
@@ -240,11 +206,12 @@ renderSize state =
        { component:
            P.selectPair { disableWhen: (_ < 1)
                         , defaultWhen: (const true)
-                        , mainState: state.size
+                        , mainState: emptySelect
                         , ariaLabel: Just "Node size"
                         , classes: [ B.btnPrimary, FCSS.aggregation]
+                        , defaultOption: "Select axis source"
                         }
-       , initialState: H.parentState $ P.initialState aggregationSelectWithNone
+       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
        }
     ]
 
@@ -259,11 +226,12 @@ renderColor state =
        { component:
            P.selectPair { disableWhen: (_ < 1)
                         , defaultWhen: (const true)
-                        , mainState: state.color
+                        , mainState: emptySelect
                         , ariaLabel: Just "Color mapping"
+                        , defaultOption: "Select axis source"
                         , classes: [ B.btnPrimary, FCSS.aggregation]
                         }
-       , initialState: H.parentState $ P.initialState aggregationSelectWithNone
+       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
        }
     ]
 
@@ -271,10 +239,15 @@ renderVMStart ∷ State → HTML
 renderVMStart state =
   HH.form
     [ Cp.nonSubmit
+    , HP.classes [ FCSS.chartConfigureForm ]
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Visual map start color" ]
     , HH.slot' cpVMStart unit \_ →
-       { component: S.primarySelect (pure "Visual map start color")
+       { component: S.select { disableWhen: (_ < 1)
+                             , defaultWhen: (const true)
+                             , ariaLabel: pure "Visual map start color"
+                             , defaultOption: "Select visual map start color"
+                             }
        , initialState: newSelect allVisualMapColors
        }
     ]
@@ -283,10 +256,15 @@ renderVMEnd ∷ State → HTML
 renderVMEnd state =
   HH.form
     [ Cp.nonSubmit
+    , HP.classes [ FCSS.chartConfigureForm ]
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Visual map end color" ]
     , HH.slot' cpVMEnd unit \_ →
-        { component: S.primarySelect (pure "Visual map end color")
+       { component: S.select { disableWhen: (_ < 1)
+                             , defaultWhen: const true
+                             , ariaLabel: pure "Visual map end color"
+                             , defaultOption: "Select visual map start color"
+                             }
         , initialState: newSelect allVisualMapColors
         }
     ]
@@ -339,19 +317,43 @@ renderCircular state =
 eval ∷ Query ~> DSL
 eval (ToggleCircularLayout next) =
   next <$ H.modify \x → x{circular = not x.circular}
-eval (GetChartConfig continue) =
-  pure $  continue $ CH.Graph {}
+eval (GetChartConfig continue) = do
+  st ← H.get
+  source ←
+    H.query' cpSource unit $ H.request S.GetSelect
+  target ←
+    H.query' cpTarget unit $ H.request S.GetSelect
+  sizeSel ←
+    H.query' cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  sizeAgg ←
+    H.query' cpSize unit $ left $ H.request S.GetSelect
+  colorSel ←
+    H.query' cpColor unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  colorAgg ←
+    H.query' cpColor unit $ left $ H.request S.GetSelect
+  vmStart ←
+    H.query' cpVMStart unit $ H.request S.GetSelect
+  vmEnd ←
+    H.query' cpVMEnd unit $ H.request S.GetSelect
+  let
+    graphRecord =
+      { source: _
+      , target: _
+      , size: sizeSel >>= view _value
+      , color: colorSel >>= view _value
+      , sizeAggregation: sizeAgg >>= view _value
+      , colorAggregation: colorAgg >>= view _value
+      , vmStart: vmStart >>= view _value
+      , vmEnd: vmEnd >>= view _value
+      , minSize: st.minSize
+      , maxSize: st.maxSize
+      }
+      <$> (source >>= view _value)
+      <*> (target >>= view _value)
+  pure $ continue $ map CH.Graph graphRecord
 eval (UpdateAxes axes next) = do
-  traceAnyA axes
-  H.modify _{ source = newSelect (axes.category ⊕ axes.value)
-            , target = newSelect (axes.category ⊕ axes.value)
-            , size = newSelect axes.value
-            , color = newSelect axes.value
-            }
-  H.query' cpSource unit $ H.action $ S.SetSelect $ newSelect (axes.category ⊕ axes.value)
-  H.query' cpTarget unit $ H.action $ S.SetSelect $ newSelect (axes.category ⊕ axes.value)
-  H.query' cpSize unit $ right $ H.ChildF unit $ H.action $ S.SetSelect $ newSelect axes.value
-  H.query' cpColor unit $ right $ H.ChildF unit $ H.action $ S.SetSelect $ newSelect axes.value
+  H.modify _{ axes = axes }
+  synchronizeChildren
   pure next
 eval (SetMaxNodeSize str next) = do
   let fl = readFloat str
@@ -364,40 +366,81 @@ eval (SetMinNodeSize str next) = do
 
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
-peek =
-  peekSource
-  ⨁ peekTarget
-  ⨁ (peekSizeAgg ⨁ (peekSizeSel ∘ H.runChildF))
-  ⨁ (peekColorAgg ⨁ (peekColorSel ∘ H.runChildF))
-  ⨁ peekVMStart
-  ⨁ peekVMEnd
+peek _ = synchronizeChildren
 
-peekSource ∷ ∀ a. SourceQuery a → DSL Unit
-peekSource (S.Choose i _) = pure unit
-peekSource _ = pure unit
+synchronizeChildren ∷ DSL Unit
+synchronizeChildren = void do
+  st ← H.get
+  source ←
+    H.query' cpSource unit $ H.request S.GetSelect
+  target ←
+    H.query' cpTarget unit $ H.request S.GetSelect
+  sizeSel ←
+    H.query' cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  sizeAgg ←
+    H.query' cpSize unit $ left $ H.request S.GetSelect
+  colorSel ←
+    H.query' cpColor unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  colorAgg ←
+    H.query' cpColor unit $ left $ H.request S.GetSelect
 
-peekTarget ∷ ∀ a. TargetQuery a → DSL Unit
-peekTarget (S.Choose i _) = pure unit
-peekTarget _ = pure unit
+  vmStart ←
+    H.query' cpVMStart unit $ H.request S.GetSelect
+  vmEnd ←
+    H.query' cpVMEnd unit $ H.request S.GetSelect
 
-peekVMStart ∷ ∀ a. VMStartQuery a → DSL Unit
-peekVMStart (S.Choose i _) = pure unit
-peekVMStart _ = pure unit
+  let
+    categoryAndValues = st.axes.category ⊕ st.axes.value
 
-peekVMEnd ∷ ∀ a. VMEndQuery a → DSL Unit
-peekVMEnd (S.Choose i _) = pure unit
-peekVMEnd _ = pure unit
+    newSource =
+      setPreviousValueFrom source
+        $ autoSelect
+        $ newSelect
+        $ dependsOnArr categoryAndValues
+        $ categoryAndValues
+    newTarget =
+      setPreviousValueFrom target
+        $ autoSelect
+        $ newSelect
+        $ depends newSource
+        $ ifSelected [newSource]
+        $ categoryAndValues ⊝ newSource
 
-peekSizeSel ∷ ∀ a. SizeSelQuery a → DSL Unit
-peekSizeSel (S.Choose i _) = pure unit
-peekSizeSel _ = pure unit
+    newSize =
+      setPreviousValueFrom sizeSel
+      $ autoSelect
+      $ newSelect
+      $ ifSelected [newTarget]
+      $ st.axes.value
+    newColor =
+      setPreviousValueFrom colorSel
+      $ autoSelect
+      $ newSelect
+      $ ifSelected [newTarget]
+      $ st.axes.value
+    newSizeAggregation =
+      setPreviousValueFrom sizeAgg nonMaybeAggregationSelect
+    newColorAggregation =
+      setPreviousValueFrom colorAgg nonMaybeAggregationSelect
 
-peekSizeAgg ∷ ∀ a. SizeAggQuery a → DSL Unit
-peekSizeAgg _ = pure unit
+    newVMStart =
+      setPreviousValueFrom vmStart
+        $ newSelect
+        $ ifSelected [newColor]
+        $ allVisualMapColors
 
-peekColorSel ∷ ∀ a. ColorSelQuery a → DSL Unit
-peekColorSel (S.Choose i _) = pure unit
-peekColorSel _ = pure unit
+    newVMEnd =
+      setPreviousValueFrom vmEnd
+        $ newSelect
+        $ ifSelected [newColor]
+        $ ifSelected [newVMStart]
+        $ allVisualMapColors ⊝ newVMStart
 
-peekColorAgg ∷ ∀ a. ColorAggQuery a → DSL Unit
-peekColorAgg _ = pure unit
+  H.query' cpSource unit $ H.action $ S.SetSelect newSource
+  H.query' cpTarget unit $ H.action $ S.SetSelect newTarget
+  H.query' cpSize unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSize
+  H.query' cpSize unit $ left $ H.action $ S.SetSelect newSizeAggregation
+  H.query' cpColor unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newColor
+  H.query' cpColor unit $ left $ H.action $ S.SetSelect newColorAggregation
+  H.query' cpVMStart unit $ H.action $ S.SetSelect newVMStart
+  H.query' cpVMEnd unit $ H.action $ S.SetSelect newVMEnd
