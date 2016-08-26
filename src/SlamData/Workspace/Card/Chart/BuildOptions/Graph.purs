@@ -108,7 +108,11 @@ buildGraphData axesMap r =
 
   names ∷ Array (Maybe String)
   names =
-    map (flip bind $ either (const Nothing) Just) sources
+    -- I'm not sure about this, when this is set to `either (const Nothing) Just`
+    -- graphs that has measure axes in source and target field would show only one point
+    -- w/o selecting color and size. But in this case we have name "86.0" but number
+    -- used as source is supposed to be an index of node.
+    map (flip bind $ either (const Nothing) Just) $ sources ⊕ targets
 
   sizes ∷ Array (Maybe Number)
   sizes =
@@ -180,3 +184,6 @@ buildGraph r records = do
     traverse_ E.symbolSize $ map Int.floor item.size
     traverse_ E.value item.size
     traverse_ E.name item.name
+    E.label do
+      E.normal E.hidden
+      E.emphasis E.hidden
