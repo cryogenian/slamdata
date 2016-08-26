@@ -58,7 +58,9 @@ buildBar axes angle size conf = do
     E.axisType ET.Category
     E.items $ map ET.strItem catVals
     E.interval 0
-    addAxisLabelAngleAndFontSize angle size
+    E.axisLabel do
+      addAxisLabelAngleAndFontSize angle size
+      E.interval 0
 
   E.yAxis $ E.axisType ET.Value
   E.legend do
