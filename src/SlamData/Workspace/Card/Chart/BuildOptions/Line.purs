@@ -58,7 +58,7 @@ buildLine axes angle size conf = do
     E.axisType $ fst xAxisPair
     traverse_ E.interval $ snd xAxisPair
     E.items $ map ET.strItem catVals
-    addAxisLabelAngleAndFontSize angle size
+    E.axisLabel $ addAxisLabelAngleAndFontSize angle size
 
   E.yAxes do
     E.addYAxis yAxis

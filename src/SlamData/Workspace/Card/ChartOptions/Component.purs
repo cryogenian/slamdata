@@ -522,6 +522,8 @@ cardEval = case _ of
           H.query' cpForm st.chartType
             $ left
             $ H.action $ Form.SetConfiguration chartConfig
+        for_ (model >>= Lens.preview CH._Graph) \graphConfig →
+          H.query' cpGraph unit $ left $ H.action $ Graph.Load graphConfig
       _ → pure unit
     pure next
   CC.SetDimensions dims next → do

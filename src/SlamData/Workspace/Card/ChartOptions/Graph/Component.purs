@@ -14,10 +14,6 @@ module SlamData.Workspace.Card.ChartOptions.Graph.Component
   , SizeQuery
   , ColorState
   , ColorQuery
-  , VMStartState
-  , VMStartQuery
-  , VMEndState
-  , VMEndQuery
   , comp
   , initialState
   ) where
@@ -25,6 +21,7 @@ module SlamData.Workspace.Card.ChartOptions.Graph.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
+import Data.Array as Arr
 import Data.Lens (view)
 
 import Global (readFloat, isNaN)
@@ -40,7 +37,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value)
+import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, trySelect')
 import SlamData.Workspace.Card.Chart.ChartConfiguration (depends, dependsOnArr)
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
@@ -49,7 +46,7 @@ import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Form.Component.CSS as FCSS
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
-import SlamData.Workspace.Card.Chart.VisualMapColor (VisualMapColor, allVisualMapColors)
+import SlamData.Workspace.Card.Chart.BuildOptions.Graph (GraphR)
 
 
 data Query a
@@ -58,6 +55,7 @@ data Query a
   | ToggleCircularLayout a
   | SetMinNodeSize String a
   | SetMaxNodeSize String a
+  | Load GraphR a
 
 type State =
   { circular ∷ Boolean
@@ -75,17 +73,15 @@ initialState =
   }
 
 type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit
+  Unit ⊹ Unit ⊹ Unit ⊹ Unit
 
 type SourceState = Select JCursor
 type TargetState = Select JCursor
 type SizeState = P.StateP Aggregation JCursor
-type ColorState = P.StateP Aggregation JCursor
-type VMStartState = Select VisualMapColor
-type VMEndState = Select VisualMapColor
+type ColorState = Select JCursor
 
 type ChildState =
-  SourceState ⊹ TargetState ⊹ SizeState ⊹ ColorState ⊹ VMStartState ⊹VMEndState
+  SourceState ⊹ TargetState ⊹ SizeState ⊹ ColorState
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 
 type SourceQuery = S.Query JCursor
@@ -93,14 +89,10 @@ type TargetQuery = S.Query JCursor
 type SizeQuery = P.QueryP Aggregation JCursor
 type SizeAggQuery = S.Query Aggregation
 type SizeSelQuery = S.Query JCursor
-type ColorQuery = P.QueryP Aggregation JCursor
-type ColorAggQuery = S.Query Aggregation
-type ColorSelQuery = S.Query JCursor
-type VMStartQuery = S.Query VisualMapColor
-type VMEndQuery = S.Query VisualMapColor
+type ColorQuery = S.Query JCursor
 
 type ChildQuery =
-  SourceQuery ⨁ TargetQuery ⨁ SizeQuery ⨁ ColorQuery ⨁ VMStartQuery ⨁ VMEndQuery
+  SourceQuery ⨁ TargetQuery ⨁ SizeQuery ⨁ ColorQuery
 type QueryP =
   Query ⨁ (H.ChildF ChildSlot ChildQuery)
 
@@ -130,21 +122,9 @@ cpColor
       ColorState ChildState
       ColorQuery ChildQuery
       Unit ChildSlot
-cpColor = cpR :> cpR :> cpR :> cpL
+cpColor = cpR :> cpR :> cpR
 
-cpVMStart
-  ∷ ChildPath
-      VMStartState ChildState
-      VMStartQuery ChildQuery
-      Unit ChildSlot
-cpVMStart = cpR :> cpR :> cpR :> cpR :> cpL
 
-cpVMEnd
-  ∷ ChildPath
-      VMEndState ChildState
-      VMEndQuery ChildQuery
-      Unit ChildSlot
-cpVMEnd = cpR :> cpR :> cpR :> cpR :> cpR
 
 
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
@@ -162,8 +142,6 @@ render state =
     , renderSize state
     , HH.hr_
     , renderColor state
-    , renderVMStart state
-    , renderVMEnd state
     , HH.hr_
     , row [ renderMaxSize state, renderMinSize state ]
     , row [ renderCircular state ]
@@ -221,52 +199,11 @@ renderColor state =
     [ HP.classes [ FCSS.withAggregation, FCSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Color mapping" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Node category" ]
     , HH.slot' cpColor unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Color mapping"
-                        , defaultOption: "Select axis source"
-                        , classes: [ B.btnPrimary, FCSS.aggregation]
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
+       { component: S.secondarySelect (pure "Node category")
+       , initialState: emptySelect
        }
-    ]
-
-renderVMStart ∷ State → HTML
-renderVMStart state =
-  HH.form
-    [ Cp.nonSubmit
-    , HP.classes [ FCSS.chartConfigureForm ]
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Visual map start color" ]
-    , HH.slot' cpVMStart unit \_ →
-       { component: S.select { disableWhen: (_ < 1)
-                             , defaultWhen: (const true)
-                             , ariaLabel: pure "Visual map start color"
-                             , defaultOption: "Select visual map start color"
-                             }
-       , initialState: newSelect allVisualMapColors
-       }
-    ]
-
-renderVMEnd ∷ State → HTML
-renderVMEnd state =
-  HH.form
-    [ Cp.nonSubmit
-    , HP.classes [ FCSS.chartConfigureForm ]
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Visual map end color" ]
-    , HH.slot' cpVMEnd unit \_ →
-       { component: S.select { disableWhen: (_ < 1)
-                             , defaultWhen: const true
-                             , ariaLabel: pure "Visual map end color"
-                             , defaultOption: "Select visual map start color"
-                             }
-        , initialState: newSelect allVisualMapColors
-        }
     ]
 
 renderMaxSize ∷ State → HTML
@@ -327,33 +264,26 @@ eval (GetChartConfig continue) = do
     H.query' cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
   sizeAgg ←
     H.query' cpSize unit $ left $ H.request S.GetSelect
-  colorSel ←
-    H.query' cpColor unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  colorAgg ←
-    H.query' cpColor unit $ left $ H.request S.GetSelect
-  vmStart ←
-    H.query' cpVMStart unit $ H.request S.GetSelect
-  vmEnd ←
-    H.query' cpVMEnd unit $ H.request S.GetSelect
+  color ←
+    H.query' cpColor unit $ H.request S.GetSelect
   let
     graphRecord =
       { source: _
       , target: _
       , size: sizeSel >>= view _value
-      , color: colorSel >>= view _value
+      , color: color >>= view _value
       , sizeAggregation: sizeAgg >>= view _value
-      , colorAggregation: colorAgg >>= view _value
-      , vmStart: vmStart >>= view _value
-      , vmEnd: vmEnd >>= view _value
       , minSize: st.minSize
       , maxSize: st.maxSize
+      , circular: st.circular
+      , axes: st.axes
       }
       <$> (source >>= view _value)
       <*> (target >>= view _value)
   pure $ continue $ map CH.Graph graphRecord
 eval (UpdateAxes axes next) = do
   H.modify _{ axes = axes }
-  synchronizeChildren
+  synchronizeChildren Nothing
   pure next
 eval (SetMaxNodeSize str next) = do
   let fl = readFloat str
@@ -363,13 +293,19 @@ eval (SetMinNodeSize str next) = do
   let fl = readFloat str
   unless (isNaN fl) $ H.modify _{minSize = fl}
   pure next
+eval (Load r next) = do
+  H.modify _{axes = r.axes}
+  synchronizeChildren $ Just r
 
+  H.modify _{circular = r.circular, minSize = r.minSize, maxSize = r.maxSize}
+
+  pure next
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
-peek _ = synchronizeChildren
+peek _ = synchronizeChildren Nothing
 
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = void do
+synchronizeChildren ∷ Maybe GraphR → DSL Unit
+synchronizeChildren r = void do
   st ← H.get
   source ←
     H.query' cpSource unit $ H.request S.GetSelect
@@ -379,68 +315,57 @@ synchronizeChildren = void do
     H.query' cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
   sizeAgg ←
     H.query' cpSize unit $ left $ H.request S.GetSelect
-  colorSel ←
-    H.query' cpColor unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  colorAgg ←
-    H.query' cpColor unit $ left $ H.request S.GetSelect
-
-  vmStart ←
-    H.query' cpVMStart unit $ H.request S.GetSelect
-  vmEnd ←
-    H.query' cpVMEnd unit $ H.request S.GetSelect
+  color ←
+    H.query' cpColor unit $ H.request S.GetSelect
 
   let
     categoryAndValues = st.axes.category ⊕ st.axes.value
+    isSourceCategory = isJust $ source >>= view _value >>= flip Arr.elemIndex st.axes.category
+    isSourceValue = isJust $ source >>= view _value >>= flip Arr.elemIndex st.axes.value
 
     newSource =
       setPreviousValueFrom source
+        $ (maybe id trySelect' $ r <#> _.source)
         $ autoSelect
         $ newSelect
         $ dependsOnArr categoryAndValues
         $ categoryAndValues
+
     newTarget =
       setPreviousValueFrom target
+        $ (maybe id trySelect' $ r <#> _.target)
         $ autoSelect
         $ newSelect
         $ depends newSource
         $ ifSelected [newSource]
-        $ categoryAndValues ⊝ newSource
+        $ (if isSourceCategory
+           then st.axes.category
+           else if isSourceValue
+                then st.axes.value
+                else categoryAndValues) ⊝ newSource
 
     newSize =
       setPreviousValueFrom sizeSel
+      $ (maybe id trySelect' $ r >>= _.size)
       $ autoSelect
       $ newSelect
       $ ifSelected [newTarget]
-      $ st.axes.value
+      $ st.axes.value ⊝ newSource ⊝ newTarget
     newColor =
-      setPreviousValueFrom colorSel
+      setPreviousValueFrom color
+      $ (maybe id trySelect' $ r >>= _.color)
       $ autoSelect
       $ newSelect
       $ ifSelected [newTarget]
-      $ st.axes.value
+      $ st.axes.category ⊝ newSource ⊝ newTarget
+
     newSizeAggregation =
-      setPreviousValueFrom sizeAgg nonMaybeAggregationSelect
-    newColorAggregation =
-      setPreviousValueFrom colorAgg nonMaybeAggregationSelect
-
-    newVMStart =
-      setPreviousValueFrom vmStart
-        $ newSelect
-        $ ifSelected [newColor]
-        $ allVisualMapColors
-
-    newVMEnd =
-      setPreviousValueFrom vmEnd
-        $ newSelect
-        $ ifSelected [newColor]
-        $ ifSelected [newVMStart]
-        $ allVisualMapColors ⊝ newVMStart
+      setPreviousValueFrom sizeAgg
+      $ (maybe id trySelect' $ r >>= _.sizeAggregation)
+      $ nonMaybeAggregationSelect
 
   H.query' cpSource unit $ H.action $ S.SetSelect newSource
   H.query' cpTarget unit $ H.action $ S.SetSelect newTarget
   H.query' cpSize unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSize
   H.query' cpSize unit $ left $ H.action $ S.SetSelect newSizeAggregation
-  H.query' cpColor unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newColor
-  H.query' cpColor unit $ left $ H.action $ S.SetSelect newColorAggregation
-  H.query' cpVMStart unit $ H.action $ S.SetSelect newVMStart
-  H.query' cpVMEnd unit $ H.action $ S.SetSelect newVMEnd
+  H.query' cpColor unit $ H.action $ S.SetSelect newColor

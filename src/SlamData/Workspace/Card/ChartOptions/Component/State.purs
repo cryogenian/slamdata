@@ -46,7 +46,7 @@ import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
+import SlamData.Workspace.Card.Chart.ChartType as CT
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC)
 import SlamData.Workspace.Card.ChartOptions.Model (Model)
 import SlamData.Workspace.Card.Chart.Config (ChartConfig(..))
@@ -55,27 +55,27 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.ChartOptions.Component.Install (ChildQuery, ChildSlot, ChildState)
 
 type State =
-  { chartType ∷ ChartType
-  , availableChartTypes ∷ Set.Set ChartType
+  { chartType ∷ CT.ChartType
+  , availableChartTypes ∷ Set.Set CT.ChartType
   , axes ∷ Axes
   , axisLabelFontSize ∷ Int
   , axisLabelAngle ∷ Int
   , levelOfDetails ∷ LevelOfDetails
-  , areaStacked :: Boolean
-  , smooth :: Boolean
-  , bubbleMinSize :: Number
-  , bubbleMaxSize :: Number
-  , funnelOrder :: String
-  , funnelAlign :: String
-  , minColorVal :: Number
-  , maxColorVal :: Number
-  , colorScheme :: String
-  , colorReversed :: Boolean
+  , areaStacked ∷ Boolean
+  , smooth ∷ Boolean
+  , bubbleMinSize ∷ Number
+  , bubbleMaxSize ∷ Number
+  , funnelOrder ∷ String
+  , funnelAlign ∷ String
+  , minColorVal ∷ Number
+  , maxColorVal ∷ Number
+  , colorScheme ∷ String
+  , colorReversed ∷ Boolean
   }
 
 initialState ∷ State
 initialState =
-  { chartType: Pie
+  { chartType: CT.Pie
   , availableChartTypes: Set.empty
   , axes: {value: [], category: [], time: []}
   , axisLabelFontSize: 12
@@ -158,6 +158,8 @@ fromModel (Just (Legacy {options})) =
     , colorScheme = options.colorScheme
     , colorReversed = options.colorReversed
     }
+fromModel (Just (Graph _)) =
+  initialState { chartType = CT.Graph }
 fromModel _ = initialState
 
 

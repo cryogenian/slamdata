@@ -131,8 +131,14 @@ render config state =
 
 eval ∷ ∀ a b. (Eq a, Eq b) ⇒ Query a ~> DSL a b
 eval (Choose i next) = do
-  H.modify (_opened .~ false)
-  H.modify (_model %~ S.trySelect i)
+  H.modify
+    $ (_opened .~ false)
+    ∘ (_model %~ S.trySelect i)
+  pure next
+eval (TrySelect val next) = do
+  H.modify
+    $ (_opened .~ false)
+    ∘ (_model %~ S.trySelect' val)
   pure next
 eval (SetSelect sel next) = H.modify (_model .~ sel) $> next
 eval (GetValue continue) = map continue $ H.gets $ view $ _model <<< S._value

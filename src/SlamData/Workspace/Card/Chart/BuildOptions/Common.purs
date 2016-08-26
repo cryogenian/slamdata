@@ -31,7 +31,7 @@ import Data.Unfoldable (replicate)
 import Color (Color, toRGBA, hsla, toHSLA)
 
 import ECharts.Monad (DSL)
-import ECharts.Types.Phantom (AxisI)
+import ECharts.Types.Phantom (AxisLabelI)
 import ECharts.Commands as E
 
 import SlamData.Form.Select (_value)
@@ -225,13 +225,12 @@ commonNameMap fn catVals = mapByCategories ∘ fn ∘ groupByCategories
   alterNamed n ns = Just $ A.cons n $ fromMaybe [] ns
 
 
-addAxisLabelAngleAndFontSize ∷ ∀ i. Int → Int → DSL (AxisI i)
+addAxisLabelAngleAndFontSize ∷ Int → Int → DSL AxisLabelI
 addAxisLabelAngleAndFontSize angle size = do
-  E.axisLabel do
-    E.rotate $ toNumber angle
-    E.textStyle do
-      E.fontSize size
-      E.fontFamily "Ubuntu, sans"
+  E.rotate $ toNumber angle
+  E.textStyle do
+    E.fontSize size
+    E.fontFamily "Ubuntu, sans"
 
 type LabeledPointPairs = M.Map Key ((Array Number) × (Array Number))
 type LineData = List (Key × (Number × Number))

@@ -54,22 +54,24 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
         size ← map (map runArbJCursor) arbitrary
         color ← map (map runArbJCursor) arbitrary
         sizeAggregation ← arbitrary
-        colorAggregation ← arbitrary
-        vmStart ← arbitrary
-        vmEnd ← arbitrary
         minSize ← arbitrary
         maxSize ← arbitrary
+        circular ← arbitrary
+        axes ← do
+          value ← map (map runArbJCursor) arbitrary
+          time ← map (map runArbJCursor) arbitrary
+          category ← map (map runArbJCursor) arbitrary
+          pure {value, time, category}
         pure
           $ Graph { source
                   , target
                   , size
                   , color
                   , sizeAggregation
-                  , colorAggregation
-                  , vmStart
-                  , vmEnd
                   , minSize
                   , maxSize
+                  , circular
+                  , axes
                   }
       _ → do
         chartConfig ← CC.genChartConfiguration
@@ -88,11 +90,13 @@ instance encodeJsonChartConfig ∷ EncodeJson ChartConfig where
     ~> "size" := r.size
     ~> "color" := r.color
     ~> "sizeAggregation" := r.sizeAggregation
-    ~> "colorAggregation" := r.colorAggregation
-    ~> "vmStart" := r.vmStart
-    ~> "vmEnd" := r.vmEnd
     ~> "minSize" := r.minSize
     ~> "maxSize" := r.maxSize
+    ~> "circular" := r.circular
+    ~> "axes" := ("value" := r.axes.value
+                  ~> "time" := r.axes.time
+                  ~> "category" := r.axes.category
+                  ~> jsonEmptyObject)
     ~> jsonEmptyObject
 
 instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
@@ -116,21 +120,24 @@ instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
       size ← obj .? "size"
       color ← obj .? "color"
       sizeAggregation ← obj .? "sizeAggregation"
-      colorAggregation ← obj .? "colorAggregation"
-      vmStart ← obj .? "vmStart"
-      vmEnd ← obj .? "vmEnd"
       minSize ← obj .? "minSize"
       maxSize ← obj .? "maxSize"
+      circular ← obj .? "circular"
+      jsAxes ← obj .? "axes"
+      axes ← do
+        value ← jsAxes .? "value"
+        category ← jsAxes .? "category"
+        time ← jsAxes .? "time"
+        pure {value, category, time}
       pure $ Graph { source
                    , target
                    , size
                    , color
                    , sizeAggregation
-                   , colorAggregation
-                   , vmStart
-                   , vmEnd
                    , minSize
                    , maxSize
+                   , circular
+                   , axes
                    }
 
 buildOptions

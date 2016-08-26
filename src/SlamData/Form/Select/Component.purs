@@ -37,6 +37,7 @@ data Query s a
   | SetSelect (S.Select s) a
   | GetValue (Maybe s → a)
   | GetSelect (S.Select s → a)
+  | TrySelect s a
   | ToggleOpened a
 
 type SelectConfig r =
@@ -130,3 +131,4 @@ eval (SetSelect s next) = H.set s $> next
 eval (GetValue continue) = map continue $ H.gets (_ ^. S._value)
 eval (GetSelect continue) = map continue H.get
 eval (ToggleOpened next) = pure next
+eval (TrySelect val next) = H.modify (S.trySelect' val) $> next

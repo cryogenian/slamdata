@@ -93,7 +93,7 @@ buildArea axes angle size stacked smooth conf = do
     E.axisLine $ E.lineStyle do
       E.width 1
       E.color $ C.rgba 184 184 184 0.8
-    addAxisLabelAngleAndFontSize angle size
+    E.axisLabel $ addAxisLabelAngleAndFontSize angle size
 
   E.colors colors
 
