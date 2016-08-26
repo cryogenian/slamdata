@@ -37,24 +37,24 @@ type Axes =
   , category ∷ Array JCursor
   }
 
-isValAxis :: Axis -> Boolean
+isValAxis ∷ Axis → Boolean
 isValAxis (ValAxis _) = true
 isValAxis _ = false
 
-isCatAxis :: Axis -> Boolean
+isCatAxis ∷ Axis → Boolean
 isCatAxis (CatAxis _) = true
 isCatAxis _ = false
 
-isTimeAxis :: Axis -> Boolean
+isTimeAxis ∷ Axis → Boolean
 isTimeAxis (TimeAxis _) = true
 isTimeAxis _ = false
 
-runAxis :: Axis -> List (Maybe Semantics)
+runAxis ∷ Axis → List (Maybe Semantics)
 runAxis (ValAxis a) = a
 runAxis (CatAxis a) = a
 runAxis (TimeAxis a) = a
 
-checkSemantics :: List (Maybe Semantics) -> Maybe Axis
+checkSemantics ∷ List (Maybe Semantics) → Maybe Axis
 checkSemantics lst =
       (ValAxis  <$> checkValues lst)
   <|> (ValAxis  <$> checkMoney lst)
@@ -63,7 +63,7 @@ checkSemantics lst =
   <|> (TimeAxis <$> checkTime lst)
   <|> (CatAxis  <$> checkCategory lst)
 
-analyzeJArray :: JArray -> M.Map JCursor Axis
+analyzeJArray ∷ JArray → M.Map JCursor Axis
 analyzeJArray arr =
   -- If array has exactly one element return it
   do guard $ length arr == 1
@@ -88,35 +88,35 @@ analyzeJArray arr =
   where
   -- | Translate encoded {foo: 1, bar: 2}
   -- | to [{key: "foo", value: 1}, {key: "bar", value: 2}]
-  toKeyValJArray :: Json -> JArray
+  toKeyValJArray ∷ Json → JArray
   toKeyValJArray =
     decodeJson >>> (map toKeyValJsons) >>> either (const []) fromFoldable
 
   -- | same as `toKeyValJArray` but argument isn't encoded and it returns `List`
-  toKeyValJsons :: JObject -> List Json
+  toKeyValJsons ∷ JObject → List Json
   toKeyValJsons =
     Sm.toList >>> map (toKeyVals >>> Sm.fromFoldable >>> encodeJson)
 
-  toKeyVals :: Tuple String Json -> List (Tuple String Json)
+  toKeyVals ∷ Tuple String Json → List (Tuple String Json)
   toKeyVals (Tuple key val) =
     Cons (Tuple "key" $ encodeJson key)
     $ Cons (Tuple "value" val) Nil
 
-getPossibleDependencies :: JCursor -> M.Map JCursor Axis -> List JCursor
+getPossibleDependencies ∷ JCursor → M.Map JCursor Axis → List JCursor
 getPossibleDependencies cursor m =
   filter (dependsOn cursor) $ M.keys m
 
-checkPairs :: M.Map JCursor Axis -> M.Map JCursor Axis
+checkPairs ∷ M.Map JCursor Axis → M.Map JCursor Axis
 checkPairs m =
   foldl check m $ M.keys m
   where
-  check :: M.Map JCursor Axis -> JCursor -> M.Map JCursor Axis
+  check ∷ M.Map JCursor Axis → JCursor → M.Map JCursor Axis
   check m cursor =
     case getPossibleDependencies cursor m of
-      Nil -> M.delete cursor m
-      _ -> m
+      Nil → M.delete cursor m
+      _ → m
 
-dependsOn :: JCursor -> JCursor -> Boolean
+dependsOn ∷ JCursor → JCursor → Boolean
 dependsOn a b = a /= b &&
   dependsOn' (insideOut a) (insideOut b)
   where
@@ -127,8 +127,19 @@ dependsOn a b = a /= b &&
   dependsOn' (JIndex _ c) (JIndex _ c') = dependsOn' c c'
   dependsOn' _ _ = false
 
+newtype ParentJCursor = ParentJCursor JCursor
+runParentJCursor ∷ ParentJCursor → JCursor
+runParentJCursor (ParentJCursor x) = x
 
-instance axisShow :: Show Axis where
+isDrilledByIndex ∷ JCursor → ParentJCursor → Boolean
+isDrilledByIndex child (ParentJCursor parent) = isDrilledByIndex' child parent
+  where
+  isDrilledByIndex' JCursorTop (JIndex _ JCursorTop) = true
+  isDrilledByIndex' (JField a1 j1) (JField a2 j2) | a1 ≡ a2 = isDrilledByIndex' j1 j2
+  isDrilledByIndex' (JIndex i1 j1) (JIndex i2 j2) | i1 ≡ i2 = isDrilledByIndex' j1 j2
+  isDrilledByIndex' _ _ = false
+
+instance axisShow ∷ Show Axis where
   show (ValAxis vs) = "(ValAxis " <> show vs <> ")"
   show (CatAxis vs) = "(CatAxis " <> show vs <> ")"
   show (TimeAxis vs) = "(TimeAxis " <> show vs <> ")"

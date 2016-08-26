@@ -40,31 +40,31 @@ data Semantics
   | Category String
   | Time String
 
-isValue :: Semantics -> Boolean
+isValue ∷ Semantics → Boolean
 isValue (Value _) = true
 isValue _ = false
 
-isPercent :: Semantics -> Boolean
+isPercent ∷ Semantics → Boolean
 isPercent (Percent _) = true
 isPercent _ = false
 
-isMoney :: Semantics -> Boolean
+isMoney ∷ Semantics → Boolean
 isMoney (Money _ _) = true
 isMoney _ = false
 
-isBool :: Semantics -> Boolean
+isBool ∷ Semantics → Boolean
 isBool (Bool _) = true
 isBool _ = false
 
-isCategory :: Semantics -> Boolean
+isCategory ∷ Semantics → Boolean
 isCategory (Category _) = true
 isCategory _ = false
 
-isTime :: Semantics -> Boolean
+isTime ∷ Semantics → Boolean
 isTime (Time _) = true
 isTime _ = false
 
-printSemantics :: Semantics -> String
+printSemantics ∷ Semantics → String
 printSemantics (Value v) = show v
 printSemantics (Percent v) = show v <> "%"
 printSemantics (Money v m) = show v <> m
@@ -72,7 +72,7 @@ printSemantics (Category s) = s
 printSemantics (Time t) = t
 printSemantics (Bool b) = show b
 
-semanticsToNumber :: Semantics -> Maybe Number
+semanticsToNumber ∷ Semantics → Maybe Number
 semanticsToNumber (Value v) = pure v
 semanticsToNumber (Money v _) = pure v
 semanticsToNumber (Percent v) = pure v
@@ -82,12 +82,12 @@ semanticsToNumber _ = Nothing
 
 -- | Used as accumulator in `checkPredicate` only
 type CheckAccum =
-  { correct :: Int
-  , incorrect :: Int
-  , filtered :: List (Maybe Semantics)
+  { correct ∷ Int
+  , incorrect ∷ Int
+  , filtered ∷ List (Maybe Semantics)
   }
 
-emptyAccum :: CheckAccum
+emptyAccum ∷ CheckAccum
 emptyAccum =
   { correct: zero
   , incorrect: zero
@@ -98,8 +98,8 @@ emptyAccum =
 -- | returns a list with values that satisfies predicate wrapped in `Just`
 -- | or (if there more incorrect values than correct) it returns `Nothing`
 checkPredicate
-  :: (Semantics -> Boolean) -> List (Maybe Semantics)
-  -> Maybe (List (Maybe Semantics))
+  ∷ (Semantics → Boolean) → List (Maybe Semantics)
+  → Maybe (List (Maybe Semantics))
 checkPredicate p lst = pureST do
   corrects <- newSTRef 0
   incorrects <- newSTRef 0
@@ -110,12 +110,12 @@ checkPredicate p lst = pureST do
   -- and this make our optimization absolutely useless because of two
   -- `reverse`s. And this is worse then converting list to array before `traverse_`
   -- ```
-  --  let arr :: Array _
+  --  let arr ∷ Array _
   --      arr = L.fromFoldable lst
   --  in traverse_ (checkPredicateTraverseFn p corrects incorrects filtered) arr
   -- ```
   foldl
-    (\b a -> checkPredicateTraverseFn p corrects incorrects filtered a *> b)
+    (\b a → checkPredicateTraverseFn p corrects incorrects filtered a *> b)
     (pure unit) lst
   c <- readSTRef corrects
   ic <- readSTRef incorrects
@@ -127,10 +127,10 @@ checkPredicate p lst = pureST do
     pure Nothing
 
 checkPredicateTraverseFn
-  :: forall h
-   . (Semantics -> Boolean)
-  -> STRef h Int -> STRef h Int -> STRef h (List (Maybe Semantics))
-  -> Maybe Semantics -> Eff (st :: ST h) Unit
+  ∷ forall h
+   . (Semantics → Boolean)
+  → STRef h Int → STRef h Int → STRef h (List (Maybe Semantics))
+  → Maybe Semantics → Eff (st ∷ ST h) Unit
 checkPredicateTraverseFn _ corrects incorrects filtered Nothing = do
   modifySTRef filtered (Cons Nothing)
   pure unit
@@ -149,7 +149,7 @@ checkPredicateTraverseFn p corrects incorrects filtered (Just c)
     modifySTRef incorrects (_ + 1)
     pure unit
 
-isUsedAsNothing :: Semantics -> Boolean
+isUsedAsNothing ∷ Semantics → Boolean
 isUsedAsNothing (Category "undefined") = true
 isUsedAsNothing (Category "null") = true
 isUsedAsNothing (Category "NA") = true
@@ -157,7 +157,7 @@ isUsedAsNothing (Category "N/A") = true
 isUsedAsNothing (Category "") = true
 isUsedAsNothing _ = false
 
-instance showSemantics :: Show Semantics where
+instance showSemantics ∷ Show Semantics where
   show (Value v) = "(Value " <> show v <> ")"
   show (Percent p) = "(Percent " <> show p <> ")"
   show (Money n s) = "(Money " <> show n <> s <> ")"
@@ -165,7 +165,7 @@ instance showSemantics :: Show Semantics where
   show (Category s) = "(Category " <> s <> ")"
   show (Time t) = "(Time " <> t <> ")"
 
-instance eqSemantics :: Eq Semantics where
+instance eqSemantics ∷ Eq Semantics where
   eq (Value v) (Value v') = v == v'
   eq (Value v) _ = false
   eq (Percent p) (Percent p') = p == p'
@@ -179,13 +179,13 @@ instance eqSemantics :: Eq Semantics where
   eq (Bool b) (Bool b') = b == b'
   eq (Bool _) _ = false
 
-instance ordSemantics :: Ord Semantics where
+instance ordSemantics ∷ Ord Semantics where
   compare (Time t) (Time t') = compare t t'
   compare (Time _) _ = LT
   compare (Money v a) (Money v' a') =
     case compare a a' of
-      EQ -> compare v v'
-      c -> c
+      EQ → compare v v'
+      c → c
   compare (Money _ _) _ = LT
   compare (Percent v) (Percent v') = compare v v'
   compare (Percent _) _ = LT
@@ -197,14 +197,14 @@ instance ordSemantics :: Ord Semantics where
   compare (Bool _) _ = LT
 
 
-analyze :: JsonPrim -> Maybe Semantics
+analyze ∷ JsonPrim → Maybe Semantics
 analyze p = runJsonPrim p
             (const Nothing)
             (Just <<< Bool)
             (Just <<< Value)
             analyzeString
 
-analyzeString :: String -> Maybe Semantics
+analyzeString ∷ String → Maybe Semantics
 analyzeString str =
       analyzeDate str
   <|> analyzeNumber str
@@ -212,31 +212,31 @@ analyzeString str =
   <|> analyzePercent str
   <|> (Just $ Category str)
 
-analyzeNumber :: String -> Maybe Semantics
+analyzeNumber ∷ String → Maybe Semantics
 analyzeNumber s = do
   num <- stringToNumber s
   int <- Int.fromString s
   guard $ show num == s || show int == s
   pure $ Value num
 
-percentRegex :: Regex
+percentRegex ∷ Regex
 percentRegex = unsafePartial fromRight $ regex """^(-?\d+(\.\d+)?)\%$""" noFlags
 
-analyzePercent :: String -> Maybe Semantics
+analyzePercent ∷ String → Maybe Semantics
 analyzePercent input = do
   matches <- match percentRegex input
   maybeMatch <- matches A.!! 1
   num <- maybeMatch >>= stringToNumber
   pure $ Percent num
 
-moneyRegex :: Regex
+moneyRegex ∷ Regex
 moneyRegex = unsafePartial fromRight $ regex rgxStr noFlags
   where
   rgxStr = "^" <> curSymbols <> """?(([0-9]{1,3},([0-9]{3},)*[0-9]{3}|[0-9]+)(.[0-9][0-9])?)$"""
-  curSymbols :: String
+  curSymbols ∷ String
   curSymbols = """[\$\u20A0-\u20CF\u00A2\u00A3\u00A4\u00A5\u058F\u060B\u09F2\u09F3\u09FB\u0AF1\u0BF9\u0E3F\u17DB\uA838\uFDFC\uFE69\uFF04\uFFE0\uFFE1\uFFE5\uFFE6]"""
 
-analyzeMoney :: String -> Maybe Semantics
+analyzeMoney ∷ String → Maybe Semantics
 analyzeMoney str = do
   matches <- match moneyRegex str
   maybeMatch <- matches A.!! 1
@@ -247,63 +247,63 @@ analyzeMoney str = do
                        else pure fstSymbol
   pure $ Money num currencySymbol
 
-dateRegex :: Regex
+dateRegex ∷ Regex
 dateRegex = unsafePartial fromRight $ regex rgxStr noFlags
   where
   rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
 
-analyzeDate :: String -> Maybe Semantics
+analyzeDate ∷ String → Maybe Semantics
 analyzeDate str = do
   guard $ test dateRegex str
   pure $ Time str
 
-jsonToSemantics :: Json -> Map JCursor Semantics
+jsonToSemantics ∷ Json → Map JCursor Semantics
 jsonToSemantics j = fromFoldable $ catMaybes $ map (traverse analyze) $ toPrims j
 
-jarrayToSemantics :: JArray -> Map JCursor (List (Maybe Semantics))
+jarrayToSemantics ∷ JArray → Map JCursor (List (Maybe Semantics))
 jarrayToSemantics arr = foldl foldFn initial mapArr
   where
-  mapArr :: Array (Map JCursor Semantics)
+  mapArr ∷ Array (Map JCursor Semantics)
   mapArr = map jsonToSemantics arr
 
-  initial :: Map JCursor (List (Maybe Semantics))
+  initial ∷ Map JCursor (List (Maybe Semantics))
   initial = fromFoldable $ map (flip Tuple Nil) ks
 
-  ks :: List JCursor
+  ks ∷ List JCursor
   ks = L.nub $ foldMap keys mapArr
 
   foldFn
-    :: Map JCursor (List (Maybe Semantics))
-    -> Map JCursor Semantics
-    -> Map JCursor (List (Maybe Semantics))
+    ∷ Map JCursor (List (Maybe Semantics))
+    → Map JCursor Semantics
+    → Map JCursor (List (Maybe Semantics))
   foldFn acc m = foldl (insertOne m) acc ks
 
   insertOne
-    :: Map JCursor Semantics
-    -> Map JCursor (List (Maybe Semantics))
-    -> JCursor
-    -> Map JCursor (List (Maybe Semantics))
+    ∷ Map JCursor Semantics
+    → Map JCursor (List (Maybe Semantics))
+    → JCursor
+    → Map JCursor (List (Maybe Semantics))
   insertOne m acc k = update (pure <<< Cons (lookup k m)) k acc
 
-checkValues :: List (Maybe Semantics) -> Maybe (List (Maybe Semantics))
+checkValues ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
 checkValues = checkPredicate isValue
 
-checkMoney :: List (Maybe Semantics) -> Maybe (List (Maybe Semantics))
+checkMoney ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
 checkMoney = checkPredicate isMoney
 
-checkPercent :: List (Maybe Semantics) -> Maybe (List (Maybe Semantics))
+checkPercent ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
 checkPercent = checkPredicate isPercent
 
-checkBool :: List (Maybe Semantics) -> Maybe (List (Maybe Semantics))
+checkBool ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
 checkBool = checkPredicate isBool
 
-checkTime :: List (Maybe Semantics) -> Maybe (List (Maybe Semantics))
+checkTime ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
 checkTime = checkPredicate isTime
 
-checkCategory :: List (Maybe Semantics) -> Maybe (List (Maybe Semantics))
+checkCategory ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
 checkCategory = checkPredicate isCategory
 
-instance encodeJsonSemantics :: EncodeJson Semantics where
+instance encodeJsonSemantics ∷ EncodeJson Semantics where
   encodeJson (Value n)
      = "type" := "value"
     ~> "value" := n
@@ -329,14 +329,14 @@ instance encodeJsonSemantics :: EncodeJson Semantics where
      ~> "value" := t
      ~> jsonEmptyObject
 
-instance decodeJsonSemantics :: DecodeJson Semantics where
-  decodeJson = decodeJson >=> \obj -> do
+instance decodeJsonSemantics ∷ DecodeJson Semantics where
+  decodeJson = decodeJson >=> \obj → do
     ty <- obj .? "type"
     case ty of
-      "money" -> Money <$> obj .? "value" <*> obj .? "currency"
-      "time" -> Time <$> obj .? "value"
-      "bool" -> Bool <$> obj .? "value"
-      "category" -> Category <$> obj .? "value"
-      "value" -> Value <$> obj .? "value"
-      "percent" -> Percent <$> obj .? "value"
-      _ -> Left "incorrect type value for Semantics"
+      "money" → Money <$> obj .? "value" <*> obj .? "currency"
+      "time" → Time <$> obj .? "value"
+      "bool" → Bool <$> obj .? "value"
+      "category" → Category <$> obj .? "value"
+      "value" → Value <$> obj .? "value"
+      "percent" → Percent <$> obj .? "value"
+      _ → Left "incorrect type value for Semantics"

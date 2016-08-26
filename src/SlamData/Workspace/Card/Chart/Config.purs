@@ -53,7 +53,6 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
         target ← map runArbJCursor arbitrary
         size ← map (map runArbJCursor) arbitrary
         color ← map (map runArbJCursor) arbitrary
-        sizeAggregation ← arbitrary
         minSize ← arbitrary
         maxSize ← arbitrary
         circular ← arbitrary
@@ -67,7 +66,6 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
                   , target
                   , size
                   , color
-                  , sizeAggregation
                   , minSize
                   , maxSize
                   , circular
@@ -89,7 +87,6 @@ instance encodeJsonChartConfig ∷ EncodeJson ChartConfig where
     ~> "target" := r.target
     ~> "size" := r.size
     ~> "color" := r.color
-    ~> "sizeAggregation" := r.sizeAggregation
     ~> "minSize" := r.minSize
     ~> "maxSize" := r.maxSize
     ~> "circular" := r.circular
@@ -119,7 +116,6 @@ instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
       target ← obj .? "target"
       size ← obj .? "size"
       color ← obj .? "color"
-      sizeAggregation ← obj .? "sizeAggregation"
       minSize ← obj .? "minSize"
       maxSize ← obj .? "maxSize"
       circular ← obj .? "circular"
@@ -133,7 +129,6 @@ instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
                    , target
                    , size
                    , color
-                   , sizeAggregation
                    , minSize
                    , maxSize
                    , circular
