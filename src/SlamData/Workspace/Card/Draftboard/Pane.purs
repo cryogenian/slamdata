@@ -29,7 +29,6 @@ module SlamData.Workspace.Card.Draftboard.Pane
   , getAtWithLocator
   , getValueAt
   , modifyAt
-  , spliceAt
   , toList
   , traverseWithCursor
   , withCursor
@@ -185,28 +184,6 @@ modifyAt = flip runCursor go
   where
   go orn ps ix r =
     Split orn (fromMaybe ps (List.modifyAt ix (map (const r)) ps))
-
--- | Splices in Panes at a given cursor. Ratios should always be relative to
--- | `one` and will be scaled appropriately. It's possible to return multiple
--- | Panes given a root cursor, so the caller must decide how to assimilate the
--- | spliced structure.
-spliceAt
-  ∷ ∀ a
-  . (Pane a → List (Rational × Pane a))
-  → Cursor
-  → Pane a
-  → Maybe (List (Rational × Pane a))
-spliceAt = flip runCursor (go 0 Nil)
-  where
-  go i pre orn ps ix acc =
-    case ps of
-      (r × p) : post | i == ix →
-        let spl = map (lmap (_ * r)) acc in
-        case List.reverse pre <> spl <> post of
-          Nil → Nil
-          all → List.singleton (one × Split orn all)
-      x : xs → go (i + 1) (x : pre) orn xs ix acc
-      _ → Nil
 
 instance eqPane ∷ Eq a ⇒ Eq (Pane a) where
   eq (Cell a) (Cell b) = eq a b

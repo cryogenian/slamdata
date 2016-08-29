@@ -149,16 +149,13 @@ renderLayout opts st cells edges =
 renderCell ∷ CardOptions → State → Layout.Cell (Maybe DeckId) Number → DraftboardHTML
 renderCell opts st { cursor, value, rect } =
   HH.div
-    ([ HP.classes
-         ([ HH.className "sd-draftboard-cell" ]
-          <> (HH.className "outer-edge-top" <$ guard (rect.top == 0.0))
-          <> (HH.className "outer-edge-left" <$ guard (rect.left == 0.0)))
-    , HC.style do
-        C.top (C.px rect.top)
-        C.left (C.px rect.left)
-        C.width (C.px rect.width)
-        C.height (C.px rect.height)
-    ] <> (maybe [] (\deckId → [ HP.key (deckIdToString deckId) ]) value))
+    ([ HP.classes [ HH.className "sd-draftboard-cell" ]
+     , HC.style do
+         C.top (C.px rect.top)
+         C.left (C.px rect.left)
+         C.width (C.px rect.width)
+         C.height (C.px rect.height)
+     ] <> (maybe [] (\deckId → [ HP.key (deckIdToString deckId) ]) value))
     [ HH.div
         [ HP.classes [ HH.className "sd-draftboard-cell-content" ] ]
         case value of

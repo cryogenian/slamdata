@@ -59,12 +59,10 @@ import Utils.Path (DirPath)
 draftboardComponent ∷ CardOptions → CC.CardComponent
 draftboardComponent opts = CC.makeCardComponent
   { cardType: CT.Draftboard
-  , component: H.lifecycleParentComponent
+  , component: H.parentComponent
       { render: render opts
       , eval: coproduct evalCard (evalBoard opts)
       , peek: Just (peek opts)
-      , initializer: Just (right (H.action Init))
-      , finalizer: Nothing
       }
   , initialState: H.parentState initialState
   , _State: CC._DraftboardState
@@ -99,13 +97,8 @@ evalCard = case _ of
 
 evalBoard ∷ CardOptions → Query ~> DraftboardDSL
 evalBoard opts = case _ of
-  Init next → do
-    pure next
   SetRoot el next → do
     H.modify _ { root = el }
-    pure next
-  Recalc next → do
-    recalcRect
     pure next
   SplitStart orientation bias root ev next → do
     st ← H.get

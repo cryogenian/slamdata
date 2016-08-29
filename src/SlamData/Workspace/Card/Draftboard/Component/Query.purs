@@ -36,9 +36,7 @@ import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Model (Deck)
 
 data Query a
-  = Init a
-  | Recalc a
-  | SetRoot (Maybe HTMLElement) a
+  = SetRoot (Maybe HTMLElement) a
   | SplitStart Orientation SplitBias Boolean (HET.Event HET.MouseEvent) a
   | Splitting DragEvent a
   | ResizeStart (Edge Number) (HET.Event HET.MouseEvent) a
