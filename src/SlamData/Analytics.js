@@ -7,9 +7,11 @@ exports._enableAnalytics = function () {
   }}();
 };
 
-exports.identify = function (email) {
-  return function () {
-    if (window.analytics) window.analytics.identify(email, { email: email });
+exports._identify = function (userId) {
+  return function (traits) {
+    return function () {
+      if (window.analytics) window.analytics.identify(userId, traits);
+    };
   };
 };
 
