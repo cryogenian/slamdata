@@ -7,12 +7,15 @@ import Data.Array as A
 import Data.Int as Int
 import Data.Foldable as F
 import Data.Map as M
+import Data.String.Regex as Rgx
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
+
+import Global (infinity)
 
 import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
@@ -37,6 +40,7 @@ type GraphItem =
   { size ∷ Maybe Number
   , category ∷ Maybe String
   , name ∷ Maybe String
+  , value ∷ Maybe Number
   }
 
 type GraphData = Array GraphItem × Array EdgeItem
@@ -67,13 +71,15 @@ buildGraphData axesMap r =
   nodes ∷ Array GraphItem
   nodes =
     A.nubBy (\r1 r2 → r1.name ≡ r2.name)
-      $ map (\(size × category × name) →
-              { size
+      $ map (\(value × size × category × name) →
+              { value
+              , size
               , category
-              , name: name
+              , name: (map (\n → "name:" ⊕ n) name)
                   ⊕ (map (\c → ":category:" ⊕ c) category)
                   ⊕ (map (\s → ":size:" ⊕ show s) size)
               })
+      $ A.zip (values ⊕ nothingTail values)
       $ A.zip (sizes ⊕ nothingTail sizes)
       $ A.zip (categories ⊕ nothingTail categories)
       $ names ⊕ nothingTail names
@@ -96,13 +102,40 @@ buildGraphData axesMap r =
   names ∷ Array (Maybe String)
   names = sources ⊕ targets
 
-  sizes ∷ Array (Maybe Number)
-  sizes =
+  values ∷ Array (Maybe Number)
+  values =
     foldMap (pure ∘ flip bind Sem.semanticsToNumber)
     $ foldMap Ax.runAxis
     $ r.size
     >>= flip M.lookup axesMap
 
+  minimumValue ∷ Number
+  minimumValue = fromMaybe (-1.0 * infinity) $ F.minimum $ A.catMaybes values
+
+  maximumValue ∷ Number
+  maximumValue = fromMaybe infinity $ F.maximum $ A.catMaybes values
+
+  distance ∷ Number
+  distance = maximumValue - minimumValue
+
+  sizeDistance ∷ Number
+  sizeDistance = r.maxSize - r.minSize
+
+  relativeSize ∷ Number → Number
+  relativeSize val
+    | val < 0.0 = 0.0
+    | otherwise =
+      sizeDistance / distance * (maximumValue - val)  + r.minSize
+
+  sizes ∷ Array (Maybe Number)
+  sizes = map (map relativeSize) values
+
+
+nameRgx ∷ Rgx.Regex
+nameRgx = unsafePartial fromRight $ Rgx.regex "name:(\\w+)" Rgx.noFlags
+
+categoryRgx ∷ Rgx.Regex
+categoryRgx = unsafePartial fromRight $ Rgx.regex "category:(\\w+)" Rgx.noFlags
 
 buildGraph ∷ GraphR → JArray → DSL OptionI
 buildGraph r records = do
@@ -111,6 +144,17 @@ buildGraph r records = do
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
+    E.formatterItem \{name, value} →
+      let
+        mbName ∷ Maybe String
+        mbName = join $ Rgx.match nameRgx name >>= flip A.index 1
+
+        mbCat ∷ Maybe String
+        mbCat = join $ Rgx.match categoryRgx name >>= flip A.index 1
+      in
+        (foldMap (\n → "name: " ⊕ n) mbName)
+        ⊕ (foldMap (\c → "<br /> category: " ⊕ c) mbCat)
+        ⊕ "<br /> value: " ⊕ show value
 
   E.legend do
     E.orient ET.Vertical
@@ -160,8 +204,10 @@ buildGraph r records = do
   items = for_ (fst graphData) \item → E.addItem do
     for_ (item.category >>= flip A.elemIndex legendNames) E.category
     traverse_ E.symbolSize $ map Int.floor item.size
-    traverse_ E.value item.size
+    traverse_ E.value item.value
     traverse_ E.name item.name
+    E.itemStyle $ E.normal do
+      E.borderWidth 1
     E.label do
       E.normal E.hidden
       E.emphasis E.hidden
