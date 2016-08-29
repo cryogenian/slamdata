@@ -31,8 +31,7 @@ type GraphR =
   }
 
 
-type EdgeItem =
-  (Number × Number) ⊹ (String × String)
+type EdgeItem = String × String
 
 type GraphItem =
   { size ∷ Maybe Number
@@ -50,30 +49,18 @@ buildGraphData axesMap r =
   edges =
     A.nub $ A.catMaybes $ A.zipWith edgeZipper sources targets
 
-  edgeZipper
-    ∷ Maybe (Number ⊹ String)
-    → Maybe (Number ⊹ String)
-    → Maybe ((Number × Number) ⊹ (String × String))
-  edgeZipper (Just (Left n1)) (Just (Left n2)) = pure $ Left (n1 × n2)
-  edgeZipper (Just (Right s1)) (Just (Right s2)) = pure $ Right (s1 × s2)
-  edgeZipper _ _ = Nothing
+  edgeZipper ∷ Maybe String → Maybe String → Maybe (String × String)
+  edgeZipper source target = Tuple <$> source <*> target
 
-  semToEdgePoint ∷ Sem.Semantics → Number ⊹ String
-  semToEdgePoint sem =
-    maybe
-      (Right $ Sem.printSemantics sem)
-      Left
-      (Sem.semanticsToNumber sem)
-
-  sources ∷ Array (Maybe (Number ⊹ String))
+  sources ∷ Array (Maybe String)
   sources =
-    foldMap (pure ∘ map semToEdgePoint)
+    foldMap (pure ∘ map Sem.printSemantics)
       $ foldMap Ax.runAxis
       $ M.lookup r.source axesMap
 
-  targets ∷ Array (Maybe (Number ⊹ String))
+  targets ∷ Array (Maybe String)
   targets =
-    foldMap (pure ∘ map semToEdgePoint)
+    foldMap (pure ∘ map Sem.printSemantics)
       $ foldMap Ax.runAxis
       $ M.lookup r.target axesMap
 
@@ -107,12 +94,7 @@ buildGraphData axesMap r =
       >>= flip M.lookup axesMap
 
   names ∷ Array (Maybe String)
-  names =
-    -- I'm not sure about this, when this is set to `either (const Nothing) Just`
-    -- graphs that has measure axes in source and target field would show only one point
-    -- w/o selecting color and size. But in this case we have name "86.0" but number
-    -- used as source is supposed to be an index of node.
-    map (flip bind $ either (const Nothing) Just) $ sources ⊕ targets
+  names = sources ⊕ targets
 
   sizes ∷ Array (Maybe Number)
   sizes =
@@ -170,13 +152,9 @@ buildGraph r records = do
   legendNames = A.nub $ A.catMaybes $ map _.category $ fst graphData
 
   links ∷ DSL ETP.LinksI
-  links = for_ (snd graphData) case _ of
-    Left (sIx × tIx) → E.addLink do
-      traverse_ E.sourceIx $ Int.fromNumber sIx
-      traverse_ E.targetIx $ Int.fromNumber tIx
-    Right (sName × tName) → E.addLink do
-      E.sourceName sName
-      E.targetName tName
+  links = for_ (snd graphData) \(sName × tName) → E.addLink do
+    E.sourceName sName
+    E.targetName tName
 
   items ∷ DSL ETP.ItemsI
   items = for_ (fst graphData) \item → E.addItem do
