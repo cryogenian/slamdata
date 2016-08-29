@@ -198,7 +198,7 @@ buildGraph r records = do
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
-    E.formatterItem \(o@{name, value, "data": item, dataType}) →
+    E.formatterItem \{name, value, "data": item, dataType} →
       let
         fItem ∷ FR.Foreign
         fItem = FR.toForeign item
@@ -243,9 +243,7 @@ buildGraph r records = do
       else E.layoutForce
 
     E.force do
-      E.edgeLength 100.0
-      E.repulsion 300.0
-      E.gravity 0.1
+      E.edgeLength 120.0
       E.layoutAnimation true
 
     E.buildItems items
