@@ -2,12 +2,13 @@ module SlamData.Workspace.Card.Chart.BuildOptions.Graph where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, JCursor)
+import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, toString)
 import Data.Array as A
 import Data.Int as Int
 import Data.Foldable as F
 import Data.Map as M
 import Data.String.Regex as Rgx
+import Data.Foreign as FR
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -31,6 +32,7 @@ type GraphR =
   , maxSize ∷ Number
   , circular ∷ Boolean
   , axes ∷ Axes
+  , sizeAggregation ∷ Maybe JCursor
   }
 
 
@@ -47,8 +49,8 @@ type GraphItem =
 
 type GraphData = Array GraphItem × Array EdgeItem
 
-buildGraphData ∷ M.Map JCursor Axis → GraphR → GraphData
-buildGraphData axesMap r =
+buildGraphData ∷ JArray → M.Map JCursor Axis → GraphR → GraphData
+buildGraphData records axesMap r =
   nodes × edges
   where
   rawEdges ∷ Array EdgeItem
@@ -73,23 +75,22 @@ buildGraphData axesMap r =
   nodes ∷ Array GraphItem
   nodes =
     A.nubBy (\r1 r2 → r1.name ≡ r2.name)
-      $ map (\(source × target × value × size × category) →
-              { source
-              , target
-              , value
-              , size
-              , category
-              , name:
+      $ map (\(source × target × category) →
+              let value = map F.sum $ M.lookup (source × category) valueMap
+
+                  size = map relativeSize value
+              in { source
+                 , target
+                 , value
+                 , size
+                 , category
+                 , name:
                   (map (\s → "edge source:" ⊕ s) source)
                   ⊕ (map (\c → ":category:" ⊕ c) category)
-                  ⊕ (map (\s → ":size:" ⊕ show s) size)
               })
       $ A.zip (sources ⊕ nothingTail sources)
       $ A.zip (targets ⊕ nothingTail targets)
-      $ A.zip (values ⊕ nothingTail values)
-      $ A.zip (sizes ⊕ nothingTail sizes)
       $ categories ⊕ nothingTail categories
-
 
   edgeMap ∷ M.Map String (Array String)
   edgeMap = foldl foldFn M.empty nodes
@@ -112,9 +113,7 @@ buildGraphData axesMap r =
     $ F.maximum
       [ A.length categories
       , A.length sources
-      , A.length sizes
       , A.length targets
-      , A.length values
       ]
 
   nothingTail ∷ ∀ a. Array (Maybe a) → Array (Maybe a)
@@ -132,18 +131,11 @@ buildGraphData axesMap r =
   names ∷ Array (Maybe String)
   names = sources ⊕ targets
 
-  values ∷ Array (Maybe Number)
-  values =
-    foldMap (pure ∘ flip bind Sem.semanticsToNumber)
-    $ foldMap Ax.runAxis
-    $ r.size
-    >>= flip M.lookup axesMap
-
   minimumValue ∷ Number
-  minimumValue = fromMaybe (-1.0 * infinity) $ F.minimum $ A.catMaybes values
+  minimumValue = fromMaybe (-1.0 * infinity) $ F.minimum $ map F.sum valueMap
 
   maximumValue ∷ Number
-  maximumValue = fromMaybe infinity $ F.maximum $ A.catMaybes values
+  maximumValue = fromMaybe infinity $ F.maximum $ map F.sum valueMap
 
   distance ∷ Number
   distance = maximumValue - minimumValue
@@ -157,15 +149,33 @@ buildGraphData axesMap r =
     | otherwise =
       sizeDistance / distance * (maximumValue - val)  + r.minSize
 
-  sizes ∷ Array (Maybe Number)
-  sizes = map (map relativeSize) values
-
   edges ∷ Array EdgeItem
   edges = do
     (s × t) ← rawEdges
     ss ← fromMaybe [ ] $ M.lookup s edgeMap
     tt ← fromMaybe [ ] $ M.lookup t edgeMap
     pure $ ss × tt
+
+  valueMap ∷ M.Map ((Maybe String) × (Maybe String)) (Array Number)
+  valueMap =
+    foldl valueFoldFn M.empty records
+
+  valueFoldFn
+    ∷ M.Map ((Maybe String) × (Maybe String)) (Array Number)
+    → Json
+    → M.Map ((Maybe String) × (Maybe String)) (Array Number)
+  valueFoldFn acc js =
+    let
+      mbSource = spy $ toString =<< cursorGet r.source js
+      mbCategory = spy $ toString =<< flip cursorGet js =<< r.color
+      mbValue = spy $ toNumber =<< traceAnyM =<< flip cursorGet js =<< r.size
+
+      valueAlterFn ∷ Maybe Number → Maybe (Array Number) → Maybe (Array Number)
+      valueAlterFn (Just a) Nothing = Just [a]
+      valueAlterFn (Just a) (Just arr) = Just $ A.cons a arr
+      valueAlterFn _ mbArr = mbArr
+    in
+      M.alter (valueAlterFn mbValue) (spy $ mbSource × mbCategory) acc
 
 
 sourceRgx ∷ Rgx.Regex
@@ -181,17 +191,21 @@ buildGraph r records = do
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
-    E.formatterItem \{name, value} →
+    E.formatterItem \(r@{name, value}) →
       let
+        o = spy r
         mbSource ∷ Maybe String
         mbSource = join $ Rgx.match sourceRgx name >>= flip A.index 1
 
         mbCat ∷ Maybe String
         mbCat = join $ Rgx.match categoryRgx name >>= flip A.index 1
+
+        mbVal = if FR.isUndefined $ FR.toForeign value then Nothing else Just value
       in
+       -- TODO: handle edge tooltip
         (foldMap (\s → "source: " ⊕ s) mbSource)
         ⊕ (foldMap (\c → "<br /> category: " ⊕ c) mbCat)
-        ⊕ "<br /> value: " ⊕ show value
+        ⊕ (foldMap (\v → "<br /> value: " ⊕ show v) mbVal)
 
   E.legend do
     E.orient ET.Vertical
@@ -227,7 +241,7 @@ buildGraph r records = do
   axisMap = analyzeJArray records
 
   graphData ∷ GraphData
-  graphData = buildGraphData axisMap r
+  graphData = buildGraphData records axisMap r
 
   legendNames ∷ Array String
   legendNames = A.nub $ A.catMaybes $ map _.category $ fst graphData

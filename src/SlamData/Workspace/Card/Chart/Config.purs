@@ -56,6 +56,7 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
         minSize ← arbitrary
         maxSize ← arbitrary
         circular ← arbitrary
+        sizeAggregation ← map (map runArbJCursor) arbitrary
         axes ← do
           value ← map (map runArbJCursor) arbitrary
           time ← map (map runArbJCursor) arbitrary
@@ -70,6 +71,7 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
                   , maxSize
                   , circular
                   , axes
+                  , sizeAggregation
                   }
       _ → do
         chartConfig ← CC.genChartConfiguration
@@ -90,6 +92,7 @@ instance encodeJsonChartConfig ∷ EncodeJson ChartConfig where
     ~> "minSize" := r.minSize
     ~> "maxSize" := r.maxSize
     ~> "circular" := r.circular
+    ~> "sizeAggregation" := r.sizeAggregation
     ~> "axes" := ("value" := r.axes.value
                   ~> "time" := r.axes.time
                   ~> "category" := r.axes.category
@@ -119,6 +122,7 @@ instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
       minSize ← obj .? "minSize"
       maxSize ← obj .? "maxSize"
       circular ← obj .? "circular"
+      sizeAggregation ← obj .? "sizeAggregation"
       jsAxes ← obj .? "axes"
       axes ← do
         value ← jsAxes .? "value"
@@ -133,6 +137,7 @@ instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
                    , maxSize
                    , circular
                    , axes
+                   , sizeAggregation
                    }
 
 buildOptions

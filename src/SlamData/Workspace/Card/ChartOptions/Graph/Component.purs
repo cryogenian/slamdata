@@ -260,6 +260,7 @@ eval (GetChartConfig continue) = do
       , minSize: st.minSize
       , maxSize: st.maxSize
       , circular: st.circular
+      , sizeAggregation: Nothing
       , axes: st.axes
       }
       <$> (source >>= view _value)
