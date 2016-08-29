@@ -40,10 +40,12 @@ import SlamData.Render.Common (row)
 import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, trySelect')
 import SlamData.Workspace.Card.Chart.ChartConfiguration (depends, dependsOnArr)
 import SlamData.Form.Select.Component as S
+import SlamData.Form.SelectPair.Component as P
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Form.Component.CSS as FCSS
+import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
 import SlamData.Workspace.Card.Chart.BuildOptions.Graph (GraphR)
 
 
@@ -75,7 +77,7 @@ type ChildSlot =
 
 type SourceState = Select JCursor
 type TargetState = Select JCursor
-type SizeState = Select JCursor
+type SizeState = P.StateP Aggregation JCursor
 type ColorState = Select JCursor
 
 type ChildState =
@@ -84,7 +86,9 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 
 type SourceQuery = S.Query JCursor
 type TargetQuery = S.Query JCursor
-type SizeQuery = S.Query JCursor
+type SizeQuery = P.QueryP Aggregation JCursor
+type SizeAggQuery = S.Query Aggregation
+type SizeSelQuery = S.Query JCursor
 type ColorQuery = S.Query JCursor
 
 type ChildQuery =
@@ -119,6 +123,8 @@ cpColor
       ColorQuery ChildQuery
       Unit ChildSlot
 cpColor = cpR :> cpR :> cpR
+
+
 
 
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
@@ -170,20 +176,27 @@ renderTarget state =
 renderSize ∷ State → HTML
 renderSize state =
   HH.form
-    [ HP.classes [ FCSS.chartConfigureForm ]
+    [ HP.classes [ FCSS.withAggregation, FCSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Node size" ]
     , HH.slot' cpSize unit \_ →
-       { component: S.secondarySelect (pure "Node size")
-       , initialState: emptySelect
+       { component:
+           P.selectPair { disableWhen: (_ < 1)
+                        , defaultWhen: (const true)
+                        , mainState: emptySelect
+                        , ariaLabel: Just "Node size"
+                        , classes: [ B.btnPrimary, FCSS.aggregation]
+                        , defaultOption: "Select axis source"
+                        }
+       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
        }
     ]
 
 renderColor ∷ State → HTML
 renderColor state =
   HH.form
-    [ HP.classes [ FCSS.chartConfigureForm ]
+    [ HP.classes [ FCSS.withAggregation, FCSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Node category" ]
@@ -247,20 +260,22 @@ eval (GetChartConfig continue) = do
     H.query' cpSource unit $ H.request S.GetSelect
   target ←
     H.query' cpTarget unit $ H.request S.GetSelect
-  size ←
-    H.query' cpSize unit $ H.request S.GetSelect
+  sizeSel ←
+    H.query' cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  sizeAgg ←
+    H.query' cpSize unit $ left $ H.request S.GetSelect
   color ←
     H.query' cpColor unit $ H.request S.GetSelect
   let
     graphRecord =
       { source: _
       , target: _
-      , size: size >>= view _value
+      , size: sizeSel >>= view _value
       , color: color >>= view _value
+      , sizeAggregation: sizeAgg >>= view _value
       , minSize: st.minSize
       , maxSize: st.maxSize
       , circular: st.circular
-      , sizeAggregation: Nothing
       , axes: st.axes
       }
       <$> (source >>= view _value)
@@ -281,7 +296,6 @@ eval (SetMinNodeSize str next) = do
 eval (Load r next) = do
   H.modify _{axes = r.axes}
   synchronizeChildren $ Just r
-
   H.modify _{circular = r.circular, minSize = r.minSize, maxSize = r.maxSize}
 
   pure next
@@ -296,12 +310,15 @@ synchronizeChildren r = void do
     H.query' cpSource unit $ H.request S.GetSelect
   target ←
     H.query' cpTarget unit $ H.request S.GetSelect
-  size ←
-    H.query' cpSize unit $ H.request S.GetSelect
+  sizeSel ←
+    H.query' cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  sizeAgg ←
+    H.query' cpSize unit $ left $ H.request S.GetSelect
   color ←
     H.query' cpColor unit $ H.request S.GetSelect
 
   let
+    categoryAndValues = st.axes.category ⊕ st.axes.value
     isSourceCategory = isJust $ source >>= view _value >>= flip Arr.elemIndex st.axes.category
     isSourceValue = isJust $ source >>= view _value >>= flip Arr.elemIndex st.axes.value
 
@@ -310,8 +327,8 @@ synchronizeChildren r = void do
         $ (maybe id trySelect' $ r <#> _.source)
         $ autoSelect
         $ newSelect
-        $ dependsOnArr st.axes.category
-        $ st.axes.category
+        $ dependsOnArr categoryAndValues
+        $ categoryAndValues
 
     newTarget =
       setPreviousValueFrom target
@@ -324,16 +341,15 @@ synchronizeChildren r = void do
            then st.axes.category
            else if isSourceValue
                 then st.axes.value
-                else st.axes.category) ⊝ newSource
+                else categoryAndValues) ⊝ newSource
 
     newSize =
-      setPreviousValueFrom size
+      setPreviousValueFrom sizeSel
       $ (maybe id trySelect' $ r >>= _.size)
       $ autoSelect
       $ newSelect
       $ ifSelected [newTarget]
       $ st.axes.value ⊝ newSource ⊝ newTarget
-
     newColor =
       setPreviousValueFrom color
       $ (maybe id trySelect' $ r >>= _.color)
@@ -342,7 +358,13 @@ synchronizeChildren r = void do
       $ ifSelected [newTarget]
       $ st.axes.category ⊝ newSource ⊝ newTarget
 
+    newSizeAggregation =
+      setPreviousValueFrom sizeAgg
+      $ (maybe id trySelect' $ r >>= _.sizeAggregation)
+      $ nonMaybeAggregationSelect
+
   H.query' cpSource unit $ H.action $ S.SetSelect newSource
   H.query' cpTarget unit $ H.action $ S.SetSelect newTarget
-  H.query' cpSize unit $ H.action $ S.SetSelect newSize
+  H.query' cpSize unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSize
+  H.query' cpSize unit $ left $ H.action $ S.SetSelect newSizeAggregation
   H.query' cpColor unit $ H.action $ S.SetSelect newColor

@@ -56,7 +56,7 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
         minSize ← arbitrary
         maxSize ← arbitrary
         circular ← arbitrary
-        sizeAggregation ← map (map runArbJCursor) arbitrary
+        sizeAggregation ← arbitrary
         axes ← do
           value ← map (map runArbJCursor) arbitrary
           time ← map (map runArbJCursor) arbitrary

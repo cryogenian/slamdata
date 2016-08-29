@@ -7,8 +7,10 @@ import Data.Array as A
 import Data.Int as Int
 import Data.Foldable as F
 import Data.Map as M
+import Data.String as Str
 import Data.String.Regex as Rgx
 import Data.Foreign as FR
+import Data.Foreign.Class (readProp)
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -20,6 +22,7 @@ import Global (infinity)
 
 import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
+import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 import SlamData.Workspace.Card.Chart.Semantics as Sem
 
@@ -32,7 +35,7 @@ type GraphR =
   , maxSize ∷ Number
   , circular ∷ Boolean
   , axes ∷ Axes
-  , sizeAggregation ∷ Maybe JCursor
+  , sizeAggregation ∷ Maybe Ag.Aggregation
   }
 
 
@@ -76,17 +79,18 @@ buildGraphData records axesMap r =
   nodes =
     A.nubBy (\r1 r2 → r1.name ≡ r2.name)
       $ map (\(source × target × category) →
-              let value = map F.sum $ M.lookup (source × category) valueMap
-
-                  size = map relativeSize value
-              in { source
-                 , target
-                 , value
-                 , size
-                 , category
-                 , name:
-                  (map (\s → "edge source:" ⊕ s) source)
-                  ⊕ (map (\c → ":category:" ⊕ c) category)
+              let
+                value = M.lookup (source × category) valueMap
+                size = map relativeSize value
+              in
+               { source
+               , target
+               , value
+               , size
+               , category
+               , name:
+                 (map (\s → "edge source:" ⊕ s) source)
+                 ⊕ (map (\c → ":category:" ⊕ c) category)
               })
       $ A.zip (sources ⊕ nothingTail sources)
       $ A.zip (targets ⊕ nothingTail targets)
@@ -132,10 +136,10 @@ buildGraphData records axesMap r =
   names = sources ⊕ targets
 
   minimumValue ∷ Number
-  minimumValue = fromMaybe (-1.0 * infinity) $ F.minimum $ map F.sum valueMap
+  minimumValue = fromMaybe (-1.0 * infinity) $ F.minimum valueMap
 
   maximumValue ∷ Number
-  maximumValue = fromMaybe infinity $ F.maximum $ map F.sum valueMap
+  maximumValue = fromMaybe infinity $ F.maximum valueMap
 
   distance ∷ Number
   distance = maximumValue - minimumValue
@@ -147,7 +151,7 @@ buildGraphData records axesMap r =
   relativeSize val
     | val < 0.0 = 0.0
     | otherwise =
-      sizeDistance / distance * (maximumValue - val)  + r.minSize
+      r.maxSize - sizeDistance / distance * (maximumValue - val)
 
   edges ∷ Array EdgeItem
   edges = do
@@ -156,8 +160,11 @@ buildGraphData records axesMap r =
     tt ← fromMaybe [ ] $ M.lookup t edgeMap
     pure $ ss × tt
 
-  valueMap ∷ M.Map ((Maybe String) × (Maybe String)) (Array Number)
-  valueMap =
+  valueMap ∷ M.Map ((Maybe String) × (Maybe String)) Number
+  valueMap = map (Ag.runAggregation $ fromMaybe Ag.Sum r.sizeAggregation) valueArrMap
+
+  valueArrMap ∷ M.Map ((Maybe String) × (Maybe String)) (Array Number)
+  valueArrMap =
     foldl valueFoldFn M.empty records
 
   valueFoldFn
@@ -166,23 +173,23 @@ buildGraphData records axesMap r =
     → M.Map ((Maybe String) × (Maybe String)) (Array Number)
   valueFoldFn acc js =
     let
-      mbSource = spy $ toString =<< cursorGet r.source js
-      mbCategory = spy $ toString =<< flip cursorGet js =<< r.color
-      mbValue = spy $ toNumber =<< traceAnyM =<< flip cursorGet js =<< r.size
+      mbSource = toString =<< cursorGet r.source js
+      mbCategory = toString =<< flip cursorGet js =<< r.color
+      mbValue = toNumber =<< traceAnyM =<< flip cursorGet js =<< r.size
 
       valueAlterFn ∷ Maybe Number → Maybe (Array Number) → Maybe (Array Number)
       valueAlterFn (Just a) Nothing = Just [a]
       valueAlterFn (Just a) (Just arr) = Just $ A.cons a arr
       valueAlterFn _ mbArr = mbArr
     in
-      M.alter (valueAlterFn mbValue) (spy $ mbSource × mbCategory) acc
+      M.alter (valueAlterFn mbValue) (mbSource × mbCategory) acc
 
 
 sourceRgx ∷ Rgx.Regex
-sourceRgx = unsafePartial fromRight $ Rgx.regex "source:(\\w+)" Rgx.noFlags
+sourceRgx = unsafePartial fromRight $ Rgx.regex "source:([^:]+)" Rgx.noFlags
 
 categoryRgx ∷ Rgx.Regex
-categoryRgx = unsafePartial fromRight $ Rgx.regex "category:(\\w+)" Rgx.noFlags
+categoryRgx = unsafePartial fromRight $ Rgx.regex "category:([^:]+)" Rgx.noFlags
 
 buildGraph ∷ GraphR → JArray → DSL OptionI
 buildGraph r records = do
@@ -191,21 +198,35 @@ buildGraph r records = do
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
-    E.formatterItem \(r@{name, value}) →
+    E.formatterItem \(o@{name, value, "data": item, dataType}) →
       let
-        o = spy r
+        fItem ∷ FR.Foreign
+        fItem = FR.toForeign item
+
         mbSource ∷ Maybe String
         mbSource = join $ Rgx.match sourceRgx name >>= flip A.index 1
 
         mbCat ∷ Maybe String
         mbCat = join $ Rgx.match categoryRgx name >>= flip A.index 1
 
+        mbVal ∷ Maybe Number
         mbVal = if FR.isUndefined $ FR.toForeign value then Nothing else Just value
-      in
-       -- TODO: handle edge tooltip
-        (foldMap (\s → "source: " ⊕ s) mbSource)
-        ⊕ (foldMap (\c → "<br /> category: " ⊕ c) mbCat)
-        ⊕ (foldMap (\v → "<br /> value: " ⊕ show v) mbVal)
+
+        itemTooltip ∷ String
+        itemTooltip =
+          (foldMap (\s → "name: " ⊕ s) mbSource)
+          ⊕ (foldMap (\c → "<br /> category: " ⊕ c) mbCat)
+          ⊕ (foldMap (\v → "<br /> value: " ⊕ show v) mbVal)
+          ⊕ (foldMap (\a → "<br /> value aggregation: "
+                           ⊕ (Str.toLower $ Ag.printAggregation a))
+             r.sizeAggregation)
+      in fromMaybe itemTooltip do
+        guard $ dataType ≡ "edge"
+        source ← either (const Nothing) Just $ FR.readString =<< readProp "source" fItem
+        target ← either (const Nothing) Just $ FR.readString =<< readProp "target" fItem
+        sourceName ← Str.stripPrefix "edge " source
+        targetName ← Str.stripPrefix "edge " target
+        pure $ sourceName ⊕ " > " ⊕ targetName
 
   E.legend do
     E.orient ET.Vertical
@@ -223,12 +244,9 @@ buildGraph r records = do
 
     E.force do
       E.edgeLength 100.0
-      E.repulsion 200.0
-      E.gravity 0.2
+      E.repulsion 300.0
+      E.gravity 0.1
       E.layoutAnimation true
-
-    E.circular do
-      E.rotateLabel true
 
     E.buildItems items
     E.buildLinks links
