@@ -241,10 +241,22 @@ renderCard opts deckComponent st (deckId × card) index =
         (Gripper.gripperDefsForCard st.displayCards $ Just coord)
         ⊕ [ HH.div
               (cardProperties st coord)
-              [ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
-           ]
+              ([ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
+                ⊕ (if st.presentAddCardGuide ∧ isLastRealCard then [ guide ] else []))
+          ]
   where
   key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
+  isLastRealCard = Just (deckId × card.cardId) == DCS.findLastRealCard st
+  guide =
+    HH.div
+      [ HP.class_ $ HH.className "sd-add-card-guide" ]
+      [ HH.p_ [ HH.text "To do more with this data click or drag this gripper to the left and add a new card to the deck." ]
+      , HH.button
+          [ HP.classes [ HH.className "sd-form-button", HH.className "sd-add-card-guide-dismiss" ]
+          , HE.onClick (HE.input_ DCQ.HideAddCardGuide)
+          ]
+          [ HH.text "Dismiss" ]
+      ]
   classes =
     [ ClassNames.card
     , HH.className case st.fadeTransition of
