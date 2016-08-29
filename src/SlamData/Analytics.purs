@@ -25,7 +25,7 @@ module SlamData.Analytics
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff)
+import Control.Monad.Aff (Aff, apathize)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff (Eff)
@@ -50,7 +50,7 @@ import SlamData.Config as Config
 import SlamData.Workspace.AccessType as AT
 
 -- | Enables the segment.io analyics API.
-foreign import enableAnalytics ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
+foreign import _enableAnalytics ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
 
 foreign import _track ∷ ∀ eff. String → Json → Eff (dom ∷ DOM | eff) Unit
 
@@ -60,6 +60,12 @@ isAdvanced
   $ QA.eval
   $ either (const false) (\{ name } → name == "Quasar-Advanced")
   <$> QF.serverInfo
+
+-- | Enables the segment.io analyics API.
+enableAnalytics ∷ ∀ eff. Aff (dom ∷ DOM, ajax ∷ AX.AJAX | eff) Unit
+enableAnalytics = apathize do
+  isAdv ← isAdvanced
+  unless isAdv (liftEff _enableAnalytics)
 
 -- | Identifies a user in the segment.io analytics API. This will have no effect
 -- | if `enableAnalytics` has not previously been run.
