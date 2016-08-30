@@ -40,7 +40,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Form.Select (Select, autoSelect, newSelect, (⊝), ifSelected, trySelect', _value, isSelected)
+import SlamData.Form.Select (autoSelect, newSelect, (⊝), ifSelected, isSelected, setPreviousValueFrom)
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType (CardType(ChartOptions))
 import SlamData.Workspace.Card.CardType as CT
@@ -48,7 +48,8 @@ import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect, aggregation
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colorSchemes, printColorScheme)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel, isHeatmap)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel, isGraph, isHeatmap)
+import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
 import SlamData.Workspace.Card.ChartOptions.Component.State as VCS
@@ -59,9 +60,12 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.Card.ChartOptions.Graph.Component as Graph
+import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph)
 
-type HTML = H.ParentHTML Form.StateP QueryC Form.QueryP Slam ChartType
-type DSL = H.ParentDSL VCS.State Form.StateP QueryC Form.QueryP Slam ChartType
+type DSL = H.ParentDSL VCS.State ChildState QueryC ChildQuery Slam ChildSlot
+type HTML = H.ParentHTML ChildState QueryC ChildQuery Slam ChildSlot
+
 
 -- | How does this module work?
 -- | + Take a TaggedResource case of Port
@@ -105,7 +109,7 @@ type DSL = H.ParentDSL VCS.State Form.StateP QueryC Form.QueryP Slam ChartType
 chartOptionsComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 chartOptionsComponent = CC.makeCardComponent
   { cardType: ChartOptions
-  , component: H.parentComponent { render, eval, peek: Just peek }
+  , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   , initialState: H.parentState VCS.initialState
   , _State: CC._ChartOptionsState
   , _Query: CC.makeQueryPrism' CC._ChartOptionsQuery
@@ -167,6 +171,7 @@ renderChartTypeSelector state =
         , HP.classes
             $ [ cls state.chartType ]
             ⊕ (guard (selected ≡ current) $> B.active)
+
         , HE.onClick (HE.input_ (right ∘ SetChartType current))
         ]
 
@@ -178,6 +183,7 @@ renderChartTypeSelector state =
   src Scatter = "img/scatter.svg"
   src Radar = "img/radar.svg"
   src Funnel = "img/funnel.svg"
+  src Graph = "img/graph.svg"
   src Heatmap = "img/heatmap.svg"
 
   cls ∷ ChartType → HH.ClassName
@@ -188,6 +194,7 @@ renderChartTypeSelector state =
   cls Scatter = CSS.scatterChartIcon
   cls Radar = CSS.radarChartIcon
   cls Funnel = CSS.funnelChartIcon
+  cls Graph = CSS.pieChartIcon
   cls Heatmap = CSS.heatmapChartIcon
 
 renderChartConfiguration ∷ VCS.State → HTML
@@ -201,14 +208,22 @@ renderChartConfiguration state =
     , renderTab Scatter
     , renderTab Radar
     , renderTab Funnel
+    , renderTab Graph
     , renderTab Heatmap
     , renderDimensions state
     ]
   where
   renderTab ∷ ChartType → HTML
+  renderTab Graph =
+    showIf (state.chartType ≡ Graph)
+    [ HH.slot' cpGraph unit \_ →
+         { component: Graph.comp
+         , initialState: H.parentState Graph.initialState
+         }
+    ]
   renderTab ty =
     showIf (state.chartType ≡ ty)
-    [ HH.slot ty \_ →
+    [ HH.slot' cpForm ty \_ →
         { component: formComponent
         , initialState: H.parentState $ Form.getInitialState ty
         }
@@ -223,18 +238,10 @@ renderDimensions state =
   row
   [ intChartInput CSS.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel
-        (isPie state.chartType
-          || isScatter state.chartType
-          || isRadar state.chartType
-          || isFunnel state.chartType
-          || isHeatmap state.chartType)
+      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap ] )
   , intChartInput CSS.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize
-        (isPie state.chartType
-          || isScatter state.chartType
-          || isRadar state.chartType
-          || isFunnel state.chartType
-          || isHeatmap state.chartType)
+      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap ] )
   , boolChartInput CSS.chartDetailParam "If stack"
       (_.areaStacked) ToggleSetStacked (not $ isArea state.chartType)
   , boolChartInput CSS.chartDetailParam "If smooth"
@@ -415,11 +422,11 @@ renderDimensions state =
 
 -- Note: need to put running to state
 eval ∷ QueryC ~> DSL
-eval = coproduct cardEval chartEval
+eval = cardEval ⨁ chartEval
 
 chartEval ∷ Query ~> DSL
 chartEval q = do
-  next <- case q of
+  next ← case q of
     SetChartType ct n → H.modify (VCS._chartType .~ ct) $> n
     RotateAxisLabel angle n → H.modify (VCS._axisLabelAngle .~ angle) $> n
     SetAxisFontSize size n → H.modify (VCS._axisLabelFontSize .~ size) $> n
@@ -458,55 +465,65 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    conf ← H.query st.chartType $ left $ H.request Form.GetConfiguration
-    let
-      rawConfig = fromMaybe Form.initialConfiguration conf
-      chartConfig = case st.chartType of
-        Pie | not $ F.any isSelected rawConfig.series → Nothing
-        Pie | not $ F.any isSelected rawConfig.measures → Nothing
-        Bar | not $ F.any isSelected rawConfig.series → Nothing
-        Bar | not $ F.any isSelected rawConfig.measures → Nothing
-        Line | not $ F.any isSelected rawConfig.dimensions → Nothing
-        Line | not $ F.any isSelected rawConfig.measures → Nothing
-        Area | not $ F.any isSelected rawConfig.dimensions → Nothing
-        Area | not $ F.any isSelected rawConfig.measures → Nothing
-        Scatter | not $ F.any isSelected rawConfig.measures → Nothing
-        Radar | not $ F.any isSelected rawConfig.dimensions → Nothing
-        Radar | not $ F.any isSelected rawConfig.measures → Nothing
-        Funnel | not $ F.any isSelected rawConfig.dimensions → Nothing
-        Funnel | not $ F.any isSelected rawConfig.measures → Nothing
-        Heatmap | not $ F.any isSelected rawConfig.dimensions → Nothing
-        Heatmap | not $ F.any isSelected rawConfig.measures → Nothing
-        _ → Just rawConfig
+    chartConfig ← case st.chartType of
+      Graph →
+        map join $ H.query' cpGraph unit $ left $ H.request Graph.GetChartConfig
+      _ → do
+        conf ← H.query' cpForm st.chartType $ left $ H.request Form.GetConfiguration
+        let
+          rawConfig = fromMaybe Form.initialConfiguration conf
+          mbChartCfg = case st.chartType of
+            Pie | not $ F.any isSelected rawConfig.series → Nothing
+            Pie | not $ F.any isSelected rawConfig.measures → Nothing
+            Bar | not $ F.any isSelected rawConfig.series → Nothing
+            Bar | not $ F.any isSelected rawConfig.measures → Nothing
+            Line | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Line | not $ F.any isSelected rawConfig.measures → Nothing
+            Area | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Area | not $ F.any isSelected rawConfig.measures → Nothing
+            Scatter | not $ F.any isSelected rawConfig.measures → Nothing
+            Radar | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Radar | not $ F.any isSelected rawConfig.measures → Nothing
+            Funnel | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Funnel | not $ F.any isSelected rawConfig.measures → Nothing
+            Heatmap | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Heatmap | not $ F.any isSelected rawConfig.measures → Nothing
+            _ → Just rawConfig
+        pure
+          $ mbChartCfg
+          <#> { chartConfig: _
+              , options:
+                 { chartType: st.chartType
+                 , axisLabelFontSize: st.axisLabelFontSize
+                 , axisLabelAngle: st.axisLabelAngle
+                 , areaStacked: st.areaStacked
+                 , smooth: st.smooth
+                 , bubbleMinSize: st.bubbleMinSize
+                 , bubbleMaxSize: st.bubbleMaxSize
+                 , funnelOrder: st.funnelOrder
+                 , funnelAlign: st.funnelAlign
+                 , minColorVal: st.minColorVal
+                 , maxColorVal: st.maxColorVal
+                 , colorScheme: st.colorScheme
+                 , colorReversed: st.colorReversed
+                 }
+              }
+          <#> CH.Legacy
 
-    pure ∘ k $ Card.ChartOptions
-      { chartConfig
-      , options:
-          { chartType: st.chartType
-          , axisLabelFontSize: st.axisLabelFontSize
-          , axisLabelAngle: st.axisLabelAngle
-          , areaStacked: st.areaStacked
-          , smooth: st.smooth
-          , bubbleMinSize: st.bubbleMinSize
-          , bubbleMaxSize: st.bubbleMaxSize
-          , funnelOrder: st.funnelOrder
-          , funnelAlign: st.funnelAlign
-          , minColorVal: st.minColorVal
-          , maxColorVal: st.maxColorVal
-          , colorScheme: st.colorScheme
-          , colorReversed: st.colorReversed
-          }
-      }
+    pure ∘ k $ Card.ChartOptions chartConfig
+
   CC.Load card next → do
+    -- TODO: Load graph
     case card of
       Card.ChartOptions model → do
         let st = VCS.fromModel model
         H.set st
-        for_ model.chartConfig \conf →
-          H.query st.chartType
+        for_ (model >>= Lens.preview CH._Legacy) \{chartConfig} →
+          H.query' cpForm st.chartType
             $ left
-            $ H.action $ Form.SetConfiguration conf
-        pure unit
+            $ H.action $ Form.SetConfiguration chartConfig
+        for_ (model >>= Lens.preview CH._Graph) \graphConfig →
+          H.query' cpGraph unit $ left $ H.action $ Graph.Load graphConfig
       _ → pure unit
     pure next
   CC.SetDimensions dims next → do
@@ -524,18 +541,27 @@ cardEval = case _ of
 configure ∷ DSL Unit
 configure = void do
   axes ← H.gets _.axes
+
+  H.query' cpGraph unit $ left $ H.action $ Graph.UpdateAxes axes
+
   pieConf ← getOrInitial Pie
   setConfigFor Pie $ pieBarConfiguration axes pieConf
+
   lineConf ← getOrInitial Line
   setConfigFor Line $ lineConfiguration axes lineConf
+
   barConf ← getOrInitial Bar
   setConfigFor Bar $ pieBarConfiguration axes barConf
+
   areaConf ← getOrInitial Area
   setConfigFor Area $ areaConfiguration axes areaConf
+
   scatterConf ← getOrInitial Scatter
   setConfigFor Scatter $ scatterConfiguration axes scatterConf
+
   radarConf ← getOrInitial Radar
   setConfigFor Radar $ radarConfiguration axes radarConf
+
   funnelConf ← getOrInitial Funnel
   setConfigFor Funnel $ funnelConfiguration axes funnelConf
   heatmapConf ← getOrInitial Heatmap
@@ -544,17 +570,13 @@ configure = void do
   getOrInitial ∷ ChartType → DSL ChartConfiguration
   getOrInitial ty =
     map (fromMaybe Form.initialConfiguration)
-      $ H.query ty
+      $ H.query' cpForm ty
       $ left (H.request Form.GetConfiguration)
 
   setConfigFor ∷ ChartType → ChartConfiguration → DSL Unit
   setConfigFor ty conf =
-    void $ H.query ty $ left $ H.action $ Form.SetConfiguration conf
+    void $ H.query' cpForm ty $ left $ H.action $ Form.SetConfiguration conf
 
-  setPreviousValueFrom
-    ∷ ∀ a. (Eq a) ⇒ Maybe (Select a) → Select a → Select a
-  setPreviousValueFrom mbSel target  =
-    (maybe id trySelect' $ mbSel >>= Lens.view _value) $ target
 
   pieBarConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
   pieBarConfiguration axes current =
@@ -756,5 +778,5 @@ configure = void do
        , aggregations: [aggregation]
        }
 
-peek ∷ ∀ a. H.ChildF ChartType Form.QueryP a → DSL Unit
+peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate

@@ -25,64 +25,25 @@ module SlamData.Workspace.Card.ChartOptions.Model
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
+import Data.Argonaut (Json, (.?), encodeJson, decodeJson, (~>), (:=))
 
-import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
-import SlamData.Workspace.Card.Chart.BuildOptions as CO
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
+import SlamData.Workspace.Card.Chart.Config as CC
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 
-type Model =
-  { chartConfig ∷ Maybe CC.ChartConfiguration
-  , options ∷ CO.BuildOptions
-  }
+type Model = Maybe CC.ChartConfig
 
 eqModel ∷ Model → Model → Boolean
-eqModel m1 m2 =
-  CO.eqBuildOptions m1.options m2.options
-  && case m1.chartConfig × m2.chartConfig of
-    Nothing × Nothing → true
-    (Just o1) × (Just o2) → CC.eqChartConfiguration o1 o2
-    _  → false
+eqModel = eq
 
 genModel ∷ Gen.Gen Model
-genModel = do
-  needCC ← arbitrary
-  chartConfig ← if needCC then Just <$> CC.genChartConfiguration else pure Nothing
-  options ← CO.genBuildOptions
-  pure { chartConfig, options }
+genModel = arbitrary
 
 encode ∷ Model → Json
-encode m
-   = "options" := CO.encode m.options
-  ~> case m.chartConfig of
-    Nothing → jsonEmptyObject
-    Just cc → ("chartConfig" := CC.encode cc
-               ~> jsonEmptyObject)
+encode = encodeJson
 
 decode ∷ Json → Either String Model
-decode = decodeJson >=> \obj →
-  { chartConfig: _, options: _ }
-    <$> (((obj .? "chartConfig") >>= CC.decode <#> Just) <|> pure Nothing)
-    <*> (CO.decode =<< obj .? "options")
+decode js = (decodeJson js) <|> (pure Nothing)
 
 initialModel ∷ Model
-initialModel =
-  { chartConfig: Nothing
-  , options:
-      { chartType: Pie
-      , axisLabelFontSize: 12
-      , axisLabelAngle: 0
-      , areaStacked: false
-      , smooth: false
-      , bubbleMinSize: 1.0
-      , bubbleMaxSize: 50.0
-      , funnelOrder: "descending"
-      , funnelAlign: "center"
-      , minColorVal: 0.0
-      , maxColorVal: 1.0
-      , colorScheme: "diverging: red-blue"
-      , colorReversed: false
-      }
-  }
+initialModel = Nothing

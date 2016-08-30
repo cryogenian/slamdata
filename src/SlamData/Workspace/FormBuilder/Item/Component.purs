@@ -135,6 +135,8 @@ render { model } =
       <> if model.name /= "" then " for " <> (quotedName model.name) <> " variable" else ""
     inputType =
       fieldTypeToInputType model.fieldType
+
+    fieldType ∷ ∀ r i. Array (HP.IProp (inputType ∷ HP.I|r) i)
     fieldType = case model.fieldType of
       DateTimeFieldType ->
         [ HP.inputType inputType
@@ -147,7 +149,7 @@ render { model } =
       _ ->
         [ HP.inputType inputType ]
 
-    secondsStep ∷ forall r i. HP.IProp r i
+    secondsStep ∷ ∀ i r. HP.IProp r i
     secondsStep = refine $ HC.Attr Nothing (HC.attrName "step") "1"
       where
       refine :: HC.Prop i -> HP.IProp r i

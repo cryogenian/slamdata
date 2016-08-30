@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Chart.BuildOptions
   ( BuildOptions
   , encode
   , decode
-  , buildOptions
+  , buildOptionsLegacy
   , eqBuildOptions
   , genBuildOptions
   ) where
@@ -134,12 +134,12 @@ decode = decodeJson >=> \obj →
     <*> ((obj .? "colorScheme") <|> (pure "diverging: red-blue"))
     <*> ((obj .? "colorReversed") <|> (pure false))
 
-buildOptions
+buildOptionsLegacy
   ∷ BuildOptions
   → ChartConfiguration
   → JArray
   → DSL OptionI
-buildOptions args conf records =
+buildOptionsLegacy args conf records =
   let
     mp = analyzeJArray records
   in case args.chartType of
@@ -151,3 +151,4 @@ buildOptions args conf records =
     Radar → buildRadar mp conf
     Funnel → buildFunnel mp args.funnelOrder args.funnelAlign conf
     Heatmap → buildHeatmap mp args.minColorVal args.maxColorVal args.colorScheme args.colorReversed conf
+    Graph → pure unit

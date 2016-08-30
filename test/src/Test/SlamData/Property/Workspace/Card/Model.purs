@@ -46,14 +46,17 @@ instance arbitraryArbCard ∷ SCA.Arbitrary ArbCard where
 
 check ∷ forall eff. SC.SC eff Unit
 check =
-  SC.quickCheck $ runArbCard >>> \model →
+  SC.quickCheck $ runArbCard ⋙ \model →
     case Card.decode (Card.encode model) of
-      Left err -> SC.Failed $ "Decode failed: " <> err
-      Right model' -> checkCardEquality model model'
+      Left err → SC.Failed $ "Decode failed: " <> err
+      Right model' → checkCardEquality model model'
 
 checkCardEquality ∷ Card.Model → Card.Model → SC.Result
 checkCardEquality model model' =
   fold
-   [ model.cardId == model'.cardId <?> "cardId mismatch"
-   , model.model == model'.model <?> ("model mismatch:\n " <> show (J.encodeJson model.model) <> "\n" <> show (J.encodeJson model'.model))
+   [ model.cardId ≡ model'.cardId <?> "cardId mismatch"
+   , model.model ≡ model'.model
+       <?> ( "model mismatch:\n "
+             <> show (J.encodeJson model.model)
+             <> "\n" <> show (J.encodeJson model'.model))
    ]

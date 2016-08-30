@@ -21,9 +21,8 @@ module Test.Property.Utils.Path
   , runArbDirPath
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Foldable (foldl)
 import Data.Path.Pathy (Path, Rel, Dir, Sandboxed, (</>), dir, file, rootDir)
 import Data.String (null)
 
@@ -34,27 +33,27 @@ import Utils.Path (FilePath, DirPath)
 
 newtype ArbFilePath = ArbFilePath FilePath
 
-runArbFilePath :: ArbFilePath -> FilePath
+runArbFilePath ∷ ArbFilePath → FilePath
 runArbFilePath (ArbFilePath p) = p
 
-instance arbitraryArbFilePath :: Arbitrary ArbFilePath where
+instance arbitraryArbFilePath ∷ Arbitrary ArbFilePath where
   arbitrary = do
-    numDirs <- chooseInt 1.0 10.0
-    dirs <- map dir <$> vectorOf numDirs pathPart
-    filename <- file <$> pathPart
-    pure $ ArbFilePath $ rootDir </> foldl (flip (</>)) filename (dirs :: Array (Path Rel Dir Sandboxed))
+    numDirs ← chooseInt 1.0 10.0
+    dirs ← map dir <$> vectorOf numDirs pathPart
+    filename ← file <$> pathPart
+    pure $ ArbFilePath $ rootDir </> foldl (flip (</>)) filename (dirs ∷ Array (Path Rel Dir Sandboxed))
 
 newtype ArbDirPath = ArbDirPath DirPath
 
-runArbDirPath :: ArbDirPath -> DirPath
+runArbDirPath ∷ ArbDirPath → DirPath
 runArbDirPath (ArbDirPath p) = p
 
-instance arbitraryArbDirPath :: Arbitrary ArbDirPath where
+instance arbitraryArbDirPath ∷ Arbitrary ArbDirPath where
   arbitrary = do
-    numDirs <- chooseInt 1.0 10.0
-    dirs <- map dir <$> vectorOf numDirs pathPart
-    last <- dir <$> pathPart
-    pure $ ArbDirPath $ rootDir </> foldl (flip (</>)) last (dirs :: Array (Path Rel Dir Sandboxed))
+    numDirs ← chooseInt 1.0 10.0
+    dirs ← map dir <$> vectorOf numDirs pathPart
+    last ← dir <$> pathPart
+    pure $ ArbDirPath $ rootDir </> foldl (flip (</>)) last (dirs ∷ Array (Path Rel Dir Sandboxed))
 
-pathPart :: Gen String
-pathPart = suchThat arbitrary (not <<< null)
+pathPart ∷ Gen String
+pathPart = suchThat arbitrary (not ∘ null)

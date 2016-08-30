@@ -247,12 +247,14 @@ render state = case state.chartType of
            , mainState: sel
            , ariaLabel: renderLabel i "Measure"
            , classes: [CSS.aggregation, B.btnPrimary]
+           , defaultOption: "Select axis source"
            }
       else { disableWhen: (_ < 1)
            , defaultWhen: (const true)
            , mainState: sel
            , ariaLabel: renderLabel i "Measure"
            , classes: [CSS.aggregation, B.btnPrimary]
+           , defaultOption: "Select axis source"
            }
 
 
