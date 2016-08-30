@@ -60,7 +60,6 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
-import SlamData.Monad (Slam)
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring (Wiring(..), CardEval, Cache, DeckMessage(..), putCardEval, putCache, getCache, makeCache)
 import SlamData.Wiring as W
@@ -523,14 +522,13 @@ createCard cardType = do
 
 getDismissedAddCardGuideBefore ∷ DeckDSL Boolean
 getDismissedAddCardGuideBefore =
-  H.liftH
-    $ H.liftH
+  H.liftH $ H.liftH
     $ either (const $ false) id
-    <$> ((LocalStorage.getLocalStorage "dismissedAddCardGuide") ∷ Slam (Either String Boolean))
+    <$> LocalStorage.getLocalStorage "dismissedAddCardGuide"
 
 storeDismissedAddCardGuide ∷ DeckDSL Unit
 storeDismissedAddCardGuide =
-  H.liftH $ H.liftH $ ((LocalStorage.setLocalStorage "dismissedAddCardGuide" true) ∷ Slam Unit)
+  H.liftH $ H.liftH $ LocalStorage.setLocalStorage "dismissedAddCardGuide" true
 
 presentAddCardGuideAfterDelay ∷ DeckDSL Unit
 presentAddCardGuideAfterDelay = do
