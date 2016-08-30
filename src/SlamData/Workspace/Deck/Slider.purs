@@ -28,6 +28,7 @@ import Data.Array as Array
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
+import Data.String as String
 import Data.Tuple as Tuple
 
 import CSS (CSS)
@@ -243,7 +244,7 @@ renderCard opts deckComponent st (deckId × card) index =
         ⊕ [ HH.div
               (cardProperties st coord)
               ([ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
-                ⊕ (if st.presentAddCardGuide ∧ isLastRealCard then maybe [] (\text → [ guide text ]) guideText else []))
+                ⊕ (if st.presentAddCardGuide ∧ isLastRealCard then [ guide guideText ] else []))
           ]
   where
   key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
@@ -258,10 +259,11 @@ renderCard opts deckComponent st (deckId × card) index =
           ]
           [ HH.text "Dismiss" ]
       ]
-  guideText = guideText' <$> (ICT.printIOType' =<< ICT.outputFor =<< ICT.fromCardType (Card.modelCardType card.model))
-  guideText' outputTypeString =
+  outputs = maybe [] ICT.outputsFor $ ICT.fromCardType (Card.modelCardType card.model)
+  guideText = guideText' ∘ String.joinWith " / " $ Array.catMaybes $ ICT.printIOType' <$> outputs
+  guideText' outputTypesString =
     "To do more with "
-      ⊕ outputTypeString
+      ⊕ outputTypesString
       ⊕ " click or drag this gripper to the left and add a new card to the deck."
   classes =
     [ ClassNames.card
