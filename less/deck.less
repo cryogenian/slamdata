@@ -257,23 +257,25 @@ button.sd-zoom-deck {
 }
 
 .sd-add-card-guide {
-  margin-left: @grid-size;
   position: absolute;
   top: 50%;
   right: 0;
-  margin-top: translate(0, -50%);
-  margin-right: @grid-size;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  border-top: 3px solid #337ab7;
+  transform: translate(0, -50%);
+  margin-top: -4px;
   z-index: 1000;
   animation-name: pointRight, fadeIn;
   animation-duration: 1s, 0.5s;
   animation-fill-mode: both;
-  box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.0125);
 }
 
-.sd-add-card-guide::after, .sd-add-card-guide::before {
+.sd-add-card-guide .sd-notification {
+  display: block;
+  border-top: 3px solid #337ab7;
+  margin: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.125);
+}
+
+.sd-add-card-guide .sd-notification::after, .sd-add-card-guide .sd-notification::before {
   left: 100%;
   top: 50%;
   border: solid transparent;
@@ -284,16 +286,16 @@ button.sd-zoom-deck {
   pointer-events: none;
 }
 
-.sd-add-card-guide::after {
+.sd-add-card-guide .sd-notification::after {
   border-color: rgba(255, 255, 255, 0);
   border-left-color: #FFF;
   border-width: 8px;
   margin-top: -8px;
 }
 
-.sd-add-card-guide::before {
+.sd-add-card-guide .sd-notification::before {
   border-color: rgba(204, 204, 204, 0);
-  border-left-color: #ccc;
+  border-left-color: #cccccc;
   border-width: 9px;
   margin-top: -9px;
 }
