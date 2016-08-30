@@ -33,7 +33,7 @@ import Data.Map as Map
 
 import OIDC.Crypt.Types as OIDC
 
-import Quasar.Advanced.QuasarAF as QSlamF
+import Quasar.Advanced.QuasarAF as QA
 
 import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
@@ -79,7 +79,7 @@ unFork = unsafeCoerce
 data SlamF eff a
   = Aff (Aff eff a)
   | GetAuthIdToken (Maybe OIDC.IdToken → a)
-  | Quasar (QSlamF.QuasarAFC a)
+  | Quasar (QA.QuasarAFC a)
   | GetURLVarMaps (Map.Map DeckId Port.URLVarMap → a)
   | PutURLVarMaps (Map.Map DeckId Port.URLVarMap) a
   | Track A.Event a
@@ -182,6 +182,12 @@ unSlam = foldFree go ∘ unSlamM
           Bus.write URLVarMapsUpdated wiring.messaging
       pure a
     Track e a → do
+      Wiring wiring ← ask
+      hasIdentified ← lift $ liftEff $ readRef wiring.hasIdentified
+      unless (hasIdentified) $ lift do
+        liftEff $ writeRef wiring.hasIdentified true
+        licensee ← runQuasarF Nothing QA.licensee
+        liftEff $ for_ licensee A.identify
       liftEff $ A.trackEvent e
       pure a
     Notify no a → do

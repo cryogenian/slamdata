@@ -38,7 +38,8 @@ import Math as Math
 
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, commonNameMap, keyCategory, colors, addAxisLabelAngleAndFontSize, buildChartAxes, buildPieBarData)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, commonNameMap, keyCategory, addAxisLabelAngleAndFontSize, buildChartAxes, buildPieBarData)
+import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 
 import Utils.DOM (getTextWidthPure)
 
@@ -57,7 +58,9 @@ buildBar axes angle size conf = do
     E.axisType ET.Category
     E.items $ map ET.strItem catVals
     E.interval 0
-    addAxisLabelAngleAndFontSize angle size
+    E.axisLabel do
+      addAxisLabelAngleAndFontSize angle size
+      E.interval 0
 
   E.yAxis $ E.axisType ET.Value
   E.legend do

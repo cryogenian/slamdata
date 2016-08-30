@@ -141,7 +141,17 @@ render state = case state.chartType of
         ⊕ foldMap (renderSeries 1) (state.chartConfiguration.series !! 1)
       , hr
       ]
-  _ -> HH.div
+  Heatmap → HH.div
+    [ HP.classes [ CSS.chartEditor ] ]
+    $ fold
+      [ foldMap (renderDimension 0) (state.chartConfiguration.dimensions !! 0)
+      , foldMap (renderDimension 1) (state.chartConfiguration.dimensions !! 1)
+      , foldMap (renderMeasure 0 aggregationSelect) (state.chartConfiguration.measures !! 0)
+      , hr
+      , foldMap (renderSeries 0) (state.chartConfiguration.series !! 0)
+      , hr
+      ]
+  _ → HH.div
     [ HP.classes [ CSS.chartEditor ] ]
     $ fold
       [ if null state.chartConfiguration.dimensions
@@ -237,12 +247,14 @@ render state = case state.chartType of
            , mainState: sel
            , ariaLabel: renderLabel i "Measure"
            , classes: [CSS.aggregation, B.btnPrimary]
+           , defaultOption: "Select axis source"
            }
       else { disableWhen: (_ < 1)
            , defaultWhen: (const true)
            , mainState: sel
            , ariaLabel: renderLabel i "Measure"
            , classes: [CSS.aggregation, B.btnPrimary]
+           , defaultOption: "Select axis source"
            }
 
 

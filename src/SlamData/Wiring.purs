@@ -43,7 +43,6 @@ import Control.Monad.Fork (class MonadFork)
 import Data.Map as Map
 import Data.Set as Set
 
-import SlamData.Analytics.Event as AE
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Notification as N
@@ -95,10 +94,10 @@ newtype Wiring =
     , messaging ∷ Bus.BusRW DeckMessage
     , notify ∷ Bus.BusRW N.NotificationOptions
     , globalError ∷ Bus.BusRW GE.GlobalError
-    , analytics ∷ Bus.BusRW AE.Event
     , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
     , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
     , signInBus ∷ SignInBus
+    , hasIdentified ∷ Ref Boolean
     }
 
 makeWiring
@@ -113,10 +112,10 @@ makeWiring = fromAff do
   messaging ← Bus.make
   notify ← Bus.make
   globalError ← Bus.make
-  analytics ← Bus.make
   requestNewIdTokenBus ← Auth.authentication
   urlVarMaps ← fromEff (newRef mempty)
   signInBus ← Bus.make
+  hasIdentified ← fromEff (newRef false)
   pure $
     Wiring
       { decks
@@ -126,10 +125,10 @@ makeWiring = fromAff do
       , messaging
       , notify
       , globalError
-      , analytics
       , requestNewIdTokenBus
       , urlVarMaps
       , signInBus
+      , hasIdentified
       }
 
 makeCache

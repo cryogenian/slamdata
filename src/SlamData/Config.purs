@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Config where
 
 import Prelude ((<>), (*))
+import Data.Time.Duration (Milliseconds(Milliseconds))
 
 baseUrl :: String
 baseUrl = ""
@@ -74,6 +75,9 @@ authenticationTimeout = 5000
 
 resizeEChartsTimeout :: Int
 resizeEChartsTimeout = 0
+
+addCardGuideDelay :: Milliseconds
+addCardGuideDelay = Milliseconds 4000.0
 
 trashFolder :: String
 trashFolder = ".trash"

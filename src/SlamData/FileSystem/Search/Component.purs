@@ -185,6 +185,7 @@ eval (Validate next) = do
     _ → do
       H.modify (_valid .~ true)
       HU.sendAfter (Milliseconds zero) $ H.action Submit
+      pure unit
   pure next
 eval (Submit next) = pure next
 eval (GetValue continue) = map continue $ H.gets _.value

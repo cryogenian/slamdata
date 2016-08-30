@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Analytics
   ( enableAnalytics
-  , consumeEvents
   , identify
   , trackEvent
   , module SlamData.Analytics.Class
@@ -26,24 +25,17 @@ module SlamData.Analytics
 import SlamData.Prelude
 
 import Control.Monad.Aff (Aff, apathize)
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Reader (runReaderT)
-import Control.Monad.Rec.Class (forever)
 
 import Data.Argonaut (Json, (:=), (~>), jsonEmptyObject)
-import Data.String as Str
 
 import DOM (DOM)
-import DOM.HTML (window)
-import DOM.HTML.Location as Location
-import DOM.HTML.Window as Window
 
 import Network.HTTP.Affjax as AX
-import OIDC.Crypt.Types as OIDC
 
+import Quasar.Advanced.Types as QT
 import Quasar.QuasarF as QF
 import Quasar.QuasarF.Interpreter.Aff as QA
 
@@ -52,7 +44,9 @@ import SlamData.Analytics.Event (Event(..))
 import SlamData.Config as Config
 import SlamData.Workspace.AccessType as AT
 
+-- | Enables the segment.io analyics API.
 foreign import _enableAnalytics ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
+
 foreign import _track ∷ ∀ eff. String → Json → Eff (dom ∷ DOM | eff) Unit
 
 isAdvanced ∷ ∀ eff. Aff (ajax ∷ AX.AJAX | eff) Boolean
@@ -62,31 +56,26 @@ isAdvanced
   $ either (const false) (\{ name } → name == "Quasar-Advanced")
   <$> QF.serverInfo
 
-isHosted ∷ ∀ eff. Eff (dom ∷ DOM | eff) Boolean
-isHosted = do
-  host ← Location.host =<< Window.location =<< window
-  pure $ isJust $ Str.stripSuffix "slamdata.com" host
-
 -- | Enables the segment.io analyics API.
 enableAnalytics ∷ ∀ eff. Aff (dom ∷ DOM, ajax ∷ AX.AJAX | eff) Unit
-enableAnalytics = apathize $
-  liftEff isHosted >>=
-    if _
-    then liftEff _enableAnalytics
-    else isAdvanced >>=
-      if _
-      then pure unit
-      else liftEff _enableAnalytics
+enableAnalytics = apathize do
+  isAdv ← isAdvanced
+  unless isAdv (liftEff _enableAnalytics)
 
--- | Identifies a user in the segment.io analytics API. This will have no effect
--- | if `enableAnalytics` has not previously been run.
-foreign import identify ∷ ∀ eff. OIDC.Email → Eff (dom ∷ DOM | eff) Unit
-
-consumeEvents
+foreign import _identify
   ∷ ∀ r eff
-  . Bus.Bus (read ∷ Bus.Cap | r) Event
-  → Aff (avar ∷ AVAR, dom ∷ DOM | eff) Unit
-consumeEvents bus = forever $ liftEff <<< trackEvent =<< Bus.read bus
+  . String
+  → { | r }
+  → Eff (dom ∷ DOM | eff) Unit
+
+identify ∷ ∀ eff. QT.Licensee → Eff (dom ∷ DOM | eff) Unit
+identify licensee =
+  _identify
+    licensee.registeredTo
+    { fullName: licensee.fullName
+    , registeredTo: licensee.registeredTo
+    , company: licensee.company
+    }
 
 trackEvent ∷ ∀ eff. Event → Eff (dom ∷ DOM | eff) Unit
 trackEvent = case _ of

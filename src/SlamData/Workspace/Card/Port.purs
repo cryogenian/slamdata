@@ -37,20 +37,18 @@ import Data.Lens (PrismP, prism', TraversalP, wander)
 import Data.Set as Set
 
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
-import SlamData.Workspace.Card.Chart.BuildOptions (BuildOptions)
-import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
+import SlamData.Workspace.Card.Chart.Config as CC
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
 type ChartPort =
-  { options ∷ BuildOptions
-  , chartConfig ∷ Maybe ChartConfiguration
-  , resource ∷ PU.FilePath
+  { resource ∷ PU.FilePath
   , availableChartTypes ∷ Set.Set ChartType
   , axes ∷ Axes
+  , config ∷ Maybe CC.ChartConfig
   }
 
 type DownloadPort =

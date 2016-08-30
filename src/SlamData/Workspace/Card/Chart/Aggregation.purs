@@ -91,6 +91,12 @@ aggregationSelectWithNone =
      , options: [Nothing] <> map Just allAggregations
      }
 
+nonMaybeAggregationSelect ∷ Select Aggregation
+nonMaybeAggregationSelect =
+  Select
+    { value: Just Sum
+    , options: allAggregations
+    }
 
 derive instance genericAggregation ∷ Generic Aggregation
 derive instance eqAggregation ∷ Eq Aggregation

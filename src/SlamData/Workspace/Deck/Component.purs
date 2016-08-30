@@ -21,10 +21,13 @@ module SlamData.Workspace.Deck.Component
   , peek
   , module SlamData.Workspace.Deck.Component.Query
   , module DCS
+  , module SlamData.Workspace.Deck.DeckPath
   ) where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff as Aff
+import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Promise as Pr
@@ -47,11 +50,13 @@ import DOM.HTML.Location as Location
 
 import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaqueState)
-import Halogen.Component.Utils (raise', subscribeToBus')
+import Halogen.Component.Utils (raise', sendAfter', subscribeToBus')
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Indexed as HH
 
 import SlamData.Analytics as SA
+import SlamData.Config as Config
+import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
@@ -84,6 +89,7 @@ import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
 import SlamData.Workspace.Deck.Component.Render as DCR
 import SlamData.Workspace.Deck.Component.State as DCS
+import SlamData.Workspace.Deck.DeckPath (deckPath, deckPath')
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
@@ -96,6 +102,7 @@ import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils.DOM (getBoundingClientRect, elementEq)
+import Utils.LocalStorage as LocalStorage
 import Utils.Path (DirPath)
 
 initialState ∷ DirPath → DeckId → DCS.StateP
@@ -124,6 +131,10 @@ eval opts = case _ of
       H.modify $ DCS._breakers %~ (Array.cons eb)
     updateCardSize
     pure next
+  PresentAddCardGuide next → do
+    H.modify (DCS._presentAddCardGuide .~ true) $> next
+  HideAddCardGuide next →
+    dismissAddCardGuide $> next
   Finish next → do
     H.modify _ { finalized = true }
     H.gets _.breakers >>= traverse_ (H.fromAff ∘ EventLoop.break')
@@ -153,7 +164,7 @@ eval opts = case _ of
     updateIndicator
     pure next
   Publish next → do
-    path ← H.gets DCS.deckPath
+    path ← H.gets deckPath
     H.fromEff ∘ newTab $ mkWorkspaceURL path (WA.Load AT.ReadOnly)
     pure next
   -- TODO: How can we get rid of this? What is it's purpose? It smells.
@@ -202,7 +213,7 @@ eval opts = case _ of
       queuePendingCard pending
     pure next
   GetVarMaps k → do
-    deckPath ← H.gets DCS.deckPath
+    deckPath ← H.gets deckPath
     k <$> getVarMaps deckPath
   FlipDeck next → do
     updateBackSide opts
@@ -220,7 +231,7 @@ eval opts = case _ of
   ZoomIn next → do
     st ← H.get
     varMaps ← getURLVarMaps
-    let deckHash = mkWorkspaceHash (DCS.deckPath st) (WA.Load opts.accessType) varMaps
+    let deckHash = mkWorkspaceHash (deckPath st) (WA.Load opts.accessType) varMaps
     H.fromEff $ locationObject >>= Location.setHash deckHash
     pure next
   ZoomOut next → do
@@ -228,7 +239,7 @@ eval opts = case _ of
     case st.parent of
       Just (Tuple deckId _) → do
         varMaps ← getURLVarMaps
-        let deckHash = mkWorkspaceHash (DCS.deckPath' st.path deckId) (WA.Load opts.accessType) varMaps
+        let deckHash = mkWorkspaceHash (deckPath' st.path deckId) (WA.Load opts.accessType) varMaps
         H.fromEff $ locationObject >>= Location.setHash deckHash
       Nothing →
         void $ H.fromEff $ setHref $ parentURL $ Left st.path
@@ -247,6 +258,9 @@ eval opts = case _ of
     Slider.stopSlidingAndSnap mouseEvent
     updateIndicator
     updateActiveState
+    eq (Just CT.NextAction) ∘ DCS.activeCardType <$> H.get >>=
+      flip when dismissAddCardGuide
+
     pure next
   UpdateSliderPosition mouseEvent next →
     Slider.updateSliderPosition mouseEvent $> next
@@ -380,7 +394,7 @@ peekBackSide opts (Back.DoAction action _) =
             H.set $ snd rem
             triggerSave Nothing
             updateActiveCardAndIndicator
-            H.modify $ DCS._displayMode .~ DCS.Normal
+            H.modify $ (DCS._displayMode .~ DCS.Normal) ∘ (DCS._presentAddCardGuide .~ false)
             DCS.activeCardCoord (snd rem)
               # maybe (runCardUpdates opts state.id L.Nil) queuePendingCard
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
@@ -397,13 +411,13 @@ peekBackSide opts (Back.DoAction action _) =
       st ← H.get
       SA.track (SA.Embed st.id)
       sharingInput ← getSharingInput
-      varMaps ← getVarMaps (DCS.deckPath st)
+      varMaps ← getVarMaps (deckPath st)
       showDialog $ Dialog.Embed sharingInput varMaps
     Back.Publish → do
       st ← H.get
       SA.track (SA.Publish st.id)
       sharingInput ← getSharingInput
-      varMaps ← getVarMaps (DCS.deckPath st)
+      varMaps ← getVarMaps (deckPath st)
       showDialog $ Dialog.Publish sharingInput varMaps
     Back.DeleteDeck → do
       cards ← H.gets _.modelCards
@@ -507,12 +521,58 @@ updateBackSide { cursor } = do
 
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
+  presentAddCardGuideAfterDelay
   SA.track (SA.AddCard cardType)
   deckId ← H.gets _.id
   (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
   H.set st
   queuePendingCard (deckId × newCardId)
   triggerSave $ Just (deckId × newCardId)
+
+getDismissedAddCardGuideBefore ∷ DeckDSL Boolean
+getDismissedAddCardGuideBefore =
+  H.liftH $ H.liftH
+    $ either (const $ false) id
+    <$> LocalStorage.getLocalStorage "dismissedAddCardGuide"
+
+storeDismissedAddCardGuide ∷ DeckDSL Unit
+storeDismissedAddCardGuide =
+  H.liftH $ H.liftH $ LocalStorage.setLocalStorage "dismissedAddCardGuide" true
+
+presentAddCardGuideAfterDelay ∷ DeckDSL Unit
+presentAddCardGuideAfterDelay = do
+  dismissedBefore ← getDismissedAddCardGuideBefore
+  if dismissedBefore
+    then pure unit
+    else do
+      cancelPresentAddCardGuide
+      H.modify
+        ∘ (DCS._presentAddCardGuideCanceler .~ _)
+        ∘ Just
+        =<< (sendAfter' Config.addCardGuideDelay $ PresentAddCardGuide unit)
+
+cancelPresentAddCardGuide ∷ DeckDSL Boolean
+cancelPresentAddCardGuide =
+  H.fromAff ∘ maybe (pure false) (flip Aff.cancel $ Exception.error "Cancelled")
+    =<< H.gets _.presentAddCardGuideCanceler
+
+dismissAddCardGuide ∷ DeckDSL Unit
+dismissAddCardGuide =
+  H.gets _.presentAddCardGuide >>=
+    flip when do
+      H.modify (DCS._presentAddCardGuide .~ false)
+      storeDismissedAddCardGuide
+
+resetAddCardGuideDelay ∷ DeckDSL Unit
+resetAddCardGuideDelay =
+  cancelPresentAddCardGuide >>= if _ then presentAddCardGuideAfterDelay else pure unit
+
+deckDSLLater ∷ Int → DeckDSL Unit → DeckDSL Unit
+deckDSLLater ms action =
+  (H.fromAff $ Aff.later' ms noOp) *> action
+  where
+  noOp ∷ Aff.Aff SlamDataEffects Unit
+  noOp = pure unit
 
 peekCardInner
   ∷ ∀ a
@@ -531,6 +591,7 @@ peekCardEvalQuery cardCoord = case _ of
 
 peekAnyCard ∷ ∀ a. DeckId × CardId → AnyCardQuery a → DeckDSL Unit
 peekAnyCard cardCoord q = do
+  resetAddCardGuideDelay
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._PresentReason) $ uncurry presentReason
 
@@ -831,7 +892,7 @@ saveDeck { accessType, cursor } coord = do
         Notify.saveDeckFail err
       Right _ → do
         when (L.null cursor) $ do
-          path' ← H.gets DCS.deckPath
+          path' ← H.gets deckPath
           varMaps ← getURLVarMaps
           let deckHash = mkWorkspaceHash path' (WA.Load accessType) varMaps
           H.fromEff $ locationObject >>= Location.setHash deckHash

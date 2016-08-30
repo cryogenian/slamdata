@@ -16,13 +16,14 @@ limitations under the License.
 
 module SlamData.Workspace.Card.ChartOptions.Component.Query where
 
-import Data.Functor.Coproduct (Coproduct)
+import SlamData.Prelude
 
 import Halogen (ChildF)
 
+import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildSlot, ChildQuery)
+
 import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.ChartOptions.Form.Component as Form
 
 data Query a
   = SetChartType ChartType a
@@ -34,7 +35,13 @@ data Query a
   | SetBubbleMaxSize Number a
   | SetFunnelOrder String a
   | SetFunnelAlign String a
+  | SetMinColorVal Number a
+  | SetMaxColorVal Number a
+  | SetColorScheme String a
+  | SetColorReversed Boolean a
 
-type QueryC = Coproduct CardEvalQuery Query
 
-type QueryP = Coproduct QueryC (ChildF ChartType Form.QueryP)
+
+type QueryC = CardEvalQuery ⨁ Query
+
+type QueryP = QueryC ⨁ (ChildF ChildSlot ChildQuery)

@@ -39,7 +39,8 @@ import ECharts.Types.Phantom as ETP
 import SlamData.Form.Select (_value)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, LineData, commonNameMap, keyCategory, colors, addAxisLabelAngleAndFontSize, buildChartAxes, buildLineData)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, LineData, commonNameMap, keyCategory, addAxisLabelAngleAndFontSize, buildChartAxes, buildLineData)
+import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 
 import Math as Math
 
@@ -57,7 +58,7 @@ buildLine axes angle size conf = do
     E.axisType $ fst xAxisPair
     traverse_ E.interval $ snd xAxisPair
     E.items $ map ET.strItem catVals
-    addAxisLabelAngleAndFontSize angle size
+    E.axisLabel $ addAxisLabelAngleAndFontSize angle size
 
   E.yAxes do
     E.addYAxis yAxis

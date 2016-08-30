@@ -41,7 +41,6 @@ import OIDC.Crypt as Crypt
 
 import Quasar.Advanced.Types (ProviderR, Provider(..))
 
-import SlamData.Analytics as Analytics
 import SlamData.Monad (Slam)
 import SlamData.Quasar as Api
 import SlamData.Quasar.Auth as Auth
@@ -103,7 +102,6 @@ eval (Init next) = update $> next
 update ∷ SignInDSL Unit
 update = do
   mbIdToken ← H.liftH $ H.liftH $ Auth.getIdToken
-  traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
   maybe
     retrieveProvidersAndUpdateMenu
     putEmailToMenu

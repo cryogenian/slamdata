@@ -314,15 +314,16 @@ button.aggregation {
 }
 
 form.chart-configure-form {
-    .chart-configuration(@label-width: 75px);
+    .chart-configuration(@label-width: 120px);
     &.with-aggregation {
         div {
-            width: ~"calc(100% - 75px)";
+            width: ~"calc(100% - 120px)";
             display: inline-block;
             .form-control {
                 width: ~"calc(100% - 40px)";
                 &.aggregation {
                     width: 40px;
+                    height: 34px;
                     font-weight: bold;
                 }
             }

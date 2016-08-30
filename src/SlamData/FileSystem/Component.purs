@@ -279,7 +279,10 @@ uploadFileSelected f = do
     -- Or check if its first/last characters are [/]
     | otherwise =
         let trimmed = S.trim content'
-        in F.all isJust [S.stripPrefix "[" trimmed, S.stripSuffix "]" trimmed]
+        in (startsWithEndsWith "[" "]" trimmed) || (startsWithEndsWith "{" "}" trimmed)
+
+  startsWithEndsWith startsWith endsWith s =
+    F.all isJust [S.stripPrefix startsWith s, S.stripSuffix endsWith s]
 
   handleError err =
     case GE.fromQError err of
@@ -467,14 +470,23 @@ configure (R.View path) = do
 configure (R.Database path) = do
   API.mountInfo path >>=
     case _ of
-      Left err →
-        case GE.fromQError err of
-          Left msg →
-            showDialog $ Dialog.Error
-              $ "There was a problem reading the mount settings: "
-              ⊕ msg
-          Right ge →
-            GE.raiseGlobalError ge
+      Left err
+        | path /= rootDir →
+            case GE.fromQError err of
+              Left msg →
+                showDialog $ Dialog.Error
+                  $ "There was a problem reading the mount settings: "
+                  ⊕ msg
+              Right ge →
+                GE.raiseGlobalError ge
+        | otherwise →
+            -- We need to allow a non-existant root mount to be configured to
+            -- allow for the case where Quasar has not yet had any mounts set
+            -- up.
+            showDialog $ Dialog.Mount
+              rootDir
+              ""
+              (Just (Left MongoDB.initialState))
       Right config →
         showDialog $ Dialog.Mount
           (fromMaybe rootDir (parentDir path))

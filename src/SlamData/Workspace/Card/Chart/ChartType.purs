@@ -23,6 +23,8 @@ module SlamData.Workspace.Card.Chart.ChartType
   , isScatter
   , isRadar
   , isFunnel
+  , isGraph
+  , isHeatmap
   , parseChartType
   , printChartType
   ) where
@@ -33,37 +35,54 @@ import Data.List as L
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
-data ChartType = Pie | Line | Bar | Area | Scatter | Radar | Funnel
+data ChartType
+  = Pie
+  | Line
+  | Bar
+  | Area
+  | Scatter
+  | Radar
+  | Funnel
+  | Graph
+  | Heatmap
 
-isPie :: ChartType -> Boolean
+isPie ∷ ChartType → Boolean
 isPie Pie = true
 isPie _ = false
 
-isLine :: ChartType -> Boolean
+isLine ∷ ChartType → Boolean
 isLine Line = true
 isLine _ = false
 
-isBar :: ChartType -> Boolean
+isBar ∷ ChartType → Boolean
 isBar Bar = true
 isBar _ = false
 
-isArea :: ChartType -> Boolean
+isArea ∷ ChartType → Boolean
 isArea Area = true
 isArea _ = false
 
-isScatter :: ChartType -> Boolean
+isScatter ∷ ChartType → Boolean
 isScatter Scatter = true
 isScatter _ = false
 
-isRadar :: ChartType -> Boolean
+isRadar ∷ ChartType → Boolean
 isRadar Radar = true
 isRadar _ = false
 
-isFunnel :: ChartType -> Boolean
+isFunnel ∷ ChartType → Boolean
 isFunnel Funnel = true
 isFunnel _ = false
 
-parseChartType :: String -> Either String ChartType
+isGraph ∷ ChartType → Boolean
+isGraph Graph = true
+isGraph _ = false
+
+isHeatmap :: ChartType -> Boolean
+isHeatmap Heatmap = true
+isHeatmap _ = false
+
+parseChartType ∷ String → Either String ChartType
 parseChartType "pie" = pure Pie
 parseChartType "line" = pure Line
 parseChartType "bar" = pure Bar
@@ -71,9 +90,11 @@ parseChartType "area" = pure Area
 parseChartType "scatter" = pure Scatter
 parseChartType "radar" = pure Radar
 parseChartType "funnel" = pure Funnel
+parseChartType "graph" = pure Graph
+parseChartType "heatmap" = pure Heatmap
 parseChartType _ = Left "incorrect chartType"
 
-printChartType :: ChartType -> String
+printChartType ∷ ChartType → String
 printChartType Pie = "pie"
 printChartType Line = "line"
 printChartType Bar = "bar"
@@ -81,23 +102,28 @@ printChartType Area = "area"
 printChartType Scatter = "scatter"
 printChartType Radar = "radar"
 printChartType Funnel = "funnel"
+printChartType Graph = "graph"
+printChartType Heatmap = "heatmap"
 
-derive instance genericChartType :: Generic ChartType
-derive instance eqChartType :: Eq ChartType
-derive instance ordChartType :: Ord ChartType
+derive instance genericChartType ∷ Generic ChartType
+derive instance eqChartType ∷ Eq ChartType
+derive instance ordChartType ∷ Ord ChartType
 
-instance encodeJsonChartType :: EncodeJson ChartType where
-  encodeJson = fromString <<< printChartType
+instance encodeJsonChartType ∷ EncodeJson ChartType where
+  encodeJson = fromString ∘ printChartType
 
-instance decodeJsonChartType :: DecodeJson ChartType where
+instance decodeJsonChartType ∷ DecodeJson ChartType where
   decodeJson json = decodeJson json >>= parseChartType
 
 instance arbitraryChartType ∷ SC.Arbitrary ChartType where
-  arbitrary = Gen.elements Pie $ L.fromFoldable 
+  arbitrary = Gen.elements Pie $ L.fromFoldable
     [ Pie
     , Line
     , Bar
     , Area
     , Scatter
     , Radar
-    , Funnel ]
+    , Funnel
+    , Graph
+    , Heatmap
+    ]

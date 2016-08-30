@@ -49,7 +49,7 @@ import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
-import SlamData.Wiring (Wiring(..), makeWiring)
+import SlamData.Wiring (makeWiring)
 
 import Routing as Routing
 
@@ -63,8 +63,7 @@ main = do
   runHalogenAff do
     forkAff Analytics.enableAnalytics
     let st = Workspace.initialState (Just "3.0")
-    wiring@(Wiring { analytics }) ← makeWiring
-    forkAff (Analytics.consumeEvents analytics)
+    wiring ← makeWiring
     let ui = interpret (runSlam wiring) Workspace.comp
     driver ← runUI ui (parentState st) =<< awaitBody
     forkAff (routeSignal driver)

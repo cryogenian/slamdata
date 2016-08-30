@@ -37,41 +37,49 @@ data Query s a
   | SetSelect (S.Select s) a
   | GetValue (Maybe s → a)
   | GetSelect (S.Select s → a)
+  | TrySelect s a
   | ToggleOpened a
 
 type SelectConfig r =
   { disableWhen ∷ Int → Boolean
   , defaultWhen ∷ Int → Boolean
   , ariaLabel ∷ Maybe String
+  , defaultOption ∷ String
   | r
   }
 
 primarySelect
-  ∷ forall a
-   . (S.OptionVal a)
+  ∷ ∀ a
+  . (S.OptionVal a)
   ⇒ Maybe String
   → H.Component (S.Select a) (Query a) Slam
 primarySelect mbLabel =
-  select { disableWhen: (_ < 2), defaultWhen: (_ > 1), ariaLabel: mbLabel }
+  select { disableWhen: (_ < 2)
+         , defaultWhen: (_ > 1)
+         , ariaLabel: mbLabel
+         , defaultOption: "Select axis source" }
 
 secondarySelect
   ∷ forall a
-   . (S.OptionVal a)
+  . (S.OptionVal a)
   ⇒ Maybe String
   → H.Component (S.Select a) (Query a) Slam
 secondarySelect mbLabel =
-  select { disableWhen: (_ < 1), defaultWhen: const true, ariaLabel: mbLabel }
+  select { disableWhen: (_ < 1)
+         , defaultWhen: const true
+         , ariaLabel: mbLabel
+         , defaultOption: "Select axis source" }
 
 select
-  ∷ forall a r
-   . S.OptionVal a
+  ∷ ∀ a r
+  . S.OptionVal a
   ⇒ SelectConfig r
   → H.Component (S.Select a) (Query a) Slam
 select config =
   H.component { render: render config, eval }
 
 render
-  ∷ forall a r
+  ∷ ∀ a r
   . S.OptionVal a
   ⇒ SelectConfig r
   → S.Select a
@@ -80,7 +88,7 @@ render config state =
   HH.select
     ([ HP.classes [ B.formControl ]
        -- `fromJust` is safe here because we know that value are `show`n ints
-     , HE.onValueChange (HE.input (Choose <<< unsafePartial fromJust <<< Int.fromString))
+     , HE.onValueChange (HE.input (Choose ∘ unsafePartial fromJust <<< Int.fromString))
      , HP.disabled $ config.disableWhen len
      ]
     <> maybe [] (singleton <<< ARIA.label) config.ariaLabel)
@@ -107,7 +115,7 @@ render config state =
       [ HP.selected (val == Nothing)
       , HP.value "-1"
       ]
-      [ HH.text "Select axis source" ]
+      [ HH.text config.defaultOption ]
 
   option ∷ Maybe a → a → Int → H.ComponentHTML (Query a)
   option currentVal val i =
@@ -117,9 +125,10 @@ render config state =
       ]
       [ HH.text (S.stringVal val) ]
 
-eval ∷ forall a. Eq a ⇒ Query a ~> H.ComponentDSL (S.Select a) (Query a) Slam
+eval ∷ ∀ a. Eq a ⇒ Query a ~> H.ComponentDSL (S.Select a) (Query a) Slam
 eval (Choose i next) = H.modify (S.trySelect i) $> next
 eval (SetSelect s next) = H.set s $> next
 eval (GetValue continue) = map continue $ H.gets (_ ^. S._value)
 eval (GetSelect continue) = map continue H.get
 eval (ToggleOpened next) = pure next
+eval (TrySelect val next) = H.modify (S.trySelect' val) $> next

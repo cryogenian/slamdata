@@ -117,7 +117,7 @@ trySelect' a sel =
 -- | type ViewModel = { userSelect ∷ Select User }
 -- |
 -- | updateState ∷ ViewModel → State → State
--- | updateState vm st = st { users = st.users <→ vm.userSelect }
+-- | updateState vm st = st { users = st.users ⊝ vm.userSelect }
 -- | ```
 infixl 2 exceptFlipped as ⊝
 
@@ -125,13 +125,18 @@ exceptFlipped ∷ ∀ a. (Eq a) ⇒ Array a → Select a → Array a
 exceptFlipped = flip except'
 
 ifSelected
-  ∷ ∀ f m a
+  ∷ ∀ f m a b
   . (Foldable f, MonadPlus m)
   ⇒ f (Select a)
-  → m a
-  → m a
+  → m b
+  → m b
 ifSelected sels arr =
-  guard (runConj $ foldMap (Conj <<< isJust <<< view _value) sels) *> arr
+  guard (runConj $ foldMap (Conj ∘ isJust ∘ view _value) sels) *> arr
+
+setPreviousValueFrom
+  ∷ ∀ a. (Eq a) ⇒ Maybe (Select a) → Select a → Select a
+setPreviousValueFrom mbSel target  =
+  (maybe id trySelect' $ mbSel >>= view _value) $ target
 
 instance eqSelect ∷ (Eq a) ⇒ Eq (Select a) where
   eq (Select r) (Select rr) =

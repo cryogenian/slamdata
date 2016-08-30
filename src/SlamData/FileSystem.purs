@@ -29,7 +29,7 @@ import Control.Monad.Fork (fork, Canceler, cancel)
 import Control.Monad.Eff.Exception (error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
-import Data.Array (filter, mapMaybe)
+import Data.Array (null, filter, mapMaybe)
 import Data.Lens ((%~), (<>~), _1, _2)
 import Data.Map as M
 import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
@@ -146,9 +146,17 @@ checkMount
   → Driver QueryP SlamDataRawEffects
   → Slam Unit
 checkMount path driver = do
-  result ← Quasar.mountInfo path
-  for_ result \_ →
-    fromAff $ driver $ left $ action $ SetIsMount true
+  Quasar.mountInfo path >>= case _ of
+    Left _ →
+      -- When Quasar has no mounts configured we want to enable the root to be
+      -- configured as a mount - if `/` is not a mount and also has no children
+      -- then we know it's in this unconfigured state.
+      when (path == rootDir) do
+        void $ Quasar.children path >>= traverse \children ->
+          when (null children) $
+            fromAff $ driver $ left $ action $ SetIsMount true
+    Right _ →
+      fromAff $ driver $ left $ action $ SetIsMount true
 
 listPath
   ∷ SearchQuery

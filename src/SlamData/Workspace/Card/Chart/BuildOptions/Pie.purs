@@ -34,7 +34,8 @@ import Math (floor)
 
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, keyCategory, colors, buildChartAxes, buildPieBarData, saturateLast, printKey)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, keyCategory, buildChartAxes, buildPieBarData, saturateLast, printKey)
+import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 
 
 rowLength ∷ Int
