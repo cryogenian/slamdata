@@ -97,11 +97,14 @@ walkWithLocator
 walkWithLocator f = go rootLocator
   where
   go loc@(Locator c x y w h _ _) acc p =
-    let acc' = f loc acc p in
-    case p of
-      Cell _ → acc'
-      Split orn ps →
-        goIx x y w h zero 0 orn acc' ps
+    let
+      acc' =
+        case p of
+          Cell _ → acc
+          Split orn ps →
+            goIx x y w h zero 0 orn acc ps
+    in
+      f loc acc' p
 
     where
     goIx x y w h off ix orn acc ps =
