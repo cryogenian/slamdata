@@ -24,7 +24,6 @@ import SlamData.Workspace.Card.CardType as CardType
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port (Port)
-import Utils (singletonValue)
 
 data InsertableCardType
   = CacheCard
@@ -72,25 +71,22 @@ inputs =
   , TroubleshootCard × [ Variables, Data ]
   ]
 
-outputs ∷ Array (InsertableCardType × InsertableCardIOType)
+outputs ∷ Array (InsertableCardType × Array InsertableCardIOType)
 outputs =
-  [ CacheCard × Data
-  , DraftboardCard × Draftboard
-  , OpenCard × Data
-  , QueryCard × Data
-  , SearchCard × Data
-  , SetupChartCard × Chart
-  , SetupDownloadCard × Download
-  , SetupMarkdownCard × Markdown
-  , SetupVariablesCard × Variables
-  , SetupVariablesCard × Markdown
-  , ShowChartCard × Chart
-  , ShowDownloadCard × Download
-  , ShowMarkdownCard × Variables
-  , ShowMarkdownCard × Markdown
-  , TableCard × Data
-  , TroubleshootCard × Variables
-  , TroubleshootCard × Markdown
+  [ CacheCard × [ Data ]
+  , DraftboardCard × [ Draftboard ]
+  , OpenCard × [ Data ]
+  , QueryCard × [ Data ]
+  , SearchCard × [ Data ]
+  , SetupChartCard × [ Chart ]
+  , SetupDownloadCard × [ Download ]
+  , SetupMarkdownCard × [ Markdown ]
+  , SetupVariablesCard × [ Markdown, Variables ]
+  , ShowChartCard × [ Chart ]
+  , ShowDownloadCard × [ Download ]
+  , ShowMarkdownCard × [ Markdown, Variables ]
+  , TableCard × [ Data ]
+  , TroubleshootCard × [ Markdown, Variables ]
   ]
 
 contains ∷ ∀ a. (Eq a) ⇒ a → Array a → Boolean
@@ -104,13 +100,13 @@ inputsFor ∷ InsertableCardType → Array InsertableCardIOType
 inputsFor card =
   Array.concat $ map snd $ Array.filter (eq card ∘ fst) inputs
 
-outputFor ∷ InsertableCardType → Maybe InsertableCardIOType
-outputFor card =
-  singletonValue Nothing (const Nothing) (map snd $ Array.filter (eq card ∘ fst) outputs)
+outputsFor ∷ InsertableCardType → Array InsertableCardIOType
+outputsFor card =
+  Array.concat $ map snd $ Array.filter (eq card ∘ fst) outputs
 
 cardsThatOutput ∷ InsertableCardIOType → Array InsertableCardType
 cardsThatOutput io =
-  map fst $ Array.filter (eq io ∘ snd) outputs
+  map fst $ Array.filter (contains io ∘ snd) outputs
 
 cardsThatTakeInput ∷ InsertableCardIOType → Array InsertableCardType
 cardsThatTakeInput io =
@@ -190,6 +186,17 @@ printIOType =
     Markdown → "markdown"
     None → "to be the first card in a deck"
     Variables → "variables"
+
+printIOType' ∷ InsertableCardIOType → Maybe String
+printIOType' =
+  case _ of
+    Chart → Just "this chart"
+    Data → Just "this data"
+    Download → Just "this download"
+    Draftboard → Just "this draftboard"
+    Markdown → Just "this markdown"
+    Variables → Just "these variables"
+    _ → Nothing
 
 eitherOr ∷ Array String → String
 eitherOr strings =

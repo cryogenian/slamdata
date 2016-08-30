@@ -43,6 +43,8 @@ import Utils.Path as UP
 
 data Query a
   = Init a
+  | PresentAddCardGuide a
+  | HideAddCardGuide a
   | Finish a
   | RunPendingCards PendingMessage a
   | QueuePendingCard a

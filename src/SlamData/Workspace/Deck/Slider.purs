@@ -28,6 +28,7 @@ import Data.Array as Array
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
+import Data.String as String
 import Data.Tuple as Tuple
 
 import CSS (CSS)
@@ -47,6 +48,7 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component as CardC
+import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Factory as Factory
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
@@ -241,10 +243,33 @@ renderCard opts deckComponent st (deckId × card) index =
         (Gripper.gripperDefsForCard st.displayCards $ Just coord)
         ⊕ [ HH.div
               (cardProperties st coord)
-              [ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
-           ]
+              ([ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
+                ⊕ (if st.presentAddCardGuide ∧ isLastRealCard then [ guide guideText ] else []))
+          ]
   where
   key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
+  isLastRealCard = Just (deckId × card.cardId) == DCS.findLastRealCard st
+  guide text =
+    HH.div
+      [ HP.class_ $ HH.className "sd-add-card-guide sd-notification" ]
+      [ HH.div
+          [ HP.class_ $ HH.className "sd-notification-text" ]
+          [ HH.text text ]
+      , HH.div
+          [ HP.class_ $ HH.className "sd-notification-buttons" ]
+          [ HH.button
+              [ HP.classes [ HH.className "sd-notification-dismiss", HH.className "sd-add-card-guide-dismiss" ]
+              , HE.onClick (HE.input_ DCQ.HideAddCardGuide)
+              ]
+              [ HH.text "×" ]
+          ]
+      ]
+  outputs = maybe [] ICT.outputsFor $ ICT.fromCardType (Card.modelCardType card.model)
+  guideText = guideText' ∘ String.joinWith " / " $ Array.catMaybes $ ICT.printIOType' <$> outputs
+  guideText' outputTypesString =
+    "To do more with "
+      ⊕ outputTypesString
+      ⊕ " click or drag this gripper to the left and add a new card to the deck."
   classes =
     [ ClassNames.card
     , HH.className case st.fadeTransition of

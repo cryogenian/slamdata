@@ -29,6 +29,8 @@ module SlamData.Workspace.Deck.Component.State
   , _displayCards
   , _activeCardIndex
   , _path
+  , _presentAddCardGuideCanceler
+  , _presentAddCardGuide
   , _saveTrigger
   , _runTrigger
   , _pendingCard
@@ -55,8 +57,6 @@ module SlamData.Workspace.Deck.Component.State
   , removePendingCard
   , variablesCards
   , fromModel
-  , deckPath
-  , deckPath'
   , cardIndexFromCoord
   , cardCoordFromIndex
   , activeCardCoord
@@ -70,6 +70,7 @@ module SlamData.Workspace.Deck.Component.State
 import SlamData.Prelude
 
 import Control.Monad.Aff.EventLoop (Breaker)
+import Control.Monad.Aff (Canceler)
 
 import DOM.HTML.Types (HTMLElement)
 
@@ -77,26 +78,26 @@ import Data.Array as A
 import Data.Foldable (maximum)
 import Data.Lens (LensP, lens)
 import Data.Lens as Lens
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as P
-import Data.Set as Set
 import Data.Map as Map
+import Data.Path.Pathy ((</>))
+import Data.Set as Set
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
 import Halogen.Component.Utils.Debounced (DebounceTrigger)
 
+import SlamData.Effects (SlamDataEffects)
 import SlamData.Monad (Slam)
 
 import SlamData.Workspace.Card.CardId (CardId(..))
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
-
-import SlamData.Workspace.Deck.Component.Query (Query)
-import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
-import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
-import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 import SlamData.Workspace.StateMode (StateMode(..))
+
+import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
+import SlamData.Workspace.Deck.Component.Query (Query)
+import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
 import Utils.Path (DirPath)
 
@@ -134,6 +135,8 @@ type State =
   , cardsToLoad ∷ Set.Set (DeckId × CardId)
   , activeCardIndex ∷ Maybe Int
   , path ∷ DirPath
+  , presentAddCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
+  , presentAddCardGuide ∷ Boolean
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , runTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , pendingCard ∷ Maybe (DeckId × CardId)
@@ -169,6 +172,8 @@ initialDeck path deckId =
   , cardsToLoad: mempty
   , activeCardIndex: Nothing
   , path
+  , presentAddCardGuideCanceler: Nothing
+  , presentAddCardGuide: false
   , saveTrigger: Nothing
   , runTrigger: Nothing
   , pendingCard: Nothing
@@ -222,6 +227,15 @@ _activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
 -- | The path to the deck in the filesystem
 _path ∷ ∀ a r. LensP {path ∷ a |r} a
 _path = lens _.path _{path = _}
+
+-- | An optional canceler for the delayed guiding of the user to add a card. Can
+-- | be used to reset the delay of this guiding.
+_presentAddCardGuideCanceler ∷ ∀ a r. LensP {presentAddCardGuideCanceler ∷ a |r} a
+_presentAddCardGuideCanceler = lens _.presentAddCardGuideCanceler _{presentAddCardGuideCanceler = _}
+
+-- | Whether the add card guide should be presented or not.
+_presentAddCardGuide ∷ ∀ a r. LensP {presentAddCardGuide ∷ a |r} a
+_presentAddCardGuide = lens _.presentAddCardGuide _{presentAddCardGuide = _}
 
 -- | The debounced trigger for deck save actions.
 _saveTrigger ∷ ∀ a r. LensP {saveTrigger ∷ a|r} a
@@ -355,13 +369,6 @@ removePendingCard coord st =
     oldCoord ← st.pendingCard
     comp ← (eq LT || eq EQ) <$> compareCoordCards coord oldCoord st.modelCards
     pure $ st { pendingCard = Nothing }
-
--- | Finds the current deck path
-deckPath ∷ State → DirPath
-deckPath state = deckPath' state.path state.id
-
-deckPath' ∷ DirPath → DeckId → DirPath
-deckPath' path deckId = path </> P.dir (deckIdToString deckId)
 
 -- | Reconstructs a deck state from a deck model.
 fromModel
