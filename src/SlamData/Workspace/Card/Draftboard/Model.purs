@@ -227,7 +227,7 @@ migrateLayout decks =
   splitTop r1 ps ((deckId × r2) : ds) | r2.y - r1.y == 0.0 =
     splitTop r1 ((deckId × r2) : ps) ds
   splitTop r1 ps ((deckId × r2) : ds) =
-    case trySplitV r1.x r2.y r1.width (ps <> ds) of
+    case trySplitV r2.y (ps <> ds) of
       Just (as × bs) →
         let
           ratio = floor (r2.y - r1.y) % floor r1.height
@@ -253,7 +253,7 @@ migrateLayout decks =
   splitLeft r1 ps ((deckId × r2) : ds) | r2.x - r1.x == 0.0 =
     splitLeft r1 ((deckId × r2) : ps) ds
   splitLeft r1 ps ((deckId × r2) : ds) =
-    case trySplitH r2.x r1.y r1.height (ps <> ds) of
+    case trySplitH r2.x (ps <> ds) of
       Just (as × bs) →
         let
           ratio = floor (r2.x - r1.x) % floor r1.width
@@ -273,27 +273,23 @@ migrateLayout decks =
   trySplitH = trySplit Orn.Horizontal Nil Nil
   trySplitV = trySplit Orn.Vertical Nil Nil
 
-  trySplit orn a b x y z Nil = Just (a × b)
-  trySplit orn a b x y z ((deckId × r) : ds) =
+  trySplit orn a b z Nil = Just (a × b)
+  trySplit orn a b z ((deckId × r) : ds) =
     case orn of
       Orn.Horizontal →
-        if inside r x y || inside r x (y + z) then
+        if z > r.x && z < r.x + r.width then
           Nothing
-        else if r.x < x then
-          trySplit orn ((deckId × r) : a) b x y z ds
+        else if r.x < z then
+          trySplit orn ((deckId × r) : a) b z ds
         else
-          trySplit orn a ((deckId × r) : b) x y z ds
+          trySplit orn a ((deckId × r) : b) z ds
       Orn.Vertical →
-        if inside r x y || inside r (x + z) y
-          then Nothing
-        else if r.y < y then
-          trySplit orn ((deckId × r) : a) b x y z ds
+        if z > r.y && z < r.y + r.height then
+          Nothing
+        else if r.y < z then
+          trySplit orn ((deckId × r) : a) b z ds
         else
-          trySplit orn a ((deckId × r) : b) x y z ds
-
-  inside r x y =
-    x > r.x && x < r.x + r.width &&
-    y > r.y && y < r.y + r.height
+          trySplit orn a ((deckId × r) : b) z ds
 
   merge orn ratio a b =
     let
