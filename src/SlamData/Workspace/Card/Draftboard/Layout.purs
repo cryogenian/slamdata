@@ -274,11 +274,11 @@ deleteCell cursor = map compressRoot ∘ join ∘ runCursor (const Nothing) merg
   where
   merge orn ps ix = case _ of
     Nothing →
-      Split orn <$> (collapse =<< goIx 0 ix Nil ps)
+      collapse orn =<< goIx 0 ix Nil ps
     Just p →
       Just (defaultMerge orn ps ix p)
 
-  collapse p =
+  collapse orn p =
     let
       ps = case p of
         r × Nil × Nil →
@@ -292,10 +292,10 @@ deleteCell cursor = map compressRoot ∘ join ∘ runCursor (const Nothing) merg
             <> (((r2 + r * (1%2)) × p2) : post))
     in ps <#>
       case _ of
-        (r × (Split _ ps')) : Nil →
-          ps'
+        (r × (Split orn' ps')) : Nil →
+          Split orn' ps'
         ps' →
-          ps'
+          Split orn ps'
 
   goIx i ix pre Nil = Nothing
   goIx i ix pre ((r × _) : post) | i == ix = Just (r × pre × post)
