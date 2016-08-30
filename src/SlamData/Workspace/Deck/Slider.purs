@@ -251,13 +251,18 @@ renderCard opts deckComponent st (deckId × card) index =
   isLastRealCard = Just (deckId × card.cardId) == DCS.findLastRealCard st
   guide text =
     HH.div
-      [ HP.class_ $ HH.className "sd-add-card-guide" ]
-      [ HH.p_ [ HH.text text ]
-      , HH.button
-          [ HP.classes [ HH.className "sd-form-button", HH.className "sd-add-card-guide-dismiss" ]
-          , HE.onClick (HE.input_ DCQ.HideAddCardGuide)
+      [ HP.class_ $ HH.className "sd-add-card-guide sd-notification" ]
+      [ HH.div
+          [ HP.class_ $ HH.className "sd-notification-text" ]
+          [ HH.text text ]
+      , HH.div
+          [ HP.class_ $ HH.className "sd-notification-buttons" ]
+          [ HH.button
+              [ HP.classes [ HH.className "sd-notification-dismiss", HH.className "sd-add-card-guide-dismiss" ]
+              , HE.onClick (HE.input_ DCQ.HideAddCardGuide)
+              ]
+              [ HH.text "×" ]
           ]
-          [ HH.text "Dismiss" ]
       ]
   outputs = maybe [] ICT.outputsFor $ ICT.fromCardType (Card.modelCardType card.model)
   guideText = guideText' ∘ String.joinWith " / " $ Array.catMaybes $ ICT.printIOType' <$> outputs
