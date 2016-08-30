@@ -52,7 +52,7 @@ import SlamData.Workspace.Card.ChartOptions.Model (Model)
 import SlamData.Workspace.Card.Chart.Config (ChartConfig(..))
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-import SlamData.Workspace.Card.ChartOptions.Component.Install (ChildQuery, ChildSlot, ChildState)
+import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildQuery, ChildSlot, ChildState)
 
 type State =
   { chartType ∷ CT.ChartType

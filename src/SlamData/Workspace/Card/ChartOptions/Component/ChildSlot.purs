@@ -1,4 +1,4 @@
-module SlamData.Workspace.Card.ChartOptions.Component.Install where
+module SlamData.Workspace.Card.ChartOptions.Component.ChildSlot where
 
 import SlamData.Prelude
 

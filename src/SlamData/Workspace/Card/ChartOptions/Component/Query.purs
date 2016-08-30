@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Halogen (ChildF)
 
-import SlamData.Workspace.Card.ChartOptions.Component.Install (ChildSlot, ChildQuery)
+import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildSlot, ChildQuery)
 
 import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)

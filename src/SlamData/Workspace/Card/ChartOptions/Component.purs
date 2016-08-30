@@ -61,7 +61,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.ChartOptions.Graph.Component as Graph
-import SlamData.Workspace.Card.ChartOptions.Component.Install (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph)
+import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph)
 
 type DSL = H.ParentDSL VCS.State ChildState QueryC ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState QueryC ChildQuery Slam ChildSlot
