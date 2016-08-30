@@ -26,15 +26,22 @@ module SlamData.Workspace.Card.Draftboard.Model
 import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
-import Data.Int (toNumber)
+import Data.Function (on)
+import Data.Int (toNumber, floor)
+import Data.List(List(..), (:))
 import Data.List as List
+import Data.Map as Map
+import Data.Maybe as Maybe
 import Data.Ratio as Ratio
 import Data.Rational (Rational(..), (%))
+import Data.Rational as Rational
+import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
+import Math as Math
 
 type Model =
   { layout ∷ Pane.Pane (Maybe DeckId)
@@ -65,8 +72,18 @@ decode
   ∷ J.Json
   → Either String Model
 decode =
-  J.decodeJson >=> \obj → do
+  J.decodeJson >=> \obj → decodeLayout obj <|> decodeDecks obj
+
+  where
+  decodeLayout obj = do
     layout ← decodePane =<< obj .? "layout"
+    pure { layout }
+
+  decodeDecks obj = do
+    decks ∷ Map.Map DeckId DeckPosition ←
+      traverse decodeDeckPosition =<< obj .? "decks"
+    let
+      layout = migrateLayout decks
     pure { layout }
 
 encodePane
@@ -106,7 +123,7 @@ decodePane =
         orn ← decodeOrientation =<< obj .? "orientation"
         ps ← traverse decodeSplits =<< obj .? "panes"
         pure (Pane.Split orn ps)
-      _ →
+      _ → do
         Left ("Not a valid Pane tag: " <> ty)
   where
   decodeSplits obj = do
@@ -147,3 +164,156 @@ decodeOrientation = J.decodeJson >=> case _ of
 
 genOrientation ∷ Gen.Gen Orn.Orientation
 genOrientation = SC.arbitrary <#> if _ then Orn.Vertical else Orn.Horizontal
+
+type DeckPosition =
+  { x ∷ Number
+  , y ∷ Number
+  , width ∷ Number
+  , height ∷ Number
+  }
+
+decodeDeckPosition
+  ∷ J.Json
+  → Either String DeckPosition
+decodeDeckPosition =
+  J.decodeJson >=> \obj → do
+    x ← obj .? "x"
+    y ← obj .? "y"
+    width ← obj .? "width"
+    height ← obj .? "height"
+    pure { x, y, width, height }
+
+migrateLayout
+  ∷ Map.Map DeckId DeckPosition
+  → Pane.Pane (Maybe DeckId)
+migrateLayout decks =
+  splitTop total Nil deckList
+
+  where
+  deckList =
+    List.sortBy (compare `on` (snd ⋙ \r → Math.sqrt ((r.x * r.x) + (r.y * r.y))))
+      $ Map.toList decks
+
+  total =
+    let
+      size =
+        foldl
+          (\acc r →
+            { width: if r.x + r.width > acc.width then r.x + r.width else acc.width
+            , height: if r.y + r.height > acc.height then r.y + r.height else acc.height
+            })
+          { width: 0.0, height: 0.0 }
+          decks
+    in case deckList of
+      List.Cons (_ × rect) _ →
+        { x: rect.x
+        , y: rect.y
+        , width: size.width - rect.x
+        , height: size.height - rect.y
+        }
+      _ →
+        { x: 0.0
+        , y: 0.0
+        , width: 0.0
+        , height: 0.0
+        }
+
+  splitTop r1 Nil Nil =
+    Pane.Cell Nothing
+  splitTop r1 ps Nil =
+    splitLeft r1 Nil ps
+  splitTop r1 Nil ((deckId × r2) : Nil) =
+    Pane.Cell (Just deckId)
+  splitTop r1 ps ((deckId × r2) : ds) | r2.y - r1.y == 0.0 =
+    splitTop r1 ((deckId × r2) : ps) ds
+  splitTop r1 ps ((deckId × r2) : ds) =
+    case trySplitV r1.x r2.y r1.width (ps <> ds) of
+      Just (as × bs) →
+        let
+          ratio = floor (r2.y - r1.y) % floor r1.height
+          r1'   = r1 { height = r2.y - r1.y }
+        in case bs of
+          Nil →
+            merge Orn.Vertical ratio
+              (splitLeft r1' Nil as)
+              (Pane.wrap Orn.Horizontal (Pane.Cell (Just deckId)))
+          _ →
+            merge Orn.Vertical ratio
+              (splitLeft r1' Nil as)
+              (splitLeft r1' Nil ((deckId × r2) : bs))
+      Nothing →
+        splitTop r1 ((deckId × r2) : ps) ds
+
+  splitLeft r1 Nil Nil =
+    Pane.Cell Nothing
+  splitLeft r1 ps Nil =
+    splitTop r1 Nil ps
+  splitLeft r1 Nil ((deckId × r2) : Nil) =
+    Pane.Cell (Just deckId)
+  splitLeft r1 ps ((deckId × r2) : ds) | r2.x - r1.x == 0.0 =
+    splitLeft r1 ((deckId × r2) : ps) ds
+  splitLeft r1 ps ((deckId × r2) : ds) =
+    case trySplitH r2.x r1.y r1.height (ps <> ds) of
+      Just (as × bs) →
+        let
+          ratio = floor (r2.x - r1.x) % floor r1.width
+          r1'   = r1 { width = r2.x - r1.x }
+        in case bs of
+          Nil →
+            merge Orn.Horizontal ratio
+              (splitTop r1' Nil as)
+              (Pane.wrap Orn.Vertical (Pane.Cell (Just deckId)))
+          _ →
+            merge Orn.Horizontal ratio
+              (splitTop r1' Nil as)
+              (splitTop r1' Nil ((deckId × r2) : bs))
+      Nothing →
+        splitLeft r1 ((deckId × r2) : ps) ds
+
+  trySplitH = trySplit Orn.Horizontal Nil Nil
+  trySplitV = trySplit Orn.Vertical Nil Nil
+
+  trySplit orn a b x y z Nil = Just (a × b)
+  trySplit orn a b x y z ((deckId × r) : ds) =
+    case orn of
+      Orn.Horizontal →
+        if inside r x y || inside r x (y + z) then
+          Nothing
+        else if r.x < x then
+          trySplit orn ((deckId × r) : a) b x y z ds
+        else
+          trySplit orn a ((deckId × r) : b) x y z ds
+      Orn.Vertical →
+        if inside r x y || inside r (x + z) y
+          then Nothing
+        else if r.y < y then
+          trySplit orn ((deckId × r) : a) b x y z ds
+        else
+          trySplit orn a ((deckId × r) : b) x y z ds
+
+  inside r x y =
+    x > r.x && x < r.x + r.width &&
+    y > r.y && y < r.y + r.height
+
+  merge orn ratio a b =
+    let
+      ps = List.fromFoldable [ ratio × Pane.Cell Nothing, (one - ratio) × Pane.Cell Nothing ]
+    in case (Layout.defaultMerge orn ps 0 a), (Layout.defaultMerge orn ps 1 b) of
+      Pane.Split _ as, Pane.Split _ bs →
+        let
+          as' = unsafePartial (Maybe.fromJust (List.init as))
+          bs' = unsafePartial (Maybe.fromJust (List.tail bs))
+        in
+          Pane.Split orn (bestFit zero Nil (as' <> bs'))
+      _, _ →
+        -- Should never happen
+        Pane.Split orn ps
+
+  bestFit off acc Nil = Nil
+  bestFit off acc ((_ × p) : Nil) =
+    List.reverse ((one - off × p) : acc)
+  bestFit off acc ((ratio × p) : ps) =
+    let
+      ratio' = Layout.closestSnapRatio (Rational.toNumber ratio)
+    in
+      bestFit (off + ratio') ((ratio' × p) : acc) ps

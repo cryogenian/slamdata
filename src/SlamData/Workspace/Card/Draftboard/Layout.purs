@@ -35,6 +35,7 @@ module SlamData.Workspace.Card.Draftboard.Layout
   , absoluteCells
   , absoluteEdges
   , closestSnapRatio
+  , defaultMerge
   ) where
 
 import SlamData.Prelude
