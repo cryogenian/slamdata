@@ -22,6 +22,7 @@ module SlamData.Workspace.Component.State
   , _version
   , _path
   , _initialDeckId
+  , _rootDeckId
   , _stateMode
   ) where
 
@@ -41,6 +42,7 @@ type State =
   , version ∷ Maybe String
   , path ∷ Maybe DirPath
   , initialDeckId ∷ Maybe DeckId
+  , rootDeckId ∷ Maybe DeckId
   , stateMode ∷ StateMode
   }
 
@@ -51,6 +53,7 @@ initialState version =
   , version
   , path: Nothing
   , initialDeckId: Nothing
+  , rootDeckId: Nothing
   , stateMode: Loading
   }
 
@@ -70,6 +73,9 @@ _path = lens _.path _{path = _}
 -- | that the value is irrelevant.
 _initialDeckId ∷ ∀ a r. LensP {initialDeckId ∷ a|r} a
 _initialDeckId = lens _.initialDeckId _{initialDeckId = _}
+
+_rootDeckId ∷ ∀ a r. LensP {rootDeckId ∷ a|r} a
+_rootDeckId = lens _.rootDeckId _{rootDeckId = _}
 
 _stateMode ∷ LensP State StateMode
 _stateMode = lens _.stateMode _{stateMode = _}

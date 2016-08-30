@@ -22,6 +22,7 @@ module SlamData.Workspace.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Fork (class MonadFork)
@@ -58,7 +59,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.SignIn.Component as SignIn
-import SlamData.Wiring (Wiring, putDeck, getDeck)
+import SlamData.Wiring (Wiring(..), DeckMessage(..), putDeck, getDeck)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
@@ -68,7 +69,7 @@ import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Class (class WorkspaceDSL, putURLVarMaps, getURLVarMaps)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, _rootDeckId, initialState)
 import SlamData.Workspace.Deck.Common (wrappedDeck, splitDeck)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
@@ -79,7 +80,7 @@ import SlamData.Workspace.Routing (mkWorkspaceHash)
 import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils.Path as UP
-import Utils.DOM (onResize)
+import Utils.DOM (onResize, elementEq)
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
@@ -101,7 +102,7 @@ render state =
     [ HP.classes
         $ (guard (AT.isReadOnly (state ^. _accessType)) $> HH.className "sd-published")
         ⊕ [ HH.className "sd-workspace" ]
-    , HE.onClick (HE.input_ DismissAll)
+    , HE.onClick (HE.input DismissAll)
     ]
     $ notifications ⊕ header ⊕ deck
   where
@@ -159,8 +160,15 @@ eval (Init next) = do
 eval (SetVarMaps urlVarMaps next) = do
   putURLVarMaps urlVarMaps
   pure next
-eval (DismissAll next) = do
-  querySignIn $ H.action SignIn.DismissSubmenu
+eval (DismissAll ev next) = do
+  eq ← H.fromEff $ elementEq ev.target ev.currentTarget
+  if eq
+    then
+      H.gets _.rootDeckId >>= traverse_ \rootId → do
+        Wiring wiring ← H.liftH $ H.liftH ask
+        H.fromAff $ Bus.write (DeckFocused rootId) wiring.messaging
+    else
+      querySignIn $ H.action SignIn.DismissSubmenu
   pure next
 eval (Resize next) = do
   queryDeck $ H.action $ Deck.UpdateCardSize
@@ -176,7 +184,10 @@ eval (Reset path next) = do
   pure next
 eval (Load path deckId accessType next) = do
   oldAccessType <- H.gets _.accessType
-  H.modify (_accessType .~ accessType)
+  H.modify _
+    { accessType = accessType
+    , rootDeckId = deckId
+    }
 
   queryDeck (H.request Deck.GetId) >>= \deckId' →
     case deckId, deckId' of
@@ -196,7 +207,10 @@ eval (Load path deckId accessType next) = do
 
   loadDeck deckId = void do
     SA.track (SA.Load deckId accessType)
-    H.modify _ { stateMode = Ready }
+    H.modify _
+      { stateMode = Ready
+      , rootDeckId = Just deckId
+      }
     queryDeck $ H.action $ Deck.Load path deckId
 
   loadRoot =
