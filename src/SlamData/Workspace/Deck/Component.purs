@@ -579,7 +579,7 @@ peekCardEvalQuery ∷ ∀ a. DeckId × CardId → CEQ.CardEvalQuery a → DeckDS
 peekCardEvalQuery cardCoord = case _ of
   CEQ.ModelUpdated CEQ.StateOnlyUpdate _ → triggerSave (Just cardCoord)
   CEQ.ModelUpdated CEQ.EvalModelUpdate _ → runCard cardCoord *> triggerSave (Just cardCoord)
-  CEQ.ZoomIn _ → raise' (H.action ZoomIn)
+  CEQ.ZoomIn _ → raise' $ H.action ZoomIn
   _ → pure unit
 
 peekAnyCard ∷ ∀ a. DeckId × CardId → AnyCardQuery a → DeckDSL Unit
