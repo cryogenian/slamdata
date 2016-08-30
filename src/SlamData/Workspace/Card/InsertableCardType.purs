@@ -191,6 +191,17 @@ printIOType =
     None → "to be the first card in a deck"
     Variables → "variables"
 
+printIOType' ∷ InsertableCardIOType → Maybe String
+printIOType' =
+  case _ of
+    Chart → Just "this chart"
+    Data → Just "this data"
+    Download → Just "this download"
+    Draftboard → Just "this draftboard"
+    Markdown → Just "this markdown"
+    Variables → Just "these variables"
+    _ → Nothing
+
 eitherOr ∷ Array String → String
 eitherOr strings =
   case Array.length strings of

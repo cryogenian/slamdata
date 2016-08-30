@@ -47,6 +47,7 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component as CardC
+import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Factory as Factory
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
@@ -242,21 +243,26 @@ renderCard opts deckComponent st (deckId × card) index =
         ⊕ [ HH.div
               (cardProperties st coord)
               ([ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
-                ⊕ (if st.presentAddCardGuide ∧ isLastRealCard then [ guide ] else []))
+                ⊕ (if st.presentAddCardGuide ∧ isLastRealCard then maybe [] (\text → [ guide text ]) guideText else []))
           ]
   where
   key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
   isLastRealCard = Just (deckId × card.cardId) == DCS.findLastRealCard st
-  guide =
+  guide text =
     HH.div
       [ HP.class_ $ HH.className "sd-add-card-guide" ]
-      [ HH.p_ [ HH.text "To do more with this data click or drag this gripper to the left and add a new card to the deck." ]
+      [ HH.p_ [ HH.text text ]
       , HH.button
           [ HP.classes [ HH.className "sd-form-button", HH.className "sd-add-card-guide-dismiss" ]
           , HE.onClick (HE.input_ DCQ.HideAddCardGuide)
           ]
           [ HH.text "Dismiss" ]
       ]
+  guideText = guideText' <$> (ICT.printIOType' =<< ICT.outputFor =<< ICT.fromCardType (Card.modelCardType card.model))
+  guideText' outputTypeString =
+    "To do more with "
+      ⊕ outputTypeString
+      ⊕ " click or drag this gripper to the left and add a new card to the deck."
   classes =
     [ ClassNames.card
     , HH.className case st.fadeTransition of
