@@ -149,7 +149,10 @@ renderLayout opts st cells edges =
 renderCell ∷ CardOptions → State → Layout.Cell (Maybe DeckId) Number → DraftboardHTML
 renderCell opts st { cursor, value, rect } =
   HH.div
-    ([ HP.classes [ HH.className "sd-draftboard-cell" ]
+    ([ HP.classes
+         [ HH.className "sd-draftboard-cell"
+         , HH.className if isJust value then "filled" else "empty"
+         ]
      , HC.style do
          C.top (C.px rect.top)
          C.left (C.px rect.left)
