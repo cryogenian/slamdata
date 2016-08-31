@@ -22,6 +22,7 @@ import SlamData.Prelude
 import CSS as C
 import Data.Array as Array
 import Data.List (List(..))
+import Data.List as List
 import Data.Ratio as Ratio
 import Data.Rational (Rational, (%))
 import Data.Rational as Rational
@@ -33,12 +34,16 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.HTML.CSS.Indexed as HC
+import Halogen.Themes.Bootstrap3 as B
 import Math as Math
+import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Card.Common (CardOptions)
+import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Draftboard.Component.Common (DraftboardHTML)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..))
 import SlamData.Workspace.Card.Draftboard.Component.State (State, SplitLocation)
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Deck.Component.Nested.State as DNS
 import SlamData.Workspace.Deck.Component.State as DCS
@@ -56,14 +61,28 @@ render opts st =
     , renderOuterEdge "left" Orn.Horizontal Layout.SideA
     , renderOuterEdge "right" Orn.Horizontal Layout.SideB
     , renderOuterEdge "bottom" Orn.Vertical Layout.SideB
-    , HH.div
-        [ HP.classes [ HH.className "sd-draftboard-root" ]
-        , HP.ref (right ∘ H.action ∘ SetRoot)
-        ]
-        [ renderLayout opts st st.cellLayout st.edgeLayout
-        , maybe (HH.text "") renderGuide st.splitLocation
-        , maybe (HH.text "") renderMoving st.movingLocation
-        ]
+    , if not (List.null opts.deck.cursor) && st.layout == Pane.Cell Nothing
+        then
+          HH.div
+            [ HP.classes [ HH.className "card-input-minimum-lod" ] ]
+            [ HH.button
+                [ ARIA.label "Zoom"
+                , HP.title "Zoom"
+                , HE.onClick (HE.input_ (left ∘ CC.ZoomIn))
+                ]
+                [ glyph B.glyphiconZoomIn
+                , HH.text "Zoom"
+                ]
+            ]
+        else
+          HH.div
+            [ HP.classes [ HH.className "sd-draftboard-root" ]
+            , HP.ref (right ∘ H.action ∘ SetRoot)
+            ]
+            [ renderLayout opts st st.cellLayout st.edgeLayout
+            , maybe (HH.text "") renderGuide st.splitLocation
+            , maybe (HH.text "") renderMoving st.movingLocation
+            ]
     ]
 
 renderOuterEdge ∷ String → Orn.Orientation → Layout.SplitBias → DraftboardHTML

@@ -459,12 +459,7 @@ updateActiveCardAndIndicator ∷ DeckDSL Unit
 updateActiveCardAndIndicator = do
   st ← H.get
   case st.activeCardIndex of
-    Nothing → do
-      let
-        lastCardIndex = max 0 $ Array.length st.displayCards - 1
-        lastRealCardIndex = DCS.findLastRealCardIndex st
-        cardIndex = fromMaybe lastCardIndex lastRealCardIndex
-      H.modify $ DCS._activeCardIndex .~ Just cardIndex
+    Nothing → H.modify $ DCS._activeCardIndex .~ Just (DCS.defaultActiveIndex st)
     Just _ → pure unit
   updateIndicator
   updateActiveState
@@ -769,11 +764,18 @@ runCardUpdates opts source steps = do
   -- when we apply the child updates.
   when (st.stateMode == Preparing) do
     Wiring wiring ← H.liftH $ H.liftH ask
-    activeCardIndex ← map _.cardIndex <$> getCache st.id wiring.activeState
+    activeIndex ← map _.cardIndex <$> getCache st.id wiring.activeState
     lastIndex ← H.gets DCS.findLastRealCardIndex
+    -- When a deck is deeply nested, we should treat it as "published", such
+    -- that it always show the last available card.
+    let
+      activeCardIndex =
+        if L.length opts.cursor > 1
+          then lastIndex
+          else activeIndex <|> lastIndex
     H.modify
       $ (DCS._stateMode .~ Ready)
-      ∘ (DCS._activeCardIndex .~ (activeCardIndex <|> lastIndex))
+      ∘ (DCS._activeCardIndex .~ activeCardIndex)
 
   -- Splice in the new display cards
   for_ (Array.head updateResult.displayCards) \card → do

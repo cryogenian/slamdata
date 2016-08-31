@@ -409,6 +409,10 @@
     text-align: center;
     font-size: 1.5rem;
     color: #aaa;
+
+    .sd-draftboard-cell:only-child & {
+      display: none;
+    }
   }
 }
 
@@ -433,6 +437,10 @@
 }
 
 .sd-deck-level-2 {
+  .sd-card-draftboard {
+    background: #fff;
+  }
+
   .sd-draftboard-edge,
   .sd-draftboard-split-edge {
     display: none;
@@ -451,5 +459,9 @@
     right: 0;
     bottom: 0;
     box-shadow: none;
+  }
+
+  .sd-draftboard-cell.empty {
+    display: none;
   }
 }
