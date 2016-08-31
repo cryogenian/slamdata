@@ -23,6 +23,7 @@ import Data.Lens ((.~), (?~))
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map as Map
+import Data.Ord (abs)
 import Data.Rational (Rational, (%))
 
 import Halogen as H
@@ -121,35 +122,46 @@ evalBoard opts = case _ of
                 if not root
                   then fromMaybe Nil (Layout.findSplit orientation cursor st.layout)
                   else Nil
+            rs ← getRatios =<< Pane.getAt cursor' st.layout
             rectT ← Layout.absoluteRect rectR <$> Layout.rectAt cursor' st.layout
             let
               relX = d.x - (rectR.left + rectT.left)
               relY = d.y - (rectR.top + rectT.top)
             pure case orientation of
               Orn.Horizontal →
-                { orientation
-                , bias
-                , cursor: cursor'
-                , ratio: Layout.closestSnapRatio (relX / rectT.width)
-                , x: d.x - rectR.left
-                , y: rectT.top
-                , z: rectT.height
-                }
+                let
+                  ratio = Layout.closestSnapRatio (relX / rectT.width)
+                  valid = isSensibleSplit ratio rs && not (isEdge ratio)
+                in
+                  { orientation
+                  , bias
+                  , cursor: cursor'
+                  , ratio
+                  , valid
+                  , x: d.x - rectR.left
+                  , y: rectT.top
+                  , z: rectT.height
+                  }
               Orn.Vertical →
-                { orientation
-                , bias
-                , cursor: cursor'
-                , ratio: Layout.closestSnapRatio (relY / rectT.height)
-                , x: rectT.left
-                , y: d.y - rectR.top
-                , z: rectT.width
-                }
+                let
+                  ratio = Layout.closestSnapRatio (relY / rectT.height)
+                  valid = isSensibleSplit ratio rs && not (isEdge ratio)
+                in
+                  { orientation
+                  , bias
+                  , cursor: cursor'
+                  , ratio
+                  , valid
+                  , x: rectT.left
+                  , y: d.y - rectR.top
+                  , z: rectT.width
+                  }
         H.modify _ { splitLocation = result }
       Drag.Done _ → do
         let
           result = do
             loc ← st.splitLocation
-            guard (loc.ratio > zero && loc.ratio < one)
+            guard loc.valid
             Layout.insertSplit (Pane.Cell Nothing) loc.orientation loc.ratio loc.bias loc.cursor st.layout
         H.modify
           $ updateLayout (fromMaybe st.layout result)
@@ -162,6 +174,7 @@ evalBoard opts = case _ of
       loc =
         { edge
         , ratio: edge.ratio
+        , valid: true
         , collapse: Nothing
         , offset: 0.0
         , initial: case edge.orientation of
@@ -191,25 +204,31 @@ evalBoard opts = case _ of
               Orn.Horizontal →
                 let
                   ratio = Layout.closestSnapRatio (relX / rectT.width)
+                  collapse = isCollapsing ratio pre post
+                  valid = not (isEdge ratio) || isJust collapse
                 in loc
                   { offset = d.x - loc.initial
                   , ratio = ratio
-                  , collapse = isCollapsing ratio pre post
+                  , valid = valid
+                  , collapse = collapse
                   }
               Orn.Vertical →
                 let
                   ratio = Layout.closestSnapRatio (relY / rectT.height)
+                  collapse = isCollapsing ratio pre post
+                  valid = not (isEdge ratio) || isJust collapse
                 in loc
                   { offset = d.y - loc.initial
                   , ratio = ratio
-                  , collapse = isCollapsing ratio pre post
+                  , valid = valid
+                  , collapse = collapse
                   }
         H.modify _ { resizeLocation = result }
       Drag.Done _ → do
         let
           result = do
             loc ← st.resizeLocation
-            guard (loc.ratio /= zero && loc.ratio /= one || isJust loc.collapse)
+            guard loc.valid
             Layout.resizeEdge' loc.edge.index loc.ratio loc.edge.parent st.layout
         H.modify
           $ updateLayout (fromMaybe st.layout result)
@@ -318,6 +337,22 @@ isCollapsing ratio pre post
   | ratio == zero && and (map (all isNothing) pre) = Just Layout.SideA
   | ratio == one && and (map (all isNothing) post) = Just Layout.SideB
   | otherwise = Nothing
+
+isSensibleSplit ∷ Rational → List (Rational) → Boolean
+isSensibleSplit ratio = go zero
+  where
+  go off Nil = true
+  go off (r : xs) =
+    if abs (ratio - off) < 1%16
+      then false
+      else go (off + r) xs
+
+getRatios ∷ ∀ a . Pane.Pane a → Maybe (List Rational)
+getRatios (Pane.Split _ ps) = Just (map fst ps)
+getRatios _ = Nothing
+
+isEdge ∷ Rational → Boolean
+isEdge r = r == zero || r == one
 
 overlapping
   ∷ ∀ a

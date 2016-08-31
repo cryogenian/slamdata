@@ -76,6 +76,7 @@ type SplitLocation =
   , bias ∷ SplitBias
   , cursor ∷ Cursor
   , ratio ∷ Rational
+  , valid ∷ Boolean
   , x ∷ Number
   , y ∷ Number
   , z ∷ Number
@@ -84,6 +85,7 @@ type SplitLocation =
 type ResizeLocation =
   { edge ∷ Edge Number
   , ratio ∷ Rational
+  , valid ∷ Boolean
   , collapse ∷ Maybe SplitBias
   , initial ∷ Number
   , offset ∷ Number

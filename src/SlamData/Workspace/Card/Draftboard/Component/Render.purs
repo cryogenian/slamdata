@@ -86,12 +86,11 @@ renderOuterEdge edge orn bias =
 
 renderGuide ∷ SplitLocation → DraftboardHTML
 renderGuide sp =
-  let ratio = unRational sp.ratio in
   HH.div
     [ HP.classes
         ([ HH.className "sd-draftboard-guide"
          , HH.className (Orn.toString sp.orientation)
-         ] <> (HH.className "invalid" <$ guard (sp.ratio == zero || sp.ratio == one)))
+         ] <> (HH.className "invalid" <$ guard (not sp.valid)))
     , HC.style do
         C.top (C.px sp.y)
         C.left (C.px sp.x)
@@ -217,7 +216,7 @@ renderEdge st edge@{ orientation, vect } =
                    LT → "lt"
                    GT → "gt"
                    EQ → "eq"
-             ] <> (HH.className "invalid" <$ guard ((loc.ratio == zero || loc.ratio == one) && isNothing loc.collapse)))
+             ] <> (HH.className "invalid" <$ guard (not loc.valid)))
         , HC.style
             case orientation of
               Orn.Horizontal → do
