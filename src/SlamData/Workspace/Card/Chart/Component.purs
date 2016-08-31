@@ -144,6 +144,8 @@ eval = case _ of
             H.modify (_chartType ?~ r.options.chartType)
           CH.Graph _ →
             H.modify (_chartType ?~ Graph)
+          CH.Sankey _ →
+            H.modify (_chartType ?~ Sankey)
       _ → do
         H.query unit $ H.action HEC.Clear
         pure unit

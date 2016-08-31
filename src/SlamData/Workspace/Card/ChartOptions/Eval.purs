@@ -149,18 +149,17 @@ eval info model = do
 
   getMaybeGraph ∷ Axes → Maybe ChartType
   getMaybeGraph axes = do
-    -- We need at least two axes: one for source and one for target.
-    -- If there is only one category and one value axis then value axis is used as index
-    -- I.e. [{cat: "foo", val: 1}, {cat: "bar", val: 2}] will produce two points
-    -- "foo" <--- "bar"
-    guard $ (length axes.category + length axes.value > 1)
+    guard $ (length axes.category > 1)
     pure Graph
 
   getMaybeHeatmap ∷ Axes → Maybe ChartType
   getMaybeHeatmap axes = do
-    guard $ (not $ null axes.value) ∧ (((length axes.category) + (length axes.time) + (length axes.value)) > 2)
+    guard
+      $ (not $ null axes.value)
+      ∧ (((length axes.category) + (length axes.time) + (length axes.value)) > 2)
     pure Heatmap
 
   getMaybeSankey ∷ Axes → Maybe ChartType
   getMaybeSankey axes = do
+    guard $ (length axes.category > 1 ∧ length axes.value > 0)
     pure Sankey

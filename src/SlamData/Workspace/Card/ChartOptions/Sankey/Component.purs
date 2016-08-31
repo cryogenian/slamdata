@@ -30,8 +30,6 @@ import SlamData.Workspace.Card.ChartOptions.Form.Component.CSS as FCSS
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
 import SlamData.Workspace.Card.Chart.BuildOptions.Sankey (SankeyR)
 
-import Unsafe.Coerce (unsafeCoerce)
-
 data Query a
   = GetChartConfig (Maybe CH.ChartConfig → a)
   | UpdateAxes Axes a
@@ -153,7 +151,31 @@ renderValue state =
 
 eval ∷ Query ~> DSL
 eval (GetChartConfig continue) = do
-  pure $ continue $ unsafeCoerce unit
+  st ← H.get
+
+  source ←
+    H.query' cpSource unit $ H.request S.GetSelect
+  target ←
+    H.query' cpTarget unit $ H.request S.GetSelect
+  value ←
+    H.query' cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  valueAggregation ←
+    H.query' cpValue unit $ left $ H.request S.GetSelect
+
+  let
+    sankeyRecord =
+      { source: _
+      , target: _
+      , value: _
+      , valueAggregation: _
+      , axes: st.axes
+      }
+      <$> (source >>= view _value)
+      <*> (target >>= view _value)
+      <*> (value >>= view _value)
+      <*> (valueAggregation >>= view _value)
+  pure $ continue $ map CH.Sankey sankeyRecord
+
 eval (UpdateAxes axes next) = do
   H.modify _{axes = axes}
   synchronizeChildren Nothing
@@ -168,4 +190,49 @@ peek _ = synchronizeChildren Nothing
 
 synchronizeChildren ∷ Maybe SankeyR → DSL Unit
 synchronizeChildren r = void do
-  pure unit
+  st ← H.get
+  source ←
+    H.query' cpSource unit $ H.request S.GetSelect
+  target ←
+    H.query' cpTarget unit $ H.request S.GetSelect
+  valueSel ←
+    H.query' cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  valueAgg ←
+    H.query' cpValue unit $ left $ H.request S.GetSelect
+
+
+  let
+    newSource =
+      setPreviousValueFrom source
+        $ (maybe id trySelect' $ r <#> _.source)
+        $ autoSelect
+        $ newSelect
+        $ dependsOnArr st.axes.category
+        $ st.axes.category
+
+    newTarget =
+      setPreviousValueFrom target
+        $ (maybe id trySelect' $ r <#> _.target)
+        $ autoSelect
+        $ newSelect
+        $ depends newSource
+        $ ifSelected [ newSource ]
+        $ st.axes.category ⊝ newSource
+
+    newValue =
+      setPreviousValueFrom valueSel
+        $ (maybe id trySelect' $ r <#> _.value)
+        $ autoSelect
+        $ newSelect
+        $ ifSelected [newTarget]
+        $ st.axes.value
+
+    newValueAggregation =
+      setPreviousValueFrom valueAgg
+        $ (maybe id trySelect' $ r <#> _.valueAggregation)
+        $ nonMaybeAggregationSelect
+
+  H.query' cpSource unit $ H.action $ S.SetSelect newSource
+  H.query' cpTarget unit $ H.action $ S.SetSelect newTarget
+  H.query' cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
+  H.query' cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation

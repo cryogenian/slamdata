@@ -295,7 +295,6 @@ eval (Load r next) = do
   H.modify _{axes = r.axes}
   synchronizeChildren $ Just r
   H.modify _{circular = r.circular, minSize = r.minSize, maxSize = r.maxSize}
-
   pure next
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
@@ -316,17 +315,13 @@ synchronizeChildren r = void do
     H.query' cpColor unit $ H.request S.GetSelect
 
   let
-    categoryAndValues = st.axes.category ⊕ st.axes.value
-    isSourceCategory = isJust $ source >>= view _value >>= flip Arr.elemIndex st.axes.category
-    isSourceValue = isJust $ source >>= view _value >>= flip Arr.elemIndex st.axes.value
-
     newSource =
       setPreviousValueFrom source
         $ (maybe id trySelect' $ r <#> _.source)
         $ autoSelect
         $ newSelect
-        $ dependsOnArr categoryAndValues
-        $ categoryAndValues
+        $ dependsOnArr st.axes.category
+        $ st.axes.category
 
     newTarget =
       setPreviousValueFrom target
@@ -335,11 +330,7 @@ synchronizeChildren r = void do
         $ newSelect
         $ depends newSource
         $ ifSelected [newSource]
-        $ (if isSourceCategory
-           then st.axes.category
-           else if isSourceValue
-                then st.axes.value
-                else categoryAndValues) ⊝ newSource
+        $ st.axes.category ⊝ newSource
 
     newSize =
       setPreviousValueFrom sizeSel
@@ -347,7 +338,7 @@ synchronizeChildren r = void do
       $ autoSelect
       $ newSelect
       $ ifSelected [newTarget]
-      $ st.axes.value ⊝ newSource ⊝ newTarget
+      $ st.axes.value
     newColor =
       setPreviousValueFrom color
       $ (maybe id trySelect' $ r >>= _.color)
