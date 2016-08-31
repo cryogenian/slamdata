@@ -122,7 +122,10 @@ evalBoard opts = case _ of
                 if not root
                   then fromMaybe Nil (Layout.findSplit orientation cursor st.layout)
                   else Nil
-            rs ← getRatios =<< Pane.getAt cursor' st.layout
+            rs ←
+              if List.null cursor'
+                then pure Nil
+                else getRatios =<< Pane.getAt cursor' st.layout
             rectT ← Layout.absoluteRect rectR <$> Layout.rectAt cursor' st.layout
             let
               relX = d.x - (rectR.left + rectT.left)
