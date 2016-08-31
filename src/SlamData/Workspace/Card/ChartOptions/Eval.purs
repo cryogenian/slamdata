@@ -80,6 +80,7 @@ eval info model = do
         , getMaybeFunnel
         , getMaybeGraph
         , getMaybeHeatmap
+        , getMaybeSankey
         ]
 
   when (null available)
@@ -159,3 +160,7 @@ eval info model = do
   getMaybeHeatmap axes = do
     guard $ (not $ null axes.value) ∧ (((length axes.category) + (length axes.time) + (length axes.value)) > 2)
     pure Heatmap
+
+  getMaybeSankey ∷ Axes → Maybe ChartType
+  getMaybeSankey axes = do
+    pure Sankey

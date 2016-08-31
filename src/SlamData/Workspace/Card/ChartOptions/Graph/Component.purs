@@ -125,8 +125,6 @@ cpColor
 cpColor = cpR :> cpR :> cpR
 
 
-
-
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 

@@ -123,6 +123,7 @@ renderButton ct =
   src Funnel = "img/funnel-black.svg"
   src Graph = "img/graph-black.svg"
   src Heatmap = "img/heatmap-black.svg"
+  src Sankey = "img/sankey-black.svg"
 
 eval ∷ CC.CardEvalQuery ~> ChartDSL
 eval = case _ of
