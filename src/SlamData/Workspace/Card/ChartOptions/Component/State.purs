@@ -160,6 +160,8 @@ fromModel (Just (Legacy {options})) =
     }
 fromModel (Just (Graph _)) =
   initialState { chartType = CT.Graph }
+fromModel (Just (Sankey _)) =
+  initialState { chartType = CT.Sankey }
 fromModel _ = initialState
 
 

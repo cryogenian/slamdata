@@ -152,3 +152,4 @@ buildOptionsLegacy args conf records =
     Funnel → buildFunnel mp args.funnelOrder args.funnelAlign conf
     Heatmap → buildHeatmap mp args.minColorVal args.maxColorVal args.colorScheme args.colorReversed conf
     Graph → pure unit
+    Sankey → pure unit

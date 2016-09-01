@@ -175,7 +175,7 @@ buildGraphData records axesMap r =
     let
       mbSource = toString =<< cursorGet r.source js
       mbCategory = toString =<< flip cursorGet js =<< r.color
-      mbValue = toNumber =<< traceAnyM =<< flip cursorGet js =<< r.size
+      mbValue = toNumber =<< flip cursorGet js =<< r.size
 
       valueAlterFn ∷ Maybe Number → Maybe (Array Number) → Maybe (Array Number)
       valueAlterFn (Just a) Nothing = Just [a]

@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect, aggregation
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colorSchemes, printColorScheme)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel, isGraph, isHeatmap)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey)
 import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
@@ -61,7 +61,8 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.ChartOptions.Graph.Component as Graph
-import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph)
+import SlamData.Workspace.Card.ChartOptions.Sankey.Component as Sankey
+import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph, cpSankey)
 
 type DSL = H.ParentDSL VCS.State ChildState QueryC ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState QueryC ChildQuery Slam ChildSlot
@@ -185,6 +186,7 @@ renderChartTypeSelector state =
   src Funnel = "img/funnel.svg"
   src Graph = "img/graph.svg"
   src Heatmap = "img/heatmap.svg"
+  src Sankey = "img/sankey.svg"
 
   cls ∷ ChartType → HH.ClassName
   cls Pie = CSS.pieChartIcon
@@ -196,6 +198,7 @@ renderChartTypeSelector state =
   cls Funnel = CSS.funnelChartIcon
   cls Graph = CSS.pieChartIcon
   cls Heatmap = CSS.heatmapChartIcon
+  cls Sankey = CSS.sankeyChartIcon
 
 renderChartConfiguration ∷ VCS.State → HTML
 renderChartConfiguration state =
@@ -210,6 +213,7 @@ renderChartConfiguration state =
     , renderTab Funnel
     , renderTab Graph
     , renderTab Heatmap
+    , renderTab Sankey
     , renderDimensions state
     ]
   where
@@ -220,6 +224,13 @@ renderChartConfiguration state =
          { component: Graph.comp
          , initialState: H.parentState Graph.initialState
          }
+    ]
+  renderTab Sankey =
+    showIf (state.chartType ≡ Sankey)
+    [ HH.slot' cpSankey unit \_ →
+       { component: Sankey.comp
+       , initialState: H.parentState Sankey.initialState
+       }
     ]
   renderTab ty =
     showIf (state.chartType ≡ ty)
@@ -238,10 +249,10 @@ renderDimensions state =
   row
   [ intChartInput CSS.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel
-      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap ] )
+      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey ] )
   , intChartInput CSS.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize
-      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap ] )
+      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey ] )
   , boolChartInput CSS.chartDetailParam "If stack"
       (_.areaStacked) ToggleSetStacked (not $ isArea state.chartType)
   , boolChartInput CSS.chartDetailParam "If smooth"
@@ -468,6 +479,8 @@ cardEval = case _ of
     chartConfig ← case st.chartType of
       Graph →
         map join $ H.query' cpGraph unit $ left $ H.request Graph.GetChartConfig
+      Sankey →
+        map join $ H.query' cpSankey unit $ left $ H.request Sankey.GetChartConfig
       _ → do
         conf ← H.query' cpForm st.chartType $ left $ H.request Form.GetConfiguration
         let
@@ -513,7 +526,6 @@ cardEval = case _ of
     pure ∘ k $ Card.ChartOptions chartConfig
 
   CC.Load card next → do
-    -- TODO: Load graph
     case card of
       Card.ChartOptions model → do
         let st = VCS.fromModel model
@@ -522,8 +534,10 @@ cardEval = case _ of
           H.query' cpForm st.chartType
             $ left
             $ H.action $ Form.SetConfiguration chartConfig
-        for_ (model >>= Lens.preview CH._Graph) \graphConfig →
+        for_ (model >>= Lens.preview CH._Graph) \graphConfig → do
           H.query' cpGraph unit $ left $ H.action $ Graph.Load graphConfig
+        for_ (model >>= Lens.preview CH._Sankey) \sankeyConfig →
+          H.query' cpSankey unit $ left $ H.action $ Sankey.Load sankeyConfig
       _ → pure unit
     pure next
   CC.SetDimensions dims next → do
@@ -543,6 +557,7 @@ configure = void do
   axes ← H.gets _.axes
 
   H.query' cpGraph unit $ left $ H.action $ Graph.UpdateAxes axes
+  H.query' cpSankey unit $ left $ H.action $ Sankey.UpdateAxes axes
 
   pieConf ← getOrInitial Pie
   setConfigFor Pie $ pieBarConfiguration axes pieConf

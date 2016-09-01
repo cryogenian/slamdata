@@ -51,6 +51,9 @@ funnelChartIcon = className "funnel-chart-icon"
 heatmapChartIcon ∷ ClassName
 heatmapChartIcon = className "heatmap-chart-icon"
 
+sankeyChartIcon ∷ ClassName
+sankeyChartIcon = className "sankey-chart-icon"
+
 areaChartIcon ∷ ClassName
 areaChartIcon = className "area-chart-icon"
 
