@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Data.Foldable as F
 import Data.String as Str
-import Data.Map as Map
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -35,7 +34,7 @@ import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component.CSS as CCSS
-import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
+import SlamData.Workspace.Card.Draftboard.Pane (Pane)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck)
 
@@ -47,7 +46,7 @@ data Query a
   -- TODO: this is a bit of a hack, we probably instead want a way of
   -- customising the available and enabled actions based on card type & state
   -- in the long run -gb
-  | SetUnwrappable DeckMap a
+  | SetUnwrappable (Maybe DeckLayout) a
 
 data BackAction
   = Trash
@@ -58,7 +57,7 @@ data BackAction
   | DeleteDeck
   | Mirror
   | Wrap
-  | Unwrap DeckMap
+  | Unwrap DeckLayout
   | Share
   | Unshare
 
@@ -78,9 +77,10 @@ allBackActions state =
     , Mirror
     , Wrap
     ]
-  ⊕ (guard (state.activeCardType == Just CT.Draftboard) $> Unwrap state.unwrappableDecks)
+  ⊕ (guard (state.activeCardType == Just CT.Draftboard)
+     *> maybe [] (\ds → [ Unwrap ds ]) state.unwrappableDecks)
 
-type DeckMap = Map.Map DeckId (DeckPosition × Deck)
+type DeckLayout = Pane (Maybe (DeckId × Deck))
 
 type State =
   { filterString ∷ String
@@ -88,7 +88,7 @@ type State =
   , cardTypes ∷ Array CT.CardType
   , saved ∷ Boolean
   , isLogged ∷ Boolean
-  , unwrappableDecks ∷ DeckMap
+  , unwrappableDecks ∷ Maybe DeckLayout
   }
 
 initialState ∷ State
@@ -98,7 +98,7 @@ initialState =
   , cardTypes: mempty
   , saved: false
   , isLogged: false
-  , unwrappableDecks: Map.empty
+  , unwrappableDecks: Nothing
   }
 
 labelAction ∷ BackAction → String
@@ -120,7 +120,7 @@ actionEnabled st a =
     Just CT.ErrorCard, Trash → false
     Just CT.NextAction, Trash → false
     Nothing, Trash → false
-    _, Unwrap _ → not Map.isEmpty st.unwrappableDecks
+    _, Unwrap _ → isJust st.unwrappableDecks
     _, Mirror | F.elem CT.Draftboard st.cardTypes → false
     _, _ → true
 
@@ -208,7 +208,7 @@ eval (DoAction _ next) = pure next
 eval (UpdateFilter str next) =
   H.modify (_ { filterString = str }) $> next
 eval (UpdateCardType cty ctys next) =
-  H.modify (_ { activeCardType = cty, cardTypes = ctys, unwrappableDecks = Map.empty :: DeckMap }) $> next
+  H.modify (_ { activeCardType = cty, cardTypes = ctys, unwrappableDecks = Nothing }) $> next
 eval (Init next) = next <$ do
   isLogged ← map isJust $ H.liftH getIdToken
   H.modify (_ { isLogged = isLogged })

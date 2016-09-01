@@ -30,9 +30,9 @@ import SlamData.Render.Common (logo)
 import SlamData.Render.CSS as Rc
 import SlamData.SignIn.Component as SignIn
 
-type State = Unit
+type State = Boolean
 initialState ∷ State
-initialState = unit
+initialState = false
 
 type Query = Const Void
 
@@ -71,11 +71,15 @@ type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 
 comp ∷ H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Nothing }
+comp = H.parentComponent { render, eval, peek: Just peek }
 
-render ∷ Unit → HTML
-render _ =
-  HH.nav_
+render ∷ State → HTML
+render open =
+  HH.nav
+    [ HP.classes
+        [ HH.className "sd-nav"
+        , HH.className if open then "open" else "closed" ]
+        ]
     [ HH.div_
         [ HH.div_
             [ HH.div [ HP.classes [ Rc.header ] ]
@@ -98,3 +102,16 @@ render _ =
 
 eval ∷ Query ~> DSL
 eval = absurd ∘ getConst
+
+peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → DSL Unit
+peek (H.ChildF s q) =
+  peekGripper ⨁ (const $ pure unit) $ q
+
+  where
+  peekGripper (Gripper.Notify st _) = do
+    H.set
+      case st of
+        Gripper.Closed → false
+        _ → true
+  peekGripper _ =
+    pure unit

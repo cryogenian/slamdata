@@ -1,3 +1,23 @@
+.sd-workspace {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  .header-gripper {
+    z-index: 1;
+  }
+
+  .sd-nav {
+    z-index: 1;
+  }
+
+  .sd-nav.open {
+    z-index: 99999;
+  }
+}
+
 body.sd-workspace-page.sd-embedded {
   background: transparent;
 
@@ -9,19 +29,25 @@ body.sd-workspace-page.sd-embedded {
 
 .sd-workspace.sd-published {
 
-  .sd-card-header {
+  .sd-card-header,
+  .sd-draftboard-edge,
+  .sd-draftboard-split-edge,
+  .sd-draftboard-cell.empty {
     display: none;
   }
 
-  .sd-board-inset-shadow, .sd-deck-shadow, .sd-deck-container.sd-focused {
+  .sd-deck-container.sd-focused {
     box-shadow: none;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
   }
 
-  .sd-board-grid {
-    background: none;
-  }
-
-  > .sd-deck-nested > .sd-deck-container {
+  .sd-deck-level-1 > .sd-deck-container {
+    > .sd-deck > .sd-card-slider {
+      height: 100%;
+    }
 
     > .sd-deck > .sd-card-slider > .sd-card > div > .sd-deck-card {
       // set the background colour for a published deck when the root card is a board
@@ -45,31 +71,6 @@ body.sd-workspace-page.sd-embedded {
         .sd-card-slider {
           left: ~"calc(1.5rem - 1px)";
           right: ~"calc(1.5rem - 1px)";
-        }
-      }
-
-      .sd-deck-top-level > .sd-deck-nested > .sd-deck-container {
-        > .sd-deck-frame {
-          top: 0.5rem;
-          bottom: 0.5rem;
-          left: 0.5rem;
-          right: 0.5rem;
-          width: auto;
-          height: auto;
-          // this tiny shadow is to give the top/left edge of the deck some
-          // definition over white backgrounds - the sd-deck-shadow is also used
-          // to provide a larger softer drop
-          box-shadow: 0px 0px 2px 0px rgba(0, 0, 0, 0.1);
-        }
-
-        > .sd-deck-shadow {
-          top: 0.5rem;
-          bottom: 0.5rem;
-          left: 0.5rem;
-          right: 0.5rem;
-          width: auto;
-          height: auto;
-          box-shadow: 2px 2px 8px 0px rgba(0, 0, 0, 0.15);
         }
       }
 

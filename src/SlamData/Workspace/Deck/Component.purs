@@ -72,6 +72,7 @@ import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQu
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.Draftboard.Component.Query as DBQ
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Model as Card
@@ -100,7 +101,7 @@ import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 
-import Utils.DOM (getBoundingClientRect)
+import Utils.DOM (getBoundingClientRect, elementEq)
 import Utils.LocalStorage as LocalStorage
 import Utils.Path (DirPath)
 
@@ -227,8 +228,6 @@ eval opts = case _ of
   UpdateCardSize next → do
     updateCardSize
     pure next
-  ResizeDeck _ next →
-    pure next
   ZoomIn next → do
     st ← H.get
     varMaps ← getURLVarMaps
@@ -281,10 +280,20 @@ eval opts = case _ of
       Wiring wiring ← H.liftH $ H.liftH ask
       H.fromAff $ Bus.write (DeckFocused st.id) wiring.messaging
     pure next
+  Defocus ev next → do
+    st ← H.get
+    isFrame ← H.fromEff $ elementEq ev.target ev.currentTarget
+    when (st.focused && isFrame) $
+      for_ (L.last opts.cursor) \rootId → do
+        Wiring wiring ← H.liftH $ H.liftH ask
+        H.fromAff $ Bus.write (DeckFocused rootId) wiring.messaging
+    pure next
   HandleMessage msg next → do
     st ← H.get
     case msg of
-      DeckFocused focusedDeckId →
+      DeckFocused focusedDeckId → do
+        when (st.id ≡ focusedDeckId && not st.focused) $
+          H.modify (DCS._focused .~ true)
         when (st.id ≠ focusedDeckId && st.focused) $
           H.modify (DCS._focused .~ false)
       URLVarMapsUpdated →
@@ -317,7 +326,7 @@ getVarMaps path =
       Card.Variables vm →
         pure $ (deckId × Variables.eval deckId Map.empty vm) : acc
       Card.Draftboard dbm →
-        L.foldM goDeck acc (Map.keys dbm.decks)
+        L.foldM goDeck acc (L.catMaybes $ Pane.toList dbm.layout)
       _ ->
         pure acc
   goDeck
@@ -450,12 +459,7 @@ updateActiveCardAndIndicator ∷ DeckDSL Unit
 updateActiveCardAndIndicator = do
   st ← H.get
   case st.activeCardIndex of
-    Nothing → do
-      let
-        lastCardIndex = max 0 $ Array.length st.displayCards - 1
-        lastRealCardIndex = DCS.findLastRealCardIndex st
-        cardIndex = fromMaybe lastCardIndex lastRealCardIndex
-      H.modify $ DCS._activeCardIndex .~ Just cardIndex
+    Nothing → H.modify $ DCS._activeCardIndex .~ Just (DCS.defaultActiveIndex st)
     Just _ → pure unit
   updateIndicator
   updateActiveState
@@ -504,9 +508,9 @@ updateBackSide { cursor } = do
       -- of the following hold:
       --   - a board is a child of another board
       --   - there is only one deck inside a root board
-      when (not (L.null cursor) || Map.size decks == 1) $
+      when (not (L.null cursor) || L.length (L.catMaybes (Pane.toList decks)) == 1) $
         void $ lift $
-          H.query' cpBackSide unit $ H.action $ Back.SetUnwrappable decks
+          H.query' cpBackSide unit $ H.action $ Back.SetUnwrappable (Just decks)
 
       pure unit
 
@@ -760,11 +764,18 @@ runCardUpdates opts source steps = do
   -- when we apply the child updates.
   when (st.stateMode == Preparing) do
     Wiring wiring ← H.liftH $ H.liftH ask
-    activeCardIndex ← map _.cardIndex <$> getCache st.id wiring.activeState
+    activeIndex ← map _.cardIndex <$> getCache st.id wiring.activeState
     lastIndex ← H.gets DCS.findLastRealCardIndex
+    -- When a deck is deeply nested, we should treat it as "published", such
+    -- that it always show the last available card.
+    let
+      activeCardIndex =
+        if L.length opts.cursor > 1
+          then lastIndex
+          else activeIndex <|> lastIndex
     H.modify
       $ (DCS._stateMode .~ Ready)
-      ∘ (DCS._activeCardIndex .~ (activeCardIndex <|> lastIndex))
+      ∘ (DCS._activeCardIndex .~ activeCardIndex)
 
   -- Splice in the new display cards
   for_ (Array.head updateResult.displayCards) \card → do

@@ -22,6 +22,7 @@ import Data.Map as Map
 
 import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
+import Halogen.HTML.Events.Types as HET
 
 import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.Port.VarMap as Port
@@ -33,7 +34,7 @@ import Utils.Path as UP
 
 data Query a
   = SetVarMaps (Map.Map DeckId Port.URLVarMap) a
-  | DismissAll a
+  | DismissAll (HET.Event HET.MouseEvent) a
   | Reset UP.DirPath a
   | Init a
   | Load UP.DirPath (Maybe DeckId) AccessType a

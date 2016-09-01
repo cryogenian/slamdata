@@ -65,6 +65,7 @@ module SlamData.Workspace.Deck.Component.State
   , eqCoordModel
   , compareCoordCards
   , coordModelToCoord
+  , defaultActiveIndex
   ) where
 
 import SlamData.Prelude
@@ -441,3 +442,10 @@ compareCoordCards coordA coordB cards =
 
 coordModelToCoord ∷ DeckId × Card.Model → DeckId × CardId
 coordModelToCoord = map _.cardId
+
+defaultActiveIndex ∷ State → Int
+defaultActiveIndex st =
+  fromMaybe lastCardIndex lastRealCardIndex
+  where
+  lastCardIndex = max 0 $ A.length st.displayCards - 1
+  lastRealCardIndex = findLastRealCardIndex st

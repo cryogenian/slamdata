@@ -39,6 +39,7 @@ import CSS.Time (sec)
 import CSS.Transition (easeOut)
 
 import Halogen as H
+import Halogen.Component.Utils (raise)
 import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events.Indexed as HE
@@ -57,6 +58,7 @@ data Query a
   | StopDragging a
   | ChangePosition Number a
   | Animated a
+  | Notify State a
 
 data Direction = Up | Down
 
@@ -200,6 +202,7 @@ eval _ (StartDragging pos next) = do
     Closed → H.set (Dragging Down pos pos)
     Opened → H.set (Dragging Up (pos - maxMargin) pos)
     _ → pure unit
+  H.get >>= raise ∘ H.action ∘ Notify
   pure next
 eval _ (StopDragging next) = do
   astate ← H.get
@@ -231,4 +234,8 @@ eval _ (Animated next) = do
     Opening _ → H.set Opened
     Closing _ → H.set Closed
     _ → pure unit
+  H.get >>= raise ∘ H.action ∘ Notify
+  pure next
+
+eval _ (Notify _ next) =
   pure next
