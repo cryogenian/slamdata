@@ -21,7 +21,6 @@ module SlamData.Workspace.Card.ChartOptions.Graph.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Array as Arr
 import Data.Lens (view)
 
 import Global (readFloat, isNaN)

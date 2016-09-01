@@ -4,20 +4,13 @@ import SlamData.Prelude
 
 import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, toString)
 import Data.Array as A
-import Data.Int as Int
 import Data.Foldable as F
 import Data.Map as M
-import Data.String as Str
-import Data.String.Regex as Rgx
-import Data.Foreign as FR
-import Data.Foreign.Class (readProp)
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
-import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
 
 import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
