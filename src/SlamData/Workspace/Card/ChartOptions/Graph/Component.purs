@@ -193,7 +193,7 @@ renderSize state =
 renderColor ∷ State → HTML
 renderColor state =
   HH.form
-    [ HP.classes [ FCSS.withAggregation, FCSS.chartConfigureForm ]
+    [ HP.classes [ FCSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Node category" ]

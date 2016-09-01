@@ -124,6 +124,7 @@ renderButton ct =
   src Graph = "img/graph-black.svg"
   src Heatmap = "img/heatmap-black.svg"
   src Sankey = "img/sankey-black.svg"
+  src Gauge = "img/gauge-black.svg"
 
 eval ∷ CC.CardEvalQuery ~> ChartDSL
 eval = case _ of
@@ -139,13 +140,11 @@ eval = case _ of
         H.query unit $ H.action $ HEC.Reset optionDSL
         H.query unit $ H.action HEC.Resize
         setLevelOfDetails $ buildObj optionDSL
-        case config of
-          CH.Legacy r →
-            H.modify (_chartType ?~ r.options.chartType)
-          CH.Graph _ →
-            H.modify (_chartType ?~ Graph)
-          CH.Sankey _ →
-            H.modify (_chartType ?~ Sankey)
+        H.modify $ _chartType ?~ case config of
+          CH.Legacy r → r.options.chartType
+          CH.Graph _ → Graph
+          CH.Sankey _ → Sankey
+          CH.Gauge _ → Gauge
       _ → do
         H.query unit $ H.action HEC.Clear
         pure unit

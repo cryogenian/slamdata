@@ -250,7 +250,7 @@ buildGraph r records = do
     E.buildLinks links
 
     E.buildCategories $ for_ legendNames $ E.addCategory ∘ E.name
-    E.lineStylePair $ E.normal $ E.colorSource
+    E.lineStyle $ E.normal $ E.colorSource
 
   where
   axisMap ∷ M.Map JCursor Axis

@@ -224,8 +224,8 @@ buildArea axes angle size stacked smooth conf = do
         (colors !! ((i * (A.length colors - 1)) + ( 1 - 2 * i) * (mod ind $ A.length colors)))
     E.name serieName
     E.itemStyle $ E.normalItemStyle $ E.color color
-    E.lineStylePair $ E.normalLineStyle $ E.width 2
-    E.areaStylePair $ E.normalAreaStyle
+    E.lineStyle $ E.normal $ E.width 2
+    E.areaStyle $ E.normal
       $ E.color $ getShadeColor color (if stacked then 1.0 else 0.5)
 
     E.items $ map ET.numItem nums

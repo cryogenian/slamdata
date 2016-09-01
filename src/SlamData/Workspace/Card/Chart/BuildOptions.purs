@@ -153,3 +153,4 @@ buildOptionsLegacy args conf records =
     Heatmap → buildHeatmap mp args.minColorVal args.maxColorVal args.colorScheme args.colorReversed conf
     Graph → pure unit
     Sankey → pure unit
+    Gauge → pure unit

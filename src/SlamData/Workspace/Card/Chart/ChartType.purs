@@ -47,6 +47,7 @@ data ChartType
   | Graph
   | Heatmap
   | Sankey
+  | Gauge
 
 isPie ∷ ChartType → Boolean
 isPie Pie = true
@@ -88,6 +89,10 @@ isSankey ∷ ChartType → Boolean
 isSankey Sankey = true
 isSankey _ = false
 
+isGauge ∷ ChartType → Boolean
+isGauge Gauge = true
+isGauge _ = false
+
 parseChartType ∷ String → Either String ChartType
 parseChartType "pie" = pure Pie
 parseChartType "line" = pure Line
@@ -99,6 +104,7 @@ parseChartType "funnel" = pure Funnel
 parseChartType "graph" = pure Graph
 parseChartType "heatmap" = pure Heatmap
 parseChartType "sankey" = pure Sankey
+parseChartType "gauge" = pure Gauge
 parseChartType _ = Left "incorrect chartType"
 
 printChartType ∷ ChartType → String
@@ -112,6 +118,7 @@ printChartType Funnel = "funnel"
 printChartType Graph = "graph"
 printChartType Heatmap = "heatmap"
 printChartType Sankey = "sankey"
+printChartType Gauge = "gauge"
 
 derive instance genericChartType ∷ Generic ChartType
 derive instance eqChartType ∷ Eq ChartType
@@ -135,4 +142,5 @@ instance arbitraryChartType ∷ SC.Arbitrary ChartType where
     , Graph
     , Heatmap
     , Sankey
+    , Gauge
     ]

@@ -9,11 +9,13 @@ import Data.Lens (PrismP, prism')
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
+import SlamData.Workspace.Card.Chart.Axis (eqAxes)
 import SlamData.Workspace.Card.Chart.ChartType as CT
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 import SlamData.Workspace.Card.Chart.BuildOptions as CO
 import SlamData.Workspace.Card.Chart.BuildOptions.Graph (GraphR, buildGraph)
 import SlamData.Workspace.Card.Chart.BuildOptions.Sankey (SankeyR, buildSankey)
+import SlamData.Workspace.Card.Chart.BuildOptions.Gauge (GaugeR, buildGauge)
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.Property.ArbJson (runArbJCursor)
@@ -27,6 +29,7 @@ data ChartConfig
   = Legacy LegacyR
   | Graph GraphR
   | Sankey SankeyR
+  | Gauge GaugeR
 
 _Legacy ∷ PrismP ChartConfig LegacyR
 _Legacy = prism' Legacy case _ of
@@ -43,15 +46,18 @@ _Sankey = prism' Sankey case _ of
   Sankey r → Just r
   _ → Nothing
 
+_Gauge ∷ PrismP ChartConfig GaugeR
+_Gauge = prism' Gauge case _ of
+  Gauge r → Just r
+  _ → Nothing
+
 instance eqChartConfig ∷ Eq ChartConfig where
   eq (Legacy r1) (Legacy r2) =
     CO.eqBuildOptions r1.options r2.options
     ∧ CC.eqChartConfiguration r1.chartConfig r2.chartConfig
   eq (Graph r1) (Graph r2) =
     F.and
-      [ r1.axes.category ≡ r2.axes.category
-      , r1.axes.value ≡ r2.axes.value
-      , r1.axes.time ≡ r2.axes.time
+      [ eqAxes r1.axes r2.axes
       , r1.source ≡ r2.source
       , r1.target ≡ r2.target
       , r1.size ≡ r2.size
@@ -63,13 +69,19 @@ instance eqChartConfig ∷ Eq ChartConfig where
       ]
   eq (Sankey r1) (Sankey r2) =
     F.and
-      [ r1.axes.category ≡ r2.axes.category
-      , r1.axes.value ≡ r2.axes.value
-      , r1.axes.time ≡ r2.axes.time
+      [ eqAxes r1.axes r2.axes
       , r1.source ≡ r2.source
       , r1.target ≡ r2.target
       , r1.value ≡ r2.value
       , r1.valueAggregation ≡ r2.valueAggregation
+      ]
+  eq (Gauge r1) (Gauge r2) =
+    F.and
+      [ eqAxes r1.axes r2.axes
+      , r1.value ≡ r2.value
+      , r1.valueAggregation ≡ r2.valueAggregation
+      , r1.parallel ≡ r2.parallel
+      , r1.multiple ≡ r2.multiple
       ]
   eq _ _ = false
 
@@ -84,6 +96,20 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
         pure {value, time, category}
     chartType ← arbitrary
     case chartType of
+      CT.Gauge → do
+        value ← map runArbJCursor arbitrary
+        valueAggregation ← arbitrary
+        parallel ← map (map runArbJCursor) arbitrary
+        multiple ← map (map runArbJCursor) arbitrary
+        axes ← arbAxes
+        pure
+          $ Gauge { value
+                  , valueAggregation
+                  , parallel
+                  , multiple
+                  , axes
+                  }
+
       CT.Sankey → do
         source ← map runArbJCursor arbitrary
         target ← map runArbJCursor arbitrary
@@ -118,40 +144,48 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
         pure $ Legacy { options, chartConfig }
 
 instance encodeJsonChartConfig ∷ EncodeJson ChartConfig where
-  encodeJson (Legacy r) =
-    "options" := CO.encode r.options
-    ~> "chartConfig" := CC.encode r.chartConfig
-    ~> jsonEmptyObject
-  encodeJson (Graph r) =
-    "configType" := "graph"
-    ~> "source" := r.source
-    ~> "target" := r.target
-    ~> "size" := r.size
-    ~> "color" := r.color
-    ~> "minSize" := r.minSize
-    ~> "maxSize" := r.maxSize
-    ~> "circular" := r.circular
-    ~> "sizeAggregation" := r.sizeAggregation
-    ~> "axes" := ("value" := r.axes.value
-                  ~> "time" := r.axes.time
-                  ~> "category" := r.axes.category
-                  ~> jsonEmptyObject)
-    ~> jsonEmptyObject
-  encodeJson (Sankey r) =
-    "configType" := "sankey"
-    ~> "source" := r.source
-    ~> "target" := r.target
-    ~> "value" := r.value
-    ~> "valueAggregation" := r.valueAggregation
-    ~> "axes" := ("value" := r.axes.value
-                  ~> "time" := r.axes.time
-                  ~> "category" := r.axes.category
-                  ~> jsonEmptyObject)
-    ~> jsonEmptyObject
-
+  encodeJson = case _ of
+    Legacy r →
+      "options" := CO.encode r.options
+      ~> "chartConfig" := CC.encode r.chartConfig
+      ~> jsonEmptyObject
+    Graph r →
+      "configType" := "graph"
+      ~> "source" := r.source
+      ~> "target" := r.target
+      ~> "size" := r.size
+      ~> "color" := r.color
+      ~> "minSize" := r.minSize
+      ~> "maxSize" := r.maxSize
+      ~> "circular" := r.circular
+      ~> "sizeAggregation" := r.sizeAggregation
+      ~> "axes" := encodeAxes r.axes
+      ~> jsonEmptyObject
+    Sankey r →
+      "configType" := "sankey"
+      ~> "source" := r.source
+      ~> "target" := r.target
+      ~> "value" := r.value
+      ~> "valueAggregation" := r.valueAggregation
+      ~> "axes" := encodeAxes r.axes
+      ~> jsonEmptyObject
+    Gauge r →
+      "configType" := "gauge"
+      ~> "value" := r.value
+      ~> "valueAggregation" := r.valueAggregation
+      ~> "parallel" := r.parallel
+      ~> "multiple" := r.multiple
+      ~> "axes" := encodeAxes r.axes
+      ~> jsonEmptyObject
+    where
+    encodeAxes axes =
+      "value" := axes.value
+      ~> "time" := axes.time
+      ~> "category" := axes.category
+      ~> jsonEmptyObject
 
 instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
-  decodeJson js = decodeGraph <|> decodeSankey <|> decodeLegacy
+  decodeJson js = decodeGauge <|> decodeGraph <|> decodeSankey <|> decodeLegacy
     where
     decodeAxes jsAxes = do
       value ← jsAxes .? "value"
@@ -195,7 +229,6 @@ instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
       sizeAggregation ← obj .? "sizeAggregation"
       jsAxes ← obj .? "axes"
       axes ← decodeAxes jsAxes
-
       pure $ Graph { source
                    , target
                    , size
@@ -206,11 +239,27 @@ instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
                    , axes
                    , sizeAggregation
                    }
+    decodeGauge = do
+      obj ← decodeJson js
+      configType ← obj .? "configType"
+      unless (configType ≡ "gauge")
+        $ throwError "This config is not gauge"
+      value ← obj .? "value"
+      valueAggregation ← obj .? "valueAggregation"
+      parallel ← obj .? "parallel"
+      multiple ← obj .? "multiple"
+      jsAxes ← obj .? "axes"
+      axes ← decodeAxes jsAxes
+      pure $ Gauge { value
+                   , valueAggregation
+                   , parallel
+                   , multiple
+                   , axes
+                   }
 
-buildOptions
-  ∷ ChartConfig
-  → JArray
-  → DSL OptionI
+
+buildOptions ∷ ChartConfig → JArray → DSL OptionI
 buildOptions (Legacy r) records = CO.buildOptionsLegacy r.options r.chartConfig records
 buildOptions (Graph r) records = buildGraph r records
 buildOptions (Sankey r) records = buildSankey r records
+buildOptions (Gauge r) records = buildGauge r records

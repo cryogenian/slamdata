@@ -81,6 +81,7 @@ eval info model = do
         , getMaybeGraph
         , getMaybeHeatmap
         , getMaybeSankey
+        , getMaybeGauge
         ]
 
   when (null available)
@@ -163,3 +164,8 @@ eval info model = do
   getMaybeSankey axes = do
     guard $ (length axes.category > 1 ∧ length axes.value > 0)
     pure Sankey
+
+  getMaybeGauge ∷ Axes → Maybe ChartType
+  getMaybeGauge axes = do
+    guard $ (length axes.category > 0 ∧ length axes.value > 0)
+    pure Gauge

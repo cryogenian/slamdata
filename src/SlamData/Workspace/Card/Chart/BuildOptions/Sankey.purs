@@ -115,7 +115,7 @@ buildSankey r records = do
     E.buildItems items
     E.buildLinks links
 
-    E.lineStylePair $ E.normal $ E.curveness 0.3
+    E.lineStyle $ E.normal $ E.curveness 0.3
   where
   sankeyData ∷ SankeyData
   sankeyData = buildSankeyData records r
