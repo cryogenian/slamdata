@@ -27,10 +27,8 @@ import SlamData.Config as Config
 
 import Data.Foldable (elem)
 import Data.Lens (PrismP, (.~), review, preview, clonePrism)
-import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
-import Halogen.Component.Utils (sendAfter')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -144,8 +142,7 @@ makeCardComponentPart def render =
     pure $ k { cardId, model }
   eval (CQ.LoadCard card next) = do
     H.query unit ∘ left ∘ H.action $ CQ.Load card.model
-    sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions unit)
-    pure next
+    eval (CQ.UpdateDimensions next)
   eval (CQ.SetHTMLElement el next) =
     H.modify (CS._element .~ el) $> next
   eval (CQ.UpdateDimensions next) = do
