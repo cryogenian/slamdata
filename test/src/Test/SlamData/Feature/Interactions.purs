@@ -37,6 +37,7 @@ mountTestDatabase = do
   Feature.click (XPath.anywhere XPaths.accessMountDatabase)
   Feature.provideFieldValue (XPath.anywhere XPaths.mountName) "test-mount"
   Feature.selectFromDropdown (XPath.anywhere XPaths.mountType) "MongoDB"
+  Feature.click (XPath.anywhere $ XPaths.mountName)
   Feature.provideFieldValue (XPath.index (XPath.anywhere XPaths.mountPort) 1) "63174"
   Feature.provideFieldValue (XPath.index (XPath.anywhere XPaths.mountHost) 1) "localhost"
   Feature.provideFieldValue (XPath.anywhere XPaths.mountDatabase) "testDb"

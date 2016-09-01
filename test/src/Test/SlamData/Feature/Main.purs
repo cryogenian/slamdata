@@ -36,6 +36,7 @@ import Selenium.Monad (setWindowSize)
 import Selenium.Types (SELENIUM)
 
 import Test.Feature.Monad (FeatureEffects)
+import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Config (Config)
 import Test.SlamData.Feature.Effects (SlamFeatureEffects)
 import Test.SlamData.Feature.Interactions (launchSlamData, mountTestDatabase)
@@ -67,7 +68,8 @@ type Effects =
 tests ∷ SlamFeature Unit
 tests = do
   launchSlamData
-  mountTestDatabase
+
+  scenario "Setup" (pure unit) (pure unit) "Mount test database" [] mountTestDatabase
 
   File.test
   Search.test
