@@ -29,8 +29,8 @@ module SlamData.Workspace.Deck.Component.State
   , _displayCards
   , _activeCardIndex
   , _path
-  , _presentAddCardGuideCanceler
-  , _presentAddCardGuide
+  , _presentAccessNextActionCardGuideCanceler
+  , _presentAccessNextActionCardGuide
   , _saveTrigger
   , _runTrigger
   , _pendingCard
@@ -136,8 +136,8 @@ type State =
   , cardsToLoad ∷ Set.Set (DeckId × CardId)
   , activeCardIndex ∷ Maybe Int
   , path ∷ DirPath
-  , presentAddCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
-  , presentAddCardGuide ∷ Boolean
+  , presentAccessNextActionCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
+  , presentAccessNextActionCardGuide ∷ Boolean
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , runTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , pendingCard ∷ Maybe (DeckId × CardId)
@@ -173,8 +173,8 @@ initialDeck path deckId =
   , cardsToLoad: mempty
   , activeCardIndex: Nothing
   , path
-  , presentAddCardGuideCanceler: Nothing
-  , presentAddCardGuide: false
+  , presentAccessNextActionCardGuideCanceler: Nothing
+  , presentAccessNextActionCardGuide: false
   , saveTrigger: Nothing
   , runTrigger: Nothing
   , pendingCard: Nothing
@@ -231,12 +231,12 @@ _path = lens _.path _{path = _}
 
 -- | An optional canceler for the delayed guiding of the user to add a card. Can
 -- | be used to reset the delay of this guiding.
-_presentAddCardGuideCanceler ∷ ∀ a r. LensP {presentAddCardGuideCanceler ∷ a |r} a
-_presentAddCardGuideCanceler = lens _.presentAddCardGuideCanceler _{presentAddCardGuideCanceler = _}
+_presentAccessNextActionCardGuideCanceler ∷ ∀ a r. LensP {presentAccessNextActionCardGuideCanceler ∷ a |r} a
+_presentAccessNextActionCardGuideCanceler = lens _.presentAccessNextActionCardGuideCanceler _{presentAccessNextActionCardGuideCanceler = _}
 
 -- | Whether the add card guide should be presented or not.
-_presentAddCardGuide ∷ ∀ a r. LensP {presentAddCardGuide ∷ a |r} a
-_presentAddCardGuide = lens _.presentAddCardGuide _{presentAddCardGuide = _}
+_presentAccessNextActionCardGuide ∷ ∀ a r. LensP {presentAccessNextActionCardGuide ∷ a |r} a
+_presentAccessNextActionCardGuide = lens _.presentAccessNextActionCardGuide _{presentAccessNextActionCardGuide = _}
 
 -- | The debounced trigger for deck save actions.
 _saveTrigger ∷ ∀ a r. LensP {saveTrigger ∷ a|r} a

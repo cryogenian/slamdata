@@ -34,13 +34,17 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common (glyph)
+import SlamData.Workspace.Guide as Guide
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(..), _AddCardType, _PresentReason)
-import SlamData.Workspace.Card.Next.Component.State (State, initialState, _input, _filterString)
+import SlamData.Workspace.Card.Next.Component.State (State)
+import SlamData.Workspace.Card.Next.Component.State as State
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.InsertableCardType as ICT
+
+import Utils.LocalStorage as LocalStorage
 
 type NextHTML = H.ComponentHTML QueryP
 type NextDSL = H.ComponentDSL State QueryP Slam
@@ -48,8 +52,8 @@ type NextDSL = H.ComponentDSL State QueryP Slam
 nextCardComponent ∷ CC.CardComponent
 nextCardComponent = CC.makeCardComponent
   { cardType: CT.NextAction
-  , component: H.component {render, eval}
-  , initialState: initialState
+  , component: H.lifecycleComponent { initializer: Just $ right $ H.action $ Init, finalizer: Nothing, render, eval}
+  , initialState: State.initialState
   , _State: CC._NextState
   , _Query: CC.makeQueryPrism CC._NextQuery
   }
@@ -57,7 +61,8 @@ nextCardComponent = CC.makeCardComponent
 render ∷ State → NextHTML
 render state =
   HH.div_
-    [ HH.form_
+    $ (guard (not state.presentAddCardGuide) $>
+      HH.form_
         [ HH.div_
             [ HH.input
                 [ HP.value state.filterString
@@ -71,9 +76,13 @@ render state =
                 ]
                 [ glyph B.glyphiconRemove ]
             ]
-        ]
-    , HH.ul_ $ map nextButton CT.insertableCardTypes
-    ]
+        ])
+    ⊕ (guard state.presentAddCardGuide $>
+        Guide.render
+          (HH.className "sd-add-card-guide")
+          (right ∘ DismissAddCardGuide)
+          (addCardGuideText state.input))
+    ⊕ [ HH.ul_ $ map nextButton CT.insertableCardTypes ]
   where
 
   filterString ∷ String
@@ -101,6 +110,9 @@ render state =
         ⊕ (guard enabled
              $> HE.onClick (HE.input_ (right ∘ addCardOrPresentReason state.input cty)))
 
+  addCardGuideTextEmptyDeck = "To get this deck started press one of these buttons to add a card."
+  addCardGuideTextNonEmptyDeck = "To do more with this deck press one of these buttons to add a card."
+  addCardGuideText = maybe addCardGuideTextEmptyDeck (const addCardGuideTextNonEmptyDeck)
 
 eval ∷ QueryP ~> NextDSL
 eval = coproduct cardEval nextEval
@@ -108,7 +120,7 @@ eval = coproduct cardEval nextEval
 cardEval ∷ CC.CardEvalQuery ~> NextDSL
 cardEval = case _ of
   CC.EvalCard value output next →
-    H.modify (_input .~ value.input) $> next
+    H.modify (State._input .~ value.input) $> next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -139,8 +151,28 @@ addCardOrPresentReason input cardType a =
      then AddCard cardType a
      else PresentReason input cardType a
 
+dismissedAddCardGuideKey ∷ String
+dismissedAddCardGuideKey = "dismissedAddCardGuide"
+
+getDismissedAddCardGuideBefore ∷ NextDSL Boolean
+getDismissedAddCardGuideBefore =
+  H.liftH
+    $ either (const $ false) id
+    <$> LocalStorage.getLocalStorage dismissedAddCardGuideKey
+
+storeDismissedAddCardGuide ∷ NextDSL Unit
+storeDismissedAddCardGuide =
+  H.liftH $ LocalStorage.setLocalStorage dismissedAddCardGuideKey true
+
+dismissAddCardGuide ∷ NextDSL Unit
+dismissAddCardGuide =
+  H.modify (State._presentAddCardGuide .~ false) *> storeDismissedAddCardGuide
+
 nextEval ∷ Query ~> NextDSL
-nextEval (AddCard _ next) = pure next
+nextEval (AddCard _ next) = dismissAddCardGuide $> next
 nextEval (PresentReason io card next) = pure next
-nextEval (UpdateFilter str next) =
-  H.modify (_filterString .~ str) $> next
+nextEval (UpdateFilter str next) = H.modify (State._filterString .~ str) $> next
+nextEval (DismissAddCardGuide next) = dismissAddCardGuide $> next
+nextEval (Init next) = do
+  H.modify ∘ (State._presentAddCardGuide .~ _) ∘ not =<< getDismissedAddCardGuideBefore
+  pure next

@@ -26,6 +26,8 @@ data Query a
   = AddCard CardType a
   | PresentReason (Maybe Port) CardType a
   | UpdateFilter String a
+  | DismissAddCardGuide a
+  | Init a
 
 _AddCardType :: forall a. TraversalP (Query a) CardType
 _AddCardType =
@@ -33,6 +35,8 @@ _AddCardType =
     AddCard cty next → flip AddCard next <$> f cty
     PresentReason io card next → pure s
     UpdateFilter filter next → pure s
+    DismissAddCardGuide next → pure s
+    Init next → pure s
 
 _PresentReason :: forall a. TraversalP (Query a) (Tuple (Maybe Port) CardType)
 _PresentReason =
@@ -40,5 +44,7 @@ _PresentReason =
     AddCard cty next → pure s
     PresentReason io card next → (#) next <<< uncurry PresentReason <$> f (Tuple io card)
     UpdateFilter filter next → pure s
+    DismissAddCardGuide next → pure s
+    Init next → pure s
 
 type QueryP = CardEvalQuery ⨁ Query
