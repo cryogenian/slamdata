@@ -28,12 +28,15 @@ module SlamData.Workspace.Card.ChartOptions.Form.Component
   , DimensionQuery
   , SeriesQuery
   , MeasureQuery
+  , MeasureSelQuery
   , DimensionSlot
   , SeriesSlot
   , MeasureSlot
+  , MeasureSelSlot
   , DimensionState
   , SeriesState
   , MeasureState
+  , MeasureSelState
   ) where
 
 import SlamData.Prelude
@@ -56,6 +59,7 @@ import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, aggregationSelect
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Chart.ChartConfiguration (JSelect, ChartConfiguration)
 import SlamData.Workspace.Card.ChartOptions.Form.Component.CSS as CSS
+
 
 data Query a
   = SetConfiguration ChartConfiguration a
@@ -83,19 +87,20 @@ initialConfiguration =
 type DimensionSlot = Int
 type SeriesSlot = Int
 type MeasureSlot = Int
-type ChildSlot = Either DimensionSlot (Either SeriesSlot MeasureSlot)
+type MeasureSelSlot = Int
+type ChildSlot = Either DimensionSlot (Either SeriesSlot (Either MeasureSlot MeasureSelSlot))
 
 type DimensionQuery = S.Query JCursor
 type SeriesQuery = S.Query JCursor
 type MeasureQuery = P.QueryP (Maybe Aggregation) JCursor
-type MeasureAggQuery = S.Query (Maybe Aggregation)
 type MeasureSelQuery = S.Query JCursor
-type ChildQuery = Coproduct DimensionQuery (Coproduct SeriesQuery MeasureQuery)
+type ChildQuery = Coproduct DimensionQuery (Coproduct SeriesQuery (Coproduct MeasureQuery MeasureSelQuery))
 
 type DimensionState = Select JCursor
 type SeriesState = Select JCursor
 type MeasureState = P.StateP (Maybe Aggregation) JCursor
-type ChildState = Either DimensionState (Either SeriesState MeasureState)
+type MeasureSelState = Select JCursor
+type ChildState = Either DimensionState (Either SeriesState (Either MeasureState MeasureSelState))
 
 type FormHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type FormDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
@@ -121,7 +126,14 @@ cpMeasure
        MeasureState ChildState
        MeasureQuery ChildQuery
        MeasureSlot ChildSlot
-cpMeasure = cpR :> cpR
+cpMeasure = cpR :> cpR :> cpL
+
+cpMeasureSel
+  ∷ ChildPath
+       MeasureSelState ChildState
+       MeasureSelQuery ChildQuery
+       MeasureSlot ChildSlot
+cpMeasureSel = cpR :> cpR :> cpR
 
 formComponent ∷ H.Component StateP QueryP Slam
 formComponent = H.parentComponent { render, eval, peek: Nothing }
@@ -149,6 +161,16 @@ render state = case state.chartType of
       , foldMap (renderMeasure 0 aggregationSelect) (state.chartConfiguration.measures !! 0)
       , hr
       , foldMap (renderSeries 0) (state.chartConfiguration.series !! 0)
+      , hr
+      ]
+  Boxplot → HH.div
+    [ HP.classes [ CSS.chartEditor ] ]
+    $ fold
+      [ foldMap (renderDimension 0) (state.chartConfiguration.dimensions !! 0)
+      , foldMap (renderMeasureSel 0) (state.chartConfiguration.measures !! 0)
+      , hr
+      , foldMap (renderSeries 0) (state.chartConfiguration.series !! 0)
+      , foldMap (renderSeries 1) (state.chartConfiguration.series !! 1)
       , hr
       ]
   _ → HH.div
@@ -201,6 +223,23 @@ render state = case state.chartType of
         , HH.slot' cpMeasure ix \_ →
             { component: childMeasure ix sel
             , initialState: H.parentState $ P.initialState aggSelect
+            }
+        ]
+    ]
+
+  renderMeasureSel ∷ Int → JSelect → Array FormHTML
+  renderMeasureSel ix sel =
+    [ HH.form
+        [ CP.nonSubmit
+        , HP.classes
+            [ CSS.chartConfigureForm
+            , CSS.chartMeasureOne
+            ]
+        ]
+        [ measureLabel
+        , HH.slot' cpMeasureSel ix \_ →
+            { component: S.secondarySelect $ renderLabel ix "Measure"
+            , initialState: sel
             }
         ]
     ]
@@ -320,8 +359,9 @@ eval (SetConfiguration conf next) = do
         ∘ S.SetSelect
 
   synchronizeMeasures ∷ Array JSelect → Array JSelect → FormDSL Unit
-  synchronizeMeasures old new =
+  synchronizeMeasures old new = do
     traverse_ (syncMeasureByIndex old new) $ range 0 $ getLastIndex old new
+    traverse_ (syncMeasureSelByIndex old new) $ range 0 $ getLastIndex old new
 
   syncMeasureByIndex ∷ Array JSelect → Array JSelect → Int → FormDSL Unit
   syncMeasureByIndex old new i =
@@ -331,6 +371,15 @@ eval (SetConfiguration conf next) = do
         ∘ H.query' cpMeasure i
         ∘ right
         ∘ H.ChildF unit
+        ∘ H.action
+        ∘ S.SetSelect
+
+  syncMeasureSelByIndex ∷ Array JSelect → Array JSelect → Int → FormDSL Unit
+  syncMeasureSelByIndex old new i =
+    for_ (old !! i) \_ →
+      for_ (new !! i)
+        $ void
+        ∘ H.query' cpMeasureSel i
         ∘ H.action
         ∘ S.SetSelect
 
@@ -393,16 +442,24 @@ eval (GetConfiguration continue) = do
       $ H.request S.GetSelect
 
   getMeasures ∷ FormDSL (Array JSelect)
-  getMeasures = do
-    state ← H.get
-    map catMaybes
-      $ traverse getMeasure (range' 0 $ length state.chartConfiguration.measures - 1)
+  getMeasures = do 
+    state ← H.get 
+    map catMaybes 
+      $ for (range' 0 $ length state.chartConfiguration.measures - 1) \ix → do 
+        mbMeasure ← getMeasure ix 
+        mbMeasureSel ← getMeasureSel ix 
+        pure $ mbMeasure <|> mbMeasureSel
 
   getMeasure ∷ Int → FormDSL (Maybe JSelect)
   getMeasure i =
     H.query' cpMeasure i
       $ right
       $ H.ChildF unit
+      $ H.request S.GetSelect
+
+  getMeasureSel ∷ Int → FormDSL (Maybe JSelect)
+  getMeasureSel i =
+    H.query' cpMeasureSel i
       $ H.request S.GetSelect
 
   getAggregations ∷ FormDSL (Array (Select (Maybe Aggregation)))

@@ -124,6 +124,7 @@ renderButton ct =
   src Graph = "img/graph-black.svg"
   src Heatmap = "img/heatmap-black.svg"
   src Sankey = "img/sankey-black.svg"
+  src Boxplot = "img/boxplot-black.svg"
 
 eval ∷ CC.CardEvalQuery ~> ChartDSL
 eval = case _ of

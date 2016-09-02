@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect, aggregation
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colorSchemes, printColorScheme)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey, isBoxplot)
 import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
@@ -187,6 +187,7 @@ renderChartTypeSelector state =
   src Graph = "img/graph.svg"
   src Heatmap = "img/heatmap.svg"
   src Sankey = "img/sankey.svg"
+  src Boxplot = "img/boxplot.svg"
 
   cls ∷ ChartType → HH.ClassName
   cls Pie = CSS.pieChartIcon
@@ -199,6 +200,7 @@ renderChartTypeSelector state =
   cls Graph = CSS.pieChartIcon
   cls Heatmap = CSS.heatmapChartIcon
   cls Sankey = CSS.sankeyChartIcon
+  cls Boxplot = CSS.boxplotChartIcon
 
 renderChartConfiguration ∷ VCS.State → HTML
 renderChartConfiguration state =
@@ -214,6 +216,7 @@ renderChartConfiguration state =
     , renderTab Graph
     , renderTab Heatmap
     , renderTab Sankey
+    , renderTab Boxplot
     , renderDimensions state
     ]
   where
@@ -249,10 +252,10 @@ renderDimensions state =
   row
   [ intChartInput CSS.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel
-      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey ] )
+      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey, isBoxplot ] )
   , intChartInput CSS.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize
-      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey ] )
+      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey, isBoxplot ] )
   , boolChartInput CSS.chartDetailParam "If stack"
       (_.areaStacked) ToggleSetStacked (not $ isArea state.chartType)
   , boolChartInput CSS.chartDetailParam "If smooth"
@@ -501,6 +504,8 @@ cardEval = case _ of
             Funnel | not $ F.any isSelected rawConfig.measures → Nothing
             Heatmap | not $ F.any isSelected rawConfig.dimensions → Nothing
             Heatmap | not $ F.any isSelected rawConfig.measures → Nothing
+            Boxplot | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Boxplot | not $ F.any isSelected rawConfig.measures → Nothing
             _ → Just rawConfig
         pure
           $ mbChartCfg
@@ -579,8 +584,12 @@ configure = void do
 
   funnelConf ← getOrInitial Funnel
   setConfigFor Funnel $ funnelConfiguration axes funnelConf
+
   heatmapConf ← getOrInitial Heatmap
   setConfigFor Heatmap $ heatmapConfiguration axes heatmapConf
+
+  boxplotConf ← getOrInitial Boxplot
+  setConfigFor Boxplot $ boxplotConfiguration axes boxplotConf
   where
   getOrInitial ∷ ChartType → DSL ChartConfiguration
   getOrInitial ty =
@@ -791,6 +800,30 @@ configure = void do
        , dimensions: [firstDimensions, secondDimensions]
        , measures: [measures]
        , aggregations: [aggregation]
+       }
+       
+  boxplotConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
+  boxplotConfiguration axes current =
+    let allAxises = (axes.category ⊕ axes.time ⊕ axes.value)
+        dimensions =
+          setPreviousValueFrom (index current.dimensions 0)
+          $ autoSelect $ newSelect $ allAxises
+        measures =
+          setPreviousValueFrom (index current.measures 0)
+          $ autoSelect $ newSelect $ ifSelected [dimensions]
+          $ axes.value
+        firstSeries =
+          setPreviousValueFrom (index current.series 0)
+          $ newSelect $ ifSelected [measures]
+          $ allAxises ⊝ dimensions ⊝ measures
+        secondSeries =
+          setPreviousValueFrom (index current.series 1)
+          $ newSelect $ ifSelected [firstSeries]
+          $ allAxises ⊝ dimensions ⊝ measures ⊝ firstSeries
+    in { series: [firstSeries, secondSeries]
+       , dimensions: [dimensions]
+       , measures: [measures]
+       , aggregations: []
        }
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
