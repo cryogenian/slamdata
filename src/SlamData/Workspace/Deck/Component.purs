@@ -129,11 +129,12 @@ eval opts = case _ of
       eb ← subscribeToBus' (H.action ∘ HandleError) wiring.globalError
       H.modify $ DCS._breakers %~ (Array.cons eb)
     updateCardSize
+    presentAccessNextActionCardGuideAfterDelay
     pure next
-  PresentAddCardGuide next → do
-    H.modify (DCS._presentAddCardGuide .~ true) $> next
-  HideAddCardGuide next →
-    dismissAddCardGuide $> next
+  PresentAccessNextActionCardGuide next → do
+    H.modify (DCS._presentAccessNextActionCardGuide .~ true) $> next
+  HideAccessNextActionCardGuide next →
+    dismissAccessNextActionCardGuide $> next
   Finish next → do
     H.modify _ { finalized = true }
     H.gets _.breakers >>= traverse_ (H.fromAff ∘ EventLoop.break')
@@ -260,7 +261,7 @@ eval opts = case _ of
     updateIndicator
     updateActiveState
     eq (Just CT.NextAction) ∘ DCS.activeCardType <$> H.get >>=
-      flip when dismissAddCardGuide
+      flip when dismissAccessNextActionCardGuide
 
     pure next
   UpdateSliderPosition mouseEvent next →
@@ -385,7 +386,7 @@ peekBackSide opts (Back.DoAction action _) =
             H.set $ snd rem
             triggerSave Nothing
             updateActiveCardAndIndicator
-            H.modify $ (DCS._displayMode .~ DCS.Normal) ∘ (DCS._presentAddCardGuide .~ false)
+            H.modify $ (DCS._displayMode .~ DCS.Normal) ∘ (DCS._presentAccessNextActionCardGuide .~ false)
             DCS.activeCardCoord (snd rem)
               # maybe (runCardUpdates opts state.id L.Nil) queuePendingCard
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
@@ -512,7 +513,6 @@ updateBackSide { cursor } = do
 
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
-  presentAddCardGuideAfterDelay
   SA.track (SA.AddCard cardType)
   deckId ← H.gets _.id
   (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
@@ -520,43 +520,46 @@ createCard cardType = do
   queuePendingCard (deckId × newCardId)
   triggerSave $ Just (deckId × newCardId)
 
-getDismissedAddCardGuideBefore ∷ DeckDSL Boolean
-getDismissedAddCardGuideBefore =
+dismissedAccessNextActionCardGuideKey ∷ String
+dismissedAccessNextActionCardGuideKey = "dismissedAccessNextActionCardGuide"
+
+getDismissedAccessNextActionCardGuideBefore ∷ DeckDSL Boolean
+getDismissedAccessNextActionCardGuideBefore =
   H.liftH $ H.liftH
     $ either (const $ false) id
-    <$> LocalStorage.getLocalStorage "dismissedAddCardGuide"
+    <$> LocalStorage.getLocalStorage dismissedAccessNextActionCardGuideKey
 
-storeDismissedAddCardGuide ∷ DeckDSL Unit
-storeDismissedAddCardGuide =
-  H.liftH $ H.liftH $ LocalStorage.setLocalStorage "dismissedAddCardGuide" true
+storeDismissedAccessNextActionCardGuide ∷ DeckDSL Unit
+storeDismissedAccessNextActionCardGuide =
+  H.liftH $ H.liftH $ LocalStorage.setLocalStorage dismissedAccessNextActionCardGuideKey true
 
-presentAddCardGuideAfterDelay ∷ DeckDSL Unit
-presentAddCardGuideAfterDelay = do
-  dismissedBefore ← getDismissedAddCardGuideBefore
+presentAccessNextActionCardGuideAfterDelay ∷ DeckDSL Unit
+presentAccessNextActionCardGuideAfterDelay = do
+  dismissedBefore ← getDismissedAccessNextActionCardGuideBefore
   if dismissedBefore
     then pure unit
     else do
-      cancelPresentAddCardGuide
+      cancelPresentAccessNextActionCardGuide
       H.modify
-        ∘ (DCS._presentAddCardGuideCanceler .~ _)
+        ∘ (DCS._presentAccessNextActionCardGuideCanceler .~ _)
         ∘ Just
-        =<< (sendAfter' Config.addCardGuideDelay $ PresentAddCardGuide unit)
+        =<< (sendAfter' Config.addCardGuideDelay $ PresentAccessNextActionCardGuide unit)
 
-cancelPresentAddCardGuide ∷ DeckDSL Boolean
-cancelPresentAddCardGuide =
+cancelPresentAccessNextActionCardGuide ∷ DeckDSL Boolean
+cancelPresentAccessNextActionCardGuide =
   H.fromAff ∘ maybe (pure false) (flip Aff.cancel $ Exception.error "Cancelled")
-    =<< H.gets _.presentAddCardGuideCanceler
+    =<< H.gets _.presentAccessNextActionCardGuideCanceler
 
-dismissAddCardGuide ∷ DeckDSL Unit
-dismissAddCardGuide =
-  H.gets _.presentAddCardGuide >>=
+dismissAccessNextActionCardGuide ∷ DeckDSL Unit
+dismissAccessNextActionCardGuide =
+  H.gets _.presentAccessNextActionCardGuide >>=
     flip when do
-      H.modify (DCS._presentAddCardGuide .~ false)
-      storeDismissedAddCardGuide
+      H.modify (DCS._presentAccessNextActionCardGuide .~ false)
+      storeDismissedAccessNextActionCardGuide
 
-resetAddCardGuideDelay ∷ DeckDSL Unit
-resetAddCardGuideDelay =
-  cancelPresentAddCardGuide >>= if _ then presentAddCardGuideAfterDelay else pure unit
+resetAccessNextActionCardGuideDelay ∷ DeckDSL Unit
+resetAccessNextActionCardGuideDelay =
+  cancelPresentAccessNextActionCardGuide >>= if _ then presentAccessNextActionCardGuideAfterDelay else pure unit
 
 deckDSLLater ∷ Int → DeckDSL Unit → DeckDSL Unit
 deckDSLLater ms action =
@@ -582,7 +585,7 @@ peekCardEvalQuery cardCoord = case _ of
 
 peekAnyCard ∷ ∀ a. DeckId × CardId → AnyCardQuery a → DeckDSL Unit
 peekAnyCard cardCoord q = do
-  resetAddCardGuideDelay
+  resetAccessNextActionCardGuideDelay
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._PresentReason) $ uncurry presentReason
 

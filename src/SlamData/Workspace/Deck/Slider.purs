@@ -45,6 +45,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import SlamData.Config as Config
 import SlamData.Render.CSS as ClassNames
 import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Guide as Guide
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component as CardC
@@ -244,29 +245,13 @@ renderCard opts deckComponent st (deckId × card) index =
         ⊕ [ HH.div
               (cardProperties st coord)
               ([ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
-                ⊕ (if st.presentAddCardGuide ∧ isLastRealCard then [ guide guideText ] else []))
+                ⊕ (guard presentAccessNextActionCardGuide $> renderGuide))
           ]
   where
   key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
   isLastRealCard = Just (deckId × card.cardId) == DCS.findLastRealCard st
-  guide text =
-    HH.div
-      [ HP.class_ $ HH.className "sd-add-card-guide " ]
-      [ HH.div
-          [ HP.class_ $ HH.className "sd-notification" ]
-          [ HH.div
-              [ HP.class_ $ HH.className "sd-notification-text" ]
-              [ HH.text text ]
-          , HH.div
-              [ HP.class_ $ HH.className "sd-notification-buttons" ]
-              [ HH.button
-                  [ HP.classes [ HH.className "sd-add-card-guide-dismiss", HH.className "sd-notification-dismiss" ]
-                  , HE.onClick (HE.input_ DCQ.HideAddCardGuide)
-                  ]
-                  [ HH.text "×" ]
-              ]
-          ]
-      ]
+  presentAccessNextActionCardGuide = st.presentAccessNextActionCardGuide ∧ isLastRealCard
+  renderGuide = Guide.render (HH.className "sd-access-next-card-guide") DCQ.HideAccessNextActionCardGuide guideText
   outputs = maybe [] ICT.outputsFor $ ICT.fromCardType (Card.modelCardType card.model)
   guideText = guideText' ∘ String.joinWith " / " $ Array.catMaybes $ ICT.printIOType' <$> outputs
   guideText' outputTypesString =
@@ -281,7 +266,7 @@ renderCard opts deckComponent st (deckId × card) index =
         DCS.FadeNone → "sd-fade-none"
     ]
       ⊕ (guard (not $ isClick st.sliderTranslateX) $> ClassNames.cardSliding)
-      ⊕ (guard (cardSelected st (deckId × card.cardId)) $> ClassNames.cardActive)
+      ⊕ (guard (cardSelected st coord) $> ClassNames.cardActive)
   coord = deckId × card.cardId
   slotId = ChildSlot.CardSlot coord
   cardOpts =
