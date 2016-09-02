@@ -129,7 +129,6 @@ eval opts = case _ of
       eb ← subscribeToBus' (H.action ∘ HandleError) wiring.globalError
       H.modify $ DCS._breakers %~ (Array.cons eb)
     updateCardSize
-    presentAccessNextActionCardGuideAfterDelay
     pure next
   PresentAccessNextActionCardGuide next → do
     H.modify (DCS._presentAccessNextActionCardGuide .~ true) $> next
@@ -513,6 +512,7 @@ updateBackSide { cursor } = do
 
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
+  presentAccessNextActionCardGuideAfterDelay
   SA.track (SA.AddCard cardType)
   deckId ← H.gets _.id
   (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
@@ -955,6 +955,7 @@ setModel opts model = do
   H.modify
     $ (DCS._stateMode .~ Preparing)
     ∘ DCS.fromModel model
+  presentAccessNextActionCardGuideAfterDelay
   case Array.head model.modelCards of
     Just _ → runInitialEval
     Nothing → runCardUpdates opts model.id L.Nil
