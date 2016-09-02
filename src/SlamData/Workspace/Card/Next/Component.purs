@@ -168,13 +168,15 @@ storeDismissedAddCardGuide ∷ NextDSL Unit
 storeDismissedAddCardGuide =
   H.liftH $ LocalStorage.setLocalStorage dismissedAddCardGuideKey true
 
+dismissAddCardGuide ∷ NextDSL Unit
+dismissAddCardGuide =
+  H.modify (State._presentAddCardGuide .~ false) *> storeDismissedAddCardGuide
+
 nextEval ∷ Query ~> NextDSL
-nextEval (AddCard _ next) = pure next
+nextEval (AddCard _ next) = dismissAddCardGuide $> next
 nextEval (PresentReason io card next) = pure next
-nextEval (UpdateFilter str next) =
-  H.modify (State._filterString .~ str) $> next
-nextEval (DismissAddCardGuide next) =
-  H.modify (State._presentAddCardGuide .~ false) *> storeDismissedAddCardGuide $> next
+nextEval (UpdateFilter str next) = H.modify (State._filterString .~ str) $> next
+nextEval (DismissAddCardGuide next) = dismissAddCardGuide $> next
 nextEval (Init next) = do
   H.modify ∘ (State._presentAddCardGuide .~ _) ∘ not =<< getDismissedAddCardGuideBefore
   pure next
