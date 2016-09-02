@@ -81,7 +81,7 @@ render state =
         Guide.render
           (HH.className "sd-add-card-guide")
           (right ∘ DismissAddCardGuide)
-          addCardGuideTextEmptyDeck)
+          (addCardGuideText state.input))
     ⊕ [ HH.ul_ $ map nextButton CT.insertableCardTypes ]
   where
 
@@ -110,13 +110,9 @@ render state =
         ⊕ (guard enabled
              $> HE.onClick (HE.input_ (right ∘ addCardOrPresentReason state.input cty)))
 
-  cardGuideText =
-    "Cards retreive, process and present data, forms, charts and more."
-      ⊕ " Every card creates an output which can be passed to another."
-      ⊕ " By stacking cards into decks you can find valuable insights"
-      ⊕ " and do amazing things."
   addCardGuideTextEmptyDeck = "To get this deck started press one of these buttons to add a card."
   addCardGuideTextNonEmptyDeck = "To do more with this deck press one of these buttons to add a card."
+  addCardGuideText = maybe addCardGuideTextEmptyDeck (const addCardGuideTextNonEmptyDeck)
 
 eval ∷ QueryP ~> NextDSL
 eval = coproduct cardEval nextEval
