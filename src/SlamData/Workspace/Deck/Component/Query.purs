@@ -30,7 +30,7 @@ import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import SlamData.GlobalError (GlobalError)
 import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
+import SlamData.Workspace.Card.Draftboard.Pane (Pane)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port.VarMap (VarMap)
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -43,8 +43,8 @@ import Utils.Path as UP
 
 data Query a
   = Init a
-  | PresentAddCardGuide a
-  | HideAddCardGuide a
+  | PresentAccessNextActionCardGuide a
+  | HideAccessNextActionCardGuide a
   | Finish a
   | RunPendingCards PendingMessage a
   | QueuePendingCard a
@@ -63,7 +63,6 @@ data Query a
   | GetVarMaps (Map.Map DeckId VarMap → a)
   | FlipDeck a
   | GrabDeck (Event MouseEvent) a
-  | ResizeDeck (Event MouseEvent) a
   | UpdateCardSize a
   | ZoomIn a
   | ZoomOut a
@@ -74,6 +73,7 @@ data Query a
   | StopSliderTransition a
   | DoAction DeckAction a
   | Focus a
+  | Defocus (Event MouseEvent) a
   | HandleMessage DeckMessage a
   | GetSharingInput (SharingInput → a)
   | HandleError GlobalError a
@@ -81,7 +81,7 @@ data Query a
 data DeckAction
   = Mirror
   | Wrap
-  | Unwrap (Map.Map DeckId (DeckPosition × Deck))
+  | Unwrap (Pane (Maybe (DeckId × Deck)))
   | DeleteDeck
 
 type QueryP = OpaqueQuery Query

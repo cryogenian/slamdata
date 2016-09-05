@@ -82,6 +82,7 @@ eval info model = do
         , getMaybeHeatmap
         , getMaybeSankey
         , getMaybeGauge
+        , getMaybeBoxplot
         ]
 
   when (null available)
@@ -169,3 +170,8 @@ eval info model = do
   getMaybeGauge axes = do
     guard $ (length axes.category > 0 ∧ length axes.value > 0)
     pure Gauge
+
+  getMaybeBoxplot ∷ Axes → Maybe ChartType
+  getMaybeBoxplot axes = do
+    guard $ (not $ null axes.value) ∧ (((length axes.category) + (length axes.time) + (length axes.value)) > 2)
+    pure Boxplot

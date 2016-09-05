@@ -19,6 +19,7 @@ module SlamData.Workspace.Card.Next.Component.State
   , initialState
   , _input
   , _filterString
+  , _presentAddCardGuide
   ) where
 
 import SlamData.Prelude
@@ -30,11 +31,13 @@ import SlamData.Workspace.Card.Port (Port)
 type State =
   { input ∷ Maybe Port
   , filterString ∷ String
+  , presentAddCardGuide ∷ Boolean
   }
 
 initialState :: State
 initialState =
   { input: Nothing
+  , presentAddCardGuide: true
   , filterString: ""
   }
 
@@ -43,3 +46,6 @@ _input = lens _.input (_ { input = _ })
 
 _filterString ∷ ∀ a r. LensP { filterString ∷ a | r } a
 _filterString = lens _.filterString (_ { filterString = _ })
+
+_presentAddCardGuide ∷ ∀ a r. LensP { presentAddCardGuide ∷ a | r } a
+_presentAddCardGuide = lens _.presentAddCardGuide (_ { presentAddCardGuide = _ })

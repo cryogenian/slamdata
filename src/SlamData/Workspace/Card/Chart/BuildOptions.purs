@@ -40,6 +40,7 @@ import SlamData.Workspace.Card.Chart.BuildOptions.Scatter (buildScatter)
 import SlamData.Workspace.Card.Chart.BuildOptions.Radar (buildRadar)
 import SlamData.Workspace.Card.Chart.BuildOptions.Funnel (buildFunnel)
 import SlamData.Workspace.Card.Chart.BuildOptions.Heatmap (buildHeatmap)
+import SlamData.Workspace.Card.Chart.BuildOptions.Boxplot (buildBoxplot)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
 import Test.StrongCheck.Arbitrary as SC
@@ -151,6 +152,7 @@ buildOptionsLegacy args conf records =
     Radar → buildRadar mp conf
     Funnel → buildFunnel mp args.funnelOrder args.funnelAlign conf
     Heatmap → buildHeatmap mp args.minColorVal args.maxColorVal args.colorScheme args.colorReversed conf
+    Boxplot → buildBoxplot mp conf
     Graph → pure unit
     Sankey → pure unit
     Gauge → pure unit

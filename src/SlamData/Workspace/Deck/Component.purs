@@ -72,6 +72,7 @@ import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQu
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.Draftboard.Component.Query as DBQ
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Model as Card
@@ -100,7 +101,7 @@ import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 
-import Utils.DOM (getBoundingClientRect)
+import Utils.DOM (getBoundingClientRect, elementEq)
 import Utils.LocalStorage as LocalStorage
 import Utils.Path (DirPath)
 
@@ -130,10 +131,10 @@ eval opts = case _ of
       H.modify $ DCS._breakers %~ (Array.cons eb)
     updateCardSize
     pure next
-  PresentAddCardGuide next → do
-    H.modify (DCS._presentAddCardGuide .~ true) $> next
-  HideAddCardGuide next →
-    dismissAddCardGuide $> next
+  PresentAccessNextActionCardGuide next → do
+    H.modify (DCS._presentAccessNextActionCardGuide .~ true) $> next
+  HideAccessNextActionCardGuide next →
+    dismissAccessNextActionCardGuide $> next
   Finish next → do
     H.modify _ { finalized = true }
     H.gets _.breakers >>= traverse_ (H.fromAff ∘ EventLoop.break')
@@ -227,8 +228,6 @@ eval opts = case _ of
   UpdateCardSize next → do
     updateCardSize
     pure next
-  ResizeDeck _ next →
-    pure next
   ZoomIn next → do
     st ← H.get
     varMaps ← getURLVarMaps
@@ -260,7 +259,7 @@ eval opts = case _ of
     updateIndicator
     updateActiveState
     eq (Just CT.NextAction) ∘ DCS.activeCardType <$> H.get >>=
-      flip when dismissAddCardGuide
+      flip when dismissAccessNextActionCardGuide
 
     pure next
   UpdateSliderPosition mouseEvent next →
@@ -281,10 +280,20 @@ eval opts = case _ of
       Wiring wiring ← H.liftH $ H.liftH ask
       H.fromAff $ Bus.write (DeckFocused st.id) wiring.messaging
     pure next
+  Defocus ev next → do
+    st ← H.get
+    isFrame ← H.fromEff $ elementEq ev.target ev.currentTarget
+    when (st.focused && isFrame) $
+      for_ (L.last opts.cursor) \rootId → do
+        Wiring wiring ← H.liftH $ H.liftH ask
+        H.fromAff $ Bus.write (DeckFocused rootId) wiring.messaging
+    pure next
   HandleMessage msg next → do
     st ← H.get
     case msg of
-      DeckFocused focusedDeckId →
+      DeckFocused focusedDeckId → do
+        when (st.id ≡ focusedDeckId && not st.focused) $
+          H.modify (DCS._focused .~ true)
         when (st.id ≠ focusedDeckId && st.focused) $
           H.modify (DCS._focused .~ false)
       URLVarMapsUpdated →
@@ -317,7 +326,7 @@ getVarMaps path =
       Card.Variables vm →
         pure $ (deckId × Variables.eval deckId Map.empty vm) : acc
       Card.Draftboard dbm →
-        L.foldM goDeck acc (Map.keys dbm.decks)
+        L.foldM goDeck acc (L.catMaybes $ Pane.toList dbm.layout)
       _ ->
         pure acc
   goDeck
@@ -385,7 +394,7 @@ peekBackSide opts (Back.DoAction action _) =
             H.set $ snd rem
             triggerSave Nothing
             updateActiveCardAndIndicator
-            H.modify $ (DCS._displayMode .~ DCS.Normal) ∘ (DCS._presentAddCardGuide .~ false)
+            H.modify $ (DCS._displayMode .~ DCS.Normal) ∘ (DCS._presentAccessNextActionCardGuide .~ false)
             DCS.activeCardCoord (snd rem)
               # maybe (runCardUpdates opts state.id L.Nil) queuePendingCard
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
@@ -450,12 +459,7 @@ updateActiveCardAndIndicator ∷ DeckDSL Unit
 updateActiveCardAndIndicator = do
   st ← H.get
   case st.activeCardIndex of
-    Nothing → do
-      let
-        lastCardIndex = max 0 $ Array.length st.displayCards - 1
-        lastRealCardIndex = DCS.findLastRealCardIndex st
-        cardIndex = fromMaybe lastCardIndex lastRealCardIndex
-      H.modify $ DCS._activeCardIndex .~ Just cardIndex
+    Nothing → H.modify $ DCS._activeCardIndex .~ Just (DCS.defaultActiveIndex st)
     Just _ → pure unit
   updateIndicator
   updateActiveState
@@ -504,15 +508,15 @@ updateBackSide { cursor } = do
       -- of the following hold:
       --   - a board is a child of another board
       --   - there is only one deck inside a root board
-      when (not (L.null cursor) || Map.size decks == 1) $
+      when (not (L.null cursor) || L.length (L.catMaybes (Pane.toList decks)) == 1) $
         void $ lift $
-          H.query' cpBackSide unit $ H.action $ Back.SetUnwrappable decks
+          H.query' cpBackSide unit $ H.action $ Back.SetUnwrappable (Just decks)
 
       pure unit
 
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
-  presentAddCardGuideAfterDelay
+  presentAccessNextActionCardGuideAfterDelay
   SA.track (SA.AddCard cardType)
   deckId ← H.gets _.id
   (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
@@ -520,43 +524,46 @@ createCard cardType = do
   queuePendingCard (deckId × newCardId)
   triggerSave $ Just (deckId × newCardId)
 
-getDismissedAddCardGuideBefore ∷ DeckDSL Boolean
-getDismissedAddCardGuideBefore =
+dismissedAccessNextActionCardGuideKey ∷ String
+dismissedAccessNextActionCardGuideKey = "dismissedAccessNextActionCardGuide"
+
+getDismissedAccessNextActionCardGuideBefore ∷ DeckDSL Boolean
+getDismissedAccessNextActionCardGuideBefore =
   H.liftH $ H.liftH
     $ either (const $ false) id
-    <$> LocalStorage.getLocalStorage "dismissedAddCardGuide"
+    <$> LocalStorage.getLocalStorage dismissedAccessNextActionCardGuideKey
 
-storeDismissedAddCardGuide ∷ DeckDSL Unit
-storeDismissedAddCardGuide =
-  H.liftH $ H.liftH $ LocalStorage.setLocalStorage "dismissedAddCardGuide" true
+storeDismissedAccessNextActionCardGuide ∷ DeckDSL Unit
+storeDismissedAccessNextActionCardGuide =
+  H.liftH $ H.liftH $ LocalStorage.setLocalStorage dismissedAccessNextActionCardGuideKey true
 
-presentAddCardGuideAfterDelay ∷ DeckDSL Unit
-presentAddCardGuideAfterDelay = do
-  dismissedBefore ← getDismissedAddCardGuideBefore
+presentAccessNextActionCardGuideAfterDelay ∷ DeckDSL Unit
+presentAccessNextActionCardGuideAfterDelay = do
+  dismissedBefore ← getDismissedAccessNextActionCardGuideBefore
   if dismissedBefore
     then pure unit
     else do
-      cancelPresentAddCardGuide
+      cancelPresentAccessNextActionCardGuide
       H.modify
-        ∘ (DCS._presentAddCardGuideCanceler .~ _)
+        ∘ (DCS._presentAccessNextActionCardGuideCanceler .~ _)
         ∘ Just
-        =<< (sendAfter' Config.addCardGuideDelay $ PresentAddCardGuide unit)
+        =<< (sendAfter' Config.addCardGuideDelay $ PresentAccessNextActionCardGuide unit)
 
-cancelPresentAddCardGuide ∷ DeckDSL Boolean
-cancelPresentAddCardGuide =
+cancelPresentAccessNextActionCardGuide ∷ DeckDSL Boolean
+cancelPresentAccessNextActionCardGuide =
   H.fromAff ∘ maybe (pure false) (flip Aff.cancel $ Exception.error "Cancelled")
-    =<< H.gets _.presentAddCardGuideCanceler
+    =<< H.gets _.presentAccessNextActionCardGuideCanceler
 
-dismissAddCardGuide ∷ DeckDSL Unit
-dismissAddCardGuide =
-  H.gets _.presentAddCardGuide >>=
+dismissAccessNextActionCardGuide ∷ DeckDSL Unit
+dismissAccessNextActionCardGuide =
+  H.gets _.presentAccessNextActionCardGuide >>=
     flip when do
-      H.modify (DCS._presentAddCardGuide .~ false)
-      storeDismissedAddCardGuide
+      H.modify (DCS._presentAccessNextActionCardGuide .~ false)
+      storeDismissedAccessNextActionCardGuide
 
-resetAddCardGuideDelay ∷ DeckDSL Unit
-resetAddCardGuideDelay =
-  cancelPresentAddCardGuide >>= if _ then presentAddCardGuideAfterDelay else pure unit
+resetAccessNextActionCardGuideDelay ∷ DeckDSL Unit
+resetAccessNextActionCardGuideDelay =
+  cancelPresentAccessNextActionCardGuide >>= if _ then presentAccessNextActionCardGuideAfterDelay else pure unit
 
 deckDSLLater ∷ Int → DeckDSL Unit → DeckDSL Unit
 deckDSLLater ms action =
@@ -582,7 +589,7 @@ peekCardEvalQuery cardCoord = case _ of
 
 peekAnyCard ∷ ∀ a. DeckId × CardId → AnyCardQuery a → DeckDSL Unit
 peekAnyCard cardCoord q = do
-  resetAddCardGuideDelay
+  resetAccessNextActionCardGuideDelay
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._PresentReason) $ uncurry presentReason
 
@@ -760,11 +767,18 @@ runCardUpdates opts source steps = do
   -- when we apply the child updates.
   when (st.stateMode == Preparing) do
     Wiring wiring ← H.liftH $ H.liftH ask
-    activeCardIndex ← map _.cardIndex <$> getCache st.id wiring.activeState
+    activeIndex ← map _.cardIndex <$> getCache st.id wiring.activeState
     lastIndex ← H.gets DCS.findLastRealCardIndex
+    -- When a deck is deeply nested, we should treat it as "published", such
+    -- that it always show the last available card.
+    let
+      activeCardIndex =
+        if L.length opts.cursor > 1
+          then lastIndex
+          else activeIndex <|> lastIndex
     H.modify
       $ (DCS._stateMode .~ Ready)
-      ∘ (DCS._activeCardIndex .~ (activeCardIndex <|> lastIndex))
+      ∘ (DCS._activeCardIndex .~ activeCardIndex)
 
   -- Splice in the new display cards
   for_ (Array.head updateResult.displayCards) \card → do
@@ -952,6 +966,7 @@ setModel opts model = do
   H.modify
     $ (DCS._stateMode .~ Preparing)
     ∘ DCS.fromModel model
+  presentAccessNextActionCardGuideAfterDelay
   case Array.head model.modelCards of
     Just _ → runInitialEval
     Nothing → runCardUpdates opts model.id L.Nil

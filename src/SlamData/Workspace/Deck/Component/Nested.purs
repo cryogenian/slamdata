@@ -26,6 +26,8 @@ import Control.Monad.Aff (runAff)
 import Control.Monad.Aff.AVar (makeVar, putVar, takeVar)
 import Control.Monad.Eff (Eff)
 
+import Data.List (length)
+
 import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaque, opaqueQuery)
 import Halogen.HTML.Indexed as HH
@@ -63,7 +65,6 @@ comp opts deckState =
           case query of
             DCQ.DoAction a _ → H.fromEff $ emitter $ DCQ.DoAction a unit
             DCQ.GrabDeck a _ → H.fromEff $ emitter $ DCQ.GrabDeck a unit
-            DCQ.ResizeDeck a _ → H.fromEff $ emitter $ DCQ.ResizeDeck a unit
             _ → pure unit
           pure res
       , peek: Just (DC.peek opts)
@@ -74,7 +75,10 @@ comp opts deckState =
   render ∷ DNS.State → HTML
   render _ =
     HH.div
-      [ HP.classes [ HH.className "sd-deck-nested" ]
+      [ HP.classes
+          [ HH.className "sd-deck-nested"
+          , HH.className ("sd-deck-level-" <> show (length opts.cursor + 1))
+          ]
       , HP.ref (left ∘ H.action ∘ DNQ.Ref)
       ]
       []
@@ -107,7 +111,6 @@ comp opts deckState =
     -- These are the actions that are peeked, so they are terminal.
     DCQ.DoAction _ next → pure next
     DCQ.GrabDeck _ next → pure next
-    DCQ.ResizeDeck _ next → pure next
     -- The rest we'll just pass through
     query → do
       DNS.Driver driver ← unsafePartial fromJust <$> H.gets _.driver

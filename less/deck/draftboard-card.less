@@ -1,21 +1,8 @@
 .sd-card-draftboard {
-
   position: absolute;
   width: 100%;
   height: 100%;
-  overflow: auto;
-
-  .sd-board-grid {
-    position: absolute;
-    min-width: 100%;
-    min-height: 100%;
-    background-color: #fafafa;
-    background-size: @grid-size @grid-size;
-    background-position: top top;
-    background-image:
-      linear-gradient(to right, #eee 1px, transparent 1px),
-      linear-gradient(to bottom, #eee 1px, transparent 1px);
-  }
+  background: #ccc;
 
   .sd-board-inset-shadow {
     position: fixed;
@@ -27,9 +14,454 @@
     box-shadow: inset 0px 0px 8px 0px rgba(0, 0, 0, 0.25);
     pointer-events: none;
   }
+}
 
-  .grouping {
-    box-shadow: 0 0 4px 4px blue;
-    z-index: 19;
+.sd-draftboard-edge {
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+
+  &:hover {
+    background: rgba(0,0,0,.06);
+  }
+
+  &.sd-draftboard-edge-top {
+    bottom: auto;
+    height: 10px;
+    cursor: ns-resize;
+  }
+
+  &.sd-draftboard-edge-left {
+    right: auto;
+    width: 10px;
+    cursor: ew-resize;
+  }
+
+  &.sd-draftboard-edge-right {
+    left: auto;
+    width: 10px;
+    cursor: ew-resize;
+  }
+
+  &.sd-draftboard-edge-bottom {
+    top: auto;
+    height: 10px;
+    cursor: ns-resize;
+  }
+}
+
+.sd-draftboard-edge-mid {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  margin-left: -5px;
+
+  &:before {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-style: solid;
+    content: "";
+  }
+
+  .sd-draftboard-edge-left &,
+  .sd-draftboard-edge-right & {
+    height: 20px;
+    margin-top: -10px;
+  }
+
+  .sd-draftboard-edge-top &,
+  .sd-draftboard-edge-bottom & {
+    width: 20px;
+    margin-left: -10px;
+  }
+
+  .sd-draftboard-edge-top & {
+    cursor: s-resize;
+  }
+
+  .sd-draftboard-edge-left & {
+    cursor: e-resize;
+  }
+
+  .sd-draftboard-edge-right & {
+    cursor: w-resize;
+  }
+
+  .sd-draftboard-edge-bottom & {
+    cursor: n-resize;
+  }
+
+  .sd-draftboard-edge-top &:before {
+    border-width: 4px 3px 0 3px;
+    border-color: #888 transparent transparent transparent;
+    margin-top: -2px;
+    margin-left: -4px;
+  }
+
+  .sd-draftboard-edge-left &:before {
+    border-width: 3px 0 3px 4px;
+    border-color: transparent transparent transparent #888;
+    margin-top: -4px;
+    margin-left: -2px;
+  }
+
+  .sd-draftboard-edge-right &:before {
+    border-width: 3px 4px 3px 0;
+    border-color: transparent #888 transparent transparent;
+    margin-top: -4px;
+    margin-left: -2px;
+  }
+
+  .sd-draftboard-edge-bottom &:before {
+    border-width: 0 3px 4px 3px;
+    border-color: transparent transparent #888 transparent;
+    margin-top: -2px;
+    margin-left: -4px;
+  }
+}
+
+.sd-draftboard-root {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  right: 5px;
+  bottom: 5px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.sd-draftboard-guide {
+  position: absolute;
+  z-index: 10;
+  border-style: dotted;
+  border-color: blue;
+  border-width: 0;
+  pointer-events: none;
+
+  &.invalid {
+    border-color: red;
+  }
+
+  &.horizontal {
+    width: 0;
+    border-left-width: 1px;
+  }
+
+  &.vertical {
+    height: 0;
+    border-top-width: 1px;
+  }
+}
+
+.sd-draftboard-guide-label {
+  position: absolute;
+  background: rgba(230,230,230,.9);
+  color: #666;
+  font-size: 11px;
+  width: 3em;
+  height: 2em;
+  margin: 0;
+  padding: 0;
+  line-height: 2em;
+  text-align: center;
+  transition: .1s ease-out all;
+  top: 0;
+  left: 0;
+
+  .invalid & {
+    display: none;
+  }
+
+  .horizontal &.leading {
+    left: 0;
+  }
+
+  .horizontal &.trailing {
+    left: -3em;
+    margin-left: -1px;
+  }
+
+  .vertical &.leading {
+    top: 0;
+  }
+
+  .vertical &.trailing {
+    top: -2em;
+    margin-top: -1px
+  }
+}
+
+.sd-draftboard-cell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+
+  .splitting &,
+  .sizing & {
+    pointer-events: auto;
+  }
+}
+
+.sd-draftboard-cell-content {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  right: 5px;
+  bottom: 5px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  pointer-events: auto;
+}
+
+.sd-draftboard-split-edge {
+  position: absolute;
+  z-index: 5;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  border-color: blue;
+  border-style: solid;
+  border-width: 0;
+  outline: none;
+  pointer-events: auto;
+
+  .splitting & {
+    display: none;
+  }
+
+  &.invalid {
+    border-color: red;
+  }
+
+  &.horizontal {
+    width: 10px;
+    margin-left: -5px;
+    cursor: ew-resize;
+  }
+
+  &.vertical {
+    height: 10px;
+    margin-top: -5px;
+    cursor: ns-resize;
+  }
+
+  &.sizing {
+    margin: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
+  &.sizing.horizontal {
+    border-left-width: 1px;
+  }
+
+  &.sizing.vertical {
+    border-top-width: 1px;
+  }
+}
+
+.sd-draftboard-split-edge-loc {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-color: blue;
+  border-style: dotted;
+  border-width: 0;
+
+  &:before {
+    content: " ";
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-style: solid;
+  }
+
+  .eq & {
+    display: none;
+  }
+
+  .vertical & {
+    left: 50%;
+    margin-left: -1px;
+    border-left-width: 1px;
+  }
+
+  .vertical.lt & {
+    top: 0;
+  }
+
+  .vertical.lt &:before {
+    top: 0;
+    left: -4px;
+    width: 1px;
+    border-width: 0 3px 7px 3px;
+    border-color: transparent transparent blue transparent;
+  }
+
+  .vertical.gt & {
+    bottom: 0;
+  }
+
+  .vertical.gt &:before {
+    bottom: 1px;
+    left: -4px;
+    width: 1px;
+    border-width: 7px 3px 0 3px;
+    border-color: blue transparent transparent transparent;
+  }
+
+  .horizontal & {
+    top: 50%;
+    margin-top: -1px;
+    border-top-width: 1px;
+  }
+
+  .horizontal.lt & {
+    left: 0;
+  }
+
+  .horizontal.lt &:before {
+    left: 0;
+    top: -4px;
+    height: 1px;
+    border-width: 3px 7px 3px 0;
+    border-color: transparent blue transparent transparent;
+  }
+
+  .horizontal.gt & {
+    right: 0;
+  }
+
+  .horizontal.gt &:before {
+    right: 1px;
+    top: -4px;
+    height: 1px;
+    border-width: 3px 0 3px 7px;
+    border-color: transparent transparent transparent blue;
+  }
+}
+
+.sd-draftboard-cell-empty {
+  button {
+    background: none;
+    padding: none;
+    margin: none;
+    border: none;
+  }
+
+  .insert-cell {
+    position: absolute;
+
+    > span {
+      position: absolute;
+      top: @grid-size;
+      left: @grid-size;
+      right: @grid-size;
+      bottom: @grid-size;
+
+      &:before {
+        position: absolute;
+        top: 20%;
+        left: 45%;
+        height: 60%;
+        width: 10%;
+        content: "";
+        background: #337ab7;
+      }
+
+      &:after {
+        position: absolute;
+        top: 45%;
+        left: 20%;
+        width: 60%;
+        height: 10%;
+        content: "";
+        background: #337ab7;
+      }
+    }
+  }
+
+  .delete-cell {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: @grid-size;
+    height: @grid-size;
+    line-height: @grid-size;
+    text-align: center;
+    font-size: 1.5rem;
+    color: #aaa;
+
+    .sd-draftboard-cell:only-child & {
+      display: none;
+    }
+  }
+}
+
+.sd-draftboard-moving-icon {
+  position: absolute;
+  background: rgba(0,0,0,.2);
+  cursor: grabbing;
+  cursor: -webkit-grabbing;
+  cursor: -moz-grabbing;
+  border-radius: 4px;
+  transition: all .1s linear;
+  pointer-events: auto;
+
+  &.invalid {
+    width: 10rem;
+    height: 6rem;
+    margin-top: -3rem;
+    margin-left: -5rem;
+    z-index: 9999;
+    transition: none;
+  }
+}
+
+.sd-deck-level-2 {
+  .sd-card-draftboard {
+    background: #fff;
+  }
+
+  .sd-draftboard-edge,
+  .sd-draftboard-split-edge {
+    display: none;
+  }
+
+  .sd-draftboard-root {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .sd-draftboard-cell-content {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    box-shadow: none;
+  }
+
+  .sd-draftboard-cell.empty {
+    display: none;
   }
 }

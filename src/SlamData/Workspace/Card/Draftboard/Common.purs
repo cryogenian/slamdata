@@ -19,6 +19,7 @@ module SlamData.Workspace.Card.Draftboard.Common
   , deleteGraph
   , replacePointer
   , unsafeUpdateCachedDraftboard
+  , clearDeckId
   ) where
 
 import SlamData.Prelude
@@ -26,7 +27,7 @@ import SlamData.Prelude
 import Control.Monad.Aff.Free (class Affable)
 
 import Data.Array as Array
-import Data.Map as Map
+import Data.List as List
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 
@@ -35,6 +36,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.Model as DM
@@ -67,7 +69,7 @@ childDeckIds = (_ >>= getDeckIds ∘ _.model)
   where
   getDeckIds =
     case _ of
-      CM.Draftboard { decks } → Array.fromFoldable $ Map.keys decks
+      CM.Draftboard { layout } → Array.fromFoldable $ List.catMaybes $ Pane.toList layout
       _ → []
 
 deleteGraph
@@ -98,17 +100,12 @@ replacePointer from to cid = map replace
   where
   replace model =
     case model of
-      { cardId, model: CM.Draftboard { decks } } | cardId ≡ cid →
-        { cardId, model: CM.Draftboard { decks: update decks } }
+      { cardId, model: CM.Draftboard { layout } } | cardId ≡ cid →
+        { cardId, model: CM.Draftboard { layout: update <$> layout } }
       _ → model
 
-  update decks =
-    case Map.lookup from decks of
-      Nothing → decks
-      Just rect →
-        decks
-          # Map.delete from
-          # maybe id (flip Map.insert rect) to
+  update (Just deckId) | deckId ≡ from = to
+  update c = c
 
 -- | This shouldn't be done in general, but since draftboards have no inputs or
 -- | outputs it's OK to just swap out the model for the cached card eval.
@@ -127,3 +124,10 @@ unsafeUpdateCachedDraftboard deckId model = do
         let card = map (_ { model = CM.Draftboard db }) ce.card
         putCardEval (ce { card = card }) wiring.cards
     _ → pure unit
+
+clearDeckId ∷ DeckId → Pane.Pane (Maybe DeckId) → Pane.Pane (Maybe DeckId)
+clearDeckId deckId tree = Pane.walkWithCursor go tree tree
+  where
+  go c t (Pane.Cell (Just deckId')) | deckId == deckId' =
+    fromMaybe t (Pane.modifyAt (const (Pane.Cell Nothing)) c t)
+  go _ t _ = t

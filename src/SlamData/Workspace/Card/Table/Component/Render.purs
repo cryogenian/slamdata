@@ -55,20 +55,20 @@ fromInputValue { current, pending } =
 
 render ∷ State → H.ComponentHTML QueryP
 render state =
-  HH.div_
-    [ renderHighLOD state
-    , renderLowLOD (CT.lightCardGlyph CT.Table) left state.levelOfDetails
-    ]
+  if state.levelOfDetails ≡ High
+    then renderHighLOD state
+    else renderLowLOD (CT.lightCardGlyph CT.Table) left state.levelOfDetails
 
 renderHighLOD ∷ State → H.ComponentHTML QueryP
 renderHighLOD st =
-  HH.div
-    [ HP.classes $ (guard (st.levelOfDetails ≠ High) $> B.hidden) ]
+  HH.div_
     $ flip foldMap st.result \result →
         let
           p = currentPageInfo st
         in
-          [ right <$> JT.renderJTable jTableOpts result.json
+          [ HH.div
+              [ HP.classes [ HH.className "sd-card-table-content" ] ]
+              [ right <$> JT.renderJTable jTableOpts result.json ]
           , HH.div
             [ HP.classes [CSS.pagination, CSS.form] ]
             [ prevButtons (p.page <= 1)

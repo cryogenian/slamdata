@@ -189,6 +189,7 @@ renderChartTypeSelector state =
   src Heatmap = "img/heatmap.svg"
   src Sankey = "img/sankey.svg"
   src Gauge = "img/gauge.svg"
+  src Boxplot = "img/boxplot.svg"
 
   cls ∷ ChartType → HH.ClassName
   cls Pie = CSS.pieChartIcon
@@ -202,6 +203,7 @@ renderChartTypeSelector state =
   cls Heatmap = CSS.heatmapChartIcon
   cls Sankey = CSS.sankeyChartIcon
   cls Gauge = CSS.gaugeChartIcon
+  cls Boxplot = CSS.boxplotChartIcon
 
 renderChartConfiguration ∷ VCS.State → HTML
 renderChartConfiguration state =
@@ -218,6 +220,7 @@ renderChartConfiguration state =
     , renderTab Heatmap
     , renderTab Sankey
     , renderTab Gauge
+    , renderTab Boxplot
     , renderDimensions state
     ]
   where
@@ -516,6 +519,8 @@ cardEval = case _ of
             Funnel | not $ F.any isSelected rawConfig.measures → Nothing
             Heatmap | not $ F.any isSelected rawConfig.dimensions → Nothing
             Heatmap | not $ F.any isSelected rawConfig.measures → Nothing
+            Boxplot | not $ F.any isSelected rawConfig.dimensions → Nothing
+            Boxplot | not $ F.any isSelected rawConfig.measures → Nothing
             _ → Just rawConfig
         pure
           $ mbChartCfg
@@ -597,8 +602,12 @@ configure = void do
 
   funnelConf ← getOrInitial Funnel
   setConfigFor Funnel $ funnelConfiguration axes funnelConf
+
   heatmapConf ← getOrInitial Heatmap
   setConfigFor Heatmap $ heatmapConfiguration axes heatmapConf
+
+  boxplotConf ← getOrInitial Boxplot
+  setConfigFor Boxplot $ boxplotConfiguration axes boxplotConf
   where
   getOrInitial ∷ ChartType → DSL ChartConfiguration
   getOrInitial ty =
@@ -809,6 +818,30 @@ configure = void do
        , dimensions: [firstDimensions, secondDimensions]
        , measures: [measures]
        , aggregations: [aggregation]
+       }
+
+  boxplotConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
+  boxplotConfiguration axes current =
+    let allAxises = (axes.category ⊕ axes.time ⊕ axes.value)
+        dimensions =
+          setPreviousValueFrom (index current.dimensions 0)
+          $ autoSelect $ newSelect $ allAxises
+        measures =
+          setPreviousValueFrom (index current.measures 0)
+          $ autoSelect $ newSelect $ ifSelected [dimensions]
+          $ axes.value
+        firstSeries =
+          setPreviousValueFrom (index current.series 0)
+          $ newSelect $ ifSelected [measures]
+          $ allAxises ⊝ dimensions ⊝ measures
+        secondSeries =
+          setPreviousValueFrom (index current.series 1)
+          $ newSelect $ ifSelected [firstSeries]
+          $ allAxises ⊝ dimensions ⊝ measures ⊝ firstSeries
+    in { series: [firstSeries, secondSeries]
+       , dimensions: [dimensions]
+       , measures: [measures]
+       , aggregations: []
        }
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit

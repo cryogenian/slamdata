@@ -30,9 +30,9 @@ import Control.UI.Browser (setHref, locationObject)
 import Data.Array as Array
 import Data.Lens ((^.), (.~), (?~))
 import Data.List as List
-import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+import Data.Rational ((%))
 import Data.String as Str
 import Data.Time.Duration (Milliseconds(..))
 
@@ -63,23 +63,23 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Draftboard.Common as DBC
-import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
+import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Class (class WorkspaceDSL, putURLVarMaps, getURLVarMaps)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
 import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, initialState)
-import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
+import SlamData.Workspace.Deck.Common (wrappedDeck, splitDeck)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
 import SlamData.Workspace.Deck.DeckId (DeckId, freshDeckId)
-import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Model as Model
 import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash)
 import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils.Path as UP
-import Utils.DOM (onResize)
+import Utils.DOM (onResize, elementEq)
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
@@ -101,7 +101,7 @@ render state =
     [ HP.classes
         $ (guard (AT.isReadOnly (state ^. _accessType)) $> HH.className "sd-published")
         ⊕ [ HH.className "sd-workspace" ]
-    , HE.onClick (HE.input_ DismissAll)
+    , HE.onClick (HE.input DismissAll)
     ]
     $ notifications ⊕ header ⊕ deck
   where
@@ -159,8 +159,10 @@ eval (Init next) = do
 eval (SetVarMaps urlVarMaps next) = do
   putURLVarMaps urlVarMaps
   pure next
-eval (DismissAll next) = do
+eval (DismissAll ev next) = do
   querySignIn $ H.action SignIn.DismissSubmenu
+  eq ← H.fromEff $ elementEq ev.target ev.currentTarget
+  when eq $ void $ queryDeck $ H.action Deck.Focus
   pure next
 eval (Resize next) = do
   queryDeck $ H.action $ Deck.UpdateCardSize
@@ -196,7 +198,7 @@ eval (Load path deckId accessType next) = do
 
   loadDeck deckId = void do
     SA.track (SA.Load deckId accessType)
-    H.modify _ { stateMode = Ready }
+    H.modify (_stateMode .~ Ready)
     queryDeck $ H.action $ Deck.Load path deckId
 
   loadRoot =
@@ -219,7 +221,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
     path   ← MaybeT $ pure state.path
     oldId  ← MaybeT $ queryDeck $ H.request Deck.GetId
     parent ← lift $ join <$> queryDeck (H.request Deck.GetParent)
-    newId × (_ × deck) ← MaybeT $ pure $ List.head $ Map.toList decks
+    newId × deck ← MaybeT $ pure $ List.head $ List.catMaybes $ Pane.toList decks
 
     let deck' = deck { parent = parent }
 
@@ -247,7 +249,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
 
     let
       deck' = deck { parent = Just (newId × CID.CardId 0) }
-      wrapper = (wrappedDeck defaultPosition oldId) { parent = deck.parent }
+      wrapper = (wrappedDeck oldId) { parent = deck.parent }
 
     error ← lift $ H.liftH $ H.liftH $ runExceptT do
       ExceptT $ map (errors "; ") $ parTraverse id
@@ -294,6 +296,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
             void $ H.fromEff $ setHref $ parentURL $ Left path
 
   peekDeck (Deck.DoAction Deck.Mirror _) = void $ runMaybeT do
+    pure unit
     state ← lift H.get
     path ← MaybeT $ pure state.path
     newIdShared ← lift $ H.fromEff freshDeckId
@@ -304,19 +307,10 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
     let
       freshCard = CID.CardId 0
       parentRef = Just (newIdParent × freshCard)
-      wrappedDeck = DM.emptyDeck
-        { parent = oldModel.parent
-        , cards = pure
-          { cardId: freshCard
-          , model: Card.Draftboard
-            { decks: Map.fromFoldable
-              [ oldId × defaultPosition
-              , newIdMirror × defaultPosition
-                  { y = defaultPosition.y + defaultPosition.height + 1.0 }
-              ]
-            }
-          }
-        }
+      wrappedDeck =
+        (splitDeck Orn.Vertical (List.fromFoldable [ oldId, newIdMirror ]))
+          { parent = oldModel.parent }
+
     error ← lift $ H.liftH $ H.liftH $ runExceptT do
       ExceptT $ map (errors "; ") $ parTraverse id
         if Array.null oldModel.cards

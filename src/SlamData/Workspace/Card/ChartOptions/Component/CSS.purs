@@ -54,6 +54,9 @@ heatmapChartIcon = className "heatmap-chart-icon"
 sankeyChartIcon ∷ ClassName
 sankeyChartIcon = className "sankey-chart-icon"
 
+boxplotChartIcon ∷ ClassName
+boxplotChartIcon = className "boxplot-chart-icon"
+
 areaChartIcon ∷ ClassName
 areaChartIcon = className "area-chart-icon"
 
