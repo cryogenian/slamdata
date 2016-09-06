@@ -1,34 +1,4 @@
 @import "common";
-@keyframes pointDown {
-  from, 20%, 53%, 80%, to {
-    animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
-    transform: translate3d(0, 0, 0);
-  }
-
-  40%, 43% {
-    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
-    transform: translate3d(0, -20%, 0);
-  }
-
-  70% {
-    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
-    transform: translate3d(0, -15%, 0);
-  }
-
-  90% {
-    transform: translate3d(0, -4%, 0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
 
 .sd-deck-backside, .sd-card-next-action {
 
@@ -188,53 +158,10 @@
 }
 
 .sd-add-card-guide {
-  margin: 0 auto 1.5rem auto;
-  z-index: 1000;
-  animation-name: pointDown, fadeIn;
-  animation-duration: 1s, 0.5s;
-  animation-fill-mode: both;
-  max-width: 100%;
   width: 29rem;
-  max-height: 4rem;
-  position: static;
-}
-
-.sd-add-card-guide .sd-notification {
-  display: block;
-  transform: translate3d(0, 0.5rem, 0);
-  position: relative;
-  right: 0;
-  border-top: 3px solid #337ab7;
-  margin: 0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.125);
-  width: 100%;
-}
-
-.sd-add-card-guide .sd-notification-text {
-  width: 100%;
-}
-
-.sd-add-card-guide .sd-notification::after, .sd-add-card-guide .sd-notification::before {
-  left: 50%;
-  top: 100%;
-  border: solid transparent;
-  content: " ";
-  height: 0;
-  width: 0;
-  position: absolute;
-  pointer-events: none;
-}
-
-.sd-add-card-guide .sd-notification::after {
-  border-color: rgba(255, 255, 255, 0);
-  border-top-color: #fff;
-  border-width: 8px;
-  margin-left: -8px;
-}
-
-.sd-add-card-guide .sd-notification::before {
-  border-color: rgba(204, 204, 204, 0);
-  border-top-color: #ccc;
-  border-width: 9px;
-  margin-left: -9px;
+  min-height: 4rem;
+  padding-top: 0.5rem;
+  padding-bottom: 1rem;
+  margin-left: auto;
+  margin-right: auto;
 }

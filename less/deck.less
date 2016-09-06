@@ -1,37 +1,6 @@
 @import "deck/common";
 @import "deck/indicator";
 
-@keyframes pointRight {
-  from, 20%, 53%, 80%, to {
-    animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
-    transform: translate3d(0, -50%, 0);
-  }
-
-  40%, 43% {
-    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
-    transform: translate3d(-30px, -50%, 0);
-  }
-
-  70% {
-    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
-    transform: translate3d(-15px, -50%, 0);
-  }
-
-  90% {
-    transform: translate3d(-4px, -50%, 0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
 .sd-workspace > div > .sd-deck-container {
   top: 0;
   left: 0;
@@ -286,45 +255,12 @@ button.sd-zoom-deck {
 .sd-access-next-card-guide {
   position: absolute;
   top: 50%;
-  right: 0;
+  right: @grid-size;
+  padding-left: @grid-size;
   transform: translate(0, -50%);
   margin-top: -4px;
   z-index: 1000;
-  animation-name: pointRight, fadeIn;
-  animation-duration: 1s, 0.5s;
-  animation-fill-mode: both;
-}
-
-.sd-access-next-card-guide .sd-notification {
-  display: block;
-  border-top: 3px solid #337ab7;
-  margin: 0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.125);
-}
-
-.sd-access-next-card-guide .sd-notification::after, .sd-access-next-card-guide .sd-notification::before {
-  left: 100%;
-  top: 50%;
-  border: solid transparent;
-  content: " ";
-  height: 0;
-  width: 0;
-  position: absolute;
-  pointer-events: none;
-}
-
-.sd-access-next-card-guide .sd-notification::after {
-  border-color: rgba(255, 255, 255, 0);
-  border-left-color: #FFF;
-  border-width: 8px;
-  margin-top: -8px;
-}
-
-.sd-access-next-card-guide .sd-notification::before {
-  border-color: rgba(204, 204, 204, 0);
-  border-left-color: #cccccc;
-  border-width: 9px;
-  margin-top: -9px;
+  width: 20rem;
 }
 
 @import "deck/card";

@@ -34,7 +34,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common (glyph)
-import SlamData.Workspace.Guide as Guide
+import SlamData.Guide as Guide
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
@@ -79,6 +79,7 @@ render state =
         ])
     ⊕ (guard state.presentAddCardGuide $>
         Guide.render
+          Guide.DownArrow
           (HH.className "sd-add-card-guide")
           (right ∘ DismissAddCardGuide)
           (addCardGuideText state.input))

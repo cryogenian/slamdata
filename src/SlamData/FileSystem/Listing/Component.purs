@@ -64,6 +64,7 @@ data Query a
   | SetIsSearching Boolean a
   | Filter (Item -> Boolean) a
   | SetIsHidden Boolean a
+  | Get (Array Item -> a)
 
 data ItemSlot = ItemSlot Int Item
 
@@ -111,6 +112,7 @@ eval (SetIsHidden bool next) = do
   for_ (zipItems ItemSlot items) \slot ->
     H.query slot $ H.action $ Item.SetIsHidden bool
   pure next
+eval (Get continue) = continue <$> H.gets _.items
 
 peek :: forall x. H.ChildF ItemSlot Item.Query x -> DSL Unit
 peek (H.ChildF p (Item.Toggle _)) = void do

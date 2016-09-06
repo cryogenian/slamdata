@@ -28,7 +28,7 @@ import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
 
 import Data.Argonaut (jsonParser, jsonEmptyObject)
-import Data.Array (head, last, mapMaybe, filter)
+import Data.Array as Array
 import Data.Foldable as F
 import Data.Lens ((.~), preview)
 import Data.MediaType.Common (textCSV, applicationJSON)
@@ -52,7 +52,8 @@ import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpHeader, toDialog, toFs, toListing, toSearch)
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
-import SlamData.FileSystem.Component.State (State, _isMount, _path, _salt, _showHiddenFiles, _sort, _version, initialState)
+import SlamData.FileSystem.Component.State (State, initialState)
+import SlamData.FileSystem.Component.State as State
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Explore.Component as Explore
@@ -82,6 +83,7 @@ import SlamData.Workspace.Routing (mkWorkspaceURL)
 import SlamData.Wiring (Wiring(..))
 
 import Utils.DOM as D
+import Utils.LocalStorage as LocalStorage
 import Utils.Path (DirPath, getNameStr)
 
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
@@ -142,20 +144,20 @@ eval (Resort next) = do
   searchValue ← H.query' cpSearch unit (H.request Search.GetValue)
   H.fromEff $ setLocation $ browseURL searchValue (notSort sort) salt path
   pure next
-eval (SetPath path next) = H.modify (_path .~ path) *> updateBreadcrumbs $> next
+eval (SetPath path next) = H.modify (State._path .~ path) *> updateBreadcrumbs $> next
 eval (SetSort sort next) = do
-  H.modify (_sort .~ sort)
+  H.modify (State._sort .~ sort)
   updateBreadcrumbs
   resort
   pure next
-eval (SetSalt salt next) = H.modify (_salt .~ salt) *> updateBreadcrumbs $> next
-eval (SetIsMount isMount next) = H.modify (_isMount .~ isMount) $> next
+eval (SetSalt salt next) = H.modify (State._salt .~ salt) *> updateBreadcrumbs $> next
+eval (SetIsMount isMount next) = H.modify (State._isMount .~ isMount) $> next
 eval (ShowHiddenFiles next) = do
-  H.modify (_showHiddenFiles .~ true)
+  H.modify (State._showHiddenFiles .~ true)
   queryListing $ H.action (Listing.SetIsHidden false)
   pure next
 eval (HideHiddenFiles next) = do
-  H.modify (_showHiddenFiles .~ false)
+  H.modify (State._showHiddenFiles .~ false)
   queryListing $ H.action (Listing.SetIsHidden true)
   pure next
 eval (Configure next) = do
@@ -217,8 +219,9 @@ eval (UploadFile el next) = do
 
 eval (FileListChanged el next) = do
   fileArr ← map Cf.fileListToArray $ (H.fromAff $ Cf.files el)
+  traceAnyA "uh"
   H.fromEff $ clearValue el
-  case head fileArr of
+  case Array.head fileArr of
     Nothing →
       -- TODO: notification? this shouldn't be a runtime exception anyway!
       -- let err ∷ Slam Unit
@@ -233,11 +236,17 @@ eval (Download next) = do
   download (R.Directory path)
   pure next
 
-eval (SetVersion version next) = H.modify (_version .~ Just version) $> next
+eval (SetVersion version next) = H.modify (State._version .~ Just version) $> next
 eval (DismissSignInSubmenu next) = dismissSignInSubmenu $> next
+eval (DismissMountGuide next) = dismissMountGuide $> next
 eval (HandleError ge next) = do
   showDialog $ Dialog.Error $ GE.print ge
   pure next
+
+dismissMountGuide ∷ DSL Unit
+dismissMountGuide = do
+  H.liftH $ H.liftH $ LocalStorage.setLocalStorage dismissedMountGuideKey true
+  H.modify (State._presentMountGuide .~ false)
 
 uploadFileSelected ∷ Cf.File → DSL Unit
 uploadFileSelected f = do
@@ -256,7 +265,7 @@ uploadFileSelected f = do
       let fileName = path </> file name'
           res = R.File fileName
           fileItem = PhantomItem res
-          ext = last (S.split "." name')
+          ext = Array.last (S.split "." name')
           mime = if ext ≡ Just "csv"
                  then textCSV
                  else if isApplicationJSON content'
@@ -301,8 +310,24 @@ listingPeek ∷ ∀ a. Listing.QueryP a → DSL Unit
 listingPeek = go ⨁ (itemPeek ∘ H.runChildF)
   where
   go (Listing.Add _ _) = resort
-  go (Listing.Adds _ _) = resort
+  go (Listing.Adds items _) = (presentMountGuide items =<< H.gets _.path) *> resort
   go _ = pure unit
+
+presentMountGuide ∷ ∀ a. Array a → DirPath → DSL Unit
+presentMountGuide xs path =
+  H.modify
+    ∘ (State._presentMountGuide .~ _)
+    ∘ ((Array.length xs == 0 && path == rootDir) && _)
+    ∘ not
+    ∘ either (const false) id
+    =<< dismissedBefore
+  where
+  dismissedBefore ∷ DSL (Either String Boolean)
+  dismissedBefore =
+    H.liftH $ H.liftH $ LocalStorage.getLocalStorage dismissedMountGuideKey
+
+dismissedMountGuideKey ∷ String
+dismissedMountGuideKey = "dismissed-mount-guide"
 
 itemPeek ∷ ∀ a. Item.Query a → DSL Unit
 itemPeek (Item.Open res _) = do
@@ -331,7 +356,6 @@ itemPeek (Item.Remove res _) = do
   mbTrashFolder ← H.liftH $ H.liftH $ API.delete res
   -- Remove phantom resource after we have response from server
   queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
-
   case mbTrashFolder of
     Left err → do
       -- Error occured: put item back and show dialog
@@ -345,6 +369,10 @@ itemPeek (Item.Remove res _) = do
       -- Item has been deleted: probably add trash folder
       for_ mbRes \res' →
         void $ queryListing $ H.action $ Listing.Add (Item res')
+
+  listing ← fromMaybe [] <$> (queryListing $ H.request Listing.Get)
+  path ← H.gets _.path
+  presentMountGuide listing path
 
   resort
 
@@ -422,6 +450,7 @@ mountPeek = go ⨁ const (pure unit)
         _ → pure false
       unless isCurrentMount do
         queryListing $ H.action $ Listing.Add $ Item (R.Mount m)
+        dismissMountGuide
         resort
   go _ = pure unit
 
@@ -509,8 +538,8 @@ getChildren pred cont start = do
   ei ← API.children start
   case ei of
     Right items → do
-      let items' = filter pred items
-          parents = mapMaybe (either Just (const Nothing) ∘ R.getPath) items
+      let items' = Array.filter pred items
+          parents = Array.mapMaybe (either Just (const Nothing) ∘ R.getPath) items
       cont items'
       traverse_ (getChildren pred cont) parents
     _ → pure unit

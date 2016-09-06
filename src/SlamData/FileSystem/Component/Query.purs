@@ -41,5 +41,6 @@ data Query a
   | FileListChanged HTMLElement a
   | SetVersion String a
   | DismissSignInSubmenu a
+  | DismissMountGuide a
   | Init a
   | HandleError GlobalError a
