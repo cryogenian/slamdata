@@ -6,12 +6,13 @@ import Halogen.Component.ChildPath (ChildPath, cpR, cpL, (:>))
 
 import SlamData.Workspace.Card.ChartOptions.Graph.Component as Graph
 import SlamData.Workspace.Card.ChartOptions.Sankey.Component as Sankey
+import SlamData.Workspace.Card.ChartOptions.Gauge.Component as Gauge
 import SlamData.Workspace.Card.ChartOptions.Form.Component as Form
 import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 
-type ChildState = Form.StateP ⊹ Graph.StateP ⊹ Sankey.StateP
-type ChildQuery = Form.QueryP ⨁ Graph.QueryP ⨁ Sankey.QueryP
-type ChildSlot = ChartType ⊹ Unit ⊹ Unit
+type ChildState = Form.StateP ⊹ Graph.StateP ⊹ Sankey.StateP ⊹ Gauge.StateP
+type ChildQuery = Form.QueryP ⨁ Graph.QueryP ⨁ Sankey.QueryP ⨁ Gauge.QueryP
+type ChildSlot = ChartType ⊹ Unit ⊹ Unit ⊹ Unit
 
 cpForm
   ∷ ChildPath
@@ -32,4 +33,11 @@ cpSankey
       Sankey.StateP ChildState
       Sankey.QueryP ChildQuery
       Unit ChildSlot
-cpSankey = cpR :> cpR
+cpSankey = cpR :> cpR :> cpL
+
+cpGauge
+  ∷ ChildPath
+      Gauge.StateP ChildState
+      Gauge.QueryP ChildQuery
+      Unit ChildSlot
+cpGauge = cpR :> cpR :> cpR

@@ -48,6 +48,7 @@ data ChartType
   | Graph
   | Heatmap
   | Sankey
+  | Gauge
   | Boxplot
 
 isPie ∷ ChartType → Boolean
@@ -90,6 +91,10 @@ isSankey ∷ ChartType → Boolean
 isSankey Sankey = true
 isSankey _ = false
 
+isGauge ∷ ChartType → Boolean
+isGauge Gauge = true
+isGauge _ = false
+
 isBoxplot ∷ ChartType → Boolean
 isBoxplot Boxplot = true
 isBoxplot _ = false
@@ -105,6 +110,7 @@ parseChartType "funnel" = pure Funnel
 parseChartType "graph" = pure Graph
 parseChartType "heatmap" = pure Heatmap
 parseChartType "sankey" = pure Sankey
+parseChartType "gauge" = pure Gauge
 parseChartType "boxplot" = pure Boxplot
 parseChartType _ = Left "incorrect chartType"
 
@@ -119,6 +125,7 @@ printChartType Funnel = "funnel"
 printChartType Graph = "graph"
 printChartType Heatmap = "heatmap"
 printChartType Sankey = "sankey"
+printChartType Gauge = "gauge"
 printChartType Boxplot = "boxplot"
 
 derive instance genericChartType ∷ Generic ChartType
@@ -143,5 +150,6 @@ instance arbitraryChartType ∷ SC.Arbitrary ChartType where
     , Graph
     , Heatmap
     , Sankey
+    , Gauge
     , Boxplot
     ]

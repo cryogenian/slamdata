@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect, aggregation
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colorSchemes, printColorScheme)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey, isBoxplot)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isLine, isBar, isArea, isScatter, isFunnel, isHeatmap)
 import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
@@ -62,7 +62,8 @@ import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.ChartOptions.Graph.Component as Graph
 import SlamData.Workspace.Card.ChartOptions.Sankey.Component as Sankey
-import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph, cpSankey)
+import SlamData.Workspace.Card.ChartOptions.Gauge.Component as Gauge
+import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph, cpSankey, cpGauge)
 
 type DSL = H.ParentDSL VCS.State ChildState QueryC ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState QueryC ChildQuery Slam ChildSlot
@@ -187,6 +188,7 @@ renderChartTypeSelector state =
   src Graph = "img/graph.svg"
   src Heatmap = "img/heatmap.svg"
   src Sankey = "img/sankey.svg"
+  src Gauge = "img/gauge.svg"
   src Boxplot = "img/boxplot.svg"
 
   cls ∷ ChartType → HH.ClassName
@@ -200,6 +202,7 @@ renderChartTypeSelector state =
   cls Graph = CSS.pieChartIcon
   cls Heatmap = CSS.heatmapChartIcon
   cls Sankey = CSS.sankeyChartIcon
+  cls Gauge = CSS.gaugeChartIcon
   cls Boxplot = CSS.boxplotChartIcon
 
 renderChartConfiguration ∷ VCS.State → HTML
@@ -216,6 +219,7 @@ renderChartConfiguration state =
     , renderTab Graph
     , renderTab Heatmap
     , renderTab Sankey
+    , renderTab Gauge
     , renderTab Boxplot
     , renderDimensions state
     ]
@@ -235,6 +239,15 @@ renderChartConfiguration state =
        , initialState: H.parentState Sankey.initialState
        }
     ]
+
+  renderTab Gauge =
+    showIf (state.chartType ≡ Gauge)
+    [ HH.slot' cpGauge unit \_ →
+       { component: Gauge.comp
+       , initialState: H.parentState Gauge.initialState
+       }
+    ]
+
   renderTab ty =
     showIf (state.chartType ≡ ty)
     [ HH.slot' cpForm ty \_ →
@@ -252,10 +265,10 @@ renderDimensions state =
   row
   [ intChartInput CSS.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel
-      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey, isBoxplot ] )
+      (not $ F.any (_ $ state.chartType) [ isLine, isArea, isBar ])
   , intChartInput CSS.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize
-      (F.any (_ $ state.chartType) [ isPie, isScatter, isRadar, isFunnel, isGraph, isHeatmap, isSankey, isBoxplot ] )
+      (not $ F.any (_ $ state.chartType) [ isLine, isArea, isBar ])
   , boolChartInput CSS.chartDetailParam "If stack"
       (_.areaStacked) ToggleSetStacked (not $ isArea state.chartType)
   , boolChartInput CSS.chartDetailParam "If smooth"
@@ -484,6 +497,8 @@ cardEval = case _ of
         map join $ H.query' cpGraph unit $ left $ H.request Graph.GetChartConfig
       Sankey →
         map join $ H.query' cpSankey unit $ left $ H.request Sankey.GetChartConfig
+      Gauge →
+        map join $ H.query' cpGauge unit $ left $ H.request Gauge.GetChartConfig
       _ → do
         conf ← H.query' cpForm st.chartType $ left $ H.request Form.GetConfiguration
         let
@@ -543,6 +558,8 @@ cardEval = case _ of
           H.query' cpGraph unit $ left $ H.action $ Graph.Load graphConfig
         for_ (model >>= Lens.preview CH._Sankey) \sankeyConfig →
           H.query' cpSankey unit $ left $ H.action $ Sankey.Load sankeyConfig
+        for_ (model >>= Lens.preview CH._Gauge) \gaugeConfig →
+          H.query' cpGauge unit $ left $ H.action $ Gauge.Load gaugeConfig
       _ → pure unit
     pure next
   CC.SetDimensions dims next → do
@@ -563,6 +580,7 @@ configure = void do
 
   H.query' cpGraph unit $ left $ H.action $ Graph.UpdateAxes axes
   H.query' cpSankey unit $ left $ H.action $ Sankey.UpdateAxes axes
+  H.query' cpGauge unit $ left $ H.action $ Gauge.UpdateAxes axes
 
   pieConf ← getOrInitial Pie
   setConfigFor Pie $ pieBarConfiguration axes pieConf
@@ -801,7 +819,7 @@ configure = void do
        , measures: [measures]
        , aggregations: [aggregation]
        }
-       
+
   boxplotConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
   boxplotConfiguration axes current =
     let allAxises = (axes.category ⊕ axes.time ⊕ axes.value)

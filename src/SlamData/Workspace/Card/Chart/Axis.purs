@@ -20,6 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor(..), JObject, JArray, Json, insideOut, decodeJson, encodeJson)
 import Data.Array ((!!), length, fromFoldable)
+import Data.Foldable as F
 import Data.List (List(..), filter, catMaybes)
 import Data.Map as M
 import Data.StrMap as Sm
@@ -36,6 +37,15 @@ type Axes =
   , time ∷ Array JCursor
   , category ∷ Array JCursor
   }
+
+
+eqAxes ∷ Axes → Axes → Boolean
+eqAxes r1 r2 =
+  F.and
+    [ r1.category ≡ r2.category
+    , r1.time ≡ r2.time
+    , r1.value ≡ r2.value
+    ]
 
 isValAxis ∷ Axis → Boolean
 isValAxis (ValAxis _) = true

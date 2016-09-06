@@ -155,3 +155,4 @@ buildOptionsLegacy args conf records =
     Boxplot → buildBoxplot mp conf
     Graph → pure unit
     Sankey → pure unit
+    Gauge → pure unit
