@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+пCopyright 2016 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,49 +63,11 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.ChartOptions.Graph.Component as Graph
 import SlamData.Workspace.Card.ChartOptions.Sankey.Component as Sankey
 import SlamData.Workspace.Card.ChartOptions.Gauge.Component as Gauge
-import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph, cpSankey, cpGauge)
+import SlamData.Workspace.Card.ChartOptions.Metric.Component as Metric
+import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpForm, cpGraph, cpSankey, cpGauge, cpMetric)
 
 type DSL = H.ParentDSL VCS.State ChildState QueryC ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState QueryC ChildQuery Slam ChildSlot
-
-
--- | How does this module work?
--- | + Take a TaggedResource case of Port
--- | + Check that resource exists and if so analyze sample to extract Map from
--- |   JCursors to Axes otherwise leave it Map.empty and set available chart types
--- |   to Set.empty. Following steps don't do anything useful if sample is empty.
--- |   Localized in first part of EvalCard handler and updateForm function.
--- | + Load all resource and if it's not too big produce output port
--- |   Second part of EvalCard handler
--- |
--- | + Output port is response of currently active subcomponent which is `Form`
--- | + Form's state (ChartConfiguration) is record with `dimensions`,
--- |   `aggregations`, `series` and `measures` fields.
--- |   These fields are arrays of `Select JCursor`  where `Select α`
--- |   Is model of html combobox with maybe selected α and list of α choices.
--- | + Form can render any kind of `ChartConfiguration` and has weird logic
--- |   for doing this :)
--- |
--- | + Peeking form signals and running CardEval call `configure` func
--- |   (second through `updateForms`)
--- | + `configure` takes all subcomponent configuration and filters them
--- |   e.g. it removes already selected in first measure combobox value from
--- |   available to select choices of second measure combobox -->
--- |   nonsense output is forbidden (one shouldn't be able to make chart
--- |   from `foo` to `foo` groupped by `foo`)
--- | + After filtering (That's important!) previoiusly selected values must
--- |   be set with func `setPreviousValueFrom`.
--- | + Then we have updated config and set it back as subcomponent state.
--- |
--- | About `needToUpdate`
--- | This flag is set when we need to update `records` and `sample` fields.
--- | Basically it's true after parent in deck has changed its output.
--- | And it's false when we just re`configure`d subcomponents.
--- |
--- |   >>> TODO: update this note, or fix the code to restore the old needToUpdate
--- |       logic, if needed. -js
--- |
--- | cryogenian 04/29/2016
 
 
 chartOptionsComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
@@ -190,6 +152,7 @@ renderChartTypeSelector state =
   src Sankey = "img/sankey.svg"
   src Gauge = "img/gauge.svg"
   src Boxplot = "img/boxplot.svg"
+  src Metric = "img/metric.svg"
 
   cls ∷ ChartType → HH.ClassName
   cls Pie = CSS.pieChartIcon
@@ -204,6 +167,7 @@ renderChartTypeSelector state =
   cls Sankey = CSS.sankeyChartIcon
   cls Gauge = CSS.gaugeChartIcon
   cls Boxplot = CSS.boxplotChartIcon
+  cls Metric = CSS.metricChartIcon
 
 renderChartConfiguration ∷ VCS.State → HTML
 renderChartConfiguration state =
@@ -221,6 +185,7 @@ renderChartConfiguration state =
     , renderTab Sankey
     , renderTab Gauge
     , renderTab Boxplot
+    , renderTab Metric
     , renderDimensions state
     ]
   where
@@ -246,6 +211,14 @@ renderChartConfiguration state =
        { component: Gauge.comp
        , initialState: H.parentState Gauge.initialState
        }
+    ]
+
+  renderTab Metric =
+    showIf (state.chartType ≡ Metric)
+    [ HH.slot' cpMetric unit \_ →
+         { component: Metric.comp
+         , initialState: H.parentState Metric.initialState
+         }
     ]
 
   renderTab ty =
@@ -499,6 +472,8 @@ cardEval = case _ of
         map join $ H.query' cpSankey unit $ left $ H.request Sankey.GetChartConfig
       Gauge →
         map join $ H.query' cpGauge unit $ left $ H.request Gauge.GetChartConfig
+      Metric →
+        map join $ H.query' cpMetric unit $ left $ H.request Metric.GetChartConfig
       _ → do
         conf ← H.query' cpForm st.chartType $ left $ H.request Form.GetConfiguration
         let
@@ -553,13 +528,15 @@ cardEval = case _ of
         for_ (model >>= Lens.preview CH._Legacy) \{chartConfig} →
           H.query' cpForm st.chartType
             $ left
-            $ H.action $ Form.SetConfiguration chartConfig
+            $ H.action $ Form.Load chartConfig
         for_ (model >>= Lens.preview CH._Graph) \graphConfig → do
           H.query' cpGraph unit $ left $ H.action $ Graph.Load graphConfig
         for_ (model >>= Lens.preview CH._Sankey) \sankeyConfig →
           H.query' cpSankey unit $ left $ H.action $ Sankey.Load sankeyConfig
         for_ (model >>= Lens.preview CH._Gauge) \gaugeConfig →
           H.query' cpGauge unit $ left $ H.action $ Gauge.Load gaugeConfig
+        for_ (model >>= Lens.preview CH._Metric) \metricConfig →
+          H.query' cpMetric unit $ left $ H.action $ Metric.Load metricConfig
       _ → pure unit
     pure next
   CC.SetDimensions dims next → do
@@ -581,6 +558,7 @@ configure = void do
   H.query' cpGraph unit $ left $ H.action $ Graph.UpdateAxes axes
   H.query' cpSankey unit $ left $ H.action $ Sankey.UpdateAxes axes
   H.query' cpGauge unit $ left $ H.action $ Gauge.UpdateAxes axes
+  H.query' cpMetric unit $ left $ H.action $ Metric.UpdateAxes axes
 
   pieConf ← getOrInitial Pie
   setConfigFor Pie $ pieBarConfiguration axes pieConf
@@ -617,7 +595,7 @@ configure = void do
 
   setConfigFor ∷ ChartType → ChartConfiguration → DSL Unit
   setConfigFor ty conf =
-    void $ H.query' cpForm ty $ left $ H.action $ Form.SetConfiguration conf
+    void $ H.query' cpForm ty $ left $ H.action $ Form.Load conf
 
 
   pieBarConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
@@ -685,8 +663,6 @@ configure = void do
         dimensions =
           setPreviousValueFrom (index current.dimensions 0)
           $ autoSelect $ newSelect $ dependsOnArr axes.value
-          -- This is redundant, I've put it here to notify
-          -- that this behaviour differs from pieBar and can be changed.
           $ allAxes
         firstMeasures =
           setPreviousValueFrom (index current.measures 0)

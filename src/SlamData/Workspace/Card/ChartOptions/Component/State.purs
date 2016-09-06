@@ -164,7 +164,10 @@ fromModel (Just (Sankey _)) =
   initialState { chartType = CT.Sankey }
 fromModel (Just (Gauge _)) =
   initialState { chartType = CT.Gauge }
+fromModel (Just (Metric _)) =
+  initialState { chartType = CT.Metric }
 fromModel _ = initialState
 
 
-type StateP = ParentState State ChildState QueryC ChildQuery Slam ChildSlot
+type StateP =
+  ParentState State ChildState QueryC ChildQuery Slam ChildSlot

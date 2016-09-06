@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.ChartOptions.Eval where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Array (cons, length, null, catMaybes)
+import Data.Array (cons, length, null, mapMaybe)
 import Data.Lens ((^?))
 import Data.Lens as Lens
 import Data.Set as Set
@@ -69,8 +69,8 @@ eval info model = do
     sample = analyzeJArray recordSample
     axes = getAxes sample
     available =
-      catMaybes
-        $ map (\x → x axes)
+      mapMaybe
+        (\x → x axes)
         [ getMaybePie
         , getMaybeBar
         , getMaybeLine
@@ -83,6 +83,7 @@ eval info model = do
         , getMaybeSankey
         , getMaybeGauge
         , getMaybeBoxplot
+        , getMaybeMetric
         ]
 
   when (null available)
@@ -158,7 +159,7 @@ eval info model = do
   getMaybeHeatmap axes = do
     guard
       $ (not $ null axes.value)
-      ∧ (((length axes.category) + (length axes.time) + (length axes.value)) > 2)
+      ∧ ((length axes.category + length axes.time + length axes.value) > 2)
     pure Heatmap
 
   getMaybeSankey ∷ Axes → Maybe ChartType
@@ -173,5 +174,12 @@ eval info model = do
 
   getMaybeBoxplot ∷ Axes → Maybe ChartType
   getMaybeBoxplot axes = do
-    guard $ (not $ null axes.value) ∧ (((length axes.category) + (length axes.time) + (length axes.value)) > 2)
+    guard
+      $ (not $ null axes.value)
+      ∧ ((length axes.category + length axes.time + length axes.value) > 2)
     pure Boxplot
+
+  getMaybeMetric ∷ Axes → Maybe ChartType
+  getMaybeMetric axes = do
+    guard $ not $ null axes.value
+    pure Metric

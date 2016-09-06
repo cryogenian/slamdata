@@ -16,6 +16,7 @@ import SlamData.Workspace.Card.Chart.BuildOptions as CO
 import SlamData.Workspace.Card.Chart.BuildOptions.Graph (GraphR, buildGraph)
 import SlamData.Workspace.Card.Chart.BuildOptions.Sankey (SankeyR, buildSankey)
 import SlamData.Workspace.Card.Chart.BuildOptions.Gauge (GaugeR, buildGauge)
+import SlamData.Workspace.Card.Chart.BuildOptions.Metric (MetricR)
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.Property.ArbJson (runArbJCursor)
@@ -30,6 +31,7 @@ data ChartConfig
   | Graph GraphR
   | Sankey SankeyR
   | Gauge GaugeR
+  | Metric MetricR
 
 _Legacy ∷ PrismP ChartConfig LegacyR
 _Legacy = prism' Legacy case _ of
@@ -51,10 +53,23 @@ _Gauge = prism' Gauge case _ of
   Gauge r → Just r
   _ → Nothing
 
+_Metric ∷ PrismP ChartConfig MetricR
+_Metric = prism' Metric case _ of
+  Metric r → Just r
+  _ → Nothing
+
 instance eqChartConfig ∷ Eq ChartConfig where
   eq (Legacy r1) (Legacy r2) =
     CO.eqBuildOptions r1.options r2.options
     ∧ CC.eqChartConfiguration r1.chartConfig r2.chartConfig
+  eq (Metric r1) (Metric r2) =
+    F.and
+      [ eqAxes r1.axes r2.axes
+      , r1.value ≡ r2.value
+      , r1.valueAggregation ≡ r2.valueAggregation
+      , r1.label ≡ r2.label
+      , r1.formatter ≡ r2.formatter
+      ]
   eq (Graph r1) (Graph r2) =
     F.and
       [ eqAxes r1.axes r2.axes
@@ -138,6 +153,13 @@ instance arbitraryChartConfig ∷ Arbitrary ChartConfig where
                   , axes
                   , sizeAggregation
                   }
+      CT.Metric → do
+        value ← map runArbJCursor arbitrary
+        valueAggregation ← arbitrary
+        label ← arbitrary
+        formatter ← arbitrary
+        axes ← arbAxes
+        pure $ Metric {value, valueAggregation, label, formatter, axes}
       _ → do
         chartConfig ← CC.genChartConfiguration
         options ← CO.genBuildOptions
@@ -177,6 +199,14 @@ instance encodeJsonChartConfig ∷ EncodeJson ChartConfig where
       ~> "multiple" := r.multiple
       ~> "axes" := encodeAxes r.axes
       ~> jsonEmptyObject
+    Metric r →
+      "configType" := "metric"
+      ~> "value" := r.value
+      ~> "valueAggregation" := r.valueAggregation
+      ~> "label" := r.label
+      ~> "formatter" := r.formatter
+      ~> "axes" := encodeAxes r.axes
+      ~> jsonEmptyObject
     where
     encodeAxes axes =
       "value" := axes.value
@@ -185,7 +215,12 @@ instance encodeJsonChartConfig ∷ EncodeJson ChartConfig where
       ~> jsonEmptyObject
 
 instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
-  decodeJson js = decodeGauge <|> decodeGraph <|> decodeSankey <|> decodeLegacy
+  decodeJson js =
+    decodeMetric
+    <|> decodeGauge
+    <|> decodeGraph
+    <|> decodeSankey
+    <|> decodeLegacy
     where
     decodeAxes jsAxes = do
       value ← jsAxes .? "value"
@@ -213,6 +248,19 @@ instance decodeJsonChartConfig ∷ DecodeJson ChartConfig where
       jsAxes ← obj .? "axes"
       axes ← decodeAxes jsAxes
       pure $ Sankey { source, target, value, valueAggregation, axes }
+
+    decodeMetric = do
+      obj ← decodeJson js
+      configType ← obj .? "configType"
+      unless (configType ≡ "metric")
+        $ throwError "This config is not metric"
+      value ← obj .? "value"
+      valueAggregation ← obj .? "valueAggregation"
+      label ← obj .? "label"
+      formatter ← obj .? "formatter"
+      jsAxes ← obj .? "axes"
+      axes ← decodeAxes jsAxes
+      pure $ Metric { value, valueAggregation, label, formatter, axes }
 
     decodeGraph = do
       obj ← decodeJson js
@@ -263,3 +311,4 @@ buildOptions (Legacy r) records = CO.buildOptionsLegacy r.options r.chartConfig 
 buildOptions (Graph r) records = buildGraph r records
 buildOptions (Sankey r) records = buildSankey r records
 buildOptions (Gauge r) records = buildGauge r records
+buildOptions (Metric r) records = pure unit

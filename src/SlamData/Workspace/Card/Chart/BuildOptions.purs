@@ -156,3 +156,4 @@ buildOptionsLegacy args conf records =
     Graph → pure unit
     Sankey → pure unit
     Gauge → pure unit
+    Metric → pure unit
