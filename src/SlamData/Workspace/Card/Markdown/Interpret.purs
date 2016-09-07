@@ -109,7 +109,7 @@ formFieldValueToVarMapValue v =
       JSD.toISOString $
         JSD.jsdate
           { year: Int.toNumber localDateTime.date.year
-          , month: Int.toNumber localDateTime.date.month
+          , month: (Int.toNumber localDateTime.date.month) - one
           , day: Int.toNumber localDateTime.date.day
           , hour: Int.toNumber localDateTime.time.hours
           , minute: Int.toNumber localDateTime.time.minutes
