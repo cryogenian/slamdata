@@ -49,6 +49,33 @@ var getTextWidth_ = function(text) {
     };
 };
 
+exports.getTextHeightPure = function(o) {
+    var span = document.createElement("span"),
+        div = document.createElement("div"),
+        block = document.createElement("div"),
+        height;
+
+    block.style.display = "inline-block";
+    block.style.width = "1px";
+    block.style.height = "0px";
+
+    span.style.fontFamily = o.fontFamily;
+    span.style.fontSize = o.fontSize + "px";
+    span.style.fontStyle = o.fontStyle;
+
+    div.appendChild(span);
+    div.appendChild(block);
+
+    document.body.appendChild(div);
+
+    block.style.verticalAlign = "bottom";
+    height = block.offsetTop - span.offsetTop;
+
+    div.remove();
+
+    return height;
+};
+
 exports.getTextWidthPure = getTextWidth_;
 
 exports.getTextWidth = function(text) {

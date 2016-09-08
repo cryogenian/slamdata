@@ -59,6 +59,9 @@ foreign import centerPopupWindowFeatures ∷ ∀ eff. Int → Int → Window →
 -- | this as pure function from font style and string to width.
 foreign import getTextWidthPure ∷ String → String → Number
 
+foreign import getTextHeightPure
+  ∷ {fontSize ∷ Int, fontFamily ∷ String, fontStyle ∷ String, text ∷ String} → Number
+
 type DOMRect =
   { left ∷ Number
   , top ∷ Number

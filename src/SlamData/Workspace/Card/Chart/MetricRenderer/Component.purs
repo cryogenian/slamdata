@@ -5,6 +5,7 @@ import SlamData.Prelude
 import CSS as C
 import CSS.TextAlign (textAlign, center)
 
+import Data.Foldable as F
 import Data.Int as Int
 
 import Halogen as H
@@ -16,7 +17,7 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Chart.BuildOptions.Metric (Metric)
 
-import Utils.DOM (getTextWidthPure)
+import Utils.DOM (getTextWidthPure, getTextHeightPure)
 
 type State =
   { width ∷ Int
@@ -56,10 +57,34 @@ render state =
         , HC.style do
              C.fontSize $ C.px $ Int.toNumber state.valueFontSize
              textAlign center
+             C.position C.relative
+             C.top
+               $ C.px
+               $ Int.toNumber
+               $ (state.height - margins - totalHeight) / 2
         ]
         [ HH.text state.value ] ]
     ⊕ foldMap renderLabel state.label
   where
+  margins ∷ Int
+  margins = 48
+
+  labelHeight ∷ Int
+  labelHeight =
+    Int.floor
+    $ fromMaybe zero
+    $ ubuntuHeight state.labelFontSize
+    <$> state.label
+
+  valueHeight ∷ Int
+  valueHeight =
+    Int.floor
+    $ ubuntuHeight state.valueFontSize state.value
+
+  totalHeight ∷ Int
+  totalHeight =
+    valueHeight + labelHeight
+
   renderLabel ∷ String → Array HTML
   renderLabel str =
     [ HH.div
@@ -67,6 +92,11 @@ render state =
         , HC.style do
              C.fontSize $ C.px $ Int.toNumber state.labelFontSize
              textAlign center
+             C.position C.relative
+             C.top
+               $ C.px
+               $ Int.toNumber
+               $ (state.height - margins - labelHeight) / 2
         ]
         [ HH.text str ]
     ]
@@ -83,52 +113,103 @@ eval (SetDimensions dims next) = do
 eval (GetLOD continue) = do
   state ← H.get
   let
-    minWidthVal = getTextWidthPure state.value "normal 16px Ubuntu"
-    minWidthLbl = flip getTextWidthPure "normal 12px Ubuntu" <$> state.label
+    minWidthVal = ubuntuWidth 16 state.value
+    minWidthLbl = ubuntuWidth 12 <$> state.label
+    minHeightVal = ubuntuHeight 16 state.value
+    minHeightLbl = ubuntuHeight 12 $ fromMaybe "" state.label
+
     widthNum = Int.toNumber state.width
-    lod =
-      if state.width < 24 ∨ widthNum < minWidthVal ∨ widthNum < fromMaybe zero minWidthLbl
-      then Low
-      else High
+    heightNum = Int.toNumber state.height
+
+    shouldBeLowLOD =
+      F.or
+        [ state.width < 24
+        , widthNum < minWidthVal
+        , widthNum < fromMaybe zero minWidthLbl
+        , heightNum < minHeightVal + minHeightLbl
+        ]
+
+    lod = if shouldBeLowLOD then Low else High
   pure $ continue lod
 
 adjustFontSizes ∷ DSL Unit
 adjustFontSizes = do
+  byWidth ← suggestFontSizesByWidth
+  byHeight ← suggestFontSizesByHeight
+
+  let
+    valueFont = min byWidth.value byHeight.value
+    labelFontRaw = Int.toNumber $ min byWidth.value byHeight.value
+    labelFont = Int.floor $ min labelFontRaw (0.66 * Int.toNumber valueFont)
+
+  H.modify _{ valueFontSize = valueFont
+            , labelFontSize = labelFont
+            }
+
+suggestDims
+  ∷ Number
+  → (Number → Int → String → Int)
+  → DSL {value ∷ Int, label ∷ Int}
+suggestDims maxDim computeHeightFn = do
   st ← H.get
   let
-    maxWidth = st.width - 24
-  when (st.value ≠ "") do
-    let valueFont = determineFont maxWidth 40 st.value
-    H.modify _{valueFontSize = valueFont}
+    value =
+      if st.value ≠ ""
+      then computeHeightFn maxDim 40 st.value
+      else zero
 
-    when (st.label ≠ Nothing ∧ st.label ≠ Just "") do
-      let
-        labelFontRaw = determineFont maxWidth 24 $ fromMaybe "" st.label
-        labelFontNum = Int.toNumber labelFontRaw
-        valueFontNum = Int.toNumber valueFont
-        labelFont =
-          if labelFontNum > 0.66 * valueFontNum
-          then Int.floor $ valueFontNum * 0.66
-          else labelFontRaw
-      H.modify _{labelFontSize = labelFont}
+    label =
+      if st.label ≠ Nothing ∧ st.label ≠ Just ""
+      then computeHeightFn maxDim 24 $ fromMaybe "" st.label
+      else zero
+
+  pure {value, label}
 
 
-determineFont ∷ Int → Int → String → Int
-determineFont maxWidth current text
+suggestFontSizesByWidth ∷ DSL {value ∷ Int, label ∷ Int}
+suggestFontSizesByWidth = do
+  st ← H.get
+  suggestDims (Int.toNumber $ st.width - 24) determineWidth
+
+suggestFontSizesByHeight ∷ DSL {value ∷ Int, label ∷ Int}
+suggestFontSizesByHeight = do
+  st ← H.get
+  suggestDims (Int.toNumber st.height) determineHeight
+
+determineBy ∷ (Int → String → Number) → Number → Int → String → Int
+determineBy getHeight maxDim current text
   | text ≡ "" = 12
   | otherwise =
     let
-      widthNum =
-        getTextWidthPure text $ "normal " ⊕ show current ⊕ "px Ubuntu"
-      maxWidthNum =
-        Int.toNumber maxWidth
+      height = getHeight current text
 
-      ratio =
-        maxWidthNum / widthNum
+      ratio = maxDim / height
 
       result
         | ratio < 1.05 ∧ ratio > 0.9 = current
         | otherwise =
-          determineFont maxWidth (spy $ Int.round $ Int.toNumber current  * ratio) text
+          determineBy getHeight maxDim (Int.round $ Int.toNumber current * ratio) text
     in
-     result
+      result
+
+ubuntuHeight ∷ Int → String → Number
+ubuntuHeight fontSize text =
+  getTextHeightPure
+    { fontSize
+    , text
+    , fontFamily: "Ubuntu"
+    , fontStyle: "normal"
+    }
+
+ubuntuWidth ∷ Int → String → Number
+ubuntuWidth fontSize text =
+  getTextWidthPure text $ "normal " ⊕ show fontSize ⊕ "px Ubuntu"
+
+determineHeight ∷ Number → Int → String → Int
+determineHeight =
+  determineBy ubuntuHeight
+
+
+determineWidth ∷ Number → Int → String → Int
+determineWidth =
+  determineBy ubuntuWidth
