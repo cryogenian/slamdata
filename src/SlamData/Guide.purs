@@ -16,7 +16,10 @@ limitations under the License.
 module SlamData.Guide where
 
 import Prelude
+import Data.Maybe (Maybe(..))
+import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Events.Handler as EH
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -53,3 +56,39 @@ render arrow className dismissQuery text =
             ]
         ]
     ]
+
+renderStepByStep
+  ∷ ∀ f a
+  . { next ∷ Unit → f Unit, dismiss ∷ Unit → f Unit }
+  → String
+  → String
+  → Boolean
+  → HH.HTML a (f Unit)
+renderStepByStep queries imageUri text last =
+  HH.div
+    [ HE.onClick \_ → EH.stopPropagation $> Just (H.action $ queries.dismiss)
+    , HP.class_ $ HH.className "sd-step-by-step-guide-backdrop"
+    ]
+    [ HH.div
+      [ HP.class_ $ HH.className "sd-step-by-step-guide"
+      , HE.onClick (\_ → EH.stopPropagation $> Nothing)
+      ]
+      ([ HH.img [ HP.src imageUri ] , HH.p_ [ HH.text text ] ] <> pure buttons)
+    ]
+      where
+      buttons =
+        HH.div_
+          $ if last
+            then
+              [ HH.button
+                  [ HE.onClick \_ → EH.stopPropagation $> Just (H.action queries.dismiss) ]
+                  [ HH.text "Get started!" ]
+              ]
+            else
+              [ HH.button
+                 [ HE.onClick \_ → EH.stopPropagation $> Just (H.action queries.next) ]
+                 [ HH.text "Next" ]
+              , HH.button
+                 [ HE.onClick \_ → EH.stopPropagation $> Just (H.action queries.dismiss) ]
+                  [ HH.text "Skip" ]
+              ]

@@ -23,6 +23,8 @@ module SlamData.Workspace.Component.State
   , _path
   , _initialDeckId
   , _stateMode
+  , _cardGuideStep
+  , cardGuideStepNext
   ) where
 
 import SlamData.Prelude
@@ -42,6 +44,7 @@ type State =
   , path ∷ Maybe DirPath
   , initialDeckId ∷ Maybe DeckId
   , stateMode ∷ StateMode
+  , cardGuideStep ∷ Maybe Int
   }
 
 initialState ∷ Maybe String → State
@@ -52,6 +55,7 @@ initialState version =
   , path: Nothing
   , initialDeckId: Nothing
   , stateMode: Loading
+  , cardGuideStep: Nothing
   }
 
 _accessType ∷ ∀ a r. LensP {accessType ∷ a|r} a
@@ -73,3 +77,9 @@ _initialDeckId = lens _.initialDeckId _{initialDeckId = _}
 
 _stateMode ∷ LensP State StateMode
 _stateMode = lens _.stateMode _{stateMode = _}
+
+_cardGuideStep ∷ LensP State (Maybe Int)
+_cardGuideStep = lens _.cardGuideStep _{cardGuideStep = _}
+
+cardGuideStepNext ∷ State → State
+cardGuideStepNext st = st { cardGuideStep = add 1 <$> st.cardGuideStep }

@@ -35,11 +35,12 @@ import Selenium.Builder (withCapabilities, build)
 import Selenium.Monad (setWindowSize)
 import Selenium.Types (SELENIUM)
 
+import Test.Feature.Log as Log
 import Test.Feature.Monad (FeatureEffects)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Config (Config)
 import Test.SlamData.Feature.Effects (SlamFeatureEffects)
-import Test.SlamData.Feature.Interactions (launchSlamData, mountTestDatabase)
+import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.Test.File as File
 import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
@@ -65,11 +66,22 @@ type Effects =
     , selenium ∷ SELENIUM
     ))
 
+
 tests ∷ SlamFeature Unit
 tests = do
-  launchSlamData
+  let setupScenario = scenario "Setup" (pure unit) (pure unit) 
+  setupScenario "Launch SlamData" [] do
+    Interact.launchSlamData
+    Log.successMsg "Ok, launced SlamData"
 
-  scenario "Setup" (pure unit) (pure unit) "Mount test database" [] mountTestDatabase
+  setupScenario "Mount test database" [] do
+    Interact.mountTestDatabase
+    Log.successMsg "Ok, mounted test database"
+
+  setupScenario "Skip guides" [] do
+    Interact.createWorkspaceInTestFolder "Search"
+    Interact.skipAnyGuides
+    Log.successMsg "Ok, skipped guides"
 
   File.test
   Search.test

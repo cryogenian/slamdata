@@ -1,3 +1,6 @@
+@import (reference) "button";
+
+@margin: 4.5%;
 
 @keyframes pointDown {
   from, 20%, 53%, 80%, to {
@@ -134,4 +137,53 @@
   border-left-color: #cccccc;
   border-width: 9px;
   margin-top: -9px;
+}
+
+.sd-step-by-step-guide {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30rem;
+  background-color: white;
+  z-index: 1000;
+  box-shadow: 0px 0px 8px 0px rgba(0,0,0,1);
+  box-sizing: content-box;
+}
+
+.sd-step-by-step-guide img {
+  width: 100%;
+  height: auto;
+  margin-bottom: @margin;
+  border-bottom: 1px solid #ddd;
+}
+
+.sd-step-by-step-guide p {
+  padding: 0 @margin;
+  display: block;
+  height: 3rem;
+}
+
+.sd-step-by-step-guide button {
+  .btn;
+  .btn-default;
+  float: right;
+  margin-right: @margin;
+  margin-bottom: @margin;
+}
+
+.sd-step-by-step-guide button:first-of-type {
+  .btn-primary;
+}
+
+.sd-step-by-step-guide-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 999;
+    width: 10000px;
+    height: 10000px;
 }

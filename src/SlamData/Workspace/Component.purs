@@ -45,6 +45,7 @@ import Halogen.Component.Utils.Throttled (throttledEventSource_)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Analytics as SA
@@ -53,6 +54,7 @@ import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
 import SlamData.Header.Component as Header
 import SlamData.Monad (Slam)
+import SlamData.Guide as Guide
 import SlamData.Notification.Component as NC
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
@@ -68,7 +70,8 @@ import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Class (class WorkspaceDSL, putURLVarMaps, getURLVarMaps)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, _cardGuideStep, initialState)
+import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Common (wrappedDeck, splitDeck)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
@@ -80,6 +83,7 @@ import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils.Path as UP
 import Utils.DOM (onResize, elementEq)
+import Utils.LocalStorage as LocalStorage
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
@@ -103,8 +107,27 @@ render state =
         ⊕ [ HH.className "sd-workspace" ]
     , HE.onClick (HE.input DismissAll)
     ]
-    $ notifications ⊕ header ⊕ deck
+    ([ preloadCardGuide ]
+     ⊕ notifications ⊕ header ⊕ deck
+     ⊕ renderCardGuide)
   where
+  renderCardGuide ∷ Array WorkspaceHTML
+  renderCardGuide =
+    maybe [] pure do
+      index ← state.cardGuideStep
+      step ← Array.index cardGuideSteps index
+      pure
+        $ Guide.renderStepByStep
+            { next: CardGuideStepNext, dismiss: CardGuideDismiss }
+            (fst step)
+            (snd step)
+            (index == Array.length cardGuideSteps - 1)
+
+  preloadCardGuide =
+    HH.div
+      [ ARIA.hidden "true" ]
+      ((\url → HH.img [ HP.src url ]) ∘ fst <$> cardGuideSteps)
+
   notifications ∷ Array WorkspaceHTML
   notifications =
     pure $ HH.slot' cpNotify unit \_ →
@@ -155,6 +178,12 @@ eval (Init next) = do
   H.subscribe'
     $ throttledEventSource_ (Milliseconds 100.0) onResize
     $ pure (H.action Resize)
+  H.modify ∘ (_cardGuideStep .~ _) =<< initialCardGuideStep
+  pure next
+eval (CardGuideStepNext next) = H.modify State.cardGuideStepNext $> next
+eval (CardGuideDismiss next) = do
+  H.liftH $ H.liftH $ LocalStorage.setLocalStorage dismissedCardGuideKey true
+  H.modify (_cardGuideStep .~ Nothing)
   pure next
 eval (SetVarMaps urlVarMaps next) = do
   putURLVarMaps urlVarMaps
@@ -405,3 +434,31 @@ updateHash path accessType newId = do
   H.fromEff do
     let deckHash = mkWorkspaceHash (Deck.deckPath' path newId) (WA.Load accessType) varMaps
     locationObject >>= Location.setHash deckHash
+
+cardGuideSteps ∷ Array (Tuple String String)
+cardGuideSteps =
+  [ Tuple
+      "img/cardGuide/1.gif"
+      "Welcome to SlamData! When using SlamData we think about analytics in terms of cards."
+  , Tuple
+      "img/cardGuide/2.gif"
+      "Each card performs a function like showing a pie chart or opening a data set."
+  , Tuple
+      "img/cardGuide/3.gif"
+      "Each card passes an output to the card after it, for example passing a data set to a chart."
+  , Tuple
+      "img/cardGuide/4.gif"
+      "This is done by stacking cards ontop of each other to build decks. Decks represent analytic workflows."
+  , Tuple
+      "img/cardGuide/5.gif"
+      "Check out the deck backside, slide the card grippers and visit the next action card to see more of what's possible with SlamData."
+  ]
+
+dismissedCardGuideKey ∷ String
+dismissedCardGuideKey = "dismissedCardGuide"
+
+initialCardGuideStep ∷ WorkspaceDSL (Maybe Int)
+initialCardGuideStep =
+  H.liftH $ H.liftH
+    $ either (const $ Just 0) (if _ then Nothing else Just 0)
+    <$> LocalStorage.getLocalStorage dismissedCardGuideKey

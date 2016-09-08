@@ -6,7 +6,7 @@ import Data.Array as Arr
 import Data.Map as Map
 import Data.String as Str
 
-import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
+import Selenium.Monad (get, apathize, refresh, getCurrentUrl, tryRepeatedlyTo)
 
 import Test.Feature as Feature
 import Test.Feature.Log as Log
@@ -42,6 +42,10 @@ mountTestDatabase = do
   Feature.provideFieldValue (XPath.index (XPath.anywhere XPaths.mountHost) 1) "localhost"
   Feature.provideFieldValue (XPath.anywhere XPaths.mountDatabase) "testDb"
   Feature.click (XPath.anywhere XPaths.mountButton)
+
+skipAnyGuides ∷ SlamFeature Unit
+skipAnyGuides =
+  apathize $ Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Skip"
 
 accessFile ∷ String → SlamFeature Unit
 accessFile =

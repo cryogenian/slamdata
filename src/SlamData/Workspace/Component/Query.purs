@@ -38,6 +38,8 @@ data Query a
   | Reset UP.DirPath a
   | Init a
   | Load UP.DirPath (Maybe DeckId) AccessType a
+  | CardGuideStepNext a
+  | CardGuideDismiss a
   | Resize a
 
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
