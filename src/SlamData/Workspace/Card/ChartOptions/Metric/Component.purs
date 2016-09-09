@@ -137,7 +137,6 @@ renderFormatter state =
     , HH.input
         $ [ HP.classes [ B.formControl ] ]
         ⊕ foldMap (pure ∘ HP.value) state.formatter
-        ⊕ [ HP.placeholder "Will be replaced by actual aggregated value" ]
         ⊕ [ ARIA.label "Value formatter" ]
         ⊕ [ HE.onValueChange $ HE.input SetFormatter ]
     ]

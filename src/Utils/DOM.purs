@@ -59,8 +59,14 @@ foreign import centerPopupWindowFeatures ∷ ∀ eff. Int → Int → Window →
 -- | this as pure function from font style and string to width.
 foreign import getTextWidthPure ∷ String → String → Number
 
-foreign import getTextHeightPure
-  ∷ {fontSize ∷ Int, fontFamily ∷ String, fontStyle ∷ String, text ∷ String} → Number
+-- | Takes an array of (div) elements, array of available font sizes, maximum dimension and
+-- | returns sizes of fitted elements
+foreign import fitTexts
+  ∷ ∀ e
+  . Array HTMLElement
+  → Array Int
+  → {width ∷ Int, height ∷ Int}
+  → Eff (dom ∷ DOM|e) (Array {width ∷ Int, height ∷ Int})
 
 type DOMRect =
   { left ∷ Number

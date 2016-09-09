@@ -3,9 +3,11 @@ module SlamData.Workspace.Card.Chart.MetricRenderer.Component where
 import SlamData.Prelude
 
 import CSS as C
-import CSS.TextAlign (textAlign, center)
 
+import Data.Array as A
 import Data.Int as Int
+
+import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -16,15 +18,17 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Chart.BuildOptions.Metric (Metric)
 
-import Utils.DOM (getTextWidthPure, getTextHeightPure)
+import Utils.DOM (fitTexts)
 
 type State =
   { width ∷ Int
   , height ∷ Int
   , label ∷ Maybe String
   , value ∷ String
-  , valueFontSize ∷ Int
-  , labelFontSize ∷ Int
+  , valueElement ∷ Maybe HTMLElement
+  , labelElement ∷ Maybe HTMLElement
+  , valueHeight ∷ Int
+  , labelHeight ∷ Int
   }
 
 initialState ∷ State
@@ -33,14 +37,18 @@ initialState =
   , height: 400
   , label: Nothing
   , value: ""
-  , valueFontSize: 0
-  , labelFontSize: 0
+  , valueElement: Nothing
+  , labelElement: Nothing
+  , valueHeight: 0
+  , labelHeight: 0
   }
 
 data Query a
   = SetMetric Metric a
   | SetDimensions {width ∷ Int, height ∷ Int} a
   | GetLOD (LevelOfDetails → a)
+  | SetValueElement (Maybe HTMLElement) a
+  | SetLabelElement (Maybe HTMLElement) a
 
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
@@ -53,61 +61,30 @@ render state =
   HH.div_
     $ [ HH.div
         [ HP.classes [ HH.className "metric-value" ]
+        , HP.ref \el → H.action $ SetValueElement el
         , HC.style do
-             C.fontSize $ C.px $ Int.toNumber state.valueFontSize
              C.position C.absolute
-             C.width $ C.pct 100.0
-             textAlign center
-             C.top
-               $ C.px
-               $ Int.toNumber
+             C.top $ C.px
                $ max zero
-               $ (state.height - totalHeight) / 2
+               $ Int.toNumber
+               $ -8 + (state.height - state.valueHeight - state.labelHeight) / 2
 
         ]
         [ HH.text state.value ] ]
     ⊕ foldMap renderLabel state.label
   where
-  labelHeight ∷ Int
-  labelHeight =
-    Int.floor
-      $ fromMaybe zero
-      $ ubuntuHeight state.labelFontSize
-      <$> state.label
-
-  valueHeight ∷ Int
-  valueHeight =
-    Int.floor $ ubuntuHeight state.valueFontSize state.value
-
-  totalHeight ∷ Int
-  totalHeight =
-    valueHeight + labelHeight
-
-  valueWidth ∷ Int
-  valueWidth =
-    Int.floor $ ubuntuWidth state.valueFontSize state.value
-
-  labelWidth ∷ Int
-  labelWidth =
-    Int.floor
-      $ fromMaybe zero
-      $ ubuntuWidth state.labelFontSize
-      <$> state.label
-
   renderLabel ∷ String → Array HTML
   renderLabel str =
     [ HH.div
         [ HP.classes [ HH.className "metric-label" ]
+        , HP.ref \el → H.action $ SetLabelElement el
         , HC.style do
-             C.fontSize $ C.px $ Int.toNumber state.labelFontSize
              C.position C.absolute
-             C.width $ C.pct 100.0
-             textAlign center
-             C.top
-               $ C.px
+             C.top $ C.px
                $ Int.toNumber
-               $ max valueHeight
-               $ (state.height + valueHeight - labelHeight) / 2
+               $ max state.valueHeight
+               $ -8 + (state.height + state.valueHeight - state.labelHeight) / 2
+
         ]
         [ HH.text str ]
     ]
@@ -123,96 +100,29 @@ eval (SetDimensions dims next) = do
   pure next
 eval (GetLOD continue) = do
   state ← H.get
-  pure $ continue $ if state.height < 120 ∨ state.valueFontSize < 17 then Low else High
+  pure $ continue $ if (state.labelHeight + state.valueHeight) > state.height then Low else High
+eval (SetValueElement mbEl next) = do
+  for_ mbEl \el → H.modify _{valueElement = Just el}
+  adjustFontSizes
+  pure next
+eval (SetLabelElement mbEl next) = do
+  for_ mbEl \el → do
+    H.modify _{labelElement = Just el}
+  adjustFontSizes
+  pure next
+
+
+availableFontSizes ∷ Array Int
+availableFontSizes = [ 16, 24, 32, 48, 64, 96, 128, 160, 200 ]
 
 adjustFontSizes ∷ DSL Unit
 adjustFontSizes = do
-  byWidth ← suggestFontSizesByWidth
-  byHeight ← suggestFontSizesByHeight
-
-
-  let
-    valueFont = min byWidth.value byHeight.value
-    labelFontRaw = Int.toNumber $ min byWidth.label byHeight.label
-    labelFont = Int.floor $ min labelFontRaw (0.66 * Int.toNumber valueFont)
-
-  H.modify _{ valueFontSize = valueFont
-            , labelFontSize = labelFont
-            }
-
-
-suggestFontSizesByWidth ∷ DSL {value ∷ Int, label ∷ Int}
-suggestFontSizesByWidth = do
   st ← H.get
-  suggestDims (Int.toNumber st.width - 48.0)
-  where
-  suggestDims ∷ Number → DSL {value ∷ Int, label ∷ Int}
-  suggestDims maxDim = do
-    st ← H.get
-    let
-      value =
-        if st.value ≠ ""
-        then determineByWidth maxDim 40 st.value
-        else zero
-      label =
-        if st.label ≠ Nothing ∧ st.label ≠ Just ""
-        then determineByWidth maxDim 24 $ fromMaybe "" st.label
-        else zero
-
-    pure {value, label}
-
-suggestFontSizesByHeight ∷ DSL {value ∷ Int, label ∷ Int}
-suggestFontSizesByHeight = do
-  st ← H.get
-  pure
-    $ determineByHeight
-        (Int.toNumber st.height - 32.0)
-        40
-        {value: st.value, label: fromMaybe "" st.label}
-
-determineByWidth ∷ Number → Int → String → Int
-determineByWidth maxDim current text
-  | text ≡ "" = 12
-  | otherwise =
-    let
-      width = ubuntuWidth current text
-
-      ratio = maxDim / width
-
-      result
-        | ratio < 1.05 ∧ ratio > 0.9 = current
-        | otherwise =
-          determineByWidth maxDim (Int.round $ Int.toNumber current * ratio) text
-    in
-      result
-
-determineByHeight ∷ Number → Int → {value ∷ String, label ∷ String} → {value ∷ Int, label ∷ Int}
-determineByHeight maxDim current input@{value, label}
-  | value ≡ "" = {value: 12, label: 8}
-  | otherwise =
-    let
-      labelCurrent = Int.ceil $ 0.66 * Int.toNumber current
-      height = ubuntuHeight current value + ubuntuHeight labelCurrent label
-
-      ratio = maxDim / height
-
-      result
-        | ratio < 1.05 ∧ ratio > 0.9 = {value: current, label: labelCurrent}
-        | otherwise =
-          determineByHeight maxDim (Int.round $ Int.toNumber current * ratio) input
-    in
-      result
-
-
-ubuntuHeight ∷ Int → String → Number
-ubuntuHeight fontSize text =
-  getTextHeightPure
-    { fontSize
-    , text
-    , fontFamily: "Ubuntu"
-    , fontStyle: "normal"
-    }
-
-ubuntuWidth ∷ Int → String → Number
-ubuntuWidth fontSize text =
-  getTextWidthPure text $ "normal " ⊕ show fontSize ⊕ "px Ubuntu"
+  for_ st.valueElement \vel →
+    for_ st.labelElement \lel → do
+      tD ←
+        H.fromEff
+          $ fitTexts [vel, lel] availableFontSizes
+              {width: st.width - 32, height: st.height - 32}
+      for_ (A.head tD) \vD → H.modify _{valueHeight = vD.height}
+      for_ (tD A.!! 1) \lD → H.modify _{labelHeight = lD.height}

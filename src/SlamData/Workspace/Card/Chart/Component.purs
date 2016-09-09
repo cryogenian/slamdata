@@ -183,7 +183,8 @@ eval = case _ of
 
     let
       heightPadding = 60
-      intWidth = floor dims.width
+      widthPadding = 6
+      intWidth = floor dims.width - widthPadding
       intHeight = floor dims.height
 
     H.query' cpMetric unit $ H.action $ Metric.SetDimensions {width: intWidth, height: intHeight}
