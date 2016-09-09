@@ -49,7 +49,8 @@
     "purescript-tuples": "^1.0.0",
     "purescript-uri": "^1.0.0",
     "purescript-zclipboard": "^2.0.0",
-    "purescript-rationals": "^0.4.0"
+    "purescript-rationals": "^0.4.0",
+    "purescript-formatters": "^0.0.4"
   },
   "devDependencies": {
     "purescript-chalky": "^1.0.0",

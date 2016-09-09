@@ -72,13 +72,39 @@ render state =
     [ renderValue state
     , HH.hr_
     , renderFormatter state
-    , HH.p_
-        [ HH.strong_ [ HH.text "\"{{value}}\"" ]
-        , HH.text " will be replaced by actual aggregated value"
-        ]
+    , renderFormatterInstruction
     , HH.hr_
     , renderLabel state
     , HH.p_ [ HH.text "This string will appear under formatted value" ]
+    ]
+
+renderFormatterInstruction ∷ HTML
+renderFormatterInstruction =
+  HH.div_
+    [ HH.p_ [ HH.text "Value between \"{{\" and \"}}\" will be replaced by following rules" ]
+    , HH.p_
+        [ HH.strong_ [ HH.text "{{0}}"]
+        , HH.text " rounds to the closest integer"
+        ]
+    , HH.p_
+        [ HH.strong_ [ HH.text "{{0,0}}"]
+        , HH.text " rounds to the closest integer and adds thousands delimiters"
+        ]
+    , HH.p_
+        [ HH.strong_ [ HH.text "{{000}}" ]
+        , HH.text " adds leading zeros to the value"
+        ]
+    , HH.p_
+        [ HH.strong_ [ HH.text "{{0a}}" ]
+        , HH.text " adds an abbreviation"
+        ]
+    , HH.p_
+        [ HH.strong_ [ HH.text "{{0.000}}" ]
+        , HH.text " leaves three numbers after dot or adds up to three trailing zeros"
+        ]
+    , HH.a [ HP.href "https://github.com/slamdata/purescript-formatters" ]
+        [ HH.text "Complete documentation"
+        ]
     ]
 
 renderValue ∷ State → HTML
@@ -111,7 +137,7 @@ renderFormatter state =
     , HH.input
         $ [ HP.classes [ B.formControl ] ]
         ⊕ foldMap (pure ∘ HP.value) state.formatter
-        ⊕ [ HP.placeholder "{{value}} will be replaced by actual aggregated value" ]
+        ⊕ [ HP.placeholder "Will be replaced by actual aggregated value" ]
         ⊕ [ ARIA.label "Value formatter" ]
         ⊕ [ HE.onValueChange $ HE.input SetFormatter ]
     ]
@@ -185,6 +211,5 @@ synchronizeChildren r = void do
         $ (maybe id trySelect' $ r <#> _.valueAggregation)
         $ nonMaybeAggregationSelect
 
-  traceAnyA newValueAggregation
   H.query unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
   H.query unit $ left $ H.action $ S.SetSelect newValueAggregation

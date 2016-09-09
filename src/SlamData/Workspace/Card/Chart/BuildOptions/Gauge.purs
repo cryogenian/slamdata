@@ -118,7 +118,7 @@ buildGaugeData r records = series
         → Int
         → Array GaugeSerie
         → Array GaugeSerie
-      setPositions acc colIx rowIx inThisRow arr = traceAny inThisRow \_ → case A.uncons arr of
+      setPositions acc colIx rowIx inThisRow arr = case A.uncons arr of
         Nothing → acc
         Just {head, tail} →
           let
