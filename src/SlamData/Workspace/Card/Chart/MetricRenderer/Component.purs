@@ -71,14 +71,13 @@ render state =
   labelHeight ∷ Int
   labelHeight =
     Int.floor
-    $ fromMaybe zero
-    $ ubuntuHeight state.labelFontSize
-    <$> state.label
+      $ fromMaybe zero
+      $ ubuntuHeight state.labelFontSize
+      <$> state.label
 
   valueHeight ∷ Int
   valueHeight =
-    Int.floor
-    $ ubuntuHeight state.valueFontSize state.value
+    Int.floor $ ubuntuHeight state.valueFontSize state.value
 
   totalHeight ∷ Int
   totalHeight =
@@ -86,15 +85,14 @@ render state =
 
   valueWidth ∷ Int
   valueWidth =
-    Int.floor
-    $ ubuntuWidth state.valueFontSize state.value
+    Int.floor $ ubuntuWidth state.valueFontSize state.value
 
   labelWidth ∷ Int
   labelWidth =
     Int.floor
-    $ fromMaybe zero
-    $ ubuntuWidth state.labelFontSize
-    <$> state.label
+      $ fromMaybe zero
+      $ ubuntuWidth state.labelFontSize
+      <$> state.label
 
   renderLabel ∷ String → Array HTML
   renderLabel str =

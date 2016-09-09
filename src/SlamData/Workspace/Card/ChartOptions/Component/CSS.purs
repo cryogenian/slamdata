@@ -79,4 +79,4 @@ gaugeChartIcon ∷ ClassName
 gaugeChartIcon = className "gauge-chart-icon"
 
 metricChartIcon ∷ ClassName
-metricChartIcon = className "metrci-chart-icon"
+metricChartIcon = className "metric-chart-icon"
