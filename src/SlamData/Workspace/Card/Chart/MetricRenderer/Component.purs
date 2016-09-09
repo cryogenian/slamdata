@@ -109,7 +109,7 @@ render state =
                $ C.px
                $ Int.toNumber
                $ max valueHeight
-               $ state.height / 2
+               $ (state.height + valueHeight - labelHeight) / 2
         ]
         [ HH.text str ]
     ]
@@ -146,7 +146,7 @@ adjustFontSizes = do
 suggestFontSizesByWidth ∷ DSL {value ∷ Int, label ∷ Int}
 suggestFontSizesByWidth = do
   st ← H.get
-  suggestDims (Int.toNumber st.width - 28.0)
+  suggestDims (Int.toNumber st.width - 48.0)
   where
   suggestDims ∷ Number → DSL {value ∷ Int, label ∷ Int}
   suggestDims maxDim = do
@@ -168,7 +168,7 @@ suggestFontSizesByHeight = do
   st ← H.get
   pure
     $ determineByHeight
-        (Int.toNumber st.height - 24.0)
+        (Int.toNumber st.height - 32.0)
         40
         {value: st.value, label: fromMaybe "" st.label}
 
