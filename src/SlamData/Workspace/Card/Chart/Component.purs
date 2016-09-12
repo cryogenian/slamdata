@@ -84,7 +84,7 @@ renderHighLOD state =
         $ [ RC.chartOutput, HH.className "card-input-maximum-lod" ]
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     , CSS.style do
-         CG.height $ px $ toNumber $ state.height - heightPadding
+         CG.height $ px $ toNumber $ state.height
          CG.width $ px $ toNumber state.width
     ]
     [ HH.div
@@ -102,9 +102,6 @@ renderHighLOD state =
              }
         ]
     ]
-  where
-  heightPadding ∷ Int
-  heightPadding = 80
 
 renderLowLOD ∷ State → HTML
 renderLowLOD state =

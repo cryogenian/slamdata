@@ -91,6 +91,38 @@ exports.getOffsetClientRect = function(el) {
   };
 };
 
+exports.setFontSize = function(element) {
+  return function(fontSize) {
+    return function() {
+      return element.style.fontSize = fontSize;
+    };
+  };
+};
+
+exports.getOffsetWidth = function(element) {
+  return function() {
+    return element.offsetWidth;
+  };
+};
+
+exports.getOffsetHeight = function(element) {
+  return function() {
+    return element.offsetHeight;
+  };
+};
+
+exports.getScrollWidth = function(element) {
+  return function() {
+    return element.scrollWidth;
+  };
+};
+
+exports.getScrollHeight = function(element) {
+  return function() {
+    return element.scrollHeight;
+  };
+};
+
 exports.open = function(strUrl) {
   return function(strWindowName) {
     return function(strWindowFeatures) {

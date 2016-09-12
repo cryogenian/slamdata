@@ -24,6 +24,7 @@ import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 
+import Data.Array (uncons, sort, reverse)
 import Data.Nullable (toMaybe)
 
 import DOM (DOM)
@@ -52,6 +53,11 @@ foreign import getOffsetClientRect ∷ ∀ eff.  HTMLElement → Eff (dom ∷ DO
 foreign import open ∷ ∀ eff. String → String → String → Window → Eff (dom ∷ DOM | eff) Unit
 foreign import close ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Unit
 foreign import centerPopupWindowFeatures ∷ ∀ eff. Int → Int → Window → Eff (dom ∷ DOM | eff) String
+foreign import setFontSize ∷ ∀ eff. HTMLElement → String → Eff (dom ∷ DOM | eff) Unit
+foreign import getOffsetWidth ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Int
+foreign import getOffsetHeight ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Int
+foreign import getScrollWidth ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Int
+foreign import getScrollHeight ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Int
 
 -- | Same as `getTextWidth` but w/o Eff wrapper. This function definitely has effects
 -- | of allocating canvas and should have `Eff (ref ∷ REF|e)` or `Eff (dom ∷ DOM|e)`
@@ -59,14 +65,19 @@ foreign import centerPopupWindowFeatures ∷ ∀ eff. Int → Int → Window →
 -- | this as pure function from font style and string to width.
 foreign import getTextWidthPure ∷ String → String → Number
 
--- | Takes an array of (div) elements, array of available font sizes, maximum dimension and
--- | returns sizes of fitted elements
-foreign import fitTexts
-  ∷ ∀ e
-  . Array HTMLElement
-  → Array Int
-  → {width ∷ Int, height ∷ Int}
-  → Eff (dom ∷ DOM|e) (Array {width ∷ Int, height ∷ Int})
+fits ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Boolean
+fits el = (&&) <$> fitsHorizontally <*> fitsVertically
+  where
+  fitsHorizontally = (<=) <$> getScrollWidth el <*> getOffsetWidth el
+  fitsVertically = (<=) <$> getScrollHeight el <*> getOffsetHeight el
+
+fitText ∷ ∀ eff. Array Int → HTMLElement → Eff (dom ∷ DOM | eff) (Maybe Int)
+fitText fontSizes el = go $ reverse $ sort fontSizes
+  where
+  go remainingFontSizes = maybe (pure Nothing) f $ uncons remainingFontSizes
+  f { head, tail } =
+    setFontSize el (g head) *> fits el >>= (if _ then pure (Just head) else go tail)
+  g = flip append "px" ∘ show
 
 type DOMRect =
   { left ∷ Number
