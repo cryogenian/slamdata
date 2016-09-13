@@ -2,17 +2,11 @@ module SlamData.Workspace.Card.Chart.MetricRenderer.Component where
 
 import SlamData.Prelude
 
-import CSS as C
-
-import Data.Int as Int
-import Data.Lens (lens, LensP, (.~))
-
 import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.CSS.Indexed as HC
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
