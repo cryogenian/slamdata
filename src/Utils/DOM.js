@@ -91,6 +91,38 @@ exports.getOffsetClientRect = function(el) {
   };
 };
 
+exports.setFontSize = function(element) {
+  return function(fontSize) {
+    return function() {
+      return element.style.fontSize = fontSize;
+    };
+  };
+};
+
+exports.getOffsetWidth = function(element) {
+  return function() {
+    return element.offsetWidth;
+  };
+};
+
+exports.getOffsetHeight = function(element) {
+  return function() {
+    return element.offsetHeight;
+  };
+};
+
+exports.getScrollWidth = function(element) {
+  return function() {
+    return element.scrollWidth;
+  };
+};
+
+exports.getScrollHeight = function(element) {
+  return function() {
+    return element.scrollHeight;
+  };
+};
+
 exports.open = function(strUrl) {
   return function(strWindowName) {
     return function(strWindowFeatures) {
@@ -126,79 +158,4 @@ exports.centerPopupWindowFeatures = function(w) {
       };
     };
   };
-};
-
-
-var css = function (el, prop) {
-    return window.getComputedStyle ? getComputedStyle(el).getPropertyValue(prop) : el.currentStyle[prop];
-  };
-exports.fitTexts = function(elements) {
-    return function(availableFontSizes) {
-        return function(dims) {
-            return function() {
-                var sizes = availableFontSizes.slice().sort(function(a, b) {return a - b;}),
-                    i, el, j, display, width, wIndices = [];
-
-                for (i = 0; i < elements.length; i++ ) {
-                    el = elements[i];
-                    display = css(el, "display");
-                    width = el.style.width;
-                    el.style.display = "inline-block";
-                    el.style.width = "auto";
-
-                    for (j = sizes.length - 1; j > -1; j--) {
-                        el.style.fontSize = sizes[j] + "px";
-                        wIndices[i] = j;
-                        if (el.clientWidth <= dims.width) break;
-                    }
-
-                    el.style.display = display;
-                    el.style.width = width;
-                }
-
-                var lastWix = wIndices[0];
-                for (i = 1; i < wIndices.length; i++) {
-                    if (wIndices[i] >= lastWix) {
-                        wIndices[i] = lastWix - 1;
-                    }
-                    lastWix = wIndices[i];
-                }
-
-                var adjustIndices = function() {
-                    for (i = 0; i < wIndices.length; i++) {
-                        elements[i].style.fontSize = sizes[wIndices[i]] + "px";
-                    }
-                };
-
-                var totalHeight = function() {
-                    var result = 0;
-                    for (i = 0; i < wIndices.length; i++) {
-                        result += elements[i].clientHeight;
-                    }
-                    return result;
-                };
-
-                j = wIndices.length - 1;
-                while (totalHeight() > dims.height) {
-                    if (wIndices[j] == 0) break;
-                    wIndices[j]--;
-                    adjustIndices();
-                    if (j === 0) {
-                        j = wIndices.length - 1;
-                    } else {
-                        j--;
-                    }
-                }
-                var result = [];
-                for (i = 0; i < elements.length; i++) {
-                    result[i] = {
-                        height: Math.ceil(elements[i].clientHeight),
-                        width: Math.ceil(elements[i].clientWidth)
-                    };
-                }
-                console.log(result);
-                return result;
-            };
-        };
-    };
 };

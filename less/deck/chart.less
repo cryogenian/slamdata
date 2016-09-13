@@ -1,5 +1,42 @@
+.metric {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.metric-value-and-label {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  transform: translate(0, -50%);
+  padding: 0;
+}
+
 .metric-value, .metric-label {
-    text-align: center;
-    white-space: nowrap;
-    width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  width: 100%;
+  padding: 0;
+}
+
+.metric-value {
+  font-size: 1em;
+}
+
+.metric-label {
+  font-size: 0.5em;
+}
+
+.sd-card-chart > div, .chart-output, .chart-output > div {
+  height: 100%;
+  width: 100%;
+  padding: 0;
+}
+
+[_echarts_instance_] {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(0,-50%);
 }

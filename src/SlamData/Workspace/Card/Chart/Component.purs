@@ -25,9 +25,6 @@ import Data.Int (toNumber, floor)
 import Data.Lens ((.~), (?~))
 import Data.String as Str
 
-import CSS.Geometry as CG
-import CSS.Size (px)
-
 import ECharts.Monad (buildObj)
 
 import Global (readFloat, isNaN)
@@ -35,7 +32,6 @@ import Global (readFloat, isNaN)
 import Halogen as H
 import Halogen.ECharts as HEC
 import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -83,9 +79,6 @@ renderHighLOD state =
     [ HP.classes
         $ [ RC.chartOutput, HH.className "card-input-maximum-lod" ]
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
-    , CSS.style do
-         CG.height $ px $ toNumber $ state.height - heightPadding
-         CG.width $ px $ toNumber state.width
     ]
     [ HH.div
         [ HP.classes $ (B.hidden <$ guard (state.chartType ≡ Just Metric)) ]
@@ -102,9 +95,6 @@ renderHighLOD state =
              }
         ]
     ]
-  where
-  heightPadding ∷ Int
-  heightPadding = 80
 
 renderLowLOD ∷ State → HTML
 renderLowLOD state =
