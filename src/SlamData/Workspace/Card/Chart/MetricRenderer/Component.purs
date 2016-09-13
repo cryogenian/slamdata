@@ -83,7 +83,6 @@ eval (GetLOD continue) = do
 eval (SetElement mbEl next) = do
   for_ mbEl \el → do
     H.modify _{element = Just el}
-  adjustFontSizes
   pure next
 
 availableFontSizes ∷ Array Int
