@@ -26,7 +26,7 @@ import Data.Lens ((.~), (?~))
 import Data.String as Str
 
 import CSS.Geometry as CG
-import CSS.Size (px)
+import CSS.Size (px, pct)
 
 import ECharts.Monad (buildObj)
 
@@ -84,8 +84,8 @@ renderHighLOD state =
         $ [ RC.chartOutput, HH.className "card-input-maximum-lod" ]
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     , CSS.style do
-         CG.height $ px $ toNumber $ state.height
-         CG.width $ px $ toNumber state.width
+         CG.height $ pct 100--$ toNumber $ state.height
+         CG.width $ pct 100--$ toNumber $ state.width
     ]
     [ HH.div
         [ HP.classes $ (B.hidden <$ guard (state.chartType ≡ Just Metric)) ]
