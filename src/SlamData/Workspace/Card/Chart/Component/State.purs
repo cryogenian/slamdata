@@ -23,7 +23,7 @@ import Data.Lens (lens, LensP)
 import Halogen (ParentState)
 
 import SlamData.Workspace.Card.Chart.Component.ChildSlot (ChildState, ChildQuery, ChildSlot)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Monad (Slam)

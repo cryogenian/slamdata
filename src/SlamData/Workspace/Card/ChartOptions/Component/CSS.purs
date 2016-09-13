@@ -30,36 +30,6 @@ vizChartTypeSelector = className "chart-type-selector"
 vizChartConfiguration ∷ ClassName
 vizChartConfiguration = className "chart-configuration"
 
-pieChartIcon ∷ ClassName
-pieChartIcon = className "pie-chart-icon"
-
-barChartIcon ∷ ClassName
-barChartIcon = className "bar-chart-icon"
-
-lineChartIcon ∷ ClassName
-lineChartIcon = className "line-chart-icon"
-
-scatterChartIcon ∷ ClassName
-scatterChartIcon = className "scatter-chart-icon"
-
-radarChartIcon ∷ ClassName
-radarChartIcon = className "radar-chart-icon"
-
-funnelChartIcon ∷ ClassName
-funnelChartIcon = className "funnel-chart-icon"
-
-heatmapChartIcon ∷ ClassName
-heatmapChartIcon = className "heatmap-chart-icon"
-
-sankeyChartIcon ∷ ClassName
-sankeyChartIcon = className "sankey-chart-icon"
-
-boxplotChartIcon ∷ ClassName
-boxplotChartIcon = className "boxplot-chart-icon"
-
-areaChartIcon ∷ ClassName
-areaChartIcon = className "area-chart-icon"
-
 axisLabelParam ∷ ClassName
 axisLabelParam = className "axis-label-param"
 
@@ -74,9 +44,3 @@ funnelChartOrderParam = className "funnel-chart-order-param"
 
 funnelChartAlignParam ∷ ClassName
 funnelChartAlignParam = className "funnel-chart-align-param"
-
-gaugeChartIcon ∷ ClassName
-gaugeChartIcon = className "gauge-chart-icon"
-
-metricChartIcon ∷ ClassName
-metricChartIcon = className "metric-chart-icon"

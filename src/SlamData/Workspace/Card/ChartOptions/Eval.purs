@@ -30,7 +30,7 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port

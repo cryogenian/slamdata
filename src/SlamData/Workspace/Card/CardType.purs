@@ -33,17 +33,20 @@ module SlamData.Workspace.Card.CardType
 import SlamData.Prelude
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson)
+import Data.String as Str
 
 import Halogen.HTML as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), allChartTypes, printChartType, parseChartType, chartLightIconSrc, chartDarkIconSrc)
 
 import Test.StrongCheck.Arbitrary as SC
 
 data CardType
   = Ace AceMode
   | Search
-  | ChartOptions
+  | ChartOptions ChartType
   | Chart
   | Markdown
   | Table
@@ -69,12 +72,12 @@ insertableCardTypes =
   , Markdown
   , Download
   , DownloadOptions
-  , ChartOptions
   , Chart
   , Draftboard
   , Troubleshoot
   , Cache
   ]
+  ⊕ map ChartOptions allChartTypes
 
 derive instance eqCardType ∷ Eq CardType
 derive instance ordCardType ∷ Ord CardType
@@ -102,7 +105,7 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
         Ace MarkdownMode → "ace-markdown"
         Ace SQLMode → "ace-sql"
         Search → "search"
-        ChartOptions → "chart-options"
+        ChartOptions chty → printChartType chty ⊕ "-options"
         Chart → "chart"
         Markdown → "markdown"
         Table → "table"
@@ -124,7 +127,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "ace-markdown" → pure $ Ace MarkdownMode
       "ace-sql" → pure $ Ace SQLMode
       "search" → pure Search
-      "chart-options" → pure ChartOptions
+      "chart-options" → pure $ ChartOptions Pie
       "chart" → pure Chart
       "markdown" → pure Markdown
       "table" → pure Table
@@ -138,89 +141,93 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "draftboard" → pure Draftboard
       "error" → pure ErrorCard
       "pending" → pure PendingCard
-      name → throwError $ "unknown card type '" ⊕ name ⊕ "'"
+      name → do
+        let
+          chartName = fromMaybe "" $ Str.stripSuffix "-options" name
+        chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseChartType chartName
+        pure $ ChartOptions chty
 
 cardName ∷ CardType → String
-cardName =
-  case _ of
-    Ace at → aceCardName at
-    Search → "Search"
-    ChartOptions → "Setup Chart"
-    Chart → "Show Chart"
-    Markdown → "Show Markdown"
-    Table → "Show Table"
-    Download → "Show Download"
-    Variables → "Setup Variables"
-    Troubleshoot → "Troubleshoot"
-    NextAction → "Next Action"
-    Cache → "Cache"
-    Open → "Open"
-    DownloadOptions → "Setup Download"
-    Draftboard → "Setup Draftboard"
-    ErrorCard → "Error"
-    PendingCard → "Pending"
+cardName = case _ of
+  Ace at → aceCardName at
+  Search → "Search"
+  ChartOptions _ → "Setup Chart"
+  Chart → "Show Chart"
+  Markdown → "Show Markdown"
+  Table → "Show Table"
+  Download → "Show Download"
+  Variables → "Setup Variables"
+  Troubleshoot → "Troubleshoot"
+  NextAction → "Next Action"
+  Cache → "Cache"
+  Open → "Open"
+  DownloadOptions → "Setup Download"
+  Draftboard → "Setup Draftboard"
+  ErrorCard → "Error"
+  PendingCard → "Pending"
 
 darkCardGlyph ∷ ∀ s f. CardType → H.HTML s f
-darkCardGlyph =
-  case _ of
-    Ace MarkdownMode → HH.img [ HP.src "img/cardsDark/setupMarkdown.svg" ]
-    Ace SQLMode → HH.img [ HP.src "img/cardsDark/query.svg" ]
-    Search →  HH.img [ HP.src "img/cardsDark/search.svg" ]
-    ChartOptions → HH.img [ HP.src "img/cardsDark/setupChart.svg" ]
-    Download → HH.img [ HP.src "img/cardsDark/showDownload.svg" ]
-    Variables → HH.img [ HP.src "img/cardsDark/setupVariables.svg" ]
-    Troubleshoot → HH.img [ HP.src "img/cardsDark/troubleshoot.svg" ]
-    Chart → HH.img [ HP.src "img/cardsDark/showChart.svg" ]
-    Markdown → HH.img [ HP.src "img/cardsDark/showMarkdown.svg" ]
-    Table → HH.img [ HP.src "img/cardsDark/table.svg" ]
-    NextAction → HH.text ""
-    Cache → HH.img [ HP.src "img/cardsDark/cache.svg" ]
-    Open → HH.img [ HP.src "img/cardsDark/open.svg" ]
-    DownloadOptions → HH.img [ HP.src "img/cardsDark/setupDownload.svg" ]
-    Draftboard → HH.img [ HP.src "img/cardsDark/draftboard.svg" ]
-    ErrorCard → HH.text ""
-    PendingCard → HH.text ""
+darkCardGlyph = case _ of
+  Ace MarkdownMode → HH.img [ HP.src "img/cardsDark/setupMarkdown.svg" ]
+  Ace SQLMode → HH.img [ HP.src "img/cardsDark/query.svg" ]
+  Search →  HH.img [ HP.src "img/cardsDark/search.svg" ]
+  ChartOptions chty →
+    HH.img [ HP.src $ chartDarkIconSrc chty ]
+--      HH.img [ HP.src "img/cardsDark/setupChart.svg" ]
+  Download → HH.img [ HP.src "img/cardsDark/showDownload.svg" ]
+  Variables → HH.img [ HP.src "img/cardsDark/setupVariables.svg" ]
+  Troubleshoot → HH.img [ HP.src "img/cardsDark/troubleshoot.svg" ]
+  Chart → HH.img [ HP.src "img/cardsDark/showChart.svg" ]
+  Markdown → HH.img [ HP.src "img/cardsDark/showMarkdown.svg" ]
+  Table → HH.img [ HP.src "img/cardsDark/table.svg" ]
+  NextAction → HH.text ""
+  Cache → HH.img [ HP.src "img/cardsDark/cache.svg" ]
+  Open → HH.img [ HP.src "img/cardsDark/open.svg" ]
+  DownloadOptions → HH.img [ HP.src "img/cardsDark/setupDownload.svg" ]
+  Draftboard → HH.img [ HP.src "img/cardsDark/draftboard.svg" ]
+  ErrorCard → HH.text ""
+  PendingCard → HH.text ""
 
 lightCardGlyph ∷ ∀ s f. CardType → H.HTML s f
-lightCardGlyph =
-  case _ of
-    Ace MarkdownMode → HH.img [ HP.src "img/cardsLight/setupMarkdown.svg" ]
-    Ace SQLMode → HH.img [ HP.src "img/cardsLight/query.svg" ]
-    Search →  HH.img [ HP.src "img/cardsLight/search.svg" ]
-    ChartOptions → HH.img [ HP.src "img/cardsLight/setupChart.svg" ]
-    Download → HH.img [ HP.src "img/cardsLight/showDownload.svg" ]
-    Variables → HH.img [ HP.src "img/cardsLight/setupVariables.svg" ]
-    Troubleshoot → HH.img [ HP.src "img/cardsLight/troubleshoot.svg" ]
-    Chart → HH.img [ HP.src "img/cardsLight/showChart.svg" ]
-    Markdown → HH.img [ HP.src "img/cardsLight/showMarkdown.svg" ]
-    Table → HH.img [ HP.src "img/cardsLight/table.svg" ]
-    NextAction → HH.text ""
-    Cache → HH.img [ HP.src "img/cardsLight/cache.svg" ]
-    Open → HH.img [ HP.src "img/cardsLight/open.svg" ]
-    DownloadOptions → HH.img [ HP.src "img/cardsLight/setupDownload.svg" ]
-    Draftboard → HH.img [ HP.src "img/cardsLight/draftboard.svg" ]
-    ErrorCard → HH.text ""
-    PendingCard → HH.text ""
+lightCardGlyph = case _ of
+  Ace MarkdownMode → HH.img [ HP.src "img/cardsLight/setupMarkdown.svg" ]
+  Ace SQLMode → HH.img [ HP.src "img/cardsLight/query.svg" ]
+  Search →  HH.img [ HP.src "img/cardsLight/search.svg" ]
+  ChartOptions chty →
+--    HH.img [ HP.src "img/cardsLight/setupChart.svg" ]
+    HH.img [ HP.src $ chartLightIconSrc chty ]
+  Download → HH.img [ HP.src "img/cardsLight/showDownload.svg" ]
+  Variables → HH.img [ HP.src "img/cardsLight/setupVariables.svg" ]
+  Troubleshoot → HH.img [ HP.src "img/cardsLight/troubleshoot.svg" ]
+  Chart → HH.img [ HP.src "img/cardsLight/showChart.svg" ]
+  Markdown → HH.img [ HP.src "img/cardsLight/showMarkdown.svg" ]
+  Table → HH.img [ HP.src "img/cardsLight/table.svg" ]
+  NextAction → HH.text ""
+  Cache → HH.img [ HP.src "img/cardsLight/cache.svg" ]
+  Open → HH.img [ HP.src "img/cardsLight/open.svg" ]
+  DownloadOptions → HH.img [ HP.src "img/cardsLight/setupDownload.svg" ]
+  Draftboard → HH.img [ HP.src "img/cardsLight/draftboard.svg" ]
+  ErrorCard → HH.text ""
+  PendingCard → HH.text ""
 
 cardClasses ∷ CardType → Array H.ClassName
-cardClasses =
-  case _ of
-    Ace at → [ H.className "sd-card-ace" ] <> aceCardClasses at
-    Search → [ H.className "sd-card-search" ]
-    ChartOptions → [ H.className "sd-card-chart-options" ]
-    Chart → [ H.className "sd-card-chart" ]
-    Markdown → [ H.className "sd-card-markdown" ]
-    Table → [ H.className "sd-card-table" ]
-    Download → [ H.className "sd-card-download" ]
-    DownloadOptions → [ H.className "sd-card-download-options" ]
-    Variables → [ H.className "sd-card-variables" ]
-    Troubleshoot → [ H.className "sd-card-troubleshoot" ]
-    NextAction → [ H.className "sd-card-next-action" ]
-    Cache → [ H.className "sd-card-cache" ]
-    Open → [ H.className "sd-card-open" ]
-    Draftboard → [ H.className "sd-card-draftboard" ]
-    ErrorCard → [ H.className "sd-card-error" ]
-    PendingCard → [ H.className "sd-card-pending" ]
+cardClasses = case _ of
+  Ace at → [ H.className "sd-card-ace" ] <> aceCardClasses at
+  Search → [ H.className "sd-card-search" ]
+  ChartOptions _ → [ H.className "sd-card-chart-options" ]
+  Chart → [ H.className "sd-card-chart" ]
+  Markdown → [ H.className "sd-card-markdown" ]
+  Table → [ H.className "sd-card-table" ]
+  Download → [ H.className "sd-card-download" ]
+  DownloadOptions → [ H.className "sd-card-download-options" ]
+  Variables → [ H.className "sd-card-variables" ]
+  Troubleshoot → [ H.className "sd-card-troubleshoot" ]
+  NextAction → [ H.className "sd-card-next-action" ]
+  Cache → [ H.className "sd-card-cache" ]
+  Open → [ H.className "sd-card-open" ]
+  Draftboard → [ H.className "sd-card-draftboard" ]
+  ErrorCard → [ H.className "sd-card-error" ]
+  PendingCard → [ H.className "sd-card-pending" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Setup Markdown"

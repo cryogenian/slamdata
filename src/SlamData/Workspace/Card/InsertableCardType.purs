@@ -22,6 +22,7 @@ import Data.Foldable as Foldable
 import SlamData.Prelude
 import SlamData.Workspace.Card.CardType as CardType
 import SlamData.Workspace.Card.CardType (CardType)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port (Port)
 
@@ -227,7 +228,7 @@ toCardType =
     OpenCard → CardType.Open
     QueryCard → CardType.Ace CardType.SQLMode
     SearchCard → CardType.Search
-    SetupChartCard → CardType.ChartOptions
+    SetupChartCard → CardType.ChartOptions Pie
     SetupDownloadCard → CardType.DownloadOptions
     SetupMarkdownCard → CardType.Ace CardType.MarkdownMode
     SetupVariablesCard → CardType.Variables
@@ -289,7 +290,7 @@ fromCardType =
     CardType.Open → Just OpenCard
     CardType.Ace CardType.SQLMode → Just QueryCard
     CardType.Search → Just SearchCard
-    CardType.ChartOptions → Just SetupChartCard
+    CardType.ChartOptions _ → Just SetupChartCard
     CardType.DownloadOptions → Just SetupDownloadCard
     CardType.Ace CardType.MarkdownMode → Just SetupMarkdownCard
     CardType.Variables → Just SetupVariablesCard

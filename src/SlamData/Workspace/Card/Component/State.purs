@@ -36,6 +36,7 @@ module SlamData.Workspace.Card.Component.State
   , _DraftboardState
   , _ErrorState
   , _PendingState
+  , _BuildMetricState
   ) where
 
 import SlamData.Prelude
@@ -64,6 +65,7 @@ import SlamData.Workspace.Card.Next.Component.State as Next
 import SlamData.Workspace.Card.Open.Component.State as Open
 import SlamData.Workspace.Card.Search.Component.State as Search
 import SlamData.Workspace.Card.ChartOptions.Component.State as ChartOptions
+import SlamData.Workspace.Card.BuildChart.Metric.Component.State as BuildMetric
 
 -- | The common state value for deck cards.
 type CardState =
@@ -98,6 +100,7 @@ data AnyCardState
   | DraftboardState Draftboard.StateP
   | ErrorState Error.State
   | PendingState Pending.State
+  | BuildMetricState BuildMetric.StateP
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState \s → case s of
@@ -177,4 +180,9 @@ _ErrorState = prism' ErrorState \s → case s of
 _PendingState ∷ PrismP AnyCardState Pending.State
 _PendingState = prism' PendingState \s → case s of
   PendingState s' → Just s'
+  _ → Nothing
+
+_BuildMetricState ∷ PrismP AnyCardState BuildMetric.StateP
+_BuildMetricState = prism' BuildMetricState case _ of
+  BuildMetricState s' → Just s'
   _ → Nothing

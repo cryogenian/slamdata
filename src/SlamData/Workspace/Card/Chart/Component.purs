@@ -42,7 +42,7 @@ import SlamData.Quasar.Query as Quasar
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.BuildOptions.Metric as BM
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), chartDarkIconSrc)
 import SlamData.Workspace.Card.Chart.Component.ChildSlot (cpMetric, cpECharts, ChildState, ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
 import SlamData.Workspace.Card.Chart.Config as CH
@@ -114,24 +114,9 @@ renderLowLOD state =
 
 renderButton ∷ ChartType → Array HTML
 renderButton ct =
-  [ HH.img [ HP.src $ src ct ]
+  [ HH.img [ HP.src $ chartDarkIconSrc ct ]
   , HH.text "Zoom or resize"
   ]
-  where
-  src ∷ ChartType → String
-  src Pie = "img/pie-black.svg"
-  src Bar = "img/bar-black.svg"
-  src Line = "img/line-black.svg"
-  src Area = "img/area-black.svg"
-  src Scatter = "img/scatter-black.svg"
-  src Radar = "img/radar-black.svg"
-  src Funnel = "img/funnel-black.svg"
-  src Graph = "img/graph-black.svg"
-  src Heatmap = "img/heatmap-black.svg"
-  src Sankey = "img/sankey-black.svg"
-  src Gauge = "img/gauge-black.svg"
-  src Boxplot = "img/boxplot-black.svg"
-  src Metric = "img/metric-black.svg"
 
 eval ∷ CC.CardEvalQuery ~> DSL
 eval = case _ of

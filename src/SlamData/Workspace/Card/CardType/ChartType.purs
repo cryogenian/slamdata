@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Chart.ChartType
+module SlamData.Workspace.Card.CardType.ChartType
   ( ChartType(..)
   , isPie
   , isLine
@@ -29,11 +29,16 @@ module SlamData.Workspace.Card.Chart.ChartType
   , isBoxplot
   , parseChartType
   , printChartType
+  , chartLightIconSrc
+  , chartDarkIconSrc
+  , allChartTypes
   ) where
 
+
 import SlamData.Prelude
+
 import Data.Argonaut (fromString, class EncodeJson, class DecodeJson, decodeJson)
-import Data.List as L
+
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
@@ -51,6 +56,24 @@ data ChartType
   | Gauge
   | Boxplot
   | Metric
+
+
+allChartTypes ∷ Array ChartType
+allChartTypes =
+  [ Pie
+  , Line
+  , Bar
+  , Area
+  , Scatter
+  , Radar
+  , Funnel
+  , Graph
+  , Heatmap
+  , Sankey
+  , Gauge
+  , Boxplot
+  , Metric
+  ]
 
 isPie ∷ ChartType → Boolean
 isPie Pie = true
@@ -146,18 +169,37 @@ instance decodeJsonChartType ∷ DecodeJson ChartType where
   decodeJson json = decodeJson json >>= parseChartType
 
 instance arbitraryChartType ∷ SC.Arbitrary ChartType where
-  arbitrary = Gen.elements Pie $ L.fromFoldable
-    [ Pie
-    , Line
-    , Bar
-    , Area
-    , Scatter
-    , Radar
-    , Funnel
-    , Graph
-    , Heatmap
-    , Sankey
-    , Gauge
-    , Boxplot
-    , Metric
-    ]
+  arbitrary = Gen.allInArray allChartTypes
+
+
+chartLightIconSrc ∷ ChartType → String
+chartLightIconSrc = case _ of
+  Pie → "img/pie.svg"
+  Line → "img/line.svg"
+  Bar → "img/bar.svg"
+  Area → "img/area.svg"
+  Scatter → "img/scatter.svg"
+  Radar → "img/radar.svg"
+  Funnel → "img/funnel.svg"
+  Graph → "img/graph.svg"
+  Heatmap → "img/heatmap.svg"
+  Sankey → "img/sankey.svg"
+  Gauge → "img/gauge.svg"
+  Boxplot → "img/boxplot.svg"
+  Metric → "img/metric.svg"
+
+chartDarkIconSrc ∷ ChartType → String
+chartDarkIconSrc = case _ of
+  Pie → "img/pie-black.svg"
+  Line → "img/line-black.svg"
+  Bar → "img/bar-black.svg"
+  Area → "img/area-black.svg"
+  Scatter → "img/scatter-black.svg"
+  Radar → "img/radar-black.svg"
+  Funnel → "img/funnel-black.svg"
+  Graph → "img/graph-black.svg"
+  Heatmap → "img/heatmap-black.svg"
+  Sankey → "img/sankey-black.svg"
+  Gauge → "img/gauge-black.svg"
+  Boxplot → "img/boxplot-black.svg"
+  Metric → "img/metric-black.svg"

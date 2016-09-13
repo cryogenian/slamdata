@@ -37,6 +37,7 @@ module SlamData.Workspace.Card.Component.Query
   , _DraftboardQuery
   , _ErrorQuery
   , _PendingQuery
+  , _BuildMetricQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -70,6 +71,7 @@ import SlamData.Workspace.Card.Pending.Component.Query as Pending
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Search.Component.Query as Search
 import SlamData.Workspace.Card.ChartOptions.Component.Query as ChartOptions
+import SlamData.Workspace.Card.BuildChart.Metric.Component.Query as BuildMetric
 
 -- | The common query algebra for a card.
 -- |
@@ -114,83 +116,89 @@ data AnyCardQuery a
   | DraftboardQuery (Draftboard.QueryP a)
   | ErrorQuery (Error.QueryP a)
   | PendingQuery (Pending.QueryP a)
+  | BuildMetricQuery (BuildMetric.QueryP a)
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
-_AceQuery = prism' AceQuery \q → case q of
-  AceQuery q' → Just q'
+_AceQuery = prism' AceQuery case _ of
+  AceQuery q → Just q
   _ → Nothing
 
 _MarkdownQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Markdown.QueryP a)
-_MarkdownQuery = prism' MarkdownQuery \q → case q of
-  MarkdownQuery q' → Just q'
+_MarkdownQuery = prism' MarkdownQuery case _ of
+  MarkdownQuery q → Just q
   _ → Nothing
 
 _SearchQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Search.Query a)
-_SearchQuery = prism' SearchQuery \q → case q of
-  SearchQuery q' → Just q'
+_SearchQuery = prism' SearchQuery case _ of
+  SearchQuery q → Just q
   _ → Nothing
 
 _TableQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Table.QueryP a)
-_TableQuery = prism' TableQuery \q → case q of
-  TableQuery q' → Just q'
+_TableQuery = prism' TableQuery case _ of
+  TableQuery q → Just q
   _ → Nothing
 
 _ChartOptionsQuery ∷ ∀ a. PrismP (AnyCardQuery a) (ChartOptions.QueryP a)
-_ChartOptionsQuery = prism' ChartOptionsQuery \q → case q of
-  ChartOptionsQuery q' → Just q'
+_ChartOptionsQuery = prism' ChartOptionsQuery case _ of
+  ChartOptionsQuery q → Just q
   _ → Nothing
 
 _ChartQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Chart.QueryP a)
-_ChartQuery = prism' ChartQuery \q → case q of
-  ChartQuery q' → Just q'
+_ChartQuery = prism' ChartQuery case _ of
+  ChartQuery q → Just q
   _ → Nothing
 
 _DownloadQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Download.QueryP a)
-_DownloadQuery = prism' DownloadQuery \q → case q of
-  DownloadQuery q' → Just q'
+_DownloadQuery = prism' DownloadQuery case _ of
+  DownloadQuery q → Just q
   _ → Nothing
 
 _VariablesQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Variables.QueryP a)
-_VariablesQuery = prism' VariablesQuery \q → case q of
-  VariablesQuery q' → Just q'
+_VariablesQuery = prism' VariablesQuery case _ of
+  VariablesQuery q → Just q
   _ → Nothing
 
 _TroubleshootQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Troubleshoot.QueryP a)
-_TroubleshootQuery = prism' TroubleshootQuery \q → case q of
-  TroubleshootQuery q' → Just q'
+_TroubleshootQuery = prism' TroubleshootQuery case _ of
+  TroubleshootQuery q → Just q
   _ → Nothing
 
 _NextQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Next.QueryP a)
-_NextQuery = prism' NextQuery \q → case q of
-  NextQuery q' → Just q'
+_NextQuery = prism' NextQuery case _ of
+  NextQuery q → Just q
   _ → Nothing
 
 _CacheQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Cache.QueryP a)
-_CacheQuery = prism' CacheQuery \q → case q of
-  CacheQuery q' → Just q'
+_CacheQuery = prism' CacheQuery case _ of
+  CacheQuery q → Just q
   _ → Nothing
 
 _OpenQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Open.QueryP a)
-_OpenQuery = prism' OpenQuery \q → case q of
-  OpenQuery q' → Just q'
+_OpenQuery = prism' OpenQuery case _ of
+  OpenQuery q → Just q
   _ → Nothing
 
 _DownloadOptionsQuery ∷ ∀ a. PrismP (AnyCardQuery a) (DOpts.QueryP a)
-_DownloadOptionsQuery = prism' DownloadOptionsQuery \q → case q of
-  DownloadOptionsQuery q' → Just q'
+_DownloadOptionsQuery = prism' DownloadOptionsQuery case _ of
+  DownloadOptionsQuery q → Just q
   _ → Nothing
 
 _DraftboardQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Draftboard.QueryP a)
-_DraftboardQuery = prism' DraftboardQuery \q → case q of
-  DraftboardQuery q' → Just q'
+_DraftboardQuery = prism' DraftboardQuery case _ of
+  DraftboardQuery q → Just q
   _ → Nothing
 
 _ErrorQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Error.QueryP a)
-_ErrorQuery = prism' ErrorQuery \q → case q of
-  ErrorQuery q' → Just q'
+_ErrorQuery = prism' ErrorQuery case _ of
+  ErrorQuery q → Just q
   _ → Nothing
 
 _PendingQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Pending.QueryP a)
-_PendingQuery = prism' PendingQuery \q → case q of
-  PendingQuery q' → Just q'
+_PendingQuery = prism' PendingQuery case _ of
+  PendingQuery q → Just q
+  _ → Nothing
+
+_BuildMetricQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildMetric.QueryP a)
+_BuildMetricQuery = prism' BuildMetricQuery case _ of
+  BuildMetricQuery q → Just q
   _ → Nothing

@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Chart.Axis where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor(..), JObject, JArray, Json, insideOut, decodeJson, encodeJson)
+import Data.Argonaut (JCursor(..), JObject, JArray, Json, insideOut, decodeJson, encodeJson, (:=), (.?), (~>), jsonEmptyObject)
 import Data.Array ((!!), length, fromFoldable)
 import Data.Foldable as F
 import Data.List (List(..), filter, catMaybes)
@@ -26,6 +26,10 @@ import Data.Map as M
 import Data.StrMap as Sm
 
 import SlamData.Workspace.Card.Chart.Semantics (Semantics, jarrayToSemantics, checkCategory, checkTime, checkBool, checkPercent, checkMoney, checkValues)
+
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
+import Test.StrongCheck.Gen as Gen
+import Test.Property.ArbJson (runArbJCursor)
 
 data Axis
   = ValAxis (List (Maybe Semantics))
@@ -38,6 +42,34 @@ type Axes =
   , category ∷ Array JCursor
   }
 
+genAxes ∷ Gen.Gen Axes
+genAxes = do
+  value ← map (map runArbJCursor) arbitrary
+  time ← map (map runArbJCursor) arbitrary
+  category ← map (map runArbJCursor) arbitrary
+  pure {value, time, category}
+
+encodeAxes ∷ Axes → Json
+encodeAxes axes =
+  "value" := axes.value
+  ~> "time" := axes.time
+  ~> "category" := axes.category
+  ~> jsonEmptyObject
+
+decodeAxes ∷ JObject → String ⊹ Axes
+decodeAxes js = do
+  value ← js .? "value"
+  category ← js .? "category"
+  time ← js .? "time"
+  pure {value, category, time}
+
+
+initialAxes ∷ Axes
+initialAxes =
+  { value: []
+  , time: []
+  , category: []
+  }
 
 eqAxes ∷ Axes → Axes → Boolean
 eqAxes r1 r2 =

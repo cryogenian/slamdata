@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect, aggregation
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colorSchemes, printColorScheme)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isLine, isBar, isArea, isScatter, isFunnel, isHeatmap)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), isLine, isBar, isArea, isScatter, isFunnel, isHeatmap, chartLightIconSrc)
 import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
@@ -72,7 +72,7 @@ type HTML = H.ParentHTML ChildState QueryC ChildQuery Slam ChildSlot
 
 chartOptionsComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 chartOptionsComponent = CC.makeCardComponent
-  { cardType: ChartOptions
+  { cardType: ChartOptions Pie
   , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   , initialState: H.parentState VCS.initialState
   , _State: CC._ChartOptionsState
@@ -83,7 +83,7 @@ render ∷ VCS.State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD (CT.lightCardGlyph CT.ChartOptions) left state.levelOfDetails
+    , renderLowLOD (CT.darkCardGlyph $ CT.ChartOptions state.chartType) left state.levelOfDetails
     ]
 
 renderHighLOD ∷ VCS.State → HTML
@@ -131,43 +131,12 @@ renderChartTypeSelector state =
   foldFn selected accum current =
     flip cons accum $
       HH.img
-        [ HP.src $ src current
+        [ HP.src $ chartLightIconSrc current
         , HP.classes
-            $ [ cls state.chartType ]
-            ⊕ (guard (selected ≡ current) $> B.active)
+           (guard (selected ≡ current) $> B.active)
 
         , HE.onClick (HE.input_ (right ∘ SetChartType current))
         ]
-
-  src ∷ ChartType → String
-  src Pie = "img/pie.svg"
-  src Line = "img/line.svg"
-  src Bar = "img/bar.svg"
-  src Area = "img/area.svg"
-  src Scatter = "img/scatter.svg"
-  src Radar = "img/radar.svg"
-  src Funnel = "img/funnel.svg"
-  src Graph = "img/graph.svg"
-  src Heatmap = "img/heatmap.svg"
-  src Sankey = "img/sankey.svg"
-  src Gauge = "img/gauge.svg"
-  src Boxplot = "img/boxplot.svg"
-  src Metric = "img/metric.svg"
-
-  cls ∷ ChartType → HH.ClassName
-  cls Pie = CSS.pieChartIcon
-  cls Line = CSS.lineChartIcon
-  cls Bar = CSS.barChartIcon
-  cls Area = CSS.areaChartIcon
-  cls Scatter = CSS.scatterChartIcon
-  cls Radar = CSS.radarChartIcon
-  cls Funnel = CSS.funnelChartIcon
-  cls Graph = CSS.pieChartIcon
-  cls Heatmap = CSS.heatmapChartIcon
-  cls Sankey = CSS.sankeyChartIcon
-  cls Gauge = CSS.gaugeChartIcon
-  cls Boxplot = CSS.boxplotChartIcon
-  cls Metric = CSS.metricChartIcon
 
 renderChartConfiguration ∷ VCS.State → HTML
 renderChartConfiguration state =

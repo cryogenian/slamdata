@@ -10,7 +10,7 @@ import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Workspace.Card.Chart.Axis (eqAxes)
-import SlamData.Workspace.Card.Chart.ChartType as CT
+import SlamData.Workspace.Card.CardType.ChartType as CT
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 import SlamData.Workspace.Card.Chart.BuildOptions as CO
 import SlamData.Workspace.Card.Chart.BuildOptions.Graph (GraphR, buildGraph)

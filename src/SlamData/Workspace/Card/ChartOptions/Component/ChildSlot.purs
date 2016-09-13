@@ -9,7 +9,7 @@ import SlamData.Workspace.Card.ChartOptions.Sankey.Component as Sankey
 import SlamData.Workspace.Card.ChartOptions.Gauge.Component as Gauge
 import SlamData.Workspace.Card.ChartOptions.Metric.Component as Metric
 import SlamData.Workspace.Card.ChartOptions.Form.Component as Form
-import SlamData.Workspace.Card.Chart.ChartType (ChartType)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 
 type ChildState =
   Form.StateP

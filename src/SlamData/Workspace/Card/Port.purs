@@ -37,7 +37,7 @@ import Data.Lens (PrismP, prism', TraversalP, wander)
 import Data.Set as Set
 
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.Config as CC
 import SlamData.Download.Model (DownloadOptions)

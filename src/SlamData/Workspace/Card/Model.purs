@@ -34,6 +34,7 @@ import SlamData.FileSystem.Resource as R
 import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Table.Model as JT
@@ -41,6 +42,8 @@ import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
+import SlamData.Workspace.Card.BuildChart.Metric.Model as BuildMetric
+
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -59,12 +62,13 @@ data AnyCardModel
   | Open (Maybe R.Resource)
   | DownloadOptions DLO.State
   | Draftboard DB.Model
+  | BuildMetric BuildMetric.Model
   | ErrorCard
   | NextAction
   | PendingCard
 
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
-  arbitrary = do
+  arbitrary =
     Gen.oneOf (pure ErrorCard)
       [ Ace <$> SC.arbitrary <*> Ace.genModel
       , Search <$> SC.arbitrary
@@ -78,6 +82,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , Cache <$> SC.arbitrary
       , Open <$> SC.arbitrary
       , Draftboard <$> DB.genModel
+      , BuildMetric <$> BuildMetric.genModel
       , pure ErrorCard
       , pure NextAction
       ]
@@ -98,6 +103,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       Open x, Open y → x ≡ y
       DownloadOptions x, DownloadOptions y → DLO.eqState x y
       Draftboard x, Draftboard y → DB.eqModel x y
+      BuildMetric x, BuildMetric y → BuildMetric.eqModel x y
       ErrorCard, ErrorCard → true
       NextAction, NextAction → true
       _,_ → false
@@ -112,7 +118,8 @@ modelCardType =
   case _ of
     Ace mode _ → CT.Ace mode
     Search _ → CT.Search
-    ChartOptions _ → CT.ChartOptions
+    ChartOptions _ → CT.ChartOptions Pie
+    BuildMetric _ → CT.ChartOptions Metric
     Chart → CT.Chart
     Markdown _ → CT.Markdown
     Table _ → CT.Table
@@ -172,67 +179,70 @@ encodeCardModel =
     ErrorCard → J.jsonEmptyObject
     NextAction → J.jsonEmptyObject
     PendingCard → J.jsonEmptyObject
+    BuildMetric model → BuildMetric.encode model
 
 decodeCardModel
   ∷ CT.CardType
   → J.Json
   → Either String AnyCardModel
-decodeCardModel ty =
-  case ty of
-    CT.Ace mode → map (Ace mode) ∘ Ace.decode
-    CT.Search → map Search ∘ J.decodeJson
-    CT.ChartOptions → map ChartOptions ∘ ChartOptions.decode
-    CT.Chart → const $ pure Chart
-    CT.Markdown → map Markdown ∘ MD.decode
-    CT.Table → map Table ∘ JT.decode
-    CT.Download → const $ pure Download
-    CT.Variables → map Variables ∘ Variables.decode
-    CT.Troubleshoot → const $ pure Troubleshoot
-    CT.Cache → map Cache ∘ J.decodeJson
-    CT.Open → map Open ∘ J.decodeJson
-    CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
-    CT.Draftboard → map Draftboard ∘ DB.decode
-    CT.ErrorCard → const $ pure ErrorCard
-    CT.NextAction → const $ pure NextAction
-    CT.PendingCard → const $ pure PendingCard
+decodeCardModel = case _ of
+  CT.Ace mode → map (Ace mode) ∘ Ace.decode
+  CT.Search → map Search ∘ J.decodeJson
+  -- TODO: put legacy handler here
+  CT.ChartOptions Metric → map BuildMetric ∘ BuildMetric.decode
+  CT.ChartOptions _ → map ChartOptions ∘ ChartOptions.decode
+  CT.Chart → const $ pure Chart
+  CT.Markdown → map Markdown ∘ MD.decode
+  CT.Table → map Table ∘ JT.decode
+  CT.Download → const $ pure Download
+  CT.Variables → map Variables ∘ Variables.decode
+  CT.Troubleshoot → const $ pure Troubleshoot
+  CT.Cache → map Cache ∘ J.decodeJson
+  CT.Open → map Open ∘ J.decodeJson
+  CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
+  CT.Draftboard → map Draftboard ∘ DB.decode
+
+  CT.ErrorCard → const $ pure ErrorCard
+  CT.NextAction → const $ pure NextAction
+  CT.PendingCard → const $ pure PendingCard
 
 
 cardModelOfType
   ∷ CT.CardType
   → AnyCardModel
-cardModelOfType =
-  case _ of
-    CT.Ace mode → Ace mode Ace.emptyModel
-    CT.Search → Search ""
-    CT.ChartOptions → ChartOptions ChartOptions.initialModel
-    CT.Chart → Chart
-    CT.Markdown → Markdown MD.emptyModel
-    CT.Table → Table JT.emptyModel
-    CT.Download → Download
-    CT.Variables → Variables Variables.emptyModel
-    CT.Troubleshoot → Troubleshoot
-    CT.Cache → Cache Nothing
-    CT.Open → Open Nothing
-    CT.DownloadOptions → DownloadOptions DLO.initialState
-    CT.Draftboard → Draftboard DB.emptyModel
-    CT.ErrorCard → ErrorCard
-    CT.NextAction → NextAction
-    CT.PendingCard → PendingCard
+cardModelOfType = case _ of
+  CT.Ace mode → Ace mode Ace.emptyModel
+  CT.Search → Search ""
+  CT.ChartOptions Metric → BuildMetric BuildMetric.initialModel
+  CT.ChartOptions _ → ChartOptions ChartOptions.initialModel
+  CT.Chart → Chart
+  CT.Markdown → Markdown MD.emptyModel
+  CT.Table → Table JT.emptyModel
+  CT.Download → Download
+  CT.Variables → Variables Variables.emptyModel
+  CT.Troubleshoot → Troubleshoot
+  CT.Cache → Cache Nothing
+  CT.Open → Open Nothing
+  CT.DownloadOptions → DownloadOptions DLO.initialState
+  CT.Draftboard → Draftboard DB.emptyModel
+  CT.ErrorCard → ErrorCard
+  CT.NextAction → NextAction
+  CT.PendingCard → PendingCard
 
+-- TODO: handle build chartype models
 modelToEval
   ∷ AnyCardModel
   → Either String Eval.Eval
-modelToEval =
-  case _ of
-    Ace CT.SQLMode model → pure $ Eval.Query $ fromMaybe "" $ _.text <$> model
-    Ace CT.MarkdownMode model → pure $ Eval.Markdown $ fromMaybe "" $ _.text <$> model
-    Markdown model → pure $ Eval.MarkdownForm model
-    Search txt → pure $ Eval.Search txt
-    Cache fp → pure $ Eval.Cache fp
-    Open (Just res) → pure $ Eval.Open res
-    Open _ → Left $ "Open model missing resource"
-    Variables model → pure $ Eval.Variables model
-    ChartOptions model → pure $ Eval.ChartOptions model
-    DownloadOptions model → pure $ Eval.DownloadOptions model
-    Draftboard _ → pure Eval.Draftboard
-    _ → pure Eval.Pass
+modelToEval = case _ of
+  Ace CT.SQLMode model → pure $ Eval.Query $ fromMaybe "" $ _.text <$> model
+  Ace CT.MarkdownMode model → pure $ Eval.Markdown $ fromMaybe "" $ _.text <$> model
+  Markdown model → pure $ Eval.MarkdownForm model
+  Search txt → pure $ Eval.Search txt
+  Cache fp → pure $ Eval.Cache fp
+  Open (Just res) → pure $ Eval.Open res
+  Open _ → Left $ "Open model missing resource"
+  Variables model → pure $ Eval.Variables model
+  ChartOptions model → pure $ Eval.ChartOptions model
+  DownloadOptions model → pure $ Eval.DownloadOptions model
+  Draftboard _ → pure Eval.Draftboard
+  _ → pure Eval.Pass

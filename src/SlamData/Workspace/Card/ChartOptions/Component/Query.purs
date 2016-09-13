@@ -22,7 +22,7 @@ import Halogen (ChildF)
 
 import SlamData.Workspace.Card.ChartOptions.Component.ChildSlot (ChildSlot, ChildQuery)
 
-import SlamData.Workspace.Card.Chart.ChartType (ChartType)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 
 data Query a
@@ -39,7 +39,6 @@ data Query a
   | SetMaxColorVal Number a
   | SetColorScheme String a
   | SetColorReversed Boolean a
-
 
 
 type QueryC = CardEvalQuery ⨁ Query

@@ -46,7 +46,7 @@ import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
-import SlamData.Workspace.Card.Chart.ChartType as CT
+import SlamData.Workspace.Card.CardType.ChartType as CT
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC)
 import SlamData.Workspace.Card.ChartOptions.Model (Model)
 import SlamData.Workspace.Card.Chart.Config (ChartConfig(..))

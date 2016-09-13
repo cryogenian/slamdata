@@ -41,7 +41,7 @@ import SlamData.Workspace.Card.Chart.BuildOptions.Radar (buildRadar)
 import SlamData.Workspace.Card.Chart.BuildOptions.Funnel (buildFunnel)
 import SlamData.Workspace.Card.Chart.BuildOptions.Heatmap (buildHeatmap)
 import SlamData.Workspace.Card.Chart.BuildOptions.Boxplot (buildBoxplot)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
