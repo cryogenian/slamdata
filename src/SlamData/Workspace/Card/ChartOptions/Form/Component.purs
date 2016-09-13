@@ -62,7 +62,7 @@ import SlamData.Workspace.Card.ChartOptions.Form.Component.CSS as CSS
 
 
 data Query a
-  = SetConfiguration ChartConfiguration a
+  = Load ChartConfiguration a
   | GetConfiguration (ChartConfiguration → a)
 
 type State =
@@ -319,7 +319,7 @@ render state = case state.chartType of
   renderLabel n str = pure $ show n ⊕ "th " ⊕ str
 
 eval ∷ Query ~> FormDSL
-eval (SetConfiguration conf next) = do
+eval (Load conf next) = do
   r ← H.get
   H.modify _{chartConfiguration = conf}
   synchronizeDimensions r.chartConfiguration.dimensions conf.dimensions
@@ -442,12 +442,12 @@ eval (GetConfiguration continue) = do
       $ H.request S.GetSelect
 
   getMeasures ∷ FormDSL (Array JSelect)
-  getMeasures = do 
-    state ← H.get 
-    map catMaybes 
-      $ for (range' 0 $ length state.chartConfiguration.measures - 1) \ix → do 
-        mbMeasure ← getMeasure ix 
-        mbMeasureSel ← getMeasureSel ix 
+  getMeasures = do
+    state ← H.get
+    map catMaybes
+      $ for (range' 0 $ length state.chartConfiguration.measures - 1) \ix → do
+        mbMeasure ← getMeasure ix
+        mbMeasureSel ← getMeasureSel ix
         pure $ mbMeasure <|> mbMeasureSel
 
   getMeasure ∷ Int → FormDSL (Maybe JSelect)

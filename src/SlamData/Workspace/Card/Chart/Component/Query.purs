@@ -19,8 +19,8 @@ module SlamData.Workspace.Card.Chart.Component.Query where
 import SlamData.Prelude
 
 import Halogen (ChildF)
-import Halogen.ECharts (EChartsQuery)
 
+import SlamData.Workspace.Card.Chart.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 
-type QueryP = Coproduct CardEvalQuery (ChildF Unit EChartsQuery)
+type QueryP = CardEvalQuery ⨁ ChildF ChildSlot ChildQuery

@@ -50,6 +50,7 @@ data ChartType
   | Sankey
   | Gauge
   | Boxplot
+  | Metric
 
 isPie ∷ ChartType → Boolean
 isPie Pie = true
@@ -99,6 +100,10 @@ isBoxplot ∷ ChartType → Boolean
 isBoxplot Boxplot = true
 isBoxplot _ = false
 
+isMetric ∷ ChartType → Boolean
+isMetric Metric = true
+isMetric _ = false
+
 parseChartType ∷ String → Either String ChartType
 parseChartType "pie" = pure Pie
 parseChartType "line" = pure Line
@@ -112,6 +117,7 @@ parseChartType "heatmap" = pure Heatmap
 parseChartType "sankey" = pure Sankey
 parseChartType "gauge" = pure Gauge
 parseChartType "boxplot" = pure Boxplot
+parseChartType "metric" = pure Metric
 parseChartType _ = Left "incorrect chartType"
 
 printChartType ∷ ChartType → String
@@ -127,6 +133,7 @@ printChartType Heatmap = "heatmap"
 printChartType Sankey = "sankey"
 printChartType Gauge = "gauge"
 printChartType Boxplot = "boxplot"
+printChartType Metric = "metric"
 
 derive instance genericChartType ∷ Generic ChartType
 derive instance eqChartType ∷ Eq ChartType
@@ -152,4 +159,5 @@ instance arbitraryChartType ∷ SC.Arbitrary ChartType where
     , Sankey
     , Gauge
     , Boxplot
+    , Metric
     ]

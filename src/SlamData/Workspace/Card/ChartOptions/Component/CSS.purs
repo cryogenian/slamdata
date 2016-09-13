@@ -77,3 +77,6 @@ funnelChartAlignParam = className "funnel-chart-align-param"
 
 gaugeChartIcon ∷ ClassName
 gaugeChartIcon = className "gauge-chart-icon"
+
+metricChartIcon ∷ ClassName
+metricChartIcon = className "metric-chart-icon"
