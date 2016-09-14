@@ -44,6 +44,8 @@ import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 import SlamData.Workspace.Card.BuildChart.Metric.Model as BuildMetric
 import SlamData.Workspace.Card.BuildChart.Sankey.Model as BuildSankey
+import SlamData.Workspace.Card.BuildChart.Gauge.Model as BuildGauge
+import SlamData.Workspace.Card.BuildChart.Graph.Model as BuildGraph
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -64,6 +66,8 @@ data AnyCardModel
   | Draftboard DB.Model
   | BuildMetric BuildMetric.Model
   | BuildSankey BuildSankey.Model
+  | BuildGauge BuildGauge.Model
+  | BuildGraph BuildGraph.Model
   | ErrorCard
   | NextAction
   | PendingCard
@@ -85,6 +89,8 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , Draftboard <$> DB.genModel
       , BuildMetric <$> BuildMetric.genModel
       , BuildSankey <$> BuildSankey.genModel
+      , BuildGauge <$> BuildGauge.genModel
+      , BuildGraph <$> BuildGraph.genModel
       , pure ErrorCard
       , pure NextAction
       ]
@@ -107,6 +113,8 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       Draftboard x, Draftboard y → DB.eqModel x y
       BuildMetric x, BuildMetric y → BuildMetric.eqModel x y
       BuildSankey x, BuildSankey y → BuildSankey.eqModel x y
+      BuildGauge x, BuildGauge y → BuildGauge.eqModel x y
+      BuildGraph x, BuildGraph y → BuildGraph.eqModel x y
       ErrorCard, ErrorCard → true
       NextAction, NextAction → true
       _,_ → false
@@ -123,6 +131,8 @@ modelCardType =
     Search _ → CT.Search
     BuildMetric _ → CT.ChartOptions Metric
     BuildSankey _ → CT.ChartOptions Sankey
+    BuildGauge _ → CT.ChartOptions Gauge
+    BuildGraph _ → CT.ChartOptions Graph
     ChartOptions _ → CT.ChartOptions Pie
     Chart → CT.Chart
     Markdown _ → CT.Markdown
@@ -181,6 +191,8 @@ encodeCardModel = case _ of
   Draftboard model → DB.encode model
   BuildMetric model → BuildMetric.encode model
   BuildSankey model → BuildSankey.encode model
+  BuildGauge model → BuildGauge.encode model
+  BuildGraph model → BuildGraph.encode model
   ErrorCard → J.jsonEmptyObject
   NextAction → J.jsonEmptyObject
   PendingCard → J.jsonEmptyObject
@@ -196,6 +208,8 @@ decodeCardModel = case _ of
   -- TODO: put legacy handler here
   CT.ChartOptions Metric → map BuildMetric ∘ BuildMetric.decode
   CT.ChartOptions Sankey → map BuildSankey ∘ BuildSankey.decode
+  CT.ChartOptions Gauge → map BuildGauge ∘ BuildGauge.decode
+  CT.ChartOptions Graph → map BuildGraph ∘ BuildGraph.decode
   CT.ChartOptions _ → map ChartOptions ∘ ChartOptions.decode
   CT.Chart → const $ pure Chart
   CT.Markdown → map Markdown ∘ MD.decode
@@ -220,6 +234,9 @@ cardModelOfType = case _ of
   CT.Ace mode → Ace mode Ace.emptyModel
   CT.Search → Search ""
   CT.ChartOptions Metric → BuildMetric BuildMetric.initialModel
+  CT.ChartOptions Sankey → BuildSankey BuildSankey.initialModel
+  CT.ChartOptions Gauge → BuildGauge BuildGauge.initialModel
+  CT.ChartOptions Graph → BuildGraph BuildGraph.initialModel
   CT.ChartOptions _ → ChartOptions ChartOptions.initialModel
   CT.Chart → Chart
   CT.Markdown → Markdown MD.emptyModel

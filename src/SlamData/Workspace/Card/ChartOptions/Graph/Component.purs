@@ -248,6 +248,7 @@ renderCircular state =
         ]
     ]
 
+
 eval ∷ Query ~> DSL
 eval (ToggleCircularLayout next) =
   next <$ H.modify \x → x{circular = not x.circular}

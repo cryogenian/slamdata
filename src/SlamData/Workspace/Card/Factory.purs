@@ -46,6 +46,8 @@ import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
 import SlamData.Workspace.Card.Variables.Component (variablesComponent)
 import SlamData.Workspace.Card.BuildChart.Metric.Component (metricBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Sankey.Component (sankeyBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Gauge.Component (gaugeBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Graph.Component (graphBuilderComponent)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
 cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
@@ -69,6 +71,8 @@ cardComponent deckId card opts =
     Card.Draftboard _ → draftboardComponent opts
     Card.BuildMetric _ → metricBuilderComponent
     Card.BuildSankey _ → sankeyBuilderComponent
+    Card.BuildGauge _ → gaugeBuilderComponent
+    Card.BuildGraph _ → graphBuilderComponent
 
 aceEval ∷ CT.AceMode → AceEval
 aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}

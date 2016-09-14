@@ -61,7 +61,11 @@ render state =
 
 renderHighLOD ∷ SST.State → HTML
 renderHighLOD state =
-  HH.div [ HP.classes [ CSS.chartEditor ] ]
+  HH.div
+    [ HP.classes
+      $ [ CSS.chartEditor ]
+      ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
+    ]
     [ renderSource state
     , renderTarget state
     , HH.hr_

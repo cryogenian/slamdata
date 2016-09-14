@@ -38,6 +38,8 @@ module SlamData.Workspace.Card.Component.State
   , _PendingState
   , _BuildMetricState
   , _BuildSankeyState
+  , _BuildGaugeState
+  , _BuildGraphState
   ) where
 
 import SlamData.Prelude
@@ -68,6 +70,8 @@ import SlamData.Workspace.Card.Search.Component.State as Search
 import SlamData.Workspace.Card.ChartOptions.Component.State as ChartOptions
 import SlamData.Workspace.Card.BuildChart.Metric.Component.State as BuildMetric
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.State as BuildSankey
+import SlamData.Workspace.Card.BuildChart.Gauge.Component.State as BuildGauge
+import SlamData.Workspace.Card.BuildChart.Graph.Component.State as BuildGraph
 
 -- | The common state value for deck cards.
 type CardState =
@@ -104,6 +108,8 @@ data AnyCardState
   | PendingState Pending.State
   | BuildMetricState BuildMetric.StateP
   | BuildSankeyState BuildSankey.StateP
+  | BuildGaugeState BuildGauge.StateP
+  | BuildGraphState BuildGraph.StateP
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState case _ of
@@ -193,4 +199,14 @@ _BuildMetricState = prism' BuildMetricState case _ of
 _BuildSankeyState ∷ PrismP AnyCardState BuildSankey.StateP
 _BuildSankeyState = prism' BuildSankeyState case _ of
   BuildSankeyState s → Just s
+  _ → Nothing
+
+_BuildGaugeState ∷ PrismP AnyCardState BuildGauge.StateP
+_BuildGaugeState = prism' BuildGaugeState case _ of
+  BuildGaugeState s → Just s
+  _ → Nothing
+
+_BuildGraphState ∷ PrismP AnyCardState BuildGraph.StateP
+_BuildGraphState = prism' BuildGraphState case _ of
+  BuildGraphState s → Just s
   _ → Nothing
