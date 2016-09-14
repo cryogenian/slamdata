@@ -70,7 +70,7 @@ import Data.String as S
 import Data.StrMap as SM
 
 import SlamData.Config as Config
-import SlamData.FileSystem.Listing.Sort (Sort(..))
+import SlamData.Common.Sort (Sort(..))
 
 import Test.Property.Utils.Path as TP
 import Test.StrongCheck.Arbitrary as SC

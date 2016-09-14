@@ -46,6 +46,7 @@ module SlamData.Workspace.Card.Component.State
   , _BuildAreaState
   , _BuildScatterState
   , _BuildRadarState
+  , _BuildFunnelState
   ) where
 
 import SlamData.Prelude
@@ -83,7 +84,9 @@ import SlamData.Workspace.Card.BuildChart.Bar.Component.State as BuildBar
 import SlamData.Workspace.Card.BuildChart.Line.Component.State as BuildLine
 import SlamData.Workspace.Card.BuildChart.Area.Component.State as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.State as BuildScatter
+import SlamData.Workspace.Card.BuildChart.Funnel.Component.State as BuildFunnel
 import SlamData.Workspace.Card.BuildChart.Radar.Component.State as BuildRadar
+
 
 -- | The common state value for deck cards.
 type CardState =
@@ -127,6 +130,7 @@ data AnyCardState
   | BuildLineState BuildLine.StateP
   | BuildAreaState BuildArea.StateP
   | BuildScatterState BuildScatter.StateP
+  | BuildFunnelState BuildFunnel.StateP
   | BuildRadarState BuildRadar.StateP
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
@@ -257,4 +261,9 @@ _BuildScatterState = prism' BuildScatterState case _ of
 _BuildRadarState ∷ PrismP AnyCardState BuildRadar.StateP
 _BuildRadarState = prism' BuildRadarState case _ of
   BuildRadarState s → Just s
+  _ → Nothing
+
+_BuildFunnelState ∷ PrismP AnyCardState BuildFunnel.StateP
+_BuildFunnelState = prism' BuildFunnelState case _ of
+  BuildFunnelState s → Just s
   _ → Nothing

@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Data.Lens (LensP, lens)
 import Data.Path.Pathy (rootDir)
 
-import SlamData.FileSystem.Listing.Sort (Sort(..))
+import SlamData.Common.Sort (Sort(..))
 import SlamData.FileSystem.Routing.Salt (Salt(..))
 
 import Utils.Path (DirPath)
