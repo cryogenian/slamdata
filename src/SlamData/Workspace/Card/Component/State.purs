@@ -42,6 +42,7 @@ module SlamData.Workspace.Card.Component.State
   , _BuildGraphState
   , _BuildPieState
   , _BuildBarState
+  , _BuildLineState
   ) where
 
 import SlamData.Prelude
@@ -76,6 +77,7 @@ import SlamData.Workspace.Card.BuildChart.Gauge.Component.State as BuildGauge
 import SlamData.Workspace.Card.BuildChart.Graph.Component.State as BuildGraph
 import SlamData.Workspace.Card.BuildChart.Pie.Component.State as BuildPie
 import SlamData.Workspace.Card.BuildChart.Bar.Component.State as BuildBar
+import SlamData.Workspace.Card.BuildChart.Line.Component.State as BuildLine
 
 -- | The common state value for deck cards.
 type CardState =
@@ -116,6 +118,7 @@ data AnyCardState
   | BuildGraphState BuildGraph.StateP
   | BuildPieState BuildPie.StateP
   | BuildBarState BuildBar.StateP
+  | BuildLineState BuildLine.StateP
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState case _ of
@@ -225,4 +228,9 @@ _BuildPieState = prism' BuildPieState case _ of
 _BuildBarState ∷ PrismP AnyCardState BuildBar.StateP
 _BuildBarState = prism' BuildBarState case _ of
   BuildBarState s → Just s
+  _ → Nothing
+
+_BuildLineState ∷ PrismP AnyCardState BuildLine.StateP
+_BuildLineState = prism' BuildLineState case _ of
+  BuildLineState s → Just s
   _ → Nothing

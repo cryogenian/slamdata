@@ -29,6 +29,7 @@ import SlamData.Form.Select
   , _value
   , trySelect'
   )
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
@@ -200,9 +201,9 @@ cardEval = case _ of
 
 pieBuilderEval ∷ Q.Query ~> DSL
 pieBuilderEval = case _ of
-  Q.SetAxisLabelAngle next →
+  Q.SetAxisLabelAngle str next →
     pure next
-  Q.SetAxisLabelFontSize next →
+  Q.SetAxisLabelFontSize str next →
     pure next
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
