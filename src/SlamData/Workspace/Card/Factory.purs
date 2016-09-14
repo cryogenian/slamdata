@@ -56,6 +56,7 @@ import SlamData.Workspace.Card.BuildChart.Scatter.Component (scatterBuilderCompo
 import SlamData.Workspace.Card.BuildChart.Radar.Component (radarBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Funnel.Component (funnelBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component (boxplotBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Heatmap.Component (heatmapBuilderComponent)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
 cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
@@ -89,6 +90,7 @@ cardComponent deckId card opts =
     Card.BuildRadar _ → radarBuilderComponent
     Card.BuildFunnel _ → funnelBuilderComponent
     Card.BuildBoxplot _ → boxplotBuilderComponent
+    Card.BuildHeatmap _ → heatmapBuilderComponent
 
 aceEval ∷ CT.AceMode → AceEval
 aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}
