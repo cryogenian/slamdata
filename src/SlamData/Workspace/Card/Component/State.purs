@@ -47,6 +47,7 @@ module SlamData.Workspace.Card.Component.State
   , _BuildScatterState
   , _BuildRadarState
   , _BuildFunnelState
+  , _BuildBoxplotState
   ) where
 
 import SlamData.Prelude
@@ -86,6 +87,7 @@ import SlamData.Workspace.Card.BuildChart.Area.Component.State as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.State as BuildScatter
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.State as BuildFunnel
 import SlamData.Workspace.Card.BuildChart.Radar.Component.State as BuildRadar
+import SlamData.Workspace.Card.BuildChart.Boxplot.Component.State as BuildBoxplot
 
 
 -- | The common state value for deck cards.
@@ -132,6 +134,7 @@ data AnyCardState
   | BuildScatterState BuildScatter.StateP
   | BuildFunnelState BuildFunnel.StateP
   | BuildRadarState BuildRadar.StateP
+  | BuildBoxplotState BuildBoxplot.StateP
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState case _ of
@@ -266,4 +269,9 @@ _BuildRadarState = prism' BuildRadarState case _ of
 _BuildFunnelState ∷ PrismP AnyCardState BuildFunnel.StateP
 _BuildFunnelState = prism' BuildFunnelState case _ of
   BuildFunnelState s → Just s
+  _ → Nothing
+
+_BuildBoxplotState ∷ PrismP AnyCardState BuildBoxplot.StateP
+_BuildBoxplotState = prism' BuildBoxplotState case _ of
+  BuildBoxplotState s → Just s
   _ → Nothing

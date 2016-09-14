@@ -48,6 +48,7 @@ module SlamData.Workspace.Card.Component.Query
   , _BuildScatterQuery
   , _BuildRadarQuery
   , _BuildFunnelQuery
+  , _BuildBoxplotQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -92,6 +93,7 @@ import SlamData.Workspace.Card.BuildChart.Area.Component.Query as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.Query as BuildScatter
 import SlamData.Workspace.Card.BuildChart.Radar.Component.Query as BuildRadar
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.Query as BuildFunnel
+import SlamData.Workspace.Card.BuildChart.Boxplot.Component.Query as BuildBoxplot
 
 -- | The common query algebra for a card.
 -- |
@@ -147,6 +149,7 @@ data AnyCardQuery a
   | BuildScatterQuery (BuildScatter.QueryP a)
   | BuildRadarQuery (BuildRadar.QueryP a)
   | BuildFunnelQuery (BuildFunnel.QueryP a)
+  | BuildBoxplotQuery (BuildBoxplot.QueryP a)
 
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
@@ -282,4 +285,9 @@ _BuildRadarQuery = prism' BuildRadarQuery case _ of
 _BuildFunnelQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildFunnel.QueryP a)
 _BuildFunnelQuery = prism' BuildFunnelQuery case _ of
   BuildFunnelQuery q → Just q
+  _ → Nothing
+
+_BuildBoxplotQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildBoxplot.QueryP a)
+_BuildBoxplotQuery = prism' BuildBoxplotQuery case _ of
+  BuildBoxplotQuery q → Just q
   _ → Nothing
