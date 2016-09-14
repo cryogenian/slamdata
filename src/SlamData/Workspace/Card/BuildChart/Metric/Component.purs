@@ -25,17 +25,17 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
-import SlamData.Workspace.Card.BuildChart.Metric.Component.ChildSlot as MSS
+import SlamData.Workspace.Card.BuildChart.Metric.Component.ChildSlot as MCS
 import SlamData.Workspace.Card.BuildChart.Metric.Component.State as MST
-import SlamData.Workspace.Card.BuildChart.Metric.Component.Query as MSQ
+import SlamData.Workspace.Card.BuildChart.Metric.Component.Query as MQ
 import SlamData.Workspace.Card.Chart.Aggregation (nonMaybeAggregationSelect)
 
 import Unsafe.Coerce (unsafeCoerce)
 
 type DSL =
-  H.ParentDSL MST.State MSS.ValueState MSQ.QueryC MSS.ValueQuery Slam MSS.ValueSlot
+  H.ParentDSL MST.State MCS.ValueState MQ.QueryC MCS.ValueQuery Slam MCS.ValueSlot
 type HTML =
-  H.ParentHTML MSS.ValueState MSQ.QueryC MSS.ValueQuery Slam MSS.ValueSlot
+  H.ParentHTML MCS.ValueState MQ.QueryC MCS.ValueQuery Slam MCS.ValueSlot
 
 metricBuilderComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 metricBuilderComponent = CC.makeCardComponent
@@ -129,7 +129,7 @@ renderFormatter state =
         $ [ HP.classes [ B.formControl ] ]
         ⊕ foldMap (pure ∘ HP.value) state.formatter
         ⊕ [ ARIA.label "Value formatter" ]
-        ⊕ [ HE.onValueInput $ HE.input (\s → right ∘ MSQ.SetFormatter s) ]
+        ⊕ [ HE.onValueInput $ HE.input (\s → right ∘ MQ.SetFormatter s) ]
     ]
 
 renderLabel ∷ MST.State → HTML
@@ -143,11 +143,11 @@ renderLabel state =
         $ [ HP.classes [ B.formControl ] ]
         ⊕ foldMap (pure ∘ HP.value) state.label
         ⊕ [ ARIA.label "Label" ]
-        ⊕ [ HE.onValueInput $ HE.input (\s → right ∘ MSQ.SetLabel s) ]
+        ⊕ [ HE.onValueInput $ HE.input (\s → right ∘ MQ.SetLabel s) ]
     ]
 
 
-eval ∷ MSQ.QueryC ~> DSL
+eval ∷ MQ.QueryC ~> DSL
 eval = cardEval ⨁ metricEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
@@ -169,16 +169,14 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
-metricEval ∷ MSQ.Query ~> DSL
+metricEval ∷ MQ.Query ~> DSL
 metricEval = case _ of
-  MSQ.UpdateAxes axes next →
+  MQ.SetFormatter str next →
     pure next
-  MSQ.SetFormatter str next →
-    pure next
-  MSQ.SetLabel str next →
+  MQ.SetLabel str next →
     pure next
 
-peek ∷ ∀ a. MSS.ValueQuery a → DSL Unit
+peek ∷ ∀ a. MCS.ValueQuery a → DSL Unit
 peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
 synchronizeChildren ∷ DSL Unit

@@ -4,13 +4,11 @@ import SlamData.Prelude
 
 import Halogen (ChildF)
 
-import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.BuildChart.Metric.Component.ChildSlot (ValueQuery, ValueSlot)
 
 data Query a
-  = UpdateAxes Axes a
-  | SetFormatter String a
+  = SetFormatter String a
   | SetLabel String a
 
 type QueryC = CardEvalQuery ⨁ Query

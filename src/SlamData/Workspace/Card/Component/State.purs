@@ -37,6 +37,7 @@ module SlamData.Workspace.Card.Component.State
   , _ErrorState
   , _PendingState
   , _BuildMetricState
+  , _BuildSankeyState
   ) where
 
 import SlamData.Prelude
@@ -66,6 +67,7 @@ import SlamData.Workspace.Card.Open.Component.State as Open
 import SlamData.Workspace.Card.Search.Component.State as Search
 import SlamData.Workspace.Card.ChartOptions.Component.State as ChartOptions
 import SlamData.Workspace.Card.BuildChart.Metric.Component.State as BuildMetric
+import SlamData.Workspace.Card.BuildChart.Sankey.Component.State as BuildSankey
 
 -- | The common state value for deck cards.
 type CardState =
@@ -101,88 +103,94 @@ data AnyCardState
   | ErrorState Error.State
   | PendingState Pending.State
   | BuildMetricState BuildMetric.StateP
+  | BuildSankeyState BuildSankey.StateP
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
-_AceState = prism' AceState \s → case s of
-  AceState s' → Just s'
+_AceState = prism' AceState case _ of
+  AceState s → Just s
   _ → Nothing
 
 _MarkdownState ∷ PrismP AnyCardState Markdown.StateP
-_MarkdownState = prism' MarkdownState \s → case s of
-  MarkdownState s' → Just s'
+_MarkdownState = prism' MarkdownState case _ of
+  MarkdownState s → Just s
   _ → Nothing
 
 _SearchState ∷ PrismP AnyCardState Search.State
-_SearchState = prism' SearchState \s → case s of
-  SearchState s' → Just s'
+_SearchState = prism' SearchState case _ of
+  SearchState s → Just s
   _ → Nothing
 
 _TableState ∷ PrismP AnyCardState Table.State
-_TableState = prism' TableState \s → case s of
-  TableState s' → Just s'
+_TableState = prism' TableState case _ of
+  TableState s → Just s
   _ → Nothing
 
 _ChartOptionsState ∷ PrismP AnyCardState ChartOptions.StateP
-_ChartOptionsState = prism' ChartOptionsState \s → case s of
-  ChartOptionsState s' → Just s'
+_ChartOptionsState = prism' ChartOptionsState case _ of
+  ChartOptionsState s → Just s
   _ → Nothing
 
 _ChartState ∷ PrismP AnyCardState Chart.StateP
-_ChartState = prism' ChartState \s → case s of
-  ChartState s' → Just s'
+_ChartState = prism' ChartState case _ of
+  ChartState s → Just s
   _ → Nothing
 
 _DownloadState ∷ PrismP AnyCardState Download.State
-_DownloadState = prism' DownloadState \s → case s of
-  DownloadState s' → Just s'
+_DownloadState = prism' DownloadState case _ of
+  DownloadState s → Just s
   _ → Nothing
 
 _VariablesState ∷ PrismP AnyCardState Variables.StateP
-_VariablesState = prism' VariablesState \s → case s of
-  VariablesState s' → Just s'
+_VariablesState = prism' VariablesState case _ of
+  VariablesState s → Just s
   _ → Nothing
 
 _TroubleshootState ∷ PrismP AnyCardState Troubleshoot.State
-_TroubleshootState = prism' TroubleshootState \s → case s of
-  TroubleshootState s' → Just s'
+_TroubleshootState = prism' TroubleshootState case _ of
+  TroubleshootState s → Just s
   _ → Nothing
 
 _NextState ∷ PrismP AnyCardState Next.State
-_NextState = prism' NextState \s → case s of
-  NextState s' → Just s'
+_NextState = prism' NextState case _ of
+  NextState s → Just s
   _ → Nothing
 
 _CacheState ∷ PrismP AnyCardState Cache.State
-_CacheState = prism' CacheState \s → case s of
-  CacheState s' → Just s'
+_CacheState = prism' CacheState case _ of
+  CacheState s → Just s
   _ → Nothing
 
 _OpenState ∷ PrismP AnyCardState Open.State
-_OpenState = prism' OpenState \s → case s of
-  OpenState s' → Just s'
+_OpenState = prism' OpenState case _ of
+  OpenState s → Just s
   _ → Nothing
 
 _DownloadOptionsState ∷ PrismP AnyCardState DOpts.State
-_DownloadOptionsState = prism' DownloadOptionsState \s → case s of
-  DownloadOptionsState s' → Just s'
+_DownloadOptionsState = prism' DownloadOptionsState case _ of
+  DownloadOptionsState s → Just s
   _ → Nothing
 
 _DraftboardState ∷ PrismP AnyCardState Draftboard.StateP
-_DraftboardState = prism' DraftboardState \s → case s of
-  DraftboardState s' → Just s'
+_DraftboardState = prism' DraftboardState case _ of
+  DraftboardState s → Just s
   _ → Nothing
 
 _ErrorState ∷ PrismP AnyCardState Error.State
-_ErrorState = prism' ErrorState \s → case s of
-  ErrorState s' → Just s'
+_ErrorState = prism' ErrorState case _ of
+  ErrorState s → Just s
   _ → Nothing
 
 _PendingState ∷ PrismP AnyCardState Pending.State
-_PendingState = prism' PendingState \s → case s of
-  PendingState s' → Just s'
+_PendingState = prism' PendingState case _ of
+  PendingState s → Just s
   _ → Nothing
 
 _BuildMetricState ∷ PrismP AnyCardState BuildMetric.StateP
 _BuildMetricState = prism' BuildMetricState case _ of
-  BuildMetricState s' → Just s'
+  BuildMetricState s → Just s
+  _ → Nothing
+
+_BuildSankeyState ∷ PrismP AnyCardState BuildSankey.StateP
+_BuildSankeyState = prism' BuildSankeyState case _ of
+  BuildSankeyState s → Just s
   _ → Nothing

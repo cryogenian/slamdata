@@ -43,7 +43,7 @@ import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 import SlamData.Workspace.Card.BuildChart.Metric.Model as BuildMetric
-
+import SlamData.Workspace.Card.BuildChart.Sankey.Model as BuildSankey
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -63,6 +63,7 @@ data AnyCardModel
   | DownloadOptions DLO.State
   | Draftboard DB.Model
   | BuildMetric BuildMetric.Model
+  | BuildSankey BuildSankey.Model
   | ErrorCard
   | NextAction
   | PendingCard
@@ -83,6 +84,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , Open <$> SC.arbitrary
       , Draftboard <$> DB.genModel
       , BuildMetric <$> BuildMetric.genModel
+      , BuildSankey <$> BuildSankey.genModel
       , pure ErrorCard
       , pure NextAction
       ]
@@ -104,6 +106,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       DownloadOptions x, DownloadOptions y → DLO.eqState x y
       Draftboard x, Draftboard y → DB.eqModel x y
       BuildMetric x, BuildMetric y → BuildMetric.eqModel x y
+      BuildSankey x, BuildSankey y → BuildSankey.eqModel x y
       ErrorCard, ErrorCard → true
       NextAction, NextAction → true
       _,_ → false
@@ -118,8 +121,9 @@ modelCardType =
   case _ of
     Ace mode _ → CT.Ace mode
     Search _ → CT.Search
-    ChartOptions _ → CT.ChartOptions Pie
     BuildMetric _ → CT.ChartOptions Metric
+    BuildSankey _ → CT.ChartOptions Sankey
+    ChartOptions _ → CT.ChartOptions Pie
     Chart → CT.Chart
     Markdown _ → CT.Markdown
     Table _ → CT.Table
@@ -161,25 +165,26 @@ decode =
 encodeCardModel
   ∷ AnyCardModel
   → J.Json
-encodeCardModel =
-  case _ of
-    Ace mode model → Ace.encode model
-    Search txt → J.encodeJson txt
-    ChartOptions model → ChartOptions.encode model
-    Chart → J.jsonEmptyObject
-    Markdown model → MD.encode model
-    Table model → JT.encode model
-    Download → J.jsonEmptyObject
-    Variables model → Variables.encode model
-    Troubleshoot → J.jsonEmptyObject
-    Cache model → J.encodeJson model
-    Open mres → J.encodeJson mres
-    DownloadOptions model → DLO.encode model
-    Draftboard model → DB.encode model
-    ErrorCard → J.jsonEmptyObject
-    NextAction → J.jsonEmptyObject
-    PendingCard → J.jsonEmptyObject
-    BuildMetric model → BuildMetric.encode model
+encodeCardModel = case _ of
+  Ace mode model → Ace.encode model
+  Search txt → J.encodeJson txt
+  ChartOptions model → ChartOptions.encode model
+  Chart → J.jsonEmptyObject
+  Markdown model → MD.encode model
+  Table model → JT.encode model
+  Download → J.jsonEmptyObject
+  Variables model → Variables.encode model
+  Troubleshoot → J.jsonEmptyObject
+  Cache model → J.encodeJson model
+  Open mres → J.encodeJson mres
+  DownloadOptions model → DLO.encode model
+  Draftboard model → DB.encode model
+  BuildMetric model → BuildMetric.encode model
+  BuildSankey model → BuildSankey.encode model
+  ErrorCard → J.jsonEmptyObject
+  NextAction → J.jsonEmptyObject
+  PendingCard → J.jsonEmptyObject
+
 
 decodeCardModel
   ∷ CT.CardType
@@ -190,6 +195,7 @@ decodeCardModel = case _ of
   CT.Search → map Search ∘ J.decodeJson
   -- TODO: put legacy handler here
   CT.ChartOptions Metric → map BuildMetric ∘ BuildMetric.decode
+  CT.ChartOptions Sankey → map BuildSankey ∘ BuildSankey.decode
   CT.ChartOptions _ → map ChartOptions ∘ ChartOptions.decode
   CT.Chart → const $ pure Chart
   CT.Markdown → map Markdown ∘ MD.decode

@@ -38,6 +38,7 @@ module SlamData.Workspace.Card.Component.Query
   , _ErrorQuery
   , _PendingQuery
   , _BuildMetricQuery
+  , _BuildSankeyQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -72,6 +73,7 @@ import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Search.Component.Query as Search
 import SlamData.Workspace.Card.ChartOptions.Component.Query as ChartOptions
 import SlamData.Workspace.Card.BuildChart.Metric.Component.Query as BuildMetric
+import SlamData.Workspace.Card.BuildChart.Sankey.Component.Query as BuildSankey
 
 -- | The common query algebra for a card.
 -- |
@@ -117,6 +119,8 @@ data AnyCardQuery a
   | ErrorQuery (Error.QueryP a)
   | PendingQuery (Pending.QueryP a)
   | BuildMetricQuery (BuildMetric.QueryP a)
+  | BuildSankeyQuery (BuildSankey.QueryP a)
+
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
 _AceQuery = prism' AceQuery case _ of
@@ -201,4 +205,9 @@ _PendingQuery = prism' PendingQuery case _ of
 _BuildMetricQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildMetric.QueryP a)
 _BuildMetricQuery = prism' BuildMetricQuery case _ of
   BuildMetricQuery q → Just q
+  _ → Nothing
+
+_BuildSankeyQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildSankey.QueryP a)
+_BuildSankeyQuery = prism' BuildSankeyQuery case _ of
+  BuildSankeyQuery q → Just q
   _ → Nothing
