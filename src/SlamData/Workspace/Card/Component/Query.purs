@@ -45,6 +45,7 @@ module SlamData.Workspace.Card.Component.Query
   , _BuildBarQuery
   , _BuildLineQuery
   , _BuildAreaQuery
+  , _BuildScatterQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -86,6 +87,7 @@ import SlamData.Workspace.Card.BuildChart.Pie.Component.Query as BuildPie
 import SlamData.Workspace.Card.BuildChart.Bar.Component.Query as BuildBar
 import SlamData.Workspace.Card.BuildChart.Line.Component.Query as BuildLine
 import SlamData.Workspace.Card.BuildChart.Area.Component.Query as BuildArea
+import SlamData.Workspace.Card.BuildChart.Scatter.Component.Query as BuildScatter
 
 -- | The common query algebra for a card.
 -- |
@@ -138,6 +140,7 @@ data AnyCardQuery a
   | BuildBarQuery (BuildBar.QueryP a)
   | BuildLineQuery (BuildLine.QueryP a)
   | BuildAreaQuery (BuildArea.QueryP a)
+  | BuildScatterQuery (BuildScatter.QueryP a)
 
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
@@ -258,4 +261,9 @@ _BuildLineQuery = prism' BuildLineQuery case _ of
 _BuildAreaQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildArea.QueryP a)
 _BuildAreaQuery = prism' BuildAreaQuery case _ of
   BuildAreaQuery q → Just q
+  _ → Nothing
+
+_BuildScatterQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildScatter.QueryP a)
+_BuildScatterQuery = prism' BuildScatterQuery case _ of
+  BuildScatterQuery q → Just q
   _ → Nothing

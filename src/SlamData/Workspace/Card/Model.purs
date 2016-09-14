@@ -50,7 +50,7 @@ import SlamData.Workspace.Card.BuildChart.Pie.Model as BuildPie
 import SlamData.Workspace.Card.BuildChart.Bar.Model as BuildBar
 import SlamData.Workspace.Card.BuildChart.Line.Model as BuildLine
 import SlamData.Workspace.Card.BuildChart.Area.Model as BuildArea
-
+import SlamData.Workspace.Card.BuildChart.Scatter.Model as BuildScatter
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -77,6 +77,7 @@ data AnyCardModel
   | BuildBar BuildBar.Model
   | BuildLine BuildLine.Model
   | BuildArea BuildArea.Model
+  | BuildScatter BuildScatter.Model
   | ErrorCard
   | NextAction
   | PendingCard
@@ -104,6 +105,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , BuildBar <$> BuildBar.genModel
       , BuildLine <$> BuildLine.genModel
       , BuildArea <$> BuildArea.genModel
+      , BuildScatter <$> BuildScatter.genModel
       , pure ErrorCard
       , pure NextAction
       ]
@@ -132,6 +134,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       BuildBar x, BuildBar y → BuildBar.eqModel x y
       BuildLine x, BuildLine y → BuildLine.eqModel x y
       BuildArea x, BuildArea y → BuildArea.eqModel x y
+      BuildScatter x, BuildScatter y → BuildScatter.eqModel x y
       ErrorCard, ErrorCard → true
       NextAction, NextAction → true
       _,_ → false
@@ -154,6 +157,7 @@ modelCardType =
     BuildBar _ → CT.ChartOptions Bar
     BuildLine _ → CT.ChartOptions Line
     BuildArea _ → CT.ChartOptions Area
+    BuildScatter _ → CT.ChartOptions Scatter
     ChartOptions _ → CT.ChartOptions Pie
     Chart → CT.Chart
     Markdown _ → CT.Markdown
@@ -218,6 +222,7 @@ encodeCardModel = case _ of
   BuildBar model → BuildBar.encode model
   BuildLine model → BuildLine.encode model
   BuildArea model → BuildArea.encode model
+  BuildScatter model → BuildScatter.encode model
   ErrorCard → J.jsonEmptyObject
   NextAction → J.jsonEmptyObject
   PendingCard → J.jsonEmptyObject
@@ -239,6 +244,7 @@ decodeCardModel = case _ of
   CT.ChartOptions Bar → map BuildBar ∘ BuildBar.decode
   CT.ChartOptions Line → map BuildLine ∘ BuildLine.decode
   CT.ChartOptions Area → map BuildArea ∘ BuildArea.decode
+  CT.ChartOptions Scatter → map BuildScatter ∘ BuildScatter.decode
   CT.ChartOptions _ → map ChartOptions ∘ ChartOptions.decode
   CT.Chart → const $ pure Chart
   CT.Markdown → map Markdown ∘ MD.decode
@@ -270,6 +276,7 @@ cardModelOfType = case _ of
   CT.ChartOptions Bar → BuildBar BuildBar.initialModel
   CT.ChartOptions Line → BuildLine BuildLine.initialModel
   CT.ChartOptions Area → BuildArea BuildArea.initialModel
+  CT.ChartOptions Scatter → BuildScatter BuildScatter.initialModel
   CT.ChartOptions _ → ChartOptions ChartOptions.initialModel
   CT.Chart → Chart
   CT.Markdown → Markdown MD.emptyModel
