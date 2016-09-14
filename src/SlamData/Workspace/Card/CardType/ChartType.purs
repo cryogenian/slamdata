@@ -127,7 +127,7 @@ isMetric ∷ ChartType → Boolean
 isMetric Metric = true
 isMetric _ = false
 
-parseChartType ∷ String → Either String ChartType
+parseChartType ∷ String → String ⊹ ChartType
 parseChartType "pie" = pure Pie
 parseChartType "line" = pure Line
 parseChartType "bar" = pure Bar

@@ -47,6 +47,7 @@ import SlamData.Workspace.Card.BuildChart.Sankey.Model as BuildSankey
 import SlamData.Workspace.Card.BuildChart.Gauge.Model as BuildGauge
 import SlamData.Workspace.Card.BuildChart.Graph.Model as BuildGraph
 import SlamData.Workspace.Card.BuildChart.Pie.Model as BuildPie
+import SlamData.Workspace.Card.BuildChart.Radar.Model as BuildRadar
 import SlamData.Workspace.Card.BuildChart.Bar.Model as BuildBar
 import SlamData.Workspace.Card.BuildChart.Line.Model as BuildLine
 import SlamData.Workspace.Card.BuildChart.Area.Model as BuildArea
@@ -74,6 +75,7 @@ data AnyCardModel
   | BuildGauge BuildGauge.Model
   | BuildGraph BuildGraph.Model
   | BuildPie BuildPie.Model
+  | BuildRadar BuildRadar.Model
   | BuildBar BuildBar.Model
   | BuildLine BuildLine.Model
   | BuildArea BuildArea.Model
@@ -102,6 +104,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , BuildGauge <$> BuildGauge.genModel
       , BuildGraph <$> BuildGraph.genModel
       , BuildPie <$> BuildPie.genModel
+      , BuildRadar <$> BuildRadar.genModel
       , BuildBar <$> BuildBar.genModel
       , BuildLine <$> BuildLine.genModel
       , BuildArea <$> BuildArea.genModel
@@ -131,6 +134,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       BuildGauge x, BuildGauge y → BuildGauge.eqModel x y
       BuildGraph x, BuildGraph y → BuildGraph.eqModel x y
       BuildPie x, BuildPie y → BuildPie.eqModel x y
+      BuildRadar x, BuildRadar y → BuildRadar.eqModel x y
       BuildBar x, BuildBar y → BuildBar.eqModel x y
       BuildLine x, BuildLine y → BuildLine.eqModel x y
       BuildArea x, BuildArea y → BuildArea.eqModel x y
@@ -154,6 +158,7 @@ modelCardType =
     BuildGauge _ → CT.ChartOptions Gauge
     BuildGraph _ → CT.ChartOptions Graph
     BuildPie _ → CT.ChartOptions Pie
+    BuildRadar _ → CT.ChartOptions Radar
     BuildBar _ → CT.ChartOptions Bar
     BuildLine _ → CT.ChartOptions Line
     BuildArea _ → CT.ChartOptions Area
@@ -219,6 +224,7 @@ encodeCardModel = case _ of
   BuildGauge model → BuildGauge.encode model
   BuildGraph model → BuildGraph.encode model
   BuildPie model → BuildPie.encode model
+  BuildRadar model → BuildRadar.encode model
   BuildBar model → BuildBar.encode model
   BuildLine model → BuildLine.encode model
   BuildArea model → BuildArea.encode model
@@ -241,6 +247,7 @@ decodeCardModel = case _ of
   CT.ChartOptions Gauge → map BuildGauge ∘ BuildGauge.decode
   CT.ChartOptions Graph → map BuildGraph ∘ BuildGraph.decode
   CT.ChartOptions Pie → map BuildPie ∘ BuildPie.decode
+  CT.ChartOptions Radar → map BuildRadar ∘ BuildRadar.decode
   CT.ChartOptions Bar → map BuildBar ∘ BuildBar.decode
   CT.ChartOptions Line → map BuildLine ∘ BuildLine.decode
   CT.ChartOptions Area → map BuildArea ∘ BuildArea.decode
@@ -273,6 +280,7 @@ cardModelOfType = case _ of
   CT.ChartOptions Gauge → BuildGauge BuildGauge.initialModel
   CT.ChartOptions Graph → BuildGraph BuildGraph.initialModel
   CT.ChartOptions Pie → BuildPie BuildPie.initialModel
+  CT.ChartOptions Radar → BuildRadar BuildRadar.initialModel
   CT.ChartOptions Bar → BuildBar BuildBar.initialModel
   CT.ChartOptions Line → BuildLine BuildLine.initialModel
   CT.ChartOptions Area → BuildArea BuildArea.initialModel

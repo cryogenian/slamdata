@@ -53,6 +53,7 @@ import SlamData.Workspace.Card.BuildChart.Bar.Component (barBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Line.Component (lineBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Area.Component (areaBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Scatter.Component (scatterBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Radar.Component (radarBuilderComponent)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
 cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
@@ -83,6 +84,7 @@ cardComponent deckId card opts =
     Card.BuildLine _ → lineBuilderComponent
     Card.BuildArea _ → areaBuilderComponent
     Card.BuildScatter _ → scatterBuilderComponent
+    Card.BuildRadar _ → radarBuilderComponent
 
 aceEval ∷ CT.AceMode → AceEval
 aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}
