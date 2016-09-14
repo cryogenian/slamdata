@@ -8,7 +8,6 @@ import Data.Foldable as F
 import Data.Map as M
 
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
-import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
@@ -23,7 +22,6 @@ type GraphR =
   , minSize ∷ Number
   , maxSize ∷ Number
   , circular ∷ Boolean
-  , axes ∷ Ax.Axes
   , sizeAggregation ∷ Maybe Ag.Aggregation
   }
 
@@ -35,8 +33,7 @@ initialModel = Nothing
 eqGraphR ∷ GraphR → GraphR → Boolean
 eqGraphR r1 r2 =
   F.and
-    [ Ax.eqAxes r1.axes r2.axes
-    , r1.source ≡ r2.source
+    [ r1.source ≡ r2.source
     , r1.target ≡ r2.target
     , r1.size ≡ r2.size
     , r1.color ≡ r2.color
@@ -65,7 +62,6 @@ genModel = do
     maxSize ← arbitrary
     circular ← arbitrary
     sizeAggregation ← arbitrary
-    axes ← Ax.genAxes
     pure { source
          , target
          , size
@@ -73,7 +69,6 @@ genModel = do
          , minSize
          , maxSize
          , circular
-         , axes
          , sizeAggregation
          }
 
@@ -89,7 +84,6 @@ encode (Just r) =
   ~> "maxSize" := r.maxSize
   ~> "circular" := r.circular
   ~> "sizeAggregation" := r.sizeAggregation
-  ~> "axes" := Ax.encodeAxes r.axes
   ~> jsonEmptyObject
 
 decode ∷ Json → String ⊹ Model
@@ -108,8 +102,6 @@ decode js
     maxSize ← obj .? "maxSize"
     circular ← obj .? "circular"
     sizeAggregation ← obj .? "sizeAggregation"
-    jsAxes ← obj .? "axes"
-    axes ← Ax.decodeAxes jsAxes
     pure  { source
           , target
           , size
@@ -117,6 +109,5 @@ decode js
           , minSize
           , maxSize
           , circular
-          , axes
           , sizeAggregation
           }

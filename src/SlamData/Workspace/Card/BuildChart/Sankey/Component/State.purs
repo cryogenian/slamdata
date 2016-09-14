@@ -1,3 +1,5 @@
+-- | TODO: we probably don't need axes in models. I put it here because there is no
+-- | generic BuildChart module
 module SlamData.Workspace.Card.BuildChart.Sankey.Component.State where
 
 import SlamData.Prelude

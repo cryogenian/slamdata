@@ -6,7 +6,6 @@ import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, (.?), (:=), (~
 import Data.Foldable as F
 
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
-import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
@@ -18,7 +17,6 @@ type MetricR =
   , valueAggregation ∷ Ag.Aggregation
   , label ∷ Maybe String
   , formatter ∷ Maybe String
-  , axes ∷ Ax.Axes
   }
 
 type Model = Maybe MetricR
@@ -29,8 +27,7 @@ initialModel = Nothing
 eqMetricR ∷ MetricR → MetricR → Boolean
 eqMetricR r1 r2 =
   F.and
-    [ Ax.eqAxes r1.axes r2.axes
-    , r1.value ≡ r2.value
+    [ r1.value ≡ r2.value
     , r1.valueAggregation ≡ r2.valueAggregation
     , r1.label ≡ r2.label
     , r1.formatter ≡ r2.formatter
@@ -51,8 +48,7 @@ genModel = do
     valueAggregation ← arbitrary
     label ← arbitrary
     formatter ← arbitrary
-    axes ← Ax.genAxes
-    pure $ Just { value, valueAggregation, label, formatter, axes}
+    pure $ Just { value, valueAggregation, label, formatter }
 
 encode ∷ Model → Json
 encode Nothing = jsonNull
@@ -62,7 +58,6 @@ encode (Just r) =
   ~> "valueAggregation" := r.valueAggregation
   ~> "label" := r.label
   ~> "formatter" := r.formatter
-  ~> "axes" := Ax.encodeAxes r.axes
   ~> jsonEmptyObject
 
 decode ∷ Json → String ⊹ Model
@@ -77,6 +72,4 @@ decode js
     valueAggregation ← obj .? "valueAggregation"
     label ← obj .? "label"
     formatter ← obj .? "formatter"
-    jsAxes ← obj .? "axes"
-    axes ← Ax.decodeAxes jsAxes
-    pure $ Just {value, valueAggregation, label, formatter, axes}
+    pure $ Just {value, valueAggregation, label, formatter }

@@ -46,6 +46,8 @@ import SlamData.Workspace.Card.BuildChart.Metric.Model as BuildMetric
 import SlamData.Workspace.Card.BuildChart.Sankey.Model as BuildSankey
 import SlamData.Workspace.Card.BuildChart.Gauge.Model as BuildGauge
 import SlamData.Workspace.Card.BuildChart.Graph.Model as BuildGraph
+import SlamData.Workspace.Card.BuildChart.Pie.Model as BuildPie
+
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -68,6 +70,7 @@ data AnyCardModel
   | BuildSankey BuildSankey.Model
   | BuildGauge BuildGauge.Model
   | BuildGraph BuildGraph.Model
+  | BuildPie BuildPie.Model
   | ErrorCard
   | NextAction
   | PendingCard
@@ -91,6 +94,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , BuildSankey <$> BuildSankey.genModel
       , BuildGauge <$> BuildGauge.genModel
       , BuildGraph <$> BuildGraph.genModel
+      , BuildPie <$> BuildPie.genModel
       , pure ErrorCard
       , pure NextAction
       ]
@@ -115,6 +119,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       BuildSankey x, BuildSankey y → BuildSankey.eqModel x y
       BuildGauge x, BuildGauge y → BuildGauge.eqModel x y
       BuildGraph x, BuildGraph y → BuildGraph.eqModel x y
+      BuildPie x, BuildPie y → BuildPie.eqModel x y
       ErrorCard, ErrorCard → true
       NextAction, NextAction → true
       _,_ → false
@@ -133,6 +138,7 @@ modelCardType =
     BuildSankey _ → CT.ChartOptions Sankey
     BuildGauge _ → CT.ChartOptions Gauge
     BuildGraph _ → CT.ChartOptions Graph
+    BuildPie _ → CT.ChartOptions Pie
     ChartOptions _ → CT.ChartOptions Pie
     Chart → CT.Chart
     Markdown _ → CT.Markdown
@@ -193,6 +199,7 @@ encodeCardModel = case _ of
   BuildSankey model → BuildSankey.encode model
   BuildGauge model → BuildGauge.encode model
   BuildGraph model → BuildGraph.encode model
+  BuildPie model → BuildPie.encode model
   ErrorCard → J.jsonEmptyObject
   NextAction → J.jsonEmptyObject
   PendingCard → J.jsonEmptyObject
@@ -210,6 +217,7 @@ decodeCardModel = case _ of
   CT.ChartOptions Sankey → map BuildSankey ∘ BuildSankey.decode
   CT.ChartOptions Gauge → map BuildGauge ∘ BuildGauge.decode
   CT.ChartOptions Graph → map BuildGraph ∘ BuildGraph.decode
+  CT.ChartOptions Pie → map BuildPie ∘ BuildPie.decode
   CT.ChartOptions _ → map ChartOptions ∘ ChartOptions.decode
   CT.Chart → const $ pure Chart
   CT.Markdown → map Markdown ∘ MD.decode
@@ -237,6 +245,7 @@ cardModelOfType = case _ of
   CT.ChartOptions Sankey → BuildSankey BuildSankey.initialModel
   CT.ChartOptions Gauge → BuildGauge BuildGauge.initialModel
   CT.ChartOptions Graph → BuildGraph BuildGraph.initialModel
+  CT.ChartOptions Pie → BuildPie BuildPie.initialModel
   CT.ChartOptions _ → ChartOptions ChartOptions.initialModel
   CT.Chart → Chart
   CT.Markdown → Markdown MD.emptyModel

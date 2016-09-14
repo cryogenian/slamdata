@@ -1,4 +1,4 @@
-module SlamData.Workspace.Card.BuildChart.Sankey.Model where
+module SlamData.Workspace.Card.BuildChart.Pie.Model where
 
 import SlamData.Prelude
 
@@ -14,30 +14,32 @@ import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.Property.ArbJson (runArbJCursor)
 
-type SankeyR =
-  { source ∷ JCursor
-  , target ∷ JCursor
+type PieR =
+  { category ∷ JCursor
   , value ∷ JCursor
   , valueAggregation ∷ Ag.Aggregation
+  , donut ∷ Maybe JCursor
+  , parallel ∷ Maybe JCursor
   }
 
-type Model = Maybe SankeyR
+type Model = Maybe PieR
 
 initialModel ∷ Model
 initialModel = Nothing
 
-eqSankeyR ∷ SankeyR → SankeyR → Boolean
-eqSankeyR r1 r2 =
+eqPieR ∷ PieR → PieR → Boolean
+eqPieR r1 r2 =
   F.and
-    [ r1.source ≡ r2.source
-    , r1.target ≡ r2.target
+    [ r1.category ≡ r2.category
     , r1.value ≡ r2.value
     , r1.valueAggregation ≡ r2.valueAggregation
+    , r1.donut ≡ r2.donut
+    , r1.parallel ≡ r2.parallel
     ]
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqSankeyR r1 r2
+eqModel (Just r1) (Just r2) = eqPieR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -45,34 +47,41 @@ genModel = do
   isNothing ← arbitrary
   if isNothing
     then pure Nothing
-    else do
-    source ← map runArbJCursor arbitrary
-    target ← map runArbJCursor arbitrary
+    else map Just do
+    category ← map runArbJCursor arbitrary
     value ← map runArbJCursor arbitrary
     valueAggregation ← arbitrary
-    pure $ Just { source, target, value, valueAggregation }
-
+    donut ← map (map runArbJCursor) arbitrary
+    parallel ← map (map runArbJCursor) arbitrary
+    pure { category
+         , value
+         , valueAggregation
+         , donut
+         , parallel
+         }
 
 encode ∷ Model → Json
 encode Nothing = jsonNull
 encode (Just r) =
-  "configType" := "sankey"
-  ~> "source" := r.source
-  ~> "target" := r.target
+  "configType" := "pie"
+  ~> "category" := r.category
   ~> "value" := r.value
   ~> "valueAggregation" := r.valueAggregation
+  ~> "donut" := r.donut
+  ~> "parallel" := r.parallel
   ~> jsonEmptyObject
 
 decode ∷ Json → String ⊹ Model
 decode js
   | isNull js = pure Nothing
-  | otherwise = do
+  | otherwise = map Just do
     obj ← decodeJson js
     configType ← obj .? "configType"
-    unless (configType ≡ "sankey")
-      $ throwError "This config is not sankey"
-    source ← obj .? "source"
-    target ← obj .? "target"
+    unless (configType ≡ "pie")
+      $ throwError "This config is not pie"
+    category ← obj .? "category"
     value ← obj .? "value"
     valueAggregation ← obj .? "valueAggregation"
-    pure $ Just { source, target, value, valueAggregation }
+    donut ← obj .? "donut"
+    parallel ← obj .? "parallel"
+    pure { category, value, valueAggregation, donut, parallel }
