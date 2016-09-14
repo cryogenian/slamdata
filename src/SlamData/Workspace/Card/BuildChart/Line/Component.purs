@@ -82,6 +82,8 @@ renderHighLOD state =
     , renderValue state
     , renderSecondValue state
     , HH.hr_
+    , renderSeries state
+    , HH.hr_
     , renderSize state
     , row [ renderMinSize state, renderMaxSize state ]
     , HH.hr_

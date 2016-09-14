@@ -51,6 +51,7 @@ import SlamData.Workspace.Card.BuildChart.Graph.Component (graphBuilderComponent
 import SlamData.Workspace.Card.BuildChart.Pie.Component (pieBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Bar.Component (barBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Line.Component (lineBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Area.Component (areaBuilderComponent)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
 cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
@@ -79,6 +80,7 @@ cardComponent deckId card opts =
     Card.BuildPie _ → pieBuilderComponent
     Card.BuildBar _ → barBuilderComponent
     Card.BuildLine _ → lineBuilderComponent
+    Card.BuildArea _ → areaBuilderComponent
 
 aceEval ∷ CT.AceMode → AceEval
 aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}
