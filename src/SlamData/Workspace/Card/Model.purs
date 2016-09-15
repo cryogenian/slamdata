@@ -358,5 +358,7 @@ modelToEval = case _ of
     pure $ Eval.BuildSankey model
   BuildGauge model →
     pure $ Eval.BuildGauge model
+  BuildGraph model →
+    pure $ Eval.BuildGraph model
   _ →
     pure Eval.Pass

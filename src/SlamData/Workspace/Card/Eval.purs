@@ -51,6 +51,7 @@ import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 import SlamData.Workspace.Card.BuildChart.Metric.Eval as BuildMetric
 import SlamData.Workspace.Card.BuildChart.Sankey.Eval as BuildSankey
 import SlamData.Workspace.Card.BuildChart.Gauge.Eval as BuildGauge
+import SlamData.Workspace.Card.BuildChart.Graph.Eval as BuildGraph
 
 
 import Text.SlamSearch as SS
@@ -73,6 +74,7 @@ data Eval
   | BuildMetric BuildMetric.Model
   | BuildSankey BuildSankey.Model
   | BuildGauge BuildGauge.Model
+  | BuildGraph BuildGraph.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -91,6 +93,7 @@ tagEval = case _ of
   BuildMetric _ → "BuildMetric"
   BuildSankey _ → "BuildSankey"
   BuildGauge _ → "BuildGauge"
+  BuildGraph _ → "BuildGraph"
 
 evalCard
   ∷ ∀ m
@@ -136,6 +139,8 @@ evalCard input =
       BuildSankey.eval model resource
     BuildGauge model, Just (Port.TaggedResource {resource}) →
       BuildGauge.eval model resource
+    BuildGraph model, Just (Port.TaggedResource {resource}) →
+      BuildGraph.eval model resource
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
