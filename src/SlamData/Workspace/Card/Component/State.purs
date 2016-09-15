@@ -46,6 +46,7 @@ module SlamData.Workspace.Card.Component.State
   , _BuildAreaState
   , _BuildScatterState
   , _BuildRadarState
+  , _BuildPivotTableState
   ) where
 
 import SlamData.Prelude
@@ -84,6 +85,7 @@ import SlamData.Workspace.Card.BuildChart.Line.Component.State as BuildLine
 import SlamData.Workspace.Card.BuildChart.Area.Component.State as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.State as BuildScatter
 import SlamData.Workspace.Card.BuildChart.Radar.Component.State as BuildRadar
+import SlamData.Workspace.Card.BuildChart.PivotTable.Component.State as BuildPivotTable
 
 -- | The common state value for deck cards.
 type CardState =
@@ -128,6 +130,7 @@ data AnyCardState
   | BuildAreaState BuildArea.StateP
   | BuildScatterState BuildScatter.StateP
   | BuildRadarState BuildRadar.StateP
+  | BuildPivotTableState BuildPivotTable.StateP
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState case _ of
@@ -257,4 +260,9 @@ _BuildScatterState = prism' BuildScatterState case _ of
 _BuildRadarState ∷ PrismP AnyCardState BuildRadar.StateP
 _BuildRadarState = prism' BuildRadarState case _ of
   BuildRadarState s → Just s
+  _ → Nothing
+
+_BuildPivotTableState ∷ PrismP AnyCardState BuildPivotTable.StateP
+_BuildPivotTableState = prism' BuildPivotTableState case _ of
+  BuildPivotTableState s → Just s
   _ → Nothing

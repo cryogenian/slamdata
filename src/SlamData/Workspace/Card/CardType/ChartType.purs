@@ -56,6 +56,7 @@ data ChartType
   | Gauge
   | Boxplot
   | Metric
+  | PivotTable
 
 
 allChartTypes ∷ Array ChartType
@@ -73,6 +74,7 @@ allChartTypes =
   , Gauge
   , Boxplot
   , Metric
+  , PivotTable
   ]
 
 isPie ∷ ChartType → Boolean
@@ -127,6 +129,10 @@ isMetric ∷ ChartType → Boolean
 isMetric Metric = true
 isMetric _ = false
 
+isPivotTable ∷ ChartType → Boolean
+isPivotTable PivotTable = true
+isPivotTable _ = false
+
 parseChartType ∷ String → String ⊹ ChartType
 parseChartType "pie" = pure Pie
 parseChartType "line" = pure Line
@@ -141,6 +147,7 @@ parseChartType "sankey" = pure Sankey
 parseChartType "gauge" = pure Gauge
 parseChartType "boxplot" = pure Boxplot
 parseChartType "metric" = pure Metric
+parseChartType "pivot" = pure PivotTable
 parseChartType _ = Left "incorrect chartType"
 
 printChartType ∷ ChartType → String
@@ -157,6 +164,7 @@ printChartType Sankey = "sankey"
 printChartType Gauge = "gauge"
 printChartType Boxplot = "boxplot"
 printChartType Metric = "metric"
+printChartType PivotTable = "pivot"
 
 derive instance genericChartType ∷ Generic ChartType
 derive instance eqChartType ∷ Eq ChartType
@@ -187,6 +195,7 @@ chartLightIconSrc = case _ of
   Gauge → "img/gauge.svg"
   Boxplot → "img/boxplot.svg"
   Metric → "img/metric.svg"
+  PivotTable → "img/pivot.svg"
 
 chartDarkIconSrc ∷ ChartType → String
 chartDarkIconSrc = case _ of
@@ -203,3 +212,4 @@ chartDarkIconSrc = case _ of
   Gauge → "img/gauge-black.svg"
   Boxplot → "img/boxplot-black.svg"
   Metric → "img/metric-black.svg"
+  PivotTable → "img/pivot-black.svg"

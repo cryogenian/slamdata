@@ -157,3 +157,4 @@ buildOptionsLegacy args conf records =
     Sankey → pure unit
     Gauge → pure unit
     Metric → pure unit
+    PivotTable → pure unit

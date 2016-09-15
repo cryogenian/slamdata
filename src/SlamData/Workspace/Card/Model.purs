@@ -52,6 +52,7 @@ import SlamData.Workspace.Card.BuildChart.Bar.Model as BuildBar
 import SlamData.Workspace.Card.BuildChart.Line.Model as BuildLine
 import SlamData.Workspace.Card.BuildChart.Area.Model as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Model as BuildScatter
+import SlamData.Workspace.Card.BuildChart.PivotTable.Model as BuildPivotTable
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -80,6 +81,7 @@ data AnyCardModel
   | BuildLine BuildLine.Model
   | BuildArea BuildArea.Model
   | BuildScatter BuildScatter.Model
+  | BuildPivotTable BuildPivotTable.Model
   | ErrorCard
   | NextAction
   | PendingCard
@@ -163,6 +165,7 @@ modelCardType =
     BuildLine _ → CT.ChartOptions Line
     BuildArea _ → CT.ChartOptions Area
     BuildScatter _ → CT.ChartOptions Scatter
+    BuildPivotTable _ → CT.ChartOptions PivotTable
     ChartOptions _ → CT.ChartOptions Pie
     Chart → CT.Chart
     Markdown _ → CT.Markdown
@@ -229,6 +232,7 @@ encodeCardModel = case _ of
   BuildLine model → BuildLine.encode model
   BuildArea model → BuildArea.encode model
   BuildScatter model → BuildScatter.encode model
+  BuildPivotTable model → BuildPivotTable.encode model
   ErrorCard → J.jsonEmptyObject
   NextAction → J.jsonEmptyObject
   PendingCard → J.jsonEmptyObject
@@ -252,6 +256,7 @@ decodeCardModel = case _ of
   CT.ChartOptions Line → map BuildLine ∘ BuildLine.decode
   CT.ChartOptions Area → map BuildArea ∘ BuildArea.decode
   CT.ChartOptions Scatter → map BuildScatter ∘ BuildScatter.decode
+  CT.ChartOptions PivotTable → map BuildPivotTable ∘ BuildPivotTable.decode
   CT.ChartOptions _ → map ChartOptions ∘ ChartOptions.decode
   CT.Chart → const $ pure Chart
   CT.Markdown → map Markdown ∘ MD.decode
@@ -285,6 +290,7 @@ cardModelOfType = case _ of
   CT.ChartOptions Line → BuildLine BuildLine.initialModel
   CT.ChartOptions Area → BuildArea BuildArea.initialModel
   CT.ChartOptions Scatter → BuildScatter BuildScatter.initialModel
+  CT.ChartOptions PivotTable → BuildPivotTable BuildPivotTable.initialModel
   CT.ChartOptions _ → ChartOptions ChartOptions.initialModel
   CT.Chart → Chart
   CT.Markdown → Markdown MD.emptyModel

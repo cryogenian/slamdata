@@ -1,0 +1,81 @@
+.sd-pivot-options {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden !important;
+}
+
+.sd-pivot-options-dims {
+  position: absolute;
+  top: 25%;
+  left: 0;
+  bottom: 0;
+  width: 33.333%;
+}
+
+.sd-pivot-options-dim {
+  border-top: 1px solid #ddd;
+  position: relative;
+}
+
+.sd-pivot-options-cols {
+  position: absolute;
+  top: 0;
+  left: 33.333%;
+  right: 0;
+  bottom: 0;
+}
+
+.sd-pivot-options-col {
+  height: 100%;
+  display: inline-block;
+  border-left: 1px solid #ddd;
+}
+
+.sd-pivot-options-col-value {
+  width: 100%;
+  height: 25%;
+  position: relative;
+}
+
+.sd-pivot-options-col-aggregation {
+  width: 100%;
+  height: 75%;
+  border-top: 1px solid #ddd;
+}
+
+.sd-pivot-options-plus {
+  position: absolute;
+  top: 25%;
+  left: 25%;
+  width: 50%;
+  height: 50%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  
+  &:before, &:after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    content: "";
+    background: #337ab7;
+  }
+
+  &:before {
+    width: 48px;
+    height: 8px;
+    margin-top: -4px;
+    margin-left: -24px;
+  }
+
+  &:after {
+    width: 8px;
+    height: 48px;
+    margin-top: -24px;
+    margin-left: -4px;
+  }
+}

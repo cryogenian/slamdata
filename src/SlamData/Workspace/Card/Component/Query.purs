@@ -47,6 +47,7 @@ module SlamData.Workspace.Card.Component.Query
   , _BuildAreaQuery
   , _BuildScatterQuery
   , _BuildRadarQuery
+  , _BuildPivotTableQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -90,6 +91,7 @@ import SlamData.Workspace.Card.BuildChart.Line.Component.Query as BuildLine
 import SlamData.Workspace.Card.BuildChart.Area.Component.Query as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.Query as BuildScatter
 import SlamData.Workspace.Card.BuildChart.Radar.Component.Query as BuildRadar
+import SlamData.Workspace.Card.BuildChart.PivotTable.Component.Query as BuildPivotTable
 
 -- | The common query algebra for a card.
 -- |
@@ -144,6 +146,7 @@ data AnyCardQuery a
   | BuildAreaQuery (BuildArea.QueryP a)
   | BuildScatterQuery (BuildScatter.QueryP a)
   | BuildRadarQuery (BuildRadar.QueryP a)
+  | BuildPivotTableQuery (BuildPivotTable.QueryP a)
 
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
@@ -274,4 +277,9 @@ _BuildScatterQuery = prism' BuildScatterQuery case _ of
 _BuildRadarQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildRadar.QueryP a)
 _BuildRadarQuery = prism' BuildRadarQuery case _ of
   BuildRadarQuery q → Just q
+  _ → Nothing
+
+_BuildPivotTableQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildPivotTable.QueryP a)
+_BuildPivotTableQuery = prism' BuildPivotTableQuery case _ of
+  BuildPivotTableQuery q → Just q
   _ → Nothing
