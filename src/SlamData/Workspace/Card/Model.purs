@@ -327,7 +327,7 @@ cardModelOfType = case _ of
 -- TODO: handle build chartype models
 modelToEval
   ∷ AnyCardModel
-  → Either String Eval.Eval
+  → String ⊹ Eval.Eval
 modelToEval = case _ of
   Ace CT.SQLMode model → pure $ Eval.Query $ fromMaybe "" $ _.text <$> model
   Ace CT.MarkdownMode model → pure $ Eval.Markdown $ fromMaybe "" $ _.text <$> model

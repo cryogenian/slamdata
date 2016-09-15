@@ -68,20 +68,19 @@ data Eval
   | Draftboard
 
 instance showEval ∷ Show Eval where
-  show =
-    case _ of
-      Pass → "Pass"
-      Query str → "Query " <> show str
-      Search str → "Search " <> show str
-      Cache str → "Cache " <> show str
-      Error str → "Error " <> show str
-      Markdown str → "Markdown " <> show str
-      Open res → "Open " <> show res
-      MarkdownForm m → "MarkdownForm"
-      ChartOptions m → "ChartOptions"
-      Variables m → "Variables" -- TODO: I don't have time to write these show instances -js
-      DownloadOptions m → "DownloadOptions"
-      Draftboard → "Draftboard"
+  show = case _ of
+    Pass → "Pass"
+    Query str → "Query " <> show str
+    Search str → "Search " <> show str
+    Cache str → "Cache " <> show str
+    Error str → "Error " <> show str
+    Markdown str → "Markdown " <> show str
+    Open res → "Open " <> show res
+    MarkdownForm m → "MarkdownForm"
+    ChartOptions m → "ChartOptions"
+    Variables m → "Variables" -- TODO: I don't have time to write these show instances -js
+    DownloadOptions m → "DownloadOptions"
+    Draftboard → "Draftboard"
 
 evalCard
   ∷ ∀ m
@@ -144,16 +143,20 @@ evalOpen
   → R.Resource
   → CET.CardEvalT m Port.TaggedResourcePort
 evalOpen info res = do
-   filePath ← maybe (QE.throw "No resource is selected") pure $
-    res ^? R._filePath
-   msg ← CET.liftQ $
-     QFS.messageIfFileNotFound
-       filePath
-       ("File " ⊕ Path.printPath filePath ⊕ " doesn't exist")
+   filePath ←
+     maybe (QE.throw "No resource is selected") pure
+       $ res ^? R._filePath
+   msg ←
+     CET.liftQ
+       $ QFS.messageIfFileNotFound
+         filePath
+         ("File " ⊕ Path.printPath filePath ⊕ " doesn't exist")
    case msg of
      Nothing → do
+       axes ←
+         CET.liftQ $ QQ.axes filePath 20
        CET.addSource filePath
-       pure { resource: filePath, tag: Nothing }
+       pure { resource: filePath, tag: Nothing, axes }
      Just err →
        QE.throw err
 
@@ -174,10 +177,11 @@ evalQuery info sql varMap = do
     <$> QQ.compile backendPath sql varMap'
   validateResources inputs
   CET.addSources inputs
-  CET.liftQ do
+  axes ← CET.liftQ do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
-  pure { resource, tag: pure sql }
+    QQ.axes resource 20
+  pure { resource, tag: pure sql, axes }
 
 evalSearch
   ∷ ∀ m
@@ -212,13 +216,14 @@ evalSearch info queryText resource = do
       validateResources inputs
       CET.addSources inputs
 
-  CET.liftQ do
+  axes ← CET.liftQ do
     QQ.viewQuery (Right resource) outputResource template SM.empty
     QFS.messageIfFileNotFound
       outputResource
       "Error making search temporary resource"
+    QQ.axes outputResource 20
 
-  pure { resource: outputResource, tag: pure sql }
+  pure { resource: outputResource, tag: pure sql, axes }
 
 runEvalCard
   ∷ ∀ m

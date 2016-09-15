@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Chart.Axis where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor(..), JObject, JArray, Json, insideOut, decodeJson, encodeJson, (:=), (.?), (~>), jsonEmptyObject)
-import Data.Array ((!!), length, fromFoldable)
+import Data.Array ((!!), length, fromFoldable, cons)
 import Data.Foldable as F
 import Data.List (List(..), filter, catMaybes)
 import Data.Map as M
@@ -78,6 +78,18 @@ eqAxes r1 r2 =
     , r1.time ≡ r2.time
     , r1.value ≡ r2.value
     ]
+
+buildAxes ∷ JArray → Axes
+buildAxes =
+  foldl foldFn initialAxes
+  ∘ M.toList
+  ∘ analyzeJArray
+  where
+  foldFn ∷ Axes → JCursor × Axis → Axes
+  foldFn accum (cursor × axis) = case axis of
+    CatAxis _ → accum { category = cons cursor accum.category }
+    ValAxis _ → accum { value = cons cursor accum.value }
+    TimeAxis _ → accum { time = cons cursor accum.time }
 
 isValAxis ∷ Axis → Boolean
 isValAxis (ValAxis _) = true
