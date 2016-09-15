@@ -42,7 +42,8 @@ import SlamData.Quasar.Query as Quasar
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.BuildOptions.Metric as BM
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), chartDarkIconSrc)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType, chartDarkIconSrc)
+import SlamData.Workspace.Card.CardType.ChartType as ChT
 import SlamData.Workspace.Card.Chart.Component.ChildSlot (cpMetric, cpECharts, ChildState, ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
 import SlamData.Workspace.Card.Chart.Config as CH
@@ -81,14 +82,14 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ HH.div
-        [ HP.classes $ (B.hidden <$ guard (state.chartType ≡ Just Metric)) ]
+        [ HP.classes $ (B.hidden <$ guard (state.chartType ≡ Just ChT.Metric)) ]
         [ HH.slot' cpECharts unit \_ →
             { component: HEC.echarts
             , initialState: HEC.initialEChartsState 600 400
             }
         ]
     , HH.div
-        [ HP.classes $ (B.hidden <$ guard (state.chartType ≠ Just Metric)) ]
+        [ HP.classes $ (B.hidden <$ guard (state.chartType ≠ Just ChT.Metric)) ]
         [ HH.slot' cpMetric unit \_ →
              { component: Metric.comp
              , initialState: Metric.initialState
@@ -125,13 +126,12 @@ eval = case _ of
       Just (Chart options@{ config: Just config }) → void do
         H.modify $ _chartType ?~ case config of
           CH.Legacy r → r.options.chartType
-          CH.Graph _ → Graph
-          CH.Sankey _ → Sankey
-          CH.Gauge _ → Gauge
-          CH.Metric _ → Metric
+          CH.Graph _ → ChT.Graph
+          CH.Sankey _ → ChT.Sankey
+          CH.Gauge _ → ChT.Gauge
+          CH.Metric _ → ChT.Metric
 
         records ← either (const []) id <$> Quasar.all options.resource
-
         case config of
           CH.Metric r → do
             H.query' cpMetric unit $ H.action $ Metric.SetMetric $ BM.buildMetric r records
@@ -142,6 +142,16 @@ eval = case _ of
             H.query' cpECharts unit $ H.action $ HEC.Reset optionDSL
             H.query' cpECharts unit $ H.action $ HEC.Resize
             setEChartsLOD $ buildObj optionDSL
+
+      Just (ChartInstructions opts chartType) → void do
+        H.modify $ _chartType ?~ chartType
+        H.query' cpECharts unit $ H.action $ HEC.Reset opts
+        H.query' cpECharts unit $ H.action HEC.Resize
+        setEChartsLOD $ buildObj opts
+      Just (Metric metric) → void do
+        H.modify $ _chartType ?~ ChT.Metric
+        H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
+        setMetricLOD
       _ →
         void $ H.query' cpECharts unit $ H.action HEC.Clear
     pure next
@@ -155,7 +165,6 @@ eval = case _ of
     pure next
   CC.SetDimensions dims next → do
     state ← H.get
-
     let
       heightPadding = 60
       widthPadding = 6
@@ -172,7 +181,8 @@ eval = case _ of
       H.modify _{ height = intHeight }
 
     for_ state.chartType case _ of
-      Metric → setMetricLOD
+      ChT.Metric →
+        setMetricLOD
       _ → do
         mbOpts ← H.query' cpECharts unit $ H.request HEC.GetOptions
         for_ (join mbOpts) setEChartsLOD

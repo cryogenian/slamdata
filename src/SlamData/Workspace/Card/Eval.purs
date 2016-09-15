@@ -48,6 +48,8 @@ import SlamData.Workspace.Card.Search.Interpret as Search
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
+import SlamData.Workspace.Card.BuildChart.Metric.Eval as BuildMetric
+
 
 import Text.SlamSearch as SS
 import Text.Markdown.SlamDown as SD
@@ -66,21 +68,23 @@ data Eval
   | ChartOptions ChartOptions.Model
   | DownloadOptions DO.State
   | Draftboard
+  | BuildMetric BuildMetric.Model
 
-instance showEval ∷ Show Eval where
-  show = case _ of
-    Pass → "Pass"
-    Query str → "Query " <> show str
-    Search str → "Search " <> show str
-    Cache str → "Cache " <> show str
-    Error str → "Error " <> show str
-    Markdown str → "Markdown " <> show str
-    Open res → "Open " <> show res
-    MarkdownForm m → "MarkdownForm"
-    ChartOptions m → "ChartOptions"
-    Variables m → "Variables" -- TODO: I don't have time to write these show instances -js
-    DownloadOptions m → "DownloadOptions"
-    Draftboard → "Draftboard"
+tagEval ∷ Eval → String
+tagEval = case _ of
+  Pass → "Pass"
+  Query str → "Query " <> show str
+  Search str → "Search " <> show str
+  Cache str → "Cache " <> show str
+  Error str → "Error " <> show str
+  Markdown str → "Markdown " <> show str
+  Open res → "Open " <> show res
+  MarkdownForm m → "MarkdownForm"
+  ChartOptions m → "ChartOptions"
+  Variables m → "Variables"
+  DownloadOptions m → "DownloadOptions"
+  Draftboard → "Draftboard"
+  BuildMetric _ → "BuildMetric"
 
 evalCard
   ∷ ∀ m
@@ -120,8 +124,10 @@ evalCard input =
       pure $ Port.VarMap $ VariablesE.eval (fst input.cardCoord) input.urlVarMaps model
     DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →
       pure $ Port.DownloadOptions { resource, compress, options }
+    BuildMetric model, Just (Port.TaggedResource { resource }) →
+      BuildMetric.eval resource model
     e, i →
-      QE.throw $ "Card received unexpected input type; " <> show e <> " | " <> show i
+      QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
 evalMarkdownForm
   ∷ ∀ m
@@ -232,8 +238,7 @@ runEvalCard
   → Eval
   → m (Either GE.GlobalError (Port.Port × (Set.Set AdditionalSource)))
 runEvalCard input =
-  CET.runCardEvalT ∘
-    evalCard input
+  CET.runCardEvalT ∘ evalCard input
 
 validateResources
   ∷ ∀ m f

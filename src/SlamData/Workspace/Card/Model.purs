@@ -329,15 +329,30 @@ modelToEval
   ∷ AnyCardModel
   → String ⊹ Eval.Eval
 modelToEval = case _ of
-  Ace CT.SQLMode model → pure $ Eval.Query $ fromMaybe "" $ _.text <$> model
-  Ace CT.MarkdownMode model → pure $ Eval.Markdown $ fromMaybe "" $ _.text <$> model
-  Markdown model → pure $ Eval.MarkdownForm model
-  Search txt → pure $ Eval.Search txt
-  Cache fp → pure $ Eval.Cache fp
-  Open (Just res) → pure $ Eval.Open res
-  Open _ → Left $ "Open model missing resource"
-  Variables model → pure $ Eval.Variables model
-  ChartOptions model → pure $ Eval.ChartOptions model
-  DownloadOptions model → pure $ Eval.DownloadOptions model
-  Draftboard _ → pure Eval.Draftboard
-  _ → pure Eval.Pass
+  Ace CT.SQLMode model →
+    pure $ Eval.Query $ fromMaybe "" $ _.text <$> model
+  Ace CT.MarkdownMode model →
+    pure $ Eval.Markdown $ fromMaybe "" $ _.text <$> model
+  Markdown model →
+    pure $ Eval.MarkdownForm model
+  Search txt →
+    pure $ Eval.Search txt
+  Cache fp →
+    pure $ Eval.Cache fp
+  Open (Just res) →
+    pure $ Eval.Open res
+  -- Do we need this? Eval.evalOpen is called only if Open has Just res
+  Open _ →
+    Left "Open model missing resource"
+  Variables model →
+    pure $ Eval.Variables model
+  ChartOptions model →
+    pure $ Eval.ChartOptions model
+  DownloadOptions model →
+    pure $ Eval.DownloadOptions model
+  Draftboard _ →
+    pure Eval.Draftboard
+  BuildMetric model  →
+    pure $ Eval.BuildMetric model
+  _ →
+    pure Eval.Pass

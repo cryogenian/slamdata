@@ -19,6 +19,8 @@ module SlamData.Workspace.Card.Port
   , ChartPort
   , TaggedResourcePort
   , DownloadPort
+  , MetricPort
+  , tagPort
   , _SlamDown
   , _VarMap
   , _Resource
@@ -29,6 +31,8 @@ module SlamData.Workspace.Card.Port
   , _Draftboard
   , _CardError
   , _Blocked
+  , _Metric
+  , _ChartInstructions
   , module SlamData.Workspace.Card.Port.VarMap
   ) where
 
@@ -37,9 +41,12 @@ import SlamData.Prelude
 import Data.Lens (PrismP, prism', TraversalP, wander)
 import Data.Set as Set
 
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI)
+
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
-import SlamData.Workspace.Card.Chart.Axis (Axes)
+import SlamData.Workspace.Card.Chart.Axis (Axes, printAxes)
 import SlamData.Workspace.Card.Chart.Config as CC
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
@@ -64,26 +71,37 @@ type TaggedResourcePort =
   , axes ∷ Axes
   }
 
+type MetricPort =
+  { label ∷ Maybe String
+  , value ∷ String
+  }
+
 data Port
   = SlamDown (VarMap × (SD.SlamDownP VarMapValue))
   | VarMap VarMap
   | CardError String
   | Chart ChartPort
+  | ChartInstructions (DSL OptionI) ChartType
   | TaggedResource TaggedResourcePort
   | DownloadOptions DownloadPort
+  | Metric MetricPort
   | Draftboard
   | Blocked
 
-instance showPort ∷ Show Port where
-  show = case _ of
-    SlamDown sd → "SlamDown " ⊕ show sd
-    VarMap vm → "VarMap " ⊕ show vm
-    CardError str → "CardError " ⊕ show str
-    Chart p → "Chart"
-    TaggedResource p → "TaggedResource (" ⊕ show p.resource ⊕ " " ⊕ show p.tag ⊕ ")"
-    DownloadOptions p → "DownloadOptions"
-    Draftboard → "Draftboard"
-    Blocked → "Blocked"
+
+tagPort ∷ Maybe Port → String
+tagPort Nothing = "Nothing"
+tagPort (Just p) = case p of
+  SlamDown sd → "SlamDown: " ⊕ show sd
+  VarMap vm → "VarMap: " ⊕ show vm
+  CardError str → "CardError: " ⊕ show str
+  Chart p → "Chart"
+  TaggedResource p → "TaggedResource: " ⊕ show p.resource ⊕ " " ⊕ show p.tag
+  DownloadOptions p → "DownloadOptions"
+  Draftboard → "Draftboard"
+  Blocked → "Blocked"
+  ChartInstructions _ _ → "ChartInstructions"
+  Metric _ → "Metric"
 
 _SlamDown ∷ TraversalP Port (SD.SlamDownP VarMapValue)
 _SlamDown = wander \f s → case s of
@@ -107,7 +125,7 @@ _Chart = prism' Chart \p → case p of
   _ → Nothing
 
 _ResourceTag ∷ TraversalP Port String
-_ResourceTag = wander \f → case _ of
+_ResourceTag = wander \f s → case s of
   TaggedResource o@{tag: Just tag} →
     TaggedResource ∘ o{tag = _} ∘ Just <$> f tag
   s → pure s
@@ -136,4 +154,14 @@ _DownloadOptions = prism' DownloadOptions \p → case p of
 _Draftboard ∷ PrismP Port Unit
 _Draftboard = prism' (const Draftboard) \p → case p of
   Draftboard → Just unit
+  _ → Nothing
+
+_ChartInstructions ∷ TraversalP Port (DSL OptionI)
+_ChartInstructions = wander \f s → case s of
+  ChartInstructions opts chty → flip ChartInstructions chty <$> f opts
+  _ → pure s
+
+_Metric ∷ PrismP Port MetricPort
+_Metric = prism' Metric case _ of
+  Metric u → Just u
   _ → Nothing
