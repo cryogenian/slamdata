@@ -27,12 +27,12 @@ import SlamData.Workspace.Card.Chart.Aggregation as Ag
 eval
   ∷ ∀ m
   . (Monad m, QuasarDSL m)
-  ⇒ FilePath
-  → Model
+  ⇒ Model
+  → FilePath
   → CET.CardEvalT m Port.Port
-eval _ Nothing =
+eval Nothing _  =
   QE.throw "Please select axis to aggregate"
-eval resource (Just conf) = do
+eval (Just conf) resource = do
   numRecords ←
     CET.liftQ $ QQ.count resource
 

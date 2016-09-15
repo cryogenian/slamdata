@@ -49,6 +49,7 @@ import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 import SlamData.Workspace.Card.BuildChart.Metric.Eval as BuildMetric
+import SlamData.Workspace.Card.BuildChart.Sankey.Eval as BuildSankey
 
 
 import Text.SlamSearch as SS
@@ -69,6 +70,7 @@ data Eval
   | DownloadOptions DO.State
   | Draftboard
   | BuildMetric BuildMetric.Model
+  | BuildSankey BuildSankey.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -85,6 +87,7 @@ tagEval = case _ of
   DownloadOptions m → "DownloadOptions"
   Draftboard → "Draftboard"
   BuildMetric _ → "BuildMetric"
+  BuildSankey _ → "BuildSankey"
 
 evalCard
   ∷ ∀ m
@@ -125,7 +128,9 @@ evalCard input =
     DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →
       pure $ Port.DownloadOptions { resource, compress, options }
     BuildMetric model, Just (Port.TaggedResource { resource }) →
-      BuildMetric.eval resource model
+      BuildMetric.eval model resource
+    BuildSankey model, Just pr@(Port.TaggedResource {resource}) →
+      BuildSankey.eval model resource
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 

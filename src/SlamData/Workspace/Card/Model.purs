@@ -354,5 +354,7 @@ modelToEval = case _ of
     pure Eval.Draftboard
   BuildMetric model  →
     pure $ Eval.BuildMetric model
+  BuildSankey model →
+    pure $ Eval.BuildSankey model
   _ →
     pure Eval.Pass
