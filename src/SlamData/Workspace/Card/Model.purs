@@ -47,12 +47,15 @@ import SlamData.Workspace.Card.BuildChart.Sankey.Model as BuildSankey
 import SlamData.Workspace.Card.BuildChart.Gauge.Model as BuildGauge
 import SlamData.Workspace.Card.BuildChart.Graph.Model as BuildGraph
 import SlamData.Workspace.Card.BuildChart.Pie.Model as BuildPie
-import SlamData.Workspace.Card.BuildChart.Radar.Model as BuildRadar
 import SlamData.Workspace.Card.BuildChart.Bar.Model as BuildBar
 import SlamData.Workspace.Card.BuildChart.Line.Model as BuildLine
 import SlamData.Workspace.Card.BuildChart.Area.Model as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Model as BuildScatter
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model as BuildPivotTable
+import SlamData.Workspace.Card.BuildChart.Funnel.Model as BuildFunnel
+import SlamData.Workspace.Card.BuildChart.Radar.Model as BuildRadar
+import SlamData.Workspace.Card.BuildChart.Boxplot.Model as BuildBoxplot
+import SlamData.Workspace.Card.BuildChart.Heatmap.Model as BuildHeatmap
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -76,12 +79,15 @@ data AnyCardModel
   | BuildGauge BuildGauge.Model
   | BuildGraph BuildGraph.Model
   | BuildPie BuildPie.Model
-  | BuildRadar BuildRadar.Model
   | BuildBar BuildBar.Model
   | BuildLine BuildLine.Model
   | BuildArea BuildArea.Model
   | BuildScatter BuildScatter.Model
   | BuildPivotTable BuildPivotTable.Model
+  | BuildFunnel BuildFunnel.Model
+  | BuildRadar BuildRadar.Model
+  | BuildBoxplot BuildBoxplot.Model
+  | BuildHeatmap BuildHeatmap.Model
   | ErrorCard
   | NextAction
   | PendingCard
@@ -111,6 +117,9 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , BuildLine <$> BuildLine.genModel
       , BuildArea <$> BuildArea.genModel
       , BuildScatter <$> BuildScatter.genModel
+      , BuildFunnel <$> BuildFunnel.genModel
+      , BuildBoxplot <$> BuildBoxplot.genModel
+      , BuildHeatmap <$> BuildHeatmap.genModel
       , pure ErrorCard
       , pure NextAction
       ]
@@ -141,6 +150,9 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       BuildLine x, BuildLine y → BuildLine.eqModel x y
       BuildArea x, BuildArea y → BuildArea.eqModel x y
       BuildScatter x, BuildScatter y → BuildScatter.eqModel x y
+      BuildFunnel x, BuildFunnel y → BuildFunnel.eqModel x y
+      BuildBoxplot x, BuildBoxplot y → BuildBoxplot.eqModel x y
+      BuildHeatmap x, BuildHeatmap y → BuildHeatmap.eqModel x y
       ErrorCard, ErrorCard → true
       NextAction, NextAction → true
       _,_ → false
@@ -166,6 +178,9 @@ modelCardType =
     BuildArea _ → CT.ChartOptions Area
     BuildScatter _ → CT.ChartOptions Scatter
     BuildPivotTable _ → CT.ChartOptions PivotTable
+    BuildFunnel _ → CT.ChartOptions Funnel
+    BuildBoxplot _ → CT.ChartOptions Boxplot
+    BuildHeatmap _ → CT.ChartOptions Heatmap
     ChartOptions _ → CT.ChartOptions Pie
     Chart → CT.Chart
     Markdown _ → CT.Markdown
@@ -233,6 +248,9 @@ encodeCardModel = case _ of
   BuildArea model → BuildArea.encode model
   BuildScatter model → BuildScatter.encode model
   BuildPivotTable model → BuildPivotTable.encode model
+  BuildFunnel model → BuildFunnel.encode model
+  BuildBoxplot model → BuildBoxplot.encode model
+  BuildHeatmap model → BuildHeatmap.encode model
   ErrorCard → J.jsonEmptyObject
   NextAction → J.jsonEmptyObject
   PendingCard → J.jsonEmptyObject
@@ -257,6 +275,9 @@ decodeCardModel = case _ of
   CT.ChartOptions Area → map BuildArea ∘ BuildArea.decode
   CT.ChartOptions Scatter → map BuildScatter ∘ BuildScatter.decode
   CT.ChartOptions PivotTable → map BuildPivotTable ∘ BuildPivotTable.decode
+  CT.ChartOptions Funnel → map BuildFunnel ∘ BuildFunnel.decode
+  CT.ChartOptions Boxplot → map BuildBoxplot ∘ BuildBoxplot.decode
+  CT.ChartOptions Heatmap → map BuildHeatmap ∘ BuildHeatmap.decode
   CT.ChartOptions _ → map ChartOptions ∘ ChartOptions.decode
   CT.Chart → const $ pure Chart
   CT.Markdown → map Markdown ∘ MD.decode
@@ -291,6 +312,9 @@ cardModelOfType = case _ of
   CT.ChartOptions Area → BuildArea BuildArea.initialModel
   CT.ChartOptions Scatter → BuildScatter BuildScatter.initialModel
   CT.ChartOptions PivotTable → BuildPivotTable BuildPivotTable.initialModel
+  CT.ChartOptions Funnel → BuildFunnel BuildFunnel.initialModel
+  CT.ChartOptions Boxplot → BuildBoxplot BuildBoxplot.initialModel
+  CT.ChartOptions Heatmap → BuildHeatmap BuildHeatmap.initialModel
   CT.ChartOptions _ → ChartOptions ChartOptions.initialModel
   CT.Chart → Chart
   CT.Markdown → Markdown MD.emptyModel
@@ -309,7 +333,7 @@ cardModelOfType = case _ of
 -- TODO: handle build chartype models
 modelToEval
   ∷ AnyCardModel
-  → Either String Eval.Eval
+  → String ⊹ Eval.Eval
 modelToEval = case _ of
   Ace CT.SQLMode model → pure $ Eval.Query $ fromMaybe "" $ _.text <$> model
   Ace CT.MarkdownMode model → pure $ Eval.Markdown $ fromMaybe "" $ _.text <$> model

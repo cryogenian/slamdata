@@ -22,9 +22,10 @@ module SlamData.Workspace.Card.Port
   , _SlamDown
   , _VarMap
   , _Resource
+  , _ResourceAxes
+  , _ResourceTag
   , _Chart
   , _DownloadOptions
-  , _ResourceTag
   , _Draftboard
   , _CardError
   , _Blocked
@@ -60,6 +61,7 @@ type DownloadPort =
 type TaggedResourcePort =
   { resource ∷ PU.FilePath
   , tag ∷ Maybe String
+  , axes ∷ Axes
   }
 
 data Port
@@ -73,16 +75,15 @@ data Port
   | Blocked
 
 instance showPort ∷ Show Port where
-  show =
-    case _ of
-      SlamDown sd → "SlamDown " <> show sd
-      VarMap vm → "VarMap " <> show vm
-      CardError str → "CardError " <> show str
-      Chart p → "Chart"
-      TaggedResource p → "TaggedResource (" <> show p.resource <> " " <> show p.tag <> ")"
-      DownloadOptions p → "DownloadOptions"
-      Draftboard → "Draftboard"
-      Blocked → "Blocked"
+  show = case _ of
+    SlamDown sd → "SlamDown " ⊕ show sd
+    VarMap vm → "VarMap " ⊕ show vm
+    CardError str → "CardError " ⊕ show str
+    Chart p → "Chart"
+    TaggedResource p → "TaggedResource (" ⊕ show p.resource ⊕ " " ⊕ show p.tag ⊕ ")"
+    DownloadOptions p → "DownloadOptions"
+    Draftboard → "Draftboard"
+    Blocked → "Blocked"
 
 _SlamDown ∷ TraversalP Port (SD.SlamDownP VarMapValue)
 _SlamDown = wander \f s → case s of
@@ -115,6 +116,12 @@ _Resource ∷ TraversalP Port PU.FilePath
 _Resource = wander \f s → case s of
   TaggedResource o → TaggedResource ∘ o{resource = _} <$> f o.resource
   _ → pure s
+
+_ResourceAxes ∷ TraversalP Port Axes
+_ResourceAxes = wander \f s → case s of
+  TaggedResource o → TaggedResource ∘ o{axes = _} <$> f o.axes
+  _ → pure s
+
 
 _Blocked ∷ PrismP Port Unit
 _Blocked = prism' (const Blocked) \p → case p of

@@ -14,20 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.BuildChart.PivotTable.Component.State 
+module SlamData.Workspace.Card.BuildChart.PivotTable.Component.State
   ( State
   , StateP
+  , OrderingOpts
   , initialState
   , modelFromState
   , stateFromModel
+  , reorder
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
 import Data.Array as Array
-import Data.Map (Map)
-import Data.Map as Map
 
 import Halogen (ParentState)
 
@@ -45,8 +45,16 @@ type State =
   { axes ∷ Axes
   , levelOfDetails ∷ LevelOfDetails
   , fresh ∷ Int
-  , dimensions ∷ Map Int JCursor
-  , columns ∷ Map Int Column
+  , dimensions ∷ Array (Int × JCursor)
+  , columns ∷ Array (Int × Column)
+  , orderingColumn ∷ Maybe OrderingOpts
+  , orderingDimension ∷ Maybe OrderingOpts
+  }
+
+type OrderingOpts =
+  { source ∷ Int
+  , over ∷ Maybe Int
+  , offset ∷ Number
   }
 
 initialState ∷ State
@@ -54,24 +62,41 @@ initialState =
   { axes: initialAxes
   , levelOfDetails: High
   , fresh: 0
-  , dimensions: Map.empty
-  , columns: Map.empty
+  , dimensions: []
+  , columns: []
+  , orderingColumn: Nothing
+  , orderingDimension: Nothing
   }
 
 modelFromState ∷ State → Model
 modelFromState st = Just
-  { dimensions: Array.fromFoldable st.dimensions
-  , columns: Array.fromFoldable st.columns
+  { dimensions: map snd st.dimensions
+  , columns: map snd st.columns
   }
 
 stateFromModel ∷ Model → State → State
-stateFromModel Nothing st = st { dimensions = Map.empty, columns = Map.empty, fresh = 0 }
+stateFromModel Nothing st = st { dimensions = [], columns = [], fresh = 0 }
 stateFromModel (Just r) st =
   let
     l1 = Array.length r.dimensions
     l2 = Array.length r.columns
-    dims = Map.fromFoldable (Array.mapWithIndex Tuple r.dimensions)
-    cols = Map.fromFoldable (Array.mapWithIndex (\i → Tuple (i + l1)) r.columns)
+    dims = Array.mapWithIndex Tuple r.dimensions
+    cols = Array.mapWithIndex (\i → Tuple (i + l1)) r.columns
     fresh = l1 + l2
   in
     st { dimensions = dims, columns = cols, fresh = fresh }
+
+reorder ∷ ∀ a. Int → Int → Array (Int × a) → Array (Int × a)
+reorder tag1 tag2 arr | tag1 == tag2 = arr
+reorder tag1 tag2 arr =
+  let
+    span = Array.span (not ∘ eq tag1 ∘ fst) arr
+    init = span.init
+    subj = Array.take 1 span.rest
+    rest = Array.drop 1 span.rest
+    ix1  = Array.findIndex (eq tag2 ∘ fst) init
+    ix2  = add 1 <$> Array.findIndex (eq tag2 ∘ fst) rest
+  in case ix1, ix2 of
+    Just i1, _ → Array.take i1 init <> subj <> Array.drop i1 init <> rest
+    _, Just i2 → init <> Array.take i2 rest <> subj <> Array.drop i2 rest
+    _, _ → arr

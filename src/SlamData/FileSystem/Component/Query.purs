@@ -18,7 +18,7 @@ module SlamData.FileSystem.Component.Query where
 
 import DOM.HTML.Types (HTMLElement)
 
-import SlamData.FileSystem.Listing.Sort (Sort)
+import SlamData.Common.Sort (Sort)
 import SlamData.FileSystem.Routing.Salt (Salt)
 import SlamData.GlobalError (GlobalError)
 

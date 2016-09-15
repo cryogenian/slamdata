@@ -31,7 +31,7 @@ import Routing.Match (Match, eitherMatch)
 import Routing.Match.Class (param)
 
 import SlamData.Config as Config
-import SlamData.FileSystem.Listing.Sort (Sort(..), string2sort, sort2string)
+import SlamData.Common.Sort (Sort(..), string2sort, sort2string)
 import SlamData.FileSystem.Routing.Salt (Salt(..), runSalt)
 
 import Text.SlamSearch (mkQuery)

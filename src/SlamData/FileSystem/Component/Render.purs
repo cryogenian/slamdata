@@ -33,7 +33,7 @@ import SlamData.Guide as Guide
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _isMount, _sort)
-import SlamData.FileSystem.Listing.Sort (Sort(..))
+import SlamData.Common.Sort (Sort(..))
 
 sorting ∷ ∀ a. State → HTML a (Query Unit)
 sorting state =

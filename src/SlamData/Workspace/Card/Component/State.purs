@@ -47,6 +47,9 @@ module SlamData.Workspace.Card.Component.State
   , _BuildScatterState
   , _BuildRadarState
   , _BuildPivotTableState
+  , _BuildFunnelState
+  , _BuildBoxplotState
+  , _BuildHeatmapState
   ) where
 
 import SlamData.Prelude
@@ -84,8 +87,12 @@ import SlamData.Workspace.Card.BuildChart.Bar.Component.State as BuildBar
 import SlamData.Workspace.Card.BuildChart.Line.Component.State as BuildLine
 import SlamData.Workspace.Card.BuildChart.Area.Component.State as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.State as BuildScatter
+import SlamData.Workspace.Card.BuildChart.Funnel.Component.State as BuildFunnel
 import SlamData.Workspace.Card.BuildChart.Radar.Component.State as BuildRadar
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.State as BuildPivotTable
+import SlamData.Workspace.Card.BuildChart.Boxplot.Component.State as BuildBoxplot
+import SlamData.Workspace.Card.BuildChart.Heatmap.Component.State as BuildHeatmap
+
 
 -- | The common state value for deck cards.
 type CardState =
@@ -129,8 +136,11 @@ data AnyCardState
   | BuildLineState BuildLine.StateP
   | BuildAreaState BuildArea.StateP
   | BuildScatterState BuildScatter.StateP
+  | BuildFunnelState BuildFunnel.StateP
   | BuildRadarState BuildRadar.StateP
   | BuildPivotTableState BuildPivotTable.StateP
+  | BuildBoxplotState BuildBoxplot.StateP
+  | BuildHeatmapState BuildHeatmap.StateP
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState case _ of
@@ -265,4 +275,19 @@ _BuildRadarState = prism' BuildRadarState case _ of
 _BuildPivotTableState ∷ PrismP AnyCardState BuildPivotTable.StateP
 _BuildPivotTableState = prism' BuildPivotTableState case _ of
   BuildPivotTableState s → Just s
+  _ → Nothing
+
+_BuildFunnelState ∷ PrismP AnyCardState BuildFunnel.StateP
+_BuildFunnelState = prism' BuildFunnelState case _ of
+  BuildFunnelState s → Just s
+  _ → Nothing
+
+_BuildBoxplotState ∷ PrismP AnyCardState BuildBoxplot.StateP
+_BuildBoxplotState = prism' BuildBoxplotState case _ of
+  BuildBoxplotState s → Just s
+  _ → Nothing
+
+_BuildHeatmapState ∷ PrismP AnyCardState BuildHeatmap.StateP
+_BuildHeatmapState = prism' BuildHeatmapState case _ of
+  BuildHeatmapState s → Just s
   _ → Nothing

@@ -48,6 +48,9 @@ module SlamData.Workspace.Card.Component.Query
   , _BuildScatterQuery
   , _BuildRadarQuery
   , _BuildPivotTableQuery
+  , _BuildFunnelQuery
+  , _BuildBoxplotQuery
+  , _BuildHeatmapQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -92,6 +95,9 @@ import SlamData.Workspace.Card.BuildChart.Area.Component.Query as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.Query as BuildScatter
 import SlamData.Workspace.Card.BuildChart.Radar.Component.Query as BuildRadar
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.Query as BuildPivotTable
+import SlamData.Workspace.Card.BuildChart.Funnel.Component.Query as BuildFunnel
+import SlamData.Workspace.Card.BuildChart.Boxplot.Component.Query as BuildBoxplot
+import SlamData.Workspace.Card.BuildChart.Heatmap.Component.Query as BuildHeatmap
 
 -- | The common query algebra for a card.
 -- |
@@ -147,6 +153,9 @@ data AnyCardQuery a
   | BuildScatterQuery (BuildScatter.QueryP a)
   | BuildRadarQuery (BuildRadar.QueryP a)
   | BuildPivotTableQuery (BuildPivotTable.QueryP a)
+  | BuildFunnelQuery (BuildFunnel.QueryP a)
+  | BuildBoxplotQuery (BuildBoxplot.QueryP a)
+  | BuildHeatmapQuery (BuildHeatmap.QueryP a)
 
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
@@ -282,4 +291,19 @@ _BuildRadarQuery = prism' BuildRadarQuery case _ of
 _BuildPivotTableQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildPivotTable.QueryP a)
 _BuildPivotTableQuery = prism' BuildPivotTableQuery case _ of
   BuildPivotTableQuery q → Just q
+  _ → Nothing
+
+_BuildFunnelQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildFunnel.QueryP a)
+_BuildFunnelQuery = prism' BuildFunnelQuery case _ of
+  BuildFunnelQuery q → Just q
+  _ → Nothing
+
+_BuildBoxplotQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildBoxplot.QueryP a)
+_BuildBoxplotQuery = prism' BuildBoxplotQuery case _ of
+  BuildBoxplotQuery q → Just q
+  _ → Nothing
+
+_BuildHeatmapQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildHeatmap.QueryP a)
+_BuildHeatmapQuery = prism' BuildHeatmapQuery case _ of
+  BuildHeatmapQuery q → Just q
   _ → Nothing

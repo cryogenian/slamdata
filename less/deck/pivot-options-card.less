@@ -5,6 +5,51 @@
   right: 0;
   bottom: 0;
   overflow: hidden !important;
+
+  .delete-cell {
+    background: none;
+    padding: none;
+    margin: none;
+    border: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: @grid-size;
+    height: @grid-size;
+    line-height: @grid-size;
+    text-align: center;
+    font-size: 1.5rem;
+    color: #aaa;
+  }
+}
+
+.sd-pivot-options-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25%;
+  height: 25%;
+  background: #fafafa;
+
+  span {
+    position: absolute;
+    line-height: 2rem;
+    text-align: center;
+    text-transform: uppercase;
+    color: #888;
+  }
+
+  span:nth-child(1) {
+    bottom: 0;
+    width: 100%;
+  }
+
+  span:nth-child(2) {
+    transform: rotate(-90deg);
+    right: -1rem;
+    top: 50%;
+    margin-top: -1rem;
+  }
 }
 
 .sd-pivot-options-dims {
@@ -12,25 +57,102 @@
   top: 25%;
   left: 0;
   bottom: 0;
-  width: 33.333%;
+  width: 25%;
 }
 
 .sd-pivot-options-dim {
-  border-top: 1px solid #ddd;
+  width: 100%;
+  background: #fff;
   position: relative;
+
+  &.ordering {
+    z-index: 10;
+    pointer-events: none;
+
+    .sd-pivot-options-dim-inner {
+      height: ~"calc(100% + 1px)";
+      border-bottom: 1px solid #ddd;
+      box-shadow: 0 0 8px rgba(0,0,0,.2);
+    }
+
+    &:before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+      background: #eee;
+      border-top: 1px solid #ddd;
+      box-shadow: inset 0 0 8px rgba(0,0,0,.1);
+    }
+  }
+
+  &.ordering-over {
+    .sd-pivot-options-dim-inner {
+      background: #fafafa;
+    }
+  }
+}
+
+.sd-pivot-options-dim-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  border-top: 1px solid #ddd;
 }
 
 .sd-pivot-options-cols {
   position: absolute;
   top: 0;
-  left: 33.333%;
+  left: 25%;
   right: 0;
   bottom: 0;
 }
 
 .sd-pivot-options-col {
   height: 100%;
-  display: inline-block;
+  float: left;
+  position: relative;
+
+  &.ordering {
+    z-index: 10;
+    pointer-events: none;
+
+    .sd-pivot-options-col-inner {
+      width: ~"calc(100% + 1px)";
+      border-right: 1px solid #ddd;
+      box-shadow: 0 0 8px rgba(0,0,0,.2);
+    }
+
+    &:before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+      background: #eee;
+      border-left: 1px solid #ddd;
+      box-shadow: inset 0 0 8px rgba(0,0,0,.1);
+    }
+  }
+
+  &.ordering-over {
+    .sd-pivot-options-col-inner {
+      background: #fafafa;
+    }
+  }
+}
+
+.sd-pivot-options-col-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #fff;
   border-left: 1px solid #ddd;
 }
 
@@ -56,7 +178,7 @@
   padding: 0;
   border: none;
   background: transparent;
-  
+
   &:before, &:after {
     position: absolute;
     top: 50%;
@@ -78,4 +200,17 @@
     margin-top: -24px;
     margin-left: -4px;
   }
+}
+
+.sd-pivot-options-label {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  overflow: ellipsis;
+  font-weight: bold;
+  font-size: 1rem;
+  white-space: nowrap;
 }
