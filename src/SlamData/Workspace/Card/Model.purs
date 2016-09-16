@@ -364,5 +364,9 @@ modelToEval = case _ of
     pure $ Eval.BuildPie model
   BuildRadar model →
     pure $ Eval.BuildRadar model
+  BuildArea model →
+    pure $ Eval.BuildArea model
+  BuildLine model →
+    pure $ Eval.BuildLine model
   _ →
     pure Eval.Pass

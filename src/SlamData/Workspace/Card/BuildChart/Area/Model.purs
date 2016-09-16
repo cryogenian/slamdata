@@ -20,9 +20,9 @@ type AreaR =
   , valueAggregation ∷ Ag.Aggregation
   , secondValue ∷ Maybe JCursor
   , secondValueAggregation ∷ Maybe Ag.Aggregation
+  , series ∷ Maybe JCursor
   , isStacked ∷ Boolean
   , isSmooth ∷ Boolean
-  , series ∷ Maybe JCursor
   , axisLabelAngle ∷ Number
   , axisLabelFontSize ∷ Int
   }
