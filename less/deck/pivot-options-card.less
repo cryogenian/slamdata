@@ -166,6 +166,36 @@
   width: 100%;
   height: 75%;
   border-top: 1px solid #ddd;
+  position: relative;
+
+  button.aggregation {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3rem;
+  }
+
+  .list-group {
+    position: absolute;
+    top: 3rem;
+    left: 0;
+    width: 100%;
+    border-bottom: 1px solid #ddd;
+    border-top: 1px solid #ddd;
+  }
+
+  .list-group-item {
+    border-left: none;
+    border-right: none;
+
+    &.active {
+      background: #f5f5f5;
+      color: inherit;
+      border-top-color: inherit;
+      border-bottom-color: inherit;
+    }
+  }
 }
 
 .sd-pivot-options-plus {
@@ -213,4 +243,16 @@
   font-weight: bold;
   font-size: 1rem;
   white-space: nowrap;
+}
+
+.sd-pivot-options-select {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  bottom: 20px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  background: #fff;
 }

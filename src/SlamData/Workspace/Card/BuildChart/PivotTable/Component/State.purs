@@ -22,6 +22,7 @@ module SlamData.Workspace.Card.BuildChart.PivotTable.Component.State
   , modelFromState
   , stateFromModel
   , reorder
+  , setColumnAggregation
   ) where
 
 import SlamData.Prelude
@@ -35,7 +36,8 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.ChildSlot as PCS
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.Query (QueryC)
-import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Model, Column)
+import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Model, Column(..))
+import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.Axis (Axes, initialAxes)
 
 type StateP =
@@ -49,6 +51,9 @@ type State =
   , columns ∷ Array (Int × Column)
   , orderingColumn ∷ Maybe OrderingOpts
   , orderingDimension ∷ Maybe OrderingOpts
+  , selectDimension ∷ Maybe (Array JCursor × Int)
+  , selectColumn ∷ Maybe (Array JCursor × Int)
+  , selectAggregation ∷ Maybe Int
   }
 
 type OrderingOpts =
@@ -66,6 +71,9 @@ initialState =
   , columns: []
   , orderingColumn: Nothing
   , orderingDimension: Nothing
+  , selectDimension: Nothing
+  , selectColumn: Nothing
+  , selectAggregation: Nothing
   }
 
 modelFromState ∷ State → Model
@@ -100,3 +108,9 @@ reorder tag1 tag2 arr =
     Just i1, _ → Array.take i1 init <> subj <> Array.drop i1 init <> rest
     _, Just i2 → init <> Array.take i2 rest <> subj <> Array.drop i2 rest
     _, _ → arr
+
+setColumnAggregation ∷ Int → Maybe Ag.Aggregation → State → State
+setColumnAggregation tag ag st = st { columns = map go st.columns }
+  where
+  go (tag' × Column col) | tag == tag' = tag × Column (col { valueAggregation = ag })
+  go a = a
