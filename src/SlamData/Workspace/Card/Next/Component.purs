@@ -147,10 +147,10 @@ possibleToGetTo input =
   maybe false (ICT.possibleToGetTo $ ICT.fromMaybePort input) ∘ ICT.fromCardType
 
 addCardOrPresentReason ∷ ∀ a. Maybe Port.Port → CT.CardType → a -> Query a
-addCardOrPresentReason input cardType a =
-  if takesInput input cardType
-     then AddCard cardType a
-     else PresentReason input cardType a
+addCardOrPresentReason input cardType a = AddCard cardType a
+--  if takesInput input cardType
+--     then AddCard cardType a
+--     else PresentReason input cardType a
 
 dismissedAddCardGuideKey ∷ String
 dismissedAddCardGuideKey = "dismissedAddCardGuide"

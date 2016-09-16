@@ -5,10 +5,10 @@ module SlamData.Workspace.Card.BuildChart.Graph.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (view)
+import Data.Lens (view, (^?), (.~))
+import Data.Lens as Lens
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 import Halogen.HTML.Indexed as HH
 import Halogen.CustomProps as Cp
 import Halogen.HTML.Events.Indexed as HE
@@ -16,9 +16,13 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
+import Global (readFloat, isNaN)
+
 import SlamData.Monad (Slam)
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, trySelect')
+import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, trySelect', fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
@@ -35,8 +39,7 @@ import SlamData.Workspace.Card.BuildChart.CSS as CSS
 import SlamData.Workspace.Card.BuildChart.Graph.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Graph.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Graph.Component.Query as Q
-
-import Unsafe.Coerce (unsafeCoerce)
+import SlamData.Workspace.Card.BuildChart.Graph.Model as M
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -187,17 +190,53 @@ eval = cardEval ⨁ graphBuilderEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
-  CC.EvalCard info output next →
+  CC.EvalCard info output next → do
+    for_ (info.input ^? Lens._Just ∘ Port._ResourceAxes) \axes → do
+      H.modify _{axes = axes}
+      synchronizeChildren
     pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k →
-    pure $ k $ unsafeCoerce unit
+  CC.Save k → do
+    st ← H.get
+    source ←
+      H.query' CS.cpSource unit $ H.request S.GetSelect
+    target ←
+      H.query' CS.cpTarget unit $ H.request S.GetSelect
+    sizeSel ←
+      H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
+    sizeAgg ←
+      H.query' CS.cpSize unit $ left $ H.request S.GetSelect
+    color ←
+      H.query' CS.cpColor unit $ H.request S.GetSelect
+    let
+      model =
+        { source: _
+        , target: _
+        , size: sizeSel >>= view _value
+        , color: color >>= view _value
+        , sizeAggregation: sizeAgg >>= view _value
+        , minSize: st.minSize
+        , maxSize: st.maxSize
+        , circular: st.circular
+        }
+        <$> (source >>= view _value)
+        <*> (target >>= view _value)
+    pure $ k $ Card.BuildGraph model
+  CC.Load (Card.BuildGraph model) next → do
+    for_ model loadModel
+    pure next
   CC.Load card next →
     pure next
-  CC.SetDimensions dims next →
+  CC.SetDimensions dims next → do
+    H.modify
+      _{levelOfDetails =
+           if dims.width < 576.0 ∨ dims.height < 416.0
+             then Low
+             else High
+       }
     pure next
   CC.ModelUpdated _ next →
     pure next
@@ -206,16 +245,107 @@ cardEval = case _ of
 
 graphBuilderEval ∷ Q.Query ~> DSL
 graphBuilderEval = case _ of
-  Q.ToggleCircularLayout next →
+  Q.ToggleCircularLayout next → do
+    H.modify \x → x{circular = not x.circular}
+    CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
-  Q.SetMinNodeSize str next →
+  Q.SetMinNodeSize str next → do
+    let fl = readFloat str
+    unless (isNaN fl) do
+      H.modify _{minSize = fl}
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
-  Q.SetMaxNodeSize str next →
+  Q.SetMaxNodeSize str next → do
+    let fl = readFloat str
+    unless (isNaN fl) do
+      H.modify _{maxSize = fl}
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
+loadModel ∷ M.GraphR → DSL Unit
+loadModel r = void do
+  H.query' CS.cpSource unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.source
+
+  H.query' CS.cpTarget unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.target
+
+  H.query' CS.cpSize unit
+    $ right
+    $ H.ChildF unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected r.size
+
+  H.query' CS.cpSize unit
+    $ left
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected r.sizeAggregation
+
+  H.query' CS.cpColor unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected r.color
+
 synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  pure unit
+synchronizeChildren = void do
+  st ← H.get
+  source ←
+    H.query' CS.cpSource unit $ H.request S.GetSelect
+  target ←
+    H.query' CS.cpTarget unit $ H.request S.GetSelect
+  sizeSel ←
+    H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  sizeAgg ←
+    H.query' CS.cpSize unit $ left $ H.request S.GetSelect
+  color ←
+    H.query' CS.cpColor unit $ H.request S.GetSelect
+
+  let
+    newSource =
+      setPreviousValueFrom source
+        $ autoSelect
+        $ newSelect
+        $ dependsOnArr st.axes.category
+        $ st.axes.category
+
+    newTarget =
+      setPreviousValueFrom target
+        $ autoSelect
+        $ newSelect
+        $ depends newSource
+        $ ifSelected [newSource]
+        $ st.axes.category ⊝ newSource
+
+    newSize =
+      setPreviousValueFrom sizeSel
+      $ autoSelect
+      $ newSelect
+      $ ifSelected [newTarget]
+      $ st.axes.value
+    newColor =
+      setPreviousValueFrom color
+      $ autoSelect
+      $ newSelect
+      $ ifSelected [newTarget]
+      $ st.axes.category ⊝ newSource ⊝ newTarget
+
+    newSizeAggregation =
+      setPreviousValueFrom sizeAgg
+      $ nonMaybeAggregationSelect
+
+  H.query' CS.cpSource unit $ H.action $ S.SetSelect newSource
+  H.query' CS.cpTarget unit $ H.action $ S.SetSelect newTarget
+  H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSize
+  H.query' CS.cpSize unit $ left $ H.action $ S.SetSelect newSizeAggregation
+  H.query' CS.cpColor unit $ H.action $ S.SetSelect newColor

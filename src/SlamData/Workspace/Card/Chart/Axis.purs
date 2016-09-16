@@ -63,6 +63,12 @@ decodeAxes js = do
   time ← js .? "time"
   pure {value, category, time}
 
+printAxes ∷ Axes → String
+printAxes axes =
+  "{ value: " ⊕ show axes.value ⊕ ",\n"
+  ⊕ "  time: " ⊕ show axes.time ⊕ ",\n"
+  ⊕ "  category: " ⊕ show axes.category ⊕ "\n}"
+
 
 initialAxes ∷ Axes
 initialAxes =
