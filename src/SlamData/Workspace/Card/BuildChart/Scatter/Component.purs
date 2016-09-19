@@ -218,15 +218,15 @@ cardEval = case _ of
         { abscissa: _
         , abscissaAggregation: _
         , ordinate: _
-        , ordianteAggregation: _
+        , ordinateAggregation: _
         , size: r.size >>= view _value
         , sizeAggregation: r.sizeAggregation >>= view _value
         , series: r.series >>= view _value
-        , minSize: st.minSize
-        , maxSize: st.maxSize
+        , minSize: (st.minSize ∷ Number)
+        , maxSize: (st.maxSize ∷ Number)
         }
         <$> (r.abscissa >>= view _value)
-        <*> (r.abscissaAggrgation >>= view _value)
+        <*> (r.abscissaAggregation >>= view _value)
         <*> (r.ordinate >>= view _value)
         <*> (r.ordinateAggregation >>= view _value)
     pure $ k $ Card.BuildScatter model
@@ -315,7 +315,7 @@ synchronizeChildren = void do
 
   H.query' CS.cpAbscissa unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newAbscissa
   H.query' CS.cpAbscissa unit $ left $ H.action $ S.SetSelect newAbscissaAggregation
-  H.query' CS.cpOrdinate unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newOrdiante
+  H.query' CS.cpOrdinate unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newOrdinate
   H.query' CS.cpOrdinate unit $ left $ H.action $ S.SetSelect newOrdinateAggregation
   H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSize
   H.query' CS.cpSize unit $ left $ H.action $ S.SetSelect newSizeAggregation
@@ -330,7 +330,7 @@ type Selects =
   , ordinateAggregation ∷ Maybe (Select (Maybe Aggregation))
   , size ∷ Maybe (Select JCursor)
   , sizeAggregation ∷ Maybe (Select (Maybe Aggregation))
-  , series ∷ Maybe (Select JCurso)
+  , series ∷ Maybe (Select JCursor)
   }
 
 getSelects ∷ DSL Selects
@@ -387,7 +387,7 @@ loadModel r = void do
     $ left
     $ H.action
     $ S.SetSelect
-    $ fromSelectedc
+    $ fromSelected
     $ Just r.ordinateAggregation
 
   H.query' CS.cpSize unit

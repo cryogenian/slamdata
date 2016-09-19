@@ -20,7 +20,7 @@ type ScatterR =
   , size ∷ Maybe JCursor
   , abscissaAggregation ∷ Maybe Ag.Aggregation
   , ordinateAggregation ∷ Maybe Ag.Aggregation
-  , sizeAggregation ∷ Maybe Ag.Aggregation
+  , sizeAggregation ∷ Maybe (Maybe Ag.Aggregation)
   , series ∷ Maybe JCursor
   , minSize ∷ Number
   , maxSize ∷ Number

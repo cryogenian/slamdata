@@ -7,7 +7,7 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor)
 import Data.Int as Int
 import Data.Lens (view, (^?), (.~))
-import Data.Lens (view)
+import Data.Lens as Lens
 
 import Global (readFloat, isNaN)
 
@@ -35,6 +35,7 @@ import SlamData.Form.Select
   , _value
   , trySelect'
   , fromSelected
+  , isSelected
   )
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
@@ -189,7 +190,7 @@ eval = cardEval ⨁ pieBuilderEval
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.EvalCard info output next → do
-    for_ (info.input ^? Lens._Just ∘ Port.ResourceAxes) \axes → do
+    for_ (info.input ^? Lens._Just ∘ Port._ResourceAxes) \axes → do
       H.modify _{axes = axes}
       synchronizeChildren
     pure next
@@ -222,7 +223,7 @@ cardEval = case _ of
     pure next
   CC.Load card next →
     pure next
-  CC.SetDimensions dims next →
+  CC.SetDimensions dims next → do
     H.modify
       _ { levelOfDetails =
              if dims.width < 576.0 ∨ dims.height < 416.0
@@ -277,15 +278,15 @@ synchronizeChildren = void do
         $ nonMaybeAggregationSelect
 
     newStack =
-      setPreviousValueFrom st.stack
+      setPreviousValueFrom r.stack
         $ autoSelect
         $ newSelect
-        $ isSelected [ newCategory ]
+        $ ifSelected [ newCategory ]
         $ st.axes.category
         ⊝ newCategory
 
     newParallel =
-      setPreviousValueFrom st.parallel
+      setPreviousValueFrom r.parallel
         $ autoSelect
         $ newSelect
         $ ifSelected [ newCategory ]
@@ -296,16 +297,16 @@ synchronizeChildren = void do
   H.query' CS.cpCategory unit $ H.action $ S.SetSelect newCategory
   H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
   H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
-  H.query' CS.cpStack unit $ H.action $ S.SeteSelect newStack
+  H.query' CS.cpStack unit $ H.action $ S.SetSelect newStack
   H.query' CS.cpParallel unit $ H.action $ S.SetSelect newParallel
 
 
 type Selects =
-  { category: Maybe (Select JCursor)
-  , value: Maybe (Select JCursor)
-  , valueAggregation: Maybe (Select Aggregation)
-  , stack: Maybe (Select JCursor)
-  , parallel: Maybe (Select JCursor)
+  { category ∷ Maybe (Select JCursor)
+  , value ∷ Maybe (Select JCursor)
+  , valueAggregation ∷ Maybe (Select Aggregation)
+  , stack ∷ Maybe (Select JCursor)
+  , parallel ∷ Maybe (Select JCursor)
   }
 
 getSelects ∷ DSL Selects
@@ -319,7 +320,7 @@ getSelects = do
   stack ←
     H.query' CS.cpStack unit $ H.request S.GetSelect
   parallel ←
-    H.query' CS.cpParallel uniti $ H.request S.GetSelect
+    H.query' CS.cpParallel unit $ H.request S.GetSelect
   pure { category
        , value
        , valueAggregation

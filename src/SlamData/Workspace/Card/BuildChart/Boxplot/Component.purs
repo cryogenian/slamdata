@@ -69,22 +69,22 @@ renderHighLOD state =
         $ [ CSS.chartEditor ]
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
-    [ renderCategory state
+    [ renderDimension state
     , renderValue state
     , HH.hr_
     , renderSeries state
     , renderParallel state
     ]
 
-renderCategory ∷ ST.State → HTML
-renderCategory state =
+renderDimension ∷ ST.State → HTML
+renderDimension state =
   HH.form
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Category" ]
-    , HH.slot' CS.cpCategory unit \_ →
-         { component: S.primarySelect (Just "Category")
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Dimension" ]
+    , HH.slot' CS.cpDimension unit \_ →
+         { component: S.primarySelect (Just "Dimension")
          , initialState: emptySelect
          }
     ]
@@ -142,7 +142,7 @@ eval = cardEval ⨁ (absurd ∘ getConst)
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.EvalCard info output next → do
-    for_ (info.input ^? Lens._Just ∘ Port._ResourceAxes) \axes →
+    for_ (info.input ^? Lens._Just ∘ Port._ResourceAxes) \axes → do
       H.modify _{axes = axes}
       synchronizeChildren
     pure next
@@ -225,7 +225,7 @@ synchronizeChildren = void do
         $ ifSelected [newDimension]
         $ st.axes.category
         ⊝ newDimension
-        ⊜ newSeries
+        ⊝ newSeries
 
   H.query' CS.cpDimension unit $ H.action $ S.SetSelect newDimension
   H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
@@ -241,7 +241,7 @@ type Selects =
   , parallel ∷ Maybe (Select JCursor)
   }
 
-getSelects ∷ DSl Selects
+getSelects ∷ DSL Selects
 getSelects = do
   dimension ←
     H.query' CS.cpDimension unit $ H.request S.GetSelect

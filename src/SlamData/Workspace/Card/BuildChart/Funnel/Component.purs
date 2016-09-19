@@ -21,8 +21,8 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Common.Sort (sortSelect)
-import SlamData.Common.Align (alignSelect)
+import SlamData.Common.Sort (Sort, sortSelect)
+import SlamData.Common.Align (Align, alignSelect)
 import SlamData.Render.Common (row)
 import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, trySelect', fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -194,7 +194,7 @@ cardEval = case _ of
     pure next
   CC.SetDimensions dims next → do
     H.modify
-      _ { LevelOfDetails =
+      _ { levelOfDetails =
             if dims.width < 576.0 ∨ dims.height < 416.0
               then Low
               else High
@@ -230,7 +230,7 @@ synchronizeChildren = void do
       setPreviousValueFrom r.valueAggregation
         $ nonMaybeAggregationSelect
 
-    series =
+    newSeries =
       setPreviousValueFrom r.series
         $ autoSelect
         $ newSelect
@@ -295,6 +295,7 @@ loadModel r = void do
   H.query' CS.cpValue unit
     $ right
     $ H.ChildF unit
+    $ H.action
     $ S.SetSelect
     $ fromSelected
     $ Just r.value

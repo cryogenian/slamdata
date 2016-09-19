@@ -245,12 +245,12 @@ cardEval = case _ of
         , maxValue: st.maxValue
         }
         <$> (r.abscissa >>= view _value)
-        <*> (r.ordiante >>= view _value)
+        <*> (r.ordinate >>= view _value)
         <*> (r.value >>= view _value)
         <*> (r.valueAggregation >>= view _value)
         <*> (r.colorScheme >>= view _value)
     pure $ k $ Card.BuildHeatmap model
-  CC.Load (Card.BuildHeatmap (Just model)) next →
+  CC.Load (Card.BuildHeatmap (Just model)) next → do
     loadModel model
     H.modify _{ minValue = model.minValue
               , maxValue = model.maxValue
