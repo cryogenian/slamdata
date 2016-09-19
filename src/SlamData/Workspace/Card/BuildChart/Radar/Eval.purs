@@ -36,6 +36,7 @@ import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.BuildChart.Radar.Model (RadarR)
 
+import Utils.Array (enumerate)
 
 eval
   ∷ ∀ m
@@ -146,6 +147,9 @@ buildRadarData r records = series
      , items: map (Ag.runAggregation r.valueAggregation) itemsData
      }]
 
+
+  -- TODO: extract this function, parameterize it by paddings and width/height of card
+  -- Maybe even make a separate type for handling this
   series ∷ Array SeriesOnRadar
   series =
     let
@@ -244,10 +248,72 @@ buildRadar r records = do
         radarData
 
   titles ∷ Array (DSL ETP.TitleI)
-  titles = [ ]
+  titles = radarData <#> \{name, x, y, radius} → do
+    for_ name E.text
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+    (E.top ∘ ET.Percent) $ fromMaybe zero y + maybe zero (_ / 2.0) radius
+    traverse_ (E.left ∘ ET.Percent) x
+    E.textCenter
+    E.textBottom
 
   series ∷ Array (DSL ETP.RadarSeriesI)
-  series = [ ]
+  series = (enumerate radarData) <#> \(ix × {series}) → do
+    E.radarIndex $ Int.toNumber ix
+    E.symbol ET.Circle
+    let
+      allKeys = foldMap (Set.fromFoldable ∘ M.keys ∘ _.items) series
+    E.buildItems $ for_ series \serie → E.addItem do
+      for_ serie.name E.name
+      E.buildValues $ for_ allKeys \k →
+        case M.lookup k serie.items of
+          Nothing → E.missingValue
+          Just val → E.addValue val
+
+  minVal ∷ Maybe Number
+  minVal =
+    F.minimum
+      $ map (fromMaybe zero
+             ∘ F.minimum
+             ∘ map (fromMaybe zero
+                    ∘ F.minimum
+                    ∘ M.values
+                    ∘ _.items)
+             ∘ _.series
+            )
+      radarData
+
+  maxVal ∷ Maybe Number
+  maxVal =
+    F.maximum
+      $ map (fromMaybe zero
+             ∘ F.maximum
+             ∘ map (fromMaybe zero
+                    ∘ F.maximum
+                    ∘ M.values
+                    ∘ _.items)
+             ∘ _.series
+            )
+      radarData
 
   radars ∷ Array (DSL ETP.RadarI)
-  radars = [ ]
+  radars = radarData <#> \{name, series, x, y, radius} → do
+    let
+      allKeys = foldMap (Set.fromFoldable ∘ M.keys ∘ _.items) series
+
+    E.indicators $ for_ allKeys \k → E.indicator do
+      E.name k
+      for_ minVal E.min
+      for_ maxVal E.max
+
+    E.nameGap 10.0
+
+    E.buildCenter do
+      traverse_ (E.setX ∘ E.percents) x
+      traverse_ (E.setY ∘ E.percents) y
+
+    traverse_
+      (E.singleValueRadius
+       ∘ ET.SingleValueRadius
+       ∘ ET.Percent) radius

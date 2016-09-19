@@ -68,7 +68,7 @@ buildRadarData axes = Tuple (A.fromFoldable distinctDims) $
       -- output sample:
       -- ( Tuple ''
       --         ( (Tuple 'series1' (Tuple 'dimA' 1) : Tuple 'series1' (Tuple 'dimB' 2) : Tuple 'series1' (Tuple 'dimB' 3))
-      --         : (Tuple 'series2' (Tuple 'dimA' 1) : Tuple 'series2' (Tuple 'dimB' 2) : Tuple 'series2' (Tuple 'dimB' 3)) ) 
+      --         : (Tuple 'series2' (Tuple 'dimA' 1) : Tuple 'series2' (Tuple 'dimB' 2) : Tuple 'series2' (Tuple 'dimB' 3)) )
       -- )
       <<< L.groupBy ((==) `on` fst)
       <<< L.sortBy (compare `on` fst)
@@ -96,7 +96,7 @@ buildRadarData axes = Tuple (A.fromFoldable distinctDims) $
     $ tagDuplications duplications
     $ tagSeriesKey seriesKeys
     $ L.zip dimensions values
- 
+
   where
   dimensions ∷ List (Maybe String)
   dimensions = fromMaybe Nil $ axes.dimensions !! 0
@@ -134,7 +134,7 @@ buildRadarData axes = Tuple (A.fromFoldable distinctDims) $
 
   seriesKeys ∷ List SeriesKey
   seriesKeys = map (\x → mkSeriesKey x Nothing) series
- 
+
   mkSeriesKey ∷ Maybe String → Maybe String → SeriesKey
   mkSeriesKey f s =
     f >>= \f → pure $ Tuple f s
@@ -149,7 +149,7 @@ buildRadarData axes = Tuple (A.fromFoldable distinctDims) $
                 (fromMaybe "" a)
                 (Tuple (keyName (Tuple "" b)) (Tuple c' d'))
       _, _ → Nothing
- 
+
   combineDup
     ∷ List (Tuple String (Tuple String (Tuple String Number)))
     → Maybe (Tuple String (List (Tuple String (Tuple String Number))))
@@ -174,14 +174,14 @@ buildRadarData axes = Tuple (A.fromFoldable distinctDims) $
     combine x = do
       d ← fst <$> L.head x
       pure $ Tuple d (applyAggregation $ map snd x)
- 
+
   applyAggregation ∷ List Number → Number
   applyAggregation = runAggregation (fromMaybe Sum agg)
 
   checkDimAndTransform
     ∷ Tuple String (List (Tuple String Number))
     → Maybe (Tuple String (Array Number))
-  checkDimAndTransform a = 
+  checkDimAndTransform a =
     if (L.length $ snd a) == L.length distinctDims
       then Just $ Tuple
         (fst a)
