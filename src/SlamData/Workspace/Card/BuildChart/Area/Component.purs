@@ -314,7 +314,6 @@ synchronizeChildren = void do
       setPreviousValueFrom r.dimension
         $ autoSelect
         $ newSelect
-        $ dependsOnArr st.axes.value
         $ st.axes.category
         ⊕ st.axes.time
         ⊕ st.axes.value

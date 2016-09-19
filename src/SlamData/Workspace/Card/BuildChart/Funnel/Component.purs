@@ -5,7 +5,11 @@ module SlamData.Workspace.Card.BuildChart.Funnel.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (view)
+import Data.Int as Int
+import Data.Lens (view, (^?), (.~))
+import Data.Lens as Lens
+
+import Global (readFloat, isNaN)
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
@@ -15,10 +19,12 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Common.Sort (sortSelect)
-import SlamData.Common.Align (alignSelect)
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Common.Sort (Sort, sortSelect)
+import SlamData.Common.Align (Align, alignSelect)
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, trySelect')
+import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, trySelect', fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
@@ -35,8 +41,7 @@ import SlamData.Workspace.Card.BuildChart.CSS as CSS
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.Query as Q
-
-import Unsafe.Coerce (unsafeCoerce)
+import SlamData.Workspace.Card.BuildChart.Funnel.Model as M
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -155,17 +160,45 @@ eval = cardEval ⨁ (absurd ∘ getConst)
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
-  CC.EvalCard info output next →
+  CC.EvalCard info output next → do
+    for_ (info.input ^? Lens._Just ∘ Port._ResourceAxes) \axes → do
+      H.modify _{axes = axes}
+      synchronizeChildren
     pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k →
-    pure $ k $ unsafeCoerce unit
+  CC.Save k → do
+    st ← H.get
+    r ← getSelects
+    let
+      model =
+        { category: _
+        , value: _
+        , valueAggregation: _
+        , series: r.series >>= view _value
+        , order: _
+        , align: _
+        }
+        <$> (r.category >>= view _value)
+        <*> (r.value >>= view _value)
+        <*> (r.valueAggregation >>= view _value)
+        <*> (r.order >>= view _value)
+        <*> (r.align >>= view _value)
+    pure $ k $ Card.BuildFunnel model
+  CC.Load (Card.BuildFunnel (Just model)) next → do
+    loadModel model
+    pure next
   CC.Load card next →
     pure next
-  CC.SetDimensions dims next →
+  CC.SetDimensions dims next → do
+    H.modify
+      _ { levelOfDetails =
+            if dims.width < 576.0 ∨ dims.height < 416.0
+              then Low
+              else High
+        }
     pure next
   CC.ModelUpdated _ next →
     pure next
@@ -176,5 +209,117 @@ peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
 synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  pure unit
+synchronizeChildren = void do
+  st ← H.get
+  r ← getSelects
+
+  let
+    newCategory =
+      setPreviousValueFrom r.category
+        $ autoSelect
+        $ newSelect
+        $ st.axes.category
+
+    newValue =
+      setPreviousValueFrom r.value
+        $ autoSelect
+        $ newSelect
+        $ st.axes.value
+
+    newValueAggregation =
+      setPreviousValueFrom r.valueAggregation
+        $ nonMaybeAggregationSelect
+
+    newSeries =
+      setPreviousValueFrom r.series
+        $ autoSelect
+        $ newSelect
+        $ ifSelected [ newCategory ]
+        $ st.axes.category
+        ⊝ newCategory
+
+    newOrder =
+      setPreviousValueFrom r.order
+        $ sortSelect
+
+    newAlign =
+      setPreviousValueFrom r.align
+        $ alignSelect
+
+  H.query' CS.cpCategory unit $ H.action $ S.SetSelect newCategory
+  H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
+  H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
+  H.query' CS.cpSeries unit $ H.action $ S.SetSelect newSeries
+  H.query' CS.cpOrder unit $ H.action $ S.SetSelect newOrder
+  H.query' CS.cpAlign unit $ H.action $ S.SetSelect newAlign
+
+type Selects =
+  { category ∷ Maybe (Select JCursor)
+  , value ∷ Maybe (Select JCursor)
+  , valueAggregation ∷ Maybe (Select Aggregation)
+  , series ∷ Maybe (Select JCursor)
+  , order ∷ Maybe (Select Sort)
+  , align ∷ Maybe (Select Align)
+  }
+
+getSelects ∷ DSL Selects
+getSelects = do
+  category ←
+    H.query' CS.cpCategory unit $ H.request S.GetSelect
+  value ←
+    H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  valueAggregation ←
+    H.query' CS.cpValue unit $ left $ H.request S.GetSelect
+  series ←
+    H.query' CS.cpSeries unit $ H.request S.GetSelect
+  order ←
+    H.query' CS.cpOrder unit $ H.request S.GetSelect
+  align ←
+    H.query' CS.cpAlign unit $ H.request S.GetSelect
+  pure { category
+       , value
+       , valueAggregation
+       , series
+       , order
+       , align
+       }
+
+loadModel ∷ M.FunnelR → DSL Unit
+loadModel r = void do
+  H.query' CS.cpCategory unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.category
+
+  H.query' CS.cpValue unit
+    $ right
+    $ H.ChildF unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.value
+
+  H.query' CS.cpValue unit
+    $ left
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.valueAggregation
+
+  H.query' CS.cpSeries unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected r.series
+
+  H.query' CS.cpOrder unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.order
+
+  H.query' CS.cpAlign unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.align

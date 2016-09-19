@@ -15,29 +15,29 @@ import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
 type ChildSlot =
   Unit ⊹ Unit ⊹ Unit ⊹ Unit
 
-type CategoryState = Select JCursor
+type DimensionState = Select JCursor
 type ValueState = P.StateP Aggregation JCursor
 type SeriesState = Select JCursor
 type ParallelState = Select JCursor
 
 type ChildState =
-  CategoryState ⊹ ValueState ⊹ SeriesState ⊹ ParallelState
+  DimensionState ⊹ ValueState ⊹ SeriesState ⊹ ParallelState
 
-type CategoryQuery = S.Query JCursor
+type DimensionQuery = S.Query JCursor
 type ValueQuery = P.QueryP Aggregation JCursor
 type SeriesQuery = S.Query JCursor
 type ParallelQuery = S.Query JCursor
 
 type ChildQuery =
-  CategoryQuery ⨁ ValueQuery ⨁ SeriesQuery ⨁ ParallelQuery
+  DimensionQuery ⨁ ValueQuery ⨁ SeriesQuery ⨁ ParallelQuery
 
 
-cpCategory
+cpDimension
   ∷ ChildPath
-      CategoryState ChildState
-      CategoryQuery ChildQuery
+      DimensionState ChildState
+      DimensionQuery ChildQuery
       Unit ChildSlot
-cpCategory = cpL
+cpDimension = cpL
 
 cpValue
   ∷ ChildPath
