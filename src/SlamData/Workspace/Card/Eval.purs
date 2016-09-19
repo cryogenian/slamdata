@@ -56,7 +56,11 @@ import SlamData.Workspace.Card.BuildChart.Pie.Eval as BuildPie
 import SlamData.Workspace.Card.BuildChart.Radar.Eval as BuildRadar
 import SlamData.Workspace.Card.BuildChart.Area.Eval as BuildArea
 import SlamData.Workspace.Card.BuildChart.Line.Eval as BuildLine
-
+import SlamData.Workspace.Card.BuildChart.Bar.Eval as BuildBar
+import SlamData.Workspace.Card.BuildChart.Scatter.Eval as BuildScatter
+import SlamData.Workspace.Card.BuildChart.Funnel.Eval as BuildFunnel
+import SlamData.Workspace.Card.BuildChart.Heatmap.Eval as BuildHeatmap
+import SlamData.Workspace.Card.BuildChart.Boxplot.Eval as BuildBoxplot
 
 import Text.SlamSearch as SS
 import Text.Markdown.SlamDown as SD
@@ -83,6 +87,11 @@ data Eval
   | BuildRadar BuildRadar.Model
   | BuildArea BuildArea.Model
   | BuildLine BuildLine.Model
+  | BuildBar BuildBar.Model
+  | BuildScatter BuildScatter.Model
+  | BuildFunnel BuildFunnel.Model
+  | BuildHeatmap BuildHeatmap.Model
+  | BuildBoxplot BuildBoxplot.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -106,6 +115,11 @@ tagEval = case _ of
   BuildRadar _ → "BuildRadar"
   BuildArea _ → "BuildArea"
   BuildLine _ → "BuildLine"
+  BuildBar _ → "BuildBar"
+  BuildScatter _ → "BuildScatter"
+  BuildFunnel _ → "BuildFunnel"
+  BuildHeatmap _ → "BuildHeatmap"
+  BuildBoxplot _ → "BuildBoxplot"
 
 evalCard
   ∷ ∀ m
@@ -161,6 +175,16 @@ evalCard input =
       BuildArea.eval model resource
     BuildLine model, Just (Port.TaggedResource {resource}) →
       BuildLine.eval model resource
+    BuildBar model, Just (Port.TaggedResource {resource}) →
+      BuildBar.eval model resource
+    BuildScatter model, Just (Port.TaggedResource {resource}) →
+      BuildScatter.eval model resource
+    BuildFunnel model, Just (Port.TaggedResource {resource}) →
+      BuildFunnel.eval model resource
+    BuildHeatmap model, Just (Port.TaggedResource {resource}) →
+      BuildHeatmap.eval model resource
+    BuildBoxplot model, Just (Port.TaggedResource {resource}) →
+      BuildBoxplot.eval model resource
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 

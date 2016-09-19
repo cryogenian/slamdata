@@ -5,7 +5,11 @@ module SlamData.Workspace.Card.BuildChart.Heatmap.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (view)
+import Data.Int as Int
+import Data.Lens (view, (^?), (.~))
+import Data.Lens as Lens
+
+import Global (readFloat, isNaN)
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
@@ -17,6 +21,8 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Render.Common (row)
 import SlamData.Form.Select
   ( Select
@@ -28,9 +34,10 @@ import SlamData.Form.Select
   , (⊝)
   , _value
   , trySelect'
+  , fromSelected
   )
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.BuildChart.ColorScheme (colorSchemeSelect)
+import SlamData.Workspace.Card.BuildChart.ColorScheme (ColorScheme, colorSchemeSelect)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
@@ -46,8 +53,7 @@ import SlamData.Workspace.Card.BuildChart.CSS as CSS
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.Query as Q
-
-import Unsafe.Coerce (unsafeCoerce)
+import SlamData.Workspace.Card.BuildChart.Heatmap.Model as M
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -214,17 +220,51 @@ eval = cardEval ⨁ heatmapBuilderEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
-  CC.EvalCard info output next →
+  CC.EvalCard info output next → do
+    for_ (info.input ^? Lens._Just ∘ Port._ResourceAxes) \axes → do
+      H.modify _{axes = axes}
+      synchronizeChildren
     pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k →
-    pure $ k $ unsafeCoerce unit
+  CC.Save k → do
+    st ← H.get
+    r ← getSelects
+    let
+      model =
+        { abscissa: _
+        , ordinate: _
+        , value: _
+        , valueAggregation: _
+        , series: r.series >>= view _value
+        , colorScheme: _
+        , isColorSchemeReversed: st.isSchemeReversed
+        , minValue: st.minValue
+        , maxValue: st.maxValue
+        }
+        <$> (r.abscissa >>= view _value)
+        <*> (r.ordiante >>= view _value)
+        <*> (r.value >>= view _value)
+        <*> (r.valueAggregation >>= view _value)
+        <*> (r.colorScheme >>= view _value)
+    pure $ k $ Card.BuildHeatmap model
+  CC.Load (Card.BuildHeatmap (Just model)) next →
+    loadModel model
+    H.modify _{ minValue = model.minValue
+              , maxValue = model.maxValue
+              }
+    pure next
   CC.Load card next →
     pure next
-  CC.SetDimensions dims next →
+  CC.SetDimensions dims next → do
+    H.modify
+      _{levelOfDetails =
+           if dims.width < 516.0 ∨ dims.height < 416.0
+             then Low
+             else High
+       }
     pure next
   CC.ModelUpdated _ next →
     pure next
@@ -233,16 +273,148 @@ cardEval = case _ of
 
 heatmapBuilderEval ∷ Q.Query ~> DSL
 heatmapBuilderEval = case _ of
-  Q.SetMinValue str next →
+  Q.SetMinValue str next → do
+    let fl = readFloat str
+    unless (isNaN fl) do
+      H.modify _{minValue = fl}
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
-  Q.SetMaxValue str next →
+  Q.SetMaxValue str next → do
+    let fl = readFloat str
+    unless (isNaN fl) do
+      H.modify _{maxValue = fl}
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
-  Q.ToggleReversedScheme next →
+  Q.ToggleReversedScheme next → do
+    H.modify \x → x{isSchemeReversed = not x.isSchemeReversed}
+    CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
 synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  pure unit
+synchronizeChildren = void do
+  st ← H.get
+  r ← getSelects
+
+  let
+    newAbscissa =
+      setPreviousValueFrom r.abscissa
+        $ autoSelect
+        $ newSelect
+        $ st.axes.category
+        ⊕ st.axes.value
+        ⊕ st.axes.time
+
+    newOrdinate =
+      setPreviousValueFrom r.ordinate
+        $ autoSelect
+        $ newSelect
+        $ st.axes.category
+        ⊕ st.axes.value
+        ⊕ st.axes.time
+        ⊝ newAbscissa
+
+    newValue =
+      setPreviousValueFrom r.value
+        $ autoSelect
+        $ newSelect
+        $ st.axes.value
+        ⊝ newAbscissa
+        ⊝ newOrdinate
+
+    newValueAggregation =
+      setPreviousValueFrom r.valueAggregation
+        $ nonMaybeAggregationSelect
+
+    newSeries =
+      setPreviousValueFrom r.series
+        $ autoSelect
+        $ newSelect
+        $ ifSelected [newAbscissa, newOrdinate, newValue]
+        $ st.axes.category
+        ⊝ newAbscissa
+        ⊝ newOrdinate
+
+    newColorScheme =
+      setPreviousValueFrom r.colorScheme
+        $ colorSchemeSelect
+
+  H.query' CS.cpAbscissa unit $ H.action $ S.SetSelect newAbscissa
+  H.query' CS.cpOrdinate unit $ H.action $ S.SetSelect newOrdinate
+  H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
+  H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
+  H.query' CS.cpSeries unit $ H.action $ S.SetSelect newSeries
+  H.query' CS.cpColorScheme unit $ H.action $ S.SetSelect newColorScheme
+
+type Selects =
+  { abscissa ∷ Maybe (Select JCursor)
+  , ordinate ∷ Maybe (Select JCursor)
+  , value ∷ Maybe (Select JCursor)
+  , valueAggregation ∷ Maybe (Select Aggregation)
+  , series ∷ Maybe (Select JCursor)
+  , colorScheme ∷ Maybe (Select ColorScheme)
+  }
+
+getSelects ∷ DSL Selects
+getSelects = do
+  abscissa ←
+    H.query' CS.cpAbscissa unit $ H.request S.GetSelect
+  ordinate ←
+    H.query' CS.cpOrdinate unit $ H.request S.GetSelect
+  value ←
+    H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
+  valueAggregation ←
+    H.query' CS.cpValue unit $ left $ H.request S.GetSelect
+  series ←
+    H.query' CS.cpSeries unit $ H.request S.GetSelect
+  colorScheme ←
+    H.query' CS.cpColorScheme unit $ H.request S.GetSelect
+  pure { abscissa
+       , ordinate
+       , value
+       , valueAggregation
+       , series
+       , colorScheme
+       }
+
+loadModel ∷ M.HeatmapR → DSL Unit
+loadModel r = void do
+  H.query' CS.cpAbscissa unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.abscissa
+
+  H.query' CS.cpOrdinate unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.ordinate
+
+  H.query' CS.cpValue unit
+    $ right
+    $ H.ChildF unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.value
+
+  H.query' CS.cpValue unit
+    $ left
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.valueAggregation
+
+  H.query' CS.cpSeries unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected r.series
+
+  H.query' CS.cpColorScheme unit
+    $ H.action
+    $ S.SetSelect
+    $ fromSelected
+    $ Just r.colorScheme

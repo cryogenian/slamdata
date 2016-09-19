@@ -368,5 +368,15 @@ modelToEval = case _ of
     pure $ Eval.BuildArea model
   BuildLine model →
     pure $ Eval.BuildLine model
+  BuildBar model →
+    pure $ Eval.BuildBar model
+  BuildScatter model →
+    pure $ Eval.BuildScatter model
+  BuildFunnel model →
+    pure $ Eval.BuildFunnel model
+  BuildHeatmap model →
+    pure $ Eval.BuildHeatmap model
+  BuildBoxplot model →
+    pure $ Eval.BuildBoxplot model
   _ →
     pure Eval.Pass
