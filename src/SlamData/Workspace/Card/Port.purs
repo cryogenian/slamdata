@@ -20,6 +20,7 @@ module SlamData.Workspace.Card.Port
   , TaggedResourcePort
   , DownloadPort
   , MetricPort
+  , PivotTablePort
   , tagPort
   , _SlamDown
   , _VarMap
@@ -33,11 +34,13 @@ module SlamData.Workspace.Card.Port
   , _Blocked
   , _Metric
   , _ChartInstructions
+  , _PivotTable
   , module SlamData.Workspace.Card.Port.VarMap
   ) where
 
 import SlamData.Prelude
 
+import Data.Argonaut (Json)
 import Data.Lens (PrismP, prism', TraversalP, wander)
 import Data.Set as Set
 
@@ -45,6 +48,7 @@ import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
+import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.Chart.Axis (Axes, printAxes)
 import SlamData.Workspace.Card.Chart.Config as CC
@@ -76,6 +80,11 @@ type MetricPort =
   , value ∷ String
   }
 
+type PivotTablePort =
+  { records ∷ Array Json
+  , options ∷ PTM.PivotTableR
+  }
+
 data Port
   = SlamDown (VarMap × (SD.SlamDownP VarMapValue))
   | VarMap VarMap
@@ -85,6 +94,7 @@ data Port
   | TaggedResource TaggedResourcePort
   | DownloadOptions DownloadPort
   | Metric MetricPort
+  | PivotTable PivotTablePort
   | Draftboard
   | Blocked
 
@@ -102,6 +112,7 @@ tagPort (Just p) = case p of
   Blocked → "Blocked"
   ChartInstructions _ _ → "ChartInstructions"
   Metric _ → "Metric"
+  PivotTable _ → "PivotTable"
 
 _SlamDown ∷ TraversalP Port (SD.SlamDownP VarMapValue)
 _SlamDown = wander \f s → case s of
@@ -164,4 +175,9 @@ _ChartInstructions = wander \f s → case s of
 _Metric ∷ PrismP Port MetricPort
 _Metric = prism' Metric case _ of
   Metric u → Just u
+  _ → Nothing
+
+_PivotTable ∷ PrismP Port PivotTablePort
+_PivotTable = prism' PivotTable case _ of
+  PivotTable u → Just u
   _ → Nothing

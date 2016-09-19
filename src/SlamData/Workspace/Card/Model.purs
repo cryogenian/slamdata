@@ -374,5 +374,7 @@ modelToEval = case _ of
     pure $ Eval.BuildArea model
   BuildLine model →
     pure $ Eval.BuildLine model
+  BuildPivotTable model →
+    pure $ Eval.BuildPivotTable model
   _ →
     pure Eval.Pass

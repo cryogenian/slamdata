@@ -49,34 +49,43 @@ eqModel Nothing Nothing = true
 eqModel (Just r1) (Just r2) = eqPivotTableR r1 r2
 eqModel _ _ = false
 
+genPivotTableR ∷ Gen.Gen PivotTableR
+genPivotTableR = do
+  dimensions ← map runArbJCursor <$> arbitrary
+  columns ← arbitrary
+  pure { dimensions, columns }
+
 genModel ∷ Gen.Gen Model
 genModel =
   arbitrary >>= if _
     then pure Nothing
-    else Just <$> do
-      dimensions ← map runArbJCursor <$> arbitrary
-      columns ← arbitrary
-      pure { dimensions, columns }
+    else Just <$> genPivotTableR
 
-encode ∷ Model → Json
-encode Nothing = jsonNull
-encode (Just r) =
+encodePivotTableR ∷ PivotTableR → Json
+encodePivotTableR r =
   "configType" := "pivot"
   ~> "dimensions" := r.dimensions
   ~> "columns" := r.columns
   ~> jsonEmptyObject
 
+encode ∷ Model → Json
+encode Nothing = jsonNull
+encode (Just r) = encodePivotTableR r
+
+decodePivotTableR ∷ Json → Either String PivotTableR
+decodePivotTableR js = do
+  obj ← decodeJson js
+  configType ← obj .? "configType"
+  unless (configType ≡ "pivot") do
+    throwError "Not a valid pivot table configuration"
+  dimensions ← obj .? "dimensions"
+  columns ← obj .? "columns"
+  pure { dimensions, columns }
+
 decode ∷ Json → Either String Model
 decode js
   | isNull js = pure Nothing
-  | otherwise = do
-      obj ← decodeJson js
-      configType ← obj .? "configType"
-      unless (configType ≡ "pivot") do
-        throwError "Not a valid pivot table configuration"
-      dimensions ← obj .? "dimensions"
-      columns ← obj .? "columns"
-      pure $ Just { dimensions, columns }
+  | otherwise = Just <$> decodePivotTableR js
 
 derive instance eqColumn ∷ Eq Column
 

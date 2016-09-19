@@ -44,10 +44,11 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.BuildOptions.Metric as BM
 import SlamData.Workspace.Card.CardType.ChartType (ChartType, chartDarkIconSrc)
 import SlamData.Workspace.Card.CardType.ChartType as ChT
-import SlamData.Workspace.Card.Chart.Component.ChildSlot (cpMetric, cpECharts, ChildState, ChildQuery, ChildSlot)
+import SlamData.Workspace.Card.Chart.Component.ChildSlot (cpMetric, cpPivotTable, cpECharts, ChildState, ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
 import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
+import SlamData.Workspace.Card.Chart.PivotTableRenderer.Component as Pivot
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
@@ -81,21 +82,25 @@ renderHighLOD state =
         $ [ RC.chartOutput, HH.className "card-input-maximum-lod" ]
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
-    [ HH.div
-        [ HP.classes $ (B.hidden <$ guard (state.chartType ≡ Just ChT.Metric)) ]
-        [ HH.slot' cpECharts unit \_ →
-            { component: HEC.echarts
-            , initialState: HEC.initialEChartsState 600 400
-            }
-        ]
-    , HH.div
-        [ HP.classes $ (B.hidden <$ guard (state.chartType ≠ Just ChT.Metric)) ]
+    case state.chartType of
+      Just ChT.Metric →
         [ HH.slot' cpMetric unit \_ →
              { component: Metric.comp
              , initialState: Metric.initialState
              }
         ]
-    ]
+      Just ChT.PivotTable →
+        [ HH.slot' cpPivotTable unit \_ →
+             { component: Pivot.comp
+             , initialState: Pivot.initialState
+             }
+        ]
+      _ →
+        [ HH.slot' cpECharts unit \_ →
+            { component: HEC.echarts
+            , initialState: HEC.initialEChartsState 600 400
+            }
+        ]
 
 renderLowLOD ∷ State → HTML
 renderLowLOD state =
@@ -152,6 +157,9 @@ eval = case _ of
         H.modify $ _chartType ?~ ChT.Metric
         H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
         setMetricLOD
+      Just (PivotTable r) → void do
+        H.modify $ _chartType ?~ ChT.PivotTable
+        H.query' cpPivotTable unit $ H.action $ Pivot.Update r.records r.options
       _ →
         void $ H.query' cpECharts unit $ H.action HEC.Clear
     pure next

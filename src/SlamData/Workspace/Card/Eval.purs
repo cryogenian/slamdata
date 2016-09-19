@@ -56,6 +56,7 @@ import SlamData.Workspace.Card.BuildChart.Pie.Eval as BuildPie
 import SlamData.Workspace.Card.BuildChart.Radar.Eval as BuildRadar
 import SlamData.Workspace.Card.BuildChart.Area.Eval as BuildArea
 import SlamData.Workspace.Card.BuildChart.Line.Eval as BuildLine
+import SlamData.Workspace.Card.BuildChart.PivotTable.Eval as BuildPivotTable
 
 
 import Text.SlamSearch as SS
@@ -83,6 +84,7 @@ data Eval
   | BuildRadar BuildRadar.Model
   | BuildArea BuildArea.Model
   | BuildLine BuildLine.Model
+  | BuildPivotTable BuildPivotTable.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -106,6 +108,7 @@ tagEval = case _ of
   BuildRadar _ → "BuildRadar"
   BuildArea _ → "BuildArea"
   BuildLine _ → "BuildLine"
+  BuildPivotTable _ → "BuildPivotTable"
 
 evalCard
   ∷ ∀ m
@@ -161,6 +164,8 @@ evalCard input =
       BuildArea.eval model resource
     BuildLine model, Just (Port.TaggedResource {resource}) →
       BuildLine.eval model resource
+    BuildPivotTable model, Just (Port.TaggedResource {resource}) →
+      BuildPivotTable.eval model resource
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
