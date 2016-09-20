@@ -98,15 +98,15 @@ buildFunnelData r records = series
             ∷ Maybe (String >> Array Number)
             → Maybe (String >> Array Number)
           alterSeriesFn Nothing =
-            Just $ M.singleton mbSeries $ M.singleton categoryKey values
+            Just $ M.singleton categoryKey values
           alterSeriesFn (Just series) =
-            Just $ M.alter alterSeriesFn mbSeries series
+            Just $ M.alter alterCategoryFn categoryKey series
 
-          alterSeriesFn
+          alterCategoryFn
             ∷ Maybe (Array Number)
             → Maybe (Array Number)
-          alterSeriesFn Nothing = Just values
-          alterSeriesFn (Just arr) = Just $ arr ⊕ values
+          alterCategoryFn Nothing = Just values
+          alterCategoryFn (Just arr) = Just $ arr ⊕ values
         in
           M.alter alterSeriesFn mbSeries acc
 
@@ -141,18 +141,18 @@ buildFunnel r records = do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 122
 
-    E.legend do
-      E.items $ map ET.strItem legendNames
-      E.topBottom
-      E.textStyle do
-        E.fontFamily "Ubuntu, sans"
+  E.legend do
+    E.items $ map ET.strItem legendNames
+    E.topBottom
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
 
-    E.colors colors
+  E.colors colors
 
-    E.titles
-      $ traverse_ E.title titles
+  E.titles
+    $ traverse_ E.title titles
 
-    E.series series
+  E.series series
 
   where
   funnelData ∷ Array FunnelSeries
@@ -174,11 +174,10 @@ buildFunnel r records = do
     E.textCenter
     E.textBottom
 
-  series = for_ funnelData \{x, y, w, h, items} → E.pie do
-    E.left $ ET.Percent x
-    E.top $ ET.Percent y
-    E.widthPct w
-    E.heightPct h
+  series ∷ ∀ i. DSL (funnel ∷ ETP.I|i)
+  series = for_ funnelData \{x, y, w, h, items, name} → E.funnel do
+    traverse_ E.widthPct w
+    traverse_ E.heightPct h
     for_ name E.name
     case r.order of
       Asc → E.ascending
@@ -188,7 +187,7 @@ buildFunnel r records = do
       RightAlign → E.funnelRight
       CenterAlign → E.funnelCenter
     E.label $ E.normal $ E.textStyle $ E.fontFamily "Ubuntu, sans"
-    E.buildItems $ for_ (M.toList items) \(name × value) → do
+    E.buildItems $ for_ (M.toList items) \(name × value) → E.addItem do
       E.name name
       E.value value
     traverse_ (E.top ∘ ET.Percent) y

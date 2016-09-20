@@ -46,10 +46,10 @@ data ChartType
   = Pie -- adjust
   | Line -- w/o
   | Bar -- w/o
-  | Area  -- adjust
+  | Area  -- w/o
   | Scatter -- w/o
-  | Radar -- w/o
-  | Funnel -- w/o
+  | Radar -- adjust
+  | Funnel -- adjust
   | Graph -- done
   | Heatmap -- w/o
   | Sankey -- done

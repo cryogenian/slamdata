@@ -181,8 +181,8 @@ evalCard input =
       BuildScatter.eval model resource
     BuildFunnel model, Just (Port.TaggedResource {resource}) →
       BuildFunnel.eval model resource
-    BuildHeatmap model, Just (Port.TaggedResource {resource}) →
-      BuildHeatmap.eval model resource
+    BuildHeatmap model, Just (Port.TaggedResource {resource, axes}) →
+      BuildHeatmap.eval model resource axes
     BuildBoxplot model, Just (Port.TaggedResource {resource}) →
       BuildBoxplot.eval model resource
     e, i →
