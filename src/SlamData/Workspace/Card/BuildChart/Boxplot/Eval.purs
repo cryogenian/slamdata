@@ -73,6 +73,7 @@ type OnOneBoxplot =
   , h ∷ Maybe Number
   , x ∷ Maybe Number
   , y ∷ Maybe Number
+  , fontSize ∷ Maybe Int
   , series ∷ Array BoxplotSeries
   }
 
@@ -150,6 +151,7 @@ buildBoxplotData r records = series
      , y: Nothing
      , w: Nothing
      , h: Nothing
+     , fontSize: Nothing
      , series: foldMap mkBoxplotSeries $ M.toList series
      }]
 
@@ -238,14 +240,14 @@ buildBoxplot r records = do
   serieNames ∷ Array String
   serieNames =
     A.fromFoldable
-      $ foldMap (fst ⋙
-                 _.series
+      $ foldMap (snd
+                 ⋙_.series
                  ⋙ foldMap (_.name
                             ⋙ foldMap Set.singleton))
       boxplotData
 
 --  series ∷ ∀ i. DSL (scatter ∷ ETP.I, boxplot ∷ ETP.I|i)
-  series = for_ boxplotData \(ix × series) → for_ series \serie → do
+  series = for_ boxplotData \(ix × onOnePlot) → for_ onOnePlot.series \serie → do
     E.boxPlot $ boxplotSerie $ ix × serie
     E.scatter $ scatterSerie $ ix × serie
 
@@ -272,12 +274,10 @@ buildBoxplot r records = do
       ⊕ "Q2: " ⊕ show (fromMaybe zero $ param.value !! 1)⊕ "<br/>"
       ⊕ "Lower: " ⊕ show (fromMaybe zero $ param.value !! 0)
 
-    -- TODO: actually we need check that key of this boxplot has been
-    -- rendered and then render it.
-    E.buildItems $ for_ (snd serie.items) \mbItem →
-      case mbItem of
-        Nothing → E.addItem E.missingItem
-        Just item → E.addItem $ E.buildValues do
+    E.buildItems
+      $ for_ xAxisLabels \key → case M.lookup key serie.items of
+        Nothing → E.missingItem
+        Just (_ × mbBP) → for_ mbBP \item → E.addItem $ E.buildValues do
           E.addValue item.low
           E.addValue item.q1
           E.addValue item.q2
@@ -306,8 +306,8 @@ buildBoxplot r records = do
       ⊕ show (fromMaybe zero $ param.value !! 1)
 
     E.buildItems
-      $ for_ (enumerate serie.items) \(ox × outliers) →
-          for_ (fst outliers) \outlier → E.addItem $ E.buildValues do
+      $ for_ (enumerate $ A.fromFoldable serie.items) \(ox × (outliers × _)) →
+          for_ outliers \outlier → E.addItem $ E.buildValues do
             E.addValue $ Int.toNumber ox
             E.addValue outlier
 
