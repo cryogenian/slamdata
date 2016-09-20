@@ -93,20 +93,13 @@ renderDimension state =
 renderValue ∷ ST.State → HTML
 renderValue state =
   HH.form
-    [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
+    [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
     , HH.slot' CS.cpValue unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Measure"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
+       { component: S.primarySelect (Just "Measure")
+       , initialState: emptySelect
        }
     ]
 
@@ -156,13 +149,11 @@ cardEval = case _ of
     let model =
           { dimension: _
           , value: _
-          , valueAggregation: _
           , series: r.series >>= view _value
           , parallel: r.parallel >>= view _value
           }
           <$> (r.dimension >>= view _value)
           <*> (r.value >>= view _value)
-          <*> (r.valueAggregation >>= view _value)
     pure $ k $ Card.BuildBoxplot model
   CC.Load (Card.BuildBoxplot (Just model)) next → do
     loadModel model
@@ -206,10 +197,6 @@ synchronizeChildren = void do
         $ st.axes.value
         ⊝ newDimension
 
-    newValueAggregation =
-      setPreviousValueFrom r.valueAggregation
-        $ nonMaybeAggregationSelect
-
     newSeries =
       setPreviousValueFrom r.series
         $ autoSelect
@@ -228,15 +215,13 @@ synchronizeChildren = void do
         ⊝ newSeries
 
   H.query' CS.cpDimension unit $ H.action $ S.SetSelect newDimension
-  H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
-  H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
+  H.query' CS.cpValue unit $ H.action $ S.SetSelect newValue
   H.query' CS.cpSeries unit $ H.action $ S.SetSelect newSeries
   H.query' CS.cpParallel unit $  H.action $ S.SetSelect newParallel
 
 type Selects =
   { dimension ∷ Maybe (Select JCursor)
   , value ∷ Maybe (Select JCursor)
-  , valueAggregation ∷ Maybe (Select Aggregation)
   , series ∷ Maybe (Select JCursor)
   , parallel ∷ Maybe (Select JCursor)
   }
@@ -246,16 +231,13 @@ getSelects = do
   dimension ←
     H.query' CS.cpDimension unit $ H.request S.GetSelect
   value ←
-    H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  valueAggregation ←
-    H.query' CS.cpValue unit $ left $ H.request S.GetSelect
+    H.query' CS.cpValue unit $ H.request S.GetSelect
   series ←
     H.query' CS.cpSeries unit $ H.request S.GetSelect
   parallel ←
     H.query' CS.cpParallel unit $ H.request S.GetSelect
   pure { dimension
        , value
-       , valueAggregation
        , series
        , parallel
        }
@@ -269,19 +251,10 @@ loadModel r = void do
     $ Just r.dimension
 
   H.query' CS.cpValue unit
-    $ right
-    $ H.ChildF unit
     $ H.action
     $ S.SetSelect
     $ fromSelected
     $ Just r.value
-
-  H.query' CS.cpValue unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.valueAggregation
 
   H.query' CS.cpSeries unit
     $ H.action

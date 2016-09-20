@@ -17,7 +17,6 @@ import Test.Property.ArbJson (runArbJCursor)
 type BoxplotR =
   { dimension ∷ JCursor
   , value ∷ JCursor
-  , valueAggregation ∷ Ag.Aggregation
   , series ∷ Maybe JCursor
   , parallel ∷ Maybe JCursor
   }
@@ -33,7 +32,6 @@ eqBoxplotR r1 r2 =
   F.and
     [ r1.dimension ≡ r2.dimension
     , r1.value ≡ r2.value
-    , r1.valueAggregation ≡ r2.valueAggregation
     , r1.series ≡ r2.series
     , r1.parallel ≡ r2.parallel
     ]
@@ -51,10 +49,9 @@ genModel = do
     else map Just do
     dimension ← map runArbJCursor arbitrary
     value ← map runArbJCursor arbitrary
-    valueAggregation ← arbitrary
     series ← map (map runArbJCursor) arbitrary
     parallel ← map (map runArbJCursor) arbitrary
-    pure { dimension, value, valueAggregation, series, parallel }
+    pure { dimension, value, series, parallel }
 
 encode ∷ Model → Json
 encode Nothing = jsonNull
@@ -62,7 +59,6 @@ encode (Just r) =
   "configType" := "boxplot"
   ~> "dimension" := r.dimension
   ~> "value" := r.value
-  ~> "valueAggregation" := r.valueAggregation
   ~> "series" := r.series
   ~> "parallel" := r.parallel
   ~> jsonEmptyObject
@@ -77,7 +73,6 @@ decode js
       $ throwError "THis is not boxplot"
     dimension ← obj .? "dimension"
     value ← obj .? "value"
-    valueAggregation ← obj .? "valueAggregation"
     series ← obj .? "series"
     parallel ← obj .? "parallel"
-    pure { dimension, value, valueAggregation, series, parallel }
+    pure { dimension, value, series, parallel }
