@@ -84,7 +84,7 @@ buildBoxplotData axes dimType = Tuple (A.fromFoldable distinctDims) $
       -- output sample:
       -- ( Tuple ''
       --         ( Tuple 'series1' (Tuple 'dimA' 1) : Tuple 'series1' (Tuple 'dimB' 2) : Tuple 'series1' (Tuple 'dimB' 3)
-      --         : Tuple 'series2' (Tuple 'dimA' 1) : Tuple 'series2' (Tuple 'dimB' 2) : Tuple 'series2' (Tuple 'dimB' 3) ) 
+      --         : Tuple 'series2' (Tuple 'dimA' 1) : Tuple 'series2' (Tuple 'dimB' 2) : Tuple 'series2' (Tuple 'dimB' 3) )
       -- )
       <<< L.groupBy ((==) `on` fst)
       <<< L.sortBy (compare `on` fst)
@@ -106,7 +106,7 @@ buildBoxplotData axes dimType = Tuple (A.fromFoldable distinctDims) $
   -- output sample:
   -- ( Tuple '' (Tuple 'series1' (Tuple 'dimA' 1)) : Tuple '' (Tuple 'series1' (Tuple 'dimB' 2))
   -- : Tuple '' (Tuple 'series1' (Tuple 'dimB' 3)) : Tuple '' (Tuple 'series2' (Tuple 'dimA' 1))
-  -- : Tuple '' (Tuple 'series2' (Tuple 'dimB' 2)) : Tuple '' (Tuple 'series2' (Tuple 'dimB' 3)) ) 
+  -- : Tuple '' (Tuple 'series2' (Tuple 'dimB' 2)) : Tuple '' (Tuple 'series2' (Tuple 'dimB' 3)) )
   $ L.catMaybes
   $ map filterInvalid
   $ tag duplications
@@ -136,7 +136,7 @@ buildBoxplotData axes dimType = Tuple (A.fromFoldable distinctDims) $
 
   seriesKeys ∷ List SeriesKey
   seriesKeys = map (\x → mkSeriesKey x Nothing) series
- 
+
   mkSeriesKey ∷ Maybe String → Maybe String → SeriesKey
   mkSeriesKey f s =
     f >>= \f → pure $ Tuple f s
@@ -145,7 +145,7 @@ buildBoxplotData axes dimType = Tuple (A.fromFoldable distinctDims) $
     ∷ (Maybe String) × (SeriesKey × ((Maybe String) × (Maybe Number)))
     → Maybe (String × (String × (String × Number)))
   filterInvalid (d × (s × (v1 × v2))) = case v1 × v2 of
-    Just v1' × Just v2' → 
+    Just v1' × Just v2' →
       Just $ (fromMaybe "" d) × (keyName (Tuple "" s) × (v1' × v2'))
     _ → Nothing
 
@@ -167,7 +167,7 @@ buildBoxplotData axes dimType = Tuple (A.fromFoldable distinctDims) $
   checkDimAndTransform
     ∷ String × List (String × Array Number)
     → String × Array (Array Number)
-  checkDimAndTransform x = 
+  checkDimAndTransform x =
     map (A.fromFoldable <<< matchDim) x
     where
     matchDim ∷ List (String × Array Number) → List (Array Number)
@@ -189,7 +189,7 @@ buildBoxplotData axes dimType = Tuple (A.fromFoldable distinctDims) $
       → BoxDataAndOutliers
     boxDataAndOutliers boundIQR a = case A.length a of
       0 → Tuple Nothing []
-      _ → 
+      _ →
         let
           ascArr = A.sort a
           q1 = fromMaybe zero $ quantile ascArr 0.25
@@ -389,7 +389,7 @@ buildBoxplot axes conf = do
         $ E.borderColor
         $ fromMaybe (C.rgba 0 0 0 0.5)
         $ colors !! (fromMaybe 0 $ A.elemIndex s serieNames)
-    E.tooltip do  
+    E.tooltip do
       E.formatterItemArrayValue
         \param → param.name <> "<br/>"
                   <> "Upper: " <> show (fromMaybe zero $ param.value !! 4) <> "<br/>"
@@ -417,7 +417,7 @@ buildBoxplot axes conf = do
     -- line of the panel, rather than the ones of respective boxes.
     -- Temporarily hide the outlier dots when there are multiple series.
     -- This setting should be removed after Echarts 3 fixes the problem.
-    -- An issue was opened to Echarts 3: 
+    -- An issue was opened to Echarts 3:
     -- <https://github.com/ecomfe/echarts/issues/3944>
     when (s ≠ "") $ E.symbolSize 0
     E.itemStyle $ E.normalItemStyle do
@@ -425,7 +425,7 @@ buildBoxplot axes conf = do
         $ E.color
         $ fromMaybe (C.rgba 0 0 0 0.5)
         $ colors !! (fromMaybe 0 $ A.elemIndex s serieNames)
-    E.tooltip do  
+    E.tooltip do
       E.formatterItemArrayValue
         \param → param.name <> "<br/>"
                   <> show (fromMaybe zero $ param.value !! 1)
@@ -434,4 +434,4 @@ buildBoxplot axes conf = do
       map ET.numArrItem
         $ A.concat
         $ map (\x → map (\y → [toNumber $ fst x, y]) $ snd x)
-        $ A.zip (A.range 0 $ A.length outliers) outliers 
+        $ A.zip (A.range 0 $ A.length outliers) outliers
