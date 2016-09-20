@@ -51,10 +51,10 @@ data ChartType
   | Radar -- adjust
   | Funnel -- adjust
   | Graph -- done
-  | Heatmap -- w/o
+  | Heatmap -- adjust
   | Sankey -- done
   | Gauge -- done
-  | Boxplot -- w/o
+  | Boxplot -- adjust
   | Metric -- done
 
 
