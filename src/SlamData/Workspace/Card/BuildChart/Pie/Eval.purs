@@ -63,7 +63,6 @@ eval (Just conf) resource = do
 
 infixr 3 type M.Map as >>
 
-
 type OnePieSeries =
   { name ∷ Maybe String
   , x ∷ Maybe Number
