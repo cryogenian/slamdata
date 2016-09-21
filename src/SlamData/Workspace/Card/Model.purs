@@ -40,6 +40,7 @@ import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
+import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 import SlamData.Workspace.Card.BuildChart.Metric.Model as BuildMetric
@@ -64,7 +65,7 @@ data AnyCardModel
   = Ace CT.AceMode Ace.Model
   | Search String
   | ChartOptions ChartOptions.Model
-  | Chart
+  | Chart Chart.Model
   | Markdown MD.Model
   | Table JT.Model
   | Download
@@ -98,7 +99,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       [ Ace <$> SC.arbitrary <*> Ace.genModel
       , Search <$> SC.arbitrary
       , ChartOptions <$> ChartOptions.genModel
-      , pure Chart
+      , Chart <$> Chart.genModel
       , Markdown <$> MD.genModel
       , Table <$> JT.genModel
       , pure Download
@@ -130,7 +131,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       Ace x1 y1, Ace x2 y2 → x1 ≡ x2 && Ace.eqModel y1 y2
       Search s1, Search s2 → s1 ≡ s2
       ChartOptions x1, ChartOptions x2 → ChartOptions.eqModel x1 x2
-      Chart, Chart → true
+      Chart x, Chart y → Chart.eqModel x y
       Markdown x, Markdown y → MD.eqModel x y
       Table x, Table y → JT.eqModel x y
       Download, Download → true
@@ -182,7 +183,7 @@ modelCardType =
     BuildBoxplot _ → CT.ChartOptions Boxplot
     BuildHeatmap _ → CT.ChartOptions Heatmap
     ChartOptions _ → CT.ChartOptions Pie
-    Chart → CT.Chart
+    Chart _ → CT.Chart
     Markdown _ → CT.Markdown
     Table _ → CT.Table
     Download → CT.Download
@@ -227,7 +228,7 @@ encodeCardModel = case _ of
   Ace mode model → Ace.encode model
   Search txt → J.encodeJson txt
   ChartOptions model → ChartOptions.encode model
-  Chart → J.jsonEmptyObject
+  Chart model → Chart.encode model
   Markdown model → MD.encode model
   Table model → JT.encode model
   Download → J.jsonEmptyObject
@@ -278,7 +279,7 @@ decodeCardModel = case _ of
   CT.ChartOptions Funnel → map BuildFunnel ∘ BuildFunnel.decode
   CT.ChartOptions Boxplot → map BuildBoxplot ∘ BuildBoxplot.decode
   CT.ChartOptions Heatmap → map BuildHeatmap ∘ BuildHeatmap.decode
-  CT.Chart → const $ pure Chart
+  CT.Chart → map Chart ∘ Chart.decode
   CT.Markdown → map Markdown ∘ MD.decode
   CT.Table → map Table ∘ JT.decode
   CT.Download → const $ pure Download
@@ -314,7 +315,7 @@ cardModelOfType = case _ of
   CT.ChartOptions Funnel → BuildFunnel BuildFunnel.initialModel
   CT.ChartOptions Boxplot → BuildBoxplot BuildBoxplot.initialModel
   CT.ChartOptions Heatmap → BuildHeatmap BuildHeatmap.initialModel
-  CT.Chart → Chart
+  CT.Chart → Chart Chart.emptyModel
   CT.Markdown → Markdown MD.emptyModel
   CT.Table → Table JT.emptyModel
   CT.Download → Download

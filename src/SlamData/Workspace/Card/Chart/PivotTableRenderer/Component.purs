@@ -28,19 +28,26 @@ import Halogen.HTML.Properties.Indexed as HP
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model (PivotTableR, Column(..))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 
 type State =
   { records ∷ Array J.Json
   , options ∷ PivotTableR
+  , model ∷ PTRM.Model
   }
 
 initialState ∷ State
 initialState =
   { records: []
   , options: { dimensions: [], columns: [] }
+  , model: PTRM.initialModel
   }
 
-data Query a = Update (Array J.Json) PivotTableR a
+data Query a
+  = Update (Array J.Json) PivotTableR a
+  | Load PTRM.Model a
+  | Save (PTRM.Model → a)
+  | ModelUpdated a
 
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
@@ -128,9 +135,22 @@ render st =
     J.foldJson show show show id show show
 
 eval ∷ Query ~> DSL
-eval (Update records options next) = do
-  H.set { records, options }
-  pure next
+eval = case _ of
+  Update records options next → do
+    H.modify _
+      { records = records
+      , options = options
+      }
+    pure next
+  Load model next → do
+    H.modify _
+      { model = model
+      }
+    pure next
+  Save k →
+    k <$> H.gets _.model
+  ModelUpdated next →
+    pure next
 
 tupleN ∷ Int → J.JCursor
 tupleN int = J.JField ("_" <> show int) J.JCursorTop

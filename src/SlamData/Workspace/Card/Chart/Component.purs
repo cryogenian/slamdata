@@ -47,6 +47,7 @@ import SlamData.Workspace.Card.CardType.ChartType as ChT
 import SlamData.Workspace.Card.Chart.Component.ChildSlot (cpMetric, cpPivotTable, cpECharts, ChildState, ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
 import SlamData.Workspace.Card.Chart.Config as CH
+import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Component as Pivot
 import SlamData.Workspace.Card.Component as CC
@@ -62,7 +63,7 @@ type DSL =
 chartComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 chartComponent = CC.makeCardComponent
   { cardType: CT.Chart
-  , component: H.parentComponent { render, eval, peek: Nothing }
+  , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   , initialState: H.parentState initialState
   , _State: CC._ChartState
   , _Query: CC.makeQueryPrism CC._ChartQuery
@@ -168,9 +169,20 @@ eval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k →
-    pure $ k Card.Chart
-  CC.Load _ next →
-    pure next
+    H.gets _.chartType >>= case _ of
+      Just ChT.PivotTable → do
+        res ← H.query' cpPivotTable unit $ H.request Pivot.Save
+        pure $ k (Card.Chart (Chart.PivotTableRenderer <$> res))
+      _ →
+        pure $ k (Card.Chart Nothing)
+  CC.Load model next →
+    case model of
+      Card.Chart (Just (Chart.PivotTableRenderer m)) → do
+        H.modify $ _chartType ?~ ChT.PivotTable
+        H.query' cpPivotTable unit $ H.action $ Pivot.Load m
+        pure next
+      _ →
+        pure next
   CC.SetDimensions dims next → do
     state ← H.get
     let
@@ -230,3 +242,10 @@ setEChartsLOD fOption = do
     .~ if (state.height - bottomPx) < 200 ∨ state.width < 300
          then Low
          else High
+
+peek ∷ ∀ a. ChildQuery a → DSL Unit
+peek = const (pure unit) ⨁  peekPivotTable ⨁  const (pure unit)
+  where
+  peekPivotTable = case _ of
+    Pivot.ModelUpdated _ → CC.raiseUpdatedP CC.StateOnlyUpdate
+    _ → pure unit

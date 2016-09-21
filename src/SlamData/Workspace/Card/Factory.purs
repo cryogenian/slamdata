@@ -66,7 +66,7 @@ cardComponent deckId card opts =
     Card.Ace mode _ → aceComponent { mode, eval: aceEval mode }
     Card.Search _ → searchComponent
     Card.ChartOptions _ → chartOptionsComponent
-    Card.Chart → chartComponent
+    Card.Chart _ → chartComponent
     Card.Markdown _ → markdownComponent deckId opts
     Card.Table _ → tableComponent
     Card.Download → downloadComponent
