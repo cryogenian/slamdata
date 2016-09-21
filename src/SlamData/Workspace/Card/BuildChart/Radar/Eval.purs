@@ -23,6 +23,7 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Common.Positioning (RadialPosition, adjustRadialPositions)
 import SlamData.Workspace.Card.BuildChart.Radar.Model (Model, RadarR)
@@ -45,8 +46,6 @@ eval Nothing _ =
 eval (Just conf) resource = do
   records ← BCE.records resource
   pure $ Port.ChartInstructions (buildRadar conf records) Radar
-
-infixr 3 type M.Map as >>
 
 -- | One radar serie. Actually just data for echarts radar series
 type RadarSerie =
