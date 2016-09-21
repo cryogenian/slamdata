@@ -1,10 +1,12 @@
 module SlamData.Workspace.Card.BuildChart.Common.Eval
   ( records
+  , type (>>)
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut (JArray)
+import Data.Map as M
 
 import Quasar.Types (FilePath)
 
@@ -12,6 +14,8 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
+
+infixr 3 type M.Map as >>
 
 records
   ∷ ∀ m
