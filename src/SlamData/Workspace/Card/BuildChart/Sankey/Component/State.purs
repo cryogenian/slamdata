@@ -2,8 +2,6 @@
 -- | generic BuildChart module
 module SlamData.Workspace.Card.BuildChart.Sankey.Component.State where
 
-import SlamData.Prelude
-
 import Halogen (ParentState)
 
 import SlamData.Monad (Slam)

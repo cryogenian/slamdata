@@ -7,13 +7,11 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
-import Data.Lens as Lens
 import Data.Map as M
-import Data.Int as Int
 import Data.Set as Set
 
 import Global (infinity)
@@ -33,10 +31,7 @@ import SlamData.Workspace.Card.BuildChart.Scatter.Model (Model, ScatterR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Scatter))
 import SlamData.Workspace.Card.Chart.BuildOptions.Common (getTransparentColor)
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
-import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
-import SlamData.Workspace.Card.Chart.Semantics as Sem
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 

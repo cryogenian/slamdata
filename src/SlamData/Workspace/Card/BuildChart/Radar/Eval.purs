@@ -5,11 +5,10 @@ module SlamData.Workspace.Card.BuildChart.Radar.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
-import Data.Lens as Lens
 import Data.Map as M
 import Data.Set as Set
 import Data.Int as Int
@@ -28,13 +27,9 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.BuildChart.Radar.Model (Model, RadarR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Radar))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
-import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
-import SlamData.Workspace.Card.Chart.Semantics as Sem
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.BuildChart.Radar.Model (RadarR)
 
 import Utils.Array (enumerate)
 
