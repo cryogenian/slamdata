@@ -60,6 +60,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
+import SlamData.Guide as Guide
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring (Wiring(..), CardEval, Cache, DeckMessage(..), putCardEval, putCache, getCache, makeCache)
 import SlamData.Wiring as W
@@ -218,10 +219,10 @@ eval opts = case _ of
   FlipDeck next → do
     updateBackSide opts
     H.modify
-      $ DCS._displayMode
-      %~ case _ of
+      $ DCS._displayMode %~ case _ of
         DCS.Normal → DCS.Backside
         _ → DCS.Normal
+    presentFlipGuideFirstTime
     pure next
   GrabDeck _ next →
     pure next
@@ -1066,3 +1067,21 @@ getDeck
   → DeckDSL (Either QE.QError Model.Deck)
 getDeck path deckId =
   H.liftH $ H.liftH $ W.getDeck path deckId
+
+presentFlipGuideFirstTime ∷ DeckDSL Unit
+presentFlipGuideFirstTime = do
+  H.gets _.displayMode >>=
+    case _ of
+      DCS.Backside → do
+        W.Wiring wiring ← H.liftH $ H.liftH ask
+        shouldPresentFlipGuide >>=
+          if _
+          then H.fromAff $ Bus.write W.FlipGuide wiring.presentStepByStepGuide
+          else pure unit
+      _ → pure unit
+
+shouldPresentFlipGuide ∷ DeckDSL Boolean
+shouldPresentFlipGuide =
+  H.liftH
+    $ H.liftH
+    $ either (const true) not <$> LocalStorage.getLocalStorage Guide.dismissedFlipGuideKey

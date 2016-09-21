@@ -22,6 +22,7 @@ module SlamData.Wiring
   , ActiveState
   , PendingMessage
   , DeckMessage(..)
+  , StepByStepGuide(..)
   , makeWiring
   , makeCache
   , putDeck
@@ -81,6 +82,10 @@ data DeckMessage
   = DeckFocused DeckId
   | URLVarMapsUpdated
 
+data StepByStepGuide
+  = CardGuide
+  | FlipGuide
+
 type ActiveState =
   { cardIndex ∷ Int
   }
@@ -98,6 +103,7 @@ newtype Wiring =
     , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
     , signInBus ∷ SignInBus
     , hasIdentified ∷ Ref Boolean
+    , presentStepByStepGuide ∷ Bus.BusRW StepByStepGuide
     }
 
 makeWiring
@@ -116,6 +122,7 @@ makeWiring = fromAff do
   urlVarMaps ← fromEff (newRef mempty)
   signInBus ← Bus.make
   hasIdentified ← fromEff (newRef false)
+  presentStepByStepGuide ← Bus.make
   pure $
     Wiring
       { decks
@@ -129,6 +136,7 @@ makeWiring = fromAff do
       , urlVarMaps
       , signInBus
       , hasIdentified
+      , presentStepByStepGuide
       }
 
 makeCache

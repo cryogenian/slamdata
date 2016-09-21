@@ -38,6 +38,7 @@ import SlamData.Workspace.Card.Draftboard.Pane (Pane)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck)
 
+
 data Query a
   = UpdateFilter String a
   | DoAction BackAction a
