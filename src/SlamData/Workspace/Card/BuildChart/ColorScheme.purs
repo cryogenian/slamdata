@@ -20,12 +20,12 @@ import SlamData.Prelude
 
 import Color (Color, fromHexString)
 
-import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson, jsonEmptyObject, (~>), (:=), (.?))
+import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson, (~>), (:=), (.?))
 import Data.Array as A
 
 import SlamData.Form.Select (class OptionVal, Select(..))
 
-import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
+import Test.StrongCheck.Arbitrary (class Arbitrary)
 import Test.StrongCheck.Gen (allInArray)
 
 colors ∷ Array Color

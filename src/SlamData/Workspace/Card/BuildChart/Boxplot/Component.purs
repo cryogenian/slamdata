@@ -5,14 +5,10 @@ module SlamData.Workspace.Card.BuildChart.Boxplot.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Int as Int
 import Data.Lens (view, (^?), (.~))
 import Data.Lens as Lens
 
-import Global (readFloat, isNaN)
-
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 import Halogen.HTML.Indexed as HH
 import Halogen.CustomProps as Cp
 import Halogen.HTML.Properties.Indexed as HP
@@ -21,18 +17,13 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, trySelect', fromSelected)
+import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
-import SlamData.Workspace.Card.Chart.ChartConfiguration (depends, dependsOnArr)
 import SlamData.Form.Select.Component as S
-import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.Chart.Axis (Axes)
-import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component.ChildSlot as CS
