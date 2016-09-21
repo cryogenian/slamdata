@@ -86,7 +86,6 @@ renderHighLOD state =
     [ renderDimension state
     , HH.hr_
     , renderValue state
-    , renderSecondValue state
     , HH.hr_
     , renderSeries state
     , HH.hr_
@@ -119,26 +118,6 @@ renderValue state =
        { component:
            P.selectPair { disableWhen: (_ < 1)
                         , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Measure"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
-       }
-    ]
-
-renderSecondValue ∷ ST.State → HTML
-renderSecondValue state =
-  HH.form
-    [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.slot' CS.cpSecondValue unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 2)
-                        , defaultWhen: (_ > 1)
                         , mainState: emptySelect
                         , ariaLabel: Just "Measure"
                         , classes: [ B.btnPrimary, CSS.aggregation]
@@ -244,8 +223,6 @@ cardEval = case _ of
         { dimension: _
         , value: _
         , valueAggregation: _
-        , secondValue: r.secondValue >>= view _value
-        , secondValueAggregation: r.secondValueAggregation >>= view _value
         , series: r.series >>= view _value
         , isStacked: st.isStacked
         , isSmooth: st.isSmooth
@@ -328,18 +305,6 @@ synchronizeChildren = void do
       setPreviousValueFrom r.valueAggregation
         $ nonMaybeAggregationSelect
 
-    newSecondValue =
-      setPreviousValueFrom r.secondValue
-        $ autoSelect
-        $ newSelect
-        $ ifSelected [ newValue ]
-        $ st.axes.value
-        ⊝ newValue
-
-    newSecondValueAggregation =
-      setPreviousValueFrom r.secondValueAggregation
-        $ nonMaybeAggregationSelect
-
     newSeries =
       setPreviousValueFrom r.series
         $ autoSelect
@@ -351,8 +316,6 @@ synchronizeChildren = void do
 
   H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
   H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
-  H.query' CS.cpSecondValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSecondValue
-  H.query' CS.cpSecondValue unit $ left $ H.action $ S.SetSelect newSecondValueAggregation
   H.query' CS.cpSeries unit $ H.action $ S.SetSelect newSeries
 
 
@@ -379,19 +342,6 @@ loadModel r = void do
     $ fromSelected
     $ Just r.dimension
 
-  H.query' CS.cpSecondValue unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.secondValue
-
-  H.query' CS.cpSecondValue unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.secondValueAggregation
-
   H.query' CS.cpSeries unit
     $ H.action
     $ S.SetSelect
@@ -401,8 +351,6 @@ type AreaSelects =
   { dimension ∷ Maybe (Select JCursor)
   , value ∷ Maybe (Select JCursor)
   , valueAggregation ∷ Maybe (Select Aggregation)
-  , secondValue ∷ Maybe (Select JCursor)
-  , secondValueAggregation ∷ Maybe (Select Aggregation)
   , series ∷ Maybe (Select JCursor)
   }
 
@@ -414,16 +362,10 @@ getAreaSelects = do
     H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
   valueAggregation ←
     H.query' CS.cpValue unit $ left $ H.request S.GetSelect
-  secondValue ←
-    H.query' CS.cpSecondValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  secondValueAggregation ←
-    H.query' CS.cpSecondValue unit $ left $ H.request S.GetSelect
   series ←
     H.query' CS.cpSeries unit $ H.request S.GetSelect
   pure { dimension
        , value
        , valueAggregation
-       , secondValue
-       , secondValueAggregation
        , series
        }

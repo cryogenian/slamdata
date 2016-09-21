@@ -43,18 +43,18 @@ import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 data ChartType
-  = Pie -- w/o
-  | Line -- w/o
-  | Bar -- w/o
-  | Area  -- w/o
-  | Scatter -- w/o
-  | Radar -- w/o
-  | Funnel -- w/o
+  = Pie -- adjust
+  | Line -- adjust
+  | Bar -- adjust
+  | Area  -- adjust
+  | Scatter -- adjust
+  | Radar -- adjust
+  | Funnel -- adjust
   | Graph -- done
-  | Heatmap -- w/o
+  | Heatmap -- adjust
   | Sankey -- done
   | Gauge -- done
-  | Boxplot -- w/o
+  | Boxplot -- adjust
   | Metric -- done
   | PivotTable
 

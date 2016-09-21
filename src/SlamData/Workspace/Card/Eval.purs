@@ -174,18 +174,18 @@ evalCard input =
       BuildPie.eval model resource
     BuildRadar model, Just (Port.TaggedResource {resource}) →
       BuildRadar.eval model resource
-    BuildArea model, Just (Port.TaggedResource {resource}) →
-      BuildArea.eval model resource
-    BuildLine model, Just (Port.TaggedResource {resource}) →
-      BuildLine.eval model resource
-    BuildBar model, Just (Port.TaggedResource {resource}) →
-      BuildBar.eval model resource
+    BuildArea model, Just (Port.TaggedResource {resource, axes}) →
+      BuildArea.eval model resource axes
+    BuildLine model, Just (Port.TaggedResource {resource, axes}) →
+      BuildLine.eval model resource axes
+    BuildBar model, Just (Port.TaggedResource {resource, axes}) →
+      BuildBar.eval model resource axes
     BuildScatter model, Just (Port.TaggedResource {resource}) →
       BuildScatter.eval model resource
     BuildFunnel model, Just (Port.TaggedResource {resource}) →
       BuildFunnel.eval model resource
-    BuildHeatmap model, Just (Port.TaggedResource {resource}) →
-      BuildHeatmap.eval model resource
+    BuildHeatmap model, Just (Port.TaggedResource {resource, axes}) →
+      BuildHeatmap.eval model resource axes
     BuildBoxplot model, Just (Port.TaggedResource {resource}) →
       BuildBoxplot.eval model resource
     BuildPivotTable model, Just (Port.TaggedResource {resource}) →

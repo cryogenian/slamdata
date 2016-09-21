@@ -5,9 +5,13 @@ module SlamData.Workspace.Card.BuildChart.Heatmap.Eval
 
 import SlamData.Prelude
 
+import Color as C
+
 import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, toString)
 import Data.Array as A
+import Data.List as L
 import Data.Foldable as F
+import Data.Function (on)
 import Data.Lens ((^?))
 import Data.Lens as Lens
 import Data.Map as M
@@ -15,6 +19,7 @@ import Data.Int as Int
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
+import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
@@ -24,6 +29,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.BuildChart.Heatmap.Model (Model, HeatmapR)
+import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getColorScheme)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Heatmap))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
@@ -33,16 +39,19 @@ import SlamData.Workspace.Card.Chart.Semantics as Sem
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
+import Utils (stringToNumber)
+import Utils.Array (enumerate)
 
 eval
   ∷ ∀ m
   . (Monad m, QuasarDSL m)
   ⇒ Model
   → FilePath
+  → Axes
   → CET.CardEvalT m Port.Port
-eval Nothing _ =
+eval Nothing _ _ =
   QE.throw "Please select axis to aggregate"
-eval (Just conf) resource = do
+eval (Just conf) resource axes = do
   numRecords ←
     CET.liftQ $ QQ.count resource
 
@@ -56,9 +65,198 @@ eval (Just conf) resource = do
   records ←
     CET.liftQ $ QQ.all resource
 
-  pure $ Port.ChartInstructions (buildHeatmap conf records) Heatmap
+  pure $ Port.ChartInstructions (buildHeatmap conf records axes) Heatmap
 
+infixr 3 type M.Map as >>
 
-buildHeatmap ∷ HeatmapR → JArray → DSL OptionI
-buildHeatmap r records = do
-  pure unit
+type HeatmapSeries =
+  { x ∷ Maybe Number
+  , y ∷ Maybe Number
+  , w ∷ Maybe Number
+  , h ∷ Maybe Number
+  , name ∷ Maybe String
+  , fontSize ∷ Maybe Int
+  , items ∷ (String × String) >> Number
+  }
+
+buildHeatmapData ∷ HeatmapR → JArray → Array HeatmapSeries
+buildHeatmapData r records = series
+  where
+  -- | maybe series >> pair of abscissa and ordinate >> values
+  dataMap ∷ Maybe String >> (String × String) >> Array Number
+  dataMap =
+    foldl dataMapFoldFn M.empty records
+
+  dataMapFoldFn
+    ∷ Maybe String >> (String × String) >> Array Number
+    → Json
+    → Maybe String >> (String × String) >> Array Number
+  dataMapFoldFn acc js =
+    let
+      mbAbscissa = toString =<< cursorGet r.abscissa js
+      mbOrdinate = toString =<< cursorGet r.ordinate js
+    in case mbAbscissa × mbOrdinate of
+      (Just abscissaKey) × (Just ordinateKey) →
+        let
+          mbSeries = toString =<< flip cursorGet js =<< r.series
+          values = foldMap A.singleton $ toNumber =<< cursorGet r.value js
+
+          alterSeriesFn
+            ∷ Maybe ((String × String) >> Array Number)
+            → Maybe ((String × String) >> Array Number)
+          alterSeriesFn Nothing =
+            Just $ M.singleton (abscissaKey × ordinateKey) values
+          alterSeriesFn (Just series) =
+            Just $ M.alter alterCoordFn (abscissaKey × ordinateKey) series
+
+          alterCoordFn
+            ∷ Maybe (Array Number)
+            → Maybe (Array Number)
+          alterCoordFn Nothing = Just values
+          alterCoordFn (Just arr) = Just $ arr ⊕ values
+        in
+          M.alter alterSeriesFn mbSeries acc
+      _ → acc
+
+  rawSeries ∷ Array HeatmapSeries
+  rawSeries =
+    foldMap mkOneSeries $ M.toList dataMap
+
+  mkOneSeries
+    ∷ Maybe String × ((String × String) >> Array Number)
+    → Array HeatmapSeries
+  mkOneSeries (name × items) =
+    [{ name
+     , x: Nothing
+     , y: Nothing
+     , w: Nothing
+     , h: Nothing
+     , fontSize: Nothing
+     , items: map (Ag.runAggregation r.valueAggregation) items
+     }]
+
+  series ∷ Array HeatmapSeries
+  series = positionRawSeries rawSeries
+
+  positionRawSeries ∷ Array HeatmapSeries → Array HeatmapSeries
+  positionRawSeries = id
+
+buildHeatmap ∷ HeatmapR → JArray → Axes → DSL OptionI
+buildHeatmap r records axes = do
+  E.tooltip do
+    E.triggerAxis
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+    E.axisPointer do
+      E.crossAxisPointer
+      E.crossStyle do
+        E.color $ C.rgba 170 170 170 0.6
+        E.widthNum 0.2
+        E.solidLine
+
+  E.animationEnabled false
+
+  E.grids
+    $ traverse_ E.grid grids
+
+  E.titles
+    $ traverse_ E.title titles
+
+  E.xAxes xAxes
+
+  E.yAxes yAxes
+
+  E.visualMap $ E.continuous do
+    E.min r.minValue
+    E.max r.maxValue
+    E.calculable true
+    E.orient ET.Horizontal
+    E.itemWidth 15.0
+    E.leftCenter
+    E.bottom $ ET.Percent zero
+    E.padding zero
+    E.inRange $ E.colors
+      if r.isColorSchemeReversed
+        then A.reverse $ getColorScheme r.colorScheme
+        else getColorScheme r.colorScheme
+
+  E.series series
+
+  where
+  heatmapData ∷ Array (Int × HeatmapSeries)
+  heatmapData = enumerate $ buildHeatmapData r records
+
+  grids ∷ Array (DSL ETP.GridI)
+  grids = heatmapData <#> \(_ × {x, y, w, h}) → do
+    for_ x $ E.left ∘ ET.Percent
+    for_ y $ E.top ∘ ET.Percent
+    for_ w E.widthPct
+    for_ h E.heightPct
+
+  titles ∷ Array (DSL ETP.TitleI)
+  titles = heatmapData <#> \(_ × {x, y, name, fontSize}) → do
+    for_ name E.text
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      for_ fontSize E.fontSize
+    for_ x $ E.left ∘ ET.Percent
+    for_ y $ E.top ∘ ET.Percent
+    E.textCenter
+    E.textMiddle
+
+  series ∷ ∀ i. DSL (heatMap ∷ ETP.I|i)
+  series = for_ heatmapData \(ix × series) → E.heatMap do
+    for_ series.name E.name
+    E.xAxisIndex ix
+    E.yAxisIndex ix
+    E.buildItems $ for_ (M.toList $ series.items) \((abscissa × ordinate) × value) →
+      E.addItem $ E.buildNames do
+        E.addName abscissa
+        E.addName ordinate
+        E.addName $ show value
+
+  mkAxis ∷ ∀ i. Int → DSL (ETP.AxisI (gridIndex ∷ ETP.I|i))
+  mkAxis ix = do
+    E.gridIndex ix
+    E.axisType ET.Category
+    E.axisLabel do
+      E.textStyle do
+        E.fontFamily "Ubuntu, sans"
+    E.axisLine $ E.lineStyle do
+      E.width 1
+    E.splitLine $ E.lineStyle do
+      E.width 1
+    E.splitArea E.hidden
+
+  xAxes ∷ ∀ i. DSL (addXAxis ∷ ETP.I|i)
+  xAxes = for_ heatmapData \(ix × series) → E.addXAxis do
+    mkAxis ix
+    E.items
+      $ foldMap (A.singleton ∘ ET.strItem)
+      $ sortX
+      $ map fst
+      $ M.keys series.items
+
+  yAxes ∷ ∀ i. DSL (addYAxis ∷ ETP.I|i)
+  yAxes = for_ heatmapData \(ix × series) → E.addYAxis do
+    mkAxis ix
+    E.items
+      $ foldMap (A.singleton ∘ ET.strItem)
+      $ sortY
+      $ map snd
+      $ M.keys series.items
+
+  sortX ∷ L.List String → L.List String
+  sortX
+    | F.elem r.abscissa axes.value =
+        L.sortBy (compare `on` stringToNumber)
+    | otherwise =
+        L.sort
+
+  sortY ∷ L.List String → L.List String
+  sortY
+    | F.elem r.ordinate axes.value =
+        L.sortBy (compare `on` stringToNumber)
+    | otherwise =
+        L.sort

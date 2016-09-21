@@ -50,7 +50,7 @@ import ECharts.Types.Phantom (OptionI)
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
-import SlamData.Workspace.Card.Chart.Axis (Axes, printAxes)
+import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.Config as CC
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
@@ -139,7 +139,7 @@ _ResourceTag ∷ TraversalP Port String
 _ResourceTag = wander \f s → case s of
   TaggedResource o@{tag: Just tag} →
     TaggedResource ∘ o{tag = _} ∘ Just <$> f tag
-  s → pure s
+  _ → pure s
 
 _Resource ∷ TraversalP Port PU.FilePath
 _Resource = wander \f s → case s of

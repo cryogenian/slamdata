@@ -5,14 +5,12 @@ module SlamData.Workspace.Card.BuildChart.Scatter.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Int as Int
 import Data.Lens (view, (^?), (.~))
 import Data.Lens as Lens
 
 import Global (readFloat, isNaN)
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 import Halogen.HTML.Indexed as HH
 import Halogen.CustomProps as Cp
 import Halogen.HTML.Events.Indexed as HE
@@ -30,10 +28,8 @@ import SlamData.Form.Select
   , emptySelect
   , setPreviousValueFrom
   , autoSelect
-  , ifSelected
   , (⊝)
   , _value
-  , trySelect'
   , fromSelected
   )
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -41,11 +37,8 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
-import SlamData.Workspace.Card.Chart.ChartConfiguration (depends, dependsOnArr)
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, aggregationSelectWithNone)
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS

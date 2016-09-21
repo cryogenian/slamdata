@@ -16,7 +16,7 @@ type ChildSlot =
   Unit ⊹ Unit ⊹ Unit ⊹ Unit
 
 type DimensionState = Select JCursor
-type ValueState = P.StateP Aggregation JCursor
+type ValueState = Select JCursor
 type SeriesState = Select JCursor
 type ParallelState = Select JCursor
 
@@ -24,7 +24,7 @@ type ChildState =
   DimensionState ⊹ ValueState ⊹ SeriesState ⊹ ParallelState
 
 type DimensionQuery = S.Query JCursor
-type ValueQuery = P.QueryP Aggregation JCursor
+type ValueQuery = S.Query JCursor
 type SeriesQuery = S.Query JCursor
 type ParallelQuery = S.Query JCursor
 

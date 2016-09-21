@@ -27,7 +27,7 @@ import Data.StrMap as Sm
 
 import SlamData.Workspace.Card.Chart.Semantics (Semantics, jarrayToSemantics, checkCategory, checkTime, checkBool, checkPercent, checkMoney, checkValues)
 
-import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
+import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.Property.ArbJson (runArbJCursor)
 

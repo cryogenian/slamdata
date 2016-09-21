@@ -278,7 +278,6 @@ decodeCardModel = case _ of
   CT.ChartOptions Funnel → map BuildFunnel ∘ BuildFunnel.decode
   CT.ChartOptions Boxplot → map BuildBoxplot ∘ BuildBoxplot.decode
   CT.ChartOptions Heatmap → map BuildHeatmap ∘ BuildHeatmap.decode
-  CT.ChartOptions _ → map ChartOptions ∘ ChartOptions.decode
   CT.Chart → const $ pure Chart
   CT.Markdown → map Markdown ∘ MD.decode
   CT.Table → map Table ∘ JT.decode
@@ -315,7 +314,6 @@ cardModelOfType = case _ of
   CT.ChartOptions Funnel → BuildFunnel BuildFunnel.initialModel
   CT.ChartOptions Boxplot → BuildBoxplot BuildBoxplot.initialModel
   CT.ChartOptions Heatmap → BuildHeatmap BuildHeatmap.initialModel
-  CT.ChartOptions _ → ChartOptions ChartOptions.initialModel
   CT.Chart → Chart
   CT.Markdown → Markdown MD.emptyModel
   CT.Table → Table JT.emptyModel

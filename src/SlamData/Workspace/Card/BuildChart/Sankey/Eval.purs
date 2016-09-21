@@ -9,7 +9,6 @@ import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, toString)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
-import Data.Lens as Lens
 import Data.Map as M
 
 import ECharts.Monad (DSL)
@@ -25,7 +24,7 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.BuildChart.Sankey.Model (Model, SankeyR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Sankey))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
+import SlamData.Workspace.Card.Chart.Axis (Axis, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 import SlamData.Workspace.Card.Chart.Semantics as Sem
