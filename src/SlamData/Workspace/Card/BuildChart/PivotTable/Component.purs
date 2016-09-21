@@ -19,6 +19,7 @@ module SlamData.Workspace.Card.BuildChart.PivotTable.Component where
 
 import SlamData.Prelude
 
+import Data.Argonaut as J
 import Data.Array as Array
 import Data.Int (toNumber)
 
@@ -93,7 +94,7 @@ renderHighLOD st =
       [ HP.classes [ HH.className "sd-pivot-options-select" ] ]
       [ HH.select
           [ HE.onSelectedIndexChange (HE.input (\ix → right ∘ ChangeAxis ix)) ]
-          (map (\c → HH.option_ [ HH.text (show c) ]) cs)
+          (map (\c → HH.option_ [ HH.text (showJCursor c) ]) cs)
       , HH.button
           [ HE.onClick (HE.input_ (right ∘ ChooseAxis false)) ]
           [ HH.text "Dismiss" ]
@@ -136,7 +137,7 @@ renderHighLOD st =
               [ HP.classes [ HH.className "sd-pivot-options-label" ]
               , HE.onMouseDown (HE.input (\e → right ∘ OrderDimensionStart slot e))
               ]
-              [ HH.text (show dim) ]
+              [ HH.text (showJCursor dim) ]
           , HH.button
               [ HP.classes [ HH.className "delete-cell" ]
               , HP.title "Delete dimension"
@@ -210,7 +211,7 @@ renderHighLOD st =
                   [ HP.classes [ HH.className "sd-pivot-options-label" ]
                   , HE.onMouseDown (HE.input (\e → right ∘ OrderColumnStart slot e))
                   ]
-                  [ HH.text (show col.value) ]
+                  [ HH.text (showJCursor col.value) ]
               , HH.button
                   [ HP.classes [ HH.className "delete-cell" ]
                   , HP.title "Delete column"
@@ -221,17 +222,7 @@ renderHighLOD st =
               ]
           , HH.div
               [ HP.classes [ HH.className "sd-pivot-options-col-aggregation" ] ]
-              [ HH.button
-                  [ HP.classes
-                      [ HH.className "btn"
-                      , HH.className "btn-primary"
-                      , HH.className "aggregation"
-                      , HH.className (S.stringVal col.valueAggregation)
-                      ]
-                  , HE.onClick (HE.input_ (right ∘ ChangeAggregation slot))
-                  ]
-                  []
-              , columnSelect slot col.valueAggregation
+              [ columnSelect slot col.valueAggregation
               ]
           ]
       ]
@@ -258,29 +249,28 @@ renderHighLOD st =
         []
 
   columnSelect slot ag =
-    case st.selectAggregation of
-      Just slot' | slot' == slot →
-        HH.div
-          [ HP.classes [ HH.className "list-group" ] ]
-          (map (selectBtn ag)
-            [ Nothing
-            , Just Ag.Maximum
-            , Just Ag.Minimum
-            , Just Ag.Average
-            , Just Ag.Sum
-            , Just Ag.Product
-            ])
-      _ →
-        HH.text ""
+    HH.div
+      [ HP.classes [ HH.className "list-group" ] ]
+      (map (selectBtn slot ag)
+        [ Nothing
+        , Just Ag.Maximum
+        , Just Ag.Minimum
+        , Just Ag.Average
+        , Just Ag.Sum
+        , Just Ag.Product
+        ])
 
-  selectBtn ag ctr =
+  selectBtn slot ag ctr =
     HH.button
       [ HP.classes
           ([ HH.className "list-group-item" ]
            <> (HH.className "active" <$ guard (ctr == ag)))
-      , HE.onClick (HE.input_ (right ∘ ChooseAggregation ctr))
+      , HE.onClick (HE.input_ (right ∘ ChooseAggregation slot ctr))
       ]
-      [ HH.text (S.stringVal ctr) ]
+      [ HH.text (maybe "Tabulate" S.stringVal ctr) ]
+
+  showJCursor (J.JField i c) = i <> show c
+  showJCursor c = show c
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
@@ -317,7 +307,6 @@ evalOptions = case _ of
         cursors = Array.sort (st.axes.category <> st.axes.time <> st.axes.value)
       in
         st { selectDimension = Just (cursors × 0) }
-    CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   AddColumn next → do
     H.modify \st →
@@ -325,7 +314,6 @@ evalOptions = case _ of
         cursors = Array.sort (st.axes.category <> st.axes.time <> st.axes.value)
       in
         st { selectColumn = Just (cursors × 0) }
-    CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   RemoveDimension slot next → do
     H.modify \st →
@@ -441,20 +429,10 @@ evalOptions = case _ of
       }
     CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
-  ChangeAggregation slot next → do
+  ChooseAggregation slot ag next → do
     st ← H.get
-    case st.selectAggregation of
-      Just slot' | slot' == slot →
-        H.modify _ { selectAggregation = Nothing }
-      _ →
-        H.modify _ { selectAggregation = Just slot }
-    pure next
-  ChooseAggregation ag next → do
-    st ← H.get
-    for_ st.selectAggregation \slot → do
-      H.modify (setColumnAggregation slot ag)
-      CC.raiseUpdatedP' CC.EvalModelUpdate
-    H.modify _ { selectAggregation = Nothing }
+    H.modify (setColumnAggregation slot ag)
+    CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
 
 peek ∷ ∀ a. H.ChildF PCS.ChildSlot PCS.ChildQuery a → DSL Unit

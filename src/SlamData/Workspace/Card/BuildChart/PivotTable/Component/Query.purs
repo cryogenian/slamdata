@@ -45,8 +45,7 @@ data Query a
   | OrderOutColumn Int a
   | ChangeAxis Int a
   | ChooseAxis Boolean a
-  | ChangeAggregation Int a
-  | ChooseAggregation (Maybe Ag.Aggregation) a
+  | ChooseAggregation Int (Maybe Ag.Aggregation) a
 
 type QueryC = CardEvalQuery ⨁ Query
 

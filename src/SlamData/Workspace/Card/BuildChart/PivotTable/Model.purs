@@ -38,6 +38,13 @@ newtype Column = Column
 
 type Model = Maybe PivotTableR
 
+unColumn
+  ∷ Column
+  → { value ∷ JCursor
+    , valueAggregation ∷ Maybe (Ag.Aggregation)
+    }
+unColumn (Column c) = c
+
 initialModel ∷ Model
 initialModel = Nothing
 

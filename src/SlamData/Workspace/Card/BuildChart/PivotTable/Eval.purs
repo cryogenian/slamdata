@@ -3,13 +3,22 @@ module SlamData.Workspace.Card.BuildChart.PivotTable.Eval
   , module PTM
   ) where
 
+import Data.Array as Array
+import Data.Foldable as F
+import Data.Path.Pathy as P
+import Data.String as String
+import Data.StrMap as SM
+
 import SlamData.Prelude
-import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
+import Quasar.Advanced.QuasarAF as QF
+import Quasar.Data (JSONMode(..))
 import Quasar.Types (FilePath)
 
 eval
@@ -20,18 +29,65 @@ eval
   → CET.CardEvalT m Port.Port
 eval Nothing _ =
   QE.throw "Please select axis to aggregate"
-eval (Just options) resource = do
-  numRecords ←
-    CET.liftQ $ QQ.count resource
-
-  when (numRecords > 10000)
-    $ QE.throw
-    $ "The 10000 record limit for visualizations has been exceeded - the current dataset contains "
-    ⊕ show numRecords
-    ⊕ " records. "
-    ⊕ "Please consider using a 'limit' or 'group by' clause in the query to reduce the result size."
-
-  records ←
-    CET.liftQ $ QQ.all resource
-
+eval (Just options@{ dimensions: [], columns }) resource | F.all (isNothing ∘ _.valueAggregation ∘ PTM.unColumn) columns = do
+  let
+    path = fromMaybe P.rootDir (P.parentDir resource)
+    cols =
+      Array.mapWithIndex
+        (\i (PTM.Column c) → "row" <> show c.value <> " AS _" <> show i)
+        options.columns
+    sql =
+      QQ.templated resource $ String.joinWith " "
+        [ "SELECT " <> String.joinWith ", " cols
+        , "FROM {{path}} AS row"
+        ]
+  records ← CET.liftQ $ liftQuasar $
+    QF.readQuery Readable path sql SM.empty Nothing
   pure $ Port.PivotTable { records, options }
+eval (Just options@{ dimensions: [] }) resource = do
+  let
+    path = fromMaybe P.rootDir (P.parentDir resource)
+    cols =
+      Array.mapWithIndex
+        (\i (PTM.Column c) → sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show i)
+        options.columns
+    sql =
+      QQ.templated resource $ String.joinWith " "
+        [ "SELECT " <> String.joinWith ", " cols
+        , "FROM {{path}} AS row"
+        ]
+  records ← CET.liftQ $ liftQuasar $
+    QF.readQuery Readable path sql SM.empty Nothing
+  pure $ Port.PivotTable { records, options }
+eval (Just options) resource = do
+  let
+    path = fromMaybe P.rootDir (P.parentDir resource)
+    dlen = Array.length dims
+    groupBy =
+      map (\value → "row" <> show value) options.dimensions
+    dims =
+      Array.mapWithIndex
+        (\i value → "row" <> show value <> " AS _" <> show i)
+        options.dimensions
+    cols =
+      Array.mapWithIndex
+        (\i (PTM.Column c) → sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show (i + dlen))
+        options.columns
+    sql =
+      QQ.templated resource $ String.joinWith " "
+        [ "SELECT " <> String.joinWith ", " (dims <> cols)
+        , "FROM {{path}} AS row"
+        , "GROUP BY " <> String.joinWith ", " groupBy
+        , "ORDER BY " <> String.joinWith ", " groupBy
+        ]
+  records ← CET.liftQ $ liftQuasar $
+    QF.readQuery Readable path sql SM.empty Nothing
+  pure $ Port.PivotTable { records, options }
+
+sqlAggregation ∷ Maybe Ag.Aggregation → String → String
+sqlAggregation a b = case a of
+  Just Ag.Minimum → "MIN(" <> b <> ")"
+  Just Ag.Maximum → "MAX(" <> b <> ")"
+  Just Ag.Average → "AVG(" <> b <> ")"
+  Just Ag.Sum     → "SUM(" <> b <> ")"
+  _               → "[" <> b <> " ...]"

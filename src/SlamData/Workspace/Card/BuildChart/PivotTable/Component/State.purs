@@ -53,7 +53,6 @@ type State =
   , orderingDimension ∷ Maybe OrderingOpts
   , selectDimension ∷ Maybe (Array JCursor × Int)
   , selectColumn ∷ Maybe (Array JCursor × Int)
-  , selectAggregation ∷ Maybe Int
   }
 
 type OrderingOpts =
@@ -73,7 +72,6 @@ initialState =
   , orderingDimension: Nothing
   , selectDimension: Nothing
   , selectColumn: Nothing
-  , selectAggregation: Nothing
   }
 
 modelFromState ∷ State → Model
