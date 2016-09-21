@@ -9,8 +9,6 @@ import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 import SlamData.Form.Select (Select)
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
-import SlamData.Common.Sort (Sort)
-import SlamData.Common.Align (Align)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (ColorScheme)
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
 

@@ -13,7 +13,6 @@ import Data.Foreign as FR
 import Data.Foreign.Class (readProp)
 import Data.Int as Int
 import Data.Lens ((^?))
-import Data.Lens as Lens
 import Data.Map as M
 import Data.String as Str
 import Data.String.Regex as Rgx
@@ -30,11 +29,11 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
-import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Graph.Model (Model, GraphR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Graph))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
+import SlamData.Workspace.Card.Chart.Axis (Axis, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 import SlamData.Workspace.Card.Chart.Semantics as Sem
@@ -51,19 +50,7 @@ eval
 eval Nothing _ =
   QE.throw "Please select axis to aggregate"
 eval (Just conf) resource = do
-  numRecords ←
-    CET.liftQ $ QQ.count resource
-
-  when (numRecords > 10000)
-    $ QE.throw
-    $ "The 10000 record limit for visualizations has been exceeded - the current dataset contains "
-    ⊕ show numRecords
-    ⊕ " records. "
-    ⊕ "Please consider using a 'limit' or 'group by' clause in the query to reduce the result size."
-
-  records ←
-    CET.liftQ $ QQ.all resource
-
+  records ← BCE.records resource
   pure $ Port.ChartInstructions (buildGraph conf records) Graph
 
 

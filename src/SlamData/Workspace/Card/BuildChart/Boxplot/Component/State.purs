@@ -1,7 +1,5 @@
 module SlamData.Workspace.Card.BuildChart.Boxplot.Component.State where
 
-import SlamData.Prelude
-
 import Halogen (ParentState)
 
 import SlamData.Monad (Slam)

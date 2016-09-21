@@ -22,7 +22,7 @@ import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, jsonEmptyO
 
 import SlamData.Form.Select (class OptionVal, Select(..))
 
-import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
+import Test.StrongCheck.Arbitrary (class Arbitrary)
 import Test.StrongCheck.Gen (allInArray)
 
 data Align = LeftAlign | CenterAlign | RightAlign

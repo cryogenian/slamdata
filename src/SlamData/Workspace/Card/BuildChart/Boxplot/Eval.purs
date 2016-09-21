@@ -7,12 +7,10 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Foldable as F
 import Data.Lens ((^?))
-import Data.Lens as Lens
 import Data.Map as M
 import Data.Int as Int
 import Data.Set as Set
@@ -27,14 +25,10 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
-import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model (Model, BoxplotR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
-import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
-import SlamData.Workspace.Card.Chart.Semantics as Sem
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -49,19 +43,7 @@ eval
 eval Nothing _ =
   QE.throw "Please select axis to aggregate"
 eval (Just conf) resource = do
-  numRecords ←
-    CET.liftQ $ QQ.count resource
-
-  when (numRecords > 10000)
-    $ QE.throw
-    $ "The 10000 record limit for visualizations has been exceeded - the current dataset contains "
-    ⊕ show numRecords
-    ⊕ " records. "
-    ⊕ "Please consider using a 'limit' or 'group by' clause in the query to reduce the result size."
-
-  records ←
-    CET.liftQ $ QQ.all resource
-
+  records ← BCE.records resource
   pure $ Port.ChartInstructions (buildBoxplot conf records) Boxplot
 
 infixr 3 type M.Map as >>
@@ -145,14 +127,14 @@ buildBoxplotData r records = series
   mkOneBoxplot
     ∷ Maybe String × (Maybe String >> String >> Array Number)
     → Array OnOneBoxplot
-  mkOneBoxplot (name × series) =
+  mkOneBoxplot (name × sers) =
     [{ name
      , x: Nothing
      , y: Nothing
      , w: Nothing
      , h: Nothing
      , fontSize: Nothing
-     , series: foldMap mkBoxplotSeries $ M.toList series
+     , series: foldMap mkBoxplotSeries $ M.toList sers
      }]
 
   mkBoxplotSeries
@@ -174,12 +156,12 @@ buildBoxplotData r records = series
         sortedArr = A.sort arr
 
         quantile ∷ Array Number → Number → Maybe Number
-        quantile arr p = do
+        quantile inp p = do
           let
-            h = Int.toNumber (A.length arr - one) * p + one
+            h = Int.toNumber (A.length inp - one) * p + one
             h' = Int.floor h
             v = arr !! (h' - one)
-            v' = arr !! h'
+            v' = inp !! h'
             e = h - Int.toNumber h'
           if e > 0.0
             then case v × v' of

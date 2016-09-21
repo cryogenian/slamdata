@@ -20,7 +20,7 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
-import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Sankey.Model (Model, SankeyR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Sankey))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
@@ -41,19 +41,7 @@ eval
 eval Nothing _ =
   QE.throw "Please select axis to aggregate"
 eval (Just conf) resource = do
-  numRecords ←
-    CET.liftQ $ QQ.count resource
-
-  when (numRecords > 10000)
-    $ QE.throw
-    $ "The 10000 record limit for visualizations has been exceeded - the current dataset contains "
-    ⊕ show numRecords
-    ⊕ " records. "
-    ⊕ "Please consider using a 'limit' or 'group by' clause in the query to reduce the result size."
-
-  records ←
-    CET.liftQ $ QQ.all resource
-
+  records ← BCE.records resource
   pure $ Port.ChartInstructions (buildSankey conf records) Sankey
 
 ----------------------------------------------------------------------

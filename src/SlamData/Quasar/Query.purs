@@ -235,5 +235,5 @@ axes
   ⇒ FilePath
   → Int
   → m (QError ⊹ Axes)
-axes file count = runExceptT do
-  map buildAxes $ ExceptT $ sample file 0 count
+axes file =
+  runExceptT ∘ map buildAxes ∘ ExceptT ∘ sample file 0

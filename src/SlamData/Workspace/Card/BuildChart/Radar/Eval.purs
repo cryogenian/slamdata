@@ -23,7 +23,8 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
-import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
+import SlamData.Workspace.Card.BuildChart.Common.Positioning (RadialPosition, adjustRadialPositions)
 import SlamData.Workspace.Card.BuildChart.Radar.Model (Model, RadarR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Radar))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
@@ -42,19 +43,7 @@ eval
 eval Nothing _ =
   QE.throw "Please select axis to aggregate"
 eval (Just conf) resource = do
-  numRecords ←
-    CET.liftQ $ QQ.count resource
-
-  when (numRecords > 10000)
-    $ QE.throw
-    $ "The 10000 record limit for visualizations has been exceeded - the current dataset contains "
-    ⊕ show numRecords
-    ⊕ " records. "
-    ⊕ "Please consider using a 'limit' or 'group by' clause in the query to reduce the result size."
-
-  records ←
-    CET.liftQ $ QQ.all resource
-
+  records ← BCE.records resource
   pure $ Port.ChartInstructions (buildRadar conf records) Radar
 
 infixr 3 type M.Map as >>
@@ -67,12 +56,10 @@ type RadarSerie =
 
 -- | All series that are drawn on one radar
 type SeriesOnRadar =
-  { name ∷ Maybe String
-  , x ∷ Maybe Number
-  , y ∷ Maybe Number
-  , radius ∷ Maybe Number
-  , series ∷ Array RadarSerie
-  }
+  RadialPosition
+    ( name ∷ Maybe String
+    , series ∷ Array RadarSerie
+    )
 
 buildRadarData ∷ RadarR → JArray → Array SeriesOnRadar
 buildRadarData r records = series
@@ -143,67 +130,8 @@ buildRadarData r records = series
      }]
 
 
-  -- TODO: extract this function, parameterize it by paddings and width/height of card
-  -- Maybe even make a separate type for handling this
   series ∷ Array SeriesOnRadar
-  series =
-    let
-      len = A.length unpositionedSeries
-
-      itemsInRow
-        | len < 2 = 1
-        | len < 5 = 2
-        | len < 10 = 3
-        | otherwise = 4
-
-      numRows =
-        Int.ceil $ Int.toNumber len / Int.toNumber itemsInRow
-
-      topStep =
-        90.0 / Int.toNumber numRows
-
-      setPositions
-        ∷ Array SeriesOnRadar
-        → Int
-        → Int
-        → Int
-        → Array SeriesOnRadar
-        → Array SeriesOnRadar
-      setPositions acc colIx rowIx inThisRow arr = case A.uncons arr of
-        Nothing → acc
-        Just {head, tail} →
-          let
-            top = topStep * ((Int.toNumber rowIx) + 0.5) + 5.0
-
-            leftStep = 90.0 / Int.toNumber inThisRow
-
-            left = leftStep * ((Int.toNumber colIx) + 0.5) + 5.0
-
-            toPush =
-              head { x = Just left
-                   , y = Just top
-                   , radius = Just $ 90.0 / Int.toNumber itemsInRow
-                   }
-
-            newAcc = A.snoc acc toPush
-
-            newColIx
-              | one + colIx < inThisRow = colIx + one
-              | otherwise = zero
-
-            newRowIx
-              | newColIx ≡ zero = rowIx + one
-              | otherwise = rowIx
-
-            inNewRow
-              | A.length tail > itemsInRow = itemsInRow
-              | newColIx ≠ zero = itemsInRow
-              | otherwise = A.length tail
-          in
-            setPositions newAcc newColIx newRowIx inNewRow tail
-    in
-      setPositions [ ] 0 0 itemsInRow unpositionedSeries
-
+  series = adjustRadialPositions unpositionedSeries
 
 buildRadar ∷ RadarR → JArray → DSL OptionI
 buildRadar r records = do

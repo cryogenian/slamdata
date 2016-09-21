@@ -2,13 +2,12 @@ module SlamData.Workspace.Card.BuildChart.Metric.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, (.?), (:=), (~>), jsonEmptyObject, jsonNull, isNull, decodeJson)
+import Data.Argonaut (JCursor, Json, (.?), (:=), (~>), jsonEmptyObject, jsonNull, isNull, decodeJson)
 import Data.Foldable as F
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 
-import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
+import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.Property.ArbJson (runArbJCursor)
 
