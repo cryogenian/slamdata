@@ -23,6 +23,7 @@ import SlamData.Common.Sort (Sort(..))
 import SlamData.Common.Align (Align(..))
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Funnel.Model (Model, FunnelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Funnel))
@@ -43,8 +44,6 @@ eval Nothing _ =
 eval (Just conf) resource = do
   records ← BCE.records resource
   pure $ Port.ChartInstructions (buildFunnel conf records) Funnel
-
-infixr 3 type M.Map as >>
 
 type FunnelSeries =
   { name ∷ Maybe String

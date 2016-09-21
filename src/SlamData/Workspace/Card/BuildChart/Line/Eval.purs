@@ -26,6 +26,7 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Line.Model (Model, LineR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Line))
@@ -49,8 +50,6 @@ eval Nothing _ _ =
 eval (Just conf) resource axes = do
   records ← BCE.records resource
   pure $ Port.ChartInstructions (buildLine conf records axes) Line
-
-infixr 3 type M.Map as >>
 
 type LineSerie =
   { name ∷ Maybe String

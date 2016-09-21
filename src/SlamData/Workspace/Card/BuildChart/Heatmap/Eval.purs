@@ -25,6 +25,7 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Heatmap.Model (Model, HeatmapR)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getColorScheme)
@@ -49,8 +50,6 @@ eval Nothing _ _ =
 eval (Just conf) resource axes = do
   records ← BCE.records resource
   pure $ Port.ChartInstructions (buildHeatmap conf records axes) Heatmap
-
-infixr 3 type M.Map as >>
 
 type HeatmapSeries =
   { x ∷ Maybe Number

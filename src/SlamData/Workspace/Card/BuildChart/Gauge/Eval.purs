@@ -20,6 +20,7 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Gauge.Model (Model, GaugeR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Gauge))
@@ -44,8 +45,6 @@ eval (Just conf) resource = do
 ----------------------------------------------------------------------
 -- GAUGE BUILDER
 ----------------------------------------------------------------------
-
-infixr 3 type M.Map as >>
 
 type GaugeItem =
   { name ∷ Maybe String

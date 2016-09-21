@@ -21,12 +21,13 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
+import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Pie.Model (Model, PieR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Pie))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
-import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.Port as Port
 
 
@@ -42,8 +43,6 @@ eval (Just conf) resource = do
   records ← BCE.records resource
   pure $ Port.ChartInstructions (buildPie conf records) Pie
 
-
-infixr 3 type M.Map as >>
 
 type OnePieSeries =
   { name ∷ Maybe String
