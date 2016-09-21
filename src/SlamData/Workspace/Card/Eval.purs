@@ -173,8 +173,8 @@ evalCard input =
       BuildRadar.eval model resource
     BuildArea model, Just (Port.TaggedResource {resource}) →
       BuildArea.eval model resource
-    BuildLine model, Just (Port.TaggedResource {resource}) →
-      BuildLine.eval model resource
+    BuildLine model, Just (Port.TaggedResource {resource, axes}) →
+      BuildLine.eval model resource axes
     BuildBar model, Just (Port.TaggedResource {resource, axes}) →
       BuildBar.eval model resource axes
     BuildScatter model, Just (Port.TaggedResource {resource}) →

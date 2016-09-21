@@ -44,8 +44,8 @@ import Test.StrongCheck.Gen as Gen
 
 data ChartType
   = Pie -- adjust
-  | Line -- w/o
-  | Bar -- w/o
+  | Line -- adjust
+  | Bar -- adjust
   | Area  -- w/o
   | Scatter -- w/o
   | Radar -- adjust

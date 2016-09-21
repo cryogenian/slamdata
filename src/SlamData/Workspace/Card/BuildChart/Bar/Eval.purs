@@ -206,7 +206,7 @@ buildBar r records axes = do
 
       width =
         getTextWidthPure longest
-        $ "normal " ⊕ show r.axisLabelFontSize ⊕ "px Ubuntu"
+          $ "normal " ⊕ show r.axisLabelFontSize ⊕ "px Ubuntu"
 
       minHeight = 24.0
 
