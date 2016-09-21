@@ -12,28 +12,24 @@ import SlamData.Form.SelectPair.Component as P
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
 
 type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit ⊹ Unit
+  Unit ⊹ Unit ⊹ Unit
 
 type DimensionState = Select JCursor
 type ValueState = P.StateP Aggregation JCursor
-type SecondValueState = P.StateP Aggregation JCursor
 type SeriesState = Select JCursor
 
 type ChildState
   = DimensionState
   ⊹ ValueState
-  ⊹ SecondValueState
   ⊹ SeriesState
 
 type DimensionQuery = S.Query JCursor
 type ValueQuery = P.QueryP Aggregation JCursor
-type SecondValueQuery = P.QueryP Aggregation JCursor
 type SeriesQuery = S.Query JCursor
 
 type ChildQuery
   = DimensionQuery
   ⨁ ValueQuery
-  ⨁ SecondValueQuery
   ⨁ SeriesQuery
 
 cpDimension
@@ -50,16 +46,9 @@ cpValue
       Unit ChildSlot
 cpValue = cpR :> cpL
 
-cpSecondValue
-  ∷ ChildPath
-      SecondValueState ChildState
-      SecondValueQuery ChildQuery
-      Unit ChildSlot
-cpSecondValue = cpR :> cpR :> cpL
-
 cpSeries
   ∷ ChildPath
       SeriesState ChildState
       SeriesQuery ChildQuery
       Unit ChildSlot
-cpSeries = cpR :> cpR :> cpR
+cpSeries = cpR :> cpR

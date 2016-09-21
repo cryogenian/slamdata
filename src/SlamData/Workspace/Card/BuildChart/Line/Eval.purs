@@ -22,8 +22,6 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import Global (infinity)
-
 import Math as Math
 
 import Quasar.Types (FilePath)
@@ -125,8 +123,8 @@ buildLineData r records = series
     → Array LineSerie
   mkLineSerie (name × items) =
     [{ name
-     , leftItems: map mkLeftItem items
-     , rightItems: map mkRightItem items
+     , leftItems: adjustSymbolSizes $ map mkLeftItem items
+     , rightItems: adjustSymbolSizes $ map mkRightItem items
      } ]
 
   mkLeftItem
@@ -135,19 +133,7 @@ buildLineData r records = series
   mkLeftItem (ls × _ × ss) =
     let
       value = Ag.runAggregation r.valueAggregation ls
-      symbolSize = case r.sizeAggregation of
-        Nothing → zero
-        Just agg →
-          let
-            minVal = fromMaybe (-1.0 * infinity) $ F.minimum ss
-            maxVal = fromMaybe infinity $ F.maximum ss
-
-            sizeDistance = r.maxSize - r.minSize
-            distance = maxVal - minVal
-
-            aggregatedSize = Ag.runAggregation agg ss
-          in
-            Int.floor $ r.maxSize - sizeDistance / distance * (maxVal - aggregatedSize)
+      symbolSize = maybe zero (\ag → Int.floor $ Ag.runAggregation ag ss) r.sizeAggregation
     in {value, symbolSize}
 
   mkRightItem
@@ -159,21 +145,46 @@ buildLineData r records = series
       Just valAgg →
         let
           value = Ag.runAggregation valAgg rs
-          symbolSize = case r.sizeAggregation of
-            Nothing → zero
-            Just agg →
-              let
-                minVal = fromMaybe (-1.0 * infinity) $ F.minimum ss
-                maxVal = fromMaybe infinity $ F.maximum ss
-
-                sizeDistance = r.maxSize - r.minSize
-                distance = maxVal - minVal
-
-                aggregatedSize = Ag.runAggregation agg ss
-              in
-               Int.floor $ r.maxSize - sizeDistance / distance * (maxVal - aggregatedSize)
+          symbolSize = maybe zero (\ag → Int.floor $ Ag.runAggregation ag ss) r.sizeAggregation
         in {value, symbolSize}
 
+
+  adjustSymbolSizes
+    ∷ ∀ f
+    . (Functor f, Foldable f)
+    ⇒ f {value ∷ Number, symbolSize ∷ Int}
+    → f {value ∷ Number, symbolSize ∷ Int}
+  adjustSymbolSizes items =
+    let
+      minValue ∷ Number
+      minValue =
+        Int.toNumber
+          $ fromMaybe bottom
+          $ map _.symbolSize
+          $ F.minimumBy (\a b → compare a.symbolSize b.symbolSize) items
+
+      maxValue ∷ Number
+      maxValue =
+        Int.toNumber
+          $ fromMaybe top
+          $ map _.symbolSize
+          $ F.maximumBy (\a b → compare a.symbolSize b.symbolSize) items
+
+      distance ∷ Number
+      distance =
+        maxValue - minValue
+
+      sizeDistance ∷ Number
+      sizeDistance =
+        r.maxSize - r.minSize
+
+      relativeSize ∷ Int → Int
+      relativeSize val =
+        Int.floor
+          $ r.maxSize
+          - sizeDistance / distance * (maxValue - Int.toNumber val)
+    in
+      map (\x → x{symbolSize = relativeSize x.symbolSize}) items
 
 buildLine ∷ LineR → JArray → Axes → DSL OptionI
 buildLine r records axes = do
@@ -246,7 +257,7 @@ buildLine r records axes = do
   needTwoAxes ∷ Boolean
   needTwoAxes = isJust r.secondValue
 
---  series ∷ ∀ i. DSL (line ∷ ETP.I|i)
+  series ∷ ∀ i. DSL (line ∷ ETP.I|i)
   series = for_ lineData \lineSerie → do
     E.line do
       E.buildItems $ for_ xValues \key →

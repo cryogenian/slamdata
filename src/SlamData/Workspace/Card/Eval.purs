@@ -171,8 +171,8 @@ evalCard input =
       BuildPie.eval model resource
     BuildRadar model, Just (Port.TaggedResource {resource}) →
       BuildRadar.eval model resource
-    BuildArea model, Just (Port.TaggedResource {resource}) →
-      BuildArea.eval model resource
+    BuildArea model, Just (Port.TaggedResource {resource, axes}) →
+      BuildArea.eval model resource axes
     BuildLine model, Just (Port.TaggedResource {resource, axes}) →
       BuildLine.eval model resource axes
     BuildBar model, Just (Port.TaggedResource {resource, axes}) →

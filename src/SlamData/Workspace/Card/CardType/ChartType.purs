@@ -46,8 +46,8 @@ data ChartType
   = Pie -- adjust
   | Line -- adjust
   | Bar -- adjust
-  | Area  -- w/o
-  | Scatter -- w/o
+  | Area  -- adjust
+  | Scatter -- adjust
   | Radar -- adjust
   | Funnel -- adjust
   | Graph -- done

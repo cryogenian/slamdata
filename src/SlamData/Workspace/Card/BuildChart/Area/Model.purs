@@ -18,8 +18,6 @@ type AreaR =
   { dimension ∷ JCursor
   , value ∷ JCursor
   , valueAggregation ∷ Ag.Aggregation
-  , secondValue ∷ Maybe JCursor
-  , secondValueAggregation ∷ Maybe Ag.Aggregation
   , series ∷ Maybe JCursor
   , isStacked ∷ Boolean
   , isSmooth ∷ Boolean
@@ -38,8 +36,6 @@ eqAreaR r1 r2 =
     [ r1.dimension ≡ r2.dimension
     , r1.value ≡ r2.value
     , r1.valueAggregation ≡ r2.valueAggregation
-    , r1.secondValue ≡ r2.secondValue
-    , r1.secondValueAggregation ≡ r2.secondValueAggregation
     , r1.isStacked ≡ r2.isStacked
     , r1.isSmooth ≡ r2.isSmooth
     , r1.series ≡ r2.series
@@ -61,8 +57,6 @@ genModel = do
     dimension ← map runArbJCursor arbitrary
     value ← map runArbJCursor arbitrary
     valueAggregation ← arbitrary
-    secondValue ← map (map runArbJCursor) arbitrary
-    secondValueAggregation ← arbitrary
     isStacked ← arbitrary
     isSmooth ← arbitrary
     series ← map (map runArbJCursor) arbitrary
@@ -71,8 +65,6 @@ genModel = do
     pure { dimension
          , value
          , valueAggregation
-         , secondValue
-         , secondValueAggregation
          , isStacked
          , isSmooth
          , series
@@ -88,8 +80,6 @@ encode (Just r) =
   ~> "dimension" := r.dimension
   ~> "value" := r.value
   ~> "valueAggregation" := r.valueAggregation
-  ~> "secondValue" := r.secondValue
-  ~> "secondValueAggregation" := r.secondValueAggregation
   ~> "isStacked" := r.isStacked
   ~> "isSmooth" := r.isSmooth
   ~> "series" := r.series
@@ -107,8 +97,6 @@ decode js
     dimension ← obj .? "dimension"
     value ← obj .? "value"
     valueAggregation ← obj .? "valueAggregation"
-    secondValue ← obj .? "secondValue"
-    secondValueAggregation ← obj .? "secondValueAggregation"
     isStacked ← obj .? "isStacked"
     isSmooth ← obj .? "isSmooth"
     series ← obj .? "series"
@@ -117,8 +105,6 @@ decode js
     pure { dimension
          , value
          , valueAggregation
-         , secondValue
-         , secondValueAggregation
          , isStacked
          , isSmooth
          , series
