@@ -4,7 +4,6 @@ module SlamData.Workspace.Card.BuildChart.PivotTable.Eval
   ) where
 
 import Data.Array as Array
-import Data.Foldable as F
 import Data.Path.Pathy as P
 import Data.String as String
 import Data.StrMap as SM
@@ -19,49 +18,48 @@ import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (JSONMode(..))
-import Quasar.Types (FilePath)
 
 eval
   ∷ ∀ m
   . (Monad m, QuasarDSL m)
   ⇒ PTM.Model
-  → FilePath
+  → Port.TaggedResourcePort
   → CET.CardEvalT m Port.Port
 eval Nothing _ =
   QE.throw "Please select axis to aggregate"
-eval (Just options@{ dimensions: [], columns }) resource | F.all (isNothing ∘ _.valueAggregation ∘ PTM.unColumn) columns = do
+eval (Just options) tr | PTM.isSimple options = do
+  -- let
+  --   path = fromMaybe P.rootDir (P.parentDir tr.resource)
+  --   cols =
+  --     Array.mapWithIndex
+  --       (\i (PTM.Column c) → "row" <> show c.value <> " AS _" <> show i)
+  --       options.columns
+  --   sql =
+  --     QQ.templated tr.resource $ String.joinWith " "
+  --       [ "SELECT " <> String.joinWith ", " cols
+  --       , "FROM {{path}} AS row"
+  --       ]
+  -- records ← CET.liftQ $ liftQuasar $
+  --   QF.readQuery Readable path sql SM.empty Nothing
+  pure $ Port.PivotTable { records: [], options, taggedResource: tr }
+eval (Just options@{ dimensions: [] }) tr = do
   let
-    path = fromMaybe P.rootDir (P.parentDir resource)
-    cols =
-      Array.mapWithIndex
-        (\i (PTM.Column c) → "row" <> show c.value <> " AS _" <> show i)
-        options.columns
-    sql =
-      QQ.templated resource $ String.joinWith " "
-        [ "SELECT " <> String.joinWith ", " cols
-        , "FROM {{path}} AS row"
-        ]
-  records ← CET.liftQ $ liftQuasar $
-    QF.readQuery Readable path sql SM.empty Nothing
-  pure $ Port.PivotTable { records, options }
-eval (Just options@{ dimensions: [] }) resource = do
-  let
-    path = fromMaybe P.rootDir (P.parentDir resource)
+    path = fromMaybe P.rootDir (P.parentDir tr.resource)
     cols =
       Array.mapWithIndex
         (\i (PTM.Column c) → sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show i)
         options.columns
     sql =
-      QQ.templated resource $ String.joinWith " "
+      QQ.templated tr.resource $ String.joinWith " "
         [ "SELECT " <> String.joinWith ", " cols
         , "FROM {{path}} AS row"
         ]
   records ← CET.liftQ $ liftQuasar $
     QF.readQuery Readable path sql SM.empty Nothing
-  pure $ Port.PivotTable { records, options }
-eval (Just options) resource = do
+  pure $ Port.PivotTable { records, options, taggedResource: tr }
+eval (Just options) tr = do
   let
-    path = fromMaybe P.rootDir (P.parentDir resource)
+    path = fromMaybe P.rootDir (P.parentDir tr.resource)
     dlen = Array.length dims
     groupBy =
       map (\value → "row" <> show value) options.dimensions
@@ -74,7 +72,7 @@ eval (Just options) resource = do
         (\i (PTM.Column c) → sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show (i + dlen))
         options.columns
     sql =
-      QQ.templated resource $ String.joinWith " "
+      QQ.templated tr.resource $ String.joinWith " "
         [ "SELECT " <> String.joinWith ", " (dims <> cols)
         , "FROM {{path}} AS row"
         , "GROUP BY " <> String.joinWith ", " groupBy
@@ -82,7 +80,7 @@ eval (Just options) resource = do
         ]
   records ← CET.liftQ $ liftQuasar $
     QF.readQuery Readable path sql SM.empty Nothing
-  pure $ Port.PivotTable { records, options }
+  pure $ Port.PivotTable { records, options, taggedResource: tr }
 
 sqlAggregation ∷ Maybe Ag.Aggregation → String → String
 sqlAggregation a b = case a of

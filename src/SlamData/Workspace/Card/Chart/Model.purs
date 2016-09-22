@@ -46,7 +46,9 @@ encode (Just r) = encodeJson r
 decode ∷ Json → Either String Model
 decode js
   | isNull js = pure Nothing
-  | otherwise = Just <$> decodeJson js
+  -- Backwards compatability has the model as an empty object rather than null,
+  -- so we have to fallback to a successful Nothing if there's a parse error.
+  | otherwise = (Just <$> decodeJson js) <|> pure Nothing
 
 instance eqChartModel ∷ Eq ChartModel where
   eq (PivotTableRenderer m1) (PivotTableRenderer m2) = PTRM.eqModel m1 m2

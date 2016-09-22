@@ -160,7 +160,7 @@ eval = case _ of
         setMetricLOD
       Just (PivotTable r) → void do
         H.modify $ _chartType ?~ ChT.PivotTable
-        H.query' cpPivotTable unit $ H.action $ Pivot.Update r.records r.options
+        H.query' cpPivotTable unit $ H.action $ Pivot.Update r
       _ →
         void $ H.query' cpECharts unit $ H.action HEC.Clear
     pure next

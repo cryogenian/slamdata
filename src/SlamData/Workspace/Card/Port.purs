@@ -83,6 +83,7 @@ type MetricPort =
 type PivotTablePort =
   { records ∷ Array Json
   , options ∷ PTM.PivotTableR
+  , taggedResource ∷ TaggedResourcePort
   }
 
 data Port

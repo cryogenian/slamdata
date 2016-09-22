@@ -19,6 +19,8 @@ module SlamData.Workspace.Card.BuildChart.PivotTable.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Array as Array
+import Data.Foldable as F
 
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 
@@ -114,3 +116,7 @@ instance decodeJsonColumn ∷ DecodeJson Column where
     value ← obj .? "value"
     valueAggregation ← obj .? "valueAggregation"
     pure $ Column { value, valueAggregation }
+
+isSimple ∷ PivotTableR → Boolean
+isSimple { dimensions, columns } =
+  Array.null dimensions && F.all (isNothing ∘ _.valueAggregation ∘ unColumn) columns

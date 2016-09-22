@@ -188,8 +188,8 @@ evalCard input =
       BuildHeatmap.eval model resource axes
     BuildBoxplot model, Just (Port.TaggedResource {resource}) →
       BuildBoxplot.eval model resource
-    BuildPivotTable model, Just (Port.TaggedResource {resource}) →
-      BuildPivotTable.eval model resource
+    BuildPivotTable model, Just (Port.TaggedResource tr) →
+      BuildPivotTable.eval model tr
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 

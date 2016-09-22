@@ -257,7 +257,8 @@ renderHighLOD st =
         , Just Ag.Minimum
         , Just Ag.Average
         , Just Ag.Sum
-        , Just Ag.Product
+        -- Not supported by the backend
+        -- , Just Ag.Product
         ])
 
   selectBtn slot ag ctr =
