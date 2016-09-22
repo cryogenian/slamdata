@@ -24,6 +24,7 @@ import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Pie.Model (Model, PieR)
+import SlamData.Workspace.Card.BuildChart.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Pie))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
@@ -45,19 +46,16 @@ eval (Just conf) resource = do
 
 
 type OnePieSeries =
-  { name ∷ Maybe String
-  , x ∷ Maybe Number
-  , y ∷ Maybe Number
-  , radius ∷ Maybe Number
-  , series ∷ Array DonutSeries
-  }
+  RadialPosition
+  ( series ∷ Array DonutSeries
+  , name ∷ Maybe String
+  )
 
 type DonutSeries =
-  { radius ∷ Maybe {start ∷ Number, end ∷ Number}
-  , name ∷ Maybe String
+  WithDonutRadius
+  ( name ∷ Maybe String
   , items ∷ String >> Number
-  }
-
+  )
 
 buildPieData ∷ PieR → JArray → Array OnePieSeries
 buildPieData r records = series
@@ -130,13 +128,7 @@ buildPieData r records = series
      }]
 
   series ∷ Array OnePieSeries
-  series = adjustPosition $ map (\x → x{series = adjustDonutRadiuses x.series}) rawSeries
-
-  adjustPosition ∷ Array OnePieSeries → Array OnePieSeries
-  adjustPosition a = a
-
-  adjustDonutRadiuses ∷ Array DonutSeries → Array DonutSeries
-  adjustDonutRadiuses a = a
+  series = map (\x → x{series = adjustDonutRadiuses x.series}) $ adjustRadialPositions rawSeries
 
 buildPie ∷ PieR → JArray → DSL OptionI
 buildPie r records = do
@@ -154,8 +146,7 @@ buildPie r records = do
 
   E.series series
 
-  E.titles
-    $ traverse_ E.title titles
+  radialTitles pieData
 
   where
   pieData ∷ Array OnePieSeries
@@ -172,16 +163,16 @@ buildPie r records = do
         pieData
 
   series ∷ ∀ i. DSL (pie ∷ ETP.I|i)
-  series = for_ pieData \{x, y, radius, series} →
+  series = for_ pieData \{x, y, radius: parallelR, series} →
     for_ series \{radius, items, name} → E.pie do
       E.buildCenter do
         traverse_ (E.setX ∘ E.percents) x
         traverse_ (E.setY ∘ E.percents) y
 
-      for_ radius \{start, end} →
-        E.buildRadius do
-          E.setStart $ E.percents start
-          E.setEnd $ E.percents end
+      for_ parallelR \pR →
+        for_ radius \{start, end} → E.buildRadius do
+          E.setStart $ E.percents $ start * pR
+          E.setEnd $ E.percents $ end * pR
 
       for_ name E.name
 
@@ -189,14 +180,3 @@ buildPie r records = do
         E.addItem do
           E.value value
           E.name key
-
-  titles ∷ Array (DSL ETP.TitleI)
-  titles = pieData <#> \{name, x, y, radius} → do
-    for_ name E.text
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
-    traverse_ (E.top ∘ ET.Percent) y
-    traverse_ (E.left ∘ ET.Percent) x
-    E.textCenter
-    E.textBottom

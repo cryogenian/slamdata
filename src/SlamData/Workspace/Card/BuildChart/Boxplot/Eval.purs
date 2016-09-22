@@ -27,6 +27,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
+import SlamData.Workspace.Card.BuildChart.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model (Model, BoxplotR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
@@ -184,10 +185,7 @@ buildBoxplotData r records = series
         outliers × Just {low, q1, q2, q3, high}
 
   series ∷ Array OnOneBoxplot
-  series = positionRawSeries rawSeries
-
-  positionRawSeries ∷ Array OnOneBoxplot → Array OnOneBoxplot
-  positionRawSeries = id
+  series = adjustRectangularPositions rawSeries
 
 buildBoxplot ∷ BoxplotR → JArray → DSL OptionI
 buildBoxplot r records = do
@@ -196,11 +194,11 @@ buildBoxplot r records = do
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
-  E.grids
-    $ traverse_ E.grid grids
 
-  E.titles
-    $ traverse_ E.title titles
+  rectangularTitles $ map snd boxplotData
+
+  rectangularGrids $ map snd boxplotData
+
 
   E.legend do
     E.topBottom

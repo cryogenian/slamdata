@@ -27,6 +27,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
+import SlamData.Workspace.Card.BuildChart.Common.Positioning (adjustRectangularPositions, rectangularGrids, rectangularTitles)
 import SlamData.Workspace.Card.BuildChart.Heatmap.Model (Model, HeatmapR)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getColorScheme)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Heatmap))
@@ -118,10 +119,8 @@ buildHeatmapData r records = series
      }]
 
   series ∷ Array HeatmapSeries
-  series = positionRawSeries rawSeries
+  series = adjustRectangularPositions rawSeries
 
-  positionRawSeries ∷ Array HeatmapSeries → Array HeatmapSeries
-  positionRawSeries = id
 
 buildHeatmap ∷ HeatmapR → JArray → Axes → DSL OptionI
 buildHeatmap r records axes = do
@@ -139,11 +138,9 @@ buildHeatmap r records axes = do
 
   E.animationEnabled false
 
-  E.grids
-    $ traverse_ E.grid grids
+  rectangularTitles $ map snd heatmapData
 
-  E.titles
-    $ traverse_ E.title titles
+  rectangularGrids $ map snd heatmapData
 
   E.xAxes xAxes
 
@@ -170,24 +167,6 @@ buildHeatmap r records axes = do
   where
   heatmapData ∷ Array (Int × HeatmapSeries)
   heatmapData = enumerate $ buildHeatmapData r records
-
-  grids ∷ Array (DSL ETP.GridI)
-  grids = heatmapData <#> \(_ × {x, y, w, h}) → do
-    for_ x $ E.left ∘ ET.Percent
-    for_ y $ E.top ∘ ET.Percent
-    for_ w E.widthPct
-    for_ h E.heightPct
-
-  titles ∷ Array (DSL ETP.TitleI)
-  titles = heatmapData <#> \(_ × {x, y, name, fontSize}) → do
-    for_ name E.text
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      for_ fontSize E.fontSize
-    for_ x $ E.left ∘ ET.Percent
-    for_ y $ E.top ∘ ET.Percent
-    E.textCenter
-    E.textMiddle
 
   series ∷ ∀ i. DSL (heatMap ∷ ETP.I|i)
   series = for_ heatmapData \(ix × series) → E.heatMap do

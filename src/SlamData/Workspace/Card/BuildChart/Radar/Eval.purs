@@ -25,7 +25,8 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
-import SlamData.Workspace.Card.BuildChart.Common.Positioning (RadialPosition, adjustRadialPositions)
+import SlamData.Workspace.Card.BuildChart.Common.Positioning
+  (RadialPosition, adjustRadialPositions, radialTitles)
 import SlamData.Workspace.Card.BuildChart.Radar.Model (Model, RadarR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Radar))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
@@ -148,14 +149,13 @@ buildRadar r records = do
 
   E.colors colors
 
-  E.titles
-    $ traverse_ E.title titles
-
   E.radars
     $ traverse_ E.radar radars
 
   E.series
     $ traverse_ E.radarSeries series
+
+  radialTitles radarData
 
   where
   radarData ∷ Array SeriesOnRadar
@@ -168,17 +168,6 @@ buildRadar r records = do
                  ⋙ foldMap (_.name
                             ⋙ (foldMap Set.singleton)))
         radarData
-
-  titles ∷ Array (DSL ETP.TitleI)
-  titles = radarData <#> \{name, x, y, radius} → do
-    for_ name E.text
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
-    (E.top ∘ ET.Percent) $ fromMaybe zero y + maybe zero (_ / 2.0) radius
-    traverse_ (E.left ∘ ET.Percent) x
-    E.textCenter
-    E.textBottom
 
   series ∷ Array (DSL ETP.RadarSeriesI)
   series = (enumerate radarData) <#> \(ix × {series}) → do
