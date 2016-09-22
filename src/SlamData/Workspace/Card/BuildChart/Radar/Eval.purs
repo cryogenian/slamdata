@@ -143,9 +143,11 @@ buildRadar r records = do
 
   E.legend do
     E.items $ map ET.strItem serieNames
-    E.topBottom
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+    E.orient ET.Vertical
+    E.leftLeft
 
   E.colors colors
 

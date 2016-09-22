@@ -177,9 +177,7 @@ synchronizeChildren = void do
       setPreviousValueFrom r.dimension
         $ autoSelect
         $ newSelect
-        $ st.axes.value
-        ⊕ st.axes.category
-        ⊕ st.axes.time
+        $ st.axes.category
 
     newValue =
       setPreviousValueFrom r.value

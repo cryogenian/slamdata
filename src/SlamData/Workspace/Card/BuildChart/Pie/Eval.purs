@@ -165,6 +165,10 @@ buildPie r records = do
   series ∷ ∀ i. DSL (pie ∷ ETP.I|i)
   series = for_ pieData \{x, y, radius: parallelR, series} →
     for_ series \{radius, items, name} → E.pie do
+      E.label do
+        E.normal E.hidden
+        E.emphasis E.hidden
+
       E.buildCenter do
         traverse_ (E.setX ∘ E.percents) x
         traverse_ (E.setY ∘ E.percents) y

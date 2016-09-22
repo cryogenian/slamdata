@@ -252,7 +252,11 @@ rectangularGrids
   ⇒ f (RectangularPosition r)
   → DSL (grid ∷ ETP.I|i)
 rectangularGrids poss = E.grids $ for_ poss \{w, h, x, y} → E.grid do
-  for_ x $ E.left ∘ ET.Percent
-  for_ y $ E.top ∘ ET.Percent
+  case x × w of
+    Just x' × Just w' → E.left $ ET.Percent $ x' - w' / 2.0
+    _ → pure unit
+  case y × h of
+    Just y' × Just h' → E.top $ ET.Percent $ y' - h' / 2.0
+    _ → pure unit
   for_ w E.widthPct
   for_ h E.heightPct

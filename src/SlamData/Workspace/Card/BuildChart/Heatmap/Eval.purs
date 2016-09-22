@@ -14,6 +14,7 @@ import Data.Foldable as F
 import Data.Function (on)
 import Data.Lens ((^?))
 import Data.Map as M
+import Data.Int as Int
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -173,11 +174,18 @@ buildHeatmap r records axes = do
     for_ series.name E.name
     E.xAxisIndex ix
     E.yAxisIndex ix
-    E.buildItems $ for_ (M.toList $ series.items) \((abscissa × ordinate) × value) →
-      E.addItem $ E.buildNames do
-        E.addName abscissa
-        E.addName ordinate
-        E.addName $ show value
+    let
+      xValues =
+        enumerate $ foldMap A.singleton $ sortX $ map fst $ M.keys series.items
+      yValues =
+        enumerate $ foldMap A.singleton $ sortY $ map snd $ M.keys series.items
+
+    E.buildItems $ for_ xValues \(xIx × abscissa) → for_ yValues \(yIx × ordinate) →
+      E.addItem $ E.buildValues do
+        E.addValue $ Int.toNumber xIx
+        E.addValue $ Int.toNumber yIx
+        maybe E.missingValue E.addValue
+          $ M.lookup (abscissa × ordinate) series.items
 
   mkAxis ∷ ∀ i. Int → DSL (ETP.AxisI (gridIndex ∷ ETP.I|i))
   mkAxis ix = do
@@ -191,6 +199,7 @@ buildHeatmap r records axes = do
     E.splitLine $ E.lineStyle do
       E.width 1
     E.splitArea E.hidden
+
 
   xAxes ∷ ∀ i. DSL (addXAxis ∷ ETP.I|i)
   xAxes = for_ heatmapData \(ix × series) → E.addXAxis do
