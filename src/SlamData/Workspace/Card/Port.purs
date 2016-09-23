@@ -43,7 +43,7 @@ import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
-import SlamData.Workspace.Card.Chart.Axis (Axes)
+import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU

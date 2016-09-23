@@ -20,8 +20,8 @@ import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.BuildChart.Metric.Model (Model, MetricR)
-import SlamData.Workspace.Card.Chart.Semantics (analyzeJson, semanticsToNumber)
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
 eval
   ∷ ∀ m

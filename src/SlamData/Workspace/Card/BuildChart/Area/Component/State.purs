@@ -8,7 +8,7 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.BuildChart.Area.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Area.Component.Query (QueryC)
-import SlamData.Workspace.Card.Chart.Axis (Axes, initialAxes)
+import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
 
 type State =
    { axes ∷ Axes

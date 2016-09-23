@@ -5,7 +5,7 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
 import Data.Foldable as F
 
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Chart.Axis where
+module SlamData.Workspace.Card.BuildChart.Axis where
 
 import SlamData.Prelude
 
@@ -25,7 +25,7 @@ import Data.List (List(..), filter, catMaybes)
 import Data.Map as M
 import Data.StrMap as Sm
 
-import SlamData.Workspace.Card.Chart.Semantics (Semantics, jarrayToSemantics, checkCategory, checkTime, checkBool, checkPercent, checkMoney, checkValues)
+import SlamData.Workspace.Card.BuildChart.Semantics (Semantics, jarrayToSemantics, checkCategory, checkTime, checkBool, checkPercent, checkMoney, checkValues)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen

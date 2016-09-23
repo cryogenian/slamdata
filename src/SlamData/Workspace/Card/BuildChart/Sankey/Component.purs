@@ -24,7 +24,7 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.Chart.Aggregation (nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.ChildSlot as CS

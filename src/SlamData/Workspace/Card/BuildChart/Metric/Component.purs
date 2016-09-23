@@ -34,7 +34,7 @@ import SlamData.Workspace.Card.BuildChart.Metric.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Metric.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Metric.Component.Query as Q
 import SlamData.Workspace.Card.BuildChart.Metric.Model as M
-import SlamData.Workspace.Card.Chart.Aggregation (nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect)
 import SlamData.Workspace.Card.Port as Port
 
 type DSL =
