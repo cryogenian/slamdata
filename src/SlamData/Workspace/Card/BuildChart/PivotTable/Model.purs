@@ -22,7 +22,7 @@ import Data.Argonaut (JCursor, Json, class EncodeJson, class DecodeJson, decodeJ
 import Data.Array as Array
 import Data.Foldable as F
 
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen

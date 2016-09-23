@@ -31,7 +31,7 @@ import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Chart.Axis (initialAxes)
+import SlamData.Workspace.Card.BuildChart.Axis (initialAxes)
 
 import Utils.Path as PU
 

@@ -26,9 +26,9 @@ import Halogen as H
 import Halogen.Component.Utils.Drag (DragEvent)
 import Halogen.HTML.Events.Types as HET
 
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
 
 data Query a
   = AddDimension a

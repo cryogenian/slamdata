@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Funnel.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toString)
 import Data.Array as A
 import Data.Lens ((^?))
 import Data.Map as M
@@ -23,11 +23,13 @@ import SlamData.Common.Sort (Sort(..))
 import SlamData.Common.Align (Align(..))
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Funnel.Model (Model, FunnelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Funnel))
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
+import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
+import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -43,8 +45,6 @@ eval Nothing _ =
 eval (Just conf) resource = do
   records ← BCE.records resource
   pure $ Port.ChartInstructions (buildFunnel conf records) Funnel
-
-infixr 3 type M.Map as >>
 
 type FunnelSeries =
   { name ∷ Maybe String
@@ -73,7 +73,9 @@ buildFunnelData r records = series
       Just categoryKey →
         let
           mbSeries = toString =<< flip cursorGet js =<< r.series
-          values = foldMap A.singleton $ toNumber =<< cursorGet r.value js
+          values =
+            foldMap A.singleton
+              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
 
           alterSeriesFn
             ∷ Maybe (String >> Array Number)

@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Pie.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toString)
 import Data.Array as A
 import Data.Lens ((^?))
 import Data.Map as M
@@ -21,12 +21,15 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
-import SlamData.Workspace.Card.BuildChart.Pie.Model (Model, PieR)
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Pie))
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
+import SlamData.Workspace.Card.BuildChart.Pie.Model (Model, PieR)
+import SlamData.Workspace.Card.BuildChart.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(Pie))
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
+import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
+import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
+import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
 
@@ -43,22 +46,17 @@ eval (Just conf) resource = do
   pure $ Port.ChartInstructions (buildPie conf records) Pie
 
 
-infixr 3 type M.Map as >>
-
 type OnePieSeries =
-  { name ∷ Maybe String
-  , x ∷ Maybe Number
-  , y ∷ Maybe Number
-  , radius ∷ Maybe Number
-  , series ∷ Array DonutSeries
-  }
+  RadialPosition
+  ( series ∷ Array DonutSeries
+  , name ∷ Maybe String
+  )
 
 type DonutSeries =
-  { radius ∷ Maybe {start ∷ Number, end ∷ Number}
-  , name ∷ Maybe String
+  WithDonutRadius
+  ( name ∷ Maybe String
   , items ∷ String >> Number
-  }
-
+  )
 
 buildPieData ∷ PieR → JArray → Array OnePieSeries
 buildPieData r records = series
@@ -79,7 +77,9 @@ buildPieData r records = series
         let
           mbParallel = toString =<< flip cursorGet js =<< r.parallel
           mbDonut = toString =<< flip cursorGet js =<< r.donut
-          values = foldMap A.singleton $ toNumber =<< cursorGet r.value js
+          values =
+            foldMap A.singleton
+              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
 
           alterParallelFn
             ∷ Maybe (Maybe String >> String >> Array Number)
@@ -131,13 +131,7 @@ buildPieData r records = series
      }]
 
   series ∷ Array OnePieSeries
-  series = adjustPosition $ map (\x → x{series = adjustDonutRadiuses x.series}) rawSeries
-
-  adjustPosition ∷ Array OnePieSeries → Array OnePieSeries
-  adjustPosition a = a
-
-  adjustDonutRadiuses ∷ Array DonutSeries → Array DonutSeries
-  adjustDonutRadiuses a = a
+  series = map (\x → x{series = adjustDonutRadiuses x.series}) $ adjustRadialPositions rawSeries
 
 buildPie ∷ PieR → JArray → DSL OptionI
 buildPie r records = do
@@ -146,24 +140,23 @@ buildPie r records = do
   E.colors colors
 
   E.legend do
-    E.leftLeft
     E.textStyle do
       E.fontSize 12
       E.fontFamily "Ubuntu, sans"
-    E.orient ET.Vertical
     E.items $ map ET.strItem legendNames
+    E.orient ET.Vertical
+    E.leftLeft
 
   E.series series
 
-  E.titles
-    $ traverse_ E.title titles
+  radialTitles pieData
 
   where
   pieData ∷ Array OnePieSeries
   pieData = buildPieData r records
 
-  legendNames ∷ Array String
-  legendNames =
+  itemNames ∷ Array String
+  itemNames =
     A.fromFoldable
       $ foldMap (_.series
                  ⋙ foldMap (_.items
@@ -172,32 +165,36 @@ buildPie r records = do
                 )
         pieData
 
+  seriesNames ∷ Array String
+  seriesNames =
+    A.fromFoldable
+      $ foldMap (_.series ⋙ foldMap (_.name ⋙ Set.fromFoldable)) pieData
+
+  legendNames ∷ Array String
+  legendNames = do
+    s ← seriesNames
+    i ← itemNames
+    pure $ s ⊕ ":" ⊕ i
+
   series ∷ ∀ i. DSL (pie ∷ ETP.I|i)
-  series = for_ pieData \{x, y, radius, series} →
+  series = for_ pieData \{x, y, radius: parallelR, series} →
     for_ series \{radius, items, name} → E.pie do
+      E.label do
+        E.normal E.hidden
+        E.emphasis E.hidden
+
       E.buildCenter do
         traverse_ (E.setX ∘ E.percents) x
         traverse_ (E.setY ∘ E.percents) y
 
-      for_ radius \{start, end} →
-        E.buildRadius do
-          E.setStart $ E.percents start
-          E.setEnd $ E.percents end
+      for_ parallelR \pR →
+        for_ radius \{start, end} → E.buildRadius do
+          E.setStart $ E.percents $ start * pR
+          E.setEnd $ E.percents $ end * pR
 
       for_ name E.name
 
       E.buildItems $ for_ (M.toList $ items) \(key × value) →
         E.addItem do
           E.value value
-          E.name key
-
-  titles ∷ Array (DSL ETP.TitleI)
-  titles = pieData <#> \{name, x, y, radius} → do
-    for_ name E.text
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
-    traverse_ (E.top ∘ ET.Percent) y
-    traverse_ (E.left ∘ ET.Percent) x
-    E.textCenter
-    E.textBottom
+          E.name $ foldMap (flip append ":") name ⊕ key

@@ -38,15 +38,12 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Query as Quasar
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Chart.BuildOptions.Metric as BM
 import SlamData.Workspace.Card.CardType.ChartType (ChartType, chartDarkIconSrc)
 import SlamData.Workspace.Card.CardType.ChartType as ChT
 import SlamData.Workspace.Card.Chart.Component.ChildSlot (cpMetric, cpPivotTable, cpECharts, ChildState, ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
-import SlamData.Workspace.Card.Chart.Config as CH
 import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Component as Pivot
@@ -129,26 +126,6 @@ eval ∷ CC.CardEvalQuery ~> DSL
 eval = case _ of
   CC.EvalCard value output next → do
     case value.input of
-      Just (Chart options@{ config: Just config }) → void do
-        H.modify $ _chartType ?~ case config of
-          CH.Legacy r → r.options.chartType
-          CH.Graph _ → ChT.Graph
-          CH.Sankey _ → ChT.Sankey
-          CH.Gauge _ → ChT.Gauge
-          CH.Metric _ → ChT.Metric
-
-        records ← either (const []) id <$> Quasar.all options.resource
-        case config of
-          CH.Metric r → do
-            H.query' cpMetric unit $ H.action $ Metric.SetMetric $ BM.buildMetric r records
-            setMetricLOD
-          _ → do
-            let
-              optionDSL = CH.buildOptions config records
-            H.query' cpECharts unit $ H.action $ HEC.Reset optionDSL
-            H.query' cpECharts unit $ H.action $ HEC.Resize
-            setEChartsLOD $ buildObj optionDSL
-
       Just (ChartInstructions opts chartType) → void do
         H.modify $ _chartType ?~ chartType
         H.query' cpECharts unit $ H.action $ HEC.Reset opts

@@ -66,7 +66,6 @@ insertableCardTypes =
   [ Ace SQLMode
   , Open
   , Search
-  , Table
   , Variables
   , Ace MarkdownMode
   , Markdown

@@ -11,7 +11,7 @@ import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
 import SlamData.Common.Sort (Sort)
 import SlamData.Common.Align (Align)
-import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
+import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
 
 type ChildSlot
   = Unit

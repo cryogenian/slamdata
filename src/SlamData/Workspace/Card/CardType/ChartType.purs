@@ -194,7 +194,7 @@ chartLightIconSrc = case _ of
   Gauge → "img/gauge.svg"
   Boxplot → "img/boxplot.svg"
   Metric → "img/metric.svg"
-  PivotTable → "img/pivot.svg"
+  PivotTable → "img/cardsLight/table.svg"
 
 chartDarkIconSrc ∷ ChartType → String
 chartDarkIconSrc = case _ of
@@ -211,4 +211,4 @@ chartDarkIconSrc = case _ of
   Gauge → "img/gauge-black.svg"
   Boxplot → "img/boxplot-black.svg"
   Metric → "img/metric-black.svg"
-  PivotTable → "img/pivot-black.svg"
+  PivotTable → "img/cardsDark/table.svg"

@@ -5,12 +5,11 @@ module SlamData.Workspace.Card.BuildChart.Gauge.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toString)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
 import Data.Map as M
-import Data.Int as Int
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -20,13 +19,16 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Gauge.Model (Model, GaugeR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Gauge))
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
+import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
+import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.BuildChart.Common.Positioning (RadialPosition, adjustRadialPositions)
 
 
 eval
@@ -45,21 +47,16 @@ eval (Just conf) resource = do
 -- GAUGE BUILDER
 ----------------------------------------------------------------------
 
-infixr 3 type M.Map as >>
-
 type GaugeItem =
   { name ∷ Maybe String
   , value ∷ Number
   }
 
 type GaugeSerie =
-  { x ∷ Maybe Number
-  , y ∷ Maybe Number
-  , radius ∷ Maybe Number
-  , name ∷ Maybe String
+  RadialPosition
+  ( name ∷ Maybe String
   , items ∷ Array GaugeItem
-  }
-
+  )
 
 buildGaugeData ∷ GaugeR → JArray → Array GaugeSerie
 buildGaugeData r records = series
@@ -76,7 +73,9 @@ buildGaugeData r records = series
     let
        mbParallel = toString =<< flip cursorGet js =<< r.parallel
        mbMultiple = toString =<< flip cursorGet js =<< r.multiple
-       values = foldMap A.singleton $ toNumber =<< cursorGet r.value js
+       values =
+         foldMap A.singleton
+           $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
 
        alterFn
          ∷ Maybe (Maybe String >> Array Number)
@@ -116,63 +115,8 @@ buildGaugeData r records = series
     foldMap mkSerie $ M.toList valueAndSizeMap
 
   series ∷ Array GaugeSerie
-  series =
-    let
-      len = A.length unpositionedSeries
+  series = adjustRadialPositions unpositionedSeries
 
-      itemsInRow
-        | len < 2 = 1
-        | len < 5 = 2
-        | len < 10 = 3
-        | otherwise = 4
-
-      numRows =
-        Int.ceil $ Int.toNumber len / Int.toNumber itemsInRow
-
-      topStep =
-        90.0 / Int.toNumber numRows
-
-      setPositions
-        ∷ Array GaugeSerie
-        → Int
-        → Int
-        → Int
-        → Array GaugeSerie
-        → Array GaugeSerie
-      setPositions acc colIx rowIx inThisRow arr = case A.uncons arr of
-        Nothing → acc
-        Just {head, tail} →
-          let
-            top = topStep * ((Int.toNumber rowIx) + 0.5) + 5.0
-
-            leftStep = 90.0 / Int.toNumber inThisRow
-
-            left = leftStep * ((Int.toNumber colIx) + 0.5) + 5.0
-
-            toPush =
-              head{ x = Just left
-                  , y = Just top
-                  , radius = Just $ 90.0 / Int.toNumber itemsInRow
-                  }
-
-            newAcc = A.snoc acc toPush
-
-            newColIx
-              | one + colIx < inThisRow = colIx + one
-              | otherwise = zero
-
-            newRowIx
-              | newColIx ≡ zero = rowIx + one
-              | otherwise = rowIx
-
-            inNewRow
-              | A.length tail > itemsInRow = itemsInRow
-              | newColIx ≠ zero = itemsInRow
-              | otherwise = A.length tail
-          in
-            setPositions newAcc newColIx newRowIx inNewRow tail
-    in
-      setPositions [] 0 0 itemsInRow unpositionedSeries
 
 buildGauge ∷ GaugeR → JArray → DSL OptionI
 buildGauge r records = do

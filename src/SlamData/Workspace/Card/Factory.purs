@@ -27,7 +27,6 @@ import SlamData.Workspace.Card.Ace.Component (AceEval, aceComponent, Status(..))
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Component (chartComponent)
-import SlamData.Workspace.Card.ChartOptions.Component (chartOptionsComponent)
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component (CardComponent)
 import SlamData.Workspace.Card.Download.Component (downloadComponent)
@@ -65,7 +64,6 @@ cardComponent deckId card opts =
   case card.model of
     Card.Ace mode _ → aceComponent { mode, eval: aceEval mode }
     Card.Search _ → searchComponent
-    Card.ChartOptions _ → chartOptionsComponent
     Card.Chart _ → chartComponent
     Card.Markdown _ → markdownComponent deckId opts
     Card.Table _ → tableComponent

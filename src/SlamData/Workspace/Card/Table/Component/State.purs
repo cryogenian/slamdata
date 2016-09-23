@@ -45,7 +45,7 @@ import Data.Foldable (maximum)
 import Data.Int as Int
 import Data.Lens ((^?), (?~), LensP, lens, _Just)
 
-import SlamData.Workspace.Card.Chart.Axis (Axes)
+import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..))
 import SlamData.Workspace.Card.Table.Model (Model)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))

@@ -7,7 +7,7 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toString)
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Lens ((^?))
@@ -25,10 +25,13 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
+import SlamData.Workspace.Card.BuildChart.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model (Model, BoxplotR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
-import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
+import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
+import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -45,9 +48,6 @@ eval Nothing _ =
 eval (Just conf) resource = do
   records ← BCE.records resource
   pure $ Port.ChartInstructions (buildBoxplot conf records) Boxplot
-
-infixr 3 type M.Map as >>
-
 
 type OnOneBoxplot =
   { name ∷ Maybe String
@@ -94,7 +94,9 @@ buildBoxplotData r records = series
         let
           mbParallel = toString =<< flip cursorGet js =<< r.parallel
           mbSeries = toString =<< flip cursorGet js =<< r.series
-          values = foldMap A.singleton $ toNumber =<< cursorGet r.value js
+          values =
+            foldMap A.singleton
+              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
 
           alterParallelFn
             ∷ Maybe (Maybe String >> String >> Array Number)
@@ -186,10 +188,7 @@ buildBoxplotData r records = series
         outliers × Just {low, q1, q2, q3, high}
 
   series ∷ Array OnOneBoxplot
-  series = positionRawSeries rawSeries
-
-  positionRawSeries ∷ Array OnOneBoxplot → Array OnOneBoxplot
-  positionRawSeries = id
+  series = adjustRectangularPositions rawSeries
 
 buildBoxplot ∷ BoxplotR → JArray → DSL OptionI
 buildBoxplot r records = do
@@ -198,11 +197,11 @@ buildBoxplot r records = do
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
-  E.grids
-    $ traverse_ E.grid grids
 
-  E.titles
-    $ traverse_ E.title titles
+  rectangularTitles $ map snd boxplotData
+
+  rectangularGrids $ map snd boxplotData
+
 
   E.legend do
     E.topBottom
@@ -257,7 +256,7 @@ buildBoxplot r records = do
       ⊕ "Lower: " ⊕ show (fromMaybe zero $ param.value !! 0)
 
     E.buildItems
-      $ for_ xAxisLabels \key → case M.lookup key serie.items of
+      $ for_ xAxisLabels \key → case M.lookup (spy key) serie.items of
         Nothing → E.missingItem
         Just (_ × mbBP) → for_ mbBP \item → E.addItem $ E.buildValues do
           E.addValue item.low

@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.BuildChart.ColorScheme where
 
 import SlamData.Prelude
 
-import Color (Color, fromHexString)
+import Color (Color, fromHexString, toHSLA, hsla)
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson, (~>), (:=), (.?))
 import Data.Array as A
@@ -680,3 +680,21 @@ colorSchemeSelect =
   Select { options: colorSchemes
          , value: Just RedToBlue
          }
+
+getShadeColor ∷ Color → Number → Color
+getShadeColor color alpha =
+  setAlpha (lightenTo color 0.95) alpha
+
+getTransparentColor ∷ Color → Number → Color
+getTransparentColor color alpha =
+  setAlpha color alpha
+
+lightenTo ∷ Color → Number → Color
+lightenTo col l' = hsla c.h c.s l' c.a
+  where
+  c = toHSLA col
+
+setAlpha ∷ Color → Number → Color
+setAlpha col a' = hsla c.h c.s c.l a'
+  where
+  c = toHSLA col

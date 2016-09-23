@@ -7,7 +7,7 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toString)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
@@ -26,12 +26,13 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Scatter.Model (Model, ScatterR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Scatter))
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (getTransparentColor)
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
+import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getTransparentColor)
+import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -49,8 +50,6 @@ eval (Just conf) resource = do
   records ← BCE.records resource
   pure $ Port.ChartInstructions (buildScatter conf records) Scatter
 
-
-infixr 3 type M.Map as >>
 
 type ScatterSeries =
   { name ∷ Maybe String
@@ -72,9 +71,15 @@ buildScatterData r records = series
   dataMapFoldFn acc js =
     let
       mbSeries = toString =<< flip cursorGet js =<< r.series
-      xs = foldMap A.singleton $ toNumber =<< cursorGet r.abscissa js
-      ys = foldMap A.singleton $ toNumber =<< cursorGet r.ordinate js
-      rs = foldMap A.singleton $ toNumber =<< flip cursorGet js =<< r.size
+      xs =
+        foldMap A.singleton
+          $ semanticsToNumber =<< analyzeJson =<< cursorGet r.abscissa js
+      ys =
+        foldMap A.singleton
+          $ semanticsToNumber =<< analyzeJson =<< cursorGet r.ordinate js
+      rs =
+        foldMap A.singleton
+          $ semanticsToNumber =<< analyzeJson =<< flip cursorGet js =<< r.size
 
       alterSeriesFn
         ∷ Maybe (Array Number × Array Number × Array Number)

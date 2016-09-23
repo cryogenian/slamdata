@@ -12,8 +12,8 @@ import SlamData.Prelude
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 import Quasar.Advanced.QuasarAF as QF

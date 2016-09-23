@@ -24,7 +24,6 @@ module SlamData.Workspace.Card.Component.State
   , _MarkdownState
   , _SearchState
   , _TableState
-  , _ChartOptionsState
   , _ChartState
   , _DownloadState
   , _VariablesState
@@ -77,7 +76,6 @@ import SlamData.Workspace.Card.Markdown.Component.State as Markdown
 import SlamData.Workspace.Card.Next.Component.State as Next
 import SlamData.Workspace.Card.Open.Component.State as Open
 import SlamData.Workspace.Card.Search.Component.State as Search
-import SlamData.Workspace.Card.ChartOptions.Component.State as ChartOptions
 import SlamData.Workspace.Card.BuildChart.Metric.Component.State as BuildMetric
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.State as BuildSankey
 import SlamData.Workspace.Card.BuildChart.Gauge.Component.State as BuildGauge
@@ -115,7 +113,6 @@ data AnyCardState
   | MarkdownState Markdown.StateP
   | SearchState Search.State
   | TableState Table.State
-  | ChartOptionsState ChartOptions.StateP
   | ChartState Chart.StateP
   | DownloadState Download.State
   | VariablesState Variables.StateP
@@ -160,11 +157,6 @@ _SearchState = prism' SearchState case _ of
 _TableState ∷ PrismP AnyCardState Table.State
 _TableState = prism' TableState case _ of
   TableState s → Just s
-  _ → Nothing
-
-_ChartOptionsState ∷ PrismP AnyCardState ChartOptions.StateP
-_ChartOptionsState = prism' ChartOptionsState case _ of
-  ChartOptionsState s → Just s
   _ → Nothing
 
 _ChartState ∷ PrismP AnyCardState Chart.StateP

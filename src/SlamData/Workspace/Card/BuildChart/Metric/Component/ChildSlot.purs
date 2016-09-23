@@ -5,7 +5,7 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor)
 
 import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
+import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
 
 type ValueSlot = Unit
 type ValueState = P.StateP Aggregation JCursor

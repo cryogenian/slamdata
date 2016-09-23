@@ -10,7 +10,7 @@ import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.Chart.BuildOptions.Metric (Metric)
+import SlamData.Workspace.Card.Port (MetricPort)
 
 import Utils.DOM (fitText)
 
@@ -36,7 +36,7 @@ initialState =
   }
 
 data Query a
-  = SetMetric Metric a
+  = SetMetric MetricPort a
   | SetDimensions {width ∷ Int, height ∷ Int} a
   | GetLOD (LevelOfDetails → a)
   | SetElement (Maybe HTMLElement) a

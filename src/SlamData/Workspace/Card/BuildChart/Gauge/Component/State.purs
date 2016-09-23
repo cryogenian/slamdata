@@ -6,7 +6,7 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.BuildChart.Gauge.Component.ChildSlot as GCS
 import SlamData.Workspace.Card.BuildChart.Gauge.Component.Query (QueryC)
-import SlamData.Workspace.Card.Chart.Axis (Axes, initialAxes)
+import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
 
 type State =
    { axes ∷ Axes

@@ -34,13 +34,13 @@ import Halogen.HTML.CSS.Indexed as HC
 
 import SlamData.Form.Select as S
 import SlamData.Monad (Slam)
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.ChildSlot as PCS
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.Query (Query(..), QueryC)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.State (State, modelFromState, stateFromModel, initialState, reorder, setColumnAggregation)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column(..))
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card

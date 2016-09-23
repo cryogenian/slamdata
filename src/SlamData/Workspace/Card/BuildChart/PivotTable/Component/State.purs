@@ -34,11 +34,11 @@ import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
+import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.ChildSlot as PCS
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.Query (QueryC)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Model, Column(..))
-import SlamData.Workspace.Card.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Chart.Axis (Axes, initialAxes)
 
 type StateP =
   ParentState State PCS.ChildState QueryC PCS.ChildQuery Slam PCS.ChildSlot

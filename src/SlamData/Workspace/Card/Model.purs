@@ -39,7 +39,6 @@ import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Markdown.Model as MD
-import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
@@ -64,7 +63,6 @@ import Test.StrongCheck.Gen as Gen
 data AnyCardModel
   = Ace CT.AceMode Ace.Model
   | Search String
-  | ChartOptions ChartOptions.Model
   | Chart Chart.Model
   | Markdown MD.Model
   | Table JT.Model
@@ -98,7 +96,6 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
     Gen.oneOf (pure ErrorCard)
       [ Ace <$> SC.arbitrary <*> Ace.genModel
       , Search <$> SC.arbitrary
-      , ChartOptions <$> ChartOptions.genModel
       , Chart <$> Chart.genModel
       , Markdown <$> MD.genModel
       , Table <$> JT.genModel
@@ -130,7 +127,6 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
     case _, _ of
       Ace x1 y1, Ace x2 y2 → x1 ≡ x2 && Ace.eqModel y1 y2
       Search s1, Search s2 → s1 ≡ s2
-      ChartOptions x1, ChartOptions x2 → ChartOptions.eqModel x1 x2
       Chart x, Chart y → Chart.eqModel x y
       Markdown x, Markdown y → MD.eqModel x y
       Table x, Table y → JT.eqModel x y
@@ -182,7 +178,6 @@ modelCardType =
     BuildFunnel _ → CT.ChartOptions Funnel
     BuildBoxplot _ → CT.ChartOptions Boxplot
     BuildHeatmap _ → CT.ChartOptions Heatmap
-    ChartOptions _ → CT.ChartOptions Pie
     Chart _ → CT.Chart
     Markdown _ → CT.Markdown
     Table _ → CT.Table
@@ -227,7 +222,6 @@ encodeCardModel
 encodeCardModel = case _ of
   Ace mode model → Ace.encode model
   Search txt → J.encodeJson txt
-  ChartOptions model → ChartOptions.encode model
   Chart model → Chart.encode model
   Markdown model → MD.encode model
   Table model → JT.encode model
@@ -351,8 +345,6 @@ modelToEval = case _ of
     Left "Open model missing resource"
   Variables model →
     pure $ Eval.Variables model
-  ChartOptions model →
-    pure $ Eval.ChartOptions model
   DownloadOptions model →
     pure $ Eval.DownloadOptions model
   Draftboard _ →

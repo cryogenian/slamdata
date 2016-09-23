@@ -1,5 +1,3 @@
--- | TODO: we probably don't need axes in models. I put it here because there is no
--- | generic BuildChart module
 module SlamData.Workspace.Card.BuildChart.Sankey.Component.State where
 
 import Halogen (ParentState)
@@ -8,7 +6,7 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.ChildSlot as SCS
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.Query (QueryC)
-import SlamData.Workspace.Card.Chart.Axis (Axes, initialAxes)
+import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
 
 type State =
    { axes ∷ Axes

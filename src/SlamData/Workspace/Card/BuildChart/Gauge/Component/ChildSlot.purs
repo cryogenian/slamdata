@@ -9,7 +9,7 @@ import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 import SlamData.Form.Select (Select)
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
+import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
 
 type ChildSlot =
   Unit ⊹ Unit ⊹ Unit
