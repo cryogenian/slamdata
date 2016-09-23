@@ -27,20 +27,7 @@ eval
   → CET.CardEvalT m Port.Port
 eval Nothing _ =
   QE.throw "Please select axis to aggregate"
-eval (Just options) tr | PTM.isSimple options = do
-  -- let
-  --   path = fromMaybe P.rootDir (P.parentDir tr.resource)
-  --   cols =
-  --     Array.mapWithIndex
-  --       (\i (PTM.Column c) → "row" <> show c.value <> " AS _" <> show i)
-  --       options.columns
-  --   sql =
-  --     QQ.templated tr.resource $ String.joinWith " "
-  --       [ "SELECT " <> String.joinWith ", " cols
-  --       , "FROM {{path}} AS row"
-  --       ]
-  -- records ← CET.liftQ $ liftQuasar $
-  --   QF.readQuery Readable path sql SM.empty Nothing
+eval (Just options) tr | PTM.isSimple options =
   pure $ Port.PivotTable { records: [], options, taggedResource: tr }
 eval (Just options@{ dimensions: [] }) tr = do
   let

@@ -247,5 +247,5 @@ peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek = const (pure unit) ⨁  peekPivotTable ⨁  const (pure unit)
   where
   peekPivotTable = case _ of
-    Pivot.ModelUpdated _ → CC.raiseUpdatedP CC.StateOnlyUpdate
+    Pivot.ModelUpdated _ → CC.raiseUpdatedP CC.EvalModelUpdate
     _ → pure unit

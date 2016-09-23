@@ -53,6 +53,7 @@ type State =
   , pageSize ∷ Int
   , records ∷ PTree J.Json J.Json
   , customPage ∷ Maybe String
+  , loading ∷ Boolean
   }
 
 initialState ∷ State
@@ -64,6 +65,7 @@ initialState =
   , pageSize: PTRM.initialModel.pageSize
   , records: Bucket []
   , customPage: Nothing
+  , loading: false
   }
 
 data Query a
@@ -108,26 +110,30 @@ render st =
             , nextButtons (st.pageIndex < st.pageCount - 1)
             , pageSizeControls st.pageSize
             ]
+            , if st.loading
+                then HH.div [ HP.classes [ HH.className "loading" ] ] []
+                else HH.text ""
         ]
     _ →
       HH.text ""
   where
-  renderFlat cols rows =
-    HH.table_ $
-      [ HH.tr_ (map (\(Column { value }) → HH.th_ [ HH.text (showJCursor value) ]) cols)
-      ] <> map HH.tr_ (renderLeaves (Array.mapWithIndex Tuple cols) rows)
-
   renderTable dims cols tree =
     let
       cols' = Array.mapWithIndex (Tuple ∘ add (Array.length dims)) cols
     in
-      HH.table_ $
-        [ HH.tr_ $
-            (if Array.null dims
-              then []
-              else [ HH.td [ HP.colSpan (Array.length dims) ] [] ])
-            <> map (\(Column { value }) → HH.th_ [ HH.text (showJCursor value) ]) cols
-        ] <> renderRows cols' tree
+      if st.count ≡ 0
+        then
+          HH.div
+            [ HP.classes [ HH.className "no-results" ] ]
+            [ HH.text "No results" ]
+        else
+          HH.table_ $
+            [ HH.tr_ $
+                (if Array.null dims
+                  then []
+                  else [ HH.td [ HP.colSpan (Array.length dims) ] [] ])
+                <> map (\(Column { value }) → HH.th_ [ HH.text (showJCursor value) ]) cols
+            ] <> renderRows cols' tree
 
   renderRows cols =
     map HH.tr_ ∘ foldTree (renderLeaves cols) renderHeadings
@@ -250,7 +256,16 @@ eval ∷ Query ~> DSL
 eval = case _ of
   Update input next | isSimple input.options → do
     st ← H.get
-    H.modify _ { input = Just input }
+    let
+      sameResource =
+        case input.taggedResource, st.input of
+          tr1, Just { options, taggedResource: tr2 } →
+            tr1.resource ≡ tr2.resource && tr1.tag ≡ tr2.tag && isSimple options
+          _, _ → false
+    traceAnyA { tag: "Update", input, input2: st.input, sameResource }
+    if sameResource
+      then H.modify _ { input = Just input }
+      else H.modify _ { input = Just input, pageIndex = 0, count = 0, pageCount = 0 }
     pageQuery input
     pure next
   Update input next → do
@@ -261,10 +276,10 @@ eval = case _ of
   StepPage step next → do
     st ← H.get
     let
-      pageIndex = case step of
+      pageIndex = clamp 0 (st.pageCount - 1) case step of
         First → 0
-        Prev  → max 0 (st.pageIndex - 1)
-        Next  → min (st.pageCount - 1) (st.pageIndex + 1)
+        Prev  → st.pageIndex - 1
+        Next  → st.pageIndex + 1
         Last  → st.pageCount - 1
     H.modify _ { pageIndex = pageIndex }
     for st.input (ifSimpleInput pageQuery pageTree)
@@ -276,9 +291,9 @@ eval = case _ of
     st ← H.get
     for_ st.customPage \page → do
       let
-        page' = clamp 0 (st.pageCount - 1) (Int.floor (readFloat page) - 1)
+        pageIndex = clamp 0 (st.pageCount - 1) (Int.floor (readFloat page) - 1)
       H.modify _
-        { pageIndex = page'
+        { pageIndex = pageIndex
         , customPage = Nothing
         }
       for st.input (ifSimpleInput pageQuery pageTree)
@@ -316,6 +331,7 @@ pageQuery input = do
     sql    = simpleQuery input.options.columns input.taggedResource
     offset = st.pageIndex * st.pageSize
     limit  = st.pageSize
+  H.modify _ { loading = true }
   if st.count ≡ 0
     then do
       count ← either (const 0) id <$>
@@ -330,6 +346,7 @@ pageQuery input = do
         }
   records ← liftQuasar $
     QF.readQuery Readable path sql mempty (Just { offset, limit })
+  H.modify _ { loading = false }
   for_ records \recs →
     H.modify _
       { records = buildTree mempty Bucket Grouped recs
