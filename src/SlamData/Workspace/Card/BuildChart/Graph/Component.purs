@@ -27,7 +27,6 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Chart.ChartConfiguration (depends, dependsOnArr)
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
 import SlamData.Workspace.Card.Chart.Aggregation (nonMaybeAggregationSelect)
@@ -313,14 +312,12 @@ synchronizeChildren = void do
       setPreviousValueFrom source
         $ autoSelect
         $ newSelect
-        $ dependsOnArr st.axes.category
         $ st.axes.category
 
     newTarget =
       setPreviousValueFrom target
         $ autoSelect
         $ newSelect
-        $ depends newSource
         $ ifSelected [newSource]
         $ st.axes.category ⊝ newSource
 

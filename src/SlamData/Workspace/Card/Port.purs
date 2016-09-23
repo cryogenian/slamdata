@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Port
   ( Port(..)
-  , ChartPort
   , TaggedResourcePort
   , DownloadPort
   , MetricPort
@@ -26,7 +25,6 @@ module SlamData.Workspace.Card.Port
   , _Resource
   , _ResourceAxes
   , _ResourceTag
-  , _Chart
   , _DownloadOptions
   , _Draftboard
   , _CardError
@@ -39,7 +37,6 @@ module SlamData.Workspace.Card.Port
 import SlamData.Prelude
 
 import Data.Lens (PrismP, prism', TraversalP, wander)
-import Data.Set as Set
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
@@ -47,17 +44,9 @@ import ECharts.Types.Phantom (OptionI)
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
-import SlamData.Workspace.Card.Chart.Config as CC
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
-
-type ChartPort =
-  { resource ∷ PU.FilePath
-  , availableChartTypes ∷ Set.Set ChartType
-  , axes ∷ Axes
-  , config ∷ Maybe CC.ChartConfig
-  }
 
 type DownloadPort =
   { resource ∷ PU.FilePath
@@ -80,7 +69,6 @@ data Port
   = SlamDown (VarMap × (SD.SlamDownP VarMapValue))
   | VarMap VarMap
   | CardError String
-  | Chart ChartPort
   | ChartInstructions (DSL OptionI) ChartType
   | TaggedResource TaggedResourcePort
   | DownloadOptions DownloadPort
@@ -95,7 +83,6 @@ tagPort (Just p) = case p of
   SlamDown sd → "SlamDown: " ⊕ show sd
   VarMap vm → "VarMap: " ⊕ show vm
   CardError str → "CardError: " ⊕ show str
-  Chart p → "Chart"
   TaggedResource p → "TaggedResource: " ⊕ show p.resource ⊕ " " ⊕ show p.tag
   DownloadOptions p → "DownloadOptions"
   Draftboard → "Draftboard"
@@ -117,11 +104,6 @@ _VarMap = wander \f s → case s of
 _CardError ∷ PrismP Port String
 _CardError = prism' CardError \p → case p of
   CardError x → Just x
-  _ → Nothing
-
-_Chart ∷ PrismP Port ChartPort
-_Chart = prism' Chart \p → case p of
-  Chart o → Just o
   _ → Nothing
 
 _ResourceTag ∷ TraversalP Port String

@@ -36,8 +36,6 @@ import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Cache.Eval as Cache
-import SlamData.Workspace.Card.ChartOptions.Eval as ChartE
-import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DO
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Markdown.Component.State.Core as MDS
@@ -76,7 +74,6 @@ data Eval
   | MarkdownForm MD.Model
   | Open R.Resource
   | Variables Variables.Model
-  | ChartOptions ChartOptions.Model
   | DownloadOptions DO.State
   | Draftboard
   | BuildMetric BuildMetric.Model
@@ -103,7 +100,6 @@ tagEval = case _ of
   Markdown str → "Markdown " <> show str
   Open res → "Open " <> show res
   MarkdownForm m → "MarkdownForm"
-  ChartOptions m → "ChartOptions"
   Variables m → "Variables"
   DownloadOptions m → "DownloadOptions"
   Draftboard → "Draftboard"
@@ -153,8 +149,6 @@ evalCard input =
       Port.TaggedResource <$> Cache.eval input pathString resource
     Open res, _ →
       Port.TaggedResource <$> evalOpen input res
-    ChartOptions model, _ →
-      Port.Chart <$> ChartE.eval input model
     Variables model, _ →
       pure $ Port.VarMap $ VariablesE.eval (fst input.cardCoord) input.urlVarMaps model
     DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →

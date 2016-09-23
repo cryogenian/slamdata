@@ -36,8 +36,7 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.Semantics (analyzeJson, semanticsToNumber)
-import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (getShadeColor)
+import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getShadeColor)
 
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port

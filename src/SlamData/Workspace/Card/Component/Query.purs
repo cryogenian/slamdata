@@ -25,7 +25,6 @@ module SlamData.Workspace.Card.Component.Query
   , _MarkdownQuery
   , _SearchQuery
   , _TableQuery
-  , _ChartOptionsQuery
   , _ChartQuery
   , _DownloadQuery
   , _VariablesQuery
@@ -82,7 +81,6 @@ import SlamData.Workspace.Card.Open.Component.Query as Open
 import SlamData.Workspace.Card.Pending.Component.Query as Pending
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Search.Component.Query as Search
-import SlamData.Workspace.Card.ChartOptions.Component.Query as ChartOptions
 import SlamData.Workspace.Card.BuildChart.Metric.Component.Query as BuildMetric
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.Query as BuildSankey
 import SlamData.Workspace.Card.BuildChart.Gauge.Component.Query as BuildGauge
@@ -128,7 +126,6 @@ data AnyCardQuery a
   | MarkdownQuery (Markdown.QueryP a)
   | SearchQuery (Search.Query a)
   | TableQuery (Table.QueryP a)
-  | ChartOptionsQuery (ChartOptions.QueryP a)
   | ChartQuery (Chart.QueryP a)
   | DownloadQuery (Download.QueryP a)
   | VariablesQuery (Variables.QueryP a)
@@ -173,11 +170,6 @@ _SearchQuery = prism' SearchQuery case _ of
 _TableQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Table.QueryP a)
 _TableQuery = prism' TableQuery case _ of
   TableQuery q → Just q
-  _ → Nothing
-
-_ChartOptionsQuery ∷ ∀ a. PrismP (AnyCardQuery a) (ChartOptions.QueryP a)
-_ChartOptionsQuery = prism' ChartOptionsQuery case _ of
-  ChartOptionsQuery q → Just q
   _ → Nothing
 
 _ChartQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Chart.QueryP a)
