@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Line.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toString)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
@@ -33,9 +33,11 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Line))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
+import SlamData.Workspace.Card.Chart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
+import Utils (stringToNumber)
 import Utils.DOM (getTextWidthPure)
 
 eval
@@ -75,9 +77,15 @@ buildLineData r records = series
       Just dimKey →
         let
           mbSeries = toString =<< flip cursorGet js =<< r.series
-          leftValues = foldMap A.singleton $ toNumber =<< cursorGet r.value js
-          rightValues = foldMap A.singleton $ toNumber =<< flip cursorGet js =<< r.secondValue
-          sizes = foldMap A.singleton $ toNumber =<< flip cursorGet js =<< r.size
+          leftValues =
+            foldMap A.singleton
+              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
+          rightValues =
+            foldMap A.singleton
+              $ semanticsToNumber =<< analyzeJson =<< flip cursorGet js =<< r.secondValue
+          sizes =
+            foldMap A.singleton
+              $ semanticsToNumber =<< analyzeJson =<< flip cursorGet js =<< r.size
 
           alterSeriesFn
             ∷ Maybe (String >> (Array Number × Array Number × Array Number))
@@ -204,7 +212,10 @@ buildLine r records axes = do
     | F.elem r.dimension axes.value = {axisType: ET.Category, interval: Nothing}
     | otherwise = {axisType: ET.Category, interval: Just 0}
 
-  xSortFn = compare
+  xSortFn ∷ String → String → Ordering
+  xSortFn a b
+    | F.elem r.dimension axes.value = compare (stringToNumber a) (stringToNumber b)
+    | otherwise = compare a b
 
   labelHeight ∷ Int
   labelHeight =

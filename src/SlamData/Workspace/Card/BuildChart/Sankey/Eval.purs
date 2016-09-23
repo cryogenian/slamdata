@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Sankey.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, JCursor, Json, cursorGet, toString)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
@@ -109,7 +109,8 @@ buildSankeyData records r = items
     let
       mbSource = toString =<< cursorGet r.source js
       mbTarget = toString =<< cursorGet r.target js
-      mbValue = toNumber =<< cursorGet r.value js
+      mbValue =
+        Sem.semanticsToNumber =<< Sem.analyzeJson =<< cursorGet r.value js
     in
       case mbSource × mbTarget × mbValue of
         Just source × Just target × Just value →

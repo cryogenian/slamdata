@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Metric.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet, toNumber)
+import Data.Argonaut (JArray, Json, cursorGet)
 import Data.Array as A
 import Data.Formatter.Number as FN
 import Data.String as Str
@@ -20,6 +20,7 @@ import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.BuildChart.Metric.Model (Model, MetricR)
+import SlamData.Workspace.Card.Chart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 
 eval
@@ -62,4 +63,5 @@ buildMetric r records =
 
   foldFn ∷ Json → Array Number
   foldFn js =
-    foldMap A.singleton $ toNumber =<< cursorGet r.value js
+    foldMap A.singleton
+      $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js

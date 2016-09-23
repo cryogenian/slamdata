@@ -7,7 +7,7 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toString)
 import Data.Array as A
 import Data.List as L
 import Data.Foldable as F
@@ -33,6 +33,7 @@ import SlamData.Workspace.Card.BuildChart.Heatmap.Model (Model, HeatmapR)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getColorScheme)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Heatmap))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Chart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
@@ -83,7 +84,9 @@ buildHeatmapData r records = series
       (Just abscissaKey) × (Just ordinateKey) →
         let
           mbSeries = toString =<< flip cursorGet js =<< r.series
-          values = foldMap A.singleton $ toNumber =<< cursorGet r.value js
+          values =
+            foldMap A.singleton
+              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
 
           alterSeriesFn
             ∷ Maybe ((String × String) >> Array Number)

@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.ST (STRef, ST, newSTRef, modifySTRef, readSTRef, pureST)
 
-import Data.Argonaut (runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>))
+import Data.Argonaut (runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>), foldJson)
 import Data.Array as A
 import Data.Int as Int
 import Data.List (List(..), catMaybes)
@@ -101,9 +101,9 @@ checkPredicate
   ∷ (Semantics → Boolean) → List (Maybe Semantics)
   → Maybe (List (Maybe Semantics))
 checkPredicate p lst = pureST do
-  corrects <- newSTRef 0
-  incorrects <- newSTRef 0
-  filtered <- newSTRef Nil
+  corrects ← newSTRef 0
+  incorrects ← newSTRef 0
+  filtered ← newSTRef Nil
   -- `traverse_` uses `foldr`. `List`s `foldr` isn't tail recursive.
   -- To make it tail recursive we probably should reimplement `foldr` like
   -- `foldr f init lst = reverse $ foldl (flip f) init $ reverse lst`
@@ -117,11 +117,11 @@ checkPredicate p lst = pureST do
   foldl
     (\b a → checkPredicateTraverseFn p corrects incorrects filtered a *> b)
     (pure unit) lst
-  c <- readSTRef corrects
-  ic <- readSTRef incorrects
+  c ← readSTRef corrects
+  ic ← readSTRef incorrects
   if c > ic
     then do
-    f <- readSTRef filtered
+    f ← readSTRef filtered
     pure $ Just f
     else
     pure Nothing
@@ -200,9 +200,20 @@ instance ordSemantics ∷ Ord Semantics where
 analyze ∷ JsonPrim → Maybe Semantics
 analyze p = runJsonPrim p
             (const Nothing)
-            (Just <<< Bool)
-            (Just <<< Value)
+            (Just ∘ Bool)
+            (Just ∘ Value)
             analyzeString
+
+analyzeJson ∷ Json → Maybe Semantics
+analyzeJson =
+  foldJson
+    (const Nothing)
+    (pure ∘ Bool)
+    (pure ∘ Value)
+    analyzeString
+    (const Nothing)
+    (const Nothing)
+
 
 analyzeString ∷ String → Maybe Semantics
 analyzeString str =
@@ -214,8 +225,8 @@ analyzeString str =
 
 analyzeNumber ∷ String → Maybe Semantics
 analyzeNumber s = do
-  num <- stringToNumber s
-  int <- Int.fromString s
+  num ← stringToNumber s
+  int ← Int.fromString s
   guard $ show num == s || show int == s
   pure $ Value num
 
@@ -224,9 +235,9 @@ percentRegex = unsafePartial fromRight $ regex """^(-?\d+(\.\d+)?)\%$""" noFlags
 
 analyzePercent ∷ String → Maybe Semantics
 analyzePercent input = do
-  matches <- match percentRegex input
-  maybeMatch <- matches A.!! 1
-  num <- maybeMatch >>= stringToNumber
+  matches ← match percentRegex input
+  maybeMatch ← matches A.!! 1
+  num ← maybeMatch >>= stringToNumber
   pure $ Percent num
 
 moneyRegex ∷ Regex
@@ -238,10 +249,10 @@ moneyRegex = unsafePartial fromRight $ regex rgxStr noFlags
 
 analyzeMoney ∷ String → Maybe Semantics
 analyzeMoney str = do
-  matches <- match moneyRegex str
-  maybeMatch <- matches A.!! 1
-  num <- maybeMatch >>= stringToNumber
-  currencySymbol <- let fstSymbol = take 1 str
+  matches ← match moneyRegex str
+  maybeMatch ← matches A.!! 1
+  num ← maybeMatch >>= stringToNumber
+  currencySymbol ← let fstSymbol = take 1 str
                     in if fstSymbol == ""
                        then Nothing
                        else pure fstSymbol
@@ -283,7 +294,7 @@ jarrayToSemantics arr = foldl foldFn initial mapArr
     → Map JCursor (List (Maybe Semantics))
     → JCursor
     → Map JCursor (List (Maybe Semantics))
-  insertOne m acc k = update (pure <<< Cons (lookup k m)) k acc
+  insertOne m acc k = update (pure ∘ Cons (lookup k m)) k acc
 
 checkValues ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
 checkValues = checkPredicate isValue
@@ -331,7 +342,7 @@ instance encodeJsonSemantics ∷ EncodeJson Semantics where
 
 instance decodeJsonSemantics ∷ DecodeJson Semantics where
   decodeJson = decodeJson >=> \obj → do
-    ty <- obj .? "type"
+    ty ← obj .? "type"
     case ty of
       "money" → Money <$> obj .? "value" <*> obj .? "currency"
       "time" → Time <$> obj .? "value"

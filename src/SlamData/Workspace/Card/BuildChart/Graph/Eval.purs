@@ -6,7 +6,7 @@ module SlamData.Workspace.Card.BuildChart.Graph.Eval
 import SlamData.Prelude
 
 
-import Data.Argonaut (JArray, JCursor, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, JCursor, Json, cursorGet, toString)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Foreign as FR
@@ -35,6 +35,7 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Graph))
 import SlamData.Workspace.Card.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.Axis (Axis, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
+import SlamData.Workspace.Card.Chart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
 import SlamData.Workspace.Card.Chart.Semantics as Sem
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -190,7 +191,7 @@ buildGraphData records axesMap r =
     let
       mbSource = toString =<< cursorGet r.source js
       mbCategory = toString =<< flip cursorGet js =<< r.color
-      mbValue = toNumber =<< flip cursorGet js =<< r.size
+      mbValue = semanticsToNumber =<< analyzeJson =<< flip cursorGet js =<< r.size
 
       valueAlterFn ∷ Maybe Number → Maybe (Array Number) → Maybe (Array Number)
       valueAlterFn (Just a) Nothing = Just [a]

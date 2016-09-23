@@ -7,7 +7,7 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, Json, cursorGet, toNumber, toString)
+import Data.Argonaut (JArray, Json, cursorGet, toString)
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Lens ((^?))
@@ -31,6 +31,7 @@ import SlamData.Workspace.Card.BuildChart.Common.Positioning (rectangularGrids, 
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model (Model, BoxplotR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
 import SlamData.Workspace.Card.Chart.BuildOptions.ColorScheme (colors)
+import SlamData.Workspace.Card.Chart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -93,7 +94,9 @@ buildBoxplotData r records = series
         let
           mbParallel = toString =<< flip cursorGet js =<< r.parallel
           mbSeries = toString =<< flip cursorGet js =<< r.series
-          values = foldMap A.singleton $ toNumber =<< cursorGet r.value js
+          values =
+            foldMap A.singleton
+              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
 
           alterParallelFn
             ∷ Maybe (Maybe String >> String >> Array Number)
