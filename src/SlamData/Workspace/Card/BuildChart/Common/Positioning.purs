@@ -22,29 +22,47 @@ type WithDonutRadius r =
   | r
   }
 
+itemsInRow ∷ ∀ a. Array a → Int
+itemsInRow arr =
+  let
+    len = A.length arr
+
+    result
+      | len < 2 = 1
+      | len < 5 = 2
+      | len < 10 = 3
+      | otherwise = 4
+  in
+    result
+
+rowCount ∷ ∀ a. Array a → Int
+rowCount arr =
+  Int.ceil $ Int.toNumber (A.length arr) / Int.toNumber (itemsInRow arr)
+
+radialSpaceCoeff ∷ Number
+radialSpaceCoeff = 0.85
+
 adjustRadialPositions
   ∷ ∀ r
   . Array (RadialPosition r)
   → Array (RadialPosition r)
 adjustRadialPositions ps =
   let
-    len ∷ Int
-    len = A.length ps
-
-    itemsInRow ∷ Int
-    itemsInRow
-      | len < 2 = 1
-      | len < 5 = 2
-      | len < 10 = 3
-      | otherwise = 4
+    inRow ∷ Int
+    inRow = itemsInRow ps
 
     numRows ∷ Int
-    numRows =
-      Int.ceil $ Int.toNumber len / Int.toNumber itemsInRow
+    numRows = rowCount ps
 
     topStep ∷ Number
     topStep =
-      90.0 / Int.toNumber numRows
+      100.0 / Int.toNumber numRows
+
+    radiusDivisor ∷ Number
+    radiusDivisor = Int.toNumber $ max inRow numRows
+
+    radius ∷ Maybe Number
+    radius = Just $ 75.0 / radiusDivisor
 
     setPositions
       ∷ Array (RadialPosition r)
@@ -57,20 +75,17 @@ adjustRadialPositions ps =
       Nothing → acc
       Just {head, tail} →
         let
-          top ∷ Number
-          top = topStep * (Int.toNumber rowIx + 0.5) + 5.0
+          top ∷ Maybe Number
+          top = Just $ 100.0 * (2.0 * Int.toNumber rowIx + 1.0) / (Int.toNumber numRows * 2.0) - 10.0
 
-          leftStep ∷ Number
-          leftStep = 90.0 / Int.toNumber inThisRow
-
-          left ∷ Number
-          left = leftStep * (Int.toNumber colIx + 0.5) + 5.0
+          left ∷ Maybe Number
+          left = Just $ 100.0 * (2.0 * Int.toNumber colIx + 1.0) / (Int.toNumber inThisRow * 2.0)
 
           toPush ∷ RadialPosition r
           toPush =
-            head { x = Just left
-                 , y = Just top
-                 , radius = Just $ 90.0 / Int.toNumber itemsInRow
+            head { x = left
+                 , y = top
+                 , radius = radius
                  }
 
           newAcc ∷ Array (RadialPosition r)
@@ -88,13 +103,13 @@ adjustRadialPositions ps =
 
           inNewRow ∷ Int
           inNewRow
-            | A.length tail > itemsInRow = itemsInRow
-            | newColIx ≠ zero = itemsInRow
+            | A.length tail > inRow = inRow
+            | newColIx ≠ zero = inRow
             | otherwise = A.length tail
         in
           setPositions newAcc newColIx newRowIx inNewRow tail
   in
-    setPositions [] 0 0 itemsInRow ps
+    setPositions [] 0 0 inRow ps
 
 adjustDonutRadiuses
   ∷ ∀ r
@@ -123,19 +138,26 @@ adjustDonutRadiuses arr =
     adjustRadius [] zero arr
 
 radialTitles
-  ∷ ∀ r f i
-  . Foldable f
-  ⇒ f (RadialPosition (name ∷ Maybe String |r))
+  ∷ ∀ r i
+  . Array (RadialPosition (name ∷ Maybe String |r))
   → DSL (title ∷ ETP.I|i)
 radialTitles rposs = E.titles $ for_ rposs \{name, x, y, radius} → E.title do
   traverse_ E.text name
   E.textStyle do
     E.fontFamily "Ubuntu, sans"
     E.fontSize 12
-  traverse_ (E.top ∘ ET.Percent) y
-  traverse_ (E.left ∘ ET.Percent) x
+  for_ x \left →
+    E.left $ ET.Percent $ left - 0.3
+  for_ y \top →
+    E.top $ ET.Percent $ top - (rowHeight * radialSpaceCoeff) / 2.0
   E.textCenter
   E.textBottom
+  where
+  numRows ∷ Int
+  numRows = rowCount rposs
+
+  rowHeight ∷ Number
+  rowHeight = 100.0 / Int.toNumber numRows
 
 
 type RectangularPosition r =
@@ -156,16 +178,11 @@ adjustRectangularPositions arr =
     len ∷ Int
     len = A.length arr
 
-    itemsInRow ∷ Int
-    itemsInRow
-      | len < 2 = 1
-      | len < 5 = 2
-      | len < 10 = 3
-      | otherwise = 4
+    inRow ∷ Int
+    inRow = itemsInRow arr
 
     numRows ∷ Int
-    numRows =
-      Int.ceil $ Int.toNumber len / Int.toNumber itemsInRow
+    numRows = rowCount arr
 
     topStep ∷ Number
     topStep =
@@ -201,7 +218,7 @@ adjustRectangularPositions arr =
           toPush =
             head { x = Just left
                  , y = Just top
-                 , w = Just $ 90.0 / Int.toNumber itemsInRow
+                 , w = Just $ 90.0 / Int.toNumber inRow
                  , h = Just $ 90.0 / Int.toNumber numRows
                  , fontSize = Just fontSize
                  }
@@ -221,13 +238,13 @@ adjustRectangularPositions arr =
 
           inNewRow ∷ Int
           inNewRow
-            | A.length tail > itemsInRow = itemsInRow
-            | newColIx ≠ zero = itemsInRow
+            | A.length tail > inRow = inRow
+            | newColIx ≠ zero = inRow
             | otherwise = A.length tail
         in
           setPositions newAcc newColIx newRowIx inNewRow tail
   in
-    setPositions [] 0 0 itemsInRow arr
+    setPositions [] 0 0 inRow arr
 
 
 rectangularTitles

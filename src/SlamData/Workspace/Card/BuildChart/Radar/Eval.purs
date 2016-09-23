@@ -167,8 +167,7 @@ buildRadar r records = do
   serieNames =
     A.fromFoldable
       $ foldMap (_.series
-                 ⋙ foldMap (_.name
-                            ⋙ (foldMap Set.singleton)))
+                 ⋙ foldMap (_.name ⋙ Set.fromFoldable))
         radarData
 
   series ∷ Array (DSL ETP.RadarSeriesI)

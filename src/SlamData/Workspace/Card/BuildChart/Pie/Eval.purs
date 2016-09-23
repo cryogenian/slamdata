@@ -137,11 +137,10 @@ buildPie r records = do
   E.colors colors
 
   E.legend do
-    E.leftLeft
+    E.topBottom
     E.textStyle do
       E.fontSize 12
       E.fontFamily "Ubuntu, sans"
-    E.orient ET.Vertical
     E.items $ map ET.strItem legendNames
 
   E.series series
@@ -152,8 +151,8 @@ buildPie r records = do
   pieData ∷ Array OnePieSeries
   pieData = buildPieData r records
 
-  legendNames ∷ Array String
-  legendNames =
+  itemNames ∷ Array String
+  itemNames =
     A.fromFoldable
       $ foldMap (_.series
                  ⋙ foldMap (_.items
@@ -161,6 +160,17 @@ buildPie r records = do
                             ⋙ Set.fromFoldable)
                 )
         pieData
+
+  seriesNames ∷ Array String
+  seriesNames =
+    A.fromFoldable
+      $ foldMap (_.series ⋙ foldMap (_.name ⋙ Set.fromFoldable)) pieData
+
+  legendNames ∷ Array String
+  legendNames = do
+    s ← seriesNames
+    i ← itemNames
+    pure $ s ⊕ ":" ⊕ i
 
   series ∷ ∀ i. DSL (pie ∷ ETP.I|i)
   series = for_ pieData \{x, y, radius: parallelR, series} →
@@ -183,4 +193,4 @@ buildPie r records = do
       E.buildItems $ for_ (M.toList $ items) \(key × value) →
         E.addItem do
           E.value value
-          E.name key
+          E.name $ foldMap (flip append ":") name ⊕ key
