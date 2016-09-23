@@ -42,6 +42,9 @@ rowCount arr =
 radialSpaceCoeff ∷ Number
 radialSpaceCoeff = 0.85
 
+rectangularSpaceCoeff ∷ Number
+rectangularSpaceCoeff = 0.72
+
 adjustRadialPositions
   ∷ ∀ r
   . Array (RadialPosition r)
@@ -53,10 +56,6 @@ adjustRadialPositions ps =
 
     numRows ∷ Int
     numRows = rowCount ps
-
-    topStep ∷ Number
-    topStep =
-      100.0 / Int.toNumber numRows
 
     radiusDivisor ∷ Number
     radiusDivisor = Int.toNumber $ max inRow numRows
@@ -76,10 +75,13 @@ adjustRadialPositions ps =
       Just {head, tail} →
         let
           top ∷ Maybe Number
-          top = Just $ 100.0 * (2.0 * Int.toNumber rowIx + 1.0) / (Int.toNumber numRows * 2.0) - 10.0
+          top =
+            Just $ 100.0 * (2.0 * Int.toNumber rowIx + 1.0) / (Int.toNumber numRows * 2.0)
 
           left ∷ Maybe Number
-          left = Just $ 100.0 * (2.0 * Int.toNumber colIx + 1.0) / (Int.toNumber inThisRow * 2.0)
+          left =
+            Just $ 10.0 + 90.0 * (2.0 * Int.toNumber colIx + 1.0) / (2.0 * Int.toNumber inThisRow)
+
 
           toPush ∷ RadialPosition r
           toPush =
@@ -141,7 +143,7 @@ radialTitles
   ∷ ∀ r i
   . Array (RadialPosition (name ∷ Maybe String |r))
   → DSL (title ∷ ETP.I|i)
-radialTitles rposs = E.titles $ for_ rposs \{name, x, y, radius} → E.title do
+radialTitles rposs = E.titles $ for_ rposs \{name, x, y} → E.title do
   traverse_ E.text name
   E.textStyle do
     E.fontFamily "Ubuntu, sans"
@@ -184,9 +186,19 @@ adjustRectangularPositions arr =
     numRows ∷ Int
     numRows = rowCount arr
 
-    topStep ∷ Number
-    topStep =
-      90.0 / Int.toNumber numRows
+    colWidth ∷ Number
+    colWidth =
+      100.0 / Int.toNumber inRow
+
+    rowHeight ∷ Number
+    rowHeight =
+      100.0 / Int.toNumber numRows
+
+    legendAndVMHeight ∷ Number
+    legendAndVMHeight = 10.0
+
+    titleHeight ∷ Number
+    titleHeight = 3.0
 
     setPositions
       ∷ Array (RectangularPosition r)
@@ -199,14 +211,19 @@ adjustRectangularPositions arr =
       Nothing → acc
       Just {head, tail} →
         let
-          top ∷ Number
-          top = topStep * (Int.toNumber rowIx + 0.5) + 5.0
+          left ∷ Maybe Number
+          left =
+            Just
+              $ 100.0 * (2.0 * Int.toNumber colIx + one) / (Int.toNumber inRow * 2.0)
+              - (colWidth * rectangularSpaceCoeff) / 2.0
 
-          leftStep ∷ Number
-          leftStep = 90.0 / Int.toNumber inThisRow
-
-          left ∷ Number
-          left = leftStep * (Int.toNumber colIx + 0.5) + 5.0
+          top ∷ Maybe Number
+          top =
+            Just
+              $ (100.0 - legendAndVMHeight - Int.toNumber numRows * titleHeight)
+              * (2.0 * Int.toNumber rowIx + one) / (Int.toNumber numRows * 2.0)
+              - (rowHeight * rectangularSpaceCoeff) / 2.0
+              + Int.toNumber (rowIx + one) *  titleHeight
 
           fontSize ∷ Int
           fontSize
@@ -216,10 +233,10 @@ adjustRectangularPositions arr =
 
           toPush ∷ RectangularPosition r
           toPush =
-            head { x = Just left
-                 , y = Just top
-                 , w = Just $ 90.0 / Int.toNumber inRow
-                 , h = Just $ 90.0 / Int.toNumber numRows
+            head { x = left
+                 , y = top
+                 , w = Just $ colWidth * rectangularSpaceCoeff
+                 , h = Just $ rowHeight * rectangularSpaceCoeff
                  , fontSize = Just fontSize
                  }
 
@@ -248,20 +265,33 @@ adjustRectangularPositions arr =
 
 
 rectangularTitles
-  ∷ ∀ r f i
-  . Foldable f
-  ⇒ f (RectangularPosition (name ∷ Maybe String |r))
+  ∷ ∀ r i
+  . Array (RectangularPosition (name ∷ Maybe String |r))
   → DSL (title ∷ ETP.I|i)
 rectangularTitles poss = E.titles $ for_ poss \{name, x, y, h, fontSize} → E.title do
   traverse_ E.text name
   E.textStyle do
     E.fontFamily "Ubuntu, sans"
     traverse_ E.fontSize fontSize
-  traverse_ (E.top ∘ ET.Percent) y
-  traverse_ (E.left ∘ ET.Percent) x
+  for_ y \top →
+    E.top $ ET.Percent $ top - 5.0
+  for_ x \left →
+    E.left $ ET.Percent $ left + colWidth / 2.0 - 0.3
   E.textCenter
   E.textMiddle
+  where
+  numRows ∷ Int
+  numRows = rowCount poss
 
+  rowHeight ∷ Number
+  rowHeight = 100.0 / Int.toNumber numRows
+
+  inRow ∷ Int
+  inRow = itemsInRow poss
+
+  colWidth ∷ Number
+  colWidth =
+    rectangularSpaceCoeff * 100.0 / Int.toNumber inRow
 
 rectangularGrids
   ∷ ∀ r f i
@@ -269,11 +299,7 @@ rectangularGrids
   ⇒ f (RectangularPosition r)
   → DSL (grid ∷ ETP.I|i)
 rectangularGrids poss = E.grids $ for_ poss \{w, h, x, y} → E.grid do
-  case x × w of
-    Just x' × Just w' → E.left $ ET.Percent $ x' - w' / 2.0
-    _ → pure unit
-  case y × h of
-    Just y' × Just h' → E.top $ ET.Percent $ y' - h' / 2.0
-    _ → pure unit
+  for_ x $ E.left ∘ ET.Percent
+  for_ y $ E.top ∘ ET.Percent
   for_ w E.widthPct
   for_ h E.heightPct

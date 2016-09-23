@@ -137,11 +137,12 @@ buildPie r records = do
   E.colors colors
 
   E.legend do
-    E.topBottom
     E.textStyle do
       E.fontSize 12
       E.fontFamily "Ubuntu, sans"
     E.items $ map ET.strItem legendNames
+    E.orient ET.Vertical
+    E.leftLeft
 
   E.series series
 
