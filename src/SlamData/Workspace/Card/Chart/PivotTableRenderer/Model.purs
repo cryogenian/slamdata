@@ -28,7 +28,7 @@ type Model =
 
 initialModel ∷ Model
 initialModel =
-  { pageSize: 20
+  { pageSize: 25
   }
 
 eqModel ∷ Model → Model → Boolean

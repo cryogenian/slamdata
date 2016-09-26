@@ -51,7 +51,7 @@ type State =
   , pageCount ∷ Int
   , pageIndex ∷ Int
   , pageSize ∷ Int
-  , records ∷ PTree J.Json J.Json
+  , records ∷ Maybe (PTree J.Json J.Json)
   , customPage ∷ Maybe String
   , loading ∷ Boolean
   }
@@ -63,7 +63,7 @@ initialState =
   , pageCount: 0
   , pageIndex: 0
   , pageSize: PTRM.initialModel.pageSize
-  , records: Bucket []
+  , records: Nothing
   , customPage: Nothing
   , loading: false
   }
@@ -98,7 +98,7 @@ render st =
         [ HP.classes [ HH.className "sd-pivot-table" ] ]
         [ HH.div
             [ HP.classes [ HH.className "sd-pivot-table-content" ] ]
-            [ renderTable options.dimensions options.columns st.records ]
+            [ maybe (HH.text "") (renderTable options.dimensions options.columns) st.records ]
         , HH.div
             [ HP.classes
                 [ HH.className "sd-pagination"
@@ -262,11 +262,14 @@ eval = case _ of
           tr1, Just { options, taggedResource: tr2 } →
             tr1.resource ≡ tr2.resource && tr1.tag ≡ tr2.tag && isSimple options
           _, _ → false
-    traceAnyA { tag: "Update", input, input2: st.input, sameResource }
     if sameResource
-      then H.modify _ { input = Just input }
-      else H.modify _ { input = Just input, pageIndex = 0, count = 0, pageCount = 0 }
-    pageQuery input
+      then do
+        H.modify _ { input = Just input }
+        when (isNothing st.records) do
+          pageQuery input
+      else do
+        H.modify _ { input = Just input, pageIndex = 0, count = 0, pageCount = 0 }
+        pageQuery input
     pure next
   Update input next → do
     st ← H.get
@@ -349,7 +352,7 @@ pageQuery input = do
   H.modify _ { loading = false }
   for_ records \recs →
     H.modify _
-      { records = buildTree mempty Bucket Grouped recs
+      { records = Just (buildTree mempty Bucket Grouped recs)
       }
 
 pageTree ∷ PivotTablePort → DSL Unit
@@ -364,7 +367,7 @@ pageTree input = do
     pageCount = Array.length (snd pages)
     pageIndex = clamp 0 (pageCount - 1) st.pageIndex
   H.modify _
-    { records = fromMaybe (Bucket []) (Array.index (snd pages) pageIndex)
+    { records = Array.index (snd pages) pageIndex
     , count = fst pages
     , pageCount = pageCount
     , pageIndex = pageIndex
