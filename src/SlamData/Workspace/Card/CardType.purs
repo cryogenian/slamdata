@@ -39,7 +39,14 @@ import Halogen.HTML as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), allChartTypes, printChartType, parseChartType, chartLightIconSrc, chartDarkIconSrc)
+import SlamData.Workspace.Card.CardType.ChartType
+  ( ChartType(..)
+  , allChartTypes
+  , printChartType
+  , parseChartType
+  , chartLightIconSrc
+  , chartDarkIconSrc
+  )
 
 import Test.StrongCheck.Arbitrary as SC
 

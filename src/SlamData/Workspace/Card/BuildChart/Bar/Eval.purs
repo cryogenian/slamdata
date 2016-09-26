@@ -182,7 +182,6 @@ buildBar r records axes = do
                  ⋙ foldMap (_.items
                             ⋙ M.keys
                             ⋙ Set.fromFoldable)) barData
-  -- TODO: use semantics
   xSortFn ∷ String → String → Ordering
   xSortFn a b
     | F.elem r.category axes.value = compare (stringToNumber a) (stringToNumber b)

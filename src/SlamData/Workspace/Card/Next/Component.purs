@@ -22,6 +22,8 @@ module SlamData.Workspace.Card.Next.Component
 
 import SlamData.Prelude
 
+import Data.Array as A
+import Data.Foldable as F
 import Data.Lens ((.~))
 import Data.String as Str
 
@@ -52,7 +54,13 @@ type NextDSL = H.ComponentDSL State QueryP Slam
 nextCardComponent ∷ CC.CardComponent
 nextCardComponent = CC.makeCardComponent
   { cardType: CT.NextAction
-  , component: H.lifecycleComponent { initializer: Just $ right $ H.action $ Init, finalizer: Nothing, render, eval}
+  , component:
+      H.lifecycleComponent
+        { initializer: Just $ right $ H.action $ Init
+        , finalizer: Nothing
+        , render
+        , eval
+        }
   , initialState: State.initialState
   , _State: CC._NextState
   , _Query: CC.makeQueryPrism CC._NextQuery
@@ -83,33 +91,37 @@ render state =
           (HH.className "sd-add-card-guide")
           (right ∘ DismissAddCardGuide)
           (addCardGuideText state.input))
-    ⊕ [ HH.ul_ $ map nextButton CT.insertableCardTypes ]
+    ⊕ [ HH.ul_ $ map nextButton state.actions ]
   where
 
   filterString ∷ String
   filterString = Str.toLower state.filterString
 
-  cardTitle ∷ CT.CardType → String
-  cardTitle cty = "Insert " ⊕ CT.cardName cty ⊕ " card"
+  cardTitle ∷ State.NextAction → String
+  cardTitle (State.Insert cty) = "Insert " ⊕ CT.cardName cty ⊕ " card"
+  cardTitle (State.Drill name _ _) = "Select " ⊕ name ⊕ " card category"
 
-  nextButton ∷ CT.CardType → NextHTML
-  nextButton cty =
+  nextButton ∷ State.NextAction → NextHTML
+  nextButton action =
     HH.li_
       [ HH.button attrs
-          [ CT.lightCardGlyph cty
-          , HH.p_ [ HH.text (CT.cardName cty) ]
+          [ State.actionGlyph action
+          , HH.p_ [ HH.text $ State.actionLabel action ]
           ]
       ]
     where
-    enabled = Str.contains filterString (Str.toLower $ CT.cardName cty)
+    enabled ∷ Boolean
+    enabled =
+      F.any (Str.contains filterString ∘ Str.toLower) $ State.searchFilters action
+
     attrs =
-      [ HP.title $ cardTitle cty
+      [ HP.title $ cardTitle action
       , HP.disabled $ not enabled
-      , ARIA.label $ cardTitle cty
-      ] ⊕ (guard (not $ takesInput state.input cty)
+      , ARIA.label $ cardTitle action
+      ] ⊕ (guard (not $ F.any (takesInput state.input) $ State.foldToArray action)
              $> HP.classes [ HH.className "sd-button-warning" ])
         ⊕ (guard enabled
-             $> HE.onClick (HE.input_ (right ∘ addCardOrPresentReason state.input cty)))
+             $> HE.onClick (HE.input_ (right ∘ addCardOrPresentReason state.input action)))
 
   addCardGuideTextEmptyDeck = "To get this deck started press one of these buttons to add a card."
   addCardGuideTextNonEmptyDeck = "To do more with this deck press one of these buttons to add a card."
@@ -146,8 +158,9 @@ possibleToGetTo ∷ Maybe Port.Port → CT.CardType → Boolean
 possibleToGetTo input =
   maybe false (ICT.possibleToGetTo $ ICT.fromMaybePort input) ∘ ICT.fromCardType
 
-addCardOrPresentReason ∷ ∀ a. Maybe Port.Port → CT.CardType → a -> Query a
-addCardOrPresentReason input cardType a = AddCard cardType a
+addCardOrPresentReason ∷ ∀ a. Maybe Port.Port → State.NextAction → a → Query a
+addCardOrPresentReason input (State.Insert cardType) a = AddCard cardType a
+addCardOrPresentReason input (State.Drill _ _ _) a = Init a -- 0_o
 --  if takesInput input cardType
 --     then AddCard cardType a
 --     else PresentReason input cardType a
@@ -172,7 +185,10 @@ dismissAddCardGuide =
 nextEval ∷ Query ~> NextDSL
 nextEval (AddCard _ next) = dismissAddCardGuide $> next
 nextEval (PresentReason io card next) = pure next
-nextEval (UpdateFilter str next) = H.modify (State._filterString .~ str) $> next
+nextEval (UpdateFilter str next) = do
+  H.modify
+    $ (State._filterString .~ str)
+  pure next
 nextEval (DismissAddCardGuide next) = dismissAddCardGuide $> next
 nextEval (Init next) = do
   H.modify ∘ (State._presentAddCardGuide .~ _) ∘ not =<< getDismissedAddCardGuideBefore
