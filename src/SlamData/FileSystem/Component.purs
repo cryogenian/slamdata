@@ -77,7 +77,7 @@ import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
 import SlamData.Render.Common (content, row)
-import SlamData.SignIn.Component as SignIn
+import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 import SlamData.Wiring (Wiring(..))
@@ -455,14 +455,14 @@ mountPeek = go ⨁ const (pure unit)
   go _ = pure unit
 
 dismissSignInSubmenu ∷ DSL Unit
-dismissSignInSubmenu = querySignIn $ H.action SignIn.DismissSubmenu
+dismissSignInSubmenu = querySignIn $ H.action GlobalMenu.DismissSubmenu
   where
-  querySignIn ∷ ∀ a. SignIn.Query a → DSL Unit
+  querySignIn ∷ ∀ a. GlobalMenu.Query a → DSL Unit
   querySignIn =
     void
       ∘ H.query' cpHeader unit
       ∘ right
-      ∘ H.ChildF (injSlot Header.cpSignIn unit)
+      ∘ H.ChildF (injSlot Header.cpGlobalMenu unit)
       ∘ right
       ∘ left
 

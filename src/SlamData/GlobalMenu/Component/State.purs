@@ -14,15 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.SignIn.Component.State where
+module SlamData.GlobalMenu.Component.State where
 
 type State =
   { loggedIn :: Boolean
-  , hidden :: Boolean
   }
 
 initialState :: State
 initialState =
   { loggedIn: false
-  , hidden: false
   }

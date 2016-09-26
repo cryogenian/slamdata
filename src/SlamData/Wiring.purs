@@ -51,7 +51,7 @@ import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
-import SlamData.SignIn.Bus (SignInBus)
+import SlamData.GlobalMenu.Bus (SignInBus)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port)

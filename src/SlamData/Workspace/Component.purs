@@ -59,7 +59,7 @@ import SlamData.Notification.Component as NC
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
-import SlamData.SignIn.Component as SignIn
+import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Wiring (Wiring, putDeck, getDeck)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
@@ -200,7 +200,7 @@ eval (SetVarMaps urlVarMaps next) = do
   putURLVarMaps urlVarMaps
   pure next
 eval (DismissAll ev next) = do
-  querySignIn $ H.action SignIn.DismissSubmenu
+  querySignIn $ H.action GlobalMenu.DismissSubmenu
   eq ← H.fromEff $ elementEq ev.target ev.currentTarget
   when eq $ void $ queryDeck $ H.action Deck.Focus
   pure next
@@ -393,13 +393,13 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck = H.query' cpDeck unit ∘ right
 
-querySignIn ∷ ∀ a. SignIn.Query a → WorkspaceDSL Unit
+querySignIn ∷ ∀ a. GlobalMenu.Query a → WorkspaceDSL Unit
 querySignIn =
   void
     ∘ H.query' cpHeader unit
     ∘ right
-    ∘ H.ChildF (injSlot Header.cpSignIn unit)
-    ∘ injQuery Header.cpSignIn
+    ∘ H.ChildF (injSlot Header.cpGlobalMenu unit)
+    ∘ injQuery Header.cpGlobalMenu
     ∘ left
 
 lefts ∷ ∀ a b. Array (Either a b) → Array a
