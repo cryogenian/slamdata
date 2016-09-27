@@ -260,7 +260,8 @@ eval = case _ of
       sameResource =
         case input.taggedResource, st.input of
           tr1, Just { options, taggedResource: tr2 } →
-            tr1.resource ≡ tr2.resource && tr1.tag ≡ tr2.tag && isSimple options
+            tr1.resource ≡ tr2.resource && tr1.tag ≡ tr2.tag &&
+            isSimple options && input.options.columns ≡ options.columns
           _, _ → false
     if sameResource
       then do
