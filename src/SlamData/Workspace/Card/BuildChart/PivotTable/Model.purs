@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor, Json, class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
 import Data.Array as Array
 import Data.Foldable as F
+import Data.Lens (PrismP, prism')
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -33,19 +34,23 @@ type PivotTableR =
   , columns ∷ Array Column
   }
 
-newtype Column = Column
-  { value ∷ JCursor
-  , valueAggregation ∷ Maybe (Ag.Aggregation)
-  }
+data Column
+  = Column
+      { value ∷ JCursor
+      , valueAggregation ∷ Maybe (Ag.Aggregation)
+      }
+  | Count
 
 type Model = Maybe PivotTableR
 
-unColumn
-  ∷ Column
-  → { value ∷ JCursor
-    , valueAggregation ∷ Maybe (Ag.Aggregation)
-    }
-unColumn (Column c) = c
+_Column
+  ∷ PrismP Column
+      { value ∷ JCursor
+      , valueAggregation ∷ Maybe (Ag.Aggregation)
+      }
+_Column = prism' Column case _ of
+  Column r → Just r
+  _ → Nothing
 
 initialModel ∷ Model
 initialModel = Nothing
@@ -106,17 +111,31 @@ instance arbitraryColumn ∷ Arbitrary Column where
 
 instance encodeJsonColumn ∷ EncodeJson Column where
   encodeJson (Column c) =
-    "value" := c.value
+    "columnType" := "value"
+    ~> "value" := c.value
     ~> "valueAggregation" := c.valueAggregation
+    ~> jsonEmptyObject
+  encodeJson Count =
+    "columnType" := "count"
     ~> jsonEmptyObject
 
 instance decodeJsonColumn ∷ DecodeJson Column where
   decodeJson json = do
     obj ← decodeJson json
-    value ← obj .? "value"
-    valueAggregation ← obj .? "valueAggregation"
-    pure $ Column { value, valueAggregation }
+    columnType ← obj .? "columnType"
+    case columnType of
+      "value" → do
+        value ← obj .? "value"
+        valueAggregation ← obj .? "valueAggregation"
+        pure $ Column { value, valueAggregation }
+      "count" → do
+        pure Count
+      _ →
+        Left $ "Not a valid column type: " <> columnType
 
 isSimple ∷ PivotTableR → Boolean
 isSimple { dimensions, columns } =
-  Array.null dimensions && F.all (isNothing ∘ _.valueAggregation ∘ unColumn) columns
+  Array.null dimensions && F.all simpleCol columns
+  where
+  simpleCol (Column { valueAggregation: Nothing }) = true
+  simpleCol _ = false

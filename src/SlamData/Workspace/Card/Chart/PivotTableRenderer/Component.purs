@@ -132,7 +132,11 @@ render st =
                 (if Array.null dims
                   then []
                   else [ HH.td [ HP.colSpan (Array.length dims) ] [] ])
-                <> map (\(Column { value }) → HH.th_ [ HH.text (showJCursor value) ]) cols
+                <> map
+                     case _ of
+                       Column { value } → HH.th_ [ HH.text (showJCursor value) ]
+                       Count → HH.th_ [ HH.text "COUNT" ]
+                     cols
             ] <> renderRows cols' tree
 
   renderRows cols =
@@ -146,23 +150,27 @@ render st =
       rowLen = sizeOfRow cols row
     in
       Array.range 0 (rowLen - 1) <#> \rowIx →
-        flip foldMap cols \(ix × Column { valueAggregation }) →
+        flip foldMap cols \(ix × col) →
           let
-            text = J.cursorGet (tupleN ix) row <#> case rowIx, valueAggregation of
-              0, Just ag →
+            text = J.cursorGet (tupleN ix) row <#> case rowIx, col of
+              0, Column { valueAggregation: Just ag } →
                 foldJsonArray'
                   renderJson
                   (show ∘ Ag.runAggregation ag ∘ jsonNumbers)
-              _, Just ag →
+              _, Column { valueAggregation: Just ag } →
                 foldJsonArray'
                   (const "")
                   (maybe "" renderJson ∘ flip Array.index rowIx)
-              _, _ →
+              _, Column _ →
                 foldJsonArray'
                   renderJson
                   (maybe "" renderJson ∘ flip Array.index rowIx)
-          in
-            [ HH.td_ [ HH.text (fromMaybe "" text) ] ]
+              0, Count →
+                J.foldJsonNumber "" show
+              _, Count →
+                const ""
+            in
+              [ HH.td_ [ HH.text (fromMaybe "" text) ] ]
 
   jsonNumbers =
     Array.mapMaybe (J.foldJsonNumber Nothing Just)
@@ -386,7 +394,9 @@ simpleQuery columns tr =
   let
     cols =
       Array.mapWithIndex
-        (\i (Column c) → "row" <> show c.value <> " AS _" <> show i)
+        case _, _ of
+          i, Column c → "row" <> show c.value <> " AS _" <> show i
+          i, _ → "COUNT(*) AS _" <> show i -- Shouldn't be possible, but ok
         columns
   in
     QQ.templated tr.resource $ String.joinWith " "

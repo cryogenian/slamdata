@@ -34,7 +34,9 @@ eval (Just options@{ dimensions: [] }) tr = do
     path = fromMaybe P.rootDir (P.parentDir tr.resource)
     cols =
       Array.mapWithIndex
-        (\i (PTM.Column c) → sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show i)
+        case _, _ of
+          i, PTM.Column c → sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show i
+          i, PTM.Count    → "COUNT(*) AS _" <> show i
         options.columns
     sql =
       QQ.templated tr.resource $ String.joinWith " "
@@ -56,7 +58,9 @@ eval (Just options) tr = do
         options.dimensions
     cols =
       Array.mapWithIndex
-        (\i (PTM.Column c) → sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show (i + dlen))
+        case _, _ of
+          i, PTM.Column c → sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show (i + dlen)
+          i, PTM.Count    → "COUNT(*) AS _" <> show (i + dlen)
         options.columns
     sql =
       QQ.templated tr.resource $ String.joinWith " "

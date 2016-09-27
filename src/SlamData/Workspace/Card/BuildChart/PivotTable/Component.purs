@@ -90,18 +90,26 @@ renderHighLOD st =
     ]
   where
   renderSelect = case _ of
-    Col → renderSelectContainer "Choose column"
-    Dim → renderSelectContainer "Choose dimension"
-
-  renderSelectContainer title =
-    HH.slot unit \_ →
+    Col →
+      let
+        values =
+          Array.cons Count
+            (map (Column ∘ { value: _, valueAggregation: Nothing })
+              (Array.sort (st.axes.category <> st.axes.time <> st.axes.value)))
+      in
+        HH.slot' PCS.cpCol unit \_ →
+          { component: DPC.picker "Choose column" showColumn
+          , initialState: { values, selectedIndex: -1 }
+          }
+    Dim →
       let
         values =
           Array.sort (st.axes.category <> st.axes.time <> st.axes.value)
       in
-        { component: DPC.picker title showJCursor
-        , initialState: { values, selectedIndex: -1 }
-        }
+        HH.slot' PCS.cpDim unit \_ →
+          { component: DPC.picker "Choose dimension" showJCursor
+          , initialState: { values, selectedIndex: -1 }
+          }
 
   renderedDimensions =
     let
@@ -196,7 +204,7 @@ renderHighLOD st =
           ]
       ]
 
-  renderColumn size (slot × (Column col)) =
+  renderColumn size (slot × col) =
     HH.div
       ([ HP.classes (columnClasses slot)
        , HC.style (C.width (C.pct size))
@@ -211,7 +219,8 @@ renderHighLOD st =
                   [ HP.classes [ HH.className "sd-pivot-options-label" ]
                   , HE.onMouseDown (HE.input (\e → right ∘ OrderColumnStart slot e))
                   ]
-                  [ HH.text (showJCursor col.value) ]
+                  [ HH.text (showColumn col)
+                  ]
               , HH.button
                   [ HP.classes [ HH.className "sd-dismiss-button" ]
                   , HP.title "Delete column"
@@ -222,8 +231,9 @@ renderHighLOD st =
               ]
           , HH.div
               [ HP.classes [ HH.className "sd-pivot-options-col-aggregation" ] ]
-              [ columnSelect slot col.valueAggregation
-              ]
+              case col of
+                Column { valueAggregation } → [ columnSelect slot valueAggregation ]
+                _ → []
           ]
       ]
 
@@ -269,6 +279,9 @@ renderHighLOD st =
       , HE.onClick (HE.input_ (right ∘ ChooseAggregation slot ctr))
       ]
       [ HH.text (maybe "Tabulate" S.stringVal ctr) ]
+
+  showColumn (Column { value }) = showJCursor value
+  showColumn Count = "COUNT"
 
   showJCursor (J.JField i c) = i <> show c
   showJCursor c = show c
@@ -399,25 +412,32 @@ evalOptions = case _ of
     pure next
 
 peek ∷ ∀ a. H.ChildF PCS.ChildSlot PCS.ChildQuery a → DSL Unit
-peek = peekSelect ∘ H.runChildF
+peek = (coproduct peekSelectDim peekSelectCol) ∘ H.runChildF
   where
-  peekSelect = case _ of
+  peekSelectDim = case _ of
     DPC.Dismiss _ →
       H.modify _ { selecting = Nothing }
     DPC.Confirm value _ → do
       st ← H.get
-      for_ st.selecting case _ of
-        Col →
-          H.modify _
-            { fresh = st.fresh + 1
-            , columns = Array.snoc st.columns (st.fresh × Column { value, valueAggregation: Nothing })
-            }
-        Dim →
-          H.modify _
-            { fresh = st.fresh + 1
-            , dimensions = Array.snoc st.dimensions (st.fresh × value)
-            }
+      H.modify _
+        { fresh = st.fresh + 1
+        , dimensions = Array.snoc st.dimensions (st.fresh × value)
+        , selecting = Nothing
+        }
+      CC.raiseUpdatedP' CC.EvalModelUpdate
+    _ →
+      pure unit
+
+  peekSelectCol = case _ of
+    DPC.Dismiss _ →
       H.modify _ { selecting = Nothing }
+    DPC.Confirm value _ → do
+      st ← H.get
+      H.modify _
+        { fresh = st.fresh + 1
+        , columns = Array.snoc st.columns (st.fresh × value)
+        , selecting = Nothing
+        }
       CC.raiseUpdatedP' CC.EvalModelUpdate
     _ →
       pure unit
