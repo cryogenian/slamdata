@@ -23,6 +23,7 @@ module SlamData.Wiring
   , PendingMessage
   , DeckMessage(..)
   , StepByStepGuide(..)
+  , SignInPromptMessage(..)
   , makeWiring
   , makeCache
   , putDeck
@@ -82,6 +83,10 @@ data DeckMessage
   = DeckFocused DeckId
   | URLVarMapsUpdated
 
+data SignInPromptMessage
+  = PresentSignInPrompt { src ∷ String, dismissedAVar ∷ AVar Unit }
+  | DismissSignInPrompt
+
 data StepByStepGuide
   = CardGuide
   | FlipGuide
@@ -102,6 +107,7 @@ newtype Wiring =
     , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
     , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
     , signInBus ∷ SignInBus
+    , signInPromptBus ∷ Bus.BusRW SignInPromptMessage
     , hasIdentified ∷ Ref Boolean
     , presentStepByStepGuide ∷ Bus.BusRW StepByStepGuide
     }
@@ -121,6 +127,7 @@ makeWiring = fromAff do
   requestNewIdTokenBus ← Auth.authentication
   urlVarMaps ← fromEff (newRef mempty)
   signInBus ← Bus.make
+  signInPromptBus ← Bus.make
   hasIdentified ← fromEff (newRef false)
   presentStepByStepGuide ← Bus.make
   pure $
@@ -135,6 +142,7 @@ makeWiring = fromAff do
       , requestNewIdTokenBus
       , urlVarMaps
       , signInBus
+      , signInPromptBus
       , hasIdentified
       , presentStepByStepGuide
       }
