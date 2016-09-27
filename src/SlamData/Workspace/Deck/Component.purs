@@ -327,7 +327,7 @@ getVarMaps path =
         pure $ (deckId × Variables.eval deckId Map.empty vm) : acc
       Card.Draftboard dbm →
         L.foldM goDeck acc (L.catMaybes $ Pane.toList dbm.layout)
-      _ ->
+      _ →
         pure acc
   goDeck
     ∷ L.List (DeckId × Port.VarMap)
@@ -342,7 +342,7 @@ getVarMaps path =
       Left err → do
         Notify.loadDeckFail err
         pure acc
-      Right cards ->
+      Right cards →
         Array.foldM goCard acc cards
 
 peek ∷ ∀ a. DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
@@ -563,7 +563,8 @@ dismissAccessNextActionCardGuide =
 
 resetAccessNextActionCardGuideDelay ∷ DeckDSL Unit
 resetAccessNextActionCardGuideDelay =
-  cancelPresentAccessNextActionCardGuide >>= if _ then presentAccessNextActionCardGuideAfterDelay else pure unit
+  cancelPresentAccessNextActionCardGuide
+  >>= if _ then presentAccessNextActionCardGuideAfterDelay else pure unit
 
 deckDSLLater ∷ Int → DeckDSL Unit → DeckDSL Unit
 deckDSLLater ms action =
@@ -593,14 +594,14 @@ peekAnyCard cardCoord q = do
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._PresentReason) $ uncurry presentReason
 
-presentReason ∷ (Maybe Port.Port) -> CT.CardType → DeckDSL Unit
+presentReason ∷ (Maybe Port.Port) → CT.CardType → DeckDSL Unit
 presentReason input cardType =
   traverse_ showDialog dialog
   where
   insertableCardType = ICT.fromCardType cardType
   ioType = ICT.fromMaybePort input
-  reason = ICT.reason ioType <$> insertableCardType
-  cardPaths = map (map ICT.toCardType) ∘ ICT.cardPathsBetween ioType <$> insertableCardType
+  reason = ICT.reason ioType cardType
+  cardPaths = map (ICT.cardPathsBetween ioType) insertableCardType
   dialog = Dialog.Reason cardType <$> reason <*> cardPaths
 
 nextActionCard ∷ Card.Model
@@ -936,8 +937,8 @@ loadDeck opts path deckId = do
 
 loadMirroredCards
   :: DirPath
-  -> Array (DeckId × CardId)
-  -> DeckDSL (Either QE.QError (Array (DeckId × Card.Model)))
+  → Array (DeckId × CardId)
+  → DeckDSL (Either QE.QError (Array (DeckId × Card.Model)))
 loadMirroredCards path coords = do
   let deckIds = Array.nub (fst <$> coords)
   res ← H.liftH $ H.liftH $ sequence <$> parTraverse (W.getDeck path) deckIds
@@ -1040,7 +1041,7 @@ getSharingInput = do
 updateCardSize ∷ DeckDSL Unit
 updateCardSize = do
   H.queryAll' cpCard $ left $ H.action UpdateDimensions
-  H.gets _.deckElement >>= traverse_ \el -> do
+  H.gets _.deckElement >>= traverse_ \el → do
     { width } ← H.fromEff $ getBoundingClientRect el
     H.modify $ DCS._responsiveSize .~ breakpoint width
   where

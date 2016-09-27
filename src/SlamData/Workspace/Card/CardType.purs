@@ -26,7 +26,6 @@ module SlamData.Workspace.Card.CardType
   , aceMode
   , controllable
   , insertableCardTypes
-
   , blocking
   ) where
 
@@ -83,7 +82,6 @@ insertableCardTypes =
   , Troubleshoot
   , Cache
   ]
-  ⊕ map ChartOptions allChartTypes
 
 derive instance eqCardType ∷ Eq CardType
 derive instance ordCardType ∷ Ord CardType
@@ -133,7 +131,8 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "ace-markdown" → pure $ Ace MarkdownMode
       "ace-sql" → pure $ Ace SQLMode
       "search" → pure Search
-      "chart-options" → pure $ ChartOptions Pie
+      -- TODO
+--      "chart-options" → pure $ ChartOptions Pie
       "chart" → pure Chart
       "markdown" → pure Markdown
       "table" → pure Table
@@ -157,7 +156,11 @@ cardName ∷ CardType → String
 cardName = case _ of
   Ace at → aceCardName at
   Search → "Search"
-  ChartOptions _ → "Setup Chart"
+  ChartOptions chty →
+    let
+      capitalize s = Str.toUpper (Str.take 1 s) ⊕ Str.drop 1 s
+    in
+      "Setup " ⊕ (capitalize $ printChartType chty)
   Chart → "Show Chart"
   Markdown → "Show Markdown"
   Table → "Show Table"
@@ -177,9 +180,7 @@ darkCardGlyph = case _ of
   Ace MarkdownMode → HH.img [ HP.src "img/cardsDark/setupMarkdown.svg" ]
   Ace SQLMode → HH.img [ HP.src "img/cardsDark/query.svg" ]
   Search →  HH.img [ HP.src "img/cardsDark/search.svg" ]
-  ChartOptions chty →
-    HH.img [ HP.src $ chartDarkIconSrc chty ]
---      HH.img [ HP.src "img/cardsDark/setupChart.svg" ]
+  ChartOptions chty → HH.img [ HP.src $ chartDarkIconSrc chty ]
   Download → HH.img [ HP.src "img/cardsDark/showDownload.svg" ]
   Variables → HH.img [ HP.src "img/cardsDark/setupVariables.svg" ]
   Troubleshoot → HH.img [ HP.src "img/cardsDark/troubleshoot.svg" ]
@@ -199,9 +200,7 @@ lightCardGlyph = case _ of
   Ace MarkdownMode → HH.img [ HP.src "img/cardsLight/setupMarkdown.svg" ]
   Ace SQLMode → HH.img [ HP.src "img/cardsLight/query.svg" ]
   Search →  HH.img [ HP.src "img/cardsLight/search.svg" ]
-  ChartOptions chty →
---    HH.img [ HP.src "img/cardsLight/setupChart.svg" ]
-    HH.img [ HP.src $ chartLightIconSrc chty ]
+  ChartOptions chty → HH.img [ HP.src $ chartLightIconSrc chty ]
   Download → HH.img [ HP.src "img/cardsLight/showDownload.svg" ]
   Variables → HH.img [ HP.src "img/cardsLight/setupVariables.svg" ]
   Troubleshoot → HH.img [ HP.src "img/cardsLight/troubleshoot.svg" ]

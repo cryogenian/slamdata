@@ -21,56 +21,39 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.Lens (LensP, lens)
 
-import Halogen.HTML as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-
 import SlamData.Workspace.Card.Port (Port)
-import SlamData.Workspace.Card.CardType (CardType, insertableCardTypes, cardName, lightCardGlyph)
+
 import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
-
-data NextAction
-  = Insert CardType
-  | Drill String String (Array NextAction)
-
-instance eqNextAction ∷ Eq NextAction where
-  eq (Insert cty1) (Insert cty2) = cty1 ≡ cty2
-  eq (Drill n1 i1 ctys1) (Drill n2 i2 ctys2) =
-    n1 ≡ n2
-    ∧ i1 ≡ i2
-    ∧ ctys1 ≡ ctys2
-  eq _ _ = false
+import SlamData.Workspace.Card.Next.NextAction (NextAction(..))
+import SlamData.Workspace.Card.CardType (CardType(..), insertableCardTypes)
 
 type State =
   { input ∷ Maybe Port
   , presentAddCardGuide ∷ Boolean
   , actions ∷ Array NextAction
-  , activeActions ∷ Array NextAction
+  , previousActions ∷ Array NextAction
   , filterString ∷ String
   }
 
-foldToArray ∷ NextAction → Array CardType
-foldToArray (Insert cty) = [ cty ]
-foldToArray (Drill _ _ as) = A.concat $ map foldToArray as
+chartSubmenu ∷ Array NextAction
+chartSubmenu =
+  [ Drill
+      "Setup Chart"
+      "img/cardsLight/setupChart.svg"
+      $ [ GoBack ]
+      ⊕ map (Insert ∘ ChartOptions) allChartTypes
+  ]
 
-searchFilters ∷ NextAction → Array String
-searchFilters (Insert cty) = [ cardName cty ]
-searchFilters  (Drill name _ as) = [ name ] ⊕ A.concat (map searchFilters as)
-
-actionLabel ∷ NextAction → String
-actionLabel (Insert cty) = cardName cty
-actionLabel (Drill name _ _) = name
-
-actionGlyph ∷ ∀ s f. NextAction → H.HTML s f
-actionGlyph (Insert cty) = lightCardGlyph cty
-actionGlyph (Drill _ src _) = HH.img [ HP.src src ]
+defaultActions ∷ Array NextAction
+defaultActions =
+  map Insert insertableCardTypes ⊕ chartSubmenu
 
 initialState ∷ State
 initialState =
   { input: Nothing
   , presentAddCardGuide: true
-  , actions: map Insert insertableCardTypes ⊕ [Drill "TROLOLO" "foo" [ ] ]
-  , activeActions: map Insert insertableCardTypes ⊕ [Drill "TROLOLO" "foo" [ ] ]
+  , actions: defaultActions
+  , previousActions: [ ]
   , filterString: ""
   }
 
@@ -80,8 +63,8 @@ _input = lens _.input (_ { input = _ })
 _actions ∷ ∀ a r. LensP { actions ∷ a |r } a
 _actions = lens _.actions (_ { actions = _ })
 
-_activeActions ∷ ∀ a r. LensP { activeActions ∷ a | r} a
-_activeActions = lens _.activeActions (_ { activeActions = _ })
+_previousActions ∷ ∀ a r. LensP { previousActions ∷ a | r} a
+_previousActions = lens _.previousActions (_ { previousActions = _ })
 
 _presentAddCardGuide ∷ ∀ a r. LensP { presentAddCardGuide ∷ a | r } a
 _presentAddCardGuide = lens _.presentAddCardGuide (_ { presentAddCardGuide = _ })

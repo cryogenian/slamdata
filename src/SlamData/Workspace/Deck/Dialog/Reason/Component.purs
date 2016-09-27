@@ -26,11 +26,12 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CardType
+import SlamData.Workspace.Card.InsertableCardType (InsertableCardType, print)
 
 type State =
   { attemptedCardType ∷ CardType
   , reason ∷ String
-  , cardPaths ∷ Array (Array CardType)
+  , cardPaths ∷ Array (Array InsertableCardType)
   }
 
 data Query a = Dismiss a
@@ -80,8 +81,8 @@ comp = H.component { render, eval } where
 
     setsOfCardsText =
       case _ of
-        1 -> if onlySingleCardPaths then "this card" else "these cards in order"
-        _ -> if onlySingleCardPaths then "any of these cards" else "any of these sets of cards in order"
+        1 → if onlySingleCardPaths then "this card" else "these cards in order"
+        _ → if onlySingleCardPaths then "any of these cards" else "any of these sets of cards in order"
 
     renderCardPath cardPath =
       HH.p
@@ -91,7 +92,7 @@ comp = H.component { render, eval } where
     renderCard card =
       HH.span
         [ HP.classes [HH.className "deck-dialog-cardpath-card" ] ]
-        [ HH.text $ CardType.cardName card ]
+        [ HH.text $ print card ]
 
   eval ∷ Query ~> H.ComponentDSL State Query g
   eval (Dismiss next) = pure next

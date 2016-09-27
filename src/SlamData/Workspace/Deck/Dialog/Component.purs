@@ -40,6 +40,7 @@ import Halogen.Component.Utils (raise')
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType (CardType)
+import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
@@ -54,7 +55,7 @@ data Dialog
   = Error String
   | Embed SharingInput (Map.Map DeckId Port.VarMap)
   | Publish SharingInput (Map.Map DeckId Port.VarMap)
-  | Reason CardType String (Array (Array CardType))
+  | Reason CardType String (Array (Array InsertableCardType))
   | Share SharingInput
   | Unshare SharingInput
   | Rename String

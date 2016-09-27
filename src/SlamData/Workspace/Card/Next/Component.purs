@@ -33,6 +33,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
+import Halogen.Component.Utils as HU
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common (glyph)
@@ -40,6 +41,7 @@ import SlamData.Guide as Guide
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Next.NextAction as NA
 import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(..), _AddCardType, _PresentReason)
 import SlamData.Workspace.Card.Next.Component.State (State)
 import SlamData.Workspace.Card.Next.Component.State as State
@@ -97,31 +99,37 @@ render state =
   filterString ∷ String
   filterString = Str.toLower state.filterString
 
-  cardTitle ∷ State.NextAction → String
-  cardTitle (State.Insert cty) = "Insert " ⊕ CT.cardName cty ⊕ " card"
-  cardTitle (State.Drill name _ _) = "Select " ⊕ name ⊕ " card category"
+  cardTitle ∷ NA.NextAction → String
+  cardTitle (NA.Insert cty) = "Insert " ⊕ CT.cardName cty ⊕ " card"
+  cardTitle (NA.Drill name _ _) = "Select " ⊕ name ⊕ " card category"
+  cardTitle (NA.GoBack) = "Go Back"
 
-  nextButton ∷ State.NextAction → NextHTML
+  nextButton ∷ NA.NextAction → NextHTML
   nextButton action =
     HH.li_
       [ HH.button attrs
-          [ State.actionGlyph action
-          , HH.p_ [ HH.text $ State.actionLabel action ]
+          [ NA.actionGlyph action
+          , HH.p_ [ HH.text $ NA.actionLabel action ]
           ]
       ]
     where
     enabled ∷ Boolean
-    enabled =
-      F.any (Str.contains filterString ∘ Str.toLower) $ State.searchFilters action
+    enabled = case action of
+      NA.GoBack → true
+      _ → F.any (Str.contains filterString ∘ Str.toLower) $ NA.searchFilters action
 
     attrs =
       [ HP.title $ cardTitle action
       , HP.disabled $ not enabled
       , ARIA.label $ cardTitle action
-      ] ⊕ (guard (not $ F.any (takesInput state.input) $ State.foldToArray action)
+      ] ⊕ (guard warned
              $> HP.classes [ HH.className "sd-button-warning" ])
         ⊕ (guard enabled
-             $> HE.onClick (HE.input_ (right ∘ addCardOrPresentReason state.input action)))
+             $> HE.onClick (HE.input_ (right ∘ Selected action)))
+    warned ∷ Boolean
+    warned = case action of
+      NA.GoBack → false
+      _ → not $ F.any (takesInput state.input) $ NA.foldToArray action
 
   addCardGuideTextEmptyDeck = "To get this deck started press one of these buttons to add a card."
   addCardGuideTextNonEmptyDeck = "To do more with this deck press one of these buttons to add a card."
@@ -158,12 +166,6 @@ possibleToGetTo ∷ Maybe Port.Port → CT.CardType → Boolean
 possibleToGetTo input =
   maybe false (ICT.possibleToGetTo $ ICT.fromMaybePort input) ∘ ICT.fromCardType
 
-addCardOrPresentReason ∷ ∀ a. Maybe Port.Port → State.NextAction → a → Query a
-addCardOrPresentReason input (State.Insert cardType) a = AddCard cardType a
-addCardOrPresentReason input (State.Drill _ _ _) a = Init a -- 0_o
---  if takesInput input cardType
---     then AddCard cardType a
---     else PresentReason input cardType a
 
 dismissedAddCardGuideKey ∷ String
 dismissedAddCardGuideKey = "dismissedAddCardGuide"
@@ -192,4 +194,23 @@ nextEval (UpdateFilter str next) = do
 nextEval (DismissAddCardGuide next) = dismissAddCardGuide $> next
 nextEval (Init next) = do
   H.modify ∘ (State._presentAddCardGuide .~ _) ∘ not =<< getDismissedAddCardGuideBefore
+  pure next
+nextEval (Selected action next) = do
+  st ← H.get
+  case action of
+    NA.Insert cardType → do
+      HU.raise
+        $ right
+        $ H.action
+          if takesInput st.input cardType
+          then AddCard cardType
+          else PresentReason st.input cardType
+    NA.Drill _ _ actions → do
+      H.modify
+        $ (State._actions .~ actions)
+        ∘ (State._previousActions .~ st.actions)
+    NA.GoBack →
+      H.modify
+        $ (State._actions .~ st.previousActions)
+        ∘ (State._previousActions .~ [ ])
   pure next
