@@ -238,8 +238,9 @@ toCardType =
     TroubleshootCard → CardType.Troubleshoot
 
 print ∷ InsertableCardType → String
-print =
-  CardType.cardName ∘ toCardType
+print = case _ of
+  SetupChartCard → "Setup Chart"
+  a → CardType.cardName $ toCardType a
 
 aAn ∷ String → String
 aAn s =
@@ -249,19 +250,29 @@ aAn s =
   where
   vowels = [ "a", "e", "i", "o", "u" ]
 
-reason ∷ InsertableCardIOType → InsertableCardType → String
-reason io card =
-  aAn (print card) <> " " <> show (print card) <> " card can't " <> actual
-    <> " because it needs " <> expected <> action <> "."
+reason ∷ InsertableCardIOType → CardType → Maybe String
+reason io card = do
+  ictCardType ← fromCardType card
+  pure $ fold
+    [ aAn $ CardType.cardName card
+    , " "
+    , show $ CardType.cardName card
+    , " card can't "
+    , actual
+    , " because it needs "
+    , expected ictCardType
+    , action ictCardType
+    , "."
+    ]
   where
   actual =
     case io of
       None → "be the first card in a deck"
       _ → "follow a card which outputs " <> printIOType io
-  expected =
-    eitherOr $ printIOType <$> inputsFor card
-  action =
-    maybe "" (" to " <> _) (printAction card)
+  expected ict =
+    eitherOr $ map printIOType $ inputsFor ict
+  action ict =
+    foldMap (append " to ") $ printAction ict
 
 printAction ∷ InsertableCardType → Maybe String
 printAction =

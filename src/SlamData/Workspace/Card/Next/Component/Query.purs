@@ -21,10 +21,12 @@ import Data.Lens (TraversalP, wander)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port (Port)
+import SlamData.Workspace.Card.Next.NextAction (NextAction)
 
 data Query a
   = AddCard CardType a
   | PresentReason (Maybe Port) CardType a
+  | Selected NextAction a
   | UpdateFilter String a
   | DismissAddCardGuide a
   | Init a
