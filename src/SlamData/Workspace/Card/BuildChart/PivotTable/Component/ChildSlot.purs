@@ -17,9 +17,11 @@ limitations under the License.
 module SlamData.Workspace.Card.BuildChart.PivotTable.Component.ChildSlot where
 
 import SlamData.Prelude
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DP
+import Data.Argonaut as J
 
-type ChildSlot = Void
+type ChildSlot = Unit
 
-type ChildState = Void
+type ChildState = DP.State J.JCursor
 
-type ChildQuery = Const Void
+type ChildQuery = DP.Query J.JCursor

@@ -18,6 +18,7 @@ module SlamData.Workspace.Card.BuildChart.PivotTable.Component.State
   ( State
   , StateP
   , OrderingOpts
+  , Selecting(..)
   , initialState
   , modelFromState
   , stateFromModel
@@ -43,6 +44,8 @@ import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Model, Column(..))
 type StateP =
   ParentState State PCS.ChildState QueryC PCS.ChildQuery Slam PCS.ChildSlot
 
+data Selecting = Dim | Col
+
 type State =
   { axes ∷ Axes
   , levelOfDetails ∷ LevelOfDetails
@@ -51,8 +54,7 @@ type State =
   , columns ∷ Array (Int × Column)
   , orderingColumn ∷ Maybe OrderingOpts
   , orderingDimension ∷ Maybe OrderingOpts
-  , selectDimension ∷ Maybe (Array JCursor × Int)
-  , selectColumn ∷ Maybe (Array JCursor × Int)
+  , selecting ∷ Maybe Selecting
   }
 
 type OrderingOpts =
@@ -70,8 +72,7 @@ initialState =
   , columns: []
   , orderingColumn: Nothing
   , orderingDimension: Nothing
-  , selectDimension: Nothing
-  , selectColumn: Nothing
+  , selecting: Nothing
   }
 
 modelFromState ∷ State → Model

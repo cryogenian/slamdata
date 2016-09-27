@@ -6,20 +6,20 @@
   bottom: 0;
   overflow: hidden !important;
 
-  .delete-cell {
-    background: none;
-    padding: none;
-    margin: none;
-    border: none;
+  .sd-dismiss-button {
     position: absolute;
     top: 0;
     right: 0;
-    width: @grid-size;
-    height: @grid-size;
-    line-height: @grid-size;
-    text-align: center;
-    font-size: 1.5rem;
-    color: #aaa;
+  }
+
+  .sd-dimension-picker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #fff;
+    z-index: 10;
   }
 }
 
@@ -239,16 +239,4 @@
   font-weight: bold;
   font-size: 1rem;
   white-space: nowrap;
-}
-
-.sd-pivot-options-select {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  right: 20px;
-  bottom: 20px;
-  padding: 20px;
-  border: 1px solid #ddd;
-  box-shadow: 0 2px 8px rgba(0,0,0,.2);
-  background: #fff;
 }

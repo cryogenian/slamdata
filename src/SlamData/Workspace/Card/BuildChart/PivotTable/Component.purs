@@ -35,9 +35,10 @@ import Halogen.HTML.CSS.Indexed as HC
 import SlamData.Form.Select as S
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.ChildSlot as PCS
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.Query (Query(..), QueryC)
-import SlamData.Workspace.Card.BuildChart.PivotTable.Component.State (State, modelFromState, stateFromModel, initialState, reorder, setColumnAggregation)
+import SlamData.Workspace.Card.BuildChart.PivotTable.Component.State (State, Selecting(..), modelFromState, stateFromModel, initialState, reorder, setColumnAggregation)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column(..))
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -85,23 +86,22 @@ renderHighLOD st =
     , HH.div
         [ HP.classes [ HH.className "sd-pivot-options-cols" ] ]
         renderedColumns
-    , maybe (HH.text "") renderSelect st.selectDimension
-    , maybe (HH.text "") renderSelect st.selectColumn
+    , maybe (HH.text "") renderSelect st.selecting
     ]
   where
-  renderSelect (cs × _) =
-    HH.div
-      [ HP.classes [ HH.className "sd-pivot-options-select" ] ]
-      [ HH.select
-          [ HE.onSelectedIndexChange (HE.input (\ix → right ∘ ChangeAxis ix)) ]
-          (map (\c → HH.option_ [ HH.text (showJCursor c) ]) cs)
-      , HH.button
-          [ HE.onClick (HE.input_ (right ∘ ChooseAxis false)) ]
-          [ HH.text "Dismiss" ]
-      , HH.button
-          [ HE.onClick (HE.input_ (right ∘ ChooseAxis true)) ]
-          [ HH.text "Confirm" ]
-      ]
+  renderSelect = case _ of
+    Col → renderSelectContainer "Choose column"
+    Dim → renderSelectContainer "Choose dimension"
+
+  renderSelectContainer title =
+    HH.slot unit \_ →
+      let
+        values =
+          Array.sort (st.axes.category <> st.axes.time <> st.axes.value)
+      in
+        { component: DPC.picker title showJCursor
+        , initialState: { values, selectedIndex: -1 }
+        }
 
   renderedDimensions =
     let
@@ -139,7 +139,7 @@ renderHighLOD st =
               ]
               [ HH.text (showJCursor dim) ]
           , HH.button
-              [ HP.classes [ HH.className "delete-cell" ]
+              [ HP.classes [ HH.className "sd-dismiss-button" ]
               , HP.title "Delete dimension"
               , ARIA.label "Delete dimension"
               , HE.onClick (HE.input_ (right ∘ RemoveDimension slot))
@@ -213,7 +213,7 @@ renderHighLOD st =
                   ]
                   [ HH.text (showJCursor col.value) ]
               , HH.button
-                  [ HP.classes [ HH.className "delete-cell" ]
+                  [ HP.classes [ HH.className "sd-dismiss-button" ]
                   , HP.title "Delete column"
                   , ARIA.label "Delete column"
                   , HE.onClick (HE.input_ (right ∘ RemoveColumn slot))
@@ -303,18 +303,10 @@ evalCard = case _ of
 evalOptions ∷ Query ~> DSL
 evalOptions = case _ of
   AddDimension next → do
-    H.modify \st →
-      let
-        cursors = Array.sort (st.axes.category <> st.axes.time <> st.axes.value)
-      in
-        st { selectDimension = Just (cursors × 0) }
+    H.modify _ { selecting = Just Dim }
     pure next
   AddColumn next → do
-    H.modify \st →
-      let
-        cursors = Array.sort (st.axes.category <> st.axes.time <> st.axes.value)
-      in
-        st { selectColumn = Just (cursors × 0) }
+    H.modify _ { selecting = Just Col }
     pure next
   RemoveDimension slot next → do
     H.modify \st →
@@ -400,36 +392,6 @@ evalOptions = case _ of
     for_ st.orderingColumn \opts →
       H.modify _ { orderingColumn = Just (opts { over = Nothing }) }
     pure next
-  ChangeAxis ix next → do
-    st ← H.get
-    for_ st.selectDimension \(ds × _) →
-      H.modify _ { selectDimension = Just (ds × ix)}
-    for_ st.selectColumn \(cs × _) →
-      H.modify _ { selectColumn = Just (cs × ix)}
-    pure next
-  ChooseAxis bool next → do
-    when bool do
-      st ← H.get
-      for_ st.selectDimension \(ds × ix) → do
-        let
-          dim = Tuple st.fresh <$> Array.index ds ix
-        H.modify _
-          { fresh = st.fresh + 1
-          , dimensions = st.dimensions <> maybe [] pure dim
-          }
-      for_ st.selectColumn \(cs × ix) → do
-        let
-          col = Tuple st.fresh ∘ Column ∘ { value: _, valueAggregation: Nothing } <$> Array.index cs ix
-        H.modify _
-          { fresh = st.fresh + 1
-          , columns = st.columns <> maybe [] pure col
-          }
-    H.modify _
-      { selectColumn = Nothing
-      , selectDimension = Nothing
-      }
-    CC.raiseUpdatedP' CC.EvalModelUpdate
-    pure next
   ChooseAggregation slot ag next → do
     st ← H.get
     H.modify (setColumnAggregation slot ag)
@@ -437,4 +399,25 @@ evalOptions = case _ of
     pure next
 
 peek ∷ ∀ a. H.ChildF PCS.ChildSlot PCS.ChildQuery a → DSL Unit
-peek _ = pure unit
+peek = peekSelect ∘ H.runChildF
+  where
+  peekSelect = case _ of
+    DPC.Dismiss _ →
+      H.modify _ { selecting = Nothing }
+    DPC.Confirm value _ → do
+      st ← H.get
+      for_ st.selecting case _ of
+        Col →
+          H.modify _
+            { fresh = st.fresh + 1
+            , columns = Array.snoc st.columns (st.fresh × Column { value, valueAggregation: Nothing })
+            }
+        Dim →
+          H.modify _
+            { fresh = st.fresh + 1
+            , dimensions = Array.snoc st.dimensions (st.fresh × value)
+            }
+      H.modify _ { selecting = Nothing }
+      CC.raiseUpdatedP' CC.EvalModelUpdate
+    _ →
+      pure unit

@@ -43,8 +43,6 @@ data Query a
   | OrderingColumn Int DragEvent a
   | OrderOverColumn Int a
   | OrderOutColumn Int a
-  | ChangeAxis Int a
-  | ChooseAxis Boolean a
   | ChooseAggregation Int (Maybe Ag.Aggregation) a
 
 type QueryC = CardEvalQuery ⨁ Query
