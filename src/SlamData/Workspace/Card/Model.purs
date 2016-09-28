@@ -28,13 +28,16 @@ import SlamData.Prelude
 
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
+import Data.Array as A
+import Data.Lens (view)
+import Data.Int as Int
 
 import SlamData.FileSystem.Resource as R
 
 import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), printChartType)
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Table.Model as JT
@@ -54,6 +57,9 @@ import SlamData.Workspace.Card.BuildChart.Funnel.Model as BuildFunnel
 import SlamData.Workspace.Card.BuildChart.Radar.Model as BuildRadar
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model as BuildBoxplot
 import SlamData.Workspace.Card.BuildChart.Heatmap.Model as BuildHeatmap
+
+import SlamData.Form.Select as S
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -205,12 +211,191 @@ encode card =
 decode
   ∷ J.Json
   → Either String Model
-decode =
-  J.decodeJson >=> \obj → do
-    cardId ← obj .? "cardId"
-    cardType ← obj .? "cardType"
-    model ← decodeCardModel cardType =<< obj .? "model"
-    pure { cardId, model }
+decode js = do
+  obj ← J.decodeJson js
+  cardId ← obj .? "cardId"
+  cardTypeStr ← obj .? "cardType"
+  model ←
+    if cardTypeStr ≡ "chart-options"
+      then
+      decodeLegacyChartOptions js
+      else do
+      cardType ← obj .? "cardType"
+      modelJS ← obj .? "model"
+      decodeCardModel cardType modelJS
+  pure { cardId, model }
+
+
+type ChartConfiguration =
+  { series ∷ Array (S.Select J.JCursor)
+  , dimensions ∷ Array (S.Select J.JCursor)
+  , measures ∷ Array (S.Select J.JCursor)
+  , aggregations ∷ Array (S.Select (Maybe Ag.Aggregation))
+  }
+
+decodeCC ∷ J.Json →  Either String ChartConfiguration
+decodeCC = J.decodeJson >=> \obj → do
+  { series: _, dimensions: _, measures: _, aggregations: _}
+    <$> obj .? "series"
+    <*> obj .? "dimensions"
+    <*> obj .? "measures"
+    <*> ((obj .? "aggregations") <|> ((obj .? "aggregations") <#> map (map Just)))
+
+type BuildOptions =
+  { chartType ∷ ChartType
+  , axisLabelAngle ∷ Int
+  , axisLabelFontSize ∷ Int
+  , areaStacked ∷ Boolean
+  , smooth ∷ Boolean
+  , bubbleMinSize ∷ Number
+  , bubbleMaxSize ∷ Number
+  , funnelOrder ∷ String
+  , funnelAlign ∷ String
+  , minColorVal ∷ Number
+  , maxColorVal ∷ Number
+  , colorScheme ∷ String
+  , colorReversed ∷ Boolean
+  }
+
+decodeBO ∷ J.Json → Either String BuildOptions
+decodeBO = J.decodeJson >=> \obj →
+  { chartType: _, axisLabelAngle: _, axisLabelFontSize: _
+  , areaStacked: _, smooth: _, bubbleMinSize:_, bubbleMaxSize: _
+  , funnelOrder: _, funnelAlign: _, minColorVal: _, maxColorVal: _
+  , colorScheme: _, colorReversed: _ }
+    <$> (obj .? "chartType")
+    <*> (obj .? "axisLabelAngle")
+    <*> (obj .? "axisLabelFontSize")
+    <*> ((obj .? "areaStacked") <|> (pure false))
+    <*> ((obj .? "smooth") <|> (pure false))
+    <*> ((obj .? "bubbleMinSize") <|> (pure 1.0))
+    <*> ((obj .? "bubbleMaxSize") <|> (pure 50.0))
+    <*> ((obj .? "funnelOrder") <|> (pure "descending"))
+    <*> ((obj .? "funnelAlign") <|> (pure "center"))
+    <*> ((obj .? "minColorVal") <|> (pure 0.0))
+    <*> ((obj .? "maxColorVal") <|> (pure 1.0))
+    <*> ((obj .? "colorScheme") <|> (pure "diverging: red-blue"))
+    <*> ((obj .? "colorReversed") <|> (pure false))
+
+
+decodeLegacyChartOptions
+  ∷ J.Json
+  → Either String AnyCardModel
+decodeLegacyChartOptions js = do
+  (BuildMetric.decode js <#> BuildMetric)
+  <|> (BuildSankey.decode js <#> BuildSankey)
+  <|> (BuildGauge.decode js <#> BuildGauge)
+  <|> (BuildGraph.decode js <#> BuildGraph)
+  <|> (decodeOldestCharts js)
+  where
+  decodeOldestCharts ∷ J.Json → String ⊹ AnyCardModel
+  decodeOldestCharts js = do
+    obj ← J.decodeJson js
+    bo ← (obj .? "options") >>= decodeBO
+    cc ← (obj .? "chartConfiguration") >>= decodeCC
+    case bo.chartType of
+      Pie → decodePie cc
+      Line → decodeLine cc bo
+      Bar → decodeBar cc bo
+      Area → decodeArea cc bo
+      Scatter → decodeScatter cc bo
+      Radar → decodeRadar cc bo
+      Funnel → decodeFunnel cc bo
+      Heatmap → decodeHeatmap cc bo
+      Boxplot → decodeBoxplot cc bo
+      chty → throwError $ printChartType chty ⊕ " should be decoded already"
+
+  decodePie ∷ ChartConfiguration → String ⊹ AnyCardModel
+  decodePie cc = pure $ BuildPie
+    let
+      category =
+        cc.series A.!! 0 >>= view S._value
+      donut =
+        cc.series A.!! 1 >>= view S._value
+      parallel =
+        cc.series A.!! 2 >>= view S._value
+      value =
+        cc.measures A.!! 0 >>= view S._value
+      valueAggregation =
+        join $ cc.aggregations A.!! 0 >>= view S._value
+
+      pieR =
+        { category: _
+        , value: _
+        , valueAggregation: _
+        , donut
+        , parallel
+        }
+        <$> category
+        <*> value
+        <*> valueAggregation
+
+    in
+      pieR
+
+  decodeLine ∷ ChartConfiguration → BuildOptions → String ⊹ AnyCardModel
+  decodeLine cc bo = pure $ BuildLine
+    let
+      dimension =
+        cc.dimensions A.!! 0 >>= view S._value
+      series =
+        cc.series A.!! 0 >>= view S._value
+      value =
+        cc.measures A.!! 0 >>= view S._value
+      valueAggregation =
+        join $ cc.aggregations A.!! 0 >>= view S._value
+      secondValue =
+        cc.measures A.!! 1 >>= view S._value
+      secondValueAggregation =
+        join $ cc.aggregations A.!! 1 >>= view S._value
+
+      size = Nothing
+      sizeAggregation = Nothing
+      minSize = 2.0
+      maxSize = 20.0
+      axisLabelAngle = Int.toNumber bo.axisLabelAngle
+      axisLabelFontSize = bo.axisLabelFontSize
+
+      lineR =
+        { dimension: _
+        , value: _
+        , valueAggregation: _
+        , secondValue
+        , secondValueAggregation
+        , size
+        , sizeAggregation
+        , minSize
+        , maxSize
+        , axisLabelAngle
+        , axisLabelFontSize
+        , series
+        }
+        <$> dimension
+        <*> value
+        <*> valueAggregation
+    in
+      lineR
+
+  decodeBar ∷ ChartConfiguration → BuildOptions → String ⊹ AnyCardModel
+  decodeBar _ _ = throwError "not implemented"
+
+  decodeArea ∷ ChartConfiguration → BuildOptions → String ⊹ AnyCardModel
+  decodeArea _ _ = throwError "not implemented"
+
+  decodeScatter ∷ ChartConfiguration → BuildOptions → String ⊹ AnyCardModel
+  decodeScatter _ _ = throwError "not implemented"
+
+  decodeRadar ∷ ChartConfiguration → BuildOptions → String ⊹ AnyCardModel
+  decodeRadar _ _ = throwError "not implemented"
+
+  decodeFunnel ∷ ChartConfiguration → BuildOptions → String ⊹ AnyCardModel
+  decodeFunnel _ _ = throwError "not implemented"
+
+  decodeHeatmap ∷ ChartConfiguration → BuildOptions → String ⊹ AnyCardModel
+  decodeHeatmap _ _ = throwError "not implemented"
+
+  decodeBoxplot ∷ ChartConfiguration → BuildOptions → String ⊹ AnyCardModel
+  decodeBoxplot _ _ = throwError "not implemented"
 
 encodeCardModel
   ∷ AnyCardModel
@@ -253,7 +438,6 @@ decodeCardModel
 decodeCardModel = case _ of
   CT.Ace mode → map (Ace mode) ∘ Ace.decode
   CT.Search → map Search ∘ J.decodeJson
-  -- TODO: put legacy handler here
   CT.ChartOptions Metric → map BuildMetric ∘ BuildMetric.decode
   CT.ChartOptions Sankey → map BuildSankey ∘ BuildSankey.decode
   CT.ChartOptions Gauge → map BuildGauge ∘ BuildGauge.decode
