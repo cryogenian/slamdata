@@ -42,7 +42,6 @@ import Halogen.HTML.Properties.Indexed (IProp(), I)
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
-import SlamData.Config as Config
 import SlamData.Render.CSS as ClassNames
 import SlamData.Guide as Guide
 import SlamData.Workspace.AccessType as AT
@@ -158,7 +157,7 @@ snapActiveCardIndexByTranslationAndCardWidth st cardWidth idx =
     result
 
 offsetCardSpacing ∷ Number → Number
-offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
+offsetCardSpacing = add cardSpacingPx
 
 snapActiveCardIndex ∷ State → Int
 snapActiveCardIndex st = maybe id snap' st.initialSliderCardWidth $ fromMaybe 0 st.activeCardIndex
@@ -222,7 +221,7 @@ cardSpacingGridSquares ∷ Number
 cardSpacingGridSquares = 2.0
 
 cardSpacingPx ∷ Number
-cardSpacingPx = cardSpacingGridSquares * Config.gridPx
+cardSpacingPx = cardSpacingGridSquares * 24.0
 
 renderCard ∷ DeckOptions → (DeckOptions → DeckComponent) → State → (DeckId × Card.Model) → Int → DeckHTML
 renderCard opts deckComponent st (deckId × card) index =

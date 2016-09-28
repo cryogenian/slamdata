@@ -93,12 +93,3 @@ redirectURIString = "/auth_redirect.html"
 
 isSharingPermissionReady :: Boolean
 isSharingPermissionReady = true
-
-remPx :: Number
-remPx = 16.0
-
-gridRem :: Number
-gridRem = 1.5
-
-gridPx :: Number
-gridPx = gridRem * remPx

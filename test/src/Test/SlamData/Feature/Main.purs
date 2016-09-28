@@ -69,7 +69,7 @@ type Effects =
 
 tests ∷ SlamFeature Unit
 tests = do
-  let setupScenario = scenario "Setup" (pure unit) (pure unit) 
+  let setupScenario = scenario "Setup" (pure unit) (pure unit)
   setupScenario "Launch SlamData" [] do
     Interact.launchSlamData
     Log.successMsg "Ok, launced SlamData"
@@ -80,6 +80,8 @@ tests = do
 
   setupScenario "Skip guides" [] do
     Interact.createWorkspaceInTestFolder "Search"
+    Interact.skipAnyGuides
+    Interact.flipDeck
     Interact.skipAnyGuides
     Log.successMsg "Ok, skipped guides"
 

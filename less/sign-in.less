@@ -1,18 +1,20 @@
 .sd-sign-in {
     display: inline-block;
     vertical-align: middle;
-    padding-top: 15px;
+    height: 100%;
+    float: right;
     > ul {
         list-style-type: none;
         display: inline-block;
         float: right;
-        margin-right: 27px;
+        margin-right: ~"calc(21px - 0.5rem)";
         position: relative;
         z-index: 800;
+        height: 100%;
         > li {
             display: block;
+            height: 100%;
             float: left;
-            padding: 0;
             position: relative;
             a {
                 color: rgb(210,210,210);
@@ -23,8 +25,62 @@
                     color: white;
                 }
             }
+            & > div, & > div > a, & > a {
+              display: block;
+              height: 100%;
+            }
+            & > div > a, & > a {
+              padding-top: 0.9rem;
+              padding-left: 0.5rem;
+              padding-right: 0.5rem;
+            }
+            & > a:not(:only-child) {
+              background-color: rgb(17, 90, 223);
+              color: white;
+            }
+            &:last-of-type > div > a, &:last-of-type > a {
+              font-size: 1px;
+              color: transparent;
+              position: relative;
+              width: 2.5rem;
+              &:hover::before {
+                background-color: before;
+                color: transparent;
+              }
+              &:not(:only-child)::before {
+                background-color: white;
+                color: transparent;
+              }
+              &::before {
+                font-size: 1rem;
+                display: block;
+                content: "";
+                width: 1.5rem;
+                height: 1.5rem;
+                border-radius: 0.75rem;
+                background-color: rgb(210,210,210);
+                overflow: hidden;
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+                color: #333;
+              }
+              &::after {
+                content: "?";
+                position: absolute;
+                padding-left: 0.05rem;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                color: #333;
+                font-size: 1rem;
+                z-index: 9999;
+              }
+}
             > ul {
-                right: -1.125rem;
+                right: -1px;
                 list-style-type: none;
                 padding: 0;
                 position: absolute;
@@ -77,3 +133,4 @@
         text-decoration: none;
     }
 }
+
