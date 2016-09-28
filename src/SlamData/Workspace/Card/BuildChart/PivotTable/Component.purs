@@ -298,7 +298,13 @@ evalCard = case _ of
     pure next
   CC.Deactivate next →
     pure next
-  CC.SetDimensions _ next →
+  CC.SetDimensions dims next → do
+    H.modify _
+      { levelOfDetails =
+          if dims.width < 540.0 || dims.height < 360.0
+            then Low
+            else High
+      }
     pure next
   CC.Save k →
     map (k ∘ Card.BuildPivotTable ∘ modelFromState) H.get
