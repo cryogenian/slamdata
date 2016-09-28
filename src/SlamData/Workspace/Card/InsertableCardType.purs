@@ -210,15 +210,16 @@ eitherOr strings =
         <> String.joinWith "" (Array.drop (n - 1) strings)
 
 fromPort ∷ Port → InsertableCardIOType
-fromPort =
-  case _ of
-    Port.DownloadOptions _ → Download
-    Port.Draftboard → Draftboard
-    Port.SlamDown _ → Markdown
-    Port.TaggedResource _ → Data
-    Port.VarMap _ → Variables
-    Port.ChartInstructions _ _ → Chart
-    _ → None
+fromPort = case _ of
+  Port.DownloadOptions _ → Download
+  Port.Draftboard → Draftboard
+  Port.SlamDown _ → Markdown
+  Port.TaggedResource _ → Data
+  Port.VarMap _ → Variables
+  Port.ChartInstructions _ _ → Chart
+  Port.Metric _ → Chart
+  Port.PivotTable _ → Chart
+  _ → None
 
 toCardType ∷ InsertableCardType → CardType
 toCardType =
