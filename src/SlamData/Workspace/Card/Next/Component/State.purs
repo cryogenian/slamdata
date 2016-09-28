@@ -18,7 +18,6 @@ module SlamData.Workspace.Card.Next.Component.State where
 
 import SlamData.Prelude
 
-import Data.Array as A
 import Data.Lens (LensP, lens)
 
 import SlamData.Workspace.Card.Port (Port)

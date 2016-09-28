@@ -30,7 +30,6 @@ import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
 
 import SlamData.FileSystem.Resource as R
-
 import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
@@ -56,6 +55,7 @@ import SlamData.Workspace.Card.BuildChart.Funnel.Model as BuildFunnel
 import SlamData.Workspace.Card.BuildChart.Radar.Model as BuildRadar
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model as BuildBoxplot
 import SlamData.Workspace.Card.BuildChart.Heatmap.Model as BuildHeatmap
+import SlamData.Workspace.Card.BuildChart.Legacy as ChartLegacy
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -209,12 +209,37 @@ encode card =
 decode
   ∷ J.Json
   → Either String Model
-decode =
-  J.decodeJson >=> \obj → do
-    cardId ← obj .? "cardId"
-    cardType ← obj .? "cardType"
-    model ← decodeCardModel cardType =<< obj .? "model"
-    pure { cardId, model }
+decode js = do
+  obj ← J.decodeJson js
+  cardId ← obj .? "cardId"
+  cardTypeStr ← obj .? "cardType"
+  model ←
+    if cardTypeStr ≡ "chart-options"
+      then
+      (map BuildMetric $ BuildMetric.decode js)
+      <|> (map BuildSankey $ BuildSankey.decode js)
+      <|> (map BuildGauge $ BuildGauge.decode js)
+      <|> (map BuildGraph $ BuildGraph.decode js)
+      <|> (ChartLegacy.decode legacyConf js)
+      else do
+      cardType ← obj .? "cardType"
+      modelJS ← obj .? "model"
+      decodeCardModel cardType modelJS
+  pure { cardId, model }
+  where
+  legacyConf =
+    { pie: BuildPie
+    , line: BuildLine
+    , bar: BuildBar
+    , area: BuildArea
+    , scatter: BuildScatter
+    , radar: BuildRadar
+    , funnel: BuildFunnel
+    , heatmap: BuildHeatmap
+    , boxplot: BuildBoxplot
+    }
+
+
 
 encodeCardModel
   ∷ AnyCardModel
@@ -258,7 +283,6 @@ decodeCardModel
 decodeCardModel = case _ of
   CT.Ace mode → map (Ace mode) ∘ Ace.decode
   CT.Search → map Search ∘ J.decodeJson
-  -- TODO: put legacy handler here
   CT.ChartOptions Metric → map BuildMetric ∘ BuildMetric.decode
   CT.ChartOptions Sankey → map BuildSankey ∘ BuildSankey.decode
   CT.ChartOptions Gauge → map BuildGauge ∘ BuildGauge.decode
