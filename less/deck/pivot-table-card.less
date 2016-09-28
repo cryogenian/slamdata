@@ -1,0 +1,82 @@
+.sd-pivot-table {
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  table {
+    width: 100%;
+  }
+
+  tr:first-child {
+    th, td {
+      border-bottom-width: 2px;
+    }
+  }
+
+  th, td {
+    vertical-align: top;
+    border-bottom: 1px solid #ddd;
+    padding: .5rem;
+  }
+
+  .loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 3rem;
+    background-color: rgba(255,255,255,.8);
+    background-image: url(../img/spin.gif);
+    background-position: center center;
+    background-repeat: no-repeat;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: .5rem;
+    opacity: .6;
+  }
+
+  .sd-pagination {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3rem;
+    border-top: 1px solid #ddd;
+
+    > div {
+      display: inline-block;
+      margin-left: .5rem;
+    }
+
+    input[type=number] {
+      width: 3.5rem;
+    }
+
+    select {
+      width: 5rem;
+    }
+
+    input[type=number], select {
+      margin: 0.5rem 0.25rem;
+    }
+
+    .glyphicon {
+      font-size: 75%;
+      top: 0;
+    }
+  }
+}
+
+.sd-pivot-table-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 3rem;
+  overflow: auto;
+}

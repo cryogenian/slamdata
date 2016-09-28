@@ -53,6 +53,7 @@ import SlamData.Workspace.Card.BuildChart.Line.Component (lineBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Area.Component (areaBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Scatter.Component (scatterBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Radar.Component (radarBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.PivotTable.Component (pivotTableBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Funnel.Component (funnelBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component (boxplotBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component (heatmapBuilderComponent)
@@ -63,7 +64,7 @@ cardComponent deckId card opts =
   case card.model of
     Card.Ace mode _ → aceComponent { mode, eval: aceEval mode }
     Card.Search _ → searchComponent
-    Card.Chart → chartComponent
+    Card.Chart _ → chartComponent
     Card.Markdown _ → markdownComponent deckId opts
     Card.Table _ → tableComponent
     Card.Download → downloadComponent
@@ -86,6 +87,7 @@ cardComponent deckId card opts =
     Card.BuildArea _ → areaBuilderComponent
     Card.BuildScatter _ → scatterBuilderComponent
     Card.BuildRadar _ → radarBuilderComponent
+    Card.BuildPivotTable _ → pivotTableBuilderComponent
     Card.BuildFunnel _ → funnelBuilderComponent
     Card.BuildBoxplot _ → boxplotBuilderComponent
     Card.BuildHeatmap _ → heatmapBuilderComponent

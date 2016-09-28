@@ -38,6 +38,7 @@ import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Markdown.Model as MD
+import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 import SlamData.Workspace.Card.BuildChart.Metric.Model as BuildMetric
@@ -49,6 +50,7 @@ import SlamData.Workspace.Card.BuildChart.Bar.Model as BuildBar
 import SlamData.Workspace.Card.BuildChart.Line.Model as BuildLine
 import SlamData.Workspace.Card.BuildChart.Area.Model as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Model as BuildScatter
+import SlamData.Workspace.Card.BuildChart.PivotTable.Model as BuildPivotTable
 import SlamData.Workspace.Card.BuildChart.Funnel.Model as BuildFunnel
 import SlamData.Workspace.Card.BuildChart.Radar.Model as BuildRadar
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model as BuildBoxplot
@@ -61,7 +63,7 @@ import Test.StrongCheck.Gen as Gen
 data AnyCardModel
   = Ace CT.AceMode Ace.Model
   | Search String
-  | Chart
+  | Chart Chart.Model
   | Markdown MD.Model
   | Table JT.Model
   | Download
@@ -80,6 +82,7 @@ data AnyCardModel
   | BuildLine BuildLine.Model
   | BuildArea BuildArea.Model
   | BuildScatter BuildScatter.Model
+  | BuildPivotTable BuildPivotTable.Model
   | BuildFunnel BuildFunnel.Model
   | BuildRadar BuildRadar.Model
   | BuildBoxplot BuildBoxplot.Model
@@ -93,7 +96,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
     Gen.oneOf (pure ErrorCard)
       [ Ace <$> SC.arbitrary <*> Ace.genModel
       , Search <$> SC.arbitrary
-      , pure Chart
+      , Chart <$> Chart.genModel
       , Markdown <$> MD.genModel
       , Table <$> JT.genModel
       , pure Download
@@ -124,7 +127,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
     case _, _ of
       Ace x1 y1, Ace x2 y2 → x1 ≡ x2 && Ace.eqModel y1 y2
       Search s1, Search s2 → s1 ≡ s2
-      Chart, Chart → true
+      Chart x, Chart y → Chart.eqModel x y
       Markdown x, Markdown y → MD.eqModel x y
       Table x, Table y → JT.eqModel x y
       Download, Download → true
@@ -171,10 +174,11 @@ modelCardType =
     BuildLine _ → CT.ChartOptions Line
     BuildArea _ → CT.ChartOptions Area
     BuildScatter _ → CT.ChartOptions Scatter
+    BuildPivotTable _ → CT.ChartOptions PivotTable
     BuildFunnel _ → CT.ChartOptions Funnel
     BuildBoxplot _ → CT.ChartOptions Boxplot
     BuildHeatmap _ → CT.ChartOptions Heatmap
-    Chart → CT.Chart
+    Chart _ → CT.Chart
     Markdown _ → CT.Markdown
     Table _ → CT.Table
     Download → CT.Download
@@ -243,7 +247,7 @@ encodeCardModel
 encodeCardModel = case _ of
   Ace mode model → Ace.encode model
   Search txt → J.encodeJson txt
-  Chart → J.jsonEmptyObject
+  Chart model → Chart.encode model
   Markdown model → MD.encode model
   Table model → JT.encode model
   Download → J.jsonEmptyObject
@@ -263,6 +267,7 @@ encodeCardModel = case _ of
   BuildLine model → BuildLine.encode model
   BuildArea model → BuildArea.encode model
   BuildScatter model → BuildScatter.encode model
+  BuildPivotTable model → BuildPivotTable.encode model
   BuildFunnel model → BuildFunnel.encode model
   BuildBoxplot model → BuildBoxplot.encode model
   BuildHeatmap model → BuildHeatmap.encode model
@@ -288,10 +293,11 @@ decodeCardModel = case _ of
   CT.ChartOptions Line → map BuildLine ∘ BuildLine.decode
   CT.ChartOptions Area → map BuildArea ∘ BuildArea.decode
   CT.ChartOptions Scatter → map BuildScatter ∘ BuildScatter.decode
+  CT.ChartOptions PivotTable → map BuildPivotTable ∘ BuildPivotTable.decode
   CT.ChartOptions Funnel → map BuildFunnel ∘ BuildFunnel.decode
   CT.ChartOptions Boxplot → map BuildBoxplot ∘ BuildBoxplot.decode
   CT.ChartOptions Heatmap → map BuildHeatmap ∘ BuildHeatmap.decode
-  CT.Chart → const $ pure Chart
+  CT.Chart → map Chart ∘ Chart.decode
   CT.Markdown → map Markdown ∘ MD.decode
   CT.Table → map Table ∘ JT.decode
   CT.Download → const $ pure Download
@@ -323,10 +329,11 @@ cardModelOfType = case _ of
   CT.ChartOptions Line → BuildLine BuildLine.initialModel
   CT.ChartOptions Area → BuildArea BuildArea.initialModel
   CT.ChartOptions Scatter → BuildScatter BuildScatter.initialModel
+  CT.ChartOptions PivotTable → BuildPivotTable BuildPivotTable.initialModel
   CT.ChartOptions Funnel → BuildFunnel BuildFunnel.initialModel
   CT.ChartOptions Boxplot → BuildBoxplot BuildBoxplot.initialModel
   CT.ChartOptions Heatmap → BuildHeatmap BuildHeatmap.initialModel
-  CT.Chart → Chart
+  CT.Chart → Chart Chart.emptyModel
   CT.Markdown → Markdown MD.emptyModel
   CT.Table → Table JT.emptyModel
   CT.Download → Download
@@ -392,5 +399,7 @@ modelToEval = case _ of
     pure $ Eval.BuildHeatmap model
   BuildBoxplot model →
     pure $ Eval.BuildBoxplot model
+  BuildPivotTable model →
+    pure $ Eval.BuildPivotTable model
   _ →
     pure Eval.Pass

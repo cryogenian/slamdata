@@ -45,6 +45,7 @@ module SlamData.Workspace.Card.Component.State
   , _BuildAreaState
   , _BuildScatterState
   , _BuildRadarState
+  , _BuildPivotTableState
   , _BuildFunnelState
   , _BuildBoxplotState
   , _BuildHeatmapState
@@ -86,6 +87,7 @@ import SlamData.Workspace.Card.BuildChart.Area.Component.State as BuildArea
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.State as BuildScatter
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.State as BuildFunnel
 import SlamData.Workspace.Card.BuildChart.Radar.Component.State as BuildRadar
+import SlamData.Workspace.Card.BuildChart.PivotTable.Component.State as BuildPivotTable
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component.State as BuildBoxplot
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.State as BuildHeatmap
 
@@ -133,6 +135,7 @@ data AnyCardState
   | BuildScatterState BuildScatter.StateP
   | BuildFunnelState BuildFunnel.StateP
   | BuildRadarState BuildRadar.StateP
+  | BuildPivotTableState BuildPivotTable.StateP
   | BuildBoxplotState BuildBoxplot.StateP
   | BuildHeatmapState BuildHeatmap.StateP
 
@@ -259,6 +262,11 @@ _BuildScatterState = prism' BuildScatterState case _ of
 _BuildRadarState ∷ PrismP AnyCardState BuildRadar.StateP
 _BuildRadarState = prism' BuildRadarState case _ of
   BuildRadarState s → Just s
+  _ → Nothing
+
+_BuildPivotTableState ∷ PrismP AnyCardState BuildPivotTable.StateP
+_BuildPivotTableState = prism' BuildPivotTableState case _ of
+  BuildPivotTableState s → Just s
   _ → Nothing
 
 _BuildFunnelState ∷ PrismP AnyCardState BuildFunnel.StateP
