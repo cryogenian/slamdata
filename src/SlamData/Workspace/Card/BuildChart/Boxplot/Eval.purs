@@ -256,7 +256,7 @@ buildBoxplot r records = do
       ⊕ "Lower: " ⊕ show (fromMaybe zero $ param.value !! 0)
 
     E.buildItems
-      $ for_ xAxisLabels \key → case M.lookup (spy key) serie.items of
+      $ for_ xAxisLabels \key → case M.lookup key serie.items of
         Nothing → E.missingItem
         Just (_ × mbBP) → for_ mbBP \item → E.addItem $ E.buildValues do
           E.addValue item.low

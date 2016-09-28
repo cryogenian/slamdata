@@ -217,6 +217,7 @@ fromPort =
     Port.SlamDown _ → Markdown
     Port.TaggedResource _ → Data
     Port.VarMap _ → Variables
+    Port.ChartInstructions _ _ → Chart
     _ → None
 
 toCardType ∷ InsertableCardType → CardType

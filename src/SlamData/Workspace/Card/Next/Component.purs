@@ -125,6 +125,7 @@ render state =
              $> HP.classes [ HH.className "sd-button-warning" ])
         ⊕ (guard enabled
              $> HE.onClick (HE.input_ (right ∘ Selected action)))
+
     warned ∷ Boolean
     warned = case action of
       NA.GoBack → false
