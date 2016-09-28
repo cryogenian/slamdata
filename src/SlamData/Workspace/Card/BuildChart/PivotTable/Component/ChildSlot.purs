@@ -26,20 +26,20 @@ import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column)
 
 type ChildSlot = Unit ⊹ Unit
 
-type ChildState = DP.State J.JCursor ⊹ DP.State Column
+type ChildState = DP.StateP J.JCursor ⊹ DP.StateP Column
 
-type ChildQuery = DP.Query J.JCursor ⨁ DP.Query Column
+type ChildQuery = DP.QueryP J.JCursor ⨁ DP.QueryP Column
 
 cpDim
   ∷ ChildPath
-      (DP.State J.JCursor) ChildState
-      (DP.Query J.JCursor) ChildQuery
+      (DP.StateP J.JCursor) ChildState
+      (DP.QueryP J.JCursor) ChildQuery
       Unit ChildSlot
 cpDim = cpL
 
 cpCol
   ∷ ChildPath
-      (DP.State Column) ChildState
-      (DP.Query Column) ChildQuery
+      (DP.StateP Column) ChildState
+      (DP.QueryP Column) ChildQuery
       Unit ChildSlot
 cpCol = cpR

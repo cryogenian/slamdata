@@ -18,7 +18,12 @@ module SlamData.Workspace.Card.BuildChart.DimensionPicker.Component where
 
 import SlamData.Prelude
 
+import Control.Comonad.Cofree (Cofree)
+import Control.Comonad.Cofree as Cofree
+
 import Data.Array as Array
+import Data.List (List(..), (:))
+import Data.List as List
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -30,29 +35,58 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 
 data Query s a
-  = Choose Int a
+  = Choose (List Int) a
   | Dismiss a
-  | Confirm s a
+  | Confirm (List s) a
 
 type State s =
-  { values ∷ Array s
-  , selectedIndex ∷ Int
+  { values ∷ Cofree List s
+  , selection ∷ Maybe (List Int)
+  , cursor ∷ List Int
+  }
+
+initialState ∷ ∀ s. Cofree List s → State s
+initialState values =
+  { values
+  , selection: Nothing
+  , cursor: Nil
+  }
+
+type ChildState s = Void
+
+type ChildQuery s = Const Void
+
+type ChildSlot = Unit
+
+type StateP s = H.ParentState (State s) (ChildState s) (Query s) (ChildQuery s) Slam ChildSlot
+
+type QueryP s = H.ParentQuery (Query s) (ChildQuery s) ChildSlot
+
+type HTML s = H.ParentHTML (ChildState s) (Query s) (ChildQuery s) Slam ChildSlot
+
+type DSL s = H.ParentDSL (State s) (ChildState s) (Query s) (ChildQuery s) Slam ChildSlot
+
+type PickerOptions s =
+  { label  ∷ s → String
+  , render ∷ s → HTML s
+  , weight ∷ s → Number
+  , title  ∷ String
   }
 
 picker
   ∷ ∀ s
-  . String
-  → (s → String)
-  → H.Component (State s) (Query s) Slam
-picker title showValue = H.component { render, eval }
+  . PickerOptions s
+  → H.Component (StateP s) (QueryP s) Slam
+picker opts = H.parentComponent { render, eval, peek: Nothing }
   where
-  render ∷ State s → H.ComponentHTML (Query s)
+  render ∷ State s → HTML s
   render st =
+    let cof = snd <$> getCursor st.cursor st.values in
     HH.div
       [ HP.classes [ HH.className "sd-dimension-picker" ] ]
       [ HH.div
           [ HP.classes [ HH.className "sd-dimension-picker-title" ] ]
-          [ HH.h1_ [ HH.text title ]
+          [ HH.h1_ [ HH.text opts.title ]
           , HH.button
               [ HP.classes [ HH.className "sd-dismiss-button" ]
               , HP.title "Dismiss"
@@ -63,7 +97,7 @@ picker title showValue = H.component { render, eval }
           ]
       , HH.div
           [ HP.classes [ HH.className "sd-dimension-picker-content" ] ]
-          [ HH.ul_ (Array.mapWithIndex renderValue st.values) ]
+          [ HH.ul_ (renderedValues cof) ]
       , HH.div
           [ HP.classes [ HH.className "sd-dimension-picker-toolbar" ] ]
           [ HH.button
@@ -76,30 +110,58 @@ picker title showValue = H.component { render, eval }
               ([ HP.classes [ B.btn, B.btnPrimary ]
               , ARIA.label ""
               ] <>
-                case Array.index st.values st.selectedIndex of
-                  Just s  → [ HE.onClick (HE.input_ (Confirm s)) ]
+                case flip getCursor st.values =<< st.selection of
+                  Just (p × cof') → [ HE.onClick (HE.input_ (Confirm (List.snoc p (Cofree.head cof')))) ]
                   Nothing → [ HP.disabled true ])
               [ HH.text "Confirm" ]
           ]
       ]
     where
-    renderValue ix val =
+    renderedValues Nothing = []
+    renderedValues (Just parent) =
+      let
+        values =
+          Array.mapWithIndex
+            (\ix val → renderValue (ix : st.cursor) (opts.label val) (opts.render val))
+            (Array.fromFoldable
+              (Cofree.head <$> Cofree.tail parent))
+      in
+        maybe [] (pure ∘ renderBack) (List.tail st.cursor) <> values
+
+    renderValue cursor label html =
       HH.li
-        [ HP.classes (HH.className "selected" <$ guard (ix ≡ st.selectedIndex)) ]
+        [ HP.classes (HH.className "selected" <$ guard (Just cursor ≡ st.selection)) ]
         [ HH.button
-            [ HP.title (showValue val)
-            , ARIA.label (showValue val)
-            , HE.onClick (HE.input_ (Choose ix))
+            [ HP.title label
+            , ARIA.label label
+            , HE.onClick (HE.input_ (Choose cursor))
             ]
-            [ HH.text (showValue val) ]
+            [ html ]
         ]
 
-  eval ∷ Query s ~> H.ComponentDSL (State s) (Query s) Slam
+    renderBack back =
+      renderValue back "Back" (HH.text "Back")
+
+  eval ∷ Query s ~> DSL s
   eval = case _ of
-    Choose ix next → do
-      H.modify _ { selectedIndex = ix }
+    Choose cursor next → do
+      st ← H.get
+      for_ (getCursor cursor st.values) \(p × cof) →
+        if List.null (Cofree.tail cof)
+          then H.modify _ { selection = Just cursor }
+          else H.modify _ { cursor = cursor, selection = Nothing }
       pure next
     Dismiss next →
       pure next
     Confirm _ next →
       pure next
+
+getCursor
+  ∷ ∀ a
+  . List Int
+  → Cofree List a
+  → Maybe (List a × Cofree List a)
+getCursor cursor = go Nil (List.reverse cursor)
+  where
+  go p Nil cof = Just (List.reverse p × cof)
+  go p (i : is) cof = go (Cofree.head cof : p) is =<< List.index (Cofree.tail cof) i
