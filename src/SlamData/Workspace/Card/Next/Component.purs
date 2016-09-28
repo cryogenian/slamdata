@@ -22,7 +22,6 @@ module SlamData.Workspace.Card.Next.Component
 
 import SlamData.Prelude
 
-import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((.~))
 import Data.String as Str

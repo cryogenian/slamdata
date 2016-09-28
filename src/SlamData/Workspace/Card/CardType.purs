@@ -39,8 +39,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Workspace.Card.CardType.ChartType
-  ( ChartType(..)
-  , allChartTypes
+  ( ChartType
   , printChartType
   , parseChartType
   , chartLightIconSrc
@@ -104,26 +103,24 @@ instance arbitraryAceMode ∷ SC.Arbitrary AceMode where
     pure $ if b then MarkdownMode else SQLMode
 
 instance encodeJsonCardType ∷ EncodeJson CardType where
-  encodeJson =
-    encodeJson ∘
-      case _ of
-        Ace MarkdownMode → "ace-markdown"
-        Ace SQLMode → "ace-sql"
-        Search → "search"
-        ChartOptions chty → printChartType chty ⊕ "-options"
-        Chart → "chart"
-        Markdown → "markdown"
-        Table → "table"
-        Download → "download"
-        Variables → "variables"
-        Troubleshoot → "troubleshoot"
-        NextAction → "next-action"
-        Cache → "cache"
-        Open → "open"
-        DownloadOptions → "download-options"
-        Draftboard → "draftboard"
-        ErrorCard → "error"
-        PendingCard → "pending"
+  encodeJson = encodeJson ∘ case _ of
+    Ace MarkdownMode → "ace-markdown"
+    Ace SQLMode → "ace-sql"
+    Search → "search"
+    ChartOptions chty → printChartType chty ⊕ "-options"
+    Chart → "chart"
+    Markdown → "markdown"
+    Table → "table"
+    Download → "download"
+    Variables → "variables"
+    Troubleshoot → "troubleshoot"
+    NextAction → "next-action"
+    Cache → "cache"
+    Open → "open"
+    DownloadOptions → "download-options"
+    Draftboard → "draftboard"
+    ErrorCard → "error"
+    PendingCard → "pending"
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
@@ -132,8 +129,6 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "ace-markdown" → pure $ Ace MarkdownMode
       "ace-sql" → pure $ Ace SQLMode
       "search" → pure Search
-      -- TODO
---      "chart-options" → pure $ ChartOptions Pie
       "chart" → pure Chart
       "markdown" → pure Markdown
       "table" → pure Table
