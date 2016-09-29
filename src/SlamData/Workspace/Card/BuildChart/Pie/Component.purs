@@ -70,10 +70,15 @@ renderHighLOD state =
     , renderParallel state
     , case state.pickerOptions of
         Nothing → HH.text ""
-        Just { options } →
+        Just { options, select } →
           HH.slot unit \_ →
             { component: DPC.picker
-                { title: "Choose dimension"
+                { title: case select of
+                    Q.Category _ → "Choose category"
+                    Q.Value _    → "Choose measure"
+                    Q.Donut _    → "Choose donut"
+                    Q.Parallel _ → "Choose parallel"
+                    _ → ""
                 , label: show
                 , render: HH.text ∘ show
                 , weight: const 0.0
@@ -96,13 +101,7 @@ renderCategory state =
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Category" ]
     , BCI.pickerInput
-        { disableWhen: (_ < 2)
-        , defaultWhen: (_ < 1)
-        , ariaLabel: Just "category"
-        , defaultOption: "Select source"
-        , showValue: show
-        , query: selecting Q.Category
-        }
+        (BCI.primary (Just "Category") (selecting Q.Category))
         state.category
     ]
 
@@ -115,14 +114,8 @@ renderValue state =
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
     , HH.div_
         [ BCI.pickerInput
-            { disableWhen: (_ < 1)
-            , defaultWhen: const true
-            , ariaLabel: Nothing
-            , defaultOption: "Select source"
-            , showValue: show
-            , query: selecting Q.Value
-            }
-            state.category
+            (BCI.secondary (Just "Measure") (selecting Q.Value))
+            state.value
         , BCI.aggregationInput
             { disableWhen: (_ < 1)
             , defaultWhen: const false
@@ -143,13 +136,7 @@ renderDonut state =
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Donut" ]
     , BCI.pickerInput
-        { disableWhen: (_ < 1)
-        , defaultWhen: const true
-        , ariaLabel: Just "Donut"
-        , defaultOption: "Select source"
-        , showValue: show
-        , query: selecting Q.Donut
-        }
+        (BCI.secondary (Just "Donut") (selecting Q.Donut))
         state.donut
     ]
 
@@ -161,13 +148,7 @@ renderParallel state =
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Parallel" ]
     , BCI.pickerInput
-        { disableWhen: (_ < 1)
-        , defaultWhen: const true
-        , ariaLabel: Just "Parallel"
-        , defaultOption: "Select source"
-        , showValue: show
-        , query: selecting Q.Parallel
-        }
+        (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
         state.parallel
     ]
 
@@ -254,6 +235,7 @@ peek = coproduct peekPicker (const (pure unit))
           Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ value')
           _ → pure unit
       synchronizeChildren
+      update
     _ →
       pure unit
 

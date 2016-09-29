@@ -24,11 +24,31 @@ type PickerConfig a i =
     , query ∷ SelectAction a → H.Action i
     )
 
-type AggregationInput a i =
+type AggregationConfig a i =
   SelectConfig
     ( query ∷ SelectAction a → H.Action i
     , open ∷ Boolean
     )
+
+primary ∷ ∀ a i. Show a ⇒ Maybe String → (SelectAction a → H.Action i) → PickerConfig a i
+primary =
+  { disableWhen: (_ < 2)
+  , defaultWhen: (_ < 1)
+  , ariaLabel: _
+  , defaultOption: "Select source"
+  , showValue: show
+  , query: _
+  }
+
+secondary ∷ ∀ a i. Show a ⇒ Maybe String → (SelectAction a → H.Action i) → PickerConfig a i
+secondary =
+  { disableWhen: (_ < 1)
+  , defaultWhen: const true
+  , ariaLabel: _
+  , defaultOption: "Select source"
+  , showValue: show
+  , query: _
+  }
 
 pickerInput
   ∷ ∀ a i p
@@ -70,7 +90,7 @@ pickerInput conf (Select { options, value }) =
 aggregationInput
   ∷ ∀ a i p
   . OptionVal a
-  ⇒ AggregationInput a i
+  ⇒ AggregationConfig a i
   → Select a
   → H.HTML p i
 aggregationInput conf (Select { options, value }) =
