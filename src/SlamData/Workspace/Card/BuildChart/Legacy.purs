@@ -139,17 +139,17 @@ decode cturs js = do
   decodeLine cc bo = pure $ cturs.line
     let
       dimension =
-        cc.dimensions A.!! 0 >>= view S._value
+        spy $ cc.dimensions A.!! 0 >>= view S._value
       series =
-        cc.series A.!! 0 >>= view S._value
+        spy $ cc.series A.!! 0 >>= view S._value
       value =
-        cc.measures A.!! 0 >>= view S._value
+        spy $ cc.measures A.!! 0 >>= view S._value
       valueAggregation =
-        join $ cc.aggregations A.!! 0 >>= view S._value
+        spy $ fromMaybe Ag.Sum $ join $ cc.aggregations A.!! 0 >>= view S._value
       secondValue =
-        cc.measures A.!! 1 >>= view S._value
+        spy $ cc.measures A.!! 1 >>= view S._value
       secondValueAggregation =
-        join $ cc.aggregations A.!! 1 >>= view S._value
+        spy $ join $ cc.aggregations A.!! 1 >>= view S._value
 
       size = Nothing
       sizeAggregation = Nothing
@@ -158,10 +158,10 @@ decode cturs js = do
       axisLabelAngle = Int.toNumber bo.axisLabelAngle
       axisLabelFontSize = bo.axisLabelFontSize
 
-      lineR =
+      lineR = spy $
         { dimension: _
         , value: _
-        , valueAggregation: _
+        , valueAggregation
         , secondValue
         , secondValueAggregation
         , size
@@ -174,7 +174,6 @@ decode cturs js = do
         }
         <$> dimension
         <*> value
-        <*> valueAggregation
     in
       lineR
 

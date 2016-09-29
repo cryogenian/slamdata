@@ -214,7 +214,8 @@ decode js = do
   cardId ← obj .? "cardId"
   cardTypeStr ← obj .? "cardType"
   modelJS ← obj .? "model"
-  model ←
+  traceAnyA "we are in decode card model"
+  model ← traceAnyM =<<
     if cardTypeStr ≡ "chart-options"
       then
       (map BuildMetric $ BuildMetric.decode modelJS)
