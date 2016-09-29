@@ -324,28 +324,24 @@ decode cturs js = do
       series =
         cc.series A.!! 0 >>= view S._value
       order = case bo.funnelOrder of
-        "ascending" → Just Asc
-        "desceding" → Just Desc
-        _ → Nothing
+        "ascending" → Asc
+        _ → Desc
       align = case bo.funnelAlign of
-        "left" → Just LeftAlign
-        "right" → Just RightAlign
-        "center" → Just CenterAlign
-        _ → Nothing
+        "left" → LeftAlign
+        "right" → RightAlign
+        _ → CenterAlign
 
       funnelR =
         { category: _
         , value: _
         , valueAggregation: _
-        , order: _
-        , align: _
+        , order
+        , align
         , series
         }
         <$> category
         <*> value
         <*> valueAggregation
-        <*> order
-        <*> align
     in
       funnelR
 
