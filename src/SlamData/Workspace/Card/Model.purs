@@ -213,17 +213,17 @@ decode js = do
   obj ← J.decodeJson js
   cardId ← obj .? "cardId"
   cardTypeStr ← obj .? "cardType"
+  modelJS ← obj .? "model"
   model ←
     if cardTypeStr ≡ "chart-options"
       then
-      (map BuildMetric $ BuildMetric.decode js)
-      <|> (map BuildSankey $ BuildSankey.decode js)
-      <|> (map BuildGauge $ BuildGauge.decode js)
-      <|> (map BuildGraph $ BuildGraph.decode js)
-      <|> (ChartLegacy.decode legacyConf js)
+      (map BuildMetric $ BuildMetric.decode modelJS)
+      <|> (map BuildSankey $ BuildSankey.decode modelJS)
+      <|> (map BuildGauge $ BuildGauge.decode modelJS)
+      <|> (map BuildGraph $ BuildGraph.decode modelJS)
+      <|> (ChartLegacy.decode legacyConf modelJS)
       else do
       cardType ← obj .? "cardType"
-      modelJS ← obj .? "model"
       decodeCardModel cardType modelJS
   pure { cardId, model }
   where

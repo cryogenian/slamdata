@@ -94,17 +94,17 @@ decode
 decode cturs js = do
   obj ← J.decodeJson js
   bo ← (obj .? "options") >>= decodeBO
-  cc ← (obj .? "chartConfiguration") >>= decodeCC
+  cc ← (obj .? "chartConfig") >>= decodeCC
   case bo.chartType of
-    Pie → decodePie cc
-    Line → decodeLine cc bo
-    Bar → decodeBar cc bo
-    Area → decodeArea cc bo
-    Scatter → decodeScatter cc bo
-    Radar → decodeRadar cc bo
-    Funnel → decodeFunnel cc bo
-    Heatmap → decodeHeatmap cc bo
-    Boxplot → decodeBoxplot cc bo
+    Pie → spy $ decodePie cc
+    Line → spy $ decodeLine cc bo
+    Bar → spy $ decodeBar cc bo
+    Area → spy $ decodeArea cc bo
+    Scatter → spy $ decodeScatter cc bo
+    Radar → spy $ decodeRadar cc bo
+    Funnel → spy $ decodeFunnel cc bo
+    Heatmap → spy $ decodeHeatmap cc bo
+    Boxplot → spy $ decodeBoxplot cc bo
     chty → throwError $ printChartType chty ⊕ " should be decoded already"
   where
   decodePie ∷ ChartConfiguration → String ⊹ a
