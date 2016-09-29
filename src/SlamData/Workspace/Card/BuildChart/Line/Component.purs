@@ -4,9 +4,9 @@ module SlamData.Workspace.Card.BuildChart.Line.Component
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
-import Data.Lens (view, (^?), (.~))
+import Data.Lens ((^?), (^.), (.~), (?~), _1, _2)
 import Data.Lens as Lens
+import Data.List as List
 import Data.Int as Int
 
 import Global (readFloat, isNaN)
@@ -24,9 +24,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Render.Common (row)
 import SlamData.Form.Select
-  ( Select
-  , newSelect
-  , emptySelect
+  ( newSelect
   , setPreviousValueFrom
   , autoSelect
   , ifSelected
@@ -39,11 +37,12 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Form.Select.Component as S
-import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Line.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Line.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Line.Component.Query as Q
@@ -89,7 +88,34 @@ renderHighLOD state =
     , row [ renderMinSize state, renderMaxSize state ]
     , HH.hr_
     , row [ renderAxisLabelAngle state, renderAxisLabelFontSize state ]
+    , renderPicker state
     ]
+
+selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting f q _ = right (Q.Select (f q) unit)
+
+renderPicker ∷ ST.State → HTML
+renderPicker state = case state.picker of
+  Nothing → HH.text ""
+  Just { options, select } →
+    HH.slot unit \_ →
+      { component: DPC.picker
+          { title: case select of
+              Q.Dimension _   → "Choose dimension"
+              Q.Value _       → "Choose measure #1"
+              Q.SecondValue _ → "Choose measure #2"
+              Q.Size _        → "Choose measure #3"
+              Q.Series _      → "Choose series"
+              _ → ""
+          , label: show
+          , render: HH.text ∘ show
+          , weight: const 0.0
+          }
+      , initialState:
+          H.parentState
+            (DPC.initialState
+              (groupJCursors (List.fromFoldable options)))
+      }
 
 renderDimension ∷ ST.State → HTML
 renderDimension state =
@@ -98,10 +124,9 @@ renderDimension state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Dimension" ]
-    , HH.slot' CS.cpDimension unit \_ →
-         { component: S.primarySelect (Just "Dimension")
-         , initialState: emptySelect
-         }
+    , BCI.pickerInput
+        (BCI.primary (Just "Dimension") (selecting Q.Dimension))
+        state.dimension
     ]
 
 renderValue ∷ ST.State → HTML
@@ -110,18 +135,21 @@ renderValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.slot' CS.cpValue unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Measure"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
-       }
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure #1" ]
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.secondary (Just "Measure1") (selecting Q.Value))
+            state.value
+        , BCI.aggregationInput
+            { disableWhen: (_ < 1)
+            , defaultWhen: const false
+            , ariaLabel: Nothing
+            , defaultOption: ""
+            , query: selecting Q.ValueAgg
+            , open: fst state.valueAgg
+            }
+            (snd state.valueAgg)
+        ]
     ]
 
 renderSecondValue ∷ ST.State → HTML
@@ -130,18 +158,21 @@ renderSecondValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.slot' CS.cpSecondValue unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Measure"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
-       }
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure #2" ]
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.secondary (Just "Measure2") (selecting Q.SecondValue))
+            state.secondValue
+        , BCI.aggregationInput
+            { disableWhen: (_ < 1)
+            , defaultWhen: const false
+            , ariaLabel: Nothing
+            , defaultOption: ""
+            , query: selecting Q.SecondValueAgg
+            , open: fst state.secondValueAgg
+            }
+            (snd state.secondValueAgg)
+        ]
     ]
 
 renderSeries ∷ ST.State → HTML
@@ -151,10 +182,9 @@ renderSeries state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , HH.slot' CS.cpSeries unit \_ →
-       { component: S.secondarySelect (pure "Series")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Series") (selecting Q.Series))
+        state.series
     ]
 
 renderSize ∷ ST.State → HTML
@@ -163,18 +193,21 @@ renderSize state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.slot' CS.cpSize unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Measure"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
-       }
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure #3" ]
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.secondary (Just "Measure3") (selecting Q.Size))
+            state.size
+        , BCI.aggregationInput
+            { disableWhen: (_ < 1)
+            , defaultWhen: const false
+            , ariaLabel: Nothing
+            , defaultOption: ""
+            , query: selecting Q.SizeAgg
+            , open: fst state.sizeAgg
+            }
+            (snd state.sizeAgg)
+        ]
     ]
 
 
@@ -184,7 +217,7 @@ renderAxisLabelAngle state =
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Axis label angle" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label angle" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.axisLabelAngle
@@ -199,7 +232,7 @@ renderAxisLabelFontSize state =
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Axis label font size" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label font size" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.axisLabelFontSize
@@ -255,48 +288,51 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    r ← getLineSelects
     let
       model =
         { dimension: _
         , value: _
         , valueAggregation: _
-        , secondValue: r.secondValue >>= view _value
-        , secondValueAggregation: r.secondValueAggregation >>= view _value
-        , size: r.size >>= view _value
-        , sizeAggregation: r.sizeAggregation >>= view _value
-        , series: r.series >>= view _value
+        , secondValue: st.secondValue ^. _value
+        , secondValueAggregation: snd st.secondValueAgg ^. _value
+        , size: st.size ^. _value
+        , sizeAggregation: snd st.sizeAgg ^. _value
+        , series: st.series ^. _value
         , maxSize: st.maxSize
         , minSize: st.minSize
         , axisLabelAngle: st.axisLabelAngle
         , axisLabelFontSize: st.axisLabelFontSize
         }
-        <$> (r.dimension >>= view _value)
-        <*> (r.value >>= view _value)
-        <*> (r.valueAggregation >>= view _value)
+        <$> (st.dimension ^. _value)
+        <*> (st.value ^. _value)
+        <*> (snd st.valueAgg ^. _value)
     pure $ k $ Card.BuildLine model
   CC.Load (Card.BuildLine (Just model)) next → do
     loadModel model
-    H.modify _{ maxSize = model.maxSize
-              , minSize = model.minSize
-              , axisLabelAngle = model.axisLabelAngle
-              , axisLabelFontSize = model.axisLabelFontSize
-              }
+    H.modify _
+      { maxSize = model.maxSize
+      , minSize = model.minSize
+      , axisLabelAngle = model.axisLabelAngle
+      , axisLabelFontSize = model.axisLabelFontSize
+      }
     pure next
   CC.Load card next →
     pure next
   CC.SetDimensions dims next → do
-    H.modify
-      _{levelOfDetails =
-           if dims.width < 576.0 ∨ dims.height < 416.0
-             then Low
-             else High
-       }
+    H.modify _
+      { levelOfDetails =
+          if dims.width < 576.0 ∨ dims.height < 416.0
+            then Low
+            else High
+      }
     pure next
   CC.ModelUpdated _ next →
     pure next
   CC.ZoomIn next →
     pure next
+
+update ∷ DSL Unit
+update = CC.raiseUpdatedP' CC.EvalModelUpdate
 
 lineBuilderEval ∷ Q.Query ~> DSL
 lineBuilderEval = case _ of
@@ -304,37 +340,76 @@ lineBuilderEval = case _ of
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{axisLabelAngle = fl}
-      CC.raiseUpdatedP' CC.EvalModelUpdate
+      update
     pure next
   Q.SetAxisLabelFontSize str next → do
     let mbFS = Int.fromString str
     for_ mbFS \fs → do
       H.modify _{axisLabelFontSize = fs}
-      CC.raiseUpdatedP' CC.EvalModelUpdate
+      update
     pure next
   Q.SetMinSymbolSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{minSize = fl}
-      CC.raiseUpdatedP' CC.EvalModelUpdate
+      update
     pure next
   Q.SetMaxSymbolSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{maxSize = fl}
-      CC.raiseUpdatedP' CC.EvalModelUpdate
+      update
     pure next
+  Q.Select sel next → do
+    case sel of
+      Q.Dimension a      → updatePicker ST._dimension Q.Dimension a
+      Q.Value a          → updatePicker ST._value Q.Value a
+      Q.ValueAgg a       → updateSelect ST._valueAgg a
+      Q.SecondValue a    → updatePicker ST._secondValue Q.SecondValue a
+      Q.SecondValueAgg a → updateSelect ST._secondValueAgg a
+      Q.Size a           → updatePicker ST._size Q.Size a
+      Q.SizeAgg a        → updateSelect ST._sizeAgg a
+      Q.Series a         → updatePicker ST._series Q.Series a
+    pure next
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> update
+
+  updateSelect l = case _ of
+    BCI.Open _    → H.modify (l ∘ _1 .~ true)
+    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> synchronizeChildren *> update
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+peek = coproduct peekPicker (const (pure unit))
+  where
+  peekPicker = case _ of
+    DPC.Dismiss _ →
+      H.modify _ { picker = Nothing }
+    DPC.Confirm value _ → do
+      st ← H.get
+      H.modify _ { picker = Nothing }
+      let
+        value' = flattenJCursors value
+      for_ st.picker \{ select } →
+        case select of
+          Q.Dimension _   → H.modify (ST._dimension ∘ _value ?~ value')
+          Q.Value _       → H.modify (ST._value ∘ _value ?~ value')
+          Q.SecondValue _ → H.modify (ST._secondValue ∘ _value ?~ value')
+          Q.Size _        → H.modify (ST._size ∘ _value ?~ value')
+          Q.Series _      → H.modify (ST._series ∘ _value ?~ value')
+          _ → pure unit
+      synchronizeChildren
+      update
+    _ →
+      pure unit
 
 synchronizeChildren ∷ DSL Unit
-synchronizeChildren = void do
+synchronizeChildren = do
   st ← H.get
-  r ← getLineSelects
   let
     newDimension =
-      setPreviousValueFrom r.dimension
+      setPreviousValueFrom (Just st.dimension)
         $ autoSelect
         $ newSelect
         $ st.axes.category
@@ -342,17 +417,17 @@ synchronizeChildren = void do
         ⊕ st.axes.value
 
     newValue =
-      setPreviousValueFrom r.value
+      setPreviousValueFrom (Just st.value)
         $ autoSelect
         $ newSelect
         $ st.axes.value
 
     newValueAggregation =
-      setPreviousValueFrom r.valueAggregation
+      setPreviousValueFrom (Just $ snd st.valueAgg)
         $ nonMaybeAggregationSelect
 
     newSecondValue =
-      setPreviousValueFrom r.secondValue
+      setPreviousValueFrom (Just st.secondValue)
         $ autoSelect
         $ newSelect
         $ ifSelected [ newValue ]
@@ -360,11 +435,11 @@ synchronizeChildren = void do
         ⊝ newValue
 
     newSecondValueAggregation =
-      setPreviousValueFrom r.secondValueAggregation
+      setPreviousValueFrom (Just $ snd st.secondValueAgg)
         $ nonMaybeAggregationSelect
 
     newSize =
-      setPreviousValueFrom r.size
+      setPreviousValueFrom (Just st.size)
         $ autoSelect
         $ newSelect
         $ ifSelected [ newValue ]
@@ -373,115 +448,37 @@ synchronizeChildren = void do
         ⊝ newSecondValue
 
     newSizeAggregation =
-      setPreviousValueFrom r.sizeAggregation
+      setPreviousValueFrom (Just $ snd st.sizeAgg)
         $ nonMaybeAggregationSelect
 
     newSeries =
-      setPreviousValueFrom r.series
+      setPreviousValueFrom (Just st.series)
         $ autoSelect
         $ newSelect
         $ ifSelected [ newDimension ]
         $ st.axes.category
         ⊝ newDimension
 
-  H.query' CS.cpDimension unit $ H.action $ S.SetSelect newDimension
-  H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
-  H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
-  H.query' CS.cpSecondValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSecondValue
-  H.query' CS.cpSecondValue unit $ left $ H.action $ S.SetSelect newSecondValueAggregation
-  H.query' CS.cpSeries unit $ H.action $ S.SetSelect newSeries
-  H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSize
-  H.query' CS.cpSize unit $ left $ H.action $ S.SetSelect newSizeAggregation
+  H.modify _
+    { dimension = newDimension
+    , value = newValue
+    , valueAgg = false × newValueAggregation
+    , secondValue = newSecondValue
+    , secondValueAgg = false × newSecondValueAggregation
+    , size = newSize
+    , sizeAgg = false × newSizeAggregation
+    , series = newSeries
+    }
 
 loadModel ∷ M.LineR → DSL Unit
-loadModel r = void do
-  H.query' CS.cpValue unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.value
-
-  H.query' CS.cpValue unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.valueAggregation
-
-  H.query' CS.cpDimension unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.dimension
-
-  H.query' CS.cpSecondValue unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.secondValue
-
-  H.query' CS.cpSecondValue unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.secondValueAggregation
-
-  H.query' CS.cpSeries unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.series
-
-  H.query' CS.cpSize unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.size
-
-  H.query' CS.cpSize unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.sizeAggregation
-
-type LineSelects =
-  { dimension ∷ Maybe (Select JCursor)
-  , value ∷ Maybe (Select JCursor)
-  , valueAggregation ∷ Maybe (Select Aggregation)
-  , secondValue ∷ Maybe (Select JCursor)
-  , secondValueAggregation ∷ Maybe (Select Aggregation)
-  , series ∷ Maybe (Select JCursor)
-  , size ∷ Maybe (Select JCursor)
-  , sizeAggregation ∷ Maybe (Select Aggregation)
-  }
-
-getLineSelects ∷ DSL LineSelects
-getLineSelects = do
-  dimension ←
-    H.query' CS.cpDimension unit $ H.request S.GetSelect
-  value ←
-    H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  valueAggregation ←
-    H.query' CS.cpValue unit $ left $ H.request S.GetSelect
-  secondValue ←
-    H.query' CS.cpSecondValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  secondValueAggregation ←
-    H.query' CS.cpSecondValue unit $ left $ H.request S.GetSelect
-  series ←
-    H.query' CS.cpSeries unit $ H.request S.GetSelect
-  size ←
-    H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  sizeAggregation ←
-    H.query' CS.cpSize unit $ left $ H.request S.GetSelect
-  pure { dimension
-       , value
-       , valueAggregation
-       , secondValue
-       , secondValueAggregation
-       , series
-       , size
-       , sizeAggregation
-       }
+loadModel r =
+  H.modify _
+    { value = fromSelected (Just r.value)
+    , valueAgg = false × fromSelected (Just r.valueAggregation)
+    , dimension = fromSelected (Just r.dimension)
+    , secondValue = fromSelected r.secondValue
+    , secondValueAgg = false × fromSelected r.secondValueAggregation
+    , series = fromSelected r.series
+    , size = fromSelected r.size
+    , sizeAgg = false × fromSelected r.sizeAggregation
+    }

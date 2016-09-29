@@ -14,6 +14,8 @@ import SlamData.Render.CSS as Rc
 import SlamData.Form.Select (Select(..), stringVal, class OptionVal)
 import SlamData.Form.Select.Component (SelectConfig)
 
+type Select' a = Boolean × Select a
+
 data SelectAction a
   = Open (Array a)
   | Choose (Maybe a)
@@ -81,6 +83,7 @@ pickerInput conf (Select { options, value }) =
             HH.button
               [ HP.classes [ HH.className "sd-dismiss-button" ]
               , HE.onClick (HE.input_ (conf.query (Choose Nothing)))
+              , HP.disabled isDisabled
               ]
               [ HH.text "×" ]
           else
