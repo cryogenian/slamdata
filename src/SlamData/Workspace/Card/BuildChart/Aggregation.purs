@@ -34,7 +34,7 @@ data Aggregation
   | Sum
   | Product
 
-allAggregations ∷ Array Aggregationj
+allAggregations ∷ Array Aggregation
 allAggregations =
   [ Maximum
   , Minimum
