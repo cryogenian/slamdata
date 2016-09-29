@@ -111,14 +111,41 @@ buildScatterData r records = series
     | A.null ys = []
     | otherwise =
       let
-        abscissas = maybe xs (\ag → A.singleton $ Ag.runAggregation ag xs) r.abscissaAggregation
-        ordinates = maybe ys (\ag → A.singleton $ Ag.runAggregation ag ys) r.ordinateAggregation
-        sizes = maybe rs (\ag → A.singleton $ Ag.runAggregation ag rs) $ join $ r.sizeAggregation
-      in do
-        x ← abscissas
-        y ← ordinates
-        r ← sizes
-        pure {x, y, r}
+        len =
+          max (A.length xs) $ max (A.length ys) (A.length rs)
+
+        abscissas =
+          case r.abscissaAggregation of
+            Nothing → xs
+            Just ag →
+              let
+                v = Ag.runAggregation ag xs
+              in
+                map (const v) $ A.range 0 $ len - 1
+        ordinates =
+          case r.ordinateAggregation of
+            Nothing → ys
+            Just ag →
+              let
+                v = Ag.runAggregation ag ys
+              in
+                map (const v) $ A.range 0 $ len - 1
+
+        sizes =
+          case join $ r.sizeAggregation of
+            Just ag →
+              let
+                v = Ag.runAggregation ag rs
+              in
+                map (const v) $ A.range 0 $ len - 1
+            Nothing
+              | A.null rs →
+                map (\_ → r.minSize) rs
+            Nothing →
+              rs
+        zipped = A.zip abscissas $ A.zip ordinates sizes
+      in
+        zipped <#> \(x × y × r) → {x, y, r}
 
   adjustSymbolSizes
     ∷ Array {x ∷ Number, y ∷ Number, r ∷ Number}

@@ -38,7 +38,7 @@ import SlamData.Quasar.Auth.Permission (retrieveTokenHashes)
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Advanced.QuasarAF.Interpreter.Aff as QFA
 
-import SlamData.SignIn.Bus (SignInBus)
+import SlamData.GlobalMenu.Bus (SignInBus)
 
 import OIDC.Crypt as OIDC
 

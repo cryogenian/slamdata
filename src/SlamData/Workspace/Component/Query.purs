@@ -24,6 +24,7 @@ import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
 import Halogen.HTML.Events.Types as HET
 
+import SlamData.Wiring (StepByStepGuide)
 import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck)
@@ -38,8 +39,11 @@ data Query a
   | Reset UP.DirPath a
   | Init a
   | Load UP.DirPath (Maybe DeckId) AccessType a
+  | PresentStepByStepGuide StepByStepGuide a
   | CardGuideStepNext a
   | CardGuideDismiss a
+  | FlipGuideStepNext a
+  | FlipGuideDismiss a
   | Resize a
 
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)

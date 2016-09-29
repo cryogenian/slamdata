@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.SignIn.Menu.Component.State where
+module SlamData.GlobalMenu.Menu.Component.State where
 
 import SlamData.Prelude
 
@@ -24,18 +24,23 @@ import Halogen.Menu.Submenu.Component.State as HalogenSubmenuState
 
 import Quasar.Advanced.Types (ProviderR)
 
-type StateP g = HalogenMenu.MenuP (Maybe ProviderR) g
+data AuthenticateOrPresentHelp =
+  Authenticate (Maybe ProviderR) | PresentHelp String
 
-make ∷ Array ProviderR → HalogenMenu.Menu (Maybe ProviderR)
-make providers = HalogenMenuState.makeMenu
+type StateP g = HalogenMenu.MenuP AuthenticateOrPresentHelp g
+
+makeAuthenticationMenu
+  ∷ Array ProviderR → HalogenMenu.Menu AuthenticateOrPresentHelp
+makeAuthenticationMenu providers = HalogenMenuState.makeMenu
   [ { label: "🔓 Sign in"
-    , submenu: makeSubmenuItem <$> providers
+    , submenu: makeAuthenticateSubmenuItem <$> providers
     }
   ]
 
-makeSubmenuItem ∷ ProviderR → HalogenSubmenuState.SubmenuItem (Maybe ProviderR)
-makeSubmenuItem provider =
+makeAuthenticateSubmenuItem
+  ∷ ProviderR → HalogenSubmenuState.SubmenuItem AuthenticateOrPresentHelp
+makeAuthenticateSubmenuItem provider =
   { label: "Sign in with " ⊕ provider.displayName
   , shortcutLabel: Nothing
-  , value: Just provider
+  , value: Authenticate $ Just provider
   }

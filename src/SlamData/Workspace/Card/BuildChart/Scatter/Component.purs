@@ -366,7 +366,8 @@ loadModel r = void do
     $ H.action
     $ S.SetSelect
     $ fromSelected
-    $ Just r.abscissaAggregation
+    $ Just
+    $ r.abscissaAggregation
 
   H.query' CS.cpOrdinate unit
     $ right
@@ -381,7 +382,8 @@ loadModel r = void do
     $ H.action
     $ S.SetSelect
     $ fromSelected
-    $ Just r.ordinateAggregation
+    $ Just
+    $ r.ordinateAggregation
 
   H.query' CS.cpSize unit
     $ right
@@ -395,7 +397,6 @@ loadModel r = void do
     $ H.action
     $ S.SetSelect
     $ fromSelected r.sizeAggregation
-
   H.query' CS.cpSeries unit
     $ H.action
     $ S.SetSelect

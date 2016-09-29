@@ -23,7 +23,6 @@ module SlamData.Workspace.Card.Component
   ) where
 
 import SlamData.Prelude
-import SlamData.Config as Config
 
 import Data.Foldable (elem)
 import Data.Lens (PrismP, (.~), review, preview, clonePrism)
@@ -32,8 +31,6 @@ import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-
-import Math as Math
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, darkCardGlyph)
@@ -148,17 +145,10 @@ makeCardComponentPart def render =
   eval (CQ.UpdateDimensions next) = do
     H.gets _.element >>= traverse_ \el -> do
       { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
-      let
-        round n = (Math.round (n / Config.gridPx)) * Config.gridPx
-        roundedWidth = round width
-        roundedHeight = round height
-      unless (roundedWidth ≡ zero ∧ roundedHeight ≡ zero)
+      unless (width ≡ zero ∧ height ≡ zero)
         $ void
         $ H.query unit
         $ left
         $ H.action
-        $ CQ.SetDimensions
-            { width: roundedWidth
-            , height: roundedHeight
-            }
+        $ CQ.SetDimensions { width, height }
     pure next

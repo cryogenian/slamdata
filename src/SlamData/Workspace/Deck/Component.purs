@@ -60,6 +60,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
+import SlamData.Guide as Guide
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring (Wiring(..), CardEval, Cache, DeckMessage(..), putCardEval, putCache, getCache, makeCache)
 import SlamData.Wiring as W
@@ -218,10 +219,10 @@ eval opts = case _ of
   FlipDeck next → do
     updateBackSide opts
     H.modify
-      $ DCS._displayMode
-      %~ case _ of
+      $ DCS._displayMode %~ case _ of
         DCS.Normal → DCS.Backside
         _ → DCS.Normal
+    presentFlipGuideFirstTime
     pure next
   GrabDeck _ next →
     pure next
@@ -687,7 +688,6 @@ runInitialEval = do
   st ← H.get
   Wiring wiring ← H.liftH $ H.liftH ask
   cards ← makeCache
-
   let
     cardCoords = DCS.coordModelToCoord <$> L.fromFoldable st.modelCards
     source = st.id
@@ -696,7 +696,7 @@ runInitialEval = do
     getCache coord wiring.cards >>= traverse_ \ev →
       putCardEval ev cards
 
-  for_ (Array.head st.modelCards) \pendingCard →
+  for_ (Array.head st.modelCards) \pendingCard → do
     H.fromAff $ Bus.write { source, pendingCard, cards } wiring.pending
 
 -- | Evaluates a card given an input and model.
@@ -922,7 +922,6 @@ loadDeck opts path deckId = do
     deck ← ExceptT $ getDeck path deckId
     mirroredCards ← ExceptT $ loadMirroredCards path deck.mirror
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
-
   case res of
     Left err →
       H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
@@ -969,8 +968,10 @@ setModel opts model = do
     ∘ DCS.fromModel model
   presentAccessNextActionCardGuideAfterDelay
   case Array.head model.modelCards of
-    Just _ → runInitialEval
-    Nothing → runCardUpdates opts model.id L.Nil
+    Just _ →
+      runInitialEval
+    Nothing →
+      runCardUpdates opts model.id L.Nil
 
 getModelCards ∷ DeckDSL (Array (DeckId × Card.Model))
 getModelCards = do
@@ -1067,3 +1068,21 @@ getDeck
   → DeckDSL (Either QE.QError Model.Deck)
 getDeck path deckId =
   H.liftH $ H.liftH $ W.getDeck path deckId
+
+presentFlipGuideFirstTime ∷ DeckDSL Unit
+presentFlipGuideFirstTime = do
+  H.gets _.displayMode >>=
+    case _ of
+      DCS.Backside → do
+        W.Wiring wiring ← H.liftH $ H.liftH ask
+        shouldPresentFlipGuide >>=
+          if _
+          then H.fromAff $ Bus.write W.FlipGuide wiring.presentStepByStepGuide
+          else pure unit
+      _ → pure unit
+
+shouldPresentFlipGuide ∷ DeckDSL Boolean
+shouldPresentFlipGuide =
+  H.liftH
+    $ H.liftH
+    $ either (const true) not <$> LocalStorage.getLocalStorage Guide.dismissedFlipGuideKey

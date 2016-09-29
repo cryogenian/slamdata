@@ -94,7 +94,7 @@ decode
 decode cturs js = do
   obj ← J.decodeJson js
   bo ← (obj .? "options") >>= decodeBO
-  cc ← (obj .? "chartConfiguration") >>= decodeCC
+  cc ← (obj .? "chartConfig") >>= decodeCC
   case bo.chartType of
     Pie → decodePie cc
     Line → decodeLine cc bo
@@ -145,23 +145,29 @@ decode cturs js = do
       value =
         cc.measures A.!! 0 >>= view S._value
       valueAggregation =
-        join $ cc.aggregations A.!! 0 >>= view S._value
+        fromMaybe Ag.Sum $ join $ cc.aggregations A.!! 0 >>= view S._value
       secondValue =
         cc.measures A.!! 1 >>= view S._value
       secondValueAggregation =
-        join $ cc.aggregations A.!! 1 >>= view S._value
+        fromMaybe (Just Ag.Sum) $ cc.aggregations A.!! 1 >>= view S._value
 
-      size = Nothing
-      sizeAggregation = Nothing
-      minSize = 2.0
-      maxSize = 20.0
-      axisLabelAngle = Int.toNumber bo.axisLabelAngle
-      axisLabelFontSize = bo.axisLabelFontSize
+      size =
+        Nothing
+      sizeAggregation =
+        Just Ag.Sum
+      minSize =
+        2.0
+      maxSize =
+        20.0
+      axisLabelAngle =
+        Int.toNumber bo.axisLabelAngle
+      axisLabelFontSize =
+        bo.axisLabelFontSize
 
       lineR =
         { dimension: _
         , value: _
-        , valueAggregation: _
+        , valueAggregation
         , secondValue
         , secondValueAggregation
         , size
@@ -174,7 +180,6 @@ decode cturs js = do
         }
         <$> dimension
         <*> value
-        <*> valueAggregation
     in
       lineR
 
@@ -258,9 +263,9 @@ decode cturs js = do
       size =
         cc.measures A.!! 2 >>= view S._value
       abscissaAggregation =
-        cc.aggregations A.!! 0 >>= view S._value
+        fromMaybe Nothing $ cc.aggregations A.!! 0 >>= view S._value
       ordinateAggregation =
-        cc.aggregations A.!! 1 >>= view S._value
+        fromMaybe Nothing $ cc.aggregations A.!! 1 >>= view S._value
       sizeAggregation =
         cc.aggregations A.!! 2 >>= view S._value
       series =
@@ -273,8 +278,8 @@ decode cturs js = do
         { abscissa: _
         , ordinate: _
         , size
-        , abscissaAggregation: _
-        , ordinateAggregation: _
+        , abscissaAggregation
+        , ordinateAggregation
         , sizeAggregation
         , series
         , minSize
@@ -282,8 +287,6 @@ decode cturs js = do
         }
         <$> abscissa
         <*> ordinate
-        <*> abscissaAggregation
-        <*> ordinateAggregation
     in
       scatterR
 
@@ -326,28 +329,24 @@ decode cturs js = do
       series =
         cc.series A.!! 0 >>= view S._value
       order = case bo.funnelOrder of
-        "ascending" → Just Asc
-        "desceding" → Just Desc
-        _ → Nothing
+        "ascending" → Asc
+        _ → Desc
       align = case bo.funnelAlign of
-        "left" → Just LeftAlign
-        "right" → Just RightAlign
-        "center" → Just CenterAlign
-        _ → Nothing
+        "left" → LeftAlign
+        "right" → RightAlign
+        _ → CenterAlign
 
       funnelR =
         { category: _
         , value: _
         , valueAggregation: _
-        , order: _
-        , align: _
+        , order
+        , align
         , series
         }
         <$> category
         <*> value
         <*> valueAggregation
-        <*> order
-        <*> align
     in
       funnelR
 

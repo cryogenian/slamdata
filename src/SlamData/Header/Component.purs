@@ -22,13 +22,12 @@ import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Render.Common (logo)
 import SlamData.Render.CSS as Rc
-import SlamData.SignIn.Component as SignIn
+import SlamData.GlobalMenu.Component as GlobalMenu
 
 type State = Boolean
 initialState ∷ State
@@ -39,12 +38,12 @@ type Query = Const Void
 type ChildState =
   Either
     Gripper.State
-    SignIn.StateP
+    GlobalMenu.StateP
 
 type ChildQuery =
   Coproduct
     Gripper.Query
-    SignIn.QueryP
+    GlobalMenu.QueryP
 
 type ChildSlot =
   Either
@@ -58,12 +57,12 @@ cpGripper
       Unit ChildSlot
 cpGripper = cpL
 
-cpSignIn
+cpGlobalMenu
   ∷ ChildPath
-      SignIn.StateP ChildState
-      SignIn.QueryP ChildQuery
+      GlobalMenu.StateP ChildState
+      GlobalMenu.QueryP ChildQuery
       Unit ChildSlot
-cpSignIn = cpR
+cpGlobalMenu = cpR
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
@@ -84,13 +83,10 @@ render open =
         [ HH.div_
             [ HH.div [ HP.classes [ Rc.header ] ]
                 [ logo $ Just "3.0"
-                , HH.div
-                    [ HP.classes [ B.pullRight ] ]
-                    [ HH.slot' cpSignIn unit \_ →
-                         { component: SignIn.comp
-                         , initialState: H.parentState SignIn.initialState
-                         }
-                    ]
+                , HH.slot' cpGlobalMenu unit \_ →
+                     { component: GlobalMenu.comp
+                     , initialState: H.parentState GlobalMenu.initialState
+                     }
                 , HH.slot' cpGripper unit \_ →
                       { component: Gripper.comp "nav"
                       , initialState: Gripper.initialState
