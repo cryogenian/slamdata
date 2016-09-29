@@ -688,23 +688,15 @@ runInitialEval = do
   st ← H.get
   Wiring wiring ← H.liftH $ H.liftH ask
   cards ← makeCache
-  traceAnyA "running initial eval"
-  traceAnyA cards
-  traceAnyA st.modelCards
   let
     cardCoords = DCS.coordModelToCoord <$> L.fromFoldable st.modelCards
     source = st.id
 
   for_ cardCoords \coord → do
-    getCache coord wiring.cards >>= traverse_ \ev → do
-      traceAnyA "got cache"
-      traceAnyA ev
+    getCache coord wiring.cards >>= traverse_ \ev →
       putCardEval ev cards
 
   for_ (Array.head st.modelCards) \pendingCard → do
-    traceAnyA "pending card"
-    traceAnyA pendingCard
-    traceAnyA wiring.pending
     H.fromAff $ Bus.write { source, pendingCard, cards } wiring.pending
 
 -- | Evaluates a card given an input and model.
@@ -930,8 +922,6 @@ loadDeck opts path deckId = do
     deck ← ExceptT $ getDeck path deckId
     mirroredCards ← ExceptT $ loadMirroredCards path deck.mirror
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
-  traceAnyA "?????"
-  traceAnyA res
   case res of
     Left err →
       H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
@@ -973,19 +963,14 @@ setModel
   → DeckDSL Unit
 setModel opts model = do
   updateCardSize
-  traceAnyA "we are in set model"
   H.modify
     $ (DCS._stateMode .~ Preparing)
     ∘ DCS.fromModel model
-  traceAnyA "preparing"
   presentAccessNextActionCardGuideAfterDelay
-  traceAnyA "presented guide"
   case Array.head model.modelCards of
-    Just _ → do
-      traceAnyA "models head"
+    Just _ →
       runInitialEval
-    Nothing → do
-      traceAnyA "headless model"
+    Nothing →
       runCardUpdates opts model.id L.Nil
 
 getModelCards ∷ DeckDSL (Array (DeckId × Card.Model))

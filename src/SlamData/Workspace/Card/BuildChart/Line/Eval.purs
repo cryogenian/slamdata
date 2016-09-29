@@ -51,7 +51,8 @@ eval Nothing _ _ =
   QE.throw "Please select axis to aggregate"
 eval (Just conf) resource axes = do
   records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildLine conf records axes) Line
+  let res = Port.ChartInstructions (buildLine conf records axes) Line
+  pure res
 
 type LineSerie =
   { name ∷ Maybe String
@@ -170,12 +171,15 @@ buildLineData r records = series
         r.maxSize - r.minSize
 
       relativeSize ∷ Int → Int
-      relativeSize val =
-        Int.floor
+      relativeSize val
+        | distance ≡ 0.0 = val
+        | otherwise =
+          Int.floor
           $ r.maxSize
           - sizeDistance / distance * (maxValue - Int.toNumber val)
     in
       map (\x → x{symbolSize = relativeSize x.symbolSize}) items
+
 
 buildLine ∷ LineR → JArray → Axes → DSL OptionI
 buildLine r records axes = do

@@ -229,9 +229,7 @@ cardEval = case _ of
               , minSize = model.minSize
               }
     pure next
-  CC.Load card next → do
-    traceAnyA "model"
-    traceAnyA card
+  CC.Load card next →
     pure next
   CC.SetDimensions dims next → do
     H.modify
@@ -266,7 +264,6 @@ peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
 synchronizeChildren ∷ DSL Unit
 synchronizeChildren = void do
-  traceAnyA "synching"
   st ← H.get
   r ← getSelects
   let

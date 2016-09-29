@@ -276,7 +276,6 @@ cardEval = case _ of
         <*> (r.valueAggregation >>= view _value)
     pure $ k $ Card.BuildLine model
   CC.Load (Card.BuildLine (Just model)) next → do
-    traceAnyA "Load just model"
     loadModel model
     H.modify _{ maxSize = model.maxSize
               , minSize = model.minSize
@@ -284,9 +283,7 @@ cardEval = case _ of
               , axisLabelFontSize = model.axisLabelFontSize
               }
     pure next
-  CC.Load card next → do
-    traceAnyA "load something else"
-    traceAnyA card
+  CC.Load card next →
     pure next
   CC.SetDimensions dims next → do
     H.modify
@@ -335,10 +332,8 @@ synchronizeChildren ∷ DSL Unit
 synchronizeChildren = void do
   st ← H.get
   r ← getLineSelects
-  traceAnyA "Got line series"
   let
     newDimension =
-      spy $
       setPreviousValueFrom r.dimension
         $ autoSelect
         $ newSelect
@@ -347,19 +342,16 @@ synchronizeChildren = void do
         ⊕ st.axes.value
 
     newValue =
-      spy $
       setPreviousValueFrom r.value
         $ autoSelect
         $ newSelect
         $ st.axes.value
 
     newValueAggregation =
-      spy $
       setPreviousValueFrom r.valueAggregation
         $ nonMaybeAggregationSelect
 
     newSecondValue =
-      spy $
       setPreviousValueFrom r.secondValue
         $ autoSelect
         $ newSelect
@@ -368,12 +360,10 @@ synchronizeChildren = void do
         ⊝ newValue
 
     newSecondValueAggregation =
-      spy $
       setPreviousValueFrom r.secondValueAggregation
         $ nonMaybeAggregationSelect
 
     newSize =
-      spy $
       setPreviousValueFrom r.size
         $ autoSelect
         $ newSelect
@@ -383,19 +373,16 @@ synchronizeChildren = void do
         ⊝ newSecondValue
 
     newSizeAggregation =
-      spy $
       setPreviousValueFrom r.sizeAggregation
         $ nonMaybeAggregationSelect
 
     newSeries =
-      spy $
       setPreviousValueFrom r.series
         $ autoSelect
         $ newSelect
         $ ifSelected [ newDimension ]
         $ st.axes.category
         ⊝ newDimension
-
 
   H.query' CS.cpDimension unit $ H.action $ S.SetSelect newDimension
   H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue

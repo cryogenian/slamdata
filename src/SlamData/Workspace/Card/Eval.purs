@@ -220,8 +220,6 @@ evalOpen info res = do
        axes ←
          CET.liftQ $ QQ.axes filePath 20
        CET.addSource filePath
-       traceAnyA "axes"
-       traceAnyA axes
        pure { resource: filePath, tag: Nothing, axes }
      Just err →
        QE.throw err
