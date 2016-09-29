@@ -230,6 +230,7 @@ cardEval = case _ of
               }
     pure next
   CC.Load card next → do
+    traceAnyA "model"
     traceAnyA card
     pure next
   CC.SetDimensions dims next → do
@@ -265,6 +266,7 @@ peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
 synchronizeChildren ∷ DSL Unit
 synchronizeChildren = void do
+  traceAnyA "synching"
   st ← H.get
   r ← getSelects
   let
@@ -354,7 +356,6 @@ getSelects = do
 
 loadModel ∷ M.ScatterR → DSL Unit
 loadModel r = void do
-  traceAnyA "1"
   H.query' CS.cpAbscissa unit
     $ right
     $ H.ChildF unit
@@ -362,14 +363,15 @@ loadModel r = void do
     $ S.SetSelect
     $ fromSelected
     $ Just r.abscissa
-  traceAnyA "2"
+
   H.query' CS.cpAbscissa unit
     $ left
     $ H.action
     $ S.SetSelect
     $ fromSelected
-    $ Just r.abscissaAggregation
-  traceAnyA "3"
+    $ Just
+    $ r.abscissaAggregation
+
   H.query' CS.cpOrdinate unit
     $ right
     $ H.ChildF unit
@@ -377,27 +379,27 @@ loadModel r = void do
     $ S.SetSelect
     $ fromSelected
     $ Just r.ordinate
-  traceAnyA "4"
+
   H.query' CS.cpOrdinate unit
     $ left
     $ H.action
     $ S.SetSelect
     $ fromSelected
-    $ Just r.ordinateAggregation
-  traceAnyA "5"
+    $ Just
+    $ r.ordinateAggregation
+
   H.query' CS.cpSize unit
     $ right
     $ H.ChildF unit
     $ H.action
     $ S.SetSelect
     $ fromSelected r.size
-  traceAnyA "6"
+
   H.query' CS.cpSize unit
     $ left
     $ H.action
     $ S.SetSelect
     $ fromSelected r.sizeAggregation
-  traceAnyA "7"
   H.query' CS.cpSeries unit
     $ H.action
     $ S.SetSelect

@@ -308,7 +308,7 @@ synchronizeChildren = void do
         $ st.axes.category
         ⊝ newDimension
 
-
+  H.query' CS.cpDimension unit $ H.action $ S.SetSelect newDimension
   H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
   H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
   H.query' CS.cpSeries unit $ H.action $ S.SetSelect newSeries

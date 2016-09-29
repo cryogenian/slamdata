@@ -133,8 +133,8 @@ renderSecondValue state =
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
     , HH.slot' CS.cpSecondValue unit \_ →
        { component:
-           P.selectPair { disableWhen: (_ < 2)
-                        , defaultWhen: (_ > 1)
+           P.selectPair { disableWhen: (_ < 1)
+                        , defaultWhen: (const true)
                         , mainState: emptySelect
                         , ariaLabel: Just "Measure"
                         , classes: [ B.btnPrimary, CSS.aggregation]
@@ -166,8 +166,8 @@ renderSize state =
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
     , HH.slot' CS.cpSize unit \_ →
        { component:
-           P.selectPair { disableWhen: (_ < 2)
-                        , defaultWhen: (_ > 1)
+           P.selectPair { disableWhen: (_ < 1)
+                        , defaultWhen: (const true)
                         , mainState: emptySelect
                         , ariaLabel: Just "Measure"
                         , classes: [ B.btnPrimary, CSS.aggregation]
@@ -385,6 +385,7 @@ synchronizeChildren = void do
         ⊝ newDimension
 
 
+  H.query' CS.cpDimension unit $ H.action $ S.SetSelect newDimension
   H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
   H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
   H.query' CS.cpSecondValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSecondValue

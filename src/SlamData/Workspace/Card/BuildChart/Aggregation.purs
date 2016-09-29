@@ -34,7 +34,7 @@ data Aggregation
   | Sum
   | Product
 
-allAggregations ∷ Array Aggregation
+allAggregations ∷ Array Aggregationj
 allAggregations =
   [ Maximum
   , Minimum
@@ -87,7 +87,7 @@ aggregationSelect =
 aggregationSelectWithNone ∷ Select (Maybe Aggregation)
 aggregationSelectWithNone =
   Select
-     { value: Just Nothing
+     { value: Just $ Just Sum
      , options: [Nothing] <> map Just allAggregations
      }
 
