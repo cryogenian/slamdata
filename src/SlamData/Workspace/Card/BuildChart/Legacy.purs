@@ -96,15 +96,15 @@ decode cturs js = do
   bo ← (obj .? "options") >>= decodeBO
   cc ← (obj .? "chartConfig") >>= decodeCC
   case bo.chartType of
-    Pie → spy $ decodePie cc
-    Line → spy $ decodeLine cc bo
-    Bar → spy $ decodeBar cc bo
-    Area → spy $ decodeArea cc bo
-    Scatter → spy $ decodeScatter cc bo
-    Radar → spy $ decodeRadar cc bo
-    Funnel → spy $ decodeFunnel cc bo
-    Heatmap → spy $ decodeHeatmap cc bo
-    Boxplot → spy $ decodeBoxplot cc bo
+    Pie → decodePie cc
+    Line → decodeLine cc bo
+    Bar → decodeBar cc bo
+    Area → decodeArea cc bo
+    Scatter → decodeScatter cc bo
+    Radar → decodeRadar cc bo
+    Funnel → decodeFunnel cc bo
+    Heatmap → decodeHeatmap cc bo
+    Boxplot → decodeBoxplot cc bo
     chty → throwError $ printChartType chty ⊕ " should be decoded already"
   where
   decodePie ∷ ChartConfiguration → String ⊹ a
@@ -258,9 +258,9 @@ decode cturs js = do
       size =
         cc.measures A.!! 2 >>= view S._value
       abscissaAggregation =
-        cc.aggregations A.!! 0 >>= view S._value
+        fromMaybe Nothing $ cc.aggregations A.!! 0 >>= view S._value
       ordinateAggregation =
-        cc.aggregations A.!! 1 >>= view S._value
+        fromMaybe Nothing $ cc.aggregations A.!! 1 >>= view S._value
       sizeAggregation =
         cc.aggregations A.!! 2 >>= view S._value
       series =
@@ -273,8 +273,8 @@ decode cturs js = do
         { abscissa: _
         , ordinate: _
         , size
-        , abscissaAggregation: _
-        , ordinateAggregation: _
+        , abscissaAggregation
+        , ordinateAggregation
         , sizeAggregation
         , series
         , minSize
@@ -282,8 +282,6 @@ decode cturs js = do
         }
         <$> abscissa
         <*> ordinate
-        <*> abscissaAggregation
-        <*> ordinateAggregation
     in
       scatterR
 

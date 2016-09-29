@@ -923,7 +923,8 @@ loadDeck opts path deckId = do
     deck ← ExceptT $ getDeck path deckId
     mirroredCards ← ExceptT $ loadMirroredCards path deck.mirror
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
-
+  traceAnyA "?????"
+  traceAnyA res
   case res of
     Left err →
       H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
