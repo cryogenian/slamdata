@@ -7,6 +7,7 @@ import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Render.CSS as Rc
@@ -37,7 +38,7 @@ pickerInput
 pickerInput conf (Select { options, value }) =
   let
     len = Array.length options
-    isDefault = isNothing value || conf.defaultWhen len
+    isDefault = isNothing value
     isDisabled = conf.disableWhen len
   in
     HH.span
@@ -48,12 +49,22 @@ pickerInput conf (Select { options, value }) =
       [ HH.button
           ([ HP.classes [ B.formControl ]
           , HP.disabled isDisabled
+          , ARIA.label (fromMaybe "" conf.ariaLabel)
           ] <> (HE.onClick (HE.input_ (conf.query (Open options))) <$ guard (not isDisabled)))
           [ HH.text
               if isDefault
                 then conf.defaultOption
                 else maybe conf.defaultOption conf.showValue value
           ]
+      , if conf.defaultWhen len
+          then
+            HH.button
+              [ HP.classes [ HH.className "sd-dismiss-button" ]
+              , HE.onClick (HE.input_ (conf.query (Choose Nothing)))
+              ]
+              [ HH.text "×" ]
+          else
+            HH.text ""
       ]
 
 aggregationInput

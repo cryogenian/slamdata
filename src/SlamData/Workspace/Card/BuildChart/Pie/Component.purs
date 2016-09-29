@@ -96,9 +96,9 @@ renderCategory state =
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Category" ]
     , BCI.pickerInput
-        { disableWhen: (_ < 1)
+        { disableWhen: (_ < 2)
         , defaultWhen: (_ < 1)
-        , ariaLabel: Nothing
+        , ariaLabel: Just "category"
         , defaultOption: "Select source"
         , showValue: show
         , query: selecting Q.Category
@@ -116,7 +116,7 @@ renderValue state =
     , HH.div_
         [ BCI.pickerInput
             { disableWhen: (_ < 1)
-            , defaultWhen: (_ < 1)
+            , defaultWhen: const true
             , ariaLabel: Nothing
             , defaultOption: "Select source"
             , showValue: show
@@ -125,9 +125,9 @@ renderValue state =
             state.category
         , BCI.aggregationInput
             { disableWhen: (_ < 1)
-            , defaultWhen: (_ < 1)
+            , defaultWhen: const false
             , ariaLabel: Nothing
-            , defaultOption: "Select source"
+            , defaultOption: ""
             , query: selecting Q.ValueAggregation
             , open: state.valueAggregationOpen
             }
@@ -144,8 +144,8 @@ renderDonut state =
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Donut" ]
     , BCI.pickerInput
         { disableWhen: (_ < 1)
-        , defaultWhen: (_ < 1)
-        , ariaLabel: Nothing
+        , defaultWhen: const true
+        , ariaLabel: Just "Donut"
         , defaultOption: "Select source"
         , showValue: show
         , query: selecting Q.Donut
@@ -162,8 +162,8 @@ renderParallel state =
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Parallel" ]
     , BCI.pickerInput
         { disableWhen: (_ < 1)
-        , defaultWhen: (_ < 1)
-        , ariaLabel: Nothing
+        , defaultWhen: const true
+        , ariaLabel: Just "Parallel"
         , defaultOption: "Select source"
         , showValue: show
         , query: selecting Q.Parallel
@@ -217,19 +217,22 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
+update ∷ DSL Unit
+update = CC.raiseUpdatedP' CC.EvalModelUpdate
+
 chartEval ∷ Q.Query ~> DSL
 chartEval (Q.Select sel next) = do
   case sel of
-    Q.Value (BCI.Open opts)      → H.modify (ST.showPicker Q.Value opts)
-    Q.Category (BCI.Open opts)   → H.modify (ST.showPicker Q.Category opts)
-    Q.Donut (BCI.Open opts)      → H.modify (ST.showPicker Q.Donut opts)
-    Q.Parallel (BCI.Open opts)   → H.modify (ST.showPicker Q.Parallel opts)
+    Q.Value (BCI.Open opts)            → H.modify (ST.showPicker Q.Value opts)
+    Q.Value (BCI.Choose a)             → H.modify (ST._value ∘ _value .~ a) *> update
+    Q.Category (BCI.Open opts)         → H.modify (ST.showPicker Q.Category opts)
+    Q.Category (BCI.Choose a)          → H.modify (ST._category ∘ _value .~ a) *> update
+    Q.Donut (BCI.Open opts)            → H.modify (ST.showPicker Q.Donut opts)
+    Q.Donut (BCI.Choose a)             → H.modify (ST._donut ∘ _value .~ a) *> update
+    Q.Parallel (BCI.Open opts)         → H.modify (ST.showPicker Q.Parallel opts)
+    Q.Parallel (BCI.Choose a)          → H.modify (ST._parallel ∘ _value .~ a) *> update
     Q.ValueAggregation (BCI.Open opts) → H.modify _ { valueAggregationOpen = true }
-    Q.ValueAggregation (BCI.Choose a)  →
-      H.modify
-        $ (ST._valueAggregation ∘ _value .~ a)
-        ∘ (ST._valueAggregationOpen .~ false)
-    _ → pure unit
+    Q.ValueAggregation (BCI.Choose a)  → H.modify ((ST._valueAggregation ∘ _value .~ a) ∘ (ST._valueAggregationOpen .~ false)) *> update
   pure next
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
@@ -251,7 +254,6 @@ peek = coproduct peekPicker (const (pure unit))
           Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ value')
           _ → pure unit
       synchronizeChildren
-      CC.raiseUpdatedP' CC.EvalModelUpdate
     _ →
       pure unit
 
