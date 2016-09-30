@@ -2,7 +2,7 @@ module SlamData.Workspace.Card.BuildChart.Scatter.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Argonaut (JCursor, Json, encodeJson, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
 import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
@@ -22,6 +22,24 @@ type ScatterR =
   , minSize ∷ Number
   , maxSize ∷ Number
   }
+
+encodeMbMbAggregation ∷ Maybe (Maybe Ag.Aggregation) → Json
+encodeMbMbAggregation = case _ of
+  Nothing → jsonNull
+  Just Nothing → encodeJson "just nothing"
+  Just a → encodeJson a
+
+decodeMbMbAggregation ∷ Json → String ⊹ Maybe (Maybe Ag.Aggregation)
+decodeMbMbAggregation js
+  | isNull js = pure Nothing
+  | otherwise =
+    let
+      decodeJustNothing json =
+        decodeJson json >>= case _ of
+          "just nothing" → Right $ Just Nothing
+          _ → Left "This is not just nothing"
+
+    in decodeJustNothing js <|> decodeJson js
 
 type Model = Maybe ScatterR
 
@@ -82,7 +100,7 @@ encode (Just r) =
   ~> "size" := r.size
   ~> "abscissaAggregation" := r.abscissaAggregation
   ~> "ordinateAggregation" := r.ordinateAggregation
-  ~> "sizeAggregation" := r.sizeAggregation
+  ~> "sizeAggregation" := encodeMbMbAggregation r.sizeAggregation
   ~> "series" := r.series
   ~> "minSize" := r.minSize
   ~> "maxSize" := r.maxSize
@@ -101,7 +119,7 @@ decode js
     size ← obj .? "size"
     abscissaAggregation ← obj .? "abscissaAggregation"
     ordinateAggregation ← obj .? "ordinateAggregation"
-    sizeAggregation ← obj .? "sizeAggregation"
+    sizeAggregation ← (obj .? "sizeAggregation") >>= decodeMbMbAggregation
     series ← obj .? "series"
     minSize ← obj .? "minSize"
     maxSize ← obj .? "maxSize"

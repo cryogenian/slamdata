@@ -127,17 +127,19 @@ render st =
             [ HP.classes [ HH.className "no-results" ] ]
             [ HH.text "No results" ]
         else
-          HH.table_ $
-            [ HH.tr_ $
-                (if Array.null dims
-                  then []
-                  else [ HH.td [ HP.colSpan (Array.length dims) ] [] ])
-                <> map
-                     case _ of
-                       Column { value } → HH.th_ [ HH.text (showJCursor value) ]
-                       Count → HH.th_ [ HH.text "COUNT" ]
-                     cols
-            ] <> renderRows cols' tree
+          HH.table_
+              $ [ HH.tr_
+                  $ (if Array.null dims
+                     then []
+                     else [ HH.td [ HP.colSpan (Array.length dims) ] [] ])
+                  ⊕ (cols <#> case _ of
+                        Column { value } →
+                          HH.th_ [ HH.text (showJCursor value) ]
+                        Count →
+                          HH.th_ [ HH.text "COUNT" ])
+              ]
+              ⊕ renderRows cols' tree
+
 
   renderRows cols =
     map HH.tr_ ∘ foldTree (renderLeaves cols) renderHeadings
