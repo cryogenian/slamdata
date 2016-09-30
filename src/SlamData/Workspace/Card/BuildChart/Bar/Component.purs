@@ -4,10 +4,10 @@ module SlamData.Workspace.Card.BuildChart.Bar.Component
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
 import Data.Int as Int
-import Data.Lens (view, (^?), (.~))
+import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
 import Data.Lens as Lens
+import Data.List as List
 
 import Global (readFloat, isNaN)
 
@@ -24,9 +24,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Render.Common (row)
 import SlamData.Form.Select
-  ( Select
-  , newSelect
-  , emptySelect
+  ( newSelect
   , setPreviousValueFrom
   , autoSelect
   , ifSelected
@@ -39,11 +37,12 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Form.Select.Component as S
-import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Bar.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Bar.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Bar.Component.Query as Q
@@ -85,7 +84,34 @@ renderHighLOD state =
     , renderParallel state
     , HH.hr_
     , row [ renderAxisLabelAngle state, renderAxisLabelFontSize state ]
+    , renderPicker state
     ]
+
+selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting f q _ = right (Q.Select (f q) unit)
+
+renderPicker ∷ ST.State → HTML
+renderPicker state = case state.picker of
+  Nothing → HH.text ""
+  Just { options, select } →
+    HH.slot unit \_ →
+      { component: DPC.picker
+          { title: case select of
+              Q.Category _ → "Choose category"
+              Q.Value _    → "Choose measure"
+              Q.Stack _    → "Choose stack"
+              Q.Parallel _ → "Choose parallel"
+              _ → ""
+          , label: show
+          , render: HH.text ∘ show
+          , weight: const 0.0
+          }
+      , initialState:
+          H.parentState
+            $ DPC.initialState
+            $ groupJCursors
+            $ List.fromFoldable options
+      }
 
 renderCategory ∷ ST.State → HTML
 renderCategory state =
@@ -94,10 +120,9 @@ renderCategory state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Category" ]
-    , HH.slot' CS.cpCategory unit \_ →
-         { component: S.primarySelect (Just "Category")
-         , initialState: emptySelect
-         }
+    , BCI.pickerInput
+        (BCI.primary (Just "Category") (selecting Q.Category))
+        state.category
     ]
 
 
@@ -108,17 +133,19 @@ renderValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.slot' CS.cpValue unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Measure"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
-       }
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.secondary (Just "Measure") (selecting Q.Value))
+            state.value
+        , BCI.aggregationInput
+            { disableWhen: (_ < 1)
+            , defaultWhen: const false
+            , ariaLabel: Nothing
+            , defaultOption: ""
+            , query: selecting Q.ValueAgg
+            }
+            state.valueAgg
+        ]
     ]
 
 renderStack ∷ ST.State → HTML
@@ -128,10 +155,9 @@ renderStack state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Stack" ]
-    , HH.slot' CS.cpStack unit \_ →
-       { component: S.secondarySelect (pure "Stack")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Stack") (selecting Q.Stack))
+        state.stack
     ]
 
 renderParallel ∷ ST.State → HTML
@@ -141,10 +167,9 @@ renderParallel state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Parallel" ]
-    , HH.slot' CS.cpParallel unit \_ →
-       { component: S.secondarySelect (pure "Parallel")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
+        state.parallel
     ]
 
 renderAxisLabelAngle ∷ ST.State → HTML
@@ -153,7 +178,7 @@ renderAxisLabelAngle state =
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Axis label angle" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label angle" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.axisLabelAngle
@@ -168,7 +193,7 @@ renderAxisLabelFontSize state =
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Axis label font size" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label font size" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.axisLabelFontSize
@@ -176,7 +201,6 @@ renderAxisLabelFontSize state =
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetAxisLabelFontSize s)
         ]
     ]
-
 
 eval ∷ Q.QueryC ~> DSL
 eval = cardEval ⨁ pieBuilderEval
@@ -194,20 +218,19 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    r ← getSelects
     let
       model =
         { category: _
         , value: _
         , valueAggregation: _
-        , stack: r.stack >>= view _value
-        , parallel: r.parallel >>= view _value
+        , stack: st.stack ^. _value
+        , parallel: st.parallel ^. _value
         , axisLabelAngle: st.axisLabelAngle
         , axisLabelFontSize: st.axisLabelFontSize
         }
-        <$> (r.category >>= view _value)
-        <*> (r.value >>= view _value)
-        <*> (r.valueAggregation >>= view _value)
+        <$> (st.category ^. _value)
+        <*> (st.value ^. _value)
+        <*> (snd st.valueAgg ^. _value)
     pure $ k $ Card.BuildBar model
   CC.Load (Card.BuildBar (Just model)) next → do
     loadModel model
@@ -230,6 +253,9 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
+raiseUpdate ∷ DSL Unit
+raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+
 pieBuilderEval ∷ Q.Query ~> DSL
 pieBuilderEval = case _ of
   Q.SetAxisLabelAngle str next → do
@@ -244,17 +270,50 @@ pieBuilderEval = case _ of
       H.modify _{axisLabelFontSize = fs}
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
+  Q.Select sel next → do
+    case sel of
+      Q.Category a → updatePicker ST._category Q.Category a
+      Q.Value a    → updatePicker ST._value Q.Value a
+      Q.ValueAgg a → updateSelect ST._valueAgg a
+      Q.Stack a    → updatePicker ST._stack Q.Stack a
+      Q.Parallel a → updatePicker ST._parallel Q.Parallel a
+    pure next
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+
+  updateSelect l = case _ of
+    BCI.Open _    → H.modify (l ∘ _1 .~ true)
+    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+peek = coproduct peekPicker (const (pure unit))
+  where
+  peekPicker = case _ of
+    DPC.Dismiss _ →
+      H.modify _ { picker = Nothing }
+    DPC.Confirm value _ → do
+      st ← H.get
+      let
+        value' = flattenJCursors value
+      for_ st.picker \{ select } → case select of
+        Q.Category _ → H.modify (ST._category ∘ _value ?~ value')
+        Q.Value _    → H.modify (ST._value ∘ _value ?~ value')
+        Q.Stack _    → H.modify (ST._stack ∘ _value ?~ value')
+        Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ value')
+        _ → pure unit
+      H.modify _ { picker = Nothing }
+      raiseUpdate
+    _ →
+      pure unit
 
 synchronizeChildren ∷ DSL Unit
 synchronizeChildren = void do
   st ← H.get
-  r ← getSelects
   let
     newCategory =
-      setPreviousValueFrom r.category
+      setPreviousValueFrom (Just st.category)
         $ autoSelect
         $ newSelect
         $ st.axes.category
@@ -262,17 +321,17 @@ synchronizeChildren = void do
         ⊕ st.axes.time
 
     newValue =
-      setPreviousValueFrom r.value
+      setPreviousValueFrom (Just st.value)
         $ autoSelect
         $ newSelect
         $ st.axes.value
 
     newValueAggregation =
-      setPreviousValueFrom r.valueAggregation
+      setPreviousValueFrom (Just $ snd st.valueAgg)
         $ nonMaybeAggregationSelect
 
     newStack =
-      setPreviousValueFrom r.stack
+      setPreviousValueFrom (Just st.stack)
         $ autoSelect
         $ newSelect
         $ ifSelected [ newCategory ]
@@ -280,7 +339,7 @@ synchronizeChildren = void do
         ⊝ newCategory
 
     newParallel =
-      setPreviousValueFrom r.parallel
+      setPreviousValueFrom (Just st.parallel)
         $ autoSelect
         $ newSelect
         $ ifSelected [ newCategory ]
@@ -288,69 +347,20 @@ synchronizeChildren = void do
         ⊝ newCategory
         ⊝ newStack
 
-  H.query' CS.cpCategory unit $ H.action $ S.SetSelect newCategory
-  H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
-  H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
-  H.query' CS.cpStack unit $ H.action $ S.SetSelect newStack
-  H.query' CS.cpParallel unit $ H.action $ S.SetSelect newParallel
-
-
-type Selects =
-  { category ∷ Maybe (Select JCursor)
-  , value ∷ Maybe (Select JCursor)
-  , valueAggregation ∷ Maybe (Select Aggregation)
-  , stack ∷ Maybe (Select JCursor)
-  , parallel ∷ Maybe (Select JCursor)
-  }
-
-getSelects ∷ DSL Selects
-getSelects = do
-  category ←
-    H.query' CS.cpCategory unit $ H.request S.GetSelect
-  value ←
-    H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  valueAggregation ←
-    H.query' CS.cpValue unit $ left $ H.request S.GetSelect
-  stack ←
-    H.query' CS.cpStack unit $ H.request S.GetSelect
-  parallel ←
-    H.query' CS.cpParallel unit $ H.request S.GetSelect
-  pure { category
-       , value
-       , valueAggregation
-       , stack
-       , parallel
-       }
+  H.modify _
+    { category = newCategory
+    , value = newValue
+    , valueAgg = false × newValueAggregation
+    , stack = newStack
+    , parallel = newParallel
+    }
 
 loadModel ∷ M.BarR → DSL Unit
-loadModel r = void do
-  H.query' CS.cpCategory unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.category
-
-  H.query' CS.cpValue unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.value
-
-  H.query' CS.cpValue unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.valueAggregation
-
-  H.query' CS.cpStack unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.stack
-
-  H.query' CS.cpParallel unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.parallel
+loadModel r =
+  H.modify _
+    { category = fromSelected (Just r.category)
+    , value = fromSelected (Just r.value)
+    , valueAgg = false × fromSelected (Just r.valueAggregation)
+    , stack = fromSelected r.stack
+    , parallel = fromSelected r.parallel
+    }

@@ -82,7 +82,7 @@ pickerInput conf (Select { options, value }) =
                 then conf.defaultOption
                 else maybe conf.defaultOption conf.showValue value
           ]
-      , if conf.defaultWhen len
+      , if conf.defaultWhen len && not isDefault
           then
             HH.button
               [ HP.classes [ HH.className "sd-dismiss-button" ]
