@@ -119,6 +119,25 @@ oneTimeEventSource (Milliseconds n) action cancelerVar =
   delay = later' (Int.floor $ Math.max n zero)
   emitAndEnd emit = liftEff $ emit (E.Left action) *> emit (E.Right unit)
 
+subscribeToBus
+  ∷ ∀ s f g a r eff
+  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ⇒ (a → f Unit)
+  → Bus.Bus (read ∷ Bus.Cap | r) a
+  → H.ComponentDSL s f g (EventLoop.Breaker Unit)
+subscribeToBus k bus = do
+  breaker ← fromAff makeVar
+  H.subscribe
+    $ ES.EventSource
+    $ ES.produce \emit →
+        void $ runAff (const $ pure unit) (const $ pure unit) do
+          loop ← EventLoop.forever do
+            a ← Bus.read bus
+            forkAff $ H.fromEff $ emit $ E.Left (k a)
+          putVar breaker loop.breaker
+          loop.run
+  H.fromAff $ takeVar breaker
+
 subscribeToBus'
   ∷ ∀ s s' f f' g p a r eff
   . (Affable (avar ∷ AVAR | eff) g, Functor g)
@@ -137,3 +156,46 @@ subscribeToBus' k bus = do
           putVar breaker loop.breaker
           loop.run
   H.fromAff $ takeVar breaker
+
+-- TODO: Fix infinite type
+--subscribeToBus'
+--  ∷ ∀ s s' f f' g p a r eff
+--  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+--  ⇒ (a → f Unit)
+--  → Bus.Bus (read ∷ Bus.Cap | r) a
+--  → H.ParentDSL s s' f f' g p Unit --(EventLoop.Breaker Unit)
+--subscribeToBus' k bus = do
+--  eventSourceAndBreaker ← busToEventSourceAndBreaker k bus
+--  H.subscribe' eventSourceAndBreaker.eventSource
+--  --pure eventSourceAndBreaker.breaker
+--
+--subscribeToBus
+--  ∷ ∀ s f g a r eff
+--  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+--  ⇒ (a → f Unit)
+--  → Bus.Bus (read ∷ Bus.Cap | r) a
+--  → H.ComponentDSL s f g Unit --(EventLoop.Breaker Unit)
+--subscribeToBus k bus = do
+--  eventSourceAndBreaker ← busToEventSourceAndBreaker k bus
+--  H.subscribe eventSourceAndBreaker.eventSource
+--  --pure eventSourceAndBreaker.breaker
+--
+--busToEventSourceAndBreaker
+--  ∷ ∀ f g a r eff
+--  . (Affable (avar ∷ AVAR | eff) g, Monad g)
+--  ⇒ (a → f Unit)
+--  → Bus.Bus (read ∷ Bus.Cap | r) a
+--  → g { eventSource ∷ ES.EventSource f g, breaker ∷ EventLoop.Breaker Unit }
+--busToEventSourceAndBreaker k bus = do
+--  breakerAVar ← fromAff makeVar
+--  let eventSource =
+--        ES.EventSource
+--          $ ES.produce \emit →
+--            void $ runAff (const $ pure unit) (const $ pure unit) do
+--              loop ← EventLoop.forever do
+--                a ← Bus.read bus
+--                forkAff $ H.fromEff $ emit $ E.Left (k a)
+--              putVar breakerAVar loop.breaker
+--              loop.run
+--  breaker ← H.fromAff $ takeVar breakerAVar
+--  pure { eventSource, breaker }
