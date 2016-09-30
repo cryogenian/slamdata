@@ -4,8 +4,9 @@ module SlamData.Workspace.Card.BuildChart.Sankey.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (.~), view)
+import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
 import Data.Lens as Lens
+import Data.List as List
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -14,19 +15,20 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (newSelect, emptySelect, setPreviousValueFrom, autoSelect, (⊝), _value, fromSelected, ifSelected)
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Form.Select.Component as S
-import SlamData.Form.SelectPair.Component as P
 import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.Query as Q
@@ -67,7 +69,33 @@ renderHighLOD state =
     , renderTarget state
     , HH.hr_
     , renderValue state
+    , renderPicker state
     ]
+
+selecting ∷ ∀ a . (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting f q a = right (Q.Select (f q) a)
+
+renderPicker ∷ ST.State → HTML
+renderPicker state = case state.picker of
+  Nothing → HH.text ""
+  Just { options, select } →
+    HH.slot unit \_ →
+      { component: DPC.picker
+          { title: case select of
+              Q.Value _  → "Choose weight"
+              Q.Source _ → "Choose source"
+              Q.Target _ → "Choose target"
+              _ → ""
+          , label: show
+          , render: HH.text ∘ show
+          , weight: const 0.0
+          }
+      , initialState:
+          H.parentState
+            $ DPC.initialState
+            $ groupJCursors
+            $ List.fromFoldable options
+      }
 
 renderSource ∷ ST.State → HTML
 renderSource state =
@@ -76,10 +104,9 @@ renderSource state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Link source" ]
-    , HH.slot' CS.cpSource unit \_ →
-       { component: S.primarySelect (pure "Link source")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.primary (Just "Link source") (selecting Q.Source))
+        state.source
     ]
 
 renderTarget ∷ ST.State → HTML
@@ -89,10 +116,9 @@ renderTarget state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Link target" ]
-    , HH.slot' CS.cpTarget unit \_ →
-       { component: S.secondarySelect (pure "Link target")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Link target") (selecting Q.Target))
+        state.target
     ]
 
 renderValue ∷ ST.State → HTML
@@ -102,21 +128,18 @@ renderValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Weight" ]
-    , HH.slot' CS.cpValue unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Weight"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
-       }
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.secondary (Just "Weight") (selecting Q.Value))
+            state.value
+        , BCI.aggregationInput
+            (BCI.dropdown Nothing (selecting Q.ValueAgg))
+            state.valueAgg
+        ]
     ]
 
 eval ∷ Q.QueryC ~> DSL
-eval = cardEval ⨁ (absurd ∘ getConst)
+eval = cardEval ⨁ chartEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -131,16 +154,6 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-
-    source ←
-      H.query' CS.cpSource unit $ H.request S.GetSelect
-    target ←
-      H.query' CS.cpTarget unit $ H.request S.GetSelect
-    value ←
-      H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
-    valueAggregation ←
-      H.query' CS.cpValue unit $ left $ H.request S.GetSelect
-
     let
       model =
         { source: _
@@ -148,10 +161,10 @@ cardEval = case _ of
         , value: _
         , valueAggregation: _
         }
-        <$> (source >>= view _value)
-        <*> (target >>= view _value)
-        <*> (value >>= view _value)
-        <*> (valueAggregation >>= view _value)
+        <$> (st.source ^. _value)
+        <*> (st.target ^. _value)
+        <*> (st.value ^.  _value)
+        <*> (snd st.valueAgg ^. _value)
     pure $ k $ Card.BuildSankey model
   CC.Load (Card.BuildSankey model) next → do
     for_ model loadModel
@@ -171,76 +184,86 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
-loadModel ∷ M.SankeyR → DSL Unit
-loadModel r = void do
-  H.query' CS.cpSource unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.source
+raiseUpdate ∷ DSL Unit
+raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
-  H.query' CS.cpTarget unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.target
+chartEval ∷ Q.Query ~> DSL
+chartEval (Q.Select sel next) = do
+  case sel of
+    Q.Value a    → updatePicker ST._value Q.Value a
+    Q.ValueAgg a → updateSelect ST._valueAgg a
+    Q.Source a   → updatePicker ST._source Q.Source a
+    Q.Target a   → updatePicker ST._target Q.Target a
+  pure next
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
-  H.query' CS.cpValue unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.value
-
-  H.query' CS.cpValue unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.valueAggregation
+  updateSelect l = case _ of
+    BCI.Open _    → H.modify (l ∘ _1 .~ true)
+    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+peek = coproduct peekPicker (const (pure unit))
+  where
+  peekPicker = case _ of
+    DPC.Dismiss _ →
+      H.modify _ { picker = Nothing }
+    DPC.Confirm value _ → do
+      st ← H.get
+      let
+        value' = flattenJCursors value
+      for_ st.picker \{ select } → case select of
+        Q.Value _  → H.modify (ST._value ∘ _value ?~ value')
+        Q.Source _ → H.modify (ST._source ∘ _value ?~ value')
+        Q.Target _ → H.modify (ST._target ∘ _value ?~ value')
+        _ → pure unit
+      H.modify _ { picker = Nothing }
+      raiseUpdate
+    _ →
+      pure unit
 
 synchronizeChildren ∷ DSL Unit
 synchronizeChildren = void do
   st ← H.get
-  source ←
-    H.query' CS.cpSource unit $ H.request S.GetSelect
-  target ←
-    H.query' CS.cpTarget unit $ H.request S.GetSelect
-  valueSel ←
-    H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  valueAgg ←
-    H.query' CS.cpValue unit $ left $ H.request S.GetSelect
-
   let
     newSource =
-      setPreviousValueFrom source
+      setPreviousValueFrom (Just st.source)
         $ autoSelect
         $ newSelect
         $ st.axes.category
 
     newTarget =
-      setPreviousValueFrom target
+      setPreviousValueFrom (Just st.target)
         $ autoSelect
         $ newSelect
         $ ifSelected [ newSource ]
         $ st.axes.category ⊝ newSource
 
     newValue =
-      setPreviousValueFrom valueSel
+      setPreviousValueFrom (Just st.value)
         $ autoSelect
         $ newSelect
         $ ifSelected [newTarget]
         $ st.axes.value
 
     newValueAggregation =
-      setPreviousValueFrom valueAgg
+      setPreviousValueFrom (Just $ snd st.valueAgg)
         $ nonMaybeAggregationSelect
 
-  H.query' CS.cpSource unit $ H.action $ S.SetSelect newSource
-  H.query' CS.cpTarget unit $ H.action $ S.SetSelect newTarget
-  H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
-  H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
+  H.modify _
+    { source = newSource
+    , target = newTarget
+    , value = newValue
+    , valueAgg = false × newValueAggregation
+    }
+
+loadModel ∷ M.SankeyR → DSL Unit
+loadModel r =
+  H.modify _
+    { source = fromSelected (Just r.source)
+    , target = fromSelected (Just r.target)
+    , value = fromSelected (Just r.value)
+    , valueAgg = false × fromSelected (Just r.valueAggregation)
+    }

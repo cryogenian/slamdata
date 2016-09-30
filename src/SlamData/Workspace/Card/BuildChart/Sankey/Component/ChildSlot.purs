@@ -4,47 +4,10 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DP
 
-import SlamData.Form.Select (Select)
-import SlamData.Form.Select.Component as S
-import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
+type ChildSlot = Unit
 
-type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit
+type ChildState = DP.StateP JCursor
 
-type SourceState = Select JCursor
-type TargetState = Select JCursor
-type ValueState = P.StateP Aggregation JCursor
-
-type ChildState =
-  SourceState ⊹ TargetState ⊹ ValueState
-
-type SourceQuery = S.Query JCursor
-type TargetQuery = S.Query JCursor
-type ValueQuery = P.QueryP Aggregation JCursor
-
-type ChildQuery =
-  SourceQuery ⨁ TargetQuery ⨁ ValueQuery
-
-cpSource
-  ∷ ChildPath
-      SourceState ChildState
-      SourceQuery ChildQuery
-      Unit ChildSlot
-cpSource = cpL
-
-cpTarget
-  ∷ ChildPath
-      TargetState ChildState
-      TargetQuery ChildQuery
-      Unit ChildSlot
-cpTarget = cpR :> cpL
-
-cpValue
-  ∷ ChildPath
-      ValueState ChildState
-      ValueQuery ChildQuery
-      Unit ChildSlot
-cpValue = cpR :> cpR
+type ChildQuery = DP.QueryP JCursor
