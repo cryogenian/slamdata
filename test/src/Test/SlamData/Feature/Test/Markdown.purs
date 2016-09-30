@@ -25,7 +25,7 @@ import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Expectations as Expect
 import Test.Feature.Scenario (scenario)
 
-mdScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
+mdScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
 mdScenario =
   scenario
     "Markdown"
@@ -33,7 +33,7 @@ mdScenario =
     (Interact.deleteFileInTestFolder "Untitled Workspace.slam"
        *> Interact.browseRootFolder)
 
-test :: SlamFeature Unit
+test ∷ SlamFeature Unit
 test = do
   mdScenario "Provide and play markdown" ["https://github.com/slamdata/slamdata/issues/987"] do
     Interact.insertMdCardInLastDeck
@@ -200,7 +200,7 @@ test = do
     Expect.cardsInTableColumnInLastCardToBeGT 2 "year" "1924"
     Expect.cardsInTableColumnInLastCardToNotEq 2 "type" "Silver"
     successMsg "Ok, Filtered query results with fields"
-{-
+
   mdScenario "Filter query results by changing field values" [] do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard $ joinWith "\n\n"
@@ -274,4 +274,3 @@ test = do
     Interact.accessNextCardInLastDeck
     Expect.fieldInLastMdCard "city" "text" "ASHAWAY"
     successMsg "Ok, variables from md card could be used in md card"
--}

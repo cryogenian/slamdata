@@ -148,8 +148,8 @@ evalCard input =
       lift $ Port.VarMap <$> evalMarkdownForm doc model
     Search query, Just (Port.TaggedResource { resource }) →
       Port.TaggedResource <$> evalSearch input query resource
-    Cache pathString, Just (Port.TaggedResource { resource }) →
-      Port.TaggedResource <$> Cache.eval input pathString resource
+    Cache pathString, Just (Port.TaggedResource { resource, varMap }) →
+      Port.TaggedResource <$> Cache.eval input pathString resource varMap
     Open res, _ →
       Port.TaggedResource <$> evalOpen input res
     Variables model, _ →
@@ -220,7 +220,7 @@ evalOpen info res = do
        axes ←
          CET.liftQ $ QQ.axes filePath 20
        CET.addSource filePath
-       pure { resource: filePath, tag: Nothing, axes }
+       pure { resource: filePath, tag: Nothing, axes, varMap: Nothing }
      Just err →
        QE.throw err
 
@@ -245,7 +245,7 @@ evalQuery info sql varMap = do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
     QQ.axes resource 20
-  pure { resource, tag: pure sql, axes }
+  pure { resource, tag: pure sql, axes, varMap: Just varMap }
 
 evalSearch
   ∷ ∀ m
@@ -287,7 +287,7 @@ evalSearch info queryText resource = do
       "Error making search temporary resource"
     QQ.axes outputResource 20
 
-  pure { resource: outputResource, tag: pure sql, axes }
+  pure { resource: outputResource, tag: pure sql, axes, varMap: Nothing }
 
 runEvalCard
   ∷ ∀ m

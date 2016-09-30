@@ -48,6 +48,7 @@ import Data.Lens ((^?), (?~), LensP, lens, _Just)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..))
 import SlamData.Workspace.Card.Table.Model (Model)
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.Path (FilePath)
@@ -107,6 +108,7 @@ type Input =
   , tag ∷ Maybe String
   , axes ∷ Axes
   , size ∷ Int
+  , varMap ∷ Maybe Port.VarMap
   }
 
 -- | The resource to load pages of data from.

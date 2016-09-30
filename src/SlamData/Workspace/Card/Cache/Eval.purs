@@ -41,15 +41,16 @@ eval
   ⇒ CET.CardEvalInput
   → Maybe String
   → FilePath
+  → Maybe Port.VarMap
   → CET.CardEvalT m Port.TaggedResourcePort
-eval info mfp resource =
+eval info mfp resource varMap =
   let
     axes = fromMaybe initialAxes $ info.input ^? Lens._Just ∘ Port._ResourceAxes
   in map _{axes = axes} case mfp of
-    Nothing → eval' (CET.temporaryOutputResource info) resource
+    Nothing → eval' (CET.temporaryOutputResource info) resource varMap
     Just pt →
       case PU.parseAnyPath pt of
-        Just (Right fp) → eval' fp resource
+        Just (Right fp) → eval' fp resource varMap
         _ → QE.throw $ pt ⊕ " is not a valid file path"
 
 eval'
@@ -57,8 +58,9 @@ eval'
   . (Monad m, QuasarDSL m)
   ⇒ FilePath
   → FilePath
+  → Maybe Port.VarMap
   → CET.CardEvalT m Port.TaggedResourcePort
-eval' fp resource = do
+eval' fp resource varMap = do
 
   outputResource ← CET.liftQ $
     QQ.fileQuery resource fp "select * from {{path}}" SM.empty
@@ -79,4 +81,4 @@ eval' fp resource = do
     $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
   CET.addSource resource
   CET.addCache outputResource
-  pure { resource: outputResource, tag: Nothing, axes: initialAxes }
+  pure { resource: outputResource, tag: Nothing, axes: initialAxes, varMap }
