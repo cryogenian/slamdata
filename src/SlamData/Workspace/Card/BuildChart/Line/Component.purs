@@ -113,8 +113,9 @@ renderPicker state = case state.picker of
           }
       , initialState:
           H.parentState
-            (DPC.initialState
-              (groupJCursors (List.fromFoldable options)))
+            $ DPC.initialState
+            $ groupJCursors
+            $ List.fromFoldable options
       }
 
 renderDimension ∷ ST.State → HTML
@@ -146,9 +147,8 @@ renderValue state =
             , ariaLabel: Nothing
             , defaultOption: ""
             , query: selecting Q.ValueAgg
-            , open: fst state.valueAgg
             }
-            (snd state.valueAgg)
+            state.valueAgg
         ]
     ]
 
@@ -169,9 +169,8 @@ renderSecondValue state =
             , ariaLabel: Nothing
             , defaultOption: ""
             , query: selecting Q.SecondValueAgg
-            , open: fst state.secondValueAgg
             }
-            (snd state.secondValueAgg)
+            state.secondValueAgg
         ]
     ]
 
@@ -204,12 +203,10 @@ renderSize state =
             , ariaLabel: Nothing
             , defaultOption: ""
             , query: selecting Q.SizeAgg
-            , open: fst state.sizeAgg
             }
-            (snd state.sizeAgg)
+            state.sizeAgg
         ]
     ]
-
 
 renderAxisLabelAngle ∷ ST.State → HTML
 renderAxisLabelAngle state =
@@ -331,8 +328,8 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
-update ∷ DSL Unit
-update = CC.raiseUpdatedP' CC.EvalModelUpdate
+raiseUpdate ∷ DSL Unit
+raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
 lineBuilderEval ∷ Q.Query ~> DSL
 lineBuilderEval = case _ of
@@ -340,25 +337,25 @@ lineBuilderEval = case _ of
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{axisLabelAngle = fl}
-      update
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.SetAxisLabelFontSize str next → do
     let mbFS = Int.fromString str
     for_ mbFS \fs → do
       H.modify _{axisLabelFontSize = fs}
-      update
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.SetMinSymbolSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{minSize = fl}
-      update
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.SetMaxSymbolSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{maxSize = fl}
-      update
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.Select sel next → do
     case sel of
@@ -374,11 +371,11 @@ lineBuilderEval = case _ of
   where
   updatePicker l q = case _ of
     BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> update
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
   updateSelect l = case _ of
     BCI.Open _    → H.modify (l ∘ _1 .~ true)
-    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> synchronizeChildren *> update
+    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = coproduct peekPicker (const (pure unit))
@@ -388,19 +385,17 @@ peek = coproduct peekPicker (const (pure unit))
       H.modify _ { picker = Nothing }
     DPC.Confirm value _ → do
       st ← H.get
-      H.modify _ { picker = Nothing }
       let
         value' = flattenJCursors value
-      for_ st.picker \{ select } →
-        case select of
-          Q.Dimension _   → H.modify (ST._dimension ∘ _value ?~ value')
-          Q.Value _       → H.modify (ST._value ∘ _value ?~ value')
-          Q.SecondValue _ → H.modify (ST._secondValue ∘ _value ?~ value')
-          Q.Size _        → H.modify (ST._size ∘ _value ?~ value')
-          Q.Series _      → H.modify (ST._series ∘ _value ?~ value')
-          _ → pure unit
-      synchronizeChildren
-      update
+      for_ st.picker \{ select } → case select of
+        Q.Dimension _   → H.modify (ST._dimension ∘ _value ?~ value')
+        Q.Value _       → H.modify (ST._value ∘ _value ?~ value')
+        Q.SecondValue _ → H.modify (ST._secondValue ∘ _value ?~ value')
+        Q.Size _        → H.modify (ST._size ∘ _value ?~ value')
+        Q.Series _      → H.modify (ST._series ∘ _value ?~ value')
+        _ → pure unit
+      H.modify _ { picker = Nothing }
+      raiseUpdate
     _ →
       pure unit
 

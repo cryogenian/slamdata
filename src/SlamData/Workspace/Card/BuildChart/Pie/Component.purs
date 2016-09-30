@@ -4,7 +4,7 @@ module SlamData.Workspace.Card.BuildChart.Pie.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (.~), (?~))
+import Data.Lens ((^?), (^.), (.~), (?~), _1, _2)
 import Data.Lens as Lens
 import Data.List as List
 
@@ -68,30 +68,34 @@ renderHighLOD state =
     , HH.hr_
     , renderDonut state
     , renderParallel state
-    , case state.pickerOptions of
-        Nothing → HH.text ""
-        Just { options, select } →
-          HH.slot unit \_ →
-            { component: DPC.picker
-                { title: case select of
-                    Q.Category _ → "Choose category"
-                    Q.Value _    → "Choose measure"
-                    Q.Donut _    → "Choose donut"
-                    Q.Parallel _ → "Choose parallel"
-                    _ → ""
-                , label: show
-                , render: HH.text ∘ show
-                , weight: const 0.0
-                }
-            , initialState:
-                H.parentState
-                  (DPC.initialState
-                    (groupJCursors (List.fromFoldable options)))
-            }
+    , renderPicker state
     ]
 
 selecting ∷ ∀ a . (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
 selecting f q a = right (Q.Select (f q) a)
+
+renderPicker ∷ ST.State → HTML
+renderPicker state = case state.picker of
+  Nothing → HH.text ""
+  Just { options, select } →
+    HH.slot unit \_ →
+      { component: DPC.picker
+          { title: case select of
+              Q.Category _ → "Choose category"
+              Q.Value _    → "Choose measure"
+              Q.Donut _    → "Choose donut"
+              Q.Parallel _ → "Choose parallel"
+              _ → ""
+          , label: show
+          , render: HH.text ∘ show
+          , weight: const 0.0
+          }
+      , initialState:
+          H.parentState
+            $ DPC.initialState
+            $ groupJCursors
+            $ List.fromFoldable options
+      }
 
 renderCategory ∷ ST.State → HTML
 renderCategory state =
@@ -121,10 +125,9 @@ renderValue state =
             , defaultWhen: const false
             , ariaLabel: Nothing
             , defaultOption: ""
-            , query: selecting Q.ValueAggregation
-            , open: state.valueAggregationOpen
+            , query: selecting Q.ValueAgg
             }
-            state.valueAggregation
+            state.valueAgg
         ]
     ]
 
@@ -177,7 +180,7 @@ cardEval = case _ of
         , donut: st.donut ^. _value
         }
         <$> (st.value ^. _value)
-        <*> (st.valueAggregation ^. _value)
+        <*> (snd st.valueAgg ^. _value)
         <*> (st.category ^. _value)
     pure $ k $ Card.BuildPie model
   CC.Load (Card.BuildPie model) next → do
@@ -198,44 +201,45 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
-update ∷ DSL Unit
-update = CC.raiseUpdatedP' CC.EvalModelUpdate
+raiseUpdate ∷ DSL Unit
+raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
 chartEval ∷ Q.Query ~> DSL
 chartEval (Q.Select sel next) = do
   case sel of
-    Q.Value (BCI.Open opts)            → H.modify (ST.showPicker Q.Value opts)
-    Q.Value (BCI.Choose a)             → H.modify (ST._value ∘ _value .~ a) *> update
-    Q.Category (BCI.Open opts)         → H.modify (ST.showPicker Q.Category opts)
-    Q.Category (BCI.Choose a)          → H.modify (ST._category ∘ _value .~ a) *> update
-    Q.Donut (BCI.Open opts)            → H.modify (ST.showPicker Q.Donut opts)
-    Q.Donut (BCI.Choose a)             → H.modify (ST._donut ∘ _value .~ a) *> update
-    Q.Parallel (BCI.Open opts)         → H.modify (ST.showPicker Q.Parallel opts)
-    Q.Parallel (BCI.Choose a)          → H.modify (ST._parallel ∘ _value .~ a) *> update
-    Q.ValueAggregation (BCI.Open opts) → H.modify _ { valueAggregationOpen = true }
-    Q.ValueAggregation (BCI.Choose a)  → H.modify ((ST._valueAggregation ∘ _value .~ a) ∘ (ST._valueAggregationOpen .~ false)) *> update
+    Q.Value a    → updatePicker ST._value Q.Value a
+    Q.ValueAgg a → updateSelect ST._valueAgg a
+    Q.Category a → updatePicker ST._category Q.Category a
+    Q.Donut a    → updatePicker ST._donut Q.Donut a
+    Q.Parallel a → updatePicker ST._parallel Q.Parallel a
   pure next
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+
+  updateSelect l = case _ of
+    BCI.Open _    → H.modify (l ∘ _1 .~ true)
+    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = coproduct peekPicker (const (pure unit))
   where
   peekPicker = case _ of
     DPC.Dismiss _ →
-      H.modify _ { pickerOptions = Nothing }
+      H.modify _ { picker = Nothing }
     DPC.Confirm value _ → do
       st ← H.get
-      H.modify _ { pickerOptions = Nothing }
       let
         value' = flattenJCursors value
-      for_ st.pickerOptions \{ select } →
-        case select of
-          Q.Value _    → H.modify (ST._value ∘ _value ?~ value')
-          Q.Category _ → H.modify (ST._category ∘ _value ?~ value')
-          Q.Donut _    → H.modify (ST._donut ∘ _value ?~ value')
-          Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ value')
-          _ → pure unit
-      synchronizeChildren
-      update
+      for_ st.picker \{ select } → case select of
+        Q.Value _    → H.modify (ST._value ∘ _value ?~ value')
+        Q.Category _ → H.modify (ST._category ∘ _value ?~ value')
+        Q.Donut _    → H.modify (ST._donut ∘ _value ?~ value')
+        Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ value')
+        _ → pure unit
+      H.modify _ { picker = Nothing }
+      raiseUpdate
     _ →
       pure unit
 
@@ -243,7 +247,7 @@ loadModel ∷ M.PieR → DSL Unit
 loadModel r =
   H.modify _
     { value = fromSelected (Just r.value)
-    , valueAggregation = fromSelected (Just r.valueAggregation)
+    , valueAgg = false × fromSelected (Just r.valueAggregation)
     , category = fromSelected (Just r.category)
     , donut = fromSelected r.donut
     , parallel = fromSelected r.parallel
@@ -260,7 +264,7 @@ synchronizeChildren = do
         $ st.axes.value
 
     newValueAggregation =
-      setPreviousValueFrom (Just st.valueAggregation)
+      setPreviousValueFrom (Just $ snd st.valueAgg)
         $ nonMaybeAggregationSelect
 
     newCategory =
@@ -288,7 +292,7 @@ synchronizeChildren = do
 
   H.modify _
     { value = newValue
-    , valueAggregation = newValueAggregation
+    , valueAgg = false × newValueAggregation
     , category = newCategory
     , donut = newDonut
     , parallel = newParallel

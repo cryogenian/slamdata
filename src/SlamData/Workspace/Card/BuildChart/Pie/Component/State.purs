@@ -14,22 +14,17 @@ import SlamData.Workspace.Card.BuildChart.Pie.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Pie.Component.Query (QueryC, Selection)
 import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
+import SlamData.Workspace.Card.BuildChart.Inputs (Select', PickerOptions)
 
 type State =
   { axes ∷ Axes
   , levelOfDetails ∷ LevelOfDetails
   , category ∷ Select JCursor
   , value ∷ Select JCursor
-  , valueAggregation ∷ Select Aggregation
-  , valueAggregationOpen ∷ Boolean
+  , valueAgg ∷ Select' Aggregation
   , donut ∷ Select JCursor
   , parallel ∷ Select JCursor
-  , pickerOptions ∷ Maybe PickerOptions
-  }
-
-type PickerOptions =
-  { options ∷ Array JCursor
-  , select ∷ Selection (Const Unit)
+  , picker ∷ Maybe (PickerOptions JCursor Selection)
   }
 
 initialState ∷ State
@@ -38,11 +33,10 @@ initialState =
   , levelOfDetails: High
   , category: emptySelect
   , value: emptySelect
-  , valueAggregation: emptySelect
-  , valueAggregationOpen: false
+  , valueAgg: false × emptySelect
   , donut: emptySelect
   , parallel: emptySelect
-  , pickerOptions: Nothing
+  , picker: Nothing
   }
 
 type StateP =
@@ -51,11 +45,8 @@ type StateP =
 _value ∷ ∀ r a. LensP { value ∷ a | r } a
 _value = lens _.value _{ value = _ }
 
-_valueAggregation ∷ ∀ r a. LensP { valueAggregation ∷ a | r } a
-_valueAggregation = lens _.valueAggregation _{ valueAggregation = _ }
-
-_valueAggregationOpen ∷ ∀ r a. LensP { valueAggregationOpen ∷ a | r } a
-_valueAggregationOpen = lens _.valueAggregationOpen _{ valueAggregationOpen = _ }
+_valueAgg ∷ ∀ r a. LensP { valueAgg ∷ a | r } a
+_valueAgg = lens _.valueAgg _{ valueAgg = _ }
 
 _category ∷ ∀ r a. LensP { category ∷ a | r } a
 _category = lens _.category _{ category = _ }
@@ -72,4 +63,4 @@ showPicker
   → State
   → State
 showPicker f options =
-  _ { pickerOptions = Just { options, select: f (Const unit) } }
+  _ { picker = Just { options, select: f (Const unit) } }

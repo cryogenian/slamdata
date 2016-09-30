@@ -14,7 +14,7 @@ import SlamData.Workspace.Card.BuildChart.Line.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Line.Component.Query (QueryC, Selection)
 import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.BuildChart.Inputs (Select')
+import SlamData.Workspace.Card.BuildChart.Inputs (Select', PickerOptions)
 
 type State =
   { axes ∷ Axes
@@ -31,12 +31,7 @@ type State =
   , size ∷ Select JCursor
   , sizeAgg ∷ Select' Aggregation
   , series ∷ Select JCursor
-  , picker ∷ Maybe PickerOptions
-  }
-
-type PickerOptions =
-  { options ∷ Array JCursor
-  , select ∷ Selection (Const Unit)
+  , picker ∷ Maybe (PickerOptions JCursor Selection)
   }
 
 initialState ∷ State

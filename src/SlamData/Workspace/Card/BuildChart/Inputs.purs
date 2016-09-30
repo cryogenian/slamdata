@@ -26,10 +26,14 @@ type PickerConfig a i =
     , query ∷ SelectAction a → H.Action i
     )
 
+type PickerOptions a f =
+  { options ∷ Array a
+  , select ∷ f (Const Unit)
+  }
+
 type AggregationConfig a i =
   SelectConfig
     ( query ∷ SelectAction a → H.Action i
-    , open ∷ Boolean
     )
 
 primary ∷ ∀ a i. Show a ⇒ Maybe String → (SelectAction a → H.Action i) → PickerConfig a i
@@ -94,9 +98,9 @@ aggregationInput
   ∷ ∀ a i p
   . OptionVal a
   ⇒ AggregationConfig a i
-  → Select a
+  → Select' a
   → H.HTML p i
-aggregationInput conf (Select { options, value }) =
+aggregationInput conf (isOpen × Select { options, value }) =
   let
     len = Array.length options
     isDefault = isNothing value || conf.defaultWhen len
@@ -110,7 +114,7 @@ aggregationInput conf (Select { options, value }) =
       [ HH.button
           ([ HP.classes ([ Rc.aggregation, B.formControl, B.btn, B.btnPrimary ] <> clsValOrEmpty)
           , HP.disabled isDisabled
-          ] <> (HE.onClick (HE.input_ (conf.query (if conf.open then Choose value else Open options))) <$ guard (not isDisabled)))
+          ] <> (HE.onClick (HE.input_ (conf.query (if isOpen then Choose value else Open options))) <$ guard (not isDisabled)))
           []
       , HH.span
           [ HP.classes
@@ -118,9 +122,9 @@ aggregationInput conf (Select { options, value }) =
               , B.fade
               , Rc.fileListGroup
               , Rc.aggregation
-              ] <> (B.in_ <$ guard conf.open))
+              ] <> (B.in_ <$ guard isOpen))
           ]
-          if conf.open
+          if isOpen
             then (map renderOption options)
             else []
       ]

@@ -14,7 +14,7 @@ import SlamData.Workspace.Card.BuildChart.Pie.Component.ChildSlot (ChildQuery, C
 data Selection f
   = Category (f JCursor)
   | Value (f JCursor)
-  | ValueAggregation (f Aggregation)
+  | ValueAgg (f Aggregation)
   | Donut (f JCursor)
   | Parallel (f JCursor)
 
