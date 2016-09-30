@@ -185,14 +185,22 @@ test = do
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender[_] AND year > :year AND country = :country"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
-    Interact.insertTableCardInLastDeck
+    Interact.selectBuildChart
+    Interact.insertPivotCard
+    Interact.addColumn "discipline"
+    Interact.addColumn "country"
+    Interact.addColumn "gender"
+    Interact.addColumn "year"
+    Interact.addColumn "type"
+    Interact.accessNextCardInLastDeck
+    Interact.insertChartCardInLastDeck
     Expect.cardsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
     Expect.cardsInTableColumnInLastCardToEq 2 "country" "AUT"
     Expect.cardsInTableColumnInLastCardToEq 2 "gender" "W"
     Expect.cardsInTableColumnInLastCardToBeGT 2 "year" "1924"
     Expect.cardsInTableColumnInLastCardToNotEq 2 "type" "Silver"
     successMsg "Ok, Filtered query results with fields"
-
+{-
   mdScenario "Filter query results by changing field values" [] do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard $ joinWith "\n\n"
@@ -212,7 +220,17 @@ test = do
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender[_] AND year > :year AND country = :country"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
-    Interact.insertTableCardInLastDeck
+    Interact.selectBuildChart
+    Interact.insertPivotCard
+
+    Interact.addColumn "discipline"
+    Interact.addColumn "gender"
+    Interact.addColumn "year"
+    Interact.addColumn "type"
+    Interact.addColumn "country"
+    Interact.accessNextCardInLastDeck
+    Interact.insertChartCardInLastDeck
+    Interact.accessPreviousCardInLastDeck
     Interact.accessPreviousCardInLastDeck
     Interact.accessPreviousCardInLastDeck
     Interact.provideFieldValueInLastDeck "discipline" "Luge"
@@ -222,6 +240,7 @@ test = do
     Interact.checkFieldInLastDeck "M"
     Interact.pushRadioButtonInLastDeck "Gold"
     Interact.selectFromDropdownInLastDeck "country" "GDR"
+    Interact.accessNextCardInLastDeck
     Interact.accessNextCardInLastDeck
     Interact.accessNextCardInLastDeck
     Expect.cardsInTableColumnInLastCardToEq 8 "discipline" "Luge"
@@ -255,3 +274,4 @@ test = do
     Interact.accessNextCardInLastDeck
     Expect.fieldInLastMdCard "city" "text" "ASHAWAY"
     successMsg "Ok, variables from md card could be used in md card"
+-}
