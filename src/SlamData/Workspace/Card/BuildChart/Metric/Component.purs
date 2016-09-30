@@ -4,8 +4,9 @@ module SlamData.Workspace.Card.BuildChart.Metric.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (.~), view)
+import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
 import Data.Lens as Lens
+import Data.List as List
 import Data.String as Str
 
 import Halogen as H
@@ -18,9 +19,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 
-import SlamData.Form.Select (newSelect, emptySelect, setPreviousValueFrom, autoSelect, (⊝), _value, fromSelected)
-import SlamData.Form.Select.Component as S
-import SlamData.Form.SelectPair.Component as P
+import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, (⊝), _value, fromSelected)
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
@@ -30,6 +29,9 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Metric.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Metric.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Metric.Component.Query as Q
@@ -38,9 +40,9 @@ import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect
 import SlamData.Workspace.Card.Port as Port
 
 type DSL =
-  H.ParentDSL ST.State CS.ValueState Q.QueryC CS.ValueQuery Slam CS.ValueSlot
+  H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
 type HTML =
-  H.ParentHTML CS.ValueState Q.QueryC CS.ValueQuery Slam CS.ValueSlot
+  H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
 
 metricBuilderComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 metricBuilderComponent = CC.makeCardComponent
@@ -72,7 +74,30 @@ renderHighLOD state =
     , HH.hr_
     , renderLabel state
     , HH.p_ [ HH.text "This string will appear under formatted value" ]
+    , renderPicker state
     ]
+selecting ∷ ∀ a . (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting f q a = right (Q.Select (f q) a)
+
+renderPicker ∷ ST.State → HTML
+renderPicker state = case state.picker of
+  Nothing → HH.text ""
+  Just { options, select } →
+    HH.slot unit \_ →
+      { component: DPC.picker
+          { title: case select of
+              Q.Value _    → "Choose measure"
+              _ → ""
+          , label: show
+          , render: HH.text ∘ show
+          , weight: const 0.0
+          }
+      , initialState:
+          H.parentState
+            $ DPC.initialState
+            $ groupJCursors
+            $ List.fromFoldable options
+      }
 
 renderFormatterInstruction ∷ HTML
 renderFormatterInstruction =
@@ -110,17 +135,14 @@ renderValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.slot unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen:const true
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Measure"
-                        , classes: [ B.btnPrimary, CSS.aggregation ]
-                        , defaultOption: "Select measure axis"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
-       }
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.secondary (Just "Measure") (selecting Q.Value))
+            state.value
+        , BCI.aggregationInput
+            (BCI.dropdown Nothing (selecting Q.ValueAgg))
+            state.valueAgg
+        ]
     ]
 
 renderFormatter ∷ ST.State → HTML
@@ -168,11 +190,6 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    value ←
-      H.query unit $ right $ H.ChildF unit $ H.request S.GetSelect
-    valueAggregation ←
-      H.query unit $ left $ H.request S.GetSelect
-
     let
       model =
         { value: _
@@ -180,8 +197,8 @@ cardEval = case _ of
         , label: st.label
         , formatter: st.formatter
         }
-        <$> (value >>= view _value)
-        <*> (valueAggregation >>= view _value)
+        <$> (st.value ^. _value)
+        <*> (snd st.valueAgg ^. _value)
     pure $ k $ Card.BuildMetric model
 
   CC.Load (Card.BuildMetric model) next → do
@@ -204,6 +221,9 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
+raiseUpdate ∷ DSL Unit
+raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+
 metricEval ∷ Q.Query ~> DSL
 metricEval = case _ of
   Q.SetFormatter str next → do
@@ -214,45 +234,60 @@ metricEval = case _ of
     H.modify _{label = if Str.trim str ≡ "" then Nothing else Just str }
     CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
+  Q.Select sel next → do
+    case sel of
+      Q.Value a    → updatePicker ST._value Q.Value a
+      Q.ValueAgg a → updateSelect ST._valueAgg a
+    pure next
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
-peek ∷ ∀ a. CS.ValueQuery a → DSL Unit
-peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+  updateSelect l = case _ of
+    BCI.Open _    → H.modify (l ∘ _1 .~ true)
+    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
+
+peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
+peek = coproduct peekPicker (const (pure unit))
+  where
+  peekPicker = case _ of
+    DPC.Dismiss _ →
+      H.modify _ { picker = Nothing }
+    DPC.Confirm value _ → do
+      st ← H.get
+      let
+        value' = flattenJCursors value
+      for_ st.picker \{ select } → case select of
+        Q.Value _    → H.modify (ST._value ∘ _value ?~ value')
+        _ → pure unit
+      H.modify _ { picker = Nothing }
+      raiseUpdate
+    _ →
+      pure unit
 
 loadModel ∷ M.MetricR → DSL Unit
-loadModel r = void do
-  H.query unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.value
-
-  H.query unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.valueAggregation
+loadModel r =
+  H.modify _
+    { value = fromSelected (Just r.value)
+    , valueAgg = false × fromSelected (Just r.valueAggregation)
+    }
 
 synchronizeChildren ∷ DSL Unit
-synchronizeChildren = void do
+synchronizeChildren = do
   st ← H.get
-  value ←
-    H.query unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  valueAggregation ←
-    H.query unit $ left $ H.request S.GetSelect
-
   let
     newValue =
-      setPreviousValueFrom value
+      setPreviousValueFrom (Just st.value)
         $ autoSelect
         $ newSelect
         $ st.axes.value
 
     newValueAggregation =
-      setPreviousValueFrom valueAggregation
+      setPreviousValueFrom (Just $ snd  st.valueAgg)
         $ nonMaybeAggregationSelect
 
-  H.query unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
-  H.query unit $ left $ H.action $ S.SetSelect newValueAggregation
+  H.modify _
+    { value = newValue
+    , valueAgg = false × newValueAggregation
+    }
