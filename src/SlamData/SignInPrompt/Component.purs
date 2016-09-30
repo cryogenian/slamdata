@@ -29,10 +29,10 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Events.Indexed as HE
 
 import SlamData.Monad (Slam)
-import SlamData.Wiring (Wiring(Wiring), SignInPromptMessage)
-import SlamData.Wiring as Wiring
+import SlamData.Wiring (Wiring(Wiring))
+import SlamData.Quasar.Auth.Authentication as Auth
 
-data Query a = Init a | Message SignInPromptMessage a | Dismiss a
+data Query a = Init a | Message Auth.SignInPromptMessage a | Dismiss a
 type PromiseVar = { input ∷ AVar Unit, output ∷ Promise Unit }
 type State = Maybe { src ∷ String, dismissed ∷ PromiseVar }
 
@@ -66,8 +66,8 @@ eval =
       (getSignInPromptBus >>= subscribeToBus (H.action ∘ Message)) $> next
     Message message next →
       case message of
-        Wiring.DismissSignInPrompt → dismiss
-        Wiring.PresentSignInPrompt { src, dismissedAVar } →
+        Auth.DismissSignInPrompt → dismiss
+        Auth.PresentSignInPrompt { src, dismissedAVar } →
           H.get >>=
             case _ of
               Nothing → present src >>= putAVarWhenDismissed dismissedAVar
@@ -79,7 +79,7 @@ eval =
     Dismiss next → dismiss $> next
   where
   runWiring (Wiring wiring) = wiring
-  getSignInPromptBus ∷ DSL (BusRW Wiring.SignInPromptMessage)
+  getSignInPromptBus ∷ DSL (BusRW Auth.SignInPromptMessage)
   getSignInPromptBus = _.signInPromptBus ∘ runWiring <$> H.liftH ask
 
 putAVarWhenDismissed ∷ AVar Unit → PromiseVar → DSL Unit

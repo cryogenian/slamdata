@@ -22,6 +22,7 @@ module SlamData.Quasar.Auth.Authentication
   , EIdToken
   , AuthenticationError
   , RequestIdTokenBus
+  , SignInPromptMessage(..)
   ) where
 
 import Control.Apply as Apply
@@ -74,7 +75,6 @@ import SlamData.Quasar.Auth.Keys as AuthKeys
 import SlamData.Quasar.Auth.Store as AuthStore
 import Text.Parsing.StringParser (ParseError(..))
 import Utils (passover)
-import Utils.DOM as DOMUtils
 import Utils.LocalStorage as LocalStorage
 
 fromEither ∷ ∀ a b. E.Either a b → M.Maybe b
@@ -87,8 +87,13 @@ getIdToken requestNewIdTokenBus =
 data AuthenticationError
   = IdTokenInvalid
   | IdTokenUnavailable String
+  | PromptDismissed
   | DOMError String
   | NoAuthProviderInLocalStorage
+
+data SignInPromptMessage
+  = PresentSignInPrompt { src ∷ String, dismissedAVar ∷ AVar Unit }
+  | DismissSignInPrompt
 
 instance semigroupAuthenticationError ∷ Semigroup AuthenticationError where
   append x y = y
@@ -120,23 +125,24 @@ writeOnlyBus ∷ ∀ a. BusRW a → BusW a
 writeOnlyBus = snd ∘ Bus.split
 
 -- | Write an AVar to the returned bus to get a valid OIDC id token from the given provider.
-authentication ∷ ∀ eff. Aff (AuthEffects eff) RequestIdTokenBus
-authentication = do
+authentication ∷ ∀ eff. BusRW SignInPromptMessage → Aff (AuthEffects eff) RequestIdTokenBus
+authentication signInPromptBus = do
   stateRef ← liftEff $ Ref.newRef Nothing
   requestBus ← Bus.make
-  Aff.forkAff $ forever (authenticate stateRef =<< Bus.read requestBus)
+  Aff.forkAff $ forever (authenticate signInPromptBus stateRef =<< Bus.read requestBus)
   pure $ writeOnlyBus requestBus
 
 authenticate
   ∷ ∀ eff
-  . Ref (Maybe (Promise EIdToken))
+  . BusRW SignInPromptMessage
+  → Ref (Maybe (Promise EIdToken))
   → AVar EIdToken
   → Aff (AuthEffects eff) Unit
-authenticate stateRef replyAvar = do
+authenticate signInPromptBus stateRef replyAvar = do
   state ← liftEff $ Ref.readRef stateRef
   case state of
     Nothing → do
-      idTokenPromise ← requestIdToken
+      idTokenPromise ← requestIdToken signInPromptBus
       writeState $ Just idTokenPromise
       void $ Aff.forkAff $ reply idTokenPromise *> writeState Nothing
     Just idTokenPromise → do
@@ -154,7 +160,7 @@ requestReauthenticationSilently = do
   either (pure ∘ Left) await =<< request
   where
   await authenticationIFrameNode = do
-    idToken ← retrieveIdTokenFromLSOnChange
+    idToken ← race retrieveIdTokenFromLSOnChange timeout
     liftEff $ removeBodyChild authenticationIFrameNode
     pure idToken
   request =
@@ -162,16 +168,24 @@ requestReauthenticationSilently = do
       (const $ pure $ Left $ NoAuthProviderInLocalStorage)
       (liftEff ∘ map (lmap DOMError) ∘ appendHiddenIFrameToBody)
       =<< requestReauthenticationURI OIDCAff.None
+  timeout =
+    Aff.later' Config.authenticationTimeout
+      $ pure $ Left $ IdTokenUnavailable "No id token received before timeout."
 
-requestPromptedAuthentication ∷ ∀ eff. Aff (AuthEffects eff) EIdToken
-requestPromptedAuthentication =
-  request *> retrieveIdTokenFromLSOnChange
+requestPromptedAuthentication
+  ∷ ∀ eff
+  . BusRW SignInPromptMessage
+  → Aff (AuthEffects eff) EIdToken
+requestPromptedAuthentication signInPromptBus = do
+  race
+    retrieveIdTokenFromLSOnChange
+    (either (pure ∘ Left) prompt =<< requestReauthenticationURI OIDCAff.Login)
   where
-  request =
-    either
-      (const $ pure $ Left $ NoAuthProviderInLocalStorage)
-      (map Right ∘ liftEff ∘ DOMUtils.openPopup)
-      =<< requestReauthenticationURI OIDCAff.Login
+  prompt src = do
+    dismissedAVar ← AVar.makeVar
+    Bus.write (PresentSignInPrompt { src, dismissedAVar }) signInPromptBus
+    AVar.takeVar dismissedAVar
+    pure $ Left PromptDismissed
 
 appendHiddenIFrameToBody ∷ ∀ eff. String → Eff (AuthEffects eff) (Either String Node)
 appendHiddenIFrameToBody uri =
@@ -236,15 +250,18 @@ getBodyNode =
       ∘ map DOMHTMLTypes.htmlElementToNode
       ∘ Nullable.toMaybe
 
-requestIdToken ∷ ∀ eff. Aff (AuthEffects eff) (Promise EIdToken)
-requestIdToken = Promise.defer do
+requestIdToken
+  ∷ ∀ eff
+  . BusRW SignInPromptMessage
+  → Aff (AuthEffects eff) (Promise EIdToken)
+requestIdToken signInPromptBus = Promise.defer do
   startIdToken ← retrieveIdTokenFromLS
   provider ← liftEff $ retrieveProvider
   idToken ← case startIdToken of
     Left (IdTokenUnavailable _) | isJust provider →
       runExceptT
         $ ExceptT requestReauthenticationSilently
-        <|> ExceptT requestPromptedAuthentication
+        <|> ExceptT (requestPromptedAuthentication signInPromptBus)
     Left IdTokenInvalid →
       requestReauthenticationSilently
     _ ->
@@ -252,15 +269,13 @@ requestIdToken = Promise.defer do
   either (const $ liftEff AuthStore.clearProvider) (const $ pure unit) idToken
   pure idToken
 
-retrieveIdTokenFromLSOnChange ∷ ∀ eff. Aff (AuthEffects eff) EIdToken
+retrieveIdTokenFromLSOnChange
+  ∷ ∀ eff
+  . Aff (AuthEffects eff) EIdToken
 retrieveIdTokenFromLSOnChange =
-  race
-    (validTokenIdFromIdTokenStorageEvent
-      =<< firstValueFromStallingProducer
-      =<< liftEff getIdTokenStorageEvents)
-    (Aff.later'
-      Config.authenticationTimeout
-      $ pure $ Left $ IdTokenUnavailable "No id token received before timeout.")
+  validTokenIdFromIdTokenStorageEvent
+    =<< firstValueFromStallingProducer
+    =<< liftEff getIdTokenStorageEvents
 
 validTokenIdFromIdTokenStorageEvent
   ∷ ∀ eff
@@ -292,13 +307,15 @@ runParseError (ParseError s) = s
 requestReauthenticationURI
   ∷ ∀ eff
   . OIDCAff.Prompt
-  → Aff (AuthEffects eff) (Either String String)
+  → Aff (AuthEffects eff) (Either AuthenticationError String)
 requestReauthenticationURI prompt =
-  liftEff do
-    redirectUri ← appendAuthPath <$> Browser.locationString
-    runExceptT
-      $ ExceptT ∘ request redirectUri
-      =<< ExceptT retrieveProviderRFromLS
+  map
+    (lmap $ const NoAuthProviderInLocalStorage)
+    (liftEff do
+      redirectUri ← appendAuthPath <$> Browser.locationString
+      runExceptT
+        $ ExceptT ∘ request redirectUri
+        =<< ExceptT retrieveProviderRFromLS)
   where
   request redirectUri =
     map (bimap runParseError id)
