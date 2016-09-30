@@ -18,20 +18,23 @@ flipDeckScenario =
     (Interact.deleteFileInTestFolder "Untitled Workspace.slam")
 
 
-mkTwoCardTestDeck ∷ SlamFeature Unit
-mkTwoCardTestDeck = do
+mkDeckWithLastTable ∷ SlamFeature Unit
+mkDeckWithLastTable = do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "select measureOne from `/test-mount/testDb/flatViz`"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
-    Interact.insertTableCardInLastDeck
-    Expect.tableColumnsAre ["measureOne"]
+    Interact.selectBuildChart
+    Interact.insertPivotCard
+    Interact.addColumn "measureOne"
+    Interact.accessNextCardInLastDeck
+    Interact.insertChartCardInLastDeck
 
 test ∷ SlamFeature Unit
 test = do
   flipDeckScenario "Flip deck" [] do
-    mkTwoCardTestDeck
+    mkDeckWithLastTable
     Interact.flipDeck
     Expect.backsideMenuPresented
     Interact.flipDeck
@@ -41,7 +44,7 @@ test = do
 
   -- Note: Trash button deletes last or active card
   flipDeckScenario "Trash last card" [] do
-    mkTwoCardTestDeck
+    mkDeckWithLastTable
     Interact.flipDeck
     Expect.backsideMenuPresented
     Interact.trashActiveOrLastCard
@@ -69,7 +72,7 @@ test = do
     successMsg "Successfully shared deck"
 
   flipDeckScenario "Filter backside buttons" [] do
-    mkTwoCardTestDeck
+    mkDeckWithLastTable
     Interact.flipDeck
     Expect.backsideMenuPresented
     Interact.filterDeckAndCardActions "delete c"

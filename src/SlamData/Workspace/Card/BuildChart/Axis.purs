@@ -126,25 +126,29 @@ checkSemantics lst =
 analyzeJArray ∷ JArray → M.Map JCursor Axis
 analyzeJArray arr =
   -- If array has exactly one element return it
-  do guard $ length arr == 1
+  do guard $ length (spy arr) == 1
      arr !! 0
   -- If element returned transpose it else take initial array
   # maybe arr toKeyValJArray
   -- Produce map from JCursor to List of values (Maybe Semantics) for every Json
   # jarrayToSemantics
+  # spy
   -- Check if values of that map can be converted to axes (if can it will be Just)
   # map checkSemantics
+  # spy
   -- Make list of Tuple JCursor (Maybe Axis)
   # M.toList
+  # spy
   -- lift Maybe to Tuple from Axis
   # map sequence
   -- Drop Nothings
   # catMaybes
+  # spy
   -- Create new Map
   # M.fromFoldable
   -- Drop records those keys have no relations to other keys
   # checkPairs
-
+  # spy
   where
   -- | Translate encoded {foo: 1, bar: 2}
   -- | to [{key: "foo", value: 1}, {key: "bar", value: 2}]
@@ -168,7 +172,10 @@ getPossibleDependencies cursor m =
 
 checkPairs ∷ M.Map JCursor Axis → M.Map JCursor Axis
 checkPairs m =
-  foldl check m $ M.keys m
+  case M.keys m of
+    Nil → m
+    Cons _ Nil → m
+    _ → foldl check m $ M.keys m
   where
   check ∷ M.Map JCursor Axis → JCursor → M.Map JCursor Axis
   check m cursor =
