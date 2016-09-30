@@ -4,9 +4,9 @@ module SlamData.Workspace.Card.BuildChart.Scatter.Component
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
-import Data.Lens (view, (^?), (.~))
+import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
 import Data.Lens as Lens
+import Data.List as List
 
 import Global (readFloat, isNaN)
 
@@ -23,9 +23,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Render.Common (row)
 import SlamData.Form.Select
-  ( Select
-  , newSelect
-  , emptySelect
+  ( newSelect
   , setPreviousValueFrom
   , autoSelect
   , (⊝)
@@ -37,11 +35,12 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Form.Select.Component as S
-import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation, aggregationSelectWithNone)
+import SlamData.Workspace.Card.BuildChart.Aggregation (aggregationSelectWithNone)
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.Query as Q
@@ -83,7 +82,34 @@ renderHighLOD state =
     , renderSeries state
     , HH.hr_
     , row [ renderMinSize state, renderMaxSize state ]
+    , renderPicker state
     ]
+
+selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting f q _ = right (Q.Select (f q) unit)
+
+renderPicker ∷ ST.State → HTML
+renderPicker state = case state.picker of
+  Nothing → HH.text ""
+  Just { options, select } →
+    HH.slot unit \_ →
+      { component: DPC.picker
+          { title: case select of
+              Q.Abscissa _ → "Choose x-axis"
+              Q.Ordinate _ → "Choose y-axis"
+              Q.Size _     → "Choose size"
+              Q.Series _   → "Choose series"
+              _ → ""
+          , label: show
+          , render: HH.text ∘ show
+          , weight: const 0.0
+          }
+      , initialState:
+          H.parentState
+            $ DPC.initialState
+            $ groupJCursors
+            $ List.fromFoldable options
+      }
 
 renderAbscissa ∷ ST.State → HTML
 renderAbscissa state =
@@ -92,17 +118,14 @@ renderAbscissa state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "X-Axis" ]
-    , HH.slot' CS.cpAbscissa unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "X-Axis"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState aggregationSelectWithNone
-       }
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.secondary (Just "X-Axis") (selecting Q.Abscissa))
+            state.abscissa
+        , BCI.aggregationInput
+            (BCI.dropdown Nothing (selecting Q.AbscissaAgg))
+            state.abscissaAgg
+        ]
     ]
 
 renderOrdinate ∷ ST.State → HTML
@@ -112,17 +135,14 @@ renderOrdinate state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Y-Axis" ]
-    , HH.slot' CS.cpOrdinate unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 2)
-                        , defaultWhen: (_ > 1)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Y-Axis"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState aggregationSelectWithNone
-       }
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.primary (Just "Y-Axis") (selecting Q.Ordinate))
+            state.ordinate
+        , BCI.aggregationInput
+            (BCI.dropdown Nothing (selecting Q.OrdinateAgg))
+            state.ordinateAgg
+        ]
     ]
 
 renderSize ∷ ST.State → HTML
@@ -132,17 +152,14 @@ renderSize state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Bubble size" ]
-    , HH.slot' CS.cpSize unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 2)
-                        , defaultWhen: (_ > 1)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Bubble size"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState aggregationSelectWithNone
-       }
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.primary (Just "Bubble size") (selecting Q.Size))
+            state.size
+        , BCI.aggregationInput
+            (BCI.dropdown Nothing (selecting Q.SizeAgg))
+            state.sizeAgg
+        ]
     ]
 
 renderSeries ∷ ST.State → HTML
@@ -152,10 +169,9 @@ renderSeries state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , HH.slot' CS.cpSeries unit \_ →
-       { component: S.secondarySelect (pure "Series")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Series") (selecting Q.Series))
+        state.series
     ]
 
 renderMinSize ∷ ST.State → HTML
@@ -205,23 +221,22 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    r ← getSelects
     let
       model =
         { abscissa: _
         , abscissaAggregation: _
         , ordinate: _
         , ordinateAggregation: _
-        , size: r.size >>= view _value
-        , sizeAggregation: r.sizeAggregation >>= view _value
-        , series: r.series >>= view _value
+        , size: st.size ^. _value
+        , sizeAggregation: snd st.sizeAgg ^. _value
+        , series: st.series ^. _value
         , minSize: (st.minSize ∷ Number)
         , maxSize: (st.maxSize ∷ Number)
         }
-        <$> (r.abscissa >>= view _value)
-        <*> (r.abscissaAggregation >>= view _value)
-        <*> (r.ordinate >>= view _value)
-        <*> (r.ordinateAggregation >>= view _value)
+        <$> (st.abscissa ^. _value)
+        <*> (snd st.abscissaAgg ^. _value)
+        <*> (st.ordinate ^. _value)
+        <*> (snd st.ordinateAgg ^. _value)
     pure $ k $ Card.BuildScatter model
   CC.Load (Card.BuildScatter (Just model)) next → do
     loadModel model
@@ -244,6 +259,9 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
+raiseUpdate ∷ DSL Unit
+raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+
 scatterBuilderEval ∷ Q.Query ~> DSL
 scatterBuilderEval = case _ of
   Q.SetMinSymbolSize str next → do
@@ -258,38 +276,73 @@ scatterBuilderEval = case _ of
       H.modify _{maxSize = fl}
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
+  Q.Select sel next → do
+    case sel of
+      Q.Abscissa a    → updatePicker ST._abscissa Q.Abscissa a
+      Q.AbscissaAgg a → updateSelect ST._abscissaAgg a
+      Q.Ordinate a    → updatePicker ST._ordinate Q.Ordinate a
+      Q.OrdinateAgg a → updateSelect ST._ordinateAgg a
+      Q.Size a        → updatePicker ST._size Q.Size a
+      Q.SizeAgg a     → updateSelect ST._sizeAgg a
+      Q.Series a      → updatePicker ST._series Q.Series a
+    pure next
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+
+  updateSelect l = case _ of
+    BCI.Open _    → H.modify (l ∘ _1 .~ true)
+    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+peek = coproduct peekPicker (const (pure unit))
+  where
+  peekPicker = case _ of
+    DPC.Dismiss _ →
+      H.modify _ { picker = Nothing }
+    DPC.Confirm value _ → do
+      st ← H.get
+      let
+        value' = flattenJCursors value
+      for_ st.picker \{ select } → case select of
+        Q.Abscissa _ → H.modify (ST._abscissa ∘ _value ?~ value')
+        Q.Ordinate _ → H.modify (ST._ordinate ∘ _value ?~ value')
+        Q.Size _     → H.modify (ST._size ∘ _value ?~ value')
+        Q.Series _   → H.modify (ST._series ∘ _value ?~ value')
+        _ → pure unit
+      H.modify _ { picker = Nothing }
+      raiseUpdate
+    _ →
+      pure unit
 
 synchronizeChildren ∷ DSL Unit
-synchronizeChildren = void do
+synchronizeChildren = do
   st ← H.get
-  r ← getSelects
   let
     newAbscissa =
-      setPreviousValueFrom r.abscissa
+      setPreviousValueFrom (Just st.abscissa)
         $ autoSelect
         $ newSelect
         $ st.axes.value
 
     newAbscissaAggregation =
-      setPreviousValueFrom r.abscissaAggregation
+      setPreviousValueFrom (Just $ snd st.abscissaAgg)
         $ aggregationSelectWithNone
 
     newOrdinate =
-      setPreviousValueFrom r.ordinate
+      setPreviousValueFrom (Just st.ordinate)
         $ autoSelect
         $ newSelect
         $ st.axes.value
         ⊝ newAbscissa
 
     newOrdinateAggregation =
-      setPreviousValueFrom r.ordinateAggregation
+      setPreviousValueFrom (Just $ snd st.ordinateAgg)
         $ aggregationSelectWithNone
 
     newSize =
-      setPreviousValueFrom r.size
+      setPreviousValueFrom (Just st.size)
         $ autoSelect
         $ newSelect
         $ st.axes.value
@@ -297,107 +350,33 @@ synchronizeChildren = void do
         ⊝ newOrdinate
 
     newSizeAggregation =
-      setPreviousValueFrom r.sizeAggregation
+      setPreviousValueFrom (Just $ snd st.sizeAgg)
         $ aggregationSelectWithNone
 
     newSeries =
-      setPreviousValueFrom r.series
+      setPreviousValueFrom (Just st.series)
         $ autoSelect
         $ newSelect
         $ st.axes.category
 
-  H.query' CS.cpAbscissa unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newAbscissa
-  H.query' CS.cpAbscissa unit $ left $ H.action $ S.SetSelect newAbscissaAggregation
-  H.query' CS.cpOrdinate unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newOrdinate
-  H.query' CS.cpOrdinate unit $ left $ H.action $ S.SetSelect newOrdinateAggregation
-  H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSize
-  H.query' CS.cpSize unit $ left $ H.action $ S.SetSelect newSizeAggregation
-  H.query' CS.cpSeries unit $ H.action $ S.SetSelect newSeries
-
-
-
-type Selects =
-  { abscissa ∷ Maybe (Select JCursor)
-  , abscissaAggregation ∷ Maybe (Select (Maybe Aggregation))
-  , ordinate ∷ Maybe (Select JCursor)
-  , ordinateAggregation ∷ Maybe (Select (Maybe Aggregation))
-  , size ∷ Maybe (Select JCursor)
-  , sizeAggregation ∷ Maybe (Select (Maybe Aggregation))
-  , series ∷ Maybe (Select JCursor)
-  }
-
-getSelects ∷ DSL Selects
-getSelects = do
-  abscissa ←
-    H.query' CS.cpAbscissa unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  abscissaAggregation ←
-    H.query' CS.cpAbscissa unit $ left $ H.request S.GetSelect
-  ordinate ←
-    H.query' CS.cpOrdinate unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  ordinateAggregation ←
-    H.query' CS.cpOrdinate unit $ left $ H.request S.GetSelect
-  size ←
-    H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  sizeAggregation ←
-    H.query' CS.cpSize unit $ left $ H.request S.GetSelect
-  series ←
-    H.query' CS.cpSeries unit $ H.request S.GetSelect
-  pure { abscissa
-       , abscissaAggregation
-       , ordinate
-       , ordinateAggregation
-       , size
-       , sizeAggregation
-       , series
-       }
+  H.modify _
+    { abscissa = newAbscissa
+    , abscissaAgg = false × newAbscissaAggregation
+    , ordinate = newOrdinate
+    , ordinateAgg = false × newOrdinateAggregation
+    , size = newSize
+    , sizeAgg = false × newSizeAggregation
+    , series = newSeries
+    }
 
 loadModel ∷ M.ScatterR → DSL Unit
-loadModel r = void do
-  H.query' CS.cpAbscissa unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.abscissa
-
-  H.query' CS.cpAbscissa unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just
-    $ r.abscissaAggregation
-
-  H.query' CS.cpOrdinate unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.ordinate
-
-  H.query' CS.cpOrdinate unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just
-    $ r.ordinateAggregation
-
-  H.query' CS.cpSize unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.size
-
-  H.query' CS.cpSize unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.sizeAggregation
-  H.query' CS.cpSeries unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.series
+loadModel r =
+  H.modify _
+    { abscissa = fromSelected (Just r.abscissa)
+    , abscissaAgg = false × fromSelected (Just r.abscissaAggregation)
+    , ordinate = fromSelected (Just r.ordinate)
+    , ordinateAgg = false × fromSelected (Just r.ordinateAggregation)
+    , size = fromSelected r.size
+    , sizeAgg = false × fromSelected r.sizeAggregation
+    , series = fromSelected r.series
+    }

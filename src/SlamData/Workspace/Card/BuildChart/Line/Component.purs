@@ -142,12 +142,7 @@ renderValue state =
             (BCI.secondary (Just "Measure1") (selecting Q.Value))
             state.value
         , BCI.aggregationInput
-            { disableWhen: (_ < 1)
-            , defaultWhen: const false
-            , ariaLabel: Nothing
-            , defaultOption: ""
-            , query: selecting Q.ValueAgg
-            }
+            (BCI.dropdown Nothing (selecting Q.ValueAgg))
             state.valueAgg
         ]
     ]
@@ -164,12 +159,7 @@ renderSecondValue state =
             (BCI.secondary (Just "Measure2") (selecting Q.SecondValue))
             state.secondValue
         , BCI.aggregationInput
-            { disableWhen: (_ < 1)
-            , defaultWhen: const false
-            , ariaLabel: Nothing
-            , defaultOption: ""
-            , query: selecting Q.SecondValueAgg
-            }
+            (BCI.dropdown Nothing (selecting Q.SecondValueAgg))
             state.secondValueAgg
         ]
     ]
@@ -198,12 +188,7 @@ renderSize state =
             (BCI.secondary (Just "Measure3") (selecting Q.Size))
             state.size
         , BCI.aggregationInput
-            { disableWhen: (_ < 1)
-            , defaultWhen: const false
-            , ariaLabel: Nothing
-            , defaultOption: ""
-            , query: selecting Q.SizeAgg
-            }
+            (BCI.dropdown Nothing (selecting Q.SizeAgg))
             state.sizeAgg
         ]
     ]

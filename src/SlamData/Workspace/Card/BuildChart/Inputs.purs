@@ -56,6 +56,15 @@ secondary =
   , query: _
   }
 
+dropdown ∷ ∀ a i. Maybe String → (SelectAction a → H.Action i) → AggregationConfig a i
+dropdown =
+  { disableWhen: (_ < 1)
+  , defaultWhen: const false
+  , ariaLabel: _
+  , defaultOption: ""
+  , query: _
+  }
+
 pickerInput
   ∷ ∀ a i p
   . PickerConfig a i

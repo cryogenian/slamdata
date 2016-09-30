@@ -121,12 +121,7 @@ renderValue state =
             (BCI.secondary (Just "Measure") (selecting Q.Value))
             state.value
         , BCI.aggregationInput
-            { disableWhen: (_ < 1)
-            , defaultWhen: const false
-            , ariaLabel: Nothing
-            , defaultOption: ""
-            , query: selecting Q.ValueAgg
-            }
+            (BCI.dropdown Nothing (selecting Q.ValueAgg))
             state.valueAgg
         ]
     ]

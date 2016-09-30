@@ -137,12 +137,7 @@ renderValue state =
             (BCI.secondary (Just "Measure") (selecting Q.Value))
             state.value
         , BCI.aggregationInput
-            { disableWhen: (_ < 1)
-            , defaultWhen: const false
-            , ariaLabel: Nothing
-            , defaultOption: ""
-            , query: selecting Q.ValueAgg
-            }
+            (BCI.dropdown Nothing (selecting Q.ValueAgg))
             state.valueAgg
         ]
     ]
@@ -336,7 +331,7 @@ peek = coproduct peekPicker (const (pure unit))
       pure unit
 
 synchronizeChildren ∷ DSL Unit
-synchronizeChildren = void do
+synchronizeChildren = do
   st ← H.get
   let
     newDimension =
@@ -371,7 +366,6 @@ synchronizeChildren = void do
     , dimension = newDimension
     , series = newSeries
     }
-
 
 loadModel ∷ M.AreaR → DSL Unit
 loadModel r = void do
