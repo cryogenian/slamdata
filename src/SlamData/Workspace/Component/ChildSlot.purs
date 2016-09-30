@@ -22,17 +22,18 @@ import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
 import SlamData.Header.Component as Header
 import SlamData.Notification.Component as Notify
+import SlamData.SignInPrompt.Component as SignInPrompt
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Nested.State as DNS
 
 type ChildQuery =
-  DNQ.QueryP ⨁ Header.QueryP ⨁ Notify.Query
+  DNQ.QueryP ⨁ Header.QueryP ⨁ Notify.Query ⨁ SignInPrompt.Query
 
 type ChildState =
-  DNS.State ⊹ Header.StateP ⊹ Notify.State
+  DNS.State ⊹ Header.StateP ⊹ Notify.State ⊹ SignInPrompt.State
 
 type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit
+  Unit ⊹ Unit ⊹ Unit ⊹ Unit
 
 cpDeck
   ∷ ChildPath
@@ -53,4 +54,11 @@ cpNotify
       Notify.State ChildState
       Notify.Query ChildQuery
       Unit ChildSlot
-cpNotify = cpR :> cpR
+cpNotify = cpR :> cpR :> cpL
+
+cpSignInPrompt
+  ∷ ChildPath
+      SignInPrompt.State ChildState
+      SignInPrompt.Query ChildQuery
+      Unit ChildSlot
+cpSignInPrompt = cpR :> cpR :> cpR
