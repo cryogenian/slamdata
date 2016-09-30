@@ -4,9 +4,9 @@ module SlamData.Workspace.Card.BuildChart.Boxplot.Component
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
-import Data.Lens (view, (^?), (.~))
+import Data.Lens ((^?), (^.), (?~), (.~))
 import Data.Lens as Lens
+import Data.List as List
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -17,15 +17,17 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
+import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Form.Select.Component as S
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component.Query as Q
@@ -65,7 +67,33 @@ renderHighLOD state =
     , HH.hr_
     , renderSeries state
     , renderParallel state
+    , renderPicker state
     ]
+
+selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting f q _ = right (Q.Select (f q) unit)
+
+renderPicker ∷ ST.State → HTML
+renderPicker state = case state.picker of
+  Nothing → HH.text ""
+  Just { options, select } →
+    HH.slot unit \_ →
+      { component: DPC.picker
+          { title: case select of
+              Q.Dimension _   → "Choose dimension"
+              Q.Value _       → "Choose measure"
+              Q.Series _      → "Choose series"
+              Q.Parallel _    → "Choose parallel"
+          , label: show
+          , render: HH.text ∘ show
+          , weight: const 0.0
+          }
+      , initialState:
+          H.parentState
+            $ DPC.initialState
+            $ groupJCursors
+            $ List.fromFoldable options
+      }
 
 renderDimension ∷ ST.State → HTML
 renderDimension state =
@@ -74,12 +102,10 @@ renderDimension state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Dimension" ]
-    , HH.slot' CS.cpDimension unit \_ →
-         { component: S.primarySelect (Just "Dimension")
-         , initialState: emptySelect
-         }
+    , BCI.pickerInput
+        (BCI.primary (Just "Dimension") (selecting Q.Dimension))
+        state.dimension
     ]
-
 
 renderValue ∷ ST.State → HTML
 renderValue state =
@@ -88,10 +114,9 @@ renderValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.slot' CS.cpValue unit \_ →
-       { component: S.primarySelect (Just "Measure")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.primary (Just "Measure") (selecting Q.Value))
+        state.value
     ]
 
 renderSeries ∷ ST.State → HTML
@@ -101,10 +126,9 @@ renderSeries state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , HH.slot' CS.cpSeries unit \_ →
-       { component: S.secondarySelect (pure "Series")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Series") (selecting Q.Series))
+        state.series
     ]
 
 renderParallel ∷ ST.State → HTML
@@ -114,14 +138,13 @@ renderParallel state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Parallel" ]
-    , HH.slot' CS.cpParallel unit \_ →
-       { component: S.secondarySelect (pure "Parallel")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
+        state.parallel
     ]
 
 eval ∷ Q.QueryC ~> DSL
-eval = cardEval ⨁ (absurd ∘ getConst)
+eval = cardEval ⨁ chartEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -136,15 +159,15 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    r ← getSelects
-    let model =
-          { dimension: _
-          , value: _
-          , series: r.series >>= view _value
-          , parallel: r.parallel >>= view _value
-          }
-          <$> (r.dimension >>= view _value)
-          <*> (r.value >>= view _value)
+    let
+      model =
+        { dimension: _
+        , value: _
+        , series: st.series ^. _value
+        , parallel: st.parallel ^. _value
+        }
+        <$> (st.dimension ^. _value)
+        <*> (st.value ^. _value)
     pure $ k $ Card.BuildBoxplot model
   CC.Load (Card.BuildBoxplot (Just model)) next → do
     loadModel model
@@ -164,30 +187,61 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
+raiseUpdate ∷ DSL Unit
+raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+
+chartEval ∷ Q.Query ~> DSL
+chartEval (Q.Select sel next) = do
+  case sel of
+    Q.Value a     → updatePicker ST._value Q.Value a
+    Q.Dimension a → updatePicker ST._dimension Q.Dimension a
+    Q.Series a    → updatePicker ST._series Q.Series a
+    Q.Parallel a  → updatePicker ST._parallel Q.Parallel a
+  pure next
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+peek = coproduct peekPicker (const (pure unit))
+  where
+  peekPicker = case _ of
+    DPC.Dismiss _ →
+      H.modify _ { picker = Nothing }
+    DPC.Confirm value _ → do
+      st ← H.get
+      let
+        value' = flattenJCursors value
+      for_ st.picker \{ select } → case select of
+        Q.Value _     → H.modify (ST._value ∘ _value ?~ value')
+        Q.Dimension _ → H.modify (ST._dimension ∘ _value ?~ value')
+        Q.Series _    → H.modify (ST._series ∘ _value ?~ value')
+        Q.Parallel _  → H.modify (ST._parallel ∘ _value ?~ value')
+      H.modify _ { picker = Nothing }
+      raiseUpdate
+    _ →
+      pure unit
 
 synchronizeChildren ∷ DSL Unit
 synchronizeChildren = void do
   st ← H.get
-  r ← getSelects
-
   let
     newDimension =
-      setPreviousValueFrom r.dimension
+      setPreviousValueFrom (Just st.dimension)
         $ autoSelect
         $ newSelect
         $ st.axes.category
 
     newValue =
-      setPreviousValueFrom r.value
+      setPreviousValueFrom (Just st.value)
         $ autoSelect
         $ newSelect
         $ st.axes.value
         ⊝ newDimension
 
     newSeries =
-      setPreviousValueFrom r.series
+      setPreviousValueFrom (Just st.series)
         $ autoSelect
         $ newSelect
         $ ifSelected [newDimension]
@@ -195,7 +249,7 @@ synchronizeChildren = void do
         ⊝ newDimension
 
     newParallel =
-      setPreviousValueFrom r.parallel
+      setPreviousValueFrom (Just st.parallel)
         $ autoSelect
         $ newSelect
         $ ifSelected [newDimension]
@@ -203,54 +257,19 @@ synchronizeChildren = void do
         ⊝ newDimension
         ⊝ newSeries
 
-  H.query' CS.cpDimension unit $ H.action $ S.SetSelect newDimension
-  H.query' CS.cpValue unit $ H.action $ S.SetSelect newValue
-  H.query' CS.cpSeries unit $ H.action $ S.SetSelect newSeries
-  H.query' CS.cpParallel unit $  H.action $ S.SetSelect newParallel
-
-type Selects =
-  { dimension ∷ Maybe (Select JCursor)
-  , value ∷ Maybe (Select JCursor)
-  , series ∷ Maybe (Select JCursor)
-  , parallel ∷ Maybe (Select JCursor)
-  }
-
-getSelects ∷ DSL Selects
-getSelects = do
-  dimension ←
-    H.query' CS.cpDimension unit $ H.request S.GetSelect
-  value ←
-    H.query' CS.cpValue unit $ H.request S.GetSelect
-  series ←
-    H.query' CS.cpSeries unit $ H.request S.GetSelect
-  parallel ←
-    H.query' CS.cpParallel unit $ H.request S.GetSelect
-  pure { dimension
-       , value
-       , series
-       , parallel
-       }
+  H.modify _
+    { value = newValue
+    , dimension = newDimension
+    , series = newSeries
+    , parallel = newParallel
+    }
 
 loadModel ∷ M.BoxplotR → DSL Unit
-loadModel r = void do
-  H.query' CS.cpDimension unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.dimension
+loadModel r =
+  H.modify _
+    { value = fromSelected (Just r.value)
+    , dimension = fromSelected (Just r.dimension)
+    , series = fromSelected r.series
+    , parallel = fromSelected r.parallel
+    }
 
-  H.query' CS.cpValue unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.value
-
-  H.query' CS.cpSeries unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.series
-
-  H.query' CS.cpParallel unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.parallel
