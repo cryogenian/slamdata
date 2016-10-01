@@ -22,7 +22,7 @@ import Control.Coroutine (Producer)
 import Control.Coroutine.Aff as AffCoroutine
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff)
+import Control.Monad.Eff (Eff, untilE)
 
 import Data.Array (uncons, sort, reverse)
 import Data.Nullable (toMaybe)
@@ -50,8 +50,9 @@ foreign import elementEq ∷ ∀ eff. HTMLElement → HTMLElement → Eff (dom �
 foreign import scrollTop ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Number
 foreign import scrollLeft ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Number
 foreign import getOffsetClientRect ∷ ∀ eff.  HTMLElement → Eff (dom ∷ DOM | eff) DOMRect
-foreign import open ∷ ∀ eff. String → String → String → Window → Eff (dom ∷ DOM | eff) Unit
+foreign import open ∷ ∀ eff. String → String → String → Window → Eff (dom ∷ DOM | eff) Window
 foreign import close ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Unit
+foreign import closed ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Boolean
 foreign import centerPopupWindowFeatures ∷ ∀ eff. Int → Int → Window → Eff (dom ∷ DOM | eff) String
 foreign import setFontSize ∷ ∀ eff. HTMLElement → String → Eff (dom ∷ DOM | eff) Unit
 foreign import getOffsetWidth ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Int
@@ -128,4 +129,4 @@ openPopup ∷ ∀ eff. String → Eff (dom ∷ DOM | eff) Unit
 openPopup stringUrl = do
   window ← window
   windowFeaturesStr ← centerPopupWindowFeatures 800 600 window
-  open stringUrl "SignIn" windowFeaturesStr window
+  untilE $ closed =<< open stringUrl "SignIn" windowFeaturesStr window

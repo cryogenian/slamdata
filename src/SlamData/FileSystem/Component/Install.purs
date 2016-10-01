@@ -29,7 +29,6 @@ import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.Header.Component as Header
-import SlamData.SignInPrompt.Component as SignInPrompt
 
 type ChildState =
   Listing.StateP
@@ -37,7 +36,6 @@ type ChildState =
   ⊹ Breadcrumbs.State
   ⊹ Dialog.StateP
   ⊹ Header.StateP
-  ⊹ SignInPrompt.State
 
 type ChildQuery =
   Listing.QueryP
@@ -45,11 +43,9 @@ type ChildQuery =
   ⨁ Breadcrumbs.Query
   ⨁ Dialog.QueryP
   ⨁ Header.QueryP
-  ⨁ SignInPrompt.Query
 
 type ChildSlot =
   Unit
-  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -88,14 +84,7 @@ cpHeader
       Header.StateP ChildState
       Header.QueryP ChildQuery
       Unit ChildSlot
-cpHeader = cpR :> cpR :> cpR :> cpR :> cpL
-
-cpSignInPrompt
-  ∷ ChildPath
-      SignInPrompt.State ChildState
-      SignInPrompt.Query ChildQuery
-      Unit ChildSlot
-cpSignInPrompt = cpR :> cpR :> cpR :> cpR :> cpR
+cpHeader = cpR :> cpR :> cpR :> cpR
 
 toFs ∷ Action Query → QueryP Unit
 toFs = left ∘ action

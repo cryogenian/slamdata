@@ -22,7 +22,6 @@ module SlamData.Quasar.Auth.Authentication
   , EIdToken
   , AuthenticationError
   , RequestIdTokenBus
-  , SignInPromptMessage(..)
   ) where
 
 import Control.Apply as Apply
@@ -73,9 +72,12 @@ import SlamData.Prelude
 import SlamData.Quasar.Auth.IdTokenStorageEvents (getIdTokenStorageEvents)
 import SlamData.Quasar.Auth.Keys as AuthKeys
 import SlamData.Quasar.Auth.Store as AuthStore
+
 import Text.Parsing.StringParser (ParseError(..))
+
 import Utils (passover)
 import Utils.LocalStorage as LocalStorage
+import Utils.DOM as DOMUtils
 
 fromEither ∷ ∀ a b. E.Either a b → M.Maybe b
 fromEither = E.either (\_ → M.Nothing) (M.Just)
@@ -90,10 +92,6 @@ data AuthenticationError
   | PromptDismissed
   | DOMError String
   | NoAuthProviderInLocalStorage
-
-data SignInPromptMessage
-  = PresentSignInPrompt { src ∷ String, dismissedAVar ∷ AVar Unit }
-  | DismissSignInPrompt
 
 instance semigroupAuthenticationError ∷ Semigroup AuthenticationError where
   append x y = y
@@ -125,24 +123,23 @@ writeOnlyBus ∷ ∀ a. BusRW a → BusW a
 writeOnlyBus = snd ∘ Bus.split
 
 -- | Write an AVar to the returned bus to get a valid OIDC id token from the given provider.
-authentication ∷ ∀ eff. BusRW SignInPromptMessage → Aff (AuthEffects eff) RequestIdTokenBus
-authentication signInPromptBus = do
+authentication ∷ ∀ eff. Aff (AuthEffects eff) RequestIdTokenBus
+authentication = do
   stateRef ← liftEff $ Ref.newRef Nothing
   requestBus ← Bus.make
-  Aff.forkAff $ forever (authenticate signInPromptBus stateRef =<< Bus.read requestBus)
+  Aff.forkAff $ forever (authenticate stateRef =<< Bus.read requestBus)
   pure $ writeOnlyBus requestBus
 
 authenticate
   ∷ ∀ eff
-  . BusRW SignInPromptMessage
-  → Ref (Maybe (Promise EIdToken))
+  . Ref (Maybe (Promise EIdToken))
   → AVar EIdToken
   → Aff (AuthEffects eff) Unit
-authenticate signInPromptBus stateRef replyAvar = do
+authenticate stateRef replyAvar = do
   state ← liftEff $ Ref.readRef stateRef
   case state of
     Nothing → do
-      idTokenPromise ← requestIdToken signInPromptBus
+      idTokenPromise ← requestIdToken
       writeState $ Just idTokenPromise
       void $ Aff.forkAff $ reply idTokenPromise *> writeState Nothing
     Just idTokenPromise → do
@@ -174,18 +171,13 @@ requestReauthenticationSilently = do
 
 requestPromptedAuthentication
   ∷ ∀ eff
-  . BusRW SignInPromptMessage
-  → Aff (AuthEffects eff) EIdToken
-requestPromptedAuthentication signInPromptBus = do
+  . Aff (AuthEffects eff) EIdToken
+requestPromptedAuthentication= do
   race
     retrieveIdTokenFromLSOnChange
     (either (pure ∘ Left) prompt =<< requestReauthenticationURI OIDCAff.Login)
   where
-  prompt src = do
-    dismissedAVar ← AVar.makeVar
-    Bus.write (PresentSignInPrompt { src, dismissedAVar }) signInPromptBus
-    AVar.takeVar dismissedAVar
-    pure $ Left PromptDismissed
+  prompt src = liftEff $ DOMUtils.openPopup src $> Left PromptDismissed
 
 appendHiddenIFrameToBody ∷ ∀ eff. String → Eff (AuthEffects eff) (Either String Node)
 appendHiddenIFrameToBody uri =
@@ -252,21 +244,21 @@ getBodyNode =
 
 requestIdToken
   ∷ ∀ eff
-  . BusRW SignInPromptMessage
-  → Aff (AuthEffects eff) (Promise EIdToken)
-requestIdToken signInPromptBus = Promise.defer do
+  . Aff (AuthEffects eff) (Promise EIdToken)
+requestIdToken = Promise.defer do
   startIdToken ← retrieveIdTokenFromLS
   provider ← liftEff $ retrieveProvider
   idToken ← case startIdToken of
     Left (IdTokenUnavailable _) | isJust provider →
-      runExceptT
-        $ ExceptT requestReauthenticationSilently
-        <|> ExceptT (requestPromptedAuthentication signInPromptBus)
+      requestPromptedAuthentication
     Left IdTokenInvalid →
       requestReauthenticationSilently
     _ ->
       pure startIdToken
-  either (const $ liftEff AuthStore.clearProvider) (const $ pure unit) idToken
+  either
+    (const $ liftEff $ AuthStore.clearProvider *> AuthStore.clearIdToken)
+    (const $ pure unit)
+    idToken
   pure idToken
 
 retrieveIdTokenFromLSOnChange

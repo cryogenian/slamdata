@@ -49,7 +49,7 @@ import SlamData.Config as Config
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.CSS as CSS
-import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpSignInPrompt, cpHeader, toDialog, toFs, toListing, toSearch)
+import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpHeader, toDialog, toFs, toListing, toSearch)
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)
@@ -78,7 +78,6 @@ import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
 import SlamData.Render.Common (content, row)
-import SlamData.SignInPrompt.Component as SIPC
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 import SlamData.Wiring (Wiring(..))
@@ -132,10 +131,6 @@ render state@{ version, sort, salt, path } =
     , HH.slot' cpDialog unit \_ →
         { component: Dialog.comp
         , initialState: H.parentState Dialog.initialState
-        }
-    , HH.slot' cpSignInPrompt unit \_ →
-        { component: SIPC.comp
-        , initialState: SIPC.initialState
         }
     ]
 

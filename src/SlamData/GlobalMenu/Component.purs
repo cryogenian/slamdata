@@ -88,7 +88,7 @@ comp =
 render ∷ State → GlobalMenuHTML
 render state =
   HH.div
-    [ HP.classes $ [ className "sd-sign-in" ] ]
+    [ HP.classes $ [ className "sd-global-menu" ] ]
     [ HH.slot MenuSlot \_ →
         { component: HalogenMenu.menuComponent
         , initialState: H.parentState $ makeMenu helpMenu

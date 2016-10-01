@@ -102,7 +102,6 @@ newtype Wiring =
     , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
     , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
     , signInBus ∷ SignInBus
-    , signInPromptBus ∷ Bus.BusRW Auth.SignInPromptMessage
     , hasIdentified ∷ Ref Boolean
     , presentStepByStepGuide ∷ Bus.BusRW StepByStepGuide
     }
@@ -119,8 +118,7 @@ makeWiring = fromAff do
   messaging ← Bus.make
   notify ← Bus.make
   globalError ← Bus.make
-  signInPromptBus ← Bus.make
-  requestNewIdTokenBus ← Auth.authentication signInPromptBus
+  requestNewIdTokenBus ← Auth.authentication
   urlVarMaps ← fromEff (newRef mempty)
   signInBus ← Bus.make
   hasIdentified ← fromEff (newRef false)
@@ -137,7 +135,6 @@ makeWiring = fromAff do
       , requestNewIdTokenBus
       , urlVarMaps
       , signInBus
-      , signInPromptBus
       , hasIdentified
       , presentStepByStepGuide
       }

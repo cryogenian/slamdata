@@ -60,7 +60,6 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.GlobalMenu.Component as GlobalMenu
-import SlamData.SignInPrompt.Component as SIPC
 import SlamData.Wiring (Wiring, putDeck, getDeck)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
@@ -70,7 +69,7 @@ import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Class (class WorkspaceDSL, putURLVarMaps, getURLVarMaps)
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify, cpSignInPrompt)
+import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
 import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
 import SlamData.Workspace.Component.State as State
@@ -134,13 +133,6 @@ render state =
     pure $ HH.slot' cpNotify unit \_ →
       { component: NC.comp
       , initialState: NC.initialState
-      }
-
-  signInPrompt ∷ Array WorkspaceHTML
-  signInPrompt =
-    pure $ HH.slot' cpSignInPrompt unit \_ →
-      { component: SIPC.comp
-      , initialState: SIPC.initialState
       }
 
   header ∷ Array WorkspaceHTML
