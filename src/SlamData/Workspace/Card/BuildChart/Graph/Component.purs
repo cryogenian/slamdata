@@ -4,8 +4,9 @@ module SlamData.Workspace.Card.BuildChart.Graph.Component
 
 import SlamData.Prelude
 
-import Data.Lens (view, (^?), (.~))
+import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
 import Data.Lens as Lens
+import Data.List as List
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -21,17 +22,18 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
+import SlamData.Form.Select (newSelect,setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Form.Select.Component as S
-import SlamData.Form.SelectPair.Component as P
 import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Graph.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Graph.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Graph.Component.Query as Q
@@ -75,7 +77,34 @@ renderHighLOD state =
     , HH.hr_
     , row [ renderMaxSize state, renderMinSize state ]
     , row [ renderCircular state ]
+    , renderPicker state
     ]
+
+selecting ∷ ∀ a . (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting f q a = right (Q.Select (f q) a)
+
+renderPicker ∷ ST.State → HTML
+renderPicker state = case state.picker of
+  Nothing → HH.text ""
+  Just { options, select } →
+    HH.slot unit \_ →
+      { component: DPC.picker
+          { title: case select of
+              Q.Source _    → "Choose edge source"
+              Q.Target _    → "Choose edge target"
+              Q.Size _      → "Choose node size"
+              Q.Color _     → "Choose node category"
+              _ → ""
+          , label: show
+          , render: HH.text ∘ show
+          , weight: const 0.0
+          }
+      , initialState:
+          H.parentState
+            $ DPC.initialState
+            $ groupJCursors
+            $ List.fromFoldable options
+      }
 
 renderSource ∷ ST.State → HTML
 renderSource state =
@@ -84,10 +113,9 @@ renderSource state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Edge source" ]
-    , HH.slot' CS.cpSource unit \_ →
-       { component: S.primarySelect (pure "Edge source")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.primary (Just "Edge source") (selecting Q.Source))
+        state.source
     ]
 
 renderTarget ∷ ST.State → HTML
@@ -97,10 +125,9 @@ renderTarget state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Edge target" ]
-    , HH.slot' CS.cpTarget unit \_ →
-       { component: S.secondarySelect (pure "Edge target")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Edge target") (selecting Q.Target))
+        state.target
     ]
 
 renderSize ∷ ST.State → HTML
@@ -110,17 +137,14 @@ renderSize state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Node size" ]
-    , HH.slot' CS.cpSize unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Node size"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
-       }
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.secondary (Just "Node size") (selecting Q.Size))
+            state.size
+        , BCI.aggregationInput
+            (BCI.dropdown Nothing (selecting Q.SizeAgg))
+            state.sizeAgg
+        ]
     ]
 
 renderColor ∷ ST.State → HTML
@@ -130,10 +154,9 @@ renderColor state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Node category" ]
-    , HH.slot' CS.cpColor unit \_ →
-       { component: S.secondarySelect (pure "Node category")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Node category") (selecting Q.Color))
+        state.color
     ]
 
 renderMaxSize ∷ ST.State → HTML
@@ -197,29 +220,19 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    source ←
-      H.query' CS.cpSource unit $ H.request S.GetSelect
-    target ←
-      H.query' CS.cpTarget unit $ H.request S.GetSelect
-    sizeSel ←
-      H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
-    sizeAgg ←
-      H.query' CS.cpSize unit $ left $ H.request S.GetSelect
-    color ←
-      H.query' CS.cpColor unit $ H.request S.GetSelect
     let
       model =
         { source: _
         , target: _
-        , size: sizeSel >>= view _value
-        , color: color >>= view _value
-        , sizeAggregation: sizeAgg >>= view _value
+        , size: st.size ^. _value
+        , color: st.color ^. _value
+        , sizeAggregation: snd st.sizeAgg ^. _value
         , minSize: st.minSize
         , maxSize: st.maxSize
         , circular: st.circular
         }
-        <$> (source >>= view _value)
-        <*> (target >>= view _value)
+        <$> (st.source ^. _value)
+        <*> (st.target ^. _value)
     pure $ k $ Card.BuildGraph model
   CC.Load (Card.BuildGraph model) next → do
     for_ model loadModel
@@ -239,6 +252,9 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
+raiseUpdate ∷ DSL Unit
+raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+
 graphBuilderEval ∷ Q.Query ~> DSL
 graphBuilderEval = case _ of
   Q.ToggleCircularLayout next → do
@@ -257,89 +273,92 @@ graphBuilderEval = case _ of
       H.modify _{maxSize = fl}
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
+  Q.Select sel next → do
+    case sel of
+      Q.Source a  → updatePicker ST._source Q.Source a
+      Q.Target a  → updatePicker ST._target Q.Target a
+      Q.Size a    → updatePicker ST._size Q.Size a
+      Q.SizeAgg a → updateSelect ST._sizeAgg a
+      Q.Color a   → updatePicker ST._color Q.Color a
+    pure next
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+
+  updateSelect l = case _ of
+    BCI.Open _    → H.modify (l ∘ _1 .~ true)
+    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+peek = coproduct peekPicker (const (pure unit))
+  where
+  peekPicker = case _ of
+    DPC.Dismiss _ →
+      H.modify _ { picker = Nothing }
+    DPC.Confirm value _ → do
+      st ← H.get
+      let
+        value' = flattenJCursors value
+      for_ st.picker \{ select } → case select of
+        Q.Source _ → H.modify (ST._source ∘ _value ?~ value')
+        Q.Target _ → H.modify (ST._target ∘ _value ?~ value')
+        Q.Size _   → H.modify (ST._size ∘ _value ?~ value')
+        Q.Color _  → H.modify (ST._color ∘ _value ?~ value')
+        _ → pure unit
+      H.modify _ { picker = Nothing }
+      raiseUpdate
+    _ →
+      pure unit
 
 loadModel ∷ M.GraphR → DSL Unit
-loadModel r = void do
-  H.query' CS.cpSource unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.source
-
-  H.query' CS.cpTarget unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.target
-
-  H.query' CS.cpSize unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.size
-
-  H.query' CS.cpSize unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.sizeAggregation
-
-  H.query' CS.cpColor unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.color
+loadModel r =
+  H.modify _
+    { source = fromSelected (Just r.source)
+    , target = fromSelected (Just r.target)
+    , size = fromSelected r.size
+    , sizeAgg = false × fromSelected r.sizeAggregation
+    , color = fromSelected r.color
+    }
 
 synchronizeChildren ∷ DSL Unit
-synchronizeChildren = void do
+synchronizeChildren = do
   st ← H.get
-  source ←
-    H.query' CS.cpSource unit $ H.request S.GetSelect
-  target ←
-    H.query' CS.cpTarget unit $ H.request S.GetSelect
-  sizeSel ←
-    H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  sizeAgg ←
-    H.query' CS.cpSize unit $ left $ H.request S.GetSelect
-  color ←
-    H.query' CS.cpColor unit $ H.request S.GetSelect
-
   let
     newSource =
-      setPreviousValueFrom source
+      setPreviousValueFrom (Just st.source)
         $ autoSelect
         $ newSelect
         $ st.axes.category
 
     newTarget =
-      setPreviousValueFrom target
+      setPreviousValueFrom (Just st.target)
         $ autoSelect
         $ newSelect
         $ ifSelected [newSource]
         $ st.axes.category ⊝ newSource
 
     newSize =
-      setPreviousValueFrom sizeSel
+      setPreviousValueFrom (Just st.size)
       $ autoSelect
       $ newSelect
       $ ifSelected [newTarget]
       $ st.axes.value
     newColor =
-      setPreviousValueFrom color
+      setPreviousValueFrom (Just st.color)
       $ autoSelect
       $ newSelect
       $ ifSelected [newTarget]
       $ st.axes.category ⊝ newSource ⊝ newTarget
 
     newSizeAggregation =
-      setPreviousValueFrom sizeAgg
+      setPreviousValueFrom (Just $ snd st.sizeAgg)
       $ nonMaybeAggregationSelect
 
-  H.query' CS.cpSource unit $ H.action $ S.SetSelect newSource
-  H.query' CS.cpTarget unit $ H.action $ S.SetSelect newTarget
-  H.query' CS.cpSize unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newSize
-  H.query' CS.cpSize unit $ left $ H.action $ S.SetSelect newSizeAggregation
-  H.query' CS.cpColor unit $ H.action $ S.SetSelect newColor
+  H.modify _
+    { source = newSource
+    , target = newTarget
+    , size = newSize
+    , sizeAgg = false × newSizeAggregation
+    , color = newColor
+    }

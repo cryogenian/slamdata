@@ -76,6 +76,7 @@ renderHighLOD state =
     , HH.p_ [ HH.text "This string will appear under formatted value" ]
     , renderPicker state
     ]
+
 selecting ∷ ∀ a . (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
 selecting f q a = right (Q.Select (f q) a)
 
