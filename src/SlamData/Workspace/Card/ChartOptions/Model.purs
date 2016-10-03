@@ -25,7 +25,7 @@ module SlamData.Workspace.Card.ChartOptions.Model
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json, (.?), encodeJson, decodeJson, (~>), (:=))
+import Data.Argonaut (Json, encodeJson, decodeJson)
 
 import SlamData.Workspace.Card.Chart.Config as CC
 import Test.StrongCheck.Arbitrary (arbitrary)

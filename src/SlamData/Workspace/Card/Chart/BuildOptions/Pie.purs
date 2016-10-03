@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.Chart.BuildOptions.Pie where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Array ((!!), (:))
 import Data.Array as A
 import Data.Int (toNumber)
 import Data.Map as M
