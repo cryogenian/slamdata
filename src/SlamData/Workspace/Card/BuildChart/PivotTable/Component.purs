@@ -142,6 +142,8 @@ renderHighLOD st =
               [ HH.button
                   [ HP.classes [ HH.className "sd-pivot-options-plus" ]
                   , HE.onClick (HE.input_ (right ∘ AddDimension))
+                  , ARIA.label "Add dimension"
+                  , HP.title "Add dimension"
                   ]
                   []
               ]
@@ -210,6 +212,8 @@ renderHighLOD st =
                   [ HH.button
                       [ HP.classes [ HH.className "sd-pivot-options-plus" ]
                       , HE.onClick (HE.input_ (right ∘ AddColumn))
+                      , ARIA.label "Add column"
+                      , HP.title "Add column"
                       ]
                       []
                   ]

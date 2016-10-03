@@ -25,7 +25,7 @@ import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Expectations as Expect
 import Test.Feature.Scenario (scenario)
 
-mdScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
+mdScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
 mdScenario =
   scenario
     "Markdown"
@@ -33,7 +33,7 @@ mdScenario =
     (Interact.deleteFileInTestFolder "Untitled Workspace.slam"
        *> Interact.browseRootFolder)
 
-test :: SlamFeature Unit
+test ∷ SlamFeature Unit
 test = do
   mdScenario "Provide and play markdown" ["https://github.com/slamdata/slamdata/issues/987"] do
     Interact.insertMdCardInLastDeck
@@ -185,7 +185,15 @@ test = do
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender[_] AND year > :year AND country = :country"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
-    Interact.insertTableCardInLastDeck
+    Interact.selectBuildChart
+    Interact.insertPivotCard
+    Interact.addColumn "discipline"
+    Interact.addColumn "country"
+    Interact.addColumn "gender"
+    Interact.addColumn "year"
+    Interact.addColumn "type"
+    Interact.accessNextCardInLastDeck
+    Interact.insertChartCardInLastDeck
     Expect.cardsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
     Expect.cardsInTableColumnInLastCardToEq 2 "country" "AUT"
     Expect.cardsInTableColumnInLastCardToEq 2 "gender" "W"
@@ -212,7 +220,17 @@ test = do
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender[_] AND year > :year AND country = :country"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
-    Interact.insertTableCardInLastDeck
+    Interact.selectBuildChart
+    Interact.insertPivotCard
+
+    Interact.addColumn "discipline"
+    Interact.addColumn "gender"
+    Interact.addColumn "year"
+    Interact.addColumn "type"
+    Interact.addColumn "country"
+    Interact.accessNextCardInLastDeck
+    Interact.insertChartCardInLastDeck
+    Interact.accessPreviousCardInLastDeck
     Interact.accessPreviousCardInLastDeck
     Interact.accessPreviousCardInLastDeck
     Interact.provideFieldValueInLastDeck "discipline" "Luge"
@@ -222,6 +240,7 @@ test = do
     Interact.checkFieldInLastDeck "M"
     Interact.pushRadioButtonInLastDeck "Gold"
     Interact.selectFromDropdownInLastDeck "country" "GDR"
+    Interact.accessNextCardInLastDeck
     Interact.accessNextCardInLastDeck
     Interact.accessNextCardInLastDeck
     Expect.cardsInTableColumnInLastCardToEq 8 "discipline" "Luge"

@@ -35,8 +35,10 @@ eval (Just options@{ dimensions: [] }) tr = do
     cols =
       Array.mapWithIndex
         case _, _ of
-          i, PTM.Column c → sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show i
-          i, PTM.Count    → "COUNT(*) AS _" <> show i
+          i, PTM.Column c →
+            sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show i
+          i, PTM.Count →
+            "COUNT(*) AS _" <> show i
         options.columns
     sql =
       QQ.templated tr.resource $ String.joinWith " "

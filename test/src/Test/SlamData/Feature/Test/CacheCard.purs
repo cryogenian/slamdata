@@ -32,8 +32,10 @@ test =
       "/test-mount/testDb/временный файл"
     Interact.doSaveInLastCacheCard
     Interact.accessNextCardInLastDeck
-    Interact.insertTableCardInLastDeck
-    Expect.tableColumnsAre ["measureOne", "measureTwo"]
+    Interact.selectBuildChart
+    Interact.insertPivotCard
+    Interact.addColumn "measureOne"
+    Interact.addColumn "measureTwo"
     Interact.browseTestFolder
     Interact.accessFile "временный файл"
     Interact.exploreFile
