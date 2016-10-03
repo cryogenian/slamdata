@@ -162,8 +162,10 @@ buildScatterData r records = series
         r.maxSize - r.minSize
 
       relativeSize ∷ Number → Number
-      relativeSize val =
-        r.maxSize - sizeDistance / distance * (maxValue - val)
+      relativeSize val
+        | distance ≡ zero = val
+        | otherwise =
+            r.maxSize - sizeDistance / distance * (maxValue - val)
     in
       map (\x → x{r = relativeSize x.r}) items
 

@@ -5,8 +5,9 @@ module SlamData.Workspace.Card.BuildChart.Heatmap.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (view, (^?), (.~))
+import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
 import Data.Lens as Lens
+import Data.List as List
 
 import Global (readFloat, isNaN)
 
@@ -23,9 +24,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Render.Common (row)
 import SlamData.Form.Select
-  ( Select
-  , newSelect
-  , emptySelect
+  ( newSelect
   , setPreviousValueFrom
   , autoSelect
   , ifSelected
@@ -34,20 +33,22 @@ import SlamData.Form.Select
   , fromSelected
   )
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.BuildChart.ColorScheme (ColorScheme, colorSchemeSelect)
+import SlamData.Workspace.Card.BuildChart.ColorScheme (colorSchemeSelect)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Form.Select.Component as S
-import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.Query as Q
 import SlamData.Workspace.Card.BuildChart.Heatmap.Model as M
+import SlamData.Workspace.Card.BuildChart.Inputs (Select')
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -87,7 +88,34 @@ renderHighLOD state =
     , row [ renderColorScheme state, renderIsReversedScheme state ]
     , HH.hr_
     , row [ renderMinVal state, renderMaxVal state ]
+    , renderPicker state
     ]
+
+selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting f q _ = right (Q.Select (f q) unit)
+
+renderPicker ∷ ST.State → HTML
+renderPicker state = case state.picker of
+  Nothing → HH.text ""
+  Just { options, select } →
+    HH.slot unit \_ →
+      { component: DPC.picker
+          { title: case select of
+               Q.Abscissa _ → "Choose x-axis"
+               Q.Ordinate _ → "Choose y-axis"
+               Q.Value _ → "Choose measure"
+               Q.Series _ → "Choose series"
+               _ → ""
+          , label: show
+          , render: HH.text ∘ show
+          , weight: const 0.0
+          }
+      , initialState:
+          H.parentState
+            $ DPC.initialState
+            $ groupJCursors
+            $ List.fromFoldable options
+      }
 
 renderAbscissa ∷ ST.State → HTML
 renderAbscissa state =
@@ -96,10 +124,9 @@ renderAbscissa state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "X-Axis" ]
-    , HH.slot' CS.cpAbscissa unit \_ →
-         { component: S.primarySelect (Just "X-Axis")
-         , initialState: emptySelect
-         }
+    , BCI.pickerInput
+        (BCI.primary (Just "X-Axis") (selecting Q.Abscissa))
+        state.abscissa
     ]
 
 renderOrdinate ∷ ST.State → HTML
@@ -109,10 +136,9 @@ renderOrdinate state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Y-Axis" ]
-    , HH.slot' CS.cpOrdinate unit \_ →
-         { component: S.primarySelect (Just "Y-Axis")
-         , initialState: emptySelect
-         }
+    , BCI.pickerInput
+        (BCI.primary (Just "Y-Axis") (selecting Q.Ordinate))
+        state.ordinate
     ]
 
 renderValue ∷ ST.State → HTML
@@ -122,17 +148,14 @@ renderValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.slot' CS.cpValue unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Measure"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
-       }
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.primary (Just "Measure") (selecting Q.Value))
+            state.value
+        , BCI.aggregationInput
+            (BCI.dropdown Nothing (selecting Q.ValueAgg))
+            state.valueAgg
+        ]
     ]
 
 renderSeries ∷ ST.State → HTML
@@ -142,10 +165,9 @@ renderSeries state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , HH.slot' CS.cpSeries unit \_ →
-       { component: S.secondarySelect (pure "Series")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Series") (selecting Q.Series))
+        state.series
     ]
 
 renderMinVal ∷ ST.State → HTML
@@ -202,10 +224,9 @@ renderColorScheme state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Color scheme" ]
-    , HH.slot' CS.cpColorScheme unit \_ →
-       { component: S.primarySelect (pure "Color scheme")
-       , initialState: colorSchemeSelect
-       }
+    , BCI.otherInput
+        (BCI.dropdown Nothing (selecting Q.ColorScheme))
+        state.colorScheme
     ]
 
 
@@ -225,24 +246,23 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    r ← getSelects
     let
       model =
         { abscissa: _
         , ordinate: _
         , value: _
         , valueAggregation: _
-        , series: r.series >>= view _value
+        , series: (st.series ^. _value)
         , colorScheme: _
         , isColorSchemeReversed: st.isSchemeReversed
         , minValue: st.minValue
         , maxValue: st.maxValue
         }
-        <$> (r.abscissa >>= view _value)
-        <*> (r.ordinate >>= view _value)
-        <*> (r.value >>= view _value)
-        <*> (r.valueAggregation >>= view _value)
-        <*> (r.colorScheme >>= view _value)
+        <$> (st.abscissa ^. _value)
+        <*> (st.ordinate ^. _value)
+        <*> (st.value ^. _value)
+        <*> (snd st.valueAgg ^. _value)
+        <*> (snd st.colorScheme ^. _value)
     pure $ k $ Card.BuildHeatmap model
   CC.Load (Card.BuildHeatmap (Just model)) next → do
     loadModel model
@@ -283,18 +303,55 @@ heatmapBuilderEval = case _ of
     H.modify \x → x{isSchemeReversed = not x.isSchemeReversed}
     CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
+  Q.Select sel next → next <$ case sel of
+    Q.Abscissa a → updatePicker ST._abscissa Q.Abscissa a
+    Q.Ordinate a → updatePicker ST._ordinate Q.Ordinate a
+    Q.Value a → updatePicker ST._value Q.Value a
+    Q.ValueAgg a → updateSelect ST._valueAgg a
+    Q.Series a → updatePicker ST._series Q.Series a
+    Q.ColorScheme a → updateSelect ST._colorScheme a
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a → H.modify (l ∘ _value .~ a) *> raiseUpdate
+
+  updateSelect ∷ ∀ a. Lens.LensP ST.State (Select' a) → BCI.SelectAction a → DSL Unit
+  updateSelect l = case _ of
+    BCI.Open _ → H.modify (l ∘ _1 .~ true)
+    BCI.Choose a → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
+
+raiseUpdate ∷ DSL Unit
+raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+peek = peekPeeker ⨁ (const $ pure unit)
+
+peekPeeker ∷ ∀ a. DPC.Query JCursor a → DSL Unit
+peekPeeker = case _ of
+  DPC.Dismiss _ →
+    H.modify _{ picker = Nothing }
+  DPC.Confirm value _ → do
+    st ← H.get
+    let
+      value' = flattenJCursors value
+    for_ st.picker \v → case v.select of
+      Q.Abscissa _ → H.modify $ ST._abscissa ∘ _value ?~ value'
+      Q.Ordinate _ → H.modify $ ST._ordinate ∘ _value ?~ value'
+      Q.Value _ → H.modify $ ST._value ∘ _value ?~ value'
+      Q.Series _ → H.modify $ ST._series ∘ _value ?~ value'
+      _ → pure unit
+    H.modify _{ picker = Nothing }
+    raiseUpdate
+  _ →
+    pure unit
 
 synchronizeChildren ∷ DSL Unit
 synchronizeChildren = void do
   st ← H.get
-  r ← getSelects
-
   let
     newAbscissa =
-      setPreviousValueFrom r.abscissa
+      setPreviousValueFrom (Just st.abscissa)
         $ autoSelect
         $ newSelect
         $ st.axes.category
@@ -302,7 +359,7 @@ synchronizeChildren = void do
         ⊕ st.axes.time
 
     newOrdinate =
-      setPreviousValueFrom r.ordinate
+      setPreviousValueFrom (Just st.ordinate)
         $ autoSelect
         $ newSelect
         $ st.axes.category
@@ -311,7 +368,7 @@ synchronizeChildren = void do
         ⊝ newAbscissa
 
     newValue =
-      setPreviousValueFrom r.value
+      setPreviousValueFrom (Just st.value)
         $ autoSelect
         $ newSelect
         $ st.axes.value
@@ -319,11 +376,11 @@ synchronizeChildren = void do
         ⊝ newOrdinate
 
     newValueAggregation =
-      setPreviousValueFrom r.valueAggregation
+      setPreviousValueFrom (Just $ snd st.valueAgg)
         $ nonMaybeAggregationSelect
 
     newSeries =
-      setPreviousValueFrom r.series
+      setPreviousValueFrom (Just st.series)
         $ autoSelect
         $ newSelect
         $ ifSelected [newAbscissa, newOrdinate, newValue]
@@ -332,83 +389,26 @@ synchronizeChildren = void do
         ⊝ newOrdinate
 
     newColorScheme =
-      setPreviousValueFrom r.colorScheme
+      setPreviousValueFrom (Just $ snd st.colorScheme)
         $ colorSchemeSelect
 
-  H.query' CS.cpAbscissa unit $ H.action $ S.SetSelect newAbscissa
-  H.query' CS.cpOrdinate unit $ H.action $ S.SetSelect newOrdinate
-  H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
-  H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
-  H.query' CS.cpSeries unit $ H.action $ S.SetSelect newSeries
-  H.query' CS.cpColorScheme unit $ H.action $ S.SetSelect newColorScheme
 
-type Selects =
-  { abscissa ∷ Maybe (Select JCursor)
-  , ordinate ∷ Maybe (Select JCursor)
-  , value ∷ Maybe (Select JCursor)
-  , valueAggregation ∷ Maybe (Select Aggregation)
-  , series ∷ Maybe (Select JCursor)
-  , colorScheme ∷ Maybe (Select ColorScheme)
-  }
-
-getSelects ∷ DSL Selects
-getSelects = do
-  abscissa ←
-    H.query' CS.cpAbscissa unit $ H.request S.GetSelect
-  ordinate ←
-    H.query' CS.cpOrdinate unit $ H.request S.GetSelect
-  value ←
-    H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  valueAggregation ←
-    H.query' CS.cpValue unit $ left $ H.request S.GetSelect
-  series ←
-    H.query' CS.cpSeries unit $ H.request S.GetSelect
-  colorScheme ←
-    H.query' CS.cpColorScheme unit $ H.request S.GetSelect
-  pure { abscissa
-       , ordinate
-       , value
-       , valueAggregation
-       , series
-       , colorScheme
-       }
+  H.modify _
+    { abscissa = newAbscissa
+    , ordinate = newOrdinate
+    , value = newValue
+    , valueAgg = false × newValueAggregation
+    , series = newSeries
+    , colorScheme = false × newColorScheme
+    }
 
 loadModel ∷ M.HeatmapR → DSL Unit
-loadModel r = void do
-  H.query' CS.cpAbscissa unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.abscissa
-
-  H.query' CS.cpOrdinate unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.ordinate
-
-  H.query' CS.cpValue unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.value
-
-  H.query' CS.cpValue unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.valueAggregation
-
-  H.query' CS.cpSeries unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.series
-
-  H.query' CS.cpColorScheme unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.colorScheme
+loadModel r =
+  H.modify _
+    { abscissa = fromSelected $ Just r.abscissa
+    , ordinate = fromSelected $ Just r.ordinate
+    , value = fromSelected $ Just r.value
+    , valueAgg = false × fromSelected (Just r.valueAggregation)
+    , series = fromSelected r.series
+    , colorScheme = false × fromSelected (Just r.colorScheme)
+    }

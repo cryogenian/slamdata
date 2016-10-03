@@ -49,7 +49,7 @@ data ChartType
   | Area -- done
   | Scatter -- done
   | Radar -- done
-  | Funnel
+  | Funnel -- done
   | Graph
   | Heatmap
   | Sankey -- done
