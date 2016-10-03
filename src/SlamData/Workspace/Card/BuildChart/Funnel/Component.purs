@@ -5,8 +5,9 @@ module SlamData.Workspace.Card.BuildChart.Funnel.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (view, (^?), (.~))
+import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
 import Data.Lens as Lens
+import Data.List as List
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -17,24 +18,26 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Common.Sort (Sort, sortSelect)
-import SlamData.Common.Align (Align, alignSelect)
+import SlamData.Common.Sort (sortSelect)
+import SlamData.Common.Align (alignSelect)
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (Select, newSelect, emptySelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
+import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Form.Select.Component as S
-import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.Query as Q
 import SlamData.Workspace.Card.BuildChart.Funnel.Model as M
+import SlamData.Workspace.Card.BuildChart.Inputs (Select')
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -72,7 +75,33 @@ renderHighLOD state =
     , renderSeries state
     , HH.hr_
     , row [ renderOrder state, renderAlign state ]
+    , renderPicker state
     ]
+
+selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting f q a = right (Q.Select (f q) a)
+
+renderPicker ∷ ST.State → HTML
+renderPicker state = case state.picker of
+  Nothing → HH.text ""
+  Just { options, select } →
+    HH.slot unit \_ →
+      { component: DPC.picker
+          { title: case select of
+               Q.Category _ → "Choose category"
+               Q.Value _ → "Choose measure"
+               Q.Series _ → "Choose series"
+               _ → ""
+          , label: show
+          , render: HH.text ∘ show
+          , weight: const 0.0
+          }
+      , initialState:
+          H.parentState
+            $ DPC.initialState
+            $ groupJCursors
+            $ List.fromFoldable options
+      }
 
 
 renderCategory ∷ ST.State → HTML
@@ -82,10 +111,9 @@ renderCategory state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Category" ]
-    , HH.slot' CS.cpCategory unit \_ →
-         { component: S.primarySelect (Just "Category")
-         , initialState: emptySelect
-         }
+    , BCI.pickerInput
+        (BCI.primary (Just "Category") (selecting Q.Category))
+        state.category
     ]
 
 renderValue ∷ ST.State → HTML
@@ -95,19 +123,15 @@ renderValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.slot' CS.cpValue unit \_ →
-       { component:
-           P.selectPair { disableWhen: (_ < 1)
-                        , defaultWhen: (const true)
-                        , mainState: emptySelect
-                        , ariaLabel: Just "Measure"
-                        , classes: [ B.btnPrimary, CSS.aggregation]
-                        , defaultOption: "Select axis source"
-                        }
-       , initialState: H.parentState $ P.initialState nonMaybeAggregationSelect
-       }
+    , HH.div_
+        [ BCI.pickerInput
+            (BCI.primary (Just "Measure") (selecting Q.Value))
+             state.value
+        , BCI.aggregationInput
+            (BCI.dropdown Nothing (selecting Q.ValueAgg))
+            state.valueAgg
+        ]
     ]
-
 
 renderSeries ∷ ST.State → HTML
 renderSeries state =
@@ -116,10 +140,9 @@ renderSeries state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , HH.slot' CS.cpSeries unit \_ →
-       { component: S.secondarySelect (pure "Series")
-       , initialState: emptySelect
-       }
+    , BCI.pickerInput
+        (BCI.secondary (Just "Series") (selecting Q.Series))
+        state.series
     ]
 
 renderOrder ∷ ST.State → HTML
@@ -129,10 +152,9 @@ renderOrder state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Order" ]
-    , HH.slot' CS.cpOrder unit \_ →
-       { component: S.primarySelect (pure "Order")
-       , initialState: sortSelect
-       }
+    , BCI.aggregationInput
+        (BCI.dropdown Nothing (selecting Q.Order))
+        state.order
     ]
 
 renderAlign ∷ ST.State → HTML
@@ -142,14 +164,13 @@ renderAlign state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Alignment" ]
-    , HH.slot' CS.cpAlign unit \_ →
-       { component: S.primarySelect (pure "Alignment")
-       , initialState: alignSelect
-       }
+    , BCI.aggregationInput
+        (BCI.dropdown Nothing (selecting Q.Align))
+        state.align
     ]
 
 eval ∷ Q.QueryC ~> DSL
-eval = cardEval ⨁ (absurd ∘ getConst)
+eval = cardEval ⨁ chartEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -164,21 +185,20 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    r ← getSelects
     let
       model =
         { category: _
         , value: _
         , valueAggregation: _
-        , series: r.series >>= view _value
+        , series: st.series ^. _value
         , order: _
         , align: _
         }
-        <$> (r.category >>= view _value)
-        <*> (r.value >>= view _value)
-        <*> (r.valueAggregation >>= view _value)
-        <*> (r.order >>= view _value)
-        <*> (r.align >>= view _value)
+        <$> (st.category ^. _value)
+        <*> (st.value ^. _value)
+        <*> (snd st.valueAgg ^. _value)
+        <*> (snd st.order ^. _value)
+        <*> (snd st.align ^. _value)
     pure $ k $ Card.BuildFunnel model
   CC.Load (Card.BuildFunnel (Just model)) next → do
     loadModel model
@@ -198,33 +218,71 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
+chartEval ∷ Q.Query ~> DSL
+chartEval (Q.Select sel next) = next <$ case sel of
+  Q.Category a → updatePicker ST._category Q.Category a
+  Q.Value a → updatePicker ST._value Q.Value a
+  Q.ValueAgg a → updateSelect ST._valueAgg a
+  Q.Series a → updatePicker ST._series Q.Series a
+  Q.Order a → updateSelect ST._order a
+  Q.Align a → updateSelect ST._align a
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a → H.modify (l ∘ _value .~ a) *> raiseUpdate
+
+  updateSelect ∷ ∀ a. Lens.LensP ST.State (Select' a) → BCI.SelectAction a → DSL Unit
+  updateSelect l = case _ of
+    BCI.Open _ → H.modify (l ∘ _1 .~ true)
+    BCI.Choose a → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
+
+
+raiseUpdate ∷ DSL Unit
+raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek _ = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+peek = peekPeeker ⨁ (const $ pure unit)
+
+peekPeeker ∷ ∀ a. DPC.Query JCursor a → DSL Unit
+peekPeeker = case _ of
+  DPC.Dismiss _ →
+    H.modify _ { picker = Nothing }
+  DPC.Confirm value _ → do
+    st ← H.get
+    let
+      value' = flattenJCursors value
+    for_ st.picker \v → case v.select of
+      Q.Value _ → H.modify (ST._value ∘ _value ?~ value')
+      Q.Category _ → H.modify (ST._category ∘ _value ?~ value')
+      Q.Series _ → H.modify (ST._series ∘ _value ?~ value')
+      _ → pure unit
+    H.modify _ { picker = Nothing }
+    raiseUpdate
+  _ →
+    pure unit
 
 synchronizeChildren ∷ DSL Unit
 synchronizeChildren = void do
   st ← H.get
-  r ← getSelects
-
   let
     newCategory =
-      setPreviousValueFrom r.category
+      setPreviousValueFrom (Just st.category)
         $ autoSelect
         $ newSelect
         $ st.axes.category
 
     newValue =
-      setPreviousValueFrom r.value
+      setPreviousValueFrom (Just st.value)
         $ autoSelect
         $ newSelect
         $ st.axes.value
 
     newValueAggregation =
-      setPreviousValueFrom r.valueAggregation
+      setPreviousValueFrom (Just $ snd st.valueAgg)
         $ nonMaybeAggregationSelect
 
     newSeries =
-      setPreviousValueFrom r.series
+      setPreviousValueFrom (Just st.series)
         $ autoSelect
         $ newSelect
         $ ifSelected [ newCategory ]
@@ -232,87 +290,29 @@ synchronizeChildren = void do
         ⊝ newCategory
 
     newOrder =
-      setPreviousValueFrom r.order
+      setPreviousValueFrom (Just $ snd st.order)
         $ sortSelect
 
     newAlign =
-      setPreviousValueFrom r.align
+      setPreviousValueFrom (Just $ snd st.align)
         $ alignSelect
 
-  H.query' CS.cpCategory unit $ H.action $ S.SetSelect newCategory
-  H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.action $ S.SetSelect newValue
-  H.query' CS.cpValue unit $ left $ H.action $ S.SetSelect newValueAggregation
-  H.query' CS.cpSeries unit $ H.action $ S.SetSelect newSeries
-  H.query' CS.cpOrder unit $ H.action $ S.SetSelect newOrder
-  H.query' CS.cpAlign unit $ H.action $ S.SetSelect newAlign
-
-type Selects =
-  { category ∷ Maybe (Select JCursor)
-  , value ∷ Maybe (Select JCursor)
-  , valueAggregation ∷ Maybe (Select Aggregation)
-  , series ∷ Maybe (Select JCursor)
-  , order ∷ Maybe (Select Sort)
-  , align ∷ Maybe (Select Align)
-  }
-
-getSelects ∷ DSL Selects
-getSelects = do
-  category ←
-    H.query' CS.cpCategory unit $ H.request S.GetSelect
-  value ←
-    H.query' CS.cpValue unit $ right $ H.ChildF unit $ H.request S.GetSelect
-  valueAggregation ←
-    H.query' CS.cpValue unit $ left $ H.request S.GetSelect
-  series ←
-    H.query' CS.cpSeries unit $ H.request S.GetSelect
-  order ←
-    H.query' CS.cpOrder unit $ H.request S.GetSelect
-  align ←
-    H.query' CS.cpAlign unit $ H.request S.GetSelect
-  pure { category
-       , value
-       , valueAggregation
-       , series
-       , order
-       , align
-       }
+  H.modify _
+    { value = newValue
+    , valueAgg = false × newValueAggregation
+    , category = newCategory
+    , series = newSeries
+    , align = false × newAlign
+    , order = false × newOrder
+    }
 
 loadModel ∷ M.FunnelR → DSL Unit
-loadModel r = void do
-  H.query' CS.cpCategory unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.category
-
-  H.query' CS.cpValue unit
-    $ right
-    $ H.ChildF unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.value
-
-  H.query' CS.cpValue unit
-    $ left
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.valueAggregation
-
-  H.query' CS.cpSeries unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected r.series
-
-  H.query' CS.cpOrder unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.order
-
-  H.query' CS.cpAlign unit
-    $ H.action
-    $ S.SetSelect
-    $ fromSelected
-    $ Just r.align
+loadModel r =
+  H.modify _
+    { value = fromSelected $ Just r.value
+    , valueAgg = false × fromSelected (Just r.valueAggregation)
+    , category = fromSelected $ Just r.category
+    , series = fromSelected r.series
+    , align = false × fromSelected (Just r.align)
+    , order = false × fromSelected (Just r.order)
+    }
