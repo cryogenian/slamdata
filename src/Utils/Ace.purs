@@ -27,7 +27,6 @@ import Ace.Range as Range
 import Ace.KeyBinding as KeyBinding
 import Ace.Marker as Marker
 
-import Control.Bind ((>=>))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Ref (newRef, writeRef, readRef, REF)
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)

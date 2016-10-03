@@ -24,7 +24,6 @@ module Utils.LocalStorage
 
 import Prelude
 
-import Control.Bind ((>=>))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Coroutine as Coroutine
