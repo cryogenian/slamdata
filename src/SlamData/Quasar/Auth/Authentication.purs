@@ -177,7 +177,9 @@ requestPromptedAuthentication= do
     retrieveIdTokenFromLSOnChange
     (either (pure ∘ Left) prompt =<< requestReauthenticationURI OIDCAff.Login)
   where
-  prompt src = liftEff $ DOMUtils.openPopup src $> Left PromptDismissed
+  prompt src =
+    (liftEff (DOMUtils.openPopup src) >>= DOMUtils.waitUntilWindowClosed)
+      $> Left PromptDismissed
 
 appendHiddenIFrameToBody ∷ ∀ eff. String → Eff (AuthEffects eff) (Either String Node)
 appendHiddenIFrameToBody uri =

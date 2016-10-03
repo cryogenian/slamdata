@@ -235,7 +235,7 @@ authenticate providerR = do
     for_ providerR $ H.fromEff ∘ AuthStore.storeProvider ∘ Provider
     Wiring wiring ← H.liftH $ H.liftH ask
     H.fromAff
-      -- TODO: Add notifications here.
+      -- TODO: Add failure notifications here.
       $ either (const $ pure unit) (const $ Bus.write SignInSuccess wiring.signInBus)
       =<< AVar.takeVar
       =<< passover (flip Bus.write wiring.requestNewIdTokenBus)

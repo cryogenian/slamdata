@@ -88,7 +88,9 @@ exports.open = function(strUrl) {
 };
 
 exports.closed = function(windowObjectReference) {
-  return windowObjectReference.closed;
+  return function() {
+    return windowObjectReference.closed;
+  };
 };
 
 exports.close = function(windowObjectReference) {
