@@ -152,7 +152,7 @@ renderOrder state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Order" ]
-    , BCI.aggregationInput
+    , BCI.otherInput
         (BCI.dropdown Nothing (selecting Q.Order))
         state.order
     ]
@@ -164,7 +164,7 @@ renderAlign state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Alignment" ]
-    , BCI.aggregationInput
+    , BCI.otherInput
         (BCI.dropdown Nothing (selecting Q.Align))
         state.align
     ]

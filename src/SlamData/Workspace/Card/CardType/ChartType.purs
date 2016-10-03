@@ -56,7 +56,7 @@ data ChartType
   | Gauge -- done
   | Boxplot -- done
   | Metric -- done
-  | PivotTable
+  | PivotTable --done
 
 allChartTypes ∷ Array ChartType
 allChartTypes =

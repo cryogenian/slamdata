@@ -147,3 +147,51 @@ aggregationInput conf (isOpen × Select { options, value }) =
 
   clsValOrEmpty =
     foldMap (pure ∘ HH.className ∘ stringVal) value
+
+
+otherInput
+  ∷ ∀ a i p
+  . OptionVal a
+  ⇒ AggregationConfig a i
+  → Select' a
+  → H.HTML p i
+otherInput conf (isOpen × Select { options, value }) =
+  let
+    len = Array.length options
+    isDefault = isNothing value || conf.defaultWhen len
+    isDisabled = conf.disableWhen len
+  in
+    HH.span
+      [ HP.classes
+          ([ HH.className "sd-select-input" ]
+            <> (HH.className "default" <$ guard isDefault))
+      ]
+      [ HH.button
+          ([ HP.disabled isDisabled
+           , HP.classes [ B.btn, B.btnDefault, B.formControl ]
+           ]
+          <> (HE.onClick
+              (HE.input_
+               (conf.query
+                (if isOpen then Choose value else Open options))) <$ guard (not isDisabled)))
+          [ HH.text $ stringVal value ]
+      , HH.span
+          [ HP.classes
+              ([ B.listGroup
+              , B.fade
+              , Rc.fileListGroup
+              , Rc.aggregation
+              ] <> (B.in_ <$ guard isOpen))
+          ]
+          if isOpen
+            then (map renderOption options)
+            else []
+      ]
+
+  where
+  renderOption val =
+    HH.button
+      [ HP.classes [ B.listGroupItem ]
+      , HE.onClick (HE.input_ (conf.query (Choose (Just val))))
+      ]
+      [ HH.text (stringVal val) ]
