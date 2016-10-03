@@ -22,12 +22,13 @@ mkDeckWithLastTable ∷ SlamFeature Unit
 mkDeckWithLastTable = do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
-      "select measureOne from `/test-mount/testDb/flatViz`"
+      "select measureOne, measureTwo from `/test-mount/testDb/flatViz`"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.selectBuildChart
     Interact.insertPivotCard
     Interact.addColumn "measureOne"
+    Interact.addColumn "measureTwo"
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
 
@@ -39,7 +40,7 @@ test = do
     Expect.backsideMenuPresented
     Interact.flipDeck
     Expect.backsideMenuNotPresented
-    Expect.tableColumnsAre ["measureOne"]
+    Expect.tableColumnsAre ["measureOne", "measureTwo"]
     successMsg "Ok, 'flip deck' button works"
 
   -- Note: Trash button deletes last or active card
