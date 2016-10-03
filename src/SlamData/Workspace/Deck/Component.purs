@@ -47,6 +47,7 @@ import Data.Set as Set
 import Data.Time.Duration (Milliseconds(..))
 
 import DOM.HTML.Location as Location
+import DOM.HTML.HTMLElement (getBoundingClientRect)
 
 import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaqueState)
@@ -102,7 +103,7 @@ import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 
-import Utils.DOM (getBoundingClientRect, elementEq)
+import Utils.DOM (elementEq)
 import Utils.LocalStorage as LocalStorage
 import Utils.Path (DirPath)
 

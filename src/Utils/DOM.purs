@@ -32,6 +32,8 @@ import DOM.Event.EventTarget as EventTarget
 import DOM.Event.Types (EventTarget, EventType, Event)
 import DOM.HTML (window)
 import DOM.HTML.Event.EventTypes as EventTypes
+import DOM.Node.Element (scrollWidth, scrollHeight)
+import DOM.HTML.HTMLElement (offsetWidth, offsetHeight)
 import DOM.HTML.Types (Window, HTMLElement, htmlElementToElement, htmlDocumentToDocument, windowToEventTarget)
 import DOM.HTML.Window (document)
 import DOM.Node.ParentNode as P
@@ -43,22 +45,15 @@ foreign import waitLoaded ∷ ∀ e. Aff (dom ∷ DOM |e) Unit
 foreign import onLoad ∷ ∀ e. Eff e Unit → Eff e Unit
 foreign import blur ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM|e) Unit
 foreign import focus ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM|e) Unit
-foreign import offsetLeft ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM|e) Number
-foreign import getBoundingClientRect ∷ ∀ eff.  HTMLElement → Eff (dom ∷ DOM | eff) DOMRect
 foreign import getTextWidth ∷ ∀ eff. String → String → Eff (dom ∷ DOM | eff) Number
 foreign import elementEq ∷ ∀ eff. HTMLElement → HTMLElement → Eff (dom ∷ DOM | eff) Boolean
-foreign import scrollTop ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Number
-foreign import scrollLeft ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Number
-foreign import getOffsetClientRect ∷ ∀ eff.  HTMLElement → Eff (dom ∷ DOM | eff) DOMRect
+foreign import getOffsetClientRect ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) DOMRect
 foreign import open ∷ ∀ eff. String → String → String → Window → Eff (dom ∷ DOM | eff) Window
 foreign import close ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Unit
 foreign import closed ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Boolean
 foreign import centerPopupWindowFeatures ∷ ∀ eff. Int → Int → Window → Eff (dom ∷ DOM | eff) String
 foreign import setFontSize ∷ ∀ eff. HTMLElement → String → Eff (dom ∷ DOM | eff) Unit
-foreign import getOffsetWidth ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Int
-foreign import getOffsetHeight ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Int
-foreign import getScrollWidth ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Int
-foreign import getScrollHeight ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Int
+
 
 -- | Same as `getTextWidth` but w/o Eff wrapper. This function definitely has effects
 -- | of allocating canvas and should have `Eff (ref ∷ REF|e)` or `Eff (dom ∷ DOM|e)`
@@ -69,8 +64,8 @@ foreign import getTextWidthPure ∷ String → String → Number
 fits ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Boolean
 fits el = (&&) <$> fitsHorizontally <*> fitsVertically
   where
-  fitsHorizontally = (<=) <$> getScrollWidth el <*> getOffsetWidth el
-  fitsVertically = (<=) <$> getScrollHeight el <*> getOffsetHeight el
+  fitsHorizontally = (<=) <$> scrollWidth (htmlElementToElement el) <*> offsetWidth el
+  fitsVertically = (<=) <$> scrollHeight (htmlElementToElement el) <*> offsetHeight el
 
 fitText ∷ ∀ eff. Array Int → HTMLElement → Eff (dom ∷ DOM | eff) (Maybe Int)
 fitText fontSizes el = go $ reverse $ sort fontSizes
