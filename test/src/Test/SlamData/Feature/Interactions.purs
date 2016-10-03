@@ -199,6 +199,21 @@ insertTroubleshootCardInLastDeck ∷ SlamFeature Unit
 insertTroubleshootCardInLastDeck =
   Feature.click $ followingLastPreviousCardGripper XPaths.insertTroubleshootCard
 
+selectBuildChart ∷ SlamFeature Unit
+selectBuildChart =
+  Feature.click $ followingLastPreviousCardGripper XPaths.selectBuildChart
+
+insertPivotCard ∷ SlamFeature Unit
+insertPivotCard =
+  Feature.click $ followingLastPreviousCardGripper XPaths.insertPivotCard
+
+
+addColumn ∷ String → SlamFeature Unit
+addColumn str = do
+  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Add column"
+  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel str
+  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
+
 selectFileForLastOpenCard ∷ String → SlamFeature Unit
 selectFileForLastOpenCard p = do
   Expect.resourceOpenedInLastOpenCard "/"

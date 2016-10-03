@@ -120,7 +120,7 @@ withLabelWithExactText xPath = withLabel xPath ∘ labelXPath
     "label[text()= '" ⊕ text ⊕ "' or descendant::*[text()= '" ⊕ text ⊕ "']]"
 
 thWithExactText ∷ String → String
-thWithExactText thText = "thead/tr/th[text()='" ⊕ thText ⊕ "']"
+thWithExactText thText = "tr/th[text()='" ⊕ thText ⊕ "']"
 
 tdWithTh ∷ String → String → String → String
 tdWithTh tableXPath thXPath tdXPath =
@@ -192,7 +192,7 @@ tdWithThAndPredicate ∷ String → String → String → String
 tdWithThAndPredicate tableXPath thXPath predicate' =
   tdWithTh tableXPath thXPath tdXPath
   where
-  tdXPath = "tbody/tr/td" ⊕ predicate predicate'
+  tdXPath = "tr/td" ⊕ predicate predicate'
 
 tdWithThAndTextEq ∷ String → String → String → String
 tdWithThAndTextEq tableXPath thXPath =

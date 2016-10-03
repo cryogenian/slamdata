@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.Chart.PivotTableRenderer.Component where
 
 import SlamData.Prelude
+
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Foldable as F
@@ -25,6 +26,7 @@ import Data.List (List, (:))
 import Data.List as List
 import Data.Path.Pathy as P
 import Data.String as String
+
 import Halogen as H
 import Halogen.Component.Utils (raise)
 import Halogen.HTML.Indexed as HH
@@ -32,8 +34,10 @@ import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
+
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (JSONMode(..))
+
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Class (liftQuasar)
 import SlamData.Quasar.Query as QQ
@@ -43,6 +47,7 @@ import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column(..), isSimple
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 import SlamData.Workspace.Card.Port (PivotTablePort, TaggedResourcePort)
+
 import Global (readFloat)
 
 type State =
@@ -127,17 +132,19 @@ render st =
             [ HP.classes [ HH.className "no-results" ] ]
             [ HH.text "No results" ]
         else
-          HH.table_ $
-            [ HH.tr_ $
-                (if Array.null dims
-                  then []
-                  else [ HH.td [ HP.colSpan (Array.length dims) ] [] ])
-                <> map
-                     case _ of
-                       Column { value } → HH.th_ [ HH.text (showJCursor value) ]
-                       Count → HH.th_ [ HH.text "COUNT" ]
-                     cols
-            ] <> renderRows cols' tree
+          HH.table_
+              $ [ HH.tr_
+                  $ (if Array.null dims
+                     then []
+                     else [ HH.td [ HP.colSpan (Array.length dims) ] [] ])
+                  ⊕ (cols <#> case _ of
+                        Column { value } →
+                          HH.th_ [ HH.text (showJCursor value) ]
+                        Count →
+                          HH.th_ [ HH.text "COUNT" ])
+              ]
+              ⊕ renderRows cols' tree
+
 
   renderRows cols =
     map HH.tr_ ∘ foldTree (renderLeaves cols) renderHeadings
@@ -268,8 +275,13 @@ eval = case _ of
       sameResource =
         case input.taggedResource, st.input of
           tr1, Just { options, taggedResource: tr2 } →
-            tr1.resource ≡ tr2.resource && tr1.tag ≡ tr2.tag &&
-            isSimple options && input.options.columns ≡ options.columns
+            F.and
+              [ tr1.resource ≡ tr2.resource
+              , tr1.tag ≡ tr2.tag
+              , isSimple options
+              , input.options.columns ≡ options.columns
+              , tr1.varMap ≡ tr2.varMap
+              ]
           _, _ → false
     if sameResource
       then do

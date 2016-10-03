@@ -122,7 +122,7 @@ buildFunnel r records = do
     E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
-      E.fontSize 122
+      E.fontSize 12
 
   E.legend do
     E.items $ map ET.strItem legendNames

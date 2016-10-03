@@ -144,7 +144,6 @@ analyzeJArray arr =
   # M.fromFoldable
   -- Drop records those keys have no relations to other keys
   # checkPairs
-
   where
   -- | Translate encoded {foo: 1, bar: 2}
   -- | to [{key: "foo", value: 1}, {key: "bar", value: 2}]
@@ -168,7 +167,10 @@ getPossibleDependencies cursor m =
 
 checkPairs ∷ M.Map JCursor Axis → M.Map JCursor Axis
 checkPairs m =
-  foldl check m $ M.keys m
+  case M.keys m of
+    Nil → m
+    Cons _ Nil → m
+    _ → foldl check m $ M.keys m
   where
   check ∷ M.Map JCursor Axis → JCursor → M.Map JCursor Axis
   check m cursor =

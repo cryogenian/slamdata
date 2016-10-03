@@ -120,7 +120,7 @@ renderAbscissa state =
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "X-Axis" ]
     , HH.div_
         [ BCI.pickerInput
-            (BCI.secondary (Just "X-Axis") (selecting Q.Abscissa))
+            (BCI.primary (Just "X-Axis") (selecting Q.Abscissa))
             state.abscissa
         , BCI.aggregationInput
             (BCI.dropdown Nothing (selecting Q.AbscissaAgg))

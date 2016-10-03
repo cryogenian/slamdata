@@ -62,6 +62,7 @@ type TaggedResourcePort =
   { resource ∷ PU.FilePath
   , tag ∷ Maybe String
   , axes ∷ Axes
+  , varMap ∷ Maybe VarMap
   }
 
 type MetricPort =

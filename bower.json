@@ -60,7 +60,7 @@
     "purescript-node-path": "^1.0.0",
     "purescript-node-process": "^2.0.0",
     "purescript-platform": "^1.0.0",
-    "purescript-quasar-test-starter": "quasar-test-starter#^0.1.0",
+    "purescript-quasar-test-starter": "quasar-test-starter#^0.1.1",
     "purescript-strongcheck": "^1.1.1",
     "purescript-webdriver": "^2.0.0"
   }

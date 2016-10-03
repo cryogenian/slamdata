@@ -101,6 +101,14 @@ insertDisplayMarkdownCard ∷ String
 insertDisplayMarkdownCard =
   XPath.anyWithExactAriaLabel "Insert Show Markdown card"
 
+selectBuildChart ∷ String
+selectBuildChart =
+  XPath.anyWithExactAriaLabel "Select Setup Chart card category"
+
+insertPivotCard ∷ String
+insertPivotCard =
+  XPath.anyWithExactAriaLabel "Insert Setup Pivot card"
+
 showFileList ∷ String
 showFileList =
   XPath.anyWithExactAriaLabel "Show file list"
