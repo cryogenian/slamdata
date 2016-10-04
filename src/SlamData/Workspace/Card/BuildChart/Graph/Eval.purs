@@ -165,6 +165,7 @@ buildGraphData records axesMap r =
 
   relativeSize ∷ Number → Number
   relativeSize val
+    | distance ≡ zero = val
     | val < 0.0 = 0.0
     | otherwise =
       r.maxSize - sizeDistance / distance * (maximumValue - val)

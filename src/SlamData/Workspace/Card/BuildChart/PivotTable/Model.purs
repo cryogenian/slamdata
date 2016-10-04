@@ -35,11 +35,11 @@ type PivotTableR =
   }
 
 data Column
-  = Column
+  = Count
+  | Column
       { value ∷ JCursor
       , valueAggregation ∷ Maybe (Ag.Aggregation)
       }
-  | Count
 
 type Model = Maybe PivotTableR
 
@@ -102,6 +102,7 @@ decode js
   | otherwise = Just <$> decodePivotTableR js
 
 derive instance eqColumn ∷ Eq Column
+derive instance ordColumn ∷ Ord Column
 
 instance arbitraryColumn ∷ Arbitrary Column where
   arbitrary = do

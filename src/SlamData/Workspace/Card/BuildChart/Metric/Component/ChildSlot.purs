@@ -4,9 +4,10 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
 
-import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DP
 
-type ValueSlot = Unit
-type ValueState = P.StateP Aggregation JCursor
-type ValueQuery = P.QueryP Aggregation JCursor
+type ChildSlot = Unit
+
+type ChildState = DP.StateP JCursor
+
+type ChildQuery = DP.QueryP JCursor

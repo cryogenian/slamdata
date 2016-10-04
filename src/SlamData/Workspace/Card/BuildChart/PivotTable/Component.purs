@@ -1,4 +1,3 @@
-
 {-
 Copyright 2016 SlamData, Inc.
 
@@ -22,6 +21,8 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Int (toNumber)
+import Data.List ((:))
+import Data.List as List
 
 import CSS as C
 import Halogen as H
@@ -36,6 +37,8 @@ import SlamData.Form.Select as S
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Column (groupColumns, flattenColumns)
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.ChildSlot as PCS
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.Query (Query(..), QueryC)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Component.State (State, Selecting(..), modelFromState, stateFromModel, initialState, reorder, setColumnAggregation)
@@ -93,22 +96,35 @@ renderHighLOD st =
     Col →
       let
         values =
-          Array.cons Count
-            (map (Column ∘ { value: _, valueAggregation: Nothing })
-              (Array.sort (st.axes.category <> st.axes.time <> st.axes.value)))
+          groupColumns
+            (Count : List.fromFoldable
+              (map (Column ∘ { value: _, valueAggregation: Nothing })
+                (Array.sort (st.axes.category <> st.axes.time <> st.axes.value))))
       in
         HH.slot' PCS.cpCol unit \_ →
-          { component: DPC.picker "Choose column" showColumn
-          , initialState: { values, selectedIndex: -1 }
+          { component: DPC.picker
+              { title: "Choose column"
+              , label: showColumn
+              , render: HH.text ∘ showColumn
+              , weight: const 0.0
+              }
+          , initialState: H.parentState (DPC.initialState values)
           }
     Dim →
       let
         values =
-          Array.sort (st.axes.category <> st.axes.time <> st.axes.value)
+          groupJCursors
+            (List.fromFoldable
+              (Array.sort (st.axes.category <> st.axes.time <> st.axes.value)))
       in
         HH.slot' PCS.cpDim unit \_ →
-          { component: DPC.picker "Choose dimension" showJCursor
-          , initialState: { values, selectedIndex: -1 }
+          { component: DPC.picker
+              { title: "Choose dimension"
+              , label: showJCursor
+              , render: HH.text ∘ showJCursor
+              , weight: const 0.0
+              }
+          , initialState: H.parentState (DPC.initialState values)
           }
 
   renderedDimensions =
@@ -422,7 +438,11 @@ evalOptions = case _ of
     pure next
 
 peek ∷ ∀ a. H.ChildF PCS.ChildSlot PCS.ChildQuery a → DSL Unit
-peek = (coproduct peekSelectDim peekSelectCol) ∘ H.runChildF
+peek =
+  (coproduct
+    (coproduct peekSelectDim (const (pure unit)))
+    (coproduct peekSelectCol (const (pure unit))))
+  ∘ H.runChildF
   where
   peekSelectDim = case _ of
     DPC.Dismiss _ →
@@ -431,7 +451,7 @@ peek = (coproduct peekSelectDim peekSelectCol) ∘ H.runChildF
       st ← H.get
       H.modify _
         { fresh = st.fresh + 1
-        , dimensions = Array.snoc st.dimensions (st.fresh × value)
+        , dimensions = Array.snoc st.dimensions (st.fresh × (flattenJCursors value))
         , selecting = Nothing
         }
       CC.raiseUpdatedP' CC.EvalModelUpdate
@@ -445,7 +465,7 @@ peek = (coproduct peekSelectDim peekSelectCol) ∘ H.runChildF
       st ← H.get
       H.modify _
         { fresh = st.fresh + 1
-        , columns = Array.snoc st.columns (st.fresh × value)
+        , columns = Array.snoc st.columns (st.fresh × (flattenColumns value))
         , selecting = Nothing
         }
       CC.raiseUpdatedP' CC.EvalModelUpdate

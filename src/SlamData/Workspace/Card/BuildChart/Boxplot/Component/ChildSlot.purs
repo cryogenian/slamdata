@@ -4,55 +4,10 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DP
 
-import SlamData.Form.Select (Select)
-import SlamData.Form.Select.Component as S
+type ChildSlot = Unit
 
-type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit ⊹ Unit
+type ChildState = DP.StateP JCursor
 
-type DimensionState = Select JCursor
-type ValueState = Select JCursor
-type SeriesState = Select JCursor
-type ParallelState = Select JCursor
-
-type ChildState =
-  DimensionState ⊹ ValueState ⊹ SeriesState ⊹ ParallelState
-
-type DimensionQuery = S.Query JCursor
-type ValueQuery = S.Query JCursor
-type SeriesQuery = S.Query JCursor
-type ParallelQuery = S.Query JCursor
-
-type ChildQuery =
-  DimensionQuery ⨁ ValueQuery ⨁ SeriesQuery ⨁ ParallelQuery
-
-
-cpDimension
-  ∷ ChildPath
-      DimensionState ChildState
-      DimensionQuery ChildQuery
-      Unit ChildSlot
-cpDimension = cpL
-
-cpValue
-  ∷ ChildPath
-      ValueState ChildState
-      ValueQuery ChildQuery
-      Unit ChildSlot
-cpValue = cpR :> cpL
-
-cpSeries
-  ∷ ChildPath
-      SeriesState ChildState
-      SeriesQuery ChildQuery
-      Unit ChildSlot
-cpSeries = cpR :> cpR :> cpL
-
-cpParallel
-  ∷ ChildPath
-      ParallelState ChildState
-      ParallelQuery ChildQuery
-      Unit ChildSlot
-cpParallel = cpR :> cpR :> cpR
+type ChildQuery = DP.QueryP JCursor
