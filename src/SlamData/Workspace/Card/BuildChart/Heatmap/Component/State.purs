@@ -14,23 +14,23 @@ import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (ColorScheme)
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.Query (QueryC, Selection)
-import SlamData.Workspace.Card.BuildChart.Inputs (Select', PickerOptions)
+import SlamData.Workspace.Card.BuildChart.Inputs (PickerOptions)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type State =
-   { axes ∷ Axes
-   , levelOfDetails ∷ LevelOfDetails
-   , minValue ∷ Number
-   , maxValue ∷ Number
-   , isSchemeReversed ∷ Boolean
-   , abscissa ∷ Select JCursor
-   , ordinate ∷ Select JCursor
-   , value ∷ Select JCursor
-   , valueAgg ∷ Select' Aggregation
-   , series ∷ Select JCursor
-   , colorScheme ∷ Select' ColorScheme
-   , picker ∷ Maybe (PickerOptions JCursor Selection)
-   }
+  { axes ∷ Axes
+  , levelOfDetails ∷ LevelOfDetails
+  , minValue ∷ Number
+  , maxValue ∷ Number
+  , isSchemeReversed ∷ Boolean
+  , abscissa ∷ Select JCursor
+  , ordinate ∷ Select JCursor
+  , value ∷ Select JCursor
+  , valueAgg ∷ Select Aggregation
+  , series ∷ Select JCursor
+  , colorScheme ∷ Select ColorScheme
+  , picker ∷ Maybe (PickerOptions JCursor Selection)
+  }
 
 initialState ∷ State
 initialState =
@@ -42,9 +42,9 @@ initialState =
   , abscissa: emptySelect
   , ordinate: emptySelect
   , value: emptySelect
-  , valueAgg: false × emptySelect
+  , valueAgg: emptySelect
   , series: emptySelect
-  , colorScheme: false × emptySelect
+  , colorScheme: emptySelect
   , picker: Nothing
   }
 

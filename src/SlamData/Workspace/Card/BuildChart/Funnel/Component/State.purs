@@ -16,19 +16,19 @@ import SlamData.Workspace.Card.BuildChart.Funnel.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.Query (QueryC, Selection)
 import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.BuildChart.Inputs (Select', PickerOptions)
+import SlamData.Workspace.Card.BuildChart.Inputs (PickerOptions)
 
 type State =
-   { axes ∷ Axes
-   , levelOfDetails ∷ LevelOfDetails
-   , category ∷ Select JCursor
-   , value ∷ Select JCursor
-   , valueAgg ∷ Select' Aggregation
-   , series ∷ Select JCursor
-   , align ∷ Select' Align
-   , order ∷ Select' Sort
-   , picker ∷ Maybe (PickerOptions JCursor Selection)
-   }
+  { axes ∷ Axes
+  , levelOfDetails ∷ LevelOfDetails
+  , category ∷ Select JCursor
+  , value ∷ Select JCursor
+  , valueAgg ∷ Select Aggregation
+  , series ∷ Select JCursor
+  , align ∷ Select Align
+  , order ∷ Select Sort
+  , picker ∷ Maybe (PickerOptions JCursor Selection)
+  }
 
 initialState ∷ State
 initialState =
@@ -36,10 +36,10 @@ initialState =
   , levelOfDetails: High
   , category: emptySelect
   , value: emptySelect
-  , valueAgg: false × emptySelect
+  , valueAgg: emptySelect
   , series: emptySelect
-  , align: false × emptySelect
-  , order: false × emptySelect
+  , align: emptySelect
+  , order: emptySelect
   , picker: Nothing
   }
 
