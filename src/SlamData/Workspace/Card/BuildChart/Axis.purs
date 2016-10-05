@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.BuildChart.Axis where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor(..), JObject, JArray, Json, insideOut, decodeJson, encodeJson, (:=), (.?), (~>), jsonEmptyObject)
-import Data.Array ((!!), length, fromFoldable, cons)
+import Data.Array ((!!), fromFoldable, cons)
 import Data.Foldable as F
 import Data.List (List(..), filter, catMaybes)
 import Data.Map as M
@@ -125,13 +125,7 @@ checkSemantics lst =
 
 analyzeJArray ∷ JArray → M.Map JCursor Axis
 analyzeJArray arr =
-  -- If array has exactly one element return it
-  do guard $ length arr == 1
-     arr !! 0
-  -- If element returned transpose it else take initial array
-  # maybe arr toKeyValJArray
-  -- Produce map from JCursor to List of values (Maybe Semantics) for every Json
-  # jarrayToSemantics
+  jarrayToSemantics arr
   -- Check if values of that map can be converted to axes (if can it will be Just)
   # map checkSemantics
   -- Make list of Tuple JCursor (Maybe Axis)
