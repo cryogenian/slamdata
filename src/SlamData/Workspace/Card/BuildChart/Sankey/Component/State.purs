@@ -14,7 +14,7 @@ import SlamData.Workspace.Card.BuildChart.Sankey.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.Query (QueryC, Selection)
 import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.BuildChart.Inputs (Select', PickerOptions)
+import SlamData.Workspace.Card.BuildChart.Inputs (PickerOptions)
 
 type State =
   { axes ∷ Axes
@@ -22,7 +22,7 @@ type State =
   , source ∷ Select JCursor
   , target ∷ Select JCursor
   , value ∷ Select JCursor
-  , valueAgg ∷ Select' Aggregation
+  , valueAgg ∷ Select Aggregation
   , picker ∷ Maybe (PickerOptions JCursor Selection)
   }
 
@@ -33,7 +33,7 @@ initialState =
   , source: emptySelect
   , target: emptySelect
   , value: emptySelect
-  , valueAgg: false × emptySelect
+  , valueAgg: emptySelect
   , picker: Nothing
   }
 

@@ -10,7 +10,6 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Render.CSS as Rc
 import SlamData.Form.Select (Select(..), stringVal, class OptionVal)
 import SlamData.Form.Select.Component (SelectConfig)
 
@@ -56,12 +55,23 @@ secondary =
   , query: _
   }
 
-dropdown ∷ ∀ a i. Maybe String → (SelectAction a → H.Action i) → AggregationConfig a i
+dropdown ∷ ∀ a i. OptionVal a ⇒ Maybe String → (SelectAction a → H.Action i) → PickerConfig a i
 dropdown =
   { disableWhen: (_ < 1)
   , defaultWhen: const false
   , ariaLabel: _
   , defaultOption: ""
+  , showValue: stringVal
+  , query: _
+  }
+
+aggregation ∷ ∀ a i. OptionVal a ⇒ Maybe String → (SelectAction a → H.Action i) → PickerConfig a i
+aggregation =
+  { disableWhen: (_ < 1)
+  , defaultWhen: const false
+  , ariaLabel: _
+  , defaultOption: ""
+  , showValue: stringVal
   , query: _
   }
 
@@ -103,95 +113,59 @@ pickerInput conf (Select { options, value }) =
             HH.text ""
       ]
 
-aggregationInput
+selectInput
   ∷ ∀ a i p
-  . OptionVal a
-  ⇒ AggregationConfig a i
-  → Select' a
+  . Eq a
+  ⇒ PickerConfig a i
+  → Select a
   → H.HTML p i
-aggregationInput conf (isOpen × Select { options, value }) =
+selectInput conf (Select { options, value }) =
   let
     len = Array.length options
-    isDefault = isNothing value || conf.defaultWhen len
+    defaultWhen = conf.defaultWhen len
+    isDefault = isNothing value
     isDisabled = conf.disableWhen len
+    renderedOptions = map renderOption options
   in
-    HH.span
-      [ HP.classes
-          ([ HH.className "sd-select-input" ]
-            <> (HH.className "default" <$ guard isDefault))
+    HH.select
+      [ HP.classes [ B.formControl ]
+      , HP.disabled isDisabled
+      , HE.onSelectedIndexChange \ix →
+          case defaultWhen, ix of
+            true, 0 → pure (Just (conf.query (Choose Nothing) unit))
+            true, _ → pure (Array.index options (ix - 1) <#> \val → conf.query (Choose (Just val)) unit)
+            _   , _ → pure (Array.index options ix <#> \val → conf.query (Choose (Just val)) unit)
       ]
-      [ HH.button
-          ([ HP.classes ([ Rc.aggregation, B.formControl, B.btn, B.btnPrimary ] <> clsValOrEmpty)
-          , HP.disabled isDisabled
-          ] <> (HE.onClick (HE.input_ (conf.query (if isOpen then Choose value else Open options))) <$ guard (not isDisabled)))
-          []
-      , HH.span
-          [ HP.classes
-              ([ B.listGroup
-              , B.fade
-              , Rc.fileListGroup
-              , Rc.aggregation
-              ] <> (B.in_ <$ guard isOpen))
-          ]
-          if isOpen
-            then (map renderOption options)
-            else []
-      ]
+      if defaultWhen
+        then
+          [ HH.option
+              [ HP.selected isDefault ]
+              [ HH.text conf.defaultOption ]
+          ] ⊕ renderedOptions
+        else
+          renderedOptions
+
   where
-  renderOption val =
-    HH.button
-      [ HP.classes [ B.listGroupItem ]
-      , HE.onClick (HE.input_ (conf.query (Choose (Just val))))
-      ]
-      [ HH.text (stringVal val) ]
+  renderOption option =
+    HH.option
+      [ HP.selected (Just option ≡ value) ]
+      [ HH.text (conf.showValue option) ]
 
-  clsValOrEmpty =
-    foldMap (pure ∘ HH.className ∘ stringVal) value
-
-
-otherInput
-  ∷ ∀ a i p
-  . OptionVal a
-  ⇒ AggregationConfig a i
-  → Select' a
+pickerWithSelect
+  ∷ ∀ a b i p
+  . Eq b
+  ⇒ PickerConfig a i
+  → Select a
+  → PickerConfig b i
+  → Select b
   → H.HTML p i
-otherInput conf (isOpen × Select { options, value }) =
+pickerWithSelect conf1 sel1@(Select { options, value }) conf2 sel2 =
   let
-    len = Array.length options
-    isDefault = isNothing value || conf.defaultWhen len
-    isDisabled = conf.disableWhen len
+    isDisabled = conf1.disableWhen (Array.length options)
   in
-    HH.span
-      [ HP.classes
-          ([ HH.className "sd-select-input" ]
-            <> (HH.className "default" <$ guard isDefault))
+    HH.div_
+      [ pickerInput conf1 sel1
+      , if isDisabled
+          then selectInput (conf2 { disableWhen = const true }) sel2
+          else selectInput conf2 sel2
       ]
-      [ HH.button
-          ([ HP.disabled isDisabled
-           , HP.classes [ B.btn, B.btnDefault, B.formControl ]
-           ]
-          <> (HE.onClick
-              (HE.input_
-               (conf.query
-                (if isOpen then Choose value else Open options))) <$ guard (not isDisabled)))
-          [ HH.text $ stringVal value ]
-      , HH.span
-          [ HP.classes
-              ([ B.listGroup
-              , B.fade
-              , Rc.fileListGroup
-              , Rc.aggregation
-              ] <> (B.in_ <$ guard isOpen))
-          ]
-          if isOpen
-            then (map renderOption options)
-            else []
-      ]
-
-  where
-  renderOption val =
-    HH.button
-      [ HP.classes [ B.listGroupItem ]
-      , HE.onClick (HE.input_ (conf.query (Choose (Just val))))
-      ]
-      [ HH.text (stringVal val) ]
