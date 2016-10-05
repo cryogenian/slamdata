@@ -16,40 +16,38 @@ limitations under the License.
 
 module Test.SlamData.Property.Workspace.Card.CardType where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Argonaut (encodeJson, decodeJson)
-import Data.Either (Either(..))
-import Data.List as L
 
 import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..))
+import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
 
 import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
 import Test.StrongCheck.Arbitrary (class Arbitrary)
-import Test.StrongCheck.Gen (elements)
+import Test.StrongCheck.Gen (allInArray)
 
 newtype ArbCardType = ArbCardType CardType
 
-runArbCardType :: ArbCardType -> CardType
+runArbCardType ∷ ArbCardType → CardType
 runArbCardType (ArbCardType m) = m
 
-instance arbitraryArbCardType :: Arbitrary ArbCardType where
+instance arbitraryArbCardType ∷ Arbitrary ArbCardType where
   arbitrary =
-    ArbCardType <$>
-      elements
-        Open
-        (L.fromFoldable
-          [ Ace MarkdownMode
-          , Ace SQLMode
-          , Search
-          , ChartOptions
-          , Chart
-          , Markdown
-          , Table
-          ])
+    allInArray
+      $ map ArbCardType
+      $ [ Ace MarkdownMode
+        , Ace SQLMode
+        , Search
+        , Chart
+        , Markdown
+        , Table
+        ]
+      ⊕ map ChartOptions allChartTypes
 
-check :: forall eff. SC eff Unit
-check = quickCheck $ runArbCardType >>> \ct ->
+
+check ∷ forall eff. SC eff Unit
+check = quickCheck $ runArbCardType ⋙ \ct →
   case decodeJson (encodeJson ct) of
-    Left err -> Failed $ "Decode failed: " <> err
-    Right ct' -> ct == ct' <?> "CardType failed to decode as encoded value"
+    Left err → Failed $ "Decode failed: " <> err
+    Right ct' → ct == ct' <?> "CardType failed to decode as encoded value"

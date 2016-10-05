@@ -18,7 +18,7 @@ module SlamData.FileSystem.Listing.Item where
 
 import SlamData.Prelude
 
-import SlamData.FileSystem.Listing.Sort (Sort)
+import SlamData.Common.Sort (Sort)
 import SlamData.FileSystem.Resource (Resource, resourcePath, resourceName, sortResource)
 
 data Item

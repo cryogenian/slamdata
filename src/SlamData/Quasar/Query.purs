@@ -27,6 +27,7 @@ module SlamData.Quasar.Query
   , sample
   , count
   , fields
+  , axes
   , module Quasar.Error
   ) where
 
@@ -51,13 +52,15 @@ import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
 import SlamData.Quasar.Error (throw)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
+import SlamData.Workspace.Card.BuildChart.Axis (buildAxes, Axes)
+
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
 
 -- | Replaces `{{path}}` placeholders in an SQL template string with a file
 -- | path.
 templated ∷ FilePath → SQL → SQL
-templated res = S.replace "{{path}}" ("`" <> P.printPath res <> "`")
+templated res = S.replace "{{path}}" ("`" ⊕ P.printPath res ⊕ "`")
 
 -- | Compiles a query.
 -- |
@@ -73,7 +76,7 @@ compile
   → m (Either QError CompileResultR)
 compile path sql varMap =
   let
-    backendPath = either id (fromMaybe P.rootDir <<< P.parentDir) path
+    backendPath = either id (fromMaybe P.rootDir ∘ P.parentDir) path
     sql' = maybe sql (flip templated sql) $ either (const Nothing) Just path
   in
     liftQuasar $ QF.compileQuery backendPath sql' varMap
@@ -202,29 +205,35 @@ fields file = runExceptT do
   -- to return an array of *arrays* of unformatted strings, which can then be formatted by the
   -- client (e.g. to intercalate with dots and add backticks).
   getFields ∷ JS.Json → Array String
-  getFields = Arr.filter (_ /= "") <<< Arr.nub <<< go []
+  getFields = Arr.filter (_ /= "") ∘ Arr.nub ∘ go []
     where
     go ∷ Array String → JS.Json → Array String
     go [] json = go [""] json
-    go acc json =
-      if JS.isObject json
-      then maybe acc (goObj acc) $ JS.toObject json
-      else if JS.isArray json
-           then maybe acc (goArr acc) $ JS.toArray json
-           else acc
+    go acc json
+      | JS.isObject json = maybe acc (goObj acc) $ JS.toObject json
+      | JS.isArray json = maybe acc (goArr acc) $ JS.toArray json
+      | otherwise = acc
 
+    goArr ∷ Array String → JS.JArray → Array String
+    goArr acc arr =
+      Arr.concat $ go (lift2 append acc $ mkArrIxs arr) <$> arr
       where
-      goArr ∷ Array String → JS.JArray → Array String
-      goArr acc arr =
-        Arr.concat $ go (lift2 append acc $ mkArrIxs arr) <$> arr
-        where
-        mkArrIxs ∷ JS.JArray → Array String
-        mkArrIxs jarr =
-          map (\x → "[" <> show x <> "]") $ Arr.range 0 $ Arr.length jarr - 1
+      mkArrIxs ∷ JS.JArray → Array String
+      mkArrIxs jarr =
+        map (\x → "[" ⊕ show x ⊕ "]") $ Arr.range 0 $ Arr.length jarr - 1
 
-      goObj ∷ Array String → JS.JObject → Array String
-      goObj acc = Arr.concat <<< map (goTuple acc) <<< Arr.fromFoldable <<< SM.toList
+    goObj ∷ Array String → JS.JObject → Array String
+    goObj acc = Arr.concat ∘ map (goTuple acc) ∘ Arr.fromFoldable ∘ SM.toList
 
-      goTuple ∷ Array String → Tuple String JS.Json → Array String
-      goTuple acc (Tuple key json) =
-        go ((\x → x <> ".`" <> key <> "`") <$> acc) json
+    goTuple ∷ Array String → Tuple String JS.Json → Array String
+    goTuple acc (key × json) =
+      go (map (\x → x ⊕ ".`" ⊕ key ⊕ "`") acc) json
+
+axes
+  ∷ ∀ m
+  . (Monad m, QuasarDSL m)
+  ⇒ FilePath
+  → Int
+  → m (QError ⊹ Axes)
+axes file =
+  runExceptT ∘ map buildAxes ∘ ExceptT ∘ sample file 0

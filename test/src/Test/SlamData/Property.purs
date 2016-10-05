@@ -26,7 +26,6 @@ import Test.SlamData.Property.Form.Select as Test.SlamData.Property.Form.Select
 import Test.SlamData.Property.Workspace.Card.Ace.Model as Test.SlamData.Property.Workspace.Card.Ace.Model
 import Test.SlamData.Property.Workspace.Card.CardId as Test.SlamData.Property.Workspace.Card.CardId
 import Test.SlamData.Property.Workspace.Card.CardType as Test.SlamData.Property.Workspace.Card.CardType
-import Test.SlamData.Property.Workspace.Card.ChartOptions.Model as Test.SlamData.Property.Workspace.Card.ChartOptions.Model
 import Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State as Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State
 import Test.SlamData.Property.Workspace.Card.Markdown.Model as Test.SlamData.Property.Workspace.Card.Markdown.Model
 import Test.SlamData.Property.Workspace.Card.Model as Test.SlamData.Property.Workspace.Card.Model
@@ -69,9 +68,6 @@ main = do
 
   log "Check SlamData.Workspace.Card.Markdown.Model..."
   Test.SlamData.Property.Workspace.Card.Markdown.Model.check
-
-  log "Check SlamData.Workspace.Card.ChartOptions.Model..."
-  Test.SlamData.Property.Workspace.Card.ChartOptions.Model.check
 
   log "Check SlamData.Workspace.Deck.DeckId..."
   Test.SlamData.Property.Workspace.Deck.DeckId.check

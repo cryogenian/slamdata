@@ -1,52 +1,68 @@
 @import "common";
 
-
 @chart-type-selector-width: 60px;
-.sd-card-chart-options {
-    height: ~"calc(100% - 2rem)";
-    > div { height: 100%; }
-    div.loading-message.alert.alert-info {
-        height: 100%;
-        margin-top: 0;
-        margin-bottom: 0;
-    }
-    .card-input {
-        &-maximum-lod {
-            height: 100%;
-            .card-editor {
-                padding: 0;
-                height: 100%;
-                position: relative;
 
-                .chart-type-selector {
-                    width: @chart-type-selector-width;
-                    height: 100%;
-                    background-color: #f0f0f0;
-                    position: absolute;
-                    left: 0;
-                    img {
-                        width: 32px;
-                        height: 32px;
-                        padding: 6px;
-                        background-color: #aaa;
-                        cursor: pointer;
-                        margin-left: 16px;
-                        margin-top: 8px;
-                        left: 50%;
-                        &.active, &:hover {
-                            background-color: #337ab7;
-                        }
-                    }
-                }
-                .chart-configuration {
-                    position: absolute;
-                    left: @chart-type-selector-width + 6px;
-                    right: @grid-size;
-                    padding-left: 6px;
-                    padding-right: 6px;
-                    padding-top: 12px;
-                }
-            }
+.sd-card-chart-options {
+  height: ~"calc(100% - 2rem)";
+
+  > div {
+    height: 100%;
+  }
+
+  .loading-message.alert.alert-info {
+    height: 100%;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .sd-dimension-picker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #fff;
+  }
+
+  .card-input-maximum-lod {
+    height: 100%;
+
+    .card-editor {
+      padding: 0;
+      height: 100%;
+      position: relative;
+
+      .chart-type-selector {
+        width: @chart-type-selector-width;
+        height: 100%;
+        background-color: #f0f0f0;
+        position: absolute;
+        left: 0;
+
+        img {
+          width: 32px;
+          height: 32px;
+          padding: 6px;
+          background-color: #aaa;
+          cursor: pointer;
+          margin-left: 16px;
+          margin-top: 8px;
+          left: 50%;
+
+          &.active, &:hover {
+            background-color: #337ab7;
+          }
         }
+      }
+
+      .chart-configuration {
+        position: absolute;
+        left: @chart-type-selector-width + 6px;
+        right: @grid-size;
+        padding-left: 6px;
+        padding-right: 6px;
+        padding-top: 12px;
+      }
     }
+  }
 }

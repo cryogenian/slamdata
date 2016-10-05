@@ -83,36 +83,37 @@ evalCard = case _ of
   CC.ZoomIn next →
     pure next
 
-runTable ∷ Port.Port → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
-runTable =
-  case _ of
-    Port.TaggedResource trp → updateTable trp
-    _ → QE.throw "Expected a TaggedResource input"
+runTable
+  ∷ Port.Port
+  → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
+runTable = case _ of
+  Port.TaggedResource trp → updateTable trp
+  _ → QE.throw "Expected a TaggedResource input"
 
 updateTable
   ∷ Port.TaggedResourcePort
   → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
-updateTable { resource, tag } = do
+updateTable { resource, tag, axes, varMap } = do
   oldInput ← lift $ H.gets _.input
   when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
     $ lift $ resetState
 
   size ← CET.liftQ $ Quasar.count resource
 
-  lift $ H.modify $ JTS._input ?~ { resource, size, tag }
+  lift $ H.modify $ JTS._input ?~ { resource, size, tag, axes, varMap }
   p ← lift $ H.gets JTS.pendingPageInfo
 
   items ← CET.liftQ $
     Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
 
-  lift $
-    H.modify
-      $ (JTS._isEnteringPageSize .~ false)
-      ∘ (JTS._result ?~
-           { json: JSON.fromArray items
-           , page: p.page
-           , pageSize: p.pageSize
-           })
+  lift
+    $ H.modify
+    $ (JTS._isEnteringPageSize .~ false)
+    ∘ (JTS._result ?~
+         { json: JSON.fromArray items
+         , page: p.page
+         , pageSize: p.pageSize
+         })
 
 -- | Resets the state while preserving settings like page size.
 resetState ∷ DSL Unit
@@ -141,6 +142,6 @@ evalTable = case _ of
 refresh ∷ DSL Unit
 refresh = do
   input ← H.gets _.input
-  for_ input \{ resource, tag } →
-    CEQ.runCardEvalT_ $ updateTable { resource, tag }
+  for_ input \ {resource, tag, axes, varMap} →
+    CEQ.runCardEvalT_ $ updateTable {resource, tag, axes, varMap}
   CC.raiseUpdatedC' CC.StateOnlyUpdate

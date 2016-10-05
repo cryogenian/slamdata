@@ -45,8 +45,8 @@ import Halogen.HTML.Properties.Indexed as HP
 
 import Quasar.Data (QData(..))
 
+import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
-import SlamData.Monad (Slam)
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpHeader, toDialog, toFs, toListing, toSearch)
@@ -64,23 +64,23 @@ import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
-import SlamData.FileSystem.Listing.Sort (notSort)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (newSalt)
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.GlobalError as GE
 import SlamData.Header.Component as Header
+import SlamData.Monad (Slam)
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
 import SlamData.Render.Common (content, row)
+import SlamData.Wiring (Wiring(..))
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
-import SlamData.Wiring (Wiring(..))
 
 import Utils.DOM as D
 import Utils.LocalStorage as LocalStorage

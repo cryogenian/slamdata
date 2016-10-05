@@ -22,6 +22,7 @@ import Data.Foldable as Foldable
 import SlamData.Prelude
 import SlamData.Workspace.Card.CardType as CardType
 import SlamData.Workspace.Card.CardType (CardType)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port (Port)
 
@@ -209,15 +210,16 @@ eitherOr strings =
         <> String.joinWith "" (Array.drop (n - 1) strings)
 
 fromPort ∷ Port → InsertableCardIOType
-fromPort =
-  case _ of
-    Port.Chart _ → Chart
-    Port.DownloadOptions _ → Download
-    Port.Draftboard → Draftboard
-    Port.SlamDown _ → Markdown
-    Port.TaggedResource _ → Data
-    Port.VarMap _ → Variables
-    _ → None
+fromPort = case _ of
+  Port.DownloadOptions _ → Download
+  Port.Draftboard → Draftboard
+  Port.SlamDown _ → Markdown
+  Port.TaggedResource _ → Data
+  Port.VarMap _ → Variables
+  Port.ChartInstructions _ _ → Chart
+  Port.Metric _ → Chart
+  Port.PivotTable _ → Chart
+  _ → None
 
 toCardType ∷ InsertableCardType → CardType
 toCardType =
@@ -227,7 +229,7 @@ toCardType =
     OpenCard → CardType.Open
     QueryCard → CardType.Ace CardType.SQLMode
     SearchCard → CardType.Search
-    SetupChartCard → CardType.ChartOptions
+    SetupChartCard → CardType.ChartOptions Pie
     SetupDownloadCard → CardType.DownloadOptions
     SetupMarkdownCard → CardType.Ace CardType.MarkdownMode
     SetupVariablesCard → CardType.Variables
@@ -238,8 +240,9 @@ toCardType =
     TroubleshootCard → CardType.Troubleshoot
 
 print ∷ InsertableCardType → String
-print =
-  CardType.cardName ∘ toCardType
+print = case _ of
+  SetupChartCard → "Setup Chart"
+  a → CardType.cardName $ toCardType a
 
 aAn ∷ String → String
 aAn s =
@@ -249,19 +252,29 @@ aAn s =
   where
   vowels = [ "a", "e", "i", "o", "u" ]
 
-reason ∷ InsertableCardIOType → InsertableCardType → String
-reason io card =
-  aAn (print card) <> " " <> show (print card) <> " card can't " <> actual
-    <> " because it needs " <> expected <> action <> "."
+reason ∷ InsertableCardIOType → CardType → Maybe String
+reason io card = do
+  ictCardType ← fromCardType card
+  pure $ fold
+    [ aAn $ CardType.cardName card
+    , " "
+    , show $ CardType.cardName card
+    , " card can't "
+    , actual
+    , " because it needs "
+    , expected ictCardType
+    , action ictCardType
+    , "."
+    ]
   where
   actual =
     case io of
       None → "be the first card in a deck"
       _ → "follow a card which outputs " <> printIOType io
-  expected =
-    eitherOr $ printIOType <$> inputsFor card
-  action =
-    maybe "" (" to " <> _) (printAction card)
+  expected ict =
+    eitherOr $ map printIOType $ inputsFor ict
+  action ict =
+    foldMap (append " to ") $ printAction ict
 
 printAction ∷ InsertableCardType → Maybe String
 printAction =
@@ -289,7 +302,7 @@ fromCardType =
     CardType.Open → Just OpenCard
     CardType.Ace CardType.SQLMode → Just QueryCard
     CardType.Search → Just SearchCard
-    CardType.ChartOptions → Just SetupChartCard
+    CardType.ChartOptions _ → Just SetupChartCard
     CardType.DownloadOptions → Just SetupDownloadCard
     CardType.Ace CardType.MarkdownMode → Just SetupMarkdownCard
     CardType.Variables → Just SetupVariablesCard
