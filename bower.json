@@ -22,7 +22,7 @@
     "purescript-argonaut": "^1.0.0",
     "purescript-css": "^1.1.0",
     "purescript-datetime": "^1.0.0",
-    "purescript-dom": "^2.0.0",
+    "purescript-dom": "^2.2.0",
     "purescript-ejson": "^1.0.0",
     "purescript-fixed-points": "^1.0.0",
     "purescript-functor-coproducts": "^1.0.1",

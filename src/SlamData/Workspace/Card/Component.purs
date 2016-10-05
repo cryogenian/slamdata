@@ -27,6 +27,8 @@ import SlamData.Prelude
 import Data.Foldable (elem)
 import Data.Lens (PrismP, (.~), review, preview, clonePrism)
 
+import DOM.HTML.HTMLElement (getBoundingClientRect)
+
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -39,8 +41,6 @@ import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQuery
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.State as CS
 import SlamData.Workspace.Card.Model as Card
-
-import Utils.DOM as DOMUtils
 
 -- | Type synonym for the full type of a card component.
 type CardComponent = H.Component CS.CardStateP CQ.CardQueryP Slam
@@ -144,7 +144,7 @@ makeCardComponentPart def render =
     H.modify (CS._element .~ el) $> next
   eval (CQ.UpdateDimensions next) = do
     H.gets _.element >>= traverse_ \el -> do
-      { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
+      { width, height } ← H.fromEff (getBoundingClientRect el)
       unless (width ≡ zero ∧ height ≡ zero)
         $ void
         $ H.query unit
