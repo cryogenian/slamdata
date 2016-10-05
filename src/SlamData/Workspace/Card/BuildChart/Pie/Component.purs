@@ -4,7 +4,7 @@ module SlamData.Workspace.Card.BuildChart.Pie.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (.~), (?~), _1, _2)
+import Data.Lens ((^?), (^.), (.~), (?~))
 import Data.Lens as Lens
 import Data.List as List
 
@@ -112,14 +112,11 @@ renderValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.div_
-        [ BCI.pickerInput
-            (BCI.secondary (Just "Measure") (selecting Q.Value))
-            state.value
-        , BCI.aggregationInput
-            (BCI.dropdown Nothing (selecting Q.ValueAgg))
-            state.valueAgg
-        ]
+    , BCI.pickerWithSelect
+        (BCI.secondary (Just "Measure") (selecting Q.Value))
+        state.value
+        (BCI.aggregation (Just "Measure Aggregation") (selecting Q.ValueAgg))
+        state.valueAgg
     ]
 
 renderDonut ∷ ST.State → HTML
@@ -171,7 +168,7 @@ cardEval = case _ of
         , donut: st.donut ^. _value
         }
         <$> (st.value ^. _value)
-        <*> (snd st.valueAgg ^. _value)
+        <*> (st.valueAgg ^. _value)
         <*> (st.category ^. _value)
     pure $ k $ Card.BuildPie model
   CC.Load (Card.BuildPie model) next → do
@@ -210,8 +207,8 @@ chartEval (Q.Select sel next) = do
     BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
   updateSelect l = case _ of
-    BCI.Open _    → H.modify (l ∘ _1 .~ true)
-    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
+    BCI.Open _    → pure unit
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = coproduct peekPicker (const (pure unit))
@@ -236,7 +233,7 @@ loadModel ∷ M.PieR → DSL Unit
 loadModel r =
   H.modify _
     { value = fromSelected (Just r.value)
-    , valueAgg = false × fromSelected (Just r.valueAggregation)
+    , valueAgg = fromSelected (Just r.valueAggregation)
     , category = fromSelected (Just r.category)
     , donut = fromSelected r.donut
     , parallel = fromSelected r.parallel
@@ -253,7 +250,7 @@ synchronizeChildren = do
         $ st.axes.value
 
     newValueAggregation =
-      setPreviousValueFrom (Just $ snd st.valueAgg)
+      setPreviousValueFrom (Just st.valueAgg)
         $ nonMaybeAggregationSelect
 
     newCategory =
@@ -281,7 +278,7 @@ synchronizeChildren = do
 
   H.modify _
     { value = newValue
-    , valueAgg = false × newValueAggregation
+    , valueAgg = newValueAggregation
     , category = newCategory
     , donut = newDonut
     , parallel = newParallel

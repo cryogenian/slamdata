@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Heatmap.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
+import Data.Lens ((^?), (^.), (?~), (.~))
 import Data.Lens as Lens
 import Data.List as List
 
@@ -24,7 +24,8 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Render.Common (row)
 import SlamData.Form.Select
-  ( newSelect
+  ( Select
+  , newSelect
   , setPreviousValueFrom
   , autoSelect
   , ifSelected
@@ -48,7 +49,6 @@ import SlamData.Workspace.Card.BuildChart.Heatmap.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.Query as Q
 import SlamData.Workspace.Card.BuildChart.Heatmap.Model as M
-import SlamData.Workspace.Card.BuildChart.Inputs (Select')
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -144,14 +144,11 @@ renderValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , HH.div_
-        [ BCI.pickerInput
-            (BCI.primary (Just "Measure") (selecting Q.Value))
-            state.value
-        , BCI.aggregationInput
-            (BCI.dropdown Nothing (selecting Q.ValueAgg))
-            state.valueAgg
-        ]
+    , BCI.pickerWithSelect
+        (BCI.primary (Just "Measure") (selecting Q.Value))
+        state.value
+        (BCI.dropdown (Just "Measure aggregation") (selecting Q.ValueAgg))
+        state.valueAgg
     ]
 
 renderSeries ∷ ST.State → HTML
@@ -220,8 +217,8 @@ renderColorScheme state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Color scheme" ]
-    , BCI.otherInput
-        (BCI.dropdown Nothing (selecting Q.ColorScheme))
+    , BCI.selectInput
+        (BCI.dropdown (Just "Color scheme") (selecting Q.ColorScheme))
         state.colorScheme
     ]
 
@@ -257,8 +254,8 @@ cardEval = case _ of
         <$> (st.abscissa ^. _value)
         <*> (st.ordinate ^. _value)
         <*> (st.value ^. _value)
-        <*> (snd st.valueAgg ^. _value)
-        <*> (snd st.colorScheme ^. _value)
+        <*> (st.valueAgg ^. _value)
+        <*> (st.colorScheme ^. _value)
     pure $ k $ Card.BuildHeatmap model
   CC.Load (Card.BuildHeatmap (Just model)) next → do
     loadModel model
@@ -300,21 +297,21 @@ heatmapBuilderEval = case _ of
     CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.Select sel next → next <$ case sel of
-    Q.Abscissa a → updatePicker ST._abscissa Q.Abscissa a
-    Q.Ordinate a → updatePicker ST._ordinate Q.Ordinate a
-    Q.Value a → updatePicker ST._value Q.Value a
-    Q.ValueAgg a → updateSelect ST._valueAgg a
-    Q.Series a → updatePicker ST._series Q.Series a
+    Q.Abscissa a    → updatePicker ST._abscissa Q.Abscissa a
+    Q.Ordinate a    → updatePicker ST._ordinate Q.Ordinate a
+    Q.Value a       → updatePicker ST._value Q.Value a
+    Q.ValueAgg a    → updateSelect ST._valueAgg a
+    Q.Series a      → updatePicker ST._series Q.Series a
     Q.ColorScheme a → updateSelect ST._colorScheme a
   where
   updatePicker l q = case _ of
     BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a → H.modify (l ∘ _value .~ a) *> raiseUpdate
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
-  updateSelect ∷ ∀ a. Lens.LensP ST.State (Select' a) → BCI.SelectAction a → DSL Unit
+  updateSelect ∷ ∀ a. Lens.LensP ST.State (Select a) → BCI.SelectAction a → DSL Unit
   updateSelect l = case _ of
-    BCI.Open _ → H.modify (l ∘ _1 .~ true)
-    BCI.Choose a → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
+    BCI.Open _   → pure unit
+    BCI.Choose a → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
 raiseUpdate ∷ DSL Unit
 raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
@@ -334,8 +331,8 @@ peekPeeker = case _ of
     for_ st.picker \v → case v.select of
       Q.Abscissa _ → H.modify $ ST._abscissa ∘ _value ?~ value'
       Q.Ordinate _ → H.modify $ ST._ordinate ∘ _value ?~ value'
-      Q.Value _ → H.modify $ ST._value ∘ _value ?~ value'
-      Q.Series _ → H.modify $ ST._series ∘ _value ?~ value'
+      Q.Value _    → H.modify $ ST._value ∘ _value ?~ value'
+      Q.Series _   → H.modify $ ST._series ∘ _value ?~ value'
       _ → pure unit
     H.modify _{ picker = Nothing }
     raiseUpdate
@@ -370,7 +367,7 @@ synchronizeChildren = void do
         ⊝ newOrdinate
 
     newValueAggregation =
-      setPreviousValueFrom (Just $ snd st.valueAgg)
+      setPreviousValueFrom (Just st.valueAgg)
         $ nonMaybeAggregationSelect
 
     newSeries =
@@ -383,26 +380,25 @@ synchronizeChildren = void do
         ⊝ newOrdinate
 
     newColorScheme =
-      setPreviousValueFrom (Just $ snd st.colorScheme)
+      setPreviousValueFrom (Just st.colorScheme)
         $ colorSchemeSelect
-
 
   H.modify _
     { abscissa = newAbscissa
     , ordinate = newOrdinate
     , value = newValue
-    , valueAgg = false × newValueAggregation
+    , valueAgg = newValueAggregation
     , series = newSeries
-    , colorScheme = false × newColorScheme
+    , colorScheme = newColorScheme
     }
 
 loadModel ∷ M.HeatmapR → DSL Unit
 loadModel r =
   H.modify _
-    { abscissa = fromSelected $ Just r.abscissa
-    , ordinate = fromSelected $ Just r.ordinate
-    , value = fromSelected $ Just r.value
-    , valueAgg = false × fromSelected (Just r.valueAggregation)
+    { abscissa = fromSelected (Just r.abscissa)
+    , ordinate = fromSelected (Just r.ordinate)
+    , value = fromSelected (Just r.value)
+    , valueAgg = fromSelected (Just r.valueAggregation)
     , series = fromSelected r.series
-    , colorScheme = false × fromSelected (Just r.colorScheme)
+    , colorScheme = fromSelected (Just r.colorScheme)
     }

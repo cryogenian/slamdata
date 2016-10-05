@@ -4,7 +4,7 @@ module SlamData.Workspace.Card.BuildChart.Scatter.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
+import Data.Lens ((^?), (^.), (?~), (.~))
 import Data.Lens as Lens
 import Data.List as List
 
@@ -114,14 +114,11 @@ renderAbscissa state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "X-Axis" ]
-    , HH.div_
-        [ BCI.pickerInput
-            (BCI.primary (Just "X-Axis") (selecting Q.Abscissa))
-            state.abscissa
-        , BCI.aggregationInput
-            (BCI.dropdown Nothing (selecting Q.AbscissaAgg))
-            state.abscissaAgg
-        ]
+    , BCI.pickerWithSelect
+        (BCI.primary (Just "X-Axis") (selecting Q.Abscissa))
+        state.abscissa
+        (BCI.aggregation (Just "X-Axis Aggregation") (selecting Q.AbscissaAgg))
+        state.abscissaAgg
     ]
 
 renderOrdinate ∷ ST.State → HTML
@@ -131,14 +128,11 @@ renderOrdinate state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Y-Axis" ]
-    , HH.div_
-        [ BCI.pickerInput
-            (BCI.primary (Just "Y-Axis") (selecting Q.Ordinate))
-            state.ordinate
-        , BCI.aggregationInput
-            (BCI.dropdown Nothing (selecting Q.OrdinateAgg))
-            state.ordinateAgg
-        ]
+    , BCI.pickerWithSelect
+        (BCI.primary (Just "Y-Axis") (selecting Q.Ordinate))
+        state.ordinate
+        (BCI.aggregation (Just "Y-Axis Aggregation") (selecting Q.OrdinateAgg))
+        state.ordinateAgg
     ]
 
 renderSize ∷ ST.State → HTML
@@ -148,14 +142,11 @@ renderSize state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Bubble size" ]
-    , HH.div_
-        [ BCI.pickerInput
-            (BCI.primary (Just "Bubble size") (selecting Q.Size))
-            state.size
-        , BCI.aggregationInput
-            (BCI.dropdown Nothing (selecting Q.SizeAgg))
-            state.sizeAgg
-        ]
+    , BCI.pickerWithSelect
+        (BCI.primary (Just "Bubble size") (selecting Q.Size))
+        state.size
+        (BCI.aggregation (Just "Bubble size Aggregation") (selecting Q.SizeAgg))
+        state.sizeAgg
     ]
 
 renderSeries ∷ ST.State → HTML
@@ -224,15 +215,15 @@ cardEval = case _ of
         , ordinate: _
         , ordinateAggregation: _
         , size: st.size ^. _value
-        , sizeAggregation: snd st.sizeAgg ^. _value
+        , sizeAggregation: st.sizeAgg ^. _value
         , series: st.series ^. _value
         , minSize: (st.minSize ∷ Number)
         , maxSize: (st.maxSize ∷ Number)
         }
         <$> (st.abscissa ^. _value)
-        <*> (snd st.abscissaAgg ^. _value)
+        <*> (st.abscissaAgg ^. _value)
         <*> (st.ordinate ^. _value)
-        <*> (snd st.ordinateAgg ^. _value)
+        <*> (st.ordinateAgg ^. _value)
     pure $ k $ Card.BuildScatter model
   CC.Load (Card.BuildScatter (Just model)) next → do
     loadModel model
@@ -288,8 +279,8 @@ scatterBuilderEval = case _ of
     BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
   updateSelect l = case _ of
-    BCI.Open _    → H.modify (l ∘ _1 .~ true)
-    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
+    BCI.Open _    → pure unit
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = coproduct peekPicker (const (pure unit))
@@ -321,7 +312,7 @@ synchronizeChildren = do
         $ st.axes.value
 
     newAbscissaAggregation =
-      setPreviousValueFrom (Just $ snd st.abscissaAgg)
+      setPreviousValueFrom (Just st.abscissaAgg)
         $ aggregationSelectWithNone
 
     newOrdinate =
@@ -332,7 +323,7 @@ synchronizeChildren = do
         ⊝ newAbscissa
 
     newOrdinateAggregation =
-      setPreviousValueFrom (Just $ snd st.ordinateAgg)
+      setPreviousValueFrom (Just st.ordinateAgg)
         $ aggregationSelectWithNone
 
     newSize =
@@ -344,7 +335,7 @@ synchronizeChildren = do
         ⊝ newOrdinate
 
     newSizeAggregation =
-      setPreviousValueFrom (Just $ snd st.sizeAgg)
+      setPreviousValueFrom (Just st.sizeAgg)
         $ aggregationSelectWithNone
 
     newSeries =
@@ -355,11 +346,11 @@ synchronizeChildren = do
 
   H.modify _
     { abscissa = newAbscissa
-    , abscissaAgg = false × newAbscissaAggregation
+    , abscissaAgg = newAbscissaAggregation
     , ordinate = newOrdinate
-    , ordinateAgg = false × newOrdinateAggregation
+    , ordinateAgg = newOrdinateAggregation
     , size = newSize
-    , sizeAgg = false × newSizeAggregation
+    , sizeAgg = newSizeAggregation
     , series = newSeries
     }
 
@@ -367,10 +358,10 @@ loadModel ∷ M.ScatterR → DSL Unit
 loadModel r =
   H.modify _
     { abscissa = fromSelected (Just r.abscissa)
-    , abscissaAgg = false × fromSelected (Just r.abscissaAggregation)
+    , abscissaAgg = fromSelected (Just r.abscissaAggregation)
     , ordinate = fromSelected (Just r.ordinate)
-    , ordinateAgg = false × fromSelected (Just r.ordinateAggregation)
+    , ordinateAgg = fromSelected (Just r.ordinateAggregation)
     , size = fromSelected r.size
-    , sizeAgg = false × fromSelected r.sizeAggregation
+    , sizeAgg = fromSelected r.sizeAggregation
     , series = fromSelected r.series
     }

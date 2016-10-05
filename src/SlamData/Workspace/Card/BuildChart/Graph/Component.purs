@@ -4,7 +4,7 @@ module SlamData.Workspace.Card.BuildChart.Graph.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
+import Data.Lens ((^?), (^.), (?~), (.~))
 import Data.Lens as Lens
 import Data.List as List
 
@@ -133,14 +133,11 @@ renderSize state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Node size" ]
-    , HH.div_
-        [ BCI.pickerInput
-            (BCI.secondary (Just "Node size") (selecting Q.Size))
-            state.size
-        , BCI.aggregationInput
-            (BCI.dropdown Nothing (selecting Q.SizeAgg))
-            state.sizeAgg
-        ]
+    , BCI.pickerWithSelect
+        (BCI.secondary (Just "Node size") (selecting Q.Size))
+        state.size
+        (BCI.aggregation (Just "Node size aggregation") (selecting Q.SizeAgg))
+        state.sizeAgg
     ]
 
 renderColor ∷ ST.State → HTML
@@ -222,7 +219,7 @@ cardEval = case _ of
         , target: _
         , size: st.size ^. _value
         , color: st.color ^. _value
-        , sizeAggregation: snd st.sizeAgg ^. _value
+        , sizeAggregation: st.sizeAgg ^. _value
         , minSize: st.minSize
         , maxSize: st.maxSize
         , circular: st.circular
@@ -283,8 +280,8 @@ graphBuilderEval = case _ of
     BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
   updateSelect l = case _ of
-    BCI.Open _    → H.modify (l ∘ _1 .~ true)
-    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
+    BCI.Open _    → pure unit
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = coproduct peekPicker (const (pure unit))
@@ -311,7 +308,7 @@ loadModel r =
     { source = fromSelected (Just r.source)
     , target = fromSelected (Just r.target)
     , size = fromSelected r.size
-    , sizeAgg = false × fromSelected r.sizeAggregation
+    , sizeAgg = fromSelected r.sizeAggregation
     , color = fromSelected r.color
     }
 
@@ -334,25 +331,26 @@ synchronizeChildren = do
 
     newSize =
       setPreviousValueFrom (Just st.size)
-      $ autoSelect
-      $ newSelect
-      $ ifSelected [newTarget]
-      $ st.axes.value
+        $ autoSelect
+        $ newSelect
+        $ ifSelected [newTarget]
+        $ st.axes.value
+
     newColor =
       setPreviousValueFrom (Just st.color)
-      $ autoSelect
-      $ newSelect
-      $ ifSelected [newTarget]
-      $ st.axes.category ⊝ newSource ⊝ newTarget
+        $ autoSelect
+        $ newSelect
+        $ ifSelected [newTarget]
+        $ st.axes.category ⊝ newSource ⊝ newTarget
 
     newSizeAggregation =
-      setPreviousValueFrom (Just $ snd st.sizeAgg)
-      $ nonMaybeAggregationSelect
+      setPreviousValueFrom (Just st.sizeAgg)
+        $ nonMaybeAggregationSelect
 
   H.modify _
     { source = newSource
     , target = newTarget
     , size = newSize
-    , sizeAgg = false × newSizeAggregation
+    , sizeAgg = newSizeAggregation
     , color = newColor
     }

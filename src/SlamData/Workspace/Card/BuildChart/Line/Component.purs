@@ -4,7 +4,7 @@ module SlamData.Workspace.Card.BuildChart.Line.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (.~), (?~), _1, _2)
+import Data.Lens ((^?), (^.), (.~), (?~))
 import Data.Lens as Lens
 import Data.List as List
 import Data.Int as Int
@@ -133,14 +133,11 @@ renderValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure #1" ]
-    , HH.div_
-        [ BCI.pickerInput
-            (BCI.secondary (Just "Measure1") (selecting Q.Value))
-            state.value
-        , BCI.aggregationInput
-            (BCI.dropdown Nothing (selecting Q.ValueAgg))
-            state.valueAgg
-        ]
+    , BCI.pickerWithSelect
+        (BCI.secondary (Just "Measure #1") (selecting Q.Value))
+        state.value
+        (BCI.aggregation (Just "Measure Aggregation #1") (selecting Q.ValueAgg))
+        state.valueAgg
     ]
 
 renderSecondValue ∷ ST.State → HTML
@@ -150,14 +147,11 @@ renderSecondValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure #2" ]
-    , HH.div_
-        [ BCI.pickerInput
-            (BCI.secondary (Just "Measure2") (selecting Q.SecondValue))
-            state.secondValue
-        , BCI.aggregationInput
-            (BCI.dropdown Nothing (selecting Q.SecondValueAgg))
-            state.secondValueAgg
-        ]
+    , BCI.pickerWithSelect
+        (BCI.secondary (Just "Measure #2") (selecting Q.SecondValue))
+        state.secondValue
+        (BCI.aggregation (Just "Measure Aggregation #2") (selecting Q.SecondValueAgg))
+        state.secondValueAgg
     ]
 
 renderSeries ∷ ST.State → HTML
@@ -179,14 +173,11 @@ renderSize state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure #3" ]
-    , HH.div_
-        [ BCI.pickerInput
-            (BCI.secondary (Just "Measure3") (selecting Q.Size))
-            state.size
-        , BCI.aggregationInput
-            (BCI.dropdown Nothing (selecting Q.SizeAgg))
-            state.sizeAgg
-        ]
+    , BCI.pickerWithSelect
+        (BCI.secondary (Just "Measure #3") (selecting Q.Size))
+        state.size
+        (BCI.aggregation (Just "Measure Aggregation #3") (selecting Q.SizeAgg))
+        state.sizeAgg
     ]
 
 renderAxisLabelAngle ∷ ST.State → HTML
@@ -272,9 +263,9 @@ cardEval = case _ of
         , value: _
         , valueAggregation: _
         , secondValue: st.secondValue ^. _value
-        , secondValueAggregation: snd st.secondValueAgg ^. _value
+        , secondValueAggregation: st.secondValueAgg ^. _value
         , size: st.size ^. _value
-        , sizeAggregation: snd st.sizeAgg ^. _value
+        , sizeAggregation: st.sizeAgg ^. _value
         , series: st.series ^. _value
         , maxSize: st.maxSize
         , minSize: st.minSize
@@ -283,7 +274,7 @@ cardEval = case _ of
         }
         <$> (st.dimension ^. _value)
         <*> (st.value ^. _value)
-        <*> (snd st.valueAgg ^. _value)
+        <*> (st.valueAgg ^. _value)
     pure $ k $ Card.BuildLine model
   CC.Load (Card.BuildLine (Just model)) next → do
     loadModel model
@@ -355,8 +346,8 @@ lineBuilderEval = case _ of
     BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
   updateSelect l = case _ of
-    BCI.Open _    → H.modify (l ∘ _1 .~ true)
-    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
+    BCI.Open _    → pure unit
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = coproduct peekPicker (const (pure unit))
@@ -397,7 +388,7 @@ synchronizeChildren = do
         $ st.axes.value
 
     newValueAggregation =
-      setPreviousValueFrom (Just $ snd st.valueAgg)
+      setPreviousValueFrom (Just st.valueAgg)
         $ nonMaybeAggregationSelect
 
     newSecondValue =
@@ -409,7 +400,7 @@ synchronizeChildren = do
         ⊝ newValue
 
     newSecondValueAggregation =
-      setPreviousValueFrom (Just $ snd st.secondValueAgg)
+      setPreviousValueFrom (Just st.secondValueAgg)
         $ nonMaybeAggregationSelect
 
     newSize =
@@ -422,7 +413,7 @@ synchronizeChildren = do
         ⊝ newSecondValue
 
     newSizeAggregation =
-      setPreviousValueFrom (Just $ snd st.sizeAgg)
+      setPreviousValueFrom (Just st.sizeAgg)
         $ nonMaybeAggregationSelect
 
     newSeries =
@@ -436,11 +427,11 @@ synchronizeChildren = do
   H.modify _
     { dimension = newDimension
     , value = newValue
-    , valueAgg = false × newValueAggregation
+    , valueAgg = newValueAggregation
     , secondValue = newSecondValue
-    , secondValueAgg = false × newSecondValueAggregation
+    , secondValueAgg = newSecondValueAggregation
     , size = newSize
-    , sizeAgg = false × newSizeAggregation
+    , sizeAgg = newSizeAggregation
     , series = newSeries
     }
 
@@ -448,11 +439,11 @@ loadModel ∷ M.LineR → DSL Unit
 loadModel r =
   H.modify _
     { value = fromSelected (Just r.value)
-    , valueAgg = false × fromSelected (Just r.valueAggregation)
+    , valueAgg = fromSelected (Just r.valueAggregation)
     , dimension = fromSelected (Just r.dimension)
     , secondValue = fromSelected r.secondValue
-    , secondValueAgg = false × fromSelected r.secondValueAggregation
+    , secondValueAgg = fromSelected r.secondValueAggregation
     , series = fromSelected r.series
     , size = fromSelected r.size
-    , sizeAgg = false × fromSelected r.sizeAggregation
+    , sizeAgg = fromSelected r.sizeAggregation
     }

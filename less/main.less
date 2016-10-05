@@ -319,13 +319,13 @@ form.chart-configure-form {
         div {
             width: ~"calc(100% - 120px)";
             display: inline-block;
-            .form-control {
-                width: ~"calc(100% - 40px)";
-                &.aggregation {
-                    width: 40px;
-                    height: 34px;
-                    font-weight: bold;
-                }
+
+            .form-control:nth-child(1) {
+              border-right: none;
+              width: 80%;
+            }
+            .form-control:nth-child(2) {
+              width: 20%;
             }
         }
     }
