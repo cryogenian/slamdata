@@ -11,7 +11,7 @@ See the [Use with Quasar](#use-with-quasar) section for next steps.
 
 ## Building from source
 
-Building SlamData requires [PureScript 0.8.5](https://github.com/purescript/purescript/releases/tag/v0.8.5) or newer and Node.js v4.1.0 or newer.
+Building SlamData requires Node.js v4.1.0 or newer. The app is written in [PureScript](http://www.purescript.org/), the appropriate version of the PureScript compiler will be installed as part of the `npm` dependencies (see below).
 
 #### Prerequisites
 
