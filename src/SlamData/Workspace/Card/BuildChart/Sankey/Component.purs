@@ -4,7 +4,7 @@ module SlamData.Workspace.Card.BuildChart.Sankey.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (?~), (.~), _1, _2)
+import Data.Lens ((^?), (^.), (?~), (.~))
 import Data.Lens as Lens
 import Data.List as List
 
@@ -49,7 +49,6 @@ sankeyBuilderComponent = CC.makeCardComponent
   , _State: CC._BuildSankeyState
   , _Query: CC.makeQueryPrism' CC._BuildSankeyQuery
   }
-
 
 render ∷ ST.State → HTML
 render state =
@@ -128,14 +127,11 @@ renderValue state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Weight" ]
-    , HH.div_
-        [ BCI.pickerInput
-            (BCI.secondary (Just "Weight") (selecting Q.Value))
-            state.value
-        , BCI.aggregationInput
-            (BCI.dropdown Nothing (selecting Q.ValueAgg))
-            state.valueAgg
-        ]
+    , BCI.pickerWithSelect
+        (BCI.secondary (Just "Weight") (selecting Q.Value))
+        state.value
+        (BCI.aggregation (Just "Weight Aggregation") (selecting Q.ValueAgg))
+        state.valueAgg
     ]
 
 eval ∷ Q.QueryC ~> DSL
@@ -164,7 +160,7 @@ cardEval = case _ of
         <$> (st.source ^. _value)
         <*> (st.target ^. _value)
         <*> (st.value ^.  _value)
-        <*> (snd st.valueAgg ^. _value)
+        <*> (st.valueAgg ^. _value)
     pure $ k $ Card.BuildSankey model
   CC.Load (Card.BuildSankey model) next → do
     for_ model loadModel
@@ -201,8 +197,8 @@ chartEval (Q.Select sel next) = do
     BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
   updateSelect l = case _ of
-    BCI.Open _    → H.modify (l ∘ _1 .~ true)
-    BCI.Choose a  → H.modify (l ∘ _2 ∘ _value .~ a) *> raiseUpdate
+    BCI.Open _    → pure unit
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = coproduct peekPicker (const (pure unit))
@@ -249,14 +245,14 @@ synchronizeChildren = void do
         $ st.axes.value
 
     newValueAggregation =
-      setPreviousValueFrom (Just $ snd st.valueAgg)
+      setPreviousValueFrom (Just st.valueAgg)
         $ nonMaybeAggregationSelect
 
   H.modify _
     { source = newSource
     , target = newTarget
     , value = newValue
-    , valueAgg = false × newValueAggregation
+    , valueAgg = newValueAggregation
     }
 
 loadModel ∷ M.SankeyR → DSL Unit
@@ -265,5 +261,5 @@ loadModel r =
     { source = fromSelected (Just r.source)
     , target = fromSelected (Just r.target)
     , value = fromSelected (Just r.value)
-    , valueAgg = false × fromSelected (Just r.valueAggregation)
+    , valueAgg = fromSelected (Just r.valueAggregation)
     }

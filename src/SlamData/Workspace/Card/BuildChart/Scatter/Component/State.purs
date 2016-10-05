@@ -14,7 +14,7 @@ import SlamData.Workspace.Card.BuildChart.Scatter.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Scatter.Component.Query (QueryC, Selection)
 import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.BuildChart.Inputs (Select', PickerOptions)
+import SlamData.Workspace.Card.BuildChart.Inputs (PickerOptions)
 
 type State =
   { axes ∷ Axes
@@ -22,11 +22,11 @@ type State =
   , minSize ∷ Number
   , maxSize ∷ Number
   , abscissa ∷ Select JCursor
-  , abscissaAgg ∷ Select' (Maybe Aggregation)
+  , abscissaAgg ∷ Select (Maybe Aggregation)
   , ordinate ∷ Select JCursor
-  , ordinateAgg ∷ Select' (Maybe Aggregation)
+  , ordinateAgg ∷ Select (Maybe Aggregation)
   , size ∷ Select JCursor
-  , sizeAgg ∷ Select' (Maybe Aggregation)
+  , sizeAgg ∷ Select (Maybe Aggregation)
   , series ∷ Select JCursor
   , picker ∷ Maybe (PickerOptions JCursor Selection)
   }
@@ -38,11 +38,11 @@ initialState =
   , minSize: 10.0
   , maxSize: 50.0
   , abscissa: emptySelect
-  , abscissaAgg: false × emptySelect
+  , abscissaAgg: emptySelect
   , ordinate: emptySelect
-  , ordinateAgg: false × emptySelect
+  , ordinateAgg: emptySelect
   , size: emptySelect
-  , sizeAgg: false × emptySelect
+  , sizeAgg: emptySelect
   , series: emptySelect
   , picker: Nothing
   }
