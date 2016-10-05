@@ -18,7 +18,9 @@ limitations under the License.
 module SlamData.Workspace.Card.Chart.PivotTableRenderer.Model where
 
 import SlamData.Prelude
+
 import Data.Argonaut (Json, decodeJson, (~>), (:=), (.?), jsonEmptyObject)
+
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 

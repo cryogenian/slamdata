@@ -5,8 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Graph.Eval
 
 import SlamData.Prelude
 
-
-import Data.Argonaut (JArray, JCursor, Json, cursorGet, toString)
+import Data.Argonaut (JArray, JCursor, Json, cursorGet)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Foreign as FR
@@ -29,13 +28,12 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Graph.Model (Model, GraphR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Graph))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.Axis (Axis, analyzeJArray)
-import SlamData.Workspace.Card.BuildChart.Axis as Ax
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.BuildChart.Semantics as Sem
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -55,7 +53,10 @@ eval (Just conf) resource = do
   pure $ Port.ChartInstructions (buildGraph conf records) Graph
 
 
-type EdgeItem = String × String
+type EdgeItem =
+  { source ∷ String
+  , target ∷  String
+  }
 
 type GraphItem =
   { size ∷ Maybe Number
@@ -72,90 +73,99 @@ buildGraphData ∷ JArray → M.Map JCursor Axis → GraphR → GraphData
 buildGraphData records axesMap r =
   nodes × edges
   where
-  rawEdges ∷ Array EdgeItem
-  rawEdges =
-    A.nub $ A.catMaybes $ A.zipWith edgeZipper sources targets
+  -- | maybe color >> maybe source × maybe target >> values
+  dataMap ∷ Maybe String >> Maybe String × Maybe String >> Array Number
+  dataMap =
+    foldl dataMapFoldFn M.empty records
 
-  edgeZipper ∷ Maybe String → Maybe String → Maybe EdgeItem
-  edgeZipper s t = Tuple <$> s <*> t
+  dataMapFoldFn
+    ∷ Maybe String >> Maybe String × Maybe String >> Array Number
+    → Json
+    → Maybe String >> Maybe String × Maybe String >> Array Number
+  dataMapFoldFn acc js =
+    let
+      mbSource =
+        map Sem.printSemantics $ Sem.analyzeJson =<< cursorGet r.source js
+      mbTarget =
+        map Sem.printSemantics $ Sem.analyzeJson =<< cursorGet r.target js
+      mbColor =
+        map Sem.printSemantics $ Sem.analyzeJson =<< flip cursorGet js =<< r.color
+      values =
+        foldMap A.singleton
+          $ Sem.semanticsToNumber =<< Sem.analyzeJson =<< flip cursorGet js =<< r.size
 
-  sources ∷ Array (Maybe String)
-  sources =
-    foldMap (pure ∘ map Sem.printSemantics)
-      $ foldMap Ax.runAxis
-      $ M.lookup r.source axesMap
+      colorAlterFn
+        ∷ Maybe (Maybe String × Maybe String >> Array Number)
+        → Maybe (Maybe String × Maybe String >> Array Number)
+      colorAlterFn Nothing =
+        Just $ M.singleton (mbSource × mbTarget) values
+      colorAlterFn (Just color) =
+        Just $ M.alter alterSourceTargetFn (mbSource × mbTarget) color
 
-  targets ∷ Array (Maybe String)
-  targets =
-    foldMap (pure ∘ map Sem.printSemantics)
-      $ foldMap Ax.runAxis
-      $ M.lookup r.target axesMap
+      alterSourceTargetFn
+        ∷ Maybe (Array Number)
+        → Maybe (Array Number)
+      alterSourceTargetFn Nothing = Just values
+      alterSourceTargetFn (Just arr) = Just $ arr ⊕ values
+    in
+     M.alter colorAlterFn mbColor acc
 
-  nodes ∷ Array GraphItem
-  nodes =
-    A.nubBy (\r1 r2 → r1.name ≡ r2.name)
-      $ map (\(source × target × category) →
-              let
-                value = M.lookup (source × category) valueMap
-                size = map relativeSize value
-              in
-               { source
-               , target
-               , value
-               , size
-               , category
-               , name:
-                 (map (\s → "edge source:" ⊕ s) source)
-                 ⊕ (map (\c → ":category:" ⊕ c) category)
-              })
-      $ A.zip (sources ⊕ nothingTail sources)
-      $ A.zip (targets ⊕ nothingTail targets)
-      $ categories ⊕ nothingTail categories
+  rawNodes ∷ Array GraphItem
+  rawNodes =
+    foldMap mkNodes $ M.toList dataMap
 
-  edgeMap ∷ M.Map String (Array String)
-  edgeMap = foldl foldFn M.empty nodes
+  mkNodes
+    ∷ Maybe String × ((Maybe String × Maybe String) >> Array Number)
+    → Array GraphItem
+  mkNodes (color × stMap) =
+    foldMap (mkNode color) $ M.toList stMap
 
-  foldFn ∷ M.Map String (Array String) → GraphItem → M.Map String (Array String)
-  foldFn acc { source, target, name} = case name of
-    Nothing → acc
-    Just n →
-      maybe id (M.alter (alterFn n)) target
-      $ maybe id (M.alter (alterFn n)) source
-      $ acc
+  mkNode
+    ∷ Maybe String
+    → (Maybe String × Maybe String) × Array Number
+    → Array GraphItem
+  mkNode category ((source × target) × values) =
+    [ { size: Nothing
+      , source
+      , target
+      , value: map (\ag → Ag.runAggregation ag values) r.sizeAggregation
+      , category
+      , name: mkName source target category
+      } ]
 
-  alterFn ∷ String → Maybe (Array String) → Maybe (Array String)
-  alterFn s Nothing = pure $ A.singleton s
-  alterFn s (Just arr) = pure $ A.cons s arr
+  mkName ∷ Maybe String → Maybe String → Maybe String → Maybe String
+  mkName source target category =
+    (map (\s → "source:" ⊕ s) source)
+    ⊕ (pure $ foldMap (\t → ":target:" ⊕ t) target)
+    ⊕ (pure $ foldMap (\c → ":category:" ⊕ c) category)
 
-  maxLength ∷ Int
-  maxLength =
-    fromMaybe zero
-    $ F.maximum
-      [ A.length categories
-      , A.length sources
-      , A.length targets
-      ]
+  edges ∷ Array EdgeItem
+  edges =
+    foldMap mkEdges $ M.toList dataMap
 
-  nothingTail ∷ ∀ a. Array (Maybe a) → Array (Maybe a)
-  nothingTail heads = do
-    guard (maxLength > A.length heads)
-    map (const Nothing) $ A.range 0 (maxLength - A.length heads)
+  mkEdges
+    ∷ Maybe String × ((Maybe String × Maybe String) >> Array Number)
+    → Array EdgeItem
+  mkEdges (color × stMap) =
+    foldMap (mkEdge color) $ M.keys stMap
 
-  categories ∷ Array (Maybe String)
-  categories =
-    foldMap (pure ∘ map Sem.printSemantics)
-      $ foldMap Ax.runAxis
-      $ r.color
-      >>= flip M.lookup axesMap
-
-  names ∷ Array (Maybe String)
-  names = sources ⊕ targets
+  mkEdge
+    ∷ Maybe String
+    → Maybe String × Maybe String
+    → Array EdgeItem
+  mkEdge category (mbSource × mbTarget) =
+    foldMap A.singleton do
+      source ← mkName mbSource mbTarget category
+      target ← mkName mbTarget mbSource category
+      pure { source, target }
 
   minimumValue ∷ Number
-  minimumValue = fromMaybe (-1.0 * infinity) $ F.minimum valueMap
+  minimumValue =
+    fromMaybe (-1.0 * infinity) $ F.minimum $ A.catMaybes $ map _.value rawNodes
 
   maximumValue ∷ Number
-  maximumValue = fromMaybe infinity $ F.maximum valueMap
+  maximumValue =
+    fromMaybe infinity $ F.maximum $ A.catMaybes $ map _.value rawNodes
 
   distance ∷ Number
   distance = maximumValue - minimumValue
@@ -170,37 +180,8 @@ buildGraphData records axesMap r =
     | otherwise =
       r.maxSize - sizeDistance / distance * (maximumValue - val)
 
-  edges ∷ Array EdgeItem
-  edges = do
-    (s × t) ← rawEdges
-    ss ← fromMaybe [ ] $ M.lookup s edgeMap
-    tt ← fromMaybe [ ] $ M.lookup t edgeMap
-    pure $ ss × tt
-
-  valueMap ∷ M.Map ((Maybe String) × (Maybe String)) Number
-  valueMap = map (Ag.runAggregation $ fromMaybe Ag.Sum r.sizeAggregation) valueArrMap
-
-  valueArrMap ∷ M.Map ((Maybe String) × (Maybe String)) (Array Number)
-  valueArrMap =
-    foldl valueFoldFn M.empty records
-
-  valueFoldFn
-    ∷ M.Map ((Maybe String) × (Maybe String)) (Array Number)
-    → Json
-    → M.Map ((Maybe String) × (Maybe String)) (Array Number)
-  valueFoldFn acc js =
-    let
-      mbSource = toString =<< cursorGet r.source js
-      mbCategory = toString =<< flip cursorGet js =<< r.color
-      mbValue = semanticsToNumber =<< analyzeJson =<< flip cursorGet js =<< r.size
-
-      valueAlterFn ∷ Maybe Number → Maybe (Array Number) → Maybe (Array Number)
-      valueAlterFn (Just a) Nothing = Just [a]
-      valueAlterFn (Just a) (Just arr) = Just $ A.cons a arr
-      valueAlterFn _ mbArr = mbArr
-    in
-      M.alter (valueAlterFn mbValue) (mbSource × mbCategory) acc
-
+  nodes ∷ Array GraphItem
+  nodes = rawNodes <#> \r → r{size = map relativeSize r.value}
 
 sourceRgx ∷ Rgx.Regex
 sourceRgx = unsafePartial fromRight $ Rgx.regex "source:([^:]+)" Rgx.noFlags
@@ -264,7 +245,7 @@ buildGraph r records = do
       E.layoutAnimation true
 
     E.buildItems items
-    E.buildLinks links
+    E.links $ snd graphData
 
     E.buildCategories $ for_ legendNames $ E.addCategory ∘ E.name
     E.lineStyle $ E.normal $ E.colorSource
@@ -278,11 +259,6 @@ buildGraph r records = do
 
   legendNames ∷ Array String
   legendNames = A.nub $ A.catMaybes $ map _.category $ fst graphData
-
-  links ∷ DSL ETP.LinksI
-  links = for_ (snd graphData) \(sName × tName) → E.addLink do
-    E.sourceName sName
-    E.targetName tName
 
   items ∷ DSL ETP.ItemsI
   items = for_ (fst graphData) \item → E.addItem do

@@ -5,9 +5,8 @@ module SlamData.Workspace.Card.BuildChart.Sankey.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, JCursor, Json, cursorGet, toString)
+import Data.Argonaut (JArray, Json, cursorGet)
 import Data.Array as A
-import Data.Foldable as F
 import Data.Lens ((^?))
 import Data.Map as M
 
@@ -20,12 +19,11 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Sankey.Model (Model, SankeyR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Sankey))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
-import SlamData.Workspace.Card.BuildChart.Axis (Axis, analyzeJArray)
-import SlamData.Workspace.Card.BuildChart.Axis as Ax
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.BuildChart.Semantics as Sem
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -92,67 +90,41 @@ buildSankey r records = do
 buildSankeyData ∷ JArray → SankeyR → SankeyData
 buildSankeyData records r = items
   where
-  axesMap ∷ M.Map JCursor Axis
-  axesMap = analyzeJArray records
+  --| source × target >> values
+  dataMap ∷ (String × String) >> Array Number
+  dataMap =
+    foldl dataMapFoldFn M.empty records
 
-  valueMap ∷ M.Map (String × String) Number
-  valueMap = map (Ag.runAggregation r.valueAggregation) valueArrMap
-
-  valueArrMap ∷ M.Map (String × String) (Array Number)
-  valueArrMap = foldl valueFoldFn M.empty records
-
-  valueFoldFn
+  dataMapFoldFn
     ∷ M.Map (String × String) (Array Number)
     → Json
     → M.Map (String × String) (Array Number)
-  valueFoldFn acc js =
+  dataMapFoldFn acc js =
     let
-      mbSource = toString =<< cursorGet r.source js
-      mbTarget = toString =<< cursorGet r.target js
-      mbValue =
-        Sem.semanticsToNumber =<< Sem.analyzeJson =<< cursorGet r.value js
+      mbSource =
+        map Sem.printSemantics $ Sem.analyzeJson =<< cursorGet r.source js
+      mbTarget =
+        map Sem.printSemantics $ Sem.analyzeJson =<< cursorGet r.target js
+      values =
+        foldMap A.singleton
+          $ Sem.semanticsToNumber =<< Sem.analyzeJson =<< cursorGet r.value js
+
+      alterFn ∷ Maybe (Array Number) → Maybe (Array Number)
+      alterFn Nothing = Just values
+      alterFn (Just arr) = Just $ arr ⊕ values
     in
-      case mbSource × mbTarget × mbValue of
-        Just source × Just target × Just value →
-          M.alter (valueAlterFn value) (source × target) acc
+      case mbSource × mbTarget of
+        Just source × Just target →
+          M.alter alterFn (source × target) acc
         _ → acc
-
-  valueAlterFn ∷ Number → Maybe (Array Number) → Maybe (Array Number)
-  valueAlterFn a Nothing = Just [ a ]
-  valueAlterFn a (Just arr) = Just $ A.cons a arr
-
-  sources ∷ Array (Maybe String)
-  sources =
-    foldMap (pure ∘ map Sem.printSemantics)
-      $ foldMap Ax.runAxis
-      $ M.lookup r.source axesMap
-
-  targets ∷ Array (Maybe String)
-  targets =
-    foldMap (pure ∘ map Sem.printSemantics)
-      $ foldMap Ax.runAxis
-      $ M.lookup r.target axesMap
-
-
-  maxLength ∷ Int
-  maxLength =
-    fromMaybe zero
-    $ F.maximum
-      [ A.length sources
-      , A.length targets
-      ]
-
-  nothingTailed ∷ ∀ a. Array (Maybe a) → Array (Maybe a)
-  nothingTailed heads = heads ⊕ do
-    guard (maxLength > A.length heads)
-    map (const Nothing) $ A.range 0 (maxLength - A.length heads)
 
   items ∷ SankeyData
   items =
-    A.nubBy (\r1 r2 → r1.source ≡ r2.source ∧ r1.target ≡ r2.target)
-    $ A.catMaybes $ map findAndBuildItem $ A.zip (nothingTailed targets) (nothingTailed sources)
+    foldMap mkItem $ M.toList dataMap
 
-  findAndBuildItem ∷ Maybe String × Maybe String → Maybe SankeyItem
-  findAndBuildItem ((Just target) × (Just source)) =
-    {source, target, weight: _} <$> M.lookup (source × target) valueMap
-  findAndBuildItem _ = Nothing
+  mkItem ∷ (String × String) × Array Number → Array SankeyItem
+  mkItem ((source × target) × values) =
+    [ { source
+      , target
+      , weight: Ag.runAggregation r.valueAggregation values
+      } ]

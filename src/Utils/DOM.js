@@ -28,18 +28,6 @@ exports.focus = function(el) {
     };
 };
 
-exports.getBoundingClientRect = function(el) {
-    return function() {
-        return el.getBoundingClientRect();
-    };
-};
-
-exports.offsetLeft = function(el) {
-    return function() {
-       return el.offsetLeft;
-    };
-};
-
 var getTextWidth_ = function(text) {
     return function(font) {
         var canvas = document.createElement("canvas");
@@ -67,18 +55,6 @@ exports.elementEq = function(a) {
     };
 };
 
-exports.scrollTop = function(el) {
-    return function() {
-        return el.scrollTop;
-    };
-};
-
-exports.scrollLeft = function(el) {
-    return function() {
-        return el.scrollLeft;
-    };
-};
-
 exports.getOffsetClientRect = function(el) {
   return function() {
     var rect = el.getBoundingClientRect();
@@ -96,30 +72,6 @@ exports.setFontSize = function(element) {
     return function() {
       return element.style.fontSize = fontSize;
     };
-  };
-};
-
-exports.getOffsetWidth = function(element) {
-  return function() {
-    return element.offsetWidth;
-  };
-};
-
-exports.getOffsetHeight = function(element) {
-  return function() {
-    return element.offsetHeight;
-  };
-};
-
-exports.getScrollWidth = function(element) {
-  return function() {
-    return element.scrollWidth;
-  };
-};
-
-exports.getScrollHeight = function(element) {
-  return function() {
-    return element.scrollHeight;
   };
 };
 
