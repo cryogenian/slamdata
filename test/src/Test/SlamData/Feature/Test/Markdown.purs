@@ -182,7 +182,7 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
-      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender[_] AND year > :year AND country = :country"
+      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.selectBuildChart
@@ -217,7 +217,7 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
-      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender[_] AND year > :year AND country = :country"
+      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.selectBuildChart
