@@ -107,6 +107,7 @@ renderHighLOD st =
               , label: DPC.labelNode showColumn
               , render: DPC.renderNode showColumn
               , values
+              , isSelectable: DPC.isLeafPath
               }
           , initialState: H.parentState DPC.initialState
           }
@@ -123,6 +124,7 @@ renderHighLOD st =
               , label: DPC.labelNode showJCursor
               , render: DPC.renderNode showJCursor
               , values
+              , isSelectable: DPC.isLeafPath
               }
           , initialState: H.parentState DPC.initialState
           }

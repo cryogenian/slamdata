@@ -86,6 +86,7 @@ renderPicker state = case state.picker of
           , label: DPC.labelNode show
           , render: DPC.renderNode show
           , values: groupJCursors (List.fromFoldable options)
+          , isSelectable: DPC.isLeafPath
           }
       , initialState: H.parentState DPC.initialState
       }

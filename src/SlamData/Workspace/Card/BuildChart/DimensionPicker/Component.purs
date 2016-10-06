@@ -88,6 +88,7 @@ type PickerOptions s =
   , render ∷ s → MC.ItemHTML
   , title  ∷ String
   , values ∷ MCT.Tree s
+  , isSelectable ∷ List s → Boolean
   }
 
 pickerOptionsToItemSpec ∷ ∀ s. Eq s ⇒ PickerOptions s → MC.ItemSpec s s Slam
@@ -113,6 +114,9 @@ renderNode f node =
         ]
     ]
     [ HH.span_ [ HH.text (either f f node) ] ]
+
+isLeafPath ∷ ∀ a. List (Either a a) → Boolean
+isLeafPath = fromMaybe false ∘ map isRight ∘ List.last ∘ spy
 
 picker
   ∷ ∀ s
@@ -156,9 +160,11 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
               ([ HP.classes [ B.btn, B.btnPrimary ]
               , ARIA.label ""
               ] <>
-                case st.selection of
-                  Just sel → [ HE.onClick (HE.input_ (Confirm (List.reverse sel))) ]
-                  Nothing → [ HP.disabled true ])
+                case List.reverse <$> st.selection of
+                  Just sel | opts.isSelectable sel →
+                    [ HE.onClick (HE.input_ (Confirm sel)) ]
+                  _ →
+                    [ HP.disabled true ])
               [ HH.text "Confirm" ]
           ]
       ]
