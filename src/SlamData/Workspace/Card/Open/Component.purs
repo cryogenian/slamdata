@@ -73,18 +73,21 @@ openComponent mres =
       }
 
 render ∷ L.List AnyPath → State → HTML
-render initPath state =
+render initPath { levelOfDetails } =
   HH.div_
-    [ renderHighLOD initPath state
-    , renderLowLOD (CT.lightCardGlyph CT.Open) id state.levelOfDetails
+    [ renderHighLOD initPath levelOfDetails
+    , renderLowLOD (CT.lightCardGlyph CT.Open) id levelOfDetails
     ]
 
-renderHighLOD ∷ L.List AnyPath → State → HTML
-renderHighLOD initPath state =
-  HH.slot unit \_ →
-    { component: MC.component itemSpec (Just initPath)
-    , initialState: MC.initialState
-    }
+renderHighLOD ∷ L.List AnyPath → LevelOfDetails → HTML
+renderHighLOD initPath levelOfDetails =
+  HH.div
+    [ HP.classes (guard (levelOfDetails ≠ High) $> B.hidden) ]
+    [ HH.slot unit \_ →
+        { component: MC.component itemSpec (Just initPath)
+        , initialState: MC.initialState
+        }
+    ]
 
 renderItem ∷ R.Resource -> MC.ItemHTML
 renderItem r =
