@@ -63,13 +63,6 @@ decodeAxes js = do
   time ← js .? "time"
   pure {value, category, time}
 
-printAxes ∷ Axes → String
-printAxes axes =
-  "{ value: " ⊕ show axes.value ⊕ ",\n"
-  ⊕ "  time: " ⊕ show axes.time ⊕ ",\n"
-  ⊕ "  category: " ⊕ show axes.category ⊕ "\n}"
-
-
 initialAxes ∷ Axes
 initialAxes =
   { value: []
@@ -194,8 +187,3 @@ isDrilledByIndex child (ParentJCursor parent) = isDrilledByIndex' child parent
   isDrilledByIndex' (JField a1 j1) (JField a2 j2) | a1 ≡ a2 = isDrilledByIndex' j1 j2
   isDrilledByIndex' (JIndex i1 j1) (JIndex i2 j2) | i1 ≡ i2 = isDrilledByIndex' j1 j2
   isDrilledByIndex' _ _ = false
-
-instance axisShow ∷ Show Axis where
-  show (ValAxis vs) = "(ValAxis " <> show vs <> ")"
-  show (CatAxis vs) = "(CatAxis " <> show vs <> ")"
-  show (TimeAxis vs) = "(TimeAxis " <> show vs <> ")"

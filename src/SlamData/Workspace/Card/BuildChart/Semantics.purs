@@ -23,12 +23,16 @@ import Control.Monad.ST (STRef, ST, newSTRef, modifySTRef, readSTRef, pureST)
 
 import Data.Argonaut (runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>), foldJson)
 import Data.Array as A
+import Data.Enum (fromEnum, toEnum)
 import Data.Int as Int
 import Data.List (List(..), catMaybes)
 import Data.List as L
 import Data.Map (Map, keys, update, lookup, fromFoldable)
 import Data.String (take)
-import Data.String.Regex (Regex, noFlags, regex, match, test)
+import Data.String.Regex (Regex, noFlags, regex, match)
+import Data.Time as Dt
+import Data.Date as Dd
+import Data.DateTime as Ddt
 
 import Utils (stringToNumber)
 
@@ -38,7 +42,9 @@ data Semantics
   | Money Number String
   | Bool Boolean
   | Category String
-  | Time String
+  | Time Dt.Time
+  | Date Dd.Date
+  | DateTime Ddt.DateTime
 
 isValue ∷ Semantics → Boolean
 isValue (Value _) = true
@@ -64,13 +70,44 @@ isTime ∷ Semantics → Boolean
 isTime (Time _) = true
 isTime _ = false
 
+isDate ∷ Semantics → Boolean
+isDate (Date _) = true
+isDate _ = false
+
+isDateTime ∷ Semantics → Boolean
+isDateTime (DateTime _) = true
+isDateTime _ = false
+
+printTime ∷ Dt.Time → String
+printTime time =
+  let
+    hour = fromEnum $ Dt.hour time
+    minute = fromEnum $ Dt.minute time
+    second = fromEnum $ Dt.second time
+    millisecond = fromEnum $ Dt.millisecond time
+  in
+    show hour ⊕ ":" ⊕ show minute ⊕ ":" ⊕ show second ⊕ "." ⊕ show millisecond
+
+printDate ∷ Dd.Date → String
+printDate date =
+  let
+    year = fromEnum $ Dd.year date
+    month = fromEnum $ Dd.month date
+    day = fromEnum $ Dd.day date
+  in
+    show year ⊕ "-" ⊕ show month ⊕ "-" ⊕ show day
+
 printSemantics ∷ Semantics → String
 printSemantics (Value v) = show v
 printSemantics (Percent v) = show v <> "%"
 printSemantics (Money v m) = show v <> m
 printSemantics (Category s) = s
-printSemantics (Time t) = t
 printSemantics (Bool b) = show b
+printSemantics (Time t) = printTime t
+printSemantics (Date d) = printDate d
+printSemantics (DateTime (Ddt.DateTime d t)) =
+  printDate d ⊕ "T" ⊕ printTime t
+
 
 semanticsToNumber ∷ Semantics → Maybe Number
 semanticsToNumber (Value v) = pure v
@@ -157,14 +194,6 @@ isUsedAsNothing (Category "N/A") = true
 isUsedAsNothing (Category "") = true
 isUsedAsNothing _ = false
 
-instance showSemantics ∷ Show Semantics where
-  show (Value v) = "(Value " <> show v <> ")"
-  show (Percent p) = "(Percent " <> show p <> ")"
-  show (Money n s) = "(Money " <> show n <> s <> ")"
-  show (Bool b) = "(Bool " <> show b <> ")"
-  show (Category s) = "(Category " <> s <> ")"
-  show (Time t) = "(Time " <> t <> ")"
-
 instance eqSemantics ∷ Eq Semantics where
   eq (Value v) (Value v') = v == v'
   eq (Value v) _ = false
@@ -174,6 +203,10 @@ instance eqSemantics ∷ Eq Semantics where
   eq (Money _ _) _ = false
   eq (Time t) (Time t') = t == t'
   eq (Time _) _ = false
+  eq (Date d) (Date d') = d == d'
+  eq (Date _) _ = false
+  eq (DateTime dt) (DateTime dt') = dt == dt'
+  eq (DateTime dt) _ = false
   eq (Category c) (Category c') = c == c'
   eq (Category _) _ = false
   eq (Bool b) (Bool b') = b == b'
@@ -182,6 +215,10 @@ instance eqSemantics ∷ Eq Semantics where
 instance ordSemantics ∷ Ord Semantics where
   compare (Time t) (Time t') = compare t t'
   compare (Time _) _ = LT
+  compare (Date d) (Date d') = compare d d'
+  compare (Date d) _ = LT
+  compare (DateTime dt) (DateTime dt') = compare dt dt'
+  compare (DateTime dt) _ = LT
   compare (Money v a) (Money v' a') =
     case compare a a' of
       EQ → compare v v'
@@ -217,7 +254,9 @@ analyzeJson =
 
 analyzeString ∷ String → Maybe Semantics
 analyzeString str =
-      analyzeDate str
+  analyzeTime str
+  <|> analyzeDatetime str
+  <|> analyzeDate str
   <|> analyzeNumber str
   <|> analyzeMoney str
   <|> analyzePercent str
@@ -252,21 +291,64 @@ analyzeMoney str = do
   matches ← match moneyRegex str
   maybeMatch ← matches A.!! 1
   num ← maybeMatch >>= stringToNumber
-  currencySymbol ← let fstSymbol = take 1 str
-                    in if fstSymbol == ""
-                       then Nothing
-                       else pure fstSymbol
+  currencySymbol ←
+    let fstSymbol = take 1 str
+    in if fstSymbol == ""
+       then Nothing
+       else pure fstSymbol
   pure $ Money num currencySymbol
+
+datetimeRegex ∷ Regex
+datetimeRegex = unsafePartial fromRight $ regex rgxStr noFlags
+  where
+  rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9])(T| )(2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
+
+timeRegex ∷ Regex
+timeRegex = unsafePartial fromRight $ regex rgxStr noFlags
+  where
+  rgxStr = "^(2[0-3]|[0-1][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
 
 dateRegex ∷ Regex
 dateRegex = unsafePartial fromRight $ regex rgxStr noFlags
   where
-  rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
+  rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9])$"
 
 analyzeDate ∷ String → Maybe Semantics
 analyzeDate str = do
-  guard $ test dateRegex str
-  pure $ Time str
+  matches ← match dateRegex str
+  year ← (join $ matches A.!! 1) >>= Int.fromString >>= toEnum
+  month ← (join $ matches A.!! 2) >>= Int.fromString >>= toEnum
+  day ← (join $ matches A.!! 3) >>= Int.fromString >>= toEnum
+  date ← Dd.exactDate year month day
+  pure $ Date date
+
+analyzeTime ∷ String → Maybe Semantics
+analyzeTime str = do
+  matches ← match timeRegex str
+  hour ← (join $ matches A.!! 1) >>= Int.fromString >>= toEnum
+  minute ← (join $ matches A.!! 2) >>= Int.fromString >>= toEnum
+  let
+    second = fromMaybe bottom $ (join $ matches A.!! 3) >>= Int.fromString >>= toEnum
+    millisecond = fromMaybe bottom $ (join $ matches A.!! 4) >>= Int.fromString >>= toEnum
+  pure $ Time $ Dt.Time hour minute second millisecond
+
+analyzeDatetime ∷ String → Maybe Semantics
+analyzeDatetime str = do
+  matches ← match datetimeRegex str
+  year ← (join $ matches A.!! 1) >>= Int.fromString >>= toEnum
+  month ← (join $ matches A.!! 2) >>= Int.fromString >>= toEnum
+  day ← (join $ matches A.!! 3) >>= Int.fromString >>= toEnum
+  hour ← (join $ matches A.!! 5) >>= Int.fromString >>= toEnum
+  minute ← (join $ matches A.!! 6) >>= Int.fromString >>= toEnum
+  let
+    second = fromMaybe bottom $ (join $ matches A.!! 7) >>= Int.fromString >>= toEnum
+    millisecond = fromMaybe bottom $  (join $ matches A.!! 8) >>= Int.fromString >>= toEnum
+    time = Dt.Time hour minute second millisecond
+
+  date ← Dd.exactDate year month day
+  pure
+    $ DateTime
+    $ Ddt.DateTime date time
 
 jsonToSemantics ∷ Json → Map JCursor Semantics
 jsonToSemantics j = fromFoldable $ catMaybes $ map (traverse analyze) $ toPrims j
@@ -335,9 +417,17 @@ instance encodeJsonSemantics ∷ EncodeJson Semantics where
      = "type" := "category"
      ~> "value" := c
      ~> jsonEmptyObject
-  encodeJson (Time t)
+  encodeJson s@(Time t)
      = "type" := "time"
-     ~> "value" := t
+     ~> "value" := printSemantics s
+     ~> jsonEmptyObject
+  encodeJson s@(Date d)
+     = "type" := "date"
+     ~> "value" := printSemantics s
+     ~> jsonEmptyObject
+  encodeJson s@(DateTime dt)
+     = "type" := "datetime"
+     ~> "value" := printSemantics s
      ~> jsonEmptyObject
 
 instance decodeJsonSemantics ∷ DecodeJson Semantics where
@@ -345,9 +435,17 @@ instance decodeJsonSemantics ∷ DecodeJson Semantics where
     ty ← obj .? "type"
     case ty of
       "money" → Money <$> obj .? "value" <*> obj .? "currency"
-      "time" → Time <$> obj .? "value"
       "bool" → Bool <$> obj .? "value"
       "category" → Category <$> obj .? "value"
       "value" → Value <$> obj .? "value"
       "percent" → Percent <$> obj .? "value"
+      "time" → do
+        strVal ← obj .? "value"
+        maybe (Left "incorrect time") pure $ analyzeTime strVal
+      "date" → do
+        strVal ← obj .? "value"
+        maybe (Left "incorrect date") pure $ analyzeDate strVal
+      "datetime" → do
+        strVal ← obj .? "value"
+        maybe (Left "incorrect datetime") pure $ analyzeDatetime strVal
       _ → Left "incorrect type value for Semantics"
