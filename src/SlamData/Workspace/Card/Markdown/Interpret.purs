@@ -58,18 +58,17 @@ formFieldEmptyValue
   . SD.FormFieldP f a
   → VM.VarMapValue
 formFieldEmptyValue field =
-  VM.Literal
-    case field of
-      SD.TextBox tb →
-        case tb of
-          SD.PlainText _ → EJSON.string ""
-          SD.Numeric _ → EJSON.integer 0
-          SD.Date _ → EJSON.null
-          SD.Time _ _ → EJSON.null
-          SD.DateTime _ _ → EJSON.null
-      SD.CheckBoxes _ _ → EJSON.array []
-      SD.RadioButtons _ _ → EJSON.null
-      SD.DropDown _ _ → EJSON.null
+  case field of
+    SD.TextBox tb → VM.Literal
+      case tb of
+        SD.PlainText _ → EJSON.string ""
+        SD.Numeric _ → EJSON.integer 0
+        SD.Date _ → EJSON.null
+        SD.Time _ _ → EJSON.null
+        SD.DateTime _ _ → EJSON.null
+    SD.CheckBoxes _ _ → VM.SetLiteral []
+    SD.RadioButtons _ _ → VM.Literal EJSON.null
+    SD.DropDown _ _ → VM.Literal EJSON.null
 
 formFieldValueToVarMapValue
   ∷ ∀ m
@@ -77,9 +76,9 @@ formFieldValueToVarMapValue
   ⇒ SDS.FormFieldValue VM.VarMapValue
   → m (M.Maybe VM.VarMapValue)
 formFieldValueToVarMapValue v =
-  runMaybeT ∘ map VM.Literal $
+  runMaybeT $
     case v of
-      SD.TextBox tb → do
+      SD.TextBox tb → VM.Literal <$> do
         tb' ← liftMaybe $ SD.traverseTextBox decompose tb
         case tb' of
           SD.PlainText (Identity x) → pure $ EJSON.string x
@@ -89,10 +88,10 @@ formFieldValueToVarMapValue v =
           SD.DateTime _ (Identity localDateTime) →
             pure $ EJSON.timestamp $ either (const "") id $ mkdate localDateTime
       SD.CheckBoxes (Identity sel) _ →
-        pure ∘ EJSON.array ∘ A.fromFoldable $ L.mapMaybe getLiteral sel
+        pure ∘ VM.SetLiteral ∘ A.fromFoldable $ L.mapMaybe getLiteral sel
       SD.RadioButtons (Identity x) _ →
-        getLiteral x
-      SD.DropDown mx _ → do
+        VM.Literal <$> getLiteral x
+      SD.DropDown mx _ → VM.Literal <$> do
         Identity x ← liftMaybe mx
         getLiteral x
 
