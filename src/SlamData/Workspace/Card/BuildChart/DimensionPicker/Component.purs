@@ -98,6 +98,22 @@ pickerOptionsToItemSpec { label, render, values } =
   , id: id
   }
 
+labelNode ∷ ∀ s. (s → String) → Either s s → String
+labelNode f = either f f
+
+renderNode ∷ ∀ s. (s → String) → Either s s → MC.ItemHTML
+renderNode f node =
+  HH.div
+    [ HP.classes
+        [ HH.className "sd-miller-column-item-inner"
+        , either
+            (const $ HH.className "sd-miller-column-item-node")
+            (const $ HH.className "sd-miller-column-item-leaf")
+            node
+        ]
+    ]
+    [ HH.span_ [ HH.text (either f f node) ] ]
+
 picker
   ∷ ∀ s
   . Eq s
@@ -152,7 +168,7 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
     Dismiss next → pure next
     Confirm _ next → pure next
 
-  peek ∷ ∀ x. MC.Query s x -> DSL s Unit
+  peek ∷ ∀ x. MC.Query s x → DSL s Unit
   peek = case _ of
     MC.Populate sel _ →
       H.modify (_ { selection = Just sel })

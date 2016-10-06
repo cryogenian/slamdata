@@ -107,8 +107,8 @@ renderPicker state = case state.picker of
               Q.Size _        → "Choose measure #3"
               Q.Series _      → "Choose series"
               _ → ""
-          , label: show
-          , render: HH.text ∘ show
+          , label: DPC.labelNode show
+          , render: DPC.renderNode show
           , values: groupJCursors (List.fromFoldable options)
           }
       , initialState: H.parentState DPC.initialState

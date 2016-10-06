@@ -25,10 +25,14 @@ import Data.Argonaut as J
 import Data.List (List(..), (:))
 import Data.Map as Map
 
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Node (discriminateNodes, unNode)
+
+type JCursorNode = Either J.JCursor J.JCursor
+
 groupJCursors
   ∷ List J.JCursor
-  → Cofree List J.JCursor
-groupJCursors ls = Cofree.mkCofree J.JCursorTop (group ls)
+  → Cofree List JCursorNode
+groupJCursors ls = discriminateNodes $ Cofree.mkCofree J.JCursorTop (group ls)
   where
   group l =
     fin (foldl go Map.empty l)
@@ -55,11 +59,11 @@ groupJCursors ls = Cofree.mkCofree J.JCursorTop (group ls)
       k
 
 flattenJCursors
-  ∷ List J.JCursor
+  ∷ List JCursorNode
   → J.JCursor
 flattenJCursors Nil = J.JCursorTop
 flattenJCursors (c : cs) =
-  case c of
+  case unNode c of
     J.JCursorTop  → flattenJCursors cs
     J.JField ix _ → J.JField ix (flattenJCursors cs)
     J.JIndex ix _ → J.JIndex ix (flattenJCursors cs)

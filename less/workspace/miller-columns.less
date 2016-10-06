@@ -1,4 +1,4 @@
-div.sd-miller-columns {
+.sd-miller-columns {
   overflow-x: auto;
   overflow-y: hidden;
   width: 100%;
@@ -6,7 +6,7 @@ div.sd-miller-columns {
   white-space: nowrap;
 }
 
-ul.sd-miller-column {
+.sd-miller-column {
   display: inline-block;
   list-style: none;
   padding: 0;
@@ -52,4 +52,35 @@ ul.sd-miller-column {
     margin-left: 8px;
   }
 
+}
+
+.sd-miller-column-item-inner {
+  span {
+    display: block;
+    position: relative;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &.sd-miller-column-item-node {
+    span {
+      width: ~"calc(100% - 16px)";
+    }
+
+    &::after {
+      position: absolute;
+      right: 6px;
+      top: 10px;
+
+      content: "\e080";
+      font-family: "Glyphicons Halflings";
+      font-style: normal;
+      font-weight: 400;
+      line-height: 1;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+  }
 }

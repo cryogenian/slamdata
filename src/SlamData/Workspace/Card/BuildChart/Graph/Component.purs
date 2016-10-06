@@ -95,8 +95,8 @@ renderPicker state = case state.picker of
               Q.Size _      → "Choose node size"
               Q.Color _     → "Choose node category"
               _ → ""
-          , label: show
-          , render: HH.text ∘ show
+          , label: DPC.labelNode show
+          , render: DPC.renderNode show
           , values: groupJCursors (List.fromFoldable options)
           }
       , initialState: H.parentState DPC.initialState

@@ -102,8 +102,8 @@ renderPicker state = case state.picker of
               Q.Stack _    → "Choose stack"
               Q.Parallel _ → "Choose parallel"
               _ → ""
-          , label: show
-          , render: HH.text ∘ show
+          , label: DPC.labelNode show
+          , render: DPC.renderNode show
           , values: groupJCursors (List.fromFoldable options)
           }
       , initialState: H.parentState DPC.initialState

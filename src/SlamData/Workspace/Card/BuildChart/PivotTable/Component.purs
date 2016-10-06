@@ -104,8 +104,8 @@ renderHighLOD st =
         HH.slot' PCS.cpCol unit \_ →
           { component: DPC.picker
               { title: "Choose column"
-              , label: showColumn
-              , render: HH.text ∘ showColumn
+              , label: DPC.labelNode showColumn
+              , render: DPC.renderNode showColumn
               , values
               }
           , initialState: H.parentState DPC.initialState
@@ -120,8 +120,8 @@ renderHighLOD st =
         HH.slot' PCS.cpDim unit \_ →
           { component: DPC.picker
               { title: "Choose dimension"
-              , label: showJCursor
-              , render: HH.text ∘ showJCursor
+              , label: DPC.labelNode showJCursor
+              , render: DPC.renderNode showJCursor
               , values
               }
           , initialState: H.parentState DPC.initialState
