@@ -90,15 +90,17 @@ renderItem ∷ R.Resource -> MC.ItemHTML
 renderItem r =
   HH.div
     [ HP.classes
-        [ HH.className "sd-open-item"
+        [ HH.className "sd-miller-column-item-inner"
         , either
-            (const $ HH.className "sd-open-item-node")
-            (const $ HH.className "sd-open-item-leaf")
+            (const $ HH.className "sd-miller-column-item-node")
+            (const $ HH.className "sd-miller-column-item-leaf")
             (R.getPath r)
         ]
     ]
-    [ glyphForResource r
-    , HH.span_ [ HH.text (R.resourceName r) ]
+    [ HH.span_
+        [ glyphForResource r
+        , HH.text (R.resourceName r)
+        ]
     ]
 
 glyphForResource ∷ R.Resource → MC.ItemHTML

@@ -3,35 +3,8 @@
   height: 100%;
   > div { height: 100%; }
 
-  .sd-open-item {
-    span {
-      position: absolute;
-      left: 30px;
-      width: ~"calc(100% - 30px)";
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    &.sd-open-item-node {
-      span {
-        width: ~"calc(100% - 50px)";
-      }
-
-      &::after {
-        position: absolute;
-        right: 6px;
-        top: 10px;
-
-        content: "\e080";
-        font-family: "Glyphicons Halflings";
-        font-style: normal;
-        font-weight: 400;
-        line-height: 1;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-    }
+  .sd-miller-column-item-inner i.glyphicon {
+    margin-right: 8px;
   }
 
   // &.loading {
