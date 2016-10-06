@@ -116,7 +116,7 @@ renderNode f node =
     [ HH.span_ [ HH.text (either f f node) ] ]
 
 isLeafPath ∷ ∀ a. List (Either a a) → Boolean
-isLeafPath = fromMaybe false ∘ map isRight ∘ List.last ∘ spy
+isLeafPath = fromMaybe false ∘ map isRight ∘ List.last
 
 picker
   ∷ ∀ s
