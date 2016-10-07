@@ -85,6 +85,9 @@ nodeWithExactAriaLabel = nodeWithExactAttribute "aria-label"
 nodeWithAriaLabel ∷ String → String → String
 nodeWithAriaLabel = nodeWithAttribute "aria-label"
 
+nodeAtPosition ∷ Int → String → String
+nodeAtPosition pos name = name ⊕ "[position()=" ⊕ show pos ⊕ "]"
+
 anyWithAttributeWithAnyValue ∷ String → String
 anyWithAttributeWithAnyValue = nodeWithAttributeWithAnyValue any
 
