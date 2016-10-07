@@ -111,6 +111,7 @@ component ispec initial =
   renderColumn colPath items selected =
     HH.ul
       [ HP.class_ (HH.className "sd-miller-column")
+      , ARIA.label "Column"
       , HP.ref (\_ → H.action Extended)
       ]
       $ A.fromFoldable (renderItem colPath selected <$> items)
@@ -125,7 +126,7 @@ component ispec initial =
       HH.li
         [ HE.onClick $ HE.input_ $ Populate (ispec.id item : colPath)
         , HP.title label
-        , ARIA.label label
+        , ARIA.label ("Select " <> label)
         , HP.classes
             $ (guard isSelected $> HH.className "selected")
             <> (guard isTip $> HH.className "tip")
