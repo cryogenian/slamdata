@@ -151,7 +151,9 @@ component ispec initial =
     -- if it differs after a `load` completes we know a competing `load` has
     -- been triggered in the mean time, and we can just abandon this result.
     --
-    -- TODO: use fork instead so we can just cancel?
+    -- We can't just use `fork` here since we need to continue performing
+    -- actions in `ComponentDSL` after the load completes, and there's no
+    -- `MonadFork` instance for `ComponentDSL`.
     currentCycle' ← H.gets _.cycle
     when (currentCycle == currentCycle') do
       let
