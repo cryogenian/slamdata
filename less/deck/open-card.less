@@ -1,44 +1,18 @@
 .sd-card-open {
 
-  > div > div { height: 100%; }
+  > div, > div > div { height: 100%; }
+
+  .loading .tip .sd-miller-column-item-inner.sd-miller-column-item-node::after {
+    content: '';
+    background: url("../img/spin-white.svg") no-repeat;
+    height: 16px;
+    width: 16px;
+    background-size: 16px 16px;
+    background-position: center;
+  }
 
   .sd-miller-column-item-inner i.glyphicon {
     margin-right: 8px;
   }
 
-  // &.loading {
-  //     div.open-card-menu button {
-  //         margin-right: 12px;
-  //     }
-  //     .list-group-item {
-  //         cursor: default;
-  //         background: white;
-  //         &:hover {
-  //             background: white;
-  //             a:hover {
-  //                 color: multiply(#337ab7, #fafafa);
-  //             }
-  //         }
-  //         a {
-  //             text-decoration: none;
-  //             color: multiply(#337ab7, #fafafa);
-  //         }
-  //     }
-  //     .open-card-menu p {
-  //         white-space: nowrap;
-  //         overflow: hidden;
-  //         text-overflow: ellipsis;
-  //         &:before  {
-  //             content: "";
-  //             background: url("../img/spin.svg") no-repeat;
-  //             height: 22px;
-  //             width: 22px;
-  //             position: relative;
-  //             top: 5px;
-  //             display: inline-block;
-  //             background-size: 20px 20px;
-  //             background-position: center;
-  //         }
-  //     }
-  // }
 }

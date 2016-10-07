@@ -10,3 +10,4 @@ data Query i b
   = Ref (Maybe HTMLElement) b
   | Extended b
   | Populate (List i) b
+  | Loading Boolean b

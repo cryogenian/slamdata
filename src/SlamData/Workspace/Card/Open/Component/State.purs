@@ -20,6 +20,7 @@ module SlamData.Workspace.Card.Open.Component.State
   , initialState
   , _selected
   , _levelOfDetails
+  , _loading
   ) where
 
 import SlamData.Prelude
@@ -41,12 +42,14 @@ import Utils.Path (AnyPath)
 type State =
   { selected ∷ Maybe (List AnyPath)
   , levelOfDetails ∷ LevelOfDetails
+  , loading ∷ Boolean
   }
 
 initialState ∷ State
 initialState =
   { selected: Nothing
   , levelOfDetails: High
+  , loading: false
   }
 
 _selected ∷ ∀ a r. LensP { selected ∷ a|r} a
@@ -54,6 +57,9 @@ _selected = lens (_.selected) (_{selected = _})
 
 _levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
+
+_loading ∷ ∀ a r. LensP {loading ∷ a|r} a
+_loading = lens (_.loading) (_{loading = _})
 
 type StateP =
   ParentState

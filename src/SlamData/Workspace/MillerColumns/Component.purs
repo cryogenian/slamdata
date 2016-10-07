@@ -8,7 +8,6 @@ module SlamData.Workspace.MillerColumns.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff (Eff)
 
 import Data.Array as A
@@ -27,7 +26,9 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.Component.Utils (raise)
 
+import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Component.Query (Query(..))
 import SlamData.Workspace.MillerColumns.Component.State (State, initialState)
 
@@ -46,11 +47,11 @@ type ItemHTML = H.ComponentHTML (Const Void)
 type RenderRec i = { path ∷ L.List i, html ∷ Array (HTML i) }
 
 component
-  ∷ ∀ eff a i m
-  . (Affable (dom ∷ DOM | eff) m, MonadPar m, Eq i)
-  ⇒ ItemSpec a i m
+  ∷ ∀ a i
+  . Eq i
+  ⇒ ItemSpec a i Slam
   → Maybe (L.List i)
-  → H.Component (State a i) (Query i) m
+  → H.Component (State a i) (Query i) Slam
 component ispec initial =
   H.lifecycleComponent
     { render
@@ -64,9 +65,14 @@ component ispec initial =
   render { columns, selected } =
     let
       -- Drop the root item from `selected` (since there's no corresponding
-      -- rendered item), and reverse it to produce a list rather than a stack,
-      -- so the steps can be zipped with the columns.
-      selectSteps = A.reverse (A.fromFoldable (fromMaybe L.Nil (L.init selected)))
+      -- rendered item), and reverse it (foldl) to produce a list rather than a
+      -- stack, so the steps can be zipped with the columns. The fold also tags
+      -- the steps as `Left` or `Right`, where `Right` is the "tip", so we can
+      -- add a class to the tip-selected-item as necessary.
+      selectSteps = A.fromFoldable (foldl go L.Nil (fromMaybe L.Nil (L.init selected)))
+      go acc a = case acc of
+        L.Nil → pure (Right a)
+        _ → Left a : acc
     in
       HH.div
         [ HP.class_ (HH.className "sd-miller-columns")
@@ -79,13 +85,13 @@ component ispec initial =
 
   goColumn
     ∷ RenderRec i
-    → Tuple (Tuple i (L.List a)) (Maybe i)
+    → Tuple (Tuple i (L.List a)) (Maybe (Either i i))
     → RenderRec i
   goColumn acc (Tuple (Tuple item children) sel) =
     let path = item : acc.path
     in { path, html: acc.html <> [renderColumn path children sel] }
 
-  renderColumn ∷ L.List i → L.List a → Maybe i → HTML i
+  renderColumn ∷ L.List i → L.List a → Maybe (Either i i) → HTML i
   renderColumn colPath items selected =
     HH.ul
       [ HP.class_ (HH.className "sd-miller-column")
@@ -93,22 +99,24 @@ component ispec initial =
       ]
       $ A.fromFoldable (renderItem colPath selected <$> items)
 
-  renderItem ∷ L.List i → Maybe i → a → HTML i
+  renderItem ∷ L.List i → Maybe (Either i i) → a → HTML i
   renderItem colPath selected item =
-    let label = ispec.label item
+    let
+      label = ispec.label item
+      isSelected = Just (ispec.id item) == (either id id <$> selected)
+      isTip = isSelected && maybe false isRight selected
     in
       HH.li
         [ HE.onClick $ HE.input_ $ Populate (ispec.id item : colPath)
         , HP.title label
         , ARIA.label label
         , HP.classes
-            if Just (ispec.id item) == selected
-            then [ HH.className "selected" ]
-            else []
+            $ (guard isSelected $> HH.className "selected")
+            <> (guard isTip $> HH.className "tip")
         ]
         [ absurd ∘ getConst <$> ispec.render item ]
 
-  eval ∷ Query i ~> DSL a i m
+  eval ∷ Query i ~> DSL a i Slam
   eval (Ref mel next) = do
     H.modify (_ { element = mel })
     pure next
@@ -130,6 +138,9 @@ component ispec initial =
       }
 
     currentCycle ← H.gets _.cycle
+
+    raise $ H.action $ Loading true
+
     more ← H.liftH (parTraverse ispec.load remPaths)
 
     -- `load` is async, so in case multiple `Populate`s have been raised we need
@@ -151,7 +162,10 @@ component ispec initial =
         { columns = st.columns <> newColumns
         , selected = path
         }
+      raise $ H.action $ Loading false
 
+    pure next
+  eval (Loading _ next) =
     pure next
 
 findPathPrefix ∷ ∀ a. Eq a ⇒ L.List a → L.List a → L.List a

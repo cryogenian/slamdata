@@ -22,6 +22,7 @@ module SlamData.Workspace.Card.Open.Component
 
 import SlamData.Prelude
 
+
 import Data.List as L
 import Data.List ((:))
 import Data.Lens ((?~), (.~), (%~))
@@ -45,7 +46,7 @@ import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Open.Component.Query (QueryP)
-import SlamData.Workspace.Card.Open.Component.State (State, StateP, _levelOfDetails, _selected, initialState)
+import SlamData.Workspace.Card.Open.Component.State (State, StateP, _levelOfDetails, _selected, _loading, initialState)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.MillerColumns.Component as MC
 
@@ -73,16 +74,19 @@ openComponent mres =
       }
 
 render ∷ L.List AnyPath → State → HTML
-render initPath { levelOfDetails } =
+render initPath state =
   HH.div_
-    [ renderHighLOD initPath levelOfDetails
-    , renderLowLOD (CT.lightCardGlyph CT.Open) id levelOfDetails
+    [ renderHighLOD initPath state
+    , renderLowLOD (CT.lightCardGlyph CT.Open) id state.levelOfDetails
     ]
 
-renderHighLOD ∷ L.List AnyPath → LevelOfDetails → HTML
-renderHighLOD initPath levelOfDetails =
+renderHighLOD ∷ L.List AnyPath → State → HTML
+renderHighLOD initPath state =
   HH.div
-    [ HP.classes (guard (levelOfDetails ≠ High) $> B.hidden) ]
+    [ HP.classes
+        $ (guard (state.loading) $> HH.className "loading")
+        <> (guard (state.levelOfDetails ≠ High) $> B.hidden)
+    ]
     [ HH.slot unit \_ →
         { component: MC.component itemSpec (Just initPath)
         , initialState: MC.initialState
@@ -147,6 +151,8 @@ peek = case _ of
   MC.Populate rs _ → do
     H.modify (_selected ?~ rs)
     CC.raiseUpdatedP CC.EvalModelUpdate
+  MC.Loading b _ → do
+    H.modify (_loading .~ b)
   _ → pure unit
 
 itemSpec ∷ MC.ItemSpec R.Resource AnyPath Slam
