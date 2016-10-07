@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Graph.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, JCursor, Json, cursorGet)
+import Data.Argonaut (JArray, Json, cursorGet)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Foreign as FR

@@ -18,9 +18,6 @@ module SlamData.Workspace.Card.BuildChart.Semantics where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff (Eff)
-import Control.Monad.ST (STRef, ST, newSTRef, modifySTRef, readSTRef, pureST)
-
 import Data.Argonaut (runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>), foldJson)
 import Data.Array as A
 import Data.Enum (fromEnum, toEnum)
@@ -45,38 +42,6 @@ data Semantics
   | Time Dt.Time
   | Date Dd.Date
   | DateTime Ddt.DateTime
-
-isValue ∷ Semantics → Boolean
-isValue (Value _) = true
-isValue _ = false
-
-isPercent ∷ Semantics → Boolean
-isPercent (Percent _) = true
-isPercent _ = false
-
-isMoney ∷ Semantics → Boolean
-isMoney (Money _ _) = true
-isMoney _ = false
-
-isBool ∷ Semantics → Boolean
-isBool (Bool _) = true
-isBool _ = false
-
-isCategory ∷ Semantics → Boolean
-isCategory (Category _) = true
-isCategory _ = false
-
-isTime ∷ Semantics → Boolean
-isTime (Time _) = true
-isTime _ = false
-
-isDate ∷ Semantics → Boolean
-isDate (Date _) = true
-isDate _ = false
-
-isDateTime ∷ Semantics → Boolean
-isDateTime (DateTime _) = true
-isDateTime _ = false
 
 printTime ∷ Dt.Time → String
 printTime time =
@@ -105,86 +70,26 @@ printSemantics (Category s) = s
 printSemantics (Bool b) = show b
 printSemantics (Time t) = printTime t
 printSemantics (Date d) = printDate d
-printSemantics (DateTime (Ddt.DateTime d t)) =
-  printDate d ⊕ "T" ⊕ printTime t
-
+printSemantics (DateTime (Ddt.DateTime d t)) = printDate d ⊕ "T" ⊕ printTime t
 
 semanticsToNumber ∷ Semantics → Maybe Number
 semanticsToNumber (Value v) = pure v
 semanticsToNumber (Money v _) = pure v
 semanticsToNumber (Percent v) = pure v
+semanticsToNumber (Bool b) = pure if b then one else zero
 semanticsToNumber _ = Nothing
 
+semanticsToTime ∷ Semantics → Maybe Dt.Time
+semanticsToTime (Time t) = pure t
+semanticsToTime _ = Nothing
 
+semanticsToDate ∷ Semantics → Maybe Dd.Date
+semanticsToDate (Date d) = pure d
+semanticsToDate _ = Nothing
 
--- | Used as accumulator in `checkPredicate` only
-type CheckAccum =
-  { correct ∷ Int
-  , incorrect ∷ Int
-  , filtered ∷ List (Maybe Semantics)
-  }
-
-emptyAccum ∷ CheckAccum
-emptyAccum =
-  { correct: zero
-  , incorrect: zero
-  , filtered: Nil
-  }
-
--- | This function checks values in list of `Maybe Semantics` and
--- | returns a list with values that satisfies predicate wrapped in `Just`
--- | or (if there more incorrect values than correct) it returns `Nothing`
-checkPredicate
-  ∷ (Semantics → Boolean) → List (Maybe Semantics)
-  → Maybe (List (Maybe Semantics))
-checkPredicate p lst = pureST do
-  corrects ← newSTRef 0
-  incorrects ← newSTRef 0
-  filtered ← newSTRef Nil
-  -- `traverse_` uses `foldr`. `List`s `foldr` isn't tail recursive.
-  -- To make it tail recursive we probably should reimplement `foldr` like
-  -- `foldr f init lst = reverse $ foldl (flip f) init $ reverse lst`
-  -- and this make our optimization absolutely useless because of two
-  -- `reverse`s. And this is worse then converting list to array before `traverse_`
-  -- ```
-  --  let arr ∷ Array _
-  --      arr = L.fromFoldable lst
-  --  in traverse_ (checkPredicateTraverseFn p corrects incorrects filtered) arr
-  -- ```
-  foldl
-    (\b a → checkPredicateTraverseFn p corrects incorrects filtered a *> b)
-    (pure unit) lst
-  c ← readSTRef corrects
-  ic ← readSTRef incorrects
-  if c > ic
-    then do
-    f ← readSTRef filtered
-    pure $ Just f
-    else
-    pure Nothing
-
-checkPredicateTraverseFn
-  ∷ forall h
-   . (Semantics → Boolean)
-  → STRef h Int → STRef h Int → STRef h (List (Maybe Semantics))
-  → Maybe Semantics → Eff (st ∷ ST h) Unit
-checkPredicateTraverseFn _ corrects incorrects filtered Nothing = do
-  modifySTRef filtered (Cons Nothing)
-  pure unit
-checkPredicateTraverseFn p corrects incorrects filtered (Just c)
-  | isUsedAsNothing c = do
-    modifySTRef filtered $ Cons Nothing
-    pure unit
-
-  | p c = do
-    modifySTRef filtered $ Cons $ Just c
-    modifySTRef corrects (_ + 1)
-    pure unit
-
-  | otherwise = do
-    modifySTRef filtered $ Cons Nothing
-    modifySTRef incorrects (_ + 1)
-    pure unit
+semanticsToDateTime ∷ Semantics → Maybe Ddt.DateTime
+semanticsToDateTime (DateTime dt) = pure dt
+semanticsToDateTime _ = Nothing
 
 isUsedAsNothing ∷ Semantics → Boolean
 isUsedAsNothing (Category "undefined") = true
@@ -233,13 +138,13 @@ instance ordSemantics ∷ Ord Semantics where
   compare (Bool b) (Bool b') = compare b b'
   compare (Bool _) _ = LT
 
-
 analyze ∷ JsonPrim → Maybe Semantics
-analyze p = runJsonPrim p
-            (const Nothing)
-            (Just ∘ Bool)
-            (Just ∘ Value)
-            analyzeString
+analyze p =
+  runJsonPrim p
+    (const Nothing)
+    (Just ∘ Bool)
+    (Just ∘ Value)
+    analyzeString
 
 analyzeJson ∷ Json → Maybe Semantics
 analyzeJson =
@@ -250,7 +155,6 @@ analyzeJson =
     analyzeString
     (const Nothing)
     (const Nothing)
-
 
 analyzeString ∷ String → Maybe Semantics
 analyzeString str =
@@ -351,7 +255,8 @@ analyzeDatetime str = do
     $ Ddt.DateTime date time
 
 jsonToSemantics ∷ Json → Map JCursor Semantics
-jsonToSemantics j = fromFoldable $ catMaybes $ map (traverse analyze) $ toPrims j
+jsonToSemantics j =
+  fromFoldable $ catMaybes $ map (traverse analyze) $ toPrims j
 
 jarrayToSemantics ∷ JArray → Map JCursor (List (Maybe Semantics))
 jarrayToSemantics arr = foldl foldFn initial mapArr
@@ -377,24 +282,6 @@ jarrayToSemantics arr = foldl foldFn initial mapArr
     → JCursor
     → Map JCursor (List (Maybe Semantics))
   insertOne m acc k = update (pure ∘ Cons (lookup k m)) k acc
-
-checkValues ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkValues = checkPredicate isValue
-
-checkMoney ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkMoney = checkPredicate isMoney
-
-checkPercent ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkPercent = checkPredicate isPercent
-
-checkBool ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkBool = checkPredicate isBool
-
-checkTime ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkTime = checkPredicate isTime
-
-checkCategory ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkCategory = checkPredicate isCategory
 
 instance encodeJsonSemantics ∷ EncodeJson Semantics where
   encodeJson (Value n)
