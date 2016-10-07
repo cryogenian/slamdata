@@ -16,47 +16,54 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Open.Component.State
   ( State
+  , StateP
   , initialState
-  , _items
-  , _browsing
   , _selected
   , _levelOfDetails
+  , _loading
   ) where
 
 import SlamData.Prelude
 
 import Data.Lens (LensP, lens)
-import Data.Path.Pathy (rootDir)
+import Data.List (List)
+
+import Halogen (ParentState)
 
 import SlamData.FileSystem.Resource as R
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Monad (Slam)
 
-import Utils.Path as Up
+import SlamData.Workspace.MillerColumns.Component as MC
+
+import Utils.Path (AnyPath)
 
 type State =
-  { items ∷ Array R.Resource
-  , browsing ∷ Up.DirPath
-  , selected ∷ Maybe Up.FilePath
+  { selected ∷ Maybe (List AnyPath)
   , levelOfDetails ∷ LevelOfDetails
+  , loading ∷ Boolean
   }
 
 initialState ∷ State
 initialState =
-  { items: [ ]
-  , browsing: rootDir
-  , selected: Nothing
+  { selected: Nothing
   , levelOfDetails: High
+  , loading: false
   }
-
-
-_items ∷ ∀ a r. LensP { items ∷ a |r} a
-_items = lens (_.items) (_{items = _})
-
-_browsing ∷ ∀ a r. LensP { browsing ∷ a |r} a
-_browsing = lens (_.browsing) (_{browsing = _})
 
 _selected ∷ ∀ a r. LensP { selected ∷ a|r} a
 _selected = lens (_.selected) (_{selected = _})
 
 _levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
+
+_loading ∷ ∀ a r. LensP {loading ∷ a|r} a
+_loading = lens (_.loading) (_{loading = _})
+
+type StateP =
+  ParentState
+    State (MC.State R.Resource AnyPath)
+    CardEvalQuery (MC.Query AnyPath)
+    Slam
+    Unit

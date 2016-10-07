@@ -1,3 +1,19 @@
+{-
+Copyright 2016 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Card.BuildChart.Boxplot.Component
   ( boxplotBuilderComponent
   ) where
@@ -84,15 +100,12 @@ renderPicker state = case state.picker of
               Q.Value _       → "Choose measure"
               Q.Series _      → "Choose series"
               Q.Parallel _    → "Choose parallel"
-          , label: show
-          , render: HH.text ∘ show
-          , weight: const 0.0
+          , label: DPC.labelNode show
+          , render: DPC.renderNode show
+          , values: groupJCursors (List.fromFoldable options)
+          , isSelectable: DPC.isLeafPath
           }
-      , initialState:
-          H.parentState
-            $ DPC.initialState
-            $ groupJCursors
-            $ List.fromFoldable options
+      , initialState: H.parentState DPC.initialState
       }
 
 renderDimension ∷ ST.State → HTML
@@ -220,8 +233,6 @@ peek = coproduct peekPicker (const (pure unit))
         Q.Parallel _  → H.modify (ST._parallel ∘ _value ?~ value')
       H.modify _ { picker = Nothing }
       raiseUpdate
-    _ →
-      pure unit
 
 synchronizeChildren ∷ DSL Unit
 synchronizeChildren = void do
@@ -272,4 +283,3 @@ loadModel r =
     , series = fromSelected r.series
     , parallel = fromSelected r.parallel
     }
-

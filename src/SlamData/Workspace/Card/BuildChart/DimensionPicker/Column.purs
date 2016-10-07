@@ -25,15 +25,19 @@ import Data.Argonaut as J
 import Data.List (List(..), (:))
 import Data.Map as Map
 
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Node (discriminateNodes, unNode)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column(..))
+
+type ColumnNode = Either Column Column
 
 groupColumns
   ∷ List Column
-  → Cofree List Column
+  → Cofree List ColumnNode
 groupColumns ls =
-  Cofree.mkCofree
-    (Column { value: J.JCursorTop, valueAggregation: Nothing })
-    (group ls)
+  discriminateNodes $
+    Cofree.mkCofree
+      (Column { value: J.JCursorTop, valueAggregation: Nothing })
+      (group ls)
 
   where
   group l =
@@ -71,12 +75,12 @@ groupColumns ls =
       k
 
 flattenColumns
-  ∷ List Column
+  ∷ List ColumnNode
   → Column
 flattenColumns Nil =
   Column { value: J.JCursorTop, valueAggregation: Nothing }
 flattenColumns (c : cs) =
-  case c of
+  case unNode c of
     Count → Count
     Column { value } →
       case value of
