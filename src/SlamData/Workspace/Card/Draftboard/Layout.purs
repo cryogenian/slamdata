@@ -185,7 +185,7 @@ insertSplit pane orn ratio side = runCursor split defaultMerge
     case side of
       SideA → scaleOrWrap r cell2 <> scaleOrWrap (one - r) cell1
       SideB → scaleOrWrap r cell1 <> scaleOrWrap (one - r) cell2
-            
+
   scaleOrWrap ∷ Rational → Pane a → List (Rational × Pane a)
   scaleOrWrap r p = case p of
     -- Cells need to be wrapped in a single Split of the opposite orientation.
