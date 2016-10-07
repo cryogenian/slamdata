@@ -94,6 +94,14 @@ type AxesTypeAnnotated a =
 
 type Axes = AxesTypeAnnotated (Array JCursor)
 
+axesType ∷ JCursor → Axes → AxesType
+axesType c axes
+  | F.elem c axes.value = Measurre
+  | F.elem c axes.time = Time
+  | F.elem c axes.date = Date
+  | F.elem c axes.datetime = DateTime
+  | otherwise = Category
+
 genAxes ∷ Gen.Gen Axes
 genAxes = do
   value ← map (map runArbJCursor) arbitrary
