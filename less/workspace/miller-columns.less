@@ -10,19 +10,18 @@
   display: inline-block;
   list-style: none;
   padding: 0;
+  margin: 0;
   width: 250px;
-  height: 100%;
+  max-height: 100%;
   overflow: auto;
+  border: 1px solid #ddd;
+  vertical-align: top;
 
   li {
     display: block;
-    // background: #eee;
     padding: 8px 6px;
     cursor: pointer;
     position: relative;
-    border-top: 1px solid #ddd;
-    border-bottom: 1px solid #ddd;
-    border-collapse: collapse;
     box-sizing: border-box;
     z-index: 1;
   }
@@ -30,22 +29,22 @@
   li:hover {
     background: #eee;
   }
+
   li.selected {
     background: #337ab7;
-    border-top: 1px solid #337ab7;
-    border-bottom: 1px solid #337ab7;
+    border-color: #337ab7;
     color: #fff;
     z-index: 2;
   }
 
   li+li {
     margin-top: -1px;
+    border-top: 1px solid #ddd;
   }
 
-  +ul.sd-miller-column {
-    margin-left: 8px;
+  +.sd-miller-column {
+    margin-left: -1px;
   }
-
 }
 
 .sd-miller-column-item-inner {
