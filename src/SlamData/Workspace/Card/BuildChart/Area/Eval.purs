@@ -34,14 +34,13 @@ import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Area.Model (Model, AreaR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
-import SlamData.Workspace.Card.BuildChart.Axis (Axes)
+import SlamData.Workspace.Card.BuildChart.Axis as Ax
 import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getShadeColor)
 
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
-import Utils (stringToNumber)
 import Utils.Array (enumerate)
 import Utils.DOM (getTextWidthPure)
 
@@ -50,7 +49,7 @@ eval
   . (Monad m, QuasarDSL m)
   ⇒ Model
   → FilePath
-  → Axes
+  → Ax.Axes
   → CET.CardEvalT m Port.Port
 eval Nothing _ _ =
   QE.throw "Please select axis to aggregate"
@@ -111,7 +110,7 @@ buildAreaData r records = series
      , items: map (Ag.runAggregation r.valueAggregation) items
      }]
 
-buildArea ∷ AreaR → JArray → Axes → DSL OptionI
+buildArea ∷ AreaR → JArray → Ax.Axes → DSL OptionI
 buildArea r records axes = do
   E.tooltip do
     E.triggerAxis
@@ -173,11 +172,13 @@ buildArea r records axes = do
   areaData ∷ Array (Int × AreaSeries)
   areaData = enumerate $ buildAreaData r records
 
-  xAxisTypeAndInterval ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int}
-  xAxisTypeAndInterval
-    | F.elem r.dimension axes.time = {axisType: ET.Time, interval: Just 0}
-    | F.elem r.dimension axes.value = {axisType: ET.Category, interval: Nothing}
-    | otherwise = {axisType: ET.Category, interval: Just 0}
+  xAxisTypeAndInterval ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int, heightMult ∷ Int}
+  xAxisTypeAndInterval = case Ax.axisType r.dimension axes of
+    Ax.Measure → {axisType: ET.Category, interval: Nothing, heightMult: 1}
+    Ax.Time → {axisType: ET.Time, interval: Just 0, heightMult: 2}
+    Ax.Date → {axisType: ET.Time, interval: Just 0, heightMult: 2}
+    Ax.DateTime → {axisType: ET.Time, interval: Just 0, heightMult: 2}
+    Ax.Category → {axisType: ET.Category, interval: Just 0, heightMult: 1}
 
   labelHeight ∷ Int
   labelHeight =
@@ -193,7 +194,8 @@ buildArea r records axes = do
       minHeight = 24.0
 
     in
-      Int.round
+     mul xAxisTypeAndInterval.heightMult
+        $ Int.round
         $ add minHeight
         $ max (Int.toNumber r.axisLabelFontSize + 2.0)
         $ Math.abs
@@ -201,10 +203,7 @@ buildArea r records axes = do
         * Math.sin (r.axisLabelAngle / 180.0 * Math.pi)
 
   xSortFn ∷ String → String → Ordering
-  xSortFn a b
-    | F.elem r.dimension axes.value = compare (stringToNumber a) (stringToNumber b)
-    | otherwise = compare a b
-
+  xSortFn = Ax.compareWithAxisType $ Ax.axisType r.dimension axes
 
   xValues ∷ Array String
   xValues =

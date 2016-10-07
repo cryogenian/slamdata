@@ -84,7 +84,7 @@ compareWithAxisType atype a b =
     DateTime →
       compare (mbASem >>= Sem.semanticsToDateTime) (mbBSem >>= Sem.semanticsToDateTime)
 
-type AxesTypeAnnotated a =
+type AxisTypeAnnotated a =
   { value ∷ a
   , time ∷ a
   , category ∷ a
@@ -92,11 +92,11 @@ type AxesTypeAnnotated a =
   , datetime ∷ a
   }
 
-type Axes = AxesTypeAnnotated (Array JCursor)
+type Axes = AxisTypeAnnotated (Array JCursor)
 
-axesType ∷ JCursor → Axes → AxesType
-axesType c axes
-  | F.elem c axes.value = Measurre
+axisType ∷ JCursor → Axes → AxisType
+axisType c axes
+  | F.elem c axes.value = Measure
   | F.elem c axes.time = Time
   | F.elem c axes.date = Date
   | F.elem c axes.datetime = DateTime
@@ -156,10 +156,11 @@ buildAxes rs =
     # map checkSemantics
     # M.toList
     # foldl foldFn initialAxes
+    # spy
   where
   foldFn ∷ Axes → JCursor × Maybe AxisType → Axes
   foldFn acc (_ × Nothing) = acc
-  foldFn acc (cursor × (Just axesType)) = case axesType of
+  foldFn acc (cursor × (Just at)) = case at of
     Measure → acc { value = A.cons cursor acc.value }
     Category → acc { category = A.cons cursor acc.category }
     Time → acc { time = A.cons cursor acc.time }
@@ -170,6 +171,7 @@ checkSemantics ∷ List (Maybe Sem.Semantics) → Maybe AxisType
 checkSemantics lst =
   result
   where
+  o = spy lst
   result
     | semiLen < counts.value = Just Measure
     | semiLen < counts.category = Just Category
@@ -181,10 +183,10 @@ checkSemantics lst =
   semiLen ∷ Int
   semiLen = L.length lst / 2
 
-  counts ∷ AxesTypeAnnotated Int
+  counts ∷ AxisTypeAnnotated Int
   counts = foldl foldFn init lst
 
-  init ∷ AxesTypeAnnotated Int
+  init ∷ AxisTypeAnnotated Int
   init =
     { category: 0
     , time: 0
@@ -193,7 +195,7 @@ checkSemantics lst =
     , datetime: 0
     }
 
-  foldFn ∷ AxesTypeAnnotated Int → Maybe Sem.Semantics → AxesTypeAnnotated Int
+  foldFn ∷ AxisTypeAnnotated Int → Maybe Sem.Semantics → AxisTypeAnnotated Int
   foldFn acc Nothing = acc
   foldFn acc (Just a)
     | Sem.isUsedAsNothing a =

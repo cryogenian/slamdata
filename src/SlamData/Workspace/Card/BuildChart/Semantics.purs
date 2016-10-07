@@ -210,7 +210,7 @@ datetimeRegex = unsafePartial fromRight $ regex rgxStr noFlags
 timeRegex ∷ Regex
 timeRegex = unsafePartial fromRight $ regex rgxStr noFlags
   where
-  rgxStr = "^(2[0-3]|[0-1][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
+  rgxStr = "^(2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])?(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
 
 dateRegex ∷ Regex
 dateRegex = unsafePartial fromRight $ regex rgxStr noFlags
