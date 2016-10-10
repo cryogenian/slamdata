@@ -311,6 +311,8 @@ synchronizeChildren = do
         $ st.axes.category
         ⊕ st.axes.value
         ⊕ st.axes.time
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
 
     newValue =
       setPreviousValueFrom (Just st.value)
@@ -328,6 +330,7 @@ synchronizeChildren = do
         $ newSelect
         $ ifSelected [ newCategory ]
         $ st.axes.category
+        ⊕ st.axes.time
         ⊝ newCategory
 
     newParallel =
@@ -336,6 +339,7 @@ synchronizeChildren = do
         $ newSelect
         $ ifSelected [ newCategory ]
         $ st.axes.category
+        ⊕ st.axes.date
         ⊝ newCategory
         ⊝ newStack
 

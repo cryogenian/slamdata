@@ -357,6 +357,9 @@ synchronizeChildren = do
         $ newSelect
         $ ifSelected [ newDimension ]
         $ st.axes.category
+        ⊕ st.axes.time
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
         ⊝ newDimension
 
   H.modify _
