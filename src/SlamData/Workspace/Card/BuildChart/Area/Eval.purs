@@ -7,7 +7,7 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, Json, cursorGet, toString)
+import Data.Argonaut (JArray, Json, cursorGet)
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Foldable as F
@@ -35,7 +35,7 @@ import SlamData.Workspace.Card.BuildChart.Area.Model (Model, AreaR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.Axis as Ax
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
+import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber, printSemantics)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getShadeColor)
 
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -75,12 +75,14 @@ buildAreaData r records = series
     → Json
     → Maybe String >> String >> Array Number
   dataMapFoldFn acc js =
-    case toString =<< cursorGet r.dimension js of
+    case map printSemantics $ analyzeJson =<< cursorGet r.dimension js of
       Nothing → acc
       Just dimKey →
         let
-          mbSeries = toString =<< flip cursorGet js =<< r.series
-          values = foldMap A.singleton $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
+          mbSeries =
+            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.series
+          values =
+            foldMap A.singleton $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
 
           alterSeriesFn
             ∷ Maybe (String >> Array Number)
@@ -100,12 +102,15 @@ buildAreaData r records = series
 
   series ∷ Array AreaSeries
   series =
+    traceAny "series" \_ →
     foldMap mkAreaSerie $ M.toList dataMap
 
   mkAreaSerie
     ∷ Maybe String × (String >> Array Number)
     → Array AreaSeries
   mkAreaSerie (name × items) =
+    traceAny "name" \_ →
+    traceAny name \_ →
     [{ name
      , items: map (Ag.runAggregation r.valueAggregation) items
      }]
@@ -175,7 +180,7 @@ buildArea r records axes = do
   xAxisTypeAndInterval ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int, heightMult ∷ Int}
   xAxisTypeAndInterval = case Ax.axisType r.dimension axes of
     Ax.Measure → {axisType: ET.Category, interval: Nothing, heightMult: 1}
-    Ax.Time → {axisType: ET.Time, interval: Just 0, heightMult: 2}
+    Ax.Time → {axisType: ET.Category, interval: Just 0, heightMult: 2}
     Ax.Date → {axisType: ET.Time, interval: Just 0, heightMult: 2}
     Ax.DateTime → {axisType: ET.Time, interval: Just 0, heightMult: 2}
     Ax.Category → {axisType: ET.Category, interval: Just 0, heightMult: 1}
@@ -220,10 +225,14 @@ buildArea r records axes = do
 
   series ∷ ∀ i. DSL (line ∷ ETP.I|i)
   series = for_ areaData \(ix × serie) → E.line do
-    E.buildItems $ for_ xValues \key →
+    E.buildItems $ for_ xValues \key → do
       case M.lookup key serie.items of
         Nothing → E.missingItem
-        Just v → E.addItem $ E.value v
+        Just v → E.addItem do
+          E.name key
+          E.buildValues do
+            E.addStringValue key
+            E.addValue v
     for_ serie.name E.name
     for_ (colors !! ix) \color → do
       E.itemStyle $ E.normal $ E.color color
