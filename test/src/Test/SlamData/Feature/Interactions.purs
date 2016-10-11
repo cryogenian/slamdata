@@ -6,10 +6,9 @@ import Data.Array as Arr
 import Data.Map as Map
 import Data.String as Str
 
-import Selenium.Monad (script, get, apathize, refresh, getCurrentUrl, tryRepeatedlyTo)
+import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
 
 import Test.Feature as Feature
-import Test.Feature.Log as Log
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature, getConfig, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -243,7 +242,6 @@ addColumn str = do
 selectFileForLastOpenCard ∷ String → SlamFeature Unit
 selectFileForLastOpenCard p = do
   for_ paths \(ix × path) → tryRepeatedlyTo do
-    script $ spy $ "(function() {document.querySelector('[aria-label=\"" ⊕ ariaLabel path ⊕ "\"]').scrollIntoView();})();"
     Feature.click $ resourceXPath (ix + 1) path
   where
   ariaLabel ∷ String → String
