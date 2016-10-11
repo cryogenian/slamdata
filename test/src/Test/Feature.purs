@@ -64,7 +64,7 @@ import Selenium.Types (Element, Location)
 import Test.Feature.ActionSequence as FeatureSequence
 import Test.Feature.Log (warnMsg)
 import Test.Feature.Monad (Feature, await)
-import Test.Utils (appendToCwd, ifTrue, ifFalse, throwIfNotEmpty, singletonValue, throwIfEmpty, passover)
+import Test.Utils (appendToCwd, ifTrue, ifFalse, singletonValue, throwIfEmpty, passover)
 
 import XPath as XPath
 
