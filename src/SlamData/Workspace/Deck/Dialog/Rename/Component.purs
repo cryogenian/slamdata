@@ -23,6 +23,7 @@ import Halogen.CustomProps as CP
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -49,6 +50,7 @@ render { newName } =
                   , HP.value newName
                   , HP.inputType HP.InputText
                   , HP.classes [ B.formControl ]
+                  , ARIA.label "Deck name"
                   ]
               ]
           ]

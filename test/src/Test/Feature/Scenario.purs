@@ -10,7 +10,7 @@ import Data.String (joinWith)
 import Test.Feature.Log (sectionMsg, warnMsg)
 import Test.Feature (logCurrentScreen)
 import Test.Feature.Monad (Feature)
-import Selenium.Monad (attempt, apathize)
+import Selenium.Monad (attempt)
 
 type EpicTitle = String
 type Hook eff o = Feature eff o
@@ -65,5 +65,5 @@ scenario epic before after title knownIssues actions =
   actions' = do
     e <- attempt actions
     case e of
-      Left e' → logCurrentScreen *> warn (message e') *> warn knownIssuesWarning *> apathize after
+      Left e' → logCurrentScreen *> warn (message e') *> warn knownIssuesWarning *> after
       Right _ → after *> unexpectedSuccess

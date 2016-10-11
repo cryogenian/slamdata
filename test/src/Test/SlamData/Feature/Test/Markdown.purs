@@ -30,7 +30,7 @@ mdScenario =
   scenario
     "Markdown"
     (Interact.createWorkspaceInTestFolder "Markdown")
-    (Interact.deleteFileInTestFolder "Untitled Workspace.slam"
+    (Interact.deleteFileInTestFolder "Markdown.slam"
        *> Interact.browseRootFolder)
 
 test ∷ SlamFeature Unit

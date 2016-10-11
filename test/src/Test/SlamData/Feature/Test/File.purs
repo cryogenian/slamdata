@@ -36,14 +36,16 @@ defaultAfterFile ∷ SlamFeature Unit
 defaultAfterFile = Interact.browseRootFolder
 
 afterRename ∷ SlamFeature Unit
-afterRename =
-  Selenium.apathize $ Interact.deleteFile "Ϡ⨁⟶≣ΜϞ"
+afterRename = Interact.deleteFileInTestFolder "Ϡ⨁⟶≣ΜϞ"
 
 afterMove ∷ SlamFeature Unit
-afterMove = Interact.browseTestFolder *> Interact.deleteFile "Medical data"
+afterMove = Interact.deleteFileInTestFolder "Medical data"
 
 afterUpload ∷ SlamFeature Unit
-afterUpload = Interact.deleteFile "array-wrapped.json"
+afterUpload = Interact.deleteFileInTestFolder "array-wrapped.json"
+
+afterCreateWorkspace ∷ SlamFeature Unit
+afterCreateWorkspace = Interact.deleteFileInTestFolder "Untitled Workspace.slam"
 
 afterAccessSharingUrl ∷ SlamFeature Unit
 afterAccessSharingUrl =
@@ -55,14 +57,23 @@ test ∷ SlamFeature Unit
 test = do
   fileScenario afterRename "Rename a folder" ["https://github.com/slamdata/slamdata/issues/987"] do
     Interact.browseTestFolder
+    traceAnyA "1"
     Interact.createFolder
+    traceAnyA "2"
     Interact.renameFile "Untitled Folder" "Patients"
+    traceAnyA "3"
     Expect.file "Patients"
+    traceAnyA "4"
     Interact.renameFile "Patients" "Пациенты# #"
+    traceAnyA "5"
     Expect.file "Пациенты# #"
+    traceAnyA "6"
     Interact.renameFile "Пациенты# #" "Ϡ⨁⟶≣ΜϞ"
+    traceAnyA "7"
     Expect.file "Ϡ⨁⟶≣ΜϞ"
+    traceAnyA "8"
     successMsg "Successfully renamed a folder"
+    traceAnyA "9"
 
   fileScenario afterMove "Move a folder" [] do
     Interact.browseTestFolder
@@ -111,7 +122,7 @@ test = do
     Expect.numberOfFiles 1
     successMsg "Succesfully searched for a file"
 
-  fileScenario defaultAfterFile "Access sharing URL for a file" [] do
+  fileScenario afterCreateWorkspace "Access sharing URL for a file" [] do
     Interact.browseTestFolder
     Interact.shareFile "smallZips"
     Interact.accessSharingUrl

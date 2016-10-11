@@ -15,8 +15,7 @@ flipDeckScenario =
   scenario
     "Deck backside"
     (Interact.createWorkspaceInTestFolder "Flipped deck")
-    (Interact.deleteFileInTestFolder "Untitled Workspace.slam")
-
+    (Interact.deleteFileInTestFolder "Flipped deck.slam")
 
 mkDeckWithLastTable ∷ SlamFeature Unit
 mkDeckWithLastTable = do
