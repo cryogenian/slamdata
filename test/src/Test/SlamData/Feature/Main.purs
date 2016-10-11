@@ -93,9 +93,9 @@ tests = do
       Interact.skipGuide
       Log.successMsg "Ok, skipped guides and dismiss hints"
 
-  --File.test
-  --Search.test
-  --Markdown.test
+  File.test
+  Search.test
+  Markdown.test
 --  FlexibleVisualization.test
   Cache.test
   FlipDeck.test

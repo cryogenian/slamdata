@@ -188,7 +188,7 @@ textInDisplayMarkdownCard =
   tryRepeatedlyTo
     ∘ expectPresented
     ∘ XPath.anywhere
-    ∘ XPath.anyWithExactText
+    ∘ XPath.nodeWithExactText "p"
 
 backsideActionNotPresented ∷ String → SlamFeature Unit
 backsideActionNotPresented =

@@ -22,7 +22,6 @@ import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
-import Selenium.Monad as Selenium
 
 fileScenario
   ∷ SlamFeature Unit
@@ -57,23 +56,14 @@ test ∷ SlamFeature Unit
 test = do
   fileScenario afterRename "Rename a folder" ["https://github.com/slamdata/slamdata/issues/987"] do
     Interact.browseTestFolder
-    traceAnyA "1"
     Interact.createFolder
-    traceAnyA "2"
     Interact.renameFile "Untitled Folder" "Patients"
-    traceAnyA "3"
     Expect.file "Patients"
-    traceAnyA "4"
     Interact.renameFile "Patients" "Пациенты# #"
-    traceAnyA "5"
     Expect.file "Пациенты# #"
-    traceAnyA "6"
     Interact.renameFile "Пациенты# #" "Ϡ⨁⟶≣ΜϞ"
-    traceAnyA "7"
     Expect.file "Ϡ⨁⟶≣ΜϞ"
-    traceAnyA "8"
     successMsg "Successfully renamed a folder"
-    traceAnyA "9"
 
   fileScenario afterMove "Move a folder" [] do
     Interact.browseTestFolder
