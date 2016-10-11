@@ -18,17 +18,18 @@ module SlamData.Workspace.Card.BuildChart.Semantics where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff (Eff)
-import Control.Monad.ST (STRef, ST, newSTRef, modifySTRef, readSTRef, pureST)
-
-import Data.Argonaut (runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>), foldJson)
+import Data.Argonaut (runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, foldJson, cursorGet)
 import Data.Array as A
+import Data.Enum (fromEnum, toEnum)
 import Data.Int as Int
 import Data.List (List(..), catMaybes)
 import Data.List as L
 import Data.Map (Map, keys, update, lookup, fromFoldable)
 import Data.String (take)
-import Data.String.Regex (Regex, noFlags, regex, match, test)
+import Data.String.Regex (Regex, noFlags, regex, match)
+import Data.Time as Dt
+import Data.Date as Dd
+import Data.DateTime as Ddt
 
 import Utils (stringToNumber)
 
@@ -38,116 +39,58 @@ data Semantics
   | Money Number String
   | Bool Boolean
   | Category String
-  | Time String
+  | Time Dt.Time
+  | Date Dd.Date
+  | DateTime Ddt.DateTime
 
-isValue ∷ Semantics → Boolean
-isValue (Value _) = true
-isValue _ = false
-
-isPercent ∷ Semantics → Boolean
-isPercent (Percent _) = true
-isPercent _ = false
-
-isMoney ∷ Semantics → Boolean
-isMoney (Money _ _) = true
-isMoney _ = false
-
-isBool ∷ Semantics → Boolean
-isBool (Bool _) = true
-isBool _ = false
-
-isCategory ∷ Semantics → Boolean
-isCategory (Category _) = true
-isCategory _ = false
-
-isTime ∷ Semantics → Boolean
-isTime (Time _) = true
-isTime _ = false
+printTime ∷ Dt.Time → String
+printTime time =
+  let
+    hour = fromEnum $ Dt.hour time
+    minute = fromEnum $ Dt.minute time
+    second = fromEnum $ Dt.second time
+    millisecond = fromEnum $ Dt.millisecond time
+  in
+    show hour ⊕ ":" ⊕ show minute ⊕ ":" ⊕ show second ⊕ "." ⊕ show millisecond
+-- We _can_ user purescript-formatters here, but printing semantics is used
+-- heavily in axis analysis, so, simple printing used here instead of Μ stuff
+printDate ∷ Dd.Date → String
+printDate date =
+  let
+    year = fromEnum $ Dd.year date
+    month = fromEnum $ Dd.month date
+    day = fromEnum $ Dd.day date
+  in
+    show year ⊕ "-" ⊕ show month ⊕ "-" ⊕ show day
 
 printSemantics ∷ Semantics → String
 printSemantics (Value v) = show v
 printSemantics (Percent v) = show v <> "%"
 printSemantics (Money v m) = show v <> m
 printSemantics (Category s) = s
-printSemantics (Time t) = t
 printSemantics (Bool b) = show b
+printSemantics (Time t) = printTime t
+printSemantics (Date d) = printDate d
+printSemantics (DateTime (Ddt.DateTime d t)) = printDate d ⊕ "T" ⊕ printTime t
 
 semanticsToNumber ∷ Semantics → Maybe Number
 semanticsToNumber (Value v) = pure v
 semanticsToNumber (Money v _) = pure v
 semanticsToNumber (Percent v) = pure v
+semanticsToNumber (Bool b) = pure if b then one else zero
 semanticsToNumber _ = Nothing
 
+semanticsToTime ∷ Semantics → Maybe Dt.Time
+semanticsToTime (Time t) = pure t
+semanticsToTime _ = Nothing
 
+semanticsToDate ∷ Semantics → Maybe Dd.Date
+semanticsToDate (Date d) = pure d
+semanticsToDate _ = Nothing
 
--- | Used as accumulator in `checkPredicate` only
-type CheckAccum =
-  { correct ∷ Int
-  , incorrect ∷ Int
-  , filtered ∷ List (Maybe Semantics)
-  }
-
-emptyAccum ∷ CheckAccum
-emptyAccum =
-  { correct: zero
-  , incorrect: zero
-  , filtered: Nil
-  }
-
--- | This function checks values in list of `Maybe Semantics` and
--- | returns a list with values that satisfies predicate wrapped in `Just`
--- | or (if there more incorrect values than correct) it returns `Nothing`
-checkPredicate
-  ∷ (Semantics → Boolean) → List (Maybe Semantics)
-  → Maybe (List (Maybe Semantics))
-checkPredicate p lst = pureST do
-  corrects ← newSTRef 0
-  incorrects ← newSTRef 0
-  filtered ← newSTRef Nil
-  -- `traverse_` uses `foldr`. `List`s `foldr` isn't tail recursive.
-  -- To make it tail recursive we probably should reimplement `foldr` like
-  -- `foldr f init lst = reverse $ foldl (flip f) init $ reverse lst`
-  -- and this make our optimization absolutely useless because of two
-  -- `reverse`s. And this is worse then converting list to array before `traverse_`
-  -- ```
-  --  let arr ∷ Array _
-  --      arr = L.fromFoldable lst
-  --  in traverse_ (checkPredicateTraverseFn p corrects incorrects filtered) arr
-  -- ```
-  foldl
-    (\b a → checkPredicateTraverseFn p corrects incorrects filtered a *> b)
-    (pure unit) lst
-  c ← readSTRef corrects
-  ic ← readSTRef incorrects
-  if c > ic
-    then do
-    f ← readSTRef filtered
-    pure $ Just f
-    else
-    pure Nothing
-
-checkPredicateTraverseFn
-  ∷ forall h
-   . (Semantics → Boolean)
-  → STRef h Int → STRef h Int → STRef h (List (Maybe Semantics))
-  → Maybe Semantics → Eff (st ∷ ST h) Unit
-checkPredicateTraverseFn _ corrects incorrects filtered Nothing = do
-  modifySTRef filtered (Cons Nothing)
-  pure unit
-checkPredicateTraverseFn p corrects incorrects filtered (Just c)
-  | isUsedAsNothing c = do
-    modifySTRef filtered $ Cons Nothing
-    pure unit
-
-  | p c = do
-    modifySTRef filtered $ Cons $ Just c
-    modifySTRef corrects (_ + 1)
-    pure unit
-
-  | otherwise = do
-    modifySTRef filtered $ Cons Nothing
-    modifySTRef incorrects (_ + 1)
-    pure unit
+semanticsToDateTime ∷ Semantics → Maybe Ddt.DateTime
+semanticsToDateTime (DateTime dt) = pure dt
+semanticsToDateTime _ = Nothing
 
 isUsedAsNothing ∷ Semantics → Boolean
 isUsedAsNothing (Category "undefined") = true
@@ -157,52 +100,16 @@ isUsedAsNothing (Category "N/A") = true
 isUsedAsNothing (Category "") = true
 isUsedAsNothing _ = false
 
-instance showSemantics ∷ Show Semantics where
-  show (Value v) = "(Value " <> show v <> ")"
-  show (Percent p) = "(Percent " <> show p <> ")"
-  show (Money n s) = "(Money " <> show n <> s <> ")"
-  show (Bool b) = "(Bool " <> show b <> ")"
-  show (Category s) = "(Category " <> s <> ")"
-  show (Time t) = "(Time " <> t <> ")"
-
-instance eqSemantics ∷ Eq Semantics where
-  eq (Value v) (Value v') = v == v'
-  eq (Value v) _ = false
-  eq (Percent p) (Percent p') = p == p'
-  eq (Percent _) _ = false
-  eq (Money m c) (Money m' c') = m == m' && c == c'
-  eq (Money _ _) _ = false
-  eq (Time t) (Time t') = t == t'
-  eq (Time _) _ = false
-  eq (Category c) (Category c') = c == c'
-  eq (Category _) _ = false
-  eq (Bool b) (Bool b') = b == b'
-  eq (Bool _) _ = false
-
-instance ordSemantics ∷ Ord Semantics where
-  compare (Time t) (Time t') = compare t t'
-  compare (Time _) _ = LT
-  compare (Money v a) (Money v' a') =
-    case compare a a' of
-      EQ → compare v v'
-      c → c
-  compare (Money _ _) _ = LT
-  compare (Percent v) (Percent v') = compare v v'
-  compare (Percent _) _ = LT
-  compare (Value v) (Value v') = compare v v'
-  compare (Value _) _ = LT
-  compare (Category c) (Category c') = compare c c'
-  compare (Category _) _ = LT
-  compare (Bool b) (Bool b') = compare b b'
-  compare (Bool _) _ = LT
-
+derive instance eqSemantics ∷ Eq Semantics
+derive instance ordSemantics ∷ Ord Semantics
 
 analyze ∷ JsonPrim → Maybe Semantics
-analyze p = runJsonPrim p
-            (const Nothing)
-            (Just ∘ Bool)
-            (Just ∘ Value)
-            analyzeString
+analyze p =
+  runJsonPrim p
+    (const Nothing)
+    (Just ∘ Bool)
+    (Just ∘ Value)
+    analyzeString
 
 analyzeJson ∷ Json → Maybe Semantics
 analyzeJson =
@@ -214,10 +121,11 @@ analyzeJson =
     (const Nothing)
     (const Nothing)
 
-
 analyzeString ∷ String → Maybe Semantics
 analyzeString str =
-      analyzeDate str
+  analyzeTime str
+  <|> analyzeDatetime str
+  <|> analyzeDate str
   <|> analyzeNumber str
   <|> analyzeMoney str
   <|> analyzePercent str
@@ -252,24 +160,68 @@ analyzeMoney str = do
   matches ← match moneyRegex str
   maybeMatch ← matches A.!! 1
   num ← maybeMatch >>= stringToNumber
-  currencySymbol ← let fstSymbol = take 1 str
-                    in if fstSymbol == ""
-                       then Nothing
-                       else pure fstSymbol
+  currencySymbol ←
+    let fstSymbol = take 1 str
+    in if fstSymbol == ""
+       then Nothing
+       else pure fstSymbol
   pure $ Money num currencySymbol
+
+datetimeRegex ∷ Regex
+datetimeRegex = unsafePartial fromRight $ regex rgxStr noFlags
+  where
+  rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9])(T| )(2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
+
+timeRegex ∷ Regex
+timeRegex = unsafePartial fromRight $ regex rgxStr noFlags
+  where
+  rgxStr = "^(2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])?(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
 
 dateRegex ∷ Regex
 dateRegex = unsafePartial fromRight $ regex rgxStr noFlags
   where
-  rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
+  rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9])$"
 
 analyzeDate ∷ String → Maybe Semantics
 analyzeDate str = do
-  guard $ test dateRegex str
-  pure $ Time str
+  matches ← match dateRegex str
+  year ← (join $ matches A.!! 1) >>= Int.fromString >>= toEnum
+  month ← (join $ matches A.!! 2) >>= Int.fromString >>= toEnum
+  day ← (join $ matches A.!! 3) >>= Int.fromString >>= toEnum
+  date ← Dd.exactDate year month day
+  pure $ Date date
+
+analyzeTime ∷ String → Maybe Semantics
+analyzeTime str = do
+  matches ← match timeRegex str
+  hour ← (join $ matches A.!! 1) >>= Int.fromString >>= toEnum
+  minute ← (join $ matches A.!! 2) >>= Int.fromString >>= toEnum
+  let
+    second = fromMaybe bottom $ (join $ matches A.!! 3) >>= Int.fromString >>= toEnum
+    millisecond = fromMaybe bottom $ (join $ matches A.!! 4) >>= Int.fromString >>= toEnum
+  pure $ Time $ Dt.Time hour minute second millisecond
+
+analyzeDatetime ∷ String → Maybe Semantics
+analyzeDatetime str = do
+  matches ← match datetimeRegex str
+  year ← (join $ matches A.!! 1) >>= Int.fromString >>= toEnum
+  month ← (join $ matches A.!! 2) >>= Int.fromString >>= toEnum
+  day ← (join $ matches A.!! 3) >>= Int.fromString >>= toEnum
+  hour ← (join $ matches A.!! 5) >>= Int.fromString >>= toEnum
+  minute ← (join $ matches A.!! 6) >>= Int.fromString >>= toEnum
+  let
+    second = fromMaybe bottom $ (join $ matches A.!! 7) >>= Int.fromString >>= toEnum
+    millisecond = fromMaybe bottom $  (join $ matches A.!! 8) >>= Int.fromString >>= toEnum
+    time = Dt.Time hour minute second millisecond
+
+  date ← Dd.exactDate year month day
+  pure
+    $ DateTime
+    $ Ddt.DateTime date time
 
 jsonToSemantics ∷ Json → Map JCursor Semantics
-jsonToSemantics j = fromFoldable $ catMaybes $ map (traverse analyze) $ toPrims j
+jsonToSemantics j =
+  fromFoldable $ catMaybes $ map (traverse analyze) $ toPrims j
 
 jarrayToSemantics ∷ JArray → Map JCursor (List (Maybe Semantics))
 jarrayToSemantics arr = foldl foldFn initial mapArr
@@ -296,58 +248,16 @@ jarrayToSemantics arr = foldl foldFn initial mapArr
     → Map JCursor (List (Maybe Semantics))
   insertOne m acc k = update (pure ∘ Cons (lookup k m)) k acc
 
-checkValues ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkValues = checkPredicate isValue
+getMaybeString ∷ Json → JCursor → Maybe String
+getMaybeString js cursor =
+  map printSemantics
+    $ analyzeJson
+    =<< cursorGet cursor js
 
-checkMoney ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkMoney = checkPredicate isMoney
-
-checkPercent ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkPercent = checkPredicate isPercent
-
-checkBool ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkBool = checkPredicate isBool
-
-checkTime ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkTime = checkPredicate isTime
-
-checkCategory ∷ List (Maybe Semantics) → Maybe (List (Maybe Semantics))
-checkCategory = checkPredicate isCategory
-
-instance encodeJsonSemantics ∷ EncodeJson Semantics where
-  encodeJson (Value n)
-     = "type" := "value"
-    ~> "value" := n
-    ~> jsonEmptyObject
-  encodeJson (Percent p)
-     = "type" := "percent"
-     ~> "value" := p
-     ~> jsonEmptyObject
-  encodeJson (Money n v)
-     = "type" := "money"
-     ~> "currency" := v
-     ~> "value" := n ~> jsonEmptyObject
-  encodeJson (Bool b)
-     = "type" := "bool"
-     ~> "value" := b
-     ~> jsonEmptyObject
-  encodeJson (Category c)
-     = "type" := "category"
-     ~> "value" := c
-     ~> jsonEmptyObject
-  encodeJson (Time t)
-     = "type" := "time"
-     ~> "value" := t
-     ~> jsonEmptyObject
-
-instance decodeJsonSemantics ∷ DecodeJson Semantics where
-  decodeJson = decodeJson >=> \obj → do
-    ty ← obj .? "type"
-    case ty of
-      "money" → Money <$> obj .? "value" <*> obj .? "currency"
-      "time" → Time <$> obj .? "value"
-      "bool" → Bool <$> obj .? "value"
-      "category" → Category <$> obj .? "value"
-      "value" → Value <$> obj .? "value"
-      "percent" → Percent <$> obj .? "value"
-      _ → Left "incorrect type value for Semantics"
+getValues ∷ Json → Maybe JCursor → Array Number
+getValues js cursor =
+  foldMap A.singleton
+    $ semanticsToNumber
+    =<< analyzeJson
+    =<< flip cursorGet js
+    =<< cursor

@@ -246,7 +246,8 @@ synchronizeChildren = void do
         $ autoSelect
         $ newSelect
         $ ifSelected [ newSource ]
-        $ st.axes.category ⊝ newSource
+        $ st.axes.category
+        ⊝ newSource
 
     newValue =
       setPreviousValueFrom (Just st.value)

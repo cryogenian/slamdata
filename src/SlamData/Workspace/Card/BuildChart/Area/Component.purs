@@ -349,6 +349,8 @@ synchronizeChildren = do
         $ st.axes.category
         ⊕ st.axes.time
         ⊕ st.axes.value
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
 
     newValue =
       setPreviousValueFrom (Just st.value)
@@ -366,6 +368,9 @@ synchronizeChildren = do
         $ newSelect
         $ ifSelected [ newDimension ]
         $ st.axes.category
+        ⊕ st.axes.time
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
         ⊝ newDimension
 
   H.modify _
