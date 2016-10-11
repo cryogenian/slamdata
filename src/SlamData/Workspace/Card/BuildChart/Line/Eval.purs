@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Line.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet, toString)
+import Data.Argonaut (JArray, Json, cursorGet)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
@@ -32,12 +32,12 @@ import SlamData.Workspace.Card.BuildChart.Line.Model (Model, LineR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Line))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)
+import SlamData.Workspace.Card.BuildChart.Axis as Ax
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
+import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber, printSemantics)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
-import Utils (stringToNumber)
 import Utils.DOM (getTextWidthPure)
 
 eval
@@ -73,11 +73,12 @@ buildLineData r records = series
     → Json
     → Maybe String >> String >> (Array Number × Array Number × Array Number)
   dataMapFoldFn acc js =
-    case toString =<< cursorGet r.dimension js of
+    case map printSemantics $ analyzeJson =<< cursorGet r.dimension js of
       Nothing → acc
       Just dimKey →
         let
-          mbSeries = toString =<< flip cursorGet js =<< r.series
+          mbSeries =
+            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.series
           leftValues =
             foldMap A.singleton
               $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
@@ -210,16 +211,16 @@ buildLine r records axes = do
   lineData ∷ Array LineSerie
   lineData = buildLineData r records
 
-  xAxisTypeAndInterval ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int}
-  xAxisTypeAndInterval
-    | F.elem r.dimension axes.time = {axisType: ET.Time, interval: Just 0}
-    | F.elem r.dimension axes.value = {axisType: ET.Category, interval: Nothing}
-    | otherwise = {axisType: ET.Category, interval: Just 0}
+  xAxisTypeAndInterval ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int, heightMult ∷ Int}
+  xAxisTypeAndInterval = case Ax.axisType r.dimension axes of
+    Ax.Measure → {axisType: ET.Category, interval: Nothing, heightMult: 1}
+    Ax.Time → {axisType: ET.Category, interval: Just 0, heightMult: 2}
+    Ax.Date → {axisType: ET.Time, interval: Just 0, heightMult: 2}
+    Ax.DateTime → {axisType: ET.Time, interval: Just 0, heightMult: 2}
+    Ax.Category → {axisType: ET.Category, interval: Just 0, heightMult: 1}
 
   xSortFn ∷ String → String → Ordering
-  xSortFn a b
-    | F.elem r.dimension axes.value = compare (stringToNumber a) (stringToNumber b)
-    | otherwise = compare a b
+  xSortFn = Ax.compareWithAxisType $ Ax.axisType r.dimension axes
 
   labelHeight ∷ Int
   labelHeight =
@@ -234,7 +235,8 @@ buildLine r records axes = do
 
       minHeight = 24.0
     in
-      Int.round
+      mul xAxisTypeAndInterval.heightMult
+        $ Int.round
         $ add minHeight
         $ max (Int.toNumber r.axisLabelFontSize + 2.0)
         $ Math.abs
@@ -262,7 +264,10 @@ buildLine r records axes = do
         case M.lookup key lineSerie.leftItems of
           Nothing → E.missingItem
           Just {value, symbolSize} → E.addItem do
-            E.value value
+            E.name key
+            E.buildValues do
+              E.addStringValue key
+              E.addValue value
             E.symbolSize symbolSize
       E.yAxisIndex 0
       for_ lineSerie.name E.name

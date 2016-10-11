@@ -339,7 +339,7 @@ synchronizeChildren = do
         $ newSelect
         $ ifSelected [ newCategory ]
         $ st.axes.category
-        ⊕ st.axes.date
+        ⊕ st.axes.time
         ⊝ newCategory
         ⊝ newStack
 

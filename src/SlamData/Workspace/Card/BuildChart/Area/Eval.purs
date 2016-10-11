@@ -102,15 +102,12 @@ buildAreaData r records = series
 
   series ∷ Array AreaSeries
   series =
-    traceAny "series" \_ →
     foldMap mkAreaSerie $ M.toList dataMap
 
   mkAreaSerie
     ∷ Maybe String × (String >> Array Number)
     → Array AreaSeries
   mkAreaSerie (name × items) =
-    traceAny "name" \_ →
-    traceAny name \_ →
     [{ name
      , items: map (Ag.runAggregation r.valueAggregation) items
      }]

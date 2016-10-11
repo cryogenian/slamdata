@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Pie.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet, toString)
+import Data.Argonaut (JArray, Json, cursorGet)
 import Data.Array as A
 import Data.Lens ((^?))
 import Data.Map as M
@@ -28,7 +28,7 @@ import SlamData.Workspace.Card.BuildChart.Common.Positioning (adjustRadialPositi
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Pie))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
+import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber, printSemantics)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -71,12 +71,14 @@ buildPieData r records = series
     → Json
     → Maybe String >> Maybe String >> String >> Array Number
   dataMapFoldFn acc js =
-    case toString =<< cursorGet r.category js of
+    case map printSemantics $ analyzeJson =<< cursorGet r.category js of
       Nothing → acc
       Just categoryKey →
         let
-          mbParallel = toString =<< flip cursorGet js =<< r.parallel
-          mbDonut = toString =<< flip cursorGet js =<< r.donut
+          mbParallel =
+            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.parallel
+          mbDonut =
+            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.donut
           values =
             foldMap A.singleton
               $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js

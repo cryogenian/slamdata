@@ -7,7 +7,7 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, Json, cursorGet, toString)
+import Data.Argonaut (JArray, Json, cursorGet)
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Lens ((^?))
@@ -31,7 +31,7 @@ import SlamData.Workspace.Card.BuildChart.Common.Positioning (rectangularGrids, 
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model (Model, BoxplotR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
+import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber, printSemantics)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -88,12 +88,14 @@ buildBoxplotData r records = series
     → Json
     → Maybe String >> Maybe String >> String >> Array Number
   dataMapFoldFn acc js =
-    case toString =<< cursorGet r.dimension js of
+    case map printSemantics $ analyzeJson =<< cursorGet r.dimension js of
       Nothing → acc
       Just dimensionKey →
         let
-          mbParallel = toString =<< flip cursorGet js =<< r.parallel
-          mbSeries = toString =<< flip cursorGet js =<< r.series
+          mbParallel =
+            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.parallel
+          mbSeries =
+            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.series
           values =
             foldMap A.singleton
               $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js

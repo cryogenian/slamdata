@@ -156,7 +156,6 @@ buildAxes rs =
     # map checkSemantics
     # M.toList
     # foldl foldFn initialAxes
-    # spy
   where
   foldFn ∷ Axes → JCursor × Maybe AxisType → Axes
   foldFn acc (_ × Nothing) = acc
@@ -171,7 +170,6 @@ checkSemantics ∷ List (Maybe Sem.Semantics) → Maybe AxisType
 checkSemantics lst =
   result
   where
-  o = spy lst
   result
     | semiLen < counts.value = Just Measure
     | semiLen < counts.category = Just Category

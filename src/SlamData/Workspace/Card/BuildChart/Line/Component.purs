@@ -385,6 +385,8 @@ synchronizeChildren = do
         $ newSelect
         $ st.axes.category
         ⊕ st.axes.time
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
         ⊕ st.axes.value
 
     newValue =
