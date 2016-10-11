@@ -44,7 +44,7 @@ import Data.Lens (PrismP, prism', TraversalP, wander)
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
-import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
+import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), renderVarMapValue, emptyVarMap)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)

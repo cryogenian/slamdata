@@ -36,6 +36,9 @@ deckName = className "sd-deck-name"
 focused ∷ ClassName
 focused = className "sd-focused"
 
+unfocused ∷ ClassName
+unfocused = className "sd-unfocused"
+
 zoomDeck ∷ ClassName
 zoomDeck = className "sd-zoom-deck"
 

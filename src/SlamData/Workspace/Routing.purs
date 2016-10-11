@@ -157,20 +157,22 @@ mkWorkspaceHash path action varMap =
 varMapsForURL ∷ Map.Map D.DeckId Port.VarMap → Map.Map D.DeckId Port.URLVarMap
 varMapsForURL = map (map go)
   where
-  go (Port.Literal ej) =
-    case EJSON.unroll ej of
-      EJSON.String str → str
-      EJSON.Timestamp str → str
-      EJSON.Date str → str
-      EJSON.Time str → str
-      EJSON.Interval str → str
-      EJSON.ObjectId str → str
-      _ → EJSON.renderEJson ej
+  go (Port.Literal ej) = goEJson ej
+  go (Port.SetLiteral as) = "(" <> F.intercalate "," (goEJson <$> as) <> ")"
   go (Port.QueryExpr q) =
     -- | This is not entirely legit as it will strip backticks from SQL²
     -- | expressions as well as identifiers, as we have no information about
     -- | the field type here... -gb
     fromMaybe q $ Str.stripPrefix "`" =<< Str.stripSuffix "`" q
+
+  goEJson ej = case EJSON.unroll ej of
+    EJSON.String str → str
+    EJSON.Timestamp str → str
+    EJSON.Date str → str
+    EJSON.Time str → str
+    EJSON.Interval str → str
+    EJSON.ObjectId str → str
+    _ → EJSON.renderEJson ej
 
 decodeVarMaps ∷ String → Either String (Map.Map D.DeckId Port.URLVarMap)
 decodeVarMaps = J.jsonParser >=> J.decodeJson >=> \obj →

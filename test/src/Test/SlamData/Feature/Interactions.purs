@@ -211,35 +211,26 @@ insertPivotCard =
 addColumn ∷ String → SlamFeature Unit
 addColumn str = do
   Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Add column"
-  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel str
+  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel $ "Select " ⊕ str
   Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
 
 selectFileForLastOpenCard ∷ String → SlamFeature Unit
 selectFileForLastOpenCard p = do
-  Expect.resourceOpenedInLastOpenCard "/"
-  for_ paths \path → do
-    Feature.click $ resourceXPath path
-    Expect.resourceOpenedInLastOpenCard path
+  for_ paths \(ix × path) → do
+    Feature.click $ resourceXPath (ix + 1) path
   where
-  resourceXPath ∷ String → String
-  resourceXPath rPath =
-    XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel $ "Select " ⊕ rPath
+  resourceXPath ∷ Int → String → String
+  resourceXPath ix rPath =
+    XPath.last $ XPath.anywhere
+      $ (XPath.nodeAtPosition ix $ XPath.anyWithExactAriaLabel "Column")
+      ⊕ "/"
+      ⊕ (XPath.anyWithExactAriaLabel $ "Select " ⊕ rPath)
 
-  -- Constructs ["/foo/", "/foo/bar/", "/foo/bar/baz"] from "/foo/bar/baz"
-  paths ∷ Array String
+  paths ∷ Array (Int × String)
   paths =
-    let
-      parts = foldl foldFn [] $ Str.split "/" p
-      mbUnconsed = Arr.uncons parts
-    in Arr.drop 1 $ Arr.reverse case mbUnconsed of
-      Nothing →
-        parts
-      Just {head, tail} →
-        Arr.cons (fromMaybe head (Str.stripSuffix "/" head)) tail
-
-  foldFn ∷ Array String → String → Array String
-  foldFn acc new =
-    Arr.cons (maybe "/" (\x → x ⊕ new ⊕ "/") $ Arr.head acc) acc
+    Arr.mapWithIndex (×)
+      $ Arr.filter (\s → Str.length s > 0)
+      $ Str.split "/" p
 
 provideSearchStringInLastSearchCard ∷ String → SlamFeature Unit
 provideSearchStringInLastSearchCard =

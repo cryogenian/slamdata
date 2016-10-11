@@ -1,10 +1,25 @@
+{-
+Copyright 2016 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Card.BuildChart.Funnel.Component
   ( funnelBuilderComponent
   ) where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
 import Data.Lens ((^?), (^.), (?~), (.~))
 import Data.Lens as Lens
 import Data.List as List
@@ -31,7 +46,7 @@ import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect
 
 import SlamData.Workspace.Card.BuildChart.CSS as CSS
 import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (JCursorNode, groupJCursors, flattenJCursors)
 import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.State as ST
@@ -91,15 +106,12 @@ renderPicker state = case state.picker of
                Q.Value _ → "Choose measure"
                Q.Series _ → "Choose series"
                _ → ""
-          , label: show
-          , render: HH.text ∘ show
-          , weight: const 0.0
+          , label: DPC.labelNode show
+          , render: DPC.renderNode show
+          , values: groupJCursors (List.fromFoldable options)
+          , isSelectable: DPC.isLeafPath
           }
-      , initialState:
-          H.parentState
-            $ DPC.initialState
-            $ groupJCursors
-            $ List.fromFoldable options
+      , initialState: H.parentState DPC.initialState
       }
 
 
@@ -239,7 +251,7 @@ raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = peekPeeker ⨁ (const $ pure unit)
 
-peekPeeker ∷ ∀ a. DPC.Query JCursor a → DSL Unit
+peekPeeker ∷ ∀ a. DPC.Query JCursorNode a → DSL Unit
 peekPeeker = case _ of
   DPC.Dismiss _ →
     H.modify _ { picker = Nothing }
@@ -254,8 +266,6 @@ peekPeeker = case _ of
       _ → pure unit
     H.modify _ { picker = Nothing }
     raiseUpdate
-  _ →
-    pure unit
 
 synchronizeChildren ∷ DSL Unit
 synchronizeChildren = void do
