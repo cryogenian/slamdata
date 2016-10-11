@@ -25,6 +25,8 @@ import Data.List (List(..))
 import Data.List as L
 import Data.Map as M
 
+import ECharts.Types as ET
+
 import SlamData.Workspace.Card.BuildChart.Semantics as Sem
 
 import Test.StrongCheck.Arbitrary (arbitrary)
@@ -235,3 +237,17 @@ dependsOn a b = a ≠ b ∧
   dependsOn' (JField _ c) (JField _ c') = dependsOn' c c'
   dependsOn' (JIndex _ c) (JIndex _ c') = dependsOn' c c'
   dependsOn' _ _ = false
+
+type EChartsAxisConfiguration =
+  { axisType ∷ ET.AxisType
+  , interval ∷ Maybe Int
+  , heightMult ∷ Int
+  }
+
+axisConfiguration ∷ AxisType → EChartsAxisConfiguration
+axisConfiguration = case _ of
+  Measure → {axisType: ET.Category, interval: Nothing, heightMult: 1}
+  Time → {axisType: ET.Category, interval: Just 0, heightMult: 2}
+  Date → {axisType: ET.Time, interval: Just 0, heightMult: 2}
+  DateTime → {axisType: ET.Time, interval: Just 0, heightMult: 2}
+  Category → {axisType: ET.Category, interval: Just 0, heightMult: 1}

@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Sankey.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet)
+import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Lens ((^?))
 import Data.Map as M
@@ -101,13 +101,15 @@ buildSankeyData records r = items
     → M.Map (String × String) (Array Number)
   dataMapFoldFn acc js =
     let
+      getValuesFromJson = Sem.getValues js
+      getMaybeStringFromJson = Sem.getMaybeString js
+
       mbSource =
-        map Sem.printSemantics $ Sem.analyzeJson =<< cursorGet r.source js
+        getMaybeStringFromJson r.source
       mbTarget =
-        map Sem.printSemantics $ Sem.analyzeJson =<< cursorGet r.target js
+        getMaybeStringFromJson r.target
       values =
-        foldMap A.singleton
-          $ Sem.semanticsToNumber =<< Sem.analyzeJson =<< cursorGet r.value js
+        getValuesFromJson $ pure r.value
 
       alterFn ∷ Maybe (Array Number) → Maybe (Array Number)
       alterFn Nothing = Just values

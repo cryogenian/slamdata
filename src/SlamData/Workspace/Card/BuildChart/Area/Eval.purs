@@ -7,7 +7,7 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, Json, cursorGet)
+import Data.Argonaut (JArray, Json)
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Foldable as F
@@ -35,7 +35,7 @@ import SlamData.Workspace.Card.BuildChart.Area.Model (Model, AreaR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.Axis as Ax
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber, printSemantics)
+import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getShadeColor)
 
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -75,14 +75,17 @@ buildAreaData r records = series
     → Json
     → Maybe String >> String >> Array Number
   dataMapFoldFn acc js =
-    case map printSemantics $ analyzeJson =<< cursorGet r.dimension js of
+    let
+      getValuesFromJson = getValues js
+      getMaybeStringFromJson = getMaybeString js
+    in case getMaybeStringFromJson r.dimension of
       Nothing → acc
       Just dimKey →
         let
           mbSeries =
-            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.series
+            getMaybeStringFromJson =<< r.series
           values =
-            foldMap A.singleton $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
+            getValuesFromJson $ pure r.value
 
           alterSeriesFn
             ∷ Maybe (String >> Array Number)
@@ -139,8 +142,8 @@ buildArea r records axes = do
       E.width 1
 
   E.xAxis do
-    E.axisType xAxisTypeAndInterval.axisType
-    traverse_ E.interval $ xAxisTypeAndInterval.interval
+    E.axisType xAxisConfig.axisType
+    traverse_ E.interval $ xAxisConfig.interval
     E.items $ map ET.strItem xValues
     E.disabledBoundaryGap
     E.axisTick do
@@ -174,13 +177,8 @@ buildArea r records axes = do
   areaData ∷ Array (Int × AreaSeries)
   areaData = enumerate $ buildAreaData r records
 
-  xAxisTypeAndInterval ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int, heightMult ∷ Int}
-  xAxisTypeAndInterval = case Ax.axisType r.dimension axes of
-    Ax.Measure → {axisType: ET.Category, interval: Nothing, heightMult: 1}
-    Ax.Time → {axisType: ET.Category, interval: Just 0, heightMult: 2}
-    Ax.Date → {axisType: ET.Time, interval: Just 0, heightMult: 2}
-    Ax.DateTime → {axisType: ET.Time, interval: Just 0, heightMult: 2}
-    Ax.Category → {axisType: ET.Category, interval: Just 0, heightMult: 1}
+  xAxisConfig ∷ Ax.EChartsAxisConfiguration
+  xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.dimension axes
 
   labelHeight ∷ Int
   labelHeight =
@@ -196,7 +194,7 @@ buildArea r records axes = do
       minHeight = 24.0
 
     in
-     mul xAxisTypeAndInterval.heightMult
+     mul xAxisConfig.heightMult
         $ Int.round
         $ add minHeight
         $ max (Int.toNumber r.axisLabelFontSize + 2.0)

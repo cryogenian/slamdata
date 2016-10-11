@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Funnel.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet)
+import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Lens ((^?))
 import Data.Map as M
@@ -29,7 +29,7 @@ import SlamData.Workspace.Card.BuildChart.Funnel.Model (Model, FunnelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Funnel))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber, printSemantics)
+import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -68,15 +68,17 @@ buildFunnelData r records = series
     → Json
     → Maybe String >> String >> Array Number
   dataMapFoldFn acc js =
-    case map printSemantics $ analyzeJson =<< cursorGet r.category js of
+    let
+      getMaybeStringFromJson = getMaybeString js
+      getValuesFromJson = getValues js
+    in case getMaybeStringFromJson r.category of
       Nothing → acc
       Just categoryKey →
         let
           mbSeries =
-            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.series
+            getMaybeStringFromJson =<< r.series
           values =
-            foldMap A.singleton
-              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
+            getValuesFromJson $ pure r.value
 
           alterSeriesFn
             ∷ Maybe (String >> Array Number)

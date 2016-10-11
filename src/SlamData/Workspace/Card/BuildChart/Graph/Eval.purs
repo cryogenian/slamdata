@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Graph.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet)
+import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Foreign as FR
@@ -83,15 +83,16 @@ buildGraphData records r =
     → Maybe String >> Maybe String × Maybe String >> Array Number
   dataMapFoldFn acc js =
     let
+      getMaybeStringFromJson = Sem.getMaybeString js
+      getValuesFromJson = Sem.getValues js
       mbSource =
-        map Sem.printSemantics $ Sem.analyzeJson =<< cursorGet r.source js
+        getMaybeStringFromJson r.source
       mbTarget =
-        map Sem.printSemantics $ Sem.analyzeJson =<< cursorGet r.target js
+        getMaybeStringFromJson r.target
       mbColor =
-        map Sem.printSemantics $ Sem.analyzeJson =<< flip cursorGet js =<< r.color
+        getMaybeStringFromJson =<< r.color
       values =
-        foldMap A.singleton
-          $ Sem.semanticsToNumber =<< Sem.analyzeJson =<< flip cursorGet js =<< r.size
+        getValuesFromJson r.size
 
       colorAlterFn
         ∷ Maybe (Maybe String × Maybe String >> Array Number)

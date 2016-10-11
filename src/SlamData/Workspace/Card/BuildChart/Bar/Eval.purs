@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Bar.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet)
+import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
@@ -33,7 +33,7 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 import SlamData.Workspace.Card.BuildChart.Axis as Ax
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber, printSemantics)
+import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
@@ -77,17 +77,19 @@ buildBarData r records = series
     → Json
     → Maybe String >> Maybe String >> String >> Array Number
   dataMapFoldFn acc js =
-    case map printSemantics $ analyzeJson =<< cursorGet r.category js of
+    let
+      getMaybeStringFromJson = getMaybeString js
+      getValuesFromJson = getValues js
+    in case getMaybeStringFromJson r.category of
       Nothing → acc
       Just categoryKey →
         let
           mbStack =
-            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.stack
+            getMaybeStringFromJson =<< r.stack
           mbParallel =
-            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.parallel
+            getMaybeStringFromJson =<< r.parallel
           values =
-            foldMap A.singleton
-              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
+            getValuesFromJson $ pure r.value
 
           alterStackFn
             ∷ Maybe (Maybe String >> String >> Array Number)
@@ -141,8 +143,8 @@ buildBar r records axes = do
   E.colors colors
 
   E.xAxis do
-    E.axisType xAxisTypeAndInterval.axisType
-    traverse_ E.interval xAxisTypeAndInterval.interval
+    E.axisType xAxisConfig.axisType
+    traverse_ E.interval xAxisConfig.interval
     E.items $ map ET.strItem xValues
     E.axisLabel do
       E.rotate r.axisLabelAngle
@@ -160,7 +162,7 @@ buildBar r records axes = do
 
   E.legend do
     E.textStyle $ E.fontFamily "Ubuntu, sans"
-    case xAxisTypeAndInterval.axisType of
+    case xAxisConfig.axisType of
       ET.Category | A.length seriesNames > 40 → E.hidden
       _ → pure unit
     E.items $ map ET.strItem seriesNames
@@ -176,14 +178,8 @@ buildBar r records axes = do
   barData ∷ Array BarStacks
   barData = buildBarData r records
 
-  xAxisTypeAndInterval ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int, heightMult ∷ Int}
-  xAxisTypeAndInterval = case Ax.axisType r.category axes of
-    Ax.Measure → {axisType: ET.Category, interval: Nothing, heightMult: 1}
-    Ax.Time → {axisType: ET.Category, interval: Just 0, heightMult: 2}
-    Ax.Date → {axisType: ET.Time, interval: Just 0, heightMult: 2}
-    Ax.DateTime → {axisType: ET.Time, interval: Just 0, heightMult: 2}
-    Ax.Category → {axisType: ET.Category, interval: Just 0, heightMult: 1}
-
+  xAxisConfig ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int, heightMult ∷ Int}
+  xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.category axes
 
   seriesNames ∷ Array String
   seriesNames =
@@ -216,7 +212,7 @@ buildBar r records axes = do
       minHeight = 24.0
 
     in
-      mul xAxisTypeAndInterval.heightMult
+      mul xAxisConfig.heightMult
         $ Int.round
         $ add minHeight
         $ max (Int.toNumber r.axisLabelFontSize + 2.0)

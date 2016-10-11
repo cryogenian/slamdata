@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.BuildChart.Semantics where
 
 import SlamData.Prelude
 
-import Data.Argonaut (runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>), foldJson)
+import Data.Argonaut (runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, foldJson, cursorGet)
 import Data.Array as A
 import Data.Enum (fromEnum, toEnum)
 import Data.Int as Int
@@ -52,7 +52,8 @@ printTime time =
     millisecond = fromEnum $ Dt.millisecond time
   in
     show hour ⊕ ":" ⊕ show minute ⊕ ":" ⊕ show second ⊕ "." ⊕ show millisecond
-
+-- We _can_ user purescript-formatters here, but printing semantics is used
+-- heavily in axis analysis, so, simple printing used here instead of Μ stuff
 printDate ∷ Dd.Date → String
 printDate date =
   let
@@ -99,44 +100,8 @@ isUsedAsNothing (Category "N/A") = true
 isUsedAsNothing (Category "") = true
 isUsedAsNothing _ = false
 
-instance eqSemantics ∷ Eq Semantics where
-  eq (Value v) (Value v') = v == v'
-  eq (Value v) _ = false
-  eq (Percent p) (Percent p') = p == p'
-  eq (Percent _) _ = false
-  eq (Money m c) (Money m' c') = m == m' && c == c'
-  eq (Money _ _) _ = false
-  eq (Time t) (Time t') = t == t'
-  eq (Time _) _ = false
-  eq (Date d) (Date d') = d == d'
-  eq (Date _) _ = false
-  eq (DateTime dt) (DateTime dt') = dt == dt'
-  eq (DateTime dt) _ = false
-  eq (Category c) (Category c') = c == c'
-  eq (Category _) _ = false
-  eq (Bool b) (Bool b') = b == b'
-  eq (Bool _) _ = false
-
-instance ordSemantics ∷ Ord Semantics where
-  compare (Time t) (Time t') = compare t t'
-  compare (Time _) _ = LT
-  compare (Date d) (Date d') = compare d d'
-  compare (Date d) _ = LT
-  compare (DateTime dt) (DateTime dt') = compare dt dt'
-  compare (DateTime dt) _ = LT
-  compare (Money v a) (Money v' a') =
-    case compare a a' of
-      EQ → compare v v'
-      c → c
-  compare (Money _ _) _ = LT
-  compare (Percent v) (Percent v') = compare v v'
-  compare (Percent _) _ = LT
-  compare (Value v) (Value v') = compare v v'
-  compare (Value _) _ = LT
-  compare (Category c) (Category c') = compare c c'
-  compare (Category _) _ = LT
-  compare (Bool b) (Bool b') = compare b b'
-  compare (Bool _) _ = LT
+derive instance eqSemantics ∷ Eq Semantics
+derive instance ordSemantics ∷ Ord Semantics
 
 analyze ∷ JsonPrim → Maybe Semantics
 analyze p =
@@ -283,56 +248,16 @@ jarrayToSemantics arr = foldl foldFn initial mapArr
     → Map JCursor (List (Maybe Semantics))
   insertOne m acc k = update (pure ∘ Cons (lookup k m)) k acc
 
-instance encodeJsonSemantics ∷ EncodeJson Semantics where
-  encodeJson (Value n)
-     = "type" := "value"
-    ~> "value" := n
-    ~> jsonEmptyObject
-  encodeJson (Percent p)
-     = "type" := "percent"
-     ~> "value" := p
-     ~> jsonEmptyObject
-  encodeJson (Money n v)
-     = "type" := "money"
-     ~> "currency" := v
-     ~> "value" := n ~> jsonEmptyObject
-  encodeJson (Bool b)
-     = "type" := "bool"
-     ~> "value" := b
-     ~> jsonEmptyObject
-  encodeJson (Category c)
-     = "type" := "category"
-     ~> "value" := c
-     ~> jsonEmptyObject
-  encodeJson s@(Time t)
-     = "type" := "time"
-     ~> "value" := printSemantics s
-     ~> jsonEmptyObject
-  encodeJson s@(Date d)
-     = "type" := "date"
-     ~> "value" := printSemantics s
-     ~> jsonEmptyObject
-  encodeJson s@(DateTime dt)
-     = "type" := "datetime"
-     ~> "value" := printSemantics s
-     ~> jsonEmptyObject
+getMaybeString ∷ Json → JCursor → Maybe String
+getMaybeString js cursor =
+  map printSemantics
+    $ analyzeJson
+    =<< cursorGet cursor js
 
-instance decodeJsonSemantics ∷ DecodeJson Semantics where
-  decodeJson = decodeJson >=> \obj → do
-    ty ← obj .? "type"
-    case ty of
-      "money" → Money <$> obj .? "value" <*> obj .? "currency"
-      "bool" → Bool <$> obj .? "value"
-      "category" → Category <$> obj .? "value"
-      "value" → Value <$> obj .? "value"
-      "percent" → Percent <$> obj .? "value"
-      "time" → do
-        strVal ← obj .? "value"
-        maybe (Left "incorrect time") pure $ analyzeTime strVal
-      "date" → do
-        strVal ← obj .? "value"
-        maybe (Left "incorrect date") pure $ analyzeDate strVal
-      "datetime" → do
-        strVal ← obj .? "value"
-        maybe (Left "incorrect datetime") pure $ analyzeDatetime strVal
-      _ → Left "incorrect type value for Semantics"
+getValues ∷ Json → Maybe JCursor → Array Number
+getValues js cursor =
+  foldMap A.singleton
+    $ semanticsToNumber
+    =<< analyzeJson
+    =<< flip cursorGet js
+    =<< cursor

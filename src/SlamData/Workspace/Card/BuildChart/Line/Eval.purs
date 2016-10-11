@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.BuildChart.Line.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet)
+import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
@@ -34,7 +34,7 @@ import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 import SlamData.Workspace.Card.BuildChart.Axis as Ax
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber, printSemantics)
+import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -73,21 +73,21 @@ buildLineData r records = series
     → Json
     → Maybe String >> String >> (Array Number × Array Number × Array Number)
   dataMapFoldFn acc js =
-    case map printSemantics $ analyzeJson =<< cursorGet r.dimension js of
+    let
+      getMaybeStringFromJson = getMaybeString js
+      getValuesFromJson = getValues js
+    in case getMaybeStringFromJson r.dimension of
       Nothing → acc
       Just dimKey →
         let
           mbSeries =
-            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.series
+            getMaybeStringFromJson =<< r.series
           leftValues =
-            foldMap A.singleton
-              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
+            getValuesFromJson $ pure r.value
           rightValues =
-            foldMap A.singleton
-              $ semanticsToNumber =<< analyzeJson =<< flip cursorGet js =<< r.secondValue
+            getValuesFromJson r.secondValue
           sizes =
-            foldMap A.singleton
-              $ semanticsToNumber =<< analyzeJson =<< flip cursorGet js =<< r.size
+            getValuesFromJson r.size
 
           alterSeriesFn
             ∷ Maybe (String >> (Array Number × Array Number × Array Number))
@@ -190,8 +190,8 @@ buildLine r records axes = do
   E.series series
 
   E.xAxis do
-    E.axisType xAxisTypeAndInterval.axisType
-    traverse_ E.interval xAxisTypeAndInterval.interval
+    E.axisType xAxisConfig.axisType
+    traverse_ E.interval xAxisConfig.interval
     E.items $ map ET.strItem xValues
     E.axisLabel do
       E.rotate r.axisLabelAngle
@@ -211,13 +211,8 @@ buildLine r records axes = do
   lineData ∷ Array LineSerie
   lineData = buildLineData r records
 
-  xAxisTypeAndInterval ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int, heightMult ∷ Int}
-  xAxisTypeAndInterval = case Ax.axisType r.dimension axes of
-    Ax.Measure → {axisType: ET.Category, interval: Nothing, heightMult: 1}
-    Ax.Time → {axisType: ET.Category, interval: Just 0, heightMult: 2}
-    Ax.Date → {axisType: ET.Time, interval: Just 0, heightMult: 2}
-    Ax.DateTime → {axisType: ET.Time, interval: Just 0, heightMult: 2}
-    Ax.Category → {axisType: ET.Category, interval: Just 0, heightMult: 1}
+  xAxisConfig ∷ Ax.EChartsAxisConfiguration
+  xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.dimension axes
 
   xSortFn ∷ String → String → Ordering
   xSortFn = Ax.compareWithAxisType $ Ax.axisType r.dimension axes
@@ -235,7 +230,7 @@ buildLine r records axes = do
 
       minHeight = 24.0
     in
-      mul xAxisTypeAndInterval.heightMult
+      mul xAxisConfig.heightMult
         $ Int.round
         $ add minHeight
         $ max (Int.toNumber r.axisLabelFontSize + 2.0)

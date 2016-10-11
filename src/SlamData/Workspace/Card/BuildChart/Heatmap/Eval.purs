@@ -7,7 +7,7 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, Json, cursorGet)
+import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.List as L
 import Data.Lens ((^?))
@@ -31,7 +31,7 @@ import SlamData.Workspace.Card.BuildChart.Heatmap.Model (Model, HeatmapR)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getColorScheme)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Heatmap))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber, printSemantics)
+import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.BuildChart.Axis as Ax
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
@@ -75,18 +75,19 @@ buildHeatmapData r records = series
     → Maybe String >> (String × String) >> Array Number
   dataMapFoldFn acc js =
     let
+      getMaybeStringFromJson = getMaybeString js
+      getValuesFromJson = getValues js
       mbAbscissa =
-        map printSemantics $ analyzeJson =<< cursorGet r.abscissa js
+        getMaybeStringFromJson r.abscissa
       mbOrdinate =
-        map printSemantics $ analyzeJson =<< cursorGet r.ordinate js
+        getMaybeStringFromJson r.ordinate
     in case mbAbscissa × mbOrdinate of
       (Just abscissaKey) × (Just ordinateKey) →
         let
           mbSeries =
-            map printSemantics $ analyzeJson =<< flip cursorGet js =<< r.series
+            getMaybeStringFromJson =<< r.series
           values =
-            foldMap A.singleton
-              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
+            getValuesFromJson $ pure r.value
 
           alterSeriesFn
             ∷ Maybe ((String × String) >> Array Number)
