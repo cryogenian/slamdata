@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.BuildChart.Graph.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, JCursor, Json, cursorGet)
+import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Foreign as FR
@@ -49,7 +49,6 @@ import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Graph.Model (Model, GraphR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Graph))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
-import SlamData.Workspace.Card.BuildChart.Axis (Axis, analyzeJArray)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.BuildChart.Semantics as Sem
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -85,8 +84,8 @@ type GraphItem =
 
 type GraphData = Array GraphItem × Array EdgeItem
 
-buildGraphData ∷ JArray → M.Map JCursor Axis → GraphR → GraphData
-buildGraphData records axesMap r =
+buildGraphData ∷ JArray → GraphR → GraphData
+buildGraphData records r =
   nodes × edges
   where
   -- | maybe color >> maybe source × maybe target >> values
@@ -100,15 +99,16 @@ buildGraphData records axesMap r =
     → Maybe String >> Maybe String × Maybe String >> Array Number
   dataMapFoldFn acc js =
     let
+      getMaybeStringFromJson = Sem.getMaybeString js
+      getValuesFromJson = Sem.getValues js
       mbSource =
-        map Sem.printSemantics $ Sem.analyzeJson =<< cursorGet r.source js
+        getMaybeStringFromJson r.source
       mbTarget =
-        map Sem.printSemantics $ Sem.analyzeJson =<< cursorGet r.target js
+        getMaybeStringFromJson r.target
       mbColor =
-        map Sem.printSemantics $ Sem.analyzeJson =<< flip cursorGet js =<< r.color
+        getMaybeStringFromJson =<< r.color
       values =
-        foldMap A.singleton
-          $ Sem.semanticsToNumber =<< Sem.analyzeJson =<< flip cursorGet js =<< r.size
+        getValuesFromJson r.size
 
       colorAlterFn
         ∷ Maybe (Maybe String × Maybe String >> Array Number)
@@ -267,11 +267,8 @@ buildGraph r records = do
     E.lineStyle $ E.normal $ E.colorSource
 
   where
-  axisMap ∷ M.Map JCursor Axis
-  axisMap = analyzeJArray records
-
   graphData ∷ GraphData
-  graphData = buildGraphData records axisMap r
+  graphData = buildGraphData records r
 
   legendNames ∷ Array String
   legendNames = A.nub $ A.catMaybes $ map _.category $ fst graphData

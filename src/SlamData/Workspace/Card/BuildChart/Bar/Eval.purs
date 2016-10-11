@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.BuildChart.Bar.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet, toString)
+import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
@@ -48,12 +48,12 @@ import SlamData.Workspace.Card.BuildChart.Bar.Model (Model, BarR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
+import SlamData.Workspace.Card.BuildChart.Axis as Ax
+import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
-import Utils (stringToNumber)
 import Utils.DOM (getTextWidthPure)
 
 eval
@@ -93,15 +93,19 @@ buildBarData r records = series
     → Json
     → Maybe String >> Maybe String >> String >> Array Number
   dataMapFoldFn acc js =
-    case toString =<< cursorGet r.category js of
+    let
+      getMaybeStringFromJson = getMaybeString js
+      getValuesFromJson = getValues js
+    in case getMaybeStringFromJson r.category of
       Nothing → acc
       Just categoryKey →
         let
-          mbStack = toString =<< flip cursorGet js =<< r.stack
-          mbParallel = toString =<< flip cursorGet js =<< r.parallel
+          mbStack =
+            getMaybeStringFromJson =<< r.stack
+          mbParallel =
+            getMaybeStringFromJson =<< r.parallel
           values =
-            foldMap A.singleton
-              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
+            getValuesFromJson $ pure r.value
 
           alterStackFn
             ∷ Maybe (Maybe String >> String >> Array Number)
@@ -155,18 +159,28 @@ buildBar r records axes = do
   E.colors colors
 
   E.xAxis do
-    E.axisType ET.Category
+    E.axisType xAxisConfig.axisType
+    traverse_ E.interval xAxisConfig.interval
     E.items $ map ET.strItem xValues
-    when xAxisIsCategory $ E.interval 0
     E.axisLabel do
       E.rotate r.axisLabelAngle
       E.textStyle do
         E.fontSize r.axisLabelFontSize
         E.fontFamily "Ubuntu, sans"
 
+  E.yAxis do
+    E.axisType ET.Value
+    E.axisLabel $ E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize r.axisLabelFontSize
+    E.axisLine $ E.lineStyle $ E.width 1
+    E.splitLine $ E.lineStyle $ E.width 1
+
   E.legend do
     E.textStyle $ E.fontFamily "Ubuntu, sans"
-    unless (xAxisIsCategory ∧ A.length seriesNames > 40) E.hidden
+    case xAxisConfig.axisType of
+      ET.Category | A.length seriesNames > 40 → E.hidden
+      _ → pure unit
     E.items $ map ET.strItem seriesNames
     E.leftLeft
     E.topBottom
@@ -180,9 +194,8 @@ buildBar r records axes = do
   barData ∷ Array BarStacks
   barData = buildBarData r records
 
-  xAxisIsCategory ∷ Boolean
-  xAxisIsCategory = F.elem r.category axes.category
-
+  xAxisConfig ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int, heightMult ∷ Int}
+  xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.category axes
 
   seriesNames ∷ Array String
   seriesNames =
@@ -199,9 +212,7 @@ buildBar r records axes = do
                             ⋙ M.keys
                             ⋙ Set.fromFoldable)) barData
   xSortFn ∷ String → String → Ordering
-  xSortFn a b
-    | F.elem r.category axes.value = compare (stringToNumber a) (stringToNumber b)
-    | otherwise = compare a b
+  xSortFn = Ax.compareWithAxisType $ Ax.axisType r.category axes
 
   labelHeight ∷ Int
   labelHeight =
@@ -217,7 +228,8 @@ buildBar r records axes = do
       minHeight = 24.0
 
     in
-      Int.round
+      mul xAxisConfig.heightMult
+        $ Int.round
         $ add minHeight
         $ max (Int.toNumber r.axisLabelFontSize + 2.0)
         $ Math.abs
@@ -230,6 +242,10 @@ buildBar r records axes = do
       E.buildItems $ for_ xValues \key →
         case M.lookup key serie.items of
           Nothing → E.missingItem
-          Just v → E.addItem $ E.value v
+          Just v → E.addItem do
+            E.name key
+            E.buildValues do
+              E.addStringValue key
+              E.addValue v
       for_ stacked.stack E.stack
       for_ serie.name E.name

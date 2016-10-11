@@ -18,42 +18,108 @@ module SlamData.Workspace.Card.BuildChart.Axis where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor(..), JObject, JArray, Json, insideOut, decodeJson, encodeJson, (:=), (.?), (~>), jsonEmptyObject)
-import Data.Array ((!!), fromFoldable, cons)
+import Data.Argonaut (JCursor(..), JObject, JArray, Json, insideOut, (:=), (.?), (~>), jsonEmptyObject)
+import Data.Array as A
 import Data.Foldable as F
-import Data.List (List(..), filter, catMaybes)
+import Data.List (List(..))
+import Data.List as L
 import Data.Map as M
-import Data.StrMap as Sm
 
-import SlamData.Workspace.Card.BuildChart.Semantics (Semantics, jarrayToSemantics, checkCategory, checkTime, checkBool, checkPercent, checkMoney, checkValues)
+import ECharts.Types as ET
+
+import SlamData.Workspace.Card.BuildChart.Semantics as Sem
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.Property.ArbJson (runArbJCursor)
 
-data Axis
-  = ValAxis (List (Maybe Semantics))
-  | CatAxis (List (Maybe Semantics))
-  | TimeAxis (List (Maybe Semantics))
+data AxisType
+  = Measure
+  | Category
+  | Time
+  | Date
+  | DateTime
 
-type Axes =
-  { value ∷ Array JCursor
-  , time ∷ Array JCursor
-  , category ∷ Array JCursor
+compatible ∷ AxisType → Sem.Semantics → Boolean
+compatible Measure = case _ of
+  Sem.Value _ → true
+  Sem.Bool _ → true
+  Sem.Percent _ → true
+  Sem.Money _ _ → true
+  _ → false
+compatible Category = case _ of
+  Sem.Category _ → true
+  _ → false
+compatible Time = case _ of
+  Sem.Time _ → true
+  _ → false
+compatible Date = case _ of
+  Sem.Date _ → true
+  _ → false
+compatible DateTime = case _ of
+  Sem.DateTime _ → true
+  _ → false
+
+printWithAxisType ∷ AxisType → Sem.Semantics → Maybe String
+printWithAxisType atype sem
+  | compatible atype sem = pure $ Sem.printSemantics sem
+  | otherwise = Nothing
+
+-- | Note that this function is used on stuff that has been already
+-- | aggregated and analyzed, i.e. you take JArray, analyze it, extract axes
+-- | and then you need to sort those axes
+compareWithAxisType ∷ AxisType → String → String → Ordering
+compareWithAxisType atype a b =
+  let
+    mbASem = Sem.analyzeString a
+    mbBSem = Sem.analyzeString b
+
+  in case atype of
+    Measure →
+      compare (mbASem >>= Sem.semanticsToNumber) (mbBSem >>= Sem.semanticsToNumber)
+    Category →
+      compare a b
+    Time →
+      compare (mbASem >>= Sem.semanticsToTime) (mbBSem >>= Sem.semanticsToTime)
+    Date →
+      compare (mbASem >>= Sem.semanticsToDate) (mbBSem >>= Sem.semanticsToDate)
+    DateTime →
+      compare (mbASem >>= Sem.semanticsToDateTime) (mbBSem >>= Sem.semanticsToDateTime)
+
+type AxisTypeAnnotated a =
+  { value ∷ a
+  , time ∷ a
+  , category ∷ a
+  , date ∷ a
+  , datetime ∷ a
   }
+
+type Axes = AxisTypeAnnotated (Array JCursor)
+
+axisType ∷ JCursor → Axes → AxisType
+axisType c axes
+  | F.elem c axes.value = Measure
+  | F.elem c axes.time = Time
+  | F.elem c axes.date = Date
+  | F.elem c axes.datetime = DateTime
+  | otherwise = Category
 
 genAxes ∷ Gen.Gen Axes
 genAxes = do
   value ← map (map runArbJCursor) arbitrary
   time ← map (map runArbJCursor) arbitrary
   category ← map (map runArbJCursor) arbitrary
-  pure {value, time, category}
+  date ← map (map runArbJCursor) arbitrary
+  datetime ← map (map runArbJCursor) arbitrary
+  pure {value, time, category, date, datetime}
 
 encodeAxes ∷ Axes → Json
 encodeAxes axes =
   "value" := axes.value
   ~> "time" := axes.time
   ~> "category" := axes.category
+  ~> "date" := axes.date
+  ~> "datetime" := axes.datetime
   ~> jsonEmptyObject
 
 decodeAxes ∷ JObject → String ⊹ Axes
@@ -61,20 +127,17 @@ decodeAxes js = do
   value ← js .? "value"
   category ← js .? "category"
   time ← js .? "time"
-  pure {value, category, time}
-
-printAxes ∷ Axes → String
-printAxes axes =
-  "{ value: " ⊕ show axes.value ⊕ ",\n"
-  ⊕ "  time: " ⊕ show axes.time ⊕ ",\n"
-  ⊕ "  category: " ⊕ show axes.category ⊕ "\n}"
-
+  date ← ((js .? "date") <|> pure [])
+  datetime ← ((js .? "datetime") <|> pure [])
+  pure {value, category, time, date, datetime}
 
 initialAxes ∷ Axes
 initialAxes =
   { value: []
   , time: []
   , category: []
+  , date: []
+  , datetime: []
   }
 
 eqAxes ∷ Axes → Axes → Boolean
@@ -83,97 +146,89 @@ eqAxes r1 r2 =
     [ r1.category ≡ r2.category
     , r1.time ≡ r2.time
     , r1.value ≡ r2.value
+    , r1.date ≡ r2.date
+    , r1.datetime ≡ r2.datetime
     ]
 
 buildAxes ∷ JArray → Axes
-buildAxes =
-  foldl foldFn initialAxes
-  ∘ M.toList
-  ∘ analyzeJArray
+buildAxes rs =
+  rs
+    # Sem.jarrayToSemantics
+    # checkPairs
+    # map checkSemantics
+    # M.toList
+    # foldl foldFn initialAxes
   where
-  foldFn ∷ Axes → JCursor × Axis → Axes
-  foldFn accum (cursor × axis) = case axis of
-    CatAxis _ → accum { category = cons cursor accum.category }
-    ValAxis _ → accum { value = cons cursor accum.value }
-    TimeAxis _ → accum { time = cons cursor accum.time }
+  foldFn ∷ Axes → JCursor × Maybe AxisType → Axes
+  foldFn acc (_ × Nothing) = acc
+  foldFn acc (cursor × (Just at)) = case at of
+    Measure → acc { value = A.cons cursor acc.value }
+    Category → acc { category = A.cons cursor acc.category }
+    Time → acc { time = A.cons cursor acc.time }
+    Date → acc { date = A.cons cursor acc.date }
+    DateTime → acc { datetime = A.cons cursor acc.datetime }
 
-isValAxis ∷ Axis → Boolean
-isValAxis (ValAxis _) = true
-isValAxis _ = false
-
-isCatAxis ∷ Axis → Boolean
-isCatAxis (CatAxis _) = true
-isCatAxis _ = false
-
-isTimeAxis ∷ Axis → Boolean
-isTimeAxis (TimeAxis _) = true
-isTimeAxis _ = false
-
-runAxis ∷ Axis → List (Maybe Semantics)
-runAxis (ValAxis a) = a
-runAxis (CatAxis a) = a
-runAxis (TimeAxis a) = a
-
-checkSemantics ∷ List (Maybe Semantics) → Maybe Axis
+checkSemantics ∷ List (Maybe Sem.Semantics) → Maybe AxisType
 checkSemantics lst =
-      (ValAxis  <$> checkValues lst)
-  <|> (ValAxis  <$> checkMoney lst)
-  <|> (ValAxis  <$> checkPercent lst)
-  <|> (ValAxis  <$> checkBool lst)
-  <|> (TimeAxis <$> checkTime lst)
-  <|> (CatAxis  <$> checkCategory lst)
-
-analyzeJArray ∷ JArray → M.Map JCursor Axis
-analyzeJArray arr =
-  jarrayToSemantics arr
-  -- Check if values of that map can be converted to axes (if can it will be Just)
-  # map checkSemantics
-  -- Make list of Tuple JCursor (Maybe Axis)
-  # M.toList
-  -- lift Maybe to Tuple from Axis
-  # map sequence
-  -- Drop Nothings
-  # catMaybes
-  -- Create new Map
-  # M.fromFoldable
-  -- Drop records those keys have no relations to other keys
-  # checkPairs
+  result
   where
-  -- | Translate encoded {foo: 1, bar: 2}
-  -- | to [{key: "foo", value: 1}, {key: "bar", value: 2}]
-  toKeyValJArray ∷ Json → JArray
-  toKeyValJArray =
-    decodeJson >>> (map toKeyValJsons) >>> either (const []) fromFoldable
+  result
+    | semiLen < counts.value = Just Measure
+    | semiLen < counts.category = Just Category
+    | semiLen < counts.time = Just Time
+    | semiLen < counts.datetime = Just DateTime
+    | semiLen < counts.date = Just Date
+    | otherwise = Nothing
 
-  -- | same as `toKeyValJArray` but argument isn't encoded and it returns `List`
-  toKeyValJsons ∷ JObject → List Json
-  toKeyValJsons =
-    Sm.toList >>> map (toKeyVals >>> Sm.fromFoldable >>> encodeJson)
+  semiLen ∷ Int
+  semiLen = L.length lst / 2
 
-  toKeyVals ∷ Tuple String Json → List (Tuple String Json)
-  toKeyVals (Tuple key val) =
-    Cons (Tuple "key" $ encodeJson key)
-    $ Cons (Tuple "value" val) Nil
+  counts ∷ AxisTypeAnnotated Int
+  counts = foldl foldFn init lst
 
-getPossibleDependencies ∷ JCursor → M.Map JCursor Axis → List JCursor
-getPossibleDependencies cursor m =
-  filter (dependsOn cursor) $ M.keys m
+  init ∷ AxisTypeAnnotated Int
+  init =
+    { category: 0
+    , time: 0
+    , value: 0
+    , date: 0
+    , datetime: 0
+    }
 
-checkPairs ∷ M.Map JCursor Axis → M.Map JCursor Axis
-checkPairs m =
-  case M.keys m of
-    Nil → m
-    Cons _ Nil → m
-    _ → foldl check m $ M.keys m
+  foldFn ∷ AxisTypeAnnotated Int → Maybe Sem.Semantics → AxisTypeAnnotated Int
+  foldFn acc Nothing = acc
+  foldFn acc (Just a)
+    | Sem.isUsedAsNothing a =
+        acc
+    | compatible Measure a =
+        acc { value = acc.value + 1 }
+    | compatible Category a =
+        acc { category = acc.category + 1 }
+    | compatible Time a =
+        acc { time = acc.time + 1 }
+    | compatible Date a =
+        acc { date = acc.date +  1 }
+    | compatible DateTime a =
+        acc { datetime = acc.datetime + 1 }
+    | otherwise =
+        acc
+
+checkPairs ∷ ∀ a. M.Map JCursor a → M.Map JCursor a
+checkPairs m = case ks of
+  Nil → m
+  Cons _ Nil → m
+  _ → foldl check m ks
   where
-  check ∷ M.Map JCursor Axis → JCursor → M.Map JCursor Axis
-  check m cursor =
-    case getPossibleDependencies cursor m of
-      Nil → M.delete cursor m
-      _ → m
+  ks ∷ List JCursor
+  ks = M.keys m
+
+  check ∷ M.Map JCursor a → JCursor → M.Map JCursor a
+  check m cursor
+    | F.any (dependsOn cursor) ks = m
+    | otherwise = M.delete cursor m
 
 dependsOn ∷ JCursor → JCursor → Boolean
-dependsOn a b = a /= b &&
+dependsOn a b = a ≠ b ∧
   dependsOn' (insideOut a) (insideOut b)
   where
   dependsOn' JCursorTop JCursorTop = true
@@ -183,19 +238,16 @@ dependsOn a b = a /= b &&
   dependsOn' (JIndex _ c) (JIndex _ c') = dependsOn' c c'
   dependsOn' _ _ = false
 
-newtype ParentJCursor = ParentJCursor JCursor
-runParentJCursor ∷ ParentJCursor → JCursor
-runParentJCursor (ParentJCursor x) = x
+type EChartsAxisConfiguration =
+  { axisType ∷ ET.AxisType
+  , interval ∷ Maybe Int
+  , heightMult ∷ Int
+  }
 
-isDrilledByIndex ∷ JCursor → ParentJCursor → Boolean
-isDrilledByIndex child (ParentJCursor parent) = isDrilledByIndex' child parent
-  where
-  isDrilledByIndex' JCursorTop (JIndex _ JCursorTop) = true
-  isDrilledByIndex' (JField a1 j1) (JField a2 j2) | a1 ≡ a2 = isDrilledByIndex' j1 j2
-  isDrilledByIndex' (JIndex i1 j1) (JIndex i2 j2) | i1 ≡ i2 = isDrilledByIndex' j1 j2
-  isDrilledByIndex' _ _ = false
-
-instance axisShow ∷ Show Axis where
-  show (ValAxis vs) = "(ValAxis " <> show vs <> ")"
-  show (CatAxis vs) = "(CatAxis " <> show vs <> ")"
-  show (TimeAxis vs) = "(TimeAxis " <> show vs <> ")"
+axisConfiguration ∷ AxisType → EChartsAxisConfiguration
+axisConfiguration = case _ of
+  Measure → {axisType: ET.Category, interval: Nothing, heightMult: 1}
+  Time → {axisType: ET.Category, interval: Just 0, heightMult: 2}
+  Date → {axisType: ET.Time, interval: Just 0, heightMult: 2}
+  DateTime → {axisType: ET.Time, interval: Just 0, heightMult: 2}
+  Category → {axisType: ET.Category, interval: Just 0, heightMult: 1}

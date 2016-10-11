@@ -276,6 +276,9 @@ synchronizeChildren = void do
         $ autoSelect
         $ newSelect
         $ st.axes.category
+        ⊕ st.axes.time
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
 
     newValue =
       setPreviousValueFrom (Just st.value)
@@ -293,6 +296,7 @@ synchronizeChildren = void do
         $ newSelect
         $ ifSelected [ newCategory ]
         $ st.axes.category
+        ⊕ st.axes.time
         ⊝ newCategory
 
     newOrder =

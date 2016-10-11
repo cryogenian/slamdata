@@ -23,7 +23,7 @@ import SlamData.Prelude
 
 import Color as C
 
-import Data.Argonaut (JArray, Json, cursorGet, toString)
+import Data.Argonaut (JArray, Json)
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Lens ((^?))
@@ -47,7 +47,7 @@ import SlamData.Workspace.Card.BuildChart.Common.Positioning (rectangularGrids, 
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model (Model, BoxplotR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
+import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -104,15 +104,19 @@ buildBoxplotData r records = series
     → Json
     → Maybe String >> Maybe String >> String >> Array Number
   dataMapFoldFn acc js =
-    case toString =<< cursorGet r.dimension js of
+    let
+      getMaybeStringFromJson = getMaybeString js
+      getValuesFromJson = getValues js
+    in case getMaybeStringFromJson r.dimension of
       Nothing → acc
       Just dimensionKey →
         let
-          mbParallel = toString =<< flip cursorGet js =<< r.parallel
-          mbSeries = toString =<< flip cursorGet js =<< r.series
+          mbParallel =
+            getMaybeStringFromJson =<< r.parallel
+          mbSeries =
+            getMaybeStringFromJson =<< r.series
           values =
-            foldMap A.singleton
-              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
+            getValuesFromJson $ pure r.value
 
           alterParallelFn
             ∷ Maybe (Maybe String >> String >> Array Number)

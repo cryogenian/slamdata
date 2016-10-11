@@ -344,7 +344,8 @@ synchronizeChildren = do
         $ autoSelect
         $ newSelect
         $ ifSelected [newSource]
-        $ st.axes.category ⊝ newSource
+        $ st.axes.category
+        ⊝ newSource
 
     newSize =
       setPreviousValueFrom (Just st.size)
@@ -358,7 +359,10 @@ synchronizeChildren = do
         $ autoSelect
         $ newSelect
         $ ifSelected [newTarget]
-        $ st.axes.category ⊝ newSource ⊝ newTarget
+        $ st.axes.category
+        ⊕ st.axes.time
+        ⊝ newSource
+        ⊝ newTarget
 
     newSizeAggregation =
       setPreviousValueFrom (Just st.sizeAgg)

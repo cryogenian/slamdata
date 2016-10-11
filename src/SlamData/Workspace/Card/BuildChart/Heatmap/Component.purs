@@ -364,6 +364,8 @@ synchronizeChildren = void do
         $ st.axes.category
         ⊕ st.axes.value
         ⊕ st.axes.time
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
 
     newOrdinate =
       setPreviousValueFrom (Just st.ordinate)
@@ -372,6 +374,8 @@ synchronizeChildren = void do
         $ st.axes.category
         ⊕ st.axes.value
         ⊕ st.axes.time
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
         ⊝ newAbscissa
 
     newValue =
@@ -392,6 +396,7 @@ synchronizeChildren = void do
         $ newSelect
         $ ifSelected [newAbscissa, newOrdinate, newValue]
         $ st.axes.category
+        ⊕ st.axes.time
         ⊝ newAbscissa
         ⊝ newOrdinate
 

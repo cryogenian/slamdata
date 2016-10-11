@@ -275,6 +275,9 @@ synchronizeChildren = void do
         $ autoSelect
         $ newSelect
         $ st.axes.category
+        ⊕ st.axes.time
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
 
     newMultiple =
       setPreviousValueFrom (Just st.multiple)
@@ -282,6 +285,7 @@ synchronizeChildren = void do
         $ newSelect
         $ ifSelected [newCategory]
         $ st.axes.category
+        ⊕ st.axes.time
         ⊝ newCategory
 
     newParallel =
@@ -290,6 +294,7 @@ synchronizeChildren = void do
         $ newSelect
         $ ifSelected [newCategory]
         $ st.axes.category
+        ⊕ st.axes.time
         ⊝ newCategory
         ⊝ newMultiple
 

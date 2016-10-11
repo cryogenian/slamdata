@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.BuildChart.Radar.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, cursorGet, toString)
+import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Lens ((^?))
@@ -47,7 +47,7 @@ import SlamData.Workspace.Card.BuildChart.Radar.Model (Model, RadarR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Radar))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
-import SlamData.Workspace.Card.BuildChart.Semantics (analyzeJson, semanticsToNumber)
+import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -91,15 +91,19 @@ buildRadarData r records = series
     → Json
     → Maybe String >> Maybe String >> String >> Array Number
   dataMapFoldFn acc js =
-    case toString =<< cursorGet r.category js of
+    let
+      getMaybeStringFromJson = getMaybeString js
+      getValuesFromJson = getValues js
+    in case getMaybeStringFromJson r.category of
       Nothing → acc
       Just categoryKey →
         let
-          mbParallel = toString =<< flip cursorGet js =<< r.parallel
-          mbMultiple = toString =<< flip cursorGet js =<< r.multiple
+          mbParallel =
+            getMaybeStringFromJson =<< r.parallel
+          mbMultiple =
+            getMaybeStringFromJson =<< r.multiple
           values =
-            foldMap A.singleton
-              $ semanticsToNumber =<< analyzeJson =<< cursorGet r.value js
+            getValuesFromJson $ pure r.value
 
           alterParallelFn
             ∷ Maybe (Maybe String >> String >> Array Number)
