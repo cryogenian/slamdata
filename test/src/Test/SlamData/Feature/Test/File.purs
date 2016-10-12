@@ -22,7 +22,6 @@ import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
-import Selenium.Monad as Selenium
 
 fileScenario
   ∷ SlamFeature Unit
@@ -36,14 +35,16 @@ defaultAfterFile ∷ SlamFeature Unit
 defaultAfterFile = Interact.browseRootFolder
 
 afterRename ∷ SlamFeature Unit
-afterRename =
-  Selenium.apathize $ Interact.deleteFile "Ϡ⨁⟶≣ΜϞ"
+afterRename = Interact.deleteFileInTestFolder "Ϡ⨁⟶≣ΜϞ"
 
 afterMove ∷ SlamFeature Unit
-afterMove = Interact.browseTestFolder *> Interact.deleteFile "Medical data"
+afterMove = Interact.deleteFileInTestFolder "Medical data"
 
 afterUpload ∷ SlamFeature Unit
-afterUpload = Interact.deleteFile "array-wrapped.json"
+afterUpload = Interact.deleteFileInTestFolder "array-wrapped.json"
+
+afterCreateWorkspace ∷ SlamFeature Unit
+afterCreateWorkspace = Interact.deleteFileInTestFolder "Untitled Workspace.slam"
 
 afterAccessSharingUrl ∷ SlamFeature Unit
 afterAccessSharingUrl =
@@ -111,7 +112,7 @@ test = do
     Expect.numberOfFiles 1
     successMsg "Succesfully searched for a file"
 
-  fileScenario defaultAfterFile "Access sharing URL for a file" [] do
+  fileScenario afterCreateWorkspace "Access sharing URL for a file" [] do
     Interact.browseTestFolder
     Interact.shareFile "smallZips"
     Interact.accessSharingUrl

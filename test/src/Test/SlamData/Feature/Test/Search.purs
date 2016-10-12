@@ -30,7 +30,7 @@ searchScenario =
   scenario
     "Search"
     (Interact.createWorkspaceInTestFolder "Search")
-    (Interact.deleteFileInTestFolder "Untitled Workspace.slam"
+    (Interact.deleteFileInTestFolder "Search.slam"
        *> Interact.browseRootFolder)
 
 test ∷ SlamFeature Unit

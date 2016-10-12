@@ -14,9 +14,9 @@ cacheCardScenario =
   scenario
     "Caching data source card output"
     (Interact.createWorkspaceInTestFolder "Cache card")
-    (Interact.deleteFileInTestFolder "Untitled Workspace.slam"
-     ≫ Interact.deleteFile "временный файл"
-     ≫ Interact.browseRootFolder
+    (Interact.deleteFileInTestFolder "Cache card.slam"
+     ≫ Interact.deleteFileInTestFolder "Explore временный файл.slam"
+     ≫ Interact.deleteFileInTestFolder "временный файл"
     )
 
 test ∷ SlamFeature Unit
@@ -38,6 +38,6 @@ test =
     Interact.addColumn "measureTwo"
     Interact.browseTestFolder
     Interact.accessFile "временный файл"
-    Interact.exploreFile
+    Interact.exploreFile "Explore временный файл"
     Expect.tableColumnsAre ["measureOne", "measureTwo"]
     successMsg "Successfully saved data source card output to file"

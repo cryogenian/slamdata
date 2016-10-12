@@ -6,10 +6,9 @@ import Data.Array as Arr
 import Data.Map as Map
 import Data.String as Str
 
-import Selenium.Monad (script, get, apathize, refresh, getCurrentUrl, tryRepeatedlyTo)
+import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
 
 import Test.Feature as Feature
-import Test.Feature.Log as Log
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature, getConfig, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -43,16 +42,21 @@ mountTestDatabase = do
   Feature.provideFieldValue (XPath.anywhere XPaths.mountDatabase) "testDb"
   Feature.click (XPath.anywhere XPaths.mountButton)
 
-skipAnyGuides ∷ SlamFeature Unit
-skipAnyGuides =
-  apathize $ Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Skip"
+skipGuide ∷ SlamFeature Unit
+skipGuide =
+  Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Skip"
+
+dismissHint ∷ SlamFeature Unit
+dismissHint =
+  Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Dismiss"
 
 accessFile ∷ String → SlamFeature Unit
 accessFile =
   Feature.click ∘ XPath.anywhere ∘ XPaths.accessFile
 
-exploreFile ∷ SlamFeature Unit
-exploreFile =
+exploreFile ∷ String → SlamFeature Unit
+exploreFile name = do
+  Feature.provideFieldValue (XPath.anywhere $ XPath.anyWithExactAriaLabel "New workspace name") name
   Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Explore file"
 
 accessBreadcrumb ∷ String → SlamFeature Unit
@@ -73,42 +77,57 @@ browseTestFolder =
 createWorkspace ∷ SlamFeature Unit
 createWorkspace = Feature.click $ XPath.anywhere XPaths.createWorkspace
 
-nameWorkspace ∷ String → SlamFeature Unit
-nameWorkspace name = do
-  Feature.provideFieldValueWithProperties
-    (Map.singleton "value" $ Just "Untitled Workspace")
-    (XPath.anywhere "input")
-    name
-  Feature.pressEnter
+nameDeck ∷ String → SlamFeature Unit
+nameDeck name = do
+  flipDeck
+  Feature.click $ XPath.anywhere XPaths.renameDeck
+  Feature.provideFieldValue (XPath.anywhere $ XPath.nodeWithExactAriaLabel "input" "Deck name") name
+  Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Save"
 
 deleteFile ∷ String → SlamFeature Unit
 deleteFile name =
   Feature.click (XPath.anywhere $ XPaths.selectFile name)
-    *> (Feature.click (XPath.anywhere $ XPaths.removeFile name)
-          *> Feature.expectNotPresented (XPath.anywhere (XPaths.removeFile name))
-          <|> Log.warnMsg "Couldn't remove file, see https://slamdata.atlassian.net/browse/SD-1613 and https://slamdata.atlassian.net/browse/SD-1614")
+    *> Feature.click (XPath.anywhere $ XPaths.removeFile name)
+    *> Feature.expectNotPresented (XPath.anywhere $ XPaths.selectFile name)
 
 shareFile ∷ String → SlamFeature Unit
-shareFile name =
-  Feature.click (XPath.anywhere $ XPaths.selectFile name) *> Feature.click (XPath.anywhere $ XPaths.shareFile name)
+shareFile name = do
+  Feature.click (XPath.anywhere $ XPaths.selectFile name)
+  tryRepeatedlyTo $ clickShareFile <|> clickShareWorkspace
+  where
+  clickShareFile =
+    Feature.clickNotRepeatedly (XPath.anywhere $ XPaths.shareFile name)
+  clickShareWorkspace =
+    Feature.clickNotRepeatedly (XPath.anywhere $ XPaths.shareFile $ name <> ".slam")
 
 renameFile ∷ String → String → SlamFeature Unit
 renameFile oldName newName = do
   selectFile oldName
-  Feature.click $ XPath.anywhere $ XPaths.moveFile oldName
+  clickMove oldName
   Feature.provideFieldValueWithProperties
     (Map.singleton "value" $ Just oldName)
     (XPath.anywhere "input")
     newName
   Feature.click $ XPath.anywhere XPaths.renameButton
+  where
+  oldWorkspaceName = oldName <> ".slam"
 
 moveFile ∷ String → String → String → SlamFeature Unit
 moveFile fileName oldLocation newLocation = do
   selectFile fileName
-  Feature.click $ XPath.anywhere $ XPaths.moveFile fileName
+  clickMove fileName
   Feature.click $ XPath.anywhere XPaths.selectADestinationFolder
   Feature.click $ XPath.anywhere $ XPath.anyWithExactText newLocation
   Feature.click $ XPath.anywhere XPaths.renameButton
+
+clickMove ∷ String → SlamFeature Unit
+clickMove name =
+  tryRepeatedlyTo $ clickMoveFile <|> clickMoveWorkspace
+  where
+  clickMoveFile =
+    Feature.clickNotRepeatedly $ XPath.anywhere $ XPaths.moveFile name
+  clickMoveWorkspace =
+    Feature.clickNotRepeatedly $ XPath.anywhere $ XPaths.moveFile $ name <> ".slam"
 
 uploadFile ∷ String → SlamFeature Unit
 uploadFile =
@@ -121,15 +140,21 @@ provideFileSearchString value =
 
 selectFile ∷ String → SlamFeature Unit
 selectFile name =
-  Feature.click $ XPath.anywhere $ XPaths.selectFile name
+  tryRepeatedlyTo (selectFile' <|> selectWorkspace)
+  where
+  selectFile' =
+    Feature.clickNotRepeatedly $ XPath.anywhere $ XPaths.selectFile name
+  selectWorkspace =
+    Feature.clickNotRepeatedly $ XPath.anywhere $ XPaths.selectFile $ name <> ".slam"
 
 createWorkspaceInTestFolder ∷ String → SlamFeature Unit
 createWorkspaceInTestFolder name = do
   browseTestFolder
   createWorkspace
-  Feature.expectPresented
-    $ XPath.anywhere
-    $ XPaths.headerGripper
+  nameDeck name
+  browseTestFolder
+  renameFile "Untitled Workspace" name
+  accessFile $ name <> ".slam"
 
 createFolder ∷ SlamFeature Unit
 createFolder = Feature.click $ XPath.anywhere XPaths.createFolder
@@ -217,7 +242,6 @@ addColumn str = do
 selectFileForLastOpenCard ∷ String → SlamFeature Unit
 selectFileForLastOpenCard p = do
   for_ paths \(ix × path) → tryRepeatedlyTo do
-    script $ spy $ "(function() {document.querySelector('[aria-label=\"" ⊕ ariaLabel path ⊕ "\"]').scrollIntoView();})();"
     Feature.click $ resourceXPath (ix + 1) path
   where
   ariaLabel ∷ String → String
