@@ -39,7 +39,6 @@ data Selection f
 
 data Query a
   = SetAxisLabelAngle String a
-  | SetAxisLabelFontSize String a
   | SetMaxSymbolSize String a
   | SetMinSymbolSize String a
   | Select (Selection SelectAction) a

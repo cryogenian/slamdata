@@ -36,7 +36,6 @@ type State =
   { axes ∷ Axes
   , levelOfDetails ∷ LevelOfDetails
   , axisLabelAngle ∷ Number
-  , axisLabelFontSize ∷ Int
   , minSize ∷ Number
   , maxSize ∷ Number
   , dimension ∷ Select JCursor
@@ -55,7 +54,6 @@ initialState =
   { axes: initialAxes
   , levelOfDetails: High
   , axisLabelAngle: zero
-  , axisLabelFontSize: zero
   , minSize: 2.0
   , maxSize: 20.0
   , dimension: emptySelect

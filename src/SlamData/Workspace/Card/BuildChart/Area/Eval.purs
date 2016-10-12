@@ -26,20 +26,15 @@ import Color as C
 import Data.Argonaut (JArray, Json)
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Foldable as F
 import Data.Lens ((^?))
 import Data.Map as M
-import Data.Int as Int
 import Data.Set as Set
-import Data.String as Str
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
-import Math as Math
 
 import Quasar.Types (FilePath)
 
@@ -53,12 +48,11 @@ import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.Axis as Ax
 import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getShadeColor)
-
+import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
 import Utils.Array (enumerate)
-import Utils.DOM (getTextWidthPure)
 
 eval
   ∷ ∀ m
@@ -149,7 +143,6 @@ buildArea r records axes = do
     E.axisType ET.Value
     E.axisLabel $ E.textStyle do
       E.fontFamily "Ubuntu, sans"
-      E.fontSize r.axisLabelFontSize
     E.axisLine $ E.lineStyle do
       E.color $ C.rgba 184 184 184 1.0
       E.width 1
@@ -176,12 +169,11 @@ buildArea r records axes = do
     E.axisLabel do
       E.rotate r.axisLabelAngle
       E.textStyle do
-        E.fontSize r.axisLabelFontSize
         E.fontFamily "Ubuntu, sans"
 
   E.colors colors
 
-  E.grid $ E.bottomPx labelHeight
+  E.grid BCP.cartesian
 
   E.legend do
     E.textStyle $ E.fontFamily "Ubuntu, sans"
@@ -195,28 +187,6 @@ buildArea r records axes = do
 
   xAxisConfig ∷ Ax.EChartsAxisConfiguration
   xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.dimension axes
-
-  labelHeight ∷ Int
-  labelHeight =
-    let
-      longest =
-        fromMaybe ""
-          $ F.maximumBy (\a b → compare (Str.length a) (Str.length b)) xValues
-
-      width =
-        getTextWidthPure longest
-          $ "normal " ⊕ show r.axisLabelFontSize ⊕ "px Ubuntu"
-
-      minHeight = 24.0
-
-    in
-     mul xAxisConfig.heightMult
-        $ Int.round
-        $ add minHeight
-        $ max (Int.toNumber r.axisLabelFontSize + 2.0)
-        $ Math.abs
-        $ width
-        * Math.sin (r.axisLabelAngle / 180.0 * Math.pi)
 
   xSortFn ∷ String → String → Ordering
   xSortFn = Ax.compareWithAxisType $ Ax.axisType r.dimension axes

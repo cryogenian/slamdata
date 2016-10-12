@@ -20,7 +20,6 @@ module SlamData.Workspace.Card.BuildChart.Bar.Component
 
 import SlamData.Prelude
 
-import Data.Int as Int
 import Data.Lens ((^?), (^.), (?~), (.~))
 import Data.Lens as Lens
 import Data.List as List
@@ -99,7 +98,7 @@ renderHighLOD state =
     , renderStack state
     , renderParallel state
     , HH.hr_
-    , row [ renderAxisLabelAngle state, renderAxisLabelFontSize state ]
+    , row [ renderAxisLabelAngle state ]
     , renderPicker state
     ]
 
@@ -192,21 +191,6 @@ renderAxisLabelAngle state =
         ]
     ]
 
-renderAxisLabelFontSize ∷ ST.State → HTML
-renderAxisLabelFontSize state =
-  HH.form
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label font size" ]
-    , HH.input
-        [ HP.classes [ B.formControl ]
-        , HP.value $ show $ state.axisLabelFontSize
-        , ARIA.label "Axis label font size"
-        , HE.onValueChange $ HE.input (\s → right ∘ Q.SetAxisLabelFontSize s)
-        ]
-    ]
-
 eval ∷ Q.QueryC ~> DSL
 eval = cardEval ⨁ pieBuilderEval
 
@@ -231,7 +215,6 @@ cardEval = case _ of
         , stack: st.stack ^. _value
         , parallel: st.parallel ^. _value
         , axisLabelAngle: st.axisLabelAngle
-        , axisLabelFontSize: st.axisLabelFontSize
         }
         <$> (st.category ^. _value)
         <*> (st.value ^. _value)
@@ -240,7 +223,6 @@ cardEval = case _ of
   CC.Load (Card.BuildBar (Just model)) next → do
     loadModel model
     H.modify _{ axisLabelAngle = model.axisLabelAngle
-              , axisLabelFontSize = model.axisLabelFontSize
               }
     pure next
   CC.Load card next →
@@ -267,12 +249,6 @@ pieBuilderEval = case _ of
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{axisLabelAngle = fl}
-      CC.raiseUpdatedP' CC.EvalModelUpdate
-    pure next
-  Q.SetAxisLabelFontSize str next → do
-    let mbFS = Int.fromString str
-    for_ mbFS \fs → do
-      H.modify _{axisLabelFontSize = fs}
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.Select sel next → do

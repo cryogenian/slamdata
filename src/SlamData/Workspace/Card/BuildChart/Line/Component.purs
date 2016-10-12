@@ -23,7 +23,6 @@ import SlamData.Prelude
 import Data.Lens ((^?), (^.), (.~), (?~))
 import Data.Lens as Lens
 import Data.List as List
-import Data.Int as Int
 
 import Global (readFloat, isNaN)
 
@@ -103,7 +102,7 @@ renderHighLOD state =
     , renderSize state
     , row [ renderMinSize state, renderMaxSize state ]
     , HH.hr_
-    , row [ renderAxisLabelAngle state, renderAxisLabelFontSize state ]
+    , row [ renderAxisLabelAngle state ]
     , renderPicker state
     ]
 
@@ -212,21 +211,6 @@ renderAxisLabelAngle state =
         ]
     ]
 
-renderAxisLabelFontSize ∷ ST.State → HTML
-renderAxisLabelFontSize state =
-  HH.form
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label font size" ]
-    , HH.input
-        [ HP.classes [ B.formControl ]
-        , HP.value $ show $ state.axisLabelFontSize
-        , ARIA.label "Axis label font size"
-        , HE.onValueChange $ HE.input (\s → right ∘ Q.SetAxisLabelFontSize s)
-        ]
-    ]
-
 renderMinSize ∷ ST.State → HTML
 renderMinSize state =
   HH.form
@@ -287,7 +271,6 @@ cardEval = case _ of
         , maxSize: st.maxSize
         , minSize: st.minSize
         , axisLabelAngle: st.axisLabelAngle
-        , axisLabelFontSize: st.axisLabelFontSize
         }
         <$> (st.dimension ^. _value)
         <*> (st.value ^. _value)
@@ -299,7 +282,6 @@ cardEval = case _ of
       { maxSize = model.maxSize
       , minSize = model.minSize
       , axisLabelAngle = model.axisLabelAngle
-      , axisLabelFontSize = model.axisLabelFontSize
       }
     pure next
   CC.Load card next →
@@ -326,12 +308,6 @@ lineBuilderEval = case _ of
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{axisLabelAngle = fl}
-      CC.raiseUpdatedP' CC.EvalModelUpdate
-    pure next
-  Q.SetAxisLabelFontSize str next → do
-    let mbFS = Int.fromString str
-    for_ mbFS \fs → do
-      H.modify _{axisLabelFontSize = fs}
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.SetMinSymbolSize str next → do

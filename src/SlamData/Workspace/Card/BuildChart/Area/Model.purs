@@ -35,7 +35,6 @@ type AreaR =
   , isStacked ∷ Boolean
   , isSmooth ∷ Boolean
   , axisLabelAngle ∷ Number
-  , axisLabelFontSize ∷ Int
   }
 
 type Model = Maybe AreaR
@@ -53,7 +52,6 @@ eqAreaR r1 r2 =
     , r1.isSmooth ≡ r2.isSmooth
     , r1.series ≡ r2.series
     , r1.axisLabelAngle ≡ r2.axisLabelAngle
-    , r1.axisLabelFontSize ≡ r2.axisLabelFontSize
     ]
 
 eqModel ∷ Model → Model → Boolean
@@ -74,7 +72,6 @@ genModel = do
     isSmooth ← arbitrary
     series ← map (map runArbJCursor) arbitrary
     axisLabelAngle ← arbitrary
-    axisLabelFontSize ← arbitrary
     pure { dimension
          , value
          , valueAggregation
@@ -82,7 +79,6 @@ genModel = do
          , isSmooth
          , series
          , axisLabelAngle
-         , axisLabelFontSize
          }
 
 
@@ -97,7 +93,6 @@ encode (Just r) =
   ~> "isSmooth" := r.isSmooth
   ~> "series" := r.series
   ~> "axisLabelAngle" := r.axisLabelAngle
-  ~> "axisLabelFontSize" := r.axisLabelFontSize
   ~> jsonEmptyObject
 
 decode ∷ Json → String ⊹ Model
@@ -115,7 +110,6 @@ decode js
     isSmooth ← obj .? "isSmooth"
     series ← obj .? "series"
     axisLabelAngle ← obj .? "axisLabelAngle"
-    axisLabelFontSize ← obj .? "axisLabelFontSize"
     pure { dimension
          , value
          , valueAggregation
@@ -123,5 +117,4 @@ decode js
          , isSmooth
          , series
          , axisLabelAngle
-         , axisLabelFontSize
          }

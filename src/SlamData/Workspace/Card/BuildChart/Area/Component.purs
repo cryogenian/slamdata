@@ -20,7 +20,6 @@ module SlamData.Workspace.Card.BuildChart.Area.Component
 
 import SlamData.Prelude
 
-import Data.Int as Int
 import Data.Lens ((^?), (^.), (?~), (.~))
 import Data.Lens as Lens
 import Data.List as List
@@ -100,7 +99,7 @@ renderHighLOD state =
     , renderSeries state
     , HH.hr_
     , row [ renderIsStacked state, renderIsSmooth state ]
-    , row [ renderAxisLabelAngle state, renderAxisLabelFontSize state ]
+    , row [ renderAxisLabelAngle state ]
     , renderPicker state
     ]
 
@@ -179,21 +178,6 @@ renderAxisLabelAngle state =
         ]
     ]
 
-renderAxisLabelFontSize ∷ ST.State → HTML
-renderAxisLabelFontSize state =
-  HH.form
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label font size" ]
-    , HH.input
-        [ HP.classes [ B.formControl ]
-        , HP.value $ show $ state.axisLabelFontSize
-        , ARIA.label "Axis label font size"
-        , HE.onValueChange $ HE.input (\s → right ∘ Q.SetAxisLabelFontSize s)
-        ]
-    ]
-
 renderIsStacked ∷ ST.State → HTML
 renderIsStacked state =
   HH.form
@@ -250,7 +234,6 @@ cardEval = case _ of
         , isStacked: st.isStacked
         , isSmooth: st.isSmooth
         , axisLabelAngle: st.axisLabelAngle
-        , axisLabelFontSize: st.axisLabelFontSize
         }
         <$> (st.dimension ^. _value)
         <*> (st.value ^. _value)
@@ -261,7 +244,6 @@ cardEval = case _ of
     H.modify _{ isStacked = model.isStacked
               , isSmooth = model.isSmooth
               , axisLabelAngle = model.axisLabelAngle
-              , axisLabelFontSize = model.axisLabelFontSize
               }
     pure next
   CC.Load card next →
@@ -288,12 +270,6 @@ areaBuilderEval = case _ of
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{axisLabelAngle = fl}
-      CC.raiseUpdatedP' CC.EvalModelUpdate
-    pure next
-  Q.SetAxisLabelFontSize str next → do
-    let mbFS = Int.fromString str
-    for_ mbFS \fs → do
-      H.modify _{axisLabelFontSize = fs}
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.ToggleSmooth next → do

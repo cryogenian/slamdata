@@ -50,8 +50,9 @@ printTime time =
     minute = fromEnum $ Dt.minute time
     second = fromEnum $ Dt.second time
     millisecond = fromEnum $ Dt.millisecond time
+    show' n = (if n > 9 then "" else "0") ⊕ show n
   in
-    show hour ⊕ ":" ⊕ show minute ⊕ ":" ⊕ show second ⊕ "." ⊕ show millisecond
+    show' hour ⊕ ":" ⊕ show' minute ⊕ ":" ⊕ show' second ⊕ "." ⊕ show millisecond
 -- We _can_ user purescript-formatters here, but printing semantics is used
 -- heavily in axis analysis, so, simple printing used here instead of Μ stuff
 printDate ∷ Dd.Date → String
