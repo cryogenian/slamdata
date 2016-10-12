@@ -241,13 +241,12 @@ dependsOn a b = a ≠ b ∧
 type EChartsAxisConfiguration =
   { axisType ∷ ET.AxisType
   , interval ∷ Maybe Int
-  , heightMult ∷ Int
   }
 
 axisConfiguration ∷ AxisType → EChartsAxisConfiguration
 axisConfiguration = case _ of
-  Measure → {axisType: ET.Category, interval: Nothing, heightMult: 1}
-  Time → {axisType: ET.Category, interval: Just 0, heightMult: 2}
-  Date → {axisType: ET.Time, interval: Just 0, heightMult: 2}
-  DateTime → {axisType: ET.Time, interval: Just 0, heightMult: 2}
-  Category → {axisType: ET.Category, interval: Just 0, heightMult: 1}
+  Measure → {axisType: ET.Category, interval: Nothing }
+  Time → {axisType: ET.Category, interval: Just 0 }
+  Date → {axisType: ET.Time, interval: Just 0 }
+  DateTime → {axisType: ET.Time, interval: Just 0 }
+  Category → {axisType: ET.Category, interval: Just 0 }

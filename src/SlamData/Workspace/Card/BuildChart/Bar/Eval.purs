@@ -23,20 +23,15 @@ import SlamData.Prelude
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
-import Data.Foldable as F
 import Data.Lens ((^?))
 import Data.Map as M
-import Data.Int as Int
 import Data.Set as Set
-import Data.String as Str
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
-import Math as Math
 
 import Quasar.Types (FilePath)
 
@@ -53,8 +48,6 @@ import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
-
-import Utils.DOM (getTextWidthPure)
 
 eval
   ∷ ∀ m
@@ -185,7 +178,7 @@ buildBar r records axes = do
     E.leftLeft
     E.topBottom
 
-  E.grid $ E.bottomPx labelHeight
+  E.grid $ E.containLabel true
 
   E.series series
 
@@ -194,7 +187,7 @@ buildBar r records axes = do
   barData ∷ Array BarStacks
   barData = buildBarData r records
 
-  xAxisConfig ∷ {axisType ∷ ET.AxisType, interval ∷ Maybe Int, heightMult ∷ Int}
+  xAxisConfig ∷ Ax.EChartsAxisConfiguration
   xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.category axes
 
   seriesNames ∷ Array String
@@ -213,28 +206,6 @@ buildBar r records axes = do
                             ⋙ Set.fromFoldable)) barData
   xSortFn ∷ String → String → Ordering
   xSortFn = Ax.compareWithAxisType $ Ax.axisType r.category axes
-
-  labelHeight ∷ Int
-  labelHeight =
-    let
-      longest =
-        fromMaybe ""
-          $ F.maximumBy (\a b → compare (Str.length a) (Str.length b)) xValues
-
-      width =
-        getTextWidthPure longest
-          $ "normal " ⊕ show r.axisLabelFontSize ⊕ "px Ubuntu"
-
-      minHeight = 24.0
-
-    in
-      mul xAxisConfig.heightMult
-        $ Int.round
-        $ add minHeight
-        $ max (Int.toNumber r.axisLabelFontSize + 2.0)
-        $ Math.abs
-        $ width
-        * Math.sin (r.axisLabelAngle / 180.0 * Math.pi)
 
   series ∷ ∀ i. DSL (bar ∷ ETP.I|i)
   series = for_ barData \stacked →
