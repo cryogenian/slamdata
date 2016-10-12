@@ -177,6 +177,7 @@ eval opts = case _ of
         , displayCards = [ st.id × nextActionCard ]
         , deckElement = st.deckElement
         , responsiveSize = st.responsiveSize
+        , breakers = st.breakers
         }
     pure next
   SetParent parent next →
