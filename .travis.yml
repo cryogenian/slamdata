@@ -36,6 +36,8 @@ before_script:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
 script:
+  - gulp add-headers trim-whitespace replace-crlf
+  - if [[ $(git diff --shortstat 2> /dev/null | tail -n1) != "" ]]; then git status && echo -e "\033[31m\n^ CRLF/header/whitespace related problems found\033[0m\n" && exit 1; fi
   - npm run psa
   - if test $TRAVIS_TAG; then npm run build-lite; else npm run property-tests && npm test; fi
 before_deploy:
