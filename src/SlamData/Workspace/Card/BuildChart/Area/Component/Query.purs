@@ -35,7 +35,6 @@ data Selection f
 
 data Query a
   = SetAxisLabelAngle String a
-  | SetAxisLabelFontSize String a
   | ToggleSmooth a
   | ToggleStacked a
   | Select (Selection SelectAction) a

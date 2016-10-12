@@ -36,7 +36,6 @@ data Selection f
 
 data Query a
   = SetAxisLabelAngle String a
-  | SetAxisLabelFontSize String a
   | Select (Selection SelectAction) a
 
 type QueryC = CardEvalQuery ⨁ Query

@@ -48,6 +48,7 @@ import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 import SlamData.Workspace.Card.BuildChart.Axis as Ax
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -197,7 +198,7 @@ buildLine ∷ LineR → JArray → Axes → DSL OptionI
 buildLine r records axes = do
   E.tooltip E.triggerItem
   E.colors colors
-  E.grid $ E.containLabel true
+  E.grid BCP.cartesian
   E.series series
 
   E.xAxis do
@@ -207,7 +208,6 @@ buildLine r records axes = do
     E.axisLabel do
       E.rotate r.axisLabelAngle
       E.textStyle do
-        E.fontSize r.axisLabelFontSize
         E.fontFamily "Ubuntu, sans"
 
   E.yAxes do
@@ -272,4 +272,3 @@ buildLine r records axes = do
     E.axisType ET.Value
     E.axisLabel $ E.textStyle do
       E.fontFamily "Ubuntu, sans"
-      E.fontSize r.axisLabelFontSize

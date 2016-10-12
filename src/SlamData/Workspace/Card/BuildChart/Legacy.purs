@@ -59,7 +59,6 @@ decodeCC = J.decodeJson >=> \obj → do
 type BuildOptions =
   { chartType ∷ ChartType
   , axisLabelAngle ∷ Int
-  , axisLabelFontSize ∷ Int
   , areaStacked ∷ Boolean
   , smooth ∷ Boolean
   , bubbleMinSize ∷ Number
@@ -74,13 +73,12 @@ type BuildOptions =
 
 decodeBO ∷ J.Json → Either String BuildOptions
 decodeBO = J.decodeJson >=> \obj →
-  { chartType: _, axisLabelAngle: _, axisLabelFontSize: _
+  { chartType: _, axisLabelAngle: _
   , areaStacked: _, smooth: _, bubbleMinSize:_, bubbleMaxSize: _
   , funnelOrder: _, funnelAlign: _, minColorVal: _, maxColorVal: _
   , colorScheme: _, colorReversed: _ }
     <$> (obj .? "chartType")
     <*> (obj .? "axisLabelAngle")
-    <*> (obj .? "axisLabelFontSize")
     <*> ((obj .? "areaStacked") <|> (pure false))
     <*> ((obj .? "smooth") <|> (pure false))
     <*> ((obj .? "bubbleMinSize") <|> (pure 1.0))
@@ -177,8 +175,6 @@ decode cturs js = do
         20.0
       axisLabelAngle =
         Int.toNumber bo.axisLabelAngle
-      axisLabelFontSize =
-        bo.axisLabelFontSize
 
       lineR =
         { dimension: _
@@ -191,7 +187,6 @@ decode cturs js = do
         , minSize
         , maxSize
         , axisLabelAngle
-        , axisLabelFontSize
         , series
         }
         <$> dimension
@@ -214,8 +209,6 @@ decode cturs js = do
         cc.series A.!! 1 >>= view S._value
       axisLabelAngle =
         Int.toNumber bo.axisLabelAngle
-      axisLabelFontSize =
-        bo.axisLabelFontSize
 
       barR =
         { category: _
@@ -224,7 +217,6 @@ decode cturs js = do
         , stack
         , parallel
         , axisLabelAngle
-        , axisLabelFontSize
         }
         <$> category
         <*> value
@@ -250,8 +242,6 @@ decode cturs js = do
         bo.smooth
       axisLabelAngle =
         Int.toNumber bo.axisLabelAngle
-      axisLabelFontSize =
-        bo.axisLabelFontSize
 
       areaR =
         { dimension: _
@@ -261,7 +251,6 @@ decode cturs js = do
         , isStacked
         , isSmooth
         , axisLabelAngle
-        , axisLabelFontSize
         }
         <$> dimension
         <*> value

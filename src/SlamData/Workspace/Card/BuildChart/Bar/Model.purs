@@ -34,7 +34,6 @@ type BarR =
   , stack ∷ Maybe JCursor
   , parallel ∷ Maybe JCursor
   , axisLabelAngle ∷ Number
-  , axisLabelFontSize ∷ Int
   }
 
 type Model = Maybe BarR
@@ -51,7 +50,6 @@ eqBarR r1 r2 =
     , r1.stack ≡ r2.stack
     , r1.parallel ≡ r2.parallel
     , r1.axisLabelAngle ≡ r2.axisLabelAngle
-    , r1.axisLabelFontSize ≡ r2.axisLabelFontSize
     ]
 
 eqModel ∷ Model → Model → Boolean
@@ -71,8 +69,7 @@ genModel = do
     stack ← map (map runArbJCursor) arbitrary
     parallel ← map (map runArbJCursor) arbitrary
     axisLabelAngle ← arbitrary
-    axisLabelFontSize ← arbitrary
-    pure { category, value, valueAggregation, stack, parallel, axisLabelAngle, axisLabelFontSize }
+    pure { category, value, valueAggregation, stack, parallel, axisLabelAngle }
 
 encode ∷ Model → Json
 encode Nothing = jsonNull
@@ -84,7 +81,6 @@ encode (Just r) =
   ~> "stack" := r.stack
   ~> "parallel" := r.parallel
   ~> "axisLabelAngle" := r.axisLabelAngle
-  ~> "axisLabelFontSize" := r.axisLabelFontSize
   ~> jsonEmptyObject
 
 decode ∷ Json → String ⊹ Model
@@ -101,5 +97,4 @@ decode js
     stack ← obj .? "stack"
     parallel ← obj .? "parallel"
     axisLabelAngle ← obj .? "axisLabelAngle"
-    axisLabelFontSize ← obj .? "axisLabelFontSize"
-    pure { category, value, valueAggregation, stack, parallel, axisLabelAngle, axisLabelFontSize }
+    pure { category, value, valueAggregation, stack, parallel, axisLabelAngle }

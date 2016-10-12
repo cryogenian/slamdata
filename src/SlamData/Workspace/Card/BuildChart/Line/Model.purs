@@ -39,7 +39,6 @@ type LineR =
   , maxSize ∷ Number
   , minSize ∷ Number
   , axisLabelAngle ∷ Number
-  , axisLabelFontSize ∷ Int
   }
 
 type Model = Maybe LineR
@@ -62,7 +61,6 @@ eqLineR r1 r2 =
     , r1.maxSize ≡ r2.maxSize
     , r1.minSize ≡ r2.minSize
     , r1.axisLabelAngle ≡ r2.axisLabelAngle
-    , r1.axisLabelFontSize ≡ r2.axisLabelFontSize
     ]
 
 eqModel ∷ Model → Model → Boolean
@@ -87,7 +85,6 @@ genModel = do
     maxSize ← arbitrary
     minSize ← arbitrary
     axisLabelAngle ← arbitrary
-    axisLabelFontSize ← arbitrary
     pure { dimension
          , value
          , valueAggregation
@@ -99,7 +96,6 @@ genModel = do
          , maxSize
          , minSize
          , axisLabelAngle
-         , axisLabelFontSize
          }
 
 encode ∷ Model → Json
@@ -117,7 +113,6 @@ encode (Just r) =
   ~> "maxSize" := r.maxSize
   ~> "minSize" := r.minSize
   ~> "axisLabelAngle" := r.axisLabelAngle
-  ~> "axisLabelFontSize" := r.axisLabelFontSize
   ~> jsonEmptyObject
 
 decode ∷ Json → String ⊹ Model
@@ -139,7 +134,6 @@ decode js
     maxSize ← obj .? "maxSize"
     minSize ← obj .? "minSize"
     axisLabelAngle ← obj .? "axisLabelAngle"
-    axisLabelFontSize ← obj .? "axisLabelFontSize"
     pure { dimension
          , value
          , valueAggregation
@@ -151,5 +145,4 @@ decode js
          , maxSize
          , minSize
          , axisLabelAngle
-         , axisLabelFontSize
          }

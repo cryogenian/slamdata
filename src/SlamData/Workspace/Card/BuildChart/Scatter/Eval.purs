@@ -49,6 +49,7 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Scatter))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getTransparentColor)
 import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -202,6 +203,7 @@ buildScatter r records = do
         E.solidLine
   E.colors colors
 
+  E.grid BCP.cartesian
   E.xAxis valueAxis
   E.yAxis valueAxis
 

@@ -36,7 +36,6 @@ type State =
   { axes ∷ Axes
   , levelOfDetails ∷ LevelOfDetails
   , axisLabelAngle ∷ Number
-  , axisLabelFontSize ∷ Int
   , category ∷ Select JCursor
   , value ∷ Select JCursor
   , valueAgg ∷ Select Aggregation
@@ -50,7 +49,6 @@ initialState =
   { axes: initialAxes
   , levelOfDetails: High
   , axisLabelAngle: zero
-  , axisLabelFontSize: zero
   , category: emptySelect
   , value: emptySelect
   , valueAgg: emptySelect
