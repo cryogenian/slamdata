@@ -662,19 +662,28 @@ runPendingCards opts source pendingCard pendingCards = do
     prevCard = DCS.coordModelToCoord <$> L.last splitCards.init
     pendingCards = L.Cons pendingCard <$> L.tail splitCards.rest
 
+  traceAnyA "pendingCards"
+  traceAnyA pendingCards
   for_ pendingCards \cards → do
+    traceAnyA "in run pending cards"
+    traceAnyA cards
     input ← join <$> for prevCard (flip getCache wiring.cards)
+    traceAnyA input
     steps ← resume wiring st (input >>= _.output <#> map fst) cards
+    traceAnyA "steps"
+    traceAnyA steps
     runCardUpdates opts source steps
+    traceAnyA "card uppdates are run"
 
   where
   resume wiring st = go L.Nil where
     go steps input L.Nil = pure $ L.reverse steps
     go steps input (L.Cons c cs) = do
       step ←
-        getCache (DCS.coordModelToCoord pendingCard) pendingCards >>= case _ of
+        getCache (traceAny "Getting cache" \_ → spy $ DCS.coordModelToCoord pendingCard) pendingCards >>= case _ of
           Just ev → pure ev
           Nothing → do
+            traceAnyA "got nothing from cache"
             urlVarMaps ← getURLVarMaps
             ev ← evalCard st.path urlVarMaps input c
             putCardEval ev pendingCards
@@ -687,16 +696,18 @@ runPendingCards opts source pendingCard pendingCards = do
 -- | evaluated, which is unnecessary.
 runInitialEval ∷ DeckDSL Unit
 runInitialEval = do
-  traceAnyA "RUNINITIALRUNINITIALRUNINITIAL"
   st ← H.get
   Wiring wiring ← H.liftH $ H.liftH ask
   cards ← makeCache
   let
-    cardCoords = DCS.coordModelToCoord <$> L.fromFoldable st.modelCards
+    cardCoords = traceAny "cardCoords" \_ → spy $ DCS.coordModelToCoord <$> L.fromFoldable st.modelCards
     source = st.id
 
   for_ cardCoords \coord → do
     getCache coord wiring.cards >>= traverse_ \ev →
+      traceAny "in run initial eval" \_ →
+      traceAny ev \_ →
+      traceAny cards \_ →
       putCardEval ev cards
 
   for_ (Array.head st.modelCards) \pendingCard → do
@@ -713,6 +724,8 @@ evalCard path urlVarMaps input card = do
   Wiring wiring ← H.liftH $ H.liftH ask
   output ← H.liftH $ H.liftH $ Pr.defer do
     input' ← for input Pr.wait
+    traceAnyA "input'"
+    traceAnyA input'
     let
       model = (snd card).model
     case Card.modelToEval model of
@@ -745,7 +758,6 @@ evalCard path urlVarMaps input card = do
 -- | error card.
 runCardUpdates ∷ DeckOptions → DeckId → L.List CardEval → DeckDSL Unit
 runCardUpdates opts source steps = do
-  traceAnyA "RUNCARDUPDATESRUNCARDUPDATES"
   st ← H.get
   let
     realCards = Array.filter (Lens.has _CardId ∘ _.cardId ∘ snd) st.displayCards
@@ -753,7 +765,7 @@ runCardUpdates opts source steps = do
     pendingCm = st.id × pendingEvalCard
     nextActionStep =
       { card: st.id × nextActionCard
-      , input: map (map fst) <$> _.output =<< L.last steps
+      , input: map (map fst) <$> _.output =<< L.last (traceAny "steps" \_ → spy steps)
       , output: Nothing
       }
     updateSteps =
@@ -800,7 +812,7 @@ runCardUpdates opts source steps = do
 
   where
   updateCards ∷ DCS.State → UpdateAccum → Pr.Promise UpdateResult
-  updateCards st = case _ of
+  updateCards st = traceAny "updateCards" \_ → case _ of
     { steps: L.Nil, cards, updates } →
       pure
         { displayCards: Array.fromFoldable $ L.reverse cards
@@ -810,6 +822,9 @@ runCardUpdates opts source steps = do
       output ← sequence x.output
       let cards' = L.Cons x.card cards
           updates' = L.Cons x updates
+      traceAnyA "output in updateCards"
+      traceAnyA x.card
+      traceAnyA output
       updateCards st $ case output of
         Just ((Port.CardError err) × _) →
           let errorCard' = st.id × errorCard
@@ -819,7 +834,7 @@ runCardUpdates opts source steps = do
               , cards: L.Cons errorCard' cards'
               , updates: L.Cons errorStep updates'
               }
-        _ →
+        _ → traceAny "ok updated one card" \_ → spy
           { steps: xs
           , cards: cards'
           , updates: updates'
@@ -927,12 +942,10 @@ loadDeck opts path deckId = do
     deck ← ExceptT $ getDeck path deckId
     mirroredCards ← ExceptT $ loadMirroredCards path deck.mirror
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
-  traceAnyA "RESRESRESRES"
-  traceAnyA res
   case res of
     Left err →
       H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
-    Right (deck × modelCards) →
+    Right (deck × modelCards) → traceAny "deck × modelCards" \_ → traceAny (deck × modelCards) \_ →
       setModel opts
         { path
         , id: deckId
@@ -969,15 +982,17 @@ setModel
     }
   → DeckDSL Unit
 setModel opts model = do
-  traceAnyA "MODELMODELMODELMODELMODEL"
+  traceAnyA "SET MODEL"
+  traceAnyA opts
+  traceAnyA model
   updateCardSize
   H.modify
     $ (DCS._stateMode .~ Preparing)
     ∘ DCS.fromModel model
-  traceAnyA model
+  H.get >>= traceAnyA
   presentAccessNextActionCardGuideAfterDelay
-  case spy $ Array.head model.modelCards of
-    Just _ →
+  case Array.head model.modelCards of
+    Just _ → traceAny "run initial eval" \_ →
       runInitialEval
     Nothing →
       runCardUpdates opts model.id L.Nil

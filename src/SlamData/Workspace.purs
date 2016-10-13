@@ -55,8 +55,6 @@ import Routing as Routing
 
 import Utils.Path as UP
 
-import Data.Map as Map
-
 main ∷ Eff SlamDataEffects Unit
 main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
@@ -83,17 +81,9 @@ routeSignal driver =
 
   routeConsumer old = do
     new ← await
-    traceAnyA new
     case new of
       WorkspaceRoute path deckId action varMaps → lift do
-        traceAnyA "OOOH"
-        traverse_ traceAnyA $ Map.toList varMaps
-        traceAnyA "OOOH\n"
         driver $ Workspace.toWorkspace $ Workspace.SetVarMaps varMaps
-        traceAnyA "route"
-        traverse_ traceAnyA $ Map.toList varMaps
-        traceAnyA "route\n"
-
         case old of
           Just (WorkspaceRoute path' deckId' action' varMaps')
             | path == path' && deckId == deckId' && action == action' && varMaps == varMaps' →

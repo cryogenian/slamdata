@@ -172,10 +172,6 @@ unSlam = foldFree go ∘ unSlamM
       lift $ runQuasarF idToken qf
     GetURLVarMaps k → do
       Wiring { urlVarMaps } ← ask
-      traceAnyA "in unSlam"
-      lift $ liftEff do
-        mp ← readRef urlVarMaps
-        for_ (Map.toList mp) traceAnyA
       lift $ liftEff $ k <$> readRef urlVarMaps
     PutURLVarMaps urlVarMaps a → do
       Wiring wiring ← ask

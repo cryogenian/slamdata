@@ -127,7 +127,7 @@ evalCard
   ⇒ CET.CardEvalInput
   → Eval
   → CET.CardEvalT m Port.Port
-evalCard input =
+evalCard input = traceAny "output" \_ → spy $ traceAny "port" \_ → traceAny input.input \_ →
   case _, input.input of
     Error msg, _ →
       pure $ Port.CardError msg
@@ -140,13 +140,9 @@ evalCard input =
     Draftboard, _ →
       pure Port.Draftboard
     Query sql, Just (Port.VarMap varMap) →
-      traceAny (Map.toList $ input.urlVarMaps) \_ →
-      traceAny input.cardCoord \_ →
       map Port.TaggedResource
         $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) varMap
-    Query sql, _ →
-      traceAny (Map.toList input.urlVarMaps) \_ →
-      traceAny input.cardCoord \_ →
+    Query sql, _ → traceAny "quering, right?" \_ →
       map Port.TaggedResource
         $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) Port.emptyVarMap
     Markdown txt, _ →
@@ -242,10 +238,11 @@ evalQuery
 evalQuery info sql urlVarMap varMap = do
   let
     varMap' =
-      traceAny "varMap'" \_ →
-      spy $ SM.union urlVarMap $ map Port.renderVarMapValue varMap
-    resource = CET.temporaryOutputResource info
-    backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir resource)
+      SM.union urlVarMap $ map Port.renderVarMapValue varMap
+    resource =
+      CET.temporaryOutputResource info
+    backendPath =
+      Left $ fromMaybe Path.rootDir (Path.parentDir resource)
   { inputs } ← CET.liftQ
     $ lmap (QE.prefixMessage "Error compiling query")
     <$> QQ.compile backendPath sql varMap'
@@ -255,7 +252,8 @@ evalQuery info sql urlVarMap varMap = do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
     QQ.axes resource 20
-  traceAnyA "Last line in evalQuery"
+  traceAnyA "eval query finished"
+  traceAnyA axes
   pure { resource, tag: pure sql, axes, varMap: Just varMap }
 
 evalSearch

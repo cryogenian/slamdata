@@ -60,7 +60,6 @@ eval
 eval Nothing _ _ =
   QE.throw "Please select axis to aggregate"
 eval (Just conf) resource axes = do
-  traceAnyA "???"
   records ← BCE.records resource
   pure $ Port.ChartInstructions (buildBar conf records axes) Bar
 

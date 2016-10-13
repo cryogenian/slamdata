@@ -197,7 +197,11 @@ eval = cardEval ⨁ pieBuilderEval
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.EvalCard info output next → do
+    traceAnyA "bar evalcard"
+    traceAnyA info.input
     for_ (info.input ^? Lens._Just ∘ Port._ResourceAxes) \axes → do
+      traceAnyA "axes"
+      traceAnyA axes
       H.modify _{axes = axes}
       synchronizeChildren
     pure next
@@ -289,6 +293,7 @@ peek = coproduct peekPicker (const (pure unit))
 
 synchronizeChildren ∷ DSL Unit
 synchronizeChildren = do
+  traceAnyA "Sync"
   st ← H.get
   let
     newCategory =

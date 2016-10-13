@@ -78,87 +78,64 @@ aceComponent cfg = CC.makeCardComponent
 
 eval ∷ AceConfig → CC.CardEvalQuery ~> DSL
 eval cfg (CC.EvalCard info output next) = do
-  traceAnyA "Evaling"
   cfg.eval info
-  traceAnyA "Evaling\n"
   pure next
 eval _ (CC.Activate next) = do
-  traceAnyA "ACTIVATE"
   mbEditor ← H.query unit $ H.request AC.GetEditor
-  for_ (join mbEditor) $ H.fromEff ∘ Editor.focus ∘ spy
-  traceAnyA "ACTIVATE\n"
+  for_ (join mbEditor) $ H.fromEff ∘ Editor.focus
   pure next
 eval _ (CC.Deactivate next) = do
-  traceAnyA "DEACTIVATE"
   st ← H.get
   when st.dirty do
     N.info "Don't forget to run your query to see the latest result."
       Nothing (Just $ Milliseconds 3000.0)
-  traceAnyA "DEACTIVATE\n"
   pure next
 eval cfg (CC.Save k) = do
-  traceAnyA "SAVE"
   status ← H.gets _.status
+  traceAnyA "STATUS"
+  traceAnyA status
   content ← fromMaybe "" <$> H.query unit (H.request AC.GetText)
   mbEditor ← H.query unit (H.request AC.GetEditor)
   rrs ← H.fromEff $ maybe (pure []) getRangeRecs $ join mbEditor
-  traceAnyA "SAVE\n"
-  pure ∘ k
+  pure ∘ k ∘ spy
     $ Card.Ace cfg.mode
     $ if isNew status
       then Nothing
       else Just { text: content, ranges: rrs }
 eval _ (CC.Load card next) = do
-  traceAnyA "loading"
-  traceAnyA card
   case card of
     Card.Ace _ (Just { text, ranges }) → do
-      H.get >>= traceAnyA
       -- We don't want the Ace component to trigger a TextChanged event when we
       -- initially set the text, so we use this nasty state to filter it out.
       H.modify $ _status .~ Loading
-      traceAnyA "SETTING TEXT"
-      H.query unit $ H.action (AC.SetText text)
-      H.get >>= traceAnyA
-      traceAnyA "is set"
+      H.query unit $ H.action $ AC.SetText text
       H.modify $ _status .~ Ready
-      traceAnyA "ready"
       mbEditor ← H.query unit $ H.request AC.GetEditor
-      traceAnyA "editor"
-      H.get >>= traceAnyA
-      traceAnyA mbEditor
       H.fromEff $ for_ (join mbEditor) \editor → do
         traverse_ (readOnly editor) ranges
         Editor.navigateFileEnd editor
+        traceAnyA "editor is here"
+      traceAnyA "loaded"
     Card.Ace CT.MarkdownMode Nothing →
       H.modify $ _status .~ Ready
     _ → pure unit
   H.modify _ { dirty = false }
-  traceAnyA "loaded\n"
   pure next
 eval _ (CC.SetDimensions dims next) = do
-  traceAnyA "SET DIMENSION"
   H.modify
     $ _levelOfDetails
     .~ if dims.width < 240.0 then Low else High
   mbEditor ← H.query unit $ H.request AC.GetEditor
   for_ (join mbEditor) $ H.fromEff ∘ Editor.resize Nothing
-  traceAnyA "SET DIMENSION\n"
   pure next
 eval _ (CC.ModelUpdated _ next) = do
-  traceAnyA "MODEL UPDATED"
   H.modify _ { dirty = false }
-  traceAnyA "MODEL UPDATED\n"
   pure next
-eval _ (CC.ZoomIn next) = do
-  traceAnyA "ZOOM"
-  traceAnyA "ZOOM\n"
-  pure next
+eval _ (CC.ZoomIn next) = pure next
 
 peek ∷ ∀ x. AC.AceQuery x → DSL Unit
 peek = case _ of
   AC.TextChanged _ → H.modify _ { dirty = true }
-  AC.Init _ → traceAnyA "Peek init"
   _ → pure unit
 
 aceSetup ∷ AceConfig → Editor → Slam Unit
