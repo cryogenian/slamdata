@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Foldable as F
+import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.List (List, (:))
 import Data.List as List
@@ -173,7 +174,7 @@ render st =
                   renderJson
                   (maybe "" renderJson ∘ flip Array.index rowIx)
               0, Count →
-                J.foldJsonNumber "" show
+                J.foldJsonNumber "" (FN.format numFormatter)
               _, Count →
                 const ""
             in
@@ -197,10 +198,22 @@ render st =
         []
 
   renderJson =
-    J.foldJson show show show id show show
+    J.foldJson show show showPrettyNum id show show
 
   showJCursor (J.JField i c) = i <> show c
   showJCursor c = show c
+
+  showPrettyNum n =
+    let s = show n
+    in fromMaybe s (String.stripSuffix ".0" s)
+
+  numFormatter =
+    { comma: true
+    , before: 0
+    , after: 0
+    , abbreviations: false
+    , sign: false
+    }
 
   prevButtons enabled =
     HH.div
