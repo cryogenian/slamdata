@@ -127,7 +127,7 @@ evalCard
   ⇒ CET.CardEvalInput
   → Eval
   → CET.CardEvalT m Port.Port
-evalCard input = traceAny "output" \_ → spy $ traceAny "port" \_ → traceAny input.input \_ →
+evalCard input =
   case _, input.input of
     Error msg, _ →
       pure $ Port.CardError msg
@@ -142,7 +142,7 @@ evalCard input = traceAny "output" \_ → spy $ traceAny "port" \_ → traceAny 
     Query sql, Just (Port.VarMap varMap) →
       map Port.TaggedResource
         $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) varMap
-    Query sql, _ → traceAny "quering, right?" \_ →
+    Query sql, _ →
       map Port.TaggedResource
         $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) Port.emptyVarMap
     Markdown txt, _ →
@@ -252,8 +252,6 @@ evalQuery info sql urlVarMap varMap = do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
     QQ.axes resource 20
-  traceAnyA "eval query finished"
-  traceAnyA axes
   pure { resource, tag: pure sql, axes, varMap: Just varMap }
 
 evalSearch

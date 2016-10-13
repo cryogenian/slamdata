@@ -43,8 +43,6 @@ import Utils.Completions (mkCompletion, pathCompletions)
 queryEval ∷ CET.CardEvalInput → AceCard.DSL Unit
 queryEval info = do
   status ← gets _.status
-  traceAnyA "query eval"
-  traceAnyA info
   when (isNew status) do
     mbEditor ←
       map join $ query unit $ request Ace.GetEditor

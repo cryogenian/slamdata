@@ -351,7 +351,7 @@ cardModelOfType = case _ of
 modelToEval
   ∷ AnyCardModel
   → String ⊹ Eval.Eval
-modelToEval = spy >>> case _ of
+modelToEval = case _ of
   Ace CT.SQLMode model →
     pure $ Eval.Query $ fromMaybe "" $ _.text <$> model
   Ace CT.MarkdownMode model →
@@ -401,7 +401,5 @@ modelToEval = spy >>> case _ of
     pure $ Eval.BuildBoxplot model
   BuildPivotTable model →
     pure $ Eval.BuildPivotTable model
-  a → do
-    traceAnyA "????????????????????????????????????"
-    traceAnyA a
+  _ →
     pure Eval.Pass

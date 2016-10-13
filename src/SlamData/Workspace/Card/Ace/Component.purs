@@ -92,12 +92,10 @@ eval _ (CC.Deactivate next) = do
   pure next
 eval cfg (CC.Save k) = do
   status ← H.gets _.status
-  traceAnyA "STATUS"
-  traceAnyA status
   content ← fromMaybe "" <$> H.query unit (H.request AC.GetText)
   mbEditor ← H.query unit (H.request AC.GetEditor)
   rrs ← H.fromEff $ maybe (pure []) getRangeRecs $ join mbEditor
-  pure ∘ k ∘ spy
+  pure ∘ k
     $ Card.Ace cfg.mode
     $ if isNew status
       then Nothing
@@ -114,8 +112,6 @@ eval _ (CC.Load card next) = do
       H.fromEff $ for_ (join mbEditor) \editor → do
         traverse_ (readOnly editor) ranges
         Editor.navigateFileEnd editor
-        traceAnyA "editor is here"
-      traceAnyA "loaded"
     Card.Ace CT.MarkdownMode Nothing →
       H.modify $ _status .~ Ready
     _ → pure unit
