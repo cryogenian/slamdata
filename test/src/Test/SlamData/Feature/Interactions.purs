@@ -248,7 +248,6 @@ selectInMillerColumns ∷ Array String → SlamFeature Unit
 selectInMillerColumns ps = do
   for_ (enumerate $ Arr.filter (\s → Str.length s > 0) ps) \(ix × path) →
     Feature.click $ resourceXPath (ix + one) path
-  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
   where
   ariaLabel ∷ String → String
   ariaLabel rPath = "Select " ⊕ rPath
@@ -264,6 +263,11 @@ selectInMillerColumns ps = do
 selectFileForLastOpenCard ∷ String → SlamFeature Unit
 selectFileForLastOpenCard s =
   selectInMillerColumns $ Str.split "/" s
+
+selectInChartBuilder ∷ Array String → SlamFeature Unit
+selectInChartBuilder ps = do
+  selectInMillerColumns ps
+  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
 
 provideSearchStringInLastSearchCard ∷ String → SlamFeature Unit
 provideSearchStringInLastSearchCard =

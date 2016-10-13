@@ -16,23 +16,32 @@ limitations under the License.
 
 module Test.SlamData.Feature.Test.FlexibleVisualation where
 
-import Prelude
+import SlamData.Prelude
 
+import Data.Argonaut (encodeJson)
+import Data.Array as A
 import Data.String as Str
+import Data.String.Regex as Rgx
+import Data.StrMap as SM
+
+import Global (encodeURIComponent)
+
 import Test.Feature.Log (successMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
-import Selenium.Monad (script, tryRepeatedlyTo, later)
+
+import Selenium.Monad (script, tryRepeatedlyTo)
+
+import Utils (prettyJson)
 
 variablesChartScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
 variablesChartScenario =
   scenario
     "Flexible Visualization"
     (Interact.createWorkspaceInTestFolder "Flexible Visualization")
-    (Interact.deleteFileInTestFolder "Untitled Workspace.slam")
-
+    (Interact.deleteFileInTestFolder "Flexible Visualization.slam")
 
 test ∷ SlamFeature Unit
 test =
@@ -78,7 +87,7 @@ test =
     Expect.categoryEnabledInLastBuildChartCard
     successMsg "Ok, category field is enabled"
     Interact.activateCategoryForChartBuilder
-    Interact.selectInMillerColumns [".city"]
+    Interact.selectInChartBuilder [".city"]
     Expect.measureInLastChartCard ".ct"
     Interact.accessNextCardInLastDeck
     successMsg "Will insert chart options card"
@@ -87,13 +96,28 @@ test =
     Expect.lastEChart chart_CO
     Interact.accessPreviousCardInLastDeck
     Interact.activateStackForChartBuilder
-    Interact.selectInMillerColumns [".gender"]
+    Interact.selectInChartBuilder [".gender"]
 
     Interact.accessNextCardInLastDeck
 
     Expect.lastEChart chart_CO_gender
-    Interact.accessWorkspaceWithModifiedURL (flip append "/?state=%22NE%22")
-    later top $ pure unit
+    Interact.accessWorkspaceWithModifiedURL \urlStr →
+      let
+        deckIdRgx = unsafePartial fromRight $ Rgx.regex "\\.slam\\/([^\\/]+)" Rgx.noFlags
+        mbDeckId = join $ Rgx.match deckIdRgx urlStr >>= flip A.index 1
+      in case mbDeckId of
+        Nothing → urlStr
+        Just did →
+          let
+            varsValue =
+              encodeURIComponent
+                $ prettyJson
+                $ encodeJson
+                $ SM.singleton did
+                $ SM.singleton "state" "\"NE\""
+          in
+            urlStr ⊕ "/?vars=" ⊕ varsValue
+
     Expect.lastEChart chart_NE_gender
     Interact.accessWorkspaceWithModifiedURL (Str.replace "NE" "CO")
 
