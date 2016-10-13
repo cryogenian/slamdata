@@ -672,7 +672,7 @@ runPendingCards opts source pendingCard pendingCards = do
     go steps input L.Nil = pure $ L.reverse steps
     go steps input (L.Cons c cs) = do
       step ←
-        getCache (DCS.coordModelToCoord c) pendingCards >>= case _ of
+        getCache (DCS.coordModelToCoord pendingCard) pendingCards >>= case _ of
           Just ev → pure ev
           Nothing → do
             urlVarMaps ← getURLVarMaps
@@ -687,6 +687,7 @@ runPendingCards opts source pendingCard pendingCards = do
 -- | evaluated, which is unnecessary.
 runInitialEval ∷ DeckDSL Unit
 runInitialEval = do
+  traceAnyA "RUNINITIALRUNINITIALRUNINITIAL"
   st ← H.get
   Wiring wiring ← H.liftH $ H.liftH ask
   cards ← makeCache
@@ -712,7 +713,8 @@ evalCard path urlVarMaps input card = do
   Wiring wiring ← H.liftH $ H.liftH ask
   output ← H.liftH $ H.liftH $ Pr.defer do
     input' ← for input Pr.wait
-    let model = (snd card).model
+    let
+      model = (snd card).model
     case Card.modelToEval model of
       Left err → do
         SA.track (SA.ErrorInCardEval $ Card.modelCardType model)
@@ -743,6 +745,7 @@ evalCard path urlVarMaps input card = do
 -- | error card.
 runCardUpdates ∷ DeckOptions → DeckId → L.List CardEval → DeckDSL Unit
 runCardUpdates opts source steps = do
+  traceAnyA "RUNCARDUPDATESRUNCARDUPDATES"
   st ← H.get
   let
     realCards = Array.filter (Lens.has _CardId ∘ _.cardId ∘ snd) st.displayCards
@@ -924,6 +927,8 @@ loadDeck opts path deckId = do
     deck ← ExceptT $ getDeck path deckId
     mirroredCards ← ExceptT $ loadMirroredCards path deck.mirror
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
+  traceAnyA "RESRESRESRES"
+  traceAnyA res
   case res of
     Left err →
       H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
@@ -964,12 +969,14 @@ setModel
     }
   → DeckDSL Unit
 setModel opts model = do
+  traceAnyA "MODELMODELMODELMODELMODEL"
   updateCardSize
   H.modify
     $ (DCS._stateMode .~ Preparing)
     ∘ DCS.fromModel model
+  traceAnyA model
   presentAccessNextActionCardGuideAfterDelay
-  case Array.head model.modelCards of
+  case spy $ Array.head model.modelCards of
     Just _ →
       runInitialEval
     Nothing →

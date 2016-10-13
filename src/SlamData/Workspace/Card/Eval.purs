@@ -22,6 +22,7 @@ import Control.Monad.Eff as Eff
 import Control.Monad.Aff.Free (class Affable, fromEff)
 
 import Data.Lens ((^?))
+import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 import Data.Set as Set
@@ -139,9 +140,15 @@ evalCard input =
     Draftboard, _ →
       pure Port.Draftboard
     Query sql, Just (Port.VarMap varMap) →
-      Port.TaggedResource <$> evalQuery input sql varMap
+      traceAny (Map.toList $ input.urlVarMaps) \_ →
+      traceAny input.cardCoord \_ →
+      map Port.TaggedResource
+        $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) varMap
     Query sql, _ →
-      Port.TaggedResource <$> evalQuery input sql Port.emptyVarMap
+      traceAny (Map.toList input.urlVarMaps) \_ →
+      traceAny input.cardCoord \_ →
+      map Port.TaggedResource
+        $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) Port.emptyVarMap
     Markdown txt, _ →
       MDE.markdownEval input txt
     MarkdownForm model, (Just (Port.SlamDown doc)) →
@@ -229,11 +236,14 @@ evalQuery
   . (MonadPar m, QuasarDSL m)
   ⇒ CET.CardEvalInput
   → SQL
+  → Port.URLVarMap
   → Port.VarMap
   → CET.CardEvalT m Port.TaggedResourcePort
-evalQuery info sql varMap = do
+evalQuery info sql urlVarMap varMap = do
   let
-    varMap' = Port.renderVarMapValue <$> varMap
+    varMap' =
+      traceAny "varMap'" \_ →
+      spy $ SM.union urlVarMap $ map Port.renderVarMapValue varMap
     resource = CET.temporaryOutputResource info
     backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir resource)
   { inputs } ← CET.liftQ
@@ -245,6 +255,7 @@ evalQuery info sql varMap = do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
     QQ.axes resource 20
+  traceAnyA "Last line in evalQuery"
   pure { resource, tag: pure sql, axes, varMap: Just varMap }
 
 evalSearch

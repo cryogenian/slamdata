@@ -42,6 +42,7 @@ import Utils.Completions (mkCompletion, pathCompletions)
 
 queryEval ∷ CET.CardEvalInput → AceCard.DSL Unit
 queryEval info = do
+  traceAnyA "query eval"
   status ← gets _.status
   when (isNew status) do
     mbEditor ←

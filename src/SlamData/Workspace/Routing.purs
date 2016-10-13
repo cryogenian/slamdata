@@ -62,7 +62,7 @@ data Routes
 
 routing ∷ Match Routes
 routing
-  = WorkspaceRoute <$> workspace <*> deckId <*> action <*> optionalVarMap
+  = spy $ WorkspaceRoute <$> workspace <*> deckId <*> action <*> optionalVarMap
 
   where
   optionalVarMap ∷ Match (Map.Map D.DeckId Port.URLVarMap)
@@ -175,16 +175,20 @@ varMapsForURL = map (map go)
     _ → EJSON.renderEJson ej
 
 decodeVarMaps ∷ String → Either String (Map.Map D.DeckId Port.URLVarMap)
-decodeVarMaps = J.jsonParser >=> J.decodeJson >=> \obj →
-  Map.fromFoldable <$> L.foldM go L.Nil (SM.toList obj)
+decodeVarMaps = traceAnyM >=> J.jsonParser >=> J.decodeJson >=> traceAnyM >=> \obj →
+  Map.fromFoldable <$> spy <$> L.foldM go L.Nil (spy $ SM.toList obj)
   where
   go
     ∷ L.List (D.DeckId × Port.URLVarMap)
     → String × J.Json
     → Either String (L.List (D.DeckId × Port.URLVarMap))
   go acc (key × json) = do
-    deckId ← D.stringToDeckId key
-    varMap ← J.decodeJson json
+    traceAnyA "go"
+    traceAnyA key
+    traceAnyA json
+    traceAnyA "go\n"
+    deckId ← spy $ D.stringToDeckId key
+    varMap ← spy $ J.decodeJson json
     pure $ (deckId × varMap) : acc
 
 renderVarMapQueryString ∷ Map.Map D.DeckId Port.URLVarMap → Maybe String

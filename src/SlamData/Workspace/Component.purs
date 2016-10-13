@@ -197,7 +197,12 @@ eval (FlipGuideDismiss next) = do
   H.modify (_flipGuideStep .~ Nothing)
   pure next
 eval (SetVarMaps urlVarMaps next) = do
+  traceAnyA "set var maps"
+  traceAnyA urlVarMaps
+  traceAnyA "set var maps\n"
   putURLVarMaps urlVarMaps
+  traceAnyA "url var maps are put"
+  getURLVarMaps >>= traceAnyA
   pure next
 eval (DismissAll ev next) = do
   querySignIn $ H.action GlobalMenu.DismissSubmenu
