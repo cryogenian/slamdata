@@ -148,40 +148,45 @@ component ispec initial =
       remainder = L.take (L.length path - L.length prefix) path
       remPaths = scanr (:) prefix remainder
 
-    H.modify \st → st
-      { cycle = st.cycle + 1
-      , columns = A.take (L.length prefix) st.columns
-      , selected = L.take (L.length prefix + 1) path
-      }
+    -- Explicitly check whether anything needs loading before proceeding:
+    -- incrementing `currentCycle` when there is no work to be done can
+    -- break things if we're awaiting a previous load of the same path.
+    when (not L.null remPaths) do
 
-    currentCycle ← H.gets _.cycle
-
-    raise $ H.action $ Loading true
-
-    more ← H.liftH (parTraverse ispec.load remPaths)
-
-    -- `load` is async, so in case multiple `Populate`s have been raised we need
-    -- to check that we still care about the results of the load we just
-    -- triggered.
-    --
-    -- The "cycle" counter is incremented every time a `load` is triggered, so
-    -- if it differs after a `load` completes we know a competing `load` has
-    -- been triggered in the mean time, and we can just abandon this result.
-    --
-    -- We can't just use `fork` here since we need to continue performing
-    -- actions in `ComponentDSL` after the load completes, and there's no
-    -- `MonadFork` instance for `ComponentDSL`.
-    currentCycle' ← H.gets _.cycle
-    when (currentCycle == currentCycle') do
-      let
-        newColumns = foldr go [] (L.zip remainder more)
-        go (Tuple item colItems) cols =
-          maybe cols (\items -> cols <> [Tuple item items]) colItems
       H.modify \st → st
-        { columns = st.columns <> newColumns
-        , selected = path
+        { cycle = st.cycle + 1
+        , columns = A.take (L.length prefix) st.columns
+        , selected = L.take (L.length prefix + 1) path
         }
-      raise $ H.action $ Loading false
+
+      currentCycle ← H.gets _.cycle
+
+      raise $ H.action $ Loading true
+
+      more ← H.liftH (parTraverse ispec.load remPaths)
+
+      -- `load` is async, so in case multiple `Populate`s have been raised we need
+      -- to check that we still care about the results of the load we just
+      -- triggered.
+      --
+      -- The "cycle" counter is incremented every time a `load` is triggered, so
+      -- if it differs after a `load` completes we know a competing `load` has
+      -- been triggered in the mean time, and we can just abandon this result.
+      --
+      -- We can't just use `fork` here since we need to continue performing
+      -- actions in `ComponentDSL` after the load completes, and there's no
+      -- `MonadFork` instance for `ComponentDSL`.
+      currentCycle' ← H.gets _.cycle
+      when (currentCycle == currentCycle') do
+        let
+          newColumns = foldr go [] (L.zip remainder more)
+          go (Tuple item colItems) cols =
+            maybe cols (\items -> cols <> [Tuple item items]) colItems
+        H.modify \st → st
+          { columns = st.columns <> newColumns
+          , selected = path
+          }
+        raise $ H.action $ Loading false
 
     pure next
   eval (Loading _ next) =
