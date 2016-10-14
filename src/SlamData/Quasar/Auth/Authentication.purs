@@ -132,7 +132,6 @@ firstValueFromStallingProducer producer = do
     $ StallingCoroutine.runStallingProcess
         (producer $$? (Coroutine.consumer \o → liftAff (AVar.putVar firstValue o) $> Just unit))
   val ← AVar.takeVar firstValue
-  traceAnyA val
   pure val
 
 writeOnlyBus ∷ ∀ a. BusRW a → BusW a
@@ -309,7 +308,6 @@ getIdToken providerR prompt =
         getIdTokenUsingLocalStorage providerR
           >>= maybe (getIdTokenSilently providerR) (pure ∘ Right)
     -- Store provider for future local storage gets and reauthentications
-    traceAnyA idToken
     either
       (const $ liftEff $ AuthStore.clearProvider *> AuthStore.clearIdToken)
       (const $ liftEff $ AuthStore.storeProvider $ QAT.Provider providerR)
