@@ -205,6 +205,7 @@ eval opts = case _ of
     st ← H.get
     let pendingCoord = DCS.coordModelToCoord pendingCard
     when (any (DCS.eqCoordModel pendingCoord) st.modelCards) do
+      H.modify $ DCS.addPendingCard pendingCoord
       runPendingCards opts source pendingCard cards
     pure next
   QueuePendingCard next → do
@@ -666,6 +667,7 @@ runPendingCards opts source pendingCard pendingCards = do
     input ← join <$> for prevCard (flip getCache wiring.cards)
     steps ← resume wiring st (input >>= _.output <#> map fst) cards
     runCardUpdates opts source steps
+    H.modify $ DCS.removePendingCard $ DCS.coordModelToCoord pendingCard
 
   where
   resume wiring st = go L.Nil where
