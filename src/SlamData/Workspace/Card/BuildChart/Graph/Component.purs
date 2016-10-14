@@ -175,11 +175,11 @@ renderMaxSize state =
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max size of node" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max node size" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.maxSize
-        , ARIA.label "Max size of node"
+        , ARIA.label "Max node size"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMaxNodeSize s)
         ]
     ]
@@ -190,11 +190,11 @@ renderMinSize state =
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Min size of node" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Min node size" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.minSize
-        , ARIA.label "Min size of node"
+        , ARIA.label "Min node size"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMinNodeSize s)
         ]
     ]
@@ -349,14 +349,12 @@ synchronizeChildren = do
 
     newSize =
       setPreviousValueFrom (Just st.size)
-        $ autoSelect
         $ newSelect
         $ ifSelected [newTarget]
         $ st.axes.value
 
     newColor =
       setPreviousValueFrom (Just st.color)
-        $ autoSelect
         $ newSelect
         $ ifSelected [newTarget]
         $ st.axes.category

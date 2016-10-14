@@ -25,10 +25,10 @@ import Color as C
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
-import Data.List as L
 import Data.Lens ((^?))
 import Data.Map as M
 import Data.Int as Int
+import Data.Set as Set
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -189,28 +189,32 @@ buildHeatmap r records axes = do
   heatmapData ∷ Array (Int × HeatmapSeries)
   heatmapData = enumerate $ buildHeatmapData r records
 
+  xValues ∷ HeatmapSeries → Array String
+  xValues serie =
+    sortX $ A.fromFoldable $ Set.fromFoldable $ map fst $ M.keys serie.items
+
+  yValues ∷ HeatmapSeries → Array String
+  yValues serie =
+    sortY $ A.fromFoldable $ Set.fromFoldable $ map snd $ M.keys serie.items
+
   series ∷ ∀ i. DSL (heatMap ∷ ETP.I|i)
-  series = for_ heatmapData \(ix × series) → E.heatMap do
-    for_ series.name E.name
+  series = for_ heatmapData \(ix × serie) → E.heatMap do
+    for_ serie.name E.name
     E.xAxisIndex ix
     E.yAxisIndex ix
-    let
-      xValues =
-        enumerate $ foldMap A.singleton $ sortX $ map fst $ M.keys series.items
-      yValues =
-        enumerate $ foldMap A.singleton $ sortY $ map snd $ M.keys series.items
 
-    E.buildItems $ for_ xValues \(xIx × abscissa) → for_ yValues \(yIx × ordinate) →
-      E.addItem $ E.buildValues do
-        E.addValue $ Int.toNumber xIx
-        E.addValue $ Int.toNumber yIx
-        maybe E.missingValue E.addValue
-          $ M.lookup (abscissa × ordinate) series.items
+    E.buildItems
+      $ for_ (enumerate $ xValues serie) \(xIx × abscissa) →
+          for_ (enumerate $ yValues serie) \(yIx × ordinate) →
+            for_ (M.lookup (abscissa × ordinate) serie.items) \val → E.addItem $ E.buildValues do
+              E.addValue $ Int.toNumber xIx
+              E.addValue $ Int.toNumber yIx
+              E.addValue val
 
   mkAxis ∷ ∀ i. Int → DSL (ETP.AxisI (gridIndex ∷ ETP.I|i))
   mkAxis ix = do
-    E.gridIndex ix
     E.axisType ET.Category
+    E.gridIndex ix
     E.axisLabel do
       E.textStyle do
         E.fontFamily "Ubuntu, sans"
@@ -220,27 +224,24 @@ buildHeatmap r records axes = do
       E.width 1
     E.splitArea E.hidden
 
+  abscissaAxisType = Ax.axisType r.abscissa axes
+  ordinateAxisType = Ax.axisType r.ordinate axes
+
+  abscissaAxisCfg = Ax.axisConfiguration abscissaAxisType
+  ordinateAxisCfg = Ax.axisConfiguration ordinateAxisType
 
   xAxes ∷ ∀ i. DSL (addXAxis ∷ ETP.I|i)
-  xAxes = for_ heatmapData \(ix × series) → E.addXAxis do
+  xAxes = for_ heatmapData \(ix × serie) → E.addXAxis do
     mkAxis ix
-    E.items
-      $ foldMap (A.singleton ∘ ET.strItem)
-      $ sortX
-      $ map fst
-      $ M.keys series.items
+    E.items $ map ET.strItem $ xValues serie
 
   yAxes ∷ ∀ i. DSL (addYAxis ∷ ETP.I|i)
-  yAxes = for_ heatmapData \(ix × series) → E.addYAxis do
+  yAxes = for_ heatmapData \(ix × serie) → E.addYAxis do
     mkAxis ix
-    E.items
-      $ foldMap (A.singleton ∘ ET.strItem)
-      $ sortY
-      $ map snd
-      $ M.keys series.items
+    E.items $ map ET.strItem $ yValues serie
 
-  sortX ∷ L.List String → L.List String
-  sortX = L.sortBy (Ax.compareWithAxisType $ Ax.axisType r.abscissa axes)
+  sortX ∷ Array String → Array String
+  sortX = A.sortBy $ Ax.compareWithAxisType abscissaAxisType
 
-  sortY ∷ L.List String → L.List String
-  sortY = L.sortBy (Ax.compareWithAxisType $ Ax.axisType r.ordinate axes)
+  sortY ∷ Array String → Array String
+  sortY = A.sortBy $ Ax.compareWithAxisType ordinateAxisType

@@ -256,7 +256,6 @@ synchronizeChildren = void do
 
     newSeries =
       setPreviousValueFrom (Just st.series)
-        $ autoSelect
         $ newSelect
         $ ifSelected [newDimension]
         $ st.axes.category
@@ -265,7 +264,6 @@ synchronizeChildren = void do
 
     newParallel =
       setPreviousValueFrom (Just st.parallel)
-        $ autoSelect
         $ newSelect
         $ ifSelected [newDimension]
         $ st.axes.category

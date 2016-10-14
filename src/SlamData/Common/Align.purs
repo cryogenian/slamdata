@@ -71,7 +71,10 @@ instance decodeJsonAlign ∷ DecodeJson Align where
     parseAlign value
 
 instance optionValAlign ∷ OptionVal Align where
-  stringVal = printAlign
+  stringVal = case _ of
+    LeftAlign → "Left"
+    CenterAlign → "Center"
+    RightAlign → "Right"
 
 alignSelect ∷ Select Align
 alignSelect =

@@ -292,7 +292,6 @@ synchronizeChildren = void do
 
     newSeries =
       setPreviousValueFrom (Just st.series)
-        $ autoSelect
         $ newSelect
         $ ifSelected [ newCategory ]
         $ st.axes.category

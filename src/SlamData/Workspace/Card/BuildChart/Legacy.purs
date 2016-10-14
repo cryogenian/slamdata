@@ -204,9 +204,9 @@ decode cturs js = do
       valueAggregation =
         join $ cc.aggregations A.!! 0 >>= view S._value
       stack =
-        cc.series A.!! 2 >>= view S._value
+        (cc.series A.!! 1 >>= view S._value) <|> (cc.series A.!! 2 >>= view S._value)
       parallel =
-        cc.series A.!! 1 >>= view S._value
+        cc.series A.!! 2 >>= view S._value
       axisLabelAngle =
         Int.toNumber bo.axisLabelAngle
 

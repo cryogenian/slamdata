@@ -191,10 +191,12 @@ buildPie r records = do
       $ foldMap (_.series ⋙ foldMap (_.name ⋙ Set.fromFoldable)) pieData
 
   legendNames ∷ Array String
-  legendNames = do
-    s ← seriesNames
-    i ← itemNames
-    pure $ s ⊕ ":" ⊕ i
+  legendNames
+    | A.null seriesNames = itemNames
+    | otherwise = do
+      s ← seriesNames
+      i ← itemNames
+      pure $ s ⊕ ":" ⊕ i
 
   series ∷ ∀ i. DSL (pie ∷ ETP.I|i)
   series = for_ pieData \{x, y, radius: parallelR, series} →

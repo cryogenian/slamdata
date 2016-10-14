@@ -32,6 +32,7 @@ module SlamData.Workspace.Card.Draftboard.Component.State
   ) where
 
 import SlamData.Prelude
+import Data.Function (on)
 import Data.List as List
 import Data.Map as Map
 import Data.Rational (Rational)
@@ -137,7 +138,7 @@ recalc
 recalc rect layout = _
   { rootRect = rect
   , layout = layout
-  , cellLayout = Layout.absoluteCells rect (Layout.cells layout)
+  , cellLayout = List.sortBy (flip compare `on` _.value) (Layout.absoluteCells rect (Layout.cells layout))
   , edgeLayout = Layout.absoluteEdges rect (Layout.edges layout)
   , cursors = walkWithCursor goCursors mempty layout
   }
