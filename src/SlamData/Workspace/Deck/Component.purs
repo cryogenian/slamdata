@@ -63,7 +63,7 @@ import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
 import SlamData.Guide as Guide
 import SlamData.Quasar.Error as QE
-import SlamData.Wiring (Wiring(..), CardEval, Cache, DeckMessage(..), putCardEval, putCache, getCache, makeCache)
+import SlamData.Wiring (Wiring(..), CardEval, Cache, DeckMessage(..), putCardEval, putCache, getCache, makeCache, clearCache)
 import SlamData.Wiring as W
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
@@ -171,6 +171,8 @@ eval opts = case _ of
     pure next
   -- TODO: How can we get rid of this? What is it's purpose? It smells.
   Reset path next → do
+    Wiring wiring ← H.liftH $ H.liftH ask
+    clearCache wiring.cards
     H.modify \st →
       (DCS.initialDeck path st.id)
         { stateMode = Ready
@@ -309,11 +311,6 @@ eval opts = case _ of
   HandleError ge next → do
     showDialog $ Dialog.Error $ GE.print ge
     pure next
-  Run next → do
-    initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
-    for_ initialCard queuePendingCard
-    pure next
-
 
   where
   getBoundingClientWidth =
@@ -700,7 +697,7 @@ runInitialEval = do
     source = st.id
 
   for_ cardCoords \coord →
-    getCache coord wiring.cards >>= traverse_ \ev →
+    getCache coord wiring.cards >>= traverse_ \ev → do
       putCardEval ev cards
 
   for_ (Array.head st.modelCards) \pendingCard → do

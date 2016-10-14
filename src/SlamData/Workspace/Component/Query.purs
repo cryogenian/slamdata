@@ -38,7 +38,7 @@ data Query a
   | DismissAll (HET.Event HET.MouseEvent) a
   | Reset UP.DirPath a
   | Init a
-  | Load UP.DirPath (Maybe DeckId) Boolean AccessType a
+  | Load UP.DirPath (Maybe DeckId) AccessType a
   | PresentStepByStepGuide StepByStepGuide a
   | CardGuideStepNext a
   | CardGuideDismiss a

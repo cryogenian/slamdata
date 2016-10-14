@@ -77,7 +77,6 @@ data Query a
   | HandleMessage DeckMessage a
   | GetSharingInput (SharingInput → a)
   | HandleError GlobalError a
-  | Run a
 
 data DeckAction
   = Mirror

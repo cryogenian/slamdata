@@ -46,8 +46,7 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
 import SlamData.Workspace.Deck.Component as Deck
-import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Routing (Routes(..), routing, getURLVarMap)
+import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
 import SlamData.Wiring (makeWiring)
 
@@ -88,7 +87,7 @@ routeSignal driver =
           Just (WorkspaceRoute path' deckId' action' varMaps')
             | path ≡ path' ∧ deckId ≡ deckId' ∧ action ≡ action' ∧ varMaps ≡ varMaps' →
                 pure unit
-          route → do
+          _ → do
             when (toAccessType action ≡ AT.ReadOnly) do
               isEmbedded ←
                 liftEff $ Browser.detectEmbedding
@@ -104,22 +103,13 @@ routeSignal driver =
                 =<< body
                 =<< document
                 =<< window
-            workspace path deckId (Just varMaps ≠ map getURLVarMap route) action
 
+            driver $ Workspace.toWorkspace $ Workspace.Reset path
+            case action of
+              Load accessType → do
+                driver $ Workspace.toWorkspace $ Workspace.Load path deckId accessType
+              Exploring fp → do
+                driver $ Workspace.toDeck $ Deck.ExploreFile fp
+              New → pure unit
 
     routeConsumer (Just new)
-
-  workspace
-    ∷ UP.DirPath
-    → Maybe DeckId
-    → Boolean
-    → Action
-    → Aff SlamDataEffects Unit
-  workspace path deckId changed = case _ of
-    New →
-      driver $ Workspace.toWorkspace $ Workspace.Reset path
-    Load accessType →
-      driver $ Workspace.toWorkspace $ Workspace.Load path deckId changed accessType
-    Exploring fp → do
-      driver $ Workspace.toWorkspace $ Workspace.Reset path
-      driver $ Workspace.toDeck $ Deck.ExploreFile fp

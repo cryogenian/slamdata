@@ -216,18 +216,9 @@ eval (Reset path next) = do
   queryDeck $ H.action $ Deck.Reset path
   queryDeck $ H.action $ Deck.Focus
   pure next
-eval (Load path deckId changed accessType next) = do
-  oldAccessType ← H.gets _.accessType
+eval (Load path deckId accessType next) = do
   H.modify (_accessType .~ accessType)
-
-  queryDeck (H.request Deck.GetId) >>= \deckId' → do
-    case deckId, deckId' of
-      Just a, Just b
-        | a ≡ b ∧ oldAccessType ≡ accessType ∧ not changed →
-            pure unit
-      _, _ → load
-
-  when changed $ void $ queryDeck (H.action Deck.Run)
+  load
   pure next
 
   where
@@ -236,9 +227,7 @@ eval (Load path deckId changed accessType next) = do
       { stateMode = Loading
       , path = Just path
       }
-    queryDeck $ H.action $ Deck.Reset path
     maybe loadRoot loadDeck deckId
-    void $ queryDeck $ H.action $ Deck.Focus
 
   loadDeck deckId = void do
     SA.track (SA.Load deckId accessType)
