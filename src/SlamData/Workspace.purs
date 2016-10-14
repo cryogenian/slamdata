@@ -46,7 +46,7 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
 import SlamData.Workspace.Deck.Component as Deck
-import SlamData.Workspace.Routing (Routes(..), routing)
+import SlamData.Workspace.Routing (Routes(..), routing, getURLVarMaps, getPath)
 import SlamData.Workspace.StyleLoader as StyleLoader
 import SlamData.Wiring (makeWiring)
 
@@ -105,11 +105,18 @@ routeSignal driver =
                 =<< window
 
             driver $ Workspace.toWorkspace $ Workspace.Reset path
+
             case action of
-              Load accessType → do
+              Load _ | map getURLVarMaps old ≡ Just varMaps ∧ map getPath old ≡ Just path →
+                pure unit
+              _ → driver $ Workspace.toWorkspace $ Workspace.ClearCaches
+
+            case action of
+              Load accessType →
                 driver $ Workspace.toWorkspace $ Workspace.Load path deckId accessType
-              Exploring fp → do
+              Exploring fp →
                 driver $ Workspace.toDeck $ Deck.ExploreFile fp
-              New → pure unit
+              New →
+                driver $ Workspace.toWorkspace $ Workspace.ClearCaches
 
     routeConsumer (Just new)

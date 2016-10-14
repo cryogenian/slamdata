@@ -60,7 +60,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.GlobalMenu.Component as GlobalMenu
-import SlamData.Wiring (Wiring, putDeck, getDeck)
+import SlamData.Wiring (Wiring(..), putDeck, getDeck, clearCache)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
@@ -215,6 +215,10 @@ eval (Reset path next) = do
     }
   queryDeck $ H.action $ Deck.Reset path
   queryDeck $ H.action $ Deck.Focus
+  pure next
+eval(ClearCaches next) = do
+  Wiring wiring ← H.liftH $ H.liftH ask
+  clearCache wiring.cards
   pure next
 eval (Load path deckId accessType next) = do
   H.modify (_accessType .~ accessType)

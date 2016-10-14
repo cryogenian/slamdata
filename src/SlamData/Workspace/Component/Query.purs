@@ -44,6 +44,7 @@ data Query a
   | CardGuideDismiss a
   | FlipGuideStepNext a
   | FlipGuideDismiss a
+  | ClearCaches a
   | Resize a
 
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
