@@ -35,7 +35,6 @@ import SlamData.Prelude
 import Data.Function (on)
 import Data.List as List
 import Data.Map as Map
-import Data.Ordering (invert)
 import Data.Rational (Rational)
 import DOM.HTML.Types (HTMLElement)
 
@@ -139,15 +138,13 @@ recalc
 recalc rect layout = _
   { rootRect = rect
   , layout = layout
-  , cellLayout = List.sortBy (icompare `on` _.value) (Layout.absoluteCells rect (Layout.cells layout))
+  , cellLayout = List.sortBy (flip compare `on` _.value) (Layout.absoluteCells rect (Layout.cells layout))
   , edgeLayout = Layout.absoluteEdges rect (Layout.edges layout)
   , cursors = walkWithCursor goCursors mempty layout
   }
   where
   goCursors c m (Cell (Just deckId)) = Map.insert deckId c m
   goCursors _ m _ = m
-
-  icompare a b = invert (compare a b)
 
 updateRect ∷ Rect Number → State → State
 updateRect rect st = recalc rect st.layout st
