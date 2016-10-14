@@ -70,8 +70,8 @@ instance decodeJsonSort ∷ DecodeJson Sort where
 
 instance optionValSort ∷ OptionVal Sort where
   stringVal = case _ of
-    Asc → "ascending"
-    Desc → "descending"
+    Asc → "Ascending"
+    Desc → "Descending"
 
 sortSelect ∷ Select Sort
 sortSelect =
