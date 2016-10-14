@@ -146,10 +146,10 @@ flipGuideSteps =
     , text: "Delete Card deletes the current card and any cards inserted after it. Error cards and next action cards aren't inserted so are not deleted."
     }
   , { imageUri: "img/flipGuide/3.gif"
-    , text: "Wrap Deck places the deck on a draftboard card in a new deck."
+    , text: "Wrap Deck places the deck on a dashboard card in a new deck."
     }
   , { imageUri: "img/flipGuide/4.gif"
-    , text: "Draftboard cards allow muliple decks to be laid out on one card. They are perfect for creating dashboards."
+    , text: "Dashboard cards allow muliple decks to be laid out on one card."
     }
   , { imageUri: "img/flipGuide/5.gif"
     , text: "Decks can be removed using Delete Deck."

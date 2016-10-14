@@ -183,7 +183,7 @@ printIOType =
     Chart → "a chart"
     Data → "data"
     Download → "a download"
-    Draftboard → "a draftboard"
+    Draftboard → "a dashboard"
     Markdown → "markdown"
     None → "to be the first card in a deck"
     Variables → "variables"
@@ -194,7 +194,7 @@ printIOType' =
     Chart → Just "this chart"
     Data → Just "this data"
     Download → Just "this download"
-    Draftboard → Just "this draftboard"
+    Draftboard → Just "this dashboard"
     Markdown → Just "this markdown"
     Variables → Just "these variables"
     _ → Nothing
