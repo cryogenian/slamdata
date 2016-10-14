@@ -144,7 +144,7 @@ cardName = case _ of
   Cache → "Cache"
   Open → "Open"
   DownloadOptions → "Setup Download"
-  Draftboard → "Setup Draftboard"
+  Draftboard → "Setup Dashboard"
   ErrorCard → "Error"
   PendingCard → "Pending"
 

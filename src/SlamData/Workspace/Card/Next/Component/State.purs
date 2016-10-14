@@ -48,13 +48,13 @@ defaultActions =
   , Insert Search
   , chartSubmenu
   , Insert Chart
-  , Insert Variables
   , Insert (Ace MarkdownMode)
   , Insert Markdown
   , Insert Draftboard
   , Insert DownloadOptions
   , Insert Download
   , Insert Cache
+  , Insert Variables
   , Insert Troubleshoot
   ]
 
