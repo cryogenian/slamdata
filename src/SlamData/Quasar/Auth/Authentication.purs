@@ -213,8 +213,13 @@ getIdTokenUsingPrompt providerR = do
     (prompt unhashedNonce)
   where
   popup src =
-    (liftEff (DOMUtils.openPopup src) >>= DOMUtils.waitUntilWindowClosed)
-      *> Aff.later' 250 (pure $ Left PromptDismissed)
+    liftEff (DOMUtils.openPopup src)
+      >>= case _ of
+        Just window → do
+          DOMUtils.waitUntilWindowClosed window
+          Aff.later' 250 (pure $ Left PromptDismissed)
+        Nothing →
+          pure $ Left $ DOMError "`window.open` returned null"
   prompt unhashedNonce =
     (either (pure ∘ Left) popup)
       =<< getAuthenticationUri OIDCAff.Login unhashedNonce providerR

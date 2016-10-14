@@ -18,6 +18,8 @@ module Utils.DOM where
 
 import SlamData.Prelude
 
+import Data.Nullable as Nullable
+
 import Control.Coroutine (Producer)
 import Control.Coroutine.Aff as AffCoroutine
 import Control.Monad.Aff (Aff)
@@ -51,11 +53,17 @@ foreign import focus ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM|e) Unit
 foreign import getTextWidth ∷ ∀ eff. String → String → Eff (dom ∷ DOM | eff) Number
 foreign import elementEq ∷ ∀ eff. HTMLElement → HTMLElement → Eff (dom ∷ DOM | eff) Boolean
 foreign import getOffsetClientRect ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) DOMRect
-foreign import open ∷ ∀ eff. String → String → String → Window → Eff (dom ∷ DOM | eff) Window
 foreign import close ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Unit
 foreign import closed ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Boolean
 foreign import centerPopupWindowFeatures ∷ ∀ eff. Int → Int → Window → Eff (dom ∷ DOM | eff) String
 foreign import setFontSize ∷ ∀ eff. HTMLElement → String → Eff (dom ∷ DOM | eff) Unit
+foreign import open
+  ∷ ∀ eff
+  . String
+  → String
+  → String
+  → Window
+  → Eff (dom ∷ DOM | eff) (Nullable.Nullable Window)
 
 
 -- | Same as `getTextWidth` but w/o Eff wrapper. This function definitely has effects
@@ -123,11 +131,11 @@ eventProducer eventType capture eventTarget =
       capture
       eventTarget
 
-openPopup ∷ ∀ eff. String → Eff (dom ∷ DOM | eff) Window
+openPopup ∷ ∀ eff. String → Eff (dom ∷ DOM | eff) (Maybe Window)
 openPopup stringUrl = do
   window ← window
   windowFeaturesStr ← centerPopupWindowFeatures 800 600 window
-  open stringUrl "SignIn" windowFeaturesStr window
+  Nullable.toMaybe <$> open stringUrl "SignIn" windowFeaturesStr window
 
 waitUntilWindowClosed ∷ ∀ eff. Window → Aff (dom ∷ DOM | eff) Unit
 waitUntilWindowClosed = AffUtils.untilA ∘ Aff.later' 250 ∘ liftEff ∘ closed
