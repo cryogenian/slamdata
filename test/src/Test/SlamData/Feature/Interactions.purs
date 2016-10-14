@@ -2,9 +2,14 @@ module Test.SlamData.Feature.Interactions where
 
 import SlamData.Prelude
 
+import Data.Argonaut (encodeJson)
 import Data.Array as Arr
 import Data.Map as Map
 import Data.String as Str
+import Data.String.Regex as Rgx
+import Data.StrMap as SM
+
+import Global (encodeURIComponent)
 
 import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
 
@@ -16,6 +21,7 @@ import Test.Utils (appendToCwd)
 
 import XPath as XPath
 
+import Utils (prettyJson)
 import Utils.Array (enumerate)
 
 followingLastPreviousCardGripper :: String -> String
@@ -423,3 +429,20 @@ confirmDeckAction =
 runQuery ∷ SlamFeature Unit
 runQuery =
   Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Run query"
+
+setVarMapForCurrentDeck ∷ SM.StrMap String → SlamFeature Unit
+setVarMapForCurrentDeck vm = accessWorkspaceWithModifiedURL \urlStr →
+  let
+    deckIdRgx = unsafePartial fromRight $ Rgx.regex "\\.slam\\/([^\\/]+)" Rgx.noFlags
+    mbDeckId = join $ Rgx.match deckIdRgx urlStr >>= flip Arr.index 1
+  in case mbDeckId of
+    Nothing → urlStr
+    Just did →
+      let
+        varsValue =
+          encodeURIComponent
+          $ prettyJson
+          $ encodeJson
+          $ SM.singleton did vm
+      in
+       urlStr ⊕ "/?vars=" ⊕ varsValue

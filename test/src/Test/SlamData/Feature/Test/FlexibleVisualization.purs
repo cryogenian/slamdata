@@ -18,13 +18,8 @@ module Test.SlamData.Feature.Test.FlexibleVisualation where
 
 import SlamData.Prelude
 
-import Data.Argonaut (encodeJson)
-import Data.Array as A
 import Data.String as Str
-import Data.String.Regex as Rgx
 import Data.StrMap as SM
-
-import Global (encodeURIComponent)
 
 import Test.Feature.Log (successMsg)
 import Test.Feature.Scenario (scenario)
@@ -33,8 +28,6 @@ import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
 
 import Selenium.Monad (script, tryRepeatedlyTo)
-
-import Utils (prettyJson)
 
 variablesChartScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
 variablesChartScenario =
@@ -45,7 +38,7 @@ variablesChartScenario =
 
 test ∷ SlamFeature Unit
 test =
-  variablesChartScenario "Make embeddable patients-city charts" ["https://slamdata.atlassian.net/browse/SD-1862"] do
+  variablesChartScenario "Make embeddable patients-city charts" [] do
     tryRepeatedlyTo $ script """
       var run = function() {
         var __init = echarts.init;
@@ -101,25 +94,11 @@ test =
     Interact.accessNextCardInLastDeck
 
     Expect.lastEChart chart_CO_gender
-    Interact.accessWorkspaceWithModifiedURL \urlStr →
-      let
-        deckIdRgx = unsafePartial fromRight $ Rgx.regex "\\.slam\\/([^\\/]+)" Rgx.noFlags
-        mbDeckId = join $ Rgx.match deckIdRgx urlStr >>= flip A.index 1
-      in case mbDeckId of
-        Nothing → urlStr
-        Just did →
-          let
-            varsValue =
-              encodeURIComponent
-                $ prettyJson
-                $ encodeJson
-                $ SM.singleton did
-                $ SM.singleton "state" "\"NE\""
-          in
-            urlStr ⊕ "/?vars=" ⊕ varsValue
+    Interact.setVarMapForCurrentDeck $ SM.singleton "state" "\"NE\""
+
 
     Expect.lastEChart chart_NE_gender
-    Interact.accessWorkspaceWithModifiedURL (Str.replace "NE" "CO")
+    Interact.accessWorkspaceWithModifiedURL $ Str.replace "NE" "CO"
 
     Expect.lastEChart chart_CO_gender
 
