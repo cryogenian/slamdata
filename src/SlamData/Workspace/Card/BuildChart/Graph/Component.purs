@@ -349,14 +349,12 @@ synchronizeChildren = do
 
     newSize =
       setPreviousValueFrom (Just st.size)
-        $ autoSelect
         $ newSelect
         $ ifSelected [newTarget]
         $ st.axes.value
 
     newColor =
       setPreviousValueFrom (Just st.color)
-        $ autoSelect
         $ newSelect
         $ ifSelected [newTarget]
         $ st.axes.category
