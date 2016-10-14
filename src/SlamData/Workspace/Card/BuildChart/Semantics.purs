@@ -135,8 +135,7 @@ analyzeString str =
 analyzeNumber ∷ String → Maybe Semantics
 analyzeNumber s = do
   num ← stringToNumber s
-  int ← Int.fromString s
-  guard $ show num == s || show int == s
+  guard $ show num == s || show (Int.floor num) == s
   pure $ Value num
 
 percentRegex ∷ Regex
