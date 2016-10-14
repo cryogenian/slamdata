@@ -217,5 +217,7 @@ buildBar r records axes = do
             E.buildValues do
               E.addStringValue key
               E.addValue v
-      for_ stacked.stack E.stack
+      case r.parallel of
+        Just _ → for_ stacked.stack E.stack
+        Nothing → E.stack "default stack"
       for_ serie.name E.name
