@@ -189,8 +189,9 @@ getIdTokenSilently providerR = do
     >>= case _ of
       Left error → pure $ Left error
       Right iFrameNode → do
+        idToken ← race (getIdTokenFromLSOnChange providerR unhashedNonce) timeout
         liftEff $ removeBodyChild iFrameNode
-        race (getIdTokenFromLSOnChange providerR unhashedNonce) timeout
+        pure idToken
   where
   appendHiddenRequestIFrameToBody unhashedNonce providerR =
     either
