@@ -29,7 +29,6 @@ import Control.Monad.Aff.AVar (AffAVar, AVAR, makeVar', takeVar, putVar)
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Rec.Class (class MonadRec, tailRecM)
 import Data.Either (Either(..))
-import Data.Functor (($>))
 import Data.Maybe (Maybe(..), maybe)
 
 newtype Breaker a = Breaker (∀ eff. a → AffAVar eff Unit)

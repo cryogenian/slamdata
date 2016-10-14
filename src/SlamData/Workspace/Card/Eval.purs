@@ -36,8 +36,6 @@ import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Cache.Eval as Cache
-import SlamData.Workspace.Card.ChartOptions.Eval as ChartE
-import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DO
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Markdown.Component.State.Core as MDS
@@ -48,6 +46,20 @@ import SlamData.Workspace.Card.Search.Interpret as Search
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
+import SlamData.Workspace.Card.BuildChart.Metric.Eval as BuildMetric
+import SlamData.Workspace.Card.BuildChart.Sankey.Eval as BuildSankey
+import SlamData.Workspace.Card.BuildChart.Gauge.Eval as BuildGauge
+import SlamData.Workspace.Card.BuildChart.Graph.Eval as BuildGraph
+import SlamData.Workspace.Card.BuildChart.Pie.Eval as BuildPie
+import SlamData.Workspace.Card.BuildChart.Radar.Eval as BuildRadar
+import SlamData.Workspace.Card.BuildChart.Area.Eval as BuildArea
+import SlamData.Workspace.Card.BuildChart.Line.Eval as BuildLine
+import SlamData.Workspace.Card.BuildChart.Bar.Eval as BuildBar
+import SlamData.Workspace.Card.BuildChart.Scatter.Eval as BuildScatter
+import SlamData.Workspace.Card.BuildChart.Funnel.Eval as BuildFunnel
+import SlamData.Workspace.Card.BuildChart.Heatmap.Eval as BuildHeatmap
+import SlamData.Workspace.Card.BuildChart.Boxplot.Eval as BuildBoxplot
+import SlamData.Workspace.Card.BuildChart.PivotTable.Eval as BuildPivotTable
 
 import Text.SlamSearch as SS
 import Text.Markdown.SlamDown as SD
@@ -63,25 +75,50 @@ data Eval
   | MarkdownForm MD.Model
   | Open R.Resource
   | Variables Variables.Model
-  | ChartOptions ChartOptions.Model
   | DownloadOptions DO.State
   | Draftboard
+  | BuildMetric BuildMetric.Model
+  | BuildSankey BuildSankey.Model
+  | BuildGauge BuildGauge.Model
+  | BuildGraph BuildGraph.Model
+  | BuildPie BuildPie.Model
+  | BuildRadar BuildRadar.Model
+  | BuildArea BuildArea.Model
+  | BuildLine BuildLine.Model
+  | BuildBar BuildBar.Model
+  | BuildScatter BuildScatter.Model
+  | BuildFunnel BuildFunnel.Model
+  | BuildHeatmap BuildHeatmap.Model
+  | BuildBoxplot BuildBoxplot.Model
+  | BuildPivotTable BuildPivotTable.Model
 
-instance showEval ∷ Show Eval where
-  show =
-    case _ of
-      Pass → "Pass"
-      Query str → "Query " <> show str
-      Search str → "Search " <> show str
-      Cache str → "Cache " <> show str
-      Error str → "Error " <> show str
-      Markdown str → "Markdown " <> show str
-      Open res → "Open " <> show res
-      MarkdownForm m → "MarkdownForm"
-      ChartOptions m → "ChartOptions"
-      Variables m → "Variables" -- TODO: I don't have time to write these show instances -js
-      DownloadOptions m → "DownloadOptions"
-      Draftboard → "Draftboard"
+tagEval ∷ Eval → String
+tagEval = case _ of
+  Pass → "Pass"
+  Query str → "Query " <> show str
+  Search str → "Search " <> show str
+  Cache str → "Cache " <> show str
+  Error str → "Error " <> show str
+  Markdown str → "Markdown " <> show str
+  Open res → "Open " <> show res
+  MarkdownForm m → "MarkdownForm"
+  Variables m → "Variables"
+  DownloadOptions m → "DownloadOptions"
+  Draftboard → "Draftboard"
+  BuildMetric _ → "BuildMetric"
+  BuildSankey _ → "BuildSankey"
+  BuildGauge _ → "BuildGauge"
+  BuildGraph _ → "BuildGraph"
+  BuildPie _ → "BuildPie"
+  BuildRadar _ → "BuildRadar"
+  BuildArea _ → "BuildArea"
+  BuildLine _ → "BuildLine"
+  BuildBar _ → "BuildBar"
+  BuildScatter _ → "BuildScatter"
+  BuildFunnel _ → "BuildFunnel"
+  BuildHeatmap _ → "BuildHeatmap"
+  BuildBoxplot _ → "BuildBoxplot"
+  BuildPivotTable _ → "BuildPivotTable"
 
 evalCard
   ∷ ∀ m
@@ -111,18 +148,44 @@ evalCard input =
       lift $ Port.VarMap <$> evalMarkdownForm doc model
     Search query, Just (Port.TaggedResource { resource }) →
       Port.TaggedResource <$> evalSearch input query resource
-    Cache pathString, Just (Port.TaggedResource { resource }) →
-      Port.TaggedResource <$> Cache.eval input pathString resource
+    Cache pathString, Just (Port.TaggedResource { resource, varMap }) →
+      Port.TaggedResource <$> Cache.eval input pathString resource varMap
     Open res, _ →
       Port.TaggedResource <$> evalOpen input res
-    ChartOptions model, _ →
-      Port.Chart <$> ChartE.eval input model
     Variables model, _ →
       pure $ Port.VarMap $ VariablesE.eval (fst input.cardCoord) input.urlVarMaps model
     DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →
       pure $ Port.DownloadOptions { resource, compress, options }
+    BuildMetric model, Just (Port.TaggedResource { resource }) →
+      BuildMetric.eval model resource
+    BuildSankey model, Just (Port.TaggedResource {resource}) →
+      BuildSankey.eval model resource
+    BuildGauge model, Just (Port.TaggedResource {resource}) →
+      BuildGauge.eval model resource
+    BuildGraph model, Just (Port.TaggedResource {resource}) →
+      BuildGraph.eval model resource
+    BuildPie model, Just (Port.TaggedResource {resource}) →
+      BuildPie.eval model resource
+    BuildRadar model, Just (Port.TaggedResource {resource}) →
+      BuildRadar.eval model resource
+    BuildArea model, Just (Port.TaggedResource {resource, axes}) →
+      BuildArea.eval model resource axes
+    BuildLine model, Just (Port.TaggedResource {resource, axes}) →
+      BuildLine.eval model resource axes
+    BuildBar model, Just (Port.TaggedResource {resource, axes}) →
+      BuildBar.eval model resource axes
+    BuildScatter model, Just (Port.TaggedResource {resource}) →
+      BuildScatter.eval model resource
+    BuildFunnel model, Just (Port.TaggedResource {resource}) →
+      BuildFunnel.eval model resource
+    BuildHeatmap model, Just (Port.TaggedResource {resource, axes}) →
+      BuildHeatmap.eval model resource axes
+    BuildBoxplot model, Just (Port.TaggedResource {resource}) →
+      BuildBoxplot.eval model resource
+    BuildPivotTable model, Just (Port.TaggedResource tr) →
+      BuildPivotTable.eval model tr
     e, i →
-      QE.throw $ "Card received unexpected input type; " <> show e <> " | " <> show i
+      QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
 evalMarkdownForm
   ∷ ∀ m
@@ -144,16 +207,20 @@ evalOpen
   → R.Resource
   → CET.CardEvalT m Port.TaggedResourcePort
 evalOpen info res = do
-   filePath ← maybe (QE.throw "No resource is selected") pure $
-    res ^? R._filePath
-   msg ← CET.liftQ $
-     QFS.messageIfFileNotFound
-       filePath
-       ("File " ⊕ Path.printPath filePath ⊕ " doesn't exist")
+   filePath ←
+     maybe (QE.throw "No resource is selected") pure
+       $ res ^? R._filePath
+   msg ←
+     CET.liftQ
+       $ QFS.messageIfFileNotFound
+         filePath
+         ("File " ⊕ Path.printPath filePath ⊕ " doesn't exist")
    case msg of
      Nothing → do
+       axes ←
+         CET.liftQ $ QQ.axes filePath 20
        CET.addSource filePath
-       pure { resource: filePath, tag: Nothing }
+       pure { resource: filePath, tag: Nothing, axes, varMap: Nothing }
      Just err →
        QE.throw err
 
@@ -174,10 +241,11 @@ evalQuery info sql varMap = do
     <$> QQ.compile backendPath sql varMap'
   validateResources inputs
   CET.addSources inputs
-  CET.liftQ do
+  axes ← CET.liftQ do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
-  pure { resource, tag: pure sql }
+    QQ.axes resource 20
+  pure { resource, tag: pure sql, axes, varMap: Just varMap }
 
 evalSearch
   ∷ ∀ m
@@ -212,13 +280,14 @@ evalSearch info queryText resource = do
       validateResources inputs
       CET.addSources inputs
 
-  CET.liftQ do
+  axes ← CET.liftQ do
     QQ.viewQuery (Right resource) outputResource template SM.empty
     QFS.messageIfFileNotFound
       outputResource
       "Error making search temporary resource"
+    QQ.axes outputResource 20
 
-  pure { resource: outputResource, tag: pure sql }
+  pure { resource: outputResource, tag: pure sql, axes, varMap: Nothing }
 
 runEvalCard
   ∷ ∀ m
@@ -227,8 +296,7 @@ runEvalCard
   → Eval
   → m (Either GE.GlobalError (Port.Port × (Set.Set AdditionalSource)))
 runEvalCard input =
-  CET.runCardEvalT ∘
-    evalCard input
+  CET.runCardEvalT ∘ evalCard input
 
 validateResources
   ∷ ∀ m f

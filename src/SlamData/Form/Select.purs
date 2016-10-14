@@ -63,6 +63,10 @@ emptySelect = Select { options: [ ], value: Nothing}
 newSelect ∷ ∀ a. Array a → Select a
 newSelect as = Select { options: as, value: Nothing }
 
+fromSelected ∷ ∀ a. Maybe a → Select a
+fromSelected = case _ of
+  Nothing → Select { options: [], value: Nothing }
+  Just a → Select { options: [a], value: Just a}
 
 -- | Take first select and remove all from its options second select's value
 except ∷ ∀ a. (Eq a) ⇒ Select a → Select a → Select a

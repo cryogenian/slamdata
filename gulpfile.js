@@ -80,6 +80,7 @@ gulp.task("add-headers", ["replace-headers"], function () {
             .pipe(header(licenseHeader))
             .pipe(gulp.dest("./"));
 });
+
 /**
 * To switch license file
 * + Copy old license file to `headers` folder
@@ -127,6 +128,13 @@ gulp.task("replace-headers", function() {
         // run gulp task
     })().pipe(gulp.dest("./"));
 });
+
+gulp.task("replace-crlf", function() {
+    gulp.src(slamDataSources, {base: "./"})
+        .pipe(replace(/\r\n/g, "\n"))
+        .pipe(gulp.dest("./"));
+});
+
 
 gulp.task("trim-whitespace", function () {
   var options = { leading: false };

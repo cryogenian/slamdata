@@ -23,7 +23,7 @@ import Data.Either (Either(..))
 
 import SlamData.FileSystem.Resource (Resource)
 
-import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck)
 
 check :: forall eff. SC eff Unit
 check = quickCheck \(res ∷ Resource) ->

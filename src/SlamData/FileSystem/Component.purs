@@ -45,6 +45,7 @@ import Halogen.HTML.Properties.Indexed as HP
 
 import Quasar.Data (QData(..))
 
+import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.CSS as CSS
@@ -64,7 +65,6 @@ import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
-import SlamData.FileSystem.Listing.Sort (notSort)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (newSalt)

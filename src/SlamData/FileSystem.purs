@@ -46,6 +46,7 @@ import Quasar.Error as QE
 import Routing (matchesAff)
 
 import SlamData.Analytics as Analytics
+import SlamData.Common.Sort (Sort(..))
 import SlamData.Config as Config
 import SlamData.Config.Version (slamDataVersion)
 import SlamData.Effects (SlamDataEffects, SlamDataRawEffects)
@@ -53,17 +54,16 @@ import SlamData.FileSystem.Component (QueryP, Query(..), toListing, toDialog, to
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..))
-import SlamData.FileSystem.Listing.Sort (Sort(..))
 import SlamData.FileSystem.Resource (Resource, getPath)
 import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
-import SlamData.Wiring (makeWiring)
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam, runSlam)
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
+import SlamData.Wiring (makeWiring)
 
 import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch.Types (SearchQuery)

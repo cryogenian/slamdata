@@ -98,7 +98,8 @@ deckClasses st =
   pure $ HP.classes $
     [ CSS.deckContainer
     , HH.className (responsiveSize st.responsiveSize)
-    ] ⊕ (guard st.focused $> CSS.focused)
+    , if st.focused then CSS.focused else CSS.unfocused
+    ]
 
 deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp (HP.InteractiveEvents (HP.GlobalProperties r)) (Query Unit))
 deckProperties opts =

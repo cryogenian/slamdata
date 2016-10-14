@@ -247,6 +247,7 @@ messageIfFileNotFound path defaultMsg =
   handleResult (Left err) = Left err
   handleResult (Right _) = Right Nothing
 
+
 dirNotAccessible
   ∷ ∀ m
   . (Functor m, QuasarDSL m)

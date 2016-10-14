@@ -14,13 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Next.Component.State
-  ( State
-  , initialState
-  , _input
-  , _filterString
-  , _presentAddCardGuide
-  ) where
+module SlamData.Workspace.Card.Next.Component.State where
 
 import SlamData.Prelude
 
@@ -28,24 +22,51 @@ import Data.Lens (LensP, lens)
 
 import SlamData.Workspace.Card.Port (Port)
 
+import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
+import SlamData.Workspace.Card.Next.NextAction (NextAction(..))
+import SlamData.Workspace.Card.CardType (CardType(..), insertableCardTypes)
+
 type State =
   { input ∷ Maybe Port
-  , filterString ∷ String
   , presentAddCardGuide ∷ Boolean
+  , actions ∷ Array NextAction
+  , previousActions ∷ Array NextAction
+  , filterString ∷ String
   }
 
-initialState :: State
+chartSubmenu ∷ Array NextAction
+chartSubmenu =
+  [ Drill
+      "Setup Chart"
+      "img/cardsLight/setupChart.svg"
+      $ [ GoBack ]
+      ⊕ map (Insert ∘ ChartOptions) allChartTypes
+  ]
+
+defaultActions ∷ Array NextAction
+defaultActions =
+  map Insert insertableCardTypes ⊕ chartSubmenu
+
+initialState ∷ State
 initialState =
   { input: Nothing
   , presentAddCardGuide: true
+  , actions: defaultActions
+  , previousActions: [ ]
   , filterString: ""
   }
 
 _input ∷ ∀ a r. LensP { input ∷ a | r } a
 _input = lens _.input (_ { input = _ })
 
-_filterString ∷ ∀ a r. LensP { filterString ∷ a | r } a
-_filterString = lens _.filterString (_ { filterString = _ })
+_actions ∷ ∀ a r. LensP { actions ∷ a |r } a
+_actions = lens _.actions (_ { actions = _ })
+
+_previousActions ∷ ∀ a r. LensP { previousActions ∷ a | r} a
+_previousActions = lens _.previousActions (_ { previousActions = _ })
 
 _presentAddCardGuide ∷ ∀ a r. LensP { presentAddCardGuide ∷ a | r } a
 _presentAddCardGuide = lens _.presentAddCardGuide (_ { presentAddCardGuide = _ })
+
+_filterString ∷ ∀ a r. LensP { filterString ∷ a | r } a
+_filterString = lens _.filterString (_ { filterString = _ })

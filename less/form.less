@@ -63,3 +63,58 @@ label.sd-option span {
     border-left: 0px;
   }
 }
+
+.sd-dismiss-button {
+  background: none;
+  padding: none;
+  margin: none;
+  border: none;
+  width: @grid-size;
+  height: @grid-size;
+  line-height: @grid-size;
+  text-align: center;
+  font-size: 1.5rem;
+  color: #aaa;
+}
+
+.sd-picker-input {
+  position: relative;
+
+  .form-control {
+    border-radius: 0;
+  }
+
+  button {
+    text-align: left;
+  }
+
+  &.default {
+    button {
+      color: #999;
+    }
+  }
+
+  .sd-dismiss-button {
+    position: absolute;
+    height: 34px;
+    width: 34px;
+    right: 0;
+    text-align: center;
+
+    &[disabled] {
+      display: none;
+    }
+  }
+}
+
+.sd-select-input {
+  position: relative;
+  top: -6px;
+
+  .list-group {
+    position: absolute;
+    top: 30px;
+    right: 0;
+    width: 240px;
+  }
+}

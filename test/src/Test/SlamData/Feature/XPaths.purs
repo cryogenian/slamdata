@@ -7,12 +7,14 @@ import Test.SlamData.Feature.Data as Data
 aceEditor ∷ String
 aceEditor = "*[contains(@class, 'ace_editor') and not(contains(@class, 'ace_autocomplete'))]"
 
-
 playButton ∷ String
 playButton = XPath.anyWithExactAriaLabel "Play"
 
 renameButton ∷ String
 renameButton = XPath.anyWithExactText "Rename"
+
+renameDeck ∷ String
+renameDeck = XPath.anyWithExactAriaLabel "Rename deck"
 
 refreshButton ∷ String
 refreshButton = XPath.anyWithExactAriaLabel "Refresh"
@@ -100,6 +102,14 @@ insertChartCard =
 insertDisplayMarkdownCard ∷ String
 insertDisplayMarkdownCard =
   XPath.anyWithExactAriaLabel "Insert Show Markdown card"
+
+selectBuildChart ∷ String
+selectBuildChart =
+  XPath.anyWithExactAriaLabel "Select Setup Chart card category"
+
+insertPivotCard ∷ String
+insertPivotCard =
+  XPath.anyWithExactAriaLabel "Insert Setup Pivot card"
 
 showFileList ∷ String
 showFileList =

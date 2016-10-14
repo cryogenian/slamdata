@@ -126,7 +126,7 @@ a.item-hidden, button.list-group-item.item-hidden {
     color: #aaa;
 }
 
-select.form-control, input.form-control {
+select.form-control, input.form-control, button.form-control {
     border-radius: 0;
     -webkit-appearance: none;
 }
@@ -265,7 +265,7 @@ ol.breadcrumb {
     label.control-label {
         width: @label-width;
     }
-    select.form-control, input.form-control {
+    select.form-control, input.form-control, .sd-picker-input .form-control {
         width: calc(~"100% - " @label-width);
         display: inline-block;
     }
@@ -319,13 +319,13 @@ form.chart-configure-form {
         div {
             width: ~"calc(100% - 120px)";
             display: inline-block;
-            .form-control {
-                width: ~"calc(100% - 40px)";
-                &.aggregation {
-                    width: 40px;
-                    height: 34px;
-                    font-weight: bold;
-                }
+
+            .form-control:nth-child(1) {
+              border-right: none;
+              width: 80%;
+            }
+            .form-control:nth-child(2) {
+              width: 20%;
             }
         }
     }

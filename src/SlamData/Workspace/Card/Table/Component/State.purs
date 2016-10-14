@@ -45,8 +45,10 @@ import Data.Foldable (maximum)
 import Data.Int as Int
 import Data.Lens ((^?), (?~), LensP, lens, _Just)
 
+import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..))
 import SlamData.Workspace.Card.Table.Model (Model)
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.Path (FilePath)
@@ -104,7 +106,9 @@ _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 type Input =
   { resource ∷ FilePath
   , tag ∷ Maybe String
+  , axes ∷ Axes
   , size ∷ Int
+  , varMap ∷ Maybe Port.VarMap
   }
 
 -- | The resource to load pages of data from.
@@ -144,7 +148,7 @@ pendingPageInfo st =
       pageSize = fromMaybe 10 $ customPageSize <|> actualPageSize
       total = fromMaybe 0 $ st ^? _input ∘ _Just ∘ _size
       totalPages = calcTotalPages pageSize total
-      page' = if page > totalPages then totalPages else page
+      page' = min page totalPages
   in { page: page', pageSize, totalPages }
 
 -- | Changes the current page based on a PageStep increment.

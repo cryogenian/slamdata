@@ -16,46 +16,34 @@ module SlamData.Workspace.Card.Port.VarMap
   , URLVarMap
   , VarMapValue(..)
   , renderVarMapValue
-  , parseVarMapValue
   , emptyVarMap
   ) where
 
 import SlamData.Prelude
 
-import Data.Array as A
 import Data.Foldable as F
 import Data.HugeNum as HN
 import Data.Json.Extended as EJSON
 import Data.StrMap as SM
-import Data.String as S
 
 import Data.Argonaut ((.?))
 import Data.Argonaut.Core (jsonSingletonObject)
 import Data.Argonaut.Decode (class DecodeJson, decodeJson)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 
-import Text.Parsing.Parser as P
-import Text.Parsing.Parser.Combinators as PC
-import Text.Parsing.Parser.String as PS
-
 import Text.Markdown.SlamDown.Syntax.Value as SDV
 
+import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Arbitrary as SC
 
 data VarMapValue
   = Literal EJSON.EJson
+  | SetLiteral (Array EJSON.EJson)
   | QueryExpr String -- TODO: syntax of SQL^2 queries
 
-instance eqVarMapValue ∷ Eq VarMapValue where
-  eq (Literal c) (Literal d) = c == d
-  eq (QueryExpr q) (QueryExpr q') = q == q'
-  eq _ _ = false
+derive instance eqVarMapValue ∷ Eq VarMapValue
 
-instance ordVarMapValue ∷ Ord VarMapValue where
-  compare (Literal c) (Literal d) = compare c d
-  compare _ (Literal _) = GT
-  compare (Literal _) _ = LT
-  compare (QueryExpr a) (QueryExpr b) = compare a b
+derive instance ordVarMapValue ∷ Ord VarMapValue
 
 instance showVarMapValue ∷ Show VarMapValue where
   show = renderVarMapValue
@@ -66,6 +54,9 @@ instance encodeJsonVarMapValue ∷ EncodeJson VarMapValue where
       Literal ejson →
         jsonSingletonObject "literal" $
           encodeJson ejson
+      SetLiteral as →
+        jsonSingletonObject "set" $
+          encodeJson as
       QueryExpr str →
         jsonSingletonObject "query" $
           encodeJson str
@@ -74,6 +65,7 @@ instance decodeJsonVarMapValue :: DecodeJson VarMapValue where
   decodeJson json = do
     obj <- decodeJson json
     decodeLiteral obj
+      <|> decodeSetLiteral obj
       <|> decodeQueryExpr obj
 
     where
@@ -81,6 +73,11 @@ instance decodeJsonVarMapValue :: DecodeJson VarMapValue where
         (_ .? "literal")
           >=> decodeJson
           >>> map Literal
+
+      decodeSetLiteral =
+        (_ .? "set")
+          >=> decodeJson
+          >>> map SetLiteral
 
       decodeQueryExpr  =
         (_ .? "query")
@@ -92,6 +89,7 @@ renderVarMapValue
 renderVarMapValue val =
   case val of
     Literal lit → EJSON.renderEJson lit
+    SetLiteral as → "(" <> F.intercalate "," (EJSON.renderEJson <$> as) <> ")"
     QueryExpr str → str
 
 displayVarMapValue
@@ -100,6 +98,7 @@ displayVarMapValue
 displayVarMapValue val =
   case val of
     Literal lit → displayEJson lit
+    SetLiteral as → "(" <> F.intercalate ", " (displayEJson <$> as) <> ")"
     QueryExpr str → str
 
 displayEJsonF
@@ -171,21 +170,10 @@ instance valueVarMapValue ∷ SDV.Value VarMapValue where
   renderValue = displayVarMapValue
 
 instance arbitraryVarMapValue ∷ SC.Arbitrary VarMapValue where
-  arbitrary = do
+  arbitrary =
     Literal <$> EJSON.arbitraryJsonEncodableEJsonOfSize 1
+      <|> SetLiteral <$> Gen.arrayOf (EJSON.arbitraryJsonEncodableEJsonOfSize 1)
       <|> QueryExpr <$> SC.arbitrary
-
-parseVarMapValue
-  ∷ forall m
-  . (Monad m)
-  ⇒ P.ParserT String m VarMapValue
-parseVarMapValue =
-  Literal <$> PC.try EJSON.parseEJson
-    <|> QueryExpr <$> anyString
-  where
-    anyString =
-      A.many PS.anyChar
-        <#> S.fromCharArray
 
 type VarMap = SM.StrMap VarMapValue
 

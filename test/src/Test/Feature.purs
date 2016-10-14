@@ -46,7 +46,7 @@ import SlamData.Prelude
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (throw)
 
-import Data.Array (elemIndex)
+import Data.Array (elemIndex, length)
 import Data.List (toUnfoldable)
 import Data.List as L
 import Data.Map as Map
@@ -64,7 +64,7 @@ import Selenium.Types (Element, Location)
 import Test.Feature.ActionSequence as FeatureSequence
 import Test.Feature.Log (warnMsg)
 import Test.Feature.Monad (Feature, await)
-import Test.Utils (appendToCwd, ifTrue, throwIfNotEmpty, singletonValue, throwIfEmpty, passover)
+import Test.Utils (appendToCwd, ifTrue, ifFalse, singletonValue, throwIfEmpty, passover)
 
 import XPath as XPath
 
@@ -75,9 +75,13 @@ type FilePath = String
 smallWaitTime ∷ Int
 smallWaitTime = 500
 
+finderInternalFindAllNotRepeatedly ∷ ∀ eff o. XPath → Feature eff o (Array Element)
+finderInternalFindAllNotRepeatedly =
+  map toUnfoldable ∘ findElements <=< byXPath
+
 -- Basic XPath dependent finders
 findAllNotRepeatedly ∷ ∀ eff o. XPath → Feature eff o (Array Element)
-findAllNotRepeatedly = map toUnfoldable ∘ findElements <=< byXPath
+findAllNotRepeatedly = findAllWithPropertiesNotRepeatedly Map.empty
 
 findNotRepeatedly ∷ ∀ eff o. XPath → Feature eff o Element
 findNotRepeatedly xPath =
@@ -98,7 +102,7 @@ findNotRepeatedly xPath =
 
 findAtLeastOneNotRepeatedly ∷ ∀ eff o. XPath → Feature eff o (Array Element)
 findAtLeastOneNotRepeatedly xPath =
-  headOrThrow =<< findAll xPath
+  headOrThrow =<< findAllNotRepeatedly xPath
   where
   headOrThrow = passover (throwIfEmpty noElementsMessage)
   noElementsMessage = XPath.errorMessage "Couldn't find an element" xPath
@@ -110,13 +114,24 @@ findAll ∷ ∀ eff o. XPath → Feature eff o (Array Element)
 findAll xPath = expectPresented xPath *> findAllNotRepeatedly xPath
 
 -- Property and XPath dependent finders
+findAllInvisibleWithPropertiesNotRepeatedly
+  ∷ ∀ eff o
+  . Properties
+  → XPath
+  → Feature eff o (Array Element)
+findAllInvisibleWithPropertiesNotRepeatedly properties xPath =
+  elementsWithProperties properties
+    =<< finderInternalFindAllNotRepeatedly xPath
+
 findAllWithPropertiesNotRepeatedly
   ∷ ∀ eff o
   . Properties
   → XPath
   → Feature eff o (Array Element)
-findAllWithPropertiesNotRepeatedly properties =
-  elementsWithProperties properties <=< findAllNotRepeatedly
+findAllWithPropertiesNotRepeatedly properties xPath =
+  passover (expectPresentedVisualElements properties xPath)
+    =<< elementsWithProperties properties
+    =<< finderInternalFindAllNotRepeatedly xPath
 
 findAtLeastOneWithPropertiesNotRepeatedly
   ∷ ∀ eff o
@@ -134,6 +149,27 @@ findAtLeastOneWithPropertiesNotRepeatedly properties xPath =
     XPath.errorMessage
       (withPropertiesMessage properties "Couldn't find an element")
       xPath
+
+findInvisibleWithPropertiesNotRepeatedly
+  ∷ ∀ eff o
+  . Properties
+  → XPath
+  → Feature eff o Element
+findInvisibleWithPropertiesNotRepeatedly properties xPath =
+  singletonValue throwNoElements throwMoreThanOneElement
+    =<< findAllInvisibleWithPropertiesNotRepeatedly properties xPath
+  where
+  throwNoElements =
+    liftEff $ throw $ noElementWithPropertiesError properties xPath
+
+  throwMoreThanOneElement i =
+    liftEff $ throw $ moreThanOneElementMessage i
+
+  moreThanOneElementRawMessage i = "Found (" ⊕ show i ⊕ ") more than one element"
+  moreThanOneElementMessage i =
+    XPath.errorMessage
+      (withPropertiesMessage properties
+       $ moreThanOneElementRawMessage i) xPath
 
 findWithPropertiesNotRepeatedly
   ∷ ∀ eff o
@@ -242,11 +278,14 @@ validateJustTrue error xPath _ = liftEff $ throw $ error xPath
 
 expectNotPresentedAria ∷ ∀ eff o. Properties → XPath → Feature eff o Unit
 expectNotPresentedAria properties xPath =
-  throwIfNotEmpty message
-    =<< findAllWithPropertiesNotRepeatedly properties notHiddenXPath
+  ifFalse checkAria ∘ eq 0 ∘ length
+    =<< findAllInvisibleWithPropertiesNotRepeatedly properties xPath
   where
-  notHiddenXPath =
-    xPath `XPath.ancestorOrSelf` "*[not(@aria-hidden='true')]"
+  checkAria =
+    throwIfEmpty message
+      =<< findAllInvisibleWithPropertiesNotRepeatedly properties hiddenXPath
+  hiddenXPath =
+    xPath `XPath.ancestorOrSelf` "*[@aria-hidden='true']"
 
   message =
     XPath.errorMessage
@@ -257,9 +296,9 @@ expectNotPresentedAria properties xPath =
     printProperty "aria-hidden" (Just "true")
 
   rawMessage =
-    "Expected an "
+    "Expected no elements to be found or for them or their ancestors to have an "
       ⊕ printedAriaHiddenProperty
-      ⊕ " attribute of elements or their ancestors"
+      ⊕ " attribute"
 
 expectNotPresentedVisual
   ∷ ∀ eff o
@@ -267,19 +306,8 @@ expectNotPresentedVisual
   → XPath
   → Feature eff o Unit
 expectNotPresentedVisual properties xPath =
-  traverse_ validate
-    =<< findAllWithPropertiesNotRepeatedly properties xPath
-  where
-  validate =
-    ifTrue throwVisualError <=< isDisplayed
-
-  throwVisualError =
-    liftEff $ throw $ XPath.errorMessage message xPath
-
-  message =
-    withPropertiesMessage
-      properties
-      "Expected to find no visually displayed elements"
+  expectNotPresentedVisualElements properties xPath
+    =<< findAllInvisibleWithPropertiesNotRepeatedly properties xPath
 
 -- | Expect nodes found with the provided XPath which have the provided
 -- | attributes or properties to either:
@@ -295,10 +323,6 @@ expectNotPresentedWithProperties properties xPath =
   tryRepeatedlyTo
     $ expectNotPresentedWithPropertiesNotRepeatedly properties xPath
 
-
--- `expectNotPresentedAria` should check if the element's parent has `aria-hidden`
--- then we can switch from `<|>` to `*>` again
--- See SD-1563
 expectNotPresentedWithPropertiesNotRepeatedly
   ∷ ∀ eff o
   . Properties
@@ -306,7 +330,7 @@ expectNotPresentedWithPropertiesNotRepeatedly
   → Feature eff o Unit
 expectNotPresentedWithPropertiesNotRepeatedly properties xPath =
   expectNotPresentedVisual properties xPath
-    <|> expectNotPresentedAria properties xPath
+    *> expectNotPresentedAria properties xPath
 
 -- | Expect nodes found with the providied XPath which have the provided
 -- | attributes or properties to exist, be presented visually and for them or
@@ -592,11 +616,12 @@ hoverWithProperties properties xPath =
   tryRepeatedlyTo $ hoverElement =<< findWithPropertiesNotRepeatedly properties xPath
 
 -- | Provide file input value to the file input with the provided attributes or
--- | properties found with the provided XPath.
+-- | properties found with the provided XPath. This also will find invisible
+-- | file inputs.
 provideFileInputValueWithProperties ∷ ∀ eff o. Properties → XPath → FilePath → Feature eff o Unit
 provideFileInputValueWithProperties properties xPath filePath =
   tryRepeatedlyTo $ sendKeysEl filePath
-    =<< findWithPropertiesNotRepeatedly properties xPath
+    =<< findInvisibleWithPropertiesNotRepeatedly properties xPath
 
 -- | Navigate to the URL presented in the field with the provided attributes or
 -- | properties found with the providied Xath.
@@ -712,6 +737,47 @@ elementsWithProperties properties =
   elementsPropertiesTuples =
     traverse (\el → Tuple el <$> getPropertiesForElement el)
 
+expectNotPresentedVisualElements
+  ∷ ∀ eff o
+  . Properties
+  → XPath
+  → Array Element
+  → Feature eff o Unit
+expectNotPresentedVisualElements properties xPath =
+  traverse_ validate
+  where
+  validate =
+    ifTrue throwVisualError <=< isDisplayed
+
+  throwVisualError =
+    liftEff $ throw $ XPath.errorMessage message xPath
+
+  message =
+    withPropertiesMessage
+      properties
+      "Expected to find no visually displayed elements"
+
+expectPresentedVisualElements
+  ∷ ∀ eff o
+  . Properties
+  → String
+  → Array Element
+  → Feature eff o Unit
+expectPresentedVisualElements properties xPath =
+  traverse_ (\element → hoverElement element *> validate element)
+  where
+  validate =
+    ifFalse throwVisualError <=< isDisplayed
+
+  throwVisualError =
+    liftEff $ throw $ XPath.errorMessage message xPath
+
+  message =
+    withPropertiesMessage
+      properties
+      "Expected to find only visually displayed elements"
+
+-- Utilities
 logCurrentScreen ∷ ∀ eff o. Feature eff o Unit
 logCurrentScreen =
   saveScreenshot path *> logScreenshot path
@@ -720,7 +786,6 @@ logCurrentScreen =
   message = ("Screenshot taken now:\ndata:image/png;base64," <> _)
   logScreenshot p = (message <$> showImageFile p) >>= warnMsg
 
--- File utilities
 showImageFile ∷ ∀ eff o. FilePath → Feature eff o String
 showImageFile =
   showBuffer <=< readBuffer <=< getFullPath

@@ -43,7 +43,7 @@ import Test.SlamData.Feature.Effects (SlamFeatureEffects)
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.Test.File as File
-import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
+--import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
 import Test.SlamData.Feature.Test.CacheCard as Cache
@@ -69,26 +69,34 @@ type Effects =
 
 tests ∷ SlamFeature Unit
 tests = do
-  let setupScenario = scenario "Setup" (pure unit) (pure unit)
-  setupScenario "Launch SlamData" [] do
+  let setupScenario = scenario "Setup" (pure unit)
+  setupScenario (pure unit) "Launch SlamData" [] do
     Interact.launchSlamData
     Log.successMsg "Ok, launced SlamData"
 
-  setupScenario "Mount test database" [] do
+  setupScenario (pure unit) "Mount test database" [] do
     Interact.mountTestDatabase
     Log.successMsg "Ok, mounted test database"
 
-  setupScenario "Skip guides" [] do
-    Interact.createWorkspaceInTestFolder "Search"
-    Interact.skipAnyGuides
-    Interact.flipDeck
-    Interact.skipAnyGuides
-    Log.successMsg "Ok, skipped guides"
+  setupScenario
+    (Interact.deleteFileInTestFolder "Untitled Workspace.slam")
+    "Skip guides and dismiss hints"
+    []
+    do
+      Interact.browseTestFolder
+      Interact.createWorkspace
+      Interact.skipGuide
+      Interact.dismissHint
+      Interact.insertOpenCardInLastDeck
+      Interact.dismissHint
+      Interact.flipDeck
+      Interact.skipGuide
+      Log.successMsg "Ok, skipped guides and dismiss hints"
 
   File.test
   Search.test
   Markdown.test
-  FlexibleVisualization.test
+--  FlexibleVisualization.test
   Cache.test
   FlipDeck.test
 

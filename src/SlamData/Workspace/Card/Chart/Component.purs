@@ -38,15 +38,15 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Query as Quasar
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Chart.BuildOptions.Metric as BM
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
-import SlamData.Workspace.Card.Chart.Component.ChildSlot (cpMetric, cpECharts, ChildState, ChildQuery, ChildSlot)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType, chartDarkIconSrc)
+import SlamData.Workspace.Card.CardType.ChartType as ChT
+import SlamData.Workspace.Card.Chart.Component.ChildSlot (cpMetric, cpPivotTable, cpECharts, ChildState, ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
-import SlamData.Workspace.Card.Chart.Config as CH
+import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
+import SlamData.Workspace.Card.Chart.PivotTableRenderer.Component as Pivot
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
@@ -60,7 +60,7 @@ type DSL =
 chartComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 chartComponent = CC.makeCardComponent
   { cardType: CT.Chart
-  , component: H.parentComponent { render, eval, peek: Nothing }
+  , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   , initialState: H.parentState initialState
   , _State: CC._ChartState
   , _Query: CC.makeQueryPrism CC._ChartQuery
@@ -80,21 +80,25 @@ renderHighLOD state =
         $ [ RC.chartOutput, HH.className "card-input-maximum-lod" ]
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
-    [ HH.div
-        [ HP.classes $ (B.hidden <$ guard (state.chartType ≡ Just Metric)) ]
-        [ HH.slot' cpECharts unit \_ →
-            { component: HEC.echarts
-            , initialState: HEC.initialEChartsState 600 400
-            }
-        ]
-    , HH.div
-        [ HP.classes $ (B.hidden <$ guard (state.chartType ≠ Just Metric)) ]
+    case state.chartType of
+      Just ChT.Metric →
         [ HH.slot' cpMetric unit \_ →
              { component: Metric.comp
              , initialState: Metric.initialState
              }
         ]
-    ]
+      Just ChT.PivotTable →
+        [ HH.slot' cpPivotTable unit \_ →
+             { component: Pivot.comp
+             , initialState: Pivot.initialState
+             }
+        ]
+      _ →
+        [ HH.slot' cpECharts unit \_ →
+            { component: HEC.echarts
+            , initialState: HEC.initialEChartsState 600 400
+            }
+        ]
 
 renderLowLOD ∷ State → HTML
 renderLowLOD state =
@@ -114,49 +118,26 @@ renderLowLOD state =
 
 renderButton ∷ ChartType → Array HTML
 renderButton ct =
-  [ HH.img [ HP.src $ src ct ]
+  [ HH.img [ HP.src $ chartDarkIconSrc ct ]
   , HH.text "Zoom or resize"
   ]
-  where
-  src ∷ ChartType → String
-  src Pie = "img/pie-black.svg"
-  src Bar = "img/bar-black.svg"
-  src Line = "img/line-black.svg"
-  src Area = "img/area-black.svg"
-  src Scatter = "img/scatter-black.svg"
-  src Radar = "img/radar-black.svg"
-  src Funnel = "img/funnel-black.svg"
-  src Graph = "img/graph-black.svg"
-  src Heatmap = "img/heatmap-black.svg"
-  src Sankey = "img/sankey-black.svg"
-  src Gauge = "img/gauge-black.svg"
-  src Boxplot = "img/boxplot-black.svg"
-  src Metric = "img/metric-black.svg"
 
 eval ∷ CC.CardEvalQuery ~> DSL
 eval = case _ of
   CC.EvalCard value output next → do
     case value.input of
-      Just (Chart options@{ config: Just config }) → void do
-        H.modify $ _chartType ?~ case config of
-          CH.Legacy r → r.options.chartType
-          CH.Graph _ → Graph
-          CH.Sankey _ → Sankey
-          CH.Gauge _ → Gauge
-          CH.Metric _ → Metric
-
-        records ← either (const []) id <$> Quasar.all options.resource
-
-        case config of
-          CH.Metric r → do
-            H.query' cpMetric unit $ H.action $ Metric.SetMetric $ BM.buildMetric r records
-            setMetricLOD
-          _ → do
-            let
-              optionDSL = CH.buildOptions config records
-            H.query' cpECharts unit $ H.action $ HEC.Reset optionDSL
-            H.query' cpECharts unit $ H.action $ HEC.Resize
-            setEChartsLOD $ buildObj optionDSL
+      Just (ChartInstructions opts chartType) → void do
+        H.modify $ _chartType ?~ chartType
+        H.query' cpECharts unit $ H.action $ HEC.Reset opts
+        H.query' cpECharts unit $ H.action HEC.Resize
+        setEChartsLOD $ buildObj opts
+      Just (Metric metric) → void do
+        H.modify $ _chartType ?~ ChT.Metric
+        H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
+        setMetricLOD
+      Just (PivotTable r) → void do
+        H.modify $ _chartType ?~ ChT.PivotTable
+        H.query' cpPivotTable unit $ H.action $ Pivot.Update r
       _ →
         void $ H.query' cpECharts unit $ H.action HEC.Clear
     pure next
@@ -165,12 +146,22 @@ eval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k →
-    pure $ k Card.Chart
-  CC.Load _ next →
-    pure next
+    H.gets _.chartType >>= case _ of
+      Just ChT.PivotTable → do
+        res ← H.query' cpPivotTable unit $ H.request Pivot.Save
+        pure $ k (Card.Chart (Chart.PivotTableRenderer <$> res))
+      _ →
+        pure $ k (Card.Chart Nothing)
+  CC.Load model next →
+    case model of
+      Card.Chart (Just (Chart.PivotTableRenderer m)) → do
+        H.modify $ _chartType ?~ ChT.PivotTable
+        H.query' cpPivotTable unit $ H.action $ Pivot.Load m
+        pure next
+      _ →
+        pure next
   CC.SetDimensions dims next → do
     state ← H.get
-
     let
       heightPadding = 60
       widthPadding = 6
@@ -187,7 +178,8 @@ eval = case _ of
       H.modify _{ height = intHeight }
 
     for_ state.chartType case _ of
-      Metric → setMetricLOD
+      ChT.Metric →
+        setMetricLOD
       _ → do
         mbOpts ← H.query' cpECharts unit $ H.request HEC.GetOptions
         for_ (join mbOpts) setEChartsLOD
@@ -227,3 +219,10 @@ setEChartsLOD fOption = do
     .~ if (state.height - bottomPx) < 200 ∨ state.width < 300
          then Low
          else High
+
+peek ∷ ∀ a. ChildQuery a → DSL Unit
+peek = const (pure unit) ⨁  peekPivotTable ⨁  const (pure unit)
+  where
+  peekPivotTable = case _ of
+    Pivot.ModelUpdated _ → CC.raiseUpdatedP CC.EvalModelUpdate
+    _ → pure unit

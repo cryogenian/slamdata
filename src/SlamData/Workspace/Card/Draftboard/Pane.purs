@@ -80,7 +80,7 @@ walkWithCursor f = go Nil
       Cell a → f c acc p
       Split _ ps →
         goIx c 0 acc ps
-  
+
   goIx c ix acc ps =
     case ps of
       Nil → acc

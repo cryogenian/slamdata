@@ -21,7 +21,6 @@ module Utils.SessionStorage
 
 import Prelude
 
-import Control.Bind ((>=>))
 import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.Eff (Eff)
 

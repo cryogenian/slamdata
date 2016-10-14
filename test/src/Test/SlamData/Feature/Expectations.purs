@@ -53,10 +53,10 @@ cardsInTableColumnInLastCard
   → SlamFeature Unit
 cardsInTableColumnInLastCard f i headerText xs = do
   expectPresented $ XPath.index tdXPath i
-  expectNotPresented $ XPath.index trXPath (i + 1)
+--  expectNotPresented $ XPath.index trXPath (i + 1)
   where
   trXPath =
-    tableXPath <> "/tbody/tr"
+    tableXPath <> "/tr"
   thXPath =
     XPath.thWithExactText headerText
   tdXPath =
@@ -188,7 +188,7 @@ textInDisplayMarkdownCard =
   tryRepeatedlyTo
     ∘ expectPresented
     ∘ XPath.anywhere
-    ∘ XPath.anyWithText
+    ∘ XPath.nodeWithExactText "p"
 
 backsideActionNotPresented ∷ String → SlamFeature Unit
 backsideActionNotPresented =

@@ -18,6 +18,8 @@ module SlamData.Workspace.Card.Cache.Eval where
 
 import SlamData.Prelude
 
+import Data.Lens ((^?))
+import Data.Lens as Lens
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 
@@ -29,6 +31,7 @@ import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.BuildChart.Axis (initialAxes)
 
 import Utils.Path as PU
 
@@ -38,22 +41,26 @@ eval
   ⇒ CET.CardEvalInput
   → Maybe String
   → FilePath
+  → Maybe Port.VarMap
   → CET.CardEvalT m Port.TaggedResourcePort
-eval info mfp resource =
-  case mfp of
-    Nothing -> eval' (CET.temporaryOutputResource info) resource
-    Just pt ->
+eval info mfp resource varMap =
+  let
+    axes = fromMaybe initialAxes $ info.input ^? Lens._Just ∘ Port._ResourceAxes
+  in map _{axes = axes} case mfp of
+    Nothing → eval' (CET.temporaryOutputResource info) resource varMap
+    Just pt →
       case PU.parseAnyPath pt of
-        Just (Right fp) → eval' fp resource
+        Just (Right fp) → eval' fp resource varMap
         _ → QE.throw $ pt ⊕ " is not a valid file path"
 
 eval'
   ∷ ∀ m
   . (Monad m, QuasarDSL m)
-  ⇒ PU.FilePath
+  ⇒ FilePath
   → FilePath
+  → Maybe Port.VarMap
   → CET.CardEvalT m Port.TaggedResourcePort
-eval' fp resource = do
+eval' fp resource varMap = do
 
   outputResource ← CET.liftQ $
     QQ.fileQuery resource fp "select * from {{path}}" SM.empty
@@ -74,4 +81,4 @@ eval' fp resource = do
     $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
   CET.addSource resource
   CET.addCache outputResource
-  pure { resource: outputResource, tag: Nothing }
+  pure { resource: outputResource, tag: Nothing, axes: initialAxes, varMap }
