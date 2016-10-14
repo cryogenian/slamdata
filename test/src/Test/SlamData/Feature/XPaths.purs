@@ -109,7 +109,7 @@ selectBuildChart =
 
 insertPivotCard ∷ String
 insertPivotCard =
-  XPath.anyWithExactAriaLabel "Insert Setup Pivot card"
+  XPath.anyWithExactAriaLabel "Insert Pivot Table card"
 
 showFileList ∷ String
 showFileList =
