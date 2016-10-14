@@ -190,10 +190,13 @@ buildBar r records axes = do
   xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.category axes
 
   seriesNames ∷ Array String
-  seriesNames =
-    A.fromFoldable
+  seriesNames = case r.parallel of
+    Just _ →
+      A.fromFoldable
       $ foldMap (_.series ⋙ foldMap (_.name ⋙ foldMap Set.singleton ))
         barData
+    Nothing →
+      A.catMaybes $ map _.stack barData
 
   xValues ∷ Array String
   xValues =
@@ -217,5 +220,10 @@ buildBar r records axes = do
             E.buildValues do
               E.addStringValue key
               E.addValue v
-      for_ stacked.stack E.stack
-      for_ serie.name E.name
+      case r.parallel of
+        Just _ → do
+          for_ stacked.stack E.stack
+          for_ serie.name E.name
+        Nothing → do
+          E.stack "default stack"
+          for_ stacked.stack E.name
