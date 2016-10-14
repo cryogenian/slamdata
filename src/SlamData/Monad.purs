@@ -165,10 +165,10 @@ unSlam = foldFree go ∘ unSlamM
       lift aff
     GetAuthIdToken k → do
       Wiring { requestNewIdTokenBus } ← ask
-      lift $ k ∘ Auth.fromEither <$> Auth.getIdToken requestNewIdTokenBus
+      lift $ k ∘ Auth.fromEitherEither <$> Auth.getIdTokenFromBusSilently requestNewIdTokenBus
     Quasar qf → do
       Wiring { requestNewIdTokenBus } ← ask
-      idToken ← lift $ Auth.fromEither <$> Auth.getIdToken requestNewIdTokenBus
+      idToken ← lift $ Auth.fromEitherEither <$> Auth.getIdTokenFromBusSilently requestNewIdTokenBus
       lift $ runQuasarF idToken qf
     GetURLVarMaps k → do
       Wiring { urlVarMaps } ← ask

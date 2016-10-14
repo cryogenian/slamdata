@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Wiring
   ( Wiring(..)
+  , WiringR
   , Cache
   , CardEval
   , DeckRef
@@ -30,6 +31,7 @@ module SlamData.Wiring
   , putCache
   , getCache
   , putCardEval
+  , run
   ) where
 
 import SlamData.Prelude
@@ -90,8 +92,7 @@ type ActiveState =
   { cardIndex ∷ Int
   }
 
-newtype Wiring =
-  Wiring
+type WiringR =
     { decks ∷ Cache DeckId DeckRef
     , activeState ∷ Cache DeckId ActiveState
     , cards ∷ Cache (DeckId × CardId) CardEval
@@ -105,6 +106,11 @@ newtype Wiring =
     , hasIdentified ∷ Ref Boolean
     , presentStepByStepGuide ∷ Bus.BusRW StepByStepGuide
     }
+
+newtype Wiring = Wiring WiringR
+
+run ∷ Wiring → WiringR
+run (Wiring wiringR) = wiringR
 
 makeWiring
   ∷ ∀ m

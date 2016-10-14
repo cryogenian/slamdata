@@ -45,8 +45,8 @@ storeKeyString (OIDCT.KeyString ks) =
     AuthKeys.keyStringLocalStorageKey
     ks
 
-storeNonce ∷ ∀ e. OIDCT.UnhashedNonce → Eff (dom ∷ DOM |e) Unit
-storeNonce (OIDCT.UnhashedNonce n) =
+storeUnhashedNonce ∷ ∀ e. OIDCT.UnhashedNonce → Eff (dom ∷ DOM |e) Unit
+storeUnhashedNonce (OIDCT.UnhashedNonce n) =
   LS.setLocalStorage
     AuthKeys.nonceLocalStorageKey
     n
@@ -54,3 +54,7 @@ storeNonce (OIDCT.UnhashedNonce n) =
 clearIdToken ∷ ∀ e. Eff (dom ∷ DOM |e) Unit
 clearIdToken =
   LS.removeLocalStorage AuthKeys.idTokenLocalStorageKey
+
+clearUnhashedNonce ∷ ∀ e. Eff (dom ∷ DOM |e) Unit
+clearUnhashedNonce =
+  LS.removeLocalStorage AuthKeys.nonceLocalStorageKey

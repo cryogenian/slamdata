@@ -16,15 +16,16 @@ limitations under the License.
 
 module SlamData.Quasar.Auth.Authentication
   ( authentication
-  , getIdToken
+  , getIdTokenFromBusSilently
   , fromEither
+  , fromEitherEither
   , AuthEffects
   , EIdToken
-  , AuthenticationError
+  , AuthenticationError(..)
   , RequestIdTokenBus
+  , RequestIdTokenMessage
   ) where
 
-import Control.Apply as Apply
 import Control.Coroutine as Coroutine
 import Control.Coroutine.Stalling (($$?))
 import Control.Coroutine.Stalling as StallingCoroutine
@@ -66,6 +67,7 @@ import OIDC.Crypt (RSASIGNTIME)
 import OIDC.Crypt as OIDCCrypt
 import OIDC.Crypt.JSONWebKey (JSONWebKey)
 import OIDC.Crypt.Types (IdToken(..), UnhashedNonce(..))
+import Quasar.Advanced.Types (ProviderR)
 import Quasar.Advanced.Types as QAT
 import SlamData.Config as Config
 import SlamData.Prelude
@@ -82,21 +84,33 @@ import Utils.DOM as DOMUtils
 fromEither ∷ ∀ a b. E.Either a b → M.Maybe b
 fromEither = E.either (\_ → M.Nothing) (M.Just)
 
-getIdToken ∷ ∀ eff. RequestIdTokenBus → Aff (AuthEffects eff) EIdToken
-getIdToken requestNewIdTokenBus =
-  AVar.takeVar =<< passover (flip Bus.write requestNewIdTokenBus) =<< AVar.makeVar
+fromEitherEither ∷ ∀ a b c. E.Either a (E.Either b c) → M.Maybe c
+fromEitherEither = E.either (\_ → M.Nothing) fromEither
+
+getIdTokenFromBusSilently ∷ ∀ eff. RequestIdTokenBus → Aff (AuthEffects eff) (Either String EIdToken)
+getIdTokenFromBusSilently requestNewIdTokenBus =
+  liftEff getProviderRUsingLocalStorage
+    >>= case _ of
+      Right providerR → do
+        idTokenVar ← AVar.makeVar
+        Bus.write { idToken: idTokenVar, providerR, prompt: false } requestNewIdTokenBus
+        idToken ← Right <$> AVar.takeVar idTokenVar
+        pure idToken
+      Left error → pure $ Left error
 
 data AuthenticationError
   = IdTokenInvalid
   | IdTokenUnavailable String
   | PromptDismissed
   | DOMError String
-  | NoAuthProviderInLocalStorage
+  | ProviderError String
 
 instance semigroupAuthenticationError ∷ Semigroup AuthenticationError where
   append x y = y
 
-type RequestIdTokenBus = BusW (AVar EIdToken)
+type RequestIdTokenMessage = { providerR ∷ ProviderR, prompt ∷ Boolean, idToken ∷ AVar EIdToken }
+
+type RequestIdTokenBus = BusW RequestIdTokenMessage
 
 type EIdToken = Either AuthenticationError IdToken
 
@@ -117,7 +131,9 @@ firstValueFromStallingProducer producer = do
   Aff.forkAff
     $ StallingCoroutine.runStallingProcess
         (producer $$? (Coroutine.consumer \o → liftAff (AVar.putVar firstValue o) $> Just unit))
-  AVar.takeVar firstValue
+  val ← AVar.takeVar firstValue
+  traceAnyA val
+  pure val
 
 writeOnlyBus ∷ ∀ a. BusRW a → BusW a
 writeOnlyBus = snd ∘ Bus.split
@@ -130,16 +146,28 @@ authentication = do
   Aff.forkAff $ forever (authenticate stateRef =<< Bus.read requestBus)
   pure $ writeOnlyBus requestBus
 
+-- TODO: Allow multiple concurrent auth requests with different providers
+-- and prompt options. Alternatively immediately respond with an
+-- "authentication already in progress" error.
+--
+-- Currently if a message comes in whilst authentication is in progress the
+-- sender will be given the id token from the in progress auth regardless of
+-- what provider they asked for.
+--
+-- In current use this won't happen but it could if things change.
+--
+-- The same thing and worse could happen before but it was obscured by the
+-- "store provider in localstorage then put a message on the bus" approach.
 authenticate
   ∷ ∀ eff
   . Ref (Maybe (Promise EIdToken))
-  → AVar EIdToken
+  → RequestIdTokenMessage
   → Aff (AuthEffects eff) Unit
-authenticate stateRef replyAvar = do
+authenticate stateRef message = do
   state ← liftEff $ Ref.readRef stateRef
   case state of
     Nothing → do
-      idTokenPromise ← requestIdToken
+      idTokenPromise ← getIdToken message.providerR message.prompt
       writeState $ Just idTokenPromise
       void $ Aff.forkAff $ reply idTokenPromise *> writeState Nothing
     Just idTokenPromise → do
@@ -149,37 +177,60 @@ authenticate stateRef replyAvar = do
   writeState = liftEff ∘ Ref.writeRef stateRef
 
   reply ∷ Promise EIdToken → Aff (AuthEffects eff) Unit
-  reply = AVar.putVar replyAvar <=< Promise.wait
+  reply = AVar.putVar message.idToken <=< Promise.wait
 
-requestReauthenticationSilently
-  ∷ ∀ eff. Aff (AuthEffects eff) EIdToken
-requestReauthenticationSilently = do
-  either (pure ∘ Left) await =<< request
+getIdTokenSilently
+  ∷ ∀ eff
+  . ProviderR
+  → Aff (AuthEffects eff) EIdToken
+getIdTokenSilently providerR = do
+  unhashedNonce ← liftEff OIDCAff.getRandomUnhashedNonce
+  liftEff $ AuthStore.storeUnhashedNonce unhashedNonce
+  appendHiddenRequestIFrameToBody unhashedNonce providerR
+    >>= case _ of
+      Left error → pure $ Left error
+      Right iFrameNode → do
+        liftEff $ removeBodyChild iFrameNode
+        race (getIdTokenFromLSOnChange providerR unhashedNonce) timeout
   where
-  await authenticationIFrameNode = do
-    idToken ← race retrieveIdTokenFromLSOnChange timeout
-    liftEff $ removeBodyChild authenticationIFrameNode
-    pure idToken
-  request =
+  appendHiddenRequestIFrameToBody unhashedNonce providerR =
     either
-      (const $ pure $ Left $ NoAuthProviderInLocalStorage)
+      (pure ∘ Left)
       (liftEff ∘ map (lmap DOMError) ∘ appendHiddenIFrameToBody)
-      =<< requestReauthenticationURI OIDCAff.None
+      =<< getAuthenticationUri OIDCAff.None unhashedNonce providerR
   timeout =
     Aff.later' Config.authenticationTimeout
       $ pure $ Left $ IdTokenUnavailable "No id token received before timeout."
 
-requestPromptedAuthentication
+getIdTokenUsingPrompt
   ∷ ∀ eff
-  . Aff (AuthEffects eff) EIdToken
-requestPromptedAuthentication= do
+  . ProviderR
+  → Aff (AuthEffects eff) EIdToken
+getIdTokenUsingPrompt providerR = do
+  unhashedNonce ← liftEff OIDCAff.getRandomUnhashedNonce
+  liftEff $ AuthStore.storeUnhashedNonce unhashedNonce
   race
-    retrieveIdTokenFromLSOnChange
-    (either (pure ∘ Left) prompt =<< requestReauthenticationURI OIDCAff.Login)
+    (getIdTokenFromLSOnChange providerR unhashedNonce)
+    (prompt unhashedNonce)
   where
-  prompt src =
+  popup src =
     (liftEff (DOMUtils.openPopup src) >>= DOMUtils.waitUntilWindowClosed)
-      $> Left PromptDismissed
+      *> Aff.later' 250 (pure $ Left PromptDismissed)
+  prompt unhashedNonce =
+    (either (pure ∘ Left) popup)
+      =<< getAuthenticationUri OIDCAff.Login unhashedNonce providerR
+
+getAuthenticationUri
+  ∷ ∀ eff
+  . OIDCAff.Prompt
+  → UnhashedNonce
+  → ProviderR
+  → Aff (AuthEffects eff) (Either AuthenticationError String)
+getAuthenticationUri prompt unhashedNonce providerR =
+  (bimap (ProviderError ∘ runParseError) id)
+    <$> (liftEff
+           $ OIDCAff.getAuthenticationUri prompt unhashedNonce providerR
+           =<< getRedirectUri)
 
 appendHiddenIFrameToBody ∷ ∀ eff. String → Eff (AuthEffects eff) (Either String Node)
 appendHiddenIFrameToBody uri =
@@ -244,117 +295,88 @@ getBodyNode =
       ∘ map DOMHTMLTypes.htmlElementToNode
       ∘ Nullable.toMaybe
 
-requestIdToken
+getIdToken
   ∷ ∀ eff
-  . Aff (AuthEffects eff) (Promise EIdToken)
-requestIdToken = Promise.defer do
-  startIdToken ← retrieveIdTokenFromLS
-  provider ← liftEff $ retrieveProvider
-  idToken ← case startIdToken of
-    Left (IdTokenUnavailable _) | isJust provider →
-      requestPromptedAuthentication
-    Left IdTokenInvalid →
-      requestReauthenticationSilently
-    _ ->
-      pure startIdToken
-  either
-    (const $ liftEff $ AuthStore.clearProvider *> AuthStore.clearIdToken)
-    (const $ pure unit)
-    idToken
-  pure idToken
+  . ProviderR
+  → Boolean
+  → Aff (AuthEffects eff) (Promise EIdToken)
+getIdToken providerR prompt =
+  Promise.defer do
+    idToken ← if prompt
+      then
+        getIdTokenUsingPrompt providerR
+      else
+        getIdTokenUsingLocalStorage providerR
+          >>= maybe (getIdTokenSilently providerR) (pure ∘ Right)
+    -- Store provider for future local storage gets and reauthentications
+    traceAnyA idToken
+    either
+      (const $ liftEff $ AuthStore.clearProvider *> AuthStore.clearIdToken)
+      (const $ liftEff $ AuthStore.storeProvider $ QAT.Provider providerR)
+      idToken
+    pure idToken
 
-retrieveIdTokenFromLSOnChange
-  ∷ ∀ eff
-  . Aff (AuthEffects eff) EIdToken
-retrieveIdTokenFromLSOnChange =
-  validTokenIdFromIdTokenStorageEvent
-    =<< firstValueFromStallingProducer
-    =<< liftEff getIdTokenStorageEvents
+getIdTokenUsingLocalStorage ∷ ∀ eff. ProviderR → Aff (AuthEffects eff) (Maybe IdToken)
+getIdTokenUsingLocalStorage providerR = do
+  eitherIdToken ← getUnverifiedIdTokenUsingLocalStorage
+  eitherUnhashedNonce ← getUnhashedNonceUsingLocalStorage
+  case Tuple eitherIdToken eitherUnhashedNonce of
+    Tuple (Right idToken) (Right unhashedNonce) →
+      liftEff $ verify providerR unhashedNonce idToken
+        >>= if _ then (pure $ Just idToken) else (pure Nothing)
+    Tuple _ _ → pure Nothing
 
-validTokenIdFromIdTokenStorageEvent
-  ∷ ∀ eff
-  . LocalStorage.StorageEvent (Either String IdToken)
-  → Aff (AuthEffects eff) EIdToken
-validTokenIdFromIdTokenStorageEvent =
-  either (pure ∘ Left) verify ∘ lmap IdTokenUnavailable ∘ _.newValue
+getUnverifiedIdTokenUsingLocalStorage ∷ ∀ eff. Aff (AuthEffects eff) (Either String IdToken)
+getUnverifiedIdTokenUsingLocalStorage =
+  flip bind (map IdToken)
+    <$> LocalStorage.getLocalStorage AuthKeys.idTokenLocalStorageKey
 
-retrieveIdTokenFromLS ∷ ∀ eff. Aff (AuthEffects eff) EIdToken
-retrieveIdTokenFromLS =
-  either
-    (pure ∘ Left ∘ IdTokenUnavailable)
-    verify
-    =<< (flip bind (map IdToken) <$> retrieveRaw)
-  where
-  retrieveRaw ∷ Aff (AuthEffects eff) (Either String (Either String String))
-  retrieveRaw = LocalStorage.getLocalStorage AuthKeys.idTokenLocalStorageKey
+getUnhashedNonceUsingLocalStorage ∷ ∀ eff. Aff (AuthEffects eff) (Either String UnhashedNonce)
+getUnhashedNonceUsingLocalStorage =
+  rmap UnhashedNonce <$> LocalStorage.getLocalStorage AuthKeys.nonceLocalStorageKey
 
-retrieveProviderRFromLS ∷ ∀ eff. Eff (AuthEffects eff) (Either String QAT.ProviderR)
-retrieveProviderRFromLS =
+getProviderRUsingLocalStorage ∷ ∀ eff. Eff (AuthEffects eff) (Either String QAT.ProviderR)
+getProviderRUsingLocalStorage =
   map QAT.runProvider <$> LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey
 
-appendAuthPath ∷ String → String
-appendAuthPath s = (s <> _) Config.redirectURIString
+getIdTokenFromLSOnChange
+  ∷ ∀ eff
+  . ProviderR
+  → UnhashedNonce
+  → Aff (AuthEffects eff) EIdToken
+getIdTokenFromLSOnChange providerR unhashedNonce =
+  getUnverifiedIdTokenFromLSOnChange
+    >>= case _ of
+          Left localStorageError →
+            pure $ Left $ IdTokenUnavailable localStorageError
+          Right idToken →
+            liftEff $ verify providerR unhashedNonce idToken
+              >>= if _ then pure $ Right idToken else pure $ Left IdTokenInvalid
+
+getUnverifiedIdTokenFromLSOnChange
+  ∷ ∀ eff
+  . Aff (AuthEffects eff) (Either String IdToken)
+getUnverifiedIdTokenFromLSOnChange =
+  _.newValue <$> (firstValueFromStallingProducer =<< liftEff getIdTokenStorageEvents)
 
 runParseError ∷ ParseError → String
 runParseError (ParseError s) = s
 
-requestReauthenticationURI
-  ∷ ∀ eff
-  . OIDCAff.Prompt
-  → Aff (AuthEffects eff) (Either AuthenticationError String)
-requestReauthenticationURI prompt =
-  map
-    (lmap $ const NoAuthProviderInLocalStorage)
-    (liftEff do
-      redirectUri ← appendAuthPath <$> Browser.locationString
-      runExceptT
-        $ ExceptT ∘ request redirectUri
-        =<< ExceptT retrieveProviderRFromLS)
-  where
-  request redirectUri =
-    map (bimap runParseError id)
-      ∘ flip (OIDCAff.requestAuthenticationURI prompt) redirectUri
+verify ∷ ∀ eff. ProviderR → UnhashedNonce → IdToken → Eff (AuthEffects eff) Boolean
+verify providerR unhashedNonce idToken =
+  F.or
+    <$> T.traverse
+          (verifyWithJwk providerR unhashedNonce idToken)
+          providerR.openIDConfiguration.jwks
 
-verify ∷ ∀ eff. IdToken → Aff (AuthEffects eff) EIdToken
-verify idToken = do
-  verified ← liftEff $ verifyBoolean idToken
-  if verified
-    then pure $ Right idToken
-    else pure $ Left IdTokenInvalid
+verifyWithJwk ∷ ∀ eff. ProviderR → UnhashedNonce → IdToken → JSONWebKey → Eff (AuthEffects eff) Boolean
+verifyWithJwk providerR unhashedNonce idToken jwk = do
+  OIDCCrypt.verifyIdToken
+      idToken
+      providerR.openIDConfiguration.issuer
+      providerR.clientID
+      unhashedNonce
+      jwk
 
-verifyBoolean ∷ ∀ eff. IdToken → Eff (AuthEffects eff) Boolean
-verifyBoolean idToken = do
-  jwks ← map (fromMaybe []) retrieveJwks
-  F.or <$> T.traverse (verifyBooleanWithJwk idToken) jwks
-
-verifyBooleanWithJwk ∷ ∀ eff. IdToken → JSONWebKey → Eff (AuthEffects eff) Boolean
-verifyBooleanWithJwk idToken jwk = do
-  issuer ← retrieveIssuer
-  clientId ← retrieveClientID
-  nonce ← retrieveNonce
-  fromMaybe (pure false)
-    $ Apply.lift4 (OIDCCrypt.verifyIdToken idToken) issuer clientId nonce (Just jwk)
-
-retrieveProvider ∷ ∀ eff. Eff (AuthEffects eff) (Maybe QAT.Provider)
-retrieveProvider =
-  LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey <#> fromEither
-
-retrieveProviderR ∷ ∀ eff. Eff (AuthEffects eff) (Maybe QAT.ProviderR)
-retrieveProviderR = map QAT.runProvider <$> retrieveProvider
-
-retrieveIssuer ∷ ∀ eff. Eff (AuthEffects eff) (Maybe OIDCCrypt.Issuer)
-retrieveIssuer =
-  map (_.issuer <<< _.openIDConfiguration) <$> retrieveProviderR
-
-retrieveJwks ∷ ∀ eff. Eff (AuthEffects eff) (Maybe (Array JSONWebKey))
-retrieveJwks =
-  map (_.jwks <<< _.openIDConfiguration) <$> retrieveProviderR
-
-retrieveClientID ∷ ∀ eff. Eff (AuthEffects eff) (Maybe OIDCCrypt.ClientID)
-retrieveClientID =
-  map _.clientID <$> retrieveProviderR
-
-retrieveNonce ∷ ∀ eff. Eff (AuthEffects eff) (Maybe UnhashedNonce)
-retrieveNonce =
-  LocalStorage.getLocalStorage AuthKeys.nonceLocalStorageKey <#>
-    either (\_ → Nothing) (Just <<< UnhashedNonce)
+getRedirectUri ∷ ∀ eff. Eff (AuthEffects eff) String
+getRedirectUri = (_ <> Config.redirectURIString) <$> Browser.locationString
