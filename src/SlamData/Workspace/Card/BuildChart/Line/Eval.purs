@@ -196,7 +196,9 @@ buildLineData r records = series
 
 buildLine ∷ LineR → JArray → Axes → DSL OptionI
 buildLine r records axes = do
-  E.tooltip E.triggerItem
+  E.tooltip case r.size of
+    Just _ → E.triggerItem
+    Nothing → E.triggerAxis
   E.colors colors
   E.grid BCP.cartesian
   E.series series
@@ -239,8 +241,9 @@ buildLine r records axes = do
         lineData
 
   seriesNames ∷ Array String
-  seriesNames =
-    A.fromFoldable $ foldMap (_.name ⋙ foldMap Set.singleton) lineData
+  seriesNames = case r.series of
+    Just _ → A.fromFoldable $ foldMap (_.name ⋙ foldMap Set.singleton) lineData
+    Nothing → map show $ A.catMaybes [ Just r.value, r.secondValue ]
 
   needTwoAxes ∷ Boolean
   needTwoAxes = isJust r.secondValue
@@ -258,17 +261,28 @@ buildLine r records axes = do
               E.addValue value
             E.symbolSize symbolSize
       E.yAxisIndex 0
-      for_ lineSerie.name E.name
+      case r.series of
+        Just _ →
+          for_ lineSerie.name E.name
+        Nothing →
+          E.name $ show r.value
 
     when needTwoAxes $ E.line do
       E.buildItems $ for_ xValues \key →
         case M.lookup key lineSerie.rightItems of
           Nothing → E.missingItem
           Just {value, symbolSize} → E.addItem do
-            E.value value
+            E.name key
+            E.buildValues do
+              E.addStringValue key
+              E.addValue value
             E.symbolSize symbolSize
       E.yAxisIndex 1
-      for_ lineSerie.name E.name
+      case r.series of
+        Just _ →
+          for_ lineSerie.name E.name
+        Nothing →
+          traverse_ (E.name ∘ show) r.secondValue
 
   yAxis ∷ DSL ETP.YAxisI
   yAxis = do
