@@ -77,7 +77,6 @@ import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Data (makeFile, save) as API
-import SlamData.Quasar.Security as Q
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
 import SlamData.Render.Common (content, row)
@@ -143,7 +142,6 @@ render state@{ version, sort, salt, path } =
 
 eval ∷ Query ~> DSL
 eval (Init next) = do
-  Q.authorityList >>= traceAnyA
   Wiring wiring ← H.liftH $ H.liftH ask
   subscribeToBus' (H.action ∘ HandleError) wiring.globalError
   pure next

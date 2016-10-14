@@ -37,8 +37,7 @@ import Global as Global
 
 import Network.HTTP.RequestHeader (RequestHeader(..))
 
-import Quasar.Advanced.Types (TokenHash(..), PermissionR, runTokenHash)
-import Quasar.Advanced.QuasarAF.Interpreter.Affjax (authHeader, permissionsHeader, authority)
+import Quasar.Advanced.Types (TokenHash(..), runTokenHash)
 
 import SlamData.FileSystem.Resource as R
 

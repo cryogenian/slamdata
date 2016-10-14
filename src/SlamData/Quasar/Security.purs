@@ -98,11 +98,3 @@ deletePermission
 deletePermission pid =
   liftQuasar $ lmap lowerQError
     <$> QF.deletePermission pid
-
-authorityList
-  ∷ ∀ m
-  . QuasarDSL m
-  ⇒ m (Exn.Error ⊹ Array QTA.PermissionR)
-authorityList =
-  liftQuasar $ lmap lowerQError
-    <$> QF.authorityList
