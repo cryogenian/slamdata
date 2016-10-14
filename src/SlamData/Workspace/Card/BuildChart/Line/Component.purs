@@ -388,7 +388,6 @@ synchronizeChildren = do
 
     newSecondValue =
       setPreviousValueFrom (Just st.secondValue)
-        $ autoSelect
         $ newSelect
         $ ifSelected [ newValue ]
         $ st.axes.value
@@ -400,7 +399,6 @@ synchronizeChildren = do
 
     newSize =
       setPreviousValueFrom (Just st.size)
-        $ autoSelect
         $ newSelect
         $ ifSelected [ newValue ]
         $ st.axes.value
@@ -413,7 +411,6 @@ synchronizeChildren = do
 
     newSeries =
       setPreviousValueFrom (Just st.series)
-        $ autoSelect
         $ newSelect
         $ ifSelected [ newDimension ]
         $ st.axes.category

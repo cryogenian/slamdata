@@ -345,7 +345,6 @@ synchronizeChildren = do
 
     newSize =
       setPreviousValueFrom (Just st.size)
-        $ autoSelect
         $ newSelect
         $ st.axes.value
         ⊝ newAbscissa

@@ -252,7 +252,6 @@ synchronizeChildren = do
 
     newParallel =
       setPreviousValueFrom (Just st.parallel)
-        $ autoSelect
         $ newSelect
         $ ifSelected [newValue]
         $ st.axes.category
@@ -260,7 +259,6 @@ synchronizeChildren = do
 
     newMultiple =
       setPreviousValueFrom (Just st.multiple)
-        $ autoSelect
         $ newSelect
         $ ifSelected [newValue]
         $ st.axes.category
