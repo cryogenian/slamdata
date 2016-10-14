@@ -283,7 +283,7 @@ authenticate =
         , timeout
         }
     where
-    timeout = Just $ Milliseconds 10000.0
+    timeout = Just $ Milliseconds 5000.0
 
 presentHelp ∷ String → GlobalMenuDSL Unit
 presentHelp = H.fromEff ∘ Browser.newTab

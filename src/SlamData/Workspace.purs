@@ -42,6 +42,8 @@ import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Monad (runSlam)
+import SlamData.Notification.Component as NC
+import SlamData.Wiring (makeWiring)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
@@ -49,7 +51,6 @@ import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
-import SlamData.Wiring (makeWiring)
 
 import Routing as Routing
 
