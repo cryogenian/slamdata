@@ -29,6 +29,7 @@ module SlamData.Workspace.Card.CardType.ChartType
   , isBoxplot
   , parseChartType
   , printChartType
+  , chartName
   , chartLightIconSrc
   , chartDarkIconSrc
   , allChartTypes
@@ -43,24 +44,25 @@ import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 data ChartType
-  = Pie -- done
-  | Line -- done
-  | Bar -- done
-  | Area -- done
-  | Scatter -- done
-  | Radar -- done
-  | Funnel -- done
+  = Pie
+  | Line
+  | Bar
+  | Area
+  | Scatter
+  | Radar
+  | Funnel
   | Graph
   | Heatmap
-  | Sankey -- done
-  | Gauge -- done
-  | Boxplot -- done
-  | Metric -- done
-  | PivotTable --done
+  | Sankey
+  | Gauge
+  | Boxplot
+  | Metric
+  | PivotTable
 
 allChartTypes ∷ Array ChartType
 allChartTypes =
-  [ Pie
+  [ PivotTable
+  , Pie
   , Line
   , Bar
   , Area
@@ -73,7 +75,6 @@ allChartTypes =
   , Gauge
   , Boxplot
   , Metric
-  , PivotTable
   ]
 
 isPie ∷ ChartType → Boolean
@@ -133,37 +134,56 @@ isPivotTable PivotTable = true
 isPivotTable _ = false
 
 parseChartType ∷ String → String ⊹ ChartType
-parseChartType "pie" = pure Pie
-parseChartType "line" = pure Line
-parseChartType "bar" = pure Bar
-parseChartType "area" = pure Area
-parseChartType "scatter" = pure Scatter
-parseChartType "radar" = pure Radar
-parseChartType "funnel" = pure Funnel
-parseChartType "graph" = pure Graph
-parseChartType "heatmap" = pure Heatmap
-parseChartType "sankey" = pure Sankey
-parseChartType "gauge" = pure Gauge
-parseChartType "boxplot" = pure Boxplot
-parseChartType "metric" = pure Metric
-parseChartType "pivot" = pure PivotTable
-parseChartType _ = Left "incorrect chartType"
+parseChartType = case _ of
+  "pie" → pure Pie
+  "line" → pure Line
+  "bar" → pure Bar
+  "area" → pure Area
+  "scatter" → pure Scatter
+  "radar" → pure Radar
+  "funnel" → pure Funnel
+  "graph" → pure Graph
+  "heatmap" → pure Heatmap
+  "sankey" → pure Sankey
+  "gauge" → pure Gauge
+  "boxplot" → pure Boxplot
+  "metric" → pure Metric
+  "pivot" → pure PivotTable
+  _ → Left "incorrect chartType"
 
 printChartType ∷ ChartType → String
-printChartType Pie = "pie"
-printChartType Line = "line"
-printChartType Bar = "bar"
-printChartType Area = "area"
-printChartType Scatter = "scatter"
-printChartType Radar = "radar"
-printChartType Funnel = "funnel"
-printChartType Graph = "graph"
-printChartType Heatmap = "heatmap"
-printChartType Sankey = "sankey"
-printChartType Gauge = "gauge"
-printChartType Boxplot = "boxplot"
-printChartType Metric = "metric"
-printChartType PivotTable = "pivot"
+printChartType = case _ of
+  Pie → "pie"
+  Line → "line"
+  Bar → "bar"
+  Area → "area"
+  Scatter → "scatter"
+  Radar → "radar"
+  Funnel → "funnel"
+  Graph → "graph"
+  Heatmap → "heatmap"
+  Sankey → "sankey"
+  Gauge → "gauge"
+  Boxplot → "boxplot"
+  Metric → "metric"
+  PivotTable → "pivot"
+
+chartName ∷ ChartType → String
+chartName = case _ of
+  Pie → "Pie"
+  Line → "Line"
+  Bar → "Bar"
+  Area → "Area"
+  Scatter → "Scatter"
+  Radar → "Radar"
+  Funnel → "Funnel"
+  Graph → "Graph"
+  Heatmap → "Heatmap"
+  Sankey → "Sankey"
+  Gauge → "Gauge"
+  Boxplot → "Boxplot"
+  Metric → "Metric"
+  PivotTable → "Pivot Table"
 
 derive instance genericChartType ∷ Generic ChartType
 derive instance eqChartType ∷ Eq ChartType

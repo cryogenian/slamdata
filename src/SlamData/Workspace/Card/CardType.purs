@@ -25,7 +25,6 @@ module SlamData.Workspace.Card.CardType
   , aceCardClasses
   , aceMode
   , controllable
-  , insertableCardTypes
   , blocking
   ) where
 
@@ -42,6 +41,7 @@ import SlamData.Workspace.Card.CardType.ChartType
   ( ChartType(..)
   , printChartType
   , parseChartType
+  , chartName
   )
 
 import Test.StrongCheck.Arbitrary as SC
@@ -63,22 +63,6 @@ data CardType
   | Draftboard
   | ErrorCard
   | PendingCard
-
-insertableCardTypes ∷ Array CardType
-insertableCardTypes =
-  [ Ace SQLMode
-  , Open
-  , Search
-  , Variables
-  , Ace MarkdownMode
-  , Markdown
-  , Download
-  , DownloadOptions
-  , Chart
-  , Draftboard
-  , Troubleshoot
-  , Cache
-  ]
 
 derive instance eqCardType ∷ Eq CardType
 derive instance ordCardType ∷ Ord CardType
@@ -149,11 +133,7 @@ cardName ∷ CardType → String
 cardName = case _ of
   Ace at → aceCardName at
   Search → "Search"
-  ChartOptions chty →
-    let
-      capitalize s = Str.toUpper (Str.take 1 s) ⊕ Str.drop 1 s
-    in
-      "Setup " ⊕ (capitalize $ printChartType chty)
+  ChartOptions chty → chartName chty
   Chart → "Show Chart"
   Markdown → "Show Markdown"
   Table → "Show Table"
