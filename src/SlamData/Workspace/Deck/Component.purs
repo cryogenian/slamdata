@@ -525,7 +525,8 @@ createCard cardType = do
   deckId ← H.gets _.id
   (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
   H.set st
-  queuePendingCard (deckId × newCardId)
+  when (isNothing st.pendingCard) do
+    queuePendingCard (deckId × newCardId)
   triggerSave $ Just (deckId × newCardId)
 
 dismissedAccessNextActionCardGuideKey ∷ String
