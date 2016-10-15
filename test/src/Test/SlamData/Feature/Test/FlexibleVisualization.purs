@@ -90,19 +90,22 @@ test =
     Interact.accessPreviousCardInLastDeck
     Interact.activateStackForChartBuilder
     Interact.selectInChartBuilder [".gender"]
+    successMsg "Ok, stack is set to gender"
 
     Interact.accessNextCardInLastDeck
 
     Expect.lastEChart chart_CO_gender
+    successMsg "Ok, gender stack works"
 
     Interact.setVarMapForCurrentDeck $ SM.singleton "state" "\"NE\""
 
 
     Expect.lastEChart chart_NE_gender
+    successMsg "Ok, vars work"
     Interact.accessWorkspaceWithModifiedURL $ Str.replace "NE" "CO"
 
     Expect.lastEChart chart_CO_gender
-
+    successMsg "Ok, hot swap in URI works"
     successMsg "Successfully created flexible patient chart"
 
 chart_CO ∷ String
