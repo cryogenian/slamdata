@@ -213,6 +213,15 @@ cardSelected ∷ State → DeckId × CardId → Boolean
 cardSelected state coord =
   Just coord ≡ DCS.activeCardCoord state
 
+cardPending ∷ State → DeckId × CardId → Boolean
+cardPending state coord =
+  case state.pendingCard of
+    Just pcoord →
+      case DCS.compareCoordCards coord pcoord state.modelCards of
+        Just GT → true
+        _ → false
+    _ → false
+
 cardProperties ∷ ∀ a b. State → DeckId × CardId → Array (IProp a b)
 cardProperties state coord =
   [ ARIA.disabled ∘ show ∘ not $ cardSelected state coord ]
@@ -235,6 +244,7 @@ renderCard opts deckComponent st (deckId × card) index =
       [ HH.div
           (cardProperties st coord)
           [ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
+      , loadingPanel
       ]
     else
       Gripper.renderGrippers
@@ -245,6 +255,7 @@ renderCard opts deckComponent st (deckId × card) index =
               (cardProperties st coord)
               ([ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
                 ⊕ (guard presentAccessNextActionCardGuide $> renderGuide))
+          , loadingPanel
           ]
   where
   key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
@@ -271,6 +282,7 @@ renderCard opts deckComponent st (deckId × card) index =
     ]
       ⊕ (guard (not $ isClick st.sliderTranslateX) $> ClassNames.cardSliding)
       ⊕ (guard (cardSelected st coord) $> ClassNames.cardActive)
+      ⊕ (guard (cardPending st coord) $> ClassNames.pending)
   coord = deckId × card.cardId
   slotId = ChildSlot.CardSlot coord
   cardOpts =
@@ -284,3 +296,13 @@ renderCard opts deckComponent st (deckId × card) index =
     { component: Factory.cardComponent st.id card cardOpts
     , initialState: H.parentState CardC.initialCardState
     }
+
+loadingPanel ∷ DeckHTML
+loadingPanel =
+  HH.div
+    [ HP.classes [ HH.className "sd-pending-overlay" ] ]
+    [ HH.div_
+        [ HH.i_ []
+        , HH.span_ [ HH.text "Please wait while this card is evaluated" ]
+        ]
+    ]
