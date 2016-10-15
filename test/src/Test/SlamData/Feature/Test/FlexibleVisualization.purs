@@ -23,6 +23,7 @@ import Data.StrMap as SM
 
 import Test.Feature.Log (successMsg)
 import Test.Feature.Scenario (scenario)
+import Test.Feature.Monad (waitTime)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
@@ -91,7 +92,7 @@ test =
     Interact.activateStackForChartBuilder
     Interact.selectInChartBuilder [".gender"]
     successMsg "Ok, stack is set to gender"
-
+    waitTime 5000
     Interact.accessNextCardInLastDeck
 
     Expect.lastEChart chart_CO_gender
