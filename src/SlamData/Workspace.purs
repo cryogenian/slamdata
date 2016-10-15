@@ -105,7 +105,6 @@ routeSignal driver =
                 =<< window
 
 
-
             case action of
               Load _ | map getURLVarMaps old ≡ Just varMaps ∧ map getPath old ≡ Just path →
                 pure unit

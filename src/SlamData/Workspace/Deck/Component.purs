@@ -309,6 +309,11 @@ eval opts = case _ of
   HandleError ge next → do
     showDialog $ Dialog.Error $ GE.print ge
     pure next
+  Run next → do
+    H.modify _{ stateMode = Preparing }
+    initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
+    for_ initialCard queuePendingCard
+    pure next
 
   where
   getBoundingClientWidth =

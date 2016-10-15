@@ -227,13 +227,15 @@ eval (Load path deckId accessType next) = do
   queryDeck (H.request Deck.GetId) >>= \deckId' → do
     case deckId, deckId' of
       Just a, Just b
-        | a ≡ b ∧ oldAccessType ≡ accessType →
-            pure unit
+        | a ≡ b ∧ oldAccessType ≡ accessType → run
       _, _ → load
 
   pure next
 
   where
+  run = do
+    void $ queryDeck $ H.action $ Deck.Run
+
   load = do
     H.modify _
       { stateMode = Loading
