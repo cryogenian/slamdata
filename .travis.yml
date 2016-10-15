@@ -3,10 +3,7 @@ sudo: required
 dist: trusty
 jdk:
   - oraclejdk8
-cache:
-  directories:
-    - node_modules
-    - $HOME/bin
+
 before_install:
   - mkdir -p $HOME/bin
 install:
