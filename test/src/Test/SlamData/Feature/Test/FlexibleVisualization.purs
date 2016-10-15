@@ -86,7 +86,6 @@ test =
     successMsg "Will insert chart options card"
     Interact.insertChartCardInLastDeck
 
-
     Expect.lastEChart chart_CO
     Interact.accessPreviousCardInLastDeck
     Interact.activateStackForChartBuilder
