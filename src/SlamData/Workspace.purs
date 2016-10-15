@@ -104,7 +104,7 @@ routeSignal driver =
                 =<< document
                 =<< window
 
-            driver $ Workspace.toWorkspace $ Workspace.Reset path
+
 
             case action of
               Load _ | map getURLVarMaps old ≡ Just varMaps ∧ map getPath old ≡ Just path →
@@ -114,9 +114,11 @@ routeSignal driver =
             case action of
               Load accessType →
                 driver $ Workspace.toWorkspace $ Workspace.Load path deckId accessType
-              Exploring fp →
+              Exploring fp → do
+                driver $ Workspace.toWorkspace $ Workspace.Reset path
                 driver $ Workspace.toDeck $ Deck.ExploreFile fp
               New →
-                driver $ Workspace.toWorkspace $ Workspace.ClearCaches
+                driver $ Workspace.toWorkspace $ Workspace.Reset path
+
 
     routeConsumer (Just new)

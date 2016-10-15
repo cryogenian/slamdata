@@ -113,7 +113,7 @@ insertPivotCard =
 
 insertBuildBarChartCard ∷ String
 insertBuildBarChartCard =
-  XPath.anyWithExactAriaLabel "Insert Setup Bar card"
+  XPath.anyWithExactAriaLabel "Insert Bar card"
 
 showFileList ∷ String
 showFileList =

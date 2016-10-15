@@ -221,8 +221,16 @@ eval(ClearCaches next) = do
   clearCache wiring.cards
   pure next
 eval (Load path deckId accessType next) = do
+  oldAccessType ← H.gets _.accessType
   H.modify (_accessType .~ accessType)
-  load
+
+  queryDeck (H.request Deck.GetId) >>= \deckId' → do
+    case deckId, deckId' of
+      Just a, Just b
+        | a ≡ b ∧ oldAccessType ≡ accessType →
+            pure unit
+      _, _ → load
+
   pure next
 
   where
@@ -231,7 +239,9 @@ eval (Load path deckId accessType next) = do
       { stateMode = Loading
       , path = Just path
       }
+    queryDeck $ H.action $ Deck.Reset path
     maybe loadRoot loadDeck deckId
+    void $ queryDeck $ H.action $ Deck.Focus
 
   loadDeck deckId = void do
     SA.track (SA.Load deckId accessType)
