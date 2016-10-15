@@ -61,8 +61,9 @@ printDate date =
     year = fromEnum $ Dd.year date
     month = fromEnum $ Dd.month date
     day = fromEnum $ Dd.day date
+    show' n = (if n > 9 then "" else "0") ⊕ show n
   in
-    show year ⊕ "-" ⊕ show month ⊕ "-" ⊕ show day
+    show year ⊕ "-" ⊕ show' month ⊕ "-" ⊕ show' day
 
 printSemantics ∷ Semantics → String
 printSemantics (Value v) = show v
@@ -72,7 +73,7 @@ printSemantics (Category s) = s
 printSemantics (Bool b) = show b
 printSemantics (Time t) = printTime t
 printSemantics (Date d) = printDate d
-printSemantics (DateTime (Ddt.DateTime d t)) = printDate d ⊕ "T" ⊕ printTime t
+printSemantics (DateTime (Ddt.DateTime d t)) = printDate d ⊕ " " ⊕ printTime t
 
 semanticsToNumber ∷ Semantics → Maybe Number
 semanticsToNumber (Value v) = pure v
