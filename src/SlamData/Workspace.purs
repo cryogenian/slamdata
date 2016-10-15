@@ -46,8 +46,7 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
 import SlamData.Workspace.Deck.Component as Deck
-import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Routing (Routes(..), routing)
+import SlamData.Workspace.Routing (Routes(..), routing, getURLVarMaps, getPath)
 import SlamData.Workspace.StyleLoader as StyleLoader
 import SlamData.Wiring (makeWiring)
 
@@ -84,36 +83,41 @@ routeSignal driver =
     case new of
       WorkspaceRoute path deckId action varMaps → lift do
         driver $ Workspace.toWorkspace $ Workspace.SetVarMaps varMaps
-
         case old of
-          Just (WorkspaceRoute path' deckId' action' _)
-            | path == path' && deckId == deckId' && action == action' →
+          Just (WorkspaceRoute path' deckId' action' varMaps')
+            | path ≡ path' ∧ deckId ≡ deckId' ∧ action ≡ action' ∧ varMaps ≡ varMaps' →
                 pure unit
           _ → do
-            when (toAccessType action == AT.ReadOnly) do
-              isEmbedded ← liftEff $ Browser.detectEmbedding
-              let bodyClass = if isEmbedded then "sd-workspace-page sd-embedded" else "sd-workspace-page"
-              void $ liftEff $
-                traverse (setClassName bodyClass <<< htmlElementToElement)
-                  <<< toMaybe
-                  =<< body
-                  =<< document
-                  =<< window
-            workspace path deckId action
+            when (toAccessType action ≡ AT.ReadOnly) do
+              isEmbedded ←
+                liftEff $ Browser.detectEmbedding
+              let
+                bodyClass =
+                  if isEmbedded
+                    then "sd-workspace-page sd-embedded"
+                    else "sd-workspace-page"
+              void
+                $ liftEff
+                $ traverse (setClassName bodyClass ∘ htmlElementToElement)
+                ∘ toMaybe
+                =<< body
+                =<< document
+                =<< window
+
+
+            case action of
+              Load _ | map getURLVarMaps old ≡ Just varMaps ∧ map getPath old ≡ Just path →
+                pure unit
+              _ → driver $ Workspace.toWorkspace $ Workspace.ClearCaches
+
+            case action of
+              Load accessType →
+                driver $ Workspace.toWorkspace $ Workspace.Load path deckId accessType
+              Exploring fp → do
+                driver $ Workspace.toWorkspace $ Workspace.Reset path
+                driver $ Workspace.toDeck $ Deck.ExploreFile fp
+              New →
+                driver $ Workspace.toWorkspace $ Workspace.Reset path
+
 
     routeConsumer (Just new)
-
-  workspace
-    ∷ UP.DirPath
-    → Maybe DeckId
-    → Action
-    → Aff SlamDataEffects Unit
-  workspace path deckId =
-    case _ of
-      New →
-        driver $ Workspace.toWorkspace $ Workspace.Reset path
-      Load accessType →
-        driver $ Workspace.toWorkspace $ Workspace.Load path deckId accessType
-      Exploring fp → do
-        driver $ Workspace.toWorkspace $ Workspace.Reset path
-        driver $ Workspace.toDeck $ Deck.ExploreFile fp

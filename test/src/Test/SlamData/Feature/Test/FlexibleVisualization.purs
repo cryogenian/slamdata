@@ -16,14 +16,17 @@ limitations under the License.
 
 module Test.SlamData.Feature.Test.FlexibleVisualation where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.String as Str
+import Data.StrMap as SM
+
 import Test.Feature.Log (successMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
+
 import Selenium.Monad (script, tryRepeatedlyTo)
 
 variablesChartScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
@@ -31,39 +34,11 @@ variablesChartScenario =
   scenario
     "Flexible Visualization"
     (Interact.createWorkspaceInTestFolder "Flexible Visualization")
-    (Interact.deleteFileInTestFolder "Untitled Workspace.slam")
-
-expectedImagesBasePath ∷ String
-expectedImagesBasePath =
-  "test/image/flexible-visualization/"
-
-expectedColoradoWithoutSeriesChartImages ∷ Array String
-expectedColoradoWithoutSeriesChartImages =
-  map (append expectedImagesBasePath)
-    [
-      "CO-without-series-mac.png"
-    , "CO-without-series-linux.png"
-    ]
-
-expectedColoradoChartImages ∷ Array String
-expectedColoradoChartImages =
-  map (append expectedImagesBasePath)
-    [
-      "CO-mac.png"
-    , "CO-linux.png"
-    ]
-
-expectedNebraskaChartImages ∷ Array String
-expectedNebraskaChartImages =
-  map (append expectedImagesBasePath)
-    [
-      "NE-mac.png"
-    , "NE-linux.png"
-    ]
+    (Interact.deleteFileInTestFolder "Flexible Visualization.slam")
 
 test ∷ SlamFeature Unit
 test =
-  variablesChartScenario "Make embeddable patients-city charts" ["https://slamdata.atlassian.net/browse/SD-1862"] do
+  variablesChartScenario "Make embeddable patients-city charts" [] do
     tryRepeatedlyTo $ script """
       var run = function() {
         var __init = echarts.init;
@@ -100,40 +75,45 @@ test =
         ]
     Interact.runQuery
     Interact.accessNextCardInLastDeck
-    successMsg "Will insert Table card"
-    Interact.insertTableCardInLastDeck
-    Expect.tableCardPresented
-    Interact.accessNextCardInLastDeck
-    successMsg "Will insert chart card"
-    Interact.insertChartOptionsCardInLastDeck
-    Interact.switchToBarChart
-    Interact.provideCategoryForLastChartCard ".city"
+    Interact.selectBuildChart
+    Interact.insertBuildBarChartCard
+    Expect.categoryEnabledInLastBuildChartCard
+    successMsg "Ok, category field is enabled"
+    Interact.activateCategoryForChartBuilder
+    Interact.selectInChartBuilder [".city"]
     Expect.measureInLastChartCard ".ct"
-    Expect.measureDisabledInLastChartCard
-    successMsg "Will access next card"
     Interact.accessNextCardInLastDeck
     successMsg "Will insert chart options card"
     Interact.insertChartCardInLastDeck
+
     Expect.lastEChart chart_CO
     Interact.accessPreviousCardInLastDeck
-    Interact.provideSeriesForLastChartCard ".gender"
+    Interact.activateStackForChartBuilder
+    Interact.selectInChartBuilder [".gender"]
+
     Interact.accessNextCardInLastDeck
+
     Expect.lastEChart chart_CO_gender
-    Interact.accessWorkspaceWithModifiedURL (flip append "/?state=%22NE%22")
+
+    Interact.setVarMapForCurrentDeck $ SM.singleton "state" "\"NE\""
+
+
     Expect.lastEChart chart_NE_gender
-    Interact.accessWorkspaceWithModifiedURL (Str.replace "NE" "CO")
+    Interact.accessWorkspaceWithModifiedURL $ Str.replace "NE" "CO"
+
     Expect.lastEChart chart_CO_gender
+
     successMsg "Successfully created flexible patient chart"
 
 chart_CO ∷ String
 chart_CO =
-  """{"color":["#93A9A6","#CDA71F","#EB6F76","#66B35B","#BD97E2","#5B5925","#884A6F","#51B3F6","#CCA067","#398465","#3C607A","#81463C","#B65F33","#9AAE31","#CE8B9E","#6C6356","#95A779","#44AECB","#E987C2","#8A7EA0","#3D6C2F","#40B994","#87984A","#C1A088","#9B6E2D","#428C8D","#B8766A","#EB8666","#DF883E","#BB6273","#C994BF","#929DE0","#7BA5CB","#AE9093","#66557B","#936370","#3C6D64","#84693F","#C19744","#E77AA1","#5D555F","#4078A2","#3FAFAF","#698B99","#486A4C","#7EA48B","#B57E57","#8C72AA","#609050","#56B379","#489F8B","#714D4A","#9A8867","#93B66B","#7DA93F","#877424","#C75D56","#B774AC","#7B7A3E","#73581C","#398EA3","#964734","#DF8D89","#AF97CC","#96951F","#A37791","#7C4D2E","#78865F","#216B74","#935524","#6FAFB6","#75AB76","#A48B50","#D28DD0","#BE9AAF","#AD8D22","#D89576","#964860","#9B9A61","#4DAADB","#A9628D","#98943B","#486366","#6D7E2B","#CF9A2F","#827A8B","#876A69","#495F23","#677F45","#805845","#A2544D","#8C5157","#6B6C9E","#236443","#919B82","#CC8E55","#3E8555","#A08A7A","#767870","#6D9643","#87658F","#3BB069","#6A5D42","#586249","#1F7769","#6DAF8E","#8FA7BE","#B7A82C","#A09DA0","#7D8AA6","#78A3E0","#719186","#765771","#A37EA7","#8E8CBC","#A76840","#49934B","#A27C62","#3DA27B","#A9AC53","#6685B4","#5F728A","#CB6B4A","#9F8DD3","#B7A66E","#A998B3","#85A362","#595146"],"series":[{"type":"bar","data":[1,1,1,1,1,1,1,2,1,1,1,1,1,1,1],"stack":"total "}],"tooltip":{"trigger":"axis"},"legend":{"textStyle":{"fontFamily":"Ubuntu sans"},"data":[]},"xAxis":{"type":"category","axisTick":{"interval":0},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu sans","fontSize":12},"rotate":30},"data":["ANTONITO","ARVADA","DEL NORTE","DENVER","HENDERSON","JOHNSTOWN","KIOWA","LITTLETON","LONGMONT","MANZANOLA","PITKIN","ROCKVALE","SILVERTHORNE","VERNON","WALSH"]},"yAxis":{"type":"value"}}"""
+  """{"series":[{"stack":"default stack","data":[{"value":["ANTONITO",1],"name":"ANTONITO"},{"value":["ARVADA",1],"name":"ARVADA"},{"value":["DEL NORTE",1],"name":"DEL NORTE"},{"value":["DENVER",1],"name":"DENVER"},{"value":["HENDERSON",1],"name":"HENDERSON"},{"value":["JOHNSTOWN",1],"name":"JOHNSTOWN"},{"value":["KIOWA",1],"name":"KIOWA"},{"value":["LITTLETON",2],"name":"LITTLETON"},{"value":["LONGMONT",1],"name":"LONGMONT"},{"value":["MANZANOLA",1],"name":"MANZANOLA"},{"value":["PITKIN",1],"name":"PITKIN"},{"value":["ROCKVALE",1],"name":"ROCKVALE"},{"value":["SILVERTHORNE",1],"name":"SILVERTHORNE"},{"value":["VERNON",1],"name":"VERNON"},{"value":["WALSH",1],"name":"WALSH"}],"type":"bar"}],"legend":{"top":"bottom","left":"left","data":[],"textStyle":{"fontFamily":"Ubuntu, sans"}},"yAxis":{"splitLine":{"lineStyle":{"width":1}},"axisLine":{"lineStyle":{"width":1}},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"}},"type":"value"},"xAxis":{"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"},"rotate":0},"data":["ANTONITO","ARVADA","DEL NORTE","DENVER","HENDERSON","JOHNSTOWN","KIOWA","LITTLETON","LONGMONT","MANZANOLA","PITKIN","ROCKVALE","SILVERTHORNE","VERNON","WALSH"],"interval":0,"type":"category"},"color":["#93a9a6","#cda71f","#eb6f76","#66b35b","#bd97e2","#5b5925","#884a6f","#51b3f6","#cca067","#398465","#3c607a","#81463c","#b65f33","#9aae31","#ce8b9e","#6c6356","#95a779","#44aecb","#e987c2","#8a7ea0","#3d6c2f","#40b994","#87984a","#c1a088","#9b6e2d","#428c8d","#b8766a","#eb8666","#df883e","#bb6273","#c994bf","#929de0","#7ba5cb","#ae9093","#66557b","#936370","#3c6d64","#84693f","#c19744","#e77aa1","#5d555f","#4078a2","#3fafaf","#698b99","#486a4c","#7ea48b","#b57e57","#8c72aa","#609050","#56b379","#489f8b","#714d4a","#9a8867","#93b66b","#7da93f","#877424","#c75d56","#b774ac","#7b7a3e","#73581c","#398ea3","#964734","#df8d89","#af97cc","#96951f","#a37791","#7c4d2e","#78865f","#216b74","#935524","#6fafb6","#75ab76","#a48b50","#d28dd0","#be9aaf","#ad8d22","#d89576","#964860","#9b9a61","#4daadb","#a9628d","#98943b","#486366","#6d7e2b","#cf9a2f","#827a8b","#876a69","#495f23","#677f45","#805845","#a2544d","#8c5157","#6b6c9e","#236443","#919b82","#cc8e55","#3e8555","#a08a7a","#767870","#6d9643","#87658f","#3bb069","#6a5d42","#586249","#1f7769","#6daf8e","#8fa7be","#b7a82c","#a09da0","#7d8aa6","#78a3e0","#719186","#765771","#a37ea7","#8e8cbc","#a76840","#49934b","#a27c62","#3da27b","#a9ac53","#6685b4","#5f728a","#cb6b4a","#9f8dd3","#b7a66e","#a998b3","#85a362","#595146"],"tooltip":{"trigger":"axis"}}"""
 
 
 chart_CO_gender ∷ String
 chart_CO_gender =
-  """{"color":["#93A9A6","#CDA71F","#EB6F76","#66B35B","#BD97E2","#5B5925","#884A6F","#51B3F6","#CCA067","#398465","#3C607A","#81463C","#B65F33","#9AAE31","#CE8B9E","#6C6356","#95A779","#44AECB","#E987C2","#8A7EA0","#3D6C2F","#40B994","#87984A","#C1A088","#9B6E2D","#428C8D","#B8766A","#EB8666","#DF883E","#BB6273","#C994BF","#929DE0","#7BA5CB","#AE9093","#66557B","#936370","#3C6D64","#84693F","#C19744","#E77AA1","#5D555F","#4078A2","#3FAFAF","#698B99","#486A4C","#7EA48B","#B57E57","#8C72AA","#609050","#56B379","#489F8B","#714D4A","#9A8867","#93B66B","#7DA93F","#877424","#C75D56","#B774AC","#7B7A3E","#73581C","#398EA3","#964734","#DF8D89","#AF97CC","#96951F","#A37791","#7C4D2E","#78865F","#216B74","#935524","#6FAFB6","#75AB76","#A48B50","#D28DD0","#BE9AAF","#AD8D22","#D89576","#964860","#9B9A61","#4DAADB","#A9628D","#98943B","#486366","#6D7E2B","#CF9A2F","#827A8B","#876A69","#495F23","#677F45","#805845","#A2544D","#8C5157","#6B6C9E","#236443","#919B82","#CC8E55","#3E8555","#A08A7A","#767870","#6D9643","#87658F","#3BB069","#6A5D42","#586249","#1F7769","#6DAF8E","#8FA7BE","#B7A82C","#A09DA0","#7D8AA6","#78A3E0","#719186","#765771","#A37EA7","#8E8CBC","#A76840","#49934B","#A27C62","#3DA27B","#A9AC53","#6685B4","#5F728A","#CB6B4A","#9F8DD3","#B7A66E","#A998B3","#85A362","#595146"],"series":[{"name":"female","type":"bar","data":[1,0,1,0,1,1,0,1,1,1,0,0,0,0,1],"stack":"total "},{"name":"male","type":"bar","data":[0,1,0,1,0,0,1,1,0,0,1,1,1,1,0],"stack":"total "}],"tooltip":{"trigger":"axis"},"legend":{"textStyle":{"fontFamily":"Ubuntu sans"},"data":[{"name":"female"},{"name":"male"}]},"xAxis":{"type":"category","axisTick":{"interval":0},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu sans","fontSize":12},"rotate":30},"data":["ANTONITO","ARVADA","DEL NORTE","DENVER","HENDERSON","JOHNSTOWN","KIOWA","LITTLETON","LONGMONT","MANZANOLA","PITKIN","ROCKVALE","SILVERTHORNE","VERNON","WALSH"]},"yAxis":{"type":"value"}}"""
+  """{"series":[{"name":"female","stack":"default stack","data":[{"value":["ANTONITO",1],"name":"ANTONITO"},null,{"value":["DEL NORTE",1],"name":"DEL NORTE"},null,{"value":["HENDERSON",1],"name":"HENDERSON"},{"value":["JOHNSTOWN",1],"name":"JOHNSTOWN"},null,{"value":["LITTLETON",1],"name":"LITTLETON"},{"value":["LONGMONT",1],"name":"LONGMONT"},{"value":["MANZANOLA",1],"name":"MANZANOLA"},null,null,null,null,{"value":["WALSH",1],"name":"WALSH"}],"type":"bar"},{"name":"male","stack":"default stack","data":[null,{"value":["ARVADA",1],"name":"ARVADA"},null,{"value":["DENVER",1],"name":"DENVER"},null,null,{"value":["KIOWA",1],"name":"KIOWA"},{"value":["LITTLETON",1],"name":"LITTLETON"},null,null,{"value":["PITKIN",1],"name":"PITKIN"},{"value":["ROCKVALE",1],"name":"ROCKVALE"},{"value":["SILVERTHORNE",1],"name":"SILVERTHORNE"},{"value":["VERNON",1],"name":"VERNON"},null],"type":"bar"}],"legend":{"top":"bottom","left":"left","data":["female","male"],"textStyle":{"fontFamily":"Ubuntu, sans"}},"yAxis":{"splitLine":{"lineStyle":{"width":1}},"axisLine":{"lineStyle":{"width":1}},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"}},"type":"value"},"xAxis":{"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"},"rotate":0},"data":["ANTONITO","ARVADA","DEL NORTE","DENVER","HENDERSON","JOHNSTOWN","KIOWA","LITTLETON","LONGMONT","MANZANOLA","PITKIN","ROCKVALE","SILVERTHORNE","VERNON","WALSH"],"interval":0,"type":"category"},"color":["#93a9a6","#cda71f","#eb6f76","#66b35b","#bd97e2","#5b5925","#884a6f","#51b3f6","#cca067","#398465","#3c607a","#81463c","#b65f33","#9aae31","#ce8b9e","#6c6356","#95a779","#44aecb","#e987c2","#8a7ea0","#3d6c2f","#40b994","#87984a","#c1a088","#9b6e2d","#428c8d","#b8766a","#eb8666","#df883e","#bb6273","#c994bf","#929de0","#7ba5cb","#ae9093","#66557b","#936370","#3c6d64","#84693f","#c19744","#e77aa1","#5d555f","#4078a2","#3fafaf","#698b99","#486a4c","#7ea48b","#b57e57","#8c72aa","#609050","#56b379","#489f8b","#714d4a","#9a8867","#93b66b","#7da93f","#877424","#c75d56","#b774ac","#7b7a3e","#73581c","#398ea3","#964734","#df8d89","#af97cc","#96951f","#a37791","#7c4d2e","#78865f","#216b74","#935524","#6fafb6","#75ab76","#a48b50","#d28dd0","#be9aaf","#ad8d22","#d89576","#964860","#9b9a61","#4daadb","#a9628d","#98943b","#486366","#6d7e2b","#cf9a2f","#827a8b","#876a69","#495f23","#677f45","#805845","#a2544d","#8c5157","#6b6c9e","#236443","#919b82","#cc8e55","#3e8555","#a08a7a","#767870","#6d9643","#87658f","#3bb069","#6a5d42","#586249","#1f7769","#6daf8e","#8fa7be","#b7a82c","#a09da0","#7d8aa6","#78a3e0","#719186","#765771","#a37ea7","#8e8cbc","#a76840","#49934b","#a27c62","#3da27b","#a9ac53","#6685b4","#5f728a","#cb6b4a","#9f8dd3","#b7a66e","#a998b3","#85a362","#595146"],"tooltip":{"trigger":"axis"}}"""
 
 chart_NE_gender ∷ String
 chart_NE_gender =
-  """{"color":["#93A9A6","#CDA71F","#EB6F76","#66B35B","#BD97E2","#5B5925","#884A6F","#51B3F6","#CCA067","#398465","#3C607A","#81463C","#B65F33","#9AAE31","#CE8B9E","#6C6356","#95A779","#44AECB","#E987C2","#8A7EA0","#3D6C2F","#40B994","#87984A","#C1A088","#9B6E2D","#428C8D","#B8766A","#EB8666","#DF883E","#BB6273","#C994BF","#929DE0","#7BA5CB","#AE9093","#66557B","#936370","#3C6D64","#84693F","#C19744","#E77AA1","#5D555F","#4078A2","#3FAFAF","#698B99","#486A4C","#7EA48B","#B57E57","#8C72AA","#609050","#56B379","#489F8B","#714D4A","#9A8867","#93B66B","#7DA93F","#877424","#C75D56","#B774AC","#7B7A3E","#73581C","#398EA3","#964734","#DF8D89","#AF97CC","#96951F","#A37791","#7C4D2E","#78865F","#216B74","#935524","#6FAFB6","#75AB76","#A48B50","#D28DD0","#BE9AAF","#AD8D22","#D89576","#964860","#9B9A61","#4DAADB","#A9628D","#98943B","#486366","#6D7E2B","#CF9A2F","#827A8B","#876A69","#495F23","#677F45","#805845","#A2544D","#8C5157","#6B6C9E","#236443","#919B82","#CC8E55","#3E8555","#A08A7A","#767870","#6D9643","#87658F","#3BB069","#6A5D42","#586249","#1F7769","#6DAF8E","#8FA7BE","#B7A82C","#A09DA0","#7D8AA6","#78A3E0","#719186","#765771","#A37EA7","#8E8CBC","#A76840","#49934B","#A27C62","#3DA27B","#A9AC53","#6685B4","#5F728A","#CB6B4A","#9F8DD3","#B7A66E","#A998B3","#85A362","#595146"],"series":[{"name":"female","type":"bar","data":[1,1,0,0,0,0,2,0,0,1,0,0,1,1],"stack":"total "},{"name":"male","type":"bar","data":[1,0,1,1,1,1,2,1,1,1,1,1,0,0],"stack":"total "}],"tooltip":{"trigger":"axis"},"legend":{"textStyle":{"fontFamily":"Ubuntu sans"},"data":[{"name":"female"},{"name":"male"}]},"xAxis":{"type":"category","axisTick":{"interval":0},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu sans","fontSize":12},"rotate":30},"data":["BEE","BLAIR","CAIRO","CRAIG","GOTHENBURG","LINCOLN","OMAHA","ORD","OSHKOSH","PIERCE","SAINT EDWARD","WILLOW ISLAND","WOOD LAKE","WYNOT"]},"yAxis":{"type":"value"}}"""
+  """{"series":[{"name":"female","stack":"default stack","data":[{"value":["BEE",1],"name":"BEE"},{"value":["BLAIR",1],"name":"BLAIR"},null,null,null,null,{"value":["OMAHA",2],"name":"OMAHA"},null,null,{"value":["PIERCE",1],"name":"PIERCE"},null,null,{"value":["WOOD LAKE",1],"name":"WOOD LAKE"},{"value":["WYNOT",1],"name":"WYNOT"}],"type":"bar"},{"name":"male","stack":"default stack","data":[{"value":["BEE",1],"name":"BEE"},null,{"value":["CAIRO",1],"name":"CAIRO"},{"value":["CRAIG",1],"name":"CRAIG"},{"value":["GOTHENBURG",1],"name":"GOTHENBURG"},{"value":["LINCOLN",1],"name":"LINCOLN"},{"value":["OMAHA",2],"name":"OMAHA"},{"value":["ORD",1],"name":"ORD"},{"value":["OSHKOSH",1],"name":"OSHKOSH"},{"value":["PIERCE",1],"name":"PIERCE"},{"value":["SAINT EDWARD",1],"name":"SAINT EDWARD"},{"value":["WILLOW ISLAND",1],"name":"WILLOW ISLAND"},null,null],"type":"bar"}],"legend":{"top":"bottom","left":"left","data":["female","male"],"textStyle":{"fontFamily":"Ubuntu, sans"}},"yAxis":{"splitLine":{"lineStyle":{"width":1}},"axisLine":{"lineStyle":{"width":1}},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"}},"type":"value"},"xAxis":{"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"},"rotate":0},"data":["BEE","BLAIR","CAIRO","CRAIG","GOTHENBURG","LINCOLN","OMAHA","ORD","OSHKOSH","PIERCE","SAINT EDWARD","WILLOW ISLAND","WOOD LAKE","WYNOT"],"interval":0,"type":"category"},"color":["#93a9a6","#cda71f","#eb6f76","#66b35b","#bd97e2","#5b5925","#884a6f","#51b3f6","#cca067","#398465","#3c607a","#81463c","#b65f33","#9aae31","#ce8b9e","#6c6356","#95a779","#44aecb","#e987c2","#8a7ea0","#3d6c2f","#40b994","#87984a","#c1a088","#9b6e2d","#428c8d","#b8766a","#eb8666","#df883e","#bb6273","#c994bf","#929de0","#7ba5cb","#ae9093","#66557b","#936370","#3c6d64","#84693f","#c19744","#e77aa1","#5d555f","#4078a2","#3fafaf","#698b99","#486a4c","#7ea48b","#b57e57","#8c72aa","#609050","#56b379","#489f8b","#714d4a","#9a8867","#93b66b","#7da93f","#877424","#c75d56","#b774ac","#7b7a3e","#73581c","#398ea3","#964734","#df8d89","#af97cc","#96951f","#a37791","#7c4d2e","#78865f","#216b74","#935524","#6fafb6","#75ab76","#a48b50","#d28dd0","#be9aaf","#ad8d22","#d89576","#964860","#9b9a61","#4daadb","#a9628d","#98943b","#486366","#6d7e2b","#cf9a2f","#827a8b","#876a69","#495f23","#677f45","#805845","#a2544d","#8c5157","#6b6c9e","#236443","#919b82","#cc8e55","#3e8555","#a08a7a","#767870","#6d9643","#87658f","#3bb069","#6a5d42","#586249","#1f7769","#6daf8e","#8fa7be","#b7a82c","#a09da0","#7d8aa6","#78a3e0","#719186","#765771","#a37ea7","#8e8cbc","#a76840","#49934b","#a27c62","#3da27b","#a9ac53","#6685b4","#5f728a","#cb6b4a","#9f8dd3","#b7a66e","#a998b3","#85a362","#595146"],"tooltip":{"trigger":"axis"}}"""

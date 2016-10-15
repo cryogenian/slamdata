@@ -4,7 +4,7 @@ import SlamData.Prelude
 
 import Data.Map as Map
 import Selenium.Monad (tryRepeatedlyTo)
-import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectSelectValue, expectPresentedNotRepeatedly)
+import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectNotPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectPresentedNotRepeatedly, expectElementContainsText)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
 import XPath as XPath
@@ -139,15 +139,25 @@ measureDisabledInLastChartCard
 measureDisabledInLastChartCard =
   expectPresentedWithProperties
     (Map.singleton "disabled" (Just "true"))
-    (XPath.last $ XPath.anywhere $ XPaths.chartMeasureOneSelector)
+    (XPath.last $ XPath.anywhere $ XPaths.chartMeasureSelector)
 
 measureInLastChartCard
   ∷ String
   → SlamFeature Unit
 measureInLastChartCard value =
-  expectSelectValue
+  expectElementContainsText
     value
-    (XPath.last $ XPath.anywhere $ XPaths.chartMeasureOneSelector)
+    (XPath.last $ XPath.anywhere $ XPaths.chartMeasureSelector)
+
+categoryEnabledInLastBuildChartCard
+  ∷ SlamFeature Unit
+categoryEnabledInLastBuildChartCard = do
+  let
+    catXPath = XPath.last $ XPath.anywhere $ XPaths.chartCategorySelector
+  expectPresented catXPath
+  expectNotPresentedWithProperties
+    (Map.singleton "disabled" (Just "true"))
+    catXPath
 
 fileSearchString ∷ String → SlamFeature Unit
 fileSearchString string =
