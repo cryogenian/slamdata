@@ -74,6 +74,7 @@ import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Header.Component as Header
 import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Monad (Slam)
+import SlamData.Notification as N
 import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
@@ -324,7 +325,7 @@ listingPeek = go ⨁ (itemPeek ∘ H.runChildF)
 peekNotification ∷ ∀ a. NC.Query a → DSL Unit
 peekNotification =
   case _ of
-    NC.Action "ExpandGlobalMenu" _ → do
+    NC.Action N.ExpandGlobalMenu _ → do
       queryHeaderGripper $ Gripper.StartDragging 0.0 unit
       queryHeaderGripper $ Gripper.StopDragging unit
     _ → pure unit

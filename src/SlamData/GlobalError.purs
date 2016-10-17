@@ -89,7 +89,7 @@ toNotificationOptions =
             { messagePrefix: "Please "
             , actionMessage: "sign in"
             , messageSuffix: " to continue."
-            , action: "ExpandGlobalMenu"
+            , action: N.ExpandGlobalMenu
             }
       , timeout: Nothing
       }

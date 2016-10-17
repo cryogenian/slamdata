@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Notification
   ( Notification(..)
   , NotificationOptions
+  , NotificationAction(..)
   , Detail(..)
   , class NotifyDSL
   , notify
@@ -39,6 +40,9 @@ data Notification
   | Warning String
   | Error String
 
+data NotificationAction
+  = ExpandGlobalMenu
+
 type NotificationOptions =
   { notification ∷ Notification
   , detail ∷ Maybe Detail
@@ -47,7 +51,12 @@ type NotificationOptions =
 
 data Detail
   = SimpleDetail String
-  | ActionDetail { messagePrefix ∷ String, actionMessage ∷ String, messageSuffix ∷ String, action ∷ String }
+  | ActionDetail
+      { messagePrefix ∷ String
+      , actionMessage ∷ String
+      , messageSuffix ∷ String
+      , action ∷ NotificationAction
+      }
 
 class NotifyDSL m where
   notify ∷ Notification → Maybe Detail → Maybe Milliseconds → m Unit

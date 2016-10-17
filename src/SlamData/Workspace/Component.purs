@@ -268,7 +268,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
   peekNotification ∷ NC.Query a → WorkspaceDSL Unit
   peekNotification =
     case _ of
-      NC.Action "ExpandGlobalMenu" _ → do
+      NC.Action N.ExpandGlobalMenu _ → do
         queryHeaderGripper $ Gripper.StartDragging 0.0 unit
         queryHeaderGripper $ Gripper.StopDragging unit
       _ → pure unit

@@ -69,7 +69,7 @@ data Query a
   = Init a
   | Push N.NotificationOptions a
   | ToggleDetail a
-  | Action String a
+  | Action N.NotificationAction a
   | Dismiss a
 
 data Status
