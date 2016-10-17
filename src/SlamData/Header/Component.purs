@@ -82,7 +82,7 @@ render open =
     [ HH.div_
         [ HH.div_
             [ HH.div [ HP.classes [ Rc.header ] ]
-                [ logo $ Just "3.0"
+                [ logo $ Just "4.0"
                 , HH.slot' cpGlobalMenu unit \_ →
                      { component: GlobalMenu.comp
                      , initialState: H.parentState GlobalMenu.initialState

@@ -21,8 +21,6 @@ module SlamData.Workspace.Card.BuildChart.Area.Eval
 
 import SlamData.Prelude
 
-import Color as C
-
 import Data.Argonaut (JArray, Json)
 import Data.Array ((!!))
 import Data.Array as A
@@ -135,7 +133,6 @@ buildArea r records axes = do
     E.axisPointer do
       E.lineAxisPointer
       E.lineStyle do
-        E.color $ C.rgba 170 170 170 1.0
         E.width 1
         E.solidLine
 
@@ -144,10 +141,8 @@ buildArea r records axes = do
     E.axisLabel $ E.textStyle do
       E.fontFamily "Ubuntu, sans"
     E.axisLine $ E.lineStyle do
-      E.color $ C.rgba 184 184 184 1.0
       E.width 1
     E.splitLine $ E.lineStyle do
-      E.color $ C.rgba 204 204 204 1.0
       E.width 1
 
   E.xAxis do
@@ -162,12 +157,9 @@ buildArea r records axes = do
       E.length 2
       E.lineStyle do
         E.width 1
-        E.color $ C.rgba 184 184 184 1.0
     E.splitLine $ E.lineStyle do
-      E.color $ C.rgba 204 204 204 1.0
       E.width 1
     E.axisLine $ E.lineStyle do
-      E.color $ C.rgba 184 184 184 1.0
       E.width 1
     E.axisLabel do
       E.rotate r.axisLabelAngle
