@@ -179,7 +179,7 @@ handleError err =
     Left msg →
       N.error
         "There was a problem fetching the directory listing"
-        (Just msg)
+        (Just $ N.SimpleDetail msg)
         Nothing
     Right ge →
       GE.raiseGlobalError ge
