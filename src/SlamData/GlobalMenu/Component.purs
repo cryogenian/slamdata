@@ -54,8 +54,7 @@ import SlamData.GlobalMenu.Bus (SignInMessage(..))
 import SlamData.GlobalMenu.Component.State (State, initialState)
 import SlamData.GlobalMenu.Menu.Component.Query (QueryP) as MenuQuery
 import SlamData.GlobalMenu.Menu.Component.State as MenuState
-import SlamData.Wiring (WiringR)
-import SlamData.Wiring as Wiring
+import SlamData.Wiring (Wiring(Wiring))
 
 
 data Query a
@@ -236,21 +235,22 @@ authenticate =
 
   logIn ∷ ProviderR → GlobalMenuDSL Unit
   logIn providerR = do
-    wiringR ← H.liftH $ H.liftH $ Wiring.run <$> ask
+    Wiring wiringR ← H.liftH $ H.liftH $ ask
     idToken ← H.fromAff AVar.makeVar
     H.fromAff $ Bus.write { providerR, idToken, prompt: true } wiringR.requestNewIdTokenBus
-    either (signInFailure wiringR) (const $ signInSuccess wiringR)
-      =<< (H.fromAff $ AVar.takeVar idToken)
+    either signInFailure (const $ signInSuccess) =<< (H.fromAff $ AVar.takeVar idToken)
 
   -- TODO: Reattempt failed actions without loosing state, remove reload.
-  signInSuccess ∷ WiringR → GlobalMenuDSL Unit
-  signInSuccess wiringR =
+  signInSuccess ∷ GlobalMenuDSL Unit
+  signInSuccess = do
+    Wiring wiringR ← H.liftH $ H.liftH $ ask
     (H.fromAff $ Bus.write SignInSuccess $ wiringR.signInBus)
       *> update
       *> H.fromEff Browser.reload
 
-  signInFailure ∷ WiringR → AuthenticationError → GlobalMenuDSL Unit
-  signInFailure wiringR error = do
+  signInFailure ∷ AuthenticationError → GlobalMenuDSL Unit
+  signInFailure error = do
+    Wiring wiringR ← H.liftH $ H.liftH $ ask
     H.fromAff $ (Bus.write (toNotificationOptions error) wiringR.notify)
     H.fromAff $ (Bus.write SignInFailure $ wiringR.signInBus)
 
