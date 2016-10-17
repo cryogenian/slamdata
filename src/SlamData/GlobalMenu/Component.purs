@@ -251,37 +251,37 @@ authenticate =
   signInFailure ∷ AuthenticationError → GlobalMenuDSL Unit
   signInFailure error = do
     Wiring wiringR ← H.liftH $ H.liftH $ ask
-    H.fromAff $ (Bus.write (toNotificationOptions error) wiringR.notify)
+    H.fromAff $ maybe (pure unit) (flip Bus.write wiringR.notify) (toNotificationOptions error)
     H.fromAff $ (Bus.write SignInFailure $ wiringR.signInBus)
 
-  toNotificationOptions ∷ AuthenticationError → NotificationOptions
+  toNotificationOptions ∷ AuthenticationError → Maybe NotificationOptions
   toNotificationOptions =
     case _ of
       IdTokenInvalid →
-        { notification: Notification.Error $ "Sign in failed: Authentication provider provided invalid id token."
-        , detail: Nothing
-        , timeout
-        }
+        Just
+          { notification: Notification.Error $ "Sign in failed: Authentication provider provided invalid id token."
+          , detail: Nothing
+          , timeout
+          }
       IdTokenUnavailable detail →
-        { notification: Notification.Error $ "Sign in failed: Authentication provider didn't provide a token."
-        , detail: Just detail
-        , timeout
-        }
+        Just
+          { notification: Notification.Error $ "Sign in failed: Authentication provider didn't provide a token."
+          , detail: Just detail
+          , timeout
+          }
       PromptDismissed →
-        { notification: Notification.Warning $ "Sign in prompt closed."
-        , detail: Nothing
-        , timeout
-        }
-      DOMError detail →
-        { notification: Notification.Error $ "Sign in failed: Your browser is incompatible with SlamData please try again with another browser."
-        , detail: Just detail
-        , timeout
-        }
+        Just
+          { notification: Notification.Warning $ "Sign in prompt closed."
+          , detail: Nothing
+          , timeout
+          }
       ProviderError detail →
-        { notification: Notification.Error $ "Sign in failed: There was a problem with your provider configuration, please update your SlamData configuration and try again."
-        , detail: Just detail
-        , timeout
-        }
+        Just
+          { notification: Notification.Error $ "Sign in failed: There was a problem with your provider configuration, please update your SlamData configuration and try again."
+          , detail: Just detail
+          , timeout
+          }
+      DOMError _ → Nothing
     where
     timeout = Just $ Milliseconds 5000.0
 
