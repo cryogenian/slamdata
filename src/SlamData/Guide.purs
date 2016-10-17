@@ -133,7 +133,7 @@ cardGuideSteps =
     , text: "This is done by stacking cards ontop of each other to build decks. Decks represent analytic workflows."
     }
   , { imageUri: "img/cardGuide/5.gif"
-    , text: "Check out the deck backside, slide the card grippers and visit the next action card to see more of what's possible with SlamData."
+    , text: "Check out the deck flip side, slide the card grippers and visit the next action card to see more of what's possible with SlamData."
     }
   ]
 
@@ -155,7 +155,7 @@ flipGuideSteps =
     , text: "Decks can be removed using Delete Deck."
     }
   , { imageUri: "img/flipGuide/6.gif"
-    , text: "Mirror Deck creates a live copy of the cards in the deck and places them in a new deck on the current draftboard card."
+    , text: "Mirror Deck creates a live copy of the cards in the deck and places them in a new deck on the current dashboard card."
     }
   , { imageUri: "img/flipGuide/7.gif"
     , text: "Any changes made to the original or mirrored cards are reflected in each other except for deletion."
