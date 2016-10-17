@@ -544,7 +544,7 @@ changePermissionResumeForGroup name sharingInput res perm =
           actions = Model.sharingActions sharingInput res
           shareRequest =
             { users: [ ]
-            , groups: [ groupPath ]
+            , groups: [ Right groupPath ]
             , actions
             }
         shareRes ← Q.sharePermission shareRequest
@@ -627,7 +627,7 @@ adjustPermissions prs sharingInput =
           in res
         QTA.GroupGranted pt →
           let
-            gid = Pt.printPath pt
+            gid = either QTA.printRoot Pt.printPath pt
             res
               | subset sharingActionsEdit actionsSet =
                 acc{groups = SM.insert gid perm{resume = Edit} groups }

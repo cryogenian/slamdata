@@ -16,52 +16,32 @@ limitations under the License.
 
 module SlamData.Quasar.Mount
   ( mountInfo
-  , viewInfo
   , saveMount
   , module Quasar.Error
   ) where
 
 import SlamData.Prelude
 
-import Data.Path.Pathy as P
-
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Error (QError)
 import Quasar.Mount as QM
-import Quasar.Mount.MongoDB as QMountMDB
-import Quasar.Mount.View as QMountV
-import Quasar.Types (DirPath, FilePath)
+import Quasar.Types (AnyPath)
 
-import SlamData.Quasar.Error (throw)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
 mountInfo
   ∷ ∀ m
   . (Monad m, QuasarDSL m)
-  ⇒ DirPath
-  → m (Either QError QMountMDB.Config)
+  ⇒ AnyPath
+  → m (Either QError QM.MountConfig)
 mountInfo path = runExceptT do
-  result ← ExceptT $ liftQuasar $ QF.getMount (Left path)
-  case result of
-    QM.MongoDBConfig config → pure config
-    _ → throw $ P.printPath path <> " is not a MongoDB mount point"
-
-viewInfo
-  ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ FilePath
-  → m (Either QError QMountV.Config)
-viewInfo path = runExceptT do
-  result ← ExceptT $ liftQuasar $ QF.getMount (Right path)
-  case result of
-    QM.ViewConfig config → pure config
-    _ → throw $ P.printPath path <> " is not an SQL² view"
+  ExceptT $ liftQuasar $ QF.getMount path
 
 saveMount
   ∷ ∀ m
   . QuasarDSL m
-  ⇒ DirPath
-  → QMountMDB.Config
+  ⇒ AnyPath
+  → QM.MountConfig
   → m (Either QError Unit)
 saveMount path config =
-  liftQuasar $ QF.updateMount (Left path) (QM.MongoDBConfig config)
+  liftQuasar $ QF.updateMount path config

@@ -14,10 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State
+module SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State
   ( State
   , initialState
-  , processState
   , fromConfig
   , toConfig
   , module MCS
@@ -25,61 +24,43 @@ module SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State
 
 import SlamData.Prelude
 
-import Data.Array as A
-import Data.NonEmpty (oneOf)
-import Data.StrMap as SM
 import Data.URI.Host as URI
 
 import Global as Global
 
-import Quasar.Mount.MongoDB (Config)
+import Quasar.Mount.Couchbase (Config)
 
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
 
 type State =
-  { hosts ∷ Array MCS.MountHost
-  , path ∷ String
+  { host ∷ MCS.MountHost
   , user ∷ String
   , password ∷ String
-  , props ∷ Array MCS.MountProp
   }
 
 initialState ∷ State
 initialState =
-  { hosts: [MCS.initialTuple]
-  , path: ""
+  { host: MCS.initialTuple
   , user: ""
   , password: ""
-  , props: [MCS.initialTuple]
-  }
-
-processState ∷ State → State
-processState s = s
-  { hosts = MCS.processDynMap s.hosts
-  , props = MCS.processDynMap s.props
   }
 
 fromConfig ∷ Config → State
-fromConfig { hosts, path, user, password, props } =
-  processState
-    { hosts: bimap URI.printHost (maybe "" show) <$> oneOf hosts
-    , path: ""
-    , user: maybe "" Global.decodeURIComponent user
-    , password: maybe "" Global.decodeURIComponent password
-    , props: map (fromMaybe "") <$> A.fromFoldable (SM.toList props)
-    }
+fromConfig { host, user, password } =
+  { host: bimap URI.printHost (maybe "" show) host
+  , user: maybe "" Global.decodeURIComponent user
+  , password: maybe "" Global.decodeURIComponent password
+  }
 
 toConfig ∷ State → Either String Config
-toConfig { hosts, path, user, password, props } = do
-  hosts' ← MCS.nonEmptyHosts =<< traverse MCS.parseHost (A.filter (not MCS.isEmptyTuple) hosts)
+toConfig { host, user, password } = do
+  when (MCS.isEmpty (fst host)) $ Left "Please enter host"
+  host' ← lmap ("Host: " <> _) $ MCS.parseHost host
   when (not MCS.isEmpty user || not MCS.isEmpty password) do
     when (MCS.isEmpty user) $ Left "Please enter user name"
     when (MCS.isEmpty password) $ Left "Please enter password"
-    when (MCS.isEmpty path) $ Left "Please enter authentication database name"
   pure
-    { hosts: hosts'
-    , path: MCS.parsePath' =<< MCS.nonEmptyString path
+    { host: host'
     , user: Global.encodeURIComponent <$> MCS.nonEmptyString user
     , password: Global.encodeURIComponent <$> MCS.nonEmptyString password
-    , props: SM.fromFoldable $ map MCS.nonEmptyString <$> A.filter (not MCS.isEmptyTuple) props
     }

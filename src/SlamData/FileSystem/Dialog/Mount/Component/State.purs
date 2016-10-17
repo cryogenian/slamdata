@@ -20,46 +20,58 @@ import SlamData.Prelude
 
 import Data.Lens (LensP, lens)
 
+import SlamData.FileSystem.Dialog.Mount.Scheme as MS
+import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
+import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
+import SlamData.FileSystem.Dialog.Mount.Spark.Component.State as Spark
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
-import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme(..))
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 
 import Utils.Path (DirPath)
 
 type State =
-  { new :: Boolean
-  , parent :: DirPath
-  , name :: String
-  , message :: Maybe String
-  , saving :: Boolean
-  , settings :: Maybe MountSettings
+  { new ∷ Boolean
+  , parent ∷ DirPath
+  , name ∷ String
+  , message ∷ Maybe String
+  , saving ∷ Boolean
+  , settings ∷ Maybe MountSettings
   }
 
-type MountSettings = Either MongoDB.State SQL2.State
+data MountSettings
+  = MongoDB MongoDB.State
+  | SQL2 SQL2.State
+  | Couchbase Couchbase.State
+  | MarkLogic MarkLogic.State
+  | Spark Spark.State
 
-initialSettings :: Scheme -> MountSettings
-initialSettings MongoDB = Left MongoDB.initialState
-initialSettings SQL2 = Right SQL2.initialState
+initialSettings ∷ MS.Scheme → MountSettings
+initialSettings = case _ of
+  MS.MongoDB → MongoDB MongoDB.initialState
+  MS.SQL2 → SQL2 SQL2.initialState
+  MS.Couchbase → Couchbase Couchbase.initialState
+  MS.MarkLogic → MarkLogic MarkLogic.initialState
+  MS.Spark → Spark Spark.initialState
 
-_new :: LensP State Boolean
+_new ∷ LensP State Boolean
 _new = lens _.new (_ { new = _ })
 
-_parent :: LensP State DirPath
+_parent ∷ LensP State DirPath
 _parent = lens _.parent (_ { parent = _ })
 
-_name :: forall a. LensP { name :: String | a } String
+_name ∷ forall a. LensP { name ∷ String | a } String
 _name = lens _.name (_ { name = _ })
 
-_message :: LensP State (Maybe String)
+_message ∷ LensP State (Maybe String)
 _message = lens _.message (_ { message = _ })
 
-_saving :: LensP State Boolean
+_saving ∷ LensP State Boolean
 _saving = lens _.saving (_ { saving = _ })
 
-_settings :: LensP State (Maybe MountSettings)
+_settings ∷ LensP State (Maybe MountSettings)
 _settings = lens _.settings _{settings = _}
 
-initialState :: DirPath -> String -> Maybe MountSettings -> State
+initialState ∷ DirPath → String → Maybe MountSettings → State
 initialState parent name settings =
   { new: isNothing settings
   , parent
@@ -69,17 +81,22 @@ initialState parent name settings =
   , saving: false
   }
 
-scheme :: MountSettings -> Scheme
-scheme s = if isLeft s then MongoDB else SQL2
+scheme ∷ MountSettings → MS.Scheme
+scheme = case _ of
+  MongoDB _ → MS.MongoDB
+  SQL2 _ → MS.SQL2
+  Couchbase _ → MS.Couchbase
+  MarkLogic _ → MS.MarkLogic
+  Spark _ → MS.Spark
 
 -- | Checks whether the state is saveable: no validation errors, and has a name
 -- | entered/type selected.
-canSave :: State -> Boolean
+canSave ∷ State → Boolean
 canSave st
   = isNothing st.message
   && isJust st.settings
   && (not st.new || st.name /= "")
 
-validate :: State -> Maybe String
+validate ∷ State → Maybe String
 validate { new, name, settings } = either Just (const Nothing) $ runExcept do
   when (new && name == "") $ throwError "Please enter a mount name"

@@ -26,6 +26,7 @@ module SlamData.FileSystem.Resource
   , _root
   , _tempFile
   , getPath
+  , mountPath
   , hiddenTopLevel
   , isDirectory
   , isFile
@@ -248,6 +249,8 @@ resourceMount = case _ of
   Mount m → Just m
   _ → Nothing
 
+-- TODO: Database unnecesarily maps to "mongodb", but I think this is a purely
+-- cosmetic thing, and changing it might break a bunch of JSON decoding. - NF
 mountTypeTag ∷ Mount → String
 mountTypeTag = case _ of
   View _ → "view"
@@ -267,9 +270,12 @@ getPath = case _ of
   File p → Right p
   Workspace p → Left p
   Directory p → Left p
-  Mount (View p) → Right p
-  Mount (Database p) → Left p
+  Mount m → mountPath m
 
+mountPath ∷ Mount → PU.AnyPath
+mountPath = case _ of
+  View p → Right p
+  Database p → Left p
 
 -- SETTERS
 setDir ∷ PU.AnyPath → PU.DirPath → PU.AnyPath

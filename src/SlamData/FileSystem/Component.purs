@@ -44,6 +44,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
 import Quasar.Data (QData(..))
+import Quasar.Mount as QM
 
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
@@ -59,7 +60,10 @@ import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Explore.Component as Explore
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
+import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
+import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
+import SlamData.FileSystem.Dialog.Mount.Spark.Component.State as Spark
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Listing.Component as Listing
@@ -80,7 +84,7 @@ import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
-import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
+import SlamData.Quasar.Mount (mountInfo) as API
 import SlamData.Render.Common (content, row)
 import SlamData.Wiring (Wiring(..))
 import SlamData.Workspace.Action (Action(..), AccessType(..))
@@ -495,48 +499,39 @@ resort = do
       void $ queryListing $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
 configure ∷ R.Mount → DSL Unit
-configure (R.View path) = do
-  API.viewInfo path >>=
-    case _ of
-      Left err →
-        case GE.fromQError err of
-          Left msg →
-            showDialog $ Dialog.Error
-              $ "There was a problem reading the mount settings: "
-              ⊕ msg
-          Right ge →
-            GE.raiseGlobalError ge
-      Right info →
-        showDialog $ Dialog.Mount
-          (fromMaybe rootDir (parentDir path))
-          (getNameStr (Right path))
-          (Just (Right (SQL2.stateFromViewInfo info)))
+configure m =
+  API.mountInfo anyPath >>= case m, _ of
+    R.View path, Left err → raiseError err
+    R.Database path, Left err
+      | path /= rootDir → raiseError err
+      | otherwise →
+          -- We need to allow a non-existant root mount to be configured to
+          -- allow for the case where Quasar has not yet had any mounts set
+          -- up.
+          showDialog $ Dialog.Mount rootDir "" Nothing
+    _, Right config →
+      showDialog $ Dialog.Mount
+        (fromMaybe rootDir (either parentDir parentDir anyPath))
+        (getNameStr anyPath)
+        (Just (fromConfig config))
+  where
+    anyPath =
+      R.mountPath m
 
-configure (R.Database path) = do
-  API.mountInfo path >>=
-    case _ of
-      Left err
-        | path /= rootDir →
-            case GE.fromQError err of
-              Left msg →
-                showDialog $ Dialog.Error
-                  $ "There was a problem reading the mount settings: "
-                  ⊕ msg
-              Right ge →
-                GE.raiseGlobalError ge
-        | otherwise →
-            -- We need to allow a non-existant root mount to be configured to
-            -- allow for the case where Quasar has not yet had any mounts set
-            -- up.
-            showDialog $ Dialog.Mount
-              rootDir
-              ""
-              (Just (Left MongoDB.initialState))
-      Right config →
-        showDialog $ Dialog.Mount
-          (fromMaybe rootDir (parentDir path))
-          (getNameStr (Left path))
-          (Just (Left (MongoDB.fromConfig config)))
+    fromConfig = case _ of
+      QM.ViewConfig config → Mount.SQL2 (SQL2.stateFromViewInfo config)
+      QM.MongoDBConfig config → Mount.MongoDB (MongoDB.fromConfig config)
+      QM.CouchbaseConfig config → Mount.Couchbase (Couchbase.fromConfig config)
+      QM.MarkLogicConfig config → Mount.MarkLogic (MarkLogic.fromConfig config)
+      QM.SparkConfig config → Mount.Spark (Spark.fromConfig config)
+
+    raiseError err = case GE.fromQError err of
+      Left msg →
+        showDialog $ Dialog.Error
+          $ "There was a problem reading the mount settings: "
+          ⊕ msg
+      Right ge →
+        GE.raiseGlobalError ge
 
 download ∷ R.Resource → DSL Unit
 download res = do

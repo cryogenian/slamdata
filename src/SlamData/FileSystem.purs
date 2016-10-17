@@ -146,7 +146,7 @@ checkMount
   → Driver QueryP SlamDataRawEffects
   → Slam Unit
 checkMount path driver = do
-  Quasar.mountInfo path >>= case _ of
+  Quasar.mountInfo (Left path) >>= case _ of
     Left _ →
       -- When Quasar has no mounts configured we want to enable the root to be
       -- configured as a mount - if `/` is not a mount and also has no children
