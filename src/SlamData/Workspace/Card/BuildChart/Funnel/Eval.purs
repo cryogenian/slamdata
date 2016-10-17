@@ -41,6 +41,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
+import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
 import SlamData.Workspace.Card.BuildChart.Funnel.Model (Model, FunnelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Funnel))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
@@ -69,6 +70,7 @@ type FunnelSeries =
   , y ∷ Maybe Number
   , w ∷ Maybe Number
   , h ∷ Maybe Number
+  , fontSize ∷ Maybe Int
   }
 
 buildFunnelData ∷ FunnelR → JArray → Array FunnelSeries
@@ -125,6 +127,7 @@ buildFunnelData r records = series
      , y: Nothing
      , w: Nothing
      , h: Nothing
+     , fontSize: Nothing
      , items: map (Ag.runAggregation r.valueAggregation) ss
      }]
 
@@ -132,7 +135,7 @@ buildFunnelData r records = series
   series = adjustPosition rawSeries
 
   adjustPosition ∷ Array FunnelSeries → Array FunnelSeries
-  adjustPosition = id
+  adjustPosition = BCP.adjustRectangularPositions
 
 
 buildFunnel ∷ FunnelR → JArray → DSL OptionI
@@ -151,8 +154,7 @@ buildFunnel r records = do
 
   E.colors colors
 
-  E.titles
-    $ traverse_ E.title titles
+  BCP.rectangularTitles funnelData
 
   E.series series
 
@@ -163,24 +165,13 @@ buildFunnel r records = do
   legendNames ∷ Array String
   legendNames =
     A.fromFoldable
-      $ foldMap (_.name ⋙ foldMap Set.singleton) funnelData
-
-  titles ∷ Array (DSL ETP.TitleI)
-  titles = funnelData <#> \{name, x, y} → do
-    for_ name E.text
-    E.textStyle do
-      E.fontFamily "Ubunut, sans"
-      E.fontSize 12
-    traverse_ (E.top ∘ ET.Percent) y
-    traverse_ (E.left ∘ ET.Percent) x
-    E.textCenter
-    E.textBottom
+      $ foldMap (_.items ⋙ M.keys ⋙ Set.fromFoldable) funnelData
 
   series ∷ ∀ i. DSL (funnel ∷ ETP.I|i)
-  series = for_ funnelData \{x, y, w, h, items, name} → E.funnel do
+  series = for_ funnelData \{x, y, w, h, items, name: serieName} → E.funnel do
     traverse_ E.widthPct w
     traverse_ E.heightPct h
-    for_ name E.name
+    for_ serieName E.name
     case r.order of
       Asc → E.ascending
       Desc → E.descending
@@ -188,7 +179,13 @@ buildFunnel r records = do
       LeftAlign → E.funnelLeft
       RightAlign → E.funnelRight
       CenterAlign → E.funnelCenter
-    E.label $ E.normal $ E.textStyle $ E.fontFamily "Ubuntu, sans"
+    E.label do
+      E.normal do
+        E.textStyle $ E.fontFamily "Ubuntu, sans"
+        E.positionInside
+      E.emphasis do
+        E.textStyle $ E.fontFamily "Ubuntu, sans"
+        E.positionInside
     E.buildItems $ for_ (M.toList items) \(name × value) → E.addItem do
       E.name name
       E.value value

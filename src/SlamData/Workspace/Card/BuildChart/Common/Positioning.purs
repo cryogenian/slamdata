@@ -77,7 +77,7 @@ adjustRadialPositions ps =
     radiusDivisor = Int.toNumber $ max inRow numRows
 
     radius ∷ Maybe Number
-    radius = Just $ 75.0 / radiusDivisor
+    radius = Just $ 65.0 / radiusDivisor
 
     setPositions
       ∷ Array (RadialPosition r)
