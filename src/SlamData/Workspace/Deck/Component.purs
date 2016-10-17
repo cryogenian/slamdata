@@ -205,6 +205,7 @@ eval opts = case _ of
     st ← H.get
     let pendingCoord = DCS.coordModelToCoord pendingCard
     when (any (DCS.eqCoordModel pendingCoord) st.modelCards) do
+      H.modify $ DCS.addPendingCard pendingCoord
       runPendingCards opts source pendingCard cards
     pure next
   QueuePendingCard next → do
@@ -308,6 +309,11 @@ eval opts = case _ of
     k <$> getSharingInput
   HandleError ge next → do
     showDialog $ Dialog.Error $ GE.print ge
+    pure next
+  Run next → do
+    H.modify _{ stateMode = Preparing }
+    initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
+    for_ initialCard queuePendingCard
     pure next
 
   where
@@ -524,7 +530,8 @@ createCard cardType = do
   deckId ← H.gets _.id
   (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
   H.set st
-  queuePendingCard (deckId × newCardId)
+  when (isNothing st.pendingCard) do
+    queuePendingCard (deckId × newCardId)
   triggerSave $ Just (deckId × newCardId)
 
 dismissedAccessNextActionCardGuideKey ∷ String
@@ -666,6 +673,7 @@ runPendingCards opts source pendingCard pendingCards = do
     input ← join <$> for prevCard (flip getCache wiring.cards)
     steps ← resume wiring st (input >>= _.output <#> map fst) cards
     runCardUpdates opts source steps
+    H.modify $ DCS.removePendingCard $ DCS.coordModelToCoord pendingCard
 
   where
   resume wiring st = go L.Nil where
@@ -694,8 +702,8 @@ runInitialEval = do
     cardCoords = DCS.coordModelToCoord <$> L.fromFoldable st.modelCards
     source = st.id
 
-  for_ cardCoords \coord → do
-    getCache coord wiring.cards >>= traverse_ \ev →
+  for_ cardCoords \coord →
+    getCache coord wiring.cards >>= traverse_ \ev → do
       putCardEval ev cards
 
   for_ (Array.head st.modelCards) \pendingCard → do
@@ -712,7 +720,9 @@ evalCard path urlVarMaps input card = do
   Wiring wiring ← H.liftH $ H.liftH ask
   output ← H.liftH $ H.liftH $ Pr.defer do
     input' ← for input Pr.wait
-    let model = (snd card).model
+
+    let
+      model = (snd card).model
     case Card.modelToEval model of
       Left err → do
         SA.track (SA.ErrorInCardEval $ Card.modelCardType model)

@@ -99,7 +99,12 @@ renderHighLOD st =
           groupColumns
             (Count : List.fromFoldable
               (map (Column ∘ { value: _, valueAggregation: Nothing })
-                (Array.sort (st.axes.category <> st.axes.time <> st.axes.value))))
+                (Array.sort
+                  (st.axes.category
+                   <> st.axes.time
+                   <> st.axes.value
+                   <> st.axes.date
+                   <> st.axes.datetime))))
       in
         HH.slot' PCS.cpCol unit \_ →
           { component: DPC.picker

@@ -24,6 +24,18 @@
   }
 }
 
+.sd-card {
+  .sd-pending-overlay {
+    display: none;
+  }
+
+  &.pending {
+    .sd-pending-overlay {
+      display: block;
+    }
+  }
+}
+
 .sd-card-header {
   .noselect;
   position: absolute;

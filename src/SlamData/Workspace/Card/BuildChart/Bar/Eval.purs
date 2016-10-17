@@ -155,7 +155,10 @@ buildBar r records axes = do
   E.xAxis do
     E.axisType xAxisConfig.axisType
     traverse_ E.interval xAxisConfig.interval
-    E.items $ map ET.strItem xValues
+    case xAxisConfig.axisType of
+      ET.Category →
+        E.items $ map ET.strItem xValues
+      _ → pure unit
     E.axisLabel do
       E.rotate r.axisLabelAngle
       E.textStyle do
@@ -190,10 +193,13 @@ buildBar r records axes = do
   xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.category axes
 
   seriesNames ∷ Array String
-  seriesNames =
-    A.fromFoldable
+  seriesNames = case r.parallel of
+    Just _ →
+      A.fromFoldable
       $ foldMap (_.series ⋙ foldMap (_.name ⋙ foldMap Set.singleton ))
         barData
+    Nothing →
+      A.catMaybes $ map _.stack barData
 
   xValues ∷ Array String
   xValues =
@@ -217,5 +223,10 @@ buildBar r records axes = do
             E.buildValues do
               E.addStringValue key
               E.addValue v
-      for_ stacked.stack E.stack
-      for_ serie.name E.name
+      case r.parallel of
+        Just _ → do
+          for_ stacked.stack E.stack
+          for_ serie.name E.name
+        Nothing → do
+          E.stack "default stack"
+          for_ stacked.stack E.name

@@ -61,7 +61,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.GlobalMenu.Component as GlobalMenu
-import SlamData.Wiring (Wiring, putDeck, getDeck)
+import SlamData.Wiring (Wiring(..), putDeck, getDeck, clearCache)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
@@ -218,17 +218,26 @@ eval (Reset path next) = do
   queryDeck $ H.action $ Deck.Reset path
   queryDeck $ H.action $ Deck.Focus
   pure next
+eval(ClearCaches next) = do
+  Wiring wiring ← H.liftH $ H.liftH ask
+  clearCache wiring.cards
+  pure next
 eval (Load path deckId accessType next) = do
-  oldAccessType <- H.gets _.accessType
+  oldAccessType ← H.gets _.accessType
   H.modify (_accessType .~ accessType)
 
-  queryDeck (H.request Deck.GetId) >>= \deckId' →
+  queryDeck (H.request Deck.GetId) >>= \deckId' → do
     case deckId, deckId' of
-      Just a, Just b | a == b && oldAccessType == accessType → pure unit
+      Just a, Just b
+        | a ≡ b ∧ oldAccessType ≡ accessType → run
       _, _ → load
+
   pure next
 
   where
+  run = do
+    void $ queryDeck $ H.action $ Deck.Run
+
   load = do
     H.modify _
       { stateMode = Loading
@@ -246,10 +255,9 @@ eval (Load path deckId accessType next) = do
   loadRoot =
     rootDeck path >>= either handleError loadDeck
 
-  handleError err =
-    case GE.fromQError err of
-      Left msg → H.modify $ _stateMode .~ Error msg
-      Right ge → GE.raiseGlobalError ge
+  handleError err = case GE.fromQError err of
+    Left msg → H.modify $ _stateMode .~ Error msg
+    Right ge → GE.raiseGlobalError ge
 
 rootDeck ∷ UP.DirPath → WorkspaceDSL (Either QE.QError DeckId)
 rootDeck path = Model.getRoot (path </> Pathy.file "index")
@@ -265,7 +273,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
         queryHeaderGripper $ Gripper.StopDragging unit
       _ → pure unit
 
-  peekDeck :: Deck.Query a -> WorkspaceDSL Unit
+  peekDeck :: Deck.Query a → WorkspaceDSL Unit
   peekDeck (Deck.DoAction (Deck.Unwrap decks) _) = void $ runMaybeT do
     state  ← lift H.get
     path   ← MaybeT $ pure state.path
@@ -431,8 +439,8 @@ errors m es = case lefts es of
   [] → Right unit
   ss →
     case sequence $ map (either Right Left ∘ GE.fromQError) ss of
-      Left ge -> Left $ GE.toQError ge
-      Right msgs -> Left $ QE.Error $ Exn.error (Str.joinWith m msgs)
+      Left ge → Left $ GE.toQError ge
+      Right msgs → Left $ QE.Error $ Exn.error (Str.joinWith m msgs)
 
 updateParentPointer
   ∷ ∀ m

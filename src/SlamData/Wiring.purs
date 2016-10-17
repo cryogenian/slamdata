@@ -29,6 +29,7 @@ module SlamData.Wiring
   , getDeck
   , putCache
   , getCache
+  , clearCache
   , putCardEval
   ) where
 
@@ -211,3 +212,11 @@ putCardEval
   → Cache (DeckId × CardId) CardEval
   → m Unit
 putCardEval step = putCache (map _.cardId step.card) step
+
+clearCache
+  ∷ ∀ m k v
+  . (Affable SlamDataEffects m, Ord k)
+  ⇒ Cache k v
+  → m Unit
+clearCache cache = fromAff do
+  modifyVar (const $ Map.empty) cache

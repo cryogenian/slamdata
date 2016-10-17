@@ -1,9 +1,6 @@
 @import "common";
 
-@chart-type-selector-width: 60px;
-
 .sd-card-chart-options {
-  height: ~"calc(100% - 2rem)";
 
   > div {
     height: 100%;
@@ -24,45 +21,21 @@
     background: #fff;
   }
 
-  .card-input-maximum-lod {
-    height: 100%;
+  hr {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
 
-    .card-editor {
-      padding: 0;
-      height: 100%;
-      position: relative;
+  p {
+    margin-left: .5rem;
+    margin-right: .5rem;
+  }
 
-      .chart-type-selector {
-        width: @chart-type-selector-width;
-        height: 100%;
-        background-color: #f0f0f0;
-        position: absolute;
-        left: 0;
+  .row {
+    margin: 0;
 
-        img {
-          width: 32px;
-          height: 32px;
-          padding: 6px;
-          background-color: #aaa;
-          cursor: pointer;
-          margin-left: 16px;
-          margin-top: 8px;
-          left: 50%;
-
-          &.active, &:hover {
-            background-color: #337ab7;
-          }
-        }
-      }
-
-      .chart-configuration {
-        position: absolute;
-        left: @chart-type-selector-width + 6px;
-        right: @grid-size;
-        padding-left: 6px;
-        padding-right: 6px;
-        padding-top: 12px;
-      }
+    .col-xs-6 {
+      padding: .5rem;
     }
   }
 }

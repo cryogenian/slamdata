@@ -22,6 +22,7 @@ import Control.Monad.Eff as Eff
 import Control.Monad.Aff.Free (class Affable, fromEff)
 
 import Data.Lens ((^?))
+import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 import Data.Set as Set
@@ -139,9 +140,11 @@ evalCard input =
     Draftboard, _ →
       pure Port.Draftboard
     Query sql, Just (Port.VarMap varMap) →
-      Port.TaggedResource <$> evalQuery input sql varMap
+      map Port.TaggedResource
+        $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) varMap
     Query sql, _ →
-      Port.TaggedResource <$> evalQuery input sql Port.emptyVarMap
+      map Port.TaggedResource
+        $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) Port.emptyVarMap
     Markdown txt, _ →
       MDE.markdownEval input txt
     MarkdownForm model, (Just (Port.SlamDown doc)) →
@@ -229,13 +232,17 @@ evalQuery
   . (MonadPar m, QuasarDSL m)
   ⇒ CET.CardEvalInput
   → SQL
+  → Port.URLVarMap
   → Port.VarMap
   → CET.CardEvalT m Port.TaggedResourcePort
-evalQuery info sql varMap = do
+evalQuery info sql urlVarMap varMap = do
   let
-    varMap' = Port.renderVarMapValue <$> varMap
-    resource = CET.temporaryOutputResource info
-    backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir resource)
+    varMap' =
+      SM.union urlVarMap $ map Port.renderVarMapValue varMap
+    resource =
+      CET.temporaryOutputResource info
+    backendPath =
+      Left $ fromMaybe Path.rootDir (Path.parentDir resource)
   { inputs } ← CET.liftQ
     $ lmap (QE.prefixMessage "Error compiling query")
     <$> QQ.compile backendPath sql varMap'

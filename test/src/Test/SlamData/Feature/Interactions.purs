@@ -2,9 +2,14 @@ module Test.SlamData.Feature.Interactions where
 
 import SlamData.Prelude
 
+import Data.Argonaut (encodeJson)
 import Data.Array as Arr
 import Data.Map as Map
 import Data.String as Str
+import Data.String.Regex as Rgx
+import Data.StrMap as SM
+
+import Global (encodeURIComponent)
 
 import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
 
@@ -15,6 +20,9 @@ import Test.SlamData.Feature.XPaths as XPaths
 import Test.Utils (appendToCwd)
 
 import XPath as XPath
+
+import Utils (prettyJson)
+import Utils.Array (enumerate)
 
 followingLastPreviousCardGripper :: String -> String
 followingLastPreviousCardGripper = XPath.following lastPreviousCardGripperXPath
@@ -232,6 +240,9 @@ insertPivotCard ∷ SlamFeature Unit
 insertPivotCard =
   Feature.click $ followingLastPreviousCardGripper XPaths.insertPivotCard
 
+insertBuildBarChartCard ∷ SlamFeature Unit
+insertBuildBarChartCard =
+  Feature.click $ followingLastPreviousCardGripper XPaths.insertBuildBarChartCard
 
 addColumn ∷ String → SlamFeature Unit
 addColumn str = do
@@ -239,26 +250,30 @@ addColumn str = do
   Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel $ "Select " ⊕ str
   Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
 
-selectFileForLastOpenCard ∷ String → SlamFeature Unit
-selectFileForLastOpenCard p = do
-  for_ paths \(ix × path) → tryRepeatedlyTo do
-    Feature.click $ resourceXPath (ix + 1) path
+selectInMillerColumns ∷ Array String → SlamFeature Unit
+selectInMillerColumns ps = do
+  for_ (enumerate $ Arr.filter (\s → Str.length s > 0) ps) \(ix × path) →
+    Feature.click $ resourceXPath (ix + one) path
   where
   ariaLabel ∷ String → String
   ariaLabel rPath = "Select " ⊕ rPath
 
   resourceXPath ∷ Int → String → String
   resourceXPath ix rPath =
-    XPath.last $ XPath.anywhere
+    XPath.last
+      $ XPath.anywhere
       $ (XPath.nodeAtPosition ix $ XPath.anyWithExactAriaLabel "Column")
       ⊕ "/"
       ⊕ (XPath.anyWithExactAriaLabel $ ariaLabel rPath)
 
-  paths ∷ Array (Int × String)
-  paths =
-    Arr.mapWithIndex (×)
-      $ Arr.filter (\s → Str.length s > 0)
-      $ Str.split "/" p
+selectFileForLastOpenCard ∷ String → SlamFeature Unit
+selectFileForLastOpenCard s =
+  selectInMillerColumns $ Str.split "/" s
+
+selectInChartBuilder ∷ Array String → SlamFeature Unit
+selectInChartBuilder ps = do
+  selectInMillerColumns ps
+  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
 
 provideSearchStringInLastSearchCard ∷ String → SlamFeature Unit
 provideSearchStringInLastSearchCard =
@@ -375,23 +390,13 @@ provideApiVariableBindingsForVariablesCard name ty val =
       val
     Feature.pressEnter
 
-provideCategoryForLastChartCard
-  ∷ String
-  → SlamFeature Unit
-provideCategoryForLastChartCard str =
-  Feature.selectFromDropdown
-    (XPath.last $ XPath.anywhere $ XPaths.chartCategorySelector)
-    str
+activateCategoryForChartBuilder ∷ SlamFeature Unit
+activateCategoryForChartBuilder =
+  Feature.click $ XPath.last $ XPath.anywhere $ XPaths.chartCategorySelector
 
-provideSeriesForLastChartCard ∷ String → SlamFeature Unit
-provideSeriesForLastChartCard str =
-  Feature.selectFromDropdown
-    (XPath.last $ XPath.anywhere $ XPaths.chartSeriesOneSelector)
-    str
-
-switchToBarChart ∷ SlamFeature Unit
-switchToBarChart =
-  Feature.click $ XPath.anywhere $ XPaths.chartSwitchToBar
+activateStackForChartBuilder ∷ SlamFeature Unit
+activateStackForChartBuilder =
+  Feature.click $ XPath.last $ XPath.anywhere $ XPaths.chartStackSelector
 
 flipDeck ∷ SlamFeature Unit
 flipDeck =
@@ -424,3 +429,20 @@ confirmDeckAction =
 runQuery ∷ SlamFeature Unit
 runQuery =
   Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Run query"
+
+setVarMapForCurrentDeck ∷ SM.StrMap String → SlamFeature Unit
+setVarMapForCurrentDeck vm = accessWorkspaceWithModifiedURL \urlStr →
+  let
+    deckIdRgx = unsafePartial fromRight $ Rgx.regex "\\.slam\\/([^\\/]+)" Rgx.noFlags
+    mbDeckId = join $ Rgx.match deckIdRgx urlStr >>= flip Arr.index 1
+  in case mbDeckId of
+    Nothing → urlStr
+    Just did →
+      let
+        varsValue =
+          encodeURIComponent
+          $ prettyJson
+          $ encodeJson
+          $ SM.singleton did vm
+      in
+       urlStr ⊕ "/?vars=" ⊕ varsValue

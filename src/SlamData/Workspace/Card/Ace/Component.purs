@@ -106,7 +106,7 @@ eval _ (CC.Load card next) = do
       -- We don't want the Ace component to trigger a TextChanged event when we
       -- initially set the text, so we use this nasty state to filter it out.
       H.modify $ _status .~ Loading
-      H.query unit $ H.action (AC.SetText text)
+      H.query unit $ H.action $ AC.SetText text
       H.modify $ _status .~ Ready
       mbEditor ← H.query unit $ H.request AC.GetEditor
       H.fromEff $ for_ (join mbEditor) \editor → do
@@ -127,8 +127,7 @@ eval _ (CC.SetDimensions dims next) = do
 eval _ (CC.ModelUpdated _ next) = do
   H.modify _ { dirty = false }
   pure next
-eval _ (CC.ZoomIn next) =
-  pure next
+eval _ (CC.ZoomIn next) = pure next
 
 peek ∷ ∀ x. AC.AceQuery x → DSL Unit
 peek = case _ of

@@ -262,48 +262,16 @@ ol.breadcrumb {
 }
 .chart-configuration(@label-width) {
     padding-bottom: 10px;
+
     label.control-label {
         width: @label-width;
     }
-    select.form-control, input.form-control, .sd-picker-input .form-control {
+
+    select.form-control,
+    input.form-control,
+    .sd-picker-input .form-control {
         width: calc(~"100% - " @label-width);
         display: inline-block;
-    }
-}
-
-button.aggregation {
-    border-radius: 0;
-    display: inline-block;
-    color: transparent;
-    position: relative;
-    top: 5px;
-    background-size: 60% 60%;
-    background-position: center;
-    background-repeat: no-repeat;
-    height: 35px;
-    &.Sum {
-
-        background-image: url("../img/aggregation-sum.svg");
-    }
-    &.Product {
-
-        background-image: url("../img/aggregation-product.svg");
-    }
-    &.Maximum {
-
-        background-image: url("../img/aggregation-maximum.svg");
-    }
-    &.Minimum {
-
-        background-image: url("../img/aggregation-minimum.svg");
-    }
-    &.Average {
-        background-size: 54% 54%;
-        background-image: url("../img/aggregation-average.svg");
-    }
-    &.None {
-
-        background-image: url("../img/aggregation-none.svg");
     }
 }
 
@@ -315,6 +283,8 @@ button.aggregation {
 
 form.chart-configure-form {
     .chart-configuration(@label-width: 120px);
+    padding: .5rem;
+
     &.with-aggregation {
         div {
             width: ~"calc(100% - 120px)";

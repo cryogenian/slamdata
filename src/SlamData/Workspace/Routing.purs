@@ -21,6 +21,8 @@ module SlamData.Workspace.Routing
   , mkWorkspaceURL
   , varMapsForURL
   , encodeVarMaps
+  , getPath
+  , getURLVarMaps
   ) where
 
 import SlamData.Prelude
@@ -59,6 +61,12 @@ data Routes
       (Maybe D.DeckId)
       WA.Action
       (Map.Map D.DeckId Port.URLVarMap)
+
+getPath ∷ Routes → UP.DirPath
+getPath (WorkspaceRoute p _ _ _) = p
+
+getURLVarMaps ∷ Routes → Map.Map D.DeckId Port.URLVarMap
+getURLVarMaps (WorkspaceRoute _ _ _ vm) = vm
 
 routing ∷ Match Routes
 routing

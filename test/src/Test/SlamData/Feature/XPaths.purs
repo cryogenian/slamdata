@@ -109,7 +109,11 @@ selectBuildChart =
 
 insertPivotCard ∷ String
 insertPivotCard =
-  XPath.anyWithExactAriaLabel "Insert Setup Pivot card"
+  XPath.anyWithExactAriaLabel "Insert Pivot Table card"
+
+insertBuildBarChartCard ∷ String
+insertBuildBarChartCard =
+  XPath.anyWithExactAriaLabel "Insert Bar card"
 
 showFileList ∷ String
 showFileList =
@@ -310,11 +314,11 @@ variablesCardDefaultValueFor name =
 chartCategorySelector ∷ String
 chartCategorySelector = XPath.anyWithExactAriaLabel "Category"
 
-chartSeriesOneSelector ∷ String
-chartSeriesOneSelector = XPath.anyWithExactAriaLabel "Second Series"
+chartStackSelector ∷ String
+chartStackSelector = XPath.anyWithExactAriaLabel "Stack"
 
-chartMeasureOneSelector ∷ String
-chartMeasureOneSelector = XPath.anyWithExactAriaLabel "First Measure"
+chartMeasureSelector ∷ String
+chartMeasureSelector = XPath.anyWithExactAriaLabel "Measure"
 
 chartSwitchToBar ∷ String
 chartSwitchToBar = XPath.anyWithExactSrc "img/bar.svg"

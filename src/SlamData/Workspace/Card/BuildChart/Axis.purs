@@ -245,7 +245,7 @@ type EChartsAxisConfiguration =
 
 axisConfiguration ∷ AxisType → EChartsAxisConfiguration
 axisConfiguration = case _ of
-  Measure → {axisType: ET.Category, interval: Nothing }
+  Measure → {axisType: ET.Value, interval: Nothing }
   Time → {axisType: ET.Category, interval: Just 0 }
   Date → {axisType: ET.Time, interval: Just 0 }
   DateTime → {axisType: ET.Time, interval: Just 0 }

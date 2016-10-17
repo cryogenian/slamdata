@@ -43,7 +43,7 @@ import Test.SlamData.Feature.Effects (SlamFeatureEffects)
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.Test.File as File
---import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
+import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
 import Test.SlamData.Feature.Test.CacheCard as Cache
@@ -56,7 +56,7 @@ foreign import createReadStream
 foreign import createWriteStream
   ∷ ∀ e. String → Aff e (Duplex e)
 foreign import stack
-  ∷ Error -> String
+  ∷ Error → String
 
 type Effects =
   SlamFeatureEffects (FeatureEffects
@@ -96,7 +96,7 @@ tests = do
   File.test
   Search.test
   Markdown.test
---  FlexibleVisualization.test
+  FlexibleVisualization.test
   Cache.test
   FlipDeck.test
 

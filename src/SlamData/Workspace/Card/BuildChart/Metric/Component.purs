@@ -137,8 +137,10 @@ renderFormatterInstruction =
         [ HH.strong_ [ HH.text "{{0.000}}" ]
         , HH.text " leaves three numbers after dot or adds up to three trailing zeros"
         ]
-    , HH.a [ HP.href "https://github.com/slamdata/purescript-formatters" ]
-        [ HH.text "Complete documentation"
+    , HH.p_
+        [ HH.a [ HP.href "https://github.com/slamdata/purescript-formatters" ]
+            [ HH.text "Complete documentation"
+            ]
         ]
     ]
 

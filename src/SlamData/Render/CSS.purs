@@ -208,6 +208,9 @@ openCardMenu = className "open-card-menu"
 loading ∷ ClassName
 loading = className "loading"
 
+pending ∷ ClassName
+pending = className "pending"
+
 cardSlider ∷ ClassName
 cardSlider = className "sd-card-slider"
 

@@ -153,7 +153,10 @@ buildArea r records axes = do
   E.xAxis do
     E.axisType xAxisConfig.axisType
     traverse_ E.interval $ xAxisConfig.interval
-    E.items $ map ET.strItem xValues
+    case xAxisConfig.axisType of
+      ET.Category →
+        E.items $ map ET.strItem xValues
+      _ → pure unit
     E.disabledBoundaryGap
     E.axisTick do
       E.length 2
