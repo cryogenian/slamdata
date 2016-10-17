@@ -80,10 +80,16 @@ exports.open = function(strUrl) {
     return function(strWindowFeatures) {
       return function(windowObjectReference) {
         return function() {
-          windowObjectReference.open(strUrl, strWindowName, strWindowFeatures);
+          return windowObjectReference.open(strUrl, strWindowName, strWindowFeatures);
         };
       };
     };
+  };
+};
+
+exports.closed = function(windowObjectReference) {
+  return function() {
+    return windowObjectReference.closed;
   };
 };
 

@@ -21,7 +21,6 @@ import SlamData.Prelude
 import Halogen (ChildF(..), ParentState, Action, action)
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>), injSlot, injQuery)
 
-import SlamData.Monad (Slam)
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.Query (Query)
 import SlamData.FileSystem.Component.State (State)
@@ -29,6 +28,8 @@ import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.Header.Component as Header
+import SlamData.Monad (Slam)
+import SlamData.Notification.Component as Notify
 
 type ChildState =
   Listing.StateP
@@ -36,6 +37,7 @@ type ChildState =
   ⊹ Breadcrumbs.State
   ⊹ Dialog.StateP
   ⊹ Header.StateP
+  ⊹ Notify.State
 
 type ChildQuery =
   Listing.QueryP
@@ -43,9 +45,11 @@ type ChildQuery =
   ⨁ Breadcrumbs.Query
   ⨁ Dialog.QueryP
   ⨁ Header.QueryP
+  ⨁ Notify.Query
 
 type ChildSlot =
   Unit
+  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -84,7 +88,14 @@ cpHeader
       Header.StateP ChildState
       Header.QueryP ChildQuery
       Unit ChildSlot
-cpHeader = cpR :> cpR :> cpR :> cpR
+cpHeader = cpR :> cpR :> cpR :> cpR :> cpL
+
+cpNotify
+  ∷ ChildPath
+      Notify.State ChildState
+      Notify.Query ChildQuery
+      Unit ChildSlot
+cpNotify = cpR :> cpR :> cpR :> cpR :> cpR
 
 toFs ∷ Action Query → QueryP Unit
 toFs = left ∘ action

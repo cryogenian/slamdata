@@ -25,6 +25,8 @@ module SlamData.GlobalMenu.Component
 
 import SlamData.Prelude
 
+import Data.Time.Duration (Milliseconds(Milliseconds))
+
 import Control.UI.Browser as Browser
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
@@ -39,19 +41,21 @@ import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
 
 import OIDC.Crypt as Crypt
 
-import Quasar.Advanced.Types (ProviderR, Provider(..))
+import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Monad (Slam)
 import SlamData.Quasar as Api
+import SlamData.Notification (NotificationOptions)
+import SlamData.Notification as Notification
 import SlamData.Quasar.Auth as Auth
+import SlamData.Quasar.Auth.Authentication (AuthenticationError(..))
 import SlamData.Quasar.Auth.Store as AuthStore
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
 import SlamData.GlobalMenu.Component.State (State, initialState)
 import SlamData.GlobalMenu.Menu.Component.Query (QueryP) as MenuQuery
 import SlamData.GlobalMenu.Menu.Component.State as MenuState
-import SlamData.Wiring (Wiring(..))
+import SlamData.Wiring (Wiring(Wiring))
 
-import Utils (passover)
 
 data Query a
   = DismissSubmenu a
@@ -88,7 +92,7 @@ comp =
 render ∷ State → GlobalMenuHTML
 render state =
   HH.div
-    [ HP.classes $ [ className "sd-sign-in" ] ]
+    [ HP.classes $ [ className "sd-global-menu" ] ]
     [ HH.slot MenuSlot \_ →
         { component: HalogenMenu.menuComponent
         , initialState: H.parentState $ makeMenu helpMenu
@@ -218,31 +222,68 @@ queryMenu
 queryMenu q = void $ H.query MenuSlot (left q)
 
 authenticate ∷ Maybe ProviderR → GlobalMenuDSL Unit
-authenticate providerR = do
-  {loggedIn} ← H.get
-  if loggedIn then logOut else logIn
-  pure unit
+authenticate =
+  maybe logOut logIn
   where
   logOut ∷ GlobalMenuDSL Unit
   logOut = do
     H.fromEff do
       AuthStore.clearIdToken
+      AuthStore.clearUnhashedNonce
       AuthStore.clearProvider
       Browser.reload
 
-  logIn ∷ GlobalMenuDSL Unit
-  logIn = do
-    for_ providerR $ H.fromEff ∘ AuthStore.storeProvider ∘ Provider
-    Wiring wiring ← H.liftH $ H.liftH ask
-    H.fromAff
-      -- TODO: Add notifications here.
-      $ either (const $ pure unit) (const $ Bus.write SignInSuccess wiring.signInBus)
-      =<< AVar.takeVar
-      =<< passover (flip Bus.write wiring.requestNewIdTokenBus)
-      =<< AVar.makeVar
-    update
-    -- TODO: Reattempt failed actions without loosing state, remove reload.
-    H.fromEff Browser.reload
+  logIn ∷ ProviderR → GlobalMenuDSL Unit
+  logIn providerR = do
+    Wiring wiringR ← H.liftH $ H.liftH $ ask
+    idToken ← H.fromAff AVar.makeVar
+    H.fromAff $ Bus.write { providerR, idToken, prompt: true } wiringR.requestNewIdTokenBus
+    either signInFailure (const $ signInSuccess) =<< (H.fromAff $ AVar.takeVar idToken)
+
+  -- TODO: Reattempt failed actions without loosing state, remove reload.
+  signInSuccess ∷ GlobalMenuDSL Unit
+  signInSuccess = do
+    Wiring wiringR ← H.liftH $ H.liftH $ ask
+    (H.fromAff $ Bus.write SignInSuccess $ wiringR.signInBus)
+      *> update
+      *> H.fromEff Browser.reload
+
+  signInFailure ∷ AuthenticationError → GlobalMenuDSL Unit
+  signInFailure error = do
+    Wiring wiringR ← H.liftH $ H.liftH $ ask
+    H.fromAff $ maybe (pure unit) (flip Bus.write wiringR.notify) (toNotificationOptions error)
+    H.fromAff $ (Bus.write SignInFailure $ wiringR.signInBus)
+
+  toNotificationOptions ∷ AuthenticationError → Maybe NotificationOptions
+  toNotificationOptions =
+    case _ of
+      IdTokenInvalid →
+        Just
+          { notification: Notification.Error $ "Sign in failed: Authentication provider provided invalid id token."
+          , detail: Nothing
+          , timeout
+          }
+      IdTokenUnavailable detail →
+        Just
+          { notification: Notification.Error $ "Sign in failed: Authentication provider didn't provide a token."
+          , detail: Just detail
+          , timeout
+          }
+      PromptDismissed →
+        Just
+          { notification: Notification.Warning $ "Sign in prompt closed."
+          , detail: Nothing
+          , timeout
+          }
+      ProviderError detail →
+        Just
+          { notification: Notification.Error $ "Sign in failed: There was a problem with your provider configuration, please update your SlamData configuration and try again."
+          , detail: Just detail
+          , timeout
+          }
+      DOMError _ → Nothing
+    where
+    timeout = Just $ Milliseconds 5000.0
 
 presentHelp ∷ String → GlobalMenuDSL Unit
 presentHelp = H.fromEff ∘ Browser.newTab

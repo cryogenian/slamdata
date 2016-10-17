@@ -24,10 +24,14 @@ import Data.URI (printURI, runParseURI)
 import Data.URI.Types as URI
 import DOM (DOM)
 import OIDC.Crypt as Cryptography
-import Quasar.Advanced.Types (ProviderR, Provider(..))
-import SlamData.Quasar.Auth.Store as AuthStore
+import Quasar.Advanced.Types (ProviderR)
 
 data Prompt = Login | None
+
+type AuthenticationDetails =
+  { uri ∷ String
+  , unhashedNonce ∷ Cryptography.UnhashedNonce
+  }
 
 printPrompt ∷ Prompt → String
 printPrompt =
@@ -35,26 +39,24 @@ printPrompt =
     Login → "login"
     None → "none"
 
-requestAuthenticationURI
+getRandomUnhashedNonce ∷ ∀ e. Eff (random ∷ RANDOM | e) Cryptography.UnhashedNonce
+getRandomUnhashedNonce = Cryptography.UnhashedNonce ∘ show <$> random
+
+getAuthenticationUri
   ∷ Prompt
+  → Cryptography.UnhashedNonce
   → ProviderR
   → String
   → ∀ e. Eff (dom ∷ DOM, random ∷ RANDOM | e) (Either ParseError String)
-requestAuthenticationURI prompt pr redirectURIStr = do
-  csrf ← (Cryptography.KeyString ∘ show) <$> random
-  replay ← (Cryptography.UnhashedNonce ∘ show) <$> random
-  AuthStore.storeKeyString csrf
-  AuthStore.storeNonce replay
-  AuthStore.storeProvider $ Provider pr
+getAuthenticationUri prompt unhashedNonce pr redirectURIStr = do
+  key ← (Cryptography.KeyString ∘ show) <$> random
   hap ← hostAndProtocol
   hrefState ← map Cryptography.StateString getHref
   let authURIString = pr.openIDConfiguration.authorizationEndpoint
   for (runParseURI authURIString) \(URI.URI s h q f) →
     let
       nonce =
-        Cryptography.hashNonce replay
-      state =
-        Cryptography.bindState hrefState csrf
+        Cryptography.hashNonce unhashedNonce
       query =
         pure
         $ URI.Query
@@ -65,7 +67,6 @@ requestAuthenticationURI prompt pr redirectURIStr = do
           , Tuple "client_id" $ Cryptography.runClientID pr.clientID
           , Tuple "redirect_uri" redirectURIStr
           , Tuple "scope" "openid email"
-          , Tuple "state" $ Cryptography.runBoundStateJWS state
           , Tuple "nonce" $ Cryptography.runHashedNonce nonce
           , Tuple "prompt" $ printPrompt prompt
           , Tuple "display" "popup"

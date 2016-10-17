@@ -91,8 +91,7 @@ type ActiveState =
   { cardIndex ∷ Int
   }
 
-newtype Wiring =
-  Wiring
+newtype Wiring = Wiring
     { decks ∷ Cache DeckId DeckRef
     , activeState ∷ Cache DeckId ActiveState
     , cards ∷ Cache (DeckId × CardId) CardEval

@@ -49,7 +49,8 @@ import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.CSS as CSS
-import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpHeader, toDialog, toFs, toListing, toSearch)
+import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, toListing, toDialog, toSearch, toFs)
+import SlamData.FileSystem.Component.Install as Install
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)
@@ -69,8 +70,10 @@ import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (newSalt)
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.GlobalError as GE
+import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Header.Component as Header
 import SlamData.Monad (Slam)
+import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Data (makeFile, save) as API
@@ -78,7 +81,6 @@ import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
 import SlamData.Render.Common (content, row)
 import SlamData.Wiring (Wiring(..))
-import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 
@@ -105,32 +107,36 @@ render state@{ version, sort, salt, path } =
     [ HP.classes [ CSS.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
     ]
-    [ HH.slot' cpHeader unit \_ →
+    [ HH.slot' Install.cpHeader unit \_ →
           { component: Header.comp
           , initialState: H.parentState Header.initialState
           }
 
     , content
-        [ HH.slot' cpSearch unit \_ →
+        [ HH.slot' Install.cpSearch unit \_ →
              { component: Search.comp
              , initialState: Search.initialState
              }
         , HH.div_
-            [ HH.slot' cpBreadcrumbs unit \_ →
+            [ HH.slot' Install.cpBreadcrumbs unit \_ →
                 { component: Breadcrumbs.comp
                 , initialState: Breadcrumbs.mkBreadcrumbs path sort salt
                 }
             , toolbar state
             ]
         , row [ sorting state ]
-        , HH.slot' cpListing unit \_ →
+        , HH.slot' Install.cpListing unit \_ →
             { component: Listing.comp
             , initialState: H.parentState Listing.initialState
             }
         ]
-    , HH.slot' cpDialog unit \_ →
+    , HH.slot' Install.cpDialog unit \_ →
         { component: Dialog.comp
         , initialState: H.parentState Dialog.initialState
+        }
+    , HH.slot' Install.cpNotify unit \_ →
+        { component: NC.comp
+        , initialState: NC.initialState
         }
     ]
 
@@ -141,7 +147,7 @@ eval (Init next) = do
   pure next
 eval (Resort next) = do
   { sort, salt, path } ← H.get
-  searchValue ← H.query' cpSearch unit (H.request Search.GetValue)
+  searchValue ← H.query' Install.cpSearch unit (H.request Search.GetValue)
   H.fromEff $ setLocation $ browseURL searchValue (notSort sort) salt path
   pure next
 eval (SetPath path next) = H.modify (State._path .~ path) *> updateBreadcrumbs $> next
@@ -406,7 +412,7 @@ searchPeek (Search.Clear _) = do
 searchPeek (Search.Submit _) = do
   salt ← H.fromEff newSalt
   { sort, path } ← H.get
-  value ← H.query' cpSearch unit $ H.request Search.GetValue
+  value ← H.query' Install.cpSearch unit $ H.request Search.GetValue
   H.fromEff $ setLocation $ browseURL value sort salt path
 searchPeek _ = pure unit
 
@@ -460,7 +466,7 @@ dismissSignInSubmenu = querySignIn $ H.action GlobalMenu.DismissSubmenu
   querySignIn ∷ ∀ a. GlobalMenu.Query a → DSL Unit
   querySignIn =
     void
-      ∘ H.query' cpHeader unit
+      ∘ H.query' Install.cpHeader unit
       ∘ right
       ∘ H.ChildF (injSlot Header.cpGlobalMenu unit)
       ∘ right
@@ -469,12 +475,12 @@ dismissSignInSubmenu = querySignIn $ H.action GlobalMenu.DismissSubmenu
 updateBreadcrumbs ∷ DSL Unit
 updateBreadcrumbs = do
   { path, sort, salt } ← H.get
-  void $ H.query' cpBreadcrumbs unit $ H.action (Breadcrumbs.Update path sort salt)
+  void $ H.query' Install.cpBreadcrumbs unit $ H.action (Breadcrumbs.Update path sort salt)
 
 resort ∷ DSL Unit
 resort = do
   sort ← H.gets _.sort
-  H.query' cpSearch unit (H.request Search.IsSearching)
+  H.query' Install.cpSearch unit (H.request Search.IsSearching)
     >>= traverse_ \isSearching →
       void $ queryListing $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
@@ -548,16 +554,16 @@ getDirectories ∷ (Array R.Resource → DSL Unit) → DirPath → DSL Unit
 getDirectories = getChildren (R.isDirectory ∨ R.isDatabaseMount)
 
 showDialog ∷ Dialog.Dialog → DSL Unit
-showDialog = void ∘ H.query' cpDialog unit ∘ left ∘ H.action ∘ Dialog.Show
+showDialog = void ∘ H.query' Install.cpDialog unit ∘ left ∘ H.action ∘ Dialog.Show
 
 hideDialog ∷ DSL Unit
-hideDialog = void $ H.query' cpDialog unit $ left (H.action Dialog.Dismiss)
+hideDialog = void $ H.query' Install.cpDialog unit $ left (H.action Dialog.Dismiss)
 
 queryListing ∷ ∀ a. Listing.Query a → DSL (Maybe a)
-queryListing = H.query' cpListing unit ∘ left
+queryListing = H.query' Install.cpListing unit ∘ left
 
 queryItem ∷ ∀ a. Listing.ItemSlot → Item.Query a → DSL (Maybe a)
-queryItem slot = H.query' cpListing unit ∘ right ∘ H.ChildF slot
+queryItem slot = H.query' Install.cpListing unit ∘ right ∘ H.ChildF slot
 
 queryDialog
   ∷ ∀ s f a
@@ -565,4 +571,4 @@ queryDialog
   → f a
   → DSL (Maybe a)
 queryDialog cp =
-  H.query' cpDialog unit ∘ right ∘ H.ChildF (injSlot cp unit) ∘ injQuery cp
+  H.query' Install.cpDialog unit ∘ right ∘ H.ChildF (injSlot cp unit) ∘ injQuery cp
