@@ -55,6 +55,7 @@ import SlamData.Workspace.Card.BuildChart.Funnel.Model as BuildFunnel
 import SlamData.Workspace.Card.BuildChart.Radar.Model as BuildRadar
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model as BuildBoxplot
 import SlamData.Workspace.Card.BuildChart.Heatmap.Model as BuildHeatmap
+import SlamData.Workspace.Card.BuildChart.PunchCard.Model as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Legacy as ChartLegacy
 
 import Test.StrongCheck.Arbitrary as SC
@@ -87,6 +88,7 @@ data AnyCardModel
   | BuildRadar BuildRadar.Model
   | BuildBoxplot BuildBoxplot.Model
   | BuildHeatmap BuildHeatmap.Model
+  | BuildPunchCard BuildPunchCard.Model
   | ErrorCard
   | NextAction
   | PendingCard
@@ -118,6 +120,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , BuildFunnel <$> BuildFunnel.genModel
       , BuildBoxplot <$> BuildBoxplot.genModel
       , BuildHeatmap <$> BuildHeatmap.genModel
+      , BuildPunchCard <$> BuildPunchCard.genModel
       , pure ErrorCard
       , pure NextAction
       ]
@@ -150,6 +153,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       BuildFunnel x, BuildFunnel y → BuildFunnel.eqModel x y
       BuildBoxplot x, BuildBoxplot y → BuildBoxplot.eqModel x y
       BuildHeatmap x, BuildHeatmap y → BuildHeatmap.eqModel x y
+      BuildPunchCard x, BuildPunchCard y → BuildPunchCard.eqModel x y
       ErrorCard, ErrorCard → true
       NextAction, NextAction → true
       _,_ → false
@@ -178,6 +182,7 @@ modelCardType =
     BuildFunnel _ → CT.ChartOptions Funnel
     BuildBoxplot _ → CT.ChartOptions Boxplot
     BuildHeatmap _ → CT.ChartOptions Heatmap
+    BuildPunchCard _ → CT.ChartOptions PunchCard
     Chart _ → CT.Chart
     Markdown _ → CT.Markdown
     Table _ → CT.Table
@@ -271,6 +276,7 @@ encodeCardModel = case _ of
   BuildFunnel model → BuildFunnel.encode model
   BuildBoxplot model → BuildBoxplot.encode model
   BuildHeatmap model → BuildHeatmap.encode model
+  BuildPunchCard model → BuildPunchCard.encode model
   ErrorCard → J.jsonEmptyObject
   NextAction → J.jsonEmptyObject
   PendingCard → J.jsonEmptyObject
@@ -297,6 +303,7 @@ decodeCardModel = case _ of
   CT.ChartOptions Funnel → map BuildFunnel ∘ BuildFunnel.decode
   CT.ChartOptions Boxplot → map BuildBoxplot ∘ BuildBoxplot.decode
   CT.ChartOptions Heatmap → map BuildHeatmap ∘ BuildHeatmap.decode
+  CT.ChartOptions PunchCard → map BuildPunchCard ∘ BuildPunchCard.decode
   CT.Chart → map Chart ∘ Chart.decode
   CT.Markdown → map Markdown ∘ MD.decode
   CT.Table → map Table ∘ JT.decode
@@ -333,6 +340,7 @@ cardModelOfType = case _ of
   CT.ChartOptions Funnel → BuildFunnel BuildFunnel.initialModel
   CT.ChartOptions Boxplot → BuildBoxplot BuildBoxplot.initialModel
   CT.ChartOptions Heatmap → BuildHeatmap BuildHeatmap.initialModel
+  CT.ChartOptions PunchCard → BuildPunchCard BuildPunchCard.initialModel
   CT.Chart → Chart Chart.emptyModel
   CT.Markdown → Markdown MD.emptyModel
   CT.Table → Table JT.emptyModel
@@ -347,7 +355,6 @@ cardModelOfType = case _ of
   CT.NextAction → NextAction
   CT.PendingCard → PendingCard
 
--- TODO: handle build chartype models
 modelToEval
   ∷ AnyCardModel
   → String ⊹ Eval.Eval
@@ -401,5 +408,7 @@ modelToEval = case _ of
     pure $ Eval.BuildBoxplot model
   BuildPivotTable model →
     pure $ Eval.BuildPivotTable model
+  BuildPunchCard model →
+    pure $ Eval.BuildPunchCard model
   _ →
     pure Eval.Pass
