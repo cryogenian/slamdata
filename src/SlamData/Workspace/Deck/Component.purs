@@ -984,7 +984,6 @@ setModel opts model = do
   H.modify
     $ (DCS._stateMode .~ Preparing)
     ∘ DCS.fromModel model
-  -- presentAccessNextActionCardGuideAfterDelay
   case Array.head model.modelCards of
     Just _ →
       runInitialEval
