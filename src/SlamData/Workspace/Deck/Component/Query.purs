@@ -77,6 +77,7 @@ data Query a
   | HandleMessage DeckMessage a
   | GetSharingInput (SharingInput → a)
   | HandleError GlobalError a
+  | DismissedCardGuide a
   | Run a
 
 data DeckAction

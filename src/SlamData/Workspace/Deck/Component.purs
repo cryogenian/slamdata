@@ -310,6 +310,8 @@ eval opts = case _ of
   HandleError ge next → do
     showDialog $ Dialog.Error $ GE.print ge
     pure next
+  DismissedCardGuide next → do
+    queryRootDeckNextActionCard (Next.PresentAddCardGuide unit) $> next
   Run next → do
     H.modify _{ stateMode = Preparing }
     initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
@@ -1098,3 +1100,11 @@ shouldPresentFlipGuide =
   H.liftH
     $ H.liftH
     $ either (const true) not <$> LocalStorage.getLocalStorage Guide.dismissedFlipGuideKey
+
+queryRootDeckCard ∷ ∀ a. CardId → CQ.AnyCardQuery a → DeckDSL (Maybe a)
+queryRootDeckCard cid query =
+  flip queryCard query ∘ flip Tuple cid =<< H.gets _.id
+
+queryRootDeckNextActionCard ∷ ∀ a. Next.Query a → DeckDSL (Maybe a)
+queryRootDeckNextActionCard =
+  queryRootDeckCard NextActionCardId ∘ CQ.NextQuery ∘ right

@@ -61,7 +61,7 @@ defaultActions =
 initialState ∷ State
 initialState =
   { input: Nothing
-  , presentAddCardGuide: true
+  , presentAddCardGuide: false
   , actions: defaultActions
   , previousActions: [ ]
   , filterString: ""

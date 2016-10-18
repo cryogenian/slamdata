@@ -225,7 +225,6 @@ eval (UploadFile el next) = do
 
 eval (FileListChanged el next) = do
   fileArr ← map Cf.fileListToArray $ (H.fromAff $ Cf.files el)
-  traceAnyA "uh"
   H.fromEff $ clearValue el
   case Array.head fileArr of
     Nothing →
