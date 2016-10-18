@@ -56,10 +56,8 @@ nextCardComponent ∷ CC.CardComponent
 nextCardComponent = CC.makeCardComponent
   { cardType: CT.NextAction
   , component:
-      H.lifecycleComponent
-        { initializer: Just $ right $ H.action $ Init
-        , finalizer: Nothing
-        , render
+      H.component
+        { render
         , eval
         }
   , initialState: State.initialState
@@ -166,7 +164,6 @@ possibleToGetTo ∷ Maybe Port.Port → CT.CardType → Boolean
 possibleToGetTo input =
   maybe false (ICT.possibleToGetTo $ ICT.fromMaybePort input) ∘ ICT.fromCardType
 
-
 dismissedAddCardGuideKey ∷ String
 dismissedAddCardGuideKey = "dismissedAddCardGuide"
 
@@ -192,7 +189,7 @@ nextEval (UpdateFilter str next) = do
     $ (State._filterString .~ str)
   pure next
 nextEval (DismissAddCardGuide next) = dismissAddCardGuide $> next
-nextEval (Init next) = do
+nextEval (PresentAddCardGuide next) = do
   H.modify ∘ (State._presentAddCardGuide .~ _) ∘ not =<< getDismissedAddCardGuideBefore
   pure next
 nextEval (Selected action next) = do

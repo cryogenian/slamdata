@@ -22,6 +22,7 @@ module SlamData.Workspace.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff as Aff
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Fork (class MonadFork)
@@ -176,13 +177,17 @@ render state =
 eval ∷ Query ~> WorkspaceDSL
 eval (Init next) = do
   deckId ← H.fromEff freshDeckId
+  cardGuideStep ← initialCardGuideStep
   H.modify (_initialDeckId ?~ deckId)
   H.subscribe'
     $ throttledEventSource_ (Milliseconds 100.0) onResize
     $ pure (H.action Resize)
-  H.modify ∘ (_cardGuideStep .~ _) =<< initialCardGuideStep
+  H.modify $ (_cardGuideStep .~ cardGuideStep)
   Wiring.Wiring wiring ← H.liftH $ H.liftH ask
   subscribeToBus' (H.action ∘ PresentStepByStepGuide) wiring.presentStepByStepGuide
+  -- The deck component isn't initialised before this later has completed
+  H.fromAff $ Aff.later (pure unit :: Aff.Aff SlamDataEffects Unit)
+  when (isNothing cardGuideStep) (void $ queryDeck $ H.action Deck.DismissedCardGuide)
   pure next
 eval (PresentStepByStepGuide stepByStepGuide next) =
   case stepByStepGuide of
@@ -192,6 +197,7 @@ eval (CardGuideStepNext next) = H.modify State.cardGuideStepNext $> next
 eval (CardGuideDismiss next) = do
   H.liftH $ H.liftH $ LocalStorage.setLocalStorage Guide.dismissedCardGuideKey true
   H.modify (_cardGuideStep .~ Nothing)
+  queryDeck $ H.action Deck.DismissedCardGuide
   pure next
 eval (FlipGuideStepNext next) = H.modify State.flipGuideStepNext $> next
 eval (FlipGuideDismiss next) = do

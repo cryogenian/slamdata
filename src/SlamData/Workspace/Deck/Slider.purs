@@ -260,7 +260,9 @@ renderCard opts deckComponent st (deckId × card) index =
   where
   key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
   isLastRealCard = Just (deckId × card.cardId) == DCS.findLastRealCard st
-  presentAccessNextActionCardGuide = st.presentAccessNextActionCardGuide ∧ isLastRealCard
+  -- st.focused shouldn't be neccessary but Defocus isn't always evaluated when deck looses focus
+  presentAccessNextActionCardGuide =
+    st.presentAccessNextActionCardGuide ∧ isLastRealCard ∧ st.focused
   renderGuide =
     Guide.render
       Guide.RightArrow
