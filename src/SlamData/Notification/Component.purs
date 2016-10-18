@@ -60,7 +60,7 @@ type NotificationItem =
 initialState ∷ State
 initialState =
   { tick: 0
-  , queue: []
+  , queue: [ ]
   , current: Nothing
   , dismissed: Nothing
   }
@@ -69,6 +69,7 @@ data Query a
   = Init a
   | Push N.NotificationOptions a
   | ToggleDetail a
+  | Action N.NotificationAction a
   | Dismiss a
 
 data Status
@@ -121,19 +122,35 @@ render st =
           ]
       ]
 
-  renderDetail n = n.options.detail # maybe (HH.text "") \d →
-    HH.div
-      [ HP.class_ (HH.className "sd-notification-detail") ]
-      [ HH.button
-          [ HP.class_ (HH.className "sd-notification-toggle-detail")
-          , HP.buttonType HP.ButtonButton
-          , HE.onClick (HE.input_ ToggleDetail)
+  renderDetail n = n.options.detail # maybe (HH.text "") (f n)
+
+  f n =
+    case _ of
+      N.SimpleDetail d →
+        HH.div
+          [ HP.class_ (HH.className "sd-notification-detail") ]
+          [ HH.button
+              [ HP.class_ (HH.className "sd-notification-toggle-detail")
+              , HP.buttonType HP.ButtonButton
+              , HE.onClick (HE.input_ ToggleDetail)
+              ]
+              [ HH.text if n.expanded then "Hide detail" else "Show detail" ]
+          , if n.expanded
+              then HH.p_ [ HH.text d ]
+              else HH.text ""
           ]
-          [ HH.text if n.expanded then "Hide detail" else "Show detail" ]
-      , if n.expanded
-          then HH.p_ [ HH.text d ]
-          else HH.text ""
-      ]
+      N.ActionDetail d →
+        HH.div
+          [ HP.class_ (HH.className "sd-notification-detail") ]
+          [ HH.text d.messagePrefix
+          , HH.button
+              [ HP.classes [ HH.className "btn", HH.className "btn-primary", HH.className "btn-sm" ]
+              , HP.buttonType HP.ButtonButton
+              , HE.onClick (HE.input_ $ Action d.action)
+              ]
+              [ HH.text d.actionMessage ]
+          , HH.text d.messageSuffix
+          ]
 
   notificationClasses status n =
     [ HH.className "sd-notification"
@@ -171,16 +188,19 @@ eval = case _ of
       }
     when (isNothing st.current) drainQueue
     pure next
-  Dismiss next → do
-    current ← H.gets _.current
-    for_ current \{ dismiss } →
-      H.fromAff $ putVar dismiss unit
-    pure next
+  Dismiss next → dismissNotification $> next
+  Action _ next → dismissNotification $> next
   ToggleDetail next → do
     current ← H.gets _.current
     for_ current \curr →
       H.modify _ { current = Just curr { expanded = not curr.expanded } }
     pure next
+
+dismissNotification ∷ NotifyDSL Unit
+dismissNotification = do
+  current ← H.gets _.current
+  for_ current \{ dismiss } →
+    H.fromAff $ putVar dismiss unit
 
 drainQueue ∷ NotifyDSL Unit
 drainQueue = do

@@ -48,7 +48,7 @@ notifyError
 notifyError msg event err = do
   case GE.fromQError err of
     Left msg -> do
-      N.error msg (Just msg) Nothing
+      N.error msg (Just (N.SimpleDetail msg)) Nothing
       SA.track event
     Right ge ->
       GE.raiseGlobalError ge

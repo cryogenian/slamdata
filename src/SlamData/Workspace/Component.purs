@@ -55,6 +55,7 @@ import SlamData.GlobalError as GE
 import SlamData.Header.Component as Header
 import SlamData.Monad (Slam)
 import SlamData.Guide as Guide
+import SlamData.Notification as N
 import SlamData.Notification.Component as NC
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
@@ -75,6 +76,7 @@ import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _
 import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Common (wrappedDeck, splitDeck)
 import SlamData.Workspace.Deck.Component as Deck
+import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Workspace.Deck.Component.Nested as DN
 import SlamData.Workspace.Deck.DeckId (DeckId, freshDeckId)
 import SlamData.Workspace.Model as Model
@@ -261,8 +263,16 @@ rootDeck ∷ UP.DirPath → WorkspaceDSL (Either QE.QError DeckId)
 rootDeck path = Model.getRoot (path </> Pathy.file "index")
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
-peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
+peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotification)
   where
+  peekNotification ∷ NC.Query a → WorkspaceDSL Unit
+  peekNotification =
+    case _ of
+      NC.Action N.ExpandGlobalMenu _ → do
+        queryHeaderGripper $ Gripper.StartDragging 0.0 unit
+        queryHeaderGripper $ Gripper.StopDragging unit
+      _ → pure unit
+
   peekDeck :: Deck.Query a → WorkspaceDSL Unit
   peekDeck (Deck.DoAction (Deck.Unwrap decks) _) = void $ runMaybeT do
     state  ← lift H.get
@@ -281,7 +291,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       Left err →
         case GE.fromQError err of
           Left msg →
-            Notify.error "Failed to collapse deck." (Just msg) Nothing
+            Notify.error "Failed to collapse deck." (Just $ N.SimpleDetail msg) Nothing
           Right ge →
             GE.raiseGlobalError ge
       Right _  → do
@@ -310,7 +320,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       Left err →
         case GE.fromQError err of
           Left msg →
-            Notify.error "Failed to wrap deck." (Just msg) Nothing
+            Notify.error "Failed to wrap deck." (Just $ N.SimpleDetail msg) Nothing
           Right ge →
             GE.raiseGlobalError ge
       Right _  → do
@@ -389,7 +399,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       Left err →
         case GE.fromQError err of
           Left msg →
-            Notify.error "Failed to mirror deck." (Just msg) Nothing
+            Notify.error "Failed to mirror deck." (Just $ N.SimpleDetail msg) Nothing
           Right ge →
             GE.raiseGlobalError ge
       Right _  → do
@@ -400,6 +410,14 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck = H.query' cpDeck unit ∘ right
+
+queryHeaderGripper ∷ ∀ a. Gripper.Query a → WorkspaceDSL Unit
+queryHeaderGripper =
+  void
+    ∘ H.query' cpHeader unit
+    ∘ right
+    ∘ H.ChildF (injSlot Header.cpGripper unit)
+    ∘ injQuery Header.cpGripper
 
 querySignIn ∷ ∀ a. GlobalMenu.Query a → WorkspaceDSL Unit
 querySignIn =
