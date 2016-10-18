@@ -283,7 +283,9 @@ eval opts = case _ of
       H.modify (DCS._focused .~ true)
       Wiring wiring ← H.liftH $ H.liftH ask
       H.fromAff $ Bus.write (DeckFocused st.id) wiring.messaging
+      presentAccessNextActionCardGuideAfterDelay
     pure next
+  -- Isn't always evaluated when deck looses focus
   Defocus ev next → do
     st ← H.get
     isFrame ← H.fromEff $ elementEq ev.target ev.currentTarget
@@ -291,6 +293,7 @@ eval opts = case _ of
       for_ (L.last opts.cursor) \rootId → do
         Wiring wiring ← H.liftH $ H.liftH ask
         H.fromAff $ Bus.write (DeckFocused rootId) wiring.messaging
+    H.modify (DCS._presentAccessNextActionCardGuide .~ false)
     pure next
   HandleMessage msg next → do
     st ← H.get
@@ -552,9 +555,10 @@ storeDismissedAccessNextActionCardGuide =
 presentAccessNextActionCardGuideAfterDelay ∷ DeckDSL Unit
 presentAccessNextActionCardGuideAfterDelay = do
   dismissedBefore ← getDismissedAccessNextActionCardGuideBefore
-  if dismissedBefore
-    then pure unit
-    else do
+  focused ← H.gets _.focused
+  when
+    (not dismissedBefore && focused)
+    do
       cancelPresentAccessNextActionCardGuide
       H.modify
         ∘ (DCS._presentAccessNextActionCardGuideCanceler .~ _)
@@ -980,7 +984,7 @@ setModel opts model = do
   H.modify
     $ (DCS._stateMode .~ Preparing)
     ∘ DCS.fromModel model
-  presentAccessNextActionCardGuideAfterDelay
+  -- presentAccessNextActionCardGuideAfterDelay
   case Array.head model.modelCards of
     Just _ →
       runInitialEval
