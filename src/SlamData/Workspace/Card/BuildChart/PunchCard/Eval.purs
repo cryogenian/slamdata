@@ -135,15 +135,17 @@ buildPunchCard r records axes = do
 
   E.colors colors
 
-  when r.circular $ E.polar $ pure unit
-
   when r.circular do
+    E.polar $ pure unit
     E.angleAxis abscissaAxis
     E.radiusAxis ordinateAxis
 
   when (not r.circular) do
     E.xAxis abscissaAxis
     E.yAxis ordinateAxis
+
+    E.grid $ E.containLabel true
+
 
   E.series series
 
