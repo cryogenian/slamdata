@@ -26,9 +26,13 @@ import Halogen.Query.HalogenF as HF
 
 import Quasar.Error as QE
 
+import SlamData.Notification (NotificationOptions)
+import SlamData.Notification as N
+
 data GlobalError
   = PaymentRequired
   | Unauthorized
+  | Forbidden
 
 class GlobalErrorDSL m where
   raiseGlobalError ∷ GlobalError → m Unit
@@ -52,12 +56,14 @@ fromQError ∷ QE.QError → Either String GlobalError
 fromQError = case _ of
   QE.PaymentRequired → Right PaymentRequired
   QE.Unauthorized → Right Unauthorized
+  QE.Forbidden → Right Forbidden
   err → Left (QE.printQError err)
 
 toQError ∷ GlobalError → QE.QError
 toQError = case _ of
   PaymentRequired → QE.PaymentRequired
   Unauthorized → QE.Unauthorized
+  Forbidden → QE.Forbidden
 
 print ∷ GlobalError → String
 print = case _ of
@@ -65,3 +71,30 @@ print = case _ of
     "Payment is required to perform the current action."
   Unauthorized →
     "Please sign in to continue."
+  Forbidden →
+    "Your authorization credentials do not grant access to this resource."
+
+toNotificationOptions ∷ GlobalError → NotificationOptions
+toNotificationOptions =
+  case _ of
+    PaymentRequired →
+      { notification: N.Error (print PaymentRequired)
+      , detail: Nothing
+      , timeout: Nothing
+      }
+    Unauthorized →
+      { notification: N.Error "No resources available"
+      , detail:
+          Just $ N.ActionDetail
+            { messagePrefix: "Please "
+            , actionMessage: "sign in"
+            , messageSuffix: " to continue."
+            , action: N.ExpandGlobalMenu
+            }
+      , timeout: Nothing
+      }
+    Forbidden →
+      { notification: N.Error (print Forbidden)
+      , detail: Nothing
+      , timeout: Nothing
+      }

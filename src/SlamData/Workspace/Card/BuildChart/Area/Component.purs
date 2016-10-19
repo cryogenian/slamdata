@@ -203,7 +203,7 @@ renderIsSmooth state =
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Smooth" ]
     , HH.input
         [ HP.inputType HP.InputCheckbox
-        , HP.checked state.isStacked
+        , HP.checked state.isSmooth
         , ARIA.label "Smooth"
         , HE.onChecked $ HE.input_ (right ∘ Q.ToggleSmooth)
         ]

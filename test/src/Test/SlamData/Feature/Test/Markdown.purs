@@ -250,6 +250,8 @@ test = do
     successMsg "Ok, Filtered query results by changing field values"
 
   mdScenario "Markdown chaining" [] do
+    let
+      states = ["MA", "MN", "SC", "RI", "OK", "SD", "NH", "ME", "NJ", "VT", "CA", "CT", "CO", "PA", "LA", "NY", "DE", "DC", "OR", "MD", "VA", "WV", "NC", "NE", "GA", "TX", "FL", "AL", "TN", "MS", "AK", "KY", "AZ", "OH", "IN", "MI", "IA", "KS", "WI", "ND", "MT", "IL", "UT", "MO", "AR", "NM", "WY", "ID", "NV", "HI", "WA"]
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard $
       "state = {!``select distinct state from `/test-mount/testDb/zips` order by asc``}"
@@ -257,7 +259,7 @@ test = do
     Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
-
+    Expect.dropdownInLastMdCard "MA" states
     Interact.accessNextCardInLastDeck
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard $

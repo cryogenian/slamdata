@@ -29,7 +29,7 @@ data Query a
   | Selected NextAction a
   | UpdateFilter String a
   | DismissAddCardGuide a
-  | Init a
+  | PresentAddCardGuide a
 
 _AddCardType ∷ ∀ a. TraversalP (Query a) CardType
 _AddCardType =

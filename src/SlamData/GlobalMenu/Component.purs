@@ -266,7 +266,7 @@ authenticate =
       IdTokenUnavailable detail →
         Just
           { notification: Notification.Error $ "Sign in failed: Authentication provider didn't provide a token."
-          , detail: Just detail
+          , detail: Just $ Notification.SimpleDetail detail
           , timeout
           }
       PromptDismissed →
@@ -278,7 +278,7 @@ authenticate =
       ProviderError detail →
         Just
           { notification: Notification.Error $ "Sign in failed: There was a problem with your provider configuration, please update your SlamData configuration and try again."
-          , detail: Just detail
+          , detail: Just $ Notification.SimpleDetail detail
           , timeout
           }
       DOMError _ → Nothing

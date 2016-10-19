@@ -30,6 +30,7 @@ mkDeckWithLastTable = do
     Interact.addColumn "measureTwo"
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
+    Expect.tableColumnsAre ["measureOne", "measureTwo"]
 
 test ∷ SlamFeature Unit
 test = do

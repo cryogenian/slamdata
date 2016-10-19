@@ -72,7 +72,9 @@ import SlamData.FileSystem.Search.Component as Search
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Header.Component as Header
+import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Monad (Slam)
+import SlamData.Notification as N
 import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
@@ -225,7 +227,6 @@ eval (UploadFile el next) = do
 
 eval (FileListChanged el next) = do
   fileArr ← map Cf.fileListToArray $ (H.fromAff $ Cf.files el)
-  traceAnyA "uh"
   H.fromEff $ clearValue el
   case Array.head fileArr of
     Nothing →
@@ -311,6 +312,7 @@ peek
   ⨁ const (pure unit)
   ⨁ dialogPeek
   ⨁ const (pure unit)
+  ⨁ peekNotification
 
 listingPeek ∷ ∀ a. Listing.QueryP a → DSL Unit
 listingPeek = go ⨁ (itemPeek ∘ H.runChildF)
@@ -318,6 +320,14 @@ listingPeek = go ⨁ (itemPeek ∘ H.runChildF)
   go (Listing.Add _ _) = resort
   go (Listing.Adds items _) = (presentMountGuide items =<< H.gets _.path) *> resort
   go _ = pure unit
+
+peekNotification ∷ ∀ a. NC.Query a → DSL Unit
+peekNotification =
+  case _ of
+    NC.Action N.ExpandGlobalMenu _ → do
+      queryHeaderGripper $ Gripper.StartDragging 0.0 unit
+      queryHeaderGripper $ Gripper.StopDragging unit
+    _ → pure unit
 
 presentMountGuide ∷ ∀ a. Array a → DirPath → DSL Unit
 presentMountGuide xs path =
@@ -572,3 +582,11 @@ queryDialog
   → DSL (Maybe a)
 queryDialog cp =
   H.query' Install.cpDialog unit ∘ right ∘ H.ChildF (injSlot cp unit) ∘ injQuery cp
+
+queryHeaderGripper ∷ ∀ a. Gripper.Query a → DSL Unit
+queryHeaderGripper =
+  void
+    ∘ H.query' Install.cpHeader unit
+    ∘ right
+    ∘ H.ChildF (injSlot Header.cpGripper unit)
+    ∘ injQuery Header.cpGripper

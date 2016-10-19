@@ -22,6 +22,7 @@ module SlamData.Workspace.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff as Aff
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Fork (class MonadFork)
@@ -55,6 +56,7 @@ import SlamData.GlobalError as GE
 import SlamData.Header.Component as Header
 import SlamData.Monad (Slam)
 import SlamData.Guide as Guide
+import SlamData.Notification as N
 import SlamData.Notification.Component as NC
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
@@ -75,6 +77,7 @@ import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _
 import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Common (wrappedDeck, splitDeck)
 import SlamData.Workspace.Deck.Component as Deck
+import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Workspace.Deck.Component.Nested as DN
 import SlamData.Workspace.Deck.DeckId (DeckId, freshDeckId)
 import SlamData.Workspace.Model as Model
@@ -174,13 +177,17 @@ render state =
 eval ∷ Query ~> WorkspaceDSL
 eval (Init next) = do
   deckId ← H.fromEff freshDeckId
+  cardGuideStep ← initialCardGuideStep
   H.modify (_initialDeckId ?~ deckId)
   H.subscribe'
     $ throttledEventSource_ (Milliseconds 100.0) onResize
     $ pure (H.action Resize)
-  H.modify ∘ (_cardGuideStep .~ _) =<< initialCardGuideStep
+  H.modify $ (_cardGuideStep .~ cardGuideStep)
   Wiring.Wiring wiring ← H.liftH $ H.liftH ask
   subscribeToBus' (H.action ∘ PresentStepByStepGuide) wiring.presentStepByStepGuide
+  -- The deck component isn't initialised before this later has completed
+  H.fromAff $ Aff.later (pure unit :: Aff.Aff SlamDataEffects Unit)
+  when (isNothing cardGuideStep) (void $ queryDeck $ H.action Deck.DismissedCardGuide)
   pure next
 eval (PresentStepByStepGuide stepByStepGuide next) =
   case stepByStepGuide of
@@ -190,6 +197,7 @@ eval (CardGuideStepNext next) = H.modify State.cardGuideStepNext $> next
 eval (CardGuideDismiss next) = do
   H.liftH $ H.liftH $ LocalStorage.setLocalStorage Guide.dismissedCardGuideKey true
   H.modify (_cardGuideStep .~ Nothing)
+  queryDeck $ H.action Deck.DismissedCardGuide
   pure next
 eval (FlipGuideStepNext next) = H.modify State.flipGuideStepNext $> next
 eval (FlipGuideDismiss next) = do
@@ -261,8 +269,16 @@ rootDeck ∷ UP.DirPath → WorkspaceDSL (Either QE.QError DeckId)
 rootDeck path = Model.getRoot (path </> Pathy.file "index")
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
-peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
+peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotification)
   where
+  peekNotification ∷ NC.Query a → WorkspaceDSL Unit
+  peekNotification =
+    case _ of
+      NC.Action N.ExpandGlobalMenu _ → do
+        queryHeaderGripper $ Gripper.StartDragging 0.0 unit
+        queryHeaderGripper $ Gripper.StopDragging unit
+      _ → pure unit
+
   peekDeck :: Deck.Query a → WorkspaceDSL Unit
   peekDeck (Deck.DoAction (Deck.Unwrap decks) _) = void $ runMaybeT do
     state  ← lift H.get
@@ -281,7 +297,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       Left err →
         case GE.fromQError err of
           Left msg →
-            Notify.error "Failed to collapse deck." (Just msg) Nothing
+            Notify.error "Failed to collapse deck." (Just $ N.SimpleDetail msg) Nothing
           Right ge →
             GE.raiseGlobalError ge
       Right _  → do
@@ -310,7 +326,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       Left err →
         case GE.fromQError err of
           Left msg →
-            Notify.error "Failed to wrap deck." (Just msg) Nothing
+            Notify.error "Failed to wrap deck." (Just $ N.SimpleDetail msg) Nothing
           Right ge →
             GE.raiseGlobalError ge
       Right _  → do
@@ -389,7 +405,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       Left err →
         case GE.fromQError err of
           Left msg →
-            Notify.error "Failed to mirror deck." (Just msg) Nothing
+            Notify.error "Failed to mirror deck." (Just $ N.SimpleDetail msg) Nothing
           Right ge →
             GE.raiseGlobalError ge
       Right _  → do
@@ -400,6 +416,14 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck = H.query' cpDeck unit ∘ right
+
+queryHeaderGripper ∷ ∀ a. Gripper.Query a → WorkspaceDSL Unit
+queryHeaderGripper =
+  void
+    ∘ H.query' cpHeader unit
+    ∘ right
+    ∘ H.ChildF (injSlot Header.cpGripper unit)
+    ∘ injQuery Header.cpGripper
 
 querySignIn ∷ ∀ a. GlobalMenu.Query a → WorkspaceDSL Unit
 querySignIn =
