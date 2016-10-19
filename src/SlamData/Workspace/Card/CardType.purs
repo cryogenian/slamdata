@@ -173,6 +173,7 @@ darkCardGlyph = case _ of
         Boxplot → "img/cardsDark/buildChart/boxplot.svg"
         Metric → "img/cardsDark/buildChart/metric.svg"
         PivotTable → "img/cardsDark/buildChart/pivot-table.svg"
+        PunchCard → "img/cardsDark/buildChart/punch-card.svg"
     in HH.img [ HP.src src ]
   Download →
     HH.img [ HP.src "img/cardsDark/showDownload.svg" ]
@@ -226,6 +227,7 @@ lightCardGlyph = case _ of
         Boxplot → "img/cardsLight/buildChart/boxplot.svg"
         Metric → "img/cardsLight/buildChart/metric.svg"
         PivotTable → "img/cardsLight/buildChart/pivot-table.svg"
+        PunchCard → "img/cardsLight/buildChart/punch-card.svg"
     in HH.img [ HP.src src ]
   Download →
     HH.img [ HP.src "img/cardsLight/showDownload.svg" ]

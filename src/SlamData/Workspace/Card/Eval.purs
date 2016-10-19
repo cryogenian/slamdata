@@ -61,6 +61,7 @@ import SlamData.Workspace.Card.BuildChart.Funnel.Eval as BuildFunnel
 import SlamData.Workspace.Card.BuildChart.Heatmap.Eval as BuildHeatmap
 import SlamData.Workspace.Card.BuildChart.Boxplot.Eval as BuildBoxplot
 import SlamData.Workspace.Card.BuildChart.PivotTable.Eval as BuildPivotTable
+import SlamData.Workspace.Card.BuildChart.PunchCard.Eval as BuildPunchCard
 
 import Text.SlamSearch as SS
 import Text.Markdown.SlamDown as SD
@@ -92,6 +93,7 @@ data Eval
   | BuildHeatmap BuildHeatmap.Model
   | BuildBoxplot BuildBoxplot.Model
   | BuildPivotTable BuildPivotTable.Model
+  | BuildPunchCard BuildPunchCard.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -120,6 +122,7 @@ tagEval = case _ of
   BuildHeatmap _ → "BuildHeatmap"
   BuildBoxplot _ → "BuildBoxplot"
   BuildPivotTable _ → "BuildPivotTable"
+  BuildPunchCard _ → "BuildPunchCard"
 
 evalCard
   ∷ ∀ m
@@ -187,6 +190,8 @@ evalCard input =
       BuildBoxplot.eval model resource
     BuildPivotTable model, Just (Port.TaggedResource tr) →
       BuildPivotTable.eval model tr
+    BuildPunchCard model, Just (Port.TaggedResource {resource, axes}) →
+      BuildPunchCard.eval model resource axes
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 

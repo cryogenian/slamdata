@@ -29,7 +29,7 @@
     "purescript-generics": "^1.0.1",
     "purescript-halogen-bootstrap": "^3.0.0",
     "purescript-halogen-css": "^3.0.0",
-    "purescript-halogen-echarts": "d734bb269ab1bc38ff337dd5e54f34af2b315282",
+    "purescript-halogen-echarts": "f8ff8a4f1b24882bf1b4fb8eb4afcff8c89e3bdb",
     "purescript-halogen-menu": "^2.0.0",
     "purescript-halogen": "^0.11.0",
     "purescript-js-timers": "^1.0.0",

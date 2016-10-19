@@ -16,17 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.CardType.ChartType
   ( ChartType(..)
-  , isPie
-  , isLine
-  , isBar
-  , isArea
-  , isScatter
-  , isRadar
-  , isFunnel
-  , isGraph
-  , isHeatmap
-  , isSankey
-  , isBoxplot
   , parseChartType
   , printChartType
   , chartName
@@ -58,6 +47,7 @@ data ChartType
   | Boxplot
   | Metric
   | PivotTable
+  | PunchCard
 
 allChartTypes ∷ Array ChartType
 allChartTypes =
@@ -74,64 +64,9 @@ allChartTypes =
   , Sankey
   , Gauge
   , Boxplot
+  , PunchCard
   , Metric
   ]
-
-isPie ∷ ChartType → Boolean
-isPie Pie = true
-isPie _ = false
-
-isLine ∷ ChartType → Boolean
-isLine Line = true
-isLine _ = false
-
-isBar ∷ ChartType → Boolean
-isBar Bar = true
-isBar _ = false
-
-isArea ∷ ChartType → Boolean
-isArea Area = true
-isArea _ = false
-
-isScatter ∷ ChartType → Boolean
-isScatter Scatter = true
-isScatter _ = false
-
-isRadar ∷ ChartType → Boolean
-isRadar Radar = true
-isRadar _ = false
-
-isFunnel ∷ ChartType → Boolean
-isFunnel Funnel = true
-isFunnel _ = false
-
-isGraph ∷ ChartType → Boolean
-isGraph Graph = true
-isGraph _ = false
-
-isHeatmap ∷ ChartType → Boolean
-isHeatmap Heatmap = true
-isHeatmap _ = false
-
-isSankey ∷ ChartType → Boolean
-isSankey Sankey = true
-isSankey _ = false
-
-isGauge ∷ ChartType → Boolean
-isGauge Gauge = true
-isGauge _ = false
-
-isBoxplot ∷ ChartType → Boolean
-isBoxplot Boxplot = true
-isBoxplot _ = false
-
-isMetric ∷ ChartType → Boolean
-isMetric Metric = true
-isMetric _ = false
-
-isPivotTable ∷ ChartType → Boolean
-isPivotTable PivotTable = true
-isPivotTable _ = false
 
 parseChartType ∷ String → String ⊹ ChartType
 parseChartType = case _ of
@@ -149,6 +84,7 @@ parseChartType = case _ of
   "boxplot" → pure Boxplot
   "metric" → pure Metric
   "pivot" → pure PivotTable
+  "punch-card" → pure PunchCard
   _ → Left "incorrect chartType"
 
 printChartType ∷ ChartType → String
@@ -167,6 +103,7 @@ printChartType = case _ of
   Boxplot → "boxplot"
   Metric → "metric"
   PivotTable → "pivot"
+  PunchCard → "punch-card"
 
 chartName ∷ ChartType → String
 chartName = case _ of
@@ -184,6 +121,7 @@ chartName = case _ of
   Boxplot → "Boxplot"
   Metric → "Metric"
   PivotTable → "Pivot Table"
+  PunchCard → "Punch Card"
 
 derive instance genericChartType ∷ Generic ChartType
 derive instance eqChartType ∷ Eq ChartType
@@ -215,6 +153,7 @@ chartLightIconSrc = case _ of
   Boxplot → "img/boxplot.svg"
   Metric → "img/metric.svg"
   PivotTable → "img/cardsLight/table.svg"
+  PunchCard → "img/punch-card.svg"
 
 chartDarkIconSrc ∷ ChartType → String
 chartDarkIconSrc = case _ of
@@ -232,3 +171,4 @@ chartDarkIconSrc = case _ of
   Boxplot → "img/boxplot-black.svg"
   Metric → "img/metric-black.svg"
   PivotTable → "img/cardsDark/table.svg"
+  PunchCard → "img/punch-card-black.svg"

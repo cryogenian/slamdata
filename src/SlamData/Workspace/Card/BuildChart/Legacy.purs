@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.BuildChart.Legacy where
 
 import SlamData.Prelude
 
-import Data.Argonaut ((:=), (~>), (.?))
+import Data.Argonaut ((.?))
 import Data.Argonaut as J
 import Data.Array as A
 import Data.Lens (view)

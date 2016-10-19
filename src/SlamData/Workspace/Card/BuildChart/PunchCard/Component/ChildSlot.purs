@@ -14,25 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.MillerColumns.Component.State where
+module SlamData.Workspace.Card.BuildChart.PunchCard.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Data.List (List(..))
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DP
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (JCursorNode)
 
-import DOM.HTML.Types (HTMLElement)
+type ChildSlot = Unit
 
-type State a i =
-  { element ∷ Maybe HTMLElement
-  , columns ∷ Array (Tuple i (List a))
-  , selected ∷ List i
-  , cycle ∷ Int
-  }
+type ChildState = DP.StateP JCursorNode
 
-initialState ∷ ∀ a i. State a i
-initialState =
-  { element: Nothing
-  , columns: []
-  , selected: Nil
-  , cycle: 0
-  }
+type ChildQuery = DP.QueryP JCursorNode

@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Color (Color, fromHexString, toHSLA, hsla)
 
-import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson, (~>), (:=), (.?))
+import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson)
 import Data.Array as A
 
 import SlamData.Form.Select (class OptionVal, Select(..))
