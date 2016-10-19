@@ -190,8 +190,8 @@ evalCard input =
       BuildBoxplot.eval model resource
     BuildPivotTable model, Just (Port.TaggedResource tr) →
       BuildPivotTable.eval model tr
-    BuildPunchCard model, Just (Port.TaggedResource {resource}) →
-      BuildPunchCard.eval model resource
+    BuildPunchCard model, Just (Port.TaggedResource {resource, axes}) →
+      BuildPunchCard.eval model resource axes
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 

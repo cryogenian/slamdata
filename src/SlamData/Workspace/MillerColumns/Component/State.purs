@@ -18,7 +18,7 @@ module SlamData.Workspace.MillerColumns.Component.State where
 
 import SlamData.Prelude
 
-import Data.List (List(..), (:))
+import Data.List (List(..))
 
 import DOM.HTML.Types (HTMLElement)
 

@@ -50,6 +50,7 @@ module SlamData.Workspace.Card.Component.Query
   , _BuildFunnelQuery
   , _BuildBoxplotQuery
   , _BuildHeatmapQuery
+  , _BuildPunchCardQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -96,6 +97,7 @@ import SlamData.Workspace.Card.BuildChart.PivotTable.Component.Query as BuildPiv
 import SlamData.Workspace.Card.BuildChart.Funnel.Component.Query as BuildFunnel
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component.Query as BuildBoxplot
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.Query as BuildHeatmap
+import SlamData.Workspace.Card.BuildChart.PunchCard.Component.Query as BuildPunchCard
 
 -- | The common query algebra for a card.
 -- |
@@ -153,6 +155,7 @@ data AnyCardQuery a
   | BuildFunnelQuery (BuildFunnel.QueryP a)
   | BuildBoxplotQuery (BuildBoxplot.QueryP a)
   | BuildHeatmapQuery (BuildHeatmap.QueryP a)
+  | BuildPunchCardQuery (BuildPunchCard.QueryP a)
 
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
@@ -298,4 +301,9 @@ _BuildBoxplotQuery = prism' BuildBoxplotQuery case _ of
 _BuildHeatmapQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildHeatmap.QueryP a)
 _BuildHeatmapQuery = prism' BuildHeatmapQuery case _ of
   BuildHeatmapQuery q → Just q
+  _ → Nothing
+
+_BuildPunchCardQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildPunchCard.QueryP a)
+_BuildPunchCardQuery = prism' BuildPunchCardQuery case _ of
+  BuildPunchCardQuery q → Just q
   _ → Nothing

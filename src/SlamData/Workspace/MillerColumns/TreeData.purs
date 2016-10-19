@@ -19,7 +19,6 @@ module SlamData.Workspace.MillerColumns.TreeData where
 import SlamData.Prelude
 
 import Control.Comonad (extract)
-import Control.Comonad.Cofree ((:<))
 import Control.Comonad.Cofree as CF
 
 import Data.Foldable (find)

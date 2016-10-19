@@ -17,6 +17,8 @@ type PunchCardR =
   , value ∷ JCursor
   , valueAggregation ∷ Ag.Aggregation
   , circular ∷ Boolean
+  , minSize ∷ Number
+  , maxSize ∷ Number
   }
 
 type Model = Maybe PunchCardR
@@ -32,6 +34,8 @@ eqPunchCardR r1 r2 =
     , r1.valueAggregation ≡ r2.valueAggregation
     , r1.value ≡ r2.value
     , r1.circular ≡ r2.circular
+    , r1.minSize ≡ r2.minSize
+    , r1.maxSize ≡ r2.maxSize
     ]
 
 eqModel ∷ Model → Model → Boolean
@@ -50,11 +54,15 @@ genModel = do
     value ← map runArbJCursor arbitrary
     valueAggregation ← arbitrary
     circular ← arbitrary
+    minSize ← arbitrary
+    maxSize ← arbitrary
     pure { abscissa
          , ordinate
          , value
          , valueAggregation
          , circular
+         , minSize
+         , maxSize
          }
 
 encode ∷ Model → Json
@@ -66,6 +74,8 @@ encode (Just r) =
   ~> "value" := r.value
   ~> "valueAggregation" := r.valueAggregation
   ~> "circular" := r.circular
+  ~> "minSize" := r.minSize
+  ~> "maxSize" := r.maxSize
   ~> jsonEmptyObject
 
 decode ∷ Json → String ⊹ Model
@@ -81,4 +91,6 @@ decode js
     value ← obj .? "value"
     valueAggregation ← obj .? "valueAggregation"
     circular ← obj .? "circular"
-    pure { abscissa, ordinate, value, valueAggregation, circular }
+    minSize ← obj .? "minSize"
+    maxSize ← obj .? "maxSize"
+    pure { abscissa, ordinate, value, valueAggregation, circular, minSize, maxSize }

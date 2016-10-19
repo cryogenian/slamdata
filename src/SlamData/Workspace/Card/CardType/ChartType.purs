@@ -64,8 +64,8 @@ allChartTypes =
   , Sankey
   , Gauge
   , Boxplot
-  , Metric
   , PunchCard
+  , Metric
   ]
 
 parseChartType ∷ String → String ⊹ ChartType
@@ -153,7 +153,7 @@ chartLightIconSrc = case _ of
   Boxplot → "img/boxplot.svg"
   Metric → "img/metric.svg"
   PivotTable → "img/cardsLight/table.svg"
-  PunchCard → "img/metric.svg"
+  PunchCard → "img/punch-card.svg"
 
 chartDarkIconSrc ∷ ChartType → String
 chartDarkIconSrc = case _ of
@@ -171,4 +171,4 @@ chartDarkIconSrc = case _ of
   Boxplot → "img/boxplot-black.svg"
   Metric → "img/metric-black.svg"
   PivotTable → "img/cardsDark/table.svg"
-  PunchCard → "img/metric-black.svg"
+  PunchCard → "img/punch-card-black.svg"

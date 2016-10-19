@@ -57,6 +57,7 @@ import SlamData.Workspace.Card.BuildChart.PivotTable.Component (pivotTableBuilde
 import SlamData.Workspace.Card.BuildChart.Funnel.Component (funnelBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component (boxplotBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component (heatmapBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.PunchCard.Component (punchCardBuilderComponent)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
 cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
@@ -91,6 +92,7 @@ cardComponent deckId card opts =
     Card.BuildFunnel _ → funnelBuilderComponent
     Card.BuildBoxplot _ → boxplotBuilderComponent
     Card.BuildHeatmap _ → heatmapBuilderComponent
+    Card.BuildPunchCard _ → punchCardBuilderComponent
 
 aceEval ∷ CT.AceMode → AceEval
 aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}
