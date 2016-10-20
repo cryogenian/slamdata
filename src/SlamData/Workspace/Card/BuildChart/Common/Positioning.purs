@@ -156,8 +156,9 @@ adjustDonutRadiuses arr =
     adjustRadius [] zero arr
 
 radialTitles
-  ∷ ∀ r i
-  . Array (RadialPosition (name ∷ Maybe String |r))
+  ∷ ∀ r i f
+  . Foldable f
+  ⇒ f (RadialPosition (name ∷ Maybe String |r))
   → DSL (title ∷ ETP.I|i)
 radialTitles rposs = E.titles $ for_ rposs \{name, x, y} → E.title do
   traverse_ E.text name
@@ -188,11 +189,15 @@ type RectangularPosition r =
   }
 
 adjustRectangularPositions
-  ∷ ∀ r
-  . Array (RectangularPosition r)
-  → Array (RectangularPosition r)
-adjustRectangularPositions arr =
+  ∷ ∀ r f
+  . Foldable f
+  ⇒ f (RectangularPosition r)
+  → f (RectangularPosition r)
+adjustRectangularPositions fl =
   let
+    arr ∷ Array (RectangularPosition r)
+    arr = foldMap A.singleton fl
+
     len ∷ Int
     len = A.length arr
 
@@ -296,14 +301,16 @@ rectangularTitles poss = E.titles $ for_ poss \{name, x, y, h, fontSize} → E.t
   E.textCenter
   E.textMiddle
   where
+  arr = foldMap (A.singleton) poss
+
   numRows ∷ Int
-  numRows = rowCount poss
+  numRows = rowCount arr
 
   rowHeight ∷ Number
   rowHeight = 100.0 / Int.toNumber numRows
 
   inRow ∷ Int
-  inRow = itemsInRow poss
+  inRow = itemsInRow arr
 
   colWidth ∷ Number
   colWidth =
