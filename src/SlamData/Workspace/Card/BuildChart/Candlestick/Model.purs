@@ -25,6 +25,8 @@ type CandlestickR =
   , parallel ∷ Maybe JCursor
   }
 
+type Model = Maybe CandlestickR
+
 initialModel ∷ Maybe CandlestickR
 initialModel = Nothing
 
@@ -34,7 +36,7 @@ eqCandleStickR r1 r2 =
     [ r1.dimension ≡ r2.dimension
     , r1.high ≡ r2.high
     , r1.highAggregation ≡ r2.highAggregation
-    , r1.low ≡ r2.aggregation
+    , r1.low ≡ r2.low
     , r1.lowAggregation ≡ r2.lowAggregation
     , r1.open ≡ r2.open
     , r1.openAggregation ≡ r2.openAggregation
@@ -83,7 +85,7 @@ genModel = do
 encode ∷ Model → Json
 encode Nothing = jsonNull
 encode (Just r) =
-  "configType" := "candlestick"'
+  "configType" := "candlestick"
   ~> "dimension" := r.dimension
   ~> "high" := r.high
   ~> "highAggregation" := r.highAggregation

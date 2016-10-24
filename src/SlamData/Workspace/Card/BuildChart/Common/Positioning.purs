@@ -156,9 +156,8 @@ adjustDonutRadiuses arr =
     adjustRadius [] zero arr
 
 radialTitles
-  ∷ ∀ r i f
-  . Foldable f
-  ⇒ f (RadialPosition (name ∷ Maybe String |r))
+  ∷ ∀ r i
+  . Array (RadialPosition (name ∷ Maybe String |r))
   → DSL (title ∷ ETP.I|i)
 radialTitles rposs = E.titles $ for_ rposs \{name, x, y} → E.title do
   traverse_ E.text name
@@ -190,7 +189,7 @@ type RectangularPosition r =
 
 adjustRectangularPositions
   ∷ ∀ r f
-  . Foldable f
+  . (Foldable f, Monoid (f (RectangularPosition r)), Plus f)
   ⇒ f (RectangularPosition r)
   → f (RectangularPosition r)
 adjustRectangularPositions fl =
@@ -222,13 +221,13 @@ adjustRectangularPositions fl =
     titleHeight = 3.0
 
     setPositions
-      ∷ Array (RectangularPosition r)
+      ∷ f (RectangularPosition r)
       → Int
       → Int
       → Int
       → Array (RectangularPosition r)
-      → Array (RectangularPosition r)
-    setPositions acc colIx rowIx inThisRow arr = case A.uncons arr of
+      → f (RectangularPosition r)
+    setPositions acc colIx rowIx inThisRow = A.uncons ⋙ case _ of
       Nothing → acc
       Just {head, tail} →
         let
@@ -252,8 +251,8 @@ adjustRectangularPositions fl =
             | numRows < 6 = 11
             | otherwise = 10
 
-          toPush ∷ RectangularPosition r
-          toPush =
+          toPush ∷ f (RectangularPosition r)
+          toPush = fl $>
             head { x = left
                  , y = top
                  , w = Just $ colWidth * rectangularSpaceCoeff
@@ -261,8 +260,8 @@ adjustRectangularPositions fl =
                  , fontSize = Just fontSize
                  }
 
-          newAcc ∷ Array (RectangularPosition r)
-          newAcc = A.snoc acc toPush
+          newAcc ∷ f (RectangularPosition r)
+          newAcc = acc ⊕ toPush
 
           newColIx ∷ Int
           newColIx
@@ -282,12 +281,13 @@ adjustRectangularPositions fl =
         in
           setPositions newAcc newColIx newRowIx inNewRow tail
   in
-    setPositions [] 0 0 inRow arr
+    setPositions mempty 0 0 inRow arr
 
 
 rectangularTitles
-  ∷ ∀ r i
-  . Array (RectangularPosition (name ∷ Maybe String |r))
+  ∷ ∀ r i f
+  . Foldable f
+  ⇒ f (RectangularPosition (name ∷ Maybe String |r))
   → DSL (title ∷ ETP.I|i)
 rectangularTitles poss = E.titles $ for_ poss \{name, x, y, h, fontSize} → E.title do
   traverse_ E.text name

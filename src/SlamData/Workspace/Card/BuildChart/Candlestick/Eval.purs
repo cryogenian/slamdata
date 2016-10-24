@@ -27,7 +27,7 @@ import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Candlestick))
 import SlamData.Workspace.Card.BuildChart.Semantics as Sem
-import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP (rectangularGrids, rectangularTitles, adjustRectangularPositions)
+import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.BuildChart.Axis as Ax
@@ -199,7 +199,7 @@ buildCandlestick r records axes = do
     $ foldMap (M.values ⋙ foldMap (_.series ⋙ M.keys ⋙ Set.fromFoldable))
     $ candlestickData
 
-  xValues ∷ ∀ a. OnOneGrid → String
+  xValues ∷ OnOneGrid → String
   xValues onOneGrid =
     sortX
     $ foldMap A.singleton
@@ -226,4 +226,8 @@ buildCandlestick r records axes = do
       E.yAxisIndex ix
 
       E.buildItems $ for_ (xValues onOneGrid) \(xIx × dim) →
-        for_ (M.lookup dim serie) $ E.additem ∘ E.buildValues ∘ E.addValue
+        for_ (M.lookup dim serie) \{high, low, open, close} → E.additem $ E.buildValues do
+          E.addValue open
+          E.addValue close
+          E.addValue low
+          E.addValue high
