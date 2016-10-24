@@ -18,27 +18,37 @@ module SlamData.FileSystem.Dialog.Mount.Scheme where
 
 import SlamData.Prelude
 
-data Scheme = MongoDB | SQL2
+data Scheme
+  = MongoDB
+  | SQL2
+  | Couchbase
+  | MarkLogic
+  | Spark
 
-instance eqScheme :: Eq Scheme where
-  eq MongoDB MongoDB = true
-  eq SQL2 SQL2 = true
-  eq _ _ = false
+derive instance eqScheme ∷ Eq Scheme
 
-instance ordScheme :: Ord Scheme where
-  compare MongoDB MongoDB = EQ
-  compare MongoDB SQL2 = LT
-  compare SQL2 SQL2 = EQ
-  compare SQL2 MongoDB = GT
+derive instance ordScheme ∷ Ord Scheme
 
 schemeToString :: Scheme -> String
 schemeToString MongoDB = "MongoDB"
 schemeToString SQL2 = "SQL²"
+schemeToString Couchbase = "Couchbase"
+schemeToString MarkLogic = "MarkLogic"
+schemeToString Spark = "Spark"
 
 schemeFromString :: String -> Maybe Scheme
 schemeFromString "MongoDB" = Just MongoDB
 schemeFromString "SQL²" = Just SQL2
+schemeFromString "Couchbase" = Just Couchbase
+schemeFromString "MarkLogic" = Just MarkLogic
+schemeFromString "Spark" = Just Spark
 schemeFromString _ = Nothing
 
 schemes :: Array Scheme
-schemes = [MongoDB, SQL2]
+schemes =
+  [ MongoDB
+  , SQL2
+  , Couchbase
+  , MarkLogic
+  , Spark
+  ]

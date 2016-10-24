@@ -18,11 +18,9 @@ module SlamData.FileSystem.Dialog.Mount.Component
   ( comp
   , QueryP
   , StateP
-  , ChildState
-  , ChildQuery
-  , ChildSlot
+  , module SlamData.FileSystem.Dialog.Mount.Component.ChildSlot
   , module SlamData.FileSystem.Dialog.Mount.Component.Query
-  , module SlamData.FileSystem.Dialog.Mount.Component.State
+  , module MCS
   ) where
 
 import SlamData.Prelude
@@ -33,7 +31,6 @@ import Data.Lens (set, (.~), (?~))
 import Ace.Halogen.Component (AceQuery(..))
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
 import Halogen.CustomProps as CP
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
@@ -44,39 +41,33 @@ import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Monad (Slam)
 import SlamData.GlobalError as GE
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as SQ
+import SlamData.FileSystem.Dialog.Mount.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpSQL, cpMongoDB, cpCouchbase, cpMarkLogic, cpSpark)
 import SlamData.FileSystem.Dialog.Mount.Component.Query (Query(..))
-import SlamData.FileSystem.Dialog.Mount.Component.State (MountSettings, State, _message, _name, _new, _parent, _saving, _settings, canSave, initialSettings, initialState, scheme, validate)
+import SlamData.FileSystem.Dialog.Mount.Component.State as MCS
+import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
+import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
+import SlamData.FileSystem.Dialog.Mount.Spark.Component as Spark
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
-import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme(..), schemes, schemeToString, schemeFromString)
+import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.Quasar.FS as Api
 import SlamData.Render.CSS as Rc
 
-type ChildState = Either SQL2.StateP MongoDB.State
-type ChildQuery = Coproduct SQL2.QueryP MongoDB.Query
-type ChildSlot = Either Unit Unit
-
-cpSQL :: ChildPath SQL2.StateP ChildState SQL2.QueryP ChildQuery Unit ChildSlot
-cpSQL = cpL
-
-cpMongoDB :: ChildPath MongoDB.State ChildState MongoDB.Query ChildQuery Unit ChildSlot
-cpMongoDB = cpR
-
-type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type DSL = H.ParentDSL MCS.State ChildState Query ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 
-type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
+type StateP = H.ParentState MCS.State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 
-comp :: H.Component StateP QueryP Slam
+comp ∷ H.Component StateP QueryP Slam
 comp =
   H.parentComponent
     { render
     , eval
-    , peek: Just (peek <<< H.runChildF)
+    , peek: Just (peek ∘ H.runChildF)
     }
 
-render :: State → HTML
+render ∷ MCS.State → HTML
 render state@{ new } =
   modalDialog
     [ modalHeader "Mount"
@@ -85,8 +76,8 @@ render state@{ new } =
           [ CP.nonSubmit, HP.class_ Rc.dialogMount ]
           $ (guard new $> fldName state)
           <> (guard new $> selScheme state)
-          <> maybe [] (pure <<< settings) state.settings
-          <> maybe [] (pure <<< errorMessage) state.message
+          <> maybe [] (pure ∘ settings) state.settings
+          <> maybe [] (pure ∘ errorMessage) state.message
     , modalFooter
         [ progressSpinner state
         , btnCancel
@@ -94,16 +85,25 @@ render state@{ new } =
         ]
     ]
   where
-  settings :: MountSettings -> HTML
+  settings ∷ MCS.MountSettings → HTML
   settings ss = case ss of
-    Left initialState ->
-      HH.slot' cpMongoDB unit \_ ->
+    MCS.MongoDB initialState →
+      HH.slot' cpMongoDB unit \_ →
         { component: MongoDB.comp, initialState }
-    Right initialState ->
-      HH.slot' cpSQL unit \_ ->
+    MCS.SQL2 initialState →
+      HH.slot' cpSQL unit \_ →
         { component: SQL2.comp, initialState: H.parentState initialState }
+    MCS.Couchbase initialState →
+      HH.slot' cpCouchbase unit \_ →
+        { component: Couchbase.comp, initialState }
+    MCS.MarkLogic initialState →
+      HH.slot' cpMarkLogic unit \_ →
+        { component: MarkLogic.comp, initialState }
+    MCS.Spark initialState →
+      HH.slot' cpSpark unit \_ →
+        { component: Spark.comp, initialState }
 
-fldName :: State -> HTML
+fldName ∷ MCS.State → HTML
 fldName state =
   HH.div
     [ HP.classes [B.formGroup, Rc.mountName] ]
@@ -111,13 +111,13 @@ fldName state =
         [ HH.span_ [ HH.text "Name" ]
         , HH.input
             [ HP.class_ B.formControl
-            , HE.onValueInput $ HE.input (ModifyState <<< set _name)
+            , HE.onValueInput $ HE.input (ModifyState ∘ set MCS._name)
             , HP.value (state.name)
             ]
         ]
     ]
 
-selScheme :: State -> HTML
+selScheme ∷ MCS.State → HTML
 selScheme state =
   HH.div
     [ HP.class_ B.formGroup ]
@@ -125,21 +125,21 @@ selScheme state =
         [ HH.span_ [ HH.text "Mount type" ]
         , HH.select
             [ HP.class_ B.formControl
-            , HE.onValueChange (HE.input SelectScheme <<< schemeFromString)
+            , HE.onValueChange (HE.input SelectScheme ∘ MS.schemeFromString)
             ]
             $ [ HH.option_ [] ] <> schemeOptions
         ]
     ]
   where
-  schemeOptions = map (\s -> HH.option_ [ HH.text (schemeToString s) ]) schemes
+  schemeOptions = map (\s → HH.option_ [ HH.text (MS.schemeToString s) ]) MS.schemes
 
-errorMessage :: String -> HTML
+errorMessage ∷ String → HTML
 errorMessage msg =
   HH.div
     [ HP.classes [ B.alert, B.alertDanger ] ]
     [ HH.text msg ]
 
-btnCancel :: HTML
+btnCancel ∷ HTML
 btnCancel =
   HH.button
     [ HP.classes [B.btn]
@@ -147,88 +147,97 @@ btnCancel =
     ]
     [ HH.text "Cancel" ]
 
-btnMount :: State -> HTML
+btnMount ∷ MCS.State → HTML
 btnMount state@{ new, saving } =
   HH.button
     [ HP.classes [B.btn, B.btnPrimary]
-    , HP.enabled (not saving && canSave state)
+    , HP.enabled (not saving && MCS.canSave state)
     , HE.onClick (HE.input_ NotifySave)
     ]
     [ HH.text text ]
   where
   text = if new then "Mount" else "Save changes"
 
-progressSpinner :: State -> HTML
+progressSpinner ∷ MCS.State → HTML
 progressSpinner { saving } =
   HH.img [ HP.src "img/spin.gif", HP.class_ (Rc.mountProgressSpinner saving) ]
 
-eval :: Query ~> DSL
+eval ∷ Query ~> DSL
 eval (ModifyState f next) = H.modify f *> validateInput $> next
 eval (SelectScheme newScheme next) = do
-  currentScheme <- map scheme <$> H.gets _.settings
+  currentScheme ← map MCS.scheme <$> H.gets _.settings
   when (currentScheme /= newScheme) do
-    H.modify (_settings .~ map initialSettings newScheme)
+    H.modify (MCS._settings .~ map MCS.initialSettings newScheme)
     validateInput
   pure next
 eval (Dismiss next) = pure next
 eval (NotifySave next) = pure next
 eval (Save k) = do
-  { parent, name, new } <- H.get
-  H.modify (_saving .~ true)
-  newName <-
+  { parent, name, new } ← H.get
+  H.modify (MCS._saving .~ true)
+  newName ←
     if new then Api.getNewName parent name else pure (pure name)
   case newName of
     Left err → do
       handleQError err
       pure $ k Nothing
-    Right newName' -> do
-      result <- querySettings (H.request (SQ.Submit parent newName'))
-      mount <- case result of
-        Just (Right m) -> pure (Just m)
-        Just (Left err) -> do
+    Right newName' → do
+      result ← querySettings (H.request (SQ.Submit parent newName'))
+      mount ← case result of
+        Just (Right m) → pure (Just m)
+        Just (Left err) → do
           handleQError err
           pure Nothing
-        Nothing -> pure Nothing
-      H.modify (_saving .~ false)
+        Nothing → pure Nothing
+      H.modify (MCS._saving .~ false)
       pure $ k mount
 
-handleQError :: Api.QError -> DSL Unit
+handleQError ∷ Api.QError → DSL Unit
 handleQError err =
   case GE.fromQError err of
-    Left msg -> H.modify (_message ?~ formatError msg)
-    Right ge -> GE.raiseGlobalError ge
+    Left msg → H.modify (MCS._message ?~ formatError msg)
+    Right ge → GE.raiseGlobalError ge
 
-peek :: forall x. ChildQuery x -> DSL Unit
-peek = coproduct (coproduct peekSQ (peekAce <<< H.runChildF)) peekSQ
+peek ∷ forall x. ChildQuery x → DSL Unit
+peek =
+  peekSQ
+  ⨁  (peekSQ ⨁ peekAce ∘ H.runChildF)
+  ⨁  peekSQ
+  ⨁  peekSQ
+  ⨁  peekSQ
   where
-  peekSQ :: forall s. SQ.SettingsQuery s x -> DSL Unit
+  peekSQ ∷ forall s. SQ.SettingsQuery s x → DSL Unit
   peekSQ (SQ.ModifyState _ _ ) = validateInput
   peekSQ _ = pure unit
-  peekAce :: AceQuery x -> DSL Unit
+
+  peekAce ∷ AceQuery x → DSL Unit
   peekAce (TextChanged _) = validateInput
   peekAce _ = pure unit
 
-validateInput :: DSL Unit
+validateInput ∷ DSL Unit
 validateInput = do
-  state <- H.get
-  message <- runExceptT do
-    liftMaybe (validate state)
-    liftMaybe <<< join =<< lift (querySettings (H.request SQ.Validate))
-  H.modify (_message .~ either Just (const Nothing) message)
+  state ← H.get
+  message ← runExceptT do
+    liftMaybe (MCS.validate state)
+    liftMaybe ∘ join =<< lift (querySettings (H.request SQ.Validate))
+  H.modify (MCS._message .~ either Just (const Nothing) message)
   where
-  liftMaybe :: Maybe String -> ExceptT String DSL Unit
+  liftMaybe ∷ Maybe String → ExceptT String DSL Unit
   liftMaybe = maybe (pure unit) throwError
 
-formatError :: String -> String
+formatError ∷ String → String
 formatError err =
   "There was a problem saving the mount: " <> extract err
   where
   extract msg =
     either (const msg) id (jsonParser msg >>= decodeJson >>= (_ .? "error"))
 
-querySettings :: forall a. (forall s. SQ.SettingsQuery s a) -> DSL (Maybe a)
-querySettings q = (map scheme <$> H.gets _.settings) >>= \s ->
+querySettings ∷ forall a. (forall s. SQ.SettingsQuery s a) → DSL (Maybe a)
+querySettings q = (map MCS.scheme <$> H.gets _.settings) >>= \s →
   case s of
-    Just MongoDB -> H.query' cpMongoDB unit q
-    Just SQL2 -> H.query' cpSQL unit (left q)
-    _ -> pure Nothing
+    Just MS.MongoDB → H.query' cpMongoDB unit q
+    Just MS.SQL2 → H.query' cpSQL unit (left q)
+    Just MS.Couchbase → H.query' cpCouchbase unit q
+    Just MS.MarkLogic → H.query' cpMarkLogic unit q
+    Just MS.Spark → H.query' cpSpark unit q
+    _ → pure Nothing

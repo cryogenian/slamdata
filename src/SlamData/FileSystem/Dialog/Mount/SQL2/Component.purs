@@ -70,15 +70,15 @@ render state@{ initialQuery } =
 eval ∷ Query ~> SQLMountDSL
 eval (ModifyState f next) = H.modify (processState <<< f) $> next
 eval (Validate k) = do
-  sql <- fromMaybe "" <$> H.query unit (H.request GetText)
+  sql ← fromMaybe "" <$> H.query unit (H.request GetText)
   pure $ k if sql == "" then Just "Please enter a query" else Nothing
 eval (Submit parent name k) = do
-  sql <- fromMaybe "" <$> H.query unit (H.request GetText)
-  vars <- Sm.fromFoldable <<< filter (not isEmptyVar) <$> H.gets _.vars
+  sql ← fromMaybe "" <$> H.query unit (H.request GetText)
+  vars ← Sm.fromFoldable <<< filter (not isEmptyVar) <$> H.gets _.vars
   let destPath = parent Pt.</> Pt.file name
       view = R.View $ destPath
       dest = R.Mount view
-  result <- API.viewQuery (Left parent) destPath sql vars
+  result ← API.viewQuery (Left parent) destPath sql vars
   pure $ k $ map (const view) result
 
 aceSetup ∷ Maybe String → Editor → Slam Unit
@@ -89,7 +89,7 @@ aceSetup initialQuery editor = H.fromEff do
   Editor.setTheme "ace/theme/chrome" editor
   Editor.setEnableLiveAutocompletion true editor
   Editor.setEnableBasicAutocompletion true editor
-  session <- Editor.getSession editor
+  session ← Editor.getSession editor
   Session.setMode "ace/mode/sql" session
   case initialQuery of
     Just q → void $ Editor.setValue q Nothing editor

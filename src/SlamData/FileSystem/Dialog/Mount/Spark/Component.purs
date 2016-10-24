@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Mount.MongoDB.Component
+module SlamData.FileSystem.Dialog.Mount.Spark.Component
   ( comp
   , Query
   , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
@@ -28,14 +28,13 @@ import Data.Path.Pathy (dir, (</>))
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Mount as QM
 
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
-import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MCS
+import SlamData.FileSystem.Dialog.Mount.Spark.Component.State as MCS
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Quasar.Mount as API
 import SlamData.Quasar.Error as QE
@@ -51,34 +50,28 @@ comp = H.component { render, eval }
 render ∷ MCS.State → HTML
 render state =
   HH.div
-    [ HP.key "mount-mongodb"
-    , HP.class_ Rc.mountMongoDB
+    [ HP.key "mount-spark"
+    , HP.class_ Rc.mountSpark
     ]
-    [ MCR.section "Server(s)" [ MCR.hosts state MCS._hosts ]
-    , MCR.section "Authentication"
+    [ MCR.section "Spark Server" [ MCR.host state MCS._sparkHost ]
+    , MCR.section "HDFS Server" [ MCR.host state MCS._hdfsHost ]
+    , MCR.section "Root"
         [ HH.div
-            [ HP.classes [B.formGroup, Rc.mountUserInfo] ]
-            [ MCR.label "Username" [ MCR.input state MCS._user [] ]
-            , MCR.label "Password" [ MCR.input state MCS._password [ HP.inputType HP.InputPassword ] ]
-            ]
-        , HH.div
             [ HP.class_ Rc.mountPath ]
-            [ MCR.label "Database" [ MCR.input state MCS._path [] ] ]
+            [ MCR.label "Path" [ MCR.input state MCS._path [] ] ]
         ]
-    , MCR.section "Settings" [ MCR.propList MCS._props state ]
     ]
 
 eval ∷ Query ~> H.ComponentDSL MCS.State Query Slam
 eval = case _ of
   ModifyState f next →
-    H.modify (MCS.processState <<< f) $> next
+    H.modify f $> next
   Validate k →
-    k ∘ either Just (const Nothing) ∘ MCS.toConfig <$> H.get
+    k <<< either Just (const Nothing) <<< MCS.toConfig <$> H.get
   Submit parent name k →
     k <$> runExceptT do
-      let
-        path = parent </> dir name
       st ← lift H.get
       config ← except $ lmap QE.msgToQError $ MCS.toConfig st
-      ExceptT $ API.saveMount (Left path) (QM.MongoDBConfig config)
+      let path = parent </> dir name
+      ExceptT $ API.saveMount (Left path) (QM.SparkConfig config)
       pure $ Database path

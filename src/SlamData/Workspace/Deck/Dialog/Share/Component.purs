@@ -389,7 +389,7 @@ eval (Share next) = next <$ do
                   then [ QT.UserId state.email ]
                   else [ ])
         , groups: (if state.subjectType ≡ Group
-                   then foldMap pure state.groupSelected
+                   then foldMap (pure ∘ Right) state.groupSelected
                    else [ ])
         , actions
         }

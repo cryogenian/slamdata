@@ -60,6 +60,15 @@ renameDialogForm = className "rename-dialog-form"
 mountMongoDB ∷ ClassName
 mountMongoDB = className "mount-mongodb"
 
+mountCouchbase ∷ ClassName
+mountCouchbase = className "mount-couchbase"
+
+mountMarkLogic ∷ ClassName
+mountMarkLogic = className "mount-marklogic"
+
+mountSpark ∷ ClassName
+mountSpark = className "mount-spark"
+
 mountName ∷ ClassName
 mountName = className "mount-name"
 

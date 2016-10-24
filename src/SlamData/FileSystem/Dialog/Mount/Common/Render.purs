@@ -18,31 +18,33 @@ module SlamData.FileSystem.Dialog.Mount.Common.Render where
 
 import SlamData.Prelude
 
-import Data.Array ((..))
+import Data.Array ((..), length)
 import Data.Array as Arr
 import Data.Lens (LensP, TraversalP, (.~), (^.))
 import Data.Lens.Index (ix)
 import Data.Profunctor.Strong (first, second)
+import Data.String.Regex as Rx
 
-import Halogen (HTML)
+import Halogen as H
 import Halogen.CustomProps as CP
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
+import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
 import SlamData.Render.CSS as Rc
 
-section :: forall p i. String -> Array (HTML p i) -> HTML p i
+section :: forall p i. String -> Array (H.HTML p i) -> H.HTML p i
 section title inner =
-  H.div
-    [ P.classes [ B.panel, B.panelDefault ] ]
-    [ H.div
-        [ P.class_ B.panelHeading ]
-        [ H.text title ]
-    , H.div
-        [ P.class_ B.panelBody ]
+  HH.div
+    [ HP.classes [ B.panel, B.panelDefault ] ]
+    [ HH.div
+        [ HP.class_ B.panelHeading ]
+        [ HH.text title ]
+    , HH.div
+        [ HP.class_ B.panelBody ]
         inner
     ]
 
@@ -50,25 +52,25 @@ propList
   :: forall s p
    . LensP s (Array (Tuple String String))
   -> s
-  -> HTML p (SettingsQuery s)
+  -> H.HTML p (SettingsQuery s)
 propList _props state =
-  H.div
-    [ P.class_ Rc.mountProps ]
-    [ H.table
-        [ P.classes [B.table, B.tableBordered] ]
-        [ H.thead_
-            [ H.tr_
-                [ H.th_ [ H.text "Name" ]
-                , H.th_ [ H.text "Value" ]
+  HH.div
+    [ HP.class_ Rc.mountProps ]
+    [ HH.table
+        [ HP.classes [B.table, B.tableBordered] ]
+        [ HH.thead_
+            [ HH.tr_
+                [ HH.th_ [ HH.text "Name" ]
+                , HH.th_ [ HH.text "Value" ]
                 ]
             ]
-        , H.tbody_
-            [ H.tr_
-                [ H.td
-                    [ P.colSpan 2 ]
-                    [ H.div
-                        [ P.class_ Rc.mountPropsScrollbox ]
-                        [ H.table_ propRows ]
+        , HH.tbody_
+            [ HH.tr_
+                [ HH.td
+                    [ HP.colSpan 2 ]
+                    [ HH.div
+                        [ HP.class_ Rc.mountPropsScrollbox ]
+                        [ HH.table_ propRows ]
                     ]
                 ]
             ]
@@ -77,22 +79,87 @@ propList _props state =
   where
   propRows = prop <$> 0 .. (Arr.length (state ^. _props) - 1)
 
-  prop :: Int -> HTML p (SettingsQuery s)
+  prop :: Int -> H.HTML p (SettingsQuery s)
   prop index =
-    H.tr_ [ part first, part second ]
+    HH.tr_ [ part first, part second ]
     where
-    part :: LensP (Tuple String String) String -> HTML p (SettingsQuery s)
-    part lens = H.td_ [ input (_props <<< ix index <<< lens) classes ]
-    classes = [ P.classes [B.formControl, B.inputSm] ]
+    part :: LensP (Tuple String String) String -> H.HTML p (SettingsQuery s)
+    part lens = HH.td_ [ input state (_props <<< ix index <<< lens) classes ]
+    classes = [ HP.classes [B.formControl, B.inputSm] ]
 
-  input
-    :: TraversalP s String
-    -> Array (CP.InputProp (SettingsQuery s))
-    -> HTML p (SettingsQuery s)
-  input lens attrs =
-    H.input
-      $ [ P.class_ B.formControl
-        , E.onValueInput (E.input \val -> ModifyState (lens .~ val))
-        , P.value (state ^. lens)
+-- | A labelled section within the form.
+label ∷ ∀ p i. String → Array (H.HTML p i) → H.HTML p i
+label text inner = HH.label_ $ [ HH.span_ [ HH.text text ] ] <> inner
+
+-- | A basic text input field that uses a lens to read from and update the
+-- | state.
+input
+  ∷ ∀ s p
+  . s
+  → TraversalP s String
+  → Array (CP.InputProp (SettingsQuery s))
+  → H.HTML p (SettingsQuery s)
+input state lens =
+  input' id state lens -- can't eta reduce further here as the typechecker doesn't like it
+
+-- | A basic text input field that uses a lens to read from and update the
+-- | state, and allows for the input value to be modified.
+input'
+  ∷ ∀ s p
+  . (String → String)
+  → s
+  → TraversalP s String
+  → Array (CP.InputProp (SettingsQuery s))
+  → H.HTML p (SettingsQuery s)
+input' f state lens attrs =
+  HH.input
+    $ [ HP.class_ B.formControl
+      , HE.onValueInput (HE.input \val → ModifyState (lens .~ f val))
+      , HP.value (state ^. lens)
+      ]
+    <> attrs
+
+hosts ∷ ∀ s. s → LensP s (Array MCS.MountHost) → H.ComponentHTML (SettingsQuery s)
+hosts state lens =
+  HH.div
+    [ HP.class_ Rc.mountHostList ]
+    $ hostIx state <$> 0 .. (length (state ^. lens) - 1)
+
+  where
+  hostIx state index =
+    HH.div
+      [ HP.class_ Rc.mountHost ]
+      [ label "Host"
+          [ input' rejectNonHostname state (lens <<< ix index <<< MCS._host) [] ]
+      , label "Port"
+          [ input' rejectNonPort state (lens <<< ix index <<< MCS._port) [] ]
+      ]
+
+host ∷ ∀ s. s → LensP s MCS.MountHost → H.ComponentHTML (SettingsQuery s)
+host state lens =
+  HH.div
+    [ HP.class_ Rc.mountHostList ]
+    [ HH.div
+        [ HP.class_ Rc.mountHost ]
+        [ label "Host"
+            [ input' rejectNonHostname state (lens ∘ MCS._host) [] ]
+        , label "Port"
+            [ input' rejectNonPort state (lens ∘ MCS._port) [] ]
         ]
-      <> attrs
+    ]
+
+rejectNonHostname ∷ String → String
+rejectNonHostname = Rx.replace rxNonHostname ""
+
+rxNonHostname ∷ Rx.Regex
+rxNonHostname =
+  unsafePartial fromRight $
+    Rx.regex "[^0-9a-z\\-\\._~%]" (Rx.noFlags { ignoreCase = true, global = true })
+
+rejectNonPort ∷ String → String
+rejectNonPort = Rx.replace rxNonPort ""
+
+rxNonPort :: Rx.Regex
+rxNonPort =
+  unsafePartial fromRight $
+    Rx.regex "[^0-9]" (Rx.noFlags { global = true })
