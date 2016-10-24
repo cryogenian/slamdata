@@ -75,8 +75,8 @@ eval = case _ of
     k <<< either Just (const Nothing) <<< MCS.toConfig <$> H.get
   Submit parent name k →
     k <$> runExceptT do
-      st <- lift H.get
-      config <- except $ lmap QE.msgToQError $ MCS.toConfig st
+      st ← lift H.get
+      config ← except $ lmap QE.msgToQError $ MCS.toConfig st
       let path = parent </> dir name
       ExceptT $ API.saveMount (Left path) (QM.MarkLogicConfig config)
       pure $ Database path

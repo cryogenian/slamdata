@@ -165,7 +165,7 @@ progressSpinner { saving } =
 eval ∷ Query ~> DSL
 eval (ModifyState f next) = H.modify f *> validateInput $> next
 eval (SelectScheme newScheme next) = do
-  currentScheme <- map MCS.scheme <$> H.gets _.settings
+  currentScheme ← map MCS.scheme <$> H.gets _.settings
   when (currentScheme /= newScheme) do
     H.modify (MCS._settings .~ map MCS.initialSettings newScheme)
     validateInput
@@ -173,17 +173,17 @@ eval (SelectScheme newScheme next) = do
 eval (Dismiss next) = pure next
 eval (NotifySave next) = pure next
 eval (Save k) = do
-  { parent, name, new } <- H.get
+  { parent, name, new } ← H.get
   H.modify (MCS._saving .~ true)
-  newName <-
+  newName ←
     if new then Api.getNewName parent name else pure (pure name)
   case newName of
     Left err → do
       handleQError err
       pure $ k Nothing
     Right newName' → do
-      result <- querySettings (H.request (SQ.Submit parent newName'))
-      mount <- case result of
+      result ← querySettings (H.request (SQ.Submit parent newName'))
+      mount ← case result of
         Just (Right m) → pure (Just m)
         Just (Left err) → do
           handleQError err
@@ -216,8 +216,8 @@ peek =
 
 validateInput ∷ DSL Unit
 validateInput = do
-  state <- H.get
-  message <- runExceptT do
+  state ← H.get
+  message ← runExceptT do
     liftMaybe (MCS.validate state)
     liftMaybe ∘ join =<< lift (querySettings (H.request SQ.Validate))
   H.modify (MCS._message .~ either Just (const Nothing) message)
