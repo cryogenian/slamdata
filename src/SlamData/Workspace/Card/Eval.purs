@@ -315,6 +315,22 @@ runEvalCard
 runEvalCard input =
   CET.runCardEvalT ∘ evalCard input
 
+runEvalCard'
+  ∷ ∀ m
+  . (MonadPar m, QuasarDSL m, Affable SlamDataEffects m)
+  ⇒ CET.CardEvalInput
+  → Eval
+  → m { output ∷ Either QE.QError Port.Port
+      , sources ∷ Set.Set AdditionalSource
+      , state ∷ Maybe Unit
+      }
+runEvalCard' input =
+  evalCard input >>> CET.runCardEvalT' >>> map \(output × sources) →
+    { output
+    , sources
+    , state: Just unit
+    }
+
 validateResources
   ∷ ∀ m f
   . (MonadPar m, QuasarDSL m, Foldable f)

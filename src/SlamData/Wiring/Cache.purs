@@ -20,9 +20,11 @@ module SlamData.Wiring.Cache
   , make
   , make'
   , get
+  , alter
   , put
   , remove
   , clear
+  , snapshot
   ) where
 
 import SlamData.Prelude
@@ -63,6 +65,16 @@ get key (Cache cache) = fromAff do
   putVar cache vals
   pure (Map.lookup key vals)
 
+alter
+  ∷ ∀ eff m k v
+  . (Affable (avar ∷ AVAR | eff) m, Ord k)
+  ⇒ k
+  → (Maybe v → Maybe v)
+  → Cache k v
+  → m Unit
+alter key fn (Cache cache) = fromAff do
+  modifyVar (Map.alter fn key) cache
+
 put
   ∷ ∀ eff m k v
   . (Affable (avar ∷ AVAR | eff) m, Ord k)
@@ -96,5 +108,15 @@ clear
   → m Unit
 clear (Cache cache) = fromAff do
   modifyVar (const mempty) cache
+
+snapshot
+  ∷ ∀ eff m k v
+  . Affable (avar ∷ AVAR | eff) m
+  ⇒ Cache k v
+  → m (Map k v)
+snapshot (Cache cache) = fromAff do
+  vals ← takeVar cache
+  putVar cache vals
+  pure vals
 
 -- TODO: Provide some way to do key-level locking.

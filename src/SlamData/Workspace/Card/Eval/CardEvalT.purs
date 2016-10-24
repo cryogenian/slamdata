@@ -23,6 +23,7 @@ module SlamData.Workspace.Card.Eval.CardEvalT
   , addCaches
   , additionalSources
   , runCardEvalT
+  , runCardEvalT'
   , runCardEvalT_
   , temporaryOutputResource
   , liftQ
@@ -99,8 +100,8 @@ runCardEvalT
   . Functor m
   ⇒ CardEvalT m Port.Port
   → m (Either GE.GlobalError (Port.Port × (Set.Set AdditionalSource)))
-runCardEvalT (CardEvalT m) =
-  WT.runWriterT (runExceptT m) <#> \(r × ms) →
+runCardEvalT =
+  runCardEvalT' >>> map \(r × ms) →
     case r of
       Left err →
         case GE.fromQError err of
@@ -108,6 +109,14 @@ runCardEvalT (CardEvalT m) =
           Right ge → Left ge
       Right r' →
         Right $ r' × ms
+
+runCardEvalT'
+  ∷ ∀ m
+  . Functor m
+  ⇒ CardEvalT m Port.Port
+  → m (Either QError Port.Port × Set.Set AdditionalSource)
+runCardEvalT' (CardEvalT m) =
+  WT.runWriterT (runExceptT m)
 
 runCardEvalT_
   ∷ ∀ m

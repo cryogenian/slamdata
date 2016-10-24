@@ -49,14 +49,16 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.GlobalMenu.Bus (SignInBus)
 import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck, deckIndex, decode, encode)
+import SlamData.Workspace.Eval.Card as Card
+import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
+import SlamData.Wiring.Heap as Heap
 
 import Utils.Path (DirPath)
 
@@ -100,6 +102,9 @@ newtype Wiring = Wiring
   , signInBus ∷ SignInBus
   , hasIdentified ∷ Ref Boolean
   , presentStepByStepGuide ∷ Bus.BusRW StepByStepGuide
+  , evalTick ∷ Ref Int
+  , cards' ∷ Heap.Heap Card.Coord Card.Cell
+  , decks' ∷ Heap.Heap Deck.Id Deck.Cell
   }
 
 makeWiring
@@ -121,6 +126,9 @@ makeWiring path varMaps = fromAff do
   signInBus ← Bus.make
   hasIdentified ← fromEff (newRef false)
   presentStepByStepGuide ← Bus.make
+  evalTick ← fromEff (newRef 0)
+  cards' ← Cache.make
+  decks' ← Cache.make
   pure $ Wiring
     { path
     , decks
@@ -135,6 +143,9 @@ makeWiring path varMaps = fromAff do
     , signInBus
     , hasIdentified
     , presentStepByStepGuide
+    , evalTick
+    , cards'
+    , decks'
     }
 
 putDeck
