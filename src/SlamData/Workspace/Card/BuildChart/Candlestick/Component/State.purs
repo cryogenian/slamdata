@@ -29,7 +29,6 @@ type State =
   , openAgg ∷ Select Aggregation
   , close ∷ Select JCursor
   , closeAgg ∷ Select Aggregation
-  , series ∷ Select JCursor
   , parallel ∷ Select JCursor
   }
 
@@ -47,7 +46,6 @@ initialState =
   , openAgg: emptySelect
   , close: emptySelect
   , closeAgg: emptySelect
-  , series: emptySelect
   , parallel: emptySelect
   }
 
@@ -80,9 +78,6 @@ _close = lens _.close _{ close = _ }
 
 _closeAgg ∷ ∀ r a. LensP { closeAgg ∷ a | r} a
 _closeAgg = lens _.closeAgg _{ closeAgg = _ }
-
-_series ∷ ∀ r a. LensP { series ∷ a | r} a
-_series = lens _.series _{ series = _ }
 
 _parallel ∷ ∀ r a. LensP { parallel ∷ a | r} a
 _parallel = lens _.parallel _{ parallel = _ }

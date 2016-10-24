@@ -1,6 +1,6 @@
 module SlamData.Workspace.Card.BuildChart.Candlestick.Component.Query where
 
-import Slamdata.Prelude
+import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
 
@@ -21,7 +21,6 @@ data Selection f
   | OpenAgg (f Aggregation)
   | Close (f JCursor)
   | CloseAgg (f Aggregation)
-  | Series (f JCursor)
   | Parallel (f JCursor)
 
 data Query a

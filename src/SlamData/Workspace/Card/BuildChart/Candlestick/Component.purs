@@ -18,7 +18,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
+import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, (⊝), _value, fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
@@ -33,7 +33,6 @@ import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.Query as Q
-import SlamData.Workspace.Card.BuildChart.Candlestick.Model as M
 
 
 type DSL =
@@ -74,9 +73,8 @@ renderHighLOD state =
     , renderLow state
     , renderHigh state
     , HH.hr_
-    , renderSeries
-    , renderParallel
-    , renderPicker
+    , renderParallel state
+    , renderPicker state
     ]
 
 selecting ∷ ∀ a . (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
@@ -94,7 +92,6 @@ renderPicker state = case state.picker of
               Q.Close _ → "Choose measure for close position"
               Q.High _ → "Choose measure for highest position"
               Q.Low _ → "Choose measure for lowest position"
-              Q.Series _ → " Choose series"
               Q.Parallel _ → "Choose parallel"
               _ → ""
           , label: DPC.labelNode show
@@ -131,7 +128,7 @@ renderOpen state =
         state.openAgg
     ]
 
-renderClose ∷ ST.STate → HTML
+renderClose ∷ ST.State → HTML
 renderClose state =
   HH.form
     [ HP.classes [ CSS.chartConfigureForm, CSS.withAggregation ]
@@ -145,7 +142,7 @@ renderClose state =
         state.closeAgg
     ]
 
-renderHigh ∷ ST.STate → HTML
+renderHigh ∷ ST.State → HTML
 renderHigh state =
   HH.form
     [ HP.classes [ CSS.chartConfigureForm, CSS.withAggregation ]
@@ -155,7 +152,7 @@ renderHigh state =
     , BCI.pickerWithSelect
         (BCI.secondary (Just "Highest") (selecting Q.High))
         state.high
-        (BIC.aggregation (Just "Highest Aggregation") (selecting Q.HighAgg))
+        (BCI.aggregation (Just "Highest Aggregation") (selecting Q.HighAgg))
         state.highAgg
     ]
 
@@ -169,7 +166,7 @@ renderLow state =
     , BCI.pickerWithSelect
         (BCI.secondary (Just "Lowest") (selecting Q.Low))
         state.low
-        (BIC.aggregation (Just "Lowest Aggregation") (selecting Q.LowAgg))
+        (BCI.aggregation (Just "Lowest Aggregation") (selecting Q.LowAgg))
         state.lowAgg
     ]
 
@@ -185,18 +182,6 @@ renderParallel state =
         state.parallel
     ]
 
-
-renderSeries ∷ ST.State → HTML
-renderSeries state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , BCI.pickerInput
-        (BCI.secondary (Just "Series") (selecting Q.Series))
-        state.series
-    ]
 
 eval ∷ Q.QueryC ~> DSL
 eval = cardEval ⨁ chartEval
@@ -225,7 +210,6 @@ cardEval = case _ of
         , highAggregation: _
         , low: _
         , lowAggregation: _
-        , series: st.series ^. _value
         , parallel: st.parallel ^. _value
         }
         <$> (st.dimension ^. _value)
@@ -237,7 +221,7 @@ cardEval = case _ of
         <*> (st.highAgg ^. _value)
         <*> (st.low ^. _value)
         <*> (st.lowAgg ^. _value)
-    pure $ k $ Card.BuildPie model
+    pure $ k $ Card.BuildCandlestick model
   CC.Load (Card.BuildCandlestick (Just m)) next → do
     H.modify _
       { dimension = fromSelected $ Just m.dimension
@@ -249,9 +233,9 @@ cardEval = case _ of
       , highAgg = fromSelected $ Just m.highAggregation
       , low = fromSelected $ Just m.low
       , lowAgg = fromSelected $ Just m.lowAggregation
-      , series = fromSelected m.series
       , parallel = fromSelected m.parallel
       }
+    pure next
   CC.Load card next →
     pure next
   CC.SetDimensions dims next → do
@@ -278,8 +262,7 @@ chartEval (Q.Select sel next) = next <$ case sel of
   Q.HighAgg a → updateSelect ST._highAgg a
   Q.Low a → updatePicker ST._low Q.Low a
   Q.LowAgg a → updateSelect ST._lowAgg a
-  Q.Series a → updatePicker ST._series Q.Series a
-  Q.Parallel → updatePicker ST._parallel Q.Parallel a
+  Q.Parallel a → updatePicker ST._parallel Q.Parallel a
 
   where
   updatePicker l q = case _ of
@@ -292,7 +275,7 @@ chartEval (Q.Select sel next) = next <$ case sel of
 
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek = peekPicker ⊕ const (pure unit)
+peek = peekPicker ⨁ (const (pure unit))
   where
   peekPicker = case _ of
     DPC.Dismiss _ →
@@ -307,14 +290,87 @@ peek = peekPicker ⊕ const (pure unit)
         Q.Close _ → H.modify (ST._close ∘ _value ?~ v)
         Q.High _ → H.modify (ST._high ∘ _value ?~ v)
         Q.Low _ → H.modify (ST._low ∘ _value ?~ v)
-        Q.Series _ → H.modify (ST._series ∘ _value ?~ v)
         Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ v)
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
 
-
-
-
 raiseUpdate ∷ DSL Unit
 raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+
+
+synchronizeChildren ∷ DSL Unit
+synchronizeChildren = do
+  st ← H.get
+  let
+    newOpen =
+      setPreviousValueFrom (Just st.open)
+        $ newSelect
+        $ st.axes.value
+
+    newOpenAgg =
+      setPreviousValueFrom (Just st.openAgg)
+        $ nonMaybeAggregationSelect
+
+    newClose =
+      setPreviousValueFrom (Just st.close)
+        $ newSelect
+        $ st.axes.value
+        ⊝ newOpen
+
+    newCloseAgg =
+      setPreviousValueFrom (Just st.closeAgg)
+        $ nonMaybeAggregationSelect
+
+
+    newHigh =
+      setPreviousValueFrom (Just st.high)
+        $ newSelect
+        $ st.axes.value
+        ⊝ newOpen
+        ⊝ newClose
+
+    newHighAgg =
+      setPreviousValueFrom (Just st.highAgg)
+        $ nonMaybeAggregationSelect
+
+    newLow =
+      setPreviousValueFrom (Just st.low)
+        $ newSelect
+        $ st.axes.value
+        ⊝ newOpen
+        ⊝ newClose
+        ⊝ newHigh
+
+    newLowAgg =
+      setPreviousValueFrom (Just st.lowAgg)
+        $ nonMaybeAggregationSelect
+
+
+    newDimension =
+      setPreviousValueFrom (Just st.dimension)
+        $ autoSelect
+        $ newSelect
+        $ st.axes.category
+        ⊕ st.axes.time
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
+
+    newParallel =
+      setPreviousValueFrom (Just st.parallel)
+        $ newSelect
+        $ st.axes.category
+        ⊝ newDimension
+
+  H.modify _
+    { open = newOpen
+    , close = newClose
+    , high = newHigh
+    , low = newLow
+    , openAgg = newOpenAgg
+    , closeAgg = newCloseAgg
+    , highAgg = newHighAgg
+    , lowAgg = newLowAgg
+    , dimension = newDimension
+    , parallel = newParallel
+    }

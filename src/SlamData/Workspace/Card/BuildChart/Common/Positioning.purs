@@ -188,15 +188,11 @@ type RectangularPosition r =
   }
 
 adjustRectangularPositions
-  ∷ ∀ r f
-  . (Foldable f, Monoid (f (RectangularPosition r)), Plus f)
-  ⇒ f (RectangularPosition r)
-  → f (RectangularPosition r)
-adjustRectangularPositions fl =
+  ∷ ∀ r
+  . Array (RectangularPosition r)
+  → Array (RectangularPosition r)
+adjustRectangularPositions arr =
   let
-    arr ∷ Array (RectangularPosition r)
-    arr = foldMap A.singleton fl
-
     len ∷ Int
     len = A.length arr
 
@@ -221,13 +217,13 @@ adjustRectangularPositions fl =
     titleHeight = 3.0
 
     setPositions
-      ∷ f (RectangularPosition r)
+      ∷ Array (RectangularPosition r)
       → Int
       → Int
       → Int
       → Array (RectangularPosition r)
-      → f (RectangularPosition r)
-    setPositions acc colIx rowIx inThisRow = A.uncons ⋙ case _ of
+      → Array (RectangularPosition r)
+    setPositions acc colIx rowIx inThisRow arr = case A.uncons arr of
       Nothing → acc
       Just {head, tail} →
         let
@@ -251,8 +247,8 @@ adjustRectangularPositions fl =
             | numRows < 6 = 11
             | otherwise = 10
 
-          toPush ∷ f (RectangularPosition r)
-          toPush = fl $>
+          toPush ∷ RectangularPosition r
+          toPush =
             head { x = left
                  , y = top
                  , w = Just $ colWidth * rectangularSpaceCoeff
@@ -260,8 +256,8 @@ adjustRectangularPositions fl =
                  , fontSize = Just fontSize
                  }
 
-          newAcc ∷ f (RectangularPosition r)
-          newAcc = acc ⊕ toPush
+          newAcc ∷ Array (RectangularPosition r)
+          newAcc = A.snoc acc toPush
 
           newColIx ∷ Int
           newColIx
@@ -281,7 +277,7 @@ adjustRectangularPositions fl =
         in
           setPositions newAcc newColIx newRowIx inNewRow tail
   in
-    setPositions mempty 0 0 inRow arr
+    setPositions [] 0 0 inRow arr
 
 
 rectangularTitles

@@ -158,7 +158,7 @@ data AnyCardQuery a
   | BuildBoxplotQuery (BuildBoxplot.QueryP a)
   | BuildHeatmapQuery (BuildHeatmap.QueryP a)
   | BuildPunchCardQuery (BuildPunchCard.QueryP a)
-  | BuildCandlestick (BuildCandlestick.QueryP a)
+  | BuildCandlestickQuery (BuildCandlestick.QueryP a)
 
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)

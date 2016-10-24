@@ -58,6 +58,7 @@ import SlamData.Workspace.Card.BuildChart.Funnel.Component (funnelBuilderCompone
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component (boxplotBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component (heatmapBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component (punchCardBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Candlestick.Component (candlestickBuilderComponent)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
 cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
@@ -93,6 +94,7 @@ cardComponent deckId card opts =
     Card.BuildBoxplot _ → boxplotBuilderComponent
     Card.BuildHeatmap _ → heatmapBuilderComponent
     Card.BuildPunchCard _ → punchCardBuilderComponent
+    Card.BuildCandlestick _ → candlestickBuilderComponent
 
 aceEval ∷ CT.AceMode → AceEval
 aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}

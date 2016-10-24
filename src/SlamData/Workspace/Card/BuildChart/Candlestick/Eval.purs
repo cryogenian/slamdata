@@ -7,16 +7,12 @@ import SlamData.Prelude
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
-import Data.Foldable as F
-import Data.Int as Int
 import Data.Map as M
-import Data.Set as Set
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
-import ECharts.Types.Phantom as ETP
 
 import Quasar.Types (FilePath)
 
@@ -63,105 +59,90 @@ type OnOneGrid =
   , h ∷ Maybe Number
   , x ∷ Maybe Number
   , y ∷ Maybe Number
-  , fontSize ∷ Maybe Number
-  , series ∷ Maybe String >> Series
+  , name ∷ Maybe String
+  , fontSize ∷ Maybe Int
+  , items ∷ Series
   }
 
-type CandlestickData = Maybe String >> OnOneGrid
+type CandlestickData = Array OnOneGrid
 
 buildCandlestickData ∷ CandlestickR → JArray → CandlestickData
 buildCandlestickData r records = series
   where
-
-  dataMap ∷ Maybe String >> Maybe String >> String >> HLOC (Array Number)
+  dataMap ∷ Maybe String >> String >> HLOC (Array Number)
   dataMap =
     foldl dataMapFoldFn M.empty records
 
   dataMapFoldFn
-    ∷ Maybe String >> Maybe String >> String >> HLOC (Array Number)
+    ∷ Maybe String >> String >> HLOC (Array Number)
     → Json
-    → Maybe String >> Maybe String >> String >> HLOC (Array Number)
+    → Maybe String >> String >> HLOC (Array Number)
   dataMapFoldFn acc js =
     let
       getMaybeString = Sem.getMaybeString js
       getValues = Sem.getValues js
-    in case getMaybeStringFromJson r.dimension of
+    in case getMaybeString r.dimension of
       Nothing → acc
       Just dimKey →
         let
           high =
-            getValues js $ pure r.high
+            getValues $ pure r.high
           low =
-            getValues js $ pure r.low
+            getValues $ pure r.low
           open =
-            getValues js $ pure r.open
+            getValues $ pure r.open
           close =
-            getValues js $ pure r.closes
+            getValues $ pure r.close
 
           hloc = {high, low, open, close}
 
           mbParallel =
             getMaybeString =<< r.parallel
 
-          mbSeries =
-            getMaybeString =<< r.series
-
           alterParallelFn
-            ∷ Maybe (Maybe String >> String >> HLOC (Array Number))
-            → Maybe (Maybe String >> String >> HLOC (Array Number))
-          alterParallelFn Nothing =
-            Just $ M.singleton mbSeries $ M.singleton dimKey hloc
-          alterParallelFn (Just parallel) =
-            Just $ M.alter alterSeriesFn mbSeries parallel
-
-          alterSeriesFn
             ∷ Maybe (String >> HLOC (Array Number))
             → Maybe (String >> HLOC (Array Number))
-          alterSeriesFn Nothing =
+          alterParallelFn Nothing =
             Just $ M.singleton dimKey hloc
-          alterSeriesFn (Just dims) =
-            Just $  M.alter alterDimFn dimKey dims
+          alterParallelFn (Just parallel) =
+            Just $ M.alter alterDimFn dimKey parallel
 
           alterDimFn
             ∷ Maybe (HLOC (Array Number))
             → Maybe (HLOC (Array Number))
-          alterDimFn Nothing = hloc
+          alterDimFn Nothing = Just $ hloc
           alterDimFn (Just r) =
-            Just { high = high ⊕ r.high
-                 , low = low ⊕ r.low
-                 , open = open ⊕ r.open
-                 , close = close ⊕ r.closes
+            Just { high: high ⊕ r.high
+                 , low: low ⊕ r.low
+                 , open: open ⊕ r.open
+                 , close: close ⊕ r.close
                  }
         in
           M.alter alterParallelFn mbParallel acc
 
   rawSeries ∷ CandlestickData
   rawSeries =
-    map mkOneGridData dataMap
+    foldMap mkOneGridData $ M.toList dataMap
 
   mkOneGridData
-    ∷ Maybe String >> String >> HLOC (Array Number)
-    → OnOneGrid
-  mkOneGridData mp =
-    { x: Nothing
-    , y: Nothing
-    , w: Nothing
-    , h: Nothing
-    , fontSize: Nothing
-    , series: map mkSeries mp
-    }
-
-  mkSeries
-    ∷ String >> HLOC (Array Number)
-    → String >> HLOC Number
-  mkSeries = map aggregateHLOC
+    ∷ Maybe String × (String >> HLOC (Array Number))
+    → Array OnOneGrid
+  mkOneGridData (name × mp) =
+    [ { x: Nothing
+      , y: Nothing
+      , w: Nothing
+      , h: Nothing
+      , fontSize: Nothing
+      , name
+      , items: map aggregateHLOC mp
+      } ]
 
   aggregateHLOC ∷ HLOC (Array Number) → HLOC Number
-  aggregateHLOC r =
-    { high: Ag.runAggregation r.highAggregation r
-    , low: Ag.runAggregation r.lowAggregation r
-    , open: Ag.openAggregation r.openAggregation r
-    , close: Ag.closeAggregation r.closeAggregation r
+  aggregateHLOC rr =
+    { high: Ag.runAggregation r.highAggregation rr.high
+    , low: Ag.runAggregation r.lowAggregation rr.low
+    , open: Ag.runAggregation r.openAggregation rr.open
+    , close: Ag.runAggregation r.closeAggregation rr.close
     }
 
   series ∷ CandlestickData
@@ -173,17 +154,12 @@ buildCandlestick r records axes = do
     E.triggerAxis
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
-      E.fontSize
+      E.fontSize 12
 
   BCP.rectangularTitles candlestickData
   BCP.rectangularGrids candlestickData
 
   E.colors colors
-
-  E.legend do
-    E.topBottom
-    E.textStyle $ E.fontFamily "Ubuntu, sans"
-    E.items $ map ET.strItem serieNames
 
   E.xAxes xAxes
   E.yAxes yAxes
@@ -193,41 +169,29 @@ buildCandlestick r records axes = do
   candlestickData ∷ CandlestickData
   candlestickData = buildCandlestickData r records
 
-  serieNames ∷ Array String
-  serieNames =
-    foldMap A.singleton
-    $ foldMap (M.values ⋙ foldMap (_.series ⋙ M.keys ⋙ Set.fromFoldable))
-    $ candlestickData
-
-  xValues ∷ OnOneGrid → String
-  xValues onOneGrid =
-    sortX
-    $ foldMap A.singleton
-    $ foldMap (_.series ⋙ M.keys ⋙ Set.fromFoldable)
-    $ onOneGrid
+  xValues ∷ OnOneGrid → Array String
+  xValues  = sortX ∘ foldMap A.singleton ∘ M.keys ∘ _.items
 
   sortX ∷ Array String → Array String
   sortX = A.sortBy $ Ax.compareWithAxisType $ Ax.axisType r.dimension axes
 
-  xAxes = enumeratedFor_ candlestickData \(ix × onOneGrid) → E.addXAxis do
+  xAxes = enumeratedFor_ candlestickData \(ix × serie) → E.addXAxis do
     E.gridIndex ix
     E.axisType ET.Category
     E.axisLabel $ E.textStyle $ E.fontFamily "Ubuntu, sans"
-    E.items $ map ET.strItem $ xValues onOneGrid
+    E.items $ map ET.strItem $ xValues serie
 
-  yAxes = enumeratedFor_ candlestickData \(ix × _) → E.addYAxis
+  yAxes = enumeratedFor_ candlestickData \(ix × _) → E.addYAxis do
     E.gridIndex ix
     E.axisType ET.Value
 
-  series = enumeratedFor_  candlestickData \(ix × onOneGrid) →
-    for_ (M.toList onOneGrid.series) \(mbName × serie) → do
-      for_ mbName E.name
-      E.xAxisIndex ix
-      E.yAxisIndex ix
-
-      E.buildItems $ for_ (xValues onOneGrid) \(xIx × dim) →
-        for_ (M.lookup dim serie) \{high, low, open, close} → E.additem $ E.buildValues do
-          E.addValue open
-          E.addValue close
-          E.addValue low
-          E.addValue high
+  series = enumeratedFor_  candlestickData \(ix × serie) → E.candlestick do
+    for_ serie.name E.name
+    E.xAxisIndex ix
+    E.yAxisIndex ix
+    E.buildItems $ for_ (xValues serie) \dim →
+      for_ (M.lookup dim serie.items) \{high, low, open, close} → E.addItem $ E.buildValues do
+        E.addValue open
+        E.addValue close
+        E.addValue low
+        E.addValue high

@@ -21,7 +21,6 @@ type CandlestickR =
   , openAggregation ∷ Ag.Aggregation
   , close ∷ JCursor
   , closeAggregation ∷ Ag.Aggregation
-  , series ∷ Maybe JCursor
   , parallel ∷ Maybe JCursor
   }
 
@@ -42,7 +41,6 @@ eqCandleStickR r1 r2 =
     , r1.openAggregation ≡ r2.openAggregation
     , r1.close ≡ r2.close
     , r1.closeAggregation ≡ r2.closeAggregation
-    , r1.series ≡ r2.series
     , r1.parallel ≡ r2.parallel
     ]
 
@@ -66,7 +64,6 @@ genModel = do
     openAggregation ← arbitrary
     close ← map runArbJCursor arbitrary
     closeAggregation ← arbitrary
-    series ← map (map runArbJCursor) arbitrary
     parallel ← map (map runArbJCursor) arbitrary
 
     pure { dimension
@@ -78,7 +75,6 @@ genModel = do
          , openAggregation
          , close
          , closeAggregation
-         , series
          , parallel
          }
 
@@ -95,7 +91,6 @@ encode (Just r) =
   ~> "openAggregation" := r.openAggregation
   ~> "close" := r.close
   ~> "closeAggregation" := r.closeAggregation
-  ~> "series" := r.series
   ~> "parallel" := r.parallel
   ~> jsonEmptyObject
 
@@ -116,7 +111,6 @@ decode js
     openAggregation ← obj .? "openAggregation"
     close ← obj .? "close"
     closeAggregation ← obj .? "closeAggregation"
-    series ← obj .? "series"
     parallel ← obj .? "parallel"
     pure { dimension
          , high
@@ -127,6 +121,5 @@ decode js
          , openAggregation
          , close
          , closeAggregation
-         , series
          , parallel
          }
