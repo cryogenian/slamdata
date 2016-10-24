@@ -63,8 +63,9 @@ import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
 import SlamData.Guide as Guide
 import SlamData.Quasar.Error as QE
-import SlamData.Wiring (Wiring(..), CardEval, Cache, DeckMessage(..), putCardEval, putCache, getCache, makeCache)
+import SlamData.Wiring (Wiring(..), CardEval, DeckMessage(..))
 import SlamData.Wiring as W
+import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
@@ -494,7 +495,7 @@ updateActiveState = do
   st ← H.get
   Wiring wiring ← H.liftH $ H.liftH ask
   for_ st.activeCardIndex \cardIndex → do
-    putCache st.id { cardIndex } wiring.activeState
+    Cache.put st.id { cardIndex } wiring.activeState
     for_ (DCS.cardCoordFromIndex cardIndex st) \coord →
       void $ queryCardEval coord $ H.action CQ.ActivateCard
 
@@ -658,14 +659,14 @@ queuePendingCard pendingCoord = do
   Wiring wiring ← H.liftH $ H.liftH ask
   for_ (find (DCS.eqCoordModel pendingCoord) st.modelCards) \pendingCard →
     H.fromAff do
-      cards ← makeCache
+      cards ← Cache.make
       Bus.write { source: st.id, pendingCard, cards } wiring.pending
 
 runPendingCards
   ∷ DeckOptions
   → DeckId
   → DeckId × Card.Model
-  → Cache (DeckId × CardId) CardEval
+  → Cache.Cache (DeckId × CardId) CardEval
   → DeckDSL Unit
 runPendingCards opts source pendingCard pendingCards = do
   st ← H.get
@@ -677,7 +678,7 @@ runPendingCards opts source pendingCard pendingCards = do
     pendingCards = L.Cons pendingCard <$> L.tail splitCards.rest
 
   for_ pendingCards \cards → do
-    input ← join <$> for prevCard (flip getCache wiring.cards)
+    input ← join <$> for prevCard (flip Cache.get wiring.cards)
     steps ← resume wiring st (input >>= _.output <#> map fst) cards
     runCardUpdates opts source steps
     H.modify $ DCS.removePendingCard $ DCS.coordModelToCoord pendingCard
@@ -687,13 +688,13 @@ runPendingCards opts source pendingCard pendingCards = do
     go steps input L.Nil = pure $ L.reverse steps
     go steps input (L.Cons c cs) = do
       step ←
-        getCache (DCS.coordModelToCoord c) pendingCards >>= case _ of
+        Cache.get (DCS.coordModelToCoord c) pendingCards >>= case _ of
           Just ev → pure ev
           Nothing → do
             urlVarMaps ← getURLVarMaps
             ev ← evalCard wiring.path urlVarMaps input c
-            putCardEval ev pendingCards
-            putCardEval ev wiring.cards
+            W.putCardEval ev pendingCards
+            W.putCardEval ev wiring.cards
             pure ev
       go (L.Cons step steps) (map (map fst) step.output) cs
 
@@ -704,14 +705,14 @@ runInitialEval ∷ DeckDSL Unit
 runInitialEval = do
   st ← H.get
   Wiring wiring ← H.liftH $ H.liftH ask
-  cards ← makeCache
+  cards ← Cache.make
   let
     cardCoords = DCS.coordModelToCoord <$> L.fromFoldable st.modelCards
     source = st.id
 
   for_ cardCoords \coord →
-    getCache coord wiring.cards >>= traverse_ \ev → do
-      putCardEval ev cards
+    Cache.get coord wiring.cards >>= traverse_ \ev → do
+      W.putCardEval ev cards
 
   for_ (Array.head st.modelCards) \pendingCard → do
     H.fromAff $ Bus.write { source, pendingCard, cards } wiring.pending
@@ -787,7 +788,7 @@ runCardUpdates opts source steps = do
   -- when we apply the child updates.
   when (st.stateMode == Preparing) do
     Wiring wiring ← H.liftH $ H.liftH ask
-    activeIndex ← map _.cardIndex <$> getCache st.id wiring.activeState
+    activeIndex ← map _.cardIndex <$> Cache.get st.id wiring.activeState
     lastIndex ← H.gets DCS.findLastRealCardIndex
     -- When a deck is deeply nested, we should treat it as "published", such
     -- that it always show the last available card.

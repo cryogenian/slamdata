@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Wiring
   ( Wiring(..)
-  , Cache
   , CardEval
   , DeckRef
   , ActiveState
@@ -24,18 +23,14 @@ module SlamData.Wiring
   , DeckMessage(..)
   , StepByStepGuide(..)
   , makeWiring
-  , makeCache
-  , putDeck
   , getDeck
-  , putCache
-  , getCache
-  , clearCache
+  , putDeck
   , putCardEval
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar, makeVar', takeVar, putVar, modifyVar)
+import Control.Monad.Aff.AVar (takeVar, putVar, modifyVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Aff.Promise (Promise, wait, defer)
@@ -60,6 +55,8 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck, deckIndex, decode, encode)
+import SlamData.Wiring.Cache (Cache)
+import SlamData.Wiring.Cache as Cache
 
 import Utils.Path (DirPath)
 
@@ -70,8 +67,6 @@ type CardEval =
   }
 
 type DeckRef = Promise (Either QE.QError Deck)
-
-type Cache k v = AVar (Map.Map k v)
 
 type PendingMessage =
   { source ∷ DeckId
@@ -114,9 +109,9 @@ makeWiring
   → Map.Map DeckId Port.URLVarMap
   → m Wiring
 makeWiring path varMaps = fromAff do
-  decks ← makeCache
-  activeState ← makeCache
-  cards ← makeCache
+  decks ← Cache.make
+  activeState ← Cache.make
+  cards ← Cache.make
   pending ← Bus.make
   messaging ← Bus.make
   notify ← Bus.make
@@ -142,12 +137,6 @@ makeWiring path varMaps = fromAff do
     , presentStepByStepGuide
     }
 
-makeCache
-  ∷ ∀ m k v
-  . (Affable SlamDataEffects m, Ord k)
-  ⇒ m (Cache k v)
-makeCache = fromAff (makeVar' mempty)
-
 putDeck
   ∷ ∀ m
   . (Affable SlamDataEffects m, MonadFork m, QuasarDSL m, MonadReader Wiring m)
@@ -159,9 +148,9 @@ putDeck deckId deck = do
   ref ← defer do
     res ← Quasar.save (deckIndex wiring.path deckId) $ encode deck
     when (isLeft res) do
-      fromAff $ modifyVar (Map.delete deckId) wiring.decks
+      void $ Cache.remove deckId wiring.decks
     pure $ const deck <$> res
-  putCache deckId ref wiring.decks
+  Cache.put deckId ref wiring.decks
   rmap (const unit) <$> wait ref
 
 getDeck
@@ -171,40 +160,20 @@ getDeck
   → m (Either QE.QError Deck)
 getDeck deckId = do
   Wiring wiring ← ask
-  decks ← fromAff $ takeVar wiring.decks
+  let cacheVar = Cache.unCache wiring.decks
+  decks ← fromAff $ takeVar cacheVar
   case Map.lookup deckId decks of
     Just ref → do
-      fromAff $ putVar wiring.decks decks
+      fromAff $ putVar cacheVar decks
       wait ref
     Nothing → do
       ref ← defer do
         res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load (deckIndex wiring.path deckId)
         when (isLeft res) do
-          fromAff $ modifyVar (Map.delete deckId) wiring.decks
+          fromAff $ modifyVar (Map.delete deckId) cacheVar
         pure res
-      fromAff $ putVar wiring.decks (Map.insert deckId ref decks)
+      fromAff $ putVar cacheVar (Map.insert deckId ref decks)
       wait ref
-
-getCache
-  ∷ ∀ m k v
-  . (Affable SlamDataEffects m, Ord k)
-  ⇒ k
-  → Cache k v
-  → m (Maybe v)
-getCache key cache = fromAff do
-  vals ← takeVar cache
-  putVar cache vals
-  pure $ Map.lookup key vals
-
-putCache
-  ∷ ∀ m k v
-  . (Affable SlamDataEffects m, Ord k)
-  ⇒ k
-  → v
-  → Cache k v
-  → m Unit
-putCache key val cache = fromAff do
-  modifyVar (Map.insert key val) cache
 
 putCardEval
   ∷ ∀ m
@@ -212,12 +181,4 @@ putCardEval
   ⇒ CardEval
   → Cache (DeckId × CardId) CardEval
   → m Unit
-putCardEval step = putCache (map _.cardId step.card) step
-
-clearCache
-  ∷ ∀ m k v
-  . (Affable SlamDataEffects m, Ord k)
-  ⇒ Cache k v
-  → m Unit
-clearCache cache = fromAff do
-  modifyVar (const $ Map.empty) cache
+putCardEval step = Cache.put (map _.cardId step.card) step

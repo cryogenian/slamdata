@@ -40,7 +40,8 @@ import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.Model as DM
-import SlamData.Wiring (Wiring(..), putCardEval, getCache)
+import SlamData.Wiring (Wiring(..), putCardEval)
+import SlamData.Wiring.Cache as Cache
 
 import Utils.Path (DirPath)
 
@@ -120,7 +121,7 @@ unsafeUpdateCachedDraftboard deckId model = do
   case model of
     { cardId, model: CM.Draftboard db } → do
       let coord = deckId × cardId
-      getCache coord wiring.cards >>= traverse_ \ce → do
+      Cache.get coord wiring.cards >>= traverse_ \ce → do
         let card = map (_ { model = CM.Draftboard db }) ce.card
         putCardEval (ce { card = card }) wiring.cards
     _ → pure unit
