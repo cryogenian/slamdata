@@ -96,6 +96,7 @@ renderHighLOD state =
     , renderSize state
     , HH.hr_
     , renderSeries state
+    , renderParallel state
     , HH.hr_
     , row [ renderMinSize state, renderMaxSize state ]
     , renderPicker state
@@ -115,6 +116,7 @@ renderPicker state = case state.picker of
               Q.Ordinate _ → "Choose y-axis"
               Q.Size _     → "Choose size"
               Q.Series _   → "Choose series"
+              Q.Parallel _ → "Choose category"
               _ → ""
           , label: DPC.labelNode show
           , render: DPC.renderNode show
@@ -178,6 +180,18 @@ renderSeries state =
         state.series
     ]
 
+renderParallel ∷ ST.State → HTML
+renderParallel state =
+  HH.form
+    [ HP.classes [ CSS.chartConfigureForm ]
+    , Cp.nonSubmit
+    ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Parallel" ]
+    , BCI.pickerInput
+        (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
+        state.parallel
+    ]
+
 renderMinSize ∷ ST.State → HTML
 renderMinSize state =
   HH.form
@@ -234,6 +248,7 @@ cardEval = case _ of
         , size: st.size ^. _value
         , sizeAggregation: st.sizeAgg ^. _value
         , series: st.series ^. _value
+        , parallel: st.parallel ^. _value
         , minSize: (st.minSize ∷ Number)
         , maxSize: (st.maxSize ∷ Number)
         }
@@ -289,6 +304,7 @@ scatterBuilderEval = case _ of
       Q.Size a        → updatePicker ST._size Q.Size a
       Q.SizeAgg a     → updateSelect ST._sizeAgg a
       Q.Series a      → updatePicker ST._series Q.Series a
+      Q.Parallel a    → updatePicker ST._parallel Q.Parallel a
     pure next
   where
   updatePicker l q = case _ of
@@ -314,6 +330,7 @@ peek = coproduct peekPicker (const (pure unit))
         Q.Ordinate _ → H.modify (ST._ordinate ∘ _value ?~ value')
         Q.Size _     → H.modify (ST._size ∘ _value ?~ value')
         Q.Series _   → H.modify (ST._series ∘ _value ?~ value')
+        Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ value')
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
@@ -356,9 +373,14 @@ synchronizeChildren = do
 
     newSeries =
       setPreviousValueFrom (Just st.series)
-        $ autoSelect
         $ newSelect
         $ st.axes.category
+
+    newParallel =
+      setPreviousValueFrom (Just st.parallel)
+        $ newSelect
+        $ st.axes.category
+        ⊝ newSeries
 
   H.modify _
     { abscissa = newAbscissa
@@ -368,6 +390,7 @@ synchronizeChildren = do
     , size = newSize
     , sizeAgg = newSizeAggregation
     , series = newSeries
+    , parallel = newParallel
     }
 
 loadModel ∷ M.ScatterR → DSL Unit
@@ -380,4 +403,5 @@ loadModel r =
     , size = fromSelected r.size
     , sizeAgg = fromSelected r.sizeAggregation
     , series = fromSelected r.series
+    , parallel = fromSelected r.parallel
     }

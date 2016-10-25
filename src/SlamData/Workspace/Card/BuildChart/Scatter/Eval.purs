@@ -46,14 +46,14 @@ import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Scatter.Model (Model, ScatterR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Scatter))
+import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors, getTransparentColor)
 import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
-import Utils.Array (enumerate)
+import Utils.Foldable (enumeratedFor_)
 
 eval
   ∷ ∀ m
@@ -70,21 +70,33 @@ eval (Just conf) resource = do
 
 type ScatterSeries =
   { name ∷ Maybe String
+  , w ∷ Maybe Number
+  , h ∷ Maybe Number
+  , x ∷ Maybe Number
+  , y ∷ Maybe Number
+  , fontSize ∷ Maybe Int
+  , series ∷ Array OnOneGrid
+  }
+
+type OnOneGrid =
+  { name ∷ Maybe String
   , items ∷ Array {x ∷ Number, y ∷ Number, r ∷ Number}
   }
 
-buildScatterData ∷ ScatterR → JArray → Array ScatterSeries
+type ScatterData = Array ScatterSeries
+
+buildScatterData ∷ ScatterR → JArray → ScatterData
 buildScatterData r records = series
   where
-  -- | maybe series >> array xs × array ys × array rs
-  dataMap ∷ Maybe String >> (Array Number × Array Number × Array Number)
+  -- | maybe parallel >> maybe series >> array xs × array ys × array rs
+  dataMap ∷ Maybe String >> Maybe String >> (Array Number × Array Number × Array Number)
   dataMap =
     foldl dataMapFoldFn M.empty records
 
   dataMapFoldFn
-    ∷ Maybe String >> (Array Number × Array Number × Array Number)
+    ∷ Maybe String >> Maybe String >> (Array Number × Array Number × Array Number)
     → Json
-    → Maybe String >> (Array Number × Array Number × Array Number)
+    → Maybe String >> Maybe String >> (Array Number × Array Number × Array Number)
   dataMapFoldFn acc js =
     let
       getValuesFromJson = getValues js
@@ -92,12 +104,24 @@ buildScatterData r records = series
 
       mbSeries =
         getMaybeStringFromJson =<< r.series
+
+      mbParallel =
+        getMaybeStringFromJson =<< r.parallel
+
       xs =
         getValuesFromJson $ pure r.abscissa
       ys =
         getValuesFromJson $ pure r.ordinate
       rs =
         getValuesFromJson r.size
+
+      alterParallelFn
+        ∷ Maybe (Maybe String >> (Array Number × Array Number × Array Number))
+        → Maybe (Maybe String >> (Array Number × Array Number × Array Number))
+      alterParallelFn Nothing =
+        Just $ M.singleton mbSeries $ xs × ys × rs
+      alterParallelFn (Just parallel) =
+        Just $ M.alter alterSeriesFn mbSeries parallel
 
       alterSeriesFn
         ∷ Maybe (Array Number × Array Number × Array Number)
@@ -106,17 +130,34 @@ buildScatterData r records = series
         Just $ xs × ys × rs
       alterSeriesFn (Just (xxs × yys × rrs)) =
         Just $ (xxs ⊕ xs) × (yys ⊕ ys) × (rrs ⊕ rs)
-    in
-      M.alter alterSeriesFn mbSeries acc
 
-  series ∷ Array ScatterSeries
-  series =
+    in
+      M.alter alterParallelFn mbParallel acc
+
+  rawSeries ∷ Array ScatterSeries
+  rawSeries =
     foldMap mkScatterSeries $ M.toList dataMap
 
+  series ∷ Array ScatterSeries
+  series = BCP.adjustRectangularPositions rawSeries
+
   mkScatterSeries
-    ∷ Maybe String × (Array Number × Array Number × Array Number)
+    ∷ Maybe String × (Maybe String >> (Array Number × Array Number × Array Number))
     → Array ScatterSeries
-  mkScatterSeries (name × items) =
+  mkScatterSeries (name × mp) =
+    [{ name
+     , x: Nothing
+     , y: Nothing
+     , w: Nothing
+     , h: Nothing
+     , fontSize: Nothing
+     , series: foldMap mkOneGrid $ M.toList mp
+     }]
+
+  mkOneGrid
+    ∷ Maybe String × (Array Number × Array Number × Array Number)
+    → Array OnOneGrid
+  mkOneGrid (name × items) =
     [{ name
      , items: adjustSymbolSizes $ mkScatterItem items
      }]
@@ -203,22 +244,27 @@ buildScatter r records = do
         E.solidLine
   E.colors colors
 
+  BCP.rectangularGrids scatterData
+  BCP.rectangularTitles scatterData
+
   E.grid BCP.cartesian
-  E.xAxis valueAxis
-  E.yAxis valueAxis
+  E.xAxes $ valueAxes E.addXAxis
+  E.yAxes $ valueAxes E.addYAxis
 
   E.legend do
+    E.topBottom
     E.textStyle $ E.fontFamily "Ubuntu, sans"
     E.items $ map ET.strItem seriesNames
 
   E.series series
 
   where
-  scatterData ∷ Array (Int × ScatterSeries)
-  scatterData = enumerate $ buildScatterData r records
+  scatterData ∷ ScatterData
+  scatterData = buildScatterData r records
 
-  valueAxis ∷ ∀ i. DSL (ETP.AxisI i)
-  valueAxis = do
+  valueAxes ∷ ∀ i a. (DSL (ETP.AxisI (gridIndex ∷ ETP.I|i)) → DSL a) → DSL a
+  valueAxes addAxis = enumeratedFor_ scatterData \(ix × _) → addAxis do
+    E.gridIndex ix
     E.axisType ET.Value
     E.axisLabel $ E.textStyle $ E.fontFamily "Ubuntu, sans"
     E.axisLine $ E.lineStyle do
@@ -230,15 +276,19 @@ buildScatter r records = do
 
   seriesNames ∷ Array String
   seriesNames =
-    A.fromFoldable $ foldMap (snd ⋙ _.name ⋙ Set.fromFoldable) scatterData
+    A.fromFoldable
+    $ foldMap (_.series ⋙ foldMap (_.name ⋙ Set.fromFoldable)) scatterData
 
   series ∷ ∀ i. DSL (scatter ∷ ETP.I|i)
-  series = for_ scatterData \(ix × serie) → E.scatter do
-    for_ serie.name E.name
-    for_ (A.index colors $ mod ix $ A.length colors) \color → do
-      E.itemStyle $ E.normal $ E.color $ getTransparentColor color 0.5
-    E.symbol ET.Circle
-    E.buildItems $ for_ serie.items \item → E.addItem $ E.buildValues do
-      E.addValue item.x
-      E.addValue item.y
-      E.addValue item.r
+  series = enumeratedFor_ scatterData \(gridIx × onOneGrid) →
+    enumeratedFor_ onOneGrid.series \(ix × serie) → E.scatter do
+      E.xAxisIndex gridIx
+      E.yAxisIndex gridIx
+      for_ serie.name E.name
+      for_ (A.index colors $ mod ix $ A.length colors) \color → do
+        E.itemStyle $ E.normal $ E.color $ getTransparentColor color 0.5
+      E.symbol ET.Circle
+      E.buildItems $ for_ serie.items \item → E.addItem $ E.buildValues do
+        E.addValue item.x
+        E.addValue item.y
+        E.addValue item.r

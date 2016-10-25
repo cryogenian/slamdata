@@ -210,14 +210,13 @@ raiseUpdate ∷ DSL Unit
 raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 
 chartEval ∷ Q.Query ~> DSL
-chartEval (Q.Select sel next) = do
-  case sel of
-    Q.Value a    → updatePicker ST._value Q.Value a
-    Q.ValueAgg a → updateSelect ST._valueAgg a
-    Q.Category a → updatePicker ST._category Q.Category a
-    Q.Donut a    → updatePicker ST._donut Q.Donut a
-    Q.Parallel a → updatePicker ST._parallel Q.Parallel a
-  pure next
+chartEval (Q.Select sel next) = next <$ case sel of
+  Q.Value a    → updatePicker ST._value Q.Value a
+  Q.ValueAgg a → updateSelect ST._valueAgg a
+  Q.Category a → updatePicker ST._category Q.Category a
+  Q.Donut a    → updatePicker ST._donut Q.Donut a
+  Q.Parallel a → updatePicker ST._parallel Q.Parallel a
+
   where
   updatePicker l q = case _ of
     BCI.Open opts → H.modify (ST.showPicker q opts)

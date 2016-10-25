@@ -48,6 +48,7 @@ data ChartType
   | Metric
   | PivotTable
   | PunchCard
+  | Candlestick
 
 allChartTypes ∷ Array ChartType
 allChartTypes =
@@ -65,6 +66,7 @@ allChartTypes =
   , Gauge
   , Boxplot
   , PunchCard
+  , Candlestick
   , Metric
   ]
 
@@ -85,6 +87,7 @@ parseChartType = case _ of
   "metric" → pure Metric
   "pivot" → pure PivotTable
   "punch-card" → pure PunchCard
+  "candlestick" → pure Candlestick
   _ → Left "incorrect chartType"
 
 printChartType ∷ ChartType → String
@@ -104,6 +107,7 @@ printChartType = case _ of
   Metric → "metric"
   PivotTable → "pivot"
   PunchCard → "punch-card"
+  Candlestick → "candlestick"
 
 chartName ∷ ChartType → String
 chartName = case _ of
@@ -122,6 +126,7 @@ chartName = case _ of
   Metric → "Metric"
   PivotTable → "Pivot Table"
   PunchCard → "Punch Card"
+  Candlestick → "Candlestick"
 
 derive instance genericChartType ∷ Generic ChartType
 derive instance eqChartType ∷ Eq ChartType
@@ -154,6 +159,7 @@ chartLightIconSrc = case _ of
   Metric → "img/metric.svg"
   PivotTable → "img/cardsLight/table.svg"
   PunchCard → "img/punch-card.svg"
+  Candlestick → "img/candlestick.svg"
 
 chartDarkIconSrc ∷ ChartType → String
 chartDarkIconSrc = case _ of
@@ -172,3 +178,4 @@ chartDarkIconSrc = case _ of
   Metric → "img/metric-black.svg"
   PivotTable → "img/cardsDark/table.svg"
   PunchCard → "img/punch-card-black.svg"
+  Candlestick → "img/candlestick-black.svg"

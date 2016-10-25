@@ -286,6 +286,7 @@ decode cturs js = do
         , abscissaAggregation
         , ordinateAggregation
         , sizeAggregation
+        , parallel: Nothing
         , series
         , minSize
         , maxSize

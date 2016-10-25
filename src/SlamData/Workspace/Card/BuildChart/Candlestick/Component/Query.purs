@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.BuildChart.Scatter.Component.Query where
+module SlamData.Workspace.Card.BuildChart.Candlestick.Component.Query where
 
 import SlamData.Prelude
 
@@ -23,24 +23,24 @@ import Data.Argonaut (JCursor)
 import Halogen as H
 
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.BuildChart.Scatter.Component.ChildSlot (ChildQuery, ChildSlot)
+import SlamData.Workspace.Card.BuildChart.Candlestick.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.BuildChart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.BuildChart.Inputs (SelectAction)
 
 data Selection f
-  = Abscissa (f JCursor)
-  | AbscissaAgg (f (Maybe Aggregation))
-  | Ordinate (f JCursor)
-  | OrdinateAgg (f (Maybe Aggregation))
-  | Size (f JCursor)
-  | SizeAgg (f (Maybe Aggregation))
-  | Series (f JCursor)
+  = Dimension (f JCursor)
+  | High (f JCursor)
+  | HighAgg (f Aggregation)
+  | Low (f JCursor)
+  | LowAgg (f Aggregation)
+  | Open (f JCursor)
+  | OpenAgg (f Aggregation)
+  | Close (f JCursor)
+  | CloseAgg (f Aggregation)
   | Parallel (f JCursor)
 
 data Query a
-  = SetMinSymbolSize String a
-  | SetMaxSymbolSize String a
-  | Select (Selection SelectAction) a
+  = Select (Selection SelectAction) a
 
 type QueryC = CardEvalQuery ⨁ Query
 

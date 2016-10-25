@@ -281,8 +281,9 @@ adjustRectangularPositions arr =
 
 
 rectangularTitles
-  ∷ ∀ r i
-  . Array (RectangularPosition (name ∷ Maybe String |r))
+  ∷ ∀ r i f
+  . Foldable f
+  ⇒ f (RectangularPosition (name ∷ Maybe String |r))
   → DSL (title ∷ ETP.I|i)
 rectangularTitles poss = E.titles $ for_ poss \{name, x, y, h, fontSize} → E.title do
   traverse_ E.text name
@@ -296,14 +297,16 @@ rectangularTitles poss = E.titles $ for_ poss \{name, x, y, h, fontSize} → E.t
   E.textCenter
   E.textMiddle
   where
+  arr = foldMap (A.singleton) poss
+
   numRows ∷ Int
-  numRows = rowCount poss
+  numRows = rowCount arr
 
   rowHeight ∷ Number
   rowHeight = 100.0 / Int.toNumber numRows
 
   inRow ∷ Int
-  inRow = itemsInRow poss
+  inRow = itemsInRow arr
 
   colWidth ∷ Number
   colWidth =

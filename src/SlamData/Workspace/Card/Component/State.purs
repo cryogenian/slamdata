@@ -50,6 +50,7 @@ module SlamData.Workspace.Card.Component.State
   , _BuildBoxplotState
   , _BuildHeatmapState
   , _BuildPunchCardState
+  , _BuildCandlestickState
   ) where
 
 import SlamData.Prelude
@@ -92,6 +93,7 @@ import SlamData.Workspace.Card.BuildChart.PivotTable.Component.State as BuildPiv
 import SlamData.Workspace.Card.BuildChart.Boxplot.Component.State as BuildBoxplot
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.State as BuildHeatmap
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component.State as BuildPunchCard
+import SlamData.Workspace.Card.BuildChart.Candlestick.Component.State as BuildCandlestick
 
 
 -- | The common state value for deck cards.
@@ -141,6 +143,7 @@ data AnyCardState
   | BuildBoxplotState BuildBoxplot.StateP
   | BuildHeatmapState BuildHeatmap.StateP
   | BuildPunchCardState BuildPunchCard.StateP
+  | BuildCandlestickState BuildCandlestick.StateP
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState case _ of
@@ -290,4 +293,9 @@ _BuildHeatmapState = prism' BuildHeatmapState case _ of
 _BuildPunchCardState ∷ PrismP AnyCardState BuildPunchCard.StateP
 _BuildPunchCardState = prism' BuildPunchCardState case _ of
   BuildPunchCardState s → Just s
+  _ → Nothing
+
+_BuildCandlestickState ∷ PrismP AnyCardState BuildCandlestick.StateP
+_BuildCandlestickState = prism' BuildCandlestickState case _ of
+  BuildCandlestickState s → Just s
   _ → Nothing

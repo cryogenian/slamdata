@@ -44,6 +44,7 @@ type State =
   , size ∷ Select JCursor
   , sizeAgg ∷ Select (Maybe Aggregation)
   , series ∷ Select JCursor
+  , parallel ∷ Select JCursor
   , picker ∷ Maybe (PickerOptions JCursor Selection)
   }
 
@@ -60,6 +61,7 @@ initialState =
   , size: emptySelect
   , sizeAgg: emptySelect
   , series: emptySelect
+  , parallel: emptySelect
   , picker: Nothing
   }
 
@@ -86,6 +88,9 @@ _sizeAgg = lens _.sizeAgg _{ sizeAgg = _ }
 
 _series ∷ ∀ r a. LensP { series ∷ a | r } a
 _series = lens _.series _{ series = _ }
+
+_parallel ∷ ∀ r a. LensP { parallel ∷ a | r} a
+_parallel = lens _.parallel _{parallel = _}
 
 showPicker
   ∷ (Const Unit JCursor → Selection (Const Unit))

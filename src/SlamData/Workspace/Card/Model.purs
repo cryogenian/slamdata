@@ -56,6 +56,7 @@ import SlamData.Workspace.Card.BuildChart.Radar.Model as BuildRadar
 import SlamData.Workspace.Card.BuildChart.Boxplot.Model as BuildBoxplot
 import SlamData.Workspace.Card.BuildChart.Heatmap.Model as BuildHeatmap
 import SlamData.Workspace.Card.BuildChart.PunchCard.Model as BuildPunchCard
+import SlamData.Workspace.Card.BuildChart.Candlestick.Model as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Legacy as ChartLegacy
 
 import Test.StrongCheck.Arbitrary as SC
@@ -89,6 +90,7 @@ data AnyCardModel
   | BuildBoxplot BuildBoxplot.Model
   | BuildHeatmap BuildHeatmap.Model
   | BuildPunchCard BuildPunchCard.Model
+  | BuildCandlestick BuildCandlestick.Model
   | ErrorCard
   | NextAction
   | PendingCard
@@ -121,6 +123,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , BuildBoxplot <$> BuildBoxplot.genModel
       , BuildHeatmap <$> BuildHeatmap.genModel
       , BuildPunchCard <$> BuildPunchCard.genModel
+      , BuildCandlestick <$> BuildCandlestick.genModel
       , pure ErrorCard
       , pure NextAction
       ]
@@ -154,6 +157,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       BuildBoxplot x, BuildBoxplot y → BuildBoxplot.eqModel x y
       BuildHeatmap x, BuildHeatmap y → BuildHeatmap.eqModel x y
       BuildPunchCard x, BuildPunchCard y → BuildPunchCard.eqModel x y
+      BuildCandlestick x, BuildCandlestick y → BuildCandlestick.eqModel x y
       ErrorCard, ErrorCard → true
       NextAction, NextAction → true
       _,_ → false
@@ -183,6 +187,7 @@ modelCardType =
     BuildBoxplot _ → CT.ChartOptions Boxplot
     BuildHeatmap _ → CT.ChartOptions Heatmap
     BuildPunchCard _ → CT.ChartOptions PunchCard
+    BuildCandlestick _ → CT.ChartOptions Candlestick
     Chart _ → CT.Chart
     Markdown _ → CT.Markdown
     Table _ → CT.Table
@@ -277,6 +282,7 @@ encodeCardModel = case _ of
   BuildBoxplot model → BuildBoxplot.encode model
   BuildHeatmap model → BuildHeatmap.encode model
   BuildPunchCard model → BuildPunchCard.encode model
+  BuildCandlestick model → BuildCandlestick.encode model
   ErrorCard → J.jsonEmptyObject
   NextAction → J.jsonEmptyObject
   PendingCard → J.jsonEmptyObject
@@ -304,6 +310,7 @@ decodeCardModel = case _ of
   CT.ChartOptions Boxplot → map BuildBoxplot ∘ BuildBoxplot.decode
   CT.ChartOptions Heatmap → map BuildHeatmap ∘ BuildHeatmap.decode
   CT.ChartOptions PunchCard → map BuildPunchCard ∘ BuildPunchCard.decode
+  CT.ChartOptions Candlestick → map BuildCandlestick ∘ BuildCandlestick.decode
   CT.Chart → map Chart ∘ Chart.decode
   CT.Markdown → map Markdown ∘ MD.decode
   CT.Table → map Table ∘ JT.decode
@@ -341,6 +348,7 @@ cardModelOfType = case _ of
   CT.ChartOptions Boxplot → BuildBoxplot BuildBoxplot.initialModel
   CT.ChartOptions Heatmap → BuildHeatmap BuildHeatmap.initialModel
   CT.ChartOptions PunchCard → BuildPunchCard BuildPunchCard.initialModel
+  CT.ChartOptions Candlestick → BuildCandlestick BuildCandlestick.initialModel
   CT.Chart → Chart Chart.emptyModel
   CT.Markdown → Markdown MD.emptyModel
   CT.Table → Table JT.emptyModel
@@ -410,5 +418,7 @@ modelToEval = case _ of
     pure $ Eval.BuildPivotTable model
   BuildPunchCard model →
     pure $ Eval.BuildPunchCard model
+  BuildCandlestick model →
+    pure $ Eval.BuildCandlestick model
   _ →
     pure Eval.Pass
