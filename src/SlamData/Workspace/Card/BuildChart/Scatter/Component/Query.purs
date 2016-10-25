@@ -35,6 +35,7 @@ data Selection f
   | Size (f JCursor)
   | SizeAgg (f (Maybe Aggregation))
   | Series (f JCursor)
+  | Parallel (f JCursor)
 
 data Query a
   = SetMinSymbolSize String a

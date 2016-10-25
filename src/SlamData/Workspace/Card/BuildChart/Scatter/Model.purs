@@ -34,6 +34,7 @@ type ScatterR =
   , abscissaAggregation ∷ Maybe Ag.Aggregation
   , ordinateAggregation ∷ Maybe Ag.Aggregation
   , sizeAggregation ∷ Maybe (Maybe Ag.Aggregation)
+  , parallel ∷ Maybe JCursor
   , series ∷ Maybe JCursor
   , minSize ∷ Number
   , maxSize ∷ Number
@@ -71,6 +72,7 @@ eqScatterR r1 r2 =
     , r1.abscissaAggregation ≡ r2.abscissaAggregation
     , r1.ordinateAggregation ≡ r2.ordinateAggregation
     , r1.sizeAggregation ≡ r2.sizeAggregation
+    , r1.parallel ≡ r2.parallel
     , r1.series ≡ r2.series
     , r1.minSize ≡ r2.minSize
     , r1.maxSize ≡ r2.maxSize
@@ -94,6 +96,7 @@ genModel = do
     ordinateAggregation ← arbitrary
     sizeAggregation ← arbitrary
     series ← map (map runArbJCursor) arbitrary
+    parallel ← map (map runArbJCursor) arbitrary
     minSize ← arbitrary
     maxSize ← arbitrary
     pure { abscissa
@@ -103,6 +106,7 @@ genModel = do
          , ordinateAggregation
          , sizeAggregation
          , series
+         , parallel
          , minSize
          , maxSize
          }
@@ -118,6 +122,7 @@ encode (Just r) =
   ~> "ordinateAggregation" := r.ordinateAggregation
   ~> "sizeAggregation" := encodeMbMbAggregation r.sizeAggregation
   ~> "series" := r.series
+  ~> "parallel" := r.parallel
   ~> "minSize" := r.minSize
   ~> "maxSize" := r.maxSize
   ~> jsonEmptyObject
@@ -137,6 +142,7 @@ decode js
     ordinateAggregation ← obj .? "ordinateAggregation"
     sizeAggregation ← (obj .? "sizeAggregation") >>= decodeMbMbAggregation
     series ← obj .? "series"
+    parallel ← (obj .? "parallel") <|> (pure Nothing)
     minSize ← obj .? "minSize"
     maxSize ← obj .? "maxSize"
     pure { abscissa
@@ -146,6 +152,7 @@ decode js
          , ordinateAggregation
          , sizeAggregation
          , series
+         , parallel
          , minSize
          , maxSize
          }
