@@ -23,6 +23,7 @@ module SlamData.Workspace.Component
 import SlamData.Prelude
 
 import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar (putVar)
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Fork (class MonadFork)
@@ -53,23 +54,24 @@ import SlamData.Analytics as SA
 import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
-import SlamData.Header.Component as Header
-import SlamData.Monad (Slam)
+import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Guide as Guide
+import SlamData.Header.Component as Header
+import SlamData.Header.Gripper.Component as Gripper
+import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Notification.Component as NC
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
-import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Wiring (Wiring(..), putDeck, getDeck, clearCache)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Draftboard.Common as DBC
-import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Class (class WorkspaceDSL, putURLVarMaps, getURLVarMaps)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
@@ -77,7 +79,6 @@ import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _
 import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Common (wrappedDeck, splitDeck)
 import SlamData.Workspace.Deck.Component as Deck
-import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Workspace.Deck.Component.Nested as DN
 import SlamData.Workspace.Deck.DeckId (DeckId, freshDeckId)
 import SlamData.Workspace.Model as Model
@@ -277,6 +278,8 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
       NC.Action N.ExpandGlobalMenu _ → do
         queryHeaderGripper $ Gripper.StartDragging 0.0 unit
         queryHeaderGripper $ Gripper.StopDragging unit
+      NC.Action (N.Fulfill var) _ →
+        void $ H.fromAff $ Aff.attempt $ putVar var unit
       _ → pure unit
 
   peekDeck :: Deck.Query a → WorkspaceDSL Unit

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Ace.Component.Query (QueryP) where
+module SlamData.Workspace.Card.Ace.Component.Query (Query(..), QueryP) where
 
 import SlamData.Prelude
 
@@ -22,4 +22,9 @@ import Ace.Halogen.Component as Ace
 import Halogen (ChildF)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 
-type QueryP = Coproduct CardEvalQuery (ChildF Unit Ace.AceQuery)
+data Query a
+  = Init a
+  | RunFromNotification a
+  | Finalize a
+
+type QueryP = (CardEvalQuery ⨁ Query) ⨁ (ChildF Unit Ace.AceQuery)

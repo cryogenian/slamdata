@@ -30,13 +30,17 @@ import SlamData.Prelude
 
 import Ace.Halogen.Component (AceQuery, AceState)
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.EventLoop (Breaker)
+
 import Data.Lens (LensP, lens)
 
 import Halogen (ParentState)
 
+import SlamData.Monad (Slam)
+import SlamData.Workspace.Card.Ace.Component.Query (Query)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Monad (Slam)
 
 data Status
   = New
@@ -47,6 +51,8 @@ type State =
   { levelOfDetails ∷ LevelOfDetails
   , status ∷ Status
   , dirty ∷ Boolean
+  , trigger ∷ Maybe (AVar Unit)
+  , breaker ∷ Maybe (Breaker Unit)
   }
 
 initialState ∷ State
@@ -54,6 +60,8 @@ initialState =
   { levelOfDetails: High
   , status: New
   , dirty: false
+  , trigger: Nothing
+  , breaker: Nothing
   }
 
 _levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a |r} a
@@ -74,4 +82,4 @@ isReady ∷ Status → Boolean
 isReady Ready = true
 isReady _     = false
 
-type StateP = ParentState State AceState CardEvalQuery AceQuery Slam Unit
+type StateP = ParentState State AceState (CardEvalQuery ⨁ Query) AceQuery Slam Unit

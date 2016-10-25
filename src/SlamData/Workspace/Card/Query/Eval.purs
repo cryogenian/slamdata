@@ -79,7 +79,7 @@ queryEval info = do
       for_ mbEditor setSelectEmpty
 
     modify $ _status .~ Ready
-    CC.raiseUpdatedP CC.EvalModelUpdate
+    CC.raiseUpdatedP' CC.EvalModelUpdate
   where
   setSelectEmpty editor = do
     void $ query unit $ action $ Ace.SetText ("SELECT \"Hello World!\"")

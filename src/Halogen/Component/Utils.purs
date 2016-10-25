@@ -125,16 +125,24 @@ subscribeToBus'
   ⇒ (a → f Unit)
   → Bus.Bus (read ∷ Bus.Cap | r) a
   → H.ParentDSL s s' f f' g p (EventLoop.Breaker Unit)
-subscribeToBus' k bus = do
+subscribeToBus' k bus =
+  subscribeToASource' k (Bus.read bus)
+
+subscribeToASource'
+  ∷ ∀ s s' f f' g p a eff
+  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ⇒ (a → f Unit)
+  → Aff (avar ∷ AVAR | eff) a
+  → H.ParentDSL s s' f f' g p (EventLoop.Breaker Unit)
+subscribeToASource' k source = do
   breaker ← fromAff makeVar
   H.subscribe'
     $ ES.EventSource
     $ ES.produce \emit →
         void $ runAff (const $ pure unit) (const $ pure unit) do
           loop ← EventLoop.forever do
-            a ← Bus.read bus
+            a ← source
             forkAff $ H.fromEff $ emit $ E.Left (k a)
           putVar breaker loop.breaker
           loop.run
   H.fromAff $ takeVar breaker
-

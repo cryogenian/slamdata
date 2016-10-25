@@ -28,6 +28,7 @@ module SlamData.Notification
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Free (Free, liftF)
 
 import Data.Time.Duration (Milliseconds)
@@ -42,6 +43,7 @@ data Notification
 
 data NotificationAction
   = ExpandGlobalMenu
+  | Fulfill (AVar Unit)
 
 type NotificationOptions =
   { notification ∷ Notification
