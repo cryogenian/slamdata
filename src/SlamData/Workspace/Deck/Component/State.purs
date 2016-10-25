@@ -28,7 +28,6 @@ module SlamData.Workspace.Deck.Component.State
   , _modelCards
   , _displayCards
   , _activeCardIndex
-  , _path
   , _presentAccessNextActionCardGuideCanceler
   , _presentAccessNextActionCardGuide
   , _saveTrigger
@@ -100,8 +99,6 @@ import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
-import Utils.Path (DirPath)
-
 type StateP = OpaqueState State
 
 data DisplayMode
@@ -135,7 +132,6 @@ type State =
   , displayCards ∷ Array (DeckId × Card.Model)
   , cardsToLoad ∷ Set.Set (DeckId × CardId)
   , activeCardIndex ∷ Maybe Int
-  , path ∷ DirPath
   , presentAccessNextActionCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
   , presentAccessNextActionCardGuide ∷ Boolean
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
@@ -162,8 +158,8 @@ type State =
 type CardDef = { id ∷ CardId, ty ∷ CT.CardType }
 
 -- | Constructs a default `State` value.
-initialDeck ∷ DirPath → DeckId → State
-initialDeck path deckId =
+initialDeck ∷ DeckId → State
+initialDeck deckId =
   { id: deckId
   , name: ""
   , parent: Nothing
@@ -172,7 +168,6 @@ initialDeck path deckId =
   , displayCards: mempty
   , cardsToLoad: mempty
   , activeCardIndex: Nothing
-  , path
   , presentAccessNextActionCardGuideCanceler: Nothing
   , presentAccessNextActionCardGuide: false
   , saveTrigger: Nothing
@@ -224,10 +219,6 @@ _displayCards = lens _.displayCards _{displayCards = _}
 -- | action card.
 _activeCardIndex ∷ ∀ a r. LensP {activeCardIndex ∷ a |r} a
 _activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
-
--- | The path to the deck in the filesystem
-_path ∷ ∀ a r. LensP {path ∷ a |r} a
-_path = lens _.path _{path = _}
 
 -- | An optional canceler for the delayed guiding of the user to add a card. Can
 -- | be used to reset the delay of this guiding.
@@ -373,18 +364,16 @@ removePendingCard coord st =
 
 -- | Reconstructs a deck state from a deck model.
 fromModel
-  ∷ { path ∷ DirPath
-    , id ∷ DeckId
+  ∷ { id ∷ DeckId
     , parent ∷ Maybe (DeckId × CardId)
     , modelCards ∷ Array (DeckId × Card.Model)
     , name ∷ String
     }
   → State
   → State
-fromModel { path, id: deckId, parent, modelCards, name } state =
+fromModel { id: deckId, parent, modelCards, name } state =
   state
-    { path = path
-    , id = deckId
+    { id = deckId
     , parent = parent
     , modelCards = modelCards
     , name = name

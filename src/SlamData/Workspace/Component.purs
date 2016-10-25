@@ -64,7 +64,7 @@ import SlamData.Notification.Component as NC
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
-import SlamData.Wiring (Wiring(..), putDeck, getDeck, clearCache)
+import SlamData.Wiring (Wiring(..), putDeck, getDeck)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
@@ -75,7 +75,7 @@ import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Class (class WorkspaceDSL, putURLVarMaps, getURLVarMaps)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _version, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
 import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Common (wrappedDeck, splitDeck)
 import SlamData.Workspace.Deck.Component as Deck
@@ -86,7 +86,6 @@ import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash)
 import SlamData.Workspace.StateMode (StateMode(..))
 
-import Utils.Path as UP
 import Utils.DOM (onResize, elementEq)
 import Utils.LocalStorage as LocalStorage
 
@@ -149,22 +148,20 @@ render state =
 
   deck ∷ Array WorkspaceHTML
   deck =
-    pure case state.stateMode, state.path, state.initialDeckId of
-      Loading, _, _ →
+    pure case state.stateMode, state.initialDeckId of
+      Loading, _ →
         HH.div_ []
-      Error err, _, _→ showError err
-      _, Just path, Just deckId →
+      Error err,  _→ showError err
+      _, Just deckId →
         HH.slot' cpDeck unit \_ →
-          let init = opaqueState $ Deck.initialDeck path deckId
-          in { component: DN.comp (deckOpts path deckId) init
+          let init = opaqueState $ Deck.initialDeck deckId
+          in { component: DN.comp (deckOpts deckId) init
              , initialState: DN.initialState
              }
-      _, Nothing, _ → showError "Missing workspace path"
-      _, _, Nothing → showError "Missing deck id (impossible!)"
+      _, _ → showError "Missing deck id (impossible!)"
 
-  deckOpts path deckId =
-    { path
-    , accessType: state.accessType
+  deckOpts deckId =
+    { accessType: state.accessType
     , cursor: List.Nil
     }
 
@@ -184,7 +181,7 @@ eval (Init next) = do
     $ throttledEventSource_ (Milliseconds 100.0) onResize
     $ pure (H.action Resize)
   H.modify $ (_cardGuideStep .~ cardGuideStep)
-  Wiring.Wiring wiring ← H.liftH $ H.liftH ask
+  Wiring wiring ← H.liftH $ H.liftH ask
   subscribeToBus' (H.action ∘ PresentStepByStepGuide) wiring.presentStepByStepGuide
   -- The deck component isn't initialised before this later has completed
   H.fromAff $ Aff.later (pure unit :: Aff.Aff SlamDataEffects Unit)
@@ -216,20 +213,16 @@ eval (DismissAll ev next) = do
 eval (Resize next) = do
   queryDeck $ H.action $ Deck.UpdateCardSize
   pure next
-eval (Reset path next) = do
+eval (Reset next) = do
+  Wiring wiring ← H.liftH $ H.liftH ask
   H.modify _
-    { path = Just path
-    , stateMode = Ready
+    { stateMode = Ready
     , accessType = AT.Editable
     }
-  queryDeck $ H.action $ Deck.Reset path
-  queryDeck $ H.action $ Deck.Focus
+  queryDeck $ H.action Deck.Reset
+  queryDeck $ H.action Deck.Focus
   pure next
-eval(ClearCaches next) = do
-  Wiring wiring ← H.liftH $ H.liftH ask
-  clearCache wiring.cards
-  pure next
-eval (Load path deckId accessType next) = do
+eval (Load deckId accessType next) = do
   oldAccessType ← H.gets _.accessType
   H.modify (_accessType .~ accessType)
 
@@ -246,28 +239,27 @@ eval (Load path deckId accessType next) = do
     void $ queryDeck $ H.action $ Deck.Run
 
   load = do
-    H.modify _
-      { stateMode = Loading
-      , path = Just path
-      }
-    queryDeck $ H.action $ Deck.Reset path
+    H.modify _ { stateMode = Loading }
+    queryDeck $ H.action Deck.Reset
     maybe loadRoot loadDeck deckId
     void $ queryDeck $ H.action $ Deck.Focus
 
   loadDeck deckId = void do
     SA.track (SA.Load deckId accessType)
     H.modify (_stateMode .~ Ready)
-    queryDeck $ H.action $ Deck.Load path deckId
+    queryDeck $ H.action $ Deck.Load deckId
 
   loadRoot =
-    rootDeck path >>= either handleError loadDeck
+    rootDeck >>= either handleError loadDeck
 
   handleError err = case GE.fromQError err of
     Left msg → H.modify $ _stateMode .~ Error msg
     Right ge → GE.raiseGlobalError ge
 
-rootDeck ∷ UP.DirPath → WorkspaceDSL (Either QE.QError DeckId)
-rootDeck path = Model.getRoot (path </> Pathy.file "index")
+rootDeck ∷ WorkspaceDSL (Either QE.QError DeckId)
+rootDeck = do
+  Wiring wiring ← H.liftH $ H.liftH ask
+  Model.getRoot (wiring.path </> Pathy.file "index")
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
 peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotification)
@@ -285,7 +277,6 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
   peekDeck :: Deck.Query a → WorkspaceDSL Unit
   peekDeck (Deck.DoAction (Deck.Unwrap decks) _) = void $ runMaybeT do
     state  ← lift H.get
-    path   ← MaybeT $ pure state.path
     oldId  ← MaybeT $ queryDeck $ H.request Deck.GetId
     parent ← lift $ join <$> queryDeck (H.request Deck.GetParent)
     newId × deck ← MaybeT $ pure $ List.head $ List.catMaybes $ Pane.toList decks
@@ -293,8 +284,8 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
     let deck' = deck { parent = parent }
 
     error ← lift $ H.liftH $ H.liftH $ runExceptT do
-      req1 ← ExceptT $ putDeck path newId deck'
-      updateParentPointer path oldId newId parent
+      req1 ← ExceptT $ putDeck newId deck'
+      updateParentPointer oldId newId parent
 
     case error of
       Left err →
@@ -305,11 +296,10 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
             GE.raiseGlobalError ge
       Right _  → do
         SA.track (SA.Collapse oldId)
-        lift $ H.liftH $ H.liftH $ updateHash path state.accessType newId
+        lift $ H.liftH $ H.liftH $ updateHash state.accessType newId
 
   peekDeck (Deck.DoAction Deck.Wrap _) = void $ runMaybeT do
     state ← lift H.get
-    path  ← MaybeT $ pure state.path
     deck  ← MaybeT $ queryDeck (H.request Deck.GetModel)
     oldId ← MaybeT $ queryDeck (H.request Deck.GetId)
     newId ← lift $ H.fromEff freshDeckId
@@ -320,10 +310,10 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
 
     error ← lift $ H.liftH $ H.liftH $ runExceptT do
       ExceptT $ map (errors "; ") $ parTraverse id
-        [ putDeck path oldId deck'
-        , putDeck path newId wrapper
+        [ putDeck oldId deck'
+        , putDeck newId wrapper
         ]
-      updateParentPointer path oldId newId deck.parent
+      updateParentPointer oldId newId deck.parent
 
     case error of
       Left err →
@@ -334,22 +324,22 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
             GE.raiseGlobalError ge
       Right _  → do
         SA.track (SA.Wrap oldId)
-        lift $ H.liftH $ H.liftH $ updateHash path state.accessType newId
+        lift $ H.liftH $ H.liftH $ updateHash state.accessType newId
 
   peekDeck (Deck.DoAction Deck.DeleteDeck _) = void $ runMaybeT do
     state  ← lift H.get
-    path   ← MaybeT $ pure state.path
     oldId  ← MaybeT $ queryDeck (H.request Deck.GetId)
     parent ← lift $ join <$> queryDeck (H.request Deck.GetParent)
     error  ← lift $ H.liftH $ H.liftH $ runExceptT do
       case parent of
         Just (deckId × cardId) → do
-          parentDeck ← ExceptT $ getDeck path deckId
+          parentDeck ← ExceptT $ getDeck deckId
           let cards = DBC.replacePointer oldId Nothing cardId parentDeck.cards
           lift $ for_ cards (DBC.unsafeUpdateCachedDraftboard deckId)
-          ExceptT $ putDeck path deckId (parentDeck { cards = cards })
-        Nothing →
-          ExceptT $ Quasar.delete $ Left path
+          ExceptT $ putDeck deckId (parentDeck { cards = cards })
+        Nothing → do
+          Wiring wiring ← lift ask
+          ExceptT $ Quasar.delete $ Left wiring.path
 
     case error of
       Left err →
@@ -358,14 +348,14 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
         SA.track (SA.Delete oldId)
         case parent of
           Just (deckId × _) →
-            lift $ H.liftH $ H.liftH $ updateHash path state.accessType deckId
-          Nothing →
-            void $ H.fromEff $ setHref $ parentURL $ Left path
+            lift $ H.liftH $ H.liftH $ updateHash state.accessType deckId
+          Nothing → do
+            Wiring wiring ← lift $ H.liftH $ H.liftH ask
+            void $ H.fromEff $ setHref $ parentURL $ Left wiring.path
 
   peekDeck (Deck.DoAction Deck.Mirror _) = void $ runMaybeT do
     pure unit
     state ← lift H.get
-    path ← MaybeT $ pure state.path
     newIdShared ← lift $ H.fromEff freshDeckId
     newIdMirror ← lift $ H.fromEff freshDeckId
     newIdParent ← lift $ H.fromEff freshDeckId
@@ -385,8 +375,8 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
           let
             mirrored = oldModel { parent = parentRef }
           in
-            [ putDeck path oldId mirrored
-            , putDeck path newIdMirror mirrored
+            [ putDeck oldId mirrored
+            , putDeck newIdMirror mirrored
             ]
         else
           let
@@ -397,12 +387,12 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
               , name = oldModel.name
               }
           in
-            [ putDeck path oldId mirrored
-            , putDeck path newIdMirror (mirrored { name = "" })
-            , putDeck path newIdShared (oldModel { name = "" })
+            [ putDeck oldId mirrored
+            , putDeck newIdMirror (mirrored { name = "" })
+            , putDeck newIdShared (oldModel { name = "" })
             ]
-      ExceptT $ putDeck path newIdParent wrappedDeck
-      updateParentPointer path oldId newIdParent oldModel.parent
+      ExceptT $ putDeck newIdParent wrappedDeck
+      updateParentPointer oldId newIdParent oldModel.parent
 
     case error of
       Left err →
@@ -413,7 +403,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
             GE.raiseGlobalError ge
       Right _  → do
         SA.track (SA.Mirror oldId)
-        lift $ H.liftH $ H.liftH $ updateHash path state.accessType newIdParent
+        lift $ H.liftH $ H.liftH $ updateHash state.accessType newIdParent
 
   peekDeck _ = pure unit
 
@@ -454,31 +444,31 @@ errors m es = case lefts es of
 updateParentPointer
   ∷ ∀ m
   . (MonadFork m, QuasarDSL m, Affable SlamDataEffects m, MonadReader Wiring m)
-  ⇒ UP.DirPath
-  → DeckId
+  ⇒ DeckId
   → DeckId
   → Maybe (DeckId × CID.CardId)
   → ExceptT QE.QError m Unit
-updateParentPointer path oldId newId = case _ of
+updateParentPointer oldId newId = case _ of
   Just (deckId × cardId) → do
-    parentDeck ← ExceptT $ getDeck path deckId
+    parentDeck ← ExceptT $ getDeck deckId
     let cards = DBC.replacePointer oldId (Just newId) cardId parentDeck.cards
     lift $ for_ cards (DBC.unsafeUpdateCachedDraftboard deckId)
-    ExceptT $ putDeck path deckId (parentDeck { cards = cards })
-  Nothing →
-    ExceptT $ Model.setRoot (path </> Pathy.file "index") newId
+    ExceptT $ putDeck deckId (parentDeck { cards = cards })
+  Nothing → do
+    Wiring wiring ← lift ask
+    ExceptT $ Model.setRoot (wiring.path </> Pathy.file "index") newId
 
 updateHash
   ∷ ∀ m
-  . (Bind m, Affable SlamDataEffects m, WorkspaceDSL m)
-  ⇒ UP.DirPath
-  → AT.AccessType
+  . (Bind m, Affable SlamDataEffects m, WorkspaceDSL m, MonadReader Wiring m)
+  ⇒ AT.AccessType
   → DeckId
   → m Unit
-updateHash path accessType newId = do
+updateHash accessType newId = do
+  Wiring wiring ← ask
   varMaps ← getURLVarMaps
   H.fromEff do
-    let deckHash = mkWorkspaceHash (Deck.deckPath' path newId) (WA.Load accessType) varMaps
+    let deckHash = mkWorkspaceHash (Deck.deckPath' wiring.path newId) (WA.Load accessType) varMaps
     locationObject >>= Location.setHash deckHash
 
 initialCardGuideStep ∷ WorkspaceDSL (Maybe Int)

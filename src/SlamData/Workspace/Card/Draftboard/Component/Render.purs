@@ -232,7 +232,7 @@ renderCell opts st { cursor, value, rect } =
     ]
   where
   mkDeckComponent id _ =
-    { component: opts.deckComponent deckOpts (opaqueState $ DCS.initialDeck opts.deck.path id)
+    { component: opts.deckComponent deckOpts (opaqueState $ DCS.initialDeck id)
     , initialState: DNS.initialState
     }
     where

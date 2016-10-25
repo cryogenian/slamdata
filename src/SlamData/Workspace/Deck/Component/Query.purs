@@ -53,13 +53,13 @@ data Query a
   | SetParent (Tuple DeckId CardId) a
   | ExploreFile UP.FilePath a
   | Publish a
-  | Load UP.DirPath DeckId a
+  | Load DeckId a
   | SetModel DeckId Deck a
   | GetModel (Deck → a)
   | GetModelCards (Array (DeckId × Card.Model) → a)
   | SetModelCards (Array (DeckId × Card.Model)) a
   | Save (Maybe (DeckId × CardId)) a
-  | Reset UP.DirPath a
+  | Reset a
   | GetVarMaps (Map.Map DeckId VarMap → a)
   | FlipDeck a
   | GrabDeck (Event MouseEvent) a

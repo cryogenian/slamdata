@@ -57,7 +57,6 @@ import SlamData.Workspace.Notification as Notify
 import SlamData.Wiring as W
 
 import Utils.DOM (getOffsetClientRect)
-import Utils.Path (DirPath)
 
 draftboardComponent ∷ CardOptions → CC.CardComponent
 draftboardComponent opts = CC.makeCardComponent
@@ -298,7 +297,7 @@ evalBoard opts = case _ of
         CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   LoadDeck deckId next → do
-    queryDeck deckId (H.action (DCQ.Load opts.deck.path deckId))
+    queryDeck deckId (H.action (DCQ.Load deckId))
     pure next
   AddDeck cursor next → do
     addDeck opts DM.emptyDeck cursor
@@ -403,7 +402,7 @@ saveChildDeck { deck: opts, deckId: parentId, cardId } deck = do
   let deck' = deck { parent = Just (parentId × cardId) }
   H.modify _ { inserting = true }
   deckId ← H.fromEff freshDeckId
-  putDeck opts.path deckId deck' >>= case _ of
+  putDeck deckId deck' >>= case _ of
     Left err → do
       H.modify _ { inserting = false }
       Notify.saveDeckFail err
@@ -424,7 +423,8 @@ addDeck opts deck cursor = do
 
 deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 deleteDeck { deck } deckId = do
-  res ← H.liftH $ H.liftH $ deleteGraph deck.path deckId
+  W.Wiring wiring ← H.liftH $ H.liftH $ ask
+  res ← H.liftH $ H.liftH $ deleteGraph wiring.path deckId
   st ← H.get
   case res of
     Left err →
@@ -437,7 +437,7 @@ wrapDeck { cardId, deckId: parentId, deck } oldId cursor = do
   let
     newDeck = (wrappedDeck oldId) { parent = Just (parentId × cardId) }
   newId ← H.fromEff freshDeckId
-  putDeck deck.path newId newDeck >>= case _ of
+  putDeck newId newDeck >>= case _ of
     Left err →
       Notify.saveDeckFail err
     Right _ → void do
@@ -466,7 +466,7 @@ unwrapDeck { deckId, cardId, deck: opts } oldId cursor decks = do
       Just (deckId × deck) → do
         let
           deck' = deck { parent = Just coord }
-        putDeck opts.path deckId deck'
+        putDeck deckId deck'
         pure (Just deckId)
   st ← H.get
   let
@@ -490,7 +490,7 @@ mirrorDeck opts oldId cursor = do
             , name: ""
             }
         newId ← H.fromEff freshDeckId
-        putDeck opts.deck.path newId newDeck >>= case _ of
+        putDeck newId newDeck >>= case _ of
           Left err →
             Notify.saveDeckFail err
           Right _ → do
@@ -547,7 +547,7 @@ groupDecks opts orn bias (deckFrom × cursorFrom) (deckTo × cursorTo) = do
             Layout.SideB → [ deckTo, deckFrom ]
         newDeck = (splitDeck orn splits) { parent = Just (opts.deckId × opts.cardId) }
       newId ← H.fromEff freshDeckId
-      putDeck opts.deck.path newId newDeck >>= case _ of
+      putDeck newId newDeck >>= case _ of
         Left err →
           Notify.saveDeckFail err
         Right _ → void do
@@ -571,14 +571,13 @@ queryDeck slot = H.query slot ∘ right
 loadAndFocus ∷ DeckOptions → DeckId → DraftboardDSL Unit
 loadAndFocus opts deckId =
   traverse_ (queryDeck deckId ∘ H.action)
-    [ DCQ.Load opts.path deckId
+    [ DCQ.Load deckId
     , DCQ.Focus
     ]
 
 putDeck
-  ∷ DirPath
-  → DeckId
+  ∷ DeckId
   → DM.Deck
   → DraftboardDSL (Either QE.QError Unit)
-putDeck path deckId deck =
-  H.liftH $ H.liftH $ W.putDeck path deckId deck
+putDeck deckId deck =
+  H.liftH $ H.liftH $ W.putDeck deckId deck

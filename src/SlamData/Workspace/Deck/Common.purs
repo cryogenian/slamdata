@@ -35,15 +35,12 @@ import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck, emptyDeck)
 
-import Utils.Path (DirPath)
-
 type DeckHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 
 type DeckDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
 type DeckOptions =
-  { path ∷ DirPath
-  , accessType ∷ AccessType
+  { accessType ∷ AccessType
   , cursor ∷ L.List DeckId
   }
 

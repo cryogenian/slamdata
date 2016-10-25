@@ -92,25 +92,28 @@ type ActiveState =
   }
 
 newtype Wiring = Wiring
-    { decks ∷ Cache DeckId DeckRef
-    , activeState ∷ Cache DeckId ActiveState
-    , cards ∷ Cache (DeckId × CardId) CardEval
-    , pending ∷ Bus.BusRW PendingMessage
-    , messaging ∷ Bus.BusRW DeckMessage
-    , notify ∷ Bus.BusRW N.NotificationOptions
-    , globalError ∷ Bus.BusRW GE.GlobalError
-    , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
-    , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
-    , signInBus ∷ SignInBus
-    , hasIdentified ∷ Ref Boolean
-    , presentStepByStepGuide ∷ Bus.BusRW StepByStepGuide
-    }
+  { path ∷ DirPath
+  , decks ∷ Cache DeckId DeckRef
+  , activeState ∷ Cache DeckId ActiveState
+  , cards ∷ Cache (DeckId × CardId) CardEval
+  , pending ∷ Bus.BusRW PendingMessage
+  , messaging ∷ Bus.BusRW DeckMessage
+  , notify ∷ Bus.BusRW N.NotificationOptions
+  , globalError ∷ Bus.BusRW GE.GlobalError
+  , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
+  , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
+  , signInBus ∷ SignInBus
+  , hasIdentified ∷ Ref Boolean
+  , presentStepByStepGuide ∷ Bus.BusRW StepByStepGuide
+  }
 
 makeWiring
   ∷ ∀ m
   . (Affable SlamDataEffects m)
-  ⇒ m Wiring
-makeWiring = fromAff do
+  ⇒ DirPath
+  → Map.Map DeckId Port.URLVarMap
+  → m Wiring
+makeWiring path varMaps = fromAff do
   decks ← makeCache
   activeState ← makeCache
   cards ← makeCache
@@ -119,25 +122,25 @@ makeWiring = fromAff do
   notify ← Bus.make
   globalError ← Bus.make
   requestNewIdTokenBus ← Auth.authentication
-  urlVarMaps ← fromEff (newRef mempty)
+  urlVarMaps ← fromEff (newRef varMaps)
   signInBus ← Bus.make
   hasIdentified ← fromEff (newRef false)
   presentStepByStepGuide ← Bus.make
-  pure $
-    Wiring
-      { decks
-      , activeState
-      , cards
-      , pending
-      , messaging
-      , notify
-      , globalError
-      , requestNewIdTokenBus
-      , urlVarMaps
-      , signInBus
-      , hasIdentified
-      , presentStepByStepGuide
-      }
+  pure $ Wiring
+    { path
+    , decks
+    , activeState
+    , cards
+    , pending
+    , messaging
+    , notify
+    , globalError
+    , requestNewIdTokenBus
+    , urlVarMaps
+    , signInBus
+    , hasIdentified
+    , presentStepByStepGuide
+    }
 
 makeCache
   ∷ ∀ m k v
@@ -148,14 +151,13 @@ makeCache = fromAff (makeVar' mempty)
 putDeck
   ∷ ∀ m
   . (Affable SlamDataEffects m, MonadFork m, QuasarDSL m, MonadReader Wiring m)
-  ⇒ DirPath
-  → DeckId
+  ⇒ DeckId
   → Deck
   → m (Either QE.QError Unit)
-putDeck path deckId deck = do
+putDeck deckId deck = do
   Wiring wiring ← ask
   ref ← defer do
-    res ← Quasar.save (deckIndex path deckId) $ encode deck
+    res ← Quasar.save (deckIndex wiring.path deckId) $ encode deck
     when (isLeft res) do
       fromAff $ modifyVar (Map.delete deckId) wiring.decks
     pure $ const deck <$> res
@@ -165,10 +167,9 @@ putDeck path deckId deck = do
 getDeck
   ∷ ∀ m
   . (Affable SlamDataEffects m, MonadFork m, QuasarDSL m, MonadReader Wiring m)
-  ⇒ DirPath
-  → DeckId
+  ⇒ DeckId
   → m (Either QE.QError Deck)
-getDeck path deckId = do
+getDeck deckId = do
   Wiring wiring ← ask
   decks ← fromAff $ takeVar wiring.decks
   case Map.lookup deckId decks of
@@ -177,7 +178,7 @@ getDeck path deckId = do
       wait ref
     Nothing → do
       ref ← defer do
-        res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load (deckIndex path deckId)
+        res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load (deckIndex wiring.path deckId)
         when (isLeft res) do
           fromAff $ modifyVar (Map.delete deckId) wiring.decks
         pure res
