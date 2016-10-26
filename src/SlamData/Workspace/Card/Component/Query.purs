@@ -52,6 +52,7 @@ module SlamData.Workspace.Card.Component.Query
   , _BuildHeatmapQuery
   , _BuildPunchCardQuery
   , _BuildCandlestickQuery
+  , _BuildParallelQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -100,6 +101,7 @@ import SlamData.Workspace.Card.BuildChart.Boxplot.Component.Query as BuildBoxplo
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.Query as BuildHeatmap
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component.Query as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.Query as BuildCandlestick
+import SlamData.Workspace.Card.BuildChart.Parallel.Component.Query as BuildParallel
 
 -- | The common query algebra for a card.
 -- |
@@ -159,6 +161,7 @@ data AnyCardQuery a
   | BuildHeatmapQuery (BuildHeatmap.QueryP a)
   | BuildPunchCardQuery (BuildPunchCard.QueryP a)
   | BuildCandlestickQuery (BuildCandlestick.QueryP a)
+  | BuildParallelQuery (BuildParallel.QueryP a)
 
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
@@ -314,4 +317,9 @@ _BuildPunchCardQuery = prism' BuildPunchCardQuery case _ of
 _BuildCandlestickQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildCandlestick.QueryP a)
 _BuildCandlestickQuery = prism' BuildCandlestickQuery case _ of
   BuildCandlestickQuery q → Just q
+  _ → Nothing
+
+_BuildParallelQuery ∷ ∀ a. PrismP (AnyCardQuery a) (BuildParallel.QueryP a)
+_BuildParallelQuery = prism' BuildParallelQuery case _ of
+  BuildParallelQuery q → Just q
   _ → Nothing

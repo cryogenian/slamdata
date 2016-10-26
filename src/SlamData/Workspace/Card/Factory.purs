@@ -59,6 +59,7 @@ import SlamData.Workspace.Card.BuildChart.Boxplot.Component (boxplotBuilderCompo
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component (heatmapBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component (punchCardBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component (candlestickBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Parallel.Component (parallelBuilderComponent)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
 cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
@@ -95,6 +96,7 @@ cardComponent deckId card opts =
     Card.BuildHeatmap _ → heatmapBuilderComponent
     Card.BuildPunchCard _ → punchCardBuilderComponent
     Card.BuildCandlestick _ → candlestickBuilderComponent
+    Card.BuildParallel _ → parallelBuilderComponent
 
 aceEval ∷ CT.AceMode → AceEval
 aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}

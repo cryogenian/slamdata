@@ -323,6 +323,8 @@ rectangularGrids poss = E.grids $ for_ poss \{w, h, x, y} → E.grid do
   for_ w E.widthPct
   for_ h E.heightPct
 
+
+
 cartesian ∷ ∀ i. DSL (left ∷ ETP.I, right ∷ ETP.I, top ∷ ETP.I, containLabel ∷ ETP.I|i)
 cartesian = do
   E.left $ ET.Pixel 30

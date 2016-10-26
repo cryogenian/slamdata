@@ -175,6 +175,7 @@ darkCardGlyph = case _ of
         PivotTable → "img/cardsDark/buildChart/pivot-table.svg"
         PunchCard → "img/cardsDark/buildChart/punch-card.svg"
         Candlestick → "img/cardsDark/buildChart/candlestick.svg"
+        Parallel → "img/cardsDark/buildChart/parallel.svg"
     in HH.img [ HP.src src ]
   Download →
     HH.img [ HP.src "img/cardsDark/showDownload.svg" ]
@@ -230,6 +231,7 @@ lightCardGlyph = case _ of
         PivotTable → "img/cardsLight/buildChart/pivot-table.svg"
         PunchCard → "img/cardsLight/buildChart/punch-card.svg"
         Candlestick → "img/cardsLight/buildChart/candlestick.svg"
+        Parallel → "img/cardsLight/buildChart/parallel.svg"
     in HH.img [ HP.src src ]
   Download →
     HH.img [ HP.src "img/cardsLight/showDownload.svg" ]

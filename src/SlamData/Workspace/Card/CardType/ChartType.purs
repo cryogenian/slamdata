@@ -49,6 +49,7 @@ data ChartType
   | PivotTable
   | PunchCard
   | Candlestick
+  | Parallel
 
 allChartTypes ∷ Array ChartType
 allChartTypes =
@@ -67,6 +68,7 @@ allChartTypes =
   , Boxplot
   , PunchCard
   , Candlestick
+  , Parallel
   , Metric
   ]
 
@@ -88,6 +90,7 @@ parseChartType = case _ of
   "pivot" → pure PivotTable
   "punch-card" → pure PunchCard
   "candlestick" → pure Candlestick
+  "parallels" → pure Parallel
   _ → Left "incorrect chartType"
 
 printChartType ∷ ChartType → String
@@ -108,6 +111,7 @@ printChartType = case _ of
   PivotTable → "pivot"
   PunchCard → "punch-card"
   Candlestick → "candlestick"
+  Parallel → "parallels"
 
 chartName ∷ ChartType → String
 chartName = case _ of
@@ -127,6 +131,7 @@ chartName = case _ of
   PivotTable → "Pivot Table"
   PunchCard → "Punch Card"
   Candlestick → "Candlestick"
+  Parallel → "Parallel"
 
 derive instance genericChartType ∷ Generic ChartType
 derive instance eqChartType ∷ Eq ChartType
@@ -160,6 +165,7 @@ chartLightIconSrc = case _ of
   PivotTable → "img/cardsLight/table.svg"
   PunchCard → "img/punch-card.svg"
   Candlestick → "img/candlestick.svg"
+  Parallel → "img/parallel.svg"
 
 chartDarkIconSrc ∷ ChartType → String
 chartDarkIconSrc = case _ of
@@ -179,3 +185,4 @@ chartDarkIconSrc = case _ of
   PivotTable → "img/cardsDark/table.svg"
   PunchCard → "img/punch-card-black.svg"
   Candlestick → "img/candlestick-black.svg"
+  Parallel → "img/parallel-black.svg"

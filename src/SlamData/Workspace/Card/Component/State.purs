@@ -51,6 +51,7 @@ module SlamData.Workspace.Card.Component.State
   , _BuildHeatmapState
   , _BuildPunchCardState
   , _BuildCandlestickState
+  , _BuildParallelState
   ) where
 
 import SlamData.Prelude
@@ -94,6 +95,7 @@ import SlamData.Workspace.Card.BuildChart.Boxplot.Component.State as BuildBoxplo
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component.State as BuildHeatmap
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component.State as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.State as BuildCandlestick
+import SlamData.Workspace.Card.BuildChart.Parallel.Component.State as BuildParallel
 
 
 -- | The common state value for deck cards.
@@ -144,6 +146,7 @@ data AnyCardState
   | BuildHeatmapState BuildHeatmap.StateP
   | BuildPunchCardState BuildPunchCard.StateP
   | BuildCandlestickState BuildCandlestick.StateP
+  | BuildParallelState BuildParallel.StateP
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState case _ of
@@ -298,4 +301,9 @@ _BuildPunchCardState = prism' BuildPunchCardState case _ of
 _BuildCandlestickState ∷ PrismP AnyCardState BuildCandlestick.StateP
 _BuildCandlestickState = prism' BuildCandlestickState case _ of
   BuildCandlestickState s → Just s
+  _ → Nothing
+
+_BuildParallelState ∷ PrismP AnyCardState BuildParallel.StateP
+_BuildParallelState = prism' BuildParallelState case _ of
+  BuildParallelState s → Just s
   _ → Nothing
