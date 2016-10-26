@@ -47,12 +47,14 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
 import SlamData.Workspace.Deck.Component as Deck
-import SlamData.Workspace.Routing (Routes(..), routing, getURLVarMaps, getPath)
+import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
 
 import Routing as Routing
 
 import Utils.Path as UP
+
+data RouterState = RouterState Routes (Driver Workspace.QueryP SlamDataRawEffects)
 
 main ∷ Eff SlamDataEffects Unit
 main = do
@@ -61,63 +63,67 @@ main = do
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
     forkAff Analytics.enableAnalytics
-    let st = Workspace.initialState (Just "3.0")
-    wiring ← makeWiring
-    let ui = interpret (runSlam wiring) Workspace.comp
-    driver ← runUI ui (parentState st) =<< awaitBody
-    forkAff (routeSignal driver)
+    forkAff routeSignal
   StyleLoader.loadStyles
 
-routeSignal
-  ∷ Driver Workspace.QueryP SlamDataRawEffects
-  → Aff SlamDataEffects Unit
-routeSignal driver =
+routeSignal ∷ Aff SlamDataEffects Unit
+routeSignal =
   runProcess (routeProducer $$ routeConsumer Nothing)
 
   where
   routeProducer = produce \emit →
     Routing.matches' UP.decodeURIPath routing \_ → emit ∘ Left
 
-  routeConsumer old = do
+  routeConsumer state = do
     new ← await
-    case new of
-      WorkspaceRoute path deckId action varMaps → lift do
-        driver $ Workspace.toWorkspace $ Workspace.SetVarMaps varMaps
+    case new, state of
+      -- Initialize the Workspace component
+      WorkspaceRoute path deckId action varMaps, Nothing → do
+        wiring ← lift $ makeWiring path varMaps
+        let
+          st = Workspace.initialState (Just "4.0")
+          ui = interpret (runSlam wiring) Workspace.comp
+        driver ← lift $ runUI ui (parentState st) =<< awaitBody
+        lift $ setupWorkspace new driver
+        routeConsumer (Just (RouterState new driver))
+
+      -- Reload the page on path change
+      WorkspaceRoute path _ _ _, Just (RouterState (WorkspaceRoute path' _ _ _) _) | path ≠ path' →
+        lift $ liftEff Browser.reload
+
+      -- Transition Workspace
+      WorkspaceRoute path deckId action varMaps, Just (RouterState old driver) →
         case old of
-          Just (WorkspaceRoute path' deckId' action' varMaps')
+          WorkspaceRoute path' deckId' action' varMaps'
             | path ≡ path' ∧ deckId ≡ deckId' ∧ action ≡ action' ∧ varMaps ≡ varMaps' →
-                pure unit
+                routeConsumer (Just (RouterState new driver))
           _ → do
-            when (toAccessType action ≡ AT.ReadOnly) do
-              isEmbedded ←
-                liftEff $ Browser.detectEmbedding
-              let
-                bodyClass =
-                  if isEmbedded
-                    then "sd-workspace-page sd-embedded"
-                    else "sd-workspace-page"
-              void
-                $ liftEff
-                $ traverse (setClassName bodyClass ∘ htmlElementToElement)
-                ∘ toMaybe
-                =<< body
-                =<< document
-                =<< window
+            lift $ setupWorkspace new driver
+            routeConsumer (Just (RouterState new driver))
 
+  setupWorkspace new@(WorkspaceRoute _ deckId action varMaps) driver = do
+    driver $ Workspace.toWorkspace $ Workspace.SetVarMaps varMaps
+    when (toAccessType action ≡ AT.ReadOnly) do
+      isEmbedded ←
+        liftEff $ Browser.detectEmbedding
+      let
+        bodyClass =
+          if isEmbedded
+            then "sd-workspace-page sd-embedded"
+            else "sd-workspace-page"
+      void
+        $ liftEff
+        $ traverse (setClassName bodyClass ∘ htmlElementToElement)
+        ∘ toMaybe
+        =<< body
+        =<< document
+        =<< window
 
-            case action of
-              Load _ | map getURLVarMaps old ≡ Just varMaps ∧ map getPath old ≡ Just path →
-                pure unit
-              _ → driver $ Workspace.toWorkspace $ Workspace.ClearCaches
-
-            case action of
-              Load accessType →
-                driver $ Workspace.toWorkspace $ Workspace.Load path deckId accessType
-              Exploring fp → do
-                driver $ Workspace.toWorkspace $ Workspace.Reset path
-                driver $ Workspace.toDeck $ Deck.ExploreFile fp
-              New →
-                driver $ Workspace.toWorkspace $ Workspace.Reset path
-
-
-    routeConsumer (Just new)
+    forkAff case action of
+      Load accessType →
+        driver $ Workspace.toWorkspace $ Workspace.Load deckId accessType
+      Exploring fp → do
+        driver $ Workspace.toWorkspace $ Workspace.Reset
+        driver $ Workspace.toDeck $ Deck.ExploreFile fp
+      New →
+        driver $ Workspace.toWorkspace $ Workspace.Reset

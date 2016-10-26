@@ -20,7 +20,6 @@ module SlamData.Workspace.Component.State
   , _accessType
   , _loaded
   , _version
-  , _path
   , _initialDeckId
   , _stateMode
   , _cardGuideStep
@@ -37,13 +36,10 @@ import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
-import Utils.Path (DirPath)
-
 type State =
   { accessType ∷ AccessType
   , loaded ∷ Boolean
   , version ∷ Maybe String
-  , path ∷ Maybe DirPath
   , initialDeckId ∷ Maybe DeckId
   , stateMode ∷ StateMode
   , cardGuideStep ∷ Maybe Int
@@ -55,7 +51,6 @@ initialState version =
   { accessType: Editable
   , loaded: false
   , version
-  , path: Nothing
   , initialDeckId: Nothing
   , stateMode: Loading
   , cardGuideStep: Nothing
@@ -70,9 +65,6 @@ _loaded = lens _.loaded _{loaded = _}
 
 _version ∷ ∀ a r. LensP {version ∷ a|r} a
 _version = lens _.version _{version = _}
-
-_path ∷ ∀ a r. LensP {path ∷ a|r} a
-_path = lens _.path _{path = _}
 
 -- | This is only used while the workspace and initial deck are created, after
 -- | that the value is irrelevant.

@@ -31,20 +31,17 @@ import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck)
 import SlamData.Workspace.Deck.Component.Query as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
-import Utils.Path as UP
-
 data Query a
   = SetVarMaps (Map.Map DeckId Port.URLVarMap) a
   | DismissAll (HET.Event HET.MouseEvent) a
-  | Reset UP.DirPath a
+  | Reset a
   | Init a
-  | Load UP.DirPath (Maybe DeckId) AccessType a
+  | Load (Maybe DeckId) AccessType a
   | PresentStepByStepGuide StepByStepGuide a
   | CardGuideStepNext a
   | CardGuideDismiss a
   | FlipGuideStepNext a
   | FlipGuideDismiss a
-  | ClearCaches a
   | Resize a
 
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
