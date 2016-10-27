@@ -45,6 +45,7 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column(..), isSimple)
+import SlamData.Workspace.Card.BuildChart.PivotTable.Eval (escapedCursor)
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 import SlamData.Workspace.Card.Port (PivotTablePort, TaggedResourcePort)
@@ -420,7 +421,7 @@ simpleQuery columns tr =
     cols =
       Array.mapWithIndex
         case _, _ of
-          i, Column c → "row" <> show c.value <> " AS _" <> show i
+          i, Column c → "row" <> escapedCursor c.value <> " AS _" <> show i
           i, _ → "COUNT(*) AS _" <> show i -- Shouldn't be possible, but ok
         columns
   in
