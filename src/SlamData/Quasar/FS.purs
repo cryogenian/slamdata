@@ -39,6 +39,7 @@ import Data.String as S
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Error (QError)
 import Quasar.FS as QFS
+import Quasar.FS.Mount as QFSM
 import Quasar.FS.Resource as QR
 import Quasar.Types (AnyPath, DirPath, FilePath)
 
@@ -93,8 +94,7 @@ listing p =
       in case workspaceName of
         Just name → R.Workspace (p </> P.dir name)
         Nothing → R.Directory path
-    QFS.Mount (QFS.MongoDB path) → R.Mount (R.Database path)
-    QFS.Mount (QFS.View path) → R.Mount (R.View path)
+    QFS.Mount m → R.Mount $ either R.Database R.View $ QFSM.getPath m
 
 -- | Generates a new resource name based on a directory path and a name for the
 -- | resource. If the name already exists in the path a number is appended to
