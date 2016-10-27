@@ -111,7 +111,7 @@ escapeField str = "`" <> Regex.replace tickRegex "\\`" str <> "`"
 escapedCursor ∷ J.JCursor → String
 escapedCursor = case _ of
   J.JField c cs → "." <> escapeField c <> escapedCursor cs
-  J.JIndex c cs → "[ " <> show c <> "]" <> escapedCursor cs
+  J.JIndex c cs → "[" <> show c <> "]" <> escapedCursor cs
   J.JCursorTop  → ""
 
 sqlAggregation ∷ Maybe Ag.Aggregation → String → String
