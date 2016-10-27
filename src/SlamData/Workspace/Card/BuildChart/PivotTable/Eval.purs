@@ -16,12 +16,15 @@ limitations under the License.
 
 module SlamData.Workspace.Card.BuildChart.PivotTable.Eval
   ( eval
+  , escapedCursor
   , module PTM
   ) where
 
+import Data.Argonaut as J
 import Data.Array as Array
 import Data.Path.Pathy as P
 import Data.String as String
+import Data.String.Regex as Regex
 import Data.StrMap as SM
 
 import SlamData.Prelude
@@ -52,7 +55,7 @@ eval (Just options@{ dimensions: [] }) tr = do
       Array.mapWithIndex
         case _, _ of
           i, PTM.Column c →
-            sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show i
+            sqlAggregation c.valueAggregation ("row" <> escapedCursor c.value) <> " AS _" <> show i
           i, PTM.Count →
             "COUNT(*) AS _" <> show i
         options.columns
@@ -72,12 +75,12 @@ eval (Just options) tr = do
       map (\value → "row" <> show value) options.dimensions
     dims =
       Array.mapWithIndex
-        (\i value → "row" <> show value <> " AS _" <> show i)
+        (\i value → "row" <> escapedCursor value <> " AS _" <> show i)
         options.dimensions
     cols =
       Array.mapWithIndex
         case _, _ of
-          i, PTM.Column c → sqlAggregation c.valueAggregation ("row" <> show c.value) <> " AS _" <> show (i + dlen)
+          i, PTM.Column c → sqlAggregation c.valueAggregation ("row" <> escapedCursor c.value) <> " AS _" <> show (i + dlen)
           i, PTM.Count    → "COUNT(*) AS _" <> show (i + dlen)
         options.columns
     sql =
@@ -90,6 +93,26 @@ eval (Just options) tr = do
   records ← CET.liftQ $ liftQuasar $
     QF.readQuery Readable path sql SM.empty Nothing
   pure $ Port.PivotTable { records, options, taggedResource: tr }
+
+tickRegex ∷ Regex.Regex
+tickRegex = unsafePartial (fromRight (Regex.regex "`" flags))
+  where
+    flags =
+      { global: true
+      , ignoreCase: false
+      , multiline: false
+      , sticky: false
+      , unicode: false
+      }
+
+escapeField ∷ String → String
+escapeField str = "`" <> Regex.replace tickRegex "\\`" str <> "`"
+
+escapedCursor ∷ J.JCursor → String
+escapedCursor = case _ of
+  J.JField c cs → "." <> escapeField c <> escapedCursor cs
+  J.JIndex c cs → "[" <> show c <> "]" <> escapedCursor cs
+  J.JCursorTop  → ""
 
 sqlAggregation ∷ Maybe Ag.Aggregation → String → String
 sqlAggregation a b = case a of
