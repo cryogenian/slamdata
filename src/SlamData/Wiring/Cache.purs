@@ -67,13 +67,19 @@ get key (Cache cache) = fromAff do
 
 alter
   ∷ ∀ eff m k v
-  . (Affable (avar ∷ AVAR | eff) m, Ord k)
+  . (Monad m, Affable (avar ∷ AVAR | eff) m, Ord k)
   ⇒ k
-  → (Maybe v → Maybe v)
+  → (Maybe v → m (Maybe v))
   → Cache k v
   → m Unit
-alter key fn (Cache cache) = fromAff do
-  modifyVar (Map.alter fn key) cache
+alter key fn (Cache cache) = do
+  vals ← fromAff $ takeVar cache
+  let val = Map.lookup key vals
+  val' ← fn val
+  fromAff $ case val, val' of
+    Nothing, Nothing → putVar cache vals
+    Just _ , Nothing → putVar cache (Map.delete key vals)
+    _      , Just v  → putVar cache (Map.insert key v vals)
 
 put
   ∷ ∀ eff m k v

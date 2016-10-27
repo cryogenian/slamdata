@@ -37,6 +37,9 @@ import Control.Monad.Aff.Promise (Promise, wait, defer)
 import Control.Monad.Eff.Ref (Ref, newRef)
 import Control.Monad.Fork (class MonadFork)
 
+import Data.Array as Array
+import Data.List (List(..), (:))
+import Data.List as List
 import Data.Map as Map
 import Data.Set as Set
 
@@ -58,7 +61,6 @@ import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
-import SlamData.Wiring.Heap as Heap
 
 import Utils.Path (DirPath)
 
@@ -103,8 +105,8 @@ newtype Wiring = Wiring
   , hasIdentified ∷ Ref Boolean
   , presentStepByStepGuide ∷ Bus.BusRW StepByStepGuide
   , evalTick ∷ Ref Int
-  , cards' ∷ Heap.Heap Card.Coord Card.Cell
-  , decks' ∷ Heap.Heap Deck.Id Deck.Cell
+  , cards' ∷ Cache Card.Coord Card.Cell
+  , decks' ∷ Cache Deck.Id Deck.Cell
   }
 
 makeWiring
@@ -150,7 +152,11 @@ makeWiring path varMaps = fromAff do
 
 putDeck
   ∷ ∀ m
-  . (Affable SlamDataEffects m, MonadFork m, QuasarDSL m, MonadReader Wiring m)
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , QuasarDSL m
+    )
   ⇒ DeckId
   → Deck
   → m (Either QE.QError Unit)
@@ -166,25 +172,115 @@ putDeck deckId deck = do
 
 getDeck
   ∷ ∀ m
-  . (Affable SlamDataEffects m, MonadFork m, QuasarDSL m, MonadReader Wiring m)
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , MonadPar m
+    , QuasarDSL m
+    )
   ⇒ DeckId
   → m (Either QE.QError Deck)
-getDeck deckId = do
+getDeck =
+  getDeck' >=> _.value >>> wait
+
+getDeck'
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , MonadPar m
+    , QuasarDSL m
+    )
+  ⇒ DeckId
+  → m Deck.Cell
+getDeck' deckId = do
   Wiring wiring ← ask
-  let cacheVar = Cache.unCache wiring.decks
-  decks ← fromAff $ takeVar cacheVar
-  case Map.lookup deckId decks of
-    Just ref → do
-      fromAff $ putVar cacheVar decks
-      wait ref
+  let
+    cacheVar  = Cache.unCache wiring.decks
+    cacheVar' = Cache.unCache wiring.decks'
+  decks  ← fromAff (takeVar cacheVar)
+  decks' ← fromAff (takeVar cacheVar')
+  case Map.lookup deckId decks' of
+    Just cell → do
+      fromAff do
+        putVar cacheVar decks
+        putVar cacheVar' decks'
+      pure cell
     Nothing → do
-      ref ← defer do
-        res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load (deckIndex wiring.path deckId)
-        when (isLeft res) do
-          fromAff $ modifyVar (Map.delete deckId) cacheVar
-        pure res
-      fromAff $ putVar cacheVar (Map.insert deckId ref decks)
-      wait ref
+      value ← defer do
+        let
+          path = deckIndex wiring.path deckId
+        result ← runExceptT do
+          deck  ← ExceptT $ (_ >>= decode >>> lmap QE.msgToQError) <$> Quasar.load path
+          cards ← ExceptT $ populateCards deckId deck
+          pure deck
+        when (isLeft result) $ fromAff do
+          modifyVar (Map.delete deckId) cacheVar
+          modifyVar (Map.delete deckId) cacheVar'
+        pure result
+      cell ← { value, bus: _ } <$> fromAff Bus.make
+      fromAff do
+        putVar cacheVar (Map.insert deckId value decks)
+        putVar cacheVar' (Map.insert deckId cell decks')
+      pure cell
+
+populateCards
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , MonadPar m
+    , QuasarDSL m
+    )
+  ⇒ Deck.Id
+  → Deck
+  → m (Either QE.QError Unit)
+populateCards deckId deck = runExceptT do
+  Wiring wiring ← ask
+  decks ←
+    ExceptT $ sequence <$>
+      parTraverse getDeck (Array.nub (fst <$> deck.mirror))
+
+  case Array.last deck.mirror, List.fromFoldable deck.cards of
+    Just _    , Nil    → pure unit
+    Nothing   , cards  → fromAff $ threadCards wiring.cards' cards
+    Just coord, c : cs → do
+      cell ← do
+        mb ← Cache.get coord wiring.cards'
+        case mb of
+          Nothing → QE.throw ("Card not found in eval cache: " <> show coord)
+          Just a  → pure a
+      let
+        coord' = deckId × c.cardId
+        cell' = cell { next = coord' : cell.next }
+      fromAff do
+        Cache.put coord cell' wiring.cards'
+        threadCards wiring.cards' (c : cs)
+
+  where
+    threadCards cache = case _ of
+      Nil         → pure unit
+      c : Nil     → makeCell c Nil cache
+      c : c' : cs → do
+        makeCell c (pure c'.cardId) cache
+        threadCards cache (c' : cs)
+
+    makeCell card next cache = do
+      bus ← Bus.make
+      let
+        coord = deckId × card.cardId
+        value =
+          { model: card
+          , input: Nothing
+          , output: Nothing
+          , state: Nothing
+          }
+        cell =
+          { bus
+          , next: Tuple deckId <$> next
+          , value
+          }
+      Cache.put coord cell cache
 
 putCardEval
   ∷ ∀ m

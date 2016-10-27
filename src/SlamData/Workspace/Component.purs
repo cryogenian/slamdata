@@ -443,7 +443,12 @@ errors m es = case lefts es of
 
 updateParentPointer
   ∷ ∀ m
-  . (MonadFork m, QuasarDSL m, Affable SlamDataEffects m, MonadReader Wiring m)
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , MonadPar m
+    , QuasarDSL m
+    )
   ⇒ DeckId
   → DeckId
   → Maybe (DeckId × CID.CardId)

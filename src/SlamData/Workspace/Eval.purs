@@ -38,7 +38,6 @@ import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Wiring (Wiring(..))
 import SlamData.Wiring.Cache as Cache
-import SlamData.Wiring.Heap as Heap
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 
@@ -116,12 +115,12 @@ runEvalLoop tick input graph = do
     updateCardValue
       ∷ Card.Coord
       → Card.EvalResult
-      → Heap.Heap Card.Coord Card.Cell
+      → Cache.Cache Card.Coord Card.Cell
       → Slam Unit
     updateCardValue key value =
       Cache.alter key case _ of
-        Just (n × cell) → Just (n × cell { value = value })
-        _ → Nothing
+        Just cell → pure (Just cell { value = value })
+        _         → pure Nothing
 
 notifyDecks ∷ Deck.EvalMessage → EvalGraph → Slam Unit
 notifyDecks msg = traverse_ (fromAff ∘ Bus.write msg ∘ _.bus ∘ snd) ∘ nubDecks
@@ -130,23 +129,18 @@ deckCompleted ∷ Deck.Id → List EvalGraph → Boolean
 deckCompleted deckId = not ∘ F.any (eq deckId ∘ fst ∘ _.coord ∘ Cofree.head)
 
 unfoldGraph
-  ∷ Map Card.Coord (Heap.Cell Card.Cell)
-  → Map Deck.Id (Heap.Cell Deck.Cell)
+  ∷ Map Card.Coord Card.Cell
+  → Map Deck.Id Deck.Cell
   → Card.Coord
   → Maybe EvalGraph
 unfoldGraph cards decks coord =
   go
-    <$> (referenced =<< Map.lookup coord cards)
-    <*> (referenced =<< Map.lookup (fst coord) decks)
+    <$> Map.lookup coord cards
+    <*> Map.lookup (fst coord) decks
   where
     go card deck =
       Cofree.mkCofree { coord, card, deck }
         (List.catMaybes (unfoldGraph cards decks <$> card.next))
-
-    referenced ∷ ∀ a. Int × a → Maybe a
-    referenced (n × val)
-      | n ≡ 0 = Nothing
-      | otherwise = Just val
 
 nubDecks ∷ EvalGraph → List (Deck.Id × Deck.Cell)
 nubDecks = List.nubBy (eq `on` fst) ∘ go
