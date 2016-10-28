@@ -46,7 +46,6 @@ import SlamData.Wiring (makeWiring)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
-import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
 
@@ -122,8 +121,8 @@ routeSignal =
     forkAff case action of
       Load accessType →
         driver $ Workspace.toWorkspace $ Workspace.Load deckId accessType
-      Exploring fp → do
-        driver $ Workspace.toWorkspace $ Workspace.Reset
-        driver $ Workspace.toDeck $ Deck.ExploreFile fp
       New →
-        driver $ Workspace.toWorkspace $ Workspace.Reset
+        driver $ Workspace.toWorkspace $ Workspace.Load Nothing AT.Editable
+      -- FIXME
+      Exploring _ → do
+        driver $ Workspace.toWorkspace $ Workspace.Load Nothing AT.Editable

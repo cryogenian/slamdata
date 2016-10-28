@@ -24,14 +24,12 @@ module SlamData.Workspace.Card.Draftboard.Common
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
 
 import Data.Array as Array
 import Data.List as List
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 
-import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
@@ -40,8 +38,6 @@ import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.Model as DM
-import SlamData.Wiring (Wiring(..), putCardEval)
-import SlamData.Wiring.Cache as Cache
 
 import Utils.Path (DirPath)
 
@@ -112,19 +108,13 @@ replacePointer from to cid = map replace
 -- | outputs it's OK to just swap out the model for the cached card eval.
 unsafeUpdateCachedDraftboard
   ∷ ∀ m
-  . (Monad m, Affable SlamDataEffects m, MonadReader Wiring m)
+  . Monad m
   ⇒ DeckId
   → CM.Model
   → m Unit
 unsafeUpdateCachedDraftboard deckId model = do
-  Wiring wiring ← ask
-  case model of
-    { cardId, model: CM.Draftboard db } → do
-      let coord = deckId × cardId
-      Cache.get coord wiring.cards >>= traverse_ \ce → do
-        let card = map (_ { model = CM.Draftboard db }) ce.card
-        putCardEval (ce { card = card }) wiring.cards
-    _ → pure unit
+  -- FIXME
+  pure unit
 
 clearDeckId ∷ DeckId → Pane.Pane (Maybe DeckId) → Pane.Pane (Maybe DeckId)
 clearDeckId deckId tree = Pane.walkWithCursor go tree tree

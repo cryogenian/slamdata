@@ -18,7 +18,6 @@ module SlamData.Workspace.Card.Draftboard.Component where
 
 import SlamData.Prelude
 
-import Data.Array as Array
 import Data.Foldable (and, all, find)
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
@@ -29,12 +28,9 @@ import Data.Ord (abs)
 import Data.Rational (Rational, (%))
 
 import Halogen as H
-import Halogen.Component.Utils (raise')
 import Halogen.Component.Utils.Drag as Drag
 
 import SlamData.Analytics as SA
-import SlamData.Quasar.Error as QE
-import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
@@ -42,19 +38,14 @@ import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Common (CardOptions)
-import SlamData.Workspace.Card.Draftboard.Common (deleteGraph, clearDeckId, unsafeUpdateCachedDraftboard)
 import SlamData.Workspace.Card.Draftboard.Component.Common (DraftboardDSL)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..))
 import SlamData.Workspace.Card.Draftboard.Component.Render (render)
-import SlamData.Workspace.Card.Draftboard.Component.State (MoveLocation(..), initialState, modelFromState, childSlots, updateRect, updateLayout)
-import SlamData.Workspace.Deck.Common (DeckOptions, wrappedDeck, splitDeck)
+import SlamData.Workspace.Card.Draftboard.Component.State (MoveLocation(..), initialState, modelFromState, updateRect, updateLayout)
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Query as DCQ
-import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.DeckId (DeckId, freshDeckId)
+import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model as DM
-import SlamData.Workspace.Notification as Notify
-import SlamData.Wiring as W
 
 import Utils.DOM (getOffsetClientRect)
 
@@ -89,7 +80,6 @@ evalCard = case _ of
     case card of
       Card.Draftboard model → do
         H.modify (updateLayout model.layout)
-        loadDecks
       _ → pure unit
     pure next
   CC.ModelUpdated _ next →
@@ -297,29 +287,12 @@ evalBoard opts = case _ of
         CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   LoadDeck deckId next → do
-    queryDeck deckId (H.action (DCQ.Load deckId))
+    -- FIXME
     pure next
   AddDeck cursor next → do
     addDeck opts DM.emptyDeck cursor
     CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
-  GetDecks k → do
-    st ← H.get
-    decks ←
-      for st.layout case _ of
-        Just deckId → do
-          deck ← queryDeck deckId (H.request DCQ.GetModel)
-          pure ((deckId × _) <$> deck)
-        Nothing →
-          pure Nothing
-    pure (k decks)
-  GetDecksSharingInput k → do
-    decks ← H.gets _.cursors
-    deckMbList ← for (Map.keys decks) \deckId → do
-      mbInput ← queryDeck deckId $ H.request DCQ.GetSharingInput
-      pure $ deckId × mbInput
-    pure $ k
-      $ foldMap (\(deckId × sharing) → foldMap (Map.singleton deckId) sharing) deckMbList
 
 peek ∷ ∀ a. CardOptions → H.ChildF DeckId DNQ.QueryP a → DraftboardDSL Unit
 peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
@@ -397,59 +370,20 @@ recalcRect = do
     rect ← H.fromEff (getOffsetClientRect root)
     H.modify (updateRect rect)
 
-saveChildDeck ∷ CardOptions → DM.Deck → DraftboardDSL (Maybe DeckId)
-saveChildDeck { deck: opts, deckId: parentId, cardId } deck = do
-  let deck' = deck { parent = Just (parentId × cardId) }
-  H.modify _ { inserting = true }
-  deckId ← H.fromEff freshDeckId
-  putDeck deckId deck' >>= case _ of
-    Left err → do
-      H.modify _ { inserting = false }
-      Notify.saveDeckFail err
-      pure Nothing
-    Right _ → do
-      pure (Just deckId)
-
 addDeck ∷ CardOptions → DM.Deck → Pane.Cursor → DraftboardDSL Unit
 addDeck opts deck cursor = do
-  saveChildDeck opts deck >>= traverse_ \deckId → do
-    st ← H.get
-    let
-      layout = Pane.modifyAt (const (Pane.Cell (Just deckId))) cursor st.layout
-    H.modify
-      $ updateLayout (fromMaybe st.layout layout)
-      ∘ _ { inserting = false }
-    loadAndFocus opts.deck deckId
+  -- FIXME
+  pure unit
 
 deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 deleteDeck { deck } deckId = do
-  W.Wiring wiring ← H.liftH $ H.liftH $ ask
-  res ← H.liftH $ H.liftH $ deleteGraph wiring.path deckId
-  st ← H.get
-  case res of
-    Left err →
-      H.liftH $ H.liftH $ Notify.deleteDeckFail err
-    Right _ →
-      H.modify (updateLayout (clearDeckId deckId st.layout))
+  -- FIXME
+  pure unit
 
 wrapDeck ∷ CardOptions → DeckId → Pane.Cursor → DraftboardDSL Unit
 wrapDeck { cardId, deckId: parentId, deck } oldId cursor = do
-  let
-    newDeck = (wrappedDeck oldId) { parent = Just (parentId × cardId) }
-  newId ← H.fromEff freshDeckId
-  putDeck newId newDeck >>= case _ of
-    Left err →
-      Notify.saveDeckFail err
-    Right _ → void do
-      traverse_ (queryDeck oldId ∘ H.action)
-        [ DCQ.SetParent (newId × CID.CardId 0)
-        , DCQ.Save Nothing
-        ]
-      st ← H.get
-      let
-        layout = Pane.modifyAt (const (Pane.Cell (Just newId))) cursor st.layout
-      H.modify (updateLayout (fromMaybe st.layout layout))
-      loadAndFocus deck newId
+  -- FIXME
+  pure unit
 
 unwrapDeck
   ∷ CardOptions
@@ -458,62 +392,13 @@ unwrapDeck
   → Pane.Pane (Maybe (DeckId × DM.Deck))
   → DraftboardDSL Unit
 unwrapDeck { deckId, cardId, deck: opts } oldId cursor decks = do
-  let
-    coord = deckId × cardId
-  subLayout ←
-    for decks case _ of
-      Nothing → pure Nothing
-      Just (deckId × deck) → do
-        let
-          deck' = deck { parent = Just coord }
-        putDeck deckId deck'
-        pure (Just deckId)
-  st ← H.get
-  let
-    layout = Pane.modifyAt (const subLayout) cursor st.layout
-  H.modify (updateLayout (fromMaybe st.layout layout))
-  for_ subLayout $ traverse_ \deckId →
-    raise' (right (H.action (LoadDeck deckId)))
+  -- FIXME
+  pure unit
 
 mirrorDeck ∷ CardOptions → DeckId → Pane.Cursor → DraftboardDSL Unit
 mirrorDeck opts oldId cursor = do
-  queryDeck oldId (H.request DCQ.GetModelCards) >>= traverse_ \modelCards → do
-    let modelCards' = Array.span (not ∘ eq oldId ∘ fst) modelCards
-    if Array.null modelCards'.rest
-      then insertNewDeck DM.emptyDeck { mirror = DCS.coordModelToCoord <$> modelCards'.init }
-      else do
-        let
-          newDeck =
-            { parent: Nothing
-            , mirror: map _.cardId <$> modelCards'.init
-            , cards: snd <$> modelCards'.rest
-            , name: ""
-            }
-        newId ← H.fromEff freshDeckId
-        putDeck newId newDeck >>= case _ of
-          Left err →
-            Notify.saveDeckFail err
-          Right _ → do
-            let
-              modelCards'' =
-                modelCards'.init <> map (lmap (const newId)) modelCards'.rest
-            queryDeck oldId $ H.action $ DCQ.SetModelCards modelCards''
-            insertNewDeck DM.emptyDeck { mirror = DCS.coordModelToCoord <$> modelCards'' }
-  where
-  insertNewDeck deck = do
-    st ← H.get
-    let
-      cursor' = case cursor of
-        _ : cs → cs
-        _ → Nil
-      orn = case Pane.getAt cursor' st.layout of
-        Just (Pane.Split o _) → o
-        _ → Orn.Vertical
-    saveChildDeck opts deck >>= traverse_ \deckId → do
-      let
-        layout = Layout.insertSplit (Pane.Cell (Just deckId)) orn (1%2) Layout.SideB cursor' st.layout
-      H.modify (updateLayout (fromMaybe st.layout layout))
-      loadAndFocus opts.deck deckId
+  -- FIXME
+  pure unit
 
 groupDecks
   ∷ CardOptions
@@ -523,61 +408,8 @@ groupDecks
   → (DeckId × Pane.Cursor)
   → DraftboardDSL Unit
 groupDecks opts orn bias (deckFrom × cursorFrom) (deckTo × cursorTo) = do
-  st ← H.get
-  queryDeck deckTo (H.request DCQ.GetModelCards) >>= case _ of
-    Just [ deckId' × { cardId, model: Card.Draftboard { layout } } ] → void do
-      let
-        layout' = Layout.insertRootSplit (Pane.Cell (Just deckFrom)) orn (1%2) bias layout
-        card = { cardId, model: Card.Draftboard { layout: layout' } }
-      H.liftH $ H.liftH $ unsafeUpdateCachedDraftboard deckId' card
-      H.modify \s →
-        let
-          result =
-            Pane.modifyAt (const (Pane.Cell Nothing)) cursorFrom st.layout
-        in updateLayout (fromMaybe s.layout result) s
-      queryDeck deckTo
-        $ H.action
-        $ DCQ.SetModelCards [ deckId' × card ]
-
-    _ → do
-      let
-        splits =
-          List.fromFoldable case bias of
-            Layout.SideA → [ deckFrom, deckTo ]
-            Layout.SideB → [ deckTo, deckFrom ]
-        newDeck = (splitDeck orn splits) { parent = Just (opts.deckId × opts.cardId) }
-      newId ← H.fromEff freshDeckId
-      putDeck newId newDeck >>= case _ of
-        Left err →
-          Notify.saveDeckFail err
-        Right _ → void do
-          H.modify \s →
-            let
-              result =
-                pure s.layout
-                  >>= Pane.modifyAt (const (Pane.Cell Nothing)) cursorFrom
-                  >>= Pane.modifyAt (const (Pane.Cell (Just newId))) cursorTo
-            in updateLayout (fromMaybe s.layout result) s
-          loadAndFocus opts.deck newId
-
-loadDecks ∷ DraftboardDSL Unit
-loadDecks =
-  H.gets childSlots >>=
-    traverse_ (raise' ∘ right ∘ H.action ∘ LoadDeck)
+  -- FIXME
+  pure unit
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
 queryDeck slot = H.query slot ∘ right
-
-loadAndFocus ∷ DeckOptions → DeckId → DraftboardDSL Unit
-loadAndFocus opts deckId =
-  traverse_ (queryDeck deckId ∘ H.action)
-    [ DCQ.Load deckId
-    , DCQ.Focus
-    ]
-
-putDeck
-  ∷ DeckId
-  → DM.Deck
-  → DraftboardDSL (Either QE.QError Unit)
-putDeck deckId deck =
-  H.liftH $ H.liftH $ W.putDeck deckId deck

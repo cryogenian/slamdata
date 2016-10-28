@@ -22,6 +22,7 @@ import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
 import SlamData.Header.Component as Header
 import SlamData.Notification.Component as Notify
+import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Nested.State as DNS
 
@@ -32,13 +33,13 @@ type ChildState =
   DNS.State ⊹ Header.StateP ⊹ Notify.State
 
 type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit
+  DeckId ⊹ Unit ⊹ Unit
 
 cpDeck
   ∷ ChildPath
       DNS.State ChildState
       DNQ.QueryP ChildQuery
-      Unit ChildSlot
+      DeckId ChildSlot
 cpDeck = cpL
 
 cpHeader

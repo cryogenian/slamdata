@@ -18,9 +18,7 @@ module SlamData.Workspace.Component.State
   ( State
   , initialState
   , _accessType
-  , _loaded
-  , _version
-  , _initialDeckId
+  , _deckId
   , _stateMode
   , _cardGuideStep
   , _flipGuideStep
@@ -38,9 +36,7 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 
 type State =
   { accessType ∷ AccessType
-  , loaded ∷ Boolean
-  , version ∷ Maybe String
-  , initialDeckId ∷ Maybe DeckId
+  , deckId ∷ Maybe DeckId
   , stateMode ∷ StateMode
   , cardGuideStep ∷ Maybe Int
   , flipGuideStep ∷ Maybe Int
@@ -49,36 +45,26 @@ type State =
 initialState ∷ Maybe String → State
 initialState version =
   { accessType: Editable
-  , loaded: false
-  , version
-  , initialDeckId: Nothing
+  , deckId: Nothing
   , stateMode: Loading
   , cardGuideStep: Nothing
   , flipGuideStep: Nothing
   }
 
-_accessType ∷ ∀ a r. LensP {accessType ∷ a|r} a
-_accessType = lens _.accessType _{accessType = _}
+_accessType ∷ ∀ a r. LensP { accessType ∷ a | r } a
+_accessType = lens _.accessType _ { accessType = _ }
 
-_loaded ∷ ∀ a r. LensP {loaded ∷ a|r} a
-_loaded = lens _.loaded _{loaded = _}
-
-_version ∷ ∀ a r. LensP {version ∷ a|r} a
-_version = lens _.version _{version = _}
-
--- | This is only used while the workspace and initial deck are created, after
--- | that the value is irrelevant.
-_initialDeckId ∷ ∀ a r. LensP {initialDeckId ∷ a|r} a
-_initialDeckId = lens _.initialDeckId _{initialDeckId = _}
+_deckId ∷ ∀ a r. LensP { deckId ∷ a | r } a
+_deckId = lens _.deckId _ { deckId = _ }
 
 _stateMode ∷ LensP State StateMode
-_stateMode = lens _.stateMode _{stateMode = _}
+_stateMode = lens _.stateMode _ { stateMode = _ }
 
 _cardGuideStep ∷ LensP State (Maybe Int)
-_cardGuideStep = lens _.cardGuideStep _{cardGuideStep = _}
+_cardGuideStep = lens _.cardGuideStep _ { cardGuideStep = _ }
 
 _flipGuideStep ∷ LensP State (Maybe Int)
-_flipGuideStep = lens _.flipGuideStep _{flipGuideStep = _}
+_flipGuideStep = lens _.flipGuideStep _ { flipGuideStep = _ }
 
 cardGuideStepNext ∷ State → State
 cardGuideStepNext st = st { cardGuideStep = add 1 <$> st.cardGuideStep }

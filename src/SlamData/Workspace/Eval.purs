@@ -56,8 +56,8 @@ evalGraph coord = do
   tick ← nextTick
   graph ←
     unfoldGraph
-      <$> Cache.snapshot wiring.cards'
-      <*> Cache.snapshot wiring.decks'
+      <$> Cache.snapshot wiring.cards
+      <*> Cache.snapshot wiring.decks
       <*> pure coord
   for_ graph \graph' → do
     notifyDecks Deck.Pending graph'
@@ -72,7 +72,7 @@ runEvalLoop tick input graph = do
   let
     node = Cofree.head graph
     next = Cofree.tail graph
-    -- TODO
+    -- FIXME
     eval = unsafePartial (fromRight (Card.modelToEval node.card.value.model.model))
     cei  =
       { path: wiring.path
@@ -85,13 +85,13 @@ runEvalLoop tick input graph = do
   tick' ← currentTick
   when (tick ≡ tick') case result.output of
     Left err → do
-      -- TODO: report errors
+      -- FIXME: report errors
       let
         value' = node.card.value { state = result.state }
         output = Card.CardError case GE.fromQError err of
           Left msg → msg
-          _        → "Global error" -- TODO
-      updateCardValue node.coord value' wiring.cards'
+          _        → "Global error" -- FIXME
+      updateCardValue node.coord value' wiring.cards
       fromAff do
         Bus.write (Card.StateChange result.state) node.card.bus
         Bus.write (Card.Complete output) node.card.bus
@@ -103,7 +103,7 @@ runEvalLoop tick input graph = do
           , output = Just output
           , state = result.state
           }
-      updateCardValue node.coord value' wiring.cards'
+      updateCardValue node.coord value' wiring.cards
       fromAff do
         Bus.write (Card.StateChange result.state) node.card.bus
         Bus.write (Card.Complete output) node.card.bus
