@@ -36,7 +36,7 @@ import Data.Map as Map
 
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
-import SlamData.Wiring (Wiring(..))
+import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
@@ -52,12 +52,12 @@ type EvalGraph =
 
 evalGraph ∷ Card.Coord → Slam Unit
 evalGraph coord = do
-  Wiring wiring ← ask
+  { eval } ← Wiring.expose
   tick ← nextTick
   graph ←
     unfoldGraph
-      <$> Cache.snapshot wiring.cards
-      <*> Cache.snapshot wiring.decks
+      <$> Cache.snapshot eval.cards
+      <*> Cache.snapshot eval.decks
       <*> pure coord
   for_ graph \graph' → do
     notifyDecks Deck.Pending graph'
@@ -67,21 +67,20 @@ evalGraph coord = do
 
 runEvalLoop ∷ Tick → Maybe Card.Port → EvalGraph → Slam Unit
 runEvalLoop tick input graph = do
-  Wiring wiring ← ask
-  urlVarMaps ← liftEff $ readRef wiring.urlVarMaps
+  { path, varMaps, eval } ← Wiring.expose
   let
     node = Cofree.head graph
     next = Cofree.tail graph
     -- FIXME
-    eval = unsafePartial (fromRight (Card.modelToEval node.card.value.model.model))
-    cei  =
-      { path: wiring.path
+    trans = unsafePartial (fromRight (Card.modelToEval node.card.value.model.model))
+    cei =
+      { path
       , cardCoord: node.coord
       , input
-      , urlVarMaps
+      , urlVarMaps: varMaps
       }
   fromAff $ Bus.write Card.Pending node.card.bus
-  result ← Card.runEvalCard' cei eval
+  result ← Card.runEvalCard' cei trans
   tick' ← currentTick
   when (tick ≡ tick') case result.output of
     Left err → do
@@ -91,7 +90,7 @@ runEvalLoop tick input graph = do
         output = Card.CardError case GE.fromQError err of
           Left msg → msg
           _        → "Global error" -- FIXME
-      updateCardValue node.coord value' wiring.cards
+      updateCardValue node.coord value' eval.cards
       fromAff do
         Bus.write (Card.StateChange result.state) node.card.bus
         Bus.write (Card.Complete output) node.card.bus
@@ -103,7 +102,7 @@ runEvalLoop tick input graph = do
           , output = Just output
           , state = result.state
           }
-      updateCardValue node.coord value' wiring.cards
+      updateCardValue node.coord value' eval.cards
       fromAff do
         Bus.write (Card.StateChange result.state) node.card.bus
         Bus.write (Card.Complete output) node.card.bus
@@ -154,12 +153,12 @@ nubDecks = List.nubBy (eq `on` fst) ∘ go
 
 nextTick ∷ Slam Int
 nextTick = do
-  Wiring wiring ← ask
+  { eval } ← Wiring.expose
   liftEff do
-    modifyRef wiring.evalTick (add 1)
-    readRef wiring.evalTick
+    modifyRef eval.tick (add 1)
+    readRef eval.tick
 
 currentTick ∷ Slam Int
 currentTick = do
-  Wiring wiring ← ask
-  liftEff (readRef wiring.evalTick)
+  { eval } ← Wiring.expose
+  liftEff (readRef eval.tick)

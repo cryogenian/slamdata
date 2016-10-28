@@ -18,14 +18,11 @@ module SlamData.Workspace.Component.Query where
 
 import SlamData.Prelude
 
-import Data.Map as Map
-
 import Halogen as H
 import Halogen.HTML.Events.Types as HET
 
 import SlamData.Wiring (StepByStepGuide)
 import SlamData.Workspace.AccessType (AccessType)
-import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
@@ -33,7 +30,6 @@ data Query a
   = Init a
   | DismissAll (HET.Event HET.MouseEvent) a
   | Load (Maybe DeckId) AccessType a
-  | SetVarMaps (Map.Map DeckId Port.URLVarMap) a
   | PresentStepByStepGuide StepByStepGuide a
   | CardGuideStepNext a
   | CardGuideDismiss a

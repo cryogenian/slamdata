@@ -86,7 +86,7 @@ import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo) as API
 import SlamData.Render.Common (content, row)
-import SlamData.Wiring (Wiring(..))
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 
@@ -148,8 +148,8 @@ render state@{ version, sort, salt, path } =
 
 eval ∷ Query ~> DSL
 eval (Init next) = do
-  Wiring wiring ← H.liftH $ H.liftH ask
-  subscribeToBus' (H.action ∘ HandleError) wiring.globalError
+  { bus } ← H.liftH $ H.liftH Wiring.expose
+  subscribeToBus' (H.action ∘ HandleError) bus.globalError
   pure next
 eval (Resort next) = do
   { sort, salt, path } ← H.get

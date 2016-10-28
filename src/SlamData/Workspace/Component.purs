@@ -55,7 +55,6 @@ import SlamData.Quasar.Error as QE
 import SlamData.Wiring (Wiring(..))
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
-import SlamData.Workspace.Class (putURLVarMaps)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, toWorkspace)
 import SlamData.Workspace.Component.State (State, _accessType, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
@@ -155,12 +154,12 @@ render state =
 eval ∷ Query ~> WorkspaceDSL
 eval = case _ of
   Init next → do
-    Wiring wiring ← H.liftH $ H.liftH ask
+    { bus } ← H.liftH $ H.liftH Wiring.expose
     cardGuideStep ← initialCardGuideStep
     H.modify _ { cardGuideStep = cardGuideStep }
     subscribeToBus'
       (H.action ∘ PresentStepByStepGuide)
-      wiring.presentStepByStepGuide
+      bus.stepByStep
     H.subscribe'
       $ throttledEventSource_ (Milliseconds 100.0) onResize
       $ pure (H.action Resize)
@@ -187,8 +186,6 @@ eval = case _ of
     H.liftH $ H.liftH $ LocalStorage.setLocalStorage Guide.dismissedFlipGuideKey true
     H.modify (_flipGuideStep .~ Nothing)
     pure next
-  SetVarMaps urlVarMaps next →
-    putURLVarMaps urlVarMaps $> next
   DismissAll ev next → do
     querySignIn $ H.action GlobalMenu.DismissSubmenu
     eq ← H.fromEff $ elementEq ev.target ev.currentTarget

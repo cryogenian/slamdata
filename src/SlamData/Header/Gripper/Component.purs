@@ -48,7 +48,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Monad (Slam)
-import SlamData.Wiring (Wiring(..))
+import SlamData.Wiring as Wiring
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -193,8 +193,8 @@ eval sel (Init next) = do
     in
       H.subscribe $ H.eventSource attachAnimationEnd handleAnimationEnd
 
-  Wiring wiring ← H.liftH ask
-  forever $ const (H.set $ Closing maxMargin) =<< H.fromAff (Bus.read wiring.signInBus)
+  { auth } ← H.liftH Wiring.expose
+  forever $ const (H.set $ Closing maxMargin) =<< H.fromAff (Bus.read auth.signIn)
   pure next
 eval _ (StartDragging pos next) = do
   astate ← H.get

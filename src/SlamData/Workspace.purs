@@ -42,7 +42,7 @@ import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Monad (runSlam)
-import SlamData.Wiring (makeWiring)
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
@@ -78,7 +78,7 @@ routeSignal =
     case new, state of
       -- Initialize the Workspace component
       WorkspaceRoute path deckId action varMaps, Nothing → do
-        wiring ← lift $ makeWiring path varMaps
+        wiring ← lift $ Wiring.make path varMaps
         let
           st = Workspace.initialState (Just "4.0")
           ui = interpret (runSlam wiring) Workspace.comp
@@ -101,7 +101,6 @@ routeSignal =
             routeConsumer (Just (RouterState new driver))
 
   setupWorkspace new@(WorkspaceRoute _ deckId action varMaps) driver = do
-    driver $ Workspace.toWorkspace $ Workspace.SetVarMaps varMaps
     when (toAccessType action ≡ AT.ReadOnly) do
       isEmbedded ←
         liftEff $ Browser.detectEmbedding
