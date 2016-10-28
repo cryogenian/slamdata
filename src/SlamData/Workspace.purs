@@ -86,8 +86,9 @@ routeSignal =
         lift $ setupWorkspace new driver
         routeConsumer (Just (RouterState new driver))
 
-      -- Reload the page on path change
-      WorkspaceRoute path _ _ _, Just (RouterState (WorkspaceRoute path' _ _ _) _) | path ≠ path' →
+      -- Reload the page on path change or varMap change
+      WorkspaceRoute path _ _ varMaps, Just (RouterState (WorkspaceRoute path' _ _ varMaps') _)
+        | path ≠ path' || varMaps ≠ varMaps' →
         lift $ liftEff Browser.reload
 
       -- Transition Workspace
