@@ -16,10 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.CardId
   ( CardId(..)
-  , _CardId
-
-  , _StringCardId
-
   , stringToCardId
   , cardIdToString
   ) where
@@ -28,43 +24,20 @@ import SlamData.Prelude
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
 import Data.Int as Int
-import Data.Lens as Lens
 
--- | The slot address value for cards and identifier within the deck graph.
-data CardId
-  = ErrorCardId
-  | CardId Int
-  | NextActionCardId
-  | PendingCardId
+newtype CardId = CardId Int
 
-_CardId ∷ Lens.PrismP CardId Int
-_CardId =
-  Lens.prism CardId
-    case _ of
-      CardId i → Right i
-      cid → Left cid
+unCardId ∷ CardId → Int
+unCardId (CardId i) = i
 
 stringToCardId ∷ String → Either String CardId
-stringToCardId =
-  case _ of
-    "ErrorCardId" → Right ErrorCardId
-    "NextActionCardId" → Right NextActionCardId
-    "PendingCardId" → Right PendingCardId
-    str →
-      case Int.fromString str of
-        Just i → Right $ CardId i
-        Nothing → Left "Invalid CardId"
+stringToCardId str =
+  case Int.fromString str of
+    Just i → Right (CardId i)
+    Nothing → Left "Invalid CardId"
 
 cardIdToString ∷ CardId → String
-cardIdToString =
-  case _ of
-    ErrorCardId → "ErrorCardId"
-    NextActionCardId → "NextActionCardId"
-    PendingCardId → "PendingCardId"
-    CardId i → show i
-
-_StringCardId ∷ Lens.PrismP String CardId
-_StringCardId = Lens.prism cardIdToString stringToCardId
+cardIdToString = show ∘ unCardId
 
 derive instance genericCardId ∷ Generic CardId
 derive instance eqCardId ∷ Eq CardId
@@ -74,25 +47,7 @@ instance showCardId ∷ Show CardId where
   show c = "CardId " <> cardIdToString c
 
 instance encodeJsonCardId ∷ EncodeJson CardId where
-  encodeJson =
-    case _ of
-      CardId i → encodeJson i
-      ErrorCardId → encodeJson "ErrorCardId"
-      NextActionCardId → encodeJson "NextActionCardId"
-      PendingCardId → encodeJson "PendingCardId"
+  encodeJson = encodeJson ∘ unCardId
 
 instance decodeJsonCardId ∷ DecodeJson CardId where
-  decodeJson json =
-    decodeErrorCardId <|> decodeNumeric
-
-    where
-      decodeErrorCardId = do
-        decodeJson json >>=
-          case _ of
-            "ErrorCardId" → pure ErrorCardId
-            "NextActionCardId" → pure NextActionCardId
-            "PendingCardId" → pure PendingCardId
-            str → Left $ "Invalid CardId: " <> str
-      decodeNumeric =
-        CardId <$>
-          decodeJson json
+  decodeJson = map CardId ∘ decodeJson

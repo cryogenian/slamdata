@@ -230,7 +230,8 @@ eval opts = case _ of
     showDialog $ Dialog.Error $ GE.print ge
     pure next
   DismissedCardGuide next → do
-    queryRootDeckNextActionCard (Next.PresentAddCardGuide unit) $> next
+    -- FIXME
+    pure next
   Run next → do
     H.modify _{ stateMode = Preparing }
     initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
@@ -271,18 +272,10 @@ peekBackSide opts (Back.DoAction action _) = do
   case action of
     Back.Trash → do
       state ← H.get
-      lastId ← H.gets DCS.findLastRealCard
+      lastId ← H.gets DCS.findLastCard
       for_ (DCS.activeCardCoord state <|> lastId)  \trashId →
+        -- FIXME
         case snd trashId of
-          ErrorCardId → do
-            showDialog
-              $ Dialog.Error "You cannot delete the error card. Please, fix errors or slide to previous card."
-          NextActionCardId → do
-            showDialog
-              $ Dialog.Error "You cannot delete the next action card. Please, slide to previous card."
-          PendingCardId → do
-            showDialog
-              $ Dialog.Error "You cannot delete the pending card. Please, wait till card evaluation is finished."
           CardId _ → do
             let rem = DCS.removeCard trashId state
             H.liftH $ H.liftH $
@@ -463,24 +456,6 @@ presentReason input cardType =
   cardPaths = map (ICT.cardPathsBetween ioType) insertableCardType
   dialog = Dialog.Reason cardType <$> reason <*> cardPaths
 
-nextActionCard ∷ Card.Model
-nextActionCard =
-  { cardId: NextActionCardId
-  , model: Card.NextAction
-  }
-
-errorCard ∷ Card.Model
-errorCard =
-  { cardId: ErrorCardId
-  , model: Card.ErrorCard
-  }
-
-pendingEvalCard ∷ Card.Model
-pendingEvalCard =
-  { cardId: PendingCardId
-  , model: Card.PendingCard
-  }
-
 -- | Enqueues the card with the specified ID in the set of cards that are
 -- | pending to run and enqueues a debounced query to trigger the cards to
 -- | actually run.
@@ -549,7 +524,3 @@ shouldPresentFlipGuide =
 queryRootDeckCard ∷ ∀ a. CardId → CQ.AnyCardQuery a → DeckDSL (Maybe a)
 queryRootDeckCard cid query =
   flip queryCard query ∘ flip Tuple cid =<< H.gets _.id
-
-queryRootDeckNextActionCard ∷ ∀ a. Next.Query a → DeckDSL (Maybe a)
-queryRootDeckNextActionCard =
-  queryRootDeckCard NextActionCardId ∘ CQ.NextQuery ∘ right
