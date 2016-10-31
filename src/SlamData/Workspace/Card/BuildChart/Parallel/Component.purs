@@ -100,7 +100,7 @@ renderPicker state = case state.picker of
     HH.slot unit \_ →
       { component: DPC.picker
           { title: case picker.select of
-               Q.Dimension _ _ → "Chosse dimension"
+               Q.Dimension _ _ → "Choose dimension"
                Q.Series _ → "Choose series"
                _ → ""
           , label: DPC.labelNode show
@@ -197,7 +197,7 @@ cardEval = case _ of
 
 chartEval ∷ Q.Query ~> DSL
 chartEval (Q.Select sel next) = next <$ case sel of
-  Q.Dimension i a → updateDimension i a --updatePicker (ST._dimension i) (Q.Dimension i) a
+  Q.Dimension i a → updateDimension i a
   Q.Aggregation i a → updateSelect (ST._aggregation i) a
   Q.Series a → updatePicker ST._series Q.Series a
 
