@@ -63,6 +63,7 @@ import SlamData.Workspace.Card.BuildChart.Boxplot.Eval as BuildBoxplot
 import SlamData.Workspace.Card.BuildChart.PivotTable.Eval as BuildPivotTable
 import SlamData.Workspace.Card.BuildChart.PunchCard.Eval as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Eval as BuildCandlestick
+import SlamData.Workspace.Card.BuildChart.Parallel.Eval as BuildParallel
 
 import Text.SlamSearch as SS
 import Text.Markdown.SlamDown as SD
@@ -96,6 +97,7 @@ data Eval
   | BuildPivotTable BuildPivotTable.Model
   | BuildPunchCard BuildPunchCard.Model
   | BuildCandlestick BuildCandlestick.Model
+  | BuildParallel BuildParallel.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -126,6 +128,7 @@ tagEval = case _ of
   BuildPivotTable _ → "BuildPivotTable"
   BuildPunchCard _ → "BuildPunchCard"
   BuildCandlestick _ → "BuildCandlestick"
+  BuildParallel _ → "BuildParallel"
 
 evalCard
   ∷ ∀ m
@@ -197,6 +200,8 @@ evalCard input =
       BuildPunchCard.eval model resource axes
     BuildCandlestick model, Just (Port.TaggedResource {resource, axes}) →
       BuildCandlestick.eval model resource axes
+    BuildParallel model, Just (Port.TaggedResource {resource, axes}) →
+      BuildParallel.eval model resource axes
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
