@@ -129,7 +129,7 @@ eval opts = case _ of
       $ (DCS.addCard $ Card.cardModelOfType CT.Table)
       ∘ (DCS.addCard ∘ Card.Open ∘ Just $ R.File res)
       ∘ (DCS._stateMode .~ Preparing)
-    initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
+    initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.displayCards)
     -- FIXME
     saveDeck opts Nothing
     updateIndicator
@@ -234,7 +234,7 @@ eval opts = case _ of
     pure next
   Run next → do
     H.modify _{ stateMode = Preparing }
-    initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
+    initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.displayCards)
     -- FIXME
     pure next
 
@@ -307,7 +307,7 @@ peekBackSide opts (Back.DoAction action _) = do
       sharingInput ← getSharingInput
       showDialog $ Dialog.Publish sharingInput mempty
     Back.DeleteDeck → do
-      cards ← H.gets _.modelCards
+      cards ← H.gets _.displayCards
       if Array.null cards
         then raise' $ H.action $ DoAction DeleteDeck
         else showDialog Dialog.DeleteDeck

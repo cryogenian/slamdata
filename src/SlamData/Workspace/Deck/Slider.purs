@@ -215,12 +215,8 @@ cardSelected state coord =
 
 cardPending ∷ State → DeckId × CardId → Boolean
 cardPending state coord =
-  case state.pendingCard of
-    Just pcoord →
-      case DCS.compareCoordCards coord pcoord state.modelCards of
-        Just GT → true
-        _ → false
-    _ → false
+  -- FIXME
+  false
 
 cardProperties ∷ ∀ a b. State → DeckId × CardId → Array (IProp a b)
 cardProperties state coord =

@@ -20,19 +20,14 @@ module SlamData.Workspace.Deck.Component.State
   , DisplayMode(..)
   , ResponsiveSize(..)
   , Fade(..)
-  , CardDef
   , initialDeck
   , _id
   , _name
   , _parent
-  , _modelCards
   , _displayCards
   , _activeCardIndex
   , _presentAccessNextActionCardGuideCanceler
   , _presentAccessNextActionCardGuide
-  , _saveTrigger
-  , _runTrigger
-  , _pendingCard
   , _stateMode
   , _displayMode
   , _initialSliderX
@@ -43,7 +38,6 @@ module SlamData.Workspace.Deck.Component.State
   , _slidingTo
   , _breakers
   , _focused
-  , _additionalSources
   , _responsiveSize
   , _fadeTransition
   , addCard
@@ -77,16 +71,11 @@ import DOM.HTML.Types (HTMLElement)
 import Data.Array as A
 import Data.Foldable (maximum)
 import Data.Lens (LensP, lens)
-import Data.Lens as Lens
-import Data.Map as Map
 import Data.Path.Pathy ((</>))
-import Data.Set as Set
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
-import Halogen.Component.Utils.Debounced (DebounceTrigger)
 
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Monad (Slam)
 
 import SlamData.Workspace.Card.CardId (CardId(..))
 import SlamData.Workspace.Card.CardId as CID
@@ -94,8 +83,6 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.StateMode (StateMode(..))
 
-import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
-import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
@@ -121,41 +108,30 @@ data Fade
   | FadeIn
   | FadeOut
 
--- | The deck state. See the corresponding lenses for descriptions of
--- | the fields.
 type State =
   { id ∷ DeckId
   , name ∷ String
   , parent ∷ Maybe (DeckId × CardId)
-  , fresh ∷ Int
-  , modelCards ∷ Array (DeckId × Card.Model)
+  , stateMode ∷ StateMode
+  , displayMode ∷ DisplayMode
   , displayCards ∷ Array (DeckId × Card.Model)
-  , cardsToLoad ∷ Set.Set (DeckId × CardId)
+  , fresh ∷ Int
   , activeCardIndex ∷ Maybe Int
   , presentAccessNextActionCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
   , presentAccessNextActionCardGuide ∷ Boolean
-  , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
-  , runTrigger ∷ Maybe (DebounceTrigger Query Slam)
-  , pendingCard ∷ Maybe (DeckId × CardId)
-  , stateMode ∷ StateMode
-  , displayMode ∷ DisplayMode
   , initialSliderX ∷ Maybe Number
   , initialSliderCardWidth ∷ Maybe Number
   , sliderTransition ∷ Boolean
   , sliderTranslateX ∷ Number
   , cardElementWidth ∷ Maybe Number
   , slidingTo ∷ Maybe GripperDef
-  , breakers ∷ Array (Breaker Unit)
   , focused ∷ Boolean
   , finalized ∷ Boolean
   , deckElement ∷ Maybe HTMLElement
-  , additionalSources ∷ Map.Map (DeckId × CardId) (Set.Set AdditionalSource)
   , responsiveSize ∷ ResponsiveSize
   , fadeTransition ∷ Fade
+  , breakers ∷ Array (Breaker Unit)
   }
-
--- | A record used to represent card definitions in the deck.
-type CardDef = { id ∷ CardId, ty ∷ CT.CardType }
 
 -- | Constructs a default `State` value.
 initialDeck ∷ DeckId → State
@@ -163,31 +139,25 @@ initialDeck deckId =
   { id: deckId
   , name: ""
   , parent: Nothing
-  , fresh: 0
-  , modelCards: mempty
+  , stateMode: Loading
+  , displayMode: Normal
   , displayCards: mempty
-  , cardsToLoad: mempty
+  , fresh: 0
   , activeCardIndex: Nothing
   , presentAccessNextActionCardGuideCanceler: Nothing
   , presentAccessNextActionCardGuide: false
-  , saveTrigger: Nothing
-  , runTrigger: Nothing
-  , pendingCard: Nothing
-  , stateMode: Loading
-  , displayMode: Normal
   , initialSliderX: Nothing
   , initialSliderCardWidth: Nothing
   , sliderTransition: false
   , sliderTranslateX: 0.0
   , cardElementWidth: Nothing
   , slidingTo: Nothing
-  , breakers: mempty
   , focused: false
   , finalized: false
   , deckElement: Nothing
-  , additionalSources: mempty
   , responsiveSize: XLarge
   , fadeTransition: FadeNone
+  , breakers: mempty
   }
 
 -- | The unique identifier of the deck.
@@ -207,10 +177,6 @@ _parent = lens _.parent _{parent = _}
 _fresh ∷ ∀ a r. LensP {fresh ∷ a|r} a
 _fresh = lens _.fresh _{fresh = _}
 
--- | The list of cards currently in the deck.
-_modelCards ∷ ∀ a r. LensP {modelCards ∷ a |r} a
-_modelCards = lens _.modelCards _{modelCards = _}
-
 -- | The list of cards to be displayed in the deck
 _displayCards ∷ ∀ a r. LensP {displayCards ∷ a |r} a
 _displayCards = lens _.displayCards _{displayCards = _}
@@ -228,18 +194,6 @@ _presentAccessNextActionCardGuideCanceler = lens _.presentAccessNextActionCardGu
 -- | Whether the add card guide should be presented or not.
 _presentAccessNextActionCardGuide ∷ ∀ a r. LensP {presentAccessNextActionCardGuide ∷ a |r} a
 _presentAccessNextActionCardGuide = lens _.presentAccessNextActionCardGuide _{presentAccessNextActionCardGuide = _}
-
--- | The debounced trigger for deck save actions.
-_saveTrigger ∷ ∀ a r. LensP {saveTrigger ∷ a|r} a
-_saveTrigger = lens _.saveTrigger _{saveTrigger = _}
-
--- | The debounced trigger for running all cards that are pending.
-_runTrigger ∷ ∀ a r. LensP {runTrigger ∷ a|r} a
-_runTrigger = lens _.runTrigger _{runTrigger = _}
-
--- | The earliest card in the deck that needs to evaluate.
-_pendingCard ∷ ∀ a r. LensP {pendingCard ∷ a|r} a
-_pendingCard = lens _.pendingCard _{pendingCard = _}
 
 -- | The "state mode" used to track whether the deck is ready, loading, or
 -- | if an error has occurred while loading.
@@ -281,9 +235,6 @@ _slidingTo = lens _.slidingTo _{slidingTo = _}
 _breakers ∷ ∀ a r. LensP {breakers ∷ a|r} a
 _breakers = lens _.breakers _{breakers = _}
 
-_additionalSources ∷ ∀ a r. LensP {additionalSources ∷ a|r} a
-_additionalSources = lens _.additionalSources _{additionalSources = _}
-
 _focused ∷ ∀ a r. LensP {focused ∷ a|r} a
 _focused = lens _.focused _{focused = _}
 
@@ -298,27 +249,16 @@ addCard card st = fst $ addCard' card st
 
 addCard' ∷ Card.AnyCardModel → State → State × CardId
 addCard' model st =
+  -- FIXME
   let
     cardId = CardId st.fresh
-    newState = st
-      { fresh = st.fresh + one
-      , modelCards =
-          A.snoc st.modelCards (st.id × { cardId, model })
-      }
+    newState = st { fresh = st.fresh + one }
   in newState × cardId
 
 removeCard ∷ DeckId × CardId → State → (Array (DeckId × Card.Model)) × State
 removeCard coord st =
-  Tuple displayCards.rest
-    $ removePendingCard coord
-    $ st
-      { modelCards = modelCards.init
-      , displayCards = displayCards.init
-      , activeCardIndex = Just $ max zero $ A.length displayCards.init - 1
-      }
-  where
-  modelCards = A.span (not ∘ eqCoordModel coord) st.modelCards
-  displayCards = A.span (not ∘ eqCoordModel coord) st.displayCards
+  -- FIXME
+  st.displayCards × st
 
 findLastCardIndex ∷ State → Maybe Int
 findLastCardIndex st =
@@ -333,60 +273,46 @@ findLastCardType ∷ State → Maybe CT.CardType
 findLastCardType { displayCards } = Card.modelCardType ∘ _.model ∘ snd <$> A.last displayCards
 
 variablesCards ∷ State → Array (DeckId × CardId)
-variablesCards = A.mapMaybe cardTypeMatches ∘ _.modelCards
+variablesCards = A.mapMaybe cardTypeMatches ∘ _.displayCards
   where
   cardTypeMatches (deckId × { cardId, model }) =
     case Card.modelCardType model of
       CT.Variables → Just (deckId × cardId)
       _ → Nothing
 
--- | Updates the stored card that is pending to run. This handles the logic of
--- | changing the pending card when a provided card appears earlier in the deck
--- | than the currently enqueued card, and if the provided card appears after
--- | the currently enqueued card the function is a no-op.
 addPendingCard ∷ (DeckId × CardId) → State → State
 addPendingCard coord st =
-  case st.pendingCard of
-    Nothing → st { pendingCard = Just coord }
-    Just oldCoord → fromMaybe st $
-      compareCoordCards coord oldCoord st.modelCards <#> eq LT <#>
-        if _ then st { pendingCard = Just coord } else st
+  -- FIXME
+  st
 
 removePendingCard ∷ DeckId × CardId → State → State
 removePendingCard coord st =
-  fromMaybe st do
-    oldCoord ← st.pendingCard
-    comp ← (eq LT || eq EQ) <$> compareCoordCards coord oldCoord st.modelCards
-    pure $ st { pendingCard = Nothing }
+  -- FIXME
+  st
 
 -- | Reconstructs a deck state from a deck model.
 fromModel
-  ∷ { id ∷ DeckId
+  ∷ { name ∷ String
     , parent ∷ Maybe (DeckId × CardId)
-    , modelCards ∷ Array (DeckId × Card.Model)
-    , name ∷ String
+    , displayCards ∷ Array (DeckId × Card.Model)
     }
   → State
   → State
-fromModel { id: deckId, parent, modelCards, name } state =
+fromModel { name, parent, displayCards } state =
   state
-    { id = deckId
+    { name = name
     , parent = parent
-    , modelCards = modelCards
-    , name = name
-    , activeCardIndex = Nothing
-    , displayMode = Normal
     , displayCards = mempty
+    , displayMode = Normal
     , fresh = fresh
+    , activeCardIndex = Nothing
     , initialSliderX = Nothing
-    , runTrigger = Nothing
-    , pendingCard = Nothing
     }
   where
   fresh =
-    modelCards
-      # A.filter (eq deckId ∘ fst)
-      # A.mapMaybe (Lens.preview CID._CardId ∘ _.cardId ∘ snd)
+    displayCards
+      # A.filter (eq state.id ∘ fst)
+      # map (CID.unCardId ∘ _.cardId ∘ snd)
       # maximum
       # maybe 0 (add 1)
 

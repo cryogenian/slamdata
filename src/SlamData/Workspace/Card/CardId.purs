@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.CardId
   ( CardId(..)
+  , unCardId
   , stringToCardId
   , cardIdToString
   ) where
