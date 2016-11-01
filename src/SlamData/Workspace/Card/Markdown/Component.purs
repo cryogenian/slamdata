@@ -71,7 +71,7 @@ markdownComponent deckId opts = CC.makeCardComponent
     = foldMap
         DID.toString
         (deckId : opts.deckId : opts.deck.cursor)
-    <> CID.cardIdToString opts.cardId
+    <> CID.toString opts.cardId
 
 type MarkdownHTML a =
   H.ParentHTML

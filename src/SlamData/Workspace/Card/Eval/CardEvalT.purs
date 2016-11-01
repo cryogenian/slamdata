@@ -168,7 +168,7 @@ temporaryOutputResource { path, cardCoord: deckId × cardId } =
   path
     </> Path.dir ".tmp"
     </> Path.dir (DID.toString deckId)
-    </> Path.file ("out" ⊕ CID.cardIdToString cardId)
+    </> Path.file ("out" ⊕ CID.toString cardId)
 
 liftQ ∷ ∀ m a. Monad m ⇒ m (Either QError a) → CardEvalT m a
 liftQ = either throwError pure <=< lift

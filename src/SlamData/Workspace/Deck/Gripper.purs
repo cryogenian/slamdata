@@ -28,7 +28,7 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.CardId (CardId(CardId))
+import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Deck.Common (DeckHTML)
 import SlamData.Workspace.Deck.Component.Query (Query(StartSliding))
 import SlamData.Workspace.Deck.Component.State (coordModelToCoord)
@@ -51,9 +51,9 @@ gripperDefsForCard cards coord =
       <$> coord
       <*> map coordModelToCoord (Array.head cards)
 
-  nextCardAvailable = case coord of
-    Just (_ × (CardId _)) → true
-    _ → false
+  nextCardAvailable =
+    -- FIXME
+    true
 
 isAvailable ∷ GripperDef → Boolean
 isAvailable (Previous available) =

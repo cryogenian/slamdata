@@ -27,8 +27,6 @@ import Data.Argonaut as J
 
 import SlamData.Workspace.Card.Model as Card
 
-import Test.SlamData.Property.Workspace.Card.CardId (runArbCardId)
-
 import Test.StrongCheck ((<?>))
 import Test.StrongCheck as SC
 import Test.StrongCheck.Arbitrary as SCA
@@ -40,7 +38,7 @@ runArbCard (ArbCard m) = m
 
 instance arbitraryArbCard ∷ SCA.Arbitrary ArbCard where
   arbitrary = do
-    cardId ← runArbCardId <$> SCA.arbitrary
+    cardId ← SCA.arbitrary
     model ← SCA.arbitrary
     pure $ ArbCard { cardId, model }
 

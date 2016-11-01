@@ -46,4 +46,8 @@ passover ∷ ∀ a b m. (Applicative m) ⇒ (a → m b) → a → m a
 passover f x =
   f x *> pure x
 
+replicate ∷ ∀ m. Semigroup m ⇒ Int → m → m
+replicate i m | i <= 0 = m
+replicate i m = replicate (i - 1) (m <> m)
+
 foreign import prettyJson ∷ J.Json → String

@@ -25,7 +25,7 @@ import Halogen as H
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.AccessType (AccessType)
-import SlamData.Workspace.Card.CardId (CardId(..))
+import SlamData.Workspace.Card.CardId (legacyFromInt)
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Model as Card
@@ -46,18 +46,20 @@ type DeckOptions =
 
 wrappedDeck ∷ DeckId → Deck
 wrappedDeck deckId =
+  -- FIXME
   emptyDeck
     { cards = pure
-      { cardId: CardId 0
+      { cardId: legacyFromInt 0
       , model: Card.Draftboard { layout: Pane.Cell (Just deckId) }
       }
     }
 
 splitDeck ∷ Orn.Orientation → L.List DeckId → Deck
 splitDeck orn deckIds =
+  -- FIXME
   emptyDeck
     { cards = pure
-      { cardId: CardId 0
+      { cardId: legacyFromInt 0
       , model: Card.Draftboard
         { layout: Pane.Split orn (mkCell <$> deckIds)
         }

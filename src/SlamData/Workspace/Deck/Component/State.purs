@@ -69,7 +69,6 @@ import Control.Monad.Aff (Canceler)
 import DOM.HTML.Types (HTMLElement)
 
 import Data.Array as A
-import Data.Foldable (maximum)
 import Data.Lens (LensP, lens)
 import Data.Path.Pathy ((</>))
 
@@ -77,7 +76,7 @@ import Halogen.Component.Opaque.Unsafe (OpaqueState)
 
 import SlamData.Effects (SlamDataEffects)
 
-import SlamData.Workspace.Card.CardId (CardId(..))
+import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
@@ -115,7 +114,6 @@ type State =
   , stateMode ∷ StateMode
   , displayMode ∷ DisplayMode
   , displayCards ∷ Array (DeckId × Card.Model)
-  , fresh ∷ Int
   , activeCardIndex ∷ Maybe Int
   , presentAccessNextActionCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
   , presentAccessNextActionCardGuide ∷ Boolean
@@ -142,7 +140,6 @@ initialDeck deckId =
   , stateMode: Loading
   , displayMode: Normal
   , displayCards: mempty
-  , fresh: 0
   , activeCardIndex: Nothing
   , presentAccessNextActionCardGuideCanceler: Nothing
   , presentAccessNextActionCardGuide: false
@@ -172,10 +169,6 @@ _name = lens _.name _{name = _}
 -- | the root deck.
 _parent ∷ ∀ a r. LensP {parent ∷ a|r} a
 _parent = lens _.parent _{parent = _}
-
--- | A counter used to generate `CardId` values. This should be a monotonically increasing value
-_fresh ∷ ∀ a r. LensP {fresh ∷ a|r} a
-_fresh = lens _.fresh _{fresh = _}
 
 -- | The list of cards to be displayed in the deck
 _displayCards ∷ ∀ a r. LensP {displayCards ∷ a |r} a
@@ -250,10 +243,7 @@ addCard card st = fst $ addCard' card st
 addCard' ∷ Card.AnyCardModel → State → State × CardId
 addCard' model st =
   -- FIXME
-  let
-    cardId = CardId st.fresh
-    newState = st { fresh = st.fresh + one }
-  in newState × cardId
+  st × CID.legacyFromInt 0
 
 removeCard ∷ DeckId × CardId → State → (Array (DeckId × Card.Model)) × State
 removeCard coord st =
@@ -304,17 +294,9 @@ fromModel { name, parent, displayCards } state =
     , parent = parent
     , displayCards = mempty
     , displayMode = Normal
-    , fresh = fresh
     , activeCardIndex = Nothing
     , initialSliderX = Nothing
     }
-  where
-  fresh =
-    displayCards
-      # A.filter (eq state.id ∘ fst)
-      # map (CID.unCardId ∘ _.cardId ∘ snd)
-      # maximum
-      # maybe 0 (add 1)
 
 cardIndexFromCoord ∷ DeckId × CardId → State → Maybe Int
 cardIndexFromCoord coord = A.findIndex (eqCoordModel coord) ∘ _.displayCards

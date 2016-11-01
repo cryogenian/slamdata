@@ -35,7 +35,7 @@ import Control.Monad.Aff.Bus (BusRW)
 
 import Data.List (List)
 
-import SlamData.Workspace.Card.CardId (CardId(..))
+import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Eval (Eval, runEvalCard')
 import SlamData.Workspace.Card.Model (Model, modelToEval)
 import SlamData.Workspace.Card.Port (Port(..))

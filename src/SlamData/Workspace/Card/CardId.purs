@@ -15,40 +15,66 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.CardId
-  ( CardId(..)
-  , unCardId
-  , stringToCardId
-  , cardIdToString
+  ( CardId
+  , make
+  , fromString
+  , fromString'
+  , toString
+  , legacyFromInt
   ) where
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Class (class MonadEff)
+import Control.Monad.Eff.Random as Random
+import Data.UUID.Random as UUID
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
-import Data.Int as Int
+import Data.String as String
+import Test.StrongCheck.Arbitrary as SC
+import Utils (replicate)
 
-newtype CardId = CardId Int
+newtype CardId = CardId UUID.UUIDv4
 
-unCardId ∷ CardId → Int
-unCardId (CardId i) = i
+make ∷ ∀ m eff. MonadEff (random ∷ Random.RANDOM | eff) m ⇒ m CardId
+make = CardId <$> UUID.make
 
-stringToCardId ∷ String → Either String CardId
-stringToCardId str =
-  case Int.fromString str of
-    Just i → Right (CardId i)
-    Nothing → Left "Invalid CardId"
+fromString ∷ String → Maybe CardId
+fromString = map CardId <<< UUID.fromString
 
-cardIdToString ∷ CardId → String
-cardIdToString = show ∘ unCardId
+fromString' ∷ String → Either String CardId
+fromString' s = case fromString s of
+  Just d  → Right d
+  Nothing → Left $ "Invalid CardId: " <> s
 
-derive instance genericCardId ∷ Generic CardId
+toString ∷ CardId → String
+toString (CardId u) = UUID.toString u
+
+legacyFromInt ∷ Int → CardId
+legacyFromInt i =
+  let
+    str = String.take 12 (show i)
+    len = String.length str
+    block =
+      if len < 12
+        then replicate (12 - len) "0" <> str
+        else str
+    ustr = "00000000-0000-4000-8000-" <> block
+  in unsafePartial (fromRight (fromString' ustr))
+
 derive instance eqCardId ∷ Eq CardId
 derive instance ordCardId ∷ Ord CardId
 
 instance showCardId ∷ Show CardId where
-  show c = "CardId " <> cardIdToString c
+  show c = "CardId " <> toString c
 
 instance encodeJsonCardId ∷ EncodeJson CardId where
-  encodeJson = encodeJson ∘ unCardId
+  encodeJson (CardId u) = encodeJson u
 
 instance decodeJsonCardId ∷ DecodeJson CardId where
-  decodeJson = map CardId ∘ decodeJson
+  decodeJson json = uuid <|> legacy
+    where
+      uuid = fromString' =<< decodeJson json
+      legacy = legacyFromInt <$> decodeJson json
+
+instance arbitraryDeckId ∷ SC.Arbitrary CardId where
+  arbitrary = CardId <$> SC.arbitrary

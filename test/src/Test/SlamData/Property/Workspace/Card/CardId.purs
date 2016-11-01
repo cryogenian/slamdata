@@ -21,21 +21,12 @@ import Prelude
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
 
-import SlamData.Workspace.Card.CardId (CardId(..))
+import SlamData.Workspace.Card.CardId (CardId)
 
 import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
-import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
-
-newtype ArbCardId = ArbCardId CardId
-
-runArbCardId :: ArbCardId -> CardId
-runArbCardId (ArbCardId m) = m
-
-instance arbitraryArbCardId :: Arbitrary ArbCardId where
-  arbitrary = ArbCardId <<< CardId <$> arbitrary
 
 check :: forall eff. SC eff Unit
-check = quickCheck $ runArbCardId >>> \ci ->
+check = quickCheck \(ci ∷ CardId) ->
   case decodeJson (encodeJson ci) of
     Left err -> Failed $ "Decode failed: " <> err
     Right ci' -> ci == ci' <?> "CardId failed to decode as encoded value"

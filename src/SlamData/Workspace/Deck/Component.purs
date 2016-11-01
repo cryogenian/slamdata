@@ -59,7 +59,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
-import SlamData.Workspace.Card.CardId (CardId(..))
+import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery, _NextQuery)
@@ -273,17 +273,15 @@ peekBackSide opts (Back.DoAction action _) = do
     Back.Trash → do
       state ← H.get
       lastId ← H.gets DCS.findLastCard
-      for_ (DCS.activeCardCoord state <|> lastId)  \trashId →
+      for_ (DCS.activeCardCoord state <|> lastId)  \trashId → do
         -- FIXME
-        case snd trashId of
-          CardId _ → do
-            let rem = DCS.removeCard trashId state
-            H.liftH $ H.liftH $
-              parTraverse_ (DBC.deleteGraph path) $
-                DBC.childDeckIds (snd <$> fst rem)
-            H.set $ snd rem
-            updateActiveCardAndIndicator
-            H.modify $ (DCS._displayMode .~ DCS.Normal) ∘ (DCS._presentAccessNextActionCardGuide .~ false)
+        let rem = DCS.removeCard trashId state
+        H.liftH $ H.liftH $
+          parTraverse_ (DBC.deleteGraph path) $
+            DBC.childDeckIds (snd <$> fst rem)
+        H.set $ snd rem
+        updateActiveCardAndIndicator
+        H.modify $ (DCS._displayMode .~ DCS.Normal) ∘ (DCS._presentAccessNextActionCardGuide .~ false)
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Rename → do
       name ← H.gets _.name
