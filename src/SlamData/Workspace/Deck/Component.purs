@@ -601,7 +601,14 @@ peekCardInner cardCoord = H.runChildF ⋙
 peekCardEvalQuery ∷ ∀ a. DeckId × CardId → CEQ.CardEvalQuery a → DeckDSL Unit
 peekCardEvalQuery cardCoord = case _ of
   CEQ.ModelUpdated CEQ.StateOnlyUpdate _ → triggerSave (Just cardCoord)
-  CEQ.ModelUpdated CEQ.EvalModelUpdate _ → runCard cardCoord *> triggerSave (Just cardCoord)
+  CEQ.ModelUpdated CEQ.EvalModelUpdate _ → do
+    st ← H.get
+    let
+      ord = fromMaybe LT do
+        pending ← st.pendingCard
+        DCS.compareCoordCards cardCoord pending st.modelCards
+    when (ord ≡ LT) $ runCard cardCoord
+    triggerSave (Just cardCoord)
   CEQ.ZoomIn _ → raise' $ H.action ZoomIn
   _ → pure unit
 
