@@ -158,7 +158,7 @@ buildParallel r records axes = do
 
   where
   parallelData ∷ Array Series
-  parallelData = spy $ buildParallelData r records
+  parallelData = buildParallelData r records
 
   serieNames = A.mapMaybe _.name parallelData
 

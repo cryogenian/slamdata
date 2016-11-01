@@ -46,4 +46,5 @@ passover ∷ ∀ a b m. (Applicative m) ⇒ (a → m b) → a → m a
 passover f x =
   f x *> pure x
 
+
 foreign import prettyJson ∷ J.Json → String
