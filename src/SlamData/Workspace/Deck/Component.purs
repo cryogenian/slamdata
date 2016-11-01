@@ -604,12 +604,10 @@ peekCardEvalQuery cardCoord = case _ of
   CEQ.ModelUpdated CEQ.EvalModelUpdate _ → do
     st ← H.get
     let
-      pendingCoord = st.pendingCard
-      coordsToCheck =
-        [cardCoord]
-        ⊕ (Array.takeWhile (_ ≠ cardCoord) $ map DCS.coordModelToCoord st.modelCards)
-    unless (any (eq pendingCoord) $ map Just coordsToCheck) do
-      runCard cardCoord
+      ord = fromMaybe LT do
+        pending ← st.pendingCard
+        DCS.compareCoordCards cardCoord pending st.modelCards
+    when (ord ≡ LT) $ runCard cardCoord
     triggerSave (Just cardCoord)
   CEQ.ZoomIn _ → raise' $ H.action ZoomIn
   _ → pure unit
