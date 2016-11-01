@@ -27,7 +27,9 @@ module Control.Monad.Aff.Bus
   , BusW
   , RW
   , R
+  , R'
   , W
+  , W'
   ) where
 
 import Prelude

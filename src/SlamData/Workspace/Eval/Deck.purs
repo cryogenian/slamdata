@@ -18,6 +18,7 @@ module SlamData.Workspace.Eval.Deck
   ( EvalMessage(..)
   , Id
   , Cell
+  , Model
   , module SlamData.Workspace.Deck.DeckId
   , module SlamData.Workspace.Deck.Model
   ) where
@@ -29,15 +30,20 @@ import Control.Monad.Aff.Promise (Promise)
 
 import SlamData.Quasar.Error (QError)
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port (Port)
-import SlamData.Workspace.Deck.Model (Deck)
+import SlamData.Workspace.Deck.Model (Deck, deckIndex, encode, decode)
 import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 
 data EvalMessage
   = Pending
   | Complete (DeckId × CardId) Port
+  | AddCard CardType
+  | RemoveCard (DeckId × CardId)
 
 type Id = DeckId
+
+type Model = Deck
 
 type Cell =
   { bus ∷ BusRW EvalMessage

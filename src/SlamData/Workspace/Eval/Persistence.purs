@@ -22,7 +22,7 @@ import Control.Monad.Aff.AVar (takeVar, putVar, modifyVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Aff.Promise (wait, defer)
-import Control.Monad.Fork (class MonadFork)
+import Control.Monad.Fork (class MonadFork, fork)
 
 import Data.Array as Array
 import Data.List (List(..), (:))
@@ -33,8 +33,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
-import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Model (Deck, deckIndex, decode, encode)
+import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
@@ -48,12 +47,12 @@ putDeck
     , QuasarDSL m
     )
   ⇒ Deck.Id
-  → Deck
+  → Deck.Model
   → m (Either QE.QError Unit)
 putDeck deckId deck = do
   { path, eval } ← Wiring.expose
   ref ← defer do
-    res ← Quasar.save (deckIndex path deckId) $ encode deck
+    res ← Quasar.save (Deck.deckIndex path deckId) $ Deck.encode deck
     when (isLeft res) do
       void $ Cache.remove deckId eval.decks
     pure $ const deck <$> res
@@ -61,6 +60,7 @@ putDeck deckId deck = do
   -- Cache.put deckId ref wiring.decks
   rmap (const unit) <$> wait ref
 
+-- | Loads a deck from a DeckId. Returns the model.
 getDeck
   ∷ ∀ m
   . ( Affable SlamDataEffects m
@@ -70,10 +70,13 @@ getDeck
     , QuasarDSL m
     )
   ⇒ Deck.Id
-  → m (Either QE.QError Deck)
+  → m (Either QE.QError Deck.Model)
 getDeck =
   getDeck' >=> _.value >>> wait
 
+-- | Loads a deck from a DeckId. This has the effect of loading decks from
+-- | which it extends (for mirroring) and populating the card graph. Returns
+-- | the "cell" (model promise paired with its message bus).
 getDeck'
   ∷ ∀ m
   . ( Affable SlamDataEffects m
@@ -82,7 +85,7 @@ getDeck'
     , MonadPar m
     , QuasarDSL m
     )
-  ⇒ DeckId
+  ⇒ Deck.Id
   → m Deck.Cell
 getDeck' deckId = do
   { path, eval } ← Wiring.expose
@@ -96,9 +99,9 @@ getDeck' deckId = do
     Nothing → do
       value ← defer do
         let
-          deckPath = deckIndex path deckId
+          deckPath = Deck.deckIndex path deckId
         result ← runExceptT do
-          deck ← ExceptT $ (_ >>= decode >>> lmap QE.msgToQError) <$> Quasar.load deckPath
+          deck ← ExceptT $ (_ >>= Deck.decode >>> lmap QE.msgToQError) <$> Quasar.load deckPath
           _    ← ExceptT $ populateCards deckId deck
           pure deck
         when (isLeft result) $ fromAff do
@@ -107,8 +110,11 @@ getDeck' deckId = do
       cell ← { value, bus: _ } <$> fromAff Bus.make
       fromAff do
         putVar cacheVar (Map.insert deckId cell decks)
+      forkDeckProcess deckId cell.bus
       pure cell
 
+-- | Populates the card eval graph based on a deck model. This may fail as it
+-- | also attempts to load/hydrate foreign cards (mirrors) as well.
 populateCards
   ∷ ∀ m
   . ( Affable SlamDataEffects m
@@ -118,7 +124,7 @@ populateCards
     , QuasarDSL m
     )
   ⇒ Deck.Id
-  → Deck
+  → Deck.Model
   → m (Either QE.QError Unit)
 populateCards deckId deck = runExceptT do
   { eval } ← Wiring.expose
@@ -128,7 +134,7 @@ populateCards deckId deck = runExceptT do
 
   case Array.last deck.mirror, List.fromFoldable deck.cards of
     Just _    , Nil    → pure unit
-    Nothing   , cards  → fromAff $ threadCards eval.cards cards
+    Nothing   , cards  → lift $ threadCards eval.cards cards
     Just coord, c : cs → do
       cell ← do
         mb ← Cache.get coord eval.cards
@@ -138,9 +144,8 @@ populateCards deckId deck = runExceptT do
       let
         coord' = deckId × c.cardId
         cell' = cell { next = coord' : cell.next }
-      fromAff do
-        Cache.put coord cell' eval.cards
-        threadCards eval.cards (c : cs)
+      Cache.put coord cell' eval.cards
+      lift $ threadCards eval.cards (c : cs)
 
   where
     threadCards cache = case _ of
@@ -151,7 +156,7 @@ populateCards deckId deck = runExceptT do
         threadCards cache (c' : cs)
 
     makeCell card next cache = do
-      bus ← Bus.make
+      bus ← fromAff Bus.make
       let
         coord = deckId × card.cardId
         value =
@@ -166,3 +171,47 @@ populateCards deckId deck = runExceptT do
           , value
           }
       Cache.put coord cell cache
+      forkCardProcess coord bus
+
+forkLoop
+  ∷ ∀ m r a
+  . ( Affable SlamDataEffects m
+    , MonadFork m
+    )
+  ⇒ (a → m Unit)
+  → Bus.Bus (Bus.R' r) a
+  → m Unit
+forkLoop handler bus = void (fork loop)
+  where
+    loop = do
+      msg ← fromAff (Bus.read bus)
+      fork (handler msg)
+      loop
+
+forkDeckProcess
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , MonadPar m
+    , QuasarDSL m
+    )
+  ⇒ Deck.Id
+  → Bus.BusRW Deck.EvalMessage
+  → m Unit
+forkDeckProcess deckId = forkLoop case _ of
+  _ → pure unit
+
+forkCardProcess
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , MonadPar m
+    , QuasarDSL m
+    )
+  ⇒ Card.Coord
+  → Bus.BusRW Card.EvalMessage
+  → m Unit
+forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
+  _ → pure unit
