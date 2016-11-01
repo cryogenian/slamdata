@@ -31,7 +31,7 @@ import SlamData.Quasar.Error (QError)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Deck.Model (Deck)
-import SlamData.Workspace.Deck.DeckId (DeckId, freshDeckId, deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 
 data EvalMessage
   = Pending

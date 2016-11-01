@@ -47,7 +47,7 @@ import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Deck.Component.Nested.State as DNS
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 
 render ∷ CardOptions → State → DraftboardHTML
 render opts st =
@@ -195,7 +195,7 @@ renderCell opts st { cursor, value, rect } =
          C.left (C.px rect.left)
          C.width (C.px rect.width)
          C.height (C.px rect.height)
-     ] <> (maybe [] (\deckId → [ HP.key (deckIdToString deckId) ]) value))
+     ] <> (maybe [] (\deckId → [ HP.key (toString deckId) ]) value))
     [ HH.div
         [ HP.classes [ HH.className "sd-draftboard-cell-content" ] ]
         case value of

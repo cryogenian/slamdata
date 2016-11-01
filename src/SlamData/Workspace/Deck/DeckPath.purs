@@ -18,11 +18,11 @@ module SlamData.Workspace.Deck.DeckPath where
 
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
-import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 import Utils.Path (DirPath)
 
 deckPath' ∷ DirPath → DeckId → DirPath
-deckPath' path deckId = path </> P.dir (deckIdToString deckId)
+deckPath' path deckId = path </> P.dir (toString deckId)
 
 deckPath ∷ ∀ r. { id ∷ DeckId, path ∷ DirPath | r } → DirPath
 deckPath state = deckPath' state.path state.id

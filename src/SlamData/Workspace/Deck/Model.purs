@@ -25,7 +25,7 @@ import Data.Time.Duration (Milliseconds(..))
 
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 
 import Utils.Path (DirPath, FilePath)
 
@@ -68,4 +68,4 @@ decode = decodeJson >=> \obj → do
 
 deckIndex ∷ DirPath → DeckId → FilePath
 deckIndex path deckId =
-  path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
+  path </> Pathy.dir (toString deckId) </> Pathy.file "index"

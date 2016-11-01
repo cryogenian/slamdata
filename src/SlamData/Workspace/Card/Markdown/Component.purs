@@ -69,7 +69,7 @@ markdownComponent deckId opts = CC.makeCardComponent
   where
   uniqueCardId
     = foldMap
-        DID.deckIdToString
+        DID.toString
         (deckId : opts.deckId : opts.deck.cursor)
     <> CID.cardIdToString opts.cardId
 

@@ -254,7 +254,7 @@ renderCard opts deckComponent st (deckId × card) index =
           , loadingPanel
           ]
   where
-  key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
+  key = "card-" ⊕ DeckId.toString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
   isLastCard = Just (deckId × card.cardId) == DCS.findLastCard st
   -- st.focused shouldn't be neccessary but Defocus isn't always evaluated when deck looses focus
   presentAccessNextActionCardGuide =

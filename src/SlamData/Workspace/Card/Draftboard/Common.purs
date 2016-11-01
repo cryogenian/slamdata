@@ -36,7 +36,7 @@ import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Model as CM
-import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 import SlamData.Workspace.Deck.Model as DM
 
 import Utils.Path (DirPath)
@@ -85,7 +85,7 @@ deleteGraph path parentId = runExceptT do
 
   where
   delete deckId =
-    Quasar.delete $ Left $ path </> Pathy.dir (deckIdToString deckId)
+    Quasar.delete $ Left $ path </> Pathy.dir (toString deckId)
 
 replacePointer
   ∷ DeckId

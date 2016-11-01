@@ -24,7 +24,7 @@ import Data.Path.Pathy as Pt
 
 import Quasar.Advanced.Types as QT
 
-import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 
 import Utils.Path (DirPath, FilePath)
 
@@ -53,7 +53,7 @@ sharingActions {workspacePath, sources, caches, deckId} View =
       pure { operation, resource, accessType }
   )
   ⊕ (workspacePath
-     </> Pt.dir (deckIdToString deckId)
+     </> Pt.dir (toString deckId)
      </> Pt.file "index"
      # QT.File
      ⋙ \resource →
