@@ -17,6 +17,7 @@ limitations under the License.
 module Control.Monad.Aff.Bus
   ( make
   , read
+  , read'
   , write
   , split
   , Cap
@@ -24,52 +25,76 @@ module Control.Monad.Aff.Bus
   , BusRW
   , BusR
   , BusW
+  , RW
+  , R
+  , W
   ) where
 
 import Prelude
 import Control.Monad.Aff (forkAll, forkAff)
-import Control.Monad.Aff.AVar (AffAVar, makeVar', makeVar, takeVar, putVar, modifyVar)
+import Control.Monad.Aff.AVar (AffAVar, AVar, makeVar', makeVar, takeVar, putVar, modifyVar, killVar)
+import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Rec.Class (forever)
-import Data.Foldable (foldl)
-import Data.List ((:))
+import Data.Foldable (foldl, traverse_)
+import Data.List (List, (:))
 import Data.Monoid (mempty)
 import Data.Tuple (Tuple(..))
 
 data Cap
 
-data Bus (r ∷ # *) a = Bus (∀ eff. a → AffAVar eff Unit) (∀ eff. AffAVar eff a)
+data Bus (r ∷ # *) a = Bus (AVar a) (AVar (List (AVar a)))
 
-type BusRW = Bus (read ∷ Cap, write ∷ Cap)
+type BusRW = Bus RW
 
-type BusR = Bus (read ∷ Cap)
+type BusR = Bus R
 
-type BusW = Bus (write ∷ Cap)
+type BusW = Bus W
+
+type RW = (read ∷ Cap, write ∷ Cap)
+
+type R = (read ∷ Cap)
+
+type R' r = (read ∷ Cap | r)
+
+type W = (write ∷ Cap)
+
+type W' r = (write ∷ Cap | r)
 
 -- | Creates a new bidirectional Bus which can be read from and written to.
-make ∷ ∀ eff a. AffAVar eff (BusRW a)
+make ∷ ∀ eff a. AffAVar eff (Bus RW a)
 make = do
-  cell ← makeVar
-  consumers ← makeVar' mempty
-
+  cell ∷ AVar a ← makeVar
+  consumers ∷ AVar (List (AVar a)) ← makeVar' mempty
   forkAff $ forever do
     res ← takeVar cell
-    fns ← takeVar consumers
+    vars ← takeVar consumers
     putVar consumers mempty
-    forkAll (foldl (\xs f → f res : xs) mempty fns)
-
-  pure $ Bus (putVar cell) do
-    res' ← makeVar
-    modifyVar (putVar res' : _) consumers
-    takeVar res'
-
--- | Splits a bidirectional Bus into separate read and write Buses.
-split ∷ ∀ a. BusRW a → Tuple (BusR a) (BusW a)
-split (Bus w r) = Tuple (Bus w r) (Bus w r)
+    forkAll (foldl (\xs a → putVar a res : xs) mempty vars)
+  pure $ Bus cell consumers
 
 -- | Blocks until a new value is pushed to the Bus, returning the value.
-read ∷ ∀ eff a r. Bus (read ∷ Cap | r) a → AffAVar eff a
-read (Bus _ r) = r
+read ∷ ∀ eff a r. Bus (R' r) a → AffAVar eff a
+read = takeVar <=< read'
 
--- | Pushes a new value to the Bus, yielding immediately.
-write ∷ ∀ eff a r. a → Bus (write ∷ Cap | r) a → AffAVar eff Unit
-write a (Bus w _) = w a
+-- | Returns an AVar that will yield a one-time value.
+read' ∷ ∀ eff a r. Bus (R' r) a → AffAVar eff (AVar a)
+read' (Bus _ consumers) = do
+  res' ← makeVar
+  modifyVar (res' : _) consumers
+  pure res'
+
+-- | Pushes a new value to the Bus, yieldig immediately.
+write ∷ ∀ eff a r. a → Bus (W' r) a → AffAVar eff Unit
+write a (Bus cell _) = putVar cell a
+
+-- | Splits a bidirectional Bus into separate read and write Buses.
+split ∷ ∀ a. Bus RW a → Tuple (Bus R a) (Bus W a)
+split (Bus a b) = Tuple (Bus a b) (Bus a b)
+
+-- | Kills the Bus and propagates the exception to all consumers.
+kill ∷ ∀ eff a r. Exn.Error → Bus (W' r) a → AffAVar eff Unit
+kill err (Bus cell consumers) = do
+  killVar cell err
+  vars ← takeVar consumers
+  killVar consumers err
+  traverse_ (flip killVar err) vars
