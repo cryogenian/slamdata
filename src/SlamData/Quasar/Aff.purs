@@ -45,7 +45,7 @@ import OIDC.Crypt as OIDC
 type QEff eff = (console ∷ CONSOLE, rsaSignTime ∷ OIDC.RSASIGNTIME, random ∷ RANDOM, ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
 
 type Wiring r =
-  { requestNewIdTokenBus ∷ RequestIdTokenBus
+  { requestIdTokenBus ∷ RequestIdTokenBus
   , signInBus ∷ SignInBus
   | r
   }
