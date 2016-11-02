@@ -236,7 +236,7 @@ renderCell opts st { cursor, value, rect } =
     , initialState: DNS.initialState
     }
     where
-    deckOpts = opts.deck { cursor = Cons opts.deckId opts.deck.cursor }
+    deckOpts = opts.deck { cursor = Cons (fst opts.coord) opts.deck.cursor }
 
 renderEdge ∷ State → Layout.Edge Number → DraftboardHTML
 renderEdge st edge@{ orientation, vect } =

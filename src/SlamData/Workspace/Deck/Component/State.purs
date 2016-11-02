@@ -20,6 +20,9 @@ module SlamData.Workspace.Deck.Component.State
   , DisplayMode(..)
   , ResponsiveSize(..)
   , Fade(..)
+  , MetaCard(..)
+  , DisplayCard
+  , CardDef
   , initialDeck
   , _id
   , _name
@@ -40,22 +43,15 @@ module SlamData.Workspace.Deck.Component.State
   , _focused
   , _responsiveSize
   , _fadeTransition
-  , addCard
-  , addCard'
-  , removeCard
-  , findLastCardType
   , findLastCardIndex
   , findLastCard
-  , addPendingCard
-  , removePendingCard
-  , variablesCards
   , fromModel
   , cardIndexFromCoord
   , cardCoordFromIndex
-  , activeCardCoord
-  , activeCardType
-  , prevCard
+  , activeCard
+  , prevCardCoord
   , eqCoordModel
+  , eqDisplayCard
   , compareCoordCards
   , coordModelToCoord
   , defaultActiveIndex
@@ -77,8 +73,7 @@ import Halogen.Component.Opaque.Unsafe (OpaqueState)
 import SlamData.Effects (SlamDataEffects)
 
 import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.StateMode (StateMode(..))
 
@@ -100,12 +95,32 @@ data ResponsiveSize
   | XLarge
   | XXLarge
 
-derive instance eqDisplayMode ∷ Eq DisplayMode
+data MetaCard
+  = ErrorCard
+  | PendingCard
+  | NextActionCard
 
 data Fade
   = FadeNone
   | FadeIn
   | FadeOut
+
+derive instance eqDisplayMode ∷ Eq DisplayMode
+
+derive instance eqResponsiveSize ∷ Eq ResponsiveSize
+
+derive instance eqMetaCard ∷ Eq MetaCard
+
+derive instance ordMetaCard ∷ Ord MetaCard
+
+derive instance eqFade ∷ Eq Fade
+
+type CardDef =
+  { coord ∷ DeckId × CardId
+  , cardType ∷ CardType
+  }
+
+type DisplayCard = Either MetaCard CardDef
 
 type State =
   { id ∷ DeckId
@@ -113,7 +128,7 @@ type State =
   , parent ∷ Maybe (DeckId × CardId)
   , stateMode ∷ StateMode
   , displayMode ∷ DisplayMode
-  , displayCards ∷ Array (DeckId × Card.Model)
+  , displayCards ∷ Array DisplayCard
   , activeCardIndex ∷ Maybe Int
   , presentAccessNextActionCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
   , presentAccessNextActionCardGuide ∷ Boolean
@@ -237,48 +252,13 @@ _responsiveSize = lens _.responsiveSize _{responsiveSize = _}
 _fadeTransition ∷ ∀ a r. LensP {fadeTransition ∷ a|r} a
 _fadeTransition = lens _.fadeTransition _{fadeTransition = _}
 
-addCard ∷ Card.AnyCardModel → State → State
-addCard card st = fst $ addCard' card st
-
-addCard' ∷ Card.AnyCardModel → State → State × CardId
-addCard' model st =
-  -- FIXME
-  st × CID.legacyFromInt 0
-
-removeCard ∷ DeckId × CardId → State → (Array (DeckId × Card.Model)) × State
-removeCard coord st =
-  -- FIXME
-  st.displayCards × st
-
 findLastCardIndex ∷ State → Maybe Int
 findLastCardIndex st =
   const (A.length st.displayCards - 1) <$> A.last st.displayCards
 
-findLastCard ∷ State → Maybe (DeckId × CardId)
+findLastCard ∷ State → Maybe DisplayCard
 findLastCard state =
-  coordModelToCoord <$> A.last state.displayCards
-
--- | Finds the type of the last card.
-findLastCardType ∷ State → Maybe CT.CardType
-findLastCardType { displayCards } = Card.modelCardType ∘ _.model ∘ snd <$> A.last displayCards
-
-variablesCards ∷ State → Array (DeckId × CardId)
-variablesCards = A.mapMaybe cardTypeMatches ∘ _.displayCards
-  where
-  cardTypeMatches (deckId × { cardId, model }) =
-    case Card.modelCardType model of
-      CT.Variables → Just (deckId × cardId)
-      _ → Nothing
-
-addPendingCard ∷ (DeckId × CardId) → State → State
-addPendingCard coord st =
-  -- FIXME
-  st
-
-removePendingCard ∷ DeckId × CardId → State → State
-removePendingCard coord st =
-  -- FIXME
-  st
+  A.last state.displayCards
 
 -- | Reconstructs a deck state from a deck model.
 fromModel
@@ -299,30 +279,29 @@ fromModel { name, parent, displayCards } state =
     }
 
 cardIndexFromCoord ∷ DeckId × CardId → State → Maybe Int
-cardIndexFromCoord coord = A.findIndex (eqCoordModel coord) ∘ _.displayCards
-
-cardFromIndex ∷ Int → State → Maybe (DeckId × Card.Model)
-cardFromIndex i st = A.index st.displayCards i
+cardIndexFromCoord coord =
+  A.findIndex (eq (Right coord) ∘ map _.coord) ∘ _.displayCards
 
 cardCoordFromIndex ∷ Int → State → Maybe (DeckId × CardId)
-cardCoordFromIndex vi = map (map _.cardId) ∘ cardFromIndex vi
+cardCoordFromIndex i st =
+  A.index st.displayCards i >>= either (const Nothing) (Just ∘ _.coord)
 
-activeCardCoord ∷ State → Maybe (DeckId × CardId)
-activeCardCoord st = cardCoordFromIndex (fromMaybe 0 st.activeCardIndex) st
+activeCard ∷ State → Maybe DisplayCard
+activeCard st = A.index st.displayCards (fromMaybe 0 st.activeCardIndex)
 
-prevCard ∷ DeckId × CardId → State → Maybe (DeckId × Card.Model)
-prevCard coord st = do
+prevCardCoord ∷ DeckId × CardId → State → Maybe (DeckId × CardId)
+prevCardCoord coord st = do
   i ← cardIndexFromCoord coord st
-  cardFromIndex (i - 1) st
-
-activeCardType ∷ State → Maybe CT.CardType
-activeCardType st =
-  Card.modelCardType ∘ _.model ∘ snd <$>
-    cardFromIndex (fromMaybe 0 st.activeCardIndex) st
+  cardCoordFromIndex (i - 1) st
 
 eqCoordModel ∷ DeckId × CardId → DeckId × Card.Model → Boolean
 eqCoordModel (deckId × cardId) (deckId' × model) =
   deckId ≡ deckId' && cardId ≡ model.cardId
+
+eqDisplayCard ∷ DisplayCard → DisplayCard → Boolean
+eqDisplayCard (Right r1) (Right r2) = r1.coord ≡ r2.coord && r1.cardType ≡ r2.cardType
+eqDisplayCard (Left l1) (Left l2) = l1 ≡ l2
+eqDisplayCard _ _ = false
 
 compareCoordCards
   ∷ DeckId × CardId

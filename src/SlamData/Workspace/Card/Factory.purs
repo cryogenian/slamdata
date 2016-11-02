@@ -34,7 +34,6 @@ import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
 import SlamData.Workspace.Card.Draftboard.Component (draftboardComponent)
 import SlamData.Workspace.Card.Error.Component as Error
 import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component (nextCardComponent)
 import SlamData.Workspace.Card.Open.Component (openComponent)
 import SlamData.Workspace.Card.Pending.Component as Pending
@@ -61,40 +60,40 @@ import SlamData.Workspace.Card.BuildChart.PunchCard.Component (punchCardBuilderC
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component (candlestickBuilderComponent)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
-cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
-cardComponent deckId card opts =
-  case card.model of
-    Card.Ace mode _ → aceComponent { mode, eval: aceEval mode }
-    Card.Search _ → searchComponent
-    Card.Chart _ → chartComponent
-    Card.Markdown _ → markdownComponent deckId opts
-    Card.Table _ → tableComponent
-    Card.Download → downloadComponent
-    Card.Variables _ → variablesComponent
-    Card.Troubleshoot → troubleshootComponent
-    Card.NextAction → nextCardComponent
-    Card.Cache _ → cacheCardComponent
-    Card.Open mres → openComponent mres
-    Card.DownloadOptions _ → DOpts.comp
-    Card.ErrorCard → Error.comp
-    Card.PendingCard → Pending.comp
-    Card.Draftboard _ → draftboardComponent opts
-    Card.BuildMetric _ → metricBuilderComponent
-    Card.BuildSankey _ → sankeyBuilderComponent
-    Card.BuildGauge _ → gaugeBuilderComponent
-    Card.BuildGraph _ → graphBuilderComponent
-    Card.BuildPie _ → pieBuilderComponent
-    Card.BuildBar _ → barBuilderComponent
-    Card.BuildLine _ → lineBuilderComponent
-    Card.BuildArea _ → areaBuilderComponent
-    Card.BuildScatter _ → scatterBuilderComponent
-    Card.BuildRadar _ → radarBuilderComponent
-    Card.BuildPivotTable _ → pivotTableBuilderComponent
-    Card.BuildFunnel _ → funnelBuilderComponent
-    Card.BuildBoxplot _ → boxplotBuilderComponent
-    Card.BuildHeatmap _ → heatmapBuilderComponent
-    Card.BuildPunchCard _ → punchCardBuilderComponent
-    Card.BuildCandlestick _ → candlestickBuilderComponent
+cardComponent ∷ DeckId → CardOptions → CT.CardType → CardComponent
+cardComponent deckId opts =
+  case _ of
+    CT.Ace mode → aceComponent { mode, eval: aceEval mode }
+    CT.Search → searchComponent
+    CT.Chart → chartComponent
+    CT.Markdown → markdownComponent deckId opts
+    CT.Table → tableComponent
+    CT.Download → downloadComponent
+    CT.Variables → variablesComponent
+    CT.Troubleshoot → troubleshootComponent
+    CT.NextAction → nextCardComponent
+    CT.Cache → cacheCardComponent
+    CT.Open → openComponent Nothing -- FIXME
+    CT.DownloadOptions → DOpts.comp
+    CT.ErrorCard → Error.comp
+    CT.PendingCard → Pending.comp
+    CT.Draftboard → draftboardComponent opts
+    CT.ChartOptions CT.Metric → metricBuilderComponent
+    CT.ChartOptions CT.Sankey → sankeyBuilderComponent
+    CT.ChartOptions CT.Gauge → gaugeBuilderComponent
+    CT.ChartOptions CT.Graph → graphBuilderComponent
+    CT.ChartOptions CT.Pie → pieBuilderComponent
+    CT.ChartOptions CT.Bar → barBuilderComponent
+    CT.ChartOptions CT.Line → lineBuilderComponent
+    CT.ChartOptions CT.Area → areaBuilderComponent
+    CT.ChartOptions CT.Scatter → scatterBuilderComponent
+    CT.ChartOptions CT.Radar → radarBuilderComponent
+    CT.ChartOptions CT.PivotTable → pivotTableBuilderComponent
+    CT.ChartOptions CT.Funnel → funnelBuilderComponent
+    CT.ChartOptions CT.Boxplot → boxplotBuilderComponent
+    CT.ChartOptions CT.Heatmap → heatmapBuilderComponent
+    CT.ChartOptions CT.PunchCard → punchCardBuilderComponent
+    CT.ChartOptions CT.Candlestick → candlestickBuilderComponent
 
 aceEval ∷ CT.AceMode → AceEval
 aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}

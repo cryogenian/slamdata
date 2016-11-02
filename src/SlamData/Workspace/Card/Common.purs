@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Common where
 
+import SlamData.Prelude
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Deck.Common (DeckOptions)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
@@ -24,6 +25,5 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 type CardOptions =
   { deck ∷ DeckOptions
   , deckComponent ∷ DeckOptions → DeckComponent
-  , cardId ∷ CardId
-  , deckId ∷ DeckId
+  , coord ∷ DeckId × CardId
   }

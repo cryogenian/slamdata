@@ -53,7 +53,6 @@ import Utils.Path (DirPath)
 
 data DeckMessage
   = DeckFocused DeckId
-  | URLVarMapsUpdated
 
 data StepByStepGuide
   = CardGuide

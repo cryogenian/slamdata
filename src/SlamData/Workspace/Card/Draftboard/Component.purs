@@ -381,7 +381,7 @@ deleteDeck { deck } deckId = do
   pure unit
 
 wrapDeck ∷ CardOptions → DeckId → Pane.Cursor → DraftboardDSL Unit
-wrapDeck { cardId, deckId: parentId, deck } oldId cursor = do
+wrapDeck { coord, deck } oldId cursor = do
   -- FIXME
   pure unit
 
@@ -391,7 +391,7 @@ unwrapDeck
   → Pane.Cursor
   → Pane.Pane (Maybe (DeckId × DM.Deck))
   → DraftboardDSL Unit
-unwrapDeck { deckId, cardId, deck: opts } oldId cursor decks = do
+unwrapDeck { coord, deck: opts } oldId cursor decks = do
   -- FIXME
   pure unit
 

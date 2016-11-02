@@ -28,10 +28,7 @@ import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 
-newtype CardSlot = CardSlot (DeckId × CardId)
-
-derive instance eqCardSlot ∷ Eq CardSlot
-derive instance ordCardSlot ∷ Ord CardSlot
+type CardSlot = DeckId × CardId
 
 type BackSideSlot = Unit
 

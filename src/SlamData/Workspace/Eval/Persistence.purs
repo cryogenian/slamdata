@@ -100,6 +100,7 @@ getDeck' deckId = do
       value ← defer do
         let
           deckPath = Deck.deckIndex path deckId
+        -- FIXME: Notify on failure
         result ← runExceptT do
           deck ← ExceptT $ (_ >>= Deck.decode >>> lmap QE.msgToQError) <$> Quasar.load deckPath
           _    ← ExceptT $ populateCards deckId deck
@@ -172,6 +173,17 @@ populateCards deckId deck = runExceptT do
           }
       Cache.put coord cell cache
       forkCardProcess coord bus
+
+getCard
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    )
+  ⇒ Card.Coord
+  → m (Maybe Card.Cell)
+getCard coord = do
+  { eval } ← Wiring.expose
+  Cache.get coord eval.cards
 
 forkLoop
   ∷ ∀ m r a

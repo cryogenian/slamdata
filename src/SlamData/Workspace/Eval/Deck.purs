@@ -47,5 +47,5 @@ type Model = Deck
 
 type Cell =
   { bus ∷ BusRW EvalMessage
-  , value ∷ Promise (Either QError Deck)
+  , value ∷ Promise (Either QError Model)
   }
