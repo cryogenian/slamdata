@@ -60,12 +60,14 @@ import SlamData.Workspace.Card.Port as Port
 -- | - `ModelUpdated` is a query the card sends to itself so that the deck can
 -- |   peek the query and know that the deck needs saving/evaluating.
 data CardEvalQuery a
-  = EvalCard CardEvalInput (Maybe Port.Port) a
-  | Activate a
+  = Activate a
   | Deactivate a
   | Save (AnyCardModel → a)
   | Load AnyCardModel a
-  | SetDimensions { width ∷ Number, height ∷ Number } a
+  | ReceiveState (Maybe Unit) a -- FIXME
+  | ReceiveInput Port.Port a
+  | ReceiveOutput Port.Port a
+  | ReceiveDimensions { width ∷ Number, height ∷ Number } a
   | ZoomIn a
   | ModelUpdated ModelUpdateType a
 

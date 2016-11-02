@@ -22,6 +22,7 @@ module SlamData.Workspace.Eval.Card
   , Id
   , Transition
   , Coord
+  , DisplayCoord
   , coordOf
   , module SlamData.Workspace.Card.CardId
   , module SlamData.Workspace.Card.Eval
@@ -37,7 +38,7 @@ import Data.List (List)
 
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Eval (Eval, runEvalCard')
-import SlamData.Workspace.Card.Model (Model, modelToEval)
+import SlamData.Workspace.Card.Model (Model, AnyCardModel, modelToEval)
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Eval.Deck as Deck
 
@@ -45,10 +46,10 @@ import SlamData.Workspace.Eval.Deck as Deck
 type State = Unit
 
 data EvalMessage
-  = Pending
+  = Pending Port
   | Complete Port
   | StateChange (Maybe State)
-  | ModelChange Model
+  | ModelChange DisplayCoord AnyCardModel
 
 type EvalResult =
   { model ∷ Model
@@ -68,6 +69,8 @@ type Id = CardId
 type Transition = Eval
 
 type Coord = Deck.Id × Id
+
+type DisplayCoord = List Deck.Id × Coord
 
 coordOf ∷ Deck.Id × Model → Coord
 coordOf = map _.cardId

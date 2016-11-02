@@ -20,14 +20,12 @@ import SlamData.Prelude
 import SlamData.Monad (Slam)
 
 import Data.Lens ((^?))
-import Data.Lens as Lens
 
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Error.Component.State as ECS
 import SlamData.Workspace.Card.Error.Component.Query as ECQ
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Render.CSS as CSS
 
 import Halogen as H
@@ -37,10 +35,11 @@ import Halogen.HTML.Properties.Indexed as HP
 type DSL = H.ComponentDSL ECS.State ECQ.QueryP Slam
 type HTML = H.ComponentHTML ECQ.QueryP
 
-comp ∷ CC.CardComponent
-comp =
+comp ∷ CC.CardOptions → CC.CardComponent
+comp options =
   CC.makeCardComponent
-    { cardType: CT.ErrorCard
+    { options
+    , cardType: CT.ErrorCard
     , component: H.component { render, eval }
     , initialState: ECS.initialState
     , _State: CC._ErrorState
@@ -64,18 +63,21 @@ eval = coproduct cardEval ECQ.initiality
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
-  CC.EvalCard {input} output next → do
-    H.modify ∘ Lens.set ECS._message $ input ^? Lens._Just ∘ Port._CardError
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
     pure next
-  CC.SetDimensions _ next →
-    pure next
   CC.Save k →
     pure $ k Card.ErrorCard
   CC.Load _ next →
+    pure next
+  CC.ReceiveInput _ next →
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
     pure next

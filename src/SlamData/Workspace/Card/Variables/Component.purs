@@ -35,10 +35,11 @@ import SlamData.Workspace.FormBuilder.Item.Component as Item
 type HTML = H.ParentHTML (FB.StateP Slam) CC.CardEvalQuery FB.QueryP Slam Unit
 type DSL = H.ParentDSL State (FB.StateP Slam) CC.CardEvalQuery FB.QueryP Slam Unit
 
-variablesComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-variablesComponent =
+variablesComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+variablesComponent options =
   CC.makeCardComponent
-    { cardType: CT.Variables
+    { options
+    , cardType: CT.Variables
     , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
     , initialState: H.parentState initialState
     , _State: CC._VariablesState
@@ -56,8 +57,6 @@ render _ =
 
 eval ∷ CC.CardEvalQuery ~> DSL
 eval = case _ of
-  CC.EvalCard info output next ->
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -74,7 +73,13 @@ eval = case _ of
         void ∘ H.query unit $ H.action (FB.SetItems (L.fromFoldable items) ⋙ left)
       _ → pure unit
     pure next
-  CC.SetDimensions _ next →
+  CC.ReceiveInput _ next →
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
     pure next

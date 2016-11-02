@@ -97,7 +97,7 @@ instance ordUUIDv4 ∷ Ord UUIDv4 where
 instance showUUIDv4 ∷ Show UUIDv4 where
   show (UUIDv4 s1 _) = "UUIDv4 " <> show s1
 
-instance arbitraryDeckId ∷ SC.Arbitrary UUIDv4 where
+instance arbitraryUUIDv4 ∷ SC.Arbitrary UUIDv4 where
   -- chooseInt is inclusive, randomInt is exclusive
   arbitrary =
     make' \i j → Gen.chooseInt (Int.toNumber i) (Int.toNumber (i - 1))

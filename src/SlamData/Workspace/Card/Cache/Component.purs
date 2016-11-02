@@ -45,9 +45,10 @@ import Utils.Path as PU
 type CacheHTML = H.ComponentHTML QueryP
 type CacheDSL = H.ComponentDSL State QueryP Slam
 
-cacheCardComponent ∷ CC.CardComponent
-cacheCardComponent = CC.makeCardComponent
-  { cardType: CT.Cache
+cacheCardComponent ∷ CC.CardOptions → CC.CardComponent
+cacheCardComponent options = CC.makeCardComponent
+  { options
+  , cardType: CT.Cache
   , component: H.component { render, eval }
   , initialState: initialState
   , _State: CC._CacheState
@@ -79,14 +80,6 @@ eval = coproduct cardEval saveEval
 
 cardEval ∷ CC.CardEvalQuery ~> CacheDSL
 cardEval = case _ of
-  CC.EvalCard info output next → do
-    for_ output case _ of
-      Port.TaggedResource { resource } →
-        H.modify
-          $ (_pathString ?~ Path.printPath resource)
-          ∘ (_confirmedPath ?~ resource)
-      _ → pure unit
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -101,7 +94,19 @@ cardEval = case _ of
           ∘ (_confirmedPath .~ (PU.parseFilePath =<< s))
       _ → pure unit
     pure next
-  CC.SetDimensions _ next →
+  CC.ReceiveInput input next →
+    pure next
+  CC.ReceiveOutput output next → do
+    case output of
+      Port.TaggedResource { resource } →
+        H.modify
+          $ (_pathString ?~ Path.printPath resource)
+          ∘ (_confirmedPath ?~ resource)
+      _ → pure unit
+    pure next
+  CC.ReceiveState input next →
+    pure next
+  CC.ReceiveDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
     pure next

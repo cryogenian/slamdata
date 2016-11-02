@@ -28,6 +28,7 @@ import Data.Array as Array
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
+import Data.List ((:))
 import Data.String as String
 import Data.Tuple as Tuple
 
@@ -320,9 +321,10 @@ renderDef opts deckComponent st card =
       cardOpts =
         { deck: opts
         , deckComponent
+        , cursor: st.id : opts.cursor
         , coord: card.coord
         }
     in
-      { component: Factory.cardComponent st.id cardOpts card.cardType
+      { component: Factory.cardComponent card.cardType cardOpts
       , initialState: H.parentState CardC.initialCardState
       }

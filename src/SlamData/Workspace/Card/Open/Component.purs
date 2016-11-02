@@ -55,40 +55,41 @@ import Utils.Path (AnyPath)
 type DSL = H.ParentDSL State (MC.State R.Resource AnyPath) CC.CardEvalQuery (MC.Query AnyPath) Slam Unit
 type HTML = H.ParentHTML (MC.State R.Resource AnyPath) CC.CardEvalQuery (MC.Query AnyPath) Slam Unit
 
-openComponent ∷ Maybe R.Resource → H.Component CC.CardStateP CC.CardQueryP Slam
-openComponent mres =
-  let
-    initSelection = toPathList ∘ R.getPath <$> mres
-    initPath = fromMaybe (pure (Left Path.rootDir)) initSelection
-  in
-    CC.makeCardComponent
-      { cardType: CT.Open
-      , component: H.parentComponent
-          { render: render initPath
-          , eval
-          , peek: Just (peek ∘ H.runChildF)
-          }
-      , initialState: H.parentState initialState { selected = initSelection }
-      , _State: CC._OpenState
-      , _Query: CC.makeQueryPrism CC._OpenQuery
-      }
+openComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+openComponent options =
+  -- let
+  --   initSelection = toPathList ∘ R.getPath <$> mres
+  --   initPath = fromMaybe (pure (Left Path.rootDir)) initSelection
+  -- in
+  CC.makeCardComponent
+    { options
+    , cardType: CT.Open
+    , component: H.parentComponent
+        { render
+        , eval
+        , peek: Just (peek ∘ H.runChildF)
+        }
+    , initialState: H.parentState initialState
+    , _State: CC._OpenState
+    , _Query: CC.makeQueryPrism CC._OpenQuery
+    }
 
-render ∷ L.List AnyPath → State → HTML
-render initPath state =
+render ∷ State → HTML
+render state =
   HH.div_
-    [ renderHighLOD initPath state
+    [ renderHighLOD state
     , renderLowLOD (CT.lightCardGlyph CT.Open) id state.levelOfDetails
     ]
 
-renderHighLOD ∷ L.List AnyPath → State → HTML
-renderHighLOD initPath state =
+renderHighLOD ∷ State → HTML
+renderHighLOD state =
   HH.div
     [ HP.classes
         $ (guard (state.loading) $> HH.className "loading")
         <> (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ HH.slot unit \_ →
-        { component: MC.component itemSpec (Just initPath)
+        { component: MC.component itemSpec Nothing
         , initialState: MC.initialState
         }
     ]
@@ -120,8 +121,6 @@ glyphForResource = case _ of
 
 eval ∷ CC.CardEvalQuery ~> DSL
 eval = case _ of
-  CC.EvalCard info output next →
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -129,12 +128,19 @@ eval = case _ of
   CC.Save k → do
     mbRes ← H.gets _.selected
     pure $ k $ Card.Open (map (either R.Directory R.File) ∘ L.head =<< mbRes)
-  CC.Load (Card.Open (Just res)) next → do
-    void $ H.query unit $ H.action $ MC.Populate $ toPathList $ R.getPath res
+  CC.Load card next → do
+    case card of
+      Card.Open (Just res) → void do
+        H.query unit $ H.action $ MC.Populate $ toPathList $ R.getPath res
+      _ → pure unit
     pure next
-  CC.Load _ next →
+  CC.ReceiveInput _ next →
     pure next
-  CC.SetDimensions dims next → do
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions dims next → do
     H.modify $
       _levelOfDetails .~
         if dims.width < 250.0 ∨ dims.height < 50.0

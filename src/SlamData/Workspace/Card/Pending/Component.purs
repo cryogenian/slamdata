@@ -31,10 +31,11 @@ import Halogen.HTML.Indexed as HH
 type DSL = H.ComponentDSL PCS.State PCQ.QueryP Slam
 type HTML = H.ComponentHTML PCQ.QueryP
 
-comp ∷ CC.CardComponent
-comp =
+comp ∷ CC.CardOptions → CC.CardComponent
+comp options =
   CC.makeCardComponent
-    { cardType: CT.PendingCard
+    { options
+    , cardType: CT.PendingCard
     , component: H.component { render, eval }
     , initialState: PCS.initialState
     , _State: CC._PendingState
@@ -53,8 +54,6 @@ eval = coproduct cardEval PCQ.initiality
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
-  CC.EvalCard _ _ next → do
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -63,7 +62,13 @@ cardEval = case _ of
     pure $ k Card.PendingCard
   CC.Load _ next →
     pure next
-  CC.SetDimensions _ next →
+  CC.ReceiveInput _ next → do
+    pure next
+  CC.ReceiveOutput _ next → do
+    pure next
+  CC.ReceiveState _ next → do
+    pure next
+  CC.ReceiveDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
     pure next

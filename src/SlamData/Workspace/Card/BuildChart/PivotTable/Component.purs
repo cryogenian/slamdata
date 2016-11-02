@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.BuildChart.PivotTable.Component where
+module SlamData.Workspace.Card.BuildChart.PivotTable.Component
+  ( pivotTableBuilderComponent
+  ) where
 
 import SlamData.Prelude
 
@@ -55,9 +57,10 @@ type DSL = H.ParentDSL State PCS.ChildState QueryC PCS.ChildQuery Slam PCS.Child
 
 type HTML = H.ParentHTML PCS.ChildState QueryC PCS.ChildQuery Slam PCS.ChildSlot
 
-pivotTableBuilderComponent ∷ CC.CardComponent
-pivotTableBuilderComponent = CC.makeCardComponent
-  { cardType: CT.ChartOptions CHT.PivotTable
+pivotTableBuilderComponent ∷ CC.CardOptions → CC.CardComponent
+pivotTableBuilderComponent options = CC.makeCardComponent
+  { options
+  , cardType: CT.ChartOptions CHT.PivotTable
   , component: H.parentComponent
       { render
       , eval: coproduct evalCard evalOptions
@@ -315,23 +318,9 @@ renderHighLOD st =
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
-  CC.EvalCard info _ next → do
-    case info.input of
-      Just (Port.TaggedResource { axes }) →
-        H.modify _ { axes = axes }
-      _ → pure unit
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
-    pure next
-  CC.SetDimensions dims next → do
-    H.modify _
-      { levelOfDetails =
-          if dims.width < 540.0 || dims.height < 360.0
-            then Low
-            else High
-      }
     pure next
   CC.Save k →
     map (k ∘ Card.BuildPivotTable ∘ modelFromState) H.get
@@ -340,6 +329,24 @@ evalCard = case _ of
       Card.BuildPivotTable model →
         H.modify (stateFromModel model)
       _ → pure unit
+    pure next
+  CC.ReceiveInput input next → do
+    case input of
+      Port.TaggedResource { axes } →
+        H.modify _ { axes = axes }
+      _ → pure unit
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions dims next → do
+    H.modify _
+      { levelOfDetails =
+          if dims.width < 540.0 || dims.height < 360.0
+            then Low
+            else High
+      }
     pure next
   CC.ModelUpdated _ next →
     pure next

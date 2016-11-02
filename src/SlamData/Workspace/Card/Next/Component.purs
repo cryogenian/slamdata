@@ -52,9 +52,10 @@ import Utils.LocalStorage as LocalStorage
 type NextHTML = H.ComponentHTML QueryP
 type NextDSL = H.ComponentDSL State QueryP Slam
 
-nextCardComponent ∷ CC.CardComponent
-nextCardComponent = CC.makeCardComponent
-  { cardType: CT.NextAction
+nextCardComponent ∷ CC.CardOptions → CC.CardComponent
+nextCardComponent options = CC.makeCardComponent
+  { options
+  , cardType: CT.NextAction
   , component:
       H.component
         { render
@@ -138,8 +139,6 @@ eval = coproduct cardEval nextEval
 
 cardEval ∷ CC.CardEvalQuery ~> NextDSL
 cardEval = case _ of
-  CC.EvalCard value output next →
-    H.modify (State._input .~ value.input) $> next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -148,7 +147,13 @@ cardEval = case _ of
     pure $ k Card.NextAction
   CC.Load _ next →
     pure next
-  CC.SetDimensions _ next →
+  CC.ReceiveInput _ next →
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
     pure next

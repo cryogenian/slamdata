@@ -44,10 +44,11 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = H.ComponentDSL JTS.State QueryP Slam
 
-tableComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-tableComponent =
+tableComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+tableComponent options =
   CC.makeCardComponent
-    { cardType: CT.Table
+    { options
+    , cardType: CT.Table
     , component: H.component { render, eval: evalCard ⨁ evalTable }
     , initialState: JTS.initialState
     , _State: CC._TableState
@@ -57,9 +58,6 @@ tableComponent =
 -- | Evaluates generic card queries.
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
-  CC.EvalCard info output next → do
-    for_ info.input $ CEQ.runCardEvalT_ ∘ runTable
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -71,10 +69,17 @@ evalCard = case _ of
       Card.Table model → H.set $ JTS.fromModel model
       _ → pure unit
     pure next
-  CC.SetDimensions dims next → do
+  CC.ReceiveInput input next → do
+    CEQ.runCardEvalT_ (runTable input)
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions dims next → do
     H.modify
       $ JTS._levelOfDetails
-      .~ if dims.width < 336.0 ∨ dims.height < 240.0
+      .~ if dims.width < 360.0 ∨ dims.height < 240.0
            then Low
            else High
     pure next

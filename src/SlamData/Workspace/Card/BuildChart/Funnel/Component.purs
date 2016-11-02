@@ -59,9 +59,10 @@ type DSL =
 type HTML =
   H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
 
-funnelBuilderComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-funnelBuilderComponent = CC.makeCardComponent
-  { cardType: CT.ChartOptions CHT.Funnel
+funnelBuilderComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+funnelBuilderComponent options = CC.makeCardComponent
+  { options
+  , cardType: CT.ChartOptions CHT.Funnel
   , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   , initialState: H.parentState ST.initialState
   , _State: CC._BuildFunnelState
@@ -182,11 +183,6 @@ eval = cardEval ⨁ chartEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
-  CC.EvalCard info output next → do
-    for_ (info.input ^? Lens._Just ∘ Port._ResourceAxes) \axes → do
-      H.modify _{axes = axes}
-      synchronizeChildren
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -213,7 +209,16 @@ cardEval = case _ of
     pure next
   CC.Load card next →
     pure next
-  CC.SetDimensions dims next → do
+  CC.ReceiveInput input next → do
+    for_ (input ^? Port._ResourceAxes) \axes → do
+      H.modify _{axes = axes}
+      synchronizeChildren
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions dims next → do
     H.modify
       _ { levelOfDetails =
             if dims.width < 576.0 ∨ dims.height < 416.0

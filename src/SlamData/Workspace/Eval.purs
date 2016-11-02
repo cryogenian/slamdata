@@ -79,7 +79,9 @@ runEvalLoop tick input graph = do
       , input
       , urlVarMaps: varMaps
       }
-  fromAff $ Bus.write Card.Pending node.card.bus
+  -- FIXME
+  for_ input \port →
+    fromAff $ Bus.write (Card.Pending port) node.card.bus
   result ← Card.runEvalCard' cei trans
   tick' ← currentTick
   when (tick ≡ tick') case result.output of

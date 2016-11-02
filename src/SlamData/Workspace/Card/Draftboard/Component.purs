@@ -50,12 +50,13 @@ import SlamData.Workspace.Deck.Model as DM
 import Utils.DOM (getOffsetClientRect)
 
 draftboardComponent ∷ CardOptions → CC.CardComponent
-draftboardComponent opts = CC.makeCardComponent
-  { cardType: CT.Draftboard
+draftboardComponent options = CC.makeCardComponent
+  { options
+  , cardType: CT.Draftboard
   , component: H.parentComponent
-      { render: render opts
-      , eval: coproduct evalCard (evalBoard opts)
-      , peek: Just (peek opts)
+      { render: render options
+      , eval: coproduct evalCard (evalBoard options)
+      , peek: Just (peek options)
       }
   , initialState: H.parentState initialState
   , _State: CC._DraftboardState
@@ -64,15 +65,9 @@ draftboardComponent opts = CC.makeCardComponent
 
 evalCard ∷ CC.CardEvalQuery ~> DraftboardDSL
 evalCard = case _ of
-  CC.EvalCard _ _ next →
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
-    pure next
-  CC.SetDimensions _ next → do
-    recalcRect
-    H.queryAll (right (H.action DCQ.UpdateCardSize))
     pure next
   CC.Save k →
     map (k ∘ Card.Draftboard ∘ modelFromState) H.get
@@ -81,6 +76,16 @@ evalCard = case _ of
       Card.Draftboard model → do
         H.modify (updateLayout model.layout)
       _ → pure unit
+    pure next
+  CC.ReceiveInput _ next →
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions _ next → do
+    recalcRect
+    H.queryAll (right (H.action DCQ.UpdateCardSize))
     pure next
   CC.ModelUpdated _ next →
     pure next

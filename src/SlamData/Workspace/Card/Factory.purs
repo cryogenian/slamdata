@@ -23,7 +23,7 @@ import SlamData.Prelude
 
 import Halogen as H
 
-import SlamData.Workspace.Card.Ace.Component (AceEval, aceComponent, Status(..))
+import SlamData.Workspace.Card.Ace.Component (aceComponent)
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Component (chartComponent)
@@ -58,26 +58,25 @@ import SlamData.Workspace.Card.BuildChart.Boxplot.Component (boxplotBuilderCompo
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component (heatmapBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component (punchCardBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component (candlestickBuilderComponent)
-import SlamData.Workspace.Deck.DeckId (DeckId)
 
-cardComponent ∷ DeckId → CardOptions → CT.CardType → CardComponent
-cardComponent deckId opts =
+cardComponent ∷ CT.CardType → CardOptions → CardComponent
+cardComponent =
   case _ of
-    CT.Ace mode → aceComponent { mode, eval: aceEval mode }
+    CT.Ace mode → aceComponent mode
     CT.Search → searchComponent
     CT.Chart → chartComponent
-    CT.Markdown → markdownComponent deckId opts
+    CT.Markdown → markdownComponent
     CT.Table → tableComponent
     CT.Download → downloadComponent
     CT.Variables → variablesComponent
     CT.Troubleshoot → troubleshootComponent
     CT.NextAction → nextCardComponent
     CT.Cache → cacheCardComponent
-    CT.Open → openComponent Nothing -- FIXME
+    CT.Open → openComponent
     CT.DownloadOptions → DOpts.comp
     CT.ErrorCard → Error.comp
     CT.PendingCard → Pending.comp
-    CT.Draftboard → draftboardComponent opts
+    CT.Draftboard → draftboardComponent
     CT.ChartOptions CT.Metric → metricBuilderComponent
     CT.ChartOptions CT.Sankey → sankeyBuilderComponent
     CT.ChartOptions CT.Gauge → gaugeBuilderComponent
@@ -94,7 +93,3 @@ cardComponent deckId opts =
     CT.ChartOptions CT.Heatmap → heatmapBuilderComponent
     CT.ChartOptions CT.PunchCard → punchCardBuilderComponent
     CT.ChartOptions CT.Candlestick → candlestickBuilderComponent
-
-aceEval ∷ CT.AceMode → AceEval
-aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}
-aceEval CT.SQLMode = queryEval

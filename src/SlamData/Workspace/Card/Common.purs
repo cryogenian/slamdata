@@ -14,16 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Common where
+module SlamData.Workspace.Card.Common
+  ( CardOptions
+  ) where
 
-import SlamData.Prelude
-import SlamData.Workspace.Card.CardId (CardId)
+import Data.List (List)
+
 import SlamData.Workspace.Deck.Common (DeckOptions)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
-import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Eval.Card as Card
+import SlamData.Workspace.Eval.Deck as Deck
 
 type CardOptions =
   { deck ∷ DeckOptions
   , deckComponent ∷ DeckOptions → DeckComponent
-  , coord ∷ DeckId × CardId
+  , coord ∷ Card.Coord
+  , cursor ∷ List Deck.Id
   }

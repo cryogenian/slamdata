@@ -35,7 +35,7 @@ import Control.Monad.Aff.EventLoop as EventLoop
 import Control.UI.Browser (locationObject, setHref, newTab)
 
 import Data.Array as Array
-import Data.Lens ((.~), (%~), (^?), (?~), _Right, _Left, _Just)
+import Data.Lens ((.~), (%~), (^?), (?~), _Left, _Just)
 import Data.List ((:))
 import Data.List as L
 
@@ -49,7 +49,6 @@ import Halogen.HTML.Indexed as HH
 
 import SlamData.Analytics as SA
 import SlamData.Config as Config
-import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
 import SlamData.Guide as Guide
@@ -62,16 +61,14 @@ import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
-import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery, _NextQuery)
+import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery)
 import SlamData.Workspace.Card.Component.Query as CQ
-import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
-import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, cpDialog)
+import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, ChildQuery, ChildSlot, cpDialog)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
 import SlamData.Workspace.Deck.Component.Render as DCR
@@ -80,7 +77,6 @@ import SlamData.Workspace.Deck.DeckPath (deckPath, deckPath')
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
-import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Eval.Persistence as P
