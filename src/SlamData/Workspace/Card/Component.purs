@@ -140,6 +140,7 @@ makeCardComponentPart def render =
   eval ∷ CQ.CardQuery ~> CardDSL
   eval = case _ of
     CQ.Initialize next → do
+      eval (CQ.UpdateDimensions unit)
       cell ← H.liftH $ H.liftH $ P.getCard def.options.coord
       for_ cell \{ bus, value } → do
         queryInnerCard $ EQ.Load value.model.model
