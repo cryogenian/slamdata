@@ -42,7 +42,7 @@
     "purescript-parallel": "^1.1.0",
     "purescript-pathy": "^2.0.0",
     "purescript-profunctor-lenses": "^1.0.0",
-    "purescript-quasar": "^9.0.0",
+    "purescript-quasar": "^10.0.0",
     "purescript-routing": "^2.0.0",
     "purescript-search": "^1.0.0",
     "purescript-these": "^1.0.0",

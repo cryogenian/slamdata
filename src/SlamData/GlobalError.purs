@@ -31,7 +31,7 @@ import SlamData.Notification as N
 
 data GlobalError
   = PaymentRequired
-  | Unauthorized
+  | Unauthorized (Maybe QE.UnauthorizedDetails)
   | Forbidden
 
 class GlobalErrorDSL m where
@@ -55,21 +55,21 @@ instance globalErrorDSLHFP ∷ GlobalErrorDSL g ⇒ GlobalErrorDSL (HF.HalogenFP
 fromQError ∷ QE.QError → Either String GlobalError
 fromQError = case _ of
   QE.PaymentRequired → Right PaymentRequired
-  QE.Unauthorized → Right Unauthorized
+  QE.Unauthorized unauthDetails → Right $ Unauthorized unauthDetails
   QE.Forbidden → Right Forbidden
   err → Left (QE.printQError err)
 
 toQError ∷ GlobalError → QE.QError
 toQError = case _ of
   PaymentRequired → QE.PaymentRequired
-  Unauthorized → QE.Unauthorized
+  Unauthorized unauthDetails → QE.Unauthorized unauthDetails
   Forbidden → QE.Forbidden
 
 print ∷ GlobalError → String
 print = case _ of
   PaymentRequired →
     "Payment is required to perform the current action."
-  Unauthorized →
+  Unauthorized _ →
     "Please sign in to continue."
   Forbidden →
     "Your authorization credentials do not grant access to this resource."
@@ -82,7 +82,7 @@ toNotificationOptions =
       , detail: Nothing
       , timeout: Nothing
       }
-    Unauthorized →
+    Unauthorized unauthDetails →
       { notification: N.Error "No resources available"
       , detail:
           Just $ N.ActionDetail
