@@ -19,10 +19,6 @@ module SlamData.Workspace.Card.Factory
   ( cardComponent
   ) where
 
-import SlamData.Prelude
-
-import Halogen as H
-
 import SlamData.Workspace.Card.Ace.Component (aceComponent)
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.CardType as CT
@@ -37,7 +33,6 @@ import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
 import SlamData.Workspace.Card.Next.Component (nextCardComponent)
 import SlamData.Workspace.Card.Open.Component (openComponent)
 import SlamData.Workspace.Card.Pending.Component as Pending
-import SlamData.Workspace.Card.Query.Eval (queryEval)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)

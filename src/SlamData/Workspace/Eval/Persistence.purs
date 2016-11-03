@@ -18,10 +18,12 @@ module SlamData.Workspace.Eval.Persistence where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (takeVar, putVar, modifyVar)
+import Control.Monad.Aff (later')
+import Control.Monad.Aff.AVar (AVar, makeVar, takeVar, putVar, modifyVar, killVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Aff.Promise (wait, defer)
+import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Fork (class MonadFork, fork)
 
 import Data.Array as Array
@@ -33,11 +35,15 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
+
+censor ∷ ∀ e a. Either e a → Maybe a
+censor = either (const Nothing) Just
 
 putDeck
   ∷ ∀ m
@@ -53,12 +59,29 @@ putDeck deckId deck = do
   { path, eval } ← Wiring.expose
   ref ← defer do
     res ← Quasar.save (Deck.deckIndex path deckId) $ Deck.encode deck
-    when (isLeft res) do
-      void $ Cache.remove deckId eval.decks
-    pure $ const deck <$> res
-  -- FIXME
-  -- Cache.put deckId ref wiring.decks
+    pure $ res $> deck
+  Cache.alter deckId
+    (\cell → pure $ _ { value = ref } <$> cell)
+    eval.decks
   rmap (const unit) <$> wait ref
+
+saveDeck
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , QuasarDSL m
+    )
+  ⇒ Deck.Id
+  → m Unit
+saveDeck deckId = do
+  { eval } ← Wiring.expose
+  newDeck ← runMaybeT do
+    cell ← MaybeT $ Cache.get deckId eval.decks
+    deck ← MaybeT $ censor <$> wait cell.value
+    cards ← MaybeT $ sequence <$> traverse getCard (Tuple deckId ∘ _.cardId <$> deck.cards)
+    pure deck { cards = (\c → c.value.model) <$> cards }
+  for_ newDeck (void ∘ putDeck deckId)
 
 -- | Loads a deck from a DeckId. Returns the model.
 getDeck
@@ -226,4 +249,85 @@ forkCardProcess
   → Bus.BusRW Card.EvalMessage
   → m Unit
 forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
+  Card.ModelChange source model → do
+    { eval } ← Wiring.expose
+    Cache.alter coord (pure ∘ map (updateModel model)) eval.cards
+    queueSave deckId
+    queueEval source coord
   _ → pure unit
+
+  where
+    -- TODO: Lenses?
+    updateModel model cell = cell
+      { value = cell.value
+          { model = cell.value.model
+              { model = model
+              }
+          }
+      }
+
+queueSave
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , QuasarDSL m
+    )
+  ⇒ Deck.Id
+  → m Unit
+queueSave deckId = do
+  { eval } ← Wiring.expose
+  debounce 500 deckId eval.pendingSaves do
+    saveDeck deckId
+
+queueEval
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , MonadPar m
+    , QuasarDSL m
+    )
+  ⇒ Card.DisplayCoord
+  → Card.Coord
+  → m Unit
+queueEval source coord = do
+  -- FIXME: Be smarter about queuing overlapping graphs
+  { eval } ← Wiring.expose
+  debounce 500 coord eval.pendingEvals do
+    Eval.evalGraph source coord
+
+debounce
+  ∷ ∀ k m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    , Ord k
+    )
+  ⇒ Int
+  → k
+  → Cache.Cache k (AVar Unit)
+  → m Unit
+  → m Unit
+debounce ms key cache run = do
+  avar ← laterVar ms $ Cache.remove key cache *> run
+  Cache.alter key (alterFn avar) cache
+  where
+    alterFn avar avar' = fromAff do
+      traverse_ (flip killVar (Exn.error "debounce")) avar'
+        $> Just avar
+
+laterVar
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadFork m
+    )
+  ⇒ Int
+  → m Unit
+  → m (AVar Unit)
+laterVar ms run = do
+  avar ← fromAff makeVar
+  fork $ fromAff (takeVar avar) *> run
+  fork $ fromAff $ later' ms (putVar avar unit)
+  pure avar

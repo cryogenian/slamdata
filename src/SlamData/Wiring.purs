@@ -31,6 +31,7 @@ module SlamData.Wiring
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Eff.Ref (Ref, newRef)
@@ -66,6 +67,11 @@ type EvalWiring =
   { tick ∷ Ref Int
   , cards ∷ Cache Card.Coord Card.Cell
   , decks ∷ Cache Deck.Id Deck.Cell
+  -- We need to use AVars for debounce state rather than storing Cancelers,
+  -- because the Canceler would need to reference `Slam` resulting in a
+  -- circular dependency.
+  , pendingEvals ∷ Cache Card.Coord (AVar Unit)
+  , pendingSaves ∷ Cache Deck.Id (AVar Unit)
   }
 
 type AuthWiring =
@@ -123,7 +129,9 @@ make path varMaps = fromAff do
     tick ← fromEff (newRef 0)
     cards ← Cache.make
     decks ← Cache.make
-    pure { tick, cards, decks }
+    pendingEvals ← Cache.make
+    pendingSaves ← Cache.make
+    pure { tick, cards, decks, pendingEvals, pendingSaves }
 
   makeAuth = do
     hasIdentified ← fromEff (newRef false)

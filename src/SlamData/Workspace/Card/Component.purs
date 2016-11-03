@@ -166,10 +166,11 @@ makeCardComponentPart def render =
       pure next
     CQ.HandleEvalMessage msg next → do
       case msg of
-        Card.Pending evalPort → do
+        Card.Pending source evalPort → do
           queryInnerCard $ EQ.ReceiveInput evalPort
-          H.modify (CS._pending .~ true)
-        Card.Complete evalPort → do
+          when (source ≠ displayCoord) do
+            H.modify (CS._pending .~ true)
+        Card.Complete source evalPort → do
           queryInnerCard $ EQ.ReceiveOutput evalPort
           H.modify (CS._pending .~ false)
         Card.StateChange evalState →

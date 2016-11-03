@@ -46,8 +46,8 @@ import SlamData.Workspace.Eval.Deck as Deck
 type State = Unit
 
 data EvalMessage
-  = Pending Port
-  | Complete Port
+  = Pending DisplayCoord Port
+  | Complete DisplayCoord Port
   | StateChange (Maybe State)
   | ModelChange DisplayCoord AnyCardModel
 

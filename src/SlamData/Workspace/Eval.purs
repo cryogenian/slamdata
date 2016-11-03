@@ -23,9 +23,8 @@ import SlamData.Prelude
 import Control.Comonad.Cofree (Cofree)
 import Control.Comonad.Cofree as Cofree
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Aff.Free (fromAff)
+import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Eff.Ref (readRef, modifyRef)
-import Control.Monad.Eff.Class (liftEff)
 
 import Data.Foldable as F
 import Data.Function (on)
@@ -34,8 +33,10 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 
+import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
-import SlamData.Monad (Slam)
+import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.Eval.Card as Card
@@ -50,8 +51,17 @@ type EvalGraph =
     , deck ∷ Deck.Cell
     }
 
-evalGraph ∷ Card.Coord → Slam Unit
-evalGraph coord = do
+evalGraph
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadPar m
+    , QuasarDSL m
+    )
+  ⇒ Card.DisplayCoord
+  → Card.Coord
+  → m Unit
+evalGraph source coord = do
   { eval } ← Wiring.expose
   tick ← nextTick
   graph ←
@@ -63,10 +73,21 @@ evalGraph coord = do
     notifyDecks Deck.Pending graph'
     let
       input = (Cofree.head graph').card.value.input
-    runEvalLoop tick input graph'
+    runEvalLoop source tick input graph'
 
-runEvalLoop ∷ Tick → Maybe Card.Port → EvalGraph → Slam Unit
-runEvalLoop tick input graph = do
+runEvalLoop
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    , MonadPar m
+    , QuasarDSL m
+    )
+  ⇒ Card.DisplayCoord
+  → Tick
+  → Maybe Card.Port
+  → EvalGraph
+  → m Unit
+runEvalLoop source tick input graph = do
   { path, varMaps, eval } ← Wiring.expose
   let
     node = Cofree.head graph
@@ -81,7 +102,7 @@ runEvalLoop tick input graph = do
       }
   -- FIXME
   for_ input \port →
-    fromAff $ Bus.write (Card.Pending port) node.card.bus
+    fromAff $ Bus.write (Card.Pending source port) node.card.bus
   result ← Card.runEvalCard' cei trans
   tick' ← currentTick
   when (tick ≡ tick') case result.output of
@@ -95,7 +116,7 @@ runEvalLoop tick input graph = do
       updateCardValue node.coord value' eval.cards
       fromAff do
         Bus.write (Card.StateChange result.state) node.card.bus
-        Bus.write (Card.Complete output) node.card.bus
+        Bus.write (Card.Complete source output) node.card.bus
       notifyDecks (Deck.Complete node.coord output) graph
     Right output → do
       let
@@ -107,23 +128,30 @@ runEvalLoop tick input graph = do
       updateCardValue node.coord value' eval.cards
       fromAff do
         Bus.write (Card.StateChange result.state) node.card.bus
-        Bus.write (Card.Complete output) node.card.bus
+        Bus.write (Card.Complete source output) node.card.bus
       when (deckCompleted (fst node.coord) next) $ fromAff do
         Bus.write (Deck.Complete node.coord output) node.deck.bus
-      parTraverse_ (runEvalLoop tick (Just output)) next
+      parTraverse_ (runEvalLoop source tick (Just output)) next
 
   where
     updateCardValue
       ∷ Card.Coord
       → Card.EvalResult
       → Cache.Cache Card.Coord Card.Cell
-      → Slam Unit
+      → m Unit
     updateCardValue key value =
       Cache.alter key case _ of
         Just cell → pure (Just cell { value = value })
         _         → pure Nothing
 
-notifyDecks ∷ Deck.EvalMessage → EvalGraph → Slam Unit
+notifyDecks
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , Applicative m
+    )
+  ⇒ Deck.EvalMessage
+  → EvalGraph
+  → m Unit
 notifyDecks msg = traverse_ (fromAff ∘ Bus.write msg ∘ _.bus ∘ snd) ∘ nubDecks
 
 deckCompleted ∷ Deck.Id → List EvalGraph → Boolean
@@ -153,14 +181,24 @@ nubDecks = List.nubBy (eq `on` fst) ∘ go
       in
         head : join (go <$> Cofree.tail co)
 
-nextTick ∷ Slam Int
+nextTick
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    )
+  ⇒ m Int
 nextTick = do
   { eval } ← Wiring.expose
-  liftEff do
+  fromEff do
     modifyRef eval.tick (add 1)
     readRef eval.tick
 
-currentTick ∷ Slam Int
+currentTick
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadReader Wiring m
+    )
+  ⇒ m Int
 currentTick = do
   { eval } ← Wiring.expose
-  liftEff (readRef eval.tick)
+  fromEff (readRef eval.tick)
