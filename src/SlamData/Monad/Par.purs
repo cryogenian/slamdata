@@ -14,15 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Query.Eval
-  ( queryEval
-  ) where
+module SlamData.Monad.Par where
 
 import SlamData.Prelude
+import Unsafe.Coerce (unsafeCoerce)
 
-import SlamData.Workspace.Card.Ace.Component as AceCard
+data ParF f x y a = ParF (x -> y -> a) (f x) (f y)
+data Par (f :: * -> *) a
 
-queryEval ∷ AceCard.DSL Unit
-queryEval =
-  -- FIXME
-  pure unit
+mkPar :: forall f x y a. ParF f x y a → Par f a
+mkPar = unsafeCoerce
+
+unPar :: forall f x y a r. (ParF f x y a → r) → Par f a → r
+unPar = unsafeCoerce
+
+instance functorPar ∷ Functor (Par f) where
+  map f = unPar case _ of
+    ParF g a b → mkPar (ParF (\x y → f (g x y)) a b)

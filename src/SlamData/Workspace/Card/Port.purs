@@ -21,12 +21,12 @@ module SlamData.Workspace.Card.Port
   , MetricPort
   , PivotTablePort
   , tagPort
+  , eqTaggedResourcePort
   , _Initial
   , _Terminal
   , _SlamDown
   , _VarMap
   , _Resource
-  , _ResourceAxes
   , _ResourceTag
   , _DownloadOptions
   , _Draftboard
@@ -39,7 +39,6 @@ module SlamData.Workspace.Card.Port
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json)
 import Data.Lens (PrismP, prism', TraversalP, wander)
 
 import ECharts.Monad (DSL)
@@ -48,7 +47,6 @@ import ECharts.Types.Phantom (OptionI)
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), renderVarMapValue, emptyVarMap)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
-import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
@@ -62,7 +60,6 @@ type DownloadPort =
 type TaggedResourcePort =
   { resource ∷ PU.FilePath
   , tag ∷ Maybe String
-  , axes ∷ Axes
   , varMap ∷ Maybe VarMap
   }
 
@@ -72,9 +69,8 @@ type MetricPort =
   }
 
 type PivotTablePort =
-  { records ∷ Array Json
-  , options ∷ PTM.PivotTableR
-  , taggedResource ∷ TaggedResourcePort
+  { query ∷ String
+  , options ∷ PTM.Model
   }
 
 data Port
@@ -103,6 +99,12 @@ tagPort  = case _ of
   ChartInstructions _ _ → "ChartInstructions"
   Metric _ → "Metric"
   PivotTable _ → "PivotTable"
+
+eqTaggedResourcePort ∷ TaggedResourcePort → TaggedResourcePort → Boolean
+eqTaggedResourcePort tr1 tr2 =
+  tr1.resource ≡ tr2.resource
+  && tr1.tag ≡ tr2.tag
+  && tr1.varMap ≡ tr2.varMap
 
 _Initial ∷ PrismP Port Unit
 _Initial = prism' (const Initial) case _ of
@@ -139,11 +141,6 @@ _ResourceTag = wander \f s → case s of
 _Resource ∷ TraversalP Port PU.FilePath
 _Resource = wander \f s → case s of
   TaggedResource o → TaggedResource ∘ o{resource = _} <$> f o.resource
-  _ → pure s
-
-_ResourceAxes ∷ TraversalP Port Axes
-_ResourceAxes = wander \f s → case s of
-  TaggedResource o → TaggedResource ∘ o{axes = _} <$> f o.axes
   _ → pure s
 
 _DownloadOptions ∷ PrismP Port DownloadPort

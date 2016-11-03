@@ -21,7 +21,6 @@ module SlamData.Workspace.Card.Common.EvalQuery
   , raiseUpdatedC'
   , raiseUpdatedP
   , raiseUpdatedP'
-  , module SlamData.Workspace.Card.Eval.CardEvalT
   ) where
 
 import SlamData.Prelude
@@ -32,7 +31,7 @@ import Control.Monad.Aff.AVar (AVAR)
 import Halogen as H
 import Halogen.Component.Utils (raise, raise')
 
-import SlamData.Workspace.Card.Eval.CardEvalT (CardEvalInput, CardEvalT, runCardEvalT, runCardEvalT_, temporaryOutputResource)
+import SlamData.Workspace.Card.Eval.Monad (EvalState)
 import SlamData.Workspace.Card.Model (AnyCardModel)
 import SlamData.Workspace.Card.Port as Port
 
@@ -64,7 +63,7 @@ data CardEvalQuery a
   | Deactivate a
   | Save (AnyCardModel → a)
   | Load AnyCardModel a
-  | ReceiveState (Maybe Unit) a -- FIXME
+  | ReceiveState EvalState a
   | ReceiveInput Port.Port a
   | ReceiveOutput Port.Port a
   | ReceiveDimensions { width ∷ Number, height ∷ Number } a

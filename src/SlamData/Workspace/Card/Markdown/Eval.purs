@@ -17,8 +17,10 @@ module SlamData.Workspace.Card.Markdown.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free as AffF
+import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Throw (class MonadThrow)
+import Control.Monad.Writer.Class (class MonadWriter)
 
 import Data.Array as A
 import Data.Identity (Identity)
@@ -31,10 +33,9 @@ import Data.String as S
 import Data.StrMap as SM
 
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
 import Text.Markdown.SlamDown as SD
@@ -50,13 +51,19 @@ import Utils.Path (DirPath)
 
 markdownEval
   ∷ ∀ m
-  . (Monad m, AffF.Affable SlamDataEffects m, QuasarDSL m)
-  ⇒ CET.CardEvalInput
+  . ( Affable SlamDataEffects m
+    , MonadReader CEM.CardEnv m
+    , MonadThrow CEM.CardError m
+    , MonadWriter CEM.CardLog m
+    , QuasarDSL m
+    )
+  ⇒ Port.Port
   → String
-  → CET.CardEvalT m Port.Port
-markdownEval { input, path } str =
+  → m Port.Port
+markdownEval input str = do
+  CEM.CardEnv { path } ← ask
   case SDP.parseMd str of
-    Left e → QE.throw e
+    Left e → CEM.throw e
     Right sd → do
       let
         vm = fromMaybe Port.emptyVarMap $ input ^? Port._VarMap
@@ -76,11 +83,15 @@ findFields = SDT.everything (const mempty) extractField
 
 evalEmbeddedQueries
   ∷ ∀ m
-  . (Monad m, AffF.Affable SlamDataEffects m, QuasarDSL m)
+  . ( Affable SlamDataEffects m
+    , MonadThrow CEM.CardError m
+    , MonadWriter CEM.CardLog m
+    , QuasarDSL m
+    )
   ⇒ SM.StrMap String
   → DirPath
   → SD.SlamDownP Port.VarMapValue
-  → CET.CardEvalT m (SD.SlamDownP Port.VarMapValue)
+  → m (SD.SlamDownP Port.VarMapValue)
 evalEmbeddedQueries sm dir =
   SDE.eval
     { code: evalCode
@@ -94,7 +105,7 @@ evalEmbeddedQueries sm dir =
   evalCode
     ∷ Maybe SDE.LanguageId
     → String
-    → CET.CardEvalT m Port.VarMapValue
+    → m Port.VarMapValue
   evalCode mid code
     | languageIsSql mid =
         Port.Literal ∘ extractCodeValue <$> runQuery code
@@ -123,7 +134,7 @@ evalEmbeddedQueries sm dir =
 
   evalValue
     ∷ String
-    → CET.CardEvalT m Port.VarMapValue
+    → m Port.VarMapValue
   evalValue code = do
     maybe (Port.Literal EJSON.null) (Port.Literal ∘ extractSingletonObject)
       ∘ A.head
@@ -131,12 +142,12 @@ evalEmbeddedQueries sm dir =
 
   evalTextBox
     ∷ SD.TextBox (Const String)
-    → CET.CardEvalT m (SD.TextBox Identity)
+    → m (SD.TextBox Identity)
   evalTextBox tb = do
     let sql = getConst $ SD.traverseTextBox (map \_ → Const unit) tb
     mresult ← A.head <$> runQuery sql
     result ←
-      maybe (QE.throw "No results") (pure ∘ extractSingletonObject) mresult
+      maybe (CEM.throw "No results") (pure ∘ extractSingletonObject) mresult
     case tb × (EJSON.unroll result) of
       (SD.PlainText _) × (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
@@ -147,21 +158,21 @@ evalEmbeddedQueries sm dir =
       (SD.Date _) × (EJSON.Date str) →
         SD.Date ∘ pure <$> parse parseSqlDate str
       (SD.DateTime prec _) × (EJSON.Timestamp str) → do
-        lift (AffF.fromEff (parseSqlTimeStamp str)) >>=
+        fromEff (parseSqlTimeStamp str) >>=
           case _ of
-            Left msg → QE.throw msg
+            Left msg → CEM.throw msg
             Right dt → pure $ SD.DateTime prec (pure dt)
-      _ → QE.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
+      _ → CEM.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
     where
-      parse ∷ ∀ s a. P.Parser s a → s → CET.CardEvalT m a
+      parse ∷ ∀ s a. P.Parser s a → s → m a
       parse p str =
         case P.runParser str p of
-          Left err → QE.throw $ "Parse error: " ⊕ show err
+          Left err → CEM.throw $ "Parse error: " ⊕ show err
           Right a → pure a
 
   evalList
     ∷ String
-    → CET.CardEvalT m (L.List Port.VarMapValue)
+    → m (L.List Port.VarMapValue)
   evalList code = do
     items ← map extractSingletonObject <$> runQuery code
     let limit = 500
@@ -176,11 +187,11 @@ evalEmbeddedQueries sm dir =
 
   runQuery
     ∷ String
-    → CET.CardEvalT m (Array EJSON.EJson)
+    → m (Array EJSON.EJson)
   runQuery code = do
-    {inputs} ← CET.liftQ $ Quasar.compile (Left dir) code sm
-    CET.addSources inputs
-    CET.liftQ $ Quasar.queryEJsonVM dir code sm
+    {inputs} ← CEM.liftQ $ Quasar.compile (Left dir) code sm
+    CEM.addSources inputs
+    CEM.liftQ $ Quasar.queryEJsonVM dir code sm
 
 parseDigit ∷ P.Parser String Int
 parseDigit =

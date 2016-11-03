@@ -52,7 +52,7 @@ import SlamData.Workspace.Card.BuildChart.Metric.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Metric.Component.Query as Q
 import SlamData.Workspace.Card.BuildChart.Metric.Model as M
 import SlamData.Workspace.Card.BuildChart.Aggregation (nonMaybeAggregationSelect)
-import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Eval.State (_Axes)
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -216,14 +216,14 @@ cardEval = case _ of
     pure next
   CC.Load _ next →
     pure next
-  CC.ReceiveInput input next → do
-    for_ (input ^? Port._ResourceAxes) \axes → do
-      H.modify _{axes = axes}
-      synchronizeChildren
+  CC.ReceiveInput _ next →
     pure next
   CC.ReceiveOutput _ next →
     pure next
-  CC.ReceiveState _ next →
+  CC.ReceiveState evalState next → do
+    for_ (evalState ^? _Axes) \axes → do
+      H.modify _{axes = axes}
+      synchronizeChildren
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify

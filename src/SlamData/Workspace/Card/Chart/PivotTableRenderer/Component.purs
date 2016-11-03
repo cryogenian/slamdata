@@ -25,7 +25,6 @@ import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.List (List, (:))
 import Data.List as List
-import Data.Path.Pathy as P
 import Data.String as String
 
 import Halogen as H
@@ -36,18 +35,13 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Advanced.QuasarAF as QF
-import Quasar.Data (JSONMode(..))
-
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Class (liftQuasar)
-import SlamData.Quasar.Query as QQ
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column(..), isSimple)
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
-import SlamData.Workspace.Card.Port (PivotTablePort, TaggedResourcePort)
+import SlamData.Workspace.Card.Port (PivotTablePort)
 
 import Global (readFloat)
 
@@ -283,27 +277,7 @@ render st =
 eval ∷ Query ~> DSL
 eval = case _ of
   Update input next | isSimple input.options → do
-    st ← H.get
-    let
-      sameResource =
-        case input.taggedResource, st.input of
-          tr1, Just { options, taggedResource: tr2 } →
-            F.and
-              [ tr1.resource ≡ tr2.resource
-              , tr1.tag ≡ tr2.tag
-              , isSimple options
-              , input.options.columns ≡ options.columns
-              , tr1.varMap ≡ tr2.varMap
-              ]
-          _, _ → false
-    if sameResource
-      then do
-        H.modify _ { input = Just input }
-        when (isNothing st.records) do
-          pageQuery input
-      else do
-        H.modify _ { input = Just input, pageIndex = 0, count = 0, pageCount = 0 }
-        pageQuery input
+    -- FIXME
     pure next
   Update input next → do
     st ← H.get
@@ -362,72 +336,17 @@ ifSimpleInput f g p =
 
 pageQuery ∷ PivotTablePort → DSL Unit
 pageQuery input = do
-  st ← H.get
-  let
-    path   = fromMaybe P.rootDir (P.parentDir input.taggedResource.resource)
-    sql    = simpleQuery input.options.columns input.taggedResource
-    offset = st.pageIndex * st.pageSize
-    limit  = st.pageSize
-  H.modify _ { loading = true }
-  if st.count ≡ 0
-    then do
-      count ← either (const 0) id <$>
-        QQ.count input.taggedResource.resource
-      H.modify _
-        { count = count
-        , pageCount = calcPageCount count st.pageSize
-        }
-    else do
-      H.modify _
-        { pageCount = calcPageCount st.count st.pageSize
-        }
-  records ← liftQuasar $
-    QF.readQuery Readable path sql mempty (Just { offset, limit })
-  H.modify _ { loading = false }
-  for_ records \recs →
-    H.modify _
-      { records = Just (buildTree mempty Bucket Grouped recs)
-      }
+  -- FIXME
+  pure unit
 
 pageTree ∷ PivotTablePort → DSL Unit
 pageTree input = do
-  st ← H.get
-  let
-    dlen      = Array.length input.options.dimensions
-    dims      = List.fromFoldable (dimensionsN (Array.length input.options.dimensions))
-    cols      = Array.mapWithIndex (Tuple ∘ add dlen) input.options.columns
-    records   = buildTree dims Bucket Grouped input.records
-    pages     = pagedTree st.pageSize (sizeOfRow cols) records
-    pageCount = Array.length (snd pages)
-    pageIndex = clamp 0 (pageCount - 1) st.pageIndex
-  H.modify _
-    { records = Array.index (snd pages) pageIndex
-    , count = fst pages
-    , pageCount = pageCount
-    , pageIndex = pageIndex
-    }
+  -- FIXME
+  pure unit
 
 calcPageCount ∷ Int → Int → Int
 calcPageCount count size =
   Int.ceil (Int.toNumber count / Int.toNumber size)
-
-simpleQuery
-  ∷ Array Column
-  → TaggedResourcePort
-  → String
-simpleQuery columns tr =
-  let
-    cols =
-      Array.mapWithIndex
-        case _, _ of
-          i, Column c → "row" <> show c.value <> " AS _" <> show i
-          i, _ → "COUNT(*) AS _" <> show i -- Shouldn't be possible, but ok
-        columns
-  in
-    QQ.templated tr.resource $ String.joinWith " "
-      [ "SELECT " <> String.joinWith ", " cols
-      , "FROM {{path}} AS row"
-      ]
 
 tupleN ∷ Int → J.JCursor
 tupleN int = J.JField ("_" <> show int) J.JCursorTop

@@ -36,6 +36,8 @@ import Quasar.Advanced.QuasarAF as QA
 import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
+import SlamData.Monad.Fork (ForkF(..), Fork, mkFork, unFork)
+import SlamData.Monad.Par (ParF(..), Par, mkPar, unPar)
 import SlamData.Notification as N
 import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
@@ -45,33 +47,7 @@ import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
 
-import Unsafe.Coerce (unsafeCoerce)
-
 type Slam = SlamM SlamDataEffects
-
---------------------------------------------------------------------------------
-
-data ParF f x y a = ParF (x -> y -> a) (f x) (f y)
-data Par (f :: * -> *) a
-
-mkPar :: forall f x y a. ParF f x y a → Par f a
-mkPar = unsafeCoerce
-
-unPar :: forall f x y a r. (ParF f x y a → r) → Par f a → r
-unPar = unsafeCoerce
-
---------------------------------------------------------------------------------
-
-data ForkF f x a = ForkF (f x) (Canceler f -> a)
-data Fork (f :: * -> *) a
-
-mkFork :: forall f x a. ForkF f x a → Fork f a
-mkFork = unsafeCoerce
-
-unFork :: forall f x a r. (ForkF f x a → r) → Fork f a → r
-unFork = unsafeCoerce
-
---------------------------------------------------------------------------------
 
 data SlamF eff a
   = Aff (Aff eff a)

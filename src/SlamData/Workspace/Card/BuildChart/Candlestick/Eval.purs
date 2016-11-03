@@ -21,6 +21,9 @@ module SlamData.Workspace.Card.BuildChart.Candlestick.Eval
 
 import SlamData.Prelude
 
+import Control.Monad.State (class MonadState)
+import Control.Monad.Throw (class MonadThrow)
+
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Map as M
@@ -30,10 +33,7 @@ import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 
-import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
@@ -43,23 +43,21 @@ import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.BuildChart.Axis as Ax
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.BuildChart.Candlestick.Model (CandlestickR, Model)
 
 import Utils.Foldable (enumeratedFor_)
 
 eval
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ Model
-  → FilePath
-  → Ax.Axes
-  → CET.CardEvalT m Port.Port
-eval Nothing _ _ =
-  QE.throw "Please select axis to aggregate"
-eval (Just conf) resource axes = do
-  records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildCandlestick conf records axes) Candlestick
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ Port.TaggedResourcePort
+  → Model
+  → m Port.Port
+eval = BCE.buildChartEval Candlestick buildCandlestick
 
 type HLOC a =
   { low ∷ a
@@ -164,8 +162,8 @@ buildCandlestickData r records = series
   series ∷ CandlestickData
   series = BCP.adjustRectangularPositions rawSeries
 
-buildCandlestick ∷ CandlestickR → JArray → Ax.Axes → DSL OptionI
-buildCandlestick r records axes = do
+buildCandlestick ∷ Ax.Axes → CandlestickR → JArray → DSL OptionI
+buildCandlestick axes r records = do
   E.tooltip do
     E.triggerAxis
     E.textStyle do

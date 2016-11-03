@@ -23,6 +23,7 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Int (toNumber)
+import Data.Lens ((^?))
 import Data.List ((:))
 import Data.List as List
 
@@ -49,8 +50,8 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = H.ParentDSL State PCS.ChildState QueryC PCS.ChildQuery Slam PCS.ChildSlot
@@ -330,15 +331,13 @@ evalCard = case _ of
         H.modify (stateFromModel model)
       _ → pure unit
     pure next
-  CC.ReceiveInput input next → do
-    case input of
-      Port.TaggedResource { axes } →
-        H.modify _ { axes = axes }
-      _ → pure unit
+  CC.ReceiveInput _ next →
     pure next
   CC.ReceiveOutput _ next →
     pure next
-  CC.ReceiveState _ next →
+  CC.ReceiveState evalState next → do
+    for_ (evalState ^? _Axes) \axes → do
+      H.modify _ { axes = axes }
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _

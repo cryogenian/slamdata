@@ -35,7 +35,6 @@ import Global (readFloat, isNaN)
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Render.Common (row)
 import SlamData.Form.Select (newSelect,setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -53,6 +52,7 @@ import SlamData.Workspace.Card.BuildChart.Graph.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Graph.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Graph.Component.Query as Q
 import SlamData.Workspace.Card.BuildChart.Graph.Model as M
+import SlamData.Workspace.Card.Eval.State (_Axes)
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -244,14 +244,14 @@ cardEval = case _ of
     pure next
   CC.Load card next →
     pure next
-  CC.ReceiveInput input next → do
-    for_ (input ^? Port._ResourceAxes) \axes → do
-      H.modify _{axes = axes}
-      synchronizeChildren
+  CC.ReceiveInput _ next →
     pure next
   CC.ReceiveOutput _ next →
     pure next
-  CC.ReceiveState _ next →
+  CC.ReceiveState evalState next → do
+    for_ (evalState ^? _Axes) \axes → do
+      H.modify _{axes = axes}
+      synchronizeChildren
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify

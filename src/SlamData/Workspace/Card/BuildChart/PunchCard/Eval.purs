@@ -23,6 +23,9 @@ import SlamData.Prelude
 
 import Color as C
 
+import Control.Monad.State (class MonadState)
+import Control.Monad.Throw (class MonadThrow)
+
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
@@ -38,10 +41,7 @@ import ECharts.Types.Phantom as ETP
 
 import Global (infinity)
 
-import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL )
-import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
@@ -50,23 +50,21 @@ import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.BuildChart.Axis as Ax
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.BuildChart.PunchCard.Model (PunchCardR, Model)
 
 import Utils.Array (enumerate)
 
 eval
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ Model
-  → FilePath
-  → Ax.Axes
-  → CET.CardEvalT m Port.Port
-eval Nothing _ _ =
-  QE.throw "Please select axis to aggregate"
-eval (Just conf) resource axes = do
-  records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildPunchCard conf records axes) PunchCard
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ Port.TaggedResourcePort
+  → Model
+  → m Port.Port
+eval = BCE.buildChartEval PunchCard buildPunchCard
 
 type PunchCardData = (String × String) >> (Int × Number)
 
@@ -130,8 +128,8 @@ buildPunchCardData r records = map addSymbolSize aggregated
         (Int.ceil (r.maxSize - sizeDistance / distance * (maxValue - val))) × val
 
 
-buildPunchCard ∷ PunchCardR → JArray → Ax.Axes → DSL OptionI
-buildPunchCard r records axes = do
+buildPunchCard ∷ Ax.Axes → PunchCardR → JArray → DSL OptionI
+buildPunchCard axes r records = do
   E.tooltip do
     E.triggerItem
     E.textStyle do

@@ -26,6 +26,7 @@ module SlamData.Workspace.Eval.Card
   , coordOf
   , module SlamData.Workspace.Card.CardId
   , module SlamData.Workspace.Card.Eval
+  , module SlamData.Workspace.Card.Eval.Monad
   , module SlamData.Workspace.Card.Model
   , module SlamData.Workspace.Card.Port
   ) where
@@ -37,25 +38,25 @@ import Control.Monad.Aff.Bus (BusRW)
 import Data.List (List)
 
 import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.Eval (Eval, runEvalCard')
+import SlamData.Workspace.Card.Eval (Eval, runCard)
+import SlamData.Workspace.Card.Eval.Monad (CardEnv(..), EvalState)
 import SlamData.Workspace.Card.Model (Model, AnyCardModel, modelToEval)
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Eval.Deck as Deck
 
--- TODO
-type State = Unit
+type State = EvalState
 
 data EvalMessage
   = Pending DisplayCoord Port
   | Complete DisplayCoord Port
-  | StateChange (Maybe State)
+  | StateChange State
   | ModelChange DisplayCoord AnyCardModel
 
 type EvalResult =
   { model ∷ Model
   , input ∷ Maybe Port
   , output ∷ Maybe Port
-  , state ∷ Maybe State
+  , state ∷ Maybe EvalState
   }
 
 type Cell =

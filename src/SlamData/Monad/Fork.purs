@@ -14,15 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Query.Eval
-  ( queryEval
-  ) where
+module SlamData.Monad.Fork where
 
-import SlamData.Prelude
+import Control.Monad.Fork (Canceler)
 
-import SlamData.Workspace.Card.Ace.Component as AceCard
+import Unsafe.Coerce (unsafeCoerce)
 
-queryEval ∷ AceCard.DSL Unit
-queryEval =
-  -- FIXME
-  pure unit
+data ForkF f x a = ForkF (f x) (Canceler f -> a)
+data Fork (f :: * -> *) a
+
+mkFork :: forall f x a. ForkF f x a → Fork f a
+mkFork = unsafeCoerce
+
+unFork :: forall f x a r. (ForkF f x a → r) → Fork f a → r
+unFork = unsafeCoerce

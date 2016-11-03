@@ -39,6 +39,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 
@@ -94,14 +95,13 @@ runEvalLoop source tick input graph = do
     next = Cofree.tail graph
     -- FIXME
     trans = unsafePartial (fromRight (Card.modelToEval node.card.value.model.model))
-    cei =
+    env = CEM.CardEnv
       { path
-      , cardCoord: node.coord
-      , input
+      , coord: node.coord
       , urlVarMaps: varMaps
       }
   fromAff $ Bus.write (Card.Pending source input) node.card.bus
-  result ← Card.runEvalCard' cei trans
+  result ← Card.runCard env node.card.value.state input trans
   tick' ← currentTick
   when (tick ≡ tick') case result.output of
     Left err → do
@@ -113,7 +113,8 @@ runEvalLoop source tick input graph = do
           _        → "Global error" -- FIXME
       updateCardValue node.coord value' eval.cards
       fromAff do
-        Bus.write (Card.StateChange result.state) node.card.bus
+        for_ result.state \state →
+          Bus.write (Card.StateChange state) node.card.bus
         Bus.write (Card.Complete source output) node.card.bus
       notifyDecks (Deck.Complete node.coord output) graph
     Right output → do
@@ -125,7 +126,8 @@ runEvalLoop source tick input graph = do
           }
       updateCardValue node.coord value' eval.cards
       fromAff do
-        Bus.write (Card.StateChange result.state) node.card.bus
+        for_ result.state \state →
+          Bus.write (Card.StateChange state) node.card.bus
         Bus.write (Card.Complete source output) node.card.bus
       when (deckCompleted (fst node.coord) next) $ fromAff do
         Bus.write (Deck.Complete node.coord output) node.deck.bus
