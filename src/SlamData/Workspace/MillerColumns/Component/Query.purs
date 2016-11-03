@@ -20,10 +20,20 @@ import SlamData.Prelude
 
 import Data.List (List)
 
+import Halogen as H
+
 import DOM.HTML.Types (HTMLElement)
 
 data Query i b
   = Ref (Maybe HTMLElement) b
-  | Extended b
   | Populate (List i) b
+  | Extended b
   | Loading Boolean b
+
+data ItemQuery i b
+  = RaisePopulate (List i) b
+  | ToggleSelected Boolean b
+
+type ChildQuery i f = Coproduct (ItemQuery i) f
+
+type Query' i f = Coproduct (Query i) (H.ChildF i (ChildQuery i f))
