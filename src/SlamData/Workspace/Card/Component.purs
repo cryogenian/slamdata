@@ -26,6 +26,7 @@ module SlamData.Workspace.Card.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop (break')
 import Control.Monad.Aff.Free (fromAff)
 
@@ -111,7 +112,7 @@ makeCardComponentPart def render =
   H.lifecycleParentComponent
     { render: render component initialState
     , eval
-    , peek: Nothing
+    , peek: Just (coproduct peek (const (pure unit)) ∘ H.runChildF)
     , initializer: Just (H.action CQ.Initialize)
     , finalizer: Just (H.action CQ.Finalize)
     }
@@ -177,6 +178,16 @@ makeCardComponentPart def render =
           when (source ≠ displayCoord) do
             queryInnerCard $ EQ.Load evalModel
       pure next
+
+  peek ∷ ∀ a. EQ.CardEvalQuery a → CardDSL Unit
+  peek = case _ of
+    EQ.ModelUpdated EQ.EvalModelUpdate _ → do
+      st ← H.get
+      model ← H.query unit (left (H.request EQ.Save))
+      traverse_ fromAff $
+        Bus.write ∘ Card.ModelChange displayCoord <$> model <*> st.bus
+    _ →
+      pure unit
 
 queryInnerCard ∷ H.Action EQ.CardEvalQuery → CardDSL Unit
 queryInnerCard q =
