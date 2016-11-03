@@ -143,6 +143,9 @@ makeCardComponentPart def render =
       cell ← H.liftH $ H.liftH $ P.getCard def.options.coord
       for_ cell \{ bus, value } → do
         queryInnerCard $ EQ.Load value.model.model
+        for_ value.input (queryInnerCard ∘ EQ.ReceiveInput)
+        queryInnerCard $ EQ.ReceiveState value.state
+        for_ value.input (queryInnerCard ∘ EQ.ReceiveOutput)
         breaker ← subscribeToBus' (H.action ∘ CQ.HandleEvalMessage) bus
         H.modify _
           { breaker = Just breaker
