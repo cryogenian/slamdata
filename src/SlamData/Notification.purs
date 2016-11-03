@@ -17,11 +17,12 @@ limitations under the License.
 module SlamData.Notification
   ( Notification(..)
   , NotificationOptions
-  , NotificationAction(..)
-  , Detail(..)
+  , ActionOptions(..)
+  , Action(..)
+  , Details(..)
   , class NotifyDSL
   , notify
-  , optionsWithSimpleDetailsEq
+  , optionsWithoutActionEq
   , info
   , warn
   , error
@@ -49,68 +50,66 @@ derive instance genericNotification :: Generic Notification
 instance eqNotification ∷ Eq Notification where
   eq = gEq
 
-data NotificationAction
+data Action
   = ExpandGlobalMenu
   | Fulfill (AVar Unit)
 
 type NotificationOptions =
   { notification ∷ Notification
-  , detail ∷ Maybe Detail
+  , detail ∷ Maybe Details
+  , actionOptions ∷ Maybe ActionOptions
   , timeout ∷ Maybe Milliseconds
   }
 
-optionsWithSimpleDetailsEq
+optionsWithoutActionEq
   ∷ NotificationOptions
   → NotificationOptions
   → Boolean
-optionsWithSimpleDetailsEq x y =
-  x.notification == y.notification && x.timeout == y.timeout && detailsAreEq
-  where
-  detailsAreEq =
-    case x.detail, y.detail of
-      Nothing, Nothing → true
-      Just xDetail, Just yDetail → xDetail `simpleDetailEq` yDetail
-      _, _ → false
+optionsWithoutActionEq x y =
+  isNothing x.actionOptions
+    && isNothing y.actionOptions
+    && x.notification == y.notification
+    && x.timeout == y.timeout
+    && y.detail == y.detail
 
-data Detail
-  = SimpleDetail String
-  | ActionDetail
-      { messagePrefix ∷ String
-      , actionMessage ∷ String
-      , messageSuffix ∷ String
-      , action ∷ NotificationAction
-      }
+newtype Details = Details String
 
-simpleDetailEq ∷ Detail → Detail → Boolean
-simpleDetailEq =
-  case _, _ of
-    SimpleDetail x, SimpleDetail y → x == y
-    _, _ → false
+instance eqDetails ∷ Eq Details where
+  eq (Details x) (Details y) = eq x y
+
+newtype ActionOptions =
+  ActionOptions
+    { messagePrefix ∷ String
+    , actionMessage ∷ String
+    , messageSuffix ∷ String
+    , action ∷ Action
+    }
 
 class NotifyDSL m where
-  notify ∷ Notification → Maybe Detail → Maybe Milliseconds → m Unit
+  notify ∷ Notification → Maybe Details → Maybe Milliseconds → Maybe ActionOptions → m Unit
 
 instance notifyDSLFree ∷ NotifyDSL m ⇒ NotifyDSL (Free m) where
-  notify n d m = liftF $ notify n d m
+  notify n d m a = liftF $ notify n d m a
 
 instance notifyDSLMaybeT ∷ (Monad m, NotifyDSL m) ⇒ NotifyDSL (MaybeT m) where
-  notify n d m = lift $ notify n d m
+  notify n d m a = lift $ notify n d m a
 
 instance notifyDSLExceptT ∷ (Monad m, NotifyDSL m) ⇒ NotifyDSL (ExceptT e m) where
-  notify n d m = lift $ notify n d m
+  notify n d m a = lift $ notify n d m a
 
 instance notifyDSLHFC ∷ NotifyDSL g ⇒ NotifyDSL (HF.HalogenFP ES.EventSource s f g) where
-  notify n d m = HF.QueryHF $ notify n d m
+  notify n d m a = HF.QueryHF $ notify n d m a
 
 instance notifyDSLHFP ∷ NotifyDSL g ⇒ NotifyDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
-  notify n d m = HF.QueryHF $ notify n d m
+  notify n d m a = HF.QueryHF $ notify n d m a
 
 info
   ∷ ∀ m
   . NotifyDSL m
   ⇒ String
-  → Maybe Detail
+  → Maybe Details
   → Maybe Milliseconds
+  → Maybe ActionOptions
   → m Unit
 info = notify <<< Info
 
@@ -118,8 +117,9 @@ warn
   ∷ ∀ m
   . NotifyDSL m
   ⇒ String
-  → Maybe Detail
+  → Maybe Details
   → Maybe Milliseconds
+  → Maybe ActionOptions
   → m Unit
 warn = notify <<< Warning
 
@@ -127,7 +127,8 @@ error
   ∷ ∀ m
   . NotifyDSL m
   ⇒ String
-  → Maybe Detail
+  → Maybe Details
   → Maybe Milliseconds
+  → Maybe ActionOptions
   → m Unit
 error = notify <<< Error

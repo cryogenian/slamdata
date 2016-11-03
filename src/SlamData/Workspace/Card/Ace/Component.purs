@@ -115,13 +115,14 @@ cardEval cfg = case _ of
     for_ st.trigger \trigger →
       when st.dirty do
         N.info "Don't forget to run your query to see the latest result."
-          (Just $ N.ActionDetail
+          Nothing
+          Nothing
+          (Just $ N.ActionOptions
             { messagePrefix: ""
             , actionMessage: "Run query now"
             , messageSuffix: ""
             , action: N.Fulfill trigger
             })
-          Nothing
     pure next
   CC.Save k → do
     status ← H.gets _.status

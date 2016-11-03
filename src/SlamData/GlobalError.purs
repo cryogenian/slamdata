@@ -81,11 +81,13 @@ toNotificationOptions =
       { notification: N.Error (print PaymentRequired)
       , detail: Nothing
       , timeout: Nothing
+      , actionOptions: Nothing
       }
     Unauthorized unauthDetails →
       { notification: N.Error "No resources available"
-      , detail:
-          Just $ N.ActionDetail
+      , detail: (\(QE.UnauthorizedDetails s) → N.Details s) <$> unauthDetails
+      , actionOptions:
+          Just $ N.ActionOptions
             { messagePrefix: "Please "
             , actionMessage: "sign in"
             , messageSuffix: " to continue."
@@ -97,4 +99,5 @@ toNotificationOptions =
       { notification: N.Error (print Forbidden)
       , detail: Nothing
       , timeout: Nothing
+      , actionOptions: Nothing
       }

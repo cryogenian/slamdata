@@ -402,26 +402,30 @@ toNotificationOptions =
     IdTokenInvalid error →
       Just
         { notification: Notification.Error $ "Sign in failed: Authentication provider provided invalid id token."
-        , detail: Notification.SimpleDetail ∘ Exception.message <$> error
+        , detail: Notification.Details ∘ Exception.message <$> error
         , timeout
+        , actionOptions: Nothing
         }
     IdTokenUnavailable detail →
       Just
         { notification: Notification.Error $ "Sign in failed: Authentication provider didn't provide a token."
-        , detail: Just $ Notification.SimpleDetail detail
+        , detail: Just $ Notification.Details detail
         , timeout
+        , actionOptions: Nothing
         }
     PromptDismissed →
       Just
         { notification: Notification.Warning $ "Sign in prompt closed."
         , detail: Nothing
         , timeout
+        , actionOptions: Nothing
         }
     ProviderError detail →
       Just
         { notification: Notification.Error $ "Sign in failed: There was a problem with your provider configuration, please update your SlamData configuration and try again."
-        , detail: Just $ Notification.SimpleDetail detail
+        , detail: Just $ Notification.Details detail
         , timeout
+        , actionOptions: Nothing
         }
     DOMError _ → Nothing
   where
