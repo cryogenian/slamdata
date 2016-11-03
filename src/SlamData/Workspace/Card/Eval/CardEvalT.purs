@@ -51,9 +51,10 @@ import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
 
 import Utils.Path (DirPath, FilePath)
 
+-- FIXME: Most of this is unnecessary now
 type CardEvalInput =
   { path ∷ DirPath
-  , input ∷ Maybe Port.Port
+  , input ∷ Port.Port
   , cardCoord ∷ DID.DeckId × CID.CardId
   , urlVarMaps ∷ Map.Map DID.DeckId Port.URLVarMap
   }

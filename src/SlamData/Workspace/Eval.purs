@@ -72,7 +72,7 @@ evalGraph source coord = do
   for_ graph \graph' → do
     notifyDecks Deck.Pending graph'
     let
-      input = (Cofree.head graph').card.value.input
+      input = fromMaybe Card.Initial (Cofree.head graph').card.value.input
     runEvalLoop source tick input graph'
 
 runEvalLoop
@@ -84,7 +84,7 @@ runEvalLoop
     )
   ⇒ Card.DisplayCoord
   → Tick
-  → Maybe Card.Port
+  → Card.Port
   → EvalGraph
   → m Unit
 runEvalLoop source tick input graph = do
@@ -100,9 +100,7 @@ runEvalLoop source tick input graph = do
       , input
       , urlVarMaps: varMaps
       }
-  -- FIXME
-  for_ input \port →
-    fromAff $ Bus.write (Card.Pending source port) node.card.bus
+  fromAff $ Bus.write (Card.Pending source input) node.card.bus
   result ← Card.runEvalCard' cei trans
   tick' ← currentTick
   when (tick ≡ tick') case result.output of
@@ -121,7 +119,7 @@ runEvalLoop source tick input graph = do
     Right output → do
       let
         value' = node.card.value
-          { input = input
+          { input = Just input
           , output = Just output
           , state = result.state
           }
@@ -131,7 +129,7 @@ runEvalLoop source tick input graph = do
         Bus.write (Card.Complete source output) node.card.bus
       when (deckCompleted (fst node.coord) next) $ fromAff do
         Bus.write (Deck.Complete node.coord output) node.deck.bus
-      parTraverse_ (runEvalLoop source tick (Just output)) next
+      parTraverse_ (runEvalLoop source tick output) next
 
   where
     updateCardValue

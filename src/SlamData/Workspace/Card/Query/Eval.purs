@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Query.Eval
 import SlamData.Prelude
 
 import Data.StrMap as SM
-import Data.Lens (_Just, _Nothing, (^?), (.~))
+import Data.Lens ((^?), (.~))
 import Data.Path.Pathy as Pt
 import Data.String as Str
 
@@ -47,11 +47,11 @@ queryEval info = do
     mbEditor ←
       map join $ query unit $ request Ace.GetEditor
 
-    for_ (info.input ^? _Just ∘ Port._VarMap) \vm → do
+    for_ (info.input ^? Port._VarMap) \vm → do
       addCompletions vm
       for_ mbEditor setSelectEmpty
 
-    for_ (info.input ^? _Just ∘ Port._Resource) \r → do
+    for_ (info.input ^? Port._Resource) \r → do
       let resParent = Pt.parentDir r
           strPath =
             if pure info.path ≡ resParent
@@ -75,7 +75,7 @@ queryEval info = do
           }
         Editor.navigateFileEnd editor
 
-    for_ (info.input ^? _Nothing) \_ →
+    for_ (info.input ^? Port._Initial) \_ →
       for_ mbEditor setSelectEmpty
 
     modify $ _status .~ Ready

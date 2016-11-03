@@ -25,7 +25,7 @@ import Data.Identity (Identity)
 import Data.Int as Int
 import Data.JSDate as JSD
 import Data.Json.Extended as EJSON
-import Data.Lens ((^?), _Just)
+import Data.Lens ((^?))
 import Data.List as L
 import Data.String as S
 import Data.StrMap as SM
@@ -59,7 +59,7 @@ markdownEval { input, path } str =
     Left e → QE.throw e
     Right sd → do
       let
-        vm = fromMaybe Port.emptyVarMap $ input ^? _Just ∘ Port._VarMap
+        vm = fromMaybe Port.emptyVarMap $ input ^? Port._VarMap
         sm = map Port.renderVarMapValue vm
       doc ← evalEmbeddedQueries sm path sd
       pure $ Port.SlamDown (vm × doc)

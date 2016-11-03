@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.Cache.Eval where
 import SlamData.Prelude
 
 import Data.Lens ((^?))
-import Data.Lens as Lens
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 
@@ -45,7 +44,7 @@ eval
   → CET.CardEvalT m Port.TaggedResourcePort
 eval info mfp resource varMap =
   let
-    axes = fromMaybe initialAxes $ info.input ^? Lens._Just ∘ Port._ResourceAxes
+    axes = fromMaybe initialAxes $ info.input ^? Port._ResourceAxes
   in map _{axes = axes} case mfp of
     Nothing → eval' (CET.temporaryOutputResource info) resource varMap
     Just pt →

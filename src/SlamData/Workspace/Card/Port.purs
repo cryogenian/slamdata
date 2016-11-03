@@ -21,6 +21,8 @@ module SlamData.Workspace.Card.Port
   , MetricPort
   , PivotTablePort
   , tagPort
+  , _Initial
+  , _Terminal
   , _SlamDown
   , _VarMap
   , _Resource
@@ -29,7 +31,6 @@ module SlamData.Workspace.Card.Port
   , _DownloadOptions
   , _Draftboard
   , _CardError
-  , _Blocked
   , _Metric
   , _ChartInstructions
   , _PivotTable
@@ -77,31 +78,41 @@ type PivotTablePort =
   }
 
 data Port
-  = SlamDown (VarMap × (SD.SlamDownP VarMapValue))
-  | VarMap VarMap
+  = Initial
+  | Terminal
   | CardError String
-  | ChartInstructions (DSL OptionI) ChartType
+  | VarMap VarMap
   | TaggedResource TaggedResourcePort
+  | SlamDown (VarMap × (SD.SlamDownP VarMapValue))
+  | ChartInstructions (DSL OptionI) ChartType
   | DownloadOptions DownloadPort
   | Metric MetricPort
   | PivotTable PivotTablePort
   | Draftboard
-  | Blocked
 
-
-tagPort ∷ Maybe Port → String
-tagPort Nothing = "Nothing"
-tagPort (Just p) = case p of
+tagPort ∷ Port → String
+tagPort  = case _ of
+  Initial → "Initial"
+  Terminal → "Terminal"
   SlamDown sd → "SlamDown: " ⊕ show sd
   VarMap vm → "VarMap: " ⊕ show vm
   CardError str → "CardError: " ⊕ show str
   TaggedResource p → "TaggedResource: " ⊕ show p.resource ⊕ " " ⊕ show p.tag
   DownloadOptions p → "DownloadOptions"
   Draftboard → "Draftboard"
-  Blocked → "Blocked"
   ChartInstructions _ _ → "ChartInstructions"
   Metric _ → "Metric"
   PivotTable _ → "PivotTable"
+
+_Initial ∷ PrismP Port Unit
+_Initial = prism' (const Initial) case _ of
+  Initial → Just unit
+  _ → Nothing
+
+_Terminal ∷ PrismP Port Unit
+_Terminal = prism' (const Terminal) case _ of
+  Terminal → Just unit
+  _ → Nothing
 
 _SlamDown ∷ TraversalP Port (SD.SlamDownP VarMapValue)
 _SlamDown = wander \f s → case s of
@@ -134,12 +145,6 @@ _ResourceAxes ∷ TraversalP Port Axes
 _ResourceAxes = wander \f s → case s of
   TaggedResource o → TaggedResource ∘ o{axes = _} <$> f o.axes
   _ → pure s
-
-
-_Blocked ∷ PrismP Port Unit
-_Blocked = prism' (const Blocked) \p → case p of
-  Blocked → Just unit
-  _ → Nothing
 
 _DownloadOptions ∷ PrismP Port DownloadPort
 _DownloadOptions = prism' DownloadOptions \p → case p of

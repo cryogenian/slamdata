@@ -137,15 +137,15 @@ evalCard input =
   case _, input.input of
     Error msg, _ →
       pure $ Port.CardError msg
-    _, Just Port.Blocked →
-      pure Port.Blocked
-    Pass, Nothing →
-      QE.throw "Card expected an input value"
-    Pass, Just port →
+    Pass, Port.Initial →
+      QE.throw "Cannot pass initial port"
+    Pass, Port.Terminal →
+      QE.throw "Cannot pass terminal port"
+    Pass, port →
       pure port
     Draftboard, _ →
       pure Port.Draftboard
-    Query sql, Just (Port.VarMap varMap) →
+    Query sql, Port.VarMap varMap →
       map Port.TaggedResource
         $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) varMap
     Query sql, _ →
@@ -153,49 +153,49 @@ evalCard input =
         $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) Port.emptyVarMap
     Markdown txt, _ →
       MDE.markdownEval input txt
-    MarkdownForm model, (Just (Port.SlamDown doc)) →
+    MarkdownForm model, Port.SlamDown doc →
       lift $ Port.VarMap <$> evalMarkdownForm doc model
-    Search query, Just (Port.TaggedResource { resource }) →
+    Search query, Port.TaggedResource { resource } →
       Port.TaggedResource <$> evalSearch input query resource
-    Cache pathString, Just (Port.TaggedResource { resource, varMap }) →
+    Cache pathString, Port.TaggedResource { resource, varMap } →
       Port.TaggedResource <$> Cache.eval input pathString resource varMap
     Open res, _ →
       Port.TaggedResource <$> evalOpen input res
     Variables model, _ →
       pure $ Port.VarMap $ VariablesE.eval (fst input.cardCoord) input.urlVarMaps model
-    DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →
+    DownloadOptions { compress, options }, Port.TaggedResource { resource } →
       pure $ Port.DownloadOptions { resource, compress, options }
-    BuildMetric model, Just (Port.TaggedResource { resource }) →
+    BuildMetric model, Port.TaggedResource { resource } →
       BuildMetric.eval model resource
-    BuildSankey model, Just (Port.TaggedResource {resource}) →
+    BuildSankey model, Port.TaggedResource {resource} →
       BuildSankey.eval model resource
-    BuildGauge model, Just (Port.TaggedResource {resource}) →
+    BuildGauge model, Port.TaggedResource {resource} →
       BuildGauge.eval model resource
-    BuildGraph model, Just (Port.TaggedResource {resource}) →
+    BuildGraph model, Port.TaggedResource {resource} →
       BuildGraph.eval model resource
-    BuildPie model, Just (Port.TaggedResource {resource}) →
+    BuildPie model, Port.TaggedResource {resource} →
       BuildPie.eval model resource
-    BuildRadar model, Just (Port.TaggedResource {resource}) →
+    BuildRadar model, Port.TaggedResource {resource} →
       BuildRadar.eval model resource
-    BuildArea model, Just (Port.TaggedResource {resource, axes}) →
+    BuildArea model, Port.TaggedResource {resource, axes} →
       BuildArea.eval model resource axes
-    BuildLine model, Just (Port.TaggedResource {resource, axes}) →
+    BuildLine model, Port.TaggedResource {resource, axes} →
       BuildLine.eval model resource axes
-    BuildBar model, Just (Port.TaggedResource {resource, axes}) →
+    BuildBar model, Port.TaggedResource {resource, axes} →
       BuildBar.eval model resource axes
-    BuildScatter model, Just (Port.TaggedResource {resource}) →
+    BuildScatter model, Port.TaggedResource {resource} →
       BuildScatter.eval model resource
-    BuildFunnel model, Just (Port.TaggedResource {resource}) →
+    BuildFunnel model, Port.TaggedResource {resource} →
       BuildFunnel.eval model resource
-    BuildHeatmap model, Just (Port.TaggedResource {resource, axes}) →
+    BuildHeatmap model, Port.TaggedResource {resource, axes} →
       BuildHeatmap.eval model resource axes
-    BuildBoxplot model, Just (Port.TaggedResource {resource}) →
+    BuildBoxplot model, Port.TaggedResource {resource} →
       BuildBoxplot.eval model resource
-    BuildPivotTable model, Just (Port.TaggedResource tr) →
+    BuildPivotTable model, Port.TaggedResource tr →
       BuildPivotTable.eval model tr
-    BuildPunchCard model, Just (Port.TaggedResource {resource, axes}) →
+    BuildPunchCard model, Port.TaggedResource {resource, axes} →
       BuildPunchCard.eval model resource axes
-    BuildCandlestick model, Just (Port.TaggedResource {resource, axes}) →
+    BuildCandlestick model, Port.TaggedResource {resource, axes} →
       BuildCandlestick.eval model resource axes
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
