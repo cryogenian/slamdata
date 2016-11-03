@@ -88,12 +88,12 @@ fromEitherEither ∷ ∀ a b c. E.Either a (E.Either b c) → M.Maybe c
 fromEitherEither = E.either (\_ → M.Nothing) fromEither
 
 getIdTokenFromBusSilently ∷ ∀ eff. RequestIdTokenBus → Aff (AuthEffects eff) (Either String EIdToken)
-getIdTokenFromBusSilently requestNewIdTokenBus =
+getIdTokenFromBusSilently requestIdTokenBus =
   liftEff getProviderRUsingLocalStorage
     >>= case _ of
       Right providerR → do
         idTokenVar ← AVar.makeVar
-        Bus.write { idToken: idTokenVar, providerR, prompt: false } requestNewIdTokenBus
+        Bus.write { idToken: idTokenVar, providerR, prompt: false } requestIdTokenBus
         idToken ← Right <$> AVar.takeVar idTokenVar
         pure idToken
       Left error → pure $ Left error

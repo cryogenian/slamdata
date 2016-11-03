@@ -100,7 +100,7 @@ newtype Wiring = Wiring
   , messaging ∷ Bus.BusRW DeckMessage
   , notify ∷ Bus.BusRW N.NotificationOptions
   , globalError ∷ Bus.BusRW GE.GlobalError
-  , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
+  , requestIdTokenBus ∷ Auth.RequestIdTokenBus
   , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
   , signInBus ∷ SignInBus
   , hasIdentified ∷ Ref Boolean
@@ -121,7 +121,7 @@ makeWiring path varMaps = fromAff do
   messaging ← Bus.make
   notify ← Bus.make
   globalError ← Bus.make
-  requestNewIdTokenBus ← Auth.authentication
+  requestIdTokenBus ← Auth.authentication
   urlVarMaps ← fromEff (newRef varMaps)
   signInBus ← Bus.make
   hasIdentified ← fromEff (newRef false)
@@ -135,7 +135,7 @@ makeWiring path varMaps = fromAff do
     , messaging
     , notify
     , globalError
-    , requestNewIdTokenBus
+    , requestIdTokenBus
     , urlVarMaps
     , signInBus
     , hasIdentified
