@@ -50,6 +50,8 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 
 import Unsafe.Coerce (unsafeCoerce)
 
+import Utils (censor)
+
 type Slam = SlamM SlamDataEffects
 
 --------------------------------------------------------------------------------
@@ -164,12 +166,23 @@ unSlam = foldFree go ∘ unSlamM
     Aff aff →
       lift aff
     GetAuthIdToken k → do
-      Wiring { requestIdTokenBus } ← ask
-      lift $ k ∘ Auth.fromEitherEither <$> Auth.getIdTokenFromBusSilently requestIdTokenBus
+      Wiring { requestIdTokenBus, notify } ← ask
+      idToken ← liftAff $ censor <$> Auth.getIdTokenFromBusSilently requestIdTokenBus
+      case idToken of
+        Just (Left error) →
+          maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error
+        _ →
+          pure unit
+      pure $ k $ maybe Nothing censor idToken
     Quasar qf → do
-      Wiring { requestIdTokenBus, signInBus } ← ask
-      idToken ← lift $ Auth.fromEitherEither <$> Auth.getIdTokenFromBusSilently requestIdTokenBus
-      lift $ runQuasarF idToken qf
+      Wiring { requestIdTokenBus, signInBus, notify } ← ask
+      idToken ← lift $ censor <$> Auth.getIdTokenFromBusSilently requestIdTokenBus
+      case idToken of
+        Just (Left error) →
+          maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error
+        _ →
+          pure unit
+      lift $ runQuasarF (maybe Nothing censor idToken) qf
     GetURLVarMaps k → do
       Wiring { urlVarMaps } ← ask
       lift $ liftEff $ k <$> readRef urlVarMaps

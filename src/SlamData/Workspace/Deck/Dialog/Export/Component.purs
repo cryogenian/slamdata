@@ -18,6 +18,8 @@ module SlamData.Workspace.Deck.Dialog.Export.Component where
 
 import SlamData.Prelude
 
+import Control.Monad.Eff as Eff
+import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Eff.Ref (Ref, newRef, readRef, writeRef)
 import Control.UI.Browser (select, locationString)
 
@@ -58,7 +60,7 @@ import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL, encodeVarMaps
 
 import Quasar.Advanced.Types as QTA
 
-import Utils (prettyJson)
+import Utils (censor, prettyJson)
 import Utils.Path as UP
 
 import ZClipboard as Z
@@ -451,20 +453,20 @@ eval (TextAreaLeft next) =
   next <$ H.modify _{hovered = false}
 
 workspaceTokenName ∷ UP.DirPath → OIDC.IdToken → QTA.TokenName
-workspaceTokenName workspacePath token =
+workspaceTokenName workspacePath idToken =
   let
+    payload =
+      censor $ Eff.runPure $ Exception.try $ OIDC.readPayload idToken
     email =
-      fromMaybe "unknown user"
-        $ map OIDC.runEmail
-        $ OIDC.pluckEmail token
-    workspace = Pathy.printPath workspacePath
+      fromMaybe "unknown user" $ OIDC.runEmail <$> (OIDC.pluckEmail =<< payload)
+    workspace =
+      Pathy.printPath workspacePath
   in
     QTA.TokenName
       $ "publish permission granted by "
       ⊕ email
       ⊕ " for "
       ⊕ workspace
-
 
 updateCopyVal ∷ DSL Unit
 updateCopyVal = do

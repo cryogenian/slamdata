@@ -24,6 +24,7 @@ import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Console (CONSOLE)
+import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Eff.Ref as Ref
 
 import Control.Monad.Reader.Trans (runReaderT)
@@ -42,7 +43,7 @@ import SlamData.GlobalMenu.Bus (SignInBus)
 
 import OIDC.Crypt as OIDC
 
-type QEff eff = (console ∷ CONSOLE, rsaSignTime ∷ OIDC.RSASIGNTIME, random ∷ RANDOM, ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
+type QEff eff = (console ∷ CONSOLE, now ∷ NOW, random ∷ RANDOM, ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
 
 type Wiring r =
   { requestIdTokenBus ∷ RequestIdTokenBus

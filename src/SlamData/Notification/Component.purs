@@ -176,17 +176,20 @@ eval = case _ of
   Push options next → do
     st ← H.get
     dismiss ← H.fromAff makeVar
-    let item =
-          { id: st.tick
-          , dismiss
-          , options
-          , expanded: false
+    when
+      (not (options `optionsEqItem` st.current ∨ options `optionsEqItem` Array.last st.queue))
+      do
+        let item =
+              { id: st.tick
+              , dismiss
+              , options
+              , expanded: false
+              }
+        H.modify _
+          { tick = st.tick + 1
+          , queue = Array.snoc st.queue item
           }
-    H.modify _
-      { tick = st.tick + 1
-      , queue = Array.snoc st.queue item
-      }
-    when (isNothing st.current) drainQueue
+        when (isNothing st.current) drainQueue
     pure next
   Dismiss next → dismissNotification $> next
   Action _ next → dismissNotification $> next
@@ -195,6 +198,11 @@ eval = case _ of
     for_ current \curr →
       H.modify _ { current = Just curr { expanded = not curr.expanded } }
     pure next
+  where
+  optionsEqItem ∷ N.NotificationOptions → Maybe NotificationItem → Boolean
+  optionsEqItem options =
+    maybe false (N.optionsWithSimpleDetailsEq options) ∘ map _.options
+
 
 dismissNotification ∷ NotifyDSL Unit
 dismissNotification = do

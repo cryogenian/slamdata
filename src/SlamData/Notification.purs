@@ -21,12 +21,15 @@ module SlamData.Notification
   , Detail(..)
   , class NotifyDSL
   , notify
+  , optionsWithSimpleDetailsEq
   , info
   , warn
   , error
   ) where
 
 import SlamData.Prelude
+
+import Data.Generic (gEq)
 
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Free (Free, liftF)
@@ -41,6 +44,11 @@ data Notification
   | Warning String
   | Error String
 
+derive instance genericNotification :: Generic Notification
+
+instance eqNotification ∷ Eq Notification where
+  eq = gEq
+
 data NotificationAction
   = ExpandGlobalMenu
   | Fulfill (AVar Unit)
@@ -51,6 +59,19 @@ type NotificationOptions =
   , timeout ∷ Maybe Milliseconds
   }
 
+optionsWithSimpleDetailsEq
+  ∷ NotificationOptions
+  → NotificationOptions
+  → Boolean
+optionsWithSimpleDetailsEq x y =
+  x.notification == y.notification && x.timeout == y.timeout && detailsAreEq
+  where
+  detailsAreEq =
+    case x.detail, y.detail of
+      Nothing, Nothing → true
+      Just xDetail, Just yDetail → xDetail `simpleDetailEq` yDetail
+      _, _ → false
+
 data Detail
   = SimpleDetail String
   | ActionDetail
@@ -59,6 +80,12 @@ data Detail
       , messageSuffix ∷ String
       , action ∷ NotificationAction
       }
+
+simpleDetailEq ∷ Detail → Detail → Boolean
+simpleDetailEq =
+  case _, _ of
+    SimpleDetail x, SimpleDetail y → x == y
+    _, _ → false
 
 class NotifyDSL m where
   notify ∷ Notification → Maybe Detail → Maybe Milliseconds → m Unit
