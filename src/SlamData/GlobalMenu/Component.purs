@@ -105,7 +105,7 @@ eval ∷ Query ~> GlobalMenuDSL
 eval (DismissSubmenu next) = dismissAll $> next
 eval (HandleGlobalError error next) =
   case error of
-    GlobalError.Unauthorized → update $> next
+    GlobalError.Unauthorized _ → update $> next
     _ -> pure next
 eval (Init next) = do
   Wiring { globalError } ← H.liftH $ H.liftH ask

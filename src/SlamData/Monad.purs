@@ -142,8 +142,8 @@ instance analyticsDSLSlamM ∷ A.AnalyticsDSL (SlamM eff) where
   track = SlamM ∘ liftF ∘ flip Track unit
 
 instance notifyDSLSlamM ∷ N.NotifyDSL (SlamM eff) where
-  notify notification detail timeout =
-    SlamM $ liftF $ Notify { notification, detail, timeout } unit
+  notify notification detail timeout actionOptions =
+    SlamM $ liftF $ Notify { notification, detail, timeout, actionOptions } unit
 
 instance globalErrorDSLSlamM ∷ GE.GlobalErrorDSL (SlamM eff) where
   raiseGlobalError = SlamM ∘ liftF ∘ flip Halt unit

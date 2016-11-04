@@ -291,7 +291,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
       Left err →
         case GE.fromQError err of
           Left msg →
-            Notify.error "Failed to collapse deck." (Just $ N.SimpleDetail msg) Nothing
+            Notify.error "Failed to collapse deck." (Just $ N.Details msg) Nothing Nothing
           Right ge →
             GE.raiseGlobalError ge
       Right _  → do
@@ -319,7 +319,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
       Left err →
         case GE.fromQError err of
           Left msg →
-            Notify.error "Failed to wrap deck." (Just $ N.SimpleDetail msg) Nothing
+            Notify.error "Failed to wrap deck." (Just $ N.Details msg) Nothing Nothing
           Right ge →
             GE.raiseGlobalError ge
       Right _  → do
@@ -398,7 +398,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
       Left err →
         case GE.fromQError err of
           Left msg →
-            Notify.error "Failed to mirror deck." (Just $ N.SimpleDetail msg) Nothing
+            Notify.error "Failed to mirror deck." (Just $ N.Details msg) Nothing Nothing
           Right ge →
             GE.raiseGlobalError ge
       Right _  → do

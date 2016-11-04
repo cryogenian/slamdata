@@ -71,7 +71,7 @@ test = do
     Expect.cardsInTableColumnInLastCardToContain 2 "state" "OR"
     successMsg "Successfully searched within results"
 
-  searchScenario "Search with field names" [] do
+  searchScenario "Search with field names" ["https://github.com/slamdata/slamdata/issues/1190"] do
     Interact.insertOpenCardInLastDeck
     Interact.selectFileForLastOpenCard "/test-mount/testDb/zips"
     Interact.accessNextCardInLastDeck
