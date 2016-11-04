@@ -201,7 +201,7 @@ test = do
     Expect.cardsInTableColumnInLastCardToNotEq 2 "type" "Silver"
     successMsg "Ok, Filtered query results with fields"
 
-  mdScenario "Filter query results by changing field values" [] do
+  mdScenario "Filter query results by changing field values" ["https://github.com/slamdata/slamdata/issues/1194"] do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard $ joinWith "\n\n"
       [ "discipline = __ (!``SELECT discipline FROM `/test-mount/testDb/olympics` LIMIT 1``)"
