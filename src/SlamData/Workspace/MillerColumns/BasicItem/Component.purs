@@ -74,15 +74,12 @@ component ispec path item itemState =
   render state =
     let
       label = ispec.label item
-      isTip = false -- TODO: tip styling isSelected && maybe false isRight selected -gb
     in
       HH.li
         [ HE.onClick $ HE.input_ $ left <<< MC.RaisePopulate path
         , HP.title label
         , ARIA.label ("Select " <> label)
-        , HP.classes
-            $ (guard state.selected $> HH.className "selected")
-            <> (guard isTip $> HH.className "tip")
+        , HP.classes $ (guard state.selected $> HH.className "selected")
         ]
         [ absurd ∘ getConst <$> ispec.render item ]
 
