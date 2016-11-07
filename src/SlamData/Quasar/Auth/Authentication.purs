@@ -410,7 +410,7 @@ toNotificationOptions =
       Just
       { notification:
           Notification.Error
-            $ "Sign in failed: Authentication provider didn't provide a token. This might happen if you are signed into multiple accounts with you authentication provider."
+            $ "Sign in failed: Authentication provider didn't provide a token. This might happen if you are signed into multiple accounts with your authentication provider."
         , detail: Just $ Notification.Details detail
         , timeout
         , actionOptions: Nothing
