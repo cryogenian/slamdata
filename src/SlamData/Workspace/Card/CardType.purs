@@ -43,6 +43,12 @@ import SlamData.Workspace.Card.CardType.ChartType
   , parseChartType
   , chartName
   )
+import SlamData.Workspace.Card.CardType.FormInputType
+  ( FormInputType(..)
+  , printFormInputType
+  , parseFormInputType
+  , formInputName
+  )
 
 import Test.StrongCheck.Arbitrary as SC
 
@@ -50,7 +56,9 @@ data CardType
   = Ace AceMode
   | Search
   | ChartOptions ChartType
+  | SetupFormInput FormInputType
   | Chart
+  | FormInput
   | Markdown
   | Table
   | Download
@@ -89,7 +97,9 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     Ace SQLMode → "ace-sql"
     Search → "search"
     ChartOptions chty → printChartType chty ⊕ "-options"
+    SetupFormInput fity → printFormInputType fity ⊕ "-setup"
     Chart → "chart"
+    FormInput → "form-input"
     Markdown → "markdown"
     Table → "table"
     Download → "download"
@@ -105,12 +115,26 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
-    str ← decodeJson json
-    case str of
+    (decodeJson json >>= parseBasic)
+    <|> (decodeJson json >>= parseChartOptions)
+    <|> (decodeJson json >>= parseFormInputSetup)
+    where
+    parseFormInputSetup name = do
+      let fiName = fromMaybe "" $ Str.stripSuffix "-setup" name
+      fity ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseFormInputType fiName
+      pure $ SetupFormInput fity
+
+    parseChartOptions name = do
+      let chartName = fromMaybe "" $ Str.stripSuffix "-options" name
+      chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseChartType chartName
+      pure $ ChartOptions chty
+
+    parseBasic = case _ of
       "ace-markdown" → pure $ Ace MarkdownMode
       "ace-sql" → pure $ Ace SQLMode
       "search" → pure Search
       "chart" → pure Chart
+      "form-input" → pure FormInput
       "markdown" → pure Markdown
       "table" → pure Table
       "download" → pure Download
@@ -123,18 +147,16 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "draftboard" → pure Draftboard
       "error" → pure ErrorCard
       "pending" → pure PendingCard
-      name → do
-        let
-          chartName = fromMaybe "" $ Str.stripSuffix "-options" name
-        chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseChartType chartName
-        pure $ ChartOptions chty
+      _ → Left "This is not basic card type"
 
 cardName ∷ CardType → String
 cardName = case _ of
   Ace at → aceCardName at
   Search → "Search"
   ChartOptions chty → chartName chty
+  SetupFormInput fity → formInputName fity
   Chart → "Show Chart"
+  FormInput → "Show Form"
   Markdown → "Show Markdown"
   Table → "Show Table"
   Download → "Show Download"
@@ -177,6 +199,19 @@ darkCardGlyph = case _ of
         Candlestick → "img/cardsDark/buildChart/candlestick.svg"
         Parallel → "img/cardsDark/buildChart/parallel.svg"
     in HH.img [ HP.src src ]
+  SetupFormInput fity →
+    let
+      src = case fity of
+        Dropdown → "img/cardsDark/setupFormInput/dropdown.svg"
+        StaticText → "img/cardsDark/setupFormInput/staticText.svg"
+        Text → "img/cardsDark/setupFormInput/text.svg"
+        Numeric → "img/cardsDark/setupFormInput/numeric.svg"
+        Checkbox → "img/cardsDark/setupFormInput/checkbox.svg"
+        Radio → "img/cardsDark/setupFormInput/radio.svg"
+        Date → "img/cardsDark/setupFormInput/date.svg"
+        Time → "img/cardsDark/setupFormInput/time.svg"
+        Datetime → "img/cardsDark/setupFormInput/datetime.svg"
+    in HH.img [ HP.src src ]
   Download →
     HH.img [ HP.src "img/cardsDark/showDownload.svg" ]
   Variables →
@@ -185,6 +220,8 @@ darkCardGlyph = case _ of
     HH.img [ HP.src "img/cardsDark/troubleshoot.svg" ]
   Chart →
     HH.img [ HP.src "img/cardsDark/showChart.svg" ]
+  FormInput →
+    HH.img [ HP.src "img/cardsDark/showFormInput.svg" ]
   Markdown →
     HH.img [ HP.src "img/cardsDark/showMarkdown.svg" ]
   Table →
@@ -233,6 +270,19 @@ lightCardGlyph = case _ of
         Candlestick → "img/cardsLight/buildChart/candlestick.svg"
         Parallel → "img/cardsLight/buildChart/parallel.svg"
     in HH.img [ HP.src src ]
+  SetupFormInput fity →
+    let
+      src = case fity of
+        Dropdown → "img/cardsLight/setupFormInput/dropdown.svg"
+        StaticText → "img/cardsLight/setupFormInput/staticText.svg"
+        Text → "img/cardsLight/setupFormInput/text.svg"
+        Numeric → "img/cardsLight/setupFormInput/numeric.svg"
+        Checkbox → "img/cardsLight/setupFormInput/checkbox.svg"
+        Radio → "img/cardsLight/setupFormInput/radio.svg"
+        Date → "img/cardsLight/setupFormInput/date.svg"
+        Time → "img/cardsLight/setupFormInput/time.svg"
+        Datetime → "img/cardsLight/setupFormInput/datetime.svg"
+    in HH.img [ HP.src src ]
   Download →
     HH.img [ HP.src "img/cardsLight/showDownload.svg" ]
   Variables →
@@ -241,6 +291,8 @@ lightCardGlyph = case _ of
     HH.img [ HP.src "img/cardsLight/troubleshoot.svg" ]
   Chart →
     HH.img [ HP.src "img/cardsLight/showChart.svg" ]
+  FormInput →
+    HH.img [ HP.src "img/cardsLight/showFormInput.svg" ]
   Markdown →
     HH.img [ HP.src "img/cardsLight/showMarkdown.svg" ]
   Table →
@@ -265,7 +317,9 @@ cardClasses = case _ of
   Ace at → [ H.className "sd-card-ace" ] <> aceCardClasses at
   Search → [ H.className "sd-card-search" ]
   ChartOptions _ → [ H.className "sd-card-chart-options" ]
+  SetupFormInput _ → [ H.className "sd-form-input-setup" ]
   Chart → [ H.className "sd-card-chart" ]
+  FormInput → [ H.className "sd-card-form-input" ]
   Markdown → [ H.className "sd-card-markdown" ]
   Table → [ H.className "sd-card-table" ]
   Download → [ H.className "sd-card-download" ]

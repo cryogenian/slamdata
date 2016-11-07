@@ -23,6 +23,7 @@ import Data.Lens (LensP, lens)
 import SlamData.Workspace.Card.Port (Port)
 
 import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
+import SlamData.Workspace.Card.CardType.FormInputType (allFormInputTypes)
 import SlamData.Workspace.Card.Next.NextAction (NextAction(..))
 import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..))
 
@@ -41,6 +42,13 @@ chartSubmenu =
     "img/cardsLight/setupChart.svg"
     ([ GoBack ] ⊕ map (Insert ∘ ChartOptions) allChartTypes)
 
+formInputSubmenu ∷ NextAction
+formInputSubmenu =
+  Drill
+    "Setup Form"
+    "img/cardsLight/setupFormInput.svg"
+    ([ GoBack ] ⊕ map (Insert ∘ SetupFormInput) allFormInputTypes)
+
 defaultActions ∷ Array NextAction
 defaultActions =
   [ Insert Open
@@ -48,6 +56,8 @@ defaultActions =
   , Insert Search
   , chartSubmenu
   , Insert Chart
+  , formInputSubmenu
+  , Insert FormInput
   , Insert (Ace MarkdownMode)
   , Insert Markdown
   , Insert Draftboard

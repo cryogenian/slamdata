@@ -318,7 +318,9 @@ decodeCardModel = case _ of
   CT.ChartOptions PunchCard → map BuildPunchCard ∘ BuildPunchCard.decode
   CT.ChartOptions Candlestick → map BuildCandlestick ∘ BuildCandlestick.decode
   CT.ChartOptions Parallel → map BuildParallel ∘ BuildParallel.decode
+  CT.SetupFormInput _ → const $ pure ErrorCard
   CT.Chart → map Chart ∘ Chart.decode
+  CT.FormInput → const $ pure ErrorCard
   CT.Markdown → map Markdown ∘ MD.decode
   CT.Table → map Table ∘ JT.decode
   CT.Download → const $ pure Download
@@ -357,7 +359,9 @@ cardModelOfType = case _ of
   CT.ChartOptions PunchCard → BuildPunchCard BuildPunchCard.initialModel
   CT.ChartOptions Candlestick → BuildCandlestick BuildCandlestick.initialModel
   CT.ChartOptions Parallel → BuildParallel BuildParallel.initialModel
+  CT.SetupFormInput _ → ErrorCard
   CT.Chart → Chart Chart.emptyModel
+  CT.FormInput → ErrorCard
   CT.Markdown → Markdown MD.emptyModel
   CT.Table → Table JT.emptyModel
   CT.Download → Download

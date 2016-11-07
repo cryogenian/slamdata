@@ -81,6 +81,7 @@ data Port
   | VarMap VarMap
   | CardError String
   | ChartInstructions (DSL OptionI) ChartType
+  | FormInputParams Unit
   | TaggedResource TaggedResourcePort
   | DownloadOptions DownloadPort
   | Metric MetricPort
@@ -100,6 +101,7 @@ tagPort (Just p) = case p of
   Draftboard → "Draftboard"
   Blocked → "Blocked"
   ChartInstructions _ _ → "ChartInstructions"
+  FormInputParams _ → "FormInputParams"
   Metric _ → "Metric"
   PivotTable _ → "PivotTable"
 
