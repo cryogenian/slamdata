@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.MillerColumns.Component
   ( ColumnOptions
+  , InitialItemState(..)
   , ItemHTML
   , component
   , module SlamData.Workspace.MillerColumns.Component.Query
@@ -51,6 +52,7 @@ type ColumnOptions a i s f =
   { render
       ∷ L.List i
       → a
+      → InitialItemState
       → { component :: H.Component s (ChildQuery i f) Slam
          , initialState :: s
          }
@@ -58,8 +60,13 @@ type ColumnOptions a i s f =
   , id ∷ a → i
   }
 
-type HTML i s f = H.ParentHTML s (Query i) (ChildQuery i f) Slam i
-type DSL a i s f = H.ParentDSL (State a i) s (Query i) (ChildQuery i f) Slam i
+data InitialItemState = Selected | Deselected
+
+derive instance eqInitialItemState :: Eq InitialItemState
+derive instance ordInitialItemState :: Ord InitialItemState
+
+type HTML i s f = H.ParentHTML s (Query i) (ChildQuery i f) Slam (L.List i)
+type DSL a i s f = H.ParentDSL (State a i) s (Query i) (ChildQuery i f) Slam (L.List i)
 
 type ItemHTML = H.ComponentHTML (Const Void)
 
@@ -122,8 +129,11 @@ component ispec initial =
 
   renderItem ∷ L.List i → Maybe (Either i i) → a → HTML i s f
   renderItem colPath selected item =
-    HH.slot (ispec.id item) \_ ->
-      ispec.render (ispec.id item : colPath) item
+    let
+      itemId = ispec.id item : colPath
+      isSelected = Just (ispec.id item) == (either id id <$> selected)
+    in
+      HH.slot itemId \_ -> ispec.render itemId item (if isSelected then Selected else Deselected)
 
   eval ∷ Query i ~> DSL a i s f
   eval (Ref mel next) = do
@@ -145,11 +155,21 @@ component ispec initial =
     -- break things if we're awaiting a previous load of the same path.
     when (not L.null remPaths) do
 
+      let
+        deselected = L.take (L.length currentPath - L.length prefix) currentPath
+        deselPaths = scanr (:) prefix deselected
+        selected = L.take (L.length prefix + 1) path
+
+      for_ deselPaths \i ->
+        H.query i $ left $ H.action $ ToggleSelected false
+
       H.modify \st → st
         { cycle = st.cycle + 1
         , columns = A.take (L.length prefix) st.columns
-        , selected = L.take (L.length prefix + 1) path
+        , selected = selected
         }
+
+      H.query selected $ left $ H.action $ ToggleSelected true
 
       currentCycle ← H.gets _.cycle
 
@@ -174,10 +194,13 @@ component ispec initial =
           newColumns = foldr go [] (L.zip remainder more)
           go (Tuple item colItems) cols =
             maybe cols (\items -> cols <> [Tuple item items]) colItems
+          selPaths = scanr (:) prefix path
         H.modify \st → st
           { columns = st.columns <> newColumns
           , selected = path
           }
+        for_ (L.take (L.length remainder) selPaths) \i ->
+          H.query i $ left $ H.action $ ToggleSelected true
         raise' $ H.action $ Loading false
 
     pure next

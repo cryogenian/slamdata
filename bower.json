@@ -40,7 +40,7 @@
     "purescript-minimatch": "^0.2.0",
     "purescript-oidc-crypt-utils": "^3.0.0",
     "purescript-parallel": "^1.1.0",
-    "purescript-pathy": "^2.0.0",
+    "purescript-pathy": "garyb/purescript-pathy#backport-ord-fix",
     "purescript-profunctor-lenses": "^1.0.0",
     "purescript-quasar": "^8.0.0",
     "purescript-routing": "^2.0.0",
@@ -63,5 +63,8 @@
     "purescript-quasar-test-starter": "quasar-test-starter#^0.1.1",
     "purescript-strongcheck": "^1.1.1",
     "purescript-webdriver": "^2.0.0"
+  },
+  "resolutions": {
+    "purescript-pathy": "backport-ord-fix"
   }
 }

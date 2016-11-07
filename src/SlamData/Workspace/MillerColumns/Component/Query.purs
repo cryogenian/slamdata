@@ -36,4 +36,4 @@ data ItemQuery i b
 
 type ChildQuery i f = Coproduct (ItemQuery i) f
 
-type Query' i f = Coproduct (Query i) (H.ChildF i (ChildQuery i f))
+type Query' i f = Coproduct (Query i) (H.ChildF (List i) (ChildQuery i f))

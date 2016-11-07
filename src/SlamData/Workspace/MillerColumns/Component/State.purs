@@ -34,7 +34,7 @@ type State a i =
   , cycle ∷ Int
   }
 
-type State' a i s f = H.ParentState (State a i) s (Query i) (ChildQuery i f) Slam i
+type State' a i s f = H.ParentState (State a i) s (Query i) (ChildQuery i f) Slam (List i)
 
 initialState ∷ ∀ a i. State a i
 initialState =

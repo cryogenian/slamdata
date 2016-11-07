@@ -61,12 +61,13 @@ component
   ⇒ ItemSpec a
   → L.List i
   → a
+  → MC.InitialItemState
   → { component :: H.Component State (Query i) Slam
      , initialState :: State
      }
-component ispec path item =
+component ispec path item itemState =
   { component: H.component { render, eval }
-  , initialState: { selected: false }
+  , initialState: { selected: itemState == MC.Selected }
   }
   where
   render ∷ State → HTML i
