@@ -408,7 +408,9 @@ toNotificationOptions =
         }
     IdTokenUnavailable detail →
       Just
-        { notification: Notification.Error $ "Sign in failed: Authentication provider didn't provide a token."
+      { notification:
+          Notification.Error
+            $ "Sign in failed: Authentication provider didn't provide a token. This might happen if you are signed into multiple accounts with you authentication provider."
         , detail: Just $ Notification.Details detail
         , timeout
         , actionOptions: Nothing
