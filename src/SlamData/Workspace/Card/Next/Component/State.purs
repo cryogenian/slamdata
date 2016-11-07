@@ -22,9 +22,7 @@ import Data.Lens (LensP, lens)
 
 import SlamData.Workspace.Card.Port (Port)
 
-import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
-import SlamData.Workspace.Card.Next.NextAction (NextAction(..))
-import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..))
+import SlamData.Workspace.Card.Next.NextAction (NextAction)
 
 type State =
   { input ∷ Maybe Port
@@ -34,36 +32,11 @@ type State =
   , filterString ∷ String
   }
 
-chartSubmenu ∷ NextAction
-chartSubmenu =
-  Drill
-    "Setup Chart"
-    "img/cardsLight/setupChart.svg"
-    ([ GoBack ] ⊕ map (Insert ∘ ChartOptions) allChartTypes)
-
-defaultActions ∷ Array NextAction
-defaultActions =
-  [ Insert Open
-  , Insert (Ace SQLMode)
-  , Insert Search
-  , Insert Table
-  , chartSubmenu
-  , Insert Chart
-  , Insert (Ace MarkdownMode)
-  , Insert Markdown
-  , Insert Draftboard
-  , Insert DownloadOptions
-  , Insert Download
-  , Insert Cache
-  , Insert Variables
-  , Insert Troubleshoot
-  ]
-
 initialState ∷ State
 initialState =
   { input: Nothing
   , presentAddCardGuide: false
-  , actions: defaultActions
+  , actions: []
   , previousActions: [ ]
   , filterString: ""
   }
