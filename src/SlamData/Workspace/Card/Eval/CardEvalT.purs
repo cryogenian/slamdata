@@ -37,7 +37,7 @@ import Data.Set as Set
 
 import Control.Monad.Writer.Class as WC
 import Control.Monad.Writer.Trans as WT
-import Control.Parallel.Class as Par
+import Control.Parallel as Par
 
 import Quasar.Error (QError)
 
@@ -59,40 +59,31 @@ type CardEvalInput =
 
 type CardEvalTP m = ExceptT QError (WT.WriterT (Set.Set AdditionalSource) m)
 
-newtype CardEvalT m a = CardEvalT (CardEvalTP m a)
+newtype CardEvalT m a = CardEvalT (ExceptT QError (WT.WriterT (Set.Set AdditionalSource) m) a)
 
 getCardEvalT ∷ ∀ m a. CardEvalT m a → CardEvalTP m a
 getCardEvalT (CardEvalT m) = m
 
-instance functorCardEvalT ∷ Functor m ⇒ Functor (CardEvalT m) where
-  map f = getCardEvalT ⋙ map f ⋙ CardEvalT
+derive newtype instance functorCardEvalT ∷ Functor m ⇒ Functor (CardEvalT m)
 
-instance applyCardEvalT ∷ Apply m ⇒ Apply (CardEvalT m) where
-  apply (CardEvalT f) = getCardEvalT ⋙ apply f ⋙ CardEvalT
+derive newtype instance applyCardEvalT ∷ Monad m ⇒ Apply (CardEvalT m)
 
-instance applicativeCardEvalT ∷ Applicative m ⇒ Applicative (CardEvalT m) where
-  pure = pure ⋙ CardEvalT
+derive newtype instance applicativeCardEvalT ∷ Monad m ⇒ Applicative (CardEvalT m)
 
-instance bindCardEvalT ∷ Monad m ⇒ Bind (CardEvalT m) where
-  bind (CardEvalT m) = (_ ⋙ getCardEvalT) ⋙ bind m ⋙ CardEvalT
+derive newtype instance bindCardEvalT ∷ Monad m ⇒ Bind (CardEvalT m)
 
-instance monadCardEvalT ∷ Monad m ⇒ Monad (CardEvalT m)
+derive newtype instance monadCardEvalT ∷ Monad m ⇒ Monad (CardEvalT m)
 
 instance monadTransCardEvalT ∷ MonadTrans CardEvalT where
   lift = lift ⋙ lift ⋙ CardEvalT
 
-instance monadWriterCardEvalT
-         ∷ (Monad m) ⇒ WC.MonadWriter (Set.Set AdditionalSource) (CardEvalT m) where
-  writer = WC.writer ⋙ lift ⋙ CardEvalT
-  listen = getCardEvalT ⋙ WC.listen ⋙ CardEvalT
-  pass = getCardEvalT ⋙ WC.pass ⋙ CardEvalT
+derive newtype instance monadTellCardEvalT ∷ Monad m ⇒ WC.MonadTell (Set.Set AdditionalSource) (CardEvalT m)
 
-instance monadErrorCardEvalT ∷ Monad m ⇒ MonadError QError (CardEvalT m) where
-  throwError = throwError ⋙ CardEvalT
-  catchError (CardEvalT m) = CardEvalT ∘ catchError m ∘ (getCardEvalT ∘ _)
+derive newtype instance monadWriterCardEvalT ∷ Monad m ⇒ WC.MonadWriter (Set.Set AdditionalSource) (CardEvalT m)
 
-instance monadParCardEvalT ∷ Par.MonadPar m ⇒ Par.MonadPar (CardEvalT m) where
-  par f (CardEvalT ma) (CardEvalT mb) = CardEvalT (Par.par f ma mb)
+derive newtype instance monadErrorCardEvalT ∷ Monad m ⇒ MonadError QError (CardEvalT m)
+
+derive newtype instance parallelCardEvalT ∷ Par.Parallel f (ExceptT QError (WT.WriterT (Set.Set AdditionalSource) m)) ⇒ Par.Parallel f (CardEvalT m)
 
 runCardEvalT
   ∷ ∀ m
@@ -118,35 +109,35 @@ runCardEvalT_ (CardEvalT m) =
 
 addSource
   ∷ ∀ m
-  . (WC.MonadWriter (Set.Set AdditionalSource) m)
+  . (WC.MonadTell (Set.Set AdditionalSource) m)
   ⇒ FilePath
   → m Unit
 addSource fp = WT.tell $ Set.singleton $ Source fp
 
 addCache
   ∷ ∀ m
-  . (WC.MonadWriter (Set.Set AdditionalSource) m)
+  . (WC.MonadTell (Set.Set AdditionalSource) m)
   ⇒ FilePath
   → m Unit
 addCache fp = WT.tell $ Set.singleton $ Cache fp
 
 addSources
   ∷ ∀ m f
-  . (Foldable f, WC.MonadWriter (Set.Set AdditionalSource) m)
+  . (Foldable f, WC.MonadTell (Set.Set AdditionalSource) m)
   ⇒ f FilePath
   → m Unit
 addSources fps = WT.tell $ foldMap (Set.singleton ∘ Source) fps
 
 addCaches
   ∷ ∀ m f
-  . (Foldable f, WC.MonadWriter (Set.Set AdditionalSource) m)
+  . (Foldable f, WC.MonadTell (Set.Set AdditionalSource) m)
   ⇒ f FilePath
   → m Unit
 addCaches fps = WT.tell $ foldMap (Set.singleton ∘ Cache) fps
 
 additionalSources
   ∷ ∀ m f
-  . (Foldable f, WC.MonadWriter (Set.Set AdditionalSource) m)
+  . (Foldable f, WC.MonadTell (Set.Set AdditionalSource) m)
   ⇒ f AdditionalSource
   → m Unit
 additionalSources = WT.tell ∘ foldMap Set.singleton

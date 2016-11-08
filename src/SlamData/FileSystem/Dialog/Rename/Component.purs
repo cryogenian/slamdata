@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Control.UI.Browser (reload)
 
 import Data.Array (elemIndex, singleton, sort, nub)
-import Data.Lens ((^.), (%~), (.~), (?~), lens, LensP)
+import Data.Lens ((^.), (%~), (.~), (?~), lens, Lens')
 import Data.Path.Pathy (printPath, parseAbsDir, sandbox, rootDir, (</>))
 import Data.String as S
 
@@ -71,28 +71,28 @@ initialState resource =
   , error: Nothing
   }
 
-_showList ∷ LensP State Boolean
+_showList ∷ Lens' State Boolean
 _showList = lens _.showList (_ { showList = _ })
 
-_initial ∷ LensP State R.Resource
+_initial ∷ Lens' State R.Resource
 _initial = lens _.initial (_ { initial = _ })
 
-_name ∷ LensP State String
+_name ∷ Lens' State String
 _name = lens _.name (_ { name = _ })
 
-_typedDir ∷ LensP State String
+_typedDir ∷ Lens' State String
 _typedDir = lens _.typedDir (_ { typedDir = _ })
 
-_dirs ∷ LensP State (Array R.Resource)
+_dirs ∷ Lens' State (Array R.Resource)
 _dirs = lens _.dirs (_ { dirs = _ })
 
-_dir ∷ LensP State DirPath
+_dir ∷ Lens' State DirPath
 _dir = lens _.dir (_ { dir = _ })
 
-_siblings ∷ LensP State (Array R.Resource)
+_siblings ∷ Lens' State (Array R.Resource)
 _siblings = lens _.siblings (_ { siblings = _ })
 
-_error ∷ LensP State (Maybe String)
+_error ∷ Lens' State (Maybe String)
 _error = lens _.error (_ { error = _ })
 
 renameSlam ∷ State → R.Resource
@@ -113,12 +113,12 @@ validate r
     when (name == "")
       $ throwError "Please enter a name for the file"
 
-    when (isJust $ S.stripSuffix ("." <> Config.workspaceExtension) name)
+    when (isJust $ S.stripSuffix (S.Pattern $ "." <> Config.workspaceExtension) name)
       $ throwError $ "Please choose an alternative name, ."
       <> Config.workspaceExtension
       <> " is a reserved extension"
 
-    when (isJust $ S.indexOf "/" name)
+    when (isJust $ S.indexOf (S.Pattern "/") name)
       $ throwError "Please entera valid name for the file"
 
     let nameWithExt = if R.isWorkspace (r.initial)

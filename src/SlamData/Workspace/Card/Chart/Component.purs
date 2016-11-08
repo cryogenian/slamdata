@@ -19,11 +19,11 @@ module SlamData.Workspace.Card.Chart.Component (chartComponent) where
 import SlamData.Prelude
 
 import Data.Array as A
-import Data.Foreign (Foreign, ForeignError(TypeMismatch), readInt, readString)
+import Data.Foreign as F
 import Data.Foreign.Class (readProp)
 import Data.Int (toNumber, floor)
 import Data.Lens ((.~), (?~))
-import Data.String as Str
+import Data.String as S
 
 import ECharts.Monad (buildObj)
 
@@ -195,20 +195,20 @@ setMetricLOD = do
   mbLod ← H.query' cpMetric unit $ H.request Metric.GetLOD
   for_ mbLod \lod → H.modify _{levelOfDetails = lod}
 
-setEChartsLOD ∷ Foreign → DSL Unit
+setEChartsLOD ∷ F.Foreign → DSL Unit
 setEChartsLOD fOption = do
   state ← H.get
   let
     eBottom = do
       grids ← readProp "grid" fOption
-      grid ← maybe (Left $ TypeMismatch "Array of grids" "Empty array") Right $ A.head grids
+      grid ← maybe (F.fail $ F.TypeMismatch "Array of grids" "Empty array") pure $ A.head grids
       readProp "bottom" grid
 
-    eBottomPx = either (const Nothing) Just $ readInt =<< eBottom
+    eBottomPx = either (const Nothing) Just $ runExcept $ F.readInt =<< eBottom
 
     eBottomPct = do
-      pctStr ← either (const Nothing) Just $ readString =<< eBottom
-      str ← Str.stripSuffix "%" pctStr
+      pctStr ← either (const Nothing) Just $ runExcept $ F.readString =<< eBottom
+      str ← S.stripSuffix (S.Pattern "%") pctStr
       let num = readFloat str
       guard (not $ isNaN num)
       pure $ floor $ num / 100.0 * toNumber state.height

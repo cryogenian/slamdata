@@ -155,7 +155,7 @@ render { model } =
       refine :: HC.Prop i -> HP.IProp r i
       refine = unsafeCoerce
 
-    _StringBoolean :: Lens.PrismP String Boolean
+    _StringBoolean :: Lens.Prism' String Boolean
     _StringBoolean = Lens.prism re pre
       where
         re b = if b then "true" else "false"

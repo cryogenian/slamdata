@@ -24,7 +24,7 @@ import SlamData.Prelude
 
 import Data.Foldable as F
 import Data.Lens ((.~))
-import Data.String as Str
+import Data.String as S
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -56,11 +56,9 @@ nextCardComponent ∷ CC.CardComponent
 nextCardComponent = CC.makeCardComponent
   { cardType: CT.NextAction
   , component:
-      H.lifecycleComponent
+      H.component
         { render
         , eval
-        , initializer: Just (right $ H.action Init)
-        , finalizer: Nothing
         }
   , initialState: State.initialState
   , _State: CC._NextState
@@ -96,7 +94,7 @@ render state =
   where
 
   filterString ∷ String
-  filterString = Str.toLower state.filterString
+  filterString = S.toLower state.filterString
 
   cardTitle ∷ NA.NextAction → String
   cardTitle (NA.Insert cty) = "Insert a " ⊕ CT.cardName cty ⊕ " card"
@@ -116,16 +114,15 @@ render state =
     enabled ∷ Boolean
     enabled = case action of
       NA.GoBack → true
-      _ → F.any (Str.contains filterString ∘ Str.toLower) $ NA.searchFilters action
+      _ → F.any (S.contains (S.Pattern filterString) ∘ S.toLower) $ NA.searchFilters action
 
     attrs =
       [ HP.title $ cardTitle action
       , HP.disabled $ not enabled
       , ARIA.label $ cardTitle action
       , HP.classes classes
-      ] ⊕ (guard
-            (NA.isInsert action ∨ NA.isDrill action)
-            $> HE.onClick (HE.input_ (right ∘ Selected action)))
+      , HE.onClick (HE.input_ $ right ∘ Selected action)
+      ]
 
     classes ∷ Array HH.ClassName
     classes = case action of
@@ -153,12 +150,10 @@ eval = coproduct cardEval nextEval
 cardEval ∷ CC.CardEvalQuery ~> NextDSL
 cardEval = case _ of
   CC.EvalCard value output next →
-    (H.modify
-       $ (State._input .~ value.input)
-       ∘ (State._actions .~ NA.fromMaybePort value.input))
+    (H.modify $ (State._input .~ value.input) ∘ updateActions value.input)
        $> next
   CC.Activate next →
-    pure next
+    (H.modify ∘ updateActions =<< H.gets _.input) $> next
   CC.Deactivate next →
     pure next
   CC.Save k →
@@ -172,6 +167,38 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
+updateActions ∷ Maybe Port.Port → State → State
+updateActions input state =
+  case activeDrill of
+    Nothing →
+      state
+        { actions = newActions }
+    Just drill →
+      state
+        { previousActions = newActions
+        , actions = fromMaybe [] $ pluckDrillActions =<< newActiveDrill
+        }
+  where
+  newActions = NA.fromMaybePort input
+
+  activeDrill =
+    F.find
+      (maybe false (eq state.actions) ∘ pluckDrillActions)
+      state.previousActions
+
+  newActiveDrill =
+    F.find (maybe false eqNameOfActiveDrill ∘ pluckDrillName) newActions
+
+  eqNameOfActiveDrill name =
+    maybe false (eq name) (pluckDrillName =<< activeDrill)
+
+  pluckDrillActions = case _ of
+    NA.Drill _ _ xs → Just xs
+    _ → Nothing
+
+  pluckDrillName = case _ of
+    NA.Drill x _ _ → Just x
+    _ → Nothing
 
 takesInput ∷ Maybe Port.Port → CT.CardType → Boolean
 takesInput input =
@@ -200,9 +227,6 @@ dismissAddCardGuide =
     *> storeDismissedAddCardGuide
 
 nextEval ∷ Query ~> NextDSL
-nextEval (Init next) =
-  H.modify (\st → st { actions = NA.fromMaybePort st.input })
-    $> next
 nextEval (AddCard _ next) = dismissAddCardGuide $> next
 nextEval (PresentReason io card next) = pure next
 nextEval (UpdateFilter str next) =

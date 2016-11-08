@@ -60,8 +60,8 @@ children dir = runExceptT do
   pure result
 
 transitiveChildren
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (Parallel f m, QuasarDSL m)
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
 transitiveChildren start = runExceptT do
@@ -89,7 +89,7 @@ listing p =
     QFS.File path → R.File path
     QFS.Directory path →
       let workspaceName
-            = S.stripSuffix ("." <> Config.workspaceExtension)
+            = S.stripSuffix (S.Pattern $ "." <> Config.workspaceExtension)
             ∘ P.runDirName =<< P.dirName path
       in case workspaceName of
         Just name → R.Workspace (p </> P.dir name)
@@ -117,7 +117,7 @@ getNewName parent name = do
 
   getNewName' ∷ Array QFS.Resource → Int → String
   getNewName' items i =
-    let arr = S.split "." name
+    let arr = S.split (S.Pattern ".") name
     in fromMaybe "" do
       body ← Arr.head arr
       suffixes ← Arr.tail arr
@@ -135,8 +135,8 @@ getNewName parent name = do
 -- | Will return `Just` in case the resource was successfully moved, and
 -- | `Nothing` in case no resource existed at the requested source path.
 move
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (Monad m, QuasarDSL m, Parallel f m)
   ⇒ R.Resource
   → AnyPath
   → m (Either QError (Maybe AnyPath))
@@ -154,8 +154,8 @@ move src tgt = do
       Left err → Left err
 
 delete
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (Monad m, QuasarDSL m, Parallel f m)
   ⇒ R.Resource
   → m (Either QError (Maybe R.Resource))
 delete resource =
@@ -205,8 +205,8 @@ delete resource =
           else alreadyInTrash' d
 
 forceDelete
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (QuasarDSL m, Parallel f m)
   ⇒ R.Resource
   → ExceptT QError m Unit
 forceDelete res =
@@ -219,8 +219,8 @@ forceDelete res =
       ExceptT ∘ liftQuasar $ QF.deleteData path
 
 cleanViewMounts
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (Parallel f m, QuasarDSL m)
   ⇒ DirPath
   → ExceptT QError m Unit
 cleanViewMounts =

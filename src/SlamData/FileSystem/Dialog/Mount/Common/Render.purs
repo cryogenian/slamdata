@@ -20,10 +20,11 @@ import SlamData.Prelude
 
 import Data.Array ((..), length)
 import Data.Array as Arr
-import Data.Lens (LensP, TraversalP, (.~), (^.))
+import Data.Lens (Lens', Traversal', (.~), (^.))
 import Data.Lens.Index (ix)
 import Data.Profunctor.Strong (first, second)
 import Data.String.Regex as Rx
+import Data.String.Regex.Flags as RXF
 
 import Halogen as H
 import Halogen.CustomProps as CP
@@ -50,7 +51,7 @@ section title inner =
 
 propList
   :: forall s p
-   . LensP s (Array (Tuple String String))
+   . Lens' s (Array (Tuple String String))
   -> s
   -> H.HTML p (SettingsQuery s)
 propList _props state =
@@ -83,7 +84,7 @@ propList _props state =
   prop index =
     HH.tr_ [ part first, part second ]
     where
-    part :: LensP (Tuple String String) String -> H.HTML p (SettingsQuery s)
+    part :: Lens' (Tuple String String) String -> H.HTML p (SettingsQuery s)
     part lens = HH.td_ [ input state (_props <<< ix index <<< lens) classes ]
     classes = [ HP.classes [B.formControl, B.inputSm] ]
 
@@ -96,7 +97,7 @@ label text inner = HH.label_ $ [ HH.span_ [ HH.text text ] ] <> inner
 input
   ∷ ∀ s p
   . s
-  → TraversalP s String
+  → Traversal' s String
   → Array (CP.InputProp (SettingsQuery s))
   → H.HTML p (SettingsQuery s)
 input state lens =
@@ -108,7 +109,7 @@ input'
   ∷ ∀ s p
   . (String → String)
   → s
-  → TraversalP s String
+  → Traversal' s String
   → Array (CP.InputProp (SettingsQuery s))
   → H.HTML p (SettingsQuery s)
 input' f state lens attrs =
@@ -119,7 +120,7 @@ input' f state lens attrs =
       ]
     <> attrs
 
-hosts ∷ ∀ s. s → LensP s (Array MCS.MountHost) → H.ComponentHTML (SettingsQuery s)
+hosts ∷ ∀ s. s → Lens' s (Array MCS.MountHost) → H.ComponentHTML (SettingsQuery s)
 hosts state lens =
   HH.div
     [ HP.class_ Rc.mountHostList ]
@@ -135,7 +136,7 @@ hosts state lens =
           [ input' rejectNonPort state (lens <<< ix index <<< MCS._port) [] ]
       ]
 
-host ∷ ∀ s. s → LensP s MCS.MountHost → H.ComponentHTML (SettingsQuery s)
+host ∷ ∀ s. s → Lens' s MCS.MountHost → H.ComponentHTML (SettingsQuery s)
 host state lens =
   HH.div
     [ HP.class_ Rc.mountHostList ]
@@ -154,7 +155,7 @@ rejectNonHostname = Rx.replace rxNonHostname ""
 rxNonHostname ∷ Rx.Regex
 rxNonHostname =
   unsafePartial fromRight $
-    Rx.regex "[^0-9a-z\\-\\._~%]" (Rx.noFlags { ignoreCase = true, global = true })
+    Rx.regex "[^0-9a-z\\-\\._~%]" (RXF.ignoreCase <> RXF.global)
 
 rejectNonPort ∷ String → String
 rejectNonPort = Rx.replace rxNonPort ""
@@ -162,4 +163,4 @@ rejectNonPort = Rx.replace rxNonPort ""
 rxNonPort :: Rx.Regex
 rxNonPort =
   unsafePartial fromRight $
-    Rx.regex "[^0-9]" (Rx.noFlags { global = true })
+    Rx.regex "[^0-9]" (RXF.global)

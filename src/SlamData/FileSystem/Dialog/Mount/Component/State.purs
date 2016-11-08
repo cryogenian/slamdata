@@ -18,7 +18,7 @@ module SlamData.FileSystem.Dialog.Mount.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
@@ -53,22 +53,22 @@ initialSettings = case _ of
   MS.MarkLogic → MarkLogic MarkLogic.initialState
   MS.Spark → Spark Spark.initialState
 
-_new ∷ LensP State Boolean
+_new ∷ Lens' State Boolean
 _new = lens _.new (_ { new = _ })
 
-_parent ∷ LensP State DirPath
+_parent ∷ Lens' State DirPath
 _parent = lens _.parent (_ { parent = _ })
 
-_name ∷ forall a. LensP { name ∷ String | a } String
+_name ∷ forall a. Lens' { name ∷ String | a } String
 _name = lens _.name (_ { name = _ })
 
-_message ∷ LensP State (Maybe String)
+_message ∷ Lens' State (Maybe String)
 _message = lens _.message (_ { message = _ })
 
-_saving ∷ LensP State Boolean
+_saving ∷ Lens' State Boolean
 _saving = lens _.saving (_ { saving = _ })
 
-_settings ∷ LensP State (Maybe MountSettings)
+_settings ∷ Lens' State (Maybe MountSettings)
 _settings = lens _.settings _{settings = _}
 
 initialState ∷ DirPath → String → Maybe MountSettings → State

@@ -39,7 +39,7 @@ module SlamData.Workspace.Card.Port
 import SlamData.Prelude
 
 import Data.Argonaut (Json)
-import Data.Lens (PrismP, prism', TraversalP, wander)
+import Data.Lens (Prism', prism', Traversal', wander)
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
@@ -103,65 +103,65 @@ tagPort (Just p) = case p of
   Metric _ → "Metric"
   PivotTable _ → "PivotTable"
 
-_SlamDown ∷ TraversalP Port (SD.SlamDownP VarMapValue)
+_SlamDown ∷ Traversal' Port (SD.SlamDownP VarMapValue)
 _SlamDown = wander \f s → case s of
   SlamDown (vm × sd) → SlamDown ∘ (vm × _) <$> f sd
   _ → pure s
 
-_VarMap ∷ TraversalP Port VarMap
+_VarMap ∷ Traversal' Port VarMap
 _VarMap = wander \f s → case s of
   VarMap x → VarMap <$> f x
   SlamDown (vm × sd) → SlamDown ∘ (_ × sd) <$> f vm
   _ → pure s
 
-_CardError ∷ PrismP Port String
+_CardError ∷ Prism' Port String
 _CardError = prism' CardError \p → case p of
   CardError x → Just x
   _ → Nothing
 
-_ResourceTag ∷ TraversalP Port String
+_ResourceTag ∷ Traversal' Port String
 _ResourceTag = wander \f s → case s of
   TaggedResource o@{tag: Just tag} →
     TaggedResource ∘ o{tag = _} ∘ Just <$> f tag
   _ → pure s
 
-_Resource ∷ TraversalP Port PU.FilePath
+_Resource ∷ Traversal' Port PU.FilePath
 _Resource = wander \f s → case s of
   TaggedResource o → TaggedResource ∘ o{resource = _} <$> f o.resource
   _ → pure s
 
-_ResourceAxes ∷ TraversalP Port Axes
+_ResourceAxes ∷ Traversal' Port Axes
 _ResourceAxes = wander \f s → case s of
   TaggedResource o → TaggedResource ∘ o{axes = _} <$> f o.axes
   _ → pure s
 
 
-_Blocked ∷ PrismP Port Unit
+_Blocked ∷ Prism' Port Unit
 _Blocked = prism' (const Blocked) \p → case p of
   Blocked → Just unit
   _ → Nothing
 
-_DownloadOptions ∷ PrismP Port DownloadPort
+_DownloadOptions ∷ Prism' Port DownloadPort
 _DownloadOptions = prism' DownloadOptions \p → case p of
   DownloadOptions p' → Just p'
   _ → Nothing
 
-_Draftboard ∷ PrismP Port Unit
+_Draftboard ∷ Prism' Port Unit
 _Draftboard = prism' (const Draftboard) \p → case p of
   Draftboard → Just unit
   _ → Nothing
 
-_ChartInstructions ∷ TraversalP Port (DSL OptionI)
+_ChartInstructions ∷ Traversal' Port (DSL OptionI)
 _ChartInstructions = wander \f s → case s of
   ChartInstructions opts chty → flip ChartInstructions chty <$> f opts
   _ → pure s
 
-_Metric ∷ PrismP Port MetricPort
+_Metric ∷ Prism' Port MetricPort
 _Metric = prism' Metric case _ of
   Metric u → Just u
   _ → Nothing
 
-_PivotTable ∷ PrismP Port PivotTablePort
+_PivotTable ∷ Prism' Port PivotTablePort
 _PivotTable = prism' PivotTable case _ of
   PivotTable u → Just u
   _ → Nothing

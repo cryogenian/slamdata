@@ -18,7 +18,7 @@ module Test.Feature.Log where
 
 import Prelude
 import Text.Chalky (red, green, magenta, yellow)
-import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)

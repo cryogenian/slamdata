@@ -45,8 +45,8 @@ import SlamData.Wiring (Wiring(..), putCardEval, getCache)
 import Utils.Path (DirPath)
 
 transitiveChildren
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (Monad m, QuasarDSL m, Parallel f m)
   ⇒ DirPath
   → DeckId
   → ExceptT QE.QError m (Array DeckId)
@@ -73,8 +73,8 @@ childDeckIds = (_ >>= getDeckIds ∘ _.model)
       _ → []
 
 deleteGraph
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (Monad m, QuasarDSL m, Parallel f m)
   ⇒ DirPath
   → DeckId
   → m (Either QE.QError Unit)
@@ -111,7 +111,7 @@ replacePointer from to cid = map replace
 -- | outputs it's OK to just swap out the model for the cached card eval.
 unsafeUpdateCachedDraftboard
   ∷ ∀ m
-  . (Monad m, Affable SlamDataEffects m, MonadReader Wiring m)
+  . (Monad m, Affable SlamDataEffects m, MonadAsk Wiring m)
   ⇒ DeckId
   → CM.Model
   → m Unit

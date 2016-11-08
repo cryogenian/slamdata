@@ -24,7 +24,7 @@ import Control.UI.Browser (select)
 
 import Data.Array as Arr
 import Data.Foldable as F
-import Data.Lens (LensP, lens, (.~), (%~), (?~))
+import Data.Lens (Lens', lens, (.~), (%~), (?~))
 import Data.Lens.Index (ix)
 import Data.List as L
 import Data.Set as Set
@@ -83,22 +83,22 @@ type TokenPermission =
   , state ∷ Maybe PermissionState
   }
 
-_resume ∷ ∀ a r. LensP {resume ∷ a|r} a
+_resume ∷ ∀ a r. Lens' {resume ∷ a|r} a
 _resume = lens (_.resume) (_{resume = _})
 
-_tokenId ∷ ∀ a r. LensP {tokenId ∷ a|r} a
+_tokenId ∷ ∀ a r. Lens' {tokenId ∷ a|r} a
 _tokenId = lens (_.tokenId) (_{tokenId = _})
 
-_secret ∷ ∀ a r. LensP {secret ∷ a|r} a
+_secret ∷ ∀ a r. Lens' {secret ∷ a|r} a
 _secret = lens (_.secret) (_{secret = _})
 
 -- :( `ix` doesn't work without `Maybe PermissionState`
-_state ∷ ∀ r. LensP {state ∷ (Maybe PermissionState)|r} (Maybe PermissionState)
+_state ∷ ∀ r. Lens' {state ∷ (Maybe PermissionState)|r} (Maybe PermissionState)
 _state = lens (_.state) (_{state = _})
 
 _actions
   ∷ ∀ r
-  . LensP
+  . Lens'
       {actions ∷ Map.Map QTA.PermissionId QTA.ActionR|r}
       (Map.Map QTA.PermissionId QTA.ActionR)
 _actions = lens (_.actions) (_{actions = _})
@@ -122,19 +122,19 @@ initialState sharingInput =
   , sharingInput
   }
 
-_userPermissions ∷ ∀ a r. LensP {userPermissions ∷ a|r} a
+_userPermissions ∷ ∀ a r. Lens' {userPermissions ∷ a|r} a
 _userPermissions = lens (_.userPermissions) (_{userPermissions = _})
 
-_groupPermissions ∷ ∀ a r. LensP {groupPermissions ∷ a |r} a
+_groupPermissions ∷ ∀ a r. Lens' {groupPermissions ∷ a |r} a
 _groupPermissions = lens (_.groupPermissions) (_{groupPermissions = _})
 
-_tokenPermissions ∷ ∀ a r. LensP {tokenPermissions ∷ a|r} a
+_tokenPermissions ∷ ∀ a r. Lens' {tokenPermissions ∷ a|r} a
 _tokenPermissions = lens (_.tokenPermissions) (_{tokenPermissions = _})
 
-_loading ∷ ∀ a r. LensP {loading ∷ a|r} a
+_loading ∷ ∀ a r. Lens' {loading ∷ a|r} a
 _loading = lens (_.loading) (_{loading = _})
 
-_errored ∷ ∀ a r. LensP {errored ∷ a|r} a
+_errored ∷ ∀ a r. Lens' {errored ∷ a|r} a
 _errored = lens (_.errored) (_{errored = _})
 
 data Query a

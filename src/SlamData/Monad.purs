@@ -18,6 +18,7 @@ module SlamData.Monad where
 
 import SlamData.Prelude
 
+import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Bus as Bus
@@ -26,8 +27,8 @@ import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Ref (readRef, writeRef)
 import Control.Monad.Fork (class MonadFork, Canceler, cancelWith, fork, hoistCanceler)
 import Control.Monad.Free (Free, liftF, foldFree)
-import Control.Monad.Reader (ReaderT, runReaderT, local)
-import Control.Parallel.Class (par)
+import Control.Monad.Reader (ReaderT, runReaderT)
+import Control.Parallel (parallel, sequential)
 
 import Data.Map as Map
 
@@ -56,17 +57,6 @@ type Slam = SlamM SlamDataEffects
 
 --------------------------------------------------------------------------------
 
-data ParF f x y a = ParF (x -> y -> a) (f x) (f y)
-data Par (f :: * -> *) a
-
-mkPar :: forall f x y a. ParF f x y a → Par f a
-mkPar = unsafeCoerce
-
-unPar :: forall f x y a r. (ParF f x y a → r) → Par f a → r
-unPar = unsafeCoerce
-
---------------------------------------------------------------------------------
-
 data ForkF f x a = ForkF (f x) (Canceler f -> a)
 data Fork (f :: * -> *) a
 
@@ -87,11 +77,10 @@ data SlamF eff a
   | Track A.Event a
   | Notify N.NotificationOptions a
   | Halt GE.GlobalError a
-  | Par (Par (SlamM eff) a)
+  | Par (SlamA eff a)
   | Fork (Fork (SlamM eff) a)
   | Cancel (SlamM eff a) (Canceler (SlamM eff))
   | Ask (Wiring → a)
-  | Local (Wiring → Wiring) (SlamM eff a)
 
 newtype SlamM eff a = SlamM (Free (SlamF eff) a)
 
@@ -121,16 +110,16 @@ instance monadAffSlamM ∷ MonadAff eff (SlamM eff) where
 instance affableSlamM ∷ Affable eff (SlamM eff) where
   fromAff = SlamM ∘ liftF ∘ Aff
 
-instance monadParSlamM ∷ MonadPar (SlamM eff) where
-  par f a b = SlamM $ liftF $ Par $ mkPar $ ParF f a b
+instance monadParSlamM ∷ Parallel (SlamA eff) (SlamM eff) where
+  parallel = SlamA ∘ liftFreeAp
+  sequential = SlamM ∘ liftF ∘ Par
 
 instance monadForkSlamM ∷ MonadFork (SlamM eff) where
   fork a = SlamM $ liftF $ Fork $ mkFork $ ForkF a id
   cancelWith a c = SlamM $ liftF $ Cancel a c
 
-instance monadReaderSlamM ∷ MonadReader Wiring (SlamM eff) where
+instance monadAskSlamM ∷ MonadAsk Wiring (SlamM eff) where
   ask = SlamM $ liftF $ Ask id
-  local f a = SlamM $ liftF $ Local f a
 
 instance quasarAuthDSLSlamM ∷ QuasarAuthDSL (SlamM eff) where
   getIdToken = SlamM $ liftF $ GetAuthIdToken id
@@ -151,6 +140,14 @@ instance globalErrorDSLSlamM ∷ GE.GlobalErrorDSL (SlamM eff) where
 instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
   getURLVarMaps = SlamM $ liftF $ GetURLVarMaps id
   putURLVarMaps = SlamM ∘ liftF ∘ flip PutURLVarMaps unit
+
+--------------------------------------------------------------------------------
+
+newtype SlamA eff a = SlamA (FreeAp (SlamM eff) a)
+
+derive newtype instance functorSlamA :: Functor (SlamA eff)
+derive newtype instance applySlamA :: Apply (SlamA eff)
+derive newtype instance applicativeSlamA :: Applicative (SlamA eff)
 
 --------------------------------------------------------------------------------
 
@@ -211,8 +208,8 @@ unSlam = foldFree go ∘ unSlamM
       Wiring wiring ← ask
       lift $ Bus.write (GE.toNotificationOptions err) wiring.notify
       pure a
-    Par p →
-      goPar p
+    Par (SlamA p) →
+      sequential $ retractFreeAp $ hoistFreeAp (parallel <<< unSlam) p
     Fork f → do
       r ← ask
       goFork r f
@@ -220,12 +217,6 @@ unSlam = foldFree go ∘ unSlamM
       cancelWith (unSlam m) (hoistCanceler unSlam c)
     Ask k →
       k <$> ask
-    Local f a →
-      local f (unSlam a)
-
-  goPar ∷ Par Slam ~> ReaderT Wiring (Aff SlamDataEffects)
-  goPar = unPar \(ParF f x y) →
-    par f (unSlam x) (unSlam y)
 
   goFork ∷ Wiring → Fork Slam ~> ReaderT Wiring (Aff SlamDataEffects)
   goFork r = unFork \(ForkF x k) →

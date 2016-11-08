@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Array as Arr
 import Data.Lens as Lens
-import Data.Lens (lens, LensP, (.~))
+import Data.Lens (lens, Lens', (.~))
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -44,10 +44,10 @@ type State =
   , focused ∷ Int
   }
 
-_icons ∷ ∀ a r. LensP {icons ∷ a|r} a
+_icons ∷ ∀ a r. Lens' {icons ∷ a|r} a
 _icons = lens (_.icons) (_{icons = _})
 
-_focused ∷ ∀ a r. LensP {focused ∷ a |r} a
+_focused ∷ ∀ a r. Lens' {focused ∷ a |r} a
 _focused = lens (_.focused) (_{focused = _})
 
 initialState ∷ State

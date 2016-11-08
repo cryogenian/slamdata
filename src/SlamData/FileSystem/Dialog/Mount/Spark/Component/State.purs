@@ -26,7 +26,7 @@ module SlamData.FileSystem.Dialog.Mount.Spark.Component.State
 
 import SlamData.Prelude
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 import Data.URI.Path (printPath) as URI
 import Data.URI.Host (printHost) as URI
 
@@ -47,10 +47,10 @@ initialState =
   , path: ""
   }
 
-_sparkHost ∷ ∀ r a. LensP { sparkHost ∷ a | r } a
+_sparkHost ∷ ∀ r a. Lens' { sparkHost ∷ a | r } a
 _sparkHost = lens _.sparkHost (_ { sparkHost = _ })
 
-_hdfsHost ∷ ∀ r a. LensP { hdfsHost ∷ a | r } a
+_hdfsHost ∷ ∀ r a. Lens' { hdfsHost ∷ a | r } a
 _hdfsHost = lens _.hdfsHost (_ { hdfsHost = _ })
 
 fromConfig ∷ Config → State

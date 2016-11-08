@@ -131,8 +131,8 @@ tagEval = case _ of
   BuildParallel _ → "BuildParallel"
 
 evalCard
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m, Affable SlamDataEffects m)
+  ∷ ∀ f m
+  . (Monad m, Parallel f m, QuasarDSL m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
   → Eval
   → CET.CardEvalT m Port.Port
@@ -243,8 +243,8 @@ evalOpen info res = do
        QE.throw err
 
 evalQuery
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (Monad m, Parallel f m, QuasarDSL m)
   ⇒ CET.CardEvalInput
   → SQL
   → Port.URLVarMap
@@ -270,8 +270,8 @@ evalQuery info sql urlVarMap varMap = do
   pure { resource, tag: pure sql, axes, varMap: Just varMap }
 
 evalSearch
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (Monad m, Parallel f m, QuasarDSL m)
   ⇒ CET.CardEvalInput
   → String
   → FilePath
@@ -312,8 +312,8 @@ evalSearch info queryText resource = do
   pure { resource: outputResource, tag: pure sql, axes, varMap: Nothing }
 
 runEvalCard
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m, Affable SlamDataEffects m)
+  ∷ ∀ f m
+  . (Monad m, Parallel f m, QuasarDSL m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
   → Eval
   → m (Either GE.GlobalError (Port.Port × (Set.Set AdditionalSource)))
@@ -321,9 +321,9 @@ runEvalCard input =
   CET.runCardEvalT ∘ evalCard input
 
 validateResources
-  ∷ ∀ m f
-  . (MonadPar m, QuasarDSL m, Foldable f)
-  ⇒ f FilePath
+  ∷ ∀ f m t
+  . (Functor m, QuasarDSL m, Parallel f m, Foldable t)
+  ⇒ t FilePath
   → CET.CardEvalT m Unit
 validateResources =
   parTraverse_ \path → do

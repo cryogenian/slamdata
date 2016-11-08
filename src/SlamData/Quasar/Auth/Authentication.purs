@@ -46,7 +46,7 @@ import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Ref (Ref, REF)
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Rec.Class (forever)
-import Control.Parallel.Class (race)
+import Control.Parallel (parallel, sequential)
 import Control.UI.Browser as Browser
 import DOM (DOM)
 import DOM.HTML as DOMHTML
@@ -185,7 +185,7 @@ getIdTokenSilently providerR = do
     >>= case _ of
       Left error → pure $ Left error
       Right iFrameNode → do
-        idToken ← race (getIdTokenFromLSOnChange providerR unhashedNonce) timeout
+        idToken ← sequential $ parallel $ getIdTokenFromLSOnChange providerR unhashedNonce <|> timeout
         liftEff $ removeBodyChild iFrameNode
         pure idToken
   where
@@ -205,9 +205,8 @@ getIdTokenUsingPrompt
 getIdTokenUsingPrompt providerR = do
   unhashedNonce ← liftEff OIDCAff.getRandomUnhashedNonce
   liftEff $ AuthStore.storeUnhashedNonce unhashedNonce
-  race
-    (getIdTokenFromLSOnChange providerR unhashedNonce)
-    (prompt unhashedNonce)
+  sequential $ parallel $
+    getIdTokenFromLSOnChange providerR unhashedNonce <|> prompt unhashedNonce
   where
   popup src =
     liftEff (DOMUtils.openPopup src)
@@ -270,7 +269,7 @@ appendIFrameToNode iFrameElement node =
 
 createIFrameElement ∷ ∀ eff. Eff (AuthEffects eff) (Either String HTMLIFrameElement)
 createIFrameElement =
-  (lmap show ∘ DOMHTMLTypes.readHTMLIFrameElement ∘ Foreign.toForeign)
+  (lmap show ∘ runExcept ∘ DOMHTMLTypes.readHTMLIFrameElement ∘ Foreign.toForeign)
     <$> createElement "iframe"
 
 createElement ∷ ∀ eff.  String → Eff (AuthEffects eff) Element
@@ -432,4 +431,3 @@ toNotificationOptions =
     DOMError _ → Nothing
   where
   timeout = Just $ Milliseconds 5000.0
-

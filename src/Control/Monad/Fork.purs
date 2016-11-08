@@ -20,7 +20,7 @@ import Prelude
 import Control.Monad.Aff as Aff
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Reader.Trans (ReaderT(..))
-import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Class (lift)
 import Data.Monoid (class Monoid)
 
 class Monad m ⇐ MonadFork m where

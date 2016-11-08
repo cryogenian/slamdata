@@ -21,7 +21,7 @@ module SlamData.Workspace.FormBuilder.Item.Component.State
   , module SlamData.Workspace.FormBuilder.Item.Model
   ) where
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import SlamData.Workspace.FormBuilder.Item.Model
 
@@ -29,7 +29,7 @@ type State =
   { model :: Model
   }
 
-_model :: LensP State Model
+_model :: Lens' State Model
 _model = lens _.model _ { model = _ }
 
 initialState :: State

@@ -43,7 +43,7 @@ import SlamData.Prelude
 import Data.Argonaut (Json)
 import Data.Foldable (maximum)
 import Data.Int as Int
-import Data.Lens ((^?), (?~), LensP, lens, _Just)
+import Data.Lens ((^?), (?~), Lens', lens, _Just)
 
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..))
@@ -83,23 +83,23 @@ initialState =
 
 -- | The current card input - a resource location for the results, and the size
 -- | of the result set.
-_input ∷ ∀ a r. LensP {input ∷ a|r} a
+_input ∷ ∀ a r. Lens' {input ∷ a|r} a
 _input = lens _.input (_ { input = _ })
 
-_result ∷ ∀ a r. LensP {result ∷ a|r} a
+_result ∷ ∀ a r. Lens' {result ∷ a|r} a
 _result = lens _.result (_ { result = _ })
 
-_page ∷ ∀ a r. LensP {page ∷ a |r} a
+_page ∷ ∀ a r. Lens' {page ∷ a |r} a
 _page = lens _.page (_ { page = _ })
 
-_pageSize ∷ ∀ a r. LensP {pageSize ∷ a|r} a
+_pageSize ∷ ∀ a r. Lens' {pageSize ∷ a|r} a
 _pageSize = lens _.pageSize (_ { pageSize = _ })
 
 -- | Specifies whether the custom page size entry is currently enabled.
-_isEnteringPageSize ∷ ∀ a r. LensP {isEnteringPageSize ∷ a|r} a
+_isEnteringPageSize ∷ ∀ a r. Lens' {isEnteringPageSize ∷ a|r} a
 _isEnteringPageSize = lens _.isEnteringPageSize (_ { isEnteringPageSize = _ })
 
-_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
+_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a|r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
 -- | The card input state.
@@ -112,16 +112,16 @@ type Input =
   }
 
 -- | The resource to load pages of data from.
-_resource ∷ ∀ a r. LensP {resource ∷ a|r} a
+_resource ∷ ∀ a r. Lens' {resource ∷ a|r} a
 _resource = lens _.resource (_ { resource = _ })
 
 -- | The total size of the resource's result set.
-_size ∷ ∀ a r. LensP {size ∷ a|r} a
+_size ∷ ∀ a r. Lens' {size ∷ a|r} a
 _size = lens _.size (_ { size = _ })
 
 -- | This is used to determine if query producing temporary resource has
 -- | been changed. It holds sql query.
-_tag ∷ ∀ a r. LensP {tag ∷ a|r} a
+_tag ∷ ∀ a r. Lens' {tag ∷ a|r} a
 _tag = lens _.tag _{tag = _}
 
 -- | A record with information about the current page number, page size, and

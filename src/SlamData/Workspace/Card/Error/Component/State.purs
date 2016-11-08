@@ -27,7 +27,7 @@ import SlamData.Prelude
 
 import Data.Argonaut as JS
 import Data.Argonaut ((:=), (~>), (.?))
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 type State =
   { message :: Maybe String
@@ -38,7 +38,7 @@ initialState =
   { message: Nothing
   }
 
-_message ∷ LensP State (Maybe String)
+_message ∷ Lens' State (Maybe String)
 _message = lens (_.message) (_ { message = _ })
 
 encode

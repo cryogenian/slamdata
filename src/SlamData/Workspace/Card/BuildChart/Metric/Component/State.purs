@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.BuildChart.Metric.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
@@ -56,10 +56,10 @@ initialState =
 type StateP =
   ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
-_value ∷ ∀ r a. LensP { value ∷ a | r } a
+_value ∷ ∀ r a. Lens' { value ∷ a | r } a
 _value = lens _.value _{ value = _ }
 
-_valueAgg ∷ ∀ r a. LensP { valueAgg ∷ a | r } a
+_valueAgg ∷ ∀ r a. Lens' { valueAgg ∷ a | r } a
 _valueAgg = lens _.valueAgg _{ valueAgg = _ }
 
 showPicker

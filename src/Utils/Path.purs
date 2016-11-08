@@ -29,8 +29,9 @@ import Data.Either (Either(..), either, fromRight)
 import Data.Maybe (Maybe, maybe, fromMaybe)
 import Data.Path.Pathy (Sandboxed, Unsandboxed, Abs, Path, File, Rel, Dir, DirName(..), FileName(..), peel, rootDir, (</>), file, canonicalize, printPath, parseAbsDir, parseAbsFile, dir, relativeTo, renameDir)
 import Data.Path.Pathy as P
-import Data.String (split, joinWith, trim, replace, drop, take, lastIndexOf, length, toCharArray)
+import Data.String as S
 import Data.String.Regex as Rgx
+import Data.String.Regex.Flags as RXF
 import Data.Tuple (snd, fst)
 
 import Global as Global
@@ -78,43 +79,43 @@ changeDirExt :: (String -> String) -> DirName -> DirName
 changeDirExt f (DirName name) =
   DirName ((if ext == "" then name else n) <> "." <> f ext)
   where
-  mbIdx = lastIndexOf "." name
-  n = maybe name (\idx -> take idx name) mbIdx
-  ext = maybe "" (\idx -> drop (idx + 1) name) mbIdx
+  mbIdx = S.lastIndexOf (S.Pattern ".") name
+  n = maybe name (\idx -> S.take idx name) mbIdx
+  ext = maybe "" (\idx -> S.drop (idx + 1) name) mbIdx
 
 dropDirExt :: DirName -> DirName
 dropDirExt (DirName d) =
-  DirName $ maybe d (\idx -> take idx d) $ lastIndexOf "." d
+  DirName $ maybe d (\idx -> S.take idx d) $ S.lastIndexOf (S.Pattern ".") d
 
 takeDirExt :: DirName -> String
 takeDirExt (DirName d) =
-  maybe "" (\idx -> drop (idx + 1) d) $ lastIndexOf "." d
+  maybe "" (\idx -> S.drop (idx + 1) d) $ S.lastIndexOf (S.Pattern ".") d
 
 dropWorkspaceExt :: String -> String
-dropWorkspaceExt name = take (length name - length Config.workspaceExtension - 1) name
+dropWorkspaceExt name = S.take (S.length name - S.length Config.workspaceExtension - 1) name
 
 decodeURIPath :: String -> String
 decodeURIPath uri =
   Global.decodeURIComponent $
-    Rgx.replace (unsafePartial fromRight $ Rgx.regex "\\+" Rgx.noFlags{global=true}) " " uri
+    Rgx.replace (unsafePartial fromRight $ Rgx.regex "\\+" RXF.global) " " uri
 
 encodeURIPath :: String -> String
 encodeURIPath path =
-  joinWith "/" $
-  joinWith "+" <$>
+  S.joinWith "/" $
+  S.joinWith "+" <$>
   (Global.encodeURIComponent <$> _) <$>
-  split " " <$>
-  split "/" path
+  S.split (S.Pattern " ") <$>
+  S.split (S.Pattern "/") path
 
 hidePath :: String -> String -> String
 hidePath path input =
-  trim $
-  replace ("+path:\"" <> path <> "\"") "" $
-  replace ("+path:" <> path) "" input
+  S.trim $
+  S.replace (S.Pattern $ "+path:\"" <> path <> "\"") (S.Replacement "") $
+  S.replace (S.Pattern $ "+path:" <> path) (S.Replacement "") input
 
 renderPath :: AnyPath -> String
 renderPath ap =
-  if null $ intersect (toCharArray rendered) ((Ch.fromCharCode 32):keyChars)
+  if null $ intersect (S.toCharArray rendered) ((Ch.fromCharCode 32):keyChars)
   then rendered
   else "\"" <> rendered <> "\""
   where

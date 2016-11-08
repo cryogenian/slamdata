@@ -23,10 +23,11 @@ module SlamData.FileSystem.Routing.Search
 import SlamData.Prelude
 
 import Data.List (List(..))
-import Data.Maybe.First (First(..), runFirst)
+import Data.Maybe.First (First(..))
 import Data.Minimatch as MM
 import Data.String as Str
 import Data.String.Regex as Rgx
+import Data.String.Regex.Flags as RXF
 
 import SlamData.FileSystem.Resource as M
 
@@ -64,21 +65,23 @@ check p prj =
       (c (SST.Lte val) && c (SST.Gte val'))
     _ -> true
   where
-  escapeGlob str = Str.replace "*" "\\*" $ Str.replace "?" "\\?" str
+  escapeGlob
+    = Str.replace (Str.Pattern "*") (Str.Replacement "\\*")
+    ∘ Str.replace (Str.Pattern "?") (Str.Replacement "\\?")
   percentRgx = unsafePartial fromRight $ Rgx.regex "%" flags
   underscoreRgx = unsafePartial fromRight $ Rgx.regex "_" flags
-  flags = Rgx.noFlags{global = true}
+  flags = RXF.global
   match a = MM.minimatch (Str.toLower a) (Str.toLower prj)
   compare = Str.localeCompare prj
-  like2glob str =
-    Rgx.replace percentRgx "*" $ Rgx.replace underscoreRgx "?" $ str
+  like2glob =
+    Rgx.replace percentRgx "*" ∘ Rgx.replace underscoreRgx "?"
 
 -- | Extract path predicate from search query
 searchPath :: SST.SearchQuery -> Maybe String
 searchPath query =
-  runFirst $ foldMap fn query
+  alaF First foldMap fn query
   where
-  fn term = First $ case term of
+  fn term = case term of
     SST.Term { include: true
            , predicate: SST.Contains (SST.Text path)
            , labels: Cons (SST.Common "path") Nil } -> Just path

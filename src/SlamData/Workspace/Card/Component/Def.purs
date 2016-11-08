@@ -22,7 +22,7 @@ module SlamData.Workspace.Card.Component.Def
 
 import SlamData.Prelude
 
-import Data.Lens (APrismP, PrismP, prism', review, preview)
+import Data.Lens (APrism', Prism', prism', review, preview)
 
 import Halogen (Component)
 
@@ -37,8 +37,8 @@ type CardDef s f r =
   { component ∷ Component s f Slam
   , cardType :: CardType
   , initialState ∷ s
-  , _State ∷ APrismP AnyCardState s
-  , _Query ∷ ∀ a. APrismP (Coproduct CardEvalQuery AnyCardQuery a) (f a)
+  , _State ∷ APrism' AnyCardState s
+  , _Query ∷ ∀ a. APrism' (Coproduct CardEvalQuery AnyCardQuery a) (f a)
   | r
   }
 
@@ -53,10 +53,10 @@ type CardDef s f r =
 -- |    will be the component's own internal algebra.
 makeQueryPrism
   ∷ ∀ a f
-   . PrismP
+   . Prism'
        (AnyCardQuery a)
        (Coproduct CardEvalQuery f a)
-  → PrismP
+  → Prism'
        (Coproduct CardEvalQuery AnyCardQuery a)
        (Coproduct CardEvalQuery f a)
 makeQueryPrism base = prism' to fro
@@ -78,10 +78,10 @@ makeQueryPrism base = prism' to fro
 -- | algebra and `g` will be some `ChildF`.
 makeQueryPrism'
   ∷ ∀ a f g
-  . PrismP
+  . Prism'
       (AnyCardQuery a)
       (Coproduct (Coproduct CardEvalQuery f) g a)
-  → PrismP
+  → Prism'
       (Coproduct CardEvalQuery AnyCardQuery a)
       (Coproduct (Coproduct CardEvalQuery f) g a)
 makeQueryPrism' base = prism' to fro

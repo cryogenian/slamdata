@@ -23,9 +23,9 @@ import SlamData.Prelude
 import Data.Array (filter, catMaybes, head, nub, fromFoldable)
 import Data.Int as Int
 import Data.List (List)
-import Data.Semiring.Free (runFree)
-import Data.String (joinWith, indexOf)
+import Data.String as S
 import Data.String.Regex as RX
+import Data.String.Regex.Flags as RXF
 
 import Data.Json.Extended as EJSON
 
@@ -49,7 +49,7 @@ queryToSQL fields query =
   where
     topFields :: String
     topFields =
-        joinWith ", "
+        S.joinWith ", "
       $ nub
       $ map (RX.replace firstDot "")
       $ catMaybes
@@ -62,25 +62,25 @@ queryToSQL fields query =
     topFieldRegex :: RX.Regex
     topFieldRegex =
       unsafePartial fromRight $
-        RX.regex "^\\.[^\\.\\[]+|^\\[.+\\]/" RX.noFlags
+        RX.regex "^\\.[^\\.\\[]+|^\\[.+\\]/" RXF.noFlags
 
     whereOrFalse :: String
     whereOrFalse = if whereClause == "()" then "FALSE" else whereClause
 
     whereClause :: String
     whereClause =
-        joinWith " OR "
+        S.joinWith " OR "
       $ map oneWhereInput
       $ fromFoldable
-      $ runFree
+      $ unwrap
       $ map (termToSQL fields) query
 
     oneWhereInput :: List String -> String
-    oneWhereInput s = pars $ joinWith " AND " $ fromFoldable s
+    oneWhereInput s = pars $ S.joinWith " AND " $ fromFoldable s
 
 needDistinct :: String -> Boolean
 needDistinct input =
-  (isJust $ indexOf "{*}" input) || (isJust $ indexOf "[*]" input)
+  (isJust $ S.indexOf (S.Pattern "{*}") input) || (isJust $ S.indexOf (S.Pattern "[*]") input)
 
 termToSQL
   :: Array String
@@ -93,14 +93,14 @@ termToSQL fields (SS.Term {include: include, predicate: p, labels: ls}) =
   where
     renderPredicate :: SS.Predicate -> Array String -> String
     renderPredicate p prj =
-      joinWith " OR " (predicateToSQL p <$> prj)
+      S.joinWith " OR " (predicateToSQL p <$> prj)
 
 predicateToSQL
   :: SS.Predicate
   -> String
   -> String
 predicateToSQL (SS.Contains (SS.Text v)) s =
-  joinWith " OR " $
+  S.joinWith " OR " $
     [s <> " ~* " <> EJSON.renderEJson (EJSON.string (globToRegex (containsToGlob v)))]
     <> (if needUnq v then renderLowercased v else [])
     <> (if not (needDateTime v) && needDate v then render date else [ ])
@@ -117,7 +117,7 @@ predicateToSQL (SS.Contains (SS.Text v)) s =
 
     hasSpecialChars :: String -> Boolean
     hasSpecialChars v =
-      isJust (indexOf "*" v) || isJust (indexOf "?" v)
+      isJust (S.indexOf (S.Pattern "*") v) || isJust (S.indexOf (S.Pattern "?") v)
 
     date = EJSON.renderEJson $ EJSON.date v
     time = EJSON.renderEJson $ EJSON.time v
@@ -128,7 +128,7 @@ predicateToSQL (SS.Contains (SS.Text v)) s =
     render v = [s <> " = " <> v ]
 
 predicateToSQL (SS.Range (SS.Text v) (SS.Text v')) s =
-  joinWith " OR " $
+  S.joinWith " OR " $
     [ forR' (quote v) (quote v') ]
     <> (if needUnq v && needUnq v' then [ forR v v' ] else [ ])
     <> (if needDate v && needDate v' then [ forR date date' ] else [ ])
@@ -170,14 +170,14 @@ globToRegex =
       unsafePartial fromRight $
         RX.regex
           "[\\-\\[\\]\\/\\{\\}\\(\\)\\+\\.\\\\\\^\\$\\|]"
-          RX.noFlags { global = true }
+          RXF.global
 
     starRegex =
       unsafePartial fromRight $
-        RX.regex "\\*" RX.noFlags { global = true }
+        RX.regex "\\*" RXF.global
     askRegex =
       unsafePartial fromRight $
-        RX.regex "\\?" RX.noFlags { global = true }
+        RX.regex "\\?" RXF.global
 
 renderBinRel
   :: String
@@ -185,7 +185,7 @@ renderBinRel
   -> SS.Value
   -> String
 renderBinRel s op v = pars $
-  joinWith " OR " $
+  S.joinWith " OR " $
     [ forV' (quote unquoted) ]
     <> (if needUnq unquoted then [ forV unquoted ] else [])
     <> (if not (needDateTime unquoted) && needDate unquoted then [ forV date ] else [])
@@ -218,7 +218,7 @@ needDate = RX.test dateRegex
       unsafePartial fromRight $
         RX.regex
           """^(((19|20)([2468][048]|[13579][26]|0[48])|2000)[-]02[-]29|((19|20)[0-9]{2}[-](0[4678]|1[02])[-](0[1-9]|[12][0-9]|30)|(19|20)[0-9]{2}[-](0[1359]|11)[-](0[1-9]|[12][0-9]|3[01])|(19|20)[0-9]{2}[-]02[-](0[1-9]|1[0-9]|2[0-8])))$"""
-          RX.noFlags
+          RXF.noFlags
 
 
 needTime :: String -> Boolean
@@ -228,7 +228,7 @@ needTime = RX.test timeRegex
       unsafePartial fromRight $
         RX.regex
           "^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
-          RX.noFlags
+          RXF.noFlags
 
 
 needDateTime :: String -> Boolean
@@ -238,7 +238,7 @@ needDateTime = RX.test dtRegex
       unsafePartial fromRight $
         RX.regex
           "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
-          RX.noFlags
+          RXF.noFlags
 
 needInterval :: String -> Boolean
 needInterval = RX.test intervalRegex
@@ -247,7 +247,7 @@ needInterval = RX.test intervalRegex
       unsafePartial fromRight $
         RX.regex
           "P((([0-9]*\\.?[0-9]*)Y)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)W)?(([0-9]*\\.?[0-9]*)D)?)?(T(([0-9]*\\.?[0-9]*)H)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)S)?)?"
-          RX.noFlags
+          RXF.noFlags
 
 valueToSQL :: SS.Value -> String
 valueToSQL v =
@@ -265,12 +265,12 @@ labelsProjection fields ls =
     arrFieldRgx :: RX.Regex
     arrFieldRgx =
       unsafePartial fromRight $
-        RX.regex "\\[\\d+\\]" RX.noFlags{global = true}
+        RX.regex "\\[\\d+\\]" RXF.global
 
 labelsRegex :: Array SS.Label -> RX.Regex
-labelsRegex [] = unsafePartial fromRight $ RX.regex ".*" RX.noFlags
+labelsRegex [] = unsafePartial fromRight $ RX.regex ".*" RXF.noFlags
 labelsRegex ls =
-  unsafePartial fromRight $ RX.regex ("^" <> (foldMap mapFn ls) <> "$") RX.noFlags{ignoreCase = true}
+  unsafePartial fromRight $ RX.regex ("^" <> (foldMap mapFn ls) <> "$") RXF.ignoreCase
   where
   mapFn :: SS.Label -> String
   mapFn (SS.Meta l) = mapFn (SS.Common l)
@@ -278,20 +278,20 @@ labelsRegex ls =
   mapFn (SS.Common "[*]") = "(\\[\\d+\\])"
   mapFn (SS.Common "*") = "(\\.[^\\.]+|\\[\\d+\\])"
   mapFn (SS.Common l)
-    | RX.test (unsafePartial fromRight $ RX.regex "\\[\\d+\\]" RX.noFlags) l =
+    | RX.test (unsafePartial fromRight $ RX.regex "\\[\\d+\\]" RXF.noFlags) l =
         RX.replace openSquare "\\["
       $ RX.replace closeSquare "\\]"
       $ l
     | otherwise = "(\\.`" <> l <> "`|\\." <> l <> ")"
 
   openSquare :: RX.Regex
-  openSquare = unsafePartial fromRight $ RX.regex "\\[" RX.noFlags
+  openSquare = unsafePartial fromRight $ RX.regex "\\[" RXF.noFlags
 
   closeSquare :: RX.Regex
-  closeSquare = unsafePartial fromRight $ RX.regex "\\]" RX.noFlags
+  closeSquare = unsafePartial fromRight $ RX.regex "\\]" RXF.noFlags
 
 firstDot :: RX.Regex
-firstDot = unsafePartial fromRight $ RX.regex "^\\." RX.noFlags
+firstDot = unsafePartial fromRight $ RX.regex "^\\." RXF.noFlags
 
 quote :: String -> String
 quote s = EJSON.renderEJson $ EJSON.string s

@@ -17,28 +17,27 @@ limitations under the License.
 module SlamData.Workspace.Card.Next.Component.Query where
 
 import SlamData.Prelude
-import Data.Lens (TraversalP, wander)
+import Data.Lens (Traversal', wander)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Next.NextAction (NextAction)
 
 data Query a
-  = Init a
-  | AddCard CardType a
+  = AddCard CardType a
   | PresentReason (Maybe Port) CardType a
   | Selected NextAction a
   | UpdateFilter String a
   | DismissAddCardGuide a
   | PresentAddCardGuide a
 
-_AddCardType ∷ ∀ a. TraversalP (Query a) CardType
+_AddCardType ∷ ∀ a. Traversal' (Query a) CardType
 _AddCardType =
   wander \f s → case s of
     AddCard cty next → flip AddCard next <$> f cty
     _ → pure s
 
-_PresentReason ∷ ∀ a. TraversalP (Query a) (Tuple (Maybe Port) CardType)
+_PresentReason ∷ ∀ a. Traversal' (Query a) (Tuple (Maybe Port) CardType)
 _PresentReason =
   wander \f s → case s of
     PresentReason io card next → (#) next ∘ uncurry PresentReason <$> f (Tuple io card)

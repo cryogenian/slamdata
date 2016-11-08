@@ -181,8 +181,8 @@ render state =
     ]
   where
 
-  filterString ∷ String
-  filterString = Str.toLower state.filterString
+  filterString ∷ Str.Pattern
+  filterString = Str.Pattern (Str.toLower state.filterString)
 
   backsideAction ∷ BackAction → HTML
   backsideAction action =
