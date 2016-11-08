@@ -63,8 +63,8 @@ component
   → a
   → MC.InitialItemState
   → { component :: H.Component State (Query i) Slam
-     , initialState :: State
-     }
+    , initialState :: State
+    }
 component ispec path item itemState =
   { component: H.component { render, eval }
   , initialState: { selected: itemState == MC.Selected }

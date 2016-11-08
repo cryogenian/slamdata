@@ -177,7 +177,7 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
   peek ∷ ∀ x. MCI.BasicColumnsQuery s x → DSL s Unit
   peek = coproduct peekColumns (const (pure unit))
 
-  peekColumns ∷ ∀ x. MC.Query s x -> DSL s Unit
+  peekColumns ∷ ∀ x. MC.Query s x → DSL s Unit
   peekColumns = case _ of
     MC.Populate sel _ →
       H.modify (_ { selection = Just sel })
