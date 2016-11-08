@@ -18,10 +18,10 @@ module SlamData.Workspace.Card.Open.Component.Query where
 
 import SlamData.Prelude
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.MillerColumns.Component as MC
+import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 
 import Halogen (ChildF)
 
 import Utils.Path (AnyPath)
 
-type QueryP = Coproduct CardEvalQuery (ChildF Unit (MC.Query AnyPath))
+type QueryP = Coproduct CardEvalQuery (ChildF Unit (MCI.BasicColumnsQuery AnyPath))
