@@ -56,11 +56,9 @@ nextCardComponent ∷ CC.CardComponent
 nextCardComponent = CC.makeCardComponent
   { cardType: CT.NextAction
   , component:
-      H.lifecycleComponent
+      H.component
         { render
         , eval
-        , initializer: Just (right $ H.action Init)
-        , finalizer: Nothing
         }
   , initialState: State.initialState
   , _State: CC._NextState
@@ -200,9 +198,6 @@ dismissAddCardGuide =
     *> storeDismissedAddCardGuide
 
 nextEval ∷ Query ~> NextDSL
-nextEval (Init next) =
-  H.modify (\st → st { actions = NA.fromMaybePort st.input })
-    $> next
 nextEval (AddCard _ next) = dismissAddCardGuide $> next
 nextEval (PresentReason io card next) = pure next
 nextEval (UpdateFilter str next) =
