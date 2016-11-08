@@ -156,7 +156,7 @@ cardEval = case _ of
        ∘ (State._actions .~ NA.fromMaybePort value.input))
        $> next
   CC.Activate next →
-    pure next
+    H.modify (\st → st { actions = NA.fromMaybePort st.input }) $> next
   CC.Deactivate next →
     pure next
   CC.Save k →

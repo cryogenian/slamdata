@@ -46,7 +46,6 @@ import SlamData.Wiring (makeWiring)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
-import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
@@ -128,5 +127,3 @@ routeSignal =
         driver $ Workspace.toDeck $ Deck.ExploreFile fp
       New → do
         driver $ Workspace.toWorkspace $ Workspace.Reset
-        driver $ Workspace.toDeck $ Deck.Save $ (flip Tuple CardId.NextActionCardId) <$> deckId
-        driver $ Workspace.toWorkspace $ Workspace.Load deckId AT.Editable
