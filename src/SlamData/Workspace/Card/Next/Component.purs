@@ -121,9 +121,8 @@ render state =
       , HP.disabled $ not enabled
       , ARIA.label $ cardTitle action
       , HP.classes classes
-      ] ⊕ (guard
-            (NA.isInsert action ∨ NA.isDrill action)
-            $> HE.onClick (HE.input_ (right ∘ Selected action)))
+      , HE.onClick (HE.input_ $ right ∘ Selected action)
+      ]
 
     classes ∷ Array HH.ClassName
     classes = case action of
