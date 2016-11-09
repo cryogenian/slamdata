@@ -150,12 +150,10 @@ eval = coproduct cardEval nextEval
 cardEval ∷ CC.CardEvalQuery ~> NextDSL
 cardEval = case _ of
   CC.EvalCard value output next →
-    (H.modify
-       $ (State._input .~ value.input)
-       ∘ (State._actions .~ NA.fromMaybePort value.input))
+    (H.modify $ (State._input .~ value.input) ∘ updateActions value.input)
        $> next
   CC.Activate next →
-    H.modify (\st → st { actions = NA.fromMaybePort st.input }) $> next
+    (H.modify ∘ updateActions =<< H.gets _.input) $> next
   CC.Deactivate next →
     pure next
   CC.Save k →
@@ -169,6 +167,38 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
+updateActions ∷ Maybe Port.Port → State → State
+updateActions input state =
+  case activeDrill of
+    Nothing →
+      state
+        { actions = newActions }
+    Just drill →
+      state
+        { previousActions = newActions
+        , actions = fromMaybe [] $ pluckDrillActions =<< newActiveDrill
+        }
+  where
+  newActions = NA.fromMaybePort input
+
+  activeDrill =
+    F.find
+      (maybe false (eq state.actions) ∘ pluckDrillActions)
+      state.previousActions
+
+  newActiveDrill =
+    F.find (maybe false eqNameOfActiveDrill ∘ pluckDrillName) newActions
+
+  eqNameOfActiveDrill name =
+    maybe false (eq name) (pluckDrillName =<< activeDrill)
+
+  pluckDrillActions = case _ of
+    NA.Drill _ _ xs → Just xs
+    _ → Nothing
+
+  pluckDrillName = case _ of
+    NA.Drill x _ _ → Just x
+    _ → Nothing
 
 takesInput ∷ Maybe Port.Port → CT.CardType → Boolean
 takesInput input =
