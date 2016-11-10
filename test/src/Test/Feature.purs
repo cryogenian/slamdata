@@ -234,12 +234,12 @@ printProperties =
 noElementWithPropertiesError ∷ Properties → XPath → String
 noElementWithPropertiesError properties =
   XPath.errorMessage
-    $ withPropertiesMessage properties "Unable to find element with "
+    $ withPropertiesMessage properties "Unable to find element "
 
 elementWithPropertiesError ∷ Properties → XPath → String
 elementWithPropertiesError properties =
   XPath.errorMessage
-    $ withPropertiesMessage properties "Expected not to find element with "
+    $ withPropertiesMessage properties "Expected not to find element "
 
 withPropertiesMessage ∷ Properties → String → String
 withPropertiesMessage mp s

@@ -35,7 +35,7 @@ mdScenario =
 
 test ∷ SlamFeature Unit
 test = do
-  mdScenario "Provide and play markdown" ["https://github.com/slamdata/slamdata/issues/987"] do
+  mdScenario "Provide and play markdown" [] do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard
       $ joinWith "\n\n"
@@ -166,7 +166,7 @@ test = do
     Expect.checkableFieldInLastMdCard "Bronze" "radio" false
     successMsg "Ok, successfully provided and played markdown with evaluated content"
 
-  mdScenario "Filter query results with default field values" ["https://github.com/slamdata/slamdata/issues/1193"] do
+  mdScenario "Filter query results with default field values" ["https://github.com/slamdata/slamdata/issues/1216"] do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard $ joinWith "\n\n"
       [ "discipline = __ (!``SELECT discipline FROM `/test-mount/testDb/olympics` LIMIT 1``)"
@@ -201,7 +201,7 @@ test = do
     Expect.cardsInTableColumnInLastCardToNotEq 2 "type" "Silver"
     successMsg "Ok, Filtered query results with fields"
 
-  mdScenario "Filter query results by changing field values" ["https://github.com/slamdata/slamdata/issues/1194"] do
+  mdScenario "Filter query results by changing field values" ["https://github.com/slamdata/slamdata/issues/1216"] do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard $ joinWith "\n\n"
       [ "discipline = __ (!``SELECT discipline FROM `/test-mount/testDb/olympics` LIMIT 1``)"
