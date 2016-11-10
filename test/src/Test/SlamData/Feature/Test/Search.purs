@@ -71,7 +71,7 @@ test = do
     Expect.cardsInTableColumnInLastCardToContain 2 "state" "OR"
     successMsg "Successfully searched within results"
 
-  searchScenario "Search with field names" [] do
+  searchScenario "Search with field names" ["https://github.com/slamdata/slamdata/issues/1190"] do
     Interact.insertOpenCardInLastDeck
     Interact.selectFileForLastOpenCard "/test-mount/testDb/zips"
     Interact.accessNextCardInLastDeck
@@ -91,7 +91,7 @@ test = do
     Expect.cardsInTableColumnInLastCardToBeGT 1 "pop" "30000"
     successMsg "Successfully searched with field names"
 
-  searchScenario "Suppress search results" [] do
+  searchScenario "Suppress search results" ["https://github.com/slamdata/slamdata/issues/1196"] do
     Interact.insertOpenCardInLastDeck
     Interact.selectFileForLastOpenCard "/test-mount/testDb/zips"
     Interact.accessNextCardInLastDeck

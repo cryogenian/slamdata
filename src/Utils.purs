@@ -46,5 +46,7 @@ passover ∷ ∀ a b m. (Applicative m) ⇒ (a → m b) → a → m a
 passover f x =
   f x *> pure x
 
+censor ∷ ∀ a b. Either a b → Maybe b
+censor = either (\_ → Nothing) (Just)
 
 foreign import prettyJson ∷ J.Json → String

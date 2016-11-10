@@ -17,8 +17,7 @@ limitations under the License.
 module SlamData.Quasar.Auth.Authentication
   ( authentication
   , getIdTokenFromBusSilently
-  , fromEither
-  , fromEitherEither
+  , toNotificationOptions
   , AuthEffects
   , EIdToken
   , AuthenticationError(..)
@@ -40,6 +39,9 @@ import Control.Monad.Aff.Promise (Promise)
 import Control.Monad.Aff.Promise as Promise
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (Error)
+import Control.Monad.Eff.Exception as Exception
+import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Ref (Ref, REF)
 import Control.Monad.Eff.Ref as Ref
@@ -56,20 +58,20 @@ import DOM.HTML.Window as DOMHTMLWindow
 import DOM.Node.Document as DOMNodeDocument
 import DOM.Node.Node as DOMNode
 import DOM.Node.Types (Node, Element)
-import Data.Either as E
 import Data.Foldable as F
 import Data.Foreign as Foreign
-import Data.Maybe as M
 import Data.Nullable as Nullable
+import Data.Time.Duration (Milliseconds(Milliseconds), Seconds(Seconds))
 import Data.Traversable as T
 import OIDC.Aff as OIDCAff
-import OIDC.Crypt (RSASIGNTIME)
 import OIDC.Crypt as OIDCCrypt
 import OIDC.Crypt.JSONWebKey (JSONWebKey)
 import OIDC.Crypt.Types (IdToken(..), UnhashedNonce(..))
 import Quasar.Advanced.Types (ProviderR)
 import Quasar.Advanced.Types as QAT
 import SlamData.Config as Config
+import SlamData.Notification (NotificationOptions)
+import SlamData.Notification as Notification
 import SlamData.Prelude
 import SlamData.Quasar.Auth.IdTokenStorageEvents (getIdTokenStorageEvents)
 import SlamData.Quasar.Auth.Keys as AuthKeys
@@ -81,25 +83,19 @@ import Utils (passover)
 import Utils.LocalStorage as LocalStorage
 import Utils.DOM as DOMUtils
 
-fromEither ∷ ∀ a b. E.Either a b → M.Maybe b
-fromEither = E.either (\_ → M.Nothing) (M.Just)
-
-fromEitherEither ∷ ∀ a b c. E.Either a (E.Either b c) → M.Maybe c
-fromEitherEither = E.either (\_ → M.Nothing) fromEither
-
 getIdTokenFromBusSilently ∷ ∀ eff. RequestIdTokenBus → Aff (AuthEffects eff) (Either String EIdToken)
-getIdTokenFromBusSilently requestNewIdTokenBus =
+getIdTokenFromBusSilently requestIdTokenBus =
   liftEff getProviderRUsingLocalStorage
     >>= case _ of
       Right providerR → do
         idTokenVar ← AVar.makeVar
-        Bus.write { idToken: idTokenVar, providerR, prompt: false } requestNewIdTokenBus
+        Bus.write { idToken: idTokenVar, providerR, prompt: false } requestIdTokenBus
         idToken ← Right <$> AVar.takeVar idTokenVar
         pure idToken
       Left error → pure $ Left error
 
 data AuthenticationError
-  = IdTokenInvalid
+  = IdTokenInvalid (Maybe Error)
   | IdTokenUnavailable String
   | PromptDismissed
   | DOMError String
@@ -115,7 +111,7 @@ type RequestIdTokenBus = BusW RequestIdTokenMessage
 type EIdToken = Either AuthenticationError IdToken
 
 type AuthEffects eff =
-  ( rsaSignTime ∷ RSASIGNTIME
+  ( now ∷ NOW
   , avar ∷ AVAR
   , ref ∷ REF
   , dom ∷ DOM
@@ -326,8 +322,8 @@ getIdTokenUsingLocalStorage providerR = do
   eitherUnhashedNonce ← getUnhashedNonceUsingLocalStorage
   case Tuple eitherIdToken eitherUnhashedNonce of
     Tuple (Right idToken) (Right unhashedNonce) →
-      liftEff $ verify providerR unhashedNonce idToken
-        >>= if _ then (pure $ Just idToken) else (pure Nothing)
+      either (const $ Nothing) (if _ then (Just idToken) else Nothing)
+        <$> (liftEff $ verify providerR unhashedNonce idToken)
     Tuple _ _ → pure Nothing
 
 getUnverifiedIdTokenUsingLocalStorage ∷ ∀ eff. Aff (AuthEffects eff) (Either String IdToken)
@@ -354,8 +350,10 @@ getIdTokenFromLSOnChange providerR unhashedNonce =
           Left localStorageError →
             pure $ Left $ IdTokenUnavailable localStorageError
           Right idToken →
-            liftEff $ verify providerR unhashedNonce idToken
-              >>= if _ then pure $ Right idToken else pure $ Left IdTokenInvalid
+            either
+              (Left ∘ IdTokenInvalid ∘ Just )
+              (if _ then Right idToken else Left $ IdTokenInvalid Nothing)
+              <$> (liftEff $ verify providerR unhashedNonce idToken)
 
 getUnverifiedIdTokenFromLSOnChange
   ∷ ∀ eff
@@ -366,16 +364,29 @@ getUnverifiedIdTokenFromLSOnChange =
 runParseError ∷ ParseError → String
 runParseError (ParseError s) = s
 
-verify ∷ ∀ eff. ProviderR → UnhashedNonce → IdToken → Eff (AuthEffects eff) Boolean
+-- TODO: Remove g
+verify ∷ ∀ eff. ProviderR → UnhashedNonce → IdToken → Eff (AuthEffects eff) (Either Error Boolean)
 verify providerR unhashedNonce idToken =
-  F.or
+  F.foldl accumulateErrorsAcceptTrues (Right false)
     <$> T.traverse
           (verifyWithJwk providerR unhashedNonce idToken)
           providerR.openIDConfiguration.jwks
+  where
+  accumulateErrorsAcceptTrues ∷ Either Error Boolean → Either Error Boolean → Either Error Boolean
+  accumulateErrorsAcceptTrues =
+    case _, _ of
+      _, Right true → Right true
+      Right true, _ → Right true
+      Left acc, Left error →
+        Left $ Exception.error $ (Exception.message acc) <> " " <> (Exception.message error)
+      Right false, Left error → Left error
+      Right false, Right false → Right false
+      Left acc, Right false → Left acc
 
-verifyWithJwk ∷ ∀ eff. ProviderR → UnhashedNonce → IdToken → JSONWebKey → Eff (AuthEffects eff) Boolean
+verifyWithJwk ∷ ∀ eff. ProviderR → UnhashedNonce → IdToken → JSONWebKey → Eff (AuthEffects eff) (Either Error Boolean)
 verifyWithJwk providerR unhashedNonce idToken jwk = do
   OIDCCrypt.verifyIdToken
+      (Seconds 1.0)
       idToken
       providerR.openIDConfiguration.issuer
       providerR.clientID
@@ -384,3 +395,41 @@ verifyWithJwk providerR unhashedNonce idToken jwk = do
 
 getRedirectUri ∷ ∀ eff. Eff (AuthEffects eff) String
 getRedirectUri = (_ <> Config.redirectURIString) <$> Browser.locationString
+
+toNotificationOptions ∷ AuthenticationError → Maybe NotificationOptions
+toNotificationOptions =
+  case _ of
+    IdTokenInvalid error →
+      Just
+        { notification: Notification.Error $ "Sign in failed: Authentication provider provided invalid id token."
+        , detail: Notification.Details ∘ Exception.message <$> error
+        , timeout
+        , actionOptions: Nothing
+        }
+    IdTokenUnavailable detail →
+      Just
+      { notification:
+          Notification.Error
+            $ "Sign in failed: Authentication provider didn't provide a token. This might happen if you are signed into multiple accounts with your authentication provider."
+        , detail: Just $ Notification.Details detail
+        , timeout
+        , actionOptions: Nothing
+        }
+    PromptDismissed →
+      Just
+        { notification: Notification.Warning $ "Sign in prompt closed."
+        , detail: Nothing
+        , timeout
+        , actionOptions: Nothing
+        }
+    ProviderError detail →
+      Just
+        { notification: Notification.Error $ "Sign in failed: There was a problem with your provider configuration, please update your SlamData configuration and try again."
+        , detail: Just $ Notification.Details detail
+        , timeout
+        , actionOptions: Nothing
+        }
+    DOMError _ → Nothing
+  where
+  timeout = Just $ Milliseconds 5000.0
+

@@ -158,7 +158,7 @@ cardName = case _ of
   Chart → "Show Chart"
   FormInput → "Show Form"
   Markdown → "Show Markdown"
-  Table → "Show Table"
+  Table → "Preview Table"
   Download → "Show Download"
   Variables → "Setup Variables"
   Troubleshoot → "Troubleshoot"

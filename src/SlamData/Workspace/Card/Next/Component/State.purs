@@ -35,6 +35,7 @@ type State =
   , filterString ∷ String
   }
 
+
 chartSubmenu ∷ NextAction
 chartSubmenu =
   Drill
@@ -72,7 +73,7 @@ initialState ∷ State
 initialState =
   { input: Nothing
   , presentAddCardGuide: false
-  , actions: defaultActions
+  , actions: []
   , previousActions: [ ]
   , filterString: ""
   }

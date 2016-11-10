@@ -27,7 +27,6 @@ import Data.JSDate (LOCALE)
 import ECharts.Types (ECHARTS)
 import Halogen (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
-import OIDC.Crypt (RSASIGNTIME)
 import ZClipboard (ZCLIPBOARD)
 
 type SlamDataEffects = HalogenEffects SlamDataRawEffects
@@ -42,7 +41,6 @@ type SlamDataRawEffects =
   , now ∷ NOW
   , ref ∷ REF
   , timer ∷ TIMER
-  , rsaSignTime ∷ RSASIGNTIME
   , zClipboard ∷ ZCLIPBOARD
   , locale ∷ LOCALE
   )

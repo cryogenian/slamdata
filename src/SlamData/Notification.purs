@@ -17,16 +17,20 @@ limitations under the License.
 module SlamData.Notification
   ( Notification(..)
   , NotificationOptions
-  , NotificationAction(..)
-  , Detail(..)
+  , ActionOptions(..)
+  , Action(..)
+  , Details(..)
   , class NotifyDSL
   , notify
+  , optionsWithoutActionEq
   , info
   , warn
   , error
   ) where
 
 import SlamData.Prelude
+
+import Data.Generic (gEq)
 
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Free (Free, liftF)
@@ -41,49 +45,71 @@ data Notification
   | Warning String
   | Error String
 
-data NotificationAction
+derive instance genericNotification :: Generic Notification
+
+instance eqNotification ∷ Eq Notification where
+  eq = gEq
+
+data Action
   = ExpandGlobalMenu
   | Fulfill (AVar Unit)
 
 type NotificationOptions =
   { notification ∷ Notification
-  , detail ∷ Maybe Detail
+  , detail ∷ Maybe Details
+  , actionOptions ∷ Maybe ActionOptions
   , timeout ∷ Maybe Milliseconds
   }
 
-data Detail
-  = SimpleDetail String
-  | ActionDetail
-      { messagePrefix ∷ String
-      , actionMessage ∷ String
-      , messageSuffix ∷ String
-      , action ∷ NotificationAction
-      }
+optionsWithoutActionEq
+  ∷ NotificationOptions
+  → NotificationOptions
+  → Boolean
+optionsWithoutActionEq x y =
+  isNothing x.actionOptions
+    && isNothing y.actionOptions
+    && x.notification == y.notification
+    && x.timeout == y.timeout
+    && y.detail == y.detail
+
+newtype Details = Details String
+
+instance eqDetails ∷ Eq Details where
+  eq (Details x) (Details y) = eq x y
+
+newtype ActionOptions =
+  ActionOptions
+    { messagePrefix ∷ String
+    , actionMessage ∷ String
+    , messageSuffix ∷ String
+    , action ∷ Action
+    }
 
 class NotifyDSL m where
-  notify ∷ Notification → Maybe Detail → Maybe Milliseconds → m Unit
+  notify ∷ Notification → Maybe Details → Maybe Milliseconds → Maybe ActionOptions → m Unit
 
 instance notifyDSLFree ∷ NotifyDSL m ⇒ NotifyDSL (Free m) where
-  notify n d m = liftF $ notify n d m
+  notify n d m a = liftF $ notify n d m a
 
 instance notifyDSLMaybeT ∷ (Monad m, NotifyDSL m) ⇒ NotifyDSL (MaybeT m) where
-  notify n d m = lift $ notify n d m
+  notify n d m a = lift $ notify n d m a
 
 instance notifyDSLExceptT ∷ (Monad m, NotifyDSL m) ⇒ NotifyDSL (ExceptT e m) where
-  notify n d m = lift $ notify n d m
+  notify n d m a = lift $ notify n d m a
 
 instance notifyDSLHFC ∷ NotifyDSL g ⇒ NotifyDSL (HF.HalogenFP ES.EventSource s f g) where
-  notify n d m = HF.QueryHF $ notify n d m
+  notify n d m a = HF.QueryHF $ notify n d m a
 
 instance notifyDSLHFP ∷ NotifyDSL g ⇒ NotifyDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
-  notify n d m = HF.QueryHF $ notify n d m
+  notify n d m a = HF.QueryHF $ notify n d m a
 
 info
   ∷ ∀ m
   . NotifyDSL m
   ⇒ String
-  → Maybe Detail
+  → Maybe Details
   → Maybe Milliseconds
+  → Maybe ActionOptions
   → m Unit
 info = notify <<< Info
 
@@ -91,8 +117,9 @@ warn
   ∷ ∀ m
   . NotifyDSL m
   ⇒ String
-  → Maybe Detail
+  → Maybe Details
   → Maybe Milliseconds
+  → Maybe ActionOptions
   → m Unit
 warn = notify <<< Warning
 
@@ -100,7 +127,8 @@ error
   ∷ ∀ m
   . NotifyDSL m
   ⇒ String
-  → Maybe Detail
+  → Maybe Details
   → Maybe Milliseconds
+  → Maybe ActionOptions
   → m Unit
 error = notify <<< Error
