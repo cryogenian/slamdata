@@ -125,5 +125,5 @@ routeSignal =
       Exploring fp → do
         driver $ Workspace.toWorkspace $ Workspace.Reset
         driver $ Workspace.toDeck $ Deck.ExploreFile fp
-      New →
+      New → do
         driver $ Workspace.toWorkspace $ Workspace.Reset
