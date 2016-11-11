@@ -127,7 +127,7 @@ getNewName parent name = do
            else newName
 
   exists ∷ String → Array QFS.Resource → Boolean
-  exists name = F.any ((_ == name) ∘ printName ∘ QR.getName)
+  exists n = F.any ((_ == n) ∘ printName ∘ QR.getName)
 
   printName ∷ Either (Maybe P.DirName) P.FileName → String
   printName = either (fromMaybe "" ∘ map P.runDirName) P.runFileName
@@ -196,13 +196,13 @@ delete resource =
 
     where
     go ∷ Tuple DirPath (Either P.DirName P.FileName) → Boolean
-    go (Tuple d name) =
+    go (Tuple d' name) =
       case name of
         Right _ → false
         Left n →
           if n == P.DirName Config.trashFolder
           then true
-          else alreadyInTrash' d
+          else alreadyInTrash' d'
 
 forceDelete
   ∷ ∀ f m

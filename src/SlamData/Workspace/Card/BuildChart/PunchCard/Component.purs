@@ -38,7 +38,7 @@ import SlamData.Monad (Slam)
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
+import SlamData.Form.Select (_value, autoSelect, fromSelected, ifSelected, newSelect, setPreviousValueFrom)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)

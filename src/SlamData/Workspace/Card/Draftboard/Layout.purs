@@ -113,14 +113,14 @@ edges = walkWithLocator go Nil
     goEdges x y zero 0 Nil panes <> es
 
     where
-    goEdges x y off ix acc ps =
+    goEdges x' y' off ix acc ps =
       let
         edge = case ps of
           (r × p) : (r' × p') : _ →
             let
               vect = case orn of
-                Horizontal → { x: x + r * w, y, z: h }
-                Vertical   → { x, y: y + r * h, z: w }
+                Horizontal → { x: x' + r * w, y: y', z: h }
+                Vertical   → { x: x', y: y' + r * h, z: w }
               in
                 List.singleton
                   { index: ix
@@ -136,9 +136,9 @@ edges = walkWithLocator go Nil
           (r × p) : ps' →
             case orn of
               Horizontal →
-                goEdges (r * w + x) y (off + r) (ix + 1) (edge <> acc) ps'
+                goEdges (r * w + x') y' (off + r) (ix + 1) (edge <> acc) ps'
               Vertical →
-                goEdges x (r * h + y) (off + r) (ix + 1) (edge <> acc) ps'
+                goEdges x' (r * h + y') (off + r) (ix + 1) (edge <> acc) ps'
 
 -- | Finds the deepest split for a given orientation and cursor.
 findSplit

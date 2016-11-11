@@ -89,10 +89,10 @@ termToSQL
 termToSQL fields (SS.Term {include: include, predicate: p, labels: ls}) =
   if not include
     then "NOT " <> pars (termToSQL fields $ SS.Term {include: true, predicate: p, labels: ls})
-    else renderPredicate p $ labelsProjection fields (fromFoldable ls)
+    else renderPredicate $ labelsProjection fields (fromFoldable ls)
   where
-    renderPredicate :: SS.Predicate -> Array String -> String
-    renderPredicate p prj =
+    renderPredicate :: Array String -> String
+    renderPredicate prj =
       S.joinWith " OR " (predicateToSQL p <$> prj)
 
 predicateToSQL
@@ -110,14 +110,14 @@ predicateToSQL (SS.Contains (SS.Text v)) s =
 
   where
     containsToGlob :: String -> String
-    containsToGlob v =
-      if hasSpecialChars v
-      then v
-      else "*" <> v <> "*"
+    containsToGlob v' =
+      if hasSpecialChars v'
+      then v'
+      else "*" <> v' <> "*"
 
     hasSpecialChars :: String -> Boolean
-    hasSpecialChars v =
-      isJust (S.indexOf (S.Pattern "*") v) || isJust (S.indexOf (S.Pattern "?") v)
+    hasSpecialChars v' =
+      isJust (S.indexOf (S.Pattern "*") v') || isJust (S.indexOf (S.Pattern "?") v')
 
     date = EJSON.renderEJson $ EJSON.date v
     time = EJSON.renderEJson $ EJSON.time v
@@ -125,7 +125,7 @@ predicateToSQL (SS.Contains (SS.Text v)) s =
     i = EJSON.renderEJson $ EJSON.interval v
 
     renderLowercased v = [ "LOWER(" <> s <> ") = " <> v]
-    render v = [s <> " = " <> v ]
+    render v' = [s <> " = " <> v']
 
 predicateToSQL (SS.Range (SS.Text v) (SS.Text v')) s =
   S.joinWith " OR " $
@@ -138,12 +138,12 @@ predicateToSQL (SS.Range (SS.Text v) (SS.Text v')) s =
     date' = EJSON.renderEJson $ EJSON.date v'
 
     forR' :: String -> String -> String
-    forR' v v' =
-      fold ["(LOWER(", s, ") >=", v, " AND LOWER(", s, ") <= ", v', ")"]
+    forR' a b =
+      fold ["(LOWER(", s, ") >=", a, " AND LOWER(", s, ") <= ", b, ")"]
 
     forR :: String -> String -> String
-    forR v v' =
-      fold ["(", s, " >= ", v, " AND ", s, " <= ", v', ")"]
+    forR a b =
+      fold ["(", s, " >= ", a, " AND ", s, " <= ", b, ")"]
 
 predicateToSQL (SS.Range (SS.Tag val) val') s =
   predicateToSQL (SS.Range (SS.Text val) val') s
@@ -199,8 +199,8 @@ renderBinRel s op v = pars $
     ts = EJSON.renderEJson $ EJSON.timestamp unquoted
     i = EJSON.renderEJson $ EJSON.interval unquoted
 
-    forV' v = fold ["LOWER(", s, ") ", op, " ", v]
-    forV v = fold [s, " ", op, " ", v]
+    forV' v' = fold ["LOWER(", s, ") ", op, " ", v']
+    forV v' = fold [s, " ", op, " ", v']
 
 -- | Whether the string should be rendered without quotes
 needUnq :: String -> Boolean
@@ -250,8 +250,8 @@ needInterval = RX.test intervalRegex
           RXF.noFlags
 
 valueToSQL :: SS.Value -> String
-valueToSQL v =
-  case v of
+valueToSQL =
+  case _ of
     SS.Text v -> v
     SS.Tag v -> v
 

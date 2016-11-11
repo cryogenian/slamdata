@@ -282,13 +282,13 @@ setDir ∷ PU.AnyPath → PU.DirPath → PU.AnyPath
 setDir ap d = bimap (setDir' d) (setFile' d) ap
   where
   setDir' ∷ PU.DirPath → PU.DirPath → PU.DirPath
-  setDir' d p =
-    d </>
+  setDir' d' p =
+    d' </>
     (maybe P.currentDir (snd ⋙ PU.nameOfFileOrDir ⋙ P.dir) $ P.peel p)
 
   setFile' ∷ PU.DirPath → PU.FilePath → PU.FilePath
-  setFile' d p =
-    d </>
+  setFile' d' p =
+    d' </>
     (maybe (P.file "") (snd ⋙ PU.nameOfFileOrDir ⋙ P.file) $ P.peel p)
 
 setPath ∷ Resource → PU.AnyPath → Resource
@@ -305,10 +305,10 @@ setName r name =
 -- MODIFIERS (PRIVATE)
 
 renameAny ∷ (String → String) → PU.AnyPath → PU.AnyPath
-renameAny fn ap = bimap (P.renameDir $ liftDir fn) (P.renameFile $ liftFile fn) ap
+renameAny fn ap = bimap (P.renameDir liftDir) (P.renameFile liftFile) ap
   where
-  liftFile fn (P.FileName a) = P.FileName $ fn a
-  liftDir fn (P.DirName a) = P.DirName $ fn a
+  liftFile (P.FileName a) = P.FileName $ fn a
+  liftDir (P.DirName a) = P.DirName $ fn a
 
 
 -- TRAVERSALS

@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.BuildChart.DimensionPicker.Component where
 
 import SlamData.Prelude
 
-import Data.List (List, (:))
+import Data.List (List)
 import Data.List as List
 
 import Halogen as H

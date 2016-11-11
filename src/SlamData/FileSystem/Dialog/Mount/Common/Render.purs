@@ -124,10 +124,10 @@ hosts ∷ ∀ s. s → Lens' s (Array MCS.MountHost) → H.ComponentHTML (Settin
 hosts state lens =
   HH.div
     [ HP.class_ Rc.mountHostList ]
-    $ hostIx state <$> 0 .. (length (state ^. lens) - 1)
+    $ hostIx <$> 0 .. (length (state ^. lens) - 1)
 
   where
-  hostIx state index =
+  hostIx index =
     HH.div
       [ HP.class_ Rc.mountHost ]
       [ label "Host"

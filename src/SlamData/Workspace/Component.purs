@@ -34,7 +34,6 @@ import Data.Lens ((^.), (.~), (?~))
 import Data.List as List
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
-import Data.Rational ((%))
 import Data.String as Str
 import Data.Time.Duration (Milliseconds(..))
 

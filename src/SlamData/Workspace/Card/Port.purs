@@ -95,8 +95,8 @@ tagPort (Just p) = case p of
   SlamDown sd → "SlamDown: " ⊕ show sd
   VarMap vm → "VarMap: " ⊕ show vm
   CardError str → "CardError: " ⊕ show str
-  TaggedResource p → "TaggedResource: " ⊕ show p.resource ⊕ " " ⊕ show p.tag
-  DownloadOptions p → "DownloadOptions"
+  TaggedResource tr → "TaggedResource: " ⊕ show tr.resource ⊕ " " ⊕ show tr.tag
+  DownloadOptions _ → "DownloadOptions"
   Draftboard → "Draftboard"
   Blocked → "Blocked"
   ChartInstructions _ _ → "ChartInstructions"

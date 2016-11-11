@@ -181,7 +181,7 @@ getIdTokenSilently
 getIdTokenSilently providerR = do
   unhashedNonce ← liftEff OIDCAff.getRandomUnhashedNonce
   liftEff $ AuthStore.storeUnhashedNonce unhashedNonce
-  appendHiddenRequestIFrameToBody unhashedNonce providerR
+  appendHiddenRequestIFrameToBody unhashedNonce
     >>= case _ of
       Left error → pure $ Left error
       Right iFrameNode → do
@@ -189,7 +189,7 @@ getIdTokenSilently providerR = do
         liftEff $ removeBodyChild iFrameNode
         pure idToken
   where
-  appendHiddenRequestIFrameToBody unhashedNonce providerR =
+  appendHiddenRequestIFrameToBody unhashedNonce =
     either
       (pure ∘ Left)
       (liftEff ∘ map (lmap DOMError) ∘ appendHiddenIFrameToBody)

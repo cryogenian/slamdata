@@ -23,7 +23,6 @@ import SlamData.Prelude
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
-import Data.Lens ((^?))
 import Data.Map as M
 import Data.Set as Set
 

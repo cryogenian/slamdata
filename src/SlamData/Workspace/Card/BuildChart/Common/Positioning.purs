@@ -223,7 +223,7 @@ adjustRectangularPositions arr =
       → Int
       → Array (RectangularPosition r)
       → Array (RectangularPosition r)
-    setPositions acc colIx rowIx inThisRow arr = case A.uncons arr of
+    setPositions acc colIx rowIx inThisRow arr' = case A.uncons arr' of
       Nothing → acc
       Just {head, tail} →
         let

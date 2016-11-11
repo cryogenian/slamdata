@@ -197,7 +197,7 @@ buildGraphData records r =
       r.maxSize - sizeDistance / distance * (maximumValue - val)
 
   nodes ∷ Array GraphItem
-  nodes = rawNodes <#> \r → r{size = map relativeSize r.value}
+  nodes = rawNodes <#> \r' → r' { size = map relativeSize r'.value }
 
 sourceRgx ∷ Rgx.Regex
 sourceRgx = unsafePartial fromRight $ Rgx.regex "source:([^:]+)" RXF.noFlags

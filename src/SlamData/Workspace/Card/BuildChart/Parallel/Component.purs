@@ -23,7 +23,7 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor)
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Lens ((^?), (^.), (.~), (?~), (%~))
+import Data.Lens ((^?), (^.), (.~), (?~))
 import Data.Lens as Lens
 import Data.List as List
 
