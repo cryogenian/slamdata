@@ -24,8 +24,7 @@ import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Next.NextAction (NextAction)
 
 data Query a
-  = Init a
-  | AddCard CardType a
+  = AddCard CardType a
   | PresentReason (Maybe Port) CardType a
   | Selected NextAction a
   | UpdateFilter String a

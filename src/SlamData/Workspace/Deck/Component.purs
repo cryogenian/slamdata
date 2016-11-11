@@ -179,6 +179,8 @@ eval opts = case _ of
         , responsiveSize = st.responsiveSize
         , breakers = st.breakers
         }
+    id ← H.gets _.id
+    void $ queryCardEval (id × NextActionCardId) $ H.action CQ.ActivateCard
     pure next
   SetParent parent next →
     H.modify (DCS._parent .~ Just parent) $> next

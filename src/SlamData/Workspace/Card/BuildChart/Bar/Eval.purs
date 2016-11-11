@@ -154,6 +154,7 @@ buildBar r records axes = do
 
   E.xAxis do
     E.axisType xAxisConfig.axisType
+    E.enabledBoundaryGap
     traverse_ E.interval xAxisConfig.interval
     case xAxisConfig.axisType of
       ET.Category →

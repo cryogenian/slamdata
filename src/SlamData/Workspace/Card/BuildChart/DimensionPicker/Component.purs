@@ -29,6 +29,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Workspace.MillerColumns.TreeData as MCT
 
@@ -45,9 +46,9 @@ initialState =
   { selection: Nothing
   }
 
-type ChildState s = MC.State s s
+type ChildState s = MCI.BasicColumnsState s s
 
-type ChildQuery s = MC.Query s
+type ChildQuery s = MCI.BasicColumnsQuery s
 
 type ChildSlot = Unit
 
@@ -91,10 +92,9 @@ type PickerOptions s =
   , isSelectable ∷ List s → Boolean
   }
 
-pickerOptionsToItemSpec ∷ ∀ s. Eq s ⇒ PickerOptions s → MC.ItemSpec s s Slam
-pickerOptionsToItemSpec { label, render, values } =
-  { label: label
-  , render: render
+pickerOptionsToColumnOptions ∷ ∀ s. Eq s ⇒ PickerOptions s → MCI.BasicColumnOptions s s
+pickerOptionsToColumnOptions { label, render, values } =
+  { render: MCI.component { render, label }
   , load: MCT.loadFromTree id values
   , id: id
   }
@@ -120,12 +120,12 @@ isLeafPath = fromMaybe false ∘ map isRight ∘ List.last
 
 picker
   ∷ ∀ s
-  . Eq s
+  . Ord s
   ⇒ PickerOptions s
   → H.Component (StateP s) (QueryP s) Slam
 picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   where
-  itemSpec = pickerOptionsToItemSpec opts
+  columnOptions = pickerOptionsToColumnOptions opts
   render ∷ State s → HTML s
   render st =
     HH.div
@@ -144,8 +144,8 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
       , HH.div
           [ HP.classes [ HH.className "sd-dimension-picker-content" ] ]
           [ HH.slot unit \_ →
-              { component: MC.component itemSpec Nothing
-              , initialState: MCT.initialStateFromTree itemSpec.id opts.values
+              { component: MC.component columnOptions Nothing
+              , initialState: H.parentState $ MCT.initialStateFromTree columnOptions.id opts.values
               }
           ]
       , HH.div
@@ -174,8 +174,11 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
     Dismiss next → pure next
     Confirm _ next → pure next
 
-  peek ∷ ∀ x. MC.Query s x → DSL s Unit
-  peek = case _ of
+  peek ∷ ∀ x. MCI.BasicColumnsQuery s x → DSL s Unit
+  peek = coproduct peekColumns (const (pure unit))
+
+  peekColumns ∷ ∀ x. MC.Query s x → DSL s Unit
+  peekColumns = case _ of
     MC.Populate sel _ →
       H.modify (_ { selection = Just sel })
     _ →

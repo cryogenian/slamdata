@@ -35,7 +35,7 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Monad (Slam)
 
-import SlamData.Workspace.MillerColumns.Component as MC
+import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 
 import Utils.Path (AnyPath)
 
@@ -63,7 +63,7 @@ _loading = lens (_.loading) (_{loading = _})
 
 type StateP =
   ParentState
-    State (MC.State R.Resource AnyPath)
-    CardEvalQuery (MC.Query AnyPath)
+    State (MCI.BasicColumnsState R.Resource AnyPath)
+    CardEvalQuery (MCI.BasicColumnsQuery AnyPath)
     Slam
     Unit

@@ -49,11 +49,12 @@ import SlamData.Workspace.Card.Open.Component.Query (QueryP)
 import SlamData.Workspace.Card.Open.Component.State (State, StateP, _levelOfDetails, _selected, _loading, initialState)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.MillerColumns.Component as MC
+import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 
 import Utils.Path (AnyPath)
 
-type DSL = H.ParentDSL State (MC.State R.Resource AnyPath) CC.CardEvalQuery (MC.Query AnyPath) Slam Unit
-type HTML = H.ParentHTML (MC.State R.Resource AnyPath) CC.CardEvalQuery (MC.Query AnyPath) Slam Unit
+type DSL = H.ParentDSL State (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQuery (MCI.BasicColumnsQuery AnyPath) Slam Unit
+type HTML = H.ParentHTML (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQuery (MCI.BasicColumnsQuery AnyPath) Slam Unit
 
 openComponent ∷ Maybe R.Resource → H.Component CC.CardStateP CC.CardQueryP Slam
 openComponent mres =
@@ -89,11 +90,11 @@ renderHighLOD initPath state =
     ]
     [ HH.slot unit \_ →
         { component: MC.component itemSpec (Just initPath)
-        , initialState: MC.initialState
+        , initialState: H.parentState MC.initialState
         }
     ]
 
-renderItem ∷ R.Resource -> MC.ItemHTML
+renderItem ∷ R.Resource → MC.ItemHTML
 renderItem r =
   HH.div
     [ HP.classes
@@ -130,7 +131,7 @@ eval = case _ of
     mbRes ← H.gets _.selected
     pure $ k $ Card.Open (map (either R.Directory R.File) ∘ L.head =<< mbRes)
   CC.Load (Card.Open (Just res)) next → do
-    void $ H.query unit $ H.action $ MC.Populate $ toPathList $ R.getPath res
+    void $ H.query unit $ left $ H.action $ MC.Populate $ toPathList $ R.getPath res
     pure next
   CC.Load _ next →
     pure next
@@ -146,8 +147,11 @@ eval = case _ of
   CC.ZoomIn next →
     pure next
 
-peek ∷ ∀ x. MC.Query AnyPath x → DSL Unit
-peek = case _ of
+peek ∷ ∀ x. MCI.BasicColumnsQuery AnyPath x → DSL Unit
+peek = coproduct peekColumns (const (pure unit))
+
+peekColumns ∷ ∀ x. MC.Query AnyPath x → DSL Unit
+peekColumns = case _ of
   MC.Populate rs _ → do
     H.modify (_selected ?~ rs)
     CC.raiseUpdatedP CC.EvalModelUpdate
@@ -155,10 +159,9 @@ peek = case _ of
     H.modify (_loading .~ b)
   _ → pure unit
 
-itemSpec ∷ MC.ItemSpec R.Resource AnyPath Slam
+itemSpec ∷ MCI.BasicColumnOptions R.Resource AnyPath
 itemSpec =
-  { label: R.resourceName
-  , render: renderItem
+  { render: MCI.component { label: R.resourceName, render: renderItem }
   , load
   , id: R.getPath
   }
@@ -192,5 +195,5 @@ toPathList ∷ AnyPath → L.List AnyPath
 toPathList res =
   (unfoldr \r → Tuple r <$> either go go r) res `L.snoc` Left Path.rootDir
   where
-  go ∷ ∀ b. Path.Path Path.Abs b Path.Sandboxed -> Maybe AnyPath
+  go ∷ ∀ b. Path.Path Path.Abs b Path.Sandboxed → Maybe AnyPath
   go = map (Left ∘ fst) ∘ Path.peel

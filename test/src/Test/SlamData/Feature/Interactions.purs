@@ -14,7 +14,6 @@ import Global (encodeURIComponent)
 import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
 
 import Test.Feature as Feature
-import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature, getConfig, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
 import Test.Utils (appendToCwd)
@@ -71,12 +70,9 @@ accessBreadcrumb ∷ String → SlamFeature Unit
 accessBreadcrumb = Feature.click ∘ XPath.anywhere ∘ XPaths.accessBreadcrumb
 
 browseRootFolder ∷ SlamFeature Unit
-browseRootFolder =
-  tryRepeatedlyTo do
-    ((Feature.clickNotRepeatedly $ XPath.anywhere XPaths.headerGripper)
-     <|>
-     (Feature.clickNotRepeatedly $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1))
-    Expect.fileNotRepeatedly "test-mount"
+browseRootFolder = do
+  Feature.click $ XPath.anywhere XPaths.headerGripper
+  Feature.click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
 
 browseTestFolder ∷ SlamFeature Unit
 browseTestFolder =
