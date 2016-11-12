@@ -200,8 +200,8 @@ evalCard input =
       BuildPunchCard.eval model resource axes
     BuildCandlestick model, Just (Port.TaggedResource {resource, axes}) →
       BuildCandlestick.eval model resource axes
-    BuildParallel model, Just (Port.TaggedResource {resource, axes}) →
-      BuildParallel.eval model resource axes
+    BuildParallel model, Just (Port.TaggedResource {resource}) →
+      BuildParallel.eval model resource
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
