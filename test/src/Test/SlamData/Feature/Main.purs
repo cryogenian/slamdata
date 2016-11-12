@@ -15,7 +15,7 @@ import Control.Monad.Reader.Trans (runReaderT)
 
 import Data.Array as Arr
 import Data.Posix.Signal (Signal(SIGTERM))
-import Data.String as Str
+import Data.String as S
 
 import DOM (DOM)
 
@@ -250,5 +250,5 @@ main = do
   where
   errHandler e = do
     Ec.log $ red $ message e
-    traverse_ (Ec.log ∘ red) $ Str.split "\n" $ stack e
+    traverse_ (Ec.log ∘ red) $ S.split (S.Pattern "\n") $ stack e
     Process.exit 1

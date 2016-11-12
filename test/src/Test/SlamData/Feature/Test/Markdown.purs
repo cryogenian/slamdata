@@ -16,9 +16,8 @@ limitations under the License.
 
 module Test.SlamData.Feature.Test.Markdown where
 
-import Data.String (joinWith)
-import Control.Apply ((*>))
 import Prelude
+import Data.String (joinWith)
 import Test.Feature.Log (successMsg)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.Interactions as Interact

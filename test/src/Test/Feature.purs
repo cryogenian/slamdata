@@ -400,7 +400,7 @@ expectSelectValue value xPath =
   optionXPath = xPath ⊕ "/descendant::option[text()='" ⊕ value ⊕ "']"
   getOptionValue = flip getAttribute "value" =<< find optionXPath
   valueProperty = Map.singleton "value"
-  expectPresentedWithValue value = expectPresentedWithProperties (valueProperty value) xPath
+  expectPresentedWithValue value' = expectPresentedWithProperties (valueProperty value') xPath
 
 expectElementContainsText ∷ ∀ e o. String → XPath → Feature e o Unit
 expectElementContainsText txt xPath =
@@ -425,9 +425,9 @@ expectDownloadedTextFileToMatchFile downloadFolder downloadedFileName expectedFi
   downloadedFile ← lift $ readTextFile UTF8 $ filePath
   if downloadedFile == expectedFile
     then lift $ unlink filePath
-    else liftEff $ throw $ notEqualError filePath downloadedFile expectedFilePath
+    else liftEff $ throw $ notEqualError filePath downloadedFile
   where
-  notEqualError filePath fileContents expectedFilePath =
+  notEqualError filePath fileContents =
     "Expected file "
       ⊕ filePath
       ⊕ "'s contents\n\n"

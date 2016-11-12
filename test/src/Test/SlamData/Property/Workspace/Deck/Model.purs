@@ -28,7 +28,7 @@ import SlamData.Workspace.Deck.Model as Model
 
 import Test.SlamData.Property.Workspace.Card.CardId (runArbCardId)
 import Test.SlamData.Property.Workspace.Card.Model (runArbCard, checkCardEquality)
-import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck)
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype ArbDeck = ArbDeck Model.Deck
