@@ -79,7 +79,6 @@ import Data.Foldable (maximum)
 import Data.Lens (Lens', lens)
 import Data.Lens as Lens
 import Data.Map as Map
-import Data.Path.Pathy ((</>))
 import Data.Set as Set
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)

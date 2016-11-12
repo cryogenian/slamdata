@@ -243,10 +243,10 @@ eval (Load deckId accessType next) = do
     maybe loadRoot loadDeck deckId
     void $ queryDeck $ H.action $ Deck.Focus
 
-  loadDeck deckId = void do
-    SA.track (SA.Load deckId accessType)
+  loadDeck deckId' = void do
+    SA.track (SA.Load deckId' accessType)
     H.modify (_stateMode .~ Ready)
-    queryDeck $ H.action $ Deck.Load deckId
+    queryDeck $ H.action $ Deck.Load deckId'
 
   loadRoot =
     rootDeck >>= either handleError loadDeck

@@ -124,7 +124,7 @@ predicateToSQL (SS.Contains (SS.Text v)) s =
     ts = EJSON.renderEJson $ EJSON.timestamp v
     i = EJSON.renderEJson $ EJSON.interval v
 
-    renderLowercased v = [ "LOWER(" <> s <> ") = " <> v]
+    renderLowercased v' = [ "LOWER(" <> s <> ") = " <> v']
     render v' = [s <> " = " <> v']
 
 predicateToSQL (SS.Range (SS.Text v) (SS.Text v')) s =

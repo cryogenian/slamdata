@@ -599,10 +599,10 @@ adjustPermissions prs sharingInput =
         subset' ∷ L.List a → L.List a → Boolean
         subset' L.Nil _ = true
         subset' _ L.Nil = false
-        subset' needle@(L.Cons x xs) (L.Cons y ys) =
+        subset' needle'@(L.Cons x xs) (L.Cons y ys) =
           if x ≡ y
           then subset' xs ys
-          else subset' needle ys
+          else subset' needle' ys
       in subset' needleLst hayLst
 
 

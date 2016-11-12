@@ -164,15 +164,14 @@ render { model } =
         pre str = Left str
 
 eval :: forall g. Query ~> ItemDSL g
-eval q =
-  case q of
-    Update q ->
-      evalUpdate q
-    SetModel m next -> do
-      H.modify $ _model .~ m
-      pure next
-    GetModel k ->
-      k <<< Lens.view _model <$> H.get
+eval = case _ of
+  Update q ->
+    evalUpdate q
+  SetModel m next -> do
+    H.modify $ _model .~ m
+    pure next
+  GetModel k ->
+    k <<< Lens.view _model <$> H.get
 
 evalUpdate :: forall g. UpdateQuery ~> ItemDSL g
 evalUpdate q =

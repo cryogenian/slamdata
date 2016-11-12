@@ -88,7 +88,7 @@ component ispec path item itemState =
 
   evalItemQuery ∷ MC.ItemQuery i ~> DSL i Slam
   evalItemQuery = case _ of
-    MC.RaisePopulate path next →
+    MC.RaisePopulate _ next →
       pure next
     MC.ToggleSelected b next → do
       H.modify (_ { selected = b })
