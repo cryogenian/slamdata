@@ -72,7 +72,7 @@ tests = do
   let setupScenario = scenario "Setup" (pure unit)
   setupScenario (pure unit) "Launch SlamData" [] do
     Interact.launchSlamData
-    Log.successMsg "Ok, launced SlamData"
+    Log.successMsg "Ok, launched SlamData"
 
   setupScenario (pure unit) "Mount test database" [] do
     Interact.mountTestDatabase

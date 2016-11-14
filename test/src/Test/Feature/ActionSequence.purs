@@ -58,15 +58,6 @@ sendKeyCombo ctrlKeys str = do
   sendKeys str
   traverse_ keyUp ctrlKeys
 
--- Send keys one by one and replace if they can't be processed
--- by selenium driver
+-- Send keys one by one.
 keys ∷ String → Sequence Unit
-keys str = traverse_ sendKey $ S.split (S.Pattern "") str
-  where
-  sendKey ∷ String → Sequence Unit
-  sendKey "!" = shifted "1"
-  sendKey "(" = shifted "9"
-  sendKey ")" = shifted "0"
-  sendKey "#" = shifted "3"
-  sendKey "-" = sendKeys "\xE027"
-  sendKey a = sendKeys a
+keys str = traverse_ sendKeys $ S.split (S.Pattern "") str
