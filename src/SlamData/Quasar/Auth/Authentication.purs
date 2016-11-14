@@ -185,7 +185,9 @@ getIdTokenSilently providerR = do
     >>= case _ of
       Left error → pure $ Left error
       Right iFrameNode → do
-        idToken ← sequential $ parallel $ getIdTokenFromLSOnChange providerR unhashedNonce <|> timeout
+        idToken ← sequential
+          $ parallel (getIdTokenFromLSOnChange providerR unhashedNonce)
+          <|> parallel timeout
         liftEff $ removeBodyChild iFrameNode
         pure idToken
   where
@@ -205,8 +207,9 @@ getIdTokenUsingPrompt
 getIdTokenUsingPrompt providerR = do
   unhashedNonce ← liftEff OIDCAff.getRandomUnhashedNonce
   liftEff $ AuthStore.storeUnhashedNonce unhashedNonce
-  sequential $ parallel $
-    getIdTokenFromLSOnChange providerR unhashedNonce <|> prompt unhashedNonce
+  sequential
+    $ parallel (getIdTokenFromLSOnChange providerR unhashedNonce)
+    <|> parallel (prompt unhashedNonce)
   where
   popup src =
     liftEff (DOMUtils.openPopup src)
