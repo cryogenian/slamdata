@@ -42,7 +42,7 @@
     "purescript-minimatch": "^0.2.0",
     "purescript-oidc-crypt-utils": "^5.0.0",
     "purescript-parallel": "^2.1.0",
-    "purescript-pathy": "^3.0.0",
+    "purescript-pathy": "^3.0.1",
     "purescript-profunctor-lenses": "^2.1.0",
     "purescript-quasar": "^11.0.0",
     "purescript-rationals": "^2.0.0",
