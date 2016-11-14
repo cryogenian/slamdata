@@ -22,7 +22,7 @@ module SlamData.Workspace.Card.Download.Component.State
   , _fileName
   ) where
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
@@ -33,13 +33,13 @@ type State =
   }
 
 
-_url ∷ ∀ a r. LensP {url ∷ a | r} a
+_url ∷ ∀ a r. Lens' {url ∷ a | r} a
 _url = lens (_.url) (_{url = _})
 
-_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
+_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a|r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
-_fileName ∷ ∀ a r. LensP {fileName ∷ a |r} a
+_fileName ∷ ∀ a r. Lens' {fileName ∷ a |r} a
 _fileName = lens (_.fileName) (_{fileName = _})
 
 initialState ∷ State

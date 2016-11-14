@@ -75,7 +75,7 @@ allFieldTypes =
   , SqlIdentifierFieldType
   ]
 
-_FieldTypeDisplayName ∷ Lens.PrismP String FieldType
+_FieldTypeDisplayName ∷ Lens.Prism' String FieldType
 _FieldTypeDisplayName = Lens.prism inj proj
   where
     inj StringFieldType = "Text"

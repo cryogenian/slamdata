@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.BuildChart.Boxplot.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
@@ -55,16 +55,16 @@ initialState =
 type StateP =
   ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
-_dimension ∷ ∀ r a. LensP { dimension ∷ a | r } a
+_dimension ∷ ∀ r a. Lens' { dimension ∷ a | r } a
 _dimension = lens _.dimension _{ dimension = _ }
 
-_value ∷ ∀ r a. LensP { value ∷ a | r } a
+_value ∷ ∀ r a. Lens' { value ∷ a | r } a
 _value = lens _.value _{ value = _ }
 
-_series ∷ ∀ r a. LensP { series ∷ a | r } a
+_series ∷ ∀ r a. Lens' { series ∷ a | r } a
 _series = lens _.series _{ series = _ }
 
-_parallel ∷ ∀ r a. LensP { parallel ∷ a | r } a
+_parallel ∷ ∀ r a. Lens' { parallel ∷ a | r } a
 _parallel = lens _.parallel _{ parallel = _ }
 
 showPicker

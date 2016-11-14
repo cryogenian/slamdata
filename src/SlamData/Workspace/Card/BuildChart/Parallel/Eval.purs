@@ -57,7 +57,6 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Parallel))
 import SlamData.Workspace.Card.BuildChart.Semantics as Sem
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.BuildChart.Axis as Ax
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.BuildChart.Parallel.Model (ParallelR, Model)
 
@@ -69,13 +68,12 @@ eval
   . (Monad m, QuasarDSL m)
   ⇒ Model
   → FilePath
-  → Ax.Axes
   → CET.CardEvalT m Port.Port
-eval Nothing _ _ =
+eval Nothing _ =
   QE.throw "Please select axis to aggregate"
-eval (Just conf) resource axes = do
+eval (Just conf) resource = do
   records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildParallel conf records axes) Parallel
+  pure $ Port.ChartInstructions (buildParallel conf records) Parallel
 
 
 type Series =
@@ -139,8 +137,8 @@ buildParallelData r records = series
 
 
 
-buildParallel ∷ ParallelR → JArray → Ax.Axes → DSL OptionI
-buildParallel r records axes = do
+buildParallel ∷ ParallelR → JArray → DSL OptionI
+buildParallel r records = do
   E.parallel do
     E.left $ ET.Percent 5.0
     E.right $ ET.Percent 18.0

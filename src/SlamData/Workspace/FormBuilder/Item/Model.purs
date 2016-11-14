@@ -34,7 +34,7 @@ import SlamData.Prelude
 
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Argonaut as J
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 import Data.Json.Extended as EJSON
 import Data.String as Str
 
@@ -59,13 +59,13 @@ genModel = do
   defaultValue ← SC.arbitrary
   pure { name, fieldType, defaultValue }
 
-_name ∷ LensP Model String
+_name ∷ Lens' Model String
 _name = lens _.name _ { name = _ }
 
-_fieldType ∷ LensP Model FieldType
+_fieldType ∷ Lens' Model FieldType
 _fieldType = lens _.fieldType _ { fieldType = _ }
 
-_defaultValue ∷ LensP Model (Maybe String)
+_defaultValue ∷ Lens' Model (Maybe String)
 _defaultValue = lens _.defaultValue _ { defaultValue = _ }
 
 newtype EqModel = EqModel Model
@@ -152,7 +152,7 @@ defaultValueToVarMapValue ty str =
   fixupDateTime dt =
     let
       t = Str.drop 11 dt
-      t' = fromMaybe t (Str.stripSuffix "Z" t)
+      t' = fromMaybe t (Str.stripSuffix (Str.Pattern "Z") t)
     in
       Str.take 11 dt <> fixupTime t' <> "Z"
   fixupTime :: String -> String

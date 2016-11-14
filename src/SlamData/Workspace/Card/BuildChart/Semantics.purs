@@ -26,7 +26,8 @@ import Data.List (List(..), catMaybes)
 import Data.List as L
 import Data.Map (Map, keys, update, lookup, fromFoldable)
 import Data.String (take)
-import Data.String.Regex (Regex, noFlags, regex, match)
+import Data.String.Regex (Regex, regex, match)
+import Data.String.Regex.Flags as RXF
 import Data.Time as Dt
 import Data.Date as Dd
 import Data.DateTime as Ddt
@@ -140,7 +141,7 @@ analyzeNumber s = do
   pure $ Value num
 
 percentRegex ∷ Regex
-percentRegex = unsafePartial fromRight $ regex """^(-?\d+(\.\d+)?)\%$""" noFlags
+percentRegex = unsafePartial fromRight $ regex """^(-?\d+(\.\d+)?)\%$""" RXF.noFlags
 
 analyzePercent ∷ String → Maybe Semantics
 analyzePercent input = do
@@ -150,7 +151,7 @@ analyzePercent input = do
   pure $ Percent num
 
 moneyRegex ∷ Regex
-moneyRegex = unsafePartial fromRight $ regex rgxStr noFlags
+moneyRegex = unsafePartial fromRight $ regex rgxStr RXF.noFlags
   where
   rgxStr = "^" <> curSymbols <> """?(([0-9]{1,3},([0-9]{3},)*[0-9]{3}|[0-9]+)(.[0-9][0-9])?)$"""
   curSymbols ∷ String
@@ -169,17 +170,17 @@ analyzeMoney str = do
   pure $ Money num currencySymbol
 
 datetimeRegex ∷ Regex
-datetimeRegex = unsafePartial fromRight $ regex rgxStr noFlags
+datetimeRegex = unsafePartial fromRight $ regex rgxStr RXF.noFlags
   where
   rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9])(T| )(2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
 
 timeRegex ∷ Regex
-timeRegex = unsafePartial fromRight $ regex rgxStr noFlags
+timeRegex = unsafePartial fromRight $ regex rgxStr RXF.noFlags
   where
   rgxStr = "^(2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])?(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
 
 dateRegex ∷ Regex
-dateRegex = unsafePartial fromRight $ regex rgxStr noFlags
+dateRegex = unsafePartial fromRight $ regex rgxStr RXF.noFlags
   where
   rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9])$"
 

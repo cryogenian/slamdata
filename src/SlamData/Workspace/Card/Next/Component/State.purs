@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Next.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import SlamData.Workspace.Card.Port (Port)
 
@@ -41,17 +41,17 @@ initialState =
   , filterString: ""
   }
 
-_input ∷ ∀ a r. LensP { input ∷ a | r } a
+_input ∷ ∀ a r. Lens' { input ∷ a | r } a
 _input = lens _.input (_ { input = _ })
 
-_actions ∷ ∀ a r. LensP { actions ∷ a |r } a
+_actions ∷ ∀ a r. Lens' { actions ∷ a |r } a
 _actions = lens _.actions (_ { actions = _ })
 
-_previousActions ∷ ∀ a r. LensP { previousActions ∷ a | r} a
+_previousActions ∷ ∀ a r. Lens' { previousActions ∷ a | r} a
 _previousActions = lens _.previousActions (_ { previousActions = _ })
 
-_presentAddCardGuide ∷ ∀ a r. LensP { presentAddCardGuide ∷ a | r } a
+_presentAddCardGuide ∷ ∀ a r. Lens' { presentAddCardGuide ∷ a | r } a
 _presentAddCardGuide = lens _.presentAddCardGuide (_ { presentAddCardGuide = _ })
 
-_filterString ∷ ∀ a r. LensP { filterString ∷ a | r } a
+_filterString ∷ ∀ a r. Lens' { filterString ∷ a | r } a
 _filterString = lens _.filterString (_ { filterString = _ })

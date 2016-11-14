@@ -34,7 +34,6 @@ import Data.Lens ((^.), (.~), (?~))
 import Data.List as List
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
-import Data.Rational ((%))
 import Data.String as Str
 import Data.Time.Duration (Milliseconds(..))
 
@@ -244,10 +243,10 @@ eval (Load deckId accessType next) = do
     maybe loadRoot loadDeck deckId
     void $ queryDeck $ H.action $ Deck.Focus
 
-  loadDeck deckId = void do
-    SA.track (SA.Load deckId accessType)
+  loadDeck deckId' = void do
+    SA.track (SA.Load deckId' accessType)
     H.modify (_stateMode .~ Ready)
-    queryDeck $ H.action $ Deck.Load deckId
+    queryDeck $ H.action $ Deck.Load deckId'
 
   loadRoot =
     rootDeck >>= either handleError loadDeck
@@ -443,7 +442,7 @@ errors m es = case lefts es of
 
 updateParentPointer
   ∷ ∀ m
-  . (MonadFork m, QuasarDSL m, Affable SlamDataEffects m, MonadReader Wiring m)
+  . (MonadFork m, QuasarDSL m, Affable SlamDataEffects m, MonadAsk Wiring m)
   ⇒ DeckId
   → DeckId
   → Maybe (DeckId × CID.CardId)
@@ -460,7 +459,7 @@ updateParentPointer oldId newId = case _ of
 
 updateHash
   ∷ ∀ m
-  . (Bind m, Affable SlamDataEffects m, WorkspaceDSL m, MonadReader Wiring m)
+  . (Bind m, Affable SlamDataEffects m, WorkspaceDSL m, MonadAsk Wiring m)
   ⇒ AT.AccessType
   → DeckId
   → m Unit

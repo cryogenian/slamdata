@@ -19,7 +19,7 @@ module SlamData.FileSystem.Listing.Component where
 import SlamData.Prelude
 
 import Data.Array (zipWith, range, length, cons, sortBy, filter, nub)
-import Data.Lens ((.~), (%~), (<>~), lens, LensP)
+import Data.Lens ((.~), (%~), (<>~), lens, Lens')
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -44,13 +44,13 @@ initialState =
   , isHidden: true
   }
 
-_items :: LensP State (Array Item)
+_items :: Lens' State (Array Item)
 _items = lens _.items _{items = _}
 
-_isSearching :: LensP State Boolean
+_isSearching :: Lens' State Boolean
 _isSearching = lens _.isSearching _{isSearching = _}
 
-_isHidden :: LensP State Boolean
+_isHidden :: Lens' State Boolean
 _isHidden = lens _.isHidden _{isHidden = _}
 
 zipItems :: forall a. (Int -> Item -> a) -> Array Item -> Array a

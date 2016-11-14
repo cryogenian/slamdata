@@ -105,15 +105,15 @@ compress state =
         [ HH.span_ [ HH.text "Compress" ]
         , HH.input
             [ HP.inputType HP.InputCheckbox
-            , HP.checked $ compressed state
+            , HP.checked compressed
             , HP.enabled $ isJust state.source
             , HE.onValueChange (HE.input_ (right ∘ ToggleCompress))
             ]
         ]
     ]
   where
-  compressed ∷ State → Boolean
-  compressed state = isJust state.source || state.compress
+  compressed ∷ Boolean
+  compressed = isJust state.source || state.compress
 
 renderDownloadTypeSelector ∷ State → HTML
 renderDownloadTypeSelector state =

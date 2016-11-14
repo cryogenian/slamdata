@@ -26,6 +26,6 @@ import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 type Query = Const Void
 
 initiality ∷ ∀ f. Query ~> f
-initiality = absurd ∘ getConst
+initiality = absurd ∘ unwrap
 
 type QueryP = CEQ.CardEvalQuery ⨁ Query

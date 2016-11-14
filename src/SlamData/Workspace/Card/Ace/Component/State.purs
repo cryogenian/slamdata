@@ -33,7 +33,7 @@ import Ace.Halogen.Component (AceQuery, AceState)
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.EventLoop (Breaker)
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
@@ -64,10 +64,10 @@ initialState =
   , breaker: Nothing
   }
 
-_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a |r} a
+_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a |r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
-_status ∷ ∀ a r. LensP {status ∷ a|r} a
+_status ∷ ∀ a r. Lens' {status ∷ a|r} a
 _status = lens (_.status) (_{status = _})
 
 isNew ∷ Status → Boolean

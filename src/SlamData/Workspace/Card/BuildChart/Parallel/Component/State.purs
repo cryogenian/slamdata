@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.BuildChart.Parallel.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (TraversalP, LensP, lens)
+import Data.Lens (Traversal', Lens', lens)
 import Data.Lens.Index (ix)
 
 import Halogen (ParentState)
@@ -55,13 +55,13 @@ initialState =
 type StateP =
   ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
-_series ∷ ∀ r a. LensP { series ∷ a | r } a
+_series ∷ ∀ r a. Lens' { series ∷ a | r } a
 _series = lens _.series _{ series = _ }
 
-_dimension ∷ ∀ a r. Int → TraversalP { dims ∷ Array a | r} a
+_dimension ∷ ∀ a r. Int → Traversal' { dims ∷ Array a | r} a
 _dimension i = ix i ⋙ lens _.dims _{ dims = _ }
 
-_aggregation ∷ ∀ a r. Int → TraversalP { aggs ∷ Array a | r} a
+_aggregation ∷ ∀ a r. Int → Traversal' { aggs ∷ Array a | r} a
 _aggregation i = ix i ⋙ lens _.aggs _{ aggs = _ }
 
 showPicker

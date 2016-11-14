@@ -84,7 +84,7 @@ fullDownloadString ∷ State → String
 fullDownloadString state = "Download " ⊕ state.fileName
 
 eval ∷ QueryP ~> DSL
-eval = coproduct cardEval (absurd ∘ getConst)
+eval = coproduct cardEval (absurd ∘ unwrap)
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of

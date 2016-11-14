@@ -23,7 +23,7 @@ import SlamData.Prelude
 import Data.Lens ((^?), (^.), (?~), (.~))
 import Data.Lens as Lens
 import Data.List as List
-import Data.String as Str
+import Data.String as S
 
 import Halogen as H
 import Halogen.CustomProps as Cp
@@ -35,7 +35,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 
-import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, (⊝), _value, fromSelected)
+import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, _value, fromSelected)
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
@@ -240,11 +240,11 @@ raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
 metricEval ∷ Q.Query ~> DSL
 metricEval = case _ of
   Q.SetFormatter str next → do
-    H.modify _{formatter = if Str.trim str ≡ "" then Nothing else Just str }
+    H.modify _{formatter = if S.trim str ≡ "" then Nothing else Just str }
     CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.SetLabel str next → do
-    H.modify _{label = if Str.trim str ≡ "" then Nothing else Just str }
+    H.modify _{label = if S.trim str ≡ "" then Nothing else Just str }
     CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.Select sel next → do

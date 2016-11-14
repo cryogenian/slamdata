@@ -20,11 +20,12 @@ import SlamData.Prelude
 
 import Halogen.HTML.Core as H
 import Halogen.HTML.Events.Handler (preventDefault)
-import Halogen.HTML.Properties.Indexed (IProp, I, InteractiveEvents, GlobalProperties)
+import Halogen.HTML.Properties (Element)
+import Halogen.HTML.Properties.Indexed (IProp, Size, I, InteractiveEvents, GlobalProperties)
 
 import Unsafe.Coerce (unsafeCoerce)
 
-type InputProp f = IProp (InteractiveEvents (GlobalProperties (accept ∷ I, autocomplete ∷ I, autofocus ∷ I, checked ∷ I, disabled ∷ I, form ∷ I, formaction ∷ I, formenctype ∷ I, formmethod ∷ I, formnovalidate ∷ I, formtarget ∷ I, height ∷ I, list ∷ I, max ∷ I, min ∷ I, multiple ∷ I, onAbort ∷ I, onChange ∷ I, onError ∷ I, onInput ∷ I, onInvalid ∷ I, onLoad ∷ I, onSearch ∷ I, onSelect ∷ I, pattern ∷ I, placeholder ∷ I, readonly ∷ I, required ∷ I, size ∷ I, src ∷ I, step ∷ I, inputType ∷ I, value ∷ I, width ∷ I))) (f Unit)
+type InputProp f = IProp (InteractiveEvents (GlobalProperties (accept ∷ I, autocomplete ∷ I, autofocus ∷ I, checked ∷ I, disabled ∷ I, form ∷ I, formaction ∷ I, formenctype ∷ I, formmethod ∷ I, formnovalidate ∷ I, formtarget ∷ I, height ∷ Size Element, list ∷ I, max ∷ I, min ∷ I, multiple ∷ I, onAbort ∷ I, onChange ∷ I, onError ∷ I, onInput ∷ I, onInvalid ∷ I, onLoad ∷ I, onSearch ∷ I, onSelect ∷ I, pattern ∷ I, placeholder ∷ I, readonly ∷ I, required ∷ I, size ∷ I, src ∷ I, step ∷ I, inputType ∷ I, value ∷ I, width ∷ Size Element))) (f Unit)
 
 nonSubmit ∷ ∀ i r. IProp (onSubmit ∷ I | r) i
 nonSubmit = unsafeCoerce unrefined

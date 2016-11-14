@@ -81,14 +81,14 @@ component ispec path item itemState =
         , ARIA.label ("Select " <> label)
         , HP.classes $ (guard state.selected $> HH.className "selected")
         ]
-        [ absurd ∘ getConst <$> ispec.render item ]
+        [ absurd ∘ unwrap <$> ispec.render item ]
 
   eval ∷ Query i ~> DSL i Slam
-  eval = coproduct evalItemQuery (absurd <<< getConst)
+  eval = coproduct evalItemQuery (absurd <<< unwrap)
 
   evalItemQuery ∷ MC.ItemQuery i ~> DSL i Slam
   evalItemQuery = case _ of
-    MC.RaisePopulate path next →
+    MC.RaisePopulate _ next →
       pure next
     MC.ToggleSelected b next → do
       H.modify (_ { selected = b })

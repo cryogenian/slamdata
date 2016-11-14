@@ -18,7 +18,7 @@ module SlamData.FileSystem.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 import Data.Path.Pathy (rootDir)
 
 import SlamData.Common.Sort (Sort(..))
@@ -36,25 +36,25 @@ type State =
   , showHiddenFiles :: Boolean
   }
 
-_version :: LensP State (Maybe String)
+_version :: Lens' State (Maybe String)
 _version = lens _.version _{version = _}
 
-_sort :: LensP State Sort
+_sort :: Lens' State Sort
 _sort = lens _.sort _{sort = _}
 
-_presentMountGuide :: LensP State Boolean
+_presentMountGuide :: Lens' State Boolean
 _presentMountGuide = lens _.presentMountGuide _{presentMountGuide = _}
 
-_salt :: LensP State Salt
+_salt :: Lens' State Salt
 _salt = lens _.salt _{salt = _}
 
-_path :: LensP State DirPath
+_path :: Lens' State DirPath
 _path = lens _.path _{path = _}
 
-_isMount :: LensP State Boolean
+_isMount :: Lens' State Boolean
 _isMount = lens _.isMount _{isMount = _}
 
-_showHiddenFiles :: LensP State Boolean
+_showHiddenFiles :: Lens' State Boolean
 _showHiddenFiles = lens _.showHiddenFiles _{showHiddenFiles = _}
 
 initialState :: State

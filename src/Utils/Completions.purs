@@ -68,8 +68,8 @@ memoizeCompletionStrs dir arr = do
   filterSiblings =
     Arr.filter
     $ fromMaybe true
-    <<< map (S.contains "/")
-    <<< S.stripPrefix parentPath
+    <<< map (S.contains (S.Pattern "/"))
+    <<< S.stripPrefix (S.Pattern parentPath)
 
   newSiblings :: Array String
   newSiblings = Arr.catMaybes $ map (resToMbPath) arr

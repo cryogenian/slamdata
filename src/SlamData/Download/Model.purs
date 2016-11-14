@@ -19,10 +19,11 @@ module SlamData.Download.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson, (:=), (~>), (.?), jsonEmptyObject)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 import Data.MediaType (MediaType(..))
 import Data.String as Str
 import Data.String.Regex as Rx
+import Data.String.Regex.Flags as RXF
 
 import Network.HTTP.RequestHeader (RequestHeader(..))
 
@@ -79,22 +80,22 @@ initialCSVOptions =
              , arrays: Flatten
              }
 
-_CSVOptions :: LensP CSVOptions CSVOptionsRec
+_CSVOptions :: Lens' CSVOptions CSVOptionsRec
 _CSVOptions = lens (\(CSVOptions obj) -> obj) (const CSVOptions)
 
-_colDelimiter :: LensP CSVOptions String
+_colDelimiter :: Lens' CSVOptions String
 _colDelimiter = _CSVOptions <<< lens _.colDelimiter (_ { colDelimiter = _ })
 
-_rowDelimiter :: LensP CSVOptions String
+_rowDelimiter :: Lens' CSVOptions String
 _rowDelimiter = _CSVOptions <<< lens _.rowDelimiter (_ { rowDelimiter = _ })
 
-_quoteChar :: LensP CSVOptions String
+_quoteChar :: Lens' CSVOptions String
 _quoteChar = _CSVOptions <<< lens _.quoteChar (_ { quoteChar = _ })
 
-_escapeChar :: LensP CSVOptions String
+_escapeChar :: Lens' CSVOptions String
 _escapeChar = _CSVOptions <<< lens _.escapeChar (_ { escapeChar = _ })
 
-_arrays :: LensP CSVOptions ArrayMode
+_arrays :: Lens' CSVOptions ArrayMode
 _arrays = _CSVOptions <<< lens _.arrays (_ { arrays = _ })
 
 type JSONOptionsRec =
@@ -127,13 +128,13 @@ initialJSONOptions = JSONOptions
   , precision: Readable
   }
 
-_JSONOptions :: LensP JSONOptions JSONOptionsRec
+_JSONOptions :: Lens' JSONOptions JSONOptionsRec
 _JSONOptions = lens (\(JSONOptions obj) -> obj) (const JSONOptions)
 
-_multivalues :: LensP JSONOptions MultiValueMode
+_multivalues :: Lens' JSONOptions MultiValueMode
 _multivalues = _JSONOptions <<< lens _.multivalues (_ { multivalues = _ })
 
-_precision :: LensP JSONOptions PrecisionMode
+_precision :: Lens' JSONOptions PrecisionMode
 _precision = _JSONOptions <<< lens _.precision (_ { precision = _ })
 
 data ArrayMode = Flatten | Separate String
@@ -238,11 +239,11 @@ toHeaders r =
   esc s =
     (\a -> "\"" <> a <> "\"")
     $ Rx.replace (grx "\"") "\\\""
-    $ Str.replace "\\t" "\t"
-    $ Str.replace "\\r" "\r"
+    $ Str.replace (Str.Pattern "\\t") (Str.Replacement "\t")
+    $ Str.replace (Str.Pattern "\\r") (Str.Replacement "\r")
     s
     where
     grx :: String -> Rx.Regex
-    grx pat = unsafePartial fromRight $ Rx.regex pat Rx.noFlags { global = true }
+    grx pat = unsafePartial fromRight $ Rx.regex pat RXF.global
 
 data OutputType = CSV | JSON

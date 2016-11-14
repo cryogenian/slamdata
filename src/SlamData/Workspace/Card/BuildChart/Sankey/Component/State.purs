@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.BuildChart.Sankey.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
@@ -56,16 +56,16 @@ initialState =
 type StateP =
   ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
-_value ∷ ∀ r a. LensP { value ∷ a | r } a
+_value ∷ ∀ r a. Lens' { value ∷ a | r } a
 _value = lens _.value _{ value = _ }
 
-_valueAgg ∷ ∀ r a. LensP { valueAgg ∷ a | r } a
+_valueAgg ∷ ∀ r a. Lens' { valueAgg ∷ a | r } a
 _valueAgg = lens _.valueAgg _{ valueAgg = _ }
 
-_source ∷ ∀ r a. LensP { source ∷ a | r } a
+_source ∷ ∀ r a. Lens' { source ∷ a | r } a
 _source = lens _.source _{ source = _ }
 
-_target ∷ ∀ r a. LensP { target ∷ a | r } a
+_target ∷ ∀ r a. Lens' { target ∷ a | r } a
 _target = lens _.target _{ target = _ }
 
 showPicker

@@ -29,7 +29,7 @@ module SlamData.Workspace.Card.DownloadOptions.Component.State
 import SlamData.Prelude
 
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 import Data.Path.Pathy as Pathy
 import SlamData.Download.Model as D
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -59,16 +59,16 @@ initialState =
   , levelOfDetails: High
   }
 
-_compress ∷ ∀ a r. LensP {compress ∷ a|r} a
+_compress ∷ ∀ a r. Lens' {compress ∷ a|r} a
 _compress = lens (_.compress) (_{compress = _ })
 
-_options ∷ ∀ a r. LensP {options ∷ a|r} a
+_options ∷ ∀ a r. Lens' {options ∷ a|r} a
 _options = lens (_.options) (_{options = _})
 
-_source ∷ ∀ a r. LensP {source ∷ a|r} a
+_source ∷ ∀ a r. Lens' {source ∷ a|r} a
 _source = lens (_.source) (_{source = _})
 
-_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
+_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a|r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
 encode :: State -> Json

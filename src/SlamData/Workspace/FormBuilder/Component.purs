@@ -114,9 +114,7 @@ render
    . (Functor g)
   => State
   -> FormBuilderHTML g
-render { items } =
-  renderTable items
-
+render = renderTable <<< _.items
   where
     renderTable
       :: L.List ItemId

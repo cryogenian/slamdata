@@ -18,7 +18,7 @@ module SlamData.FileSystem.Listing.Item.Component where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP, lens, (%~), (.~))
+import Data.Lens (Lens', lens, (%~), (.~))
 
 import Halogen as H
 import Halogen.HTML.CSS.Indexed as HCSS
@@ -50,13 +50,13 @@ initialState =
   , isHidden: false
   }
 
-_item ∷ LensP State Item
+_item ∷ Lens' State Item
 _item = lens _.item _{item = _}
 
-_isSearching ∷ LensP State Boolean
+_isSearching ∷ Lens' State Boolean
 _isSearching = lens _.isSearching _{isSearching = _}
 
-_isHidden ∷ LensP State Boolean
+_isHidden ∷ Lens' State Boolean
 _isHidden = lens _.isHidden _{isHidden = _}
 
 data Query a

@@ -24,8 +24,7 @@ import SlamData.Prelude
 
 
 import Data.List as L
-import Data.List ((:))
-import Data.Lens ((?~), (.~), (%~))
+import Data.Lens ((.~), (?~))
 import Data.Path.Pathy as Path
 import Data.Unfoldable (unfoldr)
 

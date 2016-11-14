@@ -19,7 +19,7 @@ module SlamData.FileSystem.Dialog.Download.Component.State where
 import SlamData.Prelude
 
 import Data.Array (findIndex)
-import Data.Lens (LensP, lens, (?~), (.~))
+import Data.Lens (Lens', lens, (?~), (.~))
 
 import Network.HTTP.RequestHeader (RequestHeader)
 
@@ -47,22 +47,22 @@ initialState res =
   , authHeaders: []
   }
 
-_source ∷ LensP State Resource
+_source ∷ Lens' State Resource
 _source = lens _.source (_ { source = _ })
 
-_targetName ∷ LensP State (Either String String)
+_targetName ∷ Lens' State (Either String String)
 _targetName = lens _.targetName (_ { targetName = _ })
 
-_compress ∷ LensP State Boolean
+_compress ∷ Lens' State Boolean
 _compress = lens _.compress (_ { compress = _ })
 
-_options ∷ LensP State (Either CSVOptions JSONOptions)
+_options ∷ Lens' State (Either CSVOptions JSONOptions)
 _options = lens _.options (_ { options = _ })
 
-_error ∷ LensP State (Maybe String)
+_error ∷ Lens' State (Maybe String)
 _error = lens _.error (_ { error = _ })
 
-_authHeaders ∷ ∀ a r. LensP {authHeaders ∷ a | r} a
+_authHeaders ∷ ∀ a r. Lens' {authHeaders ∷ a | r} a
 _authHeaders = lens _.authHeaders (_{authHeaders = _})
 
 validate ∷ State → State

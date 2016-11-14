@@ -125,7 +125,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "pending" → pure PendingCard
       name → do
         let
-          chartName = fromMaybe "" $ Str.stripSuffix "-options" name
+          chartName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-options") name
         chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseChartType chartName
         pure $ ChartOptions chty
 
