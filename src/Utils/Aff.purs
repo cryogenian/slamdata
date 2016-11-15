@@ -19,6 +19,8 @@ module Utils.Aff where
 import Prelude
 import Control.Monad.Aff (Aff)
 import Control.Monad.Rec.Class (Step(..), tailRecM)
+import Control.Monad.Eff.Exception as Exception
+import Control.Monad.Error.Class (throwError)
 
 -- | Loop until a condition becomes `true`.
 -- |
@@ -29,3 +31,6 @@ untilA aff =
   tailRecM go unit
   where
   go = const $ (if _ then pure (Done unit) else pure (Loop unit)) =<< aff
+
+throw ∷ ∀ a eff. String → Aff eff a
+throw = throwError <<< Exception.error

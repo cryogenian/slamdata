@@ -20,9 +20,13 @@ import SlamData.Prelude
 
 import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Ref (readRef, writeRef)
 import Control.Monad.Fork (class MonadFork, Canceler, cancelWith, fork, hoistCanceler)
@@ -35,6 +39,7 @@ import Data.Map as Map
 import OIDC.Crypt.Types as OIDC
 
 import Quasar.Advanced.QuasarAF as QA
+import Quasar.Advanced.Types as QAT
 
 import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
@@ -43,7 +48,10 @@ import SlamData.Notification as N
 import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
 import SlamData.Quasar.Auth.Authentication as Auth
+import SlamData.Quasar.Auth.Keys as AuthKeys
 import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Quasar.Error (QError)
+import SlamData.Quasar.Error as QError
 import SlamData.Wiring (Wiring(..), DeckMessage(..))
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Class (class WorkspaceDSL)
@@ -51,7 +59,8 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 
 import Unsafe.Coerce (unsafeCoerce)
 
-import Utils (censor)
+import Utils (censor, passover, singletonValue)
+import Utils.LocalStorage as LocalStorage
 
 type Slam = SlamM SlamDataEffects
 
@@ -151,6 +160,60 @@ derive newtype instance applicativeSlamA :: Applicative (SlamA eff)
 
 --------------------------------------------------------------------------------
 
+getIdTokenSilently ∷ Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
+getIdTokenSilently idTokenRequestBus = do
+  either (const $ getWithSingletonProviderFromQuasar) (pure ∘ Right)
+    =<< getWithProviderFromLocalStorage
+  where
+
+  getWithProviderFromLocalStorage ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
+  getWithProviderFromLocalStorage =
+    traverse get =<< liftEff getProviderFromLocalStorage
+
+  getWithSingletonProviderFromQuasar ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
+  getWithSingletonProviderFromQuasar =
+    traverse get =<< getSingletonProviderFromQuasar
+
+  get ∷ QAT.ProviderR → Aff SlamDataEffects Auth.EIdToken
+  get providerR =
+    AVar.takeVar =<< passover (write providerR) =<< AVar.makeVar
+
+  write ∷ QAT.ProviderR → AVar Auth.EIdToken → Aff SlamDataEffects Unit
+  write providerR idTokenVar =
+    Bus.write { idToken: idTokenVar, providerR, prompt: false } idTokenRequestBus
+
+  getSingletonProviderFromQuasar ∷ Aff SlamDataEffects (Either QError QAT.ProviderR)
+  getSingletonProviderFromQuasar =
+    flip bind singletonProvider <$> runQuasarF Nothing QA.authProviders
+
+  singletonProvider ∷ Array QAT.ProviderR → Either QError QAT.ProviderR
+  singletonProvider =
+    singletonValue
+      (Left $ unauthorizedError $ Just noProvidersMessage)
+      (const $ Left $ unauthorizedError $ Just tooManyProvidersMessage)
+
+  getProviderFromLocalStorage ∷ Eff SlamDataEffects (Either QError QAT.ProviderR)
+  getProviderFromLocalStorage =
+    lmap (unauthorizedError ∘ Just) ∘ map QAT.runProvider
+      <$> LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey
+
+  noProvidersMessage ∷ String
+  noProvidersMessage =
+    "Quasar is not configured with any authentication providers."
+
+  tooManyProvidersMessage ∷ String
+  tooManyProvidersMessage =
+    "Quasar is configured with more than one authentication providers. Interactionless sign in currently only supports configurations with a single provider."
+
+  unauthorizedError ∷ Maybe String → QError
+  unauthorizedError =
+    QError.Unauthorized ∘ map QError.UnauthorizedDetails
+
+  affToAffQError ∷ ∀ a eff. Aff eff a → Aff eff (Either QError a)
+  affToAffQError = map (lmap QError.Error) ∘ Aff.attempt
+
+--------------------------------------------------------------------------------
+
 runSlam :: Wiring -> Slam ~> Aff SlamDataEffects
 runSlam wiring s = runReaderT (unSlam s) wiring
 
@@ -164,7 +227,7 @@ unSlam = foldFree go ∘ unSlamM
       lift aff
     GetAuthIdToken k → do
       Wiring { requestIdTokenBus, notify } ← ask
-      idToken ← liftAff $ censor <$> Auth.getIdTokenFromBusSilently requestIdTokenBus
+      idToken ← liftAff $ censor <$> getIdTokenSilently requestIdTokenBus
       case idToken of
         Just (Left error) →
           maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error
@@ -173,7 +236,7 @@ unSlam = foldFree go ∘ unSlamM
       pure $ k $ maybe Nothing censor idToken
     Quasar qf → do
       Wiring { requestIdTokenBus, signInBus, notify } ← ask
-      idToken ← lift $ censor <$> Auth.getIdTokenFromBusSilently requestIdTokenBus
+      idToken ← lift $ censor <$> getIdTokenSilently requestIdTokenBus
       case idToken of
         Just (Left error) →
           maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error

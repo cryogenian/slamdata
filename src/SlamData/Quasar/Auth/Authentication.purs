@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Quasar.Auth.Authentication
   ( authentication
-  , getIdTokenFromBusSilently
   , toNotificationOptions
   , AuthEffects
   , EIdToken
@@ -82,17 +81,6 @@ import Text.Parsing.StringParser (ParseError(..))
 import Utils (passover)
 import Utils.LocalStorage as LocalStorage
 import Utils.DOM as DOMUtils
-
-getIdTokenFromBusSilently ∷ ∀ eff. RequestIdTokenBus → Aff (AuthEffects eff) (Either String EIdToken)
-getIdTokenFromBusSilently requestIdTokenBus =
-  liftEff getProviderRUsingLocalStorage
-    >>= case _ of
-      Right providerR → do
-        idTokenVar ← AVar.makeVar
-        Bus.write { idToken: idTokenVar, providerR, prompt: false } requestIdTokenBus
-        idToken ← Right <$> AVar.takeVar idTokenVar
-        pure idToken
-      Left error → pure $ Left error
 
 data AuthenticationError
   = IdTokenInvalid (Maybe Error)
@@ -336,10 +324,6 @@ getUnverifiedIdTokenUsingLocalStorage =
 getUnhashedNonceUsingLocalStorage ∷ ∀ eff. Aff (AuthEffects eff) (Either String UnhashedNonce)
 getUnhashedNonceUsingLocalStorage =
   rmap UnhashedNonce <$> LocalStorage.getLocalStorage AuthKeys.nonceLocalStorageKey
-
-getProviderRUsingLocalStorage ∷ ∀ eff. Eff (AuthEffects eff) (Either String QAT.ProviderR)
-getProviderRUsingLocalStorage =
-  map QAT.runProvider <$> LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey
 
 getIdTokenFromLSOnChange
   ∷ ∀ eff
