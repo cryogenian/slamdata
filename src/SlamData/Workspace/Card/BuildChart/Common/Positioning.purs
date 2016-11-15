@@ -223,7 +223,7 @@ adjustRectangularPositions arr =
       → Int
       → Array (RectangularPosition r)
       → Array (RectangularPosition r)
-    setPositions acc colIx rowIx inThisRow arr = case A.uncons arr of
+    setPositions acc colIx rowIx inThisRow arr' = case A.uncons arr' of
       Nothing → acc
       Just {head, tail} →
         let
@@ -322,6 +322,8 @@ rectangularGrids poss = E.grids $ for_ poss \{w, h, x, y} → E.grid do
   for_ y $ E.top ∘ ET.Percent
   for_ w E.widthPct
   for_ h E.heightPct
+
+
 
 cartesian ∷ ∀ i. DSL (left ∷ ETP.I, right ∷ ETP.I, top ∷ ETP.I, containLabel ∷ ETP.I|i)
 cartesian = do

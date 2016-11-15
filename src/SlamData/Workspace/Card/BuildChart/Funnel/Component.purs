@@ -244,7 +244,7 @@ chartEval (Q.Select sel next) = next <$ case sel of
     BCI.Open opts → H.modify (ST.showPicker q opts)
     BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
-  updateSelect ∷ ∀ a. Lens.LensP ST.State (Select a) → BCI.SelectAction a → DSL Unit
+  updateSelect ∷ ∀ a. Lens.Lens' ST.State (Select a) → BCI.SelectAction a → DSL Unit
   updateSelect l = case _ of
     BCI.Open _   → pure unit
     BCI.Choose a → H.modify (l ∘ _value .~ a) *> raiseUpdate

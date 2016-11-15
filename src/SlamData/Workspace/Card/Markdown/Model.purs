@@ -22,7 +22,6 @@ module SlamData.Workspace.Card.Markdown.Model
 
 import SlamData.Prelude
 
-import Data.Identity (runIdentity)
 import Data.Functor.Compose (Compose(..))
 import Data.Argonaut (Json, JObject, jsonEmptyObject, encodeJson, decodeJson, (~>), (:=), (.?))
 import Data.HugeNum as HN
@@ -538,7 +537,7 @@ encodeFormFieldValue
   → Json
 encodeFormFieldValue =
   encodeFormField
-    ∘ SD.transFormField (SD.Literal ∘ runIdentity)
+    ∘ SD.transFormField (SD.Literal ∘ unwrap)
 
 decodeFormFieldValue
   ∷ Json

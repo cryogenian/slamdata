@@ -26,7 +26,6 @@ import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
-import Data.Lens ((^?))
 import Data.Map as M
 
 import ECharts.Monad (DSL)

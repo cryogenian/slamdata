@@ -5,8 +5,9 @@ import SlamData.Prelude
 import Data.Argonaut (encodeJson)
 import Data.Array as Arr
 import Data.Map as Map
-import Data.String as Str
-import Data.String.Regex as Rgx
+import Data.String as S
+import Data.String.Regex as RX
+import Data.String.Regex.Flags as RXF
 import Data.StrMap as SM
 
 import Global (encodeURIComponent)
@@ -14,7 +15,6 @@ import Global (encodeURIComponent)
 import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
 
 import Test.Feature as Feature
-import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature, getConfig, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
 import Test.Utils (appendToCwd)
@@ -71,12 +71,9 @@ accessBreadcrumb ∷ String → SlamFeature Unit
 accessBreadcrumb = Feature.click ∘ XPath.anywhere ∘ XPaths.accessBreadcrumb
 
 browseRootFolder ∷ SlamFeature Unit
-browseRootFolder =
-  tryRepeatedlyTo do
-    ((Feature.clickNotRepeatedly $ XPath.anywhere XPaths.headerGripper)
-     <|>
-     (Feature.clickNotRepeatedly $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1))
-    Expect.fileNotRepeatedly "test-mount"
+browseRootFolder = do
+  Feature.click $ XPath.anywhere XPaths.headerGripper
+  Feature.click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
 
 browseTestFolder ∷ SlamFeature Unit
 browseTestFolder =
@@ -252,7 +249,7 @@ addColumn str = do
 
 selectInMillerColumns ∷ Array String → SlamFeature Unit
 selectInMillerColumns ps = do
-  for_ (enumerate $ Arr.filter (\s → Str.length s > 0) ps) \(ix × path) →
+  for_ (enumerate $ Arr.filter (\s → S.length s > 0) ps) \(ix × path) →
     Feature.click $ resourceXPath (ix + one) path
   where
   ariaLabel ∷ String → String
@@ -268,7 +265,7 @@ selectInMillerColumns ps = do
 
 selectFileForLastOpenCard ∷ String → SlamFeature Unit
 selectFileForLastOpenCard s =
-  selectInMillerColumns $ Str.split "/" s
+  selectInMillerColumns $ S.split (S.Pattern "/") s
 
 selectInChartBuilder ∷ Array String → SlamFeature Unit
 selectInChartBuilder ps = do
@@ -365,26 +362,26 @@ provideApiVariableBindingsForVariablesCard
   → ApiVarType
   → ApiVarValue
   → SlamFeature Unit
-provideApiVariableBindingsForVariablesCard name ty val =
-  provideValueForVariablesCard name
-  *> provideTypeForVariablesCard name ty
-  *> provideDefaultValueForVariablesCard name val
+provideApiVariableBindingsForVariablesCard name ty val = do
+  provideValueForVariablesCard
+  provideTypeForVariablesCard
+  provideDefaultValueForVariablesCard
   where
-  provideValueForVariablesCard ∷ String → SlamFeature Unit
-  provideValueForVariablesCard name = do
+  provideValueForVariablesCard ∷ SlamFeature Unit
+  provideValueForVariablesCard = do
     Feature.provideFieldValue
       (XPath.first $ XPath.anywhere $ XPaths.variablesCardVariableName)
       name
     Feature.pressEnter
-  provideTypeForVariablesCard ∷ String → String → SlamFeature Unit
-  provideTypeForVariablesCard name ty = do
+  provideTypeForVariablesCard ∷ SlamFeature Unit
+  provideTypeForVariablesCard = do
     Feature.selectFromDropdown
       (XPath.first $ XPath.anywhere $ XPaths.variablesCardVariableTypeFor name)
       ty
     Feature.pressEnter
 
-  provideDefaultValueForVariablesCard ∷ String → String → SlamFeature Unit
-  provideDefaultValueForVariablesCard name val = do
+  provideDefaultValueForVariablesCard ∷ SlamFeature Unit
+  provideDefaultValueForVariablesCard = do
     Feature.provideFieldValue
       (XPath.first $ XPath.anywhere $ XPaths.variablesCardDefaultValueFor name)
       val
@@ -433,8 +430,8 @@ runQuery =
 setVarMapForCurrentDeck ∷ SM.StrMap String → SlamFeature Unit
 setVarMapForCurrentDeck vm = accessWorkspaceWithModifiedURL \urlStr →
   let
-    deckIdRgx = unsafePartial fromRight $ Rgx.regex "\\.slam\\/([^\\/]+)" Rgx.noFlags
-    mbDeckId = join $ Rgx.match deckIdRgx urlStr >>= flip Arr.index 1
+    deckIdRgx = unsafePartial fromRight $ RX.regex "\\.slam\\/([^\\/]+)" RXF.noFlags
+    mbDeckId = join $ RX.match deckIdRgx urlStr >>= flip Arr.index 1
   in case mbDeckId of
     Nothing → urlStr
     Just did →

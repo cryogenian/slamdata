@@ -27,6 +27,7 @@ import Data.Array as Arr
 import Data.NonEmpty as Ne
 import Data.String as Str
 import Data.String.Regex as Rgx
+import Data.String.Regex.Flags as RXF
 
 import DOM (DOM)
 import DOM.HTML (window)
@@ -106,7 +107,7 @@ retrieveTokenHashes =
   permissionRegex :: Rgx.Regex
   permissionRegex =
     unsafePartial fromRight $
-      Rgx.regex "permissionTokens=([^&]+)" Rgx.noFlags
+      Rgx.regex "permissionTokens=([^&]+)" RXF.noFlags
 
   extractTokenHashsString :: String -> Maybe String
   extractTokenHashsString str =
@@ -118,5 +119,5 @@ retrieveTokenHashes =
   permissionTokens :: String -> Array String
   permissionTokens s =
     fromMaybe []
-      $ Str.split ","
+      $ Str.split (Str.Pattern ",")
       <$> extractTokenHashsString s

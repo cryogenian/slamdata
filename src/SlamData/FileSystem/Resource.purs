@@ -61,10 +61,10 @@ module SlamData.FileSystem.Resource
 import SlamData.Prelude
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, jsonEmptyObject, (~>), (:=), (.?))
-import Data.Foreign (ForeignError(..)) as F
+import Data.Foreign (ForeignError(..), fail) as F
 import Data.Foreign.Class (class IsForeign, readProp) as F
 import Data.Foreign.NullOrUndefined (unNullOrUndefined) as F
-import Data.Lens (lens, prism', PrismP, LensP, TraversalP, wander)
+import Data.Lens (lens, prism', Prism', Lens', Traversal', wander)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S
@@ -282,13 +282,13 @@ setDir ∷ PU.AnyPath → PU.DirPath → PU.AnyPath
 setDir ap d = bimap (setDir' d) (setFile' d) ap
   where
   setDir' ∷ PU.DirPath → PU.DirPath → PU.DirPath
-  setDir' d p =
-    d </>
+  setDir' d' p =
+    d' </>
     (maybe P.currentDir (snd ⋙ PU.nameOfFileOrDir ⋙ P.dir) $ P.peel p)
 
   setFile' ∷ PU.DirPath → PU.FilePath → PU.FilePath
-  setFile' d p =
-    d </>
+  setFile' d' p =
+    d' </>
     (maybe (P.file "") (snd ⋙ PU.nameOfFileOrDir ⋙ P.file) $ P.peel p)
 
 setPath ∷ Resource → PU.AnyPath → Resource
@@ -305,14 +305,14 @@ setName r name =
 -- MODIFIERS (PRIVATE)
 
 renameAny ∷ (String → String) → PU.AnyPath → PU.AnyPath
-renameAny fn ap = bimap (P.renameDir $ liftDir fn) (P.renameFile $ liftFile fn) ap
+renameAny fn ap = bimap (P.renameDir liftDir) (P.renameFile liftFile) ap
   where
-  liftFile fn (P.FileName a) = P.FileName $ fn a
-  liftDir fn (P.DirName a) = P.DirName $ fn a
+  liftFile (P.FileName a) = P.FileName $ fn a
+  liftDir (P.DirName a) = P.DirName $ fn a
 
 
 -- TRAVERSALS
-_tempFile ∷ LensP Resource Resource
+_tempFile ∷ Lens' Resource Resource
 _tempFile = lens id \r s → case r of
   File p →
     if isTempFile r
@@ -320,36 +320,36 @@ _tempFile = lens id \r s → case r of
     else r
   _ → r
 
-_filePath ∷ TraversalP Resource PU.FilePath
+_filePath ∷ Traversal' Resource PU.FilePath
 _filePath = wander \f s → case s of
   File fp → File <$> f fp
   Mount (View fp) → map (Mount ∘ View) $ f fp
   _ → pure s
 
-_dirPath ∷ TraversalP Resource PU.DirPath
+_dirPath ∷ Traversal' Resource PU.DirPath
 _dirPath = wander \f s → case s of
   Directory dp → Directory <$> f dp
   Mount (Database dp) → map (Mount ∘ Database) $ f dp
   _ → pure s
 
-_Workspace ∷ PrismP Resource PU.DirPath
+_Workspace ∷ Prism' Resource PU.DirPath
 _Workspace = prism' Workspace case _ of
   Workspace dp → Just dp
   _ → Nothing
 
-_path ∷ LensP Resource PU.AnyPath
+_path ∷ Lens' Resource PU.AnyPath
 _path = lens getPath setPath
 
-_nameAnyPath ∷ LensP PU.AnyPath String
+_nameAnyPath ∷ Lens' PU.AnyPath String
 _nameAnyPath = lens PU.getNameStr (\p x → renameAny (const x) p)
 
-_name ∷ LensP Resource String
+_name ∷ Lens' Resource String
 _name = _path ∘ _nameAnyPath
 
-_rootAnyPath ∷ LensP PU.AnyPath PU.DirPath
+_rootAnyPath ∷ Lens' PU.AnyPath PU.DirPath
 _rootAnyPath = lens PU.getDir setDir
 
-_root ∷ LensP Resource PU.DirPath
+_root ∷ Lens' Resource PU.DirPath
 _root = _path ∘ _rootAnyPath
 
 
@@ -392,7 +392,7 @@ instance resourceIsForeign ∷ F.IsForeign Resource where
             newDatabase
           _ →
             maybe newDirectory (const newWorkspace)
-              $ S.stripSuffix Config.workspaceExtension name
+              $ S.stripSuffix (S.Pattern Config.workspaceExtension) name
 
       "file" →
         pure case mountType of
@@ -401,7 +401,7 @@ instance resourceIsForeign ∷ F.IsForeign Resource where
           _ →
             newFile
 
-      _ → Left $ F.TypeMismatch "resource" "string"
+      _ → F.fail $ F.TypeMismatch "resource" "string"
     pure $ setName template name
 
 instance encodeJsonResource ∷ EncodeJson Resource where

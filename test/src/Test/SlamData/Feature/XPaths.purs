@@ -73,35 +73,35 @@ saveSubmitButton =
 
 insertCacheCard ∷ String
 insertCacheCard =
-  XPath.anyWithExactAriaLabel "Insert Cache card"
+  XPath.anyWithExactAriaLabel "Insert a Cache card"
 
 insertMdCard ∷ String
 insertMdCard =
-  XPath.anyWithExactAriaLabel "Insert Setup Markdown card"
+  XPath.anyWithExactAriaLabel "Insert a Setup Markdown card"
 
 insertSearchCard ∷ String
 insertSearchCard =
-  XPath.anyWithExactAriaLabel "Insert Search card"
+  XPath.anyWithExactAriaLabel "Insert a Search card"
 
 insertChartOptionsCard ∷ String
 insertChartOptionsCard =
-  XPath.anyWithExactAriaLabel "Insert Setup Chart card"
+  XPath.anyWithExactAriaLabel "Insert a Setup Chart card"
 
 insertDownloadOptionsCard ∷ String
 insertDownloadOptionsCard =
-  XPath.anyWithExactAriaLabel "Insert Setup Download card"
+  XPath.anyWithExactAriaLabel "Insert a Setup Download card"
 
 insertTroubleshootCard ∷ String
 insertTroubleshootCard =
-  XPath.anyWithExactAriaLabel "Insert Troubleshoot card"
+  XPath.anyWithExactAriaLabel "Insert a Troubleshoot card"
 
 insertChartCard ∷ String
 insertChartCard =
-  XPath.anyWithExactAriaLabel "Insert Show Chart card"
+  XPath.anyWithExactAriaLabel "Insert a Show Chart card"
 
 insertDisplayMarkdownCard ∷ String
 insertDisplayMarkdownCard =
-  XPath.anyWithExactAriaLabel "Insert Show Markdown card"
+  XPath.anyWithExactAriaLabel "Insert a Show Markdown card"
 
 selectBuildChart ∷ String
 selectBuildChart =
@@ -109,11 +109,11 @@ selectBuildChart =
 
 insertPivotCard ∷ String
 insertPivotCard =
-  XPath.anyWithExactAriaLabel "Insert Pivot Table card"
+  XPath.anyWithExactAriaLabel "Insert a Pivot Table card"
 
 insertBuildBarChartCard ∷ String
 insertBuildBarChartCard =
-  XPath.anyWithExactAriaLabel "Insert Bar card"
+  XPath.anyWithExactAriaLabel "Insert a Bar card"
 
 showFileList ∷ String
 showFileList =
@@ -137,18 +137,18 @@ insertCard =
 
 insertQueryCard ∷ String
 insertQueryCard =
-  XPath.anyWithExactAriaLabel "Insert Query card"
+  XPath.anyWithExactAriaLabel "Insert a Query card"
 
 insertOpenCard ∷ String
-insertOpenCard = XPath.anyWithExactAriaLabel "Insert Open card"
+insertOpenCard = XPath.anyWithExactAriaLabel "Insert a Open card"
 
 insertVariablesCard ∷ String
 insertVariablesCard =
-  XPath.anyWithExactAriaLabel "Insert Setup Variables card"
+  XPath.anyWithExactAriaLabel "Insert a Setup Variables card"
 
 insertTableCard ∷ String
 insertTableCard =
-  XPath.anyWithExactAriaLabel "Insert Show Table card"
+  XPath.anyWithExactAriaLabel "Insert a Show Table card"
 
 hideCardOptions ∷ String
 hideCardOptions =

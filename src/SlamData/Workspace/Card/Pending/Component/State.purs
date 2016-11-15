@@ -27,7 +27,7 @@ import SlamData.Prelude
 
 import Data.Argonaut as JS
 import Data.Argonaut ((:=), (~>), (.?))
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 type State =
   { message ∷ String
@@ -38,7 +38,7 @@ initialState =
   { message: "Please wait while the deck is evaluated"
   }
 
-_message ∷ LensP State String
+_message ∷ Lens' State String
 _message = lens (_.message) (_ { message = _ })
 
 encode

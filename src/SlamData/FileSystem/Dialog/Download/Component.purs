@@ -40,7 +40,7 @@ comp = H.component { render, eval }
 
 eval ∷ Query ~> (H.ComponentDSL State Query Slam)
 eval (TargetTyped s next) = do
-  H.modify (_targetName .~ (if isJust $ Str.indexOf "/" s then Left else Right) s)
+  H.modify (_targetName .~ (if isJust $ Str.indexOf (Str.Pattern "/") s then Left else Right) s)
   H.modify validate
   pure next
 eval (ToggleCompress next) = do

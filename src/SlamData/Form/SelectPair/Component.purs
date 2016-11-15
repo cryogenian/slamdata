@@ -19,7 +19,7 @@ module SlamData.Form.SelectPair.Component where
 import SlamData.Prelude
 
 import Data.Array (null, singleton)
-import Data.Lens (LensP, lens, (^.), (.~), (%~), view)
+import Data.Lens (Lens', lens, (^.), (.~), (%~), view)
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -47,13 +47,13 @@ initialState sel =
   , opened: false
   }
 
-_model ∷ ∀ a r. LensP {model ∷ a | r} a
+_model ∷ ∀ a r. Lens' {model ∷ a | r} a
 _model = lens _.model _{model = _}
 
-_disabled ∷ ∀ a r. LensP {disabled ∷ a | r} a
+_disabled ∷ ∀ a r. Lens' {disabled ∷ a | r} a
 _disabled = lens _.disabled _{disabled = _}
 
-_opened ∷ ∀ a r. LensP {opened ∷ a | r} a
+_opened ∷ ∀ a r. Lens' {opened ∷ a | r} a
 _opened = lens _.opened _{opened = _}
 
 type StateP a b =

@@ -34,7 +34,8 @@ import Data.Lens ((.~), preview)
 import Data.MediaType.Common (textCSV, applicationJSON)
 import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir)
 import Data.String as S
-import Data.String.Regex as Rgx
+import Data.String.Regex as RX
+import Data.String.Regex.Flags as RXF
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, injSlot, prjQuery, injQuery)
@@ -264,7 +265,7 @@ uploadFileSelected f = do
   { path, sort, salt } ← H.get
   name ←
     H.fromEff (Cf.name f)
-      <#> Rgx.replace (unsafePartial fromRight $ Rgx.regex "/" Rgx.noFlags{global=true}) ":"
+      <#> RX.replace (unsafePartial fromRight $ RX.regex "/" RXF.global) ":"
       >>= API.getNewName path
 
   case name of
@@ -276,7 +277,7 @@ uploadFileSelected f = do
       let fileName = path </> file name'
           res = R.File fileName
           fileItem = PhantomItem res
-          ext = Array.last (S.split "." name')
+          ext = Array.last (S.split (S.Pattern ".") name')
           mime = if ext ≡ Just "csv"
                  then textCSV
                  else if isApplicationJSON content'
@@ -302,7 +303,7 @@ uploadFileSelected f = do
         in (startsWithEndsWith "[" "]" trimmed) || (startsWithEndsWith "{" "}" trimmed)
 
   startsWithEndsWith startsWith endsWith s =
-    F.all isJust [S.stripPrefix startsWith s, S.stripSuffix endsWith s]
+    F.all isJust [S.stripPrefix (S.Pattern startsWith) s, S.stripSuffix (S.Pattern endsWith) s]
 
   handleError err =
     case GE.fromQError err of
@@ -439,9 +440,9 @@ dialogChildrenPeek q = do
   for_ (prjQuery Dialog.cpExplore q) explorePeek
 
 explorePeek ∷ ∀ a. Explore.Query a → DSL Unit
-explorePeek (Explore.Explore fp name next) = do
+explorePeek (Explore.Explore fp initialName next) = do
   { path } ← H.get
-  let newWorkspaceName = name ⊕ "." ⊕ Config.workspaceExtension
+  let newWorkspaceName = initialName ⊕ "." ⊕ Config.workspaceExtension
   name ← API.getNewName path newWorkspaceName
   case name of
     Left err →

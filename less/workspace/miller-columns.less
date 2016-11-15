@@ -16,6 +16,7 @@
   overflow: auto;
   box-sizing: border-box;
   border: 1px solid #ddd;
+  vertical-align: top;
 
   li {
     display: block;
@@ -35,7 +36,7 @@
     z-index: 2;
   }
 
-  li.selected.tip {
+  &:last-child li.selected {
     background: #337ab7;
     border-color: #337ab7;
     color: #fff;

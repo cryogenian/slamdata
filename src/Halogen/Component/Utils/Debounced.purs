@@ -24,7 +24,7 @@ import Prelude
 
 import Control.Monad.Aff.Free (class Affable)
 
-import Data.Lens (LensP, view, (?~))
+import Data.Lens (Lens', view, (?~))
 import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds)
 
@@ -41,7 +41,7 @@ fireDebouncedQuery'
   ∷ ∀ s s' f f' g p eff
   . (Functor g, Affable (DebounceEffects eff) g)
   ⇒ Milliseconds
-  → LensP s (Maybe (DebounceTrigger f g))
+  → Lens' s (Maybe (DebounceTrigger f g))
   → H.Action f
   → H.ParentDSL s s' f f' g p Unit
 fireDebouncedQuery' ms lens act = do

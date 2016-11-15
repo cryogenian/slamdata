@@ -24,7 +24,7 @@ import SlamData.Prelude
 
 import Data.Foldable as F
 import Data.Lens ((.~))
-import Data.String as Str
+import Data.String as S
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -95,12 +95,13 @@ render state =
   where
 
   filterString ∷ String
-  filterString = Str.toLower state.filterString
+  filterString = S.toLower state.filterString
 
   cardTitle ∷ NA.NextAction → String
-  cardTitle (NA.Insert cty) = "Insert " ⊕ CT.cardName cty ⊕ " card"
+  cardTitle (NA.Insert cty) = "Insert a " ⊕ CT.cardName cty ⊕ " card"
+  cardTitle (NA.FindOutHowToInsert cty) = "Find out how to insert a " ⊕ CT.cardName cty ⊕ " card"
   cardTitle (NA.Drill name _ _) = "Select " ⊕ name ⊕ " card category"
-  cardTitle (NA.GoBack) = "Go Back"
+  cardTitle (NA.GoBack) = "Go back"
 
   nextButton ∷ NA.NextAction → NextHTML
   nextButton action =
@@ -114,21 +115,31 @@ render state =
     enabled ∷ Boolean
     enabled = case action of
       NA.GoBack → true
-      _ → F.any (Str.contains filterString ∘ Str.toLower) $ NA.searchFilters action
+      _ → F.any (S.contains (S.Pattern filterString) ∘ S.toLower) $ NA.searchFilters action
 
     attrs =
       [ HP.title $ cardTitle action
       , HP.disabled $ not enabled
       , ARIA.label $ cardTitle action
-      ] ⊕ (guard warned
-             $> HP.classes [ HH.className "sd-button-warning" ])
-        ⊕ (guard enabled
-             $> HE.onClick (HE.input_ (right ∘ Selected action)))
+      , HP.classes classes
+      , HE.onClick (HE.input_ $ right ∘ Selected action)
+      ]
 
-    warned ∷ Boolean
-    warned = case action of
-      NA.GoBack → false
-      _ → not $ F.any (takesInput state.input) $ NA.foldToArray action
+    classes ∷ Array HH.ClassName
+    classes = case action of
+      NA.FindOutHowToInsert _ →
+        nonInsertableClassNames
+      NA.Drill _ _ actions | not (F.any NA.isInsert actions) →
+        nonInsertableClassNames
+      _ →
+        insertableClassNames
+
+    insertableClassNames =
+      [ HH.className "sd-button" ]
+
+    nonInsertableClassNames =
+        [ HH.className "sd-button", HH.className "sd-button-warning" ]
+
 
   addCardGuideTextEmptyDeck = "To get this deck started press one of these buttons to add a card."
   addCardGuideTextNonEmptyDeck = "To do more with this deck press one of these buttons to add a card."
@@ -140,7 +151,7 @@ eval = coproduct cardEval nextEval
 cardEval ∷ CC.CardEvalQuery ~> NextDSL
 cardEval = case _ of
   CC.Activate next →
-    pure next
+    (H.modify ∘ updateActions =<< H.gets _.input) $> next
   CC.Deactivate next →
     pure next
   CC.Save k →
@@ -160,6 +171,38 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
+updateActions ∷ Maybe Port.Port → State → State
+updateActions input state =
+  case activeDrill of
+    Nothing →
+      state
+        { actions = newActions }
+    Just drill →
+      state
+        { previousActions = newActions
+        , actions = fromMaybe [] $ pluckDrillActions =<< newActiveDrill
+        }
+  where
+  newActions = NA.fromMaybePort input
+
+  activeDrill =
+    F.find
+      (maybe false (eq state.actions) ∘ pluckDrillActions)
+      state.previousActions
+
+  newActiveDrill =
+    F.find (maybe false eqNameOfActiveDrill ∘ pluckDrillName) newActions
+
+  eqNameOfActiveDrill name =
+    maybe false (eq name) (pluckDrillName =<< activeDrill)
+
+  pluckDrillActions = case _ of
+    NA.Drill _ _ xs → Just xs
+    _ → Nothing
+
+  pluckDrillName = case _ of
+    NA.Drill x _ _ → Just x
+    _ → Nothing
 
 takesInput ∷ Maybe Port.Port → CT.CardType → Boolean
 takesInput input =
@@ -184,33 +227,29 @@ storeDismissedAddCardGuide =
 
 dismissAddCardGuide ∷ NextDSL Unit
 dismissAddCardGuide =
-  H.modify (State._presentAddCardGuide .~ false) *> storeDismissedAddCardGuide
+  H.modify (State._presentAddCardGuide .~ false)
+    *> storeDismissedAddCardGuide
 
 nextEval ∷ Query ~> NextDSL
 nextEval (AddCard _ next) = dismissAddCardGuide $> next
 nextEval (PresentReason io card next) = pure next
-nextEval (UpdateFilter str next) = do
-  H.modify
-    $ (State._filterString .~ str)
-  pure next
+nextEval (UpdateFilter str next) =
+  H.modify (State._filterString .~ str) $> next
 nextEval (DismissAddCardGuide next) = dismissAddCardGuide $> next
-nextEval (PresentAddCardGuide next) = do
-  H.modify ∘ (State._presentAddCardGuide .~ _) ∘ not =<< getDismissedAddCardGuideBefore
-  pure next
+nextEval (PresentAddCardGuide next) =
+  (H.modify
+     ∘ (State._presentAddCardGuide .~ _)
+     ∘ not =<< getDismissedAddCardGuideBefore)
+     $> next
 nextEval (Selected action next) = do
   st ← H.get
   case action of
-    NA.Insert cardType → do
-      HU.raise
-        $ right
-        $ H.action
-          if takesInput st.input cardType
-          then AddCard cardType
-          else PresentReason st.input cardType
-    NA.Drill _ _ actions → do
-      H.modify
-        $ (State._actions .~ actions)
-        ∘ (State._previousActions .~ st.actions)
+    NA.Insert cardType →
+      HU.raise $ right $ H.action $ AddCard cardType
+    NA.FindOutHowToInsert cardType →
+      HU.raise $ right $ H.action $ PresentReason st.input cardType
+    NA.Drill _ _ actions →
+      H.modify $ (State._actions .~ actions) ∘ (State._previousActions .~ st.actions)
     NA.GoBack →
       H.modify
         $ (State._actions .~ st.previousActions)

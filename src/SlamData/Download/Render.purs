@@ -18,7 +18,7 @@ module SlamData.Download.Render where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP, (^.))
+import Data.Lens (Lens', (^.))
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -31,7 +31,7 @@ import SlamData.Render.CSS as Rc
 
 optionsCSV
   :: forall f
-   . (LensP D.CSVOptions String -> String -> (Unit -> f Unit))
+   . (Lens' D.CSVOptions String -> String -> (Unit -> f Unit))
    -> D.CSVOptions
    -> H.ComponentHTML f
 optionsCSV func opts =
@@ -45,7 +45,7 @@ optionsCSV func opts =
       ]
     ]
   where
-  field :: LensP D.CSVOptions String -> String -> H.ComponentHTML f
+  field :: Lens' D.CSVOptions String -> String -> H.ComponentHTML f
   field lens label =
     HH.li_
       [ HH.label_
@@ -60,7 +60,7 @@ optionsCSV func opts =
 
 optionsJSON
   :: forall f
-   . (forall a. (Eq a) => LensP D.JSONOptions a -> a -> (Unit -> f Unit))
+   . (forall a. (Eq a) => Lens' D.JSONOptions a -> a -> (Unit -> f Unit))
   -> D.JSONOptions
   -> H.ComponentHTML f
 optionsJSON func opts =
@@ -93,7 +93,7 @@ optionsJSON func opts =
   radio
     :: forall a
      . (Eq a)
-    => String -> LensP D.JSONOptions a -> a -> String -> H.ComponentHTML f
+    => String -> Lens' D.JSONOptions a -> a -> String -> H.ComponentHTML f
   radio grp lens value label =
     HH.li_
       [ HH.label_

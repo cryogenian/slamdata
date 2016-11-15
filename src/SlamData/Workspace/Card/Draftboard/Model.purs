@@ -27,7 +27,7 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Function (on)
-import Data.Int (toNumber, floor)
+import Data.Int (floor)
 import Data.List(List(..), (:))
 import Data.List as List
 import Data.Map as Map
@@ -144,7 +144,7 @@ genPane = genOrientation >>= goGen
       else Pane.Split orn <$> genSplit orn 16 List.Nil
 
   genSplit orn range ps = do
-    num ← Gen.chooseInt 1.0 (toNumber range)
+    num ← Gen.chooseInt 1 range
     pane ← goGen (Orn.reverse orn)
     let
       ps' = List.Cons ((num%16) × pane) ps

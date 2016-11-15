@@ -53,6 +53,7 @@ import SlamData.Workspace.Card.BuildChart.Boxplot.Component (boxplotBuilderCompo
 import SlamData.Workspace.Card.BuildChart.Heatmap.Component (heatmapBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component (punchCardBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component (candlestickBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Parallel.Component (parallelBuilderComponent)
 
 cardComponent ∷ CT.CardType → CardOptions → CardComponent
 cardComponent =
@@ -88,3 +89,4 @@ cardComponent =
     CT.ChartOptions CT.Heatmap → heatmapBuilderComponent
     CT.ChartOptions CT.PunchCard → punchCardBuilderComponent
     CT.ChartOptions CT.Candlestick → candlestickBuilderComponent
+    CT.ChartOptions CT.BuildParallel → parallelBuilderComponent

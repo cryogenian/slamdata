@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor, Json, class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), isNull, (.?), jsonEmptyObject)
 import Data.Array as Array
 import Data.Foldable as F
-import Data.Lens (PrismP, prism')
+import Data.Lens (Prism', prism')
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -42,7 +42,7 @@ data Column
       }
 
 _Column
-  ∷ PrismP Column
+  ∷ Prism' Column
       { value ∷ JCursor
       , valueAggregation ∷ Maybe (Ag.Aggregation)
       }

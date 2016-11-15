@@ -24,6 +24,7 @@ import Data.Array as Arr
 import Data.Nullable as N
 import Data.String as Str
 import Data.String.Regex as Rgx
+import Data.String.Regex.Flags as RXF
 import Data.URI (printURIRef, runParseURIRef) as URI
 import Data.URI.Types (URIRef) as URI
 
@@ -54,7 +55,7 @@ retrieveStyles =
   additionalStyles :: String -> Array String
   additionalStyles s =
     fromMaybe []
-      $ Str.split ","
+      $ Str.split (Str.Pattern ",")
       <$> extractStyleURIStr s
 
   extractStyleURIStr :: String -> Maybe String
@@ -66,7 +67,7 @@ retrieveStyles =
 
   stylesRgx :: Rgx.Regex
   stylesRgx =
-    unsafePartial fromRight $ Rgx.regex "stylesheets=([^&]+)" Rgx.noFlags
+    unsafePartial fromRight $ Rgx.regex "stylesheets=([^&]+)" RXF.noFlags
 
 
 createLink

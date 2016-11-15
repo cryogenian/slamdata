@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Prelude
-  ( (∘), (⊕), (⋙), (⋘), (≡), (≠), (×), (≪), (≫), (=<<)
+  ( (∘), (⊕), (⋙), (⋘), (≡), (≠), (×), (≪), (≫)
   , (∨), (∧), (⨁), (⊹)
   , flipCompose, applyRight, applyLeft
   , type (⨁), type (⊹), type (×)
@@ -28,9 +28,9 @@ module SlamData.Prelude
   , module Control.Monad.Except
   , module Control.Monad.Maybe.Trans
   , module Control.Monad.Reader
-  , module Control.Monad.Trans
+  , module Control.Monad.Trans.Class
   , module Control.MonadPlus
-  , module Control.Parallel.Class
+  , module Control.Parallel
   , module Control.Plus
   , module Data.Bifoldable
   , module Data.Bifunctor
@@ -42,6 +42,7 @@ module SlamData.Prelude
   , module Data.Functor.Coproduct
   , module Data.Generic
   , module Data.Maybe
+  , module Data.Newtype
   , module Data.Monoid
   , module Data.Traversable
   , module Data.Tuple
@@ -51,26 +52,25 @@ module SlamData.Prelude
   )
   where
 
-import Prelude hiding ((=<<))
+import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Control.Apply ((*>), (<*))
 import Control.Bind (join, (>=>), (<=<))
-import Control.Bind as CB
 import Control.Monad (when, unless)
 import Control.Monad.Error.Class (class MonadError, throwError, catchError)
 import Control.Monad.Except (ExceptT(..), runExcept, runExceptT, except)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
-import Control.Monad.Reader (class MonadReader, ask)
-import Control.Monad.Trans (class MonadTrans, lift)
+import Control.Monad.Reader (class MonadAsk, class MonadReader, ask)
+import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Control.MonadPlus (class MonadPlus, guard)
-import Control.Parallel.Class (class MonadPar, parTraverse, parTraverse_)
+import Control.Parallel (class Parallel, parTraverse, parTraverse_)
 import Control.Plus (class Plus, empty)
 
 import Data.Bifoldable (class Bifoldable, bitraverse_, bifor_)
 import Data.Bifunctor (bimap, lmap, rmap)
 import Data.Bitraversable (class Bitraversable, bitraverse, bisequence, bifor)
-import Data.Const (Const(..), getConst)
+import Data.Const (Const(..))
 import Data.Either (Either(..), either, isLeft, isRight, fromRight)
 import Data.Foldable (class Foldable, traverse_, for_, foldMap, foldl, foldr, fold)
 import Data.Functor (($>), (<$))
@@ -78,6 +78,7 @@ import Data.Functor.Coproduct (Coproduct, coproduct, left, right)
 import Data.Generic (class Generic)
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe', fromJust)
 import Data.Monoid (class Monoid, mempty)
+import Data.Newtype (class Newtype, unwrap, ala, alaF)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Void (Void, absurd)
@@ -94,9 +95,6 @@ applyRight a b = const id <$> a <*> b
 
 applyLeft ∷ ∀ f a b. Apply f ⇒ f a → f b → f a
 applyLeft a b = const <$> a <*> b
-
--- TODO: `purescript-prelude` gets this wrong at the moment
-infixr 1 CB.bindFlipped as =<<
 
 infixr 9 compose as ∘
 infixr 5 append as ⊕

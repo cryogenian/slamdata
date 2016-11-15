@@ -19,9 +19,10 @@ module SlamData.FileSystem.Dialog.Mount.SQL2.Component.State where
 import SlamData.Prelude
 
 import Data.Array (filter)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 import Data.List as List
 import Data.String.Regex as Rx
+import Data.String.Regex.Flags as RXF
 import Data.StrMap as SM
 
 type State =
@@ -29,10 +30,10 @@ type State =
   , vars :: Array (Tuple String String)
   }
 
-_initialQuery :: LensP State (Maybe String)
+_initialQuery :: Lens' State (Maybe String)
 _initialQuery = lens _.initialQuery (_ { initialQuery = _ })
 
-_vars :: LensP State (Array (Tuple String String))
+_vars :: Lens' State (Array (Tuple String String))
 _vars = lens _.vars (_ { vars = _ })
 
 initialState :: State
@@ -58,4 +59,4 @@ isEmptyVar :: Tuple String String -> Boolean
 isEmptyVar (Tuple name value) = Rx.test rxEmpty name && Rx.test rxEmpty value
 
 rxEmpty :: Rx.Regex
-rxEmpty = unsafePartial fromRight $ Rx.regex "^\\s*$" Rx.noFlags
+rxEmpty = unsafePartial fromRight $ Rx.regex "^\\s*$" RXF.noFlags

@@ -25,17 +25,38 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
+import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.CardType (CardType, cardName, lightCardGlyph)
 import SlamData.Render.Common (glyph)
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
+import SlamData.Workspace.Card.Port (Port)
 
 data NextAction
   = Insert CardType
+  | FindOutHowToInsert CardType
   | Drill String String (Array NextAction)
   | GoBack
+
+chartSubmenu ∷ NextAction
+chartSubmenu =
+  Drill
+    "Setup Chart"
+    "img/cardsLight/setupChart.svg"
+    ([ GoBack ] ⊕ map (Insert ∘ CT.ChartOptions) allChartTypes)
+
+findOutHowToChartSubmenu ∷ NextAction
+findOutHowToChartSubmenu =
+  Drill
+    "Setup Chart"
+    "img/cardsLight/setupChart.svg"
+    ([ GoBack ] ⊕ map (FindOutHowToInsert ∘ CT.ChartOptions) allChartTypes)
 
 instance eqNextAction ∷ Eq NextAction where
   eq GoBack GoBack = true
   eq (Insert cty1) (Insert cty2) = cty1 ≡ cty2
+  eq (FindOutHowToInsert cty1) (FindOutHowToInsert cty2) = cty1 ≡ cty2
   eq (Drill n1 i1 ctys1) (Drill n2 i2 ctys2) =
     n1 ≡ n2
     ∧ i1 ≡ i2
@@ -45,20 +66,55 @@ instance eqNextAction ∷ Eq NextAction where
 
 foldToArray ∷ NextAction → Array CardType
 foldToArray (Insert cty) = [ cty ]
+foldToArray (FindOutHowToInsert cty) = [ cty ]
 foldToArray (Drill _ _ as) = A.concat $ map foldToArray as
 foldToArray (GoBack) = [ ]
 
 searchFilters ∷ NextAction → Array String
 searchFilters (Insert cty) = [ cardName cty ]
+searchFilters (FindOutHowToInsert cty) = [ cardName cty ]
 searchFilters (Drill name _ as) = [ name ] ⊕ A.concat (map searchFilters as)
 searchFilters (GoBack) = [ ]
 
 actionLabel ∷ NextAction → String
 actionLabel (Insert cty) = cardName cty
+actionLabel (FindOutHowToInsert cty) = cardName cty
 actionLabel (Drill name _ _) = name
 actionLabel (GoBack) = "Back"
 
 actionGlyph ∷ ∀ s f. NextAction → H.HTML s f
 actionGlyph (Insert cty) = lightCardGlyph cty
+actionGlyph (FindOutHowToInsert cty) = lightCardGlyph cty
 actionGlyph (Drill _ src _) = HH.img [ HP.src src ]
 actionGlyph (GoBack) = glyph B.glyphiconChevronLeft
+
+insert ∷ InsertableCardType → NextAction
+insert =
+  case _ of
+    ICT.SetupChartCard → chartSubmenu
+    iCardType → Insert $ ICT.toCardType iCardType
+
+findOutHowToInsert ∷ InsertableCardType → NextAction
+findOutHowToInsert =
+  case _ of
+    ICT.SetupChartCard → findOutHowToChartSubmenu
+    iCardType → FindOutHowToInsert $ ICT.toCardType iCardType
+
+fromInsertableCard ∷ InsertableCardType → Array InsertableCardType → NextAction
+fromInsertableCard x =
+  maybe (findOutHowToInsert x) (const $ insert x) ∘ A.findIndex (eq x)
+
+fromPort ∷ Port → Array NextAction
+fromPort port =
+  flip fromInsertableCard (ICT.cardsThatTakeInput $ ICT.fromPort port) <$> ICT.all
+
+fromMaybePort ∷ Maybe Port → Array NextAction
+fromMaybePort = maybe (flip fromInsertableCard (ICT.cardsThatTakeInput ICT.None) <$> ICT.all) fromPort
+
+isInsert ∷ NextAction → Boolean
+isInsert (Insert _) = true
+isInsert _ = false
+
+isDrill ∷ NextAction → Boolean
+isDrill (Drill _ _ _) = true
+isDrill _ = false

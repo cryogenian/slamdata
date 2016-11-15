@@ -18,13 +18,11 @@ module SlamData.Workspace.Card.Next.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import SlamData.Workspace.Card.Port (Port)
 
-import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
-import SlamData.Workspace.Card.Next.NextAction (NextAction(..))
-import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..))
+import SlamData.Workspace.Card.Next.NextAction (NextAction)
 
 type State =
   { input ∷ Maybe Port
@@ -34,50 +32,26 @@ type State =
   , filterString ∷ String
   }
 
-chartSubmenu ∷ NextAction
-chartSubmenu =
-  Drill
-    "Setup Chart"
-    "img/cardsLight/setupChart.svg"
-    ([ GoBack ] ⊕ map (Insert ∘ ChartOptions) allChartTypes)
-
-defaultActions ∷ Array NextAction
-defaultActions =
-  [ Insert Open
-  , Insert (Ace SQLMode)
-  , Insert Search
-  , chartSubmenu
-  , Insert Chart
-  , Insert (Ace MarkdownMode)
-  , Insert Markdown
-  , Insert Draftboard
-  , Insert DownloadOptions
-  , Insert Download
-  , Insert Cache
-  , Insert Variables
-  , Insert Troubleshoot
-  ]
-
 initialState ∷ State
 initialState =
   { input: Nothing
   , presentAddCardGuide: false
-  , actions: defaultActions
+  , actions: []
   , previousActions: [ ]
   , filterString: ""
   }
 
-_input ∷ ∀ a r. LensP { input ∷ a | r } a
+_input ∷ ∀ a r. Lens' { input ∷ a | r } a
 _input = lens _.input (_ { input = _ })
 
-_actions ∷ ∀ a r. LensP { actions ∷ a |r } a
+_actions ∷ ∀ a r. Lens' { actions ∷ a |r } a
 _actions = lens _.actions (_ { actions = _ })
 
-_previousActions ∷ ∀ a r. LensP { previousActions ∷ a | r} a
+_previousActions ∷ ∀ a r. Lens' { previousActions ∷ a | r} a
 _previousActions = lens _.previousActions (_ { previousActions = _ })
 
-_presentAddCardGuide ∷ ∀ a r. LensP { presentAddCardGuide ∷ a | r } a
+_presentAddCardGuide ∷ ∀ a r. Lens' { presentAddCardGuide ∷ a | r } a
 _presentAddCardGuide = lens _.presentAddCardGuide (_ { presentAddCardGuide = _ })
 
-_filterString ∷ ∀ a r. LensP { filterString ∷ a | r } a
+_filterString ∷ ∀ a r. Lens' { filterString ∷ a | r } a
 _filterString = lens _.filterString (_ { filterString = _ })

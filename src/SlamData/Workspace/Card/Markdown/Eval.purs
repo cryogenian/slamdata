@@ -144,7 +144,7 @@ evalEmbeddedQueries sm dir =
     ∷ SD.TextBox (Const String)
     → m (SD.TextBox Identity)
   evalTextBox tb = do
-    let sql = getConst $ SD.traverseTextBox (map \_ → Const unit) tb
+    let sql = unwrap $ SD.traverseTextBox (map \_ → Const unit) tb
     mresult ← A.head <$> runQuery sql
     result ←
       maybe (CEM.throw "No results") (pure ∘ extractSingletonObject) mresult

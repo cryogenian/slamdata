@@ -25,7 +25,7 @@ module SlamData.Workspace.Card.Open.Component.State
 
 import SlamData.Prelude
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 import Data.List (List)
 
 import Halogen (ParentState)
@@ -35,7 +35,7 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Monad (Slam)
 
-import SlamData.Workspace.MillerColumns.Component as MC
+import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 
 import Utils.Path (AnyPath)
 
@@ -52,18 +52,18 @@ initialState =
   , loading: false
   }
 
-_selected ∷ ∀ a r. LensP { selected ∷ a|r} a
+_selected ∷ ∀ a r. Lens' { selected ∷ a|r} a
 _selected = lens (_.selected) (_{selected = _})
 
-_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
+_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a|r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
-_loading ∷ ∀ a r. LensP {loading ∷ a|r} a
+_loading ∷ ∀ a r. Lens' {loading ∷ a|r} a
 _loading = lens (_.loading) (_{loading = _})
 
 type StateP =
   ParentState
-    State (MC.State R.Resource AnyPath)
-    CardEvalQuery (MC.Query AnyPath)
+    State (MCI.BasicColumnsState R.Resource AnyPath)
+    CardEvalQuery (MCI.BasicColumnsQuery AnyPath)
     Slam
     Unit

@@ -26,7 +26,7 @@ module SlamData.Workspace.Card.Eval.State
 import SlamData.Prelude
 
 import Data.Argonaut (Json)
-import Data.Lens (PrismP, prism', TraversalP, wander)
+import Data.Lens (Prism', prism', Traversal', wander)
 
 import SlamData.Workspace.Card.Port (TaggedResourcePort)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)
@@ -40,18 +40,18 @@ type AnalysisR =
 data EvalState
   = Analysis AnalysisR
 
-_Analysis ∷ PrismP EvalState AnalysisR
+_Analysis ∷ Prism' EvalState AnalysisR
 _Analysis = prism' Analysis case _ of
   Analysis x → Just x
 
-_Axes ∷ TraversalP EvalState Axes
+_Axes ∷ Traversal' EvalState Axes
 _Axes = wander \f s → case s of
   Analysis r@{ axes } → Analysis ∘ r { axes = _} <$> f axes
 
-_Records ∷ TraversalP EvalState (Array Json)
+_Records ∷ Traversal' EvalState (Array Json)
 _Records = wander \f s → case s of
   Analysis r@{ records } → Analysis ∘ r { records = _} <$> f records
 
-_Resource ∷ TraversalP EvalState TaggedResourcePort
+_Resource ∷ Traversal' EvalState TaggedResourcePort
 _Resource = wander \f s → case s of
   Analysis r@{ taggedResource } → Analysis ∘ r { taggedResource = _} <$> f taggedResource

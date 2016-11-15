@@ -73,7 +73,7 @@ toString' is =
 fromString ∷ String → Maybe UUIDv4
 fromString str = do
   let
-    ds = String.split "" =<< String.split "-" str
+    ds = String.split (String.Pattern "") =<< String.split (String.Pattern "-") str
   is ← traverse (Int.fromStringAs hexRadix) ds
   rd ← Array.index is 12
   yd ← Array.index is 16
@@ -100,7 +100,7 @@ instance showUUIDv4 ∷ Show UUIDv4 where
 instance arbitraryUUIDv4 ∷ SC.Arbitrary UUIDv4 where
   -- chooseInt is inclusive, randomInt is exclusive
   arbitrary =
-    make' \i j → Gen.chooseInt (Int.toNumber i) (Int.toNumber (i - 1))
+    make' \i j → Gen.chooseInt i (i - 1)
 
 instance encodeJson ∷ EncodeJson UUIDv4 where
   encodeJson (UUIDv4 s _) = encodeJson s

@@ -14,20 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Monad.Par where
+module SlamData.Workspace.Card.BuildChart.Parallel.Component.ChildSlot where
 
 import SlamData.Prelude
-import Unsafe.Coerce (unsafeCoerce)
 
-data ParF f x y a = ParF (x -> y -> a) (f x) (f y)
-data Par (f :: * -> *) a
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DP
+import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (JCursorNode)
 
-mkPar :: forall f x y a. ParF f x y a → Par f a
-mkPar = unsafeCoerce
-
-unPar :: forall f x y a r. (ParF f x y a → r) → Par f a → r
-unPar = unsafeCoerce
-
-instance functorPar ∷ Functor (Par f) where
-  map f = unPar case _ of
-    ParF g a b → mkPar (ParF (\x y → f (g x y)) a b)
+type ChildSlot = Unit
+type ChildState = DP.StateP JCursorNode
+type ChildQuery = DP.QueryP JCursorNode
