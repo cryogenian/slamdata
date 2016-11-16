@@ -65,15 +65,17 @@ import SlamData.Workspace.Card.BuildChart.Boxplot.Eval as BuildBoxplot
 import SlamData.Workspace.Card.BuildChart.PivotTable.Eval as BuildPivotTable
 import SlamData.Workspace.Card.BuildChart.PunchCard.Eval as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Eval as BuildCandlestick
+import SlamData.Workspace.Card.BuildChart.Parallel.Eval as BuildParallel
 
 import Text.SlamSearch as SS
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 
 runCard
-  ∷ ∀ m
-  . ( Affable SlamDataEffects m
-    , MonadPar m
+  ∷ ∀ f m
+  . ( Applicative m
+    , Affable SlamDataEffects m
+    , Parallel f m
     , QuasarDSL m
     )
   ⇒ CEM.CardEnv
@@ -85,9 +87,9 @@ runCard env state input trans =
   CEM.runCardEvalM env state (evalCard input trans ∷ CEM.CardEval Port.Port)
 
 evalCard
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadPar m
+    , Parallel f m
     , MonadReader CEM.CardEnv m
     , MonadState CEM.CardState m
     , MonadThrow CEM.CardError m
@@ -158,6 +160,8 @@ evalCard = flip case _, _ of
     BuildPunchCard.eval tr model
   BuildCandlestick model, Port.TaggedResource tr →
     BuildCandlestick.eval tr model
+  BuildParallel model, Port.TaggedResource tr →
+    BuildParallel.eval tr model
   e, i →
     CEM.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
@@ -199,9 +203,9 @@ evalOpen res = do
       CEM.throw err
 
 evalQuery
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadPar m
+    , Parallel f m
     , MonadReader CEM.CardEnv m
     , MonadThrow CEM.CardError m
     , MonadWriter CEM.CardLog m
@@ -226,9 +230,9 @@ evalQuery sql varMap = do
   pure { resource, tag: pure sql, varMap: Just varMap }
 
 evalSearch
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadPar m
+    , Parallel f m
     , MonadReader CEM.CardEnv m
     , MonadThrow CEM.CardError m
     , MonadWriter CEM.CardLog m
@@ -267,14 +271,14 @@ evalSearch queryText resource = do
   pure { resource: outputResource, tag: pure sql, varMap: Nothing }
 
 validateResources
-  ∷ ∀ m f
+  ∷ ∀ f m t
   . ( Affable SlamDataEffects m
-    , MonadPar m
+    , Parallel f m
     , MonadThrow CEM.CardError m
     , QuasarDSL m
-    , Foldable f
+    , Foldable t
     )
-  ⇒ f FilePath
+  ⇒ t FilePath
   → m Unit
 validateResources =
   parTraverse_ \path → do

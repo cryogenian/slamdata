@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Search.Component.State where
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 type State =
   { searchString :: String
@@ -27,5 +27,5 @@ initialState =
   { searchString: "*"
   }
 
-_searchString :: LensP State String
+_searchString :: Lens' State String
 _searchString = lens _.searchString (_ { searchString = _ })

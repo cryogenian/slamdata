@@ -69,7 +69,7 @@ data Query a
   = Init a
   | Push N.NotificationOptions a
   | ToggleDetail a
-  | Action N.NotificationAction a
+  | Action N.Action a
   | Dismiss a
 
 data Status
@@ -108,6 +108,7 @@ render st =
           [ HH.div
               [ HP.class_ (HH.className "sd-notification-text") ]
               [ HH.text (notificationText n.options.notification)
+              , renderAction n
               , renderDetail n
               ]
           , HH.div
@@ -122,12 +123,11 @@ render st =
           ]
       ]
 
-  renderDetail n = n.options.detail # maybe (HH.text "") (f n)
-
-  f n =
-    case _ of
-      N.SimpleDetail d →
-        HH.div
+  renderDetail n =
+    n.options.detail
+      # maybe
+        (HH.text "")
+        (\(N.Details d) → HH.div
           [ HP.class_ (HH.className "sd-notification-detail") ]
           [ HH.button
               [ HP.class_ (HH.className "sd-notification-toggle-detail")
@@ -138,19 +138,24 @@ render st =
           , if n.expanded
               then HH.p_ [ HH.text d ]
               else HH.text ""
-          ]
-      N.ActionDetail d →
-        HH.div
-          [ HP.class_ (HH.className "sd-notification-detail") ]
-          [ HH.text d.messagePrefix
-          , HH.button
-              [ HP.classes [ HH.className "btn", HH.className "btn-primary", HH.className "btn-sm" ]
-              , HP.buttonType HP.ButtonButton
-              , HE.onClick (HE.input_ $ Action d.action)
-              ]
-              [ HH.text d.actionMessage ]
-          , HH.text d.messageSuffix
-          ]
+          ])
+
+  renderAction n =
+    n.options.actionOptions
+      # maybe
+        (HH.text "")
+        (\(N.ActionOptions a) →
+          HH.div
+            [ HP.class_ (HH.className "sd-notification-detail") ]
+            [ HH.text a.messagePrefix
+            , HH.button
+                [ HP.classes [ HH.className "btn", HH.className "btn-primary", HH.className "btn-sm" ]
+                , HP.buttonType HP.ButtonButton
+                , HE.onClick (HE.input_ $ Action a.action)
+                ]
+                [ HH.text a.actionMessage ]
+            , HH.text a.messageSuffix
+            ])
 
   notificationClasses status n =
     [ HH.className "sd-notification"
@@ -176,17 +181,20 @@ eval = case _ of
   Push options next → do
     st ← H.get
     dismiss ← H.fromAff makeVar
-    let item =
-          { id: st.tick
-          , dismiss
-          , options
-          , expanded: false
+    when
+      (not (options `optionsEqItem` st.current ∨ options `optionsEqItem` Array.last st.queue))
+      do
+        let item =
+              { id: st.tick
+              , dismiss
+              , options
+              , expanded: false
+              }
+        H.modify _
+          { tick = st.tick + 1
+          , queue = Array.snoc st.queue item
           }
-    H.modify _
-      { tick = st.tick + 1
-      , queue = Array.snoc st.queue item
-      }
-    when (isNothing st.current) drainQueue
+        when (isNothing st.current) drainQueue
     pure next
   Dismiss next → dismissNotification $> next
   Action _ next → dismissNotification $> next
@@ -195,6 +203,11 @@ eval = case _ of
     for_ current \curr →
       H.modify _ { current = Just curr { expanded = not curr.expanded } }
     pure next
+  where
+  optionsEqItem ∷ N.NotificationOptions → Maybe NotificationItem → Boolean
+  optionsEqItem options =
+    maybe false (N.optionsWithoutActionEq options) ∘ map _.options
+
 
 dismissNotification ∷ NotifyDSL Unit
 dismissNotification = do

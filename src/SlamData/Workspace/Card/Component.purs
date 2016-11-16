@@ -31,7 +31,7 @@ import Control.Monad.Aff.EventLoop (break')
 import Control.Monad.Aff.Free (fromAff)
 
 import Data.Foldable (elem)
-import Data.Lens (PrismP, (.~), (?~), review, preview, clonePrism)
+import Data.Lens (Prism', (.~), review, preview, clonePrism)
 
 import DOM.HTML.HTMLElement (getBoundingClientRect)
 
@@ -121,10 +121,10 @@ makeCardComponentPart def render =
   displayCoord ∷ Card.DisplayCoord
   displayCoord = def.options.cursor × def.options.coord
 
-  _State ∷ PrismP CS.AnyCardState s
+  _State ∷ Prism' CS.AnyCardState s
   _State = clonePrism def._State
 
-  _Query ∷ ∀ a. PrismP (CQ.InnerCardQuery a) (f a)
+  _Query ∷ ∀ a. Prism' (CQ.InnerCardQuery a) (f a)
   _Query = clonePrism def._Query
 
   component ∷ H.Component CS.AnyCardState CQ.InnerCardQuery Slam

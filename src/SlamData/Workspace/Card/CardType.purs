@@ -126,7 +126,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "pending" → pure PendingCard
       name → do
         let
-          chartName = fromMaybe "" $ Str.stripSuffix "-options" name
+          chartName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-options") name
         chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseChartType chartName
         pure $ ChartOptions chty
 
@@ -137,7 +137,7 @@ cardName = case _ of
   ChartOptions chty → chartName chty
   Chart → "Show Chart"
   Markdown → "Show Markdown"
-  Table → "Show Table"
+  Table → "Preview Table"
   Download → "Show Download"
   Variables → "Setup Variables"
   Troubleshoot → "Troubleshoot"
@@ -176,6 +176,7 @@ darkCardGlyph = case _ of
         PivotTable → "img/cardsDark/buildChart/pivot-table.svg"
         PunchCard → "img/cardsDark/buildChart/punch-card.svg"
         Candlestick → "img/cardsDark/buildChart/candlestick.svg"
+        Parallel → "img/cardsDark/buildChart/parallel.svg"
     in HH.img [ HP.src src ]
   Download →
     HH.img [ HP.src "img/cardsDark/showDownload.svg" ]
@@ -231,6 +232,7 @@ lightCardGlyph = case _ of
         PivotTable → "img/cardsLight/buildChart/pivot-table.svg"
         PunchCard → "img/cardsLight/buildChart/punch-card.svg"
         Candlestick → "img/cardsLight/buildChart/candlestick.svg"
+        Parallel → "img/cardsLight/buildChart/parallel.svg"
     in HH.img [ HP.src src ]
   Download →
     HH.img [ HP.src "img/cardsLight/showDownload.svg" ]

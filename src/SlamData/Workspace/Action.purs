@@ -43,7 +43,7 @@ parseAction "edit" = Right (Load Editable)
 parseAction "new" = Right New
 -- This is useless, added for consistensy
 parseAction str =
-  Str.stripPrefix "exploring" str
+  Str.stripPrefix (Str.Pattern "exploring") str
     >>= UP.parseFilePath
     # maybe (Left "incorrect action string") (Right ∘ Exploring)
 

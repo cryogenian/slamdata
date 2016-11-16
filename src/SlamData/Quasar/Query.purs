@@ -60,7 +60,7 @@ type SQL = String
 -- | Replaces `{{path}}` placeholders in an SQL template string with a file
 -- | path.
 templated ∷ FilePath → SQL → SQL
-templated res = S.replace "{{path}}" ("`" ⊕ P.printPath res ⊕ "`")
+templated res = S.replace (S.Pattern "{{path}}") (S.Replacement $ "`" ⊕ P.printPath res ⊕ "`")
 
 -- | Compiles a query.
 -- |

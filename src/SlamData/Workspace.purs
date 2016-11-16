@@ -126,3 +126,4 @@ routeSignal =
       -- FIXME
       Exploring _ → do
         driver $ Workspace.toWorkspace $ Workspace.Load Nothing AT.Editable
+        -- driver $ Workspace.toDeck $ Deck.ExploreFile fp

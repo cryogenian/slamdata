@@ -18,7 +18,7 @@ module SlamData.FileSystem.Search.Component where
 
 import SlamData.Prelude
 
-import Data.Lens (lens, LensP, (.~))
+import Data.Lens (lens, Lens', (.~))
 import Data.Path.Pathy (printPath, rootDir)
 import Data.Time.Duration (Milliseconds(..))
 
@@ -59,25 +59,25 @@ initialState =
   , trigger: Nothing
   }
 
-_valid ∷ ∀ a r. LensP {valid ∷ a|r} a
+_valid ∷ ∀ a r. Lens' {valid ∷ a|r} a
 _valid = lens (_.valid) (_{valid = _})
 
-_focused ∷ ∀ a r. LensP {focused ∷ a|r} a
+_focused ∷ ∀ a r. Lens' {focused ∷ a|r} a
 _focused = lens (_.focused) (_{focused = _})
 
-_value ∷ ∀ a r. LensP {value ∷ a|r} a
+_value ∷ ∀ a r. Lens' {value ∷ a|r} a
 _value = lens (_.value) (_{value = _})
 
-_loading ∷ ∀ a r. LensP {loading ∷ a|r} a
+_loading ∷ ∀ a r. Lens' {loading ∷ a|r} a
 _loading = lens (_.loading) (_{loading = _})
 
-_timeout ∷ ∀ a r. LensP {timeout ∷ a|r} a
+_timeout ∷ ∀ a r. Lens' {timeout ∷ a|r} a
 _timeout = lens (_.timeout) (_{timeout = _})
 
-_path ∷ ∀ a r. LensP {path ∷ a|r} a
+_path ∷ ∀ a r. Lens' {path ∷ a|r} a
 _path = lens (_.path) (_{path = _})
 
-_trigger ∷ ∀ a r. LensP {trigger ∷ a|r} a
+_trigger ∷ ∀ a r. Lens' {trigger ∷ a|r} a
 _trigger = lens (_.trigger) (_{trigger = _})
 
 data Query a

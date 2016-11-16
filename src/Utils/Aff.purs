@@ -18,8 +18,7 @@ module Utils.Aff where
 
 import Prelude
 import Control.Monad.Aff (Aff)
-import Control.Monad.Rec.Class (tailRecM)
-import Data.Either (Either(Left, Right))
+import Control.Monad.Rec.Class (Step(..), tailRecM)
 
 -- | Loop until a condition becomes `true`.
 -- |
@@ -29,4 +28,4 @@ untilA ∷ ∀ eff. Aff eff Boolean → Aff eff Unit
 untilA aff =
   tailRecM go unit
   where
-  go = const $ (if _ then pure (Right unit) else pure (Left unit)) =<< aff
+  go = const $ (if _ then pure (Done unit) else pure (Loop unit)) =<< aff

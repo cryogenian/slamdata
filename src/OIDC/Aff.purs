@@ -15,16 +15,16 @@ module OIDC.Aff where
 
 import SlamData.Prelude
 
-import Text.Parsing.StringParser (ParseError)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Random (random, RANDOM)
 import Control.UI.Browser (hostAndProtocol, getHref)
-import Data.StrMap as Sm
 import Data.URI (printURI, runParseURI)
 import Data.URI.Types as URI
+import Data.List as L
 import DOM (DOM)
 import OIDC.Crypt as Cryptography
 import Quasar.Advanced.Types (ProviderR)
+import Text.Parsing.StringParser (ParseError)
 
 data Prompt = Login | None
 
@@ -60,9 +60,8 @@ getAuthenticationUri prompt unhashedNonce pr redirectURIStr = do
       query =
         pure
         $ URI.Query
-        $ map pure
-        -- Here used to be encodeURIComponent. Removed it because it produced twice encoded uri.
-        $ Sm.fromFoldable
+        $ L.fromFoldable
+        $ map (map Just)
           [ Tuple "response_type"  "id_token token"
           , Tuple "client_id" $ Cryptography.runClientID pr.clientID
           , Tuple "redirect_uri" redirectURIStr

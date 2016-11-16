@@ -38,6 +38,7 @@ module SlamData.Workspace.Card.Eval.Monad
 
 import SlamData.Prelude hiding (throwError)
 
+import Control.Applicative.Free (FreeAp, liftFreeAp)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Aff.Free (class Affable, fromAff)
@@ -46,8 +47,7 @@ import Control.Monad.Free (Free, liftF, resume)
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Throw as Throw
-import Control.Monad.Writer.Class (class MonadWriter, tell)
-import Control.Parallel.Class (runParallel, parallel)
+import Control.Monad.Writer.Class (class MonadTell, tell)
 
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
@@ -59,7 +59,6 @@ import Quasar.Advanced.QuasarAF as QA
 import Quasar.Error (QError)
 
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Monad.Par (ParF(..), Par, mkPar, unPar)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Quasar.Error (msgToQError)
 import SlamData.Workspace.Card.CardId as CID
@@ -68,8 +67,6 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
 import SlamData.Workspace.Deck.DeckId as DID
 import Utils.Path (DirPath, FilePath)
-
-import Partial.Unsafe (unsafeCrashWith)
 
 type CardEval = CardEvalM SlamDataEffects
 
@@ -93,9 +90,9 @@ newtype CardEnv = CardEnv
 
 data CardEvalF eff a
   = Aff (Aff eff a)
-  | Par (Par (CardEvalM eff) a)
+  | Par (CardEvalA eff a)
   | Quasar (QA.QuasarAFC a)
-  | Writer (a × Set AdditionalSource)
+  | Tell (a × Set AdditionalSource)
   | State (CardState → a × CardState)
   | Ask (CardEnv → a)
   | Throw QError
@@ -105,10 +102,16 @@ instance functorCardEvalF ∷ Functor (CardEvalF eff) where
     Aff aff   → Aff (f <$> aff)
     Par par   → Par (f <$> par)
     Quasar q  → Quasar (f <$> q)
-    Writer a  → Writer (lmap f a)
+    Tell a    → Tell (lmap f a)
     State a   → State (lmap f <$> a)
     Ask a     → Ask (f <$> a)
     Throw err → Throw err
+
+newtype CardEvalA eff a = CardEvalA (FreeAp (CardEvalM eff) a)
+
+derive newtype instance functorCardEvalA :: Functor (CardEvalA eff)
+derive newtype instance applyCardEvalA :: Apply (CardEvalA eff)
+derive newtype instance applicativeCardEvalA :: Applicative (CardEvalA eff)
 
 newtype CardEvalM eff a = CardEvalM (Free (CardEvalF eff) a)
 
@@ -135,14 +138,11 @@ instance monadThrowCardEvalM ∷ MonadThrow QError (CardEvalM eff) where
 instance monadStateCardEvalM ∷ MonadState (Maybe EvalState) (CardEvalM eff) where
   state = CardEvalM ∘ liftF ∘ State
 
-instance monadReaderCardEvalM ∷ MonadReader CardEnv (CardEvalM eff) where
+instance monadAskCardEvalM ∷ MonadAsk CardEnv (CardEvalM eff) where
   ask = CardEvalM (liftF (Ask id))
-  local _ = unsafeCrashWith "Not implemented: please upgrade to MonadAsk"
 
-instance monadWriterCardEvalM ∷ MonadWriter (Set AdditionalSource) (CardEvalM eff) where
-  writer = CardEvalM ∘ liftF ∘ Writer
-  pass _ = unsafeCrashWith "Not implemented: please upgrade to MonadTell"
-  listen _ = unsafeCrashWith "Not implemented: please upgrade to MonadTell"
+instance monadTellCardEvalM ∷ MonadTell (Set AdditionalSource) (CardEvalM eff) where
+  tell as = CardEvalM $ liftF $ Tell (unit × as)
 
 instance monadEffCardEvalM ∷ MonadEff eff (CardEvalM eff) where
   liftEff = CardEvalM ∘ liftF ∘ Aff ∘ liftEff
@@ -153,25 +153,26 @@ instance monadAffCardEvalM ∷ MonadAff eff (CardEvalM eff) where
 instance affableCardEvalM ∷ Affable eff (CardEvalM eff) where
   fromAff = CardEvalM ∘ liftF ∘ Aff
 
-instance monadParCardEvalM ∷ MonadPar (CardEvalM eff) where
-  par f a b = CardEvalM $ liftF $ Par $ mkPar $ ParF f a b
+instance parallelCardEvalM ∷ Parallel (CardEvalA eff) (CardEvalM eff) where
+  parallel = CardEvalA ∘ liftFreeAp
+  sequential = CardEvalM ∘ liftF ∘ Par
 
 instance quasarDSLCardEvalM ∷ QuasarDSL (CardEvalM eff) where
   liftQuasar = CardEvalM ∘ liftF ∘ Quasar
 
-addSource ∷ ∀ m. (MonadWriter (Set AdditionalSource) m) ⇒ FilePath → m Unit
+addSource ∷ ∀ m. (MonadTell (Set AdditionalSource) m) ⇒ FilePath → m Unit
 addSource fp = tell (Set.singleton (Source fp))
 
-addCache ∷ ∀ m. (MonadWriter (Set AdditionalSource) m) ⇒ FilePath → m Unit
+addCache ∷ ∀ m. (MonadTell (Set AdditionalSource) m) ⇒ FilePath → m Unit
 addCache fp = tell (Set.singleton (Cache fp))
 
-addSources ∷ ∀ f m. (Foldable f, MonadWriter (Set AdditionalSource) m) ⇒ f FilePath → m Unit
+addSources ∷ ∀ f m. (Foldable f, MonadTell (Set AdditionalSource) m) ⇒ f FilePath → m Unit
 addSources fps = tell (foldMap (Set.singleton ∘ Source) fps)
 
-addCaches ∷ ∀ f m. (Foldable f, MonadWriter (Set AdditionalSource) m) ⇒ f FilePath → m Unit
+addCaches ∷ ∀ f m. (Foldable f, MonadTell (Set AdditionalSource) m) ⇒ f FilePath → m Unit
 addCaches fps = tell (foldMap (Set.singleton ∘ Cache) fps)
 
-additionalSources ∷ ∀ f m. (Foldable f, MonadWriter (Set AdditionalSource) m) ⇒ f AdditionalSource → m Unit
+additionalSources ∷ ∀ f m. (Foldable f, MonadTell (Set AdditionalSource) m) ⇒ f AdditionalSource → m Unit
 additionalSources = tell ∘ foldMap Set.singleton
 
 temporaryOutputResource ∷ ∀ m. (MonadReader CardEnv m) ⇒ m FilePath
@@ -197,9 +198,9 @@ liftQ = flip bind (either Throw.throw pure)
 
 runCardEvalM
   ∷ ∀ eff m a
-  . ( MonadPar m
-    , QuasarDSL m
+  . ( QuasarDSL m
     , Affable eff m
+    , Monad m
     )
   ⇒ CardEnv
   → CardState
@@ -207,7 +208,7 @@ runCardEvalM
   → m (CardResult a)
 runCardEvalM env initialState (CardEvalM ce) = go initialState Set.empty ce
   where
-    go st as ce = case resume ce of
+    go st as ce' = case resume ce' of
       Left ctr →
         case ctr of
           Aff aff →
@@ -216,23 +217,26 @@ runCardEvalM env initialState (CardEvalM ce) = go initialState Set.empty ce
           -- constraint here. Really we don't want Par in general, we just
           -- need Par for Quasar requests. For now, don't Par anything that
           -- works with card state.
-          Par par →
-            flip unPar par \(ParF f fx fy) → do
-              { x, y } ←
-                runParallel $
-                  { x: _, y: _ }
-                    <$> parallel (runCardEvalM env st fx)
-                    <*> parallel (runCardEvalM env st fy)
-              case x.output, y.output of
-                Left err, _ →
-                  pure { output: Left err, sources: as, state: st }
-                _, Left err →
-                  pure { output: Left err, sources: as, state: st }
-                Right x', Right y' →
-                  go y.state (as <> x.sources <> y.sources) (f x' y')
+          Par p →
+            -- TODO^2: ummm?
+            -- sequential $ retractFreeAp $ hoistFreeAp (parallel <<< runCardEvalM env st) p
+            fromAff empty
+            -- flip unPar par \(ParF f fx fy) → do
+            --   { x, y } ←
+            --     sequential $
+            --       { x: _, y: _ }
+            --         <$> parallel (runCardEvalM env st fx)
+            --         <*> parallel (runCardEvalM env st fy)
+            --   case x.output, y.output of
+            --     Left err, _ →
+            --       pure { output: Left err, sources: as, state: st }
+            --     _, Left err →
+            --       pure { output: Left err, sources: as, state: st }
+            --     Right x', Right y' →
+            --       go y.state (as <> x.sources <> y.sources) (f x' y')
           Quasar q →
             liftQuasar q >>= go st as
-          Writer (n × as') →
+          Tell (n × as') →
             go st (as <> as') n
           State k →
             let

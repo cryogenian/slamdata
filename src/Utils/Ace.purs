@@ -102,11 +102,11 @@ readOnly editor {startRow, startColumn, endRow, endColumn} = do
   markerRef <- addMarker range session >>= newRef
   let rerenderMarker _ = do
         readRef markerRef >>= flip Session.removeMarker session
-        Position {row: startRow, column: startColumn}
+        Position {row: startRow', column: startColumn'}
           <- Anchor.getPosition startAnchor
-        Position {row: endRow, column: endColumn}
+        Position {row: endRow', column: endColumn'}
           <- Anchor.getPosition endAnchor
-        markRange <- Range.create startRow startColumn endRow endColumn
+        markRange <- Range.create startRow' startColumn' endRow' endColumn'
         newMid <- addMarker markRange session
         writeRef markerRef newMid
   Anchor.onChange startAnchor rerenderMarker
@@ -117,17 +117,17 @@ readOnly editor {startRow, startColumn, endRow, endColumn} = do
       if hs == -1 || (kcode <= 40 && kcode >= 37) -- arrows
         then pure Nothing
         else do
-        Position {row: startRow, column: startColumn}
+        Position {row: startRow', column: startColumn'}
           <- Anchor.getPosition startAnchor
-        Position {row: endRow, column: endColumn}
+        Position {row: endRow', column: endColumn'}
           <- Anchor.getPosition endAnchor
         selectedRange <- Editor.getSelectionRange editor
         newRange <-
           if kstring == "backspace"
-          then Range.create startRow (startColumn + 1) endRow endColumn
+          then Range.create startRow' (startColumn' + 1) endRow' endColumn'
           else if kstring == "delete" || (kstring == "d" && hs == 1)
-               then Range.create startRow startColumn endRow (endColumn - 1)
-               else Range.create startRow (startColumn + 1) endRow (endColumn - 1)
+               then Range.create startRow' startColumn' endRow' (endColumn' - 1)
+               else Range.create startRow' (startColumn' + 1) endRow' (endColumn' - 1)
         intersected <- Range.intersects newRange selectedRange
         pure if intersected
              then Just {command: Null, passEvent: false}

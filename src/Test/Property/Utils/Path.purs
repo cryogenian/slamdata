@@ -38,7 +38,7 @@ runArbFilePath (ArbFilePath p) = p
 
 instance arbitraryArbFilePath ∷ Arbitrary ArbFilePath where
   arbitrary = do
-    numDirs ← chooseInt 1.0 10.0
+    numDirs ← chooseInt 1 10
     dirs ← map dir <$> vectorOf numDirs pathPart
     filename ← file <$> pathPart
     pure $ ArbFilePath $ rootDir </> foldl (flip (</>)) filename (dirs ∷ Array (Path Rel Dir Sandboxed))
@@ -50,7 +50,7 @@ runArbDirPath (ArbDirPath p) = p
 
 instance arbitraryArbDirPath ∷ Arbitrary ArbDirPath where
   arbitrary = do
-    numDirs ← chooseInt 1.0 10.0
+    numDirs ← chooseInt 1 10
     dirs ← map dir <$> vectorOf numDirs pathPart
     last ← dir <$> pathPart
     pure $ ArbDirPath $ rootDir </> foldl (flip (</>)) last (dirs ∷ Array (Path Rel Dir Sandboxed))

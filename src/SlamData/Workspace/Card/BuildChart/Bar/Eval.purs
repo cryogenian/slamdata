@@ -26,7 +26,6 @@ import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
-import Data.Lens ((^?))
 import Data.Map as M
 import Data.Set as Set
 
@@ -151,6 +150,7 @@ buildBar axes r records = do
 
   E.xAxis do
     E.axisType xAxisConfig.axisType
+    E.enabledBoundaryGap
     traverse_ E.interval xAxisConfig.interval
     case xAxisConfig.axisType of
       ET.Category →

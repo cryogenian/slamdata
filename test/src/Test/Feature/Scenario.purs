@@ -2,7 +2,6 @@ module Test.Feature.Scenario where
 
 import Prelude
 
-import Control.Apply ((*>))
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (message, throw)
 import Data.Either (Either(..))

@@ -39,6 +39,7 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as Str
 import Data.String.Regex as R
+import Data.String.Regex.Flags as RXF
 import Data.StrMap as SM
 
 import Global (encodeURIComponent)
@@ -124,7 +125,7 @@ routing
   extensionRegex ∷ R.Regex
   extensionRegex =
     unsafePartial fromRight $
-      R.regex ("\\." <> Config.workspaceExtension <> "$") R.noFlags
+      R.regex ("\\." <> Config.workspaceExtension <> "$") RXF.noFlags
 
   checkExtension ∷ String → Boolean
   checkExtension = R.test extensionRegex
@@ -171,7 +172,7 @@ varMapsForURL = map (map go)
     -- | This is not entirely legit as it will strip backticks from SQL²
     -- | expressions as well as identifiers, as we have no information about
     -- | the field type here... -gb
-    fromMaybe q $ Str.stripPrefix "`" =<< Str.stripSuffix "`" q
+    fromMaybe q $ Str.stripPrefix (Str.Pattern "`") =<< Str.stripSuffix (Str.Pattern "`") q
 
   goEJson ej = case EJSON.unroll ej of
     EJSON.String str → str

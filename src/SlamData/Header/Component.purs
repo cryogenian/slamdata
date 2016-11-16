@@ -97,7 +97,7 @@ render open =
     ]
 
 eval ∷ Query ~> DSL
-eval = absurd ∘ getConst
+eval = absurd ∘ unwrap
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → DSL Unit
 peek (H.ChildF s q) =

@@ -52,7 +52,7 @@ make'
   . (Affable (avar ∷ AVAR | eff) m, Ord k)
   ⇒ List (Tuple k v)
   → m (Cache k v)
-make' = fromAff ∘ map Cache ∘ makeVar' ∘ Map.fromList
+make' = fromAff ∘ map Cache ∘ makeVar' ∘ Map.fromFoldable
 
 get
   ∷ ∀ eff m k v

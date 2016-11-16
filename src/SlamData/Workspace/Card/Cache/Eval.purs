@@ -21,7 +21,6 @@ import SlamData.Prelude
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadWriter)
 
-import Data.Lens ((^?))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 

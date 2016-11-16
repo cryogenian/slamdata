@@ -18,7 +18,7 @@ module Test.SlamData.Feature.Test.FlexibleVisualation where
 
 import SlamData.Prelude
 
-import Data.String as Str
+import Data.String as S
 import Data.StrMap as SM
 
 import Test.Feature.Log (successMsg)
@@ -38,7 +38,7 @@ variablesChartScenario =
 
 test ∷ SlamFeature Unit
 test =
-  variablesChartScenario "Make embeddable patients-city charts" [] do
+  variablesChartScenario "Make embeddable patients-city charts" ["https://github.com/slamdata/slamdata/issues/1197"] do
     tryRepeatedlyTo $ script """
       var run = function() {
         var __init = echarts.init;
@@ -65,7 +65,7 @@ test =
     Interact.accessNextCardInLastDeck
     successMsg "Will insert query card"
     Interact.insertQueryCardInLastDeck
-    Interact.provideQueryInLastQueryCard $ Str.joinWith " "
+    Interact.provideQueryInLastQueryCard $ S.joinWith " "
       $ [ "SELECT count(*) as ct, city, gender"
         , "FROM `/test-mount/testDb/patients`"
         , "WHERE state = :state"
@@ -99,7 +99,7 @@ test =
 
 
     Expect.lastEChart chart_NE_gender
-    Interact.accessWorkspaceWithModifiedURL $ Str.replace "NE" "CO"
+    Interact.accessWorkspaceWithModifiedURL $ S.replace (S.Pattern "NE") (S.Replacement "CO")
 
     Expect.lastEChart chart_CO_gender
 

@@ -312,3 +312,21 @@ fromCardType =
     CardType.Table → Just TableCard
     CardType.Troubleshoot → Just TroubleshootCard
     _ → Nothing
+
+all ∷ Array InsertableCardType
+all =
+  [ OpenCard
+  , QueryCard
+  , SearchCard
+  , TableCard
+  , SetupChartCard
+  , ShowChartCard
+  , SetupMarkdownCard
+  , ShowMarkdownCard
+  , DraftboardCard
+  , SetupDownloadCard
+  , ShowDownloadCard
+  , CacheCard
+  , SetupVariablesCard
+  , TroubleshootCard
+  ]

@@ -29,7 +29,7 @@ import Data.Array as A
 import Data.Formatter.Number as FN
 import Data.String as Str
 import Data.String.Regex as Rgx
-import Data.Lens ((^?))
+import Data.String.Regex.Flags as RXF
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
@@ -56,15 +56,15 @@ buildMetric r records =
   where
   formatterRegex ∷ Rgx.Regex
   formatterRegex =
-    unsafePartial fromRight $ Rgx.regex "{{[^}]+}}" Rgx.noFlags
+    unsafePartial fromRight $ Rgx.regex "{{[^}]+}}" RXF.noFlags
 
   value ∷ String
   value = fromMaybe (show metricValue) do
     input ← r.formatter
     matches ← Rgx.match formatterRegex input
     firstMatch ← join $ A.head matches
-    woPrefix ← Str.stripPrefix "{{" firstMatch
-    formatString ← Str.stripSuffix "}}" woPrefix
+    woPrefix ← Str.stripPrefix (Str.Pattern "{{") firstMatch
+    formatString ← Str.stripSuffix (Str.Pattern "}}") woPrefix
     formatter ← either (const Nothing) Just $ FN.parseFormatString formatString
     let
       formattedNumber = FN.format formatter metricValue

@@ -22,7 +22,6 @@ import Control.Monad.Eff (runPure)
 import Control.Monad.Eff.Exception (try)
 
 import Data.Array as A
-import Data.Functor.Compose (decompose)
 import Data.Identity (Identity(..))
 import Data.Int as Int
 import Data.JSDate as JSD
@@ -79,7 +78,7 @@ formFieldValueToVarMapValue v =
   runMaybeT $
     case v of
       SD.TextBox tb → VM.Literal <$> do
-        tb' ← liftMaybe $ SD.traverseTextBox decompose tb
+        tb' ← liftMaybe $ SD.traverseTextBox unwrap tb
         case tb' of
           SD.PlainText (Identity x) → pure $ EJSON.string x
           SD.Numeric (Identity x) → pure $ EJSON.decimal x

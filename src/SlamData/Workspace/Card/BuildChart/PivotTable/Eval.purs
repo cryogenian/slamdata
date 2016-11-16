@@ -16,15 +16,19 @@ limitations under the License.
 
 module SlamData.Workspace.Card.BuildChart.PivotTable.Eval
   ( eval
+  , escapedCursor
   , module PTM
   ) where
 
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Throw (class MonadThrow)
 
+import Data.Argonaut as J
 import Data.Array as Array
 import Data.Path.Pathy as P
 import Data.String as String
+import Data.String.Regex as Regex
+import Data.String.Regex.Flags as RXF
 
 import SlamData.Prelude
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -78,18 +82,13 @@ mkSql options resource =
       map (\value → "row" <> show value) options.dimensions
     dims =
       Array.mapWithIndex
-        (\i value → "row" <> show value <> " AS _" <> show i)
+        (\i value → "row" <> escapedCursor value <> " AS _" <> show i)
         options.dimensions
     cols =
       Array.mapWithIndex
         case _, _ of
-          i, PTM.Count →
-            "COUNT(*) AS _" <> show (i + dimLen)
-          i, PTM.Column c | isSimple →
-            "row" <> show c.value <> " AS _" <> show (i + dimLen)
-          i, PTM.Column c →
-            sqlAggregation c.valueAggregation ("row" <> show c.value)
-              <> " AS _" <> show (i + dimLen)
+          i, PTM.Column c → sqlAggregation c.valueAggregation ("row" <> escapedCursor c.value) <> " AS _" <> show (i + dimLen)
+          i, PTM.Count    → "COUNT(*) AS _" <> show (i + dimLen)
         options.columns
     head =
       [ "SELECT " <> String.joinWith ", " (dims <> cols)
@@ -105,6 +104,18 @@ mkSql options resource =
         if dimLen == 0
           then head
           else head <> tail
+
+tickRegex ∷ Regex.Regex
+tickRegex = unsafePartial (fromRight (Regex.regex "`" RXF.global))
+
+escapeField ∷ String → String
+escapeField str = "`" <> Regex.replace tickRegex "\\`" str <> "`"
+
+escapedCursor ∷ J.JCursor → String
+escapedCursor = case _ of
+  J.JField c cs → "." <> escapeField c <> escapedCursor cs
+  J.JIndex c cs → "[" <> show c <> "]" <> escapedCursor cs
+  J.JCursorTop  → ""
 
 sqlAggregation ∷ Maybe Ag.Aggregation → String → String
 sqlAggregation a b = case a of

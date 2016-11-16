@@ -16,19 +16,20 @@ limitations under the License.
 
 module SlamData.Quasar.Auth.IdTokenStorageEvents where
 
-import Control.Coroutine.Stalling as StallingCoroutine
+import SlamData.Prelude
+
 import Control.Coroutine.Stalling (StallingProducer)
-import Control.Monad.Eff (Eff)
+import Control.Coroutine.Stalling as StallingCoroutine
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Eff (Eff)
 import Data.Argonaut (decodeJson, jsonParser)
 import Data.Foreign as Foreign
 import DOM (DOM)
-import SlamData.Prelude
-import SlamData.Quasar.Auth.Keys as AuthKeys
 import OIDC.Crypt.Types (IdToken(..))
-import Utils.LocalStorage as LocalStorage
+import SlamData.Quasar.Auth.Keys as AuthKeys
 import Utils.LocalStorage (StorageEvent)
+import Utils.LocalStorage as LocalStorage
 
 getIdTokenStorageEvents
   ∷ ∀ eff
@@ -40,11 +41,11 @@ getIdTokenStorageEvents =
     <$> LocalStorage.getStorageEventProducer false
   where
   isIdTokenKeyEvent o =
-    Foreign.readString o.key == Right AuthKeys.idTokenLocalStorageKey
+    runExcept (Foreign.readString o.key) == Right AuthKeys.idTokenLocalStorageKey
   valuesToEitherStringIdTokens e =
     e
       { newValue = foreignToEitherStringIdToken e.newValue
       , oldValue = foreignToEitherStringIdToken e.oldValue
       }
   foreignToEitherStringIdToken =
-    map IdToken <=< decodeJson <=< jsonParser <=< lmap show ∘ Foreign.readString
+    map IdToken <=< decodeJson <=< jsonParser <=< lmap show ∘ runExcept ∘ Foreign.readString

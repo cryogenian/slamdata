@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.BuildChart.Candlestick.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
@@ -68,34 +68,34 @@ initialState =
 type StateP =
   ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
-_dimension ∷ ∀ r a. LensP { dimension ∷ a | r} a
+_dimension ∷ ∀ r a. Lens' { dimension ∷ a | r} a
 _dimension = lens _.dimension _{ dimension = _ }
 
-_high ∷ ∀ r a. LensP { high ∷ a | r} a
+_high ∷ ∀ r a. Lens' { high ∷ a | r} a
 _high = lens _.high _{ high = _ }
 
-_highAgg ∷ ∀ r a. LensP { highAgg ∷ a | r} a
+_highAgg ∷ ∀ r a. Lens' { highAgg ∷ a | r} a
 _highAgg = lens _.highAgg _{ highAgg = _ }
 
-_low ∷ ∀ r a. LensP { low ∷ a | r} a
+_low ∷ ∀ r a. Lens' { low ∷ a | r} a
 _low = lens _.low _{ low = _ }
 
-_lowAgg ∷ ∀ r a. LensP { lowAgg ∷ a | r} a
+_lowAgg ∷ ∀ r a. Lens' { lowAgg ∷ a | r} a
 _lowAgg = lens _.lowAgg _{ lowAgg = _ }
 
-_open ∷ ∀ r a. LensP { open ∷ a | r} a
+_open ∷ ∀ r a. Lens' { open ∷ a | r} a
 _open = lens _.open _{ open = _ }
 
-_openAgg ∷ ∀ r a. LensP { openAgg ∷ a | r} a
+_openAgg ∷ ∀ r a. Lens' { openAgg ∷ a | r} a
 _openAgg = lens _.openAgg _{ openAgg = _ }
 
-_close ∷ ∀ r a. LensP { close ∷ a | r} a
+_close ∷ ∀ r a. Lens' { close ∷ a | r} a
 _close = lens _.close _{ close = _ }
 
-_closeAgg ∷ ∀ r a. LensP { closeAgg ∷ a | r} a
+_closeAgg ∷ ∀ r a. Lens' { closeAgg ∷ a | r} a
 _closeAgg = lens _.closeAgg _{ closeAgg = _ }
 
-_parallel ∷ ∀ r a. LensP { parallel ∷ a | r} a
+_parallel ∷ ∀ r a. Lens' { parallel ∷ a | r} a
 _parallel = lens _.parallel _{ parallel = _ }
 
 showPicker

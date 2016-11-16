@@ -62,8 +62,8 @@ load
   . (Functor m, QuasarDSL m)
   ⇒ FilePath
   → m (Either QError JS.Json)
-load file =
-  liftQuasar (QF.readFile Readable file Nothing) <#> case _ of
+load path =
+  liftQuasar (QF.readFile Readable path Nothing) <#> case _ of
     Right [file] → Right file
     Right _ → throw "Unexpected result when loading value from file"
     Left err → Left err

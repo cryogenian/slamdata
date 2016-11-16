@@ -53,12 +53,12 @@ instance arbitraryArbResult :: Arbitrary ArbJson where
 
 genArray :: Gen Json -> Gen Json
 genArray genJson = do
-  numItems <- chooseInt 0.0 2.0
+  numItems <- chooseInt 0 2
   fromArray <$> vectorOf numItems genJson
 
 genObject :: Gen Json -> Gen Json
 genObject genJson = do
-  numKeys <- chooseInt 0.0 2.0
+  numKeys <- chooseInt 0 2
   keys <- vectorOf numKeys (suchThat arbitrary (not <<< S.null))
   A.foldM extendObj jsonEmptyObject keys
   where
@@ -74,7 +74,7 @@ runArbJCursor (ArbJCursor j) = j
 
 instance arbJCursor :: Arbitrary ArbJCursor where
   arbitrary = do
-    i <- chooseInt 0.0 2.0
+    i <- chooseInt 0 2
     r <- if i == 0 then pure JCursorTop
          else if i == 1 then JField <$> arbitrary <*> (runArbJCursor <$> arbitrary)
               else JIndex <$> arbitrary <*> (runArbJCursor <$> arbitrary)

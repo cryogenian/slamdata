@@ -446,7 +446,7 @@ eval (SelectElement el next) =
   next <$ H.fromEff (select el)
 
 emailIsIncorrect ∷ String → Boolean
-emailIsIncorrect = not ∘ Str.contains "@"
+emailIsIncorrect = not ∘ Str.contains (Str.Pattern "@")
 
 showConnectionError ∷ DSL Unit
 showConnectionError =

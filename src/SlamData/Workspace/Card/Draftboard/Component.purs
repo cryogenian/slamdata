@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Data.Foldable (and, all, find)
 import Data.Int as Int
-import Data.Lens ((.~), (?~))
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map as Map
@@ -159,10 +158,10 @@ evalBoard opts = case _ of
       Drag.Done _ → do
         let
           result = do
-            opts ← st.splitOpts
+            splitOpts ← st.splitOpts
             loc ← st.splitLocation
             guard loc.valid
-            if opts.root
+            if splitOpts.root
               then pure (Layout.insertRootSplit (Pane.Cell Nothing) loc.orientation loc.ratio loc.bias st.layout)
               else Layout.insertSplit (Pane.Cell Nothing) loc.orientation loc.ratio loc.bias loc.cursor st.layout
         H.modify
@@ -303,10 +302,10 @@ peek ∷ ∀ a. CardOptions → H.ChildF DeckId DNQ.QueryP a → DraftboardDSL U
 peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
   where
   peekDeck ∷ DCQ.Query a → DraftboardDSL Unit
-  peekDeck q = do
+  peekDeck q' = do
     st ← H.get
     for_ (Map.lookup deckId st.cursors) \cursor →
-      case q of
+      case q' of
         DCQ.GrabDeck ev _ → do
           startDragging ev (Grabbing (deckId × cursor))
         DCQ.DoAction DCQ.DeleteDeck _ → do

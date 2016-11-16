@@ -17,4 +17,4 @@ import Control.Monad.Aff.Bus
 
 type SignInBus = BusRW SignInMessage
 
-data SignInMessage = SignInSuccess | SignInFailure
+data SignInMessage = SignInSuccess | SignInFailure | SignOutRequest

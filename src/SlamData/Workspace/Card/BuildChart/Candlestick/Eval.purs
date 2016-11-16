@@ -125,11 +125,11 @@ buildCandlestickData r records = series
             ∷ Maybe (HLOC (Array Number))
             → Maybe (HLOC (Array Number))
           alterDimFn Nothing = Just $ hloc
-          alterDimFn (Just r) =
-            Just { high: high ⊕ r.high
-                 , low: low ⊕ r.low
-                 , open: open ⊕ r.open
-                 , close: close ⊕ r.close
+          alterDimFn (Just r') =
+            Just { high: high ⊕ r'.high
+                 , low: low ⊕ r'.low
+                 , open: open ⊕ r'.open
+                 , close: close ⊕ r'.close
                  }
         in
           M.alter alterParallelFn mbParallel acc

@@ -65,8 +65,7 @@ import Control.Monad.Aff (Canceler)
 import DOM.HTML.Types (HTMLElement)
 
 import Data.Array as A
-import Data.Lens (LensP, lens)
-import Data.Path.Pathy ((</>))
+import Data.Lens (Lens', lens)
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
 
@@ -173,83 +172,83 @@ initialDeck deckId =
   }
 
 -- | The unique identifier of the deck.
-_id ∷ ∀ a r. LensP {id ∷ a|r} a
+_id ∷ ∀ a r. Lens' {id ∷ a|r} a
 _id = lens _.id _{id = _}
 
 -- | The name of the deck. Initially Nothing.
-_name ∷ ∀ a r. LensP {name ∷ a|r} a
+_name ∷ ∀ a r. Lens' {name ∷ a|r} a
 _name = lens _.name _{name = _}
 
 -- | A pointer to the parent deck/card. If `Nothing`, the deck is assumed to be
 -- | the root deck.
-_parent ∷ ∀ a r. LensP {parent ∷ a|r} a
+_parent ∷ ∀ a r. Lens' {parent ∷ a|r} a
 _parent = lens _.parent _{parent = _}
 
 -- | The list of cards to be displayed in the deck
-_displayCards ∷ ∀ a r. LensP {displayCards ∷ a |r} a
+_displayCards ∷ ∀ a r. Lens' {displayCards ∷ a |r} a
 _displayCards = lens _.displayCards _{displayCards = _}
 
 -- | The `CardId` for the currently focused card. `Nothing` indicates the next
 -- | action card.
-_activeCardIndex ∷ ∀ a r. LensP {activeCardIndex ∷ a |r} a
+_activeCardIndex ∷ ∀ a r. Lens' {activeCardIndex ∷ a |r} a
 _activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
 
 -- | An optional canceler for the delayed guiding of the user to add a card. Can
 -- | be used to reset the delay of this guiding.
-_presentAccessNextActionCardGuideCanceler ∷ ∀ a r. LensP {presentAccessNextActionCardGuideCanceler ∷ a |r} a
+_presentAccessNextActionCardGuideCanceler ∷ ∀ a r. Lens' {presentAccessNextActionCardGuideCanceler ∷ a |r} a
 _presentAccessNextActionCardGuideCanceler = lens _.presentAccessNextActionCardGuideCanceler _{presentAccessNextActionCardGuideCanceler = _}
 
 -- | Whether the add card guide should be presented or not.
-_presentAccessNextActionCardGuide ∷ ∀ a r. LensP {presentAccessNextActionCardGuide ∷ a |r} a
+_presentAccessNextActionCardGuide ∷ ∀ a r. Lens' {presentAccessNextActionCardGuide ∷ a |r} a
 _presentAccessNextActionCardGuide = lens _.presentAccessNextActionCardGuide _{presentAccessNextActionCardGuide = _}
 
 -- | The "state mode" used to track whether the deck is ready, loading, or
 -- | if an error has occurred while loading.
-_stateMode ∷ ∀ a r. LensP {stateMode ∷ a|r} a
+_stateMode ∷ ∀ a r. Lens' {stateMode ∷ a|r} a
 _stateMode = lens _.stateMode _{stateMode = _}
 
 -- | backsided, dialog or normal (card)
-_displayMode ∷ ∀ a r. LensP {displayMode ∷ a |r} a
+_displayMode ∷ ∀ a r. Lens' {displayMode ∷ a |r} a
 _displayMode = lens (_.displayMode) (_{displayMode = _})
 
 -- | The x position of the card slider at the start of the slide interaction in
 -- | pixels. If `Nothing` slide interaction is not in progress.
-_initialSliderX ∷ ∀ a r. LensP {initialSliderX ∷ a|r} a
+_initialSliderX ∷ ∀ a r. Lens' {initialSliderX ∷ a|r} a
 _initialSliderX = lens _.initialSliderX _{initialSliderX = _}
 
 -- | The width of the next action card at the start of the slide interaction in
 -- | pixels. If `Nothing` either the slide interaction is not in progress or the
 -- | next action card element reference is broken.
-_initialSliderCardWidth ∷ ∀ a r. LensP {initialSliderCardWidth ∷ a|r} a
+_initialSliderCardWidth ∷ ∀ a r. Lens' {initialSliderCardWidth ∷ a|r} a
 _initialSliderCardWidth = lens _.initialSliderCardWidth _{initialSliderCardWidth = _}
 
 -- | Whether the translation of the card slider should be animated or not.
 -- | Should be true between the end of the slide interaction and the end of the
 -- | transition.
-_sliderTransition ∷ ∀ a r. LensP {sliderTransition ∷ a |r} a
+_sliderTransition ∷ ∀ a r. Lens' {sliderTransition ∷ a |r} a
 _sliderTransition = lens _.sliderTransition _{sliderTransition = _}
 
 -- | The current x translation of the card slider during the slide interaction.
-_sliderTranslateX ∷ ∀ a r. LensP {sliderTranslateX ∷ a |r} a
+_sliderTranslateX ∷ ∀ a r. Lens' {sliderTranslateX ∷ a |r} a
 _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
 
 -- | The width of card
-_cardElementWidth ∷ ∀ a r. LensP {cardElementWidth ∷ a|r} a
+_cardElementWidth ∷ ∀ a r. Lens' {cardElementWidth ∷ a|r} a
 _cardElementWidth = lens _.cardElementWidth _{cardElementWidth = _}
 
-_slidingTo ∷ ∀ a r. LensP {slidingTo ∷ a|r} a
+_slidingTo ∷ ∀ a r. Lens' {slidingTo ∷ a|r} a
 _slidingTo = lens _.slidingTo _{slidingTo = _}
 
-_breakers ∷ ∀ a r. LensP {breakers ∷ a|r} a
+_breakers ∷ ∀ a r. Lens' {breakers ∷ a|r} a
 _breakers = lens _.breakers _{breakers = _}
 
-_focused ∷ ∀ a r. LensP {focused ∷ a|r} a
+_focused ∷ ∀ a r. Lens' {focused ∷ a|r} a
 _focused = lens _.focused _{focused = _}
 
-_responsiveSize ∷ ∀ a r. LensP {responsiveSize ∷ a|r} a
+_responsiveSize ∷ ∀ a r. Lens' {responsiveSize ∷ a|r} a
 _responsiveSize = lens _.responsiveSize _{responsiveSize = _}
 
-_fadeTransition ∷ ∀ a r. LensP {fadeTransition ∷ a|r} a
+_fadeTransition ∷ ∀ a r. Lens' {fadeTransition ∷ a|r} a
 _fadeTransition = lens _.fadeTransition _{fadeTransition = _}
 
 findLastCardIndex ∷ State → Maybe Int

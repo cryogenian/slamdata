@@ -40,6 +40,7 @@ import SlamData.Workspace.Card.Markdown.Model as Markdown
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.BuildChart.PunchCard.Eval as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Eval as BuildCandlestick
+import SlamData.Workspace.Card.BuildChart.Parallel.Eval as BuildParallel
 
 data Eval
   = Pass
@@ -69,6 +70,7 @@ data Eval
   | BuildPivotTable BuildPivotTable.Model
   | BuildPunchCard BuildPunchCard.Model
   | BuildCandlestick BuildCandlestick.Model
+  | BuildParallel BuildParallel.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -99,3 +101,4 @@ tagEval = case _ of
   BuildPivotTable _ → "BuildPivotTable"
   BuildPunchCard _ → "BuildPunchCard"
   BuildCandlestick _ → "BuildCandlestick"
+  BuildParallel _ → "BuildParallel"

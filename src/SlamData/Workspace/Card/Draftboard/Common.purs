@@ -42,8 +42,8 @@ import SlamData.Workspace.Deck.Model as DM
 import Utils.Path (DirPath)
 
 transitiveChildren
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (Monad m, QuasarDSL m, Parallel f m)
   ⇒ DirPath
   → DeckId
   → ExceptT QE.QError m (Array DeckId)
@@ -70,8 +70,8 @@ childDeckIds = (_ >>= getDeckIds ∘ _.model)
       _ → []
 
 deleteGraph
-  ∷ ∀ m
-  . (MonadPar m, QuasarDSL m)
+  ∷ ∀ f m
+  . (Monad m, QuasarDSL m, Parallel f m)
   ⇒ DirPath
   → DeckId
   → m (Either QE.QError Unit)
