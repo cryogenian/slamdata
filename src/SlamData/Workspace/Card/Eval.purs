@@ -21,11 +21,10 @@ module SlamData.Workspace.Card.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Eff as Eff
 import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Throw (class MonadThrow, throw)
-import Control.Monad.Writer.Class (class MonadWriter)
+import Control.Monad.Writer.Class (class MonadTell)
 
 import Data.Lens ((^?))
 import Data.Path.Pathy as Path
@@ -36,9 +35,10 @@ import Quasar.Types (SQL, FilePath)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
+import Quasar.Advanced.QuasarAF as QF
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
-import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, sequenceQuasar)
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.Eval.Monad as CEM
@@ -73,10 +73,10 @@ import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 
 runCard
   ∷ ∀ f m
-  . ( Applicative m
-    , Affable SlamDataEffects m
-    , Parallel f m
+  . ( Affable SlamDataEffects m
     , QuasarDSL m
+    , Parallel f m
+    , Monad m
     )
   ⇒ CEM.CardEnv
   → CEM.CardState
@@ -87,14 +87,14 @@ runCard env state input trans =
   CEM.runCardEvalM env state (evalCard input trans ∷ CEM.CardEval Port.Port)
 
 evalCard
-  ∷ ∀ f m
+  ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , Parallel f m
-    , MonadReader CEM.CardEnv m
+    , MonadAsk CEM.CardEnv m
     , MonadState CEM.CardState m
     , MonadThrow CEM.CardError m
-    , MonadWriter CEM.CardLog m
+    , MonadTell CEM.CardLog m
     , QuasarDSL m
+    , ParQuasarDSL m
     )
   ⇒ Port.Port
   → Eval
@@ -175,15 +175,13 @@ evalMarkdownForm
   → m Port.VarMap
 evalMarkdownForm (vm × doc) model = do
   let inputState = SDH.formStateFromDocument doc
-  -- TODO: find a way to smash these annotations if possible -js
-  thisVarMap ←
-    fromEff (MDS.formStateToVarMap inputState model.state ∷ Eff.Eff SlamDataEffects Port.VarMap)
+  thisVarMap ← fromEff $ MDS.formStateToVarMap inputState model.state
   pure $ thisVarMap `SM.union` vm
 
 evalOpen
   ∷ ∀ m
   . ( MonadThrow CEM.CardError m
-    , MonadWriter CEM.CardLog m
+    , MonadTell CEM.CardLog m
     , QuasarDSL m
     )
   ⇒ R.Resource
@@ -203,13 +201,13 @@ evalOpen res = do
       CEM.throw err
 
 evalQuery
-  ∷ ∀ f m
+  ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , Parallel f m
-    , MonadReader CEM.CardEnv m
+    , MonadAsk CEM.CardEnv m
     , MonadThrow CEM.CardError m
-    , MonadWriter CEM.CardLog m
+    , MonadTell CEM.CardLog m
     , QuasarDSL m
+    , ParQuasarDSL m
     )
   ⇒ SQL
   → Port.VarMap
@@ -230,13 +228,13 @@ evalQuery sql varMap = do
   pure { resource, tag: pure sql, varMap: Just varMap }
 
 evalSearch
-  ∷ ∀ f m
+  ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , Parallel f m
-    , MonadReader CEM.CardEnv m
+    , MonadAsk CEM.CardEnv m
     , MonadThrow CEM.CardError m
-    , MonadWriter CEM.CardLog m
+    , MonadTell CEM.CardLog m
     , QuasarDSL m
+    , ParQuasarDSL m
     )
   ⇒ String
   → FilePath
@@ -271,17 +269,19 @@ evalSearch queryText resource = do
   pure { resource: outputResource, tag: pure sql, varMap: Nothing }
 
 validateResources
-  ∷ ∀ f m t
+  ∷ ∀ m t
   . ( Affable SlamDataEffects m
-    , Parallel f m
     , MonadThrow CEM.CardError m
     , QuasarDSL m
-    , Foldable t
+    , ParQuasarDSL m
+    , Traversable t
     )
   ⇒ t FilePath
   → m Unit
-validateResources =
-  parTraverse_ \path → do
-    noAccess ← QFS.fileNotAccessible path
-    for_ noAccess \reason →
+validateResources fs = do
+  res ← sequenceQuasar (map (\path → Tuple path <$> QF.fileMetadata path) fs)
+  for_ res case _ of
+    path × Left reason →
       throw $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
+    _ →
+      pure unit

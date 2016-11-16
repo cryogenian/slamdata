@@ -19,8 +19,6 @@ module SlamData.Workspace.Card.Error.Component where
 import SlamData.Prelude
 import SlamData.Monad (Slam)
 
-import Data.Lens ((^?))
-
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC

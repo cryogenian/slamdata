@@ -53,10 +53,10 @@ type EvalGraph =
     }
 
 evalGraph
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
-    , MonadPar m
+    , MonadAsk Wiring m
+    , Parallel f m
     , QuasarDSL m
     )
   ⇒ Card.DisplayCoord
@@ -77,10 +77,10 @@ evalGraph source coord = do
     runEvalLoop source tick input graph'
 
 runEvalLoop
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
-    , MonadPar m
+    , MonadAsk Wiring m
+    , Parallel f m
     , QuasarDSL m
     )
   ⇒ Card.DisplayCoord
@@ -184,7 +184,7 @@ nubDecks = List.nubBy (eq `on` fst) ∘ go
 nextTick
   ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     )
   ⇒ m Int
 nextTick = do
@@ -196,7 +196,7 @@ nextTick = do
 currentTick
   ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     )
   ⇒ m Int
 currentTick = do

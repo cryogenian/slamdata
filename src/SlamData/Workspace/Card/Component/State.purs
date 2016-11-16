@@ -125,10 +125,10 @@ initialCardState =
 _element ∷ Lens' CardState (Maybe HTMLElement)
 _element = lens _.element _{element = _}
 
-_breaker ∷ LensP CardState (Maybe (Breaker Unit))
+_breaker ∷ Lens' CardState (Maybe (Breaker Unit))
 _breaker = lens _.breaker _{breaker = _}
 
-_pending ∷ LensP CardState Boolean
+_pending ∷ Lens' CardState Boolean
 _pending = lens _.pending _{pending = _}
 
 data AnyCardState

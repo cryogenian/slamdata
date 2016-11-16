@@ -108,8 +108,8 @@ eval (HandleGlobalError error next) =
     GlobalError.Unauthorized _ → update $> next
     _ -> pure next
 eval (Init next) = do
-  { globalError } ← H.liftH $ H.liftH ask
-  subscribeToBus' (H.action ∘ HandleGlobalError) globalError
+  { bus } ← H.liftH $ H.liftH Wiring.expose
+  subscribeToBus' (H.action ∘ HandleGlobalError) bus.globalError
   update
   pure next
 

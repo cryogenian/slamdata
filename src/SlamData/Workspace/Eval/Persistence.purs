@@ -48,7 +48,7 @@ censor = either (const Nothing) Just
 putDeck
   ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
     , QuasarDSL m
     )
@@ -68,7 +68,7 @@ putDeck deckId deck = do
 saveDeck
   ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
     , QuasarDSL m
     )
@@ -85,11 +85,11 @@ saveDeck deckId = do
 
 -- | Loads a deck from a DeckId. Returns the model.
 getDeck
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
-    , MonadPar m
+    , Parallel f m
     , QuasarDSL m
     )
   ⇒ Deck.Id
@@ -101,11 +101,11 @@ getDeck =
 -- | which it extends (for mirroring) and populating the card graph. Returns
 -- | the "cell" (model promise paired with its message bus).
 getDeck'
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
-    , MonadPar m
+    , Parallel f m
     , QuasarDSL m
     )
   ⇒ Deck.Id
@@ -140,11 +140,11 @@ getDeck' deckId = do
 -- | Populates the card eval graph based on a deck model. This may fail as it
 -- | also attempts to load/hydrate foreign cards (mirrors) as well.
 populateCards
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
-    , MonadPar m
+    , Parallel f m
     , QuasarDSL m
     )
   ⇒ Deck.Id
@@ -200,7 +200,7 @@ populateCards deckId deck = runExceptT do
 getCard
   ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     )
   ⇒ Card.Coord
   → m (Maybe Card.Cell)
@@ -224,11 +224,11 @@ forkLoop handler bus = void (fork loop)
       loop
 
 forkDeckProcess
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
-    , MonadPar m
+    , Parallel f m
     , QuasarDSL m
     )
   ⇒ Deck.Id
@@ -238,11 +238,11 @@ forkDeckProcess deckId = forkLoop case _ of
   _ → pure unit
 
 forkCardProcess
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
-    , MonadPar m
+    , Parallel f m
     , QuasarDSL m
     )
   ⇒ Card.Coord
@@ -269,7 +269,7 @@ forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
 queueSave
   ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
     , QuasarDSL m
     )
@@ -281,11 +281,11 @@ queueSave deckId = do
     saveDeck deckId
 
 queueEval
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
-    , MonadPar m
+    , Parallel f m
     , QuasarDSL m
     )
   ⇒ Card.DisplayCoord
@@ -300,7 +300,7 @@ queueEval source coord = do
 debounce
   ∷ ∀ k m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
     , Ord k
     )
@@ -320,7 +320,7 @@ debounce ms key cache run = do
 laterVar
   ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , MonadReader Wiring m
+    , MonadAsk Wiring m
     , MonadFork m
     )
   ⇒ Int

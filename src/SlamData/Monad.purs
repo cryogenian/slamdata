@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
@@ -38,7 +38,6 @@ import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Monad.Fork (ForkF(..), Fork, mkFork, unFork)
-import SlamData.Monad.Par (ParF(..), Par, mkPar, unPar)
 import SlamData.Notification as N
 import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
@@ -47,6 +46,8 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
+
+import Utils (censor)
 
 type Slam = SlamM SlamDataEffects
 
@@ -141,12 +142,25 @@ unSlam = foldFree go ∘ unSlamM
     Aff aff →
       lift aff
     GetAuthIdToken k → do
-      { auth } ← Wiring.expose
-      lift $ k ∘ Auth.fromEitherEither <$> Auth.getIdTokenFromBusSilently auth.requestToken
+      { auth, bus } ← Wiring.expose
+      idToken ← liftAff $ censor <$> Auth.getIdTokenFromBusSilently auth.requestToken
+      case idToken of
+        Just (Left error) →
+          for_ (Auth.toNotificationOptions error) \opts →
+            lift (Bus.write opts bus.notify)
+        _ →
+          pure unit
+      pure $ k $ maybe Nothing censor idToken
     Quasar qf → do
-      { auth } ← Wiring.expose
-      idToken ← lift $ Auth.fromEitherEither <$> Auth.getIdTokenFromBusSilently auth.requestToken
-      lift $ runQuasarF idToken qf
+      { auth, bus } ← Wiring.expose
+      idToken ← lift $ censor <$> Auth.getIdTokenFromBusSilently auth.requestToken
+      case idToken of
+        Just (Left error) →
+          for_ (Auth.toNotificationOptions error) \opts →
+            lift (Bus.write opts bus.notify)
+        _ →
+          pure unit
+      lift $ runQuasarF (maybe Nothing censor idToken) qf
     Track e a → do
       { auth } ← Wiring.expose
       hasIdentified ← lift $ liftEff $ readRef auth.hasIdentified

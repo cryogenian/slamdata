@@ -28,7 +28,7 @@ import SlamData.Workspace.FormBuilder.Item.Model (defaultValueToVarMapValue)
 
 eval
   ∷ ∀ m
-  . (MonadReader CEM.CardEnv m)
+  . (MonadAsk CEM.CardEnv m)
   ⇒ Model
   → m Port.VarMap
 eval model = do

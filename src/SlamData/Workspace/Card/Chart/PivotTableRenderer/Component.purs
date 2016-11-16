@@ -39,7 +39,6 @@ import SlamData.Monad (Slam)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column(..), isSimple)
-import SlamData.Workspace.Card.BuildChart.PivotTable.Eval (escapedCursor)
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 import SlamData.Workspace.Card.Port (PivotTablePort)

@@ -20,7 +20,7 @@ import SlamData.Prelude
 import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Throw (class MonadThrow)
-import Control.Monad.Writer.Class (class MonadWriter)
+import Control.Monad.Writer.Class (class MonadTell)
 
 import Data.Array as A
 import Data.Identity (Identity)
@@ -52,9 +52,9 @@ import Utils.Path (DirPath)
 markdownEval
   ∷ ∀ m
   . ( Affable SlamDataEffects m
-    , MonadReader CEM.CardEnv m
+    , MonadAsk CEM.CardEnv m
     , MonadThrow CEM.CardError m
-    , MonadWriter CEM.CardLog m
+    , MonadTell CEM.CardLog m
     , QuasarDSL m
     )
   ⇒ Port.Port
@@ -85,7 +85,7 @@ evalEmbeddedQueries
   ∷ ∀ m
   . ( Affable SlamDataEffects m
     , MonadThrow CEM.CardError m
-    , MonadWriter CEM.CardLog m
+    , MonadTell CEM.CardLog m
     , QuasarDSL m
     )
   ⇒ SM.StrMap String

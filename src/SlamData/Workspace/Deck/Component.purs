@@ -36,7 +36,6 @@ import Control.UI.Browser (locationObject, setHref, newTab)
 
 import Data.Array as Array
 import Data.Lens ((.~), (%~), (^?), (?~), _Left, _Just)
-import Data.List ((:))
 import Data.List as L
 
 import DOM.HTML.Location as Location

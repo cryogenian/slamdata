@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Cache.Eval where
 import SlamData.Prelude
 
 import Control.Monad.Throw (class MonadThrow)
-import Control.Monad.Writer.Class (class MonadWriter)
+import Control.Monad.Writer.Class (class MonadTell)
 
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
@@ -36,9 +36,9 @@ import Utils.Path as PU
 
 eval
   ∷ ∀ m
-  . ( MonadReader CEM.CardEnv m
+  . ( MonadAsk CEM.CardEnv m
     , MonadThrow CEM.CardError m
-    , MonadWriter CEM.CardLog m
+    , MonadTell CEM.CardLog m
     , QuasarDSL m
     )
   ⇒ Port.Port
@@ -59,7 +59,7 @@ eval input mfp resource varMap =
 eval'
   ∷ ∀ m
   . ( MonadThrow CEM.CardError m
-    , MonadWriter CEM.CardLog m
+    , MonadTell CEM.CardLog m
     , QuasarDSL m
     )
   ⇒ FilePath

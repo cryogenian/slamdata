@@ -107,7 +107,7 @@ unWiring (Wiring w) = w
 
 expose
   ∷ ∀ m
-  . (MonadReader Wiring m)
+  . (MonadAsk Wiring m)
   ⇒ m WiringR
 expose = unWiring <$> ask
 

@@ -89,4 +89,4 @@ cardComponent =
     CT.ChartOptions CT.Heatmap → heatmapBuilderComponent
     CT.ChartOptions CT.PunchCard → punchCardBuilderComponent
     CT.ChartOptions CT.Candlestick → candlestickBuilderComponent
-    CT.ChartOptions CT.BuildParallel → parallelBuilderComponent
+    CT.ChartOptions CT.Parallel → parallelBuilderComponent

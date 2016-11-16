@@ -25,11 +25,10 @@ import SlamData.Prelude
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (putVar)
 
-import Data.Lens ((^.), (.~), (?~))
+import Data.Lens ((^.), (.~))
 import Data.List as List
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
-import Data.Rational ((%))
 import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H

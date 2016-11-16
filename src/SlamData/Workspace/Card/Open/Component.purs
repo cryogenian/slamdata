@@ -57,10 +57,6 @@ type HTML = H.ParentHTML (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQ
 
 openComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
 openComponent options =
-  -- let
-  --   initSelection = toPathList ∘ R.getPath <$> mres
-  --   initPath = fromMaybe (pure (Left Path.rootDir)) initSelection
-  -- in
   CC.makeCardComponent
     { options
     , cardType: CT.Open
@@ -89,7 +85,7 @@ renderHighLOD state =
         <> (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ HH.slot unit \_ →
-        { component: MC.component itemSpec (Just initPath)
+        { component: MC.component itemSpec Nothing
         , initialState: H.parentState MC.initialState
         }
     ]
@@ -128,8 +124,11 @@ eval = case _ of
   CC.Save k → do
     mbRes ← H.gets _.selected
     pure $ k $ Card.Open (map (either R.Directory R.File) ∘ L.head =<< mbRes)
-  CC.Load (Card.Open (Just res)) next →
+  CC.Load (Card.Open (Just res)) next → do
     void $ H.query unit $ left $ H.action $ MC.Populate $ toPathList $ R.getPath res
+    pure next
+  CC.Load _ next →
+    pure next
   CC.ReceiveInput _ next →
     pure next
   CC.ReceiveOutput _ next →
