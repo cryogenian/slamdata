@@ -45,6 +45,7 @@ import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Notification as N
+import SlamData.InteractionlessSignIn (InteractionlessSignIn(Allowed, NotAllowed))
 import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
 import SlamData.Quasar.Auth.Authentication as Auth
@@ -160,19 +161,23 @@ derive newtype instance applicativeSlamA :: Applicative (SlamA eff)
 
 --------------------------------------------------------------------------------
 
-getIdTokenSilently ∷ Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
-getIdTokenSilently idTokenRequestBus = do
-  either (const $ getWithSingletonProviderFromQuasar) (pure ∘ Right)
-    =<< getWithProviderFromLocalStorage
+getIdTokenSilently ∷ InteractionlessSignIn → Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
+getIdTokenSilently interactionlessSignIn idTokenRequestBus = do
+  case interactionlessSignIn of
+    Allowed →
+      either (const $ getWithSingletonProviderFromQuasar) (pure ∘ Right)
+        =<< getWithProviderFromLocalStorage
+    NotAllowed →
+      getWithProviderFromLocalStorage
   where
 
   getWithProviderFromLocalStorage ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
   getWithProviderFromLocalStorage =
-    traverse get =<< liftEff getProviderFromLocalStorage
+    shiftAffErrorsIntoQError $ traverse get =<< liftEff getProviderFromLocalStorage
 
   getWithSingletonProviderFromQuasar ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
   getWithSingletonProviderFromQuasar =
-    traverse get =<< getSingletonProviderFromQuasar
+      shiftAffErrorsIntoQError $ traverse get =<< getSingletonProviderFromQuasar
 
   get ∷ QAT.ProviderR → Aff SlamDataEffects Auth.EIdToken
   get providerR =
@@ -209,8 +214,8 @@ getIdTokenSilently idTokenRequestBus = do
   unauthorizedError =
     QError.Unauthorized ∘ map QError.UnauthorizedDetails
 
-  affToAffQError ∷ ∀ a eff. Aff eff a → Aff eff (Either QError a)
-  affToAffQError = map (lmap QError.Error) ∘ Aff.attempt
+  shiftAffErrorsIntoQError ∷ ∀ a eff. Aff eff (Either QError a) → Aff eff (Either QError a)
+  shiftAffErrorsIntoQError = map (either (Left ∘ QError.Error) id) ∘ Aff.attempt
 
 --------------------------------------------------------------------------------
 
@@ -226,8 +231,9 @@ unSlam = foldFree go ∘ unSlamM
     Aff aff →
       lift aff
     GetAuthIdToken k → do
-      Wiring { requestIdTokenBus, notify } ← ask
-      idToken ← liftAff $ censor <$> getIdTokenSilently requestIdTokenBus
+      Wiring { requestIdTokenBus, notify, interactionlessSignIn } ← ask
+      i ← liftEff $ readRef interactionlessSignIn
+      idToken ← liftAff $ censor <$> getIdTokenSilently i requestIdTokenBus
       case idToken of
         Just (Left error) →
           maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error
@@ -235,8 +241,9 @@ unSlam = foldFree go ∘ unSlamM
           pure unit
       pure $ k $ maybe Nothing censor idToken
     Quasar qf → do
-      Wiring { requestIdTokenBus, signInBus, notify } ← ask
-      idToken ← lift $ censor <$> getIdTokenSilently requestIdTokenBus
+      Wiring { requestIdTokenBus, signInBus, notify, interactionlessSignIn } ← ask
+      i ← liftEff $ readRef interactionlessSignIn
+      idToken ← lift $ censor <$> getIdTokenSilently i requestIdTokenBus
       case idToken of
         Just (Left error) →
           maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error

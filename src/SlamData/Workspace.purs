@@ -21,7 +21,10 @@ import SlamData.Prelude
 import Control.Coroutine (runProcess, await, ($$))
 import Control.Coroutine.Aff (produce)
 import Control.Monad.Aff (Aff, forkAff)
+import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Aff.Promise as Promise
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Eff.Class (liftEff)
 import Control.UI.Browser as Browser
 
@@ -42,8 +45,9 @@ import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Monad (runSlam)
-import SlamData.Wiring (makeWiring)
+import SlamData.Wiring (Wiring(Wiring), makeWiring)
 import SlamData.Workspace.AccessType as AT
+import SlamData.InteractionlessSignIn as InteractionlessSignIn
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
 import SlamData.Workspace.Deck.Component as Deck
@@ -67,25 +71,35 @@ main = do
   StyleLoader.loadStyles
 
 routeSignal ∷ Aff SlamDataEffects Unit
-routeSignal =
-  runProcess (routeProducer $$ routeConsumer Nothing)
+routeSignal = do
+  asyncWiring ← async =<< AVar.makeVar
+  runProcess (routeProducer $$ routeConsumer asyncWiring Nothing)
 
   where
+  async
+    ∷ ∀ a eff
+    . AVar.AVar a
+    → Aff (avar ∷ AVar.AVAR | eff) { put ∷ a → Aff (avar ∷ AVar.AVAR | eff) Unit, get ∷ Promise.Promise a }
+  async aVar =
+    Promise.defer (AVar.takeVar aVar) >>= \get →
+      pure { put: AVar.putVar aVar, get }
+
   routeProducer = produce \emit →
     Routing.matches' UP.decodeURIPath routing \_ → emit ∘ Left
 
-  routeConsumer state = do
+  routeConsumer asyncWiring state = do
     new ← await
     case new, state of
       -- Initialize the Workspace component
       WorkspaceRoute path deckId action varMaps, Nothing → do
         wiring ← lift $ makeWiring path varMaps
+        lift $ asyncWiring.put wiring
         let
           st = Workspace.initialState (Just "4.0")
           ui = interpret (runSlam wiring) Workspace.comp
         driver ← lift $ runUI ui (parentState st) =<< awaitBody
-        lift $ setupWorkspace new driver
-        routeConsumer (Just (RouterState new driver))
+        lift $ setupWorkspace asyncWiring new driver
+        routeConsumer asyncWiring (Just (RouterState new driver))
 
       -- Reload the page on path change
       WorkspaceRoute path _ _ _, Just (RouterState (WorkspaceRoute path' _ _ _) _) | path ≠ path' →
@@ -96,12 +110,12 @@ routeSignal =
         case old of
           WorkspaceRoute path' deckId' action' varMaps'
             | path ≡ path' ∧ deckId ≡ deckId' ∧ action ≡ action' ∧ varMaps ≡ varMaps' →
-                routeConsumer (Just (RouterState new driver))
+                routeConsumer asyncWiring (Just (RouterState new driver))
           _ → do
-            lift $ setupWorkspace new driver
-            routeConsumer (Just (RouterState new driver))
+            lift $ setupWorkspace asyncWiring new driver
+            routeConsumer asyncWiring (Just (RouterState new driver))
 
-  setupWorkspace new@(WorkspaceRoute _ deckId action varMaps) driver = do
+  setupWorkspace asyncWiring new@(WorkspaceRoute _ deckId action varMaps) driver = do
     driver $ Workspace.toWorkspace $ Workspace.SetVarMaps varMaps
     when (toAccessType action ≡ AT.ReadOnly) do
       isEmbedded ←
@@ -120,7 +134,11 @@ routeSignal =
         =<< window
 
     forkAff case action of
-      Load accessType →
+      Load accessType → do
+        Wiring wiring ← Promise.wait $ asyncWiring.get
+        liftEff
+          $ Ref.writeRef wiring.interactionlessSignIn
+          $ InteractionlessSignIn.fromAccessType accessType
         driver $ Workspace.toWorkspace $ Workspace.Load deckId accessType
       Exploring fp → do
         driver $ Workspace.toWorkspace $ Workspace.Reset
