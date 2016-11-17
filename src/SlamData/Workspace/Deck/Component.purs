@@ -35,7 +35,7 @@ import Control.Monad.Aff.EventLoop as EventLoop
 import Control.UI.Browser (locationObject, setHref, newTab)
 
 import Data.Array as Array
-import Data.Lens ((.~), (%~), (^?), (?~), _Left, _Just)
+import Data.Lens ((.~), (%~), (^?), (?~), _Left, _Just, is)
 import Data.List as L
 
 import DOM.HTML.Location as Location
@@ -65,6 +65,7 @@ import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Next.Component.Query as Next
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, ChildQuery, ChildSlot, cpDialog)
@@ -170,7 +171,7 @@ eval opts = case _ of
     Slider.stopSlidingAndSnap mouseEvent
     updateIndicator
     updateActiveState
-    when (DCS.activeCard st ^? _Just ∘ _Left ≡ Just DCS.NextActionCard) do
+    when (DCS.activeCard st # is (_Just ∘ _Left ∘ DCS._NextActionCard)) do
       dismissAccessNextActionCardGuide
     pure next
   UpdateSliderPosition mouseEvent next →
@@ -231,6 +232,9 @@ peek opts (H.ChildF s q) =
    ⨁ peekBackSide opts
    ⨁ (const $ pure unit)
    ⨁ (peekDialog opts ⨁ (const $ pure unit))
+   ⨁ peekNextAction
+   ⨁ (const $ pure unit)
+   ⨁ (const $ pure unit)
    $ q
 
 peekDialog ∷ ∀ a. DeckOptions → Dialog.Query a → DeckDSL Unit
@@ -409,11 +413,13 @@ peekCardEvalQuery cardCoord = case _ of
   _ → pure unit
 
 peekAnyCard ∷ ∀ a. DeckId × CardId → AnyCardQuery a → DeckDSL Unit
-peekAnyCard cardCoord q = do
+peekAnyCard cardCoord _ =
   resetAccessNextActionCardGuideDelay
-  -- FIXME
-  -- for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
-  -- for_ (q ^? _NextQuery ∘ _Right ∘ Next._PresentReason) $ uncurry presentReason
+
+peekNextAction ∷ ∀ a. Next.Query a → DeckDSL Unit
+peekNextAction q = do
+  for_ (q ^? Next._AddCardType) createCard
+  for_ (q ^? Next._PresentReason) $ uncurry presentReason
 
 presentReason ∷ Port.Port → CT.CardType → DeckDSL Unit
 presentReason input cardType =

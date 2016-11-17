@@ -14,13 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Pending.Component where
+module SlamData.Workspace.Card.Pending.Component
+  ( pendingCardComponent
+  , module SlamData.Workspace.Card.Pending.Component.Query
+  , module SlamData.Workspace.Card.Pending.Component.State
+  ) where
 
 import SlamData.Prelude
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Pending.Component.Query (Query, initiality)
-import SlamData.Workspace.Card.Pending.Component.State (State)
+import SlamData.Workspace.Card.Pending.Component.State (State, initialState)
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH

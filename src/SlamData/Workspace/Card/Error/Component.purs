@@ -14,13 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Error.Component where
+module SlamData.Workspace.Card.Error.Component
+  ( errorCardComponent
+  , module SlamData.Workspace.Card.Error.Component.Query
+  , module SlamData.Workspace.Card.Error.Component.State
+  ) where
 
 import SlamData.Prelude
 import SlamData.Monad (Slam)
 
-import SlamData.Workspace.Card.Error.Component.State (State)
 import SlamData.Workspace.Card.Error.Component.Query (Query, initiality)
+import SlamData.Workspace.Card.Error.Component.State (State, initialState)
 import SlamData.Render.CSS as CSS
 
 import Halogen as H

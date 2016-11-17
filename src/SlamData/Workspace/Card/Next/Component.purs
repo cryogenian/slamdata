@@ -16,8 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Next.Component
  ( nextCardComponent
- , module SlamData.Workspace.Card.Next.Component.State
  , module SlamData.Workspace.Card.Next.Component.Query
+ , module SlamData.Workspace.Card.Next.Component.State
  ) where
 
 import SlamData.Prelude
@@ -40,7 +40,7 @@ import SlamData.Guide as Guide
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Next.NextAction as NA
 import SlamData.Workspace.Card.Next.Component.Query (Query(..), _AddCardType, _PresentReason)
-import SlamData.Workspace.Card.Next.Component.State (State)
+import SlamData.Workspace.Card.Next.Component.State (State, initialState)
 import SlamData.Workspace.Card.Next.Component.State as State
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.InsertableCardType as ICT

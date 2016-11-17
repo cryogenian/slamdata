@@ -48,8 +48,12 @@ import SlamData.Guide as Guide
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component as CardC
+import SlamData.Workspace.Card.Component.CSS as CardCSS
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Factory as Factory
+import SlamData.Workspace.Card.Next.Component as Next
+import SlamData.Workspace.Card.Error.Component as Error
+import SlamData.Workspace.Card.Pending.Component as Pending
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
@@ -253,9 +257,9 @@ renderCard opts deckComponent st card index =
     Right cd → renderDef opts deckComponent st cd
 
   key = case card of
-    Left DCS.ErrorCard → "card-error"
     Left DCS.PendingCard → "card-pending"
-    Left DCS.NextActionCard → "card-next-action"
+    Left (DCS.ErrorCard _) → "card-error"
+    Left (DCS.NextActionCard _) → "card-next-action"
     Right { coord } →
       "card-"
         ⊕ DeckId.toString (fst coord) ⊕ "-"
@@ -305,9 +309,35 @@ renderMeta
   ∷ State
   → DCS.MetaCard
   → DeckHTML
-renderMeta st _ =
-  -- FIXME
-  HH.div_ []
+renderMeta st card =
+  HH.div
+    [ HP.classes [ CardCSS.deckCard ] ]
+    [ case card of
+        DCS.PendingCard →
+          HH.div
+            [ HP.classes [ HH.className "sd-card-pending" ] ]
+            [ HH.slot' ChildSlot.cpPending unit \_ →
+                { component: Pending.pendingCardComponent
+                , initialState: Pending.initialState
+                }
+            ]
+        DCS.ErrorCard message →
+          HH.div
+            [ HP.classes [ HH.className "sd-card-error" ] ]
+            [ HH.slot' ChildSlot.cpError unit \_ →
+                { component: Error.errorCardComponent
+                , initialState: { message }
+                }
+            ]
+        DCS.NextActionCard input →
+          HH.div
+            [ HP.classes [ HH.className "sd-card-next-action" ] ]
+            [ HH.slot' ChildSlot.cpNext unit \_ →
+                { component: Next.nextCardComponent
+                , initialState: Next.initialState input
+                }
+            ]
+    ]
 
 renderDef
   ∷ DeckOptions

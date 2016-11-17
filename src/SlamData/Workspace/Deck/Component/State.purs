@@ -43,6 +43,9 @@ module SlamData.Workspace.Deck.Component.State
   , _focused
   , _responsiveSize
   , _fadeTransition
+  , _PendingCard
+  , _NextActionCard
+  , _ErrorCard
   , findLastCardIndex
   , findLastCard
   , fromModel
@@ -65,7 +68,7 @@ import Control.Monad.Aff (Canceler)
 import DOM.HTML.Types (HTMLElement)
 
 import Data.Array as A
-import Data.Lens (Lens', lens)
+import Data.Lens (Lens', lens, Prism', prism')
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
 
@@ -74,10 +77,13 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.StateMode (StateMode(..))
 
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
+
+import Utils (censor)
 
 type StateP = OpaqueState State
 
@@ -95,9 +101,9 @@ data ResponsiveSize
   | XXLarge
 
 data MetaCard
-  = ErrorCard
-  | PendingCard
-  | NextActionCard
+  = PendingCard
+  | ErrorCard String
+  | NextActionCard Port.Port
 
 data Fade
   = FadeNone
@@ -107,10 +113,6 @@ data Fade
 derive instance eqDisplayMode ∷ Eq DisplayMode
 
 derive instance eqResponsiveSize ∷ Eq ResponsiveSize
-
-derive instance eqMetaCard ∷ Eq MetaCard
-
-derive instance ordMetaCard ∷ Ord MetaCard
 
 derive instance eqFade ∷ Eq Fade
 
@@ -251,6 +253,21 @@ _responsiveSize = lens _.responsiveSize _{responsiveSize = _}
 _fadeTransition ∷ ∀ a r. Lens' {fadeTransition ∷ a|r} a
 _fadeTransition = lens _.fadeTransition _{fadeTransition = _}
 
+_NextActionCard ∷ Prism' MetaCard Port.Port
+_NextActionCard = prism' NextActionCard case _ of
+  NextActionCard a → Just a
+  _ → Nothing
+
+_ErrorCard ∷ Prism' MetaCard String
+_ErrorCard = prism' ErrorCard case _ of
+  ErrorCard a → Just a
+  _ → Nothing
+
+_PendingCard ∷ Prism' MetaCard Unit
+_PendingCard = prism' (const PendingCard) case _ of
+  PendingCard → Just unit
+  _ → Nothing
+
 findLastCardIndex ∷ State → Maybe Int
 findLastCardIndex st =
   const (A.length st.displayCards - 1) <$> A.last st.displayCards
@@ -279,7 +296,7 @@ fromModel { name, parent, displayCards } state =
 
 cardIndexFromCoord ∷ DeckId × CardId → State → Maybe Int
 cardIndexFromCoord coord =
-  A.findIndex (eq (Right coord) ∘ map _.coord) ∘ _.displayCards
+  A.findIndex (eq (Just coord) ∘ map _.coord ∘ censor) ∘ _.displayCards
 
 cardCoordFromIndex ∷ Int → State → Maybe (DeckId × CardId)
 cardCoordFromIndex i st =
@@ -299,8 +316,15 @@ eqCoordModel (deckId × cardId) (deckId' × model) =
 
 eqDisplayCard ∷ DisplayCard → DisplayCard → Boolean
 eqDisplayCard (Right r1) (Right r2) = r1.coord ≡ r2.coord && r1.cardType ≡ r2.cardType
-eqDisplayCard (Left l1) (Left l2) = l1 ≡ l2
+eqDisplayCard (Left l1) (Left l2) = eqMetaCard l1 l2
 eqDisplayCard _ _ = false
+
+eqMetaCard ∷ MetaCard → MetaCard → Boolean
+eqMetaCard = case _, _ of
+  PendingCard, PendingCard → true
+  ErrorCard _, ErrorCard _ → true
+  NextActionCard _, NextActionCard _ → true
+  _, _ → false
 
 compareCoordCards
   ∷ DeckId × CardId
