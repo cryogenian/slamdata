@@ -279,7 +279,7 @@ renderCard opts deckComponent st card index =
       guideText
 
   outputs = case card of
-    Right { cardType } → fromMaybe [] $ ICT.outputsFor <$> ICT.fromCardType cardType
+    Right { cardType } → ICT.outputsFor (ICT.fromCardType cardType)
     _ → []
 
   guideText =

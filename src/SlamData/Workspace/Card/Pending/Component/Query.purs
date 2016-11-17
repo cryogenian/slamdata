@@ -16,16 +16,12 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Pending.Component.Query
   ( Query
-  , QueryP
   , initiality
   ) where
 
 import SlamData.Prelude
-import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 
 type Query = Const Void
 
 initiality ∷ ∀ f. Query ~> f
 initiality = absurd ∘ unwrap
-
-type QueryP = CEQ.CardEvalQuery ⨁ Query

@@ -27,7 +27,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.CardType (CardType(..))
+import SlamData.Workspace.Card.CardType (CardType)
 
 data Query a
   = UpdatePortList (Array CardType) a
@@ -97,9 +97,6 @@ eval (UpdatePortList cardTypes next) = do
 
   cardTypeToStatus =
     case _ of
-      ErrorCard → Errored
-      NextAction → Placeholder
-      PendingCard → Pending
       _ → Available
 
 eval (UpdateActiveId ix next) = do

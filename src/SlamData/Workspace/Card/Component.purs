@@ -79,7 +79,7 @@ makeCardComponent def = makeCardComponentPart def render
     where
     cardLabel ∷ Array CardHTML
     cardLabel
-      | def.cardType `elem` [PendingCard, ErrorCard, NextAction, Draftboard] = []
+      | def.cardType `elem` [ Draftboard ] = []
       | otherwise =
           [ HH.div
               [ HP.classes [CSS.cardHeader]

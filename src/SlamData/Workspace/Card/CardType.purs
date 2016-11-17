@@ -24,8 +24,6 @@ module SlamData.Workspace.Card.CardType
   , aceCardName
   , aceCardClasses
   , aceMode
-  , controllable
-  , blocking
   , module SlamData.Workspace.Card.CardType.ChartType
   ) where
 
@@ -57,13 +55,10 @@ data CardType
   | Download
   | Variables
   | Troubleshoot
-  | NextAction
   | Cache
   | Open
   | DownloadOptions
   | Draftboard
-  | ErrorCard
-  | PendingCard
 
 derive instance eqCardType ∷ Eq CardType
 derive instance ordCardType ∷ Ord CardType
@@ -96,13 +91,10 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     Download → "download"
     Variables → "variables"
     Troubleshoot → "troubleshoot"
-    NextAction → "next-action"
     Cache → "cache"
     Open → "open"
     DownloadOptions → "download-options"
     Draftboard → "draftboard"
-    ErrorCard → "error"
-    PendingCard → "pending"
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
@@ -117,13 +109,10 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "download" → pure Download
       "variables" → pure Variables
       "troubleshoot" → pure Troubleshoot
-      "next-action" → pure NextAction
       "cache" → pure Cache
       "open" → pure Open
       "download-options" → pure DownloadOptions
       "draftboard" → pure Draftboard
-      "error" → pure ErrorCard
-      "pending" → pure PendingCard
       name → do
         let
           chartName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-options") name
@@ -141,13 +130,10 @@ cardName = case _ of
   Download → "Show Download"
   Variables → "Setup Variables"
   Troubleshoot → "Troubleshoot"
-  NextAction → "Next Action"
   Cache → "Cache"
   Open → "Open"
   DownloadOptions → "Setup Download"
   Draftboard → "Setup Dashboard"
-  ErrorCard → "Error"
-  PendingCard → "Pending"
 
 darkCardGlyph ∷ ∀ s f. CardType → H.HTML s f
 darkCardGlyph = case _ of
@@ -190,8 +176,6 @@ darkCardGlyph = case _ of
     HH.img [ HP.src "img/cardsDark/showMarkdown.svg" ]
   Table →
     HH.img [ HP.src "img/cardsDark/table.svg" ]
-  NextAction →
-    HH.text ""
   Cache →
     HH.img [ HP.src "img/cardsDark/cache.svg" ]
   Open →
@@ -200,10 +184,6 @@ darkCardGlyph = case _ of
     HH.img [ HP.src "img/cardsDark/setupDownload.svg" ]
   Draftboard →
     HH.img [ HP.src "img/cardsDark/draftboard.svg" ]
-  ErrorCard →
-    HH.text ""
-  PendingCard →
-    HH.text ""
 
 lightCardGlyph ∷ ∀ s f. CardType → H.HTML s f
 lightCardGlyph = case _ of
@@ -246,8 +226,6 @@ lightCardGlyph = case _ of
     HH.img [ HP.src "img/cardsLight/showMarkdown.svg" ]
   Table →
     HH.img [ HP.src "img/cardsLight/table.svg" ]
-  NextAction →
-    HH.text ""
   Cache →
     HH.img [ HP.src "img/cardsLight/cache.svg" ]
   Open →
@@ -256,10 +234,6 @@ lightCardGlyph = case _ of
     HH.img [ HP.src "img/cardsLight/setupDownload.svg" ]
   Draftboard →
     HH.img [ HP.src "img/cardsLight/draftboard.svg" ]
-  ErrorCard →
-    HH.text ""
-  PendingCard →
-    HH.text ""
 
 cardClasses ∷ CardType → Array H.ClassName
 cardClasses = case _ of
@@ -273,12 +247,9 @@ cardClasses = case _ of
   DownloadOptions → [ H.className "sd-card-download-options" ]
   Variables → [ H.className "sd-card-variables" ]
   Troubleshoot → [ H.className "sd-card-troubleshoot" ]
-  NextAction → [ H.className "sd-card-next-action" ]
   Cache → [ H.className "sd-card-cache" ]
   Open → [ H.className "sd-card-open" ]
   Draftboard → [ H.className "sd-card-draftboard" ]
-  ErrorCard → [ H.className "sd-card-error" ]
-  PendingCard → [ H.className "sd-card-pending" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Setup Markdown"
@@ -291,11 +262,3 @@ aceCardClasses SQLMode = [ H.className "sd-card-sql" ]
 aceMode ∷ AceMode → String
 aceMode MarkdownMode = "ace/mode/markdown"
 aceMode SQLMode = "ace/mode/sql"
-
-controllable ∷ CardType → Boolean
-controllable NextAction = false
-controllable _ = true
-
-blocking ∷ CardType → Boolean
-blocking ErrorCard = true
-blocking _ = false

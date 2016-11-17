@@ -38,10 +38,8 @@ import SlamData.Monad (Slam)
 import SlamData.Render.Common (glyph)
 import SlamData.Guide as Guide
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.NextAction as NA
-import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(..), _AddCardType, _PresentReason)
+import SlamData.Workspace.Card.Next.Component.Query (Query(..), _AddCardType, _PresentReason)
 import SlamData.Workspace.Card.Next.Component.State (State)
 import SlamData.Workspace.Card.Next.Component.State as State
 import SlamData.Workspace.Card.Port as Port
@@ -49,24 +47,13 @@ import SlamData.Workspace.Card.InsertableCardType as ICT
 
 import Utils.LocalStorage as LocalStorage
 
-type NextHTML = H.ComponentHTML QueryP
-type NextDSL = H.ComponentDSL State QueryP Slam
+type HTML = H.ComponentHTML Query
+type DSL = H.ComponentDSL State Query Slam
 
-nextCardComponent ∷ CC.CardOptions → CC.CardComponent
-nextCardComponent options = CC.makeCardComponent
-  { options
-  , cardType: CT.NextAction
-  , component:
-      H.component
-        { render
-        , eval
-        }
-  , initialState: State.initialState
-  , _State: CC._NextState
-  , _Query: CC.makeQueryPrism CC._NextQuery
-  }
+nextCardComponent ∷ H.Component State Query Slam
+nextCardComponent = H.component { render, eval }
 
-render ∷ State → NextHTML
+render ∷ State → HTML
 render state =
   HH.div_
     $ (guard (not state.presentAddCardGuide) $>
@@ -74,13 +61,13 @@ render state =
         [ HH.div_
             [ HH.input
                 [ HP.value state.filterString
-                , HE.onValueInput (HE.input (\s → right ∘ UpdateFilter s))
+                , HE.onValueInput (HE.input UpdateFilter)
                 , ARIA.label "Filter next actions"
                 , HP.placeholder "Filter actions"
                 ]
             , HH.button
                 [ HP.buttonType HP.ButtonButton
-                , HE.onClick (HE.input_ (right ∘ UpdateFilter ""))
+                , HE.onClick (HE.input_ (UpdateFilter ""))
                 ]
                 [ glyph B.glyphiconRemove ]
             ]
@@ -89,7 +76,7 @@ render state =
         Guide.render
           Guide.DownArrow
           (HH.className "sd-add-card-guide")
-          (right ∘ DismissAddCardGuide)
+          DismissAddCardGuide
           (addCardGuideText state.input))
     ⊕ [ HH.ul_ $ map nextButton state.actions ]
   where
@@ -103,7 +90,7 @@ render state =
   cardTitle (NA.Drill name _ _) = "Select " ⊕ name ⊕ " card category"
   cardTitle (NA.GoBack) = "Go back"
 
-  nextButton ∷ NA.NextAction → NextHTML
+  nextButton ∷ NA.NextAction → HTML
   nextButton action =
     HH.li_
       [ HH.button attrs
@@ -122,7 +109,7 @@ render state =
       , HP.disabled $ not enabled
       , ARIA.label $ cardTitle action
       , HP.classes classes
-      , HE.onClick (HE.input_ $ right ∘ Selected action)
+      , HE.onClick (HE.input_ (Selected action))
       ]
 
     classes ∷ Array HH.ClassName
@@ -140,118 +127,61 @@ render state =
     nonInsertableClassNames =
         [ HH.className "sd-button", HH.className "sd-button-warning" ]
 
+  addCardGuideText = case _ of
+    Port.Initial → "To get this deck started press one of these buttons to add a card."
+    _            → "To do more with this deck press one of these buttons to add a card."
 
-  addCardGuideTextEmptyDeck = "To get this deck started press one of these buttons to add a card."
-  addCardGuideTextNonEmptyDeck = "To do more with this deck press one of these buttons to add a card."
-  addCardGuideText = maybe addCardGuideTextEmptyDeck (const addCardGuideTextNonEmptyDeck)
-
-eval ∷ QueryP ~> NextDSL
-eval = coproduct cardEval nextEval
-
-cardEval ∷ CC.CardEvalQuery ~> NextDSL
-cardEval = case _ of
-  CC.Activate next →
-    (H.modify ∘ updateActions =<< H.gets _.input) $> next
-  CC.Deactivate next →
+eval ∷ Query ~> DSL
+eval = case _ of
+  AddCard _ next →
+    dismissAddCardGuide $> next
+  PresentReason io card next →
     pure next
-  CC.Save k →
-    pure $ k Card.NextAction
-  CC.Load _ next →
+  UpdateFilter str next →
+    H.modify (State._filterString .~ str) $> next
+  DismissAddCardGuide next →
+    dismissAddCardGuide $> next
+  PresentAddCardGuide next → do
+    dismissed ← getDismissedAddCardGuideBefore
+    H.modify $ State._presentAddCardGuide .~ not dismissed
     pure next
-  CC.ReceiveInput _ next →
-    pure next
-  CC.ReceiveOutput _ next →
-    pure next
-  CC.ReceiveState _ next →
-    pure next
-  CC.ReceiveDimensions _ next →
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
+  Selected action next → do
+    st ← H.get
+    case action of
+      NA.Insert cardType →
+        HU.raise $ H.action $ AddCard cardType
+      NA.FindOutHowToInsert cardType →
+        HU.raise $ H.action $ PresentReason st.input cardType
+      NA.Drill _ _ actions →
+        H.modify $ (State._actions .~ actions) ∘ (State._previousActions .~ st.actions)
+      NA.GoBack →
+        H.modify
+          $ (State._actions .~ st.previousActions)
+          ∘ (State._previousActions .~ [ ])
     pure next
 
-updateActions ∷ Maybe Port.Port → State → State
-updateActions input state =
-  case activeDrill of
-    Nothing →
-      state
-        { actions = newActions }
-    Just drill →
-      state
-        { previousActions = newActions
-        , actions = fromMaybe [] $ pluckDrillActions =<< newActiveDrill
-        }
-  where
-  newActions = NA.fromMaybePort input
-
-  activeDrill =
-    F.find
-      (maybe false (eq state.actions) ∘ pluckDrillActions)
-      state.previousActions
-
-  newActiveDrill =
-    F.find (maybe false eqNameOfActiveDrill ∘ pluckDrillName) newActions
-
-  eqNameOfActiveDrill name =
-    maybe false (eq name) (pluckDrillName =<< activeDrill)
-
-  pluckDrillActions = case _ of
-    NA.Drill _ _ xs → Just xs
-    _ → Nothing
-
-  pluckDrillName = case _ of
-    NA.Drill x _ _ → Just x
-    _ → Nothing
-
-takesInput ∷ Maybe Port.Port → CT.CardType → Boolean
+takesInput ∷ Port.Port → CT.CardType → Boolean
 takesInput input =
-  maybe false (ICT.takesInput $ ICT.fromMaybePort input) ∘ ICT.fromCardType
+  ICT.takesInput (ICT.fromPort input) ∘ ICT.fromCardType
 
-possibleToGetTo ∷ Maybe Port.Port → CT.CardType → Boolean
+possibleToGetTo ∷ Port.Port → CT.CardType → Boolean
 possibleToGetTo input =
-  maybe false (ICT.possibleToGetTo $ ICT.fromMaybePort input) ∘ ICT.fromCardType
+  ICT.possibleToGetTo (ICT.fromPort input) ∘ ICT.fromCardType
 
 dismissedAddCardGuideKey ∷ String
 dismissedAddCardGuideKey = "dismissedAddCardGuide"
 
-getDismissedAddCardGuideBefore ∷ NextDSL Boolean
+getDismissedAddCardGuideBefore ∷ DSL Boolean
 getDismissedAddCardGuideBefore =
   H.liftH
-    $ either (const $ false) id
+    $ either (const false) id
     <$> LocalStorage.getLocalStorage dismissedAddCardGuideKey
 
-storeDismissedAddCardGuide ∷ NextDSL Unit
+storeDismissedAddCardGuide ∷ DSL Unit
 storeDismissedAddCardGuide =
   H.liftH $ LocalStorage.setLocalStorage dismissedAddCardGuideKey true
 
-dismissAddCardGuide ∷ NextDSL Unit
+dismissAddCardGuide ∷ DSL Unit
 dismissAddCardGuide =
   H.modify (State._presentAddCardGuide .~ false)
     *> storeDismissedAddCardGuide
-
-nextEval ∷ Query ~> NextDSL
-nextEval (AddCard _ next) = dismissAddCardGuide $> next
-nextEval (PresentReason io card next) = pure next
-nextEval (UpdateFilter str next) =
-  H.modify (State._filterString .~ str) $> next
-nextEval (DismissAddCardGuide next) = dismissAddCardGuide $> next
-nextEval (PresentAddCardGuide next) =
-  (H.modify
-     ∘ (State._presentAddCardGuide .~ _)
-     ∘ not =<< getDismissedAddCardGuideBefore)
-     $> next
-nextEval (Selected action next) = do
-  st ← H.get
-  case action of
-    NA.Insert cardType →
-      HU.raise $ right $ H.action $ AddCard cardType
-    NA.FindOutHowToInsert cardType →
-      HU.raise $ right $ H.action $ PresentReason st.input cardType
-    NA.Drill _ _ actions →
-      H.modify $ (State._actions .~ actions) ∘ (State._previousActions .~ st.actions)
-    NA.GoBack →
-      H.modify
-        $ (State._actions .~ st.previousActions)
-        ∘ (State._previousActions .~ [ ])
-  pure next

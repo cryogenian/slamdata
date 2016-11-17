@@ -18,28 +18,30 @@ module SlamData.Workspace.Card.Next.Component.State where
 
 import SlamData.Prelude
 
+import Data.Foldable as F
 import Data.Lens (Lens', lens)
 
 import SlamData.Workspace.Card.Port (Port)
 
-import SlamData.Workspace.Card.Next.NextAction (NextAction)
+import SlamData.Workspace.Card.Next.NextAction as NA
 
 type State =
-  { input ∷ Maybe Port
+  { input ∷ Port
   , presentAddCardGuide ∷ Boolean
-  , actions ∷ Array NextAction
-  , previousActions ∷ Array NextAction
+  , actions ∷ Array NA.NextAction
+  , previousActions ∷ Array NA.NextAction
   , filterString ∷ String
   }
 
-initialState ∷ State
-initialState =
-  { input: Nothing
-  , presentAddCardGuide: false
-  , actions: []
-  , previousActions: [ ]
-  , filterString: ""
-  }
+initialState ∷ Port → State
+initialState input =
+  updateActions
+    { input
+    , presentAddCardGuide: false
+    , actions: []
+    , previousActions: [ ]
+    , filterString: ""
+    }
 
 _input ∷ ∀ a r. Lens' { input ∷ a | r } a
 _input = lens _.input (_ { input = _ })
@@ -55,3 +57,38 @@ _presentAddCardGuide = lens _.presentAddCardGuide (_ { presentAddCardGuide = _ }
 
 _filterString ∷ ∀ a r. Lens' { filterString ∷ a | r } a
 _filterString = lens _.filterString (_ { filterString = _ })
+
+-- TODO: Most of the drill related stuff is unnecessary
+updateActions ∷ State → State
+updateActions state =
+  case activeDrill of
+    Nothing →
+      state
+        { actions = newActions }
+    Just drill →
+      state
+        { previousActions = newActions
+        , actions = fromMaybe [] $ pluckDrillActions =<< newActiveDrill
+        }
+  where
+  newActions =
+    NA.fromPort state.input
+
+  activeDrill =
+    F.find
+      (maybe false (eq state.actions) ∘ pluckDrillActions)
+      state.previousActions
+
+  newActiveDrill =
+    F.find (maybe false eqNameOfActiveDrill ∘ pluckDrillName) newActions
+
+  eqNameOfActiveDrill name =
+    maybe false (eq name) (pluckDrillName =<< activeDrill)
+
+  pluckDrillActions = case _ of
+    NA.Drill _ _ xs → Just xs
+    _ → Nothing
+
+  pluckDrillName = case _ of
+    NA.Drill x _ _ → Just x
+    _ → Nothing

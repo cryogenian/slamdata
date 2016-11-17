@@ -118,8 +118,6 @@ labelAction = case _ of
 actionEnabled ∷ State → BackAction → Boolean
 actionEnabled st a =
   case st.activeCardType, a of
-    Just CT.ErrorCard, Trash → false
-    Just CT.NextAction, Trash → false
     Nothing, Trash → false
     _, Unwrap _ → isJust st.unwrappableDecks
     _, Mirror | F.elem CT.Draftboard st.cardTypes → false

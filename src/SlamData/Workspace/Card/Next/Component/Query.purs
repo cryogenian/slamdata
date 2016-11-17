@@ -18,14 +18,13 @@ module SlamData.Workspace.Card.Next.Component.Query where
 
 import SlamData.Prelude
 import Data.Lens (Traversal', wander)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Next.NextAction (NextAction)
 
 data Query a
   = AddCard CardType a
-  | PresentReason (Maybe Port) CardType a
+  | PresentReason Port CardType a
   | Selected NextAction a
   | UpdateFilter String a
   | DismissAddCardGuide a
@@ -37,10 +36,8 @@ _AddCardType =
     AddCard cty next → flip AddCard next <$> f cty
     _ → pure s
 
-_PresentReason ∷ ∀ a. Traversal' (Query a) (Tuple (Maybe Port) CardType)
+_PresentReason ∷ ∀ a. Traversal' (Query a) (Tuple Port CardType)
 _PresentReason =
   wander \f s → case s of
     PresentReason io card next → (#) next ∘ uncurry PresentReason <$> f (Tuple io card)
     _ → pure s
-
-type QueryP = CardEvalQuery ⨁ Query

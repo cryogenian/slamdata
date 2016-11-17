@@ -29,13 +29,10 @@ module SlamData.Workspace.Card.Component.Query
   , _DownloadQuery
   , _VariablesQuery
   , _TroubleshootQuery
-  , _NextQuery
   , _CacheQuery
   , _OpenQuery
   , _DownloadOptionsQuery
   , _DraftboardQuery
-  , _ErrorQuery
-  , _PendingQuery
   , _BuildMetricQuery
   , _BuildSankeyQuery
   , _BuildGaugeQuery
@@ -74,12 +71,9 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Download.Component.Query as Download
 import SlamData.Workspace.Card.DownloadOptions.Component.Query as DOpts
 import SlamData.Workspace.Card.Draftboard.Component.Query as Draftboard
-import SlamData.Workspace.Card.Error.Component.Query as Error
 import SlamData.Workspace.Card.Table.Component.Query as Table
 import SlamData.Workspace.Card.Markdown.Component.Query as Markdown
-import SlamData.Workspace.Card.Next.Component.Query as Next
 import SlamData.Workspace.Card.Open.Component.Query as Open
-import SlamData.Workspace.Card.Pending.Component.Query as Pending
 import SlamData.Workspace.Card.Search.Component.Query as Search
 import SlamData.Workspace.Card.BuildChart.Metric.Component.Query as BuildMetric
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.Query as BuildSankey
@@ -129,13 +123,10 @@ data AnyCardQuery a
   | DownloadQuery (Download.QueryP a)
   | VariablesQuery (Variables.QueryP a)
   | TroubleshootQuery (Troubleshoot.QueryP a)
-  | NextQuery (Next.QueryP a)
   | CacheQuery (Cache.QueryP a)
   | OpenQuery (Open.QueryP a)
   | DownloadOptionsQuery (DOpts.QueryP a)
   | DraftboardQuery (Draftboard.QueryP a)
-  | ErrorQuery (Error.QueryP a)
-  | PendingQuery (Pending.QueryP a)
   | BuildMetricQuery (BuildMetric.QueryP a)
   | BuildSankeyQuery (BuildSankey.QueryP a)
   | BuildGaugeQuery (BuildGauge.QueryP a)
@@ -194,11 +185,6 @@ _TroubleshootQuery = prism' TroubleshootQuery case _ of
   TroubleshootQuery q → Just q
   _ → Nothing
 
-_NextQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Next.QueryP a)
-_NextQuery = prism' NextQuery case _ of
-  NextQuery q → Just q
-  _ → Nothing
-
 _CacheQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Cache.QueryP a)
 _CacheQuery = prism' CacheQuery case _ of
   CacheQuery q → Just q
@@ -217,16 +203,6 @@ _DownloadOptionsQuery = prism' DownloadOptionsQuery case _ of
 _DraftboardQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Draftboard.QueryP a)
 _DraftboardQuery = prism' DraftboardQuery case _ of
   DraftboardQuery q → Just q
-  _ → Nothing
-
-_ErrorQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Error.QueryP a)
-_ErrorQuery = prism' ErrorQuery case _ of
-  ErrorQuery q → Just q
-  _ → Nothing
-
-_PendingQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Pending.QueryP a)
-_PendingQuery = prism' PendingQuery case _ of
-  PendingQuery q → Just q
   _ → Nothing
 
 _BuildMetricQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildMetric.QueryP a)

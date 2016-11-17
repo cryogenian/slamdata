@@ -415,15 +415,15 @@ peekAnyCard cardCoord q = do
   -- for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
   -- for_ (q ^? _NextQuery ∘ _Right ∘ Next._PresentReason) $ uncurry presentReason
 
-presentReason ∷ (Maybe Port.Port) → CT.CardType → DeckDSL Unit
+presentReason ∷ Port.Port → CT.CardType → DeckDSL Unit
 presentReason input cardType =
-  traverse_ showDialog dialog
+  showDialog dialog
   where
   insertableCardType = ICT.fromCardType cardType
-  ioType = ICT.fromMaybePort input
+  ioType = ICT.fromPort input
   reason = ICT.reason ioType cardType
-  cardPaths = map (ICT.cardPathsBetween ioType) insertableCardType
-  dialog = Dialog.Reason cardType <$> reason <*> cardPaths
+  cardPaths = ICT.cardPathsBetween ioType insertableCardType
+  dialog = Dialog.Reason cardType reason cardPaths
 
 -- | Enqueues the card with the specified ID in the set of cards that are
 -- | pending to run and enqueues a debounced query to trigger the cards to
