@@ -46,6 +46,7 @@ module SlamData.Workspace.Deck.Component.State
   , _PendingCard
   , _NextActionCard
   , _ErrorCard
+  , addMetaCard
   , findLastCardIndex
   , findLastCard
   , fromModel
@@ -267,6 +268,12 @@ _PendingCard ∷ Prism' MetaCard Unit
 _PendingCard = prism' (const PendingCard) case _ of
   PendingCard → Just unit
   _ → Nothing
+
+addMetaCard ∷ MetaCard → State → State
+addMetaCard card state =
+  state { displayCards = A.snoc init (Left card) }
+  where
+  init = A.filter isRight state.displayCards
 
 findLastCardIndex ∷ State → Maybe Int
 findLastCardIndex st =

@@ -20,18 +20,16 @@ module SlamData.Workspace.Eval
 
 import SlamData.Prelude
 
-import Control.Comonad.Cofree (Cofree)
 import Control.Comonad.Cofree as Cofree
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Eff.Ref (readRef, modifyRef)
 
+import Data.Array as Array
 import Data.Foldable as F
 import Data.Function (on)
 import Data.List (List, (:))
 import Data.List as List
-import Data.Map (Map)
-import Data.Map as Map
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
@@ -42,15 +40,9 @@ import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
+import SlamData.Workspace.Eval.Graph (EvalGraph)
 
 type Tick = Int
-
-type EvalGraph =
-  Cofree List
-    { coord ∷ Card.Coord
-    , card ∷ Card.Cell
-    , deck ∷ Deck.Cell
-    }
 
 evalGraph
   ∷ ∀ f m
@@ -60,21 +52,14 @@ evalGraph
     , QuasarDSL m
     )
   ⇒ Card.DisplayCoord
-  → Card.Coord
+  → EvalGraph
   → m Unit
-evalGraph source coord = do
-  { eval } ← Wiring.expose
+evalGraph source graph = do
+  let
+    input = fromMaybe Card.Initial (Cofree.head graph).card.value.input
   tick ← nextTick
-  graph ←
-    unfoldGraph
-      <$> Cache.snapshot eval.cards
-      <*> Cache.snapshot eval.decks
-      <*> pure coord
-  for_ graph \graph' → do
-    notifyDecks Deck.Pending graph'
-    let
-      input = fromMaybe Card.Initial (Cofree.head graph').card.value.input
-    runEvalLoop source tick input graph'
+  notifyDecks Deck.Pending graph
+  runEvalLoop source tick mempty input graph
 
 runEvalLoop
   ∷ ∀ f m
@@ -85,14 +70,16 @@ runEvalLoop
     )
   ⇒ Card.DisplayCoord
   → Tick
+  → Array Card.Coord
   → Card.Port
   → EvalGraph
   → m Unit
-runEvalLoop source tick input graph = do
+runEvalLoop source tick trail input graph = do
   { path, varMaps, eval } ← Wiring.expose
   let
     node = Cofree.head graph
     next = Cofree.tail graph
+    trail' = Array.snoc trail node.coord
     -- FIXME
     trans = unsafePartial (fromRight (Card.modelToEval node.card.value.model.model))
     env = CEM.CardEnv
@@ -116,13 +103,14 @@ runEvalLoop source tick input graph = do
         for_ result.state \state →
           Bus.write (Card.StateChange state) node.card.bus
         Bus.write (Card.Complete source output) node.card.bus
-      notifyDecks (Deck.Complete node.coord output) graph
+      notifyDecks (Deck.Complete trail' output) graph
     Right output → do
       let
         value' = node.card.value
           { input = Just input
           , output = Just output
           , state = result.state
+          , tick = Just tick
           }
       updateCardValue node.coord value' eval.cards
       fromAff do
@@ -130,8 +118,8 @@ runEvalLoop source tick input graph = do
           Bus.write (Card.StateChange state) node.card.bus
         Bus.write (Card.Complete source output) node.card.bus
       when (deckCompleted (fst node.coord) next) $ fromAff do
-        Bus.write (Deck.Complete node.coord output) node.deck.bus
-      parTraverse_ (runEvalLoop source tick output) next
+        Bus.write (Deck.Complete trail' output) node.deck.bus
+      parTraverse_ (runEvalLoop source tick trail' output) next
 
   where
     updateCardValue
@@ -156,20 +144,6 @@ notifyDecks msg = traverse_ (fromAff ∘ Bus.write msg ∘ _.bus ∘ snd) ∘ nu
 
 deckCompleted ∷ Deck.Id → List EvalGraph → Boolean
 deckCompleted deckId = not ∘ F.any (eq deckId ∘ fst ∘ _.coord ∘ Cofree.head)
-
-unfoldGraph
-  ∷ Map Card.Coord Card.Cell
-  → Map Deck.Id Deck.Cell
-  → Card.Coord
-  → Maybe EvalGraph
-unfoldGraph cards decks coord =
-  go
-    <$> Map.lookup coord cards
-    <*> Map.lookup (fst coord) decks
-  where
-    go card deck =
-      Cofree.mkCofree { coord, card, deck }
-        (List.catMaybes (unfoldGraph cards decks <$> card.next))
 
 nubDecks ∷ EvalGraph → List (Deck.Id × Deck.Cell)
 nubDecks = List.nubBy (eq `on` fst) ∘ go

@@ -32,6 +32,7 @@ import SlamData.Workspace.Card.Draftboard.Pane (Pane)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Deck.Model (Deck)
+import SlamData.Workspace.Eval.Deck (EvalMessage)
 import SlamData.Wiring (DeckMessage)
 
 import Utils.Path as UP
@@ -56,6 +57,7 @@ data Query a
   | DoAction DeckAction a
   | Focus a
   | Defocus (Event MouseEvent) a
+  | HandleEval EvalMessage a
   | HandleMessage DeckMessage a
   | HandleError GlobalError a
   | DismissedCardGuide a

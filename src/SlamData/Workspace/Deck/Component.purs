@@ -79,6 +79,7 @@ import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
+import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
@@ -110,7 +111,7 @@ eval opts = case _ of
       eb ← subscribeToBus' (H.action ∘ HandleError) bus.globalError
       H.modify $ DCS._breakers %~ (Array.cons eb)
     updateCardSize
-    loadDeck
+    loadDeck opts
     pure next
   PresentAccessNextActionCardGuide next → do
     H.modify (DCS._presentAccessNextActionCardGuide .~ true) $> next
@@ -203,6 +204,8 @@ eval opts = case _ of
         H.fromAff $ Bus.write (DeckFocused rootId) bus.decks
     H.modify (DCS._presentAccessNextActionCardGuide .~ false)
     pure next
+  HandleEval msg next →
+    handleEval msg $> next
   HandleMessage msg next → do
     st ← H.get
     case msg of
@@ -246,7 +249,6 @@ peekDialog _ (Dialog.FlipToFront _) =
   H.modify (DCS._displayMode .~ DCS.Normal)
 peekDialog opts (Dialog.SetDeckName name _) =
   H.modify ((DCS._displayMode .~ DCS.Normal) ∘ (DCS._name .~ name))
-    *> saveDeck opts Nothing
 peekDialog _ (Dialog.Confirm d b _) = do
   H.modify (DCS._displayMode .~ DCS.Backside)
   case d of
@@ -431,42 +433,46 @@ presentReason input cardType =
   cardPaths = ICT.cardPathsBetween ioType insertableCardType
   dialog = Dialog.Reason cardType reason cardPaths
 
--- | Enqueues the card with the specified ID in the set of cards that are
--- | pending to run and enqueues a debounced query to trigger the cards to
--- | actually run.
-runCard ∷ DeckId × CardId → DeckDSL Unit
-runCard coord = do
-  -- FIXME
-  pure unit
-
--- | Saves the deck as JSON, using the current values present in the state.
-saveDeck ∷ DeckOptions → Maybe (DeckId × CardId) → DeckDSL Unit
-saveDeck { accessType, cursor } coord = do
-  -- FIXME
-  pure unit
-
-loadDeck ∷ DeckDSL Unit
-loadDeck = do
+loadDeck ∷ DeckOptions → DeckDSL Unit
+loadDeck opts = do
   st ← H.get
-  H.modify _ { stateMode = Loading }
   { bus, value } ← H.liftH $ H.liftH $ P.getDeck' st.id
+  breaker ← subscribeToBus' (H.action ∘ HandleEval) bus
+  H.modify \s → s
+    { stateMode = Ready
+    , displayCards = [ Left DCS.PendingCard ]
+    , breakers = Array.cons breaker s.breakers
+    }
   Promise.wait value >>= case _ of
     Left err →
       H.modify _ { stateMode = Error "Error loading deck" }
     Right deck → do
       let
-        cardIds = deck.mirror <> map (Tuple st.id ∘ _.cardId) deck.cards
-      mbCards ← H.liftH $ H.liftH $ sequence <$> traverse P.getCard cardIds
-      for_ mbCards \cards → do
-        let
-          displayCards = Array.zip cardIds cards <#> \(coord × c) →
-            { coord
-            , cardType: Card.modelCardType c.value.model.model
-            }
-        H.modify _
-          { stateMode = Ready
-          , displayCards = Right <$> displayCards
+        coords = deck.mirror <> map (Tuple st.id ∘ _.cardId) deck.cards
+      for_ (Array.head coords) \coord →
+        H.fromAff $ Bus.write (ED.Force (opts.cursor × coord)) bus
+
+handleEval ∷ ED.EvalMessage → DeckDSL Unit
+handleEval = case _ of
+  ED.Pending →
+    H.modify (DCS.addMetaCard DCS.PendingCard)
+  ED.Complete coords res → do
+    let
+      metaCard = case res of
+        Port.CardError str → DCS.ErrorCard str
+        _ → DCS.NextActionCard res
+    mbCards ← H.liftH $ H.liftH $ sequence <$> traverse P.getCard coords
+    for_ mbCards \cards → do
+      let
+        displayCards = Array.zip coords cards <#> \(coord × c) →
+          { coord
+          , cardType: Card.modelCardType c.value.model.model
           }
+      H.modify _
+        { displayCards = Array.snoc (Right <$> displayCards) (Left metaCard)
+        }
+  _ →
+    pure unit
 
 getSharingInput ∷ DeckDSL SharingInput
 getSharingInput = do

@@ -20,10 +20,12 @@ module SlamData.Wiring
   , EvalWiring
   , AuthWiring
   , CacheWiring
-  , ActiveState
   , BusWiring
   , DeckMessage(..)
   , StepByStepGuide(..)
+  , ActiveState
+  , PendingEval
+  , PendingSave
   , make
   , unWiring
   , expose
@@ -47,6 +49,7 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
+import SlamData.Workspace.Eval.Graph (EvalGraph)
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
 
@@ -63,6 +66,16 @@ type ActiveState =
   { cardIndex ∷ Int
   }
 
+type PendingEval =
+  { source ∷ Card.DisplayCoord
+  , graph ∷ EvalGraph
+  , avar ∷ AVar Unit
+  }
+
+type PendingSave =
+  { avar ∷ AVar Unit
+  }
+
 type EvalWiring =
   { tick ∷ Ref Int
   , cards ∷ Cache Card.Coord Card.Cell
@@ -70,8 +83,8 @@ type EvalWiring =
   -- We need to use AVars for debounce state rather than storing Cancelers,
   -- because the Canceler would need to reference `Slam` resulting in a
   -- circular dependency.
-  , pendingEvals ∷ Cache Card.Coord (AVar Unit)
-  , pendingSaves ∷ Cache Deck.Id (AVar Unit)
+  , pendingEvals ∷ Cache Card.Coord PendingEval
+  , pendingSaves ∷ Cache Deck.Id PendingSave
   }
 
 type AuthWiring =

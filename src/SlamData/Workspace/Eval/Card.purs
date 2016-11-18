@@ -57,6 +57,7 @@ type EvalResult =
   , input ∷ Maybe Port
   , output ∷ Maybe Port
   , state ∷ Maybe EvalState
+  , tick ∷ Maybe Int
   }
 
 type Cell =

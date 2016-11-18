@@ -38,12 +38,18 @@ import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
+import SlamData.Workspace.Eval.Graph (unfoldGraph)
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
 
-censor ∷ ∀ e a. Either e a → Maybe a
-censor = either (const Nothing) Just
+import Utils (censor)
+
+defaultSaveDebounce ∷ Int
+defaultSaveDebounce = 500
+
+defaultEvalDebounce ∷ Int
+defaultEvalDebounce = 500
 
 putDeck
   ∷ ∀ m
@@ -188,6 +194,7 @@ populateCards deckId deck = runExceptT do
           , input: Nothing
           , output: Nothing
           , state: Nothing
+          , tick: Nothing
           }
         cell =
           { bus
@@ -235,7 +242,14 @@ forkDeckProcess
   → Bus.BusRW Deck.EvalMessage
   → m Unit
 forkDeckProcess deckId = forkLoop case _ of
-  _ → pure unit
+  Deck.Force source@(_ × coord) →
+    queueEval 0 source coord
+  Deck.AddCard cty →
+    pure unit
+  Deck.RemoveCard coord →
+    pure unit
+  _ →
+    pure unit
 
 forkCardProcess
   ∷ ∀ f m
@@ -252,9 +266,10 @@ forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
   Card.ModelChange source model → do
     { eval } ← Wiring.expose
     Cache.alter coord (pure ∘ map (updateModel model)) eval.cards
-    queueSave deckId
-    queueEval source coord
-  _ → pure unit
+    queueSave defaultSaveDebounce deckId
+    queueEval defaultEvalDebounce source coord
+  _ →
+    pure unit
 
   where
     -- TODO: Lenses?
@@ -273,11 +288,12 @@ queueSave
     , MonadFork m
     , QuasarDSL m
     )
-  ⇒ Deck.Id
+  ⇒ Int
+  → Deck.Id
   → m Unit
-queueSave deckId = do
+queueSave ms deckId = do
   { eval } ← Wiring.expose
-  debounce 500 deckId eval.pendingSaves do
+  debounce ms deckId { avar: _ } eval.pendingSaves do
     saveDeck deckId
 
 queueEval
@@ -288,17 +304,30 @@ queueEval
     , Parallel f m
     , QuasarDSL m
     )
-  ⇒ Card.DisplayCoord
+  ⇒ Int
+  → Card.DisplayCoord
   → Card.Coord
   → m Unit
-queueEval source coord = do
-  -- FIXME: Be smarter about queuing overlapping graphs
+queueEval ms source coord = do
   { eval } ← Wiring.expose
-  debounce 500 coord eval.pendingEvals do
-    Eval.evalGraph source coord
+  mbGraph ←
+    unfoldGraph
+      <$> Cache.snapshot eval.cards
+      <*> Cache.snapshot eval.decks
+      <*> pure coord
+  for_ mbGraph \graph → do
+    let
+      pending =
+        { source
+        , graph
+        , avar: _
+        }
+    -- TODO: Notify pending immediately
+    debounce ms coord pending eval.pendingEvals do
+      Eval.evalGraph source graph
 
 debounce
-  ∷ ∀ k m
+  ∷ ∀ k m r
   . ( Affable SlamDataEffects m
     , MonadAsk Wiring m
     , MonadFork m
@@ -306,16 +335,17 @@ debounce
     )
   ⇒ Int
   → k
-  → Cache.Cache k (AVar Unit)
+  → (AVar Unit → { avar ∷ AVar Unit | r })
+  → Cache.Cache k { avar ∷ AVar Unit | r }
   → m Unit
   → m Unit
-debounce ms key cache run = do
-  avar ← laterVar ms $ Cache.remove key cache *> run
-  Cache.alter key (alterFn avar) cache
+debounce ms key make cache run = do
+  avar ← laterVar ms $ void $ run *> Cache.remove key cache
+  Cache.alter key (alterFn (make avar)) cache
   where
-    alterFn avar avar' = fromAff do
-      traverse_ (flip killVar (Exn.error "debounce")) avar'
-        $> Just avar
+    alterFn a b = fromAff do
+      traverse_ (flip killVar (Exn.error "debounce") ∘ _.avar) b
+        $> Just a
 
 laterVar
   ∷ ∀ m
