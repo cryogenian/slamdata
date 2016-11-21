@@ -20,12 +20,14 @@ import SlamData.Prelude
 
 import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (readRef, writeRef)
-import Control.Monad.Fork (class MonadFork, Canceler, cancelWith, fork, hoistCanceler)
+import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Free (Free, liftF, foldFree)
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Parallel (parallel, sequential)
@@ -39,6 +41,7 @@ import Quasar.Advanced.QuasarAF as QA
 import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
+import SlamData.Monad.ForkF as FF
 import SlamData.Notification as N
 import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
@@ -49,24 +52,9 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Class (class WorkspaceDSL)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
-import Unsafe.Coerce (unsafeCoerce)
-
 import Utils (censor)
 
 type Slam = SlamM SlamDataEffects
-
---------------------------------------------------------------------------------
-
-data ForkF f x a = ForkF (f x) (Canceler f -> a)
-data Fork (f :: * -> *) a
-
-mkFork :: forall f x a. ForkF f x a → Fork f a
-mkFork = unsafeCoerce
-
-unFork :: forall f x a r. (ForkF f x a → r) → Fork f a → r
-unFork = unsafeCoerce
-
---------------------------------------------------------------------------------
 
 data SlamF eff a
   = Aff (Aff eff a)
@@ -78,8 +66,7 @@ data SlamF eff a
   | Notify N.NotificationOptions a
   | Halt GE.GlobalError a
   | Par (SlamA eff a)
-  | Fork (Fork (SlamM eff) a)
-  | Cancel (SlamM eff a) (Canceler (SlamM eff))
+  | Fork (FF.Fork (SlamM eff) a)
   | Ask (Wiring → a)
 
 newtype SlamM eff a = SlamM (Free (SlamF eff) a)
@@ -114,9 +101,8 @@ instance monadParSlamM ∷ Parallel (SlamA eff) (SlamM eff) where
   parallel = SlamA ∘ liftFreeAp
   sequential = SlamM ∘ liftF ∘ Par
 
-instance monadForkSlamM ∷ MonadFork (SlamM eff) where
-  fork a = SlamM $ liftF $ Fork $ mkFork $ ForkF a id
-  cancelWith a c = SlamM $ liftF $ Cancel a c
+instance monadForkSlamM ∷ MonadFork Error (SlamM eff) where
+  fork a = map liftAff <$> SlamM (liftF $ Fork $ FF.fork a)
 
 instance monadAskSlamM ∷ MonadAsk Wiring (SlamM eff) where
   ask = SlamM $ liftF $ Ask id
@@ -141,15 +127,11 @@ instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
   getURLVarMaps = SlamM $ liftF $ GetURLVarMaps id
   putURLVarMaps = SlamM ∘ liftF ∘ flip PutURLVarMaps unit
 
---------------------------------------------------------------------------------
-
 newtype SlamA eff a = SlamA (FreeAp (SlamM eff) a)
 
 derive newtype instance functorSlamA :: Functor (SlamA eff)
 derive newtype instance applySlamA :: Apply (SlamA eff)
 derive newtype instance applicativeSlamA :: Applicative (SlamA eff)
-
---------------------------------------------------------------------------------
 
 runSlam :: Wiring -> Slam ~> Aff SlamDataEffects
 runSlam wiring s = runReaderT (unSlam s) wiring
@@ -210,15 +192,12 @@ unSlam = foldFree go ∘ unSlamM
       pure a
     Par (SlamA p) →
       sequential $ retractFreeAp $ hoistFreeAp (parallel <<< unSlam) p
-    Fork f → do
-      r ← ask
-      goFork r f
-    Cancel m c →
-      cancelWith (unSlam m) (hoistCanceler unSlam c)
+    Fork f →
+      goFork f
     Ask k →
       k <$> ask
 
-  goFork ∷ Wiring → Fork Slam ~> ReaderT Wiring (Aff SlamDataEffects)
-  goFork r = unFork \(ForkF x k) →
-    k ∘ hoistCanceler (SlamM ∘ liftF ∘ Aff ∘ flip runReaderT r)
-      <$> fork (unSlam x)
+  goFork ∷ FF.Fork Slam ~> ReaderT Wiring (Aff SlamDataEffects)
+  goFork = FF.unFork \(FF.ForkF fx k) → do
+    r ← ask
+    k ∘ map unsafeCoerceAff <$> lift (fork (runSlam r fx))

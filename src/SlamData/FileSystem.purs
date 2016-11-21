@@ -25,8 +25,8 @@ import Control.Monad.Aff.Free (fromAff, fromEff)
 import Control.Monad.Aff.AVar (AVAR, makeVar', takeVar, putVar, modifyVar, AVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Fork (fork, Canceler, cancel)
-import Control.Monad.Eff.Exception (error)
+import Control.Monad.Fork (fork)
+import Control.Monad.Eff.Exception (Error, error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (null, filter, mapMaybe)
@@ -69,6 +69,17 @@ import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch.Types (SearchQuery)
 
 import Utils.Path (DirPath, hidePath, renderPath)
+
+newtype Canceler m = Canceler (Error -> m Boolean)
+
+instance semigroupCanceler :: Apply m => Semigroup (Canceler m) where
+  append (Canceler f1) (Canceler f2) = Canceler (\e -> (||) <$> f1 e <*> f2 e)
+
+instance monoidCanceler :: Applicative m => Monoid (Canceler m) where
+  mempty = Canceler (const (pure true))
+
+cancel :: forall m. Canceler m -> Error -> m Boolean
+cancel (Canceler f) = f
 
 main ∷ Eff SlamDataEffects Unit
 main = do
@@ -113,7 +124,7 @@ redirects driver var mbOld = case _ of
     in updateURL queryParts.query sort Nothing queryParts.path
   Salted sort query salt → do
     Tuple canceler _ ← fromAff $ takeVar var
-    cancel (error "cancel search") canceler
+    cancel canceler (error "cancel search")
     fromAff $ putVar var initialAVar
     fromAff $ driver $ toListing $ Listing.SetIsSearching $ isSearchQuery query
     let
@@ -167,7 +178,7 @@ listPath
   → Slam Unit
 listPath query deep var dir driver = do
   fromAff $ modifyVar (_2 %~ M.alter (pure ∘ maybe 1 (_ + 1)) deep) var
-  canceler ← fork goDeeper
+  canceler ← Canceler <$> fork goDeeper
   fromAff $ modifyVar (_1 <>~ canceler) var
   where
   goDeeper = do
