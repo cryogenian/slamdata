@@ -45,8 +45,8 @@ make' ∷ ∀ f. Applicative f ⇒ (Int → Int → f Int) → f UUIDv4
 make' rand = unsafeToUUIDv4 <$> sequence uuid
   where
     uuid = x8 <> x4 <> [ pure 4 ] <> x3 <> y <> x3 <> x12
-    y = [ rand 8 12 ]
-    x = [ rand 0 16 ]
+    y = [ rand 8 11 ]
+    x = [ rand 0 15 ]
     x3 = x <> x <> x
     x4 = x3 <> x
     x8 = x4 <> x4
@@ -98,9 +98,8 @@ instance showUUIDv4 ∷ Show UUIDv4 where
   show (UUIDv4 s1 _) = "UUIDv4 " <> show s1
 
 instance arbitraryUUIDv4 ∷ SC.Arbitrary UUIDv4 where
-  -- chooseInt is inclusive, randomInt is exclusive
   arbitrary =
-    make' \i j → Gen.chooseInt i (i - 1)
+    make' Gen.chooseInt
 
 instance encodeJson ∷ EncodeJson UUIDv4 where
   encodeJson (UUIDv4 s _) = encodeJson s
