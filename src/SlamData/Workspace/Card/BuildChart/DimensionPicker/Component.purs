@@ -95,6 +95,7 @@ type PickerOptions s =
 pickerOptionsToColumnOptions ∷ ∀ s. Eq s ⇒ PickerOptions s → MCI.BasicColumnOptions s s
 pickerOptionsToColumnOptions { label, render, values } =
   { render: MCI.component { render, label }
+  , label: label
   , load: MCT.loadFromTree id values
   , id: id
   }

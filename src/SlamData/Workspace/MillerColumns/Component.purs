@@ -39,13 +39,16 @@ import DOM.Node.Element (scrollWidth, setScrollLeft) as DOM
 import DOM.HTML.HTMLElement (offsetWidth) as DOM
 
 import Halogen as H
+import Halogen.Component.Utils (raise')
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Component.Utils (raise')
+import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.MillerColumns.Component.Query (Query(..), ItemQuery(..), ChildQuery, Query')
+import SlamData.Render.Common (glyph)
+import SlamData.Workspace.MillerColumns.Component.Query (ItemQuery(..), ItemQuery', Query(..), Query')
 import SlamData.Workspace.MillerColumns.Component.State (State, State', initialState)
 
 type ColumnOptions a i s f =
@@ -53,9 +56,10 @@ type ColumnOptions a i s f =
       ∷ L.List i
       → a
       → InitialItemState
-      → { component :: H.Component s (ChildQuery i f) Slam
+      → { component :: H.Component s (ItemQuery i ⨁ f) Slam
          , initialState :: s
          }
+  , label ∷ a → String
   , load ∷ L.List i → Slam (Maybe (L.List a))
   , id ∷ a → i
   }
@@ -65,8 +69,8 @@ data InitialItemState = Selected | Deselected
 derive instance eqInitialItemState :: Eq InitialItemState
 derive instance ordInitialItemState :: Ord InitialItemState
 
-type HTML i s f = H.ParentHTML s (Query i) (ChildQuery i f) Slam (L.List i)
-type DSL a i s f = H.ParentDSL (State a i) s (Query i) (ChildQuery i f) Slam (L.List i)
+type HTML i s f = H.ParentHTML s (Query i) (ItemQuery' i f) Slam (L.List i)
+type DSL a i s f = H.ParentDSL (State a i) s (Query i) (ItemQuery' i f) Slam (L.List i)
 
 type ItemHTML = H.ComponentHTML (Const Void)
 
@@ -84,7 +88,7 @@ component ispec initial =
     , eval
     , initializer: map (H.action ∘ Populate) initial
     , finalizer: Nothing
-    , peek: Just (peek ∘ H.runChildF)
+    , peek: Just peek
     }
   where
 
@@ -93,13 +97,11 @@ component ispec initial =
     let
       -- Drop the root item from `selected` (since there's no corresponding
       -- rendered item), and reverse it (foldl) to produce a list rather than a
-      -- stack, so the steps can be zipped with the columns. The fold also tags
-      -- the steps as `Left` or `Right`, where `Right` is the "tip", so we can
-      -- add a class to the tip-selected-item as necessary.
+      -- stack, so the steps can be zipped with the columns.
       selectSteps = A.fromFoldable (foldl go L.Nil (fromMaybe L.Nil (L.init selected)))
       go acc a = case acc of
-        L.Nil → pure (Right a)
-        _ → Left a : acc
+        L.Nil → pure a
+        _ → a : acc
     in
       HH.div
         [ HP.class_ (HH.className "sd-miller-columns")
@@ -112,28 +114,50 @@ component ispec initial =
 
   goColumn
     ∷ RenderRec i s f
-    → Tuple (Tuple i (L.List a)) (Maybe (Either i i))
+    → Tuple (Tuple i (L.List a)) (Maybe i)
     → RenderRec i s f
   goColumn acc (Tuple (Tuple item children) sel) =
     let path = item : acc.path
     in { path, html: acc.html <> [renderColumn path children sel] }
 
-  renderColumn ∷ L.List i → L.List a → Maybe (Either i i) → HTML i s f
+  renderColumn ∷ L.List i → L.List a → Maybe i → HTML i s f
   renderColumn colPath items selected =
-    HH.ul
+    HH.div
       [ HP.class_ (HH.className "sd-miller-column")
       , ARIA.label "Column"
       , HP.ref (\_ → H.action Extended)
       ]
-      $ A.fromFoldable (renderItem colPath selected <$> items)
+      [ renderSelected colPath selected items
+      , HH.ul_ $ A.fromFoldable (renderItem colPath selected <$> items)
+      ]
 
-  renderItem ∷ L.List i → Maybe (Either i i) → a → HTML i s f
+  renderSelected ∷ L.List i → Maybe i → L.List a → HTML i s f
+  renderSelected colPath sel items =
+    case L.find (\x → sel == Just (ispec.id x)) items of
+      Nothing →
+      HH.div
+        [ HP.class_ (HH.className "sd-miller-column-selection") ]
+        [ HH.span_ [ HH.text "No selection" ] ]
+      Just x →
+        HH.div
+          [ HP.classes
+              [ HH.className "sd-miller-column-selection"
+              , HH.className "selected"
+              ]
+          , HE.onClick $ HE.input_ (Populate colPath)
+          ]
+          [ HH.span_ [ HH.text (ispec.label x) ]
+          , glyph B.glyphiconRemoveSign
+          ]
+
+  renderItem ∷ L.List i → Maybe i → a → HTML i s f
   renderItem colPath selected item =
     let
       itemId = ispec.id item : colPath
-      isSelected = Just (ispec.id item) == (either id id <$> selected)
+      isSelected = Just (ispec.id item) == selected
     in
-      HH.slot itemId \_ -> ispec.render itemId item (if isSelected then Selected else Deselected)
+      HH.slot itemId \_ →
+        ispec.render itemId item (if isSelected then Selected else Deselected)
 
   eval ∷ Query i ~> DSL a i s f
   eval (Ref mel next) = do
@@ -149,32 +173,26 @@ component ispec initial =
       prefix = findPathPrefix currentPath path
       remainder = L.take (L.length path - L.length prefix) path
       remPaths = scanr (:) prefix remainder
+      deselected = L.take (L.length currentPath - L.length prefix) currentPath
+      deselPaths = scanr (:) prefix deselected
+      selected = L.take (L.length prefix + 1) path
+
+    for_ deselPaths \i →
+      H.query i $ left $ H.action $ ToggleSelected false
+
+    H.modify \st → st
+      { columns = A.take (L.length prefix) st.columns
+      , selected = selected
+      }
 
     -- Explicitly check whether anything needs loading before proceeding:
     -- incrementing `currentCycle` when there is no work to be done can
     -- break things if we're awaiting a previous load of the same path.
     when (not L.null remPaths) do
-
-      let
-        deselected = L.take (L.length currentPath - L.length prefix) currentPath
-        deselPaths = scanr (:) prefix deselected
-        selected = L.take (L.length prefix + 1) path
-
-      for_ deselPaths \i ->
-        H.query i $ left $ H.action $ ToggleSelected false
-
-      H.modify \st → st
-        { cycle = st.cycle + 1
-        , columns = A.take (L.length prefix) st.columns
-        , selected = selected
-        }
-
+      H.modify \st → st { cycle = st.cycle + 1 }
       H.query selected $ left $ H.action $ ToggleSelected true
-
       currentCycle ← H.gets _.cycle
-
       raise' $ H.action $ Loading true
-
       more ← H.liftH $ H.liftH (parTraverse ispec.load remPaths)
 
       -- `load` is async, so in case multiple `Populate`s have been raised we need
@@ -193,13 +211,13 @@ component ispec initial =
         let
           newColumns = foldr go [] (L.zip remainder more)
           go (Tuple item colItems) cols =
-            maybe cols (\items -> cols <> [Tuple item items]) colItems
+            maybe cols (\items → cols <> [Tuple item items]) colItems
           selPaths = scanr (:) prefix path
         H.modify \st → st
           { columns = st.columns <> newColumns
           , selected = path
           }
-        for_ (L.take (L.length remainder) selPaths) \i ->
+        for_ (L.take (L.length remainder) selPaths) \i →
           H.query i $ left $ H.action $ ToggleSelected true
         raise' $ H.action $ Loading false
 
@@ -207,12 +225,12 @@ component ispec initial =
   eval (Loading _ next) =
     pure next
 
-  peek ∷ ∀ x. ChildQuery i f x -> DSL a i s f Unit
-  peek = flip coproduct (const (pure unit)) case _ of
-    RaisePopulate path _ → do
-      raise' $ H.action $ Populate path
-    _ →
-      pure unit
+  peek ∷ ∀ x. H.ChildF (L.List i) (ItemQuery' i f) x → DSL a i s f Unit
+  peek = H.runChildF >>> flip coproduct (const (pure unit)) case _ of
+      RaisePopulate path _ → do
+        raise' $ H.action $ Populate path
+      _ →
+        pure unit
 
 findPathPrefix ∷ ∀ a. Eq a ⇒ L.List a → L.List a → L.List a
 findPathPrefix xs ys =
