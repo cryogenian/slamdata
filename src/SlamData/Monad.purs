@@ -45,7 +45,8 @@ import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Notification as N
-import SlamData.InteractionlessSignIn (InteractionlessSignIn(Allowed, NotAllowed))
+import SlamData.AuthenticationMode (AuthenticationMode, AllowedAuthenticationModes)
+import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
 import SlamData.Quasar.Auth.Authentication as Auth
@@ -161,31 +162,41 @@ derive newtype instance applicativeSlamA :: Applicative (SlamA eff)
 
 --------------------------------------------------------------------------------
 
-getIdTokenSilently ∷ InteractionlessSignIn → Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
+getIdTokenSilently ∷ AllowedAuthenticationModes → Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
 getIdTokenSilently interactionlessSignIn idTokenRequestBus = do
   case interactionlessSignIn of
-    Allowed →
+    AuthenticationMode.ChosenProviderAndAllProviders →
+      -- Currently singleton provider from Quasar configuration if none chosen.
+      -- Eventually this will use all providers in Quasar configuration
       either (const $ getWithSingletonProviderFromQuasar) (pure ∘ Right)
         =<< getWithProviderFromLocalStorage
-    NotAllowed →
+    AuthenticationMode.ChosenProviderOnly →
       getWithProviderFromLocalStorage
   where
 
   getWithProviderFromLocalStorage ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
   getWithProviderFromLocalStorage =
-    shiftAffErrorsIntoQError $ traverse get =<< liftEff getProviderFromLocalStorage
+    shiftAffErrorsIntoQError $ traverse (get AuthenticationMode.ChosenProvider)
+      =<< liftEff getProviderFromLocalStorage
 
   getWithSingletonProviderFromQuasar ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
   getWithSingletonProviderFromQuasar =
-      shiftAffErrorsIntoQError $ traverse get =<< getSingletonProviderFromQuasar
+      shiftAffErrorsIntoQError $ traverse (get AuthenticationMode.AllProviders)
+        =<< getSingletonProviderFromQuasar
 
-  get ∷ QAT.ProviderR → Aff SlamDataEffects Auth.EIdToken
-  get providerR =
-    AVar.takeVar =<< passover (write providerR) =<< AVar.makeVar
+  get ∷ AuthenticationMode → QAT.ProviderR → Aff SlamDataEffects Auth.EIdToken
+  get mode providerR =
+    AVar.takeVar =<< passover (write mode providerR) =<< AVar.makeVar
 
-  write ∷ QAT.ProviderR → AVar Auth.EIdToken → Aff SlamDataEffects Unit
-  write providerR idTokenVar =
-    Bus.write { idToken: idTokenVar, providerR, prompt: false } idTokenRequestBus
+  write ∷ AuthenticationMode → QAT.ProviderR → AVar Auth.EIdToken → Aff SlamDataEffects Unit
+  write mode providerR idToken =
+    Bus.write
+      { idToken
+      , providerR
+      , prompt: false
+      , keySuffix: AuthenticationMode.toKeySuffix mode
+      }
+      idTokenRequestBus
 
   getSingletonProviderFromQuasar ∷ Aff SlamDataEffects (Either QError QAT.ProviderR)
   getSingletonProviderFromQuasar =
@@ -197,10 +208,14 @@ getIdTokenSilently interactionlessSignIn idTokenRequestBus = do
       (Left $ unauthorizedError $ Just noProvidersMessage)
       (const $ Left $ unauthorizedError $ Just tooManyProvidersMessage)
 
+  -- Get previously chosen provider from local storage
   getProviderFromLocalStorage ∷ Eff SlamDataEffects (Either QError QAT.ProviderR)
   getProviderFromLocalStorage =
     lmap (unauthorizedError ∘ Just) ∘ map QAT.runProvider
-      <$> LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey
+      <$> LocalStorage.getLocalStorage
+            (AuthKeys.hyphenatedSuffix
+               AuthKeys.providerLocalStorageKey
+               $ AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider)
 
   noProvidersMessage ∷ String
   noProvidersMessage =
@@ -231,9 +246,9 @@ unSlam = foldFree go ∘ unSlamM
     Aff aff →
       lift aff
     GetAuthIdToken k → do
-      Wiring { requestIdTokenBus, notify, interactionlessSignIn } ← ask
-      i ← liftEff $ readRef interactionlessSignIn
-      idToken ← liftAff $ censor <$> getIdTokenSilently i requestIdTokenBus
+      Wiring { requestIdTokenBus, notify, allowedAuthenticationModes } ← ask
+      allowed ← liftEff $ readRef allowedAuthenticationModes
+      idToken ← liftAff $ censor <$> getIdTokenSilently allowed requestIdTokenBus
       case idToken of
         Just (Left error) →
           maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error
@@ -241,9 +256,9 @@ unSlam = foldFree go ∘ unSlamM
           pure unit
       pure $ k $ maybe Nothing censor idToken
     Quasar qf → do
-      Wiring { requestIdTokenBus, signInBus, notify, interactionlessSignIn } ← ask
-      i ← liftEff $ readRef interactionlessSignIn
-      idToken ← lift $ censor <$> getIdTokenSilently i requestIdTokenBus
+      Wiring { requestIdTokenBus, signInBus, notify, allowedAuthenticationModes } ← ask
+      allowed ← liftEff $ readRef allowedAuthenticationModes
+      idToken ← lift $ censor <$> getIdTokenSilently allowed requestIdTokenBus
       case idToken of
         Just (Left error) →
           maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error

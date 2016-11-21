@@ -14,13 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.InteractionlessSignIn where
+module SlamData.AuthenticationMode where
 
 import SlamData.Workspace.AccessType
 
-data InteractionlessSignIn = Allowed | NotAllowed
+data AuthenticationMode = ChosenProvider | AllProviders
 
-fromAccessType :: AccessType -> InteractionlessSignIn
-fromAccessType = case _ of
-  ReadOnly → Allowed
-  Editable → NotAllowed
+data AllowedAuthenticationModes = ChosenProviderOnly | ChosenProviderAndAllProviders
+
+allowedAuthenticationModesForAccessType :: AccessType -> AllowedAuthenticationModes
+allowedAuthenticationModesForAccessType = case _ of
+  ReadOnly → ChosenProviderAndAllProviders
+  Editable → ChosenProviderOnly
+
+toKeySuffix ∷ AuthenticationMode → String
+toKeySuffix = case _ of
+  ChosenProvider → "chosen-provider"
+  AllProviders → "all-providers"

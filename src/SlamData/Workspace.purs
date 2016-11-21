@@ -47,7 +47,7 @@ import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Monad (runSlam)
 import SlamData.Wiring (Wiring(Wiring), makeWiring)
 import SlamData.Workspace.AccessType as AT
-import SlamData.InteractionlessSignIn as InteractionlessSignIn
+import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
 import SlamData.Workspace.Deck.Component as Deck
@@ -137,8 +137,8 @@ routeSignal = do
       Load accessType → do
         Wiring wiring ← Promise.wait $ asyncWiring.get
         liftEff
-          $ Ref.writeRef wiring.interactionlessSignIn
-          $ InteractionlessSignIn.fromAccessType accessType
+          $ Ref.writeRef wiring.allowedAuthenticationModes
+          $ AuthenticationMode.allowedAuthenticationModesForAccessType accessType
         driver $ Workspace.toWorkspace $ Workspace.Load deckId accessType
       Exploring fp → do
         driver $ Workspace.toWorkspace $ Workspace.Reset
