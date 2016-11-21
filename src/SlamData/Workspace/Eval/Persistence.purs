@@ -35,6 +35,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
@@ -186,23 +187,31 @@ populateCards deckId deck = runExceptT do
         threadCards cache (c' : cs)
 
     makeCell card next cache = do
-      bus ← fromAff Bus.make
       let
         coord = deckId × card.cardId
-        value =
-          { model: card
-          , input: Nothing
-          , output: Nothing
-          , state: Nothing
-          , tick: Nothing
-          }
-        cell =
-          { bus
-          , next: Tuple deckId <$> next
-          , value
-          }
+      cell ← makeCardCell card (Tuple deckId <$> next)
       Cache.put coord cell cache
-      forkCardProcess coord bus
+      forkCardProcess coord cell.bus
+
+makeCardCell
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , Monad m
+    )
+  ⇒ Card.Model
+  → List Card.Coord
+  → m Card.Cell
+makeCardCell model next = do
+  let
+    value =
+      { model
+      , input: Nothing
+      , output: Nothing
+      , state: Nothing
+      , tick: Nothing
+      }
+  bus ← fromAff Bus.make
+  pure { bus, next, value }
 
 getCard
   ∷ ∀ m
@@ -244,12 +253,32 @@ forkDeckProcess
 forkDeckProcess deckId = forkLoop case _ of
   Deck.Force source@(_ × coord) →
     queueEval 0 source coord
-  Deck.AddCard cty →
-    pure unit
+  Deck.AddCard cty → do
+    { eval } ← Wiring.expose
+    deckCell ← getDeck' deckId
+    mbDeck ← wait deckCell.value
+    for_ mbDeck \deck → do
+      cardId ← fromAff CID.make
+      let
+        coord = deckId × cardId
+        card = { cardId, model: Card.cardModelOfType cty }
+        deck' = deck { cards = Array.snoc deck.cards card }
+      for_ (Array.last (Deck.cardCoords deckId deck)) \last → do
+        Cache.alter last (addNext (deckId × cardId)) eval.cards
+      cell ← makeCardCell card mempty
+      value' ← defer (pure (Right deck'))
+      Cache.put (deckId × cardId) cell eval.cards
+      Cache.put deckId (deckCell { value = value' }) eval.decks
+      queueSave defaultSaveDebounce deckId
+      queueEval 0 (mempty × coord) coord
   Deck.RemoveCard coord →
     pure unit
   _ →
     pure unit
+
+  where
+    addNext ∷ Card.Coord → Maybe Card.Cell → m (Maybe Card.Cell)
+    addNext next = pure ∘ map \cell → cell { next = next : cell.next }
 
 forkCardProcess
   ∷ ∀ f m

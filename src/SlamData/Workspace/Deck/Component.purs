@@ -355,7 +355,9 @@ updateBackSide { cursor } = do
 
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
-  -- FIXME
+  st ← H.get
+  { bus } ← H.liftH $ H.liftH $ P.getDeck' st.id
+  H.fromAff $ Bus.write (ED.AddCard cardType) bus
   pure unit
 
 dismissedAccessNextActionCardGuideKey ∷ String

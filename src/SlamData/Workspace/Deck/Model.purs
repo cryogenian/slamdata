@@ -69,3 +69,7 @@ decode = decodeJson >=> \obj → do
 deckIndex ∷ DirPath → DeckId → FilePath
 deckIndex path deckId =
   path </> Pathy.dir (toString deckId) </> Pathy.file "index"
+
+cardCoords ∷ DeckId → Deck → Array (DeckId × CardId)
+cardCoords deckId deck =
+  deck.mirror <> map (Tuple deckId ∘ _.cardId) deck.cards
