@@ -36,6 +36,7 @@ import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.CardId as CID
+import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
@@ -354,6 +355,23 @@ queueEval ms source coord = do
     -- TODO: Notify pending immediately
     debounce ms coord pending eval.pendingEvals do
       Eval.evalGraph source graph
+
+freshWorkspace
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadAsk Wiring m
+    , MonadFork m
+    )
+  ⇒ m (Deck.Id × Deck.Cell)
+freshWorkspace = do
+  { eval } ← Wiring.expose
+  rootId ← fromAff DID.make
+  bus ← fromAff Bus.make
+  value ← defer (pure (Right Deck.emptyDeck))
+  let
+    cell = { bus, value }
+  Cache.put rootId cell eval.decks
+  pure (rootId × cell)
 
 debounce
   ∷ ∀ k m r

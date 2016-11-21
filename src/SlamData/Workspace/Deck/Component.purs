@@ -451,8 +451,11 @@ loadDeck opts = do
     Right deck → do
       let
         coords = deck.mirror <> map (Tuple st.id ∘ _.cardId) deck.cards
-      for_ (Array.head coords) \coord →
-        H.fromAff $ Bus.write (ED.Force (opts.cursor × coord)) bus
+      case Array.head coords of
+        Just coord →
+          H.fromAff $ Bus.write (ED.Force (opts.cursor × coord)) bus
+        Nothing →
+          H.modify _ { displayCards = [ Left (DCS.NextActionCard Port.Initial) ] }
 
 handleEval ∷ ED.EvalMessage → DeckDSL Unit
 handleEval = case _ of

@@ -122,8 +122,8 @@ routeSignal =
       Load accessType →
         driver $ Workspace.toWorkspace $ Workspace.Load deckId accessType
       New →
-        driver $ Workspace.toWorkspace $ Workspace.Load Nothing AT.Editable
+        driver $ Workspace.toWorkspace $ Workspace.New
       -- FIXME
       Exploring _ → do
-        driver $ Workspace.toWorkspace $ Workspace.Load Nothing AT.Editable
+        driver $ Workspace.toWorkspace $ Workspace.New
         -- driver $ Workspace.toDeck $ Deck.ExploreFile fp

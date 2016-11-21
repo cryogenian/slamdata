@@ -61,6 +61,7 @@ import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Model as Model
 import SlamData.Workspace.StateMode (StateMode(..))
 
@@ -192,6 +193,15 @@ eval = case _ of
     pure next
   Resize next →
     queryDeck (H.action Deck.UpdateCardSize) $> next
+  New next → do
+    st ← H.get
+    when (isNothing st.deckId) do
+      deckId × _ ← H.liftH $ H.liftH P.freshWorkspace
+      H.modify _
+        { stateMode = Ready
+        , deckId = Just deckId
+        }
+    pure next
   Load deckId accessType next → do
     H.modify _
       { accessType = accessType

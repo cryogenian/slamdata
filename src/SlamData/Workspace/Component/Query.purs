@@ -29,6 +29,7 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 data Query a
   = Init a
   | DismissAll (HET.Event HET.MouseEvent) a
+  | New a
   | Load (Maybe DeckId) AccessType a
   | PresentStepByStepGuide StepByStepGuide a
   | CardGuideStepNext a
