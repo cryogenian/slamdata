@@ -155,12 +155,10 @@ authenticate stateRef message = do
   state ← liftEff $ Ref.readRef stateRef
   case state of
     Nothing → do
-      traceAnyA "Nothing"
       idTokenPromise ← getIdToken message
       writeState $ Just idTokenPromise
       void $ Aff.forkAff $ reply idTokenPromise *> writeState Nothing
     Just idTokenPromise → do
-      traceAnyA "Just"
       void $ Aff.forkAff $ reply idTokenPromise
   where
   writeState ∷ Maybe (Promise EIdToken) → Aff (AuthEffects eff) Unit
@@ -313,12 +311,12 @@ getIdToken message =
           $ (AuthStore.storeProvider message.keySuffix $ QAT.Provider message.providerR)
           *> (AuthStore.storeIdToken message.keySuffix $ Right idToken))
       eIdToken
-    pure $ spy eIdToken
+    pure eIdToken
 
 getIdTokenUsingLocalStorage ∷ ∀ eff. RequestIdTokenMessage → Aff (AuthEffects eff) (Maybe IdToken)
 getIdTokenUsingLocalStorage message = do
-  eitherIdToken ← spy <$> getUnverifiedIdTokenUsingLocalStorage message.keySuffix
-  eitherUnhashedNonce ← spy <$> getUnhashedNonceUsingLocalStorage message.keySuffix
+  eitherIdToken ← getUnverifiedIdTokenUsingLocalStorage message.keySuffix
+  eitherUnhashedNonce ← getUnhashedNonceUsingLocalStorage message.keySuffix
   case Tuple eitherIdToken eitherUnhashedNonce of
     Tuple (Right idToken) (Right unhashedNonce) →
       either (const $ Nothing) (if _ then (Just idToken) else Nothing)
