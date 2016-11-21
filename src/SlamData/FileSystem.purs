@@ -22,7 +22,7 @@ import Ace.Config as AceConfig
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Free (fromAff, fromEff)
-import Control.Monad.Aff.AVar (AVAR, makeVar', takeVar, putVar, modifyVar, AVar)
+import Control.Monad.Aff.AVar (AVar, makeVar', modifyVar, putVar, takeVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Fork (fork)
@@ -70,15 +70,15 @@ import Text.SlamSearch.Types (SearchQuery)
 
 import Utils.Path (DirPath, hidePath, renderPath)
 
-newtype Canceler m = Canceler (Error -> m Boolean)
+newtype Canceler m = Canceler (Error → m Boolean)
 
-instance semigroupCanceler :: Apply m => Semigroup (Canceler m) where
-  append (Canceler f1) (Canceler f2) = Canceler (\e -> (||) <$> f1 e <*> f2 e)
+instance semigroupCanceler ∷ Apply m ⇒ Semigroup (Canceler m) where
+  append (Canceler f1) (Canceler f2) = Canceler (\e → (||) <$> f1 e <*> f2 e)
 
-instance monoidCanceler :: Applicative m => Monoid (Canceler m) where
+instance monoidCanceler ∷ Applicative m ⇒ Monoid (Canceler m) where
   mempty = Canceler (const (pure true))
 
-cancel :: forall m. Canceler m -> Error -> m Boolean
+cancel ∷ ∀ m. Canceler m → Error → m Boolean
 cancel (Canceler f) = f
 
 main ∷ Eff SlamDataEffects Unit
@@ -105,8 +105,8 @@ initialAVar = Tuple mempty M.empty
 
 routeSignal ∷ Driver QueryP SlamDataRawEffects → Slam Unit
 routeSignal driver = do
-  avar ← (fromAff :: forall eff. Aff (avar :: AVAR | eff) ~> Slam) $ makeVar' initialAVar
-  routeTpl ← (fromAff :: Aff SlamDataEffects ~> Slam) $ matchesAff routing
+  avar ← fromAff $ makeVar' initialAVar
+  routeTpl ← fromAff $ matchesAff routing
   uncurry (redirects driver avar) routeTpl
 
 redirects
@@ -163,7 +163,7 @@ checkMount path driver = do
       -- configured as a mount - if `/` is not a mount and also has no children
       -- then we know it's in this unconfigured state.
       when (path == rootDir) do
-        void $ Quasar.children path >>= traverse \children ->
+        void $ Quasar.children path >>= traverse \children →
           when (null children) $
             fromAff $ driver $ left $ action $ SetIsMount true
     Right _ →
