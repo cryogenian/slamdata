@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.BuildChart.Funnel.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
@@ -62,22 +62,22 @@ initialState =
 type StateP =
   ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
-_category ∷ ∀ a r. LensP { category ∷ a | r } a
+_category ∷ ∀ a r. Lens' { category ∷ a | r } a
 _category = lens _.category _{ category = _ }
 
-_value ∷ ∀ a r. LensP { value ∷ a | r } a
+_value ∷ ∀ a r. Lens' { value ∷ a | r } a
 _value = lens _.value _{ value = _ }
 
-_valueAgg ∷ ∀ a r. LensP { valueAgg ∷ a | r } a
+_valueAgg ∷ ∀ a r. Lens' { valueAgg ∷ a | r } a
 _valueAgg = lens _.valueAgg _{ valueAgg = _ }
 
-_series ∷ ∀ a r. LensP { series ∷ a | r } a
+_series ∷ ∀ a r. Lens' { series ∷ a | r } a
 _series = lens _.series _{ series = _ }
 
-_align ∷ ∀ a r. LensP { align ∷ a | r } a
+_align ∷ ∀ a r. Lens' { align ∷ a | r } a
 _align = lens _.align _{ align = _ }
 
-_order ∷ ∀ a r. LensP { order ∷ a | r } a
+_order ∷ ∀ a r. Lens' { order ∷ a | r } a
 _order = lens _.order _{ order = _ }
 
 showPicker

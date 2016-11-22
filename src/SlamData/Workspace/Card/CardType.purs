@@ -120,12 +120,12 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
     <|> (decodeJson json >>= parseFormInputSetup)
     where
     parseFormInputSetup name = do
-      let fiName = fromMaybe "" $ Str.stripSuffix "-setup" name
+      let fiName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-setup") name
       fity ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseFormInputType fiName
       pure $ SetupFormInput fity
 
     parseChartOptions name = do
-      let chartName = fromMaybe "" $ Str.stripSuffix "-options" name
+      let chartName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-options") name
       chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseChartType chartName
       pure $ ChartOptions chty
 
@@ -148,6 +148,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "error" → pure ErrorCard
       "pending" → pure PendingCard
       _ → Left "This is not basic card type"
+
 
 cardName ∷ CardType → String
 cardName = case _ of

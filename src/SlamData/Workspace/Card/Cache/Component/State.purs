@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Cache.Component.State where
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy as Path
 
@@ -31,8 +31,8 @@ initialState =
   , confirmedPath: Nothing
   }
 
-_pathString ∷ ∀ a r. LensP {pathString ∷ a|r} a
+_pathString ∷ ∀ a r. Lens' {pathString ∷ a|r} a
 _pathString = lens _.pathString (_{pathString = _})
 
-_confirmedPath ∷ ∀ a r. LensP {confirmedPath ∷ a|r} a
+_confirmedPath ∷ ∀ a r. Lens' {confirmedPath ∷ a|r} a
 _confirmedPath = lens _.confirmedPath (_{confirmedPath = _})

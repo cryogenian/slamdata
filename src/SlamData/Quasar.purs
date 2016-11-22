@@ -23,7 +23,7 @@ import Control.Monad.Eff.Exception as Exn
 import Data.Argonaut ((~>), (:=))
 import Data.Argonaut as JS
 import Data.Array as Arr
-import Data.MediaType (MediaType(..), unMediaType)
+import Data.MediaType (MediaType(..))
 import Data.String as S
 
 import Global (encodeURIComponent)
@@ -41,19 +41,19 @@ ldJSON = MediaType "application/ldjson"
 encodeURI ∷ String → String
 encodeURI str =
   let
-    str' = fromMaybe str $ S.stripPrefix "." str
+    str' = fromMaybe str $ S.stripPrefix (S.Pattern ".") str
 
     encode ∷ String → String
     encode = encodeURIComponent
 
     qmSplit ∷ Array String
-    qmSplit = S.split "?" str'
+    qmSplit = S.split (S.Pattern "?") str'
 
     ampSplit ∷ Maybe (Array String)
-    ampSplit = map (S.split "&") $ qmSplit Arr.!! 1
+    ampSplit = map (S.split (S.Pattern "&")) $ qmSplit Arr.!! 1
 
     eqSplit ∷ Maybe (Array (Array String))
-    eqSplit = map (map $ S.split "=") $ ampSplit
+    eqSplit = map (map $ S.split (S.Pattern "=")) $ ampSplit
 
     maybeModify ∷ ∀ a. Int → (a → a) → Array a → Array a
     maybeModify ix fn arr =
@@ -69,7 +69,7 @@ encodeURI str =
     ampMerged = map (S.joinWith "&") eqMerged
 
     slashSplit ∷ Maybe (Array String)
-    slashSplit = map (S.split "/") $ Arr.head qmSplit
+    slashSplit = map (S.split (S.Pattern "/")) $ Arr.head qmSplit
 
     slashSplitEncoded ∷ Maybe (Array String)
     slashSplitEncoded = map (map encode) $ slashSplit
@@ -89,8 +89,8 @@ encodeURI str =
 reqHeadersToJSON ∷ Array RequestHeader → JS.Json
 reqHeadersToJSON = foldl go JS.jsonEmptyObject
   where
-  go obj (Accept mime) = "Accept" := unMediaType mime ~> obj
-  go obj (ContentType mime) = "Content-Type" := unMediaType mime ~> obj
+  go obj (Accept mime) = "Accept" := unwrap mime ~> obj
+  go obj (ContentType mime) = "Content-Type" := unwrap mime ~> obj
   go obj (RequestHeader k v) = k := v ~> obj
 
 -- | Returns `Nothing` in case the authorization service is not available, and `Just` in case

@@ -17,7 +17,6 @@ limitations under the License.
 module Test.SlamData.Feature.Test.Search where
 
 import Prelude
-import Control.Apply ((*>))
 import Test.Feature.Log (successMsg)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature)

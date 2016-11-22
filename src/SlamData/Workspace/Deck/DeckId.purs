@@ -26,6 +26,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Random as Rand
 import Data.String as S
 import Data.String.Regex as Rx
+import Data.String.Regex.Flags as RXF
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
 import Test.StrongCheck.Arbitrary as SC
@@ -50,7 +51,7 @@ instance arbitraryDeckId ∷ SC.Arbitrary DeckId where
 
 stringToDeckId ∷ String → Either String DeckId
 stringToDeckId str =
-  if Rx.test (unsafePartial fromRight $ Rx.regex "\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}" Rx.noFlags) str
+  if Rx.test (unsafePartial fromRight $ Rx.regex "\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}" RXF.noFlags) str
   then Right $ DeckId str
   else Left $ "Invalid DeckId: " <> str
 

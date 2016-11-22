@@ -25,6 +25,7 @@ import Data.Array as Array
 import Data.Path.Pathy as P
 import Data.String as String
 import Data.String.Regex as Regex
+import Data.String.Regex.Flags as RXF
 import Data.StrMap as SM
 
 import SlamData.Prelude
@@ -95,15 +96,7 @@ eval (Just options) tr = do
   pure $ Port.PivotTable { records, options, taggedResource: tr }
 
 tickRegex ∷ Regex.Regex
-tickRegex = unsafePartial (fromRight (Regex.regex "`" flags))
-  where
-    flags =
-      { global: true
-      , ignoreCase: false
-      , multiline: false
-      , sticky: false
-      , unicode: false
-      }
+tickRegex = unsafePartial (fromRight (Regex.regex "`" RXF.global))
 
 escapeField ∷ String → String
 escapeField str = "`" <> Regex.replace tickRegex "\\`" str <> "`"

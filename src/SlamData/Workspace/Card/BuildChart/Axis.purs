@@ -223,9 +223,9 @@ checkPairs m = case ks of
   ks = M.keys m
 
   check ∷ M.Map JCursor a → JCursor → M.Map JCursor a
-  check m cursor
-    | F.any (dependsOn cursor) ks = m
-    | otherwise = M.delete cursor m
+  check m' cursor
+    | F.any (dependsOn cursor) ks = m'
+    | otherwise = M.delete cursor m'
 
 dependsOn ∷ JCursor → JCursor → Boolean
 dependsOn a b = a ≠ b ∧

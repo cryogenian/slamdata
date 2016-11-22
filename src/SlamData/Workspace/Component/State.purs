@@ -30,7 +30,7 @@ module SlamData.Workspace.Component.State
 
 import SlamData.Prelude
 
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.StateMode (StateMode(..))
@@ -57,27 +57,27 @@ initialState version =
   , flipGuideStep: Nothing
   }
 
-_accessType ∷ ∀ a r. LensP {accessType ∷ a|r} a
+_accessType ∷ ∀ a r. Lens' {accessType ∷ a|r} a
 _accessType = lens _.accessType _{accessType = _}
 
-_loaded ∷ ∀ a r. LensP {loaded ∷ a|r} a
+_loaded ∷ ∀ a r. Lens' {loaded ∷ a|r} a
 _loaded = lens _.loaded _{loaded = _}
 
-_version ∷ ∀ a r. LensP {version ∷ a|r} a
+_version ∷ ∀ a r. Lens' {version ∷ a|r} a
 _version = lens _.version _{version = _}
 
 -- | This is only used while the workspace and initial deck are created, after
 -- | that the value is irrelevant.
-_initialDeckId ∷ ∀ a r. LensP {initialDeckId ∷ a|r} a
+_initialDeckId ∷ ∀ a r. Lens' {initialDeckId ∷ a|r} a
 _initialDeckId = lens _.initialDeckId _{initialDeckId = _}
 
-_stateMode ∷ LensP State StateMode
+_stateMode ∷ Lens' State StateMode
 _stateMode = lens _.stateMode _{stateMode = _}
 
-_cardGuideStep ∷ LensP State (Maybe Int)
+_cardGuideStep ∷ Lens' State (Maybe Int)
 _cardGuideStep = lens _.cardGuideStep _{cardGuideStep = _}
 
-_flipGuideStep ∷ LensP State (Maybe Int)
+_flipGuideStep ∷ Lens' State (Maybe Int)
 _flipGuideStep = lens _.flipGuideStep _{flipGuideStep = _}
 
 cardGuideStepNext ∷ State → State

@@ -206,7 +206,7 @@ render st =
 
   showPrettyNum n =
     let s = show n
-    in fromMaybe s (String.stripSuffix ".0" s)
+    in fromMaybe s (String.stripSuffix (String.Pattern ".0") s)
 
   numFormatter =
     { comma: true

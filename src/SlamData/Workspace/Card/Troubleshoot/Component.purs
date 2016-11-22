@@ -74,7 +74,7 @@ render { varMap } =
       ]
 
 eval ∷ QueryP ~> TroubleshootDSL
-eval = coproduct evalCard (absurd ∘ getConst)
+eval = coproduct evalCard (absurd ∘ unwrap)
 
 evalCard ∷ CC.CardEvalQuery ~> TroubleshootDSL
 evalCard = case _ of

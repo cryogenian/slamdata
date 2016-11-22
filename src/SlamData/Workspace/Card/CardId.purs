@@ -37,7 +37,7 @@ data CardId
   | NextActionCardId
   | PendingCardId
 
-_CardId ∷ Lens.PrismP CardId Int
+_CardId ∷ Lens.Prism' CardId Int
 _CardId =
   Lens.prism CardId
     case _ of
@@ -63,7 +63,7 @@ cardIdToString =
     PendingCardId → "PendingCardId"
     CardId i → show i
 
-_StringCardId ∷ Lens.PrismP String CardId
+_StringCardId ∷ Lens.Prism' String CardId
 _StringCardId = Lens.prism cardIdToString stringToCardId
 
 derive instance genericCardId ∷ Generic CardId

@@ -24,7 +24,7 @@ import SlamData.Prelude
 
 import Data.Foldable as F
 import Data.Lens ((.~))
-import Data.String as Str
+import Data.String as S
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -94,7 +94,7 @@ render state =
   where
 
   filterString ∷ String
-  filterString = Str.toLower state.filterString
+  filterString = S.toLower state.filterString
 
   cardTitle ∷ NA.NextAction → String
   cardTitle (NA.Insert cty) = "Insert a " ⊕ CT.cardName cty ⊕ " card"
@@ -114,7 +114,7 @@ render state =
     enabled ∷ Boolean
     enabled = case action of
       NA.GoBack → true
-      _ → F.any (Str.contains filterString ∘ Str.toLower) $ NA.searchFilters action
+      _ → F.any (S.contains (S.Pattern filterString) ∘ S.toLower) $ NA.searchFilters action
 
     attrs =
       [ HP.title $ cardTitle action

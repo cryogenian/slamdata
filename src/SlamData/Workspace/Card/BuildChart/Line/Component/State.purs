@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.BuildChart.Line.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
@@ -70,28 +70,28 @@ initialState =
 type StateP =
   ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
-_dimension ∷ ∀ r a. LensP { dimension ∷ a | r } a
+_dimension ∷ ∀ r a. Lens' { dimension ∷ a | r } a
 _dimension = lens _.dimension _{ dimension = _ }
 
-_value ∷ ∀ r a. LensP { value ∷ a | r } a
+_value ∷ ∀ r a. Lens' { value ∷ a | r } a
 _value = lens _.value _{ value = _ }
 
-_valueAgg ∷ ∀ r a. LensP { valueAgg ∷ a | r } a
+_valueAgg ∷ ∀ r a. Lens' { valueAgg ∷ a | r } a
 _valueAgg = lens _.valueAgg _{ valueAgg = _ }
 
-_secondValue ∷ ∀ r a. LensP { secondValue ∷ a | r } a
+_secondValue ∷ ∀ r a. Lens' { secondValue ∷ a | r } a
 _secondValue = lens _.secondValue _{ secondValue = _ }
 
-_secondValueAgg ∷ ∀ r a. LensP { secondValueAgg ∷ a | r } a
+_secondValueAgg ∷ ∀ r a. Lens' { secondValueAgg ∷ a | r } a
 _secondValueAgg = lens _.secondValueAgg _{ secondValueAgg = _ }
 
-_size ∷ ∀ r a. LensP { size ∷ a | r } a
+_size ∷ ∀ r a. Lens' { size ∷ a | r } a
 _size = lens _.size _{ size = _ }
 
-_sizeAgg ∷ ∀ r a. LensP { sizeAgg ∷ a | r } a
+_sizeAgg ∷ ∀ r a. Lens' { sizeAgg ∷ a | r } a
 _sizeAgg = lens _.sizeAgg _{ sizeAgg = _ }
 
-_series ∷ ∀ r a. LensP { series ∷ a | r } a
+_series ∷ ∀ r a. Lens' { series ∷ a | r } a
 _series = lens _.series _{ series = _ }
 
 showPicker

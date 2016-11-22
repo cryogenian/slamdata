@@ -28,6 +28,7 @@ import Data.Map as Map
 import Data.Path.Pathy as Pathy
 import Data.String as Str
 import Data.String.Regex as RX
+import Data.String.Regex.Flags as RXF
 import Data.StrMap as SM
 
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
@@ -547,7 +548,7 @@ renderCopyVal locString state
 renderVarMaps ∷ Map.Map DeckId Port.VarMap → String
 renderVarMaps = indent <<< prettyJson <<< encodeVarMaps <<< varMapsForURL
   where
-  indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" (RX.noFlags { global = true })) "$1    "
+  indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" RXF.global) "$1    "
 
 renderURL ∷ String → State → String
 renderURL locationString state@{sharingInput, varMaps, permToken, isLoggedIn} =

@@ -18,7 +18,7 @@ module SlamData.FileSystem.Dialog.Explore.Component where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP, lens, (.~))
+import Data.Lens (Lens', lens, (.~))
 import Data.Path.Pathy as Pt
 
 import Halogen as H
@@ -48,10 +48,10 @@ initialState fp =
   }
 
 
-_filePath ∷ ∀ a r. LensP {filePath ∷ a |r} a
+_filePath ∷ ∀ a r. Lens' {filePath ∷ a |r} a
 _filePath = lens (_.filePath) (_{filePath = _})
 
-_workspaceName ∷ ∀ a r. LensP {workspaceName ∷ a|r} a
+_workspaceName ∷ ∀ a r. Lens' {workspaceName ∷ a|r} a
 _workspaceName = lens (_.workspaceName) (_{workspaceName = _})
 
 

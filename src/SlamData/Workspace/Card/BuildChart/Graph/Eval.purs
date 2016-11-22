@@ -27,10 +27,10 @@ import Data.Foldable as F
 import Data.Foreign as FR
 import Data.Foreign.Class (readProp)
 import Data.Int as Int
-import Data.Lens ((^?))
 import Data.Map as M
 import Data.String as Str
 import Data.String.Regex as Rgx
+import Data.String.Regex.Flags as RXF
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -197,13 +197,13 @@ buildGraphData records r =
       r.maxSize - sizeDistance / distance * (maximumValue - val)
 
   nodes ∷ Array GraphItem
-  nodes = rawNodes <#> \r → r{size = map relativeSize r.value}
+  nodes = rawNodes <#> \r' → r' { size = map relativeSize r'.value }
 
 sourceRgx ∷ Rgx.Regex
-sourceRgx = unsafePartial fromRight $ Rgx.regex "source:([^:]+)" Rgx.noFlags
+sourceRgx = unsafePartial fromRight $ Rgx.regex "source:([^:]+)" RXF.noFlags
 
 categoryRgx ∷ Rgx.Regex
-categoryRgx = unsafePartial fromRight $ Rgx.regex "category:([^:]+)" Rgx.noFlags
+categoryRgx = unsafePartial fromRight $ Rgx.regex "category:([^:]+)" RXF.noFlags
 
 buildGraph ∷ GraphR → JArray → DSL OptionI
 buildGraph r records = do
@@ -236,10 +236,10 @@ buildGraph r records = do
              r.sizeAggregation)
       in fromMaybe itemTooltip do
         guard $ dataType ≡ "edge"
-        source ← either (const Nothing) Just $ FR.readString =<< readProp "source" fItem
-        target ← either (const Nothing) Just $ FR.readString =<< readProp "target" fItem
-        sourceName ← Str.stripPrefix "edge " source
-        targetName ← Str.stripPrefix "edge " target
+        source ← either (const Nothing) Just $ runExcept $ FR.readString =<< readProp "source" fItem
+        target ← either (const Nothing) Just $ runExcept $ FR.readString =<< readProp "target" fItem
+        sourceName ← Str.stripPrefix (Str.Pattern "edge ") source
+        targetName ← Str.stripPrefix (Str.Pattern "edge ") target
         pure $ sourceName ⊕ " > " ⊕ targetName
 
   E.legend do

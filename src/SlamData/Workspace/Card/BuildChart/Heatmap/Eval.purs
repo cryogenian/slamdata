@@ -25,7 +25,6 @@ import Color as C
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
-import Data.Lens ((^?))
 import Data.Map as M
 import Data.Int as Int
 import Data.Set as Set

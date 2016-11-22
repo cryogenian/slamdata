@@ -34,6 +34,7 @@ import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
+import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Table.Model as JT
@@ -59,6 +60,7 @@ import SlamData.Workspace.Card.BuildChart.PunchCard.Model as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Model as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Model as BuildParallel
 import SlamData.Workspace.Card.BuildChart.Legacy as ChartLegacy
+import SlamData.Workspace.Card.SetupFormInput.Dropdown.Model as SetupDropdown
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -93,6 +95,7 @@ data AnyCardModel
   | BuildPunchCard BuildPunchCard.Model
   | BuildCandlestick BuildCandlestick.Model
   | BuildParallel BuildParallel.Model
+  | SetupDropdown SetupDropdown.Model
   | ErrorCard
   | NextAction
   | PendingCard
@@ -127,6 +130,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , BuildPunchCard <$> BuildPunchCard.genModel
       , BuildCandlestick <$> BuildCandlestick.genModel
       , BuildParallel <$> BuildParallel.genModel
+      , SetupDropdown <$> SetupDropdown.genModel
       , pure ErrorCard
       , pure NextAction
       ]
@@ -162,6 +166,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       BuildPunchCard x, BuildPunchCard y → BuildPunchCard.eqModel x y
       BuildCandlestick x, BuildCandlestick y → BuildCandlestick.eqModel x y
       BuildParallel x, BuildParallel y → BuildParallel.eqModel x y
+      SetupDropdown x, SetupDropdown y → SetupDropdown.eqModel x y
       ErrorCard, ErrorCard → true
       NextAction, NextAction → true
       _,_ → false
@@ -193,6 +198,7 @@ modelCardType =
     BuildPunchCard _ → CT.ChartOptions PunchCard
     BuildCandlestick _ → CT.ChartOptions Candlestick
     BuildParallel _ → CT.ChartOptions Parallel
+    SetupDropdown _ → CT.SetupFormInput Dropdown
     Chart _ → CT.Chart
     Markdown _ → CT.Markdown
     Table _ → CT.Table
@@ -289,6 +295,7 @@ encodeCardModel = case _ of
   BuildPunchCard model → BuildPunchCard.encode model
   BuildCandlestick model → BuildCandlestick.encode model
   BuildParallel model → BuildParallel.encode model
+  SetupDropdown model → SetupDropdown.encode model
   ErrorCard → J.jsonEmptyObject
   NextAction → J.jsonEmptyObject
   PendingCard → J.jsonEmptyObject
@@ -318,6 +325,7 @@ decodeCardModel = case _ of
   CT.ChartOptions PunchCard → map BuildPunchCard ∘ BuildPunchCard.decode
   CT.ChartOptions Candlestick → map BuildCandlestick ∘ BuildCandlestick.decode
   CT.ChartOptions Parallel → map BuildParallel ∘ BuildParallel.decode
+  CT.SetupFormInput Dropdown → map SetupDropdown ∘ SetupDropdown.decode
   CT.SetupFormInput _ → const $ pure ErrorCard
   CT.Chart → map Chart ∘ Chart.decode
   CT.FormInput → const $ pure ErrorCard
@@ -359,6 +367,7 @@ cardModelOfType = case _ of
   CT.ChartOptions PunchCard → BuildPunchCard BuildPunchCard.initialModel
   CT.ChartOptions Candlestick → BuildCandlestick BuildCandlestick.initialModel
   CT.ChartOptions Parallel → BuildParallel BuildParallel.initialModel
+  CT.SetupFormInput Dropdown → SetupDropdown SetupDropdown.initialModel
   CT.SetupFormInput _ → ErrorCard
   CT.Chart → Chart Chart.emptyModel
   CT.FormInput → ErrorCard
@@ -434,5 +443,7 @@ modelToEval = case _ of
     pure $ Eval.BuildCandlestick model
   BuildParallel model →
     pure $ Eval.BuildParallel model
+  SetupDropdown model →
+    pure $ Eval.SetupDropdown model
   _ →
     pure Eval.Pass

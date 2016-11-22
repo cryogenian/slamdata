@@ -3,11 +3,11 @@ module SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
-import SlamData.Common.Align (Align(..))
+import SlamData.Common.Align (Align)
 import SlamData.Monad (Slam)
 import SlamData.Form.Select (Select, emptySelect)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -23,8 +23,8 @@ type State =
   , name ∷ Select JCursor
   , label ∷ Select JCursor
   , value ∷ Select JCursor
-  , verticalAlign ∷ Align
-  , horizontalAlign ∷ Align
+  , verticalAlign ∷ Select Align
+  , horizontalAlign ∷ Select Align
   }
 
 initialState ∷ State
@@ -35,21 +35,27 @@ initialState =
   , name: emptySelect
   , value: emptySelect
   , label: emptySelect
-  , verticalAlign: CenterAlign
-  , horizontalAlign: CenterAlign
+  , verticalAlign: emptySelect
+  , horizontalAlign: emptySelect
   }
 
-type SateP =
+type StateP =
   ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
-_name ∷ ∀ r a. LensP { name ∷ a | r} a
+_name ∷ ∀ r a. Lens' { name ∷ a | r} a
 _name = lens _.name _ { name = _ }
 
-_value ∷ ∀ r a. LensP { value ∷ a | r } a
+_value ∷ ∀ r a. Lens' { value ∷ a | r } a
 _value = lens _.value _ { value = _ }
 
-_label ∷ ∀ r a. LensP { label ∷ a | r } a
+_label ∷ ∀ r a. Lens' { label ∷ a | r } a
 _label = lens _.label _ { label = _ }
+
+_horizontalAlign ∷ ∀ r a. Lens' { horizontalAlign ∷ a |r} a
+_horizontalAlign = lens _.horizontalAlign _{ horizontalAlign = _ }
+
+_verticalAlign ∷ ∀ r a. Lens' { verticalAlign ∷ a | r} a
+_verticalAlign = lens _.verticalAlign _{ verticalAlign = _ }
 
 showPicker
   ∷ (Const Unit JCursor → Selection (Const Unit))

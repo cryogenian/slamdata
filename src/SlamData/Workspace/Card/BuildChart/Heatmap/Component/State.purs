@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.BuildChart.Heatmap.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
@@ -67,22 +67,22 @@ initialState =
 type StateP =
   ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
-_abscissa ∷ ∀ a r. LensP { abscissa ∷ a | r } a
+_abscissa ∷ ∀ a r. Lens' { abscissa ∷ a | r } a
 _abscissa = lens _.abscissa _{ abscissa = _ }
 
-_ordinate ∷ ∀ a r. LensP { ordinate ∷ a | r } a
+_ordinate ∷ ∀ a r. Lens' { ordinate ∷ a | r } a
 _ordinate = lens _.ordinate _{ ordinate = _ }
 
-_value ∷ ∀ a r. LensP { value ∷ a | r } a
+_value ∷ ∀ a r. Lens' { value ∷ a | r } a
 _value = lens _.value _{ value = _ }
 
-_valueAgg ∷ ∀ a r. LensP { valueAgg ∷ a | r } a
+_valueAgg ∷ ∀ a r. Lens' { valueAgg ∷ a | r } a
 _valueAgg = lens _.valueAgg _{ valueAgg = _ }
 
-_series ∷ ∀ a r. LensP { series ∷ a | r} a
+_series ∷ ∀ a r. Lens' { series ∷ a | r} a
 _series = lens _.series _{ series = _ }
 
-_colorScheme ∷ ∀ a r. LensP { colorScheme ∷ a | r } a
+_colorScheme ∷ ∀ a r. Lens' { colorScheme ∷ a | r } a
 _colorScheme = lens _.colorScheme _{ colorScheme = _ }
 
 showPicker

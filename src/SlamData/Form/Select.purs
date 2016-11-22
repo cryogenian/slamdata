@@ -22,8 +22,8 @@ import SlamData.Prelude
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, JCursor, decodeJson, jsonEmptyObject, (.?), (~>), (:=))
 import Data.Array (filter, length, head, (!!), elemIndex)
-import Data.Lens (LensP, lens, view, (^.), (?~), (.~))
-import Data.Monoid.Conj (Conj(..), runConj)
+import Data.Lens (Lens', lens, view, (^.), (?~), (.~))
+import Data.Monoid.Conj (Conj(..))
 import Test.StrongCheck.Arbitrary as SC
 
 class (Eq a) ⇐ OptionVal a where
@@ -48,13 +48,13 @@ newtype Select a = Select (SelectR a)
 isSelected ∷ ∀ a. Select a → Boolean
 isSelected (Select {value}) = isJust value
 
-_Select ∷ ∀ a. LensP (Select a) (SelectR a)
+_Select ∷ ∀ a. Lens' (Select a) (SelectR a)
 _Select = lens (\(Select obj) → obj) (const Select)
 
-_options ∷ ∀ a. LensP (Select a) (Array a)
+_options ∷ ∀ a. Lens' (Select a) (Array a)
 _options = _Select ∘ lens _.options _{options = _}
 
-_value ∷ ∀ a. LensP (Select a) (Maybe a)
+_value ∷ ∀ a. Lens' (Select a) (Maybe a)
 _value = _Select ∘ lens _.value _{value = _}
 
 emptySelect ∷ ∀ a. Select a
@@ -135,7 +135,7 @@ ifSelected
   → m b
   → m b
 ifSelected sels arr =
-  guard (runConj $ foldMap (Conj ∘ isJust ∘ view _value) sels) *> arr
+  guard (alaF Conj foldMap (isJust ∘ view _value) sels) *> arr
 
 setPreviousValueFrom
   ∷ ∀ a. (Eq a) ⇒ Maybe (Select a) → Select a → Select a

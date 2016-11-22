@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Chart.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (lens, LensP)
+import Data.Lens (lens, Lens')
 
 import Halogen (ParentState)
 
@@ -35,10 +35,10 @@ type State =
   , chartType ∷ Maybe ChartType
   }
 
-_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
+_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a|r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
-_chartType ∷ ∀ a r. LensP {chartType ∷ a|r} a
+_chartType ∷ ∀ a r. Lens' {chartType ∷ a|r} a
 _chartType = lens (_.chartType) (_{chartType = _})
 
 

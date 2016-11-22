@@ -102,22 +102,21 @@ walkWithLocator f = go rootLocator
         case p of
           Cell _ → acc
           Split orn ps →
-            goIx x y w h zero 0 orn acc ps
+            goIx c x y w h zero 0 orn acc ps
     in
       f loc acc' p
 
-    where
-    goIx x y w h off ix orn acc ps =
-      case ps of
-        Nil → acc
-        (r × p) : ps' →
-          case orn of
-            Horizontal →
-              goIx (r * w + x) y w h (off + r) (ix + 1) orn
-                (go (Locator (ix : c) x y (r * w) h off r) acc p) ps'
-            Vertical →
-              goIx x (r * h + y) w h (off + r) (ix + 1) orn
-                (go (Locator (ix : c) x y w (r * h) off r) acc p) ps'
+  goIx c x y w h off ix orn acc ps =
+    case ps of
+      Nil → acc
+      (r × p) : ps' →
+        case orn of
+          Horizontal →
+            goIx c (r * w + x) y w h (off + r) (ix + 1) orn
+              (go (Locator (ix : c) x y (r * w) h off r) acc p) ps'
+          Vertical →
+            goIx c x (r * h + y) w h (off + r) (ix + 1) orn
+              (go (Locator (ix : c) x y w (r * h) off r) acc p) ps'
 
 -- | Fold over a cursor (leaf to root).
 runCursor

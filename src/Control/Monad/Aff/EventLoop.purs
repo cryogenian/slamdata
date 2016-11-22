@@ -27,8 +27,7 @@ module Control.Monad.Aff.EventLoop
 import Prelude
 import Control.Monad.Aff.AVar (AffAVar, AVAR, makeVar', takeVar, putVar)
 import Control.Monad.Aff.Free (class Affable, fromAff)
-import Control.Monad.Rec.Class (class MonadRec, tailRecM)
-import Data.Either (Either(..))
+import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
 import Data.Maybe (Maybe(..), maybe)
 
 newtype Breaker a = Breaker (∀ eff. a → AffAVar eff Unit)
@@ -51,8 +50,8 @@ make go = do
     res ← takeVar breaker
     putVar breaker Nothing
     case res of
-      Nothing → maybe (Left unit) Right <$> go
-      Just a → pure (Right a)
+      Nothing → maybe (Loop unit) Done <$> go
+      Just a → pure (Done a)
 
 -- | Like `make` but with an Affable constraint.
 make'
@@ -72,8 +71,8 @@ make' go = fromAff do
     res ← fromAff (takeVar breaker)
     fromAff (putVar breaker Nothing)
     case res of
-      Nothing → maybe (Left unit) Right <$> go
-      Just a → pure (Right a)
+      Nothing → maybe (Loop unit) Done <$> go
+      Just a → pure (Done a)
 
 forever
   ∷ ∀ eff a

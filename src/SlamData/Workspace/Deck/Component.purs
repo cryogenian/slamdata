@@ -683,9 +683,9 @@ runPendingCards opts source pendingCard pendingCards = do
     pendingCoord = DCS.coordModelToCoord pendingCard
     splitCards = L.span (not ∘ DCS.eqCoordModel pendingCoord) $ L.fromFoldable st.modelCards
     prevCard = DCS.coordModelToCoord <$> L.last splitCards.init
-    pendingCards = L.Cons pendingCard <$> L.tail splitCards.rest
+    pendingCards' = L.Cons pendingCard <$> L.tail splitCards.rest
 
-  for_ pendingCards \cards → do
+  for_ pendingCards' \cards → do
     input ← join <$> for prevCard (flip getCache wiring.cards)
     steps ← resume wiring st (input >>= _.output <#> map fst) cards
     runCardUpdates opts source steps
@@ -818,7 +818,7 @@ runCardUpdates opts source steps = do
     H.modify $ DCS._displayCards .~ displayCards
 
   updateActiveCardAndIndicator
-  for_ updateResult.updates $ updateCard st source loadedCards
+  for_ updateResult.updates $ updateCard st loadedCards
   updateCardSize
 
   where
@@ -850,11 +850,10 @@ runCardUpdates opts source steps = do
 
   updateCard
     ∷ DCS.State
-    → DeckId
     → Set.Set (DeckId × CardId)
     → CardEval
     → DeckDSL Unit
-  updateCard st source loadedCards step = void do
+  updateCard st loadedCards step = void do
     Wiring wiring ← H.liftH $ H.liftH ask
     input ← for step.input (H.liftH ∘ H.liftH ∘ Pr.wait)
     output ← for step.output (H.liftH ∘ H.liftH ∘ Pr.wait)
@@ -973,8 +972,8 @@ loadMirroredCards coords = do
   res ← H.liftH $ H.liftH $ sequence <$> parTraverse W.getDeck deckIds
   pure $ hydrateCards coords =<< map (Array.zip deckIds) res
   where
-  hydrateCards coords decks =
-    for coords \(deckId × cardId) →
+  hydrateCards coords' decks =
+    for coords' \(deckId × cardId) →
       case find (eq deckId ∘ fst) decks of
         Nothing → Left (QE.msgToQError "Deck not found")
         Just (_ × deck) →

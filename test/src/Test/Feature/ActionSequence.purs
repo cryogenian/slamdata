@@ -27,7 +27,7 @@ import Prelude
 
 import Data.Foldable (traverse_)
 import Data.List (List)
-import Data.String (split)
+import Data.String as S
 import Data.Unfoldable (replicate)
 
 import Selenium.ActionSequence (Sequence, sendKeys, keyDown, keyUp)
@@ -58,15 +58,6 @@ sendKeyCombo ctrlKeys str = do
   sendKeys str
   traverse_ keyUp ctrlKeys
 
--- Send keys one by one and replace if they can't be processed
--- by selenium driver
+-- Send keys one by one.
 keys ∷ String → Sequence Unit
-keys str = traverse_ sendKey $ split "" str
-  where
-  sendKey ∷ String → Sequence Unit
-  sendKey "!" = shifted "1"
-  sendKey "(" = shifted "9"
-  sendKey ")" = shifted "0"
-  sendKey "#" = shifted "3"
-  sendKey "-" = sendKeys "\xE027"
-  sendKey a = sendKeys a
+keys str = traverse_ sendKeys $ S.split (S.Pattern "") str
