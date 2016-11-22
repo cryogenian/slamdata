@@ -51,7 +51,6 @@ import SlamData.Config as Config
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
 import SlamData.Guide as Guide
-import SlamData.Quasar.Error as QE
 import SlamData.Wiring (DeckMessage(..))
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
@@ -68,7 +67,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Next.Component.Query as Next
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
-import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, ChildQuery, ChildSlot, cpDialog)
+import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, ChildQuery, ChildSlot, cpDialog, cpBackSide)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
 import SlamData.Workspace.Deck.Component.Render as DCR
@@ -261,9 +260,9 @@ peekBackSide opts (Back.DoAction action _) = do
   { path } ← H.liftH $ H.liftH Wiring.expose
   case action of
     Back.Trash → do
-      state ← H.get
-      lastId ← H.gets DCS.findLastCard
-      for_ (DCS.activeCard state <|> lastId) $ traverse_ \trashId → do
+      active ← H.gets DCS.activeCard
+      for_ (join $ censor <$> active) \{ coord } → do
+        removeCard coord
         -- FIXME
         H.modify
           $ (DCS._displayMode .~ DCS.Normal)
@@ -351,15 +350,19 @@ updateActiveState = do
 
 updateBackSide ∷ DeckOptions → DeckDSL Unit
 updateBackSide { cursor } = do
+  st ← H.get
+  let
+    ty = _.cardType <$> join (censor <$> DCS.activeCard st)
+    tys = _.cardType <$> Array.mapMaybe censor st.displayCards
+  void $ H.query' cpBackSide unit $ H.action $ Back.UpdateCardType ty tys
   -- FIXME
   pure unit
 
 createCard ∷ CT.CardType → DeckDSL Unit
-createCard cardType = do
-  st ← H.get
-  { bus } ← H.liftH $ H.liftH $ P.getDeck' st.id
-  H.fromAff $ Bus.write (ED.AddCard cardType) bus
-  pure unit
+createCard = broadcast ∘ ED.AddCard
+
+removeCard ∷ DeckId × CardId → DeckDSL Unit
+removeCard = broadcast ∘ ED.RemoveCard
 
 dismissedAccessNextActionCardGuideKey ∷ String
 dismissedAccessNextActionCardGuideKey = "dismissedAccessNextActionCardGuide"
@@ -451,7 +454,7 @@ loadDeck opts = do
       H.modify _ { stateMode = Error "Error loading deck" }
     Right deck → do
       let
-        coords = deck.mirror <> map (Tuple st.id ∘ _.cardId) deck.cards
+        coords = Model.cardCoords st.id deck
       case Array.head coords of
         Just coord →
           H.fromAff $ Bus.write (ED.Force (opts.cursor × coord)) bus
@@ -464,31 +467,34 @@ handleEval = case _ of
     H.modify (DCS.addMetaCard DCS.PendingCard)
   ED.Complete coords res → do
     st ← H.get
-    mbCards ← H.liftH $ H.liftH $ sequence <$> traverse P.getCard coords
-    let
-      newDefs = mbCards <#> Array.zip coords >>> map \(coord × c) →
-        { coord
-        , cardType: Card.modelCardType c.value.model.model
-        }
-      displayCards = case newDefs >>= Array.uncons of
-        Just { head, tail } →
-          let
-            realCards = Array.mapMaybe censor st.displayCards
-            initCards = Array.takeWhile (not ∘ eq head.coord ∘ _.coord) realCards
-            newCards = Array.cons head tail
-            metaCard =
-              pure $ Left case res of
-                Port.CardError str → DCS.ErrorCard str
-                _ → DCS.NextActionCard res
-          in
-            (Right <$> initCards <> newCards) <> metaCard
-        Nothing →
-          [ Left (DCS.ErrorCard "No cards to display") ]
-    H.modify _
-      { displayCards = displayCards
-      }
+    mbCards ← getCardCells coords
+    let newDefs = map makeDef ∘ Array.zip coords <$> mbCards
+    H.modify (updateDisplayCards newDefs res)
   _ →
     pure unit
+
+  where
+  getCardCells coords =
+    H.liftH $ H.liftH $ sequence <$> traverse P.getCard coords
+
+  makeDef (coord × c) =
+    { coord, cardType: Card.modelCardType c.value.model.model }
+
+  updateDisplayCards defs res st =
+    case Array.uncons =<< defs of
+      Just { head, tail } →
+        let
+          realCards = Array.mapMaybe censor st.displayCards
+          initCards = Array.takeWhile (not ∘ eq head.coord ∘ _.coord) realCards
+          newCards = Array.cons head tail
+          metaCard =
+            pure $ Left case res of
+              Port.CardError str → DCS.ErrorCard str
+              _ → DCS.NextActionCard res
+        in
+          st { displayCards = (Right <$> initCards <> newCards) <> metaCard }
+      Nothing →
+        st { displayCards = [ Left (DCS.NextActionCard Port.Initial) ] }
 
 getSharingInput ∷ DeckDSL SharingInput
 getSharingInput = do
@@ -512,12 +518,6 @@ updateCardSize = do
     | w < 720.0 = DCS.XLarge
     | otherwise = DCS.XXLarge
 
-getDeck
-  ∷ DeckId
-  → DeckDSL (Either QE.QError Model.Deck)
-getDeck deckId =
-  H.liftH $ H.liftH $ P.getDeck deckId
-
 presentFlipGuideFirstTime ∷ DeckDSL Unit
 presentFlipGuideFirstTime = do
   H.gets _.displayMode >>=
@@ -539,3 +539,10 @@ shouldPresentFlipGuide =
 queryRootDeckCard ∷ ∀ a. CardId → CQ.AnyCardQuery a → DeckDSL (Maybe a)
 queryRootDeckCard cid query =
   flip queryCard query ∘ flip Tuple cid =<< H.gets _.id
+
+broadcast ∷ ED.EvalMessage → DeckDSL Unit
+broadcast msg = do
+  st ← H.get
+  { bus } ← H.liftH $ H.liftH $ P.getDeck' st.id
+  H.fromAff $ Bus.write msg bus
+  pure unit

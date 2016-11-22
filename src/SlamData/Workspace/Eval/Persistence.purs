@@ -37,6 +37,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port (Port)
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
@@ -54,16 +55,15 @@ defaultSaveDebounce = 500
 defaultEvalDebounce ∷ Int
 defaultEvalDebounce = 500
 
-putDeck
-  ∷ ∀ m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork m
-    , QuasarDSL m
-    )
-  ⇒ Deck.Id
-  → Deck.Model
-  → m (Either QE.QError Unit)
+type Persist f m a =
+  ( Affable SlamDataEffects m
+  , MonadAsk Wiring m
+  , MonadFork m
+  , Parallel f m
+  , QuasarDSL m
+  ) ⇒ a
+
+putDeck ∷ ∀ f m. Persist f m (Deck.Id → Deck.Model → m (Either QE.QError Unit))
 putDeck deckId deck = do
   { path, eval } ← Wiring.expose
   ref ← defer do
@@ -74,15 +74,7 @@ putDeck deckId deck = do
     eval.decks
   rmap (const unit) <$> wait ref
 
-saveDeck
-  ∷ ∀ m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork m
-    , QuasarDSL m
-    )
-  ⇒ Deck.Id
-  → m Unit
+saveDeck ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
 saveDeck deckId = do
   { eval } ← Wiring.expose
   newDeck ← runMaybeT do
@@ -93,32 +85,14 @@ saveDeck deckId = do
   for_ newDeck (void ∘ putDeck deckId)
 
 -- | Loads a deck from a DeckId. Returns the model.
-getDeck
-  ∷ ∀ f m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork m
-    , Parallel f m
-    , QuasarDSL m
-    )
-  ⇒ Deck.Id
-  → m (Either QE.QError Deck.Model)
+getDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Model))
 getDeck =
   getDeck' >=> _.value >>> wait
 
 -- | Loads a deck from a DeckId. This has the effect of loading decks from
 -- | which it extends (for mirroring) and populating the card graph. Returns
 -- | the "cell" (model promise paired with its message bus).
-getDeck'
-  ∷ ∀ f m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork m
-    , Parallel f m
-    , QuasarDSL m
-    )
-  ⇒ Deck.Id
-  → m Deck.Cell
+getDeck' ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Cell)
 getDeck' deckId = do
   { path, eval } ← Wiring.expose
   let
@@ -148,17 +122,7 @@ getDeck' deckId = do
 
 -- | Populates the card eval graph based on a deck model. This may fail as it
 -- | also attempts to load/hydrate foreign cards (mirrors) as well.
-populateCards
-  ∷ ∀ f m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork m
-    , Parallel f m
-    , QuasarDSL m
-    )
-  ⇒ Deck.Id
-  → Deck.Model
-  → m (Either QE.QError Unit)
+populateCards ∷ ∀ f m. Persist f m (Deck.Id → Deck.Model → m (Either QE.QError Unit))
 populateCards deckId deck = runExceptT do
   { eval } ← Wiring.expose
   decks ←
@@ -242,17 +206,7 @@ forkLoop handler bus = void (fork loop)
       fork (handler msg)
       loop
 
-forkDeckProcess
-  ∷ ∀ f m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork m
-    , Parallel f m
-    , QuasarDSL m
-    )
-  ⇒ Deck.Id
-  → Bus.BusRW Deck.EvalMessage
-  → m Unit
+forkDeckProcess ∷ ∀ f m . Persist f m (Deck.Id → Bus.BusRW Deck.EvalMessage → m Unit)
 forkDeckProcess deckId = forkLoop case _ of
   Deck.Force source@(_ × coord) →
     queueEval 0 source coord
@@ -278,22 +232,30 @@ forkDeckProcess deckId = forkLoop case _ of
       forkCardProcess coord cell.bus
       queueSave defaultSaveDebounce deckId
       queueEval 0 (mempty × coord) coord
-  Deck.RemoveCard coord →
-    pure unit
+  Deck.RemoveCard coord@(deckId' × cardId) → do
+    { eval } ← Wiring.expose
+    deckCell ← getDeck' deckId
+    mbDeck ← wait deckCell.value
+    for_ mbDeck \deck → do
+      let
+        coords = Array.span (not ∘ eq coord) (Deck.cardCoords deckId deck)
+        deck' =
+          if deckId ≡ deckId'
+            then deck { cards = Array.takeWhile (not ∘ eq cardId ∘ _.cardId) deck.cards }
+            else deck { cards = [], mirror = Array.takeWhile (not ∘ eq coord) deck.mirror }
+      output ← runMaybeT do
+        last ← MaybeT $ pure $ Array.last coords.init
+        cell ← MaybeT $ Cache.get last eval.cards
+        lift $ Cache.put last (cell { next = List.delete coord cell.next }) eval.cards
+        MaybeT $ pure $ cell.value.output
+      value' ← defer (pure (Right deck'))
+      Cache.put deckId (deckCell { value = value' }) eval.decks
+      queueSave defaultSaveDebounce deckId
+      fromAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
   _ →
     pure unit
 
-forkCardProcess
-  ∷ ∀ f m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork m
-    , Parallel f m
-    , QuasarDSL m
-    )
-  ⇒ Card.Coord
-  → Bus.BusRW Card.EvalMessage
-  → m Unit
+forkCardProcess ∷ ∀ f m. Persist f m (Card.Coord → Bus.BusRW Card.EvalMessage → m Unit)
 forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
   Card.ModelChange source model → do
     { eval } ← Wiring.expose
@@ -313,33 +275,13 @@ forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
           }
       }
 
-queueSave
-  ∷ ∀ m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork m
-    , QuasarDSL m
-    )
-  ⇒ Int
-  → Deck.Id
-  → m Unit
+queueSave ∷ ∀ f m. Persist f m (Int → Deck.Id → m Unit)
 queueSave ms deckId = do
   { eval } ← Wiring.expose
   debounce ms deckId { avar: _ } eval.pendingSaves do
     saveDeck deckId
 
-queueEval
-  ∷ ∀ f m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork m
-    , Parallel f m
-    , QuasarDSL m
-    )
-  ⇒ Int
-  → Card.DisplayCoord
-  → Card.Coord
-  → m Unit
+queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → Card.Coord → m Unit)
 queueEval ms source coord = do
   { eval } ← Wiring.expose
   mbGraph ←
@@ -358,15 +300,7 @@ queueEval ms source coord = do
     debounce ms coord pending eval.pendingEvals do
       Eval.evalGraph source graph
 
-freshWorkspace
-  ∷ ∀ f m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork m
-    , Parallel f m
-    , QuasarDSL m
-    )
-  ⇒ m (Deck.Id × Deck.Cell)
+freshWorkspace ∷ ∀ f m. Persist f m (m (Deck.Id × Deck.Cell))
 freshWorkspace = do
   { eval } ← Wiring.expose
   rootId ← fromAff DID.make
