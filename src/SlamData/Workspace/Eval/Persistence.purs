@@ -36,6 +36,7 @@ import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.CardId as CID
+import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
@@ -190,7 +191,7 @@ populateCards deckId deck = runExceptT do
     makeCell card next cache = do
       let
         coord = deckId × card.cardId
-      cell ← makeCardCell card (Tuple deckId <$> next)
+      cell ← makeCardCell card Nothing (Tuple deckId <$> next)
       Cache.put coord cell cache
       forkCardProcess coord cell.bus
 
@@ -200,13 +201,14 @@ makeCardCell
     , Monad m
     )
   ⇒ Card.Model
+  → Maybe Port
   → List Card.Coord
   → m Card.Cell
-makeCardCell model next = do
+makeCardCell model input next = do
   let
     value =
       { model
-      , input: Nothing
+      , input
       , output: Nothing
       , state: Nothing
       , tick: Nothing
@@ -264,22 +266,22 @@ forkDeckProcess deckId = forkLoop case _ of
         coord = deckId × cardId
         card = { cardId, model: Card.cardModelOfType cty }
         deck' = deck { cards = Array.snoc deck.cards card }
-      for_ (Array.last (Deck.cardCoords deckId deck)) \last → do
-        Cache.alter last (addNext (deckId × cardId)) eval.cards
-      cell ← makeCardCell card mempty
+      input ← runMaybeT do
+        last ← MaybeT $ pure $ Array.last (Deck.cardCoords deckId deck)
+        cell ← MaybeT $ Cache.get last eval.cards
+        lift $ Cache.put last (cell { next = coord : cell.next }) eval.cards
+        MaybeT $ pure $ cell.value.output
+      cell ← makeCardCell card input mempty
       value' ← defer (pure (Right deck'))
       Cache.put (deckId × cardId) cell eval.cards
       Cache.put deckId (deckCell { value = value' }) eval.decks
+      forkCardProcess coord cell.bus
       queueSave defaultSaveDebounce deckId
       queueEval 0 (mempty × coord) coord
   Deck.RemoveCard coord →
     pure unit
   _ →
     pure unit
-
-  where
-    addNext ∷ Card.Coord → Maybe Card.Cell → m (Maybe Card.Cell)
-    addNext next = pure ∘ map \cell → cell { next = next : cell.next }
 
 forkCardProcess
   ∷ ∀ f m

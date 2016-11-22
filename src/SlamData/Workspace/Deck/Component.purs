@@ -84,6 +84,7 @@ import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 
+import Utils (censor)
 import Utils.DOM (elementEq)
 import Utils.LocalStorage as LocalStorage
 
@@ -462,20 +463,30 @@ handleEval = case _ of
   ED.Pending →
     H.modify (DCS.addMetaCard DCS.PendingCard)
   ED.Complete coords res → do
-    let
-      metaCard = case res of
-        Port.CardError str → DCS.ErrorCard str
-        _ → DCS.NextActionCard res
+    st ← H.get
     mbCards ← H.liftH $ H.liftH $ sequence <$> traverse P.getCard coords
-    for_ mbCards \cards → do
-      let
-        displayCards = Array.zip coords cards <#> \(coord × c) →
-          { coord
-          , cardType: Card.modelCardType c.value.model.model
-          }
-      H.modify _
-        { displayCards = Array.snoc (Right <$> displayCards) (Left metaCard)
+    let
+      newDefs = mbCards <#> Array.zip coords >>> map \(coord × c) →
+        { coord
+        , cardType: Card.modelCardType c.value.model.model
         }
+      displayCards = case newDefs >>= Array.uncons of
+        Just { head, tail } →
+          let
+            realCards = Array.mapMaybe censor st.displayCards
+            initCards = Array.takeWhile (not ∘ eq head.coord ∘ _.coord) realCards
+            newCards = Array.cons head tail
+            metaCard =
+              pure $ Left case res of
+                Port.CardError str → DCS.ErrorCard str
+                _ → DCS.NextActionCard res
+          in
+            (Right <$> initCards <> newCards) <> metaCard
+        Nothing →
+          [ Left (DCS.ErrorCard "No cards to display") ]
+    H.modify _
+      { displayCards = displayCards
+      }
   _ →
     pure unit
 
