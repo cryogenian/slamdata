@@ -149,8 +149,8 @@ makeCache
 makeCache = fromAff (makeVar' mempty)
 
 putDeck
-  ∷ ∀ m
-  . (Affable SlamDataEffects m, MonadFork m, QuasarDSL m, MonadAsk Wiring m)
+  ∷ ∀ m e
+  . (Affable SlamDataEffects m, MonadFork e m, QuasarDSL m, MonadAsk Wiring m)
   ⇒ DeckId
   → Deck
   → m (Either QE.QError Unit)
@@ -165,8 +165,8 @@ putDeck deckId deck = do
   rmap (const unit) <$> wait ref
 
 getDeck
-  ∷ ∀ m
-  . (Affable SlamDataEffects m, MonadFork m, QuasarDSL m, MonadAsk Wiring m)
+  ∷ ∀ m e
+  . (Affable SlamDataEffects m, MonadFork e m, QuasarDSL m, MonadAsk Wiring m)
   ⇒ DeckId
   → m (Either QE.QError Deck)
 getDeck deckId = do
