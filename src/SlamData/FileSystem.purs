@@ -25,7 +25,7 @@ import Control.Monad.Aff.Free (fromAff, fromEff)
 import Control.Monad.Aff.AVar (AVar, makeVar', modifyVar, putVar, takeVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Fork (fork)
+import Control.Monad.Fork (Canceler(..), fork, cancel)
 import Control.Monad.Eff.Exception (Error, error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
@@ -70,17 +70,6 @@ import Text.SlamSearch.Types (SearchQuery)
 
 import Utils.Path (DirPath, hidePath, renderPath)
 
-newtype Canceler m = Canceler (Error → m Boolean)
-
-instance semigroupCanceler ∷ Apply m ⇒ Semigroup (Canceler m) where
-  append (Canceler f1) (Canceler f2) = Canceler (\e → (||) <$> f1 e <*> f2 e)
-
-instance monoidCanceler ∷ Applicative m ⇒ Monoid (Canceler m) where
-  mempty = Canceler (const (pure true))
-
-cancel ∷ ∀ m. Canceler m → Error → m Boolean
-cancel (Canceler f) = f
-
 main ∷ Eff SlamDataEffects Unit
 main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
@@ -100,7 +89,7 @@ setSlamDataTitle ∷ ∀ e. String → Aff (dom ∷ DOM|e) Unit
 setSlamDataTitle version =
   liftEff $ setTitle $ "SlamData " ⊕ version
 
-initialAVar ∷ Tuple (Canceler Slam) (M.Map Int Int)
+initialAVar ∷ Tuple (Canceler Error Slam) (M.Map Int Int)
 initialAVar = Tuple mempty M.empty
 
 routeSignal ∷ Driver QueryP SlamDataRawEffects → Slam Unit
@@ -111,7 +100,7 @@ routeSignal driver = do
 
 redirects
   ∷ Driver QueryP SlamDataRawEffects
-  → AVar (Tuple (Canceler Slam) (M.Map Int Int))
+  → AVar (Tuple (Canceler Error Slam) (M.Map Int Int))
   → Maybe Routes → Routes
   → Slam Unit
 redirects driver var mbOld = case _ of
@@ -172,7 +161,7 @@ checkMount path driver = do
 listPath
   ∷ SearchQuery
   → Int
-  → AVar (Tuple (Canceler Slam) (M.Map Int Int))
+  → AVar (Tuple (Canceler Error Slam) (M.Map Int Int))
   → DirPath
   → Driver QueryP SlamDataRawEffects
   → Slam Unit
