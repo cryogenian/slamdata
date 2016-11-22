@@ -123,8 +123,8 @@ eval = case _ of
     pure next
   CC.Save k → do
     mbRes ← H.gets _.selected
-    pure $ k $ Card.Open (map (either R.Directory R.File) ∘ L.head =<< mbRes)
-  CC.Load (Card.Open (Just res)) next → do
+    pure $ k $ Card.Open (fromMaybe R.root $ map (either R.Directory R.File) ∘ L.head =<< mbRes)
+  CC.Load (Card.Open res) next → do
     void $ H.query unit $ left $ H.action $ MC.Populate $ toPathList $ R.getPath res
     pure next
   CC.Load _ next →

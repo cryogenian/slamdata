@@ -24,6 +24,7 @@ import SlamData.Prelude
 
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (putVar)
+import Control.Monad.Aff.Bus as Bus
 
 import Data.Lens ((^.), (.~))
 import Data.List as List
@@ -51,7 +52,6 @@ import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Notification.Component as NC
 import SlamData.Quasar.Error as QE
-import SlamData.Wiring (Wiring(..))
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
@@ -196,11 +196,14 @@ eval = case _ of
   New next → do
     st ← H.get
     when (isNothing st.deckId) do
-      deckId × _ ← H.liftH $ H.liftH P.freshWorkspace
+      { path } ← H.liftH $ H.liftH Wiring.expose
+      deckId × cell ← H.liftH $ H.liftH P.freshWorkspace
       H.modify _
         { stateMode = Ready
         , deckId = Just deckId
         }
+      _ ← H.fromAff (Bus.read cell.bus)
+      void $ setRoot deckId
     pure next
   Load deckId accessType next → do
     H.modify _
@@ -224,8 +227,13 @@ eval = case _ of
 
 rootDeck ∷ WorkspaceDSL (Either QE.QError DeckId)
 rootDeck = do
-  Wiring wiring ← H.liftH $ H.liftH ask
-  Model.getRoot (wiring.path </> Pathy.file "index")
+  { path } ← H.liftH $ H.liftH Wiring.expose
+  Model.getRoot (path </> Pathy.file "index")
+
+setRoot ∷ DeckId → WorkspaceDSL (Either QE.QError Unit)
+setRoot deckId = do
+  { path } ← H.liftH $ H.liftH Wiring.expose
+  Model.setRoot (path </> Pathy.file "index") deckId
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
 peek = (const $ pure unit) ⨁ ((const $ pure unit) ⨁ peekNotification)

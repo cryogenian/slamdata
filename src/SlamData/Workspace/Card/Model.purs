@@ -73,7 +73,7 @@ data AnyCardModel
   | Variables Variables.Model
   | Troubleshoot
   | Cache (Maybe String)
-  | Open (Maybe R.Resource)
+  | Open R.Resource
   | DownloadOptions DLO.State
   | Draftboard DB.Model
   | BuildMetric BuildMetric.Model
@@ -246,7 +246,7 @@ encodeCardModel = case _ of
   Variables model → Variables.encode model
   Troubleshoot → J.jsonEmptyObject
   Cache model → J.encodeJson model
-  Open mres → J.encodeJson mres
+  Open res → J.encodeJson res
   DownloadOptions model → DLO.encode model
   Draftboard model → DB.encode model
   BuildMetric model → BuildMetric.encode model
@@ -298,9 +298,15 @@ decodeCardModel = case _ of
   CT.Variables → map Variables ∘ Variables.decode
   CT.Troubleshoot → const $ pure Troubleshoot
   CT.Cache → map Cache ∘ J.decodeJson
-  CT.Open → map Open ∘ J.decodeJson
+  CT.Open → map Open ∘ decodeOpen
   CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
   CT.Draftboard → map Draftboard ∘ DB.decode
+
+  where
+    -- For backwards compat
+    decodeOpen j =
+      J.decodeJson j
+      <|> (map (fromMaybe R.root) $ J.decodeJson j)
 
 cardModelOfType ∷ CT.CardType → AnyCardModel
 cardModelOfType = case _ of
@@ -330,66 +336,36 @@ cardModelOfType = case _ of
   CT.Variables → Variables Variables.emptyModel
   CT.Troubleshoot → Troubleshoot
   CT.Cache → Cache Nothing
-  CT.Open → Open Nothing
+  CT.Open → Open R.root
   CT.DownloadOptions → DownloadOptions DLO.initialState
   CT.Draftboard → Draftboard DB.emptyModel
 
-modelToEval ∷ AnyCardModel → String ⊹ Eval.Eval
+modelToEval ∷ AnyCardModel → Eval.Eval
 modelToEval = case _ of
-  Ace CT.SQLMode model →
-    pure $ Eval.Query $ fromMaybe "" $ _.text <$> model
-  Ace CT.MarkdownMode model →
-    pure $ Eval.Markdown $ fromMaybe "" $ _.text <$> model
-  Markdown model →
-    pure $ Eval.MarkdownForm model
-  Search txt →
-    pure $ Eval.Search txt
-  Cache fp →
-    pure $ Eval.Cache fp
-  Open (Just res) →
-    pure $ Eval.Open res
-  -- Do we need this? Eval.evalOpen is called only if Open has Just res
-  Open _ →
-    Left "Open model missing resource"
-  Variables model →
-    pure $ Eval.Variables model
-  DownloadOptions model →
-    pure $ Eval.DownloadOptions model
-  Draftboard _ →
-    pure Eval.Draftboard
-  BuildMetric model  →
-    pure $ Eval.BuildMetric model
-  BuildSankey model →
-    pure $ Eval.BuildSankey model
-  BuildGauge model →
-    pure $ Eval.BuildGauge model
-  BuildGraph model →
-    pure $ Eval.BuildGraph model
-  BuildPie model →
-    pure $ Eval.BuildPie model
-  BuildRadar model →
-    pure $ Eval.BuildRadar model
-  BuildArea model →
-    pure $ Eval.BuildArea model
-  BuildLine model →
-    pure $ Eval.BuildLine model
-  BuildBar model →
-    pure $ Eval.BuildBar model
-  BuildScatter model →
-    pure $ Eval.BuildScatter model
-  BuildFunnel model →
-    pure $ Eval.BuildFunnel model
-  BuildHeatmap model →
-    pure $ Eval.BuildHeatmap model
-  BuildBoxplot model →
-    pure $ Eval.BuildBoxplot model
-  BuildPivotTable model →
-    pure $ Eval.BuildPivotTable model
-  BuildPunchCard model →
-    pure $ Eval.BuildPunchCard model
-  BuildCandlestick model →
-    pure $ Eval.BuildCandlestick model
-  BuildParallel model →
-    pure $ Eval.BuildParallel model
-  _ →
-    pure Eval.Pass
+  Ace CT.SQLMode model → Eval.Query $ fromMaybe "" $ _.text <$> model
+  Ace CT.MarkdownMode model → Eval.Markdown $ fromMaybe "" $ _.text <$> model
+  Markdown model → Eval.MarkdownForm model
+  Search txt → Eval.Search txt
+  Cache fp → Eval.Cache fp
+  Open res → Eval.Open res
+  Variables model → Eval.Variables model
+  DownloadOptions model → Eval.DownloadOptions model
+  Draftboard _ → Eval.Draftboard
+  BuildMetric model  → Eval.BuildMetric model
+  BuildSankey model → Eval.BuildSankey model
+  BuildGauge model → Eval.BuildGauge model
+  BuildGraph model → Eval.BuildGraph model
+  BuildPie model → Eval.BuildPie model
+  BuildRadar model → Eval.BuildRadar model
+  BuildArea model → Eval.BuildArea model
+  BuildLine model → Eval.BuildLine model
+  BuildBar model → Eval.BuildBar model
+  BuildScatter model → Eval.BuildScatter model
+  BuildFunnel model → Eval.BuildFunnel model
+  BuildHeatmap model → Eval.BuildHeatmap model
+  BuildBoxplot model → Eval.BuildBoxplot model
+  BuildPivotTable model → Eval.BuildPivotTable model
+  BuildPunchCard model → Eval.BuildPunchCard model
+  BuildCandlestick model → Eval.BuildCandlestick model
+  BuildParallel model → Eval.BuildParallel model
+  _ → Eval.Pass

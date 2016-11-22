@@ -357,10 +357,12 @@ queueEval ms source coord = do
       Eval.evalGraph source graph
 
 freshWorkspace
-  ∷ ∀ m
+  ∷ ∀ f m
   . ( Affable SlamDataEffects m
     , MonadAsk Wiring m
     , MonadFork m
+    , Parallel f m
+    , QuasarDSL m
     )
   ⇒ m (Deck.Id × Deck.Cell)
 freshWorkspace = do
@@ -371,6 +373,7 @@ freshWorkspace = do
   let
     cell = { bus, value }
   Cache.put rootId cell eval.decks
+  forkDeckProcess rootId bus
   pure (rootId × cell)
 
 debounce

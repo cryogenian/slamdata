@@ -81,7 +81,7 @@ runEvalLoop source tick trail input graph = do
     next = Cofree.tail graph
     trail' = Array.snoc trail node.coord
     -- FIXME
-    trans = unsafePartial (fromRight (Card.modelToEval node.card.value.model.model))
+    trans = Card.modelToEval node.card.value.model.model
     env = CEM.CardEnv
       { path
       , coord: node.coord
