@@ -441,8 +441,8 @@ errors m es = case lefts es of
       Right msgs → Left $ QE.Error $ Exn.error (Str.joinWith m msgs)
 
 updateParentPointer
-  ∷ ∀ m
-  . (MonadFork m, QuasarDSL m, Affable SlamDataEffects m, MonadAsk Wiring m)
+  ∷ ∀ m e
+  . (MonadFork e m, QuasarDSL m, Affable SlamDataEffects m, MonadAsk Wiring m)
   ⇒ DeckId
   → DeckId
   → Maybe (DeckId × CID.CardId)

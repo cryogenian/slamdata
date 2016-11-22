@@ -22,11 +22,11 @@ import Ace.Config as AceConfig
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Free (fromAff, fromEff)
-import Control.Monad.Aff.AVar (AVAR, makeVar', takeVar, putVar, modifyVar, AVar)
+import Control.Monad.Aff.AVar (AVar, makeVar', modifyVar, putVar, takeVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Fork (fork, Canceler, cancel)
-import Control.Monad.Eff.Exception (error)
+import Control.Monad.Fork (Canceler(..), fork, cancel)
+import Control.Monad.Eff.Exception (Error, error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (null, filter, mapMaybe)
@@ -89,18 +89,18 @@ setSlamDataTitle ∷ ∀ e. String → Aff (dom ∷ DOM|e) Unit
 setSlamDataTitle version =
   liftEff $ setTitle $ "SlamData " ⊕ version
 
-initialAVar ∷ Tuple (Canceler Slam) (M.Map Int Int)
+initialAVar ∷ Tuple (Canceler Error Slam) (M.Map Int Int)
 initialAVar = Tuple mempty M.empty
 
 routeSignal ∷ Driver QueryP SlamDataRawEffects → Slam Unit
 routeSignal driver = do
-  avar ← (fromAff :: forall eff. Aff (avar :: AVAR | eff) ~> Slam) $ makeVar' initialAVar
-  routeTpl ← (fromAff :: Aff SlamDataEffects ~> Slam) $ matchesAff routing
+  avar ← fromAff $ makeVar' initialAVar
+  routeTpl ← fromAff $ matchesAff routing
   uncurry (redirects driver avar) routeTpl
 
 redirects
   ∷ Driver QueryP SlamDataRawEffects
-  → AVar (Tuple (Canceler Slam) (M.Map Int Int))
+  → AVar (Tuple (Canceler Error Slam) (M.Map Int Int))
   → Maybe Routes → Routes
   → Slam Unit
 redirects driver var mbOld = case _ of
@@ -113,7 +113,7 @@ redirects driver var mbOld = case _ of
     in updateURL queryParts.query sort Nothing queryParts.path
   Salted sort query salt → do
     Tuple canceler _ ← fromAff $ takeVar var
-    cancel (error "cancel search") canceler
+    cancel canceler (error "cancel search")
     fromAff $ putVar var initialAVar
     fromAff $ driver $ toListing $ Listing.SetIsSearching $ isSearchQuery query
     let
@@ -152,7 +152,7 @@ checkMount path driver = do
       -- configured as a mount - if `/` is not a mount and also has no children
       -- then we know it's in this unconfigured state.
       when (path == rootDir) do
-        void $ Quasar.children path >>= traverse \children ->
+        void $ Quasar.children path >>= traverse \children →
           when (null children) $
             fromAff $ driver $ left $ action $ SetIsMount true
     Right _ →
@@ -161,13 +161,13 @@ checkMount path driver = do
 listPath
   ∷ SearchQuery
   → Int
-  → AVar (Tuple (Canceler Slam) (M.Map Int Int))
+  → AVar (Tuple (Canceler Error Slam) (M.Map Int Int))
   → DirPath
   → Driver QueryP SlamDataRawEffects
   → Slam Unit
 listPath query deep var dir driver = do
   fromAff $ modifyVar (_2 %~ M.alter (pure ∘ maybe 1 (_ + 1)) deep) var
-  canceler ← fork goDeeper
+  canceler ← Canceler <$> fork goDeeper
   fromAff $ modifyVar (_1 <>~ canceler) var
   where
   goDeeper = do
