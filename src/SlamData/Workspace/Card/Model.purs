@@ -59,6 +59,8 @@ import SlamData.Workspace.Card.BuildChart.PunchCard.Model as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Model as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Model as BuildParallel
 import SlamData.Workspace.Card.BuildChart.Legacy as ChartLegacy
+import SlamData.Workspace.Card.Query.Model as Query
+import SlamData.Workspace.Card.Port as Port
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -308,8 +310,9 @@ decodeCardModel = case _ of
       J.decodeJson j
       <|> (map (fromMaybe R.root) $ J.decodeJson j)
 
-cardModelOfType ∷ CT.CardType → AnyCardModel
-cardModelOfType = case _ of
+cardModelOfType ∷ Port.Port → CT.CardType → AnyCardModel
+cardModelOfType port = case _ of
+  CT.Ace CT.SQLMode → Ace CT.SQLMode (Query.initialModel port)
   CT.Ace mode → Ace mode Ace.emptyModel
   CT.Search → Search ""
   CT.ChartOptions Metric → BuildMetric BuildMetric.initialModel
@@ -342,8 +345,8 @@ cardModelOfType = case _ of
 
 modelToEval ∷ AnyCardModel → Eval.Eval
 modelToEval = case _ of
-  Ace CT.SQLMode model → Eval.Query $ fromMaybe "" $ _.text <$> model
-  Ace CT.MarkdownMode model → Eval.Markdown $ fromMaybe "" $ _.text <$> model
+  Ace CT.SQLMode model → Eval.Query model.text
+  Ace CT.MarkdownMode model → Eval.Markdown model.text
   Markdown model → Eval.MarkdownForm model
   Search txt → Eval.Search txt
   Cache fp → Eval.Cache fp

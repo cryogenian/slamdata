@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Query.Eval
-  ( evalQuery
+module SlamData.Workspace.Card.Search.Eval
+  ( evalSearch
   ) where
 
 import SlamData.Prelude
@@ -27,17 +27,22 @@ import Control.Monad.Writer.Class (class MonadTell)
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 
-import Quasar.Types (SQL)
+import Quasar.Types (FilePath)
 
 import SlamData.Effects (SlamDataEffects)
+import SlamData.GlobalError as GE
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
+import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Search.Interpret as Search
 
-evalQuery
+import Text.SlamSearch as SS
+
+evalSearch
   ∷ ∀ m
   . ( Affable SlamDataEffects m
     , MonadAsk CEM.CardEnv m
@@ -46,20 +51,34 @@ evalQuery
     , QuasarDSL m
     , ParQuasarDSL m
     )
-  ⇒ Port.VarMap
-  → SQL
+  ⇒ String
+  → FilePath
   → m Port.TaggedResourcePort
-evalQuery varMap sql = do
-  urlVarMap ← CEM.localUrlVarMap
-  resource ← CEM.temporaryOutputResource
+evalSearch queryText resource = do
+  query ← case SS.mkQuery queryText of
+    Left _ → CEM.throw "Incorrect query string"
+    Right q → pure q
+
+  fields ← CEM.liftQ do
+    QFS.messageIfFileNotFound
+      resource
+      ("Input resource " ⊕ Path.printPath resource ⊕ " doesn't exist")
+    QQ.fields resource
+
+  outputResource ← CEM.temporaryOutputResource
+
   let
-    varMap' =
-      SM.union urlVarMap (Port.renderVarMapValue <$> varMap)
-    backendPath =
-      Left $ fromMaybe Path.rootDir (Path.parentDir resource)
-  { inputs } ←
-    CEM.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
-      QQ.compile backendPath sql varMap'
-  validateResources inputs
-  CEM.addSources inputs
-  pure { resource, tag: pure sql, varMap: Just varMap }
+    template = Search.queryToSQL fields query
+    sql = QQ.templated resource template
+
+  compileResult ← QQ.compile (Right resource) sql SM.empty
+  case compileResult of
+    Left err →
+      case GE.fromQError err of
+        Left msg → CEM.throw $ "Error compiling query: " ⊕ msg
+        Right _ → CEM.throw $ "Error compiling query: " ⊕ QE.printQError err
+    Right { inputs } → do
+      validateResources inputs
+      CEM.addSources inputs
+
+  pure { resource: outputResource, tag: pure sql, varMap: Nothing }

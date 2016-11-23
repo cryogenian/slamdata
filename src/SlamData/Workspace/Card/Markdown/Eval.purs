@@ -12,7 +12,8 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Markdown.Eval
-  ( markdownEval
+  ( evalMarkdown
+  , evalMarkdownForm
   ) where
 
 import SlamData.Prelude
@@ -36,12 +37,15 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Markdown.Component.State.Core as MDS
+import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Traverse as SDT
 import Text.Markdown.SlamDown.Eval as SDE
 import Text.Markdown.SlamDown.Parser as SDP
+import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 
 import Text.Parsing.Parser as P
 import Text.Parsing.Parser.Combinators as PC
@@ -49,7 +53,20 @@ import Text.Parsing.Parser.String as PS
 
 import Utils.Path (DirPath)
 
-markdownEval
+evalMarkdownForm
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , Monad m
+    )
+  ⇒ Port.VarMap × SD.SlamDownP Port.VarMapValue
+  → MD.Model
+  → m Port.VarMap
+evalMarkdownForm (vm × doc) model = do
+  let inputState = SDH.formStateFromDocument doc
+  thisVarMap ← fromEff $ MDS.formStateToVarMap inputState model.state
+  pure $ thisVarMap `SM.union` vm
+
+evalMarkdown
   ∷ ∀ m
   . ( Affable SlamDataEffects m
     , MonadAsk CEM.CardEnv m
@@ -60,7 +77,7 @@ markdownEval
   ⇒ Port.Port
   → String
   → m Port.Port
-markdownEval input str = do
+evalMarkdown input str = do
   CEM.CardEnv { path } ← ask
   case SDP.parseMd str of
     Left e → CEM.throw e

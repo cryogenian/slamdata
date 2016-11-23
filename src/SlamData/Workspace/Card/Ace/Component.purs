@@ -29,6 +29,7 @@ import Ace.EditSession as Session
 import Ace.Halogen.Component as AC
 import Ace.Types (Editor)
 
+import Control.Monad.Aff (later)
 import Control.Monad.Aff.AVar (makeVar, takeVar)
 import Control.Monad.Aff.EventLoop as EventLoop
 
@@ -47,7 +48,7 @@ import SlamData.Notification as N
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.Ace.Component.Query (Query(..), QueryP)
-import SlamData.Workspace.Card.Ace.Component.State (State, StateP, Status(..), initialState, _levelOfDetails, _status, isNew, isLoading, isReady)
+import SlamData.Workspace.Card.Ace.Component.State (State, StateP, initialState, _levelOfDetails)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
@@ -116,30 +117,23 @@ cardEval mode = case _ of
             })
     pure next
   CC.Save k → do
-    status ← H.gets _.status
     content ← fromMaybe "" <$> H.query unit (H.request AC.GetText)
     mbEditor ← H.query unit (H.request AC.GetEditor)
     rrs ← H.fromEff $ maybe (pure []) getRangeRecs $ join mbEditor
     pure ∘ k
-      $ Card.Ace mode
-      $ if isNew status
-        then Nothing
-        else Just { text: content, ranges: rrs }
+      $ Card.Ace mode { text: content, ranges: rrs }
   CC.Load card next → do
     case card of
-      Card.Ace _ (Just { text, ranges }) → do
-        -- OH PLEASE OH PLEASE FIX ME
-        -- We don't want the Ace component to trigger a TextChanged event when we
-        -- initially set the text, so we use this nasty state to filter it out.
-        H.modify $ _status .~ Loading
+      Card.Ace _ { text, ranges } → do
+        -- TODO: On initial `Load`, this is called as part of the card component
+        -- initializer. Halogen must be running the parent initializer before
+        -- the child initializer. This is fixed in Halogen Next.
+        H.fromAff $ later (pure unit)
         H.query unit $ H.action $ AC.SetText text
-        H.modify $ _status .~ Ready
         mbEditor ← H.query unit $ H.request AC.GetEditor
         H.fromEff $ for_ (join mbEditor) \editor → do
           traverse_ (readOnly editor) ranges
           Editor.navigateFileEnd editor
-      Card.Ace CT.MarkdownMode Nothing →
-        H.modify $ _status .~ Ready
       _ → pure unit
     H.modify _ { dirty = false }
     pure next
@@ -147,8 +141,7 @@ cardEval mode = case _ of
     pure next
   CC.ReceiveOutput _ next →
     pure next
-  CC.ReceiveState _ next →
-    -- FIXME: Initial text state
+  CC.ReceiveState _ next → do
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify
@@ -165,7 +158,9 @@ cardEval mode = case _ of
 
 peek ∷ ∀ x. AC.AceQuery x → DSL Unit
 peek = case _ of
-  AC.TextChanged _ → H.modify _ { dirty = true }
+  AC.TextChanged _ →
+    unlessM (H.gets _.dirty) do
+      H.modify _ { dirty = true }
   _ → pure unit
 
 aceSetup ∷ CT.AceMode → Editor → Slam Unit

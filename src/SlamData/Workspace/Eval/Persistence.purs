@@ -218,13 +218,14 @@ forkDeckProcess deckId = forkLoop case _ of
       cardId ← fromAff CID.make
       let
         coord = deckId × cardId
-        card = { cardId, model: Card.cardModelOfType cty }
-        deck' = deck { cards = Array.snoc deck.cards card }
       input ← runMaybeT do
         last ← MaybeT $ pure $ Array.last (Deck.cardCoords deckId deck)
         cell ← MaybeT $ Cache.get last eval.cards
         lift $ Cache.put last (cell { next = coord : cell.next }) eval.cards
         MaybeT $ pure $ cell.value.output
+      let
+        card = { cardId, model: Card.cardModelOfType (fromMaybe Port.Initial input) cty }
+        deck' = deck { cards = Array.snoc deck.cards card }
       cell ← makeCardCell card input mempty
       value' ← defer (pure (Right deck'))
       Cache.put (deckId × cardId) cell eval.cards
