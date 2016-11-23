@@ -5,6 +5,9 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
+throw ∷ ∀ a eff. String → Aff eff a
+throw = throwError <<< Exception.error
+
     http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
@@ -19,8 +22,6 @@ module Utils.Aff where
 import Prelude
 import Control.Monad.Aff (Aff)
 import Control.Monad.Rec.Class (Step(..), tailRecM)
-import Control.Monad.Eff.Exception as Exception
-import Control.Monad.Error.Class (throwError)
 
 -- | Loop until a condition becomes `true`.
 -- |
@@ -31,6 +32,3 @@ untilA aff =
   tailRecM go unit
   where
   go = const $ (if _ then pure (Done unit) else pure (Loop unit)) =<< aff
-
-throw ∷ ∀ a eff. String → Aff eff a
-throw = throwError <<< Exception.error
