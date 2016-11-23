@@ -304,13 +304,13 @@ getIdToken message =
         getIdTokenUsingLocalStorage message
           >>= maybe (getIdTokenSilently message) (pure ∘ Right)
     -- Store provider and idToken for future local storage gets and reauthentications
-    either
-      (const $ liftEff $ AuthStore.clearProvider message.keySuffix *> AuthStore.clearIdToken message.keySuffix)
-      (\idToken →
-        liftEff
-          $ (AuthStore.storeProvider message.keySuffix $ QAT.Provider message.providerR)
-          *> (AuthStore.storeIdToken message.keySuffix $ Right idToken))
-      eIdToken
+    liftEff $ case eIdToken of
+      Left _ →
+        AuthStore.clearProvider message.keySuffix
+          *> AuthStore.clearIdToken message.keySuffix
+      Right idToken →
+        AuthStore.storeProvider message.keySuffix (QAT.Provider message.providerR)
+          *> AuthStore.storeIdToken message.keySuffix (Right idToken)
     pure eIdToken
 
 getIdTokenUsingLocalStorage ∷ ∀ eff. RequestIdTokenMessage → Aff (AuthEffects eff) (Maybe IdToken)
