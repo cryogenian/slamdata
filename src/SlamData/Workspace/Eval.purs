@@ -80,14 +80,13 @@ runEvalLoop source tick trail input graph = do
     node = Cofree.head graph
     next = Cofree.tail graph
     trail' = Array.snoc trail node.coord
-    trans = Card.modelToEval node.card.value.model.model
     env = CEM.CardEnv
       { path
       , coord: node.coord
       , urlVarMaps: varMaps
       }
   fromAff $ Bus.write (Card.Pending source input) node.card.bus
-  result ← Card.runCard env node.card.value.state input trans
+  result ← Card.runCard env node.card.value.state input node.transition
   tick' ← currentTick
   when (tick ≡ tick') case result.output of
     Left err → do

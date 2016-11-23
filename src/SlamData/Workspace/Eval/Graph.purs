@@ -38,6 +38,7 @@ type EvalGraphNode =
   { coord ∷ Card.Coord
   , card ∷ Card.Cell
   , deck ∷ Deck.Cell
+  , transition ∷ Card.Eval
   }
 
 type EvalGraph = Cofree List EvalGraphNode
@@ -53,8 +54,14 @@ unfoldGraph cards decks coord =
     <*> Map.lookup (fst coord) decks
   where
     go card deck =
-      Cofree.mkCofree { coord, card, deck }
-        (List.catMaybes (unfoldGraph cards decks <$> card.next))
+      Cofree.mkCofree
+        { coord
+        , card
+        , deck
+        , transition: Card.modelToEval card.value.model.model
+        }
+        (List.catMaybes
+          (unfoldGraph cards decks <$> card.next))
 
 findNode ∷ Card.Coord → EvalGraph → Maybe EvalGraphNode
 findNode coord graph =

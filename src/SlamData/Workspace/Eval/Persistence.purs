@@ -42,7 +42,7 @@ import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
-import SlamData.Workspace.Eval.Graph (unfoldGraph)
+import SlamData.Workspace.Eval.Graph (unfoldGraph, EvalGraph)
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
@@ -208,8 +208,8 @@ forkLoop handler bus = void (fork loop)
 
 forkDeckProcess ∷ ∀ f m . Persist f m (Deck.Id → Bus.BusRW Deck.EvalMessage → m Unit)
 forkDeckProcess deckId = forkLoop case _ of
-  Deck.Force source@(_ × coord) →
-    queueEval 0 source coord
+  Deck.Force source →
+    queueEval' 0 source
   Deck.AddCard cty → do
     { eval } ← Wiring.expose
     deckCell ← getDeck' deckId
@@ -232,7 +232,7 @@ forkDeckProcess deckId = forkLoop case _ of
       Cache.put deckId (deckCell { value = value' }) eval.decks
       forkCardProcess coord cell.bus
       queueSave defaultSaveDebounce deckId
-      queueEval 0 (mempty × coord) coord
+      queueEval' 0 (mempty × coord)
   Deck.RemoveCard coord@(deckId' × cardId) → do
     { eval } ← Wiring.expose
     deckCell ← getDeck' deckId
@@ -260,9 +260,11 @@ forkCardProcess ∷ ∀ f m. Persist f m (Card.Coord → Bus.BusRW Card.EvalMess
 forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
   Card.ModelChange source model → do
     { eval } ← Wiring.expose
-    Cache.alter coord (pure ∘ map (updateModel model)) eval.cards
-    queueSave defaultSaveDebounce deckId
-    queueEval defaultEvalDebounce source coord
+    mbGraph ← snapshotGraph coord
+    for_ mbGraph \graph → do
+      Cache.alter coord (pure ∘ map (updateModel model)) eval.cards
+      queueSave defaultSaveDebounce deckId
+      queueEval defaultEvalDebounce source graph
   _ →
     pure unit
 
@@ -276,30 +278,36 @@ forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
           }
       }
 
+snapshotGraph ∷ ∀ f m. Persist f m (Card.Coord → m (Maybe EvalGraph))
+snapshotGraph coord = do
+  { eval } ← Wiring.expose
+  unfoldGraph
+    <$> Cache.snapshot eval.cards
+    <*> Cache.snapshot eval.decks
+    <*> pure coord
+
 queueSave ∷ ∀ f m. Persist f m (Int → Deck.Id → m Unit)
 queueSave ms deckId = do
   { eval } ← Wiring.expose
   debounce ms deckId { avar: _ } eval.pendingSaves do
     saveDeck deckId
 
-queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → Card.Coord → m Unit)
-queueEval ms source coord = do
+queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → EvalGraph → m Unit)
+queueEval ms source@(_ × coord) graph = do
   { eval } ← Wiring.expose
-  mbGraph ←
-    unfoldGraph
-      <$> Cache.snapshot eval.cards
-      <*> Cache.snapshot eval.decks
-      <*> pure coord
-  for_ mbGraph \graph → do
-    let
-      pending =
-        { source
-        , graph
-        , avar: _
-        }
-    -- TODO: Notify pending immediately
-    debounce ms coord pending eval.pendingEvals do
-      Eval.evalGraph source graph
+  let
+    pending =
+      { source
+      , graph
+      , avar: _
+      }
+  -- TODO: Notify pending immediately
+  debounce ms coord pending eval.pendingEvals do
+    Eval.evalGraph source graph
+
+queueEval' ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → m Unit)
+queueEval' ms source@(_ × coord) =
+  traverse_ (queueEval ms source) =<< snapshotGraph coord
 
 freshWorkspace ∷ ∀ f m. Persist f m (m (Deck.Id × Deck.Cell))
 freshWorkspace = do
