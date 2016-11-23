@@ -35,7 +35,7 @@ type State =
 
 initialState ∷ Port → State
 initialState input =
-  updateActions
+  updateActions input
     { input
     , presentAddCardGuide: false
     , actions: []
@@ -59,8 +59,8 @@ _filterString ∷ ∀ a r. Lens' { filterString ∷ a | r } a
 _filterString = lens _.filterString (_ { filterString = _ })
 
 -- TODO: Most of the drill related stuff is unnecessary
-updateActions ∷ State → State
-updateActions state =
+updateActions ∷ Port → State → State
+updateActions input state =
   case activeDrill of
     Nothing →
       state
@@ -72,7 +72,7 @@ updateActions state =
         }
   where
   newActions =
-    NA.fromPort state.input
+    NA.fromPort input
 
   activeDrill =
     F.find

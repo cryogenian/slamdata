@@ -29,6 +29,7 @@ data Query a
   | UpdateFilter String a
   | DismissAddCardGuide a
   | PresentAddCardGuide a
+  | UpdateInput Port a
 
 _AddCardType ∷ ∀ a. Traversal' (Query a) CardType
 _AddCardType =

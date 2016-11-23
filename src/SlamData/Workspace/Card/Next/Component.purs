@@ -159,6 +159,9 @@ eval = case _ of
           $ (State._actions .~ st.previousActions)
           ∘ (State._previousActions .~ [ ])
     pure next
+  UpdateInput port next → do
+    H.modify (State.updateActions port)
+    pure next
 
 takesInput ∷ Port.Port → CT.CardType → Boolean
 takesInput input =

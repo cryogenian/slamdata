@@ -67,7 +67,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Next.Component.Query as Next
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
-import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, ChildQuery, ChildSlot, cpDialog, cpBackSide)
+import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, ChildQuery, ChildSlot, cpDialog, cpBackSide, cpNext)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
 import SlamData.Workspace.Deck.Component.Render as DCR
@@ -325,6 +325,10 @@ queryCardEval ∷ ∀ a. DeckId × CardId → CQ.CardQuery a → DeckDSL (Maybe 
 queryCardEval cid =
   H.query' cpCard cid ∘ left
 
+queryNextAction ∷ ∀ a. Next.Query a → DeckDSL (Maybe a)
+queryNextAction =
+  H.query' cpNext unit
+
 updateActiveCardAndIndicator ∷ DeckDSL Unit
 updateActiveCardAndIndicator = do
   st ← H.get
@@ -468,8 +472,10 @@ handleEval = case _ of
   ED.Complete coords res → do
     st ← H.get
     mbCards ← getCardCells coords
-    let newDefs = map makeDef ∘ Array.zip coords <$> mbCards
-    H.modify (updateDisplayCards newDefs res)
+    for_ mbCards \cards → void do
+      let newDefs = makeDef <$> Array.zip coords cards
+      queryNextAction $ H.action $ Next.UpdateInput res
+      H.modify (updateDisplayCards newDefs res)
   _ →
     pure unit
 
@@ -481,7 +487,7 @@ handleEval = case _ of
     { coord, cardType: Card.modelCardType c.value.model.model }
 
   updateDisplayCards defs res st =
-    case Array.uncons =<< defs of
+    case Array.uncons defs of
       Just { head, tail } →
         let
           realCards = Array.mapMaybe censor st.displayCards
