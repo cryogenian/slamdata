@@ -20,14 +20,10 @@ import SlamData.Prelude
 
 import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
-import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
-import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (readRef, writeRef)
@@ -41,29 +37,23 @@ import Data.Map as Map
 import OIDC.Crypt.Types as OIDC
 
 import Quasar.Advanced.QuasarAF as QA
-import Quasar.Advanced.Types as QAT
 
 import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Monad.ForkF as FF
 import SlamData.Notification as N
-import SlamData.AuthenticationMode (AuthenticationMode, AllowedAuthenticationModes)
-import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
 import SlamData.Quasar.Auth.Authentication as Auth
-import SlamData.Quasar.Auth.Keys as AuthKeys
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error (QError)
-import SlamData.Quasar.Error as QError
 import SlamData.Wiring (Wiring(..), DeckMessage(..))
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Class (class WorkspaceDSL)
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Monad.Auth (getIdTokenSilently)
 
-import Utils (censor, passover, singletonValue)
-import Utils.LocalStorage as LocalStorage
+import Utils (censor)
 
 type Slam = SlamM SlamDataEffects
 
@@ -146,75 +136,6 @@ derive newtype instance applicativeSlamA :: Applicative (SlamA eff)
 
 --------------------------------------------------------------------------------
 
-getIdTokenSilently ∷ AllowedAuthenticationModes → Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
-getIdTokenSilently interactionlessSignIn idTokenRequestBus = do
-  case interactionlessSignIn of
-    AuthenticationMode.ChosenProviderAndAllProviders →
-      -- Currently singleton provider from Quasar configuration if none chosen.
-      -- Eventually this will use all providers in Quasar configuration
-      either (const $ getWithSingletonProviderFromQuasar) (pure ∘ Right)
-        =<< getWithProviderFromLocalStorage
-    AuthenticationMode.ChosenProviderOnly →
-      getWithProviderFromLocalStorage
-  where
-
-  getWithProviderFromLocalStorage ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
-  getWithProviderFromLocalStorage =
-    shiftAffErrorsIntoQError $ traverse (get AuthenticationMode.ChosenProvider)
-      =<< liftEff getProviderFromLocalStorage
-
-  getWithSingletonProviderFromQuasar ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
-  getWithSingletonProviderFromQuasar =
-      shiftAffErrorsIntoQError $ traverse (get AuthenticationMode.AllProviders)
-        =<< getSingletonProviderFromQuasar
-
-  get ∷ AuthenticationMode → QAT.ProviderR → Aff SlamDataEffects Auth.EIdToken
-  get mode providerR =
-    AVar.takeVar =<< passover (write mode providerR) =<< AVar.makeVar
-
-  write ∷ AuthenticationMode → QAT.ProviderR → AVar Auth.EIdToken → Aff SlamDataEffects Unit
-  write mode providerR idToken =
-    Bus.write
-      { idToken
-      , providerR
-      , prompt: false
-      , keySuffix: AuthenticationMode.toKeySuffix mode
-      }
-      idTokenRequestBus
-
-  getSingletonProviderFromQuasar ∷ Aff SlamDataEffects (Either QError QAT.ProviderR)
-  getSingletonProviderFromQuasar =
-    flip bind singletonProvider <$> runQuasarF Nothing QA.authProviders
-
-  singletonProvider ∷ Array QAT.ProviderR → Either QError QAT.ProviderR
-  singletonProvider =
-    singletonValue
-      (Left $ unauthorizedError $ Just noProvidersMessage)
-      (const $ Left $ unauthorizedError $ Just tooManyProvidersMessage)
-
-  -- Get previously chosen provider from local storage
-  getProviderFromLocalStorage ∷ Eff SlamDataEffects (Either QError QAT.ProviderR)
-  getProviderFromLocalStorage =
-    lmap (unauthorizedError ∘ Just) ∘ map QAT.runProvider
-      <$> LocalStorage.getLocalStorage
-            (AuthKeys.hyphenatedSuffix
-               AuthKeys.providerLocalStorageKey
-               $ AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider)
-
-  noProvidersMessage ∷ String
-  noProvidersMessage =
-    "Quasar is not configured with any authentication providers."
-
-  tooManyProvidersMessage ∷ String
-  tooManyProvidersMessage =
-    "Quasar is configured with more than one authentication providers. Interactionless sign in currently only supports configurations with a single provider."
-
-  unauthorizedError ∷ Maybe String → QError
-  unauthorizedError =
-    QError.Unauthorized ∘ map QError.UnauthorizedDetails
-
-  shiftAffErrorsIntoQError ∷ ∀ a eff. Aff eff (Either QError a) → Aff eff (Either QError a)
-  shiftAffErrorsIntoQError = map (either (Left ∘ QError.Error) id) ∘ Aff.attempt
 
 --------------------------------------------------------------------------------
 
