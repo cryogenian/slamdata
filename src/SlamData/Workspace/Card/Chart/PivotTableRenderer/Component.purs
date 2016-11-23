@@ -25,6 +25,7 @@ import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.List (List, (:))
 import Data.List as List
+import Data.Path.Pathy as P
 import Data.String as String
 
 import Halogen as H
@@ -35,15 +36,22 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
+import Quasar.Advanced.QuasarAF as QF
+import Quasar.Data (JSONMode(..))
+
 import SlamData.Monad (Slam)
+import SlamData.Quasar.Class (liftQuasar)
+import SlamData.Quasar.Query as QQ
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column(..), isSimple)
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
-import SlamData.Workspace.Card.Port (PivotTablePort)
+import SlamData.Workspace.Card.Port (PivotTablePort, eqTaggedResourcePort)
+import SlamData.Wiring as Wiring
 
 import Global (readFloat)
+import Utils (censor)
 
 type State =
   { input ∷ Maybe PivotTablePort
@@ -51,6 +59,7 @@ type State =
   , pageCount ∷ Int
   , pageIndex ∷ Int
   , pageSize ∷ Int
+  , rawRecords ∷ Maybe (Array J.Json)
   , records ∷ Maybe (PTree J.Json J.Json)
   , customPage ∷ Maybe String
   , loading ∷ Boolean
@@ -63,6 +72,7 @@ initialState =
   , pageCount: 0
   , pageIndex: 0
   , pageSize: PTRM.initialModel.pageSize
+  , rawRecords: Nothing
   , records: Nothing
   , customPage: Nothing
   , loading: false
@@ -276,13 +286,23 @@ render st =
 
 eval ∷ Query ~> DSL
 eval = case _ of
-  Update input next | isSimple input.options → do
-    -- FIXME
-    pure next
   Update input next → do
     st ← H.get
-    H.modify _ { input = Just input }
-    pageTree input
+    let
+      sameResource =
+        case input.taggedResource, st.input of
+          tr1, Just { options, taggedResource: tr2 } →
+            eqTaggedResourcePort tr1 tr2
+            && input.options.columns ≡ options.columns
+            && input.options.dimensions ≡ options.dimensions
+          _, _ → false
+    if sameResource
+      then do
+        H.modify _ { input = Just input }
+        when (isSimple input.options) $ pageQuery input
+      else do
+        H.modify _ { input = Just input, pageIndex = 0, count = 0, pageCount = 0 }
+        ifSimpleInput pageQuery loadTree input
     pure next
   StepPage step next → do
     st ← H.get
@@ -336,13 +356,62 @@ ifSimpleInput f g p =
 
 pageQuery ∷ PivotTablePort → DSL Unit
 pageQuery input = do
-  -- FIXME
-  pure unit
+  st ← H.get
+  let
+    path   = fromMaybe P.rootDir (P.parentDir input.taggedResource.resource)
+    offset = st.pageIndex * st.pageSize
+    limit  = st.pageSize
+  H.modify _ { loading = true }
+  if st.count ≡ 0
+    then do
+      count ← either (const 0) id <$>
+        QQ.count input.taggedResource.resource
+      H.modify _
+        { count = count
+        , pageCount = calcPageCount count st.pageSize
+        }
+    else do
+      H.modify _
+        { pageCount = calcPageCount st.count st.pageSize
+        }
+  records ← liftQuasar $
+    QF.readQuery Readable path input.query mempty (Just { offset, limit })
+  H.modify _ { loading = false }
+  for_ records \recs →
+    H.modify _
+      { records = Just (buildTree mempty Bucket Grouped recs)
+      }
 
 pageTree ∷ PivotTablePort → DSL Unit
 pageTree input = do
-  -- FIXME
-  pure unit
+  st ← H.get
+  for_ st.rawRecords \records → do
+    let
+      dlen      = Array.length input.options.dimensions
+      dims      = List.fromFoldable (dimensionsN (Array.length input.options.dimensions))
+      cols      = Array.mapWithIndex (Tuple ∘ add dlen) input.options.columns
+      tree      = buildTree dims Bucket Grouped records
+      pages     = pagedTree st.pageSize (sizeOfRow cols) tree
+      pageCount = Array.length (snd pages)
+      pageIndex = clamp 0 (pageCount - 1) st.pageIndex
+    H.modify _
+      { records = Array.index (snd pages) pageIndex
+      , count = fst pages
+      , pageCount = pageCount
+      , pageIndex = pageIndex
+      }
+
+loadTree ∷ PivotTablePort → DSL Unit
+loadTree input = do
+  { path } ← H.liftH Wiring.expose
+  H.modify _ { loading = true }
+  records ← liftQuasar $
+    QF.readQuery Readable path input.query mempty Nothing
+  H.modify _
+    { loading = false
+    , rawRecords = censor records
+    }
+  pageTree input
 
 calcPageCount ∷ Int → Int → Int
 calcPageCount count size =

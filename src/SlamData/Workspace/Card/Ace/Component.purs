@@ -29,7 +29,6 @@ import Ace.EditSession as Session
 import Ace.Halogen.Component as AC
 import Ace.Types (Editor)
 
-import Control.Monad.Aff (later)
 import Control.Monad.Aff.AVar (makeVar, takeVar)
 import Control.Monad.Aff.EventLoop as EventLoop
 
@@ -125,10 +124,6 @@ cardEval mode = case _ of
   CC.Load card next → do
     case card of
       Card.Ace _ { text, ranges } → do
-        -- TODO: On initial `Load`, this is called as part of the card component
-        -- initializer. Halogen must be running the parent initializer before
-        -- the child initializer. This is fixed in Halogen Next.
-        H.fromAff $ later (pure unit)
         H.query unit $ H.action $ AC.SetText text
         mbEditor ← H.query unit $ H.request AC.GetEditor
         H.fromEff $ for_ (join mbEditor) \editor → do

@@ -26,6 +26,7 @@ module SlamData.Workspace.Card.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff (later)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop (break')
 import Control.Monad.Aff.Free (fromAff)
@@ -143,15 +144,19 @@ makeCardComponentPart def render =
       eval (CQ.UpdateDimensions unit)
       cell ← H.liftH $ H.liftH $ P.getCard def.options.coord
       for_ cell \{ bus, value } → do
-        queryInnerCard $ EQ.Load value.model.model
-        for_ value.input (queryInnerCard ∘ EQ.ReceiveInput)
-        for_ value.state (queryInnerCard ∘ EQ.ReceiveState)
-        for_ value.input (queryInnerCard ∘ EQ.ReceiveOutput)
         breaker ← subscribeToBus' (H.action ∘ CQ.HandleEvalMessage) bus
         H.modify _
           { breaker = Just breaker
           , bus = Just bus
           }
+        -- TODO: We need to defer these because apparently Halogen has bad
+        -- ordering with regard to child initializers. This should be fixed
+        -- in Halogen Next.
+        H.fromAff $ later (pure unit)
+        queryInnerCard $ EQ.Load value.model.model
+        for_ value.input (queryInnerCard ∘ EQ.ReceiveInput)
+        for_ value.state (queryInnerCard ∘ EQ.ReceiveState)
+        for_ value.input (queryInnerCard ∘ EQ.ReceiveOutput)
       pure next
     CQ.Finalize next → do
       H.gets _.breaker >>= traverse_ (fromAff ∘ break')

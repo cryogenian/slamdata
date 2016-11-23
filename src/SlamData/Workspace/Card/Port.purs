@@ -71,6 +71,7 @@ type MetricPort =
 type PivotTablePort =
   { query ∷ String
   , options ∷ PTM.Model
+  , taggedResource ∷ TaggedResourcePort
   }
 
 data Port

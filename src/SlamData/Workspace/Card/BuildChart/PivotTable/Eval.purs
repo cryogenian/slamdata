@@ -61,12 +61,13 @@ eval tr options = do
     query = mkSql options tr.resource
     state' =
       { axes
-      , taggedResource: tr
       , records: []
+      , taggedResource: tr
       }
     port =
       { options
       , query
+      , taggedResource: tr
       }
   put (Just (CEM.Analysis state'))
   pure (Port.PivotTable port)
@@ -79,7 +80,7 @@ mkSql options resource =
     dimLen =
       Array.length options.dimensions
     groupBy =
-      map (\value → "row" <> show value) options.dimensions
+      map (\value → "row" <> escapedCursor value) options.dimensions
     dims =
       Array.mapWithIndex
         (\i value → "row" <> escapedCursor value <> " AS _" <> show i)
