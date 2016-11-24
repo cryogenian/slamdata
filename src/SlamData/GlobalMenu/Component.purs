@@ -44,6 +44,7 @@ import OIDC.Crypt as Crypt
 
 import Quasar.Advanced.Types (ProviderR)
 
+import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.GlobalError (GlobalError)
 import SlamData.GlobalError as GlobalError
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
@@ -239,19 +240,22 @@ authenticate ∷ Maybe ProviderR → GlobalMenuDSL Unit
 authenticate =
   maybe logOut logIn
   where
+  keySuffix ∷ String
+  keySuffix = AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider
+
   logOut ∷ GlobalMenuDSL Unit
   logOut = do
     H.fromEff do
-      AuthStore.clearIdToken
-      AuthStore.clearUnhashedNonce
-      AuthStore.clearProvider
+      AuthStore.clearIdToken keySuffix
+      AuthStore.clearUnhashedNonce keySuffix
+      AuthStore.clearProvider keySuffix
       Browser.reload
 
   logIn ∷ ProviderR → GlobalMenuDSL Unit
   logIn providerR = do
     Wiring wiringR ← H.liftH $ H.liftH $ ask
     idToken ← H.fromAff AVar.makeVar
-    H.fromAff $ Bus.write { providerR, idToken, prompt: true } wiringR.requestIdTokenBus
+    H.fromAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } wiringR.requestIdTokenBus
     either signInFailure (const $ signInSuccess) =<< (H.fromAff $ AVar.takeVar idToken)
 
   -- TODO: Reattempt failed actions without loosing state, remove reload.
