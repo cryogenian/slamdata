@@ -44,10 +44,9 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Common (clearFieldIcon)
 import SlamData.Workspace.MillerColumns.Component.Query (ItemQuery(..), ItemQuery', Query(..), Query')
 import SlamData.Workspace.MillerColumns.Component.State (State, State', initialState)
 
@@ -139,16 +138,24 @@ component ispec initial =
         [ HP.class_ (HH.className "sd-miller-column-selection") ]
         [ HH.span_ [ HH.text "No selection" ] ]
       Just x →
-        HH.div
-          [ HP.classes
-              [ HH.className "sd-miller-column-selection"
-              , HH.className "selected"
-              ]
-          , HE.onClick $ HE.input_ (Populate colPath)
-          ]
-          [ HH.span_ [ HH.text (ispec.label x) ]
-          , glyph B.glyphiconRemoveSign
-          ]
+        let
+          label = ispec.label x
+          deselLabel = "Deselect '" <> label <> "'"
+        in
+          HH.div
+            [ HP.classes
+                [ HH.className "sd-miller-column-selection"
+                , HH.className "selected"
+                ]
+            , HP.title deselLabel
+            , ARIA.label deselLabel
+            , HE.onClick $ HE.input_ (Populate colPath)
+            ]
+            [ HH.span
+                [ HP.class_ (HH.className "sd-miller-column-selection-label") ]
+                [ HH.text label ]
+            , clearFieldIcon deselLabel
+            ]
 
   renderItem ∷ L.List i → Maybe i → a → HTML i s f
   renderItem colPath selected item =
