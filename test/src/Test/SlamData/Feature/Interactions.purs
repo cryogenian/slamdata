@@ -260,7 +260,7 @@ selectInMillerColumns ps = do
     XPath.last
       $ XPath.anywhere
       $ (XPath.nodeAtPosition ix $ XPath.anyWithExactAriaLabel "Column")
-      ⊕ "/"
+      ⊕ "/ul/"
       ⊕ (XPath.anyWithExactAriaLabel $ ariaLabel rPath)
 
 selectFileForLastOpenCard ∷ String → SlamFeature Unit
