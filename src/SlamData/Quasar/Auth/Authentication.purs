@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Quasar.Auth.Authentication
   ( authentication
-  , getIdTokenFromBusSilently
   , toNotificationOptions
   , AuthEffects
   , EIdToken
@@ -83,17 +82,6 @@ import Utils (passover)
 import Utils.LocalStorage as LocalStorage
 import Utils.DOM as DOMUtils
 
-getIdTokenFromBusSilently ∷ ∀ eff. RequestIdTokenBus → Aff (AuthEffects eff) (Either String EIdToken)
-getIdTokenFromBusSilently requestIdTokenBus =
-  liftEff getProviderRUsingLocalStorage
-    >>= case _ of
-      Right providerR → do
-        idTokenVar ← AVar.makeVar
-        Bus.write { idToken: idTokenVar, providerR, prompt: false } requestIdTokenBus
-        idToken ← Right <$> AVar.takeVar idTokenVar
-        pure idToken
-      Left error → pure $ Left error
-
 data AuthenticationError
   = IdTokenInvalid (Maybe Error)
   | IdTokenUnavailable String
@@ -104,7 +92,12 @@ data AuthenticationError
 instance semigroupAuthenticationError ∷ Semigroup AuthenticationError where
   append x y = y
 
-type RequestIdTokenMessage = { providerR ∷ ProviderR, prompt ∷ Boolean, idToken ∷ AVar EIdToken }
+type RequestIdTokenMessage =
+  { providerR ∷ ProviderR
+  , prompt ∷ Boolean
+  , idToken ∷ AVar EIdToken
+  , keySuffix ∷ String
+  }
 
 type RequestIdTokenBus = BusW RequestIdTokenMessage
 
@@ -162,7 +155,7 @@ authenticate stateRef message = do
   state ← liftEff $ Ref.readRef stateRef
   case state of
     Nothing → do
-      idTokenPromise ← getIdToken message.providerR message.prompt
+      idTokenPromise ← getIdToken message
       writeState $ Just idTokenPromise
       void $ Aff.forkAff $ reply idTokenPromise *> writeState Nothing
     Just idTokenPromise → do
@@ -176,17 +169,17 @@ authenticate stateRef message = do
 
 getIdTokenSilently
   ∷ ∀ eff
-  . ProviderR
+  . RequestIdTokenMessage
   → Aff (AuthEffects eff) EIdToken
-getIdTokenSilently providerR = do
+getIdTokenSilently message = do
   unhashedNonce ← liftEff OIDCAff.getRandomUnhashedNonce
-  liftEff $ AuthStore.storeUnhashedNonce unhashedNonce
+  liftEff $ AuthStore.storeUnhashedNonce message.keySuffix unhashedNonce
   appendHiddenRequestIFrameToBody unhashedNonce
     >>= case _ of
       Left error → pure $ Left error
       Right iFrameNode → do
         idToken ← sequential
-          $ parallel (getIdTokenFromLSOnChange providerR unhashedNonce)
+          $ parallel (getIdTokenFromLSOnChange message.providerR unhashedNonce)
           <|> parallel timeout
         liftEff $ removeBodyChild iFrameNode
         pure idToken
@@ -195,20 +188,20 @@ getIdTokenSilently providerR = do
     either
       (pure ∘ Left)
       (liftEff ∘ map (lmap DOMError) ∘ appendHiddenIFrameToBody)
-      =<< getAuthenticationUri OIDCAff.None unhashedNonce providerR
+      =<< getAuthenticationUri OIDCAff.None unhashedNonce message.providerR
   timeout =
     Aff.later' Config.authenticationTimeout
       $ pure $ Left $ IdTokenUnavailable "No id token received before timeout."
 
 getIdTokenUsingPrompt
   ∷ ∀ eff
-  . ProviderR
+  . RequestIdTokenMessage
   → Aff (AuthEffects eff) EIdToken
-getIdTokenUsingPrompt providerR = do
+getIdTokenUsingPrompt message = do
   unhashedNonce ← liftEff OIDCAff.getRandomUnhashedNonce
-  liftEff $ AuthStore.storeUnhashedNonce unhashedNonce
+  liftEff $ AuthStore.storeUnhashedNonce message.keySuffix unhashedNonce
   sequential
-    $ parallel (getIdTokenFromLSOnChange providerR unhashedNonce)
+    $ parallel (getIdTokenFromLSOnChange message.providerR unhashedNonce)
     <|> parallel (prompt unhashedNonce)
   where
   popup src =
@@ -221,7 +214,7 @@ getIdTokenUsingPrompt providerR = do
           pure $ Left $ DOMError "`window.open` returned null"
   prompt unhashedNonce =
     (either (pure ∘ Left) popup)
-      =<< getAuthenticationUri OIDCAff.Login unhashedNonce providerR
+      =<< getAuthenticationUri OIDCAff.Login unhashedNonce message.providerR
 
 getAuthenticationUri
   ∷ ∀ eff
@@ -300,46 +293,47 @@ getBodyNode =
 
 getIdToken
   ∷ ∀ eff
-  . ProviderR
-  → Boolean
+  . RequestIdTokenMessage
   → Aff (AuthEffects eff) (Promise EIdToken)
-getIdToken providerR prompt =
+getIdToken message =
   Promise.defer do
-    idToken ← if prompt
+    eIdToken ← if message.prompt
       then
-        getIdTokenUsingPrompt providerR
+        getIdTokenUsingPrompt message
       else
-        getIdTokenUsingLocalStorage providerR
-          >>= maybe (getIdTokenSilently providerR) (pure ∘ Right)
-    -- Store provider for future local storage gets and reauthentications
-    either
-      (const $ liftEff $ AuthStore.clearProvider *> AuthStore.clearIdToken)
-      (const $ liftEff $ AuthStore.storeProvider $ QAT.Provider providerR)
-      idToken
-    pure idToken
+        getIdTokenUsingLocalStorage message
+          >>= maybe (getIdTokenSilently message) (pure ∘ Right)
+    -- Store provider and idToken for future local storage gets and reauthentications
+    liftEff $ case eIdToken of
+      Left _ →
+        AuthStore.clearProvider message.keySuffix
+          *> AuthStore.clearIdToken message.keySuffix
+      Right idToken →
+        AuthStore.storeProvider message.keySuffix (QAT.Provider message.providerR)
+          *> AuthStore.storeIdToken message.keySuffix (Right idToken)
+    pure eIdToken
 
-getIdTokenUsingLocalStorage ∷ ∀ eff. ProviderR → Aff (AuthEffects eff) (Maybe IdToken)
-getIdTokenUsingLocalStorage providerR = do
-  eitherIdToken ← getUnverifiedIdTokenUsingLocalStorage
-  eitherUnhashedNonce ← getUnhashedNonceUsingLocalStorage
+getIdTokenUsingLocalStorage ∷ ∀ eff. RequestIdTokenMessage → Aff (AuthEffects eff) (Maybe IdToken)
+getIdTokenUsingLocalStorage message = do
+  eitherIdToken ← getUnverifiedIdTokenUsingLocalStorage message.keySuffix
+  eitherUnhashedNonce ← getUnhashedNonceUsingLocalStorage message.keySuffix
   case Tuple eitherIdToken eitherUnhashedNonce of
     Tuple (Right idToken) (Right unhashedNonce) →
       either (const $ Nothing) (if _ then (Just idToken) else Nothing)
-        <$> (liftEff $ verify providerR unhashedNonce idToken)
+        <$> (liftEff $ verify message.providerR unhashedNonce idToken)
     Tuple _ _ → pure Nothing
 
-getUnverifiedIdTokenUsingLocalStorage ∷ ∀ eff. Aff (AuthEffects eff) (Either String IdToken)
-getUnverifiedIdTokenUsingLocalStorage =
+getUnverifiedIdTokenUsingLocalStorage ∷ ∀ eff. String → Aff (AuthEffects eff) (Either String IdToken)
+getUnverifiedIdTokenUsingLocalStorage keySuffix =
   flip bind (map IdToken)
-    <$> LocalStorage.getLocalStorage AuthKeys.idTokenLocalStorageKey
+    <$> LocalStorage.getLocalStorage
+          (AuthKeys.hyphenatedSuffix AuthKeys.idTokenLocalStorageKey keySuffix)
 
-getUnhashedNonceUsingLocalStorage ∷ ∀ eff. Aff (AuthEffects eff) (Either String UnhashedNonce)
-getUnhashedNonceUsingLocalStorage =
-  rmap UnhashedNonce <$> LocalStorage.getLocalStorage AuthKeys.nonceLocalStorageKey
-
-getProviderRUsingLocalStorage ∷ ∀ eff. Eff (AuthEffects eff) (Either String QAT.ProviderR)
-getProviderRUsingLocalStorage =
-  map QAT.runProvider <$> LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey
+getUnhashedNonceUsingLocalStorage ∷ ∀ eff. String → Aff (AuthEffects eff) (Either String UnhashedNonce)
+getUnhashedNonceUsingLocalStorage keySuffix =
+  rmap UnhashedNonce
+    <$> LocalStorage.getLocalStorage
+          (AuthKeys.hyphenatedSuffix AuthKeys.nonceLocalStorageKey keySuffix)
 
 getIdTokenFromLSOnChange
   ∷ ∀ eff
@@ -349,13 +343,13 @@ getIdTokenFromLSOnChange
 getIdTokenFromLSOnChange providerR unhashedNonce =
   getUnverifiedIdTokenFromLSOnChange
     >>= case _ of
-          Left localStorageError →
-            pure $ Left $ IdTokenUnavailable localStorageError
-          Right idToken →
-            either
-              (Left ∘ IdTokenInvalid ∘ Just )
-              (if _ then Right idToken else Left $ IdTokenInvalid Nothing)
-              <$> (liftEff $ verify providerR unhashedNonce idToken)
+      Left localStorageError →
+        pure $ Left $ IdTokenUnavailable localStorageError
+      Right idToken →
+        either
+          (Left ∘ IdTokenInvalid ∘ Just )
+          (if _ then Right idToken else Left $ IdTokenInvalid Nothing)
+          <$> (liftEff $ verify providerR unhashedNonce idToken)
 
 getUnverifiedIdTokenFromLSOnChange
   ∷ ∀ eff

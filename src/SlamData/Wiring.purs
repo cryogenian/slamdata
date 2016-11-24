@@ -52,6 +52,7 @@ import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.AuthenticationMode (AllowedAuthenticationModes(ChosenProviderOnly))
 import SlamData.GlobalMenu.Bus (SignInBus)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as Card
@@ -105,6 +106,7 @@ newtype Wiring = Wiring
   , signInBus ∷ SignInBus
   , hasIdentified ∷ Ref Boolean
   , presentStepByStepGuide ∷ Bus.BusRW StepByStepGuide
+  , allowedAuthenticationModes ∷ Ref AllowedAuthenticationModes
   }
 
 makeWiring
@@ -126,6 +128,7 @@ makeWiring path varMaps = fromAff do
   signInBus ← Bus.make
   hasIdentified ← fromEff (newRef false)
   presentStepByStepGuide ← Bus.make
+  allowedAuthenticationModes ← fromEff (newRef ChosenProviderOnly)
   pure $ Wiring
     { path
     , decks
@@ -140,6 +143,7 @@ makeWiring path varMaps = fromAff do
     , signInBus
     , hasIdentified
     , presentStepByStepGuide
+    , allowedAuthenticationModes
     }
 
 makeCache

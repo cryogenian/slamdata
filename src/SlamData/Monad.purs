@@ -20,10 +20,10 @@ import SlamData.Prelude
 
 import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (readRef, writeRef)
@@ -51,6 +51,7 @@ import SlamData.Wiring (Wiring(..), DeckMessage(..))
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Class (class WorkspaceDSL)
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Monad.Auth (getIdTokenSilently)
 
 import Utils (censor)
 
@@ -133,6 +134,11 @@ derive newtype instance functorSlamA :: Functor (SlamA eff)
 derive newtype instance applySlamA :: Apply (SlamA eff)
 derive newtype instance applicativeSlamA :: Applicative (SlamA eff)
 
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+
 runSlam :: Wiring -> Slam ~> Aff SlamDataEffects
 runSlam wiring s = runReaderT (unSlam s) wiring
 
@@ -145,8 +151,9 @@ unSlam = foldFree go ∘ unSlamM
     Aff aff →
       lift aff
     GetAuthIdToken k → do
-      Wiring { requestIdTokenBus, notify } ← ask
-      idToken ← liftAff $ censor <$> Auth.getIdTokenFromBusSilently requestIdTokenBus
+      Wiring { requestIdTokenBus, notify, allowedAuthenticationModes } ← ask
+      allowed ← liftEff $ readRef allowedAuthenticationModes
+      idToken ← liftAff $ censor <$> getIdTokenSilently allowed requestIdTokenBus
       case idToken of
         Just (Left error) →
           maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error
@@ -154,8 +161,9 @@ unSlam = foldFree go ∘ unSlamM
           pure unit
       pure $ k $ maybe Nothing censor idToken
     Quasar qf → do
-      Wiring { requestIdTokenBus, signInBus, notify } ← ask
-      idToken ← lift $ censor <$> Auth.getIdTokenFromBusSilently requestIdTokenBus
+      Wiring { requestIdTokenBus, signInBus, notify, allowedAuthenticationModes } ← ask
+      allowed ← liftEff $ readRef allowedAuthenticationModes
+      idToken ← lift $ censor <$> getIdTokenSilently allowed requestIdTokenBus
       case idToken of
         Just (Left error) →
           maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error

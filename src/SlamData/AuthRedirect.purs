@@ -29,6 +29,7 @@ import DOM.HTML.Window as Win
 
 import SlamData.AuthRedirect.RedirectHashPayload as Payload
 import SlamData.Quasar.Auth.Store as AuthStore
+import SlamData.Quasar.Auth.Keys as AuthKeys
 
 import OIDC.Crypt.Types (IdToken)
 
@@ -45,4 +46,4 @@ parseIdToken :: String -> Either String IdToken
 parseIdToken = Payload.parseUriHash >>> map _.idToken >>> lmap show
 
 main :: Eff RedirectEffects Unit
-main = (getHash >>= parseIdToken >>> AuthStore.storeIdToken) *> (window >>= DOMUtils.close)
+main = (getHash >>= parseIdToken >>> AuthStore.storeIdToken AuthKeys.fromRedirectSuffix) *> (window >>= DOMUtils.close)

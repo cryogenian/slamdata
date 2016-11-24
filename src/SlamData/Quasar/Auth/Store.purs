@@ -16,45 +16,45 @@ limitations under the License.
 
 module SlamData.Quasar.Auth.Store where
 
-import Prelude
+import SlamData.Prelude
 import Control.Monad.Eff (Eff)
-import Data.Either (Either)
 import DOM (DOM)
 import OIDC.Crypt.Types as OIDCT
 import Quasar.Advanced.Types as QAT
 import SlamData.Quasar.Auth.Keys as AuthKeys
 import Utils.LocalStorage as LS
 
-storeIdToken ∷ ∀ e. Either String OIDCT.IdToken → Eff (dom ∷ DOM | e) Unit
-storeIdToken idToken =
+storeIdToken ∷ ∀ e. String → Either String OIDCT.IdToken → Eff (dom ∷ DOM | e) Unit
+storeIdToken keySuffix idToken =
   LS.setLocalStorage
-    AuthKeys.idTokenLocalStorageKey
-    $ OIDCT.runIdToken <$> idToken
+    (AuthKeys.hyphenatedSuffix AuthKeys.idTokenLocalStorageKey keySuffix)
+    $ OIDCT.runIdToken
+    <$> idToken
 
-storeProvider ∷ ∀ e. QAT.Provider → Eff (dom ∷ DOM | e) Unit
+storeProvider ∷ ∀ e. String → QAT.Provider → Eff (dom ∷ DOM | e) Unit
 storeProvider =
-  LS.setLocalStorage AuthKeys.providerLocalStorageKey
+  LS.setLocalStorage ∘ AuthKeys.hyphenatedSuffix AuthKeys.providerLocalStorageKey
 
-clearProvider ∷ ∀ e. Eff (dom ∷ DOM | e) Unit
+clearProvider ∷ ∀ e. String → Eff (dom ∷ DOM | e) Unit
 clearProvider =
-  LS.removeLocalStorage AuthKeys.providerLocalStorageKey
+  LS.removeLocalStorage ∘ AuthKeys.hyphenatedSuffix AuthKeys.providerLocalStorageKey
 
-storeKeyString ∷ ∀ e. OIDCT.KeyString → Eff (dom ∷ DOM |e) Unit
-storeKeyString (OIDCT.KeyString ks) =
+storeKeyString ∷ ∀ e. String → OIDCT.KeyString → Eff (dom ∷ DOM |e) Unit
+storeKeyString keySuffix (OIDCT.KeyString ks) =
   LS.setLocalStorage
-    AuthKeys.keyStringLocalStorageKey
+    (AuthKeys.hyphenatedSuffix AuthKeys.keyStringLocalStorageKey keySuffix)
     ks
 
-storeUnhashedNonce ∷ ∀ e. OIDCT.UnhashedNonce → Eff (dom ∷ DOM |e) Unit
-storeUnhashedNonce (OIDCT.UnhashedNonce n) =
+storeUnhashedNonce ∷ ∀ e. String → OIDCT.UnhashedNonce → Eff (dom ∷ DOM |e) Unit
+storeUnhashedNonce keySuffix (OIDCT.UnhashedNonce n) =
   LS.setLocalStorage
-    AuthKeys.nonceLocalStorageKey
+    (AuthKeys.hyphenatedSuffix AuthKeys.nonceLocalStorageKey keySuffix)
     n
 
-clearIdToken ∷ ∀ e. Eff (dom ∷ DOM |e) Unit
+clearIdToken ∷ ∀ e. String → Eff (dom ∷ DOM |e) Unit
 clearIdToken =
-  LS.removeLocalStorage AuthKeys.idTokenLocalStorageKey
+  LS.removeLocalStorage ∘ AuthKeys.hyphenatedSuffix AuthKeys.idTokenLocalStorageKey
 
-clearUnhashedNonce ∷ ∀ e. Eff (dom ∷ DOM |e) Unit
+clearUnhashedNonce ∷ ∀ e. String → Eff (dom ∷ DOM |e) Unit
 clearUnhashedNonce =
-  LS.removeLocalStorage AuthKeys.nonceLocalStorageKey
+  LS.removeLocalStorage ∘ AuthKeys.hyphenatedSuffix AuthKeys.nonceLocalStorageKey

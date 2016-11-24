@@ -1,0 +1,108 @@
+{-
+Copyright 2016 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
+module SlamData.Monad.Auth where
+
+import SlamData.Prelude
+import SlamData.AuthenticationMode (AuthenticationMode, AllowedAuthenticationModes)
+import SlamData.AuthenticationMode as AuthenticationMode
+import SlamData.Quasar.Auth.Authentication as Auth
+import SlamData.Quasar.Auth.Keys as AuthKeys
+import Control.Monad.Aff as Aff
+import Control.Monad.Aff (Aff)
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Error (QError)
+import Control.Monad.Eff.Class (liftEff)
+import Quasar.Advanced.Types as QAT
+import Control.Monad.Aff.AVar (AVar)
+import Utils (passover, singletonValue)
+import Control.Monad.Aff.Bus as Bus
+import SlamData.Quasar.Aff (runQuasarF)
+import Quasar.Advanced.QuasarAF as QA
+import Control.Monad.Eff (Eff)
+import Utils.LocalStorage as LocalStorage
+import Control.Monad.Aff.AVar as AVar
+import SlamData.Quasar.Error as QError
+
+getIdTokenSilently ∷ AllowedAuthenticationModes → Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
+getIdTokenSilently interactionlessSignIn idTokenRequestBus = do
+  case interactionlessSignIn of
+    AuthenticationMode.ChosenProviderAndAllProviders →
+      -- Currently singleton provider from Quasar configuration if none chosen.
+      -- Eventually this will use all providers in Quasar configuration
+      either (const $ getWithSingletonProviderFromQuasar) (pure ∘ Right)
+        =<< getWithProviderFromLocalStorage
+    AuthenticationMode.ChosenProviderOnly →
+      getWithProviderFromLocalStorage
+  where
+
+  getWithProviderFromLocalStorage ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
+  getWithProviderFromLocalStorage =
+    shiftAffErrorsIntoQError $ traverse (get AuthenticationMode.ChosenProvider)
+      =<< liftEff getProviderFromLocalStorage
+
+  getWithSingletonProviderFromQuasar ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
+  getWithSingletonProviderFromQuasar =
+      shiftAffErrorsIntoQError $ traverse (get AuthenticationMode.AllProviders)
+        =<< getSingletonProviderFromQuasar
+
+  get ∷ AuthenticationMode → QAT.ProviderR → Aff SlamDataEffects Auth.EIdToken
+  get mode providerR =
+    AVar.takeVar =<< passover (write mode providerR) =<< AVar.makeVar
+
+  write ∷ AuthenticationMode → QAT.ProviderR → AVar Auth.EIdToken → Aff SlamDataEffects Unit
+  write mode providerR idToken =
+    Bus.write
+      { idToken
+      , providerR
+      , prompt: false
+      , keySuffix: AuthenticationMode.toKeySuffix mode
+      }
+      idTokenRequestBus
+
+  getSingletonProviderFromQuasar ∷ Aff SlamDataEffects (Either QError QAT.ProviderR)
+  getSingletonProviderFromQuasar =
+    flip bind singletonProvider <$> runQuasarF Nothing QA.authProviders
+
+  singletonProvider ∷ Array QAT.ProviderR → Either QError QAT.ProviderR
+  singletonProvider =
+    singletonValue
+      (Left $ unauthorizedError $ Just noProvidersMessage)
+      (const $ Left $ unauthorizedError $ Just tooManyProvidersMessage)
+
+  -- Get previously chosen provider from local storage
+  getProviderFromLocalStorage ∷ Eff SlamDataEffects (Either QError QAT.ProviderR)
+  getProviderFromLocalStorage =
+    lmap (unauthorizedError ∘ Just) ∘ map QAT.runProvider
+      <$> LocalStorage.getLocalStorage
+            (AuthKeys.hyphenatedSuffix
+               AuthKeys.providerLocalStorageKey
+               $ AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider)
+
+  noProvidersMessage ∷ String
+  noProvidersMessage =
+    "Quasar is not configured with any authentication providers."
+
+  tooManyProvidersMessage ∷ String
+  tooManyProvidersMessage =
+    "Quasar is configured with more than one authentication providers. Interactionless sign in currently only supports configurations with a single provider."
+
+  unauthorizedError ∷ Maybe String → QError
+  unauthorizedError =
+    QError.Unauthorized ∘ map QError.UnauthorizedDetails
+
+  shiftAffErrorsIntoQError ∷ ∀ a eff. Aff eff (Either QError a) → Aff eff (Either QError a)
+  shiftAffErrorsIntoQError = map (either (Left ∘ QError.Error) id) ∘ Aff.attempt
