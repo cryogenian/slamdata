@@ -8,23 +8,64 @@
 
 .sd-miller-column {
   display: inline-block;
-  list-style: none;
-  padding: 0;
-  margin: 0;
   width: 250px;
   height: 100%;
-  overflow: auto;
+  vertical-align: top;
   box-sizing: border-box;
   border: 1px solid #ddd;
-  vertical-align: top;
+
+  .sd-miller-column-selection {
+    position: relative;
+    height: ~"calc(2.25rem + 3px)";
+    border-bottom: 3px solid #ddd;
+    width: 100%;
+    padding: 0 6px;
+    line-height: 2.25rem;
+
+    .sd-miller-column-selection-label {
+      opacity: 0.5;
+      width: 100%;
+      display: block;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    &.selected {
+      cursor: pointer;
+      font-weight: bold;
+      padding-right: 25px;
+      .sd-clear-field-icon {
+        position: absolute;
+        top: 50%;
+        margin-top: -0.5rem;
+        right: 6px;
+      }
+      .sd-miller-column-selection-label {
+        opacity: 1;
+      }
+    }
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: ~"calc(100% - 2.25rem - 3px)";
+    overflow: auto;
+  }
 
   li {
     display: block;
-    padding: 8px 6px;
+    padding: 0 6px;
     cursor: pointer;
     position: relative;
     box-sizing: border-box;
     z-index: 1;
+
+    height: 2.25rem;
+    line-height: 2.25rem;
   }
 
   li:hover {

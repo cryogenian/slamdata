@@ -397,7 +397,7 @@ expectSelectValue ∷ ∀ eff o. String → XPath → Feature eff o Unit
 expectSelectValue value xPath =
   tryRepeatedlyTo $ getOptionValue >>= expectPresentedWithValue
   where
-  optionXPath = xPath ⊕ "/descendant::option[text()='" ⊕ value ⊕ "']"
+  optionXPath = xPath ⊕ XPath.descendantString ⊕ "option[text()='" ⊕ value ⊕ "']"
   getOptionValue = flip getAttribute "value" =<< find optionXPath
   valueProperty = Map.singleton "value"
   expectPresentedWithValue value' = expectPresentedWithProperties (valueProperty value') xPath
