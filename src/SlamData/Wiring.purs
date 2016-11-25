@@ -45,6 +45,7 @@ import SlamData.GlobalError as GE
 import SlamData.Notification as N
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.GlobalMenu.Bus (SignInBus)
+import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Eval.Card as Card
@@ -106,6 +107,7 @@ type BusWiring =
 
 type WiringR =
   { path ∷ DirPath
+  , accessType ∷ AccessType
   , varMaps ∷ Map.Map Deck.Id Port.URLVarMap
   , eval ∷ EvalWiring
   , auth ∷ AuthWiring
@@ -128,14 +130,15 @@ make
   ∷ ∀ m
   . (Affable SlamDataEffects m)
   ⇒ DirPath
+  → AccessType
   → Map.Map Deck.Id Port.URLVarMap
   → m Wiring
-make path varMaps = fromAff do
+make path accessType varMaps = fromAff do
   eval ← makeEval
   auth ← makeAuth
   cache ← makeCache
   bus ← makeBus
-  pure $ Wiring { path, varMaps, eval, auth, cache, bus }
+  pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus }
 
   where
   makeEval = do

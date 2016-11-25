@@ -26,7 +26,7 @@ import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (putVar)
 import Control.Monad.Aff.Bus as Bus
 
-import Data.Lens ((^.), (.~))
+import Data.Lens ((.~))
 import Data.List as List
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
@@ -56,7 +56,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, toWorkspace)
-import SlamData.Workspace.Component.State (State, _accessType, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
+import SlamData.Workspace.Component.State (State, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
 import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
@@ -72,34 +72,32 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp =
+comp ∷ AT.AccessType → H.Component StateP QueryP Slam
+comp accessType =
   H.lifecycleParentComponent
-    { render
+    { render: render accessType
     , eval
     , peek: Just (peek ∘ H.runChildF)
     , initializer: Just $ Init unit
     , finalizer: Nothing
     }
 
-render ∷ State → WorkspaceHTML
-render state =
+render ∷ AT.AccessType → State → WorkspaceHTML
+render accessType state =
   HH.div
     [ HP.classes
-        $ (guard (AT.isReadOnly (state ^. _accessType)) $> HH.className "sd-published")
+        $ (guard (AT.isReadOnly accessType) $> HH.className "sd-published")
         ⊕ [ HH.className "sd-workspace" ]
     , HE.onClick (HE.input DismissAll)
     ]
     (preloadGuides ⊕ notifications ⊕ header ⊕ deck ⊕ renderCardGuide ⊕ renderFlipGuide)
   where
-  renderCardGuide ∷ Array WorkspaceHTML
   renderCardGuide =
     Guide.renderStepByStepWithArray
       { next: CardGuideStepNext, dismiss: CardGuideDismiss }
       state.cardGuideStep
       Guide.cardGuideSteps
 
-  renderFlipGuide ∷ Array WorkspaceHTML
   renderFlipGuide =
     Guide.renderStepByStepWithArray
       { next: FlipGuideStepNext, dismiss: FlipGuideDismiss }
@@ -110,22 +108,19 @@ render state =
     Guide.preloadStepByStepWithArray
       <$> [ Guide.cardGuideSteps, Guide.flipGuideSteps ]
 
-  notifications ∷ Array WorkspaceHTML
   notifications =
     pure $ HH.slot' cpNotify unit \_ →
       { component: NC.comp
       , initialState: NC.initialState
       }
 
-  header ∷ Array WorkspaceHTML
   header = do
-    guard $ AT.isEditable (state ^. _accessType)
+    guard $ AT.isEditable accessType
     pure $ HH.slot' cpHeader unit \_ →
       { component: Header.comp
       , initialState: H.parentState Header.initialState
       }
 
-  deck ∷ Array WorkspaceHTML
   deck =
     pure case state.stateMode, state.deckId of
       Loading, _ →
@@ -140,7 +135,7 @@ render state =
       _, _ → showError "Missing deck id (impossible!)"
 
   deckOpts deckId =
-    { accessType: state.accessType
+    { accessType
     , cursor: List.Nil
     }
 
@@ -205,11 +200,8 @@ eval = case _ of
       _ ← H.fromAff (Bus.read cell.bus)
       void $ setRoot deckId
     pure next
-  Load deckId accessType next → do
-    H.modify _
-      { accessType = accessType
-      , deckId = deckId
-      }
+  Load deckId next → do
+    H.modify _ { deckId = deckId }
     when (isNothing deckId) do
       H.modify _ { stateMode = Loading }
       rootDeck >>= case _ of

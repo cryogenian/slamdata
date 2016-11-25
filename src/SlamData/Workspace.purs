@@ -78,17 +78,17 @@ routeSignal =
     case new, state of
       -- Initialize the Workspace component
       WorkspaceRoute path deckId action varMaps, Nothing → do
-        wiring ← lift $ Wiring.make path varMaps
+        wiring ← lift $ Wiring.make path (toAccessType action) varMaps
         let
           st = Workspace.initialState (Just "4.0")
-          ui = interpret (runSlam wiring) Workspace.comp
+          ui = interpret (runSlam wiring) $ Workspace.comp (toAccessType action)
         driver ← lift $ runUI ui (parentState st) =<< awaitBody
         lift $ setupWorkspace new driver
         routeConsumer (Just (RouterState new driver))
 
       -- Reload the page on path change or varMap change
-      WorkspaceRoute path _ _ varMaps, Just (RouterState (WorkspaceRoute path' _ _ varMaps') _)
-        | path ≠ path' || varMaps ≠ varMaps' →
+      WorkspaceRoute path _ action varMaps, Just (RouterState (WorkspaceRoute path' _ action' varMaps') _)
+        | path ≠ path' || varMaps ≠ varMaps' || toAccessType action ≠ toAccessType action' →
         lift $ liftEff Browser.reload
 
       -- Transition Workspace
@@ -119,8 +119,8 @@ routeSignal =
         =<< window
 
     forkAff case action of
-      Load accessType →
-        driver $ Workspace.toWorkspace $ Workspace.Load deckId accessType
+      Load _ →
+        driver $ Workspace.toWorkspace $ Workspace.Load deckId
       New →
         driver $ Workspace.toWorkspace $ Workspace.New
       -- FIXME

@@ -64,6 +64,7 @@ import SlamData.Monad (Slam, runSlam)
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
 import SlamData.Wiring as Wiring
+import SlamData.Workspace.AccessType (AccessType(..))
 
 import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch.Types (SearchQuery)
@@ -77,7 +78,7 @@ main = do
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
     fork Analytics.enableAnalytics
-    wiring ← Wiring.make rootDir mempty
+    wiring ← Wiring.make rootDir Editable mempty
     let ui = interpret (runSlam wiring) comp
     driver ← runUI ui (parentState initialState) =<< awaitBody
     fork do

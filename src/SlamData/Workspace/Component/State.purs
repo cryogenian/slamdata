@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Component.State
   ( State
   , initialState
-  , _accessType
   , _deckId
   , _stateMode
   , _cardGuideStep
@@ -30,13 +29,11 @@ import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
 
-import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
 type State =
-  { accessType ∷ AccessType
-  , deckId ∷ Maybe DeckId
+  { deckId ∷ Maybe DeckId
   , stateMode ∷ StateMode
   , cardGuideStep ∷ Maybe Int
   , flipGuideStep ∷ Maybe Int
@@ -44,15 +41,11 @@ type State =
 
 initialState ∷ Maybe String → State
 initialState version =
-  { accessType: Editable
-  , deckId: Nothing
+  { deckId: Nothing
   , stateMode: Loading
   , cardGuideStep: Nothing
   , flipGuideStep: Nothing
   }
-
-_accessType ∷ ∀ a r. Lens' { accessType ∷ a | r } a
-_accessType = lens _.accessType _ { accessType = _ }
 
 _deckId ∷ ∀ a r. Lens' { deckId ∷ a | r } a
 _deckId = lens _.deckId _ { deckId = _ }

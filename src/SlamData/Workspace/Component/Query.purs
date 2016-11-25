@@ -22,7 +22,6 @@ import Halogen as H
 import Halogen.HTML.Events.Types as HET
 
 import SlamData.Wiring (StepByStepGuide)
-import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
@@ -30,7 +29,7 @@ data Query a
   = Init a
   | DismissAll (HET.Event HET.MouseEvent) a
   | New a
-  | Load (Maybe DeckId) AccessType a
+  | Load (Maybe DeckId) a
   | PresentStepByStepGuide StepByStepGuide a
   | CardGuideStepNext a
   | CardGuideDismiss a
