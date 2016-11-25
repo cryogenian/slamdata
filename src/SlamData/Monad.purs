@@ -20,15 +20,17 @@ import SlamData.Prelude
 
 import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Ref (readRef, writeRef)
 import Control.Monad.Fork (class MonadFork, Canceler, cancelWith, fork, hoistCanceler)
 import Control.Monad.Free (Free, liftF, foldFree)
-import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Parallel (parallel, sequential)
+import Control.UI.Browser (locationObject)
+
+import DOM.HTML.Location (setHash)
 
 import OIDC.Crypt.Types as OIDC
 
@@ -46,6 +48,8 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
+import SlamData.Workspace.Deck.DeckPath (deckPath')
+import SlamData.Workspace.Routing as Routing
 
 import Utils (censor)
 
@@ -62,6 +66,7 @@ data SlamF eff a
   | Fork (Fork (SlamM eff) a)
   | Cancel (SlamM eff a) (Canceler (SlamM eff))
   | Ask (Wiring → a)
+  | Navigate Routing.Routes a
 
 newtype SlamM eff a = SlamM (Free (SlamF eff) a)
 
@@ -118,7 +123,9 @@ instance notifyDSLSlamM ∷ N.NotifyDSL (SlamM eff) where
 instance globalErrorDSLSlamM ∷ GE.GlobalErrorDSL (SlamM eff) where
   raiseGlobalError = SlamM ∘ liftF ∘ flip Halt unit
 
-instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff)
+instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
+  navigate = SlamM ∘ liftF ∘ flip Navigate unit
+
 
 --------------------------------------------------------------------------------
 
@@ -130,65 +137,62 @@ derive newtype instance applicativeSlamA :: Applicative (SlamA eff)
 
 --------------------------------------------------------------------------------
 
-runSlam :: Wiring -> Slam ~> Aff SlamDataEffects
-runSlam wiring s = runReaderT (unSlam s) wiring
-
-unSlam ∷ Slam ~> ReaderT Wiring (Aff SlamDataEffects)
-unSlam = foldFree go ∘ unSlamM
+runSlam ∷ Wiring → Slam ~> Aff SlamDataEffects
+runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
   where
 
-  go ∷ SlamF SlamDataEffects ~> ReaderT Wiring (Aff SlamDataEffects)
+  go ∷ SlamF SlamDataEffects ~> Aff SlamDataEffects
   go = case _ of
     Aff aff →
-      lift aff
+      aff
     GetAuthIdToken k → do
-      { auth, bus } ← Wiring.expose
-      idToken ← liftAff $ censor <$> Auth.getIdTokenFromBusSilently auth.requestToken
+      idToken ← censor <$> Auth.getIdTokenFromBusSilently auth.requestToken
       case idToken of
         Just (Left error) →
           for_ (Auth.toNotificationOptions error) \opts →
-            lift (Bus.write opts bus.notify)
+            Bus.write opts bus.notify
         _ →
           pure unit
       pure $ k $ maybe Nothing censor idToken
     Quasar qf → do
-      { auth, bus } ← Wiring.expose
-      idToken ← lift $ censor <$> Auth.getIdTokenFromBusSilently auth.requestToken
+      idToken ← censor <$> Auth.getIdTokenFromBusSilently auth.requestToken
       case idToken of
         Just (Left error) →
           for_ (Auth.toNotificationOptions error) \opts →
-            lift (Bus.write opts bus.notify)
+            Bus.write opts bus.notify
         _ →
           pure unit
-      lift $ runQuasarF (maybe Nothing censor idToken) qf
+      runQuasarF (maybe Nothing censor idToken) qf
     Track e a → do
-      { auth } ← Wiring.expose
-      hasIdentified ← lift $ liftEff $ readRef auth.hasIdentified
-      unless (hasIdentified) $ lift do
+      hasIdentified ← liftEff $ readRef auth.hasIdentified
+      unless (hasIdentified) do
         liftEff $ writeRef auth.hasIdentified true
         licensee ← runQuasarF Nothing QA.licensee
         liftEff $ for_ licensee A.identify
       liftEff $ A.trackEvent e
       pure a
     Notify no a → do
-      { bus } ← Wiring.expose
-      lift $ Bus.write no bus.notify
+      Bus.write no bus.notify
       pure a
     Halt err a → do
-      { bus } ← Wiring.expose
-      lift $ Bus.write (GE.toNotificationOptions err) bus.notify
+      Bus.write (GE.toNotificationOptions err) bus.notify
       pure a
     Par (SlamA p) →
-      sequential $ retractFreeAp $ hoistFreeAp (parallel <<< unSlam) p
-    Fork f → do
-      r ← ask
-      goFork r f
+      sequential $ retractFreeAp $ hoistFreeAp (parallel <<< runSlam wiring) p
+    Fork f →
+      goFork f
     Cancel m c →
-      cancelWith (unSlam m) (hoistCanceler unSlam c)
+      cancelWith (runSlam wiring m) (hoistCanceler (runSlam wiring) c)
     Ask k →
-      k <$> ask
+      pure (k wiring)
+    Navigate (Routing.WorkspaceRoute path deckId action varMaps) a → do
+      let
+        path' = maybe path (deckPath' path) deckId
+        hash  = Routing.mkWorkspaceHash path' action varMaps
+      liftEff $ locationObject >>= setHash hash
+      pure a
 
-  goFork ∷ Wiring → Fork Slam ~> ReaderT Wiring (Aff SlamDataEffects)
-  goFork r = unFork \(ForkF x k) →
-    k ∘ hoistCanceler (SlamM ∘ liftF ∘ Aff ∘ flip runReaderT r)
-      <$> fork (unSlam x)
+  goFork ∷ Fork Slam ~> Aff SlamDataEffects
+  goFork = unFork \(ForkF x k) →
+    k ∘ hoistCanceler (SlamM ∘ liftF ∘ Aff)
+      <$> fork (runSlam wiring x)
