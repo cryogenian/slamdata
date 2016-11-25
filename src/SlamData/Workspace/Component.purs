@@ -54,6 +54,8 @@ import SlamData.Notification.Component as NC
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Action as WA
+import SlamData.Workspace.Class (navigate, Routes(..))
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, toWorkspace)
 import SlamData.Workspace.Component.State (State, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
@@ -191,14 +193,15 @@ eval = case _ of
   New next → do
     st ← H.get
     when (isNothing st.deckId) do
-      { path } ← H.liftH $ H.liftH Wiring.expose
+      { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
       deckId × cell ← H.liftH $ H.liftH P.freshWorkspace
       H.modify _
         { stateMode = Ready
         , deckId = Just deckId
         }
       _ ← H.fromAff (Bus.read cell.bus)
-      void $ setRoot deckId
+      setRoot deckId
+      navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) varMaps
     pure next
   Load deckId next → do
     H.modify _ { deckId = deckId }

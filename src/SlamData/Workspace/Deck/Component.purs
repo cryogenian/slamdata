@@ -32,13 +32,12 @@ import Control.Monad.Aff.Promise as Promise
 import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
-import Control.UI.Browser (locationObject, setHref, newTab)
+import Control.UI.Browser (setHref, newTab)
 
 import Data.Array as Array
 import Data.Lens ((.~), (%~), (^?), (?~), _Left, _Just, is)
 import Data.List as L
 
-import DOM.HTML.Location as Location
 import DOM.HTML.HTMLElement (getBoundingClientRect)
 
 import Halogen as H
@@ -65,6 +64,7 @@ import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Next.Component.Query as Next
+import SlamData.Workspace.Class (navigate, Routes(..))
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, ChildQuery, ChildSlot, cpDialog, cpBackSide, cpNext)
@@ -80,7 +80,7 @@ import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
-import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
+import SlamData.Workspace.Routing (mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils (censor)
@@ -143,18 +143,16 @@ eval opts = case _ of
     updateCardSize
     pure next
   ZoomIn next → do
-    { path, varMaps } ← H.liftH $ H.liftH Wiring.expose
+    { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
     st ← H.get
-    let deckHash = mkWorkspaceHash (deckPath' path st.id) (WA.Load opts.accessType) varMaps
-    H.fromEff $ locationObject >>= Location.setHash deckHash
+    navigate $ WorkspaceRoute path (Just st.id) (WA.Load accessType) varMaps
     pure next
   ZoomOut next → do
-    { path, varMaps } ← H.liftH $ H.liftH Wiring.expose
+    { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
     st ← H.get
     case st.parent of
       Just (Tuple deckId _) → do
-        let deckHash = mkWorkspaceHash (deckPath' path deckId) (WA.Load opts.accessType) varMaps
-        H.fromEff $ locationObject >>= Location.setHash deckHash
+        navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) varMaps
       Nothing →
         void $ H.fromEff $ setHref $ parentURL $ Left path
     pure next
@@ -460,10 +458,19 @@ loadDeck opts = do
       let
         coords = Model.cardCoords st.id deck
       case Array.head coords of
-        Just coord →
+        Just coord → do
+          H.modify $ DCS.fromModel
+            { name: deck.name
+            , parent: deck.parent
+            , displayCards: []
+            }
           H.fromAff $ Bus.write (ED.Force (opts.cursor × coord)) bus
         Nothing →
-          H.modify _ { displayCards = [ Left (DCS.NextActionCard Port.Initial) ] }
+          H.modify $ DCS.fromModel
+            { name: deck.name
+            , parent: deck.parent
+            , displayCards: [ Left (DCS.NextActionCard Port.Initial) ]
+            }
 
 handleEval ∷ ED.EvalMessage → DeckDSL Unit
 handleEval = case _ of

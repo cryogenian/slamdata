@@ -14,7 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Class where
+module SlamData.Workspace.Class
+  ( class WorkspaceDSL
+  , navigate
+  , module SlamData.Workspace.Routing
+  ) where
 
 import SlamData.Prelude
 
@@ -23,7 +27,7 @@ import Control.Monad.Free (Free, liftF)
 import Halogen.Query.EventSource as ES
 import Halogen.Query.HalogenF as HF
 
-import SlamData.Workspace.Routing (Routes)
+import SlamData.Workspace.Routing (Routes(..))
 
 class WorkspaceDSL (m ∷ * → *) where
   navigate ∷ Routes → m Unit

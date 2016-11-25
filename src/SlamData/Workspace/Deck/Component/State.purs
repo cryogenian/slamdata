@@ -287,7 +287,7 @@ findLastCard state =
 fromModel
   ∷ { name ∷ String
     , parent ∷ Maybe (DeckId × CardId)
-    , displayCards ∷ Array (DeckId × Card.Model)
+    , displayCards ∷ Array DisplayCard
     }
   → State
   → State
@@ -295,7 +295,7 @@ fromModel { name, parent, displayCards } state =
   state
     { name = name
     , parent = parent
-    , displayCards = mempty
+    , displayCards = displayCards
     , displayMode = Normal
     , activeCardIndex = Nothing
     , initialSliderX = Nothing
