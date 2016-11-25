@@ -35,6 +35,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
+import SlamData.Workspace.AccessType (isEditable)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
@@ -65,9 +66,12 @@ type Persist f m a =
 
 putDeck ∷ ∀ f m. Persist f m (Deck.Id → Deck.Model → m (Either QE.QError Unit))
 putDeck deckId deck = do
-  { path, eval } ← Wiring.expose
+  { path, eval, accessType } ← Wiring.expose
   ref ← defer do
-    res ← Quasar.save (Deck.deckIndex path deckId) $ Deck.encode deck
+    res ←
+      if isEditable accessType
+        then Quasar.save (Deck.deckIndex path deckId) $ Deck.encode deck
+        else pure (Right unit)
     pure $ res $> deck
   Cache.alter deckId
     (\cell → pure $ _ { value = ref } <$> cell)
