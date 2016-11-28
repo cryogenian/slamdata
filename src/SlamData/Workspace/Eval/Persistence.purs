@@ -264,9 +264,9 @@ forkCardProcess ∷ ∀ f m. Persist f m (Card.Coord → Bus.BusRW Card.EvalMess
 forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
   Card.ModelChange source model → do
     { eval } ← Wiring.expose
+    Cache.alter coord (pure ∘ map (updateModel model)) eval.cards
     mbGraph ← snapshotGraph coord
     for_ mbGraph \graph → do
-      Cache.alter coord (pure ∘ map (updateModel model)) eval.cards
       queueSave defaultSaveDebounce deckId
       queueEval defaultEvalDebounce source graph
   _ →
