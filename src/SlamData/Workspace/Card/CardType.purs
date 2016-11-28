@@ -204,7 +204,7 @@ darkCardGlyph = case _ of
     let
       src = case fity of
         Dropdown → "img/cardsDark/setupFormInput/dropdown.svg"
-        StaticText → "img/cardsDark/setupFormInput/staticText.svg"
+        Static → "img/cardsDark/setupFormInput/static.svg"
         Text → "img/cardsDark/setupFormInput/text.svg"
         Numeric → "img/cardsDark/setupFormInput/numeric.svg"
         Checkbox → "img/cardsDark/setupFormInput/checkbox.svg"
@@ -275,7 +275,7 @@ lightCardGlyph = case _ of
     let
       src = case fity of
         Dropdown → "img/cardsLight/setupFormInput/dropdown.svg"
-        StaticText → "img/cardsLight/setupFormInput/staticText.svg"
+        Static → "img/cardsLight/setupFormInput/static.svg"
         Text → "img/cardsLight/setupFormInput/text.svg"
         Numeric → "img/cardsLight/setupFormInput/numeric.svg"
         Checkbox → "img/cardsLight/setupFormInput/checkbox.svg"

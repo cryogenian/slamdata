@@ -1,5 +1,5 @@
-module SlamData.Workspace.Card.SetupFormInput.Dropdown.Component
-  ( dropdownSetupComponent
+module SlamData.Workspace.Card.SetupFormInput.Datetime.Component
+  ( datetimeSetupComponent
   ) where
 
 import SlamData.Prelude
@@ -31,10 +31,10 @@ import SlamData.Workspace.Card.BuildChart.CSS as CSS
 import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
 import SlamData.Workspace.Card.BuildChart.Inputs as BCI
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.ChildSlot as CS
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.State as ST
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.Query as Q
---import SlamData.Workspace.Card.SetupFormInput.Dropdown.Model as M
+import SlamData.Workspace.Card.SetupFormInput.Datetime.Component.ChildSlot as CS
+import SlamData.Workspace.Card.SetupFormInput.Datetime.Component.State as ST
+import SlamData.Workspace.Card.SetupFormInput.Datetime.Component.Query as Q
+--import SlamData.Workspace.Card.SetupFormInput.Datetime.Model as M
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -43,20 +43,20 @@ type HTML =
   H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
 
 
-dropdownSetupComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-dropdownSetupComponent = CC.makeCardComponent
-  { cardType: CT.SetupFormInput FIT.Dropdown
+datetimeSetupComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
+datetimeSetupComponent = CC.makeCardComponent
+  { cardType: CT.SetupFormInput FIT.Datetime
   , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   , initialState: H.parentState ST.initialState
-  , _State: CC._SetupDropdownState
-  , _Query: CC.makeQueryPrism' CC._SetupDropdownQuery
+  , _State: CC._SetupDatetimeState
+  , _Query: CC.makeQueryPrism' CC._SetupDatetimeQuery
   }
 
 render ∷ ST.State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD (CT.darkCardGlyph $ CT.SetupFormInput FIT.Dropdown) left state.levelOfDetails
+    , renderLowLOD (CT.darkCardGlyph $ CT.SetupFormInput FIT.Datetime) left state.levelOfDetails
     ]
 
 renderHighLOD ∷ ST.State → HTML
@@ -187,8 +187,8 @@ cardEval = case _ of
         <$> (st.value ^. S._value)
         <*> (st.horizontalAlign ^. S._value)
         <*> (st.verticalAlign ^. S._value)
-    pure $ k $ Card.SetupDropdown model
-  CC.Load (Card.SetupDropdown (Just model)) next → do
+    pure $ k $ Card.SetupDatetime model
+  CC.Load (Card.SetupDatetime (Just model)) next → do
     H.modify _
       { value = S.fromSelected $ Just model.value
       , name = S.fromSelected model.name
@@ -262,9 +262,9 @@ synchronizeChildren = do
         $ S.newSelect
         $ st.axes.value
         ⊕ st.axes.category
-        ⊕ st.axes.time
         ⊕ st.axes.date
         ⊕ st.axes.datetime
+        ⊕ st.axes.time
 
     newLabel =
       S.setPreviousValueFrom (Just st.label)

@@ -17,7 +17,7 @@ import Test.StrongCheck.Gen as Gen
 
 data FormInputType
   = Dropdown
-  | StaticText
+  | Static
   | Text
   | Numeric
   | Checkbox
@@ -29,12 +29,20 @@ data FormInputType
 allFormInputTypes ∷ Array FormInputType
 allFormInputTypes =
   [ Dropdown
+  , Static
+  , Text
+  , Numeric
+  , Checkbox
+  , Radio
+  , Date
+  , Time
+  , Datetime
   ]
 
 parseFormInputType ∷ String → String ⊹ FormInputType
 parseFormInputType = case _ of
   "dropdown" → pure Dropdown
-  "staticText" → pure StaticText
+  "static" → pure Static
   "text" → pure Text
   "numeric" → pure Numeric
   "checkbox" → pure Checkbox
@@ -47,7 +55,7 @@ parseFormInputType = case _ of
 printFormInputType ∷ FormInputType → String
 printFormInputType = case _ of
   Dropdown → "dropdown"
-  StaticText → "staticText"
+  Static → "static"
   Text → "text"
   Numeric → "numeric"
   Checkbox → "checkbox"
@@ -59,7 +67,7 @@ printFormInputType = case _ of
 formInputName ∷ FormInputType → String
 formInputName = case _ of
   Dropdown → "Dropdown"
-  StaticText → "Static Text"
+  Static → "Static Text"
   Text → "Text Input"
   Numeric → "Numeric Input"
   Checkbox → "Checkbox Group"
@@ -83,7 +91,7 @@ instance arbitraryFormInputType ∷ SC.Arbitrary FormInputType where
 formInputLightIconSrc ∷ FormInputType → String
 formInputLightIconSrc = case _ of
   Dropdown → "img/formInputs/light/dropdown.svg"
-  StaticText → "img/formInputs/light/staticText.svg"
+  Static → "img/formInputs/light/static.svg"
   Text → "img/formInputs/light/text.svg"
   Numeric → "img/formInputs/light/numeric.svg"
   Checkbox → "img/formInputs/light/checkbox.svg"
@@ -95,7 +103,7 @@ formInputLightIconSrc = case _ of
 formInputDarkIconSrc ∷ FormInputType → String
 formInputDarkIconSrc = case _ of
   Dropdown → "img/formInputs/dark/dropdown.svg"
-  StaticText → "img/formInputs/dark/staticText.svg"
+  Static → "img/formInputs/dark/static.svg"
   Text → "img/formInputs/dark/text.svg"
   Numeric → "img/formInputs/dark/numeric.svg"
   Checkbox → "img/formInputs/dark/checkbox.svg"

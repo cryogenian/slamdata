@@ -20,6 +20,7 @@ module SlamData.Workspace.Card.Port
   , DownloadPort
   , MetricPort
   , PivotTablePort
+  , FormInputPort
   , tagPort
   , _SlamDown
   , _VarMap

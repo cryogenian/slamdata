@@ -31,6 +31,7 @@ import SlamData.Workspace.Card.CardType (CardType, cardName, lightCardGlyph)
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
+import SlamData.Workspace.Card.CardType.FormInputType (allFormInputTypes)
 import SlamData.Workspace.Card.Port (Port)
 
 data NextAction
@@ -38,6 +39,13 @@ data NextAction
   | FindOutHowToInsert CardType
   | Drill String String (Array NextAction)
   | GoBack
+
+formInputSubmenu ∷ NextAction
+formInputSubmenu =
+  Drill
+    "Setup Form"
+    "img/cardsLight/setupFormInput.svg"
+    ([ GoBack ] ⊕ map (Insert ∘ CT.SetupFormInput) allFormInputTypes)
 
 chartSubmenu ∷ NextAction
 chartSubmenu =

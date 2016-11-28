@@ -1,5 +1,5 @@
-module SlamData.Workspace.Card.SetupFormInput.Dropdown.Component
-  ( dropdownSetupComponent
+module SlamData.Workspace.Card.SetupFormInput.Static.Component
+  ( staticSetupComponent
   ) where
 
 import SlamData.Prelude
@@ -16,7 +16,6 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Common.Align (alignSelect)
-import SlamData.Form.Select ((⊝))
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Form.Select as S
@@ -31,10 +30,11 @@ import SlamData.Workspace.Card.BuildChart.CSS as CSS
 import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
 import SlamData.Workspace.Card.BuildChart.Inputs as BCI
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.ChildSlot as CS
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.State as ST
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.Query as Q
---import SlamData.Workspace.Card.SetupFormInput.Dropdown.Model as M
+import SlamData.Workspace.Card.SetupFormInput.Static.Component.ChildSlot as CS
+import SlamData.Workspace.Card.SetupFormInput.Static.Component.State as ST
+import SlamData.Workspace.Card.SetupFormInput.Static.Component.Query as Q
+import SlamData.Workspace.Card.SetupFormInput.Static.Semantic (semanticSelect)
+--import SlamData.Workspace.Card.SetupFormInput.Static.Model as M
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -43,20 +43,20 @@ type HTML =
   H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
 
 
-dropdownSetupComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-dropdownSetupComponent = CC.makeCardComponent
-  { cardType: CT.SetupFormInput FIT.Dropdown
+staticSetupComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
+staticSetupComponent = CC.makeCardComponent
+  { cardType: CT.SetupFormInput FIT.Static
   , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   , initialState: H.parentState ST.initialState
-  , _State: CC._SetupDropdownState
-  , _Query: CC.makeQueryPrism' CC._SetupDropdownQuery
+  , _State: CC._SetupStaticState
+  , _Query: CC.makeQueryPrism' CC._SetupStaticQuery
   }
 
 render ∷ ST.State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD (CT.darkCardGlyph $ CT.SetupFormInput FIT.Dropdown) left state.levelOfDetails
+    , renderLowLOD (CT.darkCardGlyph $ CT.SetupFormInput FIT.Static) left state.levelOfDetails
     ]
 
 renderHighLOD ∷ ST.State → HTML
@@ -66,9 +66,8 @@ renderHighLOD state =
         $ [ CSS.chartEditor ]
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
-    [ renderName state
-    , renderLabel state
-    , renderValue state
+    [ renderValue state
+    , renderSemantic state
     , row
         [ renderHorizontalAlign state
         , renderVerticalAlign state
@@ -87,9 +86,7 @@ renderPicker state = case state.picker of
     HH.slot unit \_ →
       { component: DPC.picker
           { title: case r.select of
-               Q.Name _ → "Choose name"
                Q.Value _ → "Choose value"
-               Q.Label _ → "Choose label"
                _ → ""
           , label: DPC.labelNode show
           , render: DPC.renderNode show
@@ -98,30 +95,6 @@ renderPicker state = case state.picker of
           }
       , initialState: H.parentState DPC.initialState
       }
-
-renderName ∷ ST.State → HTML
-renderName state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Name" ]
-    , BCI.pickerInput
-        (BCI.primary (Just "Name") (selecting Q.Name))
-        state.name
-    ]
-
-renderLabel ∷ ST.State → HTML
-renderLabel state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label" ]
-    , BCI.pickerInput
-         (BCI.secondary (Just "Label") (selecting Q.Label))
-         state.label
-    ]
 
 renderValue ∷ ST.State → HTML
 renderValue state =
@@ -133,6 +106,18 @@ renderValue state =
     , BCI.pickerInput
         (BCI.primary (Just "Value") (selecting Q.Value))
         state.value
+    ]
+
+renderSemantic ∷ ST.State → HTML
+renderSemantic state =
+  HH.form
+    [ HP.classes [ CSS.chartConfigureForm ]
+    , Cp.nonSubmit
+    ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Semantic" ]
+    , BCI.selectInput
+        (BCI.dropdown (Just "Semantic") (selecting Q.Semantic))
+        state.semantic
     ]
 
 renderHorizontalAlign ∷ ST.State → HTML
@@ -179,20 +164,19 @@ cardEval = case _ of
     let
       model =
         { value: _
-        , name: st.name ^. S._value
-        , label: st.label ^. S._value
+        , semantic: _
         , horizontalAlign: _
         , verticalAlign: _
         }
         <$> (st.value ^. S._value)
+        <*> (st.semantic ^. S._value)
         <*> (st.horizontalAlign ^. S._value)
         <*> (st.verticalAlign ^. S._value)
-    pure $ k $ Card.SetupDropdown model
-  CC.Load (Card.SetupDropdown (Just model)) next → do
+    pure $ k $ Card.SetupStatic model
+  CC.Load (Card.SetupStatic (Just model)) next → do
     H.modify _
       { value = S.fromSelected $ Just model.value
-      , name = S.fromSelected model.name
-      , label = S.fromSelected model.label
+      , semantic = S.fromSelected $ Just model.semantic
       , horizontalAlign = S.fromSelected $ Just model.horizontalAlign
       , verticalAlign = S.fromSelected $ Just model.verticalAlign
       }
@@ -219,8 +203,7 @@ raiseUpdate = do
 chartEval ∷ Q.Query ~> DSL
 chartEval (Q.Select sel next) = next <$ case sel of
   Q.Value a → updatePicker ST._value Q.Value a
-  Q.Label a → updatePicker ST._label Q.Label a
-  Q.Name a → updatePicker ST._name Q.Name a
+  Q.Semantic a → updateSelect ST._semantic a
   Q.VerticalAlign a → updateSelect ST._verticalAlign a
   Q.HorizontalAlign a → updateSelect ST._horizontalAlign a
 
@@ -246,8 +229,6 @@ peek = peekPicker ⨁ (const $ pure unit)
         v = flattenJCursors value
       for_ st.picker \r → case r.select of
         Q.Value _ → H.modify $ ST._value ∘ S._value ?~ v
-        Q.Label _ → H.modify $ ST._label ∘ S._value ?~ v
-        Q.Name _ → H.modify $ ST._name ∘ S._value ?~ v
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
@@ -266,18 +247,9 @@ synchronizeChildren = do
         ⊕ st.axes.date
         ⊕ st.axes.datetime
 
-    newLabel =
-      S.setPreviousValueFrom (Just st.label)
-        $ S.newSelect
-        $ st.axes.category
-        ⊝ newValue
-
-    newName =
-      S.setPreviousValueFrom (Just st.name)
-        $ S.newSelect
-        $ st.axes.category
-        ⊝ newValue
-        ⊝ newLabel
+    newSemantic =
+      S.setPreviousValueFrom (Just st.semantic)
+        $ semanticSelect
 
     newVerticalAlign =
       S.setPreviousValueFrom (Just st.verticalAlign)
@@ -289,8 +261,7 @@ synchronizeChildren = do
 
   H.modify _
     { value = newValue
-    , label = newLabel
-    , name = newName
+    , semantic = newSemantic
     , verticalAlign = newVerticalAlign
     , horizontalAlign = newHorizontalAlign
     }

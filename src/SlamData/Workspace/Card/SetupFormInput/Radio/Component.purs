@@ -1,5 +1,5 @@
-module SlamData.Workspace.Card.SetupFormInput.Dropdown.Component
-  ( dropdownSetupComponent
+module SlamData.Workspace.Card.SetupFormInput.Radio.Component
+  ( radioSetupComponent
   ) where
 
 import SlamData.Prelude
@@ -31,10 +31,10 @@ import SlamData.Workspace.Card.BuildChart.CSS as CSS
 import SlamData.Workspace.Card.BuildChart.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.BuildChart.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
 import SlamData.Workspace.Card.BuildChart.Inputs as BCI
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.ChildSlot as CS
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.State as ST
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.Query as Q
---import SlamData.Workspace.Card.SetupFormInput.Dropdown.Model as M
+import SlamData.Workspace.Card.SetupFormInput.Radio.Component.ChildSlot as CS
+import SlamData.Workspace.Card.SetupFormInput.Radio.Component.State as ST
+import SlamData.Workspace.Card.SetupFormInput.Radio.Component.Query as Q
+--import SlamData.Workspace.Card.SetupFormInput.Radio.Model as M
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -43,20 +43,20 @@ type HTML =
   H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
 
 
-dropdownSetupComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-dropdownSetupComponent = CC.makeCardComponent
-  { cardType: CT.SetupFormInput FIT.Dropdown
+radioSetupComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
+radioSetupComponent = CC.makeCardComponent
+  { cardType: CT.SetupFormInput FIT.Radio
   , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   , initialState: H.parentState ST.initialState
-  , _State: CC._SetupDropdownState
-  , _Query: CC.makeQueryPrism' CC._SetupDropdownQuery
+  , _State: CC._SetupRadioState
+  , _Query: CC.makeQueryPrism' CC._SetupRadioQuery
   }
 
 render ∷ ST.State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD (CT.darkCardGlyph $ CT.SetupFormInput FIT.Dropdown) left state.levelOfDetails
+    , renderLowLOD (CT.darkCardGlyph $ CT.SetupFormInput FIT.Radio) left state.levelOfDetails
     ]
 
 renderHighLOD ∷ ST.State → HTML
@@ -69,6 +69,7 @@ renderHighLOD state =
     [ renderName state
     , renderLabel state
     , renderValue state
+    , renderSelected state
     , row
         [ renderHorizontalAlign state
         , renderVerticalAlign state
@@ -78,7 +79,6 @@ renderHighLOD state =
 
 selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
 selecting f q a = right (Q.Select (f q) a)
-
 
 renderPicker ∷ ST.State → HTML
 renderPicker state = case state.picker of
@@ -90,6 +90,7 @@ renderPicker state = case state.picker of
                Q.Name _ → "Choose name"
                Q.Value _ → "Choose value"
                Q.Label _ → "Choose label"
+               Q.Selected _ → "Choose default selected value"
                _ → ""
           , label: DPC.labelNode show
           , render: DPC.renderNode show
@@ -133,6 +134,18 @@ renderValue state =
     , BCI.pickerInput
         (BCI.primary (Just "Value") (selecting Q.Value))
         state.value
+    ]
+
+renderSelected ∷ ST.State → HTML
+renderSelected state =
+  HH.form
+    [ HP.classes [ CSS.chartConfigureForm ]
+    , Cp.nonSubmit
+    ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Selected value" ]
+    , BCI.pickerInput
+        (BCI.secondary (Just "Selected value") (selecting Q.Selected))
+        state.selected
     ]
 
 renderHorizontalAlign ∷ ST.State → HTML
@@ -181,18 +194,20 @@ cardEval = case _ of
         { value: _
         , name: st.name ^. S._value
         , label: st.label ^. S._value
+        , selected: st.selected ^. S._value
         , horizontalAlign: _
         , verticalAlign: _
         }
         <$> (st.value ^. S._value)
         <*> (st.horizontalAlign ^. S._value)
         <*> (st.verticalAlign ^. S._value)
-    pure $ k $ Card.SetupDropdown model
-  CC.Load (Card.SetupDropdown (Just model)) next → do
+    pure $ k $ Card.SetupRadio model
+  CC.Load (Card.SetupRadio (Just model)) next → do
     H.modify _
       { value = S.fromSelected $ Just model.value
       , name = S.fromSelected model.name
       , label = S.fromSelected model.label
+      , selected = S.fromSelected model.selected
       , horizontalAlign = S.fromSelected $ Just model.horizontalAlign
       , verticalAlign = S.fromSelected $ Just model.verticalAlign
       }
@@ -221,6 +236,7 @@ chartEval (Q.Select sel next) = next <$ case sel of
   Q.Value a → updatePicker ST._value Q.Value a
   Q.Label a → updatePicker ST._label Q.Label a
   Q.Name a → updatePicker ST._name Q.Name a
+  Q.Selected a → updatePicker ST._selected Q.Selected a
   Q.VerticalAlign a → updateSelect ST._verticalAlign a
   Q.HorizontalAlign a → updateSelect ST._horizontalAlign a
 
@@ -248,6 +264,7 @@ peek = peekPicker ⨁ (const $ pure unit)
         Q.Value _ → H.modify $ ST._value ∘ S._value ?~ v
         Q.Label _ → H.modify $ ST._label ∘ S._value ?~ v
         Q.Name _ → H.modify $ ST._name ∘ S._value ?~ v
+        Q.Selected _ → H.modify $ ST._selected ∘ S._value ?~ v
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
@@ -279,6 +296,17 @@ synchronizeChildren = do
         ⊝ newValue
         ⊝ newLabel
 
+    newSelected =
+      S.setPreviousValueFrom (Just st.selected)
+        $ S.autoSelect
+        $ S.newSelect
+        $ st.axes.value
+        ⊕ st.axes.category
+        ⊕ st.axes.time
+        ⊕ st.axes.date
+        ⊕ st.axes.datetime
+        ⊝ newValue
+
     newVerticalAlign =
       S.setPreviousValueFrom (Just st.verticalAlign)
         $ alignSelect
@@ -291,6 +319,7 @@ synchronizeChildren = do
     { value = newValue
     , label = newLabel
     , name = newName
+    , selected = newSelected
     , verticalAlign = newVerticalAlign
     , horizontalAlign = newHorizontalAlign
     }
