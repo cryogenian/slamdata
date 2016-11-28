@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Mount.Spark.Component.State
+module SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State
   ( State
   , initialState
   , _sparkHost
@@ -30,7 +30,7 @@ import Data.Lens (Lens', lens)
 import Data.URI.Path (printPath) as URI
 import Data.URI.Host (printHost) as URI
 
-import Quasar.Mount.Spark (Config)
+import Quasar.Mount.SparkHDFS (Config)
 
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
 
