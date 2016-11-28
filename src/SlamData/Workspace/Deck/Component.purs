@@ -462,7 +462,7 @@ loadDeck opts = do
           H.modify $ DCS.fromModel
             { name: deck.name
             , parent: deck.parent
-            , displayCards: []
+            , displayCards: [ Left DCS.PendingCard ]
             }
           H.fromAff $ Bus.write (ED.Force (opts.cursor × coord)) bus
         Nothing →
