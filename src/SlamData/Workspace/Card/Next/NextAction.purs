@@ -54,6 +54,13 @@ chartSubmenu =
     "img/cardsLight/setupChart.svg"
     ([ GoBack ] ⊕ map (Insert ∘ CT.ChartOptions) allChartTypes)
 
+findOutHowToFormInputSubmenu ∷ NextAction
+findOutHowToFormInputSubmenu =
+  Drill
+    "Setup Form"
+    "img/cardsLight/setupFormInput.svg"
+    ([ GoBack ] ⊕ map (FindOutHowToInsert ∘ CT.SetupFormInput) allFormInputTypes)
+
 findOutHowToChartSubmenu ∷ NextAction
 findOutHowToChartSubmenu =
   Drill
@@ -100,12 +107,14 @@ insert ∷ InsertableCardType → NextAction
 insert =
   case _ of
     ICT.SetupChartCard → chartSubmenu
+    ICT.SetupFormInputCard → formInputSubmenu
     iCardType → Insert $ ICT.toCardType iCardType
 
 findOutHowToInsert ∷ InsertableCardType → NextAction
 findOutHowToInsert =
   case _ of
     ICT.SetupChartCard → findOutHowToChartSubmenu
+    ICT.SetupFormInputCard → findOutHowToFormInputSubmenu
     iCardType → FindOutHowToInsert $ ICT.toCardType iCardType
 
 fromInsertableCard ∷ InsertableCardType → Array InsertableCardType → NextAction
