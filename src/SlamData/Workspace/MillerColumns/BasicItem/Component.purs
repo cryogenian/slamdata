@@ -37,11 +37,9 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Monad (Slam)
 
-type Query i = MC.ChildQuery i (Const Void)
+type Query i = MC.ItemQuery' i (Const Void)
 
-type State =
-  { selected :: Boolean
-  }
+type State = { selected :: Boolean }
 
 type HTML i = H.ComponentHTML (Query i)
 type DSL i m p = H.ComponentDSL State (Query i) m p
