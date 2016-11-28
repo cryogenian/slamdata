@@ -25,6 +25,7 @@
     "purescript-dom": "^3.1.0",
     "purescript-ejson": "^2.0.0",
     "purescript-fixed-points": "^2.0.0",
+    "purescript-fork": "^1.1.0",
     "purescript-formatters": "^0.1.0",
     "purescript-freeap": "^2.0.0",
     "purescript-functors": "^1.0.0",

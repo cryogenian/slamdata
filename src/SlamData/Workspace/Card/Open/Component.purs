@@ -162,6 +162,7 @@ peekColumns = case _ of
 itemSpec ∷ MCI.BasicColumnOptions R.Resource AnyPath
 itemSpec =
   { render: MCI.component { label: R.resourceName, render: renderItem }
+  , label: R.resourceName
   , load
   , id: R.getPath
   }

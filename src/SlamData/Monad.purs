@@ -20,12 +20,14 @@ import SlamData.Prelude
 
 import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (readRef, writeRef)
-import Control.Monad.Fork (class MonadFork, Canceler, cancelWith, fork, hoistCanceler)
+import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Free (Free, liftF, foldFree)
 import Control.Parallel (parallel, sequential)
 import Control.UI.Browser (locationObject)
@@ -39,7 +41,7 @@ import Quasar.Advanced.QuasarAF as QA
 import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
-import SlamData.Monad.Fork (ForkF(..), Fork, mkFork, unFork)
+import SlamData.Monad.ForkF as FF
 import SlamData.Notification as N
 import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
@@ -50,6 +52,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
 import SlamData.Workspace.Deck.DeckPath (deckPath')
 import SlamData.Workspace.Routing as Routing
+import SlamData.Monad.Auth (getIdTokenSilently)
 
 import Utils (censor)
 
@@ -63,8 +66,7 @@ data SlamF eff a
   | Notify N.NotificationOptions a
   | Halt GE.GlobalError a
   | Par (SlamA eff a)
-  | Fork (Fork (SlamM eff) a)
-  | Cancel (SlamM eff a) (Canceler (SlamM eff))
+  | Fork (FF.Fork (SlamM eff) a)
   | Ask (Wiring → a)
   | Navigate Routing.Routes a
 
@@ -100,9 +102,8 @@ instance monadParSlamM ∷ Parallel (SlamA eff) (SlamM eff) where
   parallel = SlamA ∘ liftFreeAp
   sequential = SlamM ∘ liftF ∘ Par
 
-instance monadForkSlamM ∷ MonadFork (SlamM eff) where
-  fork a = SlamM $ liftF $ Fork $ mkFork $ ForkF a id
-  cancelWith a c = SlamM $ liftF $ Cancel a c
+instance monadForkSlamM ∷ MonadFork Error (SlamM eff) where
+  fork a = map liftAff <$> SlamM (liftF $ Fork $ FF.fork a)
 
 instance monadAskSlamM ∷ MonadAsk Wiring (SlamM eff) where
   ask = SlamM $ liftF $ Ask id
@@ -127,8 +128,6 @@ instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
   navigate = SlamM ∘ liftF ∘ flip Navigate unit
 
 
---------------------------------------------------------------------------------
-
 newtype SlamA eff a = SlamA (FreeAp (SlamM eff) a)
 
 derive newtype instance functorSlamA :: Functor (SlamA eff)
@@ -146,7 +145,7 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
     Aff aff →
       aff
     GetAuthIdToken k → do
-      idToken ← censor <$> Auth.getIdTokenFromBusSilently auth.requestToken
+      idToken ← censor <$> getIdTokenSilently auth.allowedModes auth.requestToken
       case idToken of
         Just (Left error) →
           for_ (Auth.toNotificationOptions error) \opts →
@@ -155,7 +154,7 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
           pure unit
       pure $ k $ maybe Nothing censor idToken
     Quasar qf → do
-      idToken ← censor <$> Auth.getIdTokenFromBusSilently auth.requestToken
+      idToken ← censor <$> getIdTokenSilently auth.allowedModes auth.requestToken
       case idToken of
         Just (Left error) →
           for_ (Auth.toNotificationOptions error) \opts →
@@ -181,8 +180,6 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
       sequential $ retractFreeAp $ hoistFreeAp (parallel <<< runSlam wiring) p
     Fork f →
       goFork f
-    Cancel m c →
-      cancelWith (runSlam wiring m) (hoistCanceler (runSlam wiring) c)
     Ask k →
       pure (k wiring)
     Navigate (Routing.WorkspaceRoute path deckId action varMaps) a → do
@@ -192,7 +189,6 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
       liftEff $ locationObject >>= setHash hash
       pure a
 
-  goFork ∷ Fork Slam ~> Aff SlamDataEffects
-  goFork = unFork \(ForkF x k) →
-    k ∘ hoistCanceler (SlamM ∘ liftF ∘ Aff)
-      <$> fork (runSlam wiring x)
+  goFork ∷ FF.Fork Slam ~> Aff SlamDataEffects
+  goFork = FF.unFork \(FF.ForkF fx k) →
+    k ∘ map unsafeCoerceAff <$> fork (runSlam wiring fx)

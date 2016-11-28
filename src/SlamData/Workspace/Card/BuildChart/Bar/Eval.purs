@@ -149,13 +149,10 @@ buildBar axes r records = do
   E.colors colors
 
   E.xAxis do
-    E.axisType xAxisConfig.axisType
+    E.axisType ET.Category
     E.enabledBoundaryGap
     traverse_ E.interval xAxisConfig.interval
-    case xAxisConfig.axisType of
-      ET.Category →
-        E.items $ map ET.strItem xValues
-      _ → pure unit
+    E.items $ map ET.strItem xValues
     E.axisLabel do
       E.rotate r.axisLabelAngle
       E.textStyle do

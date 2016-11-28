@@ -25,7 +25,7 @@ import DOM.HTML.Types (HTMLElement)
 import Halogen as H
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.MillerColumns.Component.Query (Query, ChildQuery)
+import SlamData.Workspace.MillerColumns.Component.Query (Query, ItemQuery')
 
 type State a i =
   { element ∷ Maybe HTMLElement
@@ -34,7 +34,14 @@ type State a i =
   , cycle ∷ Int
   }
 
-type State' a i s f = H.ParentState (State a i) s (Query i) (ChildQuery i f) Slam (List i)
+type State' a i s f =
+  H.ParentState
+    (State a i)
+    s
+    (Query i)
+    (ItemQuery' i f)
+    Slam
+    (List i)
 
 initialState ∷ ∀ a i. State a i
 initialState =

@@ -66,7 +66,7 @@ main = do
   StyleLoader.loadStyles
 
 routeSignal ∷ Aff SlamDataEffects Unit
-routeSignal =
+routeSignal = do
   runProcess (routeProducer $$ routeConsumer Nothing)
 
   where

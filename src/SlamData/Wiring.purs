@@ -44,6 +44,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Notification as N
 import SlamData.Quasar.Auth.Authentication as Auth
+import SlamData.AuthenticationMode (AllowedAuthenticationModes, allowedAuthenticationModesForAccessType)
 import SlamData.GlobalMenu.Bus (SignInBus)
 import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.Port.VarMap as Port
@@ -92,6 +93,7 @@ type AuthWiring =
   { hasIdentified ∷ Ref Boolean
   , requestToken ∷ Auth.RequestIdTokenBus
   , signIn ∷ SignInBus
+  , allowedModes ∷ AllowedAuthenticationModes
   }
 
 type CacheWiring =
@@ -153,7 +155,8 @@ make path accessType varMaps = fromAff do
     hasIdentified ← fromEff (newRef false)
     requestToken ← Auth.authentication
     signIn ← Bus.make
-    pure { hasIdentified, requestToken, signIn }
+    let allowedModes = allowedAuthenticationModesForAccessType accessType
+    pure { hasIdentified, requestToken, signIn, allowedModes }
 
   makeCache = do
     activeState ← Cache.make

@@ -20,3 +20,4 @@ npm-debug.log
 !.gitignore
 !.travis.yml
 !.editorconfig
+current.png

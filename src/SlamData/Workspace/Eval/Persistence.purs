@@ -59,7 +59,7 @@ defaultEvalDebounce = 500
 type Persist f m a =
   ( Affable SlamDataEffects m
   , MonadAsk Wiring m
-  , MonadFork m
+  , MonadFork Exn.Error m
   , Parallel f m
   , QuasarDSL m
   ) ⇒ a
@@ -198,7 +198,7 @@ getCard coord = do
 forkLoop
   ∷ ∀ m r a
   . ( Affable SlamDataEffects m
-    , MonadFork m
+    , MonadFork Exn.Error m
     )
   ⇒ (a → m Unit)
   → Bus.Bus (Bus.R' r) a
@@ -329,7 +329,7 @@ debounce
   ∷ ∀ k m r
   . ( Affable SlamDataEffects m
     , MonadAsk Wiring m
-    , MonadFork m
+    , MonadFork Exn.Error m
     , Ord k
     )
   ⇒ Int
@@ -350,7 +350,7 @@ laterVar
   ∷ ∀ m
   . ( Affable SlamDataEffects m
     , MonadAsk Wiring m
-    , MonadFork m
+    , MonadFork Exn.Error m
     )
   ⇒ Int
   → m Unit

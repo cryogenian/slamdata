@@ -31,19 +31,18 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils as HU
 
-import SlamData.Monad (Slam)
-import SlamData.Render.Common (glyph)
 import SlamData.Guide as Guide
+import SlamData.Monad (Slam)
+import SlamData.Render.Common (clearFieldIcon)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Next.NextAction as NA
+import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Next.Component.Query (Query(..), _AddCardType, _PresentReason)
 import SlamData.Workspace.Card.Next.Component.State (State, initialState)
 import SlamData.Workspace.Card.Next.Component.State as State
+import SlamData.Workspace.Card.Next.NextAction as NA
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.InsertableCardType as ICT
 
 import Utils.LocalStorage as LocalStorage
 
@@ -68,8 +67,9 @@ render state =
             , HH.button
                 [ HP.buttonType HP.ButtonButton
                 , HE.onClick (HE.input_ (UpdateFilter ""))
+                , HP.enabled (state.filterString /= "")
                 ]
-                [ glyph B.glyphiconRemove ]
+                [ clearFieldIcon "Clear filter" ]
             ]
         ])
     ⊕ (guard state.presentAddCardGuide $>

@@ -26,11 +26,10 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth (getIdToken)
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Common (clearFieldIcon)
 import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component.CSS as CCSS
@@ -168,8 +167,9 @@ render state =
                         , HH.button
                             [ HP.buttonType HP.ButtonButton
                             , HE.onClick (HE.input_ (UpdateFilter ""))
+                            , HP.enabled (state.filterString /= "")
                             ]
-                            [ glyph B.glyphiconRemove ]
+                            [ clearFieldIcon "Clear filter" ]
                         ]
                     ]
                 , HH.ul_ $ map backsideAction (allBackActions state)

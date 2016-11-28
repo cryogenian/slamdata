@@ -14,17 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Monad.Fork where
+module SlamData.Workspace.MillerColumns.Component.ItemQuery where
 
-import Control.Monad.Fork (Canceler)
+import Data.List (List)
+import Data.Functor.Coproduct (Coproduct)
 
-import Unsafe.Coerce (unsafeCoerce)
+data ItemQuery i b
+  = RaisePopulate (List i) b
+  | ToggleSelected Boolean b
 
-data ForkF f x a = ForkF (f x) (Canceler f -> a)
-data Fork (f :: * -> *) a
-
-mkFork :: forall f x a. ForkF f x a → Fork f a
-mkFork = unsafeCoerce
-
-unFork :: forall f x a r. (ForkF f x a → r) → Fork f a → r
-unFork = unsafeCoerce
+type ItemQuery' i f = Coproduct (ItemQuery i) f

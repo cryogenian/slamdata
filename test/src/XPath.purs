@@ -13,6 +13,9 @@ ancestorString = "/ancestor::"
 followingString ∷ String
 followingString = "/following::"
 
+descendantString ∷ String
+descendantString = "/descendant::"
+
 following ∷ String → String → String
 following x y = x ⊕ followingString ⊕ y
 
@@ -138,7 +141,7 @@ tdWithTh tableXPath thXPath tdXPath =
   thEndPosition =
     endPosition (inTable thXPath) "th"
   inTable s =
-    tableXPath ⊕ "/descendant::" ⊕ s
+    tableXPath ⊕ descendantString ⊕ s
   rangePredicate x y z =
     "(" ⊕ x ⊕ " >= " ⊕ y ⊕ " and " ⊕ x ⊕ " < " ⊕ z ⊕ ")"
   endPosition s t =

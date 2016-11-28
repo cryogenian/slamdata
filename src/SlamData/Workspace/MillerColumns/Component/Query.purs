@@ -14,15 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.MillerColumns.Component.Query where
+module SlamData.Workspace.MillerColumns.Component.Query
+  ( Query(..)
+  , Query'
+  , module SlamData.Workspace.MillerColumns.Component.ItemQuery
+  ) where
 
 import SlamData.Prelude
 
 import Data.List (List)
 
+import DOM.HTML.Types (HTMLElement)
+
 import Halogen as H
 
-import DOM.HTML.Types (HTMLElement)
+import SlamData.Workspace.MillerColumns.Component.ItemQuery (ItemQuery(..), ItemQuery')
 
 data Query i b
   = Ref (Maybe HTMLElement) b
@@ -30,10 +36,4 @@ data Query i b
   | Extended b
   | Loading Boolean b
 
-data ItemQuery i b
-  = RaisePopulate (List i) b
-  | ToggleSelected Boolean b
-
-type ChildQuery i f = Coproduct (ItemQuery i) f
-
-type Query' i f = Coproduct (Query i) (H.ChildF (List i) (ChildQuery i f))
+type Query' i f = Coproduct (Query i) (H.ChildF (List i) (ItemQuery' i f))
