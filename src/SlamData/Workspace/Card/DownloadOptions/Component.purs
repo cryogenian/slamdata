@@ -113,7 +113,7 @@ compress state =
     ]
   where
   compressed ∷ Boolean
-  compressed = isJust state.source || state.compress
+  compressed = isJust state.source && state.compress
 
 renderDownloadTypeSelector ∷ State → HTML
 renderDownloadTypeSelector state =
