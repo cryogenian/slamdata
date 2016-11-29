@@ -31,7 +31,7 @@ import SlamData.Workspace.Card.BuildChart.Semantics as Sem
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.Property.ArbJson (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
 data AxisType
   = Measure
