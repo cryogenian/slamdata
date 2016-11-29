@@ -46,7 +46,7 @@ import SlamData.FileSystem.Dialog.Mount.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Mount.Component.State as MCS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
-import SlamData.FileSystem.Dialog.Mount.Spark.Component as Spark
+import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
@@ -99,7 +99,7 @@ render state@{ new } =
     MCS.MarkLogic initialState →
       HH.slot' cpMarkLogic unit \_ →
         { component: MarkLogic.comp, initialState }
-    MCS.Spark initialState →
+    MCS.SparkHDFS initialState →
       HH.slot' cpSpark unit \_ →
         { component: Spark.comp, initialState }
 
@@ -239,5 +239,5 @@ querySettings q = (map MCS.scheme <$> H.gets _.settings) >>= \s →
     Just MS.SQL2 → H.query' cpSQL unit (left q)
     Just MS.Couchbase → H.query' cpCouchbase unit q
     Just MS.MarkLogic → H.query' cpMarkLogic unit q
-    Just MS.Spark → H.query' cpSpark unit q
+    Just MS.SparkHDFS → H.query' cpSpark unit q
     _ → pure Nothing
