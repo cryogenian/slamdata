@@ -44,13 +44,14 @@ import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Slider as Slider
 
-renderError ∷ String → DeckHTML
-renderError err =
+renderError ∷ ∀ f a. String → Maybe String → HH.HTML a (f Unit)
+renderError err details =
   HH.div
-    [ HP.classes [ B.alert, B.alertDanger ] ]
-    [ HH.h1
-        [ HP.class_ B.textCenter ]
+    [ HP.class_ $ HH.className "sd-workspace-error" ]
+    [ HH.h1_
         [ HH.text err ]
+    , HH.p_
+        [ HH.text $ fromMaybe "" details ]
     ]
 
 renderDeck ∷ DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML

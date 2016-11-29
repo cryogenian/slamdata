@@ -118,7 +118,7 @@ render opts deckComponent st =
   if st.finalized
   then HH.div_ []
   else case st.stateMode of
-    Error err → DCR.renderError err
+    Error { message, detail } → DCR.renderError message detail
     _ → DCR.renderDeck opts deckComponent st
 
 eval ∷ DeckOptions → Query ~> DeckDSL
@@ -955,7 +955,8 @@ loadDeck opts deckId = do
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
   case res of
     Left err →
-      H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
+      H.modify
+        $ (DCS._stateMode .~ fromQError err)
     Right (deck × modelCards) →
       setModel opts
         { id: deckId
@@ -963,6 +964,13 @@ loadDeck opts deckId = do
         , modelCards
         , name: deck.name
         }
+
+  where
+  fromQError qError =
+    Error
+      { message: "Couldn't load this SlamData deck."
+      , detail: Just $ QE.printQError qError
+      }
 
 loadMirroredCards
   ∷ Array (DeckId × CardId)

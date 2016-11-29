@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.StateMode where
 
 import Prelude
+import Data.Maybe (Maybe)
 
 -- | The current state of the deck.
 -- |
@@ -28,7 +29,7 @@ data StateMode
   = Loading
   | Preparing
   | Ready
-  | Error String
+  | Error { message ∷ String, detail ∷ Maybe String }
 
 derive instance eqStateMode :: Eq StateMode
 derive instance ordStateMode :: Ord StateMode

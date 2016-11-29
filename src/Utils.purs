@@ -19,6 +19,7 @@ module Utils where
 import SlamData.Prelude
 
 import Data.Argonaut as J
+import Data.String as S
 
 import Global (readFloat, isNaN)
 
@@ -48,5 +49,14 @@ passover f x =
 
 censor ∷ ∀ a b. Either a b → Maybe b
 censor = either (\_ → Nothing) (Just)
+
+parenthesize ∷ String → String
+parenthesize s = "(" <> s <> ")"
+
+removeLastCharIfPeriod ∷ String → String
+removeLastCharIfPeriod s = fromMaybe s $ S.stripSuffix (S.Pattern ".") s
+
+lowercaseFirstChar ∷ String → String
+lowercaseFirstChar s = S.toLower (S.take 1 s) <> S.drop 1 s
 
 foreign import prettyJson ∷ J.Json → String

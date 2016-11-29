@@ -47,7 +47,6 @@ import Halogen.Component.Utils.Throttled (throttledEventSource_)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Analytics as SA
 import SlamData.Effects (SlamDataEffects)
@@ -84,6 +83,7 @@ import SlamData.Workspace.Model as Model
 import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash)
 import SlamData.Workspace.StateMode (StateMode(..))
+import SlamData.Workspace.Deck.Component.Render (renderError)
 
 import Utils.DOM (onResize, elementEq)
 import Utils.LocalStorage as LocalStorage
@@ -110,7 +110,7 @@ render state =
         ⊕ [ HH.className "sd-workspace" ]
     , HE.onClick (HE.input DismissAll)
     ]
-    (preloadGuides ⊕ notifications ⊕ header ⊕ deck ⊕ renderCardGuide ⊕ renderFlipGuide)
+    (preloadGuides ⊕ header ⊕ deck ⊕ notifications ⊕ renderCardGuide ⊕ renderFlipGuide)
   where
   renderCardGuide ∷ Array WorkspaceHTML
   renderCardGuide =
@@ -150,26 +150,19 @@ render state =
     pure case state.stateMode, state.initialDeckId of
       Loading, _ →
         HH.div_ []
-      Error err,  _→ showError err
+      Error { message, detail }, _ → renderError message detail
       _, Just deckId →
         HH.slot' cpDeck unit \_ →
           let init = opaqueState $ Deck.initialDeck deckId
           in { component: DN.comp (deckOpts deckId) init
              , initialState: DN.initialState
              }
-      _, _ → showError "Missing deck id (impossible!)"
+      _, _ → renderError "Missing deck id (impossible!)" Nothing
 
   deckOpts deckId =
     { accessType: state.accessType
     , cursor: List.Nil
     }
-
-  showError err =
-    HH.div [ HP.classes [ B.alert, B.alertDanger ] ]
-      [ HH.h1
-          [ HP.class_ B.textCenter ]
-          [ HH.text err ]
-      ]
 
 eval ∷ Query ~> WorkspaceDSL
 eval (Init next) = do
@@ -224,6 +217,13 @@ eval (Reset next) = do
 eval (Load deckId accessType next) = do
   oldAccessType ← H.gets _.accessType
   H.modify (_accessType .~ accessType)
+  case accessType of
+    AT.Editable → pure unit
+    _ → H.modify (_cardGuideStep .~ Nothing)
+  queryNotifications
+    $ H.action
+    $ NC.UpdateRenderMode
+    $ NC.renderModeFromAccessType accessType
 
   queryDeck (H.request Deck.GetId) >>= \deckId' → do
     case deckId, deckId' of
@@ -252,7 +252,7 @@ eval (Load deckId accessType next) = do
     rootDeck >>= either handleError loadDeck
 
   handleError err = case GE.fromQError err of
-    Left msg → H.modify $ _stateMode .~ Error msg
+    Left message → H.modify $ _stateMode .~ Error { message, detail: Nothing }
     Right ge → GE.raiseGlobalError ge
 
 rootDeck ∷ WorkspaceDSL (Either QE.QError DeckId)
@@ -405,6 +405,9 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
         lift $ H.liftH $ H.liftH $ updateHash state.accessType newIdParent
 
   peekDeck _ = pure unit
+
+queryNotifications ∷ ∀ a. NC.Query a → WorkspaceDSL (Maybe a)
+queryNotifications = H.query' cpNotify unit
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck = H.query' cpDeck unit ∘ right
