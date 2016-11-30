@@ -45,10 +45,25 @@ classedDiv cls = HH.div [ HP.classes [ cls ] ]
 formGroup ∷ ∀ f p. Array (HTML p (f Unit)) → HTML p (f Unit)
 formGroup = classedDiv B.formGroup
 
+searchFieldIcon ∷ ∀ f p. HTML p (f Unit)
+searchFieldIcon =
+  HH.span
+    [ HP.class_ (HH.className "sd-search-field-icon") ]
+    []
+
 clearFieldIcon ∷ ∀ f p. String → HTML p (f Unit)
 clearFieldIcon label =
   HH.span
     [ HP.class_ (HH.className "sd-clear-field-icon")
+    , HP.title label
+    , ARIA.label label
+    ]
+    [ HH.text label ]
+
+busyFieldIcon ∷ ∀ f p. String → HTML p (f Unit)
+busyFieldIcon label =
+  HH.span
+    [ HP.class_ (HH.className "sd-busy-field-icon")
     , HP.title label
     , ARIA.label label
     ]

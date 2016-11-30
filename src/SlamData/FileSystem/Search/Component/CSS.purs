@@ -24,9 +24,6 @@ search = className "search"
 searchInput ∷ ClassName
 searchInput = className "search-input"
 
-searchClear ∷ ClassName
-searchClear = className "search-clear"
-
 searchPath ∷ ClassName
 searchPath = className "search-path"
 
@@ -41,3 +38,12 @@ searchPathBody = className "search-path-body"
 
 searchAffixEmpty ∷ ClassName
 searchAffixEmpty = className "search-affix-empty"
+
+searchEmpty ∷ ClassName
+searchEmpty = className "search-empty"
+
+searchClearButton ∷ ClassName
+searchClearButton = className "search-clear-button"
+
+searchIcon ∷ ClassName
+searchIcon = className "search-icon"

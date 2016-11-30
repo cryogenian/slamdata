@@ -18,12 +18,14 @@ module SlamData.FileSystem.Search.Component where
 
 import SlamData.Prelude
 
+import Data.Array as A
 import Data.Lens (lens, Lens', (.~))
 import Data.Path.Pathy (printPath, rootDir)
 import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -32,8 +34,8 @@ import Halogen.Component.Utils as HU
 
 import SlamData.Config as Config
 import SlamData.Monad (Slam)
+import SlamData.Render.Common as RC
 import SlamData.FileSystem.Search.Component.CSS as CSS
-import SlamData.Render.Common (glyph)
 
 import Text.SlamSearch (mkQuery)
 
@@ -107,7 +109,10 @@ render state =
         [ HE.onSubmit (HE.input_ Submit)]
         [ HH.div
             [ HP.classes searchClasses ]
-            [ HH.input
+            [ HH.div
+                [ HP.class_ CSS.searchIcon ]
+                [ RC.searchFieldIcon ]
+            , HH.input
                 [ HP.classes [ B.formControl ]
                 , HP.value state.value
                 , HE.onFocus (HE.input_ (Focus true))
@@ -133,18 +138,13 @@ render state =
                     ]
                     [ HH.text $ "path:" ⊕ printPath (state.path) ]
                 ]
-            , HH.img
-                [ HP.class_ CSS.searchClear
-                , HP.src searchIcon
-                , HE.onClick (HE.input_ Clear)
+            , HH.button
+                [ HP.class_ CSS.searchClearButton
+                , HE.onClick (\_ → HEH.preventDefault $> Just (H.action Clear))
                 ]
-            , HH.span
-                [ HP.class_ B.inputGroupBtn ]
-                [ HH.button
-                    [ HP.classes [ B.btn, B.btnDefault ]
-                    , HP.enabled (state.valid)
-                    ]
-                    [ glyph B.glyphiconSearch ]
+                [ if state.loading
+                    then RC.busyFieldIcon "Search in progress"
+                    else RC.clearFieldIcon "Clear search"
                 ]
             ]
         ]
@@ -152,14 +152,13 @@ render state =
   where
   searchClasses ∷ Array HH.ClassName
   searchClasses =
-    [ B.inputGroup, CSS.searchInput] ⊕ do
-      guard (not $ state.valid)
-      pure B.hasError
-
-  searchIcon =
-    if state.loading
-      then "img/spin.gif"
-      else "img/remove.svg"
+    [ B.inputGroup
+    , CSS.searchInput
+    ]
+    ⊕ A.catMaybes
+        [ if not state.valid then Just B.hasError else Nothing
+        , if state.value ≡ "" then Just CSS.searchEmpty else Nothing
+        ]
 
 eval ∷ Query ~> DSL
 eval (Focus bool next) = H.modify (_focused .~ bool) $> next
