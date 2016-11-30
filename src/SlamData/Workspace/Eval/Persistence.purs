@@ -115,10 +115,13 @@ getDeck' deckId = do
           deck ← ExceptT $ (_ >>= Deck.decode >>> lmap QE.msgToQError) <$> Quasar.load deckPath
           _    ← ExceptT $ populateCards deckId deck
           pure deck
-        when (isLeft result) $ fromAff do
-          modifyVar (Map.delete deckId) cacheVar
+        case result of
+          Left _ →
+            fromAff $ modifyVar (Map.delete deckId) cacheVar
+          Right model →
+            Cache.alter deckId (pure ∘ map (_ { model = model })) eval.decks
         pure result
-      cell ← { value, bus: _ } <$> fromAff Bus.make
+      cell ← { value, model: Deck.emptyDeck, bus: _ } <$> fromAff Bus.make
       fromAff do
         putVar cacheVar (Map.insert deckId cell decks)
       forkDeckProcess deckId cell.bus
@@ -320,7 +323,7 @@ freshWorkspace = do
   bus ← fromAff Bus.make
   value ← defer (pure (Right Deck.emptyDeck))
   let
-    cell = { bus, value }
+    cell = { bus, value, model: Deck.emptyDeck }
   Cache.put rootId cell eval.decks
   forkDeckProcess rootId bus
   pure (rootId × cell)

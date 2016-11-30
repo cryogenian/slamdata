@@ -40,7 +40,7 @@ import Data.List (List)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Eval (Eval, runCard)
 import SlamData.Workspace.Card.Eval.Monad (CardEnv(..), EvalState)
-import SlamData.Workspace.Card.Model (Model, AnyCardModel, modelToEval, cardModelOfType)
+import SlamData.Workspace.Card.Model (Model, AnyCardModel, modelToEval, modelCardType, cardModelOfType)
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Eval.Deck as Deck
 

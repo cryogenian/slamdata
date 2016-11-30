@@ -51,4 +51,8 @@ type Model = Deck
 type Cell =
   { bus ∷ BusRW EvalMessage
   , value ∷ Promise (Either QError Model)
+  -- Current state of the model. Used for traversals over the _current_ deck
+  -- graph. This value _may_ be stale, so anything that relies on consistency
+  -- should use value.
+  , model ∷ Model
   }
