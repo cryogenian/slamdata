@@ -231,17 +231,31 @@ setRoot deckId = do
   Model.setRoot (path </> Pathy.file "index") deckId
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
-peek = (const $ pure unit) ⨁ ((const $ pure unit) ⨁ peekNotification)
+peek = (const (pure unit) ⨁ peekDeck) ⨁ const (pure unit) ⨁ peekNotification
   where
   peekNotification ∷ NC.Query a → WorkspaceDSL Unit
-  peekNotification =
-    case _ of
-      NC.Action N.ExpandGlobalMenu _ → do
-        queryHeaderGripper $ Gripper.StartDragging 0.0 unit
-        queryHeaderGripper $ Gripper.StopDragging unit
-      NC.Action (N.Fulfill var) _ →
-        void $ H.fromAff $ Aff.attempt $ putVar var unit
-      _ → pure unit
+  peekNotification = case _ of
+    NC.Action N.ExpandGlobalMenu _ → do
+      queryHeaderGripper $ Gripper.StartDragging 0.0 unit
+      queryHeaderGripper $ Gripper.StopDragging unit
+    NC.Action (N.Fulfill var) _ →
+      void $ H.fromAff $ Aff.attempt $ putVar var unit
+    _ → pure unit
+
+  peekDeck ∷ Deck.Query a → WorkspaceDSL Unit
+  peekDeck = case _ of
+    Deck.DoAction Deck.Wrap _ → do
+      st ← H.get
+      for_ st.deckId \deckId → do
+        res ← H.liftH $ H.liftH $ P.wrapDeck deckId
+        case res of
+          Left err → do
+            -- FIXME: Error reporting
+            pure unit
+          Right newId → do
+            { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
+            navigate $ WorkspaceRoute path (Just newId) (WA.Load accessType) varMaps
+    _ → pure unit
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck q = do

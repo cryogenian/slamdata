@@ -45,6 +45,7 @@ import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model as DM
+import SlamData.Workspace.Eval.Persistence as P
 
 import Utils.DOM (getOffsetClientRect)
 
@@ -315,7 +316,7 @@ peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
         DCQ.DoAction DCQ.Wrap _ → do
           SA.track (SA.Wrap deckId)
           wrapDeck opts deckId cursor
-          CC.raiseUpdatedP' CC.EvalModelUpdate
+          -- Don't need to raise, as wrapping will result in changes propagating
         DCQ.DoAction (DCQ.Unwrap decks) _ → do
           SA.track (SA.Collapse deckId)
           unwrapDeck opts deckId cursor decks
@@ -386,8 +387,13 @@ deleteDeck { deck } deckId = do
 
 wrapDeck ∷ CardOptions → DeckId → Pane.Cursor → DraftboardDSL Unit
 wrapDeck { coord, deck } oldId cursor = do
-  -- FIXME
-  pure unit
+  res ← H.liftH $ H.liftH $ P.wrapDeck oldId
+  -- TODO: Errors?
+  case res of
+    Left err → do
+      pure unit
+    Right newId → do
+      pure unit
 
 unwrapDeck
   ∷ CardOptions

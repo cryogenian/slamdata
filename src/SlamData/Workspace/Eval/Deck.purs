@@ -43,6 +43,8 @@ data EvalMessage
   | Force (List DeckId × DeckId × CardId)
   | AddCard CardType
   | RemoveCard (DeckId × CardId)
+  | UpdateParent (Maybe (DeckId × CardId))
+  | UpdateName String
 
 type Id = DeckId
 

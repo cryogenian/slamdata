@@ -16,10 +16,14 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Common
   ( CardOptions
+  , updatePointer
   ) where
+
+import SlamData.Prelude
 
 import Data.List (List)
 
+import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Deck.Common (DeckOptions)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Eval.Card as Card
@@ -31,3 +35,17 @@ type CardOptions =
   , coord ∷ Card.Coord
   , cursor ∷ List Deck.Id
   }
+
+updatePointer
+  ∷ Deck.Id
+  → Maybe Deck.Id
+  → CM.AnyCardModel
+  → CM.AnyCardModel
+updatePointer old new = case _ of
+  CM.Draftboard { layout } →
+    CM.Draftboard { layout: update <$> layout}
+  card → card
+
+  where
+    update (Just deckId) | deckId ≡ old = new
+    update a = a

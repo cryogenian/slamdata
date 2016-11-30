@@ -24,6 +24,7 @@ module SlamData.Workspace.Eval.Card
   , Coord
   , DisplayCoord
   , coordOf
+  , toAll
   , module SlamData.Workspace.Card.CardId
   , module SlamData.Workspace.Card.Eval
   , module SlamData.Workspace.Card.Eval.Monad
@@ -76,3 +77,6 @@ type DisplayCoord = List Deck.Id × Coord
 
 coordOf ∷ Deck.Id × Model → Coord
 coordOf = map _.cardId
+
+toAll ∷ Coord → DisplayCoord
+toAll = Tuple mempty

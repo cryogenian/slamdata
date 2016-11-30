@@ -30,6 +30,8 @@ import Data.Array as Array
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map as Map
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as Pathy
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Data as Quasar
@@ -37,13 +39,16 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.AccessType (isEditable)
 import SlamData.Workspace.Card.CardId as CID
+import SlamData.Workspace.Card.Common as CC
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Deck.Common as DC
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (unfoldGraph, EvalGraph)
+import SlamData.Workspace.Model as WM
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
@@ -67,6 +72,7 @@ type Persist f m a =
 putDeck ∷ ∀ f m. Persist f m (Deck.Id → Deck.Model → m (Either QE.QError Unit))
 putDeck deckId deck = do
   { path, eval, accessType } ← Wiring.expose
+
   ref ← defer do
     res ←
       if isEditable accessType
@@ -198,6 +204,17 @@ getCard coord = do
   { eval } ← Wiring.expose
   Cache.get coord eval.cards
 
+getCards
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadAsk Wiring m
+    )
+  ⇒ Array Card.Coord
+  → m (Maybe (Array (Deck.Id × Card.Cell)))
+getCards = map sequence ∘ traverse go
+  where
+    go coord = map (fst coord × _) <$> getCard coord
+
 forkLoop
   ∷ ∀ m r a
   . ( Affable SlamDataEffects m
@@ -260,6 +277,16 @@ forkDeckProcess deckId = forkLoop case _ of
       Cache.put deckId (deckCell { value = value' }) eval.decks
       queueSave defaultSaveDebounce deckId
       fromAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
+  Deck.UpdateParent parent → do
+    { eval } ← Wiring.expose
+    deckCell ← getDeck' deckId
+    mbDeck ← wait deckCell.value
+    for_ mbDeck \deck → do
+      let
+        deck' = deck { parent = parent }
+      value' ← defer (pure (Right deck'))
+      Cache.put deckId (deckCell { value = value' }) eval.decks
+      queueSave defaultSaveDebounce deckId
   _ →
     pure unit
 
@@ -327,6 +354,41 @@ freshWorkspace = do
   Cache.put rootId cell eval.decks
   forkDeckProcess rootId bus
   pure (rootId × cell)
+
+wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
+wrapDeck deckId = runExceptT do
+  cell ← lift $ getDeck' deckId
+  deck ← ExceptT $ wait cell.value
+  parentId ← Tuple <$> fromAff DID.make <*> fromAff CID.make
+  let
+    parentDeck = DC.wrappedDeck deck.parent (snd parentId) deckId
+  ExceptT $ putDeck (fst parentId) parentDeck
+  updateParentPointer deckId (fst parentId) deck.parent
+  fromAff $ Bus.write (Deck.UpdateParent (Just parentId)) cell.bus
+  pure (fst parentId)
+
+updateParentPointer
+  ∷ ∀ f m
+  . Persist f m
+  ( Deck.Id
+  → Deck.Id
+  → Maybe Card.Coord
+  → ExceptT QE.QError m Unit )
+updateParentPointer oldId newId parent =
+  case parent of
+    Just coord@(deckId × cardId) → do
+      -- We need to guard on the parentDeck because it may not be loaded if we
+      -- are viewing the child at the root of the UI.
+      parentDeck ← ExceptT $ getDeck deckId
+      cell ← getCard coord
+      for_ cell \{ bus, value } → do
+        let
+          model' = CC.updatePointer oldId (Just newId) value.model.model
+          message = Card.ModelChange (Card.toAll coord) model'
+        fromAff $ Bus.write message bus
+    Nothing → do
+      { path } ← Wiring.expose
+      ExceptT $ WM.setRoot (path </> Pathy.file "index") newId
 
 debounce
   ∷ ∀ k m r
