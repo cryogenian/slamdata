@@ -81,4 +81,10 @@ evalSearch queryText resource = do
       validateResources inputs
       CEM.addSources inputs
 
+  CEM.liftQ do
+    QQ.viewQuery (Right resource) outputResource template SM.empty
+    QFS.messageIfFileNotFound
+      outputResource
+      "Error making search temporary resource"
+
   pure { resource: outputResource, tag: pure sql, varMap: Nothing }
