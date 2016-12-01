@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Deck.Component.Render
   ( renderDeck
   , renderError
+  , renderSignInButton
   ) where
 
 import SlamData.Prelude
@@ -31,12 +32,13 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Quasar.Error as QE
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML)
-import SlamData.Workspace.Deck.Component.ChildSlot (cpIndicator, cpBackSide, cpDialog)
 import SlamData.Workspace.Deck.Component.CSS as CSS
+import SlamData.Workspace.Deck.Component.ChildSlot (cpIndicator, cpBackSide, cpDialog)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..))
 import SlamData.Workspace.Deck.Component.State as DCS
@@ -44,15 +46,26 @@ import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Slider as Slider
 
-renderError ∷ ∀ f a. String → Maybe String → HH.HTML a (f Unit)
-renderError err details =
+import Quasar.Advanced.Types (ProviderR)
+
+renderError ∷ ∀ f a. QE.QError → HH.HTML a (f Unit)
+renderError err =
   HH.div
-    [ HP.class_ $ HH.className "sd-workspace-error" ]
+    [ HP.classes [ HH.className "sd-workspace-error" ] ]
     [ HH.h1_
-        [ HH.text err ]
+        [ HH.text "Couldn't load this SlamData deck." ]
     , HH.p_
-        [ HH.text $ fromMaybe "" details ]
+        [ HH.text $ QE.printQError err ]
     ]
+
+renderSignInButton ∷ ProviderR → DeckHTML
+renderSignInButton providerR =
+    HH.button
+      [ HE.onClick $ HE.input_ $ SignIn providerR
+      , HP.classes [ HH.className "btn", HH.className "btn-primary" ]
+      , HP.buttonType HP.ButtonButton
+      ]
+      [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
 
 renderDeck ∷ DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
 renderDeck opts deckComponent st =

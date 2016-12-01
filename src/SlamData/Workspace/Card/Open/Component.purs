@@ -179,13 +179,13 @@ load ps =
 handleError ∷ QE.QError → Slam Unit
 handleError err =
   case GE.fromQError err of
-    Left msg →
+    Nothing →
       N.error
         "There was a problem fetching the directory listing"
-        (Just $ N.Details msg)
+        (Just $ N.Details $ QE.printQError err)
         Nothing
         Nothing
-    Right ge →
+    Just ge →
       GE.raiseGlobalError ge
 
 -- | For a filesystem path, construct a list of all of the sub-paths up to the

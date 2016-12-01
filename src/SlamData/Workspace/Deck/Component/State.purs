@@ -46,6 +46,7 @@ module SlamData.Workspace.Deck.Component.State
   , _additionalSources
   , _responsiveSize
   , _fadeTransition
+  , _providers
   , addCard
   , addCard'
   , removeCard
@@ -98,6 +99,8 @@ import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
+
+import Quasar.Advanced.Types (ProviderR)
 
 type StateP = OpaqueState State
 
@@ -152,6 +155,7 @@ type State =
   , additionalSources ∷ Map.Map (DeckId × CardId) (Set.Set AdditionalSource)
   , responsiveSize ∷ ResponsiveSize
   , fadeTransition ∷ Fade
+  , providers ∷ Array ProviderR
   }
 
 -- | A record used to represent card definitions in the deck.
@@ -188,6 +192,7 @@ initialDeck deckId =
   , additionalSources: mempty
   , responsiveSize: XLarge
   , fadeTransition: FadeNone
+  , providers: []
   }
 
 -- | The unique identifier of the deck.
@@ -292,6 +297,9 @@ _responsiveSize = lens _.responsiveSize _{responsiveSize = _}
 
 _fadeTransition ∷ ∀ a r. Lens' {fadeTransition ∷ a|r} a
 _fadeTransition = lens _.fadeTransition _{fadeTransition = _}
+
+_providers ∷ ∀ a r. Lens' {providers ∷ a|r} a
+_providers = lens _.providers _{providers = _}
 
 addCard ∷ Card.AnyCardModel → State → State
 addCard card st = fst $ addCard' card st

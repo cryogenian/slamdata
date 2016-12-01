@@ -73,7 +73,7 @@ import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Class (class WorkspaceDSL, putURLVarMaps, getURLVarMaps)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _version, _stateMode, _flipGuideStep, _cardGuideStep, _lastVarMaps, _dirtyVarMaps, initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _version, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
 import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Common (wrappedDeck, splitDeck)
 import SlamData.Workspace.Deck.Component as Deck
@@ -150,14 +150,14 @@ render state =
     pure case state.stateMode, state.initialDeckId of
       Loading, _ →
         HH.div_ []
-      Error { message, detail }, _ → renderError message detail
+      Error error, _ → renderError error
       _, Just deckId →
         HH.slot' cpDeck unit \_ →
           let init = opaqueState $ Deck.initialDeck deckId
           in { component: DN.comp (deckOpts deckId) init
              , initialState: DN.initialState
              }
-      _, _ → renderError "Missing deck id (impossible!)" Nothing
+      _, _ → renderError $ QE.Error $ Exn.error "Missing deck id (impossible!)"
 
   deckOpts deckId =
     { accessType: state.accessType
@@ -195,12 +195,7 @@ eval (FlipGuideDismiss next) = do
   H.modify (_flipGuideStep .~ Nothing)
   pure next
 eval (SetVarMaps urlVarMaps next) = do
-  lastVarMaps ← H.gets _.lastVarMaps
-  when (lastVarMaps /= urlVarMaps) do
-    putURLVarMaps urlVarMaps
-    H.modify
-      $ (_dirtyVarMaps .~ true)
-      ∘ (_lastVarMaps .~ urlVarMaps)
+  putURLVarMaps urlVarMaps
   pure next
 eval (DismissAll ev next) = do
   querySignIn $ H.action GlobalMenu.DismissSubmenu
@@ -233,10 +228,7 @@ eval (Load deckId accessType next) = do
   queryDeck (H.request Deck.GetId) >>= \deckId' → do
     case deckId, deckId' of
       Just a, Just b
-        | a ≡ b ∧ oldAccessType ≡ accessType →
-            whenM (H.gets _.dirtyVarMaps) do
-              H.modify (_dirtyVarMaps .~ false)
-              run
+        | a ≡ b ∧ oldAccessType ≡ accessType → run
       _, _ → load
 
   pure next
@@ -260,8 +252,8 @@ eval (Load deckId accessType next) = do
     rootDeck >>= either handleError loadDeck
 
   handleError err = case GE.fromQError err of
-    Left message → H.modify $ _stateMode .~ Error { message, detail: Nothing }
-    Right ge → GE.raiseGlobalError ge
+    Nothing → H.modify $ _stateMode .~ Error err
+    Just ge → GE.raiseGlobalError ge
 
 rootDeck ∷ WorkspaceDSL (Either QE.QError DeckId)
 rootDeck = do
@@ -297,9 +289,13 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
     case error of
       Left err →
         case GE.fromQError err of
-          Left msg →
-            Notify.error "Failed to collapse deck." (Just $ N.Details msg) Nothing Nothing
-          Right ge →
+          Nothing →
+            Notify.error
+              "Failed to collapse deck."
+              (Just $ N.Details $ QE.printQError err)
+              Nothing
+              Nothing
+          Just ge →
             GE.raiseGlobalError ge
       Right _  → do
         SA.track (SA.Collapse oldId)
@@ -325,9 +321,13 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
     case error of
       Left err →
         case GE.fromQError err of
-          Left msg →
-            Notify.error "Failed to wrap deck." (Just $ N.Details msg) Nothing Nothing
-          Right ge →
+          Nothing →
+            Notify.error
+              "Failed to wrap deck."
+              (Just $ N.Details $ QE.printQError err)
+              Nothing
+              Nothing
+          Just ge →
             GE.raiseGlobalError ge
       Right _  → do
         SA.track (SA.Wrap oldId)
@@ -404,9 +404,13 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
     case error of
       Left err →
         case GE.fromQError err of
-          Left msg →
-            Notify.error "Failed to mirror deck." (Just $ N.Details msg) Nothing Nothing
-          Right ge →
+          Nothing →
+            Notify.error
+              "Failed to mirror deck."
+              (Just $ N.Details $ QE.printQError err)
+              Nothing
+              Nothing
+          Just ge →
             GE.raiseGlobalError ge
       Right _  → do
         SA.track (SA.Mirror oldId)
@@ -447,7 +451,7 @@ errors ∷ ∀ a. String → Array (Either QE.QError a) → Either QE.QError Uni
 errors m es = case lefts es of
   [] → Right unit
   ss →
-    case sequence $ map (either Right Left ∘ GE.fromQError) ss of
+    case sequence $ map (\e → maybe (Right $ QE.printQError e) Left $ GE.fromQError e) ss of
       Left ge → Left $ GE.toQError ge
       Right msgs → Left $ QE.Error $ Exn.error (Str.joinWith m msgs)
 

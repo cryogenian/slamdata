@@ -39,6 +39,7 @@ import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
+import SlamData.Quasar.Error as QE
 import SlamData.GlobalError as GE
 import SlamData.Quasar.FS as API
 import SlamData.Render.CSS as Rc
@@ -261,8 +262,8 @@ eval (Submit next) = do
 
   presentError e =
     case GE.fromQError e of
-      Left msg → H.modify $ _error .~ Just msg
-      Right ge → GE.raiseGlobalError ge
+      Nothing → H.modify $ _error .~ Just (QE.printQError e)
+      Just ge → GE.raiseGlobalError ge
 
   moveIfDirAccessible dir =
     maybe (move dir) presentError =<< API.dirNotAccessible dir
@@ -276,8 +277,8 @@ eval (Submit next) = do
     case result of
       Left e ->
         case GE.fromQError e of
-          Left msg -> H.modify (_error ?~ msg)
-          Right ge -> GE.raiseGlobalError ge
+          Nothing -> H.modify (_error ?~ QE.printQError e)
+          Just ge -> GE.raiseGlobalError ge
       Right x ->
         maybe
           presentSourceMissingError

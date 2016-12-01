@@ -52,12 +52,12 @@ instance globalErrorDSLHFC ∷ GlobalErrorDSL g ⇒ GlobalErrorDSL (HF.HalogenFP
 instance globalErrorDSLHFP ∷ GlobalErrorDSL g ⇒ GlobalErrorDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
   raiseGlobalError = HF.QueryHF ∘ raiseGlobalError
 
-fromQError ∷ QE.QError → Either String GlobalError
+fromQError ∷ QE.QError → Maybe GlobalError
 fromQError = case _ of
-  QE.PaymentRequired → Right PaymentRequired
-  QE.Unauthorized unauthDetails → Right $ Unauthorized unauthDetails
-  QE.Forbidden → Right Forbidden
-  err → Left (QE.printQError err)
+  QE.PaymentRequired → Just PaymentRequired
+  QE.Unauthorized unauthDetails → Just $ Unauthorized unauthDetails
+  QE.Forbidden → Just Forbidden
+  err → Nothing
 
 toQError ∷ GlobalError → QE.QError
 toQError = case _ of

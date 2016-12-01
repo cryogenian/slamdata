@@ -40,6 +40,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Monad (Slam)
 import SlamData.GlobalError as GE
+import SlamData.Quasar.Error as QE
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as SQ
 import SlamData.FileSystem.Dialog.Mount.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpSQL, cpMongoDB, cpCouchbase, cpMarkLogic, cpSpark)
 import SlamData.FileSystem.Dialog.Mount.Component.Query (Query(..))
@@ -195,8 +196,8 @@ eval (Save k) = do
 handleQError ∷ Api.QError → DSL Unit
 handleQError err =
   case GE.fromQError err of
-    Left msg → H.modify (MCS._message ?~ formatError msg)
-    Right ge → GE.raiseGlobalError ge
+    Nothing → H.modify (MCS._message ?~ formatError (QE.printQError err))
+    Just ge → GE.raiseGlobalError ge
 
 peek ∷ forall x. ChildQuery x → DSL Unit
 peek =

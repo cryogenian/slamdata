@@ -185,10 +185,11 @@ listPath query deep var dir driver = do
   sendError ∷ QE.QError → Slam Unit
   sendError err =
     case GE.fromQError err of
-      Left msg →
-        presentError $
-          "There was a problem accessing this directory listing. " <> msg
-      Right ge →
+      Nothing →
+        presentError
+          $ "There was a problem accessing this directory listing. "
+          <> QE.printQError err
+      Just ge →
         GE.raiseGlobalError ge
 
   presentError message =

@@ -16,8 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.StateMode where
 
-import Prelude
-import Data.Maybe (Maybe)
+import SlamData.Quasar.Error (QError)
 
 -- | The current state of the deck.
 -- |
@@ -29,7 +28,10 @@ data StateMode
   = Loading
   | Preparing
   | Ready
-  | Error { message ∷ String, detail ∷ Maybe String }
+  | Error QError
 
-derive instance eqStateMode :: Eq StateMode
-derive instance ordStateMode :: Ord StateMode
+isPreparing ∷ StateMode → Boolean
+isPreparing =
+  case _ of
+    Preparing → true
+    _ → false
