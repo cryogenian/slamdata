@@ -39,7 +39,6 @@ script:
 before_deploy:
 - mkdir -p slamdata
 - cp -r public slamdata/
-- cp jars/quasar.jar slamdata/
 - tar cjf slamdata.tar.bz2 slamdata
 deploy:
   provider: releases
