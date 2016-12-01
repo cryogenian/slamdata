@@ -31,5 +31,6 @@ eval (Just conf) resource axes = do
       , name: conf.name
       , value: Just conf.value
       , label: conf.label
+      , selected: conf.selected
       }
   pure $ Port.FormInputParams fiPort
