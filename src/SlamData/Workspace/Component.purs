@@ -150,14 +150,14 @@ render state =
     pure case state.stateMode, state.initialDeckId of
       Loading, _ →
         HH.div_ []
-      Error { message, detail }, _ → renderError message detail
+      Error error, _ → renderError error
       _, Just deckId →
         HH.slot' cpDeck unit \_ →
           let init = opaqueState $ Deck.initialDeck deckId
           in { component: DN.comp (deckOpts deckId) init
              , initialState: DN.initialState
              }
-      _, _ → renderError "Missing deck id (impossible!)" Nothing
+      _, _ → renderError $ QE.Error $ Exn.error "Missing deck id (impossible!)"
 
   deckOpts deckId =
     { accessType: state.accessType
@@ -260,7 +260,7 @@ eval (Load deckId accessType next) = do
     rootDeck >>= either handleError loadDeck
 
   handleError err = case GE.fromQError err of
-    Left message → H.modify $ _stateMode .~ Error { message, detail: Nothing }
+    Left _ → H.modify $ _stateMode .~ Error err
     Right ge → GE.raiseGlobalError ge
 
 rootDeck ∷ WorkspaceDSL (Either QE.QError DeckId)

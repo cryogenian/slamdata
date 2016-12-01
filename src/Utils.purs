@@ -56,6 +56,9 @@ parenthesize s = "(" <> s <> ")"
 removeLastCharIfPeriod ∷ String → String
 removeLastCharIfPeriod s = fromMaybe s $ S.stripSuffix (S.Pattern ".") s
 
+endSentence ∷ String → String
+endSentence s = removeLastCharIfPeriod s <> "."
+
 lowercaseFirstChar ∷ String → String
 lowercaseFirstChar s = S.toLower (S.take 1 s) <> S.drop 1 s
 
