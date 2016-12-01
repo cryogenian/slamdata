@@ -28,10 +28,10 @@ import SlamData.Prelude
 
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Promise as Pr
-import Control.Monad.Eff.Exception as Exception
 import Control.UI.Browser as Browser
 
 import Data.Array as Array
@@ -64,7 +64,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
-import SlamData.GlobalMenu.Bus (SignInMessage(SignInSuccess, SignInFailure))
+import SlamData.GlobalMenu.Bus (SignInMessage(..))
 import SlamData.Guide as Guide
 import SlamData.Quasar as Quasar
 import SlamData.Quasar.Auth.Authentication as Authentication
@@ -107,8 +107,7 @@ import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
-import SlamData.Workspace.StateMode (StateMode(..))
-import SlamData.Workspace.StateMode as StateMode
+import SlamData.Workspace.StateMode (StateMode(..), isPreparing)
 
 import Utils.DOM (elementEq)
 import Utils.LocalStorage as LocalStorage
@@ -141,8 +140,7 @@ eval opts = case _ of
     Wiring wiring ← H.liftH $ H.liftH ask
     pb ← subscribeToBus' (H.action ∘ RunPendingCards) wiring.pending
     mb ← subscribeToBus' (H.action ∘ HandleMessage) wiring.messaging
-    H.modify
-      $ (DCS._breakers .~ [pb, mb])
+    H.modify $ DCS._breakers .~ [pb, mb]
     when (L.null opts.cursor) do
       eb ← subscribeToBus' (H.action ∘ HandleError) wiring.globalError
       H.modify $ DCS._breakers %~ (Array.cons eb)
@@ -512,7 +510,8 @@ updateActiveCardAndIndicator ∷ DeckDSL Unit
 updateActiveCardAndIndicator = do
   st ← H.get
   case st.activeCardIndex of
-    Nothing → H.modify $ DCS._activeCardIndex .~ Just (DCS.defaultActiveIndex st)
+    Nothing →
+      H.modify $ DCS._activeCardIndex .~ Just (DCS.defaultActiveIndex st)
     Just _ → pure unit
   updateIndicator
   updateActiveState
@@ -830,7 +829,7 @@ runCardUpdates opts source steps = do
   -- Cleanup initial presentation. Note, we do this here to eliminate jank.
   -- Doing it at the end results in cards jumping around as renders are flushed
   -- when we apply the child updates.
-  when (StateMode.isPreparing st.stateMode) do
+  when (isPreparing st.stateMode) do
     Wiring wiring ← H.liftH $ H.liftH ask
     activeIndex ← map _.cardIndex <$> getCache st.id wiring.activeState
     lastIndex ← H.gets DCS.findLastRealCardIndex
@@ -852,6 +851,11 @@ runCardUpdates opts source steps = do
       oldCards = Array.takeWhile (not ∘ DCS.eqCoordModel pendingId) realCards
       displayCards = oldCards <> updateResult.displayCards
     H.modify $ DCS._displayCards .~ displayCards
+
+  when (isPreparing st.stateMode) do
+    errorCardIndex ← H.gets DCS.findErrorCardIndex
+    for_ errorCardIndex \i →
+      H.modify (DCS._activeCardIndex .~ Just i)
 
   updateActiveCardAndIndicator
   for_ updateResult.updates $ updateCard st loadedCards

@@ -64,8 +64,8 @@ import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
@@ -84,7 +84,6 @@ import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Data (makeFile, save) as API
-import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo) as API
 import SlamData.Render.Common (content, row)
@@ -197,12 +196,10 @@ eval (MakeFolder next) = do
   case result of
     Left err →
       case GE.fromQError err of
-        Nothing →
-          showDialog
-            $ Dialog.Error
-            $ "There was a problem creating the directory: "
-            ⊕ QE.printQError err
-        Just ge →
+        Left msg →
+          showDialog $ Dialog.Error
+            $ "There was a problem creating the directory: " ⊕ msg
+        Right ge →
           GE.raiseGlobalError ge
     Right dirRes →
       void $ queryListing $ H.action $ Listing.Add (Item dirRes)
@@ -215,15 +212,13 @@ eval (MakeWorkspace next) = do
   case name of
     Left err →
       case GE.fromQError err of
-        Nothing →
+        Left msg →
           -- This error isn't strictly true as we're not actually creating the
           -- workspace here, but saying there was a problem "creating a name for the
           -- workspace" would be a little strange
-          showDialog
-            $ Dialog.Error
-            $ "There was a problem creating the workspace: "
-            ⊕ QE.printQError err
-        Just ge →
+          showDialog $ Dialog.Error
+            $ "There was a problem creating the workspace: " ⊕ msg
+        Right ge →
           GE.raiseGlobalError ge
     Right name' → do
       H.fromEff $ setLocation $ mkWorkspaceURL (path </> dir name') New
@@ -312,8 +307,8 @@ uploadFileSelected f = do
 
   handleError err =
     case GE.fromQError err of
-      Nothing → showDialog $ Dialog.Error $ QE.printQError err
-      Just ge → GE.raiseGlobalError ge
+      Left msg → showDialog $ Dialog.Error msg
+      Right ge → GE.raiseGlobalError ge
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek
@@ -387,9 +382,9 @@ itemPeek (Item.Remove res _) = do
       -- Error occured: put item back and show dialog
       void $ queryListing $ H.action $ Listing.Add (Item res)
       case GE.fromQError err of
-        Nothing →
-          showDialog $ Dialog.Error $ QE.printQError err
-        Just ge →
+        Left msg →
+          showDialog $ Dialog.Error msg
+        Right ge →
           GE.raiseGlobalError ge
     Right mbRes →
       -- Item has been deleted: probably add trash folder
@@ -411,12 +406,10 @@ itemPeek (Item.Share res _) = do
     case name of
       Left err →
         case GE.fromQError err of
-          Nothing →
-            showDialog
-              $ Dialog.Error
-              $ "There was a problem creating the workspace: "
-              ⊕ QE.printQError err
-          Just ge →
+          Left msg →
+            showDialog $ Dialog.Error
+              $ "There was a problem creating the workspace: " ⊕ msg
+          Right ge →
             GE.raiseGlobalError ge
       Right name' → do
         showDialog (Dialog.Share $ append loc $  mkWorkspaceURL (path </> dir name') $ Exploring fp)
@@ -454,11 +447,10 @@ explorePeek (Explore.Explore fp initialName next) = do
   case name of
     Left err →
       case GE.fromQError err of
-        Nothing →
+        Left msg →
           showDialog $ Dialog.Error
-            $ "There was a problem creating the workspace: "
-            ⊕ QE.printQError err
-        Just ge →
+            $ "There was a problem creating the workspace: " ⊕ msg
+        Right ge →
           GE.raiseGlobalError ge
     Right name' →
       H.fromEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
@@ -535,11 +527,11 @@ configure m =
       QM.SparkHDFSConfig config → Mount.SparkHDFS (Spark.fromConfig config)
 
     raiseError err = case GE.fromQError err of
-      Nothing →
+      Left msg →
         showDialog $ Dialog.Error
           $ "There was a problem reading the mount settings: "
-          ⊕ QE.printQError err
-      Just ge →
+          ⊕ msg
+      Right ge →
         GE.raiseGlobalError ge
 
 download ∷ R.Resource → DSL Unit

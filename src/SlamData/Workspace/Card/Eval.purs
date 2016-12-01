@@ -295,7 +295,9 @@ evalSearch info queryText resource = do
   compileResult ← lift $ QQ.compile (Right resource) sql SM.empty
   case compileResult of
     Left err →
-      QE.throw $ "Error compiling query: " ⊕ QE.printQError err
+      case GE.fromQError err of
+        Left msg → QE.throw $ "Error compiling query: " ⊕ msg
+        Right _ → QE.throw $ "Error compiling query: " ⊕ QE.printQError err
     Right { inputs } → do
       validateResources inputs
       CET.addSources inputs

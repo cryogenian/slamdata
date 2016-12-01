@@ -47,14 +47,10 @@ notifyError
   → m Unit
 notifyError msg event err = do
   case GE.fromQError err of
-    Nothing -> do
-      N.error
-        msg
-        (Just $ N.Details $ QE.printQError err)
-        Nothing
-        Nothing
+    Left details -> do
+      N.error msg (Just (N.Details details)) Nothing Nothing
       SA.track event
-    Just ge ->
+    Right ge ->
       GE.raiseGlobalError ge
 
 loadDeckFail ∷ DetailedError

@@ -73,7 +73,7 @@ import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Class (class WorkspaceDSL, putURLVarMaps, getURLVarMaps)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _version, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _version, _stateMode, _flipGuideStep, _cardGuideStep, _lastVarMaps, _dirtyVarMaps, initialState)
 import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Common (wrappedDeck, splitDeck)
 import SlamData.Workspace.Deck.Component as Deck
@@ -195,7 +195,12 @@ eval (FlipGuideDismiss next) = do
   H.modify (_flipGuideStep .~ Nothing)
   pure next
 eval (SetVarMaps urlVarMaps next) = do
-  putURLVarMaps urlVarMaps
+  lastVarMaps ← H.gets _.lastVarMaps
+  when (lastVarMaps /= urlVarMaps) do
+    putURLVarMaps urlVarMaps
+    H.modify
+      $ (_dirtyVarMaps .~ true)
+      ∘ (_lastVarMaps .~ urlVarMaps)
   pure next
 eval (DismissAll ev next) = do
   querySignIn $ H.action GlobalMenu.DismissSubmenu
@@ -228,7 +233,10 @@ eval (Load deckId accessType next) = do
   queryDeck (H.request Deck.GetId) >>= \deckId' → do
     case deckId, deckId' of
       Just a, Just b
-        | a ≡ b ∧ oldAccessType ≡ accessType → run
+        | a ≡ b ∧ oldAccessType ≡ accessType →
+            whenM (H.gets _.dirtyVarMaps) do
+              H.modify (_dirtyVarMaps .~ false)
+              run
       _, _ → load
 
   pure next
@@ -252,8 +260,8 @@ eval (Load deckId accessType next) = do
     rootDeck >>= either handleError loadDeck
 
   handleError err = case GE.fromQError err of
-    Nothing → H.modify $ _stateMode .~ Error err
-    Just ge → GE.raiseGlobalError ge
+    Left _ → H.modify $ _stateMode .~ Error err
+    Right ge → GE.raiseGlobalError ge
 
 rootDeck ∷ WorkspaceDSL (Either QE.QError DeckId)
 rootDeck = do
@@ -289,13 +297,9 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
     case error of
       Left err →
         case GE.fromQError err of
-          Nothing →
-            Notify.error
-              "Failed to collapse deck."
-              (Just $ N.Details $ QE.printQError err)
-              Nothing
-              Nothing
-          Just ge →
+          Left msg →
+            Notify.error "Failed to collapse deck." (Just $ N.Details msg) Nothing Nothing
+          Right ge →
             GE.raiseGlobalError ge
       Right _  → do
         SA.track (SA.Collapse oldId)
@@ -321,13 +325,9 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
     case error of
       Left err →
         case GE.fromQError err of
-          Nothing →
-            Notify.error
-              "Failed to wrap deck."
-              (Just $ N.Details $ QE.printQError err)
-              Nothing
-              Nothing
-          Just ge →
+          Left msg →
+            Notify.error "Failed to wrap deck." (Just $ N.Details msg) Nothing Nothing
+          Right ge →
             GE.raiseGlobalError ge
       Right _  → do
         SA.track (SA.Wrap oldId)
@@ -404,13 +404,9 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
     case error of
       Left err →
         case GE.fromQError err of
-          Nothing →
-            Notify.error
-              "Failed to mirror deck."
-              (Just $ N.Details $ QE.printQError err)
-              Nothing
-              Nothing
-          Just ge →
+          Left msg →
+            Notify.error "Failed to mirror deck." (Just $ N.Details msg) Nothing Nothing
+          Right ge →
             GE.raiseGlobalError ge
       Right _  → do
         SA.track (SA.Mirror oldId)
@@ -451,7 +447,7 @@ errors ∷ ∀ a. String → Array (Either QE.QError a) → Either QE.QError Uni
 errors m es = case lefts es of
   [] → Right unit
   ss →
-    case sequence $ map (\e → maybe (Right $ QE.printQError e) Left $ GE.fromQError e) ss of
+    case sequence $ map (either Right Left ∘ GE.fromQError) ss of
       Left ge → Left $ GE.toQError ge
       Right msgs → Left $ QE.Error $ Exn.error (Str.joinWith m msgs)
 

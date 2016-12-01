@@ -42,11 +42,10 @@ import Control.Parallel as Par
 import Quasar.Error (QError)
 
 import SlamData.GlobalError as GE
-import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
 import SlamData.Workspace.Deck.DeckId as DID
+import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
 
 
 import Utils.Path (DirPath, FilePath)
@@ -96,8 +95,8 @@ runCardEvalT (CardEvalT m) =
     case r of
       Left err →
         case GE.fromQError err of
-          Nothing → Right $ Port.CardError (QE.printQError err) × ms
-          Just ge → Left ge
+          Left msg → Right $ Port.CardError msg × ms
+          Right ge → Left ge
       Right r' →
         Right $ r' × ms
 
