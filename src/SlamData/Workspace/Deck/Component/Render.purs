@@ -48,6 +48,8 @@ import SlamData.Workspace.Deck.Slider as Slider
 
 import Quasar.Advanced.Types (ProviderR)
 
+import Utils (endSentence)
+
 renderError ∷ ∀ f a. QE.QError → HH.HTML a (f Unit)
 renderError err =
   HH.div
@@ -55,7 +57,7 @@ renderError err =
     [ HH.h1_
         [ HH.text "Couldn't load this SlamData deck." ]
     , HH.p_
-        [ HH.text $ QE.printQError err ]
+        [ HH.text $ endSentence $ QE.printQError err ]
     ]
 
 renderSignInButton ∷ ProviderR → DeckHTML
