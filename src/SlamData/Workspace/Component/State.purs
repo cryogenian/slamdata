@@ -24,6 +24,8 @@ module SlamData.Workspace.Component.State
   , _stateMode
   , _cardGuideStep
   , _flipGuideStep
+  , _lastVarMaps
+  , _dirtyVarMaps
   , cardGuideStepNext
   , flipGuideStepNext
   ) where
@@ -31,10 +33,12 @@ module SlamData.Workspace.Component.State
 import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
+import Data.Map as Map
 
 import SlamData.Workspace.AccessType (AccessType(..))
-import SlamData.Workspace.StateMode (StateMode(..))
+import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.StateMode (StateMode(..))
 
 type State =
   { accessType ∷ AccessType
@@ -44,6 +48,8 @@ type State =
   , stateMode ∷ StateMode
   , cardGuideStep ∷ Maybe Int
   , flipGuideStep ∷ Maybe Int
+  , lastVarMaps ∷ Map.Map DeckId Port.URLVarMap
+  , dirtyVarMaps ∷ Boolean
   }
 
 initialState ∷ Maybe String → State
@@ -55,6 +61,8 @@ initialState version =
   , stateMode: Loading
   , cardGuideStep: Nothing
   , flipGuideStep: Nothing
+  , lastVarMaps: Map.empty
+  , dirtyVarMaps: false
   }
 
 _accessType ∷ ∀ a r. Lens' {accessType ∷ a|r} a
@@ -79,6 +87,12 @@ _cardGuideStep = lens _.cardGuideStep _{cardGuideStep = _}
 
 _flipGuideStep ∷ Lens' State (Maybe Int)
 _flipGuideStep = lens _.flipGuideStep _{flipGuideStep = _}
+
+_lastVarMaps ∷ Lens' State (Map.Map DeckId Port.URLVarMap)
+_lastVarMaps = lens _.lastVarMaps _{lastVarMaps = _}
+
+_dirtyVarMaps ∷ Lens' State Boolean
+_dirtyVarMaps = lens _.dirtyVarMaps _{dirtyVarMaps = _}
 
 cardGuideStepNext ∷ State → State
 cardGuideStepNext st = st { cardGuideStep = add 1 <$> st.cardGuideStep }

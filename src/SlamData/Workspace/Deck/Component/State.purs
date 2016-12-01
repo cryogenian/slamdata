@@ -52,6 +52,7 @@ module SlamData.Workspace.Deck.Component.State
   , findLastCardType
   , findLastRealCardIndex
   , findLastRealCard
+  , findErrorCardIndex
   , addPendingCard
   , removePendingCard
   , variablesCards
@@ -333,6 +334,10 @@ findLastRealCard state =
 -- | Finds the type of the last card.
 findLastCardType ∷ State → Maybe CT.CardType
 findLastCardType { displayCards } = Card.modelCardType ∘ _.model ∘ snd <$> A.last displayCards
+
+findErrorCardIndex ∷ State → Maybe Int
+findErrorCardIndex =
+  A.findLastIndex ((_ == ErrorCardId) ∘ _.cardId ∘ snd) ∘ _.displayCards
 
 variablesCards ∷ State → Array (DeckId × CardId)
 variablesCards = A.mapMaybe cardTypeMatches ∘ _.modelCards

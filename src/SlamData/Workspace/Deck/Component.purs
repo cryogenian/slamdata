@@ -476,7 +476,8 @@ updateActiveCardAndIndicator ∷ DeckDSL Unit
 updateActiveCardAndIndicator = do
   st ← H.get
   case st.activeCardIndex of
-    Nothing → H.modify $ DCS._activeCardIndex .~ Just (DCS.defaultActiveIndex st)
+    Nothing →
+      H.modify $ DCS._activeCardIndex .~ Just (DCS.defaultActiveIndex st)
     Just _ → pure unit
   updateIndicator
   updateActiveState
@@ -816,6 +817,11 @@ runCardUpdates opts source steps = do
       oldCards = Array.takeWhile (not ∘ DCS.eqCoordModel pendingId) realCards
       displayCards = oldCards <> updateResult.displayCards
     H.modify $ DCS._displayCards .~ displayCards
+
+  when (st.stateMode == Preparing) do
+    errorCardIndex ← H.gets DCS.findErrorCardIndex
+    for_ errorCardIndex \i →
+      H.modify (DCS._activeCardIndex .~ Just i)
 
   updateActiveCardAndIndicator
   for_ updateResult.updates $ updateCard st loadedCards

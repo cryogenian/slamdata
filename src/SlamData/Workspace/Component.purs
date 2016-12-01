@@ -73,7 +73,7 @@ import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Class (class WorkspaceDSL, putURLVarMaps, getURLVarMaps)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _version, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _version, _stateMode, _flipGuideStep, _cardGuideStep, _lastVarMaps, _dirtyVarMaps, initialState)
 import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Common (wrappedDeck, splitDeck)
 import SlamData.Workspace.Deck.Component as Deck
@@ -195,7 +195,12 @@ eval (FlipGuideDismiss next) = do
   H.modify (_flipGuideStep .~ Nothing)
   pure next
 eval (SetVarMaps urlVarMaps next) = do
-  putURLVarMaps urlVarMaps
+  lastVarMaps ← H.gets _.lastVarMaps
+  when (lastVarMaps /= urlVarMaps) do
+    putURLVarMaps urlVarMaps
+    H.modify
+      $ (_dirtyVarMaps .~ true)
+      ∘ (_lastVarMaps .~ urlVarMaps)
   pure next
 eval (DismissAll ev next) = do
   querySignIn $ H.action GlobalMenu.DismissSubmenu
@@ -228,7 +233,10 @@ eval (Load deckId accessType next) = do
   queryDeck (H.request Deck.GetId) >>= \deckId' → do
     case deckId, deckId' of
       Just a, Just b
-        | a ≡ b ∧ oldAccessType ≡ accessType → run
+        | a ≡ b ∧ oldAccessType ≡ accessType →
+            whenM (H.gets _.dirtyVarMaps) do
+              H.modify (_dirtyVarMaps .~ false)
+              run
       _, _ → load
 
   pure next
