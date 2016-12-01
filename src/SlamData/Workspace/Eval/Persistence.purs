@@ -39,11 +39,11 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.AccessType (isEditable)
 import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.Common as CC
+import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Deck.Common as DC
 import SlamData.Workspace.Deck.DeckId as DID
+import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
@@ -361,11 +361,29 @@ wrapDeck deckId = runExceptT do
   deck ← ExceptT $ wait cell.value
   parentId ← Tuple <$> fromAff DID.make <*> fromAff CID.make
   let
-    parentDeck = DC.wrappedDeck deck.parent (snd parentId) deckId
+    parentDeck = DM.wrappedDeck deck.parent (snd parentId) deckId
   ExceptT $ putDeck (fst parentId) parentDeck
   updateParentPointer deckId (fst parentId) deck.parent
   fromAff $ Bus.write (Deck.UpdateParent (Just parentId)) cell.bus
   pure (fst parentId)
+
+unwrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
+unwrapDeck deckId = runExceptT do
+  deck ← ExceptT $ getDeck deckId
+  cards ← maybe (QE.throw "Cards not found.") pure =<< lift (getCards (Deck.cardCoords deckId deck))
+  childId ← maybe (QE.throw "Cannot unwrap deck") pure $ immediateChild (_.value.model.model ∘ snd <$> cards)
+  cell ← lift $ getDeck' childId
+  updateParentPointer deckId childId deck.parent
+  fromAff $ Bus.write (Deck.UpdateParent deck.parent) cell.bus
+  pure childId
+
+  where
+    immediateChild = case _ of
+      [ model ] →
+        case CM.childDeckIds model of
+          childId : Nil → Just childId
+          _ → Nothing
+      _ → Nothing
 
 updateParentPointer
   ∷ ∀ f m
@@ -383,7 +401,7 @@ updateParentPointer oldId newId parent =
       cell ← getCard coord
       for_ cell \{ bus, value } → do
         let
-          model' = CC.updatePointer oldId (Just newId) value.model.model
+          model' = CM.updatePointer oldId (Just newId) value.model.model
           message = Card.ModelChange (Card.toAll coord) model'
         fromAff $ Bus.write message bus
     Nothing → do

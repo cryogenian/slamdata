@@ -16,24 +16,16 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.Common where
 
-import SlamData.Prelude
-
 import Data.List as L
-import Data.Rational ((%))
 
 import Halogen as H
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.AccessType (AccessType)
-import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.Draftboard.Pane as Pane
-import SlamData.Workspace.Card.Draftboard.Orientation as Orn
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.Component.ChildSlot (ChildSlot, ChildQuery, ChildState)
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Model (Deck, emptyDeck)
 
 type DeckHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 
@@ -43,29 +35,3 @@ type DeckOptions =
   { accessType ∷ AccessType
   , cursor ∷ L.List DeckId
   }
-
-wrappedDeck ∷ Maybe (DeckId × CardId) → CardId → DeckId → Deck
-wrappedDeck parent cardId deckId =
-  emptyDeck
-    { parent = parent
-    , cards = pure
-      { cardId
-      , model: Card.Draftboard { layout: Pane.Cell (Just deckId) }
-      }
-    }
-
-splitDeck ∷ Maybe (DeckId × CardId) → CardId → Orn.Orientation → L.List DeckId → Deck
-splitDeck parent cardId orn deckIds =
-  emptyDeck
-    { parent = parent
-    , cards = pure
-      { cardId
-      , model: Card.Draftboard
-        { layout: Pane.Split orn (mkCell <$> deckIds)
-        }
-      }
-    }
-  where
-  count = L.length deckIds
-  mkCell deckId =
-    (1%count) × Pane.wrap (Orn.reverse orn) (Pane.Cell (Just deckId))

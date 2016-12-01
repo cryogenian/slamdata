@@ -297,8 +297,8 @@ peekBackSide opts (Back.DoAction action _) = do
       raise' $ H.action $ DoAction Mirror
     Back.Wrap →
       raise' $ H.action $ DoAction Wrap
-    Back.Unwrap decks →
-      raise' $ H.action $ DoAction $ Unwrap decks
+    Back.Unwrap →
+      raise' $ H.action $ DoAction $ Unwrap
 peekBackSide _ _ = pure unit
 
 peekCards ∷ ∀ a. DeckId × CardId → CardQueryP a → DeckDSL Unit
@@ -354,9 +354,9 @@ updateBackSide ∷ DeckOptions → DeckDSL Unit
 updateBackSide { cursor } = do
   st ← H.get
   let
-    ty = _.cardType <$> join (censor <$> DCS.activeCard st)
-    tys = _.cardType <$> Array.mapMaybe censor st.displayCards
-  void $ H.query' cpBackSide unit $ H.action $ Back.UpdateCardType ty tys
+    ty = join (censor <$> DCS.activeCard st)
+    tys = Array.mapMaybe censor st.displayCards
+  void $ H.query' cpBackSide unit $ H.action $ Back.UpdateCard ty tys
   -- FIXME
   pure unit
 

@@ -244,18 +244,24 @@ peek = (const (pure unit) ⨁ peekDeck) ⨁ const (pure unit) ⨁ peekNotificati
 
   peekDeck ∷ Deck.Query a → WorkspaceDSL Unit
   peekDeck = case _ of
-    Deck.DoAction Deck.Wrap _ → do
-      st ← H.get
-      for_ st.deckId \deckId → do
-        res ← H.liftH $ H.liftH $ P.wrapDeck deckId
-        case res of
-          Left err → do
-            -- FIXME: Error reporting
-            pure unit
-          Right newId → do
-            { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
-            navigate $ WorkspaceRoute path (Just newId) (WA.Load accessType) varMaps
-    _ → pure unit
+    Deck.DoAction Deck.Unwrap _ →
+      persist P.unwrapDeck
+    Deck.DoAction Deck.Wrap _ →
+      persist P.wrapDeck
+    _ →
+      pure unit
+
+  persist fn = do
+    H.gets _.deckId >>= traverse_ \deckId →
+      navigateToDeck =<< H.liftH (H.liftH (fn deckId))
+
+  navigateToDeck = case _ of
+    Left err → do
+      -- FIXME: Error reporting
+      pure unit
+    Right newId → do
+      { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
+      navigate $ WorkspaceRoute path (Just newId) (WA.Load accessType) varMaps
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck q = do

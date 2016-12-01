@@ -22,12 +22,16 @@ module SlamData.Workspace.Card.Model
   , modelToEval
   , cardModelOfType
   , modelCardType
+  , childDeckIds
+  , updatePointer
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
+
+import Data.List as L
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Workspace.Card.Eval as Eval
@@ -61,6 +65,7 @@ import SlamData.Workspace.Card.BuildChart.Parallel.Model as BuildParallel
 import SlamData.Workspace.Card.BuildChart.Legacy as ChartLegacy
 import SlamData.Workspace.Card.Query.Model as Query
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Deck.DeckId (DeckId)
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -372,3 +377,23 @@ modelToEval = case _ of
   BuildCandlestick model → Eval.BuildCandlestick model
   BuildParallel model → Eval.BuildParallel model
   _ → Eval.Pass
+
+
+childDeckIds ∷ AnyCardModel → L.List DeckId
+childDeckIds = case _ of
+  Draftboard { layout } → L.catMaybes (L.fromFoldable layout)
+  s → mempty
+
+updatePointer
+  ∷ DeckId
+  → Maybe DeckId
+  → AnyCardModel
+  → AnyCardModel
+updatePointer old new = case _ of
+  Draftboard { layout } →
+    Draftboard { layout: update <$> layout}
+  card → card
+
+  where
+    update (Just deckId) | deckId ≡ old = new
+    update a = a

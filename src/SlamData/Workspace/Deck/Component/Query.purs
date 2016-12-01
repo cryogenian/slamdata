@@ -28,10 +28,7 @@ import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
 import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import SlamData.GlobalError (GlobalError)
-import SlamData.Workspace.Card.Draftboard.Pane (Pane)
-import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
-import SlamData.Workspace.Deck.Model (Deck)
 import SlamData.Workspace.Eval.Deck (EvalMessage)
 import SlamData.Wiring (DeckMessage)
 
@@ -66,7 +63,7 @@ data Query a
 data DeckAction
   = Mirror
   | Wrap
-  | Unwrap (Pane (Maybe (DeckId × Deck)))
+  | Unwrap
   | DeleteDeck
 
 type QueryP = OpaqueQuery Query

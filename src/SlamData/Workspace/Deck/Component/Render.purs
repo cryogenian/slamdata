@@ -91,7 +91,7 @@ renderDeck opts deckComponent st =
       [ HP.classes $ [CSS.cardSlider] ⊕ (guard (not visible) $> CSS.invisible)
       , ARIA.hidden $ show $ not visible
       ]
-      [ backside ]
+      [ backside opts st ]
 
 deckClasses ∷ ∀ r. DCS.State → Array (HP.IProp (HP.InteractiveEvents (HP.GlobalProperties r)) (Query Unit))
 deckClasses st =
@@ -142,12 +142,12 @@ dialogSlot =
     , initialState: H.parentState Dialog.initialState
     }
 
-backside ∷ DeckHTML
-backside =
+backside ∷ DeckOptions → DCS.State → DeckHTML
+backside { cursor } st =
   HH.div
     [ HP.classes [ CSS.card ] ]
     [ HH.slot' cpBackSide unit \_ →
-        { component: Back.comp
+        { component: Back.comp { deckId: st.id, cursor }
         , initialState: Back.initialState
         }
     ]
