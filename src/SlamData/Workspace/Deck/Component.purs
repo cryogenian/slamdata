@@ -644,7 +644,7 @@ peekCardEvalQuery cardCoord = case _ of
       ord = fromMaybe LT do
         pending ← st.pendingCard
         DCS.compareCoordCards cardCoord pending st.modelCards
-    when (ord ≡ LT) $ runCard cardCoord
+    when (ord < GT) $ runCard cardCoord
     triggerSave (Just cardCoord)
   CEQ.ZoomIn _ → raise' $ H.action ZoomIn
   _ → pure unit
