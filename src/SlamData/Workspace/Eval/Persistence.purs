@@ -32,6 +32,7 @@ import Data.List as List
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+import Data.Rational ((%))
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Data as Quasar
@@ -43,6 +44,7 @@ import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Deck.DeckId as DID
@@ -76,17 +78,27 @@ type Persist f m a =
 putDeck ∷ ∀ f m. Persist f m (Deck.Id → Deck.Model → m (Either QE.QError Unit))
 putDeck deckId deck = do
   { path, eval, accessType } ← Wiring.expose
-
   ref ← defer do
     res ←
       if isEditable accessType
         then Quasar.save (Deck.deckIndex path deckId) $ Deck.encode deck
         else pure (Right unit)
     pure $ res $> deck
-  Cache.alter deckId
-    (\cell → pure $ _ { value = ref } <$> cell)
-    eval.decks
+  Cache.alter deckId (updateOrFork ref) eval.decks
   rmap (const unit) <$> wait ref
+
+  where
+    updateOrFork ref = case _ of
+      Just cell →
+        pure $ Just cell
+          { value = ref
+          , model = deck
+          }
+      Nothing → do
+        cell ← { value: ref, model: deck, bus: _ } <$> fromAff Bus.make
+        populateCards deckId deck
+        forkDeckProcess deckId cell.bus
+        pure (Just cell)
 
 saveDeck ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
 saveDeck deckId = do
@@ -175,49 +187,6 @@ populateCards deckId deck = runExceptT do
       cell ← makeCardCell card Nothing (Tuple deckId <$> next)
       Cache.put coord cell cache
       forkCardProcess coord cell.bus
-
-makeCardCell
-  ∷ ∀ m
-  . ( Affable SlamDataEffects m
-    , Monad m
-    )
-  ⇒ Card.Model
-  → Maybe Port
-  → List Card.Coord
-  → m Card.Cell
-makeCardCell model input next = do
-  let
-    value =
-      { model
-      , input
-      , output: Nothing
-      , state: Nothing
-      , tick: Nothing
-      }
-  bus ← fromAff Bus.make
-  pure { bus, next, value }
-
-getCard
-  ∷ ∀ m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    )
-  ⇒ Card.Coord
-  → m (Maybe Card.Cell)
-getCard coord = do
-  { eval } ← Wiring.expose
-  Cache.get coord eval.cards
-
-getCards
-  ∷ ∀ m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    )
-  ⇒ Array Card.Coord
-  → m (Maybe (Array (Deck.Id × Card.Cell)))
-getCards = map sequence ∘ traverse go
-  where
-    go coord = map (fst coord × _) <$> getCard coord
 
 forkDeckProcess ∷ ∀ f m . Persist f m (Deck.Id → Bus.BusRW Deck.EvalMessage → m Unit)
 forkDeckProcess deckId = forkLoop case _ of
@@ -321,25 +290,27 @@ wrapAndMirrorDeck deckId = runExceptT do
     wrappedDeck =
       DM.splitDeck deck.parent (snd parentCoord) Orn.Vertical
         (List.fromFoldable [ deckId, newMirrorId ])
-  reqs ← lift
+  ExceptT $ map sequence
     if Array.null deck.cards
       then do
         let
           mirrored = deck { parent = Just parentCoord }
         parSequence
           [ putDeck deckId mirrored
-          , putDeck newMirrorId mirrored
+          , putDeck newMirrorId (mirrored { name = "" })
           , putDeck (fst parentCoord) wrappedDeck
           ]
       else do
         let
-          cardIds = Tuple newSharedId ∘ _.cardId <$> deck.cards
+          oldCardIds = Tuple deckId ∘ _.cardId <$> deck.cards
+          newCardIds = Tuple newSharedId ∘ snd <$> oldCardIds
           mirrored = deck
             { parent = Just parentCoord
-            , mirror = deck.mirror <> cardIds
+            , mirror = deck.mirror <> newCardIds
             , cards = []
             , name = deck.name
             }
+        traverse_ (relocateCardTo newSharedId) oldCardIds
         parSequence
           [ putDeck deckId mirrored
           , putDeck newMirrorId (mirrored { name = "" })
@@ -348,6 +319,56 @@ wrapAndMirrorDeck deckId = runExceptT do
           ]
   updateParentPointer deckId (fst parentCoord) deck.parent
   pure (fst parentCoord)
+
+mirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Deck.Id))
+mirrorDeck childId coord = runExceptT do
+  { eval } ← Wiring.expose
+  deck ← ExceptT $ getDeck childId
+  parent ← liftWithErr "Parent not found." $ getCard coord
+  newSharedId ← fromAff DID.make
+  newMirrorId ← fromAff DID.make
+  ExceptT $ map sequence
+    if Array.null deck.cards
+      then do
+        let
+          mirrored = deck { name = "" }
+        parSequence
+          [ putDeck newMirrorId mirrored
+          ]
+      else do
+        let
+          oldCardIds = Tuple childId ∘ _.cardId <$> deck.cards
+          newCardIds = Tuple newSharedId ∘ snd <$> oldCardIds
+          mirrored = deck
+            { parent = Just coord
+            , mirror = deck.mirror <> newCardIds
+            , cards = []
+            , name = deck.name
+            }
+        traverse_ (relocateCardTo newSharedId) oldCardIds
+        parSequence
+          [ putDeck childId mirrored
+          , putDeck newMirrorId (mirrored { name = "" })
+          , putDeck newSharedId (deck { name = "" })
+          ]
+  parent'' ← liftWithErr "Cannot mirror deck." $ pure $ mirrorInLayout newMirrorId parent.value.model.model
+  fromAff $ Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
+  pure newMirrorId
+  where
+  mirrorInLayout newId = case _ of
+    CM.Draftboard { layout } → do
+      cursor ← List.tail =<< Pane.getCursorFor (Just childId) layout
+      let
+        orn =
+          case Pane.getAt cursor layout of
+            Just (Pane.Split o _) → o
+            _ → Orn.Vertical
+      layout' ←
+        Layout.insertSplit
+          (Pane.Cell (Just newId)) orn (1%2) Layout.SideB cursor layout
+      pure (CM.Draftboard { layout: layout' })
+    _ →
+      Nothing
 
 unwrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
 unwrapDeck deckId = runExceptT do
@@ -477,6 +498,64 @@ forkLoop handler bus = void (fork loop)
       msg ← fromAff (Bus.read bus)
       fork (handler msg)
       loop
+
+makeCardCell
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , Monad m
+    )
+  ⇒ Card.Model
+  → Maybe Port
+  → List Card.Coord
+  → m Card.Cell
+makeCardCell model input next = do
+  let
+    value =
+      { model
+      , input
+      , output: Nothing
+      , state: Nothing
+      , tick: Nothing
+      }
+  bus ← fromAff Bus.make
+  pure { bus, next, value }
+
+getCard
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadAsk Wiring m
+    )
+  ⇒ Card.Coord
+  → m (Maybe Card.Cell)
+getCard coord = do
+  { eval } ← Wiring.expose
+  Cache.get coord eval.cards
+
+getCards
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadAsk Wiring m
+    )
+  ⇒ Array Card.Coord
+  → m (Maybe (Array (Deck.Id × Card.Cell)))
+getCards = map sequence ∘ traverse go
+  where
+    go coord = map (fst coord × _) <$> getCard coord
+
+relocateCardTo
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadAsk Wiring m
+    )
+  ⇒ Deck.Id
+  → Card.Coord
+  → m Unit
+relocateCardTo deckId coord@(_ × cardId) = do
+  -- FIXME: This is so broken
+  { eval } ← Wiring.expose
+  Cache.get coord eval.cards >>= traverse_ \cell → do
+    Cache.remove coord eval.cards
+    Cache.put (deckId × cardId) cell eval.cards
 
 debounce
   ∷ ∀ k m r
