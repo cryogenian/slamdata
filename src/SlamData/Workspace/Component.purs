@@ -248,6 +248,8 @@ peek = (const (pure unit) ⨁ peekDeck) ⨁ const (pure unit) ⨁ peekNotificati
       persist P.unwrapDeck
     Deck.DoAction Deck.Wrap _ →
       persist P.wrapDeck
+    Deck.DoAction Deck.Mirror _ →
+      persist P.wrapAndMirrorDeck
     _ →
       pure unit
 

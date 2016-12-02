@@ -24,6 +24,7 @@ import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Aff.Promise (wait, defer)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Fork (class MonadFork, fork)
+import Control.Parallel (parSequence)
 
 import Data.Array as Array
 import Data.List (List(..), (:))
@@ -43,6 +44,7 @@ import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
+import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Eval as Eval
@@ -300,13 +302,52 @@ wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
 wrapDeck deckId = runExceptT do
   cell ← lift $ getDeck' deckId
   deck ← ExceptT $ wait cell.value
-  parentId ← Tuple <$> fromAff DID.make <*> fromAff CID.make
+  parentCoord ← Tuple <$> fromAff DID.make <*> fromAff CID.make
   let
-    parentDeck = DM.wrappedDeck deck.parent (snd parentId) deckId
-  ExceptT $ putDeck (fst parentId) parentDeck
-  updateParentPointer deckId (fst parentId) deck.parent
-  fromAff $ Bus.write (Deck.UpdateParent (Just parentId)) cell.bus
-  pure (fst parentId)
+    parentDeck = DM.wrappedDeck deck.parent (snd parentCoord) deckId
+  ExceptT $ putDeck (fst parentCoord) parentDeck
+  updateParentPointer deckId (fst parentCoord) deck.parent
+  fromAff $ Bus.write (Deck.UpdateParent (Just parentCoord)) cell.bus
+  pure (fst parentCoord)
+
+wrapAndMirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
+wrapAndMirrorDeck deckId = runExceptT do
+  cell ← lift $ getDeck' deckId
+  deck ← ExceptT $ wait cell.value
+  newSharedId ← fromAff DID.make
+  newMirrorId ← fromAff DID.make
+  parentCoord ← Tuple <$> fromAff DID.make <*> fromAff CID.make
+  let
+    wrappedDeck =
+      DM.splitDeck deck.parent (snd parentCoord) Orn.Vertical
+        (List.fromFoldable [ deckId, newMirrorId ])
+  reqs ← lift
+    if Array.null deck.cards
+      then do
+        let
+          mirrored = deck { parent = Just parentCoord }
+        parSequence
+          [ putDeck deckId mirrored
+          , putDeck newMirrorId mirrored
+          , putDeck (fst parentCoord) wrappedDeck
+          ]
+      else do
+        let
+          cardIds = Tuple newSharedId ∘ _.cardId <$> deck.cards
+          mirrored = deck
+            { parent = Just parentCoord
+            , mirror = deck.mirror <> cardIds
+            , cards = []
+            , name = deck.name
+            }
+        parSequence
+          [ putDeck deckId mirrored
+          , putDeck newMirrorId (mirrored { name = "" })
+          , putDeck newSharedId (deck { name = "" })
+          , putDeck (fst parentCoord) wrappedDeck
+          ]
+  updateParentPointer deckId (fst parentCoord) deck.parent
+  pure (fst parentCoord)
 
 unwrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
 unwrapDeck deckId = runExceptT do
