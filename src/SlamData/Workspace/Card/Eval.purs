@@ -225,22 +225,22 @@ evalOpen
   → R.Resource
   → CET.CardEvalT m Port.TaggedResourcePort
 evalOpen info res = do
-   filePath ←
-     maybe (QE.throw "No resource is selected") pure
-       $ res ^? R._filePath
-   msg ←
-     CET.liftQ
-       $ QFS.messageIfFileNotFound
-         filePath
-         ("File " ⊕ Path.printPath filePath ⊕ " doesn't exist")
-   case msg of
-     Nothing → do
-       axes ←
-         CET.liftQ $ QQ.axes filePath 20
-       CET.addSource filePath
-       pure { resource: filePath, tag: Nothing, axes, varMap: Nothing }
-     Just err →
-       QE.throw err
+  filePath ←
+    maybe (QE.throw "No resource is selected") pure
+      $ res ^? R._filePath
+  msg ←
+    CET.liftQ
+      $ QFS.messageIfFileNotFound
+        filePath
+        ("File " ⊕ Path.printPath filePath ⊕ " doesn't exist")
+  case msg of
+    Nothing → do
+      axes ←
+        CET.liftQ $ QQ.axes filePath 20
+      CET.addSource filePath
+      pure { resource: filePath, tag: Nothing, axes, varMap: Nothing }
+    Just err →
+      QE.throw err
 
 evalQuery
   ∷ ∀ f m
@@ -293,6 +293,7 @@ evalSearch info queryText resource = do
     outputResource = CET.temporaryOutputResource info
 
   compileResult ← lift $ QQ.compile (Right resource) sql SM.empty
+
   case compileResult of
     Left err →
       case GE.fromQError err of
