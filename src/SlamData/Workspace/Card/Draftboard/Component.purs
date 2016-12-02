@@ -319,7 +319,7 @@ peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
           -- Don't need to raise, as wrapping will result in changes propagating
         DCQ.DoAction DCQ.Unwrap _ → do
           SA.track (SA.Collapse deckId)
-          unwrapDeck opts deckId cursor
+          unwrapDeck opts deckId
           CC.raiseUpdatedP' CC.EvalModelUpdate
         DCQ.DoAction DCQ.Mirror _ → do
           SA.track (SA.Mirror deckId)
@@ -389,19 +389,15 @@ wrapDeck ∷ CardOptions → DeckId → Pane.Cursor → DraftboardDSL Unit
 wrapDeck { coord, deck } oldId cursor = do
   res ← H.liftH $ H.liftH $ P.wrapDeck oldId
   -- TODO: Errors?
-  case res of
-    Left err → do
-      pure unit
-    Right newId → do
-      pure unit
+  pure unit
 
 unwrapDeck
   ∷ CardOptions
   → DeckId
-  → Pane.Cursor
   → DraftboardDSL Unit
-unwrapDeck { coord, deck: opts } oldId cursor = do
-  -- FIXME
+unwrapDeck { coord, deck: opts } oldId = do
+  res ← H.liftH $ H.liftH $ P.collapseDeck oldId coord
+  -- TODO: Errors?
   pure unit
 
 mirrorDeck ∷ CardOptions → DeckId → Pane.Cursor → DraftboardDSL Unit

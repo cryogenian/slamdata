@@ -42,6 +42,7 @@ import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Eval as Eval
@@ -244,23 +245,13 @@ forkCardProcess ∷ ∀ f m. Persist f m (Card.Coord → Bus.BusRW Card.EvalMess
 forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
   Card.ModelChange source model → do
     { eval } ← Wiring.expose
-    Cache.alter coord (pure ∘ map (updateModel model)) eval.cards
+    Cache.alter coord (pure ∘ map (updateCellModel model)) eval.cards
     mbGraph ← snapshotGraph coord
     for_ mbGraph \graph → do
       queueSave defaultSaveDebounce deckId
       queueEval defaultEvalDebounce source graph
   _ →
     pure unit
-
-  where
-    -- TODO: Lenses?
-    updateModel model cell = cell
-      { value = cell.value
-          { model = cell.value.model
-              { model = model
-              }
-          }
-      }
 
 snapshotGraph ∷ ∀ f m. Persist f m (Card.Coord → m (Maybe EvalGraph))
 snapshotGraph coord = do
@@ -320,8 +311,8 @@ wrapDeck deckId = runExceptT do
 unwrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
 unwrapDeck deckId = runExceptT do
   deck ← ExceptT $ getDeck deckId
-  cards ← maybe (QE.throw "Cards not found.") pure =<< lift (getCards (Deck.cardCoords deckId deck))
-  childId ← maybe (QE.throw "Cannot unwrap deck") pure $ immediateChild (_.value.model.model ∘ snd <$> cards)
+  cards ← liftWithErr "Cards not found." $ getCards (Deck.cardCoords deckId deck)
+  childId ← liftWithErr "Cannot unwrap deck." $ pure $ immediateChild (_.value.model.model ∘ snd <$> cards)
   cell ← lift $ getDeck' childId
   updateParentPointer deckId childId deck.parent
   fromAff $ Bus.write (Deck.UpdateParent deck.parent) cell.bus
@@ -334,6 +325,34 @@ unwrapDeck deckId = runExceptT do
           childId : Nil → Just childId
           _ → Nothing
       _ → Nothing
+
+collapseDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Unit))
+collapseDeck childId coord = runExceptT do
+  { eval } ← Wiring.expose
+  deck ← ExceptT $ getDeck childId
+  cards ← liftWithErr "Cards not found." $ getCards (Deck.cardCoords childId deck)
+  parent ← liftWithErr "Parent not found." $ getCard coord
+  let
+    parent' = parent.value.model.model
+    cards' = _.value.model.model ∘ snd <$> cards
+  childIds × parent'' ← liftWithErr "Cannot collapse deck." $ pure $ collapsed parent' cards'
+  childDecks ← lift $ traverse getDeck' childIds
+  fromAff do
+    for_ childDecks \{ bus } →
+      Bus.write (Deck.UpdateParent (Just coord)) bus
+    Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
+
+  where
+    collapsed parent child = case parent, child of
+      CM.Draftboard { layout }, [ cm@CM.Draftboard { layout: subLayout } ] → do
+        cursor ← Pane.getCursorFor (Just childId) layout
+        layout' ← Pane.modifyAt (const subLayout) cursor layout
+        let
+          childIds = CM.childDeckIds cm
+          parent' = CM.Draftboard { layout: layout' }
+        pure (childIds × parent')
+      _, _ →
+        Nothing
 
 addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m (Either QE.QError Card.Coord))
 addCard deckId cty = runExceptT do
@@ -437,3 +456,21 @@ debounce ms key make cache run = do
     alterFn a b = fromAff do
       traverse_ (flip killVar (Exn.error "debounce") ∘ _.avar) b
         $> Just a
+
+liftWithErr
+  ∷ ∀ m a
+  . Monad m
+  ⇒ String
+  → m (Maybe a)
+  → ExceptT QE.QError m a
+liftWithErr err =
+  maybe (QE.throw err) pure <=< lift
+
+updateCellModel ∷ CM.AnyCardModel → Card.Cell → Card.Cell
+updateCellModel model cell = cell
+  { value = cell.value
+      { model = cell.value.model
+          { model = model
+          }
+      }
+  }

@@ -88,7 +88,7 @@ type State =
   , cardDefs ∷ Array CardDef
   , saved ∷ Boolean
   , isLogged ∷ Boolean
-  , unwrappable ∷ Maybe DeckId
+  , unwrappable ∷ Boolean
   }
 
 initialState ∷ State
@@ -98,7 +98,7 @@ initialState =
   , cardDefs: mempty
   , saved: false
   , isLogged: false
-  , unwrappable: Nothing
+  , unwrappable: false
   }
 
 labelAction ∷ BackAction → String
@@ -118,7 +118,7 @@ actionEnabled ∷ State → BackAction → Boolean
 actionEnabled st a =
   case st.activeCard, a of
     Nothing, Trash → false
-    _, Unwrap → isJust st.unwrappable
+    _, Unwrap → st.unwrappable
     _, Mirror | F.elem CT.Draftboard (_.cardType <$> st.cardDefs) → false
     _, _ → true
 
@@ -210,7 +210,7 @@ eval opts = case _ of
     H.modify _ { filterString = str }
     pure next
   UpdateCard card defs next → do
-    uw ← join <$> traverse (unwrappable opts) card
+    uw ← fromMaybe false <$> traverse (unwrappable opts) card
     H.modify _
       { activeCard = card
       , cardDefs = defs
@@ -222,13 +222,20 @@ eval opts = case _ of
     H.modify _ { isLogged = isLogged }
     pure next
 
-unwrappable ∷ BackSideOptions → CardDef → DSL (Maybe DeckId)
+unwrappable ∷ BackSideOptions → CardDef → DSL Boolean
 unwrappable { cursor, deckId } { coord } = do
   deck ← _.model <$> H.liftH (P.getDeck' deckId)
   card ← map _.value.model.model <$> H.liftH (P.getCard coord)
   let
-    len = A.length deck.mirror + A.length deck.cards
     deckIds = CM.childDeckIds <$> card
-  pure case len, cursor, deckIds of
-    1, L.Nil, Just (childId L.: L.Nil) → Just childId
-    _, _, _ → Nothing
+    len = A.length deck.mirror + A.length deck.cards
+  pure case cursor of
+    L.Nil → do
+      case len, deckIds of
+        1, Just (childId L.: L.Nil) → true
+        _, _ → false
+    parentId L.: L.Nil → do
+      case len of
+        1 → true
+        _ → false
+    _ → false
