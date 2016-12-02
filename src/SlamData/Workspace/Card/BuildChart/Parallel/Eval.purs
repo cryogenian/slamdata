@@ -46,8 +46,6 @@ import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 
-import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
@@ -67,13 +65,13 @@ eval
   ∷ ∀ m
   . (Monad m, QuasarDSL m)
   ⇒ Model
-  → FilePath
+  → Port.TaggedResourcePort
   → CET.CardEvalT m Port.Port
 eval Nothing _ =
   QE.throw "Please select axis to aggregate"
-eval (Just conf) resource = do
+eval (Just conf) tr@{resource} = do
   records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildParallel conf records) Parallel
+  pure $ Port.ChartInstructions tr (buildParallel conf records) Parallel
 
 
 type Series =

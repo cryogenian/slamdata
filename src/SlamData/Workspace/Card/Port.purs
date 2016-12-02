@@ -80,10 +80,10 @@ data Port
   = SlamDown (VarMap × (SD.SlamDownP VarMapValue))
   | VarMap VarMap
   | CardError String
-  | ChartInstructions (DSL OptionI) ChartType
+  | ChartInstructions TaggedResourcePort (DSL OptionI) ChartType
   | TaggedResource TaggedResourcePort
   | DownloadOptions DownloadPort
-  | Metric MetricPort
+  | Metric TaggedResourcePort MetricPort
   | PivotTable PivotTablePort
   | Draftboard
   | Blocked
@@ -99,8 +99,8 @@ tagPort (Just p) = case p of
   DownloadOptions _ → "DownloadOptions"
   Draftboard → "Draftboard"
   Blocked → "Blocked"
-  ChartInstructions _ _ → "ChartInstructions"
-  Metric _ → "Metric"
+  ChartInstructions _ _ _ → "ChartInstructions"
+  Metric _ _ → "Metric"
   PivotTable _ → "PivotTable"
 
 _SlamDown ∷ Traversal' Port (SD.SlamDownP VarMapValue)
@@ -153,13 +153,13 @@ _Draftboard = prism' (const Draftboard) \p → case p of
 
 _ChartInstructions ∷ Traversal' Port (DSL OptionI)
 _ChartInstructions = wander \f s → case s of
-  ChartInstructions opts chty → flip ChartInstructions chty <$> f opts
+  ChartInstructions tr opts chty → flip (ChartInstructions tr) chty <$> f opts
   _ → pure s
 
-_Metric ∷ Prism' Port MetricPort
-_Metric = prism' Metric case _ of
-  Metric u → Just u
-  _ → Nothing
+_Metric ∷ Traversal' Port MetricPort
+_Metric = wander \f s → case s of
+  Metric tr u → Metric tr <$> f u
+  _ → pure s
 
 _PivotTable ∷ Prism' Port PivotTablePort
 _PivotTable = prism' PivotTable case _ of

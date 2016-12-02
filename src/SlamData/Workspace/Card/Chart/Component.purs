@@ -126,12 +126,12 @@ eval ∷ CC.CardEvalQuery ~> DSL
 eval = case _ of
   CC.EvalCard value output next → do
     case value.input of
-      Just (ChartInstructions opts chartType) → void do
+      Just (ChartInstructions _ opts chartType) → void do
         H.modify $ _chartType ?~ chartType
         H.query' cpECharts unit $ H.action $ HEC.Reset opts
         H.query' cpECharts unit $ H.action HEC.Resize
         setEChartsLOD $ buildObj opts
-      Just (Metric metric) → void do
+      Just (Metric _ metric) → void do
         H.modify $ _chartType ?~ ChT.Metric
         H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
         setMetricLOD

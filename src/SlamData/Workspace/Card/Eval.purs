@@ -81,6 +81,7 @@ data Eval
   | Variables Variables.Model
   | DownloadOptions DO.State
   | Draftboard
+  | Chart
   | BuildMetric BuildMetric.Model
   | BuildSankey BuildSankey.Model
   | BuildGauge BuildGauge.Model
@@ -112,6 +113,7 @@ tagEval = case _ of
   Variables m → "Variables"
   DownloadOptions m → "DownloadOptions"
   Draftboard → "Draftboard"
+  Chart → "Chart"
   BuildMetric _ → "BuildMetric"
   BuildSankey _ → "BuildSankey"
   BuildGauge _ → "BuildGauge"
@@ -168,40 +170,46 @@ evalCard input =
       pure $ Port.VarMap $ VariablesE.eval (fst input.cardCoord) input.urlVarMaps model
     DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →
       pure $ Port.DownloadOptions { resource, compress, options }
-    BuildMetric model, Just (Port.TaggedResource { resource }) →
-      BuildMetric.eval model resource
-    BuildSankey model, Just (Port.TaggedResource {resource}) →
-      BuildSankey.eval model resource
-    BuildGauge model, Just (Port.TaggedResource {resource}) →
-      BuildGauge.eval model resource
-    BuildGraph model, Just (Port.TaggedResource {resource}) →
-      BuildGraph.eval model resource
-    BuildPie model, Just (Port.TaggedResource {resource}) →
-      BuildPie.eval model resource
-    BuildRadar model, Just (Port.TaggedResource {resource}) →
-      BuildRadar.eval model resource
-    BuildArea model, Just (Port.TaggedResource {resource, axes}) →
-      BuildArea.eval model resource axes
-    BuildLine model, Just (Port.TaggedResource {resource, axes}) →
-      BuildLine.eval model resource axes
-    BuildBar model, Just (Port.TaggedResource {resource, axes}) →
-      BuildBar.eval model resource axes
-    BuildScatter model, Just (Port.TaggedResource {resource}) →
-      BuildScatter.eval model resource
-    BuildFunnel model, Just (Port.TaggedResource {resource}) →
-      BuildFunnel.eval model resource
-    BuildHeatmap model, Just (Port.TaggedResource {resource, axes}) →
-      BuildHeatmap.eval model resource axes
-    BuildBoxplot model, Just (Port.TaggedResource {resource}) →
-      BuildBoxplot.eval model resource
+    BuildMetric model, Just (Port.TaggedResource tr) →
+      BuildMetric.eval model tr
+    BuildSankey model, Just (Port.TaggedResource tr) →
+      BuildSankey.eval model tr
+    BuildGauge model, Just (Port.TaggedResource tr) →
+      BuildGauge.eval model tr
+    BuildGraph model, Just (Port.TaggedResource tr) →
+      BuildGraph.eval model tr
+    BuildPie model, Just (Port.TaggedResource tr) →
+      BuildPie.eval model tr
+    BuildRadar model, Just (Port.TaggedResource tr) →
+      BuildRadar.eval model tr
+    BuildArea model, Just (Port.TaggedResource tr) →
+      BuildArea.eval model tr
+    BuildLine model, Just (Port.TaggedResource tr) →
+      BuildLine.eval model tr
+    BuildBar model, Just (Port.TaggedResource tr) →
+      BuildBar.eval model tr
+    BuildScatter model, Just (Port.TaggedResource tr) →
+      BuildScatter.eval model tr
+    BuildFunnel model, Just (Port.TaggedResource tr) →
+      BuildFunnel.eval model tr
+    BuildHeatmap model, Just (Port.TaggedResource tr) →
+      BuildHeatmap.eval model tr
+    BuildBoxplot model, Just (Port.TaggedResource tr) →
+      BuildBoxplot.eval model tr
     BuildPivotTable model, Just (Port.TaggedResource tr) →
       BuildPivotTable.eval model tr
-    BuildPunchCard model, Just (Port.TaggedResource {resource, axes}) →
-      BuildPunchCard.eval model resource axes
-    BuildCandlestick model, Just (Port.TaggedResource {resource, axes}) →
-      BuildCandlestick.eval model resource axes
-    BuildParallel model, Just (Port.TaggedResource {resource}) →
-      BuildParallel.eval model resource
+    BuildPunchCard model, Just (Port.TaggedResource tr) →
+      BuildPunchCard.eval model tr
+    BuildCandlestick model, Just (Port.TaggedResource tr) →
+      BuildCandlestick.eval model tr
+    BuildParallel model, Just (Port.TaggedResource tr) →
+      BuildParallel.eval model tr
+    Chart, Just (Port.ChartInstructions tr _ _) →
+      pure $ Port.TaggedResource tr
+    Chart, Just (Port.Metric tr _) →
+      pure $ Port.TaggedResource tr
+    Chart, Just (Port.PivotTable { taggedResource }) →
+      pure $ Port.TaggedResource taggedResource
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 

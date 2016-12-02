@@ -396,6 +396,8 @@ modelToEval = case _ of
     pure $ Eval.DownloadOptions model
   Draftboard _ →
     pure Eval.Draftboard
+  Chart _ →
+    pure Eval.Chart
   BuildMetric model  →
     pure $ Eval.BuildMetric model
   BuildSankey model →

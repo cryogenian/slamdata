@@ -32,8 +32,6 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import Quasar.Types (FilePath)
-
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Common.Align (Align(..))
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -54,13 +52,13 @@ eval
   ∷ ∀ m
   . (Monad m, QuasarDSL m)
   ⇒ Model
-  → FilePath
+  → Port.TaggedResourcePort
   → CET.CardEvalT m Port.Port
 eval Nothing _ =
   QE.throw "Please select axis to aggregate"
-eval (Just conf) resource = do
+eval (Just conf) tr@{resource} = do
   records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildFunnel conf records) Funnel
+  pure $ Port.ChartInstructions tr (buildFunnel conf records) Funnel
 
 type FunnelSeries =
   { name ∷ Maybe String
