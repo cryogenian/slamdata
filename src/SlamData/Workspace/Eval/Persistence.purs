@@ -18,8 +18,7 @@ module SlamData.Workspace.Eval.Persistence where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (later')
-import Control.Monad.Aff.AVar (AVar, makeVar, takeVar, putVar, modifyVar, killVar)
+import Control.Monad.Aff.AVar (AVar, takeVar, putVar, modifyVar, killVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Aff.Promise (wait, defer)
@@ -42,6 +41,7 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Eval as Eval
@@ -54,6 +54,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
 
 import Utils (censor)
+import Utils.Aff (laterVar)
 
 defaultSaveDebounce ∷ Int
 defaultSaveDebounce = 500
@@ -215,68 +216,17 @@ getCards = map sequence ∘ traverse go
   where
     go coord = map (fst coord × _) <$> getCard coord
 
-forkLoop
-  ∷ ∀ m r a
-  . ( Affable SlamDataEffects m
-    , MonadFork Exn.Error m
-    )
-  ⇒ (a → m Unit)
-  → Bus.Bus (Bus.R' r) a
-  → m Unit
-forkLoop handler bus = void (fork loop)
-  where
-    loop = do
-      msg ← fromAff (Bus.read bus)
-      fork (handler msg)
-      loop
-
 forkDeckProcess ∷ ∀ f m . Persist f m (Deck.Id → Bus.BusRW Deck.EvalMessage → m Unit)
 forkDeckProcess deckId = forkLoop case _ of
   Deck.Force source →
     queueEval' 0 source
-  Deck.AddCard cty → do
-    { eval } ← Wiring.expose
-    deckCell ← getDeck' deckId
-    mbDeck ← wait deckCell.value
-    for_ mbDeck \deck → do
-      cardId ← fromAff CID.make
-      let
-        coord = deckId × cardId
-      input ← runMaybeT do
-        last ← MaybeT $ pure $ Array.last (Deck.cardCoords deckId deck)
-        cell ← MaybeT $ Cache.get last eval.cards
-        lift $ Cache.put last (cell { next = coord : cell.next }) eval.cards
-        MaybeT $ pure $ cell.value.output
-      let
-        card = { cardId, model: Card.cardModelOfType (fromMaybe Port.Initial input) cty }
-        deck' = deck { cards = Array.snoc deck.cards card }
-      cell ← makeCardCell card input mempty
-      value' ← defer (pure (Right deck'))
-      Cache.put (deckId × cardId) cell eval.cards
-      Cache.put deckId (deckCell { value = value' }) eval.decks
-      forkCardProcess coord cell.bus
+  Deck.AddCard cty →
+    addCard deckId cty >>= traverse_ \coord → do
       queueSave defaultSaveDebounce deckId
       queueEval' 0 (mempty × coord)
-  Deck.RemoveCard coord@(deckId' × cardId) → do
-    { eval } ← Wiring.expose
-    deckCell ← getDeck' deckId
-    mbDeck ← wait deckCell.value
-    for_ mbDeck \deck → do
-      let
-        coords = Array.span (not ∘ eq coord) (Deck.cardCoords deckId deck)
-        deck' =
-          if deckId ≡ deckId'
-            then deck { cards = Array.takeWhile (not ∘ eq cardId ∘ _.cardId) deck.cards }
-            else deck { cards = [], mirror = Array.takeWhile (not ∘ eq coord) deck.mirror }
-      output ← runMaybeT do
-        last ← MaybeT $ pure $ Array.last coords.init
-        cell ← MaybeT $ Cache.get last eval.cards
-        lift $ Cache.put last (cell { next = List.delete coord cell.next }) eval.cards
-        MaybeT $ pure $ cell.value.output
-      value' ← defer (pure (Right deck'))
-      Cache.put deckId (deckCell { value = value' }) eval.decks
+  Deck.RemoveCard coord → do
+    removeCard deckId coord >>= traverse_ \_ → do
       queueSave defaultSaveDebounce deckId
-      fromAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
   Deck.UpdateParent parent → do
     { eval } ← Wiring.expose
     deckCell ← getDeck' deckId
@@ -385,6 +335,51 @@ unwrapDeck deckId = runExceptT do
           _ → Nothing
       _ → Nothing
 
+addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m (Either QE.QError Card.Coord))
+addCard deckId cty = runExceptT do
+  { eval } ← Wiring.expose
+  deckCell ← lift $ getDeck' deckId
+  deck ← ExceptT $ wait deckCell.value
+  cardId ← fromAff CID.make
+  let
+    coord = deckId × cardId
+  lift do
+    input ← runMaybeT do
+      last ← MaybeT $ pure $ Array.last (Deck.cardCoords deckId deck)
+      cell ← MaybeT $ Cache.get last eval.cards
+      lift $ Cache.put last (cell { next = coord : cell.next }) eval.cards
+      MaybeT $ pure $ cell.value.output
+    let
+      card = { cardId, model: Card.cardModelOfType (fromMaybe Port.Initial input) cty }
+      deck' = deck { cards = Array.snoc deck.cards card }
+    cell ← makeCardCell card input mempty
+    value' ← defer (pure (Right deck'))
+    Cache.put (deckId × cardId) cell eval.cards
+    Cache.put deckId (deckCell { value = value' }) eval.decks
+    forkCardProcess coord cell.bus
+    pure coord
+
+removeCard ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Unit))
+removeCard deckId coord@(deckId' × cardId) = runExceptT do
+  { eval } ← Wiring.expose
+  deckCell ← lift $ getDeck' deckId
+  deck ← ExceptT $ wait deckCell.value
+  lift do
+    let
+      coords = Array.span (not ∘ eq coord) (Deck.cardCoords deckId deck)
+      deck' =
+        if deckId ≡ deckId'
+          then deck { cards = Array.takeWhile (not ∘ eq cardId ∘ _.cardId) deck.cards }
+          else deck { cards = [], mirror = Array.takeWhile (not ∘ eq coord) deck.mirror }
+    output ← runMaybeT do
+      last ← MaybeT $ pure $ Array.last coords.init
+      cell ← MaybeT $ Cache.get last eval.cards
+      lift $ Cache.put last (cell { next = List.delete coord cell.next }) eval.cards
+      MaybeT $ pure $ cell.value.output
+    value' ← defer (pure (Right deck'))
+    Cache.put deckId (deckCell { value = value' }) eval.decks
+    fromAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
+
 updateParentPointer
   ∷ ∀ f m
   . Persist f m
@@ -408,10 +403,24 @@ updateParentPointer oldId newId parent =
       { path } ← Wiring.expose
       ExceptT $ WM.setRoot (path </> Pathy.file "index") newId
 
+forkLoop
+  ∷ ∀ m r a
+  . ( Affable SlamDataEffects m
+    , MonadFork Exn.Error m
+    )
+  ⇒ (a → m Unit)
+  → Bus.Bus (Bus.R' r) a
+  → m Unit
+forkLoop handler bus = void (fork loop)
+  where
+    loop = do
+      msg ← fromAff (Bus.read bus)
+      fork (handler msg)
+      loop
+
 debounce
   ∷ ∀ k m r
   . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
     , MonadFork Exn.Error m
     , Ord k
     )
@@ -428,18 +437,3 @@ debounce ms key make cache run = do
     alterFn a b = fromAff do
       traverse_ (flip killVar (Exn.error "debounce") ∘ _.avar) b
         $> Just a
-
-laterVar
-  ∷ ∀ m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    , MonadFork Exn.Error m
-    )
-  ⇒ Int
-  → m Unit
-  → m (AVar Unit)
-laterVar ms run = do
-  avar ← fromAff makeVar
-  fork $ fromAff (takeVar avar) *> run
-  fork $ fromAff $ later' ms (putVar avar unit)
-  pure avar

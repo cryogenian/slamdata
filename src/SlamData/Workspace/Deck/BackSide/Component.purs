@@ -111,7 +111,7 @@ labelAction = case _ of
   DeleteDeck → "Delete deck"
   Mirror → "Mirror"
   Wrap → "Wrap"
-  Unwrap → "Collapse board"
+  Unwrap → "Collapse"
   Unshare → "Unshare deck"
 
 actionEnabled ∷ State → BackAction → Boolean
@@ -224,11 +224,11 @@ eval opts = case _ of
 
 unwrappable ∷ BackSideOptions → CardDef → DSL (Maybe DeckId)
 unwrappable { cursor, deckId } { coord } = do
-  deck ← H.liftH $ P.getDeck' deckId
-  card ← H.liftH $ P.getCard coord
+  deck ← _.model <$> H.liftH (P.getDeck' deckId)
+  card ← map _.value.model.model <$> H.liftH (P.getCard coord)
   let
-    len = A.length deck.model.mirror + A.length deck.model.cards
-    deckIds = CM.childDeckIds ∘ _.value.model.model <$> card
+    len = A.length deck.mirror + A.length deck.cards
+    deckIds = CM.childDeckIds <$> card
   pure case len, cursor, deckIds of
     1, L.Nil, Just (childId L.: L.Nil) → Just childId
     _, _, _ → Nothing
