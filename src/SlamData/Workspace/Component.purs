@@ -204,20 +204,25 @@ eval = case _ of
       navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) varMaps
     pure next
   Load deckId next → do
-    H.modify _ { deckId = deckId }
-    when (isNothing deckId) do
-      H.modify _ { stateMode = Loading }
-      rootDeck >>= case _ of
-        Left err →
-          case GE.fromQError err of
-            Left msg → H.modify _ { stateMode = Error msg }
-            Right ge → GE.raiseGlobalError ge
-        Right deckId' → do
-          H.modify _
-            { stateMode = Ready
-            , deckId = Just deckId'
-            }
-          void $ queryDeck $ H.action Deck.Focus
+    case deckId of
+      Nothing → do
+        H.modify _ { stateMode = Loading }
+        rootDeck >>= case _ of
+          Left err →
+            case GE.fromQError err of
+              Left msg → H.modify _ { stateMode = Error msg }
+              Right ge → GE.raiseGlobalError ge
+          Right deckId' → do
+            H.modify _
+              { stateMode = Ready
+              , deckId = Just deckId'
+              }
+            void $ queryDeck $ H.action Deck.Focus
+      Just _ → do
+        H.modify _
+          { stateMode = Ready
+          , deckId = deckId
+          }
     pure next
 
 rootDeck ∷ WorkspaceDSL (Either QE.QError DeckId)
