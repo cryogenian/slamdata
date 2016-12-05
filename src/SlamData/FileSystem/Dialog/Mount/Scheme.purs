@@ -41,7 +41,7 @@ schemeFromString "MongoDB" = Just MongoDB
 schemeFromString "SQL²" = Just SQL2
 schemeFromString "Couchbase" = Just Couchbase
 schemeFromString "MarkLogic" = Just MarkLogic
-schemeFromString "SparkHDFS" = Just SparkHDFS
+schemeFromString "HDFS on Spark" = Just SparkHDFS
 schemeFromString _ = Nothing
 
 schemes :: Array Scheme
