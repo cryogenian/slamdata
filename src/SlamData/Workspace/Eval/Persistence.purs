@@ -96,8 +96,9 @@ putDeck deckId deck = do
           }
       Nothing → do
         cell ← { value: ref, model: deck, bus: _ } <$> fromAff Bus.make
-        populateCards deckId deck
-        forkDeckProcess deckId cell.bus
+        fork do
+          populateCards deckId deck
+          forkDeckProcess deckId cell.bus
         pure (Just cell)
 
 saveDeck ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
