@@ -32,38 +32,40 @@ import Quasar.Types (SQL, FilePath)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
+import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.BuildChart.Area.Eval as BuildArea
+import SlamData.Workspace.Card.BuildChart.Bar.Eval as BuildBar
+import SlamData.Workspace.Card.BuildChart.Boxplot.Eval as BuildBoxplot
+import SlamData.Workspace.Card.BuildChart.Candlestick.Eval as BuildCandlestick
+import SlamData.Workspace.Card.BuildChart.Funnel.Eval as BuildFunnel
+import SlamData.Workspace.Card.BuildChart.Gauge.Eval as BuildGauge
+import SlamData.Workspace.Card.BuildChart.Graph.Eval as BuildGraph
+import SlamData.Workspace.Card.BuildChart.Heatmap.Eval as BuildHeatmap
+import SlamData.Workspace.Card.BuildChart.Line.Eval as BuildLine
+import SlamData.Workspace.Card.BuildChart.Metric.Eval as BuildMetric
+import SlamData.Workspace.Card.BuildChart.Parallel.Eval as BuildParallel
+import SlamData.Workspace.Card.BuildChart.Pie.Eval as BuildPie
+import SlamData.Workspace.Card.BuildChart.PivotTable.Eval as BuildPivotTable
+import SlamData.Workspace.Card.BuildChart.PunchCard.Eval as BuildPunchCard
+import SlamData.Workspace.Card.BuildChart.Radar.Eval as BuildRadar
+import SlamData.Workspace.Card.BuildChart.Sankey.Eval as BuildSankey
+import SlamData.Workspace.Card.BuildChart.Scatter.Eval as BuildScatter
 import SlamData.Workspace.Card.Cache.Eval as Cache
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DO
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Markdown.Component.State.Core as MDS
 import SlamData.Workspace.Card.Markdown.Eval as MDE
 import SlamData.Workspace.Card.Markdown.Model as MD
+import SlamData.Workspace.Card.Model as Model
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
-import SlamData.Workspace.Card.BuildChart.Metric.Eval as BuildMetric
-import SlamData.Workspace.Card.BuildChart.Sankey.Eval as BuildSankey
-import SlamData.Workspace.Card.BuildChart.Gauge.Eval as BuildGauge
-import SlamData.Workspace.Card.BuildChart.Graph.Eval as BuildGraph
-import SlamData.Workspace.Card.BuildChart.Pie.Eval as BuildPie
-import SlamData.Workspace.Card.BuildChart.Radar.Eval as BuildRadar
-import SlamData.Workspace.Card.BuildChart.Area.Eval as BuildArea
-import SlamData.Workspace.Card.BuildChart.Line.Eval as BuildLine
-import SlamData.Workspace.Card.BuildChart.Bar.Eval as BuildBar
-import SlamData.Workspace.Card.BuildChart.Scatter.Eval as BuildScatter
-import SlamData.Workspace.Card.BuildChart.Funnel.Eval as BuildFunnel
-import SlamData.Workspace.Card.BuildChart.Heatmap.Eval as BuildHeatmap
-import SlamData.Workspace.Card.BuildChart.Boxplot.Eval as BuildBoxplot
-import SlamData.Workspace.Card.BuildChart.PivotTable.Eval as BuildPivotTable
-import SlamData.Workspace.Card.BuildChart.PunchCard.Eval as BuildPunchCard
-import SlamData.Workspace.Card.BuildChart.Candlestick.Eval as BuildCandlestick
-import SlamData.Workspace.Card.BuildChart.Parallel.Eval as BuildParallel
 
 import Text.SlamSearch as SS
 import Text.Markdown.SlamDown as SD
@@ -331,3 +333,65 @@ validateResources =
     noAccess ← lift $ QFS.fileNotAccessible path
     for_ noAccess \reason →
       throwError $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
+
+modelToEval
+  ∷ Model.AnyCardModel
+  → String ⊹ Eval
+modelToEval = case _ of
+  Model.Ace CT.SQLMode model →
+    pure $ Query $ fromMaybe "" $ _.text <$> model
+  Model.Ace CT.MarkdownMode model →
+    pure $ Markdown $ fromMaybe "" $ _.text <$> model
+  Model.Markdown model →
+    pure $ MarkdownForm model
+  Model.Search txt →
+    pure $ Search txt
+  Model.Cache fp →
+    pure $ Cache fp
+  Model.Open (Just res) →
+    pure $ Open res
+  -- Do we need this? evalOpen is called only if Open has Just res
+  Model.Open _ →
+    Left "Open model missing resource"
+  Model.Variables model →
+    pure $ Variables model
+  Model.DownloadOptions model →
+    pure $ DownloadOptions model
+  Model.Draftboard _ →
+    pure Draftboard
+  Model.BuildMetric model  →
+    pure $ BuildMetric model
+  Model.BuildSankey model →
+    pure $ BuildSankey model
+  Model.BuildGauge model →
+    pure $ BuildGauge model
+  Model.BuildGraph model →
+    pure $ BuildGraph model
+  Model.BuildPie model →
+    pure $ BuildPie model
+  Model.BuildRadar model →
+    pure $ BuildRadar model
+  Model.BuildArea model →
+    pure $ BuildArea model
+  Model.BuildLine model →
+    pure $ BuildLine model
+  Model.BuildBar model →
+    pure $ BuildBar model
+  Model.BuildScatter model →
+    pure $ BuildScatter model
+  Model.BuildFunnel model →
+    pure $ BuildFunnel model
+  Model.BuildHeatmap model →
+    pure $ BuildHeatmap model
+  Model.BuildBoxplot model →
+    pure $ BuildBoxplot model
+  Model.BuildPivotTable model →
+    pure $ BuildPivotTable model
+  Model.BuildPunchCard model →
+    pure $ BuildPunchCard model
+  Model.BuildCandlestick model →
+    pure $ BuildCandlestick model
+  Model.BuildParallel model →
+    pure $ BuildParallel model
+  _ →
+    pure Pass

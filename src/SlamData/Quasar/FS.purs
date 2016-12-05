@@ -37,6 +37,7 @@ import Data.Path.Pathy as P
 import Data.String as S
 
 import Quasar.Advanced.QuasarAF as QF
+import Quasar.Data.JSONMode as QDJ
 import Quasar.Error (QError)
 import Quasar.FS as QFS
 import Quasar.FS.Mount as QFSM
@@ -46,6 +47,12 @@ import Quasar.Types (AnyPath, DirPath, FilePath)
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
+
+import SlamData.Workspace.Model as WM
+import SlamData.Workspace.Deck.Model as DM
+import SlamData.Workspace.Card.Model as CM
+import SlamData.Workspace.Deck.DeckId as DID
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
 
 children
   ∷ ∀ m
@@ -144,14 +151,52 @@ move src tgt = do
   let srcPath = R.getPath src
   runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
   result ←
-    liftQuasar case src of
-      R.Mount _ → QF.moveMount srcPath tgt
-      _ → QF.moveData srcPath tgt
+    case src of
+      R.Workspace wsDir → moveWorkspace wsDir
+      R.Mount _ → liftQuasar $ QF.moveMount srcPath tgt
+      _ → liftQuasar $ QF.moveData srcPath tgt
   pure
     case result of
       Right _ → Right (Just tgt)
       Left QF.NotFound → Right Nothing
       Left err → Left err
+  where
+  moveWorkspace ∷ DirPath → m (QError ⊹ Unit)
+  moveWorkspace wsDir = do
+    wsIndexArr ←
+      liftQuasar $ QF.readFile QDJ.Readable (wsDir </> P.file "index") Nothing
+    for_ wsIndexArr
+      (Arr.head ⋙ traverse_
+       (WM.decode ⋙ traverse_
+        (_.root ⋙ traverse_ \did → do
+            deckJArr ←
+              liftQuasar
+              $ QF.readFile
+                  QDJ.Readable
+                  (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
+                  Nothing
+            for_ deckJArr
+              (Arr.head ⋙ traverse_
+               (DM.decode ⋙ traverse_ \deck → do
+                   for_ (map _.model $ deck.cards) case _ of
+                     CM.Draftboard m → for_ (Pane.toList m.layout) traceAnyA
+                     CM.Cache m → do
+                       traceAnyA "Cache"
+                       traceAnyA m
+                       traceAnyA "\n"
+                     _ → pure unit
+               ))
+            traceAnyA did
+        )))
+    pure $ pure unit
+
+  oneDeck ∷ DirPath → DM.Model → m (QError ⊹ Deck)
+  oneDeck wsDir deck = for_ (deck.cards) case _ of
+    CM.Draftboard m → for_ (Pane.toList m.layout) oneDeck
+    CM.Cache m → do
+
+
+
 
 delete
   ∷ ∀ f m
