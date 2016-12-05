@@ -157,21 +157,23 @@ populateCards deckId deck = runExceptT do
   decks ←
     ExceptT $ sequence <$>
       parTraverse getDeck (Array.nub (fst <$> deck.mirror))
-
-  case Array.last deck.mirror, List.fromFoldable deck.cards of
-    Just _    , Nil    → pure unit
-    Nothing   , cards  → lift $ threadCards eval.cards cards
-    Just coord, c : cs → do
+  let
+    cards = List.fromFoldable deck.cards
+  case Array.last deck.mirror of
+    Nothing → lift $ threadCards eval.cards cards
+    Just coord → do
       cell ← do
         mb ← Cache.get coord eval.cards
         case mb of
           Nothing → QE.throw ("Card not found in eval cache: " <> show coord)
           Just a  → pure a
       let
-        coord' = deckId × c.cardId
-        cell' = cell { next = coord' : cell.next }
+        next = case List.head cards of
+          Nothing → Left deckId
+          Just c  → Right (deckId × c.cardId)
+        cell' = cell { next = next : cell.next }
       Cache.put coord cell' eval.cards
-      lift $ threadCards eval.cards (c : cs)
+      lift $ threadCards eval.cards cards
 
   where
     threadCards cache = case _ of
@@ -184,7 +186,7 @@ populateCards deckId deck = runExceptT do
     makeCell card next cache = do
       let
         coord = deckId × card.cardId
-      cell ← makeCardCell card Nothing (Tuple deckId <$> next)
+      cell ← makeCardCell card Nothing (Right ∘ Tuple deckId <$> next)
       Cache.put coord cell cache
       forkCardProcess coord cell.bus
 
@@ -428,7 +430,10 @@ addCard deckId cty = runExceptT do
     input ← runMaybeT do
       last ← MaybeT $ pure $ Array.last (Deck.cardCoords deckId deck)
       cell ← MaybeT $ Cache.get last eval.cards
-      lift $ Cache.put last (cell { next = coord : cell.next }) eval.cards
+      let
+        next' = List.filter (not ∘ eq (Left deckId)) cell.next
+        cell' = cell { next = Right coord : next' }
+      lift $ Cache.put last cell' eval.cards
       MaybeT $ pure $ cell.value.output
     let
       card = { cardId, model: Card.cardModelOfType (fromMaybe Port.Initial input) cty }
@@ -455,7 +460,11 @@ removeCard deckId coord@(deckId' × cardId) = runExceptT do
     output ← runMaybeT do
       last ← MaybeT $ pure $ Array.last coords.init
       cell ← MaybeT $ Cache.get last eval.cards
-      lift $ Cache.put last (cell { next = List.delete coord cell.next }) eval.cards
+      let
+        leaf = if Array.null deck'.cards then pure (Left deckId) else mempty
+        next' = List.delete (Right coord) cell.next
+        cell' = cell { next = leaf <> next' }
+      lift $ Cache.put last cell' eval.cards
       MaybeT $ pure $ cell.value.output
     value' ← defer (pure (Right deck'))
     Cache.put deckId (deckCell { value = value' }) eval.decks
@@ -506,7 +515,7 @@ makeCardCell
     )
   ⇒ Card.Model
   → Maybe Port
-  → List Card.Coord
+  → List (Either Deck.Id Card.Coord)
   → m Card.Cell
 makeCardCell model input next = do
   let

@@ -63,7 +63,7 @@ type EvalResult =
 
 type Cell =
   { bus ∷ BusRW EvalMessage
-  , next ∷ List Coord
+  , next ∷ List (Either Deck.Id Coord)
   , value ∷ EvalResult
   }
 

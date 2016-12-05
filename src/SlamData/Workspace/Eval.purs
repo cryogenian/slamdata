@@ -42,6 +42,8 @@ import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
 
+import Utils (censor)
+
 type Tick = Int
 
 evalGraph
@@ -115,10 +117,13 @@ runEvalLoop source tick trail input graph = do
         for_ result.state \state →
           Bus.write (Card.StateChange state) node.card.bus
         Bus.write (Card.Complete source output) node.card.bus
-      when (deckCompleted (fst node.coord) next) $ fromAff do
+      when (deckCompleted (fst node.coord) (List.mapMaybe censor (unwrap next))) $ fromAff do
         Bus.write (Deck.Complete trail' output) node.deck.bus
-      parTraverse_ (runEvalLoop source tick trail' output) next
-
+      flip parTraverse_ (unwrap next) case _ of
+        Left (_ × deck) →
+          fromAff $ Bus.write (Deck.Complete trail' output) deck.bus
+        Right graph' →
+          runEvalLoop source tick trail' output graph'
   where
     updateCardValue
       ∷ Card.Coord
@@ -151,7 +156,10 @@ nubDecks = List.nubBy (eq `on` fst) ∘ go
         node = Cofree.head co
         head = fst node.coord × node.deck
       in
-        head : join (go <$> Cofree.tail co)
+        head : join (goTail <$> unwrap (Cofree.tail co))
+
+    goTail (Left a) = pure a
+    goTail (Right co) = go co
 
 nextTick
   ∷ ∀ m

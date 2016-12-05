@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Eval.Graph
   ( EvalGraph
   , EvalGraphNode
+  , EvalGraphLeaf
   , unfoldGraph
   , findNode
   ) where
@@ -26,6 +27,7 @@ import SlamData.Prelude
 import Control.Comonad.Cofree (Cofree)
 import Control.Comonad.Cofree as Cofree
 
+import Data.Functor.Compose (Compose(..))
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map (Map)
@@ -41,7 +43,9 @@ type EvalGraphNode =
   , transition ∷ Card.Eval
   }
 
-type EvalGraph = Cofree List EvalGraphNode
+type EvalGraphLeaf = Deck.Id × Deck.Cell
+
+type EvalGraph = Cofree (Compose List (Either EvalGraphLeaf)) EvalGraphNode
 
 unfoldGraph
   ∷ Map Card.Coord Card.Cell
@@ -60,19 +64,26 @@ unfoldGraph cards decks coord =
         , deck
         , transition: Card.modelToEval card.value.model.model
         }
-        (List.catMaybes
-          (unfoldGraph cards decks <$> card.next))
+        (Compose (List.catMaybes (goNext <$> card.next)))
+
+    goNext (Left deckId) =
+      Left ∘ Tuple deckId <$> Map.lookup deckId decks
+    goNext (Right next)  =
+      Right <$> unfoldGraph cards decks next
 
 findNode ∷ Card.Coord → EvalGraph → Maybe EvalGraphNode
 findNode coord graph =
   if node.coord ≡ coord
     then Just node
-    else go (Cofree.tail graph)
+    else go (unwrap (Cofree.tail graph))
   where
     node = Cofree.head graph
 
     go Nil = Nothing
     go (c : cs) =
-      case findNode coord c of
-        Nothing → go cs
-        res → res
+      case c of
+        Left _ → Nothing
+        Right c' →
+          case findNode coord c' of
+            Nothing → go cs
+            res → res
