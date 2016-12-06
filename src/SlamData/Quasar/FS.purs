@@ -29,16 +29,20 @@ module SlamData.Quasar.FS
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Exception (error)
+
+import Data.Argonaut as J
 import Data.Array as Arr
 import Data.Foldable as F
 import Data.Lens ((.~), (^.), (^?), _Left)
+import Data.List as List
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data.JSONMode as QDJ
-import Quasar.Error (QError)
+import Quasar.Error (QError(..))
 import Quasar.FS as QFS
 import Quasar.FS.Mount as QFSM
 import Quasar.FS.Resource as QR
@@ -47,6 +51,7 @@ import Quasar.Types (AnyPath, DirPath, FilePath)
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
+import SlamData.Quasar.Data as QD
 
 import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Deck.Model as DM
@@ -150,52 +155,100 @@ move
 move src tgt = do
   let srcPath = R.getPath src
   runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
+
+  case src of
+    R.Workspace wsDir → void $ prepareWorkspaceForMoving wsDir
+    _ → pure unit
+
   result ←
     case src of
-      R.Workspace wsDir → moveWorkspace wsDir
       R.Mount _ → liftQuasar $ QF.moveMount srcPath tgt
       _ → liftQuasar $ QF.moveData srcPath tgt
+
   pure
     case result of
       Right _ → Right (Just tgt)
       Left QF.NotFound → Right Nothing
       Left err → Left err
+
   where
-  moveWorkspace ∷ DirPath → m (QError ⊹ Unit)
-  moveWorkspace wsDir = do
+  prepareWorkspaceForMoving ∷ DirPath → m (QError ⊹ Unit)
+  prepareWorkspaceForMoving wsDir = do
+    eitherDid ← getWorkspaceRoot wsDir
+    case eitherDid of
+      Left e → pure $ Left e
+      Right Nothing → pure $ Right unit
+      Right (Just did) → do
+        deck ← getDeck wsDir did
+        case deck of
+          Left e → pure $ Left e
+          Right deck' → do
+            newDeck ← oneDeck wsDir deck'
+            case newDeck of
+              Left e → pure $ Left e
+              Right d → putDeck wsDir did d
+
+  getWorkspaceRoot ∷ DirPath → m (QError ⊹ Maybe DID.DeckId)
+  getWorkspaceRoot wsDir = do
     wsIndexArr ←
       liftQuasar $ QF.readFile QDJ.Readable (wsDir </> P.file "index") Nothing
-    for_ wsIndexArr
-      (Arr.head ⋙ traverse_
-       (WM.decode ⋙ traverse_
-        (_.root ⋙ traverse_ \did → do
-            deckJArr ←
-              liftQuasar
-              $ QF.readFile
-                  QDJ.Readable
-                  (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
-                  Nothing
-            for_ deckJArr
-              (Arr.head ⋙ traverse_
-               (DM.decode ⋙ traverse_ \deck → do
-                   for_ (map _.model $ deck.cards) case _ of
-                     CM.Draftboard m → for_ (Pane.toList m.layout) traceAnyA
-                     CM.Cache m → do
-                       traceAnyA "Cache"
-                       traceAnyA m
-                       traceAnyA "\n"
-                     _ → pure unit
-               ))
-            traceAnyA did
-        )))
-    pure $ pure unit
+    pure case wsIndexArr of
+      Left e → Left e
+      Right wsIArr → case Arr.head wsIArr of
+        Nothing → Left $ Error $ error "incorrect workspace model"
+        Just wmJS → case WM.decode wmJS of
+          Left e → Left $ Error $ error e
+          Right ok → Right ok.root
 
-  oneDeck ∷ DirPath → DM.Model → m (QError ⊹ Deck)
-  oneDeck wsDir deck = for_ (deck.cards) case _ of
-    CM.Draftboard m → for_ (Pane.toList m.layout) oneDeck
-    CM.Cache m → do
+  getDeck ∷ DirPath → DID.DeckId → m (QError ⊹ DM.Deck)
+  getDeck wsDir did = do
+    deckJArr ←
+      liftQuasar
+        $ QF.readFile
+          QDJ.Readable
+          (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
+          Nothing
+    pure case deckJArr of
+      Left e → Left e
+      Right arr → case Arr.head arr of
+        Nothing → Left $ Error $ error "incorrect deck model"
+        Just deckJS →
+          case DM.decode deckJS of
+            Left e → Left $ Error $ error e
+            Right ok → Right ok
 
+  putDeck ∷ DirPath → DID.DeckId → DM.Deck → m (QError ⊹ Unit)
+  putDeck wsDir did deck =
+    QD.save
+      (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
+      (J.encodeJson $ Arr.singleton $ DM.encode deck)
 
+  oneDeck ∷ DirPath → DM.Deck → m (QError ⊹ DM.Deck)
+  oneDeck wsDir deck =
+    let
+      foldFn d = case _ of
+        {model: CM.Draftboard m} → do
+          for_ (List.catMaybes $ Pane.toList m.layout) \did → do
+            d' ← getDeck wsDir  did
+            for_ d' \deck' → do
+              newDeck ← oneDeck wsDir deck'
+              for_ newDeck $ putDeck wsDir did
+          pure d
+        {cardId, model: CM.Cache m} →
+          let newM =
+                S.replace
+                  (S.Pattern $ P.printPath wsDir)
+                  (S.Replacement $ either P.printPath P.printPath tgt)
+                  <$> m
+          in
+           pure d{cards =
+                     Arr.sortBy (\{cardId: a} {cardId: b} → compare a b)
+                       $ Arr.cons {cardId, model: CM.Cache newM}
+                       $ Arr.filter (_.cardId ⋙ eq cardId ⋙ not) d.cards
+                 }
+
+        _ → pure d
+    in Right <$> Arr.foldM foldFn deck deck.cards
 
 
 delete
