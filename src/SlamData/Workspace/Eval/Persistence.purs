@@ -191,6 +191,7 @@ populateCards deckId deck = runExceptT do
       Cache.put coord cell cache
       forkCardProcess coord cell.bus
 
+-- FIXME: Maybe we don't need this, we can just call all these directly.
 forkDeckProcess ∷ ∀ f m . Persist f m (Deck.Id → Bus.BusRW Deck.EvalMessage → m Unit)
 forkDeckProcess deckId = forkLoop case _ of
   Deck.Force source →
@@ -278,7 +279,7 @@ wrapDeck deckId = runExceptT do
   let
     parentDeck = DM.wrappedDeck deck.parent (snd parentCoord) deckId
   ExceptT $ putDeck (fst parentCoord) parentDeck
-  updateParentPointer deckId (fst parentCoord) deck.parent
+  ExceptT $ updateParentPointer deckId (fst parentCoord) deck.parent
   fromAff $ Bus.write (Deck.UpdateParent (Just parentCoord)) cell.bus
   pure (fst parentCoord)
 
@@ -302,6 +303,7 @@ wrapAndMirrorDeck deckId = runExceptT do
           [ putDeck deckId mirrored
           , putDeck newMirrorId (mirrored { name = "" })
           , putDeck (fst parentCoord) wrappedDeck
+          , updateParentPointer deckId (fst parentCoord) deck.parent
           ]
       else do
         let
@@ -313,14 +315,14 @@ wrapAndMirrorDeck deckId = runExceptT do
             , cards = []
             , name = deck.name
             }
-        traverse_ (relocateCardTo newSharedId) oldCardIds
         parSequence
           [ putDeck deckId mirrored
           , putDeck newMirrorId (mirrored { name = "" })
           , putDeck newSharedId (deck { name = "" })
           , putDeck (fst parentCoord) wrappedDeck
+          , updateParentPointer deckId (fst parentCoord) deck.parent
           ]
-  updateParentPointer deckId (fst parentCoord) deck.parent
+  lift $ relocateCardsTo newSharedId deckId (_.cardId <$> deck.cards)
   pure (fst parentCoord)
 
 mirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Deck.Id))
@@ -348,12 +350,12 @@ mirrorDeck childId coord = runExceptT do
             , cards = []
             , name = deck.name
             }
-        traverse_ (relocateCardTo newSharedId) oldCardIds
         parSequence
           [ putDeck childId mirrored
           , putDeck newMirrorId (mirrored { name = "" })
           , putDeck newSharedId (deck { name = "" })
           ]
+  lift $ relocateCardsTo newSharedId childId (_.cardId <$> deck.cards)
   parent'' ← liftWithErr "Cannot mirror deck." $ pure $ mirrorInLayout newMirrorId parent.value.model.model
   fromAff $ Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
   pure newMirrorId
@@ -379,7 +381,7 @@ unwrapDeck deckId = runExceptT do
   cards ← liftWithErr "Cards not found." $ getCards (Deck.cardCoords deckId deck)
   childId ← liftWithErr "Cannot unwrap deck." $ pure $ immediateChild (_.value.model.model ∘ snd <$> cards)
   cell ← lift $ getDeck' childId
-  updateParentPointer deckId childId deck.parent
+  ExceptT $ updateParentPointer deckId childId deck.parent
   fromAff $ Bus.write (Deck.UpdateParent deck.parent) cell.bus
   pure childId
 
@@ -477,9 +479,9 @@ updateParentPointer
   ( Deck.Id
   → Deck.Id
   → Maybe Card.Coord
-  → ExceptT QE.QError m Unit )
+  → m (Either QE.QError Unit) )
 updateParentPointer oldId newId parent =
-  case parent of
+  runExceptT case parent of
     Just coord@(deckId × cardId) → do
       -- We need to guard on the parentDeck because it may not be loaded if we
       -- are viewing the child at the root of the UI.
@@ -552,20 +554,38 @@ getCards = map sequence ∘ traverse go
   where
     go coord = map (fst coord × _) <$> getCard coord
 
-relocateCardTo
-  ∷ ∀ m
-  . ( Affable SlamDataEffects m
-    , MonadAsk Wiring m
-    )
-  ⇒ Deck.Id
-  → Card.Coord
-  → m Unit
-relocateCardTo deckId coord@(_ × cardId) = do
-  -- FIXME: This is so broken
+relocateCardsTo ∷ ∀ f m . Persist f m (Deck.Id → Deck.Id → Array Card.Id → m Unit)
+relocateCardsTo deckId oldDeckId coords = do
   { eval } ← Wiring.expose
-  Cache.get coord eval.cards >>= traverse_ \cell → do
-    Cache.remove coord eval.cards
-    Cache.put (deckId × cardId) cell eval.cards
+  cards ← getCards (Tuple oldDeckId <$> coords)
+  for_ cards (go eval.cards ∘ List.fromFoldable ∘ map snd)
+  where
+    go cache = case _ of
+      c : Nil → do
+        let
+          cardId = c.value.model.cardId
+          coord = deckId × cardId
+          next = Left oldDeckId : c.next
+        fromAff $ Bus.kill (Exn.error "Relocated") c.bus
+        Cache.remove (oldDeckId × cardId) cache
+        Cache.alter coord
+          (pure ∘ map \c' → c' { value = c.value, next = Left oldDeckId : c'.next })
+          cache
+      c1 : c2 : cs → do
+        let
+          cardId1 = c1.value.model.cardId
+          cardId2 = c2.value.model.cardId
+          coord2 = oldDeckId × cardId2
+          coord = deckId × cardId1
+          updateNext = map (map \c → if c ≡ coord2 then deckId × cardId2 else c)
+        fromAff $ Bus.kill (Exn.error "Relocated") c1.bus
+        Cache.remove (oldDeckId × cardId1) cache
+        Cache.alter coord
+          (pure ∘ map \c' → c' { value = c1.value, next = updateNext c'.next })
+          cache
+        go cache (c2 : cs)
+      Nil →
+        pure unit
 
 debounce
   ∷ ∀ k m r

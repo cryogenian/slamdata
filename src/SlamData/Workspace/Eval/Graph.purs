@@ -20,6 +20,8 @@ module SlamData.Workspace.Eval.Graph
   , EvalGraphLeaf
   , unfoldGraph
   , findNode
+  , debugGraph
+  , Branch(..)
   ) where
 
 import SlamData.Prelude
@@ -87,3 +89,13 @@ findNode coord graph =
           case findNode coord c' of
             Nothing → go cs
             res → res
+
+newtype Branch f a = Branch { head ∷ a, tail ∷ f (Branch f a) }
+
+debugGraph ∷ ∀ f a. Functor f ⇒ Cofree f a → Branch f a
+debugGraph co =
+  let
+    head = Cofree.head co
+    tail = Cofree.tail co
+  in
+    Branch { head, tail: debugGraph <$> tail }

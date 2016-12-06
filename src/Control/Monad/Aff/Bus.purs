@@ -20,6 +20,7 @@ module Control.Monad.Aff.Bus
   , read'
   , write
   , split
+  , kill
   , Cap
   , Bus
   , BusRW
