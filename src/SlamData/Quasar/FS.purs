@@ -153,7 +153,9 @@ move
   → AnyPath
   → m (Either QError (Maybe AnyPath))
 move src tgt = do
-  let srcPath = R.getPath src
+  let
+    srcPath = R.getPath src
+
   runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
 
   case src of
@@ -186,7 +188,8 @@ move src tgt = do
             newDeck ← oneDeck wsDir deck'
             case newDeck of
               Left e → pure $ Left e
-              Right d → putDeck wsDir did d
+              Right (true × d) → putDeck wsDir did d
+              _ → pure $ Right unit
 
   getWorkspaceRoot ∷ DirPath → m (QError ⊹ Maybe DID.DeckId)
   getWorkspaceRoot wsDir = do
@@ -218,22 +221,23 @@ move src tgt = do
             Right ok → Right ok
 
   putDeck ∷ DirPath → DID.DeckId → DM.Deck → m (QError ⊹ Unit)
-  putDeck wsDir did deck =
+  putDeck wsDir did deck = do
     QD.save
       (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
       (J.encodeJson $ Arr.singleton $ DM.encode deck)
 
-  oneDeck ∷ DirPath → DM.Deck → m (QError ⊹ DM.Deck)
+  oneDeck ∷ DirPath → DM.Deck → m (QError ⊹ (Boolean × DM.Deck))
   oneDeck wsDir deck =
     let
-      foldFn d = case _ of
+      foldFn current@(shouldSave × d) = case _ of
         {model: CM.Draftboard m} → do
           for_ (List.catMaybes $ Pane.toList m.layout) \did → do
             d' ← getDeck wsDir  did
             for_ d' \deck' → do
               newDeck ← oneDeck wsDir deck'
-              for_ newDeck $ putDeck wsDir did
-          pure d
+              for_ newDeck \(save × d') →
+                when save $ void $ putDeck wsDir did d'
+          pure current
         {cardId, model: CM.Cache m} →
           let newM =
                 S.replace
@@ -241,14 +245,14 @@ move src tgt = do
                   (S.Replacement $ either P.printPath P.printPath tgt)
                   <$> m
           in
-           pure d{cards =
-                     Arr.sortBy (\{cardId: a} {cardId: b} → compare a b)
-                       $ Arr.cons {cardId, model: CM.Cache newM}
-                       $ Arr.filter (_.cardId ⋙ eq cardId ⋙ not) d.cards
-                 }
+           pure $ true × d{cards =
+                             Arr.sortBy (\{cardId: a} {cardId: b} → compare a b)
+                             $ Arr.cons {cardId, model: CM.Cache newM}
+                             $ Arr.filter (_.cardId ⋙ eq cardId ⋙ not) d.cards
+                          }
 
-        _ → pure d
-    in Right <$> Arr.foldM foldFn deck deck.cards
+        _ → pure current
+    in Right <$> Arr.foldM foldFn (false × deck) deck.cards
 
 
 delete
