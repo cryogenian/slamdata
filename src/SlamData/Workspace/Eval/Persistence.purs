@@ -159,6 +159,9 @@ populateCards deckId deck = runExceptT do
       parTraverse getDeck (Array.nub (fst <$> deck.mirror))
   let
     cards = List.fromFoldable deck.cards
+  childDecks ←
+    ExceptT $ sequence <$>
+      parTraverse getDeck (List.nub (CM.childDeckIds ∘ _.model =<< cards))
   case Array.last deck.mirror of
     Nothing → lift $ threadCards eval.cards cards
     Just coord → do
@@ -176,11 +179,13 @@ populateCards deckId deck = runExceptT do
       lift $ threadCards eval.cards cards
   where
     threadCards cache = case _ of
-      Nil         → pure unit
-      c : Nil     → makeCell c Nil cache
+      c : Nil →
+        makeCell c Nil cache
       c : c' : cs → do
         makeCell c (pure c'.cardId) cache
         threadCards cache (c' : cs)
+      Nil →
+        pure unit
 
     makeCell card next cache = do
       let
