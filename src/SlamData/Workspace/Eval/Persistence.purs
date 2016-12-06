@@ -86,7 +86,6 @@ putDeck deckId deck = do
     pure $ res $> deck
   Cache.alter deckId (updateOrFork ref) eval.decks
   rmap (const unit) <$> wait ref
-
   where
     updateOrFork ref = case _ of
       Just cell →
@@ -175,7 +174,6 @@ populateCards deckId deck = runExceptT do
         cell' = cell { next = next : cell.next }
       Cache.put coord cell' eval.cards
       lift $ threadCards eval.cards cards
-
   where
     threadCards cache = case _ of
       Nil         → pure unit
@@ -384,7 +382,6 @@ unwrapDeck deckId = runExceptT do
   ExceptT $ updateParentPointer deckId childId deck.parent
   fromAff $ Bus.write (Deck.UpdateParent deck.parent) cell.bus
   pure childId
-
   where
     immediateChild = case _ of
       [ model ] →
@@ -408,7 +405,6 @@ collapseDeck childId coord = runExceptT do
     for_ childDecks \{ bus } →
       Bus.write (Deck.UpdateParent (Just coord)) bus
     Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
-
   where
     collapsed parent child = case parent, child of
       CM.Draftboard { layout }, [ cm@CM.Draftboard { layout: subLayout } ] → do
@@ -496,6 +492,39 @@ updateParentPointer oldId newId parent =
       { path } ← Wiring.expose
       ExceptT $ WM.setRoot (path </> Pathy.file "index") newId
 
+relocateCardsTo ∷ ∀ f m . Persist f m (Deck.Id → Deck.Id → Array Card.Id → m Unit)
+relocateCardsTo deckId oldDeckId coords = do
+  { eval } ← Wiring.expose
+  cards ← getCards (Tuple oldDeckId <$> coords)
+  for_ cards (go eval.cards ∘ List.fromFoldable ∘ map snd)
+  where
+    go cache = case _ of
+      c : Nil → do
+        let
+          cardId = c.value.model.cardId
+          coord = deckId × cardId
+          next = Left oldDeckId : c.next
+        fromAff $ Bus.kill (Exn.error "Relocated") c.bus
+        Cache.remove (oldDeckId × cardId) cache
+        Cache.alter coord
+          (pure ∘ map \c' → c' { value = c.value, next = Left oldDeckId : c'.next })
+          cache
+      c1 : c2 : cs → do
+        let
+          cardId1 = c1.value.model.cardId
+          cardId2 = c2.value.model.cardId
+          coord2 = oldDeckId × cardId2
+          coord = deckId × cardId1
+          updateNext = map (map \c → if c ≡ coord2 then deckId × cardId2 else c)
+        fromAff $ Bus.kill (Exn.error "Relocated") c1.bus
+        Cache.remove (oldDeckId × cardId1) cache
+        Cache.alter coord
+          (pure ∘ map \c' → c' { value = c1.value, next = updateNext c'.next })
+          cache
+        go cache (c2 : cs)
+      Nil →
+        pure unit
+
 forkLoop
   ∷ ∀ m r a
   . ( Affable SlamDataEffects m
@@ -554,39 +583,6 @@ getCards = map sequence ∘ traverse go
   where
     go coord = map (fst coord × _) <$> getCard coord
 
-relocateCardsTo ∷ ∀ f m . Persist f m (Deck.Id → Deck.Id → Array Card.Id → m Unit)
-relocateCardsTo deckId oldDeckId coords = do
-  { eval } ← Wiring.expose
-  cards ← getCards (Tuple oldDeckId <$> coords)
-  for_ cards (go eval.cards ∘ List.fromFoldable ∘ map snd)
-  where
-    go cache = case _ of
-      c : Nil → do
-        let
-          cardId = c.value.model.cardId
-          coord = deckId × cardId
-          next = Left oldDeckId : c.next
-        fromAff $ Bus.kill (Exn.error "Relocated") c.bus
-        Cache.remove (oldDeckId × cardId) cache
-        Cache.alter coord
-          (pure ∘ map \c' → c' { value = c.value, next = Left oldDeckId : c'.next })
-          cache
-      c1 : c2 : cs → do
-        let
-          cardId1 = c1.value.model.cardId
-          cardId2 = c2.value.model.cardId
-          coord2 = oldDeckId × cardId2
-          coord = deckId × cardId1
-          updateNext = map (map \c → if c ≡ coord2 then deckId × cardId2 else c)
-        fromAff $ Bus.kill (Exn.error "Relocated") c1.bus
-        Cache.remove (oldDeckId × cardId1) cache
-        Cache.alter coord
-          (pure ∘ map \c' → c' { value = c1.value, next = updateNext c'.next })
-          cache
-        go cache (c2 : cs)
-      Nil →
-        pure unit
-
 debounce
   ∷ ∀ k m r
   . ( Affable SlamDataEffects m
@@ -607,12 +603,7 @@ debounce ms key make cache run = do
       traverse_ (flip killVar (Exn.error "debounce") ∘ _.avar) b
         $> Just a
 
-liftWithErr
-  ∷ ∀ m a
-  . Monad m
-  ⇒ String
-  → m (Maybe a)
-  → ExceptT QE.QError m a
+liftWithErr ∷ ∀ m a. Monad m ⇒ String → m (Maybe a) → ExceptT QE.QError m a
 liftWithErr err =
   maybe (QE.throw err) pure <=< lift
 

@@ -21,7 +21,7 @@ module SlamData.Workspace.Eval.Graph
   , unfoldGraph
   , findNode
   , debugGraph
-  , Branch(..)
+  , Debug(..)
   ) where
 
 import SlamData.Prelude
@@ -90,12 +90,12 @@ findNode coord graph =
             Nothing → go cs
             res → res
 
-newtype Branch f a = Branch { head ∷ a, tail ∷ f (Branch f a) }
+newtype Debug f a = Debug { head ∷ a, tail ∷ f (Debug f a) }
 
-debugGraph ∷ ∀ f a. Functor f ⇒ Cofree f a → Branch f a
+debugGraph ∷ ∀ f a. Functor f ⇒ Cofree f a → Debug f a
 debugGraph co =
   let
     head = Cofree.head co
     tail = Cofree.tail co
   in
-    Branch { head, tail: debugGraph <$> tail }
+    Debug { head, tail: debugGraph <$> tail }
