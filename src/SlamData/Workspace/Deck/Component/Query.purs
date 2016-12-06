@@ -28,6 +28,8 @@ import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
 import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import SlamData.GlobalError (GlobalError)
+import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Eval.Deck (EvalMessage)
 import SlamData.Wiring (DeckMessage)
@@ -58,7 +60,7 @@ data Query a
   | HandleMessage DeckMessage a
   | HandleError GlobalError a
   | DismissedCardGuide a
-  | Run a
+  | GetActiveCoord (Maybe (DeckId × CardId) → a)
 
 data DeckAction
   = Mirror

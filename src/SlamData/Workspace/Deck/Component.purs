@@ -219,10 +219,9 @@ eval opts = case _ of
   DismissedCardGuide next → do
     -- FIXME
     pure next
-  Run next → do
-    -- FIXME
-    pure next
-
+  GetActiveCoord k → do
+    active ← H.gets DCS.activeCard
+    pure (k (censor ∘ map _.coord =<< active))
   where
   getBoundingClientWidth =
     H.fromEff ∘ map _.width ∘ getBoundingClientRect

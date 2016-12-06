@@ -274,6 +274,12 @@ freshWorkspace = do
   forkDeckProcess rootId bus
   pure (rootId × cell)
 
+freshDeck ∷ ∀ f m. Persist f m (Maybe Card.Coord → m (Either QE.QError Deck.Id))
+freshDeck parent = runExceptT do
+  deckId ← fromAff DID.make
+  ExceptT $ putDeck deckId $ Deck.emptyDeck { parent = parent }
+  pure deckId
+
 wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
 wrapDeck deckId = runExceptT do
   cell ← lift $ getDeck' deckId
@@ -422,6 +428,59 @@ collapseDeck childId coord = runExceptT do
       _, _ →
         Nothing
 
+wrapAndGroupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → m (Either QE.QError Unit))
+wrapAndGroupDeck orn bias deckId newParentId = runExceptT do
+  cell ← lift $ getDeck' deckId
+  oldParentCoord ← liftWithErr "Parent not found." $ pure $ cell.model.parent
+  oldParent ← liftWithErr "Parent not found." $ getCard oldParentCoord
+  newParent ← lift $ getDeck' newParentId
+  case oldParent.value.model.model of
+    CM.Draftboard { layout } → do
+      wrappedCoord ← Tuple <$> fromAff DID.make <*> fromAff CID.make
+      let
+        splits = case bias of
+          Layout.SideA → [ deckId, newParentId ]
+          Layout.SideB → [ newParentId, deckId ]
+        wrappedDeck =
+          DM.splitDeck cell.model.parent (snd wrappedCoord) orn
+            (List.fromFoldable splits)
+        layout' = layout <#> case _ of
+          Just did | did ≡ deckId → Nothing
+          Just did | did ≡ newParentId → Just (fst wrappedCoord)
+          a → a
+        parent' = CM.Draftboard { layout: layout' }
+      ExceptT $ putDeck (fst wrappedCoord) wrappedDeck
+      fromAff do
+        Bus.write (Deck.UpdateParent (Just wrappedCoord)) cell.bus
+        Bus.write (Deck.UpdateParent (Just wrappedCoord)) newParent.bus
+        Bus.write (Card.ModelChange (Card.toAll oldParentCoord) parent') oldParent.bus
+    _ → do
+      QE.throw "Could not group deck."
+
+groupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Card.Coord → m (Either QE.QError Unit))
+groupDeck orn bias deckId newParentCoord = runExceptT do
+  cell ← lift $ getDeck' deckId
+  oldParentCoord ← liftWithErr "Parent not found." $ pure $ cell.model.parent
+  oldParent ← liftWithErr "Parent not found." $ getCard oldParentCoord
+  newParent ← liftWithErr "Destination not found." $ getCard newParentCoord
+  case oldParent.value.model.model
+     , newParent.value.model.model of
+    CM.Draftboard { layout }, CM.Draftboard { layout: inner } → do
+      let
+        inner' =
+          Layout.insertRootSplit (Pane.Cell (Just deckId)) orn (1%2) bias layout
+        layout' = layout <#> case _ of
+          Just did | did ≡ deckId → Nothing
+          a → a
+        child' = CM.Draftboard { layout: inner' }
+        parent' = CM.Draftboard { layout: layout' }
+      fromAff do
+        Bus.write (Deck.UpdateParent (Just newParentCoord)) cell.bus
+        Bus.write (Card.ModelChange (Card.toAll newParentCoord) child') newParent.bus
+        Bus.write (Card.ModelChange (Card.toAll oldParentCoord) parent') oldParent.bus
+    _, _ →
+      ExceptT $ wrapAndGroupDeck orn bias deckId (fst newParentCoord)
+
 addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m (Either QE.QError Card.Coord))
 addCard deckId cty = runExceptT do
   { eval } ← Wiring.expose
@@ -474,13 +533,7 @@ removeCard deckId coord@(deckId' × cardId) = runExceptT do
     Cache.put deckId (deckCell { value = value' }) eval.decks
     fromAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
 
-updateParentPointer
-  ∷ ∀ f m
-  . Persist f m
-  ( Deck.Id
-  → Deck.Id
-  → Maybe Card.Coord
-  → m (Either QE.QError Unit) )
+updateParentPointer ∷ ∀ f m . Persist f m (Deck.Id → Deck.Id → Maybe Card.Coord → m (Either QE.QError Unit))
 updateParentPointer oldId newId parent =
   runExceptT case parent of
     Just coord@(deckId × cardId) → do

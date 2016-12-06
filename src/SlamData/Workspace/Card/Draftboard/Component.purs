@@ -44,7 +44,6 @@ import SlamData.Workspace.Card.Draftboard.Component.State (MoveLocation(..), ini
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Eval.Persistence as P
 
 import Utils.DOM (getOffsetClientRect)
@@ -279,7 +278,7 @@ evalBoard opts = case _ of
           Group cell orn bias →
             for_ cell.value \deckId' → do
               H.modify _ { moveLocation = Nothing }
-              groupDecks opts orn bias (deckId × cursor) (deckId' × cell.cursor)
+              groupDeck orn bias deckId deckId'
           Move cell → do
             let
               result =
@@ -295,7 +294,7 @@ evalBoard opts = case _ of
     -- FIXME
     pure next
   AddDeck cursor next → do
-    addDeck opts DM.emptyDeck cursor
+    addDeck opts cursor
     CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
 
@@ -375,26 +374,37 @@ recalcRect = do
     rect ← H.fromEff (getOffsetClientRect root)
     H.modify (updateRect rect)
 
-addDeck ∷ CardOptions → DM.Deck → Pane.Cursor → DraftboardDSL Unit
-addDeck opts deck cursor = do
-  -- FIXME
-  pure unit
+addDeck ∷ CardOptions → Pane.Cursor → DraftboardDSL Unit
+addDeck { coord } cursor = do
+  H.modify _ { inserting = true }
+  res ← H.liftH $ H.liftH $ P.freshDeck (Just coord)
+  case res of
+    Left _ →
+      H.modify _ { inserting = false }
+    Right deckId → do
+      st ← H.get
+      let
+        layout = Pane.modifyAt (const (Pane.Cell (Just deckId))) cursor st.layout
+      H.modify
+        $ updateLayout (fromMaybe st.layout layout)
+        ∘ _ { inserting = false }
 
 deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 deleteDeck { deck } deckId = do
   -- FIXME
   pure unit
 
-groupDecks
-  ∷ CardOptions
-  → Orn.Orientation
+groupDeck
+  ∷ Orn.Orientation
   → Layout.SplitBias
-  → (DeckId × Pane.Cursor)
-  → (DeckId × Pane.Cursor)
+  → DeckId
+  → DeckId
   → DraftboardDSL Unit
-groupDecks opts orn bias (deckFrom × cursorFrom) (deckTo × cursorTo) = do
-  -- FIXME
-  pure unit
+groupDeck orn bias deckFrom deckTo = do
+  mbActive ← queryDeck deckTo (H.request DCQ.GetActiveCoord)
+  for_ mbActive case _ of
+    Just coord → H.liftH $ H.liftH $ P.groupDeck orn bias deckFrom coord
+    Nothing → H.liftH $ H.liftH $ P.wrapAndGroupDeck orn bias deckFrom deckTo
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
 queryDeck slot = H.query slot ∘ right
