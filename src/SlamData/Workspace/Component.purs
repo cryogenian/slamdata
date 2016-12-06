@@ -25,6 +25,7 @@ import SlamData.Prelude
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (putVar)
 import Control.Monad.Aff.Bus as Bus
+import Control.UI.Browser (setHref)
 
 import Data.Lens ((.~))
 import Data.List as List
@@ -43,6 +44,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (SlamDataEffects)
+import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Guide as Guide
@@ -255,20 +257,36 @@ peek = (const (pure unit) ⨁ peekDeck) ⨁ const (pure unit) ⨁ peekNotificati
       persist P.wrapDeck
     Deck.DoAction Deck.Mirror _ →
       persist P.wrapAndMirrorDeck
+    Deck.DoAction Deck.DeleteDeck _ →
+      H.gets _.deckId >>= traverse_ \deckId → do
+        res ← H.liftH $ H.liftH $ P.deleteDeck deckId
+        case res of
+          Left err →
+            -- FIXME: Error reporting
+            pure unit
+          Right parent →
+            maybe navigateToIndex navigateToDeck parent
     _ →
       pure unit
 
   persist fn = do
     H.gets _.deckId >>= traverse_ \deckId →
-      navigateToDeck =<< H.liftH (H.liftH (fn deckId))
+      navigateToDeckOrError =<< H.liftH (H.liftH (fn deckId))
 
-  navigateToDeck = case _ of
+  navigateToDeckOrError = case _ of
     Left err → do
       -- FIXME: Error reporting
       pure unit
     Right newId → do
-      { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
-      navigate $ WorkspaceRoute path (Just newId) (WA.Load accessType) varMaps
+      navigateToDeck newId
+
+  navigateToDeck newId = do
+    { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
+    navigate $ WorkspaceRoute path (Just newId) (WA.Load accessType) varMaps
+
+  navigateToIndex = do
+    { path } ← H.liftH $ H.liftH Wiring.expose
+    void $ H.fromEff $ setHref $ parentURL $ Left path
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck q = do

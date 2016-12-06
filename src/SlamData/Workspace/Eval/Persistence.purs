@@ -280,6 +280,21 @@ freshDeck parent = runExceptT do
   ExceptT $ putDeck deckId $ Deck.emptyDeck { parent = parent }
   pure deckId
 
+deleteDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError (Maybe Deck.Id)))
+deleteDeck deckId = runExceptT do
+  { path, eval } ← Wiring.expose
+  deck ← ExceptT $ getDeck deckId
+  case deck.parent of
+    Just _ →
+      void $ parTraverse ExceptT
+        [ Quasar.delete (Left (path </> Pathy.dir (DID.toString deckId)))
+        , updateParentPointer deckId Nothing deck.parent
+        ]
+    Nothing →
+      ExceptT $ Quasar.delete (Left path)
+  Cache.remove deckId eval.decks
+  pure (fst <$> deck.parent)
+
 wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
 wrapDeck deckId = runExceptT do
   cell ← lift $ getDeck' deckId
@@ -288,7 +303,7 @@ wrapDeck deckId = runExceptT do
   let
     parentDeck = DM.wrappedDeck deck.parent (snd parentCoord) deckId
   ExceptT $ putDeck (fst parentCoord) parentDeck
-  ExceptT $ updateParentPointer deckId (fst parentCoord) deck.parent
+  ExceptT $ updateParentPointer deckId (Just (fst parentCoord)) deck.parent
   fromAff $ Bus.write (Deck.UpdateParent (Just parentCoord)) cell.bus
   pure (fst parentCoord)
 
@@ -312,7 +327,7 @@ wrapAndMirrorDeck deckId = runExceptT do
           [ putDeck deckId mirrored
           , putDeck newMirrorId (mirrored { name = "" })
           , putDeck (fst parentCoord) wrappedDeck
-          , updateParentPointer deckId (fst parentCoord) deck.parent
+          , updateParentPointer deckId (Just (fst parentCoord)) deck.parent
           ]
       else do
         let
@@ -329,7 +344,7 @@ wrapAndMirrorDeck deckId = runExceptT do
           , putDeck newMirrorId (mirrored { name = "" })
           , putDeck newSharedId (deck { name = "" })
           , putDeck (fst parentCoord) wrappedDeck
-          , updateParentPointer deckId (fst parentCoord) deck.parent
+          , updateParentPointer deckId (Just (fst parentCoord)) deck.parent
           ]
   lift $ relocateCardsTo newSharedId deckId (_.cardId <$> deck.cards)
   pure (fst parentCoord)
@@ -390,7 +405,7 @@ unwrapDeck deckId = runExceptT do
   cards ← liftWithErr "Cards not found." $ getCards (Deck.cardCoords deckId deck)
   childId ← liftWithErr "Cannot unwrap deck." $ pure $ immediateChild (_.value.model.model ∘ snd <$> cards)
   cell ← lift $ getDeck' childId
-  ExceptT $ updateParentPointer deckId childId deck.parent
+  ExceptT $ updateParentPointer deckId (Just childId) deck.parent
   fromAff $ Bus.write (Deck.UpdateParent deck.parent) cell.bus
   pure childId
   where
@@ -533,7 +548,7 @@ removeCard deckId coord@(deckId' × cardId) = runExceptT do
     Cache.put deckId (deckCell { value = value' }) eval.decks
     fromAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
 
-updateParentPointer ∷ ∀ f m . Persist f m (Deck.Id → Deck.Id → Maybe Card.Coord → m (Either QE.QError Unit))
+updateParentPointer ∷ ∀ f m . Persist f m (Deck.Id → Maybe Deck.Id → Maybe Card.Coord → m (Either QE.QError Unit))
 updateParentPointer oldId newId parent =
   runExceptT case parent of
     Just coord@(deckId × cardId) → do
@@ -543,12 +558,13 @@ updateParentPointer oldId newId parent =
       cell ← getCard coord
       for_ cell \{ bus, value } → do
         let
-          model' = CM.updatePointer oldId (Just newId) value.model.model
+          model' = CM.updatePointer oldId newId value.model.model
           message = Card.ModelChange (Card.toAll coord) model'
         fromAff $ Bus.write message bus
     Nothing → do
       { path } ← Wiring.expose
-      ExceptT $ WM.setRoot (path </> Pathy.file "index") newId
+      ExceptT $ map sequence $ traverse (WM.setRoot (path </> Pathy.file "index")) newId
+      pure unit
 
 relocateCardsTo ∷ ∀ f m . Persist f m (Deck.Id → Deck.Id → Array Card.Id → m Unit)
 relocateCardsTo deckId oldDeckId coords = do

@@ -310,7 +310,7 @@ peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
           startDragging ev (Grabbing (deckId × cursor))
         DCQ.DoAction DCQ.DeleteDeck _ → do
           SA.track (SA.Delete deckId)
-          deleteDeck opts deckId
+          res ← H.liftH $ H.liftH $ P.deleteDeck deckId
           CC.raiseUpdatedP' CC.EvalModelUpdate
         DCQ.DoAction DCQ.Wrap _ → do
           SA.track (SA.Wrap deckId)
@@ -388,11 +388,6 @@ addDeck { coord } cursor = do
       H.modify
         $ updateLayout (fromMaybe st.layout layout)
         ∘ _ { inserting = false }
-
-deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
-deleteDeck { deck } deckId = do
-  -- FIXME
-  pure unit
 
 groupDeck
   ∷ Orn.Orientation
