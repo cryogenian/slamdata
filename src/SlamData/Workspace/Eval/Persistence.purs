@@ -551,11 +551,13 @@ makeCardCell
   → m Card.Cell
 makeCardCell model input next = do
   let
+    value ∷ Card.EvalResult
     value =
       { model
       , input
       , output: Nothing
       , state: Nothing
+      , sources: mempty
       , tick: Nothing
       }
   bus ← fromAff Bus.make

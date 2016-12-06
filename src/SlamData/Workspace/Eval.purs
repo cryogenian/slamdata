@@ -110,6 +110,7 @@ runEvalLoop source tick trail input graph = do
           { input = Just input
           , output = Just output
           , state = result.state
+          , sources = result.sources
           , tick = Just tick
           }
       updateCardValue node.coord value' eval.cards
