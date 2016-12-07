@@ -68,6 +68,7 @@ import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Model as Model
 import SlamData.Workspace.StateMode (StateMode(..))
@@ -241,7 +242,13 @@ runFreshWorkspace cards = do
     { stateMode = Ready
     , deckId = Just deckId
     }
-  _ ← H.fromAff (Bus.read cell.bus)
+  let
+    wait =
+      H.fromAff (Bus.read cell.bus) >>= case _ of
+        ED.Pending _ → wait
+        ED.Complete _ _ → wait
+        _ → pure unit
+  wait
   setRoot deckId
   navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) varMaps
 

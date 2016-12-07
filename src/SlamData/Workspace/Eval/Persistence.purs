@@ -197,16 +197,7 @@ populateCards deckId deck = runExceptT do
 -- FIXME: Maybe we don't need this, we can just call all these directly.
 forkDeckProcess ∷ ∀ f m . Persist f m (Deck.Id → Bus.BusRW Deck.EvalMessage → m Unit)
 forkDeckProcess deckId = forkLoop case _ of
-  Deck.Force source →
-    queueEval' 0 source
-  Deck.AddCard cty →
-    addCard deckId cty >>= traverse_ \coord → do
-      queueSave defaultSaveDebounce deckId
-      queueEval' 0 (mempty × coord)
-  Deck.RemoveCard coord → do
-    removeCard deckId coord >>= traverse_ \_ → do
-      queueSave defaultSaveDebounce deckId
-  Deck.UpdateParent parent → do
+  Deck.ParentChange parent → do
     { eval } ← Wiring.expose
     deckCell ← getDeck' deckId
     mbDeck ← wait deckCell.value
@@ -215,7 +206,7 @@ forkDeckProcess deckId = forkLoop case _ of
         deck' = deck { parent = parent }
       value' ← defer (pure (Right deck'))
       Cache.put deckId (deckCell { value = value' }) eval.decks
-      queueSave defaultSaveDebounce deckId
+      queueSaveDefault deckId
   _ →
     pure unit
 
@@ -226,8 +217,10 @@ forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
     Cache.alter coord (pure ∘ map (updateCellModel model)) eval.cards
     mbGraph ← snapshotGraph coord
     for_ mbGraph \graph → do
-      queueSave defaultSaveDebounce deckId
-      queueEval defaultEvalDebounce source graph
+      queueSaveDefault deckId
+      queueEval' defaultEvalDebounce source graph
+      deck ← getDeck' deckId
+      fromAff $ Bus.write (Deck.CardChange coord) deck.bus
   _ →
     pure unit
 
@@ -245,8 +238,14 @@ queueSave ms deckId = do
   debounce ms deckId { avar: _ } eval.pendingSaves (pure unit) do
     saveDeck deckId
 
-queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → EvalGraph → m Unit)
-queueEval ms source@(_ × coord) graph = do
+queueSaveImmediate ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
+queueSaveImmediate = queueSave 0
+
+queueSaveDefault ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
+queueSaveDefault = queueSave defaultSaveDebounce
+
+queueEval' ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → EvalGraph → m Unit)
+queueEval' ms source@(_ × coord) graph = do
   { eval } ← Wiring.expose
   let
     pending =
@@ -254,14 +253,19 @@ queueEval ms source@(_ × coord) graph = do
       , graph
       , avar: _
       }
-  -- TODO: Notify pending immediately
   debounce ms coord pending eval.pendingEvals
     do Eval.notifyDecks (Deck.Pending coord) graph
     do Eval.evalGraph source graph
 
-queueEval' ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → m Unit)
-queueEval' ms source@(_ × coord) =
-  traverse_ (queueEval ms source) =<< snapshotGraph coord
+queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → m Unit)
+queueEval ms source@(_ × coord) =
+  traverse_ (queueEval' ms source) =<< snapshotGraph coord
+
+queueEvalImmediate ∷ ∀ f m. Persist f m (Card.DisplayCoord → m Unit)
+queueEvalImmediate = queueEval 0
+
+queueEvalDefault ∷ ∀ f m. Persist f m (Card.DisplayCoord → m Unit)
+queueEvalDefault = queueEval defaultEvalDebounce
 
 freshWorkspace ∷ ∀ f m. Persist f m (Array CM.AnyCardModel → m (Deck.Id × Deck.Cell))
 freshWorkspace anyCards = do
@@ -313,7 +317,7 @@ wrapDeck deckId = runExceptT do
     parentDeck = DM.wrappedDeck deck.parent (snd parentCoord) deckId
   ExceptT $ putDeck (fst parentCoord) parentDeck
   ExceptT $ updateParentPointer deckId (Just (fst parentCoord)) deck.parent
-  fromAff $ Bus.write (Deck.UpdateParent (Just parentCoord)) cell.bus
+  fromAff $ Bus.write (Deck.ParentChange (Just parentCoord)) cell.bus
   pure (fst parentCoord)
 
 wrapAndMirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
@@ -415,7 +419,7 @@ unwrapDeck deckId = runExceptT do
   childId ← liftWithErr "Cannot unwrap deck." $ pure $ immediateChild (_.value.model.model ∘ snd <$> cards)
   cell ← lift $ getDeck' childId
   ExceptT $ updateParentPointer deckId (Just childId) deck.parent
-  fromAff $ Bus.write (Deck.UpdateParent deck.parent) cell.bus
+  fromAff $ Bus.write (Deck.ParentChange deck.parent) cell.bus
   pure childId
   where
     immediateChild = case _ of
@@ -438,7 +442,7 @@ collapseDeck childId coord = runExceptT do
   childDecks ← lift $ traverse getDeck' childIds
   fromAff do
     for_ childDecks \{ bus } →
-      Bus.write (Deck.UpdateParent (Just coord)) bus
+      Bus.write (Deck.ParentChange (Just coord)) bus
     Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
   where
     collapsed parent child = case parent, child of
@@ -475,8 +479,8 @@ wrapAndGroupDeck orn bias deckId newParentId = runExceptT do
         parent' = CM.Draftboard { layout: layout' }
       ExceptT $ putDeck (fst wrappedCoord) wrappedDeck
       fromAff do
-        Bus.write (Deck.UpdateParent (Just wrappedCoord)) cell.bus
-        Bus.write (Deck.UpdateParent (Just wrappedCoord)) newParent.bus
+        Bus.write (Deck.ParentChange (Just wrappedCoord)) cell.bus
+        Bus.write (Deck.ParentChange (Just wrappedCoord)) newParent.bus
         Bus.write (Card.ModelChange (Card.toAll oldParentCoord) parent') oldParent.bus
     _ → do
       QE.throw "Could not group deck."
@@ -499,7 +503,7 @@ groupDeck orn bias deckId newParentCoord = runExceptT do
         child' = CM.Draftboard { layout: inner' }
         parent' = CM.Draftboard { layout: layout' }
       fromAff do
-        Bus.write (Deck.UpdateParent (Just newParentCoord)) cell.bus
+        Bus.write (Deck.ParentChange (Just newParentCoord)) cell.bus
         Bus.write (Card.ModelChange (Card.toAll newParentCoord) child') newParent.bus
         Bus.write (Card.ModelChange (Card.toAll oldParentCoord) parent') oldParent.bus
     _, _ →
@@ -530,6 +534,8 @@ addCard deckId cty = runExceptT do
     Cache.put (deckId × cardId) cell eval.cards
     Cache.put deckId (deckCell { value = value' }) eval.decks
     forkCardProcess coord cell.bus
+    queueSaveDefault deckId
+    queueEvalImmediate (Card.toAll coord)
     pure coord
 
 removeCard ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Unit))
@@ -555,6 +561,7 @@ removeCard deckId coord@(deckId' × cardId) = runExceptT do
       MaybeT $ pure $ cell.value.output
     value' ← defer (pure (Right deck'))
     Cache.put deckId (deckCell { value = value' }) eval.decks
+    queueSaveDefault deckId
     fromAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
 
 updateParentPointer ∷ ∀ f m . Persist f m (Deck.Id → Maybe Deck.Id → Maybe Card.Coord → m (Either QE.QError Unit))

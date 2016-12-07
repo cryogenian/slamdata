@@ -289,8 +289,9 @@ peekBackSide opts (Back.DoAction action _) = do
   case action of
     Back.Trash → do
       active ← H.gets DCS.activeCard
+      deckId ← H.gets _.id
       for_ (join $ censor <$> active) \{ coord } → do
-        removeCard coord
+        H.liftH $ H.liftH $ P.removeCard deckId coord
         H.modify
           $ (DCS._displayMode .~ DCS.Normal)
           ∘ (DCS._presentAccessNextActionCardGuide .~ false)
@@ -373,12 +374,6 @@ updateBackSide { cursor } = do
     tys = Array.mapMaybe censor st.displayCards
   void $ H.query' cpBackSide unit $ H.action $ Back.UpdateCard ty tys
 
-createCard ∷ CT.CardType → DeckDSL Unit
-createCard = broadcast ∘ ED.AddCard
-
-removeCard ∷ DeckId × CardId → DeckDSL Unit
-removeCard = broadcast ∘ ED.RemoveCard
-
 dismissedAccessNextActionCardGuideKey ∷ String
 dismissedAccessNextActionCardGuideKey = "dismissedAccessNextActionCardGuide"
 
@@ -441,7 +436,8 @@ peekAnyCard cardCoord _ =
 
 peekNextAction ∷ ∀ a. Next.Query a → DeckDSL Unit
 peekNextAction q = do
-  for_ (q ^? Next._AddCardType) createCard
+  deckId ← H.gets _.id
+  for_ (q ^? Next._AddCardType) $ void ∘ H.liftH ∘ H.liftH ∘ P.addCard deckId
   for_ (q ^? Next._PresentReason) $ uncurry presentReason
 
 presentReason ∷ Port.Port → CT.CardType → DeckDSL Unit
@@ -503,7 +499,7 @@ loadDeck opts = do
               , parent: deck.parent
               , displayCards: [ Left DCS.PendingCard ]
               }
-            H.fromAff $ Bus.write (ED.Force (opts.cursor × coord)) bus
+            H.liftH $ H.liftH $ P.queueEvalImmediate (st.id L.: opts.cursor × coord)
 
 handleEval ∷ ED.EvalMessage → DeckDSL Unit
 handleEval = case _ of
@@ -568,10 +564,3 @@ shouldPresentFlipGuide =
   H.liftH
     $ H.liftH
     $ either (const true) not <$> LocalStorage.getLocalStorage Guide.dismissedFlipGuideKey
-
-broadcast ∷ ED.EvalMessage → DeckDSL Unit
-broadcast msg = do
-  st ← H.get
-  { bus } ← H.liftH $ H.liftH $ P.getDeck' st.id
-  H.fromAff $ Bus.write msg bus
-  pure unit

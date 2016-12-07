@@ -28,11 +28,8 @@ import SlamData.Prelude
 import Control.Monad.Aff.Bus (BusRW)
 import Control.Monad.Aff.Promise (Promise)
 
-import Data.List (List)
-
 import SlamData.Quasar.Error (QError)
 import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Deck.Model (Deck, deckIndex, emptyDeck, encode, decode, cardCoords)
 import SlamData.Workspace.Deck.DeckId (DeckId, toString)
@@ -40,11 +37,9 @@ import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 data EvalMessage
   = Pending (DeckId × CardId)
   | Complete (Array (DeckId × CardId)) Port
-  | Force (List DeckId × DeckId × CardId)
-  | AddCard CardType
-  | RemoveCard (DeckId × CardId)
-  | UpdateParent (Maybe (DeckId × CardId))
-  | UpdateName String
+  | CardChange (DeckId × CardId)
+  | ParentChange (Maybe (DeckId × CardId))
+  | NameChange String
 
 type Id = DeckId
 
