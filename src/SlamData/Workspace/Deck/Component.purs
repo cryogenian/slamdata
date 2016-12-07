@@ -514,10 +514,6 @@ shouldPresentFlipGuide =
     $ H.liftH
     $ either (const true) not <$> LocalStorage.getLocalStorage Guide.dismissedFlipGuideKey
 
-queryRootDeckCard ∷ ∀ a. CardId → CQ.AnyCardQuery a → DeckDSL (Maybe a)
-queryRootDeckCard cid query =
-  flip queryCard query ∘ flip Tuple cid =<< H.gets _.id
-
 broadcast ∷ ED.EvalMessage → DeckDSL Unit
 broadcast msg = do
   st ← H.get
