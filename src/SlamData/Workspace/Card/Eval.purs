@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Eval
   ( runCard
+  , modelToEval
   , module SlamData.Workspace.Card.Eval.Transition
   ) where
 
@@ -28,32 +29,34 @@ import Control.Monad.Writer.Class (class MonadTell)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
+import SlamData.Workspace.Card.BuildChart.Area.Eval as BuildArea
+import SlamData.Workspace.Card.BuildChart.Bar.Eval as BuildBar
+import SlamData.Workspace.Card.BuildChart.Boxplot.Eval as BuildBoxplot
+import SlamData.Workspace.Card.BuildChart.Candlestick.Eval as BuildCandlestick
+import SlamData.Workspace.Card.BuildChart.Funnel.Eval as BuildFunnel
+import SlamData.Workspace.Card.BuildChart.Gauge.Eval as BuildGauge
+import SlamData.Workspace.Card.BuildChart.Graph.Eval as BuildGraph
+import SlamData.Workspace.Card.BuildChart.Heatmap.Eval as BuildHeatmap
+import SlamData.Workspace.Card.BuildChart.Line.Eval as BuildLine
+import SlamData.Workspace.Card.BuildChart.Metric.Eval as BuildMetric
+import SlamData.Workspace.Card.BuildChart.Parallel.Eval as BuildParallel
+import SlamData.Workspace.Card.BuildChart.Pie.Eval as BuildPie
+import SlamData.Workspace.Card.BuildChart.PivotTable.Eval as BuildPivotTable
+import SlamData.Workspace.Card.BuildChart.PunchCard.Eval as BuildPunchCard
+import SlamData.Workspace.Card.BuildChart.Radar.Eval as BuildRadar
+import SlamData.Workspace.Card.BuildChart.Sankey.Eval as BuildSankey
+import SlamData.Workspace.Card.BuildChart.Scatter.Eval as BuildScatter
 import SlamData.Workspace.Card.Cache.Eval as Cache
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.Transition (Eval(..), tagEval)
 import SlamData.Workspace.Card.Markdown.Eval as MDE
-import SlamData.Workspace.Card.Query.Eval as Query
+import SlamData.Workspace.Card.Model as Model
 import SlamData.Workspace.Card.Open.Eval as Open
+import SlamData.Workspace.Card.Query.Eval as Query
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Search.Eval as Search
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
-import SlamData.Workspace.Card.BuildChart.Metric.Eval as BuildMetric
-import SlamData.Workspace.Card.BuildChart.Sankey.Eval as BuildSankey
-import SlamData.Workspace.Card.BuildChart.Gauge.Eval as BuildGauge
-import SlamData.Workspace.Card.BuildChart.Graph.Eval as BuildGraph
-import SlamData.Workspace.Card.BuildChart.Pie.Eval as BuildPie
-import SlamData.Workspace.Card.BuildChart.Radar.Eval as BuildRadar
-import SlamData.Workspace.Card.BuildChart.Area.Eval as BuildArea
-import SlamData.Workspace.Card.BuildChart.Line.Eval as BuildLine
-import SlamData.Workspace.Card.BuildChart.Bar.Eval as BuildBar
-import SlamData.Workspace.Card.BuildChart.Scatter.Eval as BuildScatter
-import SlamData.Workspace.Card.BuildChart.Funnel.Eval as BuildFunnel
-import SlamData.Workspace.Card.BuildChart.Heatmap.Eval as BuildHeatmap
-import SlamData.Workspace.Card.BuildChart.Boxplot.Eval as BuildBoxplot
-import SlamData.Workspace.Card.BuildChart.PivotTable.Eval as BuildPivotTable
-import SlamData.Workspace.Card.BuildChart.PunchCard.Eval as BuildPunchCard
-import SlamData.Workspace.Card.BuildChart.Candlestick.Eval as BuildCandlestick
-import SlamData.Workspace.Card.BuildChart.Parallel.Eval as BuildParallel
 
 runCard
   ∷ ∀ f m
@@ -148,3 +151,33 @@ evalCard = flip case _, _ of
     BuildParallel.eval tr model
   e, i →
     CEM.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
+
+modelToEval ∷ Model.AnyCardModel → Eval
+modelToEval = case _ of
+  Model.Ace CT.SQLMode model → Query model.text
+  Model.Ace CT.MarkdownMode model → Markdown model.text
+  Model.Markdown model → MarkdownForm model
+  Model.Search txt → Search txt
+  Model.Cache fp → Cache fp
+  Model.Open res → Open res
+  Model.Variables model → Variables model
+  Model.DownloadOptions model → DownloadOptions model
+  Model.Draftboard _ → Draftboard
+  Model.BuildMetric model  → BuildMetric model
+  Model.BuildSankey model → BuildSankey model
+  Model.BuildGauge model → BuildGauge model
+  Model.BuildGraph model → BuildGraph model
+  Model.BuildPie model → BuildPie model
+  Model.BuildRadar model → BuildRadar model
+  Model.BuildArea model → BuildArea model
+  Model.BuildLine model → BuildLine model
+  Model.BuildBar model → BuildBar model
+  Model.BuildScatter model → BuildScatter model
+  Model.BuildFunnel model → BuildFunnel model
+  Model.BuildHeatmap model → BuildHeatmap model
+  Model.BuildBoxplot model → BuildBoxplot model
+  Model.BuildPivotTable model → BuildPivotTable model
+  Model.BuildPunchCard model → BuildPunchCard model
+  Model.BuildCandlestick model → BuildCandlestick model
+  Model.BuildParallel model → BuildParallel model
+  _ → Pass

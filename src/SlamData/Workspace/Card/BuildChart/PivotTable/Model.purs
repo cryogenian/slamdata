@@ -27,7 +27,7 @@ import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.Property.ArbJson (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
 type Model =
   { dimensions ∷ Array JCursor

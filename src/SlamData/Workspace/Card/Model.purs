@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.Model
   , AnyCardModel(..)
   , encode
   , decode
-  , modelToEval
   , cardModelOfType
   , modelCardType
   , childDeckIds
@@ -34,7 +33,6 @@ import Data.Argonaut as J
 import Data.List as L
 
 import SlamData.FileSystem.Resource as R
-import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
@@ -347,37 +345,6 @@ cardModelOfType port = case _ of
   CT.Open → Open R.root
   CT.DownloadOptions → DownloadOptions DLO.initialState
   CT.Draftboard → Draftboard DB.emptyModel
-
-modelToEval ∷ AnyCardModel → Eval.Eval
-modelToEval = case _ of
-  Ace CT.SQLMode model → Eval.Query model.text
-  Ace CT.MarkdownMode model → Eval.Markdown model.text
-  Markdown model → Eval.MarkdownForm model
-  Search txt → Eval.Search txt
-  Cache fp → Eval.Cache fp
-  Open res → Eval.Open res
-  Variables model → Eval.Variables model
-  DownloadOptions model → Eval.DownloadOptions model
-  Draftboard _ → Eval.Draftboard
-  BuildMetric model  → Eval.BuildMetric model
-  BuildSankey model → Eval.BuildSankey model
-  BuildGauge model → Eval.BuildGauge model
-  BuildGraph model → Eval.BuildGraph model
-  BuildPie model → Eval.BuildPie model
-  BuildRadar model → Eval.BuildRadar model
-  BuildArea model → Eval.BuildArea model
-  BuildLine model → Eval.BuildLine model
-  BuildBar model → Eval.BuildBar model
-  BuildScatter model → Eval.BuildScatter model
-  BuildFunnel model → Eval.BuildFunnel model
-  BuildHeatmap model → Eval.BuildHeatmap model
-  BuildBoxplot model → Eval.BuildBoxplot model
-  BuildPivotTable model → Eval.BuildPivotTable model
-  BuildPunchCard model → Eval.BuildPunchCard model
-  BuildCandlestick model → Eval.BuildCandlestick model
-  BuildParallel model → Eval.BuildParallel model
-  _ → Eval.Pass
-
 
 childDeckIds ∷ AnyCardModel → L.List DeckId
 childDeckIds = case _ of

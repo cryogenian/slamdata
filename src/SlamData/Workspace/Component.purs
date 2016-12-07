@@ -25,6 +25,7 @@ import SlamData.Prelude
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (putVar)
 import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Eff.Exception as Exn
 import Control.UI.Browser (setHref)
 
 import Data.Lens ((.~))
@@ -41,7 +42,6 @@ import Halogen.Component.Utils.Throttled (throttledEventSource_)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Routing (parentURL)
@@ -68,6 +68,7 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Model as Model
 import SlamData.Workspace.StateMode (StateMode(..))
+import SlamData.Workspace.Deck.Component.Render (renderError)
 
 import Utils.DOM (onResize, elementEq)
 import Utils.LocalStorage as LocalStorage
@@ -94,7 +95,7 @@ render accessType state =
         ⊕ [ HH.className "sd-workspace" ]
     , HE.onClick (HE.input DismissAll)
     ]
-    (preloadGuides ⊕ notifications ⊕ header ⊕ deck ⊕ renderCardGuide ⊕ renderFlipGuide)
+    (preloadGuides ⊕ header ⊕ deck ⊕ notifications ⊕ renderCardGuide ⊕ renderFlipGuide)
   where
   renderCardGuide =
     Guide.renderStepByStepWithArray
@@ -129,26 +130,19 @@ render accessType state =
     pure case state.stateMode, state.deckId of
       Loading, _ →
         HH.div_ []
-      Error err,  _→ showError err
+      Error error, _ → renderError error
       _, Just deckId →
         HH.slot' cpDeck deckId \_ →
           let init = opaqueState $ Deck.initialDeck deckId
           in { component: DN.comp (deckOpts deckId) init
              , initialState: DN.initialState
              }
-      _, _ → showError "Missing deck id (impossible!)"
+      _, _ → renderError $ QE.Error $ Exn.error "Missing deck id (impossible!)"
 
   deckOpts deckId =
     { accessType
     , cursor: List.Nil
     }
-
-  showError err =
-    HH.div [ HP.classes [ B.alert, B.alertDanger ] ]
-      [ HH.h1
-          [ HP.class_ B.textCenter ]
-          [ HH.text err ]
-      ]
 
 eval ∷ Query ~> WorkspaceDSL
 eval = case _ of
@@ -212,7 +206,7 @@ eval = case _ of
         rootDeck >>= case _ of
           Left err →
             case GE.fromQError err of
-              Left msg → H.modify _ { stateMode = Error msg }
+              Left _ → H.modify _ { stateMode = Error err }
               Right ge → GE.raiseGlobalError ge
           Right deckId' → do
             H.modify _

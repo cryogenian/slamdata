@@ -35,7 +35,7 @@ import Halogen.Component.Utils as HU
 
 import SlamData.Guide as Guide
 import SlamData.Monad (Slam)
-import SlamData.Render.Common (clearFieldIcon)
+import SlamData.Render.Common as RC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Next.Component.Query (Query(..), _AddCardType, _PresentReason)
@@ -58,7 +58,10 @@ render state =
     $ (guard (not state.presentAddCardGuide) $>
       HH.form_
         [ HH.div_
-            [ HH.input
+            [ HH.div
+                [ HP.class_ (HH.className "sd-action-filter-icon") ]
+                [ RC.searchFieldIcon ]
+            , HH.input
                 [ HP.value state.filterString
                 , HE.onValueInput (HE.input UpdateFilter)
                 , ARIA.label "Filter next actions"
@@ -69,7 +72,7 @@ render state =
                 , HE.onClick (HE.input_ (UpdateFilter ""))
                 , HP.enabled (state.filterString /= "")
                 ]
-                [ clearFieldIcon "Clear filter" ]
+                [ RC.clearFieldIcon "Clear filter" ]
             ]
         ])
     ⊕ (guard state.presentAddCardGuide $>

@@ -43,6 +43,7 @@ module SlamData.Workspace.Deck.Component.State
   , _focused
   , _responsiveSize
   , _fadeTransition
+  , _providers
   , _PendingCard
   , _NextActionCard
   , _ErrorCard
@@ -73,16 +74,16 @@ import Data.Lens (Lens', lens, Prism', prism')
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
 
-import SlamData.Effects (SlamDataEffects)
+import Quasar.Advanced.Types (ProviderR)
 
+import SlamData.Effects (SlamDataEffects)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.StateMode (StateMode(..))
-
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
+import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils (censor)
 
@@ -146,6 +147,7 @@ type State =
   , responsiveSize ∷ ResponsiveSize
   , fadeTransition ∷ Fade
   , breakers ∷ Array (Breaker Unit)
+  , providers ∷ Array ProviderR
   }
 
 -- | Constructs a default `State` value.
@@ -172,6 +174,7 @@ initialDeck deckId =
   , responsiveSize: XLarge
   , fadeTransition: FadeNone
   , breakers: mempty
+  , providers: mempty
   }
 
 -- | The unique identifier of the deck.
@@ -253,6 +256,9 @@ _responsiveSize = lens _.responsiveSize _{responsiveSize = _}
 
 _fadeTransition ∷ ∀ a r. Lens' {fadeTransition ∷ a|r} a
 _fadeTransition = lens _.fadeTransition _{fadeTransition = _}
+
+_providers ∷ ∀ a r. Lens' {providers ∷ a|r} a
+_providers = lens _.providers _{providers = _}
 
 _NextActionCard ∷ Prism' MetaCard Port.Port
 _NextActionCard = prism' NextActionCard case _ of

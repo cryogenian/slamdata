@@ -29,8 +29,8 @@ import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
 
-import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.StateMode (StateMode(..))
 
 type State =
   { deckId ∷ Maybe DeckId

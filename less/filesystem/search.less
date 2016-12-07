@@ -1,27 +1,20 @@
-img.search-clear {
-    width: 16px;
-    height: 16px;
-    position: absolute;
-    right: 44px;
-    top: 19px;
-    z-index: 100;
-    color: #0f0f0f;
-    cursor: pointer;
-    text-decoration: none;
-    &:hover {
-        text-decoration: none;
-        color: #000;
-    }
-}
-
 .search .search-input {
+
+
+    @left-pad: 28px;
+
     width: 100%;
-    padding-top: 10px;
     border-radius: 0;
+    position: relative;
     input, button {
         border-radius: 0;
         z-input: 1;
         background-color: transparent;
+    }
+
+    input {
+      position: absolute;
+      padding-left: @left-pad;
     }
 
     .search-path {
@@ -52,13 +45,13 @@ img.search-clear {
             }
         }
         &, &-active {
-            top: 11px;
             left: 0;
             z-index: 0;
             width: 100%;
             background-color: white;
-            padding: 6px 13px;
-            position: absolute;
+            padding: 6px @left-pad;
+            position: relative;
+            line-height: 34px;
         }
     }
 
@@ -76,5 +69,29 @@ img.search-clear {
         i.glyphicon {
             top: 2px;
         }
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0px;
+      padding: 0 8px;
+      z-index: 3;
+      height: 34px;
+      line-height: 36px;
+      opacity: 0.5;
+    }
+
+    .search-clear-button {
+      position: absolute;
+      right: 0px;
+      border: 0;
+      background: transparent;
+      height: 34px;
+      z-index: 3;
+      transition: opacity ease-out 0.25s;
+    }
+
+    &.search-empty .search-clear-button {
+      opacity: 0;
     }
 }

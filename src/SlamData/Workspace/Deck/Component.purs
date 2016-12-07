@@ -28,11 +28,12 @@ module SlamData.Workspace.Deck.Component
 import SlamData.Prelude
 
 import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Promise as Promise
 import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
-import Control.UI.Browser (setHref, newTab)
+import Control.UI.Browser as Browser
 
 import Data.Array as Array
 import Data.Lens ((.~), (%~), (^?), (?~), _Left, _Just, is)
@@ -44,12 +45,18 @@ import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.Component.Utils (raise', sendAfter', subscribeToBus')
 import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Analytics as SA
+import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.Config as Config
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
+import SlamData.GlobalMenu.Bus (SignInMessage(..))
 import SlamData.Guide as Guide
+import SlamData.Quasar as Quasar
+import SlamData.Quasar.Auth.Authentication as Authentication
+import SlamData.Quasar.Error as QE
 import SlamData.Wiring (DeckMessage(..))
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
@@ -99,7 +106,14 @@ render opts deckComponent st =
   if st.finalized
   then HH.div_ []
   else case st.stateMode of
-    Error err → DCR.renderError err
+    Error error →
+      HH.div
+        [ HP.class_ $ HH.className "sd-workspace-error" ]
+        [ DCR.renderError error
+        , if (QE.isUnauthorized error)
+            then HH.p_ (DCR.renderSignInButton <$> st.providers)
+            else HH.text ""
+        ]
     _ → DCR.renderDeck opts deckComponent st
 
 eval ∷ DeckOptions → Query ~> DeckDSL
@@ -128,7 +142,7 @@ eval opts = case _ of
   Publish next → do
     { path } ← H.liftH $ H.liftH Wiring.expose
     deckPath ← deckPath' path <$> H.gets _.id
-    H.fromEff ∘ newTab $ mkWorkspaceURL deckPath (WA.Load AT.ReadOnly)
+    H.fromEff ∘ Browser.newTab $ mkWorkspaceURL deckPath (WA.Load AT.ReadOnly)
     pure next
   FlipDeck next → do
     updateBackSide opts
@@ -155,7 +169,7 @@ eval opts = case _ of
       Just (Tuple deckId _) → do
         navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) varMaps
       Nothing →
-        void $ H.fromEff $ setHref $ parentURL $ Left path
+        void $ H.fromEff $ Browser.setHref $ parentURL $ Left path
     pure next
   StartSliding mouseEvent gDef next → do
     H.gets _.deckElement >>= traverse_ \el → do
@@ -222,7 +236,27 @@ eval opts = case _ of
   GetActiveCoord k → do
     active ← H.gets DCS.activeCard
     pure (k (censor ∘ map _.coord =<< active))
+  SignIn providerR next → do
+    { auth } ← H.liftH $ H.liftH Wiring.expose
+    idToken ← H.fromAff AVar.makeVar
+    H.fromAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
+    either signInFailure (const $ signInSuccess) =<< (H.fromAff $ AVar.takeVar idToken)
+    pure next
   where
+  keySuffix = AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider
+
+  signInSuccess = do
+    { auth } ← H.liftH $ H.liftH Wiring.expose
+    H.fromAff $ Bus.write SignInSuccess $ auth.signIn
+    H.fromEff Browser.reload
+
+  signInFailure error = do
+    { auth, bus } ← H.liftH $ H.liftH Wiring.expose
+    H.fromAff do
+      for_ (Authentication.toNotificationOptions error) $
+        flip Bus.write bus.notify
+      Bus.write SignInFailure auth.signIn
+
   getBoundingClientWidth =
     H.fromEff ∘ map _.width ∘ getBoundingClientRect
 
@@ -433,8 +467,14 @@ loadDeck opts = do
     , breakers = Array.cons breaker s.breakers
     }
   Promise.wait value >>= case _ of
-    Left err →
-      H.modify _ { stateMode = Error "Error loading deck" }
+    Left err → do
+      providers ←
+        Quasar.retrieveAuthProviders <#> case _ of
+          Right (Just providers) → providers
+          _ → []
+      H.modify
+        $ (DCS._stateMode .~ Error err)
+        ∘ (DCS._providers .~ providers)
     Right deck →
       loadCards bus st deck
 

@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Deck.Component.Render
   ( renderDeck
   , renderError
+  , renderSignInButton
   ) where
 
 import SlamData.Prelude
@@ -32,6 +33,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Quasar.Error as QE
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Deck.BackSide.Component as Back
@@ -44,14 +46,28 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Slider as Slider
 
-renderError ∷ String → DeckHTML
+import Quasar.Advanced.Types (ProviderR)
+
+import Utils (endSentence)
+
+renderError ∷ ∀ f a. QE.QError → HH.HTML a (f Unit)
 renderError err =
   HH.div
-    [ HP.classes [ B.alert, B.alertDanger ] ]
-    [ HH.h1
-        [ HP.class_ B.textCenter ]
-        [ HH.text err ]
+    [ HP.classes [ HH.className "sd-workspace-error" ] ]
+    [ HH.h1_
+        [ HH.text "Couldn't load this SlamData deck." ]
+    , HH.p_
+        [ HH.text $ endSentence $ QE.printQError err ]
     ]
+
+renderSignInButton ∷ ProviderR → DeckHTML
+renderSignInButton providerR =
+    HH.button
+      [ HE.onClick $ HE.input_ $ SignIn providerR
+      , HP.classes [ HH.className "btn", HH.className "btn-primary" ]
+      , HP.buttonType HP.ButtonButton
+      ]
+      [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
 
 renderDeck ∷ DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
 renderDeck opts deckComponent st =

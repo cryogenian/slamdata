@@ -23,7 +23,7 @@ data Scheme
   | SQL2
   | Couchbase
   | MarkLogic
-  | Spark
+  | SparkHDFS
 
 derive instance eqScheme ∷ Eq Scheme
 
@@ -34,14 +34,14 @@ schemeToString MongoDB = "MongoDB"
 schemeToString SQL2 = "SQL²"
 schemeToString Couchbase = "Couchbase"
 schemeToString MarkLogic = "MarkLogic"
-schemeToString Spark = "Spark"
+schemeToString SparkHDFS = "HDFS on Spark"
 
 schemeFromString :: String -> Maybe Scheme
 schemeFromString "MongoDB" = Just MongoDB
 schemeFromString "SQL²" = Just SQL2
 schemeFromString "Couchbase" = Just Couchbase
 schemeFromString "MarkLogic" = Just MarkLogic
-schemeFromString "Spark" = Just Spark
+schemeFromString "HDFS on Spark" = Just SparkHDFS
 schemeFromString _ = Nothing
 
 schemes :: Array Scheme
@@ -50,5 +50,5 @@ schemes =
   , SQL2
   , Couchbase
   , MarkLogic
-  , Spark
+  , SparkHDFS
   ]

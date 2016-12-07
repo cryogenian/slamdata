@@ -23,7 +23,7 @@ import Data.Foldable as F
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.Property.ArbJson (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
 type BoxplotR =
   { dimension ∷ JCursor

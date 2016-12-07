@@ -24,7 +24,7 @@ import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
-import SlamData.FileSystem.Dialog.Mount.Spark.Component as Spark
+import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
 
 type ChildState
   = MongoDB.State

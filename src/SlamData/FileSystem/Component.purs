@@ -64,7 +64,7 @@ import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
-import SlamData.FileSystem.Dialog.Mount.Spark.Component.State as Spark
+import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Listing.Component as Listing
@@ -524,7 +524,7 @@ configure m =
       QM.MongoDBConfig config → Mount.MongoDB (MongoDB.fromConfig config)
       QM.CouchbaseConfig config → Mount.Couchbase (Couchbase.fromConfig config)
       QM.MarkLogicConfig config → Mount.MarkLogic (MarkLogic.fromConfig config)
-      QM.SparkConfig config → Mount.Spark (Spark.fromConfig config)
+      QM.SparkHDFSConfig config → Mount.SparkHDFS (Spark.fromConfig config)
 
     raiseError err = case GE.fromQError err of
       Left msg →
