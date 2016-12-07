@@ -39,8 +39,6 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S
 
---import Math as Math
-
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Error (QError(..))
 import Quasar.FS as QFS
@@ -162,7 +160,7 @@ move src tgt = do
   runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
 
   runExceptT case src of
-    R.Workspace wsDir → replacePathsInDecks wsDir
+    R.Workspace wsDir → replacePathsInWorkspace wsDir
     _ → pure unit
 
   result ←
@@ -177,12 +175,12 @@ move src tgt = do
       Left err → Left err
 
   where
-  replacePathsInDecks ∷ DirPath → ExceptT QError m Unit
-  replacePathsInDecks wsDir = do
+  replacePathsInWorkspace ∷ DirPath → ExceptT QError m Unit
+  replacePathsInWorkspace wsDir = do
     mbDid ← getWorkspaceRoot wsDir
     for_ mbDid \did → do
       deck ← getDeck wsDir did
-      (save × newDeck) ← oneDeck wsDir deck
+      (save × newDeck) ← replacePathsInDeck wsDir deck
       when save $ putDeck wsDir did newDeck
 
   getWorkspaceRoot ∷ DirPath → ExceptT QError m (Maybe DID.DeckId)
@@ -203,8 +201,8 @@ move src tgt = do
         (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
         (DM.encode deck)
 
-  oneDeck ∷ DirPath → DM.Deck → ExceptT QError m (Boolean × DM.Deck)
-  oneDeck wsDir deck =
+  replacePathsInDeck ∷ DirPath → DM.Deck → ExceptT QError m (Boolean × DM.Deck)
+  replacePathsInDeck wsDir deck =
     let
       replaceCardModel ∷ CM.Model → DM.Deck → DM.Deck
       replaceCardModel card@{cardId} d =
@@ -219,7 +217,7 @@ move src tgt = do
         CM.Draftboard m → do
           flip parTraverse_ (List.catMaybes $ Pane.toList m.layout) \did → do
             d' ← getDeck wsDir  did
-            (save × newDeck) ← oneDeck wsDir d'
+            (save × newDeck) ← replacePathsInDeck wsDir d'
             when save $ putDeck wsDir did newDeck
           pure current
         CM.Cache m →
