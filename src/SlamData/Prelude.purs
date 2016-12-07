@@ -68,7 +68,7 @@ import Control.Parallel (class Parallel, parTraverse, parTraverse_)
 import Control.Plus (class Plus, empty)
 
 import Data.Bifoldable (class Bifoldable, bitraverse_, bifor_)
-import Data.Bifunctor (bimap, lmap, rmap)
+import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Bitraversable (class Bitraversable, bitraverse, bisequence, bifor)
 import Data.Const (Const(..))
 import Data.Either (Either(..), either, isLeft, isRight, fromRight)

@@ -445,7 +445,7 @@ instance decodeJsonResource ∷ DecodeJson Resource where
     where
     parsePath
       ∷ forall a
-       . String
+      . String
       → (P.Path P.Abs a P.Sandboxed → Resource)
       → (String → Maybe (P.Path P.Abs a P.Unsandboxed))
       → String
