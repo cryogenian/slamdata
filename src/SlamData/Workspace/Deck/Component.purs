@@ -78,6 +78,7 @@ import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
+import SlamData.Workspace.Eval.Card as EC
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Routing (mkWorkspaceURL)
@@ -434,45 +435,56 @@ loadDeck opts = do
   Promise.wait value >>= case _ of
     Left err →
       H.modify _ { stateMode = Error "Error loading deck" }
-    Right deck → do
-      let
-        coords = Model.cardCoords st.id deck
-      case Array.head coords of
-        Just coord → do
-          H.modify $ DCS.fromModel
-            { name: deck.name
-            , parent: deck.parent
-            , displayCards: [ Left DCS.PendingCard ]
-            }
-          H.fromAff $ Bus.write (ED.Force (opts.cursor × coord)) bus
-        Nothing →
-          H.modify $ DCS.fromModel
-            { name: deck.name
-            , parent: deck.parent
-            , displayCards: [ Left (DCS.NextActionCard Port.Initial) ]
-            }
+    Right deck →
+      loadCards bus st deck
+
+  where
+  loadCards bus st deck = do
+    let
+      coords = Model.cardCoords st.id deck
+    case Array.head coords of
+      Nothing →
+        H.modify $ DCS.fromModel
+          { name: deck.name
+          , parent: deck.parent
+          , displayCards: [ Left (DCS.NextActionCard Port.Initial) ]
+          }
+      Just coord → do
+        evalCells ← H.liftH $ H.liftH $ P.getEvaluatedCards coords
+        case evalCells of
+          Just cells → do
+            let
+              last = Array.last cells >>= snd >>> _.value.output
+              port = fromMaybe Port.Initial last
+            handleDisplayCards cells port
+          Nothing → do
+            H.modify $ DCS.fromModel
+              { name: deck.name
+              , parent: deck.parent
+              , displayCards: [ Left DCS.PendingCard ]
+              }
+            H.fromAff $ Bus.write (ED.Force (opts.cursor × coord)) bus
 
 handleEval ∷ ED.EvalMessage → DeckDSL Unit
 handleEval = case _ of
   ED.Pending →
     H.modify (DCS.addMetaCard DCS.PendingCard)
-  ED.Complete coords res → do
-    st ← H.get
-    mbCards ← getCardCells coords
-    for_ mbCards \cards → void do
-      let newDefs = makeDef <$> Array.zip coords cards
-      queryNextAction $ H.action $ Next.UpdateInput res
-      H.modify (DCS.updateDisplayCards newDefs res)
-      updateActiveState
+  ED.Complete coords port → do
+    mbCells ← H.liftH $ H.liftH $ P.getCards coords
+    for_ mbCells (flip handleDisplayCards port)
   _ →
     pure unit
 
+handleDisplayCards ∷ Array (DeckId × EC.Cell) → Port.Port → DeckDSL Unit
+handleDisplayCards cells port = do
+  queryNextAction $ H.action $ Next.UpdateInput port
+  H.modify (DCS.updateDisplayCards (mkDef <$> cells) port)
+  updateActiveState
   where
-  getCardCells coords =
-    H.liftH $ H.liftH $ sequence <$> traverse P.getCard coords
-
-  makeDef (coord × c) =
-    { coord, cardType: Card.modelCardType c.value.model.model }
+  mkDef (deckId × c) =
+    { coord: deckId × c.value.model.cardId
+    , cardType: Card.modelCardType c.value.model.model
+    }
 
 getSharingInput ∷ DeckDSL SharingInput
 getSharingInput = do

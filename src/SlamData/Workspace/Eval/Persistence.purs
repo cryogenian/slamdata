@@ -659,6 +659,18 @@ getCards = map sequence ∘ traverse go
   where
     go coord = map (fst coord × _) <$> getCard coord
 
+getEvaluatedCards
+  ∷ ∀ m
+  . ( Affable SlamDataEffects m
+    , MonadAsk Wiring m
+    )
+  ⇒ Array Card.Coord
+  → m (Maybe (Array (Deck.Id × Card.Cell)))
+getEvaluatedCards = map (traverse go =<< _) ∘ getCards
+  where
+    go card@(_ × cell) | isJust cell.value.tick = Just card
+    go _ = Nothing
+
 debounce
   ∷ ∀ k m r
   . ( Affable SlamDataEffects m
