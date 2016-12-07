@@ -444,11 +444,13 @@ loadDeck opts = do
       coords = Model.cardCoords st.id deck
     case Array.head coords of
       Nothing →
-        H.modify $ DCS.fromModel
-          { name: deck.name
-          , parent: deck.parent
-          , displayCards: [ Left (DCS.NextActionCard Port.Initial) ]
-          }
+        H.modify
+          $ (DCS._activeCardIndex .~ Just 0)
+          ∘ DCS.fromModel
+              { name: deck.name
+              , parent: deck.parent
+              , displayCards: [ Left (DCS.NextActionCard Port.Initial) ]
+              }
       Just coord → do
         evalCells ← H.liftH $ H.liftH $ P.getEvaluatedCards coords
         case evalCells of
