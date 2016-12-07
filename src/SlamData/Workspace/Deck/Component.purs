@@ -230,7 +230,6 @@ peek ∷ ∀ a. DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
 peek opts (H.ChildF s q) =
   (peekCards ⊹ (\_ _ → pure unit) $ s)
    ⨁ peekBackSide opts
-   ⨁ (const $ pure unit)
    ⨁ (peekDialog opts ⨁ (const $ pure unit))
    ⨁ peekNextAction
    ⨁ (const $ pure unit)

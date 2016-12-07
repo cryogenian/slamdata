@@ -28,18 +28,14 @@ import SlamData.Workspace.Card.Error.Component as Error
 import SlamData.Workspace.Card.Pending.Component as Pending
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.BackSide.Component as Back
-import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 
 type CardSlot = DeckId × CardId
 
 type BackSideSlot = Unit
 
-type IndicatorSlot = Unit
-
 type ChildSlot
   = CardSlot
-  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -49,7 +45,6 @@ type ChildSlot
 type ChildQuery
   = CardQueryP
   ⨁ Back.Query
-  ⨁ Indicator.Query
   ⨁ Dialog.QueryP
   ⨁ Next.Query
   ⨁ Error.Query
@@ -58,7 +53,6 @@ type ChildQuery
 type ChildState
   = CardStateP
   ⊹ Back.State
-  ⊹ Indicator.State
   ⊹ Dialog.StateP
   ⊹ Next.State
   ⊹ Error.State
@@ -78,37 +72,30 @@ cpBackSide
       Unit ChildSlot
 cpBackSide = cpR :> cpL
 
-cpIndicator
-  ∷ ChildPath
-      Indicator.State ChildState
-      Indicator.Query ChildQuery
-      Unit ChildSlot
-cpIndicator = cpR :> cpR :> cpL
-
 cpDialog
   ∷ ChildPath
       Dialog.StateP ChildState
       Dialog.QueryP ChildQuery
       Unit ChildSlot
-cpDialog = cpR :> cpR :> cpR :> cpL
+cpDialog = cpR :> cpR :> cpL
 
 cpNext
   ∷ ChildPath
       Next.State ChildState
       Next.Query ChildQuery
       Unit ChildSlot
-cpNext = cpR :> cpR :> cpR :> cpR :> cpL
+cpNext = cpR :> cpR :> cpR :> cpL
 
 cpError
   ∷ ChildPath
       Error.State ChildState
       Error.Query ChildQuery
       Unit ChildSlot
-cpError = cpR :> cpR :> cpR :> cpR :> cpR :> cpL
+cpError = cpR :> cpR :> cpR :> cpR :> cpL
 
 cpPending
   ∷ ChildPath
       Pending.State ChildState
       Pending.Query ChildQuery
       Unit ChildSlot
-cpPending = cpR :> cpR :> cpR :> cpR :> cpR :> cpR
+cpPending = cpR :> cpR :> cpR :> cpR :> cpR
