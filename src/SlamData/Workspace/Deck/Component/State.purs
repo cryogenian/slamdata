@@ -58,7 +58,7 @@ module SlamData.Workspace.Deck.Component.State
   , eqDisplayCard
   , compareCoordCards
   , coordModelToCoord
-  , defaultActiveIndex
+  , updateDisplayCards
   ) where
 
 import SlamData.Prelude
@@ -346,9 +346,36 @@ compareCoordCards coordA coordB cards =
 coordModelToCoord ∷ DeckId × Card.Model → DeckId × CardId
 coordModelToCoord = map _.cardId
 
-defaultActiveIndex ∷ State → Int
-defaultActiveIndex st =
-  fromMaybe lastCardIndex lastRealCardIndex
+updateDisplayCards ∷ Array CardDef → Port.Port → State → State
+updateDisplayCards defs port st =
+  st
+    { displayCards = displayCards
+    , activeCardIndex = Just activeCardIndex
+    }
   where
-  lastCardIndex = max 0 $ A.length st.displayCards - 1
-  lastRealCardIndex = findLastCardIndex st
+  lastIndex =
+    A.length displayCards - 1
+
+  displayCards =
+    case A.uncons defs of
+      Just { head, tail } →
+        let
+          realCards = A.mapMaybe censor st.displayCards
+          initCards = A.takeWhile (not ∘ eq head.coord ∘ _.coord) realCards
+          newCards = A.cons head tail
+          metaCard =
+            pure $ Left case port of
+              Port.CardError str → ErrorCard str
+              _ → NextActionCard port
+        in
+          (Right <$> initCards <> newCards) <> metaCard
+      Nothing →
+        [ Left (NextActionCard Port.Initial) ]
+
+  activeCardIndex =
+    case st.activeCardIndex, A.last displayCards of
+      Nothing, Nothing → 0
+      Nothing, Just (Left (ErrorCard _)) → lastIndex
+      Nothing, Just _ → lastIndex - 1
+      Just ix, _ | ix > lastIndex → lastIndex
+      Just ix, _ → ix
