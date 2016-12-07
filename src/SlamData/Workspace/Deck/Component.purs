@@ -231,7 +231,8 @@ eval opts = case _ of
     showDialog $ Dialog.Error $ GE.print ge
     pure next
   DismissedCardGuide next → do
-    -- FIXME
+    when (L.null opts.cursor) $ void do
+      queryNextAction (Next.PresentAddCardGuide unit)
     pure next
   GetActiveCoord k → do
     active ← H.gets DCS.activeCard

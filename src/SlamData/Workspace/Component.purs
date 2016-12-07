@@ -156,7 +156,6 @@ eval = case _ of
     H.subscribe'
       $ throttledEventSource_ (Milliseconds 100.0) onResize
       $ pure (H.action Resize)
-    -- FIXME
     -- The deck component isn't initialised before this later has completed
     H.fromAff $ Aff.later (pure unit :: Aff.Aff SlamDataEffects Unit)
     when (isNothing cardGuideStep) do
