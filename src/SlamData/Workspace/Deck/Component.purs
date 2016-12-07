@@ -774,7 +774,7 @@ evalCard path urlVarMaps input card = do
 
     let
       model = (snd card).model
-    case Card.modelToEval model of
+    case Eval.modelToEval model of
       Left err → do
         SA.track (SA.ErrorInCardEval $ Card.modelCardType model)
         pure $ (Port.CardError $ "Could not evaluate card: " <> err) × mempty

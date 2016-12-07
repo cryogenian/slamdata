@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.Model
   , AnyCardModel(..)
   , encode
   , decode
-  , modelToEval
   , cardModelOfType
   , modelCardType
   ) where
@@ -30,7 +29,6 @@ import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
 
 import SlamData.FileSystem.Resource as R
-import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
@@ -370,65 +368,3 @@ cardModelOfType = case _ of
   CT.ErrorCard → ErrorCard
   CT.NextAction → NextAction
   CT.PendingCard → PendingCard
-
-modelToEval
-  ∷ AnyCardModel
-  → String ⊹ Eval.Eval
-modelToEval = case _ of
-  Ace CT.SQLMode model →
-    pure $ Eval.Query $ fromMaybe "" $ _.text <$> model
-  Ace CT.MarkdownMode model →
-    pure $ Eval.Markdown $ fromMaybe "" $ _.text <$> model
-  Markdown model →
-    pure $ Eval.MarkdownForm model
-  Search txt →
-    pure $ Eval.Search txt
-  Cache fp →
-    pure $ Eval.Cache fp
-  Open (Just res) →
-    pure $ Eval.Open res
-  -- Do we need this? Eval.evalOpen is called only if Open has Just res
-  Open _ →
-    Left "Open model missing resource"
-  Variables model →
-    pure $ Eval.Variables model
-  DownloadOptions model →
-    pure $ Eval.DownloadOptions model
-  Draftboard _ →
-    pure Eval.Draftboard
-  BuildMetric model  →
-    pure $ Eval.BuildMetric model
-  BuildSankey model →
-    pure $ Eval.BuildSankey model
-  BuildGauge model →
-    pure $ Eval.BuildGauge model
-  BuildGraph model →
-    pure $ Eval.BuildGraph model
-  BuildPie model →
-    pure $ Eval.BuildPie model
-  BuildRadar model →
-    pure $ Eval.BuildRadar model
-  BuildArea model →
-    pure $ Eval.BuildArea model
-  BuildLine model →
-    pure $ Eval.BuildLine model
-  BuildBar model →
-    pure $ Eval.BuildBar model
-  BuildScatter model →
-    pure $ Eval.BuildScatter model
-  BuildFunnel model →
-    pure $ Eval.BuildFunnel model
-  BuildHeatmap model →
-    pure $ Eval.BuildHeatmap model
-  BuildBoxplot model →
-    pure $ Eval.BuildBoxplot model
-  BuildPivotTable model →
-    pure $ Eval.BuildPivotTable model
-  BuildPunchCard model →
-    pure $ Eval.BuildPunchCard model
-  BuildCandlestick model →
-    pure $ Eval.BuildCandlestick model
-  BuildParallel model →
-    pure $ Eval.BuildParallel model
-  _ →
-    pure Eval.Pass

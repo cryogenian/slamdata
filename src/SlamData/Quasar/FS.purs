@@ -29,15 +29,18 @@ module SlamData.Quasar.FS
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Exception (error)
+
 import Data.Array as Arr
 import Data.Foldable as F
 import Data.Lens ((.~), (^.), (^?), _Left)
+import Data.List as List
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S
 
 import Quasar.Advanced.QuasarAF as QF
-import Quasar.Error (QError)
+import Quasar.Error (QError(..))
 import Quasar.FS as QFS
 import Quasar.FS.Mount as QFSM
 import Quasar.FS.Resource as QR
@@ -46,6 +49,16 @@ import Quasar.Types (AnyPath, DirPath, FilePath)
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
+import SlamData.Quasar.Data as QD
+
+import SlamData.Workspace.Model as WM
+import SlamData.Workspace.Deck.Model as DM
+import SlamData.Workspace.Card.Model as CM
+import SlamData.Workspace.Deck.DeckId as DID
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
+
+import Utils.Array (enumerate)
+import Utils.Ace (RangeRec)
 
 children
   ∷ ∀ m
@@ -141,17 +154,220 @@ move
   → AnyPath
   → m (Either QError (Maybe AnyPath))
 move src tgt = do
-  let srcPath = R.getPath src
+  let
+    srcPath = R.getPath src
+
   runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
+
+  runExceptT case src of
+    R.Workspace wsDir → replacePathsInWorkspace wsDir
+    _ → pure unit
+
   result ←
-    liftQuasar case src of
-      R.Mount _ → QF.moveMount srcPath tgt
-      _ → QF.moveData srcPath tgt
+    case src of
+      R.Mount _ → liftQuasar $ QF.moveMount srcPath tgt
+      _ → liftQuasar $ QF.moveData srcPath tgt
+
   pure
     case result of
       Right _ → Right (Just tgt)
       Left QF.NotFound → Right Nothing
       Left err → Left err
+
+  where
+  replacePathsInWorkspace ∷ DirPath → ExceptT QError m Unit
+  replacePathsInWorkspace wsDir = do
+    mbDid ← getWorkspaceRoot wsDir
+    for_ mbDid \did → do
+      deck ← getDeck wsDir did
+      (save × newDeck) ← replacePathsInDeck wsDir deck
+      when save $ putDeck wsDir did newDeck
+
+  getWorkspaceRoot ∷ DirPath → ExceptT QError m (Maybe DID.DeckId)
+  getWorkspaceRoot wsDir = do
+    wmJS ← ExceptT $ QD.load $ wsDir </> P.file "index"
+    deck ← ExceptT $ pure $ lmap (Error ∘ error) $ WM.decode wmJS
+    pure deck.root
+
+  getDeck ∷ DirPath → DID.DeckId → ExceptT QError m DM.Deck
+  getDeck wsDir did = do
+    deckJS ← ExceptT $ QD.load $ wsDir </> P.dir (DID.deckIdToString did) </> P.file "index"
+    ExceptT $ pure $ lmap (Error ∘ error) $ DM.decode deckJS
+
+  putDeck ∷ DirPath → DID.DeckId → DM.Deck → ExceptT QError m Unit
+  putDeck wsDir did deck =
+    ExceptT
+      $ QD.save
+        (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
+        (DM.encode deck)
+
+  replacePathsInDeck ∷ DirPath → DM.Deck → ExceptT QError m (Boolean × DM.Deck)
+  replacePathsInDeck wsDir deck =
+    let
+      replaceCardModel ∷ CM.Model → DM.Deck → DM.Deck
+      replaceCardModel card@{cardId} d =
+        d { cards =
+               Arr.sortBy (\{cardId: a} {cardId: b} → compare a b)
+               $ Arr.cons card
+               $ Arr.filter (not ∘ eq cardId ∘ _.cardId) d.cards
+          }
+
+      foldFn ∷ Boolean × DM.Deck → CM.Model → ExceptT QError m (Boolean × DM.Deck)
+      foldFn current@(shouldSave × d) {cardId, model} = case model of
+        CM.Draftboard m → do
+          flip parTraverse_ (List.catMaybes $ Pane.toList m.layout) \did → do
+            d' ← getDeck wsDir  did
+            (save × newDeck) ← replacePathsInDeck wsDir d'
+            when save $ putDeck wsDir did newDeck
+          pure current
+        CM.Cache m →
+          let
+            newM =
+              S.replace
+                (S.Pattern $ P.printPath wsDir)
+                (S.Replacement $ either P.printPath P.printPath tgt)
+                <$> m
+            newCard = {cardId, model: CM.Cache newM}
+          in
+            pure $ true × replaceCardModel newCard d
+        CM.Open mbR →
+          let
+            newMbR = do
+              r ← mbR
+              rel ←
+                bisequence
+                  $ bimap (flip P.relativeTo wsDir) (flip P.relativeTo wsDir)
+                  $ R.getPath r
+              tgtDir ← either Just (const Nothing) tgt
+              let
+                newP =
+                  bimap P.canonicalize P.canonicalize
+                  $ bimap (tgtDir </> _) (tgtDir </> _) rel
+              pure $ R.setPath r newP
+
+            newCard = {cardId, model: CM.Open newMbR}
+          in
+            pure $ (newMbR ≠ mbR) × replaceCardModel newCard d
+        CM.Ace mode (Just m) →
+          let
+            wsStr ∷ String
+            wsStr = P.printPath wsDir
+
+            pat ∷ S.Pattern
+            pat = S.Pattern wsStr
+
+            tgtStr ∷ String
+            tgtStr = either P.printPath P.printPath tgt
+
+            replacement ∷ S.Replacement
+            replacement = S.Replacement tgtStr
+
+            srcLen ∷ Int
+            srcLen = S.length wsStr
+
+            tgtLen ∷ Int
+            tgtLen = S.length tgtStr
+
+            lenDiff ∷ Int
+            lenDiff = tgtLen - srcLen
+
+            sortRangeRecs ∷ Array RangeRec → Array RangeRec
+            sortRangeRecs =
+              Arr.sortBy \a b →
+                compare a.startRow b.startRow
+                ⊕ compare a.startColumn b.startColumn
+
+            -- We don't care about endings
+            eqRangeRec ∷ RangeRec → RangeRec → Boolean
+            eqRangeRec a b =
+              -- That's a bug workaround, modification of ace field for whatever reason
+              -- removes one space left padding :(
+              (a.startColumn ≡ b.startColumn
+               ∨ a.startColumn + one ≡ b.startColumn
+               ∨ a.startColumn - one ≡ b.startColumn)
+              ∧ a.startRow ≡ b.startRow
+
+            substrIndices
+              ∷ S.Pattern
+              → Array (Int × String)
+              → Array RangeRec
+            substrIndices needle =
+              sortRangeRecs ∘ foldl foldRanges [ ]
+              where
+              findStartColumns ∷ Array Int → String → Array Int
+              findStartColumns accum hay =
+                case S.indexOf needle hay of
+                  Nothing → accum
+                  Just i → findStartColumns (Arr.cons i accum) $ S.drop (i + srcLen) hay
+
+              foldRanges
+                ∷ Array RangeRec
+                → Int × String
+                → Array RangeRec
+              foldRanges accum (startRow × hay) =
+                let
+                  starts = findStartColumns [] hay
+                  fromKWlen = 6
+                  mkRange start =
+                    [ { startColumn: start - fromKWlen
+                      , endColumn: 0
+                      , startRow
+                      , endRow: startRow
+                      } ]
+                in
+                 foldMap mkRange starts ⊕ accum
+
+            initialRanges ∷ Array RangeRec
+            initialRanges = substrIndices pat $ enumerate $ S.split (S.Pattern "\n") m.text
+
+            -- inputs must be sorted
+            filterRanges
+              ∷ Array RangeRec
+              → Array RangeRec
+              → Array RangeRec
+              → Array RangeRec
+            filterRanges accum needles hays = fromMaybe accum do
+              needles' ← Arr.uncons needles
+              hays' ← Arr.uncons hays
+              pure
+                $ if eqRangeRec hays'.head needles'.head
+                -- Note that we use stuff from hays, because it has endColumn and endRow
+                  then
+                    filterRanges
+                      (Arr.snoc
+                         accum
+                         hays'.head{ endColumn = hays'.head.endColumn
+                                                 + lenDiff
+                                                 + hays'.head.startRow
+                                                 - one
+                                   , startColumn = hays'.head.startColumn
+                                                   - hays'.head.startRow
+                                                   - one
+                                   })
+                      needles'.tail
+                      hays
+                  else
+                    filterRanges
+                      (Arr.snoc accum hays'.head)
+                      needles
+                      hays'.tail
+
+            newText ∷ String
+            newText = S.replace pat replacement m.text
+
+            newRanges ∷ Array RangeRec
+            newRanges
+              | newText ≠ m.text  =
+                filterRanges [ ] initialRanges $ sortRangeRecs m.ranges
+              | otherwise = m.ranges
+
+            newCard = {cardId, model: CM.Ace mode (Just {text: newText, ranges: newRanges})}
+          in
+            pure $ (newText ≠ m.text) × replaceCardModel newCard d
+
+        _ → pure current
+    in
+      Arr.foldM foldFn (false × deck) deck.cards
 
 delete
   ∷ ∀ f m
