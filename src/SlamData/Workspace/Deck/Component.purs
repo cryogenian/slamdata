@@ -471,6 +471,7 @@ handleEval = case _ of
       let newDefs = makeDef <$> Array.zip coords cards
       queryNextAction $ H.action $ Next.UpdateInput res
       H.modify (updateDisplayCards newDefs res)
+      updateActiveState
   _ →
     pure unit
 
@@ -482,20 +483,35 @@ handleEval = case _ of
     { coord, cardType: Card.modelCardType c.value.model.model }
 
   updateDisplayCards defs res st =
-    case Array.uncons defs of
-      Just { head, tail } →
-        let
-          realCards = Array.mapMaybe censor st.displayCards
-          initCards = Array.takeWhile (not ∘ eq head.coord ∘ _.coord) realCards
-          newCards = Array.cons head tail
-          metaCard =
-            pure $ Left case res of
-              Port.CardError str → DCS.ErrorCard str
-              _ → DCS.NextActionCard res
-        in
-          st { displayCards = (Right <$> initCards <> newCards) <> metaCard }
-      Nothing →
-        st { displayCards = [ Left (DCS.NextActionCard Port.Initial) ] }
+    let
+      displayCards =
+        case Array.uncons defs of
+          Just { head, tail } →
+            let
+              realCards = Array.mapMaybe censor st.displayCards
+              initCards = Array.takeWhile (not ∘ eq head.coord ∘ _.coord) realCards
+              newCards = Array.cons head tail
+              metaCard =
+                pure $ Left case res of
+                  Port.CardError str → DCS.ErrorCard str
+                  _ → DCS.NextActionCard res
+            in
+              (Right <$> initCards <> newCards) <> metaCard
+          Nothing →
+            [ Left (DCS.NextActionCard Port.Initial) ]
+      lastIndex =
+        Array.length displayCards - 1
+      activeCardIndex =
+        case st.activeCardIndex, Array.last displayCards of
+          Nothing, Nothing → 0
+          Nothing, Just (Left (DCS.ErrorCard _)) → lastIndex
+          Nothing, Just _ → lastIndex - 1
+          Just ix, _ | ix > lastIndex → lastIndex
+          Just ix, _ → ix
+    in
+      st { displayCards = displayCards
+         , activeCardIndex = Just activeCardIndex
+         }
 
 getSharingInput ∷ DeckDSL SharingInput
 getSharingInput = do
