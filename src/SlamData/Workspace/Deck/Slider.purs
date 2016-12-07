@@ -216,6 +216,13 @@ cardSelected state card =
   fromMaybe true $
     DCS.eqDisplayCard card <$> DCS.activeCard state
 
+cardPending ∷ State → DCS.DisplayCard → Boolean
+cardPending state (Left _) = false
+cardPending state (Right { coord }) =
+  case state.pendingCardIndex, DCS.cardIndexFromCoord coord state of
+    Just ix, Just ix' | ix < ix' → true
+    _, _ → false
+
 cardProperties ∷ ∀ a b. State → DCS.DisplayCard → Array (IProp a b)
 cardProperties state card =
   [ ARIA.disabled ∘ show ∘ not $ cardSelected state card ]
@@ -241,7 +248,9 @@ renderCard opts deckComponent st card index =
     ]
     if opts.accessType == AT.ReadOnly
     then
-      [ HH.div (cardProperties st card) cardComponent ]
+      [ HH.div (cardProperties st card) cardComponent
+      , loadingPanel
+      ]
     else
       Gripper.renderGrippers
         (cardSelected st card)
@@ -250,6 +259,7 @@ renderCard opts deckComponent st card index =
         ⊕ [ HH.div
               (cardProperties st card)
               (cardComponent ⊕ (guard presentAccessNextActionCardGuide $> renderGuide))
+          , loadingPanel
           ]
   where
   cardComponent = pure case card of
@@ -274,6 +284,7 @@ renderCard opts deckComponent st card index =
     ]
       ⊕ (guard (not $ isClick st.sliderTranslateX) $> ClassNames.cardSliding)
       ⊕ (guard (cardSelected st card) $> ClassNames.cardActive)
+      ⊕ (guard (cardPending st card) $> ClassNames.pending)
 
   renderGuide =
     Guide.render
@@ -358,3 +369,13 @@ renderDef opts deckComponent st card =
       { component: Factory.cardComponent card.cardType cardOpts
       , initialState: H.parentState CardC.initialCardState
       }
+
+loadingPanel ∷ DeckHTML
+loadingPanel =
+  HH.div
+    [ HP.classes [ HH.className "sd-pending-overlay" ] ]
+    [ HH.div_
+        [ HH.i_ []
+        , HH.span_ [ HH.text "Please wait while this card is evaluated" ]
+        ]
+  ]

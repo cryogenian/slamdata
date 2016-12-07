@@ -509,8 +509,11 @@ loadDeck opts = do
 
 handleEval ∷ ED.EvalMessage → DeckDSL Unit
 handleEval = case _ of
-  ED.Pending →
-    H.modify (DCS.addMetaCard DCS.PendingCard)
+  ED.Pending coord → do
+    st ← H.get
+    H.modify
+      $ (DCS._pendingCardIndex .~ DCS.cardIndexFromCoord coord st)
+      ∘ (DCS.addMetaCard DCS.PendingCard)
   ED.Complete coords port → do
     mbCells ← H.liftH $ H.liftH $ P.getCards coords
     for_ mbCells (flip handleDisplayCards port)

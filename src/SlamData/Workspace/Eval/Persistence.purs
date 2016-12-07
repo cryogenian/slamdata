@@ -242,7 +242,7 @@ snapshotGraph coord = do
 queueSave ∷ ∀ f m. Persist f m (Int → Deck.Id → m Unit)
 queueSave ms deckId = do
   { eval } ← Wiring.expose
-  debounce ms deckId { avar: _ } eval.pendingSaves do
+  debounce ms deckId { avar: _ } eval.pendingSaves (pure unit) do
     saveDeck deckId
 
 queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → EvalGraph → m Unit)
@@ -255,8 +255,9 @@ queueEval ms source@(_ × coord) graph = do
       , avar: _
       }
   -- TODO: Notify pending immediately
-  debounce ms coord pending eval.pendingEvals do
-    Eval.evalGraph source graph
+  debounce ms coord pending eval.pendingEvals
+    do Eval.notifyDecks (Deck.Pending coord) graph
+    do Eval.evalGraph source graph
 
 queueEval' ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → m Unit)
 queueEval' ms source@(_ × coord) =
@@ -683,13 +684,16 @@ debounce
   → Cache.Cache k { avar ∷ AVar Unit | r }
   → m Unit
   → m Unit
-debounce ms key make cache run = do
+  → m Unit
+debounce ms key make cache init run = do
   avar ← laterVar ms $ void $ run *> Cache.remove key cache
   Cache.alter key (alterFn (make avar)) cache
   where
-    alterFn a b = fromAff do
-      traverse_ (flip killVar (Exn.error "debounce") ∘ _.avar) b
-        $> Just a
+    alterFn a b = do
+      case b of
+        Just { avar } → fromAff $ killVar avar (Exn.error "debounce")
+        Nothing → void $ fork init
+      pure (Just a)
 
 liftWithErr ∷ ∀ m a. Monad m ⇒ String → m (Maybe a) → ExceptT QE.QError m a
 liftWithErr err =

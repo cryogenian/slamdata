@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Eval
   ( evalGraph
+  , notifyDecks
   ) where
 
 import SlamData.Prelude
@@ -60,7 +61,6 @@ evalGraph source graph = do
   let
     input = fromMaybe Card.Initial (Cofree.head graph).card.value.input
   tick ← nextTick
-  notifyDecks Deck.Pending graph
   runEvalLoop source tick mempty input graph
 
 runEvalLoop

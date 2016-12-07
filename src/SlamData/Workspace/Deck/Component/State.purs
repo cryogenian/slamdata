@@ -29,6 +29,7 @@ module SlamData.Workspace.Deck.Component.State
   , _parent
   , _displayCards
   , _activeCardIndex
+  , _pendingCardIndex
   , _presentAccessNextActionCardGuideCanceler
   , _presentAccessNextActionCardGuide
   , _stateMode
@@ -132,6 +133,7 @@ type State =
   , stateMode ∷ StateMode
   , displayMode ∷ DisplayMode
   , displayCards ∷ Array DisplayCard
+  , pendingCardIndex ∷ Maybe Int
   , activeCardIndex ∷ Maybe Int
   , presentAccessNextActionCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
   , presentAccessNextActionCardGuide ∷ Boolean
@@ -159,6 +161,7 @@ initialDeck deckId =
   , stateMode: Loading
   , displayMode: Normal
   , displayCards: mempty
+  , pendingCardIndex: Nothing
   , activeCardIndex: Nothing
   , presentAccessNextActionCardGuideCanceler: Nothing
   , presentAccessNextActionCardGuide: false
@@ -198,6 +201,11 @@ _displayCards = lens _.displayCards _{displayCards = _}
 -- | action card.
 _activeCardIndex ∷ ∀ a r. Lens' {activeCardIndex ∷ a |r} a
 _activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
+
+-- | The index for the currently pending card. `Nothing` indicates no cards
+-- | are pending.
+_pendingCardIndex ∷ ∀ a r. Lens' {pendingCardIndex ∷ a |r} a
+_pendingCardIndex = lens _.pendingCardIndex _{pendingCardIndex = _}
 
 -- | An optional canceler for the delayed guiding of the user to add a card. Can
 -- | be used to reset the delay of this guiding.
@@ -357,6 +365,7 @@ updateDisplayCards defs port st =
   st
     { displayCards = displayCards
     , activeCardIndex = Just activeCardIndex
+    , pendingCardIndex = Nothing
     }
   where
   lastIndex =

@@ -38,7 +38,7 @@ import SlamData.Workspace.Deck.Model (Deck, deckIndex, emptyDeck, encode, decode
 import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 
 data EvalMessage
-  = Pending
+  = Pending (DeckId × CardId)
   | Complete (Array (DeckId × CardId)) Port
   | Force (List DeckId × DeckId × CardId)
   | AddCard CardType
