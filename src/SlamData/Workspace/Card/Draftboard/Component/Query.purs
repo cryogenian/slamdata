@@ -38,7 +38,6 @@ data Query a
   | Splitting DragEvent a
   | ResizeStart (Edge Number) (HET.Event HET.MouseEvent) a
   | Resizing DragEvent a
-  | LoadDeck DeckId a
   | AddDeck Cursor a
   | DeleteCell Cursor a
   | Grabbing (DeckId × Cursor) DragEvent a

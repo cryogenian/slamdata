@@ -290,9 +290,6 @@ evalBoard opts = case _ of
               ∘ _ { moveLocation = Nothing }
         CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
-  LoadDeck deckId next → do
-    -- FIXME
-    pure next
   AddDeck cursor next → do
     addDeck opts cursor
     CC.raiseUpdatedP' CC.EvalModelUpdate
