@@ -56,7 +56,7 @@ unfoldTree cards decks deckId =
         { deckId
         , cards: List.catMaybes (unfoldCard <$> List.fromFoldable (Deck.cardCoords deckId deck))
         }
-  
+
     unfoldCard ∷ Card.Coord → Maybe TraverseCard
     unfoldCard coord =
       Map.lookup coord cards <#> \{ value: { model } } →
