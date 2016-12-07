@@ -263,17 +263,25 @@ queueEval' ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → m Unit)
 queueEval' ms source@(_ × coord) =
   traverse_ (queueEval ms source) =<< snapshotGraph coord
 
-freshWorkspace ∷ ∀ f m. Persist f m (m (Deck.Id × Deck.Cell))
-freshWorkspace = do
+freshWorkspace ∷ ∀ f m. Persist f m (Array CM.AnyCardModel → m (Deck.Id × Deck.Cell))
+freshWorkspace anyCards = do
   { eval } ← Wiring.expose
-  rootId ← fromAff DID.make
-  bus ← fromAff Bus.make
-  value ← defer (pure (Right Deck.emptyDeck))
+  cards ← traverse freshCard anyCards
   let
-    cell = { bus, value, model: Deck.emptyDeck }
+    deck = Deck.emptyDeck { cards = cards }
+  bus ← fromAff Bus.make
+  value ← defer (pure (Right deck))
+  let
+    cell = { bus, value, model: deck }
+  rootId ← fromAff DID.make
   Cache.put rootId cell eval.decks
   forkDeckProcess rootId bus
+  populateCards rootId deck
   pure (rootId × cell)
+  where
+    freshCard model = do
+      cardId ← fromAff CID.make
+      pure { cardId, model }
 
 freshDeck ∷ ∀ f m. Persist f m (Maybe Card.Coord → m (Either QE.QError Deck.Id))
 freshDeck parent = runExceptT do

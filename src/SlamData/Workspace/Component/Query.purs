@@ -25,11 +25,14 @@ import SlamData.Wiring (StepByStepGuide)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
+import Utils.Path as UP
+
 data Query a
   = Init a
   | DismissAll (HET.Event HET.MouseEvent) a
   | New a
   | Load (Maybe DeckId) a
+  | ExploreFile UP.FilePath a
   | PresentStepByStepGuide StepByStepGuide a
   | CardGuideStepNext a
   | CardGuideDismiss a

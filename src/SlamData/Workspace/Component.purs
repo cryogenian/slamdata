@@ -44,6 +44,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Effects (SlamDataEffects)
+import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Component as GlobalMenu
@@ -57,6 +58,8 @@ import SlamData.Quasar.Error as QE
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
+import SlamData.Workspace.Card.Model as CM
+import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Class (navigate, Routes(..))
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, toWorkspace)
@@ -188,15 +191,15 @@ eval = case _ of
   New next → do
     st ← H.get
     when (isNothing st.deckId) do
-      { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
-      deckId × cell ← H.liftH $ H.liftH P.freshWorkspace
-      H.modify _
-        { stateMode = Ready
-        , deckId = Just deckId
-        }
-      _ ← H.fromAff (Bus.read cell.bus)
-      setRoot deckId
-      navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) varMaps
+      runFreshWorkspace mempty
+    pure next
+  ExploreFile res next → do
+    st ← H.get
+    when (isNothing st.deckId) do
+      runFreshWorkspace
+        [ CM.Open (R.File res)
+        , CM.Table JT.emptyModel
+        ]
     pure next
   Load deckId next → do
     case deckId of
@@ -229,6 +232,18 @@ setRoot ∷ DeckId → WorkspaceDSL (Either QE.QError Unit)
 setRoot deckId = do
   { path } ← H.liftH $ H.liftH Wiring.expose
   Model.setRoot (path </> Pathy.file "index") deckId
+
+runFreshWorkspace ∷ Array CM.AnyCardModel → WorkspaceDSL Unit
+runFreshWorkspace cards = do
+  { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
+  deckId × cell ← H.liftH $ H.liftH $ P.freshWorkspace cards
+  H.modify _
+    { stateMode = Ready
+    , deckId = Just deckId
+    }
+  _ ← H.fromAff (Bus.read cell.bus)
+  setRoot deckId
+  navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) varMaps
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
 peek = (const (pure unit) ⨁ peekDeck) ⨁ const (pure unit) ⨁ peekNotification

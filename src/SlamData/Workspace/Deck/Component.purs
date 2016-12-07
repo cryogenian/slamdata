@@ -136,9 +136,6 @@ eval opts = case _ of
     H.modify _ { finalized = true }
     H.gets _.breakers >>= traverse_ (H.fromAff ∘ EventLoop.break')
     pure next
-  ExploreFile res next → do
-    -- FIXME
-    pure next
   Publish next → do
     { path } ← H.liftH $ H.liftH Wiring.expose
     deckPath ← deckPath' path <$> H.gets _.id

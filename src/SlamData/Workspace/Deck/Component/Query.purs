@@ -36,14 +36,11 @@ import SlamData.Wiring (DeckMessage)
 
 import Quasar.Advanced.Types (ProviderR)
 
-import Utils.Path as UP
-
 data Query a
   = Init a
   | PresentAccessNextActionCardGuide a
   | HideAccessNextActionCardGuide a
   | Finish a
-  | ExploreFile UP.FilePath a
   | Publish a
   | FlipDeck a
   | GrabDeck (Event MouseEvent) a

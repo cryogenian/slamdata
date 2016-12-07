@@ -123,7 +123,5 @@ routeSignal = do
         driver $ Workspace.toWorkspace $ Workspace.Load deckId
       New →
         driver $ Workspace.toWorkspace $ Workspace.New
-      -- FIXME
-      Exploring _ → do
-        driver $ Workspace.toWorkspace $ Workspace.New
-        -- driver $ Workspace.toDeck $ Deck.ExploreFile fp
+      Exploring fp → do
+        driver $ Workspace.toWorkspace $ Workspace.ExploreFile fp
