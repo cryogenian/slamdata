@@ -168,7 +168,6 @@ eval opts = case _ of
       for_ (DCS.cardCoordFromIndex oldIndex st) \coord →
         void $ queryCardEval coord $ H.action CQ.DeactivateCard
     Slider.stopSlidingAndSnap mouseEvent
-    updateIndicator
     updateActiveState
     when (DCS.activeCard st # is (_Just ∘ _Left ∘ DCS._NextActionCard)) do
       dismissAccessNextActionCardGuide
@@ -259,7 +258,6 @@ peekBackSide opts (Back.DoAction action _) = do
       active ← H.gets DCS.activeCard
       for_ (join $ censor <$> active) \{ coord } → do
         removeCard coord
-        -- FIXME
         H.modify
           $ (DCS._displayMode .~ DCS.Normal)
           ∘ (DCS._presentAccessNextActionCardGuide .~ false)
@@ -325,19 +323,13 @@ queryNextAction ∷ ∀ a. Next.Query a → DeckDSL (Maybe a)
 queryNextAction =
   H.query' cpNext unit
 
-updateActiveCardAndIndicator ∷ DeckDSL Unit
-updateActiveCardAndIndicator = do
+updateActiveCard ∷ DeckDSL Unit
+updateActiveCard = do
   st ← H.get
   case st.activeCardIndex of
     Nothing → H.modify $ DCS._activeCardIndex .~ Just (DCS.defaultActiveIndex st)
     Just _ → pure unit
-  updateIndicator
   updateActiveState
-
-updateIndicator ∷ DeckDSL Unit
-updateIndicator =
-  -- FIXME
-  pure unit
 
 updateActiveState ∷ DeckDSL Unit
 updateActiveState = do
@@ -355,8 +347,6 @@ updateBackSide { cursor } = do
     ty = join (censor <$> DCS.activeCard st)
     tys = Array.mapMaybe censor st.displayCards
   void $ H.query' cpBackSide unit $ H.action $ Back.UpdateCard ty tys
-  -- FIXME
-  pure unit
 
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard = broadcast ∘ ED.AddCard
