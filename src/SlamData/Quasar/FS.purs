@@ -39,6 +39,8 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S
 
+--import Math as Math
+
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Error (QError(..))
 import Quasar.FS as QFS
@@ -58,7 +60,7 @@ import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 
 import Utils.Array (enumerate)
-import Utils.Ace (RangeRec, eqRangeRec)
+import Utils.Ace (RangeRec)
 
 children
   ∷ ∀ m
@@ -256,17 +258,36 @@ move src tgt = do
             pat ∷ S.Pattern
             pat = S.Pattern wsStr
 
-            replacement ∷ S.Replacement
-            replacement = S.Replacement $ either P.printPath P.printPath tgt
+            tgtStr ∷ String
+            tgtStr = either P.printPath P.printPath tgt
 
-            len ∷ Int
-            len = S.length wsStr
+            replacement ∷ S.Replacement
+            replacement = S.Replacement tgtStr
+
+            srcLen ∷ Int
+            srcLen = S.length wsStr
+
+            tgtLen ∷ Int
+            tgtLen = S.length tgtStr
+
+            lenDiff ∷ Int
+            lenDiff = tgtLen - srcLen
 
             sortRangeRecs ∷ Array RangeRec → Array RangeRec
             sortRangeRecs =
               Arr.sortBy \a b →
                 compare a.startRow b.startRow
                 ⊕ compare a.startColumn b.startColumn
+
+            -- We don't care about endings
+            eqRangeRec ∷ RangeRec → RangeRec → Boolean
+            eqRangeRec a b =
+              -- That's a bug workaround, modification of ace field for whatever reason
+              -- removes one space left padding :(
+              (a.startColumn ≡ b.startColumn
+               ∨ a.startColumn + one ≡ b.startColumn
+               ∨ a.startColumn - one ≡ b.startColumn)
+              ∧ a.startRow ≡ b.startRow
 
             substrIndices
               ∷ S.Pattern
@@ -275,41 +296,71 @@ move src tgt = do
             substrIndices needle =
               sortRangeRecs ∘ foldl foldRanges [ ]
               where
+              findStartColumns ∷ Array Int → String → Array Int
+              findStartColumns accum hay =
+                case S.indexOf needle hay of
+                  Nothing → accum
+                  Just i → findStartColumns (Arr.cons i accum) $ S.drop (i + srcLen) hay
+
               foldRanges
                 ∷ Array RangeRec
                 → Int × String
                 → Array RangeRec
-              foldRanges accum (startRow × hay) = case S.indexOf needle hay of
-                Nothing → accum
-                Just startColumn →
-                  let
-                    endRow = startRow
-                    endColumn = startColumn + len
-                  in
-                    Arr.cons { startRow, startColumn, endRow, endColumn } accum
+              foldRanges accum (startRow × hay) =
+                let
+                  starts = findStartColumns [] hay
+                  fromKWlen = 6
+                  mkRange start =
+                    [ { startColumn: start - fromKWlen
+                      , endColumn: 0
+                      , startRow
+                      , endRow: startRow
+                      } ]
+                in
+                 foldMap mkRange starts ⊕ accum
 
-            rangeStarts ∷ Array RangeRec
-            rangeStarts = substrIndices pat $ enumerate $ S.split (S.Pattern "\n") wsStr
+            initialRanges ∷ Array RangeRec
+            initialRanges = substrIndices pat $ enumerate $ S.split (S.Pattern "\n") m.text
 
             -- inputs must be sorted
-            updateRanges
+            filterRanges
               ∷ Array RangeRec
               → Array RangeRec
               → Array RangeRec
               → Array RangeRec
-            updateRanges accum needles hays = fromMaybe accum do
+            filterRanges accum needles hays = fromMaybe accum do
               needles' ← Arr.uncons needles
               hays' ← Arr.uncons hays
-              pure $ if eqRangeRec hays'.head needles'.head
-                then updateRanges (Arr.snoc accum hays'.head) needles hays'.tail
-                else updateRanges accum needles'.tail hays
+              pure
+                $ if eqRangeRec hays'.head needles'.head
+                -- Note that we use stuff from hays, because it has endColumn and endRow
+                  then
+                    filterRanges
+                      (Arr.snoc
+                         accum
+                         hays'.head{ endColumn = hays'.head.endColumn
+                                                 + lenDiff
+                                                 + hays'.head.startRow
+                                                 - one
+                                   , startColumn = hays'.head.startColumn
+                                                   - hays'.head.startRow
+                                                   - one
+                                   })
+                      needles'.tail
+                      hays
+                  else
+                    filterRanges
+                      (Arr.snoc accum hays'.head)
+                      needles
+                      hays'.tail
 
             newText ∷ String
             newText = S.replace pat replacement m.text
 
             newRanges ∷ Array RangeRec
             newRanges
-              | newText ≠ m.text  = updateRanges [ ] rangeStarts $ sortRangeRecs m.ranges
+              | newText ≠ m.text  =
+                filterRanges [ ] initialRanges $ sortRangeRecs m.ranges
               | otherwise = m.ranges
 
             newCard = {cardId, model: CM.Ace mode (Just {text: newText, ranges: newRanges})}
