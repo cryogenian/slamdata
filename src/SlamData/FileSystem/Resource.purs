@@ -26,6 +26,7 @@ module SlamData.FileSystem.Resource
   , _root
   , _tempFile
   , getPath
+  , setPath
   , mountPath
   , hiddenTopLevel
   , isDirectory

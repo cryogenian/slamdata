@@ -56,6 +56,7 @@ import SlamData.Quasar.Data as QD
 import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Card.Model as CM
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 
@@ -158,8 +159,8 @@ move src tgt = do
 
   runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
 
-  case src of
-    R.Workspace wsDir → void $ prepareWorkspaceForMoving wsDir
+  runExceptT case src of
+    R.Workspace wsDir → replacePathsInDecks wsDir
     _ → pure unit
 
   result ←
@@ -174,86 +175,95 @@ move src tgt = do
       Left err → Left err
 
   where
-  prepareWorkspaceForMoving ∷ DirPath → m (QError ⊹ Unit)
-  prepareWorkspaceForMoving wsDir = do
-    eitherDid ← getWorkspaceRoot wsDir
-    case eitherDid of
-      Left e → pure $ Left e
-      Right Nothing → pure $ Right unit
-      Right (Just did) → do
-        deck ← getDeck wsDir did
-        case deck of
-          Left e → pure $ Left e
-          Right deck' → do
-            newDeck ← oneDeck wsDir deck'
-            case newDeck of
-              Left e → pure $ Left e
-              Right (true × d) → putDeck wsDir did d
-              _ → pure $ Right unit
+  exceptTHead ∷ ∀ a. String → Array a → ExceptT QError m a
+  exceptTHead msg arr = case Arr.head arr of
+    Nothing → throwError $ Error $ error msg
+    Just a → pure a
 
-  getWorkspaceRoot ∷ DirPath → m (QError ⊹ Maybe DID.DeckId)
+  replacePathsInDecks ∷ DirPath → ExceptT QError m Unit
+  replacePathsInDecks wsDir = do
+    mbDid ← getWorkspaceRoot wsDir
+    for_ mbDid \did → do
+      deck ← getDeck wsDir did
+      (save × newDeck) ← oneDeck wsDir deck
+      when save $ putDeck wsDir did newDeck
+
+  getWorkspaceRoot ∷ DirPath → ExceptT QError m (Maybe DID.DeckId)
   getWorkspaceRoot wsDir = do
     wsIndexArr ←
-      liftQuasar $ QF.readFile QDJ.Readable (wsDir </> P.file "index") Nothing
-    pure case wsIndexArr of
-      Left e → Left e
-      Right wsIArr → case Arr.head wsIArr of
-        Nothing → Left $ Error $ error "incorrect workspace model"
-        Just wmJS → case WM.decode wmJS of
-          Left e → Left $ Error $ error e
-          Right ok → Right ok.root
+      ExceptT $ liftQuasar $ QF.readFile QDJ.Readable (wsDir </> P.file "index") Nothing
+    wmJS ← exceptTHead "incorrect workspace model" wsIndexArr
+    deck ← ExceptT $ pure $ lmap (Error ∘ error) $ WM.decode wmJS
+    pure deck.root
 
-  getDeck ∷ DirPath → DID.DeckId → m (QError ⊹ DM.Deck)
+  getDeck ∷ DirPath → DID.DeckId → ExceptT QError m DM.Deck
   getDeck wsDir did = do
     deckJArr ←
-      liftQuasar
+      ExceptT
+        $ liftQuasar
         $ QF.readFile
           QDJ.Readable
           (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
           Nothing
-    pure case deckJArr of
-      Left e → Left e
-      Right arr → case Arr.head arr of
-        Nothing → Left $ Error $ error "incorrect deck model"
-        Just deckJS →
-          case DM.decode deckJS of
-            Left e → Left $ Error $ error e
-            Right ok → Right ok
+    deckJS ← exceptTHead "incorrect deck model" deckJArr
+    ExceptT $ pure $ lmap (Error ∘ error) $ DM.decode deckJS
 
-  putDeck ∷ DirPath → DID.DeckId → DM.Deck → m (QError ⊹ Unit)
+  putDeck ∷ DirPath → DID.DeckId → DM.Deck → ExceptT QError m Unit
   putDeck wsDir did deck = do
-    QD.save
-      (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
-      (J.encodeJson $ Arr.singleton $ DM.encode deck)
+    ExceptT
+      $ QD.save
+        (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
+        (J.encodeJson $ Arr.singleton $ DM.encode deck)
 
-  oneDeck ∷ DirPath → DM.Deck → m (QError ⊹ (Boolean × DM.Deck))
+  oneDeck ∷ DirPath → DM.Deck → ExceptT QError m (Boolean × DM.Deck)
   oneDeck wsDir deck =
     let
-      foldFn current@(shouldSave × d) = case _ of
-        {model: CM.Draftboard m} → do
-          for_ (List.catMaybes $ Pane.toList m.layout) \did → do
+      replaceCardModel ∷ CM.Model → DM.Deck → DM.Deck
+      replaceCardModel card@{cardId} d =
+        d { cards =
+               Arr.sortBy (\{cardId: a} {cardId: b} → compare a b)
+               $ Arr.cons card
+               $ Arr.filter (not ∘ eq cardId ∘ _.cardId) d.cards
+          }
+
+--      bi ∷ ∀ a b c d f. Bifunctor f ⇒ (∀ a' → c') → f a b → f
+
+      foldFn ∷ Boolean × DM.Deck → CM.Model → ExceptT QError m (Boolean × DM.Deck)
+      foldFn current@(shouldSave × d) {cardId, model} = case model of
+        CM.Draftboard m → do
+          flip parTraverse_ (List.catMaybes $ Pane.toList m.layout) \did → do
             d' ← getDeck wsDir  did
-            for_ d' \deck' → do
-              newDeck ← oneDeck wsDir deck'
-              for_ newDeck \(save × d') →
-                when save $ void $ putDeck wsDir did d'
+            (save × newDeck) ← oneDeck wsDir d'
+            when save $ putDeck wsDir did d'
           pure current
-        {cardId, model: CM.Cache m} →
-          let newM =
-                S.replace
-                  (S.Pattern $ P.printPath wsDir)
-                  (S.Replacement $ either P.printPath P.printPath tgt)
-                  <$> m
+        CM.Cache m →
+          let
+            newM =
+              S.replace
+                (S.Pattern $ P.printPath wsDir)
+                (S.Replacement $ either P.printPath P.printPath tgt)
+                <$> m
+            newCard = {cardId, model: CM.Cache newM}
           in
-           pure $ true × d{cards =
-                             Arr.sortBy (\{cardId: a} {cardId: b} → compare a b)
-                             $ Arr.cons {cardId, model: CM.Cache newM}
-                             $ Arr.filter (_.cardId ⋙ eq cardId ⋙ not) d.cards
-                          }
-
+            pure $ true × replaceCardModel newCard deck
+        CM.Open mbR →
+          let
+            newMbR = do
+              r ← mbR
+              rel ←
+                bisequence
+                  $ bimap (flip P.relativeTo wsDir) (flip P.relativeTo wsDir) r
+              tgtDir ← either (const Nothing) Just tgt
+              let
+                newP =
+                  bimap P.canonicalize P.canonicalize
+                  $ bimap (tgtDir </> _) (tgtDir </> _) rel
+              pure $ R.setPath r newP
+            newCard = {cardId, model: CM.Open newMbR}
+          in
+            pure $ (newMbR ≠ mbR) × replaceCardModel newCard deck
         _ → pure current
-    in Right <$> Arr.foldM foldFn (false × deck) deck.cards
-
+    in Arr.foldM foldFn (false × deck) deck.cards
 
 delete
   ∷ ∀ f m
