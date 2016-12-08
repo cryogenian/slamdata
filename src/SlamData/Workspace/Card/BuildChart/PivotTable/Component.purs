@@ -20,11 +20,13 @@ module SlamData.Workspace.Card.BuildChart.PivotTable.Component
 
 import SlamData.Prelude
 
+import Control.Comonad.Cofree (Cofree)
+
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Int (toNumber)
 import Data.Lens ((^?))
-import Data.List ((:))
+import Data.List (List, (:))
 import Data.List as List
 
 import CSS as C
@@ -98,45 +100,27 @@ renderHighLOD st =
   where
   renderSelect = case _ of
     Col →
-      let
-        values =
-          groupColumns
-            (Count : List.fromFoldable
-              (map (Column ∘ { value: _, valueAggregation: Nothing })
-                (Array.sort
-                  (st.axes.category
-                   <> st.axes.time
-                   <> st.axes.value
-                   <> st.axes.date
-                   <> st.axes.datetime))))
-      in
-        HH.slot' PCS.cpCol unit \_ →
-          { component: DPC.picker
-              { title: "Choose column"
-              , label: DPC.labelNode showColumn
-              , render: DPC.renderNode showColumn
-              , values
-              , isSelectable: DPC.isLeafPath
-              }
-          , initialState: H.parentState DPC.initialState
-          }
+      HH.slot' PCS.cpCol unit \_ →
+        { component: DPC.picker
+            { title: "Choose column"
+            , label: DPC.labelNode showColumn
+            , render: DPC.renderNode showColumn
+            , values: selectColumnValues st
+            , isSelectable: DPC.isLeafPath
+            }
+        , initialState: H.parentState DPC.initialState
+        }
     Dim →
-      let
-        values =
-          groupJCursors
-            (List.fromFoldable
-              (Array.sort (st.axes.category <> st.axes.time <> st.axes.value)))
-      in
-        HH.slot' PCS.cpDim unit \_ →
-          { component: DPC.picker
-              { title: "Choose dimension"
-              , label: DPC.labelNode showJCursor
-              , render: DPC.renderNode showJCursor
-              , values
-              , isSelectable: DPC.isLeafPath
-              }
-          , initialState: H.parentState DPC.initialState
-          }
+      HH.slot' PCS.cpDim unit \_ →
+        { component: DPC.picker
+            { title: "Choose dimension"
+            , label: DPC.labelNode showJCursor
+            , render: DPC.renderNode showJCursor
+            , values: selectDimensionValues st
+            , isSelectable: DPC.isLeafPath
+            }
+        , initialState: H.parentState DPC.initialState
+        }
 
   renderedDimensions =
     let
@@ -480,3 +464,21 @@ peek =
         , selecting = Nothing
         }
       CC.raiseUpdatedP' CC.EvalModelUpdate
+
+selectColumnValues ∷ State → Cofree List (Either Column Column)
+selectColumnValues st =
+  groupColumns
+    (Count : List.fromFoldable
+      (map (Column ∘ { value: _, valueAggregation: Nothing })
+        (Array.sort
+          (st.axes.category
+           <> st.axes.time
+           <> st.axes.value
+           <> st.axes.date
+           <> st.axes.datetime))))
+
+selectDimensionValues ∷ State → Cofree List (Either J.JCursor J.JCursor)
+selectDimensionValues st =
+  groupJCursors
+    (List.fromFoldable
+      (Array.sort (st.axes.category <> st.axes.time <> st.axes.value)))

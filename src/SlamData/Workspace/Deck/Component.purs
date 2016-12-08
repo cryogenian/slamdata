@@ -275,8 +275,10 @@ peekDialog _ (Dialog.Dismiss _) =
   H.modify (DCS._displayMode .~ DCS.Backside)
 peekDialog _ (Dialog.FlipToFront _) =
   H.modify (DCS._displayMode .~ DCS.Normal)
-peekDialog opts (Dialog.SetDeckName name _) =
-  H.modify ((DCS._displayMode .~ DCS.Normal) ∘ (DCS._name .~ name))
+peekDialog opts (Dialog.SetDeckName name _) = do
+  deckId ← H.gets _.id
+  H.modify (DCS._displayMode .~ DCS.Normal)
+  void $ H.liftH $ H.liftH $ P.renameDeck deckId name
 peekDialog _ (Dialog.Confirm d b _) = do
   H.modify (DCS._displayMode .~ DCS.Backside)
   case d of
@@ -511,6 +513,10 @@ handleEval = case _ of
   ED.Complete coords port → do
     mbCells ← H.liftH $ H.liftH $ P.getCards coords
     for_ mbCells (flip handleDisplayCards port)
+  ED.NameChange name → do
+    H.modify _ { name = name }
+  ED.ParentChange parent → do
+    H.modify _ { parent = parent }
   _ →
     pure unit
 

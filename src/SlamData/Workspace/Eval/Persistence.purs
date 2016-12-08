@@ -509,6 +509,14 @@ groupDeck orn bias deckId newParentCoord = runExceptT do
     _, _ →
       ExceptT $ wrapAndGroupDeck orn bias deckId (fst newParentCoord)
 
+renameDeck ∷ ∀ f m. Persist f m (Deck.Id → String → m (Either QE.QError Unit))
+renameDeck deckId name = runExceptT do
+  cell ← lift $ getDeck' deckId
+  deck ← ExceptT $ wait cell.value
+  ExceptT $ putDeck deckId (deck { name = name })
+  fromAff $ Bus.write (Deck.NameChange name) cell.bus
+  pure unit
+
 addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m (Either QE.QError Card.Coord))
 addCard deckId cty = runExceptT do
   { eval } ← Wiring.expose

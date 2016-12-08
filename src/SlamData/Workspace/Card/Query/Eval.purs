@@ -32,6 +32,7 @@ import Quasar.Types (SQL)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
+import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
@@ -62,4 +63,7 @@ evalQuery varMap sql = do
       QQ.compile backendPath sql varMap'
   validateResources inputs
   CEM.addSources inputs
+  CEM.liftQ do
+    QQ.viewQuery backendPath resource sql varMap'
+    QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   pure { resource, tag: pure sql, varMap: Just varMap }

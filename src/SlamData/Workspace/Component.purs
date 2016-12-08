@@ -216,12 +216,12 @@ eval = case _ of
               { stateMode = Ready
               , deckId = Just deckId'
               }
-            void $ queryDeck $ H.action Deck.Focus
       Just _ → do
         H.modify _
           { stateMode = Ready
           , deckId = deckId
           }
+    void $ queryDeck $ H.action Deck.Focus
     pure next
 
 rootDeck ∷ WorkspaceDSL (Either QE.QError DeckId)
@@ -236,12 +236,13 @@ setRoot deckId = do
 
 runFreshWorkspace ∷ Array CM.AnyCardModel → WorkspaceDSL Unit
 runFreshWorkspace cards = do
-  { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
+  { path, accessType, varMaps, bus } ← H.liftH $ H.liftH Wiring.expose
   deckId × cell ← H.liftH $ H.liftH $ P.freshWorkspace cards
   H.modify _
     { stateMode = Ready
     , deckId = Just deckId
     }
+  void $ queryDeck $ H.action Deck.Focus
   let
     wait =
       H.fromAff (Bus.read cell.bus) >>= case _ of
