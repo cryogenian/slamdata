@@ -335,10 +335,15 @@ peekNotification =
     _ → pure unit
 
 presentMountGuide ∷ ∀ a. Array a → DirPath → DSL Unit
-presentMountGuide xs path =
+presentMountGuide xs path = do
+  isSearching ←
+    map (fromMaybe false) $ H.query' Install.cpSearch unit (H.request Search.IsSearching)
+  isLoading ←
+    map (fromMaybe true)  $ H.query' Install.cpSearch unit (H.request Search.IsLoading)
+
   H.modify
     ∘ (State._presentMountGuide .~ _)
-    ∘ ((Array.length xs == 0 && path == rootDir) && _)
+    ∘ ((Array.null xs ∧ path ≡ rootDir ∧ not (isSearching ∧ isLoading)) ∧ _)
     ∘ not
     ∘ either (const false) id
     =<< dismissedBefore
