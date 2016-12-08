@@ -141,7 +141,6 @@ makeCardComponentPart def render =
   eval ∷ CQ.CardQuery ~> CardDSL
   eval = case _ of
     CQ.Initialize next → do
-      eval (CQ.UpdateDimensions unit)
       cell ← H.liftH $ H.liftH $ P.getCard def.options.coord
       for_ cell \{ bus, value } → do
         breaker ← subscribeToBus' (H.action ∘ CQ.HandleEvalMessage) bus
@@ -153,6 +152,7 @@ makeCardComponentPart def render =
         -- ordering with regard to child initializers. This should be fixed
         -- in Halogen Next.
         H.fromAff $ later (pure unit)
+        eval (CQ.UpdateDimensions unit)
         queryInnerCard $ EQ.Load value.model.model
         for_ value.input (queryInnerCard ∘ EQ.ReceiveInput)
         for_ value.state (queryInnerCard ∘ EQ.ReceiveState)

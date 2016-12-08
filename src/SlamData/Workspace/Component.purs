@@ -26,7 +26,6 @@ import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (putVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Exception as Exn
-import Control.UI.Browser (setHref)
 
 import Data.Lens ((.~))
 import Data.List as List
@@ -43,9 +42,7 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
-import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Guide as Guide
@@ -161,7 +158,7 @@ eval = case _ of
       $ throttledEventSource_ (Milliseconds 100.0) onResize
       $ pure (H.action Resize)
     -- The deck component isn't initialised before this later has completed
-    H.fromAff $ Aff.later (pure unit :: Aff.Aff SlamDataEffects Unit)
+    H.fromAff $ Aff.later (pure unit)
     when (isNothing cardGuideStep) do
       void $ queryDeck $ H.action Deck.DismissedCardGuide
     pure next
@@ -254,7 +251,7 @@ runFreshWorkspace cards = do
   navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) varMaps
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
-peek = (const (pure unit) ⨁ peekDeck) ⨁ const (pure unit) ⨁ peekNotification
+peek = (const (pure unit)) ⨁ const (pure unit) ⨁ peekNotification
   where
   peekNotification ∷ NC.Query a → WorkspaceDSL Unit
   peekNotification = case _ of
@@ -264,45 +261,6 @@ peek = (const (pure unit) ⨁ peekDeck) ⨁ const (pure unit) ⨁ peekNotificati
     NC.Action (N.Fulfill var) _ →
       void $ H.fromAff $ Aff.attempt $ putVar var unit
     _ → pure unit
-
-  peekDeck ∷ Deck.Query a → WorkspaceDSL Unit
-  peekDeck = case _ of
-    Deck.DoAction Deck.Unwrap _ →
-      persist P.unwrapDeck
-    Deck.DoAction Deck.Wrap _ →
-      persist P.wrapDeck
-    Deck.DoAction Deck.Mirror _ →
-      persist P.wrapAndMirrorDeck
-    Deck.DoAction Deck.DeleteDeck _ →
-      H.gets _.deckId >>= traverse_ \deckId → do
-        res ← H.liftH $ H.liftH $ P.deleteDeck deckId
-        case res of
-          Left err →
-            -- FIXME: Error reporting
-            pure unit
-          Right parent →
-            maybe navigateToIndex navigateToDeck parent
-    _ →
-      pure unit
-
-  persist fn = do
-    H.gets _.deckId >>= traverse_ \deckId →
-      navigateToDeckOrError =<< H.liftH (H.liftH (fn deckId))
-
-  navigateToDeckOrError = case _ of
-    Left err → do
-      -- FIXME: Error reporting
-      pure unit
-    Right newId → do
-      navigateToDeck newId
-
-  navigateToDeck newId = do
-    { path, accessType, varMaps } ← H.liftH $ H.liftH Wiring.expose
-    navigate $ WorkspaceRoute path (Just newId) (WA.Load accessType) varMaps
-
-  navigateToIndex = do
-    { path } ← H.liftH $ H.liftH Wiring.expose
-    void $ H.fromEff $ setHref $ parentURL $ Left path
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck q = do

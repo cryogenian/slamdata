@@ -29,7 +29,6 @@ import Data.Rational (Rational, (%))
 import Halogen as H
 import Halogen.Component.Utils.Drag as Drag
 
-import SlamData.Analytics as SA
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
@@ -305,22 +304,6 @@ peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
       case q' of
         DCQ.GrabDeck ev _ → do
           startDragging ev (Grabbing (deckId × cursor))
-        DCQ.DoAction DCQ.DeleteDeck _ → do
-          SA.track (SA.Delete deckId)
-          res ← H.liftH $ H.liftH $ P.deleteDeck deckId
-          CC.raiseUpdatedP' CC.EvalModelUpdate
-        DCQ.DoAction DCQ.Wrap _ → do
-          SA.track (SA.Wrap deckId)
-          res ← H.liftH $ H.liftH $ P.wrapDeck deckId
-          pure unit
-        DCQ.DoAction DCQ.Unwrap _ → do
-          SA.track (SA.Collapse deckId)
-          res ← H.liftH $ H.liftH $ P.collapseDeck deckId opts.coord
-          pure unit
-        DCQ.DoAction DCQ.Mirror _ → do
-          SA.track (SA.Mirror deckId)
-          res ← H.liftH $ H.liftH $ P.mirrorDeck deckId opts.coord
-          pure unit
         _ → pure unit
 
   startDragging ev tag =
@@ -385,6 +368,7 @@ addDeck { coord } cursor = do
       H.modify
         $ updateLayout (fromMaybe st.layout layout)
         ∘ _ { inserting = false }
+      void $ queryDeck deckId (H.action DCQ.Focus)
 
 groupDeck
   ∷ Orn.Orientation

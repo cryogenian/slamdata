@@ -19,6 +19,7 @@ module SlamData.Workspace.Eval.Deck
   , Id
   , Cell
   , Model
+  , Coord
   , module SlamData.Workspace.Deck.DeckId
   , module SlamData.Workspace.Deck.Model
   ) where
@@ -35,11 +36,13 @@ import SlamData.Workspace.Deck.Model (Deck, deckIndex, emptyDeck, encode, decode
 import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 
 data EvalMessage
-  = Pending (DeckId × CardId)
-  | Complete (Array (DeckId × CardId)) Port
-  | CardChange (DeckId × CardId)
-  | ParentChange (Maybe (DeckId × CardId))
+  = Pending Coord
+  | Complete (Array Coord) Port
+  | CardChange Coord
+  | ParentChange (Maybe Coord)
   | NameChange String
+
+type Coord = DeckId × CardId
 
 type Id = DeckId
 

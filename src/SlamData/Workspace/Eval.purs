@@ -89,8 +89,7 @@ runEvalLoop source tick trail input graph = do
       }
   fromAff $ Bus.write (Card.Pending source input) node.card.bus
   result ← Card.runCard env node.card.value.state input node.transition
-  tick' ← currentTick
-  when (tick ≡ tick') case result.output of
+  case result.output of
     Left err → do
       -- FIXME: report errors
       let

@@ -254,11 +254,12 @@ queueEval' ms source@(_ × coord) graph = do
       , avar: _
       }
   debounce ms coord pending eval.pendingEvals
-    do Eval.notifyDecks (Deck.Pending coord) graph
-    do Eval.evalGraph source graph
+    (Eval.notifyDecks (Deck.Pending coord) graph)
+    (Eval.evalGraph source graph)
 
 queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → m Unit)
-queueEval ms source@(_ × coord) =
+queueEval ms source@(_ × coord) = do
+  _ ← pure unit
   traverse_ (queueEval' ms source) =<< snapshotGraph coord
 
 queueEvalImmediate ∷ ∀ f m. Persist f m (Card.DisplayCoord → m Unit)
@@ -331,35 +332,35 @@ wrapAndMirrorDeck deckId = runExceptT do
     wrappedDeck =
       DM.splitDeck deck.parent (snd parentCoord) Orn.Vertical
         (List.fromFoldable [ deckId, newMirrorId ])
-  ExceptT $ map sequence
-    if Array.null deck.cards
-      then do
-        let
-          mirrored = deck { parent = Just parentCoord }
-        parSequence
-          [ putDeck deckId mirrored
-          , putDeck newMirrorId (mirrored { name = "" })
-          , putDeck (fst parentCoord) wrappedDeck
-          , updateParentPointer deckId (Just (fst parentCoord)) deck.parent
-          ]
-      else do
-        let
-          oldCardIds = Tuple deckId ∘ _.cardId <$> deck.cards
-          newCardIds = Tuple newSharedId ∘ snd <$> oldCardIds
-          mirrored = deck
-            { parent = Just parentCoord
-            , mirror = deck.mirror <> newCardIds
-            , cards = []
-            , name = deck.name
-            }
-        parSequence
-          [ putDeck deckId mirrored
-          , putDeck newMirrorId (mirrored { name = "" })
-          , putDeck newSharedId (deck { name = "" })
-          , putDeck (fst parentCoord) wrappedDeck
-          , updateParentPointer deckId (Just (fst parentCoord)) deck.parent
-          ]
+  if Array.null deck.cards
+    then do
+      let
+        mirrored = deck { parent = Just parentCoord }
+      parSequence
+        [ ExceptT $ putDeck deckId mirrored
+        , ExceptT $ putDeck newMirrorId (mirrored { name = "" })
+        ]
+    else do
+      let
+        oldCardIds = Tuple deckId ∘ _.cardId <$> deck.cards
+        newCardIds = Tuple newSharedId ∘ snd <$> oldCardIds
+        mirrored = deck
+          { parent = Just parentCoord
+          , mirror = deck.mirror <> newCardIds
+          , cards = []
+          , name = deck.name
+          }
+      parSequence
+        [ ExceptT $ putDeck deckId mirrored
+        , ExceptT $ putDeck newMirrorId (mirrored { name = "" })
+        , ExceptT $ putDeck newSharedId (deck { name = "" })
+        ]
+  parSequence
+    [ ExceptT $ putDeck (fst parentCoord) wrappedDeck
+    , ExceptT $ updateParentPointer deckId (Just (fst parentCoord)) deck.parent
+    ]
   lift $ relocateCardsTo newSharedId deckId (_.cardId <$> deck.cards)
+  lift $ cloneActiveStateTo newMirrorId deckId
   pure (fst parentCoord)
 
 mirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Deck.Id))
@@ -393,9 +394,10 @@ mirrorDeck childId coord = runExceptT do
           , putDeck newSharedId (deck { name = "" })
           ]
   lift $ relocateCardsTo newSharedId childId (_.cardId <$> deck.cards)
+  lift $ cloneActiveStateTo newMirrorId childId
   parent'' ← liftWithErr "Cannot mirror deck." $ pure $ mirrorInLayout newMirrorId parent.value.model.model
   fromAff $ Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
-  pure newMirrorId
+  pure newSharedId
   where
   mirrorInLayout newId = case _ of
     CM.Draftboard { layout } → do
@@ -539,8 +541,9 @@ addCard deckId cty = runExceptT do
       deck' = deck { cards = Array.snoc deck.cards card }
     cell ← makeCardCell card input mempty
     value' ← defer (pure (Right deck'))
-    Cache.put (deckId × cardId) cell eval.cards
+    Cache.put coord cell eval.cards
     Cache.put deckId (deckCell { value = value' }) eval.decks
+    fromAff $ Bus.write (Deck.CardChange coord) deckCell.bus
     forkCardProcess coord cell.bus
     queueSaveDefault deckId
     queueEvalImmediate (Card.toAll coord)
@@ -572,7 +575,7 @@ removeCard deckId coord@(deckId' × cardId) = runExceptT do
     queueSaveDefault deckId
     fromAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
 
-updateParentPointer ∷ ∀ f m . Persist f m (Deck.Id → Maybe Deck.Id → Maybe Card.Coord → m (Either QE.QError Unit))
+updateParentPointer ∷ ∀ f m. Persist f m (Deck.Id → Maybe Deck.Id → Maybe Card.Coord → m (Either QE.QError Unit))
 updateParentPointer oldId newId parent =
   runExceptT case parent of
     Just coord@(deckId × cardId) → do
@@ -590,11 +593,15 @@ updateParentPointer oldId newId parent =
       ExceptT $ map sequence $ traverse (WM.setRoot (path </> Pathy.file "index")) newId
       pure unit
 
-relocateCardsTo ∷ ∀ f m . Persist f m (Deck.Id → Deck.Id → Array Card.Id → m Unit)
-relocateCardsTo deckId oldDeckId coords = do
+relocateCardsTo ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → Array Card.Id → m Unit)
+relocateCardsTo deckId oldDeckId cardIds = do
   { eval } ← Wiring.expose
-  cards ← getCards (Tuple oldDeckId <$> coords)
-  for_ cards (go eval.cards ∘ List.fromFoldable ∘ map snd)
+  let
+    oldCoords = Tuple oldDeckId <$> cardIds
+    newCoords = Tuple deckId <$> cardIds
+  mbCards ← getCards oldCoords
+  for_ mbCards \cards → do
+    go eval.cards (List.fromFoldable (snd <$> cards))
   where
     go cache = case _ of
       c : Nil → do
@@ -622,6 +629,12 @@ relocateCardsTo deckId oldDeckId coords = do
         go cache (c2 : cs)
       Nil →
         pure unit
+
+cloneActiveStateTo ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → m Unit)
+cloneActiveStateTo to from = do
+  { cache } ← Wiring.expose
+  activeState ← Cache.get from cache.activeState
+  for_ activeState \as → Cache.put to as cache.activeState
 
 forkLoop
   ∷ ∀ m r a

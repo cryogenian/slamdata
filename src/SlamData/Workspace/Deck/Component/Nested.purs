@@ -63,7 +63,6 @@ comp opts deckState =
       , eval: \query → do
           res ← DC.eval opts query
           case query of
-            DCQ.DoAction a _ → H.fromEff $ emitter $ DCQ.DoAction a unit
             DCQ.GrabDeck a _ → H.fromEff $ emitter $ DCQ.GrabDeck a unit
             _ → pure unit
           pure res
@@ -109,7 +108,6 @@ comp opts deckState =
   evalProxy ∷ DCQ.Query ~> DSL
   evalProxy = case _ of
     -- These are the actions that are peeked, so they are terminal.
-    DCQ.DoAction _ next → pure next
     DCQ.GrabDeck _ next → pure next
     -- The rest we'll just pass through
     query → do

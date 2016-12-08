@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.Component.Query
   ( Query(..)
-  , DeckAction(..)
   , QueryP
   ) where
 
@@ -52,7 +51,6 @@ data Query a
   | UpdateSliderPosition (Event MouseEvent) a
   | SetCardElement (Maybe HTMLElement) a
   | StopSliderTransition a
-  | DoAction DeckAction a
   | Focus a
   | Defocus (Event MouseEvent) a
   | HandleEval EvalMessage a
@@ -61,11 +59,5 @@ data Query a
   | DismissedCardGuide a
   | GetActiveCoord (Maybe (DeckId × CardId) → a)
   | SignIn ProviderR a
-
-data DeckAction
-  = Mirror
-  | Wrap
-  | Unwrap
-  | DeleteDeck
 
 type QueryP = OpaqueQuery Query
