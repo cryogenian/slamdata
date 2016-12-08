@@ -20,11 +20,9 @@ import SlamData.Prelude
 
 import Data.Array as A
 
-import Halogen.HTML as H
-
 import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
 import SlamData.Workspace.Card.InsertableCardType as ICT
-import SlamData.Workspace.Card.CardType (CardType, cardName, lightCardGlyph)
+import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
 import SlamData.Workspace.Card.Port (Port)
@@ -38,7 +36,7 @@ chartSubmenu ∷ ActionList.Action NextAction
 chartSubmenu =
   ActionList.Drill
     (ActionList.ActionName "Setup Chart")
-    (ActionList.ActionIconUri "img/cardsLight/setupChart.svg")
+    (ActionList.ActionIconSrc "img/cardsLight/setupChart.svg")
     (ActionList.ActionDescription "Insert a Setup Chart card.")
     (map (toAction ∘ Insert ∘ CT.ChartOptions) allChartTypes)
 
@@ -46,7 +44,7 @@ findOutHowToChartSubmenu ∷ ActionList.Action NextAction
 findOutHowToChartSubmenu =
   ActionList.Drill
     (ActionList.ActionName "Setup Chart")
-    (ActionList.ActionIconUri "img/cardsLight/setupChart.svg")
+    (ActionList.ActionIconSrc "img/cardsLight/setupChart.svg")
     (ActionList.ActionDescription "Find out how to insert a Setup Chart card.")
     (map (toAction ∘ FindOutHowToInsert ∘ CT.ChartOptions) allChartTypes)
 
@@ -56,14 +54,14 @@ toAction =
     nextAction@(Insert cardType) →
       ActionList.Do
         (name cardType)
-        (iconUri nextAction)
+        (ActionList.ActionIconSrc $ CT.cardIconLightSrc cardType)
         (description nextAction)
         (ActionList.ActionHighlighted true)
         nextAction
     nextAction@(FindOutHowToInsert cardType) →
       ActionList.Do
         (name cardType)
-        (iconUri nextAction)
+        (ActionList.ActionIconSrc $ CT.cardIconLightSrc cardType)
         (description nextAction)
         (ActionList.ActionHighlighted false)
         nextAction
@@ -78,11 +76,6 @@ description =
     Insert cty → "Insert a " ⊕ CT.cardName cty ⊕ " card"
     FindOutHowToInsert cty → "Find out how to insert a " ⊕ CT.cardName cty ⊕ " card"
 
--- TODO: Icons
-iconUri ∷ NextAction → ActionList.ActionIconUri
-iconUri =
-  const $ ActionList.ActionIconUri "http://placekitten.com/32/32"
-
 instance eqNextAction ∷ Eq NextAction where
   eq (Insert cty1) (Insert cty2) = cty1 ≡ cty2
   eq (FindOutHowToInsert cty1) (FindOutHowToInsert cty2) = cty1 ≡ cty2
@@ -92,18 +85,6 @@ foldToArray ∷ NextAction → Array CardType
 foldToArray = case _ of
   Insert cty → [ cty ]
   FindOutHowToInsert cty → [ cty ]
-
-searchFilters ∷ NextAction → Array String
-searchFilters (Insert cty) = [ cardName cty ]
-searchFilters (FindOutHowToInsert cty) = [ cardName cty ]
-
-label ∷ NextAction → String
-label (Insert cty) = cardName cty
-label (FindOutHowToInsert cty) = cardName cty
-
-glyph ∷ ∀ s f. NextAction → H.HTML s f
-glyph (Insert cty) = lightCardGlyph cty
-glyph (FindOutHowToInsert cty) = lightCardGlyph cty
 
 insert ∷ InsertableCardType → ActionList.Action NextAction
 insert =

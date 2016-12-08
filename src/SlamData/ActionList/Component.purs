@@ -47,14 +47,14 @@ type State a =
 type HTML a = H.ComponentHTML (Query a)
 type DSL a = H.ComponentDSL (State a) (Query a) Slam
 
-newtype ActionIconUri = ActionIconUri String
+newtype ActionIconSrc = ActionIconSrc String
 newtype ActionName = ActionName String
 newtype ActionDescription = ActionDescription String
 newtype ActionHighlighted = ActionHighlighted Boolean
 
 data Action a
-  = Do ActionName ActionIconUri ActionDescription ActionHighlighted a
-  | Drill ActionName ActionIconUri ActionDescription (Array (Action a))
+  = Do ActionName ActionIconSrc ActionDescription ActionHighlighted a
+  | Drill ActionName ActionIconSrc ActionDescription (Array (Action a))
   | GoBack
 
 _actions ∷ ∀ a r. Lens' { actions ∷ a |r } a
@@ -104,7 +104,7 @@ searchFilters =
     GoBack →
       [ "go back" ]
 
-derive newtype instance eqActionIconUri :: Eq ActionIconUri
+derive newtype instance eqActionIconSrc :: Eq ActionIconSrc
 derive newtype instance eqActionName :: Eq ActionName
 derive newtype instance eqActionDescription :: Eq ActionDescription
 derive newtype instance eqActionHighlighted :: Eq ActionHighlighted
@@ -170,7 +170,7 @@ render state =
   button action =
     HH.li_
       [ HH.button attrs
-          [ HH.img [ HP.src $ actionIconUri action ]
+          [ HH.img [ HP.src $ actionIconSrc action ]
           , HH.p_ [ HH.text $ actionName action ]
           ]
       ]
@@ -199,11 +199,11 @@ render state =
         Drill _ _ (ActionDescription s) _ → s
         GoBack → "Go back"
 
-    actionIconUri ∷ Action a → String
-    actionIconUri =
+    actionIconSrc ∷ Action a → String
+    actionIconSrc =
       case _ of
-        Do _ (ActionIconUri s) _ _ _ → s
-        Drill _ (ActionIconUri s) _ _ → s
+        Do _ (ActionIconSrc s) _ _ _ → s
+        Drill _ (ActionIconSrc s) _ _ → s
         GoBack → "/img/go-back.svg"
 
     actionName ∷ Action a → String

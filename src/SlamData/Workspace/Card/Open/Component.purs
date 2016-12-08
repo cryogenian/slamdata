@@ -77,7 +77,7 @@ render ∷ L.List AnyPath → State → HTML
 render initPath state =
   HH.div_
     [ renderHighLOD initPath state
-    , renderLowLOD (CT.lightCardGlyph CT.Open) id state.levelOfDetails
+    , renderLowLOD (CT.cardIconLightImg CT.Open) id state.levelOfDetails
     ]
 
 renderHighLOD ∷ L.List AnyPath → State → HTML
