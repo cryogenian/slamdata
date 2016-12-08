@@ -63,7 +63,9 @@ _loading = lens (_.loading) (_{loading = _})
 
 type StateP =
   ParentState
-    State (MCI.BasicColumnsState R.Resource AnyPath)
-    CardEvalQuery (MCI.BasicColumnsQuery AnyPath)
+    State
+    (MCI.BasicColumnsState R.Resource AnyPath)
+    CardEvalQuery
+    (MCI.BasicColumnsQuery AnyPath)
     Slam
     Unit

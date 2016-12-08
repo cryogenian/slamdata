@@ -37,7 +37,7 @@ import Data.Array as Array
 import Data.Foldable (find, any)
 import Data.Lens ((.~), (%~), (^?), (?~))
 import Data.Lens as Lens
-import Data.Lens.Prism.Coproduct (_Right)
+import Data.Lens.Prism.Coproduct (_Right, _Left)
 import Data.List ((:))
 import Data.List as L
 import Data.Map as Map
@@ -459,7 +459,7 @@ showDialog dlg = do
   H.modify (DCS._displayMode .~ DCS.Dialog)
 
 queryDialog ∷ Dialog.Query Unit → DeckDSL Unit
-queryDialog q = H.query' cpDialog unit (left q) *> pure unit
+queryDialog = void ∘ H.query' cpDialog unit ∘ left
 
 queryCard ∷ ∀ a. DeckId × CardId → CQ.AnyCardQuery a → DeckDSL (Maybe a)
 queryCard cid =
@@ -617,8 +617,8 @@ peekCardEvalQuery cardCoord = case _ of
 peekAnyCard ∷ ∀ a. DeckId × CardId → AnyCardQuery a → DeckDSL Unit
 peekAnyCard cardCoord q = do
   resetAccessNextActionCardGuideDelay
-  for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
-  for_ (q ^? _NextQuery ∘ _Right ∘ Next._PresentReason) $ uncurry presentReason
+  for_ (q ^? _NextQuery ∘ _Left ∘ _Right ∘ Next._AddCardType) createCard
+  for_ (q ^? _NextQuery ∘ _Left ∘ _Right ∘ Next._PresentReason) $ uncurry presentReason
 
 presentReason ∷ (Maybe Port.Port) → CT.CardType → DeckDSL Unit
 presentReason input cardType =
@@ -1119,4 +1119,4 @@ queryRootDeckCard cid query =
 
 queryRootDeckNextActionCard ∷ ∀ a. Next.Query a → DeckDSL (Maybe a)
 queryRootDeckNextActionCard =
-  queryRootDeckCard NextActionCardId ∘ CQ.NextQuery ∘ right
+  queryRootDeckCard NextActionCardId ∘ CQ.NextQuery ∘ left ∘ right
