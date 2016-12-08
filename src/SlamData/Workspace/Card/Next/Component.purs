@@ -78,21 +78,17 @@ nextCardComponent = CC.makeCardComponent
 render ∷ State → NextHTML
 render state =
   HH.div_
-    $ (guard (not state.presentAddCardGuide) $>
-      HH.form_
-        [ HH.div_
-            [ HH.slot' cpI unit \_ →
-                { component: ActionList.comp
-                , initialState: ActionList.initialState
-                }
-            ]
-        ])
-    ⊕ (guard state.presentAddCardGuide $>
+    $ (guard state.presentAddCardGuide $>
         Guide.render
           Guide.DownArrow
           (HH.className "sd-add-card-guide")
           (right ∘ DismissAddCardGuide)
           (addCardGuideText state.input))
+    ⊕ [ HH.slot' cpI unit \_ →
+        { component: ActionList.comp
+        , initialState: ActionList.initialState
+        }
+      ]
   where
   addCardGuideTextEmptyDeck = "To get this deck started press one of these buttons to add a card."
   addCardGuideTextNonEmptyDeck = "To do more with this deck press one of these buttons to add a card."

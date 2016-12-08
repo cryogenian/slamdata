@@ -198,23 +198,32 @@ render state =
     actionDescription ∷ Action a → String
     actionDescription =
       case _ of
-        Do _ _ (ActionDescription s) _ _ → s
-        Drill _ _ (ActionDescription s) _ → s
-        GoBack → "Go back"
+        Do _ _ (ActionDescription s) _ _ →
+          s
+        Drill _ _ (ActionDescription s) _ →
+          s
+        GoBack →
+          "Go back"
 
     actionIconSrc ∷ Action a → String
     actionIconSrc =
       case _ of
-        Do _ (ActionIconSrc s) _ _ _ → s
-        Drill _ (ActionIconSrc s) _ _ → s
-        GoBack → "/img/go-back.svg"
+        Do _ (ActionIconSrc s) _ _ _ →
+          s
+        Drill _ (ActionIconSrc s) _ _ →
+          s
+        GoBack →
+          "/img/go-back.svg"
 
     actionName ∷ Action a → String
     actionName =
       case _ of
-        Do (ActionName s) _ _ _ _ → s
-        Drill (ActionName s) _ _ _ → s
-        GoBack → "Go back"
+        Do (ActionName s) _ _ _ _ →
+          s
+        Drill (ActionName s) _ _ _ →
+          s
+        GoBack →
+          "Go back"
 
     classes ∷ Array HH.ClassName
     classes =
@@ -247,26 +256,28 @@ updateActions newActions state =
   newActiveDrill =
     F.find (eq activeDrill ∘ Just) newActions
 
-  pluckDrillActions = case _ of
-    Drill _ _ _ xs → Just xs
-    _ → Nothing
+  pluckDrillActions =
+    case _ of
+      Drill _ _ _ xs → Just xs
+      _ → Nothing
 
 eval ∷ ∀ a. Eq a ⇒ Query a ~> DSL a
-eval = case _ of
-  UpdateFilter str next →
-    H.modify (_filterString .~ str) $> next
-  Selected action next → do
-    st ← H.get
-    case action of
-      Do _ _ _ _ _ → pure unit
-      Drill _ _ _ actions →
-        H.modify
-          $ (_actions .~ (GoBack `A.cons` actions))
-          ∘ (_previousActions .~ st.actions)
-      GoBack →
-        H.modify
-          $ (_actions .~ st.previousActions)
-          ∘ (_previousActions .~ [ ])
-    pure next
-  UpdateActions actions next →
-    H.modify (updateActions actions) $> next
+eval =
+  case _ of
+    UpdateFilter str next →
+      H.modify (_filterString .~ str) $> next
+    Selected action next → do
+      st ← H.get
+      case action of
+        Do _ _ _ _ _ → pure unit
+        Drill _ _ _ actions →
+          H.modify
+            $ (_actions .~ (GoBack `A.cons` actions))
+            ∘ (_previousActions .~ st.actions)
+        GoBack →
+          H.modify
+            $ (_actions .~ st.previousActions)
+            ∘ (_previousActions .~ [ ])
+      pure next
+    UpdateActions actions next →
+      H.modify (updateActions actions) $> next
