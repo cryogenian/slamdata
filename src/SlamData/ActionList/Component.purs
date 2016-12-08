@@ -28,10 +28,9 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Common as RC
 
 data Query a b
   = Selected (Action a) b
@@ -145,19 +144,23 @@ render state =
   HH.div
     [ HP.class_ $ HH.className "sd-action-list" ]
     ([ HH.form_
-        [ HH.div_
-            [ HH.input
-                [ HP.value state.filterString
-                , HE.onValueInput (HE.input \s → UpdateFilter s)
-                , ARIA.label "Filter next actions"
-                , HP.placeholder "Filter actions"
-                ]
-            , HH.button
-                [ HP.buttonType HP.ButtonButton
-                , HE.onClick (HE.input_ $ UpdateFilter "")
-                ]
-                [ glyph B.glyphiconRemove ]
-            ]
+         [ HH.div_
+             [ HH.div
+                 [ HP.class_ (HH.className "sd-action-filter-icon") ]
+                 [ RC.searchFieldIcon ]
+             , HH.input
+                 [ HP.value state.filterString
+                 , HE.onValueInput (HE.input (\s → UpdateFilter s))
+                 , ARIA.label "Filter next actions"
+                 , HP.placeholder "Filter actions"
+                 ]
+             , HH.button
+                 [ HP.buttonType HP.ButtonButton
+                 , HE.onClick (HE.input_ (UpdateFilter ""))
+                 , HP.enabled (state.filterString /= "")
+                 ]
+                 [ RC.clearFieldIcon "Clear filter" ]
+             ]
         ]
     ] ⊕ [ HH.ul_ $ map button state.actions ])
   where

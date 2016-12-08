@@ -40,8 +40,8 @@ newtype Promise a = Promise (∀ eff. Aff (avar ∷ AVAR | eff) a)
 -- | until completed. Promise results are shared among consumers (one-to-many
 -- | resolution).
 defer
-  ∷ ∀ m eff a
-  . (Affable (avar ∷ AVAR | eff) m, MonadFork m)
+  ∷ ∀ m e eff a
+  . (Affable (avar ∷ AVAR | eff) m, MonadFork e m)
   ⇒ m a
   → m (Promise a)
 defer run = do

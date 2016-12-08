@@ -22,6 +22,7 @@ import Control.Coroutine (runProcess, await, ($$))
 import Control.Coroutine.Aff (produce)
 import Control.Monad.Aff (Aff, forkAff)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Eff.Class (liftEff)
 import Control.UI.Browser as Browser
 
@@ -42,8 +43,9 @@ import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Monad (runSlam)
-import SlamData.Wiring (makeWiring)
+import SlamData.Wiring (Wiring(Wiring), makeWiring)
 import SlamData.Workspace.AccessType as AT
+import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
 import SlamData.Workspace.Deck.Component as Deck
@@ -54,7 +56,7 @@ import Routing as Routing
 
 import Utils.Path as UP
 
-data RouterState = RouterState Routes (Driver Workspace.QueryP SlamDataRawEffects)
+data RouterState = RouterState Routes Wiring (Driver Workspace.QueryP SlamDataRawEffects)
 
 main ∷ Eff SlamDataEffects Unit
 main = do
@@ -67,7 +69,7 @@ main = do
   StyleLoader.loadStyles
 
 routeSignal ∷ Aff SlamDataEffects Unit
-routeSignal =
+routeSignal = do
   runProcess (routeProducer $$ routeConsumer Nothing)
 
   where
@@ -84,24 +86,24 @@ routeSignal =
           st = Workspace.initialState (Just "4.0")
           ui = interpret (runSlam wiring) Workspace.comp
         driver ← lift $ runUI ui (parentState st) =<< awaitBody
-        lift $ setupWorkspace new driver
-        routeConsumer (Just (RouterState new driver))
+        lift $ setupWorkspace new wiring driver
+        routeConsumer (Just (RouterState new wiring driver))
 
       -- Reload the page on path change
-      WorkspaceRoute path _ _ _, Just (RouterState (WorkspaceRoute path' _ _ _) _) | path ≠ path' →
+      WorkspaceRoute path _ _ _, Just (RouterState (WorkspaceRoute path' _ _ _) _ _) | path ≠ path' →
         lift $ liftEff Browser.reload
 
       -- Transition Workspace
-      WorkspaceRoute path deckId action varMaps, Just (RouterState old driver) →
+      WorkspaceRoute path deckId action varMaps, Just (RouterState old wiring driver) →
         case old of
           WorkspaceRoute path' deckId' action' varMaps'
             | path ≡ path' ∧ deckId ≡ deckId' ∧ action ≡ action' ∧ varMaps ≡ varMaps' →
-                routeConsumer (Just (RouterState new driver))
+                routeConsumer (Just (RouterState new wiring driver))
           _ → do
-            lift $ setupWorkspace new driver
-            routeConsumer (Just (RouterState new driver))
+            lift $ setupWorkspace new wiring driver
+            routeConsumer (Just (RouterState new wiring driver))
 
-  setupWorkspace new@(WorkspaceRoute _ deckId action varMaps) driver = do
+  setupWorkspace new@(WorkspaceRoute _ deckId action varMaps) (Wiring wiring) driver = do
     driver $ Workspace.toWorkspace $ Workspace.SetVarMaps varMaps
     when (toAccessType action ≡ AT.ReadOnly) do
       isEmbedded ←
@@ -120,7 +122,10 @@ routeSignal =
         =<< window
 
     forkAff case action of
-      Load accessType →
+      Load accessType → do
+        liftEff
+          $ Ref.writeRef wiring.allowedAuthenticationModes
+          $ AuthenticationMode.allowedAuthenticationModesForAccessType accessType
         driver $ Workspace.toWorkspace $ Workspace.Load deckId accessType
       Exploring fp → do
         driver $ Workspace.toWorkspace $ Workspace.Reset

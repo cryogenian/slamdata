@@ -26,7 +26,7 @@ scenario
   → Feature eff o Unit
   → Feature eff o Unit
 scenario epic before after title knownIssues actions =
-  sectionMsg title' *> before *> actions'
+  sectionMsg title' *> runHook before *> actions'
   where
   title' ∷ String
   title' = epic <> ": " <> title
@@ -36,6 +36,8 @@ scenario epic before after title knownIssues actions =
 
   knownIssuesWarning ∷ String
   knownIssuesWarning = "These known issues caused this scenario to fail:\n" <> knownIssuesString
+
+  knownIssuesHookWarning = "These known issues caused this scenario hook to fail:\n" <> knownIssuesString
 
   separate ∷ Array String → String
   separate = joinWith "\n"
@@ -56,13 +58,25 @@ scenario epic before after title knownIssues actions =
       <> knownIssuesString
 
   actions' ∷ Feature eff o Unit
-  actions' | knownIssues == [] = do
-    e <- attempt actions
-    case e of
-      Left e' → logCurrentScreen *> (liftEff $ throw $ message e')
-      Right _ → after
-  actions' = do
-    e <- attempt actions
-    case e of
-      Left e' → logCurrentScreen *> warn (message e') *> warn knownIssuesWarning *> after
-      Right _ → after *> unexpectedSuccess
+  actions' | knownIssues == [] =
+    attempt actions >>=
+      case _ of
+        Left e → logCurrentScreen *> (liftEff $ throw $ message e)
+        Right _ → runHook after
+  actions' =
+    attempt actions >>=
+      case _ of
+        Left e → logCurrentScreen *> warn (message e) *> warn knownIssuesWarning *> runHook after
+        Right _ → runHook after *> unexpectedSuccess
+
+  runHook ∷ Feature eff o Unit → Feature eff o Unit
+  runHook hook | knownIssues == [] =
+    attempt hook >>=
+      case _ of
+        Left e → logCurrentScreen *> (liftEff $ throw $ message e)
+        Right _ → pure unit
+  runHook hook =
+    attempt hook >>=
+      case _ of
+        Left e → logCurrentScreen *> warn (message e) *> warn knownIssuesHookWarning
+        Right _ → pure unit

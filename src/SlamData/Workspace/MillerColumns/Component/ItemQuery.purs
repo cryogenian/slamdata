@@ -14,25 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Quasar.Auth.Keys where
+module SlamData.Workspace.MillerColumns.Component.ItemQuery where
 
-import Prelude ((<>))
+import Data.List (List)
+import Data.Functor.Coproduct (Coproduct)
 
-idTokenLocalStorageKey ∷ String
-idTokenLocalStorageKey = "sd-auth-id-token"
+data ItemQuery i b
+  = RaisePopulate (List i) b
+  | ToggleSelected Boolean b
 
-keyStringLocalStorageKey ∷ String
-keyStringLocalStorageKey = "sd-auth-csrf"
-
-nonceLocalStorageKey ∷ String
-nonceLocalStorageKey = "sd-auth-replay"
-
-providerLocalStorageKey ∷ String
-providerLocalStorageKey = "sd-auth-provider"
-
-fromRedirectSuffix ∷ String
-fromRedirectSuffix = "from-redirect"
-
-hyphenatedSuffix ∷ String → String → String
-hyphenatedSuffix string suffix = string <> "-" <> suffix
-
+type ItemQuery' i f = Coproduct (ItemQuery i) f

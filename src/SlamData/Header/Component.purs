@@ -19,15 +19,16 @@ module SlamData.Header.Component where
 import SlamData.Prelude
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
+import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
-import SlamData.Monad (Slam)
-import SlamData.Header.Gripper.Component as Gripper
-import SlamData.Render.Common (logo)
-import SlamData.Render.CSS as Rc
+import SlamData.Config as Config
 import SlamData.GlobalMenu.Component as GlobalMenu
+import SlamData.Header.Gripper.Component as Gripper
+import SlamData.Monad (Slam)
+import SlamData.Render.CSS as Rc
 
 type State = Boolean
 initialState ∷ State
@@ -95,6 +96,19 @@ render open =
             ]
         ]
     ]
+
+logo ∷ Maybe String → HTML
+logo mbVersion =
+  HH.div
+    [ HP.class_ Rc.navLogo ]
+    $ [ HH.a
+          [ HP.href Config.slamDataHome
+          , ARIA.label "Browse root folder"
+          , HP.title "Browse root folder"
+          ]
+          [ HH.img [ HP.src "img/logo.svg" ] ]
+      ]
+    ⊕ foldMap (pure ∘ HH.div_ ∘ pure ∘ HH.text) mbVersion
 
 eval ∷ Query ~> DSL
 eval = absurd ∘ unwrap

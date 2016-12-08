@@ -41,7 +41,8 @@ getIdTokenStorageEvents =
     <$> LocalStorage.getStorageEventProducer false
   where
   isIdTokenKeyEvent o =
-    runExcept (Foreign.readString o.key) == Right AuthKeys.idTokenLocalStorageKey
+    runExcept (Foreign.readString o.key)
+      == (Right $ AuthKeys.hyphenatedSuffix AuthKeys.idTokenLocalStorageKey AuthKeys.fromRedirectSuffix)
   valuesToEitherStringIdTokens e =
     e
       { newValue = foreignToEitherStringIdToken e.newValue

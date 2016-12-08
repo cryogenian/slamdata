@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Mount.Spark.Component
+module SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component
   ( comp
   , Query
   , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
@@ -34,7 +34,7 @@ import Quasar.Mount as QM
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
-import SlamData.FileSystem.Dialog.Mount.Spark.Component.State as MCS
+import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as MCS
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Quasar.Mount as API
 import SlamData.Quasar.Error as QE
@@ -73,5 +73,5 @@ eval = case _ of
       st ← lift H.get
       config ← except $ lmap QE.msgToQError $ MCS.toConfig st
       let path = parent </> dir name
-      ExceptT $ API.saveMount (Left path) (QM.SparkConfig config)
+      ExceptT $ API.saveMount (Left path) (QM.SparkHDFSConfig config)
       pure $ Database path

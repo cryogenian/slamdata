@@ -22,16 +22,11 @@ module SlamData.Workspace.Card.Next.Component
 
 import SlamData.Prelude
 
-import Data.Foldable as F
 import Data.Lens ((.~))
 
 import Halogen as H
 import Halogen.Component.ChildPath (cpI)
-import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils as HU
 
 import SlamData.ActionList.Component as ActionList
@@ -39,13 +34,13 @@ import SlamData.Monad (Slam)
 import SlamData.Guide as Guide
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.NextAction as NA
 import SlamData.Workspace.Card.Next.Component.Query (QueryC, QueryP, Query(..), _AddCardType, _PresentReason)
 import SlamData.Workspace.Card.Next.Component.State (StateP, State)
 import SlamData.Workspace.Card.Next.Component.State as State
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.InsertableCardType as ICT
 
 import Utils.LocalStorage as LocalStorage
 

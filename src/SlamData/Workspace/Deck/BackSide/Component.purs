@@ -26,12 +26,11 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth (getIdToken)
-import SlamData.Render.Common (glyph)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.Common as RC
+import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component.CSS as CCSS
 import SlamData.Workspace.Card.Draftboard.Pane (Pane)
@@ -157,11 +156,14 @@ render state =
     [ HH.div
         [ HP.class_ CCSS.deckCard ]
         [ HH.div
-            [ HP.class_ Rc.deckBackSide ]
+            [ HP.class_ CSS.deckBackSide ]
             [ HH.div_
                 [ HH.form_
                     [ HH.div_
-                        [ HH.input
+                        [ HH.div
+                            [ HP.class_ (HH.className "sd-action-filter-icon") ]
+                            [ RC.searchFieldIcon ]
+                        , HH.input
                             [ HP.value state.filterString
                             , HE.onValueInput (HE.input UpdateFilter)
                             , ARIA.label "Filter deck and card actions"
@@ -170,8 +172,9 @@ render state =
                         , HH.button
                             [ HP.buttonType HP.ButtonButton
                             , HE.onClick (HE.input_ (UpdateFilter ""))
+                            , HP.enabled (state.filterString /= "")
                             ]
-                            [ glyph B.glyphiconRemove ]
+                            [ RC.clearFieldIcon "Clear filter" ]
                         ]
                     ]
                 , HH.ul_ $ map backsideAction (allBackActions state)

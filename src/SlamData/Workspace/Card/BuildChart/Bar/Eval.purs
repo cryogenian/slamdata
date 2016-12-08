@@ -49,6 +49,7 @@ import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
+
 eval
   ∷ ∀ m
   . (Monad m, QuasarDSL m)
@@ -152,13 +153,10 @@ buildBar r records axes = do
   E.colors colors
 
   E.xAxis do
-    E.axisType xAxisConfig.axisType
+    E.axisType ET.Category
     E.enabledBoundaryGap
     traverse_ E.interval xAxisConfig.interval
-    case xAxisConfig.axisType of
-      ET.Category →
-        E.items $ map ET.strItem xValues
-      _ → pure unit
+    E.items $ map ET.strItem xValues
     E.axisLabel do
       E.rotate r.axisLabelAngle
       E.textStyle do

@@ -39,6 +39,8 @@ import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Deck.Model (Deck)
 import SlamData.Wiring (DeckMessage, PendingMessage)
 
+import Quasar.Advanced.Types (ProviderR)
+
 import Utils.Path as UP
 
 data Query a
@@ -79,6 +81,7 @@ data Query a
   | HandleError GlobalError a
   | DismissedCardGuide a
   | Run a
+  | SignIn ProviderR a
 
 data DeckAction
   = Mirror

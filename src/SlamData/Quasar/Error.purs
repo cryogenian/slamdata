@@ -23,7 +23,7 @@ import SlamData.Prelude
 
 import Control.Monad.Eff.Exception as Exn
 
-import Quasar.Error (QError(..), printQError)
+import Quasar.Error (QError(..), UnauthorizedDetails(..), printQError)
 
 throw ∷ ∀ m a. (MonadError QError m) ⇒ String → m a
 throw = throwError ∘ msgToQError
@@ -37,3 +37,9 @@ prefixMessage :: String → QError → QError
 prefixMessage msg = case _ of
   Error err -> Error $ Exn.error (msg <> ": " <> Exn.message err)
   qe -> qe
+
+isUnauthorized ∷ QError → Boolean
+isUnauthorized =
+  case _ of
+    Unauthorized _ → true
+    _ → false

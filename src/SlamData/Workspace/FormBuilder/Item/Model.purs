@@ -135,7 +135,7 @@ defaultValueToVarMapValue ty str =
   case ty of
     StringFieldType → Just $ Port.Literal $ EJSON.string str
     DateTimeFieldType → Just $ Port.Literal $ EJSON.timestamp (fixupDateTime str)
-    DateFieldType → Just $ Port.Literal $ EJSON.date str
+    DateFieldType → Just $ Port.Literal $ EJSON.date (fixupDate str)
     TimeFieldType → Just $ Port.Literal $ EJSON.time (fixupTime str)
     IntervalFieldType → Just $ Port.Literal $ EJSON.interval str
     ObjectIdFieldType → Just $ Port.Literal $ EJSON.objectId str
@@ -157,3 +157,8 @@ defaultValueToVarMapValue ty str =
       Str.take 11 dt <> fixupTime t' <> "Z"
   fixupTime :: String -> String
   fixupTime t = if Str.length t == 5 then t <> ":00" else t
+
+  -- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
+  -- connector issue that cannot represent dates distinct from datetimes.
+  fixupDate :: String -> String
+  fixupDate = Str.take 10
