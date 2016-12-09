@@ -39,6 +39,7 @@ import Halogen.HTML as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
+import SlamData.Config as Config
 import SlamData.Workspace.Card.CardType.ChartType
   ( ChartType(..)
   , printChartType
@@ -223,7 +224,7 @@ cardIcon = case _ of
 
 cardIconDarkSrc ∷ CardType → String
 cardIconDarkSrc cardType =
-  "img/cardsDark/" <> cardIcon cardType <> ".svg"
+  Config.darkIconsPath <> "/" <> cardIcon cardType <> ".svg"
 
 cardIconDarkImg ∷ ∀ a b. CardType → H.HTML a b
 cardIconDarkImg cardType =
@@ -231,7 +232,7 @@ cardIconDarkImg cardType =
 
 cardIconLightSrc ∷ CardType → String
 cardIconLightSrc cardType =
-  "img/cardsLight/" <> cardIcon cardType <> ".svg"
+  Config.lightIconsPath <> "/" <> cardIcon cardType <> ".svg"
 
 cardIconLightImg ∷ ∀ a b. CardType → H.HTML a b
 cardIconLightImg cardType =
