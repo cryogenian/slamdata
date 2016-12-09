@@ -81,11 +81,6 @@ instance eqNextAction ∷ Eq NextAction where
   eq (FindOutHowToInsert cty1) (FindOutHowToInsert cty2) = cty1 ≡ cty2
   eq _ _ = false
 
-foldToArray ∷ NextAction → Array CardType
-foldToArray = case _ of
-  Insert cty → [ cty ]
-  FindOutHowToInsert cty → [ cty ]
-
 insert ∷ InsertableCardType → ActionList.Action NextAction
 insert =
   case _ of
