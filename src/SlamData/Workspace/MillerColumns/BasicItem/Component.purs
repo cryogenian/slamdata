@@ -37,12 +37,12 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Monad (Slam)
 
-type Query i = MC.ItemQuery' i (Const Void)
+type Query = MC.ItemQuery' (Const Void)
 
 type State = { selected :: Boolean }
 
-type HTML i = H.ComponentHTML (Query i)
-type DSL i m p = H.ComponentDSL State (Query i) m p
+type HTML = H.ComponentHTML Query
+type DSL m p = H.ComponentDSL State Query m p
 
 type ItemSpec a =
   { label ∷ a → String
@@ -60,7 +60,7 @@ component
   → L.List i
   → a
   → MC.InitialItemState
-  → { component :: H.Component State (Query i) Slam
+  → { component :: H.Component State Query Slam
     , initialState :: State
     }
 component ispec path item itemState =
@@ -68,26 +68,26 @@ component ispec path item itemState =
   , initialState: { selected: itemState == MC.Selected }
   }
   where
-  render ∷ State → HTML i
+  render ∷ State → HTML
   render state =
     let
       label = ispec.label item
     in
       HH.li
-        [ HE.onClick $ HE.input_ $ left <<< MC.RaisePopulate path
-        , HP.title label
+        [ HP.title label
+        , HE.onClick $ HE.input_ $ left <<< MC.RaisePopulate
         , ARIA.label ("Select " <> label)
         , HP.classes $ (guard state.selected $> HH.className "selected")
         ]
         [ absurd ∘ unwrap <$> ispec.render item ]
 
-  eval ∷ Query i ~> DSL i Slam
+  eval ∷ Query ~> DSL Slam
   eval = coproduct evalItemQuery (absurd <<< unwrap)
 
-  evalItemQuery ∷ MC.ItemQuery i ~> DSL i Slam
+  evalItemQuery ∷ MC.ItemQuery ~> DSL Slam
   evalItemQuery = case _ of
-    MC.RaisePopulate _ next →
+    MC.RaisePopulate next →
       pure next
-    MC.ToggleSelected b next → do
+    MC.ToggleHighlight b next → do
       H.modify (_ { selected = b })
       pure next

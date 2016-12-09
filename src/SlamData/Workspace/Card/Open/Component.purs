@@ -22,7 +22,6 @@ module SlamData.Workspace.Card.Open.Component
 
 import SlamData.Prelude
 
-
 import Data.List as L
 import Data.Lens ((.~), (?~))
 import Data.Path.Pathy as Path
@@ -88,7 +87,7 @@ renderHighLOD initPath state =
         <> (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ HH.slot unit \_ →
-        { component: MC.component itemSpec (Just initPath)
+        { component: MC.component itemSpec initPath
         , initialState: H.parentState MC.initialState
         }
     ]
@@ -154,15 +153,17 @@ peekColumns = case _ of
   MC.Populate rs _ → do
     H.modify (_selected ?~ rs)
     CC.raiseUpdatedP CC.EvalModelUpdate
-  MC.Loading b _ → do
-    H.modify (_loading .~ b)
   _ → pure unit
 
 itemSpec ∷ MCI.BasicColumnOptions R.Resource AnyPath
 itemSpec =
-  { render: MCI.component { label: R.resourceName, render: renderItem }
+  { render: MCI.component
+      { label: R.resourceName
+      , render: renderItem
+      }
   , label: R.resourceName
   , load
+  , isLeaf: maybe true isRight ∘ L.head
   , id: R.getPath
   }
 

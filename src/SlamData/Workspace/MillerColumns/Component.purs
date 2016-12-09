@@ -15,246 +15,133 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.MillerColumns.Component
-  ( ColumnOptions
-  , InitialItemState(..)
-  , ItemHTML
-  , component
+  ( component
   , module SlamData.Workspace.MillerColumns.Component.Query
   , module SlamData.Workspace.MillerColumns.Component.State
+  , module Exports
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Eff (Eff)
 
-import Data.Array as A
-import Data.Traversable (scanr)
 import Data.List ((:))
 import Data.List as L
-import Data.Unfoldable (replicate)
 
 import DOM (DOM)
+import DOM.HTML.HTMLElement (offsetWidth) as DOM
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 import DOM.Node.Element (scrollWidth, setScrollLeft) as DOM
-import DOM.HTML.HTMLElement (offsetWidth) as DOM
 
 import Halogen as H
 import Halogen.Component.Utils (raise')
-import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Monad (Slam)
-import SlamData.Render.Common (clearFieldIcon)
-import SlamData.Workspace.MillerColumns.Component.Query (ItemQuery(..), ItemQuery', Query(..), Query')
-import SlamData.Workspace.MillerColumns.Component.State (State, State', initialState)
+import SlamData.Workspace.MillerColumns.Column.Component as Column
+import SlamData.Workspace.MillerColumns.Component.Query (Query(..), Query')
+import SlamData.Workspace.MillerColumns.Component.State (State, State', columnsWithSelections, initialState)
 
-type ColumnOptions a i s f =
-  { render
-      ∷ L.List i
-      → a
-      → InitialItemState
-      → { component :: H.Component s (ItemQuery i ⨁ f) Slam
-         , initialState :: s
-         }
-  , label ∷ a → String
-  , load ∷ L.List i → Slam (Maybe (L.List a))
-  , id ∷ a → i
-  }
+import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions, InitialItemState(..), ItemQuery(..), ItemQuery', ItemHTML) as Exports
 
-data InitialItemState = Selected | Deselected
+type HTML a i s f = H.ParentHTML (Column.State' a i s f) (Query i) (Column.Query' i f) Slam (L.List i)
+type DSL a i s f = H.ParentDSL (State a i) (Column.State' a i s f) (Query i) (Column.Query' i f) Slam (L.List i)
 
-derive instance eqInitialItemState :: Eq InitialItemState
-derive instance ordInitialItemState :: Ord InitialItemState
-
-type HTML i s f = H.ParentHTML s (Query i) (ItemQuery' i f) Slam (L.List i)
-type DSL a i s f = H.ParentDSL (State a i) s (Query i) (ItemQuery' i f) Slam (L.List i)
-
-type ItemHTML = H.ComponentHTML (Const Void)
-
-type RenderRec i s f = { path ∷ L.List i, html ∷ Array (HTML i s f) }
+type RenderRec a i s f = { path ∷ L.List i, html ∷ Array (HTML a i s f) }
 
 component
   ∷ ∀ a i s f
   . Ord i
-  ⇒ ColumnOptions a i s f
-  → Maybe (L.List i)
+  ⇒ Column.ColumnOptions a i s f
+  → L.List i
   → H.Component (State' a i s f) (Query' i f) Slam
-component ispec initial =
+component colSpec initialPath =
   H.lifecycleParentComponent
     { render
     , eval
-    , initializer: map (H.action ∘ Populate) initial
+    , initializer: Just $ H.action (Populate initialPath)
     , finalizer: Nothing
     , peek: Just peek
     }
   where
 
-  render ∷ State a i → HTML i s f
-  render { columns, selected } =
-    let
-      -- Drop the root item from `selected` (since there's no corresponding
-      -- rendered item), and reverse it (foldl) to produce a list rather than a
-      -- stack, so the steps can be zipped with the columns.
-      selectSteps = A.fromFoldable (foldl go L.Nil (fromMaybe L.Nil (L.init selected)))
-      go acc a = case acc of
-        L.Nil → pure a
-        _ → a : acc
-    in
-      HH.div
-        [ HP.class_ (HH.className "sd-miller-columns")
-        , HP.ref (H.action ∘ Ref)
-        ]
-        $ _.html
-        $ foldl goColumn
-            { path: L.Nil, html: [] }
-            (A.zip columns (pad selectSteps (A.length columns)))
+  render ∷ State a i → HTML a i s f
+  render state =
+    HH.div
+      [ HP.class_ (HH.className "sd-miller-columns")
+      , HP.ref (H.action ∘ Ref)
+      ]
+      $ _.html
+      $ foldr goColumn
+          { path: L.Nil, html: [] }
+          (columnsWithSelections colSpec state)
 
   goColumn
-    ∷ RenderRec i s f
-    → Tuple (Tuple i (L.List a)) (Maybe i)
-    → RenderRec i s f
-  goColumn acc (Tuple (Tuple item children) sel) =
-    let path = item : acc.path
-    in { path, html: acc.html <> [renderColumn path children sel] }
+    ∷ Tuple (L.List i) (Maybe i)
+    → RenderRec a i s f
+    → RenderRec a i s f
+  goColumn (Tuple path sel) acc =
+    { path, html: acc.html <> [renderColumn path sel] }
 
-  renderColumn ∷ L.List i → L.List a → Maybe i → HTML i s f
-  renderColumn colPath items selected =
+  renderColumn ∷ L.List i → Maybe i → HTML a i s f
+  renderColumn colPath selected =
     HH.div
       [ HP.class_ (HH.className "sd-miller-column")
       , ARIA.label "Column"
       , HP.ref (\_ → H.action Extended)
       ]
-      [ renderSelected colPath selected items
-      , HH.ul_ $ A.fromFoldable (renderItem colPath selected <$> items)
+      [ HH.slot colPath \_ →
+          { component: Column.component colSpec colPath
+          , initialState: H.parentState (Column.initialState selected)
+          }
       ]
 
-  renderSelected ∷ L.List i → Maybe i → L.List a → HTML i s f
-  renderSelected colPath sel items =
-    case L.find (\x → sel == Just (ispec.id x)) items of
-      Nothing →
-      HH.div
-        [ HP.class_ (HH.className "sd-miller-column-selection") ]
-        [ HH.span_ [ HH.text "No selection" ] ]
-      Just x →
-        let
-          label = ispec.label x
-          deselLabel = "Deselect '" <> label <> "'"
-        in
-          HH.div
-            [ HP.classes
-                [ HH.className "sd-miller-column-selection"
-                , HH.className "selected"
-                ]
-            , HP.title deselLabel
-            , ARIA.label deselLabel
-            , HE.onClick $ HE.input_ (Populate colPath)
-            ]
-            [ HH.span
-                [ HP.class_ (HH.className "sd-miller-column-selection-label") ]
-                [ HH.text label ]
-            , clearFieldIcon deselLabel
-            ]
-
-  renderItem ∷ L.List i → Maybe i → a → HTML i s f
-  renderItem colPath selected item =
-    let
-      itemId = ispec.id item : colPath
-      isSelected = Just (ispec.id item) == selected
-    in
-      HH.slot itemId \_ →
-        ispec.render itemId item (if isSelected then Selected else Deselected)
-
   eval ∷ Query i ~> DSL a i s f
-  eval (Ref mel next) = do
-    H.modify (_ { element = mel })
-    pure next
-  eval (Extended next) = do
-    traverse_ (H.fromEff ∘ scrollToRight) =<< H.gets _.element
-    pure next
-  eval (Populate path next) = do
-    currentPath <- H.gets _.selected
+  eval = case _ of
+    Ref mel next → do
+      H.modify (_ { element = mel })
+      pure next
+    Extended next → do
+      traverse_ (H.fromEff ∘ scrollToRight) =<< H.gets _.element
+      pure next
+    Populate path next → do
+      H.modify (_ { path = path })
+      colSels ← H.gets (columnsWithSelections colSpec)
+      for_ colSels \(Tuple col sel) →
+        H.query col $ left $ H.action $ Column.SetSelection sel
+      pure next
 
-    let
-      prefix = findPathPrefix currentPath path
-      remainder = L.take (L.length path - L.length prefix) path
-      remPaths = scanr (:) prefix remainder
-      deselected = L.take (L.length currentPath - L.length prefix) currentPath
-      deselPaths = scanr (:) prefix deselected
-      selected = L.take (L.length prefix + 1) path
+  peek ∷ ∀ x. H.ChildF (L.List i) (Column.Query' i f) x → DSL a i s f Unit
+  peek (H.ChildF colPath q) =
+    coproduct (peekColumn colPath) (peekColumnItem colPath) q
 
-    for_ deselPaths \i →
-      H.query i $ left $ H.action $ ToggleSelected false
+  peekColumn
+    ∷ ∀ x
+    . L.List i
+    → Column.Query i x
+    → DSL a i s f Unit
+  peekColumn colPath = case _ of
+    Column.Deselect _ → raise' $ H.action $ Populate colPath
+    _ → pure unit
 
-    H.modify \st → st
-      { columns = A.take (L.length prefix) st.columns
-      , selected = selected
-      }
+  peekColumnItem
+    ∷ ∀ x
+    . L.List i
+    → H.ChildF i (Column.ItemQuery' f) x
+    → DSL a i s f Unit
+  peekColumnItem colPath (H.ChildF itemId q) =
+    coproduct (peekColumnItemCommon (itemId : colPath)) (const (pure unit)) q
 
-    -- Explicitly check whether anything needs loading before proceeding:
-    -- incrementing `currentCycle` when there is no work to be done can
-    -- break things if we're awaiting a previous load of the same path.
-    when (not L.null remPaths) do
-      H.modify \st → st { cycle = st.cycle + 1 }
-      H.query selected $ left $ H.action $ ToggleSelected true
-      currentCycle ← H.gets _.cycle
-      raise' $ H.action $ Loading true
-      more ← H.liftH $ H.liftH (parTraverse ispec.load remPaths)
-
-      -- `load` is async, so in case multiple `Populate`s have been raised we need
-      -- to check that we still care about the results of the load we just
-      -- triggered.
-      --
-      -- The "cycle" counter is incremented every time a `load` is triggered, so
-      -- if it differs after a `load` completes we know a competing `load` has
-      -- been triggered in the mean time, and we can just abandon this result.
-      --
-      -- We can't just use `fork` here since we need to continue performing
-      -- actions in `ComponentDSL` after the load completes, and there's no
-      -- `MonadFork` instance for `ComponentDSL`.
-      currentCycle' ← H.gets _.cycle
-      when (currentCycle == currentCycle') do
-        let
-          newColumns = foldr go [] (L.zip remainder more)
-          go (Tuple item colItems) cols =
-            maybe cols (\items → cols <> [Tuple item items]) colItems
-          selPaths = scanr (:) prefix path
-        H.modify \st → st
-          { columns = st.columns <> newColumns
-          , selected = path
-          }
-        for_ (L.take (L.length remainder) selPaths) \i →
-          H.query i $ left $ H.action $ ToggleSelected true
-        raise' $ H.action $ Loading false
-
-    pure next
-  eval (Loading _ next) =
-    pure next
-
-  peek ∷ ∀ x. H.ChildF (L.List i) (ItemQuery' i f) x → DSL a i s f Unit
-  peek = H.runChildF >>> flip coproduct (const (pure unit)) case _ of
-      RaisePopulate path _ → do
-        raise' $ H.action $ Populate path
-      _ →
-        pure unit
-
-findPathPrefix ∷ ∀ a. Eq a ⇒ L.List a → L.List a → L.List a
-findPathPrefix xs ys =
-  let
-    lxs = L.length xs
-    lys = L.length ys
-    xs' = if lxs > lys then L.drop (lxs - lys) xs else xs
-    ys' = if lys > lxs then L.drop (lys - lxs) ys else ys
-  in
-    snd $ foldr go (Tuple true L.Nil) (L.zip xs' ys')
-  where
-  go (Tuple x y) (Tuple matching acc)
-    | matching && x == y = Tuple true (x : acc)
-    | otherwise = Tuple false acc
-
-pad ∷ ∀ a. Array a → Int → Array (Maybe a)
-pad xs length = map Just xs <> replicate (length - A.length xs) Nothing
+  peekColumnItemCommon
+    ∷ ∀ x
+    . L.List i
+    → Column.ItemQuery x
+    → DSL a i s f Unit
+  peekColumnItemCommon itemPath = case _ of
+    Column.RaisePopulate _ → raise' $ H.action $ Populate itemPath
+    _ → pure unit
 
 scrollToRight ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Unit
 scrollToRight hel = do
