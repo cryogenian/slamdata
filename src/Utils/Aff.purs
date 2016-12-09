@@ -18,7 +18,7 @@ module Utils.Aff where
 
 import Prelude
 import Control.Monad.Aff (Aff, later')
-import Control.Monad.Aff.Free (class Affable, fromAff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.AVar (AVar, AVAR, makeVar, takeVar, putVar)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Rec.Class (Step(..), tailRecM)
@@ -36,14 +36,14 @@ untilA aff =
 
 laterVar
   ∷ ∀ eff m
-  . ( Affable (avar ∷ AVAR | eff) m
+  . ( MonadAff (avar ∷ AVAR | eff) m
     , MonadFork Exn.Error m
     )
   ⇒ Int
   → m Unit
   → m (AVar Unit)
 laterVar ms run = do
-  avar ← fromAff makeVar
-  fork $ fromAff (takeVar avar) *> run
-  fork $ fromAff $ later' ms (putVar avar unit)
+  avar ← liftAff makeVar
+  fork $ liftAff (takeVar avar) *> run
+  fork $ liftAff $ later' ms (putVar avar unit)
   pure avar

@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Eval.Common where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Throw (class MonadThrow, throw)
 
 import Data.Path.Pathy as Path
@@ -33,7 +33,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 
 validateResources
   ∷ ∀ m t
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadThrow CEM.CardError m
     , QuasarDSL m
     , ParQuasarDSL m

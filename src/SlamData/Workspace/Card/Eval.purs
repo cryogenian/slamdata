@@ -22,7 +22,7 @@ module SlamData.Workspace.Card.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
@@ -60,7 +60,7 @@ import SlamData.Workspace.Card.Variables.Eval as VariablesE
 
 runCard
   ∷ ∀ f m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , QuasarDSL m
     , Parallel f m
     , Monad m
@@ -75,7 +75,7 @@ runCard env state input trans =
 
 evalCard
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadAsk CEM.CardEnv m
     , MonadState CEM.CardState m
     , MonadThrow CEM.CardError m

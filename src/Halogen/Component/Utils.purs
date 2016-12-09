@@ -34,6 +34,9 @@ import Halogen.Query.EventSource as ES
 
 import Math as Math
 
+liftH' ∷ ∀ s s' f f' g p a. g a → H.ParentDSL s s' f f' g p a
+liftH' = H.liftH <<< H.liftH
+
 withCanceler
   ∷ ∀ a eff g
   . (Bind g, Affable (avar ∷ AVAR | eff) g)

@@ -40,8 +40,8 @@ import SlamData.Prelude hiding (throwError)
 
 import Control.Applicative.Free (FreeAp, liftFreeAp, foldFreeAp)
 import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.Class (class MonadAff)
-import Control.Monad.Aff.Free (class Affable, fromAff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Free (Free, liftF, resume)
 import Control.Monad.State.Class (class MonadState)
@@ -185,7 +185,7 @@ liftQ = flip bind (either Throw.throw pure)
 runCardEvalM
   ∷ ∀ eff f m a
   . ( QuasarDSL m
-    , Affable eff m
+    , MonadAff eff m
     , Parallel f m
     , Monad m
     )
@@ -199,7 +199,7 @@ runCardEvalM env initialState (CardEvalM ce) = go initialState Set.empty ce
       Left ctr →
         case ctr of
           Aff aff →
-            fromAff aff >>= go st as
+            liftAff aff >>= go st as
           Quasar q →
             liftQuasar q >>= go st as
           ParQuasar q →

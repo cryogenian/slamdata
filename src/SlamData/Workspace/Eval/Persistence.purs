@@ -20,8 +20,8 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.AVar (AVar, takeVar, putVar, modifyVar, killVar)
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Aff.Free (class Affable, fromAff)
-import Control.Monad.Aff.Promise (wait, defer)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Aff.Future (wait, defer)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Fork (class MonadFork, fork)
 import Control.Parallel (parSequence)
@@ -68,7 +68,7 @@ defaultEvalDebounce ∷ Int
 defaultEvalDebounce = 500
 
 type Persist f m a =
-  ( Affable SlamDataEffects m
+  ( MonadAff SlamDataEffects m
   , MonadAsk Wiring m
   , MonadFork Exn.Error m
   , Parallel f m
@@ -94,7 +94,7 @@ putDeck deckId deck = do
           , model = deck
           }
       Nothing → do
-        cell ← { value: ref, model: deck, bus: _ } <$> fromAff Bus.make
+        cell ← { value: ref, model: deck, bus: _ } <$> liftAff Bus.make
         fork do
           populateCards deckId deck
           forkDeckProcess deckId cell.bus
@@ -123,10 +123,10 @@ getDeck' deckId = do
   { path, eval } ← Wiring.expose
   let
     cacheVar = Cache.unCache eval.decks
-  decks ← fromAff (takeVar cacheVar)
+  decks ← liftAff (takeVar cacheVar)
   case Map.lookup deckId decks of
     Just cell → do
-      fromAff $ putVar cacheVar decks
+      liftAff $ putVar cacheVar decks
       pure cell
     Nothing → do
       value ← defer do
@@ -139,12 +139,12 @@ getDeck' deckId = do
           pure deck
         case result of
           Left _ →
-            fromAff $ modifyVar (Map.delete deckId) cacheVar
+            liftAff $ modifyVar (Map.delete deckId) cacheVar
           Right model →
             Cache.alter deckId (pure ∘ map (_ { model = model })) eval.decks
         pure result
-      cell ← { value, model: Deck.emptyDeck, bus: _ } <$> fromAff Bus.make
-      fromAff do
+      cell ← { value, model: Deck.emptyDeck, bus: _ } <$> liftAff Bus.make
+      liftAff do
         putVar cacheVar (Map.insert deckId cell decks)
       forkDeckProcess deckId cell.bus
       pure cell
@@ -204,7 +204,7 @@ forkDeckProcess deckId = forkLoop case _ of
     for_ mbDeck \deck → do
       let
         deck' = deck { parent = parent }
-      value' ← defer (pure (Right deck'))
+        value' = pure (Right deck')
       Cache.put deckId (deckCell { value = value' }) eval.decks
       queueSaveDefault deckId
   _ →
@@ -220,7 +220,7 @@ forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
       queueSaveDefault deckId
       queueEval' defaultEvalDebounce source graph
       deck ← getDeck' deckId
-      fromAff $ Bus.write (Deck.CardChange coord) deck.bus
+      liftAff $ Bus.write (Deck.CardChange coord) deck.bus
   _ →
     pure unit
 
@@ -272,25 +272,24 @@ freshWorkspace ∷ ∀ f m. Persist f m (Array CM.AnyCardModel → m (Deck.Id ×
 freshWorkspace anyCards = do
   { eval } ← Wiring.expose
   cards ← traverse freshCard anyCards
+  bus ← liftAff Bus.make
   let
     deck = Deck.emptyDeck { cards = cards }
-  bus ← fromAff Bus.make
-  value ← defer (pure (Right deck))
-  let
+    value = pure (Right deck)
     cell = { bus, value, model: deck }
-  rootId ← fromAff DID.make
+  rootId ← liftAff DID.make
   Cache.put rootId cell eval.decks
   forkDeckProcess rootId bus
   populateCards rootId deck
   pure (rootId × cell)
   where
     freshCard model = do
-      cardId ← fromAff CID.make
+      cardId ← liftAff CID.make
       pure { cardId, model }
 
 freshDeck ∷ ∀ f m. Persist f m (Maybe Card.Coord → m (Either QE.QError Deck.Id))
 freshDeck parent = runExceptT do
-  deckId ← fromAff DID.make
+  deckId ← liftAff DID.make
   ExceptT $ putDeck deckId $ Deck.emptyDeck { parent = parent }
   pure deckId
 
@@ -313,21 +312,21 @@ wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
 wrapDeck deckId = runExceptT do
   cell ← lift $ getDeck' deckId
   deck ← ExceptT $ wait cell.value
-  parentCoord ← Tuple <$> fromAff DID.make <*> fromAff CID.make
+  parentCoord ← Tuple <$> liftAff DID.make <*> liftAff CID.make
   let
     parentDeck = DM.wrappedDeck deck.parent (snd parentCoord) deckId
   ExceptT $ putDeck (fst parentCoord) parentDeck
   ExceptT $ updateParentPointer deckId (Just (fst parentCoord)) deck.parent
-  fromAff $ Bus.write (Deck.ParentChange (Just parentCoord)) cell.bus
+  liftAff $ Bus.write (Deck.ParentChange (Just parentCoord)) cell.bus
   pure (fst parentCoord)
 
 wrapAndMirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
 wrapAndMirrorDeck deckId = runExceptT do
   cell ← lift $ getDeck' deckId
   deck ← ExceptT $ wait cell.value
-  newSharedId ← fromAff DID.make
-  newMirrorId ← fromAff DID.make
-  parentCoord ← Tuple <$> fromAff DID.make <*> fromAff CID.make
+  newSharedId ← liftAff DID.make
+  newMirrorId ← liftAff DID.make
+  parentCoord ← Tuple <$> liftAff DID.make <*> liftAff CID.make
   let
     wrappedDeck =
       DM.splitDeck deck.parent (snd parentCoord) Orn.Vertical
@@ -368,8 +367,8 @@ mirrorDeck childId coord = runExceptT do
   { eval } ← Wiring.expose
   deck ← ExceptT $ getDeck childId
   parent ← liftWithErr "Parent not found." $ getCard coord
-  newSharedId ← fromAff DID.make
-  newMirrorId ← fromAff DID.make
+  newSharedId ← liftAff DID.make
+  newMirrorId ← liftAff DID.make
   ExceptT $ map sequence
     if Array.null deck.cards
       then do
@@ -396,7 +395,7 @@ mirrorDeck childId coord = runExceptT do
   lift $ relocateCardsTo newSharedId childId (_.cardId <$> deck.cards)
   lift $ cloneActiveStateTo newMirrorId childId
   parent'' ← liftWithErr "Cannot mirror deck." $ pure $ mirrorInLayout newMirrorId parent.value.model.model
-  fromAff $ Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
+  liftAff $ Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
   pure newSharedId
   where
   mirrorInLayout newId = case _ of
@@ -421,7 +420,7 @@ unwrapDeck deckId = runExceptT do
   childId ← liftWithErr "Cannot unwrap deck." $ pure $ immediateChild (_.value.model.model ∘ snd <$> cards)
   cell ← lift $ getDeck' childId
   ExceptT $ updateParentPointer deckId (Just childId) deck.parent
-  fromAff $ Bus.write (Deck.ParentChange deck.parent) cell.bus
+  liftAff $ Bus.write (Deck.ParentChange deck.parent) cell.bus
   pure childId
   where
     immediateChild = case _ of
@@ -442,7 +441,7 @@ collapseDeck childId coord = runExceptT do
     cards' = _.value.model.model ∘ snd <$> cards
   childIds × parent'' ← liftWithErr "Cannot collapse deck." $ pure $ collapsed parent' cards'
   childDecks ← lift $ traverse getDeck' childIds
-  fromAff do
+  liftAff do
     for_ childDecks \{ bus } →
       Bus.write (Deck.ParentChange (Just coord)) bus
     Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
@@ -466,7 +465,7 @@ wrapAndGroupDeck orn bias deckId newParentId = runExceptT do
   newParent ← lift $ getDeck' newParentId
   case oldParent.value.model.model of
     CM.Draftboard { layout } → do
-      wrappedCoord ← Tuple <$> fromAff DID.make <*> fromAff CID.make
+      wrappedCoord ← Tuple <$> liftAff DID.make <*> liftAff CID.make
       let
         splits = case bias of
           Layout.SideA → [ deckId, newParentId ]
@@ -480,7 +479,7 @@ wrapAndGroupDeck orn bias deckId newParentId = runExceptT do
           a → a
         parent' = CM.Draftboard { layout: layout' }
       ExceptT $ putDeck (fst wrappedCoord) wrappedDeck
-      fromAff do
+      liftAff do
         Bus.write (Deck.ParentChange (Just wrappedCoord)) cell.bus
         Bus.write (Deck.ParentChange (Just wrappedCoord)) newParent.bus
         Bus.write (Card.ModelChange (Card.toAll oldParentCoord) parent') oldParent.bus
@@ -504,7 +503,7 @@ groupDeck orn bias deckId newParentCoord = runExceptT do
           a → a
         child' = CM.Draftboard { layout: inner' }
         parent' = CM.Draftboard { layout: layout' }
-      fromAff do
+      liftAff do
         Bus.write (Deck.ParentChange (Just newParentCoord)) cell.bus
         Bus.write (Card.ModelChange (Card.toAll newParentCoord) child') newParent.bus
         Bus.write (Card.ModelChange (Card.toAll oldParentCoord) parent') oldParent.bus
@@ -516,7 +515,7 @@ renameDeck deckId name = runExceptT do
   cell ← lift $ getDeck' deckId
   deck ← ExceptT $ wait cell.value
   ExceptT $ putDeck deckId (deck { name = name })
-  fromAff $ Bus.write (Deck.NameChange name) cell.bus
+  liftAff $ Bus.write (Deck.NameChange name) cell.bus
   pure unit
 
 addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m (Either QE.QError Card.Coord))
@@ -524,7 +523,7 @@ addCard deckId cty = runExceptT do
   { eval } ← Wiring.expose
   deckCell ← lift $ getDeck' deckId
   deck ← ExceptT $ wait deckCell.value
-  cardId ← fromAff CID.make
+  cardId ← liftAff CID.make
   let
     coord = deckId × cardId
   lift do
@@ -539,11 +538,11 @@ addCard deckId cty = runExceptT do
     let
       card = { cardId, model: Card.cardModelOfType (fromMaybe Port.Initial input) cty }
       deck' = deck { cards = Array.snoc deck.cards card }
+      value' = pure (Right deck')
     cell ← makeCardCell card input mempty
-    value' ← defer (pure (Right deck'))
     Cache.put coord cell eval.cards
     Cache.put deckId (deckCell { value = value' }) eval.decks
-    fromAff $ Bus.write (Deck.CardChange coord) deckCell.bus
+    liftAff $ Bus.write (Deck.CardChange coord) deckCell.bus
     forkCardProcess coord cell.bus
     queueSaveDefault deckId
     queueEvalImmediate (Card.toAll coord)
@@ -561,6 +560,7 @@ removeCard deckId coord@(deckId' × cardId) = runExceptT do
         if deckId ≡ deckId'
           then deck { cards = Array.takeWhile (not ∘ eq cardId ∘ _.cardId) deck.cards }
           else deck { cards = [], mirror = Array.takeWhile (not ∘ eq coord) deck.mirror }
+      value' = pure (Right deck')
     output ← runMaybeT do
       last ← MaybeT $ pure $ Array.last coords.init
       cell ← MaybeT $ Cache.get last eval.cards
@@ -570,10 +570,9 @@ removeCard deckId coord@(deckId' × cardId) = runExceptT do
         cell' = cell { next = leaf <> next' }
       lift $ Cache.put last cell' eval.cards
       MaybeT $ pure $ cell.value.output
-    value' ← defer (pure (Right deck'))
     Cache.put deckId (deckCell { value = value' }) eval.decks
     queueSaveDefault deckId
-    fromAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
+    liftAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
 
 updateParentPointer ∷ ∀ f m. Persist f m (Deck.Id → Maybe Deck.Id → Maybe Card.Coord → m (Either QE.QError Unit))
 updateParentPointer oldId newId parent =
@@ -587,7 +586,7 @@ updateParentPointer oldId newId parent =
         let
           model' = CM.updatePointer oldId newId value.model.model
           message = Card.ModelChange (Card.toAll coord) model'
-        fromAff $ Bus.write message bus
+        liftAff $ Bus.write message bus
     Nothing → do
       { path } ← Wiring.expose
       ExceptT $ map sequence $ traverse (WM.setRoot (path </> Pathy.file "index")) newId
@@ -609,7 +608,7 @@ relocateCardsTo deckId oldDeckId cardIds = do
           cardId = c.value.model.cardId
           coord = deckId × cardId
           next = Left oldDeckId : c.next
-        fromAff $ Bus.kill (Exn.error "Relocated") c.bus
+        liftAff $ Bus.kill (Exn.error "Relocated") c.bus
         Cache.remove (oldDeckId × cardId) cache
         Cache.alter coord
           (pure ∘ map \c' → c' { value = c.value, next = Left oldDeckId : c'.next })
@@ -621,7 +620,7 @@ relocateCardsTo deckId oldDeckId cardIds = do
           coord2 = oldDeckId × cardId2
           coord = deckId × cardId1
           updateNext = map (map \c → if c ≡ coord2 then deckId × cardId2 else c)
-        fromAff $ Bus.kill (Exn.error "Relocated") c1.bus
+        liftAff $ Bus.kill (Exn.error "Relocated") c1.bus
         Cache.remove (oldDeckId × cardId1) cache
         Cache.alter coord
           (pure ∘ map \c' → c' { value = c1.value, next = updateNext c'.next })
@@ -638,22 +637,22 @@ cloneActiveStateTo to from = do
 
 forkLoop
   ∷ ∀ m r a
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadFork Exn.Error m
     )
   ⇒ (a → m Unit)
-  → Bus.Bus (Bus.R' r) a
+  → Bus.BusR' r a
   → m Unit
 forkLoop handler bus = void (fork loop)
   where
     loop = do
-      msg ← fromAff (Bus.read bus)
+      msg ← liftAff (Bus.read bus)
       fork (handler msg)
       loop
 
 makeCardCell
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , Monad m
     )
   ⇒ Card.Model
@@ -671,12 +670,12 @@ makeCardCell model input next = do
       , sources: mempty
       , tick: Nothing
       }
-  bus ← fromAff Bus.make
+  bus ← liftAff Bus.make
   pure { bus, next, value }
 
 getCard
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadAsk Wiring m
     )
   ⇒ Card.Coord
@@ -687,7 +686,7 @@ getCard coord = do
 
 getCards
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadAsk Wiring m
     )
   ⇒ Array Card.Coord
@@ -698,7 +697,7 @@ getCards = map sequence ∘ traverse go
 
 getEvaluatedCards
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadAsk Wiring m
     )
   ⇒ Array Card.Coord
@@ -710,7 +709,7 @@ getEvaluatedCards = map (traverse go =<< _) ∘ getCards
 
 debounce
   ∷ ∀ k m r
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadFork Exn.Error m
     , Ord k
     )
@@ -727,7 +726,7 @@ debounce ms key make cache init run = do
   where
     alterFn a b = do
       case b of
-        Just { avar } → fromAff $ killVar avar (Exn.error "debounce")
+        Just { avar } → liftAff $ killVar avar (Exn.error "debounce")
         Nothing → void $ fork init
       pure (Just a)
 

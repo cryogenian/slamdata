@@ -30,7 +30,7 @@ module SlamData.Wiring.Cache
 import SlamData.Prelude
 
 import Control.Monad.Aff.AVar (AVar, AVAR, makeVar', takeVar, putVar, modifyVar)
-import Control.Monad.Aff.Free (class Affable, fromAff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 
 import Data.List (List)
 import Data.Map (Map)
@@ -43,61 +43,61 @@ unCache (Cache m) = m
 
 make
   ∷ ∀ eff m k v
-  . (Affable (avar ∷ AVAR | eff) m, Ord k)
+  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
   ⇒ m (Cache k v)
-make = fromAff (Cache <$> makeVar' mempty)
+make = liftAff (Cache <$> makeVar' mempty)
 
 make'
   ∷ ∀ eff m k v
-  . (Affable (avar ∷ AVAR | eff) m, Ord k)
+  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
   ⇒ List (Tuple k v)
   → m (Cache k v)
-make' = fromAff ∘ map Cache ∘ makeVar' ∘ Map.fromFoldable
+make' = liftAff ∘ map Cache ∘ makeVar' ∘ Map.fromFoldable
 
 get
   ∷ ∀ eff m k v
-  . (Affable (avar ∷ AVAR | eff) m, Ord k)
+  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
   ⇒ k
   → Cache k v
   → m (Maybe v)
-get key (Cache cache) = fromAff do
+get key (Cache cache) = liftAff do
   vals ← takeVar cache
   putVar cache vals
   pure (Map.lookup key vals)
 
 alter
   ∷ ∀ eff m k v
-  . (Monad m, Affable (avar ∷ AVAR | eff) m, Ord k)
+  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
   ⇒ k
   → (Maybe v → m (Maybe v))
   → Cache k v
   → m Unit
 alter key fn (Cache cache) = do
-  vals ← fromAff $ takeVar cache
+  vals ← liftAff $ takeVar cache
   let val = Map.lookup key vals
   val' ← fn val
-  fromAff $ case val, val' of
+  liftAff $ case val, val' of
     Nothing, Nothing → putVar cache vals
     Just _ , Nothing → putVar cache (Map.delete key vals)
     _      , Just v  → putVar cache (Map.insert key v vals)
 
 put
   ∷ ∀ eff m k v
-  . (Affable (avar ∷ AVAR | eff) m, Ord k)
+  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
   ⇒ k
   → v
   → Cache k v
   → m Unit
-put key val (Cache cache) = fromAff do
+put key val (Cache cache) = liftAff do
   modifyVar (Map.insert key val) cache
 
 remove
   ∷ ∀ eff m k v
-  . (Affable (avar ∷ AVAR | eff) m, Ord k)
+  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
   ⇒ k
   → Cache k v
   → m (Maybe v)
-remove key (Cache cache) = fromAff do
+remove key (Cache cache) = liftAff do
   vals ← takeVar cache
   case Map.pop key vals of
     Just (Tuple val vals') →
@@ -109,18 +109,18 @@ remove key (Cache cache) = fromAff do
 
 clear
   ∷ ∀ eff m k v
-  . (Affable (avar ∷ AVAR | eff) m, Ord k)
+  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
   ⇒ Cache k v
   → m Unit
-clear (Cache cache) = fromAff do
+clear (Cache cache) = liftAff do
   modifyVar (const mempty) cache
 
 snapshot
   ∷ ∀ eff m k v
-  . Affable (avar ∷ AVAR | eff) m
+  . MonadAff (avar ∷ AVAR | eff) m
   ⇒ Cache k v
   → m (Map k v)
-snapshot (Cache cache) = fromAff do
+snapshot (Cache cache) = liftAff do
   vals ← takeVar cache
   putVar cache vals
   pure vals

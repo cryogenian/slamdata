@@ -18,8 +18,8 @@ module SlamData.Workspace.Card.Markdown.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
@@ -55,7 +55,7 @@ import Utils.Path (DirPath)
 
 evalMarkdownForm
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadEff SlamDataEffects m
     , Monad m
     )
   ⇒ Port.VarMap × SD.SlamDownP Port.VarMapValue
@@ -63,12 +63,12 @@ evalMarkdownForm
   → m Port.VarMap
 evalMarkdownForm (vm × doc) model = do
   let inputState = SDH.formStateFromDocument doc
-  thisVarMap ← fromEff $ MDS.formStateToVarMap inputState model.state
+  thisVarMap ← liftEff $ MDS.formStateToVarMap inputState model.state
   pure $ thisVarMap `SM.union` vm
 
 evalMarkdown
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadEff SlamDataEffects m
     , MonadAsk CEM.CardEnv m
     , MonadThrow CEM.CardError m
     , MonadTell CEM.CardLog m
@@ -100,7 +100,7 @@ findFields = SDT.everything (const mempty) extractField
 
 evalEmbeddedQueries
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadEff SlamDataEffects m
     , MonadThrow CEM.CardError m
     , MonadTell CEM.CardLog m
     , QuasarDSL m
@@ -175,7 +175,7 @@ evalEmbeddedQueries sm dir =
       (SD.Date _) × (EJSON.Date str) →
         SD.Date ∘ pure <$> parse parseSqlDate str
       (SD.DateTime prec _) × (EJSON.Timestamp str) → do
-        fromEff (parseSqlTimeStamp str) >>=
+        liftEff (parseSqlTimeStamp str) >>=
           case _ of
             Left msg → CEM.throw msg
             Right dt → pure $ SD.DateTime prec (pure dt)

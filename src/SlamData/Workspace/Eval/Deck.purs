@@ -27,7 +27,7 @@ module SlamData.Workspace.Eval.Deck
 import SlamData.Prelude
 
 import Control.Monad.Aff.Bus (BusRW)
-import Control.Monad.Aff.Promise (Promise)
+import Control.Monad.Aff.Future (Future)
 
 import SlamData.Quasar.Error (QError)
 import SlamData.Workspace.Card.CardId (CardId)
@@ -50,7 +50,7 @@ type Model = Deck
 
 type Cell =
   { bus ∷ BusRW EvalMessage
-  , value ∷ Promise (Either QError Model)
+  , value ∷ Future (Either QError Model)
   -- Current state of the model. Used for traversals over the _current_ deck
   -- graph. This value _may_ be stale, so anything that relies on consistency
   -- should use value.

@@ -23,7 +23,8 @@ import SlamData.Prelude
 
 import Control.Comonad.Cofree as Cofree
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (readRef, modifyRef)
 
 import Data.Array as Array
@@ -49,7 +50,7 @@ type Tick = Int
 
 evalGraph
   ∷ ∀ f m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadAsk Wiring m
     , Parallel f m
     , QuasarDSL m
@@ -65,7 +66,7 @@ evalGraph source graph = do
 
 runEvalLoop
   ∷ ∀ f m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadAsk Wiring m
     , Parallel f m
     , QuasarDSL m
@@ -87,7 +88,7 @@ runEvalLoop source tick trail input graph = do
       , coord: node.coord
       , urlVarMaps: varMaps
       }
-  fromAff $ Bus.write (Card.Pending source input) node.card.bus
+  liftAff $ Bus.write (Card.Pending source input) node.card.bus
   result ← Card.runCard env node.card.value.state input node.transition
   case result.output of
     Left err → do
@@ -98,7 +99,7 @@ runEvalLoop source tick trail input graph = do
           Left msg → msg
           _        → "Global error" -- FIXME
       updateCardValue node.coord value' eval.cards
-      fromAff do
+      liftAff do
         for_ result.state \state →
           Bus.write (Card.StateChange state) node.card.bus
         Bus.write (Card.Complete source output) node.card.bus
@@ -113,15 +114,15 @@ runEvalLoop source tick trail input graph = do
           , tick = Just tick
           }
       updateCardValue node.coord value' eval.cards
-      fromAff do
+      liftAff do
         for_ result.state \state →
           Bus.write (Card.StateChange state) node.card.bus
         Bus.write (Card.Complete source output) node.card.bus
-      when (deckCompleted (fst node.coord) (List.mapMaybe censor (unwrap next))) $ fromAff do
+      when (deckCompleted (fst node.coord) (List.mapMaybe censor (unwrap next))) $ liftAff do
         Bus.write (Deck.Complete trail' output) node.deck.bus
       flip parTraverse_ (unwrap next) case _ of
         Left (_ × deck) →
-          fromAff $ Bus.write (Deck.Complete trail' output) deck.bus
+          liftAff $ Bus.write (Deck.Complete trail' output) deck.bus
         Right graph' →
           runEvalLoop source tick trail' output graph'
   where
@@ -137,13 +138,11 @@ runEvalLoop source tick trail input graph = do
 
 notifyDecks
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
-    , Applicative m
-    )
+  . MonadAff SlamDataEffects m
   ⇒ Deck.EvalMessage
   → EvalGraph
   → m Unit
-notifyDecks msg = traverse_ (fromAff ∘ Bus.write msg ∘ _.bus ∘ snd) ∘ nubDecks
+notifyDecks msg = traverse_ (liftAff ∘ Bus.write msg ∘ _.bus ∘ snd) ∘ nubDecks
 
 deckCompleted ∷ Deck.Id → List EvalGraph → Boolean
 deckCompleted deckId = not ∘ F.any (eq deckId ∘ fst ∘ _.coord ∘ Cofree.head)
@@ -163,22 +162,22 @@ nubDecks = List.nubBy (eq `on` fst) ∘ go
 
 nextTick
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadAsk Wiring m
     )
   ⇒ m Int
 nextTick = do
   { eval } ← Wiring.expose
-  fromEff do
+  liftEff do
     modifyRef eval.tick (add 1)
     readRef eval.tick
 
 currentTick
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadAsk Wiring m
     )
   ⇒ m Int
 currentTick = do
   { eval } ← Wiring.expose
-  fromEff (readRef eval.tick)
+  liftEff (readRef eval.tick)

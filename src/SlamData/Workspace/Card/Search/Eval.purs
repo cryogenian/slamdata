@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Search.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
@@ -44,7 +44,7 @@ import Text.SlamSearch as SS
 
 evalSearch
   ∷ ∀ m
-  . ( Affable SlamDataEffects m
+  . ( MonadAff SlamDataEffects m
     , MonadAsk CEM.CardEnv m
     , MonadThrow CEM.CardError m
     , MonadTell CEM.CardLog m
