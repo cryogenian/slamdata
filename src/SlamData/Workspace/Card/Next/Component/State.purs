@@ -20,38 +20,36 @@ import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
 
+import Halogen as H
+
+import SlamData.ActionList.Component as ActionList
+import SlamData.Monad (Slam)
+import SlamData.Workspace.Card.Next.Component.Query (QueryC)
+import SlamData.Workspace.Card.Next.NextAction (NextAction)
 import SlamData.Workspace.Card.Port (Port)
 
-import SlamData.Workspace.Card.Next.NextAction (NextAction)
+type StateP =
+  H.ParentState
+    State
+    (ActionList.State NextAction)
+    QueryC
+    (ActionList.Query NextAction)
+    Slam
+    Unit
 
 type State =
   { input ∷ Maybe Port
   , presentAddCardGuide ∷ Boolean
-  , actions ∷ Array NextAction
-  , previousActions ∷ Array NextAction
-  , filterString ∷ String
   }
 
 initialState ∷ State
 initialState =
   { input: Nothing
   , presentAddCardGuide: false
-  , actions: []
-  , previousActions: [ ]
-  , filterString: ""
   }
 
 _input ∷ ∀ a r. Lens' { input ∷ a | r } a
 _input = lens _.input (_ { input = _ })
 
-_actions ∷ ∀ a r. Lens' { actions ∷ a |r } a
-_actions = lens _.actions (_ { actions = _ })
-
-_previousActions ∷ ∀ a r. Lens' { previousActions ∷ a | r} a
-_previousActions = lens _.previousActions (_ { previousActions = _ })
-
 _presentAddCardGuide ∷ ∀ a r. Lens' { presentAddCardGuide ∷ a | r } a
 _presentAddCardGuide = lens _.presentAddCardGuide (_ { presentAddCardGuide = _ })
-
-_filterString ∷ ∀ a r. Lens' { filterString ∷ a | r } a
-_filterString = lens _.filterString (_ { filterString = _ })

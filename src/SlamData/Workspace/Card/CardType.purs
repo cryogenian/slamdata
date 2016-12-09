@@ -18,9 +18,11 @@ module SlamData.Workspace.Card.CardType
   ( CardType(..)
   , AceMode(..)
   , cardName
-  , darkCardGlyph
-  , lightCardGlyph
   , cardClasses
+  , cardIconDarkImg
+  , cardIconDarkSrc
+  , cardIconLightImg
+  , cardIconLightSrc
   , aceCardName
   , aceCardClasses
   , aceMode
@@ -37,6 +39,7 @@ import Halogen.HTML as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
+import SlamData.Config as Config
 import SlamData.Workspace.Card.CardType.ChartType
   ( ChartType(..)
   , printChartType
@@ -148,117 +151,92 @@ cardName = case _ of
   ErrorCard → "Error"
   PendingCard → "Pending"
 
-darkCardGlyph ∷ ∀ s f. CardType → H.HTML s f
-darkCardGlyph = case _ of
+cardIcon ∷ CardType → String
+cardIcon = case _ of
   Ace MarkdownMode →
-    HH.img [ HP.src "img/cardsDark/setupMarkdown.svg" ]
+    "setupMarkdown"
   Ace SQLMode →
-    HH.img [ HP.src "img/cardsDark/query.svg" ]
+    "query"
   Search →
-    HH.img [ HP.src "img/cardsDark/search.svg" ]
+    "search"
   ChartOptions chty →
-    let
-      src = case chty of
-        Pie → "img/cardsDark/buildChart/pie.svg"
-        Line → "img/cardsDark/buildChart/line.svg"
-        Bar → "img/cardsDark/buildChart/bar.svg"
-        Area → "img/cardsDark/buildChart/area.svg"
-        Scatter → "img/cardsDark/buildChart/scatter.svg"
-        Radar → "img/cardsDark/buildChart/radar.svg"
-        Funnel → "img/cardsDark/buildChart/funnel.svg"
-        Graph → "img/cardsDark/buildChart/graph.svg"
-        Heatmap → "img/cardsDark/buildChart/heatmap.svg"
-        Sankey → "img/cardsDark/buildChart/sankey.svg"
-        Gauge → "img/cardsDark/buildChart/gauge.svg"
-        Boxplot → "img/cardsDark/buildChart/boxplot.svg"
-        Metric → "img/cardsDark/buildChart/metric.svg"
-        PivotTable → "img/cardsDark/buildChart/pivot-table.svg"
-        PunchCard → "img/cardsDark/buildChart/punch-card.svg"
-        Candlestick → "img/cardsDark/buildChart/candlestick.svg"
-        Parallel → "img/cardsDark/buildChart/parallel.svg"
-    in HH.img [ HP.src src ]
+    case chty of
+      Pie →
+        "buildChart/pie"
+      Line →
+        "buildChart/line"
+      Bar →
+        "buildChart/bar"
+      Area →
+        "buildChart/area"
+      Scatter →
+        "buildChart/scatter"
+      Radar →
+        "buildChart/radar"
+      Funnel →
+        "buildChart/funnel"
+      Graph →
+        "buildChart/graph"
+      Heatmap →
+        "buildChart/heatmap"
+      Sankey →
+        "buildChart/sankey"
+      Gauge →
+        "buildChart/gauge"
+      Boxplot →
+        "buildChart/boxplot"
+      Metric →
+        "buildChart/metric"
+      PivotTable →
+        "buildChart/pivot-table"
+      PunchCard →
+        "buildChart/punch-card"
+      Candlestick →
+        "buildChart/candlestick"
+      Parallel →
+        "buildChart/parallel"
   Download →
-    HH.img [ HP.src "img/cardsDark/showDownload.svg" ]
+    "showDownload"
   Variables →
-    HH.img [ HP.src "img/cardsDark/setupVariables.svg" ]
+    "setupVariables"
   Troubleshoot →
-    HH.img [ HP.src "img/cardsDark/troubleshoot.svg" ]
+    "troubleshoot"
   Chart →
-    HH.img [ HP.src "img/cardsDark/showChart.svg" ]
+    "showChart"
   Markdown →
-    HH.img [ HP.src "img/cardsDark/showMarkdown.svg" ]
+    "showMarkdown"
   Table →
-    HH.img [ HP.src "img/cardsDark/table.svg" ]
+    "table"
   NextAction →
-    HH.text ""
+    ""
   Cache →
-    HH.img [ HP.src "img/cardsDark/cache.svg" ]
+    "cache"
   Open →
-    HH.img [ HP.src "img/cardsDark/open.svg" ]
+    "open"
   DownloadOptions →
-    HH.img [ HP.src "img/cardsDark/setupDownload.svg" ]
+    "setupDownload"
   Draftboard →
-    HH.img [ HP.src "img/cardsDark/draftboard.svg" ]
+    "draftboard"
   ErrorCard →
-    HH.text ""
+    ""
   PendingCard →
-    HH.text ""
+    ""
 
-lightCardGlyph ∷ ∀ s f. CardType → H.HTML s f
-lightCardGlyph = case _ of
-  Ace MarkdownMode →
-    HH.img [ HP.src "img/cardsLight/setupMarkdown.svg" ]
-  Ace SQLMode →
-    HH.img [ HP.src "img/cardsLight/query.svg" ]
-  Search →
-    HH.img [ HP.src "img/cardsLight/search.svg" ]
-  ChartOptions chty →
-    let
-      src = case chty of
-        Pie → "img/cardsLight/buildChart/pie.svg"
-        Line → "img/cardsLight/buildChart/line.svg"
-        Bar → "img/cardsLight/buildChart/bar.svg"
-        Area → "img/cardsLight/buildChart/area.svg"
-        Scatter → "img/cardsLight/buildChart/scatter.svg"
-        Radar → "img/cardsLight/buildChart/radar.svg"
-        Funnel → "img/cardsLight/buildChart/funnel.svg"
-        Graph → "img/cardsLight/buildChart/graph.svg"
-        Heatmap → "img/cardsLight/buildChart/heatmap.svg"
-        Sankey → "img/cardsLight/buildChart/sankey.svg"
-        Gauge → "img/cardsLight/buildChart/gauge.svg"
-        Boxplot → "img/cardsLight/buildChart/boxplot.svg"
-        Metric → "img/cardsLight/buildChart/metric.svg"
-        PivotTable → "img/cardsLight/buildChart/pivot-table.svg"
-        PunchCard → "img/cardsLight/buildChart/punch-card.svg"
-        Candlestick → "img/cardsLight/buildChart/candlestick.svg"
-        Parallel → "img/cardsLight/buildChart/parallel.svg"
-    in HH.img [ HP.src src ]
-  Download →
-    HH.img [ HP.src "img/cardsLight/showDownload.svg" ]
-  Variables →
-    HH.img [ HP.src "img/cardsLight/setupVariables.svg" ]
-  Troubleshoot →
-    HH.img [ HP.src "img/cardsLight/troubleshoot.svg" ]
-  Chart →
-    HH.img [ HP.src "img/cardsLight/showChart.svg" ]
-  Markdown →
-    HH.img [ HP.src "img/cardsLight/showMarkdown.svg" ]
-  Table →
-    HH.img [ HP.src "img/cardsLight/table.svg" ]
-  NextAction →
-    HH.text ""
-  Cache →
-    HH.img [ HP.src "img/cardsLight/cache.svg" ]
-  Open →
-    HH.img [ HP.src "img/cardsLight/open.svg" ]
-  DownloadOptions →
-    HH.img [ HP.src "img/cardsLight/setupDownload.svg" ]
-  Draftboard →
-    HH.img [ HP.src "img/cardsLight/draftboard.svg" ]
-  ErrorCard →
-    HH.text ""
-  PendingCard →
-    HH.text ""
+cardIconDarkSrc ∷ CardType → String
+cardIconDarkSrc cardType =
+  Config.darkIconsPath <> "/" <> cardIcon cardType <> ".svg"
+
+cardIconDarkImg ∷ ∀ a b. CardType → H.HTML a b
+cardIconDarkImg cardType =
+  HH.img [ HP.src $ cardIconDarkSrc cardType ]
+
+cardIconLightSrc ∷ CardType → String
+cardIconLightSrc cardType =
+  Config.lightIconsPath <> "/" <> cardIcon cardType <> ".svg"
+
+cardIconLightImg ∷ ∀ a b. CardType → H.HTML a b
+cardIconLightImg cardType =
+  HH.img [ HP.src $ cardIconLightSrc cardType ]
 
 cardClasses ∷ CardType → Array H.ClassName
 cardClasses = case _ of

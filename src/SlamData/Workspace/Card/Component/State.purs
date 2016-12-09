@@ -123,7 +123,7 @@ data AnyCardState
   | DownloadState Download.State
   | VariablesState Variables.StateP
   | TroubleshootState Troubleshoot.State
-  | NextState Next.State
+  | NextState Next.StateP
   | CacheState Cache.State
   | OpenState Open.StateP
   | DownloadOptionsState DOpts.State
@@ -188,7 +188,7 @@ _TroubleshootState = prism' TroubleshootState case _ of
   TroubleshootState s → Just s
   _ → Nothing
 
-_NextState ∷ Prism' AnyCardState Next.State
+_NextState ∷ Prism' AnyCardState Next.StateP
 _NextState = prism' NextState case _ of
   NextState s → Just s
   _ → Nothing
