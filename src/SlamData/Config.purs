@@ -29,10 +29,10 @@ workspaceUrl :: String
 workspaceUrl = baseUrl <> "workspace.html"
 
 darkIconsPath ∷ String
-darkIconsPath = "img/iconsDark"
+darkIconsPath = "img/cardsDark"
 
 lightIconsPath ∷ String
-lightIconsPath = "img/iconsLight"
+lightIconsPath = "img/cardsLight"
 
 searchTimeout :: Number
 searchTimeout = 500.0
