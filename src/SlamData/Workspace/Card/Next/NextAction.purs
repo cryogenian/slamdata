@@ -37,7 +37,7 @@ chartSubmenu =
   ActionList.Drill
     (ActionList.ActionName "Setup Chart")
     (ActionList.ActionIconSrc "img/cardsLight/setupChart.svg")
-    (ActionList.ActionDescription "Insert a Setup Chart card.")
+    (ActionList.ActionDescription "Select Setup Chart card category")
     (map (toAction ∘ Insert ∘ CT.ChartOptions) allChartTypes)
 
 findOutHowToChartSubmenu ∷ ActionList.Action NextAction
@@ -45,7 +45,7 @@ findOutHowToChartSubmenu =
   ActionList.Drill
     (ActionList.ActionName "Setup Chart")
     (ActionList.ActionIconSrc "img/cardsLight/setupChart.svg")
-    (ActionList.ActionDescription "Find out how to insert a Setup Chart card.")
+    (ActionList.ActionDescription "Select Setup Chart card category")
     (map (toAction ∘ FindOutHowToInsert ∘ CT.ChartOptions) allChartTypes)
 
 toAction ∷ NextAction → ActionList.Action NextAction
