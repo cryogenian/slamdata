@@ -20,9 +20,11 @@ import SlamData.Prelude
 
 import Ace.Config as AceConfig
 
+import Control.Coroutine (Producer, Consumer, consumer, producer, ($$), runProcess)
+
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Free (fromAff, fromEff)
-import Control.Monad.Aff.AVar (AVar, makeVar', modifyVar, putVar, takeVar)
+import Control.Monad.Aff.AVar (AVar, makeVar, makeVar', modifyVar, putVar, takeVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Fork (Canceler(..), fork, cancel)
@@ -54,7 +56,7 @@ import SlamData.FileSystem.Component (QueryP, Query(..), toListing, toDialog, to
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..))
-import SlamData.FileSystem.Resource (Resource, getPath)
+import SlamData.FileSystem.Resource (getPath)
 import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
@@ -69,6 +71,15 @@ import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch.Types (SearchQuery)
 
 import Utils.Path (DirPath, hidePath, renderPath)
+
+produceSlam
+  ∷ ∀ a r
+  . ((a ⊹ r → Slam Unit) → Slam Unit)
+  → Producer a Slam r
+produceSlam recv = do
+  v ← lift $ fromAff makeVar
+  lift $ fork $ recv $ fromAff ∘ putVar v
+  producer $ fromAff $ takeVar v
 
 main ∷ Eff SlamDataEffects Unit
 main = do
@@ -170,6 +181,11 @@ redirects driver var mbOld = case _ of
           _ → Nothing
         pure $ oldQuery ≠ query ∨ oldSalt ≡ salt
 
+      itemsConsumer ∷ Consumer (Array Item) Slam QE.QError
+      itemsConsumer = consumer \is → do
+        traceAnyA is
+        pure Nothing
+
     if isNewPage
       then do
       fromAff do
@@ -183,12 +199,19 @@ redirects driver var mbOld = case _ of
         driver $ toSearch $ Search.SetValid true
         driver $ toSearch $ Search.SetPath queryParts.path
 
-      listPath query zero var queryParts.path driver
+      let
+        p = listingProducer var query queryParts.path
+        c = listingConsumer driver
+        h = listingProcessHandler driver
+        process = p $$ c
+
+      h =<< runProcess process
 
       when (isNothing queryParts.query)
         $ checkMount queryParts.path driver
       else
         fromAff $ driver $ toSearch $ Search.SetLoading false
+
 
 checkMount
   ∷ DirPath
@@ -204,39 +227,77 @@ checkMount path driver = do
         $ SetIsMount true
 
   Quasar.mountInfo (Left path) >>= case _ of
+    -- When Quasar has no mounts configured we want to enable the root to be
+    -- configured as a mount - if `/` is not a mount and also has no children
+    -- then we know it's in this unconfigured state.
+    Left _ | path ≡ rootDir →
+      void $ Quasar.children path >>= traverse \children →
+        when (null children) $ setIsMount
     Left _ →
-      -- When Quasar has no mounts configured we want to enable the root to be
-      -- configured as a mount - if `/` is not a mount and also has no children
-      -- then we know it's in this unconfigured state.
-      when (path ≡ rootDir)
-        $ void
-        $ Quasar.children path >>= traverse \children →
-            when (null children) $ setIsMount
-
+      pure unit
     Right _ →
       setIsMount
 
-
-listPath
-  ∷ SearchQuery
-  → Int
-  → AVar ListingState
+listingProducer
+  ∷ AVar ListingState
+  → SearchQuery
   → DirPath
-  → Driver QueryP SlamDataRawEffects
-  → Slam Unit
-listPath query depth var dir driver = do
-  fromAff
-    $ flip modifyVar var
-    $ _requestMap %~ M.alter memThisRequest depth
-
-  canceler ←
-    map Canceler $ fork goDeeper
-
-  fromAff
-    $ flip modifyVar var
-    $ _canceler <>~ canceler
-
+  → Producer (Array Item) Slam (Maybe QE.QError)
+listingProducer var query startingDir = produceSlam \emit → go startingDir 0 emit
   where
+  go dir depth emit = do
+    fromAff
+      $ flip modifyVar var
+      $ _requestMap %~ M.alter memThisRequest depth
+
+    canceler ←
+      map Canceler $ fork $ runRequest dir depth emit
+
+    fromAff
+      $ flip modifyVar var
+      $ _canceler <>~ canceler
+
+  runRequest dir depth emit = do
+    Quasar.children dir >>= case _ of
+      Left e → case GE.fromQError e of
+        -- Do not show error message notification if we're in root or searching
+        Left _ | (not $ isSearchQuery query) ∨ depth ≡ 0 →
+          emit $ Right Nothing
+        _ →
+          emit $ Right $ Just e
+
+      Right cs → getChildren depth emit cs
+
+    fromAff
+      $ flip modifyVar var
+      $ _requestMap %~ M.alter markThisRequestAsFinished depth
+
+    st@{canceler: c, requestMap: r} ←
+      fromAff $ takeVar var
+
+    if allRequestsAreFinished r
+      then do
+      fromAff $ putVar var initialListingState
+      emit $ Right Nothing
+      else
+      fromAff $ putVar var st
+
+  getChildren depth emit ress = do
+    let
+      next =
+        flip mapMaybe ress $ either Just (const Nothing) ∘ getPath
+      toAdd =
+        map Item $ flip filter ress $ filterByQuery query
+
+    emit $ Left toAdd
+
+    if isSearchQuery query
+      then
+      void $ fork $ flip parTraverse_ next \dir' →
+        go dir' (depth + one) emit
+      else
+      emit $ Right Nothing
+
   memThisRequest = case _ of
     Nothing → Just 1
     Just n → Just $ n + 1
@@ -248,55 +309,41 @@ listPath query depth var dir driver = do
   -- Note that initialState is (zero ↔ zero) and final Ø
   allRequestsAreFinished = M.isEmpty
 
-  goDeeper = do
-    Quasar.children dir >>= either sendError getChildren
-    fromAff do
-      flip modifyVar var
-        $ _requestMap %~ M.alter markThisRequestAsFinished depth
+listingConsumer
+  ∷ Driver QueryP SlamDataRawEffects
+  → Consumer (Array Item) Slam (Maybe QE.QError)
+listingConsumer driver = consumer \is → do
+  fromAff
+    $ driver
+    $ toListing
+    $ Listing.Adds is
+  pure Nothing
 
-      st@{canceler: c, requestMap: r} ←
-        takeVar var
-
-      if allRequestsAreFinished r
-        then do
-        driver $ toSearch $ Search.SetLoading false
-        putVar var initialListingState
-        else
-        putVar var st
-
-  sendError ∷ QE.QError → Slam Unit
-  sendError err =
-    case GE.fromQError err of
-      Left msg →
-        presentError $
-          "There was a problem accessing this directory listing. " <> msg
-      Right ge →
-        GE.raiseGlobalError ge
-
-  presentError message =
-    when ((not $ isSearchQuery query) ∨ depth ≡ zero)
-      $ fromAff
-      $ driver
-      $ toDialog $ Dialog.Show
-      $ Dialog.Error message
-
-  getChildren ∷ Array Resource → Slam Unit
-  getChildren ress = do
-    let
-      next = do
-        guard $ isSearchQuery query
-        flip mapMaybe ress $ either Just (const Nothing) ∘ getPath
-      toAdd =
-        map Item $ flip filter ress $ filterByQuery query
-
+listingProcessHandler
+  ∷ Driver QueryP SlamDataRawEffects
+  → Maybe QE.QError
+  → Slam Unit
+listingProcessHandler driver = case _ of
+  Nothing →
     fromAff
       $ driver
-      $ toListing
-      $ Listing.Adds toAdd
+      $ toSearch
+      $ Search.SetLoading false
 
-    flip parTraverse_ next \n →
-      listPath query (depth + one) var n driver
+  Just err → case GE.fromQError err of
+    Left msg →
+      presentError
+        $ "There was a problem accessing this directory listing. " <> msg
+    Right ge →
+      GE.raiseGlobalError ge
 
+  where
+  presentError message =
+    fromAff
+      $ driver
+      $ toDialog
+      $ Dialog.Show
+      $ Dialog.Error message
 
 updateURL
   ∷ Maybe String
