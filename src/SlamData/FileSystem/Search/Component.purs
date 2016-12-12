@@ -93,6 +93,7 @@ data Query a
   | SetValue String a
   | SetValid Boolean a
   | IsSearching (Boolean → a)
+  | IsLoading (Boolean → a)
   | SetPath DirPath  a
 
 type HTML = H.ComponentHTML Query
@@ -194,4 +195,5 @@ eval (SetValid bool next) = H.modify (_valid .~ bool) $> next
 eval (IsSearching continue) = do
   state ← H.get
   pure $ continue $ (_ ≠ "") $ state.value
+eval (IsLoading continue) = map continue $ H.gets _.loading
 eval (SetPath p next) = H.modify (_path .~ p) $> next

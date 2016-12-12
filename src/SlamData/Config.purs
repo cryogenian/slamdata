@@ -28,6 +28,12 @@ browserUrl = baseUrl <> "index.html"
 workspaceUrl :: String
 workspaceUrl = baseUrl <> "workspace.html"
 
+darkIconsPath ∷ String
+darkIconsPath = "img/cardsDark"
+
+lightIconsPath ∷ String
+lightIconsPath = "img/cardsLight"
+
 searchTimeout :: Number
 searchTimeout = 500.0
 

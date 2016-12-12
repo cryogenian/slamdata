@@ -345,7 +345,7 @@ renderMeta st card =
             [ HP.classes [ HH.className "sd-card-next-action" ] ]
             [ HH.slot' ChildSlot.cpNext unit \_ →
                 { component: Next.nextCardComponent
-                , initialState: Next.initialState input
+                , initialState: H.parentState (Next.initialState input)
                 }
             ]
     ]

@@ -26,8 +26,6 @@ import Data.Foldable (find)
 import Data.List ((:))
 import Data.List as L
 
-import SlamData.Workspace.MillerColumns.Component.State (State)
-
 type Tree a = CF.Cofree L.List a
 
 loadFromTree
@@ -49,10 +47,5 @@ loadFromTree f tree = pure ∘ go tree ∘ L.drop 1 ∘ L.reverse
       let items = extract <$> CF.tail subtree
       in if L.null items then Nothing else Just items
 
-initialStateFromTree ∷ ∀ a i. (a → i) → Tree a → State a i
-initialStateFromTree f tree =
-  { element: Nothing
-  , columns: [Tuple (f (extract tree)) (extract <$> CF.tail tree)]
-  , cycle: 0
-  , selected: L.Nil
-  }
+initialItemFromTree ∷ ∀ a i. (a → i) → Tree a → L.List i
+initialItemFromTree f = L.singleton ∘ f ∘ extract

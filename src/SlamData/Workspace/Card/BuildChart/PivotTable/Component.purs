@@ -78,7 +78,7 @@ render ∷ State → HTML
 render st =
   if st.levelOfDetails ≡ High
     then renderHighLOD st
-    else renderLowLOD (CT.darkCardGlyph (CT.ChartOptions CHT.PivotTable)) left st.levelOfDetails
+    else renderLowLOD (CT.cardIconDarkImg (CT.ChartOptions CHT.PivotTable)) left st.levelOfDetails
 
 renderHighLOD ∷ State → HTML
 renderHighLOD st =

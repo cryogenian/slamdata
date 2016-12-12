@@ -14,6 +14,10 @@
   box-sizing: border-box;
   border: 1px solid #ddd;
 
+  > div {
+    height: 100%;
+  }
+
   .sd-miller-column-selection {
     position: relative;
     height: ~"calc(2.25rem + 3px)";
@@ -75,6 +79,32 @@
   li.selected {
     background: #ddd;
     z-index: 2;
+  }
+
+  li.sd-miller-column-loading {
+
+    cursor: auto;
+
+    &:hover {
+      background: transparent;
+    }
+
+    span {
+      display: block;
+      text-align: center;
+
+      &::before {
+        content: '';
+        display: block;
+        background-image: url(../img/spin.gif);
+        background-position: center center;
+        background-repeat: no-repeat;
+        background-size: 24px 24px;
+        width: 24px;
+        height: 24px;
+        margin: 12px auto -2px;
+      }
+    }
   }
 
   &:last-child li.selected {

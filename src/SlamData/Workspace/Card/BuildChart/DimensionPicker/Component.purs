@@ -93,11 +93,12 @@ type PickerOptions s =
   }
 
 pickerOptionsToColumnOptions ∷ ∀ s. Eq s ⇒ PickerOptions s → MCI.BasicColumnOptions s s
-pickerOptionsToColumnOptions { label, render, values } =
+pickerOptionsToColumnOptions { label, render, values, isSelectable } =
   { render: MCI.component { render, label }
   , label: label
   , load: MCT.loadFromTree id values
   , id: id
+  , isLeaf: isSelectable
   }
 
 labelNode ∷ ∀ s. (s → String) → Either s s → String
@@ -117,7 +118,7 @@ renderNode f node =
     [ HH.span_ [ HH.text (either f f node) ] ]
 
 isLeafPath ∷ ∀ a. List (Either a a) → Boolean
-isLeafPath = fromMaybe false ∘ map isRight ∘ List.last
+isLeafPath = maybe true isRight ∘ List.head
 
 picker
   ∷ ∀ s
@@ -145,8 +146,8 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
       , HH.div
           [ HP.classes [ HH.className "sd-dimension-picker-content" ] ]
           [ HH.slot unit \_ →
-              { component: MC.component columnOptions Nothing
-              , initialState: H.parentState $ MCT.initialStateFromTree columnOptions.id opts.values
+              { component: MC.component columnOptions (MCT.initialItemFromTree columnOptions.id opts.values)
+              , initialState: H.parentState $ MC.initialState
               }
           ]
       , HH.div
@@ -161,9 +162,9 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
               ([ HP.classes [ B.btn, B.btnPrimary ]
               , ARIA.label ""
               ] <>
-                case List.reverse <$> st.selection of
+                case st.selection of
                   Just sel | opts.isSelectable sel →
-                    [ HE.onClick (HE.input_ (Confirm sel)) ]
+                    [ HE.onClick (HE.input_ (Confirm (List.reverse sel))) ]
                   _ →
                     [ HP.disabled true ])
               [ HH.text "Confirm" ]

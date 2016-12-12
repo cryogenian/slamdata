@@ -57,7 +57,7 @@ render ∷ State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD (CT.lightCardGlyph CT.DownloadOptions) left state.levelOfDetails
+    , renderLowLOD (CT.cardIconLightImg CT.DownloadOptions) left state.levelOfDetails
     ]
 
 renderHighLOD ∷ State → HTML

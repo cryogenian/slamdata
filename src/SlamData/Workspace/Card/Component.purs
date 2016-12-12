@@ -43,7 +43,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, darkCardGlyph)
+import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, cardIconDarkSrc)
 import SlamData.Workspace.Card.Common.EvalQuery as EQ
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component.CSS as CSS
@@ -87,7 +87,7 @@ makeCardComponent def = makeCardComponentPart def render
               ]
               [ HH.div
                   [ HP.class_ CSS.cardName ]
-                  [ darkCardGlyph def.cardType
+                  [ HH.img [ HP.src $ cardIconDarkSrc def.cardType ]
                   , HH.p_ [ HH.text $ cardName def.cardType ]
                   ]
               ]

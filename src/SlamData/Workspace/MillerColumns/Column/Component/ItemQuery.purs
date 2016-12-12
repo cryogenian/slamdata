@@ -14,13 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.MillerColumns.Component.ItemQuery where
+module SlamData.Workspace.MillerColumns.Column.Component.ItemQuery where
 
-import Data.List (List)
 import Data.Functor.Coproduct (Coproduct)
 
-data ItemQuery i b
-  = RaisePopulate (List i) b
-  | ToggleSelected Boolean b
+data ItemQuery a
+  = RaisePopulate a
+  | ToggleHighlight Boolean a
 
-type ItemQuery' i f = Coproduct (ItemQuery i) f
+type ItemQuery' f = Coproduct ItemQuery f

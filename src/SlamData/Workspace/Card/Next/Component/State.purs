@@ -18,77 +18,38 @@ module SlamData.Workspace.Card.Next.Component.State where
 
 import SlamData.Prelude
 
-import Data.Foldable as F
 import Data.Lens (Lens', lens)
 
+import Halogen as H
+
+import SlamData.ActionList.Component as ActionList
+import SlamData.Monad (Slam)
+import SlamData.Workspace.Card.Next.Component.Query (Query)
+import SlamData.Workspace.Card.Next.NextAction (NextAction)
 import SlamData.Workspace.Card.Port (Port)
 
-import SlamData.Workspace.Card.Next.NextAction as NA
+type StateP =
+  H.ParentState
+    State
+    (ActionList.State NextAction)
+    Query
+    (ActionList.Query NextAction)
+    Slam
+    Unit
 
 type State =
   { input ∷ Port
   , presentAddCardGuide ∷ Boolean
-  , actions ∷ Array NA.NextAction
-  , previousActions ∷ Array NA.NextAction
-  , filterString ∷ String
   }
 
 initialState ∷ Port → State
 initialState input =
-  updateActions input
     { input
     , presentAddCardGuide: false
-    , actions: []
-    , previousActions: [ ]
-    , filterString: ""
     }
 
 _input ∷ ∀ a r. Lens' { input ∷ a | r } a
 _input = lens _.input (_ { input = _ })
 
-_actions ∷ ∀ a r. Lens' { actions ∷ a |r } a
-_actions = lens _.actions (_ { actions = _ })
-
-_previousActions ∷ ∀ a r. Lens' { previousActions ∷ a | r} a
-_previousActions = lens _.previousActions (_ { previousActions = _ })
-
 _presentAddCardGuide ∷ ∀ a r. Lens' { presentAddCardGuide ∷ a | r } a
 _presentAddCardGuide = lens _.presentAddCardGuide (_ { presentAddCardGuide = _ })
-
-_filterString ∷ ∀ a r. Lens' { filterString ∷ a | r } a
-_filterString = lens _.filterString (_ { filterString = _ })
-
--- TODO: Most of the drill related stuff is unnecessary
-updateActions ∷ Port → State → State
-updateActions input state =
-  case activeDrill of
-    Nothing →
-      state
-        { actions = newActions }
-    Just drill →
-      state
-        { previousActions = newActions
-        , actions = fromMaybe [] $ pluckDrillActions =<< newActiveDrill
-        }
-  where
-  newActions =
-    NA.fromPort input
-
-  activeDrill =
-    F.find
-      (maybe false (eq state.actions) ∘ pluckDrillActions)
-      state.previousActions
-
-  newActiveDrill =
-    F.find (maybe false eqNameOfActiveDrill ∘ pluckDrillName) newActions
-
-  eqNameOfActiveDrill name =
-    maybe false (eq name) (pluckDrillName =<< activeDrill)
-
-  pluckDrillActions = case _ of
-    NA.Drill _ _ xs → Just xs
-    _ → Nothing
-
-  pluckDrillName = case _ of
-    NA.Drill x _ _ → Just x
-    _ → Nothing

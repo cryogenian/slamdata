@@ -48,8 +48,8 @@ printShareResume Edit = "Edit"
 sharingActions ∷ SharingInput → ShareResume → Array QT.ActionR
 sharingActions {workspacePath, sources, caches, deckId} View =
   (workspacePath </> Pt.dir ".tmp" # QT.Dir ⋙ \resource → do
-      operation ← [ QT.Read ]
-      accessType ← [ QT.Structural, QT.Content ]
+      operation ← [ QT.Read, QT.Modify, QT.Delete, QT.Add ]
+      accessType ← [ QT.Structural, QT.Content, QT.Mount ]
       pure { operation, resource, accessType }
   )
   ⊕ (workspacePath

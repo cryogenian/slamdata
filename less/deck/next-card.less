@@ -1,6 +1,6 @@
 @import "common";
 
-.sd-deck-backside, .sd-card-next-action {
+.sd-deck-backside, .sd-action-list {
 
   @spacing: 0.5px;
   @size: @grid-size * 4;
@@ -169,4 +169,9 @@
   padding-bottom: 1rem;
   margin-left: auto;
   margin-right: auto;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%,0);
+  z-index: 999999;
 }

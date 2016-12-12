@@ -82,7 +82,7 @@ render ∷ ST.State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD (CT.darkCardGlyph $ CT.ChartOptions CHT.Line) left state.levelOfDetails
+    , renderLowLOD (CT.cardIconDarkImg $ CT.ChartOptions CHT.Line) left state.levelOfDetails
     ]
 
 renderHighLOD ∷ ST.State → HTML

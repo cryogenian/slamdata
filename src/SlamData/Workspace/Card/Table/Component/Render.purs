@@ -57,7 +57,7 @@ render ∷ State → H.ComponentHTML QueryP
 render state =
   if state.levelOfDetails ≡ High
     then renderHighLOD state
-    else renderLowLOD (CT.lightCardGlyph CT.Table) left state.levelOfDetails
+    else renderLowLOD (CT.cardIconLightImg CT.Table) left state.levelOfDetails
 
 renderHighLOD ∷ State → H.ComponentHTML QueryP
 renderHighLOD st =

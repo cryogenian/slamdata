@@ -22,7 +22,6 @@ module SlamData.Workspace.Card.Open.Component
 
 import SlamData.Prelude
 
-
 import Data.List as L
 import Data.Lens ((.~), (?~))
 import Data.Path.Pathy as Path
@@ -74,7 +73,7 @@ render ∷ State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD (CT.lightCardGlyph CT.Open) id state.levelOfDetails
+    , renderLowLOD (CT.cardIconLightImg CT.Open) id state.levelOfDetails
     ]
 
 renderHighLOD ∷ State → HTML
@@ -84,11 +83,14 @@ renderHighLOD state =
         $ (guard (state.loading) $> HH.className "loading")
         <> (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
-    [ HH.slot unit \_ →
-        { component: MC.component itemSpec Nothing
-        , initialState: H.parentState MC.initialState
-        }
-    ]
+    case state.selected of
+      Just itemPath →
+        [ HH.slot unit \_ →
+            { component: MC.component itemSpec itemPath
+            , initialState: H.parentState MC.initialState
+            }
+        ]
+      Nothing → []
 
 renderItem ∷ R.Resource → MC.ItemHTML
 renderItem r =
@@ -125,7 +127,11 @@ eval = case _ of
     mbRes ← H.gets _.selected
     pure $ k $ Card.Open (fromMaybe R.root $ map (either R.Directory R.File) ∘ L.head =<< mbRes)
   CC.Load (Card.Open res) next → do
-    void $ H.query unit $ left $ H.action $ MC.Populate $ toPathList $ R.getPath res
+    mbRes ← H.gets _.selected
+    let selected = toPathList (R.getPath res)
+    H.modify _ { selected = Just selected }
+    unless (isNothing mbRes) do
+      void $ H.query unit $ left $ H.action $ MC.Populate selected
     pure next
   CC.Load _ next →
     pure next
@@ -153,17 +159,21 @@ peek = coproduct peekColumns (const (pure unit))
 peekColumns ∷ ∀ x. MC.Query AnyPath x → DSL Unit
 peekColumns = case _ of
   MC.Populate rs _ → do
-    H.modify (_selected ?~ rs)
-    CC.raiseUpdatedP CC.EvalModelUpdate
-  MC.Loading b _ → do
-    H.modify (_loading .~ b)
+    sel ← H.gets _.selected
+    unless (sel ≡ Just rs) do
+      H.modify (_selected ?~ rs)
+      CC.raiseUpdatedP CC.EvalModelUpdate
   _ → pure unit
 
 itemSpec ∷ MCI.BasicColumnOptions R.Resource AnyPath
 itemSpec =
-  { render: MCI.component { label: R.resourceName, render: renderItem }
+  { render: MCI.component
+      { label: R.resourceName
+      , render: renderItem
+      }
   , label: R.resourceName
   , load
+  , isLeaf: maybe true isRight ∘ L.head
   , id: R.getPath
   }
 

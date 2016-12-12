@@ -204,7 +204,7 @@ listPath query deep var dir driver = do
     let next = mapMaybe (either Just (const Nothing) <<< getPath) ress
         toAdd = map Item $ filter (filterByQuery query) ress
     fromAff $ driver $ toListing $ Listing.Adds toAdd
-    traverse_ (\n → listPath query (deep + one) var n driver)
+    parTraverse_ (\n → listPath query (deep + one) var n driver)
       (guard (isSearchQuery query) *> next)
 
 updateURL

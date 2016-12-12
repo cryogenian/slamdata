@@ -37,6 +37,7 @@ import Control.UI.Browser as Browser
 
 import Data.Array as Array
 import Data.Lens ((.~), (%~), (^?), (?~), _Left, _Just, is)
+import Data.Lens.Prism.Coproduct as CoP
 import Data.List as L
 
 import DOM.HTML.HTMLElement (getBoundingClientRect)
@@ -353,7 +354,7 @@ showDialog dlg = do
   H.modify (DCS._displayMode .~ DCS.Dialog)
 
 queryDialog ∷ Dialog.Query Unit → DeckDSL Unit
-queryDialog q = H.query' cpDialog unit (left q) *> pure unit
+queryDialog = void ∘ H.query' cpDialog unit ∘ left
 
 queryCard ∷ ∀ a. DeckId × CardId → CQ.AnyCardQuery a → DeckDSL (Maybe a)
 queryCard cid =
@@ -368,7 +369,7 @@ queryCardEval cid =
 
 queryNextAction ∷ ∀ a. Next.Query a → DeckDSL (Maybe a)
 queryNextAction =
-  H.query' cpNext unit
+  H.query' cpNext unit ∘ left
 
 updateActiveState ∷ DeckDSL Unit
 updateActiveState = do
@@ -443,11 +444,11 @@ peekAnyCard ∷ ∀ a. DeckId × CardId → AnyCardQuery a → DeckDSL Unit
 peekAnyCard cardCoord _ =
   resetAccessNextActionCardGuideDelay
 
-peekNextAction ∷ ∀ a. Next.Query a → DeckDSL Unit
+peekNextAction ∷ ∀ a. Next.QueryP a → DeckDSL Unit
 peekNextAction q = do
   deckId ← H.gets _.id
-  for_ (q ^? Next._AddCardType) $ void ∘ H.liftH ∘ H.liftH ∘ P.addCard deckId
-  for_ (q ^? Next._PresentReason) $ uncurry presentReason
+  for_ (q ^? CoP._Left ∘ Next._AddCardType) $ void ∘ H.liftH ∘ H.liftH ∘ P.addCard deckId
+  for_ (q ^? CoP._Left ∘ Next._PresentReason) $ uncurry presentReason
 
 presentReason ∷ Port.Port → CT.CardType → DeckDSL Unit
 presentReason input cardType =

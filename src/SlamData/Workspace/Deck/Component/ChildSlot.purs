@@ -46,7 +46,7 @@ type ChildQuery
   = CardQueryP
   ⨁ Back.Query
   ⨁ Dialog.QueryP
-  ⨁ Next.Query
+  ⨁ Next.QueryP
   ⨁ Error.Query
   ⨁ Pending.Query
 
@@ -54,7 +54,7 @@ type ChildState
   = CardStateP
   ⊹ Back.State
   ⊹ Dialog.StateP
-  ⊹ Next.State
+  ⊹ Next.StateP
   ⊹ Error.State
   ⊹ Pending.State
 
@@ -81,8 +81,8 @@ cpDialog = cpR :> cpR :> cpL
 
 cpNext
   ∷ ChildPath
-      Next.State ChildState
-      Next.Query ChildQuery
+      Next.StateP ChildState
+      Next.QueryP ChildQuery
       Unit ChildSlot
 cpNext = cpR :> cpR :> cpR :> cpL
 

@@ -169,7 +169,7 @@ render ∷ CT.AceMode → State → HTML
 render mode state =
   HH.div_
     [ renderHighLOD mode state
-    , renderLowLOD (CT.lightCardGlyph $ CT.Ace mode) left state.levelOfDetails
+    , renderLowLOD (CT.cardIconLightImg $ CT.Ace mode) left state.levelOfDetails
     ]
 
 renderHighLOD ∷ CT.AceMode → State → HTML

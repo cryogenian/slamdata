@@ -18,35 +18,48 @@ module SlamData.Workspace.MillerColumns.Component.State where
 
 import SlamData.Prelude
 
-import Data.List (List(..))
+import Data.List (List(..), (:))
+import Data.List as L
+import Data.Traversable (scanr)
 
 import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.MillerColumns.Component.Query (Query, ItemQuery')
+import SlamData.Workspace.MillerColumns.Component.Query (Query)
+import SlamData.Workspace.MillerColumns.Column.Component as Column
 
 type State a i =
   { element ∷ Maybe HTMLElement
-  , columns ∷ Array (Tuple i (List a))
-  , selected ∷ List i
-  , cycle ∷ Int
+  , path ∷ List i
   }
 
 type State' a i s f =
   H.ParentState
     (State a i)
-    s
+    (Column.State' a i s f)
     (Query i)
-    (ItemQuery' i f)
+    (Column.Query' i f)
     Slam
     (List i)
 
 initialState ∷ ∀ a i. State a i
 initialState =
   { element: Nothing
-  , columns: []
-  , selected: Nil
-  , cycle: 0
+  , path: Nil
   }
+
+-- | Get a list of paths for the columns, each column paired with a
+-- | possibly-selected value within that column.
+columnsWithSelections
+  ∷ ∀ a i s f
+  . Column.ColumnOptions a i s f
+  → State a i
+  → List (Tuple (List i) (Maybe i))
+columnsWithSelections { isLeaf } { path } =
+  let
+    subpaths = scanr (:) L.Nil path
+    selections = Nothing : (L.head <$> subpaths)
+  in
+    L.dropWhile (isLeaf <<< fst) (L.zip subpaths selections)
