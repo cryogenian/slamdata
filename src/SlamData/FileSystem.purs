@@ -30,7 +30,7 @@ import Control.Monad.Eff.Exception (Error, error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (null, filter, mapMaybe)
-import Data.Lens ((%~), (<>~), _1, _2)
+import Data.Lens (Lens', lens, (%~), (<>~))
 import Data.Map as M
 import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 
@@ -89,18 +89,35 @@ setSlamDataTitle ∷ ∀ e. String → Aff (dom ∷ DOM|e) Unit
 setSlamDataTitle version =
   liftEff $ setTitle $ "SlamData " ⊕ version
 
-initialAVar ∷ Tuple (Canceler Error Slam) (M.Map Int Int)
-initialAVar = Tuple mempty M.empty
+
+type ListingState =
+  { canceler ∷ Canceler Error Slam
+    -- depth ↔ active requests
+  , requestMap ∷ M.Map Int Int
+  }
+
+initialListingState ∷ ListingState
+initialListingState =
+  { canceler: mempty
+  , requestMap: M.empty
+  }
+
+_canceler ∷ ∀ a r. Lens' { canceler ∷ a | r } a
+_canceler = lens _.canceler _{ canceler = _ }
+
+_requestMap ∷ ∀ a r. Lens' { requestMap ∷ a | r } a
+_requestMap = lens _.requestMap _{ requestMap = _ }
 
 routeSignal ∷ Driver QueryP SlamDataRawEffects → Slam Unit
 routeSignal driver = do
-  avar ← fromAff $ makeVar' initialAVar
+  avar ← fromAff $ makeVar' initialListingState
   routeTpl ← fromAff $ matchesAff routing
   uncurry (redirects driver avar) routeTpl
 
+
 redirects
   ∷ Driver QueryP SlamDataRawEffects
-  → AVar (Tuple (Canceler Error Slam) (M.Map Int Int))
+  → AVar ListingState
   → Maybe Routes → Routes
   → Slam Unit
 redirects driver var mbOld = case _ of
@@ -112,16 +129,16 @@ redirects driver var mbOld = case _ of
     let queryParts = splitQuery query
     in updateURL queryParts.query sort Nothing queryParts.path
   Salted sort query salt → do
-    Tuple canceler _ ← fromAff $ takeVar var
+    {canceler} ← fromAff $ takeVar var
     cancel canceler (error "cancel search")
-    fromAff $ putVar var initialAVar
+    fromAff $ putVar var initialListingState
     fromAff $ driver $ toListing $ Listing.SetIsSearching $ isSearchQuery query
     let
       queryParts = splitQuery query
       isNewPage = fromMaybe true do
         old ← mbOld
-        Tuple oldQuery oldSalt ← case old of
-          Salted _ oldQuery' oldSalt' → pure $ Tuple oldQuery' oldSalt'
+        oldQuery × oldSalt ← case old of
+          Salted _ oldQuery' oldSalt' → pure $ oldQuery' × oldSalt'
           _ → Nothing
         pure $ oldQuery ≠ query ∨ oldSalt ≡ salt
     if isNewPage
@@ -161,26 +178,26 @@ checkMount path driver = do
 listPath
   ∷ SearchQuery
   → Int
-  → AVar (Tuple (Canceler Error Slam) (M.Map Int Int))
+  → AVar ListingState
   → DirPath
   → Driver QueryP SlamDataRawEffects
   → Slam Unit
 listPath query deep var dir driver = do
-  fromAff $ modifyVar (_2 %~ M.alter (pure ∘ maybe 1 (_ + 1)) deep) var
+  fromAff $ modifyVar (_requestMap %~ M.alter (pure ∘ maybe 1 (_ + 1)) deep) var
   canceler ← Canceler <$> fork goDeeper
-  fromAff $ modifyVar (_1 <>~ canceler) var
+  fromAff $ modifyVar (_canceler <>~ canceler) var
   where
   goDeeper = do
     Quasar.children dir >>= either sendError getChildren
     fromAff do
-      modifyVar (_2 %~ M.update (\v → guard (v > one) $> (v - one)) deep) var
-      Tuple c r ← takeVar var
+      modifyVar (_requestMap %~ M.update (\v → guard (v > one) $> (v - one)) deep) var
+      st@{canceler: c, requestMap: r} ← takeVar var
       if (foldl (+) zero $ M.values r) ≡ zero
         then do
         driver $ toSearch $ Search.SetLoading false
-        putVar var initialAVar
+        putVar var initialListingState
         else
-        putVar var (Tuple c r)
+        putVar var st
 
   sendError ∷ QE.QError → Slam Unit
   sendError err =
