@@ -22,7 +22,7 @@ import Ace.Config as AceConfig
 
 import Control.Coroutine (Producer, Consumer, consumer, producer, ($$), runProcess)
 
-import Control.Monad.Aff (Aff)
+import Control.Monad.Aff (Aff, later')
 import Control.Monad.Aff.Free (fromAff, fromEff)
 import Control.Monad.Aff.AVar (AVar, makeVar, makeVar', modifyVar, putVar, takeVar)
 import Control.Monad.Eff (Eff)
@@ -31,7 +31,7 @@ import Control.Monad.Fork (Canceler(..), fork, cancel)
 import Control.Monad.Eff.Exception (Error, error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
-import Data.Array (null, filter, mapMaybe)
+import Data.Array (null, filter, mapMaybe, take, drop)
 import Data.Lens (Lens', lens, (%~), (<>~))
 import Data.Map as M
 import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
@@ -72,15 +72,6 @@ import Text.SlamSearch.Types (SearchQuery)
 
 import Utils.Path (DirPath, hidePath, renderPath)
 
-produceSlam
-  ∷ ∀ a r
-  . ((a ⊹ r → Slam Unit) → Slam Unit)
-  → Producer a Slam r
-produceSlam recv = do
-  v ← lift $ fromAff makeVar
-  lift $ fork $ recv $ fromAff ∘ putVar v
-  producer $ fromAff $ takeVar v
-
 main ∷ Eff SlamDataEffects Unit
 main = do
   AceConfig.set AceConfig.basePath $ Config.baseUrl ⊕ "js/ace"
@@ -114,12 +105,14 @@ type ListingState =
   { canceler ∷ Canceler Error Slam
     -- depth ↔ active requests
   , requestMap ∷ M.Map Int Int
+  , queue ∷ Array { depth ∷ Int, dir ∷ DirPath }
   }
 
 initialListingState ∷ ListingState
 initialListingState =
   { canceler: mempty
   , requestMap: M.singleton 0 0
+  , queue: []
   }
 
 _canceler ∷ ∀ a r. Lens' { canceler ∷ a | r } a
@@ -127,6 +120,9 @@ _canceler = lens _.canceler _{ canceler = _ }
 
 _requestMap ∷ ∀ a r. Lens' { requestMap ∷ a | r } a
 _requestMap = lens _.requestMap _{ requestMap = _ }
+
+_queue ∷ ∀ a r. Lens' { queue ∷ a | r } a
+_queue = lens _.queue _{ queue = _ }
 
 routeSignal ∷ Driver QueryP SlamDataRawEffects → Slam Unit
 routeSignal driver = do
@@ -181,11 +177,6 @@ redirects driver var mbOld = case _ of
           _ → Nothing
         pure $ oldQuery ≠ query ∨ oldSalt ≡ salt
 
-      itemsConsumer ∷ Consumer (Array Item) Slam QE.QError
-      itemsConsumer = consumer \is → do
-        traceAnyA is
-        pure Nothing
-
     if isNewPage
       then do
       fromAff do
@@ -202,10 +193,9 @@ redirects driver var mbOld = case _ of
       let
         p = listingProducer var query queryParts.path
         c = listingConsumer driver
-        h = listingProcessHandler driver
         process = p $$ c
 
-      h =<< runProcess process
+      listingProcessHandler driver =<< runProcess process
 
       when (isNothing queryParts.query)
         $ checkMount queryParts.path driver
@@ -243,7 +233,7 @@ listingProducer
   → SearchQuery
   → DirPath
   → Producer (Array Item) Slam (Maybe QE.QError)
-listingProducer var query startingDir = produceSlam \emit → go startingDir 0 emit
+listingProducer var query startingDir = produceSlam $ go startingDir 0
   where
   go dir depth emit = do
     fromAff
@@ -258,6 +248,7 @@ listingProducer var query startingDir = produceSlam \emit → go startingDir 0 e
       $ _canceler <>~ canceler
 
   runRequest dir depth emit = do
+    fromAff $ later' requestDelay $ pure unit
     Quasar.children dir >>= case _ of
       Left e → case GE.fromQError e of
         -- Do not show error message notification if we're in root or searching
@@ -266,7 +257,8 @@ listingProducer var query startingDir = produceSlam \emit → go startingDir 0 e
         _ →
           emit $ Right $ Just e
 
-      Right cs → getChildren depth emit cs
+      Right cs →
+        getChildren depth emit cs
 
     fromAff
       $ flip modifyVar var
@@ -285,18 +277,49 @@ listingProducer var query startingDir = produceSlam \emit → go startingDir 0 e
   getChildren depth emit ress = do
     let
       next =
-        flip mapMaybe ress $ either Just (const Nothing) ∘ getPath
+        map {dir: _, depth: depth + one}
+          $ flip mapMaybe ress
+          $ either Just (const Nothing)
+          ∘ getPath
+
       toAdd =
-        map Item $ flip filter ress $ filterByQuery query
+        map Item
+          $ flip filter ress
+          $ filterByQuery query
 
     emit $ Left toAdd
 
     if isSearchQuery query
-      then
-      void $ fork $ flip parTraverse_ next \dir' →
-        go dir' (depth + one) emit
+      then do
+      fromAff
+        $ flip modifyVar var
+        $ _queue %~ flip append next
+
+      st ←
+        fromAff $ takeVar var
+
+      let
+        running = runningRequests st.requestMap
+        count = max 0 $ maxParallelRequests - running
+        toRun = take count st.queue
+        toPut = drop count st.queue
+
+      fromAff
+        $ putVar var
+        $ st{queue = toPut}
+
+      void $ fork $ flip parTraverse_ toRun \r →
+        go r.dir r.depth emit
+
       else
       emit $ Right Nothing
+
+  -- This is just emperical stuff, things works nice on my machine with them @cryogenian
+  maxParallelRequests =
+    16
+
+  requestDelay =
+    64
 
   memThisRequest = case _ of
     Nothing → Just 1
@@ -308,6 +331,9 @@ listingProducer var query startingDir = produceSlam \emit → go startingDir 0 e
 
   -- Note that initialState is (zero ↔ zero) and final Ø
   allRequestsAreFinished = M.isEmpty
+
+  runningRequests =
+    foldl add zero ∘ M.values
 
 listingConsumer
   ∷ Driver QueryP SlamDataRawEffects
@@ -369,3 +395,12 @@ splitQuery q =
   query = do
     guard $ isSearchQuery q
     pure $ hidePath (renderPath $ Left path) (strQuery q)
+
+produceSlam
+  ∷ ∀ a r
+  . ((a ⊹ r → Slam Unit) → Slam Unit)
+  → Producer a Slam r
+produceSlam recv = do
+  v ← lift $ fromAff makeVar
+  lift $ fork $ recv $ fromAff ∘ putVar v
+  producer $ fromAff $ takeVar v
