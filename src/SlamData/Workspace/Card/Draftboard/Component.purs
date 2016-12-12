@@ -73,6 +73,7 @@ evalCard = case _ of
     case card of
       Card.Draftboard model → do
         H.modify (updateLayout model.layout)
+        void $ H.queryAll (right (H.action DCQ.UpdateCardSize))
       _ → pure unit
     pure next
   CC.ReceiveInput _ next →
@@ -81,7 +82,7 @@ evalCard = case _ of
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions _ next → do
+  CC.ReceiveDimensions dims next → do
     recalcRect
     H.queryAll (right (H.action DCQ.UpdateCardSize))
     pure next
@@ -93,6 +94,7 @@ evalCard = case _ of
 evalBoard ∷ CardOptions → Query ~> DraftboardDSL
 evalBoard opts = case _ of
   SetRoot el next → do
+    st ← H.get
     H.modify _ { root = el }
     pure next
   SplitStart orientation bias root ev next → do

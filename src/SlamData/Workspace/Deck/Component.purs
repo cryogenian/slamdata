@@ -500,7 +500,7 @@ loadCards opts deck = do
         Just cells → setEvaluatedDeck st cells
         Nothing → setUnevaluatedDeck st coord
   where
-  setEmptyDeck =
+  setEmptyDeck = do
     H.modify
       $ (DCS._activeCardIndex .~ Just 0)
       ∘ DCS.fromModel
@@ -508,6 +508,7 @@ loadCards opts deck = do
           , parent: deck.parent
           , displayCards: [ Left (DCS.NextActionCard Port.Initial) ]
           }
+    updateCardSize
 
   setUnevaluatedDeck st initialCoord = do
     H.modify $ DCS.fromModel
@@ -517,6 +518,7 @@ loadCards opts deck = do
       }
     liftH' $
       P.queueEval 0 (st.id L.: opts.cursor × initialCoord)
+    updateCardSize
 
   setEvaluatedDeck st cells = do
     { cache } ← liftH' Wiring.expose
@@ -529,6 +531,7 @@ loadCards opts deck = do
       $ (DCS.updateDisplayCards (mkDisplayCard <$> cells) port)
       ∘ (DCS._parent .~ deck.parent)
       ∘ (DCS._activeCardIndex .~ activeCardIndex)
+    updateCardSize
     updateActiveState
 
 handleEval ∷ ED.EvalMessage → DeckDSL Unit
@@ -544,6 +547,7 @@ handleEval = case _ of
     for_ (map mkDisplayCard <$> mbCells) \displayCards → do
       queryNextAction $ H.action $ Next.UpdateInput port
       H.modify (DCS.updateDisplayCards displayCards port)
+      updateCardSize
       updateActiveState
   ED.NameChange name → do
     H.modify _ { name = name }

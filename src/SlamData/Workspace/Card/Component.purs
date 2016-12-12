@@ -152,11 +152,11 @@ makeCardComponentPart def render =
         -- ordering with regard to child initializers. This should be fixed
         -- in Halogen Next.
         H.fromAff $ later (pure unit)
-        eval (CQ.UpdateDimensions unit)
         queryInnerCard $ EQ.Load value.model.model
         for_ value.input (queryInnerCard ∘ EQ.ReceiveInput)
         for_ value.state (queryInnerCard ∘ EQ.ReceiveState)
         for_ value.input (queryInnerCard ∘ EQ.ReceiveOutput)
+        eval (CQ.UpdateDimensions unit)
       pure next
     CQ.Finalize next → do
       H.gets _.breaker >>= traverse_ (fromAff ∘ break')
