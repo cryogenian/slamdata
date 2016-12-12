@@ -72,17 +72,26 @@ import Utils.Path (DirPath, hidePath, renderPath)
 
 main ∷ Eff SlamDataEffects Unit
 main = do
-  AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
-  AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
-  AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
+  AceConfig.set AceConfig.basePath $ Config.baseUrl ⊕ "js/ace"
+  AceConfig.set AceConfig.modePath $ Config.baseUrl ⊕ "js/ace"
+  AceConfig.set AceConfig.themePath $ Config.baseUrl ⊕ "js/ace"
+
   runHalogenAff do
     fork Analytics.enableAnalytics
-    wiring ← makeWiring rootDir mempty
-    let ui = interpret (runSlam wiring) comp
-    driver ← runUI ui (parentState initialState) =<< awaitBody
+
+    wiring ←
+      makeWiring rootDir mempty
+
+    let
+      ui = interpret (runSlam wiring) comp
+
+    driver ←
+      runUI ui (parentState initialState) =<< awaitBody
+
     fork do
       setSlamDataTitle slamDataVersion
-      driver (left $ action $ SetVersion slamDataVersion)
+      driver $ left $ action $ SetVersion slamDataVersion
+
     runSlam wiring $ fork $ routeSignal driver
 
 setSlamDataTitle ∷ ∀ e. String → Aff (dom ∷ DOM|e) Unit
@@ -99,7 +108,7 @@ type ListingState =
 initialListingState ∷ ListingState
 initialListingState =
   { canceler: mempty
-  , requestMap: M.empty
+  , requestMap: M.singleton 0 0
   }
 
 _canceler ∷ ∀ a r. Lens' { canceler ∷ a | r } a
@@ -110,10 +119,14 @@ _requestMap = lens _.requestMap _{ requestMap = _ }
 
 routeSignal ∷ Driver QueryP SlamDataRawEffects → Slam Unit
 routeSignal driver = do
-  avar ← fromAff $ makeVar' initialListingState
-  routeTpl ← fromAff $ matchesAff routing
-  uncurry (redirects driver avar) routeTpl
+  avar ←
+    fromAff $ makeVar' initialListingState
 
+  routeTpl ←
+    fromAff $ matchesAff routing
+
+  flip uncurry routeTpl
+    $ redirects driver avar
 
 redirects
   ∷ Driver QueryP SlamDataRawEffects
@@ -123,38 +136,57 @@ redirects
 redirects driver var mbOld = case _ of
   Index →
     updateURL Nothing Asc Nothing rootDir
+
   Sort sort →
     updateURL Nothing sort Nothing rootDir
+
   SortAndQ sort query →
-    let queryParts = splitQuery query
-    in updateURL queryParts.query sort Nothing queryParts.path
-  Salted sort query salt → do
-    {canceler} ← fromAff $ takeVar var
-    cancel canceler (error "cancel search")
-    fromAff $ putVar var initialListingState
-    fromAff $ driver $ toListing $ Listing.SetIsSearching $ isSearchQuery query
     let
       queryParts = splitQuery query
+    in
+      updateURL queryParts.query sort Nothing queryParts.path
+
+  Salted sort query salt → do
+    {canceler} ← fromAff $ takeVar var
+
+    cancel canceler $ error "cancel search"
+
+    fromAff
+      $ putVar var initialListingState
+
+    fromAff
+      $ driver
+      $ toListing
+      $ Listing.SetIsSearching
+      $ isSearchQuery query
+
+    let
+      queryParts = splitQuery query
+
       isNewPage = fromMaybe true do
         old ← mbOld
         oldQuery × oldSalt ← case old of
           Salted _ oldQuery' oldSalt' → pure $ oldQuery' × oldSalt'
           _ → Nothing
         pure $ oldQuery ≠ query ∨ oldSalt ≡ salt
+
     if isNewPage
       then do
-        fromAff do
-          driver $ toListing Listing.Reset
-          driver $ toFs $ SetPath queryParts.path
-          driver $ toFs $ SetSort sort
-          driver $ toFs $ SetSalt salt
-          driver $ toFs $ SetIsMount false
-          driver $ toSearch $ Search.SetLoading true
-          driver $ toSearch $ Search.SetValue $ fromMaybe "" queryParts.query
-          driver $ toSearch $ Search.SetValid true
-          driver $ toSearch $ Search.SetPath queryParts.path
-        listPath query zero var queryParts.path driver
-        maybe (checkMount queryParts.path driver) (const $ pure unit) queryParts.query
+      fromAff do
+        driver $ toListing Listing.Reset
+        driver $ toFs $ SetPath queryParts.path
+        driver $ toFs $ SetSort sort
+        driver $ toFs $ SetSalt salt
+        driver $ toFs $ SetIsMount false
+        driver $ toSearch $ Search.SetLoading true
+        driver $ toSearch $ Search.SetValue $ fromMaybe "" queryParts.query
+        driver $ toSearch $ Search.SetValid true
+        driver $ toSearch $ Search.SetPath queryParts.path
+
+      listPath query zero var queryParts.path driver
+
+      when (isNothing queryParts.query)
+        $ checkMount queryParts.path driver
       else
         fromAff $ driver $ toSearch $ Search.SetLoading false
 
@@ -163,17 +195,27 @@ checkMount
   → Driver QueryP SlamDataRawEffects
   → Slam Unit
 checkMount path driver = do
+  let
+    setIsMount =
+      fromAff
+        $ driver
+        $ left
+        $ action
+        $ SetIsMount true
+
   Quasar.mountInfo (Left path) >>= case _ of
     Left _ →
       -- When Quasar has no mounts configured we want to enable the root to be
       -- configured as a mount - if `/` is not a mount and also has no children
       -- then we know it's in this unconfigured state.
-      when (path == rootDir) do
-        void $ Quasar.children path >>= traverse \children →
-          when (null children) $
-            fromAff $ driver $ left $ action $ SetIsMount true
+      when (path ≡ rootDir)
+        $ void
+        $ Quasar.children path >>= traverse \children →
+            when (null children) $ setIsMount
+
     Right _ →
-      fromAff $ driver $ left $ action $ SetIsMount true
+      setIsMount
+
 
 listPath
   ∷ SearchQuery
@@ -182,17 +224,40 @@ listPath
   → DirPath
   → Driver QueryP SlamDataRawEffects
   → Slam Unit
-listPath query deep var dir driver = do
-  fromAff $ modifyVar (_requestMap %~ M.alter (pure ∘ maybe 1 (_ + 1)) deep) var
-  canceler ← Canceler <$> fork goDeeper
-  fromAff $ modifyVar (_canceler <>~ canceler) var
+listPath query depth var dir driver = do
+  fromAff
+    $ flip modifyVar var
+    $ _requestMap %~ M.alter memThisRequest depth
+
+  canceler ←
+    map Canceler $ fork goDeeper
+
+  fromAff
+    $ flip modifyVar var
+    $ _canceler <>~ canceler
+
   where
+  memThisRequest = case _ of
+    Nothing → Just 1
+    Just n → Just $ n + 1
+
+  markThisRequestAsFinished = case _ of
+    Just v | v > 1 → Just $ v - 1
+    _ → Nothing
+
+  -- Note that initialState is (zero ↔ zero) and final Ø
+  allRequestsAreFinished = M.isEmpty
+
   goDeeper = do
     Quasar.children dir >>= either sendError getChildren
     fromAff do
-      modifyVar (_requestMap %~ M.update (\v → guard (v > one) $> (v - one)) deep) var
-      st@{canceler: c, requestMap: r} ← takeVar var
-      if (foldl (+) zero $ M.values r) ≡ zero
+      flip modifyVar var
+        $ _requestMap %~ M.alter markThisRequestAsFinished depth
+
+      st@{canceler: c, requestMap: r} ←
+        takeVar var
+
+      if allRequestsAreFinished r
         then do
         driver $ toSearch $ Search.SetLoading false
         putVar var initialListingState
@@ -209,7 +274,7 @@ listPath query deep var dir driver = do
         GE.raiseGlobalError ge
 
   presentError message =
-    when ((not $ isSearchQuery query) ∨ deep ≡ zero)
+    when ((not $ isSearchQuery query) ∨ depth ≡ zero)
       $ fromAff
       $ driver
       $ toDialog $ Dialog.Show
@@ -217,11 +282,21 @@ listPath query deep var dir driver = do
 
   getChildren ∷ Array Resource → Slam Unit
   getChildren ress = do
-    let next = mapMaybe (either Just (const Nothing) <<< getPath) ress
-        toAdd = map Item $ filter (filterByQuery query) ress
-    fromAff $ driver $ toListing $ Listing.Adds toAdd
-    parTraverse_ (\n → listPath query (deep + one) var n driver)
-      (guard (isSearchQuery query) *> next)
+    let
+      next = do
+        guard $ isSearchQuery query
+        flip mapMaybe ress $ either Just (const Nothing) ∘ getPath
+      toAdd =
+        map Item $ flip filter ress $ filterByQuery query
+
+    fromAff
+      $ driver
+      $ toListing
+      $ Listing.Adds toAdd
+
+    flip parTraverse_ next \n →
+      listPath query (depth + one) var n driver
+
 
 updateURL
   ∷ Maybe String
