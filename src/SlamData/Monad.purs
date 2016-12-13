@@ -29,6 +29,7 @@ import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (readRef, writeRef)
 import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Free (Free, liftF, foldFree)
+import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
 import Control.Parallel (parallel, sequential)
 import Control.UI.Browser (locationObject)
 
@@ -108,6 +109,11 @@ instance monadForkSlamM ∷ MonadFork Error (SlamM eff) where
 instance monadAskSlamM ∷ MonadAsk Wiring (SlamM eff) where
   ask = SlamM $ liftF $ Ask id
 
+instance monadRecSlamM ∷ MonadRec (SlamM eff) where
+  tailRecM k a = k a >>= case _ of
+    Loop b → tailRecM k b
+    Done r → pure r
+
 instance quasarAuthDSLSlamM ∷ QuasarAuthDSL (SlamM eff) where
   getIdToken = SlamM $ liftF $ GetAuthIdToken id
 
@@ -126,6 +132,7 @@ instance globalErrorDSLSlamM ∷ GE.GlobalErrorDSL (SlamM eff) where
 
 instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
   navigate = SlamM ∘ liftF ∘ flip Navigate unit
+
 
 
 newtype SlamA eff a = SlamA (FreeAp (SlamM eff) a)
