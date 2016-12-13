@@ -6,61 +6,61 @@
    height="512">
   <g>
     <circle
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="path4168"
        cx="278.77966"
        cy="296.13559"
        r="92.203392" />
     <circle
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="path4170"
        cx="114.98305"
        cy="373.15256"
        r="49.898304" />
     <circle
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="path4172"
        cx="417.62711"
        cy="417.62711"
        r="33.627117" />
     <circle
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="path4174"
        cx="158.37288"
        cy="145.35593"
        r="43.389832" />
     <circle
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="path4176"
        cx="316.74576"
        cy="95.457626"
        r="32.542374" />
     <circle
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="path4178"
        cx="74.847458"
        cy="57.491524"
        r="29.288136" />
     <circle
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="path4180"
        cx="468.61017"
        cy="349.28815"
        r="19.525423" />
     <circle
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="path4182"
        cx="210.44067"
        cy="462.10168"
        r="23.864407" />
     <circle
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="path4184"
        cx="441.49152"
        cy="218.03391"
        r="35.796612" />
     <rect
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="rect4207"
        width="26.033897"
        height="104.13559"
@@ -68,7 +68,7 @@
        y="239.76898"
        transform="matrix(0.80269254,-0.59639306,0.59639306,0.80269254,0,0)" />
     <rect
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="rect4207-4"
        width="26.033897"
        height="104.13559"
@@ -76,7 +76,7 @@
        y="472.82718"
        transform="matrix(0.63877528,-0.76939336,0.76939336,0.63877528,0,0)" />
     <rect
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="rect4207-6"
        width="26.033897"
        height="104.13559"
@@ -84,7 +84,7 @@
        y="-5.2506361"
        transform="matrix(-0.38758595,-0.92183357,0.92183357,-0.38758595,0,0)" />
     <rect
-       style="fill:black;fill-opacity:1"
+       style="fill:#333333;fill-opacity:1"
        id="rect4207-9"
        width="26.033897"
        height="104.13559"
@@ -92,7 +92,7 @@
        y="-282.46582"
        transform="matrix(0.44838975,0.89383815,-0.89383815,0.44838975,0,0)" />
     <rect
-       style="fill:black;fill-opacity:0.50196081"
+       style="fill:#333333;fill-opacity:0.50196081"
        id="rect4207-5"
        width="22.762363"
        height="93.707253"
@@ -100,7 +100,7 @@
        y="115.3349"
        transform="matrix(0.05447599,-0.99851508,0.68963215,0.72415986,0,0)" />
     <rect
-       style="fill:black;fill-opacity:0.50196081"
+       style="fill:#333333;fill-opacity:0.50196081"
        id="rect4207-5-9"
        width="34.024372"
        height="140.51636"
@@ -108,7 +108,7 @@
        y="-160.13791"
        transform="matrix(-0.96303968,-0.26935956,0.96550946,-0.26036796,0,0)" />
     <rect
-       style="fill:black;fill-opacity:0.50196081"
+       style="fill:#333333;fill-opacity:0.50196081"
        id="rect4207-5-91"
        width="22.762363"
        height="93.707253"
@@ -116,7 +116,7 @@
        y="216.88268"
        transform="matrix(0.05447599,-0.99851508,0.68963215,0.72415986,0,0)" />
     <rect
-       style="fill:black;fill-opacity:0.50196081"
+       style="fill:#333333;fill-opacity:0.50196081"
        id="rect4207-5-91-9"
        width="22.762363"
        height="93.707253"

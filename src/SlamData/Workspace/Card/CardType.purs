@@ -220,23 +220,23 @@ cardIcon = case _ of
         "buildChart/parallel"
   SetupFormInput fity → case fity of
     Dropdown →
-      "setupFormInput/dropdown.svg"
+      "setupFormInput/dropdown"
     Static →
-      "setupFormInput/static.svg"
+      "setupFormInput/static"
     Text →
-      "setupFormInput/text.svg"
+      "setupFormInput/text"
     Numeric →
-      "setupFormInput/numeric.svg"
+      "setupFormInput/numeric"
     Checkbox →
-      "setupFormInput/checkbox.svg"
+      "setupFormInput/checkbox"
     Radio →
-      "setupFormInput/radio.svg"
+      "setupFormInput/radio"
     Date →
-      "setupFormInput/date.svg"
+      "setupFormInput/date"
     Time →
-      "setupFormInput/time.svg"
+      "setupFormInput/time"
     Datetime →
-      "setupFormInput/datetime.svg"
+      "setupFormInput/datetime"
   Download →
     "showDownload"
   Variables →
@@ -246,7 +246,7 @@ cardIcon = case _ of
   Chart →
     "showChart"
   FormInput →
-    "showFormInput.svg"
+    "showFormInput"
   Markdown →
     "showMarkdown"
   Table →

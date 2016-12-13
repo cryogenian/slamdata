@@ -335,6 +335,7 @@ all =
   , SetupChartCard
   , ShowChartCard
   , SetupFormInputCard
+  , ShowFormInputCard
   , SetupMarkdownCard
   , ShowMarkdownCard
   , DraftboardCard
