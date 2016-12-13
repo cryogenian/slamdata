@@ -330,6 +330,7 @@ peekBackSide opts (Back.DoAction action _) = do
         Just coord | not isRoot → do
           res ← liftH' $ P.mirrorDeck st.id coord
           for_ res relocateDisplayCards
+          H.modify (DCS._displayMode .~ DCS.Normal)
         _ → do
           res ← liftH' $ P.wrapAndMirrorDeck st.id
           for_ res navigateToDeck

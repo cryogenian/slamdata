@@ -101,7 +101,7 @@ runEvalLoop source tick trail input graph = do
         value' = node.card.value { state = result.state }
         output = Card.CardError case GE.fromQError err of
           Left msg → msg
-          _        → "Global error" -- FIXME
+          Right ge → GE.print ge
       updateCardValue node.coord value' eval.cards
       liftAff do
         for_ result.state \state →

@@ -137,7 +137,6 @@ getDeck' deckId = do
       value ← defer do
         let
           deckPath = Deck.deckIndex path deckId
-        -- FIXME: Notify on failure
         result ← runExceptT do
           deck ← ExceptT $ (_ >>= Deck.decode >>> lmap QE.msgToQError) <$> Quasar.load deckPath
           _    ← ExceptT $ populateCards deckId deck
@@ -200,7 +199,6 @@ populateCards deckId deck = runExceptT do
       Cache.put coord cell cache
       forkCardProcess coord cell.bus
 
--- FIXME: Maybe we don't need this, we can just call all these directly.
 forkDeckProcess ∷ ∀ f m . Persist f m (Deck.Id → Bus.BusRW Deck.EvalMessage → m Unit)
 forkDeckProcess deckId = forkLoop case _ of
   Deck.ParentChange parent → do
@@ -406,15 +404,16 @@ mirrorDeck childId coord = tracking SA.ErrorSavingMirror (SA.Mirror childId) $ r
   where
   mirrorInLayout newId = case _ of
     CM.Draftboard { layout } → do
-      cursor ← List.tail =<< Pane.getCursorFor (Just childId) layout
+      cursor ← Pane.getCursorFor (Just childId) layout
       let
+        cursor' = fromMaybe Nil (List.tail cursor)
         orn =
-          case Pane.getAt cursor layout of
+          case Pane.getAt cursor' layout of
             Just (Pane.Split o _) → o
             _ → Orn.Vertical
       layout' ←
         Layout.insertSplit
-          (Pane.Cell (Just newId)) orn (1%2) Layout.SideB cursor layout
+          (Pane.Cell (Just newId)) orn (1%2) Layout.SideB cursor' layout
       pure (CM.Draftboard { layout: layout' })
     _ →
       Nothing
