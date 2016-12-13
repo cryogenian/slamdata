@@ -24,6 +24,7 @@ import Data.StrMap as SM
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Variables.Model (Model)
+import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.FormBuilder.Item.Model (defaultValueToVarMapValue)
 
 eval
@@ -33,10 +34,14 @@ eval
   → m Port.VarMap
 eval model = do
   CEM.CardEnv { coord: deckId × _, urlVarMaps } ← ask
-  let
-    alg =
+  pure $ buildVarMap deckId urlVarMaps model
+
+buildVarMap ∷ DeckId → Map.Map DeckId Port.URLVarMap → Model → Port.VarMap
+buildVarMap deckId urlVarMaps model =
+  foldl go SM.empty model.items
+  where
+    go =
       flip \{ name, fieldType, defaultValue } →
         maybe id (SM.insert name) $ defaultValueToVarMapValue fieldType
           =<< (SM.lookup name =<< Map.lookup deckId urlVarMaps)
           <|> defaultValue
-  pure $ foldl alg SM.empty model.items

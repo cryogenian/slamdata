@@ -83,12 +83,12 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckPath (deckPath, deckPath')
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
-import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Eval.Card as EC
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
+import SlamData.Workspace.Eval.Traverse as ET
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 
@@ -304,21 +304,23 @@ peekBackSide opts (Back.DoAction action _) = do
     Back.Rename → do
       showDialog $ Dialog.Rename st.name
     Back.Share → do
-      sharingInput ← getSharingInput
-      showDialog $ Dialog.Share sharingInput
+      getDeckTree st.id >>= traverse_
+        (showDialog ∘ Dialog.Share ∘ ET.getSharingInput path)
     Back.Unshare → do
-      sharingInput ← getSharingInput
-      showDialog $ Dialog.Unshare sharingInput
+      getDeckTree st.id >>= traverse_
+        (showDialog ∘ Dialog.Unshare ∘ ET.getSharingInput path)
     Back.Embed → do
       SA.track (SA.Embed st.id)
-      -- FIXME
-      sharingInput ← getSharingInput
-      showDialog $ Dialog.Embed sharingInput mempty
+      getDeckTree st.id >>= traverse_ \tree →
+        showDialog $ Dialog.Embed
+          (ET.getSharingInput path tree)
+          (ET.getVarMaps tree)
     Back.Publish → do
       SA.track (SA.Publish st.id)
-      -- FIXME
-      sharingInput ← getSharingInput
-      showDialog $ Dialog.Publish sharingInput mempty
+      getDeckTree st.id >>= traverse_ \tree →
+        showDialog $ Dialog.Publish
+          (ET.getSharingInput path tree)
+          (ET.getVarMaps tree)
     Back.DeleteDeck →
       if Array.length st.displayCards <= 1
         then deleteDeck opts
@@ -575,12 +577,12 @@ relocateDisplayCards newDeckId = do
   for_ displayCards \dc →
     H.modify _ { displayCards = dc }
 
-getSharingInput ∷ DeckDSL SharingInput
-getSharingInput = do
-  -- FIXME
-  { path } ← liftH' Wiring.expose
-  deckId ← H.gets _.id
-  pure { deckId, workspacePath: path, caches: L.Nil, sources: L.Nil }
+getDeckTree ∷ DeckId → DeckDSL (Maybe ET.TraverseDeck)
+getDeckTree deckId = do
+  wiring ← liftH' Wiring.expose
+  cards ← liftH' $ Cache.snapshot wiring.eval.cards
+  decks ← liftH' $ Cache.snapshot wiring.eval.decks
+  pure (ET.unfoldTree cards decks deckId)
 
 updateCardSize ∷ DeckDSL Unit
 updateCardSize = do

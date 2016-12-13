@@ -19,6 +19,8 @@ module SlamData.Workspace.Eval.Traverse
   , TraverseCard
   , unfoldTree
   , childPointers
+  , getVarMaps
+  , getSharingInput
   ) where
 
 import SlamData.Prelude
@@ -27,20 +29,29 @@ import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
+import Data.Set (Set)
+import Data.Set as Set
 
 import SlamData.Workspace.Card.Model as CM
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Variables.Eval as Variables
+import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 
+import Utils (censor)
+import Utils.Path (DirPath)
+
 data TraverseDeck = TraverseDeck
   { deckId ∷ Deck.Id
-  , cards  ∷ List TraverseCard
+  , cards ∷ List TraverseCard
   }
 
 type TraverseCard =
-  { cardId ∷ Card.Id
+  { coord ∷ Card.Coord
   , model ∷ Card.AnyCardModel
-  , children ∷ List (Card.Id × TraverseDeck)
+  , children ∷ List TraverseDeck
+  , sources ∷ Set Card.AdditionalSource
   }
 
 unfoldTree
@@ -59,19 +70,54 @@ unfoldTree cards decks deckId =
 
     unfoldCard ∷ Card.Coord → Maybe TraverseCard
     unfoldCard coord =
-      Map.lookup coord cards <#> \{ value: { model } } →
-        let
-          pointers = childPointers model
-          children = sequence ∘ map (unfoldTree cards decks) <$> pointers
-        in
-          { cardId: model.cardId
-          , model: model.model
-          , children: List.catMaybes children
-          }
+      Map.lookup coord cards <#> \{ value: { model, sources } } →
+        { coord
+        , model: model.model
+        , children: List.catMaybes $ unfoldTree cards decks <$> childPointers model
+        , sources
+        }
 
-childPointers ∷ Card.Model → List (Card.Id × Deck.Id)
+childPointers ∷ Card.Model → List Deck.Id
 childPointers = case _ of
   { cardId, model: CM.Draftboard model } →
-    Tuple cardId <$> List.catMaybes (List.fromFoldable model.layout)
+    List.catMaybes (List.fromFoldable model.layout)
   _ → mempty
 
+getVarMaps ∷ TraverseDeck → Map Deck.Id Port.VarMap
+getVarMaps = Map.fromFoldable ∘ goDeck
+  where
+    goDeck (TraverseDeck { cards }) =
+      foldMap goCard cards
+
+    goCard ∷ TraverseCard → List (Deck.Id × Port.VarMap)
+    goCard { coord: deckId × _, model: CM.Variables vars } =
+      pure $ deckId × Variables.buildVarMap deckId Map.empty vars
+    goCard { children } = foldMap goDeck children
+
+getSharingInput ∷ DirPath → TraverseDeck → SharingInput
+getSharingInput path (TraverseDeck root) =
+  { workspacePath: path
+  , deckId: root.deckId
+  , decks: List.mapMaybe censor resources
+  , caches: List.mapMaybe isCache resources
+  , sources: List.mapMaybe isSource resources
+  }
+  where
+    resources =
+      List.fromFoldable
+        (foldMap goCard root.cards)
+
+    goCard { coord: deckId × _, sources, children } =
+      foldMap goDeck children <> Set.map Left sources <>
+      if deckId ≡ root.deckId
+         then Set.empty
+         else Set.singleton (Right deckId)
+
+    goDeck (TraverseDeck { cards }) =
+      foldMap goCard cards
+
+    isCache (Left (Card.Cache fp)) = Just fp
+    isCache _ = Nothing
+
+    isSource (Left (Card.Source fp)) = Just fp
+    isSource _ = Nothing
