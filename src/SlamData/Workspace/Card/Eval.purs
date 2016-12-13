@@ -63,6 +63,15 @@ import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Model as Model
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Search.Interpret as Search
+import SlamData.Workspace.Card.SetupFormInput.Checkbox.Eval as SetupCheckbox
+import SlamData.Workspace.Card.SetupFormInput.Date.Eval as SetupDate
+import SlamData.Workspace.Card.SetupFormInput.Datetime.Eval as SetupDatetime
+import SlamData.Workspace.Card.SetupFormInput.Dropdown.Eval as SetupDropdown
+import SlamData.Workspace.Card.SetupFormInput.Numeric.Eval as SetupNumeric
+import SlamData.Workspace.Card.SetupFormInput.Radio.Eval as SetupRadio
+import SlamData.Workspace.Card.SetupFormInput.Static.Eval as SetupStatic
+import SlamData.Workspace.Card.SetupFormInput.Text.Eval as SetupText
+import SlamData.Workspace.Card.SetupFormInput.Time.Eval as SetupTime
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
@@ -100,6 +109,15 @@ data Eval
   | BuildPunchCard BuildPunchCard.Model
   | BuildCandlestick BuildCandlestick.Model
   | BuildParallel BuildParallel.Model
+  | SetupDropdown SetupDropdown.Model
+  | SetupRadio SetupRadio.Model
+  | SetupCheckbox SetupCheckbox.Model
+  | SetupText SetupText.Model
+  | SetupNumeric SetupNumeric.Model
+  | SetupDate SetupDate.Model
+  | SetupTime SetupTime.Model
+  | SetupDatetime SetupDatetime.Model
+  | SetupStatic SetupStatic.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -131,6 +149,15 @@ tagEval = case _ of
   BuildPunchCard _ → "BuildPunchCard"
   BuildCandlestick _ → "BuildCandlestick"
   BuildParallel _ → "BuildParallel"
+  SetupDropdown _ → "SetupDropdown"
+  SetupRadio _ → "SetupRadio"
+  SetupCheckbox _ → "SetupCheckbox"
+  SetupText _ → "SetupText"
+  SetupNumeric _ → "SetupNumeric"
+  SetupDate _ → "SetupDate"
+  SetupTime _ → "SetupTime"
+  SetupDatetime _ → "SetupDatetime"
+  SetupStatic _ → "SetupStatic"
 
 evalCard
   ∷ ∀ f m
@@ -204,6 +231,24 @@ evalCard input =
       BuildCandlestick.eval model resource axes
     BuildParallel model, Just (Port.TaggedResource {resource}) →
       BuildParallel.eval model resource
+    SetupDropdown model, Just (Port.TaggedResource {resource, axes}) →
+      SetupDropdown.eval model resource axes
+    SetupRadio model, Just (Port.TaggedResource {resource, axes}) →
+      SetupRadio.eval model resource axes
+    SetupCheckbox model, Just (Port.TaggedResource {resource, axes}) →
+      SetupCheckbox.eval model resource axes
+    SetupText model, Just (Port.TaggedResource {resource, axes}) →
+      SetupText.eval model resource axes
+    SetupNumeric model, Just (Port.TaggedResource {resource, axes}) →
+      SetupNumeric.eval model resource axes
+    SetupDate model, Just (Port.TaggedResource {resource, axes}) →
+      SetupDate.eval model resource axes
+    SetupTime model, Just (Port.TaggedResource {resource, axes}) →
+      SetupTime.eval model resource axes
+    SetupDatetime model, Just (Port.TaggedResource {resource, axes}) →
+      SetupDatetime.eval model resource axes
+    SetupStatic model, Just (Port.TaggedResource {resource, axes}) →
+      SetupStatic.eval model resource axes
     e, i →
       QE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 

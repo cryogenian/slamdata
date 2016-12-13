@@ -32,6 +32,7 @@ import SlamData.FileSystem.Resource as R
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
+import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Table.Model as JT
@@ -57,6 +58,15 @@ import SlamData.Workspace.Card.BuildChart.PunchCard.Model as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Model as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Model as BuildParallel
 import SlamData.Workspace.Card.BuildChart.Legacy as ChartLegacy
+import SlamData.Workspace.Card.SetupFormInput.Dropdown.Model as SetupDropdown
+import SlamData.Workspace.Card.SetupFormInput.Radio.Model as SetupRadio
+import SlamData.Workspace.Card.SetupFormInput.Checkbox.Model as SetupCheckbox
+import SlamData.Workspace.Card.SetupFormInput.Text.Model as SetupText
+import SlamData.Workspace.Card.SetupFormInput.Numeric.Model as SetupNumeric
+import SlamData.Workspace.Card.SetupFormInput.Date.Model as SetupDate
+import SlamData.Workspace.Card.SetupFormInput.Time.Model as SetupTime
+import SlamData.Workspace.Card.SetupFormInput.Datetime.Model as SetupDatetime
+import SlamData.Workspace.Card.SetupFormInput.Static.Model as SetupStatic
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -91,6 +101,15 @@ data AnyCardModel
   | BuildPunchCard BuildPunchCard.Model
   | BuildCandlestick BuildCandlestick.Model
   | BuildParallel BuildParallel.Model
+  | SetupDropdown SetupDropdown.Model
+  | SetupRadio SetupRadio.Model
+  | SetupCheckbox SetupCheckbox.Model
+  | SetupText SetupText.Model
+  | SetupNumeric SetupNumeric.Model
+  | SetupDate SetupDate.Model
+  | SetupTime SetupTime.Model
+  | SetupDatetime SetupDatetime.Model
+  | SetupStatic SetupStatic.Model
   | ErrorCard
   | NextAction
   | PendingCard
@@ -125,6 +144,15 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , BuildPunchCard <$> BuildPunchCard.genModel
       , BuildCandlestick <$> BuildCandlestick.genModel
       , BuildParallel <$> BuildParallel.genModel
+      , SetupDropdown <$> SetupDropdown.genModel
+      , SetupRadio <$> SetupRadio.genModel
+      , SetupCheckbox <$> SetupCheckbox.genModel
+      , SetupText <$> SetupText.genModel
+      , SetupNumeric <$> SetupNumeric.genModel
+      , SetupDate <$> SetupDate.genModel
+      , SetupTime <$> SetupTime.genModel
+      , SetupDatetime <$> SetupDatetime.genModel
+      , SetupStatic <$> SetupStatic.genModel
       , pure ErrorCard
       , pure NextAction
       ]
@@ -160,6 +188,15 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       BuildPunchCard x, BuildPunchCard y → BuildPunchCard.eqModel x y
       BuildCandlestick x, BuildCandlestick y → BuildCandlestick.eqModel x y
       BuildParallel x, BuildParallel y → BuildParallel.eqModel x y
+      SetupDropdown x, SetupDropdown y → SetupDropdown.eqModel x y
+      SetupRadio x, SetupRadio y → SetupRadio.eqModel x y
+      SetupCheckbox x, SetupCheckbox y → SetupCheckbox.eqModel x y
+      SetupText x, SetupText y → SetupText.eqModel x y
+      SetupNumeric x, SetupNumeric y → SetupNumeric.eqModel x y
+      SetupDate x, SetupDate y → SetupDate.eqModel x y
+      SetupTime x, SetupTime y → SetupTime.eqModel x y
+      SetupDatetime x, SetupDatetime y → SetupDatetime.eqModel x y
+      SetupStatic x, SetupStatic y → SetupStatic.eqModel x y
       ErrorCard, ErrorCard → true
       NextAction, NextAction → true
       _,_ → false
@@ -191,6 +228,15 @@ modelCardType =
     BuildPunchCard _ → CT.ChartOptions PunchCard
     BuildCandlestick _ → CT.ChartOptions Candlestick
     BuildParallel _ → CT.ChartOptions Parallel
+    SetupDropdown _ → CT.SetupFormInput Dropdown
+    SetupRadio _ → CT.SetupFormInput Radio
+    SetupCheckbox _ → CT.SetupFormInput Checkbox
+    SetupText _ → CT.SetupFormInput Text
+    SetupNumeric _ → CT.SetupFormInput Numeric
+    SetupDate _ → CT.SetupFormInput Date
+    SetupTime _ → CT.SetupFormInput Time
+    SetupDatetime _ → CT.SetupFormInput Datetime
+    SetupStatic _ → CT.SetupFormInput Static
     Chart _ → CT.Chart
     Markdown _ → CT.Markdown
     Table _ → CT.Table
@@ -287,6 +333,15 @@ encodeCardModel = case _ of
   BuildPunchCard model → BuildPunchCard.encode model
   BuildCandlestick model → BuildCandlestick.encode model
   BuildParallel model → BuildParallel.encode model
+  SetupDropdown model → SetupDropdown.encode model
+  SetupRadio model → SetupRadio.encode model
+  SetupCheckbox model → SetupCheckbox.encode model
+  SetupText model → SetupText.encode model
+  SetupNumeric model → SetupNumeric.encode model
+  SetupDate model → SetupDate.encode model
+  SetupTime model → SetupTime.encode model
+  SetupDatetime model → SetupDatetime.encode model
+  SetupStatic model → SetupStatic.encode model
   ErrorCard → J.jsonEmptyObject
   NextAction → J.jsonEmptyObject
   PendingCard → J.jsonEmptyObject
@@ -316,7 +371,17 @@ decodeCardModel = case _ of
   CT.ChartOptions PunchCard → map BuildPunchCard ∘ BuildPunchCard.decode
   CT.ChartOptions Candlestick → map BuildCandlestick ∘ BuildCandlestick.decode
   CT.ChartOptions Parallel → map BuildParallel ∘ BuildParallel.decode
+  CT.SetupFormInput Dropdown → map SetupDropdown ∘ SetupDropdown.decode
+  CT.SetupFormInput Radio → map SetupRadio ∘ SetupRadio.decode
+  CT.SetupFormInput Checkbox → map SetupCheckbox ∘ SetupCheckbox.decode
+  CT.SetupFormInput Text → map SetupText ∘ SetupText.decode
+  CT.SetupFormInput Numeric → map SetupNumeric ∘ SetupNumeric.decode
+  CT.SetupFormInput Date → map SetupDate ∘ SetupDate.decode
+  CT.SetupFormInput Time → map SetupTime ∘ SetupTime.decode
+  CT.SetupFormInput Datetime → map SetupDatetime ∘ SetupDatetime.decode
+  CT.SetupFormInput Static → map SetupStatic ∘ SetupStatic.decode
   CT.Chart → map Chart ∘ Chart.decode
+  CT.FormInput → const $ pure ErrorCard
   CT.Markdown → map Markdown ∘ MD.decode
   CT.Table → map Table ∘ JT.decode
   CT.Download → const $ pure Download
@@ -355,7 +420,17 @@ cardModelOfType = case _ of
   CT.ChartOptions PunchCard → BuildPunchCard BuildPunchCard.initialModel
   CT.ChartOptions Candlestick → BuildCandlestick BuildCandlestick.initialModel
   CT.ChartOptions Parallel → BuildParallel BuildParallel.initialModel
+  CT.SetupFormInput Dropdown → SetupDropdown SetupDropdown.initialModel
+  CT.SetupFormInput Radio → SetupRadio SetupRadio.initialModel
+  CT.SetupFormInput Checkbox → SetupCheckbox SetupCheckbox.initialModel
+  CT.SetupFormInput Text → SetupText SetupText.initialModel
+  CT.SetupFormInput Numeric → SetupNumeric SetupNumeric.initialModel
+  CT.SetupFormInput Date → SetupDate SetupDate.initialModel
+  CT.SetupFormInput Time → SetupTime SetupTime.initialModel
+  CT.SetupFormInput Datetime → SetupDatetime SetupDatetime.initialModel
+  CT.SetupFormInput Static → SetupStatic SetupStatic.initialModel
   CT.Chart → Chart Chart.emptyModel
+  CT.FormInput → ErrorCard
   CT.Markdown → Markdown MD.emptyModel
   CT.Table → Table JT.emptyModel
   CT.Download → Download

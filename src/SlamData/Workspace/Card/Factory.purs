@@ -60,6 +60,15 @@ import SlamData.Workspace.Card.BuildChart.Heatmap.Component (heatmapBuilderCompo
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component (punchCardBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component (candlestickBuilderComponent)
 import SlamData.Workspace.Card.BuildChart.Parallel.Component (parallelBuilderComponent)
+import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component (dropdownSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Radio.Component (radioSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Checkbox.Component (checkboxSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Text.Component (textSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Numeric.Component (numericSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Date.Component (dateSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Time.Component (timeSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Datetime.Component (datetimeSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Static.Component (staticSetupComponent)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
 cardComponent ∷ DeckId → Card.Model → CardOptions → CardComponent
@@ -97,6 +106,15 @@ cardComponent deckId card opts =
     Card.BuildPunchCard _ → punchCardBuilderComponent
     Card.BuildCandlestick _ → candlestickBuilderComponent
     Card.BuildParallel _ → parallelBuilderComponent
+    Card.SetupDropdown _ → dropdownSetupComponent
+    Card.SetupRadio _ → radioSetupComponent
+    Card.SetupCheckbox _ → checkboxSetupComponent
+    Card.SetupText _ → textSetupComponent
+    Card.SetupNumeric _ → numericSetupComponent
+    Card.SetupDate _ → dateSetupComponent
+    Card.SetupTime _ → timeSetupComponent
+    Card.SetupDatetime _ → datetimeSetupComponent
+    Card.SetupStatic _ → staticSetupComponent
 
 aceEval ∷ CT.AceMode → AceEval
 aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}

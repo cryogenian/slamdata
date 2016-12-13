@@ -20,6 +20,7 @@ module SlamData.Workspace.Card.Port
   , DownloadPort
   , MetricPort
   , PivotTablePort
+  , FormInputPort
   , tagPort
   , _SlamDown
   , _VarMap
@@ -38,7 +39,7 @@ module SlamData.Workspace.Card.Port
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json)
+import Data.Argonaut (Json, JCursor)
 import Data.Lens (Prism', prism', Traversal', wander)
 
 import ECharts.Monad (DSL)
@@ -47,6 +48,7 @@ import ECharts.Types.Phantom (OptionI)
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), renderVarMapValue, emptyVarMap)
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
+import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
@@ -76,11 +78,20 @@ type PivotTablePort =
   , taggedResource ∷ TaggedResourcePort
   }
 
+type FormInputPort =
+  { name ∷ Maybe JCursor
+  , label ∷ Maybe JCursor
+  , value ∷ Maybe JCursor
+  , selected ∷ Maybe JCursor
+  , formInputType ∷ FormInputType
+  }
+
 data Port
   = SlamDown (VarMap × (SD.SlamDownP VarMapValue))
   | VarMap VarMap
   | CardError String
   | ChartInstructions (DSL OptionI) ChartType
+  | FormInputParams FormInputPort
   | TaggedResource TaggedResourcePort
   | DownloadOptions DownloadPort
   | Metric MetricPort
@@ -100,6 +111,7 @@ tagPort (Just p) = case p of
   Draftboard → "Draftboard"
   Blocked → "Blocked"
   ChartInstructions _ _ → "ChartInstructions"
+  FormInputParams _ → "FormInputParams"
   Metric _ → "Metric"
   PivotTable _ → "PivotTable"
 

@@ -46,6 +46,12 @@ import SlamData.Workspace.Card.CardType.ChartType
   , parseChartType
   , chartName
   )
+import SlamData.Workspace.Card.CardType.FormInputType
+  ( FormInputType(..)
+  , printFormInputType
+  , parseFormInputType
+  , formInputName
+  )
 
 import Test.StrongCheck.Arbitrary as SC
 
@@ -53,7 +59,9 @@ data CardType
   = Ace AceMode
   | Search
   | ChartOptions ChartType
+  | SetupFormInput FormInputType
   | Chart
+  | FormInput
   | Markdown
   | Table
   | Download
@@ -92,7 +100,9 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     Ace SQLMode → "ace-sql"
     Search → "search"
     ChartOptions chty → printChartType chty ⊕ "-options"
+    SetupFormInput fity → printFormInputType fity ⊕ "-setup"
     Chart → "chart"
+    FormInput → "form-input"
     Markdown → "markdown"
     Table → "table"
     Download → "download"
@@ -108,12 +118,26 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
-    str ← decodeJson json
-    case str of
+    (decodeJson json >>= parseBasic)
+    <|> (decodeJson json >>= parseChartOptions)
+    <|> (decodeJson json >>= parseFormInputSetup)
+    where
+    parseFormInputSetup name = do
+      let fiName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-setup") name
+      fity ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseFormInputType fiName
+      pure $ SetupFormInput fity
+
+    parseChartOptions name = do
+      let chartName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-options") name
+      chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseChartType chartName
+      pure $ ChartOptions chty
+
+    parseBasic = case _ of
       "ace-markdown" → pure $ Ace MarkdownMode
       "ace-sql" → pure $ Ace SQLMode
       "search" → pure Search
       "chart" → pure Chart
+      "form-input" → pure FormInput
       "markdown" → pure Markdown
       "table" → pure Table
       "download" → pure Download
@@ -126,18 +150,17 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "draftboard" → pure Draftboard
       "error" → pure ErrorCard
       "pending" → pure PendingCard
-      name → do
-        let
-          chartName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-options") name
-        chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseChartType chartName
-        pure $ ChartOptions chty
+      _ → Left "This is not basic card type"
+
 
 cardName ∷ CardType → String
 cardName = case _ of
   Ace at → aceCardName at
   Search → "Search"
   ChartOptions chty → chartName chty
+  SetupFormInput fity → formInputName fity
   Chart → "Show Chart"
+  FormInput → "Show Form"
   Markdown → "Show Markdown"
   Table → "Preview Table"
   Download → "Show Download"
@@ -195,6 +218,25 @@ cardIcon = case _ of
         "buildChart/candlestick"
       Parallel →
         "buildChart/parallel"
+  SetupFormInput fity → case fity of
+    Dropdown →
+      "setupFormInput/dropdown.svg"
+    Static →
+      "setupFormInput/static.svg"
+    Text →
+      "setupFormInput/text.svg"
+    Numeric →
+      "setupFormInput/numeric.svg"
+    Checkbox →
+      "setupFormInput/checkbox.svg"
+    Radio →
+      "setupFormInput/radio.svg"
+    Date →
+      "setupFormInput/date.svg"
+    Time →
+      "setupFormInput/time.svg"
+    Datetime →
+      "setupFormInput/datetime.svg"
   Download →
     "showDownload"
   Variables →
@@ -203,6 +245,8 @@ cardIcon = case _ of
     "troubleshoot"
   Chart →
     "showChart"
+  FormInput →
+    "showFormInput.svg"
   Markdown →
     "showMarkdown"
   Table →
@@ -243,7 +287,9 @@ cardClasses = case _ of
   Ace at → [ H.className "sd-card-ace" ] <> aceCardClasses at
   Search → [ H.className "sd-card-search" ]
   ChartOptions _ → [ H.className "sd-card-chart-options" ]
+  SetupFormInput _ → [ H.className "sd-form-input-setup" ]
   Chart → [ H.className "sd-card-chart" ]
+  FormInput → [ H.className "sd-card-form-input" ]
   Markdown → [ H.className "sd-card-markdown" ]
   Table → [ H.className "sd-card-table" ]
   Download → [ H.className "sd-card-download" ]

@@ -53,6 +53,15 @@ module SlamData.Workspace.Card.Component.Query
   , _BuildPunchCardQuery
   , _BuildCandlestickQuery
   , _BuildParallelQuery
+  , _SetupDropdownQuery
+  , _SetupRadioQuery
+  , _SetupCheckboxQuery
+  , _SetupTextQuery
+  , _SetupNumericQuery
+  , _SetupDateQuery
+  , _SetupTimeQuery
+  , _SetupDatetimeQuery
+  , _SetupStaticQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -102,6 +111,15 @@ import SlamData.Workspace.Card.BuildChart.Heatmap.Component.Query as BuildHeatma
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component.Query as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.Query as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Component.Query as BuildParallel
+import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.Query as SetupDropdown
+import SlamData.Workspace.Card.SetupFormInput.Radio.Component.Query as SetupRadio
+import SlamData.Workspace.Card.SetupFormInput.Checkbox.Component.Query as SetupCheckbox
+import SlamData.Workspace.Card.SetupFormInput.Text.Component.Query as SetupText
+import SlamData.Workspace.Card.SetupFormInput.Numeric.Component.Query as SetupNumeric
+import SlamData.Workspace.Card.SetupFormInput.Date.Component.Query as SetupDate
+import SlamData.Workspace.Card.SetupFormInput.Time.Component.Query as SetupTime
+import SlamData.Workspace.Card.SetupFormInput.Datetime.Component.Query as SetupDatetime
+import SlamData.Workspace.Card.SetupFormInput.Static.Component.Query as SetupStatic
 
 -- | The common query algebra for a card.
 -- |
@@ -162,7 +180,15 @@ data AnyCardQuery a
   | BuildPunchCardQuery (BuildPunchCard.QueryP a)
   | BuildCandlestickQuery (BuildCandlestick.QueryP a)
   | BuildParallelQuery (BuildParallel.QueryP a)
-
+  | SetupDropdownQuery (SetupDropdown.QueryP a)
+  | SetupRadioQuery (SetupRadio.QueryP a)
+  | SetupCheckboxQuery (SetupCheckbox.QueryP a)
+  | SetupTextQuery (SetupText.QueryP a)
+  | SetupNumericQuery (SetupNumeric.QueryP a)
+  | SetupDateQuery (SetupDate.QueryP a)
+  | SetupTimeQuery (SetupTime.QueryP a)
+  | SetupDatetimeQuery (SetupDatetime.QueryP a)
+  | SetupStaticQuery (SetupStatic.QueryP a)
 
 _AceQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Ace.QueryP a)
 _AceQuery = prism' AceQuery case _ of
@@ -322,4 +348,49 @@ _BuildCandlestickQuery = prism' BuildCandlestickQuery case _ of
 _BuildParallelQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildParallel.QueryP a)
 _BuildParallelQuery = prism' BuildParallelQuery case _ of
   BuildParallelQuery q → Just q
+  _ → Nothing
+
+_SetupDropdownQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupDropdown.QueryP a)
+_SetupDropdownQuery = prism' SetupDropdownQuery case _ of
+  SetupDropdownQuery q → Just q
+  _ → Nothing
+
+_SetupRadioQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupRadio.QueryP a)
+_SetupRadioQuery = prism' SetupRadioQuery case _ of
+  SetupRadioQuery q → Just q
+  _ → Nothing
+
+_SetupCheckboxQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupCheckbox.QueryP a)
+_SetupCheckboxQuery = prism' SetupCheckboxQuery case _ of
+  SetupCheckboxQuery q → Just q
+  _ → Nothing
+
+_SetupTextQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupText.QueryP a)
+_SetupTextQuery = prism' SetupTextQuery case _ of
+  SetupTextQuery q → Just q
+  _ → Nothing
+
+_SetupNumericQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupNumeric.QueryP a)
+_SetupNumericQuery = prism' SetupNumericQuery case _ of
+  SetupNumericQuery q → Just q
+  _ → Nothing
+
+_SetupDateQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupDate.QueryP a)
+_SetupDateQuery = prism' SetupDateQuery case _ of
+  SetupDateQuery q → Just q
+  _ → Nothing
+
+_SetupTimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTime.QueryP a)
+_SetupTimeQuery = prism' SetupTimeQuery case _ of
+  SetupTimeQuery q → Just q
+  _ → Nothing
+
+_SetupDatetimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupDatetime.QueryP a)
+_SetupDatetimeQuery = prism' SetupDatetimeQuery case _ of
+  SetupDatetimeQuery q → Just q
+  _ → Nothing
+
+_SetupStaticQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupStatic.QueryP a)
+_SetupStaticQuery = prism' SetupStaticQuery case _ of
+  SetupStaticQuery q → Just q
   _ → Nothing
