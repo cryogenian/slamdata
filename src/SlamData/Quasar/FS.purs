@@ -232,7 +232,7 @@ move src tgt = do
             pure $ true × replaceCardModel newCard d
         CM.Open r →
           let
-            newR = fromMaybe R.root do
+            newR = fromMaybe r do
               rel ←
                 bisequence
                   $ bimap (flip P.relativeTo wsDir) (flip P.relativeTo wsDir)
