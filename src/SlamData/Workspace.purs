@@ -109,14 +109,13 @@ routeSignal = do
             lift $ setup new driver
             routeConsumer (Just (RouterState new wiring driver))
 
-  reload (Wiring wiring) new@(WorkspaceRoute path _ action _) = do
-    let
-      wiring' = wiring
-        { path = path
-        , accessType = toAccessType action
-        }
+  reload (Wiring wiring) new@(WorkspaceRoute path _ action varMaps) = do
+    wiring' ←
+      if path ≡ wiring.path
+        then pure $ Wiring wiring { path = path, accessType = toAccessType action }
+        else lift $ Wiring.make path (toAccessType action) varMaps
     lift $ removeFromBody ".sd-workspace"
-    mount (Wiring wiring') new
+    mount wiring' new
 
   mount wiring new@(WorkspaceRoute _ _ action _) = do
     let
