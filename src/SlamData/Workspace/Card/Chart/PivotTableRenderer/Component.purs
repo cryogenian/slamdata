@@ -297,9 +297,8 @@ eval = case _ of
             && input.options.dimensions ≡ options.dimensions
           _, _ → false
     if sameResource
-      then do
+      then
         H.modify _ { input = Just input }
-        when (isSimple input.options) $ pageQuery input
       else do
         H.modify _ { input = Just input, pageIndex = 0, count = 0, pageCount = 0 }
         ifSimpleInput pageQuery loadTree input

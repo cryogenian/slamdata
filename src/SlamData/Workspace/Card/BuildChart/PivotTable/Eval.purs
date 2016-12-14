@@ -88,6 +88,7 @@ mkSql options resource =
     cols =
       Array.mapWithIndex
         case _, _ of
+          i, PTM.Column c | isSimple → "row" <> escapedCursor c.value <> " AS _" <> show (i + dimLen)
           i, PTM.Column c → sqlAggregation c.valueAggregation ("row" <> escapedCursor c.value) <> " AS _" <> show (i + dimLen)
           i, PTM.Count    → "COUNT(*) AS _" <> show (i + dimLen)
         options.columns
