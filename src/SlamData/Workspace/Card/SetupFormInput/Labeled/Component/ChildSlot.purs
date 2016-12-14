@@ -1,4 +1,4 @@
-module SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.ChildSlot where
+module SlamData.Workspace.Card.SetupFormInput.Labeled.Component.ChildSlot where
 
 import SlamData.Prelude
 

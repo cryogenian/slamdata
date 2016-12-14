@@ -111,9 +111,7 @@ import SlamData.Workspace.Card.BuildChart.Heatmap.Component.Query as BuildHeatma
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component.Query as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.Query as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Component.Query as BuildParallel
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.Query as SetupDropdown
-import SlamData.Workspace.Card.SetupFormInput.Radio.Component.Query as SetupRadio
-import SlamData.Workspace.Card.SetupFormInput.Checkbox.Component.Query as SetupCheckbox
+import SlamData.Workspace.Card.SetupFormInput.Labeled.Component.Query as SetupLabeled
 import SlamData.Workspace.Card.SetupFormInput.Text.Component.Query as SetupText
 import SlamData.Workspace.Card.SetupFormInput.Numeric.Component.Query as SetupNumeric
 import SlamData.Workspace.Card.SetupFormInput.Date.Component.Query as SetupDate
@@ -180,9 +178,9 @@ data AnyCardQuery a
   | BuildPunchCardQuery (BuildPunchCard.QueryP a)
   | BuildCandlestickQuery (BuildCandlestick.QueryP a)
   | BuildParallelQuery (BuildParallel.QueryP a)
-  | SetupDropdownQuery (SetupDropdown.QueryP a)
-  | SetupRadioQuery (SetupRadio.QueryP a)
-  | SetupCheckboxQuery (SetupCheckbox.QueryP a)
+  | SetupDropdownQuery (SetupLabeled.QueryP a)
+  | SetupRadioQuery (SetupLabeled.QueryP a)
+  | SetupCheckboxQuery (SetupLabeled.QueryP a)
   | SetupTextQuery (SetupText.QueryP a)
   | SetupNumericQuery (SetupNumeric.QueryP a)
   | SetupDateQuery (SetupDate.QueryP a)
@@ -350,17 +348,17 @@ _BuildParallelQuery = prism' BuildParallelQuery case _ of
   BuildParallelQuery q → Just q
   _ → Nothing
 
-_SetupDropdownQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupDropdown.QueryP a)
+_SetupDropdownQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.QueryP a)
 _SetupDropdownQuery = prism' SetupDropdownQuery case _ of
   SetupDropdownQuery q → Just q
   _ → Nothing
 
-_SetupRadioQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupRadio.QueryP a)
+_SetupRadioQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.QueryP a)
 _SetupRadioQuery = prism' SetupRadioQuery case _ of
   SetupRadioQuery q → Just q
   _ → Nothing
 
-_SetupCheckboxQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupCheckbox.QueryP a)
+_SetupCheckboxQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.QueryP a)
 _SetupCheckboxQuery = prism' SetupCheckboxQuery case _ of
   SetupCheckboxQuery q → Just q
   _ → Nothing

@@ -82,7 +82,6 @@ type FormInputPort =
   { name ∷ Maybe JCursor
   , label ∷ Maybe JCursor
   , value ∷ Maybe JCursor
-  , selected ∷ Maybe JCursor
   , formInputType ∷ FormInputType
   }
 

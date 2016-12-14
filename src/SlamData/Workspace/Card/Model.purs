@@ -21,12 +21,16 @@ module SlamData.Workspace.Card.Model
   , decode
   , cardModelOfType
   , modelCardType
+  , setupLabeledFormInput
+  , _SetupLabeledInput
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
+
+import Data.Lens (Traversal', wander)
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Workspace.Card.CardId as CID
@@ -67,6 +71,7 @@ import SlamData.Workspace.Card.SetupFormInput.Date.Model as SetupDate
 import SlamData.Workspace.Card.SetupFormInput.Time.Model as SetupTime
 import SlamData.Workspace.Card.SetupFormInput.Datetime.Model as SetupDatetime
 import SlamData.Workspace.Card.SetupFormInput.Static.Model as SetupStatic
+import SlamData.Workspace.Card.SetupFormInput.Labeled.Model as SetupLabeled
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -346,7 +351,6 @@ encodeCardModel = case _ of
   NextAction → J.jsonEmptyObject
   PendingCard → J.jsonEmptyObject
 
-
 decodeCardModel
   ∷ CT.CardType
   → J.Json
@@ -443,3 +447,17 @@ cardModelOfType = case _ of
   CT.ErrorCard → ErrorCard
   CT.NextAction → NextAction
   CT.PendingCard → PendingCard
+
+_SetupLabeledInput ∷ Traversal' AnyCardModel SetupLabeled.Model
+_SetupLabeledInput = wander \f s → case s of
+  SetupDropdown m → map SetupText $ f m
+  SetupRadio m → map SetupRadio $ f m
+  SetupCheckbox m → map SetupCheckbox $ f m
+  _ → pure s
+
+setupLabeledFormInput ∷ FormInputType → SetupLabeled.Model → AnyCardModel
+setupLabeledFormInput fit m = case fit of
+  Dropdown → SetupDropdown m
+  Radio → SetupRadio m
+  Checkbox → SetupCheckbox m
+  _ → ErrorCard

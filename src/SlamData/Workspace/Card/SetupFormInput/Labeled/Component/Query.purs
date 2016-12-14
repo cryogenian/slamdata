@@ -1,4 +1,4 @@
-module SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.Query where
+module SlamData.Workspace.Card.SetupFormInput.Labeled.Component.Query where
 
 import SlamData.Prelude
 
@@ -9,7 +9,7 @@ import Halogen as H
 import SlamData.Common.Align (Align)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.BuildChart.Inputs (SelectAction)
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.ChildSlot (ChildQuery, ChildSlot)
+import SlamData.Workspace.Card.SetupFormInput.Labeled.Component.ChildSlot (ChildQuery, ChildSlot)
 
 data Selection f
   = Name (f JCursor)

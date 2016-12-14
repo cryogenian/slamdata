@@ -105,9 +105,7 @@ import SlamData.Workspace.Card.BuildChart.Heatmap.Component.State as BuildHeatma
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component.State as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.State as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Component.State as BuildParallel
-import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component.State as SetupDropdown
-import SlamData.Workspace.Card.SetupFormInput.Radio.Component.State as SetupRadio
-import SlamData.Workspace.Card.SetupFormInput.Checkbox.Component.State as SetupCheckbox
+import SlamData.Workspace.Card.SetupFormInput.Labeled.Component.State as SetupLabeled
 import SlamData.Workspace.Card.SetupFormInput.Text.Component.State as SetupText
 import SlamData.Workspace.Card.SetupFormInput.Numeric.Component.State as SetupNumeric
 import SlamData.Workspace.Card.SetupFormInput.Date.Component.State as SetupDate
@@ -165,9 +163,9 @@ data AnyCardState
   | BuildPunchCardState BuildPunchCard.StateP
   | BuildCandlestickState BuildCandlestick.StateP
   | BuildParallelState BuildParallel.StateP
-  | SetupDropdownState SetupDropdown.StateP
-  | SetupRadioState SetupRadio.StateP
-  | SetupCheckboxState SetupCheckbox.StateP
+  | SetupDropdownState SetupLabeled.StateP
+  | SetupRadioState SetupLabeled.StateP
+  | SetupCheckboxState SetupLabeled.StateP
   | SetupTextState SetupText.StateP
   | SetupNumericState SetupNumeric.StateP
   | SetupDateState SetupDate.StateP
@@ -335,17 +333,17 @@ _BuildParallelState = prism' BuildParallelState case _ of
   BuildParallelState s → Just s
   _ → Nothing
 
-_SetupDropdownState ∷ Prism' AnyCardState SetupDropdown.StateP
+_SetupDropdownState ∷ Prism' AnyCardState SetupLabeled.StateP
 _SetupDropdownState = prism' SetupDropdownState case _ of
   SetupDropdownState s → Just s
   _ → Nothing
 
-_SetupRadioState ∷ Prism' AnyCardState SetupRadio.StateP
+_SetupRadioState ∷ Prism' AnyCardState SetupLabeled.StateP
 _SetupRadioState = prism' SetupRadioState case _ of
   SetupRadioState s → Just s
   _ → Nothing
 
-_SetupCheckboxState ∷ Prism' AnyCardState SetupCheckbox.StateP
+_SetupCheckboxState ∷ Prism' AnyCardState SetupLabeled.StateP
 _SetupCheckboxState = prism' SetupCheckboxState case _ of
   SetupCheckboxState s → Just s
   _ → Nothing
