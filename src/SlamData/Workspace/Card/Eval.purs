@@ -438,5 +438,23 @@ modelToEval = case _ of
     pure $ BuildCandlestick model
   Model.BuildParallel model →
     pure $ BuildParallel model
+  Model.SetupDropdown model →
+    pure $ SetupDropdown model
+  Model.SetupStatic model →
+    pure $ SetupStatic model
+  Model.SetupText model →
+    pure $ SetupText model
+  Model.SetupNumeric model →
+    pure $ SetupNumeric model
+  Model.SetupCheckbox model →
+    pure $ SetupCheckbox model
+  Model.SetupRadio model →
+    pure $ SetupRadio model
+  Model.SetupDate model →
+    pure $ SetupDate model
+  Model.SetupTime model →
+    pure $ SetupTime model
+  Model.SetupDatetime model →
+    pure $ SetupDatetime model
   _ →
     pure Pass
