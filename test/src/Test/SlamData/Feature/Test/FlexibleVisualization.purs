@@ -98,7 +98,7 @@ test =
     Interact.publishDeck
     Interact.accessPublishingUrl
     Interact.accessWorkspaceWithModifiedURL $ S.replace (S.Pattern "view") (S.Replacement "edit")
-    Interact.setVarMapForCurrentDeck $ SM.singleton "state" "\"NE\""
+    Interact.setVarMapForCurrentDeck $ SM.singleton "state" "NE"
 
     Expect.lastEChart chart_NE_gender
     Interact.accessWorkspaceWithModifiedURL $ S.replace (S.Pattern "NE") (S.Replacement "CO")

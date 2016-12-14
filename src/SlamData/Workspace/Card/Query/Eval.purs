@@ -25,7 +25,6 @@ import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
 import Data.Path.Pathy as Path
-import Data.StrMap as SM
 
 import Quasar.Types (SQL)
 
@@ -51,11 +50,9 @@ evalQuery
   → SQL
   → m Port.TaggedResourcePort
 evalQuery varMap sql = do
-  urlVarMap ← CEM.localUrlVarMap
   resource ← CEM.temporaryOutputResource
   let
-    varMap' =
-      SM.union urlVarMap (Port.renderVarMapValue <$> varMap)
+    varMap' = Port.renderVarMapValue <$> varMap
     backendPath =
       Left $ fromMaybe Path.rootDir (Path.parentDir resource)
   { inputs } ←
