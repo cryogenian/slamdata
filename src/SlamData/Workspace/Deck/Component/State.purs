@@ -51,6 +51,7 @@ module SlamData.Workspace.Deck.Component.State
   , addMetaCard
   , findLastCardIndex
   , findLastCard
+  , findLastRealCard
   , fromModel
   , cardIndexFromCoord
   , cardCoordFromIndex
@@ -296,6 +297,10 @@ findLastCardIndex st =
 findLastCard ∷ State → Maybe DisplayCard
 findLastCard state =
   A.last state.displayCards
+
+findLastRealCard ∷ State → Maybe DisplayCard
+findLastRealCard state =
+  A.index state.displayCards (A.length state.displayCards - 2)
 
 -- | Reconstructs a deck state from a deck model.
 fromModel
