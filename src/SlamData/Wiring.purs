@@ -110,7 +110,7 @@ type BusWiring =
 type WiringR =
   { path ∷ DirPath
   , accessType ∷ AccessType
-  , varMaps ∷ Map.Map Deck.Id Port.URLVarMap
+  , varMaps ∷ Cache Deck.Id Port.URLVarMap
   , eval ∷ EvalWiring
   , auth ∷ AuthWiring
   , cache ∷ CacheWiring
@@ -135,11 +135,12 @@ make
   → AccessType
   → Map.Map Deck.Id Port.URLVarMap
   → m Wiring
-make path accessType varMaps = fromAff do
+make path accessType vm = fromAff do
   eval ← makeEval
   auth ← makeAuth
   cache ← makeCache
   bus ← makeBus
+  varMaps ← Cache.make' vm
   pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus }
 
   where

@@ -19,6 +19,7 @@ module SlamData.Wiring.Cache
   , unCache
   , make
   , make'
+  , restore
   , get
   , alter
   , put
@@ -32,7 +33,6 @@ import SlamData.Prelude
 import Control.Monad.Aff.AVar (AVar, AVAR, makeVar', takeVar, putVar, modifyVar)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 
-import Data.List (List)
 import Data.Map (Map)
 import Data.Map as Map
 
@@ -50,9 +50,18 @@ make = liftAff (Cache <$> makeVar' mempty)
 make'
   ∷ ∀ eff m k v
   . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
-  ⇒ List (Tuple k v)
+  ⇒ Map k v
   → m (Cache k v)
-make' = liftAff ∘ map Cache ∘ makeVar' ∘ Map.fromFoldable
+make' = liftAff ∘ map Cache ∘ makeVar'
+
+restore
+  ∷ ∀ eff m k v
+  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  ⇒ Map k v
+  → Cache k v
+  → m Unit
+restore m (Cache c) =
+  liftAff (modifyVar (const m) c)
 
 get
   ∷ ∀ eff m k v
@@ -124,5 +133,3 @@ snapshot (Cache cache) = liftAff do
   vals ← takeVar cache
   putVar cache vals
   pure vals
-
--- TODO: Provide some way to do key-level locking.

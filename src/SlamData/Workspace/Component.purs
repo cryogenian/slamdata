@@ -36,7 +36,7 @@ import Data.Time.Duration (Milliseconds(..))
 import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
 import Halogen.Component.Opaque.Unsafe (opaqueState)
-import Halogen.Component.Utils (subscribeToBus')
+import Halogen.Component.Utils (liftH', subscribeToBus')
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
@@ -53,6 +53,7 @@ import SlamData.Notification as N
 import SlamData.Notification.Component as NC
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring as Wiring
+import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.Model as CM
@@ -148,7 +149,7 @@ render accessType state =
 eval ∷ Query ~> WorkspaceDSL
 eval = case _ of
   Init next → do
-    { bus } ← H.liftH $ H.liftH Wiring.expose
+    { bus } ← liftH' Wiring.expose
     cardGuideStep ← initialCardGuideStep
     H.modify _ { cardGuideStep = cardGuideStep }
     subscribeToBus'
@@ -169,14 +170,14 @@ eval = case _ of
   CardGuideStepNext next →
     H.modify State.cardGuideStepNext $> next
   CardGuideDismiss next → do
-    H.liftH $ H.liftH $ LocalStorage.setLocalStorage Guide.dismissedCardGuideKey true
+    liftH' $ LocalStorage.setLocalStorage Guide.dismissedCardGuideKey true
     H.modify (_cardGuideStep .~ Nothing)
     queryDeck $ H.action Deck.DismissedCardGuide
     pure next
   FlipGuideStepNext next →
     H.modify State.flipGuideStepNext $> next
   FlipGuideDismiss next → do
-    H.liftH $ H.liftH $ LocalStorage.setLocalStorage Guide.dismissedFlipGuideKey true
+    liftH' $ LocalStorage.setLocalStorage Guide.dismissedFlipGuideKey true
     H.modify (_flipGuideStep .~ Nothing)
     pure next
   DismissAll ev next → do
@@ -223,18 +224,18 @@ eval = case _ of
 
 rootDeck ∷ WorkspaceDSL (Either QE.QError DeckId)
 rootDeck = do
-  { path } ← H.liftH $ H.liftH Wiring.expose
+  { path } ← liftH' Wiring.expose
   Model.getRoot (path </> Pathy.file "index")
 
 setRoot ∷ DeckId → WorkspaceDSL (Either QE.QError Unit)
 setRoot deckId = do
-  { path } ← H.liftH $ H.liftH Wiring.expose
+  { path } ← liftH' Wiring.expose
   Model.setRoot (path </> Pathy.file "index") deckId
 
 runFreshWorkspace ∷ Array CM.AnyCardModel → WorkspaceDSL Unit
 runFreshWorkspace cards = do
-  { path, accessType, varMaps, bus } ← H.liftH $ H.liftH Wiring.expose
-  deckId × cell ← H.liftH $ H.liftH $ P.freshWorkspace cards
+  { path, accessType, varMaps, bus } ← liftH' Wiring.expose
+  deckId × cell ← liftH' $ P.freshWorkspace cards
   H.modify _
     { stateMode = Ready
     , deckId = Just deckId
@@ -248,7 +249,8 @@ runFreshWorkspace cards = do
         _ → pure unit
   wait
   setRoot deckId
-  navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) varMaps
+  urlVarMaps ← liftH' $ Cache.snapshot varMaps
+  navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) urlVarMaps
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
 peek = (const (pure unit)) ⨁ const (pure unit) ⨁ peekNotification
@@ -286,6 +288,6 @@ querySignIn =
 
 initialCardGuideStep ∷ WorkspaceDSL (Maybe Int)
 initialCardGuideStep =
-  H.liftH $ H.liftH
+  liftH'
     $ either (const $ Just 0) (if _ then Nothing else Just 0)
     <$> LocalStorage.getLocalStorage Guide.dismissedCardGuideKey

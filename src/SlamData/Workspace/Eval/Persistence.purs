@@ -272,6 +272,12 @@ queueEvalImmediate = queueEval 0
 queueEvalDefault ∷ ∀ f m. Persist f m (Card.DisplayCoord → m Unit)
 queueEvalDefault = queueEval defaultEvalDebounce
 
+queueEvalForDeck ∷ ∀ f m. Persist f m (Int → Deck.Id → m Unit)
+queueEvalForDeck ms deckId =
+  getDeck deckId >>= traverse_ \deck →
+    for_ (Array.head (Deck.cardCoords deckId deck)) \coord →
+      queueEval ms (Card.toAll coord)
+
 freshWorkspace ∷ ∀ f m. Persist f m (Array CM.AnyCardModel → m (Deck.Id × Deck.Cell))
 freshWorkspace anyCards = do
   { eval } ← Wiring.expose

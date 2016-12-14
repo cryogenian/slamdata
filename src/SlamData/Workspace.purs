@@ -27,13 +27,17 @@ import Control.UI.Browser as Browser
 
 import Ace.Config as AceConfig
 
+import Data.Map.Diff as Diff
 import Data.Nullable (toMaybe)
 
 import DOM.HTML.Document (body)
 import DOM.HTML (window)
+import DOM.HTML.Types (HTMLElement, htmlElementToElement, htmlElementToNode, htmlDocumentToParentNode)
 import DOM.HTML.Window (document)
 import DOM.Node.Element (setClassName)
-import DOM.HTML.Types (htmlElementToElement)
+import DOM.Node.Node (removeChild)
+import DOM.Node.Types (elementToNode)
+import DOM.Node.ParentNode (querySelector)
 
 import Halogen (Driver, runUI, parentState, interpret)
 import Halogen.Util (runHalogenAff, awaitBody)
@@ -42,10 +46,13 @@ import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Monad (runSlam)
+import SlamData.Wiring (Wiring(..))
 import SlamData.Wiring as Wiring
+import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
+import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
 
@@ -53,7 +60,7 @@ import Routing as Routing
 
 import Utils.Path as UP
 
-data RouterState = RouterState Routes (Driver Workspace.QueryP SlamDataRawEffects)
+data RouterState = RouterState Routes Wiring (Driver Workspace.QueryP SlamDataRawEffects)
 
 main ∷ Eff SlamDataEffects Unit
 main = do
@@ -79,29 +86,47 @@ routeSignal = do
       -- Initialize the Workspace component
       WorkspaceRoute path deckId action varMaps, Nothing → do
         wiring ← lift $ Wiring.make path (toAccessType action) varMaps
-        let
-          st = Workspace.initialState (Just "4.0")
-          ui = interpret (runSlam wiring) $ Workspace.comp (toAccessType action)
-        driver ← lift $ runUI ui (parentState st) =<< awaitBody
-        lift $ setupWorkspace new driver
-        routeConsumer (Just (RouterState new driver))
+        mount wiring new
 
       -- Reload the page on path change or varMap change
-      WorkspaceRoute path _ action varMaps, Just (RouterState (WorkspaceRoute path' _ action' varMaps') _)
-        | path ≠ path' || varMaps ≠ varMaps' || toAccessType action ≠ toAccessType action' →
-        lift $ liftEff Browser.reload
+      WorkspaceRoute path _ action _, Just (RouterState (WorkspaceRoute path' _ action' _) wiring _)
+        | path ≠ path' || toAccessType action ≠ toAccessType action' →
+        reload wiring new
 
       -- Transition Workspace
-      WorkspaceRoute path deckId action varMaps, Just (RouterState old driver) →
+      WorkspaceRoute path deckId action varMaps, Just (RouterState old wiring driver) →
         case old of
-          WorkspaceRoute path' deckId' action' varMaps'
-            | path ≡ path' ∧ deckId ≡ deckId' ∧ action ≡ action' ∧ varMaps ≡ varMaps' →
-                routeConsumer (Just (RouterState new driver))
-          _ → do
-            lift $ setupWorkspace new driver
-            routeConsumer (Just (RouterState new driver))
+          WorkspaceRoute _ deckId' _ varMaps'
+            | deckId ≡ deckId' ∧ varMaps ≡ varMaps' →
+                routeConsumer (Just (RouterState new wiring driver))
+          WorkspaceRoute _ deckId' _ varMaps' → do
+            when (varMaps ≠ varMaps') $ lift do
+              Cache.restore varMaps (Wiring.unWiring wiring).varMaps
+              runSlam wiring
+                $ traverse_ (P.queueEvalForDeck 0)
+                $ Diff.updated
+                $ Diff.diff varMaps' varMaps
+            lift $ setup new driver
+            routeConsumer (Just (RouterState new wiring driver))
 
-  setupWorkspace new@(WorkspaceRoute _ deckId action varMaps) driver = do
+  reload (Wiring wiring) new@(WorkspaceRoute path _ action _) = do
+    let
+      wiring' = wiring
+        { path = path
+        , accessType = toAccessType action
+        }
+    lift $ removeFromBody ".sd-workspace"
+    mount (Wiring wiring') new
+
+  mount wiring new@(WorkspaceRoute _ _ action _) = do
+    let
+      st = Workspace.initialState (Just "4.0")
+      ui = interpret (runSlam wiring) $ Workspace.comp (toAccessType action)
+    driver ← lift $ runUI ui (parentState st) =<< awaitBody'
+    lift $ setup new driver
+    routeConsumer (Just (RouterState new wiring driver))
+
+  setup new@(WorkspaceRoute _ deckId action varMaps) driver = do
     when (toAccessType action ≡ AT.ReadOnly) do
       isEmbedded ←
         liftEff $ Browser.detectEmbedding
@@ -125,3 +150,14 @@ routeSignal = do
         driver $ Workspace.toWorkspace $ Workspace.New
       Exploring fp →
         driver $ Workspace.toWorkspace $ Workspace.ExploreFile fp
+
+awaitBody' ∷ Aff SlamDataEffects HTMLElement
+awaitBody' = do
+  body ← liftEff $ map toMaybe $ window >>= document >>= body
+  maybe awaitBody pure body
+
+removeFromBody ∷ String → Aff SlamDataEffects Unit
+removeFromBody sel = liftEff $ void $ runMaybeT do
+  body ← MaybeT $ map toMaybe $ window >>= document >>= body
+  root ← MaybeT $ map toMaybe $ window >>= document >>= htmlDocumentToParentNode >>> querySelector sel
+  lift $ removeChild (elementToNode root) (htmlElementToNode body)

@@ -158,14 +158,14 @@ eval opts = case _ of
   ZoomIn next → do
     { path, accessType, varMaps } ← liftH' Wiring.expose
     st ← H.get
-    navigate $ WorkspaceRoute path (Just st.id) (WA.Load accessType) varMaps
+    navigateToDeck st.id
     pure next
   ZoomOut next → do
     { path, accessType, varMaps } ← liftH' Wiring.expose
     st ← H.get
     case st.parent of
-      Just (Tuple deckId _) → do
-        navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) varMaps
+      Just (Tuple deckId _) →
+        navigateToDeck deckId
       Nothing →
         void $ H.fromEff $ Browser.setHref $ parentURL $ Left path
     pure next
@@ -620,7 +620,8 @@ shouldPresentFlipGuide =
 navigateToDeck ∷ DeckId → DeckDSL Unit
 navigateToDeck newId = do
   { path, accessType, varMaps } ← liftH' Wiring.expose
-  navigate $ WorkspaceRoute path (Just newId) (WA.Load accessType) varMaps
+  urlVarMaps ← liftH' $ Cache.snapshot varMaps
+  navigate $ WorkspaceRoute path (Just newId) (WA.Load accessType) urlVarMaps
 
 navigateToIndex ∷ DeckDSL Unit
 navigateToIndex = do

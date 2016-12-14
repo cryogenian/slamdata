@@ -83,6 +83,7 @@ runEvalLoop
   → m Unit
 runEvalLoop source tick trail input graph = do
   { path, varMaps, eval } ← Wiring.expose
+  urlVarMaps ← Cache.snapshot varMaps
   let
     node = Cofree.head graph
     next = Cofree.tail graph
@@ -90,7 +91,7 @@ runEvalLoop source tick trail input graph = do
     env = CEM.CardEnv
       { path
       , coord: node.coord
-      , urlVarMaps: varMaps
+      , urlVarMaps
       }
   liftAff $ Bus.write (Card.Pending source input) node.card.bus
   result ← Card.runCard env node.card.value.state input node.transition
