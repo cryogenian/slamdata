@@ -15,7 +15,6 @@ cacheCardScenario =
     "Caching data source card output"
     (Interact.createWorkspaceInTestFolder "Cache card")
     (Interact.deleteFileInTestFolder "Cache card.slam"
-     ≫ Interact.deleteFileInTestFolder "Explore временный файл.slam"
      ≫ Interact.deleteFileInTestFolder "временный файл"
     )
 
