@@ -22,7 +22,6 @@ import Control.Monad.Eff as Eff
 import Control.Monad.Aff.Free (class Affable, fromEff)
 
 import Data.Lens ((^?))
-import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 import Data.Set as Set
@@ -62,6 +61,7 @@ import SlamData.Workspace.Card.Markdown.Eval as MDE
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Model as Model
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Port.VarMap (renderVarMapValue)
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.Variables.Model as Variables
@@ -152,10 +152,10 @@ evalCard input =
       pure Port.Draftboard
     Query sql, Just (Port.VarMap varMap) →
       map Port.TaggedResource
-        $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) varMap
+        $ evalQuery input sql varMap
     Query sql, _ →
       map Port.TaggedResource
-        $ evalQuery input sql (fromMaybe SM.empty $ Map.lookup (fst input.cardCoord) input.urlVarMaps) Port.emptyVarMap
+        $ evalQuery input sql Port.emptyVarMap
     Markdown txt, _ →
       MDE.markdownEval input txt
     MarkdownForm model, (Just (Port.SlamDown doc)) →
@@ -249,24 +249,21 @@ evalQuery
   . (Monad m, Parallel f m, QuasarDSL m)
   ⇒ CET.CardEvalInput
   → SQL
-  → Port.URLVarMap
   → Port.VarMap
   → CET.CardEvalT m Port.TaggedResourcePort
-evalQuery info sql urlVarMap varMap = do
+evalQuery info sql varMap = do
   let
-    varMap' =
-      SM.union urlVarMap $ map Port.renderVarMapValue varMap
     resource =
       CET.temporaryOutputResource info
     backendPath =
       Left $ fromMaybe Path.rootDir (Path.parentDir resource)
   { inputs } ← CET.liftQ
     $ lmap (QE.prefixMessage "Error compiling query")
-    <$> QQ.compile backendPath sql varMap'
+    <$> QQ.compile backendPath sql (renderVarMapValue <$> varMap)
   validateResources inputs
   CET.addSources inputs
   axes ← CET.liftQ do
-    QQ.viewQuery backendPath resource sql varMap'
+    QQ.viewQuery backendPath resource sql (renderVarMapValue <$> varMap)
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
     QQ.axes resource 20
   pure { resource, tag: pure sql, axes, varMap: Just varMap }
