@@ -106,12 +106,8 @@ import SlamData.Workspace.Card.BuildChart.PunchCard.Component.State as BuildPunc
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.State as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Component.State as BuildParallel
 import SlamData.Workspace.Card.SetupFormInput.Labeled.Component.State as SetupLabeled
-import SlamData.Workspace.Card.SetupFormInput.Text.Component.State as SetupText
-import SlamData.Workspace.Card.SetupFormInput.Numeric.Component.State as SetupNumeric
-import SlamData.Workspace.Card.SetupFormInput.Date.Component.State as SetupDate
-import SlamData.Workspace.Card.SetupFormInput.Time.Component.State as SetupTime
-import SlamData.Workspace.Card.SetupFormInput.Datetime.Component.State as SetupDatetime
 import SlamData.Workspace.Card.SetupFormInput.Static.Component.State as SetupStatic
+import SlamData.Workspace.Card.SetupFormInput.TextLike.Component.State as SetupTextLike
 
 
 -- | The common state value for deck cards.
@@ -166,11 +162,11 @@ data AnyCardState
   | SetupDropdownState SetupLabeled.StateP
   | SetupRadioState SetupLabeled.StateP
   | SetupCheckboxState SetupLabeled.StateP
-  | SetupTextState SetupText.StateP
-  | SetupNumericState SetupNumeric.StateP
-  | SetupDateState SetupDate.StateP
-  | SetupTimeState SetupTime.StateP
-  | SetupDatetimeState SetupDatetime.StateP
+  | SetupTextState SetupTextLike.StateP
+  | SetupNumericState SetupTextLike.StateP
+  | SetupDateState SetupTextLike.StateP
+  | SetupTimeState SetupTextLike.StateP
+  | SetupDatetimeState SetupTextLike.StateP
   | SetupStaticState SetupStatic.StateP
 
 _AceState ∷ Prism' AnyCardState Ace.StateP
@@ -348,27 +344,27 @@ _SetupCheckboxState = prism' SetupCheckboxState case _ of
   SetupCheckboxState s → Just s
   _ → Nothing
 
-_SetupTextState ∷ Prism' AnyCardState SetupText.StateP
+_SetupTextState ∷ Prism' AnyCardState SetupTextLike.StateP
 _SetupTextState = prism' SetupTextState case _ of
   SetupTextState s → Just s
   _ → Nothing
 
-_SetupNumericState ∷ Prism' AnyCardState SetupNumeric.StateP
+_SetupNumericState ∷ Prism' AnyCardState SetupTextLike.StateP
 _SetupNumericState = prism' SetupNumericState case _ of
   SetupNumericState s → Just s
   _ → Nothing
 
-_SetupDateState ∷ Prism' AnyCardState SetupDate.StateP
+_SetupDateState ∷ Prism' AnyCardState SetupTextLike.StateP
 _SetupDateState = prism' SetupDateState case _ of
   SetupDateState s → Just s
   _ → Nothing
 
-_SetupTimeState ∷ Prism' AnyCardState SetupTime.StateP
+_SetupTimeState ∷ Prism' AnyCardState SetupTextLike.StateP
 _SetupTimeState = prism' SetupTimeState case _ of
   SetupTimeState s → Just s
   _ → Nothing
 
-_SetupDatetimeState ∷ Prism' AnyCardState SetupDatetime.StateP
+_SetupDatetimeState ∷ Prism' AnyCardState SetupTextLike.StateP
 _SetupDatetimeState = prism' SetupDatetimeState case _ of
   SetupDatetimeState s → Just s
   _ → Nothing

@@ -112,11 +112,7 @@ import SlamData.Workspace.Card.BuildChart.PunchCard.Component.Query as BuildPunc
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.Query as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Component.Query as BuildParallel
 import SlamData.Workspace.Card.SetupFormInput.Labeled.Component.Query as SetupLabeled
-import SlamData.Workspace.Card.SetupFormInput.Text.Component.Query as SetupText
-import SlamData.Workspace.Card.SetupFormInput.Numeric.Component.Query as SetupNumeric
-import SlamData.Workspace.Card.SetupFormInput.Date.Component.Query as SetupDate
-import SlamData.Workspace.Card.SetupFormInput.Time.Component.Query as SetupTime
-import SlamData.Workspace.Card.SetupFormInput.Datetime.Component.Query as SetupDatetime
+import SlamData.Workspace.Card.SetupFormInput.TextLike.Component.Query as SetupTextLike
 import SlamData.Workspace.Card.SetupFormInput.Static.Component.Query as SetupStatic
 
 -- | The common query algebra for a card.
@@ -181,11 +177,11 @@ data AnyCardQuery a
   | SetupDropdownQuery (SetupLabeled.QueryP a)
   | SetupRadioQuery (SetupLabeled.QueryP a)
   | SetupCheckboxQuery (SetupLabeled.QueryP a)
-  | SetupTextQuery (SetupText.QueryP a)
-  | SetupNumericQuery (SetupNumeric.QueryP a)
-  | SetupDateQuery (SetupDate.QueryP a)
-  | SetupTimeQuery (SetupTime.QueryP a)
-  | SetupDatetimeQuery (SetupDatetime.QueryP a)
+  | SetupTextQuery (SetupTextLike.QueryP a)
+  | SetupNumericQuery (SetupTextLike.QueryP a)
+  | SetupDateQuery (SetupTextLike.QueryP a)
+  | SetupTimeQuery (SetupTextLike.QueryP a)
+  | SetupDatetimeQuery (SetupTextLike.QueryP a)
   | SetupStaticQuery (SetupStatic.QueryP a)
 
 _AceQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Ace.QueryP a)
@@ -363,27 +359,27 @@ _SetupCheckboxQuery = prism' SetupCheckboxQuery case _ of
   SetupCheckboxQuery q → Just q
   _ → Nothing
 
-_SetupTextQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupText.QueryP a)
+_SetupTextQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
 _SetupTextQuery = prism' SetupTextQuery case _ of
   SetupTextQuery q → Just q
   _ → Nothing
 
-_SetupNumericQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupNumeric.QueryP a)
+_SetupNumericQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
 _SetupNumericQuery = prism' SetupNumericQuery case _ of
   SetupNumericQuery q → Just q
   _ → Nothing
 
-_SetupDateQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupDate.QueryP a)
+_SetupDateQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
 _SetupDateQuery = prism' SetupDateQuery case _ of
   SetupDateQuery q → Just q
   _ → Nothing
 
-_SetupTimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTime.QueryP a)
+_SetupTimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
 _SetupTimeQuery = prism' SetupTimeQuery case _ of
   SetupTimeQuery q → Just q
   _ → Nothing
 
-_SetupDatetimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupDatetime.QueryP a)
+_SetupDatetimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
 _SetupDatetimeQuery = prism' SetupDatetimeQuery case _ of
   SetupDatetimeQuery q → Just q
   _ → Nothing

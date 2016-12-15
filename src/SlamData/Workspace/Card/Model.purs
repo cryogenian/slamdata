@@ -23,6 +23,8 @@ module SlamData.Workspace.Card.Model
   , modelCardType
   , setupLabeledFormInput
   , _SetupLabeledInput
+  , setupTextLikeInput
+  , _SetupTextLikeInput
   ) where
 
 import SlamData.Prelude
@@ -72,6 +74,7 @@ import SlamData.Workspace.Card.SetupFormInput.Time.Model as SetupTime
 import SlamData.Workspace.Card.SetupFormInput.Datetime.Model as SetupDatetime
 import SlamData.Workspace.Card.SetupFormInput.Static.Model as SetupStatic
 import SlamData.Workspace.Card.SetupFormInput.Labeled.Model as SetupLabeled
+import SlamData.Workspace.Card.SetupFormInput.TextLike.Model as SetupTextLike
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -460,4 +463,23 @@ setupLabeledFormInput fit m = case fit of
   Dropdown → SetupDropdown m
   Radio → SetupRadio m
   Checkbox → SetupCheckbox m
+  _ → ErrorCard
+
+
+_SetupTextLikeInput ∷ Traversal' AnyCardModel SetupTextLike.Model
+_SetupTextLikeInput = wander \f s → case s of
+  SetupText m → map SetupText $ f m
+  SetupNumeric m → map SetupNumeric $ f m
+  SetupDate m → map SetupDate $ f m
+  SetupTime m → map SetupTime $ f m
+  SetupDatetime m → map SetupDatetime $ f m
+  _ → pure s
+
+setupTextLikeInput ∷ FormInputType → SetupTextLike.Model → AnyCardModel
+setupTextLikeInput fit m = case fit of
+  Text → SetupText m
+  Numeric → SetupNumeric m
+  Date → SetupDate m
+  Time → SetupTime m
+  Datetime → SetupDatetime m
   _ → ErrorCard

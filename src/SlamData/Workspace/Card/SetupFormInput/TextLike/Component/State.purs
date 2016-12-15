@@ -1,4 +1,4 @@
-module SlamData.Workspace.Card.SetupFormInput.Time.Component.State where
+module SlamData.Workspace.Card.SetupFormInput.TextLike.Component.State where
 
 import SlamData.Prelude
 
@@ -11,8 +11,8 @@ import SlamData.Common.Align (Align)
 import SlamData.Monad (Slam)
 import SlamData.Form.Select (Select, emptySelect)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.SetupFormInput.Time.Component.ChildSlot as CS
-import SlamData.Workspace.Card.SetupFormInput.Time.Component.Query (QueryC, Selection)
+import SlamData.Workspace.Card.SetupFormInput.TextLike.Component.ChildSlot as CS
+import SlamData.Workspace.Card.SetupFormInput.TextLike.Component.Query (QueryC, Selection)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
 import SlamData.Workspace.Card.BuildChart.Inputs (PickerOptions)
 
