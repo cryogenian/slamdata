@@ -28,6 +28,8 @@ module SlamData.Workspace.Card.CardType
   , aceMode
   , controllable
   , blocking
+  , module SlamData.Workspace.Card.CardType.FormInputType
+  , module SlamData.Workspace.Card.CardType.ChartType
   ) where
 
 import SlamData.Prelude

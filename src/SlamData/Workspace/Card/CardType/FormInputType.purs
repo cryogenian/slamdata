@@ -6,6 +6,7 @@ module SlamData.Workspace.Card.CardType.FormInputType
   , formInputLightIconSrc
   , formInputDarkIconSrc
   , allFormInputTypes
+  , maximumCountOfEntries
   ) where
 
 import SlamData.Prelude
@@ -111,3 +112,12 @@ formInputDarkIconSrc = case _ of
   Date → "img/formInputs/dark/date.svg"
   Time → "img/formInputs/dark/time.svg"
   Datetime → "img/formInputs/dark/datetime.svg"
+
+-- If there is more records in JArray don't even try to display it in ShowFormInput
+maximumCountOfEntries ∷ FormInputType → Int
+maximumCountOfEntries = case _ of
+  Dropdown → 100
+  Radio → 20
+  Checkbox → 20
+  Static → 1
+  _ → top

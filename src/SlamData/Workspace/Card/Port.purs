@@ -21,6 +21,8 @@ module SlamData.Workspace.Card.Port
   , MetricPort
   , PivotTablePort
   , FormInputPort
+  , SetupLabeledFormInputPort
+  , SetupTextLikeFormInputPort
   , tagPort
   , _SlamDown
   , _VarMap
@@ -41,6 +43,8 @@ import SlamData.Prelude
 
 import Data.Argonaut (Json, JCursor)
 import Data.Lens (Prism', prism', Traversal', wander)
+import Data.Map as Map
+import Data.Set as Set
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
@@ -50,6 +54,7 @@ import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)
+import SlamData.Workspace.Card.BuildChart.Semantics as Sem
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
@@ -85,12 +90,30 @@ type FormInputPort =
   , formInputType ∷ FormInputType
   }
 
+type SetupLabeledFormInputPort =
+  { name ∷ Maybe String
+  , valueLabelMap ∷ Map.Map Sem.Semantics (Maybe String)
+  , cursor ∷ JCursor
+  , selectedValues ∷ Set.Set Sem.Semantics
+  , taggedResource ∷ TaggedResourcePort
+  , formInputType ∷ FormInputType
+  }
+
+type SetupTextLikeFormInputPort =
+  { name ∷ Maybe String
+  , cursor ∷ JCursor
+  , taggedResource ∷ TaggedResourcePort
+  , formInputType ∷ FormInputType
+  }
+
 data Port
   = SlamDown (VarMap × (SD.SlamDownP VarMapValue))
   | VarMap VarMap
   | CardError String
   | ChartInstructions (DSL OptionI) ChartType
   | FormInputParams FormInputPort
+  | SetupLabeledFormInput SetupLabeledFormInputPort
+  | SetupTextLikeFormInput SetupTextLikeFormInputPort
   | TaggedResource TaggedResourcePort
   | DownloadOptions DownloadPort
   | Metric MetricPort
@@ -111,6 +134,8 @@ tagPort (Just p) = case p of
   Blocked → "Blocked"
   ChartInstructions _ _ → "ChartInstructions"
   FormInputParams _ → "FormInputParams"
+  SetupLabeledFormInput _ → "SetupLabeledFormInput"
+  SetupTextLikeFormInput _ → "SetupTextLikeFormInput"
   Metric _ → "Metric"
   PivotTable _ → "PivotTable"
 
@@ -139,6 +164,15 @@ _ResourceTag = wander \f s → case s of
 _Resource ∷ Traversal' Port PU.FilePath
 _Resource = wander \f s → case s of
   TaggedResource o → TaggedResource ∘ o{resource = _} <$> f o.resource
+  PivotTable pt →
+    map (\x → PivotTable $ pt{taggedResource = pt.taggedResource{resource = x}})
+    $ f pt.taggedResource.resource
+  SetupLabeledFormInput o →
+    map (\x → SetupLabeledFormInput $ o{taggedResource = o.taggedResource{resource = x}})
+      $ f o.taggedResource.resource
+  SetupTextLikeFormInput o →
+    map (\x → SetupTextLikeFormInput $ o{taggedResource = o.taggedResource{resource = x}})
+      $ f o.taggedResource.resource
   _ → pure s
 
 _ResourceAxes ∷ Traversal' Port Axes
