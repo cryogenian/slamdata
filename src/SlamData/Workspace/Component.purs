@@ -118,7 +118,7 @@ render accessType state =
   notifications =
     pure $ HH.slot' cpNotify unit \_ →
       { component: NC.comp
-      , initialState: NC.initialState
+      , initialState: NC.initialState (NC.renderModeFromAccessType accessType)
       }
 
   header = do
@@ -149,9 +149,10 @@ render accessType state =
 eval ∷ Query ~> WorkspaceDSL
 eval = case _ of
   Init next → do
-    { bus } ← liftH' Wiring.expose
+    { bus, accessType } ← liftH' Wiring.expose
     cardGuideStep ← initialCardGuideStep
-    H.modify _ { cardGuideStep = cardGuideStep }
+    when (AT.isEditable accessType) do
+      H.modify _ { cardGuideStep = cardGuideStep }
     subscribeToBus'
       (H.action ∘ PresentStepByStepGuide)
       bus.stepByStep

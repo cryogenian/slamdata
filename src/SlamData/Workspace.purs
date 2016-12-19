@@ -118,10 +118,8 @@ routeSignal = do
     mount wiring' new
 
   mount wiring new@(WorkspaceRoute _ _ action _) = do
-    let
-      st = Workspace.initialState (Just "4.0")
-      ui = interpret (runSlam wiring) $ Workspace.comp (toAccessType action)
-    driver ← lift $ runUI ui (parentState st) =<< awaitBody'
+    let ui = interpret (runSlam wiring) $ Workspace.comp (toAccessType action)
+    driver ← lift $ runUI ui (parentState Workspace.initialState) =<< awaitBody'
     lift $ setup new driver
     routeConsumer (Just (RouterState new wiring driver))
 
