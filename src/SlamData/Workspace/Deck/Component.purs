@@ -57,7 +57,6 @@ import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Analytics as SA
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataEffects)
@@ -167,7 +166,6 @@ eval opts = case _ of
       }
     pure next
   ExploreFile res next → do
-    SA.track SA.Explore
     H.modify
       $ (DCS.addCard $ Card.cardModelOfType CT.Table)
       ∘ (DCS.addCard ∘ Card.Open ∘ Just $ R.File res)
@@ -460,13 +458,11 @@ peekBackSide opts (Back.DoAction action _) = do
       showDialog $ Dialog.Unshare sharingInput
     Back.Embed → do
       st ← H.get
-      SA.track (SA.Embed st.id)
       sharingInput ← getSharingInput
       varMaps ← getVarMaps
       showDialog $ Dialog.Embed sharingInput varMaps
     Back.Publish → do
       st ← H.get
-      SA.track (SA.Publish st.id)
       sharingInput ← getSharingInput
       varMaps ← getVarMaps
       showDialog $ Dialog.Publish sharingInput varMaps
@@ -569,7 +565,6 @@ updateBackSide { cursor } = do
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
   presentAccessNextActionCardGuideAfterDelay
-  SA.track (SA.AddCard cardType)
   deckId ← H.gets _.id
   (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
   H.set st
@@ -775,8 +770,7 @@ evalCard path urlVarMaps input card = do
     let
       model = (snd card).model
     case Eval.modelToEval model of
-      Left err → do
-        SA.track (SA.ErrorInCardEval $ Card.modelCardType model)
+      Left err →
         pure $ (Port.CardError $ "Could not evaluate card: " <> err) × mempty
       Right cmd →
         let
@@ -791,11 +785,7 @@ evalCard path urlVarMaps input card = do
             Left ge → do
               GE.raiseGlobalError ge
               pure $ (Port.CardError $ "Could not evaluate card") × mempty
-            Right out@(Tuple p _) → do
-              case p of
-                Port.CardError _ →
-                  SA.track (SA.ErrorInCardEval $ Card.modelCardType model)
-                _ → pure unit
+            Right out@(Tuple p _) →
               pure out
   pure { input, card, output: Just output }
 

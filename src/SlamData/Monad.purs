@@ -39,7 +39,6 @@ import OIDC.Crypt.Types as OIDC
 
 import Quasar.Advanced.QuasarAF as QA
 
-import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Monad.ForkF as FF
@@ -64,7 +63,6 @@ data SlamF eff a
   | Quasar (QA.QuasarAFC a)
   | GetURLVarMaps (Map.Map DeckId Port.URLVarMap → a)
   | PutURLVarMaps (Map.Map DeckId Port.URLVarMap) a
-  | Track A.Event a
   | Notify N.NotificationOptions a
   | Halt GE.GlobalError a
   | Par (SlamA eff a)
@@ -119,9 +117,6 @@ instance quasarAuthDSLSlamM ∷ QuasarAuthDSL (SlamM eff) where
 
 instance quasarDSLSlamM ∷ QuasarDSL (SlamM eff) where
   liftQuasar = SlamM ∘ liftF ∘ Quasar
-
-instance analyticsDSLSlamM ∷ A.AnalyticsDSL (SlamM eff) where
-  track = SlamM ∘ liftF ∘ flip Track unit
 
 instance notifyDSLSlamM ∷ N.NotifyDSL (SlamM eff) where
   notify notification detail timeout actionOptions =
@@ -187,15 +182,6 @@ unSlam = foldFree go ∘ unSlamM
         lift $ liftAff $ do
           liftEff $ writeRef wiring.urlVarMaps urlVarMaps
           Bus.write URLVarMapsUpdated wiring.messaging
-      pure a
-    Track e a → do
-      Wiring wiring ← ask
-      hasIdentified ← lift $ liftEff $ readRef wiring.hasIdentified
-      unless (hasIdentified) $ lift do
-        liftEff $ writeRef wiring.hasIdentified true
-        licensee ← runQuasarF Nothing QA.licensee
-        liftEff $ for_ licensee A.identify
-      liftEff $ A.trackEvent e
       pure a
     Notify no a → do
       Wiring wiring ← ask

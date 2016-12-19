@@ -47,7 +47,6 @@ import Quasar.Error as QE
 
 import Routing (matchesAff)
 
-import SlamData.Analytics as Analytics
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Config as Config
 import SlamData.Config.Version (slamDataVersion)
@@ -79,8 +78,6 @@ main = do
   AceConfig.set AceConfig.themePath $ Config.baseUrl ⊕ "js/ace"
 
   runHalogenAff do
-    fork Analytics.enableAnalytics
-
     wiring ←
       makeWiring rootDir mempty
 

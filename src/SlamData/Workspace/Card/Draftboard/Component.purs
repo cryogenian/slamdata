@@ -31,7 +31,6 @@ import Halogen as H
 import Halogen.Component.Utils (raise')
 import Halogen.Component.Utils.Drag as Drag
 
-import SlamData.Analytics as SA
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
@@ -331,19 +330,15 @@ peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
         DCQ.GrabDeck ev _ → do
           startDragging ev (Grabbing (deckId × cursor))
         DCQ.DoAction DCQ.DeleteDeck _ → do
-          SA.track (SA.Delete deckId)
           deleteDeck opts deckId
           CC.raiseUpdatedP' CC.EvalModelUpdate
         DCQ.DoAction DCQ.Wrap _ → do
-          SA.track (SA.Wrap deckId)
           wrapDeck opts deckId cursor
           CC.raiseUpdatedP' CC.EvalModelUpdate
         DCQ.DoAction (DCQ.Unwrap decks) _ → do
-          SA.track (SA.Collapse deckId)
           unwrapDeck opts deckId cursor decks
           CC.raiseUpdatedP' CC.EvalModelUpdate
         DCQ.DoAction DCQ.Mirror _ → do
-          SA.track (SA.Mirror deckId)
           mirrorDeck opts deckId cursor
           CC.raiseUpdatedP' CC.EvalModelUpdate
         _ → pure unit
