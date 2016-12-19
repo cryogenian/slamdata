@@ -48,7 +48,6 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Analytics as SA
 import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
@@ -252,7 +251,6 @@ eval (Load deckId accessType next) = do
     void $ queryDeck $ H.action $ Deck.Focus
 
   loadDeck deckId' = void do
-    SA.track (SA.Load deckId' accessType)
     H.modify (_stateMode .~ Ready)
     queryDeck $ H.action $ Deck.Load deckId'
 
@@ -301,8 +299,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
             Notify.error "Failed to collapse deck." (Just $ N.Details msg) Nothing Nothing
           Right ge →
             GE.raiseGlobalError ge
-      Right _  → do
-        SA.track (SA.Collapse oldId)
+      Right _  →
         lift $ H.liftH $ H.liftH $ updateHash state.accessType newId
 
   peekDeck (Deck.DoAction Deck.Wrap _) = void $ runMaybeT do
@@ -329,8 +326,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
             Notify.error "Failed to wrap deck." (Just $ N.Details msg) Nothing Nothing
           Right ge →
             GE.raiseGlobalError ge
-      Right _  → do
-        SA.track (SA.Wrap oldId)
+      Right _  →
         lift $ H.liftH $ H.liftH $ updateHash state.accessType newId
 
   peekDeck (Deck.DoAction Deck.DeleteDeck _) = void $ runMaybeT do
@@ -351,8 +347,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
     case error of
       Left err →
         Notify.deleteDeckFail err
-      Right _  → do
-        SA.track (SA.Delete oldId)
+      Right _  →
         case parent of
           Just (deckId × _) →
             lift $ H.liftH $ H.liftH $ updateHash state.accessType deckId
@@ -408,8 +403,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ ((const $ pure unit) ⨁ peekNotif
             Notify.error "Failed to mirror deck." (Just $ N.Details msg) Nothing Nothing
           Right ge →
             GE.raiseGlobalError ge
-      Right _  → do
-        SA.track (SA.Mirror oldId)
+      Right _  →
         lift $ H.liftH $ H.liftH $ updateHash state.accessType newIdParent
 
   peekDeck _ = pure unit

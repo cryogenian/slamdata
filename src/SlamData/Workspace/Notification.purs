@@ -27,52 +27,49 @@ module SlamData.Workspace.Notification
 
 import SlamData.Prelude
 
-import SlamData.Analytics as SA
 import SlamData.GlobalError as GE
 import SlamData.Notification as N
 import SlamData.Quasar.Error as QE
 
 type DetailedError =
   ∀ m
-  . (Monad m, N.NotifyDSL m, SA.AnalyticsDSL m, GE.GlobalErrorDSL m)
+  . (Monad m, N.NotifyDSL m, GE.GlobalErrorDSL m)
   ⇒ QE.QError
   → m Unit
 
 notifyError
   ∷ ∀ m
-  . (Monad m, N.NotifyDSL m, SA.AnalyticsDSL m, GE.GlobalErrorDSL m)
+  . (Monad m, N.NotifyDSL m, GE.GlobalErrorDSL m)
   ⇒ String
-  → SA.Event
   → QE.QError
   → m Unit
-notifyError msg event err = do
+notifyError msg err = do
   case GE.fromQError err of
-    Left details -> do
+    Left details ->
       N.error msg (Just (N.Details details)) Nothing Nothing
-      SA.track event
     Right ge ->
       GE.raiseGlobalError ge
 
 loadDeckFail ∷ DetailedError
 loadDeckFail =
-  notifyError "Failed to load your deck." SA.ErrorLoadingDeck
+  notifyError "Failed to load your deck."
 
 loadParentFail ∷ DetailedError
 loadParentFail =
-  notifyError "Failed to load a parent deck." SA.ErrorLoadingDeck
+  notifyError "Failed to load a parent deck."
 
 saveDeckFail ∷ DetailedError
 saveDeckFail =
-  notifyError "Failed to save your deck." SA.ErrorSavingDeck
+  notifyError "Failed to save your deck."
 
 saveMirrorFail ∷ DetailedError
 saveMirrorFail =
-  notifyError "Failed to save a mirrored card." SA.ErrorSavingMirror
+  notifyError "Failed to save a mirrored card."
 
 deleteDeckFail ∷ DetailedError
 deleteDeckFail =
-  notifyError "Failed to delete your deck." SA.ErrorDeletingDeck
+  notifyError "Failed to delete your deck."
 
 setRootFail ∷ DetailedError
 setRootFail =
-  notifyError "Failed to update your workspace root." SA.ErrorUpdatingRoot
+  notifyError "Failed to update your workspace root."
