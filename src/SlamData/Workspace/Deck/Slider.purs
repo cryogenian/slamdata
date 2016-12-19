@@ -310,7 +310,7 @@ renderCard opts deckComponent st card index =
       ⊕ " click or drag this gripper to the left and add a new card to the deck."
 
   isLastCard =
-    fromMaybe true $
+    fromMaybe false $
       DCS.eqDisplayCard card <$> DCS.findLastRealCard st
 
   presentAccessNextActionCardGuide =
