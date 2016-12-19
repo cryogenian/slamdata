@@ -19,6 +19,4 @@ dateSetupComponent =
     , _Query: CC.makeQueryPrism' CCQ._SetupDateQuery
     , valueProjection: \ax →
         ax.date
-    , labelProjection: \ax →
-        ax.category
     }

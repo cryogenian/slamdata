@@ -19,6 +19,4 @@ numericSetupComponent =
     , _Query: CC.makeQueryPrism' CCQ._SetupNumericQuery
     , valueProjection: \ax →
         ax.value
-    , labelProjection: \ax →
-        ax.category
     }

@@ -25,6 +25,4 @@ textSetupComponent =
         ⊕ ax.time
         ⊕ ax.date
         ⊕ ax.datetime
-    , labelProjection: \ax →
-        ax.category
     }

@@ -19,6 +19,4 @@ timeSetupComponent =
     , _Query: CC.makeQueryPrism' CCQ._SetupTimeQuery
     , valueProjection: \ax →
         ax.time
-    , labelProjection: \ax →
-        ax.category
     }

@@ -21,7 +21,6 @@ module SlamData.Workspace.Card.Port
   , MetricPort
   , PivotTablePort
   , ChartInstructionsPort
-  , FormInputPort
   , SetupLabeledFormInputPort
   , SetupTextLikeFormInputPort
   , tagPort
@@ -91,15 +90,8 @@ type ChartInstructionsPort =
   , taggedResource ∷ TaggedResourcePort
   }
 
-type FormInputPort =
-  { name ∷ Maybe JCursor
-  , label ∷ Maybe JCursor
-  , value ∷ Maybe JCursor
-  , formInputType ∷ FormInputType
-  }
-
 type SetupLabeledFormInputPort =
-  { name ∷ Maybe String
+  { name ∷ String
   , valueLabelMap ∷ Map.Map Sem.Semantics (Maybe String)
   , cursor ∷ JCursor
   , selectedValues ∷ Set.Set Sem.Semantics
@@ -108,7 +100,7 @@ type SetupLabeledFormInputPort =
   }
 
 type SetupTextLikeFormInputPort =
-  { name ∷ Maybe String
+  { name ∷ String
   , cursor ∷ JCursor
   , taggedResource ∷ TaggedResourcePort
   , formInputType ∷ FormInputType
@@ -120,7 +112,6 @@ data Port
   | CardError String
   | VarMap VarMap
   | ChartInstructions (DSL OptionI) ChartType
-  | FormInputParams FormInputPort
   | SetupLabeledFormInput SetupLabeledFormInputPort
   | SetupTextLikeFormInput SetupTextLikeFormInputPort
   | TaggedResource TaggedResourcePort
@@ -142,7 +133,6 @@ tagPort  = case _ of
   DownloadOptions _ → "DownloadOptions"
   Draftboard → "Draftboard"
   ChartInstructions _ → "ChartInstructions"
-  FormInputParams _ → "FormInputParams"
   SetupLabeledFormInput _ → "SetupLabeledFormInput"
   SetupTextLikeFormInput _ → "SetupTextLikeFormInput"
   Metric _ → "Metric"

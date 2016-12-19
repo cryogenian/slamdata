@@ -8,10 +8,7 @@ import SlamData.Prelude
 import Control.Monad.State (class MonadState)
 import Control.Monad.Throw (class MonadThrow)
 
-import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(Static))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.SetupFormInput.Static.Model (Model)
@@ -23,16 +20,17 @@ eval
     , QuasarDSL m
     )
   ⇒ Model
-  → FilePath
+  → Port.TaggedResourcePort
   → m Port.Port
 eval Nothing _ =
   CEM.throw "Please select value"
-eval (Just conf) resource = do
+eval (Just conf) taggedResource = do
   let
+    -- Here we're going to take head of taggedResource using conf.value
+    -- and propagate it to metric.
     fiPort =
-      { formInputType: Static
-      , name: Nothing
-      , value: Just conf.value
+      { value: "" --Just conf.value
       , label: Nothing
+      , taggedResource
       }
-  pure $ Port.FormInputParams fiPort
+  pure $ Port.Metric fiPort

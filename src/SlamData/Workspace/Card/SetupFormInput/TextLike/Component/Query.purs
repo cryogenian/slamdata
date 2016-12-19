@@ -12,14 +12,13 @@ import SlamData.Workspace.Card.BuildChart.Inputs (SelectAction)
 import SlamData.Workspace.Card.SetupFormInput.TextLike.Component.ChildSlot (ChildQuery, ChildSlot)
 
 data Selection f
-  = Name (f JCursor)
-  | Value (f JCursor)
-  | Label (f JCursor)
+  = Value (f JCursor)
   | VerticalAlign (f Align)
   | HorizontalAlign (f Align)
 
 data Query a
   = Select (Selection SelectAction) a
+  | UpdateName String a
 
 type QueryC = CardEvalQuery ⨁ Query
 type QueryP = QueryC ⨁ H.ChildF ChildSlot ChildQuery

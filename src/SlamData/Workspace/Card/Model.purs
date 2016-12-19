@@ -455,7 +455,7 @@ updatePointer old new = case _ of
 
 _SetupLabeledInput ∷ Traversal' AnyCardModel SetupLabeled.Model
 _SetupLabeledInput = wander \f s → case s of
-  SetupDropdown m → map SetupText $ f m
+  SetupDropdown m → map SetupDropdown $ f m
   SetupRadio m → map SetupRadio $ f m
   SetupCheckbox m → map SetupCheckbox $ f m
   _ → pure s

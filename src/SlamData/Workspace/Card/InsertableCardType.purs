@@ -225,7 +225,6 @@ fromPort = case _ of
   Port.TaggedResource _ → Data
   Port.VarMap _ → Variables
   Port.ChartInstructions _ → Chart
-  Port.FormInputParams  _ → FormInput
   Port.Metric _ → Chart
   Port.PivotTable _ → Chart
   _ → None

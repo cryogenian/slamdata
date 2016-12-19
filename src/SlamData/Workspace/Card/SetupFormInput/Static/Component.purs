@@ -1,3 +1,6 @@
+-- In fact this is BuildChart.Metric but working with other fields.
+-- One option is to remove this and make metric working with everything.
+-- And control aggregation like if it's value axis then aggregate, otherwise just take first value.
 module SlamData.Workspace.Card.SetupFormInput.Static.Component
   ( staticSetupComponent
   ) where
@@ -32,7 +35,7 @@ import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.SetupFormInput.Static.Component.ChildSlot as CS
 import SlamData.Workspace.Card.SetupFormInput.Static.Component.State as ST
 import SlamData.Workspace.Card.SetupFormInput.Static.Component.Query as Q
-import SlamData.Workspace.Card.SetupFormInput.Static.Semantic (semanticSelect)
+--import SlamData.Workspace.Card.SetupFormInput.Static.Semantic (semanticSelect)
 --import SlamData.Workspace.Card.SetupFormInput.Static.Model as M
 
 type DSL =
@@ -66,7 +69,6 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ renderValue state
-    , renderSemantic state
     , row
         [ renderHorizontalAlign state
         , renderVerticalAlign state
@@ -76,7 +78,6 @@ renderHighLOD state =
 
 selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
 selecting f q a = right (Q.Select (f q) a)
-
 
 renderPicker ∷ ST.State → HTML
 renderPicker state = case state.picker of
@@ -105,18 +106,6 @@ renderValue state =
     , BCI.pickerInput
         (BCI.primary (Just "Value") (selecting Q.Value))
         state.value
-    ]
-
-renderSemantic ∷ ST.State → HTML
-renderSemantic state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Semantic" ]
-    , BCI.selectInput
-        (BCI.dropdown (Just "Semantic") (selecting Q.Semantic))
-        state.semantic
     ]
 
 renderHorizontalAlign ∷ ST.State → HTML
@@ -158,19 +147,16 @@ cardEval = case _ of
     let
       model =
         { value: _
-        , semantic: _
         , horizontalAlign: _
         , verticalAlign: _
         }
         <$> (st.value ^. S._value)
-        <*> (st.semantic ^. S._value)
         <*> (st.horizontalAlign ^. S._value)
         <*> (st.verticalAlign ^. S._value)
     pure $ k $ Card.SetupStatic model
   CC.Load (Card.SetupStatic (Just model)) next → do
     H.modify _
       { value = S.fromSelected $ Just model.value
-      , semantic = S.fromSelected $ Just model.semantic
       , horizontalAlign = S.fromSelected $ Just model.horizontalAlign
       , verticalAlign = S.fromSelected $ Just model.verticalAlign
       }
@@ -207,7 +193,6 @@ raiseUpdate = do
 chartEval ∷ Q.Query ~> DSL
 chartEval (Q.Select sel next) = next <$ case sel of
   Q.Value a → updatePicker ST._value Q.Value a
-  Q.Semantic a → updateSelect ST._semantic a
   Q.VerticalAlign a → updateSelect ST._verticalAlign a
   Q.HorizontalAlign a → updateSelect ST._horizontalAlign a
 
@@ -251,10 +236,6 @@ synchronizeChildren = do
         ⊕ st.axes.date
         ⊕ st.axes.datetime
 
-    newSemantic =
-      S.setPreviousValueFrom (Just st.semantic)
-        $ semanticSelect
-
     newVerticalAlign =
       S.setPreviousValueFrom (Just st.verticalAlign)
         $ alignSelect
@@ -265,7 +246,6 @@ synchronizeChildren = do
 
   H.modify _
     { value = newValue
-    , semantic = newSemantic
     , verticalAlign = newVerticalAlign
     , horizontalAlign = newHorizontalAlign
     }

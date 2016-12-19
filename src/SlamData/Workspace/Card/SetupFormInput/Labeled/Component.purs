@@ -9,9 +9,11 @@ import Data.Lens as Lens
 import Data.List as List
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
 import Halogen.CustomProps as Cp
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -102,7 +104,6 @@ renderPicker state = case state.picker of
     HH.slot unit \_ →
       { component: DPC.picker
           { title: case r.select of
-               Q.Name _ → "Choose name"
                Q.Value _ → "Choose value"
                Q.Label _ → "Choose label"
                _ → ""
@@ -121,9 +122,13 @@ renderName state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Name" ]
-    , BCI.pickerInput
-        (BCI.primary (Just "Name") (selecting Q.Name))
-        state.name
+    , HH.input
+        [ HP.inputType HP.InputText
+        , HP.placeholder "Form input label"
+        , ARIA.label "Form input label"
+        , HE.onValueInput $ HE.input \str → right ∘ Q.UpdateName str
+        , HP.value state.name
+        ]
     ]
 
 renderLabel ∷ ST.State → HTML
@@ -188,7 +193,7 @@ cardEval fi = case _ of
     let
       model =
         { value: _
-        , name: st.name ^. S._value
+        , name: st.name
         , label: st.label ^. S._value
         , horizontalAlign: _
         , verticalAlign: _
@@ -201,7 +206,7 @@ cardEval fi = case _ of
     for_ (join $ preview Card._SetupLabeledInput m) \model →
       H.modify _
         { value = S.fromSelected $ Just model.value
-        , name = S.fromSelected model.name
+        , name = model.name
         , label = S.fromSelected model.label
         , horizontalAlign = S.fromSelected $ Just model.horizontalAlign
         , verticalAlign = S.fromSelected $ Just model.verticalAlign
@@ -235,10 +240,13 @@ raiseUpdate = do
   CC.raiseUpdatedP' CC.EvalModelUpdate
 
 chartEval ∷ Q.Query ~> DSL
+chartEval (Q.UpdateName str next) = do
+  H.modify _ { name = str }
+  raiseUpdate
+  pure next
 chartEval (Q.Select sel next) = next <$ case sel of
   Q.Value a → updatePicker ST._value Q.Value a
   Q.Label a → updatePicker ST._label Q.Label a
-  Q.Name a → updatePicker ST._name Q.Name a
   Q.VerticalAlign a → updateSelect ST._verticalAlign a
   Q.HorizontalAlign a → updateSelect ST._horizontalAlign a
 
@@ -265,7 +273,6 @@ peek = peekPicker ⨁ (const $ pure unit)
       for_ st.picker \r → case r.select of
         Q.Value _ → H.modify $ ST._value ∘ S._value ?~ v
         Q.Label _ → H.modify $ ST._label ∘ S._value ?~ v
-        Q.Name _ → H.modify $ ST._name ∘ S._value ?~ v
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
@@ -290,13 +297,6 @@ synchronizeChildren = do
         $ st.axes.category
         ⊝ newValue
 
-    newName =
-      S.setPreviousValueFrom (Just st.name)
-        $ S.newSelect
-        $ st.axes.category
-        ⊝ newValue
-        ⊝ newLabel
-
     newVerticalAlign =
       S.setPreviousValueFrom (Just st.verticalAlign)
         $ alignSelect
@@ -308,7 +308,6 @@ synchronizeChildren = do
   H.modify _
     { value = newValue
     , label = newLabel
-    , name = newName
     , verticalAlign = newVerticalAlign
     , horizontalAlign = newHorizontalAlign
     }

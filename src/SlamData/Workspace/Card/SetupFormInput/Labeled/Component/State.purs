@@ -20,7 +20,7 @@ type State =
   { axes ∷ Axes
   , levelOfDetails ∷ LevelOfDetails
   , picker ∷ Maybe (PickerOptions JCursor Selection)
-  , name ∷ Select JCursor
+  , name ∷ String
   , label ∷ Select JCursor
   , value ∷ Select JCursor
   , verticalAlign ∷ Select Align
@@ -32,7 +32,7 @@ initialState =
   { axes: initialAxes
   , levelOfDetails: High
   , picker: Nothing
-  , name: emptySelect
+  , name: ""
   , value: emptySelect
   , label: emptySelect
   , verticalAlign: emptySelect

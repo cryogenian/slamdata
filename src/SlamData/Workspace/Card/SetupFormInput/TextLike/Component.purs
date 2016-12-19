@@ -10,14 +10,15 @@ import Data.Lens as Lens
 import Data.List as List
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
 import Halogen.CustomProps as Cp
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Common.Align (alignSelect)
-import SlamData.Form.Select ((⊝))
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Form.Select as S
 import SlamData.Render.Common (row)
@@ -48,7 +49,6 @@ type TextLikeDef =
   { _State ∷ APrism' CCS.AnyCardState ST.StateP
   , _Query ∷ ∀ a. APrism' (Coproduct CC.CardEvalQuery CCQ.AnyCardQuery a) (Q.QueryP a)
   , valueProjection ∷ Ax.Axes → Array JCursor
-  , labelProjection ∷ Ax.Axes → Array JCursor
   }
 
 textLikeSetupComponent
@@ -85,7 +85,6 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ renderName state
-    , renderLabel state
     , renderValue state
     , row
         [ renderHorizontalAlign state
@@ -104,9 +103,7 @@ renderPicker state = case state.picker of
     HH.slot unit \_ →
       { component: DPC.picker
           { title: case r.select of
-               Q.Name _ → "Choose name"
                Q.Value _ → "Choose value"
-               Q.Label _ → "Choose label"
                _ → ""
           , label: DPC.labelNode show
           , render: DPC.renderNode show
@@ -123,21 +120,13 @@ renderName state =
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Name" ]
-    , BCI.pickerInput
-        (BCI.primary (Just "Name") (selecting Q.Name))
-        state.name
-    ]
-
-renderLabel ∷ ST.State → HTML
-renderLabel state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label" ]
-    , BCI.pickerInput
-         (BCI.secondary (Just "Label") (selecting Q.Label))
-         state.label
+    , HH.input
+        [ HP.inputType HP.InputText
+        , HP.placeholder "Form input label"
+        , ARIA.label "Form input label"
+        , HE.onValueInput $ HE.input \str → right ∘ Q.UpdateName str
+        , HP.value state.name
+        ]
     ]
 
 renderValue ∷ ST.State → HTML
@@ -190,8 +179,7 @@ cardEval fit def = case _ of
     let
       model =
         { value: _
-        , name: st.name ^. S._value
-        , label: st.label ^. S._value
+        , name: st.name
         , horizontalAlign: _
         , verticalAlign: _
         }
@@ -203,8 +191,7 @@ cardEval fit def = case _ of
     for_ (join $ preview Card._SetupTextLikeInput m) \model →
       H.modify _
         { value = S.fromSelected $ Just model.value
-        , name = S.fromSelected model.name
-        , label = S.fromSelected model.label
+        , name = model.name
         , horizontalAlign = S.fromSelected $ Just model.horizontalAlign
         , verticalAlign = S.fromSelected $ Just model.verticalAlign
         }
@@ -237,10 +224,12 @@ raiseUpdate def = do
   CC.raiseUpdatedP' CC.EvalModelUpdate
 
 chartEval ∷ TextLikeDef → Q.Query ~> DSL
+chartEval def (Q.UpdateName str next) = do
+  H.modify _ { name = str }
+  raiseUpdate def
+  pure next
 chartEval def (Q.Select sel next) = next <$ case sel of
   Q.Value a → updatePicker ST._value Q.Value a
-  Q.Label a → updatePicker ST._label Q.Label a
-  Q.Name a → updatePicker ST._name Q.Name a
   Q.VerticalAlign a → updateSelect ST._verticalAlign a
   Q.HorizontalAlign a → updateSelect ST._horizontalAlign a
 
@@ -266,8 +255,6 @@ peek def = peekPicker ⨁ (const $ pure unit)
         v = flattenJCursors value
       for_ st.picker \r → case r.select of
         Q.Value _ → H.modify $ ST._value ∘ S._value ?~ v
-        Q.Label _ → H.modify $ ST._label ∘ S._value ?~ v
-        Q.Name _ → H.modify $ ST._name ∘ S._value ?~ v
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate def
@@ -282,20 +269,6 @@ synchronizeChildren def = do
         $ S.newSelect
         $ def.valueProjection st.axes
 
-
-    newLabel =
-      S.setPreviousValueFrom (Just st.label)
-        $ S.newSelect
-        $ def.labelProjection st.axes
-        ⊝ newValue
-
-    newName =
-      S.setPreviousValueFrom (Just st.name)
-        $ S.newSelect
-        $ st.axes.category
-        ⊝ newValue
-        ⊝ newLabel
-
     newVerticalAlign =
       S.setPreviousValueFrom (Just st.verticalAlign)
         $ alignSelect
@@ -306,8 +279,6 @@ synchronizeChildren def = do
 
   H.modify _
     { value = newValue
-    , label = newLabel
-    , name = newName
     , verticalAlign = newVerticalAlign
     , horizontalAlign = newHorizontalAlign
     }

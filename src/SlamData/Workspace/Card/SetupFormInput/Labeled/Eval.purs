@@ -32,7 +32,7 @@ eval Nothing _ _ =
 eval (Just conf) taggedResource formInputType =
   pure
     $ Port.SetupLabeledFormInput
-        { name: Nothing
+        { name: conf.name
         , valueLabelMap: Map.empty
         , selectedValues: Set.empty
         , taggedResource

@@ -12,7 +12,7 @@ import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
 type LabeledR =
-  { name ∷ Maybe JCursor
+  { name ∷ String
   , value ∷ JCursor
   , label ∷ Maybe JCursor
   , verticalAlign ∷ Align
@@ -45,7 +45,7 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    name ← map (map runArbJCursor) arbitrary
+    name ← arbitrary
     value ← map runArbJCursor arbitrary
     label ← map (map runArbJCursor) arbitrary
     verticalAlign ← arbitrary

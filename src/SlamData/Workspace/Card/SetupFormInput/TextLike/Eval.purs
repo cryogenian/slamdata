@@ -29,7 +29,7 @@ eval Nothing _ _ =
 eval (Just conf) taggedResource formInputType =
   pure
     $ Port.SetupTextLikeFormInput
-        { name: Nothing
+        { name: conf.name
         , taggedResource
         , formInputType
         , cursor: conf.value
