@@ -64,11 +64,11 @@ allBackActions state =
   [ Trash
   , Rename
   ]
-  ⊕ if state.isLogged
+  ⊕ (if state.isLogged
       then [ Share
            , Unshare
            ]
-      else [ ]
+      else [ ])
   ⊕ [ Embed
     , Publish
     , DeleteDeck

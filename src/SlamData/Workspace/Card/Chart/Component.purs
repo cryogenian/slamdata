@@ -151,11 +151,11 @@ eval = case _ of
         pure next
   CC.ReceiveInput input next → do
     case input of
-      ChartInstructions opts chartType → void do
-        H.modify $ _chartType ?~ chartType
-        H.query' cpECharts unit $ H.action $ HEC.Reset opts
+      ChartInstructions r → void do
+        H.modify $ _chartType ?~ r.chartType
+        H.query' cpECharts unit $ H.action $ HEC.Reset r.options
         H.query' cpECharts unit $ H.action HEC.Resize
-        setEChartsLOD $ buildObj opts
+        setEChartsLOD $ buildObj r.options
       Metric metric → void do
         H.modify $ _chartType ?~ ChT.Metric
         H.query' cpMetric unit $ H.action $ Metric.SetMetric metric

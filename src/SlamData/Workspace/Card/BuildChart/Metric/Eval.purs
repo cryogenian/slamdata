@@ -48,11 +48,12 @@ eval
   ⇒ Port.TaggedResourcePort
   → Model
   → m Port.Port
-eval = BCE.buildChartEval' \_ b c → Port.Metric (buildMetric b c)
+eval tr =
+  flip BCE.buildChartEval' tr \_ b c → Port.Metric (buildMetric b c tr)
 
-buildMetric ∷ MetricR → JArray → Port.MetricPort
-buildMetric r records =
-  { value, label: r.label }
+buildMetric ∷ MetricR → JArray → Port.TaggedResourcePort → Port.MetricPort
+buildMetric r records taggedResource =
+  { value, label: r.label, taggedResource }
   where
   formatterRegex ∷ Rgx.Regex
   formatterRegex =

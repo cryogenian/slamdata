@@ -149,6 +149,12 @@ evalCard = flip case _, _ of
     BuildCandlestick.eval tr model
   BuildParallel model, Port.TaggedResource tr →
     BuildParallel.eval tr model
+  Chart, Port.Metric {taggedResource} →
+    pure $ Port.TaggedResource taggedResource
+  Chart, Port.PivotTable {taggedResource} →
+    pure $ Port.TaggedResource taggedResource
+  Chart, Port.ChartInstructions {taggedResource} →
+    pure $ Port.TaggedResource taggedResource
   e, i →
     CEM.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
@@ -180,4 +186,5 @@ modelToEval = case _ of
   Model.BuildPunchCard model → BuildPunchCard model
   Model.BuildCandlestick model → BuildCandlestick model
   Model.BuildParallel model → BuildParallel model
+  Model.Chart _ → Chart
   _ → Pass
