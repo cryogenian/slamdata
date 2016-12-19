@@ -99,10 +99,16 @@ runEvalLoop source tick trail input graph = do
     Left err → do
       SA.track (SA.ErrorInCardEval (Card.modelCardType node.card.value.model.model))
       let
-        value' = node.card.value { state = result.state }
         output = Card.CardError case GE.fromQError err of
           Left msg → msg
           Right ge → GE.print ge
+        value' = node.card.value
+          { input = Just input
+          , output = Just output
+          , state = result.state
+          , sources = result.sources
+          , tick = Just tick
+          }
       updateCardValue node.coord value' eval.cards
       liftAff do
         for_ result.state \state →

@@ -729,11 +729,13 @@ getEvaluatedCards
     , MonadAsk Wiring m
     )
   ⇒ Array Card.Coord
-  → m (Maybe (Array (Deck.Id × Card.Cell)))
-getEvaluatedCards = map (traverse go =<< _) ∘ getCards
+  → m (Maybe (Array (Deck.Id × Card.Cell) × Port))
+getEvaluatedCards = map (flip bind (Array.foldM go (mempty × Port.Initial))) ∘ getCards
   where
-    go card@(_ × cell) | isJust cell.value.tick = Just card
-    go _ = Nothing
+    go acc@(cs × Card.CardError _) _ = pure acc
+    go acc@(cs × _) card@(deckId × cell@{ value: { tick: Just _, output: Just out }}) =
+      pure (Array.snoc cs card × out)
+    go _ _ = Nothing
 
 debounce
   ∷ ∀ k m r
