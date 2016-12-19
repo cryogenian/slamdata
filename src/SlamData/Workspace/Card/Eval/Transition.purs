@@ -41,6 +41,9 @@ import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.BuildChart.PunchCard.Eval as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Eval as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Eval as BuildParallel
+import SlamData.Workspace.Card.SetupFormInput.Labeled.Model as SetupLabeled
+import SlamData.Workspace.Card.SetupFormInput.TextLike.Model as SetupTextLike
+import SlamData.Workspace.Card.SetupFormInput.Static.Model as SetupStatic
 
 data Eval
   = Pass
@@ -71,6 +74,15 @@ data Eval
   | BuildPunchCard BuildPunchCard.Model
   | BuildCandlestick BuildCandlestick.Model
   | BuildParallel BuildParallel.Model
+  | SetupDropdown SetupLabeled.Model
+  | SetupRadio SetupLabeled.Model
+  | SetupCheckbox SetupLabeled.Model
+  | SetupText SetupTextLike.Model
+  | SetupNumeric SetupTextLike.Model
+  | SetupDate SetupTextLike.Model
+  | SetupTime SetupTextLike.Model
+  | SetupDatetime SetupTextLike.Model
+  | SetupStatic SetupStatic.Model
   | Chart
 
 tagEval ∷ Eval → String
@@ -104,3 +116,12 @@ tagEval = case _ of
   BuildCandlestick _ → "BuildCandlestick"
   BuildParallel _ → "BuildParallel"
   Chart → "Chart"
+  SetupDropdown _ → "SetupDropdown"
+  SetupRadio _ → "SetupRadio"
+  SetupCheckbox _ → "SetupCheckbox"
+  SetupText _ → "SetupText"
+  SetupNumeric _ → "SetupNumeric"
+  SetupDate _ → "SetupDate"
+  SetupTime _ → "SetupTime"
+  SetupDatetime _ → "SetupDatetime"
+  SetupStatic _ → "SetupStatic"

@@ -21,6 +21,9 @@ module SlamData.Workspace.Card.Port
   , MetricPort
   , PivotTablePort
   , ChartInstructionsPort
+  , FormInputPort
+  , SetupLabeledFormInputPort
+  , SetupTextLikeFormInputPort
   , tagPort
   , eqTaggedResourcePort
   , _Initial
@@ -41,15 +44,20 @@ module SlamData.Workspace.Card.Port
 
 import SlamData.Prelude
 
+import Data.Argonaut (JCursor)
 import Data.Lens (Prism', prism', Traversal', wander, Lens', lens)
+import Data.Map as Map
+import Data.Set as Set
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
-import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), renderVarMapValue, emptyVarMap)
-import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
-import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Download.Model (DownloadOptions)
+import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.BuildChart.Semantics as Sem
+import SlamData.Workspace.Card.CardType.ChartType (ChartType)
+import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
+import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), renderVarMapValue, emptyVarMap)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
@@ -83,11 +91,38 @@ type ChartInstructionsPort =
   , taggedResource ∷ TaggedResourcePort
   }
 
+type FormInputPort =
+  { name ∷ Maybe JCursor
+  , label ∷ Maybe JCursor
+  , value ∷ Maybe JCursor
+  , formInputType ∷ FormInputType
+  }
+
+type SetupLabeledFormInputPort =
+  { name ∷ Maybe String
+  , valueLabelMap ∷ Map.Map Sem.Semantics (Maybe String)
+  , cursor ∷ JCursor
+  , selectedValues ∷ Set.Set Sem.Semantics
+  , taggedResource ∷ TaggedResourcePort
+  , formInputType ∷ FormInputType
+  }
+
+type SetupTextLikeFormInputPort =
+  { name ∷ Maybe String
+  , cursor ∷ JCursor
+  , taggedResource ∷ TaggedResourcePort
+  , formInputType ∷ FormInputType
+  }
+
 data Port
   = Initial
   | Terminal
   | CardError String
   | VarMap VarMap
+  | ChartInstructions (DSL OptionI) ChartType
+  | FormInputParams FormInputPort
+  | SetupLabeledFormInput SetupLabeledFormInputPort
+  | SetupTextLikeFormInput SetupTextLikeFormInputPort
   | TaggedResource TaggedResourcePort
   | SlamDown (VarMap × (SD.SlamDownP VarMapValue))
   | ChartInstructions ChartInstructionsPort
@@ -107,6 +142,9 @@ tagPort  = case _ of
   DownloadOptions _ → "DownloadOptions"
   Draftboard → "Draftboard"
   ChartInstructions _ → "ChartInstructions"
+  FormInputParams _ → "FormInputParams"
+  SetupLabeledFormInput _ → "SetupLabeledFormInput"
+  SetupTextLikeFormInput _ → "SetupTextLikeFormInput"
   Metric _ → "Metric"
   PivotTable _ → "PivotTable"
 
@@ -190,10 +228,19 @@ _TaggedResource = wander \f s → case s of
       cstr t = Metric $ o{taggedResource = t}
     in
       map cstr $ f o.taggedResource
+  SetupLabeledFormInput o →
+    let
+      cstr t = SetupLabeledFormInput $ o{taggedResource = t}
+    in
+      map cstr $ f o.taggedResource
+  SetupTextLikeFormInput o →
+    let
+      cstr t = SetupTextLikeFormInput $ o{taggedResource = t}
+    in
+      map cstr $ f o.taggedResource
   TaggedResource tr →
     map TaggedResource $ f tr
   _ → pure s
-
 
 
 _resource ∷ ∀ a r. Lens' {resource ∷ a | r} a

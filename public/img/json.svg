@@ -24,7 +24,7 @@
          rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata><defs
      id="defs3410" /><sodipodi:namedview
-     pagecolor="#000000"
+     pagecolor="#333333"
      bordercolor="#666666"
      borderopacity="1"
      objecttolerance="10"
@@ -52,12 +52,12 @@
        d="M 429.19281,273.49873 Q 396.74606,267.49007 382.32528,247.06064 367.9045,226.6312 367.9045,188.17579 l 0,-67.89783 q 0,-25.236366 -7.21039,-36.652816 -7.21039,-11.41645 -26.43809,-11.41645 l -55.27966,0 0,-57.683115 61.88918,0 q 27.03896,0 45.06493,6.008658 18.62684,6.008658 29.44243,17.425107 11.41645,11.41645 16.22337,28.841558 4.80693,16.824242 4.80693,39.056278 l 0,88.32727 q 0,25.23636 7.81125,38.45541 7.81126,12.61818 26.4381,12.61818 l 33.04762,0 0,57.68312 -33.04762,0 q -18.62684,0 -26.4381,13.21904 -7.81125,12.61818 -7.81125,37.25368 l 0,88.92814 q 0,22.23203 -4.80693,39.05627 -4.80692,17.42511 -16.22337,28.84156 -10.81559,11.41645 -29.44243,17.42511 -18.02597,6.00866 -45.06493,6.00866 l -61.88918,0 0,-57.68312 55.27966,0 q 19.2277,0 26.43809,-11.41645 7.21039,-10.81558 7.21039,-36.65281 l 0,-67.89784 q 0,-38.45541 14.42078,-58.88484 14.42078,-20.42944 46.86753,-27.63983 z"
        style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:600.86578369px;line-height:125%;font-family:'Ubuntu Mono';-inkscape-font-specification:'Ubuntu Mono, Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
        id="path4352" /></g><g
-     style="font-style:normal;font-weight:normal;font-size:180px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;font-size:180px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#333333;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      id="text3420" /><g
-     style="font-style:normal;font-weight:normal;font-size:180px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;font-size:180px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#333333;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      id="text4319" /><g
      transform="scale(0.99087081,1.0092133)"
-     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:240.50219727px;line-height:125%;font-family:'Ubuntu Mono';-inkscape-font-specification:'Ubuntu Mono, Normal';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:240.50219727px;line-height:125%;font-family:'Ubuntu Mono';-inkscape-font-specification:'Ubuntu Mono, Normal';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      id="text4323"><path
        d="m 235.39064,308.01642 q 0,13.70862 -3.36703,22.84771 -3.36703,9.37958 -9.37959,14.91113 -5.77205,5.77205 -13.94913,8.17708 -7.93657,2.40502 -17.31615,2.40502 -11.54411,0 -21.4047,-2.88603 -9.86059,-2.88602 -18.99967,-7.45557 l 9.13908,-25.01222 q 6.01255,3.36703 14.43013,6.25305 8.65808,3.12653 15.63264,3.12653 7.45557,0 11.54411,-4.56954 4.08854,-4.32904 4.08854,-16.35415 l 0,-82.49225 -45.69542,0 0,-24.53123 75.27719,0 0,105.58047 z M 231.7831,169.96816 q 0,8.65807 -5.53155,13.70862 -5.53155,5.05055 -13.22762,5.05055 -7.69607,0 -13.22762,-5.05055 -5.29105,-5.05055 -5.29105,-13.70862 0,-8.89859 5.29105,-13.94913 5.53155,-5.05055 13.22762,-5.05055 7.69607,0 13.22762,5.05055 5.53155,5.05054 5.53155,13.94913 z"
        style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:240.50219727px;line-height:125%;font-family:'Ubuntu Mono';-inkscape-font-specification:'Ubuntu Mono, Bold';text-align:start;writing-mode:lr-tb;text-anchor:start;opacity:1;fill:#ffffff;fill-opacity:1"

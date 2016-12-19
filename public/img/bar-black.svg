@@ -14,6 +14,6 @@
      xml:space="preserve">
   <path d="M512,480v32H32H0v-32V0h32v96h32v32H32v64h32v32H32v64h32v32H32v64h32v32H32v64H512z M160,288H96v160h64V288z M256,192h-64
            v256h64V192z M352,96h-64v352h64V96z M448,0h-64v448h64V0z"
-        fill="black"
-        stroke="black"/>
+        fill="#333333"
+        stroke="#333333"/>
 </svg>
