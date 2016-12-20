@@ -59,17 +59,17 @@ inputs =
   [ CacheCard × [ Data ]
   , DraftboardCard × [ None ]
   , OpenCard × [ None ]
-  , QueryCard × [ None, Data, Variables ]
-  , SearchCard × [ Data ]
-  , SetupChartCard × [ Data ]
-  , SetupDownloadCard × [ Data ]
+  , QueryCard × [ None, Data, Variables, Chart ]
+  , SearchCard × [ Data, Chart ]
+  , SetupChartCard × [ Data, Chart ]
+  , SetupDownloadCard × [ Data, Chart ]
   , SetupMarkdownCard × [ None, Variables ]
   , SetupVariablesCard × [ None ]
   , ShowChartCard × [ Chart ]
   , ShowDownloadCard × [ Download ]
   , ShowMarkdownCard × [ Markdown ]
-  , TableCard × [ Data ]
-  , TroubleshootCard × [ Variables, Data ]
+  , TableCard × [ Data, Chart ]
+  , TroubleshootCard × [ Variables, Data, Chart ]
   ]
 
 outputs ∷ Array (InsertableCardType × Array InsertableCardIOType)
@@ -216,7 +216,7 @@ fromPort = case _ of
   Port.SlamDown _ → Markdown
   Port.TaggedResource _ → Data
   Port.VarMap _ → Variables
-  Port.ChartInstructions _ _ → Chart
+  Port.ChartInstructions _ → Chart
   Port.Metric _ → Chart
   Port.PivotTable _ → Chart
   _ → None
