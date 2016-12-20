@@ -491,12 +491,13 @@ wrapAndGroupDeck orn bias deckId newParentId = runExceptT do
     _ → do
       QE.throw "Could not group deck."
 
-groupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Card.Coord → m (Either QE.QError Unit))
-groupDeck orn bias deckId newParentCoord = runExceptT do
+groupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → Card.Coord → m (Either QE.QError Unit))
+groupDeck orn bias deckId newParentId newParentCoord = runExceptT do
   cell ← lift $ getDeck' deckId
   oldParentCoord ← liftWithErr "Parent not found." $ pure $ cell.model.parent
   oldParent ← liftWithErr "Parent not found." $ getCard oldParentCoord
   newParent ← liftWithErr "Destination not found." $ getCard newParentCoord
+
   case oldParent.value.model.model
      , newParent.value.model.model of
     CM.Draftboard { layout }, CM.Draftboard { layout: inner } → do
@@ -513,7 +514,7 @@ groupDeck orn bias deckId newParentCoord = runExceptT do
         Bus.write (Card.ModelChange (Card.toAll newParentCoord) child') newParent.bus
         Bus.write (Card.ModelChange (Card.toAll oldParentCoord) parent') oldParent.bus
     _, _ →
-      ExceptT $ wrapAndGroupDeck orn bias deckId (fst newParentCoord)
+      ExceptT $ wrapAndGroupDeck orn bias deckId newParentId
 
 renameDeck ∷ ∀ f m. Persist f m (Deck.Id → String → m (Either QE.QError Unit))
 renameDeck deckId name = runExceptT do
