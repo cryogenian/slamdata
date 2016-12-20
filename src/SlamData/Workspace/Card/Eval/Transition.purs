@@ -71,6 +71,7 @@ data Eval
   | BuildPunchCard BuildPunchCard.Model
   | BuildCandlestick BuildCandlestick.Model
   | BuildParallel BuildParallel.Model
+  | Chart
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -102,3 +103,4 @@ tagEval = case _ of
   BuildPunchCard _ → "BuildPunchCard"
   BuildCandlestick _ → "BuildCandlestick"
   BuildParallel _ → "BuildParallel"
+  Chart → "Chart"

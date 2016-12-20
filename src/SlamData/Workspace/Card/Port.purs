@@ -20,6 +20,7 @@ module SlamData.Workspace.Card.Port
   , DownloadPort
   , MetricPort
   , PivotTablePort
+  , ChartInstructionsPort
   , tagPort
   , eqTaggedResourcePort
   , _Initial
@@ -34,12 +35,13 @@ module SlamData.Workspace.Card.Port
   , _Metric
   , _ChartInstructions
   , _PivotTable
+  , _TaggedResource
   , module SlamData.Workspace.Card.Port.VarMap
   ) where
 
 import SlamData.Prelude
 
-import Data.Lens (Prism', prism', Traversal', wander)
+import Data.Lens (Prism', prism', Traversal', wander, Lens', lens)
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
@@ -66,11 +68,18 @@ type TaggedResourcePort =
 type MetricPort =
   { label ∷ Maybe String
   , value ∷ String
+  , taggedResource ∷ TaggedResourcePort
   }
 
 type PivotTablePort =
   { query ∷ String
   , options ∷ PTM.Model
+  , taggedResource ∷ TaggedResourcePort
+  }
+
+type ChartInstructionsPort =
+  { options ∷ DSL OptionI
+  , chartType ∷ ChartType
   , taggedResource ∷ TaggedResourcePort
   }
 
@@ -81,7 +90,7 @@ data Port
   | VarMap VarMap
   | TaggedResource TaggedResourcePort
   | SlamDown (VarMap × (SD.SlamDownP VarMapValue))
-  | ChartInstructions (DSL OptionI) ChartType
+  | ChartInstructions ChartInstructionsPort
   | DownloadOptions DownloadPort
   | Metric MetricPort
   | PivotTable PivotTablePort
@@ -97,7 +106,7 @@ tagPort  = case _ of
   TaggedResource tr → "TaggedResource: " ⊕ show tr.resource ⊕ " " ⊕ show tr.tag
   DownloadOptions _ → "DownloadOptions"
   Draftboard → "Draftboard"
-  ChartInstructions _ _ → "ChartInstructions"
+  ChartInstructions _ → "ChartInstructions"
   Metric _ → "Metric"
   PivotTable _ → "PivotTable"
 
@@ -134,15 +143,10 @@ _CardError = prism' CardError \p → case p of
   _ → Nothing
 
 _ResourceTag ∷ Traversal' Port String
-_ResourceTag = wander \f s → case s of
-  TaggedResource o@{tag: Just tag} →
-    TaggedResource ∘ o{tag = _} ∘ Just <$> f tag
-  _ → pure s
+_ResourceTag = _TaggedResource ∘ _tag
 
 _Resource ∷ Traversal' Port PU.FilePath
-_Resource = wander \f s → case s of
-  TaggedResource o → TaggedResource ∘ o{resource = _} <$> f o.resource
-  _ → pure s
+_Resource = _TaggedResource ∘ _resource
 
 _DownloadOptions ∷ Prism' Port DownloadPort
 _DownloadOptions = prism' DownloadOptions \p → case p of
@@ -156,7 +160,7 @@ _Draftboard = prism' (const Draftboard) \p → case p of
 
 _ChartInstructions ∷ Traversal' Port (DSL OptionI)
 _ChartInstructions = wander \f s → case s of
-  ChartInstructions opts chty → flip ChartInstructions chty <$> f opts
+  ChartInstructions o → ChartInstructions ∘ o{options = _} <$> f o.options
   _ → pure s
 
 _Metric ∷ Prism' Port MetricPort
@@ -168,3 +172,40 @@ _PivotTable ∷ Prism' Port PivotTablePort
 _PivotTable = prism' PivotTable case _ of
   PivotTable u → Just u
   _ → Nothing
+
+_TaggedResource ∷ Traversal' Port TaggedResourcePort
+_TaggedResource = wander \f s → case s of
+  ChartInstructions o →
+    let
+      cstr t = ChartInstructions $ o{taggedResource = t}
+    in
+      map cstr $ f o.taggedResource
+  PivotTable o →
+    let
+      cstr t = PivotTable $ o{taggedResource = t}
+    in
+      map cstr $ f o.taggedResource
+  Metric o →
+    let
+      cstr t = Metric $ o{taggedResource = t}
+    in
+      map cstr $ f o.taggedResource
+  TaggedResource tr →
+    map TaggedResource $ f tr
+  _ → pure s
+
+
+
+_resource ∷ ∀ a r. Lens' {resource ∷ a | r} a
+_resource = lens _.resource _{resource = _}
+
+_tag ∷ ∀ a r. Traversal' {tag ∷ Maybe a |r} a
+_tag = wander \f s →
+  case s.tag of
+    Nothing → pure s
+    Just r →
+      let
+        mappedR = f r
+        cstr = s{tag = _} ∘ Just
+      in
+        map cstr $ mappedR

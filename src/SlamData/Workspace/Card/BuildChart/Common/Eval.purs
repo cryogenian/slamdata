@@ -52,10 +52,14 @@ buildChartEval
   → Port.TaggedResourcePort
   → Maybe p
   → m Port.Port
-buildChartEval chty build =
-  buildChartEval'
+buildChartEval chartType build taggedResource =
+  flip buildChartEval' taggedResource
     \axes model records →
-      Port.ChartInstructions (build axes model records) chty
+      Port.ChartInstructions
+        { options: build axes model records
+        , chartType
+        , taggedResource
+        }
 
 buildChartEval'
   ∷ ∀ m p
