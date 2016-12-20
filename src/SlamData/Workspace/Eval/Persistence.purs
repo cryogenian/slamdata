@@ -34,8 +34,6 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Rational ((%))
 
-import SlamData.Analytics (class AnalyticsDSL)
-import SlamData.Analytics as SA
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -75,7 +73,6 @@ type Persist f m a =
   , MonadFork Exn.Error m
   , Parallel f m
   , QuasarDSL m
-  , AnalyticsDSL m
   ) ⇒ a
 
 putDeck ∷ ∀ f m. Persist f m (Deck.Id → Deck.Model → m (Either QE.QError Unit))
@@ -86,8 +83,6 @@ putDeck deckId deck = do
       if isEditable accessType
         then Quasar.save (Deck.deckIndex path deckId) $ Deck.encode deck
         else pure (Right unit)
-    when (isLeft res) do
-      SA.track SA.ErrorSavingDeck
     pure $ res $> deck
   Cache.alter deckId (updateOrFork ref) eval.decks
   rmap (const unit) <$> wait ref
@@ -142,8 +137,7 @@ getDeck' deckId = do
           _    ← ExceptT $ populateCards deckId deck
           pure deck
         case result of
-          Left _ → do
-            SA.track SA.ErrorLoadingDeck
+          Left _ →
             liftAff $ modifyVar (Map.delete deckId) cacheVar
           Right model →
             Cache.alter deckId (pure ∘ map (_ { model = model })) eval.decks
@@ -304,7 +298,7 @@ freshDeck parent = runExceptT do
   pure deckId
 
 deleteDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError (Maybe Deck.Id)))
-deleteDeck deckId = tracking SA.ErrorDeletingDeck (SA.Delete deckId) $ runExceptT do
+deleteDeck deckId = runExceptT do
   { path, eval } ← Wiring.expose
   deck ← ExceptT $ getDeck deckId
   case deck.parent of
@@ -319,7 +313,7 @@ deleteDeck deckId = tracking SA.ErrorDeletingDeck (SA.Delete deckId) $ runExcept
   pure (fst <$> deck.parent)
 
 wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
-wrapDeck deckId = SA.track (SA.Wrap deckId) *> runExceptT do
+wrapDeck deckId = runExceptT do
   cell ← lift $ getDeck' deckId
   deck ← ExceptT $ wait cell.value
   parentCoord ← Tuple <$> liftAff DID.make <*> liftAff CID.make
@@ -331,7 +325,7 @@ wrapDeck deckId = SA.track (SA.Wrap deckId) *> runExceptT do
   pure (fst parentCoord)
 
 wrapAndMirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
-wrapAndMirrorDeck deckId = tracking SA.ErrorSavingMirror (SA.Mirror deckId) $ runExceptT do
+wrapAndMirrorDeck deckId = runExceptT do
   cell ← lift $ getDeck' deckId
   deck ← ExceptT $ wait cell.value
   newSharedId ← liftAff DID.make
@@ -373,7 +367,7 @@ wrapAndMirrorDeck deckId = tracking SA.ErrorSavingMirror (SA.Mirror deckId) $ ru
   pure (fst parentCoord)
 
 mirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Deck.Id))
-mirrorDeck childId coord = tracking SA.ErrorSavingMirror (SA.Mirror childId) $ runExceptT do
+mirrorDeck childId coord = runExceptT do
   { eval } ← Wiring.expose
   deck ← ExceptT $ getDeck childId
   parent ← liftWithErr "Parent not found." $ getCard coord
@@ -425,7 +419,7 @@ mirrorDeck childId coord = tracking SA.ErrorSavingMirror (SA.Mirror childId) $ r
       Nothing
 
 unwrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
-unwrapDeck deckId = SA.track (SA.Collapse deckId) *> runExceptT do
+unwrapDeck deckId = runExceptT do
   deck ← ExceptT $ getDeck deckId
   cards ← liftWithErr "Cards not found." $ getCards (Deck.cardCoords deckId deck)
   childId ← liftWithErr "Cannot unwrap deck." $ pure $ immediateChild (_.value.model.model ∘ snd <$> cards)
@@ -442,7 +436,7 @@ unwrapDeck deckId = SA.track (SA.Collapse deckId) *> runExceptT do
       _ → Nothing
 
 collapseDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Unit))
-collapseDeck childId coord = SA.track (SA.Collapse childId) *> runExceptT do
+collapseDeck childId coord = runExceptT do
   { eval } ← Wiring.expose
   deck ← ExceptT $ getDeck childId
   cards ← liftWithErr "Cards not found." $ getCards (Deck.cardCoords childId deck)
@@ -530,7 +524,7 @@ renameDeck deckId name = runExceptT do
   pure unit
 
 addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m (Either QE.QError Card.Coord))
-addCard deckId cty = SA.track (SA.AddCard cty) *> runExceptT do
+addCard deckId cty = runExceptT do
   { eval } ← Wiring.expose
   deckCell ← lift $ getDeck' deckId
   deck ← ExceptT $ wait deckCell.value
@@ -586,8 +580,8 @@ removeCard deckId coord@(deckId' × cardId) = runExceptT do
     liftAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
 
 updateParentPointer ∷ ∀ f m. Persist f m (Deck.Id → Maybe Deck.Id → Maybe Card.Coord → m (Either QE.QError Unit))
-updateParentPointer oldId newId parent = case parent of
-  Just coord@(deckId × cardId) → runExceptT do
+updateParentPointer oldId newId parent = runExceptT case parent of
+  Just coord@(deckId × cardId) → do
     -- We need to guard on the parentDeck because it may not be loaded if we
     -- are viewing the child at the root of the UI.
     parentDeck ← ExceptT $ getDeck deckId
@@ -599,10 +593,8 @@ updateParentPointer oldId newId parent = case parent of
       liftAff $ Bus.write message bus
   Nothing → do
     { path } ← Wiring.expose
-    res ← map sequence $ traverse (WM.setRoot (path </> Pathy.file "index")) newId
-    when (isLeft res) do
-      SA.track SA.ErrorUpdatingRoot
-    pure (res $> unit)
+    res ← ExceptT $ map sequence $ traverse (WM.setRoot (path </> Pathy.file "index")) newId
+    pure unit
 
 relocateCardsTo ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → Array Card.Id → m Unit)
 relocateCardsTo deckId oldDeckId cardIds = do
@@ -646,22 +638,6 @@ cloneActiveStateTo to from = do
   { cache } ← Wiring.expose
   activeState ← Cache.get from cache.activeState
   for_ activeState \as → Cache.put to as cache.activeState
-
-tracking
-  ∷ ∀ m a
-  . ( Monad m
-    , AnalyticsDSL m
-    )
-  ⇒ SA.Event
-  → SA.Event
-  → m (Either QE.QError a)
-  → m (Either QE.QError a)
-tracking onErr onSucc run = do
-  SA.track onSucc
-  res ← run
-  when (isLeft res) do
-    SA.track onErr
-  pure res
 
 forkLoop
   ∷ ∀ m r a

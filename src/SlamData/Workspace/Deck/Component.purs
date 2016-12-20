@@ -48,7 +48,6 @@ import Halogen.Component.Utils (liftH', raise', sendAfter', subscribeToBus')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Analytics as SA
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.Config as Config
 import SlamData.FileSystem.Routing (parentURL)
@@ -310,13 +309,11 @@ peekBackSide opts (Back.DoAction action _) = do
       getDeckTree st.id >>= traverse_
         (showDialog ∘ Dialog.Unshare ∘ ET.getSharingInput path)
     Back.Embed → do
-      SA.track (SA.Embed st.id)
       getDeckTree st.id >>= traverse_ \tree →
         showDialog $ Dialog.Embed
           (ET.getSharingInput path tree)
           (ET.getVarMaps tree)
     Back.Publish → do
-      SA.track (SA.Publish st.id)
       getDeckTree st.id >>= traverse_ \tree →
         showDialog $ Dialog.Publish
           (ET.getSharingInput path tree)

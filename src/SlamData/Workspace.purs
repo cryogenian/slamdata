@@ -42,7 +42,6 @@ import DOM.Node.ParentNode (querySelector)
 import Halogen (Driver, runUI, parentState, interpret)
 import Halogen.Util (runHalogenAff, awaitBody)
 
-import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Monad (runSlam)
@@ -67,9 +66,7 @@ main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
-  runHalogenAff do
-    forkAff Analytics.enableAnalytics
-    forkAff routeSignal
+  runHalogenAff $ forkAff routeSignal
   StyleLoader.loadStyles
 
 routeSignal ∷ Aff SlamDataEffects Unit
