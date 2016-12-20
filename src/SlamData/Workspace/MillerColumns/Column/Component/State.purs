@@ -23,14 +23,15 @@ import Data.List (List(..))
 import Halogen as H
 
 import SlamData.Monad (Slam)
+import SlamData.Workspace.MillerColumns.Column.Options (LoadParams)
 import SlamData.Workspace.MillerColumns.Column.Component.Query (Query, ItemQuery')
 
 data ColumnState = Loading | Loaded
 
-derive instance eqColumnState :: Eq ColumnState
-derive instance ordColumnState :: Ord ColumnState
+derive instance eqColumnState ∷ Eq ColumnState
+derive instance ordColumnState ∷ Ord ColumnState
 
-instance showColumnState :: Show ColumnState where
+instance showColumnState ∷ Show ColumnState where
   show = case _ of
     Loading → "Loading"
     Loaded → "Loaded"
@@ -38,21 +39,31 @@ instance showColumnState :: Show ColumnState where
 type State a i =
   { items ∷ List a
   , state ∷ ColumnState
-  , selected ∷ Maybe i
+  , selected ∷ Maybe a
+  , filterText ∷ String
+  , nextOffset ∷ Maybe Int
+  , lastLoadParams ∷ Maybe (LoadParams i)
+  , tick ∷ Int
+  , filterTrigger ∷ Query a Unit → Slam Unit
   }
 
 type State' a i s f =
   H.ParentState
     (State a i)
     s
-    (Query i)
-    (ItemQuery' f)
+    (Query a)
+    (ItemQuery' a f)
     Slam
     i
 
-initialState ∷ ∀ a i. Maybe i → State a i
-initialState selected =
+initialState ∷ ∀ a i. State a i
+initialState =
   { items: Nil
   , state: Loading
-  , selected
+  , selected: Nothing
+  , filterText: ""
+  , nextOffset: Nothing
+  , lastLoadParams: Nothing
+  , tick: 0
+  , filterTrigger: const (pure unit)
   }

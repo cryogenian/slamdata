@@ -27,6 +27,7 @@ import SlamData.Prelude
 
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
+import Data.Path.Pathy as Path
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Workspace.Card.CardId as CID
@@ -362,7 +363,7 @@ cardModelOfType = case _ of
   CT.Variables → Variables Variables.emptyModel
   CT.Troubleshoot → Troubleshoot
   CT.Cache → Cache Nothing
-  CT.Open → Open Nothing
+  CT.Open → Open (Just (R.Directory Path.rootDir))
   CT.DownloadOptions → DownloadOptions DLO.initialState
   CT.Draftboard → Draftboard DB.emptyModel
   CT.ErrorCard → ErrorCard

@@ -75,7 +75,7 @@ cardComponent deckId card opts =
     Card.Troubleshoot → troubleshootComponent
     Card.NextAction → nextCardComponent
     Card.Cache _ → cacheCardComponent
-    Card.Open mres → openComponent mres
+    Card.Open _ → openComponent
     Card.DownloadOptions _ → DOpts.comp
     Card.ErrorCard → Error.comp
     Card.PendingCard → Pending.comp
