@@ -47,6 +47,12 @@ passover ∷ ∀ a b m. (Applicative m) ⇒ (a → m b) → a → m a
 passover f x =
   f x *> pure x
 
+replicate ∷ ∀ m. Monoid m ⇒ Int → m → m
+replicate n m = go n mempty
+  where
+  go i acc | i <= 0 = acc
+  go i acc = go (i - 1) (acc <> m)
+
 censor ∷ ∀ a b. Either a b → Maybe b
 censor = either (\_ → Nothing) (Just)
 

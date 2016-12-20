@@ -15,84 +15,66 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.CardId
-  ( CardId(..)
-  , _CardId
-
-  , _StringCardId
-
-  , stringToCardId
-  , cardIdToString
+  ( CardId
+  , make
+  , fromString
+  , fromString'
+  , toString
+  , legacyFromInt
   ) where
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Class (class MonadEff)
+import Control.Monad.Eff.Random as Random
+import Data.UUID.Random as UUID
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
-import Data.Int as Int
-import Data.Lens as Lens
+import Data.String as String
+import Test.StrongCheck.Arbitrary as SC
+import Utils (replicate)
 
--- | The slot address value for cards and identifier within the deck graph.
-data CardId
-  = ErrorCardId
-  | CardId Int
-  | NextActionCardId
-  | PendingCardId
+newtype CardId = CardId UUID.UUIDv4
 
-_CardId ∷ Lens.Prism' CardId Int
-_CardId =
-  Lens.prism CardId
-    case _ of
-      CardId i → Right i
-      cid → Left cid
+make ∷ ∀ m eff. MonadEff (random ∷ Random.RANDOM | eff) m ⇒ m CardId
+make = CardId <$> UUID.make
 
-stringToCardId ∷ String → Either String CardId
-stringToCardId =
-  case _ of
-    "ErrorCardId" → Right ErrorCardId
-    "NextActionCardId" → Right NextActionCardId
-    "PendingCardId" → Right PendingCardId
-    str →
-      case Int.fromString str of
-        Just i → Right $ CardId i
-        Nothing → Left "Invalid CardId"
+fromString ∷ String → Maybe CardId
+fromString = map CardId <<< UUID.fromString
 
-cardIdToString ∷ CardId → String
-cardIdToString =
-  case _ of
-    ErrorCardId → "ErrorCardId"
-    NextActionCardId → "NextActionCardId"
-    PendingCardId → "PendingCardId"
-    CardId i → show i
+fromString' ∷ String → Either String CardId
+fromString' s = case fromString s of
+  Just d  → Right d
+  Nothing → Left $ "Invalid CardId: " <> s
 
-_StringCardId ∷ Lens.Prism' String CardId
-_StringCardId = Lens.prism cardIdToString stringToCardId
+toString ∷ CardId → String
+toString (CardId u) = UUID.toString u
 
-derive instance genericCardId ∷ Generic CardId
+legacyFromInt ∷ Int → CardId
+legacyFromInt i =
+  let
+    str = String.take 12 (show i)
+    len = String.length str
+    block =
+      if len < 12
+        then replicate (12 - len) "0" <> str
+        else str
+    ustr = "00000000-0000-4000-8000-" <> block
+  in unsafePartial (fromRight (fromString' ustr))
+
 derive instance eqCardId ∷ Eq CardId
 derive instance ordCardId ∷ Ord CardId
 
 instance showCardId ∷ Show CardId where
-  show c = "CardId " <> cardIdToString c
+  show c = "CardId " <> toString c
 
 instance encodeJsonCardId ∷ EncodeJson CardId where
-  encodeJson =
-    case _ of
-      CardId i → encodeJson i
-      ErrorCardId → encodeJson "ErrorCardId"
-      NextActionCardId → encodeJson "NextActionCardId"
-      PendingCardId → encodeJson "PendingCardId"
+  encodeJson (CardId u) = encodeJson u
 
 instance decodeJsonCardId ∷ DecodeJson CardId where
-  decodeJson json =
-    decodeErrorCardId <|> decodeNumeric
-
+  decodeJson json = uuid <|> legacy
     where
-      decodeErrorCardId = do
-        decodeJson json >>=
-          case _ of
-            "ErrorCardId" → pure ErrorCardId
-            "NextActionCardId" → pure NextActionCardId
-            "PendingCardId" → pure PendingCardId
-            str → Left $ "Invalid CardId: " <> str
-      decodeNumeric =
-        CardId <$>
-          decodeJson json
+      uuid = fromString' =<< decodeJson json
+      legacy = legacyFromInt <$> decodeJson json
+
+instance arbitraryDeckId ∷ SC.Arbitrary CardId where
+  arbitrary = CardId <$> SC.arbitrary

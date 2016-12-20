@@ -23,7 +23,6 @@ module SlamData.Workspace.Card.Download.Component
 import SlamData.Prelude
 
 import Data.Lens ((^?), (.~))
-import Data.Lens as Lens
 import Data.Path.Pathy (printPath)
 
 import Halogen as H
@@ -54,9 +53,10 @@ import Utils.DOM (getTextWidthPure)
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
 
-downloadComponent ∷ CC.CardComponent
-downloadComponent = CC.makeCardComponent
-  { cardType: CT.Download
+downloadComponent ∷ CC.CardOptions → CC.CardComponent
+downloadComponent options = CC.makeCardComponent
+  { options
+  , cardType: CT.Download
   , component: H.component { render, eval }
   , initialState: initialState
   , _State: CC._DownloadState
@@ -88,9 +88,6 @@ eval = coproduct cardEval (absurd ∘ unwrap)
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
-  CC.EvalCard info output next → do
-    for_ (info.input ^? Lens._Just ∘ Port._DownloadOptions) $ handleDownloadPort
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -99,7 +96,14 @@ cardEval = case _ of
     pure (k Card.Download)
   CC.Load json next →
     pure next
-  CC.SetDimensions dims next → do
+  CC.ReceiveInput input next → do
+    for_ (input ^? Port._DownloadOptions) handleDownloadPort
+    pure next
+  CC.ReceiveOutput _ next → do
+    pure next
+  CC.ReceiveState _ next → do
+    pure next
+  CC.ReceiveDimensions dims next → do
     textWidth ← H.gets $ flip getTextWidthPure "normal 14px Ubuntu" ∘ _.fileName
     let
       buttonPadding = 24.0

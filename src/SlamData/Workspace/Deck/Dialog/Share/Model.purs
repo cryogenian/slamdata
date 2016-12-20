@@ -24,7 +24,8 @@ import Data.Path.Pathy as Pt
 
 import Quasar.Advanced.Types as QT
 
-import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Model (deckIndex)
 
 import Utils.Path (DirPath, FilePath)
 
@@ -37,6 +38,7 @@ derive instance eqShareResume ∷ Eq ShareResume
 type SharingInput =
   { deckId ∷ DeckId
   , workspacePath ∷ DirPath
+  , decks ∷ List DeckId
   , sources ∷ List FilePath
   , caches ∷ List FilePath
   }
@@ -46,20 +48,20 @@ printShareResume View = "View"
 printShareResume Edit = "Edit"
 
 sharingActions ∷ SharingInput → ShareResume → Array QT.ActionR
-sharingActions {workspacePath, sources, caches, deckId} View =
+sharingActions {workspacePath, decks, sources, caches, deckId} View =
   (workspacePath </> Pt.dir ".tmp" # QT.Dir ⋙ \resource → do
       operation ← [ QT.Read, QT.Modify, QT.Delete, QT.Add ]
       accessType ← [ QT.Structural, QT.Content, QT.Mount ]
       pure { operation, resource, accessType }
   )
-  ⊕ (workspacePath
-     </> Pt.dir (deckIdToString deckId)
-     </> Pt.file "index"
-     # QT.File
-     ⋙ \resource →
-     pure { operation: QT.Read, resource, accessType: QT.Content }
+  ⊕ (deckIndex workspacePath deckId # QT.File ⋙ \resource →
+      pure { operation: QT.Read, resource, accessType: QT.Content }
     )
   ⊕ (workspacePath </> Pt.file "index" # QT.File ⋙ \resource →
+      pure { operation: QT.Read, resource, accessType: QT.Content }
+    )
+  ⊕ (flip foldMap decks \did → do
+      let resource = QT.File $ deckIndex workspacePath did
       pure { operation: QT.Read, resource, accessType: QT.Content }
     )
   ⊕ (flip foldMap sources $ QT.File ⋙ \resource → do

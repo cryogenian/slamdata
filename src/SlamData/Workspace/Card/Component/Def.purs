@@ -26,16 +26,18 @@ import Data.Lens (APrism', Prism', prism', review, preview)
 
 import Halogen (Component)
 
+import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Component.Query (AnyCardQuery)
 import SlamData.Workspace.Card.Component.State (AnyCardState)
-import SlamData.Workspace.Card.CardType (CardType())
+import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Monad (Slam)
 
 -- | The properties required by both types of card definition.
 type CardDef s f r =
-  { component ∷ Component s f Slam
-  , cardType :: CardType
+  { options ∷ CardOptions
+  , component ∷ Component s f Slam
+  , cardType ∷ CardType
   , initialState ∷ s
   , _State ∷ APrism' AnyCardState s
   , _Query ∷ ∀ a. APrism' (Coproduct CardEvalQuery AnyCardQuery a) (f a)

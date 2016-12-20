@@ -21,6 +21,9 @@ module SlamData.Workspace.Card.BuildChart.Line.Eval
 
 import SlamData.Prelude
 
+import Control.Monad.State (class MonadState)
+import Control.Monad.Throw (class MonadThrow)
+
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
@@ -34,10 +37,7 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Line.Model (Model, LineR)
@@ -48,22 +48,19 @@ import SlamData.Workspace.Card.BuildChart.Axis as Ax
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
 eval
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ Model
-  → FilePath
-  → Axes
-  → CET.CardEvalT m Port.Port
-eval Nothing _ _ =
-  QE.throw "Please select axis to aggregate"
-eval (Just conf) resource axes = do
-  records ← BCE.records resource
-  let res = Port.ChartInstructions (buildLine conf records axes) Line
-  pure res
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ Port.TaggedResourcePort
+  → Model
+  → m Port.Port
+eval = BCE.buildChartEval Line buildLine
 
 type LineSerie =
   { name ∷ Maybe String
@@ -193,8 +190,8 @@ buildLineData r records = series
       map (\x → x{symbolSize = relativeSize x.symbolSize}) items
 
 
-buildLine ∷ LineR → JArray → Axes → DSL OptionI
-buildLine r records axes = do
+buildLine ∷ Axes → LineR → JArray → DSL OptionI
+buildLine axes r records = do
   E.tooltip case r.size of
     Just _ → E.triggerItem
     Nothing → E.triggerAxis

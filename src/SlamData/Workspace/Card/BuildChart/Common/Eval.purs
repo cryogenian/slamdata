@@ -15,38 +15,81 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.BuildChart.Common.Eval
-  ( records
+  ( buildChartEval
+  , buildChartEval'
   , type (>>)
   ) where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray)
+import Control.Monad.State (class MonadState, get, put)
+import Control.Monad.Throw (class MonadThrow)
+
+import Data.Argonaut (Json)
+import Data.Array as A
 import Data.Map as M
 
-import Quasar.Types (FilePath)
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.BuildChart.Axis (Axes, buildAxes)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType)
+import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Port as Port
 
 infixr 3 type M.Map as >>
 
-records
+buildChartEval
+  ∷ ∀ m p
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ ChartType
+  → (Axes → p → Array Json → DSL OptionI)
+  → Port.TaggedResourcePort
+  → Maybe p
+  → m Port.Port
+buildChartEval chartType build taggedResource =
+  flip buildChartEval' taggedResource
+    \axes model records →
+      Port.ChartInstructions
+        { options: build axes model records
+        , chartType
+        , taggedResource
+        }
+
+buildChartEval'
+  ∷ ∀ m p
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ (Axes → p → Array Json → Port.Port)
+  → Port.TaggedResourcePort
+  → Maybe p
+  → m Port.Port
+buildChartEval' build tr model = do
+  records × axes ← analyze tr =<< get
+  put (Just (CEM.Analysis { taggedResource: tr, records, axes }))
+  case model of
+    Just ch → pure $ build axes ch records
+    Nothing → CEM.throw "Please select axis to aggregate."
+
+analyze
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ FilePath
-  → CET.CardEvalT m JArray
-records resource = do
-  numRecords ←
-    CET.liftQ $ QQ.count resource
-
-  when (numRecords > 10000)
-    $ QE.throw
-    $ "The 10000 record limit for visualizations has been exceeded - the current dataset contains "
-    ⊕ show numRecords
-    ⊕ " records. "
-    ⊕ "Please consider using a 'limit' or 'group by' clause in the query to reduce the result size."
-
-  CET.liftQ $ QQ.all resource
+  . ( MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ Port.TaggedResourcePort
+  → CEM.CardState
+  → m (Array Json × Axes)
+analyze tr (Just (CEM.Analysis st))
+  | Port.eqTaggedResourcePort st.taggedResource tr =
+      pure (st.records × st.axes)
+analyze tr _ = do
+  records ← CEM.liftQ (QQ.all tr.resource)
+  let axes = buildAxes (A.take 100 records)
+  pure (records × axes)

@@ -125,9 +125,9 @@ instance eqAction ∷ Eq a ⇒ Eq (Action a) where
   eq _ _ =
     false
 
-initialState ∷ ∀ a. State a
-initialState =
-  { actions: []
+initialState ∷ ∀ a. Array (Action a) → State a
+initialState actions =
+  { actions
   , previousActions: [ ]
   , filterString: ""
   }

@@ -29,13 +29,10 @@ module SlamData.Workspace.Card.Component.Query
   , _DownloadQuery
   , _VariablesQuery
   , _TroubleshootQuery
-  , _NextQuery
   , _CacheQuery
   , _OpenQuery
   , _DownloadOptionsQuery
   , _DraftboardQuery
-  , _ErrorQuery
-  , _PendingQuery
   , _BuildMetricQuery
   , _BuildSankeyQuery
   , _BuildGaugeQuery
@@ -69,21 +66,14 @@ import SlamData.Workspace.Card.Ace.Component.Query as Ace
 import SlamData.Workspace.Card.Variables.Component.Query as Variables
 import SlamData.Workspace.Card.Troubleshoot.Component.Query as Troubleshoot
 import SlamData.Workspace.Card.Cache.Component.Query as Cache
-import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Chart.Component.Query as Chart
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalInput, CardEvalT, CardEvalQuery(..), ModelUpdateType(..), raiseUpdatedC, raiseUpdatedC', raiseUpdatedP, raiseUpdatedP')
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Download.Component.Query as Download
 import SlamData.Workspace.Card.DownloadOptions.Component.Query as DOpts
 import SlamData.Workspace.Card.Draftboard.Component.Query as Draftboard
-import SlamData.Workspace.Card.Error.Component.Query as Error
 import SlamData.Workspace.Card.Table.Component.Query as Table
 import SlamData.Workspace.Card.Markdown.Component.Query as Markdown
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Next.Component.Query as Next
 import SlamData.Workspace.Card.Open.Component.Query as Open
-import SlamData.Workspace.Card.Pending.Component.Query as Pending
-import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Search.Component.Query as Search
 import SlamData.Workspace.Card.BuildChart.Metric.Component.Query as BuildMetric
 import SlamData.Workspace.Card.BuildChart.Sankey.Component.Query as BuildSankey
@@ -102,22 +92,17 @@ import SlamData.Workspace.Card.BuildChart.Heatmap.Component.Query as BuildHeatma
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component.Query as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.Query as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Component.Query as BuildParallel
+import SlamData.Workspace.Eval.Card as Card
 
 -- | The common query algebra for a card.
--- |
--- | - `UpdateCard` accepts an input value from a parent card if one is
--- |   required, performs any necessary actions to evalute the card and update
--- |   its state, and then returns its own output value.
--- | - `RefreshCard` is captured by the deck and goes to the root of the
--- |   current card's dependencies and updates the cards downwards from there.
 data CardQuery a
-  = UpdateCard CardEvalInput (Maybe Port) a
-  | SaveCard CardId CardType (Card.Model → a)
+  = Initialize a
+  | Finalize a
   | ActivateCard a
   | DeactivateCard a
-  | LoadCard Card.Model a
   | UpdateDimensions a
-  | SetHTMLElement (Maybe HTMLElement) a
+  | SetElement (Maybe HTMLElement) a
+  | HandleEvalMessage (Card.EvalMessage) a
 
 type CardQueryP = Coproduct CardQuery (ChildF Unit InnerCardQuery)
 
@@ -138,13 +123,10 @@ data AnyCardQuery a
   | DownloadQuery (Download.QueryP a)
   | VariablesQuery (Variables.QueryP a)
   | TroubleshootQuery (Troubleshoot.QueryP a)
-  | NextQuery (Next.QueryP a)
   | CacheQuery (Cache.QueryP a)
   | OpenQuery (Open.QueryP a)
   | DownloadOptionsQuery (DOpts.QueryP a)
   | DraftboardQuery (Draftboard.QueryP a)
-  | ErrorQuery (Error.QueryP a)
-  | PendingQuery (Pending.QueryP a)
   | BuildMetricQuery (BuildMetric.QueryP a)
   | BuildSankeyQuery (BuildSankey.QueryP a)
   | BuildGaugeQuery (BuildGauge.QueryP a)
@@ -162,7 +144,6 @@ data AnyCardQuery a
   | BuildPunchCardQuery (BuildPunchCard.QueryP a)
   | BuildCandlestickQuery (BuildCandlestick.QueryP a)
   | BuildParallelQuery (BuildParallel.QueryP a)
-
 
 _AceQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Ace.QueryP a)
 _AceQuery = prism' AceQuery case _ of
@@ -204,11 +185,6 @@ _TroubleshootQuery = prism' TroubleshootQuery case _ of
   TroubleshootQuery q → Just q
   _ → Nothing
 
-_NextQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Next.QueryP a)
-_NextQuery = prism' NextQuery case _ of
-  NextQuery q → Just q
-  _ → Nothing
-
 _CacheQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Cache.QueryP a)
 _CacheQuery = prism' CacheQuery case _ of
   CacheQuery q → Just q
@@ -227,16 +203,6 @@ _DownloadOptionsQuery = prism' DownloadOptionsQuery case _ of
 _DraftboardQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Draftboard.QueryP a)
 _DraftboardQuery = prism' DraftboardQuery case _ of
   DraftboardQuery q → Just q
-  _ → Nothing
-
-_ErrorQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Error.QueryP a)
-_ErrorQuery = prism' ErrorQuery case _ of
-  ErrorQuery q → Just q
-  _ → Nothing
-
-_PendingQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Pending.QueryP a)
-_PendingQuery = prism' PendingQuery case _ of
-  PendingQuery q → Just q
   _ → Nothing
 
 _BuildMetricQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildMetric.QueryP a)

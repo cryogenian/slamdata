@@ -16,73 +16,49 @@ limitations under the License.
 
 module SlamData.Wiring
   ( Wiring(..)
-  , Cache
-  , CardEval
-  , DeckRef
-  , ActiveState
-  , PendingMessage
+  , WiringR
+  , EvalWiring
+  , AuthWiring
+  , CacheWiring
+  , BusWiring
   , DeckMessage(..)
   , StepByStepGuide(..)
-  , makeWiring
-  , makeCache
-  , putDeck
-  , getDeck
-  , putCache
-  , getCache
-  , clearCache
-  , putCardEval
+  , ActiveState
+  , PendingEval
+  , PendingSave
+  , make
+  , unWiring
+  , expose
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar, makeVar', takeVar, putVar, modifyVar)
+import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
-import Control.Monad.Aff.Promise (Promise, wait, defer)
 import Control.Monad.Eff.Ref (Ref, newRef)
-import Control.Monad.Fork (class MonadFork)
 
 import Data.Map as Map
-import Data.Set as Set
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Notification as N
 import SlamData.Quasar.Auth.Authentication as Auth
-import SlamData.Quasar.Data as Quasar
-import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
-import SlamData.AuthenticationMode (AllowedAuthenticationModes(ChosenProviderOnly))
+import SlamData.AuthenticationMode (AllowedAuthenticationModes, allowedAuthenticationModesForAccessType)
 import SlamData.GlobalMenu.Bus (SignInBus)
-import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port (Port)
+import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Model (Deck, deckIndex, decode, encode)
+import SlamData.Workspace.Eval.Card as Card
+import SlamData.Workspace.Eval.Deck as Deck
+import SlamData.Workspace.Eval.Graph (EvalGraph)
+import SlamData.Wiring.Cache (Cache)
+import SlamData.Wiring.Cache as Cache
 
 import Utils.Path (DirPath)
 
-type CardEval =
-  { card ∷ DeckId × Card.Model
-  , input ∷ Maybe (Promise Port)
-  , output ∷ Maybe (Promise (Port × (Set.Set AdditionalSource)))
-  }
-
-type DeckRef = Promise (Either QE.QError Deck)
-
-type Cache k v = AVar (Map.Map k v)
-
-type PendingMessage =
-  { source ∷ DeckId
-  , pendingCard ∷ DeckId × Card.Model
-  , cards ∷ Cache (DeckId × CardId) CardEval
-  }
-
 data DeckMessage
   = DeckFocused DeckId
-  | URLVarMapsUpdated
 
 data StepByStepGuide
   = CardGuide
@@ -92,136 +68,104 @@ type ActiveState =
   { cardIndex ∷ Int
   }
 
-newtype Wiring = Wiring
-  { path ∷ DirPath
-  , decks ∷ Cache DeckId DeckRef
-  , activeState ∷ Cache DeckId ActiveState
-  , cards ∷ Cache (DeckId × CardId) CardEval
-  , pending ∷ Bus.BusRW PendingMessage
-  , messaging ∷ Bus.BusRW DeckMessage
-  , notify ∷ Bus.BusRW N.NotificationOptions
-  , globalError ∷ Bus.BusRW GE.GlobalError
-  , requestIdTokenBus ∷ Auth.RequestIdTokenBus
-  , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
-  , signInBus ∷ SignInBus
-  , hasIdentified ∷ Ref Boolean
-  , presentStepByStepGuide ∷ Bus.BusRW StepByStepGuide
-  , allowedAuthenticationModes ∷ Ref AllowedAuthenticationModes
+type PendingEval =
+  { source ∷ Card.DisplayCoord
+  , graph ∷ EvalGraph
+  , avar ∷ AVar Unit
   }
 
-makeWiring
+type PendingSave =
+  { avar ∷ AVar Unit
+  }
+
+type EvalWiring =
+  { tick ∷ Ref Int
+  , cards ∷ Cache Card.Coord Card.Cell
+  , decks ∷ Cache Deck.Id Deck.Cell
+  -- We need to use AVars for debounce state rather than storing Cancelers,
+  -- because the Canceler would need to reference `Slam` resulting in a
+  -- circular dependency.
+  , pendingEvals ∷ Cache Card.Coord PendingEval
+  , pendingSaves ∷ Cache Deck.Id PendingSave
+  }
+
+type AuthWiring =
+  { hasIdentified ∷ Ref Boolean
+  , requestToken ∷ Auth.RequestIdTokenBus
+  , signIn ∷ SignInBus
+  , allowedModes ∷ AllowedAuthenticationModes
+  }
+
+type CacheWiring =
+  { activeState ∷ Cache Deck.Id ActiveState
+  }
+
+type BusWiring =
+  { decks ∷ Bus.BusRW DeckMessage
+  , notify ∷ Bus.BusRW N.NotificationOptions
+  , globalError ∷ Bus.BusRW GE.GlobalError
+  , stepByStep ∷ Bus.BusRW StepByStepGuide
+  }
+
+type WiringR =
+  { path ∷ DirPath
+  , accessType ∷ AccessType
+  , varMaps ∷ Cache Deck.Id Port.URLVarMap
+  , eval ∷ EvalWiring
+  , auth ∷ AuthWiring
+  , cache ∷ CacheWiring
+  , bus ∷ BusWiring
+  }
+
+newtype Wiring = Wiring WiringR
+
+unWiring ∷ Wiring → WiringR
+unWiring (Wiring w) = w
+
+expose
+  ∷ ∀ m
+  . (MonadAsk Wiring m)
+  ⇒ m WiringR
+expose = unWiring <$> ask
+
+make
   ∷ ∀ m
   . (Affable SlamDataEffects m)
   ⇒ DirPath
-  → Map.Map DeckId Port.URLVarMap
+  → AccessType
+  → Map.Map Deck.Id Port.URLVarMap
   → m Wiring
-makeWiring path varMaps = fromAff do
-  decks ← makeCache
-  activeState ← makeCache
-  cards ← makeCache
-  pending ← Bus.make
-  messaging ← Bus.make
-  notify ← Bus.make
-  globalError ← Bus.make
-  requestIdTokenBus ← Auth.authentication
-  urlVarMaps ← fromEff (newRef varMaps)
-  signInBus ← Bus.make
-  hasIdentified ← fromEff (newRef false)
-  presentStepByStepGuide ← Bus.make
-  allowedAuthenticationModes ← fromEff (newRef ChosenProviderOnly)
-  pure $ Wiring
-    { path
-    , decks
-    , activeState
-    , cards
-    , pending
-    , messaging
-    , notify
-    , globalError
-    , requestIdTokenBus
-    , urlVarMaps
-    , signInBus
-    , hasIdentified
-    , presentStepByStepGuide
-    , allowedAuthenticationModes
-    }
+make path accessType vm = fromAff do
+  eval ← makeEval
+  auth ← makeAuth
+  cache ← makeCache
+  bus ← makeBus
+  varMaps ← Cache.make' vm
+  pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus }
 
-makeCache
-  ∷ ∀ m k v
-  . (Affable SlamDataEffects m, Ord k)
-  ⇒ m (Cache k v)
-makeCache = fromAff (makeVar' mempty)
+  where
+  makeEval = do
+    tick ← fromEff (newRef 0)
+    cards ← Cache.make
+    decks ← Cache.make
+    pendingEvals ← Cache.make
+    pendingSaves ← Cache.make
+    pure { tick, cards, decks, pendingEvals, pendingSaves }
 
-putDeck
-  ∷ ∀ m e
-  . (Affable SlamDataEffects m, MonadFork e m, QuasarDSL m, MonadAsk Wiring m)
-  ⇒ DeckId
-  → Deck
-  → m (Either QE.QError Unit)
-putDeck deckId deck = do
-  Wiring wiring ← ask
-  ref ← defer do
-    res ← Quasar.save (deckIndex wiring.path deckId) $ encode deck
-    when (isLeft res) do
-      fromAff $ modifyVar (Map.delete deckId) wiring.decks
-    pure $ const deck <$> res
-  putCache deckId ref wiring.decks
-  rmap (const unit) <$> wait ref
+  makeAuth = do
+    hasIdentified ← fromEff (newRef false)
+    requestToken ← Auth.authentication
+    signIn ← Bus.make
+    let allowedModes = allowedAuthenticationModesForAccessType accessType
+    pure { hasIdentified, requestToken, signIn, allowedModes }
 
-getDeck
-  ∷ ∀ m e
-  . (Affable SlamDataEffects m, MonadFork e m, QuasarDSL m, MonadAsk Wiring m)
-  ⇒ DeckId
-  → m (Either QE.QError Deck)
-getDeck deckId = do
-  Wiring wiring ← ask
-  decks ← fromAff $ takeVar wiring.decks
-  case Map.lookup deckId decks of
-    Just ref → do
-      fromAff $ putVar wiring.decks decks
-      wait ref
-    Nothing → do
-      ref ← defer do
-        res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load (deckIndex wiring.path deckId)
-        when (isLeft res) do
-          fromAff $ modifyVar (Map.delete deckId) wiring.decks
-        pure res
-      fromAff $ putVar wiring.decks (Map.insert deckId ref decks)
-      wait ref
+  makeCache = do
+    activeState ← Cache.make
+    pure { activeState }
 
-getCache
-  ∷ ∀ m k v
-  . (Affable SlamDataEffects m, Ord k)
-  ⇒ k
-  → Cache k v
-  → m (Maybe v)
-getCache key cache = fromAff do
-  vals ← takeVar cache
-  putVar cache vals
-  pure $ Map.lookup key vals
-
-putCache
-  ∷ ∀ m k v
-  . (Affable SlamDataEffects m, Ord k)
-  ⇒ k
-  → v
-  → Cache k v
-  → m Unit
-putCache key val cache = fromAff do
-  modifyVar (Map.insert key val) cache
-
-putCardEval
-  ∷ ∀ m
-  . (Affable SlamDataEffects m)
-  ⇒ CardEval
-  → Cache (DeckId × CardId) CardEval
-  → m Unit
-putCardEval step = putCache (map _.cardId step.card) step
-
-clearCache
-  ∷ ∀ m k v
-  . (Affable SlamDataEffects m, Ord k)
-  ⇒ Cache k v
-  → m Unit
-clearCache cache = fromAff do
-  modifyVar (const $ Map.empty) cache
+  makeBus = do
+    decks ← Bus.make
+    notify ← Bus.make
+    globalError ← Bus.make
+    stepByStep ← Bus.make
+    pure { decks, notify, globalError, stepByStep }

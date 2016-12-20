@@ -19,6 +19,8 @@ module SlamData.Workspace.Card.Component.State
   , CardStateP
   , initialCardState
   , _element
+  , _breaker
+  , _pending
   , AnyCardState
   , _AceState
   , _MarkdownState
@@ -55,6 +57,9 @@ module SlamData.Workspace.Card.Component.State
   ) where
 
 import SlamData.Prelude
+
+import Control.Monad.Aff.Bus (BusRW)
+import Control.Monad.Aff.EventLoop (Breaker)
 
 import Data.Lens (Lens', lens, Prism', prism')
 
@@ -96,11 +101,14 @@ import SlamData.Workspace.Card.BuildChart.Heatmap.Component.State as BuildHeatma
 import SlamData.Workspace.Card.BuildChart.PunchCard.Component.State as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.State as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Component.State as BuildParallel
-
+import SlamData.Workspace.Eval.Card as Card
 
 -- | The common state value for deck cards.
 type CardState =
   { element ∷ Maybe HTMLElement
+  , breaker ∷ Maybe (Breaker Unit)
+  , pending ∷ Boolean
+  , bus ∷ Maybe (BusRW Card.EvalMessage)
   }
 
 type CardStateP = ParentState CardState AnyCardState CardQuery InnerCardQuery Slam Unit
@@ -109,10 +117,19 @@ type CardStateP = ParentState CardState AnyCardState CardQuery InnerCardQuery Sl
 initialCardState ∷ CardState
 initialCardState =
   { element: Nothing
+  , breaker: Nothing
+  , pending: false
+  , bus: Nothing
   }
 
 _element ∷ Lens' CardState (Maybe HTMLElement)
 _element = lens _.element _{element = _}
+
+_breaker ∷ Lens' CardState (Maybe (Breaker Unit))
+_breaker = lens _.breaker _{breaker = _}
+
+_pending ∷ Lens' CardState Boolean
+_pending = lens _.pending _{pending = _}
 
 data AnyCardState
   = AceState Ace.StateP

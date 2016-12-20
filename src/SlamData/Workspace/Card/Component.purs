@@ -18,11 +18,18 @@ module SlamData.Workspace.Card.Component
   ( CardComponent
   , makeCardComponent
   , module SlamData.Workspace.Card.Component.Def
+  , module SlamData.Workspace.Card.Common
   , module CQ
   , module CS
+  , module EQ
   ) where
 
 import SlamData.Prelude
+
+import Control.Monad.Aff (later)
+import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Aff.EventLoop (break')
+import Control.Monad.Aff.Free (fromAff)
 
 import Data.Foldable (elem)
 import Data.Lens (Prism', (.~), review, preview, clonePrism)
@@ -30,17 +37,21 @@ import Data.Lens (Prism', (.~), review, preview, clonePrism)
 import DOM.HTML.HTMLElement (getBoundingClientRect)
 
 import Halogen as H
+import Halogen.Component.Utils (subscribeToBus')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, cardIconDarkSrc)
+import SlamData.Workspace.Card.Common.EvalQuery as EQ
+import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component.CSS as CSS
 import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.State as CS
-import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Eval.Card as Card
+import SlamData.Workspace.Eval.Persistence as P
 
 -- | Type synonym for the full type of a card component.
 type CardComponent = H.Component CS.CardStateP CQ.CardQueryP Slam
@@ -63,13 +74,13 @@ makeCardComponent def = makeCardComponentPart def render
     HH.div
       [ HP.classes $ [ CSS.deckCard ]
       , ARIA.label $ (cardName def.cardType) ⊕ " card"
-      , HP.ref (H.action ∘ CQ.SetHTMLElement)
+      , HP.ref (H.action ∘ CQ.SetElement)
       ]
       $ fold [cardLabel, card]
     where
-    cardLabel :: Array CardHTML
+    cardLabel ∷ Array CardHTML
     cardLabel
-      | def.cardType `elem` [PendingCard, ErrorCard, NextAction, Draftboard] = []
+      | def.cardType `elem` [ Draftboard ] = []
       | otherwise =
           [ HH.div
               [ HP.classes [CSS.cardHeader]
@@ -81,11 +92,11 @@ makeCardComponent def = makeCardComponentPart def render
                   ]
               ]
           ]
-    card :: Array CardHTML
+    card ∷ Array CardHTML
     card =
       [ HH.div
-        [ HP.classes $ cardClasses def.cardType ]
-        [ HH.slot unit \_ → { component, initialState } ]
+          [ HP.classes $ cardClasses def.cardType ]
+          [ HH.slot unit \_ → { component, initialState } ]
       ]
 
 -- | Constructs a card component from a record with the necessary properties and
@@ -102,11 +113,14 @@ makeCardComponentPart def render =
   H.lifecycleParentComponent
     { render: render component initialState
     , eval
-    , peek: Nothing
-    , initializer: Just (H.action CQ.UpdateDimensions)
-    , finalizer: Nothing
+    , peek: Just (coproduct peek (const (pure unit)) ∘ H.runChildF)
+    , initializer: Just (H.action CQ.Initialize)
+    , finalizer: Just (H.action CQ.Finalize)
     }
   where
+
+  displayCoord ∷ Card.DisplayCoord
+  displayCoord = def.options.cursor × def.options.coord
 
   _State ∷ Prism' CS.AnyCardState s
   _State = clonePrism def._State
@@ -125,30 +139,66 @@ makeCardComponentPart def render =
   initialState = review _State def.initialState
 
   eval ∷ CQ.CardQuery ~> CardDSL
-  eval (CQ.UpdateCard input output next) = do
-    void $ H.query unit (left (H.action (CQ.EvalCard input output)))
-    pure next
-  eval (CQ.ActivateCard next) = do
-    void $ H.query unit (left (H.action CQ.Activate))
-    pure next
-  eval (CQ.DeactivateCard next) = do
-    void $ H.query unit (left (H.action CQ.Deactivate))
-    pure next
-  eval (CQ.SaveCard cardId cardType k) = do
-    model ← fromMaybe (Card.cardModelOfType cardType) <$> H.query unit (left (H.request CQ.Save))
-    pure $ k { cardId, model }
-  eval (CQ.LoadCard card next) = do
-    H.query unit ∘ left ∘ H.action $ CQ.Load card.model
-    eval (CQ.UpdateDimensions next)
-  eval (CQ.SetHTMLElement el next) =
-    H.modify (CS._element .~ el) $> next
-  eval (CQ.UpdateDimensions next) = do
-    H.gets _.element >>= traverse_ \el -> do
-      { width, height } ← H.fromEff (getBoundingClientRect el)
-      unless (width ≡ zero ∧ height ≡ zero)
-        $ void
-        $ H.query unit
-        $ left
-        $ H.action
-        $ CQ.SetDimensions { width, height }
-    pure next
+  eval = case _ of
+    CQ.Initialize next → do
+      cell ← H.liftH $ H.liftH $ P.getCard def.options.coord
+      for_ cell \{ bus, value } → do
+        breaker ← subscribeToBus' (H.action ∘ CQ.HandleEvalMessage) bus
+        H.modify _
+          { breaker = Just breaker
+          , bus = Just bus
+          }
+        -- TODO: We need to defer these because apparently Halogen has bad
+        -- ordering with regard to child initializers. This should be fixed
+        -- in Halogen Next.
+        H.fromAff $ later (pure unit)
+        queryInnerCard $ EQ.Load value.model.model
+        for_ value.input (queryInnerCard ∘ EQ.ReceiveInput)
+        for_ value.state (queryInnerCard ∘ EQ.ReceiveState)
+        for_ value.input (queryInnerCard ∘ EQ.ReceiveOutput)
+        eval (CQ.UpdateDimensions unit)
+      pure next
+    CQ.Finalize next → do
+      H.gets _.breaker >>= traverse_ (fromAff ∘ break')
+      pure next
+    CQ.ActivateCard next →
+      queryInnerCard EQ.Activate $> next
+    CQ.DeactivateCard next →
+      queryInnerCard EQ.Deactivate $> next
+    CQ.SetElement el next →
+      H.modify (CS._element .~ el) $> next
+    CQ.UpdateDimensions next → do
+      H.gets _.element >>= traverse_ \el -> do
+        { width, height } ← H.fromEff (getBoundingClientRect el)
+        unless (width ≡ zero ∧ height ≡ zero) do
+          queryInnerCard $ EQ.ReceiveDimensions { width, height }
+      pure next
+    CQ.HandleEvalMessage msg next → do
+      case msg of
+        Card.Pending source evalPort → do
+          queryInnerCard $ EQ.ReceiveInput evalPort
+          when (source ≠ displayCoord) do
+            H.modify (CS._pending .~ true)
+        Card.Complete source evalPort → do
+          queryInnerCard $ EQ.ReceiveOutput evalPort
+          H.modify (CS._pending .~ false)
+        Card.StateChange evalState →
+          queryInnerCard $ EQ.ReceiveState evalState
+        Card.ModelChange source evalModel →
+          when (source ≠ displayCoord) do
+            queryInnerCard $ EQ.Load evalModel
+      pure next
+
+  peek ∷ ∀ a. EQ.CardEvalQuery a → CardDSL Unit
+  peek = case _ of
+    EQ.ModelUpdated EQ.EvalModelUpdate _ → do
+      st ← H.get
+      model ← H.query unit (left (H.request EQ.Save))
+      traverse_ fromAff $
+        Bus.write ∘ Card.ModelChange displayCoord <$> model <*> st.bus
+    _ →
+      pure unit
+
+queryInnerCard ∷ H.Action EQ.CardEvalQuery → CardDSL Unit
+queryInnerCard q =
+  void $ H.query unit (left (H.action q))

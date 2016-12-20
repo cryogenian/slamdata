@@ -21,7 +21,6 @@ module SlamData.Workspace.Card.Common.EvalQuery
   , raiseUpdatedC'
   , raiseUpdatedP
   , raiseUpdatedP'
-  , module SlamData.Workspace.Card.Eval.CardEvalT
   ) where
 
 import SlamData.Prelude
@@ -32,7 +31,7 @@ import Control.Monad.Aff.AVar (AVAR)
 import Halogen as H
 import Halogen.Component.Utils (raise, raise')
 
-import SlamData.Workspace.Card.Eval.CardEvalT (CardEvalInput, CardEvalT, runCardEvalT, runCardEvalT_, temporaryOutputResource)
+import SlamData.Workspace.Card.Eval.Monad (EvalState)
 import SlamData.Workspace.Card.Model (AnyCardModel)
 import SlamData.Workspace.Card.Port as Port
 
@@ -60,12 +59,14 @@ import SlamData.Workspace.Card.Port as Port
 -- | - `ModelUpdated` is a query the card sends to itself so that the deck can
 -- |   peek the query and know that the deck needs saving/evaluating.
 data CardEvalQuery a
-  = EvalCard CardEvalInput (Maybe Port.Port) a
-  | Activate a
+  = Activate a
   | Deactivate a
   | Save (AnyCardModel → a)
   | Load AnyCardModel a
-  | SetDimensions { width ∷ Number, height ∷ Number } a
+  | ReceiveState EvalState a
+  | ReceiveInput Port.Port a
+  | ReceiveOutput Port.Port a
+  | ReceiveDimensions { width ∷ Number, height ∷ Number } a
   | ZoomIn a
   | ModelUpdated ModelUpdateType a
 

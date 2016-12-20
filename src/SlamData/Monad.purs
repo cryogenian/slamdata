@@ -26,14 +26,13 @@ import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Exception (Error)
-import Control.Monad.Eff.Ref (readRef, writeRef)
 import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Free (Free, liftF, foldFree)
-import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
 import Control.Parallel (parallel, sequential)
+import Control.UI.Browser (locationObject)
 
-import Data.Map as Map
+import DOM.HTML.Location (setHash)
 
 import OIDC.Crypt.Types as OIDC
 
@@ -47,10 +46,11 @@ import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Wiring (Wiring(..), DeckMessage(..))
-import SlamData.Workspace.Card.Port.VarMap as Port
+import SlamData.Wiring (Wiring)
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
-import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.DeckPath (deckPath')
+import SlamData.Workspace.Routing as Routing
 import SlamData.Monad.Auth (getIdTokenSilently)
 
 import Utils (censor)
@@ -61,13 +61,12 @@ data SlamF eff a
   = Aff (Aff eff a)
   | GetAuthIdToken (Maybe OIDC.IdToken → a)
   | Quasar (QA.QuasarAFC a)
-  | GetURLVarMaps (Map.Map DeckId Port.URLVarMap → a)
-  | PutURLVarMaps (Map.Map DeckId Port.URLVarMap) a
   | Notify N.NotificationOptions a
   | Halt GE.GlobalError a
   | Par (SlamA eff a)
   | Fork (FF.Fork (SlamM eff) a)
   | Ask (Wiring → a)
+  | Navigate Routing.Routes a
 
 newtype SlamM eff a = SlamM (Free (SlamF eff) a)
 
@@ -126,8 +125,8 @@ instance globalErrorDSLSlamM ∷ GE.GlobalErrorDSL (SlamM eff) where
   raiseGlobalError = SlamM ∘ liftF ∘ flip Halt unit
 
 instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
-  getURLVarMaps = SlamM $ liftF $ GetURLVarMaps id
-  putURLVarMaps = SlamM ∘ liftF ∘ flip PutURLVarMaps unit
+  navigate = SlamM ∘ liftF ∘ flip Navigate unit
+
 
 
 newtype SlamA eff a = SlamA (FreeAp (SlamM eff) a)
@@ -138,67 +137,51 @@ derive newtype instance applicativeSlamA :: Applicative (SlamA eff)
 
 --------------------------------------------------------------------------------
 
-
---------------------------------------------------------------------------------
-
-runSlam :: Wiring -> Slam ~> Aff SlamDataEffects
-runSlam wiring s = runReaderT (unSlam s) wiring
-
-unSlam ∷ Slam ~> ReaderT Wiring (Aff SlamDataEffects)
-unSlam = foldFree go ∘ unSlamM
+runSlam ∷ Wiring → Slam ~> Aff SlamDataEffects
+runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
   where
 
-  go ∷ SlamF SlamDataEffects ~> ReaderT Wiring (Aff SlamDataEffects)
+  go ∷ SlamF SlamDataEffects ~> Aff SlamDataEffects
   go = case _ of
     Aff aff →
-      lift aff
+      aff
     GetAuthIdToken k → do
-      Wiring { requestIdTokenBus, notify, allowedAuthenticationModes } ← ask
-      allowed ← liftEff $ readRef allowedAuthenticationModes
-      idToken ← liftAff $ censor <$> getIdTokenSilently allowed requestIdTokenBus
+      idToken ← censor <$> getIdTokenSilently auth.allowedModes auth.requestToken
       case idToken of
         Just (Left error) →
-          maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error
+          for_ (Auth.toNotificationOptions error) \opts →
+            Bus.write opts bus.notify
         _ →
           pure unit
       pure $ k $ maybe Nothing censor idToken
     Quasar qf → do
-      Wiring { requestIdTokenBus, signInBus, notify, allowedAuthenticationModes } ← ask
-      allowed ← liftEff $ readRef allowedAuthenticationModes
-      idToken ← lift $ censor <$> getIdTokenSilently allowed requestIdTokenBus
+      idToken ← censor <$> getIdTokenSilently auth.allowedModes auth.requestToken
       case idToken of
         Just (Left error) →
-          maybe (pure unit) (lift ∘ flip Bus.write notify) $ Auth.toNotificationOptions error
+          for_ (Auth.toNotificationOptions error) \opts →
+            Bus.write opts bus.notify
         _ →
           pure unit
-      lift $ runQuasarF (maybe Nothing censor idToken) qf
-    GetURLVarMaps k → do
-      Wiring { urlVarMaps } ← ask
-      lift $ liftEff $ k <$> readRef urlVarMaps
-    PutURLVarMaps urlVarMaps a → do
-      Wiring wiring ← ask
-      currVarMaps ← lift $ liftEff $ readRef wiring.urlVarMaps
-      when (currVarMaps /= urlVarMaps) do
-        lift $ liftAff $ do
-          liftEff $ writeRef wiring.urlVarMaps urlVarMaps
-          Bus.write URLVarMapsUpdated wiring.messaging
-      pure a
+      runQuasarF (maybe Nothing censor idToken) qf
     Notify no a → do
-      Wiring wiring ← ask
-      lift $ Bus.write no wiring.notify
+      Bus.write no bus.notify
       pure a
     Halt err a → do
-      Wiring wiring ← ask
-      lift $ Bus.write (GE.toNotificationOptions err) wiring.notify
+      Bus.write (GE.toNotificationOptions err) bus.notify
       pure a
     Par (SlamA p) →
-      sequential $ retractFreeAp $ hoistFreeAp (parallel <<< unSlam) p
+      sequential $ retractFreeAp $ hoistFreeAp (parallel <<< runSlam wiring) p
     Fork f →
       goFork f
     Ask k →
-      k <$> ask
+      pure (k wiring)
+    Navigate (Routing.WorkspaceRoute path deckId action varMaps) a → do
+      let
+        path' = maybe path (deckPath' path) deckId
+        hash  = Routing.mkWorkspaceHash path' action varMaps
+      liftEff $ locationObject >>= setHash hash
+      pure a
 
-  goFork ∷ FF.Fork Slam ~> ReaderT Wiring (Aff SlamDataEffects)
-  goFork = FF.unFork \(FF.ForkF fx k) → do
-    r ← ask
-    k ∘ map unsafeCoerceAff <$> lift (fork (runSlam r fx))
+  goFork ∷ FF.Fork Slam ~> Aff SlamDataEffects
+  goFork = FF.unFork \(FF.ForkF fx k) →
+    k ∘ map unsafeCoerceAff <$> fork (runSlam wiring fx)

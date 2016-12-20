@@ -37,6 +37,9 @@ module SlamData.Workspace.Card.BuildChart.Parallel.Eval
 
 import SlamData.Prelude
 
+import Control.Monad.State (class MonadState)
+import Control.Monad.Throw (class MonadThrow)
+
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Map as M
@@ -46,34 +49,30 @@ import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 
-import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
+import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
-import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Parallel))
-import SlamData.Workspace.Card.BuildChart.Semantics as Sem
-import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.BuildChart.Parallel.Model (ParallelR, Model)
+import SlamData.Workspace.Card.BuildChart.Semantics as Sem
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(Parallel))
+import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Port as Port
 
 import Utils.Array (enumerate)
 import Utils.Foldable (enumeratedFor_)
 
 eval
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ Model
-  → FilePath
-  → CET.CardEvalT m Port.Port
-eval Nothing _ =
-  QE.throw "Please select axis to aggregate"
-eval (Just conf) resource = do
-  records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildParallel conf records) Parallel
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ Port.TaggedResourcePort
+  → Model
+  → m Port.Port
+eval = BCE.buildChartEval Parallel (const buildParallel)
 
 
 type Series =

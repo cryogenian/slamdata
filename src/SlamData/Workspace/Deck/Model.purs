@@ -19,13 +19,17 @@ module SlamData.Workspace.Deck.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.List as L
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+import Data.Rational ((%))
 import Data.Time.Duration (Milliseconds(..))
 
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
+import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 
 import Utils.Path (DirPath, FilePath)
 
@@ -68,4 +72,34 @@ decode = decodeJson >=> \obj → do
 
 deckIndex ∷ DirPath → DeckId → FilePath
 deckIndex path deckId =
-  path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
+  path </> Pathy.dir (toString deckId) </> Pathy.file "index"
+
+cardCoords ∷ DeckId → Deck → Array (DeckId × CardId)
+cardCoords deckId deck =
+  deck.mirror <> map (Tuple deckId ∘ _.cardId) deck.cards
+
+wrappedDeck ∷ Maybe (DeckId × CardId) → CardId → DeckId → Deck
+wrappedDeck parent cardId deckId =
+  emptyDeck
+    { parent = parent
+    , cards = pure
+      { cardId
+      , model: Card.Draftboard { layout: Pane.Cell (Just deckId) }
+      }
+    }
+
+splitDeck ∷ Maybe (DeckId × CardId) → CardId → Orn.Orientation → L.List DeckId → Deck
+splitDeck parent cardId orn deckIds =
+  emptyDeck
+    { parent = parent
+    , cards = pure
+      { cardId
+      , model: Card.Draftboard
+        { layout: Pane.Split orn (mkCell <$> deckIds)
+        }
+      }
+    }
+  where
+  count = L.length deckIds
+  mkCell deckId =
+    (1%count) × Pane.wrap (Orn.reverse orn) (Pane.Cell (Just deckId))

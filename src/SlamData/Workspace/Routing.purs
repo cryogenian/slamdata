@@ -132,7 +132,7 @@ routing
 
   deckId ∷ Match (Maybe D.DeckId)
   deckId
-      = Match.eitherMatch (map (map Just ∘ D.stringToDeckId) Match.str)
+      = Match.eitherMatch (map (map Just ∘ D.fromString') Match.str)
     <|> pure Nothing
 
   action ∷ Match WA.Action
@@ -192,7 +192,7 @@ decodeVarMaps = J.jsonParser >=> J.decodeJson >=> \obj →
     → String × J.Json
     → Either String (L.List (D.DeckId × Port.URLVarMap))
   go acc (key × json) = do
-    deckId ← D.stringToDeckId key
+    deckId ← D.fromString' key
     varMap ← J.decodeJson json
     pure $ (deckId × varMap) : acc
 
@@ -208,7 +208,7 @@ encodeVarMaps = foldl go J.jsonEmptyObject ∘ Map.toList
   where
   go ∷ J.Json → D.DeckId × Port.URLVarMap → J.Json
   go acc (deckId × varMap)
-    = D.deckIdToString deckId := encodeVarMap varMap
+    = D.toString deckId := encodeVarMap varMap
     ~> acc
 
 encodeVarMap ∷ Port.URLVarMap → J.Json

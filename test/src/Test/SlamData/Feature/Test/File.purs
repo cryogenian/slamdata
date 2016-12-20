@@ -112,7 +112,7 @@ test = do
     Expect.numberOfFiles 1
     successMsg "Succesfully searched for a file"
 
-  fileScenario afterCreateWorkspace "Access sharing URL for a file" [] do
+  fileScenario defaultAfterFile "Access sharing URL for a file" [] do
     Interact.browseTestFolder
     Interact.shareFile "smallZips"
     Interact.accessSharingUrl

@@ -43,10 +43,11 @@ import SlamData.Workspace.Card.Search.Component.State (State, _searchString, ini
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
 
-searchComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-searchComponent =
+searchComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+searchComponent options =
   CC.makeCardComponent
-    { cardType: CT.Search
+    { options
+    , cardType: CT.Search
     , component: H.component { render, eval }
     , initialState: initialState
     , _State: CC._SearchState
@@ -77,8 +78,6 @@ eval = coproduct cardEval searchEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
-  CC.EvalCard input output next →
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -91,7 +90,13 @@ cardEval = case _ of
       Card.Search input → H.modify $ _searchString .~ input
       _ → pure unit
     pure next
-  CC.SetDimensions _ next →
+  CC.ReceiveInput _ next →
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
     pure next

@@ -21,13 +21,16 @@ module SlamData.Workspace.Card.Model
   , decode
   , cardModelOfType
   , modelCardType
+  , childDeckIds
+  , updatePointer
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
-import Data.Path.Pathy as Path
+
+import Data.List as L
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Workspace.Card.CardId as CID
@@ -58,6 +61,9 @@ import SlamData.Workspace.Card.BuildChart.PunchCard.Model as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Model as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Model as BuildParallel
 import SlamData.Workspace.Card.BuildChart.Legacy as ChartLegacy
+import SlamData.Workspace.Card.Query.Model as Query
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Deck.DeckId (DeckId)
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -72,7 +78,7 @@ data AnyCardModel
   | Variables Variables.Model
   | Troubleshoot
   | Cache (Maybe String)
-  | Open (Maybe R.Resource)
+  | Open R.Resource
   | DownloadOptions DLO.State
   | Draftboard DB.Model
   | BuildMetric BuildMetric.Model
@@ -92,19 +98,15 @@ data AnyCardModel
   | BuildPunchCard BuildPunchCard.Model
   | BuildCandlestick BuildCandlestick.Model
   | BuildParallel BuildParallel.Model
-  | ErrorCard
-  | NextAction
-  | PendingCard
 
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
   arbitrary =
-    Gen.oneOf (pure ErrorCard)
+    Gen.oneOf (pure Download)
       [ Ace <$> SC.arbitrary <*> Ace.genModel
       , Search <$> SC.arbitrary
       , Chart <$> Chart.genModel
       , Markdown <$> MD.genModel
       , Table <$> JT.genModel
-      , pure Download
       , Variables <$> Variables.genModel
       , pure Troubleshoot
       , Cache <$> SC.arbitrary
@@ -126,103 +128,88 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , BuildPunchCard <$> BuildPunchCard.genModel
       , BuildCandlestick <$> BuildCandlestick.genModel
       , BuildParallel <$> BuildParallel.genModel
-      , pure ErrorCard
-      , pure NextAction
       ]
 
 instance eqAnyCardModel ∷ Eq AnyCardModel where
-  eq =
-    case _, _ of
-      Ace x1 y1, Ace x2 y2 → x1 ≡ x2 && Ace.eqModel y1 y2
-      Search s1, Search s2 → s1 ≡ s2
-      Chart x, Chart y → Chart.eqModel x y
-      Markdown x, Markdown y → MD.eqModel x y
-      Table x, Table y → JT.eqModel x y
-      Download, Download → true
-      Variables x, Variables y → Variables.eqModel x y
-      Troubleshoot, Troubleshoot → true
-      Cache x, Cache y → x ≡ y
-      Open x, Open y → x ≡ y
-      DownloadOptions x, DownloadOptions y → DLO.eqState x y
-      Draftboard x, Draftboard y → DB.eqModel x y
-      BuildMetric x, BuildMetric y → BuildMetric.eqModel x y
-      BuildSankey x, BuildSankey y → BuildSankey.eqModel x y
-      BuildGauge x, BuildGauge y → BuildGauge.eqModel x y
-      BuildGraph x, BuildGraph y → BuildGraph.eqModel x y
-      BuildPie x, BuildPie y → BuildPie.eqModel x y
-      BuildRadar x, BuildRadar y → BuildRadar.eqModel x y
-      BuildBar x, BuildBar y → BuildBar.eqModel x y
-      BuildLine x, BuildLine y → BuildLine.eqModel x y
-      BuildArea x, BuildArea y → BuildArea.eqModel x y
-      BuildScatter x, BuildScatter y → BuildScatter.eqModel x y
-      BuildFunnel x, BuildFunnel y → BuildFunnel.eqModel x y
-      BuildBoxplot x, BuildBoxplot y → BuildBoxplot.eqModel x y
-      BuildHeatmap x, BuildHeatmap y → BuildHeatmap.eqModel x y
-      BuildPunchCard x, BuildPunchCard y → BuildPunchCard.eqModel x y
-      BuildCandlestick x, BuildCandlestick y → BuildCandlestick.eqModel x y
-      BuildParallel x, BuildParallel y → BuildParallel.eqModel x y
-      ErrorCard, ErrorCard → true
-      NextAction, NextAction → true
-      _,_ → false
+  eq = case _, _ of
+    Ace x1 y1, Ace x2 y2 → x1 ≡ x2 && Ace.eqModel y1 y2
+    Search s1, Search s2 → s1 ≡ s2
+    Chart x, Chart y → Chart.eqModel x y
+    Markdown x, Markdown y → MD.eqModel x y
+    Table x, Table y → JT.eqModel x y
+    Download, Download → true
+    Variables x, Variables y → Variables.eqModel x y
+    Troubleshoot, Troubleshoot → true
+    Cache x, Cache y → x ≡ y
+    Open x, Open y → x ≡ y
+    DownloadOptions x, DownloadOptions y → DLO.eqState x y
+    Draftboard x, Draftboard y → DB.eqModel x y
+    BuildMetric x, BuildMetric y → BuildMetric.eqModel x y
+    BuildSankey x, BuildSankey y → BuildSankey.eqModel x y
+    BuildGauge x, BuildGauge y → BuildGauge.eqModel x y
+    BuildGraph x, BuildGraph y → BuildGraph.eqModel x y
+    BuildPie x, BuildPie y → BuildPie.eqModel x y
+    BuildRadar x, BuildRadar y → BuildRadar.eqModel x y
+    BuildBar x, BuildBar y → BuildBar.eqModel x y
+    BuildLine x, BuildLine y → BuildLine.eqModel x y
+    BuildArea x, BuildArea y → BuildArea.eqModel x y
+    BuildScatter x, BuildScatter y → BuildScatter.eqModel x y
+    BuildFunnel x, BuildFunnel y → BuildFunnel.eqModel x y
+    BuildBoxplot x, BuildBoxplot y → BuildBoxplot.eqModel x y
+    BuildHeatmap x, BuildHeatmap y → BuildHeatmap.eqModel x y
+    BuildPunchCard x, BuildPunchCard y → BuildPunchCard.eqModel x y
+    BuildCandlestick x, BuildCandlestick y → BuildCandlestick.eqModel x y
+    BuildParallel x, BuildParallel y → BuildParallel.eqModel x y
+    _, _ → false
 
 instance encodeJsonCardModel ∷ J.EncodeJson AnyCardModel where
   encodeJson = encodeCardModel
 
-modelCardType
-  ∷ AnyCardModel
-  → CT.CardType
-modelCardType =
-  case _ of
-    Ace mode _ → CT.Ace mode
-    Search _ → CT.Search
-    BuildMetric _ → CT.ChartOptions Metric
-    BuildSankey _ → CT.ChartOptions Sankey
-    BuildGauge _ → CT.ChartOptions Gauge
-    BuildGraph _ → CT.ChartOptions Graph
-    BuildPie _ → CT.ChartOptions Pie
-    BuildRadar _ → CT.ChartOptions Radar
-    BuildBar _ → CT.ChartOptions Bar
-    BuildLine _ → CT.ChartOptions Line
-    BuildArea _ → CT.ChartOptions Area
-    BuildScatter _ → CT.ChartOptions Scatter
-    BuildPivotTable _ → CT.ChartOptions PivotTable
-    BuildFunnel _ → CT.ChartOptions Funnel
-    BuildBoxplot _ → CT.ChartOptions Boxplot
-    BuildHeatmap _ → CT.ChartOptions Heatmap
-    BuildPunchCard _ → CT.ChartOptions PunchCard
-    BuildCandlestick _ → CT.ChartOptions Candlestick
-    BuildParallel _ → CT.ChartOptions Parallel
-    Chart _ → CT.Chart
-    Markdown _ → CT.Markdown
-    Table _ → CT.Table
-    Download → CT.Download
-    Variables _ → CT.Variables
-    Troubleshoot → CT.Troubleshoot
-    Cache _ → CT.Cache
-    Open _ → CT.Open
-    DownloadOptions _ → CT.DownloadOptions
-    Draftboard _ → CT.Draftboard
-    ErrorCard → CT.ErrorCard
-    NextAction → CT.NextAction
-    PendingCard → CT.PendingCard
+modelCardType ∷ AnyCardModel → CT.CardType
+modelCardType = case _ of
+  Ace mode _ → CT.Ace mode
+  Search _ → CT.Search
+  BuildMetric _ → CT.ChartOptions Metric
+  BuildSankey _ → CT.ChartOptions Sankey
+  BuildGauge _ → CT.ChartOptions Gauge
+  BuildGraph _ → CT.ChartOptions Graph
+  BuildPie _ → CT.ChartOptions Pie
+  BuildRadar _ → CT.ChartOptions Radar
+  BuildBar _ → CT.ChartOptions Bar
+  BuildLine _ → CT.ChartOptions Line
+  BuildArea _ → CT.ChartOptions Area
+  BuildScatter _ → CT.ChartOptions Scatter
+  BuildPivotTable _ → CT.ChartOptions PivotTable
+  BuildFunnel _ → CT.ChartOptions Funnel
+  BuildBoxplot _ → CT.ChartOptions Boxplot
+  BuildHeatmap _ → CT.ChartOptions Heatmap
+  BuildPunchCard _ → CT.ChartOptions PunchCard
+  BuildCandlestick _ → CT.ChartOptions Candlestick
+  BuildParallel _ → CT.ChartOptions Parallel
+  Chart _ → CT.Chart
+  Markdown _ → CT.Markdown
+  Table _ → CT.Table
+  Download → CT.Download
+  Variables _ → CT.Variables
+  Troubleshoot → CT.Troubleshoot
+  Cache _ → CT.Cache
+  Open _ → CT.Open
+  DownloadOptions _ → CT.DownloadOptions
+  Draftboard _ → CT.Draftboard
 
 type Model =
   { cardId ∷ CID.CardId
   , model ∷ AnyCardModel
   }
 
-encode
-  ∷ Model
-  → J.Json
+encode ∷ Model → J.Json
 encode card =
   "cardId" := card.cardId
     ~> "cardType" := modelCardType card.model
     ~> "model" := encodeCardModel card.model
     ~> J.jsonEmptyObject
 
-decode
-  ∷ J.Json
-  → Either String Model
+decode ∷ J.Json → Either String Model
 decode js = do
   obj ← J.decodeJson js
   cardId ← obj .? "cardId"
@@ -253,11 +240,7 @@ decode js = do
     , boxplot: BuildBoxplot
     }
 
-
-
-encodeCardModel
-  ∷ AnyCardModel
-  → J.Json
+encodeCardModel ∷ AnyCardModel → J.Json
 encodeCardModel = case _ of
   Ace mode model → Ace.encode model
   Search txt → J.encodeJson txt
@@ -268,7 +251,7 @@ encodeCardModel = case _ of
   Variables model → Variables.encode model
   Troubleshoot → J.jsonEmptyObject
   Cache model → J.encodeJson model
-  Open mres → J.encodeJson mres
+  Open res → J.encodeJson res
   DownloadOptions model → DLO.encode model
   Draftboard model → DB.encode model
   BuildMetric model → BuildMetric.encode model
@@ -288,10 +271,6 @@ encodeCardModel = case _ of
   BuildPunchCard model → BuildPunchCard.encode model
   BuildCandlestick model → BuildCandlestick.encode model
   BuildParallel model → BuildParallel.encode model
-  ErrorCard → J.jsonEmptyObject
-  NextAction → J.jsonEmptyObject
-  PendingCard → J.jsonEmptyObject
-
 
 decodeCardModel
   ∷ CT.CardType
@@ -324,19 +303,19 @@ decodeCardModel = case _ of
   CT.Variables → map Variables ∘ Variables.decode
   CT.Troubleshoot → const $ pure Troubleshoot
   CT.Cache → map Cache ∘ J.decodeJson
-  CT.Open → map Open ∘ J.decodeJson
+  CT.Open → map Open ∘ decodeOpen
   CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
   CT.Draftboard → map Draftboard ∘ DB.decode
 
-  CT.ErrorCard → const $ pure ErrorCard
-  CT.NextAction → const $ pure NextAction
-  CT.PendingCard → const $ pure PendingCard
+  where
+    -- For backwards compat
+    decodeOpen j =
+      J.decodeJson j
+      <|> (map (fromMaybe R.root) $ J.decodeJson j)
 
-
-cardModelOfType
-  ∷ CT.CardType
-  → AnyCardModel
-cardModelOfType = case _ of
+cardModelOfType ∷ Port.Port → CT.CardType → AnyCardModel
+cardModelOfType port = case _ of
+  CT.Ace CT.SQLMode → Ace CT.SQLMode (Query.initialModel port)
   CT.Ace mode → Ace mode Ace.emptyModel
   CT.Search → Search ""
   CT.ChartOptions Metric → BuildMetric BuildMetric.initialModel
@@ -363,9 +342,25 @@ cardModelOfType = case _ of
   CT.Variables → Variables Variables.emptyModel
   CT.Troubleshoot → Troubleshoot
   CT.Cache → Cache Nothing
-  CT.Open → Open (Just (R.Directory Path.rootDir))
+  CT.Open → Open R.root
   CT.DownloadOptions → DownloadOptions DLO.initialState
   CT.Draftboard → Draftboard DB.emptyModel
-  CT.ErrorCard → ErrorCard
-  CT.NextAction → NextAction
-  CT.PendingCard → PendingCard
+
+childDeckIds ∷ AnyCardModel → L.List DeckId
+childDeckIds = case _ of
+  Draftboard { layout } → L.catMaybes (L.fromFoldable layout)
+  s → mempty
+
+updatePointer
+  ∷ DeckId
+  → Maybe DeckId
+  → AnyCardModel
+  → AnyCardModel
+updatePointer old new = case _ of
+  Draftboard { layout } →
+    Draftboard { layout: update <$> layout}
+  card → card
+
+  where
+    update (Just deckId) | deckId ≡ old = new
+    update a = a

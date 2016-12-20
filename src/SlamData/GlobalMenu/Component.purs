@@ -56,7 +56,7 @@ import SlamData.Quasar as Api
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Auth.Authentication (AuthenticationError, toNotificationOptions)
 import SlamData.Quasar.Auth.Store as AuthStore
-import SlamData.Wiring (Wiring(Wiring))
+import SlamData.Wiring as Wiring
 
 
 data Query a
@@ -109,8 +109,8 @@ eval (HandleGlobalError error next) =
     GlobalError.Unauthorized _ → update $> next
     _ -> pure next
 eval (Init next) = do
-  Wiring { globalError } ← H.liftH $ H.liftH ask
-  subscribeToBus' (H.action ∘ HandleGlobalError) globalError
+  { bus } ← H.liftH $ H.liftH Wiring.expose
+  subscribeToBus' (H.action ∘ HandleGlobalError) bus.globalError
   update
   pure next
 
@@ -253,24 +253,24 @@ authenticate =
 
   logIn ∷ ProviderR → GlobalMenuDSL Unit
   logIn providerR = do
-    Wiring wiringR ← H.liftH $ H.liftH $ ask
+    { auth } ← H.liftH $ H.liftH $ Wiring.expose
     idToken ← H.fromAff AVar.makeVar
-    H.fromAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } wiringR.requestIdTokenBus
+    H.fromAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
     either signInFailure (const $ signInSuccess) =<< (H.fromAff $ AVar.takeVar idToken)
 
   -- TODO: Reattempt failed actions without loosing state, remove reload.
   signInSuccess ∷ GlobalMenuDSL Unit
   signInSuccess = do
-    Wiring wiringR ← H.liftH $ H.liftH $ ask
-    (H.fromAff $ Bus.write SignInSuccess $ wiringR.signInBus)
+    { auth } ← H.liftH $ H.liftH $ Wiring.expose
+    (H.fromAff $ Bus.write SignInSuccess auth.signIn)
       *> update
       *> H.fromEff Browser.reload
 
   signInFailure ∷ AuthenticationError → GlobalMenuDSL Unit
   signInFailure error = do
-    Wiring wiringR ← H.liftH $ H.liftH $ ask
-    H.fromAff $ maybe (pure unit) (flip Bus.write wiringR.notify) (toNotificationOptions error)
-    H.fromAff $ (Bus.write SignInFailure $ wiringR.signInBus)
+    { auth, bus } ← H.liftH $ H.liftH $ Wiring.expose
+    H.fromAff $ maybe (pure unit) (flip Bus.write bus.notify) (toNotificationOptions error)
+    H.fromAff $ (Bus.write SignInFailure auth.signIn)
 
 presentHelp ∷ String → GlobalMenuDSL Unit
 presentHelp = H.fromEff ∘ Browser.newTab

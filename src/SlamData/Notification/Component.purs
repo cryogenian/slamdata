@@ -46,7 +46,7 @@ import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Monad (Slam)
 import SlamData.Notification as N
-import SlamData.Wiring (Wiring(..))
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(Editable, ReadOnly))
 
 import Utils (lowercaseFirstChar, removeLastCharIfPeriod, parenthesize)
@@ -111,13 +111,13 @@ renderModeFromAccessType =
     Editable → Notifications
     ReadOnly → ExpandableList Shrunk
 
-initialState ∷ State
-initialState =
+initialState ∷ RenderMode → State
+initialState renderMode =
   { tick: 0
   , queue: [ ]
   , current: Nothing
   , dismissed: Nothing
-  , renderMode: Notifications
+  , renderMode
   }
 
 data Query a
@@ -272,8 +272,8 @@ render st =
 eval ∷ Query ~> NotifyDSL
 eval = case _ of
   Init next → do
-    Wiring wiring ← H.liftH ask
-    forever (raise <<< H.action <<< Push =<< H.fromAff (Bus.read wiring.notify))
+    { bus } ← H.liftH Wiring.expose
+    forever (raise <<< H.action <<< Push =<< H.fromAff (Bus.read bus.notify))
   Push options next → do
     st ← H.get
     dismiss ← H.fromAff makeVar

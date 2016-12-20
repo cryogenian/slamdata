@@ -18,25 +18,21 @@ module SlamData.Workspace.Component.Query where
 
 import SlamData.Prelude
 
-import Data.Map as Map
-
 import Halogen as H
-import Halogen.Component.ChildPath (injSlot, injQuery)
 import Halogen.HTML.Events.Types as HET
 
 import SlamData.Wiring (StepByStepGuide)
-import SlamData.Workspace.AccessType (AccessType)
-import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck)
-import SlamData.Workspace.Deck.Component.Query as Deck
+import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
+import Utils.Path as UP
+
 data Query a
-  = SetVarMaps (Map.Map DeckId Port.URLVarMap) a
+  = Init a
   | DismissAll (HET.Event HET.MouseEvent) a
-  | Reset a
-  | Init a
-  | Load (Maybe DeckId) AccessType a
+  | New a
+  | Load (Maybe DeckId) a
+  | ExploreFile UP.FilePath a
   | PresentStepByStepGuide StepByStepGuide a
   | CardGuideStepNext a
   | CardGuideDismiss a
@@ -51,19 +47,3 @@ toWorkspace = left ∘ H.action
 
 fromWorkspace ∷ ∀ a. (∀ i. (a → i) → Query i) → QueryP a
 fromWorkspace r = left (H.request r)
-
-toDeck ∷ H.Action Deck.Query → QueryP Unit
-toDeck =
-  right
-    ∘ H.ChildF (injSlot cpDeck unit)
-    ∘ injQuery cpDeck
-    ∘ right
-    ∘ H.action
-
-fromDeck ∷ ∀ a. (∀ i. (a → i) → Deck.Query i) → QueryP a
-fromDeck r =
-  right
-    $ H.ChildF (injSlot cpDeck unit)
-    $ injQuery cpDeck
-    $ right
-    $ H.request r

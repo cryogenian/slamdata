@@ -32,10 +32,12 @@ module SlamData.Workspace.Card.Draftboard.Pane
   , toList
   , traverseWithCursor
   , withCursor
+  , getCursorFor
   ) where
 
 import SlamData.Prelude
 
+import Data.Foldable (findMap)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Rational (Rational)
@@ -167,14 +169,14 @@ runCursorWithLocator f g = go rootLocator <<< List.reverse
         _ → Nothing
 
 -- | Retrieves a Pane represented by a cursor.
-getAt ∷ ∀ a . Cursor → Pane a → Maybe (Pane a)
+getAt ∷ ∀ a. Cursor → Pane a → Maybe (Pane a)
 getAt = runCursor id (\_ _ _ r → r)
 
 getAtWithLocator ∷ ∀ a. Cursor → Pane a → Maybe (Locator × Pane a)
 getAtWithLocator = runCursorWithLocator Tuple (\_ _ _ _ r → r)
 
 -- | Retrieves a Cell value represented by a cursor. Splits have no value.
-getValueAt ∷ ∀ a . Cursor → Pane a → Maybe a
+getValueAt ∷ ∀ a. Cursor → Pane a → Maybe a
 getValueAt c p =
   getAt c p >>= case _ of
     Cell a → pure a
@@ -241,3 +243,9 @@ withCursor = walkWithCursor go Nil
   where
   go c r (Cell a) = (c × a) : r
   go _ r _ = r
+
+getCursorFor ∷ ∀ a. Eq a ⇒ a → Pane a → Maybe Cursor
+getCursorFor a = findMap go ∘ withCursor
+  where
+  go (c × a') | a == a' = Just c
+  go _ = Nothing

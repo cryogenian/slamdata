@@ -18,7 +18,6 @@ module SlamData.Workspace.Card.Ace.Component
   ( aceComponent
   , DSL
   , HTML
-  , AceEval
   , module SlamData.Workspace.Card.Ace.Component.Query
   , module SlamData.Workspace.Card.Ace.Component.State
   ) where
@@ -48,7 +47,7 @@ import SlamData.Notification as N
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.Ace.Component.Query (Query(..), QueryP)
-import SlamData.Workspace.Card.Ace.Component.State (State, StateP, Status(..), initialState, _levelOfDetails, _status, isNew, isLoading, isReady)
+import SlamData.Workspace.Card.Ace.Component.State (State, StateP, initialState, _levelOfDetails)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
@@ -59,19 +58,14 @@ import Utils.Ace (getRangeRecs, readOnly)
 
 type DSL = H.ParentDSL State AC.AceState (CC.CardEvalQuery ⨁ Query) AC.AceQuery Slam Unit
 type HTML = H.ParentHTML AC.AceState (CC.CardEvalQuery ⨁ Query) AC.AceQuery Slam Unit
-type AceEval = CC.CardEvalInput → DSL Unit
 
-type AceConfig =
-  { mode ∷ CT.AceMode
-  , eval ∷ AceEval
-  }
-
-aceComponent ∷ AceConfig → H.Component CC.CardStateP CC.CardQueryP Slam
-aceComponent cfg = CC.makeCardComponent
-  { cardType: CT.Ace cfg.mode
+aceComponent ∷ CT.AceMode → CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+aceComponent mode options = CC.makeCardComponent
+  { options
+  , cardType: CT.Ace mode
   , component: H.lifecycleParentComponent
-      { render: render cfg
-      , eval: eval cfg
+      { render: render mode
+      , eval: eval mode
       , peek: Just (peek ∘ H.runChildF)
       , initializer: Just $ right $ H.action Init
       , finalizer: Just $ right $ H.action Finalize
@@ -81,10 +75,10 @@ aceComponent cfg = CC.makeCardComponent
   , _Query: CC.makeQueryPrism' CC._AceQuery
   }
 
-eval ∷ AceConfig → (CC.CardEvalQuery ⨁ Query) ~> DSL
-eval cfg = cardEval cfg ⨁ evalComponent
+eval ∷ CT.AceMode → (CC.CardEvalQuery ⨁ Query) ~> DSL
+eval mode = cardEval mode ⨁ evalComponent
 
-evalComponent :: Query ~> DSL
+evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
     trigger ← H.fromAff $ makeVar
@@ -101,11 +95,8 @@ evalComponent = case _ of
     H.fromAff $ for_ breaker EventLoop.break'
     pure next
 
-cardEval ∷ AceConfig → CC.CardEvalQuery ~> DSL
-cardEval cfg = case _ of
-  CC.EvalCard info output next → do
-    cfg.eval info
-    pure next
+cardEval ∷ CT.AceMode → CC.CardEvalQuery ~> DSL
+cardEval mode = case _ of
   CC.Activate next → do
     mbEditor ← H.query unit $ H.request AC.GetEditor
     for_ (join mbEditor) $ H.fromEff ∘ Editor.focus
@@ -125,33 +116,29 @@ cardEval cfg = case _ of
             })
     pure next
   CC.Save k → do
-    status ← H.gets _.status
     content ← fromMaybe "" <$> H.query unit (H.request AC.GetText)
     mbEditor ← H.query unit (H.request AC.GetEditor)
     rrs ← H.fromEff $ maybe (pure []) getRangeRecs $ join mbEditor
     pure ∘ k
-      $ Card.Ace cfg.mode
-      $ if isNew status
-        then Nothing
-        else Just { text: content, ranges: rrs }
+      $ Card.Ace mode { text: content, ranges: rrs }
   CC.Load card next → do
     case card of
-      Card.Ace _ (Just { text, ranges }) → do
-        -- We don't want the Ace component to trigger a TextChanged event when we
-        -- initially set the text, so we use this nasty state to filter it out.
-        H.modify $ _status .~ Loading
+      Card.Ace _ { text, ranges } → do
         H.query unit $ H.action $ AC.SetText text
-        H.modify $ _status .~ Ready
         mbEditor ← H.query unit $ H.request AC.GetEditor
         H.fromEff $ for_ (join mbEditor) \editor → do
           traverse_ (readOnly editor) ranges
           Editor.navigateFileEnd editor
-      Card.Ace CT.MarkdownMode Nothing →
-        H.modify $ _status .~ Ready
       _ → pure unit
     H.modify _ { dirty = false }
     pure next
-  CC.SetDimensions dims next → do
+  CC.ReceiveInput _ next →
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next → do
+    pure next
+  CC.ReceiveDimensions dims next → do
     H.modify
       $ _levelOfDetails
       .~ if dims.width < 240.0 then Low else High
@@ -166,25 +153,27 @@ cardEval cfg = case _ of
 
 peek ∷ ∀ x. AC.AceQuery x → DSL Unit
 peek = case _ of
-  AC.TextChanged _ → H.modify _ { dirty = true }
+  AC.TextChanged _ →
+    unlessM (H.gets _.dirty) do
+      H.modify _ { dirty = true }
   _ → pure unit
 
-aceSetup ∷ AceConfig → Editor → Slam Unit
-aceSetup cfg editor = H.fromEff do
+aceSetup ∷ CT.AceMode → Editor → Slam Unit
+aceSetup mode editor = H.fromEff do
   Editor.setTheme "ace/theme/chrome" editor
   Editor.setEnableLiveAutocompletion true editor
   Editor.setEnableBasicAutocompletion true editor
-  Session.setMode (CT.aceMode cfg.mode) =<< Editor.getSession editor
+  Session.setMode (CT.aceMode mode) =<< Editor.getSession editor
 
-render ∷ AceConfig → State → HTML
-render cfg state =
+render ∷ CT.AceMode → State → HTML
+render mode state =
   HH.div_
-    [ renderHighLOD cfg state
-    , renderLowLOD (CT.cardIconLightImg $ CT.Ace cfg.mode) left state.levelOfDetails
+    [ renderHighLOD mode state
+    , renderLowLOD (CT.cardIconLightImg $ CT.Ace mode) left state.levelOfDetails
     ]
 
-renderHighLOD ∷ AceConfig → State → HTML
-renderHighLOD cfg state =
+renderHighLOD ∷ CT.AceMode → State → HTML
+renderHighLOD mode state =
   HH.div
     [ HP.classes
         $ [ CSS.cardInput, CSS.aceContainer ]
@@ -205,7 +194,7 @@ renderHighLOD cfg state =
             ]
         ]
     , HH.slot unit \_ →
-        { component: AC.aceComponent (aceSetup cfg) (Just AC.Live)
+        { component: AC.aceComponent (aceSetup mode) (Just AC.Live)
         , initialState: AC.initialAceState
         }
     ]

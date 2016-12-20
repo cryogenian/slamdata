@@ -57,12 +57,13 @@ import Utils.Path (AnyPath)
 type DSL = H.ParentDSL State (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQuery (MCI.BasicColumnsQuery R.Resource AnyPath) Slam Unit
 type HTML = H.ParentHTML (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQuery (MCI.BasicColumnsQuery R.Resource AnyPath) Slam Unit
 
-openComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-openComponent =
+openComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+openComponent options =
   CC.makeCardComponent
-    { cardType: CT.Open
+    { options
+    , cardType: CT.Open
     , component: H.parentComponent
-        { render: render
+        { render
         , eval
         , peek: Just (peek ∘ H.runChildF)
         }
@@ -118,15 +119,14 @@ glyphForResource = case _ of
 
 eval ∷ CC.CardEvalQuery ~> DSL
 eval = case _ of
-  CC.EvalCard info output next →
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k →
-    k <<< Card.Open <$> H.gets _.selected
-  CC.Load (Card.Open (Just res)) next → do
+  CC.Save k → do
+    mbRes ← H.gets _.selected
+    pure $ k $ Card.Open (fromMaybe R.root mbRes)
+  CC.Load (Card.Open res) next → do
     let selectedResources = toResourceList res
     void $ H.query unit $ left $ H.action $ MC.Populate $ R.getPath <$> selectedResources
     for_ selectedResources \sel → do
@@ -137,7 +137,13 @@ eval = case _ of
     pure next
   CC.Load _ next →
     pure next
-  CC.SetDimensions dims next → do
+  CC.ReceiveInput _ next →
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions dims next → do
     H.modify $
       _levelOfDetails .~
         if dims.width < 250.0 ∨ dims.height < 50.0

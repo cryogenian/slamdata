@@ -42,3 +42,6 @@ instance quasarDSLHFC ∷ QuasarDSL g ⇒ QuasarDSL (HF.HalogenFP ES.EventSource
 
 instance quasarDSLHFP ∷ QuasarDSL g ⇒ QuasarDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
   liftQuasar = HF.QueryHF ∘ liftQuasar
+
+class ParQuasarDSL m where
+  sequenceQuasar ∷ ∀ f a. Traversable f ⇒ f (QF.QuasarAFC a) → m (f a)

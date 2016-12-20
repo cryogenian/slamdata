@@ -14,58 +14,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Pending.Component where
+module SlamData.Workspace.Card.Pending.Component
+  ( pendingCardComponent
+  , module SlamData.Workspace.Card.Pending.Component.Query
+  , module SlamData.Workspace.Card.Pending.Component.State
+  ) where
 
 import SlamData.Prelude
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Pending.Component.Query as PCQ
-import SlamData.Workspace.Card.Pending.Component.State as PCS
+import SlamData.Workspace.Card.Pending.Component.Query (Query, initiality)
+import SlamData.Workspace.Card.Pending.Component.State (State, initialState)
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 
-type DSL = H.ComponentDSL PCS.State PCQ.QueryP Slam
-type HTML = H.ComponentHTML PCQ.QueryP
+type DSL = H.ComponentDSL State Query Slam
+type HTML = H.ComponentHTML Query
 
-comp ∷ CC.CardComponent
-comp =
-  CC.makeCardComponent
-    { cardType: CT.PendingCard
-    , component: H.component { render, eval }
-    , initialState: PCS.initialState
-    , _State: CC._PendingState
-    , _Query: CC.makeQueryPrism CC._PendingQuery
-    }
+pendingCardComponent ∷ H.Component State Query Slam
+pendingCardComponent = H.component { render, eval }
 
-render ∷ PCS.State → HTML
+render ∷ State → HTML
 render st =
   HH.div_
     [ HH.i_ []
     , HH.span_ [ HH.text st.message ]
     ]
 
-eval ∷ PCQ.QueryP ~> DSL
-eval = coproduct cardEval PCQ.initiality
-
-cardEval ∷ CC.CardEvalQuery ~> DSL
-cardEval = case _ of
-  CC.EvalCard _ _ next → do
-    pure next
-  CC.Activate next →
-    pure next
-  CC.Deactivate next →
-    pure next
-  CC.Save k →
-    pure $ k Card.PendingCard
-  CC.Load _ next →
-    pure next
-  CC.SetDimensions _ next →
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+eval ∷ Query ~> DSL
+eval = initiality

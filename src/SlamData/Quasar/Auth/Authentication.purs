@@ -34,8 +34,8 @@ import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus (BusRW, BusW)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (liftAff)
-import Control.Monad.Aff.Promise (Promise)
-import Control.Monad.Aff.Promise as Promise
+import Control.Monad.Aff.Future (Future)
+import Control.Monad.Aff.Future as Future
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (Error)
@@ -148,24 +148,24 @@ authentication = do
 -- "store provider in localstorage then put a message on the bus" approach.
 authenticate
   ∷ ∀ eff
-  . Ref (Maybe (Promise EIdToken))
+  . Ref (Maybe (Future EIdToken))
   → RequestIdTokenMessage
   → Aff (AuthEffects eff) Unit
 authenticate stateRef message = do
   state ← liftEff $ Ref.readRef stateRef
   case state of
     Nothing → do
-      idTokenPromise ← getIdToken message
-      writeState $ Just idTokenPromise
-      void $ Aff.forkAff $ reply idTokenPromise *> writeState Nothing
-    Just idTokenPromise → do
-      void $ Aff.forkAff $ reply idTokenPromise
+      idTokenFuture ← getIdToken message
+      writeState $ Just idTokenFuture
+      void $ Aff.forkAff $ reply idTokenFuture *> writeState Nothing
+    Just idTokenFuture → do
+      void $ Aff.forkAff $ reply idTokenFuture
   where
-  writeState ∷ Maybe (Promise EIdToken) → Aff (AuthEffects eff) Unit
+  writeState ∷ Maybe (Future EIdToken) → Aff (AuthEffects eff) Unit
   writeState = liftEff ∘ Ref.writeRef stateRef
 
-  reply ∷ Promise EIdToken → Aff (AuthEffects eff) Unit
-  reply = AVar.putVar message.idToken <=< Promise.wait
+  reply ∷ Future EIdToken → Aff (AuthEffects eff) Unit
+  reply = AVar.putVar message.idToken <=< Future.wait
 
 getIdTokenSilently
   ∷ ∀ eff
@@ -294,9 +294,9 @@ getBodyNode =
 getIdToken
   ∷ ∀ eff
   . RequestIdTokenMessage
-  → Aff (AuthEffects eff) (Promise EIdToken)
+  → Aff (AuthEffects eff) (Future EIdToken)
 getIdToken message =
-  Promise.defer do
+  Future.defer do
     eIdToken ← if message.prompt
       then
         getIdTokenUsingPrompt message

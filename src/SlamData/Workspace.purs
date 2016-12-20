@@ -22,19 +22,22 @@ import Control.Coroutine (runProcess, await, ($$))
 import Control.Coroutine.Aff (produce)
 import Control.Monad.Aff (Aff, forkAff)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Eff.Class (liftEff)
 import Control.UI.Browser as Browser
 
 import Ace.Config as AceConfig
 
+import Data.Map.Diff as Diff
 import Data.Nullable (toMaybe)
 
 import DOM.HTML.Document (body)
 import DOM.HTML (window)
+import DOM.HTML.Types (HTMLElement, htmlElementToElement, htmlElementToNode, htmlDocumentToParentNode)
 import DOM.HTML.Window (document)
 import DOM.Node.Element (setClassName)
-import DOM.HTML.Types (htmlElementToElement)
+import DOM.Node.Node (removeChild)
+import DOM.Node.Types (elementToNode)
+import DOM.Node.ParentNode (querySelector)
 
 import Halogen (Driver, runUI, parentState, interpret)
 import Halogen.Util (runHalogenAff, awaitBody)
@@ -42,12 +45,13 @@ import Halogen.Util (runHalogenAff, awaitBody)
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Monad (runSlam)
-import SlamData.Wiring (Wiring(Wiring), makeWiring)
+import SlamData.Wiring (Wiring(..))
+import SlamData.Wiring as Wiring
+import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
-import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
-import SlamData.Workspace.Deck.Component as Deck
+import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
 
@@ -78,30 +82,45 @@ routeSignal = do
     case new, state of
       -- Initialize the Workspace component
       WorkspaceRoute path deckId action varMaps, Nothing → do
-        wiring ← lift $ makeWiring path varMaps
-        let
-          st = Workspace.initialState (Just "4.0")
-          ui = interpret (runSlam wiring) Workspace.comp
-        driver ← lift $ runUI ui (parentState st) =<< awaitBody
-        lift $ setupWorkspace new wiring driver
-        routeConsumer (Just (RouterState new wiring driver))
+        wiring ← lift $ Wiring.make path (toAccessType action) varMaps
+        mount wiring new
 
-      -- Reload the page on path change
-      WorkspaceRoute path _ _ _, Just (RouterState (WorkspaceRoute path' _ _ _) _ _) | path ≠ path' →
-        lift $ liftEff Browser.reload
+      -- Reload the page on path change or varMap change
+      WorkspaceRoute path _ action _, Just (RouterState (WorkspaceRoute path' _ action' _) wiring _)
+        | path ≠ path' || toAccessType action ≠ toAccessType action' →
+        reload wiring new
 
       -- Transition Workspace
       WorkspaceRoute path deckId action varMaps, Just (RouterState old wiring driver) →
         case old of
-          WorkspaceRoute path' deckId' action' varMaps'
-            | path ≡ path' ∧ deckId ≡ deckId' ∧ action ≡ action' ∧ varMaps ≡ varMaps' →
+          WorkspaceRoute _ deckId' _ varMaps'
+            | deckId ≡ deckId' ∧ varMaps ≡ varMaps' →
                 routeConsumer (Just (RouterState new wiring driver))
-          _ → do
-            lift $ setupWorkspace new wiring driver
+          WorkspaceRoute _ deckId' _ varMaps' → do
+            when (varMaps ≠ varMaps') $ lift do
+              Cache.restore varMaps (Wiring.unWiring wiring).varMaps
+              runSlam wiring
+                $ traverse_ (P.queueEvalForDeck 0)
+                $ Diff.updated
+                $ Diff.diff varMaps' varMaps
+            lift $ setup new driver
             routeConsumer (Just (RouterState new wiring driver))
 
-  setupWorkspace new@(WorkspaceRoute _ deckId action varMaps) (Wiring wiring) driver = do
-    driver $ Workspace.toWorkspace $ Workspace.SetVarMaps varMaps
+  reload (Wiring wiring) new@(WorkspaceRoute path _ action varMaps) = do
+    wiring' ←
+      if path ≡ wiring.path
+        then pure $ Wiring wiring { path = path, accessType = toAccessType action }
+        else lift $ Wiring.make path (toAccessType action) varMaps
+    lift $ removeFromBody ".sd-workspace"
+    mount wiring' new
+
+  mount wiring new@(WorkspaceRoute _ _ action _) = do
+    let ui = interpret (runSlam wiring) $ Workspace.comp (toAccessType action)
+    driver ← lift $ runUI ui (parentState Workspace.initialState) =<< awaitBody'
+    lift $ setup new driver
+    routeConsumer (Just (RouterState new wiring driver))
+
+  setup new@(WorkspaceRoute _ deckId action varMaps) driver = do
     when (toAccessType action ≡ AT.ReadOnly) do
       isEmbedded ←
         liftEff $ Browser.detectEmbedding
@@ -119,13 +138,20 @@ routeSignal = do
         =<< window
 
     forkAff case action of
-      Load accessType → do
-        liftEff
-          $ Ref.writeRef wiring.allowedAuthenticationModes
-          $ AuthenticationMode.allowedAuthenticationModesForAccessType accessType
-        driver $ Workspace.toWorkspace $ Workspace.Load deckId accessType
-      Exploring fp → do
-        driver $ Workspace.toWorkspace $ Workspace.Reset
-        driver $ Workspace.toDeck $ Deck.ExploreFile fp
-      New → do
-        driver $ Workspace.toWorkspace $ Workspace.Reset
+      Load _ →
+        driver $ Workspace.toWorkspace $ Workspace.Load deckId
+      New →
+        driver $ Workspace.toWorkspace $ Workspace.New
+      Exploring fp →
+        driver $ Workspace.toWorkspace $ Workspace.ExploreFile fp
+
+awaitBody' ∷ Aff SlamDataEffects HTMLElement
+awaitBody' = do
+  body ← liftEff $ map toMaybe $ window >>= document >>= body
+  maybe awaitBody pure body
+
+removeFromBody ∷ String → Aff SlamDataEffects Unit
+removeFromBody sel = liftEff $ void $ runMaybeT do
+  body ← MaybeT $ map toMaybe $ window >>= document >>= body
+  root ← MaybeT $ map toMaybe $ window >>= document >>= htmlDocumentToParentNode >>> querySelector sel
+  lift $ removeChild (elementToNode root) (htmlElementToNode body)

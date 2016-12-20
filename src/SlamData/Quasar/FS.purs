@@ -191,14 +191,14 @@ move src tgt = do
 
   getDeck ∷ DirPath → DID.DeckId → ExceptT QError m DM.Deck
   getDeck wsDir did = do
-    deckJS ← ExceptT $ QD.load $ wsDir </> P.dir (DID.deckIdToString did) </> P.file "index"
+    deckJS ← ExceptT $ QD.load $ wsDir </> P.dir (DID.toString did) </> P.file "index"
     ExceptT $ pure $ lmap (Error ∘ error) $ DM.decode deckJS
 
   putDeck ∷ DirPath → DID.DeckId → DM.Deck → ExceptT QError m Unit
   putDeck wsDir did deck =
     ExceptT
       $ QD.save
-        (wsDir </> P.dir (DID.deckIdToString did) </> P.file "index")
+        (wsDir </> P.dir (DID.toString did) </> P.file "index")
         (DM.encode deck)
 
   replacePathsInDeck ∷ DirPath → DM.Deck → ExceptT QError m (Boolean × DM.Deck)
@@ -230,10 +230,9 @@ move src tgt = do
             newCard = {cardId, model: CM.Cache newM}
           in
             pure $ true × replaceCardModel newCard d
-        CM.Open mbR →
+        CM.Open r →
           let
-            newMbR = do
-              r ← mbR
+            newR = fromMaybe r do
               rel ←
                 bisequence
                   $ bimap (flip P.relativeTo wsDir) (flip P.relativeTo wsDir)
@@ -245,10 +244,10 @@ move src tgt = do
                   $ bimap (tgtDir </> _) (tgtDir </> _) rel
               pure $ R.setPath r newP
 
-            newCard = {cardId, model: CM.Open newMbR}
+            newCard = {cardId, model: CM.Open newR}
           in
-            pure $ (newMbR ≠ mbR) × replaceCardModel newCard d
-        CM.Ace mode (Just m) →
+            pure $ (newR ≠ r) × replaceCardModel newCard d
+        CM.Ace mode m →
           let
             wsStr ∷ String
             wsStr = P.printPath wsDir
@@ -361,7 +360,7 @@ move src tgt = do
                 filterRanges [ ] initialRanges $ sortRangeRecs m.ranges
               | otherwise = m.ranges
 
-            newCard = {cardId, model: CM.Ace mode (Just {text: newText, ranges: newRanges})}
+            newCard = {cardId, model: CM.Ace mode {text: newText, ranges: newRanges}}
           in
             pure $ (newText ≠ m.text) × replaceCardModel newCard d
 

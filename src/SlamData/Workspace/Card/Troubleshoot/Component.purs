@@ -36,10 +36,11 @@ import SlamData.Workspace.Card.Port as Port
 
 type TroubleshootDSL = H.ComponentDSL State QueryP Slam
 
-troubleshootComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-troubleshootComponent =
+troubleshootComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+troubleshootComponent options =
   CC.makeCardComponent
-    { cardType: CT.Troubleshoot
+    { options
+    , cardType: CT.Troubleshoot
     , component: H.component { render, eval }
     , initialState: initialState
     , _State: CC._TroubleshootState
@@ -78,10 +79,6 @@ eval = coproduct evalCard (absurd ∘ unwrap)
 
 evalCard ∷ CC.CardEvalQuery ~> TroubleshootDSL
 evalCard = case _ of
-  CC.EvalCard info output next → do
-    for (info.input >>= Lens.preview Port._VarMap) \varMap →
-      H.modify (_ { varMap = varMap })
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -90,7 +87,15 @@ evalCard = case _ of
     pure $ k Card.Troubleshoot
   CC.Load _ next →
     pure next
-  CC.SetDimensions _ next →
+  CC.ReceiveInput input next → do
+    for (Lens.preview Port._VarMap input) \varMap →
+      H.modify (_ { varMap = varMap })
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
     pure next

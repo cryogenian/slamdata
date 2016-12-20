@@ -14,40 +14,35 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Class where
+module SlamData.Workspace.Class
+  ( class WorkspaceDSL
+  , navigate
+  , module SlamData.Workspace.Routing
+  ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Free (Free, liftF)
 
-import Data.Map as Map
-
 import Halogen.Query.EventSource as ES
 import Halogen.Query.HalogenF as HF
 
-import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Card.Port.VarMap as Port
+import SlamData.Workspace.Routing (Routes(..))
 
-class WorkspaceDSL m where
-  getURLVarMaps ∷ m (Map.Map DeckId Port.URLVarMap)
-  putURLVarMaps ∷ Map.Map DeckId Port.URLVarMap → m Unit
+class WorkspaceDSL (m ∷ * → *) where
+  navigate ∷ Routes → m Unit
 
 instance workspaceDSLMaybeT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (MaybeT m) where
-  getURLVarMaps = lift getURLVarMaps
-  putURLVarMaps = lift ∘ putURLVarMaps
+  navigate = lift ∘ navigate
 
 instance workspaceDSLExceptT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (ExceptT e m) where
-  getURLVarMaps = lift getURLVarMaps
-  putURLVarMaps = lift ∘ putURLVarMaps
+  navigate = lift ∘ navigate
 
 instance workspaceDSLFree ∷ WorkspaceDSL m ⇒ WorkspaceDSL (Free m) where
-  getURLVarMaps = liftF getURLVarMaps
-  putURLVarMaps = liftF ∘ putURLVarMaps
+  navigate = liftF ∘ navigate
 
 instance workspaceDSLHFC ∷ WorkspaceDSL g ⇒ WorkspaceDSL (HF.HalogenFP ES.EventSource s f g) where
-  getURLVarMaps = HF.QueryHF getURLVarMaps
-  putURLVarMaps = HF.QueryHF ∘ putURLVarMaps
+  navigate = HF.QueryHF ∘ navigate
 
 instance workspaceDSLHFP ∷ WorkspaceDSL g ⇒ WorkspaceDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
-  getURLVarMaps = HF.QueryHF getURLVarMaps
-  putURLVarMaps = HF.QueryHF ∘ putURLVarMaps
+  navigate = HF.QueryHF ∘ navigate

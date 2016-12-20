@@ -18,54 +18,60 @@ module SlamData.Workspace.Card.Cache.Eval where
 
 import SlamData.Prelude
 
-import Data.Lens ((^?))
-import Data.Lens as Lens
+import Control.Monad.Throw (class MonadThrow)
+import Control.Monad.Writer.Class (class MonadTell)
+
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 
 import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.BuildChart.Axis (initialAxes)
 
 import Utils.Path as PU
 
 eval
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ CET.CardEvalInput
+  . ( MonadAsk CEM.CardEnv m
+    , MonadThrow CEM.CardError m
+    , MonadTell CEM.CardLog m
+    , QuasarDSL m
+    )
+  ⇒ Port.Port
   → Maybe String
   → FilePath
   → Maybe Port.VarMap
-  → CET.CardEvalT m Port.TaggedResourcePort
-eval info mfp resource varMap =
-  let
-    axes = fromMaybe initialAxes $ info.input ^? Lens._Just ∘ Port._ResourceAxes
-  in map _{axes = axes} case mfp of
-    Nothing → eval' (CET.temporaryOutputResource info) resource varMap
+  → m Port.TaggedResourcePort
+eval input mfp resource varMap =
+  case mfp of
+    Nothing → do
+      tmp ← CEM.temporaryOutputResource
+      eval' tmp resource varMap
     Just pt →
       case PU.parseAnyPath pt of
         Just (Right fp) → eval' fp resource varMap
-        _ → QE.throw $ pt ⊕ " is not a valid file path"
+        _ → CEM.throw $ pt ⊕ " is not a valid file path"
 
 eval'
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
+  . ( MonadThrow CEM.CardError m
+    , MonadTell CEM.CardLog m
+    , QuasarDSL m
+    )
   ⇒ FilePath
   → FilePath
   → Maybe Port.VarMap
-  → CET.CardEvalT m Port.TaggedResourcePort
-eval' fp resource varMap = do
+  → m Port.TaggedResourcePort
+eval' tmp resource varMap = do
 
-  outputResource ← CET.liftQ $
-    QQ.fileQuery resource fp "select * from {{path}}" SM.empty
+  outputResource ← CEM.liftQ $
+    QQ.fileQuery resource tmp "select * from {{path}}" SM.empty
 
-  CET.liftQ $ QFS.messageIfFileNotFound
+  CEM.liftQ $ QFS.messageIfFileNotFound
     outputResource
     "Error saving file, please try another location"
 
@@ -76,9 +82,9 @@ eval' fp resource varMap = do
   -- as to whether that is "right", but at least it means a resource will exist
   -- in the expected location, and the rest of the deck can run as the Save
   -- failing has not effect on the output. -gb
-  when (fp /= outputResource)
-    $ QE.throw
+  when (tmp /= outputResource)
+    $ CEM.throw
     $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
-  CET.addSource resource
-  CET.addCache outputResource
-  pure { resource: outputResource, tag: Nothing, axes: initialAxes, varMap }
+  CEM.addSource resource
+  CEM.addCache outputResource
+  pure { resource: outputResource, tag: Nothing, varMap }

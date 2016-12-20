@@ -55,7 +55,7 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckPath (deckPath')
-import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
 import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL, encodeVarMaps)
 
@@ -523,7 +523,7 @@ renderCopyVal locString state
     line = (_ ⊕ "\n")
     quoted s = "\"" ⊕ s ⊕ "\""
     workspaceURL = locString ⊕ "/" ⊕ Config.workspaceUrl
-    deckId = deckIdToString state.sharingInput.deckId
+    deckId = toString state.sharingInput.deckId
     deckPath = UP.encodeURIPath (Pathy.printPath state.sharingInput.workspacePath)
     options = opt varMaps <> opt tokens
     opt = case _ of

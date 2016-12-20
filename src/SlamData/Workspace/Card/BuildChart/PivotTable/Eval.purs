@@ -20,60 +20,67 @@ module SlamData.Workspace.Card.BuildChart.PivotTable.Eval
   , module PTM
   ) where
 
+import Control.Monad.State (class MonadState, get, put)
+import Control.Monad.Throw (class MonadThrow)
+
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Path.Pathy as P
 import Data.String as String
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags as RXF
-import Data.StrMap as SM
 
 import SlamData.Prelude
-import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
-import SlamData.Quasar.Error as QE
+import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import Quasar.Advanced.QuasarAF as QF
-import Quasar.Data (JSONMode(..))
+
+import Utils.Path (FilePath)
 
 eval
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ PTM.Model
-  → Port.TaggedResourcePort
-  → CET.CardEvalT m Port.Port
-eval Nothing _ =
-  QE.throw "Please select axis to aggregate"
-eval (Just options) tr | PTM.isSimple options =
-  pure $ Port.PivotTable { records: [], options, taggedResource: tr }
-eval (Just options@{ dimensions: [] }) tr = do
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ Port.TaggedResourcePort
+  → PTM.Model
+  → m Port.Port
+eval tr options = do
+  state ← get
+  axes ←
+    case state of
+      Just (CEM.Analysis { axes: ax, taggedResource })
+        | Port.eqTaggedResourcePort tr taggedResource → pure ax
+      _ → CEM.liftQ (QQ.axes tr.resource 100)
   let
     path = fromMaybe P.rootDir (P.parentDir tr.resource)
-    cols =
-      Array.mapWithIndex
-        case _, _ of
-          i, PTM.Column c →
-            sqlAggregation c.valueAggregation ("row" <> escapedCursor c.value) <> " AS _" <> show i
-          i, PTM.Count →
-            "COUNT(*) AS _" <> show i
-        options.columns
-    sql =
-      QQ.templated tr.resource $ String.joinWith " "
-        [ "SELECT " <> String.joinWith ", " cols
-        , "FROM {{path}} AS row"
-        ]
-  records ← CET.liftQ $ liftQuasar $
-    QF.readQuery Readable path sql SM.empty Nothing
-  pure $ Port.PivotTable { records, options, taggedResource: tr }
-eval (Just options) tr = do
+    query = mkSql options tr.resource
+    state' =
+      { axes
+      , records: []
+      , taggedResource: tr
+      }
+    port =
+      { options
+      , query
+      , taggedResource: tr
+      }
+  put (Just (CEM.Analysis state'))
+  pure (Port.PivotTable port)
+
+mkSql ∷ PTM.Model → FilePath → String
+mkSql options resource =
   let
-    path = fromMaybe P.rootDir (P.parentDir tr.resource)
-    dlen = Array.length dims
+    isSimple =
+      PTM.isSimple options
+    dimLen =
+      Array.length options.dimensions
     groupBy =
-      map (\value → "row" <> show value) options.dimensions
+      map (\value → "row" <> escapedCursor value) options.dimensions
     dims =
       Array.mapWithIndex
         (\i value → "row" <> escapedCursor value <> " AS _" <> show i)
@@ -81,19 +88,24 @@ eval (Just options) tr = do
     cols =
       Array.mapWithIndex
         case _, _ of
-          i, PTM.Column c → sqlAggregation c.valueAggregation ("row" <> escapedCursor c.value) <> " AS _" <> show (i + dlen)
-          i, PTM.Count    → "COUNT(*) AS _" <> show (i + dlen)
+          i, PTM.Column c | isSimple → "row" <> escapedCursor c.value <> " AS _" <> show (i + dimLen)
+          i, PTM.Column c → sqlAggregation c.valueAggregation ("row" <> escapedCursor c.value) <> " AS _" <> show (i + dimLen)
+          i, PTM.Count    → "COUNT(*) AS _" <> show (i + dimLen)
         options.columns
-    sql =
-      QQ.templated tr.resource $ String.joinWith " "
-        [ "SELECT " <> String.joinWith ", " (dims <> cols)
-        , "FROM {{path}} AS row"
-        , "GROUP BY " <> String.joinWith ", " groupBy
-        , "ORDER BY " <> String.joinWith ", " groupBy
-        ]
-  records ← CET.liftQ $ liftQuasar $
-    QF.readQuery Readable path sql SM.empty Nothing
-  pure $ Port.PivotTable { records, options, taggedResource: tr }
+    head =
+      [ "SELECT " <> String.joinWith ", " (dims <> cols)
+      , "FROM {{path}} AS row"
+      ]
+    tail =
+      [ "GROUP BY " <> String.joinWith ", " groupBy
+      , "ORDER BY " <> String.joinWith ", " groupBy
+      ]
+  in
+    QQ.templated resource $
+      String.joinWith " "
+        if dimLen == 0
+          then head
+          else head <> tail
 
 tickRegex ∷ Regex.Regex
 tickRegex = unsafePartial (fromRight (Regex.regex "`" RXF.global))
@@ -113,4 +125,4 @@ sqlAggregation a b = case a of
   Just Ag.Maximum → "MAX(" <> b <> ")"
   Just Ag.Average → "AVG(" <> b <> ")"
   Just Ag.Sum     → "SUM(" <> b <> ")"
-  _               → "[" <> b <> " ...]"
+  _ → "[" <> b <> " ...]"

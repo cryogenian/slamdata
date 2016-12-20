@@ -20,19 +20,18 @@ module SlamData.Workspace.Deck.Component.State
   , DisplayMode(..)
   , ResponsiveSize(..)
   , Fade(..)
+  , MetaCard(..)
+  , DisplayCard
   , CardDef
   , initialDeck
   , _id
   , _name
   , _parent
-  , _modelCards
   , _displayCards
   , _activeCardIndex
+  , _pendingCardIndex
   , _presentAccessNextActionCardGuideCanceler
   , _presentAccessNextActionCardGuide
-  , _saveTrigger
-  , _runTrigger
-  , _pendingCard
   , _stateMode
   , _displayMode
   , _initialSliderX
@@ -43,30 +42,27 @@ module SlamData.Workspace.Deck.Component.State
   , _slidingTo
   , _breakers
   , _focused
-  , _additionalSources
   , _responsiveSize
   , _fadeTransition
   , _providers
-  , addCard
-  , addCard'
-  , removeCard
-  , findLastCardType
-  , findLastRealCardIndex
+  , _PendingCard
+  , _NextActionCard
+  , _ErrorCard
+  , addMetaCard
+  , findLastCardIndex
+  , findLastCard
   , findLastRealCard
-  , findErrorCardIndex
-  , addPendingCard
-  , removePendingCard
-  , variablesCards
   , fromModel
   , cardIndexFromCoord
   , cardCoordFromIndex
-  , activeCardCoord
-  , activeCardType
-  , prevCard
+  , activeCard
+  , activeCardIndex
+  , prevCardCoord
   , eqCoordModel
+  , eqDisplayCard
   , compareCoordCards
   , coordModelToCoord
-  , defaultActiveIndex
+  , updateDisplayCards
   ) where
 
 import SlamData.Prelude
@@ -77,30 +73,22 @@ import Control.Monad.Aff (Canceler)
 import DOM.HTML.Types (HTMLElement)
 
 import Data.Array as A
-import Data.Foldable (maximum)
-import Data.Lens (Lens', lens)
-import Data.Lens as Lens
-import Data.Map as Map
-import Data.Set as Set
+import Data.Lens (Lens', lens, Prism', prism')
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
-import Halogen.Component.Utils.Debounced (DebounceTrigger)
-
-import SlamData.Effects (SlamDataEffects)
-import SlamData.Monad (Slam)
-
-import SlamData.Workspace.Card.CardId (CardId(..))
-import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.StateMode (StateMode(..))
-
-import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
-import SlamData.Workspace.Deck.Component.Query (Query)
-import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
 import Quasar.Advanced.Types (ProviderR)
+
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.CardType (CardType)
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
+import SlamData.Workspace.StateMode (StateMode(..))
+
+import Utils (censor)
 
 type StateP = OpaqueState State
 
@@ -117,49 +105,54 @@ data ResponsiveSize
   | XLarge
   | XXLarge
 
-derive instance eqDisplayMode ∷ Eq DisplayMode
+data MetaCard
+  = PendingCard
+  | ErrorCard String
+  | NextActionCard Port.Port
 
 data Fade
   = FadeNone
   | FadeIn
   | FadeOut
 
--- | The deck state. See the corresponding lenses for descriptions of
--- | the fields.
+derive instance eqDisplayMode ∷ Eq DisplayMode
+
+derive instance eqResponsiveSize ∷ Eq ResponsiveSize
+
+derive instance eqFade ∷ Eq Fade
+
+type CardDef =
+  { coord ∷ DeckId × CardId
+  , cardType ∷ CardType
+  }
+
+type DisplayCard = Either MetaCard CardDef
+
 type State =
   { id ∷ DeckId
   , name ∷ String
   , parent ∷ Maybe (DeckId × CardId)
-  , fresh ∷ Int
-  , modelCards ∷ Array (DeckId × Card.Model)
-  , displayCards ∷ Array (DeckId × Card.Model)
-  , cardsToLoad ∷ Set.Set (DeckId × CardId)
+  , stateMode ∷ StateMode
+  , displayMode ∷ DisplayMode
+  , displayCards ∷ Array DisplayCard
+  , pendingCardIndex ∷ Maybe Int
   , activeCardIndex ∷ Maybe Int
   , presentAccessNextActionCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
   , presentAccessNextActionCardGuide ∷ Boolean
-  , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
-  , runTrigger ∷ Maybe (DebounceTrigger Query Slam)
-  , pendingCard ∷ Maybe (DeckId × CardId)
-  , stateMode ∷ StateMode
-  , displayMode ∷ DisplayMode
   , initialSliderX ∷ Maybe Number
   , initialSliderCardWidth ∷ Maybe Number
   , sliderTransition ∷ Boolean
   , sliderTranslateX ∷ Number
   , cardElementWidth ∷ Maybe Number
   , slidingTo ∷ Maybe GripperDef
-  , breakers ∷ Array (Breaker Unit)
   , focused ∷ Boolean
   , finalized ∷ Boolean
   , deckElement ∷ Maybe HTMLElement
-  , additionalSources ∷ Map.Map (DeckId × CardId) (Set.Set AdditionalSource)
   , responsiveSize ∷ ResponsiveSize
   , fadeTransition ∷ Fade
+  , breakers ∷ Array (Breaker Unit)
   , providers ∷ Array ProviderR
   }
-
--- | A record used to represent card definitions in the deck.
-type CardDef = { id ∷ CardId, ty ∷ CT.CardType }
 
 -- | Constructs a default `State` value.
 initialDeck ∷ DeckId → State
@@ -167,32 +160,26 @@ initialDeck deckId =
   { id: deckId
   , name: ""
   , parent: Nothing
-  , fresh: 0
-  , modelCards: mempty
+  , stateMode: Loading
+  , displayMode: Normal
   , displayCards: mempty
-  , cardsToLoad: mempty
+  , pendingCardIndex: Nothing
   , activeCardIndex: Nothing
   , presentAccessNextActionCardGuideCanceler: Nothing
   , presentAccessNextActionCardGuide: false
-  , saveTrigger: Nothing
-  , runTrigger: Nothing
-  , pendingCard: Nothing
-  , stateMode: Loading
-  , displayMode: Normal
   , initialSliderX: Nothing
   , initialSliderCardWidth: Nothing
   , sliderTransition: false
   , sliderTranslateX: 0.0
   , cardElementWidth: Nothing
   , slidingTo: Nothing
-  , breakers: mempty
   , focused: false
   , finalized: false
   , deckElement: Nothing
-  , additionalSources: mempty
   , responsiveSize: XLarge
   , fadeTransition: FadeNone
-  , providers: []
+  , breakers: mempty
+  , providers: mempty
   }
 
 -- | The unique identifier of the deck.
@@ -208,14 +195,6 @@ _name = lens _.name _{name = _}
 _parent ∷ ∀ a r. Lens' {parent ∷ a|r} a
 _parent = lens _.parent _{parent = _}
 
--- | A counter used to generate `CardId` values. This should be a monotonically increasing value
-_fresh ∷ ∀ a r. Lens' {fresh ∷ a|r} a
-_fresh = lens _.fresh _{fresh = _}
-
--- | The list of cards currently in the deck.
-_modelCards ∷ ∀ a r. Lens' {modelCards ∷ a |r} a
-_modelCards = lens _.modelCards _{modelCards = _}
-
 -- | The list of cards to be displayed in the deck
 _displayCards ∷ ∀ a r. Lens' {displayCards ∷ a |r} a
 _displayCards = lens _.displayCards _{displayCards = _}
@@ -225,6 +204,11 @@ _displayCards = lens _.displayCards _{displayCards = _}
 _activeCardIndex ∷ ∀ a r. Lens' {activeCardIndex ∷ a |r} a
 _activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
 
+-- | The index for the currently pending card. `Nothing` indicates no cards
+-- | are pending.
+_pendingCardIndex ∷ ∀ a r. Lens' {pendingCardIndex ∷ a |r} a
+_pendingCardIndex = lens _.pendingCardIndex _{pendingCardIndex = _}
+
 -- | An optional canceler for the delayed guiding of the user to add a card. Can
 -- | be used to reset the delay of this guiding.
 _presentAccessNextActionCardGuideCanceler ∷ ∀ a r. Lens' {presentAccessNextActionCardGuideCanceler ∷ a |r} a
@@ -233,18 +217,6 @@ _presentAccessNextActionCardGuideCanceler = lens _.presentAccessNextActionCardGu
 -- | Whether the add card guide should be presented or not.
 _presentAccessNextActionCardGuide ∷ ∀ a r. Lens' {presentAccessNextActionCardGuide ∷ a |r} a
 _presentAccessNextActionCardGuide = lens _.presentAccessNextActionCardGuide _{presentAccessNextActionCardGuide = _}
-
--- | The debounced trigger for deck save actions.
-_saveTrigger ∷ ∀ a r. Lens' {saveTrigger ∷ a|r} a
-_saveTrigger = lens _.saveTrigger _{saveTrigger = _}
-
--- | The debounced trigger for running all cards that are pending.
-_runTrigger ∷ ∀ a r. Lens' {runTrigger ∷ a|r} a
-_runTrigger = lens _.runTrigger _{runTrigger = _}
-
--- | The earliest card in the deck that needs to evaluate.
-_pendingCard ∷ ∀ a r. Lens' {pendingCard ∷ a|r} a
-_pendingCard = lens _.pendingCard _{pendingCard = _}
 
 -- | The "state mode" used to track whether the deck is ready, loading, or
 -- | if an error has occurred while loading.
@@ -286,9 +258,6 @@ _slidingTo = lens _.slidingTo _{slidingTo = _}
 _breakers ∷ ∀ a r. Lens' {breakers ∷ a|r} a
 _breakers = lens _.breakers _{breakers = _}
 
-_additionalSources ∷ ∀ a r. Lens' {additionalSources ∷ a|r} a
-_additionalSources = lens _.additionalSources _{additionalSources = _}
-
 _focused ∷ ∀ a r. Lens' {focused ∷ a|r} a
 _focused = lens _.focused _{focused = _}
 
@@ -301,135 +270,97 @@ _fadeTransition = lens _.fadeTransition _{fadeTransition = _}
 _providers ∷ ∀ a r. Lens' {providers ∷ a|r} a
 _providers = lens _.providers _{providers = _}
 
-addCard ∷ Card.AnyCardModel → State → State
-addCard card st = fst $ addCard' card st
+_NextActionCard ∷ Prism' MetaCard Port.Port
+_NextActionCard = prism' NextActionCard case _ of
+  NextActionCard a → Just a
+  _ → Nothing
 
-addCard' ∷ Card.AnyCardModel → State → State × CardId
-addCard' model st =
-  let
-    cardId = CardId st.fresh
-    newState = st
-      { fresh = st.fresh + one
-      , modelCards =
-          A.snoc st.modelCards (st.id × { cardId, model })
-      }
-  in newState × cardId
+_ErrorCard ∷ Prism' MetaCard String
+_ErrorCard = prism' ErrorCard case _ of
+  ErrorCard a → Just a
+  _ → Nothing
 
-removeCard ∷ DeckId × CardId → State → (Array (DeckId × Card.Model)) × State
-removeCard coord st =
-  Tuple displayCards.rest
-    $ removePendingCard coord
-    $ st
-      { modelCards = modelCards.init
-      , displayCards = displayCards.init
-      , activeCardIndex = Just $ max zero $ A.length displayCards.init - 1
-      }
+_PendingCard ∷ Prism' MetaCard Unit
+_PendingCard = prism' (const PendingCard) case _ of
+  PendingCard → Just unit
+  _ → Nothing
+
+addMetaCard ∷ MetaCard → State → State
+addMetaCard card state =
+  state { displayCards = A.snoc init (Left card) }
   where
-  modelCards = A.span (not ∘ eqCoordModel coord) st.modelCards
-  displayCards = A.span (not ∘ eqCoordModel coord) st.displayCards
+  init = A.filter isRight state.displayCards
 
-findLastRealCardIndex ∷ State → Maybe Int
-findLastRealCardIndex =
-  A.findLastIndex (Lens.has CID._CardId ∘ _.cardId ∘ snd)
-    ∘ _.displayCards
+findLastCardIndex ∷ State → Maybe Int
+findLastCardIndex st =
+  const (A.length st.displayCards - 1) <$> A.last st.displayCards
 
-findLastRealCard ∷ State → Maybe (DeckId × CardId)
+findLastCard ∷ State → Maybe DisplayCard
+findLastCard state =
+  A.last state.displayCards
+
+findLastRealCard ∷ State → Maybe DisplayCard
 findLastRealCard state =
-  findLastRealCardIndex state
-    >>= A.index state.displayCards
-    <#> coordModelToCoord
-
--- | Finds the type of the last card.
-findLastCardType ∷ State → Maybe CT.CardType
-findLastCardType { displayCards } = Card.modelCardType ∘ _.model ∘ snd <$> A.last displayCards
-
-findErrorCardIndex ∷ State → Maybe Int
-findErrorCardIndex =
-  A.findLastIndex ((_ == ErrorCardId) ∘ _.cardId ∘ snd) ∘ _.displayCards
-
-variablesCards ∷ State → Array (DeckId × CardId)
-variablesCards = A.mapMaybe cardTypeMatches ∘ _.modelCards
-  where
-  cardTypeMatches (deckId × { cardId, model }) =
-    case Card.modelCardType model of
-      CT.Variables → Just (deckId × cardId)
-      _ → Nothing
-
--- | Updates the stored card that is pending to run. This handles the logic of
--- | changing the pending card when a provided card appears earlier in the deck
--- | than the currently enqueued card, and if the provided card appears after
--- | the currently enqueued card the function is a no-op.
-addPendingCard ∷ (DeckId × CardId) → State → State
-addPendingCard coord st =
-  case st.pendingCard of
-    Nothing → st { pendingCard = Just coord }
-    Just oldCoord → fromMaybe st $
-      compareCoordCards coord oldCoord st.modelCards <#> eq LT <#>
-        if _ then st { pendingCard = Just coord } else st
-
-removePendingCard ∷ DeckId × CardId → State → State
-removePendingCard coord st =
-  fromMaybe st do
-    oldCoord ← st.pendingCard
-    comp ← (eq LT || eq EQ) <$> compareCoordCards coord oldCoord st.modelCards
-    pure $ st { pendingCard = Nothing }
+  A.index state.displayCards (A.length state.displayCards - 2)
 
 -- | Reconstructs a deck state from a deck model.
 fromModel
-  ∷ { id ∷ DeckId
+  ∷ { name ∷ String
     , parent ∷ Maybe (DeckId × CardId)
-    , modelCards ∷ Array (DeckId × Card.Model)
-    , name ∷ String
+    , displayCards ∷ Array DisplayCard
     }
   → State
   → State
-fromModel { id: deckId, parent, modelCards, name } state =
+fromModel { name, parent, displayCards } state =
   state
-    { id = deckId
+    { name = name
     , parent = parent
-    , modelCards = modelCards
-    , name = name
-    , activeCardIndex = Nothing
+    , displayCards = displayCards
     , displayMode = Normal
-    , displayCards = mempty
-    , fresh = fresh
+    , activeCardIndex = Nothing
     , initialSliderX = Nothing
-    , runTrigger = Nothing
-    , pendingCard = Nothing
     }
-  where
-  fresh =
-    modelCards
-      # A.filter (eq deckId ∘ fst)
-      # A.mapMaybe (Lens.preview CID._CardId ∘ _.cardId ∘ snd)
-      # maximum
-      # maybe 0 (add 1)
 
 cardIndexFromCoord ∷ DeckId × CardId → State → Maybe Int
-cardIndexFromCoord coord = A.findIndex (eqCoordModel coord) ∘ _.displayCards
-
-cardFromIndex ∷ Int → State → Maybe (DeckId × Card.Model)
-cardFromIndex i st = A.index st.displayCards i
+cardIndexFromCoord coord =
+  A.findIndex (eq (Just coord) ∘ map _.coord ∘ censor) ∘ _.displayCards
 
 cardCoordFromIndex ∷ Int → State → Maybe (DeckId × CardId)
-cardCoordFromIndex vi = map (map _.cardId) ∘ cardFromIndex vi
+cardCoordFromIndex i st =
+  A.index st.displayCards i >>= either (const Nothing) (Just ∘ _.coord)
 
-activeCardCoord ∷ State → Maybe (DeckId × CardId)
-activeCardCoord st = cardCoordFromIndex (fromMaybe 0 st.activeCardIndex) st
+activeCard ∷ State → Maybe DisplayCard
+activeCard st = A.index st.displayCards (activeCardIndex st)
 
-prevCard ∷ DeckId × CardId → State → Maybe (DeckId × Card.Model)
-prevCard coord st = do
+activeCardIndex ∷ State → Int
+activeCardIndex st =
+  case st.activeCardIndex of
+    Just ix | ix < ix' → ix
+    _ → ix'
+  where
+    len = A.length st.displayCards
+    ix' = if len <= 0 then 0 else len - 1
+
+prevCardCoord ∷ DeckId × CardId → State → Maybe (DeckId × CardId)
+prevCardCoord coord st = do
   i ← cardIndexFromCoord coord st
-  cardFromIndex (i - 1) st
-
-activeCardType ∷ State → Maybe CT.CardType
-activeCardType st =
-  Card.modelCardType ∘ _.model ∘ snd <$>
-    cardFromIndex (fromMaybe 0 st.activeCardIndex) st
+  cardCoordFromIndex (i - 1) st
 
 eqCoordModel ∷ DeckId × CardId → DeckId × Card.Model → Boolean
 eqCoordModel (deckId × cardId) (deckId' × model) =
   deckId ≡ deckId' && cardId ≡ model.cardId
+
+eqDisplayCard ∷ DisplayCard → DisplayCard → Boolean
+eqDisplayCard (Right r1) (Right r2) = r1.coord ≡ r2.coord && r1.cardType ≡ r2.cardType
+eqDisplayCard (Left l1) (Left l2) = eqMetaCard l1 l2
+eqDisplayCard _ _ = false
+
+eqMetaCard ∷ MetaCard → MetaCard → Boolean
+eqMetaCard = case _, _ of
+  PendingCard, PendingCard → true
+  ErrorCard _, ErrorCard _ → true
+  NextActionCard _, NextActionCard _ → true
+  _, _ → false
 
 compareCoordCards
   ∷ DeckId × CardId
@@ -444,9 +375,36 @@ compareCoordCards coordA coordB cards =
 coordModelToCoord ∷ DeckId × Card.Model → DeckId × CardId
 coordModelToCoord = map _.cardId
 
-defaultActiveIndex ∷ State → Int
-defaultActiveIndex st =
-  fromMaybe lastCardIndex lastRealCardIndex
+updateDisplayCards ∷ Array CardDef → Port.Port → State → State
+updateDisplayCards defs port st =
+  st
+    { displayCards = displayCards
+    , activeCardIndex = activeIndex
+    , pendingCardIndex = Nothing
+    }
   where
-  lastCardIndex = max 0 $ A.length st.displayCards - 1
-  lastRealCardIndex = findLastRealCardIndex st
+  lastIndex =
+    A.length displayCards - 1
+
+  displayCards =
+    case A.uncons defs of
+      Just { head, tail } →
+        let
+          realCards = A.mapMaybe censor st.displayCards
+          initCards = A.takeWhile (not ∘ eq head.coord ∘ _.coord) realCards
+          newCards = A.cons head tail
+          metaCard =
+            pure $ Left case port of
+              Port.CardError str → ErrorCard str
+              _ → NextActionCard port
+        in
+          (Right <$> initCards <> newCards) <> metaCard
+      Nothing →
+        [ Left (NextActionCard Port.Initial) ]
+
+  activeIndex =
+    case st.activeCardIndex, A.last displayCards of
+      Nothing, Nothing → Nothing
+      Nothing, Just (Left (ErrorCard _)) → Nothing
+      Nothing, Just _ → Just (lastIndex - 1)
+      Just ix, _ → Just ix

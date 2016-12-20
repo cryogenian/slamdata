@@ -18,7 +18,9 @@ module SlamData.Workspace.Deck.BackSide.Component where
 
 import SlamData.Prelude
 
+import Data.Array as A
 import Data.Foldable as F
+import Data.List as L
 import Data.String as Str
 
 import Halogen as H
@@ -32,21 +34,17 @@ import SlamData.Quasar.Auth (getIdToken)
 import SlamData.Render.Common as RC
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Component.CSS as CCSS
-import SlamData.Workspace.Card.Draftboard.Pane (Pane)
+import SlamData.Workspace.Deck.Component.State (CardDef)
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Model (Deck)
-
+import SlamData.Workspace.Eval.Persistence as P
 
 data Query a
   = UpdateFilter String a
   | DoAction BackAction a
-  | UpdateCardType (Maybe CT.CardType) (Array CT.CardType) a
+  | UpdateCard (Maybe CardDef) (Array CardDef) a
   | Init a
-  -- TODO: this is a bit of a hack, we probably instead want a way of
-  -- customising the available and enabled actions based on card type & state
-  -- in the long run -gb
-  | SetUnwrappable (Maybe DeckLayout) a
 
 data BackAction
   = Trash
@@ -57,7 +55,7 @@ data BackAction
   | DeleteDeck
   | Mirror
   | Wrap
-  | Unwrap DeckLayout
+  | Unwrap
   | Share
   | Unshare
 
@@ -76,29 +74,31 @@ allBackActions state =
     , DeleteDeck
     , Mirror
     , Wrap
+    , Unwrap
     ]
-  ⊕ (guard (state.activeCardType == Just CT.Draftboard)
-     *> maybe [] (\ds → [ Unwrap ds ]) state.unwrappableDecks)
 
-type DeckLayout = Pane (Maybe (DeckId × Deck))
+type BackSideOptions =
+  { deckId ∷ DeckId
+  , cursor ∷ L.List DeckId
+  }
 
 type State =
   { filterString ∷ String
-  , activeCardType ∷ Maybe CT.CardType
-  , cardTypes ∷ Array CT.CardType
+  , activeCard ∷ Maybe CardDef
+  , cardDefs ∷ Array CardDef
   , saved ∷ Boolean
   , isLogged ∷ Boolean
-  , unwrappableDecks ∷ Maybe DeckLayout
+  , unwrappable ∷ Boolean
   }
 
 initialState ∷ State
 initialState =
   { filterString: ""
-  , activeCardType: Nothing
-  , cardTypes: mempty
+  , activeCard: Nothing
+  , cardDefs: mempty
   , saved: false
   , isLogged: false
-  , unwrappableDecks: Nothing
+  , unwrappable: false
   }
 
 labelAction ∷ BackAction → String
@@ -111,17 +111,15 @@ labelAction = case _ of
   DeleteDeck → "Delete deck"
   Mirror → "Mirror"
   Wrap → "Wrap"
-  Unwrap _ → "Collapse board"
+  Unwrap → "Collapse"
   Unshare → "Unshare deck"
 
 actionEnabled ∷ State → BackAction → Boolean
 actionEnabled st a =
-  case st.activeCardType, a of
-    Just CT.ErrorCard, Trash → false
-    Just CT.NextAction, Trash → false
+  case st.activeCard, a of
     Nothing, Trash → false
-    _, Unwrap _ → isJust st.unwrappableDecks
-    _, Mirror | F.elem CT.Draftboard st.cardTypes → false
+    _, Unwrap → st.unwrappable
+    _, Mirror | F.elem CT.Draftboard (_.cardType <$> st.cardDefs) → false
     _, _ → true
 
 actionGlyph ∷ BackAction → HTML
@@ -134,23 +132,23 @@ actionGlyph = case _ of
   Publish → HH.img [ HP.src "img/cardAndDeckActions/publishDeck.svg" ]
   Mirror → HH.img [ HP.src "img/cardAndDeckActions/mirrorDeck.svg" ]
   Wrap → HH.img [ HP.src "img/cardAndDeckActions/wrapDeck.svg" ]
-  Unwrap _ → HH.img [ HP.src "img/cardAndDeckActions/unwrapDeck.svg" ]
+  Unwrap → HH.img [ HP.src "img/cardAndDeckActions/unwrapDeck.svg" ]
   DeleteDeck → HH.img [ HP.src "img/cardAndDeckActions/deleteDeck.svg" ]
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
 
-comp ∷ H.Component State Query Slam
-comp =
+comp ∷ BackSideOptions → H.Component State Query Slam
+comp opts =
   H.lifecycleComponent
-    { render
-    , eval
+    { render: render opts
+    , eval: eval opts
     , finalizer: Nothing
     , initializer: Just (H.action Init)
     }
 
-render ∷ State → HTML
-render state =
+render ∷ BackSideOptions → State → HTML
+render opts state =
   -- Extra div for consistent targetting with next action card styles
   HH.div_
     [ HH.div
@@ -207,14 +205,40 @@ render state =
       lbl = labelAction action ⊕ if enabled then "" else " disabled"
       icon = actionGlyph action
 
-eval ∷ Query ~> DSL
-eval (DoAction _ next) = pure next
-eval (UpdateFilter str next) =
-  H.modify (_ { filterString = str }) $> next
-eval (UpdateCardType cty ctys next) =
-  H.modify (_ { activeCardType = cty, cardTypes = ctys, unwrappableDecks = Nothing }) $> next
-eval (Init next) = next <$ do
-  isLogged ← map isJust $ H.liftH getIdToken
-  H.modify (_ { isLogged = isLogged })
-eval (SetUnwrappable decks next) =
-  H.modify (_ { unwrappableDecks = decks }) $> next
+eval ∷ BackSideOptions → Query ~> DSL
+eval opts = case _ of
+  DoAction _ next →
+    pure next
+  UpdateFilter str next → do
+    H.modify _ { filterString = str }
+    pure next
+  UpdateCard card defs next → do
+    uw ← fromMaybe false <$> traverse (unwrappable opts) card
+    H.modify _
+      { activeCard = card
+      , cardDefs = defs
+      , unwrappable = uw
+      }
+    pure next
+  Init next → do
+    isLogged ← isJust <$> H.liftH getIdToken
+    H.modify _ { isLogged = isLogged }
+    pure next
+
+unwrappable ∷ BackSideOptions → CardDef → DSL Boolean
+unwrappable { cursor, deckId } { coord } = do
+  deck ← _.model <$> H.liftH (P.getDeck' deckId)
+  card ← map _.value.model.model <$> H.liftH (P.getCard coord)
+  let
+    deckIds = CM.childDeckIds <$> card
+    len = A.length deck.mirror + A.length deck.cards
+  pure case cursor of
+    L.Nil → do
+      case len, deckIds of
+        1, Just (childId L.: L.Nil) → true
+        _, _ → false
+    parentId L.: L.Nil → do
+      case len of
+        1 → true
+        _ → false
+    _ → false

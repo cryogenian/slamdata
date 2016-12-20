@@ -17,15 +17,10 @@ limitations under the License.
 module SlamData.Workspace.Component.State
   ( State
   , initialState
-  , _accessType
-  , _loaded
-  , _version
-  , _initialDeckId
+  , _deckId
   , _stateMode
   , _cardGuideStep
   , _flipGuideStep
-  , _lastVarMaps
-  , _dirtyVarMaps
   , cardGuideStepNext
   , flipGuideStepNext
   ) where
@@ -33,66 +28,36 @@ module SlamData.Workspace.Component.State
 import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
-import Data.Map as Map
 
-import SlamData.Workspace.AccessType (AccessType(..))
-import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.StateMode (StateMode(..))
 
 type State =
-  { accessType ∷ AccessType
-  , loaded ∷ Boolean
-  , version ∷ Maybe String
-  , initialDeckId ∷ Maybe DeckId
+  { deckId ∷ Maybe DeckId
   , stateMode ∷ StateMode
   , cardGuideStep ∷ Maybe Int
   , flipGuideStep ∷ Maybe Int
-  , lastVarMaps ∷ Map.Map DeckId Port.URLVarMap
-  , dirtyVarMaps ∷ Boolean
   }
 
-initialState ∷ Maybe String → State
-initialState version =
-  { accessType: Editable
-  , loaded: false
-  , version
-  , initialDeckId: Nothing
+initialState ∷ State
+initialState =
+  { deckId: Nothing
   , stateMode: Loading
   , cardGuideStep: Nothing
   , flipGuideStep: Nothing
-  , lastVarMaps: Map.empty
-  , dirtyVarMaps: false
   }
 
-_accessType ∷ ∀ a r. Lens' {accessType ∷ a|r} a
-_accessType = lens _.accessType _{accessType = _}
-
-_loaded ∷ ∀ a r. Lens' {loaded ∷ a|r} a
-_loaded = lens _.loaded _{loaded = _}
-
-_version ∷ ∀ a r. Lens' {version ∷ a|r} a
-_version = lens _.version _{version = _}
-
--- | This is only used while the workspace and initial deck are created, after
--- | that the value is irrelevant.
-_initialDeckId ∷ ∀ a r. Lens' {initialDeckId ∷ a|r} a
-_initialDeckId = lens _.initialDeckId _{initialDeckId = _}
+_deckId ∷ ∀ a r. Lens' { deckId ∷ a | r } a
+_deckId = lens _.deckId _ { deckId = _ }
 
 _stateMode ∷ Lens' State StateMode
-_stateMode = lens _.stateMode _{stateMode = _}
+_stateMode = lens _.stateMode _ { stateMode = _ }
 
 _cardGuideStep ∷ Lens' State (Maybe Int)
-_cardGuideStep = lens _.cardGuideStep _{cardGuideStep = _}
+_cardGuideStep = lens _.cardGuideStep _ { cardGuideStep = _ }
 
 _flipGuideStep ∷ Lens' State (Maybe Int)
-_flipGuideStep = lens _.flipGuideStep _{flipGuideStep = _}
-
-_lastVarMaps ∷ Lens' State (Map.Map DeckId Port.URLVarMap)
-_lastVarMaps = lens _.lastVarMaps _{lastVarMaps = _}
-
-_dirtyVarMaps ∷ Lens' State Boolean
-_dirtyVarMaps = lens _.dirtyVarMaps _{dirtyVarMaps = _}
+_flipGuideStep = lens _.flipGuideStep _ { flipGuideStep = _ }
 
 cardGuideStepNext ∷ State → State
 cardGuideStepNext st = st { cardGuideStep = add 1 <$> st.cardGuideStep }

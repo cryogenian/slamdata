@@ -21,6 +21,9 @@ module SlamData.Workspace.Card.BuildChart.Bar.Eval
 
 import SlamData.Prelude
 
+import Control.Monad.State (class MonadState)
+import Control.Monad.Throw (class MonadThrow)
+
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Map as M
@@ -32,10 +35,7 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Bar.Model (Model, BarR)
@@ -46,23 +46,20 @@ import SlamData.Workspace.Card.BuildChart.Axis as Ax
 import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.BuildChart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
 
 eval
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ Model
-  → FilePath
-  → Axes
-  → CET.CardEvalT m Port.Port
-eval Nothing _ _ =
-  QE.throw "Please select axis to aggregate"
-eval (Just conf) resource axes = do
-  records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildBar conf records axes) Bar
-
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ Port.TaggedResourcePort
+  → Model
+  → m Port.Port
+eval = BCE.buildChartEval Bar buildBar
 
 type BarSeries =
   { name ∷ Maybe String
@@ -146,8 +143,8 @@ buildBarData r records = series
      }]
 
 
-buildBar ∷ BarR → JArray → Axes → DSL OptionI
-buildBar r records axes = do
+buildBar ∷ Axes → BarR → JArray → DSL OptionI
+buildBar axes r records = do
   E.tooltip E.triggerAxis
 
   E.colors colors

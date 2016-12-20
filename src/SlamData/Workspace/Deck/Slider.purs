@@ -28,6 +28,7 @@ import Data.Array as Array
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
+import Data.List ((:))
 import Data.String as String
 import Data.Tuple as Tuple
 
@@ -45,12 +46,14 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import SlamData.Render.CSS as ClassNames
 import SlamData.Guide as Guide
 import SlamData.Workspace.AccessType as AT
-import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component as CardC
+import SlamData.Workspace.Card.Component.CSS as CardCSS
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Factory as Factory
-import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Next.Component as Next
+import SlamData.Workspace.Card.Error.Component as Error
+import SlamData.Workspace.Card.Pending.Component as Pending
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
@@ -58,7 +61,6 @@ import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckId as DeckId
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
@@ -72,7 +74,7 @@ render opts deckComponent st visible =
      , HP.classes [ ClassNames.cardSlider ]
      , HE.onTransitionEnd $ HE.input_ DCQ.StopSliderTransition
      , style do
-         cardSliderTransformCSS (fromMaybe 0 st.activeCardIndex) st.sliderTranslateX
+         cardSliderTransformCSS (DCS.activeCardIndex st) st.sliderTranslateX
          cardSliderTransitionCSS st.sliderTransition
      ]
      ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
@@ -160,7 +162,7 @@ offsetCardSpacing ∷ Number → Number
 offsetCardSpacing = add cardSpacingPx
 
 snapActiveCardIndex ∷ State → Int
-snapActiveCardIndex st = maybe id snap' st.initialSliderCardWidth $ fromMaybe 0 st.activeCardIndex
+snapActiveCardIndex st = maybe id snap' st.initialSliderCardWidth $ DCS.activeCardIndex st
   where
   snap' = snapActiveCardIndexByTranslationAndCardWidth st
 
@@ -172,7 +174,7 @@ startTransition = DCS._sliderTransition .~ true
 
 willChangeActiveCardWhenDropped ∷ State → Boolean
 willChangeActiveCardWhenDropped st =
-  fromMaybe 0 st.activeCardIndex ≠ snapActiveCardIndex st
+  DCS.activeCardIndex st ≠ snapActiveCardIndex st
 
 cardPositionCSS ∷ Int → CSS
 cardPositionCSS index = do
@@ -209,22 +211,21 @@ containerProperties st =
     ⊕ (guard (isJust st.initialSliderX)
          $> (HE.onMouseMove $ HE.input DCQ.UpdateSliderPosition))
 
-cardSelected ∷ State → DeckId × CardId → Boolean
-cardSelected state coord =
-  Just coord ≡ DCS.activeCardCoord state
+cardSelected ∷ State → DCS.DisplayCard → Boolean
+cardSelected state card =
+  fromMaybe true $
+    DCS.eqDisplayCard card <$> DCS.activeCard state
 
-cardPending ∷ State → DeckId × CardId → Boolean
-cardPending state coord =
-  case state.pendingCard of
-    Just pcoord →
-      case DCS.compareCoordCards coord pcoord state.modelCards of
-        Just GT → true
-        _ → false
-    _ → false
+cardPending ∷ State → DCS.DisplayCard → Boolean
+cardPending state (Left _) = false
+cardPending state (Right { coord }) =
+  case state.pendingCardIndex, DCS.cardIndexFromCoord coord state of
+    Just ix, Just ix' | ix < ix' → true
+    _, _ → false
 
-cardProperties ∷ ∀ a b. State → DeckId × CardId → Array (IProp a b)
-cardProperties state coord =
-  [ ARIA.disabled ∘ show ∘ not $ cardSelected state coord ]
+cardProperties ∷ ∀ a b. State → DCS.DisplayCard → Array (IProp a b)
+cardProperties state card =
+  [ ARIA.disabled ∘ show ∘ not $ cardSelected state card ]
 
 cardSpacingGridSquares ∷ Number
 cardSpacingGridSquares = 2.0
@@ -232,8 +233,14 @@ cardSpacingGridSquares = 2.0
 cardSpacingPx ∷ Number
 cardSpacingPx = cardSpacingGridSquares * 24.0
 
-renderCard ∷ DeckOptions → (DeckOptions → DeckComponent) → State → (DeckId × Card.Model) → Int → DeckHTML
-renderCard opts deckComponent st (deckId × card) index =
+renderCard
+  ∷ DeckOptions
+  → (DeckOptions → DeckComponent)
+  → State
+  → DCS.DisplayCard
+  → Int
+  → DeckHTML
+renderCard opts deckComponent st card index =
   HH.div
     [ HP.key key
     , HP.classes classes
@@ -241,40 +248,33 @@ renderCard opts deckComponent st (deckId × card) index =
     ]
     if opts.accessType == AT.ReadOnly
     then
-      [ HH.div
-          (cardProperties st coord)
-          [ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
+      [ HH.div (cardProperties st card) cardComponent
       , loadingPanel
       ]
     else
       Gripper.renderGrippers
-        (cardSelected st (deckId × card.cardId))
+        (cardSelected st card)
         (isJust st.initialSliderX)
-        (Gripper.gripperDefsForCard st.displayCards $ Just coord)
+        (Gripper.gripperDefsForCard st.displayCards card)
         ⊕ [ HH.div
-              (cardProperties st coord)
-              ([ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
-                ⊕ (guard presentAccessNextActionCardGuide $> renderGuide))
+              (cardProperties st card)
+              (cardComponent ⊕ (guard presentAccessNextActionCardGuide $> renderGuide))
           , loadingPanel
           ]
   where
-  key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
-  isLastRealCard = Just (deckId × card.cardId) == DCS.findLastRealCard st
-  -- st.focused shouldn't be neccessary but Defocus isn't always evaluated when deck looses focus
-  presentAccessNextActionCardGuide =
-    st.presentAccessNextActionCardGuide ∧ isLastRealCard ∧ st.focused
-  renderGuide =
-    Guide.render
-      Guide.RightArrow
-      (HH.className "sd-access-next-card-guide")
-      DCQ.HideAccessNextActionCardGuide
-      guideText
-  outputs = maybe [] ICT.outputsFor $ ICT.fromCardType (Card.modelCardType card.model)
-  guideText = guideText' ∘ String.joinWith " / " $ Array.catMaybes $ ICT.printIOType' <$> outputs
-  guideText' outputTypesString =
-    "To do more with "
-      ⊕ outputTypesString
-      ⊕ " click or drag this gripper to the left and add a new card to the deck."
+  cardComponent = pure case card of
+    Left m → renderMeta st m
+    Right cd → renderDef opts deckComponent st cd
+
+  key = case card of
+    Left DCS.PendingCard → "card-pending"
+    Left (DCS.ErrorCard _) → "card-error"
+    Left (DCS.NextActionCard _) → "card-next-action"
+    Right { coord } →
+      "card-"
+        ⊕ DeckId.toString (fst coord) ⊕ "-"
+        ⊕ CardId.toString (snd coord)
+
   classes =
     [ ClassNames.card
     , HH.className case st.fadeTransition of
@@ -283,21 +283,92 @@ renderCard opts deckComponent st (deckId × card) index =
         DCS.FadeNone → "sd-fade-none"
     ]
       ⊕ (guard (not $ isClick st.sliderTranslateX) $> ClassNames.cardSliding)
-      ⊕ (guard (cardSelected st coord) $> ClassNames.cardActive)
-      ⊕ (guard (cardPending st coord) $> ClassNames.pending)
-  coord = deckId × card.cardId
-  slotId = ChildSlot.CardSlot coord
-  cardOpts =
-    { deck: opts
-    , deckComponent
-    , cardId: card.cardId
-    , deckId: deckId
-    }
+      ⊕ (guard (cardSelected st card) $> ClassNames.cardActive)
+      ⊕ (guard (cardPending st card) $> ClassNames.pending)
 
-  cardComponent =
-    { component: Factory.cardComponent st.id card cardOpts
-    , initialState: H.parentState CardC.initialCardState
-    }
+  renderGuide =
+    Guide.render
+      Guide.RightArrow
+      (HH.className "sd-access-next-card-guide")
+      DCQ.HideAccessNextActionCardGuide
+      guideText
+
+  outputs = case card of
+    Right { cardType } → ICT.outputsFor (ICT.fromCardType cardType)
+    _ → []
+
+  guideText =
+    outputs
+      # map ICT.printIOType'
+      # Array.catMaybes
+      # String.joinWith " ? "
+      # guideText'
+
+  guideText' outputTypesString =
+    "To do more with "
+      ⊕ outputTypesString
+      ⊕ " click or drag this gripper to the left and add a new card to the deck."
+
+  isLastCard =
+    fromMaybe false $
+      DCS.eqDisplayCard card <$> DCS.findLastRealCard st
+
+  presentAccessNextActionCardGuide =
+    st.presentAccessNextActionCardGuide ∧ isLastCard ∧ st.focused
+
+renderMeta
+  ∷ State
+  → DCS.MetaCard
+  → DeckHTML
+renderMeta st card =
+  HH.div
+    [ HP.classes [ CardCSS.deckCard ] ]
+    [ case card of
+        DCS.PendingCard →
+          HH.div
+            [ HP.classes [ HH.className "sd-card-pending" ] ]
+            [ HH.slot' ChildSlot.cpPending unit \_ →
+                { component: Pending.pendingCardComponent
+                , initialState: Pending.initialState
+                }
+            ]
+        DCS.ErrorCard message →
+          HH.div
+            [ HP.classes [ HH.className "sd-card-error" ] ]
+            [ HH.slot' ChildSlot.cpError unit \_ →
+                { component: Error.errorCardComponent
+                , initialState: { message }
+                }
+            ]
+        DCS.NextActionCard input →
+          HH.div
+            [ HP.classes [ HH.className "sd-card-next-action" ] ]
+            [ HH.slot' ChildSlot.cpNext unit \_ →
+                { component: Next.nextCardComponent
+                , initialState: H.parentState (Next.initialState input)
+                }
+            ]
+    ]
+
+renderDef
+  ∷ DeckOptions
+  → (DeckOptions → DeckComponent)
+  → State
+  → DCS.CardDef
+  → DeckHTML
+renderDef opts deckComponent st card =
+  HH.slot' ChildSlot.cpCard card.coord \_ →
+    let
+      cardOpts =
+        { deck: opts
+        , deckComponent
+        , cursor: st.id : opts.cursor
+        , coord: card.coord
+        }
+    in
+      { component: Factory.cardComponent card.cardType cardOpts
+      , initialState: H.parentState CardC.initialCardState
+      }
 
 loadingPanel ∷ DeckHTML
 loadingPanel =
@@ -307,4 +378,4 @@ loadingPanel =
         [ HH.i_ []
         , HH.span_ [ HH.text "Please wait while this card is evaluated" ]
         ]
-    ]
+  ]

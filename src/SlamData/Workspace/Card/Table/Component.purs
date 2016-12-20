@@ -22,6 +22,9 @@ module SlamData.Workspace.Card.Table.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Except.Trans as ET
+import Control.Monad.Error.Class as EC
+
 import Data.Argonaut.Core as JSON
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
@@ -32,9 +35,7 @@ import SlamData.Monad (Slam)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Table.Component.Query (QueryP, PageStep(..), Query(..))
@@ -44,10 +45,11 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = H.ComponentDSL JTS.State QueryP Slam
 
-tableComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-tableComponent =
+tableComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+tableComponent options =
   CC.makeCardComponent
-    { cardType: CT.Table
+    { options
+    , cardType: CT.Table
     , component: H.component { render, eval: evalCard ⨁ evalTable }
     , initialState: JTS.initialState
     , _State: CC._TableState
@@ -57,9 +59,6 @@ tableComponent =
 -- | Evaluates generic card queries.
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
-  CC.EvalCard info output next → do
-    for_ info.input $ CEQ.runCardEvalT_ ∘ runTable
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -71,10 +70,17 @@ evalCard = case _ of
       Card.Table model → H.set $ JTS.fromModel model
       _ → pure unit
     pure next
-  CC.SetDimensions dims next → do
+  CC.ReceiveInput input next → do
+    ET.runExceptT (runTable input)
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions dims next → do
     H.modify
       $ JTS._levelOfDetails
-      .~ if dims.width < 336.0 ∨ dims.height < 240.0
+      .~ if dims.width < 360.0 ∨ dims.height < 240.0
            then Low
            else High
     pure next
@@ -85,25 +91,25 @@ evalCard = case _ of
 
 runTable
   ∷ Port.Port
-  → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
+  → ET.ExceptT QE.QError (H.ComponentDSL JTS.State QueryP Slam) Unit
 runTable = case _ of
   Port.TaggedResource trp → updateTable trp
   _ → QE.throw "Expected a TaggedResource input"
 
 updateTable
   ∷ Port.TaggedResourcePort
-  → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
-updateTable { resource, tag, axes, varMap } = do
+  → ET.ExceptT QE.QError (H.ComponentDSL JTS.State QueryP Slam) Unit
+updateTable { resource, tag, varMap } = do
   oldInput ← lift $ H.gets _.input
   when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
     $ lift $ resetState
 
-  size ← CET.liftQ $ Quasar.count resource
+  size ← liftQ $ Quasar.count resource
 
-  lift $ H.modify $ JTS._input ?~ { resource, size, tag, axes, varMap }
+  lift $ H.modify $ JTS._input ?~ { resource, size, tag, varMap }
   p ← lift $ H.gets JTS.pendingPageInfo
 
-  items ← CET.liftQ $
+  items ← liftQ $
     Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
 
   lift
@@ -114,6 +120,13 @@ updateTable { resource, tag, axes, varMap } = do
          , page: p.page
          , pageSize: p.pageSize
          })
+
+liftQ
+  ∷ ∀ m a
+  . (EC.MonadError QE.QError m)
+  ⇒ m (Either QE.QError a)
+  → m a
+liftQ m = either EC.throwError pure =<< m
 
 -- | Resets the state while preserving settings like page size.
 resetState ∷ DSL Unit
@@ -142,6 +155,6 @@ evalTable = case _ of
 refresh ∷ DSL Unit
 refresh = do
   input ← H.gets _.input
-  for_ input \ {resource, tag, axes, varMap} →
-    CEQ.runCardEvalT_ $ updateTable {resource, tag, axes, varMap}
+  for_ input \ {resource, tag, varMap} →
+    void $ ET.runExceptT $ updateTable {resource, tag, varMap}
   CC.raiseUpdatedC' CC.StateOnlyUpdate

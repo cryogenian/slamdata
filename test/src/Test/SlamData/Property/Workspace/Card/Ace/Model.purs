@@ -7,7 +7,6 @@ module Test.SlamData.Property.Workspace.Card.Ace.Model
 import Prelude
 
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
 import SlamData.Workspace.Card.Ace.Model as M
 import Utils.Ace (RangeRec)
 
@@ -35,14 +34,10 @@ runArbModel (ArbModel m) = m
 
 instance arbitraryArbModel ∷ Arbitrary ArbModel where
   arbitrary = do
-    isNothing_ ← arbitrary
-    if isNothing_
-      then pure $ ArbModel Nothing
-      else do
-      r ← { text: _, ranges: _ }
-          <$> arbitrary
-          <*> (map (map runArbRangeRec) arbitrary)
-      pure $ ArbModel $ Just r
+    r ← { text: _, ranges: _ }
+        <$> arbitrary
+        <*> (map (map runArbRangeRec) arbitrary)
+    pure $ ArbModel r
 
 check ∷ forall eff. SC eff Unit
 check = quickCheck $ runArbModel >>> \m →

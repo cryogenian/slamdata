@@ -24,7 +24,7 @@ import Halogen as H
 
 import SlamData.ActionList.Component as ActionList
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Next.Component.Query (QueryC)
+import SlamData.Workspace.Card.Next.Component.Query (Query)
 import SlamData.Workspace.Card.Next.NextAction (NextAction)
 import SlamData.Workspace.Card.Port (Port)
 
@@ -32,21 +32,21 @@ type StateP =
   H.ParentState
     State
     (ActionList.State NextAction)
-    QueryC
+    Query
     (ActionList.Query NextAction)
     Slam
     Unit
 
 type State =
-  { input ∷ Maybe Port
+  { input ∷ Port
   , presentAddCardGuide ∷ Boolean
   }
 
-initialState ∷ State
-initialState =
-  { input: Nothing
-  , presentAddCardGuide: false
-  }
+initialState ∷ Port → State
+initialState input =
+    { input
+    , presentAddCardGuide: false
+    }
 
 _input ∷ ∀ a r. Lens' { input ∷ a | r } a
 _input = lens _.input (_ { input = _ })

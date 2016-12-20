@@ -21,7 +21,6 @@ module SlamData.Workspace.Card.BuildChart.Pie.Component
 import SlamData.Prelude
 
 import Data.Lens ((^?), (^.), (.~), (?~))
-import Data.Lens as Lens
 import Data.List as List
 
 import Halogen as H
@@ -32,7 +31,6 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
@@ -49,6 +47,7 @@ import SlamData.Workspace.Card.BuildChart.Pie.Component.ChildSlot as CS
 import SlamData.Workspace.Card.BuildChart.Pie.Component.State as ST
 import SlamData.Workspace.Card.BuildChart.Pie.Component.Query as Q
 import SlamData.Workspace.Card.BuildChart.Pie.Model as M
+import SlamData.Workspace.Card.Eval.State (_Axes)
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -56,9 +55,10 @@ type DSL =
 type HTML =
   H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
 
-pieBuilderComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-pieBuilderComponent = CC.makeCardComponent
-  { cardType: CT.ChartOptions CHT.Pie
+pieBuilderComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+pieBuilderComponent options = CC.makeCardComponent
+  { options
+  , cardType: CT.ChartOptions CHT.Pie
   , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   , initialState: H.parentState ST.initialState
   , _State: CC._BuildPieState
@@ -165,11 +165,6 @@ eval = cardEval ⨁ chartEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
-  CC.EvalCard info output next → do
-    for_ (info.input ^? Lens._Just ∘ Port._ResourceAxes) \axes → do
-      H.modify _{axes = axes}
-      synchronizeChildren
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -193,7 +188,16 @@ cardEval = case _ of
     pure next
   CC.Load card next →
     pure next
-  CC.SetDimensions dims next → do
+  CC.ReceiveInput _ next →
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState evalState next → do
+    for_ (evalState ^? _Axes) \axes → do
+      H.modify _{axes = axes}
+      synchronizeChildren
+    pure next
+  CC.ReceiveDimensions dims next → do
     H.modify
       _{levelOfDetails =
            if dims.width < 576.0 ∨ dims.height < 416.0

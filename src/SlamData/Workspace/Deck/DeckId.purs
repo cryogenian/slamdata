@@ -16,62 +16,47 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.DeckId
   ( DeckId
-  , stringToDeckId
-  , deckIdToString
-  , freshDeckId
+  , make
+  , fromString
+  , fromString'
+  , toString
   ) where
 
 import SlamData.Prelude
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Random as Rand
-import Data.String as S
-import Data.String.Regex as Rx
-import Data.String.Regex.Flags as RXF
 
+import Control.Monad.Eff.Class (class MonadEff)
+import Control.Monad.Eff.Random as Random
+import Data.UUID.Random as UUID
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
 import Test.StrongCheck.Arbitrary as SC
-import Test.StrongCheck.Gen as Gen
 
-newtype DeckId = DeckId String
+newtype DeckId = DeckId UUID.UUIDv4
 
-instance arbitraryDeckId ∷ SC.Arbitrary DeckId where
-  arbitrary =
-    DeckId <$> do
-      x1 ← genString 8
-      x2 ← genString 4
-      x3 ← genString 4
-      x4 ← genString 4
-      x5 ← genString 12
-      pure $ x1 <> "-" <> x2 <> "-" <> x3 <> "-" <> x4 <> "-" <> x5
+make ∷ ∀ m eff. MonadEff (random ∷ Random.RANDOM | eff) m ⇒ m DeckId
+make = DeckId <$> UUID.make
 
-    where
-      genString n =
-        Gen.vectorOf n SC.arbitrary
-          <#> S.fromCharArray
+fromString ∷ String → Maybe DeckId
+fromString = map DeckId <<< UUID.fromString
 
-stringToDeckId ∷ String → Either String DeckId
-stringToDeckId str =
-  if Rx.test (unsafePartial fromRight $ Rx.regex "\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}" RXF.noFlags) str
-  then Right $ DeckId str
-  else Left $ "Invalid DeckId: " <> str
+fromString' ∷ String → Either String DeckId
+fromString' s = case fromString s of
+  Just d  → Right d
+  Nothing → Left $ "Invalid DeckId: " <> s
 
-deckIdToString ∷ DeckId → String
-deckIdToString (DeckId x) = x
+toString ∷ DeckId → String
+toString (DeckId u) = UUID.toString u
 
-derive instance genericDeckId ∷ Generic DeckId
 derive instance eqDeckId ∷ Eq DeckId
 derive instance ordDeckId ∷ Ord DeckId
 
 instance showDeckId ∷ Show DeckId where
-  show d = "DeckId " <> deckIdToString d
+  show d = "DeckId " <> toString d
 
 instance encodeJsonDeckId ∷ EncodeJson DeckId where
-  encodeJson (DeckId x) = encodeJson x
+  encodeJson (DeckId u) = encodeJson u
 
 instance decodeJsonDeckId ∷ DecodeJson DeckId where
-  decodeJson = map DeckId ∘ decodeJson
+  decodeJson = fromString' <=< decodeJson
 
-foreign import _generateUUID ∷ ∀ eff. Eff (random ∷ Rand.RANDOM | eff) String
-
-freshDeckId ∷ ∀ eff. Eff (random ∷ Rand.RANDOM | eff) DeckId
-freshDeckId = DeckId <$> _generateUUID
+instance arbitraryDeckId ∷ SC.Arbitrary DeckId where
+  arbitrary = DeckId <$> SC.arbitrary

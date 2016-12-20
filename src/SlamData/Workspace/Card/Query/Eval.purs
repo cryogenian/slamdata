@@ -15,84 +15,52 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Query.Eval
-  ( queryEval
+  ( evalQuery
   ) where
 
 import SlamData.Prelude
 
-import Data.StrMap as SM
-import Data.Lens (_Just, _Nothing, (^?), (.~))
-import Data.Path.Pathy as Pt
-import Data.String as Str
+import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.Throw (class MonadThrow)
+import Control.Monad.Writer.Class (class MonadTell)
 
-import Ace.Editor as Editor
-import Ace.Halogen.Component as Ace
-import Ace.Types (Completion)
+import Data.Path.Pathy as Path
 
-import Halogen (query, action, gets, request, fromEff, modify)
+import Quasar.Types (SQL)
 
-import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Ace.Component as AceCard
-import SlamData.Workspace.Card.Ace.Component.State (Status(..), _status, isNew)
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Error as QE
+import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
+import SlamData.Quasar.FS as QFS
+import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.Eval.Common (validateResources)
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
-import Utils.Ace (readOnly)
-import Utils.Completions (mkCompletion, pathCompletions)
-
-queryEval ∷ CET.CardEvalInput → AceCard.DSL Unit
-queryEval info = do
-  status ← gets _.status
-  when (isNew status) do
-    mbEditor ←
-      map join $ query unit $ request Ace.GetEditor
-
-    for_ (info.input ^? _Just ∘ Port._VarMap) \vm → do
-      addCompletions vm
-      for_ mbEditor setSelectEmpty
-
-    for_ (info.input ^? _Just ∘ Port._Resource) \r → do
-      let resParent = Pt.parentDir r
-          strPath =
-            if pure info.path ≡ resParent
-              then Pt.runFileName (Pt.fileName r)
-              else Pt.printPath r
-
-      query unit $ action $ Ace.SetText (" SELECT  *  FROM `" ⊕ strPath ⊕ "` ")
-
-      for_ mbEditor \editor → fromEff do
-        readOnly editor
-          { startRow: 0
-          , startColumn: 0
-          , endRow: 0
-          , endColumn: 8
-          }
-        readOnly editor
-          { startRow: 0
-          , startColumn: 11
-          , endRow: 0
-          , endColumn: 20 + Str.length strPath
-          }
-        Editor.navigateFileEnd editor
-
-    for_ (info.input ^? _Nothing) \_ →
-      for_ mbEditor setSelectEmpty
-
-    modify $ _status .~ Ready
-    CC.raiseUpdatedP' CC.EvalModelUpdate
-  where
-  setSelectEmpty editor = do
-    void $ query unit $ action $ Ace.SetText ("SELECT \"Hello World!\"")
-    fromEff $ Editor.navigateFileEnd editor
-
-addCompletions ∷ ∀ a. SM.StrMap a → AceCard.DSL Unit
-addCompletions vm =
-  void $ query unit $ action $ Ace.SetCompleteFn \_ _ _ inp → do
-    let compl = varMapCompletions vm
-    paths ← pathCompletions
-    pure $ compl ⊕ paths
-
-  where
-  varMapCompletions ∷ SM.StrMap a → Array Completion
-  varMapCompletions strMap =
-    SM.keys strMap <#> mkCompletion "variable" (Just ∘ append ":")
+evalQuery
+  ∷ ∀ m
+  . ( MonadAff SlamDataEffects m
+    , MonadAsk CEM.CardEnv m
+    , MonadThrow CEM.CardError m
+    , MonadTell CEM.CardLog m
+    , QuasarDSL m
+    , ParQuasarDSL m
+    )
+  ⇒ Port.VarMap
+  → SQL
+  → m Port.TaggedResourcePort
+evalQuery varMap sql = do
+  resource ← CEM.temporaryOutputResource
+  let
+    varMap' = Port.renderVarMapValue <$> varMap
+    backendPath =
+      Left $ fromMaybe Path.rootDir (Path.parentDir resource)
+  { inputs } ←
+    CEM.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
+      QQ.compile backendPath sql varMap'
+  validateResources inputs
+  CEM.addSources inputs
+  CEM.liftQ do
+    QQ.viewQuery backendPath resource sql varMap'
+    QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
+  pure { resource, tag: pure sql, varMap: Just varMap }

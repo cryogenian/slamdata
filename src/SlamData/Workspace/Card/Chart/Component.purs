@@ -54,13 +54,19 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type HTML =
   H.ParentHTML ChildState CC.CardEvalQuery ChildQuery Slam ChildSlot
+
 type DSL =
   H.ParentDSL State ChildState CC.CardEvalQuery ChildQuery Slam ChildSlot
 
-chartComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-chartComponent = CC.makeCardComponent
-  { cardType: CT.Chart
-  , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
+chartComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+chartComponent options = CC.makeCardComponent
+  { options
+  , cardType: CT.Chart
+  , component: H.parentComponent
+      { render
+      , eval
+      , peek: Just (peek ∘ H.runChildF)
+      }
   , initialState: H.parentState initialState
   , _State: CC._ChartState
   , _Query: CC.makeQueryPrism CC._ChartQuery
@@ -124,23 +130,6 @@ renderButton ct =
 
 eval ∷ CC.CardEvalQuery ~> DSL
 eval = case _ of
-  CC.EvalCard value output next → do
-    case value.input of
-      Just (ChartInstructions opts chartType) → void do
-        H.modify $ _chartType ?~ chartType
-        H.query' cpECharts unit $ H.action $ HEC.Reset opts
-        H.query' cpECharts unit $ H.action HEC.Resize
-        setEChartsLOD $ buildObj opts
-      Just (Metric metric) → void do
-        H.modify $ _chartType ?~ ChT.Metric
-        H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
-        setMetricLOD
-      Just (PivotTable r) → void do
-        H.modify $ _chartType ?~ ChT.PivotTable
-        H.query' cpPivotTable unit $ H.action $ Pivot.Update r
-      _ →
-        void $ H.query' cpECharts unit $ H.action HEC.Clear
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -160,7 +149,28 @@ eval = case _ of
         pure next
       _ →
         pure next
-  CC.SetDimensions dims next → do
+  CC.ReceiveInput input next → do
+    case input of
+      ChartInstructions r → void do
+        H.modify $ _chartType ?~ r.chartType
+        H.query' cpECharts unit $ H.action $ HEC.Reset r.options
+        H.query' cpECharts unit $ H.action HEC.Resize
+        setEChartsLOD $ buildObj r.options
+      Metric metric → void do
+        H.modify $ _chartType ?~ ChT.Metric
+        H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
+        setMetricLOD
+      PivotTable r → void do
+        H.modify $ _chartType ?~ ChT.PivotTable
+        H.query' cpPivotTable unit $ H.action $ Pivot.Update r
+      _ →
+        void $ H.query' cpECharts unit $ H.action HEC.Clear
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions dims next → do
     state ← H.get
     let
       heightPadding = 60

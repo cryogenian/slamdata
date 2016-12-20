@@ -21,6 +21,9 @@ module SlamData.Workspace.Card.BuildChart.Gauge.Eval
 
 import SlamData.Prelude
 
+import Control.Monad.State (class MonadState)
+import Control.Monad.Throw (class MonadThrow)
+
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
@@ -30,10 +33,7 @@ import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types.Phantom (OptionI)
 
-import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Gauge.Model (Model, GaugeR)
@@ -41,22 +41,20 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Gauge))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.BuildChart.Common.Positioning (RadialPosition, adjustRadialPositions)
 
-
 eval
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ Model
-  → FilePath
-  → CET.CardEvalT m Port.Port
-eval Nothing _ =
-  QE.throw "Please select axis to aggregate"
-eval (Just conf) resource = do
-  records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildGauge conf records) Gauge
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ Port.TaggedResourcePort
+  → Model
+  → m Port.Port
+eval = BCE.buildChartEval Gauge (const buildGauge)
 
 ----------------------------------------------------------------------
 -- GAUGE BUILDER

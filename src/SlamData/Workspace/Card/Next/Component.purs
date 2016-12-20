@@ -16,8 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Next.Component
  ( nextCardComponent
- , module SlamData.Workspace.Card.Next.Component.State
  , module SlamData.Workspace.Card.Next.Component.Query
+ , module SlamData.Workspace.Card.Next.Component.State
  ) where
 
 import SlamData.Prelude
@@ -33,12 +33,10 @@ import SlamData.ActionList.Component as ActionList
 import SlamData.Monad (Slam)
 import SlamData.Guide as Guide
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.InsertableCardType as ICT
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.NextAction as NA
-import SlamData.Workspace.Card.Next.Component.Query (QueryC, QueryP, Query(..), _AddCardType, _PresentReason)
-import SlamData.Workspace.Card.Next.Component.State (StateP, State)
+import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(..), _AddCardType, _PresentReason)
+import SlamData.Workspace.Card.Next.Component.State (StateP, State, initialState)
 import SlamData.Workspace.Card.Next.Component.State as State
 import SlamData.Workspace.Card.Port as Port
 
@@ -47,7 +45,7 @@ import Utils.LocalStorage as LocalStorage
 type NextHTML =
   H.ParentHTML
     (ActionList.State NA.NextAction)
-    QueryC
+    Query
     (ActionList.Query NA.NextAction)
     Slam
     Unit
@@ -56,23 +54,16 @@ type NextDSL =
   H.ParentDSL
     State
     (ActionList.State NA.NextAction)
-    QueryC
+    Query
     (ActionList.Query NA.NextAction)
     Slam
     Unit
 
-nextCardComponent ∷ CC.CardComponent
-nextCardComponent = CC.makeCardComponent
-  { cardType: CT.NextAction
-  , component:
-      H.parentComponent
-        { render: render
-        , peek: Just (peek ∘ H.runChildF)
-        , eval: eval
-        }
-  , initialState: H.parentState State.initialState
-  , _State: CC._NextState
-  , _Query: CC.makeQueryPrism' CC._NextQuery
+nextCardComponent ∷ H.Component StateP QueryP Slam
+nextCardComponent = H.parentComponent
+  { render
+  , eval
+  , peek: Just (peek ∘ H.runChildF)
   }
 
 render ∷ State → NextHTML
@@ -82,67 +73,41 @@ render state =
         Guide.render
           Guide.DownArrow
           (HH.className "sd-add-card-guide")
-          (right ∘ DismissAddCardGuide)
+          (DismissAddCardGuide)
           (addCardGuideText state.input))
     ⊕ [ HH.slot' cpI unit \_ →
         { component: ActionList.comp
-        , initialState: ActionList.initialState
+        , initialState: ActionList.initialState (NA.fromPort state.input)
         }
       ]
   where
-  addCardGuideTextEmptyDeck = "To get this deck started press one of these buttons to add a card."
-  addCardGuideTextNonEmptyDeck = "To do more with this deck press one of these buttons to add a card."
-  addCardGuideText = maybe addCardGuideTextEmptyDeck (const addCardGuideTextNonEmptyDeck)
+  addCardGuideText = case _ of
+    Port.Initial → "To get this deck started press one of these buttons to add a card."
+    _            → "To do more with this deck press one of these buttons to add a card."
 
-eval ∷ QueryC ~> NextDSL
-eval = coproduct cardEval nextEval
-
-cardEval ∷ CC.CardEvalQuery ~> NextDSL
-cardEval = case _ of
-  CC.EvalCard value output next → do
-    H.modify $ State._input .~ value.input
-    updateActions value.input
-    pure next
-  CC.Activate next →
-    (updateActions =<< H.gets _.input) $> next
-  CC.Deactivate next →
-    pure next
-  CC.Save k →
-    pure $ k Card.NextAction
-  CC.Load _ next →
-    pure next
-  CC.SetDimensions _ next →
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
-
-updateActions ∷ Maybe Port.Port → NextDSL Unit
+updateActions ∷ Port.Port → NextDSL Unit
 updateActions =
   void
     ∘ H.query' cpI unit
     ∘ H.action
     ∘ ActionList.UpdateActions
-    ∘ NA.fromMaybePort
+    ∘ NA.fromPort
 
-takesInput ∷ Maybe Port.Port → CT.CardType → Boolean
+takesInput ∷ Port.Port → CT.CardType → Boolean
 takesInput input =
-  maybe false (ICT.takesInput $ ICT.fromMaybePort input) ∘ ICT.fromCardType
+  ICT.takesInput (ICT.fromPort input) ∘ ICT.fromCardType
 
-possibleToGetTo ∷ Maybe Port.Port → CT.CardType → Boolean
+possibleToGetTo ∷ Port.Port → CT.CardType → Boolean
 possibleToGetTo input =
-  maybe false (ICT.possibleToGetTo $ ICT.fromMaybePort input) ∘ ICT.fromCardType
+  ICT.possibleToGetTo (ICT.fromPort input) ∘ ICT.fromCardType
 
 dismissedAddCardGuideKey ∷ String
 dismissedAddCardGuideKey = "dismissedAddCardGuide"
 
 getDismissedAddCardGuideBefore ∷ NextDSL Boolean
 getDismissedAddCardGuideBefore =
-  H.liftH
-    $ H.liftH
-    $ either (const $ false) id
-    <$> LocalStorage.getLocalStorage dismissedAddCardGuideKey
+  H.liftH $ H.liftH $ either (const $ false) id <$>
+    LocalStorage.getLocalStorage dismissedAddCardGuideKey
 
 storeDismissedAddCardGuide ∷ NextDSL Unit
 storeDismissedAddCardGuide =
@@ -153,15 +118,17 @@ dismissAddCardGuide =
   H.modify (State._presentAddCardGuide .~ false)
     *> storeDismissedAddCardGuide
 
-nextEval ∷ Query ~> NextDSL
-nextEval (AddCard _ next) = dismissAddCardGuide $> next
-nextEval (PresentReason input cardType next) = pure next
-nextEval (DismissAddCardGuide next) = dismissAddCardGuide $> next
-nextEval (PresentAddCardGuide next) =
-  (H.modify
-     ∘ (State._presentAddCardGuide .~ _)
-     ∘ not =<< getDismissedAddCardGuideBefore)
-     $> next
+eval ∷ Query ~> NextDSL
+eval = case _ of
+  UpdateInput input next → updateActions input $> next
+  AddCard _ next → dismissAddCardGuide $> next
+  PresentReason input cardType next → pure next
+  DismissAddCardGuide next → dismissAddCardGuide $> next
+  PresentAddCardGuide next →
+    (H.modify
+       ∘ (State._presentAddCardGuide .~ _)
+       ∘ not =<< getDismissedAddCardGuideBefore)
+       $> next
 
 peek ∷ ∀ a. ActionList.Query NA.NextAction a → NextDSL Unit
 peek = case _ of
@@ -174,8 +141,8 @@ peek = case _ of
       ActionList.Do _ _ _ _ nextAction →
         case nextAction of
           NA.Insert cardType →
-            HU.raise' $ right $ H.action $ AddCard cardType
+            HU.raise' $ H.action $ AddCard cardType
           NA.FindOutHowToInsert cardType → do
             input ← H.gets _.input
-            HU.raise' $ right $ H.action $ PresentReason input cardType
+            HU.raise' $ H.action $ PresentReason input cardType
   _ → pure unit

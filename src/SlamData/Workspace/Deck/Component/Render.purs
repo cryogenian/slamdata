@@ -22,6 +22,7 @@ module SlamData.Workspace.Deck.Component.Render
 
 import SlamData.Prelude
 
+import Data.Array as A
 import Data.List as L
 
 import Halogen as H
@@ -37,13 +38,12 @@ import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML)
+import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpDialog)
 import SlamData.Workspace.Deck.Component.CSS as CSS
-import SlamData.Workspace.Deck.Component.ChildSlot (cpIndicator, cpBackSide, cpDialog)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..))
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
-import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Slider as Slider
 
 import Quasar.Advanced.Types (ProviderR)
@@ -82,7 +82,7 @@ renderDeck opts deckComponent st =
               then HEH.stopPropagation *> pure (Just (Defocus ev unit))
               else pure Nothing
         ]
-        $ frameElements opts ⊕ [ renderName st.name ]
+        $ frameElements opts st ⊕ [ renderName st.name ]
     , HH.div
         [ HP.class_ CSS.deck
         , HP.key "deck"
@@ -107,7 +107,7 @@ renderDeck opts deckComponent st =
       [ HP.classes $ [CSS.cardSlider] ⊕ (guard (not visible) $> CSS.invisible)
       , ARIA.hidden $ show $ not visible
       ]
-      [ backside ]
+      [ backside opts st ]
 
 deckClasses ∷ ∀ r. DCS.State → Array (HP.IProp (HP.InteractiveEvents (HP.GlobalProperties r)) (Query Unit))
 deckClasses st =
@@ -130,25 +130,25 @@ renderName name =
     [ HP.class_ CSS.deckName ]
     [ HH.text name ]
 
-frameElements ∷ DeckOptions → Array DeckHTML
-frameElements { accessType, cursor }
+frameElements ∷ DeckOptions → DCS.State → Array DeckHTML
+frameElements { accessType, cursor } st
   | accessType ≡ AT.ReadOnly = mempty
-  | L.null cursor = rootFrameElements
-  | otherwise = childFrameElements
+  | L.null cursor = rootFrameElements st
+  | otherwise = childFrameElements st
 
-rootFrameElements ∷ Array DeckHTML
-rootFrameElements =
+rootFrameElements ∷ DCS.State → Array DeckHTML
+rootFrameElements st =
   [ zoomOutButton
   , flipButton
-  , deckIndicator
+  , deckIndicator st
   ]
 
-childFrameElements ∷ Array DeckHTML
-childFrameElements =
+childFrameElements ∷ DCS.State → Array DeckHTML
+childFrameElements st =
   [ zoomInButton
   , flipButton
   , moveGripper
-  , deckIndicator
+  , deckIndicator st
   ]
 
 dialogSlot ∷ DeckHTML
@@ -158,22 +158,36 @@ dialogSlot =
     , initialState: H.parentState Dialog.initialState
     }
 
-backside ∷ DeckHTML
-backside =
+backside ∷ DeckOptions → DCS.State → DeckHTML
+backside { cursor } st =
   HH.div
     [ HP.classes [ CSS.card ] ]
     [ HH.slot' cpBackSide unit \_ →
-        { component: Back.comp
+        { component: Back.comp { deckId: st.id, cursor }
         , initialState: Back.initialState
         }
     ]
 
-deckIndicator ∷ DeckHTML
-deckIndicator =
-  HH.slot' cpIndicator unit \_ →
-    { component: Indicator.comp
-    , initialState: Indicator.initialState
-    }
+deckIndicator ∷ DCS.State → DeckHTML
+deckIndicator st =
+  HH.div [ HP.classes [ HH.className "indicator" ] ] $
+    A.mapWithIndex renderCircle st.displayCards
+
+  where
+  activeCard =
+    DCS.activeCardIndex st
+
+  renderCircle ix card =
+    HH.i
+      [ HP.classes $
+          pure case card of
+            Right _ → HH.className "available"
+            Left DCS.PendingCard → HH.className "pending"
+            Left (DCS.ErrorCard _) → HH.className "errored"
+            Left (DCS.NextActionCard _) → HH.className "placeholder"
+        ⊕ (guard (activeCard ≡ ix) $> HH.className "focused")
+      ]
+      [ HH.text "" ]
 
 flipButton ∷ DeckHTML
 flipButton =

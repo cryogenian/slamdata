@@ -21,6 +21,9 @@ module SlamData.Workspace.Card.BuildChart.Sankey.Eval
 
 import SlamData.Prelude
 
+import Control.Monad.State (class MonadState)
+import Control.Monad.Throw (class MonadThrow)
+
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Map as M
@@ -30,10 +33,7 @@ import ECharts.Commands as E
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Sankey.Model (Model, SankeyR)
@@ -41,21 +41,19 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Sankey))
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.BuildChart.Semantics as Sem
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-
 
 eval
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ Model
-  → FilePath
-  → CET.CardEvalT m Port.Port
-eval Nothing _ =
-  QE.throw "Please select axis to aggregate"
-eval (Just conf) resource = do
-  records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildSankey conf records) Sankey
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ Port.TaggedResourcePort
+  → Model
+  → m Port.Port
+eval = BCE.buildChartEval Sankey (const buildSankey)
 
 ----------------------------------------------------------------------
 -- SANKEY BUILDER

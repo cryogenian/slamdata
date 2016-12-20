@@ -25,7 +25,6 @@ import SlamData.Prelude
 import Data.StrMap as SM
 
 import Data.List ((:))
-import Data.Lens as Lens
 import Data.Lens ((^?))
 
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
@@ -48,12 +47,10 @@ import SlamData.Render.CSS as CSS
 
 import Text.Markdown.SlamDown.Halogen.Component as SD
 
-markdownComponent
-  ∷ DID.DeckId
-  → CardOptions
-  → H.Component CC.CardStateP CC.CardQueryP Slam
-markdownComponent deckId opts = CC.makeCardComponent
-  { cardType: CT.Markdown
+markdownComponent ∷ CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+markdownComponent options = CC.makeCardComponent
+  { options
+  , cardType: CT.Markdown
   , component:
       H.lifecycleParentComponent
         { render: render ("card-" <> uniqueCardId)
@@ -67,11 +64,9 @@ markdownComponent deckId opts = CC.makeCardComponent
   , _Query: CC.makeQueryPrism' CC._MarkdownQuery
   }
   where
-  uniqueCardId
-    = foldMap
-        DID.deckIdToString
-        (deckId : opts.deckId : opts.deck.cursor)
-    <> CID.cardIdToString opts.cardId
+  uniqueCardId =
+    foldMap DID.toString (fst options.coord : options.cursor)
+      <> CID.toString (snd options.coord)
 
 type MarkdownHTML a =
   H.ParentHTML
@@ -117,11 +112,6 @@ evalQ (Init next) = do
 
 evalCEQ ∷ CC.CardEvalQuery ~> MarkdownDSL
 evalCEQ = case _ of
-  CC.EvalCard info output next → do
-    for_ (info.input ^? Lens._Just ∘ Port._SlamDown) \sd → do
-      H.modify (_ { input = Just sd })
-      void $ H.query unit $ H.action (SD.SetDocument sd)
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -139,7 +129,16 @@ evalCEQ = case _ of
           H.query unit $ H.action (SD.PopulateForm state)
       _ → pure unit
     pure next
-  CC.SetDimensions _ next →
+  CC.ReceiveInput input next → do
+    for_ (input ^? Port._SlamDown) \sd → do
+      H.modify (_ { input = Just sd })
+      void $ H.query unit $ H.action (SD.SetDocument sd)
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
     pure next

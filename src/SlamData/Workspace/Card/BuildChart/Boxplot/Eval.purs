@@ -23,6 +23,9 @@ import SlamData.Prelude
 
 import Color as C
 
+import Control.Monad.State (class MonadState)
+import Control.Monad.Throw (class MonadThrow)
+
 import Data.Argonaut (JArray, Json)
 import Data.Array ((!!))
 import Data.Array as A
@@ -36,10 +39,7 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.BuildChart.Common.Eval (type (>>))
 import SlamData.Workspace.Card.BuildChart.Common.Eval as BCE
 import SlamData.Workspace.Card.BuildChart.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
@@ -47,22 +47,21 @@ import SlamData.Workspace.Card.BuildChart.Boxplot.Model (Model, BoxplotR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
 import SlamData.Workspace.Card.BuildChart.ColorScheme (colors)
 import SlamData.Workspace.Card.BuildChart.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
 import Utils.Array (enumerate)
 
 eval
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ Model
-  → FilePath
-  → CET.CardEvalT m Port.Port
-eval Nothing _ =
-  QE.throw "Please select axis to aggregate"
-eval (Just conf) resource = do
-  records ← BCE.records resource
-  pure $ Port.ChartInstructions (buildBoxplot conf records) Boxplot
+  . ( MonadState CEM.CardState m
+    , MonadThrow CEM.CardError m
+    , QuasarDSL m
+    )
+  ⇒ Port.TaggedResourcePort
+  → Model
+  → m Port.Port
+eval = BCE.buildChartEval Boxplot (const buildBoxplot)
 
 type OnOneBoxplot =
   { name ∷ Maybe String

@@ -17,8 +17,12 @@ limitations under the License.
 module Utils.Aff where
 
 import Prelude
-import Control.Monad.Aff (Aff)
+import Control.Monad.Aff (Aff, later')
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Aff.AVar (AVar, AVAR, makeVar, takeVar, putVar)
+import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Rec.Class (Step(..), tailRecM)
+import Control.Monad.Fork.Class (class MonadFork, fork)
 
 -- | Loop until a condition becomes `true`.
 -- |
@@ -29,3 +33,17 @@ untilA aff =
   tailRecM go unit
   where
   go = const $ (if _ then pure (Done unit) else pure (Loop unit)) =<< aff
+
+laterVar
+  ∷ ∀ eff m
+  . ( MonadAff (avar ∷ AVAR | eff) m
+    , MonadFork Exn.Error m
+    )
+  ⇒ Int
+  → m Unit
+  → m (AVar Unit)
+laterVar ms run = do
+  avar ← liftAff makeVar
+  fork $ liftAff (takeVar avar) *> run
+  fork $ liftAff $ later' ms (putVar avar unit)
+  pure avar

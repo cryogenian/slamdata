@@ -26,8 +26,7 @@ module SlamData.Workspace.Card.CardType
   , aceCardName
   , aceCardClasses
   , aceMode
-  , controllable
-  , blocking
+  , module SlamData.Workspace.Card.CardType.ChartType
   ) where
 
 import SlamData.Prelude
@@ -59,13 +58,10 @@ data CardType
   | Download
   | Variables
   | Troubleshoot
-  | NextAction
   | Cache
   | Open
   | DownloadOptions
   | Draftboard
-  | ErrorCard
-  | PendingCard
 
 derive instance eqCardType ∷ Eq CardType
 derive instance ordCardType ∷ Ord CardType
@@ -98,13 +94,10 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     Download → "download"
     Variables → "variables"
     Troubleshoot → "troubleshoot"
-    NextAction → "next-action"
     Cache → "cache"
     Open → "open"
     DownloadOptions → "download-options"
     Draftboard → "draftboard"
-    ErrorCard → "error"
-    PendingCard → "pending"
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
@@ -119,13 +112,10 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "download" → pure Download
       "variables" → pure Variables
       "troubleshoot" → pure Troubleshoot
-      "next-action" → pure NextAction
       "cache" → pure Cache
       "open" → pure Open
       "download-options" → pure DownloadOptions
       "draftboard" → pure Draftboard
-      "error" → pure ErrorCard
-      "pending" → pure PendingCard
       name → do
         let
           chartName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-options") name
@@ -143,13 +133,10 @@ cardName = case _ of
   Download → "Show Download"
   Variables → "Setup Variables"
   Troubleshoot → "Troubleshoot"
-  NextAction → "Next Action"
   Cache → "Cache"
   Open → "Open"
   DownloadOptions → "Setup Download"
   Draftboard → "Setup Dashboard"
-  ErrorCard → "Error"
-  PendingCard → "Pending"
 
 cardIcon ∷ CardType → String
 cardIcon = case _ of
@@ -207,8 +194,6 @@ cardIcon = case _ of
     "showMarkdown"
   Table →
     "table"
-  NextAction →
-    ""
   Cache →
     "cache"
   Open →
@@ -217,10 +202,6 @@ cardIcon = case _ of
     "setupDownload"
   Draftboard →
     "draftboard"
-  ErrorCard →
-    ""
-  PendingCard →
-    ""
 
 cardIconDarkSrc ∷ CardType → String
 cardIconDarkSrc cardType =
@@ -250,12 +231,9 @@ cardClasses = case _ of
   DownloadOptions → [ H.className "sd-card-download-options" ]
   Variables → [ H.className "sd-card-variables" ]
   Troubleshoot → [ H.className "sd-card-troubleshoot" ]
-  NextAction → [ H.className "sd-card-next-action" ]
   Cache → [ H.className "sd-card-cache" ]
   Open → [ H.className "sd-card-open" ]
   Draftboard → [ H.className "sd-card-draftboard" ]
-  ErrorCard → [ H.className "sd-card-error" ]
-  PendingCard → [ H.className "sd-card-pending" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Setup Markdown"
@@ -268,11 +246,3 @@ aceCardClasses SQLMode = [ H.className "sd-card-sql" ]
 aceMode ∷ AceMode → String
 aceMode MarkdownMode = "ace/mode/markdown"
 aceMode SQLMode = "ace/mode/sql"
-
-controllable ∷ CardType → Boolean
-controllable NextAction = false
-controllable _ = true
-
-blocking ∷ CardType → Boolean
-blocking ErrorCard = true
-blocking _ = false

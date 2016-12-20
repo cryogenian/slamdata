@@ -41,7 +41,6 @@ _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 _chartType ∷ ∀ a r. Lens' {chartType ∷ a|r} a
 _chartType = lens (_.chartType) (_{chartType = _})
 
-
 type StateP =
   ParentState State ChildState CardEvalQuery ChildQuery Slam ChildSlot
 

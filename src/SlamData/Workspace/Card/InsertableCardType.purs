@@ -59,17 +59,17 @@ inputs =
   [ CacheCard × [ Data ]
   , DraftboardCard × [ None ]
   , OpenCard × [ None ]
-  , QueryCard × [ None, Data, Variables ]
-  , SearchCard × [ Data ]
-  , SetupChartCard × [ Data ]
-  , SetupDownloadCard × [ Data ]
+  , QueryCard × [ None, Data, Variables, Chart ]
+  , SearchCard × [ Data, Chart ]
+  , SetupChartCard × [ Data, Chart ]
+  , SetupDownloadCard × [ Data, Chart ]
   , SetupMarkdownCard × [ None, Variables ]
   , SetupVariablesCard × [ None ]
   , ShowChartCard × [ Chart ]
   , ShowDownloadCard × [ Download ]
   , ShowMarkdownCard × [ Markdown ]
-  , TableCard × [ Data ]
-  , TroubleshootCard × [ Variables, Data ]
+  , TableCard × [ Data, Chart ]
+  , TroubleshootCard × [ Variables, Data, Chart ]
   ]
 
 outputs ∷ Array (InsertableCardType × Array InsertableCardIOType)
@@ -216,28 +216,27 @@ fromPort = case _ of
   Port.SlamDown _ → Markdown
   Port.TaggedResource _ → Data
   Port.VarMap _ → Variables
-  Port.ChartInstructions _ _ → Chart
+  Port.ChartInstructions _ → Chart
   Port.Metric _ → Chart
   Port.PivotTable _ → Chart
   _ → None
 
 toCardType ∷ InsertableCardType → CardType
-toCardType =
-  case _ of
-    CacheCard → CardType.Cache
-    DraftboardCard → CardType.Draftboard
-    OpenCard → CardType.Open
-    QueryCard → CardType.Ace CardType.SQLMode
-    SearchCard → CardType.Search
-    SetupChartCard → CardType.ChartOptions Pie
-    SetupDownloadCard → CardType.DownloadOptions
-    SetupMarkdownCard → CardType.Ace CardType.MarkdownMode
-    SetupVariablesCard → CardType.Variables
-    ShowChartCard → CardType.Chart
-    ShowDownloadCard → CardType.Download
-    ShowMarkdownCard → CardType.Markdown
-    TableCard → CardType.Table
-    TroubleshootCard → CardType.Troubleshoot
+toCardType = case _ of
+  CacheCard → CardType.Cache
+  DraftboardCard → CardType.Draftboard
+  OpenCard → CardType.Open
+  QueryCard → CardType.Ace CardType.SQLMode
+  SearchCard → CardType.Search
+  SetupChartCard → CardType.ChartOptions Pie
+  SetupDownloadCard → CardType.DownloadOptions
+  SetupMarkdownCard → CardType.Ace CardType.MarkdownMode
+  SetupVariablesCard → CardType.Variables
+  ShowChartCard → CardType.Chart
+  ShowDownloadCard → CardType.Download
+  ShowMarkdownCard → CardType.Markdown
+  TableCard → CardType.Table
+  TroubleshootCard → CardType.Troubleshoot
 
 print ∷ InsertableCardType → String
 print = case _ of
@@ -252,29 +251,30 @@ aAn s =
   where
   vowels = [ "a", "e", "i", "o", "u" ]
 
-reason ∷ InsertableCardIOType → CardType → Maybe String
-reason io card = do
-  ictCardType ← fromCardType card
-  pure $ fold
+reason ∷ InsertableCardIOType → CardType → String
+reason io card =
+  fold
     [ aAn $ CardType.cardName card
     , " "
     , show $ CardType.cardName card
     , " card can't "
     , actual
     , " because it needs "
-    , expected ictCardType
-    , action ictCardType
+    , expected
+    , action
     , "."
     ]
   where
+  ictCardType =
+    fromCardType card
   actual =
     case io of
       None → "be the first card in a deck"
       _ → "follow a card which outputs " <> printIOType io
-  expected ict =
-    eitherOr $ map printIOType $ inputsFor ict
-  action ict =
-    foldMap (append " to ") $ printAction ict
+  expected =
+    eitherOr $ map printIOType $ inputsFor ictCardType
+  action =
+    foldMap (append " to ") $ printAction ictCardType
 
 printAction ∷ InsertableCardType → Maybe String
 printAction =
@@ -294,24 +294,23 @@ printAction =
     TableCard → Just "tabulate"
     TroubleshootCard → Just "troubleshoot"
 
-fromCardType ∷ CardType → Maybe InsertableCardType
+fromCardType ∷ CardType → InsertableCardType
 fromCardType =
   case _ of
-    CardType.Cache → Just CacheCard
-    CardType.Draftboard → Just DraftboardCard
-    CardType.Open → Just OpenCard
-    CardType.Ace CardType.SQLMode → Just QueryCard
-    CardType.Search → Just SearchCard
-    CardType.ChartOptions _ → Just SetupChartCard
-    CardType.DownloadOptions → Just SetupDownloadCard
-    CardType.Ace CardType.MarkdownMode → Just SetupMarkdownCard
-    CardType.Variables → Just SetupVariablesCard
-    CardType.Chart → Just ShowChartCard
-    CardType.Download → Just ShowDownloadCard
-    CardType.Markdown → Just ShowMarkdownCard
-    CardType.Table → Just TableCard
-    CardType.Troubleshoot → Just TroubleshootCard
-    _ → Nothing
+    CardType.Cache → CacheCard
+    CardType.Draftboard → DraftboardCard
+    CardType.Open → OpenCard
+    CardType.Ace CardType.SQLMode → QueryCard
+    CardType.Search → SearchCard
+    CardType.ChartOptions _ → SetupChartCard
+    CardType.DownloadOptions → SetupDownloadCard
+    CardType.Ace CardType.MarkdownMode → SetupMarkdownCard
+    CardType.Variables → SetupVariablesCard
+    CardType.Chart → ShowChartCard
+    CardType.Download → ShowDownloadCard
+    CardType.Markdown → ShowMarkdownCard
+    CardType.Table → TableCard
+    CardType.Troubleshoot → TroubleshootCard
 
 all ∷ Array InsertableCardType
 all =

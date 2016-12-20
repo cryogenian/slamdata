@@ -27,49 +27,42 @@ import Halogen.HTML.Elements.Indexed as HH
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.CardId (CardId(CardId))
 import SlamData.Workspace.Deck.Common (DeckHTML)
 import SlamData.Workspace.Deck.Component.Query (Query(StartSliding))
-import SlamData.Workspace.Deck.Component.State (coordModelToCoord)
-import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Component.State (DisplayCard, eqDisplayCard)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
 import SlamData.Prelude
 import SlamData.Render.CSS as ClassNames
 import Data.Bifoldable (bifoldMap)
 
 gripperDefsForCard
-  ∷ Array (DeckId × Card.Model)
-  → Maybe (DeckId × CardId)
+  ∷ Array DisplayCard
+  → DisplayCard
   → GripperDef × GripperDef
-gripperDefsForCard cards coord =
+gripperDefsForCard cards card =
   Previous previousCardAvailable × Next nextCardAvailable
   where
   previousCardAvailable =
-    fromMaybe true
-      $ not ∘ eq
-      <$> coord
-      <*> map coordModelToCoord (Array.head cards)
+    fromMaybe true $
+      not ∘ eqDisplayCard card <$> Array.head cards
 
-  nextCardAvailable = case coord of
-    Just (_ × (CardId _)) → true
-    _ → false
+  nextCardAvailable =
+    isRight card
 
 isAvailable ∷ GripperDef → Boolean
-isAvailable (Previous available) =
-  available
-isAvailable (Next available) =
-  available
+isAvailable = case _ of
+  Previous available → available
+  Next available → available
 
 gripperLabel ∷ GripperDef → String
-gripperLabel (Previous _) =
-  "Access previous card"
-gripperLabel (Next _) =
-  "Access next card"
+gripperLabel = case _ of
+  Previous _ → "Access previous card"
+  Next _ → "Access next card"
 
 gripperClassName ∷ GripperDef → ClassName
-gripperClassName (Previous _) = ClassNames.cardGripper
-gripperClassName (Next _) = ClassNames.cardGripperLast
+gripperClassName = case _ of
+  Previous _ → ClassNames.cardGripper
+  Next _ → ClassNames.cardGripperLast
 
 renderGrippers ∷ Boolean → Boolean → GripperDef × GripperDef → Array DeckHTML
 renderGrippers isActiveCard isGrabbed =

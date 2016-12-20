@@ -23,29 +23,40 @@ import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 import SlamData.Workspace.Card.Component.Query (CardQueryP)
 import SlamData.Workspace.Card.Component.State (CardStateP)
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.Next.Component as Next
+import SlamData.Workspace.Card.Error.Component as Error
+import SlamData.Workspace.Card.Pending.Component as Pending
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.BackSide.Component as Back
-import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 
-newtype CardSlot = CardSlot (DeckId × CardId)
-
-derive instance genericCardSlot ∷ Generic CardSlot
-derive instance eqCardSlot ∷ Eq CardSlot
-derive instance ordCardSlot ∷ Ord CardSlot
+type CardSlot = DeckId × CardId
 
 type BackSideSlot = Unit
 
-type IndicatorSlot = Unit
+type ChildSlot
+  = CardSlot
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
 
-type ChildSlot =
-  CardSlot ⊹ Unit ⊹ Unit ⊹ Unit
+type ChildQuery
+  = CardQueryP
+  ⨁ Back.Query
+  ⨁ Dialog.QueryP
+  ⨁ Next.QueryP
+  ⨁ Error.Query
+  ⨁ Pending.Query
 
-type ChildQuery =
-  CardQueryP ⨁ Back.Query ⨁ Indicator.Query ⨁ Dialog.QueryP
-
-type ChildState =
-  CardStateP ⊹ Back.State ⊹ Indicator.State ⊹ Dialog.StateP
+type ChildState
+  = CardStateP
+  ⊹ Back.State
+  ⊹ Dialog.StateP
+  ⊹ Next.StateP
+  ⊹ Error.State
+  ⊹ Pending.State
 
 cpCard
   ∷ ChildPath
@@ -61,16 +72,30 @@ cpBackSide
       Unit ChildSlot
 cpBackSide = cpR :> cpL
 
-cpIndicator
-  ∷ ChildPath
-      Indicator.State ChildState
-      Indicator.Query ChildQuery
-      Unit ChildSlot
-cpIndicator = cpR :> cpR :> cpL
-
 cpDialog
   ∷ ChildPath
       Dialog.StateP ChildState
       Dialog.QueryP ChildQuery
       Unit ChildSlot
-cpDialog = cpR :> cpR :> cpR
+cpDialog = cpR :> cpR :> cpL
+
+cpNext
+  ∷ ChildPath
+      Next.StateP ChildState
+      Next.QueryP ChildQuery
+      Unit ChildSlot
+cpNext = cpR :> cpR :> cpR :> cpL
+
+cpError
+  ∷ ChildPath
+      Error.State ChildState
+      Error.Query ChildQuery
+      Unit ChildSlot
+cpError = cpR :> cpR :> cpR :> cpR :> cpL
+
+cpPending
+  ∷ ChildPath
+      Pending.State ChildState
+      Pending.Query ChildQuery
+      Unit ChildSlot
+cpPending = cpR :> cpR :> cpR :> cpR :> cpR

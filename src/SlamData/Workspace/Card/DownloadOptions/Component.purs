@@ -18,7 +18,6 @@ module SlamData.Workspace.Card.DownloadOptions.Component (comp) where
 
 import SlamData.Prelude
 
-import Data.Lens as Lens
 import Data.Lens ((.~), (^?), _Left, _Right, (%~))
 
 import Halogen as H
@@ -44,9 +43,10 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
 
-comp ∷ CC.CardComponent
-comp = CC.makeCardComponent
-  { cardType: DownloadOptions
+comp ∷ CC.CardOptions → CC.CardComponent
+comp options = CC.makeCardComponent
+  { options
+  , cardType: DownloadOptions
   , component: H.component {render, eval}
   , initialState: initialState
   , _State: CC._DownloadOptionsState
@@ -138,9 +138,6 @@ eval = coproduct cardEval downloadOptsEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
-  CC.EvalCard info output next → do
-    H.modify $ _source .~ info.input ^? Lens._Just ∘ Port._Resource
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -152,7 +149,14 @@ cardEval = case _ of
       Card.DownloadOptions st → H.set st
       _ → pure unit
     pure next
-  CC.SetDimensions dims next → do
+  CC.ReceiveInput input next → do
+    H.modify $ _source .~ input ^? Port._Resource
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState _ next →
+    pure next
+  CC.ReceiveDimensions dims next → do
     H.modify
       $ _levelOfDetails
       .~ if dims.width < 504.0 ∨ dims.height < 192.0

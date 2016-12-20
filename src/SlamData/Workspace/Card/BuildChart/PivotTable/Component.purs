@@ -14,14 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.BuildChart.PivotTable.Component where
+module SlamData.Workspace.Card.BuildChart.PivotTable.Component
+  ( pivotTableBuilderComponent
+  ) where
 
 import SlamData.Prelude
+
+import Control.Comonad.Cofree (Cofree)
 
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Int (toNumber)
-import Data.List ((:))
+import Data.Lens ((^?))
+import Data.List (List, (:))
 import Data.List as List
 
 import CSS as C
@@ -47,17 +52,18 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = H.ParentDSL State PCS.ChildState QueryC PCS.ChildQuery Slam PCS.ChildSlot
 
 type HTML = H.ParentHTML PCS.ChildState QueryC PCS.ChildQuery Slam PCS.ChildSlot
 
-pivotTableBuilderComponent ∷ CC.CardComponent
-pivotTableBuilderComponent = CC.makeCardComponent
-  { cardType: CT.ChartOptions CHT.PivotTable
+pivotTableBuilderComponent ∷ CC.CardOptions → CC.CardComponent
+pivotTableBuilderComponent options = CC.makeCardComponent
+  { options
+  , cardType: CT.ChartOptions CHT.PivotTable
   , component: H.parentComponent
       { render
       , eval: coproduct evalCard evalOptions
@@ -94,45 +100,27 @@ renderHighLOD st =
   where
   renderSelect = case _ of
     Col →
-      let
-        values =
-          groupColumns
-            (Count : List.fromFoldable
-              (map (Column ∘ { value: _, valueAggregation: Nothing })
-                (Array.sort
-                  (st.axes.category
-                   <> st.axes.time
-                   <> st.axes.value
-                   <> st.axes.date
-                   <> st.axes.datetime))))
-      in
-        HH.slot' PCS.cpCol unit \_ →
-          { component: DPC.picker
-              { title: "Choose column"
-              , label: DPC.labelNode showColumn
-              , render: DPC.renderNode showColumn
-              , values
-              , isSelectable: DPC.isLeafPath
-              }
-          , initialState: H.parentState DPC.initialState
-          }
+      HH.slot' PCS.cpCol unit \_ →
+        { component: DPC.picker
+            { title: "Choose column"
+            , label: DPC.labelNode showColumn
+            , render: DPC.renderNode showColumn
+            , values: selectColumnValues st
+            , isSelectable: DPC.isLeafPath
+            }
+        , initialState: H.parentState DPC.initialState
+        }
     Dim →
-      let
-        values =
-          groupJCursors
-            (List.fromFoldable
-              (Array.sort (st.axes.category <> st.axes.time <> st.axes.value)))
-      in
-        HH.slot' PCS.cpDim unit \_ →
-          { component: DPC.picker
-              { title: "Choose dimension"
-              , label: DPC.labelNode showJCursor
-              , render: DPC.renderNode showJCursor
-              , values
-              , isSelectable: DPC.isLeafPath
-              }
-          , initialState: H.parentState DPC.initialState
-          }
+      HH.slot' PCS.cpDim unit \_ →
+        { component: DPC.picker
+            { title: "Choose dimension"
+            , label: DPC.labelNode showJCursor
+            , render: DPC.renderNode showJCursor
+            , values: selectDimensionValues st
+            , isSelectable: DPC.isLeafPath
+            }
+        , initialState: H.parentState DPC.initialState
+        }
 
   renderedDimensions =
     let
@@ -315,23 +303,9 @@ renderHighLOD st =
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
-  CC.EvalCard info _ next → do
-    case info.input of
-      Just (Port.TaggedResource { axes }) →
-        H.modify _ { axes = axes }
-      _ → pure unit
-    pure next
   CC.Activate next →
     pure next
   CC.Deactivate next →
-    pure next
-  CC.SetDimensions dims next → do
-    H.modify _
-      { levelOfDetails =
-          if dims.width < 540.0 || dims.height < 360.0
-            then Low
-            else High
-      }
     pure next
   CC.Save k →
     map (k ∘ Card.BuildPivotTable ∘ modelFromState) H.get
@@ -340,6 +314,22 @@ evalCard = case _ of
       Card.BuildPivotTable model →
         H.modify (stateFromModel model)
       _ → pure unit
+    pure next
+  CC.ReceiveInput _ next →
+    pure next
+  CC.ReceiveOutput _ next →
+    pure next
+  CC.ReceiveState evalState next → do
+    for_ (evalState ^? _Axes) \axes → do
+      H.modify _ { axes = axes }
+    pure next
+  CC.ReceiveDimensions dims next → do
+    H.modify _
+      { levelOfDetails =
+          if dims.width < 540.0 || dims.height < 360.0
+            then Low
+            else High
+      }
     pure next
   CC.ModelUpdated _ next →
     pure next
@@ -474,3 +464,21 @@ peek =
         , selecting = Nothing
         }
       CC.raiseUpdatedP' CC.EvalModelUpdate
+
+selectColumnValues ∷ State → Cofree List (Either Column Column)
+selectColumnValues st =
+  groupColumns
+    (Count : List.fromFoldable
+      (map (Column ∘ { value: _, valueAggregation: Nothing })
+        (Array.sort
+          (st.axes.category
+           <> st.axes.time
+           <> st.axes.value
+           <> st.axes.date
+           <> st.axes.datetime))))
+
+selectDimensionValues ∷ State → Cofree List (Either J.JCursor J.JCursor)
+selectDimensionValues st =
+  groupJCursors
+    (List.fromFoldable
+      (Array.sort (st.axes.category <> st.axes.time <> st.axes.value)))

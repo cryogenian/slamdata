@@ -56,7 +56,7 @@ eqModel m1 m2 =
 
 genModel ∷ Gen.Gen Model
 genModel =
-  { layout: _ } <$> genPane
+  { layout: _ } <$> genPane 5
 
 emptyModel ∷ Model
 emptyModel = { layout: Pane.Cell Nothing }
@@ -134,24 +134,25 @@ decodePane =
 genPane
   ∷ ∀ a
   . SC.Arbitrary a
-  ⇒ Gen.Gen (Pane.Pane a)
-genPane = genOrientation >>= goGen
+  ⇒ Int
+  → Gen.Gen (Pane.Pane a)
+genPane size = genOrientation >>= goGen size
   where
-  goGen orn =
-    SC.arbitrary >>=
-    if _
+  goGen n orn = do
+    bool ← SC.arbitrary
+    if n ≡ 0 || bool
       then Pane.Cell <$> SC.arbitrary
-      else Pane.Split orn <$> genSplit orn 16 List.Nil
+      else Pane.Split orn <$> genSplit n orn 16 List.Nil
 
-  genSplit orn range ps = do
+  genSplit n orn range ps = do
     num ← Gen.chooseInt 1 range
-    pane ← goGen (Orn.reverse orn)
+    pane ← goGen (n - 1) (Orn.reverse orn)
     let
       ps' = List.Cons ((num%16) × pane) ps
       range' = range - num
     if range' ≡ 0
       then pure ps'
-      else genSplit orn range' ps'
+      else genSplit n orn range' ps'
 
 encodeOrientation ∷ Orn.Orientation → J.Json
 encodeOrientation = J.encodeJson ∘ Orn.toString
