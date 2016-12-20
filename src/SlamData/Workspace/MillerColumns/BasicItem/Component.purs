@@ -37,12 +37,12 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Monad (Slam)
 
-type Query = MC.ItemQuery' (Const Void)
+type Query a = MC.ItemQuery' a (Const Void)
 
-type State = { selected :: Boolean }
+type State = { selected ∷ Boolean }
 
-type HTML = H.ComponentHTML Query
-type DSL m p = H.ComponentDSL State Query m p
+type HTML a = H.ComponentHTML (Query a)
+type DSL a m p = H.ComponentDSL State (Query a) m p
 
 type ItemSpec a =
   { label ∷ a → String
@@ -50,7 +50,7 @@ type ItemSpec a =
   }
 
 type BasicColumnOptions a i = MC.ColumnOptions a i State (Const Void)
-type BasicColumnsQuery i = MC.Query' i (Const Void)
+type BasicColumnsQuery a i = MC.Query' a i (Const Void)
 type BasicColumnsState a i = MC.State' a i State (Const Void)
 
 component
@@ -60,33 +60,33 @@ component
   → L.List i
   → a
   → MC.InitialItemState
-  → { component :: H.Component State Query Slam
-    , initialState :: State
+  → { component ∷ H.Component State (Query a) Slam
+    , initialState ∷ State
     }
 component ispec path item itemState =
   { component: H.component { render, eval }
   , initialState: { selected: itemState == MC.Selected }
   }
   where
-  render ∷ State → HTML
+  render ∷ State → HTML a
   render state =
     let
       label = ispec.label item
     in
       HH.li
         [ HP.title label
-        , HE.onClick $ HE.input_ $ left <<< MC.RaisePopulate
+        , HE.onClick $ HE.input_ $ left <<< MC.RaisePopulate item
         , ARIA.label ("Select " <> label)
         , HP.classes $ (guard state.selected $> HH.className "selected")
         ]
         [ absurd ∘ unwrap <$> ispec.render item ]
 
-  eval ∷ Query ~> DSL Slam
+  eval ∷ Query a ~> DSL a Slam
   eval = coproduct evalItemQuery (absurd <<< unwrap)
 
-  evalItemQuery ∷ MC.ItemQuery ~> DSL Slam
+  evalItemQuery ∷ MC.ItemQuery a ~> DSL a Slam
   evalItemQuery = case _ of
-    MC.RaisePopulate next →
+    MC.RaisePopulate _ next →
       pure next
     MC.ToggleHighlight b next → do
       H.modify (_ { selected = b })
