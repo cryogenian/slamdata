@@ -18,8 +18,12 @@ module SlamData.Workspace.Component.Query where
 
 import SlamData.Prelude
 
+import Data.List (List)
+
 import Halogen as H
 import Halogen.HTML.Events.Types as HET
+
+import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Wiring (StepByStepGuide)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot)
@@ -31,7 +35,7 @@ data Query a
   = Init a
   | DismissAll (HET.Event HET.MouseEvent) a
   | New a
-  | Load (Maybe DeckId) a
+  | Load (List DeckId) a
   | ExploreFile UP.FilePath a
   | PresentStepByStepGuide StepByStepGuide a
   | CardGuideStepNext a
@@ -39,6 +43,7 @@ data Query a
   | FlipGuideStepNext a
   | FlipGuideDismiss a
   | Resize a
+  | SignIn ProviderR a
 
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 

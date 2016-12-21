@@ -63,4 +63,4 @@ updated = List.mapMaybe go ∘ Map.toList
       Added _ → Just k
       Changed _ → Just k
       _ → Nothing
-      
+

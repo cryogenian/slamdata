@@ -23,6 +23,7 @@ import Control.Coroutine.Aff (produce)
 import Control.Monad.Aff (Aff, forkAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Ref (writeRef)
 import Control.UI.Browser as Browser
 
 import Ace.Config as AceConfig
@@ -51,7 +52,9 @@ import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
+import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Persistence as P
+import SlamData.Workspace.Eval.Traverse (resolveUrlVarMaps)
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
 
@@ -98,13 +101,21 @@ routeSignal = do
                 routeConsumer (Just (RouterState new wiring driver))
           WorkspaceRoute _ deckId' _ varMaps' → do
             when (varMaps ≠ varMaps') $ lift do
-              Cache.restore varMaps (Wiring.unWiring wiring).varMaps
-              runSlam wiring
-                $ traverse_ (P.queueEvalForDeck 0)
-                $ Diff.updated
-                $ Diff.diff varMaps' varMaps
+              liftEff $ writeRef (Wiring.unWiring wiring).varMaps varMaps
+              diffVarMaps wiring varMaps' varMaps
             lift $ setup new driver
             routeConsumer (Just (RouterState new wiring driver))
+
+  diffVarMaps (Wiring wiring) vm1 vm2 = do
+    decks ← Cache.snapshot wiring.eval.decks
+    cards ← Cache.snapshot wiring.eval.cards
+    let
+      vm1' = resolveUrlVarMaps decks cards vm1
+      vm2' = resolveUrlVarMaps decks cards vm2
+    runSlam (Wiring wiring)
+      $ traverse_ (P.queueEvalImmediate ∘ Card.toAll)
+      $ Diff.updated
+      $ Diff.diff vm1' vm2'
 
   reload (Wiring wiring) new@(WorkspaceRoute path _ action varMaps) = do
     wiring' ←

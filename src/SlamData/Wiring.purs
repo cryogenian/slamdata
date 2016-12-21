@@ -33,12 +33,12 @@ module SlamData.Wiring
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.AVar (AVar, makeVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Eff.Ref (Ref, newRef)
 
-import Data.Map as Map
+import Data.StrMap (StrMap)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
@@ -80,13 +80,14 @@ type PendingSave =
 
 type EvalWiring =
   { tick ∷ Ref Int
-  , cards ∷ Cache Card.Coord Card.Cell
+  , root ∷ AVar Deck.Id
+  , cards ∷ Cache Card.Id Card.Cell
   , decks ∷ Cache Deck.Id Deck.Cell
   -- We need to use AVars for debounce state rather than storing Cancelers,
   -- because the Canceler would need to reference `Slam` resulting in a
   -- circular dependency.
-  , pendingEvals ∷ Cache Card.Coord PendingEval
-  , pendingSaves ∷ Cache Deck.Id PendingSave
+  , pendingEvals ∷ Cache Card.Id PendingEval
+  , pendingSaves ∷ Cache DirPath PendingSave
   }
 
 type AuthWiring =
@@ -110,7 +111,7 @@ type BusWiring =
 type WiringR =
   { path ∷ DirPath
   , accessType ∷ AccessType
-  , varMaps ∷ Cache Deck.Id Port.URLVarMap
+  , varMaps ∷ Ref (StrMap Port.URLVarMap)
   , eval ∷ EvalWiring
   , auth ∷ AuthWiring
   , cache ∷ CacheWiring
@@ -133,24 +134,25 @@ make
   . (Affable SlamDataEffects m)
   ⇒ DirPath
   → AccessType
-  → Map.Map Deck.Id Port.URLVarMap
+  → StrMap Port.URLVarMap
   → m Wiring
 make path accessType vm = fromAff do
   eval ← makeEval
   auth ← makeAuth
   cache ← makeCache
   bus ← makeBus
-  varMaps ← Cache.make' vm
+  varMaps ← fromEff (newRef vm)
   pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus }
 
   where
   makeEval = do
     tick ← fromEff (newRef 0)
+    root ← makeVar
     cards ← Cache.make
     decks ← Cache.make
     pendingEvals ← Cache.make
     pendingSaves ← Cache.make
-    pure { tick, cards, decks, pendingEvals, pendingSaves }
+    pure { tick, root, cards, decks, pendingEvals, pendingSaves }
 
   makeAuth = do
     hasIdentified ← fromEff (newRef false)

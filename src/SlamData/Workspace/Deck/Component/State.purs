@@ -24,9 +24,7 @@ module SlamData.Workspace.Deck.Component.State
   , DisplayCard
   , CardDef
   , initialDeck
-  , _id
   , _name
-  , _parent
   , _displayCards
   , _activeCardIndex
   , _pendingCardIndex
@@ -53,15 +51,13 @@ module SlamData.Workspace.Deck.Component.State
   , findLastCard
   , findLastRealCard
   , fromModel
-  , cardIndexFromCoord
-  , cardCoordFromIndex
+  , cardIndexFromId
+  , cardIdFromIndex
   , activeCard
   , activeCardIndex
-  , prevCardCoord
-  , eqCoordModel
+  , prevCardId
   , eqDisplayCard
-  , compareCoordCards
-  , coordModelToCoord
+  , compareCardIndex
   , updateDisplayCards
   ) where
 
@@ -82,11 +78,8 @@ import Quasar.Advanced.Types (ProviderR)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
-import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils (censor)
 
@@ -122,17 +115,15 @@ derive instance eqResponsiveSize ∷ Eq ResponsiveSize
 derive instance eqFade ∷ Eq Fade
 
 type CardDef =
-  { coord ∷ DeckId × CardId
+  { cardId ∷ CardId
   , cardType ∷ CardType
   }
 
 type DisplayCard = Either MetaCard CardDef
 
 type State =
-  { id ∷ DeckId
-  , name ∷ String
-  , parent ∷ Maybe (DeckId × CardId)
-  , stateMode ∷ StateMode
+  { name ∷ String
+  , stateMode ∷ Maybe String
   , displayMode ∷ DisplayMode
   , displayCards ∷ Array DisplayCard
   , pendingCardIndex ∷ Maybe Int
@@ -155,12 +146,10 @@ type State =
   }
 
 -- | Constructs a default `State` value.
-initialDeck ∷ DeckId → State
-initialDeck deckId =
-  { id: deckId
-  , name: ""
-  , parent: Nothing
-  , stateMode: Loading
+initialDeck ∷ State
+initialDeck =
+  { name: ""
+  , stateMode: Nothing
   , displayMode: Normal
   , displayCards: mempty
   , pendingCardIndex: Nothing
@@ -182,18 +171,9 @@ initialDeck deckId =
   , providers: mempty
   }
 
--- | The unique identifier of the deck.
-_id ∷ ∀ a r. Lens' {id ∷ a|r} a
-_id = lens _.id _{id = _}
-
 -- | The name of the deck. Initially Nothing.
 _name ∷ ∀ a r. Lens' {name ∷ a|r} a
 _name = lens _.name _{name = _}
-
--- | A pointer to the parent deck/card. If `Nothing`, the deck is assumed to be
--- | the root deck.
-_parent ∷ ∀ a r. Lens' {parent ∷ a|r} a
-_parent = lens _.parent _{parent = _}
 
 -- | The list of cards to be displayed in the deck
 _displayCards ∷ ∀ a r. Lens' {displayCards ∷ a |r} a
@@ -306,28 +286,26 @@ findLastRealCard state =
 -- | Reconstructs a deck state from a deck model.
 fromModel
   ∷ { name ∷ String
-    , parent ∷ Maybe (DeckId × CardId)
     , displayCards ∷ Array DisplayCard
     }
   → State
   → State
-fromModel { name, parent, displayCards } state =
+fromModel { name, displayCards } state =
   state
     { name = name
-    , parent = parent
     , displayCards = displayCards
     , displayMode = Normal
     , activeCardIndex = Nothing
     , initialSliderX = Nothing
     }
 
-cardIndexFromCoord ∷ DeckId × CardId → State → Maybe Int
-cardIndexFromCoord coord =
-  A.findIndex (eq (Just coord) ∘ map _.coord ∘ censor) ∘ _.displayCards
+cardIndexFromId ∷ CardId → State → Maybe Int
+cardIndexFromId coord =
+  A.findIndex (eq (Just coord) ∘ map _.cardId ∘ censor) ∘ _.displayCards
 
-cardCoordFromIndex ∷ Int → State → Maybe (DeckId × CardId)
-cardCoordFromIndex i st =
-  A.index st.displayCards i >>= either (const Nothing) (Just ∘ _.coord)
+cardIdFromIndex ∷ Int → State → Maybe CardId
+cardIdFromIndex i st =
+  A.index st.displayCards i >>= either (const Nothing) (Just ∘ _.cardId)
 
 activeCard ∷ State → Maybe DisplayCard
 activeCard st = A.index st.displayCards (activeCardIndex st)
@@ -341,17 +319,13 @@ activeCardIndex st =
     len = A.length st.displayCards
     ix' = if len <= 0 then 0 else len - 1
 
-prevCardCoord ∷ DeckId × CardId → State → Maybe (DeckId × CardId)
-prevCardCoord coord st = do
-  i ← cardIndexFromCoord coord st
-  cardCoordFromIndex (i - 1) st
-
-eqCoordModel ∷ DeckId × CardId → DeckId × Card.Model → Boolean
-eqCoordModel (deckId × cardId) (deckId' × model) =
-  deckId ≡ deckId' && cardId ≡ model.cardId
+prevCardId ∷ CardId → State → Maybe CardId
+prevCardId cardId st = do
+  i ← cardIndexFromId cardId st
+  cardIdFromIndex (i - 1) st
 
 eqDisplayCard ∷ DisplayCard → DisplayCard → Boolean
-eqDisplayCard (Right r1) (Right r2) = r1.coord ≡ r2.coord && r1.cardType ≡ r2.cardType
+eqDisplayCard (Right r1) (Right r2) = r1.cardId ≡ r2.cardId
 eqDisplayCard (Left l1) (Left l2) = eqMetaCard l1 l2
 eqDisplayCard _ _ = false
 
@@ -362,18 +336,15 @@ eqMetaCard = case _, _ of
   NextActionCard _, NextActionCard _ → true
   _, _ → false
 
-compareCoordCards
-  ∷ DeckId × CardId
-  → DeckId × CardId
-  → Array (DeckId × Card.Model)
+compareCardIndex
+  ∷ CardId
+  → CardId
+  → Array CardId
   → Maybe Ordering
-compareCoordCards coordA coordB cards =
+compareCardIndex a b cards =
   compare
-    <$> A.findIndex (eqCoordModel coordA) cards
-    <*> A.findIndex (eqCoordModel coordB) cards
-
-coordModelToCoord ∷ DeckId × Card.Model → DeckId × CardId
-coordModelToCoord = map _.cardId
+    <$> A.findIndex (eq a) cards
+    <*> A.findIndex (eq b) cards
 
 updateDisplayCards ∷ Array CardDef → Port.Port → State → State
 updateDisplayCards defs port st =
@@ -391,7 +362,7 @@ updateDisplayCards defs port st =
       Just { head, tail } →
         let
           realCards = A.mapMaybe censor st.displayCards
-          initCards = A.takeWhile (not ∘ eq head.coord ∘ _.coord) realCards
+          initCards = A.takeWhile (not ∘ eq head.cardId ∘ _.cardId) realCards
           newCards = A.cons head tail
           metaCard =
             pure $ Left case port of

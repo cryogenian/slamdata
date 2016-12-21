@@ -26,16 +26,13 @@ import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Error.Component as Error
 import SlamData.Workspace.Card.Pending.Component as Pending
-import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
-
-type CardSlot = DeckId × CardId
 
 type BackSideSlot = Unit
 
 type ChildSlot
-  = CardSlot
+  = CardId
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -62,7 +59,7 @@ cpCard
   ∷ ChildPath
       CardStateP ChildState
       CardQueryP ChildQuery
-      CardSlot ChildSlot
+      CardId ChildSlot
 cpCard = cpL
 
 cpBackSide

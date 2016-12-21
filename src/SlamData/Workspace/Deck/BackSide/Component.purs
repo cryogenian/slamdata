@@ -226,19 +226,19 @@ eval opts = case _ of
     pure next
 
 unwrappable ∷ BackSideOptions → CardDef → DSL Boolean
-unwrappable { cursor, deckId } { coord } = do
-  deck ← _.model <$> H.liftH (P.getDeck' deckId)
-  card ← map _.value.model.model <$> H.liftH (P.getCard coord)
+unwrappable { cursor, deckId } { cardId } = do
+  deck ← map _.model <$> H.liftH (P.getDeck deckId)
+  card ← map _.model <$> H.liftH (P.getCard cardId)
   let
+    cardLen = A.length ∘ _.cards <$> deck
     deckIds = CM.childDeckIds <$> card
-    len = A.length deck.mirror + A.length deck.cards
   pure case cursor of
     L.Nil → do
-      case len, deckIds of
-        1, Just (childId L.: L.Nil) → true
+      case cardLen, deckIds of
+        Just 1, Just (childId L.: L.Nil) → true
         _, _ → false
     parentId L.: L.Nil → do
-      case len of
-        1 → true
+      case cardLen of
+        Just 1 → true
         _ → false
     _ → false

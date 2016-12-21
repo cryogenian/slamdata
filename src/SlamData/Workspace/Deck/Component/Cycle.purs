@@ -20,6 +20,5 @@ import Halogen as H
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Deck.Component.Nested.Query (QueryP)
 import SlamData.Workspace.Deck.Component.Nested.State (State)
-import SlamData.Workspace.Deck.Component.State (StateP)
 
-type DeckComponent = StateP → H.Component State QueryP Slam
+type DeckComponent = H.Component State QueryP Slam

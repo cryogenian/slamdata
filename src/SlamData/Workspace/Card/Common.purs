@@ -29,6 +29,6 @@ import SlamData.Workspace.Eval.Deck as Deck
 type CardOptions =
   { deck ∷ DeckOptions
   , deckComponent ∷ DeckOptions → DeckComponent
-  , coord ∷ Card.Coord
+  , cardId ∷ Card.Id
   , cursor ∷ List Deck.Id
   }

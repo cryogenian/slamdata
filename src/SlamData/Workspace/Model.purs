@@ -16,56 +16,85 @@ limitations under the License.
 
 module SlamData.Workspace.Model
   ( Workspace
-  , emptyWorkspace
   , encode
   , decode
-  , getRoot
-  , setRoot
+  , eqWorkspace
   ) where
 
 import SlamData.Prelude
-
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-
-import Quasar.Types (FilePath)
-
-import SlamData.Quasar.Data as QD
-import SlamData.Quasar.Error as QE
-import SlamData.Quasar.Class (class QuasarDSL)
+import Data.Foldable as F
+import Data.List as List
+import Data.Map (Map)
+import Data.Map as Map
+import Data.StrMap as StrMap
+import SlamData.Workspace.Card.CardId as CID
+import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.Model (AnyCardModel)
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.DeckId as DID
+import SlamData.Workspace.Deck.Model (Deck)
+import SlamData.Workspace.Deck.Model as Deck
 
 type Workspace =
-  { root ∷ Maybe DeckId
+  { rootId ∷ DeckId
+  , cards ∷ Map CardId AnyCardModel
+  , decks ∷ Map DeckId Deck
   }
 
-emptyWorkspace ∷ Workspace
-emptyWorkspace = { root: Nothing }
+decode ∷ Json → Either String Workspace
+decode = decodeJson >=> \obj → do
+  version ← obj .? "version"
+  unless (version ≡ 2) $ throwError "Expected workspace format v2"
+  rootId ← obj .? "rootId"
+  cards ← decodeCards =<< obj .? "cards"
+  decks ← decodeDecks =<< obj .? "decks"
+  pure { rootId, cards, decks }
+
+  where
+    decodeCards =
+      flip StrMap.fold (Right mempty)
+        \cs key val → case cs of
+          Left _ → cs
+          Right cs' → do
+            cardId ← CID.fromString' key
+            card ← Card.decode val
+            pure (Map.insert cardId card cs')
+
+    decodeDecks =
+      flip StrMap.fold (Right mempty)
+        \ds key val → case ds of
+          Left _ → ds
+          Right ds' → do
+            deckId ← DID.fromString' key
+            deck ← Deck.decode val
+            pure (Map.insert deckId deck ds')
 
 encode ∷ Workspace → Json
-encode ws
-   = "root" := ws.root
+encode ws =
+  "version" := 2
+  ~> "rootId" := DID.toString ws.rootId
+  ~> "cards" := cards
+  ~> "decks" := decks
   ~> jsonEmptyObject
 
-decode ∷ Json → Either String Workspace
-decode = decodeJson >=> \obj ->
-  { root: _
-  } <$> obj .? "root"
+  where
+    cards =
+      Map.toList ws.cards
+        # map (bimap CID.toString Card.encode)
+        # StrMap.fromFoldable
 
-getRoot
-  ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ FilePath
-  → m (Either QE.QError DeckId)
-getRoot file = runExceptT do
-  json ← ExceptT $ QD.load file
-  ws ← ExceptT $ pure $ lmap QE.msgToQError $ decode json
-  maybe (ExceptT $ pure $ Left (QE.msgToQError "No root")) pure ws.root
+    decks =
+      Map.toList ws.decks
+        # map (bimap DID.toString Deck.encode)
+        # StrMap.fromFoldable
 
-setRoot
-  ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ FilePath
-  → DeckId
-  → m (Either QE.QError Unit)
-setRoot file root =
-  QD.save file $ encode { root: Just root }
+eqWorkspace ∷ Workspace → Workspace → Boolean
+eqWorkspace w1 w2 =
+  w1.rootId ≡ w2.rootId
+  && w1.cards ≡ w2.cards
+  && F.and (List.zipWith eqDeckPair (Map.toList w1.decks) (Map.toList w2.decks))
+    where
+      eqDeckPair d1 d2 =
+        fst d1 ≡ fst d2 && Deck.eqDeck (snd d1) (snd d2)

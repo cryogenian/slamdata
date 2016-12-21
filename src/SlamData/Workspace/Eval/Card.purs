@@ -16,14 +16,12 @@ limitations under the License.
 
 module SlamData.Workspace.Eval.Card
   ( EvalMessage(..)
-  , EvalResult
+  , Model
   , Cell
   , State
   , Id
   , Transition
-  , Coord
   , DisplayCoord
-  , coordOf
   , toAll
   , module SlamData.Workspace.Card.CardId
   , module SlamData.Workspace.Card.Eval
@@ -42,43 +40,37 @@ import Data.Set (Set)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Eval (Eval, runCard, modelToEval)
 import SlamData.Workspace.Card.Eval.Monad (CardEnv(..), EvalState, AdditionalSource(..))
-import SlamData.Workspace.Card.Model (Model, AnyCardModel, modelCardType, cardModelOfType)
+import SlamData.Workspace.Card.Model (AnyCardModel, modelCardType, cardModelOfType)
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Eval.Deck as Deck
 
 type State = EvalState
 
+type Model = AnyCardModel
+
 data EvalMessage
   = Pending DisplayCoord Port
   | Complete DisplayCoord Port
-  | StateChange State
   | ModelChange DisplayCoord AnyCardModel
-
-type EvalResult =
-  { model ∷ Model
-  , input ∷ Maybe Port
-  , output ∷ Maybe Port
-  , state ∷ Maybe EvalState
-  , sources ∷ Set AdditionalSource
-  , tick ∷ Maybe Int
-  }
+  | StateChange DisplayCoord State
 
 type Cell =
   { bus ∷ BusRW EvalMessage
-  , next ∷ List (Either Deck.Id Coord)
-  , value ∷ EvalResult
+  , next ∷ Set (Either Deck.Id Id)
+  , decks ∷ Set Deck.Id
+  , model ∷ AnyCardModel
+  , input ∷ Maybe Port
+  , output ∷ Maybe Port
+  , state ∷ Maybe State
+  , sources ∷ Set AdditionalSource
+  , tick ∷ Maybe Int
   }
 
 type Id = CardId
 
 type Transition = Eval
 
-type Coord = Deck.Id × Id
+type DisplayCoord = List Deck.Id × Id
 
-type DisplayCoord = List Deck.Id × Coord
-
-coordOf ∷ Deck.Id × Model → Coord
-coordOf = map _.cardId
-
-toAll ∷ Coord → DisplayCoord
+toAll ∷ CardId → DisplayCoord
 toAll = Tuple mempty

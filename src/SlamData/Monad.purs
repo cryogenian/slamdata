@@ -29,8 +29,12 @@ import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Free (Free, liftF, foldFree)
 import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
+import Control.Monad.Throw (class MonadThrow)
 import Control.Parallel (parallel, sequential)
 import Control.UI.Browser (locationObject)
+
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as P
 
 import DOM.HTML.Location (setHash)
 
@@ -49,7 +53,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
-import SlamData.Workspace.Deck.DeckPath (deckPath')
+import SlamData.Workspace.Deck.DeckId as DeckId
 import SlamData.Workspace.Routing as Routing
 import SlamData.Monad.Auth (getIdTokenSilently)
 
@@ -111,6 +115,9 @@ instance monadRecSlamM ∷ MonadRec (SlamM eff) where
     Loop b → tailRecM k b
     Done r → pure r
 
+instance monadThrow ∷ MonadThrow Error (SlamM eff) where
+  throw = liftAff ∘ throwError
+
 instance quasarAuthDSLSlamM ∷ QuasarAuthDSL (SlamM eff) where
   getIdToken = SlamM $ liftF $ GetAuthIdToken id
 
@@ -126,8 +133,6 @@ instance globalErrorDSLSlamM ∷ GE.GlobalErrorDSL (SlamM eff) where
 
 instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
   navigate = SlamM ∘ liftF ∘ flip Navigate unit
-
-
 
 newtype SlamA eff a = SlamA (FreeAp (SlamM eff) a)
 
@@ -175,9 +180,9 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
       goFork f
     Ask k →
       pure (k wiring)
-    Navigate (Routing.WorkspaceRoute path deckId action varMaps) a → do
+    Navigate (Routing.WorkspaceRoute path deckIds action varMaps) a → do
       let
-        path' = maybe path (deckPath' path) deckId
+        path' = foldr (\y x → x </> P.dir (DeckId.toString y)) path deckIds
         hash  = Routing.mkWorkspaceHash path' action varMaps
       liftEff $ locationObject >>= setHash hash
       pure a
