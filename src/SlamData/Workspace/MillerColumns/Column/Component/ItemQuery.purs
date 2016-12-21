@@ -18,8 +18,8 @@ module SlamData.Workspace.MillerColumns.Column.Component.ItemQuery where
 
 import Data.Functor.Coproduct (Coproduct)
 
-data ItemQuery a
-  = RaisePopulate a
-  | ToggleHighlight Boolean a
+data ItemQuery a b
+  = RaisePopulate a b
+  | ToggleHighlight Boolean b
 
-type ItemQuery' f = Coproduct ItemQuery f
+type ItemQuery' a f = Coproduct (ItemQuery a) f

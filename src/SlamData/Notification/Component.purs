@@ -111,13 +111,13 @@ renderModeFromAccessType =
     Editable → Notifications
     ReadOnly → ExpandableList Shrunk
 
-initialState ∷ State
-initialState =
+initialState ∷ RenderMode → State
+initialState renderMode =
   { tick: 0
   , queue: [ ]
   , current: Nothing
   , dismissed: Nothing
-  , renderMode: Notifications
+  , renderMode
   }
 
 data Query a

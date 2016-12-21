@@ -26,7 +26,6 @@ import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Exception (Error)
-import Control.Monad.Eff.Ref (readRef, writeRef)
 import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Free (Free, liftF, foldFree)
 import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
@@ -39,7 +38,6 @@ import OIDC.Crypt.Types as OIDC
 
 import Quasar.Advanced.QuasarAF as QA
 
-import SlamData.Analytics as A
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Monad.ForkF as FF
@@ -63,7 +61,6 @@ data SlamF eff a
   = Aff (Aff eff a)
   | GetAuthIdToken (Maybe OIDC.IdToken → a)
   | Quasar (QA.QuasarAFC a)
-  | Track A.Event a
   | Notify N.NotificationOptions a
   | Halt GE.GlobalError a
   | Par (SlamA eff a)
@@ -120,9 +117,6 @@ instance quasarAuthDSLSlamM ∷ QuasarAuthDSL (SlamM eff) where
 instance quasarDSLSlamM ∷ QuasarDSL (SlamM eff) where
   liftQuasar = SlamM ∘ liftF ∘ Quasar
 
-instance analyticsDSLSlamM ∷ A.AnalyticsDSL (SlamM eff) where
-  track = SlamM ∘ liftF ∘ flip Track unit
-
 instance notifyDSLSlamM ∷ N.NotifyDSL (SlamM eff) where
   notify notification detail timeout actionOptions =
     SlamM $ liftF $ Notify { notification, detail, timeout, actionOptions } unit
@@ -169,14 +163,6 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
         _ →
           pure unit
       runQuasarF (maybe Nothing censor idToken) qf
-    Track e a → do
-      hasIdentified ← liftEff $ readRef auth.hasIdentified
-      unless (hasIdentified) do
-        liftEff $ writeRef auth.hasIdentified true
-        licensee ← runQuasarF Nothing QA.licensee
-        liftEff $ for_ licensee A.identify
-      liftEff $ A.trackEvent e
-      pure a
     Notify no a → do
       Bus.write no bus.notify
       pure a

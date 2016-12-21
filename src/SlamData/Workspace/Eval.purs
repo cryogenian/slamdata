@@ -33,8 +33,6 @@ import Data.Function (on)
 import Data.List (List, (:))
 import Data.List as List
 
-import SlamData.Analytics (class AnalyticsDSL)
-import SlamData.Analytics as SA
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -56,7 +54,6 @@ evalGraph
     , MonadAsk Wiring m
     , Parallel f m
     , QuasarDSL m
-    , AnalyticsDSL m
     )
   ⇒ Card.DisplayCoord
   → EvalGraph
@@ -73,7 +70,6 @@ runEvalLoop
     , MonadAsk Wiring m
     , Parallel f m
     , QuasarDSL m
-    , AnalyticsDSL m
     )
   ⇒ Card.DisplayCoord
   → Tick
@@ -97,12 +93,17 @@ runEvalLoop source tick trail input graph = do
   result ← Card.runCard env node.card.value.state input node.transition
   case result.output of
     Left err → do
-      SA.track (SA.ErrorInCardEval (Card.modelCardType node.card.value.model.model))
       let
-        value' = node.card.value { state = result.state }
         output = Card.CardError case GE.fromQError err of
           Left msg → msg
           Right ge → GE.print ge
+        value' = node.card.value
+          { input = Just input
+          , output = Just output
+          , state = result.state
+          , sources = result.sources
+          , tick = Just tick
+          }
       updateCardValue node.coord value' eval.cards
       liftAff do
         for_ result.state \state →

@@ -56,7 +56,7 @@
     padding: 0;
     margin: 0;
     width: 100%;
-    height: ~"calc(100% - 2.25rem - 3px)";
+    height: ~"calc(100% - 2.25rem - 2rem - 3px)";
     overflow: auto;
   }
 
@@ -150,6 +150,39 @@
       line-height: 1;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+    }
+  }
+}
+
+.sd-miller-column-filter {
+  position: relative;
+
+  .sd-action-filter-icon {
+    position: absolute;
+    left: 6px;
+    line-height: 2rem;
+    opacity: 0.5;
+  }
+
+  .sd-form-input {
+    margin: 0;
+    border: 0;
+    border-bottom: 1px solid #ddd;
+    width: 100%;
+    padding: 0px 26px 0px 24px;
+  }
+
+  button {
+    position: absolute;
+    right: 0px;
+    border: 0;
+    background: 0;
+    line-height: 2rem;
+    padding: 0 6px;
+    transition: opacity 0.25s ease-out;
+
+    &:disabled {
+      opacity: 0;
     }
   }
 }

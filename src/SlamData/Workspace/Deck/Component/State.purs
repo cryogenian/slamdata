@@ -56,6 +56,7 @@ module SlamData.Workspace.Deck.Component.State
   , cardIndexFromCoord
   , cardCoordFromIndex
   , activeCard
+  , activeCardIndex
   , prevCardCoord
   , eqCoordModel
   , eqDisplayCard
@@ -329,7 +330,16 @@ cardCoordFromIndex i st =
   A.index st.displayCards i >>= either (const Nothing) (Just ∘ _.coord)
 
 activeCard ∷ State → Maybe DisplayCard
-activeCard st = A.index st.displayCards (fromMaybe 0 st.activeCardIndex)
+activeCard st = A.index st.displayCards (activeCardIndex st)
+
+activeCardIndex ∷ State → Int
+activeCardIndex st =
+  case st.activeCardIndex of
+    Just ix | ix < ix' → ix
+    _ → ix'
+  where
+    len = A.length st.displayCards
+    ix' = if len <= 0 then 0 else len - 1
 
 prevCardCoord ∷ DeckId × CardId → State → Maybe (DeckId × CardId)
 prevCardCoord coord st = do
@@ -369,7 +379,7 @@ updateDisplayCards ∷ Array CardDef → Port.Port → State → State
 updateDisplayCards defs port st =
   st
     { displayCards = displayCards
-    , activeCardIndex = Just activeCardIndex
+    , activeCardIndex = activeIndex
     , pendingCardIndex = Nothing
     }
   where
@@ -392,10 +402,9 @@ updateDisplayCards defs port st =
       Nothing →
         [ Left (NextActionCard Port.Initial) ]
 
-  activeCardIndex =
+  activeIndex =
     case st.activeCardIndex, A.last displayCards of
-      Nothing, Nothing → 0
-      Nothing, Just (Left (ErrorCard _)) → lastIndex
-      Nothing, Just _ → lastIndex - 1
-      Just ix, _ | ix > lastIndex → lastIndex
-      Just ix, _ → ix
+      Nothing, Nothing → Nothing
+      Nothing, Just (Left (ErrorCard _)) → Nothing
+      Nothing, Just _ → Just (lastIndex - 1)
+      Just ix, _ → Just ix

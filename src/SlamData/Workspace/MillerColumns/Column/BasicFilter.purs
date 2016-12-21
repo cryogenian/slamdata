@@ -14,16 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Open.Component.Query where
+module SlamData.Workspace.MillerColumns.Column.BasicFilter where
 
 import SlamData.Prelude
 
-import Halogen (ChildF)
+import Data.Minimatch as MM
+import Data.String as Str
+import Data.String.Regex as RX
+import Data.String.Regex.Flags as RXF
 
-import SlamData.FileSystem.Resource as R
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
+mkFilter ∷ String → String → Boolean
+mkFilter filter =
+  let
+    glob
+      | filter == "" = Nothing
+      | isGlob filter = Just filter
+      | otherwise = Just ("*" <> filter <> "*")
+  in maybe (const true) (\g → MM.minimatch (Str.toLower g) ∘ Str.toLower) glob
 
-import Utils.Path (AnyPath)
-
-type QueryP = Coproduct CardEvalQuery (ChildF Unit (MCI.BasicColumnsQuery R.Resource AnyPath))
+isGlob ∷ String → Boolean
+isGlob = RX.test $ unsafePartial $ fromRight $ RX.regex "[*!?+@]" RXF.global

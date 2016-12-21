@@ -26,7 +26,6 @@ module SlamData.Workspace.Card.Open.Component.State
 import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
-import Data.List (List)
 
 import Halogen (ParentState)
 
@@ -40,7 +39,7 @@ import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 import Utils.Path (AnyPath)
 
 type State =
-  { selected ∷ Maybe (List AnyPath)
+  { selected ∷ Maybe R.Resource
   , levelOfDetails ∷ LevelOfDetails
   , loading ∷ Boolean
   }
@@ -66,6 +65,6 @@ type StateP =
     State
     (MCI.BasicColumnsState R.Resource AnyPath)
     CardEvalQuery
-    (MCI.BasicColumnsQuery AnyPath)
+    (MCI.BasicColumnsQuery R.Resource AnyPath)
     Slam
     Unit

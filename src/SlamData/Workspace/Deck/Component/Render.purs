@@ -175,7 +175,7 @@ deckIndicator st =
 
   where
   activeCard =
-    fromMaybe 0 st.activeCardIndex
+    DCS.activeCardIndex st
 
   renderCircle ix card =
     HH.i

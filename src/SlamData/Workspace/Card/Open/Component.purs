@@ -22,8 +22,9 @@ module SlamData.Workspace.Card.Open.Component
 
 import SlamData.Prelude
 
+import Data.Array as A
+import Data.Lens ((.~), (?~), view)
 import Data.List as L
-import Data.Lens ((.~), (?~))
 import Data.Path.Pathy as Path
 import Data.Unfoldable (unfoldr)
 
@@ -46,13 +47,15 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Open.Component.Query (QueryP)
 import SlamData.Workspace.Card.Open.Component.State (State, StateP, _levelOfDetails, _selected, _loading, initialState)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
+import SlamData.Workspace.MillerColumns.Column.BasicFilter as MCF
+import SlamData.Workspace.MillerColumns.Column.Component as MCC
+import SlamData.Workspace.MillerColumns.Component as MC
 
 import Utils.Path (AnyPath)
 
-type DSL = H.ParentDSL State (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQuery (MCI.BasicColumnsQuery AnyPath) Slam Unit
-type HTML = H.ParentHTML (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQuery (MCI.BasicColumnsQuery AnyPath) Slam Unit
+type DSL = H.ParentDSL State (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQuery (MCI.BasicColumnsQuery R.Resource AnyPath) Slam Unit
+type HTML = H.ParentHTML (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQuery (MCI.BasicColumnsQuery R.Resource AnyPath) Slam Unit
 
 openComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
 openComponent options =
@@ -83,14 +86,11 @@ renderHighLOD state =
         $ (guard (state.loading) $> HH.className "loading")
         <> (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
-    case state.selected of
-      Just itemPath →
-        [ HH.slot unit \_ →
-            { component: MC.component itemSpec itemPath
-            , initialState: H.parentState MC.initialState
-            }
-        ]
-      Nothing → []
+    [ HH.slot unit \_ →
+        { component: MC.component itemSpec
+        , initialState: H.parentState MC.initialState
+        }
+    ]
 
 renderItem ∷ R.Resource → MC.ItemHTML
 renderItem r =
@@ -125,13 +125,15 @@ eval = case _ of
     pure next
   CC.Save k → do
     mbRes ← H.gets _.selected
-    pure $ k $ Card.Open (fromMaybe R.root $ map (either R.Directory R.File) ∘ L.head =<< mbRes)
+    pure $ k $ Card.Open (fromMaybe R.root mbRes)
   CC.Load (Card.Open res) next → do
-    mbRes ← H.gets _.selected
-    let selected = toPathList (R.getPath res)
-    H.modify _ { selected = Just selected }
-    unless (isNothing mbRes) do
-      void $ H.query unit $ left $ H.action $ MC.Populate selected
+    let selectedResources = toResourceList res
+    void $ H.query unit $ left $ H.action $ MC.Populate $ R.getPath <$> selectedResources
+    for_ selectedResources \sel → do
+      for_ (getColPath sel) \colPath →
+        H.query unit $ right $
+          H.ChildF colPath $ left $ H.action $ MCC.SetSelection (Just sel)
+    H.modify (_selected ?~ res)
     pure next
   CC.Load _ next →
     pure next
@@ -153,17 +155,15 @@ eval = case _ of
   CC.ZoomIn next →
     pure next
 
-peek ∷ ∀ x. MCI.BasicColumnsQuery AnyPath x → DSL Unit
-peek = coproduct peekColumns (const (pure unit))
-
-peekColumns ∷ ∀ x. MC.Query AnyPath x → DSL Unit
-peekColumns = case _ of
-  MC.Populate rs _ → do
-    sel ← H.gets _.selected
-    unless (sel ≡ Just rs) do
-      H.modify (_selected ?~ rs)
+peek ∷ ∀ x. MCI.BasicColumnsQuery R.Resource AnyPath x → DSL Unit
+peek = coproduct (peekColumns) (const (pure unit))
+  where
+  peekColumns ∷ MC.Query R.Resource AnyPath x → DSL Unit
+  peekColumns = case _ of
+    MC.RaiseSelected _ selected _ → do
+      H.modify (_selected .~ selected)
       CC.raiseUpdatedP CC.EvalModelUpdate
-  _ → pure unit
+    _ → pure unit
 
 itemSpec ∷ MCI.BasicColumnOptions R.Resource AnyPath
 itemSpec =
@@ -177,15 +177,24 @@ itemSpec =
   , id: R.getPath
   }
 
-load ∷ L.List AnyPath → Slam (Maybe (L.List R.Resource))
-load ps =
-  case L.head ps of
-    Just (Left p) → do
-      qe ← Quasar.children p
-      case qe of
-        Left err → handleError err $> Nothing
-        Right rs → pure $ Just $ L.fromFoldable rs
-    _ → pure Nothing
+load
+  ∷ ∀ r
+  . { path ∷ L.List AnyPath, filter ∷ String | r }
+  → Slam { items ∷ L.List R.Resource, nextOffset ∷ Maybe Int }
+load { path, filter } =
+  case L.head path of
+    Just (Left p) →
+      Quasar.children p >>= case _ of
+        Left err → handleError err $> noResult
+        Right rs → do
+          let filenameFilter = MCF.mkFilter filter
+          pure
+            { items: L.fromFoldable (A.filter (filenameFilter ∘ view R._name) rs)
+            , nextOffset: Nothing
+            }
+    _ → pure noResult
+  where
+  noResult = { items: L.Nil, nextOffset: Nothing }
 
 handleError ∷ QE.QError → Slam Unit
 handleError err =
@@ -201,7 +210,20 @@ handleError err =
 
 -- | For a filesystem path, construct a list of all of the sub-paths up to the
 -- | current point. This is required as column-view paths (in contrast to
--- | filesystem paths) are required to be in an unfolded form.
+-- | filesystem paths) are required to be in an unfolded form. It's cheating a
+-- | little bit, as some of the intermediate steps may be mounts, etc. but we
+-- | don't know that so always produce directories, but for the usage here that
+-- | doesn't matter.
+toResourceList ∷ R.Resource → L.List R.Resource
+toResourceList res =
+  (unfoldr \r → Tuple r <$> go r) res `L.snoc` R.Directory Path.rootDir
+  where
+  go ∷ R.Resource → Maybe R.Resource
+  go = map (R.Directory ∘ fst) ∘ either Path.peel Path.peel ∘ R.getPath
+
+getColPath ∷ R.Resource → Maybe (L.List AnyPath)
+getColPath = maybe Nothing (Just ∘ toPathList ∘ Left ∘ fst) ∘ either Path.peel Path.peel ∘ R.getPath
+
 toPathList ∷ AnyPath → L.List AnyPath
 toPathList res =
   (unfoldr \r → Tuple r <$> either go go r) res `L.snoc` Left Path.rootDir

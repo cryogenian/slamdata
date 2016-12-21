@@ -22,13 +22,19 @@ module SlamData.Workspace.MillerColumns.Column.Component.Query
 
 import SlamData.Prelude
 
+import DOM.HTML.Types (HTMLElement)
+
 import Halogen as H
 
 import SlamData.Workspace.MillerColumns.Column.Component.ItemQuery (ItemQuery(..), ItemQuery')
 
-data Query i a
-  = Load a
-  | SetSelection (Maybe i) a
-  | Deselect a
+data Query a b
+  = Init b
+  | SetSelection (Maybe a) b
+  | GetSelection (Maybe a → b)
+  | Deselect b
+  | HandleFilterChange String b
+  | UpdateFilter String b
+  | HandleScroll HTMLElement b
 
-type Query' i f = Coproduct (Query i) (H.ChildF i (ItemQuery' f))
+type Query' a i f = Coproduct (Query a) (H.ChildF i (ItemQuery' a f))

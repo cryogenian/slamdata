@@ -48,7 +48,7 @@ initialState =
 
 type ChildState s = MCI.BasicColumnsState s s
 
-type ChildQuery s = MCI.BasicColumnsQuery s
+type ChildQuery s = MCI.BasicColumnsQuery s s
 
 type ChildSlot = Unit
 
@@ -96,7 +96,7 @@ pickerOptionsToColumnOptions ∷ ∀ s. Eq s ⇒ PickerOptions s → MCI.BasicCo
 pickerOptionsToColumnOptions { label, render, values, isSelectable } =
   { render: MCI.component { render, label }
   , label: label
-  , load: MCT.loadFromTree id values
+  , load: MCT.loadFromTree id label values
   , id: id
   , isLeaf: isSelectable
   }
@@ -146,8 +146,8 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
       , HH.div
           [ HP.classes [ HH.className "sd-dimension-picker-content" ] ]
           [ HH.slot unit \_ →
-              { component: MC.component columnOptions (MCT.initialItemFromTree columnOptions.id opts.values)
-              , initialState: H.parentState $ MC.initialState
+              { component: MC.component columnOptions
+              , initialState: H.parentState (MCT.initialStateFromTree columnOptions.id opts.values)
               }
           ]
       , HH.div
@@ -176,12 +176,12 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
     Dismiss next → pure next
     Confirm _ next → pure next
 
-  peek ∷ ∀ x. MCI.BasicColumnsQuery s x → DSL s Unit
+  peek ∷ ∀ x. MCI.BasicColumnsQuery s s x → DSL s Unit
   peek = coproduct peekColumns (const (pure unit))
 
-  peekColumns ∷ ∀ x. MC.Query s x → DSL s Unit
+  peekColumns ∷ ∀ x. MC.Query s s x → DSL s Unit
   peekColumns = case _ of
-    MC.Populate sel _ →
-      H.modify (_ { selection = Just sel })
+    MC.RaiseSelected path _ _ →
+      H.modify (_ { selection = Just path })
     _ →
       pure unit

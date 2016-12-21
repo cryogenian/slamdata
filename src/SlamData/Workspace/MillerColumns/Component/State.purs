@@ -39,8 +39,8 @@ type State' a i s f =
   H.ParentState
     (State a i)
     (Column.State' a i s f)
-    (Query i)
-    (Column.Query' i f)
+    (Query a i)
+    (Column.Query' a i f)
     Slam
     (List i)
 
@@ -50,16 +50,11 @@ initialState =
   , path: Nil
   }
 
--- | Get a list of paths for the columns, each column paired with a
--- | possibly-selected value within that column.
-columnsWithSelections
+-- | Get a list of paths for the columns.
+columnPaths
   ∷ ∀ a i s f
   . Column.ColumnOptions a i s f
   → State a i
-  → List (Tuple (List i) (Maybe i))
-columnsWithSelections { isLeaf } { path } =
-  let
-    subpaths = scanr (:) L.Nil path
-    selections = Nothing : (L.head <$> subpaths)
-  in
-    L.dropWhile (isLeaf <<< fst) (L.zip subpaths selections)
+  → List (List i)
+columnPaths { isLeaf } { path } =
+  L.dropWhile isLeaf (scanr (:) L.Nil path)

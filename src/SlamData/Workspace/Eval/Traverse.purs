@@ -113,8 +113,8 @@ getSharingInput path (TraverseDeck root) =
          then Set.empty
          else Set.singleton (Right deckId)
 
-    goDeck (TraverseDeck { cards }) =
-      foldMap goCard cards
+    goDeck (TraverseDeck { cards, deckId }) =
+      foldMap goCard cards <> Set.singleton (Right deckId)
 
     isCache (Left (Card.Cache fp)) = Just fp
     isCache _ = Nothing

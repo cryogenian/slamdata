@@ -42,7 +42,6 @@ import DOM.Node.ParentNode (querySelector)
 import Halogen (Driver, runUI, parentState, interpret)
 import Halogen.Util (runHalogenAff, awaitBody)
 
-import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Monad (runSlam)
@@ -67,9 +66,7 @@ main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
-  runHalogenAff do
-    forkAff Analytics.enableAnalytics
-    forkAff routeSignal
+  runHalogenAff $ forkAff routeSignal
   StyleLoader.loadStyles
 
 routeSignal ∷ Aff SlamDataEffects Unit
@@ -118,10 +115,8 @@ routeSignal = do
     mount wiring' new
 
   mount wiring new@(WorkspaceRoute _ _ action _) = do
-    let
-      st = Workspace.initialState (Just "4.0")
-      ui = interpret (runSlam wiring) $ Workspace.comp (toAccessType action)
-    driver ← lift $ runUI ui (parentState st) =<< awaitBody'
+    let ui = interpret (runSlam wiring) $ Workspace.comp (toAccessType action)
+    driver ← lift $ runUI ui (parentState Workspace.initialState) =<< awaitBody'
     lift $ setup new driver
     routeConsumer (Just (RouterState new wiring driver))
 

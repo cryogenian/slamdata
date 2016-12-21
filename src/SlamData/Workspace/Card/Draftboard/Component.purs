@@ -381,7 +381,7 @@ groupDeck
 groupDeck orn bias deckFrom deckTo = do
   mbActive ← queryDeck deckTo (H.request DCQ.GetActiveCoord)
   for_ mbActive case _ of
-    Just coord → H.liftH $ H.liftH $ P.groupDeck orn bias deckFrom coord
+    Just coord → H.liftH $ H.liftH $ P.groupDeck orn bias deckFrom deckTo coord
     Nothing → H.liftH $ H.liftH $ P.wrapAndGroupDeck orn bias deckFrom deckTo
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)

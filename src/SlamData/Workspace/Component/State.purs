@@ -39,8 +39,8 @@ type State =
   , flipGuideStep ∷ Maybe Int
   }
 
-initialState ∷ Maybe String → State
-initialState version =
+initialState ∷ State
+initialState =
   { deckId: Nothing
   , stateMode: Loading
   , cardGuideStep: Nothing

@@ -29,9 +29,10 @@ import Halogen as H
 
 import SlamData.Workspace.MillerColumns.Column.Component as Column
 
-data Query i b
+data Query a i b
   = Ref (Maybe HTMLElement) b
   | Populate (List i) b
   | Extended b
+  | RaiseSelected (List i) (Maybe a) b
 
-type Query' i f = Coproduct (Query i) (H.ChildF (List i) (Column.Query' i f))
+type Query' a i f = Coproduct (Query a i) (H.ChildF (List i) (Column.Query' a i f))

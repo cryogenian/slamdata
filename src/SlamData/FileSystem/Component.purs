@@ -143,7 +143,7 @@ render state@{ version, sort, salt, path } =
         }
     , HH.slot' Install.cpNotify unit \_ →
         { component: NC.comp
-        , initialState: NC.initialState
+        , initialState: NC.initialState (NC.renderModeFromAccessType Editable)
         }
     ]
 

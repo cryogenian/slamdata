@@ -103,11 +103,12 @@ decode
   ∷ J.Json
   → Either String Model
 decode =
-  J.decodeJson >=> \obj →
-    { name : _, fieldType : _, defaultValue : _ }
-      <$> obj .? "name"
-      <*> obj .? "fieldType"
-      <*> obj .? "defaultValue"
+  J.decodeJson >=> \obj → do
+    name ← obj .? "name"
+    fieldType ← obj .? "fieldType"
+    let fixValue = if fieldType == DateFieldType then fixupDate else id
+    defaultValue ← map fixValue <$> obj .? "defaultValue"
+    pure { name, fieldType, defaultValue }
 
 emptyValueOfFieldType
   ∷ FieldType
@@ -158,7 +159,7 @@ defaultValueToVarMapValue ty str =
   fixupTime :: String -> String
   fixupTime t = if Str.length t == 5 then t <> ":00" else t
 
-  -- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
-  -- connector issue that cannot represent dates distinct from datetimes.
-  fixupDate :: String -> String
-  fixupDate = Str.take 10
+-- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
+-- connector issue that cannot represent dates distinct from datetimes.
+fixupDate :: String -> String
+fixupDate = Str.take 10
