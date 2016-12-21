@@ -3,8 +3,6 @@ module SlamData.Workspace.Card.SetupFormInput.TextLike.Eval
   , module SlamData.Workspace.Card.SetupFormInput.TextLike.Model
   ) where
 
-import SlamData.Prelude
-
 import Control.Monad.State (class MonadState)
 import Control.Monad.Throw (class MonadThrow)
 
@@ -25,14 +23,14 @@ eval
   → Port.TaggedResourcePort
   → FormInputType
   → m Port.Port
-eval m tr fit = BCE.buildChartEval' buildFn tr m
+eval m taggedResource formInputType =
+  BCE.buildChartEval' buildFn taggedResource m
   where
   -- We need to store axes to display selects
   buildFn axes conf records =
-    pure
-    $ Port.SetupTextLikeFormInput
-        { name: conf.name
-        , taggedResource
-        , formInputType
-        , cursor: conf.value
-        }
+    Port.SetupTextLikeFormInput
+      { name: conf.name
+      , taggedResource
+      , formInputType
+      , cursor: conf.value
+      }

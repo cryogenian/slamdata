@@ -263,3 +263,7 @@ getValues js cursor =
     =<< analyzeJson
     =<< flip cursorGet js
     =<< cursor
+
+getSemantics ∷ Json → JCursor → Maybe Semantics
+getSemantics js cursor =
+  cursorGet cursor js >>= analyzeJson

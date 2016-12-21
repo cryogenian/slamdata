@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.SetupFormInput.Static.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
+import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Throw (class MonadThrow)
 
 import Data.Array as Arr
@@ -26,16 +26,19 @@ eval
   ⇒ Model
   → Port.TaggedResourcePort
   → m Port.Port
-eval m tr =
-  BCE.buildChartEval' buildFn tr m
-  where
-  buildFn axes conf records =
-    case Arr.head records >>= flip Sem.getMaybeString conf.value of
-      Nothing → CEM.throw $ show conf.value <> " axis is not presented in this resource"
+eval m tr = do
+  records × axes ← BCE.analyze tr =<< get
+  put (Just (CEM.Analysis {taggedResource: tr, records, axes}))
+  case m of
+    Nothing →
+      CEM.throw "Please select axis."
+    Just conf → case Arr.head records >>= flip Sem.getMaybeString conf.value of
+      Nothing →
+        CEM.throw $ show conf.value <> " axis is not presented in this resource"
       Just value →
         pure
-        $ Port.Metric
-        $ { value
-          , label: Nothing
-          , taggedResource: tr
-          }
+          $ Port.Metric
+          $ { value
+            , label: Nothing
+            , taggedResource: tr
+            }

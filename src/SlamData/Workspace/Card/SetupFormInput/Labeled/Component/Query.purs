@@ -6,7 +6,6 @@ import Data.Argonaut (JCursor)
 
 import Halogen as H
 
-import SlamData.Common.Align (Align)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.BuildChart.Inputs (SelectAction)
 import SlamData.Workspace.Card.SetupFormInput.Labeled.Component.ChildSlot (ChildQuery, ChildSlot)
@@ -14,8 +13,7 @@ import SlamData.Workspace.Card.SetupFormInput.Labeled.Component.ChildSlot (Child
 data Selection f
   = Value (f JCursor)
   | Label (f JCursor)
-  | VerticalAlign (f Align)
-  | HorizontalAlign (f Align)
+  | Selected (f JCursor)
 
 data Query a
   = Select (Selection SelectAction) a

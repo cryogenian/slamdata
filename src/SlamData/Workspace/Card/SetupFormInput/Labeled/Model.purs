@@ -5,8 +5,6 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor, Json, JObject, (~>), (:=), (.?), jsonEmptyObject)
 import Data.Foldable as F
 
-import SlamData.Common.Align (Align)
-
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
@@ -15,8 +13,7 @@ type LabeledR =
   { name ∷ String
   , value ∷ JCursor
   , label ∷ Maybe JCursor
-  , verticalAlign ∷ Align
-  , horizontalAlign ∷ Align
+  , selected ∷ Maybe JCursor
   }
 
 type Model = Maybe LabeledR
@@ -30,8 +27,7 @@ eqLabeledR r1 r2 =
     [ r1.name ≡ r2.name
     , r1.value ≡ r2.value
     , r1.label ≡ r2.label
-    , r1.verticalAlign ≡ r2.verticalAlign
-    , r1.horizontalAlign ≡ r2.horizontalAlign
+    , r1.selected ≡ r2.selected
     ]
 
 eqModel ∷ Model → Model → Boolean
@@ -47,14 +43,12 @@ genModel = do
     else map Just do
     name ← arbitrary
     value ← map runArbJCursor arbitrary
+    selected ← map (map runArbJCursor) arbitrary
     label ← map (map runArbJCursor) arbitrary
-    verticalAlign ← arbitrary
-    horizontalAlign ← arbitrary
     pure { name
          , value
          , label
-         , verticalAlign
-         , horizontalAlign
+         , selected
          }
 
 encode ∷ LabeledR → Json
@@ -62,8 +56,7 @@ encode r =
   "name" := r.name
   ~> "value" := r.value
   ~> "label" := r.label
-  ~> "verticalAlign" := r.verticalAlign
-  ~> "horizontalAlign" :=  r.horizontalAlign
+  ~> "selected" := r.selected
   ~> jsonEmptyObject
 
 decode ∷ JObject → String ⊹ LabeledR
@@ -71,11 +64,9 @@ decode obj = do
   name ← obj .? "name"
   value ← obj .? "value"
   label ← obj .? "label"
-  horizontalAlign ← obj .? "horizontalAlign"
-  verticalAlign ← obj .? "verticalAlign"
+  selected ← obj .? "selected"
   pure { name
        , value
        , label
-       , horizontalAlign
-       , verticalAlign
+       , selected
        }

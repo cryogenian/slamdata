@@ -7,7 +7,6 @@ import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
-import SlamData.Common.Align (Align)
 import SlamData.Monad (Slam)
 import SlamData.Form.Select (Select, emptySelect)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -22,9 +21,8 @@ type State =
   , picker ∷ Maybe (PickerOptions JCursor Selection)
   , name ∷ String
   , label ∷ Select JCursor
+  , selected ∷ Select JCursor
   , value ∷ Select JCursor
-  , verticalAlign ∷ Select Align
-  , horizontalAlign ∷ Select Align
   }
 
 initialState ∷ State
@@ -35,8 +33,7 @@ initialState =
   , name: ""
   , value: emptySelect
   , label: emptySelect
-  , verticalAlign: emptySelect
-  , horizontalAlign: emptySelect
+  , selected: emptySelect
   }
 
 type StateP =
@@ -51,11 +48,8 @@ _value = lens _.value _ { value = _ }
 _label ∷ ∀ r a. Lens' { label ∷ a | r } a
 _label = lens _.label _ { label = _ }
 
-_horizontalAlign ∷ ∀ r a. Lens' { horizontalAlign ∷ a |r} a
-_horizontalAlign = lens _.horizontalAlign _{ horizontalAlign = _ }
-
-_verticalAlign ∷ ∀ r a. Lens' { verticalAlign ∷ a | r} a
-_verticalAlign = lens _.verticalAlign _{ verticalAlign = _ }
+_selected ∷ ∀ r a. Lens' { selected ∷ a | r } a
+_selected = lens _.selected _ { selected = _ }
 
 showPicker
   ∷ (Const Unit JCursor → Selection (Const Unit))

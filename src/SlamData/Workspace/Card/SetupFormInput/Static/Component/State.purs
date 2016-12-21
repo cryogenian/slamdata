@@ -7,13 +7,11 @@ import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
-import SlamData.Common.Align (Align)
 import SlamData.Monad (Slam)
 import SlamData.Form.Select (Select, emptySelect)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.SetupFormInput.Static.Component.ChildSlot as CS
 import SlamData.Workspace.Card.SetupFormInput.Static.Component.Query (QueryC, Selection)
---import SlamData.Workspace.Card.SetupFormInput.Static.Semantic (Semantic)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes, initialAxes)
 import SlamData.Workspace.Card.BuildChart.Inputs (PickerOptions)
 
@@ -22,8 +20,6 @@ type State =
   , levelOfDetails ∷ LevelOfDetails
   , picker ∷ Maybe (PickerOptions JCursor Selection)
   , value ∷ Select JCursor
-  , verticalAlign ∷ Select Align
-  , horizontalAlign ∷ Select Align
   }
 
 initialState ∷ State
@@ -32,8 +28,6 @@ initialState =
   , levelOfDetails: High
   , picker: Nothing
   , value: emptySelect
-  , verticalAlign: emptySelect
-  , horizontalAlign: emptySelect
   }
 
 type StateP =
@@ -41,12 +35,6 @@ type StateP =
 
 _value ∷ ∀ r a. Lens' { value ∷ a | r } a
 _value = lens _.value _ { value = _ }
-
-_horizontalAlign ∷ ∀ r a. Lens' { horizontalAlign ∷ a |r} a
-_horizontalAlign = lens _.horizontalAlign _{ horizontalAlign = _ }
-
-_verticalAlign ∷ ∀ r a. Lens' { verticalAlign ∷ a | r} a
-_verticalAlign = lens _.verticalAlign _{ verticalAlign = _ }
 
 showPicker
   ∷ (Const Unit JCursor → Selection (Const Unit))

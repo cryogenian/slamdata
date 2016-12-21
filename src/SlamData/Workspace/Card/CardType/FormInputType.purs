@@ -7,6 +7,7 @@ module SlamData.Workspace.Card.CardType.FormInputType
   , formInputDarkIconSrc
   , allFormInputTypes
   , maximumCountOfEntries
+  , maximumCountOfSelectedValues
   ) where
 
 import SlamData.Prelude
@@ -119,5 +120,10 @@ maximumCountOfEntries = case _ of
   Dropdown → 100
   Radio → 20
   Checkbox → 20
-  Static → 1
+  _ → top
+
+maximumCountOfSelectedValues ∷ FormInputType → Int
+maximumCountOfSelectedValues = case _ of
+  Dropdown → 1
+  Radio → 1
   _ → top

@@ -8,7 +8,6 @@ module SlamData.Workspace.Card.SetupFormInput.Static.Component
 import SlamData.Prelude
 
 import Data.Lens ((^?), (?~), (^.), (.~))
-import Data.Lens as Lens
 import Data.List as List
 
 import Halogen as H
@@ -18,10 +17,8 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Common.Align (alignSelect)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Form.Select as S
-import SlamData.Render.Common (row)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
@@ -35,8 +32,6 @@ import SlamData.Workspace.Card.BuildChart.Inputs as BCI
 import SlamData.Workspace.Card.SetupFormInput.Static.Component.ChildSlot as CS
 import SlamData.Workspace.Card.SetupFormInput.Static.Component.State as ST
 import SlamData.Workspace.Card.SetupFormInput.Static.Component.Query as Q
---import SlamData.Workspace.Card.SetupFormInput.Static.Semantic (semanticSelect)
---import SlamData.Workspace.Card.SetupFormInput.Static.Model as M
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -69,10 +64,6 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ renderValue state
-    , row
-        [ renderHorizontalAlign state
-        , renderVerticalAlign state
-        ]
     , renderPicker state
     ]
 
@@ -87,7 +78,6 @@ renderPicker state = case state.picker of
       { component: DPC.picker
           { title: case r.select of
                Q.Value _ → "Choose value"
-               _ → ""
           , label: DPC.labelNode show
           , render: DPC.renderNode show
           , values: groupJCursors $ List.fromFoldable r.options
@@ -108,30 +98,6 @@ renderValue state =
         state.value
     ]
 
-renderHorizontalAlign ∷ ST.State → HTML
-renderHorizontalAlign state =
-  HH.form
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Horizontal align" ]
-    , BCI.selectInput
-        (BCI.dropdown (Just "Horizonal align") (selecting Q.HorizontalAlign))
-        state.horizontalAlign
-    ]
-
-renderVerticalAlign ∷ ST.State → HTML
-renderVerticalAlign state =
-  HH.form
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , Cp.nonSubmit
-    ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Vertical align" ]
-    , BCI.selectInput
-        (BCI.dropdown (Just "Vertical align") (selecting Q.VerticalAlign))
-        state.verticalAlign
-    ]
-
 eval ∷ Q.QueryC ~> DSL
 eval = cardEval ⨁ chartEval
 
@@ -147,18 +113,12 @@ cardEval = case _ of
     let
       model =
         { value: _
-        , horizontalAlign: _
-        , verticalAlign: _
         }
         <$> (st.value ^. S._value)
-        <*> (st.horizontalAlign ^. S._value)
-        <*> (st.verticalAlign ^. S._value)
     pure $ k $ Card.SetupStatic model
   CC.Load (Card.SetupStatic (Just model)) next → do
     H.modify _
       { value = S.fromSelected $ Just model.value
-      , horizontalAlign = S.fromSelected $ Just model.horizontalAlign
-      , verticalAlign = S.fromSelected $ Just model.verticalAlign
       }
     pure next
   CC.Load _ next →
@@ -193,17 +153,9 @@ raiseUpdate = do
 chartEval ∷ Q.Query ~> DSL
 chartEval (Q.Select sel next) = next <$ case sel of
   Q.Value a → updatePicker ST._value Q.Value a
-  Q.VerticalAlign a → updateSelect ST._verticalAlign a
-  Q.HorizontalAlign a → updateSelect ST._horizontalAlign a
-
   where
   updatePicker l q = case _ of
     BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a → H.modify (l ∘ S._value .~ a) *> raiseUpdate
-
-  updateSelect ∷ ∀ a. Lens.Lens' ST.State (S.Select a) → BCI.SelectAction a → DSL Unit
-  updateSelect l = case _ of
-    BCI.Open _ → pure unit
     BCI.Choose a → H.modify (l ∘ S._value .~ a) *> raiseUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
@@ -218,7 +170,6 @@ peek = peekPicker ⨁ (const $ pure unit)
         v = flattenJCursors value
       for_ st.picker \r → case r.select of
         Q.Value _ → H.modify $ ST._value ∘ S._value ?~ v
-        _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
 
@@ -236,16 +187,6 @@ synchronizeChildren = do
         ⊕ st.axes.date
         ⊕ st.axes.datetime
 
-    newVerticalAlign =
-      S.setPreviousValueFrom (Just st.verticalAlign)
-        $ alignSelect
-
-    newHorizontalAlign =
-      S.setPreviousValueFrom (Just st.horizontalAlign)
-        $ alignSelect
-
   H.modify _
     { value = newValue
-    , verticalAlign = newVerticalAlign
-    , horizontalAlign = newHorizontalAlign
     }

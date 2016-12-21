@@ -5,18 +5,12 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), (.?), jsonEmptyObject, isNull, jsonNull)
 import Data.Foldable as F
 
-import SlamData.Common.Align (Align)
--- TODO: what's the difference between this and metric?
---import SlamData.Workspace.Card.SetupFormInput.Static.Semantic (Semantic)
-
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
 type StaticR =
   { value ∷ JCursor
-  , verticalAlign ∷ Align
-  , horizontalAlign ∷ Align
   }
 
 type Model = Maybe StaticR
@@ -28,8 +22,6 @@ eqR ∷ StaticR → StaticR → Boolean
 eqR r1 r2 =
   F.and
     [ r1.value ≡ r2.value
-    , r1.verticalAlign ≡ r2.verticalAlign
-    , r1.horizontalAlign ≡ r2.horizontalAlign
     ]
 
 eqModel ∷ Model → Model → Boolean
@@ -44,11 +36,7 @@ genModel = do
     then pure Nothing
     else map Just do
     value ← map runArbJCursor arbitrary
-    verticalAlign ← arbitrary
-    horizontalAlign ← arbitrary
     pure { value
-         , verticalAlign
-         , horizontalAlign
          }
 
 encode ∷ Model → Json
@@ -56,8 +44,6 @@ encode Nothing = jsonNull
 encode (Just r) =
   "formInputType" := "static"
   ~> "value" := r.value
-  ~> "verticalAlign" := r.verticalAlign
-  ~> "horizontalAlign" :=  r.horizontalAlign
   ~> jsonEmptyObject
 
 decode ∷ Json → String ⊹ Model
@@ -69,9 +55,5 @@ decode js
     unless (fiType ≡ "static")
       $ throwError "This is not text form input setup"
     value ← obj .? "value"
-    horizontalAlign ← obj .? "horizontalAlign"
-    verticalAlign ← obj .? "verticalAlign"
     pure { value
-         , horizontalAlign
-         , verticalAlign
          }
