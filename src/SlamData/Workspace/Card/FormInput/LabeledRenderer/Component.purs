@@ -2,14 +2,15 @@ module SlamData.Workspace.Card.FormInput.LabeledRenderer.Component where
 
 import SlamData.Prelude
 
+import Data.Array as Arr
 import Data.Set as Set
 import Data.Map as Map
 
 import Halogen as H
---import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
---import Halogen.HTML.Properties.Indexed as HP
---import Halogen.Themes.Bootstrap3 as B
+import Halogen.HTML.Properties.Indexed as HP
+import Halogen.Themes.Bootstrap3 as B
 import Halogen.CustomProps as Cp
 
 import SlamData.Monad (Slam)
@@ -54,15 +55,62 @@ render state =
 
 renderDropdown ∷ State → Array HTML
 renderDropdown state =
-  [ HH.text "TODO" ]
+  [ HH.select
+      [ HP.classes [ B.formControl ]
+      , HE.onSelectedIndexChange \ix →
+         pure (Arr.index optionList ix <#> fst ⋙ flip ItemSelected unit)
+      ]
+      $ map renderOption optionList
+  ]
+  where
+  optionList ∷ Array (Sem.Semantics × Maybe String)
+  optionList = Map.toUnfoldable state.valueLabelMap
+
+  renderOption ∷ Sem.Semantics × Maybe String → HTML
+  renderOption (sem × label) =
+    HH.option
+      [ HP.selected $ Set.member sem state.selected ]
+      [ HH.text $ fromMaybe (Sem.printSemantics sem) label ]
 
 renderCheckbox ∷ State → Array HTML
 renderCheckbox state =
-  [ HH.text "TODO" ]
+  [ HH.div
+     [ HP.classes [ B.checkbox ] ]
+     $ map renderOneInput optionList
+  ]
+  where
+  optionList ∷ Array (Sem.Semantics × Maybe String)
+  optionList = Map.toUnfoldable state.valueLabelMap
+
+  renderOneInput ∷ Sem.Semantics × Maybe String → HTML
+  renderOneInput (sem × label) =
+    HH.label_
+      [ HH.input
+          [ HP.inputType HP.InputCheckbox
+          , HP.checked $ Set.member sem state.selected
+          , HE.onValueChange (HE.input_ $ ItemSelected sem)
+          ]
+      ]
 
 renderRadio ∷ State → Array HTML
 renderRadio state =
-  [ HH.text "TODO" ]
+  [ HH.div
+     [ HP.classes [ B.radio ] ]
+     $ map renderOneInput optionList
+  ]
+  where
+  optionList ∷ Array (Sem.Semantics × Maybe String)
+  optionList = Map.toUnfoldable state.valueLabelMap
+
+  renderOneInput ∷ Sem.Semantics × Maybe String → HTML
+  renderOneInput (sem × label) =
+    HH.label_
+      [ HH.input
+          [ HP.inputType HP.InputRadio
+          , HP.checked $ Set.member sem state.selected
+          , HE.onValueChange (HE.input_ $ ItemSelected sem)
+          ]
+      ]
 
 eval ∷ Query ~> DSL
 eval (Setup conf next) = do
