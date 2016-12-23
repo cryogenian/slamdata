@@ -453,6 +453,8 @@ updatePointer old new = case _ of
     update (Just deckId) | deckId ≡ old = new
     update a = a
 
+-- TODO: this should live somewhere else and actually, FormInputType
+-- is LabeledInputType ⊹ TextLikeInputType ⊹ Static. They all are handled differently
 _SetupLabeledInput ∷ Traversal' AnyCardModel SetupLabeled.Model
 _SetupLabeledInput = wander \f s → case s of
   SetupDropdown m → map SetupDropdown $ f m
@@ -465,8 +467,7 @@ setupLabeledFormInput fit m = case fit of
   Dropdown → SetupDropdown m
   Radio → SetupRadio m
   Checkbox → SetupCheckbox m
-  -- TODO
-  _ → Troubleshoot
+  _ → SetupDropdown m
 
 _SetupTextLikeInput ∷ Traversal' AnyCardModel SetupTextLike.Model
 _SetupTextLikeInput = wander \f s → case s of
@@ -484,5 +485,4 @@ setupTextLikeInput fit m = case fit of
   Date → SetupDate m
   Time → SetupTime m
   Datetime → SetupDatetime m
-  -- TODO
-  _ → Troubleshoot
+  _ → SetupText m
