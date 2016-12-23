@@ -21,7 +21,5 @@ eval
     )
   ⇒ Model
   → m Port.Port
-eval Nothing =
-  CEM.throw "Incorrect port in form input card"
-eval (Just m) =
+eval m =
   pure Port.Terminal
