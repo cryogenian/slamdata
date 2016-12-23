@@ -98,17 +98,23 @@ eval = case _ of
     pure $ k $ unsafeCoerce unit
   CC.Load model next →
     case model of
-      Card.FormInput (M.TextLike str) →
+      Card.FormInput (M.TextLike str) → do
+        H.query' CS.cpTextLike unit $ H.action $ TextLike.ValueChanged str
         pure next
-      Card.FormInput (M.Labeled set) →
+      Card.FormInput (M.Labeled set) → do
+        H.query' CS.cpLabeled unit $ H.action $ Labeled.SetSelected set
         pure next
       _ →
         pure next
   CC.ReceiveInput input next →
     case input of
-      SetupTextLikeFormInput p →
+      SetupTextLikeFormInput p → do
+        H.modify _{ formInputType = Just p.formInputType }
+        H.query' CS.cpTextLike unit $ H.action $ TextLike.Setup p
         pure next
-      SetupLabeledFormInput p →
+      SetupLabeledFormInput p → do
+        H.modify _{ formInputType = Just p.formInputType }
+        H.query' CS.cpLabeled unit $ H.action $ Labeled.Setup p
         pure next
       _ →
         pure next
@@ -116,7 +122,8 @@ eval = case _ of
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions dims next →
+  CC.ReceiveDimensions dims next → do
+    H.modify _{levelOfDetails = if dims.width < 240.0 then Low else High}
     pure next
   CC.ModelUpdated _ next →
     pure next

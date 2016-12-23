@@ -36,6 +36,8 @@ initialState =
 data Query a
   = Setup SetupLabeledFormInputPort a
   | ItemSelected Sem.Semantics a
+  | SetSelected (Set.Set Sem.Semantics) a
+  | GetSelected (Set.Set Sem.Semantics → a)
 
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
@@ -127,3 +129,8 @@ eval (ItemSelected sem next) = do
     Checkbox → H.modify _{ selected = Set.insert sem st.selected }
     _ → H.modify _{ selected = Set.singleton sem }
   pure next
+eval (SetSelected set next) = do
+  H.modify _{ selected = set }
+  pure next
+eval (GetSelected continue) =
+  map continue $ H.gets _.selected

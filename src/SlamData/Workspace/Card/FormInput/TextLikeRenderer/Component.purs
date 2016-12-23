@@ -29,6 +29,7 @@ initialState =
 data Query a
   = Setup SetupTextLikeFormInputPort a
   | ValueChanged String a
+  | GetValue (String → a)
 
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
@@ -64,3 +65,5 @@ eval (Setup p next) = do
          _ → HP.InputText
     }
   pure next
+eval (GetValue cont) =
+  map cont $ H.gets _.value

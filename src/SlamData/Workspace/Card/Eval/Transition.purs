@@ -44,6 +44,7 @@ import SlamData.Workspace.Card.BuildChart.Parallel.Eval as BuildParallel
 import SlamData.Workspace.Card.SetupFormInput.Labeled.Model as SetupLabeled
 import SlamData.Workspace.Card.SetupFormInput.TextLike.Model as SetupTextLike
 import SlamData.Workspace.Card.SetupFormInput.Static.Model as SetupStatic
+import SlamData.Workspace.Card.FormInput.Model as FormInput
 
 data Eval
   = Pass
@@ -84,6 +85,7 @@ data Eval
   | SetupDatetime SetupTextLike.Model
   | SetupStatic SetupStatic.Model
   | Chart
+  | FormInput FormInput.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -125,3 +127,4 @@ tagEval = case _ of
   SetupTime _ → "SetupTime"
   SetupDatetime _ → "SetupDatetime"
   SetupStatic _ → "SetupStatic"
+  FormInput _ → "FormInput"

@@ -60,6 +60,7 @@ import SlamData.Workspace.Card.SetupFormInput.Labeled.Eval as SetupLabeled
 import SlamData.Workspace.Card.SetupFormInput.TextLike.Eval as SetupTextLike
 import SlamData.Workspace.Card.SetupFormInput.Static.Eval as SetupStatic
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
+import SlamData.Workspace.Card.FormInput.Eval as FormInput
 
 
 runCard
@@ -177,6 +178,10 @@ evalCard = flip case _, _ of
     SetupTextLike.eval model tr CT.Datetime
   SetupStatic model, Port.TaggedResource tr →
     SetupStatic.eval model tr
+  FormInput model, Port.SetupLabeledFormInput lp →
+    FormInput.evalLabeled model lp
+  FormInput model, Port.SetupTextLikeFormInput tlp →
+    FormInput.evalTextLike model tlp
   e, i →
     CEM.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
