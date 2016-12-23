@@ -8,13 +8,10 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
---import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
---import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.FormInput.Component.ChildSlot as CS
---import SlamData.Workspace.Card.FormInput.Component.Query as Q
 import SlamData.Workspace.Card.FormInput.Component.State as ST
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Component as Labeled
 import SlamData.Workspace.Card.FormInput.Model as M
@@ -23,8 +20,6 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-
-import Unsafe.Coerce (unsafeCoerce)
 
 type HTML =
   H.ParentHTML CS.ChildState CC.CardEvalQuery CS.ChildQuery Slam CS.ChildSlot
@@ -94,8 +89,14 @@ eval = case _ of
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k →
-    pure $ k $ unsafeCoerce unit
+  CC.Save k → do
+    mbTextLike ← H.query' CS.cpTextLike unit $ H.request TextLike.GetValue
+    mbLabeled ← H.query' CS.cpLabeled unit $ H.request Labeled.GetSelected
+    pure $ k
+      (Card.FormInput
+       $ fromMaybe (M.TextLike "")
+       $ map M.TextLike mbTextLike
+       <|> map M.Labeled mbLabeled)
   CC.Load model next →
     case model of
       Card.FormInput (M.TextLike str) → do
