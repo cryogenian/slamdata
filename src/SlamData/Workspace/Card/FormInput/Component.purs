@@ -1,3 +1,19 @@
+{-
+Copyright 2016 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Card.FormInput.Component (formInputComponent) where
 
 import SlamData.Prelude
@@ -50,7 +66,9 @@ render state =
 renderHighLOD ∷ ST.State → HTML
 renderHighLOD state =
   HH.div
-    [ HP.classes (guard (state.levelOfDetails ≠ High) $> B.hidden )]
+    [ HP.classes
+        (guard (state.levelOfDetails ≠ High) $> B.hidden )
+    ]
     case state.formInputType of
       Just FIT.Text →
         textLike
@@ -90,24 +108,27 @@ eval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    mbTextLike ← H.query' CS.cpTextLike unit $ H.request TextLike.GetValue
-    mbLabeled ← H.query' CS.cpLabeled unit $ H.request Labeled.GetSelected
+    st ← H.get
+    mbTextLike ← H.query' CS.cpTextLike unit $ H.request TextLike.Save
+    mbLabeled ← H.query' CS.cpLabeled unit $ H.request Labeled.Save
     pure $ k
       (Card.FormInput
-       $ fromMaybe (M.TextLike "")
+       $ fromMaybe M.initialModel
        $ map M.TextLike mbTextLike
        <|> map M.Labeled mbLabeled)
-  CC.Load model next →
+  CC.Load model next → do
     case model of
-      Card.FormInput (M.TextLike str) → do
-        H.query' CS.cpTextLike unit $ H.action $ TextLike.ValueChanged str
+      Card.FormInput (M.TextLike r) → do
+        H.modify _{ formInputType = Just r.formInputType }
+        H.query' CS.cpTextLike unit $ H.action $ TextLike.Load r
         pure next
-      Card.FormInput (M.Labeled set) → do
-        H.query' CS.cpLabeled unit $ H.action $ Labeled.SetSelected set
+      Card.FormInput (M.Labeled r) → do
+        H.modify _{ formInputType = Just r.formInputType }
+        H.query' CS.cpLabeled unit $ H.action $ Labeled.Load r
         pure next
       _ →
         pure next
-  CC.ReceiveInput input next →
+  CC.ReceiveInput input next → do
     case input of
       SetupTextLikeFormInput p → do
         H.modify _{ formInputType = Just p.formInputType }
@@ -132,4 +153,13 @@ eval = case _ of
     pure next
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek _ = CC.raiseUpdatedP CC.EvalModelUpdate
+peek = textLikePeek ⨁ labeledPeek
+  where
+  textLikePeek = case _ of
+    TextLike.Updated _ →
+      CC.raiseUpdatedP CC.EvalModelUpdate
+    _ → pure unit
+  labeledPeek = case _ of
+    Labeled.Updated _ →
+      CC.raiseUpdatedP CC.EvalModelUpdate
+    _ → pure unit

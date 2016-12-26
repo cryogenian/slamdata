@@ -252,6 +252,16 @@ printSemantics (Time t) = printTime t
 printSemantics (Date d) = printDate d
 printSemantics (DateTime (Ddt.DateTime d t)) = printDate d ⊕ " " ⊕ printTime t
 
+semanticsToSQLStrings ∷ Semantics → Array String
+semanticsToSQLStrings (Value v) = [ show v ]
+semanticsToSQLStrings (Percent v) = [ "\"" <> show v <> "%\"", show (v/100.0) ]
+semanticsToSQLStrings (Money v m) = [ "\"" <> show v <> show m <> "\"" ]
+semanticsToSQLStrings (Category s) = [ show s ]
+semanticsToSQLStrings (Bool b) = [ show b ]
+semanticsToSQLStrings (Time t) = [ show $ printTime t ]
+semanticsToSQLStrings (Date d) = [ show $ printDate d ]
+semanticsToSQLStrings (DateTime (Ddt.DateTime d t)) = [ show $ printDate d <> " " <> printTime t ]
+
 semanticsToNumber ∷ Semantics → Maybe Number
 semanticsToNumber (Value v) = pure v
 semanticsToNumber (Money v _) = pure v

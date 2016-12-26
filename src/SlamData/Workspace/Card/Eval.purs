@@ -223,4 +223,5 @@ modelToEval = case _ of
   Model.SetupDate model → SetupDate model
   Model.SetupTime model → SetupTime model
   Model.SetupDatetime model → SetupDatetime model
+  Model.FormInput model → FormInput model
   _ → Pass

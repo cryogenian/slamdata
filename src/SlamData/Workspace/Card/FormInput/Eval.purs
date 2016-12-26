@@ -1,3 +1,19 @@
+{-
+Copyright 2016 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Card.FormInput.Eval
   ( evalTextLike
   , evalLabeled
@@ -13,7 +29,6 @@ import Control.Monad.Writer.Class (class MonadTell)
 import Data.Argonaut as J
 import Data.Foldable as F
 import Data.Path.Pathy as Path
-import Data.Set as Set
 import Data.String as Str
 import Data.StrMap as SM
 
@@ -23,10 +38,13 @@ import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.FormInput.Model (Model(..))
+import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
+import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
 import SlamData.Workspace.Card.BuildChart.Semantics as Sem
 
 type TaggedResourceAndCursor r =
@@ -72,7 +90,7 @@ evalLabeled
     , QuasarDSL m
     , ParQuasarDSL m
     )
-  ⇒ Set.Set Sem.Semantics
+  ⇒ LR.Model
   → Port.SetupLabeledFormInputPort
   → m Port.Port
 evalLabeled = eval \m p →
@@ -82,7 +100,7 @@ evalLabeled = eval \m p →
   <> " where "
   <> (Str.drop 1 $ show p.cursor)
   <> " in ("
-  <> (F.intercalate "," $ Set.map Sem.printSemantics m)
+  <> (F.intercalate "," $ foldMap Sem.semanticsToSQLStrings m.selected)
   <> ")"
 
 evalTextLike
@@ -94,7 +112,7 @@ evalTextLike
     , QuasarDSL m
     , ParQuasarDSL m
     )
-  ⇒ String
+  ⇒ TLR.Model
   → Port.SetupTextLikeFormInputPort
   → m Port.Port
 evalTextLike = eval \m p →
@@ -104,4 +122,6 @@ evalTextLike = eval \m p →
   <> " where "
   <> (Str.drop 1 $ show p.cursor)
   <> " = "
-  <> m
+  <> (case p.formInputType of
+         Text → "\"" <> m.value <> "\""
+         _ → m.value)

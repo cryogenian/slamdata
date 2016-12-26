@@ -1,3 +1,19 @@
+{-
+Copyright 2016 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Card.CardType.FormInputType
   ( FormInputType(..)
   , parseFormInputType
@@ -17,6 +33,9 @@ import Data.Argonaut (fromString, class EncodeJson, class DecodeJson, decodeJson
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
+-- This data type is actually sum of three: LabeledLike, TextLike and Static
+-- It's a bit inconvenient to use this like LabeledLike ⊹ TextLike ⊹ Static though.
+-- (And unfortunately isn't very elegant to use this like ADT :( )
 data FormInputType
   = Dropdown
   | Static
@@ -118,8 +137,8 @@ formInputDarkIconSrc = case _ of
 maximumCountOfEntries ∷ FormInputType → Int
 maximumCountOfEntries = case _ of
   Dropdown → 100
-  Radio → 20
-  Checkbox → 20
+  Radio → 100
+  Checkbox → 100
   _ → top
 
 maximumCountOfSelectedValues ∷ FormInputType → Int

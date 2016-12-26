@@ -227,6 +227,8 @@ fromPort = case _ of
   Port.ChartInstructions _ → Chart
   Port.Metric _ → Chart
   Port.PivotTable _ → Chart
+  Port.SetupLabeledFormInput _ → FormInput
+  Port.SetupTextLikeFormInput _ → FormInput
   _ → None
 
 toCardType ∷ InsertableCardType → CardType
