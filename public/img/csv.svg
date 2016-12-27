@@ -24,7 +24,7 @@
          rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata><defs
      id="defs3410" /><sodipodi:namedview
-     pagecolor="#000000"
+     pagecolor="#333333"
      bordercolor="#666666"
      borderopacity="1"
      objecttolerance="10"
@@ -44,7 +44,7 @@
      inkscape:window-maximized="1"
      inkscape:current-layer="Layer_1" /><text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:180px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;font-size:180px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#333333;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      x="0"
      y="735.45764"
      id="text3420"
@@ -55,7 +55,7 @@
        y="735.45764">  </tspan></text>
 <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:180px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-weight:normal;font-size:180px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#333333;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      x="264.67798"
      y="360.13559"
      id="text4319"
@@ -66,7 +66,7 @@
        y="360.13559" /></text>
 <g
      transform="matrix(0.99087081,0,0,1.2998622,0,-73.726844)"
-     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:210.11161804px;line-height:125%;font-family:'Ubuntu Mono';-inkscape-font-specification:'Ubuntu Mono, Normal';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:210.11161804px;line-height:125%;font-family:'Ubuntu Mono';-inkscape-font-specification:'Ubuntu Mono, Normal';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      id="text4323"><path
        d="m 56.336284,306.82117 q -27.524622,0 -42.022323,-17.64937 -14.49770209,-17.64938 -14.49770209,-50.21668 0,-16.17859 4.41234399,-28.78529 4.412344,-12.6067 12.1864741,-21.22128 7.984241,-8.82468 18.699934,-13.23703 10.925804,-4.62245 23.742613,-4.62245 6.933683,0 12.396585,1.26067 5.673014,1.05056 9.875246,2.52134 4.202232,1.47078 6.933683,3.15167 2.941563,1.68089 4.412344,2.52134 l -6.723571,20.59094 q -4.832568,-3.15168 -11.766251,-5.25279 -6.723572,-2.31123 -15.54826,-2.31123 -6.093237,0 -11.976362,2.31123 -5.673014,2.10111 -10.295469,7.35391 -4.412344,5.04267 -7.353907,13.65725 -2.731451,8.61458 -2.731451,21.43139 0,22.27183 7.564018,34.24819 7.77413,11.76625 25.213395,11.76625 10.085357,0 16.598817,-2.31123 6.723572,-2.31123 10.715693,-4.62245 l 6.51346,20.38082 q -5.462902,3.36179 -14.917925,6.30335 -9.244911,2.73145 -21.431385,2.73145 z"
        style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:210.11161804px;line-height:125%;font-family:'Ubuntu Mono';-inkscape-font-specification:'Ubuntu Mono, Bold';text-align:start;writing-mode:lr-tb;text-anchor:start;opacity:1;fill:#ffffff;fill-opacity:1"

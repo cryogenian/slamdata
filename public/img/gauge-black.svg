@@ -7,22 +7,22 @@
    id="svg3336"
    version="1.1">
   <path
-     style="fill:black;fill-opacity:0.73333335;stroke:none"
+     style="fill:#333333;fill-opacity:0.73333335;stroke:none"
      d="M 257.61523 20.996094 A 230.9653 230.9653 0 0 0 40.578125 172.9668 A 230.9653 230.9653 0 0 0 109.1543 428.89258 L 257.20312 252.45312 L 256.80664 251.98242 L 132.09375 400.1875 A 194.01938 193.46861 0 0 1 74.488281 185.81055 A 194.01938 193.46861 0 0 1 256.80664 58.513672 A 194.01938 193.46861 0 0 1 439.12695 185.81055 A 194.01938 193.46861 0 0 1 381.79492 399.95508 L 406.07617 428.89258 A 230.9653 230.9653 0 0 0 474.65234 172.9668 A 230.9653 230.9653 0 0 0 257.61523 20.996094 z M 381.79492 399.95508 L 257.61523 251.96289 L 257.20312 252.45312 L 381.52148 400.1875 A 194.01938 193.46861 0 0 0 381.79492 399.95508 z "
      id="path3365" />
   <circle
-     style="fill:black;fill-opacity:1;stroke:none"
+     style="fill:#333333;fill-opacity:1;stroke:none"
      id="path3388"
      cx="257.21136"
      cy="253.17349"
      r="16.555204" />
   <path
-     style="fill:black;fill-opacity:1;stroke:none"
+     style="fill:#333333;fill-opacity:1;stroke:none"
      id="path3390"
      d="m 264.07573,88.025233 42.91799,72.937377 42.91798,72.93737 -84.62461,0.69938 -84.62462,0.69938 41.70663,-73.63676 z"
      transform="matrix(0.14590329,0,0,1.4386782,218.90891,-88.684152)" />
   <path
-     style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="fill:none;fill-rule:evenodd;stroke:#333333;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      d="M 259.23028,187.35647 256,185.74132"
      id="path3392" />
 </svg>

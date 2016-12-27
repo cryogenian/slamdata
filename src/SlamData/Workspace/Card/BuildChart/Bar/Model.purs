@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Bar.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -43,14 +42,12 @@ initialModel = Nothing
 
 eqBarR ∷ BarR → BarR → Boolean
 eqBarR r1 r2 =
-  F.and
-    [ r1.category ≡ r2.category
-    , r1.value ≡ r2.value
-    , r1.valueAggregation ≡ r2.valueAggregation
-    , r1.stack ≡ r2.stack
-    , r1.parallel ≡ r2.parallel
-    , r1.axisLabelAngle ≡ r2.axisLabelAngle
-    ]
+  r1.category ≡ r2.category
+  ∧ r1.value ≡ r2.value
+  ∧ r1.valueAggregation ≡ r2.valueAggregation
+  ∧ r1.stack ≡ r2.stack
+  ∧ r1.parallel ≡ r2.parallel
+  ∧ r1.axisLabelAngle ≡ r2.axisLabelAngle
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

@@ -25,6 +25,7 @@ import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
+import SlamData.Workspace.Card.CardType.FormInputType (allFormInputTypes)
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.ActionList.Component as ActionList
 
@@ -40,6 +41,15 @@ chartSubmenu =
     (ActionList.ActionDescription "Select Setup Chart card category")
     (map (toAction ∘ Insert ∘ CT.ChartOptions) allChartTypes)
 
+formInputSubmenu ∷ ActionList.Action NextAction
+formInputSubmenu =
+  ActionList.Drill
+    (ActionList.ActionName "Setup Form")
+    (ActionList.ActionIconSrc "img/cardsLight/setupFormInput.svg")
+    (ActionList.ActionDescription "Select Setup Form card category")
+    (map (toAction ∘ Insert ∘ CT.SetupFormInput) allFormInputTypes)
+
+
 findOutHowToChartSubmenu ∷ ActionList.Action NextAction
 findOutHowToChartSubmenu =
   ActionList.Drill
@@ -47,6 +57,15 @@ findOutHowToChartSubmenu =
     (ActionList.ActionIconSrc "img/cardsLight/setupChart.svg")
     (ActionList.ActionDescription "Select Setup Chart card category")
     (map (toAction ∘ FindOutHowToInsert ∘ CT.ChartOptions) allChartTypes)
+
+findOutHowToFormInputSubmenu ∷ ActionList.Action NextAction
+findOutHowToFormInputSubmenu =
+  ActionList.Drill
+    (ActionList.ActionName "Setup Form")
+    (ActionList.ActionIconSrc "img/cardsLight/setupFormInput.svg")
+    (ActionList.ActionDescription "Select Setup Form card category")
+    (map (toAction ∘ FindOutHowToInsert ∘ CT.SetupFormInput) allFormInputTypes)
+
 
 toAction ∷ NextAction → ActionList.Action NextAction
 toAction =
@@ -81,16 +100,19 @@ instance eqNextAction ∷ Eq NextAction where
   eq (FindOutHowToInsert cty1) (FindOutHowToInsert cty2) = cty1 ≡ cty2
   eq _ _ = false
 
+
 insert ∷ InsertableCardType → ActionList.Action NextAction
 insert =
   case _ of
     ICT.SetupChartCard → chartSubmenu
+    ICT.SetupFormInputCard → formInputSubmenu
     iCardType → toAction $ Insert $ ICT.toCardType iCardType
 
 findOutHowToInsert ∷ InsertableCardType → ActionList.Action NextAction
 findOutHowToInsert =
   case _ of
     ICT.SetupChartCard → findOutHowToChartSubmenu
+    ICT.SetupFormInputCard → findOutHowToFormInputSubmenu
     iCardType → toAction $ FindOutHowToInsert $ ICT.toCardType iCardType
 
 fromInsertableCard ∷ InsertableCardType → Array InsertableCardType → ActionList.Action NextAction

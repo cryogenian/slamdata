@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Candlestick.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -47,18 +46,16 @@ initialModel = Nothing
 
 eqCandleStickR ∷ CandlestickR → CandlestickR → Boolean
 eqCandleStickR r1 r2 =
-  F.and
-    [ r1.dimension ≡ r2.dimension
-    , r1.high ≡ r2.high
-    , r1.highAggregation ≡ r2.highAggregation
-    , r1.low ≡ r2.low
-    , r1.lowAggregation ≡ r2.lowAggregation
-    , r1.open ≡ r2.open
-    , r1.openAggregation ≡ r2.openAggregation
-    , r1.close ≡ r2.close
-    , r1.closeAggregation ≡ r2.closeAggregation
-    , r1.parallel ≡ r2.parallel
-    ]
+  r1.dimension ≡ r2.dimension
+  ∧ r1.high ≡ r2.high
+  ∧ r1.highAggregation ≡ r2.highAggregation
+  ∧ r1.low ≡ r2.low
+  ∧ r1.lowAggregation ≡ r2.lowAggregation
+  ∧ r1.open ≡ r2.open
+  ∧ r1.openAggregation ≡ r2.openAggregation
+  ∧ r1.close ≡ r2.close
+  ∧ r1.closeAggregation ≡ r2.closeAggregation
+  ∧ r1.parallel ≡ r2.parallel
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

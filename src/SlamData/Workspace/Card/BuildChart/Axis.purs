@@ -142,13 +142,11 @@ initialAxes =
 
 eqAxes ∷ Axes → Axes → Boolean
 eqAxes r1 r2 =
-  F.and
-    [ r1.category ≡ r2.category
-    , r1.time ≡ r2.time
-    , r1.value ≡ r2.value
-    , r1.date ≡ r2.date
-    , r1.datetime ≡ r2.datetime
-    ]
+  r1.category ≡ r2.category
+  ∧ r1.time ≡ r2.time
+  ∧ r1.value ≡ r2.value
+  ∧ r1.date ≡ r2.date
+  ∧ r1.datetime ≡ r2.datetime
 
 buildAxes ∷ JArray → Axes
 buildAxes rs =

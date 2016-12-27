@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Parallel.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -40,11 +39,9 @@ initialModel = Nothing
 
 eqParallelR ∷ ParallelR → ParallelR → Boolean
 eqParallelR r1 r2 =
-  F.and
-    [ r1.dims ≡ r2.dims
-    , r1.series ≡ r2.series
-    , r1.aggs ≡ r2.aggs
-    ]
+  r1.dims ≡ r2.dims
+  ∧ r1.series ≡ r2.series
+  ∧ r1.aggs ≡ r2.aggs
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Boxplot.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -40,12 +39,10 @@ initialModel = Nothing
 
 eqBoxplotR ∷ BoxplotR → BoxplotR → Boolean
 eqBoxplotR r1 r2 =
-  F.and
-    [ r1.dimension ≡ r2.dimension
-    , r1.value ≡ r2.value
-    , r1.series ≡ r2.series
-    , r1.parallel ≡ r2.parallel
-    ]
+  r1.dimension ≡ r2.dimension
+  ∧ r1.value ≡ r2.value
+  ∧ r1.series ≡ r2.series
+  ∧ r1.parallel ≡ r2.parallel
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

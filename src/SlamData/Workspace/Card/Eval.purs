@@ -53,10 +53,15 @@ import SlamData.Workspace.Card.Eval.Transition (Eval(..), tagEval)
 import SlamData.Workspace.Card.Markdown.Eval as MDE
 import SlamData.Workspace.Card.Model as Model
 import SlamData.Workspace.Card.Open.Eval as Open
-import SlamData.Workspace.Card.Query.Eval as Query
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Query.Eval as Query
 import SlamData.Workspace.Card.Search.Eval as Search
+import SlamData.Workspace.Card.SetupFormInput.Labeled.Eval as SetupLabeled
+import SlamData.Workspace.Card.SetupFormInput.TextLike.Eval as SetupTextLike
+import SlamData.Workspace.Card.SetupFormInput.Static.Eval as SetupStatic
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
+import SlamData.Workspace.Card.FormInput.Eval as FormInput
+
 
 runCard
   ∷ ∀ f m
@@ -155,6 +160,28 @@ evalCard = flip case _, _ of
     pure $ Port.TaggedResource taggedResource
   Chart, Port.ChartInstructions {taggedResource} →
     pure $ Port.TaggedResource taggedResource
+  SetupCheckbox model, Port.TaggedResource tr →
+    SetupLabeled.eval model tr CT.Checkbox
+  SetupRadio model, Port.TaggedResource tr →
+    SetupLabeled.eval model tr CT.Radio
+  SetupDropdown model, Port.TaggedResource tr →
+    SetupLabeled.eval model tr CT.Dropdown
+  SetupText model, Port.TaggedResource tr →
+    SetupTextLike.eval model tr CT.Text
+  SetupNumeric model, Port.TaggedResource tr →
+    SetupTextLike.eval model tr CT.Numeric
+  SetupDate model, Port.TaggedResource tr →
+    SetupTextLike.eval model tr CT.Date
+  SetupTime model, Port.TaggedResource tr →
+    SetupTextLike.eval model tr CT.Time
+  SetupDatetime model, Port.TaggedResource tr →
+    SetupTextLike.eval model tr CT.Datetime
+  SetupStatic model, Port.TaggedResource tr →
+    SetupStatic.eval model tr
+  FormInput (FormInput.Labeled model), Port.SetupLabeledFormInput lp →
+    FormInput.evalLabeled model lp
+  FormInput (FormInput.TextLike model), Port.SetupTextLikeFormInput tlp →
+    FormInput.evalTextLike model tlp
   e, i →
     CEM.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
@@ -187,4 +214,14 @@ modelToEval = case _ of
   Model.BuildCandlestick model → BuildCandlestick model
   Model.BuildParallel model → BuildParallel model
   Model.Chart _ → Chart
+  Model.SetupDropdown model → SetupDropdown model
+  Model.SetupStatic model → SetupStatic model
+  Model.SetupText model → SetupText model
+  Model.SetupNumeric model → SetupNumeric model
+  Model.SetupCheckbox model → SetupCheckbox model
+  Model.SetupRadio model → SetupRadio model
+  Model.SetupDate model → SetupDate model
+  Model.SetupTime model → SetupTime model
+  Model.SetupDatetime model → SetupDatetime model
+  Model.FormInput model → FormInput model
   _ → Pass

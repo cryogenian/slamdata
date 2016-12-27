@@ -23,6 +23,7 @@ import SlamData.Prelude
 import SlamData.Workspace.Card.CardType as CardType
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
+import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port (Port)
 
@@ -33,10 +34,12 @@ data InsertableCardType
   | QueryCard
   | SearchCard
   | SetupChartCard
+  | SetupFormInputCard
   | SetupDownloadCard
   | SetupMarkdownCard
   | SetupVariablesCard
   | ShowChartCard
+  | ShowFormInputCard
   | ShowDownloadCard
   | ShowMarkdownCard
   | TableCard
@@ -44,6 +47,7 @@ data InsertableCardType
 
 data InsertableCardIOType
   = Chart
+  | FormInput
   | Data
   | Download
   | Draftboard
@@ -63,9 +67,11 @@ inputs =
   , SearchCard × [ Data, Chart ]
   , SetupChartCard × [ Data, Chart ]
   , SetupDownloadCard × [ Data, Chart ]
+  , SetupFormInputCard × [ Data, Chart ]
   , SetupMarkdownCard × [ None, Variables ]
   , SetupVariablesCard × [ None ]
   , ShowChartCard × [ Chart ]
+  , ShowFormInputCard × [ FormInput ]
   , ShowDownloadCard × [ Download ]
   , ShowMarkdownCard × [ Markdown ]
   , TableCard × [ Data, Chart ]
@@ -80,10 +86,12 @@ outputs =
   , QueryCard × [ Data ]
   , SearchCard × [ Data ]
   , SetupChartCard × [ Chart ]
+  , SetupFormInputCard × [ FormInput ]
   , SetupDownloadCard × [ Download ]
   , SetupMarkdownCard × [ Markdown ]
   , SetupVariablesCard × [ Markdown, Variables ]
   , ShowChartCard × [ Chart ]
+  , ShowFormInputCard × [ Data ]
   , ShowDownloadCard × [ Download ]
   , ShowMarkdownCard × [ Markdown, Variables ]
   , TableCard × [ Data ]
@@ -178,26 +186,26 @@ fromMaybePort ∷ Maybe Port → InsertableCardIOType
 fromMaybePort input = maybe None fromPort input
 
 printIOType ∷ InsertableCardIOType → String
-printIOType =
-  case _ of
-    Chart → "a chart"
-    Data → "data"
-    Download → "a download"
-    Draftboard → "a dashboard"
-    Markdown → "markdown"
-    None → "to be the first card in a deck"
-    Variables → "variables"
+printIOType = case _ of
+  FormInput → "a form"
+  Chart → "a chart"
+  Data → "data"
+  Download → "a download"
+  Draftboard → "a dashboard"
+  Markdown → "markdown"
+  None → "to be the first card in a deck"
+  Variables → "variables"
 
 printIOType' ∷ InsertableCardIOType → Maybe String
-printIOType' =
-  case _ of
-    Chart → Just "this chart"
-    Data → Just "this data"
-    Download → Just "this download"
-    Draftboard → Just "this dashboard"
-    Markdown → Just "this markdown"
-    Variables → Just "these variables"
-    _ → Nothing
+printIOType' = case _ of
+  FormInput → Just "this form"
+  Chart → Just "this chart"
+  Data → Just "this data"
+  Download → Just "this download"
+  Draftboard → Just "this dashboard"
+  Markdown → Just "this markdown"
+  Variables → Just "these variables"
+  _ → Nothing
 
 eitherOr ∷ Array String → String
 eitherOr strings =
@@ -219,6 +227,8 @@ fromPort = case _ of
   Port.ChartInstructions _ → Chart
   Port.Metric _ → Chart
   Port.PivotTable _ → Chart
+  Port.SetupLabeledFormInput _ → FormInput
+  Port.SetupTextLikeFormInput _ → FormInput
   _ → None
 
 toCardType ∷ InsertableCardType → CardType
@@ -229,10 +239,12 @@ toCardType = case _ of
   QueryCard → CardType.Ace CardType.SQLMode
   SearchCard → CardType.Search
   SetupChartCard → CardType.ChartOptions Pie
+  SetupFormInputCard → CardType.SetupFormInput Dropdown
   SetupDownloadCard → CardType.DownloadOptions
   SetupMarkdownCard → CardType.Ace CardType.MarkdownMode
   SetupVariablesCard → CardType.Variables
   ShowChartCard → CardType.Chart
+  ShowFormInputCard → CardType.FormInput
   ShowDownloadCard → CardType.Download
   ShowMarkdownCard → CardType.Markdown
   TableCard → CardType.Table
@@ -241,6 +253,7 @@ toCardType = case _ of
 print ∷ InsertableCardType → String
 print = case _ of
   SetupChartCard → "Setup Chart"
+  SetupFormInputCard → "Setup Form"
   a → CardType.cardName $ toCardType a
 
 aAn ∷ String → String
@@ -277,22 +290,23 @@ reason io card =
     foldMap (append " to ") $ printAction ictCardType
 
 printAction ∷ InsertableCardType → Maybe String
-printAction =
-  case _ of
-    CacheCard → Just "cache"
-    DraftboardCard → Nothing
-    OpenCard → Nothing
-    QueryCard → Nothing
-    SearchCard → Just "search"
-    SetupChartCard → Just "set up a chart for"
-    SetupDownloadCard → Just "setup a download for"
-    SetupMarkdownCard → Nothing
-    SetupVariablesCard → Nothing
-    ShowChartCard → Just "show"
-    ShowDownloadCard → Just "show"
-    ShowMarkdownCard → Just "show"
-    TableCard → Just "tabulate"
-    TroubleshootCard → Just "troubleshoot"
+printAction = case _ of
+  CacheCard → Just "cache"
+  DraftboardCard → Nothing
+  OpenCard → Nothing
+  QueryCard → Nothing
+  SearchCard → Just "search"
+  SetupChartCard → Just "set up a chart for"
+  SetupFormInputCard → Just "set up a form for"
+  SetupDownloadCard → Just "setup a download for"
+  SetupMarkdownCard → Nothing
+  SetupVariablesCard → Nothing
+  ShowChartCard → Just "show"
+  ShowFormInputCard → Just "show"
+  ShowDownloadCard → Just "show"
+  ShowMarkdownCard → Just "show"
+  TableCard → Just "tabulate"
+  TroubleshootCard → Just "troubleshoot"
 
 fromCardType ∷ CardType → InsertableCardType
 fromCardType =
@@ -311,6 +325,8 @@ fromCardType =
     CardType.Markdown → ShowMarkdownCard
     CardType.Table → TableCard
     CardType.Troubleshoot → TroubleshootCard
+    CardType.SetupFormInput _ → SetupFormInputCard
+    CardType.FormInput → ShowFormInputCard
 
 all ∷ Array InsertableCardType
 all =
@@ -320,6 +336,8 @@ all =
   , TableCard
   , SetupChartCard
   , ShowChartCard
+  , SetupFormInputCard
+  , ShowFormInputCard
   , SetupMarkdownCard
   , ShowMarkdownCard
   , DraftboardCard
