@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.PunchCard.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -44,15 +43,13 @@ initialModel = Nothing
 
 eqPunchCardR ∷ PunchCardR → PunchCardR → Boolean
 eqPunchCardR r1 r2 =
-  F.and
-    [ r1.abscissa ≡ r2.abscissa
-    , r1.ordinate ≡ r2.ordinate
-    , r1.valueAggregation ≡ r2.valueAggregation
-    , r1.value ≡ r2.value
-    , r1.circular ≡ r2.circular
-    , r1.minSize ≡ r2.minSize
-    , r1.maxSize ≡ r2.maxSize
-    ]
+  r1.abscissa ≡ r2.abscissa
+  ∧ r1.ordinate ≡ r2.ordinate
+  ∧ r1.valueAggregation ≡ r2.valueAggregation
+  ∧ r1.value ≡ r2.value
+  ∧ r1.circular ≡ r2.circular
+  ∧ r1.minSize ≡ r2.minSize
+  ∧ r1.maxSize ≡ r2.maxSize
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

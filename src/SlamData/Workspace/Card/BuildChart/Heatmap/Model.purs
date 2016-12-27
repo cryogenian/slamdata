@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Heatmap.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 import SlamData.Workspace.Card.BuildChart.ColorScheme as CS
@@ -48,17 +47,15 @@ initialModel = Nothing
 
 eqHeatmapR ∷ HeatmapR → HeatmapR → Boolean
 eqHeatmapR r1 r2 =
-  F.and
-    [ r1.abscissa ≡ r2.abscissa
-    , r1.ordinate ≡ r2.ordinate
-    , r1.value ≡ r2.value
-    , r1.valueAggregation ≡ r2.valueAggregation
-    , r1.series ≡ r2.series
-    , r1.colorScheme ≡ r2.colorScheme
-    , r1.isColorSchemeReversed ≡ r2.isColorSchemeReversed
-    , r1.minValue ≡ r2.minValue
-    , r1.maxValue ≡ r2.maxValue
-    ]
+  r1.abscissa ≡ r2.abscissa
+  ∧ r1.ordinate ≡ r2.ordinate
+  ∧ r1.value ≡ r2.value
+  ∧ r1.valueAggregation ≡ r2.valueAggregation
+  ∧ r1.series ≡ r2.series
+  ∧ r1.colorScheme ≡ r2.colorScheme
+  ∧ r1.isColorSchemeReversed ≡ r2.isColorSchemeReversed
+  ∧ r1.minValue ≡ r2.minValue
+  ∧ r1.maxValue ≡ r2.maxValue
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

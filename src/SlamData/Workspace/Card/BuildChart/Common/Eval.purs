@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.BuildChart.Common.Eval
   ( buildChartEval
   , buildChartEval'
+  , analyze
   , type (>>)
   ) where
 
@@ -76,7 +77,7 @@ buildChartEval' build tr model = do
   put (Just (CEM.Analysis { taggedResource: tr, records, axes }))
   case model of
     Just ch → pure $ build axes ch records
-    Nothing → CEM.throw "Please select axis to aggregate."
+    Nothing → CEM.throw "Please select axis."
 
 analyze
   ∷ ∀ m

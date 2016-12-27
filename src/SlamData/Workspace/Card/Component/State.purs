@@ -54,6 +54,16 @@ module SlamData.Workspace.Card.Component.State
   , _BuildPunchCardState
   , _BuildCandlestickState
   , _BuildParallelState
+  , _SetupDropdownState
+  , _SetupRadioState
+  , _SetupCheckboxState
+  , _SetupTextState
+  , _SetupNumericState
+  , _SetupDateState
+  , _SetupTimeState
+  , _SetupDatetimeState
+  , _SetupStaticState
+  , _FormInputState
   ) where
 
 import SlamData.Prelude
@@ -102,6 +112,10 @@ import SlamData.Workspace.Card.BuildChart.PunchCard.Component.State as BuildPunc
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.State as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Component.State as BuildParallel
 import SlamData.Workspace.Eval.Card as Card
+import SlamData.Workspace.Card.SetupFormInput.Labeled.Component.State as SetupLabeled
+import SlamData.Workspace.Card.SetupFormInput.Static.Component.State as SetupStatic
+import SlamData.Workspace.Card.SetupFormInput.TextLike.Component.State as SetupTextLike
+import SlamData.Workspace.Card.FormInput.Component.State as FormInput
 
 -- | The common state value for deck cards.
 type CardState =
@@ -164,6 +178,16 @@ data AnyCardState
   | BuildPunchCardState BuildPunchCard.StateP
   | BuildCandlestickState BuildCandlestick.StateP
   | BuildParallelState BuildParallel.StateP
+  | SetupDropdownState SetupLabeled.StateP
+  | SetupRadioState SetupLabeled.StateP
+  | SetupCheckboxState SetupLabeled.StateP
+  | SetupTextState SetupTextLike.StateP
+  | SetupNumericState SetupTextLike.StateP
+  | SetupDateState SetupTextLike.StateP
+  | SetupTimeState SetupTextLike.StateP
+  | SetupDatetimeState SetupTextLike.StateP
+  | SetupStaticState SetupStatic.StateP
+  | FormInputState FormInput.StateP
 
 _AceState ∷ Prism' AnyCardState Ace.StateP
 _AceState = prism' AceState case _ of
@@ -323,4 +347,54 @@ _BuildCandlestickState = prism' BuildCandlestickState case _ of
 _BuildParallelState ∷ Prism' AnyCardState BuildParallel.StateP
 _BuildParallelState = prism' BuildParallelState case _ of
   BuildParallelState s → Just s
+  _ → Nothing
+
+_SetupDropdownState ∷ Prism' AnyCardState SetupLabeled.StateP
+_SetupDropdownState = prism' SetupDropdownState case _ of
+  SetupDropdownState s → Just s
+  _ → Nothing
+
+_SetupRadioState ∷ Prism' AnyCardState SetupLabeled.StateP
+_SetupRadioState = prism' SetupRadioState case _ of
+  SetupRadioState s → Just s
+  _ → Nothing
+
+_SetupCheckboxState ∷ Prism' AnyCardState SetupLabeled.StateP
+_SetupCheckboxState = prism' SetupCheckboxState case _ of
+  SetupCheckboxState s → Just s
+  _ → Nothing
+
+_SetupTextState ∷ Prism' AnyCardState SetupTextLike.StateP
+_SetupTextState = prism' SetupTextState case _ of
+  SetupTextState s → Just s
+  _ → Nothing
+
+_SetupNumericState ∷ Prism' AnyCardState SetupTextLike.StateP
+_SetupNumericState = prism' SetupNumericState case _ of
+  SetupNumericState s → Just s
+  _ → Nothing
+
+_SetupDateState ∷ Prism' AnyCardState SetupTextLike.StateP
+_SetupDateState = prism' SetupDateState case _ of
+  SetupDateState s → Just s
+  _ → Nothing
+
+_SetupTimeState ∷ Prism' AnyCardState SetupTextLike.StateP
+_SetupTimeState = prism' SetupTimeState case _ of
+  SetupTimeState s → Just s
+  _ → Nothing
+
+_SetupDatetimeState ∷ Prism' AnyCardState SetupTextLike.StateP
+_SetupDatetimeState = prism' SetupDatetimeState case _ of
+  SetupDatetimeState s → Just s
+  _ → Nothing
+
+_SetupStaticState ∷ Prism' AnyCardState SetupStatic.StateP
+_SetupStaticState = prism' SetupStaticState case _ of
+  SetupStaticState s → Just s
+  _ → Nothing
+
+_FormInputState ∷ Prism' AnyCardState FormInput.StateP
+_FormInputState = prism' FormInputState case _ of
+  FormInputState s → Just s
   _ → Nothing

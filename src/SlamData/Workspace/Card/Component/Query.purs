@@ -50,6 +50,16 @@ module SlamData.Workspace.Card.Component.Query
   , _BuildPunchCardQuery
   , _BuildCandlestickQuery
   , _BuildParallelQuery
+  , _SetupDropdownQuery
+  , _SetupRadioQuery
+  , _SetupCheckboxQuery
+  , _SetupTextQuery
+  , _SetupNumericQuery
+  , _SetupDateQuery
+  , _SetupTimeQuery
+  , _SetupDatetimeQuery
+  , _SetupStaticQuery
+  , _FormInputQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -93,6 +103,10 @@ import SlamData.Workspace.Card.BuildChart.PunchCard.Component.Query as BuildPunc
 import SlamData.Workspace.Card.BuildChart.Candlestick.Component.Query as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Component.Query as BuildParallel
 import SlamData.Workspace.Eval.Card as Card
+import SlamData.Workspace.Card.SetupFormInput.Labeled.Component.Query as SetupLabeled
+import SlamData.Workspace.Card.SetupFormInput.TextLike.Component.Query as SetupTextLike
+import SlamData.Workspace.Card.SetupFormInput.Static.Component.Query as SetupStatic
+import SlamData.Workspace.Card.FormInput.Component.Query as FormInput
 
 -- | The common query algebra for a card.
 data CardQuery a
@@ -144,6 +158,16 @@ data AnyCardQuery a
   | BuildPunchCardQuery (BuildPunchCard.QueryP a)
   | BuildCandlestickQuery (BuildCandlestick.QueryP a)
   | BuildParallelQuery (BuildParallel.QueryP a)
+  | SetupDropdownQuery (SetupLabeled.QueryP a)
+  | SetupRadioQuery (SetupLabeled.QueryP a)
+  | SetupCheckboxQuery (SetupLabeled.QueryP a)
+  | SetupTextQuery (SetupTextLike.QueryP a)
+  | SetupNumericQuery (SetupTextLike.QueryP a)
+  | SetupDateQuery (SetupTextLike.QueryP a)
+  | SetupTimeQuery (SetupTextLike.QueryP a)
+  | SetupDatetimeQuery (SetupTextLike.QueryP a)
+  | SetupStaticQuery (SetupStatic.QueryP a)
+  | FormInputQuery (FormInput.QueryP a)
 
 _AceQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Ace.QueryP a)
 _AceQuery = prism' AceQuery case _ of
@@ -288,4 +312,54 @@ _BuildCandlestickQuery = prism' BuildCandlestickQuery case _ of
 _BuildParallelQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildParallel.QueryP a)
 _BuildParallelQuery = prism' BuildParallelQuery case _ of
   BuildParallelQuery q → Just q
+  _ → Nothing
+
+_SetupDropdownQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.QueryP a)
+_SetupDropdownQuery = prism' SetupDropdownQuery case _ of
+  SetupDropdownQuery q → Just q
+  _ → Nothing
+
+_SetupRadioQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.QueryP a)
+_SetupRadioQuery = prism' SetupRadioQuery case _ of
+  SetupRadioQuery q → Just q
+  _ → Nothing
+
+_SetupCheckboxQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.QueryP a)
+_SetupCheckboxQuery = prism' SetupCheckboxQuery case _ of
+  SetupCheckboxQuery q → Just q
+  _ → Nothing
+
+_SetupTextQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
+_SetupTextQuery = prism' SetupTextQuery case _ of
+  SetupTextQuery q → Just q
+  _ → Nothing
+
+_SetupNumericQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
+_SetupNumericQuery = prism' SetupNumericQuery case _ of
+  SetupNumericQuery q → Just q
+  _ → Nothing
+
+_SetupDateQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
+_SetupDateQuery = prism' SetupDateQuery case _ of
+  SetupDateQuery q → Just q
+  _ → Nothing
+
+_SetupTimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
+_SetupTimeQuery = prism' SetupTimeQuery case _ of
+  SetupTimeQuery q → Just q
+  _ → Nothing
+
+_SetupDatetimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
+_SetupDatetimeQuery = prism' SetupDatetimeQuery case _ of
+  SetupDatetimeQuery q → Just q
+  _ → Nothing
+
+_SetupStaticQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupStatic.QueryP a)
+_SetupStaticQuery = prism' SetupStaticQuery case _ of
+  SetupStaticQuery q → Just q
+  _ → Nothing
+
+_FormInputQuery ∷ ∀ a. Prism' (AnyCardQuery a) (FormInput.QueryP a)
+_FormInputQuery = prism' FormInputQuery case _ of
+  FormInputQuery q → Just q
   _ → Nothing

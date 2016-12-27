@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Sankey.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -41,12 +40,10 @@ initialModel = Nothing
 
 eqSankeyR ∷ SankeyR → SankeyR → Boolean
 eqSankeyR r1 r2 =
-  F.and
-    [ r1.source ≡ r2.source
-    , r1.target ≡ r2.target
-    , r1.value ≡ r2.value
-    , r1.valueAggregation ≡ r2.valueAggregation
-    ]
+  r1.source ≡ r2.source
+  ∧ r1.target ≡ r2.target
+  ∧ r1.value ≡ r2.value
+  ∧ r1.valueAggregation ≡ r2.valueAggregation
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

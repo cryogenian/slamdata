@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Graph.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -45,16 +44,14 @@ initialModel = Nothing
 
 eqGraphR ∷ GraphR → GraphR → Boolean
 eqGraphR r1 r2 =
-  F.and
-    [ r1.source ≡ r2.source
-    , r1.target ≡ r2.target
-    , r1.size ≡ r2.size
-    , r1.color ≡ r2.color
-    , r1.minSize ≡ r2.minSize
-    , r1.maxSize ≡ r2.maxSize
-    , r1.circular ≡ r2.circular
-    , r1.sizeAggregation ≡ r2.sizeAggregation
-    ]
+  r1.source ≡ r2.source
+  ∧ r1.target ≡ r2.target
+  ∧ r1.size ≡ r2.size
+  ∧ r1.color ≡ r2.color
+  ∧ r1.minSize ≡ r2.minSize
+  ∧ r1.maxSize ≡ r2.maxSize
+  ∧ r1.circular ≡ r2.circular
+  ∧ r1.sizeAggregation ≡ r2.sizeAggregation
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

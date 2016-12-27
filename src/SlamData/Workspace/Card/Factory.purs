@@ -20,6 +20,23 @@ module SlamData.Workspace.Card.Factory
   ) where
 
 import SlamData.Workspace.Card.Ace.Component (aceComponent)
+import SlamData.Workspace.Card.BuildChart.Area.Component (areaBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Bar.Component (barBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Boxplot.Component (boxplotBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Candlestick.Component (candlestickBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Funnel.Component (funnelBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Gauge.Component (gaugeBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Graph.Component (graphBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Heatmap.Component (heatmapBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Line.Component (lineBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Metric.Component (metricBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Parallel.Component (parallelBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Pie.Component (pieBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.PivotTable.Component (pivotTableBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.PunchCard.Component (punchCardBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Radar.Component (radarBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Sankey.Component (sankeyBuilderComponent)
+import SlamData.Workspace.Card.BuildChart.Scatter.Component (scatterBuilderComponent)
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Component (chartComponent)
@@ -31,26 +48,20 @@ import SlamData.Workspace.Card.Draftboard.Component (draftboardComponent)
 import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
 import SlamData.Workspace.Card.Open.Component (openComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
+import SlamData.Workspace.Card.SetupFormInput.Checkbox.Component (checkboxSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Date.Component (dateSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Datetime.Component (datetimeSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Dropdown.Component (dropdownSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Numeric.Component (numericSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Radio.Component (radioSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Static.Component (staticSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Text.Component (textSetupComponent)
+import SlamData.Workspace.Card.SetupFormInput.Time.Component (timeSetupComponent)
 import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
 import SlamData.Workspace.Card.Variables.Component (variablesComponent)
-import SlamData.Workspace.Card.BuildChart.Metric.Component (metricBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Sankey.Component (sankeyBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Gauge.Component (gaugeBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Graph.Component (graphBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Pie.Component (pieBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Bar.Component (barBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Line.Component (lineBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Area.Component (areaBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Scatter.Component (scatterBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Radar.Component (radarBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.PivotTable.Component (pivotTableBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Funnel.Component (funnelBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Boxplot.Component (boxplotBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Heatmap.Component (heatmapBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.PunchCard.Component (punchCardBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Candlestick.Component (candlestickBuilderComponent)
-import SlamData.Workspace.Card.BuildChart.Parallel.Component (parallelBuilderComponent)
+import SlamData.Workspace.Card.FormInput.Component (formInputComponent)
+
 
 cardComponent ∷ CT.CardType → CardOptions → CardComponent
 cardComponent =
@@ -84,3 +95,13 @@ cardComponent =
     CT.ChartOptions CT.PunchCard → punchCardBuilderComponent
     CT.ChartOptions CT.Candlestick → candlestickBuilderComponent
     CT.ChartOptions CT.Parallel → parallelBuilderComponent
+    CT.SetupFormInput CT.Dropdown → dropdownSetupComponent
+    CT.SetupFormInput CT.Radio → radioSetupComponent
+    CT.SetupFormInput CT.Checkbox → checkboxSetupComponent
+    CT.SetupFormInput CT.Static → staticSetupComponent
+    CT.SetupFormInput CT.Text → textSetupComponent
+    CT.SetupFormInput CT.Numeric → numericSetupComponent
+    CT.SetupFormInput CT.Date → dateSetupComponent
+    CT.SetupFormInput CT.Time → timeSetupComponent
+    CT.SetupFormInput CT.Datetime → datetimeSetupComponent
+    CT.FormInput → formInputComponent

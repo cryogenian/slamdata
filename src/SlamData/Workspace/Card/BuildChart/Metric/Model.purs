@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Metric.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, (.?), (:=), (~>), jsonEmptyObject, jsonNull, isNull, decodeJson)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -41,12 +40,10 @@ initialModel = Nothing
 
 eqMetricR ∷ MetricR → MetricR → Boolean
 eqMetricR r1 r2 =
-  F.and
-    [ r1.value ≡ r2.value
-    , r1.valueAggregation ≡ r2.valueAggregation
-    , r1.label ≡ r2.label
-    , r1.formatter ≡ r2.formatter
-    ]
+  r1.value ≡ r2.value
+  ∧ r1.valueAggregation ≡ r2.valueAggregation
+  ∧ r1.label ≡ r2.label
+  ∧ r1.formatter ≡ r2.formatter
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

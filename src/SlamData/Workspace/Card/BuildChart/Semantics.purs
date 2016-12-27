@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.BuildChart.Semantics where
 
 import SlamData.Prelude
 
-import Data.Argonaut (runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, foldJson, cursorGet)
+import Data.Argonaut (class DecodeJson, class EncodeJson, runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, foldJson, cursorGet, jsonEmptyObject, (~>), (:=), (.?), decodeJson)
 import Data.Array as A
 import Data.Enum (fromEnum, toEnum)
 import Data.Int as Int
@@ -32,6 +32,9 @@ import Data.Time as Dt
 import Data.Date as Dd
 import Data.DateTime as Ddt
 
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
+import Test.StrongCheck.Gen as Gen
+
 import Utils (stringToNumber)
 
 data Semantics
@@ -43,6 +46,179 @@ data Semantics
   | Time Dt.Time
   | Date Dd.Date
   | DateTime Ddt.DateTime
+
+derive instance eqSemantics ∷ Eq Semantics
+derive instance ordSemantics ∷ Ord Semantics
+
+instance encodeJsonChartSemantics ∷ EncodeJson Semantics where
+  encodeJson = case _ of
+    Value n →
+      "semanticsType" := "value"
+      ~> "value" := n
+      ~> jsonEmptyObject
+    Percent p →
+      "semanticsType" := "percent"
+      ~> "percent" := p
+      ~> jsonEmptyObject
+    Money n s →
+      "semanticsType" := "money"
+      ~> "value" := n
+      ~> "currency" := s
+      ~> jsonEmptyObject
+    Bool b →
+      "semanticsType" := "bool"
+      ~> "value" := b
+      ~> jsonEmptyObject
+    Category c →
+      "semanticsType" := "category"
+      ~> "value" := c
+      ~> jsonEmptyObject
+    Time (Dt.Time h m s ms) →
+      "semanticsType" := "time"
+      ~> "hour" := (fromEnum h)
+      ~> "minute" := (fromEnum m)
+      ~> "second" := (fromEnum s)
+      ~> "millisecond" := (fromEnum ms)
+      ~> jsonEmptyObject
+    Date d →
+      "semanticsType" := "date"
+      ~> "year" := (fromEnum $ Dd.year d)
+      ~> "month" := (fromEnum $ Dd.month d)
+      ~> "day" := (fromEnum $ Dd.day d)
+      ~> jsonEmptyObject
+    DateTime (Ddt.DateTime d (Dt.Time h m s ms)) →
+      "semanticsType" := "datetime"
+      ~> "year" := (fromEnum $ Dd.year d)
+      ~> "month" := (fromEnum $ Dd.month d)
+      ~> "day" := (fromEnum $ Dd.day d)
+      ~> "hour" := (fromEnum h)
+      ~> "minute" := (fromEnum m)
+      ~> "second" := (fromEnum s)
+      ~> "millisecond" := (fromEnum ms)
+      ~> jsonEmptyObject
+
+instance decodeJsonChartSemantics ∷ DecodeJson Semantics where
+  decodeJson = decodeJson >=> \obj → do
+    semType ← obj .? "semanticsType"
+    case semType of
+      "value" → decodeValue obj
+      "percent" → decodePercent obj
+      "money" → decodeMoney obj
+      "bool" → decodeBool obj
+      "category" → decodeCategory obj
+      "time" → decodeTime obj
+      "date" → decodeDate obj
+      "datetime" → decodeDatetime obj
+      _ → Left "Incorrect semanticsType"
+    where
+    decodeBool obj = do
+      v ← obj .? "value"
+      pure $ Bool v
+
+    decodeValue obj = do
+      v ← obj .? "value"
+      pure $ Value v
+
+    decodePercent obj = do
+      p ← obj .? "percent"
+      pure $ Percent p
+
+    decodeMoney obj = do
+      v ← obj .? "value"
+      c ← obj .? "currency"
+      pure $ Money v c
+
+    decodeCategory obj = do
+      v ← obj .? "value"
+      pure $ Category v
+
+    decodeTime' obj = do
+      hour ← obj .? "hour"
+      minute ← obj .? "minute"
+      second ← obj .? "second"
+      millisecond ← obj .? "millisecond"
+      let
+        mbTime =
+          Dt.Time
+          <$> (toEnum hour)
+          <*> (toEnum minute)
+          <*> (toEnum second)
+          <*> (toEnum millisecond)
+      case mbTime of
+        Nothing → Left "Incorrect time"
+        Just t → pure t
+
+    decodeTime obj = do
+      t ← decodeTime' obj
+      pure $ Time t
+
+    decodeDate' obj = do
+      day ← obj .? "day"
+      month ← obj .? "month"
+      year ← obj .? "year"
+      let
+        mbDate = do
+          y ← toEnum year
+          m ← toEnum month
+          d ← toEnum day
+          Dd.exactDate y m d
+      case mbDate of
+        Nothing → Left "Incorrect date"
+        Just d → pure d
+
+    decodeDate obj = do
+      d ← decodeDate' obj
+      pure $ Date d
+
+    decodeDatetime obj = do
+      t ← decodeTime' obj
+      d ← decodeDate' obj
+      pure $ DateTime $ Ddt.DateTime d t
+
+instance arbitraryChartSemantics ∷ Arbitrary Semantics where
+  arbitrary = do
+    ix ← Gen.chooseInt 0 7
+    case ix of
+      0 → do
+        v ← arbitrary
+        pure $ Value v
+      1 → do
+        v ← arbitrary
+        pure $ Percent v
+      2 → do
+        v ← arbitrary
+        c ← arbitrary
+        pure $ Money v c
+      3 → do
+        v ← arbitrary
+        pure $ Bool v
+      4 → do
+        v ← arbitrary
+        pure $ Category v
+      5 → do
+        t ← genTime
+        pure $ Time t
+      6 → do
+        d ← genDate
+        pure $ Date d
+      7 → do
+        t ← genTime
+        d ← genDate
+        pure $ DateTime $ Ddt.DateTime d t
+      _ → pure $ Value 0.0
+    where
+    genTime = do
+      hour ← map (fromMaybe bottom ∘ toEnum) $ Gen.chooseInt 0 23
+      minute ← map (fromMaybe bottom ∘ toEnum) $ Gen.chooseInt 0 59
+      second ← map (fromMaybe bottom ∘ toEnum) $ Gen.chooseInt 0 59
+      millisecond ← map (fromMaybe bottom ∘ toEnum)
+                    $Gen.chooseInt 0 999
+      pure $ Dt.Time hour minute second millisecond
+    genDate = do
+      day ← map (fromMaybe bottom ∘ toEnum) $ Gen.chooseInt 0 31
+      month ← map (fromMaybe bottom ∘ toEnum) $ Gen.chooseInt 0 12
+      year ← map (fromMaybe bottom ∘ toEnum) $ Gen.chooseInt 0 9999
+      pure $ Dd.canonicalDate day month year
 
 printTime ∷ Dt.Time → String
 printTime time =
@@ -76,6 +252,16 @@ printSemantics (Time t) = printTime t
 printSemantics (Date d) = printDate d
 printSemantics (DateTime (Ddt.DateTime d t)) = printDate d ⊕ " " ⊕ printTime t
 
+semanticsToSQLStrings ∷ Semantics → Array String
+semanticsToSQLStrings (Value v) = [ show v ]
+semanticsToSQLStrings (Percent v) = [ "\"" <> show v <> "%\"", show (v/100.0) ]
+semanticsToSQLStrings (Money v m) = [ "\"" <> show v <> show m <> "\"" ]
+semanticsToSQLStrings (Category s) = [ show s ]
+semanticsToSQLStrings (Bool b) = [ show b ]
+semanticsToSQLStrings (Time t) = [ show $ printTime t ]
+semanticsToSQLStrings (Date d) = [ show $ printDate d ]
+semanticsToSQLStrings (DateTime (Ddt.DateTime d t)) = [ show $ printDate d <> " " <> printTime t ]
+
 semanticsToNumber ∷ Semantics → Maybe Number
 semanticsToNumber (Value v) = pure v
 semanticsToNumber (Money v _) = pure v
@@ -103,8 +289,6 @@ isUsedAsNothing (Category "N/A") = true
 isUsedAsNothing (Category "") = true
 isUsedAsNothing _ = false
 
-derive instance eqSemantics ∷ Eq Semantics
-derive instance ordSemantics ∷ Ord Semantics
 
 analyze ∷ JsonPrim → Maybe Semantics
 analyze p =
@@ -263,3 +447,7 @@ getValues js cursor =
     =<< analyzeJson
     =<< flip cursorGet js
     =<< cursor
+
+getSemantics ∷ Json → JCursor → Maybe Semantics
+getSemantics js cursor =
+  cursorGet cursor js >>= analyzeJson

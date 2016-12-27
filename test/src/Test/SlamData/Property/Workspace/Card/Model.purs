@@ -30,7 +30,8 @@ import Test.StrongCheck as SC
 
 check ∷ forall eff. SC.SC eff Unit
 check =
-  SC.quickCheck \model →
+  -- We have _a lot of_ model types
+  SC.quickCheck' 1000 \model →
     case Card.decode (Card.encode model) of
       Left err → SC.Failed $ "Decode failed: " <> err
       Right model' → checkCardEquality model model'

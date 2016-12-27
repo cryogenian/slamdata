@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Line.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -49,19 +48,17 @@ initialModel = Nothing
 
 eqLineR ∷ LineR → LineR → Boolean
 eqLineR r1 r2 =
-  F.and
-    [ r1.dimension ≡ r2.dimension
-    , r1.value ≡ r2.value
-    , r1.valueAggregation ≡ r2.valueAggregation
-    , r1.secondValue ≡ r2.secondValue
-    , r1.secondValueAggregation ≡ r2.secondValueAggregation
-    , r1.series ≡ r2.series
-    , r1.size ≡ r2.size
-    , r1.sizeAggregation ≡ r2.sizeAggregation
-    , r1.maxSize ≡ r2.maxSize
-    , r1.minSize ≡ r2.minSize
-    , r1.axisLabelAngle ≡ r2.axisLabelAngle
-    ]
+  r1.dimension ≡ r2.dimension
+  ∧ r1.value ≡ r2.value
+  ∧ r1.valueAggregation ≡ r2.valueAggregation
+  ∧ r1.secondValue ≡ r2.secondValue
+  ∧ r1.secondValueAggregation ≡ r2.secondValueAggregation
+  ∧ r1.series ≡ r2.series
+  ∧ r1.size ≡ r2.size
+  ∧ r1.sizeAggregation ≡ r2.sizeAggregation
+  ∧ r1.maxSize ≡ r2.maxSize
+  ∧ r1.minSize ≡ r2.minSize
+  ∧ r1.axisLabelAngle ≡ r2.axisLabelAngle
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

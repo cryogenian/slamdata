@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Pie.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -42,13 +41,11 @@ initialModel = Nothing
 
 eqPieR ∷ PieR → PieR → Boolean
 eqPieR r1 r2 =
-  F.and
-    [ r1.category ≡ r2.category
-    , r1.value ≡ r2.value
-    , r1.valueAggregation ≡ r2.valueAggregation
-    , r1.donut ≡ r2.donut
-    , r1.parallel ≡ r2.parallel
-    ]
+  r1.category ≡ r2.category
+  ∧ r1.value ≡ r2.value
+  ∧ r1.valueAggregation ≡ r2.valueAggregation
+  ∧ r1.donut ≡ r2.donut
+  ∧ r1.parallel ≡ r2.parallel
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
