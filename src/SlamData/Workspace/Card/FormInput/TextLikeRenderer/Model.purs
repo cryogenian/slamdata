@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Data.Argonaut ((:=), (.?), (~>))
 import Data.Argonaut as J
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 
@@ -43,11 +42,9 @@ initialModel =
 
 eqModel ∷ Model → Model → Boolean
 eqModel r1 r2 =
-  F.and
-    [ r1.formInputType ≡ r2.formInputType
-    , r1.value ≡ r2.value
-    , r1.cursor ≡ r2.cursor
-    ]
+  r1.formInputType ≡ r2.formInputType
+  ∧ r1.value ≡ r2.value
+  ∧ r1.cursor ≡ r2.cursor
 
 genModel ∷ Gen.Gen Model
 genModel = do

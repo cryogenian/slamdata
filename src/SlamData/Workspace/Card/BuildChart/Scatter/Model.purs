@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Scatter.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, encodeJson, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -65,18 +64,16 @@ initialModel = Nothing
 
 eqScatterR ∷ ScatterR → ScatterR → Boolean
 eqScatterR r1 r2 =
-  F.and
-    [ r1.abscissa ≡ r2.abscissa
-    , r1.ordinate ≡ r2.ordinate
-    , r1.size ≡ r2.size
-    , r1.abscissaAggregation ≡ r2.abscissaAggregation
-    , r1.ordinateAggregation ≡ r2.ordinateAggregation
-    , r1.sizeAggregation ≡ r2.sizeAggregation
-    , r1.parallel ≡ r2.parallel
-    , r1.series ≡ r2.series
-    , r1.minSize ≡ r2.minSize
-    , r1.maxSize ≡ r2.maxSize
-    ]
+  r1.abscissa ≡ r2.abscissa
+  ∧ r1.ordinate ≡ r2.ordinate
+  ∧ r1.size ≡ r2.size
+  ∧ r1.abscissaAggregation ≡ r2.abscissaAggregation
+  ∧ r1.ordinateAggregation ≡ r2.ordinateAggregation
+  ∧ r1.sizeAggregation ≡ r2.sizeAggregation
+  ∧ r1.parallel ≡ r2.parallel
+  ∧ r1.series ≡ r2.series
+  ∧ r1.minSize ≡ r2.minSize
+  ∧ r1.maxSize ≡ r2.maxSize
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

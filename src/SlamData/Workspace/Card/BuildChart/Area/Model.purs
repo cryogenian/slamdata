@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Area.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
 
@@ -44,15 +43,13 @@ initialModel = Nothing
 
 eqAreaR ∷ AreaR → AreaR → Boolean
 eqAreaR r1 r2 =
-  F.and
-    [ r1.dimension ≡ r2.dimension
-    , r1.value ≡ r2.value
-    , r1.valueAggregation ≡ r2.valueAggregation
-    , r1.isStacked ≡ r2.isStacked
-    , r1.isSmooth ≡ r2.isSmooth
-    , r1.series ≡ r2.series
-    , r1.axisLabelAngle ≡ r2.axisLabelAngle
-    ]
+  r1.dimension ≡ r2.dimension
+  ∧ r1.value ≡ r2.value
+  ∧ r1.valueAggregation ≡ r2.valueAggregation
+  ∧ r1.isStacked ≡ r2.isStacked
+  ∧ r1.isSmooth ≡ r2.isSmooth
+  ∧ r1.series ≡ r2.series
+  ∧ r1.axisLabelAngle ≡ r2.axisLabelAngle
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

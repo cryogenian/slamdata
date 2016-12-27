@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.SetupFormInput.TextLike.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, JObject, jsonEmptyObject, (~>), (:=), (.?))
-import Data.Foldable as F
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -37,10 +36,9 @@ initialModel = Nothing
 
 eqTextLikeR ∷ TextLikeR → TextLikeR → Boolean
 eqTextLikeR r1 r2 =
-  F.and
-    [ r1.name ≡ r2.name
-    , r1.value ≡ r2.value
-    ]
+  r1.name ≡ r2.name
+  ∧ r1.value ≡ r2.value
+
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true

@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.BuildChart.Funnel.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Foldable as F
 
 import SlamData.Common.Sort (Sort)
 import SlamData.Common.Align (Align)
@@ -46,14 +45,12 @@ initialModel = Nothing
 
 eqFunnelR ∷ FunnelR → FunnelR → Boolean
 eqFunnelR r1 r2 =
-  F.and
-    [ r1.category ≡ r2.category
-    , r1.value ≡ r2.value
-    , r1.valueAggregation ≡ r2.valueAggregation
-    , r1.series ≡ r2.series
-    , r1.order ≡ r2.order
-    , r1.align ≡ r2.align
-    ]
+  r1.category ≡ r2.category
+  ∧ r1.value ≡ r2.value
+  ∧ r1.valueAggregation ≡ r2.valueAggregation
+  ∧ r1.series ≡ r2.series
+  ∧ r1.order ≡ r2.order
+  ∧ r1.align ≡ r2.align
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
