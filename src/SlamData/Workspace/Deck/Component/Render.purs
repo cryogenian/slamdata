@@ -65,7 +65,7 @@ renderDeck opts deckComponent st =
     [ HH.div
         [ HP.class_ CSS.deckFrame
         , HE.onMouseDown \ev →
-            if st.focused && (not opts.isDisplayRoot)
+            if st.focused && not (L.null opts.displayCursor)
               then HEH.stopPropagation *> pure (Just (Defocus ev unit))
               else pure Nothing
         ]
@@ -118,9 +118,9 @@ renderName name =
     [ HH.text name ]
 
 frameElements ∷ DeckOptions → DCS.State → Array DeckHTML
-frameElements { accessType, isDisplayRoot } st
+frameElements { accessType, displayCursor } st
   | accessType ≡ AT.ReadOnly = mempty
-  | isDisplayRoot = rootFrameElements st
+  | L.null displayCursor = rootFrameElements st
   | otherwise = childFrameElements st
 
 rootFrameElements ∷ DCS.State → Array DeckHTML
@@ -146,11 +146,11 @@ dialogSlot =
     }
 
 backside ∷ DeckOptions → DCS.State → DeckHTML
-backside { deckId, cursor } st =
+backside { deckId, displayCursor } st =
   HH.div
     [ HP.classes [ CSS.card ] ]
     [ HH.slot' cpBackSide unit \_ →
-        { component: Back.comp { deckId, cursor }
+        { component: Back.comp { deckId, displayCursor }
         , initialState: Back.initialState
         }
     ]

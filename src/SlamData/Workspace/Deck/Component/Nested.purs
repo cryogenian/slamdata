@@ -76,7 +76,7 @@ comp opts =
     HH.div
       [ HP.classes
           [ HH.className "sd-deck-nested"
-          , HH.className ("sd-deck-level-" <> show (length opts.cursor + 1))
+          , HH.className ("sd-deck-level-" <> show (length opts.displayCursor + 1))
           ]
       , HP.ref (left ∘ H.action ∘ DNQ.Ref)
       ]

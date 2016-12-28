@@ -111,7 +111,7 @@ eval opts = case _ of
     { bus } ← liftH' Wiring.expose
     mb ← subscribeToBus' (H.action ∘ HandleMessage) bus.decks
     H.modify $ DCS._breakers .~ [mb]
-    when opts.isDisplayRoot do
+    when (L.null opts.displayCursor) do
       eb ← subscribeToBus' (H.action ∘ HandleError) bus.globalError
       H.modify $ DCS._breakers %~ (Array.cons eb)
     updateCardSize
@@ -210,7 +210,7 @@ eval opts = case _ of
     showDialog $ Dialog.Error $ GE.print ge
     pure next
   DismissedCardGuide next → do
-    when opts.isDisplayRoot $ void do
+    when (L.null opts.displayCursor) $ void do
       queryNextAction (Next.PresentAddCardGuide unit)
     pure next
   GetActiveCard k → do
@@ -286,7 +286,7 @@ peekBackSide opts (Back.DoAction action _) = do
     Back.Mirror → do
       deck ← liftH' $ P.getDeck opts.deckId
       for_ (_.parent <$> deck) case _ of
-        Just cardId | not opts.isDisplayRoot → do
+        Just cardId | not (L.null opts.displayCursor) → do
           _ ← liftH' $ P.mirrorDeck opts.deckId cardId
           H.modify (DCS._displayMode .~ DCS.Normal)
         _ → do
@@ -294,13 +294,13 @@ peekBackSide opts (Back.DoAction action _) = do
           navigateToDeck (parentId L.: opts.cursor)
     Back.Wrap → do
       parentId ← liftH' $ P.wrapDeck opts.deckId
-      if opts.isDisplayRoot
+      if L.null opts.displayCursor
         then navigateToDeck (parentId L.: opts.cursor)
         else H.modify $ DCS._displayMode .~ DCS.Normal
     Back.Unwrap → do
       deck ← liftH' $ P.getDeck opts.deckId
       for_ (_.parent <$> deck) case _ of
-        Just cardId | not opts.isDisplayRoot → do
+        Just cardId | not (L.null opts.displayCursor) → do
           void $ liftH' $ P.collapseDeck opts.deckId cardId
         _ → do
           childId ← liftH' $ P.unwrapDeck opts.deckId

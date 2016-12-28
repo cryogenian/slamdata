@@ -162,7 +162,7 @@ render accessType state =
           ]
       _, List.Cons deckId cursor →
         HH.slot' cpDeck deckId \_ →
-          { component: DN.comp { accessType, cursor, deckId, isDisplayRoot: true }
+          { component: DN.comp { accessType, cursor, displayCursor: mempty, deckId }
           , initialState: DN.initialState
           }
       _, _ → HH.text "Error"

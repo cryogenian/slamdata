@@ -234,8 +234,8 @@ renderCell opts st { cursor, value, rect } =
       deckOpts =
         { accessType: opts.deck.accessType
         , cursor: opts.cursor
+        , displayCursor: opts.displayCursor
         , deckId
-        , isDisplayRoot: false
         }
     in
       { component: opts.deckComponent deckOpts

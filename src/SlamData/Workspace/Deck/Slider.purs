@@ -359,6 +359,7 @@ renderDef opts deckComponent st { cardType, cardId } =
         { deck: opts
         , deckComponent
         , cursor: opts.deckId : opts.cursor
+        , displayCursor: opts.deckId : opts.displayCursor
         , cardId
         }
     in

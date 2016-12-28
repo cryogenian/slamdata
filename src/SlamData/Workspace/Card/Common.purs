@@ -31,4 +31,5 @@ type CardOptions =
   , deckComponent ∷ DeckOptions → DeckComponent
   , cardId ∷ Card.Id
   , cursor ∷ List Deck.Id
+  , displayCursor ∷ List Deck.Id
   }
