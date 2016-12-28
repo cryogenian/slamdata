@@ -61,7 +61,7 @@ import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (unfoldGraph, EvalGraph)
 import SlamData.Workspace.Eval.Traverse (TraverseCard(..), TraverseDeck(..), unfoldModelTree)
 import SlamData.Workspace.Model as WM
-import SlamData.Workspace.Legacy (loadCompatWorkspace)
+import SlamData.Workspace.Legacy (isLegacy, loadCompatWorkspace, pruneLegacyData)
 
 import Utils.Aff (laterVar)
 
@@ -92,12 +92,15 @@ type ForkAff m a =
 
 loadWorkspace ∷ ∀ f m. Persist f m (m (Either QE.QError Deck.Id))
 loadWorkspace = runExceptT do
-  { path, eval } ← Wiring.expose
-  ws ← ExceptT $ loadCompatWorkspace path
+  { path, eval, accessType } ← Wiring.expose
+  stat × ws ← ExceptT $ loadCompatWorkspace path
   liftAff $ putVar eval.root ws.rootId
   graph ← unwrapOrThrow (QE.msgToQError "Cannot build graph") $
     unfoldModelTree ws.decks ws.cards ws.rootId
   lift $ populateGraph mempty mempty Nothing graph
+  when (isLegacy stat && isEditable accessType) do
+    ExceptT saveWorkspace
+    void $ lift $ pruneLegacyData path -- Not imperative that this succeeds
   pure ws.rootId
 
 saveWorkspace ∷ ∀ f m. Persist f m (m (Either QE.QError Unit))

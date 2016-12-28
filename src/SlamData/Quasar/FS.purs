@@ -55,7 +55,7 @@ import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Quasar.Data as QD
 
-import SlamData.Workspace.Legacy (loadCompatWorkspace)
+import SlamData.Workspace.Legacy (isLegacy, loadCompatWorkspace, pruneLegacyData)
 import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Card.Model as CM
 
@@ -183,15 +183,16 @@ move src tgt = do
   where
   replacePathsInWorkspace ∷ DirPath → ExceptT QError m Unit
   replacePathsInWorkspace wsDir = do
-    ws ← ExceptT $ loadCompatWorkspace wsDir
+    stat × ws ← ExceptT $ loadCompatWorkspace wsDir
     let
       updated =
         ws.cards
           # Map.toList
           # List.mapMaybe (sequence ∘ map (replacePaths wsDir))
           # Map.fromFoldable
-    unless (Map.isEmpty updated) do
-      putWorkspace wsDir $ ws { cards = Map.union updated ws.cards }
+      ws' = ws { cards = Map.union updated ws.cards }
+    unless (Map.isEmpty updated) $ putWorkspace wsDir ws
+    when (isLegacy stat) $ void $ lift $ pruneLegacyData wsDir
 
   putWorkspace ∷ DirPath → WM.Workspace → ExceptT QError m Unit
   putWorkspace wsDir ws =

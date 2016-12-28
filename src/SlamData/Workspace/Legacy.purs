@@ -21,6 +21,8 @@ import Control.Monad.Eff.Exception as Exn
 import Data.Array as Array
 import Data.Map as Map
 import Data.Path.Pathy as Pathy
+import Quasar.Advanced.QuasarAF as QF
+import Quasar.FS as QFS
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring.Cache as Cache
@@ -39,7 +41,7 @@ import Control.Monad.Fork (class MonadFork)
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Path.Pathy ((</>))
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model (AnyCardModel(..))
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -61,6 +63,12 @@ type Card =
   { cardId ∷ CID.CardId
   , model ∷ AnyCardModel
   }
+
+data WorkspaceStatus = Legacy | Current
+
+isLegacy ∷ WorkspaceStatus → Boolean
+isLegacy Legacy = true
+isLegacy _ = false
 
 decodeWorkspace ∷ Json → Either String Workspace
 decodeWorkspace = decodeJson >=> \obj ->
@@ -189,10 +197,31 @@ loadCompatWorkspace
     , QuasarDSL m
     )
   ⇒ DirPath
-  → m (Either QE.QError Current.Workspace)
+  → m (Either QE.QError (WorkspaceStatus × Current.Workspace))
 loadCompatWorkspace path = runExceptT do
   root ← ExceptT $ Quasar.load $ path </> Pathy.file "index"
   case Current.decode root, decodeWorkspace root of
-    Right ws, _ → pure ws
-    _, Right ws → ExceptT $ loadGraph path ws
+    Right ws, _ → pure (Current × ws)
+    _, Right ws → map (Legacy × _) $ ExceptT $ loadGraph path ws
     Left err, _ → QE.throw err
+
+pruneLegacyData
+  ∷ ∀ f m
+  . ( Functor m
+    , Parallel f m
+    , QuasarDSL m
+    )
+  ⇒ DirPath
+  → m (Either QE.QError Unit)
+pruneLegacyData path = runExceptT do
+  children ← ExceptT $ liftQuasar (QF.dirMetadata path)
+  let
+    tmpDir = path </> Pathy.dir ".tmp"
+    deckDirs = flip foldMap children case _ of
+      QFS.Directory d → fromMaybe [] do
+        name ← Pathy.runDirName <$> Pathy.dirName d
+        deckId ← DID.fromString name
+        pure [d]
+      _ → []
+  void $ parTraverse (ExceptT ∘ Quasar.delete) $
+    Left <$> (pure tmpDir <> deckDirs)
