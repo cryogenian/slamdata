@@ -242,9 +242,8 @@ queueEval' ms source@(_ × cardId) graph = do
     (Eval.evalGraph source graph)
 
 queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → m Unit)
-queueEval ms source@(_ × coord) = do
-  _ ← pure unit
-  traverse_ (queueEval' ms source) =<< snapshotGraph coord
+queueEval ms source@(_ × cardId) =
+  traverse_ (queueEval' ms source) =<< snapshotGraph cardId
 
 queueEvalImmediate ∷ ∀ f m. Persist f m (Card.DisplayCoord → m Unit)
 queueEvalImmediate = queueEval 0

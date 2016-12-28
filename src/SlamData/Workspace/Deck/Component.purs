@@ -287,7 +287,7 @@ peekBackSide opts (Back.DoAction action _) = do
       deck ← liftH' $ P.getDeck opts.deckId
       for_ (_.parent <$> deck) case _ of
         Just cardId | not (L.null opts.displayCursor) → do
-          _ ← liftH' $ P.mirrorDeck opts.deckId cardId
+          liftH' $ P.mirrorDeck opts.deckId cardId
           H.modify (DCS._displayMode .~ DCS.Normal)
         _ → do
           parentId ← liftH' $ P.wrapAndMirrorDeck opts.deckId
@@ -408,7 +408,7 @@ peekAnyCard cardId _ =
 
 peekNextAction ∷ ∀ a. DeckOptions → Next.QueryP a → DeckDSL Unit
 peekNextAction opts q = do
-  for_ (q ^? CoP._Left ∘ Next._AddCardType) $ void ∘ H.liftH ∘ H.liftH ∘ P.addCard opts.deckId
+  for_ (q ^? CoP._Left ∘ Next._AddCardType) $ void ∘ liftH' ∘ P.addCard opts.deckId
   for_ (q ^? CoP._Left ∘ Next._PresentReason) $ uncurry presentReason
 
 presentReason ∷ Port.Port → CT.CardType → DeckDSL Unit
@@ -424,7 +424,7 @@ presentReason input cardType =
 deleteDeck ∷ DeckOptions → DeckDSL Unit
 deleteDeck opts = do
   st ← H.get
-  _ ← liftH' $ P.deleteDeck opts.deckId
+  liftH' $ P.deleteDeck opts.deckId
   navigateToDeck opts.cursor
   pure unit
 
@@ -485,7 +485,7 @@ loadCards opts deck = do
 
   activeCardIndex st = do
     { cache } ← liftH' Wiring.expose
-    map _.cardIndex <$> H.liftH (H.liftH (Cache.get opts.deckId cache.activeState))
+    map _.cardIndex <$> liftH' (Cache.get opts.deckId cache.activeState)
 
 handleEval ∷ DeckOptions → ED.EvalMessage → DeckDSL Unit
 handleEval opts = case _ of

@@ -302,7 +302,7 @@ runFreshWorkspace cards = do
         ED.Complete _ _ → wait
         _ → pure unit
   wait
-  _ ← liftH' P.saveWorkspace
+  liftH' P.saveWorkspace
   urlVarMaps ← H.fromEff $ readRef varMaps
   navigate $ WorkspaceRoute path (pure deckId) (WA.Load accessType) urlVarMaps
 

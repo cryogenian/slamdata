@@ -151,14 +151,14 @@ loadGraph path { root } = runExceptT do
 
     loadCards ∷ DeckId → Deck → ExceptT QE.QError m (Array CardId)
     loadCards deckId { mirror, cards: cardIds } = do
-      _ ← parTraverse loadDeck (Array.nub (fst <$> mirror))
+      parTraverse loadDeck (Array.nub (fst <$> mirror))
       mirrorIds ← traverse lookupCardId mirror
       cardIds' ← traverse (loadCard deckId) cardIds
       pure (mirrorIds <> cardIds')
 
     loadCard ∷ DeckId → Card → ExceptT QE.QError m CardId
     loadCard deckId { cardId, model } = do
-      _ ← parTraverse loadDeck (Card.childDeckIds model)
+      parTraverse loadDeck (Card.childDeckIds model)
       newId ← lift CID.make
       Cache.put (deckId × cardId) newId cardIdMap
       Cache.put newId model cards
@@ -180,7 +180,7 @@ loadGraph path { root } = runExceptT do
         , cards: Map.empty ∷ Map.Map CardId AnyCardModel
         }
     Just rootId → do
-      _ ← loadDeck rootId
+      loadDeck rootId
       decks' ← Cache.snapshot decks
       cards' ← Cache.snapshot cards
       pure

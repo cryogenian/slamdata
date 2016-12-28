@@ -76,7 +76,7 @@ unfoldTree getDeck getCard decks cards = unfoldDeck
         TraverseDeck
           { deckId
           , deck
-          , cards: List.catMaybes (unfoldCard <$> List.fromFoldable (getDeck deck).cards)
+          , cards: List.mapMaybe unfoldCard (List.fromFoldable (getDeck deck).cards)
           }
 
     unfoldCard cardId =
