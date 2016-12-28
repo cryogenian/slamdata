@@ -84,7 +84,7 @@ import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse as ET
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 
-import Utils (censor)
+import Utils (hush)
 import Utils.DOM (elementEq)
 import Utils.LocalStorage as LocalStorage
 
@@ -215,7 +215,7 @@ eval opts = case _ of
     pure next
   GetActiveCard k → do
     active ← H.gets DCS.activeCard
-    pure (k (censor ∘ map _.cardId =<< active))
+    pure (k (hush ∘ map _.cardId =<< active))
   where
   getBoundingClientWidth =
     H.fromEff ∘ map _.width ∘ getBoundingClientRect
@@ -255,7 +255,7 @@ peekBackSide opts (Back.DoAction action _) = do
     Back.Trash → do
       let
         active = DCS.activeCard st
-      for_ (join $ censor <$> active) \{ cardId } → do
+      for_ (join $ hush <$> active) \{ cardId } → do
         liftH' $ P.removeCard opts.deckId cardId
         H.modify
           $ (DCS._displayMode .~ DCS.Normal)
@@ -346,8 +346,8 @@ updateBackSide ∷ DeckOptions → DeckDSL Unit
 updateBackSide { cursor } = do
   st ← H.get
   let
-    ty = join (censor <$> DCS.activeCard st)
-    tys = Array.mapMaybe censor st.displayCards
+    ty = join (hush <$> DCS.activeCard st)
+    tys = Array.mapMaybe hush st.displayCards
   void $ H.query' cpBackSide unit $ H.action $ Back.UpdateCard ty tys
 
 dismissedAccessNextActionCardGuideKey ∷ String

@@ -51,7 +51,7 @@ import SlamData.Workspace.Card.Port (PivotTablePort, eqTaggedResourcePort)
 import SlamData.Wiring as Wiring
 
 import Global (readFloat)
-import Utils (censor)
+import Utils (hush)
 
 type State =
   { input ∷ Maybe PivotTablePort
@@ -408,7 +408,7 @@ loadTree input = do
     QF.readQuery Readable path input.query mempty Nothing
   H.modify _
     { loading = false
-    , rawRecords = censor records
+    , rawRecords = hush records
     }
   pageTree input
 

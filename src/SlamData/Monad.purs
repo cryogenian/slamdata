@@ -57,7 +57,7 @@ import SlamData.Workspace.Deck.DeckId as DeckId
 import SlamData.Workspace.Routing as Routing
 import SlamData.Monad.Auth (getIdTokenSilently)
 
-import Utils (censor)
+import Utils (hush)
 
 type Slam = SlamM SlamDataEffects
 
@@ -151,23 +151,23 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
     Aff aff →
       aff
     GetAuthIdToken k → do
-      idToken ← censor <$> getIdTokenSilently auth.allowedModes auth.requestToken
+      idToken ← hush <$> getIdTokenSilently auth.allowedModes auth.requestToken
       case idToken of
         Just (Left error) →
           for_ (Auth.toNotificationOptions error) \opts →
             Bus.write opts bus.notify
         _ →
           pure unit
-      pure $ k $ maybe Nothing censor idToken
+      pure $ k $ maybe Nothing hush idToken
     Quasar qf → do
-      idToken ← censor <$> getIdTokenSilently auth.allowedModes auth.requestToken
+      idToken ← hush <$> getIdTokenSilently auth.allowedModes auth.requestToken
       case idToken of
         Just (Left error) →
           for_ (Auth.toNotificationOptions error) \opts →
             Bus.write opts bus.notify
         _ →
           pure unit
-      runQuasarF (maybe Nothing censor idToken) qf
+      runQuasarF (maybe Nothing hush idToken) qf
     Notify no a → do
       Bus.write no bus.notify
       pure a

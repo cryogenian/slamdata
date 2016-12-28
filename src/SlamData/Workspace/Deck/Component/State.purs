@@ -81,7 +81,7 @@ import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
-import Utils (censor)
+import Utils (hush)
 
 type StateP = OpaqueState State
 
@@ -301,7 +301,7 @@ fromModel { name, displayCards } state =
 
 cardIndexFromId ∷ CardId → State → Maybe Int
 cardIndexFromId coord =
-  A.findIndex (eq (Just coord) ∘ map _.cardId ∘ censor) ∘ _.displayCards
+  A.findIndex (eq (Just coord) ∘ map _.cardId ∘ hush) ∘ _.displayCards
 
 cardIdFromIndex ∷ Int → State → Maybe CardId
 cardIdFromIndex i st =
@@ -361,7 +361,7 @@ updateDisplayCards defs port st =
     case A.uncons defs of
       Just { head, tail } →
         let
-          realCards = A.mapMaybe censor st.displayCards
+          realCards = A.mapMaybe hush st.displayCards
           initCards = A.takeWhile (not ∘ eq head.cardId ∘ _.cardId) realCards
           newCards = A.cons head tail
           metaCard =
