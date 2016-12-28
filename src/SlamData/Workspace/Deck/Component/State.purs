@@ -30,7 +30,7 @@ module SlamData.Workspace.Deck.Component.State
   , _pendingCardIndex
   , _presentAccessNextActionCardGuideCanceler
   , _presentAccessNextActionCardGuide
-  , _stateMode
+  , _loadError
   , _displayMode
   , _initialSliderX
   , _initialSliderCardWidth
@@ -123,7 +123,7 @@ type DisplayCard = Either MetaCard CardDef
 
 type State =
   { name ∷ String
-  , stateMode ∷ Maybe String
+  , loadError ∷ Maybe String
   , displayMode ∷ DisplayMode
   , displayCards ∷ Array DisplayCard
   , pendingCardIndex ∷ Maybe Int
@@ -149,7 +149,7 @@ type State =
 initialDeck ∷ State
 initialDeck =
   { name: ""
-  , stateMode: Nothing
+  , loadError: Nothing
   , displayMode: Normal
   , displayCards: mempty
   , pendingCardIndex: Nothing
@@ -198,10 +198,9 @@ _presentAccessNextActionCardGuideCanceler = lens _.presentAccessNextActionCardGu
 _presentAccessNextActionCardGuide ∷ ∀ a r. Lens' {presentAccessNextActionCardGuide ∷ a |r} a
 _presentAccessNextActionCardGuide = lens _.presentAccessNextActionCardGuide _{presentAccessNextActionCardGuide = _}
 
--- | The "state mode" used to track whether the deck is ready, loading, or
--- | if an error has occurred while loading.
-_stateMode ∷ ∀ a r. Lens' {stateMode ∷ a|r} a
-_stateMode = lens _.stateMode _{stateMode = _}
+-- | Whether there was an error loading the deck.
+_loadError ∷ ∀ a r. Lens' {loadError ∷ a|r} a
+_loadError = lens _.loadError _{loadError = _}
 
 -- | backsided, dialog or normal (card)
 _displayMode ∷ ∀ a r. Lens' {displayMode ∷ a |r} a

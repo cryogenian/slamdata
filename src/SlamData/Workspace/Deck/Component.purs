@@ -98,7 +98,7 @@ render opts deckComponent st =
   -- get invoked by normal machinery. -nf
   if st.finalized
   then HH.div_ []
-  else case st.stateMode of
+  else case st.loadError of
     Just error →
       HH.div
         [ HP.class_ $ HH.className "sd-workspace-error" ]
@@ -434,7 +434,7 @@ loadDeck opts = do
   deck ← liftH' $ P.getDeck opts.deckId
   case deck of
     Nothing →
-      H.modify _ { stateMode = Just "Deck does not exist" }
+      H.modify _ { loadError = Just "Deck does not exist" }
     Just { bus, model } → do
       breaker ← subscribeToBus' (H.action ∘ HandleEval) bus
       H.modify \s → s
