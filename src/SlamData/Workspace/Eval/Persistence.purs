@@ -147,8 +147,8 @@ publishCardChange source@(_ × cardId) model = do
   putCard cardId model
   mbGraph ← snapshotGraph cardId
   for_ mbGraph \graph → do
-    queueSaveDefault
     queueEval' defaultEvalDebounce source graph
+    queueSaveDefault
     let card = (Cofree.head graph).card
     liftAff $ Bus.write (Card.ModelChange source model) card.bus
     for_ card.decks \deckId →
@@ -297,9 +297,16 @@ deleteDeck deckId = do
   cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
   Cache.remove deckId eval.decks
   case cell.parent of
-    Just _  → updateParentPointer deckId Nothing cell.parent
-    Nothing → void $ Quasar.delete (Left path)
-  rebuildGraph
+    Nothing → do
+      rootId ← liftAff $ peekVar eval.root
+      when (rootId ≡ deckId) $ void do
+        Quasar.delete (Left path)
+    Just oldParentId → do
+      oldParentModel ← updatePointer deckId Nothing oldParentId
+      putCard oldParentId oldParentModel
+      rebuildGraph
+      publishCardChange (Card.toAll oldParentId) oldParentModel
+      queueSaveDefault
   pure cell.parent
 
 wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
@@ -307,8 +314,8 @@ wrapDeck deckId = do
   cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
   parentCardId × _ ← freshCard (Just Port.Initial) Set.empty (CM.singletonDraftboard deckId)
   parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId }
-  updateParentPointer deckId (Just parentDeckId) cell.parent
-  rebuildGraph
+  updateRootOrParent deckId parentDeckId cell.parent
+  queueSaveDefault
   pure parentDeckId
 
 wrapAndMirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
@@ -319,9 +326,9 @@ wrapAndMirrorDeck deckId = do
     freshCard (Just Port.Initial) Set.empty $
       CM.splitDraftboard Orn.Vertical (List.fromFoldable [ deckId, mirrorDeckId ])
   parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId }
-  updateParentPointer deckId (Just parentDeckId) cell.parent
   cloneActiveStateTo mirrorDeckId deckId
-  rebuildGraph
+  updateRootOrParent deckId parentDeckId cell.parent
+  queueSaveDefault
   pure parentDeckId
 
 mirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Id → m Deck.Id)
@@ -331,8 +338,10 @@ mirrorDeck deckId parentId = do
   mirrorDeckId × _ ← freshDeck DM.emptyDeck { cards = cell.model.cards }
   parentModel ← unwrapOrExn "Cannot mirror deck" $ CM.mirrorInDraftboard deckId mirrorDeckId card.model
   cloneActiveStateTo mirrorDeckId deckId
+  putCard parentId parentModel
   rebuildGraph
   publishCardChange (Card.toAll parentId) parentModel
+  queueSaveDefault
   pure mirrorDeckId
 
 unwrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
@@ -342,9 +351,9 @@ unwrapDeck deckId = do
   cards ← unwrapOrExn "Cards not found" =<< getCards cell.model.cards
   childId ← unwrapOrExn "Cannot unwrap deck" $ immediateChild (_.model <$> cards)
   child ← unwrapOrExn "Child not found" =<< getDeck childId
-  updateParentPointer deckId (Just childId) cell.parent
   Cache.remove deckId eval.decks
-  rebuildGraph
+  updateRootOrParent deckId childId cell.parent
+  queueSaveDefault
   pure childId
   where
     immediateChild ∷ Array Card.Model → Maybe Deck.Id
@@ -365,8 +374,10 @@ collapseDeck deckId cardId = do
     parentModel = parent.model
     cardModels = _.model <$> cards
   parentModel' ← unwrapOrExn "Cannot collapse deck" $ collapse parentModel cardModels
+  putCard cardId parentModel'
   rebuildGraph
   publishCardChange (Card.toAll cardId) parentModel'
+  queueSaveDefault
   where
     collapse ∷ Card.Model → Array Card.Model → Maybe Card.Model
     collapse parent child = case parent, child of
@@ -400,6 +411,7 @@ wrapAndGroupDeck orn bias deckId siblingId = do
       putCard oldParentId oldParent'
       rebuildGraph
       publishCardChange (Card.toAll oldParentId) oldParent'
+      queueSaveDefault
     _ → do
       throw (Exn.error "Cannot group deck")
 
@@ -421,6 +433,7 @@ groupDeck orn bias deckId siblingId newParentId = do
         parent' = CM.Draftboard { layout: layout' }
       publishCardChange (Card.toAll newParentId) child'
       publishCardChange (Card.toAll oldParentId) parent'
+      queueSaveDefault
     _, _ →
       wrapAndGroupDeck orn bias deckId siblingId
 
@@ -466,16 +479,26 @@ removeCard deckId cardId = do
   queueSaveDefault
   liftAff $ Bus.write (Deck.Complete cardIds.init (fromMaybe Port.Initial output)) deck.bus
 
-updateParentPointer ∷ ∀ f m. Persist f m (Deck.Id → Maybe Deck.Id → Maybe Card.Id → m Unit)
-updateParentPointer oldId = case _, _ of
-  newId, Just parentId → do
-    cell ← unwrapOrExn "Card not found" =<< getCard parentId
-    let model' = CM.updatePointer oldId newId cell.model
-    publishCardChange (Card.toAll parentId) model'
-  Just newId, Nothing → do
-    { eval } ← Wiring.expose
-    liftAff $ modifyVar (const newId) eval.root
-  _, _ → pure unit
+updateRootOrParent ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → Maybe Card.Id → m Unit)
+updateRootOrParent oldId newId = case _ of
+  Nothing → do
+    updateRoot newId
+    rebuildGraph
+  Just oldParentId → do
+    oldParentModel ← updatePointer oldId (Just newId) oldParentId
+    putCard oldParentId oldParentModel
+    rebuildGraph
+    publishCardChange (Card.toAll oldParentId) oldParentModel
+
+updatePointer ∷ ∀ f m. Persist f m (Deck.Id → Maybe Deck.Id → Card.Id → m Card.Model)
+updatePointer oldId newId parentId = do
+  cell ← unwrapOrExn "Card not found" =<< getCard parentId
+  pure $ CM.updatePointer oldId newId cell.model
+
+updateRoot ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
+updateRoot newId = do
+  { eval } ← Wiring.expose
+  liftAff $ modifyVar (const newId) eval.root
 
 cloneActiveStateTo ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → m Unit)
 cloneActiveStateTo to from = do
