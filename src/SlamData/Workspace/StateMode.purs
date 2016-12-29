@@ -26,12 +26,5 @@ import SlamData.Quasar.Error (QError)
 -- | - `Error` is used when there is a problem restoring the deck.
 data StateMode
   = Loading
-  | Preparing
   | Ready
   | Error QError
-
-isPreparing ∷ StateMode → Boolean
-isPreparing =
-  case _ of
-    Preparing → true
-    _ → false

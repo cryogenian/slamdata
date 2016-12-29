@@ -23,6 +23,7 @@ import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Eff.Ref (Ref, newRef, readRef, writeRef)
 import Control.UI.Browser (select, locationString)
 
+import Data.Argonaut (encodeJson)
 import Data.Foldable as F
 import Data.Map as Map
 import Data.Path.Pathy as Pathy
@@ -53,15 +54,16 @@ import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (glyph, fadeWhen)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
+import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port.VarMap as Port
+import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.DeckPath (deckPath')
-import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
-import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL, encodeVarMaps)
+import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL)
 
 import Quasar.Advanced.Types as QTA
 
-import Utils (censor, prettyJson)
+import Utils (hush, prettyJson)
 import Utils.Path as UP
 
 import ZClipboard as Z
@@ -74,7 +76,7 @@ type DSL = H.ComponentDSL State Query Slam
 
 type State =
   { presentingAs ∷ PresentAs
-  , varMaps ∷ Map.Map DeckId Port.VarMap
+  , varMaps ∷ Map.Map CID.CardId Port.VarMap
   , sharingInput ∷ SharingInput
   , permToken ∷ Maybe QTA.TokenR
   , canRevoke ∷ Boolean
@@ -457,7 +459,7 @@ workspaceTokenName ∷ UP.DirPath → OIDC.IdToken → QTA.TokenName
 workspaceTokenName workspacePath idToken =
   let
     payload =
-      censor $ Eff.runPure $ Exception.try $ OIDC.readPayload idToken
+      hush $ Eff.runPure $ Exception.try $ OIDC.readPayload idToken
     email =
       fromMaybe "unknown user" $ OIDC.runEmail <$> (OIDC.pluckEmail =<< payload)
     workspace =
@@ -523,7 +525,7 @@ renderCopyVal locString state
     line = (_ ⊕ "\n")
     quoted s = "\"" ⊕ s ⊕ "\""
     workspaceURL = locString ⊕ "/" ⊕ Config.workspaceUrl
-    deckId = toString state.sharingInput.deckId
+    deckId = DID.toString state.sharingInput.deckId
     deckPath = UP.encodeURIPath (Pathy.printPath state.sharingInput.workspacePath)
     options = opt varMaps <> opt tokens
     opt = case _ of
@@ -545,13 +547,13 @@ renderCopyVal locString state
               (_.secret <$> state.permToken)
           ⊕ "]"
 
-renderVarMaps ∷ Map.Map DeckId Port.VarMap → String
-renderVarMaps = indent <<< prettyJson <<< encodeVarMaps <<< varMapsForURL
+renderVarMaps ∷ Map.Map CID.CardId Port.VarMap → String
+renderVarMaps = indent <<< prettyJson <<< encodeJson <<< varMapsForURL
   where
   indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" RXF.global) "$1    "
 
 renderURL ∷ String → State → String
-renderURL locationString state@{sharingInput, varMaps, permToken, isLoggedIn} =
+renderURL locationString state@{sharingInput, permToken, isLoggedIn} =
   locationString
   ⊕ "/"
   ⊕ Config.workspaceUrl
@@ -560,4 +562,4 @@ renderURL locationString state@{sharingInput, varMaps, permToken, isLoggedIn} =
       (do guard isLoggedIn
           token ← permToken
           pure token.secret)
-  ⊕ mkWorkspaceHash (deckPath' sharingInput.workspacePath sharingInput.deckId) (WA.Load AT.ReadOnly) Map.empty
+  ⊕ mkWorkspaceHash (deckPath' sharingInput.workspacePath sharingInput.deckId) (WA.Load AT.ReadOnly) SM.empty

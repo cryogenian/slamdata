@@ -17,7 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Component.State
   ( State
   , initialState
-  , _deckId
+  , _cursor
   , _stateMode
   , _cardGuideStep
   , _flipGuideStep
@@ -28,27 +28,32 @@ module SlamData.Workspace.Component.State
 import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
+import Data.List (List)
+
+import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.StateMode (StateMode(..))
 
 type State =
-  { deckId ∷ Maybe DeckId
+  { cursor ∷ List DeckId
   , stateMode ∷ StateMode
   , cardGuideStep ∷ Maybe Int
   , flipGuideStep ∷ Maybe Int
+  , providers ∷ Array ProviderR
   }
 
 initialState ∷ State
 initialState =
-  { deckId: Nothing
+  { cursor: mempty
   , stateMode: Loading
   , cardGuideStep: Nothing
   , flipGuideStep: Nothing
+  , providers: mempty
   }
 
-_deckId ∷ ∀ a r. Lens' { deckId ∷ a | r } a
-_deckId = lens _.deckId _ { deckId = _ }
+_cursor ∷ ∀ a r. Lens' { cursor ∷ a | r } a
+_cursor = lens _.cursor _ { cursor = _ }
 
 _stateMode ∷ Lens' State StateMode
 _stateMode = lens _.stateMode _ { stateMode = _ }

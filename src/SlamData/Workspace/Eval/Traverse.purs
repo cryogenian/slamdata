@@ -16,108 +16,174 @@ limitations under the License.
 
 module SlamData.Workspace.Eval.Traverse
   ( TraverseDeck(..)
-  , TraverseCard
+  , TraverseCard(..)
   , unfoldTree
-  , childPointers
+  , unfoldModelTree
+  , unfoldEvalTree
   , getVarMaps
   , getSharingInput
+  , hydrateCursor
+  , resolveUrlVarMaps
   ) where
 
 import SlamData.Prelude
 
-import Data.List (List)
+import Data.Array as Array
+import Data.Foldable (find)
+import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Set (Set)
 import Data.Set as Set
+import Data.StrMap (StrMap)
+import Data.StrMap as StrMap
 
 import SlamData.Workspace.Card.Model as CM
+import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Variables.Eval as Variables
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
+import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 
-import Utils (censor)
 import Utils.Path (DirPath)
 
-data TraverseDeck = TraverseDeck
+newtype TraverseDeck d c = TraverseDeck
   { deckId ∷ Deck.Id
-  , cards ∷ List TraverseCard
+  , deck ∷ d
+  , cards ∷ List (TraverseCard d c)
   }
 
-type TraverseCard =
-  { coord ∷ Card.Coord
-  , model ∷ Card.AnyCardModel
-  , children ∷ List TraverseDeck
-  , sources ∷ Set Card.AdditionalSource
+newtype TraverseCard d c = TraverseCard
+  { cardId ∷ Card.Id
+  , card ∷ c
+  , decks ∷ List (TraverseDeck d c)
   }
 
 unfoldTree
-  ∷ Map Card.Coord Card.Cell
-  → Map Deck.Id Deck.Cell
+  ∷ ∀ d c
+  . (d → Deck.Model)
+  → (c → Card.Model)
+  → Map Deck.Id d
+  → Map Card.Id c
   → Deck.Id
-  → Maybe TraverseDeck
-unfoldTree cards decks deckId =
-  go ∘ _.model <$> Map.lookup deckId decks
+  → Maybe (TraverseDeck d c)
+unfoldTree getDeck getCard decks cards = unfoldDeck
   where
-    go deck =
-      TraverseDeck
-        { deckId
-        , cards: List.catMaybes (unfoldCard <$> List.fromFoldable (Deck.cardCoords deckId deck))
-        }
+    unfoldDeck deckId =
+      Map.lookup deckId decks <#> \deck →
+        TraverseDeck
+          { deckId
+          , deck
+          , cards: List.mapMaybe unfoldCard (List.fromFoldable (getDeck deck).cards)
+          }
 
-    unfoldCard ∷ Card.Coord → Maybe TraverseCard
-    unfoldCard coord =
-      Map.lookup coord cards <#> \{ value: { model, sources } } →
-        { coord
-        , model: model.model
-        , children: List.catMaybes $ unfoldTree cards decks <$> childPointers model
-        , sources
-        }
+    unfoldCard cardId =
+      Map.lookup cardId cards <#> \card →
+        TraverseCard
+          { cardId
+          , card
+          , decks: List.catMaybes (unfoldDeck <$> CM.childDeckIds (getCard card))
+          }
 
-childPointers ∷ Card.Model → List Deck.Id
-childPointers = case _ of
-  { cardId, model: CM.Draftboard model } →
-    List.catMaybes (List.fromFoldable model.layout)
-  _ → mempty
+unfoldModelTree
+  ∷ Map Deck.Id Deck.Model
+  → Map Card.Id Card.Model
+  → Deck.Id
+  → Maybe (TraverseDeck Deck.Model Card.Model)
+unfoldModelTree = unfoldTree id id
 
-getVarMaps ∷ TraverseDeck → Map Deck.Id Port.VarMap
+unfoldEvalTree
+  ∷ Map Deck.Id Deck.Cell
+  → Map Card.Id Card.Cell
+  → Deck.Id
+  → Maybe (TraverseDeck Deck.Cell Card.Cell)
+unfoldEvalTree = unfoldTree _.model _.model
+
+getVarMaps ∷ TraverseDeck Deck.Cell Card.Cell → Map Card.Id Port.VarMap
 getVarMaps = Map.fromFoldable ∘ goDeck
   where
     goDeck (TraverseDeck { cards }) =
       foldMap goCard cards
 
-    goCard ∷ TraverseCard → List (Deck.Id × Port.VarMap)
-    goCard { coord: deckId × _, model: CM.Variables vars } =
-      pure $ deckId × Variables.buildVarMap deckId Map.empty vars
-    goCard { children } = foldMap goDeck children
+    goCard ∷ TraverseCard Deck.Cell Card.Cell → List (Card.Id × Port.VarMap)
+    goCard (TraverseCard { cardId, card, decks }) =
+      case card.model of
+        CM.Variables vars → pure (cardId × Variables.buildVarMap cardId Map.empty vars)
+        _ → foldMap goDeck decks
 
-getSharingInput ∷ DirPath → TraverseDeck → SharingInput
-getSharingInput path (TraverseDeck root) =
+getSharingInput ∷ DirPath → TraverseDeck Deck.Cell Card.Cell → SharingInput
+getSharingInput path root@(TraverseDeck { deckId }) =
   { workspacePath: path
-  , deckId: root.deckId
-  , decks: List.mapMaybe censor resources
+  , deckId
   , caches: List.mapMaybe isCache resources
   , sources: List.mapMaybe isSource resources
   }
   where
     resources =
-      List.fromFoldable
-        (foldMap goCard root.cards)
+      List.fromFoldable (goDeck root)
 
-    goCard { coord: deckId × _, sources, children } =
-      foldMap goDeck children <> Set.map Left sources <>
-      if deckId ≡ root.deckId
-         then Set.empty
-         else Set.singleton (Right deckId)
+    goCard (TraverseCard { cardId, card, decks }) =
+      foldMap goDeck decks <> card.sources
 
-    goDeck (TraverseDeck { cards, deckId }) =
-      foldMap goCard cards <> Set.singleton (Right deckId)
+    goDeck (TraverseDeck { cards }) =
+      foldMap goCard cards
 
-    isCache (Left (Card.Cache fp)) = Just fp
+    isCache (Card.Cache fp) = Just fp
     isCache _ = Nothing
 
-    isSource (Left (Card.Source fp)) = Just fp
+    isSource (Card.Source fp) = Just fp
     isSource _ = Nothing
+
+hydrateCursor
+  ∷ Map Deck.Id Deck.Cell
+  → Map Card.Id Card.Cell
+  → List Deck.Id
+  → List Deck.Id
+hydrateCursor decks cards = maybe Nil List.reverse ∘ go Nil
+  where
+    go c Nil = pure c
+    go c (deckId : rest) = do
+      deck ← Map.lookup deckId decks
+      case deck.parent of
+        Nothing → pure (deckId : c)
+        Just cardId → do
+          card ← Map.lookup cardId cards
+          case List.fromFoldable card.decks, List.head rest of
+            Nil, _ → Nothing
+            _, Just next | Set.member next card.decks → go (deckId : c) rest
+            next : _, _ → go (deckId : c) (next : rest)
+
+resolveUrlVarMaps
+  ∷ Map Deck.Id Deck.Cell
+  → Map Card.Id Card.Cell
+  → StrMap Port.URLVarMap
+  → Map Card.Id Port.URLVarMap
+resolveUrlVarMaps decks cards = StrMap.fold go mempty
+  where
+    go vms key val =
+      case toCard key <|> toDeck key <|> toDeckName key of
+        Just cardId → Map.alter (Just ∘ maybe val (StrMap.union val)) cardId vms
+        Nothing → vms
+
+    toVariables cardId = do
+      card ← Map.lookup cardId cards
+      case card.model of
+        CM.Variables _ → pure cardId
+        _ → Nothing
+
+    toCard key =
+      CID.fromString key >>= toVariables
+
+    toDeck key = do
+      deckId ← DID.fromString key
+      deck ← Map.lookup deckId decks
+      cardId ← Array.head deck.model.cards
+      toVariables cardId
+
+    toDeckName key = do
+      guard (key ≠ "")
+      deck ← find (eq key ∘ _.model.name) decks
+      cardId ← Array.head deck.model.cards
+      toVariables cardId

@@ -21,13 +21,12 @@ module SlamData.Workspace.Card.Draftboard.Component.Render
 import SlamData.Prelude
 import CSS as C
 import Data.Array as Array
-import Data.List (List(..))
+import Data.List (List)
 import Data.List as List
 import Data.Ratio as Ratio
 import Data.Rational (Rational, (%))
 import Data.Rational as Rational
 import Halogen as H
-import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events.Indexed as HE
@@ -46,7 +45,6 @@ import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Deck.Component.Nested.State as DNS
-import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 
 render ∷ CardOptions → State → DraftboardHTML
@@ -231,12 +229,18 @@ renderCell opts st { cursor, value, rect } =
             ]
     ]
   where
-  mkDeckComponent id _ =
-    { component: opts.deckComponent deckOpts (opaqueState $ DCS.initialDeck id)
-    , initialState: DNS.initialState
-    }
-    where
-    deckOpts = opts.deck { cursor = Cons (fst opts.coord) opts.deck.cursor }
+  mkDeckComponent deckId _ =
+    let
+      deckOpts =
+        { accessType: opts.deck.accessType
+        , cursor: opts.cursor
+        , displayCursor: opts.displayCursor
+        , deckId
+        }
+    in
+      { component: opts.deckComponent deckOpts
+      , initialState: DNS.initialState
+      }
 
 renderEdge ∷ State → Layout.Edge Number → DraftboardHTML
 renderEdge st edge@{ orientation, vect } =

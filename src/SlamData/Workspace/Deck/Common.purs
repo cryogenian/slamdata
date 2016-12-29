@@ -33,5 +33,7 @@ type DeckDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
 type DeckOptions =
   { accessType ∷ AccessType
-  , cursor ∷ L.List DeckId
+  , cursor ∷ L.List DeckId -- Absolute cursor within the graph
+  , displayCursor ∷ L.List DeckId -- Relative cursor within the UI
+  , deckId ∷ DeckId
   }

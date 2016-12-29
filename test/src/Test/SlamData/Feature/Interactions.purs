@@ -6,8 +6,6 @@ import Data.Argonaut (encodeJson)
 import Data.Array as Arr
 import Data.Map as Map
 import Data.String as S
-import Data.String.Regex as RX
-import Data.String.Regex.Flags as RXF
 import Data.StrMap as SM
 
 import Global (encodeURIComponent)
@@ -427,19 +425,13 @@ runQuery ∷ SlamFeature Unit
 runQuery =
   Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Run query"
 
-setVarMapForCurrentDeck ∷ SM.StrMap String → SlamFeature Unit
-setVarMapForCurrentDeck vm = accessWorkspaceWithModifiedURL \urlStr →
+setVarMapForDeck ∷ String → SM.StrMap String → SlamFeature Unit
+setVarMapForDeck deckName vm = accessWorkspaceWithModifiedURL \urlStr →
   let
-    deckIdRgx = unsafePartial fromRight $ RX.regex "\\.slam\\/([^\\/]+)" RXF.noFlags
-    mbDeckId = join $ RX.match deckIdRgx urlStr >>= flip Arr.index 1
-  in case mbDeckId of
-    Nothing → urlStr
-    Just did →
-      let
-        varsValue =
-          encodeURIComponent
-          $ prettyJson
-          $ encodeJson
-          $ SM.singleton did vm
-      in
-       urlStr ⊕ "/?vars=" ⊕ varsValue
+    varsValue =
+      encodeURIComponent
+      $ prettyJson
+      $ encodeJson
+      $ SM.singleton deckName vm
+  in
+   urlStr ⊕ "/?vars=" ⊕ varsValue

@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Array as A
 import Data.Foldable as F
-import Data.List as L
+import Data.List (List(..), (:))
 import Data.String as Str
 
 import Halogen as H
@@ -79,7 +79,7 @@ allBackActions state =
 
 type BackSideOptions =
   { deckId ∷ DeckId
-  , cursor ∷ L.List DeckId
+  , displayCursor ∷ List DeckId
   }
 
 type State =
@@ -226,19 +226,13 @@ eval opts = case _ of
     pure next
 
 unwrappable ∷ BackSideOptions → CardDef → DSL Boolean
-unwrappable { cursor, deckId } { coord } = do
-  deck ← _.model <$> H.liftH (P.getDeck' deckId)
-  card ← map _.value.model.model <$> H.liftH (P.getCard coord)
+unwrappable { displayCursor, deckId } { cardId } = do
+  deck ← map _.model <$> H.liftH (P.getDeck deckId)
+  card ← map _.model <$> H.liftH (P.getCard cardId)
   let
+    cardLen = A.length ∘ _.cards <$> deck
     deckIds = CM.childDeckIds <$> card
-    len = A.length deck.mirror + A.length deck.cards
-  pure case cursor of
-    L.Nil → do
-      case len, deckIds of
-        1, Just (childId L.: L.Nil) → true
-        _, _ → false
-    parentId L.: L.Nil → do
-      case len of
-        1 → true
-        _ → false
-    _ → false
+  pure case displayCursor, card, cardLen, deckIds of
+    Nil    , Just (CM.Draftboard _), Just 1, Just (_ : Nil) → true
+    _ : Nil, Just (CM.Draftboard _), Just 1, _ → true
+    _ , _, _, _ → false

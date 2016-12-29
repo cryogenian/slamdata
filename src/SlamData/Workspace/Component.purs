@@ -23,27 +23,27 @@ module SlamData.Workspace.Component
 import SlamData.Prelude
 
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (putVar)
+import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, peekVar)
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Eff.Ref (readRef)
+import Control.UI.Browser as Browser
 
 import Data.Lens ((.~))
 import Data.List as List
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as Pathy
 import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
-import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.Component.Utils (liftH', subscribeToBus')
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
+import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
+import SlamData.GlobalMenu.Bus (SignInMessage(..))
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Guide as Guide
 import SlamData.Header.Component as Header
@@ -51,6 +51,8 @@ import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Notification.Component as NC
+import SlamData.Quasar as Quasar
+import SlamData.Quasar.Auth.Authentication as Authentication
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
@@ -65,13 +67,12 @@ import SlamData.Workspace.Component.State (State, _stateMode, _flipGuideStep, _c
 import SlamData.Workspace.Component.State as State
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
-import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
-import SlamData.Workspace.Model as Model
+import SlamData.Workspace.Eval.Traverse as ET
 import SlamData.Workspace.StateMode (StateMode(..))
-import SlamData.Workspace.Deck.Component.Render (renderError)
 
+import Utils (endSentence)
 import Utils.DOM (onResize, elementEq)
 import Utils.LocalStorage as LocalStorage
 
@@ -99,6 +100,26 @@ render accessType state =
     ]
     (preloadGuides ⊕ header ⊕ deck ⊕ notifications ⊕ renderCardGuide ⊕ renderFlipGuide)
   where
+  renderError err =
+    HH.div
+      [ HP.classes [ HH.className "sd-workspace-error" ] ]
+      [ HH.h1_
+          [ HH.text "Couldn't load this SlamData workspace." ]
+      , HH.p_
+          [ HH.text $ endSentence $ QE.printQError err ]
+      , if (QE.isUnauthorized err)
+          then HH.p_ (renderSignInButton <$> state.providers)
+          else HH.text ""
+      ]
+
+  renderSignInButton providerR =
+      HH.button
+        [ HE.onClick $ HE.input_ $ SignIn providerR
+        , HP.classes [ HH.className "btn", HH.className "btn-primary" ]
+        , HP.buttonType HP.ButtonButton
+        ]
+        [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
+
   renderCardGuide =
     Guide.renderStepByStepWithArray
       { next: CardGuideStepNext, dismiss: CardGuideDismiss }
@@ -129,22 +150,22 @@ render accessType state =
       }
 
   deck =
-    pure case state.stateMode, state.deckId of
-      Loading, _ →
-        HH.div_ []
+    pure case state.stateMode, state.cursor of
       Error error, _ → renderError error
-      _, Just deckId →
+      Loading, _ →
+        HH.div
+          [ HP.class_ $ HH.className "sd-pending-overlay" ]
+          [ HH.div_
+              [ HH.i_ []
+              , HH.span_ [ HH.text "Please wait while the workspace loads" ]
+              ]
+          ]
+      _, List.Cons deckId cursor →
         HH.slot' cpDeck deckId \_ →
-          let init = opaqueState $ Deck.initialDeck deckId
-          in { component: DN.comp (deckOpts deckId) init
-             , initialState: DN.initialState
-             }
-      _, _ → renderError $ QE.Error $ Exn.error "Missing deck id (impossible!)"
-
-  deckOpts deckId =
-    { accessType
-    , cursor: List.Nil
-    }
+          { component: DN.comp { accessType, cursor, displayCursor: mempty, deckId }
+          , initialState: DN.initialState
+          }
+      _, _ → HH.text "Error"
 
 eval ∷ Query ~> WorkspaceDSL
 eval = case _ of
@@ -190,48 +211,80 @@ eval = case _ of
     queryDeck (H.action Deck.UpdateCardSize) $> next
   New next → do
     st ← H.get
-    when (isNothing st.deckId) do
+    when (List.null st.cursor) do
       runFreshWorkspace mempty
     pure next
   ExploreFile res next → do
     st ← H.get
-    when (isNothing st.deckId) do
+    when (List.null st.cursor) do
       runFreshWorkspace
         [ CM.Open (R.File res)
         , CM.Table JT.emptyModel
         ]
     pure next
-  Load deckId next → do
-    case deckId of
-      Nothing → do
-        H.modify _ { stateMode = Loading }
-        rootDeck >>= case _ of
-          Left err →
-            case GE.fromQError err of
-              Left _ → H.modify _ { stateMode = Error err }
-              Right ge → GE.raiseGlobalError ge
-          Right deckId' → do
+  Load cursor next → do
+    st ← H.get
+    case st.stateMode of
+      Loading → do
+        rootId ← liftH' P.loadWorkspace
+        case rootId of
+          Left err → do
+            providers ←
+              Quasar.retrieveAuthProviders <#> case _ of
+                Right (Just providers) → providers
+                _ → []
             H.modify _
-              { stateMode = Ready
-              , deckId = Just deckId'
+              { stateMode = Error err
+              , providers = providers
               }
-      Just _ → do
-        H.modify _
-          { stateMode = Ready
-          , deckId = deckId
-          }
+            for_ (GE.fromQError err) GE.raiseGlobalError
+          Right _ → loadCursor cursor
+      _ → loadCursor cursor
     void $ queryDeck $ H.action Deck.Focus
     pure next
+  SignIn providerR next → do
+    { auth } ← liftH' Wiring.expose
+    idToken ← H.fromAff makeVar
+    H.fromAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
+    either signInFailure (const $ signInSuccess) =<< (H.fromAff $ takeVar idToken)
+    pure next
 
-rootDeck ∷ WorkspaceDSL (Either QE.QError DeckId)
-rootDeck = do
-  { path } ← liftH' Wiring.expose
-  Model.getRoot (path </> Pathy.file "index")
+  where
+  loadCursor cursor = do
+    cursor' ←
+      if List.null cursor
+        then do
+          wiring ← liftH' Wiring.expose
+          rootId ← H.fromAff $ peekVar wiring.eval.root
+          pure (pure rootId)
+        else
+          hydrateCursor cursor
+    H.modify _
+      { stateMode = Ready
+      , cursor = cursor'
+      }
 
-setRoot ∷ DeckId → WorkspaceDSL (Either QE.QError Unit)
-setRoot deckId = do
-  { path } ← liftH' Wiring.expose
-  Model.setRoot (path </> Pathy.file "index") deckId
+  hydrateCursor cursor = liftH' do
+    wiring ← Wiring.expose
+    ET.hydrateCursor
+      <$> Cache.snapshot wiring.eval.decks
+      <*> Cache.snapshot wiring.eval.cards
+      <*> pure cursor
+
+  keySuffix =
+    AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider
+
+  signInSuccess = do
+    { auth } ← liftH' Wiring.expose
+    H.fromAff $ Bus.write SignInSuccess $ auth.signIn
+    H.fromEff Browser.reload
+
+  signInFailure error = do
+    { auth, bus } ← liftH' Wiring.expose
+    H.fromAff do
+      for_ (Authentication.toNotificationOptions error) $
+        flip Bus.write bus.notify
+      Bus.write SignInFailure auth.signIn
 
 runFreshWorkspace ∷ Array CM.AnyCardModel → WorkspaceDSL Unit
 runFreshWorkspace cards = do
@@ -239,7 +292,7 @@ runFreshWorkspace cards = do
   deckId × cell ← liftH' $ P.freshWorkspace cards
   H.modify _
     { stateMode = Ready
-    , deckId = Just deckId
+    , cursor = pure deckId
     }
   void $ queryDeck $ H.action Deck.Focus
   let
@@ -249,9 +302,9 @@ runFreshWorkspace cards = do
         ED.Complete _ _ → wait
         _ → pure unit
   wait
-  setRoot deckId
-  urlVarMaps ← liftH' $ Cache.snapshot varMaps
-  navigate $ WorkspaceRoute path (Just deckId) (WA.Load accessType) urlVarMaps
+  liftH' P.saveWorkspace
+  urlVarMaps ← H.fromEff $ readRef varMaps
+  navigate $ WorkspaceRoute path (pure deckId) (WA.Load accessType) urlVarMaps
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
 peek = (const (pure unit)) ⨁ const (pure unit) ⨁ peekNotification
@@ -267,7 +320,7 @@ peek = (const (pure unit)) ⨁ const (pure unit) ⨁ peekNotification
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck q = do
-  deckId ← H.gets _.deckId
+  deckId ← H.gets (List.head ∘ _.cursor)
   join <$> for deckId \d → H.query' cpDeck d (right q)
 
 queryHeaderGripper ∷ ∀ a. Gripper.Query a → WorkspaceDSL Unit

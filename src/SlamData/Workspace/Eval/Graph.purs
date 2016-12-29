@@ -39,43 +39,42 @@ import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 
 type EvalGraphNode =
-  { coord ∷ Card.Coord
+  { cardId ∷ Card.Id
   , card ∷ Card.Cell
-  , deck ∷ Deck.Cell
   , transition ∷ Card.Eval
   }
 
-type EvalGraphLeaf = Deck.Id × Deck.Cell
+type EvalGraphLeaf =
+  { deckId ∷ Deck.Id
+  , deck ∷ Deck.Cell
+  }
 
 type EvalGraph = Cofree (Compose List (Either EvalGraphLeaf)) EvalGraphNode
 
 unfoldGraph
-  ∷ Map Card.Coord Card.Cell
+  ∷ Map Card.Id Card.Cell
   → Map Deck.Id Deck.Cell
-  → Card.Coord
+  → Card.Id
   → Maybe EvalGraph
-unfoldGraph cards decks coord =
-  go
-    <$> Map.lookup coord cards
-    <*> Map.lookup (fst coord) decks
+unfoldGraph cards decks cardId =
+  go <$> Map.lookup cardId cards
   where
-    go card deck =
+    go card =
       Cofree.mkCofree
-        { coord
+        { cardId
         , card
-        , deck
-        , transition: Card.modelToEval card.value.model.model
+        , transition: Card.modelToEval card.model
         }
-        (Compose (List.catMaybes (goNext <$> card.next)))
+        (Compose (List.catMaybes (goNext <$> List.fromFoldable card.next)))
 
     goNext (Left deckId) =
-      Left ∘ Tuple deckId <$> Map.lookup deckId decks
+      Left ∘ { deckId, deck: _ } <$> Map.lookup deckId decks
     goNext (Right next)  =
       Right <$> unfoldGraph cards decks next
 
-findNode ∷ Card.Coord → EvalGraph → Maybe EvalGraphNode
-findNode coord graph =
-  if node.coord ≡ coord
+findNode ∷ Card.Id → EvalGraph → Maybe EvalGraphNode
+findNode cardId graph =
+  if node.cardId ≡ cardId
     then Just node
     else go (unwrap (Cofree.tail graph))
   where
@@ -86,7 +85,7 @@ findNode coord graph =
       case c of
         Left _ → Nothing
         Right c' →
-          case findNode coord c' of
+          case findNode cardId c' of
             Nothing → go cs
             res → res
 

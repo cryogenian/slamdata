@@ -66,7 +66,6 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Eval.State (EvalState(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
-import SlamData.Workspace.Deck.DeckId as DID
 import Utils.Path (DirPath, FilePath)
 
 type CardEval = CardEvalM SlamDataEffects
@@ -85,8 +84,8 @@ type CardResult a =
 
 newtype CardEnv = CardEnv
   { path ∷ DirPath
-  , coord ∷ DID.DeckId × CID.CardId
-  , urlVarMaps ∷ Map.Map DID.DeckId Port.URLVarMap
+  , cardId ∷ CID.CardId
+  , urlVarMaps ∷ Map.Map CID.CardId Port.URLVarMap
   }
 
 data CardEvalF eff a
@@ -163,18 +162,17 @@ additionalSources = tell ∘ foldMap Set.singleton
 
 temporaryOutputResource ∷ ∀ m. (MonadAsk CardEnv m) ⇒ m FilePath
 temporaryOutputResource = do
-  CardEnv { path, coord: deckId × cardId } ← ask
+  CardEnv { path, cardId } ← ask
   pure $ path
     </> Path.dir ".tmp"
-    </> Path.dir (DID.toString deckId)
     </> Path.file ("out" ⊕ CID.toString cardId)
 
 localUrlVarMap ∷ ∀ m. (MonadAsk CardEnv m) ⇒ m Port.URLVarMap
 localUrlVarMap = do
-  CardEnv { coord, urlVarMaps } ← ask
+  CardEnv { cardId, urlVarMaps } ← ask
   pure
     (fromMaybe mempty
-      (Map.lookup (fst coord) urlVarMaps))
+      (Map.lookup cardId urlVarMaps))
 
 throw ∷ ∀ m a. (MonadThrow QError m) ⇒ String → m a
 throw = Throw.throw ∘ msgToQError

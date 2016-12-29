@@ -15,9 +15,7 @@ limitations under the License.
 -}
 
 module Test.SlamData.Property.Workspace.Card.Model
-  ( ArbCard
-  , runArbCard
-  , check
+  ( check
   , checkCardEquality
   ) where
 
@@ -29,33 +27,18 @@ import SlamData.Workspace.Card.Model as Card
 
 import Test.StrongCheck ((<?>))
 import Test.StrongCheck as SC
-import Test.StrongCheck.Arbitrary as SCA
-
-newtype ArbCard = ArbCard Card.Model
-
-runArbCard ∷ ArbCard → Card.Model
-runArbCard (ArbCard m) = m
-
-instance arbitraryArbCard ∷ SCA.Arbitrary ArbCard where
-  arbitrary = do
-    cardId ← SCA.arbitrary
-    model ← SCA.arbitrary
-    pure $ ArbCard { cardId, model }
 
 check ∷ forall eff. SC.SC eff Unit
 check =
   -- We have _a lot of_ model types
-  SC.quickCheck' 1000 $ runArbCard ⋙ \model →
+  SC.quickCheck' 1000 \model →
     case Card.decode (Card.encode model) of
       Left err → SC.Failed $ "Decode failed: " <> err
       Right model' → checkCardEquality model model'
 
-checkCardEquality ∷ Card.Model → Card.Model → SC.Result
+checkCardEquality ∷ Card.AnyCardModel → Card.AnyCardModel → SC.Result
 checkCardEquality model model' =
-  fold
-   [ model.cardId ≡ model'.cardId <?> "cardId mismatch"
-   , model.model ≡ model'.model
-       <?> ( "model mismatch:\n "
-             <> show (J.encodeJson model.model)
-             <> "\n" <> show (J.encodeJson model'.model))
-   ]
+  model ≡ model'
+    <?> ("model mismatch:\n "
+         <> show (J.encodeJson model)
+         <> "\n" <> show (J.encodeJson model'))

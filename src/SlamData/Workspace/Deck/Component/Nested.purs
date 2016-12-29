@@ -46,8 +46,8 @@ import SlamData.Workspace.Deck.Component.State as DCS
 type DSL = H.ComponentDSL DNS.State DNQ.QueryP Slam
 type HTML = H.ComponentHTML DNQ.QueryP
 
-comp ∷ DeckOptions → DCS.StateP → H.Component DNS.State DNQ.QueryP Slam
-comp opts deckState =
+comp ∷ DeckOptions → H.Component DNS.State DNQ.QueryP Slam
+comp opts =
   H.lifecycleComponent
     { render
     , eval: coproduct eval evalProxy
@@ -76,7 +76,7 @@ comp opts deckState =
     HH.div
       [ HP.classes
           [ HH.className "sd-deck-nested"
-          , HH.className ("sd-deck-level-" <> show (length opts.cursor + 1))
+          , HH.className ("sd-deck-level-" <> show (length opts.displayCursor + 1))
           ]
       , HP.ref (left ∘ H.action ∘ DNQ.Ref)
       ]
@@ -95,7 +95,7 @@ comp opts deckState =
       emitter' ← H.fromAff $ takeVar emitter
       wiring ← H.liftH ask
       let ui = H.interpret (runSlam wiring) $ deckComponent' (emitter' ∘ right)
-      driver ← H.fromAff $ H.runUI ui deckState el
+      driver ← H.fromAff $ H.runUI ui DC.initialState el
       H.modify _ { driver = Just (DNS.Driver driver) }
       pure next
     DNQ.Finish next → do

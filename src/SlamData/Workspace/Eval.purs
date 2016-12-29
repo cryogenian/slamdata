@@ -28,10 +28,8 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (readRef, modifyRef)
 
 import Data.Array as Array
-import Data.Foldable as F
-import Data.Function (on)
-import Data.List (List, (:))
-import Data.List as List
+import Data.List (List)
+import Data.Map (Map)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
@@ -40,11 +38,11 @@ import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Port.VarMap (URLVarMap)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
-
-import Utils (censor)
+import SlamData.Workspace.Eval.Traverse (resolveUrlVarMaps)
 
 type Tick = Int
 
@@ -59,10 +57,16 @@ evalGraph
   → EvalGraph
   → m Unit
 evalGraph source graph = do
+  { varMaps, eval } ← Wiring.expose
   let
-    input = fromMaybe Card.Initial (Cofree.head graph).card.value.input
+    input = fromMaybe Card.Initial (Cofree.head graph).card.input
+  urlVarMaps ←
+    resolveUrlVarMaps
+      <$> Cache.snapshot eval.decks
+      <*> Cache.snapshot eval.cards
+      <*> liftEff (readRef varMaps)
   tick ← nextTick
-  runEvalLoop source tick mempty input graph
+  runEvalLoop urlVarMaps source tick mempty input graph
 
 runEvalLoop
   ∷ ∀ f m
@@ -71,76 +75,64 @@ runEvalLoop
     , Parallel f m
     , QuasarDSL m
     )
-  ⇒ Card.DisplayCoord
+  ⇒ Map Card.Id URLVarMap
+  → Card.DisplayCoord
   → Tick
-  → Array Card.Coord
+  → Array Card.Id
   → Card.Port
   → EvalGraph
   → m Unit
-runEvalLoop source tick trail input graph = do
-  { path, varMaps, eval } ← Wiring.expose
-  urlVarMaps ← Cache.snapshot varMaps
+runEvalLoop urlVarMaps source tick trail input graph = do
+  { path, eval } ← Wiring.expose
   let
     node = Cofree.head graph
     next = Cofree.tail graph
-    trail' = Array.snoc trail node.coord
+    trail' = Array.snoc trail node.cardId
     env = CEM.CardEnv
       { path
-      , coord: node.coord
+      , cardId: node.cardId
       , urlVarMaps
       }
   liftAff $ Bus.write (Card.Pending source input) node.card.bus
-  result ← Card.runCard env node.card.value.state input node.transition
+  result ← Card.runCard env node.card.state input node.transition
   case result.output of
     Left err → do
       let
         output = Card.CardError case GE.fromQError err of
           Left msg → msg
           Right ge → GE.print ge
-        value' = node.card.value
+        card' = node.card
           { input = Just input
           , output = Just output
           , state = result.state
           , sources = result.sources
           , tick = Just tick
           }
-      updateCardValue node.coord value' eval.cards
+      Cache.put node.cardId card' eval.cards
       liftAff do
         for_ result.state \state →
-          Bus.write (Card.StateChange state) node.card.bus
+          Bus.write (Card.StateChange source state) node.card.bus
         Bus.write (Card.Complete source output) node.card.bus
       notifyDecks (Deck.Complete trail' output) graph
     Right output → do
       let
-        value' = node.card.value
+        card' = node.card
           { input = Just input
           , output = Just output
           , state = result.state
           , sources = result.sources
           , tick = Just tick
           }
-      updateCardValue node.coord value' eval.cards
+      Cache.put node.cardId card' eval.cards
       liftAff do
         for_ result.state \state →
-          Bus.write (Card.StateChange state) node.card.bus
+          Bus.write (Card.StateChange source state) node.card.bus
         Bus.write (Card.Complete source output) node.card.bus
-      when (deckCompleted (fst node.coord) (List.mapMaybe censor (unwrap next))) $ liftAff do
-        Bus.write (Deck.Complete trail' output) node.deck.bus
       flip parTraverse_ (unwrap next) case _ of
-        Left (_ × deck) →
-          liftAff $ Bus.write (Deck.Complete trail' output) deck.bus
+        Left leaf →
+          liftAff $ Bus.write (Deck.Complete trail' output) leaf.deck.bus
         Right graph' →
-          runEvalLoop source tick trail' output graph'
-  where
-    updateCardValue
-      ∷ Card.Coord
-      → Card.EvalResult
-      → Cache.Cache Card.Coord Card.Cell
-      → m Unit
-    updateCardValue key value =
-      Cache.alter key case _ of
-        Just cell → pure (Just cell { value = value })
-        _         → pure Nothing
+          runEvalLoop urlVarMaps source tick trail' output graph'
 
 notifyDecks
   ∷ ∀ m
@@ -148,23 +140,11 @@ notifyDecks
   ⇒ Deck.EvalMessage
   → EvalGraph
   → m Unit
-notifyDecks msg = traverse_ (liftAff ∘ Bus.write msg ∘ _.bus ∘ snd) ∘ nubDecks
+notifyDecks msg = traverse_ (liftAff ∘ Bus.write msg ∘ _.bus) ∘ pendingDecks
 
-deckCompleted ∷ Deck.Id → List EvalGraph → Boolean
-deckCompleted deckId = not ∘ F.any (eq deckId ∘ fst ∘ _.coord ∘ Cofree.head)
-
-nubDecks ∷ EvalGraph → List (Deck.Id × Deck.Cell)
-nubDecks = List.nubBy (eq `on` fst) ∘ go
-  where
-    go co =
-      let
-        node = Cofree.head co
-        head = fst node.coord × node.deck
-      in
-        head : join (goTail <$> unwrap (Cofree.tail co))
-
-    goTail (Left a) = pure a
-    goTail (Right co) = go co
+pendingDecks ∷ EvalGraph → List Deck.Cell
+pendingDecks graph =
+  either (pure ∘ _.deck) pendingDecks =<< unwrap (Cofree.tail graph)
 
 nextTick
   ∷ ∀ m

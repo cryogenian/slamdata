@@ -27,7 +27,6 @@ module SlamData.Workspace.Card.Component
 import SlamData.Prelude
 
 import Control.Monad.Aff (later)
-import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop (break')
 import Control.Monad.Aff.Free (fromAff)
 
@@ -37,7 +36,7 @@ import Data.Lens (Prism', (.~), review, preview, clonePrism)
 import DOM.HTML.HTMLElement (getBoundingClientRect)
 
 import Halogen as H
-import Halogen.Component.Utils (subscribeToBus')
+import Halogen.Component.Utils (subscribeToBus', liftH')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -120,7 +119,7 @@ makeCardComponentPart def render =
   where
 
   displayCoord ∷ Card.DisplayCoord
-  displayCoord = def.options.cursor × def.options.coord
+  displayCoord = def.options.cursor × def.options.cardId
 
   _State ∷ Prism' CS.AnyCardState s
   _State = clonePrism def._State
@@ -141,8 +140,8 @@ makeCardComponentPart def render =
   eval ∷ CQ.CardQuery ~> CardDSL
   eval = case _ of
     CQ.Initialize next → do
-      cell ← H.liftH $ H.liftH $ P.getCard def.options.coord
-      for_ cell \{ bus, value } → do
+      cell ← H.liftH $ H.liftH $ P.getCard def.options.cardId
+      for_ cell \{ bus, model, input, output, state } → do
         breaker ← subscribeToBus' (H.action ∘ CQ.HandleEvalMessage) bus
         H.modify _
           { breaker = Just breaker
@@ -152,10 +151,10 @@ makeCardComponentPart def render =
         -- ordering with regard to child initializers. This should be fixed
         -- in Halogen Next.
         H.fromAff $ later (pure unit)
-        queryInnerCard $ EQ.Load value.model.model
-        for_ value.input (queryInnerCard ∘ EQ.ReceiveInput)
-        for_ value.state (queryInnerCard ∘ EQ.ReceiveState)
-        for_ value.input (queryInnerCard ∘ EQ.ReceiveOutput)
+        queryInnerCard $ EQ.Load model
+        for_ input (queryInnerCard ∘ EQ.ReceiveInput)
+        for_ state (queryInnerCard ∘ EQ.ReceiveState)
+        for_ output (queryInnerCard ∘ EQ.ReceiveOutput)
         eval (CQ.UpdateDimensions unit)
       pure next
     CQ.Finalize next → do
@@ -182,7 +181,7 @@ makeCardComponentPart def render =
         Card.Complete source evalPort → do
           queryInnerCard $ EQ.ReceiveOutput evalPort
           H.modify (CS._pending .~ false)
-        Card.StateChange evalState →
+        Card.StateChange source evalState →
           queryInnerCard $ EQ.ReceiveState evalState
         Card.ModelChange source evalModel →
           when (source ≠ displayCoord) do
@@ -194,8 +193,7 @@ makeCardComponentPart def render =
     EQ.ModelUpdated EQ.EvalModelUpdate _ → do
       st ← H.get
       model ← H.query unit (left (H.request EQ.Save))
-      traverse_ fromAff $
-        Bus.write ∘ Card.ModelChange displayCoord <$> model <*> st.bus
+      for_ model (liftH' ∘ P.publishCardChange displayCoord)
     _ →
       pure unit
 

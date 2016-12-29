@@ -53,8 +53,8 @@ replicate n m = go n mempty
   go i acc | i <= 0 = acc
   go i acc = go (i - 1) (acc <> m)
 
-censor ∷ ∀ a b. Either a b → Maybe b
-censor = either (\_ → Nothing) (Just)
+hush ∷ ∀ a b. Either a b → Maybe b
+hush = either (\_ → Nothing) (Just)
 
 parenthesize ∷ String → String
 parenthesize s = "(" <> s <> ")"

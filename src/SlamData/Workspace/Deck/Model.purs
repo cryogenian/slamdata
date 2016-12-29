@@ -17,89 +17,31 @@ limitations under the License.
 module SlamData.Workspace.Deck.Model where
 
 import SlamData.Prelude
-
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.List as L
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as Pathy
-import Data.Rational ((%))
-import Data.Time.Duration (Milliseconds(..))
-
 import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.Draftboard.Pane as Pane
-import SlamData.Workspace.Card.Draftboard.Orientation as Orn
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Deck.DeckId (DeckId, toString)
-
-import Utils.Path (DirPath, FilePath)
 
 type Deck =
-  { parent ∷ Maybe (DeckId × CardId)
-  , mirror ∷ Array (DeckId × CardId)
-  , cards ∷ Array Card.Model
-  , name ∷ String
+  { name ∷ String
+  , cards ∷ Array CardId
   }
 
 emptyDeck ∷ Deck
 emptyDeck =
-  { parent: Nothing
-  , mirror: mempty
+  { name: ""
   , cards: mempty
-  , name: ""
   }
 
 encode ∷ Deck → Json
-encode r
-   = "version" := 3
-  ~> "parent" := r.parent
-  ~> "mirror" := r.mirror
-  ~> "cards" := map Card.encode r.cards
-  ~> "name" := r.name
+encode r =
+  "name" := r.name
+  ~> "cards" := r.cards
   ~> jsonEmptyObject
-  where
-  runMilliseconds (Milliseconds n) = n
 
 decode ∷ Json → Either String Deck
 decode = decodeJson >=> \obj → do
-  case obj .? "version" of
-    Right n | n ≠ 3 → throwError "Expected deck format v3"
-    l → l
-  parent ← obj .? "parent"
-  mirror ← obj .? "mirror"
-  cards ← traverse Card.decode =<< obj .? "cards"
-  name ← obj .? "name" <|> pure ""
-  pure { parent, mirror, cards, name }
+  name ← obj .? "name"
+  cards ← obj .? "cards"
+  pure { name, cards }
 
-deckIndex ∷ DirPath → DeckId → FilePath
-deckIndex path deckId =
-  path </> Pathy.dir (toString deckId) </> Pathy.file "index"
-
-cardCoords ∷ DeckId → Deck → Array (DeckId × CardId)
-cardCoords deckId deck =
-  deck.mirror <> map (Tuple deckId ∘ _.cardId) deck.cards
-
-wrappedDeck ∷ Maybe (DeckId × CardId) → CardId → DeckId → Deck
-wrappedDeck parent cardId deckId =
-  emptyDeck
-    { parent = parent
-    , cards = pure
-      { cardId
-      , model: Card.Draftboard { layout: Pane.Cell (Just deckId) }
-      }
-    }
-
-splitDeck ∷ Maybe (DeckId × CardId) → CardId → Orn.Orientation → L.List DeckId → Deck
-splitDeck parent cardId orn deckIds =
-  emptyDeck
-    { parent = parent
-    , cards = pure
-      { cardId
-      , model: Card.Draftboard
-        { layout: Pane.Split orn (mkCell <$> deckIds)
-        }
-      }
-    }
-  where
-  count = L.length deckIds
-  mkCell deckId =
-    (1%count) × Pane.wrap (Orn.reverse orn) (Pane.Cell (Just deckId))
+eqDeck ∷ Deck → Deck → Boolean
+eqDeck d1 d2 = d1.name ≡ d2.name && d1.cards ≡ d2.cards

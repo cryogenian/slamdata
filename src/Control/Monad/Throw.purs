@@ -17,6 +17,11 @@ limitations under the License.
 module Control.Monad.Throw where
 
 import Prelude
+import Control.Monad.Except.Trans (ExceptT(..))
+import Data.Either (Either(..))
 
 class Monad m ⇐ MonadThrow e m where
   throw ∷ ∀ a. e → m a
+
+instance exceptTMonadThrow ∷ Monad m ⇒ MonadThrow e (ExceptT e m) where
+  throw = ExceptT <<< pure <<< Left

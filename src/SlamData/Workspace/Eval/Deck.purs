@@ -19,30 +19,23 @@ module SlamData.Workspace.Eval.Deck
   , Id
   , Cell
   , Model
-  , Coord
   , module SlamData.Workspace.Deck.DeckId
   , module SlamData.Workspace.Deck.Model
   ) where
 
 import SlamData.Prelude
-
 import Control.Monad.Aff.Bus (BusRW)
-import Control.Monad.Aff.Future (Future)
-
-import SlamData.Quasar.Error (QError)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Port (Port)
-import SlamData.Workspace.Deck.Model (Deck, deckIndex, emptyDeck, encode, decode, cardCoords)
 import SlamData.Workspace.Deck.DeckId (DeckId, toString)
+import SlamData.Workspace.Deck.Model (Deck, emptyDeck, encode, decode)
 
 data EvalMessage
-  = Pending Coord
-  | Complete (Array Coord) Port
-  | CardChange Coord
-  | ParentChange (Maybe Coord)
+  = Pending CardId
+  | Complete (Array CardId) Port
+  | CardChange CardId
+  | ParentChange (Maybe CardId)
   | NameChange String
-
-type Coord = DeckId × CardId
 
 type Id = DeckId
 
@@ -50,9 +43,6 @@ type Model = Deck
 
 type Cell =
   { bus ∷ BusRW EvalMessage
-  , value ∷ Future (Either QError Model)
-  -- Current state of the model. Used for traversals over the _current_ deck
-  -- graph. This value _may_ be stale, so anything that relies on consistency
-  -- should use value.
   , model ∷ Model
+  , parent ∷ Maybe CardId
   }

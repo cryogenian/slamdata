@@ -24,7 +24,6 @@ import SlamData.Prelude
 
 import Data.StrMap as SM
 
-import Data.List ((:))
 import Data.Lens ((^?))
 
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
@@ -65,8 +64,7 @@ markdownComponent options = CC.makeCardComponent
   }
   where
   uniqueCardId =
-    foldMap DID.toString (fst options.coord : options.cursor)
-      <> CID.toString (snd options.coord)
+    foldMap DID.toString options.cursor <> CID.toString options.cardId
 
 type MarkdownHTML a =
   H.ParentHTML

@@ -27,6 +27,7 @@ import Data.Ord (abs)
 import Data.Rational (Rational, (%))
 
 import Halogen as H
+import Halogen.Component.Utils (liftH')
 import Halogen.Component.Utils.Drag as Drag
 
 import SlamData.Workspace.Card.CardType as CT
@@ -43,6 +44,7 @@ import SlamData.Workspace.Card.Draftboard.Component.State (MoveLocation(..), ini
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Model (emptyDeck)
 import SlamData.Workspace.Eval.Persistence as P
 
 import Utils.DOM (getOffsetClientRect)
@@ -357,20 +359,15 @@ recalcRect = do
     H.modify (updateRect rect)
 
 addDeck ∷ CardOptions → Pane.Cursor → DraftboardDSL Unit
-addDeck { coord } cursor = do
-  H.modify _ { inserting = true }
-  res ← H.liftH $ H.liftH $ P.freshDeck (Just coord)
-  case res of
-    Left _ →
-      H.modify _ { inserting = false }
-    Right deckId → do
-      st ← H.get
-      let
-        layout = Pane.modifyAt (const (Pane.Cell (Just deckId))) cursor st.layout
-      H.modify
-        $ updateLayout (fromMaybe st.layout layout)
-        ∘ _ { inserting = false }
-      void $ queryDeck deckId (H.action DCQ.Focus)
+addDeck _ cursor = do
+  deckId × _ ← liftH' $ P.freshDeck emptyDeck
+  st ← H.get
+  let
+    layout = Pane.modifyAt (const (Pane.Cell (Just deckId))) cursor st.layout
+  H.modify
+    $ updateLayout (fromMaybe st.layout layout)
+    ∘ _ { inserting = false }
+  void $ queryDeck deckId (H.action DCQ.Focus)
 
 groupDeck
   ∷ Orn.Orientation
@@ -379,10 +376,10 @@ groupDeck
   → DeckId
   → DraftboardDSL Unit
 groupDeck orn bias deckFrom deckTo = do
-  mbActive ← queryDeck deckTo (H.request DCQ.GetActiveCoord)
+  mbActive ← queryDeck deckTo (H.request DCQ.GetActiveCard)
   for_ mbActive case _ of
-    Just coord → H.liftH $ H.liftH $ P.groupDeck orn bias deckFrom deckTo coord
-    Nothing → H.liftH $ H.liftH $ P.wrapAndGroupDeck orn bias deckFrom deckTo
+    Just coord → liftH' $ P.groupDeck orn bias deckFrom deckTo coord
+    Nothing → liftH' $ P.wrapAndGroupDeck orn bias deckFrom deckTo
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
 queryDeck slot = H.query slot ∘ right

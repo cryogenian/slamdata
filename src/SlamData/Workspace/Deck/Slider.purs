@@ -61,7 +61,6 @@ import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.DeckId as DeckId
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
 
@@ -218,8 +217,8 @@ cardSelected state card =
 
 cardPending ∷ State → DCS.DisplayCard → Boolean
 cardPending state (Left _) = false
-cardPending state (Right { coord }) =
-  case state.pendingCardIndex, DCS.cardIndexFromCoord coord state of
+cardPending state (Right { cardId }) =
+  case state.pendingCardIndex, DCS.cardIndexFromId cardId state of
     Just ix, Just ix' | ix < ix' → true
     _, _ → false
 
@@ -270,10 +269,7 @@ renderCard opts deckComponent st card index =
     Left DCS.PendingCard → "card-pending"
     Left (DCS.ErrorCard _) → "card-error"
     Left (DCS.NextActionCard _) → "card-next-action"
-    Right { coord } →
-      "card-"
-        ⊕ DeckId.toString (fst coord) ⊕ "-"
-        ⊕ CardId.toString (snd coord)
+    Right { cardId } → "card-" ⊕ CardId.toString cardId
 
   classes =
     [ ClassNames.card
@@ -356,17 +352,18 @@ renderDef
   → State
   → DCS.CardDef
   → DeckHTML
-renderDef opts deckComponent st card =
-  HH.slot' ChildSlot.cpCard card.coord \_ →
+renderDef opts deckComponent st { cardType, cardId } =
+  HH.slot' ChildSlot.cpCard cardId \_ →
     let
       cardOpts =
         { deck: opts
         , deckComponent
-        , cursor: st.id : opts.cursor
-        , coord: card.coord
+        , cursor: opts.deckId : opts.cursor
+        , displayCursor: opts.deckId : opts.displayCursor
+        , cardId
         }
     in
-      { component: Factory.cardComponent card.cardType cardOpts
+      { component: Factory.cardComponent cardType cardOpts
       , initialState: H.parentState CardC.initialCardState
       }
 

@@ -18,47 +18,51 @@ module SlamData.Workspace.Eval.Persistence where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar, takeVar, putVar, modifyVar, killVar)
+import Control.Comonad.Cofree as Cofree
+import Control.Monad.Aff.AVar (AVar, modifyVar, killVar, peekVar, putVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
-import Control.Monad.Aff.Future (wait, defer)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Fork (class MonadFork, fork)
-import Control.Parallel (parSequence)
+import Control.Monad.Throw (class MonadThrow, throw)
 
 import Data.Array as Array
-import Data.List (List(..), (:))
 import Data.List as List
+import Data.List (List(..), (:))
+import Data.Map (Map)
 import Data.Map as Map
-import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+import Data.Path.Pathy ((</>))
 import Data.Rational ((%))
+import Data.Set (Set)
+import Data.Set as Set
 
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
+import SlamData.Wiring (Wiring)
+import SlamData.Wiring as Wiring
+import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType (isEditable)
 import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.Model as CM
-import SlamData.Workspace.Card.Port (Port)
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
-import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
+import SlamData.Workspace.Card.Model as CM
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (unfoldGraph, EvalGraph)
+import SlamData.Workspace.Eval.Traverse (TraverseCard(..), TraverseDeck(..), unfoldModelTree)
 import SlamData.Workspace.Model as WM
-import SlamData.Wiring (Wiring)
-import SlamData.Wiring as Wiring
-import SlamData.Wiring.Cache as Cache
+import SlamData.Workspace.Legacy (isLegacy, loadCompatWorkspace, pruneLegacyData)
 
-import Utils (censor)
 import Utils.Aff (laterVar)
 
 defaultSaveDebounce ∷ Int
@@ -71,194 +75,175 @@ type Persist f m a =
   ( MonadAff SlamDataEffects m
   , MonadAsk Wiring m
   , MonadFork Exn.Error m
+  , MonadThrow Exn.Error m
   , Parallel f m
   , QuasarDSL m
   ) ⇒ a
 
-putDeck ∷ ∀ f m. Persist f m (Deck.Id → Deck.Model → m (Either QE.QError Unit))
-putDeck deckId deck = do
+type PersistEnv m a =
+  ( MonadAff SlamDataEffects m
+  , MonadAsk Wiring m
+  ) ⇒ a
+
+type ForkAff m a =
+  ( MonadAff SlamDataEffects m
+  , MonadFork Exn.Error m
+  ) ⇒ a
+
+loadWorkspace ∷ ∀ f m. Persist f m (m (Either QE.QError Deck.Id))
+loadWorkspace = runExceptT do
   { path, eval, accessType } ← Wiring.expose
-  ref ← defer do
-    res ←
-      if isEditable accessType
-        then Quasar.save (Deck.deckIndex path deckId) $ Deck.encode deck
-        else pure (Right unit)
-    pure $ res $> deck
-  Cache.alter deckId (updateOrFork ref) eval.decks
-  rmap (const unit) <$> wait ref
-  where
-    updateOrFork ref = case _ of
-      Just cell →
-        pure $ Just cell
-          { value = ref
-          , model = deck
-          }
-      Nothing → do
-        cell ← { value: ref, model: deck, bus: _ } <$> liftAff Bus.make
-        fork do
-          populateCards deckId deck
-          forkDeckProcess deckId cell.bus
-        pure (Just cell)
+  stat × ws ← ExceptT $ loadCompatWorkspace path
+  liftAff $ putVar eval.root ws.rootId
+  graph ← unwrapOrThrow (QE.msgToQError "Cannot build graph") $
+    unfoldModelTree ws.decks ws.cards ws.rootId
+  lift $ populateGraph mempty mempty Nothing graph
+  when (isLegacy stat && isEditable accessType) do
+    ExceptT saveWorkspace
+    void $ lift $ pruneLegacyData path -- Not imperative that this succeeds
+  pure ws.rootId
 
-saveDeck ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
-saveDeck deckId = do
-  { eval } ← Wiring.expose
-  newDeck ← runMaybeT do
-    cell ← MaybeT $ Cache.get deckId eval.decks
-    deck ← MaybeT $ censor <$> wait cell.value
-    cards ← MaybeT $ sequence <$> traverse getCard (Tuple deckId ∘ _.cardId <$> deck.cards)
-    pure deck { cards = (\c → c.value.model) <$> cards }
-  for_ newDeck (void ∘ putDeck deckId)
-
--- | Loads a deck from a DeckId. Returns the model.
-getDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Model))
-getDeck =
-  getDeck' >=> _.value >>> wait
-
--- | Loads a deck from a DeckId. This has the effect of loading decks from
--- | which it extends (for mirroring) and populating the card graph. Returns
--- | the "cell" (model promise paired with its message bus).
-getDeck' ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Cell)
-getDeck' deckId = do
+saveWorkspace ∷ ∀ f m. Persist f m (m (Either QE.QError Unit))
+saveWorkspace = runExceptT do
   { path, eval } ← Wiring.expose
+  decks ← map _.model <$> Cache.snapshot eval.decks
+  cards ← map _.model <$> Cache.snapshot eval.cards
+  rootId ← liftAff $ peekVar eval.root
   let
-    cacheVar = Cache.unCache eval.decks
-  decks ← liftAff (takeVar cacheVar)
-  case Map.lookup deckId decks of
-    Just cell → do
-      liftAff $ putVar cacheVar decks
-      pure cell
-    Nothing → do
-      value ← defer do
-        let
-          deckPath = Deck.deckIndex path deckId
-        result ← runExceptT do
-          deck ← ExceptT $ (_ >>= Deck.decode >>> lmap QE.msgToQError) <$> Quasar.load deckPath
-          _    ← ExceptT $ populateCards deckId deck
-          pure deck
-        case result of
-          Left _ →
-            liftAff $ modifyVar (Map.delete deckId) cacheVar
-          Right model →
-            Cache.alter deckId (pure ∘ map (_ { model = model })) eval.decks
-        pure result
-      cell ← { value, model: Deck.emptyDeck, bus: _ } <$> liftAff Bus.make
-      liftAff do
-        putVar cacheVar (Map.insert deckId cell decks)
-      forkDeckProcess deckId cell.bus
-      pure cell
+    json = WM.encode { rootId, decks, cards }
+    file = path </> Pathy.file "index"
+  ExceptT $ Quasar.save file json
 
--- | Populates the card eval graph based on a deck model. This may fail as it
--- | also attempts to load/hydrate foreign cards (mirrors) as well.
-populateCards ∷ ∀ f m. Persist f m (Deck.Id → Deck.Model → m (Either QE.QError Unit))
-populateCards deckId deck = runExceptT do
+putDeck ∷ ∀ m. PersistEnv m (Deck.Id → Deck.Model → m Unit)
+putDeck deckId deck = do
   { eval } ← Wiring.expose
-  decks ←
-    ExceptT $ sequence <$>
-      parTraverse getDeck (Array.nub (fst <$> deck.mirror))
-  let
-    cards = List.fromFoldable deck.cards
-  childDecks ←
-    ExceptT $ sequence <$>
-      parTraverse getDeck (List.nub (CM.childDeckIds ∘ _.model =<< cards))
-  case Array.last deck.mirror of
-    Nothing → lift $ threadCards eval.cards cards
-    Just coord → do
-      cell ← do
-        mb ← Cache.get coord eval.cards
-        case mb of
-          Nothing → QE.throw ("Card not found in eval cache: " <> show coord)
-          Just a  → pure a
-      let
-        next = case List.head cards of
-          Nothing → Left deckId
-          Just c  → Right (deckId × c.cardId)
-        cell' = cell { next = next : cell.next }
-      Cache.put coord cell' eval.cards
-      lift $ threadCards eval.cards cards
+  Cache.alter deckId (pure ∘ map _ { model = deck }) eval.decks
+
+getDeck ∷ ∀ m. PersistEnv m (Deck.Id → m (Maybe Deck.Cell))
+getDeck deckId = do
+  { eval } ← Wiring.expose
+  Cache.get deckId eval.decks
+
+putCard ∷ ∀ m. PersistEnv m (Card.Id → Card.Model → m Unit)
+putCard cardId card = do
+  { eval } ← Wiring.expose
+  Cache.alter cardId (pure ∘ map _ { model = card }) eval.cards
+
+getCard ∷ ∀ m. PersistEnv m (Card.Id → m (Maybe Card.Cell))
+getCard cardId = do
+  { eval } ← Wiring.expose
+  Cache.get cardId eval.cards
+
+getCards ∷ ∀ m. PersistEnv m (Array Card.Id → m (Maybe (Array Card.Cell)))
+getCards = map sequence ∘ traverse getCard
+
+getEvaluatedCards ∷ ∀ m. PersistEnv m (Array Card.Id → m (Maybe (Array Card.Cell × Port)))
+getEvaluatedCards = map (flip bind (Array.foldM go (mempty × Port.Initial))) ∘ getCards
   where
-    threadCards cache = case _ of
-      c : Nil →
-        makeCell c Nil cache
-      c : c' : cs → do
-        makeCell c (pure c'.cardId) cache
-        threadCards cache (c' : cs)
-      Nil →
-        pure unit
+    go acc@(cs × Card.CardError _) _ = pure acc
+    go acc@(cs × _) card@{ tick: Just _, output: Just out } =
+      pure (Array.snoc cs card × out)
+    go _ _ = Nothing
 
-    makeCell card next cache = do
-      let
-        coord = deckId × card.cardId
-      cell ← makeCardCell card Nothing (Right ∘ Tuple deckId <$> next)
-      Cache.put coord cell cache
-      forkCardProcess coord cell.bus
+publishCardChange ∷ ∀ f m. Persist f m (Card.DisplayCoord → Card.Model → m Unit)
+publishCardChange source@(_ × cardId) model = do
+  putCard cardId model
+  mbGraph ← snapshotGraph cardId
+  for_ mbGraph \graph → do
+    queueEval' defaultEvalDebounce source graph
+    queueSaveDefault
+    let card = (Cofree.head graph).card
+    liftAff $ Bus.write (Card.ModelChange source model) card.bus
+    for_ card.decks \deckId →
+      getDeck deckId >>= traverse_ \deck →
+        liftAff $ Bus.write (Deck.CardChange cardId) deck.bus
 
-forkDeckProcess ∷ ∀ f m . Persist f m (Deck.Id → Bus.BusRW Deck.EvalMessage → m Unit)
-forkDeckProcess deckId = forkLoop case _ of
-  Deck.ParentChange parent → do
-    { eval } ← Wiring.expose
-    deckCell ← getDeck' deckId
-    mbDeck ← wait deckCell.value
-    for_ mbDeck \deck → do
-      let
-        deck' = deck { parent = parent }
-        value' = pure (Right deck')
-      Cache.put deckId (deckCell { value = value' }) eval.decks
-      queueSaveDefault deckId
-  _ →
-    pure unit
+populateGraph
+  ∷ ∀ f m
+  . Persist f m
+  ( Map Deck.Id Deck.Cell
+  → Map Card.Id Card.Cell
+  → Maybe Card.Id
+  → TraverseDeck Deck.Model Card.Model
+  → m Unit )
+populateGraph oldDecks oldCards rootParent root = do
+  { eval } ← Wiring.expose
+  goDeck eval rootParent root
+  where
+    goDeck eval parent (TraverseDeck { deckId, deck, cards }) = do
+      cell ← Cache.get deckId eval.decks >>= case _, Map.lookup deckId oldDecks of
+        Just cell, _ → pure cell
+        _, Just cell → pure cell { model = deck }
+        _, _ → makeDeckCell deck
+      cardCells ←
+        List.foldM (goCard eval deckId) mempty cards >>= case _ of
+          (lastId × last) : tail -> do
+            let last' = last { next = Set.insert (Left deckId) last.next }
+            pure ((lastId × last') : tail)
+          _ → do
+            pure mempty
+      Cache.put deckId (cell { parent = parent }) eval.decks
+      for_ cardCells (flip (uncurry Cache.put) eval.cards)
+      for_ cards \(TraverseCard { cardId, decks }) →
+        for_ decks (goDeck eval (Just cardId))
 
-forkCardProcess ∷ ∀ f m. Persist f m (Card.Coord → Bus.BusRW Card.EvalMessage → m Unit)
-forkCardProcess coord@(deckId × cardId) = forkLoop case _ of
-  Card.ModelChange source model → do
-    { eval } ← Wiring.expose
-    Cache.alter coord (pure ∘ map (updateCellModel model)) eval.cards
-    mbGraph ← snapshotGraph coord
-    for_ mbGraph \graph → do
-      queueSaveDefault deckId
-      queueEval' defaultEvalDebounce source graph
-      deck ← getDeck' deckId
-      liftAff $ Bus.write (Deck.CardChange coord) deck.bus
-  _ →
-    pure unit
+    goCard eval deckId prevCells (TraverseCard { cardId, card }) = do
+      cell ← Cache.get cardId eval.cards >>= case _, Map.lookup cardId oldCards of
+        Just cell, _ → pure cell
+        _, Just cell → pure $ cell { decks = Set.empty, next = Set.empty } ∷ Card.Cell
+        _, _ → makeCardCell Nothing Set.empty card
+      let cell' = cell { decks = Set.insert deckId cell.decks }
+      case prevCells of
+        (prevId × prev) : tail → do
+          let prev' = prev { next = Set.insert (Right cardId) prev.next }
+          pure ((cardId × cell') : (prevId × prev') : tail)
+        _ → do
+          pure (List.singleton (cardId × cell'))
 
-snapshotGraph ∷ ∀ f m. Persist f m (Card.Coord → m (Maybe EvalGraph))
-snapshotGraph coord = do
+rebuildGraph ∷ ∀ f m . Persist f m (m Unit)
+rebuildGraph = do
+  { eval } ← Wiring.expose
+  decks ← Cache.snapshot eval.decks
+  cards ← Cache.snapshot eval.cards
+  rootId ← liftAff $ peekVar eval.root
+  graph ← unwrapOrExn "Cannot rebuild graph" $
+    unfoldModelTree (_.model <$> decks) (_.model <$> cards) rootId
+  Cache.restore mempty eval.decks
+  Cache.restore mempty eval.cards
+  populateGraph decks cards Nothing graph
+
+snapshotGraph ∷ ∀ f m. Persist f m (Card.Id → m (Maybe EvalGraph))
+snapshotGraph cardId = do
   { eval } ← Wiring.expose
   unfoldGraph
     <$> Cache.snapshot eval.cards
     <*> Cache.snapshot eval.decks
-    <*> pure coord
+    <*> pure cardId
 
-queueSave ∷ ∀ f m. Persist f m (Int → Deck.Id → m Unit)
-queueSave ms deckId = do
-  { eval } ← Wiring.expose
-  debounce ms deckId { avar: _ } eval.pendingSaves (pure unit) do
-    saveDeck deckId
+queueSave ∷ ∀ f m. Persist f m (Int → m Unit)
+queueSave ms = do
+  { eval, path, accessType } ← Wiring.expose
+  when (isEditable accessType) do
+    debounce ms path { avar: _ } eval.pendingSaves (pure unit) do
+      void saveWorkspace
 
-queueSaveImmediate ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
+queueSaveImmediate ∷ ∀ f m. Persist f m (m Unit)
 queueSaveImmediate = queueSave 0
 
-queueSaveDefault ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
+queueSaveDefault ∷ ∀ f m. Persist f m (m Unit)
 queueSaveDefault = queueSave defaultSaveDebounce
 
 queueEval' ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → EvalGraph → m Unit)
-queueEval' ms source@(_ × coord) graph = do
+queueEval' ms source@(_ × cardId) graph = do
   { eval } ← Wiring.expose
-  let
-    pending =
-      { source
-      , graph
-      , avar: _
-      }
-  debounce ms coord pending eval.pendingEvals
-    (Eval.notifyDecks (Deck.Pending coord) graph)
+  let pending = { source, graph, avar: _ }
+  debounce ms cardId pending eval.pendingEvals
+    (Eval.notifyDecks (Deck.Pending cardId) graph)
     (Eval.evalGraph source graph)
 
 queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → m Unit)
-queueEval ms source@(_ × coord) = do
-  _ ← pure unit
-  traverse_ (queueEval' ms source) =<< snapshotGraph coord
+queueEval ms source@(_ × cardId) =
+  traverse_ (queueEval' ms source) =<< snapshotGraph cardId
 
 queueEvalImmediate ∷ ∀ f m. Persist f m (Card.DisplayCoord → m Unit)
 queueEvalImmediate = queueEval 0
@@ -268,166 +253,112 @@ queueEvalDefault = queueEval defaultEvalDebounce
 
 queueEvalForDeck ∷ ∀ f m. Persist f m (Int → Deck.Id → m Unit)
 queueEvalForDeck ms deckId =
-  getDeck deckId >>= traverse_ \deck →
-    for_ (Array.head (Deck.cardCoords deckId deck)) \coord →
-      queueEval ms (Card.toAll coord)
+  getDeck deckId >>= traverse_ \cell →
+    for_ (Array.head cell.model.cards) (queueEval ms ∘ Card.toAll)
 
 freshWorkspace ∷ ∀ f m. Persist f m (Array CM.AnyCardModel → m (Deck.Id × Deck.Cell))
 freshWorkspace anyCards = do
   { eval } ← Wiring.expose
-  cards ← traverse freshCard anyCards
+  genCards ← traverse genCard anyCards
+  deckId ← liftAff DID.make
   bus ← liftAff Bus.make
   let
-    deck = Deck.emptyDeck { cards = cards }
-    value = pure (Right deck)
-    cell = { bus, value, model: deck }
-  rootId ← liftAff DID.make
-  Cache.put rootId cell eval.decks
-  forkDeckProcess rootId bus
-  populateCards rootId deck
-  pure (rootId × cell)
+    cards = Map.fromFoldable genCards
+    deck = Deck.emptyDeck { cards = fst <$> genCards }
+    cell = { bus, parent: Nothing, model: deck }
+  graph ← unwrapOrExn "Cannot create workspace" $
+    unfoldModelTree (Map.singleton deckId deck) cards deckId
+  Cache.put deckId cell eval.decks
+  liftAff $ putVar eval.root deckId
+  populateGraph Map.empty Map.empty Nothing graph
+  pure (deckId × cell)
   where
-    freshCard model = do
+    genCard model = do
       cardId ← liftAff CID.make
-      pure { cardId, model }
+      pure (cardId × model)
 
-freshDeck ∷ ∀ f m. Persist f m (Maybe Card.Coord → m (Either QE.QError Deck.Id))
-freshDeck parent = runExceptT do
-  deckId ← liftAff DID.make
-  ExceptT $ putDeck deckId $ Deck.emptyDeck { parent = parent }
-  pure deckId
-
-deleteDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError (Maybe Deck.Id)))
-deleteDeck deckId = runExceptT do
-  { path, eval } ← Wiring.expose
-  deck ← ExceptT $ getDeck deckId
-  case deck.parent of
-    Just _ →
-      void $ parTraverse ExceptT
-        [ Quasar.delete (Left (path </> Pathy.dir (DID.toString deckId)))
-        , updateParentPointer deckId Nothing deck.parent
-        ]
-    Nothing →
-      ExceptT $ Quasar.delete (Left path)
-  Cache.remove deckId eval.decks
-  pure (fst <$> deck.parent)
-
-wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
-wrapDeck deckId = runExceptT do
-  cell ← lift $ getDeck' deckId
-  deck ← ExceptT $ wait cell.value
-  parentCoord ← Tuple <$> liftAff DID.make <*> liftAff CID.make
-  let
-    parentDeck = DM.wrappedDeck deck.parent (snd parentCoord) deckId
-  ExceptT $ putDeck (fst parentCoord) parentDeck
-  ExceptT $ updateParentPointer deckId (Just (fst parentCoord)) deck.parent
-  liftAff $ Bus.write (Deck.ParentChange (Just parentCoord)) cell.bus
-  pure (fst parentCoord)
-
-wrapAndMirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
-wrapAndMirrorDeck deckId = runExceptT do
-  cell ← lift $ getDeck' deckId
-  deck ← ExceptT $ wait cell.value
-  newSharedId ← liftAff DID.make
-  newMirrorId ← liftAff DID.make
-  parentCoord ← Tuple <$> liftAff DID.make <*> liftAff CID.make
-  let
-    wrappedDeck =
-      DM.splitDeck deck.parent (snd parentCoord) Orn.Vertical
-        (List.fromFoldable [ deckId, newMirrorId ])
-  if Array.null deck.cards
-    then do
-      let
-        mirrored = deck { parent = Just parentCoord }
-      parSequence
-        [ ExceptT $ putDeck deckId mirrored
-        , ExceptT $ putDeck newMirrorId (mirrored { name = "" })
-        ]
-    else do
-      let
-        oldCardIds = Tuple deckId ∘ _.cardId <$> deck.cards
-        newCardIds = Tuple newSharedId ∘ snd <$> oldCardIds
-        mirrored = deck
-          { parent = Just parentCoord
-          , mirror = deck.mirror <> newCardIds
-          , cards = []
-          , name = deck.name
-          }
-      parSequence
-        [ ExceptT $ putDeck deckId mirrored
-        , ExceptT $ putDeck newMirrorId (mirrored { name = "" })
-        , ExceptT $ putDeck newSharedId (deck { name = "" })
-        ]
-  parSequence
-    [ ExceptT $ putDeck (fst parentCoord) wrappedDeck
-    , ExceptT $ updateParentPointer deckId (Just (fst parentCoord)) deck.parent
-    ]
-  lift $ relocateCardsTo newSharedId deckId (_.cardId <$> deck.cards)
-  lift $ cloneActiveStateTo newMirrorId deckId
-  pure (fst parentCoord)
-
-mirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Deck.Id))
-mirrorDeck childId coord = runExceptT do
+freshDeck ∷ ∀ m. PersistEnv m (Deck.Model → m (Deck.Id × Deck.Cell))
+freshDeck model = do
   { eval } ← Wiring.expose
-  deck ← ExceptT $ getDeck childId
-  parent ← liftWithErr "Parent not found." $ getCard coord
-  newSharedId ← liftAff DID.make
-  newMirrorId ← liftAff DID.make
-  ExceptT $ map sequence
-    if Array.null deck.cards
-      then do
-        let
-          mirrored = deck { name = "" }
-        parSequence
-          [ putDeck newMirrorId mirrored
-          ]
-      else do
-        let
-          oldCardIds = Tuple childId ∘ _.cardId <$> deck.cards
-          newCardIds = Tuple newSharedId ∘ snd <$> oldCardIds
-          mirrored = deck
-            { parent = Just coord
-            , mirror = deck.mirror <> newCardIds
-            , cards = []
-            , name = deck.name
-            }
-        parSequence
-          [ putDeck childId mirrored
-          , putDeck newMirrorId (mirrored { name = "" })
-          , putDeck newSharedId (deck { name = "" })
-          ]
-  lift $ relocateCardsTo newSharedId childId (_.cardId <$> deck.cards)
-  lift $ cloneActiveStateTo newMirrorId childId
-  parent'' ← liftWithErr "Cannot mirror deck." $ pure $ mirrorInLayout newMirrorId parent.value.model.model
-  liftAff $ Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
-  pure newSharedId
-  where
-  mirrorInLayout newId = case _ of
-    CM.Draftboard { layout } → do
-      cursor ← Pane.getCursorFor (Just childId) layout
-      let
-        cursor' = fromMaybe Nil (List.tail cursor)
-        orn =
-          case Pane.getAt cursor' layout of
-            Just (Pane.Split o _) → o
-            _ → Orn.Vertical
-      layout' ←
-        Layout.insertSplit
-          (Pane.Cell (Just newId)) orn (1%2) Layout.SideB cursor' layout
-      pure (CM.Draftboard { layout: layout' })
-    _ →
-      Nothing
+  deckId ← liftAff DID.make
+  cell ← makeDeckCell model
+  Cache.put deckId cell eval.decks
+  pure (deckId × cell)
 
-unwrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Either QE.QError Deck.Id))
-unwrapDeck deckId = runExceptT do
-  deck ← ExceptT $ getDeck deckId
-  cards ← liftWithErr "Cards not found." $ getCards (Deck.cardCoords deckId deck)
-  childId ← liftWithErr "Cannot unwrap deck." $ pure $ immediateChild (_.value.model.model ∘ snd <$> cards)
-  cell ← lift $ getDeck' childId
-  ExceptT $ updateParentPointer deckId (Just childId) deck.parent
-  liftAff $ Bus.write (Deck.ParentChange deck.parent) cell.bus
+freshCard ∷ ∀ f m. Persist f m (Maybe Port → Set (Either Deck.Id Card.Id) → Card.Model → m (Card.Id × Card.Cell))
+freshCard input next model = do
+  { eval } ← Wiring.expose
+  cardId ← liftAff CID.make
+  cell ← makeCardCell input next model
+  Cache.put cardId cell eval.cards
+  pure (cardId × cell)
+
+deleteDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Maybe Card.Id))
+deleteDeck deckId = do
+  { eval, path } ← Wiring.expose
+  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  Cache.remove deckId eval.decks
+  case cell.parent of
+    Nothing → do
+      rootId ← liftAff $ peekVar eval.root
+      when (rootId ≡ deckId) $ void do
+        Quasar.delete (Left path)
+    Just oldParentId → do
+      oldParentModel ← updatePointer deckId Nothing oldParentId
+      putCard oldParentId oldParentModel
+      rebuildGraph
+      publishCardChange (Card.toAll oldParentId) oldParentModel
+      queueSaveDefault
+  pure cell.parent
+
+wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
+wrapDeck deckId = do
+  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  parentCardId × _ ← freshCard (Just Port.Initial) Set.empty (CM.singletonDraftboard deckId)
+  parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId }
+  updateRootOrParent deckId parentDeckId cell.parent
+  queueSaveDefault
+  pure parentDeckId
+
+wrapAndMirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
+wrapAndMirrorDeck deckId = do
+  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  mirrorDeckId × _ ← freshDeck DM.emptyDeck { cards = cell.model.cards }
+  parentCardId × _ ←
+    freshCard (Just Port.Initial) Set.empty $
+      CM.splitDraftboard Orn.Vertical (List.fromFoldable [ deckId, mirrorDeckId ])
+  parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId }
+  cloneActiveStateTo mirrorDeckId deckId
+  updateRootOrParent deckId parentDeckId cell.parent
+  queueSaveDefault
+  pure parentDeckId
+
+mirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Id → m Deck.Id)
+mirrorDeck deckId parentId = do
+  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  card ← unwrapOrExn "Card not found" =<< getCard parentId
+  mirrorDeckId × _ ← freshDeck DM.emptyDeck { cards = cell.model.cards }
+  parentModel ← unwrapOrExn "Cannot mirror deck" $ CM.mirrorInDraftboard deckId mirrorDeckId card.model
+  cloneActiveStateTo mirrorDeckId deckId
+  putCard parentId parentModel
+  rebuildGraph
+  publishCardChange (Card.toAll parentId) parentModel
+  queueSaveDefault
+  pure mirrorDeckId
+
+unwrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
+unwrapDeck deckId = do
+  { eval } ← Wiring.expose
+  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  cards ← unwrapOrExn "Cards not found" =<< getCards cell.model.cards
+  childId ← unwrapOrExn "Cannot unwrap deck" $ immediateChild (_.model <$> cards)
+  child ← unwrapOrExn "Child not found" =<< getDeck childId
+  Cache.remove deckId eval.decks
+  updateRootOrParent deckId childId cell.parent
+  queueSaveDefault
   pure childId
   where
+    immediateChild ∷ Array Card.Model → Maybe Deck.Id
     immediateChild = case _ of
       [ model ] →
         case CM.childDeckIds model of
@@ -435,71 +366,64 @@ unwrapDeck deckId = runExceptT do
           _ → Nothing
       _ → Nothing
 
-collapseDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Unit))
-collapseDeck childId coord = runExceptT do
+collapseDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Id → m Unit)
+collapseDeck deckId cardId = do
   { eval } ← Wiring.expose
-  deck ← ExceptT $ getDeck childId
-  cards ← liftWithErr "Cards not found." $ getCards (Deck.cardCoords childId deck)
-  parent ← liftWithErr "Parent not found." $ getCard coord
+  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  cards ← unwrapOrExn "Cards not found" =<< getCards cell.model.cards
+  parent ← unwrapOrExn "Parent not found" =<< getCard cardId
   let
-    parent' = parent.value.model.model
-    cards' = _.value.model.model ∘ snd <$> cards
-  childIds × parent'' ← liftWithErr "Cannot collapse deck." $ pure $ collapsed parent' cards'
-  childDecks ← lift $ traverse getDeck' childIds
-  liftAff do
-    for_ childDecks \{ bus } →
-      Bus.write (Deck.ParentChange (Just coord)) bus
-    Bus.write (Card.ModelChange (Card.toAll coord) parent'') parent.bus
+    parentModel = parent.model
+    cardModels = _.model <$> cards
+  parentModel' ← unwrapOrExn "Cannot collapse deck" $ collapse parentModel cardModels
+  putCard cardId parentModel'
+  rebuildGraph
+  publishCardChange (Card.toAll cardId) parentModel'
+  queueSaveDefault
   where
-    collapsed parent child = case parent, child of
+    collapse ∷ Card.Model → Array Card.Model → Maybe Card.Model
+    collapse parent child = case parent, child of
       CM.Draftboard { layout }, [ cm@CM.Draftboard { layout: subLayout } ] → do
-        cursor ← Pane.getCursorFor (Just childId) layout
+        cursor ← Pane.getCursorFor (Just deckId) layout
         layout' ← Pane.modifyAt (const subLayout) cursor layout
-        let
-          childIds = CM.childDeckIds cm
-          parent' = CM.Draftboard { layout: layout' }
-        pure (childIds × parent')
-      _, _ →
-        Nothing
+        pure $ CM.Draftboard { layout: layout' }
+      _, _ → Nothing
 
-wrapAndGroupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → m (Either QE.QError Unit))
-wrapAndGroupDeck orn bias deckId newParentId = runExceptT do
-  cell ← lift $ getDeck' deckId
-  oldParentCoord ← liftWithErr "Parent not found." $ pure $ cell.model.parent
-  oldParent ← liftWithErr "Parent not found." $ getCard oldParentCoord
-  newParent ← lift $ getDeck' newParentId
-  case oldParent.value.model.model of
+wrapAndGroupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → m Unit)
+wrapAndGroupDeck orn bias deckId siblingId = do
+  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  sibling ← unwrapOrExn "Sibling not found" =<< getDeck siblingId
+  oldParentId ← unwrapOrExn "Parent not found" cell.parent
+  oldParent ← unwrapOrExn "Parent not found" =<< getCard oldParentId
+  case oldParent.model of
     CM.Draftboard { layout } → do
-      wrappedCoord ← Tuple <$> liftAff DID.make <*> liftAff CID.make
       let
         splits = case bias of
-          Layout.SideA → [ deckId, newParentId ]
-          Layout.SideB → [ newParentId, deckId ]
-        wrappedDeck =
-          DM.splitDeck cell.model.parent (snd wrappedCoord) orn
-            (List.fromFoldable splits)
+          Layout.SideA → [ deckId, siblingId ]
+          Layout.SideB → [ siblingId, deckId ]
+      parentCardId × _ ← freshCard (Just Port.Initial) Set.empty $ CM.splitDraftboard orn (List.fromFoldable splits)
+      parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId }
+      let
         layout' = layout <#> case _ of
           Just did | did ≡ deckId → Nothing
-          Just did | did ≡ newParentId → Just (fst wrappedCoord)
+          Just did | did ≡ siblingId → Just parentDeckId
           a → a
-        parent' = CM.Draftboard { layout: layout' }
-      ExceptT $ putDeck (fst wrappedCoord) wrappedDeck
-      liftAff do
-        Bus.write (Deck.ParentChange (Just wrappedCoord)) cell.bus
-        Bus.write (Deck.ParentChange (Just wrappedCoord)) newParent.bus
-        Bus.write (Card.ModelChange (Card.toAll oldParentCoord) parent') oldParent.bus
+        oldParent' =
+          CM.Draftboard { layout: layout' }
+      putCard oldParentId oldParent'
+      rebuildGraph
+      publishCardChange (Card.toAll oldParentId) oldParent'
+      queueSaveDefault
     _ → do
-      QE.throw "Could not group deck."
+      throw (Exn.error "Cannot group deck")
 
-groupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → Card.Coord → m (Either QE.QError Unit))
-groupDeck orn bias deckId newParentId newParentCoord = runExceptT do
-  cell ← lift $ getDeck' deckId
-  oldParentCoord ← liftWithErr "Parent not found." $ pure $ cell.model.parent
-  oldParent ← liftWithErr "Parent not found." $ getCard oldParentCoord
-  newParent ← liftWithErr "Destination not found." $ getCard newParentCoord
-
-  case oldParent.value.model.model
-     , newParent.value.model.model of
+groupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → Card.Id → m Unit)
+groupDeck orn bias deckId siblingId newParentId = do
+  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  oldParentId ← unwrapOrExn "Parent not found" cell.parent
+  oldParent ← unwrapOrExn "Parent not found" =<< getCard oldParentId
+  newParent ← unwrapOrExn "Destination not found" =<< getCard newParentId
+  case oldParent.model, newParent.model of
     CM.Draftboard { layout }, CM.Draftboard { layout: inner } → do
       let
         inner' =
@@ -509,130 +433,74 @@ groupDeck orn bias deckId newParentId newParentCoord = runExceptT do
           a → a
         child' = CM.Draftboard { layout: inner' }
         parent' = CM.Draftboard { layout: layout' }
-      liftAff do
-        Bus.write (Deck.ParentChange (Just newParentCoord)) cell.bus
-        Bus.write (Card.ModelChange (Card.toAll newParentCoord) child') newParent.bus
-        Bus.write (Card.ModelChange (Card.toAll oldParentCoord) parent') oldParent.bus
+      publishCardChange (Card.toAll newParentId) child'
+      publishCardChange (Card.toAll oldParentId) parent'
+      queueSaveDefault
     _, _ →
-      ExceptT $ wrapAndGroupDeck orn bias deckId newParentId
+      wrapAndGroupDeck orn bias deckId siblingId
 
-renameDeck ∷ ∀ f m. Persist f m (Deck.Id → String → m (Either QE.QError Unit))
-renameDeck deckId name = runExceptT do
-  cell ← lift $ getDeck' deckId
-  deck ← ExceptT $ wait cell.value
-  ExceptT $ putDeck deckId (deck { name = name })
+renameDeck ∷ ∀ f m. Persist f m (Deck.Id → String → m Unit)
+renameDeck deckId name = do
+  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  putDeck deckId (cell.model { name = name })
   liftAff $ Bus.write (Deck.NameChange name) cell.bus
+  queueSaveDefault
   pure unit
 
-addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m (Either QE.QError Card.Coord))
-addCard deckId cty = runExceptT do
+addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m Card.Id)
+addCard deckId cty = do
   { eval } ← Wiring.expose
-  deckCell ← lift $ getDeck' deckId
-  deck ← ExceptT $ wait deckCell.value
-  cardId ← liftAff CID.make
+  deck ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  input ← fromMaybe Port.Initial <$> runMaybeT do
+    last ← MaybeT $ pure $ Array.last deck.model.cards
+    card ← MaybeT $ getCard last
+    MaybeT $ pure card.output
+  cardId × _ ← freshCard (Just input) Set.empty $ Card.cardModelOfType input cty
+  putDeck deckId deck.model { cards = Array.snoc deck.model.cards cardId }
+  rebuildGraph
+  liftAff $ Bus.write (Deck.CardChange cardId) deck.bus
+  queueSaveDefault
+  queueEvalImmediate (Card.toAll cardId)
+  pure cardId
+
+removeCard ∷ ∀ f m. Persist f m (Deck.Id → Card.Id → m Unit)
+removeCard deckId cardId = do
+  { eval } ← Wiring.expose
+  deck ← unwrapOrExn "Deck not found" =<< getDeck deckId
   let
-    coord = deckId × cardId
-  lift do
-    input ← runMaybeT do
-      last ← MaybeT $ pure $ Array.last (Deck.cardCoords deckId deck)
-      cell ← MaybeT $ Cache.get last eval.cards
-      let
-        next' = List.filter (not ∘ eq (Left deckId)) cell.next
-        cell' = cell { next = Right coord : next' }
-      lift $ Cache.put last cell' eval.cards
-      MaybeT $ pure $ cell.value.output
-    let
-      card = { cardId, model: Card.cardModelOfType (fromMaybe Port.Initial input) cty }
-      deck' = deck { cards = Array.snoc deck.cards card }
-      value' = pure (Right deck')
-    cell ← makeCardCell card input mempty
-    Cache.put coord cell eval.cards
-    Cache.put deckId (deckCell { value = value' }) eval.decks
-    liftAff $ Bus.write (Deck.CardChange coord) deckCell.bus
-    forkCardProcess coord cell.bus
-    queueSaveDefault deckId
-    queueEvalImmediate (Card.toAll coord)
-    pure coord
+    cardIds = Array.span (not ∘ eq cardId) deck.model.cards
+    deck' = deck.model { cards = cardIds.init }
+  output ← runMaybeT do
+    last ← MaybeT $ pure $ Array.last cardIds.init
+    card ← MaybeT $ getCard last
+    let next' = Set.insert (Left deckId) $ Set.delete (Right cardId) card.next
+    lift $ Cache.put last (card { next = next' }) eval.cards
+    MaybeT $ pure card.output
+  putDeck deckId deck'
+  rebuildGraph
+  queueSaveDefault
+  liftAff $ Bus.write (Deck.Complete cardIds.init (fromMaybe Port.Initial output)) deck.bus
 
-removeCard ∷ ∀ f m. Persist f m (Deck.Id → Card.Coord → m (Either QE.QError Unit))
-removeCard deckId coord@(deckId' × cardId) = runExceptT do
-  { eval } ← Wiring.expose
-  deckCell ← lift $ getDeck' deckId
-  deck ← ExceptT $ wait deckCell.value
-  lift do
-    let
-      coords = Array.span (not ∘ eq coord) (Deck.cardCoords deckId deck)
-      deck' =
-        if deckId ≡ deckId'
-          then deck { cards = Array.takeWhile (not ∘ eq cardId ∘ _.cardId) deck.cards }
-          else deck { cards = [], mirror = Array.takeWhile (not ∘ eq coord) deck.mirror }
-      value' = pure (Right deck')
-    output ← runMaybeT do
-      last ← MaybeT $ pure $ Array.last coords.init
-      cell ← MaybeT $ Cache.get last eval.cards
-      let
-        leaf = if Array.null deck'.cards then pure (Left deckId) else mempty
-        next' = List.delete (Right coord) cell.next
-        cell' = cell { next = leaf <> next' }
-      lift $ Cache.put last cell' eval.cards
-      MaybeT $ pure $ cell.value.output
-    Cache.put deckId (deckCell { value = value' }) eval.decks
-    queueSaveDefault deckId
-    liftAff $ Bus.write (Deck.Complete coords.init (fromMaybe Port.Initial output)) deckCell.bus
-
-updateParentPointer ∷ ∀ f m. Persist f m (Deck.Id → Maybe Deck.Id → Maybe Card.Coord → m (Either QE.QError Unit))
-updateParentPointer oldId newId parent = runExceptT case parent of
-  Just coord@(deckId × cardId) → do
-    -- We need to guard on the parentDeck because it may not be loaded if we
-    -- are viewing the child at the root of the UI.
-    parentDeck ← ExceptT $ getDeck deckId
-    cell ← getCard coord
-    for_ cell \{ bus, value } → do
-      let
-        model' = CM.updatePointer oldId newId value.model.model
-        message = Card.ModelChange (Card.toAll coord) model'
-      liftAff $ Bus.write message bus
+updateRootOrParent ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → Maybe Card.Id → m Unit)
+updateRootOrParent oldId newId = case _ of
   Nothing → do
-    { path } ← Wiring.expose
-    res ← ExceptT $ map sequence $ traverse (WM.setRoot (path </> Pathy.file "index")) newId
-    pure unit
+    updateRoot newId
+    rebuildGraph
+  Just oldParentId → do
+    oldParentModel ← updatePointer oldId (Just newId) oldParentId
+    putCard oldParentId oldParentModel
+    rebuildGraph
+    publishCardChange (Card.toAll oldParentId) oldParentModel
 
-relocateCardsTo ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → Array Card.Id → m Unit)
-relocateCardsTo deckId oldDeckId cardIds = do
+updatePointer ∷ ∀ f m. Persist f m (Deck.Id → Maybe Deck.Id → Card.Id → m Card.Model)
+updatePointer oldId newId parentId = do
+  cell ← unwrapOrExn "Card not found" =<< getCard parentId
+  pure $ CM.updatePointer oldId newId cell.model
+
+updateRoot ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
+updateRoot newId = do
   { eval } ← Wiring.expose
-  let
-    oldCoords = Tuple oldDeckId <$> cardIds
-    newCoords = Tuple deckId <$> cardIds
-  mbCards ← getCards oldCoords
-  for_ mbCards \cards → do
-    go eval.cards (List.fromFoldable (snd <$> cards))
-  where
-    go cache = case _ of
-      c : Nil → do
-        let
-          cardId = c.value.model.cardId
-          coord = deckId × cardId
-          next = Left oldDeckId : c.next
-        liftAff $ Bus.kill (Exn.error "Relocated") c.bus
-        Cache.remove (oldDeckId × cardId) cache
-        Cache.alter coord
-          (pure ∘ map \c' → c' { value = c.value, next = Left oldDeckId : c'.next })
-          cache
-      c1 : c2 : cs → do
-        let
-          cardId1 = c1.value.model.cardId
-          cardId2 = c2.value.model.cardId
-          coord2 = oldDeckId × cardId2
-          coord = deckId × cardId1
-          updateNext = map (map \c → if c ≡ coord2 then deckId × cardId2 else c)
-        liftAff $ Bus.kill (Exn.error "Relocated") c1.bus
-        Cache.remove (oldDeckId × cardId1) cache
-        Cache.alter coord
-          (pure ∘ map \c' → c' { value = c1.value, next = updateNext c'.next })
-          cache
-        go cache (c2 : cs)
-      Nil →
-        pure unit
+  liftAff $ modifyVar (const newId) eval.root
 
 cloneActiveStateTo ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → m Unit)
 cloneActiveStateTo to from = do
@@ -640,93 +508,47 @@ cloneActiveStateTo to from = do
   activeState ← Cache.get from cache.activeState
   for_ activeState \as → Cache.put to as cache.activeState
 
-forkLoop
-  ∷ ∀ m r a
-  . ( MonadAff SlamDataEffects m
-    , MonadFork Exn.Error m
-    )
-  ⇒ (a → m Unit)
-  → Bus.BusR' r a
-  → m Unit
-forkLoop handler bus = void (fork loop)
-  where
-    loop = do
-      msg ← liftAff (Bus.read bus)
-      fork (handler msg)
-      loop
+makeDeckCell
+  ∷ ∀ m
+  . MonadAff SlamDataEffects m
+  ⇒ Deck.Model
+  → m Deck.Cell
+makeDeckCell model = do
+  bus ← liftAff Bus.make
+  pure { bus, model, parent: Nothing }
 
 makeCardCell
   ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , Monad m
-    )
-  ⇒ Card.Model
-  → Maybe Port
-  → List (Either Deck.Id Card.Coord)
+  . MonadAff SlamDataEffects m
+  ⇒ Maybe Port
+  → Set (Either Deck.Id Card.Id)
+  → Card.AnyCardModel
   → m Card.Cell
-makeCardCell model input next = do
-  let
-    value ∷ Card.EvalResult
-    value =
-      { model
-      , input
-      , output: Nothing
-      , state: Nothing
-      , sources: mempty
-      , tick: Nothing
-      }
+makeCardCell input next model = do
   bus ← liftAff Bus.make
-  pure { bus, next, value }
-
-getCard
-  ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk Wiring m
-    )
-  ⇒ Card.Coord
-  → m (Maybe Card.Cell)
-getCard coord = do
-  { eval } ← Wiring.expose
-  Cache.get coord eval.cards
-
-getCards
-  ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk Wiring m
-    )
-  ⇒ Array Card.Coord
-  → m (Maybe (Array (Deck.Id × Card.Cell)))
-getCards = map sequence ∘ traverse go
-  where
-    go coord = map (fst coord × _) <$> getCard coord
-
-getEvaluatedCards
-  ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk Wiring m
-    )
-  ⇒ Array Card.Coord
-  → m (Maybe (Array (Deck.Id × Card.Cell) × Port))
-getEvaluatedCards = map (flip bind (Array.foldM go (mempty × Port.Initial))) ∘ getCards
-  where
-    go acc@(cs × Card.CardError _) _ = pure acc
-    go acc@(cs × _) card@(deckId × cell@{ value: { tick: Just _, output: Just out }}) =
-      pure (Array.snoc cs card × out)
-    go _ _ = Nothing
+  pure $
+    { bus
+    , next
+    , decks: Set.empty
+    , model
+    , input
+    , output: Nothing
+    , state: Nothing
+    , sources: Set.empty
+    , tick: Nothing
+    } ∷ Card.Cell
 
 debounce
   ∷ ∀ k m r
-  . ( MonadAff SlamDataEffects m
-    , MonadFork Exn.Error m
-    , Ord k
-    )
+  . ForkAff m
+  ( Ord k
   ⇒ Int
   → k
   → (AVar Unit → { avar ∷ AVar Unit | r })
   → Cache.Cache k { avar ∷ AVar Unit | r }
   → m Unit
   → m Unit
-  → m Unit
+  → m Unit )
 debounce ms key make cache init run = do
   avar ← laterVar ms $ void $ run *> Cache.remove key cache
   Cache.alter key (alterFn (make avar)) cache
@@ -737,15 +559,8 @@ debounce ms key make cache init run = do
         Nothing → void $ fork init
       pure (Just a)
 
-liftWithErr ∷ ∀ m a. Monad m ⇒ String → m (Maybe a) → ExceptT QE.QError m a
-liftWithErr err =
-  maybe (QE.throw err) pure <=< lift
+unwrapOrExn ∷ ∀ m a. MonadThrow Exn.Error m ⇒ String → Maybe a → m a
+unwrapOrExn = unwrapOrThrow ∘ Exn.error
 
-updateCellModel ∷ CM.AnyCardModel → Card.Cell → Card.Cell
-updateCellModel model cell = cell
-  { value = cell.value
-      { model = cell.value.model
-          { model = model
-          }
-      }
-  }
+unwrapOrThrow ∷ ∀ m e a. MonadThrow e m ⇒ e → Maybe a → m a
+unwrapOrThrow err = maybe (throw err) pure

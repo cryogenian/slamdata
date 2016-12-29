@@ -28,12 +28,9 @@ import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import SlamData.GlobalError (GlobalError)
 import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Eval.Deck (EvalMessage)
 import SlamData.Wiring (DeckMessage)
-
-import Quasar.Advanced.Types (ProviderR)
 
 data Query a
   = Init a
@@ -57,7 +54,6 @@ data Query a
   | HandleMessage DeckMessage a
   | HandleError GlobalError a
   | DismissedCardGuide a
-  | GetActiveCoord (Maybe (DeckId × CardId) → a)
-  | SignIn ProviderR a
+  | GetActiveCard (Maybe CardId → a)
 
 type QueryP = OpaqueQuery Query

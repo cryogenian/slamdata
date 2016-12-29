@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Deck.Component.Render
   ( renderDeck
   , renderError
-  , renderSignInButton
   ) where
 
 import SlamData.Prelude
@@ -33,7 +32,6 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Quasar.Error as QE
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Deck.BackSide.Component as Back
@@ -46,28 +44,17 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Slider as Slider
 
-import Quasar.Advanced.Types (ProviderR)
-
 import Utils (endSentence)
 
-renderError ∷ ∀ f a. QE.QError → HH.HTML a (f Unit)
+renderError ∷ ∀ f a. String → HH.HTML a (f Unit)
 renderError err =
   HH.div
     [ HP.classes [ HH.className "sd-workspace-error" ] ]
     [ HH.h1_
         [ HH.text "Couldn't load this SlamData deck." ]
     , HH.p_
-        [ HH.text $ endSentence $ QE.printQError err ]
+        [ HH.text $ endSentence err ]
     ]
-
-renderSignInButton ∷ ProviderR → DeckHTML
-renderSignInButton providerR =
-    HH.button
-      [ HE.onClick $ HE.input_ $ SignIn providerR
-      , HP.classes [ HH.className "btn", HH.className "btn-primary" ]
-      , HP.buttonType HP.ButtonButton
-      ]
-      [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
 
 renderDeck ∷ DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
 renderDeck opts deckComponent st =
@@ -78,7 +65,7 @@ renderDeck opts deckComponent st =
     [ HH.div
         [ HP.class_ CSS.deckFrame
         , HE.onMouseDown \ev →
-            if st.focused && (not (L.null opts.cursor))
+            if st.focused && not (L.null opts.displayCursor)
               then HEH.stopPropagation *> pure (Just (Defocus ev unit))
               else pure Nothing
         ]
@@ -131,9 +118,9 @@ renderName name =
     [ HH.text name ]
 
 frameElements ∷ DeckOptions → DCS.State → Array DeckHTML
-frameElements { accessType, cursor } st
+frameElements { accessType, displayCursor } st
   | accessType ≡ AT.ReadOnly = mempty
-  | L.null cursor = rootFrameElements st
+  | L.null displayCursor = rootFrameElements st
   | otherwise = childFrameElements st
 
 rootFrameElements ∷ DCS.State → Array DeckHTML
@@ -159,11 +146,11 @@ dialogSlot =
     }
 
 backside ∷ DeckOptions → DCS.State → DeckHTML
-backside { cursor } st =
+backside { deckId, displayCursor } st =
   HH.div
     [ HP.classes [ CSS.card ] ]
     [ HH.slot' cpBackSide unit \_ →
-        { component: Back.comp { deckId: st.id, cursor }
+        { component: Back.comp { deckId, displayCursor }
         , initialState: Back.initialState
         }
     ]

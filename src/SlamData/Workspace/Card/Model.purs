@@ -15,12 +15,15 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Model
-  ( Model
-  , AnyCardModel(..)
+  ( AnyCardModel(..)
   , encode
   , decode
+  , decodeCardModel
   , cardModelOfType
   , modelCardType
+  , singletonDraftboard
+  , splitDraftboard
+  , mirrorInDraftboard
   , childDeckIds
   , updatePointer
   , setupLabeledFormInput
@@ -33,12 +36,12 @@ import SlamData.Prelude
 
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
+import Data.Rational ((%))
 
 import Data.List as L
 import Data.Lens (Traversal', wander)
 
 import SlamData.FileSystem.Resource as R
-import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
@@ -47,7 +50,10 @@ import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Chart.Model as Chart
+import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Model as DB
+import SlamData.Workspace.Card.Draftboard.Orientation as Orn
+import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 import SlamData.Workspace.Card.BuildChart.Metric.Model as BuildMetric
 import SlamData.Workspace.Card.BuildChart.Sankey.Model as BuildSankey
@@ -66,7 +72,6 @@ import SlamData.Workspace.Card.BuildChart.Heatmap.Model as BuildHeatmap
 import SlamData.Workspace.Card.BuildChart.PunchCard.Model as BuildPunchCard
 import SlamData.Workspace.Card.BuildChart.Candlestick.Model as BuildCandlestick
 import SlamData.Workspace.Card.BuildChart.Parallel.Model as BuildParallel
-import SlamData.Workspace.Card.BuildChart.Legacy as ChartLegacy
 import SlamData.Workspace.Card.Query.Model as Query
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -255,48 +260,18 @@ modelCardType = case _ of
   SetupStatic _ → CT.SetupFormInput Static
   FormInput _ → CT.FormInput
 
-type Model =
-  { cardId ∷ CID.CardId
-  , model ∷ AnyCardModel
-  }
-
-encode ∷ Model → J.Json
+encode ∷ AnyCardModel → J.Json
 encode card =
-  "cardId" := card.cardId
-    ~> "cardType" := modelCardType card.model
-    ~> "model" := encodeCardModel card.model
+  "cardType" := modelCardType card
+    ~> "model" := encodeCardModel card
     ~> J.jsonEmptyObject
 
-decode ∷ J.Json → Either String Model
+decode ∷ J.Json → Either String AnyCardModel
 decode js = do
   obj ← J.decodeJson js
-  cardId ← obj .? "cardId"
-  cardTypeStr ← obj .? "cardType"
-  modelJS ← obj .? "model"
-  model ←
-    if cardTypeStr ≡ "chart-options"
-      then
-      (map BuildMetric $ BuildMetric.decode modelJS)
-      <|> (map BuildSankey $ BuildSankey.decode modelJS)
-      <|> (map BuildGauge $ BuildGauge.decode modelJS)
-      <|> (map BuildGraph $ BuildGraph.decode modelJS)
-      <|> (ChartLegacy.decode legacyConf modelJS)
-      else do
-      cardType ← obj .? "cardType"
-      decodeCardModel cardType modelJS
-  pure { cardId, model }
-  where
-  legacyConf =
-    { pie: BuildPie
-    , line: BuildLine
-    , bar: BuildBar
-    , area: BuildArea
-    , scatter: BuildScatter
-    , radar: BuildRadar
-    , funnel: BuildFunnel
-    , heatmap: BuildHeatmap
-    , boxplot: BuildBoxplot
-    }
+  cardType ← obj .? "cardType"
+  model ← obj .? "model"
+  decodeCardModel cardType model
 
 encodeCardModel ∷ AnyCardModel → J.Json
 encodeCardModel = case _ of
@@ -433,6 +408,35 @@ cardModelOfType port = case _ of
   CT.Open → Open R.root
   CT.DownloadOptions → DownloadOptions DLO.initialState
   CT.Draftboard → Draftboard DB.emptyModel
+
+singletonDraftboard ∷ DeckId → AnyCardModel
+singletonDraftboard deckId =
+  Draftboard { layout: Pane.Cell (Just deckId) }
+
+splitDraftboard ∷ Orn.Orientation → L.List DeckId → AnyCardModel
+splitDraftboard orn deckIds =
+  Draftboard { layout: Pane.Split orn (mkCell <$> deckIds) }
+  where
+    size =
+      L.length deckIds
+
+    mkCell deckId =
+      (1 % size) × Pane.wrap (Orn.reverse orn) (Pane.Cell (Just deckId))
+
+mirrorInDraftboard ∷ DeckId → DeckId → AnyCardModel → Maybe AnyCardModel
+mirrorInDraftboard oldId newId = case _ of
+  Draftboard { layout } → do
+    cursor ← Pane.getCursorFor (Just oldId) layout
+    let
+      cursor' = fromMaybe L.Nil (L.tail cursor)
+      orn = case Pane.getAt cursor' layout of
+        Just (Pane.Split o _) → o
+        _ → Orn.Vertical
+    layout' ←
+      Layout.insertSplit
+        (Pane.Cell (Just newId)) orn (1 % 2) Layout.SideB cursor' layout
+    pure (Draftboard { layout: layout' })
+  _ → Nothing
 
 childDeckIds ∷ AnyCardModel → L.List DeckId
 childDeckIds = case _ of
