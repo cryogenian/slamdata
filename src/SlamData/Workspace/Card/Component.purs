@@ -69,7 +69,7 @@ makeCardComponent def = makeCardComponentPart def render
     → CS.AnyCardState
     → CS.CardState
     → CardHTML
-  render component initialState = const $
+  render component initialState st =
     HH.div
       [ HP.classes $ [ CSS.deckCard ]
       , ARIA.label $ (cardName def.cardType) ⊕ " card"
@@ -93,10 +93,13 @@ makeCardComponent def = makeCardComponentPart def render
           ]
     card ∷ Array CardHTML
     card =
-      [ HH.div
-          [ HP.classes $ cardClasses def.cardType ]
-          [ HH.slot unit \_ → { component, initialState } ]
-      ]
+      if st.pending
+        then []
+        else
+          [ HH.div
+              [ HP.classes $ cardClasses def.cardType ]
+              [ HH.slot unit \_ → { component, initialState } ]
+          ]
 
 -- | Constructs a card component from a record with the necessary properties and
 -- | a render function.
@@ -140,22 +143,7 @@ makeCardComponentPart def render =
   eval ∷ CQ.CardQuery ~> CardDSL
   eval = case _ of
     CQ.Initialize next → do
-      cell ← H.liftH $ H.liftH $ P.getCard def.options.cardId
-      for_ cell \{ bus, model, input, output, state } → do
-        breaker ← subscribeToBus' (H.action ∘ CQ.HandleEvalMessage) bus
-        H.modify _
-          { breaker = Just breaker
-          , bus = Just bus
-          }
-        -- TODO: We need to defer these because apparently Halogen has bad
-        -- ordering with regard to child initializers. This should be fixed
-        -- in Halogen Next.
-        H.fromAff $ later (pure unit)
-        queryInnerCard $ EQ.Load model
-        for_ input (queryInnerCard ∘ EQ.ReceiveInput)
-        for_ state (queryInnerCard ∘ EQ.ReceiveState)
-        for_ output (queryInnerCard ∘ EQ.ReceiveOutput)
-        eval (CQ.UpdateDimensions unit)
+      initializeInnerCard
       pure next
     CQ.Finalize next → do
       H.gets _.breaker >>= traverse_ (fromAff ∘ break')
@@ -176,17 +164,34 @@ makeCardComponentPart def render =
       case msg of
         Card.Pending source evalPort → do
           queryInnerCard $ EQ.ReceiveInput evalPort
-          when (source ≠ displayCoord) do
-            H.modify (CS._pending .~ true)
         Card.Complete source evalPort → do
           queryInnerCard $ EQ.ReceiveOutput evalPort
-          H.modify (CS._pending .~ false)
         Card.StateChange source evalState →
           queryInnerCard $ EQ.ReceiveState evalState
         Card.ModelChange source evalModel →
           when (source ≠ displayCoord) do
             queryInnerCard $ EQ.Load evalModel
       pure next
+
+  initializeInnerCard ∷ CardDSL Unit
+  initializeInnerCard = do
+    cell ← H.liftH $ H.liftH $ P.getCard def.options.cardId
+    for_ cell \{ bus, model, input, output, state } → do
+      breaker ← subscribeToBus' (H.action ∘ CQ.HandleEvalMessage) bus
+      H.modify _
+        { breaker = Just breaker
+        , bus = Just bus
+        , pending = false
+        }
+      -- TODO: We need to defer these because apparently Halogen has bad
+      -- ordering with regard to child initializers. This should be fixed
+      -- in Halogen Next.
+      H.fromAff $ later (pure unit)
+      queryInnerCard $ EQ.Load model
+      for_ input (queryInnerCard ∘ EQ.ReceiveInput)
+      for_ state (queryInnerCard ∘ EQ.ReceiveState)
+      for_ output (queryInnerCard ∘ EQ.ReceiveOutput)
+      eval (CQ.UpdateDimensions unit)
 
   peek ∷ ∀ a. EQ.CardEvalQuery a → CardDSL Unit
   peek = case _ of

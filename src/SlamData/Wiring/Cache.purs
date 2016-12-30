@@ -26,6 +26,8 @@ module SlamData.Wiring.Cache
   , remove
   , clear
   , snapshot
+  , merge
+  , mergeWith
   ) where
 
 import SlamData.Prelude
@@ -133,3 +135,21 @@ snapshot (Cache cache) = liftAff do
   vals ← takeVar cache
   putVar cache vals
   pure vals
+
+merge
+  ∷ ∀ eff m k v
+  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  ⇒ Map k v
+  → Cache k v
+  → m Unit
+merge = mergeWith const
+
+mergeWith
+  ∷ ∀ eff m k v
+  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  ⇒ (v → v → v)
+  → Map k v
+  → Cache k v
+  → m Unit
+mergeWith f ks (Cache cache) = liftAff do
+  modifyVar (Map.unionWith f ks) cache

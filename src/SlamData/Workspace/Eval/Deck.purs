@@ -16,17 +16,25 @@ limitations under the License.
 
 module SlamData.Workspace.Eval.Deck
   ( EvalMessage(..)
+  , EvalStatus(..)
   , Id
   , Cell
   , Model
+  , evalStatusFromCards
+  , _NeedsEval
+  , _PendingEval
+  , _Completed
   , module SlamData.Workspace.Deck.DeckId
   , module SlamData.Workspace.Deck.Model
   ) where
 
 import SlamData.Prelude
 import Control.Monad.Aff.Bus (BusRW)
+import Data.Array as Array
+import Data.Lens (Prism', prism')
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Port (Port)
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 import SlamData.Workspace.Deck.Model (Deck, emptyDeck, encode, decode)
 
@@ -37,6 +45,11 @@ data EvalMessage
   | ParentChange (Maybe CardId)
   | NameChange String
 
+data EvalStatus
+  = NeedsEval CardId
+  | PendingEval CardId
+  | Completed Port
+
 type Id = DeckId
 
 type Model = Deck
@@ -45,4 +58,23 @@ type Cell =
   { bus ∷ BusRW EvalMessage
   , model ∷ Model
   , parent ∷ Maybe CardId
+  , status ∷ EvalStatus
   }
+
+evalStatusFromCards ∷ Array CardId → EvalStatus
+evalStatusFromCards = maybe (Completed Port.Initial) NeedsEval ∘ Array.head
+
+_NeedsEval ∷ Prism' EvalStatus CardId
+_NeedsEval = prism' NeedsEval case _ of
+  NeedsEval cardId → Just cardId
+  _                  → Nothing
+
+_PendingEval ∷ Prism' EvalStatus CardId
+_PendingEval = prism' PendingEval case _ of
+  PendingEval cardId → Just cardId
+  _                  → Nothing
+
+_Completed ∷ Prism' EvalStatus Port
+_Completed = prism' Completed case _ of
+  Completed port → Just port
+  _              → Nothing

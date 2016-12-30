@@ -16,85 +16,70 @@ limitations under the License.
 
 module SlamData.Workspace.Eval.Graph
   ( EvalGraph
-  , EvalGraphNode
-  , EvalGraphLeaf
-  , unfoldGraph
-  , findNode
-  , debugGraph
-  , Debug(..)
+  , pendingGraph
   ) where
 
 import SlamData.Prelude
 
-import Control.Comonad.Cofree (Cofree)
-import Control.Comonad.Cofree as Cofree
-
-import Data.Functor.Compose (Compose(..))
-import Data.List (List(..), (:))
-import Data.List as List
+import Data.List (List)
 import Data.Map (Map)
 import Data.Map as Map
 
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 
-type EvalGraphNode =
-  { cardId ∷ Card.Id
-  , card ∷ Card.Cell
-  , transition ∷ Card.Eval
+type EvalGraph =
+  { decks ∷ Map Deck.Id Deck.Cell
+  , cards ∷ Map Card.Id Card.Cell
   }
 
-type EvalGraphLeaf =
-  { deckId ∷ Deck.Id
-  , deck ∷ Deck.Cell
-  }
+pendingGraph
+  ∷ List Card.Id
+  → EvalGraph
+  → EvalGraph
+pendingGraph = go { decks: Map.empty, cards: Map.empty }
+  where
+    go delta cardIds graph =
+      let
+        nextDecks = pendingDecks graph cardIds
+        nextCards = pendingCards graph (Map.keys nextDecks)
+        nextDelta =
+          { decks: Map.union nextDecks delta.decks
+          , cards: Map.union nextCards delta.cards
+          }
+        nextGraph =
+          { decks: Map.union nextDecks graph.decks
+          , cards: Map.union nextCards graph.cards
+          }
+      in
+        if Map.isEmpty nextCards
+          then nextDelta
+          else go nextDelta (Map.keys nextCards) nextGraph
 
-type EvalGraph = Cofree (Compose List (Either EvalGraphLeaf)) EvalGraphNode
-
-unfoldGraph
-  ∷ Map Card.Id Card.Cell
+pendingDecks
+  ∷ EvalGraph
+  → List Card.Id
   → Map Deck.Id Deck.Cell
-  → Card.Id
-  → Maybe EvalGraph
-unfoldGraph cards decks cardId =
-  go <$> Map.lookup cardId cards
+pendingDecks { decks, cards } = foldMap (\a → goCard a a)
   where
-    go card =
-      Cofree.mkCofree
-        { cardId
-        , card
-        , transition: Card.modelToEval card.model
-        }
-        (Compose (List.catMaybes (goNext <$> List.fromFoldable card.next)))
+    goCard pendingId cardId =
+      case Map.lookup cardId cards of
+        Nothing   → mempty
+        Just card → foldMap (either (goDeck pendingId) (goCard pendingId)) card.next
 
-    goNext (Left deckId) =
-      Left ∘ { deckId, deck: _ } <$> Map.lookup deckId decks
-    goNext (Right next)  =
-      Right <$> unfoldGraph cards decks next
+    goDeck pendingId deckId =
+      case Map.lookup deckId decks of
+        Nothing   → mempty
+        Just deck → Map.singleton deckId deck { status = Deck.PendingEval pendingId }
 
-findNode ∷ Card.Id → EvalGraph → Maybe EvalGraphNode
-findNode cardId graph =
-  if node.cardId ≡ cardId
-    then Just node
-    else go (unwrap (Cofree.tail graph))
+pendingCards
+  ∷ EvalGraph
+  → List Deck.Id
+  → Map Card.Id Card.Cell
+pendingCards { decks, cards } = foldMap go
   where
-    node = Cofree.head graph
-
-    go Nil = Nothing
-    go (c : cs) =
-      case c of
-        Left _ → Nothing
-        Right c' →
-          case findNode cardId c' of
-            Nothing → go cs
-            res → res
-
-newtype Debug f a = Debug { head ∷ a, tail ∷ f (Debug f a) }
-
-debugGraph ∷ ∀ f a. Functor f ⇒ Cofree f a → Debug f a
-debugGraph co =
-  let
-    head = Cofree.head co
-    tail = Cofree.tail co
-  in
-    Debug { head, tail: debugGraph <$> tail }
+    go deckId = fromMaybe mempty do
+      deck ← Map.lookup deckId decks
+      cardId ← deck.parent
+      card ← Map.lookup cardId cards
+      pure (Map.singleton cardId card)

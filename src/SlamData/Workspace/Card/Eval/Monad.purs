@@ -66,6 +66,7 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Eval.State (EvalState(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
+import SlamData.Workspace.Deck.DeckId as DID
 import Utils.Path (DirPath, FilePath)
 
 type CardEval = CardEvalM SlamDataEffects
@@ -86,6 +87,7 @@ newtype CardEnv = CardEnv
   { path ∷ DirPath
   , cardId ∷ CID.CardId
   , urlVarMaps ∷ Map.Map CID.CardId Port.URLVarMap
+  , childPorts ∷ Map.Map DID.DeckId Port.Port
   }
 
 data CardEvalF eff a

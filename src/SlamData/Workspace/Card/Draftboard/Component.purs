@@ -41,10 +41,12 @@ import SlamData.Workspace.Card.Draftboard.Component.Common (DraftboardDSL)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..))
 import SlamData.Workspace.Card.Draftboard.Component.Render (render)
 import SlamData.Workspace.Card.Draftboard.Component.State (MoveLocation(..), initialState, modelFromState, updateRect, updateLayout)
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (emptyDeck)
+import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 
 import Utils.DOM (getOffsetClientRect)
@@ -360,7 +362,7 @@ recalcRect = do
 
 addDeck ∷ CardOptions → Pane.Cursor → DraftboardDSL Unit
 addDeck _ cursor = do
-  deckId × _ ← liftH' $ P.freshDeck emptyDeck
+  deckId × _ ← liftH' $ P.freshDeck emptyDeck (ED.Completed Port.Initial)
   st ← H.get
   let
     layout = Pane.modifyAt (const (Pane.Cell (Just deckId))) cursor st.layout
