@@ -27,10 +27,10 @@ import Data.Argonaut (encodeJson)
 import Data.Foldable as F
 import Data.Map as Map
 import Data.Path.Pathy as Pathy
+import Data.StrMap as SM
 import Data.String as Str
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
-import Data.StrMap as SM
 
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
@@ -478,70 +478,63 @@ renderCopyVal locString state
     renderURL locString state
   | otherwise
       = Str.joinWith "\n"
-      [ """<!-- This is the generic SlamData embedding code. -->"""
-      , """<!-- You can put this in the header or save it in a .js file included in the document -->"""
-      , """<script type="text/javascript">"""
-      , """var slamdata = window.SlamData = window.SlamData || {};"""
-      , """slamdata.embed = function(options) {"""
-      , """  var queryParts = [];"""
-      , """  if (options.permissionTokens) queryParts.push("permissionTokens=" + options.permissionTokens.join(","));"""
-      , """  if (options.stylesheets && options.stylesheets.length) queryParts.push("stylesheets=" + options.stylesheets.map(encodeURIComponent).join(","));"""
-      , """  var queryString = "?" + queryParts.join("&");"""
-      , """  var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
-      , """  var uri = """ ⊕ quoted workspaceURL ⊕ """ + queryString;"""
-      , """  var iframe = document.createElement("iframe");"""
-      , """  iframe.width = iframe.height = "100%";"""
-      , """  iframe.frameBorder = 0;"""
-      , """  iframe.src = uri + "#" + options.deckPath + options.deckId + "/view" + varsParam;"""
-      , """  var deckElement = document.getElementById("sd-deck-" + options.deckId);"""
-      , """  if (deckElement) deckElement.appendChild(iframe);"""
-      , """};"""
-      , """</script>"""
-      , ""
-      , """<!-- This is the DOM element that the deck will be embedded into -->"""
-      , """<div id=""" ⊕ quoted ("sd-deck-" ⊕ deckId) ⊕ """></div>"""
-      , ""
-      , """<!-- This is the code that performs the deck insertion, placing it at the end of the body is suggested -->"""
-      , """<script type="text/javascript">"""
-      , """  SlamData.embed({"""
-      , """    deckPath: """ ⊕ quoted deckPath ⊕ ""","""
-      , """    deckId: """ ⊕ quoted deckId ⊕ ""","""
-      , """    // An array of custom stylesheets URLs can be provided here"""
-      , """    stylesheets: []""" ⊕ options
-      , """  });"""
-      , """</script>"""
-      ]
-
+          [ """<!-- This is the DOM element that the deck will be inserted into. -->"""
+          , """<!-- You can change the width and height and use a stylesheet to apply styling. -->"""
+          , """<iframe frameborder="0" width="100%" height="800" id=""" ⊕ quoted deckDOMId ⊕ """></iframe>"""
+          , """"""
+          , """<!-- To change a deck's variables after it has been inserted please use window.slamDataDeckUrl to create an new URL then update the deck iframe's src parameter. -->"""
+          , """<script type="text/javascript">"""
+          , """  window.slamDataDeckUrl = function (options) {"""
+          , """    var queryParts = function () {"""
+          , """      var parts = [];"""
+          , """      var permissionTokenPart = "permissionTokens=" + options.permissionTokens.join(",");"""
+          , """      var stylesheetPart = "stylesheets=" + options.stylesheetUrls.map(encodeURIComponent).join(",");"""
+          , """      if (options.permissionTokens && options.permissionTokens.length) { parts.push(permissionTokenPart); }"""
+          , """      if (options.stylesheetUrls && options.stylesheetUrls.length) { parts.push(stylesheetPart); }"""
+          , """      return parts;"""
+          , """    };"""
+          , """    var queryString = "?" + queryParts().join("&");"""
+          , """    var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
+          , """    return options.slamDataUrl + queryString + "#" + options.deckPath + options.deckId + "/view" + varsParam;"""
+          , """  };"""
+          , """</script>"""
+          , """"""
+          , """<!-- This is the script which performs SlamData deck insertion. -->"""
+          , """<script type="text/javascript">"""
+          , """  (function () {"""
+          , """    var options = {"""
+          , """      slamDataUrl: """ ⊕ quoted workspaceURL ⊕ ""","""
+          , """      deckPath: """ ⊕ quoted deckPath ⊕ ""","""
+          , """      deckId: """ ⊕ quoted deckId ⊕ ""","""
+          , """      permissionTokens: [""" ⊕ maybe "" quoted token ⊕ """],"""
+          , """      stylesheetUrls: [], // An array of custom stylesheet URLs."""
+          , """      vars: """ ⊕ renderVarMaps state.varMaps
+          , """    };"""
+          , """"""
+          , """    var deckSelector = "iframe#sd-deck-" + options.deckId;"""
+          , """    var deckElement = document.querySelector(deckSelector);"""
+          , """"""
+          , """    if (deckElement) {"""
+          , """      deckElement.src = window.slamDataDeckUrl(options);"""
+          , """    } else {"""
+          , """      throw("SlamData: Couldn't locate " + deckSelector);"""
+          , """    }"""
+          , """  })();"""
+          , """</script>"""
+          ]
     where
     line = (_ ⊕ "\n")
     quoted s = "\"" ⊕ s ⊕ "\""
     workspaceURL = locString ⊕ "/" ⊕ Config.workspaceUrl
     deckId = DID.toString state.sharingInput.deckId
+    deckDOMId = "sd-deck-" ⊕ deckId
     deckPath = UP.encodeURIPath (Pathy.printPath state.sharingInput.workspacePath)
-    options = opt varMaps <> opt tokens
-    opt = case _ of
-      "" -> ""
-      s -> ",\n" ⊕ s
-    varMaps
-      | F.all SM.isEmpty state.varMaps = ""
-      | otherwise
-          = line "    // The variables for the deck(s), you can change their values here:"
-          ⊕ "    vars: " ⊕ renderVarMaps state.varMaps
-    tokens
-      | not state.isLoggedIn = ""
-      | otherwise
-          = "    permissionTokens: "
-          ⊕ "["
-          ⊕ maybe
-              "window.SLAMDATA_PERMISSION_TOKEN"
-              (quoted ∘ QTA.runTokenHash)
-              (_.secret <$> state.permToken)
-          ⊕ "]"
+    token = QTA.runTokenHash <<< _.secret <$> state.permToken
 
 renderVarMaps ∷ Map.Map CID.CardId Port.VarMap → String
 renderVarMaps = indent <<< prettyJson <<< encodeJson <<< varMapsForURL
   where
-  indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" RXF.global) "$1    "
+  indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" RXF.global) "$1      "
 
 renderURL ∷ String → State → String
 renderURL locationString state@{sharingInput, permToken, isLoggedIn} =
