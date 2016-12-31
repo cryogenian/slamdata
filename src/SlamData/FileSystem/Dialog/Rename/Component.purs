@@ -42,7 +42,7 @@ import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.Quasar.FS as API
 import SlamData.Render.CSS as Rc
-import SlamData.Render.Common (fadeWhen, formGroup)
+import SlamData.Render.Common (formGroup)
 
 import Utils.Path (DirPath, dropWorkspaceExt)
 
@@ -194,7 +194,7 @@ render dialog =
   dirDropdownField ∷ HTML
   dirDropdownField =
     HH.div
-      [ HP.classes [ B.inputGroup ] ]
+      [ HP.classes [ B.inputGroup, HH.className "file-list-field" ] ]
       [ HH.input
           [ HP.classes [ B.formControl ]
           , HP.placeholder "New directory"
@@ -215,15 +215,17 @@ render dialog =
       ]
   dirDropdownList ∷ HTML
   dirDropdownList =
-    HH.ul [ HP.classes $ [ B.listGroup, Rc.fileListGroup ]
-           <> fadeWhen (not $ dialog.showList) ]
+    HH.ul
+      ([ HP.classes  [ B.listGroup, Rc.fileListGroup ] ]
+       <> if dialog.showList then [] else [ ARIA.hidden "true" ])
     $ renameItem <$> dialog.dirs
 
   errorMessage ∷ HTML
   errorMessage =
-    HH.div [ HP.classes $ [ B.alert, B.alertDanger ]
-            <> fadeWhen (isNothing (dialog.error)) ]
-    $ maybe [ ] (pure <<< HH.text) (dialog.error)
+    HH.div
+      ([ HP.classes $ [ B.alert, B.alertDanger ] ]
+       <> if isJust dialog.error then [] else [ ARIA.hidden "true" ])
+      $ maybe [ ] (pure <<< HH.text) (dialog.error)
 
   renameItem ∷ R.Resource → HTML
   renameItem res =

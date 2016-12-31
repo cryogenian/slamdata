@@ -33,9 +33,9 @@ import Data.Map as Map
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, (:>), cpL, cpR)
+import Halogen.Component.Utils (raise')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Component.Utils (raise')
 
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Monad (Slam)

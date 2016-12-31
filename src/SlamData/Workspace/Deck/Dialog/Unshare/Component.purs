@@ -163,7 +163,8 @@ comp =
 
 render ∷ State → HTML
 render state =
-  HH.div [ HP.classes [ HH.className "deck-dialog-unshare" ] ]
+  HH.div
+    [ HP.classes [ HH.className "deck-dialog-unshare" ] ]
     [ HH.h4_ [ HH.text "Unshare deck" ]
     , HH.div
         [ HP.classes
@@ -182,30 +183,24 @@ render state =
         [ HH.form
             [ Cp.nonSubmit ]
             $ (if SM.isEmpty state.userPermissions
-                 then [ ]
+                 then
+                   [ ]
                  else
-                 [ HH.label
-                     [ HP.classes [ HH.className "subject-label" ] ]
-                     [ HH.text "Users" ]
-                 ]
-                 ⊕ (foldMap renderUserOrGroup $ SM.toList state.userPermissions)
+                   [ HH.h5_ [ HH.text "Users" ] ]
+                   ⊕ (foldMap renderUserOrGroup $ SM.toList state.userPermissions)
               )
             ⊕ (if SM.isEmpty state.groupPermissions
-                 then [ ]
+                 then
+                   [ ]
                  else
-                 [ HH.label
-                    [ HP.classes [ HH.className "subject-label" ] ]
-                    [ HH.text "Groups" ]
-                 ]
-                 ⊕ (foldMap renderUserOrGroup $ SM.toList state.groupPermissions)
+                   [ HH.h5_ [ HH.text "Groups" ] ]
+                   ⊕ (foldMap renderUserOrGroup $ SM.toList state.groupPermissions)
               )
             ⊕ (if Arr.null state.tokenPermissions
-                 then [ ]
+                 then
+                   [ ]
                  else
-                   [ HH.label
-                       [ HP.classes [ HH.className "subject-label" ] ]
-                       [ HH.text "Tokens" ]
-                   ]
+                   [ HH.h5_ [ HH.text "Tokens" ] ]
                    ⊕ map renderToken state.tokenPermissions
               )
             ⊕ (if SM.isEmpty state.userPermissions
@@ -213,7 +208,9 @@ render state =
                   ∧ Arr.null state.tokenPermissions
                   ∧ not state.errored
                  then
-                   [ HH.p_ [ HH.text "This deck hasn't been shared with anyone." ] ]
+                   [ HH.div_
+                       [ HH.text "This deck hasn't been shared with anyone." ]
+                   ]
                  else [ ]
               )
         ]
@@ -266,112 +263,97 @@ render state =
 renderUserOrGroup ∷ (String × Permission) → Array HTML
 renderUserOrGroup (name × perm) =
   [ HH.div
-    [ HP.classes [ B.row ] ]
-    [ HH.div
-        [ HP.classes [ B.colXs7 ] ]
-        [ HH.text name ]
-    , HH.div
-        [ HP.classes
-            $ [ B.colXs3 ]
-            ⊕ if perm.state ≡ Just ModifyError then [ B.hasError ] else [ ]
-        ]
-        [ HH.select
-            [ HP.classes [ B.formControl ]
-            , HE.onValueChange (HE.input (PermissionResumeChanged name))
-            , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
-            ]
-            [ HH.option
-                [ HP.value "view"
-                , HP.selected $ perm.resume ≡ View
-                ]
-                [ HH.text
-                    $ "View"
-                    ⊕ if perm.state ≡ Just Modifying
-                        then "..."
-                        else ""
-                ]
-            , HH.option
-                [ HP.value "edit"
-                , HP.selected $ perm.resume ≡ Edit
-                ]
-                [ HH.text
-                    $ "Edit"
-                    ⊕ if perm.state ≡ Just Modifying
-                        then "..."
-                        else ""
-                ]
-            ]
-        ]
-    , HH.div
-        [ HP.classes
-            $ [ B.colXs2 ]
-            ⊕ if perm.state ≡ Just RevokeError then [ B.hasError ] else [ ]
-        ]
-        [ HH.button
-            [ HP.classes [ B.btn, B.btnDefault, HH.className "unshare-button" ]
-            , HE.onClick (HE.input_ (Unshare name))
-            , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
-            ]
-            [ HH.text if perm.state ≡ Just Unsharing
-                        then "Revoking..."
-                        else "Unshare"
-            ]
-        ]
-    ]
+      [ HP.class_ $ HH.className "sd-unshare-subject" ]
+      [ HH.label_ [ HH.text name ]
+      , HH.div
+          [ HP.classes $ if perm.state ≡ Just ModifyError then [ B.hasError ] else [ ] ]
+          [ HH.select
+              [ HP.classes [ B.formControl ]
+              , HE.onValueChange (HE.input (PermissionResumeChanged name))
+              , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
+              ]
+              [ HH.option
+                  [ HP.value "view"
+                  , HP.selected $ perm.resume ≡ View
+                  ]
+                  [ HH.text
+                      $ "View"
+                      ⊕ if perm.state ≡ Just Modifying
+                          then "..."
+                          else ""
+                  ]
+              , HH.option
+                  [ HP.value "edit"
+                  , HP.selected $ perm.resume ≡ Edit
+                  ]
+                  [ HH.text
+                      $ "Edit"
+                      ⊕ if perm.state ≡ Just Modifying
+                          then "..."
+                          else ""
+                  ]
+              ]
+          ]
+      , HH.div
+          [ HP.classes $ if perm.state ≡ Just RevokeError then [ B.hasError ] else [ ] ]
+          [ HH.button
+              [ HP.classes [ B.btn, B.btnPrimary ]
+              , HE.onClick (HE.input_ (Unshare name))
+              , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
+              ]
+              [ HH.text if perm.state ≡ Just Unsharing
+                          then "Revoking..."
+                          else "Unshare"
+              ]
+          ]
+      ]
   ]
 
 renderToken ∷ TokenPermission → HTML
 renderToken token =
   HH.div
-    [ HP.classes [ B.row ] ]
-    [ HH.div
-        [ HP.classes [ B.colXs4, HH.className "token-name-field" ] ]
-        [ HH.text $ fromMaybe "Untitled token" token.name ]
-    , HH.div
-        [ HP.classes [ B.colXs1 ] ]
+    [ HP.class_ $ HH.className "sd-unshare-subject" ]
+    [ HH.label_
+        [ HH.text $ fromMaybe "Untitled token" token.name
+        ]
+    , HH.span
+        [ HP.classes [ HH.className "sd-unshare-subject-access-type" ] ]
         [ HH.text $ printShareResume token.resume ]
     , HH.div
-        [ HP.classes [ B.colXs5 ] ]
+        [ HP.classes
+            $ [ HH.className "sd-url" ]
+            ⊕ if token.state ≡ Just ModifyError then [ B.hasError ] else [ ]
+        ]
+        [ HH.input
+            [ HP.readonly true
+            , HP.title "Token secret"
+            , HP.value token.secret
+            , HE.onClick $ HE.input (SelectElement ∘ _.target)
+            , HP.disabled $ isJust token.state
+        ]
+        , HH.button
+            [ HP.classes [ B.btn, B.btnDefault ]
+            , HP.ref (H.action ∘ InitZClipboard token.secret)
+            , HP.disabled $ token.state ≡ Just Modifying ∨ token.state ≡ Just Unsharing
+            ]
+            [ glyph B.glyphiconCopy ]
+        ]
+    , HH.div
+        [ HP.classes $ if token.state ≡ Just RevokeError then [ B.hasError ] else [ ] ]
         [ HH.div
-            [ HP.classes
-                $ [ B.inputGroup ]
-                ⊕ if token.state ≡ Just ModifyError then [ B.hasError ] else [ ]
-            ]
-            [ HH.input
-                [ HP.classes [ B.formControl ]
-                , HP.readonly true
-                , HP.title "Token secret"
-                , HP.value token.secret
-                , HE.onClick $ HE.input (SelectElement ∘ _.target)
-                , HP.disabled $ isJust token.state
-            ]
-            , HH.span
-                [ HP.classes [ B.inputGroupBtn ] ]
-                [ HH.button
-                    [ HP.classes [ B.btn, B.btnDefault ]
-                    , HP.ref (H.action ∘ InitZClipboard token.secret)
-                    , HP.disabled $ token.state ≡ Just Modifying ∨ token.state ≡ Just Unsharing
-                    ]
-                    [ glyph B.glyphiconCopy ]
+            [ HP.class_ B.btnGroup ]
+            [ HH.button
+                [ HP.classes [ B.btn, B.btnPrimary ]
+                , HE.onClick (HE.input_ (UnshareToken token.tokenId))
+                , HP.disabled $ token.state ≡ Just Modifying ∨ token.state ≡ Just Unsharing
+                ]
+                [ HH.text if token.state ≡ Just Unsharing
+                            then "Revoking..."
+                            else "Unshare"
                 ]
             ]
         ]
-    , HH.div
-        [ HP.classes
-            $ [ B.colXs2 ]
-            ⊕ if token.state ≡ Just RevokeError then [ B.hasError ] else [ ]
-        ]
-        [ HH.button
-            [ HP.classes [ B.btn, B.btnDefault, HH.className "unshare-button" ]
-            , HE.onClick (HE.input_ (UnshareToken token.tokenId))
-            , HP.disabled $ token.state ≡ Just Modifying ∨ token.state ≡ Just Unsharing
-            ]
-            [ HH.text if token.state ≡ Just Unsharing
-                        then "Revoking..."
-                        else "Unshare"
-            ]
-        ]
-    ]
+  ]
 
 
 eval ∷ Query ~> DSL

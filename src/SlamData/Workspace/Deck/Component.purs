@@ -132,10 +132,12 @@ eval opts = case _ of
     pure next
   FlipDeck next → do
     updateBackSide opts
+    displayMode ← H.gets _.displayMode
     H.modify
-      $ DCS._displayMode %~ case _ of
-        DCS.Normal → DCS.Backside
-        _ → DCS.Normal
+      $ DCS.changeDisplayMode
+      $ case displayMode of
+          DCS.Normal → DCS.Backside
+          _ → DCS.Normal
     presentFlipGuideFirstTime
     pure next
   GrabDeck _ next →
@@ -216,6 +218,10 @@ eval opts = case _ of
   GetActiveCard k → do
     active ← H.gets DCS.activeCard
     pure (k (hush ∘ map _.cardId =<< active))
+  DismissDialog next →
+    queryDialog (H.action Dialog.Dismiss)
+      *> H.modify DCS.undoLastChangeDisplayMode
+      $> next
   where
   getBoundingClientWidth =
     H.fromEff ∘ map _.width ∘ getBoundingClientRect
@@ -233,16 +239,16 @@ peek opts (H.ChildF s q) =
 peekDialog ∷ ∀ a. DeckOptions → Dialog.Query a → DeckDSL Unit
 peekDialog opts = case _ of
   Dialog.Show _ _ → do
-    H.modify (DCS._displayMode .~ DCS.Dialog)
-  Dialog.Dismiss _ →
-    H.modify (DCS._displayMode .~ DCS.Backside)
+    H.modify (DCS.changeDisplayMode DCS.Dialog)
+  Dialog.Dismiss _ → do
+    H.modify DCS.undoLastChangeDisplayMode
   Dialog.FlipToFront _ →
-    H.modify (DCS._displayMode .~ DCS.Normal)
+    H.modify (DCS.changeDisplayMode DCS.Normal)
   Dialog.SetDeckName name _ → do
-    H.modify (DCS._displayMode .~ DCS.Normal)
+    H.modify (DCS.changeDisplayMode DCS.Normal)
     void $ liftH' $ P.renameDeck opts.deckId name
   Dialog.Confirm d b _ → do
-    H.modify (DCS._displayMode .~ DCS.Backside)
+    H.modify (DCS.changeDisplayMode DCS.Backside)
     case d of
       Dialog.DeleteDeck | b → deleteDeck opts
       _ → pure unit
@@ -258,7 +264,7 @@ peekBackSide opts (Back.DoAction action _) = do
       for_ (join $ hush <$> active) \{ cardId } → do
         liftH' $ P.removeCard opts.deckId cardId
         H.modify
-          $ (DCS._displayMode .~ DCS.Normal)
+          $ (DCS.changeDisplayMode DCS.Normal)
           ∘ (DCS._presentAccessNextActionCardGuide .~ false)
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Rename → do
@@ -288,7 +294,7 @@ peekBackSide opts (Back.DoAction action _) = do
       for_ (_.parent <$> deck) case _ of
         Just cardId | not (L.null opts.displayCursor) → do
           liftH' $ P.mirrorDeck opts.deckId cardId
-          H.modify (DCS._displayMode .~ DCS.Normal)
+          H.modify (DCS.changeDisplayMode DCS.Normal)
         _ → do
           parentId ← liftH' $ P.wrapAndMirrorDeck opts.deckId
           navigateToDeck (parentId L.: opts.cursor)
@@ -296,7 +302,7 @@ peekBackSide opts (Back.DoAction action _) = do
       parentId ← liftH' $ P.wrapDeck opts.deckId
       if L.null opts.displayCursor
         then navigateToDeck (parentId L.: opts.cursor)
-        else H.modify $ DCS._displayMode .~ DCS.Normal
+        else H.modify $ DCS.changeDisplayMode DCS.Normal
     Back.Unwrap → do
       deck ← liftH' $ P.getDeck opts.deckId
       for_ (_.parent <$> deck) case _ of
@@ -313,7 +319,7 @@ peekCards cardId = const (pure unit) ⨁ peekCardInner cardId
 showDialog ∷ Dialog.Dialog → DeckDSL Unit
 showDialog dlg = do
   queryDialog $ H.action $ Dialog.Show dlg
-  H.modify (DCS._displayMode .~ DCS.Dialog)
+  H.modify (DCS.changeDisplayMode DCS.Dialog)
 
 queryDialog ∷ Dialog.Query Unit → DeckDSL Unit
 queryDialog = void ∘ H.query' cpDialog unit ∘ left

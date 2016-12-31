@@ -54,6 +54,7 @@ data Query a
   | HandleMessage DeckMessage a
   | HandleError GlobalError a
   | DismissedCardGuide a
+  | DismissDialog a
   | GetActiveCard (Maybe CardId → a)
 
 type QueryP = OpaqueQuery Query

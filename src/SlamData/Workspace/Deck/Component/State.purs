@@ -59,6 +59,8 @@ module SlamData.Workspace.Deck.Component.State
   , eqDisplayCard
   , compareCardIndex
   , updateDisplayCards
+  , changeDisplayMode
+  , undoLastChangeDisplayMode
   ) where
 
 import SlamData.Prelude
@@ -125,6 +127,7 @@ type State =
   { name ∷ String
   , loadError ∷ Maybe String
   , displayMode ∷ DisplayMode
+  , prevDisplayMode ∷ Maybe DisplayMode
   , displayCards ∷ Array DisplayCard
   , pendingCardIndex ∷ Maybe Int
   , activeCardIndex ∷ Maybe Int
@@ -151,6 +154,7 @@ initialDeck =
   { name: ""
   , loadError: Nothing
   , displayMode: Normal
+  , prevDisplayMode: Nothing
   , displayCards: mempty
   , pendingCardIndex: Nothing
   , activeCardIndex: Nothing
@@ -378,3 +382,11 @@ updateDisplayCards defs port st =
       Nothing, Just (Left (ErrorCard _)) → Nothing
       Nothing, Just _ → Just (lastIndex - 1)
       Just ix, _ → Just ix
+
+changeDisplayMode ∷ DisplayMode → State → State
+changeDisplayMode displayMode state =
+  state { displayMode = displayMode, prevDisplayMode = Just state.displayMode }
+
+undoLastChangeDisplayMode ∷ State → State
+undoLastChangeDisplayMode state =
+  changeDisplayMode (fromMaybe Normal state.prevDisplayMode) state

@@ -138,17 +138,18 @@ comp =
 
 render ∷ State → HTML
 render state =
-  HH.div [ HP.classes [ HH.className "deck-dialog-share" ] ]
-   $ (case state.tokenSecret of
-         Nothing → [ HH.h4_ [ HH.text "Share deck" ] ]
-         Just _ →
-           [ HH.h4_ [ HH.text if state.tokenName ≡ ""
-                              then "Untitled token"
-                              else state.tokenName ⊕ " token"
-                    ]
-           , HH.h5_ [ HH.text $ printShareResume state.shareResume ]
-           ])
-  ⊕ [  HH.div
+  HH.div
+    [ HP.classes [ HH.className "deck-dialog-share" ] ]
+    $ (case state.tokenSecret of
+          Nothing → [ HH.h4_ [ HH.text "Share deck" ] ]
+          Just _ →
+            [ HH.h4_ [ HH.text if state.tokenName ≡ ""
+                               then "Untitled token"
+                               else state.tokenName ⊕ " token"
+                     ]
+            , HH.h5_ [ HH.text $ printShareResume state.shareResume ]
+            ])
+  ⊕ [ HH.div
        [ HP.classes [ HH.className "deck-dialog-body" ]
        , HE.onClick ( HE.input_ DismissError )
        ]
@@ -193,157 +194,157 @@ render state =
              [ Cp.nonSubmit
              , HP.classes if isJust state.tokenSecret ∨ state.loading then [ B.hidden ] else [ ]
              ]
-             [ HH.div [ HP.classes [ B.row ] ]
-                 [ HH.div [ HP.classes [ B.colXs3 ] ]
-                     [ HH.label_
-                         [ HH.text "Subject type"
-                         , HH.select
-                             [ HP.classes [ B.formControl ]
-                             , HE.onValueChange (HE.input (ChangeSubjectType ∘ readSubjectType))
-                             , HP.disabled state.submitting
-                             ]
-                             $ [ HH.option
-                                  [ HP.value "user" ]
-                                  [ HH.text "User" ]
-                               ]
-                             ⊕ (guard (not $ Arr.null state.groups)
-                                $>  HH.option
-                                      [ HP.value "group" ]
-                                      [ HH.text "Group" ]
-                               )
-                             ⊕ [ HH.option
-                                 [ HP.value "token" ]
-                                 [ HH.text "Token" ]
-                               ]
-                         ]
+             [ HH.label
+                 [ HP.for "subject-type" ]
+                 [ HH.text "Subject type" 
+                 , HH.select
+                     [ HP.classes [ B.formControl ]
+                     , HP.id_ "subject-type"
+                     , HE.onValueChange (HE.input (ChangeSubjectType ∘ readSubjectType))
+                     , HP.disabled state.submitting
                      ]
-                 , HH.div [ HP.classes [ B.colXs6 ] ]
-                     [ HH.label
-                         [ HP.classes
-                             $ (if state.subjectType ≠ User then [ B.hidden ] else [ ])
-                             ⊕ (if state.error ≡ Just Validation then [ B.hasError ] else [ ])
-                         ]
-                         [ HH.text "User email"
-                         , HH.input
-                             [ HP.classes [ B.formControl ]
-                             , HP.value state.email
-                             , HE.onValueInput $ HE.input EmailChanged
-                             , HP.placeholder "User email"
-                             , HP.inputType HP.InputText
-                             , HP.disabled state.submitting
-                             ]
-                         ]
-                     , HH.label
-                         [ HP.classes $ if state.subjectType ≠ Group then [ B.hidden ] else [ ]
-                         ]
-                         [ HH.text "Group path"
-                         , HH.select
-                             [ HP.classes [ B.formControl ]
-                             , HE.onValueChange (HE.input GroupSelected)
-                             , HP.disabled $ Arr.null state.groups ∨ state.submitting
-                             ]
-                             -- I find using such things in where a bit complicated
-                             -- because it's break context. OTOH, lambdas are not
-                             -- so fancy as named func. cryogenian.
-                             let
-                               renderOption ∷ FilePath → HTML
-                               renderOption group =
-                                 HH.option
-                                   [ HP.value $ Pt.printPath  group ]
-                                   [ HH.text $ Pt.printPath  group ]
-                             in
-                               map renderOption state.groups
-                         ]
-                     , HH.label
-                         [ HP.classes $ if state.subjectType ≠ Token then [ B.hidden ] else [ ]
-                         ]
-                         [ HH.text "Token name"
-                         , HH.input
-                             [ HP.classes [ B.formControl ]
-                             , HP.inputType HP.InputText
-                             , HP.placeholder "Token name"
-                             , HP.value state.tokenName
-                             , HE.onValueInput (HE.input TokenNameChanged)
-                             , HP.disabled state.submitting
-                             ]
-                         ]
-                     ]
-                 , HH.div [ HP.classes [ B.colXs3 ] ]
-                     [ HH.label_
-                         [ HH.text "Permission"
-                         , HH.select
-                             [ HP.classes [ B.formControl ]
-                             , HE.onValueChange (HE.input (ChangeShareResume ∘ readShareResume))
-                             , HP.disabled state.submitting
-                             ]
-
-                             [ HH.option
-                                 [ HP.value "view" ]
-                                 [ HH.text "View" ]
-                             , HH.option
-                                 [ HP.value "edit" ]
-                                 [ HH.text "Edit" ]
-                             ]
-                         ]
+                     $ [ HH.option
+                          [ HP.value "user" ]
+                          [ HH.text "User" ]
+                       ]
+                     ⊕ (guard (not $ Arr.null state.groups)
+                        $>  HH.option
+                              [ HP.value "group" ]
+                              [ HH.text "Group" ]
+                       )
+                     ⊕ [ HH.option
+                         [ HP.value "token" ]
+                         [ HH.text "Token" ]
+                       ]
+                 ]
+             , HH.label
+                 [ HP.classes
+                     $ (if state.subjectType ≠ User then [ B.hidden ] else [ ])
+                     ⊕ (if state.error ≡ Just Validation then [ B.hasError ] else [ ])
+                 , HP.for "user-email"
+                 ]
+                 [ HH.text "User email"
+                 , HH.input
+                     [ HP.classes [ B.formControl ]
+                     , HP.id_ "user-email"
+                     , HP.value state.email
+                     , HE.onValueInput $ HE.input EmailChanged
+                     , HP.placeholder "User email"
+                     , HP.inputType HP.InputText
+                     , HP.disabled state.submitting
                      ]
                  ]
+              , HH.label
+                  [ HP.classes $ if state.subjectType ≠ Group then [ B.hidden ] else [ ]
+                  , HP.for "group-path"
+                  ]
+                  [ HH.text "Group path"
+                  , HH.select
+                      [ HP.classes [ B.formControl ]
+                      , HP.id_ "group-path"
+                      , HE.onValueChange (HE.input GroupSelected)
+                      , HP.disabled $ Arr.null state.groups ∨ state.submitting
+                      ]
+                      -- I find using such things in where a bit complicated
+                      -- because it's break context. OTOH, lambdas are not
+                      -- so fancy as named func. cryogenian.
+                      let
+                        renderOption ∷ FilePath → HTML
+                        renderOption group =
+                          HH.option
+                            [ HP.value $ Pt.printPath  group ]
+                            [ HH.text $ Pt.printPath  group ]
+                      in
+                        map renderOption state.groups
+                  ]
+              , HH.label
+                  [ HP.classes $ if state.subjectType ≠ Token then [ B.hidden ] else [ ]
+                  , HP.for "token-name"
+                  ]
+                  [ HH.text "Token name"
+                  , HH.input
+                      [ HP.id_ "token-name"
+                      , HP.classes [ B.formControl ]
+                      , HP.inputType HP.InputText
+                      , HP.placeholder "Token name"
+                      , HP.value state.tokenName
+                      , HE.onValueInput (HE.input TokenNameChanged)
+                      , HP.disabled state.submitting
+                      ]
+                  ]
+             , HH.label
+                 [ HP.for "permission" ]
+                 [ HH.text "Permission"
+                 , HH.select
+                     [ HP.id_ "permission"
+                     , HP.classes [ B.formControl ]
+                     , HE.onValueChange (HE.input (ChangeShareResume ∘ readShareResume))
+                     , HP.disabled state.submitting
+                     ]
+                     [ HH.option
+                         [ HP.value "view" ]
+                         [ HH.text "View" ]
+                     , HH.option
+                         [ HP.value "edit" ]
+                         [ HH.text "Edit" ]
+                     ]
+                 ]
+             , HH.div
+                  [ HP.classes
+                      $ [ B.alert, B.alertDanger ]
+                      ⊕ (if state.showError
+                            ∧ (state.error ≡ Just Connection ∨ state.error ≡ Just GroupList)
+                           then [ ]
+                           else [ B.hidden ])
+                  , HE.onClick (HE.input_ DismissError)
+                  ]
+                  [ HH.text
+                      if state.error ≡ Just Connection
+                      then
+                        "This action couldn't be performed. "
+                        ⊕ "Please check your network connection and try again"
+                      else
+                        "Groups are unavailable. To share this deck with a group "
+                        ⊕ "please check your network connection and try again."
+                  ]
+             , HH.div
+                 [ HP.classes
+                     $ [ B.alert, B.alertInfo ]
+                     ⊕ (if state.showError ∧ state.error ≡ Just Validation then [ ] else [ B.hidden ])
+                 ]
+                 [ HH.text "Please check if user email is correct" ]
              ]
          ]
 
-   , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
-       $ [ HH.div
-           [ HP.classes
-               $ [ B.alert, B.alertDanger ]
-               ⊕ (if state.showError
-                     ∧ (state.error ≡ Just Connection ∨ state.error ≡ Just GroupList)
-                    then [ ]
-                    else [ B.hidden ])
-           , HE.onClick (HE.input_ DismissError)
-           ]
-           [ HH.text
-               if state.error ≡ Just Connection
-               then
-                 "This action couldn't be performed. "
-                 ⊕ "Please check your network connection and try again"
-               else
-                 "Groups are unavailable. To share this deck with a group "
-                 ⊕ "please check your network connection and try again."
-           ]
-       , HH.div
-           [ HP.classes
-               $ [ B.alert, B.alertInfo ]
-               ⊕ (if state.showError ∧ state.error ≡ Just Validation then [ ] else [ B.hidden ])
-           ]
-           [ HH.text
-               "Please check if user email is correct"
-           ]
-       , HH.button
-           [ HP.classes
-               $ [ B.btn, B.btnDefault ]
-               ⊕ (if state.loading then [ B.hidden ] else [ ])
-           , HP.buttonType HP.ButtonButton
-           , HE.onClick (HE.input_ Dismiss)
-           , HP.disabled state.submitting
-           ]
-           [ HH.text "Dismiss" ]
-       ]
-     ⊕  (if isJust state.tokenSecret
-           then [ ]
-           else
-           [ HH.button
+    , HH.div
+         [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+         $ [ HH.button
                [ HP.classes
-                   $ [ B.btn, B.btnPrimary ]
+                   $ [ B.btn, B.btnDefault ]
                    ⊕ (if state.loading then [ B.hidden ] else [ ])
-                   ⊕ (if isJust state.error && state.showError then [ B.hasError ] else [ ])
                , HP.buttonType HP.ButtonButton
-               , HE.onClick (HE.input_ Share)
-               , HP.disabled (state.submitting ∨
-                              ((state.email ≡ "" ∨ state.error ≡ Just Validation)
-                               ∧ state.subjectType ≡ User))
+               , HE.onClick (HE.input_ Dismiss)
+               , HP.disabled state.submitting
                ]
-               [ HH.text if state.submitting then "Sharing..." else  "Share" ]
-           ])
-   ]
+               [ HH.text "Dismiss" ]
+           ]
+           ⊕ (if isJust state.tokenSecret
+                then [ ]
+                else
+                [ HH.button
+                    [ HP.classes
+                        $ [ B.btn, B.btnPrimary ]
+                        ⊕ (if state.loading then [ B.hidden ] else [ ])
+                        ⊕ (if isJust state.error && state.showError then [ B.hasError ] else [ ])
+                    , HP.buttonType HP.ButtonButton
+                    , HE.onClick (HE.input_ Share)
+                    , HP.disabled (state.submitting ∨
+                                   ((state.email ≡ "" ∨ state.error ≡ Just Validation)
+                                    ∧ state.subjectType ≡ User))
+                    ]
+                    [ HH.text if state.submitting then "Sharing..." else  "Share" ]
+                ])
+    ]
 
 
 eval ∷ Query ~> DSL

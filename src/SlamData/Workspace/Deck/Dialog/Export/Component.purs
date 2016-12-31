@@ -51,7 +51,7 @@ import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.CSS as Rc
-import SlamData.Render.Common (glyph, fadeWhen)
+import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
@@ -113,8 +113,6 @@ data Query a
   | Dismiss a
   | Revoke a
   | ToggleShouldGenerateToken a
-  | TextAreaHovered a
-  | TextAreaLeft a
 
 comp ∷ H.Component State Query Slam
 comp = H.component { render, eval }
@@ -256,8 +254,6 @@ renderPublishIFrame state =
         ]
         [ HH.form
           [ CP.nonSubmit
-          , HE.onMouseOver (HE.input_ TextAreaHovered)
-          , HE.onMouseOut (HE.input_ TextAreaLeft)
           ]
           [ HH.div
               [ HP.classes [ B.formGroup ] ]
@@ -275,7 +271,6 @@ renderPublishIFrame state =
                   , HP.classes
                       $ [ B.btn, B.btnDefault, B.btnXs ]
                       ⊕ [ HH.className "textarea-copy-button" ]
-                      ⊕ fadeWhen (not state.hovered)
                   , HP.ref (H.action ∘ Init)
                   , HP.buttonType HP.ButtonButton
                   , HP.disabled state.submitting
@@ -450,10 +445,6 @@ eval (ToggleShouldGenerateToken next) = next <$ do
         Right _ → _ { errored = false, permToken = Nothing }
   H.modify _{shouldGenerateToken = not state.shouldGenerateToken}
   updateCopyVal
-eval (TextAreaHovered next) =
-  next <$ H.modify _{hovered = true}
-eval (TextAreaLeft next) =
-  next <$ H.modify _{hovered = false}
 
 workspaceTokenName ∷ UP.DirPath → OIDC.IdToken → QTA.TokenName
 workspaceTokenName workspacePath idToken =
