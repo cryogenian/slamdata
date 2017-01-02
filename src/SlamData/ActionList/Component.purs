@@ -108,22 +108,7 @@ derive newtype instance eqActionName :: Eq ActionName
 derive newtype instance eqActionDescription :: Eq ActionDescription
 derive newtype instance eqActionHighlighted :: Eq ActionHighlighted
 
-instance eqAction ∷ Eq a ⇒ Eq (Action a) where
-  eq GoBack GoBack =
-    true
-  eq (Do n1 i1 d1 h1 a1) (Do n2 i2 d2 h2 a2) =
-    n1 ≡ n2
-      ∧ i1 ≡ i2
-      ∧ d1 ≡ d2
-      ∧ h1 ≡ h2
-      ∧ a1 ≡ a2
-  eq (Drill n1 i1 d1 a1) (Drill n2 i2 d2 a2) =
-    n1 ≡ n2
-      ∧ i1 ≡ i2
-      ∧ d1 ≡ d2
-      ∧ a1 ≡ a2
-  eq _ _ =
-    false
+derive instance eqAction ∷ Eq a ⇒ Eq (Action a)
 
 initialState ∷ ∀ a. Array (Action a) → State a
 initialState actions =

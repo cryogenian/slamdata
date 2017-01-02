@@ -76,12 +76,7 @@ runEqModel
 runEqModel (EqModel m) =
   m
 
-instance eqEqModel ∷ Eq EqModel where
-  eq (EqModel m1) (EqModel m2) =
-    m1.name == m2.name
-      && m1.fieldType == m2.fieldType
-      && m1.defaultValue == m2.defaultValue
-
+derive instance eqEqModel ∷ Eq EqModel
 
 initialModel ∷ Model
 initialModel =

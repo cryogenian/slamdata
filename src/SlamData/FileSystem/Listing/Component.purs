@@ -68,13 +68,9 @@ data Query a
 
 data ItemSlot = ItemSlot Int Item
 
-instance eqItemSlot :: Eq ItemSlot where
-  eq (ItemSlot ix it) (ItemSlot ix' it') =
-    ix == ix' && it == it'
+derive instance eqItemSlot :: Eq ItemSlot
 
-instance ordItemSlot :: Ord ItemSlot where
-  compare (ItemSlot ix it) (ItemSlot ix' it') =
-    compare ix ix' <> compare it it'
+derive instance ordItemSlot :: Ord ItemSlot
 
 type StateP = H.ParentState State Item.State Query Item.Query Slam ItemSlot
 type QueryP = Coproduct Query (H.ChildF ItemSlot Item.Query)

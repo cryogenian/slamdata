@@ -38,13 +38,7 @@ type CSVOptionsRec =
   }
 newtype CSVOptions = CSVOptions CSVOptionsRec
 
-instance eqCSVOptions :: Eq CSVOptions where
-  eq (CSVOptions opts) (CSVOptions opts') =
-    opts.colDelimiter == opts'.colDelimiter
-    && opts.rowDelimiter == opts'.rowDelimiter
-    && opts.quoteChar == opts'.quoteChar
-    && opts.escapeChar == opts'.escapeChar
-    && opts.arrays == opts'.arrays
+derive instance eqCSVOptions :: Eq CSVOptions
 
 instance encodeJsonCSVOptions :: EncodeJson CSVOptions where
   encodeJson (CSVOptions r) =
@@ -104,9 +98,7 @@ type JSONOptionsRec =
   }
 newtype JSONOptions = JSONOptions JSONOptionsRec
 
-instance eqJsonOptions :: Eq JSONOptions where
-  eq (JSONOptions opts) (JSONOptions opts') =
-    opts.multivalues == opts'.multivalues && opts.precision == opts'.precision
+derive instance eqJsonOptions :: Eq JSONOptions
 
 instance encodeJsonJSONOptions :: EncodeJson JSONOptions where
   encodeJson (JSONOptions r) =
@@ -139,10 +131,7 @@ _precision = _JSONOptions <<< lens _.precision (_ { precision = _ })
 
 data ArrayMode = Flatten | Separate String
 
-instance eqArrayMode :: Eq ArrayMode where
-  eq Flatten Flatten = true
-  eq (Separate s) (Separate s') = s == s'
-  eq _ _ = false
+derive instance eqArrayMode :: Eq ArrayMode
 
 instance encodeJsonArrayMode :: EncodeJson ArrayMode where
   encodeJson Flatten =
@@ -171,15 +160,9 @@ separateValue _ = Nothing
 data MultiValueMode = ArrayWrapped | LineDelimited
 data PrecisionMode = Readable | Precise
 
-instance eqMultiValueMode :: Eq MultiValueMode where
-  eq ArrayWrapped ArrayWrapped = true
-  eq LineDelimited LineDelimited = true
-  eq _ _ = false
+derive instance eqMultiValueMode :: Eq MultiValueMode
 
-instance eqPrecisionMode :: Eq PrecisionMode where
-  eq Readable Readable = true
-  eq Precise Precise = true
-  eq _ _ = false
+derive instance eqPrecisionMode :: Eq PrecisionMode
 
 instance encodeJsonMultivalueMode :: EncodeJson MultiValueMode where
   encodeJson ArrayWrapped = encodeJson "ArrayWrapped"
