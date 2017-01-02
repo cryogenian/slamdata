@@ -40,21 +40,6 @@ sortItem isSearching sort a b =
   sortProjection true = resourcePath
   sortProjection _ = resourceName
 
-instance eqItem ∷ Eq Item where
-  eq (Item r) (Item r') = r ≡ r'
-  eq (SelectedItem r) (SelectedItem r') = r ≡ r'
-  eq (ActionsPresentedItem r) (ActionsPresentedItem r') = r ≡ r'
-  eq (PhantomItem r) (PhantomItem r') = r ≡ r'
-  eq _ _ = false
+derive instance eqItem ∷ Eq Item
 
-instance ordItem ∷ Ord Item where
-  compare (SelectedItem r) (SelectedItem r') = compare r r'
-  compare (SelectedItem _) _ = GT
-  compare _ (SelectedItem _) = LT
-  compare (PhantomItem r) (PhantomItem r') = compare r r'
-  compare (PhantomItem _) _ = LT
-  compare _ (PhantomItem _) = GT
-  compare (ActionsPresentedItem r) (ActionsPresentedItem r') = compare r r'
-  compare _ (ActionsPresentedItem _) = EQ
-  compare (ActionsPresentedItem _) _ = EQ
-  compare (Item r) (Item r') = compare r r'
+derive instance ordItem ∷ Ord Item

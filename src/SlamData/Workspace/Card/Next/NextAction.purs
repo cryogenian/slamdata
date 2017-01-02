@@ -95,11 +95,7 @@ description =
     Insert cty → "Insert a " ⊕ CT.cardName cty ⊕ " card"
     FindOutHowToInsert cty → "Find out how to insert a " ⊕ CT.cardName cty ⊕ " card"
 
-instance eqNextAction ∷ Eq NextAction where
-  eq (Insert cty1) (Insert cty2) = cty1 ≡ cty2
-  eq (FindOutHowToInsert cty1) (FindOutHowToInsert cty2) = cty1 ≡ cty2
-  eq _ _ = false
-
+derive instance eqNextAction ∷ Eq NextAction
 
 insert ∷ InsertableCardType → ActionList.Action NextAction
 insert =

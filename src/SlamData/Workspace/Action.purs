@@ -59,17 +59,6 @@ toAccessType New = Editable
 toAccessType (Load t) = t
 toAccessType (Exploring _) = Editable
 
-instance eqAccessType ∷ Eq Action where
-  eq New New = true
-  eq (Load at) (Load at') = at ≡ at'
-  eq (Exploring fp) (Exploring fp') = Pt.printPath fp ≡ Pt.printPath fp'
-  eq _ _ = false
+derive instance eqAccessType ∷ Eq Action
 
-instance ordAccessType ∷ Ord Action where
-  compare New New = EQ
-  compare New _ = LT
-  compare _ New = GT
-  compare (Load at) (Load at') = compare at at'
-  compare (Load _) _ = LT
-  compare _ (Load _) = GT
-  compare (Exploring fp) (Exploring fp') = compare (Pt.printPath fp) (Pt.printPath fp')
+derive instance ordAccessType ∷ Ord Action

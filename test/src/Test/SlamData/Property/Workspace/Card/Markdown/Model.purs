@@ -37,13 +37,9 @@ import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype JsonEncodableVarMapValue = JsonEncodableVarMapValue VM.VarMapValue
 
-instance eqJsonEncodableVarMapValue ∷ Eq JsonEncodableVarMapValue where
-  eq (JsonEncodableVarMapValue x) (JsonEncodableVarMapValue y) =
-    eq x y
+derive instance eqJsonEncodableVarMapValue ∷ Eq JsonEncodableVarMapValue
 
-instance ordJsonEncodableVarMapValue ∷ Ord JsonEncodableVarMapValue where
-  compare (JsonEncodableVarMapValue x) (JsonEncodableVarMapValue y) =
-    compare x y
+derive instance ordJsonEncodableVarMapValue ∷ Ord JsonEncodableVarMapValue
 
 getJsonEncodableVarMapValue
   ∷ JsonEncodableVarMapValue
