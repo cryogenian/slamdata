@@ -76,7 +76,6 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckPath (deckPath, deckPath')
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
-import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Eval.Card as EC
 import SlamData.Workspace.Eval.Deck as ED
@@ -436,38 +435,43 @@ deleteDeck opts = do
   pure unit
 
 loadDeck ∷ DeckOptions → DeckDSL Unit
-loadDeck opts = do
-  st ← H.get
-  deck ← liftH' $ P.getDeck opts.deckId
-  case deck of
-    Nothing →
-      H.modify _ { loadError = Just "Deck does not exist" }
-    Just { bus, model, status } → do
-      breaker ← subscribeToBus' (H.action ∘ HandleEval) bus
-      H.modify \s → s { breakers = Array.cons breaker s.breakers }
-      loadCards opts model status
-
-loadCards ∷ DeckOptions → Model.Deck → ED.EvalStatus → DeckDSL Unit
-loadCards opts deck status = do
-  st ← H.get
-  getCardDefs deck.cards >>= case _ of
-    Nothing →
-      H.modify _ { loadError = Just "Deck references non-existent cards" }
-    Just cardDefs → do
+loadDeck opts = mbLoadError =<< runMaybeT do
+  deck ← MaybeT $ liftH' $ P.getDeck opts.deckId
+  cardDefs ← MaybeT $ getCardDefs deck.model.cards
+  breaker ← lift $ subscribeToBus' (H.action ∘ HandleEval) deck.bus
+  case deck.status of
+    ED.NeedsEval cardId → lift do
+      let displayCards = [ Left DCS.PendingCard ]
+      H.modify
+        $ DCS.fromModel { name: deck.model.name, displayCards }
+        ∘ DCS.addBreaker breaker
+      liftH' $ P.queueEval 13 (opts.deckId L.: opts.cursor × cardId)
+    ED.PendingEval cardId → lift do
+      st ← H.get
+      active ← activeCardIndex
+      let displayCards = map Right cardDefs <> [ Left DCS.PendingCard ]
+      H.modify
+        $ (DCS._pendingCardIndex .~ DCS.cardIndexFromId cardId st)
+        ∘ (DCS._activeCardIndex .~ active)
+        ∘ DCS.fromModel { name: deck.model.name, displayCards }
+        ∘ DCS.addBreaker breaker
+      updateActiveState opts
+    ED.Completed port → lift do
       active ← activeCardIndex
       H.modify
-        $ (DCS.updateDisplayCards cardDefs status)
+        $ (DCS.updateCompletedCards cardDefs port)
         ∘ (DCS._activeCardIndex .~ active)
-        ∘ (DCS.fromModel { name: deck.name, displayCards: [] })
+        ∘ DCS.fromModel { name: deck.model.name, displayCards: [] }
+        ∘ DCS.addBreaker breaker
       updateActiveState opts
-      case status of
-        ED.NeedsEval cardId →
-          liftH' $ P.queueEval 13 (opts.deckId L.: opts.cursor × cardId)
-        _ → pure unit
   where
   activeCardIndex = do
     { cache } ← liftH' Wiring.expose
     map _.cardIndex <$> liftH' (Cache.get opts.deckId cache.activeState)
+
+  mbLoadError = case _ of
+    Nothing → H.modify _ { loadError = Just "Unable to load deck due to an inconsistent model" }
+    Just a  → pure a
 
 handleEval ∷ DeckOptions → ED.EvalMessage → DeckDSL Unit
 handleEval opts = case _ of
@@ -482,7 +486,7 @@ handleEval opts = case _ of
         H.modify _ { loadError = Just "Deck references non-existent cards" }
       Just cardDefs → do
         queryNextAction $ H.action $ Next.UpdateInput port
-        H.modify (DCS.updateDisplayCards cardDefs (ED.Completed port))
+        H.modify (DCS.updateCompletedCards cardDefs port)
         updateActiveState opts
   ED.NameChange name → H.modify _ { name = name }
   _ → pure unit

@@ -47,6 +47,7 @@ module SlamData.Workspace.Deck.Component.State
   , _NextActionCard
   , _ErrorCard
   , addMetaCard
+  , addBreaker
   , findLastCardIndex
   , findLastCard
   , findLastRealCard
@@ -58,7 +59,7 @@ module SlamData.Workspace.Deck.Component.State
   , prevCardId
   , eqDisplayCard
   , compareCardIndex
-  , updateDisplayCards
+  , updateCompletedCards
   , changeDisplayMode
   , undoLastChangeDisplayMode
   ) where
@@ -82,7 +83,6 @@ import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
-import SlamData.Workspace.Eval.Deck (EvalStatus(..))
 
 import Utils (hush)
 
@@ -275,6 +275,9 @@ addMetaCard card state =
   where
   init = A.filter isRight state.displayCards
 
+addBreaker ∷ Breaker Unit → State → State
+addBreaker breaker state = state { breakers = A.snoc state.breakers breaker }
+
 findLastCardIndex ∷ State → Maybe Int
 findLastCardIndex st =
   const (A.length st.displayCards - 1) <$> A.last st.displayCards
@@ -353,60 +356,40 @@ compareCardIndex a b cards =
     <$> A.findIndex (eq a) cards
     <*> A.findIndex (eq b) cards
 
-updateDisplayCards ∷ Array CardDef → EvalStatus → State → State
-updateDisplayCards defs status st =
+updateCompletedCards ∷ Array CardDef → Port.Port → State → State
+updateCompletedCards defs port st =
   st
-    { displayCards = displayCards
+    { displayCards = map Right realCards <> [ Left metaCard ]
     , activeCardIndex = activeIndex
-    , pendingCardIndex = pendingCardIndex
+    , pendingCardIndex = Nothing
     }
   where
-  metaCard = case status of
-    NeedsEval _ → PendingCard
-    PendingEval _ → PendingCard
-    Completed (Port.CardError str) → ErrorCard str
-    Completed port → NextActionCard port
+  metaCard = case port of
+    Port.CardError err → ErrorCard err
+    _ → NextActionCard port
 
-  pendingCardIndex = case status of
-    PendingEval cardId → cardIndexFromId' cardId displayCards
-    _ → Nothing
+  realCards = case A.head defs of
+    Nothing → []
+    Just { cardId } →
+      A.takeWhile (not ∘ eq cardId ∘ _.cardId)
+        (A.mapMaybe hush st.displayCards)
+        <> defs
 
-  displayCards =
-    case st.activeCardIndex, status, A.uncons defs of
-      Nothing, NeedsEval _, _ → [ Left metaCard ]
-      Nothing, PendingEval _, _ → [ Left metaCard ]
-      _, _, Nothing → [ Left metaCard ]
-      _, _, Just { head, tail } →
-        let
-          realCards = A.mapMaybe hush st.displayCards
-          initCards = A.takeWhile (not ∘ eq head.cardId ∘ _.cardId) realCards
-        in
-          (Right <$> initCards <> defs) <> [ Left metaCard ]
-
-  lenCards =
-    A.length displayCards
-
-  lastRealIndex =
-    if lenCards <= 1
-      then Nothing
-      else Just (lenCards - 2)
-
-  activeIndex =
-    case st.activeCardIndex, A.last displayCards of
-      -- If we already have an activeIndex, we should always preserve that.
-      -- We'll rely on the renderer to clamp as necessary when there are
-      -- too few cards.
-      Just ix, _ → Just ix
-      -- We should show errors, but we don't want to set the active index.
-      -- If the error card is resolved through some means we should then show
-      -- the top card.
-      _, Just (Left (ErrorCard _)) → Nothing
-      -- If the next action card is the only card, we should set the active
-      -- index. The ensures that when we add a card, we'll see the new card
-      -- instead of an error (if there is one).
-      _, Just (Left (NextActionCard _)) | lenCards ≡ 1 → Just 0
-      -- In all other cases we should show the last real card.
-      _, _ → lastRealIndex
+  activeIndex = case st.activeCardIndex, metaCard, A.length realCards of
+    -- If we already have an activeIndex, we should always preserve that.
+    -- We'll rely on the renderer to clamp as necessary when there are
+    -- too few cards.
+    Just ix, _, _ → Just ix
+    -- We should show errors, but we don't want to set the active index.
+    -- If the error card is resolved through some means we should then show
+    -- the top card.
+    _, ErrorCard _, _ → Nothing
+    -- If there are no real cards, we should go ahead and set the active
+    -- index to the meta card. This ensures that when we add a card, we'll
+    -- see the new card instead of an error (if there is one).
+    _, _, 0 → Just 0
+    -- If there are real cards, we should set it to the last real card.
+    _, _, n → Just (n - 1)
 
 changeDisplayMode ∷ DisplayMode → State → State
 changeDisplayMode displayMode state =
