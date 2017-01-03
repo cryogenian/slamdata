@@ -1,50 +1,60 @@
-.deck-dialog-wrapper .deck-dialog .deck-dialog-unshare {
-    .deck-dialog-body {
-        height: ~"calc(100% - 160px)";
-    }
-    .token-name-field {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    height: 100%;
-    .deck-dialog-body {
-        form {
-            height: 100%;
-            overflow: auto;
-        }
+.sd-unshare-subject {
+  display: flex;
+  flex-direction: row;
 
+  * {
+    flex: 0 0 auto;
+  }
+
+  *:not(:last-child) {
+    margin-right: 1rem;
+  }
+
+  .form-control {
+    width: auto;
+    input {
+      width: auto;
     }
-    .alert.share-loading {
-        margin-left: 0;
-        height: ~"calc(100% - 140px)";
+  }
+
+  label, span {
+    flex: 1 1 auto;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    vertical-align: middle;
+    display: inline-block;
+    line-height: 1.42857143;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .sd-unshare-subject-access-type {
+    flex: 0 0 auto;
+  }
+
+  .sd-url {
+    input {
+      flex: 1 1 auto;
+      display: inline-block;
+      vertical-align: middle;
+      background-color: #eee;
+      padding: 6px 12px;
+      box-shadow: 0;
+      margin-right: 0;
+      border: 1px solid #ccc;
+      line-height: 1.42857143;
+      font-size: 14px;
+      border-top-left-radius: 4px;
+      border-bottom-left-radius: 4px;
     }
-    .subject-label {
-        display: block
+    button {
+      margin-right: 0;
+      border-top-right-radius: 4px;
+      border-bottom-right-radius: 4px;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      margin-left: -1px;
     }
-    .row {
-        margin-bottom: 12px;
-        margin-left: 0;
-        margin-right: 0;
-        div {
-            line-height: 34px;
-            padding-left: 6px;
-            padding-right: 6px;
-        }
-    }
-    button.unshare-button {
-        min-width: 96px;
-    }
-    .has-error {
-        button {
-            border-color: #a94442;
-            box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
-            -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
-        }
-    }
-    .alert {
-        margin-bottom: 12px;
-        margin-left: 36px;
-        text-align: left;
-    }
+  }
 }

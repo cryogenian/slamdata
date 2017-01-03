@@ -34,13 +34,7 @@ runEnabledRecord :: EnabledRecord -> { ff :: Boolean
                                      }
 runEnabledRecord (EnabledRecord r) = r
 
-instance eqEnabledRecord :: Eq EnabledRecord where
-  eq (EnabledRecord r) (EnabledRecord r') =
-    r.ff == r'.ff &&
-    r.sf == r'.sf &&
-    r.fb == r'.fb &&
-    r.sb == r'.sb &&
-    r.value == r'.value
+derive instance eqEnabledRecord :: Eq EnabledRecord
 
 instance showEnabledRecord :: Show EnabledRecord where
   show (EnabledRecord r) =

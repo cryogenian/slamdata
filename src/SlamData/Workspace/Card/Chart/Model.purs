@@ -50,8 +50,7 @@ decode js
   -- so we have to fallback to a successful Nothing if there's a parse error.
   | otherwise = (Just <$> decodeJson js) <|> pure Nothing
 
-instance eqChartModel ∷ Eq ChartModel where
-  eq (PivotTableRenderer m1) (PivotTableRenderer m2) = PTRM.eqModel m1 m2
+derive instance eqChartModel ∷ Eq ChartModel
 
 instance arbitraryChartModel ∷ Arbitrary ChartModel where
   arbitrary = PivotTableRenderer <$> PTRM.genModel

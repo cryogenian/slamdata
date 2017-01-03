@@ -363,17 +363,9 @@ sortResource project direction a b
     Asc → compare (project a) (project b)
     Desc → compare (project b) (project a)
 
-instance eqResource ∷ Eq Resource where
-  eq (File p) (File p') = p ≡ p'
-  eq (Workspace p) (Workspace p') = p ≡ p'
-  eq (Directory p) (Directory p') = p ≡ p'
-  eq (Mount m) (Mount m') = m ≡ m'
-  eq _ _ = false
+derive instance eqResource ∷ Eq Resource
 
-instance eqMount ∷ Eq Mount where
-  eq (Database p) (Database p') = p ≡ p'
-  eq (View p) (View p') = p ≡ p'
-  eq _ _ = false
+derive instance eqMount ∷ Eq Mount
 
 instance resourceOrd ∷ Ord Resource where
   compare = sortResource resourcePath Asc

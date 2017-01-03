@@ -30,8 +30,6 @@ module SlamData.Notification
 
 import SlamData.Prelude
 
-import Data.Generic (gEq)
-
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Free (Free, liftF)
 
@@ -47,8 +45,7 @@ data Notification
 
 derive instance genericNotification :: Generic Notification
 
-instance eqNotification ∷ Eq Notification where
-  eq = gEq
+derive instance eqNotification ∷ Eq Notification
 
 data Action
   = ExpandGlobalMenu
@@ -74,8 +71,7 @@ optionsWithoutActionEq x y =
 
 newtype Details = Details String
 
-instance eqDetails ∷ Eq Details where
-  eq (Details x) (Details y) = eq x y
+derive instance eqDetails ∷ Eq Details
 
 newtype ActionOptions =
   ActionOptions

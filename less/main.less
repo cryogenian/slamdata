@@ -57,7 +57,7 @@ body {
 
 
 *[aria-hidden = "true"] {
-  display: none;
+  display: none !important;
 }
 
 .content {
@@ -78,9 +78,8 @@ button:focus {
 }
 
 .file-list-group {
-    position: absolute;
-    width: 568px;
-    max-height: 150px;
+    min-width: 568px;
+    height: 150px;
     overflow-y: scroll;
     border-bottom: 1px solid #ddd;
 
@@ -129,11 +128,6 @@ a.item-hidden, button.list-group-item.item-hidden {
 select.form-control, input.form-control, button.form-control {
     border-radius: 0;
     -webkit-appearance: none;
-}
-.input-group-btn {
-    button {
-        border-radius: 0;
-    }
 }
 .list-group {
     border-radius: 0;
@@ -437,14 +431,9 @@ button {
   .noselect;
 }
 
-.input-group-btn .btn{
-    height: 34px;
-}
-
 
 @import "bootstrap-overloads";
 @import "deck";
-@import "button";
 @import "dialog/download";
 @import "dialog/embed";
 @import "dialog/mount";
@@ -458,3 +447,4 @@ button {
 @import "notifications";
 @import "global-menu";
 @import "workspace";
+@import "button";

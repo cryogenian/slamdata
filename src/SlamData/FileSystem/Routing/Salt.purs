@@ -26,8 +26,7 @@ newtype Salt = Salt String
 runSalt :: Salt -> String
 runSalt (Salt s) = s
 
-instance eqSalt :: Eq Salt where
-  eq (Salt x) (Salt y) = eq x y
+derive instance eqSalt :: Eq Salt
 
 instance showSalt :: Show Salt where
   show (Salt s) = "Salt " <> show s

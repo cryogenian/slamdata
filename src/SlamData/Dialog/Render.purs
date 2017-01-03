@@ -21,28 +21,24 @@ import SlamData.Prelude
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Render.Common (classedDiv)
 
 modalDialog :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
 modalDialog children =
-  (classedDiv B.modalDialog)
+  (classedDiv $ H.className "deck-dialog")
   [ H.div [ HE.onClick (\_ -> HEH.stopPropagation $> Nothing)
           , HE.onMouseDown (\_ -> HEH.stopPropagation $> Nothing)
-          , P.classes [ B.modalContent ]
           ]
     children
   ]
 
 modalHeader :: forall f p. String -> H.HTML p (f Unit)
 modalHeader message =
-  classedDiv B.modalHeader
-  [ H.h4_ [ H.text message ] ]
+  H.h4_ [ H.text message ]
 
 modalBody :: forall f p. H.HTML p (f Unit) -> H.HTML p (f Unit)
-modalBody = classedDiv B.modalBody <<< pure
+modalBody = classedDiv (H.className "deck-dialog-body") <<< pure
 
 modalFooter :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
-modalFooter = classedDiv B.modalFooter
+modalFooter = classedDiv (H.className "deck-dialog-footer")

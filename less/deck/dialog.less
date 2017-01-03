@@ -1,70 +1,68 @@
-.deck-dialog-wrapper {
-    height: 100%;
-    margin-top: 24px;
-    padding-bottom: 48px;
-    .deck-dialog {
-        height: 100%;
-        background: white;
-        padding-left: 20px;
-        padding-right: 20px;
-        .deck-dialog-error, .deck-dialog-embed {
-            height: 100%;
-        }
-        h4 { padding-top: 20px }
-        .deck-dialog-body {
-            height: ~"calc(100% - 140px)";
-            form {
-                width: 100%;
-                .input-group {
-                    width: 100%;
-                }
+.deck-dialog-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.625);
+  z-index: 9000;
+}
 
-                .textarea-copy-button {
-                    position: absolute;
-                    top: 80px;
-                    right: 28px;
-
-                }
+.deck-dialog > div {
+    z-index: 9001;
+    box-shadow: 0 19px 38px rgba(0, 0, 0, 0.666), 0 15px 12px rgba(0, 0, 0, 0.666);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    max-height: 95%;
+    max-width: 95%;
+    background: white;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 1rem;
+    padding-top: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transform: translate(-50%, -50%);
+    display: flex !important;
+    flex-direction: column;
+    h4 {
+      flex: 0 0 auto;
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+    }
+    .deck-dialog-body {
+        flex: 1 1 auto;
+        position: relative;
+        overflow-y: auto;
+        overflow-x: hidden;
+        min-height: 4rem;
+        form {
+            .textarea-copy-button {
+              position: absolute;
+              top: 0;
+              right: 0;
             }
         }
-        .deck-dialog-cardpath-card:not(:last-child)::after {
-          content: ", ";
+    }
+    .deck-dialog-cardpath-card:not(:last-child)::after {
+      content: ", ";
+    }
+    .deck-dialog-footer {
+        flex: 0 0 auto;
+        margin-top: 2rem;
+        text-align: right;
+        .btn {
+          margin-left: 1rem;
+          margin-bottom: 1rem;
         }
-        .deck-dialog-footer {
-            position: absolute;
-            bottom: 36px;
-            text-align: right;
-            width: 100%;
-            right: 20px;
-            button, a {
-                margin-left: 20px;
-            }
-        }
-        .deck-dialog-embed {
-            height: 100%;
-            .deck-dialog-body {
-                height: ~"calc(100% - 160px)";
-                .share-loading {
-                    margin-left: 0;
-                    height: 100%;
-                }
-            }
-            .alert {
-                margin-bottom: 12px;
-                margin-left: 36px;
-                text-align: left;
-            }
-            .deck-dialog-body form {
-                height: 100%;
-                .form-group {
-                    height: 100%;
-                    textarea {
-                        resize: none;
-                        height: ~"calc(100% - 48px)";
-                        min-height: 60px;
-                    }
-                }
-            }
-        }
+    }
+    textarea {
+        resize: none;
+        height: 10rem;
+        min-height: 60px;
+    }
+    .container-fluid {
+      padding: 0;
     }
 }

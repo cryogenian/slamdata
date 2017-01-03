@@ -189,14 +189,9 @@ modifyAt = flip runCursor go
   go orn ps ix r =
     Split orn (fromMaybe ps (List.modifyAt ix (map (const r)) ps))
 
-instance eqPane ∷ Eq a ⇒ Eq (Pane a) where
-  eq (Cell a) (Cell b) = eq a b
-  eq (Split orn1 ps1) (Split orn2 ps2) = eq orn1 orn2 && eq ps1 ps2
-  eq _ _ = false
+derive instance eqPane ∷ Eq a ⇒ Eq (Pane a)
 
-instance functorPane ∷ Functor Pane where
-  map f (Cell a) = Cell (f a)
-  map f (Split orn as) = Split orn (map (map (map f)) as)
+derive instance functorPane ∷ Functor Pane
 
 instance foldablePane ∷ Foldable Pane where
   foldMap f (Cell a) = f a

@@ -77,19 +77,11 @@ newtype SlamM eff a = SlamM (Free (SlamF eff) a)
 unSlamM ∷ ∀ eff. SlamM eff ~> Free (SlamF eff)
 unSlamM (SlamM a) = a
 
-instance functorSlamM ∷ Functor (SlamM eff) where
-  map f (SlamM a) = SlamM (map f a)
-
-instance applySlamM ∷ Apply (SlamM eff) where
-  apply (SlamM a) (SlamM b) = SlamM (a <*> b)
-
-instance applicativeSlamM ∷ Applicative (SlamM eff) where
-  pure = SlamM ∘ pure
-
-instance bindSlamM ∷ Bind (SlamM eff) where
-  bind (SlamM a) f = SlamM (a >>= unSlamM ∘ f)
-
-instance monadSlamM ∷ Monad (SlamM eff)
+derive newtype instance functorSlamM ∷ Functor (SlamM eff)
+derive newtype instance applySlamM ∷ Apply (SlamM eff)
+derive newtype instance applicativeSlamM ∷ Applicative (SlamM eff)
+derive newtype instance bindSlamM ∷ Bind (SlamM eff)
+derive newtype instance monadSlamM ∷ Monad (SlamM eff)
 
 instance monadEffSlamM ∷ MonadEff eff (SlamM eff) where
   liftEff = SlamM ∘ liftF ∘ Aff ∘ liftEff
@@ -136,9 +128,9 @@ instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
 
 newtype SlamA eff a = SlamA (FreeAp (SlamM eff) a)
 
-derive newtype instance functorSlamA :: Functor (SlamA eff)
-derive newtype instance applySlamA :: Apply (SlamA eff)
-derive newtype instance applicativeSlamA :: Applicative (SlamA eff)
+derive newtype instance functorSlamA ∷ Functor (SlamA eff)
+derive newtype instance applySlamA ∷ Apply (SlamA eff)
+derive newtype instance applicativeSlamA ∷ Applicative (SlamA eff)
 
 --------------------------------------------------------------------------------
 
