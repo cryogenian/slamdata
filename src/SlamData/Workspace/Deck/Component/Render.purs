@@ -119,7 +119,7 @@ deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp (HP.InteractiveEvents 
 deckProperties opts =
   [ HP.key "deck-container"
   , HP.ref (H.action ∘ SetCardElement)
-  ] ⊕ (guard (L.length opts.cursor <= 1) $>
+  ] ⊕ (guard (L.length opts.displayCursor <= 1) $>
         HE.onMouseDown \_ → HEH.stopPropagation $> Just (H.action Focus))
 
 renderName ∷ String → DeckHTML

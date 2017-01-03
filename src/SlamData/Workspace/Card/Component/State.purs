@@ -132,7 +132,7 @@ initialCardState ∷ CardState
 initialCardState =
   { element: Nothing
   , breaker: Nothing
-  , pending: false
+  , pending: true
   , bus: Nothing
   }
 

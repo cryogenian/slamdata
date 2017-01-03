@@ -18,7 +18,6 @@ module SlamData.Workspace.Eval.Persistence where
 
 import SlamData.Prelude
 
-import Control.Comonad.Cofree as Cofree
 import Control.Monad.Aff.AVar (AVar, modifyVar, killVar, peekVar, putVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
@@ -27,6 +26,7 @@ import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Throw (class MonadThrow, throw)
 
 import Data.Array as Array
+import Data.Lens ((^?))
 import Data.List as List
 import Data.List (List(..), (:))
 import Data.Map (Map)
@@ -58,7 +58,7 @@ import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Eval as Eval
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
-import SlamData.Workspace.Eval.Graph (unfoldGraph, EvalGraph)
+import SlamData.Workspace.Eval.Graph (pendingGraph, EvalGraph)
 import SlamData.Workspace.Eval.Traverse (TraverseCard(..), TraverseDeck(..), unfoldModelTree)
 import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Legacy (isLegacy, loadCompatWorkspace, pruneLegacyData)
@@ -147,16 +147,16 @@ getEvaluatedCards = map (flip bind (Array.foldM go (mempty × Port.Initial))) �
 
 publishCardChange ∷ ∀ f m. Persist f m (Card.DisplayCoord → Card.Model → m Unit)
 publishCardChange source@(_ × cardId) model = do
+  { eval } ← Wiring.expose
   putCard cardId model
-  mbGraph ← snapshotGraph cardId
-  for_ mbGraph \graph → do
-    queueEval' defaultEvalDebounce source graph
-    queueSaveDefault
-    let card = (Cofree.head graph).card
-    liftAff $ Bus.write (Card.ModelChange source model) card.bus
-    for_ card.decks \deckId →
-      getDeck deckId >>= traverse_ \deck →
-        liftAff $ Bus.write (Deck.CardChange cardId) deck.bus
+  card ← unwrapOrExn "Card not found" =<< Cache.get cardId eval.cards
+  graph ← snapshotGraph cardId
+  queueEval' defaultEvalDebounce source graph
+  queueSaveDefault
+  Eval.publish card (Card.ModelChange source model)
+  for_ card.decks \deckId →
+    getDeck deckId >>= traverse_
+      (flip Eval.publish (Deck.CardChange cardId))
 
 populateGraph
   ∷ ∀ f m
@@ -174,7 +174,7 @@ populateGraph oldDecks oldCards rootParent root = do
       cell ← Cache.get deckId eval.decks >>= case _, Map.lookup deckId oldDecks of
         Just cell, _ → pure cell
         _, Just cell → pure cell { model = deck }
-        _, _ → makeDeckCell deck
+        _, _ → makeDeckCell deck (Deck.evalStatusFromCards deck.cards)
       cardCells ←
         List.foldM (goCard eval deckId) mempty cards >>= case _ of
           (lastId × last) : tail -> do
@@ -212,13 +212,12 @@ rebuildGraph = do
   Cache.restore mempty eval.cards
   populateGraph decks cards Nothing graph
 
-snapshotGraph ∷ ∀ f m. Persist f m (Card.Id → m (Maybe EvalGraph))
+snapshotGraph ∷ ∀ f m. Persist f m (Card.Id → m EvalGraph)
 snapshotGraph cardId = do
   { eval } ← Wiring.expose
-  unfoldGraph
-    <$> Cache.snapshot eval.cards
-    <*> Cache.snapshot eval.decks
-    <*> pure cardId
+  decks ← Cache.snapshot eval.decks
+  cards ← Cache.snapshot eval.cards
+  pure (pendingGraph (pure cardId) { decks, cards })
 
 queueSave ∷ ∀ f m. Persist f m (Int → m Unit)
 queueSave ms = do
@@ -234,16 +233,22 @@ queueSaveDefault ∷ ∀ f m. Persist f m (m Unit)
 queueSaveDefault = queueSave defaultSaveDebounce
 
 queueEval' ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → EvalGraph → m Unit)
-queueEval' ms source@(_ × cardId) graph = do
-  { eval } ← Wiring.expose
-  let pending = { source, graph, avar: _ }
-  debounce ms cardId pending eval.pendingEvals
-    (Eval.notifyDecks (Deck.Pending cardId) graph)
-    (Eval.evalGraph source graph)
+queueEval' ms source@(_ × cardId) graph =
+  if Map.isEmpty graph.decks
+    then pure unit
+    else do
+      { eval } ← Wiring.expose
+      let pending = { source, graph, avar: _ }
+      Cache.merge graph.decks eval.decks
+      Cache.merge graph.cards eval.cards
+      debounce ms cardId pending eval.pendingEvals
+        (for_ graph.decks \deck →
+          for_ (deck.status ^? Deck._PendingEval) (Eval.publish deck ∘ Deck.Pending))
+        (Eval.evalGraph (pure source))
 
 queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → m Unit)
 queueEval ms source@(_ × cardId) =
-  traverse_ (queueEval' ms source) =<< snapshotGraph cardId
+  queueEval' ms source =<< snapshotGraph cardId
 
 queueEvalImmediate ∷ ∀ f m. Persist f m (Card.DisplayCoord → m Unit)
 queueEvalImmediate = queueEval 0
@@ -261,11 +266,11 @@ freshWorkspace anyCards = do
   { eval } ← Wiring.expose
   genCards ← traverse genCard anyCards
   deckId ← liftAff DID.make
-  bus ← liftAff Bus.make
   let
     cards = Map.fromFoldable genCards
-    deck = Deck.emptyDeck { cards = fst <$> genCards }
-    cell = { bus, parent: Nothing, model: deck }
+    cardIds = fst <$> genCards
+    deck = Deck.emptyDeck { cards = cardIds }
+  cell ← makeDeckCell deck (Deck.evalStatusFromCards cardIds)
   graph ← unwrapOrExn "Cannot create workspace" $
     unfoldModelTree (Map.singleton deckId deck) cards deckId
   Cache.put deckId cell eval.decks
@@ -277,11 +282,11 @@ freshWorkspace anyCards = do
       cardId ← liftAff CID.make
       pure (cardId × model)
 
-freshDeck ∷ ∀ m. PersistEnv m (Deck.Model → m (Deck.Id × Deck.Cell))
-freshDeck model = do
+freshDeck ∷ ∀ m. PersistEnv m (Deck.Model → Deck.EvalStatus → m (Deck.Id × Deck.Cell))
+freshDeck model status = do
   { eval } ← Wiring.expose
   deckId ← liftAff DID.make
-  cell ← makeDeckCell model
+  cell ← makeDeckCell model status
   Cache.put deckId cell eval.decks
   pure (deckId × cell)
 
@@ -315,7 +320,7 @@ wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
 wrapDeck deckId = do
   cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
   parentCardId × _ ← freshCard (Just Port.Initial) Set.empty (CM.singletonDraftboard deckId)
-  parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId }
+  parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId } (Deck.NeedsEval parentCardId)
   updateRootOrParent deckId parentDeckId cell.parent
   queueSaveDefault
   pure parentDeckId
@@ -323,11 +328,11 @@ wrapDeck deckId = do
 wrapAndMirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
 wrapAndMirrorDeck deckId = do
   cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
-  mirrorDeckId × _ ← freshDeck DM.emptyDeck { cards = cell.model.cards }
+  mirrorDeckId × _ ← freshDeck DM.emptyDeck { cards = cell.model.cards } cell.status
   parentCardId × _ ←
     freshCard (Just Port.Initial) Set.empty $
       CM.splitDraftboard Orn.Vertical (List.fromFoldable [ deckId, mirrorDeckId ])
-  parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId }
+  parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId } (Deck.NeedsEval parentCardId)
   cloneActiveStateTo mirrorDeckId deckId
   updateRootOrParent deckId parentDeckId cell.parent
   queueSaveDefault
@@ -337,7 +342,7 @@ mirrorDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Id → m Deck.Id)
 mirrorDeck deckId parentId = do
   cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
   card ← unwrapOrExn "Card not found" =<< getCard parentId
-  mirrorDeckId × _ ← freshDeck DM.emptyDeck { cards = cell.model.cards }
+  mirrorDeckId × _ ← freshDeck DM.emptyDeck { cards = cell.model.cards } cell.status
   parentModel ← unwrapOrExn "Cannot mirror deck" $ CM.mirrorInDraftboard deckId mirrorDeckId card.model
   cloneActiveStateTo mirrorDeckId deckId
   putCard parentId parentModel
@@ -402,7 +407,7 @@ wrapAndGroupDeck orn bias deckId siblingId = do
           Layout.SideA → [ deckId, siblingId ]
           Layout.SideB → [ siblingId, deckId ]
       parentCardId × _ ← freshCard (Just Port.Initial) Set.empty $ CM.splitDraftboard orn (List.fromFoldable splits)
-      parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId }
+      parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId } (Deck.NeedsEval parentCardId)
       let
         layout' = layout <#> case _ of
           Just did | did ≡ deckId → Nothing
@@ -443,7 +448,7 @@ renameDeck ∷ ∀ f m. Persist f m (Deck.Id → String → m Unit)
 renameDeck deckId name = do
   cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
   putDeck deckId (cell.model { name = name })
-  liftAff $ Bus.write (Deck.NameChange name) cell.bus
+  Eval.publish cell (Deck.NameChange name)
   queueSaveDefault
   pure unit
 
@@ -458,7 +463,7 @@ addCard deckId cty = do
   cardId × _ ← freshCard (Just input) Set.empty $ Card.cardModelOfType input cty
   putDeck deckId deck.model { cards = Array.snoc deck.model.cards cardId }
   rebuildGraph
-  liftAff $ Bus.write (Deck.CardChange cardId) deck.bus
+  Eval.publish deck (Deck.CardChange cardId)
   queueSaveDefault
   queueEvalImmediate (Card.toAll cardId)
   pure cardId
@@ -479,7 +484,7 @@ removeCard deckId cardId = do
   putDeck deckId deck'
   rebuildGraph
   queueSaveDefault
-  liftAff $ Bus.write (Deck.Complete cardIds.init (fromMaybe Port.Initial output)) deck.bus
+  Eval.publish deck (Deck.Complete cardIds.init (fromMaybe Port.Initial output))
 
 updateRootOrParent ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → Maybe Card.Id → m Unit)
 updateRootOrParent oldId newId = case _ of
@@ -508,14 +513,10 @@ cloneActiveStateTo to from = do
   activeState ← Cache.get from cache.activeState
   for_ activeState \as → Cache.put to as cache.activeState
 
-makeDeckCell
-  ∷ ∀ m
-  . MonadAff SlamDataEffects m
-  ⇒ Deck.Model
-  → m Deck.Cell
-makeDeckCell model = do
+makeDeckCell ∷ ∀ m. MonadAff SlamDataEffects m ⇒ Deck.Model → Deck.EvalStatus → m Deck.Cell
+makeDeckCell model status =  do
   bus ← liftAff Bus.make
-  pure { bus, model, parent: Nothing }
+  pure { bus, model, parent: Nothing, status }
 
 makeCardCell
   ∷ ∀ m
@@ -536,6 +537,7 @@ makeCardCell input next model = do
     , state: Nothing
     , sources: Set.empty
     , tick: Nothing
+    , pending: Nothing
     } ∷ Card.Cell
 
 debounce

@@ -76,7 +76,6 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckPath (deckPath, deckPath')
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
-import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Eval.Card as EC
 import SlamData.Workspace.Eval.Deck as ED
@@ -343,10 +342,11 @@ updateActiveState ∷ DeckOptions → DeckDSL Unit
 updateActiveState opts = do
   st ← H.get
   { cache } ← liftH' Wiring.expose
-  for_ st.activeCardIndex \cardIndex → do
+  for_ st.activeCardIndex \cardIndex →
     liftH' $ Cache.put opts.deckId { cardIndex } cache.activeState
-    for_ (DCS.cardIdFromIndex cardIndex st) \cardId →
-      void $ queryCardEval cardId $ H.action CQ.ActivateCard
+  case DCS.activeCard st of
+    Just (Right { cardId }) → void $ queryCardEval cardId $ H.action CQ.ActivateCard
+    _ → pure unit
 
 updateBackSide ∷ DeckOptions → DeckDSL Unit
 updateBackSide { cursor } = do
@@ -435,63 +435,43 @@ deleteDeck opts = do
   pure unit
 
 loadDeck ∷ DeckOptions → DeckDSL Unit
-loadDeck opts = do
-  st ← H.get
-  deck ← liftH' $ P.getDeck opts.deckId
-  case deck of
-    Nothing →
-      H.modify _ { loadError = Just "Deck does not exist" }
-    Just { bus, model } → do
-      breaker ← subscribeToBus' (H.action ∘ HandleEval) bus
-      H.modify \s → s
-        { displayCards = [ Left DCS.PendingCard ]
-        , breakers = Array.cons breaker s.breakers
-        }
-      loadCards opts model
-
-loadCards ∷ DeckOptions → Model.Deck → DeckDSL Unit
-loadCards opts deck = do
-  st ← H.get
-  case Array.head deck.cards of
-    Nothing → setEmptyDeck
-    Just cardId → do
-      evalCells ← liftH' $ P.getEvaluatedCards deck.cards
-      case evalCells of
-        Just (cells × port) → setEvaluatedDeck st (Array.zip deck.cards cells) port
-        Nothing → setUnevaluatedDeck st cardId
+loadDeck opts = mbLoadError =<< runMaybeT do
+  deck ← MaybeT $ liftH' $ P.getDeck opts.deckId
+  cardDefs ← MaybeT $ getCardDefs deck.model.cards
+  breaker ← lift $ subscribeToBus' (H.action ∘ HandleEval) deck.bus
+  case deck.status of
+    ED.NeedsEval cardId → lift do
+      let displayCards = [ Left DCS.PendingCard ]
+      H.modify
+        $ DCS.fromModel { name: deck.model.name, displayCards }
+        ∘ DCS.addBreaker breaker
+      liftH' $ P.queueEval 13 (opts.deckId L.: opts.cursor × cardId)
+    ED.PendingEval cardId → lift do
+      st ← H.get
+      active ← activeCardIndex
+      let displayCards = map Right cardDefs <> [ Left DCS.PendingCard ]
+      H.modify
+        $ (DCS._pendingCardIndex .~ DCS.cardIndexFromId cardId st)
+        ∘ (DCS._activeCardIndex .~ active)
+        ∘ DCS.fromModel { name: deck.model.name, displayCards }
+        ∘ DCS.addBreaker breaker
+      updateActiveState opts
+    ED.Completed port → lift do
+      active ← activeCardIndex
+      H.modify
+        $ (DCS.updateCompletedCards cardDefs port)
+        ∘ (DCS._activeCardIndex .~ active)
+        ∘ DCS.fromModel { name: deck.model.name, displayCards: [] }
+        ∘ DCS.addBreaker breaker
+      updateActiveState opts
   where
-  setEmptyDeck = do
-    H.modify
-      $ (DCS._activeCardIndex .~ Just 0)
-      ∘ DCS.fromModel
-          { name: deck.name
-          , displayCards: [ Left (DCS.NextActionCard Port.Initial) ]
-          }
-    updateCardSize
-
-  setUnevaluatedDeck st cardId = do
-    active ← activeCardIndex st
-    H.modify
-      $ (DCS._activeCardIndex .~ active)
-      ∘ DCS.fromModel
-          { name: deck.name
-          , displayCards: [ Left DCS.PendingCard ]
-          }
-    liftH' $ P.queueEval 0 (opts.deckId L.: opts.cursor × cardId)
-    updateCardSize
-
-  setEvaluatedDeck st cells port = do
-    active ← activeCardIndex st
-    queryNextAction $ H.action $ Next.UpdateInput port
-    H.modify
-      $ (DCS.updateDisplayCards (mkDisplayCard <$> cells) port)
-      ∘ (DCS._activeCardIndex .~ active)
-    updateCardSize
-    updateActiveState opts
-
-  activeCardIndex st = do
+  activeCardIndex = do
     { cache } ← liftH' Wiring.expose
     map _.cardIndex <$> liftH' (Cache.get opts.deckId cache.activeState)
+
+  mbLoadError = case _ of
+    Nothing → H.modify _ { loadError = Just "Unable to load deck due to an inconsistent model" }
+    Just a  → pure a
 
 handleEval ∷ DeckOptions → ED.EvalMessage → DeckDSL Unit
 handleEval opts = case _ of
@@ -501,19 +481,23 @@ handleEval opts = case _ of
       $ (DCS._pendingCardIndex .~ DCS.cardIndexFromId cardId st)
       ∘ (DCS.addMetaCard DCS.PendingCard)
   ED.Complete cardIds port → do
-    mbCells ← liftH' $ P.getCards cardIds
-    for_ (map mkDisplayCard ∘ Array.zip cardIds <$> mbCells) \displayCards → do
-      queryNextAction $ H.action $ Next.UpdateInput port
-      H.modify (DCS.updateDisplayCards displayCards port)
-      updateCardSize
-      updateActiveState opts
-  ED.NameChange name → do
-    H.modify _ { name = name }
-  _ →
-    pure unit
+    getCardDefs cardIds >>= case _ of
+      Nothing →
+        H.modify _ { loadError = Just "Deck references non-existent cards" }
+      Just cardDefs → do
+        queryNextAction $ H.action $ Next.UpdateInput port
+        H.modify (DCS.updateCompletedCards cardDefs port)
+        updateActiveState opts
+  ED.NameChange name → H.modify _ { name = name }
+  _ → pure unit
 
-mkDisplayCard ∷ CardId × EC.Cell → DCS.CardDef
-mkDisplayCard (cardId × cell) = { cardId, cardType: Card.modelCardType cell.model }
+getCardDefs ∷ Array CardId → DeckDSL (Maybe (Array DCS.CardDef))
+getCardDefs cardIds =
+  sequence <$> for cardIds \cardId →
+    map (mkCardDef cardId) <$> liftH' (P.getCard cardId)
+
+mkCardDef ∷ CardId → EC.Cell → DCS.CardDef
+mkCardDef cardId cell = { cardId, cardType: Card.modelCardType cell.model }
 
 getDeckTree ∷ DeckId → DeckDSL (Maybe (ET.TraverseDeck ED.Cell EC.Cell))
 getDeckTree deckId = do

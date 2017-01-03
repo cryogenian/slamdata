@@ -47,6 +47,7 @@ module SlamData.Workspace.Deck.Component.State
   , _NextActionCard
   , _ErrorCard
   , addMetaCard
+  , addBreaker
   , findLastCardIndex
   , findLastCard
   , findLastRealCard
@@ -58,7 +59,7 @@ module SlamData.Workspace.Deck.Component.State
   , prevCardId
   , eqDisplayCard
   , compareCardIndex
-  , updateDisplayCards
+  , updateCompletedCards
   , changeDisplayMode
   , undoLastChangeDisplayMode
   ) where
@@ -274,6 +275,9 @@ addMetaCard card state =
   where
   init = A.filter isRight state.displayCards
 
+addBreaker ∷ Breaker Unit → State → State
+addBreaker breaker state = state { breakers = A.snoc state.breakers breaker }
+
 findLastCardIndex ∷ State → Maybe Int
 findLastCardIndex st =
   const (A.length st.displayCards - 1) <$> A.last st.displayCards
@@ -303,8 +307,11 @@ fromModel { name, displayCards } state =
     }
 
 cardIndexFromId ∷ CardId → State → Maybe Int
-cardIndexFromId coord =
-  A.findIndex (eq (Just coord) ∘ map _.cardId ∘ hush) ∘ _.displayCards
+cardIndexFromId cardId = cardIndexFromId' cardId ∘ _.displayCards
+
+cardIndexFromId' ∷ CardId → Array DisplayCard → Maybe Int
+cardIndexFromId' cardId =
+  A.findIndex (eq (Just cardId) ∘ map _.cardId ∘ hush)
 
 cardIdFromIndex ∷ Int → State → Maybe CardId
 cardIdFromIndex i st =
@@ -349,39 +356,40 @@ compareCardIndex a b cards =
     <$> A.findIndex (eq a) cards
     <*> A.findIndex (eq b) cards
 
-updateDisplayCards ∷ Array CardDef → Port.Port → State → State
-updateDisplayCards defs port st =
+updateCompletedCards ∷ Array CardDef → Port.Port → State → State
+updateCompletedCards defs port st =
   st
-    { displayCards = displayCards
+    { displayCards = map Right realCards <> [ Left metaCard ]
     , activeCardIndex = activeIndex
     , pendingCardIndex = Nothing
     }
   where
-  lastIndex =
-    A.length displayCards - 1
+  metaCard = case port of
+    Port.CardError err → ErrorCard err
+    _ → NextActionCard port
 
-  displayCards =
-    case A.uncons defs of
-      Just { head, tail } →
-        let
-          realCards = A.mapMaybe hush st.displayCards
-          initCards = A.takeWhile (not ∘ eq head.cardId ∘ _.cardId) realCards
-          newCards = A.cons head tail
-          metaCard =
-            pure $ Left case port of
-              Port.CardError str → ErrorCard str
-              _ → NextActionCard port
-        in
-          (Right <$> initCards <> newCards) <> metaCard
-      Nothing →
-        [ Left (NextActionCard Port.Initial) ]
+  realCards = case A.head defs of
+    Nothing → []
+    Just { cardId } →
+      A.takeWhile (not ∘ eq cardId ∘ _.cardId)
+        (A.mapMaybe hush st.displayCards)
+        <> defs
 
-  activeIndex =
-    case st.activeCardIndex, A.last displayCards of
-      Nothing, Nothing → Nothing
-      Nothing, Just (Left (ErrorCard _)) → Nothing
-      Nothing, Just _ → Just (lastIndex - 1)
-      Just ix, _ → Just ix
+  activeIndex = case st.activeCardIndex, metaCard, A.length realCards of
+    -- If we already have an activeIndex, we should always preserve that.
+    -- We'll rely on the renderer to clamp as necessary when there are
+    -- too few cards.
+    Just ix, _, _ → Just ix
+    -- We should show errors, but we don't want to set the active index.
+    -- If the error card is resolved through some means we should then show
+    -- the top card.
+    _, ErrorCard _, _ → Nothing
+    -- If there are no real cards, we should go ahead and set the active
+    -- index to the meta card. This ensures that when we add a card, we'll
+    -- see the new card instead of an error (if there is one).
+    _, _, 0 → Just 0
+    -- If there are real cards, we should set it to the last real card.
+    _, _, n → Just (n - 1)
 
 changeDisplayMode ∷ DisplayMode → State → State
 changeDisplayMode displayMode state =
