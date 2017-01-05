@@ -26,11 +26,11 @@ import Quasar.FS as QFS
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring.Cache as Cache
-import SlamData.Workspace.Card.BuildChart.Gauge.Model as BuildGauge
-import SlamData.Workspace.Card.BuildChart.Graph.Model as BuildGraph
-import SlamData.Workspace.Card.BuildChart.Legacy as ChartLegacy
-import SlamData.Workspace.Card.BuildChart.Metric.Model as BuildMetric
-import SlamData.Workspace.Card.BuildChart.Sankey.Model as BuildSankey
+import SlamData.Workspace.Card.Setups.Chart.Gauge.Model as BuildGauge
+import SlamData.Workspace.Card.Setups.Chart.Graph.Model as BuildGraph
+import SlamData.Workspace.Card.Setups.Chart.Legacy as ChartLegacy
+import SlamData.Workspace.Card.Setups.Chart.Metric.Model as BuildMetric
+import SlamData.Workspace.Card.Setups.Chart.Sankey.Model as BuildSankey
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.DeckId as DID

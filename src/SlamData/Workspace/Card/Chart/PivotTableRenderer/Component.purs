@@ -44,8 +44,8 @@ import SlamData.Quasar.Class (liftQuasar)
 import SlamData.Quasar.Query as QQ
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
-import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column(..), isSimple)
-import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..), isSimple)
+import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 import SlamData.Workspace.Card.Port (PivotTablePort, eqTaggedResourcePort)
 import SlamData.Wiring as Wiring

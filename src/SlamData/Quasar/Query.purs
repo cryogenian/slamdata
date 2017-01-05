@@ -52,7 +52,7 @@ import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
 import SlamData.Quasar.Error (throw)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
-import SlamData.Workspace.Card.BuildChart.Axis (buildAxes, Axes)
+import SlamData.Workspace.Card.Setups.Axis (buildAxes, Axes)
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String

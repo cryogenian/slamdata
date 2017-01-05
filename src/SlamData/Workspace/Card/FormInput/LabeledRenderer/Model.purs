@@ -24,7 +24,7 @@ import Data.Array as Arr
 import Data.Set as Set
 
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
-import SlamData.Workspace.Card.BuildChart.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Arbitrary (arbitrary)

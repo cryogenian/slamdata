@@ -29,7 +29,7 @@ import Data.Argonaut (Json)
 import Data.Lens (Prism', prism', Traversal', wander)
 
 import SlamData.Workspace.Card.Port (TaggedResourcePort)
-import SlamData.Workspace.Card.BuildChart.Axis (Axes)
+import SlamData.Workspace.Card.Setups.Axis (Axes)
 
 type AnalysisR =
   { taggedResource ∷ TaggedResourcePort
