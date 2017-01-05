@@ -17,11 +17,22 @@ limitations under the License.
 module Control.Monad.Throw where
 
 import Prelude
+import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Except.Trans (ExceptT(..))
 import Data.Either (Either(..))
+import Data.Maybe (Maybe, maybe)
 
 class Monad m ⇐ MonadThrow e m where
   throw ∷ ∀ a. e → m a
 
+instance eitherMonadThrow ∷ MonadThrow e (Either e) where
+  throw = Left
+
 instance exceptTMonadThrow ∷ Monad m ⇒ MonadThrow e (ExceptT e m) where
   throw = ExceptT <<< pure <<< Left
+
+note ∷ ∀ m e a. MonadThrow e m ⇒ e → Maybe a → m a
+note err = maybe (throw err) pure
+
+noteError ∷ ∀ m a. MonadThrow Exn.Error m ⇒ String → Maybe a → m a
+noteError = note <<< Exn.error
