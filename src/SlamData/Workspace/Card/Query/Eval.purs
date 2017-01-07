@@ -46,13 +46,13 @@ evalQuery
     , QuasarDSL m
     , ParQuasarDSL m
     )
-  ⇒ Port.VarMap
-  → SQL
-  → m Port.TaggedResourcePort
-evalQuery varMap sql = do
+  ⇒ SQL
+  → Port.DataMap
+  → m Port.Out
+evalQuery sql varMap = do
   resource ← CEM.temporaryOutputResource
   let
-    varMap' = Port.renderVarMapValue <$> varMap
+    varMap' = Port.renderVarMapValue <$> Port.flattenResources varMap
     backendPath =
       Left $ fromMaybe Path.rootDir (Path.parentDir resource)
   { inputs } ←
@@ -63,4 +63,4 @@ evalQuery varMap sql = do
   CEM.liftQ do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
-  pure { resource, tag: pure sql, varMap: Just varMap }
+  pure (Port.resourceOut (Port.View resource sql varMap))

@@ -132,9 +132,9 @@ cardEval mode = case _ of
       _ → pure unit
     H.modify _ { dirty = false }
     pure next
-  CC.ReceiveInput _ next →
+  CC.ReceiveInput _ _ next →
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next → do
     pure next

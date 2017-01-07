@@ -73,9 +73,9 @@ eval = case _ of
         void ∘ H.query unit $ H.action (FB.SetItems (L.fromFoldable items) ⋙ left)
       _ → pure unit
     pure next
-  CC.ReceiveInput _ next →
+  CC.ReceiveInput _ _ next →
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next →
     pure next

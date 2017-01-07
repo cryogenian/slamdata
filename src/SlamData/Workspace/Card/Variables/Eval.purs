@@ -31,17 +31,16 @@ eval
   ∷ ∀ m
   . (MonadAsk CEM.CardEnv m)
   ⇒ Model
-  → m Port.VarMap
+  → m Port.Out
 eval model = do
   CEM.CardEnv { cardId, urlVarMaps } ← ask
-  pure $ buildVarMap cardId urlVarMaps model
+  pure (Port.Initial × map Right (buildVarMap cardId urlVarMaps model))
 
 buildVarMap ∷ CardId → Map.Map CardId Port.URLVarMap → Model → Port.VarMap
 buildVarMap cardId urlVarMaps model =
   foldl go SM.empty model.items
   where
-    go =
-      flip \{ name, fieldType, defaultValue } →
-        maybe id (SM.insert name) $ defaultValueToVarMapValue fieldType
-          =<< (SM.lookup name =<< Map.lookup cardId urlVarMaps)
-          <|> defaultValue
+    go acc { name, fieldType, defaultValue } =
+      maybe acc (\v → SM.insert name v acc) $
+        defaultValueToVarMapValue fieldType =<<
+          (SM.lookup name =<< Map.lookup cardId urlVarMaps) <|> defaultValue

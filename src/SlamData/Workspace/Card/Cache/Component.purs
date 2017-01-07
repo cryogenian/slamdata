@@ -94,15 +94,13 @@ cardEval = case _ of
           ∘ (_confirmedPath .~ (PU.parseFilePath =<< s))
       _ → pure unit
     pure next
-  CC.ReceiveInput input next →
+  CC.ReceiveInput _ _ next →
     pure next
-  CC.ReceiveOutput output next → do
-    case output of
-      Port.TaggedResource { resource } →
-        H.modify
-          $ (_pathString ?~ Path.printPath resource)
-          ∘ (_confirmedPath ?~ resource)
-      _ → pure unit
+  CC.ReceiveOutput _ varMap next → do
+    for_ (Port.extractFilePath varMap) \resource →
+      H.modify
+        $ (_pathString ?~ Path.printPath resource)
+        ∘ (_confirmedPath ?~ resource)
     pure next
   CC.ReceiveState input next →
     pure next

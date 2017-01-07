@@ -40,11 +40,11 @@ eval
     , QuasarDSL m
     )
   ⇒ Model
-  → Port.TaggedResourcePort
+  → Port.Resource
   → m Port.Port
-eval m tr = do
-  records × axes ← BCE.analyze tr =<< get
-  put (Just (CEM.Analysis {taggedResource: tr, records, axes}))
+eval m resource = do
+  records × axes ← BCE.analyze resource =<< get
+  put (Just (CEM.Analysis { resource, records, axes }))
   case m of
     Nothing →
       CEM.throw "Please select axis."
@@ -52,9 +52,4 @@ eval m tr = do
       Nothing →
         CEM.throw $ show conf.value <> " axis is not presented in this resource"
       Just value →
-        pure
-          $ Port.Metric
-          $ { value
-            , label: Nothing
-            , taggedResource: tr
-            }
+        pure $ Port.Metric { value, label: Nothing }

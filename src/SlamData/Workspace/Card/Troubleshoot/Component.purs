@@ -18,7 +18,6 @@ module SlamData.Workspace.Card.Troubleshoot.Component where
 
 import SlamData.Prelude
 
-import Data.Lens as Lens
 import Data.StrMap as SM
 
 import Halogen as H
@@ -87,11 +86,10 @@ evalCard = case _ of
     pure $ k Card.Troubleshoot
   CC.Load _ next →
     pure next
-  CC.ReceiveInput input next → do
-    for (Lens.preview Port._VarMap input) \varMap →
-      H.modify (_ { varMap = varMap })
+  CC.ReceiveInput _ varMap next → do
+    H.modify (_ { varMap = Port.flattenResources varMap })
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next →
     pure next

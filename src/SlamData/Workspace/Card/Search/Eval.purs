@@ -24,10 +24,9 @@ import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
+import Data.Lens ((^.))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
-
-import Quasar.Types (FilePath)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
@@ -52,26 +51,27 @@ evalSearch
     , ParQuasarDSL m
     )
   ⇒ String
-  → FilePath
-  → m Port.TaggedResourcePort
+  → Port.Resource
+  → m Port.Out
 evalSearch queryText resource = do
+  let filePath = resource ^. Port._filePath
   query ← case SS.mkQuery queryText of
     Left _ → CEM.throw "Incorrect query string"
     Right q → pure q
 
   fields ← CEM.liftQ do
     QFS.messageIfFileNotFound
-      resource
-      ("Input resource " ⊕ Path.printPath resource ⊕ " doesn't exist")
-    QQ.fields resource
+      filePath
+      ("Input resource " ⊕ Path.printPath filePath ⊕ " doesn't exist")
+    QQ.fields filePath
 
   outputResource ← CEM.temporaryOutputResource
 
   let
     template = Search.queryToSQL fields query
-    sql = QQ.templated resource template
+    sql = QQ.templated filePath template
 
-  compileResult ← QQ.compile (Right resource) sql SM.empty
+  compileResult ← QQ.compile (Right filePath) sql SM.empty
   case compileResult of
     Left err →
       case GE.fromQError err of
@@ -82,9 +82,9 @@ evalSearch queryText resource = do
       CEM.addSources inputs
 
   CEM.liftQ do
-    QQ.viewQuery (Right resource) outputResource template SM.empty
+    QQ.viewQuery (Right filePath) outputResource template SM.empty
     QFS.messageIfFileNotFound
       outputResource
       "Error making search temporary resource"
 
-  pure { resource: outputResource, tag: pure sql, varMap: Nothing }
+  pure (Port.resourceOut (Port.View outputResource sql SM.empty))

@@ -39,9 +39,9 @@ import Data.Set (Set)
 
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Eval (Eval, runCard, modelToEval)
-import SlamData.Workspace.Card.Eval.Monad (CardEnv(..), EvalState, AdditionalSource(..))
+import SlamData.Workspace.Card.Eval.Monad (CardEnv(..), ChildOut, EvalState, AdditionalSource(..))
 import SlamData.Workspace.Card.Model (AnyCardModel, modelCardType, cardModelOfType, childDeckIds)
-import SlamData.Workspace.Card.Port (Port(..))
+import SlamData.Workspace.Card.Port (Port(..), Out, emptyOut, portOut, resourceOut)
 import SlamData.Workspace.Eval.Deck as Deck
 
 type State = EvalState
@@ -49,8 +49,8 @@ type State = EvalState
 type Model = AnyCardModel
 
 data EvalMessage
-  = Pending DisplayCoord Port
-  | Complete DisplayCoord Port
+  = Pending DisplayCoord Out
+  | Complete DisplayCoord Out
   | ModelChange DisplayCoord AnyCardModel
   | StateChange DisplayCoord State
 
@@ -59,9 +59,9 @@ type Cell =
   , next ∷ Set (Either Deck.Id Id)
   , decks ∷ Set Deck.Id
   , model ∷ AnyCardModel
-  , input ∷ Maybe Port
-  , pending ∷ Maybe Port
-  , output ∷ Maybe Port
+  , input ∷ Maybe Out
+  , pending ∷ Maybe Out
+  , output ∷ Maybe Out
   , state ∷ Maybe State
   , sources ∷ Set AdditionalSource
   , tick ∷ Maybe Int

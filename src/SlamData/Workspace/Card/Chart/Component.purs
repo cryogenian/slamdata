@@ -49,7 +49,7 @@ import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Component as Pivot
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port (Port(..))
+import SlamData.Workspace.Card.Port (Port(..), extractResource)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type HTML =
@@ -149,24 +149,24 @@ eval = case _ of
         pure next
       _ →
         pure next
-  CC.ReceiveInput input next → do
-    case input of
-      ChartInstructions r → void do
+  CC.ReceiveInput input varMap next → do
+    case input, extractResource varMap of
+      ChartInstructions r, _ → void do
         H.modify $ _chartType ?~ r.chartType
         H.query' cpECharts unit $ H.action $ HEC.Reset r.options
         H.query' cpECharts unit $ H.action HEC.Resize
         setEChartsLOD $ buildObj r.options
-      Metric metric → void do
+      Metric metric, _ → void do
         H.modify $ _chartType ?~ ChT.Metric
         H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
         setMetricLOD
-      PivotTable r → void do
+      PivotTable port, Just resource → void do
         H.modify $ _chartType ?~ ChT.PivotTable
-        H.query' cpPivotTable unit $ H.action $ Pivot.Update r
-      _ →
+        H.query' cpPivotTable unit $ H.action $ Pivot.Update port resource
+      _, _ →
         void $ H.query' cpECharts unit $ H.action HEC.Clear
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next →
     pure next

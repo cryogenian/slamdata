@@ -36,17 +36,16 @@ eval
     , QuasarDSL m
     )
   ⇒ Model
-  → Port.TaggedResourcePort
   → FormInputType
+  → Port.Resource
   → m Port.Port
-eval m taggedResource formInputType =
-  BCE.buildChartEval' buildFn taggedResource m
+eval m formInputType =
+  BCE.buildChartEval' buildFn m
   where
   -- We need to store axes to display selects
   buildFn axes conf records =
     Port.SetupTextLikeFormInput
       { name: conf.name
-      , taggedResource
       , formInputType
       , cursor: conf.value
       }

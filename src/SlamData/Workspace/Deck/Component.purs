@@ -458,7 +458,7 @@ loadDeck opts = mbLoadError =<< runMaybeT do
         ∘ DCS.fromModel { name: deck.model.name, displayCards }
         ∘ DCS.addBreaker breaker
       updateActiveState opts
-    ED.Completed port → lift do
+    ED.Completed (port × _) → lift do
       active ← activeCardIndex
       H.modify
         $ (DCS.updateCompletedCards cardDefs port)
@@ -482,7 +482,7 @@ handleEval opts = case _ of
     H.modify
       $ (DCS._pendingCardIndex .~ DCS.cardIndexFromId cardId st)
       ∘ (DCS.addMetaCard DCS.PendingCard)
-  ED.Complete cardIds port → do
+  ED.Complete cardIds output@(port × _) → do
     getCardDefs cardIds >>= case _ of
       Nothing →
         H.modify _ { loadError = Just "Deck references non-existent cards" }
