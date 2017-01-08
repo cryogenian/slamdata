@@ -54,7 +54,6 @@ data BackAction
   | Mirror
   | Wrap
   | Unwrap
-  | Share
   | Unshare
 
 allBackActions ∷ State → Array BackAction

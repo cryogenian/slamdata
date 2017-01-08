@@ -111,7 +111,6 @@ data Port
   | Terminal
   | CardError String
   | VarMap VarMap
-  | ChartInstructions (DSL OptionI) ChartType
   | SetupLabeledFormInput SetupLabeledFormInputPort
   | SetupTextLikeFormInput SetupTextLikeFormInputPort
   | TaggedResource TaggedResourcePort
