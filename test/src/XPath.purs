@@ -58,6 +58,9 @@ ariaDisabled s = "@aria-disabled = '" ⊕ s ⊕ "'"
 withoutText ∷ String → String
 withoutText s = "text() != '" ⊕ s ⊕ "'"
 
+attribute ∷ String → String
+attribute name = "@" ⊕ name
+
 withTextContaining ∷ String → String
 withTextContaining s = "contains(text(), '" ⊕ s ⊕ "')"
 
@@ -74,13 +77,13 @@ nodeWithText ∷ String → String → String
 nodeWithText name text = name ⊕ "[contains(text(), '" ⊕ text ⊕ "')]"
 
 nodeWithExactAttribute ∷ String → String → String → String
-nodeWithExactAttribute attribute name value = name ⊕ "[@" ⊕ attribute ⊕ "='" ⊕ value ⊕ "']"
+nodeWithExactAttribute name xPath value = xPath ⊕ "[@" ⊕ name ⊕ "='" ⊕ value ⊕ "']"
 
 nodeWithAttribute ∷ String → String → String → String
-nodeWithAttribute attribute name value = name ⊕ "[contains(@" ⊕ attribute ⊕ ", '" ⊕ value ⊕ "')]"
+nodeWithAttribute name xPath value = xPath ⊕ "[contains(@" ⊕ name ⊕ ", '" ⊕ value ⊕ "')]"
 
 nodeWithAttributeWithAnyValue ∷ String → String → String
-nodeWithAttributeWithAnyValue attribute name = name ⊕ name ⊕ "[@" ⊕ attribute ⊕ "]"
+nodeWithAttributeWithAnyValue name xPath = xPath ⊕ "[@" ⊕ name ⊕ "]"
 
 nodeWithExactAriaLabel ∷ String → String → String
 nodeWithExactAriaLabel = nodeWithExactAttribute "aria-label"

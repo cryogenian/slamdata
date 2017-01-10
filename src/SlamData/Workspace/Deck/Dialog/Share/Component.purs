@@ -196,7 +196,7 @@ render state =
              ]
              [ HH.label
                  [ HP.for "subject-type" ]
-                 [ HH.text "Subject type" 
+                 [ HH.text "Subject type"
                  , HH.select
                      [ HP.classes [ B.formControl ]
                      , HP.id_ "subject-type"
@@ -455,3 +455,4 @@ showConnectionError =
              , showError = true
              , submitting = false
              })
+
