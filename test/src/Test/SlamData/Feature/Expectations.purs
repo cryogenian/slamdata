@@ -3,7 +3,6 @@ module Test.SlamData.Feature.Expectations where
 import SlamData.Prelude
 
 import Data.Map as Map
-import Selenium.Monad (tryRepeatedlyTo)
 import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectNotPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectPresentedNotRepeatedly, expectElementContainsText)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -129,7 +128,7 @@ text ∷ String → SlamFeature Unit
 text = expectPresented ∘ XPath.anywhere ∘ XPath.anyWithText
 
 textEventually ∷ String → SlamFeature Unit
-textEventually = tryRepeatedlyTo ∘ text
+textEventually = text
 
 downloadedTextFileToMatchFile ∷ String → String → String → SlamFeature Unit
 downloadedTextFileToMatchFile = expectDownloadedTextFileToMatchFile
@@ -174,63 +173,57 @@ lastEChart =
 
 displayMarkdownCardPresented ∷ SlamFeature Unit
 displayMarkdownCardPresented =
-  tryRepeatedlyTo
-    $ expectPresented
+  expectPresented
     $ XPath.anywhere
     $ XPaths.displayMarkdownCardHeader
 
 troubleshootCardPresented ∷ SlamFeature Unit
 troubleshootCardPresented =
-  tryRepeatedlyTo
-    $ expectPresented
+  expectPresented
     $ XPath.anywhere
     $ XPaths.troubleshootCardHeader
 
 tableCardPresented ∷ SlamFeature Unit
 tableCardPresented =
-  tryRepeatedlyTo
-    $ expectPresented
+  expectPresented
     $ XPath.anywhere
     $ XPaths.tableCardHeader
 
 textInDisplayMarkdownCard ∷ String → SlamFeature Unit
 textInDisplayMarkdownCard =
-  tryRepeatedlyTo
-    ∘ expectPresented
+  expectPresented
     ∘ XPath.anywhere
     ∘ XPath.nodeWithExactText "p"
 
 backsideActionNotPresented ∷ String → SlamFeature Unit
-backsideActionNotPresented =
-  tryRepeatedlyTo
-    ∘ expectNotPresented
-    ∘ XPath.anywhere
+backsideActionNotPresented xPath =
+  expectNotPresented
+    $ XPath.anywhere
+    $ XPath.withPredicate xPath
+    $ XPath.not
+    $ XPath.attribute "disabled"
 
 trashButtonPresented ∷ SlamFeature Unit
 trashButtonPresented =
-  tryRepeatedlyTo
-    $ expectPresented
+  expectPresented
     $ XPath.anywhere
     $ XPaths.trashCardAction
 
 shareButtonPresented ∷ SlamFeature Unit
 shareButtonPresented =
-  tryRepeatedlyTo
-    $ expectPresented
+  expectPresented
     $ XPath.anywhere
     $ XPaths.shareDeckAction
 
 publishButtonPresented ∷ SlamFeature Unit
 publishButtonPresented =
-  tryRepeatedlyTo
-    $ expectPresented
+  expectPresented
     $ XPath.anywhere
     $ XPaths.publishDeckAction
 
 embedButtonPresented ∷ SlamFeature Unit
 embedButtonPresented =
-  tryRepeatedlyTo
-    $ expectPresented
+  expectPresented
     $ XPath.anywhere
     $ XPaths.embedDeckAction
 
@@ -251,8 +244,7 @@ backsideMenuNotPresented = do
 
 noTablesPresented ∷ SlamFeature Unit
 noTablesPresented =
-  tryRepeatedlyTo
-    $ expectNotPresented
+  expectNotPresented
     $ XPath.anywhere
     $ XPaths.tableHeading
 

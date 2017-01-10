@@ -32,12 +32,14 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.ActionList.Component as ActionList
 import SlamData.Render.Common (glyph)
+import SlamData.Render.CSS as RCSS
 import SlamData.Workspace.AccessType as AT
-import SlamData.Workspace.Deck.BackSide.Component as Back
+import SlamData.Workspace.Card.Component.CSS as CCSS
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML)
-import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpDialog)
 import SlamData.Workspace.Deck.Component.CSS as CSS
+import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpDialog)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..))
 import SlamData.Workspace.Deck.Component.State as DCS
@@ -105,7 +107,7 @@ renderDeck opts deckComponent st =
       [ HP.classes $ [CSS.cardSlider] ⊕ (guard (not visible) $> CSS.invisible)
       , ARIA.hidden $ show $ not visible
       ]
-      [ backside opts st ]
+      [ backside ]
 
 deckClasses ∷ ∀ r. DCS.State → Array (HP.IProp (HP.InteractiveEvents (HP.GlobalProperties r)) (Query Unit))
 deckClasses st =
@@ -156,14 +158,25 @@ dialogSlot =
     , initialState: H.parentState Dialog.initialState
     }
 
-backside ∷ DeckOptions → DCS.State → DeckHTML
-backside { deckId, displayCursor } st =
+backside ∷ DeckHTML
+backside =
   HH.div
     [ HP.classes [ CSS.card ] ]
-    [ HH.slot' cpBackSide unit \_ →
-        { component: Back.comp { deckId, displayCursor }
-        , initialState: Back.initialState
-        }
+    [ HH.div_
+        [ HH.div
+            [ HP.class_ CCSS.deckCard ]
+            [ HH.div
+                [ HP.class_ RCSS.deckBackSide ]
+                [ HH.slot' cpBackSide unit \_ →
+                    { component:
+                        ActionList.comp
+                          $ ActionList.FilterInputDescription "Filter deck and card actions"
+                    , initialState:
+                        ActionList.initialState []
+                    }
+                ]
+            ]
+        ]
     ]
 
 deckIndicator ∷ DCS.State → DeckHTML

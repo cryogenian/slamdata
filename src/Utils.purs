@@ -68,4 +68,9 @@ endSentence s = removeLastCharIfPeriod s <> "."
 lowercaseFirstChar ∷ String → String
 lowercaseFirstChar s = S.toLower (S.take 1 s) <> S.drop 1 s
 
+words ∷ String → Array String
+words = S.split $ S.Pattern " "
+
 foreign import prettyJson ∷ J.Json → String
+
+foreign import isFirefox ∷ Boolean

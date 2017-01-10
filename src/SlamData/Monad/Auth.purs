@@ -16,26 +16,26 @@ limitations under the License.
 
 module SlamData.Monad.Auth where
 
-import SlamData.Prelude
+import Control.Monad.Aff (Aff)
+import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (liftEff)
+import Quasar.Advanced.QuasarAF as QA
+import Quasar.Advanced.Types as QAT
 import SlamData.AuthenticationMode (AuthenticationMode, AllowedAuthenticationModes)
 import SlamData.AuthenticationMode as AuthenticationMode
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Prelude
+import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Auth.Keys as AuthKeys
-import Control.Monad.Aff as Aff
-import Control.Monad.Aff (Aff)
-import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Error (QError)
-import Control.Monad.Eff.Class (liftEff)
-import Quasar.Advanced.Types as QAT
-import Control.Monad.Aff.AVar (AVar)
-import Utils (passover, singletonValue)
-import Control.Monad.Aff.Bus as Bus
-import SlamData.Quasar.Aff (runQuasarF)
-import Quasar.Advanced.QuasarAF as QA
-import Control.Monad.Eff (Eff)
-import Utils.LocalStorage as LocalStorage
-import Control.Monad.Aff.AVar as AVar
 import SlamData.Quasar.Error as QError
+import Utils (passover, singletonValue)
+import Utils.LocalStorage as LocalStorage
 
 getIdTokenSilently ∷ AllowedAuthenticationModes → Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
 getIdTokenSilently interactionlessSignIn idTokenRequestBus = do

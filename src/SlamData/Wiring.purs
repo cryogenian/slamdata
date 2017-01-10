@@ -55,6 +55,8 @@ import SlamData.Workspace.Eval.Graph (EvalGraph)
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
 
+import Quasar.Advanced.Types (TokenHash)
+
 import Utils.Path (DirPath)
 
 data DeckMessage
@@ -95,6 +97,7 @@ type AuthWiring =
   , requestToken ∷ Auth.RequestIdTokenBus
   , signIn ∷ SignInBus
   , allowedModes ∷ AllowedAuthenticationModes
+  , permissionTokenHashes ∷ Array TokenHash
   }
 
 type CacheWiring =
@@ -135,8 +138,9 @@ make
   ⇒ DirPath
   → AccessType
   → StrMap Port.URLVarMap
+  → Array TokenHash
   → m Wiring
-make path accessType vm = fromAff do
+make path accessType vm permissionTokenHashes = fromAff do
   eval ← makeEval
   auth ← makeAuth
   cache ← makeCache
@@ -159,7 +163,7 @@ make path accessType vm = fromAff do
     requestToken ← Auth.authentication
     signIn ← Bus.make
     let allowedModes = allowedAuthenticationModesForAccessType accessType
-    pure { hasIdentified, requestToken, signIn, allowedModes }
+    pure { hasIdentified, requestToken, signIn, allowedModes, permissionTokenHashes }
 
   makeCache = do
     activeState ← Cache.make

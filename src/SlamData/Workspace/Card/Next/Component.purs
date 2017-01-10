@@ -18,16 +18,20 @@ module SlamData.Workspace.Card.Next.Component
  ( nextCardComponent
  , module SlamData.Workspace.Card.Next.Component.Query
  , module SlamData.Workspace.Card.Next.Component.State
+ , module NA
  ) where
 
 import SlamData.Prelude
+
+import CSS as CSS
 
 import Data.Lens ((.~))
 
 import Halogen as H
 import Halogen.Component.ChildPath (cpI)
-import Halogen.HTML.Indexed as HH
 import Halogen.Component.Utils as HU
+import Halogen.HTML.CSS.Indexed as HCSS
+import Halogen.HTML.Indexed as HH
 
 import SlamData.ActionList.Component as ActionList
 import SlamData.Monad (Slam)
@@ -68,7 +72,8 @@ nextCardComponent = H.parentComponent
 
 render ∷ State → NextHTML
 render state =
-  HH.div_
+  HH.div
+    [ HCSS.style $ CSS.width (CSS.pct 100.0) *> CSS.height (CSS.pct 100.0) ]
     $ (guard state.presentAddCardGuide $>
         Guide.render
           Guide.DownArrow
@@ -76,8 +81,12 @@ render state =
           (DismissAddCardGuide)
           (addCardGuideText state.input))
     ⊕ [ HH.slot' cpI unit \_ →
-        { component: ActionList.comp
-        , initialState: ActionList.initialState (NA.fromPort state.input)
+        { component:
+            ActionList.comp
+              (ActionList.FilterInputDescription "Filter next actions")
+        , initialState:
+            ActionList.initialState
+              (NA.fromPort state.input)
         }
       ]
   where
@@ -134,11 +143,11 @@ peek ∷ ∀ a. ActionList.Query NA.NextAction a → NextDSL Unit
 peek = case _ of
   ActionList.Selected action _ →
     case action of
-      ActionList.GoBack →
+      ActionList.GoBackInternal →
         pure unit
-      ActionList.Drill _ _ _ _ →
+      ActionList.DrillInternal _ _ _ _ →
         pure unit
-      ActionList.Do _ _ _ _ nextAction →
+      ActionList.DoInternal _ _ _ _ nextAction →
         case nextAction of
           NA.Insert cardType →
             HU.raise' $ H.action $ AddCard cardType

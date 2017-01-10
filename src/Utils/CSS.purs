@@ -30,8 +30,14 @@ calc s = "calc(" <> s <> ")"
 width :: String -> CSS
 width = key (fromString "width")
 
+height :: String -> CSS
+height = key (fromString "height")
+
 left :: String -> CSS
 left = key (fromString "left")
+
+lineHeight :: String -> CSS
+lineHeight = key (fromString "lineHeight")
 
 transform :: String -> CSS
 transform = key (fromString "transform")
