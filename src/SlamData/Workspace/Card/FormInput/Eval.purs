@@ -26,10 +26,9 @@ import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
-import Data.Argonaut as J
 import Data.Foldable as F
+import Data.Lens ((^.))
 import Data.Path.Pathy as Path
-import Data.String as Str
 import Data.StrMap as SM
 
 import Quasar.Types (SQL)
@@ -39,7 +38,7 @@ import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
-import SlamData.Workspace.Card.Eval.Common (validateResources)
+import SlamData.Workspace.Card.Eval.Common (validateResources, escapeCursor)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.FormInput.Model (Model(..))
@@ -47,11 +46,8 @@ import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
 import SlamData.Workspace.Card.BuildChart.Semantics as Sem
 
-type TaggedResourceAndCursor r =
-  { taggedResource ∷ Port.TaggedResourcePort, cursor ∷ J.JCursor | r}
-
 eval
-  ∷ ∀ m a r
+  ∷ ∀ m
   . ( MonadAff SlamDataEffects m
     , MonadAsk CEM.CardEnv m
     , MonadThrow CEM.CardError m
@@ -59,16 +55,16 @@ eval
     , QuasarDSL m
     , ParQuasarDSL m
     )
-  ⇒ (a → TaggedResourceAndCursor r → SQL)
-  → a
-  → TaggedResourceAndCursor r
-  → m Port.Port
-eval f m p = do
+  ⇒ SQL
+  → String
+  → Port.VarMapValue
+  → Port.Resource
+  → m Port.Out
+eval sql var val r = do
   resource ← CEM.temporaryOutputResource
   let
     backendPath =
-      Left $ fromMaybe Path.rootDir (Path.parentDir resource)
-    sql = f m p
+      Left $ fromMaybe Path.rootDir (Path.parentDir (r ^. Port._filePath))
 
   { inputs } ←
     CEM.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
@@ -79,7 +75,17 @@ eval f m p = do
   CEM.liftQ do
     QQ.viewQuery backendPath resource sql SM.empty
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
-  pure $ Port.TaggedResource { resource, tag: pure sql, varMap: Nothing }
+  let
+    var' =
+      if var ≡ Port.defaultResourceVar
+         then var <> "2"
+         else var
+    varMap =
+      SM.fromFoldable
+        [ Port.defaultResourceVar × Left (Port.View resource sql SM.empty)
+        , var' × Right val
+        ]
+  pure (Port.ResourceKey Port.defaultResourceVar × varMap)
 
 evalLabeled
   ∷ ∀ m
@@ -92,16 +98,30 @@ evalLabeled
     )
   ⇒ LR.Model
   → Port.SetupLabeledFormInputPort
-  → m Port.Port
-evalLabeled = eval \m p →
-  "select * from `"
-  <> Path.printPath p.taggedResource.resource
-  <> "`"
-  <> " where "
-  <> (Str.drop 1 $ show p.cursor)
-  <> " in ("
-  <> (F.intercalate "," $ foldMap Sem.semanticsToSQLStrings m.selected)
-  <> ")"
+  → Port.Resource
+  → m Port.Out
+evalLabeled m p r =
+  eval sql p.name (Port.QueryExpr prettySelection) r
+  where
+    semantics =
+      foldMap Sem.semanticsToSQLStrings m.selected
+
+    selection =
+      "(" <> (F.intercalate "," semantics) <> ")"
+
+    prettySelection =
+      case semantics of
+        [ a ] → a
+        _     → selection
+
+    sql =
+      "SELECT * FROM `"
+      <> Path.printPath (r ^. Port._filePath)
+      <> "` AS res"
+      <> " WHERE res"
+      <> (escapeCursor p.cursor)
+      <> " IN "
+      <> selection
 
 evalTextLike
   ∷ ∀ m
@@ -114,14 +134,21 @@ evalTextLike
     )
   ⇒ TLR.Model
   → Port.SetupTextLikeFormInputPort
-  → m Port.Port
-evalTextLike = eval \m p →
-  "select * from `"
-  <> Path.printPath p.taggedResource.resource
-  <> "`"
-  <> " where "
-  <> (Str.drop 1 $ show p.cursor)
-  <> " = "
-  <> (case p.formInputType of
-         Text → "\"" <> m.value <> "\""
-         _ → m.value)
+  → Port.Resource
+  → m Port.Out
+evalTextLike m p r =
+  eval sql p.name (Port.QueryExpr selection) r
+  where
+  selection =
+    case p.formInputType of
+      Text → show m.value
+      _ → m.value
+
+  sql =
+    "SELECT * FROM `"
+    <> Path.printPath (r ^. Port._filePath)
+    <> "` AS res"
+    <> " WHERE res"
+    <> (escapeCursor p.cursor)
+    <> " = "
+    <> selection

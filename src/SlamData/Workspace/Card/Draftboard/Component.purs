@@ -80,9 +80,9 @@ evalCard = case _ of
         void $ H.queryAll (right (H.action DCQ.UpdateCardSize))
       _ → pure unit
     pure next
-  CC.ReceiveInput _ next →
+  CC.ReceiveInput _ _ next →
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next →
     pure next
@@ -363,7 +363,7 @@ recalcRect = do
 
 addDeck ∷ CardOptions → Pane.Cursor → DraftboardDSL Unit
 addDeck _ cursor = do
-  deckId × _ ← liftH' $ P.freshDeck emptyDeck (ED.Completed Port.Initial)
+  deckId × _ ← liftH' $ P.freshDeck emptyDeck (ED.Completed Port.emptyOut)
   st ← H.get
   let
     layout = Pane.modifyAt (const (Pane.Cell (Just deckId))) cursor st.layout

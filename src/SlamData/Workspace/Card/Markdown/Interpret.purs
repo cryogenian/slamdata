@@ -87,7 +87,7 @@ formFieldValueToVarMapValue v =
           SD.DateTime _ (Identity localDateTime) →
             pure $ EJSON.timestamp $ either (const "") id $ mkdate localDateTime
       SD.CheckBoxes (Identity sel) _ →
-        pure ∘ VM.SetLiteral ∘ A.fromFoldable $ L.mapMaybe getLiteral sel
+        pure ∘ VM.SetLiteral ∘ A.fromFoldable $ L.mapMaybe (map VM.Literal ∘ getLiteral) sel
       SD.RadioButtons (Identity x) _ →
         VM.Literal <$> getLiteral x
       SD.DropDown mx _ → VM.Literal <$> do

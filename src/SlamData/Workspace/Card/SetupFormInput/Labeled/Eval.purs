@@ -44,12 +44,12 @@ eval
     , QuasarDSL m
     )
   ⇒ Model
-  → Port.TaggedResourcePort
   → FormInputType
+  → Port.Resource
   → m Port.Port
-eval m taggedResource formInputType = do
-  records × axes ← BCE.analyze taggedResource =<< get
-  put (Just (CEM.Analysis { taggedResource, axes, records}))
+eval m formInputType resource = do
+  records × axes ← BCE.analyze resource =<< get
+  put (Just (CEM.Analysis { resource, axes, records}))
   case m of
     Nothing → CEM.throw "Please select axis"
     Just conf → do
@@ -62,7 +62,6 @@ eval m taggedResource formInputType = do
           { name: conf.name
           , valueLabelMap
           , selectedValues
-          , taggedResource
           , formInputType
           , cursor: conf.value
           }

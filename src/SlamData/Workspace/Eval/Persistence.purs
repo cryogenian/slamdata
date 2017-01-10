@@ -23,7 +23,7 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Fork (class MonadFork, fork)
-import Control.Monad.Throw (class MonadThrow, throw)
+import Control.Monad.Throw (class MonadThrow, throw, note, noteError)
 
 import Data.Array as Array
 import Data.Lens ((^?))
@@ -51,8 +51,6 @@ import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Model as CM
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Eval as Eval
@@ -95,7 +93,7 @@ loadWorkspace = runExceptT do
   { path, eval, accessType } ← Wiring.expose
   stat × ws ← ExceptT $ loadCompatWorkspace path
   liftAff $ putVar eval.root ws.rootId
-  graph ← unwrapOrThrow (QE.msgToQError "Cannot build graph") $
+  graph ← note (QE.msgToQError "Cannot build graph") $
     unfoldModelTree ws.decks ws.cards ws.rootId
   lift $ populateGraph mempty mempty Nothing graph
   when (isLegacy stat && isEditable accessType) do
@@ -137,19 +135,11 @@ getCard cardId = do
 getCards ∷ ∀ m. PersistEnv m (Array Card.Id → m (Maybe (Array Card.Cell)))
 getCards = map sequence ∘ traverse getCard
 
-getEvaluatedCards ∷ ∀ m. PersistEnv m (Array Card.Id → m (Maybe (Array Card.Cell × Port)))
-getEvaluatedCards = map (flip bind (Array.foldM go (mempty × Port.Initial))) ∘ getCards
-  where
-    go acc@(cs × Card.CardError _) _ = pure acc
-    go acc@(cs × _) card@{ tick: Just _, output: Just out } =
-      pure (Array.snoc cs card × out)
-    go _ _ = Nothing
-
 publishCardChange ∷ ∀ f m. Persist f m (Card.DisplayCoord → Card.Model → m Unit)
 publishCardChange source@(_ × cardId) model = do
   { eval } ← Wiring.expose
   putCard cardId model
-  card ← unwrapOrExn "Card not found" =<< Cache.get cardId eval.cards
+  card ← noteError "Card not found" =<< Cache.get cardId eval.cards
   graph ← snapshotGraph cardId
   queueEval' defaultEvalDebounce source graph
   queueSaveDefault
@@ -206,7 +196,7 @@ rebuildGraph = do
   decks ← Cache.snapshot eval.decks
   cards ← Cache.snapshot eval.cards
   rootId ← liftAff $ peekVar eval.root
-  graph ← unwrapOrExn "Cannot rebuild graph" $
+  graph ← noteError "Cannot rebuild graph" $
     unfoldModelTree (_.model <$> decks) (_.model <$> cards) rootId
   Cache.restore mempty eval.decks
   Cache.restore mempty eval.cards
@@ -271,7 +261,7 @@ freshWorkspace anyCards = do
     cardIds = fst <$> genCards
     deck = Deck.emptyDeck { cards = cardIds }
   cell ← makeDeckCell deck (Deck.evalStatusFromCards cardIds)
-  graph ← unwrapOrExn "Cannot create workspace" $
+  graph ← noteError "Cannot create workspace" $
     unfoldModelTree (Map.singleton deckId deck) cards deckId
   Cache.put deckId cell eval.decks
   liftAff $ putVar eval.root deckId
@@ -290,7 +280,7 @@ freshDeck model status = do
   Cache.put deckId cell eval.decks
   pure (deckId × cell)
 
-freshCard ∷ ∀ f m. Persist f m (Maybe Port → Set (Either Deck.Id Card.Id) → Card.Model → m (Card.Id × Card.Cell))
+freshCard ∷ ∀ f m. Persist f m (Maybe Card.Out → Set (Either Deck.Id Card.Id) → Card.Model → m (Card.Id × Card.Cell))
 freshCard input next model = do
   { eval } ← Wiring.expose
   cardId ← liftAff CID.make
@@ -301,7 +291,7 @@ freshCard input next model = do
 deleteDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Maybe Card.Id))
 deleteDeck deckId = do
   { eval, path } ← Wiring.expose
-  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  cell ← noteError "Deck not found" =<< getDeck deckId
   Cache.remove deckId eval.decks
   case cell.parent of
     Nothing → do
@@ -318,8 +308,8 @@ deleteDeck deckId = do
 
 wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
 wrapDeck deckId = do
-  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
-  parentCardId × _ ← freshCard (Just Port.Initial) Set.empty (CM.singletonDraftboard deckId)
+  cell ← noteError "Deck not found" =<< getDeck deckId
+  parentCardId × _ ← freshCard (Just Card.emptyOut) Set.empty (CM.singletonDraftboard deckId)
   parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId } (Deck.NeedsEval parentCardId)
   updateRootOrParent deckId parentDeckId cell.parent
   queueSaveDefault
@@ -327,12 +317,12 @@ wrapDeck deckId = do
 
 wrapAndMirrorDeck ∷ ∀ f m. Persist f m (Card.Id → Deck.Id → m Deck.Id)
 wrapAndMirrorDeck cardId deckId = do
-  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
-  card ← unwrapOrExn "Card not found" =<< getCard cardId
+  cell ← noteError "Deck not found" =<< getDeck deckId
+  card ← noteError "Card not found" =<< getCard cardId
   let mstate = mirroredState cell.model.cards cardId card.output cell.status
   mirrorDeckId × _ ← freshDeck DM.emptyDeck { cards = mstate.cards } mstate.status
   parentCardId × _ ←
-    freshCard (Just Port.Initial) Set.empty $
+    freshCard (Just Card.emptyOut) Set.empty $
       CM.splitDraftboard Orn.Vertical (List.fromFoldable [ deckId, mirrorDeckId ])
   parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId } (Deck.NeedsEval parentCardId)
   cloneActiveStateTo ({ cardIndex: _ } <$> mstate.index) mirrorDeckId deckId
@@ -342,12 +332,12 @@ wrapAndMirrorDeck cardId deckId = do
 
 mirrorDeck ∷ ∀ f m. Persist f m (Card.Id → Card.Id → Deck.Id → m Deck.Id)
 mirrorDeck parentId cardId deckId = do
-  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
-  card ← unwrapOrExn "Card not found" =<< getCard cardId
-  parent ← unwrapOrExn "Parent not found" =<< getCard parentId
+  cell ← noteError "Deck not found" =<< getDeck deckId
+  card ← noteError "Card not found" =<< getCard cardId
+  parent ← noteError "Parent not found" =<< getCard parentId
   let mstate = mirroredState cell.model.cards cardId card.output cell.status
   mirrorDeckId × _ ← freshDeck DM.emptyDeck { cards = mstate.cards } mstate.status
-  parentModel ← unwrapOrExn "Cannot mirror deck" $ CM.mirrorInDraftboard deckId mirrorDeckId parent.model
+  parentModel ← noteError "Cannot mirror deck" $ CM.mirrorInDraftboard deckId mirrorDeckId parent.model
   cloneActiveStateTo ({ cardIndex: _ } <$> mstate.index) mirrorDeckId deckId
   putCard parentId parentModel
   rebuildGraph
@@ -358,10 +348,10 @@ mirrorDeck parentId cardId deckId = do
 unwrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
 unwrapDeck deckId = do
   { eval } ← Wiring.expose
-  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
-  cards ← unwrapOrExn "Cards not found" =<< getCards cell.model.cards
-  childId ← unwrapOrExn "Cannot unwrap deck" $ immediateChild (_.model <$> cards)
-  child ← unwrapOrExn "Child not found" =<< getDeck childId
+  cell ← noteError "Deck not found" =<< getDeck deckId
+  cards ← noteError "Cards not found" =<< getCards cell.model.cards
+  childId ← noteError "Cannot unwrap deck" $ immediateChild (_.model <$> cards)
+  child ← noteError "Child not found" =<< getDeck childId
   Cache.remove deckId eval.decks
   updateRootOrParent deckId childId cell.parent
   queueSaveDefault
@@ -378,13 +368,13 @@ unwrapDeck deckId = do
 collapseDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.Id → m Unit)
 collapseDeck deckId cardId = do
   { eval } ← Wiring.expose
-  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
-  cards ← unwrapOrExn "Cards not found" =<< getCards cell.model.cards
-  parent ← unwrapOrExn "Parent not found" =<< getCard cardId
+  cell ← noteError "Deck not found" =<< getDeck deckId
+  cards ← noteError "Cards not found" =<< getCards cell.model.cards
+  parent ← noteError "Parent not found" =<< getCard cardId
   let
     parentModel = parent.model
     cardModels = _.model <$> cards
-  parentModel' ← unwrapOrExn "Cannot collapse deck" $ collapse parentModel cardModels
+  parentModel' ← noteError "Cannot collapse deck" $ collapse parentModel cardModels
   putCard cardId parentModel'
   rebuildGraph
   publishCardChange (Card.toAll cardId) parentModel'
@@ -400,17 +390,17 @@ collapseDeck deckId cardId = do
 
 wrapAndGroupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → m Unit)
 wrapAndGroupDeck orn bias deckId siblingId = do
-  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
-  sibling ← unwrapOrExn "Sibling not found" =<< getDeck siblingId
-  oldParentId ← unwrapOrExn "Parent not found" cell.parent
-  oldParent ← unwrapOrExn "Parent not found" =<< getCard oldParentId
+  cell ← noteError "Deck not found" =<< getDeck deckId
+  sibling ← noteError "Sibling not found" =<< getDeck siblingId
+  oldParentId ← noteError "Parent not found" cell.parent
+  oldParent ← noteError "Parent not found" =<< getCard oldParentId
   case oldParent.model of
     CM.Draftboard { layout } → do
       let
         splits = case bias of
           Layout.SideA → [ deckId, siblingId ]
           Layout.SideB → [ siblingId, deckId ]
-      parentCardId × _ ← freshCard (Just Port.Initial) Set.empty $ CM.splitDraftboard orn (List.fromFoldable splits)
+      parentCardId × _ ← freshCard (Just Card.emptyOut) Set.empty $ CM.splitDraftboard orn (List.fromFoldable splits)
       parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId } (Deck.NeedsEval parentCardId)
       let
         layout' = layout <#> case _ of
@@ -428,10 +418,10 @@ wrapAndGroupDeck orn bias deckId siblingId = do
 
 groupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → Card.Id → m Unit)
 groupDeck orn bias deckId siblingId newParentId = do
-  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
-  oldParentId ← unwrapOrExn "Parent not found" cell.parent
-  oldParent ← unwrapOrExn "Parent not found" =<< getCard oldParentId
-  newParent ← unwrapOrExn "Destination not found" =<< getCard newParentId
+  cell ← noteError "Deck not found" =<< getDeck deckId
+  oldParentId ← noteError "Parent not found" cell.parent
+  oldParent ← noteError "Parent not found" =<< getCard oldParentId
+  newParent ← noteError "Destination not found" =<< getCard newParentId
   hasCycle ← detectCycle newParentId deckId
   case oldParent.model, newParent.model of
     CM.Draftboard { layout }, CM.Draftboard { layout: inner } | not hasCycle → do
@@ -451,21 +441,22 @@ groupDeck orn bias deckId siblingId newParentId = do
 
 renameDeck ∷ ∀ f m. Persist f m (Deck.Id → String → m Unit)
 renameDeck deckId name = do
-  cell ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  cell ← noteError "Deck not found" =<< getDeck deckId
   putDeck deckId (cell.model { name = name })
   Eval.publish cell (Deck.NameChange name)
   queueSaveDefault
+  for_ cell.parent (queueEvalDefault ∘ Card.toAll)
   pure unit
 
 addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m Card.Id)
 addCard deckId cty = do
   { eval } ← Wiring.expose
-  deck ← unwrapOrExn "Deck not found" =<< getDeck deckId
-  input ← fromMaybe Port.Initial <$> runMaybeT do
+  deck ← noteError "Deck not found" =<< getDeck deckId
+  input ← fromMaybe Card.emptyOut <$> runMaybeT do
     last ← MaybeT $ pure $ Array.last deck.model.cards
     card ← MaybeT $ getCard last
     MaybeT $ pure card.output
-  cardId × _ ← freshCard (Just input) Set.empty $ Card.cardModelOfType input cty
+  cardId × _ ← freshCard (Just input) Set.empty $ Card.cardModelOfType (fst input) cty
   putDeck deckId deck.model { cards = Array.snoc deck.model.cards cardId }
   rebuildGraph
   Eval.publish deck (Deck.CardChange cardId)
@@ -476,7 +467,7 @@ addCard deckId cty = do
 removeCard ∷ ∀ f m. Persist f m (Deck.Id → Card.Id → m Unit)
 removeCard deckId cardId = do
   { eval } ← Wiring.expose
-  deck ← unwrapOrExn "Deck not found" =<< getDeck deckId
+  deck ← noteError "Deck not found" =<< getDeck deckId
   let
     cardIds = Array.span (not ∘ eq cardId) deck.model.cards
     deck' = deck.model { cards = cardIds.init }
@@ -489,7 +480,7 @@ removeCard deckId cardId = do
   putDeck deckId deck'
   rebuildGraph
   queueSaveDefault
-  Eval.publish deck (Deck.Complete cardIds.init (fromMaybe Port.Initial output))
+  Eval.publish deck (Deck.Complete cardIds.init (fromMaybe Card.emptyOut output))
 
 updateRootOrParent ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → Maybe Card.Id → m Unit)
 updateRootOrParent oldId newId = case _ of
@@ -504,7 +495,7 @@ updateRootOrParent oldId newId = case _ of
 
 updatePointer ∷ ∀ f m. Persist f m (Deck.Id → Maybe Deck.Id → Card.Id → m Card.Model)
 updatePointer oldId newId parentId = do
-  cell ← unwrapOrExn "Card not found" =<< getCard parentId
+  cell ← noteError "Card not found" =<< getCard parentId
   pure $ CM.updatePointer oldId newId cell.model
 
 updateRoot ∷ ∀ f m. Persist f m (Deck.Id → m Unit)
@@ -527,7 +518,7 @@ makeDeckCell model status =  do
 makeCardCell
   ∷ ∀ m
   . MonadAff SlamDataEffects m
-  ⇒ Maybe Port
+  ⇒ Maybe Card.Out
   → Set (Either Deck.Id Card.Id)
   → Card.AnyCardModel
   → m Card.Cell
@@ -574,16 +565,10 @@ detectCycle cardId deckId = do
   cards ← Cache.snapshot eval.cards
   pure (isCyclical decks cards cardId deckId)
 
-unwrapOrExn ∷ ∀ m a. MonadThrow Exn.Error m ⇒ String → Maybe a → m a
-unwrapOrExn = unwrapOrThrow ∘ Exn.error
-
-unwrapOrThrow ∷ ∀ m e a. MonadThrow e m ⇒ e → Maybe a → m a
-unwrapOrThrow err = maybe (throw err) pure
-
 mirroredState
   ∷ Array Card.Id
   → Card.Id
-  → Maybe Card.Port
+  → Maybe Card.Out
   → Deck.EvalStatus
   → { cards ∷ Array Card.Id
     , status ∷ Deck.EvalStatus

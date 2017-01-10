@@ -96,10 +96,10 @@ cardEval = case _ of
     pure (k Card.Download)
   CC.Load json next →
     pure next
-  CC.ReceiveInput input next → do
+  CC.ReceiveInput input _ next → do
     for_ (input ^? Port._DownloadOptions) handleDownloadPort
     pure next
-  CC.ReceiveOutput _ next → do
+  CC.ReceiveOutput _ _ next → do
     pure next
   CC.ReceiveState _ next → do
     pure next

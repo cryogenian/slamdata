@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
+import Data.Lens ((^.))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 
@@ -41,19 +42,17 @@ eval
     , MonadTell CEM.CardLog m
     , QuasarDSL m
     )
-  ⇒ Port.Port
-  → Maybe String
-  → FilePath
-  → Maybe Port.VarMap
-  → m Port.TaggedResourcePort
-eval input mfp resource varMap =
-  case mfp of
+  ⇒ Maybe String
+  → Port.Resource
+  → m Port.Out
+eval mfp resource =
+  Port.resourceOut <$> case mfp of
     Nothing → do
       tmp ← CEM.temporaryOutputResource
-      eval' tmp resource varMap
+      eval' tmp resource
     Just pt →
       case PU.parseAnyPath pt of
-        Just (Right fp) → eval' fp resource varMap
+        Just (Right fp) → eval' fp resource
         _ → CEM.throw $ pt ⊕ " is not a valid file path"
 
 eval'
@@ -63,18 +62,15 @@ eval'
     , QuasarDSL m
     )
   ⇒ FilePath
-  → FilePath
-  → Maybe Port.VarMap
-  → m Port.TaggedResourcePort
-eval' tmp resource varMap = do
-
+  → Port.Resource
+  → m Port.Resource
+eval' tmp resource = do
+  let filePath = resource ^. Port._filePath
   outputResource ← CEM.liftQ $
-    QQ.fileQuery resource tmp "select * from {{path}}" SM.empty
-
+    QQ.fileQuery filePath tmp "select * from {{path}}" SM.empty
   CEM.liftQ $ QFS.messageIfFileNotFound
     outputResource
     "Error saving file, please try another location"
-
   -- TODO: this error message is pretty obscure. I think it occurs when a query
   -- is like "SELECT * FROM t" and quasar does no work. I'm not sure what the
   -- behaviour of Save should be in that case - perhaps instead of failing it
@@ -85,6 +81,6 @@ eval' tmp resource varMap = do
   when (tmp /= outputResource)
     $ CEM.throw
     $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
-  CEM.addSource resource
+  CEM.addSource filePath
   CEM.addCache outputResource
-  pure { resource: outputResource, tag: Nothing, varMap }
+  pure (Port.Path outputResource)

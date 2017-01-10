@@ -162,10 +162,10 @@ makeCardComponentPart def render =
       pure next
     CQ.HandleEvalMessage msg next → do
       case msg of
-        Card.Pending source evalPort → do
-          queryInnerCard $ EQ.ReceiveInput evalPort
-        Card.Complete source evalPort → do
-          queryInnerCard $ EQ.ReceiveOutput evalPort
+        Card.Pending source (evalPort × varMap) → do
+          queryInnerCard $ EQ.ReceiveInput evalPort varMap
+        Card.Complete source (evalPort × varMap) → do
+          queryInnerCard $ EQ.ReceiveOutput evalPort varMap
         Card.StateChange source evalState →
           queryInnerCard $ EQ.ReceiveState evalState
         Card.ModelChange source evalModel →
@@ -188,9 +188,9 @@ makeCardComponentPart def render =
       -- in Halogen Next.
       H.fromAff $ later (pure unit)
       queryInnerCard $ EQ.Load model
-      for_ input (queryInnerCard ∘ EQ.ReceiveInput)
+      for_ input (queryInnerCard ∘ uncurry EQ.ReceiveInput)
       for_ state (queryInnerCard ∘ EQ.ReceiveState)
-      for_ output (queryInnerCard ∘ EQ.ReceiveOutput)
+      for_ output (queryInnerCard ∘ uncurry EQ.ReceiveOutput)
       eval (CQ.UpdateDimensions unit)
 
   peek ∷ ∀ a. EQ.CardEvalQuery a → CardDSL Unit

@@ -27,6 +27,8 @@ import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
+import Data.Lens (view)
+
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Workspace.Card.BuildChart.Area.Eval as BuildArea
@@ -48,6 +50,7 @@ import SlamData.Workspace.Card.BuildChart.Sankey.Eval as BuildSankey
 import SlamData.Workspace.Card.BuildChart.Scatter.Eval as BuildScatter
 import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Eval.Common as Common
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.Transition (Eval(..), tagEval)
 import SlamData.Workspace.Card.Markdown.Eval as MDE
@@ -62,7 +65,6 @@ import SlamData.Workspace.Card.SetupFormInput.Static.Eval as SetupStatic
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.FormInput.Eval as FormInput
 
-
 runCard
   ∷ ∀ f m
   . ( MonadAff SlamDataEffects m
@@ -72,11 +74,12 @@ runCard
     )
   ⇒ CEM.CardEnv
   → CEM.CardState
-  → Port.Port
   → Eval
-  → m (CEM.CardResult Port.Port)
-runCard env state input trans =
-  CEM.runCardEvalM env state (evalCard input trans ∷ CEM.CardEval Port.Port)
+  → Port.Port
+  → Port.DataMap
+  → m (CEM.CardResult Port.Out)
+runCard env state trans input varMap =
+  CEM.runCardEvalM env state (evalCard trans input varMap ∷ CEM.CardEval Port.Out)
 
 evalCard
   ∷ ∀ m
@@ -88,102 +91,55 @@ evalCard
     , QuasarDSL m
     , ParQuasarDSL m
     )
-  ⇒ Port.Port
-  → Eval
-  → m Port.Port
-evalCard = flip case _, _ of
-  Error msg, _ →
-    pure $ Port.CardError msg
-  Pass, Port.Initial →
-    CEM.throw "Cannot pass initial port"
-  Pass, Port.Terminal →
-    CEM.throw "Cannot pass terminal port"
-  Pass, port →
-    pure port
-  Draftboard, _ →
-    pure Port.Draftboard
-  Query sql, Port.VarMap varMap →
-    Port.TaggedResource <$> Query.evalQuery varMap sql
-  Query sql, _ →
-    Port.TaggedResource <$> Query.evalQuery Port.emptyVarMap sql
-  Markdown txt, port →
-    MDE.evalMarkdown port txt
-  MarkdownForm model, Port.SlamDown doc →
-    Port.VarMap <$> MDE.evalMarkdownForm doc model
-  Search query, Port.TaggedResource { resource } →
-    Port.TaggedResource <$> Search.evalSearch query resource
-  Cache pathString, port@Port.TaggedResource { resource, varMap } →
-    Port.TaggedResource <$> Cache.eval port pathString resource varMap
-  Open res, _ →
-    Port.TaggedResource <$> Open.evalOpen res
-  Variables model, _ → do
-    Port.VarMap <$> VariablesE.eval model
-  DownloadOptions { compress, options }, Port.TaggedResource { resource } →
-    pure $ Port.DownloadOptions { resource, compress, options }
-  BuildMetric model, Port.TaggedResource tr →
-    BuildMetric.eval tr model
-  BuildSankey model, Port.TaggedResource tr →
-    BuildSankey.eval tr model
-  BuildGauge model, Port.TaggedResource tr →
-    BuildGauge.eval tr model
-  BuildGraph model, Port.TaggedResource tr →
-    BuildGraph.eval tr model
-  BuildPie model, Port.TaggedResource tr →
-    BuildPie.eval tr model
-  BuildRadar model, Port.TaggedResource tr →
-    BuildRadar.eval tr model
-  BuildArea model, Port.TaggedResource tr →
-    BuildArea.eval tr model
-  BuildLine model, Port.TaggedResource tr →
-    BuildLine.eval tr model
-  BuildBar model, Port.TaggedResource tr →
-    BuildBar.eval tr model
-  BuildScatter model, Port.TaggedResource tr →
-    BuildScatter.eval tr model
-  BuildFunnel model, Port.TaggedResource tr →
-    BuildFunnel.eval tr model
-  BuildHeatmap model, Port.TaggedResource tr →
-    BuildHeatmap.eval tr model
-  BuildBoxplot model, Port.TaggedResource tr →
-    BuildBoxplot.eval tr model
-  BuildPivotTable model, Port.TaggedResource tr →
-    BuildPivotTable.eval tr model
-  BuildPunchCard model, Port.TaggedResource tr →
-    BuildPunchCard.eval tr model
-  BuildCandlestick model, Port.TaggedResource tr →
-    BuildCandlestick.eval tr model
-  BuildParallel model, Port.TaggedResource tr →
-    BuildParallel.eval tr model
-  Chart, Port.Metric {taggedResource} →
-    pure $ Port.TaggedResource taggedResource
-  Chart, Port.PivotTable {taggedResource} →
-    pure $ Port.TaggedResource taggedResource
-  Chart, Port.ChartInstructions {taggedResource} →
-    pure $ Port.TaggedResource taggedResource
-  SetupCheckbox model, Port.TaggedResource tr →
-    SetupLabeled.eval model tr CT.Checkbox
-  SetupRadio model, Port.TaggedResource tr →
-    SetupLabeled.eval model tr CT.Radio
-  SetupDropdown model, Port.TaggedResource tr →
-    SetupLabeled.eval model tr CT.Dropdown
-  SetupText model, Port.TaggedResource tr →
-    SetupTextLike.eval model tr CT.Text
-  SetupNumeric model, Port.TaggedResource tr →
-    SetupTextLike.eval model tr CT.Numeric
-  SetupDate model, Port.TaggedResource tr →
-    SetupTextLike.eval model tr CT.Date
-  SetupTime model, Port.TaggedResource tr →
-    SetupTextLike.eval model tr CT.Time
-  SetupDatetime model, Port.TaggedResource tr →
-    SetupTextLike.eval model tr CT.Datetime
-  SetupStatic model, Port.TaggedResource tr →
-    SetupStatic.eval model tr
+  ⇒ Eval
+  → Port.Port
+  → Port.DataMap
+  → m Port.Out
+evalCard trans port varMap = case trans, port of
+  Error msg, _ → CEM.throw msg
+  Pass, _ → pure (port × varMap)
+  Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
+  Composite, _ → Port.varMapOut <$> Common.evalComposite
+  Query sql, _ → Query.evalQuery sql varMap
+  Markdown txt, _ → MDE.evalMarkdown txt varMap
+  MarkdownForm model, Port.SlamDown doc → MDE.evalMarkdownForm model doc varMap
+  Search query, _ → Search.evalSearch query =<< CEM.extractResource varMap
+  Cache path, _ → Cache.eval path =<< CEM.extractResource varMap
+  Open res, _ → Open.evalOpen res
+  Variables model, _ → VariablesE.eval model
+  BuildMetric model, _ → CEM.tapResource (BuildMetric.eval model) varMap
+  BuildSankey model, _ → CEM.tapResource (BuildSankey.eval model) varMap
+  BuildGauge model, _ → CEM.tapResource (BuildGauge.eval model) varMap
+  BuildGraph model, _ → CEM.tapResource (BuildGraph.eval model) varMap
+  BuildPie model, _ → CEM.tapResource (BuildPie.eval model) varMap
+  BuildRadar model, _ → CEM.tapResource (BuildRadar.eval model) varMap
+  BuildArea model, _ → CEM.tapResource (BuildArea.eval model) varMap
+  BuildLine model, _ → CEM.tapResource (BuildLine.eval model) varMap
+  BuildBar model, _ → CEM.tapResource (BuildBar.eval model) varMap
+  BuildScatter model, _ → CEM.tapResource (BuildScatter.eval model) varMap
+  BuildFunnel model, _ → CEM.tapResource (BuildFunnel.eval model) varMap
+  BuildHeatmap model, _ → CEM.tapResource (BuildHeatmap.eval model) varMap
+  BuildBoxplot model, _ → CEM.tapResource (BuildBoxplot.eval model) varMap
+  BuildPivotTable model, _ → BuildPivotTable.eval model varMap =<< CEM.extractResource varMap
+  BuildPunchCard model, _ → CEM.tapResource (BuildPunchCard.eval model) varMap
+  BuildCandlestick model, _ → CEM.tapResource (BuildCandlestick.eval model) varMap
+  BuildParallel model, _ → CEM.tapResource (BuildParallel.eval model) varMap
+  SetupCheckbox model, _ → CEM.tapResource (SetupLabeled.eval model CT.Checkbox) varMap
+  SetupRadio model, _ → CEM.tapResource (SetupLabeled.eval model CT.Radio) varMap
+  SetupDropdown model, _ → CEM.tapResource (SetupLabeled.eval model CT.Dropdown) varMap
+  SetupText model, _ → CEM.tapResource (SetupTextLike.eval model CT.Text) varMap
+  SetupNumeric model, _ → CEM.tapResource (SetupTextLike.eval model CT.Numeric) varMap
+  SetupDate model, _ → CEM.tapResource (SetupTextLike.eval model CT.Date) varMap
+  SetupTime model, _ → CEM.tapResource (SetupTextLike.eval model CT.Time) varMap
+  SetupDatetime model, _ → CEM.tapResource (SetupTextLike.eval model CT.Datetime) varMap
+  SetupStatic model, _ → CEM.tapResource (SetupStatic.eval model) varMap
   FormInput (FormInput.Labeled model), Port.SetupLabeledFormInput lp →
-    FormInput.evalLabeled model lp
+    FormInput.evalLabeled model lp =<< CEM.extractResource varMap
   FormInput (FormInput.TextLike model), Port.SetupTextLikeFormInput tlp →
-    FormInput.evalTextLike model tlp
-  e, i →
-    CEM.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
+    FormInput.evalTextLike model tlp =<< CEM.extractResource varMap
+  DownloadOptions { compress, options }, _ →
+    CEM.tapResource (pure ∘ Port.DownloadOptions ∘ { compress, options, resource: _ } ∘ view Port._filePath) varMap
+  e, i → CEM.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
 modelToEval ∷ Model.AnyCardModel → Eval
 modelToEval = case _ of
@@ -195,7 +151,7 @@ modelToEval = case _ of
   Model.Open res → Open res
   Model.Variables model → Variables model
   Model.DownloadOptions model → DownloadOptions model
-  Model.Draftboard _ → Draftboard
+  Model.Draftboard _ → Composite
   Model.BuildMetric model  → BuildMetric model
   Model.BuildSankey model → BuildSankey model
   Model.BuildGauge model → BuildGauge model

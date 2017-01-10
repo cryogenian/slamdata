@@ -90,38 +90,38 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
     goInit cardId = do
       Cache.get cardId cards >>= traverse_ \card → do
         let
-          cardInput = fromMaybe Card.Initial card.input
+          cardInput = fromMaybe Card.emptyOut card.input
           card' = card { pending = Just cardInput }
         Cache.put cardId card' cards
         tryEvalCard mempty cardInput cardId card'
 
-    tryEvalCard ∷ Array Card.Id → Card.Port → Card.Id → Card.Cell → m Unit
+    tryEvalCard ∷ Array Card.Id → Card.Out → Card.Id → Card.Cell → m Unit
     tryEvalCard history cardInput cardId card =
       evaluatedOutputs (Card.childDeckIds card.model) >>= traverse_ \childOutputs → do
         let
-          childPorts = List.mapMaybe (traverse (preview Deck._Completed)) childOutputs
-          pendingIds = List.mapMaybe (preview Deck._PendingEval ∘ snd) childOutputs
-          unevaluatedIds = List.nub (List.mapMaybe (traverse (preview Deck._NeedsEval)) childOutputs)
+          children = List.mapMaybe (toChildOut ∘ snd) childOutputs
+          pendingIds = List.mapMaybe (preview Deck._PendingEval ∘ _.status ∘ snd) childOutputs
+          unevaluatedIds = List.nub (List.mapMaybe (traverse (preview Deck._NeedsEval ∘ _.status)) childOutputs)
         if List.null pendingIds && List.null unevaluatedIds
-          then evalCard history cardInput cardId card (Map.fromFoldable childPorts)
+          then evalCard history cardInput cardId card children
           else goChildDecks unevaluatedIds
 
-    evalCard ∷ Array Card.Id → Card.Port → Card.Id → Card.Cell → Map Deck.Id Card.Port → m Unit
-    evalCard history cardInput cardId card childPorts = do
+    evalCard ∷ Array Card.Id → Card.Out → Card.Id → Card.Cell → List Card.ChildOut → m Unit
+    evalCard history cardInput@(cardPort × varMap) cardId card children = do
       publish card (Card.Pending source cardInput)
       let
-        cardEnv = Card.CardEnv { path, cardId, urlVarMaps, childPorts }
+        cardEnv = Card.CardEnv { path, cardId, urlVarMaps, children }
         cardTrans = Card.modelToEval card.model
-      result ← Card.runCard cardEnv card.state cardInput cardTrans
+      result ← Card.runCard cardEnv card.state cardTrans cardPort varMap
       let
         history' =
-          case cardInput of
+          case cardPort of
             Card.CardError _ → history
             _ → Array.snoc history cardId
         cardOutput =
           case result.output of
             Right out → out
-            Left  err → Card.CardError (either id GE.print (GE.fromQError err))
+            Left  err → Card.portOut (Card.CardError (either id GE.print (GE.fromQError err)))
         card' = card
           { pending = Nothing
           , output = Just cardOutput
@@ -134,7 +134,7 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
       publish card (Card.Complete source cardOutput)
       goNext history' cardOutput card.next
 
-    goNext ∷ Array Card.Id → Card.Port → Set (Either Deck.Id Card.Id) -> m Unit
+    goNext ∷ Array Card.Id → Card.Out → Set (Either Deck.Id Card.Id) -> m Unit
     goNext history cardInput next = do
       let
         next' = List.fromFoldable next
@@ -149,7 +149,7 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
       fork $ parTraverse_ goInit parentCardIds
       parTraverse_ (goNextCard history cardInput) cardIds
 
-    goNextCard ∷ Array Card.Id → Card.Port → Card.Id → m Unit
+    goNextCard ∷ Array Card.Id → Card.Out → Card.Id → m Unit
     goNextCard history cardInput cardId =
       Cache.get cardId cards >>= traverse_ \card → do
         let card' = card { input = Just cardInput, pending = Just cardInput }
@@ -164,11 +164,16 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
           Cache.put deckId deck' decks
       parTraverse_ goInit (List.nub (snd <$> cardCoords))
 
-    evaluatedOutputs ∷ ∀ t. Traversable t ⇒ t Deck.Id → m (Maybe (t (Deck.Id × Deck.EvalStatus)))
+    evaluatedOutputs ∷ ∀ t. Traversable t ⇒ t Deck.Id → m (Maybe (t (Deck.Id × Deck.Cell)))
     evaluatedOutputs deckIds = do
       deckGraph ← Cache.snapshot decks
-      let stats = for deckIds \deckId → Tuple deckId ∘ _.status <$> Map.lookup deckId deckGraph
+      let stats = for deckIds \deckId → Tuple deckId <$> Map.lookup deckId deckGraph
       pure stats
+
+    toChildOut ∷ Deck.Cell → Maybe Card.ChildOut
+    toChildOut { model, status } = case status of
+      Deck.Completed (_ × varMap) → Just { namespace: model.name, varMap }
+      _ → Nothing
 
 publish ∷ ∀ m r a b. MonadAff SlamDataEffects m ⇒ { bus ∷ Bus.BusW' b a | r } → a → m Unit
 publish rec message = liftAff (Bus.write message rec.bus)

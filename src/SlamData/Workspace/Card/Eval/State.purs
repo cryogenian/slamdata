@@ -28,11 +28,11 @@ import SlamData.Prelude
 import Data.Argonaut (Json)
 import Data.Lens (Prism', prism', Traversal', wander)
 
-import SlamData.Workspace.Card.Port (TaggedResourcePort)
+import SlamData.Workspace.Card.Port (Resource)
 import SlamData.Workspace.Card.BuildChart.Axis (Axes)
 
 type AnalysisR =
-  { taggedResource ∷ TaggedResourcePort
+  { resource ∷ Resource
   , axes ∷ Axes
   , records ∷ Array Json
   }
@@ -52,6 +52,6 @@ _Records ∷ Traversal' EvalState (Array Json)
 _Records = wander \f s → case s of
   Analysis r@{ records } → Analysis ∘ r { records = _} <$> f records
 
-_Resource ∷ Traversal' EvalState TaggedResourcePort
+_Resource ∷ Traversal' EvalState Resource
 _Resource = wander \f s → case s of
-  Analysis r@{ taggedResource } → Analysis ∘ r { taggedResource = _} <$> f taggedResource
+  Analysis r@{ resource } → Analysis ∘ r { resource = _} <$> f resource

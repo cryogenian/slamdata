@@ -17,6 +17,7 @@ module SlamData.Workspace.Card.Port.VarMap
   , VarMapValue(..)
   , renderVarMapValue
   , emptyVarMap
+  , escapeIdentifier
   ) where
 
 import SlamData.Prelude
@@ -24,6 +25,9 @@ import SlamData.Prelude
 import Data.Foldable as F
 import Data.HugeNum as HN
 import Data.Json.Extended as EJSON
+import Data.String.Regex (test, replace) as Regex
+import Data.String.Regex.Flags (ignoreCase, global) as Regex
+import Data.String.Regex.Unsafe (unsafeRegex) as Regex
 import Data.StrMap as SM
 
 import Data.Argonaut ((.?))
@@ -38,7 +42,7 @@ import Test.StrongCheck.Arbitrary as SC
 
 data VarMapValue
   = Literal EJSON.EJson
-  | SetLiteral (Array EJSON.EJson)
+  | SetLiteral (Array VarMapValue)
   | QueryExpr String -- TODO: syntax of SQL^2 queries
 
 derive instance eqVarMapValue ∷ Eq VarMapValue
@@ -89,7 +93,7 @@ renderVarMapValue
 renderVarMapValue val =
   case val of
     Literal lit → EJSON.renderEJson lit
-    SetLiteral as → "(" <> F.intercalate "," (EJSON.renderEJson <$> as) <> ")"
+    SetLiteral as → "(" <> F.intercalate "," (renderVarMapValue <$> as) <> ")"
     QueryExpr str → str
 
 displayVarMapValue
@@ -98,7 +102,7 @@ displayVarMapValue
 displayVarMapValue val =
   case val of
     Literal lit → displayEJson lit
-    SetLiteral as → "(" <> F.intercalate ", " (displayEJson <$> as) <> ")"
+    SetLiteral as → "(" <> F.intercalate ", " (displayVarMapValue <$> as) <> ")"
     QueryExpr str → str
 
 displayEJsonF
@@ -172,7 +176,7 @@ instance valueVarMapValue ∷ SDV.Value VarMapValue where
 instance arbitraryVarMapValue ∷ SC.Arbitrary VarMapValue where
   arbitrary =
     Literal <$> EJSON.arbitraryJsonEncodableEJsonOfSize 1
-      <|> SetLiteral <$> Gen.arrayOf (EJSON.arbitraryJsonEncodableEJsonOfSize 1)
+      <|> SetLiteral <$> Gen.arrayOf (Literal <$> EJSON.arbitraryJsonEncodableEJsonOfSize 1)
       <|> QueryExpr <$> SC.arbitrary
 
 type VarMap = SM.StrMap VarMapValue
@@ -184,3 +188,12 @@ type URLVarMap = SM.StrMap String
 
 emptyVarMap ∷ VarMap
 emptyVarMap = SM.empty
+
+escapeIdentifier ∷ String → String
+escapeIdentifier str =
+  if Regex.test identifier str
+    then str
+    else "`" <> Regex.replace tick "\\`" str <> "`"
+  where
+    identifier = Regex.unsafeRegex "^[_a-z][_a-z0-9]*$" Regex.ignoreCase
+    tick = Regex.unsafeRegex "`" Regex.global

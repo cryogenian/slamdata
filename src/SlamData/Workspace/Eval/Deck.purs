@@ -33,14 +33,14 @@ import Control.Monad.Aff.Bus (BusRW)
 import Data.Array as Array
 import Data.Lens (Prism', prism')
 import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.Port (Port)
+import SlamData.Workspace.Card.Port (Out)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.DeckId (DeckId, toString)
 import SlamData.Workspace.Deck.Model (Deck, emptyDeck, encode, decode)
 
 data EvalMessage
   = Pending CardId
-  | Complete (Array CardId) Port
+  | Complete (Array CardId) Out
   | CardChange CardId
   | ParentChange (Maybe CardId)
   | NameChange String
@@ -48,7 +48,7 @@ data EvalMessage
 data EvalStatus
   = NeedsEval CardId
   | PendingEval CardId
-  | Completed Port
+  | Completed Out
 
 type Id = DeckId
 
@@ -62,7 +62,7 @@ type Cell =
   }
 
 evalStatusFromCards ∷ Array CardId → EvalStatus
-evalStatusFromCards = maybe (Completed Port.Initial) NeedsEval ∘ Array.head
+evalStatusFromCards = maybe (Completed Port.emptyOut) NeedsEval ∘ Array.head
 
 _NeedsEval ∷ Prism' EvalStatus CardId
 _NeedsEval = prism' NeedsEval case _ of
@@ -74,7 +74,7 @@ _PendingEval = prism' PendingEval case _ of
   PendingEval cardId → Just cardId
   _                  → Nothing
 
-_Completed ∷ Prism' EvalStatus Port
+_Completed ∷ Prism' EvalStatus Out
 _Completed = prism' Completed case _ of
-  Completed port → Just port
-  _              → Nothing
+  Completed out → Just out
+  _             → Nothing

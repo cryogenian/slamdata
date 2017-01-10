@@ -32,7 +32,10 @@ import Ace.Types (Editor)
 import Control.Monad.Aff.AVar (makeVar, takeVar)
 import Control.Monad.Aff.EventLoop as EventLoop
 
+import Data.Array as Array
 import Data.Lens ((.~))
+import Data.String as Str
+import Data.StrMap as SM
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -52,6 +55,7 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.Ace (getRangeRecs, readOnly)
@@ -132,9 +136,20 @@ cardEval mode = case _ of
       _ → pure unit
     H.modify _ { dirty = false }
     pure next
-  CC.ReceiveInput _ next →
+  CC.ReceiveInput _ varMaps next → do
+    let vars = SM.keys varMaps
+    H.query unit $ H.action $ AC.SetCompleteFn \_ _ _ inp → do
+      let inp' = Str.toLower inp
+      pure $ flip Array.mapMaybe vars \var → do
+        guard $ Str.contains (Str.Pattern inp') (Str.toLower var)
+        pure
+          { value: ":" <> Port.escapeIdentifier var
+          , score: 200.0
+          , caption: Just var
+          , meta: "var"
+          }
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next → do
     pure next

@@ -22,6 +22,7 @@ module SlamData.Workspace.Card.Eval.Monad
   , CardEnv(..)
   , CardResult
   , CardEvalM
+  , ChildOut
   , addSource
   , addCache
   , addSources
@@ -29,6 +30,9 @@ module SlamData.Workspace.Card.Eval.Monad
   , additionalSources
   , temporaryOutputResource
   , localUrlVarMap
+  , extractResourceVar
+  , extractResource
+  , tapResource
   , throw
   , liftQ
   , runCardEvalM
@@ -50,11 +54,13 @@ import Control.Monad.Throw as Throw
 import Control.Monad.Writer.Class (class MonadTell, tell)
 import Control.Parallel.Class (parallel, sequential)
 
+import Data.List (List, (:))
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Path
 import Data.Set (Set)
 import Data.Set as Set
+import Data.StrMap as SM
 
 import Quasar.Advanced.QuasarAF as QA
 import Quasar.Error (QError)
@@ -66,7 +72,6 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Eval.State (EvalState(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
-import SlamData.Workspace.Deck.DeckId as DID
 import Utils.Path (DirPath, FilePath)
 
 type CardEval = CardEvalM SlamDataEffects
@@ -83,11 +88,16 @@ type CardResult a =
   , state ∷ CardState
   }
 
+type ChildOut =
+  { namespace ∷ String
+  , varMap ∷ Port.DataMap
+  }
+
 newtype CardEnv = CardEnv
   { path ∷ DirPath
   , cardId ∷ CID.CardId
   , urlVarMaps ∷ Map.Map CID.CardId Port.URLVarMap
-  , childPorts ∷ Map.Map DID.DeckId Port.Port
+  , children ∷ List ChildOut
   }
 
 data CardEvalF eff a
@@ -162,24 +172,36 @@ addCaches fps = tell (foldMap (Set.singleton ∘ Cache) fps)
 additionalSources ∷ ∀ f m. (Foldable f, MonadTell (Set AdditionalSource) m) ⇒ f AdditionalSource → m Unit
 additionalSources = tell ∘ foldMap Set.singleton
 
-temporaryOutputResource ∷ ∀ m. (MonadAsk CardEnv m) ⇒ m FilePath
+temporaryOutputResource ∷ ∀ m. MonadAsk CardEnv m ⇒ m FilePath
 temporaryOutputResource = do
   CardEnv { path, cardId } ← ask
   pure $ path
     </> Path.dir ".tmp"
     </> Path.file ("out" ⊕ CID.toString cardId)
 
-localUrlVarMap ∷ ∀ m. (MonadAsk CardEnv m) ⇒ m Port.URLVarMap
+localUrlVarMap ∷ ∀ m. MonadAsk CardEnv m ⇒ m Port.URLVarMap
 localUrlVarMap = do
   CardEnv { cardId, urlVarMaps } ← ask
   pure
     (fromMaybe mempty
       (Map.lookup cardId urlVarMaps))
 
-throw ∷ ∀ m a. (MonadThrow QError m) ⇒ String → m a
+extractResourceVar ∷ ∀ m. MonadThrow QError m ⇒ Port.DataMap → m (String × Port.Resource)
+extractResourceVar dm = case SM.toList (Port.filterResources dm) of
+  _ : _ : _ → throw "Multiple resources selected"
+  r : _ → pure r
+  _ → throw "No resource selected"
+
+extractResource ∷ ∀ m. MonadThrow QError m ⇒ Port.DataMap → m (Port.Resource)
+extractResource = map snd ∘ extractResourceVar
+
+tapResource ∷ ∀ m. MonadThrow QError m ⇒ (Port.Resource → m Port.Port) → Port.DataMap → m Port.Out
+tapResource f dm = map (_ × dm) (f =<< extractResource dm)
+
+throw ∷ ∀ m a. MonadThrow QError m ⇒ String → m a
 throw = Throw.throw ∘ msgToQError
 
-liftQ ∷ ∀ m a. (MonadThrow QError m) ⇒ m (Either QError a) → m a
+liftQ ∷ ∀ m a. MonadThrow QError m ⇒ m (Either QError a) → m a
 liftQ = flip bind (either Throw.throw pure)
 
 runCardEvalM
@@ -198,22 +220,12 @@ runCardEvalM env initialState (CardEvalM ce) = go initialState Set.empty ce
     go st as ce' = case resume ce' of
       Left ctr →
         case ctr of
-          Aff aff →
-            liftAff aff >>= go st as
-          Quasar q →
-            liftQuasar q >>= go st as
-          ParQuasar q →
-            sequential (foldFreeAp (parallel ∘ liftQuasar) q) >>= go st as
-          Tell (n × as') →
-            go st (as <> as') n
-          State k →
-            let
-              res = k st
-            in
-              go (snd res) as (fst res)
-          Ask k →
-            go st as (k env)
-          Throw err →
-            pure { output: Left err, sources: as, state: st }
+          Aff aff → liftAff aff >>= go st as
+          Quasar q → liftQuasar q >>= go st as
+          ParQuasar q → sequential (foldFreeAp (parallel ∘ liftQuasar) q) >>= go st as
+          Tell (n × as') → go st (as <> as') n
+          State k → let res = k st in go (snd res) as (fst res)
+          Ask k → go st as (k env)
+          Throw err → pure { output: Left err, sources: as, state: st }
       Right a →
         pure { output: Right a, sources: as, state: st }

@@ -128,7 +128,7 @@ eval = case _ of
         pure next
       _ →
         pure next
-  CC.ReceiveInput input next → do
+  CC.ReceiveInput input _ next → do
     case input of
       SetupTextLikeFormInput p → do
         H.modify _{ formInputType = Just p.formInputType }
@@ -140,7 +140,7 @@ eval = case _ of
         pure next
       _ →
         pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next →
     pure next
