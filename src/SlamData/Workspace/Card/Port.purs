@@ -120,7 +120,7 @@ data Port
   = Initial
   | Variables
   | CardError String
-  | Resource String
+  | ResourceKey String
   | SetupLabeledFormInput SetupLabeledFormInputPort
   | SetupTextLikeFormInput SetupTextLikeFormInputPort
   | SlamDown (SD.SlamDownP VarMapValue)
@@ -134,7 +134,7 @@ tagPort  = case _ of
   Initial → "Initial"
   Variables → "Variables"
   CardError str → "CardError: " ⊕ show str
-  Resource str → "Resource: " ⊕ show str
+  ResourceKey str → "ResourceKey: " ⊕ show str
   SetupLabeledFormInput _ → "SetupLabeledFormInput"
   SetupTextLikeFormInput _ → "SetupTextLikeFormInput"
   SlamDown sd → "SlamDown: " ⊕ show sd
@@ -174,7 +174,7 @@ varMapOut ∷ DataMap → Out
 varMapOut v = Variables × v
 
 resourceOut ∷ Resource → Out
-resourceOut r = Resource defaultResourceVar × SM.singleton "out" (Left r)
+resourceOut r = ResourceKey defaultResourceVar × SM.singleton "out" (Left r)
 
 portOut ∷ Port → Out
 portOut p = p × SM.empty

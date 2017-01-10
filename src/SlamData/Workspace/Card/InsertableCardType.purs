@@ -216,7 +216,7 @@ eitherOr strings =
 
 fromPort ∷ Port → InsertableCardIOType
 fromPort = case _ of
-  Port.Resource _ → Data
+  Port.ResourceKey _ → Data
   Port.DownloadOptions _ → Download
   Port.SlamDown _ → Markdown
   Port.ChartInstructions _ → Chart

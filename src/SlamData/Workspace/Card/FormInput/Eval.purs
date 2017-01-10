@@ -85,7 +85,7 @@ eval sql var val r = do
         [ Port.defaultResourceVar × Left (Port.View resource sql SM.empty)
         , var' × Right val
         ]
-  pure (Port.Resource "out" × varMap)
+  pure (Port.ResourceKey Port.defaultResourceVar × varMap)
 
 evalLabeled
   ∷ ∀ m

@@ -25,7 +25,7 @@ import SlamData.Workspace.Card.Port as Port
 
 initialModel ∷ Port.Port → Ace.Model
 initialModel = case _ of
-  Port.Resource var →
+  Port.ResourceKey var →
     { text: "SELECT * FROM :" <> Port.escapeIdentifier var
     , ranges: []
     }

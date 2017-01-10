@@ -98,7 +98,7 @@ evalCard
 evalCard trans port varMap = case trans, port of
   Error msg, _ → CEM.throw msg
   Pass, _ → pure (port × varMap)
-  Chart, _ → pure (Port.Resource Port.defaultResourceVar × varMap)
+  Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
   Composite, _ → Port.varMapOut <$> Common.evalComposite
   Query sql, _ → Query.evalQuery sql varMap
   Markdown txt, _ → MDE.evalMarkdown txt varMap
