@@ -50,9 +50,10 @@ eval
     , QuasarDSL m
     )
   ⇒ PTM.Model
+  → Port.DataMap
   → Port.Resource
   → m Port.Out
-eval options resource = do
+eval options varMap resource = do
   let
     filePath = resource ^. Port._filePath
     query = mkSql options filePath
@@ -65,7 +66,7 @@ eval options resource = do
       _ → CEM.liftQ (QQ.axes filePath 300)
   let
     state' = { axes, records: [], resource }
-    view = Port.View r (snd query) SM.empty
+    view = Port.View r (snd query) varMap
     output = Port.PivotTable (fst query) × SM.singleton Port.defaultResourceVar (Left view)
     backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir r)
   put (Just (CEM.Analysis state'))

@@ -139,19 +139,15 @@ cardEval mode = case _ of
   CC.ReceiveInput _ varMaps next → do
     let vars = SM.keys varMaps
     H.query unit $ H.action $ AC.SetCompleteFn \_ _ _ inp → do
-      traceAnyA inp
-      let
-        inp' = Str.toLower inp
-        matches = Array.sort $
-          flip Array.mapMaybe vars \var →
-            (_ × var) <$> Str.indexOf (Str.Pattern inp') (Str.toLower var)
-        completions = matches <#> \(_ × var) →
+      let inp' = Str.toLower inp
+      pure $ flip Array.mapMaybe vars \var → do
+        guard $ Str.contains (Str.Pattern inp') (Str.toLower var)
+        pure
           { value: ":" <> Port.escapeIdentifier var
           , score: 200.0
           , caption: Just var
           , meta: "var"
           }
-      pure completions
     pure next
   CC.ReceiveOutput _ _ next →
     pure next

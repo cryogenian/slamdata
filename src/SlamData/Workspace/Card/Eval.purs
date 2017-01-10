@@ -120,7 +120,7 @@ evalCard trans port varMap = case trans, port of
   BuildFunnel model, _ → CEM.tapResource (BuildFunnel.eval model) varMap
   BuildHeatmap model, _ → CEM.tapResource (BuildHeatmap.eval model) varMap
   BuildBoxplot model, _ → CEM.tapResource (BuildBoxplot.eval model) varMap
-  BuildPivotTable model, _ → BuildPivotTable.eval model =<< CEM.extractResource varMap
+  BuildPivotTable model, _ → BuildPivotTable.eval model varMap =<< CEM.extractResource varMap
   BuildPunchCard model, _ → CEM.tapResource (BuildPunchCard.eval model) varMap
   BuildCandlestick model, _ → CEM.tapResource (BuildCandlestick.eval model) varMap
   BuildParallel model, _ → CEM.tapResource (BuildParallel.eval model) varMap

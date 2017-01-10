@@ -34,7 +34,7 @@ eval
   → m Port.Out
 eval model = do
   CEM.CardEnv { cardId, urlVarMaps } ← ask
-  pure (Port.Initial × map Right (buildVarMap cardId urlVarMaps model))
+  pure (Port.Variables × map Right (buildVarMap cardId urlVarMaps model))
 
 buildVarMap ∷ CardId → Map.Map CardId Port.URLVarMap → Model → Port.VarMap
 buildVarMap cardId urlVarMaps model =
