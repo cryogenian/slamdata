@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Control.Coroutine (runProcess, await, ($$))
 import Control.Coroutine.Aff (produce)
 import Control.Monad.Aff (Aff, forkAff)
+import Control.Monad.Aff.Free (fromEff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (writeRef)
@@ -57,6 +58,7 @@ import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse (resolveUrlVarMaps)
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
+import SlamData.Quasar.Auth.Permission as Permission
 
 import Routing as Routing
 
@@ -80,12 +82,13 @@ routeSignal = do
   routeProducer = produce \emit →
     Routing.matches' UP.decodeURIPath routing \_ → emit ∘ Left
 
-  routeConsumer state = do
+  routeConsumer state  = do
     new ← await
     case new, state of
       -- Initialize the Workspace component
       WorkspaceRoute path deckId action varMaps, Nothing → do
-        wiring ← lift $ Wiring.make path (toAccessType action) varMaps
+        permissionTokenHashes ← lift $ fromEff Permission.retrieveTokenHashes
+        wiring ← lift $ Wiring.make path (toAccessType action) varMaps permissionTokenHashes
         mount wiring new
 
       -- Reload the page on path change or varMap change
@@ -121,7 +124,7 @@ routeSignal = do
     wiring' ←
       if path ≡ wiring.path
         then pure $ Wiring wiring { path = path, accessType = toAccessType action }
-        else lift $ Wiring.make path (toAccessType action) varMaps
+        else lift $ Wiring.make path (toAccessType action) varMaps wiring.auth.permissionTokenHashes
     lift $ removeFromBody ".sd-workspace"
     mount wiring' new
 

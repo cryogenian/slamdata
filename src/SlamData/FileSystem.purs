@@ -62,6 +62,7 @@ import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQu
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam, runSlam)
+import SlamData.Quasar.Auth.Permission as Permission
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
 import SlamData.Wiring as Wiring
@@ -79,7 +80,8 @@ main = do
   AceConfig.set AceConfig.themePath $ Config.baseUrl ⊕ "js/ace"
 
   runHalogenAff do
-    wiring ← Wiring.make rootDir Editable mempty
+    permissionTokenHashes ← liftEff $ Permission.retrieveTokenHashes
+    wiring ← Wiring.make rootDir Editable mempty permissionTokenHashes
     let ui = interpret (runSlam wiring) comp
     driver ← runUI ui (parentState initialState) =<< awaitBody
 

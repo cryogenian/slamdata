@@ -18,6 +18,7 @@ module SlamData.Monad where
 
 import SlamData.Prelude
 
+import Data.Array as Array
 import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Bus as Bus
@@ -143,7 +144,7 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
     Aff aff →
       aff
     GetAuthIdToken k → do
-      idToken ← hush <$> getIdTokenSilently auth.allowedModes auth.requestToken
+      idToken ← getIdTokenSilentlyIfNoPermissionTokens
       case idToken of
         Just (Left error) →
           for_ (Auth.toNotificationOptions error) \opts →
@@ -152,7 +153,7 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
           pure unit
       pure $ k $ maybe Nothing hush idToken
     Quasar qf → do
-      idToken ← hush <$> getIdTokenSilently auth.allowedModes auth.requestToken
+      idToken ← getIdTokenSilentlyIfNoPermissionTokens
       case idToken of
         Just (Left error) →
           for_ (Auth.toNotificationOptions error) \opts →
@@ -182,3 +183,9 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
   goFork ∷ FF.Fork Slam ~> Aff SlamDataEffects
   goFork = FF.unFork \(FF.ForkF fx k) →
     k ∘ map unsafeCoerceAff <$> fork (runSlam wiring fx)
+
+  getIdTokenSilentlyIfNoPermissionTokens ∷ Aff SlamDataEffects (Maybe Auth.EIdToken)
+  getIdTokenSilentlyIfNoPermissionTokens =
+    if Array.null auth.permissionTokenHashes
+      then hush <$> getIdTokenSilently auth.allowedModes auth.requestToken
+      else pure Nothing
