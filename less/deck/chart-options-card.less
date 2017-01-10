@@ -2,40 +2,184 @@
 
 .sd-card-chart-options, .sd-form-input-setup {
 
-  > div {
-    height: 100%;
-  }
-
-  .loading-message.alert.alert-info {
-    height: 100%;
-    margin-top: 0;
-    margin-bottom: 0;
-  }
-
-  .sd-dimension-picker {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: #fff;
-  }
-
-  hr {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  p {
-    margin-left: .5rem;
-    margin-right: .5rem;
-  }
-
-  .row {
-    margin: 0;
-
-    .col-xs-6 {
-      padding: .5rem;
+    > div {
+        height: 100%;
     }
-  }
+
+    .loading-message.alert.alert-info {
+        height: 100%;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+
+    .sd-dimension-picker {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #fff;
+    }
+
+    hr {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    p {
+        margin-left: .5rem;
+        margin-right: .5rem;
+    }
+
+    .row {
+        margin: 0;
+
+        .col-xs-6 {
+            padding: .5rem;
+        }
+    }
+    form.chart-configure-form {
+        margin: 0;
+        padding: 0;
+        display: inline-block;
+        float: left;
+        position: relative;
+        vertical-align: top;
+        border: none;
+
+        padding: 0;
+        display: inline-block;
+        float: left;
+
+        .sd-size-xsmall & {
+            width: 100%;
+            padding-bottom: 100%;
+        }
+        .sd-size-small & {
+            width: 50%;
+            padding-bottom: 50%;
+        }
+        .sd-size-medium & {
+            width: 33.33333%;
+            padding-bottom: 33.33333%;
+        }
+        .sd-size-large & {
+            width: 25%;
+            padding-bottom: 25%;
+        }
+        .sd-size-xlarge & {
+            width: 20%;
+            padding-bottom: 20%;
+        }
+        .sd-size-xxlarge & {
+            width: 16.66666%;
+            padding-bottom: 16.66666%;
+        }
+        div.sd-picker-with-select {
+            position: absolute;
+            width: ~"calc(100% - 1px)";
+            height: ~"calc(100% - 1px)";
+            background: #ccc;
+            .sd-picker-input {
+                width: 100%;
+                height: ~"calc(100% - 2rem - 1px)";
+                button.sd-picker-main-button {
+                    height: 100%;
+                    background: #999;
+                    &:disabled {
+                        background: #bbb;
+                    }
+                    &:not(:disabled):hover {
+                        &:hover {
+                            background: #337ab7;
+                        }
+                    }
+                    color: #fff;
+                    padding-top: ~"calc(2rem + 7px)";
+                    text-align: center;
+                    text-overflow: ellipsis;
+                    overflow: hidden;
+                }
+                button.sd-dismiss-button {
+                    postion: absolute;
+                    top: 0;
+                    right: 0;
+                    color: #fff;
+                }
+            }
+            select, option {
+                height: 2rem;
+                background: #999;
+                &:disabled {
+                    background: #bbb;
+                }
+                &:not(:disabled):hover {
+                    &:hover {
+                        background: #337ab7;
+                    }
+                }
+                color: #fff;
+                text-shadow:0 1px 0 #aaa;
+                text-align: center;
+                text-align-last: center;
+            }
+        }
+        > .sd-picker-input {
+            width: 100%;
+            position: absolute;
+            height: ~"calc(100% - 1px)";
+            button.sd-picker-main-button {
+                position: absolute;
+                width: ~"calc(100% - 1px)";
+                height: 100%;
+                background: #999;
+                color: #fff;
+                text-align: center;
+                text-overflow: ellipsis;
+                overflow: hidden;
+                &:disabled {
+                    background: #bbb;
+                }
+                &:not(:disabled):hover {
+                    &:hover {
+                        background: #337ab7;
+                    }
+                }
+            }
+        }
+        button.sd-dismiss-button {
+            position: absolute;
+            top: 0;
+            right: 0;
+            color: #fff;
+            background: transparent;
+
+        }
+    }
+    form.chart-configure-input {
+        width: 100%;
+        label {
+            width: 120px;
+            display: inline-block;
+        }
+        input {
+            width: ~"calc(100% - 120px)";
+            display: inline-block;
+        }
+    }
+
+    form.axis-label-param {
+        width: 50%;
+        label {
+            width: 150px;
+            display: inline-block;
+        }
+        input, select {
+            width: ~"calc(100% - 150px)";
+            display: inline-block;
+            &[type=checkbox], &[type=radio] {
+                width: auto
+            }
+        }
+    }
 }

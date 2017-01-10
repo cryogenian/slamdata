@@ -94,7 +94,6 @@ renderHighLOD state =
     [ renderAbscissa state
     , renderOrdinate state
     , renderSize state
-    , HH.hr_
     , renderSeries state
     , renderParallel state
     , HH.hr_
@@ -132,8 +131,7 @@ renderAbscissa state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "X-Axis" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.primary (Just "X-Axis") (selecting Q.Abscissa))
         state.abscissa
         (BCI.aggregation (Just "X-Axis Aggregation") (selecting Q.AbscissaAgg))
@@ -146,8 +144,7 @@ renderOrdinate state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Y-Axis" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.primary (Just "Y-Axis") (selecting Q.Ordinate))
         state.ordinate
         (BCI.aggregation (Just "Y-Axis Aggregation") (selecting Q.OrdinateAgg))
@@ -160,8 +157,7 @@ renderSize state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Bubble size" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.primary (Just "Bubble size") (selecting Q.Size))
         state.size
         (BCI.aggregation (Just "Bubble size Aggregation") (selecting Q.SizeAgg))
@@ -174,8 +170,7 @@ renderSeries state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Series") (selecting Q.Series))
         state.series
     ]
@@ -186,8 +181,7 @@ renderParallel state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Parallel" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
         state.parallel
     ]

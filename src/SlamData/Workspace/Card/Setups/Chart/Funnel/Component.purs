@@ -84,9 +84,7 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ renderCategory state
-    , HH.hr_
     , renderValue state
-    , HH.hr_
     , renderSeries state
     , HH.hr_
     , row [ renderOrder state, renderAlign state ]
@@ -122,8 +120,7 @@ renderCategory state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Category" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Category") (selecting Q.Category))
         state.category
     ]
@@ -134,8 +131,7 @@ renderValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.primary (Just "Measure") (selecting Q.Value))
         state.value
         (BCI.aggregation (Just "Measure aggregation") (selecting Q.ValueAgg))
@@ -148,8 +144,7 @@ renderSeries state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Series") (selecting Q.Series))
         state.series
     ]
@@ -172,7 +167,7 @@ renderAlign state =
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Alignment" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Align" ]
     , BCI.selectInput
         (BCI.dropdown Nothing (selecting Q.Align))
         state.align

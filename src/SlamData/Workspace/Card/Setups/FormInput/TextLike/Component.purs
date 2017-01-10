@@ -98,6 +98,7 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ renderName state
+    , HH.hr_
     , renderValue state
     , renderPicker state
     ]
@@ -124,7 +125,7 @@ renderPicker state = case state.picker of
 renderName ∷ ST.State → HTML
 renderName state =
   HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
+    [ HP.classes [ HH.className "chart-configure-input" ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Name" ]
@@ -144,8 +145,7 @@ renderValue state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Value" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Value") (selecting Q.Value))
         state.value
     ]

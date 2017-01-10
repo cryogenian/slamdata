@@ -81,7 +81,6 @@ renderHighLOD state =
     ]
     [ renderCategory state
     , renderValue state
-    , HH.hr_
     , renderMultiple state
     , renderParallel state
     , renderPicker state
@@ -116,8 +115,7 @@ renderCategory state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Category" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Category") (selecting Q.Category))
         state.category
     ]
@@ -128,8 +126,7 @@ renderValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Measure") (selecting Q.Value))
         state.value
         (BCI.aggregation (Just "Measure Aggregation") (selecting Q.ValueAgg))
@@ -142,8 +139,7 @@ renderMultiple state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Multiple" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Multiple") (selecting Q.Multiple))
         state.multiple
     ]
@@ -154,8 +150,7 @@ renderParallel state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Parallel" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
         state.parallel
     ]

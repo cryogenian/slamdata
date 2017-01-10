@@ -85,8 +85,7 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     $ ( renderDimensions state)
-    ⊕ [ HH.hr_
-      , renderSeries state
+    ⊕ [ renderSeries state
       , renderPicker state
       ]
 
@@ -117,8 +116,7 @@ renderSeries state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Series") (selecting Q.Series))
         state.series
     ]
@@ -127,14 +125,15 @@ renderDimensions ∷ ST.State → Array HTML
 renderDimensions state =
   map renderDimension $ enumerate $ A.zip state.dims state.aggs
   where
-  renderDimension (i × (dim × agg)) =
+  renderDimension (i × dim × agg) =
     HH.form
       [ HP.classes [ CSS.chartConfigureForm, CSS.withAggregation ]
       , Cp.nonSubmit
       ]
-      [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text $ "Dimension #" ⊕ show (i + one) ]
-      , BCI.pickerWithSelect
-          ((if i ≡ 0 then BCI.primary else BCI.secondary) (Just $  "Dimension #" ⊕ show (i + one)) (selecting (Q.Dimension i)))
+      [ BCI.pickerWithSelect
+          ((if i ≡ 0 then BCI.primary else BCI.secondary)
+             (Just $  "Dimension #" ⊕ show (i + one))
+             (selecting (Q.Dimension i)))
           (fromMaybe emptySelect $ state.dims !! i)
           (BCI.aggregation (Just "Dimension aggregation") (selecting (Q.Aggregation i)))
           (fromMaybe emptySelect $ state.aggs !! i)

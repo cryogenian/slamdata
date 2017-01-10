@@ -97,6 +97,7 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ renderName state
+    , HH.hr_
     , renderValue state
     , renderLabel state
     , renderSelected state
@@ -128,7 +129,7 @@ renderPicker state = case state.picker of
 renderName ∷ ST.State → HTML
 renderName state =
   HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
+    [ HP.classes [ HH.className "chart-configure-input" ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Name" ]
@@ -148,8 +149,7 @@ renderLabel state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
          (BCI.secondary (Just "Label") (selecting Q.Label))
          state.label
     ]
@@ -160,8 +160,7 @@ renderSelected state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Selected" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
          (BCI.secondary (Just "Selected") (selecting Q.Selected))
          state.selected
     ]
@@ -172,8 +171,7 @@ renderValue state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Value" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Value") (selecting Q.Value))
         state.value
     ]

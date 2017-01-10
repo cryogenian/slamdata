@@ -80,7 +80,6 @@ renderHighLOD state =
     ]
     [ renderDimension state
     , renderValue state
-    , HH.hr_
     , renderSeries state
     , renderParallel state
     , renderPicker state
@@ -114,8 +113,7 @@ renderDimension state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Dimension" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Dimension") (selecting Q.Dimension))
         state.dimension
     ]
@@ -126,8 +124,7 @@ renderValue state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Measure") (selecting Q.Value))
         state.value
     ]
@@ -138,8 +135,7 @@ renderSeries state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Series") (selecting Q.Series))
         state.series
     ]
@@ -150,8 +146,7 @@ renderParallel state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Parallel" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
         state.parallel
     ]

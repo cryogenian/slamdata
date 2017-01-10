@@ -80,12 +80,10 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ renderDimension state
-    , HH.hr_
     , renderOpen state
     , renderClose state
     , renderLow state
     , renderHigh state
-    , HH.hr_
     , renderParallel state
     , renderPicker state
     ]
@@ -121,8 +119,7 @@ renderDimension state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Dimension" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Dimension") (selecting Q.Dimension))
         state.dimension
     ]
@@ -133,8 +130,7 @@ renderOpen state =
     [ HP.classes [ CSS.chartConfigureForm, CSS.withAggregation ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Opening" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.primary (Just "Opening") (selecting Q.Open))
         state.open
         (BCI.aggregation (Just "Opening Aggregation") (selecting Q.OpenAgg))
@@ -147,8 +143,7 @@ renderClose state =
     [ HP.classes [ CSS.chartConfigureForm, CSS.withAggregation ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Closing" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Closing") (selecting Q.Close))
         state.close
         (BCI.aggregation (Just "Closing Aggregation") (selecting Q.CloseAgg))
@@ -161,8 +156,7 @@ renderHigh state =
     [ HP.classes [ CSS.chartConfigureForm, CSS.withAggregation ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Highest" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Highest") (selecting Q.High))
         state.high
         (BCI.aggregation (Just "Highest Aggregation") (selecting Q.HighAgg))
@@ -175,8 +169,7 @@ renderLow state =
     [ HP.classes [ CSS.chartConfigureForm, CSS.withAggregation ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Lowest" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Lowest") (selecting Q.Low))
         state.low
         (BCI.aggregation (Just "Lowest Aggregation") (selecting Q.LowAgg))
@@ -189,8 +182,7 @@ renderParallel state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Parallel" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
         state.parallel
     ]

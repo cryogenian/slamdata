@@ -98,7 +98,6 @@ renderHighLOD state =
     [ renderAbscissa state
     , renderOrdinate state
     , renderValue state
-    , HH.hr_
     , renderSeries state
     , HH.hr_
     , row [ renderColorScheme state, renderIsReversedScheme state ]
@@ -136,8 +135,7 @@ renderAbscissa state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "X-Axis" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "X-Axis") (selecting Q.Abscissa))
         state.abscissa
     ]
@@ -148,8 +146,7 @@ renderOrdinate state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Y-Axis" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Y-Axis") (selecting Q.Ordinate))
         state.ordinate
     ]
@@ -160,8 +157,7 @@ renderValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.primary (Just "Measure") (selecting Q.Value))
         state.value
         (BCI.dropdown (Just "Measure aggregation") (selecting Q.ValueAgg))
@@ -174,8 +170,7 @@ renderSeries state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Series") (selecting Q.Series))
         state.series
     ]
@@ -214,7 +209,7 @@ renderMaxVal state =
 renderIsReversedScheme ∷ ST.State → HTML
 renderIsReversedScheme state =
   HH.form
-    [ HP.classes [ B.colXs6, CSS.chartDetailParam ]
+    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Reverse color scheme" ]

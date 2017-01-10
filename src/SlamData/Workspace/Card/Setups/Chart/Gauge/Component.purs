@@ -113,8 +113,7 @@ renderValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Measure") (selecting Q.Value))
         state.value
         (BCI.aggregation (Just "Measure Aggregation") (selecting Q.ValueAgg))
@@ -127,8 +126,7 @@ renderParallel state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Parallel series" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Parallel series") (selecting Q.Parallel))
         state.parallel
     ]
@@ -139,8 +137,7 @@ renderMultiple state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Multiple cursors" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Multiple cursors") (selecting Q.Multiple))
         state.multiple
     ]

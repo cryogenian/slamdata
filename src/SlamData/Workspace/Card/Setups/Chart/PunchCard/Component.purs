@@ -122,8 +122,7 @@ renderAbscissa state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text label ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just label) (selecting Q.Abscissa))
         state.abscissa
     ]
@@ -139,8 +138,7 @@ renderOrdinate state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text label ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just label) (selecting Q.Ordinate))
         state.ordinate
     ]
@@ -156,8 +154,7 @@ renderValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Measure") (selecting Q.Value))
         state.value
         (BCI.aggregation (Just "Measure aggregation") (selecting Q.ValueAgg))
@@ -167,7 +164,7 @@ renderValue state =
 renderCircular ∷ ST.State → HTML
 renderCircular state =
   HH.form
-    [ HP.classes [ B.colXs6, CSS.chartDetailParam ]
+    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Circular layout" ]
@@ -182,7 +179,7 @@ renderCircular state =
 renderMinSize ∷ ST.State → HTML
 renderMinSize state =
   HH.form
-    [ HP.classes [ B.colXs6, CSS.chartDetailParam ]
+    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Min size" ]
@@ -197,7 +194,7 @@ renderMinSize state =
 renderMaxSize ∷ ST.State → HTML
 renderMaxSize state =
   HH.form
-    [ HP.classes [ B.colXs6, CSS.chartDetailParam ]
+    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max size" ]

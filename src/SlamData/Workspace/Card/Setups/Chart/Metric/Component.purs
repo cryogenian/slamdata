@@ -84,6 +84,7 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ renderValue state
+
     , HH.hr_
     , renderFormatter state
     , renderFormatterInstruction
@@ -150,8 +151,7 @@ renderValue state =
     [ HP.classes [ CSS.chartConfigureForm, CSS.withAggregation ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Measure") (selecting Q.Value))
         state.value
         (BCI.aggregation (Just "Measure Aggregation") (selecting Q.ValueAgg))
@@ -161,7 +161,7 @@ renderValue state =
 renderFormatter ∷ ST.State → HTML
 renderFormatter state =
   HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
+    [ HP.classes [ HH.className "chart-configure-input" ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Value formatter" ]
@@ -175,7 +175,7 @@ renderFormatter state =
 renderLabel ∷ ST.State → HTML
 renderLabel state =
   HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
+    [ HP.classes [ HH.className "chart-configure-input" ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label" ]

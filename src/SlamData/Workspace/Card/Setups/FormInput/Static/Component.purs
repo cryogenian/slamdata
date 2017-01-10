@@ -108,8 +108,7 @@ renderValue state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Value" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Value") (selecting Q.Value))
         state.value
     ]

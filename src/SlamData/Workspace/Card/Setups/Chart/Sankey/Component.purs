@@ -81,7 +81,6 @@ renderHighLOD state =
     ]
     [ renderSource state
     , renderTarget state
-    , HH.hr_
     , renderValue state
     , renderPicker state
     ]
@@ -114,8 +113,7 @@ renderSource state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Link source" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Link source") (selecting Q.Source))
         state.source
     ]
@@ -126,8 +124,7 @@ renderTarget state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Link target" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Link target") (selecting Q.Target))
         state.target
     ]
@@ -138,8 +135,7 @@ renderValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Weight" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Weight") (selecting Q.Value))
         state.value
         (BCI.aggregation (Just "Weight Aggregation") (selecting Q.ValueAgg))

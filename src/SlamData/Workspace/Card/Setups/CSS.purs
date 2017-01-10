@@ -60,9 +60,6 @@ axisLabelParam = className "axis-label-param"
 chartSizeParam ∷ ClassName
 chartSizeParam = className "chart-size-param"
 
-chartDetailParam ∷ ClassName
-chartDetailParam = className "chart-detail-param"
-
 funnelChartOrderParam ∷ ClassName
 funnelChartOrderParam = className "funnel-chart-order-param"
 

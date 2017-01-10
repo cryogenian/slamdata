@@ -93,13 +93,11 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ renderDimension state
-    , HH.hr_
     , renderValue state
     , renderSecondValue state
-    , HH.hr_
     , renderSeries state
-    , HH.hr_
     , renderSize state
+    , HH.hr_
     , row [ renderMinSize state, renderMaxSize state ]
     , HH.hr_
     , row [ renderAxisLabelAngle state ]
@@ -136,8 +134,7 @@ renderDimension state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Dimension" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Dimension") (selecting Q.Dimension))
         state.dimension
     ]
@@ -148,8 +145,7 @@ renderValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure #1" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Measure #1") (selecting Q.Value))
         state.value
         (BCI.aggregation (Just "Measure Aggregation #1") (selecting Q.ValueAgg))
@@ -162,8 +158,7 @@ renderSecondValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure #2" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Measure #2") (selecting Q.SecondValue))
         state.secondValue
         (BCI.aggregation (Just "Measure Aggregation #2") (selecting Q.SecondValueAgg))
@@ -176,8 +171,7 @@ renderSeries state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Series") (selecting Q.Series))
         state.series
     ]
@@ -188,8 +182,7 @@ renderSize state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure #3" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Measure #3") (selecting Q.Size))
         state.size
         (BCI.aggregation (Just "Measure Aggregation #3") (selecting Q.SizeAgg))

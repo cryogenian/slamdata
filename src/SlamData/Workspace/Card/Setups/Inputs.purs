@@ -51,27 +51,42 @@ type AggregationConfig a i =
     ( query ∷ SelectAction a → H.Action i
     )
 
-primary ∷ ∀ a i. Show a ⇒ Maybe String → (SelectAction a → H.Action i) → PickerConfig a i
-primary =
+primary
+  ∷ ∀ a i
+  . Show a
+  ⇒ Maybe String
+  → (SelectAction a → H.Action i)
+  → PickerConfig a i
+primary lbl =
   { disableWhen: (_ < 2)
   , defaultWhen: (_ < 1)
-  , ariaLabel: _
-  , defaultOption: "Select source"
+  , ariaLabel: lbl
+  , defaultOption: "Choose " ⊕ fromMaybe "source" lbl
   , showValue: show
   , query: _
   }
 
-secondary ∷ ∀ a i. Show a ⇒ Maybe String → (SelectAction a → H.Action i) → PickerConfig a i
-secondary =
+secondary
+  ∷ ∀ a i
+  . Show a
+  ⇒ Maybe String
+  → (SelectAction a → H.Action i)
+  → PickerConfig a i
+secondary lbl =
   { disableWhen: (_ < 1)
   , defaultWhen: const true
-  , ariaLabel: _
-  , defaultOption: "Select source"
+  , ariaLabel: lbl
+  , defaultOption: "Choose " ⊕ fromMaybe "source" lbl
   , showValue: show
   , query: _
   }
 
-dropdown ∷ ∀ a i. OptionVal a ⇒ Maybe String → (SelectAction a → H.Action i) → PickerConfig a i
+dropdown
+  ∷ ∀ a i
+  . OptionVal a
+  ⇒ Maybe String
+  → (SelectAction a → H.Action i)
+  → PickerConfig a i
 dropdown =
   { disableWhen: (_ < 1)
   , defaultWhen: const false
@@ -102,22 +117,19 @@ pickerInput conf (Select { options, value }) =
     isDefault = isNothing value
     isDisabled = conf.disableWhen len
   in
-    HH.span
-      [ HP.classes
-          ([ HH.className "sd-picker-input" ]
-            <> (HH.className "default" <$ guard isDefault))
-      ]
-      [ HH.button
-          ([ HP.classes [ B.formControl ]
+   HH.div [ HP.classes [ HH.className "sd-picker-input" ] ]
+     [ HH.button
+         ([ HP.classes
+            $ [ B.formControl, HH.className "sd-picker-main-button" ]
+            ⊕ ( HH.className "default" <$ guard isDefault )
           , HP.disabled isDisabled
           , ARIA.label (fromMaybe "" conf.ariaLabel)
-          ] <> (HE.onClick (HE.input_ (conf.query (Open options))) <$ guard (not isDisabled)))
-          [ HH.text
-              if isDefault
-                then conf.defaultOption
-                else maybe conf.defaultOption conf.showValue value
           ]
-      , if conf.defaultWhen len && not isDefault
+          <> (HE.onClick (HE.input_ (conf.query (Open options))) <$ guard (not isDisabled)))
+         ( foldMap (pure ∘ HH.p_ ∘ pure ∘ HH.text ∘ flip append ":") (value *> conf.ariaLabel)
+           ⊕ [ HH.text (maybe conf.defaultOption conf.showValue (guard (not isDefault) *> value)) ]
+         )
+     , if conf.defaultWhen len && not isDefault
           then
             HH.button
               [ HP.classes [ HH.className "sd-dismiss-button" ]
@@ -179,7 +191,7 @@ pickerWithSelect conf1 sel1@(Select { options, value }) conf2 sel2 =
   let
     isDisabled = conf1.disableWhen (Array.length options)
   in
-    HH.div_
+    HH.div [ HP.classes [ HH.className "sd-picker-with-select" ] ]
       [ pickerInput conf1 sel1
       , if isDisabled
           then selectInput (conf2 { disableWhen = const true }) sel2

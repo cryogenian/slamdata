@@ -86,9 +86,7 @@ renderHighLOD state =
     ]
     [ renderSource state
     , renderTarget state
-    , HH.hr_
     , renderSize state
-    , HH.hr_
     , renderColor state
     , HH.hr_
     , row [ renderMaxSize state, renderMinSize state ]
@@ -125,8 +123,7 @@ renderSource state =
     [ HP.classes [ CSS.chartConfigureForm]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Edge source" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Edge source") (selecting Q.Source))
         state.source
     ]
@@ -137,8 +134,7 @@ renderTarget state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Edge target" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Edge target") (selecting Q.Target))
         state.target
     ]
@@ -149,8 +145,7 @@ renderSize state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Node size" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Node size") (selecting Q.Size))
         state.size
         (BCI.aggregation (Just "Node size aggregation") (selecting Q.SizeAgg))
@@ -163,8 +158,7 @@ renderColor state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Node category" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Node category") (selecting Q.Color))
         state.color
     ]
@@ -202,7 +196,7 @@ renderMinSize state =
 renderCircular ∷ ST.State → HTML
 renderCircular state =
   HH.form
-    [ HP.classes [ B.colXs6, CSS.chartDetailParam ]
+    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Circular layout" ]

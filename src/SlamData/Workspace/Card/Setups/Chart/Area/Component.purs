@@ -93,9 +93,7 @@ renderHighLOD state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ renderDimension state
-    , HH.hr_
     , renderValue state
-    , HH.hr_
     , renderSeries state
     , HH.hr_
     , row [ renderIsStacked state, renderIsSmooth state ]
@@ -131,8 +129,7 @@ renderDimension state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Dimension" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.primary (Just "Dimension") (selecting Q.Dimension))
         state.dimension
     ]
@@ -143,8 +140,7 @@ renderValue state =
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Measure" ]
-    , BCI.pickerWithSelect
+    [ BCI.pickerWithSelect
         (BCI.secondary (Just "Measure") (selecting Q.Value))
         state.value
         (BCI.aggregation (Just "Measure Aggregation") (selecting Q.ValueAgg))
@@ -157,8 +153,7 @@ renderSeries state =
     [ HP.classes [ CSS.chartConfigureForm ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Series" ]
-    , BCI.pickerInput
+    [ BCI.pickerInput
         (BCI.secondary (Just "Series") (selecting Q.Series))
         state.series
     ]
