@@ -20,7 +20,7 @@ import Prelude
 
 import Control.Monad.Eff.Console (log)
 
-import Test.SlamData.Property.Download.Model as Test.SlamData.Property.Download.Model
+{-import Test.SlamData.Property.Download.Model as Test.SlamData.Property.Download.Model
 import Test.SlamData.Property.FileSystem.Resource as Test.SlamData.Property.FileSystem.Resource
 import Test.SlamData.Property.Form.Select as Test.SlamData.Property.Form.Select
 import Test.SlamData.Property.Workspace.Card.Ace.Model as Test.SlamData.Property.Workspace.Card.Ace.Model
@@ -35,10 +35,21 @@ import Test.SlamData.Property.Workspace.Deck.Model as Test.SlamData.Property.Wor
 import Test.SlamData.Property.Workspace.FormBuilder.Item.Model as Test.SlamData.Property.Workspace.FormBuilder.Item.Model
 import Test.SlamData.Property.Workspace.FormBuilder.Model as Test.SlamData.Property.Workspace.FormBuilder.Model
 
+-}
+
+import Test.SlamData.Property.Workspace.Deck.Dialog.Share.Model as ShareModel
+
 import Test.StrongCheck (SC)
 
 main ∷ ∀ eff. SC eff Unit
 main = do
+  log "Started..."
+  ShareModel.check
+  log "TROLOLO"
+{-
+main ∷ ∀ eff. SC eff Unit
+main = do
+
   log "Check SlamData.Download.Model..."
   Test.SlamData.Property.Download.Model.check
 
@@ -80,3 +91,4 @@ main = do
 
   log "Check SlamData.Workspace.FormBuilder.Model..."
   Test.SlamData.Property.Workspace.FormBuilder.Model.check
+-}
