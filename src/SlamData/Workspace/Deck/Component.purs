@@ -133,7 +133,7 @@ eval opts = case _ of
     pure next
   FlipDeck next → do
     displayMode ← H.gets _.displayMode
-    if displayMode ≡ DCS.Normal
+    if DCS.isFrontSide displayMode
       then switchToFlipside opts
       else switchToFrontside
     pure next
@@ -217,31 +217,48 @@ eval opts = case _ of
     pure (k (hush ∘ map _.cardId =<< active))
   DismissDialog next →
     queryDialog (H.action Dialog.Dismiss)
-      *> H.modify DCS.undoLastChangeDisplayMode
+      *> H.modify (DCS._displayMode %~ DCS.noDialog)
       $> next
   where
   getBoundingClientWidth =
     H.fromEff ∘ map _.width ∘ getBoundingClientRect
 
+-- If an ActionList has the style display: none; then calculating its dimensions
+-- will give 0, 0. (This is Mapped to Nothing.)
+--
+-- If we recalculate after flipping then there may be a momentary flash
+-- (observed).
+--
+-- Sending the dimensions of the next action list to the flip side action list
+-- prevents this.
+--
+-- If there is no next action card this can't be done so just flip and
+-- recalculate.
 switchToFlipside ∷ DeckOptions → DeckDSL Unit
 switchToFlipside opts = do
-  (traverse $ maybe (pure unit) setBacksideBoundingRect)
-     =<< (queryNextActionList $ H.request ActionList.GetBoundingRect)
   updateBackSide opts
   presentFlipGuideFirstTime
-  H.modify (DCS.changeDisplayMode $ DCS.Backside)
-  where
-  setBacksideBoundingRect =
-    void ∘ queryBacksideActionList ∘ H.action ∘ ActionList.SetBoundingRect
+  queryNextActionList $ H.action $ ActionList.CalculateBoundingRect
+  nextBoundingRect ← queryNextActionList $ H.request ActionList.GetBoundingRect
+  case nextBoundingRect of
+    Just (Just dimensions) → do
+      queryBacksideActionList $ H.action $ ActionList.SetBoundingRect dimensions
+      H.modify (DCS._displayMode .~ DCS.FlipSide DCS.NoDialog)
+    _ → do
+      H.modify (DCS._displayMode .~ DCS.FlipSide DCS.NoDialog)
+      void $ queryBacksideActionList $ H.action $ ActionList.CalculateBoundingRect
 
 switchToFrontside ∷ DeckDSL Unit
 switchToFrontside = do
-  (traverse $ maybe (pure unit) setFrontsideBoundingRect)
-    =<< (queryBacksideActionList $ H.request ActionList.GetBoundingRect)
-  H.modify (DCS.changeDisplayMode $ DCS.Normal)
-  where
-  setFrontsideBoundingRect =
-     void ∘ queryNextActionList ∘ H.action ∘ ActionList.SetBoundingRect
+  queryBacksideActionList $ H.action $ ActionList.CalculateBoundingRect
+  flipSideBoundingRect ← queryBacksideActionList $ H.request ActionList.GetBoundingRect
+  case flipSideBoundingRect of
+    Just (Just dimensions) → do
+      queryNextActionList $ H.action $ ActionList.SetBoundingRect dimensions
+      H.modify (DCS._displayMode .~ DCS.FrontSide DCS.NoDialog)
+    _ → do
+      H.modify (DCS._displayMode .~ DCS.FrontSide DCS.NoDialog)
+      void $ queryNextActionList $ H.action $ ActionList.CalculateBoundingRect
 
 peek ∷ ∀ a. DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
 peek opts (H.ChildF s q) =
@@ -256,9 +273,9 @@ peek opts (H.ChildF s q) =
 peekDialog ∷ ∀ a. DeckOptions → Dialog.Query a → DeckDSL Unit
 peekDialog opts = case _ of
   Dialog.Show _ _ → do
-    H.modify (DCS.changeDisplayMode DCS.Dialog)
+    H.modify (DCS._displayMode %~ DCS.dialog)
   Dialog.Dismiss _ → do
-    H.modify DCS.undoLastChangeDisplayMode
+    H.modify (DCS._displayMode %~ DCS.noDialog)
   Dialog.FlipToFront _ →
     switchToFrontside
   Dialog.SetDeckName name _ → do
@@ -340,7 +357,7 @@ peekCards cardId = const (pure unit) ⨁ peekCardInner cardId
 showDialog ∷ Dialog.Dialog → DeckDSL Unit
 showDialog dlg = do
   queryDialog $ H.action $ Dialog.Show dlg
-  H.modify (DCS.changeDisplayMode DCS.Dialog)
+  H.modify (DCS._displayMode %~ DCS.dialog)
 
 queryDialog ∷ Dialog.Query Unit → DeckDSL Unit
 queryDialog = void ∘ H.query' cpDialog unit ∘ left
@@ -572,7 +589,7 @@ updateCardSize ∷ DeckDSL Unit
 updateCardSize = do
   H.queryAll' cpCard $ left $ H.action UpdateDimensions
   displayMode ← H.gets _.displayMode
-  if displayMode ≡ DCS.Normal
+  if DCS.isFrontSide displayMode
     then queryNextActionList $ H.action ActionList.CalculateBoundingRect
     else queryBacksideActionList $ H.action ActionList.CalculateBoundingRect
   H.gets _.deckElement >>= traverse_ \el → do

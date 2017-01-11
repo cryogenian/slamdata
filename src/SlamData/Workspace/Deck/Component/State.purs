@@ -18,12 +18,18 @@ module SlamData.Workspace.Deck.Component.State
   ( StateP
   , State
   , DisplayMode(..)
+  , Dialog(..)
   , ResponsiveSize(..)
   , Fade(..)
   , MetaCard(..)
   , DisplayCard
   , CardDef
   , initialDeck
+  , isFlipSide
+  , isFrontSide
+  , hasDialog
+  , dialog
+  , noDialog
   , _name
   , _displayCards
   , _activeCardIndex
@@ -60,8 +66,6 @@ module SlamData.Workspace.Deck.Component.State
   , eqDisplayCard
   , compareCardIndex
   , updateCompletedCards
-  , changeDisplayMode
-  , undoLastChangeDisplayMode
   ) where
 
 import SlamData.Prelude
@@ -88,10 +92,13 @@ import Utils (hush)
 
 type StateP = OpaqueState State
 
+data Dialog
+  = Dialog
+  | NoDialog
+
 data DisplayMode
-  = Normal
-  | Backside
-  | Dialog
+  = FrontSide Dialog
+  | FlipSide Dialog
 
 data ResponsiveSize
   = XSmall
@@ -111,11 +118,45 @@ data Fade
   | FadeIn
   | FadeOut
 
+derive instance eqDialog ∷ Eq Dialog
+
 derive instance eqDisplayMode ∷ Eq DisplayMode
 
 derive instance eqResponsiveSize ∷ Eq ResponsiveSize
 
 derive instance eqFade ∷ Eq Fade
+
+isFlipSide ∷ DisplayMode → Boolean
+isFlipSide =
+  case _ of
+    FlipSide _ → true
+    FrontSide _ → false
+
+isFrontSide ∷ DisplayMode → Boolean
+isFrontSide =
+  case _ of
+    FrontSide _ → true
+    FlipSide _ → false
+
+hasDialog ∷ DisplayMode → Boolean
+hasDialog =
+  case _ of
+    FlipSide Dialog → true
+    FrontSide Dialog → true
+    FlipSide NoDialog → false
+    FrontSide NoDialog → false
+
+dialog ∷ DisplayMode → DisplayMode
+dialog =
+  case _ of
+    FlipSide _ → FlipSide Dialog
+    FrontSide _ → FrontSide Dialog
+
+noDialog ∷ DisplayMode → DisplayMode
+noDialog =
+  case _ of
+    FlipSide _ → FlipSide NoDialog
+    FrontSide _ → FrontSide NoDialog
 
 type CardDef =
   { cardId ∷ CardId
@@ -128,7 +169,6 @@ type State =
   { name ∷ String
   , loadError ∷ Maybe String
   , displayMode ∷ DisplayMode
-  , prevDisplayMode ∷ Maybe DisplayMode
   , displayCards ∷ Array DisplayCard
   , pendingCardIndex ∷ Maybe Int
   , activeCardIndex ∷ Maybe Int
@@ -154,8 +194,7 @@ initialDeck ∷ State
 initialDeck =
   { name: ""
   , loadError: Nothing
-  , displayMode: Normal
-  , prevDisplayMode: Nothing
+  , displayMode: FrontSide NoDialog
   , displayCards: mempty
   , pendingCardIndex: Nothing
   , activeCardIndex: Nothing
@@ -303,7 +342,7 @@ fromModel { name, displayCards } state =
   state
     { name = name
     , displayCards = displayCards
-    , displayMode = Normal
+    , displayMode = FrontSide NoDialog
     , activeCardIndex = Nothing
     , initialSliderX = Nothing
     }
@@ -392,11 +431,3 @@ updateCompletedCards defs port st =
     _, _, 0 → Just 0
     -- If there are real cards, we should set it to the last real card.
     _, _, n → Just (n - 1)
-
-changeDisplayMode ∷ DisplayMode → State → State
-changeDisplayMode displayMode state =
-  state { displayMode = displayMode, prevDisplayMode = Just state.displayMode }
-
-undoLastChangeDisplayMode ∷ State → State
-undoLastChangeDisplayMode state =
-  changeDisplayMode (fromMaybe Normal state.prevDisplayMode) state
