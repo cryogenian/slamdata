@@ -45,15 +45,14 @@ eval
     , MonadThrow CEM.CardError m
     , QuasarDSL m
     )
-  ⇒ Port.TaggedResourcePort
-  → Model
+  ⇒ Model
+  → Port.Resource
   → m Port.Port
-eval tr =
-  flip BCE.buildChartEval' tr \_ b c → Port.Metric (buildMetric b c tr)
+eval = BCE.buildChartEval' \_ b c → Port.Metric (buildMetric b c)
 
-buildMetric ∷ MetricR → JArray → Port.TaggedResourcePort → Port.MetricPort
-buildMetric r records taggedResource =
-  { value, label: r.label, taggedResource }
+buildMetric ∷ MetricR → JArray → Port.MetricPort
+buildMetric r records =
+  { value, label: r.label }
   where
   formatterRegex ∷ Rgx.Regex
   formatterRegex =

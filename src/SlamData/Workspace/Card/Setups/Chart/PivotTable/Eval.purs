@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.PivotTable.Eval
   ( eval
-  , escapedCursor
   , module PTM
   ) where
 
@@ -25,73 +24,75 @@ import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut as J
 import Data.Array as Array
-import Data.Path.Pathy as P
+import Data.Lens ((^.))
+import Data.Map as Map
+import Data.Path.Pathy as Path
 import Data.String as String
-import Data.String.Regex as Regex
-import Data.String.Regex.Flags as RXF
+import Data.Set as Set
+import Data.StrMap as SM
 
 import SlamData.Prelude
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 
 import Utils.Path (FilePath)
 
 eval
   ∷ ∀ m
-  . ( MonadState CEM.CardState m
+  . ( MonadAsk CEM.CardEnv m
+    , MonadState CEM.CardState m
     , MonadThrow CEM.CardError m
     , QuasarDSL m
     )
-  ⇒ Port.TaggedResourcePort
-  → PTM.Model
-  → m Port.Port
-eval tr options = do
+  ⇒ PTM.Model
+  → Port.DataMap
+  → Port.Resource
+  → m Port.Out
+eval options varMap resource = do
+  let
+    filePath = resource ^. Port._filePath
+    query = mkSql options filePath
+  r ← CEM.temporaryOutputResource
   state ← get
   axes ←
     case state of
-      Just (CEM.Analysis { axes: ax, taggedResource })
-        | Port.eqTaggedResourcePort tr taggedResource → pure ax
-      _ → CEM.liftQ (QQ.axes tr.resource 100)
+      Just (CEM.Analysis { axes: ax, resource: resource' })
+        | resource' ≡ resource → pure ax
+      _ → CEM.liftQ (QQ.axes filePath 300)
   let
-    path = fromMaybe P.rootDir (P.parentDir tr.resource)
-    query = mkSql options tr.resource
-    state' =
-      { axes
-      , records: []
-      , taggedResource: tr
-      }
-    port =
-      { options
-      , query
-      , taggedResource: tr
-      }
+    state' = { axes, records: [], resource }
+    view = Port.View r (snd query) varMap
+    output = Port.PivotTable (fst query) × SM.singleton Port.defaultResourceVar (Left view)
+    backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir r)
   put (Just (CEM.Analysis state'))
-  pure (Port.PivotTable port)
+  when (Array.null options.columns) do
+    CEM.throw "Please select a column to display"
+  CEM.liftQ $ QQ.viewQuery backendPath r (snd query) SM.empty
+  pure output
 
-mkSql ∷ PTM.Model → FilePath → String
+mkSql ∷ PTM.Model → FilePath → Port.PivotTablePort × String
 mkSql options resource =
   let
-    isSimple =
-      PTM.isSimple options
-    dimLen =
-      Array.length options.dimensions
-    groupBy =
-      map (\value → "row" <> escapedCursor value) options.dimensions
+    isSimple = PTM.isSimple options
+    port = genPort isSimple options
+    dimLen = Array.length port.dimensions
+    groupBy = map (\(_ × value) → "row" <> CEC.escapeCursor value) port.dimensions
     dims =
       Array.mapWithIndex
-        (\i value → "row" <> escapedCursor value <> " AS _" <> show i)
-        options.dimensions
+        (\i (n × value) → "row" <> CEC.escapeCursor value <> " AS " <> Port.escapeIdentifier n)
+        port.dimensions
     cols =
       Array.mapWithIndex
         case _, _ of
-          i, PTM.Column c | isSimple → "row" <> escapedCursor c.value <> " AS _" <> show (i + dimLen)
-          i, PTM.Column c → sqlAggregation c.valueAggregation ("row" <> escapedCursor c.value) <> " AS _" <> show (i + dimLen)
-          i, PTM.Count    → "COUNT(*) AS _" <> show (i + dimLen)
-        options.columns
+          i, n × PTM.Column c | isSimple → "row" <> CEC.escapeCursor c.value <> " AS " <> Port.escapeIdentifier n
+          i, n × PTM.Column c → sqlAggregation c.valueAggregation ("row" <> CEC.escapeCursor c.value) <> " AS " <> Port.escapeIdentifier n
+          i, n × PTM.Count    → "COUNT(*) AS " <> Port.escapeIdentifier n
+        port.columns
     head =
       [ "SELECT " <> String.joinWith ", " (dims <> cols)
       , "FROM {{path}} AS row"
@@ -100,24 +101,53 @@ mkSql options resource =
       [ "GROUP BY " <> String.joinWith ", " groupBy
       , "ORDER BY " <> String.joinWith ", " groupBy
       ]
+    sql =
+      QQ.templated resource $
+        String.joinWith " "
+          if dimLen == 0
+            then head
+            else head <> tail
   in
-    QQ.templated resource $
-      String.joinWith " "
-        if dimLen == 0
-          then head
-          else head <> tail
+    port × sql
 
-tickRegex ∷ Regex.Regex
-tickRegex = unsafePartial (fromRight (Regex.regex "`" RXF.global))
+genPort ∷ Boolean → PTM.Model → Port.PivotTablePort
+genPort isSimpleQuery model =
+  toPort
+    (foldl go { names: Map.empty, taken: Set.empty }
+      (map Left model.dimensions <> map Right model.columns))
+  where
+  toPort res =
+    let
+      dimensions = flip Array.mapMaybe model.dimensions \j → (_ × j) <$> Map.lookup (Left j) res.names
+      columns = flip Array.mapMaybe model.columns \j → (_ × j) <$> Map.lookup (Right j) res.names
+    in { dimensions, columns, isSimpleQuery }
 
-escapeField ∷ String → String
-escapeField str = "`" <> Regex.replace tickRegex "\\`" str <> "`"
+  go { names, taken } a
+    | Map.member a names = { names, taken }
+    | otherwise =
+        let name = uniqueTag 1 taken (genName a)
+        in
+          { names: Map.insert a name names
+          , taken: Set.insert name taken
+          }
 
-escapedCursor ∷ J.JCursor → String
-escapedCursor = case _ of
-  J.JField c cs → "." <> escapeField c <> escapedCursor cs
-  J.JIndex c cs → "[" <> show c <> "]" <> escapedCursor cs
-  J.JCursorTop  → ""
+  genName = case _ of
+    Left j → topName j
+    Right PTM.Count → "count"
+    Right (PTM.Column { value }) → topName value
+
+  uniqueTag n taken a =
+    let name = if n ≡ 1 then a else a <> "_" <> show n
+    in if Set.member name taken then uniqueTag (n + 1) taken a else name
+
+topName ∷ J.JCursor → String
+topName = case _ of
+  J.JField c J.JCursorTop → c
+  J.JField c (J.JIndex i J.JCursorTop) → c <> "_" <> show i
+  J.JIndex i J.JCursorTop → "_" <> show i
+  J.JField _ cs → topName cs
+  J.JIndex _ cs → topName cs
+  J.JCursorTop → "value"
 
 sqlAggregation ∷ Maybe Ag.Aggregation → String → String
 sqlAggregation a b = case a of

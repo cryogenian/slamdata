@@ -48,6 +48,8 @@ import SlamData.Workspace.Card.FormInput.Model as FormInput
 
 data Eval
   = Pass
+  | Composite
+  | Chart
   | Query SQL
   | Search String
   | Cache (Maybe String)
@@ -57,7 +59,6 @@ data Eval
   | Open R.Resource
   | Variables Variables.Model
   | DownloadOptions Download.State
-  | Draftboard
   | BuildMetric BuildMetric.Model
   | BuildSankey BuildSankey.Model
   | BuildGauge BuildGauge.Model
@@ -84,12 +85,13 @@ data Eval
   | SetupTime SetupTextLike.Model
   | SetupDatetime SetupTextLike.Model
   | SetupStatic SetupStatic.Model
-  | Chart
   | FormInput FormInput.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
   Pass → "Pass"
+  Composite → "Composite"
+  Chart → "Chart"
   Query str → "Query " <> show str
   Search str → "Search " <> show str
   Cache str → "Cache " <> show str
@@ -99,7 +101,6 @@ tagEval = case _ of
   MarkdownForm m → "MarkdownForm"
   Variables m → "Variables"
   DownloadOptions m → "DownloadOptions"
-  Draftboard → "Draftboard"
   BuildMetric _ → "BuildMetric"
   BuildSankey _ → "BuildSankey"
   BuildGauge _ → "BuildGauge"
@@ -117,7 +118,6 @@ tagEval = case _ of
   BuildPunchCard _ → "BuildPunchCard"
   BuildCandlestick _ → "BuildCandlestick"
   BuildParallel _ → "BuildParallel"
-  Chart → "Chart"
   SetupDropdown _ → "SetupDropdown"
   SetupRadio _ → "SetupRadio"
   SetupCheckbox _ → "SetupCheckbox"

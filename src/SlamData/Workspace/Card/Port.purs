@@ -16,37 +16,47 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Port
   ( Port(..)
-  , TaggedResourcePort
+  , Resource(..)
+  , DataMap
+  , Out
   , DownloadPort
   , MetricPort
-  , PivotTablePort
   , ChartInstructionsPort
+  , PivotTablePort
   , SetupLabeledFormInputPort
   , SetupTextLikeFormInputPort
   , tagPort
-  , eqTaggedResourcePort
+  , emptyOut
+  , varMapOut
+  , resourceOut
+  , portOut
+  , defaultResourceVar
+  , filterResources
+  , extractResource
+  , extractFilePath
+  , flattenResources
+  , resourceToVarMapValue
   , _Initial
-  , _Terminal
+  , _Variables
   , _SlamDown
-  , _VarMap
-  , _Resource
-  , _ResourceTag
   , _DownloadOptions
-  , _Draftboard
   , _CardError
   , _Metric
   , _ChartInstructions
   , _PivotTable
-  , _TaggedResource
+  , _filePath
   , module SlamData.Workspace.Card.Port.VarMap
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (Prism', prism', Traversal', wander, Lens', lens)
+import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
+import Data.List as List
 import Data.Map as Map
+import Data.Path.Pathy as Path
 import Data.Set as Set
+import Data.StrMap as SM
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
@@ -56,9 +66,19 @@ import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
-import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), renderVarMapValue, emptyVarMap)
+import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), renderVarMapValue, emptyVarMap, escapeIdentifier)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
+
+data Resource
+  = Path PU.FilePath
+  | View PU.FilePath String DataMap
+
+derive instance eqResource ∷ Eq Resource
+
+type DataMap = SM.StrMap (Either Resource VarMapValue)
+
+type Out = Port × DataMap
 
 type DownloadPort =
   { resource ∷ PU.FilePath
@@ -66,28 +86,20 @@ type DownloadPort =
   , options ∷ DownloadOptions
   }
 
-type TaggedResourcePort =
-  { resource ∷ PU.FilePath
-  , tag ∷ Maybe String
-  , varMap ∷ Maybe VarMap
-  }
-
 type MetricPort =
   { label ∷ Maybe String
   , value ∷ String
-  , taggedResource ∷ TaggedResourcePort
-  }
-
-type PivotTablePort =
-  { query ∷ String
-  , options ∷ PTM.Model
-  , taggedResource ∷ TaggedResourcePort
   }
 
 type ChartInstructionsPort =
   { options ∷ DSL OptionI
   , chartType ∷ ChartType
-  , taggedResource ∷ TaggedResourcePort
+  }
+
+type PivotTablePort =
+  { dimensions ∷ Array (String × JCursor)
+  , columns ∷ Array (String × PTM.Column)
+  , isSimpleQuery ∷ Boolean
   }
 
 type SetupLabeledFormInputPort =
@@ -95,73 +107,91 @@ type SetupLabeledFormInputPort =
   , valueLabelMap ∷ Map.Map Sem.Semantics (Maybe String)
   , cursor ∷ JCursor
   , selectedValues ∷ Set.Set Sem.Semantics
-  , taggedResource ∷ TaggedResourcePort
   , formInputType ∷ FormInputType
   }
 
 type SetupTextLikeFormInputPort =
   { name ∷ String
   , cursor ∷ JCursor
-  , taggedResource ∷ TaggedResourcePort
   , formInputType ∷ FormInputType
   }
 
 data Port
   = Initial
-  | Terminal
+  | Variables
   | CardError String
-  | VarMap VarMap
+  | ResourceKey String
   | SetupLabeledFormInput SetupLabeledFormInputPort
   | SetupTextLikeFormInput SetupTextLikeFormInputPort
-  | TaggedResource TaggedResourcePort
-  | SlamDown (VarMap × (SD.SlamDownP VarMapValue))
+  | SlamDown (SD.SlamDownP VarMapValue)
   | ChartInstructions ChartInstructionsPort
   | DownloadOptions DownloadPort
   | Metric MetricPort
   | PivotTable PivotTablePort
-  | Draftboard
 
 tagPort ∷ Port → String
 tagPort  = case _ of
   Initial → "Initial"
-  Terminal → "Terminal"
-  SlamDown sd → "SlamDown: " ⊕ show sd
-  VarMap vm → "VarMap: " ⊕ show vm
+  Variables → "Variables"
   CardError str → "CardError: " ⊕ show str
-  TaggedResource tr → "TaggedResource: " ⊕ show tr.resource ⊕ " " ⊕ show tr.tag
-  DownloadOptions _ → "DownloadOptions"
-  Draftboard → "Draftboard"
-  ChartInstructions _ → "ChartInstructions"
+  ResourceKey str → "ResourceKey: " ⊕ show str
   SetupLabeledFormInput _ → "SetupLabeledFormInput"
   SetupTextLikeFormInput _ → "SetupTextLikeFormInput"
+  SlamDown sd → "SlamDown: " ⊕ show sd
+  ChartInstructions _ → "ChartInstructions"
+  DownloadOptions _ → "DownloadOptions"
   Metric _ → "Metric"
   PivotTable _ → "PivotTable"
 
-eqTaggedResourcePort ∷ TaggedResourcePort → TaggedResourcePort → Boolean
-eqTaggedResourcePort tr1 tr2 =
-  tr1.resource ≡ tr2.resource
-  && tr1.tag ≡ tr2.tag
-  && tr1.varMap ≡ tr2.varMap
+filterResources ∷ DataMap → SM.StrMap Resource
+filterResources = SM.fold go SM.empty
+  where
+    go m key (Left res) = SM.insert key res m
+    go m _ _ = m
+
+extractResource ∷ DataMap → Maybe Resource
+extractResource = map snd ∘ List.head ∘ SM.toList ∘ filterResources
+
+extractFilePath ∷ DataMap → Maybe PU.FilePath
+extractFilePath = map (view _filePath) ∘ extractResource
+
+flattenResources ∷ DataMap → VarMap
+flattenResources = map go
+  where
+    go (Left val) = resourceToVarMapValue val
+    go (Right val) = val
+
+resourceToVarMapValue ∷ Resource → VarMapValue
+resourceToVarMapValue r = QueryExpr (escapeIdentifier (Path.printPath (r ^. _filePath)))
+
+defaultResourceVar ∷ String
+defaultResourceVar = "results"
+
+emptyOut ∷ Out
+emptyOut = Initial × SM.empty
+
+varMapOut ∷ DataMap → Out
+varMapOut v = Variables × v
+
+resourceOut ∷ Resource → Out
+resourceOut r = ResourceKey defaultResourceVar × SM.singleton "out" (Left r)
+
+portOut ∷ Port → Out
+portOut p = p × SM.empty
 
 _Initial ∷ Prism' Port Unit
 _Initial = prism' (const Initial) case _ of
   Initial → Just unit
   _ → Nothing
 
-_Terminal ∷ Prism' Port Unit
-_Terminal = prism' (const Terminal) case _ of
-  Terminal → Just unit
+_Variables ∷ Prism' Port Unit
+_Variables = prism' (const Variables) case _ of
+  Variables → Just unit
   _ → Nothing
 
 _SlamDown ∷ Traversal' Port (SD.SlamDownP VarMapValue)
 _SlamDown = wander \f s → case s of
-  SlamDown (vm × sd) → SlamDown ∘ (vm × _) <$> f sd
-  _ → pure s
-
-_VarMap ∷ Traversal' Port VarMap
-_VarMap = wander \f s → case s of
-  VarMap x → VarMap <$> f x
-  SlamDown (vm × sd) → SlamDown ∘ (_ × sd) <$> f vm
+  SlamDown sd → SlamDown <$> f sd
   _ → pure s
 
 _CardError ∷ Prism' Port String
@@ -169,20 +199,9 @@ _CardError = prism' CardError \p → case p of
   CardError x → Just x
   _ → Nothing
 
-_ResourceTag ∷ Traversal' Port String
-_ResourceTag = _TaggedResource ∘ _tag
-
-_Resource ∷ Traversal' Port PU.FilePath
-_Resource = _TaggedResource ∘ _resource
-
 _DownloadOptions ∷ Prism' Port DownloadPort
 _DownloadOptions = prism' DownloadOptions \p → case p of
   DownloadOptions p' → Just p'
-  _ → Nothing
-
-_Draftboard ∷ Prism' Port Unit
-_Draftboard = prism' (const Draftboard) \p → case p of
-  Draftboard → Just unit
   _ → Nothing
 
 _ChartInstructions ∷ Traversal' Port (DSL OptionI)
@@ -200,48 +219,11 @@ _PivotTable = prism' PivotTable case _ of
   PivotTable u → Just u
   _ → Nothing
 
-_TaggedResource ∷ Traversal' Port TaggedResourcePort
-_TaggedResource = wander \f s → case s of
-  ChartInstructions o →
-    let
-      cstr t = ChartInstructions $ o{taggedResource = t}
-    in
-      map cstr $ f o.taggedResource
-  PivotTable o →
-    let
-      cstr t = PivotTable $ o{taggedResource = t}
-    in
-      map cstr $ f o.taggedResource
-  Metric o →
-    let
-      cstr t = Metric $ o{taggedResource = t}
-    in
-      map cstr $ f o.taggedResource
-  SetupLabeledFormInput o →
-    let
-      cstr t = SetupLabeledFormInput $ o{taggedResource = t}
-    in
-      map cstr $ f o.taggedResource
-  SetupTextLikeFormInput o →
-    let
-      cstr t = SetupTextLikeFormInput $ o{taggedResource = t}
-    in
-      map cstr $ f o.taggedResource
-  TaggedResource tr →
-    map TaggedResource $ f tr
-  _ → pure s
+_filePath ∷ Lens' Resource PU.FilePath
+_filePath = lens get set
+  where
+    get (Path fp) = fp
+    get (View fp _ _) = fp
 
-
-_resource ∷ ∀ a r. Lens' {resource ∷ a | r} a
-_resource = lens _.resource _{resource = _}
-
-_tag ∷ ∀ a r. Traversal' {tag ∷ Maybe a |r} a
-_tag = wander \f s →
-  case s.tag of
-    Nothing → pure s
-    Just r →
-      let
-        mappedR = f r
-        cstr = s{tag = _} ∘ Just
-      in
-        map cstr $ mappedR
+    set (Path _) fp = Path fp
+    set (View _ a b) fp = View fp a b

@@ -127,12 +127,12 @@ evalCEQ = case _ of
           H.query unit $ H.action (SD.PopulateForm state)
       _ → pure unit
     pure next
-  CC.ReceiveInput input next → do
+  CC.ReceiveInput input _ next → do
     for_ (input ^? Port._SlamDown) \sd → do
       H.modify (_ { input = Just sd })
       void $ H.query unit $ H.action (SD.SetDocument sd)
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next →
     pure next

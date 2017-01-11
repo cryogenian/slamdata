@@ -53,8 +53,8 @@ eval
     , MonadThrow CEM.CardError m
     , QuasarDSL m
     )
-  ⇒ Port.TaggedResourcePort
-  → Model
+  ⇒ Model
+  → Port.Resource
   → m Port.Port
 eval = BCE.buildChartEval Pie (const buildPie)
 

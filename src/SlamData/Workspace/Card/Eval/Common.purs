@@ -21,7 +21,10 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Throw (class MonadThrow, throw)
 
+import Data.Argonaut as J
+import Data.Array as Array
 import Data.Path.Pathy as Path
+import Data.StrMap as SM
 
 import Quasar.Types (FilePath)
 
@@ -30,6 +33,13 @@ import Quasar.Advanced.QuasarAF as QF
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, sequenceQuasar)
 import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Port as Port
+
+escapeCursor ∷ J.JCursor → String
+escapeCursor = case _ of
+  J.JField c cs → "." <> Port.escapeIdentifier c <> escapeCursor cs
+  J.JIndex c cs → "[" <> show c <> "]" <> escapeCursor cs
+  J.JCursorTop  → ""
 
 validateResources
   ∷ ∀ m t
@@ -48,3 +58,34 @@ validateResources fs = do
       throw $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
     _ →
       pure unit
+
+evalComposite
+  ∷ ∀ m
+  . MonadAsk CEM.CardEnv m
+  ⇒ m Port.DataMap
+evalComposite = do
+  CEM.CardEnv { children } ← ask
+  pure (foldl mergeChildren SM.empty children)
+  where
+    mergeChildren ∷ Port.DataMap → CEM.ChildOut → Port.DataMap
+    mergeChildren vm { namespace, varMap } =
+      case namespace of
+        "" → SM.fold (update id) vm varMap
+        ns → SM.fold (update \k → ns <> "." <> k) vm varMap
+
+    update mkKey acc key val =
+      SM.alter
+        case val, _ of
+          Right (Port.SetLiteral s1), Just (Right (Port.SetLiteral s2)) →
+            Just (Right (Port.SetLiteral (s1 <> s2)))
+          _, Just (Right (Port.SetLiteral s)) →
+            Just (Right (Port.SetLiteral (Array.snoc s (toValue val))))
+          _, Just v →
+            Just (Right (Port.SetLiteral [ toValue v, toValue val ]))
+          _, Nothing →
+            Just val
+        (mkKey key)
+        acc
+
+    toValue =
+      either Port.resourceToVarMapValue id

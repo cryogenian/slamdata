@@ -39,7 +39,7 @@ evalOpen
     , QuasarDSL m
     )
   ⇒ R.Resource
-  → m Port.TaggedResourcePort
+  → m Port.Out
 evalOpen res = do
   filePath ←
     maybe (CEM.throw "No resource is selected") pure
@@ -50,6 +50,6 @@ evalOpen res = do
   case msg of
     Nothing → do
       CEM.addSource filePath
-      pure { resource: filePath, tag: Nothing, varMap: Nothing }
+      pure (Port.resourceOut (Port.Path filePath))
     Just err →
       CEM.throw err

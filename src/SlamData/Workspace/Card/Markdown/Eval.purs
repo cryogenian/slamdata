@@ -28,7 +28,6 @@ import Data.Identity (Identity)
 import Data.Int as Int
 import Data.JSDate as JSD
 import Data.Json.Extended as EJSON
-import Data.Lens ((^?))
 import Data.List as L
 import Data.String as S
 import Data.StrMap as SM
@@ -58,13 +57,14 @@ evalMarkdownForm
   . ( MonadEff SlamDataEffects m
     , Monad m
     )
-  ⇒ Port.VarMap × SD.SlamDownP Port.VarMapValue
-  → MD.Model
-  → m Port.VarMap
-evalMarkdownForm (vm × doc) model = do
+  ⇒ MD.Model
+  → SD.SlamDownP Port.VarMapValue
+  → Port.DataMap
+  → m Port.Out
+evalMarkdownForm model doc varMap = do
   let inputState = SDH.formStateFromDocument doc
   thisVarMap ← liftEff $ MDS.formStateToVarMap inputState model.state
-  pure $ thisVarMap `SM.union` vm
+  pure (Port.Initial × map Right thisVarMap `SM.union` varMap)
 
 evalMarkdown
   ∷ ∀ m
@@ -74,19 +74,17 @@ evalMarkdown
     , MonadTell CEM.CardLog m
     , QuasarDSL m
     )
-  ⇒ Port.Port
-  → String
-  → m Port.Port
-evalMarkdown input str = do
+  ⇒ String
+  → Port.DataMap
+  → m Port.Out
+evalMarkdown str varMap = do
   CEM.CardEnv { path } ← ask
   case SDP.parseMd str of
     Left e → CEM.throw e
     Right sd → do
-      let
-        vm = fromMaybe Port.emptyVarMap $ input ^? Port._VarMap
-        sm = map Port.renderVarMapValue vm
+      let sm = Port.renderVarMapValue <$> Port.flattenResources varMap
       doc ← evalEmbeddedQueries sm path sd
-      pure $ Port.SlamDown (vm × doc)
+      pure (Port.SlamDown doc × varMap)
 
 findFields
   ∷ ∀ a

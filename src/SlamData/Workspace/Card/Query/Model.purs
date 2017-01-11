@@ -20,34 +20,15 @@ module SlamData.Workspace.Card.Query.Model
 
 import SlamData.Prelude
 
-import Data.String as Str
-import Data.Path.Pathy as Path
-
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.Port as Port
 
 initialModel ∷ Port.Port → Ace.Model
 initialModel = case _ of
-  Port.TaggedResource tr →
-    let
-      strPath = Path.printPath tr.resource
-      ranges =
-        [ { startRow: 0
-          , startColumn: 0
-          , endRow: 0
-          , endColumn: 6
-          }
-        , { startRow: 0
-          , startColumn: 9
-          , endRow: 0
-          , endColumn: 16 + Str.length strPath
-        }
-        ]
-    in
-      { text: "SELECT * FROM `" <> strPath <> "`"
-      , ranges
-      }
-
+  Port.ResourceKey var →
+    { text: "SELECT * FROM :" <> Port.escapeIdentifier var
+    , ranges: []
+    }
   _ →
     { text: "SELECT \"Hello, World!\""
     , ranges: []

@@ -23,9 +23,9 @@ import Data.Array as Array
 import Data.Foldable as F
 import Data.Formatter.Number as FN
 import Data.Int as Int
+import Data.Lens ((^.))
 import Data.List (List, (:))
 import Data.List as List
-import Data.Path.Pathy as P
 import Data.String as String
 
 import Halogen as H
@@ -36,25 +36,25 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Advanced.QuasarAF as QF
-import Quasar.Data (JSONMode(..))
-
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Class (liftQuasar)
 import SlamData.Quasar.Query as QQ
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..), isSimple)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
-import SlamData.Workspace.Card.Port (PivotTablePort, eqTaggedResourcePort)
-import SlamData.Wiring as Wiring
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
 
 import Global (readFloat)
 import Utils (hush)
 
+type Input =
+  { port ∷ Port.PivotTablePort
+  , resource ∷ Port.Resource
+  }
+
 type State =
-  { input ∷ Maybe PivotTablePort
+  { input ∷ Maybe Input
   , count ∷ Int
   , pageCount ∷ Int
   , pageIndex ∷ Int
@@ -79,7 +79,7 @@ initialState =
   }
 
 data Query a
-  = Update PivotTablePort a
+  = Update Port.PivotTablePort Port.Resource a
   | Load PTRM.Model a
   | Save (PTRM.Model → a)
   | StepPage PageStep a
@@ -103,12 +103,12 @@ comp = H.component { render, eval }
 render ∷ State → HTML
 render st =
   case st.input of
-    Just { options } →
+    Just { port } →
       HH.div
         [ HP.classes [ HH.className "sd-pivot-table" ] ]
         [ HH.div
             [ HP.classes [ HH.className "sd-pivot-table-content" ] ]
-            [ maybe (HH.text "") (renderTable options.dimensions options.columns) st.records ]
+            [ maybe (HH.text "") (renderTable port.dimensions port.columns) st.records ]
         , HH.div
             [ HP.classes
                 [ HH.className "sd-pagination"
@@ -128,27 +128,24 @@ render st =
       HH.text ""
   where
   renderTable dims cols tree =
-    let
-      cols' = Array.mapWithIndex (Tuple ∘ add (Array.length dims)) cols
-    in
-      if st.count ≡ 0
-        then
-          HH.div
-            [ HP.classes [ HH.className "no-results" ] ]
-            [ HH.text "No results" ]
-        else
-          HH.table_
-              $ [ HH.tr_
-                  $ (if Array.null dims
-                     then []
-                     else [ HH.td [ HP.colSpan (Array.length dims) ] [] ])
-                  ⊕ (cols <#> case _ of
-                        Column { value } →
-                          HH.th_ [ HH.text (showJCursor value) ]
-                        Count →
-                          HH.th_ [ HH.text "COUNT" ])
-              ]
-              ⊕ renderRows cols' tree
+    if st.count ≡ 0
+      then
+        HH.div
+          [ HP.classes [ HH.className "no-results" ] ]
+          [ HH.text "No results" ]
+      else
+        HH.table_
+            $ [ HH.tr_
+                $ (if Array.null dims
+                    then []
+                    else [ HH.td [ HP.colSpan (Array.length dims) ] [] ])
+                ⊕ (cols <#> case _ of
+                      n × Column { value } →
+                        HH.th_ [ HH.text n ]
+                      _ × Count →
+                        HH.th_ [ HH.text "COUNT" ])
+            ]
+            ⊕ renderRows cols tree
 
 
   renderRows cols =
@@ -162,9 +159,9 @@ render st =
       rowLen = sizeOfRow cols row
     in
       Array.range 0 (rowLen - 1) <#> \rowIx →
-        flip foldMap cols \(ix × col) →
+        flip foldMap cols \(c × col) →
           let
-            text = J.cursorGet (tupleN ix) row <#> case rowIx, col of
+            text = J.cursorGet (topField c) row <#> case rowIx, col of
               0, Column { valueAggregation: Just ag } →
                 foldJsonArray'
                   renderJson
@@ -286,22 +283,15 @@ render st =
 
 eval ∷ Query ~> DSL
 eval = case _ of
-  Update input next → do
+  Update port resource next → do
     st ← H.get
-    let
-      sameResource =
-        case input.taggedResource, st.input of
-          tr1, Just { options, taggedResource: tr2 } →
-            eqTaggedResourcePort tr1 tr2
-            && input.options.columns ≡ options.columns
-            && input.options.dimensions ≡ options.dimensions
-          _, _ → false
-    if sameResource
+    let input = { port, resource }
+    if fromMaybe false (eq resource ∘ _.resource <$> st.input)
       then
         H.modify _ { input = Just input }
       else do
         H.modify _ { input = Just input, pageIndex = 0, count = 0, pageCount = 0 }
-        ifSimpleInput pageQuery loadTree input
+        ifSimpleQuery pageQuery loadTree input
     pure next
   StepPage step next → do
     st ← H.get
@@ -312,7 +302,7 @@ eval = case _ of
         Next  → st.pageIndex + 1
         Last  → st.pageCount - 1
     H.modify _ { pageIndex = pageIndex }
-    for st.input (ifSimpleInput pageQuery pageTree)
+    for st.input (ifSimpleQuery pageQuery pageTree)
     pure next
   SetCustomPage page next → do
     H.modify _ { customPage = Just page }
@@ -326,14 +316,14 @@ eval = case _ of
         { pageIndex = pageIndex
         , customPage = Nothing
         }
-      for st.input (ifSimpleInput pageQuery pageTree)
+      for st.input (ifSimpleQuery pageQuery pageTree)
     pure next
   ChangePageSize size next → do
     st ← H.get
     let
       pageSize  = Int.floor (readFloat size)
     H.modify _ { pageSize = pageSize }
-    for st.input (ifSimpleInput pageQuery pageTree)
+    for st.input (ifSimpleQuery pageQuery pageTree)
     raise (H.action ModelUpdated)
     pure next
   Load model next → do
@@ -345,26 +335,25 @@ eval = case _ of
   ModelUpdated next →
     pure next
 
-ifSimpleInput
-  ∷ (PivotTablePort → DSL Unit)
-  → (PivotTablePort → DSL Unit)
-  → PivotTablePort
+ifSimpleQuery
+  ∷ (Input → DSL Unit)
+  → (Input → DSL Unit)
+  → Input
   → DSL Unit
-ifSimpleInput f g p =
-  if isSimple (p.options) then f p else g p
+ifSimpleQuery f g p =
+  if p.port.isSimpleQuery then f p else g p
 
-pageQuery ∷ PivotTablePort → DSL Unit
+pageQuery ∷ Input → DSL Unit
 pageQuery input = do
   st ← H.get
   let
-    path   = fromMaybe P.rootDir (P.parentDir input.taggedResource.resource)
+    filePath = input.resource ^. Port._filePath
     offset = st.pageIndex * st.pageSize
-    limit  = st.pageSize
+    limit = st.pageSize
   H.modify _ { loading = true }
   if st.count ≡ 0
     then do
-      count ← either (const 0) id <$>
-        QQ.count input.taggedResource.resource
+      count ← either (const 0) id <$> QQ.count filePath
       H.modify _
         { count = count
         , pageCount = calcPageCount count st.pageSize
@@ -373,24 +362,19 @@ pageQuery input = do
       H.modify _
         { pageCount = calcPageCount st.count st.pageSize
         }
-  records ← liftQuasar $
-    QF.readQuery Readable path input.query mempty (Just { offset, limit })
+  records ← QQ.sample filePath offset limit
   H.modify _ { loading = false }
   for_ records \recs →
-    H.modify _
-      { records = Just (buildTree mempty Bucket Grouped recs)
-      }
+    H.modify _ { records = Just (buildTree mempty Bucket Grouped recs) }
 
-pageTree ∷ PivotTablePort → DSL Unit
+pageTree ∷ Input → DSL Unit
 pageTree input = do
   st ← H.get
   for_ st.rawRecords \records → do
     let
-      dlen      = Array.length input.options.dimensions
-      dims      = List.fromFoldable (dimensionsN (Array.length input.options.dimensions))
-      cols      = Array.mapWithIndex (Tuple ∘ add dlen) input.options.columns
-      tree      = buildTree dims Bucket Grouped records
-      pages     = pagedTree st.pageSize (sizeOfRow cols) tree
+      dims = List.fromFoldable $ J.cursorGet ∘ topField ∘ fst <$> input.port.dimensions
+      tree = buildTree dims Bucket Grouped records
+      pages = pagedTree st.pageSize (sizeOfRow input.port.columns) tree
       pageCount = Array.length (snd pages)
       pageIndex = clamp 0 (pageCount - 1) st.pageIndex
     H.modify _
@@ -400,12 +384,11 @@ pageTree input = do
       , pageIndex = pageIndex
       }
 
-loadTree ∷ PivotTablePort → DSL Unit
+loadTree ∷ Input → DSL Unit
 loadTree input = do
-  { path } ← H.liftH Wiring.expose
+  let filePath = input.resource ^. Port._filePath
   H.modify _ { loading = true }
-  records ← liftQuasar $
-    QF.readQuery Readable path input.query mempty Nothing
+  records ← QQ.all filePath
   H.modify _
     { loading = false
     , rawRecords = hush records
@@ -416,22 +399,18 @@ calcPageCount ∷ Int → Int → Int
 calcPageCount count size =
   Int.ceil (Int.toNumber count / Int.toNumber size)
 
-tupleN ∷ Int → J.JCursor
-tupleN int = J.JField ("_" <> show int) J.JCursorTop
-
-dimensionsN ∷ Int → Array (J.Json → Maybe J.Json)
-dimensionsN 0 = []
-dimensionsN n = J.cursorGet ∘ tupleN <$> Array.range 0 (n - 1)
-
-sizeOfRow ∷ Array (Int × Column) → J.Json → Int
+sizeOfRow ∷ Array (String × Column) → J.Json → Int
 sizeOfRow columns row =
   fromMaybe 1
     (F.maximum
       (Array.mapMaybe
         case _ of
-          ix × Column { valueAggregation: Just _ } → Just 1
-          ix × _ → J.foldJsonArray 1 Array.length <$> J.cursorGet (tupleN ix) row
+          c × Column { valueAggregation: Just _ } → Just 1
+          c × _ → J.foldJsonArray 1 Array.length <$> J.cursorGet (topField c) row
         columns))
+
+topField ∷ String → J.JCursor
+topField c = J.JField c J.JCursorTop
 
 data PTree k a
   = Bucket (Array a)

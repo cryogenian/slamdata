@@ -28,6 +28,7 @@ import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut (Json)
 import Data.Array as A
+import Data.Lens ((^.))
 import Data.Map as M
 
 import ECharts.Monad (DSL)
@@ -50,16 +51,15 @@ buildChartEval
     )
   ⇒ ChartType
   → (Axes → p → Array Json → DSL OptionI)
-  → Port.TaggedResourcePort
   → Maybe p
+  → Port.Resource
   → m Port.Port
-buildChartEval chartType build taggedResource =
-  flip buildChartEval' taggedResource
-    \axes model records →
+buildChartEval chartType build model =
+  flip buildChartEval' model
+    \axes model' records →
       Port.ChartInstructions
-        { options: build axes model records
+        { options: build axes model' records
         , chartType
-        , taggedResource
         }
 
 buildChartEval'
@@ -69,28 +69,28 @@ buildChartEval'
     , QuasarDSL m
     )
   ⇒ (Axes → p → Array Json → Port.Port)
-  → Port.TaggedResourcePort
   → Maybe p
+  → Port.Resource
   → m Port.Port
-buildChartEval' build tr model = do
-  records × axes ← analyze tr =<< get
-  put (Just (CEM.Analysis { taggedResource: tr, records, axes }))
+buildChartEval' build model resource = do
+  records × axes ← analyze resource =<< get
+  put (Just (CEM.Analysis { resource, records, axes }))
   case model of
     Just ch → pure $ build axes ch records
-    Nothing → CEM.throw "Please select axis."
+    Nothing → CEM.throw "Please select an axis."
 
 analyze
   ∷ ∀ m
   . ( MonadThrow CEM.CardError m
     , QuasarDSL m
     )
-  ⇒ Port.TaggedResourcePort
+  ⇒ Port.Resource
   → CEM.CardState
   → m (Array Json × Axes)
-analyze tr (Just (CEM.Analysis st))
-  | Port.eqTaggedResourcePort st.taggedResource tr =
-      pure (st.records × st.axes)
-analyze tr _ = do
-  records ← CEM.liftQ (QQ.all tr.resource)
-  let axes = buildAxes (A.take 100 records)
-  pure (records × axes)
+analyze resource = case _ of
+  Just (CEM.Analysis st) | resource ≡ st.resource →
+    pure (st.records × st.axes)
+  _ → do
+    records ← CEM.liftQ (QQ.all (resource ^. Port._filePath))
+    let axes = buildAxes (A.take 300 records)
+    pure (records × axes)

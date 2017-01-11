@@ -170,9 +170,9 @@ cardEval = case _ of
     pure next
   CC.Load _ next →
     pure next
-  CC.ReceiveInput _ next →
+  CC.ReceiveInput _ _ next →
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do

@@ -64,8 +64,8 @@ data CardEvalQuery a
   | Save (AnyCardModel → a)
   | Load AnyCardModel a
   | ReceiveState EvalState a
-  | ReceiveInput Port.Port a
-  | ReceiveOutput Port.Port a
+  | ReceiveInput Port.Port Port.DataMap a
+  | ReceiveOutput Port.Port Port.DataMap a
   | ReceiveDimensions { width ∷ Number, height ∷ Number } a
   | ZoomIn a
   | ModelUpdated ModelUpdateType a

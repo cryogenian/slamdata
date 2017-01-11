@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.DownloadOptions.Component (comp) where
 
 import SlamData.Prelude
 
-import Data.Lens ((.~), (^?), _Left, _Right, (%~))
+import Data.Lens ((.~), _Left, _Right, (%~))
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -149,10 +149,10 @@ cardEval = case _ of
       Card.DownloadOptions st → H.set st
       _ → pure unit
     pure next
-  CC.ReceiveInput input next → do
-    H.modify $ _source .~ input ^? Port._Resource
+  CC.ReceiveInput _ varMap next → do
+    H.modify $ _source .~ Port.extractFilePath varMap
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next →
     pure next

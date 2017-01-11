@@ -50,10 +50,9 @@ data InsertableCardIOType
   | FormInput
   | Data
   | Download
-  | Draftboard
   | Markdown
-  | None
   | Variables
+  | None
 
 derive instance eqInsertableCardType ∷ Eq InsertableCardType
 derive instance eqInsertableCardIOType ∷ Eq InsertableCardIOType
@@ -81,7 +80,7 @@ inputs =
 outputs ∷ Array (InsertableCardType × Array InsertableCardIOType)
 outputs =
   [ CacheCard × [ Data ]
-  , DraftboardCard × [ Draftboard ]
+  , DraftboardCard × [ Variables ]
   , OpenCard × [ Data ]
   , QueryCard × [ Data ]
   , SearchCard × [ Data ]
@@ -90,7 +89,7 @@ outputs =
   , SetupDownloadCard × [ Download ]
   , SetupMarkdownCard × [ Markdown ]
   , SetupVariablesCard × [ Markdown, Variables ]
-  , ShowChartCard × [ Chart ]
+  , ShowChartCard × [ Data ]
   , ShowFormInputCard × [ Data ]
   , ShowDownloadCard × [ Download ]
   , ShowMarkdownCard × [ Markdown, Variables ]
@@ -191,7 +190,6 @@ printIOType = case _ of
   Chart → "a chart"
   Data → "data"
   Download → "a download"
-  Draftboard → "a dashboard"
   Markdown → "markdown"
   None → "to be the first card in a deck"
   Variables → "variables"
@@ -202,7 +200,6 @@ printIOType' = case _ of
   Chart → Just "this chart"
   Data → Just "this data"
   Download → Just "this download"
-  Draftboard → Just "this dashboard"
   Markdown → Just "this markdown"
   Variables → Just "these variables"
   _ → Nothing
@@ -219,16 +216,15 @@ eitherOr strings =
 
 fromPort ∷ Port → InsertableCardIOType
 fromPort = case _ of
+  Port.ResourceKey _ → Data
   Port.DownloadOptions _ → Download
-  Port.Draftboard → Draftboard
   Port.SlamDown _ → Markdown
-  Port.TaggedResource _ → Data
-  Port.VarMap _ → Variables
   Port.ChartInstructions _ → Chart
   Port.Metric _ → Chart
   Port.PivotTable _ → Chart
   Port.SetupLabeledFormInput _ → FormInput
   Port.SetupTextLikeFormInput _ → FormInput
+  Port.Variables → Variables
   _ → None
 
 toCardType ∷ InsertableCardType → CardType

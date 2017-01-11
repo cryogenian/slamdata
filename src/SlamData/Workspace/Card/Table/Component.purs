@@ -43,6 +43,8 @@ import SlamData.Workspace.Card.Table.Component.Render (render)
 import SlamData.Workspace.Card.Table.Component.State as JTS
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
+import Utils.Path (FilePath)
+
 type DSL = H.ComponentDSL JTS.State QueryP Slam
 
 tableComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
@@ -70,10 +72,10 @@ evalCard = case _ of
       Card.Table model → H.set $ JTS.fromModel model
       _ → pure unit
     pure next
-  CC.ReceiveInput input next → do
-    ET.runExceptT (runTable input)
+  CC.ReceiveInput _ varMap next → do
+    ET.runExceptT (runTable varMap)
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next →
     pure next
@@ -90,16 +92,19 @@ evalCard = case _ of
     pure next
 
 runTable
-  ∷ Port.Port
+  ∷ Port.DataMap
   → ET.ExceptT QE.QError (H.ComponentDSL JTS.State QueryP Slam) Unit
-runTable = case _ of
-  Port.TaggedResource trp → updateTable trp
+runTable varMap = case Port.extractResource varMap of
+  Just (Port.Path fp) → updateTable fp Nothing Nothing
+  Just (Port.View fp tag vm) → updateTable fp (Just tag) (Just (Port.flattenResources vm))
   _ → QE.throw "Expected a TaggedResource input"
 
 updateTable
-  ∷ Port.TaggedResourcePort
+  ∷ FilePath
+  → Maybe String
+  → Maybe Port.VarMap
   → ET.ExceptT QE.QError (H.ComponentDSL JTS.State QueryP Slam) Unit
-updateTable { resource, tag, varMap } = do
+updateTable resource tag varMap = do
   oldInput ← lift $ H.gets _.input
   when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
     $ lift $ resetState
@@ -156,5 +161,5 @@ refresh ∷ DSL Unit
 refresh = do
   input ← H.gets _.input
   for_ input \ {resource, tag, varMap} →
-    void $ ET.runExceptT $ updateTable {resource, tag, varMap}
+    void $ ET.runExceptT $ updateTable resource tag varMap
   CC.raiseUpdatedC' CC.StateOnlyUpdate

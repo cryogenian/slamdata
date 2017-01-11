@@ -90,9 +90,9 @@ cardEval = case _ of
       Card.Search input → H.modify $ _searchString .~ input
       _ → pure unit
     pure next
-  CC.ReceiveInput _ next →
+  CC.ReceiveInput _ _ next →
     pure next
-  CC.ReceiveOutput _ next →
+  CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next →
     pure next

@@ -163,7 +163,7 @@ varMapsForURL ∷ Map.Map CID.CardId Port.VarMap → SM.StrMap Port.URLVarMap
 varMapsForURL = SM.fromFoldable ∘ map (bimap CID.toString (map go)) ∘ Map.toList
   where
   go (Port.Literal ej) = goEJson ej
-  go (Port.SetLiteral as) = "(" <> F.intercalate "," (goEJson <$> as) <> ")"
+  go (Port.SetLiteral as) = "(" <> F.intercalate "," (go <$> as) <> ")"
   go (Port.QueryExpr q) =
     -- | This is not entirely legit as it will strip backticks from SQL²
     -- | expressions as well as identifiers, as we have no information about
