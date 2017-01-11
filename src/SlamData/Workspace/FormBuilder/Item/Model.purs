@@ -119,7 +119,7 @@ emptyValueOfFieldType tau =
     IntervalFieldType → Port.Literal $ EJSON.interval ""
     ObjectIdFieldType → Port.Literal $ EJSON.objectId ""
     ArrayFieldType → Port.Literal $ EJSON.array mempty
-    ObjectFieldType → Port.Literal $ EJSON.object mempty
+    ObjectFieldType → Port.Literal $ EJSON.map mempty
     SqlExprFieldType → Port.QueryExpr ""
     SqlIdentifierFieldType → Port.QueryExpr "``"
 

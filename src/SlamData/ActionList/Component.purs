@@ -14,7 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.ActionList.Component where
+module SlamData.ActionList.Component
+  ( FilterInputDescription(..)
+  , comp
+  , initialState
+  , module SlamData.ActionList.Action
+  , module SlamData.ActionList.Component.ActionInternal
+  , module SlamData.ActionList.Component.State
+  , module SlamData.ActionList.Component.Query
+  ) where
 
 import SlamData.Prelude
 
@@ -24,10 +32,8 @@ import Data.Array ((..))
 import Data.Array as Array
 import Data.Foldable as Foldable
 import Data.Int as Int
-import Data.Lens (Lens', lens, (.~))
+import Data.Lens ((.~))
 import Data.String as String
-
-import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 import Halogen.HTML.CSS.Indexed as HCSS
@@ -40,70 +46,20 @@ import Math as Math
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
+import SlamData.ActionList.Action (Action(..), ActionDescription(..), ActionHighlighted(..), ActionIconSrc(..), ActionName(..))
+import SlamData.ActionList.Component.ActionInternal (ActionInternal(..), ActionNameLine(..), ActionNameWord(..), ButtonMetrics, Dimensions, Presentation(..))
+import SlamData.ActionList.Component.State (State, _actions, _boundingDimensions, _boundingElement, _filterString, _previousActions)
+import SlamData.ActionList.Component.Query (Query(..))
 
 import Utils as Utils
 import Utils.DOM (DOMRect)
 import Utils.DOM as DOMUtils
 import Utils.CSS as CSSUtils
 
-data Query a b
-  = Selected (ActionInternal a) b
-  | UpdateFilter String b
-  | UpdateActions (Array (Action a)) b
-  | CalculateBoundingRect b
-  | GetBoundingRect (Maybe Dimensions → b)
-  | SetBoundingRect Dimensions b
-  | SetBoundingElement (Maybe HTMLElement) b
-
-type State a =
-  { actions ∷ Array (ActionInternal a)
-  , previousActions ∷ Array (ActionInternal a)
-  , filterString ∷ String
-  , boundingElement ∷ Maybe HTMLElement
-  , boundingDimensions ∷ Maybe Dimensions
-  }
+newtype FilterInputDescription = FilterInputDescription String
 
 type HTML a = H.ComponentHTML (Query a)
 type DSL a = H.ComponentDSL (State a) (Query a) Slam
-
--- TODO: Add Pixels newtype
-newtype ActionIconSrc = ActionIconSrc String
-newtype ActionName = ActionName String
-newtype ActionNameWord = ActionNameWord { word ∷ String, widthPx ∷ Number }
-newtype ActionNameLine = ActionNameLine { line ∷ String, widthPx ∷ Number }
-newtype ActionDescription = ActionDescription String
-newtype ActionHighlighted = ActionHighlighted Boolean
-newtype FilterInputDescription = FilterInputDescription String
-
-data Action a
-  = Do ActionName ActionIconSrc ActionDescription ActionHighlighted a
-  | Drill ActionName ActionIconSrc ActionDescription (Array (Action a))
-
-data ActionInternal a
-  = DoInternal (Array ActionNameWord) ActionIconSrc ActionDescription ActionHighlighted a
-  | DrillInternal (Array ActionNameWord) ActionIconSrc ActionDescription (Array (ActionInternal a))
-  | GoBackInternal
-
-data Presentation
-  = IconOnly
-  | TextOnly
-  | IconAndText
-
-type Dimensions = { width ∷ Number, height ∷ Number }
-
-type ButtonMetrics =
-  { dimensions ∷ Dimensions
-  , iconDimensions ∷ Dimensions
-  , iconMarginPx ∷ Number
-  , iconOnlyLeftPx ∷ Number
-  , iconOnlyTopPx ∷ Number
-  }
-
-derive newtype instance eqActionIconSrc :: Eq ActionIconSrc
-derive newtype instance eqActionDescription :: Eq ActionDescription
-derive newtype instance eqActionHighlighted :: Eq ActionHighlighted
-derive instance eqActionNameWord ∷ Eq ActionNameWord
-derive instance eqActionInternal ∷ Eq a ⇒ Eq (ActionInternal a)
 
 fontSizePx ∷ Number
 fontSizePx =
@@ -163,26 +119,6 @@ toActionInternal =
         actionIconSrc
         actionDescription
         (toActionInternal <$> xs)
-
-_actions ∷ ∀ a r. Lens' { actions ∷ a |r } a
-_actions =
-  lens _.actions (_ { actions = _ })
-
-_previousActions ∷ ∀ a r. Lens' { previousActions ∷ a | r} a
-_previousActions =
-  lens _.previousActions (_ { previousActions = _ })
-
-_filterString ∷ ∀ a r. Lens' { filterString ∷ a | r } a
-_filterString =
-  lens _.filterString (_ { filterString = _ })
-
-_boundingElement ∷ ∀ a r. Lens' { boundingElement ∷ a | r } a
-_boundingElement =
-  lens _.boundingElement (_ { boundingElement = _ })
-
-_boundingDimensions ∷ ∀ a r. Lens' { boundingDimensions ∷ a | r } a
-_boundingDimensions =
-  lens _.boundingDimensions (_ { boundingDimensions = _ })
 
 isDo ∷ ∀ a. ActionInternal a → Boolean
 isDo =

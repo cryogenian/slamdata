@@ -144,7 +144,7 @@ evalEmbeddedQueries sm dir =
     → EJSON.EJson
   extractSingletonObject lit =
     case EJSON.unroll lit of
-      EJSON.Object [key × val] → val
+      EJSON.Map [key × val] → val
       _ → lit
 
   evalValue

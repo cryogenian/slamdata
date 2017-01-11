@@ -123,7 +123,7 @@ displayEJsonF rec d =
     EJSON.Interval str → str
     EJSON.ObjectId str → str
     EJSON.Array ds → squares $ commaSep ds
-    EJSON.Object ds → braces $ renderPairs ds
+    EJSON.Map ds → braces $ renderPairs ds
   where
     commaSep
       ∷ ∀ f
