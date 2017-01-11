@@ -31,23 +31,23 @@ import Data.Lens (view)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
-import SlamData.Workspace.Card.BuildChart.Area.Eval as BuildArea
-import SlamData.Workspace.Card.BuildChart.Bar.Eval as BuildBar
-import SlamData.Workspace.Card.BuildChart.Boxplot.Eval as BuildBoxplot
-import SlamData.Workspace.Card.BuildChart.Candlestick.Eval as BuildCandlestick
-import SlamData.Workspace.Card.BuildChart.Funnel.Eval as BuildFunnel
-import SlamData.Workspace.Card.BuildChart.Gauge.Eval as BuildGauge
-import SlamData.Workspace.Card.BuildChart.Graph.Eval as BuildGraph
-import SlamData.Workspace.Card.BuildChart.Heatmap.Eval as BuildHeatmap
-import SlamData.Workspace.Card.BuildChart.Line.Eval as BuildLine
-import SlamData.Workspace.Card.BuildChart.Metric.Eval as BuildMetric
-import SlamData.Workspace.Card.BuildChart.Parallel.Eval as BuildParallel
-import SlamData.Workspace.Card.BuildChart.Pie.Eval as BuildPie
-import SlamData.Workspace.Card.BuildChart.PivotTable.Eval as BuildPivotTable
-import SlamData.Workspace.Card.BuildChart.PunchCard.Eval as BuildPunchCard
-import SlamData.Workspace.Card.BuildChart.Radar.Eval as BuildRadar
-import SlamData.Workspace.Card.BuildChart.Sankey.Eval as BuildSankey
-import SlamData.Workspace.Card.BuildChart.Scatter.Eval as BuildScatter
+import SlamData.Workspace.Card.Setups.Chart.Area.Eval as BuildArea
+import SlamData.Workspace.Card.Setups.Chart.Bar.Eval as BuildBar
+import SlamData.Workspace.Card.Setups.Chart.Boxplot.Eval as BuildBoxplot
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval as BuildCandlestick
+import SlamData.Workspace.Card.Setups.Chart.Funnel.Eval as BuildFunnel
+import SlamData.Workspace.Card.Setups.Chart.Gauge.Eval as BuildGauge
+import SlamData.Workspace.Card.Setups.Chart.Graph.Eval as BuildGraph
+import SlamData.Workspace.Card.Setups.Chart.Heatmap.Eval as BuildHeatmap
+import SlamData.Workspace.Card.Setups.Chart.Line.Eval as BuildLine
+import SlamData.Workspace.Card.Setups.Chart.Metric.Eval as BuildMetric
+import SlamData.Workspace.Card.Setups.Chart.Parallel.Eval as BuildParallel
+import SlamData.Workspace.Card.Setups.Chart.Pie.Eval as BuildPie
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Eval as BuildPivotTable
+import SlamData.Workspace.Card.Setups.Chart.PunchCard.Eval as BuildPunchCard
+import SlamData.Workspace.Card.Setups.Chart.Radar.Eval as BuildRadar
+import SlamData.Workspace.Card.Setups.Chart.Sankey.Eval as BuildSankey
+import SlamData.Workspace.Card.Setups.Chart.Scatter.Eval as BuildScatter
 import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Eval.Common as Common
@@ -59,9 +59,9 @@ import SlamData.Workspace.Card.Open.Eval as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Query.Eval as Query
 import SlamData.Workspace.Card.Search.Eval as Search
-import SlamData.Workspace.Card.SetupFormInput.Labeled.Eval as SetupLabeled
-import SlamData.Workspace.Card.SetupFormInput.TextLike.Eval as SetupTextLike
-import SlamData.Workspace.Card.SetupFormInput.Static.Eval as SetupStatic
+import SlamData.Workspace.Card.Setups.FormInput.Labeled.Eval as SetupLabeled
+import SlamData.Workspace.Card.Setups.FormInput.TextLike.Eval as SetupTextLike
+import SlamData.Workspace.Card.Setups.FormInput.Static.Eval as SetupStatic
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.FormInput.Eval as FormInput
 

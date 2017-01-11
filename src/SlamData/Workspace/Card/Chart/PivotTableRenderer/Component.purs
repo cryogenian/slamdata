@@ -38,12 +38,12 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Query as QQ
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
-import SlamData.Workspace.Card.BuildChart.PivotTable.Model (Column(..))
-import SlamData.Workspace.Card.BuildChart.Aggregation as Ag
+import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
 
 import Global (readFloat)
 import Utils (hush)

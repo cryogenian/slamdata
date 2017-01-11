@@ -44,7 +44,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.FormInput.Model (Model(..))
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
-import SlamData.Workspace.Card.BuildChart.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 eval
   ∷ ∀ m

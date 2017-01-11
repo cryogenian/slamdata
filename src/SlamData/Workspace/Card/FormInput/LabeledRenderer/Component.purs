@@ -34,7 +34,7 @@ import Halogen.CustomProps as Cp
 import Halogen.Component.Utils (sendAfter, raise)
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.BuildChart.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Port (SetupLabeledFormInputPort)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as M

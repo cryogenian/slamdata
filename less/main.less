@@ -254,20 +254,9 @@ ol.breadcrumb {
         width: 200px;
     }
 }
-.chart-configuration(@label-width) {
-    padding-bottom: 10px;
 
-    label.control-label {
-        width: @label-width;
-    }
 
-    select.form-control,
-    input.form-control,
-    .sd-picker-input .form-control {
-        width: calc(~"100% - " @label-width);
-        display: inline-block;
-    }
-}
+
 
 .file-list-group.aggregation {
     border-top: 1px solid #ddd;
@@ -275,40 +264,19 @@ ol.breadcrumb {
     width: ~"calc(100% - 105px)";
 }
 
-form.chart-configure-form {
-    .chart-configuration(@label-width: 120px);
-    padding: .5rem;
 
-    &.with-aggregation {
-        div {
-            width: ~"calc(100% - 120px)";
-            display: inline-block;
 
-            .form-control:nth-child(1) {
-              border-right: none;
-              width: 80%;
-            }
-            .form-control:nth-child(2) {
-              width: 20%;
-            }
-        }
+
+.chart-editor {
+    hr {
+        clear: left;
+        position: relative;
+        top: 1rem;
+        padding-bottom: 1rem;
     }
 }
-form.chart-size-param {
-    .chart-configuration(75px);
-}
-form.chart-detail-param {
-    .chart-configuration(120px);
-}
-form.funnel-chart-order-param {
-    .chart-configuration(75px);
-}
-form.funnel-chart-align-param {
-    .chart-configuration(75px);
-}
-form.axis-label-param {
-    .chart-configuration(120px);
-}
+
+
 
 div.loading-message.alert.alert-info {
     text-align: center;

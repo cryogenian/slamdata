@@ -62,8 +62,8 @@ import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Download.Model (DownloadOptions)
-import SlamData.Workspace.Card.BuildChart.PivotTable.Model as PTM
-import SlamData.Workspace.Card.BuildChart.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), renderVarMapValue, emptyVarMap, escapeIdentifier)
