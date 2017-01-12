@@ -188,10 +188,10 @@ instance arbitraryArbAdjustedPermissions ∷ SC.Arbitrary ArbAdjustedPermissions
 
 conf ∷ TestConfig
 conf =
-  { workspaceCount: 10
+  { workspaceCount: 1 -- n^2
   , grantedToCount: 5
-  , deckCount: 10
-  , sourcesCount: 2
+  , deckCount: 10 -- вообще какое-то конское n^2log(n) или что-то вроде того
+  , sourcesCount: 4
   , cachesCount: 2
   }
 
