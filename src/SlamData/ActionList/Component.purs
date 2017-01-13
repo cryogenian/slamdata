@@ -153,7 +153,7 @@ isDisabled =
       disabled
     DrillInternal _ _ _ actions →
       Foldable.any isDisabled actions
-    GoBackInternal → true
+    GoBackInternal → false
 
 searchFilters ∷ ∀ a. ActionInternal a → Array String
 searchFilters =
