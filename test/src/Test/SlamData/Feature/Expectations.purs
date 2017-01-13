@@ -3,7 +3,7 @@ module Test.SlamData.Feature.Expectations where
 import SlamData.Prelude
 
 import Data.Map as Map
-import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectNotPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectPresentedNotRepeatedly, expectElementContainsText)
+import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectNotPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectPresentedNotRepeatedly)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
 import XPath as XPath
@@ -144,9 +144,10 @@ measureInLastChartCard
   ∷ String
   → SlamFeature Unit
 measureInLastChartCard value =
-  expectElementContainsText
-    value
-    (XPath.last $ XPath.anywhere $ XPaths.chartMeasureSelector)
+  expectPresented
+    $ XPath.last
+    $ XPath.anywhere
+    $ XPath.nodeWithText XPaths.chartMeasureSelector value
 
 categoryEnabledInLastBuildChartCard
   ∷ SlamFeature Unit
