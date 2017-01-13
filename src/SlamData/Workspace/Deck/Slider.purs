@@ -28,7 +28,6 @@ import Data.Int as Int
 import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
 import Data.List ((:))
-import Data.String as String
 
 import CSS (CSS)
 
@@ -62,6 +61,7 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
 
+import Utils as Utils
 import Utils.CSS as CSSUtils
 
 render ∷ DeckOptions → (DeckOptions → DeckComponent) → State → Boolean → DeckHTML
@@ -300,20 +300,13 @@ renderCard opts deckComponent st activeIndex index card =
       DCQ.HideAccessNextActionCardGuide
       guideText
 
-  outputs = case card of
-    Right { cardType } → ICT.outputsFor (ICT.fromCardType cardType)
-    _ → []
+  output ∷ Maybe ICT.InsertableCardIOType
+  output = ICT.outputFor ∘ ICT.fromCardType ∘ _.cardType =<< Utils.hush card
 
+  guideText ∷ String
   guideText =
-    outputs
-      # map ICT.printIOType'
-      # Array.catMaybes
-      # String.joinWith " ? "
-      # guideText'
-
-  guideText' outputTypesString =
     "To do more with "
-      ⊕ outputTypesString
+      ⊕ (fromMaybe "" $ ICT.printIOType' =<< output)
       ⊕ " click or drag this gripper to the left and add a new card to the deck."
 
   isLastCard =

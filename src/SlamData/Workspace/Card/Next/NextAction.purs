@@ -103,14 +103,14 @@ insert ∷ InsertableCardType → ActionList.Action NextAction
 insert =
   case _ of
     ICT.SetupChartCard → chartSubmenu
-    ICT.SetupFormInputCard → formInputSubmenu
+    ICT.SetupFormCard → formInputSubmenu
     iCardType → toAction $ Insert $ ICT.toCardType iCardType
 
 findOutHowToInsert ∷ InsertableCardType → ActionList.Action NextAction
 findOutHowToInsert =
   case _ of
     ICT.SetupChartCard → findOutHowToChartSubmenu
-    ICT.SetupFormInputCard → findOutHowToFormInputSubmenu
+    ICT.SetupFormCard → findOutHowToFormInputSubmenu
     iCardType → toAction $ FindOutHowToInsert $ ICT.toCardType iCardType
 
 fromInsertableCard ∷ InsertableCardType → Array InsertableCardType → ActionList.Action NextAction

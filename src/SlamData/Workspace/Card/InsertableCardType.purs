@@ -16,16 +16,17 @@ limitations under the License.
 
 module SlamData.Workspace.Card.InsertableCardType where
 
-import Data.Array as Array
-import Data.String as String
-import Data.Foldable as Foldable
 import SlamData.Prelude
+import Data.Array as Array
+import Data.Foldable as Foldable
+import Data.String as String
 import SlamData.Workspace.Card.CardType as CardType
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port (Port)
+import Utils as Utils
 
 data InsertableCardType
   = CacheCard
@@ -34,12 +35,12 @@ data InsertableCardType
   | QueryCard
   | SearchCard
   | SetupChartCard
-  | SetupFormInputCard
+  | SetupFormCard
   | SetupDownloadCard
   | SetupMarkdownCard
   | SetupVariablesCard
   | ShowChartCard
-  | ShowFormInputCard
+  | ShowFormCard
   | ShowDownloadCard
   | ShowMarkdownCard
   | TableCard
@@ -47,7 +48,7 @@ data InsertableCardType
 
 data InsertableCardIOType
   = Chart
-  | FormInput
+  | Form
   | Data
   | Download
   | Markdown
@@ -57,44 +58,54 @@ data InsertableCardIOType
 derive instance eqInsertableCardType ∷ Eq InsertableCardType
 derive instance eqInsertableCardIOType ∷ Eq InsertableCardIOType
 
+-- Cards can have multiple input types
 inputs ∷ Array (InsertableCardType × (Array InsertableCardIOType))
 inputs =
   [ CacheCard × [ Data ]
   , DraftboardCard × [ None ]
   , OpenCard × [ None ]
-  , QueryCard × [ None, Data, Variables, Chart ]
-  , SearchCard × [ Data, Chart ]
-  , SetupChartCard × [ Data, Chart ]
-  , SetupDownloadCard × [ Data, Chart ]
-  , SetupFormInputCard × [ Data, Chart ]
+  , QueryCard × [ None, Data, Variables ]
+  , SearchCard × [ Data ]
+  , SetupChartCard × [ Data ]
+  , SetupDownloadCard × [ Data ]
+  , SetupFormCard × [ Data ]
   , SetupMarkdownCard × [ None, Variables ]
   , SetupVariablesCard × [ None ]
   , ShowChartCard × [ Chart ]
-  , ShowFormInputCard × [ FormInput ]
+  , ShowFormCard × [ Form ]
   , ShowDownloadCard × [ Download ]
   , ShowMarkdownCard × [ Markdown ]
-  , TableCard × [ Data, Chart ]
-  , TroubleshootCard × [ Variables, Data, Chart ]
+  , TableCard × [ Data ]
+  , TroubleshootCard × [ Chart, Form, Data, Download, Markdown, Variables ]
   ]
 
-outputs ∷ Array (InsertableCardType × Array InsertableCardIOType)
+-- Cards only have one output type, treat this as a Map or turn it into one.
+outputs ∷ Array (InsertableCardType × InsertableCardIOType)
 outputs =
-  [ CacheCard × [ Data ]
-  , DraftboardCard × [ Variables ]
-  , OpenCard × [ Data ]
-  , QueryCard × [ Data ]
-  , SearchCard × [ Data ]
-  , SetupChartCard × [ Chart ]
-  , SetupFormInputCard × [ FormInput ]
-  , SetupDownloadCard × [ Download ]
-  , SetupMarkdownCard × [ Markdown ]
-  , SetupVariablesCard × [ Markdown, Variables ]
-  , ShowChartCard × [ Data ]
-  , ShowFormInputCard × [ Data ]
-  , ShowDownloadCard × [ Download ]
-  , ShowMarkdownCard × [ Markdown, Variables ]
-  , TableCard × [ Data ]
-  , TroubleshootCard × [ Markdown, Variables ]
+  [ CacheCard × Data
+  , DraftboardCard × Variables
+  , OpenCard × Data
+  , QueryCard × Data
+  , SearchCard × Data
+  , SetupChartCard × Chart
+  , SetupFormCard × Form
+  , SetupDownloadCard × Download
+  , SetupMarkdownCard × Markdown
+  , SetupVariablesCard × Variables
+  , ShowChartCard × Data
+  , ShowFormCard × Data
+  , ShowDownloadCard × Download
+  , ShowMarkdownCard × Variables
+  , TableCard × Data
+  , TroubleshootCard × Variables
+  ]
+
+cardsToExcludeFromPaths ∷ Array InsertableCardType
+cardsToExcludeFromPaths =
+  [ TroubleshootCard
+  , TableCard
+  , DraftboardCard
+  , CacheCard
   ]
 
 contains ∷ ∀ a. (Eq a) ⇒ a → Array a → Boolean
@@ -108,13 +119,13 @@ inputsFor ∷ InsertableCardType → Array InsertableCardIOType
 inputsFor card =
   Array.concat $ map snd $ Array.filter (eq card ∘ fst) inputs
 
-outputsFor ∷ InsertableCardType → Array InsertableCardIOType
-outputsFor card =
-  Array.concat $ map snd $ Array.filter (eq card ∘ fst) outputs
+outputFor ∷ InsertableCardType → Maybe InsertableCardIOType
+outputFor card =
+  Utils.singletonValue Nothing (const Nothing) (map snd $ Array.filter (eq card ∘ fst) outputs)
 
 cardsThatOutput ∷ InsertableCardIOType → Array InsertableCardType
 cardsThatOutput io =
-  map fst $ Array.filter (contains io ∘ snd) outputs
+  map fst $ Array.filter (eq io ∘ snd) outputs
 
 cardsThatTakeInput ∷ InsertableCardIOType → Array InsertableCardType
 cardsThatTakeInput io =
@@ -149,6 +160,17 @@ possibleToGetTo ∷ InsertableCardIOType → InsertableCardType → Boolean
 possibleToGetTo io card =
   not $ Array.null $ Array.concat $ pathsBetweenIO io <$> inputsFor card
 
+-- This produces an array of sensible suggested paths. It excludes paths which
+-- include cards in the cardsToExcludeFromPaths array and paths which include
+-- the same io type more than twice.
+--
+-- Allowing the same io type twice rather than only once allows sets of cards
+-- such as (SearchCard) and (SetupFormCard, ShowFormCard) to be included in
+-- paths.
+--
+-- Not allowing the same data type more than twice prevents duplicate sets of
+-- cards such as (SearchCard) and (SetupFormCard, ShowFormCard) as well as
+-- preventing infinite loops.
 pathsBetweenIO ∷ InsertableCardIOType → InsertableCardIOType → Array Path
 pathsBetweenIO fromIO toIO =
   go $ [ purePath toIO ]
@@ -173,7 +195,11 @@ expandPath fromIO initialPath | otherwise =
   g card = h card `Array.mapMaybe` (inputsFor card)
 
   h ∷ InsertableCardType → InsertableCardIOType → Maybe Path
-  h card io | io `Foldable.elem` initialPath.io = Nothing
+  h card io
+    | card `Foldable.elem` initialPath.c
+        || (Array.length $ Array.filter (eq io) initialPath.io) >= 2
+        || card `Foldable.elem` cardsToExcludeFromPaths =
+          Nothing
   h card io =
     Just { c: pathCards, io: pathIO, f: pathFinished }
     where
@@ -186,7 +212,7 @@ fromMaybePort input = maybe None fromPort input
 
 printIOType ∷ InsertableCardIOType → String
 printIOType = case _ of
-  FormInput → "a form"
+  Form → "a form"
   Chart → "a chart"
   Data → "data"
   Download → "a download"
@@ -196,7 +222,7 @@ printIOType = case _ of
 
 printIOType' ∷ InsertableCardIOType → Maybe String
 printIOType' = case _ of
-  FormInput → Just "this form"
+  Form → Just "this form"
   Chart → Just "this chart"
   Data → Just "this data"
   Download → Just "this download"
@@ -222,8 +248,8 @@ fromPort = case _ of
   Port.ChartInstructions _ → Chart
   Port.Metric _ → Chart
   Port.PivotTable _ → Chart
-  Port.SetupLabeledFormInput _ → FormInput
-  Port.SetupTextLikeFormInput _ → FormInput
+  Port.SetupLabeledFormInput _ → Form
+  Port.SetupTextLikeFormInput _ → Form
   Port.Variables → Variables
   _ → None
 
@@ -235,12 +261,12 @@ toCardType = case _ of
   QueryCard → CardType.Ace CardType.SQLMode
   SearchCard → CardType.Search
   SetupChartCard → CardType.ChartOptions Pie
-  SetupFormInputCard → CardType.SetupFormInput Dropdown
+  SetupFormCard → CardType.SetupFormInput Dropdown
   SetupDownloadCard → CardType.DownloadOptions
   SetupMarkdownCard → CardType.Ace CardType.MarkdownMode
   SetupVariablesCard → CardType.Variables
   ShowChartCard → CardType.Chart
-  ShowFormInputCard → CardType.FormInput
+  ShowFormCard → CardType.FormInput
   ShowDownloadCard → CardType.Download
   ShowMarkdownCard → CardType.Markdown
   TableCard → CardType.Table
@@ -249,7 +275,7 @@ toCardType = case _ of
 print ∷ InsertableCardType → String
 print = case _ of
   SetupChartCard → "Setup Chart"
-  SetupFormInputCard → "Setup Form"
+  SetupFormCard → "Setup Form"
   a → CardType.cardName $ toCardType a
 
 aAn ∷ String → String
@@ -293,12 +319,12 @@ printAction = case _ of
   QueryCard → Nothing
   SearchCard → Just "search"
   SetupChartCard → Just "set up a chart for"
-  SetupFormInputCard → Just "set up a form for"
+  SetupFormCard → Just "set up a form for"
   SetupDownloadCard → Just "setup a download for"
   SetupMarkdownCard → Nothing
   SetupVariablesCard → Nothing
   ShowChartCard → Just "show"
-  ShowFormInputCard → Just "show"
+  ShowFormCard → Just "show"
   ShowDownloadCard → Just "show"
   ShowMarkdownCard → Just "show"
   TableCard → Just "tabulate"
@@ -321,8 +347,8 @@ fromCardType =
     CardType.Markdown → ShowMarkdownCard
     CardType.Table → TableCard
     CardType.Troubleshoot → TroubleshootCard
-    CardType.SetupFormInput _ → SetupFormInputCard
-    CardType.FormInput → ShowFormInputCard
+    CardType.SetupFormInput _ → SetupFormCard
+    CardType.FormInput → ShowFormCard
 
 all ∷ Array InsertableCardType
 all =
@@ -332,8 +358,8 @@ all =
   , TableCard
   , SetupChartCard
   , ShowChartCard
-  , SetupFormInputCard
-  , ShowFormInputCard
+  , SetupFormCard
+  , ShowFormCard
   , SetupMarkdownCard
   , ShowMarkdownCard
   , DraftboardCard
