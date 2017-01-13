@@ -46,7 +46,7 @@ import Math as Math
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
-import SlamData.ActionList.Action (Action(..), ActionDescription(..), ActionHighlighted(..), ActionIconSrc(..), ActionName(..))
+import SlamData.ActionList.Action (Action(..), ActionDescription(..), ActionHighlighted(..), ActionIconSrc(..), ActionName(..), ActionDisabled(..))
 import SlamData.ActionList.Component.ActionInternal (ActionInternal(..), ActionNameLine(..), ActionNameWord(..), ButtonMetrics, Dimensions, Presentation(..))
 import SlamData.ActionList.Component.State (State, _actions, _boundingDimensions, _boundingElement, _filterString, _previousActions)
 import SlamData.ActionList.Component.Query (Query(..))
@@ -106,12 +106,13 @@ printActionNameWords =
 toActionInternal ∷ ∀ a. Action a → ActionInternal a
 toActionInternal =
   case _ of
-    Do actionName actionIconSrc actionDescription actionHighlighted a →
+    Do actionName actionIconSrc actionDescription actionHighlighted actionDisabled a →
       DoInternal
         (wordify actionName)
         actionIconSrc
         actionDescription
         actionHighlighted
+        actionDisabled
         a
     Drill actionName actionIconSrc actionDescription xs →
       DrillInternal
@@ -123,7 +124,7 @@ toActionInternal =
 isDo ∷ ∀ a. ActionInternal a → Boolean
 isDo =
   case _ of
-    DoInternal _ _ _ _ _ →
+    DoInternal _ _ _ _ _ _ →
       true
     _ →
       false
@@ -139,16 +140,25 @@ isDrill =
 isHighlighted ∷ ∀ a. ActionInternal a → Boolean
 isHighlighted =
   case _ of
-    DoInternal _ _ _ (ActionHighlighted highlighted) _ →
+    DoInternal _ _ _ (ActionHighlighted highlighted) _ _ →
       highlighted
     DrillInternal _ _ _ actions →
       Foldable.any isHighlighted actions
     GoBackInternal → true
 
+isDisabled ∷ ∀ a. ActionInternal a → Boolean
+isDisabled =
+  case _ of
+    DoInternal _ _ _ _ (ActionDisabled disabled) _ →
+      disabled
+    DrillInternal _ _ _ actions →
+      Foldable.any isDisabled actions
+    GoBackInternal → true
+
 searchFilters ∷ ∀ a. ActionInternal a → Array String
 searchFilters =
   case _ of
-    DoInternal words _ _ _ _ →
+    DoInternal words _ _ _ _ _ →
       [ printActionNameWords words ]
     DrillInternal words _ _ actions →
       [ printActionNameWords words ] ⊕ Array.concat (map searchFilters actions)
@@ -158,7 +168,7 @@ searchFilters =
 pluckActionDescription ∷ ∀ a. ActionInternal a → String
 pluckActionDescription =
   case _ of
-    DoInternal _ _ (ActionDescription s) _ _ →
+    DoInternal _ _ (ActionDescription s) _ _ _ →
       s
     DrillInternal _ _ (ActionDescription s) _ →
       s
@@ -168,7 +178,7 @@ pluckActionDescription =
 pluckActionIconSrc ∷ ∀ a. ActionInternal a → String
 pluckActionIconSrc =
   case _ of
-    DoInternal _ (ActionIconSrc s) _ _ _ →
+    DoInternal _ (ActionIconSrc s) _ _ _ _ →
       s
     DrillInternal _ (ActionIconSrc s) _ _ →
       s
@@ -178,7 +188,7 @@ pluckActionIconSrc =
 actionNameWords ∷ ∀ a. ActionInternal a → Array ActionNameWord
 actionNameWords =
   case _ of
-    DoInternal xs _ _ _ _ →
+    DoInternal xs _ _ _ _ _ →
       xs
     DrillInternal xs _ _ _ →
       xs
@@ -451,7 +461,7 @@ renderButton filterString presentation metrics { action, lines } =
 
   attrs =
     [ HP.title $ pluckActionDescription action
-    , HP.disabled $ not enabled
+    , HP.disabled $ (not enabled) || (isDisabled action)
     , HP.buttonType HP.ButtonButton
     , ARIA.label $ pluckActionDescription action
     , HP.classes classes
@@ -518,7 +528,7 @@ eval =
     Selected action next → do
       st ← H.get
       case action of
-        DoInternal _ _ _ _ _ → pure unit
+        DoInternal _ _ _ _ _ _ → pure unit
         DrillInternal _ _ _ actions →
           H.modify
             $ (_actions .~ (GoBackInternal `Array.cons` actions))

@@ -99,6 +99,14 @@ actionHighlighted unwrappable activeCard cardDefs a =
       _, Unwrap → unwrappable
       _, _ → true
 
+actionDisabled ∷ Boolean → Maybe CardDef → Array CardDef → BackAction → ActionList.ActionDisabled
+actionDisabled unwrappable activeCard cardDefs a =
+  ActionList.ActionDisabled
+    $ case activeCard, a of
+      Nothing, Trash → true
+      _, Unwrap → not $ unwrappable
+      _, _ → false
+
 actionIcon ∷ BackAction → ActionList.ActionIconSrc
 actionIcon =
   ActionList.ActionIconSrc
@@ -121,4 +129,5 @@ toActionListAction unwrappable activeCard cardDefs backAction =
      (actionIcon backAction)
      (actionDescripton backAction)
      (actionHighlighted unwrappable activeCard cardDefs backAction)
+     (actionDisabled unwrappable activeCard cardDefs backAction)
      backAction

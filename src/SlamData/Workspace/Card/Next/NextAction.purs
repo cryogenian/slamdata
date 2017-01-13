@@ -76,6 +76,7 @@ toAction =
         (ActionList.ActionIconSrc $ CT.cardIconLightSrc cardType)
         (description nextAction)
         (ActionList.ActionHighlighted true)
+        (ActionList.ActionDisabled false)
         nextAction
     nextAction@(FindOutHowToInsert cardType) →
       ActionList.Do
@@ -83,6 +84,7 @@ toAction =
         (ActionList.ActionIconSrc $ CT.cardIconLightSrc cardType)
         (description nextAction)
         (ActionList.ActionHighlighted false)
+        (ActionList.ActionDisabled false)
         nextAction
 
 name ∷ CardType → ActionList.ActionName

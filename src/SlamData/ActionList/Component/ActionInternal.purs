@@ -18,10 +18,10 @@ module SlamData.ActionList.Component.ActionInternal where
 
 import SlamData.Prelude
 
-import SlamData.ActionList.Action (ActionDescription, ActionHighlighted, ActionIconSrc)
+import SlamData.ActionList.Action (ActionDescription, ActionHighlighted, ActionDisabled, ActionIconSrc)
 
 data ActionInternal a
-  = DoInternal (Array ActionNameWord) ActionIconSrc ActionDescription ActionHighlighted a
+  = DoInternal (Array ActionNameWord) ActionIconSrc ActionDescription ActionHighlighted ActionDisabled a
   | DrillInternal (Array ActionNameWord) ActionIconSrc ActionDescription (Array (ActionInternal a))
   | GoBackInternal
 

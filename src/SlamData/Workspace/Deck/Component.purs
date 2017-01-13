@@ -290,7 +290,7 @@ peekDialog opts = case _ of
 peekBackSide ∷ ∀ a. DeckOptions → ActionList.Query Back.BackAction a → DeckDSL Unit
 peekBackSide opts action =
   case action of
-    ActionList.Selected (ActionList.DoInternal _ _ _ _ backAction) _ → do
+    ActionList.Selected (ActionList.DoInternal _ _ _ _ _ backAction) _ → do
       { path } ← liftH' Wiring.expose
       st ← H.get
       case backAction of

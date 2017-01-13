@@ -29,6 +29,9 @@ derive newtype instance eqActionDescription ∷ Eq ActionDescription
 newtype ActionHighlighted = ActionHighlighted Boolean
 derive newtype instance eqActionHighlighted ∷ Eq ActionHighlighted
 
+newtype ActionDisabled = ActionDisabled Boolean
+derive newtype instance eqActionDisabled ∷ Eq ActionDisabled
+
 data Action a
-  = Do ActionName ActionIconSrc ActionDescription ActionHighlighted a
+  = Do ActionName ActionIconSrc ActionDescription ActionHighlighted ActionDisabled a
   | Drill ActionName ActionIconSrc ActionDescription (Array (Action a))

@@ -147,7 +147,7 @@ peek = case _ of
         pure unit
       ActionList.DrillInternal _ _ _ _ →
         pure unit
-      ActionList.DoInternal _ _ _ _ nextAction →
+      ActionList.DoInternal _ _ _ _ _ nextAction →
         case nextAction of
           NA.Insert cardType →
             HU.raise' $ H.action $ AddCard cardType
