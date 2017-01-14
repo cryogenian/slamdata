@@ -50,6 +50,7 @@ import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), printShareRe
 import SlamData.Workspace.Deck.Dialog.Share.Model as Model
 
 import Utils.Path (parseFilePath)
+import Utils.Foldable (chunkedParTraverse, splitList)
 
 import ZClipboard as Z
 
@@ -540,7 +541,7 @@ deletePermission
 deletePermission permissionMap = do
   r ← H.fromEff $ newRef $ Map.empty × Map.size permissionMap
   resultVar ← H.fromAff makeVar
-  H.liftH $ parTraverse (go r resultVar) (Map.toList permissionMap)
+  H.liftH $ chunkedParTraverse (go r resultVar) (Map.toList permissionMap) (splitList 20) L.concat
   H.fromAff $ takeVar resultVar
   where
   go r resultVar (pid × act) = do

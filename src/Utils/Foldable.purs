@@ -18,6 +18,8 @@ module Utils.Foldable where
 
 import SlamData.Prelude
 
+import Data.List as L
+
 enumeratedFor_
   ∷ ∀ a b f m ix
   . (Applicative m, Foldable f, Semiring ix)
@@ -30,3 +32,30 @@ enumeratedFor_ fl fn =
             (ix + one)
             × ((fn $ ix × a) *> action))
     (zero × pure unit) fl
+
+splitList
+  ∷ ∀ a
+  . Int
+  → L.List a
+  → L.List (L.List a)
+splitList chunk inp =
+  splitList' inp L.Nil
+  where
+  splitList' L.Nil out = out
+  splitList' lst out =
+    let
+      taken = L.take chunk lst
+      dropped = L.drop chunk lst
+    in
+      splitList' dropped $ L.Cons taken out
+
+chunkedParTraverse
+  ∷ ∀ f m t a b
+  . (Parallel f m, Traversable t, Applicative m)
+  ⇒ (a → m b)
+  → t a
+  → (t a → t (t a))
+  → (t (t b) → t b)
+  → m (t b)
+chunkedParTraverse f ta split concat =
+  map concat $  traverse (parTraverse f) $ split ta
