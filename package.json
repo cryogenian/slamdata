@@ -19,7 +19,8 @@
     "build-lite": "gulp replace-crlf less bundle",
     "property-tests": "gulp bundle-property-tests && node tmp/js/property-tests",
     "test": "gulp bundle-test && node test",
-    "psa": "pulp build -I test/src -- --censor-lib --strict --stash"
+    "psa": "pulp build -I test/src -- --censor-lib --strict --stash",
+    "webpack-dev": "webpack --config=webpack.conf.js --watch"
   },
   "license": "Apache-2.0",
   "bugs": {
