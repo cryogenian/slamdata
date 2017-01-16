@@ -23,7 +23,6 @@ module Test.Feature
   , expectPresentedNotRepeatedly
   , expectPresentedWithPropertiesNotRepeatedly
   , expectSelectValue
-  , expectElementContainsText
   , hover
   , hoverWithProperties
   , pressEnter
@@ -401,10 +400,6 @@ expectSelectValue value xPath =
   getOptionValue = flip getAttribute "value" =<< find optionXPath
   valueProperty = Map.singleton "value"
   expectPresentedWithValue value' = expectPresentedWithProperties (valueProperty value') xPath
-
-expectElementContainsText ∷ ∀ e o. String → XPath → Feature e o Unit
-expectElementContainsText txt xPath =
-  tryRepeatedlyTo $ expectPresented $ xPath ⊕ "[contains(text(), '" ⊕ txt ⊕ "')]"
 
 -- Independent expectations
 -- | Expects the frst provided file to be in the provided folder and to match
