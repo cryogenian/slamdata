@@ -222,7 +222,7 @@ render st =
         (\(N.Details d) → HH.div
           [ HP.class_ (HH.className "sd-notification-detail") ]
           [ HH.button
-              [ HP.class_ (HH.className "sd-notification-toggle-detail")
+              [ HP.classes [ HH.className "btn", HH.className "btn-default", HH.className "btn-sm" ]
               , HP.buttonType HP.ButtonButton
               , HE.onClick (HE.input_ ToggleDetail)
               ]
@@ -231,8 +231,21 @@ render st =
                     DetailsPresented → "Hide detail"
                     DetailsHidden → "Show detail"
               ]
+          , n.options.actionOptions
+             # maybe
+               (HH.text "")
+               (\(N.ActionOptions a) →
+                  HH.button
+                    [ HP.classes [ HH.className "btn", HH.className "btn-primary", HH.className "btn-sm" ]
+                    , HP.buttonType HP.ButtonButton
+                    , HE.onClick (HE.input_ $ Action a.action)
+                    ]
+                    [ HH.text a.actionMessage ])
           , case n.detailsPresented of
-              DetailsPresented → HH.p_ [ HH.text d ]
+              DetailsPresented →
+                HH.div
+                  [ HP.class_ (HH.className "sd-notification-detail") ]
+                  [ HH.p_ [ HH.text d ] ]
               DetailsHidden → HH.text ""
           ])
 
@@ -243,15 +256,7 @@ render st =
         (\(N.ActionOptions a) →
           HH.div
             [ HP.class_ (HH.className "sd-notification-detail") ]
-            [ HH.text a.messagePrefix
-            , HH.button
-                [ HP.classes [ HH.className "btn", HH.className "btn-primary", HH.className "btn-sm" ]
-                , HP.buttonType HP.ButtonButton
-                , HE.onClick (HE.input_ $ Action a.action)
-                ]
-                [ HH.text a.actionMessage ]
-            , HH.text a.messageSuffix
-            ])
+            [ HH.p_ [ HH.text a.message ] ])
 
   notificationClasses status n =
     [ HH.className "sd-notification"

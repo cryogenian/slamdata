@@ -84,20 +84,24 @@ toNotificationOptions =
       , actionOptions: Nothing
       }
     Unauthorized unauthDetails →
-      { notification: N.Error "No resources available"
+      { notification: N.Error "You are not currently authorized"
       , detail: (\(QE.UnauthorizedDetails s) → N.Details s) <$> unauthDetails
+      , timeout: Nothing
       , actionOptions:
           Just $ N.ActionOptions
-            { messagePrefix: "Please "
-            , actionMessage: "sign in"
-            , messageSuffix: " to continue."
+            { message: "File listings and workspaces may appear empty or incomplete. Please sign in to continue."
+            , actionMessage: "Sign in"
             , action: N.ExpandGlobalMenu
             }
-      , timeout: Nothing
       }
     Forbidden →
       { notification: N.Error (print Forbidden)
       , detail: Nothing
       , timeout: Nothing
-      , actionOptions: Nothing
+      , actionOptions:
+          Just $ N.ActionOptions
+            { message: "File listings and workspaces may appear empty or incomplete. Please sign in as a user with permission to access this resource or contact your administrator."
+            , actionMessage: "Sign in"
+            , action: N.ExpandGlobalMenu
+            }
       }

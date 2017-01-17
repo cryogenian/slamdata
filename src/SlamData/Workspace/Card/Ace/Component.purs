@@ -113,9 +113,8 @@ cardEval mode = case _ of
           Nothing
           Nothing
           (Just $ N.ActionOptions
-            { messagePrefix: ""
+            { message: ""
             , actionMessage: "Run query now"
-            , messageSuffix: ""
             , action: N.Fulfill trigger
             })
     pure next
