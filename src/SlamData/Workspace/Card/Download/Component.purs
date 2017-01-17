@@ -123,14 +123,13 @@ cardEval = case _ of
 handleDownloadPort ∷ Port.DownloadPort → DSL Unit
 handleDownloadPort opts = do
   hs ← H.liftH API.authHeaders
-  H.modify $ _url .~ url hs
-  let
-    fileName = UP.getNameStr $ Right opts.resource
-    ext | opts.compress = ".zip"
-    ext | isRight opts.options = ".json"
-    ext | otherwise = ".csv"
-  H.modify $ _fileName .~ (fileName ⊕ ext)
+  H.modify
+    $ (_url .~ url hs)
+    ∘ (_fileName .~ (fileName ⊕ ext))
   where
+  fileName = UP.getNameStr $ Right opts.resource
+
+  ext = D.extension opts.compress opts.options
 
   url hs =
     (encodeURI (printPath Paths.data_ ⊕ printPath opts.resource))
@@ -142,4 +141,5 @@ handleDownloadPort opts = do
            $ show
            $ reqHeadersToJSON
            $ append hs
-           $ D.toHeaders opts)
+           $ D.toHeaders opts
+           $ Just (fileName ⊕ ext))
