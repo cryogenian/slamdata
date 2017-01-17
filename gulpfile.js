@@ -11,7 +11,8 @@ var gulp = require("gulp"),
     less = require("gulp-less"),
     sequence = require("run-sequence"),
     replace = require("gulp-replace"),
-    footer = require("gulp-footer");
+    footer = require("gulp-footer"),
+    path = require("path");
 
 var slamDataSources = [
   "src/**/*.purs",
@@ -161,8 +162,10 @@ var mkBundleTask = function (name, main) {
     return gulp.src("tmp/" + name + ".js")
           .pipe(webpack({
               resolve: {
-                  modulesDirectories: ["node_modules"]
-
+                  modulesDirectories: ["node_modules"],
+                  alias: {
+                      "package.json": path.join(__dirname, "package.json")
+                  }
               },
               output: { filename: name + ".js" },
               module: {

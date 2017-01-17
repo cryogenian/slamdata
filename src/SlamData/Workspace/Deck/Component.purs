@@ -297,7 +297,11 @@ peekBackSide opts action =
         Back.Trash → do
           let
             active = DCS.activeCard st
+            activeIx = DCS.activeCardIndex st
           for_ (join $ hush <$> active) \{ cardId } → do
+            when (activeIx > 0) do
+              H.modify _ { activeCardIndex = Just (activeIx - 1) }
+              updateActiveState opts
             liftH' $ P.removeCard opts.deckId cardId
             H.modify
               $ (DCS._presentAccessNextActionCardGuide .~ false)
