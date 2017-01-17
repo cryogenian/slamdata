@@ -207,8 +207,8 @@ expandPath fromIO initialPath | otherwise =
     pathIO = Array.cons io initialPath.io
     pathCards = Array.cons card initialPath.c
 
-fromMaybePort ∷ Maybe Port → InsertableCardIOType
-fromMaybePort input = maybe None fromPort input
+fromMaybePort ∷ Maybe Port → Array InsertableCardIOType
+fromMaybePort input = maybe [ None ] fromPort input
 
 printIOType ∷ InsertableCardIOType → String
 printIOType = case _ of
@@ -240,18 +240,18 @@ eitherOr strings =
         <> " or "
         <> String.joinWith "" (Array.drop (n - 1) strings)
 
-fromPort ∷ Port → InsertableCardIOType
+fromPort ∷ Port → Array InsertableCardIOType
 fromPort = case _ of
-  Port.ResourceKey _ → Data
-  Port.DownloadOptions _ → Download
-  Port.SlamDown _ → Markdown
-  Port.ChartInstructions _ → Chart
-  Port.Metric _ → Chart
-  Port.PivotTable _ → Chart
-  Port.SetupLabeledFormInput _ → Form
-  Port.SetupTextLikeFormInput _ → Form
-  Port.Variables → Variables
-  _ → None
+  Port.ResourceKey _ → [ Data ]
+  Port.DownloadOptions _ → [ Download ]
+  Port.SlamDown _ → [ Markdown ]
+  Port.ChartInstructions _ → [ Chart ]
+  Port.Metric _ → [ Chart, Form ]
+  Port.PivotTable _ → [ Chart ]
+  Port.SetupLabeledFormInput _ → [ Form ]
+  Port.SetupTextLikeFormInput _ → [ Form ]
+  Port.Variables → [ Variables ]
+  _ → [ None ]
 
 toCardType ∷ InsertableCardType → CardType
 toCardType = case _ of
@@ -286,8 +286,8 @@ aAn s =
   where
   vowels = [ "a", "e", "i", "o", "u" ]
 
-reason ∷ InsertableCardIOType → CardType → String
-reason io card =
+reason ∷ Array InsertableCardIOType → CardType → String
+reason ios card =
   fold
     [ aAn $ CardType.cardName card
     , " "
@@ -303,9 +303,9 @@ reason io card =
   ictCardType =
     fromCardType card
   actual =
-    case io of
-      None → "be the first card in a deck"
-      _ → "follow a card which outputs " <> printIOType io
+    case ios of
+      [ None ] → "be the first card in a deck"
+      _ → "follow a card which outputs " <> (eitherOr $ map printIOType ios)
   expected =
     eitherOr $ map printIOType $ inputsFor ictCardType
   action =

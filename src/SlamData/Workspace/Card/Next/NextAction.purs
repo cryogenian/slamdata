@@ -119,10 +119,11 @@ fromInsertableCard x =
 
 fromPort ∷ Port → Array (ActionList.Action NextAction)
 fromPort port =
-  flip fromInsertableCard (ICT.cardsThatTakeInput $ ICT.fromPort port) <$> ICT.all
+  flip fromInsertableCard (ICT.cardsThatTakeInput =<< ICT.fromPort port) <$> ICT.all
 
 fromMaybePort ∷ Maybe Port → Array (ActionList.Action NextAction)
-fromMaybePort = maybe (flip fromInsertableCard (ICT.cardsThatTakeInput ICT.None) <$> ICT.all) fromPort
+fromMaybePort =
+  maybe (flip fromInsertableCard (ICT.cardsThatTakeInput ICT.None) <$> ICT.all) fromPort
 
 isInsert ∷ NextAction → Boolean
 isInsert (Insert _) = true

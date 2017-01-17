@@ -24,6 +24,9 @@ module SlamData.Workspace.Card.CardType.FormInputType
   , allFormInputTypes
   , maximumCountOfEntries
   , maximumCountOfSelectedValues
+  , isLabeled
+  , isStatic
+  , isTextLike
   ) where
 
 import SlamData.Prelude
@@ -46,6 +49,27 @@ data FormInputType
   | Date
   | Time
   | Datetime
+
+isLabeled ∷ FormInputType → Boolean
+isLabeled = case _ of
+  Dropdown → true
+  Checkbox → true
+  Radio → true
+  _ → false
+
+isTextLike ∷ FormInputType → Boolean
+isTextLike = case _ of
+  Text → true
+  Numeric → true
+  Time → true
+  Date → true
+  Datetime → true
+  _ → false
+
+isStatic ∷ FormInputType → Boolean
+isStatic = case _ of
+  Static → true
+  _ → false
 
 allFormInputTypes ∷ Array FormInputType
 allFormInputTypes =

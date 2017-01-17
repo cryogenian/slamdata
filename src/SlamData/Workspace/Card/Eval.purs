@@ -137,6 +137,7 @@ evalCard trans port varMap = case trans, port of
     FormInput.evalLabeled model lp =<< CEM.extractResource varMap
   FormInput (FormInput.TextLike model), Port.SetupTextLikeFormInput tlp →
     FormInput.evalTextLike model tlp =<< CEM.extractResource varMap
+  FormInput _, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
   DownloadOptions { compress, options }, _ →
     CEM.tapResource (pure ∘ Port.DownloadOptions ∘ { compress, options, resource: _ } ∘ view Port._filePath) varMap
   e, i → CEM.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i

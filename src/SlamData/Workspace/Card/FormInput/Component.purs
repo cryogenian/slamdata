@@ -18,6 +18,8 @@ module SlamData.Workspace.Card.FormInput.Component (formInputComponent) where
 
 import SlamData.Prelude
 
+import Data.Int (floor)
+
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -26,6 +28,8 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
+import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.FormInput.Component.ChildSlot as CS
 import SlamData.Workspace.Card.FormInput.Component.State as ST
@@ -34,7 +38,6 @@ import SlamData.Workspace.Card.FormInput.Model as M
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Component as TextLike
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type HTML =
@@ -69,24 +72,12 @@ renderHighLOD state =
     [ HP.classes
         (guard (state.levelOfDetails ≠ High) $> B.hidden )
     ]
-    case state.formInputType of
-      Just FIT.Text →
-        textLike
-      Just FIT.Numeric →
-        textLike
-      Just FIT.Date →
-        textLike
-      Just FIT.Time →
-        textLike
-      Just FIT.Datetime →
-        textLike
-      Just FIT.Dropdown →
-        labeled
-      Just FIT.Radio →
-        labeled
-      Just FIT.Checkbox →
-        labeled
-      _ → [ ]
+    $ flip foldMap state.formInputType \fit →
+        if FIT.isLabeled fit
+          then labeled
+          else if FIT.isTextLike fit
+                 then textLike
+                 else metric
   where
   textLike =
     [ HH.slot' CS.cpTextLike unit \_ →
@@ -100,6 +91,12 @@ renderHighLOD state =
        , initialState: Labeled.initialState
        }
     ]
+  metric =
+    [ HH.slot' CS.cpMetric unit \_ →
+       { component: Metric.comp
+       , initialState: Metric.initialState
+       }
+    ]
 
 eval ∷ CC.CardEvalQuery ~> DSL
 eval = case _ of
@@ -111,11 +108,13 @@ eval = case _ of
     st ← H.get
     mbTextLike ← H.query' CS.cpTextLike unit $ H.request TextLike.Save
     mbLabeled ← H.query' CS.cpLabeled unit $ H.request Labeled.Save
-    pure $ k
-      (Card.FormInput
-       $ fromMaybe M.initialModel
-       $ map M.TextLike mbTextLike
-       <|> map M.Labeled mbLabeled)
+    let
+      mbModel =
+        Card.FormInput
+          $ fromMaybe M.Static
+          $ map M.TextLike mbTextLike
+          <|> map M.Labeled mbLabeled
+    pure $ k mbModel
   CC.Load model next → do
     case model of
       Card.FormInput (M.TextLike r) → do
@@ -125,6 +124,9 @@ eval = case _ of
       Card.FormInput (M.Labeled r) → do
         H.modify _{ formInputType = Just r.formInputType }
         H.query' CS.cpLabeled unit $ H.action $ Labeled.Load r
+        pure next
+      Card.FormInput M.Static → do
+        H.modify _{ formInputType = Just FIT.Static }
         pure next
       _ →
         pure next
@@ -138,6 +140,13 @@ eval = case _ of
         H.modify _{ formInputType = Just p.formInputType }
         H.query' CS.cpLabeled unit $ H.action $ Labeled.Setup p
         pure next
+      Metric metric → do
+        H.modify _{ formInputType = Just FIT.Static }
+        H.query' CS.cpMetric unit $ H.action $ Metric.SetMetric metric
+        mbLod ← H.query' CS.cpMetric unit $ H.request Metric.GetLOD
+        for mbLod \lod →
+          H.modify _{ levelOfDetails = lod }
+        pure next
       _ →
         pure next
   CC.ReceiveOutput _ _ next →
@@ -146,6 +155,18 @@ eval = case _ of
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _{levelOfDetails = if dims.width < 240.0 then Low else High}
+    let
+      heightPadding = 60
+      widthPadding = 6
+      intWidth = floor dims.width - widthPadding
+      intHeight = floor dims.height
+    H.query' CS.cpMetric unit $ H.action $ Metric.SetDimensions {width: intWidth, height: intHeight}
+    mbLod ← H.query' CS.cpMetric unit $ H.request Metric.GetLOD
+    H.modify case mbLod of
+      Nothing →
+        _{ levelOfDetails = if dims.width < 240.0 then Low else High }
+      Just lod →
+        _{ levelOfDetails = lod }
     pure next
   CC.ModelUpdated _ next →
     pure next
@@ -153,7 +174,7 @@ eval = case _ of
     pure next
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek = textLikePeek ⨁ labeledPeek
+peek = textLikePeek ⨁ labeledPeek ⨁ const (pure unit)
   where
   textLikePeek = case _ of
     TextLike.Updated _ →

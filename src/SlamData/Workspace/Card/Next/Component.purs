@@ -25,6 +25,7 @@ import SlamData.Prelude
 
 import CSS as CSS
 
+import Data.Foldable as F
 import Data.Lens ((.~))
 
 import Halogen as H
@@ -103,12 +104,20 @@ updateActions =
     ∘ NA.fromPort
 
 takesInput ∷ Port.Port → CT.CardType → Boolean
-takesInput input =
-  ICT.takesInput (ICT.fromPort input) ∘ ICT.fromCardType
+takesInput input ct =
+  let
+    ict = ICT.fromCardType ct
+    availableICTs = ICT.fromPort input
+  in
+    F.or $ flip ICT.takesInput ict <$> availableICTs
 
 possibleToGetTo ∷ Port.Port → CT.CardType → Boolean
-possibleToGetTo input =
-  ICT.possibleToGetTo (ICT.fromPort input) ∘ ICT.fromCardType
+possibleToGetTo input ct =
+  let
+    ict = ICT.fromCardType ct
+    availableICTs = ICT.fromPort input
+  in
+    F.or $ flip ICT.takesInput ict <$> availableICTs
 
 dismissedAddCardGuideKey ∷ String
 dismissedAddCardGuideKey = "dismissedAddCardGuide"
