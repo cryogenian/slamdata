@@ -184,6 +184,8 @@ cardEval = case _ of
           }
       H.modify _ { axes = axes }
       synchronizeChildren
+      when (not (eqAxes st.axes axes))
+        $ CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _

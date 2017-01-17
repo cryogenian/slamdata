@@ -185,8 +185,11 @@ cardEval fit def = case _ of
     pure next
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
+      oldAxes ← H.gets _.axes
       H.modify _{axes = axes}
       synchronizeChildren def
+      when (not (Ax.eqAxes oldAxes axes))
+        $ CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _

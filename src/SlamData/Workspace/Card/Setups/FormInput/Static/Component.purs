@@ -48,6 +48,7 @@ import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.FormInput.Static.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.FormInput.Static.Component.State as ST
 import SlamData.Workspace.Card.Setups.FormInput.Static.Component.Query as Q
+import SlamData.Workspace.Card.Setups.Axis as Ax
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -118,7 +119,7 @@ eval = cardEval ⨁ chartEval
 
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
-cardEval = case _ of
+cardEval q = case _ of
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -142,14 +143,17 @@ cardEval = case _ of
     pure next
   CC.ZoomIn next →
     pure next
-  CC.ReceiveInput _ _ next →
+  CC.ReceiveInput _ _ next → do
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
+      oldAxes ← H.gets _.axes
       H.modify _{axes = axes}
       synchronizeChildren
+      when (not (Ax.eqAxes oldAxes axes))
+        $ CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _

@@ -53,6 +53,7 @@ import SlamData.Workspace.Card.Setups.Chart.Metric.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Metric.Model as M
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (nonMaybeAggregationSelect)
 import SlamData.Workspace.Card.Eval.State (_Axes)
+import SlamData.Workspace.Card.Setups.Axis as Ax
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -222,8 +223,11 @@ cardEval = case _ of
     pure next
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
+      oldAxes ← H.gets _.axes
       H.modify _{axes = axes}
       synchronizeChildren
+      when (not (Ax.eqAxes oldAxes axes))
+        $ CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify
