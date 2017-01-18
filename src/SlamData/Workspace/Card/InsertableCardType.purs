@@ -247,7 +247,6 @@ fromPort = case _ of
   Port.DownloadOptions _ → Download
   Port.SlamDown _ → Markdown
   Port.ChartInstructions _ → Chart
-  Port.Metric _ → Chart
   Port.PivotTable _ → Chart
   Port.SetupLabeledFormInput _ → Form
   Port.SetupTextLikeFormInput _ → Form

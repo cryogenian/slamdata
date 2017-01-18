@@ -505,9 +505,9 @@ presentReason input cardType =
   showDialog dialog
   where
   insertableCardType = ICT.fromCardType cardType
-  ioTypes = ICT.fromPort input
-  reason = ICT.reason ioTypes cardType
-  cardPaths = flip ICT.cardPathsBetween insertableCardType =<< ioTypes
+  ioType = ICT.fromPort input
+  reason = ICT.reason ioType cardType
+  cardPaths = ICT.cardPathsBetween ioType insertableCardType
   dialog = Dialog.Reason cardType reason cardPaths
 
 deleteDeck ∷ DeckOptions → DeckDSL Unit

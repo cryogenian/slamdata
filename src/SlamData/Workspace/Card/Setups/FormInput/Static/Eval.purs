@@ -52,4 +52,4 @@ eval m resource = do
       Nothing →
         CEM.throw $ show conf.value <> " axis is not presented in this resource"
       Just value →
-        pure $ Port.Metric { value, label: Nothing }
+        pure $ Port.CategoricalMetric { value, label: Nothing }
