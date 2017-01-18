@@ -75,9 +75,8 @@ derive instance eqDetails ∷ Eq Details
 
 newtype ActionOptions =
   ActionOptions
-    { messagePrefix ∷ String
+    { message ∷ String
     , actionMessage ∷ String
-    , messageSuffix ∷ String
     , action ∷ Action
     }
 
