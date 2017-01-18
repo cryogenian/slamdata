@@ -37,8 +37,8 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, AreaR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag

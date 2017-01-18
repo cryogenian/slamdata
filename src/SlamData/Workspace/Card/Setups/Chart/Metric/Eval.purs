@@ -32,7 +32,7 @@ import Data.String.Regex as Rgx
 import Data.String.Regex.Flags as RXF
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.Metric.Model (Model, MetricR)
@@ -48,7 +48,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval' \_ b c → Port.ValueMetric (buildMetric b c)
+  -- TODO: not const Nothing
+eval m = BCE.buildChartEval' (\_ b c → Port.ValueMetric (buildMetric b c)) m (const Nothing)
 
 buildMetric ∷ MetricR → JArray → Port.MetricPort
 buildMetric r records =

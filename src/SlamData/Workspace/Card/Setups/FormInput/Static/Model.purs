@@ -19,10 +19,15 @@ module SlamData.Workspace.Card.Setups.FormInput.Static.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), (.?), jsonEmptyObject, isNull, jsonNull)
+import Data.Lens ((^.))
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select as S
 
 type StaticR =
   { value ∷ JCursor
@@ -70,3 +75,37 @@ decode js
     value ← obj .? "value"
     pure { value
          }
+
+type ReducedState r =
+  { value ∷ S.Select JCursor
+  , axes ∷ Ax.Axes
+  | r}
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st = do
+    let
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+          ⊕ st.axes.category
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+    st{ value = newValue }
+  load m =
+    _{ value = S.fromSelected $ _.value <$> m }
+  save st =
+    { value: _
+    }
+    <$> (st.value ^. S._value)
+
+initialState ∷ ReducedState ()
+initialState = { value: S.emptySelect, axes: Ax.initialAxes }

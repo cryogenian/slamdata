@@ -32,7 +32,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model (Model)

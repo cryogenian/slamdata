@@ -44,8 +44,8 @@ import ECharts.Types.Phantom as ETP
 import Global (infinity)
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Graph.Model (Model, GraphR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Graph))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag

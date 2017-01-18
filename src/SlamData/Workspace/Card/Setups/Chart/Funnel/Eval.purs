@@ -38,8 +38,8 @@ import ECharts.Types.Phantom as ETP
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Common.Align (Align(..))
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (Model, FunnelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Funnel))

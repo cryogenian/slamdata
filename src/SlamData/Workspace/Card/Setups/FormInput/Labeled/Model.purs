@@ -19,10 +19,16 @@ module SlamData.Workspace.Card.Setups.FormInput.Labeled.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, JObject, (~>), (:=), (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select ((⊝))
+import SlamData.Form.Select as S
 
 type LabeledR =
   { name ∷ String
@@ -83,3 +89,75 @@ decode obj = do
        , label
        , selected
        }
+
+
+type ReducedState r =
+  { value ∷ S.Select JCursor
+  , label ∷ S.Select JCursor
+  , name ∷ String
+  , selected ∷ S.Select JCursor
+  , axes ∷ Ax.Axes
+  | r}
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+          ⊕ st.axes.category
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+
+      newLabel =
+        S.setPreviousValueFrom (Just st.label)
+          $ S.newSelect
+          $ st.axes.category
+          ⊝ newValue
+
+      newSelected =
+        S.setPreviousValueFrom (Just st.selected)
+          $ S.newSelect
+          $ st.axes.category
+          ⊕ st.axes.value
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+          ⊝ newValue
+    in
+      st { value = newValue
+         , selected = newSelected
+         , label = newLabel
+         }
+  load Nothing st = st
+  load (Just m) st =
+    st { value = S.fromSelected $ Just m.value
+       , name = m.name
+       , label = S.fromSelected m.label
+       , selected = S.fromSelected m.selected
+       }
+  save st =
+    { value: _
+    , name: st.name
+    , label: st.label ^. S._value
+    , selected: st.selected ^. S._value
+    }
+    <$> (st.value ^. S._value)
+
+initialState ∷ ReducedState ()
+initialState =
+  { value: S.emptySelect
+  , label: S.emptySelect
+  , name: ""
+  , selected: S.emptySelect
+  , axes: Ax.initialAxes
+  }

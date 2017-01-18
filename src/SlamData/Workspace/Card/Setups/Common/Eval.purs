@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Common.Eval
+module SlamData.Workspace.Card.Setups.Common.Eval
   ( buildChartEval
   , buildChartEval'
   , analyze
@@ -52,15 +52,19 @@ buildChartEval
   ⇒ ChartType
   → (Axes → p → Array Json → DSL OptionI)
   → Maybe p
+  -- TODO (Axes → Maybe p)
   → Port.Resource
   → m Port.Port
-buildChartEval chartType build model =
-  flip buildChartEval' model
-    \axes model' records →
-      Port.ChartInstructions
-        { options: build axes model' records
-        , chartType
-        }
+buildChartEval chartType build model resource =
+  -- TODO defaultModel is not Nothing
+  buildChartEval' buildFn model defaultModel resource
+  where
+  buildFn axes model' records =
+    Port.ChartInstructions
+      { options: build axes model' records
+      , chartType
+      }
+  defaultModel = const Nothing
 
 buildChartEval'
   ∷ ∀ m p
@@ -70,12 +74,13 @@ buildChartEval'
     )
   ⇒ (Axes → p → Array Json → Port.Port)
   → Maybe p
+  → (Axes → Maybe p)
   → Port.Resource
   → m Port.Port
-buildChartEval' build model resource = do
+buildChartEval' build model defaultModel resource = do
   records × axes ← analyze resource =<< get
   put (Just (CEM.Analysis { resource, records, axes }))
-  case model of
+  case model <|> defaultModel axes of
     Just ch → pure $ build axes ch records
     Nothing → CEM.throw "Please select an axis."
 

@@ -60,7 +60,11 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Query.Eval as Query
 import SlamData.Workspace.Card.Search.Eval as Search
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Eval as SetupLabeled
-import SlamData.Workspace.Card.Setups.FormInput.TextLike.Eval as SetupTextLike
+import SlamData.Workspace.Card.Setups.FormInput.Date.Eval as SetupDate
+import SlamData.Workspace.Card.Setups.FormInput.Datetime.Eval as SetupDatetime
+import SlamData.Workspace.Card.Setups.FormInput.Numeric.Eval as SetupNumeric
+import SlamData.Workspace.Card.Setups.FormInput.Text.Eval as SetupText
+import SlamData.Workspace.Card.Setups.FormInput.Time.Eval as SetupTime
 import SlamData.Workspace.Card.Setups.FormInput.Static.Eval as SetupStatic
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.FormInput.Eval as FormInput
@@ -128,11 +132,11 @@ evalCard trans port varMap = case trans, port of
   SetupCheckbox model, _ → CEM.tapResource (SetupLabeled.eval model CT.Checkbox) varMap
   SetupRadio model, _ → CEM.tapResource (SetupLabeled.eval model CT.Radio) varMap
   SetupDropdown model, _ → CEM.tapResource (SetupLabeled.eval model CT.Dropdown) varMap
-  SetupText model, _ → CEM.tapResource (SetupTextLike.eval model CT.Text) varMap
-  SetupNumeric model, _ → CEM.tapResource (SetupTextLike.eval model CT.Numeric) varMap
-  SetupDate model, _ → CEM.tapResource (SetupTextLike.eval model CT.Date) varMap
-  SetupTime model, _ → CEM.tapResource (SetupTextLike.eval model CT.Time) varMap
-  SetupDatetime model, _ → CEM.tapResource (SetupTextLike.eval model CT.Datetime) varMap
+  SetupText model, _ → CEM.tapResource (SetupText.eval model) varMap
+  SetupNumeric model, _ → CEM.tapResource (SetupNumeric.eval model) varMap
+  SetupDate model, _ → CEM.tapResource (SetupDate.eval model) varMap
+  SetupTime model, _ → CEM.tapResource (SetupTime.eval model) varMap
+  SetupDatetime model, _ → CEM.tapResource (SetupDatetime.eval model) varMap
   SetupStatic model, _ → CEM.tapResource (SetupStatic.eval model) varMap
   FormInput (FormInput.Labeled model), Port.SetupLabeledFormInput lp →
     FormInput.evalLabeled model lp =<< CEM.extractResource varMap

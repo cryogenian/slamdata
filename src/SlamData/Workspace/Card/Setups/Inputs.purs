@@ -27,7 +27,6 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Form.Select (Select(..), stringVal, class OptionVal)
-import SlamData.Form.Select.Component (SelectConfig)
 
 type Select' a = Boolean × Select a
 
@@ -50,6 +49,14 @@ type AggregationConfig a i =
   SelectConfig
     ( query ∷ SelectAction a → H.Action i
     )
+
+type SelectConfig r =
+  { disableWhen ∷ Int → Boolean
+  , defaultWhen ∷ Int → Boolean
+  , ariaLabel ∷ Maybe String
+  , defaultOption ∷ String
+  | r
+  }
 
 primary
   ∷ ∀ a i
