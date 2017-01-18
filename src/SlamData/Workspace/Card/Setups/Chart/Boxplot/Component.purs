@@ -31,7 +31,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
+import SlamData.Form.Select (_value)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
@@ -162,18 +162,9 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    let
-      model =
-        { dimension: _
-        , value: _
-        , series: st.series ^. _value
-        , parallel: st.parallel ^. _value
-        }
-        <$> (st.dimension ^. _value)
-        <*> (st.value ^. _value)
-    pure $ k $ Card.BuildBoxplot model
-  CC.Load (Card.BuildBoxplot (Just model)) next → do
-    loadModel model
+    pure $ k $ Card.BuildBoxplot $ M.behaviour.save st
+  CC.Load (Card.BuildBoxplot model) next → do
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load card next →
     pure next
@@ -184,7 +175,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify
@@ -200,7 +191,9 @@ cardEval = case _ of
     pure next
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+raiseUpdate = do
+  H.modify M.behaviour.synchronize
+  CC.raiseUpdatedP' CC.EvalModelUpdate
 
 chartEval ∷ Q.Query ~> DSL
 chartEval (Q.Select sel next) = do
@@ -232,56 +225,3 @@ peek = coproduct peekPicker (const (pure unit))
         Q.Parallel _  → H.modify (ST._parallel ∘ _value ?~ value')
       H.modify _ { picker = Nothing }
       raiseUpdate
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = void do
-  st ← H.get
-  let
-    newDimension =
-      setPreviousValueFrom (Just st.dimension)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-        ⊕ st.axes.datetime
-
-    newValue =
-      setPreviousValueFrom (Just st.value)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.value
-        ⊝ newDimension
-
-    newSeries =
-      setPreviousValueFrom (Just st.series)
-        $ newSelect
-        $ ifSelected [newDimension]
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊝ newDimension
-
-    newParallel =
-      setPreviousValueFrom (Just st.parallel)
-        $ newSelect
-        $ ifSelected [newDimension]
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊝ newDimension
-        ⊝ newSeries
-
-  H.modify _
-    { value = newValue
-    , dimension = newDimension
-    , series = newSeries
-    , parallel = newParallel
-    }
-
-loadModel ∷ M.BoxplotR → DSL Unit
-loadModel r =
-  H.modify _
-    { value = fromSelected (Just r.value)
-    , dimension = fromSelected (Just r.dimension)
-    , series = fromSelected r.series
-    , parallel = fromSelected r.parallel
-    }

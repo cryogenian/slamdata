@@ -35,9 +35,10 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Chart.Metric.Model (Model, MetricR)
+import SlamData.Workspace.Card.Setups.Chart.Metric.Model (Model, MetricR, initialState, behaviour)
 import SlamData.Workspace.Card.Setups.Semantics (getValues)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 eval
   ∷ ∀ m
@@ -48,8 +49,11 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-  -- TODO: not const Nothing
-eval m = BCE.buildChartEval' (\_ b c → Port.ValueMetric (buildMetric b c)) m (const Nothing)
+eval m =
+  BCE.buildChartEval'
+    (\_ b c → Port.ValueMetric (buildMetric b c))
+    m
+    (\axes → B.defaultModel behaviour m initialState{axes = axes})
 
 buildMetric ∷ MetricR → JArray → Port.MetricPort
 buildMetric r records =

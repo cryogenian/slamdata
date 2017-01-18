@@ -14,7 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Area.Component.State where
+module SlamData.Workspace.Card.Setups.Chart.Area.Component.State
+  ( initialState
+  , _value
+  , _valueAgg
+  , _series
+  , _dimension
+  , State
+  , StateP
+  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  ) where
 
 import SlamData.Prelude
 
@@ -24,39 +33,28 @@ import Data.Lens (Lens', lens)
 import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
-import SlamData.Form.Select (Select, emptySelect)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query (QueryC, Selection)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Inputs (PickerOptions)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
+import SlamData.Workspace.Card.Setups.Chart.Metric.Model as M
 
-type State =
-  { axes ∷ Axes
-  , levelOfDetails ∷ LevelOfDetails
-  , axisLabelAngle ∷ Number
-  , isStacked ∷ Boolean
-  , isSmooth ∷ Boolean
-  , dimension ∷ Select JCursor
-  , value ∷ Select JCursor
-  , valueAgg ∷ Select Aggregation
-  , series ∷ Select JCursor
-  , picker ∷ Maybe (PickerOptions JCursor Selection)
-  }
+type State = M.ReducedState (DS.CommonState JCursor Selection ())
 
 initialState ∷ State
 initialState =
-  { axes: initialAxes
-  , levelOfDetails: High
-  , axisLabelAngle: zero
-  , isStacked: false
-  , isSmooth: false
-  , dimension: emptySelect
-  , value: emptySelect
-  , valueAgg: emptySelect
-  , series: emptySelect
-  , picker: Nothing
+  { axes: M.initialState.axes
+  , axisLabelAngle: M.initialState.axisLabelAngle
+  , isStacked: M.initialState.isStacked
+  , isSmooth: M.initialSttate.isSmooth
+  , dimension: M.initialState.dimension
+  , value: M.initialState.value
+  , valueAgg: M.initialState.valueAgg
+  , series: M.initialState.series
+
+  , levelOfDetails: DS.initial.levelOfDetails
+  , picker: DS.initial.picker
   }
 
 type StateP =
@@ -73,11 +71,3 @@ _valueAgg = lens _.valueAgg _{ valueAgg = _ }
 
 _series ∷ ∀ r a. Lens' { series ∷ a | r } a
 _series = lens _.series _{ series = _ }
-
-showPicker
-  ∷ (Const Unit JCursor → Selection (Const Unit))
-  → Array JCursor
-  → State
-  → State
-showPicker f options =
-  _ { picker = Just { options, select: f (Const unit) } }

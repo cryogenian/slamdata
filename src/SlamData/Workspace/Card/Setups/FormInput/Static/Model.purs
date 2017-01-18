@@ -88,7 +88,7 @@ behaviour =
   , save
   }
   where
-  synchronize st = do
+  synchronize st =
     let
       newValue =
         S.setPreviousValueFrom (Just st.value)
@@ -99,7 +99,8 @@ behaviour =
           ⊕ st.axes.time
           ⊕ st.axes.date
           ⊕ st.axes.datetime
-    st{ value = newValue }
+    in
+      st{ value = newValue }
   load m =
     _{ value = S.fromSelected $ _.value <$> m }
   save st =

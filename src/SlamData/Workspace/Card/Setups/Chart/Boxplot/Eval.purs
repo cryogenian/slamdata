@@ -43,7 +43,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (Model, BoxplotR)
+import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (Model, BoxplotR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
@@ -61,7 +61,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Boxplot (const buildBoxplot)
+eval = BCE.buildChartEval Boxplot (const buildBoxplot) \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 type OnOneBoxplot =
   { name ∷ Maybe String

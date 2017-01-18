@@ -32,7 +32,6 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Form.Select ((⊝))
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Form.Select as S
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -50,6 +49,7 @@ import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.State as ST
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.Query as Q
+import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model as M
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot

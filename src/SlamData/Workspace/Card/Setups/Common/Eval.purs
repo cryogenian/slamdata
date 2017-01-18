@@ -52,11 +52,10 @@ buildChartEval
   ⇒ ChartType
   → (Axes → p → Array Json → DSL OptionI)
   → Maybe p
-  -- TODO (Axes → Maybe p)
+  → (Axes → Maybe p)
   → Port.Resource
   → m Port.Port
-buildChartEval chartType build model resource =
-  -- TODO defaultModel is not Nothing
+buildChartEval chartType build model defaultModel resource =
   buildChartEval' buildFn model defaultModel resource
   where
   buildFn axes model' records =
@@ -64,7 +63,6 @@ buildChartEval chartType build model resource =
       { options: build axes model' records
       , chartType
       }
-  defaultModel = const Nothing
 
 buildChartEval'
   ∷ ∀ m p

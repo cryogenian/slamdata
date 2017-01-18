@@ -19,12 +19,18 @@ module SlamData.Workspace.Card.Setups.Chart.Metric.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, (.?), (:=), (~>), jsonEmptyObject, jsonNull, isNull, decodeJson)
+import Data.Lens ((^.))
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select as S
 
 type MetricR =
   { value ∷ JCursor
@@ -85,3 +91,59 @@ decode js
     label ← obj .? "label"
     formatter ← obj .? "formatter"
     pure $ Just {value, valueAggregation, label, formatter }
+
+
+type ReducedState r =
+  { value ∷ S.Select JCursor
+  , valueAgg ∷ S.Select Aggregation
+  , label ∷ Maybe String
+  , formatter ∷ Maybe String
+  , axes ∷ Ax.Axes
+  | r}
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+
+      newValueAggregation =
+        S.setPreviousValueFrom (Just st.valueAgg)
+          $ nonMaybeAggregationSelect
+    in
+     st{ value = newValue
+       , valueAgg = newValueAggregation
+       }
+  load Nothing st = st
+  load (Just m) st =
+    st{ formatter = m.formatter
+      , label = m.label
+      , value = S.fromSelected $ Just m.value
+      , valueAgg = S.fromSelected $ Just m.valueAggregation
+      }
+  save st =
+    { value: _
+    , valueAggregation: _
+    , label: st.label
+    , formatter: st.formatter
+    }
+    <$> (st.value ^. S._value)
+    <*> (st.valueAgg ^. S._value)
+
+initialState ∷ ReducedState ()
+initialState =
+    { value: S.emptySelect
+    , valueAgg: S.emptySelect
+    , label: Nothing
+    , formatter: Nothing
+    , axes: Ax.initialAxes
+    }

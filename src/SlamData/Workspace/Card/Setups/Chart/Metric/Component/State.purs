@@ -14,9 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Metric.Component.State where
-
-import SlamData.Prelude
+module SlamData.Workspace.Card.Setups.Chart.Metric.Component.State
+  ( initialState
+  , _value
+  , _valueAgg
+  , State
+  , StateP
+  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  ) where
 
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
@@ -24,33 +29,23 @@ import Data.Lens (Lens', lens)
 import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
-import SlamData.Form.Select (Select, emptySelect)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Chart.Metric.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Metric.Component.Query (QueryC, Selection)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Inputs (PickerOptions)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
+import SlamData.Workspace.Card.Setups.Chart.Metric.Model as M
 
-type State =
-  { axes ∷ Axes
-  , levelOfDetails ∷ LevelOfDetails
-  , label ∷ Maybe String
-  , formatter ∷ Maybe String
-  , value ∷ Select JCursor
-  , valueAgg ∷ Select Aggregation
-  , picker ∷ Maybe (PickerOptions JCursor Selection)
-  }
+type State = M.ReducedState (DS.CommonState JCursor Selection ())
 
 initialState ∷ State
 initialState =
-  { axes: initialAxes
-  , levelOfDetails: High
-  , label: Nothing
-  , formatter: Nothing
-  , value: emptySelect
-  , valueAgg: emptySelect
-  , picker: Nothing
+  { axes: M.initialState.axes
+  , levelOfDetails: DS.initial.levelOfDetails
+  , label: M.initialState.label
+  , formatter: M.initialState.formatter
+  , value: M.initialState.value
+  , valueAgg: M.initialState.valueAgg
+  , picker: DS.initial.picker
   }
 
 type StateP =
@@ -61,11 +56,3 @@ _value = lens _.value _{ value = _ }
 
 _valueAgg ∷ ∀ r a. Lens' { valueAgg ∷ a | r } a
 _valueAgg = lens _.valueAgg _{ valueAgg = _ }
-
-showPicker
-  ∷ (Const Unit JCursor → Selection (Const Unit))
-  → Array JCursor
-  → State
-  → State
-showPicker f options =
-  _ { picker = Just { options, select: f (Const unit) } }

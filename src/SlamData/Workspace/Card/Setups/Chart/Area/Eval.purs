@@ -39,7 +39,7 @@ import ECharts.Types.Phantom as ETP
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, AreaR)
+import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, AreaR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -48,6 +48,7 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 import Utils.Array (enumerate)
 
@@ -60,7 +61,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Area buildArea
+eval m = BCE.buildChartEval Area buildArea m \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 type AreaSeries =
   { name ∷ Maybe String

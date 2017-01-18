@@ -19,12 +19,19 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select as S
+import SlamData.Form.Select ((⊝))
 
 type AreaR =
   { dimension ∷ JCursor
@@ -115,3 +122,93 @@ decode js
          , series
          , axisLabelAngle
          }
+
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , axisLabelAngle ∷ Number
+  , isStacked ∷ Boolean
+  , isSmooth ∷ Boolean
+  , dimension ∷ S.Seelect JCursor
+  , value ∷ S.Select JCursor
+  , valueAgg ∷ S.Select Aggregation
+  , series ∷ S.Select JCursor
+  | r}
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes: Ax.initialAxes
+  , axisLabelAngle: zero
+  , isStacked: false
+  , isSmooth: false
+  , dimension: S.emptySelect
+  , value: S.emptySelect
+  , valueAgg: S.emptySelect
+  , series: S.emptySelect
+  }
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newDimension =
+        S.setPreviousValueFrom (Just st.dimension)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊕ st.axes.value
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+
+      newValueAggregation =
+        S.setPreviousValueFrom (Just st.valueAgg)
+          $ nonMaybeAggregationSelect
+
+      newSeries =
+        S.setPreviousValueFrom (Just st.series)
+          $ S.newSelect
+          $ S.ifSelected [ newDimension ]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+          ⊝ newDimension
+    in
+     st{ value = newValue
+       , valueAgg = newValueAggregation
+       , dimension = newDimension
+       , series = newSeries
+       }
+  load Nothing st = st
+  load (Just m) st =
+    st{ isStacked = m.isStacked
+      , isSmooth = m.isSmooth
+      , axisLabelAngle = m.axisLabelAngle
+      , value = S.fromSelected $ Just m.value
+      , valueAgg = S.fromSelected $ Just m.valueAggregation
+      , dimension = S.fromSelected $ Just m.dimension
+      , series = S.fromSelected m.series
+      }
+  save st =
+    { dimension: _
+    , value: _
+    , valueAggregation: _
+    , series: st.series ^. S._value
+    , isStacked: st.isStacked
+    , isSmooth: st.isSmooth
+    , axisLabelAngle: st.axisLabelAngle
+    }
+    <$> (st.dimension ^. S._value)
+    <*> (st.value ^. S._value)
+    <*> (st.valueAgg ^. S._value)
