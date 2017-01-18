@@ -220,6 +220,7 @@ printIOType = case _ of
   None → "to be the first card in a deck"
   Variables → "variables"
 
+
 printIOType' ∷ InsertableCardIOType → Maybe String
 printIOType' = case _ of
   Form → Just "this form"
@@ -246,11 +247,12 @@ fromPort = case _ of
   Port.DownloadOptions _ → Download
   Port.SlamDown _ → Markdown
   Port.ChartInstructions _ → Chart
-  Port.Metric _ → Chart
   Port.PivotTable _ → Chart
   Port.SetupLabeledFormInput _ → Form
   Port.SetupTextLikeFormInput _ → Form
   Port.Variables → Variables
+  Port.ValueMetric _ → Chart
+  Port.CategoricalMetric _ → Form
   _ → None
 
 toCardType ∷ InsertableCardType → CardType

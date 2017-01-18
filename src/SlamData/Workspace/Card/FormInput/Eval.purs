@@ -37,7 +37,7 @@ import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
+import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Eval.Common (validateResources, escapeCursor)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
@@ -141,7 +141,7 @@ evalTextLike m p r =
   where
   selection =
     case p.formInputType of
-      Text → show m.value
+      FIT.Text → show m.value
       _ → m.value
 
   sql =

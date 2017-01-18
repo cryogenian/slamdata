@@ -18,9 +18,8 @@ module SlamData.Workspace.Card.FormInput.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json, decodeJson, (~>), (:=), (.?))
+import Data.Argonaut (Json, jsonEmptyObject, decodeJson, (~>), (:=), (.?))
 
-import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
@@ -29,12 +28,15 @@ import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
 data Model
   = TextLike TLR.Model
   | Labeled LR.Model
+  | Static
 
 initialModel ∷ Model
 initialModel =
   TextLike TLR.initialModel
 
 eqModel ∷ Model → Model → Boolean
+eqModel Static Static =
+  true
 eqModel (TextLike r) (TextLike rr) =
   TLR.eqModel r rr
 eqModel (Labeled r) (Labeled rr) =
@@ -44,12 +46,14 @@ eqModel _ _ =
 
 genModel ∷ Gen.Gen Model
 genModel = do
-  isTextLike ← arbitrary
-  case isTextLike of
-    true →
+  ix ← Gen.chooseInt 0 2
+  case ix of
+    0 →
       map TextLike TLR.genModel
-    false → do
+    1 →
       map Labeled LR.genModel
+    _ →
+      pure Static
 
 encode ∷ Model → Json
 encode (TextLike r) =
@@ -58,14 +62,19 @@ encode (TextLike r) =
 encode (Labeled r) =
   "modelType" := "labeled"
   ~> LR.encode r
+encode Static =
+  "modelType" := "static"
+  ~> jsonEmptyObject
 
 decode ∷ Json → String ⊹ Model
 decode = decodeJson >=> \obj → do
   mType ← obj .? "modelType"
   case mType of
-    "textLike" → do
+    "textLike" →
       map TextLike $ TLR.decode obj
-    "labeled" → do
+    "labeled" →
       map Labeled $ LR.decode obj
+    "static" →
+      pure Static
     _ →
       Left "Incorrect form input model type"

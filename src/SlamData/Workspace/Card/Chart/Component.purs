@@ -156,7 +156,7 @@ eval = case _ of
         H.query' cpECharts unit $ H.action $ HEC.Reset r.options
         H.query' cpECharts unit $ H.action HEC.Resize
         setEChartsLOD $ buildObj r.options
-      Metric metric, _ → void do
+      ValueMetric metric, _ → void do
         H.modify $ _chartType ?~ ChT.Metric
         H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
         setMetricLOD

@@ -48,7 +48,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval' \_ b c → Port.Metric (buildMetric b c)
+eval = BCE.buildChartEval' \_ b c → Port.ValueMetric (buildMetric b c)
 
 buildMetric ∷ MetricR → JArray → Port.MetricPort
 buildMetric r records =

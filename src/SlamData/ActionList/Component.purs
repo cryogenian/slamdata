@@ -152,7 +152,7 @@ isDisabled =
     DoInternal _ _ _ _ (ActionDisabled disabled) _ →
       disabled
     DrillInternal _ _ _ actions →
-      Foldable.any isDisabled actions
+      Foldable.all isDisabled actions
     GoBackInternal → false
 
 searchFilters ∷ ∀ a. ActionInternal a → Array String
