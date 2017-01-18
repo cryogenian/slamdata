@@ -140,7 +140,7 @@ eval = case _ of
         H.modify _{ formInputType = Just p.formInputType }
         H.query' CS.cpLabeled unit $ H.action $ Labeled.Setup p
         pure next
-      Metric metric → do
+      CategoricalMetric metric → do
         H.modify _{ formInputType = Just FIT.Static }
         H.query' CS.cpMetric unit $ H.action $ Metric.SetMetric metric
         mbLod ← H.query' CS.cpMetric unit $ H.request Metric.GetLOD

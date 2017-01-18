@@ -126,7 +126,8 @@ data Port
   | SlamDown (SD.SlamDownP VarMapValue)
   | ChartInstructions ChartInstructionsPort
   | DownloadOptions DownloadPort
-  | Metric MetricPort
+  | ValueMetric MetricPort
+  | CategoricalMetric MetricPort
   | PivotTable PivotTablePort
 
 tagPort ∷ Port → String
@@ -140,7 +141,8 @@ tagPort  = case _ of
   SlamDown sd → "SlamDown: " ⊕ show sd
   ChartInstructions _ → "ChartInstructions"
   DownloadOptions _ → "DownloadOptions"
-  Metric _ → "Metric"
+  ValueMetric _ → "ValueMetric"
+  CategoricalMetric _ → "CategoricalMetric"
   PivotTable _ → "PivotTable"
 
 filterResources ∷ DataMap → SM.StrMap Resource
@@ -209,10 +211,11 @@ _ChartInstructions = wander \f s → case s of
   ChartInstructions o → ChartInstructions ∘ o{options = _} <$> f o.options
   _ → pure s
 
-_Metric ∷ Prism' Port MetricPort
-_Metric = prism' Metric case _ of
-  Metric u → Just u
-  _ → Nothing
+_Metric ∷ Traversal' Port MetricPort
+_Metric = wander \f s → case s of
+  ValueMetric m → map ValueMetric $ f m
+  CategoricalMetric m → map CategoricalMetric $ f m
+  _ → pure s
 
 _PivotTable ∷ Prism' Port PivotTablePort
 _PivotTable = prism' PivotTable case _ of
