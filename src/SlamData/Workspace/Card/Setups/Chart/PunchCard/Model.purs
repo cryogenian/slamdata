@@ -31,7 +31,6 @@ import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAg
 import SlamData.Workspace.Card.Setups.Behaviour as SB
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Form.Select as S
-import SlamData.Form.Select ((⊝))
 
 type PunchCardR =
   { abscissa ∷ JCursor

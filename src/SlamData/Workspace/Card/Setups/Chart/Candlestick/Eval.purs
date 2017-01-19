@@ -58,7 +58,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Candlestick buildCandlestick \axes →
+eval m = BCE.buildChartEval Candlestick buildCandlestick m \axes →
   B.defaultModel behaviour m initialState{axes = axes}
 
 type HLOC a =

@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Graph.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (?~), (.~))
+import Data.Lens ((^?), (?~), (.~))
 import Data.List as List
 
 import Halogen as H
@@ -219,7 +219,7 @@ cardEval = case _ of
   CC.Save k →
     H.gets $ k ∘ Card.BuildGraph ∘ M.behaviour.save
   CC.Load (Card.BuildGraph model) next → do
-    H.modify $ M.behavoiur.load model
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load card next →
     pure next

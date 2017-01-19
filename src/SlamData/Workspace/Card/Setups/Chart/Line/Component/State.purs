@@ -29,8 +29,6 @@ module SlamData.Workspace.Card.Setups.Chart.Line.Component.State
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
@@ -48,7 +46,7 @@ type State = M.ReducedState (DS.CommonState JCursor Selection ())
 initialState ∷ State
 initialState =
   { axes: M.initialState.axes
-  , levelOfDetails: DS.initial.levelOfDeails
+  , levelOfDetails: DS.initial.levelOfDetails
   , axisLabelAngle: M.initialState.axisLabelAngle
   , minSize: M.initialState.minSize
   , maxSize: M.initialState.maxSize

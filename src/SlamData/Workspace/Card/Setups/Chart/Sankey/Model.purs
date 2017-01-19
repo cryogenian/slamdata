@@ -99,7 +99,7 @@ type ReducedState r =
   , source ∷ S.Select JCursor
   , target ∷ S.Select JCursor
   , value ∷ S.Select JCursor
-  , valueAgg ∷ S.Select Aggregationi
+  , valueAgg ∷ S.Select Aggregation
   | r }
 
 initialState ∷ ReducedState ()

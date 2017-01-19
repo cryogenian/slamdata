@@ -25,20 +25,17 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Component.State
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query (QueryC, Selection)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
-import SlamData.Workspace.Card.Setups.Chart.Metric.Model as M
+import SlamData.Workspace.Card.Setups.Chart.Area.Model as M
 
 type State = M.ReducedState (DS.CommonState JCursor Selection ())
 
@@ -47,12 +44,11 @@ initialState =
   { axes: M.initialState.axes
   , axisLabelAngle: M.initialState.axisLabelAngle
   , isStacked: M.initialState.isStacked
-  , isSmooth: M.initialSttate.isSmooth
+  , isSmooth: M.initialState.isSmooth
   , dimension: M.initialState.dimension
   , value: M.initialState.value
   , valueAgg: M.initialState.valueAgg
   , series: M.initialState.series
-
   , levelOfDetails: DS.initial.levelOfDetails
   , picker: DS.initial.picker
   }

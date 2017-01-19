@@ -111,7 +111,7 @@ type ReducedState r =
   , valueAgg ∷ S.Select Aggregation
   , donut ∷ S.Select JCursor
   , parallel ∷ S.Select JCursor
-  }
+  | r}
 
 initialState ∷ ReducedState ()
 initialState =
@@ -155,7 +155,7 @@ behaviour =
       newDonut =
         S.setPreviousValueFrom (Just st.donut)
           $ S.newSelect
-          $ ifSelected [newCategory]
+          $ S.ifSelected [newCategory]
           $ st.axes.category
           ⊕ st.axes.time
           ⊝ newCategory
@@ -163,7 +163,7 @@ behaviour =
       newParallel =
         S.setPreviousValueFrom (Just st.parallel)
           $ S.newSelect
-          $ ifSelected [newCategory]
+          $ S.ifSelected [newCategory]
           $ st.axes.category
           ⊕ st.axes.time
           ⊝ newCategory
@@ -189,9 +189,9 @@ behaviour =
     { value: _
     , valueAggregation: _
     , category: _
-    , parallel: st.parallel ^. _value
-    , donut: st.donut ^. _value
+    , parallel: st.parallel ^. S._value
+    , donut: st.donut ^. S._value
     }
-    <$> (st.value ^. _value)
-    <*> (st.valueAgg ^. _value)
-    <*> (st.category ^. _value)
+    <$> (st.value ^. S._value)
+    <*> (st.valueAgg ^. S._value)
+    <*> (st.category ^. S._value)

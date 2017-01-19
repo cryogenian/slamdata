@@ -129,7 +129,7 @@ type ReducedState r =
   , axisLabelAngle ∷ Number
   , isStacked ∷ Boolean
   , isSmooth ∷ Boolean
-  , dimension ∷ S.Seelect JCursor
+  , dimension ∷ S.Select JCursor
   , value ∷ S.Select JCursor
   , valueAgg ∷ S.Select Aggregation
   , series ∷ S.Select JCursor

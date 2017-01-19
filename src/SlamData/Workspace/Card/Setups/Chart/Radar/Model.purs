@@ -111,7 +111,7 @@ type ReducedState r =
   , valueAgg ∷ S.Select Aggregation
   , multiple ∷ S.Select JCursor
   , parallel ∷ S.Select JCursor
-  }
+  | r}
 
 initialState ∷ ReducedState ()
 initialState =
@@ -135,7 +135,7 @@ behaviour =
       newValue =
         S.setPreviousValueFrom (Just st.value)
           $ S.autoSelect
-          $ S>newSelect
+          $ S.newSelect
           $ st.axes.value
 
       newValueAggregation =
@@ -154,7 +154,7 @@ behaviour =
       newMultiple =
         S.setPreviousValueFrom (Just st.multiple)
           $ S.newSelect
-          $ ifSelected [newCategory]
+          $ S.ifSelected [newCategory]
           $ st.axes.category
           ⊕ st.axes.time
           ⊝ newCategory

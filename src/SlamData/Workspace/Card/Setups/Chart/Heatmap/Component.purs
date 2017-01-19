@@ -37,7 +37,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (_value)
+import SlamData.Form.Select (_value, Select)
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
@@ -248,7 +248,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      H.modfy M.behaviour.synchronize
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify

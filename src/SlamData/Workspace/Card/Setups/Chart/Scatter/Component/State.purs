@@ -29,8 +29,6 @@ module SlamData.Workspace.Card.Setups.Chart.Scatter.Component.State
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
@@ -41,15 +39,14 @@ import SlamData.Workspace.Card.Setups.Chart.Scatter.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Component.Query (QueryC, Selection)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
-import SlamData.Workspace.Card.Setups.Chart.PunchCard.Model as M
+import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as M
 
 type State = M.ReducedState (DS.CommonState JCursor Selection ())
-  }
 
 initialState ∷ State
 initialState =
   { axes: M.initialState.axes
-  , levelOfDetails: DS.initial.levelOfDeails
+  , levelOfDetails: DS.initial.levelOfDetails
   , minSize: M.initialState.minSize
   , maxSize: M.initialState.maxSize
   , abscissa: M.initialState.abscissa

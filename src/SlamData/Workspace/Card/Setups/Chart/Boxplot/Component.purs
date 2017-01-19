@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Boxplot.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (?~), (.~))
+import Data.Lens ((^?), (?~), (.~))
 import Data.List as List
 
 import Halogen as H

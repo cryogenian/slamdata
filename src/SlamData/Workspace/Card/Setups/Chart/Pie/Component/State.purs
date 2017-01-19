@@ -26,8 +26,6 @@ module SlamData.Workspace.Card.Setups.Chart.Pie.Component.State
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
@@ -45,7 +43,7 @@ type State = M.ReducedState (DS.CommonState JCursor Selection ())
 initialState ∷ State
 initialState =
   { axes: M.initialState.axes
-  , levelOfDetails: DS.initial.levelOfDeails
+  , levelOfDetails: DS.initial.levelOfDetails
   , category: M.initialState.category
   , value: M.initialState.value
   , valueAgg: M.initialState.valueAgg

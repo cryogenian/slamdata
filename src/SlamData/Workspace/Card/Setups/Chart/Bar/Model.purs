@@ -191,10 +191,10 @@ behaviour =
     { category: _
     , value: _
     , valueAggregation: _
-    , stack: st.stack ^. _value
-    , parallel: st.parallel ^. _value
+    , stack: st.stack ^. S._value
+    , parallel: st.parallel ^. S._value
     , axisLabelAngle: st.axisLabelAngle
     }
-    <$> (st.category ^. _value)
-    <*> (st.value ^. _value)
-    <*> (st.valueAgg ^. _value)
+    <$> (st.category ^. S._value)
+    <*> (st.value ^. S._value)
+    <*> (st.valueAgg ^. S._value)

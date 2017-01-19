@@ -25,7 +25,6 @@ import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
 import SlamData.Workspace.Card.Setups.Behaviour as SB
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Form.Select as S
@@ -93,12 +92,12 @@ decode js
     pure { dimension, value, series, parallel }
 
 type ReducedState r =
-  { Axes ∷ Ax.Axes
+  { axes ∷ Ax.Axes
   , dimension ∷ S.Select JCursor
   , value ∷ S.Select JCursor
   , series ∷ S.Select JCursor
   , parallel ∷ S.Select JCursor
-  }
+  | r}
 
 initialState ∷ ReducedState ()
 initialState =

@@ -23,10 +23,9 @@ module SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.State
   , _value
   , _valueAgg
   , _series
+  , _colorScheme
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
-  ) wherex
-
-import SlamData.Prelude
+  ) where
 
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
@@ -52,7 +51,7 @@ initialState =
   , abscissa: M.initialState.abscissa
   , ordinate: M.initialState.ordinate
   , value: M.initialState.value
-  , valueAgg: M.initailState.valueAgg
+  , valueAgg: M.initialState.valueAgg
   , series: M.initialState.series
   , colorScheme: M.initialState.colorScheme
   , picker: DS.initial.picker

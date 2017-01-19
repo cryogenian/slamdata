@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Pie.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (.~), (?~))
+import Data.Lens ((^?), (.~), (?~))
 import Data.List as List
 
 import Halogen as H
@@ -31,13 +31,12 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
+import SlamData.Form.Select (_value)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC

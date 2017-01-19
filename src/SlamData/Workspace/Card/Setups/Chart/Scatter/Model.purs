@@ -19,6 +19,7 @@ module SlamData.Workspace.Card.Setups.Chart.Scatter.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, encodeJson, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
@@ -168,7 +169,7 @@ type ReducedState r =
   , abscissaAgg ∷ S.Select (Maybe Aggregation)
   , ordinate ∷ S.Select JCursor
   , ordinateAgg ∷ S.Select (Maybe Aggregation)
-  , size ∷ S.Select
+  , size ∷ S.Select JCursor
   , sizeAgg ∷ S.Select (Maybe Aggregation)
   , series ∷ S.Select JCursor
   , parallel ∷ S.Select JCursor
@@ -180,7 +181,7 @@ initialState =
   , minSize: 10.0
   , maxSize: 50.0
   , abscissa: S.emptySelect
-  , abscissaAgg:: S.emptySelect
+  , abscissaAgg: S.emptySelect
   , ordinate: S.emptySelect
   , ordinateAgg: S.emptySelect
   , size: S.emptySelect
@@ -278,7 +279,7 @@ behaviour =
     , minSize: (st.minSize ∷ Number)
     , maxSize: (st.maxSize ∷ Number)
     }
-    <$> (st.abscissa ^. _value)
-    <*> (st.abscissaAgg ^. _value)
-    <*> (st.ordinate ^. _value)
-    <*> (st.ordinateAgg ^. _value)
+    <$> (st.abscissa ^. S._value)
+    <*> (st.abscissaAgg ^. S._value)
+    <*> (st.ordinate ^. S._value)
+    <*> (st.ordinateAgg ^. S._value)

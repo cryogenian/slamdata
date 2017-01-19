@@ -21,26 +21,22 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
 import Data.Lens ((^.))
 
-import SlamData.Common.Sort (Sort, sortSelect)
-import SlamData.Common.Align (Align, alignSelect)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
-
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
-import SlamData.Workspace.Card.Setups.Behaviour as SB
-import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Common.Align (Align, alignSelect)
+import SlamData.Common.Sort (Sort, sortSelect)
 import SlamData.Form.Select ((⊝))
 import SlamData.Form.Select as S
-import SlamData.Common.Align (Align)
-import SlamData.Common.Sort (Sort)
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
 
 type FunnelR =
   { category ∷ JCursor
   , value ∷ JCursor
-  , valueAggregation ∷ Ag.Aggregation
+  , valueAggregation ∷ Aggregation
   , series ∷ Maybe JCursor
   , order ∷ Sort
   , align ∷ Align
@@ -116,7 +112,7 @@ type ReducedState r =
   , series ∷ S.Select JCursor
   , align ∷ S.Select Align
   , order ∷ S.Select Sort
-  }
+  | r}
 
 initialState ∷ ReducedState ()
 initialState =
@@ -136,7 +132,7 @@ behaviour =
   , save
   }
   where
-  synchronzie st =
+  synchronize st =
     let
       newCategory =
         S.setPreviousValueFrom (Just st.category)

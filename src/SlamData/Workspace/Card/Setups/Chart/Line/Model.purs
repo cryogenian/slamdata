@@ -162,10 +162,10 @@ type ReducedState r =
   , value ∷ S.Select JCursor
   , valueAgg ∷ S.Select Aggregation
   , secondValue ∷ S.Select JCursor
-  , secondValueAgg ∷ S.Select Aggrregation
+  , secondValueAgg ∷ S.Select Aggregation
   , size ∷ S.Select JCursor
   , sizeAgg ∷ S.Select Aggregation
-  , series ∷ S.Select Aggregation
+  , series ∷ S.Select JCursor
   | r }
 
 initialState ∷ ReducedState ()
@@ -185,7 +185,7 @@ initialState =
   }
 
 
-behavoiur ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
 behaviour =
   { synchronize
   , load

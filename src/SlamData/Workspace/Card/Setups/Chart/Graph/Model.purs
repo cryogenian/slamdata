@@ -139,7 +139,7 @@ type ReducedState r =
   , size ∷ S.Select JCursor
   , sizeAgg ∷ S.Select Aggregation
   , color ∷ S.Select JCursor
-  }
+  | r}
 
 initialState ∷ ReducedState ()
 initialState =
@@ -166,26 +166,26 @@ behaviour =
       newSource =
         S.setPreviousValueFrom (Just st.source)
           $ S.autoSelect
-          $ S.newSeelct
+          $ S.newSelect
           $ st.axes.category
 
       newTarget =
         S.setPreviousValueFrom (Just st.target)
           $ S.autoSelect
-          $ S.newSeelct
+          $ S.newSelect
           $ S.ifSelected [newSource]
           $ st.axes.category
           ⊝ newSource
 
       newSize =
         S.setPreviousValueFrom (Just st.size)
-          $ S.newSeelct
+          $ S.newSelect
           $ S.ifSelected [newTarget]
           $ st.axes.value
 
       newColor =
         S.setPreviousValueFrom (Just st.color)
-          $ S.newSeelct
+          $ S.newSelect
           $ S.ifSelected [newTarget]
           $ st.axes.category
           ⊕ st.axes.time

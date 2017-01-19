@@ -25,8 +25,6 @@ module SlamData.Workspace.Card.Setups.Chart.Gauge.Component.State
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 

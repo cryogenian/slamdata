@@ -18,8 +18,8 @@ module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.State
   ( initialState
   , _high
   , _highAgg
-  , _close
-  , _closeAgg
+  , _low
+  , _lowAgg
   , _open
   , _openAgg
   , _close
@@ -30,8 +30,6 @@ module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.State
   , StateP
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
-
-import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)

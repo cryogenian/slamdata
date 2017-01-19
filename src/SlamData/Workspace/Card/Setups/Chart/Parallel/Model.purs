@@ -95,7 +95,7 @@ type ReducedState r =
   , dims ∷ Array (S.Select JCursor)
   , aggs ∷ Array (S.Select Aggregation)
   , series ∷ S.Select JCursor
-  }
+  | r}
 
 initialState ∷ ReducedState ()
 initialState =
@@ -146,8 +146,8 @@ behaviour =
 
   load Nothing st = st
   load (Just m) st =
-    st{ dims = (map (S.fromSelected ∘ Just) m.dims) ⊕ [ emptySelect ]
-      , aggs = (map (S.fromSelected ∘ Just) m.aggs) ⊕ [ emptySelect ]
+    st{ dims = (map (S.fromSelected ∘ Just) m.dims) ⊕ [ S.emptySelect ]
+      , aggs = (map (S.fromSelected ∘ Just) m.aggs) ⊕ [ S.emptySelect ]
       , series = S.fromSelected $ Just m.series
       }
 

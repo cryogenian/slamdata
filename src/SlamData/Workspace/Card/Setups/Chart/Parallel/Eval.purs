@@ -59,6 +59,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Parallel))
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 import Utils.Array (enumerate)
 import Utils.Foldable (enumeratedFor_)

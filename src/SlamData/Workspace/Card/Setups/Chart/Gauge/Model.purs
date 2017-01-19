@@ -108,7 +108,7 @@ type ReducedState r =
   , valueAgg ∷ S.Select Aggregation
   , multiple ∷ S.Select JCursor
   , parallel ∷ S.Select JCursor
-  }
+  | r}
 
 initialState ∷ ReducedState ()
 initialState =
@@ -126,7 +126,7 @@ behaviour =
   , save
   }
   where
-  synchronize =
+  synchronize st =
     let
       newValue =
         S.setPreviousValueFrom (Just st.value)
@@ -161,11 +161,11 @@ behaviour =
         }
 
   load Nothing st = st
-  load (Jut m) st =
+  load (Just m) st =
     st{ value = S.fromSelected $ Just m.value
       , valueAgg = S.fromSelected $ Just m.valueAggregation
-      , multiple = S.fromSelected $ Just m.multiple
-      , parallel = S.fromSelected $ Just m.parallel
+      , multiple = S.fromSelected m.multiple
+      , parallel = S.fromSelected m.parallel
       }
 
   save st =

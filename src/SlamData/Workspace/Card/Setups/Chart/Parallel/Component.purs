@@ -23,7 +23,7 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor)
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Lens ((^?), (^.), (.~), (?~))
+import Data.Lens ((^?), (.~), (?~))
 import Data.List as List
 
 import Halogen as H
@@ -34,13 +34,13 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (Select, newSelect, setPreviousValueFrom, (⊝), _value, fromSelected, ifSelected, emptySelect, trySelect')
+import SlamData.Form.Select (Select, _value, emptySelect, trySelect')
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 
 import SlamData.Workspace.Card.Setups.Axis (eqAxes, initialAxes)
 import SlamData.Workspace.Card.Setups.CSS as CSS

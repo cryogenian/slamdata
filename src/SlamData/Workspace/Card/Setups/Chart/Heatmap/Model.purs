@@ -19,9 +19,7 @@ module SlamData.Workspace.Card.Setups.Chart.Heatmap.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme as CS
+import Data.Lens ((^.))
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -38,9 +36,9 @@ type HeatmapR =
   { abscissa ∷ JCursor
   , ordinate ∷ JCursor
   , value ∷ JCursor
-  , valueAggregation ∷ Ag.Aggregation
+  , valueAggregation ∷ Aggregation
   , series ∷ Maybe JCursor
-  , colorScheme ∷ CS.ColorScheme
+  , colorScheme ∷ ColorScheme
   , isColorSchemeReversed ∷ Boolean
   , minValue ∷ Number
   , maxValue ∷ Number
@@ -150,11 +148,11 @@ type ReducedState r =
   , valueAgg ∷ S.Select Aggregation
   , series ∷ S.Select JCursor
   , colorScheme ∷ S.Select ColorScheme
-  }
+  | r}
 
 initialState ∷ ReducedState ()
 initialState =
-  { axes: Ax.initialAxesn
+  { axes: Ax.initialAxes
   , minValue: 1.0
   , maxValue: 50.0
   , isSchemeReversed: false
@@ -162,7 +160,8 @@ initialState =
   , ordinate: S.emptySelect
   , value: S.emptySelect
   , valueAgg: S.emptySelect
-  , series: S.emptySelct
+  , series: S.emptySelect
+  , colorScheme: S.emptySelect
   }
 
 behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
@@ -172,7 +171,7 @@ behaviour =
   , save
   }
   where
-  synchronize =
+  synchronize st =
     let
       newAbscissa =
         S.setPreviousValueFrom (Just st.abscissa)
