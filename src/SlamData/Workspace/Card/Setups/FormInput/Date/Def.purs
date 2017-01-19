@@ -28,5 +28,3 @@ def =
   , valueProjection: \ax →
       ax.date
   }
-ax.date
-  }

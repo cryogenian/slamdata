@@ -43,5 +43,3 @@ eval = flip TL.eval FIT.Text \ax →
   ⊕ ax.time
   ⊕ ax.date
   ⊕ ax.datetime
- ax.date
-  ⊕ ax.datetime

@@ -36,4 +36,3 @@ eval
   → Port.Resource
   → m Port.Port
 eval = TL.eval _.date FIT.Date
-eval _.date FIT.Date

@@ -33,5 +33,3 @@ type TextLikeDef =
   , _Query ∷ ∀ a. APrism' (Coproduct CardEvalQuery CCQ.AnyCardQuery a) (Q.QueryP a)
   , valueProjection ∷ Ax.Axes → Array JCursor
   }
-rray JCursor
-  }
