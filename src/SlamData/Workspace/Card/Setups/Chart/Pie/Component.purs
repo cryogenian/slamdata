@@ -164,22 +164,10 @@ cardEval = case _ of
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k → do
-    st ← H.get
-    let
-      model =
-        { value: _
-        , valueAggregation: _
-        , category: _
-        , parallel: st.parallel ^. _value
-        , donut: st.donut ^. _value
-        }
-        <$> (st.value ^. _value)
-        <*> (st.valueAgg ^. _value)
-        <*> (st.category ^. _value)
-    pure $ k $ Card.BuildPie model
+  CC.Save k →
+    H.gets $ k ∘ Card.BuildPie ∘ M.behaviour.save
   CC.Load (Card.BuildPie model) next → do
-    for_ model loadModel
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load card next →
     pure next
@@ -190,7 +178,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify
@@ -206,7 +194,9 @@ cardEval = case _ of
     pure next
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+raiseUpdate = do
+  H.modify M.behaviour.synchronize
+  CC.raiseUpdatedP' CC.EvalModelUpdate
 
 chartEval ∷ Q.Query ~> DSL
 chartEval (Q.Select sel next) = next <$ case sel of
@@ -243,61 +233,3 @@ peek = coproduct peekPicker (const (pure unit))
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
-
-loadModel ∷ M.PieR → DSL Unit
-loadModel r =
-  H.modify _
-    { value = fromSelected (Just r.value)
-    , valueAgg = fromSelected (Just r.valueAggregation)
-    , category = fromSelected (Just r.category)
-    , donut = fromSelected r.donut
-    , parallel = fromSelected r.parallel
-    }
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  st ← H.get
-  let
-    newValue =
-      setPreviousValueFrom (Just st.value)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.value
-
-    newValueAggregation =
-      setPreviousValueFrom (Just st.valueAgg)
-        $ nonMaybeAggregationSelect
-
-    newCategory =
-      setPreviousValueFrom (Just st.category)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-        ⊕ st.axes.datetime
-
-    newDonut =
-      setPreviousValueFrom (Just st.donut)
-        $ newSelect
-        $ ifSelected [newCategory]
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊝ newCategory
-
-    newParallel =
-      setPreviousValueFrom (Just st.parallel)
-        $ newSelect
-        $ ifSelected [newCategory]
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊝ newCategory
-        ⊝ newDonut
-
-  H.modify _
-    { value = newValue
-    , valueAgg = newValueAggregation
-    , category = newCategory
-    , donut = newDonut
-    , parallel = newParallel
-    }

@@ -19,12 +19,20 @@ module SlamData.Workspace.Card.Setups.Chart.Line.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select as S
+import SlamData.Form.Select ((⊝))
+
 
 type LineR =
   { dimension ∷ JCursor
@@ -143,3 +151,139 @@ decode js
          , minSize
          , axisLabelAngle
          }
+
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , axisLabelAngle ∷ Number
+  , minSize ∷ Number
+  , maxSize ∷ Number
+  , dimension ∷ S.Select JCursor
+  , value ∷ S.Select JCursor
+  , valueAgg ∷ S.Select Aggregation
+  , secondValue ∷ S.Select JCursor
+  , secondValueAgg ∷ S.Select Aggrregation
+  , size ∷ S.Select JCursor
+  , sizeAgg ∷ S.Select Aggregation
+  , series ∷ S.Select Aggregation
+  | r }
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes: Ax.initialAxes
+  , axisLabelAngle: zero
+  , minSize: 2.0
+  , maxSize: 20.0
+  , dimension: S.emptySelect
+  , value: S.emptySelect
+  , valueAgg: S.emptySelect
+  , secondValue: S.emptySelect
+  , secondValueAgg: S.emptySelect
+  , size: S.emptySelect
+  , sizeAgg: S.emptySelect
+  , series: S.emptySelect
+  }
+
+
+behavoiur ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newDimension =
+        S.setPreviousValueFrom (Just st.dimension)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+          ⊕ st.axes.value
+
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+
+      newValueAggregation =
+        S.setPreviousValueFrom (Just st.valueAgg)
+          $ nonMaybeAggregationSelect
+
+      newSecondValue =
+        S.setPreviousValueFrom (Just st.secondValue)
+          $ S.newSelect
+          $ S.ifSelected [ newValue ]
+          $ st.axes.value
+          ⊝ newValue
+
+      newSecondValueAggregation =
+        S.setPreviousValueFrom (Just st.secondValueAgg)
+          $ nonMaybeAggregationSelect
+
+      newSize =
+        S.setPreviousValueFrom (Just st.size)
+          $ S.newSelect
+          $ S.ifSelected [ newValue ]
+          $ st.axes.value
+          ⊝ newValue
+          ⊝ newSecondValue
+
+      newSizeAggregation =
+        S.setPreviousValueFrom (Just st.sizeAgg)
+          $ nonMaybeAggregationSelect
+
+      newSeries =
+        S.setPreviousValueFrom (Just st.series)
+          $ S.newSelect
+          $ S.ifSelected [ newDimension ]
+          $ st.axes.category
+          ⊝ newDimension
+
+
+    in
+      st{ dimension = newDimension
+        , value = newValue
+        , valueAgg = newValueAggregation
+        , secondValue = newSecondValue
+        , secondValueAgg = newSecondValueAggregation
+        , size = newSize
+        , sizeAgg = newSizeAggregation
+        , series = newSeries
+        }
+
+  load Nothing st = st
+  load (Just m) st =
+    st{ maxSize = m.maxSize
+      , minSize = m.minSize
+      , axisLabelAngle = m.axisLabelAngle
+      , value = S.fromSelected $ Just m.value
+      , valueAgg = S.fromSelected $ Just m.valueAggregation
+      , dimension = S.fromSelected $ Just m.dimension
+      , secondValue = S.fromSelected m.secondValue
+      , secondValueAgg = S.fromSelected m.secondValueAggregation
+      , series = S.fromSelected m.series
+      , size = S.fromSelected m.size
+      , sizeAgg = S.fromSelected m.sizeAggregation
+      }
+
+  save st =
+    { dimension: _
+    , value: _
+    , valueAggregation: _
+    , secondValue: st.secondValue ^. S._value
+    , secondValueAggregation: st.secondValueAgg ^. S._value
+    , size: st.size ^. S._value
+    , sizeAggregation: st.sizeAgg ^. S._value
+    , series: st.series ^. S._value
+    , maxSize: st.maxSize
+    , minSize: st.minSize
+    , axisLabelAngle: st.axisLabelAngle
+    }
+    <$> (st.dimension ^. S._value)
+    <*> (st.value ^. S._value)
+    <*> (st.valueAgg ^. S._value)

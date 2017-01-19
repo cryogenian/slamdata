@@ -19,12 +19,19 @@ module SlamData.Workspace.Card.Setups.Chart.Radar.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select as S
+import SlamData.Form.Select ((⊝))
 
 type RadarR =
   { category ∷ JCursor
@@ -96,3 +103,94 @@ decode js
     multiple ← obj .? "multiple"
     parallel ← obj .? "parallel"
     pure { category, value, valueAggregation, multiple, parallel }
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , category ∷ S.Select JCursor
+  , value ∷ S.Select JCursor
+  , valueAgg ∷ S.Select Aggregation
+  , multiple ∷ S.Select JCursor
+  , parallel ∷ S.Select JCursor
+  }
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes: Ax.initialAxes
+  , category: S.emptySelect
+  , value: S.emptySelect
+  , valueAgg: S.emptySelect
+  , multiple: S.emptySelect
+  , parallel: S.emptySelect
+  }
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S>newSelect
+          $ st.axes.value
+
+      newValueAggregation =
+        S.setPreviousValueFrom (Just st.valueAgg)
+          $ nonMaybeAggregationSelect
+
+      newCategory =
+        S.setPreviousValueFrom (Just st.category)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+
+      newMultiple =
+        S.setPreviousValueFrom (Just st.multiple)
+          $ S.newSelect
+          $ ifSelected [newCategory]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊝ newCategory
+
+      newParallel =
+        S.setPreviousValueFrom (Just st.parallel)
+          $ S.newSelect
+          $ S.ifSelected [newCategory]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊝ newCategory
+          ⊝ newMultiple
+    in
+      st{ value = newValue
+        , valueAgg = newValueAggregation
+        , category = newCategory
+        , multiple = newMultiple
+        , parallel = newParallel
+        }
+
+  load Nothing st = st
+  load (Just m) st =
+    st{ value = S.fromSelected $ Just m.value
+      , valueAgg = S.fromSelected $ Just m.valueAggregation
+      , category = S.fromSelected $ Just m.category
+      , multiple = S.fromSelected m.multiple
+      , parallel = S.fromSelected m.parallel
+      }
+
+  save st =
+    { value: _
+    , valueAggregation: _
+    , category: _
+    , parallel: st.parallel ^. S._value
+    , multiple: st.multiple ^. S._value
+    }
+    <$> (st.value ^. S._value)
+    <*> (st.valueAgg ^. S._value)
+    <*> (st.category ^. S._value)

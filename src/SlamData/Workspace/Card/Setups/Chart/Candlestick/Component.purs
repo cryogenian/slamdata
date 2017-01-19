@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (.~), (?~))
+import Data.Lens ((^?), (.~), (?~))
 import Data.List as List
 
 import Halogen as H
@@ -31,13 +31,12 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, (⊝), _value, fromSelected)
+import SlamData.Form.Select (_value)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
@@ -46,6 +45,7 @@ import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.Query as Q
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model as M
 import SlamData.Workspace.Card.Eval.State (_Axes)
 
 type DSL =
@@ -199,42 +199,9 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    let
-      model =
-        { dimension: _
-        , open: _
-        , openAggregation: _
-        , close: _
-        , closeAggregation: _
-        , high: _
-        , highAggregation: _
-        , low: _
-        , lowAggregation: _
-        , parallel: st.parallel ^. _value
-        }
-        <$> (st.dimension ^. _value)
-        <*> (st.open ^. _value)
-        <*> (st.openAgg ^. _value)
-        <*> (st.close ^. _value)
-        <*> (st.closeAgg ^. _value)
-        <*> (st.high ^. _value)
-        <*> (st.highAgg ^. _value)
-        <*> (st.low ^. _value)
-        <*> (st.lowAgg ^. _value)
-    pure $ k $ Card.BuildCandlestick model
-  CC.Load (Card.BuildCandlestick (Just m)) next → do
-    H.modify _
-      { dimension = fromSelected $ Just m.dimension
-      , open = fromSelected $ Just m.open
-      , openAgg = fromSelected $ Just m.openAggregation
-      , close = fromSelected $ Just m.close
-      , closeAgg = fromSelected $ Just m.closeAggregation
-      , high = fromSelected $ Just m.high
-      , highAgg = fromSelected $ Just m.highAggregation
-      , low = fromSelected $ Just m.low
-      , lowAgg = fromSelected $ Just m.lowAggregation
-      , parallel = fromSelected m.parallel
-      }
+    pure $ k $ Card.BuildCandlestick $ M.behaviour.save st
+  CC.Load (Card.BuildCandlestick m) next → do
+    H.modify $ M.behaviour.load m
     pure next
   CC.Load card next →
     pure next
@@ -245,7 +212,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify
@@ -305,81 +272,6 @@ peek = peekPicker ⨁ (const (pure unit))
       raiseUpdate
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
-
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  st ← H.get
-  let
-    newOpen =
-      setPreviousValueFrom (Just st.open)
-        $ newSelect
-        $ st.axes.value
-
-    newOpenAgg =
-      setPreviousValueFrom (Just st.openAgg)
-        $ nonMaybeAggregationSelect
-
-    newClose =
-      setPreviousValueFrom (Just st.close)
-        $ newSelect
-        $ st.axes.value
-        ⊝ newOpen
-
-    newCloseAgg =
-      setPreviousValueFrom (Just st.closeAgg)
-        $ nonMaybeAggregationSelect
-
-
-    newHigh =
-      setPreviousValueFrom (Just st.high)
-        $ newSelect
-        $ st.axes.value
-        ⊝ newOpen
-        ⊝ newClose
-
-    newHighAgg =
-      setPreviousValueFrom (Just st.highAgg)
-        $ nonMaybeAggregationSelect
-
-    newLow =
-      setPreviousValueFrom (Just st.low)
-        $ newSelect
-        $ st.axes.value
-        ⊝ newOpen
-        ⊝ newClose
-        ⊝ newHigh
-
-    newLowAgg =
-      setPreviousValueFrom (Just st.lowAgg)
-        $ nonMaybeAggregationSelect
-
-
-    newDimension =
-      setPreviousValueFrom (Just st.dimension)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-        ⊕ st.axes.datetime
-
-    newParallel =
-      setPreviousValueFrom (Just st.parallel)
-        $ newSelect
-        $ st.axes.category
-        ⊝ newDimension
-
-  H.modify _
-    { open = newOpen
-    , close = newClose
-    , high = newHigh
-    , low = newLow
-    , openAgg = newOpenAgg
-    , closeAgg = newCloseAgg
-    , highAgg = newHighAgg
-    , lowAgg = newLowAgg
-    , dimension = newDimension
-    , parallel = newParallel
-    }
+raiseUpdate = do
+  H.modify M.behaviour.synchronize
+  CC.raiseUpdatedP' CC.EvalModelUpdate

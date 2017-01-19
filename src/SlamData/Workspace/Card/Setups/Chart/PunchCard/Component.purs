@@ -36,7 +36,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (_value, autoSelect, fromSelected, ifSelected, newSelect, setPreviousValueFrom)
+import SlamData.Form.Select (_value)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
@@ -51,6 +51,7 @@ import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.PunchCard.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.PunchCard.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.PunchCard.Component.Query as Q
+import SlamData.Workspace.Card.Setups.Chart.PunchCard.Model as M
 import SlamData.Workspace.Card.Eval.State (_Axes)
 
 type DSL =
@@ -216,32 +217,9 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    st ← H.get
-    let
-      model =
-        { abscissa: _
-        , ordinate: _
-        , value: _
-        , valueAggregation: _
-        , circular: st.circular
-        , minSize: st.minSize
-        , maxSize: st.maxSize
-        }
-        <$> (st.abscissa ^. _value)
-        <*> (st.ordinate ^. _value)
-        <*> (st.value ^. _value)
-        <*> (st.valueAgg ^. _value)
-    pure $ k $ Card.BuildPunchCard model
-  CC.Load (Card.BuildPunchCard (Just model)) next → do
-    H.modify _
-      { abscissa = fromSelected $ Just model.abscissa
-      , ordinate = fromSelected $ Just model.ordinate
-      , value = fromSelected $ Just model.value
-      , valueAgg = fromSelected $ Just model.valueAggregation
-      , circular = model.circular
-      , minSize = model.minSize
-      , maxSize = model.maxSize
-      }
+    H.gets $ k ∘ Card.BuildPunchCard ∘ M.behaviour.save
+  CC.Load (Card.BuildPunchCard model) next → do
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load _ next →
     pure next
@@ -252,7 +230,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _
@@ -268,7 +246,9 @@ cardEval = case _ of
     pure next
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+raiseUpdate = do
+  H.modify M.behaviour.synchronize
+  CC.raiseUpdatedP' CC.EvalModelUpdate
 
 punchCardBuilderEval ∷ Q.Query ~> DSL
 punchCardBuilderEval = case _ of
@@ -307,48 +287,6 @@ punchCardBuilderEval = case _ of
     BCI.Choose a → do
       H.modify $ l ∘ _value .~ a
       raiseUpdate
-
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  st ← H.get
-  let
-    newAbscissa =
-      setPreviousValueFrom (Just st.abscissa)
-        $ autoSelect
-        $ newSelect
-        -- date and time may not be continuous, but datetime is definitely continuous axis
-        -- that's why it's not here
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-
-    newOrdinate =
-      setPreviousValueFrom (Just st.ordinate)
-        $ autoSelect
-        $ newSelect
-        $ ifSelected [ newAbscissa ]
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-
-    newValue =
-      setPreviousValueFrom (Just st.value)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.value
-
-    newValueAgg =
-      setPreviousValueFrom (Just st.valueAgg)
-        $ nonMaybeAggregationSelect
-
-
-  H.modify _
-    { abscissa = newAbscissa
-    , ordinate = newOrdinate
-    , value = newValue
-    , valueAgg = newValueAgg
-    }
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = peekPicker ⨁ (const $ pure unit)

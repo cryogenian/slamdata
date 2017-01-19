@@ -42,7 +42,7 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRectangularPositions, rectangularGrids, rectangularTitles)
-import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (Model, HeatmapR)
+import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (Model, HeatmapR, initialState, behaviour)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getColorScheme)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Heatmap))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
@@ -50,6 +50,7 @@ import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 import Utils.Array (enumerate)
 
@@ -62,7 +63,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Heatmap buildHeatmap
+eval m = BCE.buildChartEval Heatmap buildHeatmap m \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 type HeatmapSeries =
   { x ∷ Maybe Number

@@ -36,7 +36,7 @@ import ECharts.Types.Phantom (OptionI)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Gauge.Model (Model, GaugeR)
+import SlamData.Workspace.Card.Setups.Chart.Gauge.Model (Model, GaugeR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Gauge))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
@@ -44,6 +44,7 @@ import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (RadialPosition, adjustRadialPositions)
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 eval
   ∷ ∀ m
@@ -54,7 +55,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Gauge (const buildGauge)
+eval m = BCE.buildChartEval Gauge (const buildGauge) m \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 ----------------------------------------------------------------------
 -- GAUGE BUILDER

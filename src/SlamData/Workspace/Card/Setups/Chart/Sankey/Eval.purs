@@ -36,13 +36,14 @@ import ECharts.Types.Phantom as ETP
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Model (Model, SankeyR)
+import SlamData.Workspace.Card.Setups.Chart.Sankey.Model (Model, SankeyR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Sankey))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 eval
   ∷ ∀ m
@@ -53,7 +54,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Sankey (const buildSankey)
+eval m = BCE.buildChartEval Sankey (const buildSankey) m \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 ----------------------------------------------------------------------
 -- SANKEY BUILDER

@@ -19,14 +19,23 @@ module SlamData.Workspace.Card.Setups.Chart.Funnel.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
-import SlamData.Common.Sort (Sort)
-import SlamData.Common.Align (Align)
+import SlamData.Common.Sort (Sort, sortSelect)
+import SlamData.Common.Align (Align, alignSelect)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select ((⊝))
+import SlamData.Form.Select as S
+import SlamData.Common.Align (Align)
+import SlamData.Common.Sort (Sort)
 
 type FunnelR =
   { category ∷ JCursor
@@ -98,3 +107,100 @@ decode js
     order ← obj .? "order"
     align ← obj .? "align"
     pure { category, value, valueAggregation, series, order, align }
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , category ∷ S.Select JCursor
+  , value ∷ S.Select JCursor
+  , valueAgg ∷ S.Select Aggregation
+  , series ∷ S.Select JCursor
+  , align ∷ S.Select Align
+  , order ∷ S.Select Sort
+  }
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes:Ax.initialAxes
+  , category: S.emptySelect
+  , value: S.emptySelect
+  , valueAgg: S.emptySelect
+  , series: S.emptySelect
+  , align: S.emptySelect
+  , order: S.emptySelect
+  }
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronzie st =
+    let
+      newCategory =
+        S.setPreviousValueFrom (Just st.category)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+
+      newValueAggregation =
+        S.setPreviousValueFrom (Just st.valueAgg)
+          $ nonMaybeAggregationSelect
+
+      newSeries =
+        S.setPreviousValueFrom (Just st.series)
+          $ S.newSelect
+          $ S.ifSelected [ newCategory ]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊝ newCategory
+
+      newOrder =
+        S.setPreviousValueFrom (Just st.order)
+          $ sortSelect
+
+      newAlign =
+        S.setPreviousValueFrom (Just st.align)
+          $ alignSelect
+    in
+     st{ value = newValue
+       , valueAgg = newValueAggregation
+       , category = newCategory
+       , series = newSeries
+       , align = newAlign
+       , order = newOrder
+       }
+
+  load Nothing st = st
+  load (Just m) st =
+    st{ value = S.fromSelected $ Just m.value
+      , valueAgg = S.fromSelected $ Just m.valueAggregation
+      , category = S.fromSelected $ Just m.category
+      , series = S.fromSelected m.series
+      , align = S.fromSelected $ Just m.align
+      , order = S.fromSelected $ Just m.order
+      }
+
+  save st =
+    { category: _
+    , value: _
+    , valueAggregation: _
+    , series: st.series ^. S._value
+    , order: _
+    , align: _
+    }
+    <$> (st.category ^. S._value)
+    <*> (st.value ^. S._value)
+    <*> (st.valueAgg ^. S._value)
+    <*> (st.order ^. S._value)
+    <*> (st.align ^. S._value)

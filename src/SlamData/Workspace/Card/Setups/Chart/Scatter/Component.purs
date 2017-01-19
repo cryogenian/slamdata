@@ -36,20 +36,13 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
-import SlamData.Form.Select
-  ( newSelect
-  , setPreviousValueFrom
-  , autoSelect
-  , (⊝)
-  , _value
-  , fromSelected
-  )
+import SlamData.Form.Select (_value)
+
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (aggregationSelectWithNone)
 
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
@@ -227,30 +220,9 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    st ← H.get
-    let
-      model =
-        { abscissa: _
-        , abscissaAggregation: _
-        , ordinate: _
-        , ordinateAggregation: _
-        , size: st.size ^. _value
-        , sizeAggregation: st.sizeAgg ^. _value
-        , series: st.series ^. _value
-        , parallel: st.parallel ^. _value
-        , minSize: (st.minSize ∷ Number)
-        , maxSize: (st.maxSize ∷ Number)
-        }
-        <$> (st.abscissa ^. _value)
-        <*> (st.abscissaAgg ^. _value)
-        <*> (st.ordinate ^. _value)
-        <*> (st.ordinateAgg ^. _value)
-    pure $ k $ Card.BuildScatter model
-  CC.Load (Card.BuildScatter (Just model)) next → do
-    loadModel model
-    H.modify _{ maxSize = model.maxSize
-              , minSize = model.minSize
-              }
+    H.gets $ k ∘ Card.BuildScatter ∘ M.behaviour.save
+  CC.Load (Card.BuildScatter model) next → do
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load card next →
     pure next
@@ -261,7 +233,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify
@@ -277,7 +249,9 @@ cardEval = case _ of
     pure next
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+raiseUpdate = do
+  H.modify M.behaviour.synchronize
+  CC.raiseUpdatedP' CC.EvalModelUpdate
 
 scatterBuilderEval ∷ Q.Query ~> DSL
 scatterBuilderEval = case _ of
@@ -332,74 +306,3 @@ peek = coproduct peekPicker (const (pure unit))
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  st ← H.get
-  let
-    newAbscissa =
-      setPreviousValueFrom (Just st.abscissa)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.value
-
-    newAbscissaAggregation =
-      setPreviousValueFrom (Just st.abscissaAgg)
-        $ aggregationSelectWithNone
-
-    newOrdinate =
-      setPreviousValueFrom (Just st.ordinate)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.value
-        ⊝ newAbscissa
-
-    newOrdinateAggregation =
-      setPreviousValueFrom (Just st.ordinateAgg)
-        $ aggregationSelectWithNone
-
-    newSize =
-      setPreviousValueFrom (Just st.size)
-        $ newSelect
-        $ st.axes.value
-        ⊝ newAbscissa
-        ⊝ newOrdinate
-
-    newSizeAggregation =
-      setPreviousValueFrom (Just st.sizeAgg)
-        $ aggregationSelectWithNone
-
-    newSeries =
-      setPreviousValueFrom (Just st.series)
-        $ newSelect
-        $ st.axes.category
-
-    newParallel =
-      setPreviousValueFrom (Just st.parallel)
-        $ newSelect
-        $ st.axes.category
-        ⊝ newSeries
-
-  H.modify _
-    { abscissa = newAbscissa
-    , abscissaAgg = newAbscissaAggregation
-    , ordinate = newOrdinate
-    , ordinateAgg = newOrdinateAggregation
-    , size = newSize
-    , sizeAgg = newSizeAggregation
-    , series = newSeries
-    , parallel = newParallel
-    }
-
-loadModel ∷ M.ScatterR → DSL Unit
-loadModel r =
-  H.modify _
-    { abscissa = fromSelected (Just r.abscissa)
-    , abscissaAgg = fromSelected (Just r.abscissaAggregation)
-    , ordinate = fromSelected (Just r.ordinate)
-    , ordinateAgg = fromSelected (Just r.ordinateAggregation)
-    , size = fromSelected r.size
-    , sizeAgg = fromSelected r.sizeAggregation
-    , series = fromSelected r.series
-    , parallel = fromSelected r.parallel
-    }

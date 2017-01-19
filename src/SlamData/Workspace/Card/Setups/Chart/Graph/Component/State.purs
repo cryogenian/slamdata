@@ -14,7 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Graph.Component.State where
+module SlamData.Workspace.Card.Setups.Chart.Graph.Component.State
+  ( initialState
+  , State
+  , StateP
+  , _source
+  , _target
+  , _size
+  , _sizeAgg
+  , _color
+  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  ) where
 
 import SlamData.Prelude
 
@@ -24,41 +34,27 @@ import Data.Lens (Lens', lens)
 import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
-import SlamData.Form.Select (Select, emptySelect)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Chart.Graph.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Graph.Component.Query (QueryC, Selection)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Inputs (PickerOptions)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
+import SlamData.Workspace.Card.Setups.Chart.Graph.Model as M
 
-type State =
-  { axes ∷ Axes
-  , levelOfDetails ∷ LevelOfDetails
-  , circular ∷ Boolean
-  , maxSize ∷ Number
-  , minSize ∷ Number
-  , source ∷ Select JCursor
-  , target ∷ Select JCursor
-  , size ∷ Select JCursor
-  , sizeAgg ∷ Select Aggregation
-  , color ∷ Select JCursor
-  , picker ∷ Maybe (PickerOptions JCursor Selection)
-  }
+type State = M.ReducedState (DS.CommonState JCursor Selection ())
 
 initialState ∷ State
 initialState =
-  { axes: initialAxes
-  , levelOfDetails: High
-  , maxSize: 50.0
-  , minSize: 1.0
-  , circular: false
-  , source: emptySelect
-  , target: emptySelect
-  , size: emptySelect
-  , sizeAgg: emptySelect
-  , color: emptySelect
-  , picker: Nothing
+  { axes: M.initialState.axesn
+  , levelOfDetails: DS.initial.levelOfDetails
+  , maxSize: M.initialState.maxSize
+  , minSize: M.initialState.minSize
+  , circular: M.initialState.circular
+  , source: M.initialState.source
+  , target: M.initialState.target
+  , size: M.initialState.size
+  , sizeAgg: M.initialState.sizeAgg
+  , color: M.initialState.color
+  , picker: DS.initial.picker
   }
 
 type StateP =
@@ -78,11 +74,3 @@ _sizeAgg = lens _.sizeAgg _{ sizeAgg = _ }
 
 _color ∷ ∀ r a. Lens' { color ∷ a | r } a
 _color = lens _.color _{ color = _ }
-
-showPicker
-  ∷ (Const Unit JCursor → Selection (Const Unit))
-  → Array JCursor
-  → State
-  → State
-showPicker f options =
-  _ { picker = Just { options, select: f (Const unit) } }

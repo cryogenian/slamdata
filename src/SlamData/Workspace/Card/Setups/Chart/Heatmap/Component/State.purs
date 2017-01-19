@@ -14,7 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.State where
+module SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.State
+  ( initialState
+  , State
+  , StateP
+  , _abscissa
+  , _ordinate
+  , _value
+  , _valueAgg
+  , _series
+  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  ) wherex
 
 import SlamData.Prelude
 
@@ -23,45 +33,29 @@ import Data.Lens (Lens', lens)
 
 import Halogen (ParentState)
 
-import SlamData.Form.Select (Select, emptySelect)
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (ColorScheme)
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.Query (QueryC, Selection)
-import SlamData.Workspace.Card.Setups.Inputs (PickerOptions)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
+import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model as M
 
-type State =
-  { axes ∷ Axes
-  , levelOfDetails ∷ LevelOfDetails
-  , minValue ∷ Number
-  , maxValue ∷ Number
-  , isSchemeReversed ∷ Boolean
-  , abscissa ∷ Select JCursor
-  , ordinate ∷ Select JCursor
-  , value ∷ Select JCursor
-  , valueAgg ∷ Select Aggregation
-  , series ∷ Select JCursor
-  , colorScheme ∷ Select ColorScheme
-  , picker ∷ Maybe (PickerOptions JCursor Selection)
-  }
+type State = M.ReducedState (DS.CommonState JCursor Selection ())
 
 initialState ∷ State
 initialState =
-  { axes: initialAxes
-  , levelOfDetails: High
-  , minValue: zero
-  , maxValue: one
-  , isSchemeReversed: false
-  , abscissa: emptySelect
-  , ordinate: emptySelect
-  , value: emptySelect
-  , valueAgg: emptySelect
-  , series: emptySelect
-  , colorScheme: emptySelect
-  , picker: Nothing
+  { axes: M.initialState.axes
+  , levelOfDetails: DS.initial.levelOfDetails
+  , minValue: M.initialState.minValue
+  , maxValue: M.initialState.maxValue
+  , isSchemeReversed: M.initialState.isSchemeReversed
+  , abscissa: M.initialState.abscissa
+  , ordinate: M.initialState.ordinate
+  , value: M.initialState.value
+  , valueAgg: M.initailState.valueAgg
+  , series: M.initialState.series
+  , colorScheme: M.initialState.colorScheme
+  , picker: DS.initial.picker
   }
 
 type StateP =
@@ -84,11 +78,3 @@ _series = lens _.series _{ series = _ }
 
 _colorScheme ∷ ∀ a r. Lens' { colorScheme ∷ a | r } a
 _colorScheme = lens _.colorScheme _{ colorScheme = _ }
-
-showPicker
-  ∷ (Const Unit JCursor → Selection (Const Unit))
-  → Array JCursor
-  → State
-  → State
-showPicker f options =
-  _ { picker = Just {options, select: f (Const unit) } }

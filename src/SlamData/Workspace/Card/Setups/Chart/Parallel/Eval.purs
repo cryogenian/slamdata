@@ -54,7 +54,7 @@ import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Parallel.Model (ParallelR, Model)
+import SlamData.Workspace.Card.Setups.Chart.Parallel.Model (ParallelR, Model, initialState, behaviour)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Parallel))
 import SlamData.Workspace.Card.Eval.Monad as CEM
@@ -72,7 +72,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Parallel (const buildParallel)
+eval m = BCE.buildChartEval Parallel (const buildParallel) m \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 
 type Series =

@@ -14,7 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Radar.Component.State where
+module SlamData.Workspace.Card.Setups.Chart.Radar.Component.State
+  ( initialState
+  , State
+  , StateP
+  , _category
+  , _value
+  , _valueAgg
+  , _multiple
+  , _parallel
+  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  ) where
 
 import SlamData.Prelude
 
@@ -24,35 +34,24 @@ import Data.Lens (Lens', lens)
 import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
-import SlamData.Form.Select (Select, emptySelect)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Chart.Radar.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Radar.Component.Query (QueryC, Selection)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Inputs (PickerOptions)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
+import SlamData.Workspace.Card.Setups.Chart.Radar.Model as M
 
-type State =
-  { axes ∷ Axes
-  , levelOfDetails ∷ LevelOfDetails
-  , category ∷ Select JCursor
-  , value ∷ Select JCursor
-  , valueAgg ∷ Select Aggregation
-  , multiple ∷ Select JCursor
-  , parallel ∷ Select JCursor
-  , picker ∷ Maybe (PickerOptions JCursor Selection)
-  }
+type State = M.ReducedState (DS.CommonState JCursor Selection ())
 
 initialState ∷ State
 initialState =
-  { axes: initialAxes
-  , levelOfDetails: High
-  , category: emptySelect
-  , value: emptySelect
-  , valueAgg: emptySelect
-  , multiple: emptySelect
-  , parallel: emptySelect
-  , picker: Nothing
+  { axes: M.initialState.axes
+  , levelOfDetails: DS.initial.levelOfDetails
+  , category: M.initialState.category
+  , value: M.initialState.value
+  , valueAgg: M.initialState.valueAgg
+  , multiple: M.initialState.multiple
+  , parallel: M.initialState.parallel
+  , picker: DS.initial.picker
   }
 
 type StateP =
@@ -72,11 +71,3 @@ _multiple = lens _.multiple _{ multiple = _ }
 
 _parallel ∷ ∀ r a. Lens' { parallel ∷ a | r } a
 _parallel = lens _.parallel _{ parallel = _ }
-
-showPicker
-  ∷ (Const Unit JCursor → Selection (Const Unit))
-  → Array JCursor
-  → State
-  → State
-showPicker f options =
-  _ { picker = Just { options, select: f (Const unit) } }

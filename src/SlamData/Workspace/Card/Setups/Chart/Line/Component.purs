@@ -245,32 +245,9 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    st ← H.get
-    let
-      model =
-        { dimension: _
-        , value: _
-        , valueAggregation: _
-        , secondValue: st.secondValue ^. _value
-        , secondValueAggregation: st.secondValueAgg ^. _value
-        , size: st.size ^. _value
-        , sizeAggregation: st.sizeAgg ^. _value
-        , series: st.series ^. _value
-        , maxSize: st.maxSize
-        , minSize: st.minSize
-        , axisLabelAngle: st.axisLabelAngle
-        }
-        <$> (st.dimension ^. _value)
-        <*> (st.value ^. _value)
-        <*> (st.valueAgg ^. _value)
-    pure $ k $ Card.BuildLine model
-  CC.Load (Card.BuildLine (Just model)) next → do
-    loadModel model
-    H.modify _
-      { maxSize = model.maxSize
-      , minSize = model.minSize
-      , axisLabelAngle = model.axisLabelAngle
-      }
+    H.gets $ k ∘ Card.BuildLine ∘ M.behaviour.save
+  CC.Load (Card.BuildLine model) next → do
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load card next →
     pure next
@@ -281,7 +258,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _
@@ -297,7 +274,9 @@ cardEval = case _ of
     pure next
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+raiseUpdate = do
+  H.modify M.behaviour.synchronize
+  CC.raiseUpdatedP' CC.EvalModelUpdate
 
 lineBuilderEval ∷ Q.Query ~> DSL
 lineBuilderEval = case _ of
@@ -358,81 +337,3 @@ peek = coproduct peekPicker (const (pure unit))
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  st ← H.get
-  let
-    newDimension =
-      setPreviousValueFrom (Just st.dimension)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-        ⊕ st.axes.datetime
-        ⊕ st.axes.value
-
-    newValue =
-      setPreviousValueFrom (Just st.value)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.value
-
-    newValueAggregation =
-      setPreviousValueFrom (Just st.valueAgg)
-        $ nonMaybeAggregationSelect
-
-    newSecondValue =
-      setPreviousValueFrom (Just st.secondValue)
-        $ newSelect
-        $ ifSelected [ newValue ]
-        $ st.axes.value
-        ⊝ newValue
-
-    newSecondValueAggregation =
-      setPreviousValueFrom (Just st.secondValueAgg)
-        $ nonMaybeAggregationSelect
-
-    newSize =
-      setPreviousValueFrom (Just st.size)
-        $ newSelect
-        $ ifSelected [ newValue ]
-        $ st.axes.value
-        ⊝ newValue
-        ⊝ newSecondValue
-
-    newSizeAggregation =
-      setPreviousValueFrom (Just st.sizeAgg)
-        $ nonMaybeAggregationSelect
-
-    newSeries =
-      setPreviousValueFrom (Just st.series)
-        $ newSelect
-        $ ifSelected [ newDimension ]
-        $ st.axes.category
-        ⊝ newDimension
-
-  H.modify _
-    { dimension = newDimension
-    , value = newValue
-    , valueAgg = newValueAggregation
-    , secondValue = newSecondValue
-    , secondValueAgg = newSecondValueAggregation
-    , size = newSize
-    , sizeAgg = newSizeAggregation
-    , series = newSeries
-    }
-
-loadModel ∷ M.LineR → DSL Unit
-loadModel r =
-  H.modify _
-    { value = fromSelected (Just r.value)
-    , valueAgg = fromSelected (Just r.valueAggregation)
-    , dimension = fromSelected (Just r.dimension)
-    , secondValue = fromSelected r.secondValue
-    , secondValueAgg = fromSelected r.secondValueAggregation
-    , series = fromSelected r.series
-    , size = fromSelected r.size
-    , sizeAgg = fromSelected r.sizeAggregation
-    }

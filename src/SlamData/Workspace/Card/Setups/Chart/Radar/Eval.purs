@@ -42,13 +42,14 @@ import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning
   (RadialPosition, adjustRadialPositions, radialTitles)
-import SlamData.Workspace.Card.Setups.Chart.Radar.Model (Model, RadarR)
+import SlamData.Workspace.Card.Setups.Chart.Radar.Model (Model, RadarR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Radar))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 import Utils.Array (enumerate)
 
@@ -62,7 +63,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Radar (const buildRadar)
+eval m = BCE.buildChartEval Radar (const buildRadar) m \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 -- | One radar serie. Actually just data for echarts radar series
 type RadarSerie =

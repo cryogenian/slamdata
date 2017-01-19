@@ -19,12 +19,20 @@ module SlamData.Workspace.Card.Setups.Chart.Pie.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select as S
+import SlamData.Form.Select ((⊝))
+
 
 type PieR =
   { category ∷ JCursor
@@ -95,3 +103,95 @@ decode js
     donut ← obj .? "donut"
     parallel ← obj .? "parallel"
     pure { category, value, valueAggregation, donut, parallel }
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , category ∷ S.Select JCursor
+  , value ∷ S.Select JCursor
+  , valueAgg ∷ S.Select Aggregation
+  , donut ∷ S.Select JCursor
+  , parallel ∷ S.Select JCursor
+  }
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes: Ax.initialAxes
+  , category: S.emptySelect
+  , value: S.emptySelect
+  , valueAgg: S.emptySelect
+  , donut: S.emptySelect
+  , parallel: S.emptySelect
+  }
+
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+
+      newValueAggregation =
+        S.setPreviousValueFrom (Just st.valueAgg)
+          $ nonMaybeAggregationSelect
+
+      newCategory =
+        S.setPreviousValueFrom (Just st.category)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+
+      newDonut =
+        S.setPreviousValueFrom (Just st.donut)
+          $ S.newSelect
+          $ ifSelected [newCategory]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊝ newCategory
+
+      newParallel =
+        S.setPreviousValueFrom (Just st.parallel)
+          $ S.newSelect
+          $ ifSelected [newCategory]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊝ newCategory
+          ⊝ newDonut
+    in
+      st{ value = newValue
+        , valueAgg = newValueAggregation
+        , category = newCategory
+        , donut = newDonut
+        , parallel = newParallel
+        }
+
+  load Nothing st = st
+  load (Just m) st =
+    st{ value = S.fromSelected $ Just m.value
+      , valueAgg = S.fromSelected $ Just m.valueAggregation
+      , category = S.fromSelected $ Just m.category
+      , donut = S.fromSelected m.donut
+      , parallel = S.fromSelected m.parallel
+      }
+
+  save st =
+    { value: _
+    , valueAggregation: _
+    , category: _
+    , parallel: st.parallel ^. _value
+    , donut: st.donut ^. _value
+    }
+    <$> (st.value ^. _value)
+    <*> (st.valueAgg ^. _value)
+    <*> (st.category ^. _value)

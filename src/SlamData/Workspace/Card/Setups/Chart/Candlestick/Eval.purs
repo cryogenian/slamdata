@@ -44,7 +44,8 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (CandlestickR, Model)
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (CandlestickR, Model, behaviour, initialState)
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 import Utils.Foldable (enumeratedFor_)
 
@@ -57,7 +58,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Candlestick buildCandlestick
+eval m = BCE.buildChartEval Candlestick buildCandlestick \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 type HLOC a =
   { low ∷ a

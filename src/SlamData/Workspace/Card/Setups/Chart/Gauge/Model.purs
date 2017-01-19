@@ -19,12 +19,19 @@ module SlamData.Workspace.Card.Setups.Chart.Gauge.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select ((⊝))
+import SlamData.Form.Select as S
 
 type GaugeR =
   { value ∷ JCursor
@@ -94,3 +101,78 @@ decode js
                 , parallel
                 , multiple
                 }
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , value ∷ S.Select JCursor
+  , valueAgg ∷ S.Select Aggregation
+  , multiple ∷ S.Select JCursor
+  , parallel ∷ S.Select JCursor
+  }
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes: Ax.initialAxes
+  , value: S.emptySelect
+  , valueAgg: S.emptySelect
+  , multiple: S.emptySelect
+  , parallel: S.emptySelect
+  }
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize =
+    let
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+
+      newValueAggregation =
+        S.setPreviousValueFrom (Just st.valueAgg)
+          $ nonMaybeAggregationSelect
+
+      newParallel =
+        S.setPreviousValueFrom (Just st.parallel)
+          $ S.newSelect
+          $ S.ifSelected [newValue]
+          $ st.axes.category
+          ⊕ st.axes.time
+
+      newMultiple =
+        S.setPreviousValueFrom (Just st.multiple)
+          $ S.newSelect
+          $ S.ifSelected [newValue]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊝ newParallel
+
+    in
+      st{ value = newValue
+        , valueAgg = newValueAggregation
+        , parallel = newParallel
+        , multiple = newMultiple
+        }
+
+  load Nothing st = st
+  load (Jut m) st =
+    st{ value = S.fromSelected $ Just m.value
+      , valueAgg = S.fromSelected $ Just m.valueAggregation
+      , multiple = S.fromSelected $ Just m.multiple
+      , parallel = S.fromSelected $ Just m.parallel
+      }
+
+  save st =
+    { value: _
+    , valueAggregation: _
+    , parallel: st.parallel ^. S._value
+    , multiple: st.multiple ^. S._value
+    }
+    <$> (st.value ^. S._value)
+    <*> (st.valueAgg ^. S._value)

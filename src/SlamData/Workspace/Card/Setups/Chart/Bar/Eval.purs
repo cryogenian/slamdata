@@ -59,7 +59,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Bar buildBar \axes →
+eval m = BCE.buildChartEval Bar buildBar m \axes →
   B.defaultModel behaviour m initialState{axes = axes}
 
 type BarSeries =

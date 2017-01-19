@@ -14,7 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.State where
+module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.State
+  ( initialState
+  , State
+  , StateP
+  , _category
+  , _value
+  , _valueAgg
+  , _series
+  , _order
+  , _align
+  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  ) where
 
 import SlamData.Prelude
 
@@ -24,39 +35,25 @@ import Data.Lens (Lens', lens)
 import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
-import SlamData.Common.Align (Align)
-import SlamData.Common.Sort (Sort)
-import SlamData.Form.Select (Select, emptySelect)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Component.Query (QueryC, Selection)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Inputs (PickerOptions)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
+import SlamData.Workspace.Card.Setups.Chart.Funnel.Model as M
 
-type State =
-  { axes ∷ Axes
-  , levelOfDetails ∷ LevelOfDetails
-  , category ∷ Select JCursor
-  , value ∷ Select JCursor
-  , valueAgg ∷ Select Aggregation
-  , series ∷ Select JCursor
-  , align ∷ Select Align
-  , order ∷ Select Sort
-  , picker ∷ Maybe (PickerOptions JCursor Selection)
-  }
+type State = M.ReducedState (DS.CommonState JCursor Selection ())
 
 initialState ∷ State
 initialState =
-  { axes: initialAxes
-  , levelOfDetails: High
-  , category: emptySelect
-  , value: emptySelect
-  , valueAgg: emptySelect
-  , series: emptySelect
-  , align: emptySelect
-  , order: emptySelect
-  , picker: Nothing
+  { axes: M.initialState.axes
+  , levelOfDetails: DS.initial.levelOfDetails
+  , category: M.initialState.category
+  , value: M.initialState.value
+  , valueAgg: M.initialState.valueAgg
+  , series: M.initialState.series
+  , align: M.initialState.align
+  , order: M.initialState.order
+  , picker: DS.initial.picker
   }
 
 type StateP =
@@ -79,11 +76,3 @@ _align = lens _.align _{ align = _ }
 
 _order ∷ ∀ a r. Lens' { order ∷ a | r } a
 _order = lens _.order _{ order = _ }
-
-showPicker
-  ∷ (Const Unit JCursor → Selection (Const Unit))
-  → Array JCursor
-  → State
-  → State
-showPicker f options =
-  _ { picker = Just { options, select: f (Const unit) } }

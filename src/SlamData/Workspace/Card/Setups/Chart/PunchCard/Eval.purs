@@ -51,7 +51,8 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Setups.Chart.PunchCard.Model (PunchCardR, Model)
+import SlamData.Workspace.Card.Setups.Chart.PunchCard.Model (PunchCardR, Model, initialState, behaviour)
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 import Utils.Array (enumerate)
 
@@ -64,7 +65,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval PunchCard buildPunchCard
+eval m = BCE.buildChartEval PunchCard buildPunchCard m \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 type PunchCardData = (String × String) >> (Int × Number)
 

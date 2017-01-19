@@ -46,13 +46,14 @@ import Global (infinity)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Graph.Model (Model, GraphR)
+import SlamData.Workspace.Card.Setups.Chart.Graph.Model (Model, GraphR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Graph))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 eval
   ∷ ∀ m
@@ -63,7 +64,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Graph (const buildGraph)
+eval m = BCE.buildChartEval Graph (const buildGraph) m \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 type EdgeItem =
   { source ∷ String
