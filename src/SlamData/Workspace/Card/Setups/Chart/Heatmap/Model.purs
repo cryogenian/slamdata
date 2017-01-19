@@ -19,21 +19,26 @@ module SlamData.Workspace.Card.Setups.Chart.Heatmap.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme as CS
+import Data.Lens ((^.))
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select ((⊝))
+import SlamData.Form.Select as S
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (ColorScheme, colorSchemeSelect)
+
 type HeatmapR =
   { abscissa ∷ JCursor
   , ordinate ∷ JCursor
   , value ∷ JCursor
-  , valueAggregation ∷ Ag.Aggregation
+  , valueAggregation ∷ Aggregation
   , series ∷ Maybe JCursor
-  , colorScheme ∷ CS.ColorScheme
+  , colorScheme ∷ ColorScheme
   , isColorSchemeReversed ∷ Boolean
   , minValue ∷ Number
   , maxValue ∷ Number
@@ -130,3 +135,125 @@ decode js
          , minValue
          , maxValue
          }
+
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , minValue ∷ Number
+  , maxValue ∷ Number
+  , isSchemeReversed ∷ Boolean
+  , abscissa ∷ S.Select JCursor
+  , ordinate ∷ S.Select JCursor
+  , value ∷ S.Select JCursor
+  , valueAgg ∷ S.Select Aggregation
+  , series ∷ S.Select JCursor
+  , colorScheme ∷ S.Select ColorScheme
+  | r}
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes: Ax.initialAxes
+  , minValue: 1.0
+  , maxValue: 50.0
+  , isSchemeReversed: false
+  , abscissa: S.emptySelect
+  , ordinate: S.emptySelect
+  , value: S.emptySelect
+  , valueAgg: S.emptySelect
+  , series: S.emptySelect
+  , colorScheme: S.emptySelect
+  }
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newAbscissa =
+        S.setPreviousValueFrom (Just st.abscissa)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.category
+          ⊕ st.axes.value
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+
+      newOrdinate =
+        S.setPreviousValueFrom (Just st.ordinate)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.category
+          ⊕ st.axes.value
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+          ⊝ newAbscissa
+
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+          ⊝ newAbscissa
+          ⊝ newOrdinate
+
+      newValueAggregation =
+        S.setPreviousValueFrom (Just st.valueAgg)
+          $ nonMaybeAggregationSelect
+
+      newSeries =
+        S.setPreviousValueFrom (Just st.series)
+          $ S.newSelect
+          $ S.ifSelected [newAbscissa, newOrdinate, newValue]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊝ newAbscissa
+          ⊝ newOrdinate
+
+      newColorScheme =
+        S.setPreviousValueFrom (Just st.colorScheme)
+          $ colorSchemeSelect
+
+    in
+      st{ abscissa = newAbscissa
+        , ordinate = newOrdinate
+        , value = newValue
+        , valueAgg = newValueAggregation
+        , series = newSeries
+        , colorScheme = newColorScheme
+        }
+
+  load Nothing st = st
+  load (Just m) st =
+    st{ minValue = m.minValue
+      , maxValue = m.maxValue
+      , isSchemeReversed = m.isColorSchemeReversed
+      , abscissa = S.fromSelected $ Just m.abscissa
+      , ordinate = S.fromSelected $ Just m.ordinate
+      , value = S.fromSelected $ Just m.value
+      , valueAgg = S.fromSelected $ Just m.valueAggregation
+      , colorScheme = S.fromSelected $ Just m.colorScheme
+      , series = S.fromSelected m.series
+      }
+
+  save st =
+    { abscissa: _
+    , ordinate: _
+    , value: _
+    , valueAggregation: _
+    , series: (st.series ^. S._value)
+    , colorScheme: _
+    , isColorSchemeReversed: st.isSchemeReversed
+    , minValue: st.minValue
+    , maxValue: st.maxValue
+    }
+    <$> (st.abscissa ^. S._value)
+    <*> (st.ordinate ^. S._value)
+    <*> (st.value ^. S._value)
+    <*> (st.valueAgg ^. S._value)
+    <*> (st.colorScheme ^. S._value)

@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Heatmap.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (?~), (.~))
+import Data.Lens ((^?), (?~), (.~))
 import Data.Lens as Lens
 import Data.List as List
 
@@ -37,23 +37,13 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
-import SlamData.Form.Select
-  ( Select
-  , newSelect
-  , setPreviousValueFrom
-  , autoSelect
-  , ifSelected
-  , (⊝)
-  , _value
-  , fromSelected
-  )
+import SlamData.Form.Select (_value, Select)
+
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colorSchemeSelect)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
@@ -244,31 +234,10 @@ cardEval = case _ of
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k → do
-    st ← H.get
-    let
-      model =
-        { abscissa: _
-        , ordinate: _
-        , value: _
-        , valueAggregation: _
-        , series: (st.series ^. _value)
-        , colorScheme: _
-        , isColorSchemeReversed: st.isSchemeReversed
-        , minValue: st.minValue
-        , maxValue: st.maxValue
-        }
-        <$> (st.abscissa ^. _value)
-        <*> (st.ordinate ^. _value)
-        <*> (st.value ^. _value)
-        <*> (st.valueAgg ^. _value)
-        <*> (st.colorScheme ^. _value)
-    pure $ k $ Card.BuildHeatmap model
-  CC.Load (Card.BuildHeatmap (Just model)) next → do
-    loadModel model
-    H.modify _{ minValue = model.minValue
-              , maxValue = model.maxValue
-              }
+  CC.Save k →
+    H.gets $ k ∘ Card.BuildHeatmap ∘ M.behaviour.save
+  CC.Load (Card.BuildHeatmap model) next → do
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load card next →
     pure next
@@ -279,7 +248,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify
@@ -330,8 +299,9 @@ heatmapBuilderEval = case _ of
     BCI.Choose a → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
-
+raiseUpdate = do
+  H.modify M.behaviour.synchronize
+  CC.raiseUpdatedP' CC.EvalModelUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = peekPeeker ⨁ (const $ pure unit)
@@ -352,73 +322,3 @@ peekPeeker = case _ of
       _ → pure unit
     H.modify _{ picker = Nothing }
     raiseUpdate
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = void do
-  st ← H.get
-  let
-    newAbscissa =
-      setPreviousValueFrom (Just st.abscissa)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.category
-        ⊕ st.axes.value
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-        ⊕ st.axes.datetime
-
-    newOrdinate =
-      setPreviousValueFrom (Just st.ordinate)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.category
-        ⊕ st.axes.value
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-        ⊕ st.axes.datetime
-        ⊝ newAbscissa
-
-    newValue =
-      setPreviousValueFrom (Just st.value)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.value
-        ⊝ newAbscissa
-        ⊝ newOrdinate
-
-    newValueAggregation =
-      setPreviousValueFrom (Just st.valueAgg)
-        $ nonMaybeAggregationSelect
-
-    newSeries =
-      setPreviousValueFrom (Just st.series)
-        $ newSelect
-        $ ifSelected [newAbscissa, newOrdinate, newValue]
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊝ newAbscissa
-        ⊝ newOrdinate
-
-    newColorScheme =
-      setPreviousValueFrom (Just st.colorScheme)
-        $ colorSchemeSelect
-
-  H.modify _
-    { abscissa = newAbscissa
-    , ordinate = newOrdinate
-    , value = newValue
-    , valueAgg = newValueAggregation
-    , series = newSeries
-    , colorScheme = newColorScheme
-    }
-
-loadModel ∷ M.HeatmapR → DSL Unit
-loadModel r =
-  H.modify _
-    { abscissa = fromSelected (Just r.abscissa)
-    , ordinate = fromSelected (Just r.ordinate)
-    , value = fromSelected (Just r.value)
-    , valueAgg = fromSelected (Just r.valueAggregation)
-    , series = fromSelected r.series
-    , colorScheme = fromSelected (Just r.colorScheme)
-    }

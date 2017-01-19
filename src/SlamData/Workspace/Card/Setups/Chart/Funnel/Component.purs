@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Funnel.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (?~), (.~))
+import Data.Lens ((^?), (?~), (.~))
 import Data.Lens as Lens
 import Data.List as List
 
@@ -32,16 +32,13 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Common.Sort (sortSelect)
-import SlamData.Common.Align (alignSelect)
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (Select, newSelect, setPreviousValueFrom, autoSelect, ifSelected, (⊝), _value, fromSelected)
+import SlamData.Form.Select (Select, _value)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (nonMaybeAggregationSelect)
 
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
@@ -184,23 +181,9 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    let
-      model =
-        { category: _
-        , value: _
-        , valueAggregation: _
-        , series: st.series ^. _value
-        , order: _
-        , align: _
-        }
-        <$> (st.category ^. _value)
-        <*> (st.value ^. _value)
-        <*> (st.valueAgg ^. _value)
-        <*> (st.order ^. _value)
-        <*> (st.align ^. _value)
-    pure $ k $ Card.BuildFunnel model
-  CC.Load (Card.BuildFunnel (Just model)) next → do
-    loadModel model
+    pure $ k $ Card.BuildFunnel $ M.behaviour.save st
+  CC.Load (Card.BuildFunnel model) next → do
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load card next →
     pure next
@@ -211,7 +194,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify
@@ -246,7 +229,9 @@ chartEval (Q.Select sel next) = next <$ case sel of
 
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+raiseUpdate = do
+  H.modify M.behaviour.synchronize
+  CC.raiseUpdatedP' CC.EvalModelUpdate
 
 peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
 peek = peekPeeker ⨁ (const $ pure unit)
@@ -266,62 +251,3 @@ peekPeeker = case _ of
       _ → pure unit
     H.modify _ { picker = Nothing }
     raiseUpdate
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = void do
-  st ← H.get
-  let
-    newCategory =
-      setPreviousValueFrom (Just st.category)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-        ⊕ st.axes.datetime
-
-    newValue =
-      setPreviousValueFrom (Just st.value)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.value
-
-    newValueAggregation =
-      setPreviousValueFrom (Just st.valueAgg)
-        $ nonMaybeAggregationSelect
-
-    newSeries =
-      setPreviousValueFrom (Just st.series)
-        $ newSelect
-        $ ifSelected [ newCategory ]
-        $ st.axes.category
-        ⊕ st.axes.time
-        ⊝ newCategory
-
-    newOrder =
-      setPreviousValueFrom (Just st.order)
-        $ sortSelect
-
-    newAlign =
-      setPreviousValueFrom (Just st.align)
-        $ alignSelect
-
-  H.modify _
-    { value = newValue
-    , valueAgg = newValueAggregation
-    , category = newCategory
-    , series = newSeries
-    , align = newAlign
-    , order = newOrder
-    }
-
-loadModel ∷ M.FunnelR → DSL Unit
-loadModel r =
-  H.modify _
-    { value = fromSelected (Just r.value)
-    , valueAgg = fromSelected (Just r.valueAggregation)
-    , category = fromSelected (Just r.category)
-    , series = fromSelected r.series
-    , align = fromSelected (Just r.align)
-    , order = fromSelected (Just r.order)
-    }

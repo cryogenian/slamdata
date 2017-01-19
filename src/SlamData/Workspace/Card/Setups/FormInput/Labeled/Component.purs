@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.FormInput.Labeled.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (^.), (.~), APrism', preview)
+import Data.Lens ((^?), (?~), (.~), APrism', preview)
 import Data.List as List
 
 import Halogen as H
@@ -32,7 +32,6 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Form.Select ((⊝))
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Form.Select as S
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -50,6 +49,7 @@ import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.State as ST
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.Query as Q
+import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model as M
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -187,23 +187,9 @@ cardEval fi = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    let
-      model =
-        { value: _
-        , name: st.name
-        , label: st.label ^. S._value
-        , selected: st.selected ^. S._value
-        }
-        <$> (st.value ^. S._value)
-    pure $ k $ Card.setupLabeledFormInput fi model
+    pure $ k $ Card.setupLabeledFormInput fi $ M.behaviour.save st
   CC.Load m next → do
-    for_ (join $ preview Card._SetupLabeledInput m) \model →
-      H.modify _
-        { value = S.fromSelected $ Just model.value
-        , name = model.name
-        , label = S.fromSelected model.label
-        , selected = S.fromSelected model.selected
-        }
+    H.modify $ M.behaviour.load $ join $ preview Card._SetupLabeledInput m
     pure next
   CC.ModelUpdated _ next →
     pure next
@@ -216,7 +202,7 @@ cardEval fi = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _
@@ -229,7 +215,7 @@ cardEval fi = case _ of
 
 raiseUpdate ∷ DSL Unit
 raiseUpdate = do
-  synchronizeChildren
+  H.modify M.behaviour.synchronize
   CC.raiseUpdatedP' CC.EvalModelUpdate
 
 chartEval ∷ Q.Query ~> DSL
@@ -263,39 +249,3 @@ peek = peekPicker ⨁ (const $ pure unit)
         Q.Selected _ → H.modify $ ST._selected ∘ S._value ?~ v
       H.modify _ { picker = Nothing }
       raiseUpdate
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  st ← H.get
-  let
-    newValue =
-      S.setPreviousValueFrom (Just st.value)
-        $ S.autoSelect
-        $ S.newSelect
-        $ st.axes.value
-        ⊕ st.axes.category
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-        ⊕ st.axes.datetime
-
-    newLabel =
-      S.setPreviousValueFrom (Just st.label)
-        $ S.newSelect
-        $ st.axes.category
-        ⊝ newValue
-
-    newSelected =
-      S.setPreviousValueFrom (Just st.selected)
-        $ S.newSelect
-        $ st.axes.category
-        ⊕ st.axes.value
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-        ⊕ st.axes.datetime
-        ⊝ newValue
-
-  H.modify _
-    { value = newValue
-    , label = newLabel
-    , selected = newSelected
-    }

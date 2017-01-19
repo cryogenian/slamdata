@@ -14,7 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Parallel.Component.State where
+module SlamData.Workspace.Card.Setups.Chart.Parallel.Component.State
+  ( initialState
+  , State
+  , StateP
+  , _dimension
+  , _aggregation
+  , _series
+  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  ) where
 
 import SlamData.Prelude
 
@@ -25,31 +33,22 @@ import Data.Lens.Index (ix)
 import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
-import SlamData.Form.Select (Select, emptySelect)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Chart.Parallel.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Parallel.Component.Query (QueryC, Selection)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Inputs (PickerOptions)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
+import SlamData.Workspace.Card.Setups.Chart.Parallel.Model as M
 
-type State =
-  { axes ∷ Axes
-  , levelOfDetails ∷ LevelOfDetails
-  , dims ∷ Array (Select JCursor)
-  , aggs ∷ Array (Select Aggregation)
-  , series ∷ Select JCursor
-  , picker ∷ Maybe (PickerOptions JCursor Selection)
-  }
+type State = M.ReducedState (DS.CommonState JCursor Selection ())
 
 initialState ∷ State
 initialState =
-  { axes: initialAxes
-  , levelOfDetails: High
-  , picker: Nothing
-  , dims: [emptySelect]
-  , aggs: [emptySelect]
-  , series: emptySelect
+  { axes: M.initialState.axes
+  , levelOfDetails: DS.initial.levelOfDetails
+  , picker: DS.initial.picker
+  , dims: M.initialState.dims
+  , aggs: M.initialState.aggs
+  , series: M.initialState.series
   }
 
 type StateP =
@@ -63,11 +62,3 @@ _dimension i = ix i ⋙ lens _.dims _{ dims = _ }
 
 _aggregation ∷ ∀ a r. Int → Traversal' { aggs ∷ Array a | r} a
 _aggregation i = ix i ⋙ lens _.aggs _{ aggs = _ }
-
-showPicker
-  ∷ (Const Unit JCursor → Selection (Const Unit))
-  → Array JCursor
-  → State
-  → State
-showPicker f options =
-  _ { picker = Just { options, select: f (Const unit) } }

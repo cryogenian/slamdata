@@ -20,8 +20,7 @@ module SlamData.Workspace.Card.Setups.FormInput.TextLike.Component
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
-import Data.Lens ((^?), (?~), (^.), (.~), APrism', preview)
+import Data.Lens ((^?), (?~), (.~), preview)
 import Data.List as List
 
 import Halogen as H
@@ -37,8 +36,6 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Form.Select as S
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Component.State as CCS
-import SlamData.Workspace.Card.Component.Query as CCQ
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
@@ -47,10 +44,11 @@ import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
 import SlamData.Workspace.Card.Setups.Inputs as BCI
-import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.State as ST
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.Query as Q
+import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as M
+import SlamData.Workspace.Card.Setups.FormInput.TextLike.Def (TextLikeDef)
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -58,11 +56,6 @@ type DSL =
 type HTML =
   H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
 
-type TextLikeDef =
-  { _State ∷ APrism' CCS.AnyCardState ST.StateP
-  , _Query ∷ ∀ a. APrism' (Coproduct CC.CardEvalQuery CCQ.AnyCardQuery a) (Q.QueryP a)
-  , valueProjection ∷ Ax.Axes → Array JCursor
-  }
 
 textLikeSetupComponent
   ∷ FIT.FormInputType
@@ -161,19 +154,9 @@ cardEval fit def = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    let
-      model =
-        { value: _
-        , name: st.name
-        }
-        <$> (st.value ^. S._value)
-    pure $ k $ Card.setupTextLikeInput fit model
+    pure $ k $ Card.setupTextLikeInput fit $ (M.behaviour def.valueProjection).save st
   CC.Load m next → do
-    for_ (join $ preview Card._SetupTextLikeInput m) \model →
-      H.modify _
-        { value = S.fromSelected $ Just model.value
-        , name = model.name
-        }
+    H.modify $ (M.behaviour def.valueProjection).load $ join $ preview Card._SetupTextLikeInput m
     pure next
   CC.ModelUpdated _ next →
     pure next
@@ -186,7 +169,7 @@ cardEval fit def = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren def
+      H.modify (M.behaviour def.valueProjection).synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _
@@ -199,7 +182,7 @@ cardEval fit def = case _ of
 
 raiseUpdate ∷ TextLikeDef → DSL Unit
 raiseUpdate def = do
-  synchronizeChildren def
+  H.modify (M.behaviour def.valueProjection).synchronize
   CC.raiseUpdatedP' CC.EvalModelUpdate
 
 chartEval ∷ TextLikeDef → Q.Query ~> DSL
@@ -229,17 +212,3 @@ peek def = peekPicker ⨁ (const $ pure unit)
         Q.Value _ → H.modify $ ST._value ∘ S._value ?~ v
       H.modify _ { picker = Nothing }
       raiseUpdate def
-
-synchronizeChildren ∷ TextLikeDef → DSL Unit
-synchronizeChildren def = do
-  st ← H.get
-  let
-    newValue =
-      S.setPreviousValueFrom (Just st.value)
-        $ S.autoSelect
-        $ S.newSelect
-        $ def.valueProjection st.axes
-
-  H.modify _
-    { value = newValue
-    }

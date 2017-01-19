@@ -22,12 +22,16 @@ module SlamData.Workspace.Card.Setups.FormInput.TextLike.Eval
 import Control.Monad.State (class MonadState)
 import Control.Monad.Throw (class MonadThrow)
 
+import Data.Argonaut (JCursor)
+
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model (Model)
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model (Model, behaviour, initialState)
+import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Axis as Ax
 
 eval
   ∷ ∀ m
@@ -35,12 +39,13 @@ eval
     , MonadThrow CEM.CardError m
     , QuasarDSL m
     )
-  ⇒ Model
+  ⇒ ( Ax.Axes → Array JCursor )
   → FormInputType
+  → Model
   → Port.Resource
   → m Port.Port
-eval m formInputType =
-  BCE.buildChartEval' buildFn m
+eval valueProjection formInputType m =
+  BCE.buildChartEval' buildFn m modelFromAxes
   where
   -- We need to store axes to display selects
   buildFn axes conf records =
@@ -49,3 +54,5 @@ eval m formInputType =
       , formInputType
       , cursor: conf.value
       }
+  modelFromAxes axes =
+    B.defaultModel (behaviour valueProjection) m initialState{axes = axes}

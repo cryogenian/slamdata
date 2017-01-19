@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Metric.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (^.), (?~), (.~))
+import Data.Lens ((^?), (?~), (.~))
 import Data.List as List
 import Data.String as S
 
@@ -34,7 +34,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 
-import SlamData.Form.Select (newSelect, setPreviousValueFrom, autoSelect, _value, fromSelected)
+import SlamData.Form.Select (_value)
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
@@ -51,7 +51,6 @@ import SlamData.Workspace.Card.Setups.Chart.Metric.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Metric.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Metric.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Metric.Model as M
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (nonMaybeAggregationSelect)
 import SlamData.Workspace.Card.Eval.State (_Axes)
 
 type DSL =
@@ -198,21 +197,9 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    let
-      model =
-        { value: _
-        , valueAggregation: _
-        , label: st.label
-        , formatter: st.formatter
-        }
-        <$> (st.value ^. _value)
-        <*> (st.valueAgg ^. _value)
-    pure $ k $ Card.BuildMetric model
-
+    pure $ k $ Card.BuildMetric $ M.behaviour.save st
   CC.Load (Card.BuildMetric model) next → do
-    for_ model \r → do
-      H.modify _{formatter = r.formatter, label = r.label}
-      loadModel r
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load _ next →
     pure next
@@ -223,7 +210,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify
@@ -239,7 +226,9 @@ cardEval = case _ of
     pure next
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
+raiseUpdate = do
+  H.modify M.behaviour.synchronize
+  CC.raiseUpdatedP' CC.EvalModelUpdate
 
 metricEval ∷ Q.Query ~> DSL
 metricEval = case _ of
@@ -280,29 +269,3 @@ peek = coproduct peekPicker (const (pure unit))
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
-
-loadModel ∷ M.MetricR → DSL Unit
-loadModel r =
-  H.modify _
-    { value = fromSelected (Just r.value)
-    , valueAgg = fromSelected (Just r.valueAggregation)
-    }
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  st ← H.get
-  let
-    newValue =
-      setPreviousValueFrom (Just st.value)
-        $ autoSelect
-        $ newSelect
-        $ st.axes.value
-
-    newValueAggregation =
-      setPreviousValueFrom (Just st.valueAgg)
-        $ nonMaybeAggregationSelect
-
-  H.modify _
-    { value = newValue
-    , valueAgg = newValueAggregation
-    }

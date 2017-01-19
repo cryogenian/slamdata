@@ -19,12 +19,19 @@ module SlamData.Workspace.Card.Setups.Chart.Graph.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select ((⊝))
+import SlamData.Form.Select as S
 
 type GraphR =
   { source ∷ JCursor
@@ -121,3 +128,99 @@ decode js
           , circular
           , sizeAggregation
           }
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , circular ∷ Boolean
+  , maxSize ∷ Number
+  , minSize ∷ Number
+  , source ∷ S.Select JCursor
+  , target ∷ S.Select JCursor
+  , size ∷ S.Select JCursor
+  , sizeAgg ∷ S.Select Aggregation
+  , color ∷ S.Select JCursor
+  | r}
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes: Ax.initialAxes
+  , maxSize: 50.0
+  , minSize: 1.0
+  , circular: false
+  , source: S.emptySelect
+  , target: S.emptySelect
+  , size: S.emptySelect
+  , sizeAgg: S.emptySelect
+  , color: S.emptySelect
+  }
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newSource =
+        S.setPreviousValueFrom (Just st.source)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.category
+
+      newTarget =
+        S.setPreviousValueFrom (Just st.target)
+          $ S.autoSelect
+          $ S.newSelect
+          $ S.ifSelected [newSource]
+          $ st.axes.category
+          ⊝ newSource
+
+      newSize =
+        S.setPreviousValueFrom (Just st.size)
+          $ S.newSelect
+          $ S.ifSelected [newTarget]
+          $ st.axes.value
+
+      newColor =
+        S.setPreviousValueFrom (Just st.color)
+          $ S.newSelect
+          $ S.ifSelected [newTarget]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊝ newSource
+          ⊝ newTarget
+
+      newSizeAggregation =
+        S.setPreviousValueFrom (Just st.sizeAgg)
+          $ nonMaybeAggregationSelect
+    in
+      st{ source = newSource
+        , target = newTarget
+        , size = newSize
+        , sizeAgg = newSizeAggregation
+        , color = newColor
+        }
+
+  load Nothing st = st
+  load (Just m) st =
+    st{ source = S.fromSelected $ Just m.source
+      , target = S.fromSelected $ Just m.target
+      , size = S.fromSelected m.size
+      , sizeAgg = S.fromSelected m.sizeAggregation
+      , color = S.fromSelected m.color
+      }
+
+  save st =
+    { source: _
+    , target: _
+    , size: st.size ^. S._value
+    , color: st.color ^. S._value
+    , sizeAggregation: st.sizeAgg ^. S._value
+    , minSize: st.minSize
+    , maxSize: st.maxSize
+    , circular: st.circular
+    }
+    <$> (st.source ^. S._value)
+    <*> (st.target ^. S._value)

@@ -19,10 +19,15 @@ module SlamData.Workspace.Card.Setups.FormInput.TextLike.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, JObject, jsonEmptyObject, (~>), (:=), (.?))
+import Data.Lens ((^.))
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select as S
 
 type TextLikeR =
   { name ∷ String
@@ -70,3 +75,45 @@ decode obj = do
   pure { name
        , value
        }
+
+type ReducedState r =
+  { value ∷ S.Select JCursor
+  , name ∷ String
+  , axes ∷ Ax.Axes
+  | r }
+
+initialState ∷ ReducedState ()
+initialState =
+  { value: S.emptySelect
+  , name: ""
+  , axes: Ax.initialAxes
+  }
+
+behaviour ∷ ∀ r. (Ax.Axes → Array JCursor) → SB.Behaviour (ReducedState r) Model
+behaviour valueProjection =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  load Nothing st = st
+  load (Just m) st =
+    st{ value = S.fromSelected $ Just m.value
+      , name = m.name
+      }
+
+  save st =
+    { value: _
+    , name: st.name
+    }
+    <$> (st.value ^. S._value)
+
+  synchronize st =
+    let
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ valueProjection st.axes
+    in
+      st{ value = newValue }

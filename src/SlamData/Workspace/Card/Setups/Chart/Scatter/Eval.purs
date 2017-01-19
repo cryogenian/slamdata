@@ -41,9 +41,9 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (Model, ScatterR)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (Model, ScatterR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Scatter))
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
@@ -51,6 +51,7 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getTransparentC
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 import Utils.Foldable (enumeratedFor_)
 
@@ -63,7 +64,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Scatter (const buildScatter)
+eval m = BCE.buildChartEval Scatter (const buildScatter) m \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 type ScatterSeries =
   { name ∷ Maybe String

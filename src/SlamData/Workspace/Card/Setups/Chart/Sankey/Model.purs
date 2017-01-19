@@ -19,12 +19,19 @@ module SlamData.Workspace.Card.Setups.Chart.Sankey.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select as S
+import SlamData.Form.Select ((⊝))
 
 type SankeyR =
   { source ∷ JCursor
@@ -86,3 +93,79 @@ decode js
     value ← obj .? "value"
     valueAggregation ← obj .? "valueAggregation"
     pure $ Just { source, target, value, valueAggregation }
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , source ∷ S.Select JCursor
+  , target ∷ S.Select JCursor
+  , value ∷ S.Select JCursor
+  , valueAgg ∷ S.Select Aggregation
+  | r }
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes: Ax.initialAxes
+  , source: S.emptySelect
+  , target: S.emptySelect
+  , value: S.emptySelect
+  , valueAgg: S.emptySelect
+  }
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newSource =
+        S.setPreviousValueFrom (Just st.source)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.category
+
+      newTarget =
+        S.setPreviousValueFrom (Just st.target)
+          $ S.autoSelect
+          $ S.newSelect
+          $ S.ifSelected [ newSource ]
+          $ st.axes.category
+          ⊝ newSource
+
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ S.ifSelected [newTarget]
+          $ st.axes.value
+
+      newValueAggregation =
+        S.setPreviousValueFrom (Just st.valueAgg)
+          $ nonMaybeAggregationSelect
+    in
+      st{ source = newSource
+        , target = newTarget
+        , value = newValue
+        , valueAgg = newValueAggregation
+        }
+
+  load Nothing st = st
+  load (Just m) st =
+    st{ source = S.fromSelected $ Just m.source
+      , target = S.fromSelected $ Just m.target
+      , value = S.fromSelected $ Just m.value
+      , valueAgg = S.fromSelected $ Just m.valueAggregation
+      }
+
+  save st =
+    { source: _
+    , target: _
+    , value: _
+    , valueAggregation: _
+    }
+    <$> (st.source ^. S._value)
+    <*> (st.target ^. S._value)
+    <*> (st.value ^.  S._value)
+    <*> (st.valueAgg ^. S._value)

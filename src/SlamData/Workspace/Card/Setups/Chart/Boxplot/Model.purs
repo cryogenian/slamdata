@@ -19,10 +19,16 @@ module SlamData.Workspace.Card.Setups.Chart.Boxplot.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select as S
+import SlamData.Form.Select ((⊝))
 
 type BoxplotR =
   { dimension ∷ JCursor
@@ -84,3 +90,86 @@ decode js
     series ← obj .? "series"
     parallel ← obj .? "parallel"
     pure { dimension, value, series, parallel }
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , dimension ∷ S.Select JCursor
+  , value ∷ S.Select JCursor
+  , series ∷ S.Select JCursor
+  , parallel ∷ S.Select JCursor
+  | r}
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes: Ax.initialAxes
+  , dimension: S.emptySelect
+  , value: S.emptySelect
+  , series: S.emptySelect
+  , parallel: S.emptySelect
+  }
+
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newDimension =
+        S.setPreviousValueFrom (Just st.dimension)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊕ st.axes.date
+          ⊕ st.axes.datetime
+
+      newValue =
+        S.setPreviousValueFrom (Just st.value)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+          ⊝ newDimension
+
+      newSeries =
+        S.setPreviousValueFrom (Just st.series)
+          $ S.newSelect
+          $ S.ifSelected [newDimension]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊝ newDimension
+
+      newParallel =
+        S.setPreviousValueFrom (Just st.parallel)
+          $ S.newSelect
+          $ S.ifSelected [newDimension]
+          $ st.axes.category
+          ⊕ st.axes.time
+          ⊝ newDimension
+          ⊝ newSeries
+    in
+     st { value = newValue
+        , dimension = newDimension
+        , series = newSeries
+        , parallel = newParallel
+        }
+
+  load Nothing st = st
+  load (Just m) st =
+    st { value = S.fromSelected $ Just m.value
+       , dimension = S.fromSelected $ Just m.dimension
+       , series = S.fromSelected m.series
+       , parallel = S.fromSelected m.parallel
+       }
+
+  save st =
+    { dimension: _
+    , value: _
+    , series: st.series ^. S._value
+    , parallel: st.parallel ^. S._value
+    }
+    <$> (st.dimension ^. S._value)
+    <*> (st.value ^. S._value)

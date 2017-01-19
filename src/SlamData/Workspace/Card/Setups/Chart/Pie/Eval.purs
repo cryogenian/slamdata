@@ -36,9 +36,9 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Chart.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Pie.Model (Model, PieR)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Chart.Pie.Model (Model, PieR, initialState, behaviour)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Pie))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
@@ -46,6 +46,7 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Behaviour as B
 
 eval
   ∷ ∀ m
@@ -56,7 +57,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = BCE.buildChartEval Pie (const buildPie)
+eval m = BCE.buildChartEval Pie (const buildPie) m \axes →
+  B.defaultModel behaviour m initialState{axes = axes}
 
 type OnePieSeries =
   RadialPosition

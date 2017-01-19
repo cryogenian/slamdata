@@ -19,12 +19,19 @@ module SlamData.Workspace.Card.Setups.Chart.Scatter.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, encodeJson, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens ((^.))
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, aggregationSelectWithNone)
+import SlamData.Workspace.Card.Setups.Behaviour as SB
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Form.Select as S
+import SlamData.Form.Select ((⊝))
 
 type ScatterR =
   { abscissa ∷ JCursor
@@ -153,3 +160,126 @@ decode js
          , minSize
          , maxSize
          }
+
+type ReducedState r =
+  { axes ∷ Ax.Axes
+  , minSize ∷ Number
+  , maxSize ∷ Number
+  , abscissa ∷ S.Select JCursor
+  , abscissaAgg ∷ S.Select (Maybe Aggregation)
+  , ordinate ∷ S.Select JCursor
+  , ordinateAgg ∷ S.Select (Maybe Aggregation)
+  , size ∷ S.Select JCursor
+  , sizeAgg ∷ S.Select (Maybe Aggregation)
+  , series ∷ S.Select JCursor
+  , parallel ∷ S.Select JCursor
+  | r}
+
+initialState ∷ ReducedState ()
+initialState =
+  { axes: Ax.initialAxes
+  , minSize: 10.0
+  , maxSize: 50.0
+  , abscissa: S.emptySelect
+  , abscissaAgg: S.emptySelect
+  , ordinate: S.emptySelect
+  , ordinateAgg: S.emptySelect
+  , size: S.emptySelect
+  , sizeAgg: S.emptySelect
+  , series: S.emptySelect
+  , parallel: S.emptySelect
+  }
+
+behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
+behaviour =
+  { synchronize
+  , load
+  , save
+  }
+  where
+  synchronize st =
+    let
+      newAbscissa =
+        S.setPreviousValueFrom (Just st.abscissa)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+
+      newAbscissaAggregation =
+        S.setPreviousValueFrom (Just st.abscissaAgg)
+          $ aggregationSelectWithNone
+
+      newOrdinate =
+        S.setPreviousValueFrom (Just st.ordinate)
+          $ S.autoSelect
+          $ S.newSelect
+          $ st.axes.value
+          ⊝ newAbscissa
+
+      newOrdinateAggregation =
+        S.setPreviousValueFrom (Just st.ordinateAgg)
+          $ aggregationSelectWithNone
+
+      newSize =
+        S.setPreviousValueFrom (Just st.size)
+          $ S.newSelect
+          $ st.axes.value
+          ⊝ newAbscissa
+          ⊝ newOrdinate
+
+      newSizeAggregation =
+        S.setPreviousValueFrom (Just st.sizeAgg)
+          $ aggregationSelectWithNone
+
+      newSeries =
+        S.setPreviousValueFrom (Just st.series)
+          $ S.newSelect
+          $ st.axes.category
+
+      newParallel =
+        S.setPreviousValueFrom (Just st.parallel)
+          $ S.newSelect
+          $ st.axes.category
+          ⊝ newSeries
+
+    in
+      st{ abscissa = newAbscissa
+        , abscissaAgg = newAbscissaAggregation
+        , ordinate = newOrdinate
+        , ordinateAgg = newOrdinateAggregation
+        , size = newSize
+        , sizeAgg = newSizeAggregation
+        , series = newSeries
+        , parallel = newParallel
+        }
+
+  load Nothing st = st
+  load (Just m) st =
+    st{ abscissa = S.fromSelected $ Just m.abscissa
+      , abscissaAgg = S.fromSelected $ Just m.abscissaAggregation
+      , ordinate = S.fromSelected $ Just m.ordinate
+      , ordinateAgg = S.fromSelected $ Just m.ordinateAggregation
+      , size = S.fromSelected m.size
+      , sizeAgg = S.fromSelected m.sizeAggregation
+      , series = S.fromSelected m.series
+      , parallel = S.fromSelected m.parallel
+      , minSize = m.minSize
+      , maxSize = m.maxSize
+      }
+
+  save st =
+    { abscissa: _
+    , abscissaAggregation: _
+    , ordinate: _
+    , ordinateAggregation: _
+    , size: st.size ^. S._value
+    , sizeAggregation: st.sizeAgg ^. S._value
+    , series: st.series ^. S._value
+    , parallel: st.parallel ^. S._value
+    , minSize: (st.minSize ∷ Number)
+    , maxSize: (st.maxSize ∷ Number)
+    }
+    <$> (st.abscissa ^. S._value)
+    <*> (st.abscissaAgg ^. S._value)
+    <*> (st.ordinate ^. S._value)
+    <*> (st.ordinateAgg ^. S._value)

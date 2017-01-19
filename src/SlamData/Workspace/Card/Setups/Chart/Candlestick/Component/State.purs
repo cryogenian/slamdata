@@ -14,9 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.State where
-
-import SlamData.Prelude
+module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.State
+  ( initialState
+  , _high
+  , _highAgg
+  , _low
+  , _lowAgg
+  , _open
+  , _openAgg
+  , _close
+  , _closeAgg
+  , _parallel
+  , _dimension
+  , State
+  , StateP
+  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  ) where
 
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
@@ -24,45 +37,29 @@ import Data.Lens (Lens', lens)
 import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
-import SlamData.Form.Select (Select, emptySelect)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.Query (QueryC, Selection)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Inputs (PickerOptions)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
+import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model as M
 
-type State =
-  { axes ∷ Axes
-  , levelOfDetails ∷ LevelOfDetails
-  , picker ∷ Maybe (PickerOptions JCursor Selection)
-  , dimension ∷ Select JCursor
-  , high ∷ Select JCursor
-  , highAgg ∷ Select Aggregation
-  , low ∷ Select JCursor
-  , lowAgg ∷ Select Aggregation
-  , open ∷ Select JCursor
-  , openAgg ∷ Select Aggregation
-  , close ∷ Select JCursor
-  , closeAgg ∷ Select Aggregation
-  , parallel ∷ Select JCursor
-  }
+type State = M.ReducedState (DS.CommonState JCursor Selection ())
 
 initialState ∷ State
 initialState =
-  { axes: initialAxes
-  , levelOfDetails: High
-  , picker: Nothing
-  , dimension: emptySelect
-  , high: emptySelect
-  , highAgg: emptySelect
-  , low: emptySelect
-  , lowAgg: emptySelect
-  , open: emptySelect
-  , openAgg: emptySelect
-  , close: emptySelect
-  , closeAgg: emptySelect
-  , parallel: emptySelect
+  { axes: M.initialState.axes
+  , levelOfDetails: DS.initial.levelOfDetails
+  , picker: DS.initial.picker
+  , dimension: M.initialState.dimension
+  , high: M.initialState.high
+  , highAgg: M.initialState.highAgg
+  , low: M.initialState.low
+  , lowAgg: M.initialState.lowAgg
+  , open: M.initialState.open
+  , openAgg: M.initialState.openAgg
+  , close: M.initialState.close
+  , closeAgg: M.initialState.closeAgg
+  , parallel: M.initialState.parallel
   }
 
 type StateP =
@@ -97,11 +94,3 @@ _closeAgg = lens _.closeAgg _{ closeAgg = _ }
 
 _parallel ∷ ∀ r a. Lens' { parallel ∷ a | r} a
 _parallel = lens _.parallel _{ parallel = _ }
-
-showPicker
-  ∷ (Const Unit JCursor → Selection (Const Unit))
-  → Array JCursor
-  → State
-  → State
-showPicker f options =
-  _ { picker = Just { options, select: f (Const unit) } }

@@ -23,7 +23,7 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor)
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Lens ((^?), (^.), (.~), (?~))
+import Data.Lens ((^?), (.~), (?~))
 import Data.List as List
 
 import Halogen as H
@@ -34,13 +34,13 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (Select, newSelect, setPreviousValueFrom, (⊝), _value, fromSelected, ifSelected, emptySelect, trySelect')
+import SlamData.Form.Select (Select, _value, emptySelect, trySelect')
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 
 import SlamData.Workspace.Card.Setups.Axis (eqAxes, initialAxes)
 import SlamData.Workspace.Card.Setups.CSS as CSS
@@ -50,6 +50,7 @@ import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.Parallel.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Parallel.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Parallel.Component.Query as Q
+import SlamData.Workspace.Card.Setups.Chart.Parallel.Model as M
 import SlamData.Workspace.Card.Eval.State (_Axes)
 
 import Utils.Array (enumerate)
@@ -150,23 +151,9 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    st ← H.get
-    let
-      model = do
-        st.dims A.!! 1
-        st.aggs A.!! 1
-        series ← st.series ^. _value
-        pure { dims: A.catMaybes $ map (_ ^. _value) st.dims
-             , aggs: A.catMaybes $ map (_ ^. _value) st.aggs
-             , series
-             }
-    pure $ k $ Card.BuildParallel model
-  CC.Load (Card.BuildParallel (Just model)) next → do
-    H.modify _
-      { dims = (map (fromSelected ∘ Just) model.dims) ⊕ [emptySelect]
-      , aggs = (map (fromSelected ∘ Just) model.aggs) ⊕ [emptySelect]
-      , series = fromSelected $ Just model.series
-      }
+    H.gets $ k ∘ Card.BuildParallel ∘ M.behaviour.save
+  CC.Load (Card.BuildParallel model) next → do
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load _ next →
     pure next
@@ -183,7 +170,7 @@ cardEval = case _ of
           , aggs = [emptySelect ∷ Select Aggregation]
           }
       H.modify _ { axes = axes }
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _
@@ -274,41 +261,6 @@ peek = peekPicker ⨁ (const $ pure unit)
       raiseUpdate
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate =
-  synchronizeChildren *> CC.raiseUpdatedP' CC.EvalModelUpdate
-
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  st ← H.get
-  let
-    newSeries =
-      setPreviousValueFrom (Just st.series)
-        $ newSelect
-        $ st.axes.category
-        ⊕ st.axes.value
-        ⊕ st.axes.date
-        ⊕ st.axes.time
-        ⊕ st.axes.datetime
-
-    newDimensions = foldl dimsFoldFn [ ] st.dims
-
-    dimsFoldFn acc dim =
-      let
-        newDim =
-          setPreviousValueFrom (Just dim)
-            $ newSelect
-            $ ifSelected acc
-            $ (\res → foldl (\b a → b ⊝ a) res acc)
-            $ st.axes.value
-      in A.snoc acc newDim
-
-    newAggregations = st.aggs <#> \agg →
-      setPreviousValueFrom (Just agg)
-        nonMaybeAggregationSelect
-
-  H.modify _
-    { dims = newDimensions
-    , aggs = newAggregations
-    , series = newSeries
-    }
+raiseUpdate = do
+  H.modify M.behaviour.synchronize
+  CC.raiseUpdatedP' CC.EvalModelUpdate

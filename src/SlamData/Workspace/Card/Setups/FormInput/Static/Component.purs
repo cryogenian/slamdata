@@ -23,7 +23,7 @@ module SlamData.Workspace.Card.Setups.FormInput.Static.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (^.), (.~))
+import Data.Lens ((^?), (?~), (.~))
 import Data.List as List
 
 import Halogen as H
@@ -48,6 +48,7 @@ import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.FormInput.Static.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.FormInput.Static.Component.State as ST
 import SlamData.Workspace.Card.Setups.FormInput.Static.Component.Query as Q
+import SlamData.Workspace.Card.Setups.FormInput.Static.Model as M
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -114,7 +115,7 @@ renderValue state =
     ]
 
 eval ∷ Q.QueryC ~> DSL
-eval = cardEval ⨁ chartEval
+eval = cardEval ⨁ thisEval
 
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
@@ -125,16 +126,9 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    let
-      model =
-        { value: _
-        }
-        <$> (st.value ^. S._value)
-    pure $ k $ Card.SetupStatic model
-  CC.Load (Card.SetupStatic (Just model)) next → do
-    H.modify _
-      { value = S.fromSelected $ Just model.value
-      }
+    pure $ k $ Card.SetupStatic $ M.behaviour.save st
+  CC.Load (Card.SetupStatic model) next → do
+    H.modify $ M.behaviour.load model
     pure next
   CC.Load _ next →
     pure next
@@ -149,7 +143,7 @@ cardEval = case _ of
   CC.ReceiveState evalState next → do
     for_ (evalState ^? _Axes) \axes → do
       H.modify _{axes = axes}
-      synchronizeChildren
+      H.modify M.behaviour.synchronize
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _
@@ -159,14 +153,13 @@ cardEval = case _ of
       }
     pure next
 
-
 raiseUpdate ∷ DSL Unit
 raiseUpdate = do
-  synchronizeChildren
+  H.modify M.behaviour.synchronize
   CC.raiseUpdatedP' CC.EvalModelUpdate
 
-chartEval ∷ Q.Query ~> DSL
-chartEval (Q.Select sel next) = next <$ case sel of
+thisEval ∷ Q.Query ~> DSL
+thisEval (Q.Select sel next) = next <$ case sel of
   Q.Value a → updatePicker ST._value Q.Value a
   where
   updatePicker l q = case _ of
@@ -187,21 +180,3 @@ peek = peekPicker ⨁ (const $ pure unit)
         Q.Value _ → H.modify $ ST._value ∘ S._value ?~ v
       H.modify _ { picker = Nothing }
       raiseUpdate
-
-synchronizeChildren ∷ DSL Unit
-synchronizeChildren = do
-  st ← H.get
-  let
-    newValue =
-      S.setPreviousValueFrom (Just st.value)
-        $ S.autoSelect
-        $ S.newSelect
-        $ st.axes.value
-        ⊕ st.axes.category
-        ⊕ st.axes.time
-        ⊕ st.axes.date
-        ⊕ st.axes.datetime
-
-  H.modify _
-    { value = newValue
-    }
