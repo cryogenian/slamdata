@@ -59,6 +59,7 @@ initialState =
 data Query a
   = Setup SetupLabeledFormInputPort a
   | ItemSelected Sem.Semantics a
+  | SetSelected (Set.Set Sem.Semantics) a
   | Load M.Model a
   | Save (M.Model → a)
   | Updated a
@@ -191,6 +192,15 @@ eval (ItemSelected sem next) = do
       H.modify _{ selected = selected }
     _ → H.modify _{ selected = Set.singleton sem }
   raise $ H.action Updated
+  pure next
+eval (SetSelected set next) = do
+  st ← H.get
+  let
+    selected = case st.formInputType of
+      Checkbox → set
+      _ → Set.fromFoldable $ List.head $ List.fromFoldable set
+  when (selected ≠ st.selected)
+    $ H.modify _{ selected = selected }
   pure next
 eval (Load m next) = do
   H.modify _

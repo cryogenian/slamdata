@@ -17,19 +17,24 @@ limitations under the License.
 module SlamData.Workspace.Card.Eval.State
   ( EvalState(..)
   , AnalysisR
+  , AutoSelectR
   , _Analysis
   , _Axes
   , _Records
   , _Resource
+  , _LastUsedResource
+  , _AutoSelect
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut (Json)
 import Data.Lens (Prism', prism', Traversal', wander)
+import Data.Set as Set
 
 import SlamData.Workspace.Card.Port (Resource)
 import SlamData.Workspace.Card.Setups.Axis (Axes)
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 type AnalysisR =
   { resource ∷ Resource
@@ -37,21 +42,41 @@ type AnalysisR =
   , records ∷ Array Json
   }
 
+type AutoSelectR =
+  { lastUsedResource ∷ Resource
+  , autoSelect ∷ Set.Set Sem.Semantics
+  }
+
 data EvalState
   = Analysis AnalysisR
+  | AutoSelect AutoSelectR
 
 _Analysis ∷ Prism' EvalState AnalysisR
 _Analysis = prism' Analysis case _ of
   Analysis x → Just x
+  _ → Nothing
 
 _Axes ∷ Traversal' EvalState Axes
 _Axes = wander \f s → case s of
   Analysis r@{ axes } → Analysis ∘ r { axes = _} <$> f axes
+  _ → pure s
 
 _Records ∷ Traversal' EvalState (Array Json)
 _Records = wander \f s → case s of
   Analysis r@{ records } → Analysis ∘ r { records = _} <$> f records
+  _ → pure s
 
 _Resource ∷ Traversal' EvalState Resource
 _Resource = wander \f s → case s of
   Analysis r@{ resource } → Analysis ∘ r { resource = _} <$> f resource
+  _ → pure s
+
+_LastUsedResource ∷ Traversal' EvalState Resource
+_LastUsedResource = wander \f s → case s of
+  AutoSelect r@{ lastUsedResource } → AutoSelect ∘ r { lastUsedResource = _ } <$> f lastUsedResource
+  _ → pure s
+
+_AutoSelect ∷ Traversal' EvalState (Set.Set Sem.Semantics)
+_AutoSelect = wander \f s → case s of
+  AutoSelect r@{ autoSelect } → AutoSelect ∘ r { autoSelect = _ } <$> f autoSelect
+  _ → pure s

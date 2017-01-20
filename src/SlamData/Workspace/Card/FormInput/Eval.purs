@@ -25,10 +25,14 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
+import Control.Monad.State (class MonadState, get, put)
 
 import Data.Foldable as F
-import Data.Lens ((^.))
+import Data.Lens ((^.), preview)
+import Data.List as List
+import Data.Map as Map
 import Data.Path.Pathy as Path
+import Data.Set as Set
 import Data.StrMap as SM
 
 import Quasar.Types (SQL)
@@ -40,6 +44,7 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Eval.Common (validateResources, escapeCursor)
 import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Eval.State as CES
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.FormInput.Model (Model(..))
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
@@ -52,6 +57,7 @@ eval
     , MonadAsk CEM.CardEnv m
     , MonadThrow CEM.CardError m
     , MonadTell CEM.CardLog m
+    , MonadState CEM.CardState m
     , QuasarDSL m
     , ParQuasarDSL m
     )
@@ -93,6 +99,7 @@ evalLabeled
     , MonadAsk CEM.CardEnv m
     , MonadThrow CEM.CardError m
     , MonadTell CEM.CardLog m
+    , MonadState CEM.CardState m
     , QuasarDSL m
     , ParQuasarDSL m
     )
@@ -100,11 +107,35 @@ evalLabeled
   → Port.SetupLabeledFormInputPort
   → Port.Resource
   → m Port.Out
-evalLabeled m p r =
-  eval sql p.name (Port.QueryExpr prettySelection) r
-  where
+evalLabeled m p r = do
+  cardState ← get
+  let
+    lastUsedResource = cardState >>= preview CES._LastUsedResource
+
+    availableValues =
+      Set.fromFoldable $ Map.keys p.valueLabelMap
+
+    selected
+      -- Reloading
+      | lastUsedResource ≡ Nothing
+        ∧ (not $ Set.isEmpty m.selected)
+        ∧ (not $ Set.isEmpty $ Set.intersection availableValues m.selected)  =
+          m.selected
+      -- same resource: take selected from model
+      | lastUsedResource ≡ Just r =
+          m.selected
+      -- new resource and checkbox: empty selection
+      | p.formInputType ≡ FIT.Checkbox =
+          Set.empty
+      -- default selection is empty, new resource this is not checkbox: take first value
+      | Set.isEmpty p.selectedValues =
+          Set.fromFoldable $ List.head $ Map.keys p.valueLabelMap
+      -- new resource, not checkbox: take default selection
+      | otherwise =
+          p.selectedValues
+
     semantics =
-      foldMap Sem.semanticsToSQLStrings m.selected
+      foldMap Sem.semanticsToSQLStrings selected
 
     selection =
       "(" <> (F.intercalate "," semantics) <> ")"
@@ -123,12 +154,17 @@ evalLabeled m p r =
       <> " IN "
       <> selection
 
+  put $ Just $ CEM.AutoSelect {lastUsedResource: r, autoSelect: selected}
+
+  eval sql p.name (Port.QueryExpr prettySelection) r
+
 evalTextLike
   ∷ ∀ m
   . ( MonadAff SlamDataEffects m
     , MonadAsk CEM.CardEnv m
     , MonadThrow CEM.CardError m
     , MonadTell CEM.CardLog m
+    , MonadState CEM.CardState m
     , QuasarDSL m
     , ParQuasarDSL m
     )
@@ -136,19 +172,20 @@ evalTextLike
   → Port.SetupTextLikeFormInputPort
   → Port.Resource
   → m Port.Out
-evalTextLike m p r =
-  eval sql p.name (Port.QueryExpr selection) r
-  where
-  selection =
-    case p.formInputType of
-      FIT.Text → show m.value
-      _ → m.value
+evalTextLike m p r = do
+  cardState ← get
+  let
+    selection
+      | p.formInputType ≡ FIT.Text = show m.value
+      | otherwise = m.value
 
-  sql =
-    "SELECT * FROM `"
-    <> Path.printPath (r ^. Port._filePath)
-    <> "` AS res"
-    <> " WHERE res"
-    <> (escapeCursor p.cursor)
-    <> " = "
-    <> selection
+    sql =
+      "SELECT * FROM `"
+      <> Path.printPath (r ^. Port._filePath)
+      <> "` AS res"
+      <> " WHERE res"
+      <> (escapeCursor p.cursor)
+      <> " = "
+      <> selection
+
+  eval sql p.name (Port.QueryExpr selection) r
