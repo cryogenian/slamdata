@@ -22,40 +22,27 @@ module SlamData.FileSystem.Component
   ) where
 
 import SlamData.Prelude
-
-import Control.UI.Browser (setLocation, locationString, clearValue)
+import CSS as CSS
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
-
-import Data.Argonaut (jsonParser, jsonEmptyObject)
 import Data.Array as Array
 import Data.Foldable as F
-import Data.Lens ((.~), preview)
-import Data.MediaType.Common (textCSV, applicationJSON)
-import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir)
 import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
-
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath, injSlot, prjQuery, injQuery)
-import Halogen.Component.Utils (subscribeToBus')
+import Halogen.HTML.Core as HC
+import Halogen.CustomProps as CustomProps
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-
-import Quasar.Data (QData(..))
+import Halogen.HTML.CSS.Indexed as HCSS
 import Quasar.Mount as QM
-
-import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
+import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
-import SlamData.FileSystem.Component.CSS as CSS
-import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, toListing, toDialog, toSearch, toFs)
+import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.Install as Install
-import SlamData.FileSystem.Component.Query (Query(..))
-import SlamData.FileSystem.Component.Render (sorting, toolbar)
-import SlamData.FileSystem.Component.State (State, initialState)
 import SlamData.FileSystem.Component.State as State
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Dialog.Download.Component as Download
@@ -64,35 +51,48 @@ import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
-import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
+import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Listing.Component as Listing
-import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
 import SlamData.FileSystem.Resource as R
-import SlamData.FileSystem.Routing (browseURL)
-import SlamData.FileSystem.Routing.Salt (newSalt)
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Header.Component as Header
 import SlamData.Header.Gripper.Component as Gripper
-import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Notification.Component as NC
+import SlamData.Wiring as Wiring
+import SlamData.Workspace.Deck.Component.CSS as ClassNames
+import Utils.DOM as D
+import Utils.LocalStorage as LocalStorage
+import Control.UI.Browser (setLocation, locationString, clearValue)
+import Data.Argonaut (jsonParser, jsonEmptyObject)
+import Data.Lens ((.~), preview)
+import Data.MediaType.Common (textCSV, applicationJSON)
+import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir)
+import Halogen.Component.ChildPath (ChildPath, injSlot, prjQuery, injQuery)
+import Halogen.Component.Utils (subscribeToBus')
+import Quasar.Data (QData(..))
+import SlamData.Common.Sort (notSort)
+import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, toListing, toDialog, toSearch, toFs)
+import SlamData.FileSystem.Component.Query (Query(..))
+import SlamData.FileSystem.Component.Render (sorting, toolbar)
+import SlamData.FileSystem.Component.State (State, initialState)
+import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
+import SlamData.FileSystem.Routing (browseURL)
+import SlamData.FileSystem.Routing.Salt (newSalt)
+import SlamData.Monad (Slam)
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo) as API
 import SlamData.Render.Common (content, row)
-import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
-
-import Utils.DOM as D
-import Utils.LocalStorage as LocalStorage
 import Utils.Path (DirPath, getNameStr)
 
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
@@ -111,45 +111,91 @@ comp =
 render ∷ State → HTML
 render state@{ version, sort, salt, path } =
   HH.div
-    [ HP.classes [ CSS.filesystem ]
+    [ HP.classes [ FileSystemClassNames.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
     ]
-    [ HH.slot' Install.cpHeader unit \_ →
+    ([ HH.slot' Install.cpHeader unit \_ →
           { component: Header.comp
           , initialState: H.parentState Header.initialState
           }
 
-    , content
-        [ HH.slot' Install.cpSearch unit \_ →
-             { component: Search.comp
-             , initialState: Search.initialState
+     , content
+         [ HH.slot' Install.cpSearch unit \_ →
+              { component: Search.comp
+              , initialState: Search.initialState
+              }
+         , HH.div_
+             [ HH.slot' Install.cpBreadcrumbs unit \_ →
+                 { component: Breadcrumbs.comp
+                 , initialState: Breadcrumbs.mkBreadcrumbs path sort salt
+                 }
+             , toolbar state
+             ]
+         , row [ sorting state ]
+         , HH.slot' Install.cpListing unit \_ →
+             { component: Listing.comp
+             , initialState: H.parentState Listing.initialState
              }
-        , HH.div_
-            [ HH.slot' Install.cpBreadcrumbs unit \_ →
-                { component: Breadcrumbs.comp
-                , initialState: Breadcrumbs.mkBreadcrumbs path sort salt
-                }
-            , toolbar state
-            ]
-        , row [ sorting state ]
-        , HH.slot' Install.cpListing unit \_ →
-            { component: Listing.comp
-            , initialState: H.parentState Listing.initialState
-            }
+         ]
+     , HH.slot' Install.cpDialog unit \_ →
+         { component: Dialog.comp
+         , initialState: H.parentState Dialog.initialState
+         }
+     , HH.slot' Install.cpNotify unit \_ →
+         { component: NC.comp
+         , initialState: NC.initialState (NC.renderModeFromAccessType Editable)
+         }
+     ] ⊕ (guard state.presentIntroVideo $> renderIntroVideo)
+       ⊕ (guard state.presentIntroVideo $> renderIntroVideoBackdrop))
+
+renderIntroVideoBackdrop ∷ HTML
+renderIntroVideoBackdrop =
+  HH.div
+    [ HP.class_ ClassNames.dialogBackdrop
+    , HE.onMouseDown $ HE.input_ DismissIntroVideo
+    ]
+    []
+
+renderIntroVideo ∷ HTML
+renderIntroVideo =
+  HH.div
+    [ HP.class_ $ HC.className "deck-dialog" ]
+    [ HH.div
+        [ HCSS.style
+            $ (CSS.paddingLeft CSS.nil)
+            *> (CSS.paddingRight CSS.nil)
         ]
-    , HH.slot' Install.cpDialog unit \_ →
-        { component: Dialog.comp
-        , initialState: H.parentState Dialog.initialState
-        }
-    , HH.slot' Install.cpNotify unit \_ →
-        { component: NC.comp
-        , initialState: NC.initialState (NC.renderModeFromAccessType Editable)
-        }
+    [ HH.h4
+        [ HCSS.style
+            $ (CSS.paddingLeft $ CSS.rem 1.0)
+            *> (CSS.paddingRight $ CSS.rem 1.0)
+        ]
+        [ HH.text "Welcome to SlamData!" ]
+    , HH.video
+        [ CustomProps.autoplay true ]
+        [ HH.source
+            [ CustomProps.videoType "video/mp4"
+            , HP.src "video/getting-started.mp4"
+            ]
+        ]
+    , RenderDialog.modalFooter
+        [ HH.button
+            [ HP.buttonType HP.ButtonButton
+            , HE.onClick $ HE.input_ DismissIntroVideo
+            , HP.classes [ HH.className "btn", HH.className "btn-primary" ]
+            , HCSS.style $ CSS.marginRight $ CSS.rem 1.0
+            ]
+            [ HH.text "Skip video" ]
+        ]
+    ]
     ]
 
 eval ∷ Query ~> DSL
 eval (Init next) = do
   { bus } ← H.liftH $ H.liftH Wiring.expose
+  whenM
+    (not <$> dismissedIntroVideoBefore)
+    (H.modify $ State._presentIntroVideo .~ true)
   subscribeToBus' (H.action ∘ HandleError) bus.globalError
   pure next
 eval (Resort next) = do
@@ -251,14 +297,25 @@ eval (Download next) = do
 eval (SetVersion version next) = H.modify (State._version .~ Just version) $> next
 eval (DismissSignInSubmenu next) = dismissSignInSubmenu $> next
 eval (DismissMountGuide next) = dismissMountGuide $> next
+eval (DismissIntroVideo next) = dismissIntroVideo $> next
 eval (HandleError ge next) = do
   showDialog $ Dialog.Error $ GE.print ge
   pure next
+
 
 dismissMountGuide ∷ DSL Unit
 dismissMountGuide = do
   H.liftH $ H.liftH $ LocalStorage.setLocalStorage dismissedMountGuideKey true
   H.modify (State._presentMountGuide .~ false)
+
+dismissIntroVideo ∷ DSL Unit
+dismissIntroVideo = do
+  H.liftH $ H.liftH $ LocalStorage.setLocalStorage dismissedIntroVideoKey true
+  H.modify (State._presentIntroVideo .~ false)
+
+dismissedIntroVideoBefore ∷ DSL Boolean
+dismissedIntroVideoBefore =
+  H.liftH $ H.liftH $ either (const false) id <$> LocalStorage.getLocalStorage dismissedIntroVideoKey
 
 uploadFileSelected ∷ Cf.File → DSL Unit
 uploadFileSelected f = do
@@ -354,6 +411,9 @@ presentMountGuide xs path = do
 
 dismissedMountGuideKey ∷ String
 dismissedMountGuideKey = "dismissed-mount-guide"
+
+dismissedIntroVideoKey ∷ String
+dismissedIntroVideoKey = "dismissed-intro-video"
 
 itemPeek ∷ ∀ a. Item.Query a → DSL Unit
 itemPeek (Item.Open res _) = do

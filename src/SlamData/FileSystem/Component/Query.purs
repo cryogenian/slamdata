@@ -42,5 +42,6 @@ data Query a
   | SetVersion String a
   | DismissSignInSubmenu a
   | DismissMountGuide a
+  | DismissIntroVideo a
   | Init a
   | HandleError GlobalError a

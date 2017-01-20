@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Halogen.CustomProps (InputProp, nonSubmit) where
+module Halogen.CustomProps where
 
 import SlamData.Prelude
 
@@ -32,3 +32,15 @@ nonSubmit = unsafeCoerce unrefined
   where
   unrefined ∷ H.Prop i
   unrefined = H.handler (H.eventName "submit") (\_ → preventDefault $> Nothing)
+
+autoplay :: forall r i. Boolean -> IProp (autoplay ∷ I | r) i
+autoplay = unsafeCoerce unrefined
+  where
+  unrefined ∷ Boolean → H.Prop i
+  unrefined = H.prop (H.propName "autoplay") (Just $ H.attrName "autoplay")
+
+videoType :: forall r i. String -> IProp r i
+videoType = unsafeCoerce unrefined
+  where
+  unrefined ∷ String → H.Prop i
+  unrefined = H.prop (H.propName "type") (Just $ H.attrName "type")

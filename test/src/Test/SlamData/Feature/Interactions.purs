@@ -50,7 +50,7 @@ mountTestDatabase = do
 
 skipGuide ∷ SlamFeature Unit
 skipGuide =
-  Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Skip"
+  Feature.click $ XPath.anywhere $ XPath.anyWithText "Skip"
 
 dismissHint ∷ SlamFeature Unit
 dismissHint =

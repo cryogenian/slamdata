@@ -34,6 +34,7 @@ type State =
   , version :: Maybe String
   , isMount :: Boolean
   , showHiddenFiles :: Boolean
+  , presentIntroVideo :: Boolean
   }
 
 _version :: Lens' State (Maybe String)
@@ -57,6 +58,9 @@ _isMount = lens _.isMount _{isMount = _}
 _showHiddenFiles :: Lens' State Boolean
 _showHiddenFiles = lens _.showHiddenFiles _{showHiddenFiles = _}
 
+_presentIntroVideo :: Lens' State Boolean
+_presentIntroVideo = lens _.presentIntroVideo _{presentIntroVideo = _}
+
 initialState :: State
 initialState =
   { path: rootDir
@@ -66,4 +70,5 @@ initialState =
   , version: Nothing
   , isMount: false
   , showHiddenFiles: false
+  , presentIntroVideo: false
   }

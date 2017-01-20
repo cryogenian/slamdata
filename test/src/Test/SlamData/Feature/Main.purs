@@ -75,6 +75,7 @@ tests = do
     Log.successMsg "Ok, launched SlamData"
 
   setupScenario (pure unit) "Mount test database" [] do
+    Interact.skipGuide
     Interact.mountTestDatabase
     Log.successMsg "Ok, mounted test database"
 

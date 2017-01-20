@@ -1,12 +1,11 @@
 module Test.SlamData.Feature.Expectations where
 
 import SlamData.Prelude
-
 import Data.Map as Map
-import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectNotPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectPresentedNotRepeatedly)
-import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
 import XPath as XPath
+import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectNotPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectPresentedNotRepeatedly)
+import Test.SlamData.Feature.Monad (SlamFeature)
 
 cardsInTableColumnInLastCardToEq
   ∷ Int → String → String → SlamFeature Unit
@@ -100,6 +99,9 @@ resourceOpenedInLastOpenCard ∷ String → SlamFeature Unit
 resourceOpenedInLastOpenCard fileName =
   expectPresented (XPath.last $ XPath.anywhere $ XPaths.resourceOpened fileName)
 
+skipNotPresented ∷ SlamFeature Unit
+skipNotPresented =
+  expectNotPresented $ XPath.anywhere $ XPath.anyWithText "Skip"
 
 file ∷ String → SlamFeature Unit
 file =
