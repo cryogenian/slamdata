@@ -199,8 +199,9 @@ eval (SetSelected set next) = do
     selected = case st.formInputType of
       Checkbox → set
       _ → Set.fromFoldable $ List.head $ List.fromFoldable set
-  H.modify _{ selected = selected }
---  when (selected ≠ st.selected) $ void $ sendAfter (Milliseconds 200.0) $ H.action Updated
+  when (selected ≠ st.selected) do
+    H.modify _{ selected = selected }
+    void $ sendAfter (Milliseconds 200.0) $ H.action Updated
   pure next
 eval (Load m next) = do
   H.modify _

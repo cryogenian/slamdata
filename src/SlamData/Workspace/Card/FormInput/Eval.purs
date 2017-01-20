@@ -114,7 +114,7 @@ evalLabeled m p r = do
 
     selected
       -- Reloading
-      | lastUsedResource ≡ Nothing ∧ (not Set.isEmpty m.selected) =
+      | lastUsedResource ≡ Nothing ∧ (not $ Set.isEmpty m.selected) =
           m.selected
       -- same resource: take selected from model
       | lastUsedResource ≡ Just r =
@@ -148,8 +148,8 @@ evalLabeled m p r = do
       <> (escapeCursor p.cursor)
       <> " IN "
       <> selection
-  when (lastUsedResource ≠ Just r)
-    $ put $ Just $ CEM.AutoSelect {lastUsedResource: r, autoSelect: selected}
+
+  put $ Just $ CEM.AutoSelect {lastUsedResource: r, autoSelect: selected}
 
   eval sql p.name (Port.QueryExpr prettySelection) r
 
@@ -170,10 +170,7 @@ evalTextLike
 evalTextLike m p r = do
   cardState ← get
   let
-    lastUsedResource = cardState >>= preview CES._LastUsedResource
-
     selection
-      | lastUsedResource ≠ Just r = ""
       | p.formInputType ≡ FIT.Text = show m.value
       | otherwise = m.value
 
@@ -185,9 +182,5 @@ evalTextLike m p r = do
       <> (escapeCursor p.cursor)
       <> " = "
       <> selection
-  when (lastUsedResource ≠ Just r)
-    $ put
-    $ Just
-    $ CEM.AutoSelect {lastUsedResource: r, autoSelect: (Set.empty ∷ Set.Set Sem.Semantics)}
 
   eval sql p.name (Port.QueryExpr selection) r

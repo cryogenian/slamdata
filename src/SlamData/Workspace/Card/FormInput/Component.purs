@@ -154,9 +154,8 @@ eval = case _ of
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
-    for_ (evalState ^? _AutoSelect) \autoSelect → do
-      H.query' CS.cpLabeled unit $ H.action $ Labeled.SetSelected autoSelect
-      H.query' CS.cpTextLike unit $ H.action $ TextLike.Clear
+    for_ (evalState ^? _AutoSelect)
+      $ H.query' CS.cpLabeled unit ∘ H.action ∘ Labeled.SetSelected
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _{levelOfDetails = if dims.width < 240.0 then Low else High}

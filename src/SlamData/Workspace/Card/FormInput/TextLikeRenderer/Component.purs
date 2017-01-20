@@ -52,7 +52,6 @@ initialState =
 data Query a
   = Setup SetupTextLikeFormInputPort a
   | ValueChanged String a
-  | Clear a
   | Save (M.Model → a)
   | Load M.Model a
   | Updated a
@@ -77,9 +76,6 @@ render state =
       ]
 
 eval ∷ Query ~> DSL
-eval (Clear next) = do
-  H.modify _{value = ""}
-  pure next
 eval (ValueChanged s next) = do
   H.modify _{ value = s }
   raise $ H.action Updated
