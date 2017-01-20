@@ -112,9 +112,14 @@ evalLabeled m p r = do
   let
     lastUsedResource = cardState >>= preview CES._LastUsedResource
 
+    availableValues =
+      Set.fromFoldable $ Map.keys p.valueLabelMap
+
     selected
       -- Reloading
-      | lastUsedResource ≡ Nothing ∧ (not $ Set.isEmpty m.selected) =
+      | lastUsedResource ≡ Nothing
+        ∧ (not $ Set.isEmpty m.selected)
+        ∧ (not $ Set.isEmpty $ Set.intersection availableValues m.selected)  =
           m.selected
       -- same resource: take selected from model
       | lastUsedResource ≡ Just r =
@@ -124,7 +129,7 @@ evalLabeled m p r = do
           Set.empty
       -- default selection is empty, new resource this is not checkbox: take first value
       | Set.isEmpty p.selectedValues =
-          foldMap Set.singleton $ List.head $ Map.keys p.valueLabelMap
+          Set.fromFoldable $ List.head $ Map.keys p.valueLabelMap
       -- new resource, not checkbox: take default selection
       | otherwise =
           p.selectedValues
