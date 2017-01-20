@@ -19,6 +19,7 @@ module SlamData.Workspace.Card.FormInput.Component (formInputComponent) where
 import SlamData.Prelude
 
 import Data.Int (floor)
+import Data.Lens ((^?))
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -31,6 +32,7 @@ import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State (_AutoSelect)
 import SlamData.Workspace.Card.FormInput.Component.ChildSlot as CS
 import SlamData.Workspace.Card.FormInput.Component.State as ST
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Component as Labeled
@@ -151,7 +153,10 @@ eval = case _ of
         pure next
   CC.ReceiveOutput _ _ next →
     pure next
-  CC.ReceiveState _ next →
+  CC.ReceiveState evalState next → do
+    for_ (evalState ^? _AutoSelect) \autoSelect → do
+      H.query' CS.cpLabeled unit $ H.action $ Labeled.SetSelected autoSelect
+      H.query' CS.cpTextLike unit $ H.action $ TextLike.Clear
     pure next
   CC.ReceiveDimensions dims next → do
     H.modify _{levelOfDetails = if dims.width < 240.0 then Low else High}
