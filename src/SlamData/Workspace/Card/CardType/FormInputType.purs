@@ -160,9 +160,9 @@ formInputDarkIconSrc = case _ of
 -- If there is more records in JArray don't even try to display it in ShowFormInput
 maximumCountOfEntries ∷ FormInputType → Int
 maximumCountOfEntries = case _ of
-  Dropdown → 100
-  Radio → 100
-  Checkbox → 100
+  Dropdown → 1000
+  Radio → 1000
+  Checkbox → 1000
   _ → top
 
 maximumCountOfSelectedValues ∷ FormInputType → Int
