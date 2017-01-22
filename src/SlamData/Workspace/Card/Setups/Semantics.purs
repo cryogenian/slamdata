@@ -250,7 +250,7 @@ printSemantics (Category s) = s
 printSemantics (Bool b) = show b
 printSemantics (Time t) = printTime t
 printSemantics (Date d) = printDate d
-printSemantics (DateTime (Ddt.DateTime d t)) = printDate d ⊕ " " ⊕ printTime t
+printSemantics (DateTime (Ddt.DateTime d t)) = printDate d ⊕ "T" ⊕ printTime t
 
 semanticsToSQLStrings ∷ Semantics → Array String
 semanticsToSQLStrings (Value v) = [ show v ]
