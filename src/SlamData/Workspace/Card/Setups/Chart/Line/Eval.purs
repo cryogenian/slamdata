@@ -96,8 +96,9 @@ buildLineData r records = series
             getValuesFromJson $ pure r.value
           rightValues =
             getValuesFromJson r.secondValue
-          sizes =
-            getValuesFromJson r.size
+          sizes
+            | r.optionalMarkers = [ ]
+            | otherwise = getValuesFromJson r.size
 
           alterSeriesFn
             ∷ Maybe (String >> (Array Number × Array Number × Array Number))
@@ -136,19 +137,23 @@ buildLineData r records = series
   mkLeftItem (ls × _ × ss) =
     let
       value = Ag.runAggregation r.valueAggregation ls
-      symbolSize = maybe zero (\ag → Int.floor $ Ag.runAggregation ag ss) r.sizeAggregation
+      symbolSize
+        | r.optionalMarkers = Int.floor r.minSize
+        | otherwise = maybe zero (\ag → Int.floor $ Ag.runAggregation ag ss) r.sizeAggregation
     in {value, symbolSize}
 
   mkRightItem
     ∷ Array Number × Array Number × Array Number
     → {value ∷ Number, symbolSize ∷ Int}
   mkRightItem (_ × rs × ss) =
-    case r.secondValueAggregation  of
+    case r.secondValueAggregation of
       Nothing → {symbolSize: zero, value: zero}
       Just valAgg →
         let
           value = Ag.runAggregation valAgg rs
-          symbolSize = maybe zero (\ag → Int.floor $ Ag.runAggregation ag ss) r.sizeAggregation
+          symbolSize
+            | r.optionalMarkers = Int.floor r.minSize
+            | otherwise = maybe zero (\ag → Int.floor $ Ag.runAggregation ag ss) r.sizeAggregation
         in {value, symbolSize}
 
 
@@ -157,39 +162,41 @@ buildLineData r records = series
     . (Functor f, Foldable f)
     ⇒ f {value ∷ Number, symbolSize ∷ Int}
     → f {value ∷ Number, symbolSize ∷ Int}
-  adjustSymbolSizes items =
-    let
-      minValue ∷ Number
-      minValue =
-        Int.toNumber
-          $ fromMaybe bottom
-          $ map _.symbolSize
-          $ F.minimumBy (\a b → compare a.symbolSize b.symbolSize) items
+  adjustSymbolSizes items
+    | r.optionalMarkers = items
+    | otherwise =
+      let
+        minValue ∷ Number
+        minValue =
+          Int.toNumber
+            $ fromMaybe bottom
+            $ map _.symbolSize
+            $ F.minimumBy (\a b → compare a.symbolSize b.symbolSize) items
 
-      maxValue ∷ Number
-      maxValue =
-        Int.toNumber
-          $ fromMaybe top
-          $ map _.symbolSize
-          $ F.maximumBy (\a b → compare a.symbolSize b.symbolSize) items
+        maxValue ∷ Number
+        maxValue =
+          Int.toNumber
+            $ fromMaybe top
+            $ map _.symbolSize
+            $ F.maximumBy (\a b → compare a.symbolSize b.symbolSize) items
 
-      distance ∷ Number
-      distance =
-        maxValue - minValue
+        distance ∷ Number
+        distance =
+          maxValue - minValue
 
-      sizeDistance ∷ Number
-      sizeDistance =
-        r.maxSize - r.minSize
+        sizeDistance ∷ Number
+        sizeDistance =
+          r.maxSize - r.minSize
 
-      relativeSize ∷ Int → Int
-      relativeSize val
-        | distance ≡ 0.0 = val
-        | otherwise =
-          Int.floor
-          $ r.maxSize
-          - sizeDistance / distance * (maxValue - Int.toNumber val)
-    in
-      map (\x → x{symbolSize = relativeSize x.symbolSize}) items
+        relativeSize ∷ Int → Int
+        relativeSize val
+          | distance ≡ 0.0 = val
+          | otherwise =
+            Int.floor
+            $ r.maxSize
+            - sizeDistance / distance * (maxValue - Int.toNumber val)
+      in
+        map (\x → x{symbolSize = relativeSize x.symbolSize}) items
 
 
 buildLine ∷ Axes → LineR → JArray → DSL OptionI

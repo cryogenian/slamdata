@@ -90,6 +90,8 @@ renderHighLOD state =
     , renderSeries state
     , renderSize state
     , HH.hr_
+    , renderOptionalMarkers state
+    , HH.hr_
     , row [ renderMinSize state, renderMaxSize state ]
     , HH.hr_
     , row [ renderAxisLabelAngle state ]
@@ -196,13 +198,33 @@ renderAxisLabelAngle state =
         ]
     ]
 
+renderOptionalMarkers ∷ ST.State → HTML
+renderOptionalMarkers state =
+  HH.form
+    [ HP.classes [ HH.className "chart-optional-markers" ]
+    , Cp.nonSubmit
+    ]
+    [ HH.label
+        [ HP.classes [ B.controlLabel ] ]
+        [ HH.text "Enable data point markers (disables Measure #3)" ]
+    , HH.input
+        [ HP.inputType HP.InputCheckbox
+        , HP.checked state.optionalMarkers
+        , ARIA.label "Enable data point markers"
+        , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleOptionalMarkers
+        ]
+    ]
+
+
 renderMinSize ∷ ST.State → HTML
 renderMinSize state =
   HH.form
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Min size" ]
+    [ HH.label
+        [ HP.classes [ B.controlLabel ] ]
+        [ HH.text if state.optionalMarkers then "Size" else "Min size" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.minSize
@@ -222,7 +244,8 @@ renderMaxSize state =
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.maxSize
         , ARIA.label "Max size"
-        , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMaxSymbolSize s)
+        , HP.disabled state.optionalMarkers
+        , HE.onValueChange$ HE.input (\s → right ∘ Q.SetMaxSymbolSize s)
         ]
     ]
 
@@ -275,31 +298,61 @@ lineBuilderEval = case _ of
   Q.SetAxisLabelAngle str next → do
     let fl = readFloat str
     unless (isNaN fl) do
-      H.modify _{axisLabelAngle = fl}
+      H.modify _{ axisLabelAngle = fl }
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.SetMinSymbolSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
-      H.modify _{minSize = fl}
+      H.modify \st →
+        st{ minSize = fl
+          , maxSize = if st.maxSize > fl then st.maxSize else fl
+          }
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.SetMaxSymbolSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
-      H.modify _{maxSize = fl}
+      H.modify \st →
+        st{ maxSize = fl
+           , minSize = if st.minSize < fl then st.minSize else fl
+           }
       CC.raiseUpdatedP' CC.EvalModelUpdate
+    pure next
+  Q.ToggleOptionalMarkers next → do
+    H.modify \st → st{ optionalMarkers = not st.optionalMarkers }
+    CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.Select sel next → do
     case sel of
-      Q.Dimension a      → updatePicker ST._dimension Q.Dimension a
-      Q.Value a          → updatePicker ST._value Q.Value a
-      Q.ValueAgg a       → updateSelect ST._valueAgg a
-      Q.SecondValue a    → updatePicker ST._secondValue Q.SecondValue a
-      Q.SecondValueAgg a → updateSelect ST._secondValueAgg a
-      Q.Size a           → updatePicker ST._size Q.Size a
-      Q.SizeAgg a        → updateSelect ST._sizeAgg a
-      Q.Series a         → updatePicker ST._series Q.Series a
+      Q.Dimension a →
+        updatePicker ST._dimension Q.Dimension a
+      Q.Value a →
+        updatePicker ST._value Q.Value a
+      Q.ValueAgg a →
+        updateSelect ST._valueAgg a
+      Q.SecondValue a →
+        updatePicker ST._secondValue Q.SecondValue a
+      Q.SecondValueAgg a →
+        updateSelect ST._secondValueAgg a
+      Q.Size a → case a of
+        BCI.Open opts → do
+          H.modify $ ST.showPicker Q.Size opts
+        BCI.Choose v → do
+          H.modify
+            $ (ST._size ∘ _value .~ v)
+            ∘ _{ optionalMarkers = false }
+          raiseUpdate
+      Q.SizeAgg a → case a of
+        BCI.Open _ →
+          pure unit
+        BCI.Choose v → do
+          H.modify
+            $ (ST._sizeAgg ∘ _value .~ v)
+            ∘ _{ optionalMarkers = false }
+          raiseUpdate
+      Q.Series a →
+        updatePicker ST._series Q.Series a
     pure next
   where
   updatePicker l q = case _ of
@@ -321,11 +374,21 @@ peek = coproduct peekPicker (const (pure unit))
       let
         value' = flattenJCursors value
       for_ st.picker \{ select } → case select of
-        Q.Dimension _   → H.modify (ST._dimension ∘ _value ?~ value')
-        Q.Value _       → H.modify (ST._value ∘ _value ?~ value')
-        Q.SecondValue _ → H.modify (ST._secondValue ∘ _value ?~ value')
-        Q.Size _        → H.modify (ST._size ∘ _value ?~ value')
-        Q.Series _      → H.modify (ST._series ∘ _value ?~ value')
+        Q.Dimension _ →
+          H.modify (ST._dimension ∘ _value ?~ value')
+        Q.Value _ →
+          H.modify (ST._value ∘ _value ?~ value')
+        Q.SecondValue _ →
+          H.modify (ST._secondValue ∘ _value ?~ value')
+        Q.Size _ → do
+          H.modify
+            $ (ST._size ∘ _value ?~ value')
+            ∘ _{ optionalMarkers = false }
+        Q.Series _ → do
+          H.modify
+            $ (ST._series ∘ _value ?~ value')
+            ∘ _{ optionalMarkers = false }
+
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate

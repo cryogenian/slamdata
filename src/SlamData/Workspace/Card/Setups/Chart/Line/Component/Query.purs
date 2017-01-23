@@ -41,6 +41,7 @@ data Query a
   = SetAxisLabelAngle String a
   | SetMaxSymbolSize String a
   | SetMinSymbolSize String a
+  | ToggleOptionalMarkers a
   | Select (Selection SelectAction) a
 
 type QueryC = CardEvalQuery ⨁ Query
