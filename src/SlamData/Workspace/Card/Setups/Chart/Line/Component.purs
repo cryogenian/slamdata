@@ -90,6 +90,8 @@ renderHighLOD state =
     , renderSeries state
     , renderSize state
     , HH.hr_
+    , renderOptionalMarkers state
+    , HH.hr_
     , row [ renderMinSize state, renderMaxSize state ]
     , HH.hr_
     , row [ renderAxisLabelAngle state ]
@@ -196,13 +198,33 @@ renderAxisLabelAngle state =
         ]
     ]
 
+renderOptionalMarkers ∷ ST.State → HTML
+renderOptionalMarkers state =
+  HH.form
+    [ HP.classes [ CSS.axisLabelParam ]
+    , Cp.nonSubmit
+    ]
+    [ HH.label
+        [ HP.classes [ B.controlLabel ] ]
+        [ HH.text "Enable data point markers (will disable Measure #3)" ]
+    , HH.input
+        [ HP.inputType HP.InputCheckbox
+        , HP.checked state.optionalMarkers
+        , ARIA.label "Enable data point markers"
+        , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleOptionalMarkers
+        ]
+    ]
+
+
 renderMinSize ∷ ST.State → HTML
 renderMinSize state =
   HH.form
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     , Cp.nonSubmit
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Min size" ]
+    [ HH.label
+        [ HP.classes [ B.controlLabel ] ]
+        [ HH.text if state.optionalMarkers then "Size" else "Min size" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.minSize
@@ -214,7 +236,9 @@ renderMinSize state =
 renderMaxSize ∷ ST.State → HTML
 renderMaxSize state =
   HH.form
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    [ HP.classes
+        $ [ B.colXs6, CSS.axisLabelParam ]
+        ⊕ (B.hidden <$ (guard $ not state.optionalMarkers))
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max size" ]
@@ -222,6 +246,7 @@ renderMaxSize state =
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.maxSize
         , ARIA.label "Max size"
+        , HP.disabled state.optionalMarkers
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMaxSymbolSize s)
         ]
     ]
@@ -290,16 +315,29 @@ lineBuilderEval = case _ of
       H.modify _{maxSize = fl}
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
+  Q.ToggleOptionalMarkers next → do
+    H.modify \st → st { optionalMarkers = not st.optionalMarkers }
+    pure next
   Q.Select sel next → do
     case sel of
-      Q.Dimension a      → updatePicker ST._dimension Q.Dimension a
-      Q.Value a          → updatePicker ST._value Q.Value a
-      Q.ValueAgg a       → updateSelect ST._valueAgg a
-      Q.SecondValue a    → updatePicker ST._secondValue Q.SecondValue a
-      Q.SecondValueAgg a → updateSelect ST._secondValueAgg a
-      Q.Size a           → updatePicker ST._size Q.Size a
-      Q.SizeAgg a        → updateSelect ST._sizeAgg a
-      Q.Series a         → updatePicker ST._series Q.Series a
+      Q.Dimension a →
+        updatePicker ST._dimension Q.Dimension a
+      Q.Value a →
+        updatePicker ST._value Q.Value a
+      Q.ValueAgg a →
+        updateSelect ST._valueAgg a
+      Q.SecondValue a →
+        updatePicker ST._secondValue Q.SecondValue a
+      Q.SecondValueAgg a →
+        updateSelect ST._secondValueAgg a
+      Q.Size a → do
+        H.modify _{ optionalMarkers = false }
+        updatePicker ST._size Q.Size a
+      Q.SizeAgg a → do
+        H.modify _{ optionalMarkers = false }
+        updateSelect ST._sizeAgg a
+      Q.Series a →
+        updatePicker ST._series Q.Series a
     pure next
   where
   updatePicker l q = case _ of

@@ -175,6 +175,8 @@ decode cturs js = do
         20.0
       axisLabelAngle =
         Int.toNumber bo.axisLabelAngle
+      optionalMarkers =
+        false
 
       lineR =
         { dimension: _
@@ -188,6 +190,7 @@ decode cturs js = do
         , maxSize
         , axisLabelAngle
         , series
+        , optionalMarkers
         }
         <$> dimension
         <*> value

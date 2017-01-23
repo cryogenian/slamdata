@@ -59,6 +59,7 @@ initialState =
   , sizeAgg: M.initialState.sizeAgg
   , series: M.initialState.series
   , picker: DS.initial.picker
+  , optionalMarkers: M.initialState.optionalMarkers
   }
 
 type StateP =

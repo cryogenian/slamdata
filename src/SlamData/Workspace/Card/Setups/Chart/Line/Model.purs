@@ -46,6 +46,7 @@ type LineR =
   , maxSize ∷ Number
   , minSize ∷ Number
   , axisLabelAngle ∷ Number
+  , optionalMarkers ∷ Boolean
   }
 
 type Model = Maybe LineR
@@ -67,6 +68,7 @@ eqLineR r1 r2 =
   ∧ r1.maxSize ≡ r2.maxSize
   ∧ r1.minSize ≡ r2.minSize
   ∧ r1.axisLabelAngle ≡ r2.axisLabelAngle
+  ∧ r1.optionalMarkers ≡ r2.optionalMarkers
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
@@ -90,6 +92,7 @@ genModel = do
     maxSize ← arbitrary
     minSize ← arbitrary
     axisLabelAngle ← arbitrary
+    optionalMarkers ← arbitrary
     pure { dimension
          , value
          , valueAggregation
@@ -101,6 +104,7 @@ genModel = do
          , maxSize
          , minSize
          , axisLabelAngle
+         , optionalMarkers
          }
 
 encode ∷ Model → Json
@@ -118,6 +122,7 @@ encode (Just r) =
   ~> "maxSize" := r.maxSize
   ~> "minSize" := r.minSize
   ~> "axisLabelAngle" := r.axisLabelAngle
+  ~> "optionalMarkers" := r.optionalMarkers
   ~> jsonEmptyObject
 
 decode ∷ Json → String ⊹ Model
@@ -139,6 +144,8 @@ decode js
     maxSize ← obj .? "maxSize"
     minSize ← obj .? "minSize"
     axisLabelAngle ← obj .? "axisLabelAngle"
+    optionalMarkers ←
+      (obj .? "optionalMarkers") <|> (pure false)
     pure { dimension
          , value
          , valueAggregation
@@ -150,6 +157,7 @@ decode js
          , maxSize
          , minSize
          , axisLabelAngle
+         , optionalMarkers
          }
 
 
@@ -166,6 +174,7 @@ type ReducedState r =
   , size ∷ S.Select JCursor
   , sizeAgg ∷ S.Select Aggregation
   , series ∷ S.Select JCursor
+  , optionalMarkers ∷ Boolean
   | r }
 
 initialState ∷ ReducedState ()
@@ -182,6 +191,7 @@ initialState =
   , size: S.emptySelect
   , sizeAgg: S.emptySelect
   , series: S.emptySelect
+  , optionalMarkers: false
   }
 
 
@@ -260,6 +270,7 @@ behaviour =
   load (Just m) st =
     st{ maxSize = m.maxSize
       , minSize = m.minSize
+      , optionalMarkers = m.optionalMarkers
       , axisLabelAngle = m.axisLabelAngle
       , value = S.fromSelected $ Just m.value
       , valueAgg = S.fromSelected $ Just m.valueAggregation
@@ -283,6 +294,7 @@ behaviour =
     , maxSize: st.maxSize
     , minSize: st.minSize
     , axisLabelAngle: st.axisLabelAngle
+    , optionalMarkers: st.optionalMarkers
     }
     <$> (st.dimension ^. S._value)
     <*> (st.value ^. S._value)
