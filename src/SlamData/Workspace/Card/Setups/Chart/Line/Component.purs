@@ -302,26 +302,25 @@ lineBuilderEval = case _ of
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.SetMinSymbolSize str next → do
-    st ← H.get
     let fl = readFloat str
     unless (isNaN fl) do
-      H.modify _{ minSize = fl
-                , maxSize = if st.maxSize > fl then st.maxSize else fl
-                }
+      H.modify \st →
+        st{ minSize = fl
+          , maxSize = if st.maxSize > fl then st.maxSize else fl
+          }
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.SetMaxSymbolSize str next → do
-    st ← H.get
     let fl = readFloat str
     unless (isNaN fl) do
-      H.modify _{ maxSize = fl
-                , minSize = if st.minSize < fl then st.minSize else fl
-                }
+      H.modify \st →
+        st{ maxSize = fl
+           , minSize = if st.minSize < fl then st.minSize else fl
+           }
       CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.ToggleOptionalMarkers next → do
-    st ← H.get
-    H.modify _{ optionalMarkers = not st.optionalMarkers }
+    H.modify \st → st{ optionalMarkers = not st.optionalMarkers }
     CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Q.Select sel next → do
