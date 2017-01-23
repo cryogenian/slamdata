@@ -83,7 +83,7 @@ render state =
     ⊕ [ HH.slot' cpI unit \_ →
         { component:
             ActionList.comp
-              (ActionList.FilterInputDescription "Filter next actions")
+--              (ActionList.FilterInputDescription "Filter next actions")
         , initialState:
             ActionList.initialState
               (NA.fromPort state.input)
