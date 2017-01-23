@@ -181,7 +181,7 @@ initialState ∷ ReducedState ()
 initialState =
   { axes: Ax.initialAxes
   , axisLabelAngle: zero
-  , minSize: 2.0
+  , minSize: 10.0
   , maxSize: 20.0
   , dimension: S.emptySelect
   , value: S.emptySelect
