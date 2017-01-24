@@ -77,6 +77,3 @@ eval = case _ of
     pure next
   Get cont → do
     H.gets $ cont ∘ _.filter
- pure next
-  Get cont → do
-    H.gets $ cont ∘ _.filter

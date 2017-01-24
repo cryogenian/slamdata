@@ -47,5 +47,3 @@ cpActionFilter
       ALF.Query ChildQuery
       Unit ChildSlot
 cpActionFilter = cpR
-ChildSlot
-cpActionFilter = cpR
