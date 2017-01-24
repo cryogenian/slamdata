@@ -16,26 +16,17 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Next.Component.State where
 
-import SlamData.Prelude
-
 import Data.Lens (Lens', lens)
 
 import Halogen as H
 
-import SlamData.ActionList.Component as ActionList
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Next.Component.Query (Query)
-import SlamData.Workspace.Card.Next.NextAction (NextAction)
+import SlamData.Workspace.Card.Next.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Port (Port)
 
 type StateP =
-  H.ParentState
-    State
-    (ActionList.State NextAction)
-    Query
-    (ActionList.Query NextAction)
-    Slam
-    Unit
+  H.ParentState State CS.ChildState Query CS.ChildQuery Slam CS.ChildSlot
 
 type State =
   { input ∷ Port

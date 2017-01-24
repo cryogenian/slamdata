@@ -19,10 +19,9 @@ module SlamData.Workspace.Card.Next.Component.Query where
 import SlamData.Prelude
 import Data.Lens (Traversal', wander)
 import Halogen as H
-import SlamData.ActionList.Component as ActionList
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port (Port)
-import SlamData.Workspace.Card.Next.NextAction (NextAction)
+import SlamData.Workspace.Card.Next.Component.ChildSlot as CS
 
 data Query a
   = AddCard CardType a
@@ -32,15 +31,13 @@ data Query a
   | UpdateInput Port a
 
 _AddCardType ∷ ∀ a. Traversal' (Query a) CardType
-_AddCardType =
-  wander \f s → case s of
+_AddCardType = wander \f s → case s of
     AddCard cty next → flip AddCard next <$> f cty
     _ → pure s
 
-_PresentReason ∷ ∀ a. Traversal' (Query a) (Tuple Port CardType)
-_PresentReason =
-  wander \f s → case s of
-    PresentReason io card next → (#) next ∘ uncurry PresentReason <$> f (Tuple io card)
+_PresentReason ∷ ∀ a. Traversal' (Query a) (Port × CardType)
+_PresentReason = wander \f s → case s of
+    PresentReason io card next → (#) next ∘ uncurry PresentReason <$> f (io × card)
     _ → pure s
 
-type QueryP = Query ⨁ H.ChildF Unit (ActionList.Query NextAction)
+type QueryP = Query ⨁ H.ChildF CS.ChildSlot CS.ChildQuery

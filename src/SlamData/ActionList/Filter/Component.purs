@@ -34,7 +34,7 @@ comp descr =
 
 render ∷ String → State → HTML
 render descr state =
-  HH.form_
+  HH.form [ HP.classes [ HH.className "sd-action-filter" ] ]
     [ HH.div_
         [ HH.div
             [ HP.classes [ HH.className "sd-action-filter-icon" ] ]

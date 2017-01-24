@@ -33,13 +33,14 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.ActionList.Component as ActionList
+import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as RCSS
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Component.CSS as CCSS
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML)
 import SlamData.Workspace.Deck.Component.CSS as CSS
-import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpDialog)
+import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpDialog, cpActionFilter)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..))
 import SlamData.Workspace.Deck.Component.State as DCS
@@ -166,12 +167,13 @@ backside =
             [ HP.class_ CCSS.deckCard ]
             [ HH.div
                 [ HP.class_ RCSS.deckBackSide ]
-                [ HH.slot' cpBackSide unit \_ →
-                    { component:
-                        ActionList.comp
---                          $ ActionList.FilterInputDescription "Filter deck and card actions"
-                    , initialState:
-                        ActionList.initialState []
+                [ HH.slot' cpActionFilter unit \_ →
+                    { component: ActionFilter.comp "Filter deck and card actions"
+                    , initialState: ActionFilter.initialState
+                    }
+                , HH.slot' cpBackSide unit \_ →
+                    { component: ActionList.comp
+                    , initialState: ActionList.initialState []
                     }
                 ]
             ]

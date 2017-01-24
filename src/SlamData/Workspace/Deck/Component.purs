@@ -42,12 +42,14 @@ import Data.Set as Set
 import DOM.HTML.HTMLElement (getBoundingClientRect)
 
 import Halogen as H
+import Halogen.Component.ChildPath (injSlot)
 import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.Component.Utils (liftH', raise', sendAfter', subscribeToBus')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.ActionList.Component as ActionList
+import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Config as Config
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
@@ -66,6 +68,7 @@ import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component as Next
+import SlamData.Workspace.Card.Next.Component.ChildSlot as NextCS
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Class (navigate, Routes(..))
 import SlamData.Workspace.Deck.BackSide as Back
@@ -268,6 +271,7 @@ peek opts (H.ChildF s q) =
    ⨁ (peekNextAction opts ⨁ (const $ pure unit))
    ⨁ (const $ pure unit)
    ⨁ (const $ pure unit)
+   ⨁ peekBackSideFilter
    $ q
 
 peekDialog ∷ ∀ a. DeckOptions → Dialog.Query a → DeckDSL Unit
@@ -355,6 +359,13 @@ peekBackSide opts action =
     _ →
       pure unit
 
+peekBackSideFilter ∷ ∀ a. ActionFilter.Query a → DeckDSL Unit
+peekBackSideFilter = case _ of
+  ActionFilter.Set str _ → do
+    queryBacksideActionList $ H.action $ ActionList.UpdateFilter str
+    pure unit
+  _ → pure unit
+
 peekCards ∷ ∀ a. CardId → CardQueryP a → DeckDSL Unit
 peekCards cardId = const (pure unit) ⨁ peekCardInner cardId
 
@@ -381,7 +392,8 @@ queryNextActionList ∷ ∀ a. ActionList.Query Next.NextAction a → DeckDSL (M
 queryNextActionList =
   H.query' cpNext unit
     ∘ right
-    ∘ H.ChildF unit
+    ∘ H.ChildF (injSlot NextCS.cpActionList unit)
+    ∘ left
 
 queryCardEval ∷ ∀ a. CardId → CQ.CardQuery a → DeckDSL (Maybe a)
 queryCardEval cid =

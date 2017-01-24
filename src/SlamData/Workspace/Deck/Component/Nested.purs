@@ -56,7 +56,9 @@ comp opts =
     }
 
   where
-  deckComponent' ∷ (DCQ.Query Unit → Eff SlamDataEffects Unit) → H.Component DCS.StateP DCQ.QueryP Slam
+  deckComponent'
+    ∷ (DCQ.Query Unit → Eff SlamDataEffects Unit)
+    → H.Component DCS.StateP DCQ.QueryP Slam
   deckComponent' emitter =
     opaque $ H.lifecycleParentComponent
       { render: DC.render opts comp

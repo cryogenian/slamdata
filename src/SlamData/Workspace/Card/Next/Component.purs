@@ -28,12 +28,12 @@ import CSS as CSS
 import Data.Lens ((.~))
 
 import Halogen as H
-import Halogen.Component.ChildPath (cpI)
 import Halogen.Component.Utils as HU
 import Halogen.HTML.CSS.Indexed as HCSS
 import Halogen.HTML.Indexed as HH
 
 import SlamData.ActionList.Component as ActionList
+import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Monad (Slam)
 import SlamData.Guide as Guide
 import SlamData.Workspace.Card.CardType as CT
@@ -41,27 +41,17 @@ import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Next.NextAction as NA
 import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(..), _AddCardType, _PresentReason)
 import SlamData.Workspace.Card.Next.Component.State (StateP, State, initialState)
+import SlamData.Workspace.Card.Next.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Next.Component.State as State
 import SlamData.Workspace.Card.Port as Port
 
 import Utils.LocalStorage as LocalStorage
 
-type NextHTML =
-  H.ParentHTML
-    (ActionList.State NA.NextAction)
-    Query
-    (ActionList.Query NA.NextAction)
-    Slam
-    Unit
+type HTML =
+  H.ParentHTML CS.ChildState Query CS.ChildQuery Slam CS.ChildSlot
 
-type NextDSL =
-  H.ParentDSL
-    State
-    (ActionList.State NA.NextAction)
-    Query
-    (ActionList.Query NA.NextAction)
-    Slam
-    Unit
+type DSL =
+  H.ParentDSL State CS.ChildState Query CS.ChildQuery Slam CS.ChildSlot
 
 nextCardComponent ∷ H.Component StateP QueryP Slam
 nextCardComponent = H.parentComponent
@@ -70,7 +60,7 @@ nextCardComponent = H.parentComponent
   , peek: Just (peek ∘ H.runChildF)
   }
 
-render ∷ State → NextHTML
+render ∷ State → HTML
 render state =
   HH.div
     [ HCSS.style $ CSS.width (CSS.pct 100.0) *> CSS.height (CSS.pct 100.0) ]
@@ -80,13 +70,13 @@ render state =
           (HH.className "sd-add-card-guide")
           (DismissAddCardGuide)
           (addCardGuideText state.input))
-    ⊕ [ HH.slot' cpI unit \_ →
-        { component:
-            ActionList.comp
---              (ActionList.FilterInputDescription "Filter next actions")
-        , initialState:
-            ActionList.initialState
-              (NA.fromPort state.input)
+    ⊕ [ HH.slot' CS.cpActionFilter unit \_ →
+           { component: ActionFilter.comp "Filter next actions"
+           , initialState: ActionFilter.initialState
+           }
+      , HH.slot' CS.cpActionList unit \_ →
+        { component: ActionList.comp
+        , initialState: ActionList.initialState $ NA.fromPort state.input
         }
       ]
   where
@@ -94,10 +84,10 @@ render state =
     Port.Initial → "To get this deck started press one of these buttons to add a card."
     _            → "To do more with this deck press one of these buttons to add a card."
 
-updateActions ∷ Port.Port → NextDSL Unit
+updateActions ∷ Port.Port → DSL Unit
 updateActions =
   void
-    ∘ H.query' cpI unit
+    ∘ H.query' CS.cpActionList unit
     ∘ H.action
     ∘ ActionList.UpdateActions
     ∘ NA.fromPort
@@ -113,21 +103,21 @@ possibleToGetTo input =
 dismissedAddCardGuideKey ∷ String
 dismissedAddCardGuideKey = "dismissedAddCardGuide"
 
-getDismissedAddCardGuideBefore ∷ NextDSL Boolean
+getDismissedAddCardGuideBefore ∷ DSL Boolean
 getDismissedAddCardGuideBefore =
   H.liftH $ H.liftH $ either (const $ false) id <$>
     LocalStorage.getLocalStorage dismissedAddCardGuideKey
 
-storeDismissedAddCardGuide ∷ NextDSL Unit
+storeDismissedAddCardGuide ∷ DSL Unit
 storeDismissedAddCardGuide =
   H.liftH $ H.liftH $ LocalStorage.setLocalStorage dismissedAddCardGuideKey true
 
-dismissAddCardGuide ∷ NextDSL Unit
+dismissAddCardGuide ∷ DSL Unit
 dismissAddCardGuide =
   H.modify (State._presentAddCardGuide .~ false)
     *> storeDismissedAddCardGuide
 
-eval ∷ Query ~> NextDSL
+eval ∷ Query ~> DSL
 eval = case _ of
   UpdateInput input next → updateActions input $> next
   AddCard _ next → dismissAddCardGuide $> next
@@ -139,8 +129,11 @@ eval = case _ of
        ∘ not =<< getDismissedAddCardGuideBefore)
        $> next
 
-peek ∷ ∀ a. ActionList.Query NA.NextAction a → NextDSL Unit
-peek = case _ of
+peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
+peek = actionListPeek ⨁ actionFilterPeek
+
+actionListPeek ∷ ∀ a. ActionList.Query NA.NextAction a → DSL Unit
+actionListPeek = case _ of
   ActionList.Selected action _ →
     case action of
       ActionList.GoBackInternal →
@@ -154,4 +147,13 @@ peek = case _ of
           NA.FindOutHowToInsert cardType → do
             input ← H.gets _.input
             HU.raise' $ H.action $ PresentReason input cardType
+  _ → pure unit
+
+actionFilterPeek ∷ ∀ a. ActionFilter.Query a → DSL Unit
+actionFilterPeek = case _ of
+  ActionFilter.Set str _ → do
+    H.query' CS.cpActionList unit
+      $ H.action
+      $ ActionList.UpdateFilter str
+    pure unit
   _ → pure unit

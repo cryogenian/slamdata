@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
 import SlamData.ActionList.Component as ActionList
+import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Workspace.Card.Component.Query (CardQueryP)
 import SlamData.Workspace.Card.Component.State (CardStateP)
 import SlamData.Workspace.Card.CardId (CardId)
@@ -39,6 +40,7 @@ type ChildSlot
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
+  ⊹ Unit
 
 type ChildQuery
   = CardQueryP
@@ -47,6 +49,7 @@ type ChildQuery
   ⨁ Next.QueryP
   ⨁ Error.Query
   ⨁ Pending.Query
+  ⨁ ActionFilter.Query
 
 type ChildState
   = CardStateP
@@ -55,6 +58,7 @@ type ChildState
   ⊹ Next.StateP
   ⊹ Error.State
   ⊹ Pending.State
+  ⊹ ActionFilter.State
 
 cpCard
   ∷ ChildPath
@@ -96,4 +100,11 @@ cpPending
       Pending.State ChildState
       Pending.Query ChildQuery
       Unit ChildSlot
-cpPending = cpR :> cpR :> cpR :> cpR :> cpR
+cpPending = cpR :> cpR :> cpR :> cpR :> cpR :> cpL
+
+cpActionFilter
+  ∷ ChildPath
+      ActionFilter.State ChildState
+      ActionFilter.Query ChildQuery
+      Unit ChildSlot
+cpActionFilter = cpR :> cpR :> cpR :> cpR :> cpR :> cpR
