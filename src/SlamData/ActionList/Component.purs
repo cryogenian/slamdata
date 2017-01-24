@@ -15,8 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.ActionList.Component
-  ( FilterInputDescription(..)
-  , comp
+  ( comp
   , initialState
   , module SlamData.ActionList.Action
   , module SlamData.ActionList.Component.ActionInternal
@@ -32,7 +31,6 @@ import Data.Array ((..))
 import Data.Array as Array
 import Data.Foldable as Foldable
 import Data.Int as Int
-import Data.Lens ((.~))
 import Data.String as String
 
 import Halogen as H
@@ -45,10 +43,9 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Math as Math
 
 import SlamData.Monad (Slam)
-import SlamData.Render.Common as RC
 import SlamData.ActionList.Action (Action(..), ActionDescription(..), ActionHighlighted(..), ActionIconSrc(..), ActionName(..), ActionDisabled(..))
 import SlamData.ActionList.Component.ActionInternal (ActionInternal(..), ActionNameLine(..), ActionNameWord(..), ButtonMetrics, Dimensions, Presentation(..))
-import SlamData.ActionList.Component.State (State, _actions, _boundingDimensions, _boundingElement, _filterString, _previousActions)
+import SlamData.ActionList.Component.State (State)
 import SlamData.ActionList.Component.Query (Query(..))
 
 import Utils as Utils
@@ -56,7 +53,7 @@ import Utils.DOM (DOMRect)
 import Utils.DOM as DOMUtils
 import Utils.CSS as CSSUtils
 
-newtype FilterInputDescription = FilterInputDescription String
+
 
 type HTML a = H.ComponentHTML (Query a)
 type DSL a = H.ComponentDSL (State a) (Query a) Slam
@@ -204,39 +201,20 @@ initialState actions =
   , boundingDimensions: Nothing
   }
 
-comp ∷ ∀ a. Eq a ⇒ FilterInputDescription → H.Component (State a) (Query a) Slam
-comp filterInputDescription =
+comp ∷ ∀ a. Eq a ⇒ H.Component (State a) (Query a) Slam
+comp =
   H.lifecycleComponent
-    { render: render filterInputDescription
+    { render
     , initializer: Just $ H.action CalculateBoundingRect
     , finalizer: Nothing
     , eval
     }
 
-render ∷ ∀ a. FilterInputDescription → State a → HTML a
-render (FilterInputDescription filterInputDescription) state =
+render ∷ ∀ a. State a → HTML a
+render state =
   HH.div
     [ HP.class_ $ HH.className "sd-action-list" ]
-    [ HH.form_
-        [ HH.div_
-            [ HH.div
-                [ HP.class_ (HH.className "sd-action-filter-icon") ]
-                [ RC.searchFieldIcon ]
-            , HH.input
-                [ HP.value state.filterString
-                , HE.onValueInput (HE.input (\s → UpdateFilter s))
-                , ARIA.label filterInputDescription
-                , HP.placeholder filterInputDescription
-                ]
-            , HH.button
-                [ HP.buttonType HP.ButtonButton
-                , HE.onClick (HE.input_ (UpdateFilter ""))
-                , HP.enabled (state.filterString /= "")
-                ]
-                [ RC.clearFieldIcon "Clear filter" ]
-            ]
-        ]
-    , HH.ul
+    [ HH.ul
         [ HP.ref $ H.action ∘ SetBoundingElement ]
         (maybe
            []
@@ -523,20 +501,23 @@ getBoundingDOMRect =
 eval ∷ ∀ a. Eq a ⇒ Query a ~> DSL a
 eval =
   case _ of
-    UpdateFilter str next →
-      H.modify (_filterString .~ str) $> next
+    UpdateFilter str next → do
+      H.modify _{ filterString = str }
+      pure next
     Selected action next → do
       st ← H.get
       case action of
         DoInternal _ _ _ _ _ _ → pure unit
         DrillInternal _ _ _ actions →
-          H.modify
-            $ (_actions .~ (GoBackInternal `Array.cons` actions))
-            ∘ (_previousActions .~ st.actions)
+          H.modify _
+            { actions = GoBackInternal `Array.cons` actions
+            , previousActions = st.actions
+            }
         GoBackInternal →
-          H.modify
-            $ (_actions .~ st.previousActions)
-            ∘ (_previousActions .~ [ ])
+          H.modify _
+            { actions = st.previousActions
+            , previousActions = [ ]
+            }
       pure next
     UpdateActions actions next →
       H.modify (updateActions $ toActionInternal <$> actions)
@@ -544,22 +525,21 @@ eval =
     CalculateBoundingRect next →
       calculateBoundingRect $> next
     SetBoundingRect dimensions next →
-      H.modify (_boundingDimensions .~ maybeNotZero dimensions) $> next
+      H.modify _{ boundingDimensions = maybeNotZero dimensions } $> next
     GetBoundingRect continue →
       continue <$> H.gets _.boundingDimensions
     SetBoundingElement element next →
-      H.modify (_boundingElement .~ element) $> next
+      H.modify _{ boundingElement = element } $> next
 
 maybeNotZero ∷ Dimensions → Maybe Dimensions
-maybeNotZero dimensions =
-  if dimensions.width ≡ 0.0 ∨ dimensions.height ≡ 0.0
-    then Nothing
-    else Just dimensions
+maybeNotZero dimensions
+  | dimensions.width ≡ 0.0 ∨ dimensions.height ≡ 0.0 = Nothing
+  | otherwise = Just dimensions
 
 calculateBoundingRect ∷ ∀ a. DSL a Unit
 calculateBoundingRect =
   H.modify
-    ∘ (_boundingDimensions .~ _)
+    ∘ flip _{ boundingDimensions = _ }
     ∘ flip bind maybeNotZero
     ∘ map domRectToDimensions
     =<< getBoundingDOMRect
@@ -579,18 +559,15 @@ calculateLines width words =
     case Array.uncons acc of
       Nothing →
         [ ActionNameLine { line: word, widthPx: wordWidthPx } ]
-      Just { head: ActionNameLine { line, widthPx: lineWidthPx }, tail } →
-        if (lineWidthPx + spaceWidth + wordWidthPx) <= width
-          then
-            Array.snoc
-              tail
+      Just { head: ActionNameLine { line, widthPx: lineWidthPx }, tail }
+        | (lineWidthPx + spaceWidth + wordWidthPx) <= width →
+            Array.snoc tail
               $ ActionNameLine
-                  { line: line <> " " <> word
-                  , widthPx: lineWidthPx + spaceWidth + wordWidthPx
-                  }
-          else
-            Array.snoc
-              acc
+                { line: line ⊕ " " ⊕ word
+                , widthPx: lineWidthPx + spaceWidth + wordWidthPx
+                }
+        | otherwise →
+            Array.snoc acc
               $ ActionNameLine { line: word, widthPx: wordWidthPx }
 
 spaceWidth ∷ Number

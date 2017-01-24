@@ -18,8 +18,6 @@ module SlamData.ActionList.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (Lens', lens)
-
 import DOM.HTML.Types (HTMLElement)
 
 import SlamData.ActionList.Component.ActionInternal (ActionInternal, Dimensions)
@@ -31,23 +29,3 @@ type State a =
   , boundingElement ∷ Maybe HTMLElement
   , boundingDimensions ∷ Maybe Dimensions
   }
-
-_actions ∷ ∀ a r. Lens' { actions ∷ a |r } a
-_actions =
-  lens _.actions (_ { actions = _ })
-
-_previousActions ∷ ∀ a r. Lens' { previousActions ∷ a | r} a
-_previousActions =
-  lens _.previousActions (_ { previousActions = _ })
-
-_filterString ∷ ∀ a r. Lens' { filterString ∷ a | r } a
-_filterString =
-  lens _.filterString (_ { filterString = _ })
-
-_boundingElement ∷ ∀ a r. Lens' { boundingElement ∷ a | r } a
-_boundingElement =
-  lens _.boundingElement (_ { boundingElement = _ })
-
-_boundingDimensions ∷ ∀ a r. Lens' { boundingDimensions ∷ a | r } a
-_boundingDimensions =
-  lens _.boundingDimensions (_ { boundingDimensions = _ })

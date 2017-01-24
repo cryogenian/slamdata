@@ -22,11 +22,11 @@ import DOM.HTML.Types (HTMLElement)
 import SlamData.ActionList.Action (Action)
 import SlamData.ActionList.Component.ActionInternal (ActionInternal, Dimensions)
 
-data Query a b
-  = Selected (ActionInternal a) b
-  | UpdateFilter String b
-  | UpdateActions (Array (Action a)) b
-  | CalculateBoundingRect b
-  | GetBoundingRect (Maybe Dimensions → b)
-  | SetBoundingRect Dimensions b
-  | SetBoundingElement (Maybe HTMLElement) b
+data Query a next
+  = Selected (ActionInternal a) next
+  | UpdateFilter String next
+  | UpdateActions (Array (Action a)) next
+  | CalculateBoundingRect next
+  | GetBoundingRect (Maybe Dimensions → next)
+  | SetBoundingRect Dimensions next
+  | SetBoundingElement (Maybe HTMLElement) next
