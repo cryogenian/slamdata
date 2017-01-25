@@ -55,7 +55,7 @@ type HTML a = H.ComponentHTML (Query a)
 type DSL a = H.ComponentDSL (State a) (Query a) Slam
 
 type ActionListConf a =
-  { calculateSizes ∷ Array (Action a) → Array ActionSize }
+  { calculateSizes ∷ Array (Action a) → ActionSizes }
 
 actionListComp ∷ ∀ a. Eq a ⇒ ActionListConf a → H.Component (State a) (Query a) Slam
 actionListComp conf =
@@ -66,6 +66,9 @@ actionListComp conf =
     , eval
     }
 
+comp ∷ ∀ a. Eq a ⇒ H.Component (State a) (Query a) Slam
+comp = actionListComp { calculateSizes: actionSizes }
+
 render ∷ ∀ a. ActionListConf a → State a → HTML a
 render conf state =
   HH.div
@@ -75,16 +78,14 @@ render conf state =
         (maybe
            []
            (renderButtons (String.toLower state.filterString) state.actions)
-           (actionSize
-              (Array.length state.actions)
-              =<< state.boundingDimensions))
+           (conf.calculateSizes state.actions)
     ]
 
 renderButtons
   ∷ ∀ a
   . String
   → Array (Action a)
-  → ActionSize
+  → ActionSizes
   → Array (HTML a)
 renderButtons filterString actions buttonDimensions =
   if buttonDimensions.leavesASpace
@@ -97,11 +98,11 @@ renderButtons filterString actions buttonDimensions =
 
   actionsWithLines ∷ Array { action ∷ Action a, lines ∷ Array String }
   actionsWithLines =
-    toActionWithLines (buttonDimensions.dimensions.width * 0.95) <$> actions
+    Array.zipWith toActionWithLines actions $ map _.width buttonDimensions.dimensions
 
   toActionWithLines
-    ∷ Number
-    → Action a
+    ∷ Action a
+    → Number
     → { action ∷ Action a, lines ∷ Array String }
   toActionWithLines widthPx action =
     { action

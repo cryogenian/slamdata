@@ -20,6 +20,7 @@ import SlamData.Prelude
 
 import Data.Array as A
 import Data.Foldable as F
+import Data.NonEmpty (NonEmpty, :|, tail)
 
 import Utils as Utils
 import Utils.DOM as DOMUtils
@@ -36,8 +37,8 @@ type NameLine =
 
 type Dimensions = { width ∷ Number, height ∷ Number }
 
-type ActionSize =
-  { dimensions ∷ Dimensions
+type ActionSizes =
+  { dimensions ∷ Array Dimensions
   , leavesASpace ∷ Boolean
   }
 
@@ -240,13 +241,22 @@ spaceWidth ∷ Number
 spaceWidth =
   textWidth " "
 
-mostSquareFittingRectangle ∷ Int → Dimensions → Maybe Dimensions
-mostSquareFittingRectangle i boundingDimensions =
-  Foldable.maximumBy
-    (\x y → karat x `compare` karat y)
-    solutions
+mostSquareFittingRectangle ∷ Int → Dimensions → Dimensions
+mostSquareFittingRectangle i boundingDimensions = case tailMax of
+  Just m | compareFn hd tailMax ≡ LT → tailMax
+  _ → hd
   where
-  solutions ∷ Array Dimensions
+  hd ∷ Dimenssions
+  hd = head solutions
+
+  tailMax ∷ Maybe Dimensions
+  tailMax =
+    Foldable.maximumBy compareFn $ tail solutions
+
+  compareFn x y =
+    karat x `compare` karat y
+
+  solutions ∷ NonEmpty Array Dimensions
   solutions =
     solution <$> factors i
 
@@ -276,16 +286,23 @@ mostSquareFittingRectangle i boundingDimensions =
        then i / factor
        else factor
 
-actionSize ∷ Int → Dimensions → Maybe ActionSize
-actionSize i boundingDimensions = do
-  firstTry ← mostSquareFittingRectangle i boundingDimensions
-  if firstTry.height ≡ boundingDimensions.height
-    then do
-    secondTry ← mostSquareFittingRectangle (i + 1) boundingDimensions
-    pure if secondTry.height ≡ boundingDimensions.height
-         then { dimensions: firstTry, leavesASpace: false }
-         else { dimensions: secondTry, leavesASpace: true }
-    else { dimensions: firstTry, leavesASpace: false }
+actionSizes ∷ ∀ a. Array (Action a) → Dimensions → ActionSizes
+actionSizes as dimensions =
+  let
+    firstTry = mostSquareFittingRectangle i dimensions
+
+    actionSize
+      | firstTry.height ≠ dimensions.height =
+          { dimensions: firstTry, leavesASpace: false }
+      | otherwise =
+          let secondTry = mostSquareFittingRectangle (i + 1) dimensions
+          in if secondTry.height ≡ boundingDimensions.height
+             then { dimensions: firstTry, leavesASpace: false }
+             else { dimensions: secondTry, leavesASpace: true }
+  in
+    { leavesASpace: actionSize.leaveASpace
+    , dimensions: map (const actionSize.dimension) as
+    }
 
 floor ∷ Dimensions → Dimensions
 floor dimensions =
@@ -309,9 +326,9 @@ maybeNotZero dimensions
   | dimensions.width ≡ 0.0 ∨ dimensions.height ≡ 0.0 = Nothing
   | otherwise = Just dimensions
 
-factors ∷ Int → Array Int
-factors n = do
-  factor ← 1 .. n
+factors ∷ Int → NonEmpty Array Int
+factors n = 1 :| do
+  factor ← 2 .. n
   guard $ n `mod` factor ≡ 0
   pure factor
 
