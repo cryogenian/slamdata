@@ -201,19 +201,22 @@ initialState actions =
   , boundingDimensions: Nothing
   }
 
-comp ∷ ∀ a. Eq a ⇒ H.Component (State a) (Query a) Slam
-comp =
+comp ∷ ∀ a. Eq a ⇒ Array HH.ClassName → H.Component (State a) (Query a) Slam
+comp clss =
   H.lifecycleComponent
-    { render
+    { render: render clss
     , initializer: Just $ H.action CalculateBoundingRect
     , finalizer: Nothing
     , eval
     }
 
-render ∷ ∀ a. State a → HTML a
-render state =
+render ∷ ∀ a. Array HH.ClassName → State a → HTML a
+render clss state =
   HH.div
-    [ HP.class_ $ HH.className "sd-action-list" ]
+    [ HP.classes
+      $ [ HH.className "sd-action-list" ]
+      ⊕ clss
+    ]
     [ HH.ul
         [ HP.ref $ H.action ∘ SetBoundingElement ]
         (maybe

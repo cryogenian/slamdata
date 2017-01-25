@@ -75,7 +75,7 @@ render state =
            , initialState: ActionFilter.initialState
            }
       , HH.slot' CS.cpActionList unit \_ →
-        { component: ActionList.comp
+        { component: ActionList.comp [ HH.className "with-filter" ]
         , initialState: ActionList.initialState $ NA.fromPort state.input
         }
       ]
