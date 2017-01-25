@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.List (List)
 
-import SlamData.ActionList.Component as ActionList
+import SlamData.ActionList.Component.ActionInternal as ActionList
 import SlamData.Workspace.Deck.Component.State (CardDef)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
@@ -61,73 +61,51 @@ allBackActions isAdvanced =
     , Unwrap
     ]
 
-labelAction ∷ BackAction → ActionList.ActionName
-labelAction =
-  ActionList.ActionName
-    ∘ case _ of
-        Trash → "Delete card"
-        Rename → "Rename deck"
-        Share → "Share deck"
-        Embed → "Embed deck"
-        Publish → "Publish deck"
-        DeleteDeck → "Delete deck"
-        Mirror → "Mirror"
-        Wrap → "Wrap"
-        Unwrap → "Collapse"
-        Unshare → "Unshare deck"
+toActionListAction
+  ∷ Boolean
+  → Maybe CardDef
+  → Array CardDef
+  → BackAction
+  → ActionList.ActionInternal BackAction
+toActionListAction unwrappable activeCard cardDefs action =
+   ActionList.mkDo
+     { name
+     , iconSrc
+     , description
+     , highlighted
+     , disabled
+     , action
+     }
+  where
+  iconSrc = case action of
+    Trash → "img/cardAndDeckActions/deleteCard.svg"
+    Rename → "img/cardAndDeckActions/renameDeck.svg"
+    Share → "img/cardAndDeckActions/shareDeck.svg"
+    Unshare → "img/cardAndDeckActions/unshareDeck.svg"
+    Embed → "img/cardAndDeckActions/embedDeck.svg"
+    Publish → "img/cardAndDeckActions/publishDeck.svg"
+    Mirror → "img/cardAndDeckActions/mirrorDeck.svg"
+    Wrap → "img/cardAndDeckActions/wrapDeck.svg"
+    Unwrap → "img/cardAndDeckActions/unwrapDeck.svg"
+    DeleteDeck → "img/cardAndDeckActions/deleteDeck.svg"
 
-actionDescripton ∷ BackAction → ActionList.ActionDescription
-actionDescripton =
-  ActionList.ActionDescription
-    ∘ case _ of
-        Trash → "Delete card"
-        Rename → "Rename deck"
-        Share → "Share deck"
-        Embed → "Embed deck"
-        Publish → "Publish deck"
-        DeleteDeck → "Delete deck"
-        Mirror → "Mirror"
-        Wrap → "Wrap"
-        Unwrap → "Collapse"
-        Unshare → "Unshare deck"
+  name = case action of
+    Trash → "Delete card"
+    Rename → "Rename deck"
+    Share → "Share deck"
+    Embed → "Embed deck"
+    Publish → "Publish deck"
+    DeleteDeck → "Delete deck"
+    Mirror → "Mirror"
+    Wrap → "Wrap"
+    Unwrap → "Collapse"
+    Unshare → "Unshare deck"
 
-actionHighlighted ∷ Boolean → Maybe CardDef → Array CardDef → BackAction → ActionList.ActionHighlighted
-actionHighlighted unwrappable activeCard cardDefs a =
-  ActionList.ActionHighlighted
-    $ case activeCard, a of
-      Nothing, Trash → false
-      _, Unwrap → unwrappable
-      _, _ → true
+  description = name
 
-actionDisabled ∷ Boolean → Maybe CardDef → Array CardDef → BackAction → ActionList.ActionDisabled
-actionDisabled unwrappable activeCard cardDefs a =
-  ActionList.ActionDisabled
-    $ case activeCard, a of
-      Nothing, Trash → true
-      _, Unwrap → not $ unwrappable
-      _, _ → false
+  highlighted = case activeCard, action of
+    Nothing, Trash → false
+    _, Unwrap → unwrappable
+    _, _ → true
 
-actionIcon ∷ BackAction → ActionList.ActionIconSrc
-actionIcon =
-  ActionList.ActionIconSrc
-    ∘ case _ of
-        Trash → "img/cardAndDeckActions/deleteCard.svg"
-        Rename → "img/cardAndDeckActions/renameDeck.svg"
-        Share → "img/cardAndDeckActions/shareDeck.svg"
-        Unshare → "img/cardAndDeckActions/unshareDeck.svg"
-        Embed → "img/cardAndDeckActions/embedDeck.svg"
-        Publish → "img/cardAndDeckActions/publishDeck.svg"
-        Mirror → "img/cardAndDeckActions/mirrorDeck.svg"
-        Wrap → "img/cardAndDeckActions/wrapDeck.svg"
-        Unwrap → "img/cardAndDeckActions/unwrapDeck.svg"
-        DeleteDeck → "img/cardAndDeckActions/deleteDeck.svg"
-
-toActionListAction ∷ Boolean → Maybe CardDef → Array CardDef → BackAction → ActionList.Action BackAction
-toActionListAction unwrappable activeCard cardDefs backAction =
-   ActionList.Do
-     (labelAction backAction)
-     (actionIcon backAction)
-     (actionDescripton backAction)
-     (actionHighlighted unwrappable activeCard cardDefs backAction)
-     (actionDisabled unwrappable activeCard cardDefs backAction)
-     backAction
+  disabled = not highlighted

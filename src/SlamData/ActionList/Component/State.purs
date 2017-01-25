@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import DOM.HTML.Types (HTMLElement)
 
-import SlamData.ActionList.Component.ActionInternal (ActionInternal, Dimensions)
+import SlamData.ActionList.Action (Action, Dimensions)
 
 type State a =
   { actions ∷ Array (ActionInternal a)
@@ -28,4 +28,13 @@ type State a =
   , filterString ∷ String
   , boundingElement ∷ Maybe HTMLElement
   , boundingDimensions ∷ Maybe Dimensions
+  }
+
+initialState ∷ ∀ a. Array (Action a) → State a
+initialState actions =
+  { actions
+  , previousActions: [ ]
+  , filterString: ""
+  , boundingElement: Nothing
+  , boundingDimensions: Nothing
   }

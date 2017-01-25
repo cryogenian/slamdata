@@ -292,12 +292,11 @@ peekDialog opts = case _ of
       _ → pure unit
 
 peekBackSide ∷ ∀ a. DeckOptions → ActionList.Query Back.BackAction a → DeckDSL Unit
-peekBackSide opts action =
-  case action of
-    ActionList.Selected (ActionList.DoInternal _ _ _ _ _ backAction) _ → do
+peekBackSide opts = case _ of
+    ActionList.Selected (ActionList.Do {action}) _ → do
       { path } ← liftH' Wiring.expose
       st ← H.get
-      case backAction of
+      case action of
         Back.Trash → do
           let
             active = DCS.activeCard st

@@ -134,19 +134,12 @@ peek = actionListPeek ⨁ actionFilterPeek
 
 actionListPeek ∷ ∀ a. ActionList.Query NA.NextAction a → DSL Unit
 actionListPeek = case _ of
-  ActionList.Selected action _ →
-    case action of
-      ActionList.GoBackInternal →
-        pure unit
-      ActionList.DrillInternal _ _ _ _ →
-        pure unit
-      ActionList.DoInternal _ _ _ _ _ nextAction →
-        case nextAction of
-          NA.Insert cardType →
-            HU.raise' $ H.action $ AddCard cardType
-          NA.FindOutHowToInsert cardType → do
-            input ← H.gets _.input
-            HU.raise' $ H.action $ PresentReason input cardType
+  ActionList.Selected (ActionList.Do {action}) _ → case action of
+    NA.Insert cardType →
+      HU.raise' $ H.action $ AddCard cardType
+    NA.FindOutHowToInsert cardType → do
+      input ← H.gets _.input
+      HU.raise' $ H.action $ PresentReason input cardType
   _ → pure unit
 
 actionFilterPeek ∷ ∀ a. ActionFilter.Query a → DSL Unit
