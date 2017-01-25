@@ -25,6 +25,8 @@ import Data.String as Str
 import Data.String.Regex as Rx
 import Data.String.Regex.Flags as RXF
 
+import Global as Global
+
 import Network.HTTP.RequestHeader (RequestHeader(..))
 
 type DownloadOptions = Either CSVOptions JSONOptions
@@ -188,22 +190,31 @@ instance decodeJsonPrecision :: DecodeJson PrecisionMode where
       "Precise" -> pure Precise
       _ -> Left "Incorrect Precision"
 
+extension :: Boolean -> Either CSVOptions JSONOptions -> String
+extension compress options
+  | compress = ".zip"
+  | otherwise = case options of
+      Right (JSONOptions { multivalues: LineDelimited }) →  ".ldjson"
+      Right _ → ".json"
+      Left _ → ".csv"
+
 toHeaders
   :: forall r
    . { compress :: Boolean
-     , options :: Either CSVOptions JSONOptions|r}
+     , options :: Either CSVOptions JSONOptions
+     | r
+     }
+  -> Maybe String
   -> Array RequestHeader
-toHeaders r =
-  encHeaderArray r.compress <> [ acceptHeader ]
+toHeaders r filename =
+  [ RequestHeader "Accept-Encoding" "gzip"
+  , Accept $ MediaType $ mimeType r.options <> ";disposition=\"attachment" <> encFilename <> "\""
+  ]
   where
-  acceptHeader :: RequestHeader
-  acceptHeader = Accept $ MediaType $ mimeType r.options <> attachmentDisposition
-
-  encHeaderArray :: Boolean -> Array RequestHeader
-  encHeaderArray true = [ RequestHeader "Accept-Encoding" "gzip" ]
-  encHeaderArray _ = [ ]
-
-  attachmentDisposition = ";disposition=attachment"
+  encFilename :: String
+  encFilename = case filename of
+    Nothing -> ""
+    Just fn -> "; filename*=UTF-8''" <> Global.encodeURIComponent fn
 
   mimeType :: Either CSVOptions JSONOptions -> String
   mimeType (Left (CSVOptions opts)) =

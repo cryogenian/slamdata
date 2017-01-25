@@ -55,7 +55,6 @@ render state =
           ]
       [ resField state
       , fldName state
-      , chkCompress state
       , options state
       , message state
       ]
@@ -89,7 +88,7 @@ fldName state =
         , HH.div
             [ HP.classes [ Rc.downloadTargetBox ] ]
             [ HH.span_ [ HH.text tgtValue ]
-            , HH.span_ [ HH.text ext ]
+            , HH.span_ [ HH.text (ext state) ]
             ]
         ]
     ]
@@ -97,9 +96,8 @@ fldName state =
   tgtValue ∷ String
   tgtValue = either id id $ state.targetName
 
-  ext | compressed state = ".zip"
-      | isLeft state.options = ".csv"
-      | otherwise = ".json"
+ext ∷ State → String
+ext state = D.extension (compressed state) state.options
 
 compressed ∷ State → Boolean
 compressed state = not isFile state.source || state.compress
@@ -165,6 +163,8 @@ btnDownload state =
       $ reqHeadersToJSON
       $ append state.authHeaders
       $ D.toHeaders state
+      $ Just
+      $ (either id id state.targetName) <> ext state
 
     url =
       (encodeURI $ printPath Config.data_ ⊕ resourcePath state.source)
