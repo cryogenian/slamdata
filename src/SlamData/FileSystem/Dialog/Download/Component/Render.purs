@@ -55,7 +55,6 @@ render state =
           ]
       [ resField state
       , fldName state
-      , chkCompress state
       , options state
       , message state
       ]
