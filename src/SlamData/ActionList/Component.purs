@@ -51,13 +51,30 @@ import Utils.DOM (DOMRect)
 import Utils.DOM as DOMUtils
 import Utils.CSS as CSSUtils
 
+import Unsafe.Coerce (unsafeCoerce)
+
+hole ∷ ∀ a. a
+hole = unsafeCoerce unit
+
 type HTML a = H.ComponentHTML (Query a)
 type DSL a = H.ComponentDSL (State a) (Query a) Slam
 
-type ActionListConf a =
-  { calculateSizes ∷ Array (Action a) → ActionSizes }
+type ButtonConf a =
+  { metrics ∷ ButtonMetrics
+  , presentation ∷ Presentation
+  , action ∷ Action a
+  , lines ∷ Array String
+  }
 
-actionListComp ∷ ∀ a. Eq a ⇒ ActionListConf a → H.Component (State a) (Query a) Slam
+type ActionListConf a =
+  { buttons ∷ Array (ButtonConf a)
+  , leavesASpace ∷ Boolean
+  }
+
+actionListComp
+  ∷ ∀ a. Eq a
+  ⇒ (Array (Action a) → ActionListConf a)
+  → H.Component (State a) (Query a) Slam
 actionListComp conf =
   H.lifecycleComponent
     { render: render conf
@@ -66,122 +83,35 @@ actionListComp conf =
     , eval
     }
 
+defaultConf ∷ ∀ a. Eq a ⇒ (Array (Action a)) → ActionListConf a
+defaultConf as = hole
+
 comp ∷ ∀ a. Eq a ⇒ H.Component (State a) (Query a) Slam
-comp = actionListComp { calculateSizes: actionSizes }
+comp = actionListComp defaultConf
 
 render ∷ ∀ a. ActionListConf a → State a → HTML a
-render conf state =
+render mkConf state =
   HH.div
     [ HP.class_ $ HH.className "sd-action-list" ]
     [ HH.ul
         [ HP.ref $ H.action ∘ SetBoundingElement ]
-        (maybe
-           []
-           (renderButtons (String.toLower state.filterString) state.actions)
-           (conf.calculateSizes state.actions)
+        $ renderButtons (String.toLower state.filterString)
+        $ mkConf state.actions
     ]
 
 renderButtons
   ∷ ∀ a
   . String
-  → Array (Action a)
-  → ActionSizes
+  → ActionListConf a
   → Array (HTML a)
-renderButtons filterString actions buttonDimensions =
-  if buttonDimensions.leavesASpace
+renderButtons filterString conf =
+  if conf.leaveASpace
     then realButtons <> [ renderSpaceFillerButton metrics ]
     else realButtons
   where
   realButtons ∷ Array (HTML a)
   realButtons =
-    renderButton filterString presentation metrics <$> actionsWithLines
-
-  actionsWithLines ∷ Array { action ∷ Action a, lines ∷ Array String }
-  actionsWithLines =
-    Array.zipWith toActionWithLines actions $ map _.width buttonDimensions.dimensions
-
-  toActionWithLines
-    ∷ Action a
-    → Number
-    → { action ∷ Action a, lines ∷ Array String }
-  toActionWithLines widthPx action =
-    { action
-    , lines: _.line <$> (calculateLines widthPx $ actionNameWords action)
-    }
-
-  iconDimensions ∷ Dimensions
-  iconDimensions =
-    { width: buttonDimensions.dimensions.width * iconSizeRatio
-    , height: buttonDimensions.dimensions.height * iconSizeRatio
-    }
-
-  metrics ∷ ButtonMetrics
-  metrics =
-    { dimensions:
-        buttonDimensions.dimensions
-    , iconDimensions:
-        iconDimensions
-    , iconMarginPx:
-        buttonDimensions.dimensions.height * 0.05
-    , iconOnlyLeftPx:
-        (buttonDimensions.dimensions.width / 2.0)
-          - (iconDimensions.width / 2.0)
-    , iconOnlyTopPx:
-        (buttonDimensions.dimensions.height / 2.0)
-          - (iconDimensions.height / 2.0) - 1.0
-    }
-
-  maxNumberOfLines ∷ Int
-  maxNumberOfLines =
-    fromMaybe 0 $ Foldable.maximum $ Array.length ∘ _.lines <$> actionsWithLines
-
-  maxTextHeightPx ∷ Number
-  maxTextHeightPx =
-    Int.toNumber maxNumberOfLines * fontSizePx
-
-  buttonPaddingEstimatePx ∷ Number
-  buttonPaddingEstimatePx =
-    buttonDimensions.dimensions.height * buttonPaddingHighEstimate
-
-  textDoesNotFitWithIcon ∷ Boolean
-  textDoesNotFitWithIcon =
-    maxTextHeightPx
-      + iconDimensions.height
-      + metrics.iconMarginPx
-      + buttonPaddingEstimatePx
-      > buttonDimensions.dimensions.height
-
-  textDoesNotFitOnItsOwn ∷ Boolean
-  textDoesNotFitOnItsOwn =
-    maxTextHeightPx > buttonDimensions.dimensions.height
-      ∨ buttonDimensions.dimensions.width < 40.0
-
-  -- Allows text which fits vertically but not horizontally.
-  -- Styling truncates overflowing lines with ellipses.
-  --
-  -- E.g. where there is only room for two lines:
-  -- "Show Chart" would be presented without an icon as
-  --
-  -- Sh...
-  -- Ch...
-  --
-  -- But "Build pie chart" would be presented with only an icon.
-  --
-  -- The reasoning behind this is that presentation should be
-  -- unform per action list but that the entire list shouldn't be
-  -- reduced to only icons just because "Troubleshoot" would be
-  -- truncated to "Troublesh...".
-  presentation ∷ Presentation
-  presentation =
-    if textDoesNotFitOnItsOwn ∨ maxNumberOfLines ≡ 0
-      then
-        IconOnly
-      else
-        if textDoesNotFitWithIcon
-          then
-            TextOnly
-          else
-            IconAndText
+    renderButton filterString <$> conf.buttons
 
 renderSpaceFillerButton ∷ ∀ a. ButtonMetrics → HTML a
 renderSpaceFillerButton metrics =
@@ -204,11 +134,9 @@ renderSpaceFillerButton metrics =
 renderButton
   ∷ ∀ a
   . String
-  → Presentation
-  → ButtonMetrics
-  → { action ∷ Action a, lines ∷ Array String }
+  → ButtonConf a
   → HTML a
-renderButton filterString presentation metrics { action, lines } =
+renderButton filterString { presentation, metrics, action, lines } =
   HH.li
     [ HCSS.style
         $ CSS.width (CSS.px $ firefoxify metrics.dimensions.width)

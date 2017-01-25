@@ -23,8 +23,8 @@ import DOM.HTML.Types (HTMLElement)
 import SlamData.ActionList.Action (Action, Dimensions)
 
 type State a =
-  { actions ∷ Array (ActionInternal a)
-  , previousActions ∷ Array (ActionInternal a)
+  { actions ∷ Array (Action a)
+  , previousActions ∷ Array (Action a)
   , filterString ∷ String
   , boundingElement ∷ Maybe HTMLElement
   , boundingDimensions ∷ Maybe Dimensions
