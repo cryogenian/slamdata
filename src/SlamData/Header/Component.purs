@@ -25,6 +25,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Config as Config
+import SlamData.Config.Version as CV
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Monad (Slam)
@@ -83,7 +84,7 @@ render open =
     [ HH.div_
         [ HH.div_
             [ HH.div [ HP.classes [ Rc.header ] ]
-                [ logo $ Just "4.0"
+                [ logo CV.shortVersion
                 , HH.slot' cpGlobalMenu unit \_ →
                      { component: GlobalMenu.comp
                      , initialState: H.parentState GlobalMenu.initialState

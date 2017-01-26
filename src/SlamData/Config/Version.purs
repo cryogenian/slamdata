@@ -16,4 +16,22 @@ limitations under the License.
 
 module SlamData.Config.Version where
 
-foreign import slamDataVersion :: String
+import SlamData.Prelude
+
+import Data.Array as A
+import Data.String.Regex as Rgx
+import Data.String.Regex.Unsafe as Rgu
+import Data.String.Regex.Flags as RXF
+
+foreign import slamDataVersion ∷ String
+
+shortVersion ∷ Maybe String
+shortVersion = do
+  matches ← Rgx.match versionRegex slamDataVersion
+  major ← join $ matches A.!! 1
+  minor ← join $ matches A.!! 2
+  pure $ major ⊕ "." ⊕ minor
+  where
+  versionRegex ∷ Rgx.Regex
+  versionRegex =
+    Rgu.unsafeRegex "^\\D*(\\d+)\\.(\\d+)" RXF.noFlags
