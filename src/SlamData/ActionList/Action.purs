@@ -21,10 +21,17 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.Int as Int
 import Data.Foldable as F
-import Data.NonEmpty (NonEmpty, :|, tail)
+import Data.NonEmpty ((:|))
+import Data.NonEmpty as NE
+import Data.String as String
+
+import Halogen.HTML as HH
+
+import Math as Math
 
 import Utils as Utils
 import Utils.DOM as DOMUtils
+import Utils.DOM (DOMRect)
 
 type NameWord =
   { word ∷ String
@@ -90,6 +97,20 @@ data Action a
   = Do (DoR a)
   | Drill (DrillR a)
   | GoBack
+
+type ButtonConf a =
+  { metrics ∷ ButtonMetrics
+  , presentation ∷ Presentation
+  , action ∷ Action a
+  , lines ∷ Array String
+  }
+
+type ActionListConf a =
+  { buttons ∷ Array (ButtonConf a)
+  , leavesASpace ∷ Boolean
+  , classes ∷ Array HH.ClassName
+  }
+
 
 mkDo ∷ ∀ a. MkDoR a → Action a
 mkDo {name, iconSrc, description, highlighted, disabled, action} =
@@ -173,7 +194,7 @@ isHighlighted = case _ of
   Do {highlighted} →
     highlighted
   Drill {children} →
-    Foldable.any isHighlighted children
+    F.any isHighlighted children
   GoBack → true
 
 isDisabled ∷ ∀ a. Action a → Boolean
@@ -181,7 +202,7 @@ isDisabled = case _ of
   Do {disabled} →
     disabled
   Drill {children} →
-    Foldable.all isDisabled children
+    F.all isDisabled children
   GoBack → false
 
 searchFilters ∷ ∀ a. Action a → Array String
@@ -189,7 +210,7 @@ searchFilters = case _ of
   Do {words} →
     [ printActionNameWords words ]
   Drill {words, children} →
-    [ printActionNameWords words ] ⊕ Array.concat (map searchFilters children)
+    [ printActionNameWords words ] ⊕ A.concat (map searchFilters children)
   GoBack →
     [ "go back" ]
 
@@ -225,17 +246,17 @@ calculateLines totalWidth words =
   foldl go [] words
   where
   go ∷ Array NameLine → NameWord → Array NameLine
-  go acc { word, width: wordWidthPx } = case Array.uncons acc of
+  go acc { word, width: wordWidthPx } = case A.uncons acc of
     Nothing →
       [ { line: word, width: wordWidthPx } ]
     Just { head: { line, width: lineWidthPx }, tail }
       | (lineWidthPx + spaceWidth + wordWidthPx) <= totalWidth →
-        Array.snoc tail
+        A.snoc tail
           { line: line ⊕ " " ⊕ word
           , width: lineWidthPx + spaceWidth + wordWidthPx
           }
       | otherwise →
-        Array.snoc acc
+        A.snoc acc
           { line: word, width: wordWidthPx }
 
 spaceWidth ∷ Number
@@ -244,20 +265,20 @@ spaceWidth =
 
 mostSquareFittingRectangle ∷ Int → Dimensions → Dimensions
 mostSquareFittingRectangle i boundingDimensions = case tailMax of
-  Just m | compareFn hd tailMax ≡ LT → tailMax
+  Just m | compareFn hd m ≡ LT → m
   _ → hd
   where
-  hd ∷ Dimenssions
-  hd = head solutions
+  hd ∷ Dimensions
+  hd = NE.head solutions
 
   tailMax ∷ Maybe Dimensions
   tailMax =
-    Foldable.maximumBy compareFn $ tail solutions
+    F.maximumBy compareFn $ NE.tail solutions
 
   compareFn x y =
     karat x `compare` karat y
 
-  solutions ∷ NonEmpty Array Dimensions
+  solutions ∷ NE.NonEmpty Array Dimensions
   solutions =
     solution <$> factors i
 
@@ -301,7 +322,7 @@ domRectToDimensions domRect =
   , height: domRect.height
   }
 
-pluckDrillActions ∷ ∀ a. Action → Array (Action a)
+pluckDrillActions ∷ ∀ a. Action a → Maybe (Array (Action a))
 pluckDrillActions = case _ of
   Drill {children} → Just children
   _ → Nothing
@@ -311,9 +332,9 @@ maybeNotZero dimensions
   | dimensions.width ≡ 0.0 ∨ dimensions.height ≡ 0.0 = Nothing
   | otherwise = Just dimensions
 
-factors ∷ Int → NonEmpty Array Int
+factors ∷ Int → NE.NonEmpty Array Int
 factors n = 1 :| do
-  factor ← 2 .. n
+  factor ← 2 A... n
   guard $ n `mod` factor ≡ 0
   pure factor
 
@@ -326,9 +347,6 @@ firefoxify n =
      then decimalCrop 1 n
      else n
 
-fontSizePx ∷ Number
-fontSizePx =
-  12.0
 
 lineHeightPx ∷ Number
 lineHeightPx =
@@ -350,30 +368,30 @@ decimalCrop i n =
   where
   multiplier = Math.pow 10.0 $ Int.toNumber i
 
-defaultConf ∷ ∀ a. Eq a ⇒ Array (Action a) → ActionListConf a
-defaultConf as =
+defaultConf ∷ ∀ a. Eq a ⇒ Dimensions → Array (Action a) → ActionListConf a
+defaultConf boundingDimensions as =
   let
     len = A.length as
 
-    firstTry = mostSquareFittingRectangle len dimensions
+    firstTry = mostSquareFittingRectangle len boundingDimensions
 
     actionSize
-      | firstTry.height ≠ dimensions.height =
+      | firstTry.height ≠ boundingDimensions.height =
           { dimensions: firstTry, leavesASpace: false }
       | otherwise =
-          let secondTry = mostSquareFittingRectangle (len + 1) dimensions
+          let secondTry = mostSquareFittingRectangle (len + 1) boundingDimensions
           in if secondTry.height ≡ boundingDimensions.height
              then { dimensions: firstTry, leavesASpace: false }
              else { dimensions: secondTry, leavesASpace: true }
 
     dimensions =
-      { width: actionSize.width
-      , height: actionSize.height
+      { width: actionSize.dimensions.width
+      , height: actionSize.dimensions.height
       }
 
     iconDimensions =
-      { width: actionSize.width * iconSizeRatio
-      , height: actionSize.height * iconSizeRatio
+      { width: dimensions.width * iconSizeRatio
+      , height: dimensions.height * iconSizeRatio
       }
 
     iconOnlyLeftPx =
@@ -391,20 +409,18 @@ defaultConf as =
       , iconOnlyTopPx
       }
 
-    lines =
-      map _.line $ calculateLines widthPx $ actionNameWords action
 
     mkButtonConf action =
       { action
       , metrics
-      , lines:
+      , lines: map _.line $ calculateLines dimensions.width $ actionNameWords action
       , presentation: IconAndText
       }
 
     buttonConfs = map mkButtonConf as
 
     maxNumberOfLines =
-      fromMaybe zero $ F.maximumBy (A.length ∘ _.lines) as
+      fromMaybe zero $ F.maximum $ map (A.length ∘ _.lines) buttonConfs
 
     maxTextHeightPx =
       Int.toNumber maxNumberOfLines * fontSizePx
@@ -419,7 +435,7 @@ defaultConf as =
         + iconDimensions.height
         + iconMarginPx
         + buttonPaddingEstimatePx
-        > buttonDimensions.dimensions.height
+        > dimensions.height
 
     textDoesNotFitOnItsOwn ∷ Boolean
     textDoesNotFitOnItsOwn =
@@ -451,18 +467,6 @@ defaultConf as =
 
   in
     { buttons
-    , leavesASpace: actionSize.leaveASpace
+    , leavesASpace: actionSize.leavesASpace
+    , classes: [ HH.className "with-filter" ]
     }
-
-
-type ButtonConf a =
-  { metrics ∷ ButtonMetrics
-  , presentation ∷ Presentation
-  , action ∷ Action a
-  , lines ∷ Array String
-  }
-
-type ActionListConf a =
-  { buttons ∷ Array (ButtonConf a)
-  , leavesASpace ∷ Boolean
-  }

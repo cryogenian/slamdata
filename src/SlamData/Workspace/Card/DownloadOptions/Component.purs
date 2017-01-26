@@ -88,8 +88,7 @@ renderDownloadConfiguration ∷ State → HTML
 renderDownloadConfiguration state =
   HH.div
     [ HP.classes [ RC.downloadConfiguration ] ]
-    $ [ either optionsCSV optionsJSON state.options ]
-    ⊕ [ compress state ]
+    [ either optionsCSV optionsJSON state.options ]
 
 optionsCSV ∷ DL.CSVOptions → HTML
 optionsCSV = DLR.optionsCSV (\lens v → right ∘ (ModifyCSVOpts (lens .~ v)))

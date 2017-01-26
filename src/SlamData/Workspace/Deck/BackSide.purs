@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.List (List)
 
-import SlamData.ActionList.Component.ActionInternal as ActionList
+import SlamData.ActionList.Action as Action
 import SlamData.Workspace.Deck.Component.State (CardDef)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
@@ -66,9 +66,9 @@ toActionListAction
   → Maybe CardDef
   → Array CardDef
   → BackAction
-  → ActionList.ActionInternal BackAction
+  → Action.Action BackAction
 toActionListAction unwrappable activeCard cardDefs action =
-   ActionList.mkDo
+   Action.mkDo
      { name
      , iconSrc
      , description

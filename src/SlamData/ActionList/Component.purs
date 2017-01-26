@@ -16,20 +16,17 @@ limitations under the License.
 
 module SlamData.ActionList.Component
   ( comp
-  , initialState
-  , module SlamData.ActionList.Action
-  , module SlamData.ActionList.Component.State
-  , module SlamData.ActionList.Component.Query
+  , module A
+  , module ST
+  , module Q
   ) where
 
 import SlamData.Prelude
 
 import CSS as CSS
 
-import Data.Array ((..))
 import Data.Array as Array
 import Data.Foldable as Foldable
-import Data.Int as Int
 import Data.String as String
 
 import Halogen as H
@@ -39,68 +36,75 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
-import Math as Math
-
 import SlamData.Monad (Slam)
 import SlamData.ActionList.Action as A
-import SlamData.ActionList.Component.State (State)
-import SlamData.ActionList.Component.Query (Query(..))
+import SlamData.ActionList.Component.State as ST
+import SlamData.ActionList.Component.Query as Q
 
-import Utils as Utils
 import Utils.DOM (DOMRect)
 import Utils.DOM as DOMUtils
 import Utils.CSS as CSSUtils
 
-type HTML a = H.ComponentHTML (Query a)
-type DSL a = H.ComponentDSL (State a) (Query a) Slam
+type HTML a = H.ComponentHTML (Q.Query a)
+type DSL a = H.ComponentDSL (ST.State a) (Q.Query a) Slam
 
-
+type MkConf a =
+  A.Dimensions → Array (A.Action a) → A.ActionListConf a
 
 actionListComp
   ∷ ∀ a. Eq a
-  ⇒ (Array (A.Action a) → A.ActionListConf a)
-  → H.Component (State a) (Query a) Slam
-actionListComp conf =
+  ⇒ MkConf a
+  → H.Component (ST.State a) (Q.Query a) Slam
+actionListComp mkConf =
   H.lifecycleComponent
-    { render: render conf
-    , initializer: Just $ H.action CalculateBoundingRect
+    { render: render mkConf
+    , initializer: Just $ H.action Q.CalculateBoundingRect
     , finalizer: Nothing
     , eval
     }
 
-comp ∷ ∀ a. Eq a ⇒ H.Component (State a) (Query a) Slam
+comp ∷ ∀ a. Eq a ⇒ H.Component (ST.State a) (Q.Query a) Slam
 comp = actionListComp A.defaultConf
 
-render ∷ ∀ a. ActionListConf a → State a → HTML a
+render ∷ ∀ a. MkConf a → ST.State a → HTML a
 render mkConf state =
   HH.div
-    [ HP.class_ $ HH.className "sd-action-list" ]
-    [ HH.ul
-        [ HP.ref $ H.action ∘ SetBoundingElement ]
-        $ renderButtons (String.toLower state.filterString)
-        $ mkConf state.actions
+    [ HP.classes
+      $ [ HH.className "sd-action-list" ]
+      ⊕ conf.classes
     ]
+    [ HH.ul
+        [ HP.ref $ H.action ∘ Q.SetBoundingElement ]
+        $ renderButtons (String.toLower state.filterString) conf
+
+    ]
+  where
+  conf =
+    mkConf (fromMaybe { width: 0.0, height: 0.0 } state.boundingDimensions) state.actions
 
 renderButtons
   ∷ ∀ a
   . String
-  → ActionListConf a
+  → A.ActionListConf a
   → Array (HTML a)
 renderButtons filterString conf =
-  if conf.leaveASpace
-    then realButtons <> [ renderSpaceFillerButton metrics ]
-    else realButtons
+  realButtons ⊕ foldMap (pure ∘ renderSpaceFillerButton) metrics
   where
+  metrics ∷ Maybe A.ButtonMetrics
+  metrics = do
+    guard conf.leavesASpace
+    map _.metrics $ Array.head conf.buttons
+
   realButtons ∷ Array (HTML a)
   realButtons =
     renderButton filterString <$> conf.buttons
 
-renderSpaceFillerButton ∷ ∀ a. ButtonMetrics → HTML a
+renderSpaceFillerButton ∷ ∀ a. A.ButtonMetrics → HTML a
 renderSpaceFillerButton metrics =
   HH.li
     [ HCSS.style
-        $ CSS.width (CSS.px $ firefoxify metrics.dimensions.width)
-        *> CSS.height (CSS.px $ firefoxify metrics.dimensions.height)
+        $ CSS.width (CSS.px $ A.firefoxify metrics.dimensions.width)
+        *> CSS.height (CSS.px $ A.firefoxify metrics.dimensions.height)
     ]
     [ HH.button
         [ HP.classes
@@ -116,36 +120,36 @@ renderSpaceFillerButton metrics =
 renderButton
   ∷ ∀ a
   . String
-  → ButtonConf a
+  → A.ButtonConf a
   → HTML a
 renderButton filterString { presentation, metrics, action, lines } =
   HH.li
     [ HCSS.style
-        $ CSS.width (CSS.px $ firefoxify metrics.dimensions.width)
-        *> CSS.height (CSS.px $ firefoxify metrics.dimensions.height)
+        $ CSS.width (CSS.px $ A.firefoxify metrics.dimensions.width)
+        *> CSS.height (CSS.px $ A.firefoxify metrics.dimensions.height)
     ]
     [ HH.button
         attrs
         $ case presentation of
-            IconOnly →
+            A.IconOnly →
               [ renderIcon ]
-            TextOnly →
+            A.TextOnly →
               [ renderName ]
-            IconAndText →
+            A.IconAndText →
               [ renderIcon, renderName ]
     ]
   where
   renderIcon ∷ HTML a
   renderIcon =
     HH.img
-      [ HP.src $ pluckActionIconSrc action
+      [ HP.src $ A.pluckActionIconSrc action
       , HCSS.style
           $ CSS.width (CSS.px metrics.iconDimensions.width)
           *> CSS.height (CSS.px metrics.iconDimensions.height)
           *> CSS.marginBottom (CSS.px metrics.iconMarginPx)
           -- Stops icon only presentations from being cut off in short wide
           -- buttons.
-          *> (if (isIconOnly presentation)
+          *> (if (A.isIconOnly presentation)
                 then
                   CSS.position CSS.absolute
                     *> CSS.left (CSS.px metrics.iconOnlyLeftPx)
@@ -158,8 +162,8 @@ renderButton filterString { presentation, metrics, action, lines } =
   renderName =
     HH.p
       [ HCSS.style
-          $ CSS.fontSize (CSS.px $ fontSizePx)
-          *> CSSUtils.lineHeight (show lineHeightPx <> "px")
+          $ CSS.fontSize (CSS.px $ A.fontSizePx)
+          *> CSSUtils.lineHeight (show A.lineHeightPx <> "px")
       ]
       $ Array.intercalate
           [ HH.br_ ]
@@ -168,26 +172,26 @@ renderButton filterString { presentation, metrics, action, lines } =
   enabled ∷ Boolean
   enabled =
     case action of
-      GoBack →
+      A.GoBack →
         true
       _ →
         Foldable.any
           (String.contains (String.Pattern filterString) ∘ String.toLower)
-          (searchFilters action)
+          (A.searchFilters action)
 
   attrs =
-    [ HP.title $ pluckActionDescription action
-    , HP.disabled $ (not enabled) || (isDisabled action)
+    [ HP.title $ A.pluckActionDescription action
+    , HP.disabled $ (not enabled) || (A.isDisabled action)
     , HP.buttonType HP.ButtonButton
-    , ARIA.label $ pluckActionDescription action
+    , ARIA.label $ A.pluckActionDescription action
     , HP.classes classes
-    , HE.onClick (HE.input_ $ Selected action)
+    , HE.onClick $ HE.input_ $ Q.Selected action
     , HCSS.style $ CSS.position CSS.relative
     ]
 
   classes ∷ Array HH.ClassName
   classes =
-    if isHighlighted action && enabled
+    if A.isHighlighted action && enabled
       then
         [ HH.className "sd-button" ]
       else
@@ -195,7 +199,7 @@ renderButton filterString { presentation, metrics, action, lines } =
         , HH.className "sd-button-warning"
         ]
 
-updateActions ∷ ∀ a. Eq a ⇒ Array (Action a) → State a → State a
+updateActions ∷ ∀ a. Eq a ⇒ Array (A.Action a) → ST.State a → ST.State a
 updateActions newActions state =
   case activeDrill of
     Nothing →
@@ -204,15 +208,16 @@ updateActions newActions state =
     Just drill →
       state
         { previousActions = newActions
-        , actions = fromMaybe [] $ pluckDrillActions =<< newActiveDrill
+        , actions = fromMaybe [] $ A.pluckDrillActions =<< newActiveDrill
         }
   where
-  activeDrill ∷ Maybe (Action a)
+  activeDrill ∷ Maybe (A.Action a)
   activeDrill =
     Foldable.find
-      (maybe false (eq state.actions) ∘ pluckDrillActions)
+      (maybe false (eq state.actions) ∘ A.pluckDrillActions)
       state.previousActions
 
+  newActiveDrill ∷ Maybe (A.Action a)
   newActiveDrill =
     Foldable.find (eq activeDrill ∘ Just) newActions
 
@@ -221,43 +226,40 @@ getBoundingDOMRect =
   traverse (H.fromEff ∘ DOMUtils.getOffsetClientRect)
     =<< H.gets _.boundingElement
 
-eval ∷ ∀ a. Eq a ⇒ Query a ~> DSL a
+eval ∷ ∀ a. Eq a ⇒ Q.Query a ~> DSL a
 eval =
   case _ of
-    UpdateFilter str next → do
+    Q.UpdateFilter str next → do
       H.modify _{ filterString = str }
       pure next
-    Selected action next → do
+    Q.Selected action next → do
       st ← H.get
       case action of
-        Do _ → pure unit
-        Drill {children} →
+        A.Do _ → pure unit
+        A.Drill {children} →
           H.modify _
-            { actions = GoBack `Array.cons` children
+            { actions = A.GoBack `Array.cons` children
             , previousActions = st.actions
             }
-        GoBack →
+        A.GoBack →
           H.modify _
             { actions = st.previousActions
             , previousActions = [ ]
             }
       pure next
-    UpdateActions actions next →
+    Q.UpdateActions actions next →
       H.modify (updateActions actions)
         $> next
-    CalculateBoundingRect next →
-      calculateBoundingRect $> next
-    SetBoundingRect dimensions next →
-      H.modify _{ boundingDimensions = maybeNotZero dimensions } $> next
-    GetBoundingRect continue →
+    Q.CalculateBoundingRect next → do
+      H.modify
+        ∘ flip _{ boundingDimensions = _ }
+        ∘ flip bind A.maybeNotZero
+        ∘ map A.domRectToDimensions
+        =<< getBoundingDOMRect
+      pure next
+    Q.SetBoundingRect dimensions next →
+      H.modify _{ boundingDimensions = A.maybeNotZero dimensions } $> next
+    Q.GetBoundingRect continue →
       continue <$> H.gets _.boundingDimensions
-    SetBoundingElement element next →
+    Q.SetBoundingElement element next →
       H.modify _{ boundingElement = element } $> next
-
-calculateBoundingRect ∷ ∀ a. DSL a Unit
-calculateBoundingRect =
-  H.modify
-    ∘ flip _{ boundingDimensions = _ }
-    ∘ flip bind maybeNotZero
-    ∘ map domRectToDimensions
-    =<< getBoundingDOMRect

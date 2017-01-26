@@ -27,7 +27,7 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType, allChartTypes)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType, allFormInputTypes)
 import SlamData.Workspace.Card.Port (Port)
-import SlamData.ActionList.Component.ActionInternal as ActionList
+import SlamData.ActionList.Action as Action
 
 data NextAction
   = Insert CardType
@@ -44,46 +44,46 @@ pluckCardType (Insert ct) = ct
 pluckCardType (FindOutHowToInsert ct) = ct
 
 chartSubmenu
-  ∷ (ChartType → ActionList.ActionInternal NextAction)
-  → ActionList.ActionInternal NextAction
+  ∷ (ChartType → Action.Action NextAction)
+  → Action.Action NextAction
 chartSubmenu mkAction =
-  ActionList.mkDrill
+  Action.mkDrill
     { name: "Setup Chart"
     , iconSrc: "img/cardsLight/setupChart.svg"
     , description: "Select Setup Chart card category"
     , children: map mkAction allChartTypes
     }
 
-insertChartSubmenu ∷ ActionList.ActionInternal NextAction
+insertChartSubmenu ∷ Action.Action NextAction
 insertChartSubmenu =
   chartSubmenu $ toAction ∘ Insert ∘ CT.ChartOptions
 
-findOutHowToChartSubmenu ∷ ActionList.ActionInternal NextAction
+findOutHowToChartSubmenu ∷ Action.Action NextAction
 findOutHowToChartSubmenu =
   chartSubmenu $ toAction ∘ FindOutHowToInsert ∘ CT.ChartOptions
 
 formInputSubmenu
-  ∷ (FormInputType → ActionList.ActionInternal NextAction)
-  → ActionList.ActionInternal NextAction
+  ∷ (FormInputType → Action.Action NextAction)
+  → Action.Action NextAction
 formInputSubmenu mkAction =
-  ActionList.mkDrill
+  Action.mkDrill
     { name: "Setup Form"
     , iconSrc: "img/cardsLight/setupFormInput.svg"
     , description: "Select Setup Form card category"
     , children: map mkAction allFormInputTypes
     }
 
-insertFormInputSubmenu ∷ ActionList.ActionInternal NextAction
+insertFormInputSubmenu ∷ Action.Action NextAction
 insertFormInputSubmenu =
   formInputSubmenu $ toAction ∘ Insert ∘ CT.SetupFormInput
 
-findOutHowToFormInputSubmenu ∷ ActionList.ActionInternal NextAction
+findOutHowToFormInputSubmenu ∷ Action.Action NextAction
 findOutHowToFormInputSubmenu =
   formInputSubmenu $ toAction ∘ FindOutHowToInsert ∘ CT.SetupFormInput
 
-toAction ∷ NextAction → ActionList.ActionInternal NextAction
+toAction ∷ NextAction → Action.Action NextAction
 toAction na =
-  ActionList.mkDo
+  Action.mkDo
     { name: CT.cardName cardType
     , iconSrc: CT.cardIconLightSrc cardType
     , highlighted: isInsert na
@@ -99,13 +99,13 @@ description = case _ of
   Insert cty → "Insert a " ⊕ CT.cardName cty ⊕ " card"
   FindOutHowToInsert cty → "Find out how to insert a " ⊕ CT.cardName cty ⊕ " card"
 
-insert ∷ InsertableCardType → ActionList.ActionInternal NextAction
+insert ∷ InsertableCardType → Action.Action NextAction
 insert = case _ of
   ICT.SetupChartCard → insertChartSubmenu
   ICT.SetupFormCard → insertFormInputSubmenu
   iCardType → toAction $ Insert $ ICT.toCardType iCardType
 
-findOutHowToInsert ∷ InsertableCardType → ActionList.ActionInternal NextAction
+findOutHowToInsert ∷ InsertableCardType → Action.Action NextAction
 findOutHowToInsert = case _ of
   ICT.SetupChartCard → findOutHowToChartSubmenu
   ICT.SetupFormCard → findOutHowToFormInputSubmenu
@@ -114,13 +114,13 @@ findOutHowToInsert = case _ of
 fromInsertableCard
   ∷ InsertableCardType
   → Array InsertableCardType
-  → ActionList.ActionInternal NextAction
+  → Action.Action NextAction
 fromInsertableCard x =
   maybe (findOutHowToInsert x) (const $ insert x) ∘ A.findIndex (eq x)
 
-fromPort ∷ Port → Array (ActionList.ActionInternal NextAction)
+fromPort ∷ Port → Array (Action.Action NextAction)
 fromPort port =
   flip fromInsertableCard (ICT.cardsThatTakeInput $ ICT.fromPort port) <$> ICT.all
 
-fromMaybePort ∷ Maybe Port → Array (ActionList.ActionInternal NextAction)
+fromMaybePort ∷ Maybe Port → Array (Action.Action NextAction)
 fromMaybePort = maybe (flip fromInsertableCard (ICT.cardsThatTakeInput ICT.None) <$> ICT.all) fromPort
