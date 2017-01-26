@@ -51,29 +51,14 @@ import Utils.DOM (DOMRect)
 import Utils.DOM as DOMUtils
 import Utils.CSS as CSSUtils
 
-import Unsafe.Coerce (unsafeCoerce)
-
-hole ∷ ∀ a. a
-hole = unsafeCoerce unit
-
 type HTML a = H.ComponentHTML (Query a)
 type DSL a = H.ComponentDSL (State a) (Query a) Slam
 
-type ButtonConf a =
-  { metrics ∷ ButtonMetrics
-  , presentation ∷ Presentation
-  , action ∷ Action a
-  , lines ∷ Array String
-  }
 
-type ActionListConf a =
-  { buttons ∷ Array (ButtonConf a)
-  , leavesASpace ∷ Boolean
-  }
 
 actionListComp
   ∷ ∀ a. Eq a
-  ⇒ (Array (Action a) → ActionListConf a)
+  ⇒ (Array (A.Action a) → A.ActionListConf a)
   → H.Component (State a) (Query a) Slam
 actionListComp conf =
   H.lifecycleComponent
@@ -83,11 +68,8 @@ actionListComp conf =
     , eval
     }
 
-defaultConf ∷ ∀ a. Eq a ⇒ (Array (Action a)) → ActionListConf a
-defaultConf as = hole
-
 comp ∷ ∀ a. Eq a ⇒ H.Component (State a) (Query a) Slam
-comp = actionListComp defaultConf
+comp = actionListComp A.defaultConf
 
 render ∷ ∀ a. ActionListConf a → State a → HTML a
 render mkConf state =

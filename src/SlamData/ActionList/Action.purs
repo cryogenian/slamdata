@@ -19,6 +19,7 @@ module SlamData.ActionList.Action where
 import SlamData.Prelude
 
 import Data.Array as A
+import Data.Int as Int
 import Data.Foldable as F
 import Data.NonEmpty (NonEmpty, :|, tail)
 
@@ -286,23 +287,7 @@ mostSquareFittingRectangle i boundingDimensions = case tailMax of
        then i / factor
        else factor
 
-actionSizes ∷ ∀ a. Array (Action a) → Dimensions → ActionSizes
-actionSizes as dimensions =
-  let
-    firstTry = mostSquareFittingRectangle i dimensions
 
-    actionSize
-      | firstTry.height ≠ dimensions.height =
-          { dimensions: firstTry, leavesASpace: false }
-      | otherwise =
-          let secondTry = mostSquareFittingRectangle (i + 1) dimensions
-          in if secondTry.height ≡ boundingDimensions.height
-             then { dimensions: firstTry, leavesASpace: false }
-             else { dimensions: secondTry, leavesASpace: true }
-  in
-    { leavesASpace: actionSize.leaveASpace
-    , dimensions: map (const actionSize.dimension) as
-    }
 
 floor ∷ Dimensions → Dimensions
 floor dimensions =
@@ -364,3 +349,120 @@ decimalCrop i n =
   (Math.floor $ n * multiplier) / multiplier
   where
   multiplier = Math.pow 10.0 $ Int.toNumber i
+
+defaultConf ∷ ∀ a. Eq a ⇒ Array (Action a) → ActionListConf a
+defaultConf as =
+  let
+    len = A.length as
+
+    firstTry = mostSquareFittingRectangle len dimensions
+
+    actionSize
+      | firstTry.height ≠ dimensions.height =
+          { dimensions: firstTry, leavesASpace: false }
+      | otherwise =
+          let secondTry = mostSquareFittingRectangle (len + 1) dimensions
+          in if secondTry.height ≡ boundingDimensions.height
+             then { dimensions: firstTry, leavesASpace: false }
+             else { dimensions: secondTry, leavesASpace: true }
+
+    dimensions =
+      { width: actionSize.width
+      , height: actionSize.height
+      }
+
+    iconDimensions =
+      { width: actionSize.width * iconSizeRatio
+      , height: actionSize.height * iconSizeRatio
+      }
+
+    iconOnlyLeftPx =
+      dimensions.width / 2.0 - iconDimensions.width / 2.0
+    iconOnlyTopPx =
+      dimensions.height / 2.0 - iconDimensions.height / 2.0
+    iconMarginPx =
+      dimensions.height * 0.05
+
+    metrics =
+      { dimensions
+      , iconDimensions
+      , iconMarginPx
+      , iconOnlyLeftPx
+      , iconOnlyTopPx
+      }
+
+    lines =
+      map _.line $ calculateLines widthPx $ actionNameWords action
+
+    mkButtonConf action =
+      { action
+      , metrics
+      , lines:
+      , presentation: IconAndText
+      }
+
+    buttonConfs = map mkButtonConf as
+
+    maxNumberOfLines =
+      fromMaybe zero $ F.maximumBy (A.length ∘ _.lines) as
+
+    maxTextHeightPx =
+      Int.toNumber maxNumberOfLines * fontSizePx
+
+    buttonPaddingEstimatePx ∷ Number
+    buttonPaddingEstimatePx =
+      dimensions.height * buttonPaddingHighEstimate
+
+    textDoesNotFitWithIcon ∷ Boolean
+    textDoesNotFitWithIcon =
+      maxTextHeightPx
+        + iconDimensions.height
+        + iconMarginPx
+        + buttonPaddingEstimatePx
+        > buttonDimensions.dimensions.height
+
+    textDoesNotFitOnItsOwn ∷ Boolean
+    textDoesNotFitOnItsOwn =
+      maxTextHeightPx > dimensions.height
+      ∨ dimensions.width < 40.0
+
+
+    -- Allows text which fits vertically but not horizontally.
+    -- Styling truncates overflowing lines with ellipses.
+    --
+    -- E.g. where there is only room for two lines:
+    -- "Show Chart" would be presented without an icon as
+    --
+    -- Sh...
+    -- Ch...
+    --
+    -- But "Build pie chart" would be presented with only an icon.
+    --
+    -- The reasoning behind this is that presentation should be
+    -- unform per action list but that the entire list shouldn't be
+    -- reduced to only icons just because "Troubleshoot" would be
+    -- truncated to "Troublesh...".
+    presentation
+      | textDoesNotFitOnItsOwn ∨ maxNumberOfLines ≡ 0 = IconOnly
+      | textDoesNotFitWithIcon = TextOnly
+      | otherwise = IconAndText
+
+    buttons = map _{ presentation = presentation } buttonConfs
+
+  in
+    { buttons
+    , leavesASpace: actionSize.leaveASpace
+    }
+
+
+type ButtonConf a =
+  { metrics ∷ ButtonMetrics
+  , presentation ∷ Presentation
+  , action ∷ Action a
+  , lines ∷ Array String
+  }
+
+type ActionListConf a =
+  { buttons ∷ Array (ButtonConf a)
+  , leavesASpace ∷ Boolean
+  }
