@@ -16,21 +16,17 @@ limitations under the License.
 
 module SlamData.ActionList.Component
   ( comp
-  , initialState
-  , module SlamData.ActionList.Action
-  , module SlamData.ActionList.Component.ActionInternal
-  , module SlamData.ActionList.Component.State
-  , module SlamData.ActionList.Component.Query
+  , module A
+  , module ST
+  , module Q
   ) where
 
 import SlamData.Prelude
 
 import CSS as CSS
 
-import Data.Array ((..))
 import Data.Array as Array
 import Data.Foldable as Foldable
-import Data.Int as Int
 import Data.String as String
 
 import Halogen as H
@@ -40,330 +36,75 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
-import Math as Math
-
 import SlamData.Monad (Slam)
-import SlamData.ActionList.Action (Action(..), ActionDescription(..), ActionHighlighted(..), ActionIconSrc(..), ActionName(..), ActionDisabled(..))
-import SlamData.ActionList.Component.ActionInternal (ActionInternal(..), ActionNameLine(..), ActionNameWord(..), ButtonMetrics, Dimensions, Presentation(..))
-import SlamData.ActionList.Component.State (State)
-import SlamData.ActionList.Component.Query (Query(..))
+import SlamData.ActionList.Action as A
+import SlamData.ActionList.Component.State as ST
+import SlamData.ActionList.Component.Query as Q
 
-import Utils as Utils
 import Utils.DOM (DOMRect)
 import Utils.DOM as DOMUtils
 import Utils.CSS as CSSUtils
 
+type HTML a = H.ComponentHTML (Q.Query a)
+type DSL a = H.ComponentDSL (ST.State a) (Q.Query a) Slam
 
+type MkConf a =
+  A.Dimensions → Array (A.Action a) → A.ActionListConf a
 
-type HTML a = H.ComponentHTML (Query a)
-type DSL a = H.ComponentDSL (State a) (Query a) Slam
-
-fontSizePx ∷ Number
-fontSizePx =
-  12.0
-
-lineHeightPx ∷ Number
-lineHeightPx =
-  13.0
-
-iconSizeRatio ∷ Number
-iconSizeRatio =
-  0.3
-
--- Buttons are rendered with mystery centering and padding.
--- This can cause text to overflow.
-buttonPaddingHighEstimate ∷ Number
-buttonPaddingHighEstimate =
-  0.2
-
-isIconOnly ∷ Presentation → Boolean
-isIconOnly =
-  case _ of
-    IconOnly → true
-    _ → false
-
-wordify ∷ ActionName → Array ActionNameWord
-wordify (ActionName s) =
-  ActionNameWord
-    ∘ (\word → { word, widthPx: textWidth word })
-    <$> Utils.words s
-
-printActionNameWord ∷ ActionNameWord → String
-printActionNameWord (ActionNameWord { word }) =
-  word
-
-printActionNameLine ∷ ActionNameLine → String
-printActionNameLine (ActionNameLine { line }) =
-  line
-
-printActionNameWords ∷ Array ActionNameWord → String
-printActionNameWords =
-  String.joinWith " " ∘ map printActionNameWord
-
-toActionInternal ∷ ∀ a. Action a → ActionInternal a
-toActionInternal =
-  case _ of
-    Do actionName actionIconSrc actionDescription actionHighlighted actionDisabled a →
-      DoInternal
-        (wordify actionName)
-        actionIconSrc
-        actionDescription
-        actionHighlighted
-        actionDisabled
-        a
-    Drill actionName actionIconSrc actionDescription xs →
-      DrillInternal
-        (wordify actionName)
-        actionIconSrc
-        actionDescription
-        (toActionInternal <$> xs)
-
-isDo ∷ ∀ a. ActionInternal a → Boolean
-isDo =
-  case _ of
-    DoInternal _ _ _ _ _ _ →
-      true
-    _ →
-      false
-
-isDrill ∷ ∀ a. ActionInternal a → Boolean
-isDrill =
-  case _ of
-    DrillInternal _ _ _ _ →
-      true
-    _ →
-      false
-
-isHighlighted ∷ ∀ a. ActionInternal a → Boolean
-isHighlighted =
-  case _ of
-    DoInternal _ _ _ (ActionHighlighted highlighted) _ _ →
-      highlighted
-    DrillInternal _ _ _ actions →
-      Foldable.any isHighlighted actions
-    GoBackInternal → true
-
-isDisabled ∷ ∀ a. ActionInternal a → Boolean
-isDisabled =
-  case _ of
-    DoInternal _ _ _ _ (ActionDisabled disabled) _ →
-      disabled
-    DrillInternal _ _ _ actions →
-      Foldable.all isDisabled actions
-    GoBackInternal → false
-
-searchFilters ∷ ∀ a. ActionInternal a → Array String
-searchFilters =
-  case _ of
-    DoInternal words _ _ _ _ _ →
-      [ printActionNameWords words ]
-    DrillInternal words _ _ actions →
-      [ printActionNameWords words ] ⊕ Array.concat (map searchFilters actions)
-    GoBackInternal →
-      [ "go back" ]
-
-pluckActionDescription ∷ ∀ a. ActionInternal a → String
-pluckActionDescription =
-  case _ of
-    DoInternal _ _ (ActionDescription s) _ _ _ →
-      s
-    DrillInternal _ _ (ActionDescription s) _ →
-      s
-    GoBackInternal →
-      "Go back"
-
-pluckActionIconSrc ∷ ∀ a. ActionInternal a → String
-pluckActionIconSrc =
-  case _ of
-    DoInternal _ (ActionIconSrc s) _ _ _ _ →
-      s
-    DrillInternal _ (ActionIconSrc s) _ _ →
-      s
-    GoBackInternal →
-      "/img/go-back.svg"
-
-actionNameWords ∷ ∀ a. ActionInternal a → Array ActionNameWord
-actionNameWords =
-  case _ of
-    DoInternal xs _ _ _ _ _ →
-      xs
-    DrillInternal xs _ _ _ →
-      xs
-    GoBackInternal →
-      wordify $ ActionName "Go back"
-
-initialState ∷ ∀ a. Array (Action a) → State a
-initialState actions =
-  { actions: toActionInternal <$> actions
-  , previousActions: [ ]
-  , filterString: ""
-  , boundingElement: Nothing
-  , boundingDimensions: Nothing
-  }
-
-comp ∷ ∀ a. Eq a ⇒ Array HH.ClassName → H.Component (State a) (Query a) Slam
-comp clss =
+actionListComp
+  ∷ ∀ a. Eq a
+  ⇒ MkConf a
+  → H.Component (ST.State a) (Q.Query a) Slam
+actionListComp mkConf =
   H.lifecycleComponent
-    { render: render clss
-    , initializer: Just $ H.action CalculateBoundingRect
+    { render: render mkConf
+    , initializer: Just $ H.action Q.CalculateBoundingRect
     , finalizer: Nothing
     , eval
     }
 
-render ∷ ∀ a. Array HH.ClassName → State a → HTML a
-render clss state =
+comp ∷ ∀ a. Eq a ⇒ H.Component (ST.State a) (Q.Query a) Slam
+comp = actionListComp A.defaultConf
+
+render ∷ ∀ a. MkConf a → ST.State a → HTML a
+render mkConf state =
   HH.div
     [ HP.classes
       $ [ HH.className "sd-action-list" ]
-      ⊕ clss
+      ⊕ conf.classes
     ]
     [ HH.ul
-        [ HP.ref $ H.action ∘ SetBoundingElement ]
-        (maybe
-           []
-           (renderButtons (String.toLower state.filterString) state.actions)
-           (actionSize
-              (Array.length state.actions)
-              =<< state.boundingDimensions))
+        [ HP.ref $ H.action ∘ Q.SetBoundingElement ]
+        $ renderButtons (String.toLower state.filterString) conf
+
     ]
   where
-  actionSize
-    ∷ Int
-    → Dimensions
-    → Maybe { dimensions ∷ Dimensions, leavesASpace ∷ Boolean }
-  actionSize i boundingDimensions = do
-    firstTry ← mostSquareFittingRectangle i boundingDimensions
-    if firstTry.height ≡ boundingDimensions.height
-      then do
-        secondTry ← mostSquareFittingRectangle (i + 1) boundingDimensions
-        if secondTry.height ≡ boundingDimensions.height
-           then pure { dimensions: firstTry, leavesASpace: false }
-           else pure { dimensions: secondTry, leavesASpace: true }
-        else pure { dimensions: firstTry, leavesASpace: false }
+  conf =
+    mkConf (fromMaybe { width: 0.0, height: 0.0 } state.boundingDimensions) state.actions
 
 renderButtons
   ∷ ∀ a
   . String
-  → Array (ActionInternal a)
-  → { dimensions ∷ Dimensions, leavesASpace ∷ Boolean }
+  → A.ActionListConf a
   → Array (HTML a)
-renderButtons filterString actions buttonDimensions =
-  if buttonDimensions.leavesASpace
-    then realButtons <> [ renderSpaceFillerButton metrics ]
-    else realButtons
+renderButtons filterString conf =
+  realButtons ⊕ foldMap (pure ∘ renderSpaceFillerButton) metrics
   where
+  metrics ∷ Maybe A.ButtonMetrics
+  metrics = do
+    guard conf.leavesASpace
+    map _.metrics $ Array.head conf.buttons
+
   realButtons ∷ Array (HTML a)
   realButtons =
-    renderButton filterString presentation metrics <$> actionsWithLines
+    renderButton filterString <$> conf.buttons
 
-  actionsWithLines ∷ Array { action ∷ ActionInternal a, lines ∷ Array String }
-  actionsWithLines =
-    toActionWithLines (buttonDimensions.dimensions.width * 0.95) <$> actions
-
-  toActionWithLines
-    ∷ Number
-    → ActionInternal a
-    → { action ∷ ActionInternal a, lines ∷ Array String }
-  toActionWithLines widthPx action =
-    { action
-    , lines: printActionNameLine <$> (calculateLines widthPx $ actionNameWords action)
-    }
-
-  iconDimensions ∷ Dimensions
-  iconDimensions =
-    { width: buttonDimensions.dimensions.width * iconSizeRatio
-    , height: buttonDimensions.dimensions.height * iconSizeRatio
-    }
-
-  metrics ∷ ButtonMetrics
-  metrics =
-    { dimensions:
-        buttonDimensions.dimensions
-    , iconDimensions:
-        iconDimensions
-    , iconMarginPx:
-        buttonDimensions.dimensions.height * 0.05
-    , iconOnlyLeftPx:
-        (buttonDimensions.dimensions.width / 2.0)
-          - (iconDimensions.width / 2.0)
-    , iconOnlyTopPx:
-        (buttonDimensions.dimensions.height / 2.0)
-          - (iconDimensions.height / 2.0) - 1.0
-    }
-
-  maxNumberOfLines ∷ Int
-  maxNumberOfLines =
-    fromMaybe 0 $ Foldable.maximum $ Array.length ∘ _.lines <$> actionsWithLines
-
-  maxTextHeightPx ∷ Number
-  maxTextHeightPx =
-    Int.toNumber maxNumberOfLines * fontSizePx
-
-  buttonPaddingEstimatePx ∷ Number
-  buttonPaddingEstimatePx =
-    buttonDimensions.dimensions.height * buttonPaddingHighEstimate
-
-  textDoesNotFitWithIcon ∷ Boolean
-  textDoesNotFitWithIcon =
-    maxTextHeightPx
-      + iconDimensions.height
-      + metrics.iconMarginPx
-      + buttonPaddingEstimatePx
-      > buttonDimensions.dimensions.height
-
-  textDoesNotFitOnItsOwn ∷ Boolean
-  textDoesNotFitOnItsOwn =
-    maxTextHeightPx > buttonDimensions.dimensions.height
-      ∨ buttonDimensions.dimensions.width < 40.0
-
-  -- Allows text which fits vertically but not horizontally.
-  -- Styling truncates overflowing lines with ellipses.
-  --
-  -- E.g. where there is only room for two lines:
-  -- "Show Chart" would be presented without an icon as
-  --
-  -- Sh...
-  -- Ch...
-  --
-  -- But "Build pie chart" would be presented with only an icon.
-  --
-  -- The reasoning behind this is that presentation should be
-  -- unform per action list but that the entire list shouldn't be
-  -- reduced to only icons just because "Troubleshoot" would be
-  -- truncated to "Troublesh...".
-  presentation ∷ Presentation
-  presentation =
-    if textDoesNotFitOnItsOwn ∨ maxNumberOfLines ≡ 0
-      then
-        IconOnly
-      else
-        if textDoesNotFitWithIcon
-          then
-            TextOnly
-          else
-            IconAndText
-
-decimalCrop ∷ Int → Number → Number
-decimalCrop i n =
-  (Math.floor $ n * multiplier) / multiplier
-  where
-  multiplier = Math.pow 10.0 $ Int.toNumber i
-
--- Firefox doesn't seem to be able to handle pixel metrics with decimal
--- precisons higher than one. Without applying this function actionlists
--- of certain widths render with empty spaces and overflowing actions.
-firefoxify ∷ Number → Number
-firefoxify n =
-  if Utils.isFirefox
-     then decimalCrop 1 n
-     else n
-
-renderSpaceFillerButton ∷ ∀ a. ButtonMetrics → HTML a
+renderSpaceFillerButton ∷ ∀ a. A.ButtonMetrics → HTML a
 renderSpaceFillerButton metrics =
   HH.li
     [ HCSS.style
-        $ CSS.width (CSS.px $ firefoxify metrics.dimensions.width)
-        *> CSS.height (CSS.px $ firefoxify metrics.dimensions.height)
+        $ CSS.width (CSS.px $ A.firefoxify metrics.dimensions.width)
+        *> CSS.height (CSS.px $ A.firefoxify metrics.dimensions.height)
     ]
     [ HH.button
         [ HP.classes
@@ -379,38 +120,36 @@ renderSpaceFillerButton metrics =
 renderButton
   ∷ ∀ a
   . String
-  → Presentation
-  → ButtonMetrics
-  → { action ∷ ActionInternal a, lines ∷ Array String }
+  → A.ButtonConf a
   → HTML a
-renderButton filterString presentation metrics { action, lines } =
+renderButton filterString { presentation, metrics, action, lines } =
   HH.li
     [ HCSS.style
-        $ CSS.width (CSS.px $ firefoxify metrics.dimensions.width)
-        *> CSS.height (CSS.px $ firefoxify metrics.dimensions.height)
+        $ CSS.width (CSS.px $ A.firefoxify metrics.dimensions.width)
+        *> CSS.height (CSS.px $ A.firefoxify metrics.dimensions.height)
     ]
     [ HH.button
         attrs
         $ case presentation of
-            IconOnly →
+            A.IconOnly →
               [ renderIcon ]
-            TextOnly →
+            A.TextOnly →
               [ renderName ]
-            IconAndText →
+            A.IconAndText →
               [ renderIcon, renderName ]
     ]
   where
   renderIcon ∷ HTML a
   renderIcon =
     HH.img
-      [ HP.src $ pluckActionIconSrc action
+      [ HP.src $ A.pluckActionIconSrc action
       , HCSS.style
           $ CSS.width (CSS.px metrics.iconDimensions.width)
           *> CSS.height (CSS.px metrics.iconDimensions.height)
           *> CSS.marginBottom (CSS.px metrics.iconMarginPx)
           -- Stops icon only presentations from being cut off in short wide
           -- buttons.
-          *> (if (isIconOnly presentation)
+          *> (if (A.isIconOnly presentation)
                 then
                   CSS.position CSS.absolute
                     *> CSS.left (CSS.px metrics.iconOnlyLeftPx)
@@ -423,8 +162,8 @@ renderButton filterString presentation metrics { action, lines } =
   renderName =
     HH.p
       [ HCSS.style
-          $ CSS.fontSize (CSS.px $ fontSizePx)
-          *> CSSUtils.lineHeight (show lineHeightPx <> "px")
+          $ CSS.fontSize (CSS.px $ A.fontSizePx)
+          *> CSSUtils.lineHeight (show A.lineHeightPx <> "px")
       ]
       $ Array.intercalate
           [ HH.br_ ]
@@ -433,26 +172,26 @@ renderButton filterString presentation metrics { action, lines } =
   enabled ∷ Boolean
   enabled =
     case action of
-      GoBackInternal →
+      A.GoBack →
         true
       _ →
         Foldable.any
           (String.contains (String.Pattern filterString) ∘ String.toLower)
-          (searchFilters action)
+          (A.searchFilters action)
 
   attrs =
-    [ HP.title $ pluckActionDescription action
-    , HP.disabled $ (not enabled) || (isDisabled action)
+    [ HP.title $ A.pluckActionDescription action
+    , HP.disabled $ (not enabled) || (A.isDisabled action)
     , HP.buttonType HP.ButtonButton
-    , ARIA.label $ pluckActionDescription action
+    , ARIA.label $ A.pluckActionDescription action
     , HP.classes classes
-    , HE.onClick (HE.input_ $ Selected action)
+    , HE.onClick $ HE.input_ $ Q.Selected action
     , HCSS.style $ CSS.position CSS.relative
     ]
 
   classes ∷ Array HH.ClassName
   classes =
-    if isHighlighted action && enabled
+    if A.isHighlighted action && enabled
       then
         [ HH.className "sd-button" ]
       else
@@ -460,13 +199,7 @@ renderButton filterString presentation metrics { action, lines } =
         , HH.className "sd-button-warning"
         ]
 
-factors ∷ Int → Array Int
-factors n = do
-  factor ← 1 .. n
-  guard $ n `mod` factor ≡ 0
-  pure factor
-
-updateActions ∷ ∀ a. Eq a ⇒ Array (ActionInternal a) → State a → State a
+updateActions ∷ ∀ a. Eq a ⇒ Array (A.Action a) → ST.State a → ST.State a
 updateActions newActions state =
   case activeDrill of
     Nothing →
@@ -475,146 +208,58 @@ updateActions newActions state =
     Just drill →
       state
         { previousActions = newActions
-        , actions = fromMaybe [] $ pluckDrillActions =<< newActiveDrill
+        , actions = fromMaybe [] $ A.pluckDrillActions =<< newActiveDrill
         }
   where
-  activeDrill ∷ Maybe (ActionInternal a)
+  activeDrill ∷ Maybe (A.Action a)
   activeDrill =
     Foldable.find
-      (maybe false (eq state.actions) ∘ pluckDrillActions)
+      (maybe false (eq state.actions) ∘ A.pluckDrillActions)
       state.previousActions
 
+  newActiveDrill ∷ Maybe (A.Action a)
   newActiveDrill =
     Foldable.find (eq activeDrill ∘ Just) newActions
-
-  pluckDrillActions =
-    case _ of
-      DrillInternal _ _ _ xs → Just xs
-      _ → Nothing
-
-domRectToDimensions ∷ DOMRect → Dimensions
-domRectToDimensions domRect =
-  { width: domRect.width, height: domRect.height }
 
 getBoundingDOMRect ∷ ∀ a. DSL a (Maybe DOMRect)
 getBoundingDOMRect =
   traverse (H.fromEff ∘ DOMUtils.getOffsetClientRect)
     =<< H.gets _.boundingElement
 
-eval ∷ ∀ a. Eq a ⇒ Query a ~> DSL a
+eval ∷ ∀ a. Eq a ⇒ Q.Query a ~> DSL a
 eval =
   case _ of
-    UpdateFilter str next → do
+    Q.UpdateFilter str next → do
       H.modify _{ filterString = str }
       pure next
-    Selected action next → do
+    Q.Selected action next → do
       st ← H.get
       case action of
-        DoInternal _ _ _ _ _ _ → pure unit
-        DrillInternal _ _ _ actions →
+        A.Do _ → pure unit
+        A.Drill {children} →
           H.modify _
-            { actions = GoBackInternal `Array.cons` actions
+            { actions = A.GoBack `Array.cons` children
             , previousActions = st.actions
             }
-        GoBackInternal →
+        A.GoBack →
           H.modify _
             { actions = st.previousActions
             , previousActions = [ ]
             }
       pure next
-    UpdateActions actions next →
-      H.modify (updateActions $ toActionInternal <$> actions)
+    Q.UpdateActions actions next →
+      H.modify (updateActions actions)
         $> next
-    CalculateBoundingRect next →
-      calculateBoundingRect $> next
-    SetBoundingRect dimensions next →
-      H.modify _{ boundingDimensions = maybeNotZero dimensions } $> next
-    GetBoundingRect continue →
+    Q.CalculateBoundingRect next → do
+      H.modify
+        ∘ flip _{ boundingDimensions = _ }
+        ∘ flip bind A.maybeNotZero
+        ∘ map A.domRectToDimensions
+        =<< getBoundingDOMRect
+      pure next
+    Q.SetBoundingRect dimensions next →
+      H.modify _{ boundingDimensions = A.maybeNotZero dimensions } $> next
+    Q.GetBoundingRect continue →
       continue <$> H.gets _.boundingDimensions
-    SetBoundingElement element next →
+    Q.SetBoundingElement element next →
       H.modify _{ boundingElement = element } $> next
-
-maybeNotZero ∷ Dimensions → Maybe Dimensions
-maybeNotZero dimensions
-  | dimensions.width ≡ 0.0 ∨ dimensions.height ≡ 0.0 = Nothing
-  | otherwise = Just dimensions
-
-calculateBoundingRect ∷ ∀ a. DSL a Unit
-calculateBoundingRect =
-  H.modify
-    ∘ flip _{ boundingDimensions = _ }
-    ∘ flip bind maybeNotZero
-    ∘ map domRectToDimensions
-    =<< getBoundingDOMRect
-
-floor ∷ Dimensions → Dimensions
-floor dimensions =
-  { width: Math.floor dimensions.width
-  , height: Math.floor dimensions.height
-}
-
-calculateLines ∷ Number → Array ActionNameWord → Array ActionNameLine
-calculateLines width words =
-  foldl go [] words
-  where
-  go ∷ Array ActionNameLine → ActionNameWord → Array ActionNameLine
-  go acc (ActionNameWord { word, widthPx: wordWidthPx }) =
-    case Array.uncons acc of
-      Nothing →
-        [ ActionNameLine { line: word, widthPx: wordWidthPx } ]
-      Just { head: ActionNameLine { line, widthPx: lineWidthPx }, tail }
-        | (lineWidthPx + spaceWidth + wordWidthPx) <= width →
-            Array.snoc tail
-              $ ActionNameLine
-                { line: line ⊕ " " ⊕ word
-                , widthPx: lineWidthPx + spaceWidth + wordWidthPx
-                }
-        | otherwise →
-            Array.snoc acc
-              $ ActionNameLine { line: word, widthPx: wordWidthPx }
-
-spaceWidth ∷ Number
-spaceWidth =
-  textWidth " "
-
-textWidth ∷ String → Number
-textWidth =
-  flip
-    DOMUtils.getTextWidthPure
-    $ "normal " <> show fontSizePx <> "px Ubuntu"
-
-mostSquareFittingRectangle ∷ Int → Dimensions → Maybe Dimensions
-mostSquareFittingRectangle i boundingDimensions =
-  Foldable.maximumBy
-    (\x y → karat x `compare` karat y)
-    solutions
-  where
-  solutions ∷ Array Dimensions
-  solutions =
-    solution <$> factors i
-
-  goldenRatio ∷ Number
-  goldenRatio =
-    1.61803398875
-
-  karat ∷ Dimensions → Number
-  karat dimensions =
-    -(Math.abs $ goldenRatio - (dimensions.width / dimensions.height))
-
-  solution ∷ Int → Dimensions
-  solution factor =
-    { width: boundingDimensions.width / (Int.toNumber $ numberOfRows factor)
-    , height: boundingDimensions.height / (Int.toNumber $ numberOfColumns factor)
-    }
-
-  numberOfRows ∷ Int → Int
-  numberOfRows factor =
-    if boundingDimensions.width > boundingDimensions.height
-       then factor
-       else i / factor
-
-  numberOfColumns ∷ Int → Int
-  numberOfColumns factor =
-    if boundingDimensions.width > boundingDimensions.height
-       then i / factor
-       else factor

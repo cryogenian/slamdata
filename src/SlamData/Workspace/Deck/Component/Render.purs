@@ -172,7 +172,7 @@ backside =
                     , initialState: ActionFilter.initialState
                     }
                 , HH.slot' cpBackSide unit \_ →
-                    { component: ActionList.comp [ HH.className "with-filter" ]
+                    { component: ActionList.comp
                     , initialState: ActionList.initialState []
                     }
                 ]

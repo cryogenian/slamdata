@@ -19,11 +19,10 @@ module SlamData.ActionList.Component.Query where
 import SlamData.Prelude
 
 import DOM.HTML.Types (HTMLElement)
-import SlamData.ActionList.Action (Action)
-import SlamData.ActionList.Component.ActionInternal (ActionInternal, Dimensions)
+import SlamData.ActionList.Action (Action, Dimensions)
 
 data Query a next
-  = Selected (ActionInternal a) next
+  = Selected (Action a) next
   | UpdateFilter String next
   | UpdateActions (Array (Action a)) next
   | CalculateBoundingRect next
