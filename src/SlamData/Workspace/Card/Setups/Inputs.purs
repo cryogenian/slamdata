@@ -45,6 +45,11 @@ type PickerOptions a f =
   , select ∷ f (Const Unit)
   }
 
+type NewPickerOptions option action =
+  { options ∷ Array option
+  , action ∷ action
+  }
+
 type AggregationConfig a i =
   SelectConfig
     ( query ∷ SelectAction a → H.Action i

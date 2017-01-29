@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.State
   , _name
   , State
   , StateP
-  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  , module DS
   ) where
 
 
@@ -31,12 +31,13 @@ import Halogen (ParentState)
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.Query (QueryC, Selection)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
+import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.Query (QueryC)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as M
+import SlamData.Workspace.Card.Setups.FormInput.TextLike.Action as FTA
 
-type State = M.ReducedState (DS.CommonState JCursor Selection ())
+type State =
+  M.ReducedState (DS.NewCommonState JCursor FTA.Action ())
 
 initialState ∷ State
 initialState =

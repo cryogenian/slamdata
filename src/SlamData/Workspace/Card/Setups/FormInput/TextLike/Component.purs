@@ -20,7 +20,9 @@ module SlamData.Workspace.Card.Setups.FormInput.TextLike.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (.~), preview)
+import Data.Array as Arr
+import Data.Lens ((^?), (?~))
+import Data.Lens as Lens
 import Data.List as List
 
 import Halogen as H
@@ -32,6 +34,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import SlamData.ActionList.Component as AL
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Form.Select as S
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -49,6 +52,7 @@ import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.State as ST
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.Query as Q
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as M
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Def (TextLikeDef)
+import SlamData.Workspace.Card.Setups.FormInput.TextLike.Action as FTA
 
 type DSL =
   H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
@@ -92,27 +96,42 @@ renderHighLOD state =
     ]
     [ renderName state
     , HH.hr_
-    , renderValue state
+    , renderActionList
     , renderPicker state
     ]
-
-selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
-selecting f q a = right (Q.Select (f q) a)
 
 renderPicker ∷ ST.State → HTML
 renderPicker state = case state.picker of
   Nothing → HH.text ""
   Just r →
-    HH.slot unit \_ →
+    HH.slot' CS.cpDimensionPicker unit \_ →
       { component: DPC.picker
-          { title: case r.select of
-               Q.Value _ → "Choose value"
+          { title: case r.action of
+               FTA.Value → "Choose value"
           , label: DPC.labelNode show
           , render: DPC.renderNode show
           , values: groupJCursors $ List.fromFoldable r.options
           , isSelectable: DPC.isLeafPath
           }
       , initialState: H.parentState DPC.initialState
+      }
+
+renderActionList ∷ HTML
+renderActionList =
+  HH.slot' CS.cpActionList unit \_ →
+    { component: AL.comp
+    , initialState: AL.initialState actions
+    }
+  where
+  actions =
+    Arr.singleton
+    $ AL.mkDo
+      { name: "Value"
+      , iconSrc: ""
+      , description: "Select Value Axis"
+      , highlighted: true
+      , disabled: false
+      , action: FTA.Value
       }
 
 renderName ∷ ST.State → HTML
@@ -132,17 +151,6 @@ renderName state =
         ]
     ]
 
-renderValue ∷ ST.State → HTML
-renderValue state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Value") (selecting Q.Value))
-        state.value
-    ]
-
 eval ∷ FIT.FormInputType → TextLikeDef → Q.QueryC ~> DSL
 eval fit def = cardEval fit def ⨁ chartEval def
 
@@ -156,7 +164,8 @@ cardEval fit def = case _ of
     st ← H.get
     pure $ k $ Card.setupTextLikeInput fit $ (M.behaviour def.valueProjection).save st
   CC.Load m next → do
-    H.modify $ (M.behaviour def.valueProjection).load $ join $ preview Card._SetupTextLikeInput m
+    H.modify $ (M.behaviour def.valueProjection).load
+      $ join $ Lens.preview Card._SetupTextLikeInput m
     pure next
   CC.ModelUpdated _ next →
     pure next
@@ -190,16 +199,9 @@ chartEval def (Q.UpdateName str next) = do
   H.modify _ { name = str }
   raiseUpdate def
   pure next
-chartEval def (Q.Select sel next) = next <$ case sel of
-  Q.Value a → updatePicker ST._value Q.Value a
-
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a → H.modify (l ∘ S._value .~ a) *> raiseUpdate def
 
 peek ∷ ∀ a. TextLikeDef → CS.ChildQuery a → DSL Unit
-peek def = peekPicker ⨁ (const $ pure unit)
+peek def = (peekPicker ⨁ (const $ pure unit)) ⨁ peekActionList
   where
   peekPicker = case _ of
     DPC.Dismiss _ →
@@ -208,7 +210,13 @@ peek def = peekPicker ⨁ (const $ pure unit)
       st ← H.get
       let
         v = flattenJCursors value
-      for_ st.picker \r → case r.select of
-        Q.Value _ → H.modify $ ST._value ∘ S._value ?~ v
+      for_ st.picker \r → case r.action of
+        FTA.Value → H.modify $ ST._value ∘ S._value ?~ v
       H.modify _ { picker = Nothing }
       raiseUpdate def
+
+peekActionList ∷ ∀ a. AL.Query FTA.Action a → DSL Unit
+peekActionList = case _ of
+  AL.Selected (AL.Do {action: FTA.Value}) _ → do
+    H.modify $ ST.newShowPicker FTA.Value $ Lens.view $ ST._value ∘ S._options
+  _ → pure unit

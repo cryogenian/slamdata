@@ -18,9 +18,35 @@ module SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.ChildSlot whe
 
 import SlamData.Prelude
 
+import Halogen.Component.ChildPath (ChildPath, cpR, cpL)
+
+import SlamData.ActionList.Component as AL
+import SlamData.Workspace.Card.Setups.FormInput.TextLike.Action as FTA
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DP
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
 
-type ChildSlot = Unit
-type ChildState = DP.StateP JCursorNode
-type ChildQuery = DP.QueryP JCursorNode
+type ChildSlot
+  = Unit
+  ⊹ Unit
+
+type ChildState
+  = DP.StateP JCursorNode
+  ⊹ AL.State FTA.Action
+
+type ChildQuery
+  = DP.QueryP JCursorNode
+  ⨁ AL.Query FTA.Action
+
+cpDimensionPicker
+  ∷ ChildPath
+      (DP.StateP JCursorNode) ChildState
+      (DP.QueryP JCursorNode) ChildQuery
+      Unit ChildSlot
+cpDimensionPicker = cpL
+
+cpActionList
+  ∷ ChildPath
+      (AL.State FTA.Action) ChildState
+      (AL.Query FTA.Action) ChildQuery
+      Unit ChildSlot
+cpActionList = cpR
