@@ -41,6 +41,8 @@ import SlamData.Workspace.Deck.Model (Deck, emptyDeck, encode, decode)
 data EvalMessage
   = Pending CardId
   | Complete (Array CardId) Out
+  | CardEvalStarted CardId
+  | CardEvalFinished CardId
   | CardChange CardId
   | NameChange String
 
