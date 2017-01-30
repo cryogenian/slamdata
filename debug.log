@@ -1,0 +1,3 @@
+[0126/182501:ERROR:process_reader_win.cc(114)] NtOpenThread: {Отказано в доступе} Процесс запросил доступ к объекту, но права на доступ не предоставлены.  (0xc0000022)
+[0126/182501:ERROR:exception_snapshot_win.cc(87)] thread ID 21216 not found in process
+[0126/182501:WARNING:crash_report_exception_handler.cc(61)] ProcessSnapshotWin::Initialize failed

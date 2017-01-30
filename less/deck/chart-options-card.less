@@ -1,9 +1,14 @@
 @import "common";
 
 .sd-card-chart-options, .sd-form-input-setup {
-
     > div {
         height: 100%;
+        .chart-editor {
+            height: 100%;
+            .sd-action-list.with-filter {
+                height: ~"calc(100% - 5.5rem)";
+            }
+        }
     }
 
     .loading-message.alert.alert-info {
