@@ -191,8 +191,7 @@ deckIndicator st =
 
   classes ix card =
     map HH.className
-    $ A.nub
-    $ (guard (st.runningCardIndex ≡ Just ix) $> "pending")
+    $ (guard (st.pendingCardIndex ≡ Just ix) $> "running")
     ⊕ (A.singleton case card of
           Right _ → "available"
           Left DCS.PendingCard → "pending"

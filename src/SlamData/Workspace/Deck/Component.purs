@@ -555,7 +555,7 @@ loadDeck opts = mbLoadError =<< runMaybeT do
       H.modify
         $ (DCS.updateCompletedCards cardDefs port)
         ∘ (DCS._activeCardIndex .~ active)
-        ∘ (DCS._runningCardIndex .~ Nothing)
+        ∘ (DCS._pendingCardIndex .~ Nothing)
         ∘ DCS.fromModel { name: deck.model.name, displayCards: [] }
         ∘ DCS.addBreaker breaker
       updateActiveState opts
@@ -584,17 +584,19 @@ handleEval opts = case _ of
         H.modify (DCS.updateCompletedCards cardDefs port)
         updateActiveState opts
   ED.NameChange name → H.modify _ { name = name }
-  ED.CardEvalStarted cardId → do
-    H.modify \st →
-      st # DCS._runningCardIndex .~ DCS.cardIndexFromId cardId st
   ED.CardEvalFinished cardId → do
     H.modify \st →
       let
         ix = DCS.cardIndexFromId cardId st
-      in
-       if ix ≡ st.runningCardIndex
-         then st # DCS._runningCardIndex .~ Nothing
-         else st
+        lastIx = DCS.findLastCardIndex st
+        pendingCardIndex = case ix, lastIx of
+          Nothing, _ → st.pendingCardIndex
+          _, Nothing → st.pendingCardIndex
+          Just ix', Just lastIx'
+            | lastIx' > ix' → Just $ ix' + one
+            | otherwise → Nothing
+      in st # DCS._pendingCardIndex .~ pendingCardIndex
+
   _ → pure unit
 
 getCardDefs ∷ Array CardId → DeckDSL (Maybe (Array DCS.CardDef))

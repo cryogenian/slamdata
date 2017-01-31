@@ -34,7 +34,6 @@ module SlamData.Workspace.Deck.Component.State
   , _displayCards
   , _activeCardIndex
   , _pendingCardIndex
-  , _runningCardIndex
   , _presentAccessNextActionCardGuideCanceler
   , _presentAccessNextActionCardGuide
   , _loadError
@@ -172,7 +171,6 @@ type State =
   , displayMode ∷ DisplayMode
   , displayCards ∷ Array DisplayCard
   , pendingCardIndex ∷ Maybe Int
-  , runningCardIndex ∷ Maybe Int
   , activeCardIndex ∷ Maybe Int
   , presentAccessNextActionCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
   , presentAccessNextActionCardGuide ∷ Boolean
@@ -200,7 +198,6 @@ initialDeck =
   , displayCards: mempty
   , pendingCardIndex: Nothing
   , activeCardIndex: Nothing
-  , runningCardIndex: Nothing
   , presentAccessNextActionCardGuideCanceler: Nothing
   , presentAccessNextActionCardGuide: false
   , initialSliderX: Nothing
@@ -235,10 +232,6 @@ _activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
 -- | are pending.
 _pendingCardIndex ∷ ∀ a r. Lens' {pendingCardIndex ∷ a |r} a
 _pendingCardIndex = lens _.pendingCardIndex _{pendingCardIndex = _}
-
-
-_runningCardIndex ∷ ∀ a r. Lens' {runningCardIndex ∷ a|r} a
-_runningCardIndex = lens _.runningCardIndex _{runningCardIndex = _}
 
 -- | An optional canceler for the delayed guiding of the user to add a card. Can
 -- | be used to reset the delay of this guiding.

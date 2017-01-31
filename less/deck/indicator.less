@@ -50,21 +50,23 @@
             background: #d44;
         }
     }
-    .available:not(.pending) {
-        &:before {
-            background: #bbb;
-            border-radius: 12px;
+    .available, .pending {
+        &:not(.running) {
+            &:before {
+                background: #bbb;
+                border-radius: 12px;
+            }
+            &.focused:before {
+                background: #337ab7;
+            }
         }
-        &.focused:before {
-            background: #337ab7;
-        }
-    }
-    .available.pending {
-        &:before {
-            .before-image("../img/gray-spin.svg");
-        }
-        &.focused:before {
-            .before-image("../img/blue-spin.svg");
+        &.running  {
+            &:before {
+                .before-image("../img/gray-spin.svg");
+            }
+            &.focused:before {
+                .before-image("../img/blue-spin.svg");
+            }
         }
     }
 }
