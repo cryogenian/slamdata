@@ -584,7 +584,7 @@ handleEval opts = case _ of
         H.modify (DCS.updateCompletedCards cardDefs port)
         updateActiveState opts
   ED.NameChange name → H.modify _ { name = name }
-  ED.CardEvalFinished cardId → do
+  ED.CardComplete cardId → do
     H.modify \st →
       let
         ix = DCS.cardIndexFromId cardId st
