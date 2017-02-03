@@ -102,8 +102,20 @@ type ButtonConf a =
   , presentation ∷ Presentation
   , action ∷ Action a
   , lines ∷ Array String
+  ,
   }
 
+type ButtonConf a =
+  { dimensions ∷ Dimensions
+  , iconDimensions ∷ Dimensions
+  , action ∷ a
+  , iconMarginPx ∷ Number
+  , iconOnlyLeftPx ∷ Number
+  , iconOnlyTopPx ∷ Number
+  , lines ∷ Array String
+  , presentation ∷ Presentation
+  , filterString ∷ String
+  }
 
 
 type ActionListConf a =

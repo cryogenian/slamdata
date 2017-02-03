@@ -171,12 +171,84 @@ render state =
   leavesASpace ∷ Boolean
   leavesASpace = snd needASpaceAndButtonDims
 
-  buttonConfs ∷ Array (String × A.Dimensions × A.Action)
+  buttonConfs ∷ Array (String × A.Dimensions × A.Action a)
   buttonConfs = map (\a → filterString × dimensions × a) st.actions
 
-realButtons ∷ Array (String × A.Dimensions × A.Action) → Array HTML
-realButtons confs =
+iconSizeRatio ∷ Number
+iconSizeRatio = 0.3
+
+buttonPaddingHighEstimate ∷ Number
+buttonPaddingHighEstimate = 0.2
+
+lineHeightPx ∷ Number
+lineHeightPx =
+  13.0
+
+textWidth ∷ String → Number
+textWidth =
+  flip
+    DOMUtils.getTextWidthPure
+    $ "normal " <> show fontSizePx <> "px Ubuntu"
+
+fontSizePx ∷ Number
+fontSizePx =
+  12.0
+
+realButtons ∷ ∀ a. Array (String × A.Dimensions × A.Action a) → Array HTML
+realButtons tpls =
+  map mkButtonConf tpls
+  where
+  dimensions ∷ A.Dimensions
+  dimensions = maybe { width: 0.0, height: 0.0 } (\(_ × a × _) → a) $ Array.head tpls
+
+  maxNumberOfLines =
+    fromMaybe zero $ F.maximum $ map (A.length ∘ _.lines) buttonConfs
+
+  maxTextHeightPx =
+    Int.toNumber maxNumberOfLines * fontSizePx
+
+
+  buttonPaddingEstimatePx =
+    dimensions.height
+
+  rawButtonConfs ∷ Array (ButtonConf a)
+  rawButtonConfs = map mkButtonConf tpls
+
+  mkButtonConf ∷ String × A.Dimensions × A.Action → ButtonConf a
+  mkButtonConf (filterString × dimensions × action) =
+    let
+      iconDimensions =
+        { width: dimensions.width * iconSizeRatio
+        , height: dimensions.height * iconSizeRatio
+        }
+
+      iconOnlyLeftPx =
+        (dimensions.width - iconDimensions.width) / 2.0
+
+      iconOnlyTop =
+        (dimensions.height - iconDimensions.height) / 2.0
+
+      iconMarginPx =
+        dimensions.height * 0.05
+
+      lines =
+        map _.line $ calculateLines dimensions.width $ A.actionNameWords action
+
+      presentation =
+        IconAndText
+
+    in { dimensions
+       , action
+       , filterString
+       , presentation
+       , lines
+       , iconOnlyTopPx
+       , iconOnlyLeftPx
+       , iconMarginPx
+       }
+
   map (\(f × d × a) → renderButton f d a) confs
+
 
 renderSpaceFillerButton ∷ ∀ a. A.Dimensions → HTML a
 renderSpaceFillerButton dimensions =
@@ -204,19 +276,18 @@ renderButton
   → HTML a
 renderButton filterString dimensions action = -- { presentation, metrics, action, lines } =
   HH.li
-    [ HCSS.style
-        $ CSS.width (CSS.px $ A.firefoxify dimensions.width)
-        *> CSS.height (CSS.px $ A.firefoxify dimensions.height)
+    [ HCSS.style do
+        CSS.width (CSS.px $ A.firefoxify dimensions.width)
+        CSS.height (CSS.px $ A.firefoxify dimensions.height)
     ]
-    [ HH.button
-        attrs
-        $ case presentation of
-            A.IconOnly →
-              [ renderIcon ]
-            A.TextOnly →
-              [ renderName ]
-            A.IconAndText →
-              [ renderIcon, renderName ]
+    [ HH.button attrs
+        case presentation of
+          A.IconOnly →
+            [ renderIcon ]
+          A.TextOnly →
+            [ renderName ]
+          A.IconAndText →
+            [ renderIcon, renderName ]
     ]
   where
   renderIcon ∷ HTML a
