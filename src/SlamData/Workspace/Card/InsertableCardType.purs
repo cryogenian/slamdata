@@ -43,6 +43,7 @@ data InsertableCardType
   | ShowMarkdownCard
   | TableCard
   | TroubleshootCard
+  | TabsCard
 
 data InsertableCardIOType
   = Chart
@@ -51,6 +52,7 @@ data InsertableCardIOType
   | Download
   | Markdown
   | Variables
+  | Terminal
   | None
 
 derive instance eqInsertableCardType ∷ Eq InsertableCardType
@@ -75,6 +77,7 @@ inputs =
   , ShowMarkdownCard × [ Markdown ]
   , TableCard × [ Data ]
   , TroubleshootCard × [ Chart, Form, Data, Download, Markdown, Variables ]
+  , TabsCard × [ None ]
   ]
 
 -- Cards only have one output type, treat this as a Map or turn it into one.
@@ -104,6 +107,7 @@ cardsToExcludeFromPaths =
   , TableCard
   , DraftboardCard
   , CacheCard
+  , TabsCard
   ]
 
 contains ∷ ∀ a. (Eq a) ⇒ a → Array a → Boolean
@@ -217,6 +221,7 @@ printIOType = case _ of
   Markdown → "markdown"
   None → "to be the first card in a deck"
   Variables → "variables"
+  Terminal → "nothing"
 
 
 printIOType' ∷ InsertableCardIOType → Maybe String
@@ -251,6 +256,7 @@ fromPort = case _ of
   Port.Variables → Variables
   Port.ValueMetric _ → Chart
   Port.CategoricalMetric _ → Form
+  Port.Terminal → Terminal
   _ → None
 
 toCardType ∷ InsertableCardType → Maybe CardType
@@ -271,6 +277,7 @@ toCardType = case _ of
   ShowMarkdownCard → Just CardType.Markdown
   TableCard → Just CardType.Table
   TroubleshootCard → Just CardType.Troubleshoot
+  TabsCard → Just CardType.Tabs
 
 print ∷ InsertableCardType → String
 print = case _ of
@@ -329,6 +336,7 @@ printAction = case _ of
   ShowMarkdownCard → Just "show"
   TableCard → Just "tabulate"
   TroubleshootCard → Just "troubleshoot"
+  TabsCard → Nothing
 
 fromCardType ∷ CardType → InsertableCardType
 fromCardType =
@@ -349,6 +357,7 @@ fromCardType =
     CardType.Troubleshoot → TroubleshootCard
     CardType.SetupFormInput _ → SetupFormCard
     CardType.FormInput → ShowFormCard
+    CardType.Tabs → TabsCard
 
 all ∷ Array InsertableCardType
 all =
@@ -363,6 +372,7 @@ all =
   , SetupMarkdownCard
   , ShowMarkdownCard
   , DraftboardCard
+  , TabsCard
   , SetupDownloadCard
   , ShowDownloadCard
   , CacheCard
