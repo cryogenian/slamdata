@@ -21,8 +21,7 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.Int as Int
 import Data.Foldable as F
-import Data.NonEmpty ((:|))
-import Data.NonEmpty as NE
+
 import Data.String as String
 
 import Halogen.HTML as HH
@@ -43,7 +42,7 @@ type NameLine =
   , width ∷ Number
   }
 
-type Dimensions = { width ∷ Number, height ∷ Number }
+reptype Dimensions = { width ∷ Number, height ∷ Number }
 
 type ActionSizes =
   { dimensions ∷ Array Dimensions
@@ -104,6 +103,8 @@ type ButtonConf a =
   , action ∷ Action a
   , lines ∷ Array String
   }
+
+
 
 type ActionListConf a =
   { buttons ∷ Array (ButtonConf a)
@@ -308,6 +309,12 @@ mostSquareFittingRectangle i boundingDimensions = case tailMax of
        then i / factor
        else factor
 
+  factors ∷ Int → NE.NonEmpty Array Int
+  factors n = 1 :| do
+    factor ← 2 A... n
+    guard $ n `mod` factor ≡ 0
+    pure factor
+
 
 
 floor ∷ Dimensions → Dimensions
@@ -332,11 +339,6 @@ maybeNotZero dimensions
   | dimensions.width ≡ 0.0 ∨ dimensions.height ≡ 0.0 = Nothing
   | otherwise = Just dimensions
 
-factors ∷ Int → NE.NonEmpty Array Int
-factors n = 1 :| do
-  factor ← 2 A... n
-  guard $ n `mod` factor ≡ 0
-  pure factor
 
 -- Firefox doesn't seem to be able to handle pixel metrics with decimal
 -- precisons higher than one. Without applying this function actionlists

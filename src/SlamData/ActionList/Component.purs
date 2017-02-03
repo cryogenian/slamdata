@@ -26,8 +26,11 @@ import SlamData.Prelude
 import CSS as CSS
 
 import Data.Array as Array
-import Data.Foldable as Foldable
+import Data.Foldable as F
 import Data.String as String
+import Data.Int as Int
+import Data.NonEmpty ((:|))
+import Data.NonEmpty as NE
 
 import Halogen as H
 import Halogen.HTML.CSS.Indexed as HCSS
@@ -66,8 +69,8 @@ actionListComp mkConf =
 comp ∷ ∀ a. Eq a ⇒ H.Component (ST.State a) (Q.Query a) Slam
 comp = actionListComp A.defaultConf
 
-render ∷ ∀ a. MkConf a → ST.State a → HTML a
-render mkConf state =
+render ∷ ∀ a. ST.State a → HTML a
+render state =
   HH.div
     [ HP.classes
       $ [ HH.className "sd-action-list" ]
@@ -75,36 +78,112 @@ render mkConf state =
     ]
     [ HH.ul
         [ HP.ref $ H.action ∘ Q.SetBoundingElement ]
-        $ renderButtons (String.toLower state.filterString) conf
-
+        $ (realButtons buttonConfs)
+        ⊕ (renderSpaceFillerButton dimensions <$ guard leavesASpace)
     ]
   where
-  conf =
-    mkConf (fromMaybe { width: 0.0, height: 0.0 } state.boundingDimensions) state.actions
+  filterString ∷ String
+  filterString =
+    String.toLower state.filterString
 
-renderButtons
-  ∷ ∀ a
-  . String
-  → A.ActionListConf a
-  → Array (HTML a)
-renderButtons filterString conf =
-  realButtons ⊕ foldMap (pure ∘ renderSpaceFillerButton) metrics
-  where
-  metrics ∷ Maybe A.ButtonMetrics
-  metrics = do
-    guard conf.leavesASpace
-    map _.metrics $ Array.head conf.buttons
+  actionCount ∷ Int
+  actionCount = Array.length st.actions
 
-  realButtons ∷ Array (HTML a)
-  realButtons =
-    renderButton filterString <$> conf.buttons
+  boundingDimensions ∷ A.Dimensions
+  boundingDimensions = fromMaybe { width: 0.0, height: 0.0 } state.boundingDimensions
 
-renderSpaceFillerButton ∷ ∀ a. A.ButtonMetrics → HTML a
-renderSpaceFillerButton metrics =
+  -- factors for integer from 2
+  factors ∷ Int → Array Int
+  factors = do
+    factor ← 2 Array... actionCount
+    guard $ n `mod` factor ≡ 0
+    pure factor
+
+  albumOriented ∷ Boolean
+  albumOriented =
+    boundingDimensions.width > boundingDimensions.height
+
+  numberOfRows ∷ Int → Int → Int
+  numberOfRows i factor
+    | albumOriented = factor
+    | otherwise = i / factor
+
+  numberOfColumns ∷ Int → Int → Int
+  numberOfColumns i factor
+    | albumOriented = actionCount / factor
+    | otherwise = factor
+
+  solution ∷ Int → Int → Dimensions
+  solution i factor =
+    { width: boundingDimensions.width / (Int.toNumber $ numberOfRows i factor)
+    , height: boundingDimensions.height / (Int.toNumber $ numberOfColumns i factor)
+    }
+
+  -- solutions from 2
+  solutions ∷ Int → Array A.Dimensions
+  solutions i =
+    map solution $ factors i
+
+  goldenRatio ∷ Number
+  goldenRatio =
+    1.61803398875
+
+  karat ∷ A.Dimensions → Number
+  karat dimensions =
+    -(Math.abs $ goldenRatio - (dimensions.width / dimensions.height))
+
+  compareFn ∷ A.Dimensions → A.Dimensions → Ordering
+  compareFn x y =
+    karat x `compare` karat y
+
+  tailMax ∷ Int → Maybe Dimensions
+  tailMax i =
+    F.maximumBy compareFn $ solutions i
+
+  -- one is always a factor for integer. this is one row solution
+  hd ∷ Dimensions
+  hd = solution 1
+
+  fittingRectangle ∷ Int → A.Dimensions
+  fittingRectangle i =
+    case tailMax i of
+      Just m | compareFn hd m ≡ LT →  m
+      _ → hd
+
+  firstTry ∷ A.Dimensions
+  firstTry = fittingRectangle actionCount
+
+  secondTry ∷ A.Dimensions
+  secondTry = fittingRectangle actionCount
+
+  needASpaceAndButtonDims ∷ A.Dimensions × Boolean
+  needASpaceAndButtonDims
+    | firstTry.height ≠ boundingDimensions.height =
+        firstTry × false
+    | secondTry.height ≡ boundingDimensions.height =
+        firstTry × false
+    | otherwise =
+        secondTry × true
+
+  dimensions ∷ A.Dimensions
+  dimensions = fst needASpaceAndButtonDims
+
+  leavesASpace ∷ Boolean
+  leavesASpace = snd needASpaceAndButtonDims
+
+  buttonConfs ∷ Array (String × A.Dimensions × A.Action)
+  buttonConfs = map (\a → filterString × dimensions × a) st.actions
+
+realButtons ∷ Array (String × A.Dimensions × A.Action) → Array HTML
+realButtons confs =
+  map (\(f × d × a) → renderButton f d a) confs
+
+renderSpaceFillerButton ∷ ∀ a. A.Dimensions → HTML a
+renderSpaceFillerButton dimensions =
   HH.li
-    [ HCSS.style
-        $ CSS.width (CSS.px $ A.firefoxify metrics.dimensions.width)
-        *> CSS.height (CSS.px $ A.firefoxify metrics.dimensions.height)
+    [ HCSS.style do
+         CSS.width (CSS.px $ A.firefoxify dimensions.width)
+         CSS.height (CSS.px $ A.firefoxify dimensions.height)
     ]
     [ HH.button
         [ HP.classes
@@ -120,13 +199,14 @@ renderSpaceFillerButton metrics =
 renderButton
   ∷ ∀ a
   . String
-  → A.ButtonConf a
+  → A.Dimensions
+  → A.Action a
   → HTML a
-renderButton filterString { presentation, metrics, action, lines } =
+renderButton filterString dimensions action = -- { presentation, metrics, action, lines } =
   HH.li
     [ HCSS.style
-        $ CSS.width (CSS.px $ A.firefoxify metrics.dimensions.width)
-        *> CSS.height (CSS.px $ A.firefoxify metrics.dimensions.height)
+        $ CSS.width (CSS.px $ A.firefoxify dimensions.width)
+        *> CSS.height (CSS.px $ A.firefoxify dimensions.height)
     ]
     [ HH.button
         attrs
@@ -143,27 +223,27 @@ renderButton filterString { presentation, metrics, action, lines } =
   renderIcon =
     HH.img
       [ HP.src $ A.pluckActionIconSrc action
-      , HCSS.style
-          $ CSS.width (CSS.px metrics.iconDimensions.width)
-          *> CSS.height (CSS.px metrics.iconDimensions.height)
-          *> CSS.marginBottom (CSS.px metrics.iconMarginPx)
+      , HCSS.style do
+          CSS.width (CSS.px metrics.iconDimensions.width)
+          CSS.height (CSS.px metrics.iconDimensions.height)
+          CSS.marginBottom (CSS.px metrics.iconMarginPx)
           -- Stops icon only presentations from being cut off in short wide
           -- buttons.
-          *> (if (A.isIconOnly presentation)
-                then
-                  CSS.position CSS.absolute
-                    *> CSS.left (CSS.px metrics.iconOnlyLeftPx)
-                    *> CSS.top (CSS.px metrics.iconOnlyTopPx)
-                else
-                  CSS.position CSS.relative)
+          if A.isIconOnly presentation
+            then do
+              CSS.position CSS.absolute
+              CSS.left (CSS.px metrics.iconOnlyLeftPx)
+              CSS.top (CSS.px metrics.iconOnlyTopPx)
+            else
+              CSS.position CSS.relative)
       ]
 
   renderName ∷ HTML a
   renderName =
     HH.p
-      [ HCSS.style
-          $ CSS.fontSize (CSS.px $ A.fontSizePx)
-          *> CSSUtils.lineHeight (show A.lineHeightPx <> "px")
+      [ HCSS.style do
+          CSS.fontSize (CSS.px $ A.fontSizePx)
+          CSSUtils.lineHeight (show A.lineHeightPx <> "px")
       ]
       $ Array.intercalate
           [ HH.br_ ]
@@ -175,7 +255,7 @@ renderButton filterString { presentation, metrics, action, lines } =
       A.GoBack →
         true
       _ →
-        Foldable.any
+        F.any
           (String.contains (String.Pattern filterString) ∘ String.toLower)
           (A.searchFilters action)
 
@@ -191,7 +271,7 @@ renderButton filterString { presentation, metrics, action, lines } =
 
   classes ∷ Array HH.ClassName
   classes =
-    if A.isHighlighted action && enabled
+    if A.isHighlighted action ∧ enabled
       then
         [ HH.className "sd-button" ]
       else
@@ -213,13 +293,13 @@ updateActions newActions state =
   where
   activeDrill ∷ Maybe (A.Action a)
   activeDrill =
-    Foldable.find
+    F.find
       (maybe false (eq state.actions) ∘ A.pluckDrillActions)
       state.previousActions
 
   newActiveDrill ∷ Maybe (A.Action a)
   newActiveDrill =
-    Foldable.find (eq activeDrill ∘ Just) newActions
+    F.find (eq activeDrill ∘ Just) newActions
 
 getBoundingDOMRect ∷ ∀ a. DSL a (Maybe DOMRect)
 getBoundingDOMRect =
