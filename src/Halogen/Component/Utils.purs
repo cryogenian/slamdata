@@ -34,8 +34,6 @@ import Data.Time.Duration (Milliseconds(..))
 import Halogen as H
 import Halogen.Query.EventSource as ES
 
-import Math as Math
-
 sendAfter
   ∷ ∀ s f g p o m eff
   . MonadAff (avar ∷ AVAR | eff) m
@@ -54,11 +52,11 @@ oneTimeEventSource
   → (∀ a. a → f a)
   → AVar (Canceler (avar ∷ AVAR | eff))
   → H.EventSource f m
-oneTimeEventSource (Milliseconds n) action cancelerVar = ES.EventSource do
+oneTimeEventSource (Milliseconds ms) action cancelerVar = ES.EventSource do
   let
     producer = ES.produceAff \emit → liftAff do
       let
-        delayedEmitter = later' (Int.floor $ Math.max n zero) do
+        delayedEmitter = later' (Int.floor ms) do
           emit $ E.Left $ action ES.Done
           emit $ E.Right unit
       putVar cancelerVar =<< forkAff delayedEmitter
@@ -107,10 +105,10 @@ debouncedEventSource (Milliseconds ms) = do
       }
 
     push ∷ (∀ a. a → f a) → m Unit
-    push f = liftAff do
+    push k = liftAff do
       emit ← peekVar emitVar
       takeVar cancelVar >>= traverse_ (flip cancel $ Exn.error "Debounced")
       putVar cancelVar <<< Just =<< forkAff do
-        later' (Int.floor $ Math.max ms zero) $ emit $ E.Left $ f ES.Listening
+        later' (Int.floor ms) $ emit $ E.Left $ k ES.Listening
 
   H.subscribe source $> push
