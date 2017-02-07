@@ -29,11 +29,17 @@ import SlamData.Workspace.Card.Pending.Component.State (State, initialState)
 import Halogen as H
 import Halogen.HTML as HH
 
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
 
-pendingCardComponent ∷ H.Component State Query Slam
-pendingCardComponent = H.component { render, eval }
+pendingCardComponent ∷ H.Component HH.HTML Query Unit Void Slam
+pendingCardComponent =
+  H.component
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render ∷ State → HTML
 render st =
