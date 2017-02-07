@@ -153,9 +153,9 @@ buildBar axes r records = do
   E.xAxis do
     E.axisType ET.Category
     E.enabledBoundaryGap
-    traverse_ E.interval xAxisConfig.interval
     E.items $ map ET.strItem xValues
     E.axisLabel do
+      traverse_ E.interval xAxisConfig.interval
       E.rotate r.axisLabelAngle
       E.textStyle do
         E.fontFamily "Ubuntu, sans"
