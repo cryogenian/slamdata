@@ -18,14 +18,17 @@ module Halogen.Component.Utils where
 
 import Prelude
 
-import Control.Monad.Aff (Aff, Canceler, forkAff, later')
-import Control.Monad.Aff.AVar (AVAR, AVar, makeVar, putVar, takeVar)
+import Control.Monad.Aff (Aff, Canceler, cancel, forkAff, later')
+import Control.Monad.Aff.AVar (AVAR, AVar, makeVar, makeVar', putVar, takeVar, peekVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Eff.Exception as Exn
 
 import Data.Either as E
+import Data.Foldable (traverse_)
 import Data.Int as Int
+import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
@@ -87,3 +90,27 @@ affEventSource k source = ES.EventSource do
       loop.run
     done = liftAff (EventLoop.break' =<< takeVar breaker)
   pure { producer, done }
+
+debouncedEventSource
+  ∷ ∀ s f g p o m eff
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Milliseconds
+  → H.HalogenM s f g p o m ((∀ a. a → f a) → m Unit)
+debouncedEventSource (Milliseconds ms) = do
+  emitVar ← liftAff makeVar
+  cancelVar ← liftAff $ makeVar' Nothing
+  let
+    source ∷ ES.EventSource f m
+    source = ES.EventSource $ pure
+      { producer: ES.produceAff (liftAff <<< putVar emitVar)
+      , done: pure unit
+      }
+
+    push ∷ (∀ a. a → f a) → m Unit
+    push f = liftAff do
+      emit ← peekVar emitVar
+      takeVar cancelVar >>= traverse_ (flip cancel $ Exn.error "Debounced")
+      putVar cancelVar <<< Just =<< forkAff do
+        later' (Int.floor $ Math.max ms zero) $ emit $ E.Left $ f ES.Listening
+
+  H.subscribe source $> push

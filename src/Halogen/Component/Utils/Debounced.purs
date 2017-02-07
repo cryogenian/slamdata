@@ -15,13 +15,13 @@ limitations under the License.
 -}
 
 module Halogen.Component.Utils.Debounced
-  ( module Utils.Debounced
-  , DebounceTrigger
+  ( DebounceTrigger(..)
   , fireDebouncedQuery'
   ) where
 
 import Prelude
 
+import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (class MonadAff)
 
 import Data.Lens (Lens', view, (?~))
@@ -29,26 +29,25 @@ import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds)
 
 import Halogen as H
+import Halogen.Component.Utils (debouncedEventSource)
 
-import Utils.Debounced (DebounceEffects, debouncedEventSource)
-
-type DebounceTrigger f g = f Unit → g Unit
+newtype DebounceTrigger f g = DebounceTrigger ((∀ a. a → f a) → g Unit)
 
 -- | Fires the specified debouced H.query trigger with the passed H.query. This
 -- | function also handles constructing the initial trigger if it has not yet
 -- | been created.
 fireDebouncedQuery'
-  ∷ ∀ s s' f f' g p eff
-  . (MonadAff (DebounceEffects eff) g)
+  ∷ ∀ s f g p o m eff
+  . (MonadAff (avar ∷ AVAR | eff) m)
   ⇒ Milliseconds
-  → Lens' s (Maybe (DebounceTrigger f g))
-  → H.Action f
-  → H.ParentDSL s s' f f' g p Unit
+  → Lens' s (Maybe (DebounceTrigger f m))
+  → (∀ a. a → f a)
+  → H.HalogenM s f g p o m Unit
 fireDebouncedQuery' ms lens act = do
-  t ← H.gets (view lens) >>= \mbt → case mbt of
+  DebounceTrigger t ← H.gets (view lens) >>= case _ of
     Just t' → pure t'
     Nothing → do
-      t' ← debouncedEventSource H.subscribe' ms
+      t' ← DebounceTrigger <$> debouncedEventSource ms
       H.modify (lens ?~ t')
       pure t'
-  H.liftH $ H.liftH $ t $ H.action $ act
+  H.lift $ t act
