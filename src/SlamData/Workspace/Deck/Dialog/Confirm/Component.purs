@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Deck.Dialog.Confirm.Component where
+module SlamData.Workspace.Deck.Dialog.Confirm.Component
+  ( Query(..)
+  , component
+  ) where
 
 import SlamData.Prelude
 
@@ -33,32 +36,38 @@ type State =
 
 data Query a = Confirm Boolean a
 
-comp ∷ ∀ g. Functor g ⇒ H.Component State Query g
-comp = H.component { render, eval } where
+component ∷ ∀ m. State → H.Component HH.HTML Query Unit Void m
+component initialState =
+  H.component
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
-  render ∷ State → H.ComponentHTML Query
-  render state =
-    HH.div [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
-      [ HH.h4_ [ HH.text  state.title ]
-      , HH.div [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
-          [ HH.p_
-              [ HH.text state.body
-              ]
-          ]
-      , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
-          [ HH.button
-              [ HP.classes [ B.btn ]
-              , HE.onClick (HE.input_ $ Confirm false)
-              ]
-              [ HH.text state.cancel ]
-          , HH.button
-              [ HP.classes [ B.btn, B.btnPrimary ]
-              , HE.onClick (HE.input_ $ Confirm true)
-              ]
-              [ HH.text state.confirm
-              ]
-          ]
-      ]
+render ∷ State → H.ComponentHTML Query
+render state =
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
+    [ HH.h4_ [ HH.text  state.title ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
+        [ HH.p_
+            [ HH.text state.body
+            ]
+        ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
+        [ HH.button
+            [ HP.classes [ B.btn ]
+            , HE.onClick (HE.input_ $ Confirm false)
+            ]
+            [ HH.text state.cancel ]
+        , HH.button
+            [ HP.classes [ B.btn, B.btnPrimary ]
+            , HE.onClick (HE.input_ $ Confirm true)
+            ]
+            [ HH.text state.confirm
+            ]
+        ]
+    ]
 
-  eval ∷ Query ~> H.ComponentDSL State Query g
-  eval (Confirm _ next) = pure next
+eval ∷ ∀ m. Query ~> H.ComponentDSL State Query Void m
+eval (Confirm _ next) = pure next
