@@ -15,10 +15,11 @@ limitations under the License.
 -}
 
 module SlamData.ActionList.Component
-  ( comp
+  ( component
   , module A
   , module ST
   , module Q
+  , module M
   ) where
 
 import SlamData.Prelude
@@ -40,13 +41,14 @@ import SlamData.Monad (Slam)
 import SlamData.ActionList.Action as A
 import SlamData.ActionList.Component.State as ST
 import SlamData.ActionList.Component.Query as Q
+import SlamData.ActionList.Component.Message as M
 
 import Utils.DOM (DOMRect)
 import Utils.DOM as DOMUtils
 import Utils.CSS as CSSUtils
 
 type HTML a = H.ComponentHTML (Q.Query a)
-type DSL a = H.ComponentDSL (ST.State a) (Q.Query a) Slam
+type DSL a = H.ComponentDSL (ST.State a) (Q.Query a) (M.Message a) Slam
 
 type MkConf a =
   A.Dimensions → Array (A.Action a) → A.ActionListConf a
@@ -54,17 +56,20 @@ type MkConf a =
 actionListComp
   ∷ ∀ a. Eq a
   ⇒ MkConf a
-  → H.Component (ST.State a) (Q.Query a) Slam
-actionListComp mkConf =
+  → Array (A.Action a)
+  → H.Component HH.HTML (Q.Query a) Unit (M.Message a) Slam
+actionListComp mkConf actions =
   H.lifecycleComponent
-    { render: render mkConf
+    { initialState: const (ST.initialState actions)
+    , render: render mkConf
     , initializer: Just $ H.action Q.CalculateBoundingRect
     , finalizer: Nothing
     , eval
+    , receiver: const Nothing
     }
 
-comp ∷ ∀ a. Eq a ⇒ H.Component (ST.State a) (Q.Query a) Slam
-comp = actionListComp A.defaultConf
+component ∷ ∀ a. Eq a ⇒ H.Component HH.HTML (Q.Query a) Unit (M.Message a) Slam
+component = actionListComp A.defaultConf []
 
 render ∷ ∀ a. MkConf a → ST.State a → HTML a
 render mkConf state =
@@ -74,7 +79,7 @@ render mkConf state =
       ⊕ conf.classes
     ]
     [ HH.ul
-        [ HP.ref $ H.action ∘ Q.SetBoundingElement ]
+        [ HP.ref (H.RefLabel "bounding-element") ]
         $ renderButtons (String.toLower state.filterString) conf
 
     ]
@@ -185,7 +190,7 @@ renderButton filterString { presentation, metrics, action, lines } =
     , HP.type_ HP.ButtonButton
     , ARIA.label $ A.pluckActionDescription action
     , HP.classes classes
-    , HE.onClick $ HE.input_ $ Q.Selected action
+    , HE.onClick $ HE.input_ $ Q.HandleSelected action
     , HCSS.style $ CSS.position CSS.relative
     ]
 
@@ -232,10 +237,11 @@ eval =
     Q.UpdateFilter str next → do
       H.modify _{ filterString = str }
       pure next
-    Q.Selected action next → do
+    Q.HandleSelected action next → do
       st ← H.get
       case action of
-        A.Do _ → pure unit
+        A.Do a → do
+          H.raise (M.Selected a.action)
         A.Drill {children} →
           H.modify _
             { actions = A.GoBack `Array.cons` children

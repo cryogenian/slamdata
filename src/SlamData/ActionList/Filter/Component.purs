@@ -28,28 +28,36 @@ import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
 
 type State =
-  { filter ∷ String }
-
-initialState ∷ State
-initialState =
-  { filter: "" }
+  { description ∷ String
+  , filter ∷ String
+  }
 
 data Query a
   = Set String a
   | Get (String → a)
+  | UpdateDescription String a
+
+data Message = FilterChanged String
+
+type Input = String
 
 type HTML = H.ComponentHTML Query
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Message Slam
 
-comp ∷ String → H.Component State Query Slam
-comp descr =
+component ∷ H.Component HH.HTML Query Input Message Slam
+component =
   H.component
-    { render: render descr
+    { initialState:
+        { description: _
+        , filter: ""
+        }
+    , render
     , eval
+    , receiver: HE.input UpdateDescription
     }
 
-render ∷ String → State → HTML
-render descr state =
+render ∷ State → HTML
+render state =
   HH.form [ HP.classes [ HH.ClassName "sd-action-filter" ] ]
     [ HH.div_
         [ HH.div
@@ -58,8 +66,8 @@ render descr state =
         , HH.input
             [ HP.value state.filter
             , HE.onValueInput $ HE.input \s → Set s
-            , ARIA.label descr
-            , HP.placeholder descr
+            , ARIA.label state.description
+            , HP.placeholder state.description
             ]
         , HH.button
             [ HP.type_ HP.ButtonButton
@@ -77,3 +85,6 @@ eval = case _ of
     pure next
   Get cont → do
     H.gets $ cont ∘ _.filter
+  UpdateDescription s next -> do
+    H.modify _{ description = s }
+    pure next
