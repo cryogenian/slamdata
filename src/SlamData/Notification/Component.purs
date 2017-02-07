@@ -30,8 +30,6 @@ import SlamData.Prelude
 
 import Control.Monad.Aff (later', forkAff)
 import Control.Monad.Aff.AVar (AVar, makeVar, takeVar, putVar)
-import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Rec.Class (forever)
 
 import Data.Array as Array
 import Data.HeytingAlgebra (tt, ff, implies)
@@ -39,9 +37,9 @@ import Data.Int as Int
 import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
-import Halogen.Component.Utils (raise)
-import Halogen.HTML.Events as HE
+import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
@@ -122,7 +120,7 @@ initialState renderMode =
 
 data Query a
   = Init a
-  | Push N.NotificationOptions a
+  | Push N.NotificationOptions (H.SubscribeStatus -> a)
   | ToggleDetail a
   | Action N.Action a
   | Dismiss a
@@ -135,15 +133,17 @@ data Status
 
 type NotifyHTML = H.ComponentHTML Query
 
-type NotifyDSL = H.ComponentDSL State Query Slam
+type NotifyDSL = H.ComponentDSL State Query Void Slam
 
-comp ∷ H.Component State Query Slam
-comp =
+comp ∷ RenderMode → H.Component HH.HTML Query Unit Void Slam
+comp renderMode =
   H.lifecycleComponent
-    { render
+    { initialState: const (initialState renderMode)
+    , render
     , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
+    , receiver: const Nothing
     }
 
 render ∷ State → NotifyHTML
@@ -180,9 +180,7 @@ render st =
 
   renderNotification status = maybe (HH.text "") \n →
     HH.div
-      [ HP.class_ (HH.ClassName "sd-notification-spacer")
-      , HP.key (show n.id)
-      ]
+      [ HP.class_ (HH.ClassName "sd-notification-spacer") ]
       [ HH.div
           [ HP.classes (notificationClasses status n.options.notification) ]
           [ HH.div
@@ -277,9 +275,10 @@ render st =
 eval ∷ Query ~> NotifyDSL
 eval = case _ of
   Init next → do
-    { bus } ← H.liftH Wiring.expose
-    forever (raise <<< H.action <<< Push =<< H.liftAff (Bus.read bus.notify))
-  Push options next → do
+    { bus } ← Wiring.expose
+    H.subscribe $ busEventSource (H.request <<< Push) bus.notify
+    pure next
+  Push options reply → do
     st ← H.get
     dismiss ← H.liftAff makeVar
     when
@@ -296,7 +295,7 @@ eval = case _ of
           , queue = Array.snoc st.queue item
           }
         when (isNothing st.current) drainQueue
-    pure next
+    pure $ reply H.Listening
   Dismiss next → dismissNotification $> next
   Action _ next → dismissNotification $> next
   ToggleDetail next → do
