@@ -26,17 +26,18 @@ import SlamData.Prelude
 import Data.Lens ((^?), (.~), (?~))
 import Data.Lens as Lens
 
+import DOM.HTML.Indexed as DI
+import DOM.HTML.Indexed.StepValue (StepValue(..))
+
 import Halogen as H
 import Halogen.HTML.Core as HC
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Workspace.FormBuilder.Item.Component.State (Model, State, EqModel(..), _defaultValue, _fieldType, _model, _name, decode, defaultValueToVarMapValue, emptyValueOfFieldType, encode, initialModel, initialState, runEqModel)
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
-
-import Unsafe.Coerce (unsafeCoerce)
 
 data UpdateQuery a
   = UpdateName String a
@@ -68,7 +69,7 @@ render { model } =
   nameField :: ItemHTML
   nameField =
     HH.input
-      [ HP.inputType HP.InputText
+      [ HP.type_ HP.InputText
       , HP.title "Field Name"
       , ARIA.label "Variable name"
       , HP.value model.name
@@ -101,9 +102,9 @@ render { model } =
     case model.fieldType of
       BooleanFieldType ->
         HH.label
-          [ HP.class_ (HH.className "sd-option") ]
+          [ HP.class_ (HH.ClassName "sd-option") ]
           [ HH.input
-              [ HP.inputType inputType
+              [ HP.type_ inputType
               , HP.checked
                   $ fromMaybe false
                   $ Lens.preview _StringBoolean
@@ -136,24 +137,21 @@ render { model } =
     inputType =
       fieldTypeToInputType model.fieldType
 
-    fieldType ∷ ∀ r i. Array (HP.IProp (inputType ∷ HP.I|r) i)
+    fieldType ∷ ∀ i. Array (HP.IProp DI.HTMLinput i)
     fieldType = case model.fieldType of
       DateTimeFieldType ->
-        [ HP.inputType inputType
+        [ HP.type_ inputType
         , secondsStep
         ]
       TimeFieldType ->
-        [ HP.inputType inputType
+        [ HP.type_ inputType
         , secondsStep
         ]
       _ ->
-        [ HP.inputType inputType ]
+        [ HP.type_ inputType ]
 
-    secondsStep ∷ ∀ i r. HP.IProp r i
-    secondsStep = refine $ HC.Attr Nothing (HC.attrName "step") "1"
-      where
-      refine :: HC.Prop i -> HP.IProp r i
-      refine = unsafeCoerce
+    secondsStep ∷ ∀ r i. HP.IProp (step ∷ StepValue | r) i
+    secondsStep = HP.prop (HC.PropName "step") (Step 1.0)
 
     _StringBoolean :: Lens.Prism' String Boolean
     _StringBoolean = Lens.prism re pre

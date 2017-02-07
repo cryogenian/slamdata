@@ -19,7 +19,8 @@ module Utils.Debounced where
 import Prelude
 
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Free (class Affable, fromEff)
+import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
 import Control.Monad.Eff.Timer (TIMER, setTimeout, clearTimeout)
 
@@ -43,17 +44,17 @@ type DebounceEffects eff = (ref :: REF, avar :: AVAR, timer :: TIMER | eff)
 -- |   any existing pending emission.
 debouncedEventSource
   :: forall f g h eff
-   . (Monad g, Affable (DebounceEffects eff) g, Affable (DebounceEffects eff) h, Functor h)
+   . (MonadAff (DebounceEffects eff) g, MonadAff (DebounceEffects eff) h)
   => (ES.EventSource f h -> g Unit)
   -> Milliseconds
   -> g (f Unit -> h Unit)
 debouncedEventSource subscribe (Milliseconds ms) = do
-  timeoutRef <- fromEff (newRef Nothing)
-  emitRef <- fromEff (newRef Nothing)
+  timeoutRef <- liftEff (newRef Nothing)
+  emitRef <- liftEff (newRef Nothing)
 
   subscribe $ ES.EventSource $ ES.produce \emit -> writeRef emitRef (Just emit)
 
-  pure \act -> fromEff do
+  pure \act -> liftEff do
     maybe (pure unit) clearTimeout =<< readRef timeoutRef
     timeoutId <- setTimeout (Int.floor ms) $
       maybe (pure unit) (_ $ (Left act)) =<< readRef emitRef

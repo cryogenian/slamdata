@@ -27,7 +27,7 @@ import SlamData.Workspace.Card.Pending.Component.Query (Query, initiality)
 import SlamData.Workspace.Card.Pending.Component.State (State, initialState)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
+import Halogen.HTML as HH
 
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query

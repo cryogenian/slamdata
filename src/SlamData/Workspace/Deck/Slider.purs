@@ -32,13 +32,13 @@ import Data.List ((:))
 import CSS (CSS)
 
 import Halogen as H
-import Halogen.HTML.CSS.Indexed (style)
-import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.CSS (style)
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Events.Types (Event, MouseEvent)
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed (IProp(), I)
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Properties (IProp(), I)
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Render.CSS as ClassNames
 import SlamData.Guide as Guide
@@ -284,7 +284,7 @@ renderCard opts deckComponent st activeIndex index card =
 
   classes =
     [ ClassNames.card
-    , HH.className case st.fadeTransition of
+    , HH.ClassName case st.fadeTransition of
         DCS.FadeIn   → "sd-fade-in"
         DCS.FadeOut  → "sd-fade-out"
         DCS.FadeNone → "sd-fade-none"
@@ -296,7 +296,7 @@ renderCard opts deckComponent st activeIndex index card =
   renderGuide =
     Guide.render
       Guide.RightArrow
-      (HH.className "sd-access-next-card-guide")
+      (HH.ClassName "sd-access-next-card-guide")
       DCQ.HideAccessNextActionCardGuide
       guideText
 
@@ -326,7 +326,7 @@ renderMeta st card =
     [ case card of
         DCS.PendingCard →
           HH.div
-            [ HP.classes [ HH.className "sd-card-pending" ] ]
+            [ HP.classes [ HH.ClassName "sd-card-pending" ] ]
             [ HH.slot' ChildSlot.cpPending unit \_ →
                 { component: Pending.pendingCardComponent
                 , initialState: Pending.initialState
@@ -334,7 +334,7 @@ renderMeta st card =
             ]
         DCS.ErrorCard message →
           HH.div
-            [ HP.classes [ HH.className "sd-card-error" ] ]
+            [ HP.classes [ HH.ClassName "sd-card-error" ] ]
             [ HH.slot' ChildSlot.cpError unit \_ →
                 { component: Error.errorCardComponent
                 , initialState: { message }
@@ -342,7 +342,7 @@ renderMeta st card =
             ]
         DCS.NextActionCard input →
           HH.div
-            [ HP.classes [ HH.className "sd-card-next-action" ] ]
+            [ HP.classes [ HH.ClassName "sd-card-next-action" ] ]
             [ HH.slot' ChildSlot.cpNext unit \_ →
                 { component: Next.nextCardComponent
                 , initialState: H.parentState (Next.initialState input)
@@ -374,7 +374,7 @@ renderDef opts deckComponent st { cardType, cardId } =
 loadingPanel ∷ DeckHTML
 loadingPanel =
   HH.div
-    [ HP.classes [ HH.className "sd-pending-overlay" ] ]
+    [ HP.classes [ HH.ClassName "sd-pending-overlay" ] ]
     [ HH.div_
         [ HH.i_ []
         , HH.span_ [ HH.text "Please wait while this card is evaluated" ]

@@ -34,8 +34,8 @@ import Data.Map as Map
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, (:>), cpL, cpR)
 import Halogen.Component.Utils (raise')
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Monad (Slam)
@@ -174,7 +174,7 @@ comp =
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ HH.className "deck-dialog" ] ]
+    [ HP.classes [ HH.ClassName "deck-dialog" ] ]
     $ foldMap (pure ∘ dialog) state
   where
 

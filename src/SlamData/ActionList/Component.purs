@@ -30,11 +30,11 @@ import Data.Foldable as Foldable
 import Data.String as String
 
 import Halogen as H
-import Halogen.HTML.CSS.Indexed as HCSS
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.CSS as HCSS
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.ActionList.Action as A
@@ -70,7 +70,7 @@ render ∷ ∀ a. MkConf a → ST.State a → HTML a
 render mkConf state =
   HH.div
     [ HP.classes
-      $ [ HH.className "sd-action-list" ]
+      $ [ HH.ClassName "sd-action-list" ]
       ⊕ conf.classes
     ]
     [ HH.ul
@@ -108,8 +108,8 @@ renderSpaceFillerButton metrics =
     ]
     [ HH.button
         [ HP.classes
-            [ HH.className "sd-button"
-            , HH.className "sd-button-warning"
+            [ HH.ClassName "sd-button"
+            , HH.ClassName "sd-button-warning"
             ]
         , HP.disabled true
         , HP.buttonType HP.ButtonButton
@@ -193,10 +193,10 @@ renderButton filterString { presentation, metrics, action, lines } =
   classes =
     if A.isHighlighted action && enabled
       then
-        [ HH.className "sd-button" ]
+        [ HH.ClassName "sd-button" ]
       else
-        [ HH.className "sd-button"
-        , HH.className "sd-button-warning"
+        [ HH.ClassName "sd-button"
+        , HH.ClassName "sd-button-warning"
         ]
 
 updateActions ∷ ∀ a. Eq a ⇒ Array (A.Action a) → ST.State a → ST.State a

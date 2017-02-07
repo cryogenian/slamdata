@@ -30,10 +30,10 @@ import Data.String as String
 
 import Halogen as H
 import Halogen.Component.Utils (raise)
-import Halogen.HTML.Indexed as HH
+import Halogen.HTML as HH
 import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -105,14 +105,14 @@ render st =
   case st.input of
     Just { port } →
       HH.div
-        [ HP.classes [ HH.className "sd-pivot-table" ] ]
+        [ HP.classes [ HH.ClassName "sd-pivot-table" ] ]
         [ HH.div
-            [ HP.classes [ HH.className "sd-pivot-table-content" ] ]
+            [ HP.classes [ HH.ClassName "sd-pivot-table-content" ] ]
             [ maybe (HH.text "") (renderTable port.dimensions port.columns) st.records ]
         , HH.div
             [ HP.classes
-                [ HH.className "sd-pagination"
-                , HH.className "sd-form"
+                [ HH.ClassName "sd-pagination"
+                , HH.ClassName "sd-form"
                 ]
             ]
             [ prevButtons (st.pageIndex > 0)
@@ -121,7 +121,7 @@ render st =
             , pageSizeControls st.pageSize
             ]
             , if st.loading
-                then HH.div [ HP.classes [ HH.className "loading" ] ] []
+                then HH.div [ HP.classes [ HH.ClassName "loading" ] ] []
                 else HH.text ""
         ]
     _ →
@@ -131,7 +131,7 @@ render st =
     if st.count ≡ 0
       then
         HH.div
-          [ HP.classes [ HH.className "no-results" ] ]
+          [ HP.classes [ HH.ClassName "no-results" ] ]
           [ HH.text "No results" ]
       else
         HH.table_
@@ -238,7 +238,7 @@ render st =
       [ submittable UpdatePage
           [ HH.text "Page"
           , HH.input
-              [ HP.inputType HP.InputNumber
+              [ HP.type_ HP.InputNumber
               , HP.value (fromMaybe (show (currentPage + 1)) customPage)
               , HE.onValueInput (HE.input SetCustomPage)
               ]

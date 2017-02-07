@@ -30,8 +30,8 @@ import Data.List (length)
 
 import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaque, opaqueQuery)
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as HE
 
 import SlamData.Effects (SlamDataEffects)
@@ -77,8 +77,8 @@ comp opts =
   render _ =
     HH.div
       [ HP.classes
-          [ HH.className "sd-deck-nested"
-          , HH.className ("sd-deck-level-" <> show (length opts.displayCursor + 1))
+          [ HH.ClassName "sd-deck-nested"
+          , HH.ClassName ("sd-deck-level-" <> show (length opts.displayCursor + 1))
           ]
       , HP.ref (left ∘ H.action ∘ DNQ.Ref)
       ]

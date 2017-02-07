@@ -22,7 +22,7 @@ import Data.Array as A
 import Data.List as L
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
+import Halogen.HTML as HH
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Variables.Component.State (State, initialState)

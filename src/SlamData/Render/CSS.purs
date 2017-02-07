@@ -16,236 +16,236 @@ limitations under the License.
 
 module SlamData.Render.CSS where
 
-import Halogen.HTML.Core (className, ClassName)
+import Halogen.HTML.Core (ClassName(..))
 
 version ∷ ClassName
-version = className "version"
+version = ClassName "version"
 
 results ∷ ClassName
-results = className "results"
+results = ClassName "results"
 
 header ∷ ClassName
-header = className "header"
+header = ClassName "header"
 
 logo ∷ ClassName
-logo = className "logo"
+logo = ClassName "logo"
 
 navIcon ∷ ClassName
-navIcon = className "nav-icon"
+navIcon = ClassName "nav-icon"
 
 navLogo ∷ ClassName
-navLogo = className "nav-logo"
+navLogo = ClassName "nav-logo"
 
 content ∷ ClassName
-content = className "content"
+content = ClassName "content"
 
 invisible ∷ ClassName
-invisible = className "sd-invisible"
+invisible = ClassName "sd-invisible"
 
 fileListField ∷ ClassName
-fileListField = className "file-list-field"
+fileListField = ClassName "file-list-field"
 
 fileListGroup ∷ ClassName
-fileListGroup = className "file-list-group"
+fileListGroup = ClassName "file-list-group"
 
 dialogDownload ∷ ClassName
-dialogDownload = className "dialog-download"
+dialogDownload = ClassName "dialog-download"
 
 dialogMount ∷ ClassName
-dialogMount = className "dialog-mount"
+dialogMount = ClassName "dialog-mount"
 
 renameDialogForm ∷ ClassName
-renameDialogForm = className "rename-dialog-form"
+renameDialogForm = ClassName "rename-dialog-form"
 
 mountMongoDB ∷ ClassName
-mountMongoDB = className "mount-mongodb"
+mountMongoDB = ClassName "mount-mongodb"
 
 mountCouchbase ∷ ClassName
-mountCouchbase = className "mount-couchbase"
+mountCouchbase = ClassName "mount-couchbase"
 
 mountMarkLogic ∷ ClassName
-mountMarkLogic = className "mount-marklogic"
+mountMarkLogic = ClassName "mount-marklogic"
 
 mountSpark ∷ ClassName
-mountSpark = className "mount-spark"
+mountSpark = ClassName "mount-spark"
 
 mountName ∷ ClassName
-mountName = className "mount-name"
+mountName = ClassName "mount-name"
 
 mountHostList ∷ ClassName
-mountHostList = className "mount-host-list"
+mountHostList = ClassName "mount-host-list"
 
 mountUserInfo ∷ ClassName
-mountUserInfo = className "mount-userinfo"
+mountUserInfo = ClassName "mount-userinfo"
 
 mountHost ∷ ClassName
-mountHost = className "mount-host"
+mountHost = ClassName "mount-host"
 
 mountProps ∷ ClassName
-mountProps = className "mount-props"
+mountProps = ClassName "mount-props"
 
 mountPath ∷ ClassName
-mountPath = className "mount-path"
+mountPath = ClassName "mount-path"
 
 mountFormat ∷ ClassName
-mountFormat = className "mount-format"
+mountFormat = ClassName "mount-format"
 
 mountPropsScrollbox ∷ ClassName
-mountPropsScrollbox = className "mount-props-scrollbox"
+mountPropsScrollbox = ClassName "mount-props-scrollbox"
 
 mountProgressSpinner ∷ Boolean → ClassName
-mountProgressSpinner true = className "mount-progress-spinner"
-mountProgressSpinner false = className "mount-progress-spinner-hidden"
+mountProgressSpinner true = ClassName "mount-progress-spinner"
+mountProgressSpinner false = ClassName "mount-progress-spinner-hidden"
 
 cardInput ∷ ClassName
-cardInput = className "card-input"
+cardInput = ClassName "card-input"
 
 aceContainer ∷ ClassName
-aceContainer = className "ace-container"
+aceContainer = ClassName "ace-container"
 
 cardFailures ∷ ClassName
-cardFailures = className "card-failures"
+cardFailures = ClassName "card-failures"
 
 pageSize ∷ ClassName
-pageSize = className "page-size"
+pageSize = ClassName "page-size"
 
 collapsed ∷ ClassName
-collapsed = className "collapsed"
+collapsed = ClassName "collapsed"
 
 loadingMessage ∷ ClassName
-loadingMessage = className "loading-message"
+loadingMessage = ClassName "loading-message"
 
 embedBox ∷ ClassName
-embedBox = className "embed-box"
+embedBox = ClassName "embed-box"
 
 downloadSource ∷ ClassName
-downloadSource = className "download-source"
+downloadSource = ClassName "download-source"
 
 downloadTarget ∷ ClassName
-downloadTarget = className "download-target"
+downloadTarget = ClassName "download-target"
 
 downloadTargetBox ∷ ClassName
-downloadTargetBox = className "download-target-box"
+downloadTargetBox = ClassName "download-target-box"
 
 downloadCSVDelimiters ∷ ClassName
-downloadCSVDelimiters = className "download-csv-delimiters"
+downloadCSVDelimiters = ClassName "download-csv-delimiters"
 
 downloadArrayMode ∷ ClassName
-downloadArrayMode = className "download-array-mode"
+downloadArrayMode = ClassName "download-array-mode"
 
 downloadJSONOptions ∷ ClassName
-downloadJSONOptions = className "download-json-options"
+downloadJSONOptions = ClassName "download-json-options"
 
 refreshButton ∷ ClassName
-refreshButton = className "refresh-button"
+refreshButton = ClassName "refresh-button"
 
 shareButton ∷ ClassName
-shareButton = className "share-button"
+shareButton = ClassName "share-button"
 
 aggregation ∷ ClassName
-aggregation = className "aggregation"
+aggregation = ClassName "aggregation"
 
 deleteDeckIcon ∷ ClassName
-deleteDeckIcon = className "delete-deck-icon"
+deleteDeckIcon = ClassName "delete-deck-icon"
 
 actionIcon ∷ ClassName
-actionIcon = className "action-icon"
+actionIcon = ClassName "action-icon"
 
 chartOutput ∷ ClassName
-chartOutput = className "chart-output"
+chartOutput = ClassName "chart-output"
 
 glyphiconInactive ∷ ClassName
-glyphiconInactive = className "glyphicon-inactive"
+glyphiconInactive = ClassName "glyphicon-inactive"
 
 downloadCardEditor ∷ ClassName
-downloadCardEditor = className "download-card-editor"
+downloadCardEditor = ClassName "download-card-editor"
 
 downloadTypeSelector ∷ ClassName
-downloadTypeSelector = className "download-type-selector"
+downloadTypeSelector = ClassName "download-type-selector"
 
 downloadConfiguration ∷ ClassName
-downloadConfiguration = className "download-configuration"
+downloadConfiguration = ClassName "download-configuration"
 
 permissionsCheckboxes ∷ ClassName
-permissionsCheckboxes = className "permissions-checkboxes"
+permissionsCheckboxes = ClassName "permissions-checkboxes"
 
 tokenGeneratorForm ∷ ClassName
-tokenGeneratorForm = className "token-generator-form"
+tokenGeneratorForm = ClassName "token-generator-form"
 
 cancelInputRunIcon ∷ ClassName
-cancelInputRunIcon = className "cancel-input-run-icon"
+cancelInputRunIcon = ClassName "cancel-input-run-icon"
 
 userShareForm ∷ ClassName
-userShareForm = className "user-share-form"
+userShareForm = ClassName "user-share-form"
 
 nextActionCard ∷ ClassName
-nextActionCard = className "next-action-card"
+nextActionCard = ClassName "next-action-card"
 
 sharePermissionsDialog ∷ ClassName
-sharePermissionsDialog = className "share-permissions-dialog"
+sharePermissionsDialog = ClassName "share-permissions-dialog"
 
 sharePermissionsCheckboxes ∷ ClassName
-sharePermissionsCheckboxes = className "share-permissions-checkboxes"
+sharePermissionsCheckboxes = ClassName "share-permissions-checkboxes"
 
 sharePermissionsResourceMark ∷ ClassName
-sharePermissionsResourceMark = className "share-permissions-resource-mark"
+sharePermissionsResourceMark = ClassName "share-permissions-resource-mark"
 
 sharePermissionsContent ∷ ClassName
-sharePermissionsContent = className "share-permissions-content"
+sharePermissionsContent = ClassName "share-permissions-content"
 
 sharePermissionsButtons ∷ ClassName
-sharePermissionsButtons = className "share-permissions-buttons"
+sharePermissionsButtons = ClassName "share-permissions-buttons"
 
 glyphImage ∷ ClassName
-glyphImage = className "glyph-image"
+glyphImage = ClassName "glyph-image"
 
 saveCardButton ∷ ClassName
-saveCardButton = className "save-card-button"
+saveCardButton = ClassName "save-card-button"
 
 chartGlyph ∷ ClassName
-chartGlyph = className "chart-glyph"
+chartGlyph = ClassName "chart-glyph"
 
 codeGlyph ∷ ClassName
-codeGlyph = className "code-glyph"
+codeGlyph = ClassName "code-glyph"
 
 deckBackSide ∷ ClassName
-deckBackSide = className "sd-deck-backside"
+deckBackSide = ClassName "sd-deck-backside"
 
 openCard ∷ ClassName
-openCard = className "open-card"
+openCard = ClassName "open-card"
 
 openCardMenu ∷ ClassName
-openCardMenu = className "open-card-menu"
+openCardMenu = ClassName "open-card-menu"
 
 loading ∷ ClassName
-loading = className "loading"
+loading = ClassName "loading"
 
 pending ∷ ClassName
-pending = className "pending"
+pending = ClassName "pending"
 
 cardSlider ∷ ClassName
-cardSlider = className "sd-card-slider"
+cardSlider = ClassName "sd-card-slider"
 
 card :: ClassName
-card = className "sd-card"
+card = ClassName "sd-card"
 
 cardSliding ∷ ClassName
-cardSliding = className "sd-card-sliding"
+cardSliding = ClassName "sd-card-sliding"
 
 cardTransitioning ∷ ClassName
-cardTransitioning = className "sd-card-transitioning"
+cardTransitioning = ClassName "sd-card-transitioning"
 
 cardActive ∷ ClassName
-cardActive = className "sd-card-active"
+cardActive = ClassName "sd-card-active"
 
 cardGripper ∷ ClassName
-cardGripper = className "sd-card-gripper"
+cardGripper = ClassName "sd-card-gripper"
 
 cardGripperLast ∷ ClassName
-cardGripperLast = className "sd-card-gripper-last"
+cardGripperLast = ClassName "sd-card-gripper-last"
 
 form ∷ ClassName
-form = className "sd-form"
+form = ClassName "sd-form"
 
 formButton ∷ ClassName
-formButton = className "sd-form-button"
+formButton = ClassName "sd-form-button"

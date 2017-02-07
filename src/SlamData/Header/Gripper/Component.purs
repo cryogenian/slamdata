@@ -42,10 +42,10 @@ import Halogen as H
 import Halogen.Component.Utils (raise)
 import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Wiring as Wiring
@@ -87,8 +87,8 @@ render ∷ String → State → HTML
 render sel state =
   HH.div
     [ HP.classes
-        [ HH.className "header-gripper"
-        , HH.className $ className state
+        [ HH.ClassName "header-gripper"
+        , HH.ClassName $ className state
         ]
     , HE.onMouseDown \evt →
         HEH.preventDefault $> Just (H.action $ StartDragging evt.clientY)

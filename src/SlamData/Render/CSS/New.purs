@@ -16,28 +16,28 @@ limitations under the License.
 
 module SlamData.Render.CSS.New where
 
-import Halogen.HTML.Core (className, ClassName)
+import Halogen.HTML.Core (ClassName(..))
 
 pagination ∷ ClassName
-pagination = className "sd-pagination"
+pagination = ClassName "sd-pagination"
 
 deckBackSide ∷ ClassName
-deckBackSide = className "sd-deck-backside"
+deckBackSide = ClassName "sd-deck-backside"
 
 loading ∷ ClassName
-loading = className "loading"
+loading = ClassName "loading"
 
 cardGripper :: ClassName
-cardGripper = className "sd-card-gripper"
+cardGripper = ClassName "sd-card-gripper"
 
 cardGripperLast :: ClassName
-cardGripperLast = className "sd-card-gripper-last"
+cardGripperLast = ClassName "sd-card-gripper-last"
 
 form ∷ ClassName
-form = className "sd-form"
+form = ClassName "sd-form"
 
 formButton ∷ ClassName
-formButton = className "sd-form-button"
+formButton = ClassName "sd-form-button"
 
 formButtonGroup ∷ ClassName
-formButtonGroup = className "sd-form-button-group"
+formButtonGroup = ClassName "sd-form-button-group"

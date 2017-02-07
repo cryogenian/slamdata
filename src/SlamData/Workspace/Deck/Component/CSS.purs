@@ -16,53 +16,53 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.Component.CSS where
 
-import Halogen.HTML.Core (className, ClassName)
+import Halogen.HTML.Core (ClassName(..))
 
 deckContainer ∷ ClassName
-deckContainer = className "sd-deck-container"
+deckContainer = ClassName "sd-deck-container"
 
 deck ∷ ClassName
-deck = className "sd-deck"
+deck = ClassName "sd-deck"
 
 deckFrame ∷ ClassName
-deckFrame = className "sd-deck-frame"
+deckFrame = ClassName "sd-deck-frame"
 
 deckShadow ∷ ClassName
-deckShadow = className "sd-deck-shadow"
+deckShadow = ClassName "sd-deck-shadow"
 
 deckName ∷ ClassName
-deckName = className "sd-deck-name"
+deckName = ClassName "sd-deck-name"
 
 focused ∷ ClassName
-focused = className "sd-focused"
+focused = ClassName "sd-focused"
 
 unfocused ∷ ClassName
-unfocused = className "sd-unfocused"
+unfocused = ClassName "sd-unfocused"
 
 zoomDeck ∷ ClassName
-zoomDeck = className "sd-zoom-deck"
+zoomDeck = ClassName "sd-zoom-deck"
 
 flipDeck ∷ ClassName
-flipDeck = className "sd-flip-deck"
+flipDeck = ClassName "sd-flip-deck"
 
 grabDeck ∷ ClassName
-grabDeck = className "sd-grab-deck"
+grabDeck = ClassName "sd-grab-deck"
 
 resizeDeck ∷ ClassName
-resizeDeck = className "sd-resize-deck"
+resizeDeck = ClassName "sd-resize-deck"
 
 dialogBackdrop ∷ ClassName
-dialogBackdrop = className "deck-dialog-backdrop"
+dialogBackdrop = ClassName "deck-dialog-backdrop"
 
 -------------------------------------------------------------------------------
 
 invisible ∷ ClassName
-invisible = className "sd-invisible"
+invisible = ClassName "sd-invisible"
 
 -------------------------------------------------------------------------------
 
 card ∷ ClassName
-card = className "sd-card"
+card = ClassName "sd-card"
 
 cardSlider ∷ ClassName
-cardSlider = className "sd-card-slider"
+cardSlider = ClassName "sd-card-slider"

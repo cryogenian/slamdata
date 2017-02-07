@@ -19,10 +19,10 @@ module SlamData.ActionList.Filter.Component where
 import SlamData.Prelude
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
@@ -50,10 +50,10 @@ comp descr =
 
 render ∷ String → State → HTML
 render descr state =
-  HH.form [ HP.classes [ HH.className "sd-action-filter" ] ]
+  HH.form [ HP.classes [ HH.ClassName "sd-action-filter" ] ]
     [ HH.div_
         [ HH.div
-            [ HP.classes [ HH.className "sd-action-filter-icon" ] ]
+            [ HP.classes [ HH.ClassName "sd-action-filter-icon" ] ]
             [ RC.searchFieldIcon ]
         , HH.input
             [ HP.value state.filter

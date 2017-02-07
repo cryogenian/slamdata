@@ -18,7 +18,7 @@ module Utils.Random where
 
 import Prelude
 
-import Control.Monad.Aff.Free (class Affable, fromEff)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Random (random, RANDOM)
 
 import Data.Foldable (class Foldable, foldl)
@@ -30,7 +30,7 @@ import Data.Tuple (Tuple(..), snd)
 -- | Returns `Nothing` if foldable is empty
 randomIn
   :: forall a m f e
-   . (Foldable f, Monad m, Affable (random :: RANDOM|e) m)
+   . (Foldable f, MonadEff (random :: RANDOM|e) m)
   => f a
   -> m (Maybe a)
 randomIn fa =
@@ -39,7 +39,7 @@ randomIn fa =
   foldFn :: m (Tuple Number (Maybe a)) -> a -> m (Tuple Number (Maybe a))
   foldFn mMa a = do
     ma <- mMa
-    prob <- fromEff random
+    prob <- liftEff random
     pure case ma of
       Tuple _ Nothing -> Tuple prob $ Just a
       Tuple p (Just b) ->
@@ -51,7 +51,7 @@ randomIn fa =
 -- | same as `randomIn` but returns `mempty` instead of `Nothing`
 randomInM
   :: forall a m f e
-   . (Foldable f, Monad m, Affable (random :: RANDOM|e) m, Monoid a)
+   . (Foldable f, MonadEff (random :: RANDOM|e) m, Monoid a)
    => f a
    -> m a
 randomInM fa = fromMaybe mempty <$> randomIn fa

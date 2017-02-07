@@ -26,10 +26,10 @@ import Data.String as S
 
 import Halogen as H
 import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -160,7 +160,7 @@ renderValue state =
 renderFormatter ∷ ST.State → HTML
 renderFormatter state =
   HH.form
-    [ HP.classes [ HH.className "chart-configure-input" ]
+    [ HP.classes [ HH.ClassName "chart-configure-input" ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Value formatter" ]
@@ -174,7 +174,7 @@ renderFormatter state =
 renderLabel ∷ ST.State → HTML
 renderLabel state =
   HH.form
-    [ HP.classes [ HH.className "chart-configure-input" ]
+    [ HP.classes [ HH.ClassName "chart-configure-input" ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label" ]

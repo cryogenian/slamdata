@@ -26,9 +26,9 @@ import Data.Map as Map
 import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.CustomProps as Cp
 import Halogen.Component.Utils (sendAfter, raise)
@@ -115,7 +115,7 @@ renderCheckbox state =
       [ HP.classes [ B.checkbox ] ]
       [ HH.label_
         [ HH.input
-            [ HP.inputType HP.InputCheckbox
+            [ HP.type_ HP.InputCheckbox
             , HP.checked $ Set.member sem state.selected
             , HE.onValueChange (HE.input_ $ ItemSelected sem)
             ]
@@ -139,7 +139,7 @@ renderRadio state =
       [ HP.classes [ B.radio ]  ]
       [ HH.label_
           [ HH.input
-            [ HP.inputType HP.InputRadio
+            [ HP.type_ HP.InputRadio
             , HP.checked $ Set.member sem state.selected
             , HE.onValueChange (HE.input_ $ ItemSelected sem)
             ]

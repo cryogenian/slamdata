@@ -22,9 +22,9 @@ import Data.Argonaut (JCursor(..))
 import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.CustomProps as Cp
 import Halogen.Component.Utils (raise, sendAfter)
@@ -70,7 +70,7 @@ render state =
     ⊕ [ HH.input
           [ HP.classes [ B.formControl ]
           , HP.value state.value
-          , HP.inputType $ inputTypeFromFIT state.formInputType
+          , HP.type_ $ inputTypeFromFIT state.formInputType
           , HE.onValueInput $ HE.input ValueChanged
           ]
       ]

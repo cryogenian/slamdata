@@ -23,7 +23,6 @@ import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
-import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Exception (Error)
@@ -89,9 +88,6 @@ instance monadEffSlamM ∷ MonadEff eff (SlamM eff) where
 
 instance monadAffSlamM ∷ MonadAff eff (SlamM eff) where
   liftAff = SlamM ∘ liftF ∘ Aff
-
-instance affableSlamM ∷ Affable eff (SlamM eff) where
-  fromAff = SlamM ∘ liftF ∘ Aff
 
 instance monadParSlamM ∷ Parallel (SlamA eff) (SlamM eff) where
   parallel = SlamA ∘ liftFreeAp

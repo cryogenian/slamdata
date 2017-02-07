@@ -19,9 +19,9 @@ module SlamData.Workspace.Deck.Dialog.Confirm.Component where
 import SlamData.Prelude
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 type State =
@@ -38,14 +38,14 @@ comp = H.component { render, eval } where
 
   render ∷ State → H.ComponentHTML Query
   render state =
-    HH.div [ HP.classes [ HH.className "deck-dialog-embed" ] ]
+    HH.div [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
       [ HH.h4_ [ HH.text  state.title ]
-      , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
+      , HH.div [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
           [ HH.p_
               [ HH.text state.body
               ]
           ]
-      , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+      , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
           [ HH.button
               [ HP.classes [ B.btn ]
               , HE.onClick (HE.input_ $ Confirm false)

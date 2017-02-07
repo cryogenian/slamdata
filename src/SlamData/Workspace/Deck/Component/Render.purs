@@ -25,11 +25,11 @@ import Data.Array as A
 import Data.List as L
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.ActionList.Component as ActionList
@@ -52,7 +52,7 @@ import Utils (endSentence)
 renderError ∷ ∀ f a. String → HH.HTML a (f Unit)
 renderError err =
   HH.div
-    [ HP.classes [ HH.className "sd-workspace-error" ] ]
+    [ HP.classes [ HH.ClassName "sd-workspace-error" ] ]
     [ HH.h1_
         [ HH.text "Couldn't load this SlamData deck." ]
     , HH.p_
@@ -113,7 +113,7 @@ deckClasses ∷ ∀ r. DCS.State → Array (HP.IProp (HP.InteractiveEvents (HP.G
 deckClasses st =
   pure $ HP.classes $
     [ CSS.deckContainer
-    , HH.className (responsiveSize st.responsiveSize)
+    , HH.ClassName (responsiveSize st.responsiveSize)
     , if st.focused then CSS.focused else CSS.unfocused
     ]
 
@@ -182,7 +182,7 @@ backside =
 
 deckIndicator ∷ DCS.State → DeckHTML
 deckIndicator st =
-  HH.div [ HP.classes [ HH.className "indicator" ] ] $
+  HH.div [ HP.classes [ HH.ClassName "indicator" ] ] $
     A.mapWithIndex renderCircle st.displayCards
 
   where
@@ -190,7 +190,7 @@ deckIndicator st =
     DCS.activeCardIndex st
 
   classes ix card =
-    map HH.className
+    map HH.ClassName
     $ (guard (st.pendingCardIndex ≡ Just ix) $> "running")
     ⊕ (A.singleton case card of
           Right _ → "available"

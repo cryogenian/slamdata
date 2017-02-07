@@ -45,8 +45,8 @@ import Halogen as H
 import Halogen.Component.ChildPath (injSlot)
 import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.Component.Utils (liftH', raise', sendAfter', subscribeToBus')
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
@@ -105,7 +105,7 @@ render opts deckComponent st =
   else case st.loadError of
     Just error →
       HH.div
-        [ HP.class_ $ HH.className "sd-workspace-error" ]
+        [ HP.class_ $ HH.ClassName "sd-workspace-error" ]
         [ DCR.renderError error ]
     _ → DCR.renderDeck opts deckComponent st
 

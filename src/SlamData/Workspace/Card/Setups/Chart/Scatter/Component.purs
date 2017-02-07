@@ -26,11 +26,11 @@ import Data.List as List
 import Global (readFloat, isNaN)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
+import Halogen.HTML as HH
 import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)

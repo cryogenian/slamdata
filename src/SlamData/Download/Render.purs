@@ -21,9 +21,9 @@ import SlamData.Prelude
 import Data.Lens (Lens', (^.))
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Download.Model as D
@@ -98,7 +98,7 @@ optionsJSON func opts =
     HH.li_
       [ HH.label_
           [ HH.input
-              [ HP.inputType HP.InputRadio
+              [ HP.type_ HP.InputRadio
               , HP.name grp
               , HP.checked (opts ^. lens == value)
               , HE.onValueChange (HE.input_ (func lens value))

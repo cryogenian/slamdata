@@ -19,10 +19,10 @@ module SlamData.Workspace.Card.Common.Render where
 import SlamData.Prelude
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -36,7 +36,7 @@ renderLowLOD
 renderLowLOD icon f = case _ of
   Low →
     HH.div
-      [ HP.class_ (HH.className "card-input-minimum-lod") ]
+      [ HP.class_ (HH.ClassName "card-input-minimum-lod") ]
       [ HH.button
           [ ARIA.label "Zoom or resize"
           , HP.title "Zoom or resize"

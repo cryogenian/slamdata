@@ -35,8 +35,8 @@ import Ace.Halogen.Component (AceQuery(..), AceState, Autocomplete(..), aceCompo
 import Ace.Types (Editor)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)

@@ -33,9 +33,8 @@ import Control.Monad.Eff.Exception as Exception
 
 import Halogen as H
 import Halogen.Component.Utils (subscribeToBus')
-import Halogen.HTML.Core (className)
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Menu.Component (MenuQuery(..), menuComponent) as HalogenMenu
 import Halogen.Menu.Component.State (MenuItem, makeMenu)
 import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
@@ -95,7 +94,7 @@ comp =
 render ∷ State → GlobalMenuHTML
 render state =
   HH.div
-    [ HP.classes $ [ className "sd-global-menu" ] ]
+    [ HP.classes $ [ HH.ClassName "sd-global-menu" ] ]
     [ HH.slot MenuSlot \_ →
         { component: HalogenMenu.menuComponent
         , initialState: H.parentState $ makeMenu helpMenu

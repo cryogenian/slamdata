@@ -33,10 +33,10 @@ import Data.String.Regex.Flags as RXF
 import Halogen as H
 import Halogen.HTML.Core as HC
 import Halogen.CustomProps as CustomProps
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.CSS.Indexed as HCSS
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.CSS as HCSS
 import Quasar.Mount as QM
 import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
@@ -159,7 +159,7 @@ renderIntroVideoBackdrop =
 renderIntroVideo ∷ HTML
 renderIntroVideo =
   HH.div
-    [ HP.class_ $ HC.className "deck-dialog" ]
+    [ HP.class_ $ HC.ClassName "deck-dialog" ]
     [ HH.div
         [ HCSS.style
             $ (CSS.paddingLeft CSS.nil)
@@ -182,7 +182,7 @@ renderIntroVideo =
         [ HH.button
             [ HP.buttonType HP.ButtonButton
             , HE.onClick $ HE.input_ DismissIntroVideo
-            , HP.classes [ HH.className "btn", HH.className "btn-primary" ]
+            , HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
             , HCSS.style $ CSS.marginRight $ CSS.rem 1.0
             ]
             [ HH.text "Skip video" ]

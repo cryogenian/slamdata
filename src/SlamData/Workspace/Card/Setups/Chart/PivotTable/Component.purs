@@ -32,11 +32,11 @@ import Data.List as List
 import CSS as C
 import Halogen as H
 import Halogen.Component.Utils.Drag as Drag
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.HTML.CSS.Indexed as HC
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
+import Halogen.HTML.CSS as HC
 
 import SlamData.Form.Select as S
 import SlamData.Monad (Slam)
@@ -83,17 +83,17 @@ render st =
 renderHighLOD ∷ State → HTML
 renderHighLOD st =
   HH.div
-    [ HP.classes [ HH.className "sd-pivot-options" ] ]
+    [ HP.classes [ HH.ClassName "sd-pivot-options" ] ]
     [ HH.div
-        [ HP.classes [ HH.className "sd-pivot-options-corner" ] ]
+        [ HP.classes [ HH.ClassName "sd-pivot-options-corner" ] ]
         [ HH.span_ [ HH.text "Dimensions" ]
         , HH.span_ [ HH.text "Columns" ]
         ]
     , HH.div
-        [ HP.classes [ HH.className "sd-pivot-options-dims" ] ]
+        [ HP.classes [ HH.ClassName "sd-pivot-options-dims" ] ]
         renderedDimensions
     , HH.div
-        [ HP.classes [ HH.className "sd-pivot-options-cols" ] ]
+        [ HP.classes [ HH.ClassName "sd-pivot-options-cols" ] ]
         renderedColumns
     , maybe (HH.text "") renderSelect st.selecting
     ]
@@ -129,13 +129,13 @@ renderHighLOD st =
     in
       map (renderDimension size) st.dimensions <>
       [ HH.div
-          [ HP.classes [ HH.className "sd-pivot-options-dim" ]
+          [ HP.classes [ HH.ClassName "sd-pivot-options-dim" ]
           , HC.style (C.height (C.pct size))
           ]
           [ HH.div
-              [ HP.classes [ HH.className "sd-pivot-options-dim-inner"] ]
+              [ HP.classes [ HH.ClassName "sd-pivot-options-dim-inner"] ]
               [ HH.button
-                  [ HP.classes [ HH.className "sd-pivot-options-plus" ]
+                  [ HP.classes [ HH.ClassName "sd-pivot-options-plus" ]
                   , HE.onClick (HE.input_ (right ∘ AddDimension))
                   , ARIA.label "Add dimension"
                   , HP.title "Add dimension"
@@ -151,16 +151,16 @@ renderHighLOD st =
        , HC.style (C.height (C.pct size))
        ] <> dimensionEvents slot)
       [ HH.div
-          [ HP.classes [ HH.className "sd-pivot-options-dim-inner"]
+          [ HP.classes [ HH.ClassName "sd-pivot-options-dim-inner"]
           , HC.style (dimensionStyles slot size)
           ]
           [ HH.button
-              [ HP.classes [ HH.className "sd-pivot-options-label" ]
+              [ HP.classes [ HH.ClassName "sd-pivot-options-label" ]
               , HE.onMouseDown (HE.input (\e → right ∘ OrderDimensionStart slot e))
               ]
               [ HH.text (showJCursor dim) ]
           , HH.button
-              [ HP.classes [ HH.className "sd-dismiss-button" ]
+              [ HP.classes [ HH.ClassName "sd-dismiss-button" ]
               , HP.title "Delete dimension"
               , ARIA.label "Delete dimension"
               , HE.onClick (HE.input_ (right ∘ RemoveDimension slot))
@@ -170,10 +170,10 @@ renderHighLOD st =
       ]
 
   dimensionClasses slot =
-    [ HH.className "sd-pivot-options-dim" ] <>
+    [ HH.ClassName "sd-pivot-options-dim" ] <>
       case st.orderingDimension of
-        Just opts | opts.source == slot → [ HH.className "ordering" ]
-        Just opts | opts.over == Just slot → [ HH.className "ordering-over" ]
+        Just opts | opts.source == slot → [ HH.ClassName "ordering" ]
+        Just opts | opts.over == Just slot → [ HH.ClassName "ordering-over" ]
         _ → []
 
   dimensionStyles slot size = do
@@ -197,15 +197,15 @@ renderHighLOD st =
     in
       map (renderColumn size) st.columns <>
       [ HH.div
-          [ HP.classes [ HH.className "sd-pivot-options-col" ]
+          [ HP.classes [ HH.ClassName "sd-pivot-options-col" ]
           , HC.style (C.width (C.pct size))
           ]
           [ HH.div
-              [ HP.classes [ HH.className "sd-pivot-options-col-inner"] ]
+              [ HP.classes [ HH.ClassName "sd-pivot-options-col-inner"] ]
               [ HH.div
-                  [ HP.classes [ HH.className "sd-pivot-options-col-value" ] ]
+                  [ HP.classes [ HH.ClassName "sd-pivot-options-col-value" ] ]
                   [ HH.button
-                      [ HP.classes [ HH.className "sd-pivot-options-plus" ]
+                      [ HP.classes [ HH.ClassName "sd-pivot-options-plus" ]
                       , HE.onClick (HE.input_ (right ∘ AddColumn))
                       , ARIA.label "Add column"
                       , HP.title "Add column"
@@ -213,7 +213,7 @@ renderHighLOD st =
                       []
                   ]
               , HH.div
-                  [ HP.classes [ HH.className "sd-pivot-options-col-aggregation" ] ]
+                  [ HP.classes [ HH.ClassName "sd-pivot-options-col-aggregation" ] ]
                   []
               ]
           ]
@@ -225,19 +225,19 @@ renderHighLOD st =
        , HC.style (C.width (C.pct size))
        ] <> columnEvents slot)
       [ HH.div
-          [ HP.classes [ HH.className "sd-pivot-options-col-inner"]
+          [ HP.classes [ HH.ClassName "sd-pivot-options-col-inner"]
           , HC.style (columnStyles slot size)
           ]
           [ HH.div
-              [ HP.classes [ HH.className "sd-pivot-options-col-value" ] ]
+              [ HP.classes [ HH.ClassName "sd-pivot-options-col-value" ] ]
               [ HH.button
-                  [ HP.classes [ HH.className "sd-pivot-options-label" ]
+                  [ HP.classes [ HH.ClassName "sd-pivot-options-label" ]
                   , HE.onMouseDown (HE.input (\e → right ∘ OrderColumnStart slot e))
                   ]
                   [ HH.text (showColumn col)
                   ]
               , HH.button
-                  [ HP.classes [ HH.className "sd-dismiss-button" ]
+                  [ HP.classes [ HH.ClassName "sd-dismiss-button" ]
                   , HP.title "Delete column"
                   , ARIA.label "Delete column"
                   , HE.onClick (HE.input_ (right ∘ RemoveColumn slot))
@@ -245,7 +245,7 @@ renderHighLOD st =
                   [ HH.text "×"]
               ]
           , HH.div
-              [ HP.classes [ HH.className "sd-pivot-options-col-aggregation" ] ]
+              [ HP.classes [ HH.ClassName "sd-pivot-options-col-aggregation" ] ]
               case col of
                 Column { valueAggregation } → [ columnSelect slot valueAggregation ]
                 _ → []
@@ -253,10 +253,10 @@ renderHighLOD st =
       ]
 
   columnClasses slot =
-    [ HH.className "sd-pivot-options-col" ] <>
+    [ HH.ClassName "sd-pivot-options-col" ] <>
       case st.orderingColumn of
-        Just opts | opts.source == slot → [ HH.className "ordering" ]
-        Just opts | opts.over == Just slot → [ HH.className "ordering-over" ]
+        Just opts | opts.source == slot → [ HH.ClassName "ordering" ]
+        Just opts | opts.over == Just slot → [ HH.ClassName "ordering-over" ]
         _ → []
 
   columnStyles slot size = do
@@ -275,7 +275,7 @@ renderHighLOD st =
 
   columnSelect slot ag =
     HH.div
-      [ HP.classes [ HH.className "list-group" ] ]
+      [ HP.classes [ HH.ClassName "list-group" ] ]
       (map (selectBtn slot ag)
         [ Nothing
         , Just Ag.Maximum
@@ -289,8 +289,8 @@ renderHighLOD st =
   selectBtn slot ag ctr =
     HH.button
       [ HP.classes
-          ([ HH.className "list-group-item" ]
-           <> (HH.className "active" <$ guard (ctr == ag)))
+          ([ HH.ClassName "list-group-item" ]
+           <> (HH.ClassName "active" <$ guard (ctr == ag)))
       , HE.onClick (HE.input_ (right ∘ ChooseAggregation slot ctr))
       ]
       [ HH.text (maybe "Tabulate" S.stringVal ctr) ]

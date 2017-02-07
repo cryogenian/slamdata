@@ -20,7 +20,7 @@ import Prelude
 
 import Control.Monad.Aff (Canceler(..), forkAff, launchAff, runAff)
 import Control.Monad.Aff.AVar (makeVar, makeVar', takeVar, putVar, AVAR)
-import Control.Monad.Aff.Free (class Affable, fromAff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (EXCEPTION)
@@ -57,7 +57,7 @@ type DragEffects eff =
 
 begin
   ∷ ∀ g eff
-  . Affable (DragEffects eff) g
+  . MonadAff (DragEffects eff) g
   ⇒ Event MouseEvent
   → g { subscription
           ∷ (DragEvent → Eff (DragEffects eff) Unit)
@@ -65,7 +65,7 @@ begin
       , canceler
           ∷ Canceler (DragEffects eff)
       }
-begin ev = fromAff do
+begin ev = liftAff do
   let initX = ev.pageX
       initY = ev.pageY
 
@@ -122,9 +122,7 @@ begin ev = fromAff do
 
 subscribe'
   ∷ ∀ s s' f f' g p eff
-  . ( Affable (DragEffects eff) g
-    , Monad g
-    )
+  . MonadAff (DragEffects eff) g
   ⇒ Event MouseEvent
   → (DragEvent → f Unit)
   → H.ParentDSL s s' f f' g p (Canceler (DragEffects eff))

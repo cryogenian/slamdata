@@ -36,8 +36,8 @@ import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson
 import Data.String as Str
 
 import Halogen.HTML as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.Config as Config
 import SlamData.Workspace.Card.CardType.ChartType
@@ -271,30 +271,30 @@ cardIconLightImg cardType =
 
 cardClasses ∷ CardType → Array H.ClassName
 cardClasses = case _ of
-  Ace at → [ H.className "sd-card-ace" ] <> aceCardClasses at
-  Search → [ H.className "sd-card-search" ]
-  ChartOptions _ → [ H.className "sd-card-chart-options" ]
-  SetupFormInput _ → [ H.className "sd-form-input-setup" ]
-  Chart → [ H.className "sd-card-chart" ]
-  FormInput → [ H.className "sd-card-form-input" ]
-  Markdown → [ H.className "sd-card-markdown" ]
-  Table → [ H.className "sd-card-table" ]
-  Download → [ H.className "sd-card-download" ]
-  DownloadOptions → [ H.className "sd-card-download-options" ]
-  Variables → [ H.className "sd-card-variables" ]
-  Troubleshoot → [ H.className "sd-card-troubleshoot" ]
-  Cache → [ H.className "sd-card-cache" ]
-  Open → [ H.className "sd-card-open" ]
-  Draftboard → [ H.className "sd-card-draftboard" ]
-  Tabs → [ H.className "sd-card-tabs" ]
+  Ace at → [ H.ClassName "sd-card-ace" ] <> aceCardClasses at
+  Search → [ H.ClassName "sd-card-search" ]
+  ChartOptions _ → [ H.ClassName "sd-card-chart-options" ]
+  SetupFormInput _ → [ H.ClassName "sd-form-input-setup" ]
+  Chart → [ H.ClassName "sd-card-chart" ]
+  FormInput → [ H.ClassName "sd-card-form-input" ]
+  Markdown → [ H.ClassName "sd-card-markdown" ]
+  Table → [ H.ClassName "sd-card-table" ]
+  Download → [ H.ClassName "sd-card-download" ]
+  DownloadOptions → [ H.ClassName "sd-card-download-options" ]
+  Variables → [ H.ClassName "sd-card-variables" ]
+  Troubleshoot → [ H.ClassName "sd-card-troubleshoot" ]
+  Cache → [ H.ClassName "sd-card-cache" ]
+  Open → [ H.ClassName "sd-card-open" ]
+  Draftboard → [ H.ClassName "sd-card-draftboard" ]
+  Tabs → [ H.ClassName "sd-card-tabs" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Setup Markdown"
 aceCardName SQLMode = "Query"
 
 aceCardClasses ∷ AceMode → Array H.ClassName
-aceCardClasses MarkdownMode = [ H.className "sd-card-markdown" ]
-aceCardClasses SQLMode = [ H.className "sd-card-sql" ]
+aceCardClasses MarkdownMode = [ H.ClassName "sd-card-markdown" ]
+aceCardClasses SQLMode = [ H.ClassName "sd-card-sql" ]
 
 aceMode ∷ AceMode → String
 aceMode MarkdownMode = "ace/mode/markdown"

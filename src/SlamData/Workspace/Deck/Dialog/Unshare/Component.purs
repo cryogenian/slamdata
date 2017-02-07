@@ -35,9 +35,9 @@ import Data.Path.Pathy as Pt
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.CustomProps as Cp
 
@@ -165,11 +165,11 @@ comp =
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ HH.className "deck-dialog-unshare" ] ]
+    [ HP.classes [ HH.ClassName "deck-dialog-unshare" ] ]
     [ HH.h4_ [ HH.text "Unshare deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
             ⊕ if state.loading then [ ] else [ B.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -178,7 +178,7 @@ render state =
 
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-body" ]
+            $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ (if state.loading then [ B.hidden ] else [ ])
         ]
         [ HH.form
@@ -227,7 +227,7 @@ render state =
       in
        HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-footer" ]
+            $ [ HH.ClassName "deck-dialog-footer" ]
             ⊕ (if state.loading then [ B.hidden ] else [ ])
         ]
         [ HH.div
@@ -264,7 +264,7 @@ render state =
 renderUserOrGroup ∷ (String × Permission) → Array HTML
 renderUserOrGroup (name × perm) =
   [ HH.div
-      [ HP.class_ $ HH.className "sd-unshare-subject" ]
+      [ HP.class_ $ HH.ClassName "sd-unshare-subject" ]
       [ HH.label_ [ HH.text name ]
       , HH.div
           [ HP.classes $ if perm.state ≡ Just ModifyError then [ B.hasError ] else [ ] ]
@@ -313,16 +313,16 @@ renderUserOrGroup (name × perm) =
 renderToken ∷ TokenPermission → HTML
 renderToken token =
   HH.div
-    [ HP.class_ $ HH.className "sd-unshare-subject" ]
+    [ HP.class_ $ HH.ClassName "sd-unshare-subject" ]
     [ HH.label_
         [ HH.text $ fromMaybe "Untitled token" token.name
         ]
     , HH.span
-        [ HP.classes [ HH.className "sd-unshare-subject-access-type" ] ]
+        [ HP.classes [ HH.ClassName "sd-unshare-subject-access-type" ] ]
         [ HH.text $ printShareResume token.resume ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "sd-url" ]
+            $ [ HH.ClassName "sd-url" ]
             ⊕ if token.state ≡ Just ModifyError then [ B.hasError ] else [ ]
         ]
         [ HH.input

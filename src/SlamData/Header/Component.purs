@@ -20,9 +20,9 @@ import SlamData.Prelude
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Config as Config
 import SlamData.Config.Version as CV
@@ -78,8 +78,8 @@ render ∷ State → HTML
 render open =
   HH.nav
     [ HP.classes
-        [ HH.className "sd-nav"
-        , HH.className if open then "open" else "closed" ]
+        [ HH.ClassName "sd-nav"
+        , HH.ClassName if open then "open" else "closed" ]
         ]
     [ HH.div_
         [ HH.div_

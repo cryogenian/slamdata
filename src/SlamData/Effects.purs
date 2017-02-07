@@ -25,7 +25,7 @@ import Control.Monad.Eff.Timer (TIMER)
 import Control.UI.File (READ_FILE)
 import Data.JSDate (LOCALE)
 import ECharts.Types (ECHARTS)
-import Halogen (HalogenEffects)
+import Halogen.Aff (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
 import ZClipboard (ZCLIPBOARD)
 

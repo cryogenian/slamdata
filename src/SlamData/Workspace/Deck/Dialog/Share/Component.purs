@@ -28,9 +28,9 @@ import Data.Path.Pathy as Pt
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.CustomProps as Cp
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils (raise)
@@ -139,7 +139,7 @@ comp =
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ HH.className "deck-dialog-share" ] ]
+    [ HP.classes [ HH.ClassName "deck-dialog-share" ] ]
     $ (case state.tokenSecret of
           Nothing → [ HH.h4_ [ HH.text "Share deck" ] ]
           Just _ →
@@ -150,12 +150,12 @@ render state =
             , HH.h5_ [ HH.text $ printShareResume state.shareResume ]
             ])
   ⊕ [ HH.div
-       [ HP.classes [ HH.className "deck-dialog-body" ]
+       [ HP.classes [ HH.ClassName "deck-dialog-body" ]
        , HE.onClick ( HE.input_ DismissError )
        ]
        $ [ HH.div
              [ HP.classes
-                 $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+                 $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
                  ⊕ if state.loading then [ ] else [ B.hidden ]
              ]
              [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -230,7 +230,7 @@ render state =
                      , HP.value state.email
                      , HE.onValueInput $ HE.input EmailChanged
                      , HP.placeholder "User email"
-                     , HP.inputType HP.InputText
+                     , HP.type_ HP.InputText
                      , HP.disabled state.submitting
                      ]
                  ]
@@ -265,7 +265,7 @@ render state =
                   , HH.input
                       [ HP.id_ "token-name"
                       , HP.classes [ B.formControl ]
-                      , HP.inputType HP.InputText
+                      , HP.type_ HP.InputText
                       , HP.placeholder "Token name"
                       , HP.value state.tokenName
                       , HE.onValueInput (HE.input TokenNameChanged)
@@ -317,7 +317,7 @@ render state =
          ]
 
     , HH.div
-         [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+         [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
          $ [ HH.button
                [ HP.classes
                    $ [ B.btn, B.btnDefault ]

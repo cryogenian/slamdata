@@ -27,12 +27,12 @@ import Data.Ratio as Ratio
 import Data.Rational (Rational, (%))
 import Data.Rational as Rational
 import Halogen as H
-import Halogen.HTML.Indexed as HH
+import Halogen.HTML as HH
 import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.HTML.CSS.Indexed as HC
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
+import Halogen.HTML.CSS as HC
 import Halogen.Themes.Bootstrap3 as B
 import Math as Math
 import SlamData.Render.Common (glyph)
@@ -51,9 +51,9 @@ render ∷ CardOptions → State → DraftboardHTML
 render opts st =
   HH.div
     [ HP.classes
-        ([ HH.className "sd-draftboard" ]
-         <> (HH.className "splitting" <$ guard (isJust st.splitOpts))
-         <> (HH.className "sizing" <$ guard (isJust st.resizeLocation)))
+        ([ HH.ClassName "sd-draftboard" ]
+         <> (HH.ClassName "splitting" <$ guard (isJust st.splitOpts))
+         <> (HH.ClassName "sizing" <$ guard (isJust st.resizeLocation)))
     ]
     [ renderOuterEdge "top" Orn.Vertical Layout.SideA
     , renderOuterEdge "left" Orn.Horizontal Layout.SideA
@@ -62,7 +62,7 @@ render opts st =
     , if not (List.null opts.deck.displayCursor) && st.layout == Pane.Cell Nothing
         then
           HH.div
-            [ HP.classes [ HH.className "card-input-minimum-lod" ] ]
+            [ HP.classes [ HH.ClassName "card-input-minimum-lod" ] ]
             [ HH.button
                 [ ARIA.label "Zoom"
                 , HP.title "Zoom"
@@ -74,7 +74,7 @@ render opts st =
             ]
         else
           HH.div
-            [ HP.classes [ HH.className "sd-draftboard-root" ]
+            [ HP.classes [ HH.ClassName "sd-draftboard-root" ]
             , HP.ref (right ∘ H.action ∘ SetRoot)
             ]
             [ renderLayout opts st st.cellLayout st.edgeLayout
@@ -87,13 +87,13 @@ renderOuterEdge ∷ String → Orn.Orientation → Layout.SplitBias → Draftboa
 renderOuterEdge edge orn bias =
   HH.button
     [ HP.classes
-        [ HH.className "sd-draftboard-edge"
-        , HH.className ("sd-draftboard-edge-" <> edge)
+        [ HH.ClassName "sd-draftboard-edge"
+        , HH.ClassName ("sd-draftboard-edge-" <> edge)
         ]
     , HE.onMouseDown (HE.input (\e → right ∘ SplitStart orn bias false e))
     ]
     [ HH.span
-        [ HP.classes [ HH.className "sd-draftboard-edge-mid" ]
+        [ HP.classes [ HH.ClassName "sd-draftboard-edge-mid" ]
         , HE.onMouseDown \e → do
             HEH.stopPropagation
             pure (Just (right (H.action (SplitStart orn bias true e))))
@@ -105,9 +105,9 @@ renderGuide ∷ SplitLocation → DraftboardHTML
 renderGuide sp =
   HH.div
     [ HP.classes
-        ([ HH.className "sd-draftboard-guide"
-         , HH.className (Orn.toString sp.orientation)
-         ] <> (HH.className "invalid" <$ guard (not sp.valid)))
+        ([ HH.ClassName "sd-draftboard-guide"
+         , HH.ClassName (Orn.toString sp.orientation)
+         ] <> (HH.ClassName "invalid" <$ guard (not sp.valid)))
     , HC.style do
         C.top (C.px sp.y)
         C.left (C.px sp.x)
@@ -122,10 +122,10 @@ renderGuideLabel ratio =
   let ratio' = unRational ratio in
   HH.span
     [ HP.classes
-        [ HH.className "sd-draftboard-guide-label"
+        [ HH.ClassName "sd-draftboard-guide-label"
         , if ratio > 1%2
-            then HH.className "trailing"
-            else HH.className "leading"
+            then HH.ClassName "trailing"
+            else HH.ClassName "leading"
         ]
     ]
     [ HH.text (show (Ratio.numerator ratio') <> "/" <> show (Ratio.denominator ratio')) ]
@@ -135,8 +135,8 @@ renderMoving = case _ of
   Floating x y →
     HH.div
       [ HP.classes
-          [ HH.className "sd-draftboard-moving-icon"
-          , HH.className "floating"
+          [ HH.ClassName "sd-draftboard-moving-icon"
+          , HH.ClassName "floating"
           ]
       , HC.style do
           C.left (C.px x)
@@ -146,8 +146,8 @@ renderMoving = case _ of
   Move { rect } →
     HH.div
       [ HP.classes
-          [ HH.className "sd-draftboard-moving-icon"
-          , HH.className "move"
+          [ HH.ClassName "sd-draftboard-moving-icon"
+          , HH.ClassName "move"
           ]
       , HC.style do
           C.top (C.px rect.top)
@@ -159,10 +159,10 @@ renderMoving = case _ of
   Group { rect } orn side →
     HH.div
       [ HP.classes
-          [ HH.className "sd-draftboard-moving-icon"
-          , HH.className "group"
-          , HH.className (Orn.toString orn)
-          , HH.className case side of
+          [ HH.ClassName "sd-draftboard-moving-icon"
+          , HH.ClassName "group"
+          , HH.ClassName (Orn.toString orn)
+          , HH.ClassName case side of
               Layout.SideA → "side-a"
               Layout.SideB → "side-b"
           ]
@@ -177,7 +177,7 @@ renderMoving = case _ of
 renderLayout ∷ CardOptions → State → List (Layout.Cell (Maybe DeckId) Number) → List (Layout.Edge Number) → DraftboardHTML
 renderLayout opts st cells edges =
   HH.div
-    [ HP.classes [ HH.className "sd-draftboard-layout" ] ] $
+    [ HP.classes [ HH.ClassName "sd-draftboard-layout" ] ] $
     map (renderCell opts st) (Array.fromFoldable cells) <>
     map (renderEdge st) (Array.fromFoldable edges)
 
@@ -185,8 +185,8 @@ renderCell ∷ CardOptions → State → Layout.Cell (Maybe DeckId) Number → D
 renderCell opts st { cursor, value, rect } =
   HH.div
     ([ HP.classes
-         [ HH.className "sd-draftboard-cell"
-         , HH.className if isJust value then "filled" else "empty"
+         [ HH.ClassName "sd-draftboard-cell"
+         , HH.ClassName if isJust value then "filled" else "empty"
          ]
      , HC.style do
          C.top (C.px rect.top)
@@ -195,15 +195,15 @@ renderCell opts st { cursor, value, rect } =
          C.height (C.px rect.height)
      ] <> (maybe [] (\deckId → [ HP.key (toString deckId) ]) value))
     [ HH.div
-        [ HP.classes [ HH.className "sd-draftboard-cell-content" ] ]
+        [ HP.classes [ HH.ClassName "sd-draftboard-cell-content" ] ]
         case value of
           Just deckId →
             [ HH.slot deckId (mkDeckComponent deckId) ]
           _ →
             [ HH.div
-                [ HP.classes [ HH.className "sd-draftboard-cell-empty" ] ]
+                [ HP.classes [ HH.ClassName "sd-draftboard-cell-empty" ] ]
                 [ HH.button
-                    [ HP.classes [ HH.className "insert-cell" ]
+                    [ HP.classes [ HH.ClassName "insert-cell" ]
                     , HP.title "Insert deck"
                     , ARIA.label "Insert deck"
                     , HE.onClick (HE.input_ (right ∘ AddDeck cursor))
@@ -219,7 +219,7 @@ renderCell opts st { cursor, value, rect } =
                     ]
                     [ HH.span_ [] ]
                 , HH.button
-                    [ HP.classes [ HH.className "delete-cell" ]
+                    [ HP.classes [ HH.ClassName "delete-cell" ]
                     , HP.title "Delete cell"
                     , ARIA.label "Delete cell"
                     , HE.onClick (HE.input_ (right ∘ DeleteCell cursor))
@@ -250,15 +250,15 @@ renderEdge st edge@{ orientation, vect } =
       let ord = compare loc.ratio edge.ratio in
       HH.button
         [ HP.classes
-            ([ HH.className "sd-draftboard-split-edge"
-             , HH.className (Orn.toString orientation)
-             , HH.className "sizing"
-             , HH.className
+            ([ HH.ClassName "sd-draftboard-split-edge"
+             , HH.ClassName (Orn.toString orientation)
+             , HH.ClassName "sizing"
+             , HH.ClassName
                  case ord of
                    LT → "lt"
                    GT → "gt"
                    EQ → "eq"
-             ] <> (HH.className "invalid" <$ guard (not loc.valid)))
+             ] <> (HH.ClassName "invalid" <$ guard (not loc.valid)))
         , HC.style
             case orientation of
               Orn.Horizontal → do
@@ -273,7 +273,7 @@ renderEdge st edge@{ orientation, vect } =
         ]
         [ renderGuideLabel loc.ratio
         , HH.div
-            [ HP.classes [ HH.className "sd-draftboard-split-edge-loc" ]
+            [ HP.classes [ HH.ClassName "sd-draftboard-split-edge-loc" ]
             , HC.style
                 case orientation of
                   Orn.Horizontal →
@@ -287,8 +287,8 @@ renderEdge st edge@{ orientation, vect } =
     else
       HH.button
         [ HP.classes
-            [ HH.className "sd-draftboard-split-edge"
-            , HH.className (Orn.toString orientation)
+            [ HH.ClassName "sd-draftboard-split-edge"
+            , HH.ClassName (Orn.toString orientation)
             ]
         , HE.onMouseDown (HE.input \a _ → right (H.action (ResizeStart edge a)))
         , HC.style do

@@ -20,10 +20,10 @@ import SlamData.Prelude
 
 import Halogen as H
 import Halogen.CustomProps as CP
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -37,9 +37,9 @@ comp = H.component { render, eval }
 
 render ∷ State → H.ComponentHTML Query
 render { newName } =
-  HH.div [ HP.classes [ HH.className "deck-dialog-rename" ] ]
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-rename" ] ]
     [ HH.h4_ [ HH.text  "Rename deck" ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
         [ HH.form
           [ CP.nonSubmit ]
           [ HH.div
@@ -48,14 +48,14 @@ render { newName } =
               [ HH.input
                   [ HE.onValueInput $ HE.input SetNewName
                   , HP.value newName
-                  , HP.inputType HP.InputText
+                  , HP.type_ HP.InputText
                   , HP.classes [ B.formControl ]
                   , ARIA.label "Deck name"
                   ]
               ]
           ]
         ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         [ HH.button
             [ HP.classes [ B.btn, B.btnDefault ]
             , HE.onClick (HE.input_ Dismiss)

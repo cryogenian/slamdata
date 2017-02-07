@@ -28,8 +28,8 @@ import SlamData.Workspace.Card.Error.Component.State (State, initialState)
 import SlamData.Render.CSS as CSS
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query

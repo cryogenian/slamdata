@@ -22,7 +22,7 @@ module Halogen.Component.Utils.Throttled
 import Prelude
 
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
 import Control.Monad.Eff.Timer (TIMER, setTimeout)
@@ -37,7 +37,7 @@ type ThrottleEffects eff = (ref :: REF, avar :: AVAR, timer :: TIMER | eff)
 
 throttledEventSource_
   ∷ forall eff f g
-  . (Monad g, Affable (ThrottleEffects eff) g)
+  . MonadAff (ThrottleEffects eff) g
   ⇒ Milliseconds
   → (Eff (ThrottleEffects eff) Unit -> Eff (ThrottleEffects eff) Unit)
   → Eff (ThrottleEffects eff) (f Unit)

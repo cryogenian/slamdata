@@ -36,9 +36,9 @@ import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
 import Halogen.Component.Utils (liftH', subscribeToBus')
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
@@ -94,15 +94,15 @@ render ∷ AT.AccessType → State → WorkspaceHTML
 render accessType state =
   HH.div
     [ HP.classes
-        $ (guard (AT.isReadOnly accessType) $> HH.className "sd-published")
-        ⊕ [ HH.className "sd-workspace" ]
+        $ (guard (AT.isReadOnly accessType) $> HH.ClassName "sd-published")
+        ⊕ [ HH.ClassName "sd-workspace" ]
     , HE.onClick (HE.input DismissAll)
     ]
     (preloadGuides ⊕ header ⊕ deck ⊕ notifications ⊕ renderCardGuide ⊕ renderFlipGuide)
   where
   renderError err =
     HH.div
-      [ HP.classes [ HH.className "sd-workspace-error" ] ]
+      [ HP.classes [ HH.ClassName "sd-workspace-error" ] ]
       [ HH.h1_
           [ HH.text "Couldn't load this SlamData workspace." ]
       , HH.p_
@@ -115,7 +115,7 @@ render accessType state =
   renderSignInButton providerR =
       HH.button
         [ HE.onClick $ HE.input_ $ SignIn providerR
-        , HP.classes [ HH.className "btn", HH.className "btn-primary" ]
+        , HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
         , HP.buttonType HP.ButtonButton
         ]
         [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
@@ -154,7 +154,7 @@ render accessType state =
       Error error, _ → renderError error
       Loading, _ →
         HH.div
-          [ HP.class_ $ HH.className "sd-pending-overlay" ]
+          [ HP.class_ $ HH.ClassName "sd-pending-overlay" ]
           [ HH.div_
               [ HH.i_ []
               , HH.span_ [ HH.text "Please wait while the workspace loads" ]

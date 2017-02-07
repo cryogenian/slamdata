@@ -26,9 +26,9 @@ import SlamData.Prelude
 import Data.Path.Pathy (dir, (</>))
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Mount as QM
@@ -61,7 +61,7 @@ render state =
         [ HH.div
             [ HP.class_ Rc.mountUserInfo ]
             [ MCR.label "Username" [ MCR.input state MCS._user [] ]
-            , MCR.label "Password" [ MCR.input state MCS._password [ HP.inputType HP.InputPassword ] ]
+            , MCR.label "Password" [ MCR.input state MCS._password [ HP.type_ HP.InputPassword ] ]
             ]
         ]
     , MCR.section "Root"
@@ -81,7 +81,7 @@ render state =
   formatRadio lbl val =
     HH.label_
       [ HH.input
-          [ HP.inputType HP.InputRadio
+          [ HP.type_ HP.InputRadio
           , HP.name "mlformat"
           , HP.checked (state.format ≡ val)
           , HE.onValueChange (HE.input_ (ModifyState _ { format = val }))

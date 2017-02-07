@@ -35,9 +35,9 @@ import DOM.Node.Element (scrollWidth, setScrollLeft) as DOM
 
 import Halogen as H
 import Halogen.Component.Utils (raise')
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Column.Component as Column
@@ -62,7 +62,7 @@ component colSpec = H.parentComponent { render, eval, peek: Just peek }
   render ∷ State a i → HTML a i s f
   render state =
     HH.div
-      [ HP.class_ (HH.className "sd-miller-columns")
+      [ HP.class_ (HH.ClassName "sd-miller-columns")
       , HP.ref (H.action ∘ Ref)
       ]
       $ _.html
@@ -74,7 +74,7 @@ component colSpec = H.parentComponent { render, eval, peek: Just peek }
   renderColumn ∷ L.List i → HTML a i s f
   renderColumn colPath =
     HH.div
-      [ HP.class_ (HH.className "sd-miller-column")
+      [ HP.class_ (HH.ClassName "sd-miller-column")
       , ARIA.label "Column"
       , HP.ref (\_ → H.action Extended)
       ]

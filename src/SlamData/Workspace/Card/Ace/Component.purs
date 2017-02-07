@@ -38,10 +38,10 @@ import Data.String as Str
 import Data.StrMap as SM
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils (subscribeToASource')
 
@@ -193,11 +193,11 @@ renderHighLOD mode state =
         $ [ CSS.cardInput, CSS.aceContainer ]
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
-    [ HH.div [ HP.class_ (HH.className "sd-ace-inset-shadow") ] []
+    [ HH.div [ HP.class_ (HH.ClassName "sd-ace-inset-shadow") ] []
     , HH.div
-        [ HP.class_ (HH.className "sd-ace-toolbar") ]
+        [ HP.class_ (HH.ClassName "sd-ace-toolbar") ]
         [ HH.button
-            [ HP.class_ (HH.className "sd-ace-run")
+            [ HP.class_ (HH.ClassName "sd-ace-run")
             , HP.disabled (not state.dirty)
             , HP.title "Run Query"
             , ARIA.label "Run query"

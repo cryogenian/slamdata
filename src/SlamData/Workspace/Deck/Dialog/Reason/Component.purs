@@ -20,9 +20,9 @@ import SlamData.Prelude
 
 import Data.Array as Array
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CardType
@@ -42,7 +42,7 @@ comp = H.component { render, eval } where
   render ∷ State → H.ComponentHTML Query
   render state =
     HH.div
-    [ HP.classes [ HH.className "deck-dialog-embed" ] ]
+    [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
     [ HH.h4_
         [ HH.text
           $ "Couldn't insert a "
@@ -50,7 +50,7 @@ comp = H.component { render, eval } where
           <> " card into this deck"
         ]
     , HH.div
-        [ HP.classes [ HH.className "deck-dialog-body" ] ]
+        [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
         [ HH.p_
             [ HH.text state.reason
             ]
@@ -58,7 +58,7 @@ comp = H.component { render, eval } where
         , HH.div_ $ map renderCardPath state.cardPaths
         ]
     , HH.div
-        [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+        [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         [ HH.button
             [ HP.classes [ B.btn ]
             , HE.onClick (HE.input_ $ Dismiss)
@@ -86,12 +86,12 @@ comp = H.component { render, eval } where
 
     renderCardPath cardPath =
       HH.p
-        [ HP.classes [ HH.className "deck-dialog-cardpath" ] ]
+        [ HP.classes [ HH.ClassName "deck-dialog-cardpath" ] ]
         (map renderCard cardPath)
 
     renderCard card =
       HH.span
-        [ HP.classes [HH.className "deck-dialog-cardpath-card" ] ]
+        [ HP.classes [HH.ClassName "deck-dialog-cardpath-card" ] ]
         [ HH.text $ print card ]
 
   eval ∷ Query ~> H.ComponentDSL State Query g

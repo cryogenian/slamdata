@@ -37,10 +37,10 @@ import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 import Halogen as H
 import Halogen.CustomProps as CP
 import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils (raise)
 
@@ -125,11 +125,11 @@ render state
 
 renderPublishURI ∷ State → H.ComponentHTML Query
 renderPublishURI state =
-  HH.div [ HP.classes [ HH.className "deck-dialog-share" ] ]
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-share" ] ]
     [ HH.h4_ [ HH.text "Publish deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
             ⊕ if state.loading then [ ] else [ B.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -137,7 +137,7 @@ renderPublishURI state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-body" ]
+            $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         [ HH.p_ message
@@ -174,7 +174,7 @@ renderPublishURI state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-footer" ]
+            $ [ HH.ClassName "deck-dialog-footer" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         $ [ HH.div
@@ -237,11 +237,11 @@ renderPublishURI state =
 
 renderPublishIFrame ∷ State → H.ComponentHTML Query
 renderPublishIFrame state =
-  HH.div [ HP.classes [ HH.className "deck-dialog-embed" ] ]
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
     [ HH.h4_ [ HH.text  "Embed deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
             ⊕ if state.loading then [ ] else [ B.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -249,7 +249,7 @@ renderPublishIFrame state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-body" ]
+            $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         [ HH.form
@@ -270,7 +270,7 @@ renderPublishIFrame state =
                   [ HP.id_ "copy-button"
                   , HP.classes
                       $ [ B.btn, B.btnDefault, B.btnXs ]
-                      ⊕ [ HH.className "textarea-copy-button" ]
+                      ⊕ [ HH.ClassName "textarea-copy-button" ]
                   , HP.ref (H.action ∘ Init)
                   , HP.buttonType HP.ButtonButton
                   , HP.disabled state.submitting
@@ -280,7 +280,7 @@ renderPublishIFrame state =
                   [ (if state.isLoggedIn then HH.label_ else HH.p_)
                     $ ((guard state.isLoggedIn)
                        $> HH.input
-                           [ HP.inputType HP.InputCheckbox
+                           [ HP.type_ HP.InputCheckbox
                            , HP.checked state.shouldGenerateToken
                            , HP.disabled state.submitting
                            , HE.onChecked (HE.input_ ToggleShouldGenerateToken)
@@ -292,7 +292,7 @@ renderPublishIFrame state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-footer" ]
+            $ [ HH.ClassName "deck-dialog-footer" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         $ [ HH.div
