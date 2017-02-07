@@ -20,14 +20,14 @@ import SlamData.Prelude
 
 import Data.Array as A
 
-import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
-import SlamData.Workspace.Card.InsertableCardType as ICT
+import SlamData.ActionList.Action as Action
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType, allChartTypes)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType, allFormInputTypes)
+import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
+import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Port (Port)
-import SlamData.ActionList.Action as Action
 
 data NextAction
   = Insert CardType
