@@ -41,46 +41,52 @@ import SlamData.FileSystem.Routing.Salt (Salt)
 import Utils.Path (DirPath)
 
 type State =
-  { breadcrumbs :: List Breadcrumb
-  , sort :: Sort
-  , salt :: Salt
+  { breadcrumbs ∷ List Breadcrumb
+  , sort ∷ Sort
+  , salt ∷ Salt
   }
 
 type Breadcrumb =
-  { name :: String
-  , link :: DirPath
+  { name ∷ String
+  , link ∷ DirPath
   }
 
-rootBreadcrumb :: Breadcrumb
+rootBreadcrumb ∷ Breadcrumb
 rootBreadcrumb =
   { name: "Home"
   , link: rootDir
   }
 
-mkBreadcrumbs :: DirPath -> Sort -> Salt -> State
+mkBreadcrumbs ∷ DirPath → Sort → Salt → State
 mkBreadcrumbs path sort salt =
   { breadcrumbs: reverse $ go Nil path
   , sort: sort
   , salt: salt
   }
   where
-  go :: List Breadcrumb -> DirPath -> List Breadcrumb
+  go ∷ List Breadcrumb → DirPath → List Breadcrumb
   go result p =
     let result' = { name: maybe "" runDirName (dirName p), link: p } : result
     in case parentDir p of
-      Just dir -> go result' dir
-      Nothing -> rootBreadcrumb : result
+      Just dir → go result' dir
+      Nothing → rootBreadcrumb : result
 
 data Query a = Update DirPath Sort Salt a
 
-comp :: H.Component State Query Slam
-comp = H.component { render, eval }
+comp ∷ State → H.Component HH.HTML Query Unit Void Slam
+comp initialState =
+  H.component
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
-render :: State -> H.ComponentHTML Query
+render ∷ State → H.ComponentHTML Query
 render r =
   HH.ol
     [ HP.classes [ B.breadcrumb, B.colXs7 ] ]
-    $ foldl (\views model -> view model <> views) [ ] r.breadcrumbs
+    $ foldl (\views model → view model <> views) [ ] r.breadcrumbs
   where
   view b =
     [ HH.li_
@@ -90,7 +96,7 @@ render r =
         ]
     ]
 
-eval :: Query ~> H.ComponentDSL State Query Slam
+eval ∷ Query ~> H.ComponentDSL State Query Void Slam
 eval (Update path sort salt next) = do
   H.put $ mkBreadcrumbs path sort salt
   pure next
