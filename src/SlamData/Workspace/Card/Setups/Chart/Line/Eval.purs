@@ -210,13 +210,13 @@ buildLine axes r records = do
 
   E.xAxis do
     E.axisType xAxisConfig.axisType
-    traverse_ E.interval xAxisConfig.interval
     case xAxisConfig.axisType of
       ET.Category →
         E.items $ map ET.strItem xValues
       _ → pure unit
     E.axisLabel do
       E.rotate r.axisLabelAngle
+      traverse_ E.interval xAxisConfig.interval
       E.textStyle do
         E.fontFamily "Ubuntu, sans"
 
