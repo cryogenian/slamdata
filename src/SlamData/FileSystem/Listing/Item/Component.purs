@@ -37,19 +37,12 @@ import DOM.Event.Event (preventDefault)
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
 import SlamData.FileSystem.Listing.Item.Component.CSS as CSS
-import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, resourcePath, isMount, isFile, isWorkspace, isViewMount, hiddenTopLevel, root)
+import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, resourcePath, isMount, isFile, isWorkspace, isViewMount, hiddenTopLevel)
 
 type State =
   { item ∷ Item
   , isSearching ∷ Boolean
   , isHidden ∷ Boolean
-  }
-
-initialState ∷ State
-initialState =
-  { item: PhantomItem root
-  , isSearching: false
-  , isHidden: false
   }
 
 _item ∷ Lens' State Item
@@ -62,7 +55,7 @@ _isHidden ∷ Lens' State Boolean
 _isHidden = lens _.isHidden _{isHidden = _}
 
 data Query a
-  = Toggle a
+  = Select a
   | PresentActions a
   | HideActions a
   | Deselect a
@@ -77,12 +70,13 @@ data Message
   | Download Resource
   | Remove Resource
   | Share Resource
+  | Selected
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Message Slam
 
-component ∷ H.Component HH.HTML Query Unit Message Slam
-component =
+component ∷ State → H.Component HH.HTML Query Unit Message Slam
+component initialState =
   H.component
     { initialState: const initialState
     , render
@@ -111,11 +105,13 @@ render state = case state.item of
       ]
 
 eval ∷ Query ~> DSL
-eval (Toggle next) = H.modify (_item %~ toggle) $> next
+eval (Select next) = do
+  H.modify (_item %~ toggle)
+  H.raise Selected
+  pure next
   where
   toggle (Item r) = SelectedItem r
   toggle (ActionsPresentedItem r) = SelectedItem r
-  toggle (SelectedItem r) = Item r
   toggle it = it
 eval (Deselect next) = H.modify (_item %~ deselect) $> next
   where
@@ -158,7 +154,7 @@ itemView state@{ item } selected presentActions | not (presentItem state item) =
 itemView state@{ item } selected presentActions | otherwise =
   HH.div
     [ HP.classes itemClasses
-    , HE.onClick (HE.input_ Toggle)
+    , HE.onClick (HE.input_ Select)
     , HE.onMouseEnter (HE.input_ PresentActions)
     , HE.onMouseLeave (HE.input_ HideActions)
     , HE.onDoubleClick $ HE.input $ HandleAction (Open (itemResource item))
