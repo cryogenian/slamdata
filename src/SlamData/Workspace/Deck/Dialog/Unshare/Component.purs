@@ -250,7 +250,7 @@ render state =
 
         , HH.button
             [ HE.onClick (HE.input_ Dismiss)
-            , HP.buttonType HP.ButtonButton
+            , HP.type_ HP.ButtonButton
             , HP.classes [ B.btn, B.btnDefault ]
             , HP.disabled somethingHappening
             ]

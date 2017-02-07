@@ -180,7 +180,7 @@ renderIntroVideo =
         ]
     , RenderDialog.modalFooter
         [ HH.button
-            [ HP.buttonType HP.ButtonButton
+            [ HP.type_ HP.ButtonButton
             , HE.onClick $ HE.input_ DismissIntroVideo
             , HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
             , HCSS.style $ CSS.marginRight $ CSS.rem 1.0

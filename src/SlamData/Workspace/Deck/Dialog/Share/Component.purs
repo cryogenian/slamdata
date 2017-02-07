@@ -322,7 +322,7 @@ render state =
                [ HP.classes
                    $ [ B.btn, B.btnDefault ]
                    ⊕ (if state.loading then [ B.hidden ] else [ ])
-               , HP.buttonType HP.ButtonButton
+               , HP.type_ HP.ButtonButton
                , HE.onClick (HE.input_ Dismiss)
                , HP.disabled state.submitting
                ]
@@ -336,7 +336,7 @@ render state =
                         $ [ B.btn, B.btnPrimary ]
                         ⊕ (if state.loading then [ B.hidden ] else [ ])
                         ⊕ (if isJust state.error && state.showError then [ B.hasError ] else [ ])
-                    , HP.buttonType HP.ButtonButton
+                    , HP.type_ HP.ButtonButton
                     , HE.onClick (HE.input_ Share)
                     , HP.disabled (state.submitting ∨
                                    ((state.email ≡ "" ∨ state.error ≡ Just Validation)

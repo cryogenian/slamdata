@@ -162,7 +162,7 @@ render st =
           then
             [ HH.button
                 [ HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
-                , HP.buttonType HP.ButtonButton
+                , HP.type_ HP.ButtonButton
                 , HE.onClick $ HE.input_ ExpandList
                 ]
                 [ HH.text "More details" ]
@@ -195,7 +195,7 @@ render st =
               [ HP.class_ (HH.ClassName "sd-notification-buttons") ]
               [ HH.button
                   [ HP.class_ (HH.ClassName "sd-notification-dismiss")
-                  , HP.buttonType HP.ButtonButton
+                  , HP.type_ HP.ButtonButton
                   , HE.onClick (HE.input_ Dismiss)
                   ]
                   [ HH.text "×" ]
@@ -223,7 +223,7 @@ render st =
           [ HP.class_ (HH.ClassName "sd-notification-detail") ]
           [ HH.button
               [ HP.classes [ HH.ClassName "btn", HH.ClassName "btn-default", HH.ClassName "btn-sm" ]
-              , HP.buttonType HP.ButtonButton
+              , HP.type_ HP.ButtonButton
               , HE.onClick (HE.input_ ToggleDetail)
               ]
               [ HH.text
@@ -237,7 +237,7 @@ render st =
                (\(N.ActionOptions a) →
                   HH.button
                     [ HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary", HH.ClassName "btn-sm" ]
-                    , HP.buttonType HP.ButtonButton
+                    , HP.type_ HP.ButtonButton
                     , HE.onClick (HE.input_ $ Action a.action)
                     ]
                     [ HH.text a.actionMessage ])

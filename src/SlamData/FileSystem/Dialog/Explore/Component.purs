@@ -87,14 +87,14 @@ render state =
         [ HH.button
             [ HP.classes [ B.btn ]
             , HE.onClick (HE.input_ Dismiss)
-            , HP.buttonType HP.ButtonButton
+            , HP.type_ HP.ButtonButton
             ]
             [ HH.text "Cancel" ]
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
             , HP.disabled $ state.workspaceName == ""
             , HE.onClick (HE.input_ (Explore state.filePath state.workspaceName))
-            , HP.buttonType HP.ButtonButton
+            , HP.type_ HP.ButtonButton
             , ARIA.label "Explore file"
             ]
             [ HH.text "Explore" ]

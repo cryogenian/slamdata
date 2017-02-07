@@ -81,7 +81,7 @@ component ispec colPath =
                 , HE.onValueInput (HE.input HandleFilterChange)
                 ]
             , HH.button
-                [ HP.buttonType HP.ButtonButton
+                [ HP.type_ HP.ButtonButton
                 , HE.onClick (HE.input_ (UpdateFilter ""))
                 , HP.enabled (filterText /= "")
                 ]

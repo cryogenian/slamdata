@@ -164,7 +164,7 @@ renderPublishURI state =
                         , HE.onClick (HE.input_ Dismiss)
                         , HP.ref (H.action ∘ Init)
                         , HP.id_ "copy-button"
-                        , HP.buttonType HP.ButtonButton
+                        , HP.type_ HP.ButtonButton
                         , HP.disabled state.submitting
                         ]
                         [ glyph B.glyphiconCopy ]
@@ -189,7 +189,7 @@ renderPublishURI state =
           , HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
               , HE.onClick (HE.input_ Dismiss)
-              , HP.buttonType HP.ButtonButton
+              , HP.type_ HP.ButtonButton
               ]
               [ HH.text "Cancel" ]
           ]
@@ -199,7 +199,7 @@ renderPublishURI state =
                  , HE.onClick (HE.input_ Revoke)
                  , ARIA.label "Revoke access to this deck"
                  , HP.title "Revoke access to this deck"
-                 , HP.buttonType HP.ButtonButton
+                 , HP.type_ HP.ButtonButton
                  , HP.enabled $ state.canRevoke ∧ not state.submitting
                  ]
                  [ HH.text "Revoke" ])
@@ -272,7 +272,7 @@ renderPublishIFrame state =
                       $ [ B.btn, B.btnDefault, B.btnXs ]
                       ⊕ [ HH.ClassName "textarea-copy-button" ]
                   , HP.ref (H.action ∘ Init)
-                  , HP.buttonType HP.ButtonButton
+                  , HP.type_ HP.ButtonButton
                   , HP.disabled state.submitting
                   ]
                   [ glyph B.glyphiconCopy ]
@@ -307,7 +307,7 @@ renderPublishIFrame state =
           , HH.button
               [ HP.classes [ B.btn ]
               , HE.onClick (HE.input_ Dismiss)
-              , HP.buttonType HP.ButtonButton
+              , HP.type_ HP.ButtonButton
               ]
               [ HH.text "Cancel" ]
           ]
@@ -317,7 +317,7 @@ renderPublishIFrame state =
                 , HE.onClick (HE.input_ Revoke)
                 , HP.title "Revoke access to this deck"
                 , ARIA.label "Revoke access to this deck"
-                , HP.buttonType HP.ButtonButton
+                , HP.type_ HP.ButtonButton
                 , HP.enabled $ state.canRevoke ∧ not state.submitting
                 ]
                 [ HH.text "Revoke" ])

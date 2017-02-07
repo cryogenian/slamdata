@@ -59,13 +59,13 @@ render { newName } =
         [ HH.button
             [ HP.classes [ B.btn, B.btnDefault ]
             , HE.onClick (HE.input_ Dismiss)
-            , HP.buttonType HP.ButtonButton
+            , HP.type_ HP.ButtonButton
             ]
             [ HH.text "Dismiss" ]
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
             , HE.onClick (HE.input_ $ Rename newName)
-            , HP.buttonType HP.ButtonButton
+            , HP.type_ HP.ButtonButton
             ]
             [ HH.text "Save"
             ]

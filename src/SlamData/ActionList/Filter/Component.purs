@@ -62,7 +62,7 @@ render descr state =
             , HP.placeholder descr
             ]
         , HH.button
-            [ HP.buttonType HP.ButtonButton
+            [ HP.type_ HP.ButtonButton
             , HE.onClick $ HE.input_ $ Set ""
             , HP.enabled $ state.filter ≠ ""
             ]

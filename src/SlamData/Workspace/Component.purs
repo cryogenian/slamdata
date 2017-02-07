@@ -116,7 +116,7 @@ render accessType state =
       HH.button
         [ HE.onClick $ HE.input_ $ SignIn providerR
         , HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
-        , HP.buttonType HP.ButtonButton
+        , HP.type_ HP.ButtonButton
         ]
         [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
 

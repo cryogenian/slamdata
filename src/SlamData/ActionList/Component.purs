@@ -112,7 +112,7 @@ renderSpaceFillerButton metrics =
             , HH.ClassName "sd-button-warning"
             ]
         , HP.disabled true
-        , HP.buttonType HP.ButtonButton
+        , HP.type_ HP.ButtonButton
         ]
         []
     ]
@@ -182,7 +182,7 @@ renderButton filterString { presentation, metrics, action, lines } =
   attrs =
     [ HP.title $ A.pluckActionDescription action
     , HP.disabled $ (not enabled) || (A.isDisabled action)
-    , HP.buttonType HP.ButtonButton
+    , HP.type_ HP.ButtonButton
     , ARIA.label $ A.pluckActionDescription action
     , HP.classes classes
     , HE.onClick $ HE.input_ $ Q.Selected action
