@@ -348,11 +348,11 @@ eval (Dismiss next) = pure next
 eval (Init mbEl next) = next <$ do
   state ← H.get
 
-  copyRef ← H.fromEff $ newRef ""
+  copyRef ← H.liftEff $ newRef ""
   H.modify _{copyRef = Just copyRef}
 
   for_ mbEl \htmlEl →
-    H.fromEff
+    H.liftEff
     $ Z.make (htmlElementToElement htmlEl)
     >>= Z.onCopy \z → do
       val ← readRef copyRef
@@ -401,7 +401,7 @@ eval (Init mbEl next) = next <$ do
                       }
   updateCopyVal
 
-eval (SelectElement el next) = next <$ H.fromEff (select el)
+eval (SelectElement el next) = next <$ H.liftEff (select el)
 eval (Revoke next) = do
   mbPermToken ← H.gets _.permToken
   for_ mbPermToken \tok → do
@@ -464,13 +464,13 @@ workspaceTokenName workspacePath idToken =
 
 updateCopyVal ∷ DSL Unit
 updateCopyVal = do
-  locString ← H.fromEff locationString
+  locString ← H.liftEff locationString
   state ← H.get
   let
     copyVal = renderCopyVal locString state
 
   H.modify _{ copyVal = copyVal }
-  H.fromEff $ for_ state.copyRef \r → writeRef r copyVal
+  H.liftEff $ for_ state.copyRef \r → writeRef r copyVal
 
 renderCopyVal ∷ String → State → String
 renderCopyVal locString state

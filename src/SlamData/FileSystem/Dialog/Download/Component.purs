@@ -58,7 +58,7 @@ eval (ModifyJSONOpts fn next) = do
   H.modify $ validate ∘ (_options ∘ _Right %~ fn)
   pure next
 eval (NewTab url next) = do
-  H.fromEff $ newTab url
+  H.liftEff $ newTab url
   pure next
 eval (Dismiss next) =
   pure next

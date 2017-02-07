@@ -283,7 +283,7 @@ eval (Submit next) = do
       Right x ->
         maybe
           presentSourceMissingError
-          (const $ H.modify (_error .~ Nothing) *> H.fromEff reload)
+          (const $ H.modify (_error .~ Nothing) *> H.liftEff reload)
           x
     pure unit
 

@@ -441,10 +441,10 @@ eval (ChangeShareResume sr next) =
   H.modify (_{shareResume = sr}) $> next
 eval (InitZClipboard token mbEl next) =
   next <$ for_ mbEl \el → do
-    H.fromEff $ Z.make (htmlElementToElement el)
+    H.liftEff $ Z.make (htmlElementToElement el)
       >>= Z.onCopy (Z.setData "text/plain" token)
 eval (SelectElement el next) =
-  next <$ H.fromEff (select el)
+  next <$ H.liftEff (select el)
 
 emailIsIncorrect ∷ String → Boolean
 emailIsIncorrect = not ∘ Str.contains (Str.Pattern "@")

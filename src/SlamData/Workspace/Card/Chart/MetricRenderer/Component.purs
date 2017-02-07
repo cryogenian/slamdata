@@ -107,4 +107,4 @@ availableFontSizes = [ 16, 24, 32, 48, 64, 96, 128, 160, 200 ]
 adjustFontSizes ∷ DSL Unit
 adjustFontSizes = do
   st ← H.get
-  for_ st.element \vel → H.fromEff (fitText availableFontSizes vel)
+  for_ st.element \vel → H.liftEff (fitText availableFontSizes vel)

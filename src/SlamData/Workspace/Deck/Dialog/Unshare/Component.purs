@@ -382,11 +382,11 @@ eval (Init next) = next <$ do
   H.modify (_{ loading = false})
 eval (InitZClipboard token mbEl next) =
   next <$ for_ mbEl \el → do
-    H.fromEff $ Z.make (htmlElementToElement el)
+    H.liftEff $ Z.make (htmlElementToElement el)
       >>= Z.onCopy (Z.setData "text/plain" token)
 eval (Dismiss next) = pure next
 eval (SelectElement el next) =
-  next <$ H.fromEff (select el)
+  next <$ H.liftEff (select el)
 eval (PermissionResumeChanged name string next) = next <$ do
   state ← H.get
   H.modify (_{errored = false})
@@ -539,19 +539,19 @@ deletePermission
   ∷ Map.Map QTA.PermissionId QTA.ActionR
   → DSL (Map.Map QTA.PermissionId QTA.ActionR)
 deletePermission permissionMap = do
-  r ← H.fromEff $ newRef $ Map.empty × Map.size permissionMap
-  resultVar ← H.fromAff makeVar
+  r ← H.liftEff $ newRef $ Map.empty × Map.size permissionMap
+  resultVar ← H.liftAff makeVar
   H.liftH $ chunkedParTraverse (go r resultVar) (Map.toList permissionMap) (splitList 20) L.concat
-  H.fromAff $ takeVar resultVar
+  H.liftAff $ takeVar resultVar
   where
   go r resultVar (pid × act) = do
     result ← Q.deletePermission pid
-    H.fromEff $ modifyRef r \(acc × count) → acc × (count - 1)
+    H.liftEff $ modifyRef r \(acc × count) → acc × (count - 1)
     case result of
-      Left _ → H.fromEff $ modifyRef r \(acc × count) → (Map.insert pid act acc) × count
+      Left _ → H.liftEff $ modifyRef r \(acc × count) → (Map.insert pid act acc) × count
       Right _ → pure unit
-    (acc × count) ← H.fromEff $ readRef r
-    when (count ≡ 0) $ H.fromAff $ putVar resultVar acc
+    (acc × count) ← H.liftEff $ readRef r
+    when (count ≡ 0) $ H.liftAff $ putVar resultVar acc
 
 
 adjustPermissions ∷ Array QTA.PermissionR → Model.SharingInput → AdjustedPermissions

@@ -82,7 +82,7 @@ eval (Submit parent name k) = do
   pure $ k $ map (const view) result
 
 aceSetup ∷ Maybe String → Editor → Slam Unit
-aceSetup initialQuery editor = H.fromEff do
+aceSetup initialQuery editor = H.liftEff do
   Editor.setMinLines 6 editor
   Editor.setMaxLines 10000 editor
   Editor.setAutoScrollEditorIntoView true editor

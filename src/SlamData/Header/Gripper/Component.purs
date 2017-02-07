@@ -155,12 +155,12 @@ mkAnimation sel marginFrom marginTo = do
 eval ∷ String → (Query ~> DSL)
 eval sel (Init next) = do
   doc ←
-    H.fromEff
+    H.liftEff
       $ window
       >>= Win.document
 
   mbNavEl ←
-    H.fromEff
+    H.liftEff
       $ Pn.querySelector sel (Ht.htmlDocumentToParentNode doc)
       <#> N.toMaybe
   let
@@ -194,7 +194,7 @@ eval sel (Init next) = do
       H.subscribe $ H.eventSource attachAnimationEnd handleAnimationEnd
 
   { auth } ← H.liftH Wiring.expose
-  forever $ const (H.put $ Closing maxMargin) =<< H.fromAff (Bus.read auth.signIn)
+  forever $ const (H.put $ Closing maxMargin) =<< H.liftAff (Bus.read auth.signIn)
   pure next
 eval _ (StartDragging pos next) = do
   astate ← H.get

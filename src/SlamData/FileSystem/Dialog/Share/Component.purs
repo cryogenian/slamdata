@@ -97,7 +97,7 @@ eval (Dismiss next) = pure next
 eval (InitZClipboard (Just htmlEl) next) = do
   State url ← H.get
   let el = htmlElementToElement htmlEl
-  H.fromEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
+  H.liftEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
   pure next
 eval (InitZClipboard _ next) = pure next
-eval (SelectElement el next) = H.fromEff (select el) $> next
+eval (SelectElement el next) = H.liftEff (select el) $> next

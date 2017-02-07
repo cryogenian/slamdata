@@ -201,7 +201,7 @@ eval (Init next) = do
 eval (Resort next) = do
   { sort, salt, path } ← H.get
   searchValue ← H.query' Install.cpSearch unit (H.request Search.GetValue)
-  H.fromEff $ setLocation $ browseURL searchValue (notSort sort) salt path
+  H.liftEff $ setLocation $ browseURL searchValue (notSort sort) salt path
   pure next
 eval (SetPath path next) = H.modify (State._path .~ path) *> updateBreadcrumbs $> next
 eval (SetSort sort next) = do
@@ -267,24 +267,24 @@ eval (MakeWorkspace next) = do
         Right ge →
           GE.raiseGlobalError ge
     Right name' → do
-      H.fromEff $ setLocation $ mkWorkspaceURL (path </> dir name') New
+      H.liftEff $ setLocation $ mkWorkspaceURL (path </> dir name') New
   pure next
 
 eval (UploadFile el next) = do
-  mbInput ← H.fromEff $ D.querySelector "input" el
+  mbInput ← H.liftEff $ D.querySelector "input" el
   for_ mbInput \input →
-    void $ H.fromEff $ Be.raiseEvent "click" input
+    void $ H.liftEff $ Be.raiseEvent "click" input
   pure next
 
 eval (FileListChanged el next) = do
-  fileArr ← map Cf.fileListToArray $ (H.fromAff $ Cf.files el)
-  H.fromEff $ clearValue el
+  fileArr ← map Cf.fileListToArray $ (H.liftAff $ Cf.files el)
+  H.liftEff $ clearValue el
   case Array.head fileArr of
     Nothing →
       -- TODO: notification? this shouldn't be a runtime exception anyway!
       -- let err ∷ Slam Unit
       --     err = throwError $ error "empty filelist"
-      -- in H.fromAff err
+      -- in H.liftAff err
       pure unit
     Just f → uploadFileSelected f
   pure next
@@ -321,15 +321,15 @@ uploadFileSelected ∷ Cf.File → DSL Unit
 uploadFileSelected f = do
   { path, sort, salt } ← H.get
   name ←
-    H.fromEff (Cf.name f)
+    H.liftEff (Cf.name f)
       <#> RX.replace (unsafePartial fromRight $ RX.regex "/" RXF.global) ":"
       >>= API.getNewName path
 
   case name of
     Left err → handleError err
     Right name' → do
-      reader ← H.fromEff Cf.newReaderEff
-      content' ← H.fromAff $ Cf.readAsBinaryString f reader
+      reader ← H.liftEff Cf.newReaderEff
+      content' ← H.liftAff $ Cf.readAsBinaryString f reader
 
       let fileName = path </> file name'
           res = R.File fileName
@@ -418,13 +418,13 @@ dismissedIntroVideoKey = "dismissed-intro-video"
 itemPeek ∷ ∀ a. Item.Query a → DSL Unit
 itemPeek (Item.Open res _) = do
   { sort, salt, path } ← H.get
-  loc ← H.fromEff locationString
+  loc ← H.liftEff locationString
   for_ (preview R._filePath res) \fp →
     showDialog $ Dialog.Explore fp
   for_ (preview R._dirPath res) \dp →
-    H.fromEff $ setLocation $ browseURL Nothing sort salt dp
+    H.liftEff $ setLocation $ browseURL Nothing sort salt dp
   for_ (preview R._Workspace res) \wp →
-    H.fromEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
+    H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
 
 
 itemPeek (Item.Configure (R.Mount mount) _) = configure mount
@@ -464,7 +464,7 @@ itemPeek (Item.Remove res _) = do
 
 itemPeek (Item.Share res _) = do
   path ← H.gets _.path
-  loc ← map (_ ⊕ "/") $ H.fromEff locationString
+  loc ← map (_ ⊕ "/") $ H.liftEff locationString
   for_ (preview R._filePath res) \fp → do
     let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
     name ← API.getNewName path newWorkspaceName
@@ -486,14 +486,14 @@ itemPeek _ = pure unit
 
 searchPeek ∷ ∀ a. Search.Query a → DSL Unit
 searchPeek (Search.Clear _) = do
-  salt ← H.fromEff newSalt
+  salt ← H.liftEff newSalt
   { sort, path } ← H.get
-  H.fromEff $ setLocation $ browseURL Nothing sort salt path
+  H.liftEff $ setLocation $ browseURL Nothing sort salt path
 searchPeek (Search.Submit _) = do
-  salt ← H.fromEff newSalt
+  salt ← H.liftEff newSalt
   { sort, path } ← H.get
   value ← H.query' Install.cpSearch unit $ H.request Search.GetValue
-  H.fromEff $ setLocation $ browseURL value sort salt path
+  H.liftEff $ setLocation $ browseURL value sort salt path
 searchPeek _ = pure unit
 
 dialogPeek ∷ ∀ a. Dialog.QueryP a → DSL Unit
@@ -518,7 +518,7 @@ explorePeek (Explore.Explore fp initialName next) = do
         Right ge →
           GE.raiseGlobalError ge
     Right name' →
-      H.fromEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
+      H.liftEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
 explorePeek _ = pure unit
 
 mountPeek ∷ ∀ a. Mount.QueryP a → DSL Unit

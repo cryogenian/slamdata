@@ -90,7 +90,7 @@ component colSpec = H.parentComponent { render, eval, peek: Just peek }
       H.modify (_ { element = mel })
       pure next
     Extended next → do
-      traverse_ (H.fromEff ∘ scrollToRight) =<< H.gets _.element
+      traverse_ (H.liftEff ∘ scrollToRight) =<< H.gets _.element
       pure next
     Populate path next → do
       H.modify (_ { path = path })

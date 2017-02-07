@@ -65,7 +65,7 @@ comp opts =
       , eval: \query → do
           res ← DC.eval opts query
           case query of
-            DCQ.GrabDeck a _ → H.fromEff $ emitter $ DCQ.GrabDeck a unit
+            DCQ.GrabDeck a _ → H.liftEff $ emitter $ DCQ.GrabDeck a unit
             _ → pure unit
           pure res
       , peek: Just (DC.peek opts)
@@ -88,21 +88,21 @@ comp opts =
   eval = case _ of
     DNQ.Init next → do
       el ← unsafePartial fromJust <$> H.gets _.el
-      emitter ← H.fromAff makeVar
+      emitter ← H.liftAff makeVar
       H.subscribe $
         HE.EventSource $
           HE.produce \emit →
             void $ runAff (const (pure unit)) (const (pure unit)) $
               putVar emitter (emit <<< Left)
-      emitter' ← H.fromAff $ takeVar emitter
+      emitter' ← H.liftAff $ takeVar emitter
       wiring ← H.liftH ask
       let ui = H.interpret (runSlam wiring) $ deckComponent' (emitter' ∘ right)
-      driver ← H.fromAff $ H.runUI ui DC.initialState el
+      driver ← H.liftAff $ H.runUI ui DC.initialState el
       H.modify _ { driver = Just (DNS.Driver driver) }
       pure next
     DNQ.Finish next → do
       DNS.Driver driver ← unsafePartial fromJust <$> H.gets _.driver
-      H.fromAff $ driver $ opaqueQuery $ DCQ.Finish next
+      H.liftAff $ driver $ opaqueQuery $ DCQ.Finish next
     DNQ.Ref el next → do
       H.modify _ { el = el }
       pure next
@@ -114,4 +114,4 @@ comp opts =
     -- The rest we'll just pass through
     query → do
       DNS.Driver driver ← unsafePartial fromJust <$> H.gets _.driver
-      H.fromAff $ driver $ opaqueQuery query
+      H.liftAff $ driver $ opaqueQuery query

@@ -80,7 +80,7 @@ evalCard = case _ of
       Card.Draftboard model → do
         H.modify (updateLayout model.layout)
         -- TODO: Why??? Remove this when we update to newer Halogen
-        H.fromAff (later (pure unit))
+        H.liftAff (later (pure unit))
         void $ H.queryAll (right (H.action DCQ.UpdateCardSize))
       _ → pure unit
     pure next
@@ -362,7 +362,7 @@ recalcRect ∷ DraftboardDSL Unit
 recalcRect = do
   st ← H.get
   for_ st.root \root → do
-    rect ← H.fromEff (getOffsetClientRect root)
+    rect ← H.liftEff (getOffsetClientRect root)
     H.modify (updateRect rect)
 
 addDeck ∷ CardOptions → Pane.Cursor → DraftboardDSL Unit

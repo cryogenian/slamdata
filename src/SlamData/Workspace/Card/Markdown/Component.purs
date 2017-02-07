@@ -104,7 +104,7 @@ eval = evalCEQ ⨁ evalQ
 
 evalQ ∷ Query ~> MarkdownDSL
 evalQ (Init next) = do
-  browserFeatures ← H.fromEff detectBrowserFeatures
+  browserFeatures ← H.liftEff detectBrowserFeatures
   H.modify (_ { browserFeatures = Just browserFeatures })
   pure next
 

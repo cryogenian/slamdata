@@ -223,7 +223,7 @@ updateActions newActions state =
 
 getBoundingDOMRect ∷ ∀ a. DSL a (Maybe DOMRect)
 getBoundingDOMRect =
-  traverse (H.fromEff ∘ DOMUtils.getOffsetClientRect)
+  traverse (H.liftEff ∘ DOMUtils.getOffsetClientRect)
     =<< H.gets _.boundingElement
 
 eval ∷ ∀ a. Eq a ⇒ Q.Query a ~> DSL a

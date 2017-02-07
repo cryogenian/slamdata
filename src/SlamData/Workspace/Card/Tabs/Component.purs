@@ -168,7 +168,7 @@ evalCard = case _ of
     let
       tabLen = Array.length model.tabs
       activeTab = clampActiveTab model.tabs =<< st.activeTab
-    for_ st.tabs (H.fromAff ∘ EventLoop.break' ∘ _.breaker)
+    for_ st.tabs (H.liftAff ∘ EventLoop.break' ∘ _.breaker)
     tabs ← Array.catMaybes <$> for model.tabs \deckId → runMaybeT do
       cell ← MaybeT $ liftH' $ P.getDeck deckId
       breaker ← lift $ subscribeToBus' (right ∘ H.action ∘ HandleMessage deckId) cell.bus

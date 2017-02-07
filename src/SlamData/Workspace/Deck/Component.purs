@@ -127,12 +127,12 @@ eval opts = case _ of
     dismissAccessNextActionCardGuide $> next
   Finish next → do
     H.modify _ { finalized = true }
-    H.gets _.breakers >>= traverse_ (H.fromAff ∘ EventLoop.break')
+    H.gets _.breakers >>= traverse_ (H.liftAff ∘ EventLoop.break')
     pure next
   Publish next → do
     { path } ← liftH' Wiring.expose
     let deckPath = deckPath' path opts.deckId
-    H.fromEff ∘ Browser.newTab $ mkWorkspaceURL deckPath (WA.Load AT.ReadOnly)
+    H.liftEff ∘ Browser.newTab $ mkWorkspaceURL deckPath (WA.Load AT.ReadOnly)
     pure next
   FlipDeck next → do
     displayMode ← H.gets _.displayMode
@@ -151,7 +151,7 @@ eval opts = case _ of
   ZoomOut next → do
     { path } ← liftH' Wiring.expose
     if L.null opts.cursor
-      then void $ H.fromEff $ Browser.setHref $ parentURL $ Left path
+      then void $ H.liftEff $ Browser.setHref $ parentURL $ Left path
       else navigateToDeck opts.cursor
     pure next
   StartSliding mouseEvent gDef next → do
@@ -185,16 +185,16 @@ eval opts = case _ of
     when (not st.focused) do
       H.modify (DCS._focused .~ true)
       { bus } ← liftH' Wiring.expose
-      H.fromAff $ Bus.write (DeckFocused opts.deckId) bus.decks
+      H.liftAff $ Bus.write (DeckFocused opts.deckId) bus.decks
       presentAccessNextActionCardGuideAfterDelay
     pure next
   Defocus ev next → do
     st ← H.get
-    isFrame ← H.fromEff $ elementEq ev.target ev.currentTarget
+    isFrame ← H.liftEff $ elementEq ev.target ev.currentTarget
     when (st.focused && isFrame) $
       for_ (L.last opts.cursor) \rootId → do
         { bus } ← liftH' Wiring.expose
-        H.fromAff $ Bus.write (DeckFocused rootId) bus.decks
+        H.liftAff $ Bus.write (DeckFocused rootId) bus.decks
     H.modify (DCS._presentAccessNextActionCardGuide .~ false)
     pure next
   HandleEval msg next →
@@ -224,7 +224,7 @@ eval opts = case _ of
       $> next
   where
   getBoundingClientWidth =
-    H.fromEff ∘ map _.width ∘ getBoundingClientRect
+    H.liftEff ∘ map _.width ∘ getBoundingClientRect
 
 -- If an ActionList has the style display: none; then calculating its dimensions
 -- will give 0, 0. (This is Mapped to Nothing.)
@@ -475,7 +475,7 @@ presentAccessNextActionCardGuideAfterDelay = do
 
 cancelPresentAccessNextActionCardGuide ∷ DeckDSL Boolean
 cancelPresentAccessNextActionCardGuide =
-  H.fromAff ∘ maybe (pure false) (flip Aff.cancel $ Exception.error "Cancelled")
+  H.liftAff ∘ maybe (pure false) (flip Aff.cancel $ Exception.error "Cancelled")
     =<< H.gets _.presentAccessNextActionCardGuideCanceler
 
 dismissAccessNextActionCardGuide ∷ DeckDSL Unit
@@ -628,7 +628,7 @@ updateCardSize = do
     then queryNextActionList $ H.action ActionList.CalculateBoundingRect
     else queryBacksideActionList $ H.action ActionList.CalculateBoundingRect
   H.gets _.deckElement >>= traverse_ \el → do
-    { width } ← H.fromEff $ getBoundingClientRect el
+    { width } ← H.liftEff $ getBoundingClientRect el
     H.modify $ DCS._responsiveSize .~ breakpoint width
   where
   breakpoint w
@@ -643,7 +643,7 @@ presentFlipGuideFirstTime ∷ DeckDSL Unit
 presentFlipGuideFirstTime = do
   whenM shouldPresentFlipGuide do
     { bus } ← liftH' Wiring.expose
-    H.fromAff $ Bus.write Wiring.FlipGuide bus.stepByStep
+    H.liftAff $ Bus.write Wiring.FlipGuide bus.stepByStep
 
 shouldPresentFlipGuide ∷ DeckDSL Boolean
 shouldPresentFlipGuide =
@@ -656,10 +656,10 @@ navigateToDeck = case _ of
   L.Nil → navigateToIndex
   cursor → do
     { path, accessType, varMaps } ← liftH' Wiring.expose
-    urlVarMaps ← H.fromEff $ readRef varMaps
+    urlVarMaps ← H.liftEff $ readRef varMaps
     navigate $ WorkspaceRoute path cursor (WA.Load accessType) urlVarMaps
 
 navigateToIndex ∷ DeckDSL Unit
 navigateToIndex = do
   { path } ← liftH' Wiring.expose
-  void $ H.fromEff $ Browser.setHref $ parentURL $ Left path
+  void $ H.liftEff $ Browser.setHref $ parentURL $ Left path

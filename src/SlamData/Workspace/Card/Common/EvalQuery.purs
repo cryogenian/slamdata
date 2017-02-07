@@ -25,8 +25,8 @@ module SlamData.Workspace.Card.Common.EvalQuery
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class MonadAff)
 import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Aff.Class (class MonadAff)
 
 import Halogen as H
 import Halogen.Component.Utils (raise, raise')

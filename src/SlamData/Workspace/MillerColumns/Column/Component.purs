@@ -166,7 +166,7 @@ component ispec colPath =
       load
       pure next
     HandleScroll el next → do
-      remain ← H.fromEff do
+      remain ← H.liftEff do
         let ul = DOM.htmlElementToElement el
         height <- DOM.clientHeight ul
         scrollTop <- DOM.scrollTop ul

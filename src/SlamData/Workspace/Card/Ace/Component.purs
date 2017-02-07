@@ -85,7 +85,7 @@ eval mode = cardEval mode ⨁ evalComponent
 evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
-    trigger ← H.fromAff $ makeVar
+    trigger ← H.liftAff $ makeVar
     breaker ← subscribeToASource'
       (const $ right $ H.action RunFromNotification)
       (takeVar trigger)
@@ -96,14 +96,14 @@ evalComponent = case _ of
     pure next
   Finalize next → do
     breaker ← H.gets _.breaker
-    H.fromAff $ for_ breaker EventLoop.break'
+    H.liftAff $ for_ breaker EventLoop.break'
     pure next
 
 cardEval ∷ CT.AceMode → CC.CardEvalQuery ~> DSL
 cardEval mode = case _ of
   CC.Activate next → do
     mbEditor ← H.query unit $ H.request AC.GetEditor
-    for_ (join mbEditor) $ H.fromEff ∘ Editor.focus
+    for_ (join mbEditor) $ H.liftEff ∘ Editor.focus
     pure next
   CC.Deactivate next → do
     st ← H.get
@@ -121,7 +121,7 @@ cardEval mode = case _ of
   CC.Save k → do
     content ← fromMaybe "" <$> H.query unit (H.request AC.GetText)
     mbEditor ← H.query unit (H.request AC.GetEditor)
-    rrs ← H.fromEff $ maybe (pure []) getRangeRecs $ join mbEditor
+    rrs ← H.liftEff $ maybe (pure []) getRangeRecs $ join mbEditor
     pure ∘ k
       $ Card.Ace mode { text: content, ranges: rrs }
   CC.Load card next → do
@@ -129,7 +129,7 @@ cardEval mode = case _ of
       Card.Ace _ { text, ranges } → do
         H.query unit $ H.action $ AC.SetText text
         mbEditor ← H.query unit $ H.request AC.GetEditor
-        H.fromEff $ for_ (join mbEditor) \editor → do
+        H.liftEff $ for_ (join mbEditor) \editor → do
           traverse_ (readOnly editor) ranges
           Editor.navigateFileEnd editor
       _ → pure unit
@@ -157,7 +157,7 @@ cardEval mode = case _ of
       $ _levelOfDetails
       .~ if dims.width < 240.0 then Low else High
     mbEditor ← H.query unit $ H.request AC.GetEditor
-    for_ (join mbEditor) $ H.fromEff ∘ Editor.resize Nothing
+    for_ (join mbEditor) $ H.liftEff ∘ Editor.resize Nothing
     pure next
   CC.ModelUpdated _ next → do
     H.modify _ { dirty = false }
@@ -173,7 +173,7 @@ peek = case _ of
   _ → pure unit
 
 aceSetup ∷ CT.AceMode → Editor → Slam Unit
-aceSetup mode editor = H.fromEff do
+aceSetup mode editor = H.liftEff do
   Editor.setTheme "ace/theme/chrome" editor
   Editor.setEnableLiveAutocompletion true editor
   Editor.setEnableBasicAutocompletion true editor

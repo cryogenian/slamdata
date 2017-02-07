@@ -181,7 +181,7 @@ eval = case _ of
       $ throttledEventSource_ (Milliseconds 100.0) onResize
       $ pure (H.action Resize)
     -- The deck component isn't initialised before this later has completed
-    H.fromAff $ Aff.later (pure unit)
+    H.liftAff $ Aff.later (pure unit)
     when (isNothing cardGuideStep) do
       void $ queryDeck $ H.action Deck.DismissedCardGuide
     pure next
@@ -204,7 +204,7 @@ eval = case _ of
     pure next
   DismissAll ev next → do
     querySignIn $ H.action GlobalMenu.DismissSubmenu
-    eq ← H.fromEff $ elementEq ev.target ev.currentTarget
+    eq ← H.liftEff $ elementEq ev.target ev.currentTarget
     when eq $ void $ queryDeck $ H.action Deck.Focus
     pure next
   Resize next →
@@ -244,9 +244,9 @@ eval = case _ of
     pure next
   SignIn providerR next → do
     { auth } ← liftH' Wiring.expose
-    idToken ← H.fromAff makeVar
-    H.fromAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
-    either signInFailure (const $ signInSuccess) =<< (H.fromAff $ takeVar idToken)
+    idToken ← H.liftAff makeVar
+    H.liftAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
+    either signInFailure (const $ signInSuccess) =<< (H.liftAff $ takeVar idToken)
     pure next
 
   where
@@ -255,7 +255,7 @@ eval = case _ of
       if List.null cursor
         then do
           wiring ← liftH' Wiring.expose
-          rootId ← H.fromAff $ peekVar wiring.eval.root
+          rootId ← H.liftAff $ peekVar wiring.eval.root
           pure (pure rootId)
         else
           hydrateCursor cursor
@@ -276,12 +276,12 @@ eval = case _ of
 
   signInSuccess = do
     { auth } ← liftH' Wiring.expose
-    H.fromAff $ Bus.write SignInSuccess $ auth.signIn
-    H.fromEff Browser.reload
+    H.liftAff $ Bus.write SignInSuccess $ auth.signIn
+    H.liftEff Browser.reload
 
   signInFailure error = do
     { auth, bus } ← liftH' Wiring.expose
-    H.fromAff do
+    H.liftAff do
       for_ (Authentication.toNotificationOptions error) $
         flip Bus.write bus.notify
       Bus.write SignInFailure auth.signIn
@@ -297,7 +297,7 @@ runFreshWorkspace cards = do
   void $ queryDeck $ H.action Deck.Focus
   let
     wait =
-      H.fromAff (Bus.read cell.bus) >>= case _ of
+      H.liftAff (Bus.read cell.bus) >>= case _ of
         ED.Pending _ → wait
         ED.Complete _ _ → wait
         ED.CardComplete _ → wait
@@ -305,7 +305,7 @@ runFreshWorkspace cards = do
         ED.NameChange _ → H.gets _.cursor
   cursor ← wait
   liftH' P.saveWorkspace
-  urlVarMaps ← H.fromEff $ readRef varMaps
+  urlVarMaps ← H.liftEff $ readRef varMaps
   navigate $ WorkspaceRoute path cursor (WA.Load accessType) urlVarMaps
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
@@ -317,7 +317,7 @@ peek = (const (pure unit)) ⨁ const (pure unit) ⨁ peekNotification
       queryHeaderGripper $ Gripper.StartDragging 0.0 unit
       queryHeaderGripper $ Gripper.StopDragging unit
     NC.Action (N.Fulfill var) _ →
-      void $ H.fromAff $ Aff.attempt $ putVar var unit
+      void $ H.liftAff $ Aff.attempt $ putVar var unit
     _ → pure unit
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)

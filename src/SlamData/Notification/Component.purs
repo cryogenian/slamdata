@@ -278,10 +278,10 @@ eval ∷ Query ~> NotifyDSL
 eval = case _ of
   Init next → do
     { bus } ← H.liftH Wiring.expose
-    forever (raise <<< H.action <<< Push =<< H.fromAff (Bus.read bus.notify))
+    forever (raise <<< H.action <<< Push =<< H.liftAff (Bus.read bus.notify))
   Push options next → do
     st ← H.get
-    dismiss ← H.fromAff makeVar
+    dismiss ← H.liftAff makeVar
     when
       (not (options `optionsEqItem` st.current ∨ options `optionsEqItem` Array.last st.queue))
       do
@@ -318,7 +318,7 @@ dismissNotification ∷ NotifyDSL Unit
 dismissNotification = do
   current ← H.gets _.current
   for_ current \{ dismiss } →
-    H.fromAff $ putVar dismiss unit
+    H.liftAff $ putVar dismiss unit
 
 drainQueue ∷ NotifyDSL Unit
 drainQueue = do
@@ -339,7 +339,7 @@ drainQueue = do
       -- TODO: Make notifications with timeouts not disapear in ExpandableList
       -- render mode
       for_ head.options.timeout \(Milliseconds ms) →
-        H.fromAff $ forkAff $ later' (Int.floor ms) (putVar head.dismiss unit)
+        H.liftAff $ forkAff $ later' (Int.floor ms) (putVar head.dismiss unit)
 
-      H.fromAff $ takeVar head.dismiss
+      H.liftAff $ takeVar head.dismiss
       drainQueue
