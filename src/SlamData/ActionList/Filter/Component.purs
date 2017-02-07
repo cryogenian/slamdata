@@ -85,6 +85,8 @@ eval = case _ of
     pure next
   Get cont → do
     H.gets $ cont ∘ _.filter
-  UpdateDescription s next -> do
-    H.modify _{ description = s }
+  UpdateDescription newDesc next -> do
+    oldDesc ← H.gets _.description
+    when (oldDesc /= newDesc) $
+      H.modify _{ description = newDesc }
     pure next
