@@ -22,7 +22,6 @@ import Data.Lens (Lens', lens, (%~), (.~))
 
 import Halogen as H
 import Halogen.HTML.CSS as HCSS
-import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -31,6 +30,9 @@ import Halogen.Themes.Bootstrap3 as B
 
 import CSS.Geometry (marginBottom)
 import CSS.Size (px)
+
+import DOM.Event.Types (MouseEvent, mouseEventToEvent)
+import DOM.Event.Event (preventDefault)
 
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
@@ -64,20 +66,29 @@ data Query a
   | PresentActions a
   | HideActions a
   | Deselect a
-  | Open Resource a
-  | Configure Resource a
-  | Move Resource a
-  | Download Resource a
-  | Remove Resource a
-  | Share Resource a
+  | HandleAction Message MouseEvent a
   | SetIsSearching Boolean a
   | SetIsHidden Boolean a
 
-type HTML = H.ComponentHTML Query
-type DSL = H.ComponentDSL State Query Slam
+data Message
+  = Open Resource
+  | Configure Resource
+  | Move Resource
+  | Download Resource
+  | Remove Resource
+  | Share Resource
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+type HTML = H.ComponentHTML Query
+type DSL = H.ComponentDSL State Query Message Slam
+
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component =
+  H.component
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render ∷ State → HTML
 render state = case state.item of
@@ -118,12 +129,10 @@ eval (HideActions next) = H.modify (_item %~ hideActions) $> next
   where
   hideActions (ActionsPresentedItem r) = Item r
   hideActions it = it
-eval (Open _ next) = pure next
-eval (Configure _ next) = pure next
-eval (Move _ next) = pure next
-eval (Download _ next) = pure next
-eval (Remove _ next) = pure next
-eval (Share _ next) = pure next
+eval (HandleAction msg ev next) = do
+  H.liftEff $ preventDefault (mouseEventToEvent ev)
+  H.raise msg
+  pure next
 eval (SetIsSearching bool next) = H.modify (_isSearching .~ bool) $> next
 eval (SetIsHidden bool next) = H.modify (_isHidden .~ bool) $> next
 
@@ -152,7 +161,7 @@ itemView state@{ item } selected presentActions | otherwise =
     , HE.onClick (HE.input_ Toggle)
     , HE.onMouseEnter (HE.input_ PresentActions)
     , HE.onMouseLeave (HE.input_ HideActions)
-    , HE.onDoubleClick $ HE.input_ $ Open (itemResource item)
+    , HE.onDoubleClick $ HE.input $ HandleAction (Open (itemResource item))
     , ARIA.label label
     ]
     [ HH.div
@@ -160,10 +169,7 @@ itemView state@{ item } selected presentActions | otherwise =
         [ HH.div
             [ HP.classes [ B.colXs8, CSS.itemContent ] ]
             [ HH.a
-                [ HE.onClick \_ →
-                    HEH.preventDefault $>
-                      Just (H.action (Open (itemResource item)))
-                ]
+                [ HE.onClick $ HE.input $ HandleAction (Open (itemResource item)) ]
                 [ HH.i [ iconClasses item ] []
                 , HH.text $ itemName state
                 ]
@@ -184,7 +190,7 @@ itemView state@{ item } selected presentActions | otherwise =
   label | selected  = "Deselect " <> itemName state
   label | otherwise = "Select " <> itemName state
 
-iconClasses ∷ forall i r. Item → HP.IProp (class ∷ HP.I | r) i
+iconClasses ∷ forall i r. Item → HP.IProp (class ∷ String | r) i
 iconClasses item = HP.classes
   [ B.glyphicon
   , CSS.itemIcon
@@ -226,11 +232,11 @@ itemActions presentActions item | otherwise =
   share = guard (isFile r || isWorkspace r || isViewMount r) $>
     itemAction Share "Share" B.glyphiconShare
 
-  itemAction ∷ (Resource → H.Action Query) → String → HH.ClassName → HTML
+  itemAction ∷ (Resource → Message) → String → HH.ClassName → HTML
   itemAction act label cls =
     HH.li_
       [ HH.button
-          [ HE.onClick $ HE.input_ (act (itemResource item))
+          [ HE.onClick $ HE.input $ HandleAction $ act (itemResource item)
           , HP.title label
           , ARIA.label label
           , HP.class_ CSS.fileAction
