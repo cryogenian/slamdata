@@ -16,9 +16,9 @@ limitations under the License.
 
 module SlamData.Workspace.FormBuilder.Item.Component
   ( Query(..)
-  , UpdateQuery(..)
+  , Message(..)
   , module SlamData.Workspace.FormBuilder.Item.Component.State
-  , itemComponent
+  , component
   ) where
 
 import SlamData.Prelude
@@ -39,68 +39,76 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.Workspace.FormBuilder.Item.Component.State (Model, State, EqModel(..), _defaultValue, _fieldType, _model, _name, decode, defaultValueToVarMapValue, emptyValueOfFieldType, encode, initialModel, initialState, runEqModel)
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
 
-data UpdateQuery a
+data Query a
   = UpdateName String a
   | UpdateFieldType String a
   | UpdateDefaultValue String a
-
-data Query a
-  = Update (UpdateQuery a)
   | SetModel Model a
-  | GetModel (Model -> a)
+  | GetModel (Model → a)
 
-type ItemHTML = H.ComponentHTML Query
-type ItemDSL g = H.ComponentDSL State Query g
+data Message
+  = NameChanged String
+  | FieldTypeChanged String
+  | DefaultValueChanged String
 
-itemComponent :: forall g. H.Component State Query g
-itemComponent = H.component { render, eval }
+type HTML = H.ComponentHTML Query
+type DSL = H.ComponentDSL State Query Message
+
+component ∷ ∀ g. H.Component HH.HTML Query Unit Message g
+component =
+  H.component
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render
-  :: State
-  -> ItemHTML
+  ∷ State
+  → HTML
 render { model } =
-  HH.tr_ $
+  HH.tr_
     [ HH.td_ [ nameField ]
     , HH.td_ [ typeField ]
     , HH.td_ [ defaultField ]
     ]
 
   where
-  nameField :: ItemHTML
+  nameField ∷ HTML
   nameField =
     HH.input
       [ HP.type_ HP.InputText
       , HP.title "Field Name"
       , ARIA.label "Variable name"
       , HP.value model.name
-      , HE.onValueInput (HE.input \str -> Update <<< UpdateName str)
+      , HE.onValueInput (HE.input UpdateName)
       , HP.placeholder "Variable name"
       ]
 
-  quotedName :: String -> String
+  quotedName ∷ String → String
   quotedName "" = ""
   quotedName s = "\"" <> s <> "\""
 
-  typeField :: ItemHTML
+  typeField ∷ HTML
   typeField =
     HH.select
-      [ HE.onValueChange (HE.input \str -> Update <<< UpdateFieldType str)
+      [ HE.onValueChange (HE.input UpdateFieldType)
       , ARIA.label $ "Type of " <> (quotedName model.name) <> " variable"
       ]
       (typeOption <$> allFieldTypes)
 
   typeOption
-    :: FieldType
-    -> ItemHTML
+    ∷ FieldType
+    → HTML
   typeOption ty =
     HH.option
     [ HP.selected $ ty == model.fieldType ]
     [ HH.text $ Lens.review _FieldTypeDisplayName ty ]
 
-  defaultField :: ItemHTML
+  defaultField ∷ HTML
   defaultField =
     case model.fieldType of
-      BooleanFieldType ->
+      BooleanFieldType →
         HH.label
           [ HP.class_ (HH.ClassName "sd-option") ]
           [ HH.input
@@ -110,8 +118,7 @@ render { model } =
                   $ Lens.preview _StringBoolean
                   =<< model.defaultValue
               , HE.onChecked
-                $ HE.input \str ->
-                    Update <<< UpdateDefaultValue (Lens.review _StringBoolean str)
+                  $ HE.input (UpdateDefaultValue ∘ Lens.review _StringBoolean)
               , ARIA.label
                   $ "Default value of "
                   <> (quotedName model.name)
@@ -119,18 +126,17 @@ render { model } =
               ]
           , HH.span_ [ HH.text model.name ]
           ]
-      _ ->
+      _ →
           HH.input
             $ fieldType
             <> [ HP.value (fromMaybe "" model.defaultValue)
-               , HE.onValueInput
-                   $ HE.input \str -> Update <<< UpdateDefaultValue str
+               , HE.onValueInput (HE.input UpdateDefaultValue)
                , ARIA.label lbl
                , HP.placeholder lbl
                ]
 
     where
-    lbl :: String
+    lbl ∷ String
     lbl
       = "Default value"
       <> if model.name /= "" then " for " <> (quotedName model.name) <> " variable" else ""
@@ -139,21 +145,21 @@ render { model } =
 
     fieldType ∷ ∀ i. Array (HP.IProp DI.HTMLinput i)
     fieldType = case model.fieldType of
-      DateTimeFieldType ->
+      DateTimeFieldType →
         [ HP.type_ inputType
         , secondsStep
         ]
-      TimeFieldType ->
+      TimeFieldType →
         [ HP.type_ inputType
         , secondsStep
         ]
-      _ ->
+      _ →
         [ HP.type_ inputType ]
 
     secondsStep ∷ ∀ r i. HP.IProp (step ∷ StepValue | r) i
     secondsStep = HP.prop (HC.PropName "step") (Step 1.0)
 
-    _StringBoolean :: Lens.Prism' String Boolean
+    _StringBoolean ∷ Lens.Prism' String Boolean
     _StringBoolean = Lens.prism re pre
       where
         re b = if b then "true" else "false"
@@ -161,26 +167,23 @@ render { model } =
         pre "false" = Right false
         pre str = Left str
 
-eval :: forall g. Query ~> ItemDSL g
+eval ∷ ∀ m. Query ~> DSL m
 eval = case _ of
-  Update q ->
-    evalUpdate q
-  SetModel m next -> do
+  UpdateName str next → do
+    H.modify $ _model ∘ _name .~ str
+    H.raise $ NameChanged str
+    pure next
+  UpdateFieldType str next → do
+    for_ (str ^? _FieldTypeDisplayName) \ty → do
+      H.modify $ _model ∘ _fieldType .~ ty
+    H.raise $ FieldTypeChanged str
+    pure next
+  UpdateDefaultValue str next → do
+    H.modify $ _model ∘ _defaultValue ?~ str
+    H.raise $ DefaultValueChanged str
+    pure next
+  SetModel m next → do
     H.modify $ _model .~ m
     pure next
-  GetModel k ->
-    k <<< Lens.view _model <$> H.get
-
-evalUpdate :: forall g. UpdateQuery ~> ItemDSL g
-evalUpdate q =
-  case q of
-    UpdateName str next -> do
-      H.modify $ _model <<< _name .~ str
-      pure next
-    UpdateFieldType str next -> do
-      for_ (str ^? _FieldTypeDisplayName) \ty -> do
-        H.modify $ _model <<< _fieldType .~ ty
-      pure next
-    UpdateDefaultValue str next -> do
-      H.modify $ _model <<< _defaultValue ?~ str
-      pure next
+  GetModel k →
+    k ∘ Lens.view _model <$> H.get
