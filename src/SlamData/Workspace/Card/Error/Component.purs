@@ -31,11 +31,17 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
 
-errorCardComponent ∷ H.Component State Query Slam
-errorCardComponent = H.component { render, eval }
+errorCardComponent ∷ H.Component HH.HTML Query Unit Void Slam
+errorCardComponent =
+  H.component
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render ∷ State → HTML
 render st =
