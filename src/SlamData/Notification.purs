@@ -31,12 +31,10 @@ module SlamData.Notification
 import SlamData.Prelude
 
 import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Free (Free, liftF)
 
 import Data.Time.Duration (Milliseconds)
 
-import Halogen.Query.EventSource as ES
-import Halogen.Query.HalogenF as HF
+import Halogen.Query (HalogenM)
 
 data Notification
   = Info String
@@ -83,20 +81,14 @@ newtype ActionOptions =
 class NotifyDSL m where
   notify ∷ Notification → Maybe Details → Maybe Milliseconds → Maybe ActionOptions → m Unit
 
-instance notifyDSLFree ∷ NotifyDSL m ⇒ NotifyDSL (Free m) where
-  notify n d m a = liftF $ notify n d m a
-
 instance notifyDSLMaybeT ∷ (Monad m, NotifyDSL m) ⇒ NotifyDSL (MaybeT m) where
   notify n d m a = lift $ notify n d m a
 
 instance notifyDSLExceptT ∷ (Monad m, NotifyDSL m) ⇒ NotifyDSL (ExceptT e m) where
   notify n d m a = lift $ notify n d m a
 
-instance notifyDSLHFC ∷ NotifyDSL g ⇒ NotifyDSL (HF.HalogenFP ES.EventSource s f g) where
-  notify n d m a = HF.QueryHF $ notify n d m a
-
-instance notifyDSLHFP ∷ NotifyDSL g ⇒ NotifyDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
-  notify n d m a = HF.QueryHF $ notify n d m a
+instance notifyDSLHFC ∷ (Monad m, NotifyDSL m) ⇒ NotifyDSL (HalogenM s f g p o m) where
+  notify n d m a = lift $ notify n d m a
 
 info
   ∷ ∀ m
