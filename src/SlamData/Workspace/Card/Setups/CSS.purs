@@ -16,52 +16,52 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.CSS where
 
-import Halogen.HTML.Core (className, ClassName)
+import Halogen.HTML.Core (ClassName(..))
 
 chartConfigureForm ∷ ClassName
-chartConfigureForm = className "chart-configure-form"
+chartConfigureForm = ClassName "chart-configure-form"
 
 withAggregation ∷ ClassName
-withAggregation = className "with-aggregation"
+withAggregation = ClassName "with-aggregation"
 
 aggregation ∷ ClassName
-aggregation = className "aggregation"
+aggregation = ClassName "aggregation"
 
 chartCategory ∷ ClassName
-chartCategory = className "chart-category"
+chartCategory = ClassName "chart-category"
 
 chartMeasureOne ∷ ClassName
-chartMeasureOne = className "chart-measure-one"
+chartMeasureOne = ClassName "chart-measure-one"
 
 chartDimension ∷ ClassName
-chartDimension = className "chart-dimension"
+chartDimension = ClassName "chart-dimension"
 
 chartSeriesOne ∷ ClassName
-chartSeriesOne = className "chart-series-one"
+chartSeriesOne = ClassName "chart-series-one"
 
 chartEditor ∷ ClassName
-chartEditor = className "chart-editor"
+chartEditor = ClassName "chart-editor"
 
 cardInput ∷ ClassName
-cardInput = className "card-input"
+cardInput = ClassName "card-input"
 
 vizCardEditor ∷ ClassName
-vizCardEditor = className "card-editor"
+vizCardEditor = ClassName "card-editor"
 
 vizChartTypeSelector ∷ ClassName
-vizChartTypeSelector = className "chart-type-selector"
+vizChartTypeSelector = ClassName "chart-type-selector"
 
 vizChartConfiguration ∷ ClassName
-vizChartConfiguration = className "chart-configuration"
+vizChartConfiguration = ClassName "chart-configuration"
 
 axisLabelParam ∷ ClassName
-axisLabelParam = className "axis-label-param"
+axisLabelParam = ClassName "axis-label-param"
 
 chartSizeParam ∷ ClassName
-chartSizeParam = className "chart-size-param"
+chartSizeParam = ClassName "chart-size-param"
 
 funnelChartOrderParam ∷ ClassName
-funnelChartOrderParam = className "funnel-chart-order-param"
+funnelChartOrderParam = ClassName "funnel-chart-order-param"
 
 funnelChartAlignParam ∷ ClassName
-funnelChartAlignParam = className "funnel-chart-align-param"
+funnelChartAlignParam = ClassName "funnel-chart-align-param"

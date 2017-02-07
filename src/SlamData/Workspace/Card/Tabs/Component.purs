@@ -25,10 +25,10 @@ import Data.Int (toNumber)
 import Data.Ord (abs)
 
 import Halogen as H
-import Halogen.HTML.CSS.Indexed as HC
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.CSS as HC
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Component.Utils (liftH', subscribeToBus')
 import Halogen.Component.Utils.Drag as Drag
 
@@ -72,27 +72,27 @@ tabsComponent options = CC.makeCardComponent
 render ∷ CardOptions → State → TabsHTML
 render cardOpts st =
   HH.div
-    [ HP.classes [ HH.className "sd-tab-container" ] ]
+    [ HP.classes [ HH.ClassName "sd-tab-container" ] ]
     [ HH.div
-        [ HP.classes [ HH.className "sd-tab-header" ] ]
+        [ HP.classes [ HH.ClassName "sd-tab-header" ] ]
         [ HH.ul
-            [ HP.classes [ HH.className "sd-tab-set" ] ]
+            [ HP.classes [ HH.ClassName "sd-tab-set" ] ]
             (Array.mapWithIndex renderTab st.tabs)
         , HH.button
-            [ HP.classes [ HH.className "sd-tab-add-btn" ]
+            [ HP.classes [ HH.ClassName "sd-tab-add-btn" ]
             , HE.onClick (HE.input_ (right ∘ AddTab))
             ]
             [ HH.text "+" ]
         ]
     , HH.div
-        [ HP.classes [ HH.className "sd-tab-body" ] ]
+        [ HP.classes [ HH.ClassName "sd-tab-body" ] ]
         (Array.mapWithIndex renderDeck st.tabs)
     ]
   where
     renderTab ix tab =
       HH.li
         [ HP.classes $
-            (guard (st.activeTab ≡ Just ix) $> HH.className "active")
+            (guard (st.activeTab ≡ Just ix) $> HH.ClassName "active")
             <> tabClasses ix
         , HC.style do
             C.width (C.pct $ 1.0 / toNumber (Array.length st.tabs) * 100.0)
@@ -117,10 +117,10 @@ render cardOpts st =
           ]
 
     tabClasses ix =
-      [ HH.className "sd-tab-btn" ] <>
+      [ HH.ClassName "sd-tab-btn" ] <>
         case st.ordering of
-          Just opts | isOrdering ix opts → [ HH.className "ordering" ]
-          Just opts | opts.over == Just ix → [ HH.className "ordering-over" ]
+          Just opts | isOrdering ix opts → [ HH.ClassName "ordering" ]
+          Just opts | opts.over == Just ix → [ HH.ClassName "ordering-over" ]
           _ → []
 
     tabStyles ix = do
@@ -135,8 +135,8 @@ render cardOpts st =
       HH.div
         [ HP.key (DID.toString tab.deckId)
         , HP.classes $
-            (guard (st.activeTab ≡ Just ix) $> HH.className "active")
-            <> [ HH.className "sd-tab-slot" ]
+            (guard (st.activeTab ≡ Just ix) $> HH.ClassName "active")
+            <> [ HH.ClassName "sd-tab-slot" ]
         ]
         if tab.loaded
           then [ HH.slot tab.deckId (mkDeckComponent tab.deckId) ]
@@ -168,7 +168,7 @@ evalCard = case _ of
     let
       tabLen = Array.length model.tabs
       activeTab = clampActiveTab model.tabs =<< st.activeTab
-    for_ st.tabs (H.fromAff ∘ EventLoop.break' ∘ _.breaker)
+    for_ st.tabs (H.liftAff ∘ EventLoop.break' ∘ _.breaker)
     tabs ← Array.catMaybes <$> for model.tabs \deckId → runMaybeT do
       cell ← MaybeT $ liftH' $ P.getDeck deckId
       breaker ← lift $ subscribeToBus' (right ∘ H.action ∘ HandleMessage deckId) cell.bus

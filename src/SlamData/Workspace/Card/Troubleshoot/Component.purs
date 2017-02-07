@@ -21,8 +21,8 @@ import SlamData.Prelude
 import Data.StrMap as SM
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -50,7 +50,7 @@ render ∷ State → H.ComponentHTML QueryP
 render { varMap } =
   HH.table
     [ HP.classes
-        [ HH.className "form-builder"
+        [ HH.ClassName "form-builder"
         , B.table
         , B.tableStriped
         ]

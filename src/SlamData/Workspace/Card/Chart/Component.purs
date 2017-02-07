@@ -31,10 +31,10 @@ import Global (readFloat, isNaN)
 
 import Halogen as H
 import Halogen.ECharts as HEC
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -83,7 +83,7 @@ renderHighLOD ∷ State → HTML
 renderHighLOD state =
   HH.div
     [ HP.classes
-        $ [ RC.chartOutput, HH.className "card-input-maximum-lod" ]
+        $ [ RC.chartOutput, HH.ClassName "card-input-maximum-lod" ]
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     case state.chartType of
@@ -110,7 +110,7 @@ renderLowLOD ∷ State → HTML
 renderLowLOD state =
   HH.div
     [ HP.classes
-        $ [ HH.className "card-input-minimum-lod" ]
+        $ [ HH.ClassName "card-input-minimum-lod" ]
         ⊕ (guard (state.levelOfDetails ≠ Low) $> B.hidden)
     ]
     [ HH.button

@@ -28,7 +28,7 @@ import SlamData.Prelude
 
 import Control.Monad.Aff (later)
 import Control.Monad.Aff.EventLoop (break')
-import Control.Monad.Aff.Free (fromAff)
+import Control.Monad.Aff.Class (liftAff)
 
 import Data.Foldable (elem)
 import Data.Lens (Prism', (.~), review, preview, clonePrism)
@@ -37,9 +37,9 @@ import DOM.HTML.HTMLElement (getBoundingClientRect)
 
 import Halogen as H
 import Halogen.Component.Utils (subscribeToBus', liftH')
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, cardIconDarkSrc)
@@ -146,7 +146,7 @@ makeCardComponentPart def render =
       initializeInnerCard
       pure next
     CQ.Finalize next → do
-      H.gets _.breaker >>= traverse_ (fromAff ∘ break')
+      H.gets _.breaker >>= traverse_ (liftAff ∘ break')
       pure next
     CQ.ActivateCard next →
       queryInnerCard EQ.Activate $> next
@@ -156,7 +156,7 @@ makeCardComponentPart def render =
       H.modify (CS._element .~ el) $> next
     CQ.UpdateDimensions next → do
       H.gets _.element >>= traverse_ \el -> do
-        { width, height } ← H.fromEff (getBoundingClientRect el)
+        { width, height } ← H.liftEff (getBoundingClientRect el)
         unless (width ≡ zero ∧ height ≡ zero) do
           queryInnerCard $ EQ.ReceiveDimensions { width, height }
       pure next
@@ -186,7 +186,7 @@ makeCardComponentPart def render =
       -- TODO: We need to defer these because apparently Halogen has bad
       -- ordering with regard to child initializers. This should be fixed
       -- in Halogen Next.
-      H.fromAff $ later (pure unit)
+      H.liftAff $ later (pure unit)
       queryInnerCard $ EQ.Load model
       for_ input (queryInnerCard ∘ uncurry EQ.ReceiveInput)
       for_ state (queryInnerCard ∘ EQ.ReceiveState)

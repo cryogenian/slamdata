@@ -42,10 +42,10 @@ import Halogen as H
 import Halogen.Component.Utils (raise)
 import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Wiring as Wiring
@@ -87,8 +87,8 @@ render ∷ String → State → HTML
 render sel state =
   HH.div
     [ HP.classes
-        [ HH.className "header-gripper"
-        , HH.className $ className state
+        [ HH.ClassName "header-gripper"
+        , HH.ClassName $ className state
         ]
     , HE.onMouseDown \evt →
         HEH.preventDefault $> Just (H.action $ StartDragging evt.clientY)
@@ -155,12 +155,12 @@ mkAnimation sel marginFrom marginTo = do
 eval ∷ String → (Query ~> DSL)
 eval sel (Init next) = do
   doc ←
-    H.fromEff
+    H.liftEff
       $ window
       >>= Win.document
 
   mbNavEl ←
-    H.fromEff
+    H.liftEff
       $ Pn.querySelector sel (Ht.htmlDocumentToParentNode doc)
       <#> N.toMaybe
   let
@@ -194,13 +194,13 @@ eval sel (Init next) = do
       H.subscribe $ H.eventSource attachAnimationEnd handleAnimationEnd
 
   { auth } ← H.liftH Wiring.expose
-  forever $ const (H.set $ Closing maxMargin) =<< H.fromAff (Bus.read auth.signIn)
+  forever $ const (H.put $ Closing maxMargin) =<< H.liftAff (Bus.read auth.signIn)
   pure next
 eval _ (StartDragging pos next) = do
   astate ← H.get
   case astate of
-    Closed → H.set (Dragging Down pos pos)
-    Opened → H.set (Dragging Up (pos - maxMargin) pos)
+    Closed → H.put (Dragging Down pos pos)
+    Opened → H.put (Dragging Up (pos - maxMargin) pos)
     _ → pure unit
   H.get >>= raise ∘ H.action ∘ Notify
   pure next
@@ -212,7 +212,7 @@ eval _ (StopDragging next) = do
         nextState Down = Opening
         nextState Up = Closing
       in
-        H.set (nextState dir $ current - s)
+        H.put (nextState dir $ current - s)
     _ → pure unit
   pure next
 eval _ (ChangePosition num next) = do
@@ -225,14 +225,14 @@ eval _ (ChangePosition num next) = do
       if num ≡ oldPos then oldDir else if num > oldPos then Down  else Up
   case astate of
     Dragging oldDir s old →
-      H.set (Dragging (direction old oldDir) s $ toSet s)
+      H.put (Dragging (direction old oldDir) s $ toSet s)
     _ → pure unit
   pure next
 eval _ (Animated next) = do
   astate ← H.get
   case astate of
-    Opening _ → H.set Opened
-    Closing _ → H.set Closed
+    Opening _ → H.put Opened
+    Closing _ → H.put Closed
     _ → pure unit
   H.get >>= raise ∘ H.action ∘ Notify
   pure next

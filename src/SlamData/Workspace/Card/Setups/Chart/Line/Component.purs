@@ -26,11 +26,11 @@ import Data.List as List
 import Global (readFloat, isNaN)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
+import Halogen.HTML as HH
 import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -201,14 +201,14 @@ renderAxisLabelAngle state =
 renderOptionalMarkers ∷ ST.State → HTML
 renderOptionalMarkers state =
   HH.form
-    [ HP.classes [ HH.className "chart-optional-markers" ]
+    [ HP.classes [ HH.ClassName "chart-optional-markers" ]
     , Cp.nonSubmit
     ]
     [ HH.label
         [ HP.classes [ B.controlLabel ] ]
         [ HH.text "Enable data point markers (disables Measure #3)" ]
     , HH.input
-        [ HP.inputType HP.InputCheckbox
+        [ HP.type_ HP.InputCheckbox
         , HP.checked state.optionalMarkers
         , ARIA.label "Enable data point markers"
         , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleOptionalMarkers

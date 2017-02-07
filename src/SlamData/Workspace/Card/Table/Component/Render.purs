@@ -26,9 +26,9 @@ import Data.String (singleton)
 
 import Halogen as H
 import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Render.Common (glyph)
@@ -67,7 +67,7 @@ renderHighLOD st =
           p = currentPageInfo st
         in
           [ HH.div
-              [ HP.classes [ HH.className "sd-card-table-content" ] ]
+              [ HP.classes [ HH.ClassName "sd-card-table-content" ] ]
               [ right <$> JT.renderJTable jTableOpts result.json ]
           , HH.div
             [ HP.classes [CSS.pagination, CSS.form] ]
@@ -108,7 +108,7 @@ pageField pageValue totalPages =
     [ submittable
         [ HH.text "Page"
         , HH.input
-            [ HP.inputType HP.InputNumber
+            [ HP.type_ HP.InputNumber
             , HP.value (fromInputValue pageValue)
             , HE.onValueInput (HE.input (\x → right ∘ SetCustomPage x))
             ]
@@ -146,7 +146,7 @@ pageSizeControls showCustom pageSize =
          $ [ HH.text "Per page:" ]
          ⊕ [ if showCustom
              then HH.input
-                [ HP.inputType HP.InputNumber
+                [ HP.type_ HP.InputNumber
                 , HP.value (fromInputValue pageSize)
                 , HE.onValueInput (HE.input (\v → right ∘ SetCustomPageSize v))
                 ]

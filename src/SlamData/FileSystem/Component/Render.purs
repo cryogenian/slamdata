@@ -22,10 +22,10 @@ import Data.Lens ((^.))
 
 import Halogen.HTML.Core (HTML, ClassName)
 import Halogen.HTML.Events.Handler as EH
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as E
+import Halogen.HTML as H
+import Halogen.HTML.Properties as P
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 
@@ -63,7 +63,7 @@ toolbar state =
     $ ( guard state.presentMountGuide $>
         Guide.render
           Guide.RightArrow
-          (H.className "sd-mount-guide")
+          (H.ClassName "sd-mount-guide")
           DismissMountGuide
           "To begin exploring data, please press the Mount button"
       )
@@ -96,7 +96,7 @@ toolbar state =
   file =
     H.li_
       [ H.input
-          [ P.inputType P.InputFile
+          [ P.type_ P.InputFile
           , E.onChange $ E.input (FileListChanged <<< _.target)
           , P.id_ "upload"
           ]

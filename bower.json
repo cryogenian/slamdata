@@ -15,7 +15,7 @@
     "tests"
   ],
   "dependencies": {
-    "purescript-ace-halogen": "^4.0.0",
+    "purescript-ace-halogen": "#3349982ac4e6fb191b20768145a4223efd072f6b",
     "purescript-aff-coroutines": "^4.0.0",
     "purescript-aff": "^2.0.1",
     "purescript-affjax": "^3.0.0",
@@ -30,15 +30,15 @@
     "purescript-freeap": "^2.0.0",
     "purescript-functors": "^1.0.0",
     "purescript-generics": "^3.1.0",
-    "purescript-halogen-bootstrap": "^4.0.0",
-    "purescript-halogen-css": "^4.0.0",
-    "purescript-halogen-echarts": "^3.0.0",
+    "purescript-halogen-bootstrap": "#56ea0abfdff3475c9a0de76f917bde61f12a3e1c",
+    "purescript-halogen-css": "^5.0.0-rc.1",
+    "purescript-halogen-echarts": "^4.0.0-rc.1",
     "purescript-halogen-menu": "^3.0.0",
-    "purescript-halogen": "^0.12.0",
+    "purescript-halogen": "^1.0.0-rc.2",
     "purescript-js-timers": "^2.0.0",
-    "purescript-jtable": "^3.0.0",
+    "purescript-jtable": "^4.0.0-rc.1",
     "purescript-maps": "^2.0.1",
-    "purescript-markdown-halogen": "^3.0.0",
+    "purescript-markdown-halogen": "^4.0.0-rc.2",
     "purescript-markdown": "^8.0.0",
     "purescript-minimatch": "^0.2.0",
     "purescript-oidc-crypt-utils": "^5.0.0",
@@ -68,5 +68,8 @@
     "purescript-quasar-test-starter": "quasar-test-starter#^0.2.0",
     "purescript-strongcheck": "^2.0.0",
     "purescript-webdriver": "^3.0.0"
+  },
+  "resolutions": {
+    "purescript-halogen": "^1.0.0-rc.2"
   }
 }

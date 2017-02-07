@@ -40,9 +40,9 @@ import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
 import Halogen.Component.Utils (raise)
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
 import SlamData.Notification as N
@@ -151,18 +151,18 @@ render st =
   case st.renderMode of
     Notifications →
       HH.div
-        [ HP.class_ (HH.className "sd-notifications") ]
+        [ HP.class_ (HH.ClassName "sd-notifications") ]
         [ renderNotification Dismissed st.dismissed
         , renderNotification Current st.current
         ]
     ExpandableList Shrunk →
       HH.div
-        [ HP.class_ $ HH.className "sd-notifications-list" ]
+        [ HP.class_ $ HH.ClassName "sd-notifications-list" ]
         if (Array.length all > 0)
           then
             [ HH.button
-                [ HP.classes [ HH.className "btn", HH.className "btn-primary" ]
-                , HP.buttonType HP.ButtonButton
+                [ HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
+                , HP.type_ HP.ButtonButton
                 , HE.onClick $ HE.input_ ExpandList
                 ]
                 [ HH.text "More details" ]
@@ -171,7 +171,7 @@ render st =
             []
     ExpandableList Expanded →
       HH.div
-        [ HP.class_ (HH.className "sd-notifications-list") ]
+        [ HP.class_ (HH.ClassName "sd-notifications-list") ]
         [ HH.ul_ $ renderListItem <$> all ]
 
   where
@@ -180,22 +180,22 @@ render st =
 
   renderNotification status = maybe (HH.text "") \n →
     HH.div
-      [ HP.class_ (HH.className "sd-notification-spacer")
+      [ HP.class_ (HH.ClassName "sd-notification-spacer")
       , HP.key (show n.id)
       ]
       [ HH.div
           [ HP.classes (notificationClasses status n.options.notification) ]
           [ HH.div
-              [ HP.class_ (HH.className "sd-notification-text") ]
+              [ HP.class_ (HH.ClassName "sd-notification-text") ]
               [ HH.text (notificationText n.options.notification)
               , renderAction n
               , renderDetail n
               ]
           , HH.div
-              [ HP.class_ (HH.className "sd-notification-buttons") ]
+              [ HP.class_ (HH.ClassName "sd-notification-buttons") ]
               [ HH.button
-                  [ HP.class_ (HH.className "sd-notification-dismiss")
-                  , HP.buttonType HP.ButtonButton
+                  [ HP.class_ (HH.ClassName "sd-notification-dismiss")
+                  , HP.type_ HP.ButtonButton
                   , HE.onClick (HE.input_ Dismiss)
                   ]
                   [ HH.text "×" ]
@@ -220,10 +220,10 @@ render st =
       # maybe
         (HH.text "")
         (\(N.Details d) → HH.div
-          [ HP.class_ (HH.className "sd-notification-detail") ]
+          [ HP.class_ (HH.ClassName "sd-notification-detail") ]
           [ HH.button
-              [ HP.classes [ HH.className "btn", HH.className "btn-default", HH.className "btn-sm" ]
-              , HP.buttonType HP.ButtonButton
+              [ HP.classes [ HH.ClassName "btn", HH.ClassName "btn-default", HH.ClassName "btn-sm" ]
+              , HP.type_ HP.ButtonButton
               , HE.onClick (HE.input_ ToggleDetail)
               ]
               [ HH.text
@@ -236,15 +236,15 @@ render st =
                (HH.text "")
                (\(N.ActionOptions a) →
                   HH.button
-                    [ HP.classes [ HH.className "btn", HH.className "btn-primary", HH.className "btn-sm" ]
-                    , HP.buttonType HP.ButtonButton
+                    [ HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary", HH.ClassName "btn-sm" ]
+                    , HP.type_ HP.ButtonButton
                     , HE.onClick (HE.input_ $ Action a.action)
                     ]
                     [ HH.text a.actionMessage ])
           , case n.detailsPresented of
               DetailsPresented →
                 HH.div
-                  [ HP.class_ (HH.className "sd-notification-detail") ]
+                  [ HP.class_ (HH.ClassName "sd-notification-detail") ]
                   [ HH.p_ [ HH.text d ] ]
               DetailsHidden → HH.text ""
           ])
@@ -255,16 +255,16 @@ render st =
         (HH.text "")
         (\(N.ActionOptions a) →
           HH.div
-            [ HP.class_ (HH.className "sd-notification-detail") ]
+            [ HP.class_ (HH.ClassName "sd-notification-detail") ]
             [ HH.p_ [ HH.text a.message ] ])
 
   notificationClasses status n =
-    [ HH.className "sd-notification"
-    , HH.className case n of
+    [ HH.ClassName "sd-notification"
+    , HH.ClassName case n of
         N.Info _    → "info"
         N.Warning _ → "warning"
         N.Error _   → "error"
-    , HH.className case status of
+    , HH.ClassName case status of
         Current   → "current"
         Dismissed → "dismissed"
     ]
@@ -278,10 +278,10 @@ eval ∷ Query ~> NotifyDSL
 eval = case _ of
   Init next → do
     { bus } ← H.liftH Wiring.expose
-    forever (raise <<< H.action <<< Push =<< H.fromAff (Bus.read bus.notify))
+    forever (raise <<< H.action <<< Push =<< H.liftAff (Bus.read bus.notify))
   Push options next → do
     st ← H.get
-    dismiss ← H.fromAff makeVar
+    dismiss ← H.liftAff makeVar
     when
       (not (options `optionsEqItem` st.current ∨ options `optionsEqItem` Array.last st.queue))
       do
@@ -318,7 +318,7 @@ dismissNotification ∷ NotifyDSL Unit
 dismissNotification = do
   current ← H.gets _.current
   for_ current \{ dismiss } →
-    H.fromAff $ putVar dismiss unit
+    H.liftAff $ putVar dismiss unit
 
 drainQueue ∷ NotifyDSL Unit
 drainQueue = do
@@ -339,7 +339,7 @@ drainQueue = do
       -- TODO: Make notifications with timeouts not disapear in ExpandableList
       -- render mode
       for_ head.options.timeout \(Milliseconds ms) →
-        H.fromAff $ forkAff $ later' (Int.floor ms) (putVar head.dismiss unit)
+        H.liftAff $ forkAff $ later' (Int.floor ms) (putVar head.dismiss unit)
 
-      H.fromAff $ takeVar head.dismiss
+      H.liftAff $ takeVar head.dismiss
       drainQueue

@@ -29,8 +29,8 @@ import Data.Lens ((.~))
 
 import Halogen as H
 import Halogen.Component.Utils as HU
-import Halogen.HTML.CSS.Indexed as HCSS
-import Halogen.HTML.Indexed as HH
+import Halogen.HTML.CSS as HCSS
+import Halogen.HTML as HH
 
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
@@ -67,7 +67,7 @@ render state =
     $ (guard state.presentAddCardGuide $>
         Guide.render
           Guide.DownArrow
-          (HH.className "sd-add-card-guide")
+          (HH.ClassName "sd-add-card-guide")
           (DismissAddCardGuide)
           (addCardGuideText state.input))
     ⊕ [ HH.slot' CS.cpActionFilter unit \_ →

@@ -29,7 +29,7 @@ import Data.Argonaut.Encode as JE
 import Data.Lens as Lens
 import Data.List as L
 
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties as HP
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen

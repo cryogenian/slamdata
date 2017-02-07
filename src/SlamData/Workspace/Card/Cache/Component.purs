@@ -26,10 +26,10 @@ import Data.Lens ((.~), (?~))
 import Data.Path.Pathy as Path
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.CSS as CSS
@@ -60,7 +60,7 @@ render state =
   HH.div
     [ HP.class_ CSS.form ]
     [ HH.input
-        [ HP.inputType HP.InputText
+        [ HP.type_ HP.InputText
         , HP.placeholder "Cache file destination"
         , ARIA.label "Cache file destination"
         , HE.onValueInput $ HE.input \s → right ∘ UpdatePathString s

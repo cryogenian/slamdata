@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Halogen.HTML.Core as H
 import Halogen.HTML.Events.Handler (preventDefault)
 import Halogen.HTML.Properties (Element)
-import Halogen.HTML.Properties.Indexed (IProp, Size, I, InteractiveEvents, GlobalProperties)
+import Halogen.HTML.Properties (IProp, Size, I, InteractiveEvents, GlobalProperties)
 
 import Unsafe.Coerce (unsafeCoerce)
 

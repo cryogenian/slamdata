@@ -22,7 +22,7 @@ module Halogen.Component.Utils.Debounced
 
 import Prelude
 
-import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.Class (class MonadAff)
 
 import Data.Lens (Lens', view, (?~))
 import Data.Maybe (Maybe(..))
@@ -39,7 +39,7 @@ type DebounceTrigger f g = f Unit → g Unit
 -- | been created.
 fireDebouncedQuery'
   ∷ ∀ s s' f f' g p eff
-  . (Functor g, Affable (DebounceEffects eff) g)
+  . (MonadAff (DebounceEffects eff) g)
   ⇒ Milliseconds
   → Lens' s (Maybe (DebounceTrigger f g))
   → H.Action f

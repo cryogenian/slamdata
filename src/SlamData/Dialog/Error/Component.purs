@@ -19,9 +19,9 @@ module SlamData.Dialog.Error.Component where
 import SlamData.Prelude
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
@@ -39,11 +39,11 @@ nonModalComp = H.component { render: nonModalRender, eval }
 
 nonModalRender ∷ State → H.ComponentHTML Query
 nonModalRender (State message) =
-  HH.div [ HP.classes [ HH.className "deck-dialog-error" ] ]
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-error" ] ]
     [ HH.h4_ [ HH.text "Error" ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-body", B.alert, B.alertDanger ] ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-body", B.alert, B.alertDanger ] ]
         [ HH.text message ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         [ HH.button
             [ HP.classes [ B.btn ]
             , HE.onClick (HE.input_ Dismiss)

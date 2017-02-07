@@ -19,9 +19,9 @@ module SlamData.Render.Common where
 import SlamData.Prelude
 
 import Halogen.HTML.Core (HTML, ClassName)
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Render.CSS as Rc
@@ -48,13 +48,13 @@ formGroup = classedDiv B.formGroup
 searchFieldIcon ∷ ∀ f p. HTML p (f Unit)
 searchFieldIcon =
   HH.span
-    [ HP.class_ (HH.className "sd-search-field-icon") ]
+    [ HP.class_ (HH.ClassName "sd-search-field-icon") ]
     []
 
 clearFieldIcon ∷ ∀ f p. String → HTML p (f Unit)
 clearFieldIcon label =
   HH.span
-    [ HP.class_ (HH.className "sd-clear-field-icon")
+    [ HP.class_ (HH.ClassName "sd-clear-field-icon")
     , HP.title label
     , ARIA.label label
     ]
@@ -63,7 +63,7 @@ clearFieldIcon label =
 busyFieldIcon ∷ ∀ f p. String → HTML p (f Unit)
 busyFieldIcon label =
   HH.span
-    [ HP.class_ (HH.className "sd-busy-field-icon")
+    [ HP.class_ (HH.ClassName "sd-busy-field-icon")
     , HP.title label
     , ARIA.label label
     ]

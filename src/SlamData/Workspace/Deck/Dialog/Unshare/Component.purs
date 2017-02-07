@@ -35,9 +35,9 @@ import Data.Path.Pathy as Pt
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.CustomProps as Cp
 
@@ -165,11 +165,11 @@ comp =
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ HH.className "deck-dialog-unshare" ] ]
+    [ HP.classes [ HH.ClassName "deck-dialog-unshare" ] ]
     [ HH.h4_ [ HH.text "Unshare deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
             ⊕ if state.loading then [ ] else [ B.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -178,7 +178,7 @@ render state =
 
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-body" ]
+            $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ (if state.loading then [ B.hidden ] else [ ])
         ]
         [ HH.form
@@ -227,7 +227,7 @@ render state =
       in
        HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-footer" ]
+            $ [ HH.ClassName "deck-dialog-footer" ]
             ⊕ (if state.loading then [ B.hidden ] else [ ])
         ]
         [ HH.div
@@ -250,7 +250,7 @@ render state =
 
         , HH.button
             [ HE.onClick (HE.input_ Dismiss)
-            , HP.buttonType HP.ButtonButton
+            , HP.type_ HP.ButtonButton
             , HP.classes [ B.btn, B.btnDefault ]
             , HP.disabled somethingHappening
             ]
@@ -264,7 +264,7 @@ render state =
 renderUserOrGroup ∷ (String × Permission) → Array HTML
 renderUserOrGroup (name × perm) =
   [ HH.div
-      [ HP.class_ $ HH.className "sd-unshare-subject" ]
+      [ HP.class_ $ HH.ClassName "sd-unshare-subject" ]
       [ HH.label_ [ HH.text name ]
       , HH.div
           [ HP.classes $ if perm.state ≡ Just ModifyError then [ B.hasError ] else [ ] ]
@@ -313,16 +313,16 @@ renderUserOrGroup (name × perm) =
 renderToken ∷ TokenPermission → HTML
 renderToken token =
   HH.div
-    [ HP.class_ $ HH.className "sd-unshare-subject" ]
+    [ HP.class_ $ HH.ClassName "sd-unshare-subject" ]
     [ HH.label_
         [ HH.text $ fromMaybe "Untitled token" token.name
         ]
     , HH.span
-        [ HP.classes [ HH.className "sd-unshare-subject-access-type" ] ]
+        [ HP.classes [ HH.ClassName "sd-unshare-subject-access-type" ] ]
         [ HH.text $ printShareResume token.resume ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "sd-url" ]
+            $ [ HH.ClassName "sd-url" ]
             ⊕ if token.state ≡ Just ModifyError then [ B.hasError ] else [ ]
         ]
         [ HH.input
@@ -382,11 +382,11 @@ eval (Init next) = next <$ do
   H.modify (_{ loading = false})
 eval (InitZClipboard token mbEl next) =
   next <$ for_ mbEl \el → do
-    H.fromEff $ Z.make (htmlElementToElement el)
+    H.liftEff $ Z.make (htmlElementToElement el)
       >>= Z.onCopy (Z.setData "text/plain" token)
 eval (Dismiss next) = pure next
 eval (SelectElement el next) =
-  next <$ H.fromEff (select el)
+  next <$ H.liftEff (select el)
 eval (PermissionResumeChanged name string next) = next <$ do
   state ← H.get
   H.modify (_{errored = false})
@@ -539,19 +539,19 @@ deletePermission
   ∷ Map.Map QTA.PermissionId QTA.ActionR
   → DSL (Map.Map QTA.PermissionId QTA.ActionR)
 deletePermission permissionMap = do
-  r ← H.fromEff $ newRef $ Map.empty × Map.size permissionMap
-  resultVar ← H.fromAff makeVar
+  r ← H.liftEff $ newRef $ Map.empty × Map.size permissionMap
+  resultVar ← H.liftAff makeVar
   H.liftH $ chunkedParTraverse (go r resultVar) (Map.toList permissionMap) (splitList 20) L.concat
-  H.fromAff $ takeVar resultVar
+  H.liftAff $ takeVar resultVar
   where
   go r resultVar (pid × act) = do
     result ← Q.deletePermission pid
-    H.fromEff $ modifyRef r \(acc × count) → acc × (count - 1)
+    H.liftEff $ modifyRef r \(acc × count) → acc × (count - 1)
     case result of
-      Left _ → H.fromEff $ modifyRef r \(acc × count) → (Map.insert pid act acc) × count
+      Left _ → H.liftEff $ modifyRef r \(acc × count) → (Map.insert pid act acc) × count
       Right _ → pure unit
-    (acc × count) ← H.fromEff $ readRef r
-    when (count ≡ 0) $ H.fromAff $ putVar resultVar acc
+    (acc × count) ← H.liftEff $ readRef r
+    when (count ≡ 0) $ H.liftAff $ putVar resultVar acc
 
 
 adjustPermissions ∷ Array QTA.PermissionR → Model.SharingInput → AdjustedPermissions

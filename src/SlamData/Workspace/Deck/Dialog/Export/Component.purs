@@ -37,10 +37,10 @@ import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 import Halogen as H
 import Halogen.CustomProps as CP
 import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils (raise)
 
@@ -125,11 +125,11 @@ render state
 
 renderPublishURI ∷ State → H.ComponentHTML Query
 renderPublishURI state =
-  HH.div [ HP.classes [ HH.className "deck-dialog-share" ] ]
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-share" ] ]
     [ HH.h4_ [ HH.text "Publish deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
             ⊕ if state.loading then [ ] else [ B.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -137,7 +137,7 @@ renderPublishURI state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-body" ]
+            $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         [ HH.p_ message
@@ -164,7 +164,7 @@ renderPublishURI state =
                         , HE.onClick (HE.input_ Dismiss)
                         , HP.ref (H.action ∘ Init)
                         , HP.id_ "copy-button"
-                        , HP.buttonType HP.ButtonButton
+                        , HP.type_ HP.ButtonButton
                         , HP.disabled state.submitting
                         ]
                         [ glyph B.glyphiconCopy ]
@@ -174,7 +174,7 @@ renderPublishURI state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-footer" ]
+            $ [ HH.ClassName "deck-dialog-footer" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         $ [ HH.div
@@ -189,7 +189,7 @@ renderPublishURI state =
           , HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
               , HE.onClick (HE.input_ Dismiss)
-              , HP.buttonType HP.ButtonButton
+              , HP.type_ HP.ButtonButton
               ]
               [ HH.text "Cancel" ]
           ]
@@ -199,7 +199,7 @@ renderPublishURI state =
                  , HE.onClick (HE.input_ Revoke)
                  , ARIA.label "Revoke access to this deck"
                  , HP.title "Revoke access to this deck"
-                 , HP.buttonType HP.ButtonButton
+                 , HP.type_ HP.ButtonButton
                  , HP.enabled $ state.canRevoke ∧ not state.submitting
                  ]
                  [ HH.text "Revoke" ])
@@ -237,11 +237,11 @@ renderPublishURI state =
 
 renderPublishIFrame ∷ State → H.ComponentHTML Query
 renderPublishIFrame state =
-  HH.div [ HP.classes [ HH.className "deck-dialog-embed" ] ]
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
     [ HH.h4_ [ HH.text  "Embed deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
             ⊕ if state.loading then [ ] else [ B.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -249,7 +249,7 @@ renderPublishIFrame state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-body" ]
+            $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         [ HH.form
@@ -270,9 +270,9 @@ renderPublishIFrame state =
                   [ HP.id_ "copy-button"
                   , HP.classes
                       $ [ B.btn, B.btnDefault, B.btnXs ]
-                      ⊕ [ HH.className "textarea-copy-button" ]
+                      ⊕ [ HH.ClassName "textarea-copy-button" ]
                   , HP.ref (H.action ∘ Init)
-                  , HP.buttonType HP.ButtonButton
+                  , HP.type_ HP.ButtonButton
                   , HP.disabled state.submitting
                   ]
                   [ glyph B.glyphiconCopy ]
@@ -280,7 +280,7 @@ renderPublishIFrame state =
                   [ (if state.isLoggedIn then HH.label_ else HH.p_)
                     $ ((guard state.isLoggedIn)
                        $> HH.input
-                           [ HP.inputType HP.InputCheckbox
+                           [ HP.type_ HP.InputCheckbox
                            , HP.checked state.shouldGenerateToken
                            , HP.disabled state.submitting
                            , HE.onChecked (HE.input_ ToggleShouldGenerateToken)
@@ -292,7 +292,7 @@ renderPublishIFrame state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-footer" ]
+            $ [ HH.ClassName "deck-dialog-footer" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         $ [ HH.div
@@ -307,7 +307,7 @@ renderPublishIFrame state =
           , HH.button
               [ HP.classes [ B.btn ]
               , HE.onClick (HE.input_ Dismiss)
-              , HP.buttonType HP.ButtonButton
+              , HP.type_ HP.ButtonButton
               ]
               [ HH.text "Cancel" ]
           ]
@@ -317,7 +317,7 @@ renderPublishIFrame state =
                 , HE.onClick (HE.input_ Revoke)
                 , HP.title "Revoke access to this deck"
                 , ARIA.label "Revoke access to this deck"
-                , HP.buttonType HP.ButtonButton
+                , HP.type_ HP.ButtonButton
                 , HP.enabled $ state.canRevoke ∧ not state.submitting
                 ]
                 [ HH.text "Revoke" ])
@@ -348,11 +348,11 @@ eval (Dismiss next) = pure next
 eval (Init mbEl next) = next <$ do
   state ← H.get
 
-  copyRef ← H.fromEff $ newRef ""
+  copyRef ← H.liftEff $ newRef ""
   H.modify _{copyRef = Just copyRef}
 
   for_ mbEl \htmlEl →
-    H.fromEff
+    H.liftEff
     $ Z.make (htmlElementToElement htmlEl)
     >>= Z.onCopy \z → do
       val ← readRef copyRef
@@ -401,7 +401,7 @@ eval (Init mbEl next) = next <$ do
                       }
   updateCopyVal
 
-eval (SelectElement el next) = next <$ H.fromEff (select el)
+eval (SelectElement el next) = next <$ H.liftEff (select el)
 eval (Revoke next) = do
   mbPermToken ← H.gets _.permToken
   for_ mbPermToken \tok → do
@@ -464,13 +464,13 @@ workspaceTokenName workspacePath idToken =
 
 updateCopyVal ∷ DSL Unit
 updateCopyVal = do
-  locString ← H.fromEff locationString
+  locString ← H.liftEff locationString
   state ← H.get
   let
     copyVal = renderCopyVal locString state
 
   H.modify _{ copyVal = copyVal }
-  H.fromEff $ for_ state.copyRef \r → writeRef r copyVal
+  H.liftEff $ for_ state.copyRef \r → writeRef r copyVal
 
 renderCopyVal ∷ String → State → String
 renderCopyVal locString state

@@ -34,8 +34,8 @@ import Data.Map as Map
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, (:>), cpL, cpR)
 import Halogen.Component.Utils (raise')
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Monad (Slam)
@@ -174,7 +174,7 @@ comp =
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ HH.className "deck-dialog" ] ]
+    [ HP.classes [ HH.ClassName "deck-dialog" ] ]
     $ foldMap (pure ∘ dialog) state
   where
 
@@ -239,11 +239,11 @@ render state =
 
 
 eval ∷ Query ~> DSL
-eval (Dismiss next) = H.set Nothing $> next
-eval (FlipToFront next) = H.set Nothing $> next
-eval (SetDeckName _ next) = H.set Nothing $> next
-eval (Confirm _ _ next) = H.set Nothing $> next
-eval (Show d next) = H.set (Just d) $> next
+eval (Dismiss next) = H.put Nothing $> next
+eval (FlipToFront next) = H.put Nothing $> next
+eval (SetDeckName _ next) = H.put Nothing $> next
+eval (Confirm _ _ next) = H.put Nothing $> next
+eval (Show d next) = H.put (Just d) $> next
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek =

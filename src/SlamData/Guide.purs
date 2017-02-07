@@ -19,11 +19,11 @@ import Prelude
 import Data.Array as Array
 import Data.Maybe (Maybe(..), maybe)
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Events.Handler as EH
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 type Step = { imageUri ∷ String, text ∷ String }
 data Arrow = RightArrow | DownArrow
@@ -31,26 +31,26 @@ data Arrow = RightArrow | DownArrow
 arrowClassName ∷ Arrow → HH.ClassName
 arrowClassName =
   case _ of
-    RightArrow -> HH.className "sd-guide-right-arrow"
-    DownArrow -> HH.className "sd-guide-down-arrow"
+    RightArrow -> HH.ClassName "sd-guide-right-arrow"
+    DownArrow -> HH.ClassName "sd-guide-down-arrow"
 
 render ∷ ∀ f a. Arrow → HH.ClassName → (Unit → f Unit) → String → HH.HTML a (f Unit)
 render arrow className dismissQuery text =
   HH.div
-    [ HP.classes [ HH.className "sd-guide", className ] ]
+    [ HP.classes [ HH.ClassName "sd-guide", className ] ]
     [ HH.div
         [ HP.classes
-            [ HH.className "sd-notification"
+            [ HH.ClassName "sd-notification"
             , arrowClassName arrow
             ]
         ]
         [ HH.div
-            [ HP.class_ $ HH.className "sd-notification-text" ]
+            [ HP.class_ $ HH.ClassName "sd-notification-text" ]
             [ HH.text text ]
         , HH.div
-            [ HP.class_ $ HH.className "sd-notification-buttons" ]
+            [ HP.class_ $ HH.ClassName "sd-notification-buttons" ]
             [ HH.button
-                [ HP.classes [ HH.className "sd-notification-dismiss" ]
+                [ HP.classes [ HH.ClassName "sd-notification-dismiss" ]
                 , HE.onClick (HE.input_ dismissQuery)
                 , ARIA.label "Dismiss"
                 ]
@@ -86,10 +86,10 @@ renderStepByStep
 renderStepByStep queries imageUri text last =
   HH.div
     [ HE.onClick \_ → EH.stopPropagation $> Just (H.action $ queries.dismiss)
-    , HP.class_ $ HH.className "sd-step-by-step-guide-backdrop"
+    , HP.class_ $ HH.ClassName "sd-step-by-step-guide-backdrop"
     ]
     [ HH.div
-      [ HP.class_ $ HH.className "sd-step-by-step-guide"
+      [ HP.class_ $ HH.ClassName "sd-step-by-step-guide"
       , HE.onClick (\_ → EH.stopPropagation $> Nothing)
       ]
       ([ HH.img [ HP.src imageUri ] , HH.p_ [ HH.text text ] ] <> pure buttons)

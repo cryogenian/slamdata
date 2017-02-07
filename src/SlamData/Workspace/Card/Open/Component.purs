@@ -29,8 +29,8 @@ import Data.Path.Pathy as Path
 import Data.Unfoldable (unfoldr)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.FileSystem.Resource as R
@@ -83,7 +83,7 @@ renderHighLOD ∷ State → HTML
 renderHighLOD state =
   HH.div
     [ HP.classes
-        $ (guard (state.loading) $> HH.className "loading")
+        $ (guard (state.loading) $> HH.ClassName "loading")
         <> (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ HH.slot unit \_ →
@@ -96,10 +96,10 @@ renderItem ∷ R.Resource → MC.ItemHTML
 renderItem r =
   HH.div
     [ HP.classes
-        [ HH.className "sd-miller-column-item-inner"
+        [ HH.ClassName "sd-miller-column-item-inner"
         , either
-            (const $ HH.className "sd-miller-column-item-node")
-            (const $ HH.className "sd-miller-column-item-leaf")
+            (const $ HH.ClassName "sd-miller-column-item-node")
+            (const $ HH.ClassName "sd-miller-column-item-leaf")
             (R.getPath r)
         ]
     ]

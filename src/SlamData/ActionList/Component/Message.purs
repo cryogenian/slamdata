@@ -14,18 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.ActionList.Component.Query where
+module SlamData.ActionList.Component.Message where
 
-import SlamData.Prelude
-
-import DOM.HTML.Types (HTMLElement)
-import SlamData.ActionList.Action (Action, Dimensions)
-
-data Query a next
-  = HandleSelected (Action a) next
-  | UpdateFilter String next
-  | UpdateActions (Array (Action a)) next
-  | CalculateBoundingRect next
-  | GetBoundingRect (Maybe Dimensions → next)
-  | SetBoundingRect Dimensions next
-  | SetBoundingElement (Maybe HTMLElement) next
+data Message a = Selected a

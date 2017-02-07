@@ -32,10 +32,10 @@ import DOM.HTML.Types (htmlElementToElement) as DOM
 import DOM.Node.Element (scrollTop, scrollHeight, clientHeight) as DOM
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
@@ -71,17 +71,17 @@ component ispec colPath =
     in
       HH.div_
         [ HH.div
-            [ HP.class_ (HH.className "sd-miller-column-filter") ]
+            [ HP.class_ (HH.ClassName "sd-miller-column-filter") ]
             [ HH.div
-                [ HP.class_ (HH.className "sd-action-filter-icon") ]
+                [ HP.class_ (HH.ClassName "sd-action-filter-icon") ]
                 [ RC.searchFieldIcon ]
             , HH.input
-                [ HP.class_ (HH.className "sd-form-input")
+                [ HP.class_ (HH.ClassName "sd-form-input")
                 , HP.value filterText
                 , HE.onValueInput (HE.input HandleFilterChange)
                 ]
             , HH.button
-                [ HP.buttonType HP.ButtonButton
+                [ HP.type_ HP.ButtonButton
                 , HE.onClick (HE.input_ (UpdateFilter ""))
                 , HP.enabled (filterText /= "")
                 ]
@@ -97,14 +97,14 @@ component ispec colPath =
   loadIndicator ∷ HTML a i s f
   loadIndicator =
     HH.li
-      [ HP.class_ (HH.className "sd-miller-column-loading") ]
+      [ HP.class_ (HH.ClassName "sd-miller-column-loading") ]
       [ HH.span_ [ HH.text "Loading..." ] ]
 
   renderSelected ∷ Maybe a → HTML a i s f
   renderSelected = case _ of
     Nothing →
       HH.div
-        [ HP.class_ (HH.className "sd-miller-column-selection") ]
+        [ HP.class_ (HH.ClassName "sd-miller-column-selection") ]
         [ HH.span_ [ HH.text "No selection" ] ]
     Just x →
       let
@@ -113,15 +113,15 @@ component ispec colPath =
       in
         HH.div
           [ HP.classes
-              [ HH.className "sd-miller-column-selection"
-              , HH.className "selected"
+              [ HH.ClassName "sd-miller-column-selection"
+              , HH.ClassName "selected"
               ]
           , HP.title deselLabel
           , ARIA.label deselLabel
           , HE.onClick $ HE.input_ Deselect
           ]
           [ HH.span
-              [ HP.class_ (HH.className "sd-miller-column-selection-label") ]
+              [ HP.class_ (HH.ClassName "sd-miller-column-selection-label") ]
               [ HH.text label ]
           , RC.clearFieldIcon deselLabel
           ]
@@ -166,7 +166,7 @@ component ispec colPath =
       load
       pure next
     HandleScroll el next → do
-      remain ← H.fromEff do
+      remain ← H.liftEff do
         let ul = DOM.htmlElementToElement el
         height <- DOM.clientHeight ul
         scrollTop <- DOM.scrollTop ul

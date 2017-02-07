@@ -25,10 +25,10 @@ import SlamData.Prelude
 import Data.Lens ((.~))
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -59,7 +59,7 @@ render state =
   HH.div
     [ HP.class_ CSS.form ]
     [ HH.input
-        [ HP.inputType HP.InputText
+        [ HP.type_ HP.InputText
         , HP.placeholder "Search string"
         , ARIA.label "Search string"
         , HE.onValueInput $ HE.input \str → right ∘ UpdateSearch str

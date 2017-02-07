@@ -22,10 +22,10 @@ import Data.List (List)
 import Data.List as List
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -108,10 +108,10 @@ renderNode ∷ ∀ s. (s → String) → Either s s → MC.ItemHTML
 renderNode f node =
   HH.div
     [ HP.classes
-        [ HH.className "sd-miller-column-item-inner"
+        [ HH.ClassName "sd-miller-column-item-inner"
         , either
-            (const $ HH.className "sd-miller-column-item-node")
-            (const $ HH.className "sd-miller-column-item-leaf")
+            (const $ HH.ClassName "sd-miller-column-item-node")
+            (const $ HH.ClassName "sd-miller-column-item-leaf")
             node
         ]
     ]
@@ -131,12 +131,12 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
   render ∷ State s → HTML s
   render st =
     HH.div
-      [ HP.classes [ HH.className "sd-dimension-picker" ] ]
+      [ HP.classes [ HH.ClassName "sd-dimension-picker" ] ]
       [ HH.div
-          [ HP.classes [ HH.className "sd-dimension-picker-title" ] ]
+          [ HP.classes [ HH.ClassName "sd-dimension-picker-title" ] ]
           [ HH.h1_ [ HH.text opts.title ]
           , HH.button
-              [ HP.classes [ HH.className "sd-dismiss-button" ]
+              [ HP.classes [ HH.ClassName "sd-dismiss-button" ]
               , HP.title "Dismiss"
               , ARIA.label "Dismiss"
               , HE.onClick (HE.input_ Dismiss)
@@ -144,14 +144,14 @@ picker opts = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF
               [ HH.text "×"]
           ]
       , HH.div
-          [ HP.classes [ HH.className "sd-dimension-picker-content" ] ]
+          [ HP.classes [ HH.ClassName "sd-dimension-picker-content" ] ]
           [ HH.slot unit \_ →
               { component: MC.component columnOptions
               , initialState: H.parentState (MCT.initialStateFromTree columnOptions.id opts.values)
               }
           ]
       , HH.div
-          [ HP.classes [ HH.className "sd-dimension-picker-toolbar" ] ]
+          [ HP.classes [ HH.ClassName "sd-dimension-picker-toolbar" ] ]
           [ HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
               , ARIA.label "Dismiss"

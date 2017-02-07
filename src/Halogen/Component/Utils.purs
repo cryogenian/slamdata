@@ -22,7 +22,7 @@ import Control.Monad.Aff (Aff, Canceler, forkAff, later', runAff)
 import Control.Monad.Aff.AVar (AVAR, AVar, makeVar, putVar, takeVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
-import Control.Monad.Aff.Free (class Affable, fromAff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (liftEff)
 
 import Data.Either as E
@@ -34,84 +34,54 @@ import Halogen.Query.EventSource as ES
 
 import Math as Math
 
-liftH' ∷ ∀ s s' f f' g p a. g a → H.ParentDSL s s' f f' g p a
-liftH' = H.liftH <<< H.liftH
-
 withCanceler
-  ∷ ∀ a eff g
-  . (Bind g, Affable (avar ∷ AVAR | eff) g)
-  ⇒ (Canceler (avar ∷ AVAR | eff) → g Unit)
+  ∷ ∀ a eff m
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ (Canceler (avar ∷ AVAR | eff) → m Unit)
   → Aff (avar ∷ AVAR | eff) a
-  → g a
+  → m a
 withCanceler act aff = do
-  v ← fromAff makeVar
-  canceler ← fromAff $ forkAff do
+  v ← liftAff makeVar
+  canceler ← liftAff $ forkAff do
     res ← aff
     putVar v res
   act canceler
-  fromAff $ takeVar v
-
-liftWithCanceler
-  ∷ ∀ s f g eff a
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
-  ⇒ (Canceler (avar ∷ AVAR | eff) → Unit → f Unit)
-  → Aff (avar ∷ AVAR | eff) a
-  → H.ComponentDSL s f g a
-liftWithCanceler f aff = do
-  withCanceler (\c → void <$> sendAfter zero $ f c unit) aff
+  liftAff $ takeVar v
 
 liftWithCanceler'
-  ∷ ∀ s s' f f' g p a eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ∷ ∀ s f g p o m a eff
+  . MonadAff (avar ∷ AVAR | eff) m
   ⇒ (Canceler (avar ∷ AVAR | eff) → Unit → f Unit)
   → Aff (avar ∷ AVAR | eff) a
-  → H.ParentDSL s s' f f' g p a
+  → H.HalogenM s f g p o m a
 liftWithCanceler' f aff = do
   withCanceler (\c → void <$> sendAfter' zero $ f c unit) aff
 
-sendAfter
-  ∷ ∀ s f g eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
-  ⇒ Milliseconds
-  → f Unit
-  → H.ComponentDSL s f g (Canceler (avar ∷ AVAR | eff))
-sendAfter ms action = do
-  cancelerVar ← H.fromAff makeVar
-  H.subscribe $ oneTimeEventSource ms action cancelerVar
-  H.fromAff $ takeVar cancelerVar
-
 sendAfter'
-  ∷ ∀ s s' f f' g p eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ∷ ∀ s f g m p eff
+  . MonadAff (avar ∷ AVAR | eff) m
   ⇒ Milliseconds
   → f Unit
-  → H.ParentDSL s s' f f' g p (Canceler (avar ∷ AVAR | eff))
+  → H.HalogenM s f g p o m (Canceler (avar ∷ AVAR | eff))
 sendAfter' ms action = do
-  cancelerVar ← H.fromAff makeVar
-  H.subscribe' $ oneTimeEventSource ms action cancelerVar
-  H.fromAff $ takeVar cancelerVar
-
-raise
-  ∷ ∀ s f g eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
-  ⇒ f Unit
-  → H.ComponentDSL s f g Unit
-raise = void <$> sendAfter (Milliseconds 0.0)
+  cancelerVar ← H.liftAff makeVar
+  H.subscribe $ oneTimeEventSource ms action cancelerVar
+  H.liftAff $ takeVar cancelerVar
 
 raise'
-  ∷ ∀ s s' f f' g p eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ∷ ∀ s f g m p eff
+  . MonadAff (avar ∷ AVAR | eff) m
   ⇒ f Unit
-  → H.ParentDSL s s' f f' g p Unit
+  → H.HalogenM s f g p o m Unit
 raise' = void <$> sendAfter' (Milliseconds 0.0)
 
 oneTimeEventSource
-  ∷ ∀ f g eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ∷ ∀ f m eff
+  . MonadAff (avar ∷ AVAR | eff) m
   ⇒ Milliseconds
   → f Unit
   → AVar (Canceler (avar ∷ AVAR | eff))
-  → H.EventSource f g
+  → H.EventSource f m
 oneTimeEventSource (Milliseconds n) action cancelerVar =
   ES.EventSource
     $ ES.produce \emit →
@@ -123,29 +93,29 @@ oneTimeEventSource (Milliseconds n) action cancelerVar =
   emitAndEnd emit = liftEff $ emit (E.Left action) *> emit (E.Right unit)
 
 subscribeToBus'
-  ∷ ∀ s s' f f' g p a r eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ∷ ∀ s f g p o m a r eff
+  . MonadAff (avar ∷ AVAR | eff) m
   ⇒ (a → f Unit)
   → Bus.Bus (read ∷ Bus.Cap | r) a
-  → H.ParentDSL s s' f f' g p (EventLoop.Breaker Unit)
+  → H.HalogenM s f g p o m (EventLoop.Breaker Unit)
 subscribeToBus' k bus =
   subscribeToASource' k (Bus.read bus)
 
 subscribeToASource'
-  ∷ ∀ s s' f f' g p a eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  ∷ ∀ s f g p o m a eff
+  . MonadAff (avar ∷ AVAR | eff) m
   ⇒ (a → f Unit)
   → Aff (avar ∷ AVAR | eff) a
-  → H.ParentDSL s s' f f' g p (EventLoop.Breaker Unit)
+  → H.HalogenM s f g p o m (EventLoop.Breaker Unit)
 subscribeToASource' k source = do
-  breaker ← fromAff makeVar
-  H.subscribe'
+  breaker ← liftAff makeVar
+  H.subscribe
     $ ES.EventSource
     $ ES.produce \emit →
         void $ runAff (const $ pure unit) (const $ pure unit) do
           loop ← EventLoop.forever do
             a ← source
-            forkAff $ H.fromEff $ emit $ E.Left (k a)
+            forkAff $ H.liftEff $ emit $ E.Left (k a)
           putVar breaker loop.breaker
           loop.run
-  H.fromAff $ takeVar breaker
+  H.liftAff $ takeVar breaker

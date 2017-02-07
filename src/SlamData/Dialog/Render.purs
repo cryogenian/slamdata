@@ -18,15 +18,15 @@ module SlamData.Dialog.Render where
 
 import SlamData.Prelude
 
-import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Indexed as H
+import Halogen.HTML as H
 
 import SlamData.Render.Common (classedDiv)
 
 modalDialog :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
 modalDialog children =
-  (classedDiv $ H.className "deck-dialog")
+  (classedDiv $ H.ClassName "deck-dialog")
   [ H.div [ HE.onClick (\_ -> HEH.stopPropagation $> Nothing)
           , HE.onMouseDown (\_ -> HEH.stopPropagation $> Nothing)
           ]
@@ -38,7 +38,7 @@ modalHeader message =
   H.h4_ [ H.text message ]
 
 modalBody :: forall f p. H.HTML p (f Unit) -> H.HTML p (f Unit)
-modalBody = classedDiv (H.className "deck-dialog-body") <<< pure
+modalBody = classedDiv (H.ClassName "deck-dialog-body") <<< pure
 
 modalFooter :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
-modalFooter = classedDiv (H.className "deck-dialog-footer")
+modalFooter = classedDiv (H.ClassName "deck-dialog-footer")

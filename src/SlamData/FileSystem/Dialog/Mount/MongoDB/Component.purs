@@ -26,8 +26,8 @@ import SlamData.Prelude
 import Data.Path.Pathy (dir, (</>))
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Mount as QM
@@ -59,7 +59,7 @@ render state =
         [ HH.div
             [ HP.classes [B.formGroup, Rc.mountUserInfo] ]
             [ MCR.label "Username" [ MCR.input state MCS._user [] ]
-            , MCR.label "Password" [ MCR.input state MCS._password [ HP.inputType HP.InputPassword ] ]
+            , MCR.label "Password" [ MCR.input state MCS._password [ HP.type_ HP.InputPassword ] ]
             ]
         , HH.div
             [ HP.class_ Rc.mountPath ]

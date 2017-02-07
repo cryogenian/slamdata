@@ -35,8 +35,8 @@ import Ace.Halogen.Component (AceQuery(..), AceState, Autocomplete(..), aceCompo
 import Ace.Types (Editor)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
@@ -82,7 +82,7 @@ eval (Submit parent name k) = do
   pure $ k $ map (const view) result
 
 aceSetup ∷ Maybe String → Editor → Slam Unit
-aceSetup initialQuery editor = H.fromEff do
+aceSetup initialQuery editor = H.liftEff do
   Editor.setMinLines 6 editor
   Editor.setMaxLines 10000 editor
   Editor.setAutoScrollEditorIntoView true editor

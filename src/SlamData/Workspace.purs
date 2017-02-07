@@ -21,7 +21,6 @@ import SlamData.Prelude
 import Control.Coroutine (runProcess, await, ($$))
 import Control.Coroutine.Aff (produce)
 import Control.Monad.Aff (Aff, forkAff)
-import Control.Monad.Aff.Free (fromEff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (writeRef)
@@ -87,7 +86,7 @@ routeSignal = do
     case new, state of
       -- Initialize the Workspace component
       WorkspaceRoute path deckId action varMaps, Nothing → do
-        permissionTokenHashes ← lift $ fromEff Permission.retrieveTokenHashes
+        permissionTokenHashes ← lift $ liftEff Permission.retrieveTokenHashes
         wiring ← lift $ Wiring.make path (toAccessType action) varMaps permissionTokenHashes
         mount wiring new
 

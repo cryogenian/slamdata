@@ -23,12 +23,12 @@ import Ace.Config as AceConfig
 import Control.Coroutine (Producer, Consumer, consumer, producer, ($$), runProcess)
 
 import Control.Monad.Aff (Aff, later')
-import Control.Monad.Aff.Free (fromAff, fromEff)
 import Control.Monad.Aff.AVar (AVar, makeVar, makeVar', modifyVar, putVar, takeVar)
+import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Fork (Canceler(..), fork, cancel)
 import Control.Monad.Eff.Exception (Error, error)
+import Control.Monad.Fork (Canceler(..), fork, cancel)
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (null, filter, mapMaybe, take, drop)
@@ -122,10 +122,10 @@ _queue = lens _.queue _{ queue = _ }
 routeSignal ∷ Driver QueryP SlamDataRawEffects → Slam Unit
 routeSignal driver = do
   avar ←
-    fromAff $ makeVar' initialListingState
+    liftAff $ makeVar' initialListingState
 
   routeTpl ←
-    fromAff $ matchesAff routing
+    liftAff $ matchesAff routing
 
   flip uncurry routeTpl
     $ redirects driver avar
@@ -149,14 +149,14 @@ redirects driver var mbOld = case _ of
       updateURL queryParts.query sort Nothing queryParts.path
 
   Salted sort query salt → do
-    {canceler} ← fromAff $ takeVar var
+    {canceler} ← liftAff $ takeVar var
 
     cancel canceler $ error "cancel search"
 
-    fromAff
+    liftAff
       $ putVar var initialListingState
 
-    fromAff
+    liftAff
       $ driver
       $ toListing
       $ Listing.SetIsSearching
@@ -174,7 +174,7 @@ redirects driver var mbOld = case _ of
 
     if isNewPage
       then do
-      fromAff do
+      liftAff do
         driver $ toListing Listing.Reset
         driver $ toFs $ SetPath queryParts.path
         driver $ toFs $ SetSort sort
@@ -195,7 +195,7 @@ redirects driver var mbOld = case _ of
       when (isNothing queryParts.query)
         $ checkMount queryParts.path driver
       else
-        fromAff $ driver $ toSearch $ Search.SetLoading false
+        liftAff $ driver $ toSearch $ Search.SetLoading false
 
 
 checkMount
@@ -205,7 +205,7 @@ checkMount
 checkMount path driver = do
   let
     setIsMount =
-      fromAff
+      liftAff
         $ driver
         $ left
         $ action
@@ -231,19 +231,19 @@ listingProducer
 listingProducer var query startingDir = produceSlam $ go startingDir 0
   where
   go dir depth emit = do
-    fromAff
+    liftAff
       $ flip modifyVar var
       $ _requestMap %~ M.alter memThisRequest depth
 
     canceler ←
       map Canceler $ fork $ runRequest dir depth emit
 
-    fromAff
+    liftAff
       $ flip modifyVar var
       $ _canceler <>~ canceler
 
   runRequest dir depth emit = do
-    fromAff $ later' requestDelay $ pure unit
+    liftAff $ later' requestDelay $ pure unit
     Quasar.children dir >>= case _ of
       Left e → case GE.fromQError e of
         -- Do not show error message notification if we're in root or searching
@@ -255,19 +255,19 @@ listingProducer var query startingDir = produceSlam $ go startingDir 0
       Right cs →
         getChildren depth emit cs
 
-    fromAff
+    liftAff
       $ flip modifyVar var
       $ _requestMap %~ M.alter markThisRequestAsFinished depth
 
     st@{canceler: c, requestMap: r} ←
-      fromAff $ takeVar var
+      liftAff $ takeVar var
 
     if allRequestsAreFinished r
       then do
-      fromAff $ putVar var initialListingState
+      liftAff $ putVar var initialListingState
       emit $ Right Nothing
       else
-      fromAff $ putVar var st
+      liftAff $ putVar var st
 
   getChildren depth emit ress = do
     let
@@ -286,12 +286,12 @@ listingProducer var query startingDir = produceSlam $ go startingDir 0
 
     if isSearchQuery query
       then do
-      fromAff
+      liftAff
         $ flip modifyVar var
         $ _queue %~ flip append next
 
       st ←
-        fromAff $ takeVar var
+        liftAff $ takeVar var
 
       let
         running = runningRequests st.requestMap
@@ -299,7 +299,7 @@ listingProducer var query startingDir = produceSlam $ go startingDir 0
         toRun = take count st.queue
         toPut = drop count st.queue
 
-      fromAff
+      liftAff
         $ putVar var
         $ st{queue = toPut}
 
@@ -334,7 +334,7 @@ listingConsumer
   ∷ Driver QueryP SlamDataRawEffects
   → Consumer (Array Item) Slam (Maybe QE.QError)
 listingConsumer driver = consumer \is → do
-  fromAff
+  liftAff
     $ driver
     $ toListing
     $ Listing.Adds is
@@ -346,7 +346,7 @@ listingProcessHandler
   → Slam Unit
 listingProcessHandler driver = case _ of
   Nothing →
-    fromAff
+    liftAff
       $ driver
       $ toSearch
       $ Search.SetLoading false
@@ -360,7 +360,7 @@ listingProcessHandler driver = case _ of
 
   where
   presentError message =
-    fromAff
+    liftAff
       $ driver
       $ toDialog
       $ Dialog.Show
@@ -372,7 +372,7 @@ updateURL
   → Maybe Salt
   → DirPath
   → Slam Unit
-updateURL query sort salt path = fromEff do
+updateURL query sort salt path = liftEff do
   salt' ← maybe newSalt pure salt
   replaceLocation $ browseURL query sort salt' path
 
@@ -396,6 +396,6 @@ produceSlam
   . ((a ⊹ r → Slam Unit) → Slam Unit)
   → Producer a Slam r
 produceSlam recv = do
-  v ← lift $ fromAff makeVar
-  lift $ fork $ recv $ fromAff ∘ putVar v
-  producer $ fromAff $ takeVar v
+  v ← lift $ liftAff makeVar
+  lift $ fork $ recv $ liftAff ∘ putVar v
+  producer $ liftAff $ takeVar v

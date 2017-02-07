@@ -29,8 +29,8 @@ import Data.Lens ((^?))
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardId as CID
@@ -104,7 +104,7 @@ eval = evalCEQ ⨁ evalQ
 
 evalQ ∷ Query ~> MarkdownDSL
 evalQ (Init next) = do
-  browserFeatures ← H.fromEff detectBrowserFeatures
+  browserFeatures ← H.liftEff detectBrowserFeatures
   H.modify (_ { browserFeatures = Just browserFeatures })
   pure next
 

@@ -22,10 +22,7 @@ module SlamData.Workspace.Class
 
 import SlamData.Prelude
 
-import Control.Monad.Free (Free, liftF)
-
-import Halogen.Query.EventSource as ES
-import Halogen.Query.HalogenF as HF
+import Halogen.Query (HalogenM)
 
 import SlamData.Workspace.Routing (Routes(..))
 
@@ -38,11 +35,5 @@ instance workspaceDSLMaybeT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (Mayb
 instance workspaceDSLExceptT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (ExceptT e m) where
   navigate = lift ∘ navigate
 
-instance workspaceDSLFree ∷ WorkspaceDSL m ⇒ WorkspaceDSL (Free m) where
-  navigate = liftF ∘ navigate
-
-instance workspaceDSLHFC ∷ WorkspaceDSL g ⇒ WorkspaceDSL (HF.HalogenFP ES.EventSource s f g) where
-  navigate = HF.QueryHF ∘ navigate
-
-instance workspaceDSLHFP ∷ WorkspaceDSL g ⇒ WorkspaceDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
-  navigate = HF.QueryHF ∘ navigate
+instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (HalogenM s f g p o m) where
+  navigate = lift ∘ navigate

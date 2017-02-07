@@ -18,10 +18,7 @@ module SlamData.Quasar.Class where
 
 import SlamData.Prelude
 
-import Control.Monad.Free (Free, liftF)
-
-import Halogen.Query.EventSource as ES
-import Halogen.Query.HalogenF as HF
+import Halogen.Query (HalogenM)
 
 import Quasar.Advanced.QuasarAF as QF
 
@@ -34,14 +31,8 @@ instance quasarDSLMaybeT ∷ (Monad m, QuasarDSL m) ⇒ QuasarDSL (MaybeT m) whe
 instance quasarDSLExceptT ∷ (Monad m, QuasarDSL m) ⇒ QuasarDSL (ExceptT e m) where
   liftQuasar = lift ∘ liftQuasar
 
-instance quasarDSLFree ∷ QuasarDSL m ⇒ QuasarDSL (Free m) where
-  liftQuasar = liftF ∘ liftQuasar
-
-instance quasarDSLHFC ∷ QuasarDSL g ⇒ QuasarDSL (HF.HalogenFP ES.EventSource s f g) where
-  liftQuasar = HF.QueryHF ∘ liftQuasar
-
-instance quasarDSLHFP ∷ QuasarDSL g ⇒ QuasarDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
-  liftQuasar = HF.QueryHF ∘ liftQuasar
+instance quasarDSLHalogenM ∷ (Monad m, QuasarDSL m) ⇒ QuasarDSL (HalogenM s f g p o m) where
+  liftQuasar = lift ∘ liftQuasar
 
 class ParQuasarDSL m where
   sequenceQuasar ∷ ∀ f a. Traversable f ⇒ f (QF.QuasarAFC a) → m (f a)

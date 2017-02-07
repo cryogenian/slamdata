@@ -26,10 +26,10 @@ import Control.UI.Browser (select)
 
 import Halogen as H
 import Halogen.CustomProps as CP
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
@@ -97,7 +97,7 @@ eval (Dismiss next) = pure next
 eval (InitZClipboard (Just htmlEl) next) = do
   State url ← H.get
   let el = htmlElementToElement htmlEl
-  H.fromEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
+  H.liftEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
   pure next
 eval (InitZClipboard _ next) = pure next
-eval (SelectElement el next) = H.fromEff (select el) $> next
+eval (SelectElement el next) = H.liftEff (select el) $> next

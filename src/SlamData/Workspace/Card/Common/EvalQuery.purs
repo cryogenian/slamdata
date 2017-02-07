@@ -25,8 +25,8 @@ module SlamData.Workspace.Card.Common.EvalQuery
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Aff.Class (class MonadAff)
 
 import Halogen as H
 import Halogen.Component.Utils (raise, raise')
@@ -83,7 +83,7 @@ data ModelUpdateType
 -- | component.
 raiseUpdatedC
   ∷ ∀ s g eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  . MonadAff (avar ∷ AVAR | eff) g
   ⇒ ModelUpdateType
   → H.ComponentDSL s CardEvalQuery g Unit
 raiseUpdatedC updateType = raise $ H.action $ ModelUpdated updateType
@@ -92,7 +92,7 @@ raiseUpdatedC updateType = raise $ H.action $ ModelUpdated updateType
 -- | component with an expanded query algebra.
 raiseUpdatedC'
   ∷ ∀ f s g eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  . MonadAff (avar ∷ AVAR | eff) g
   ⇒ ModelUpdateType
   → H.ComponentDSL s (CardEvalQuery ⨁ f) g Unit
 raiseUpdatedC' updateType = raise $ left $ H.action $ ModelUpdated updateType
@@ -101,7 +101,7 @@ raiseUpdatedC' updateType = raise $ left $ H.action $ ModelUpdated updateType
 -- | component.
 raiseUpdatedP
   ∷ ∀ s s' f' p g eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  . MonadAff (avar ∷ AVAR | eff) g
   ⇒ ModelUpdateType
   → H.ParentDSL s s' CardEvalQuery f' g p Unit
 raiseUpdatedP updateType = raise' $ H.action $ ModelUpdated updateType
@@ -110,7 +110,7 @@ raiseUpdatedP updateType = raise' $ H.action $ ModelUpdated updateType
 -- | component with an expanded query algebra.
 raiseUpdatedP'
   ∷ ∀ s s' f f' p g eff
-  . (Affable (avar ∷ AVAR | eff) g, Functor g)
+  . MonadAff (avar ∷ AVAR | eff) g
   ⇒ ModelUpdateType
   → H.ParentDSL s s' (CardEvalQuery ⨁ f) f' g p Unit
 raiseUpdatedP' updateType = raise' $ left $ H.action $ ModelUpdated updateType

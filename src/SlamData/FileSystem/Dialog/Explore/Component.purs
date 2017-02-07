@@ -22,10 +22,10 @@ import Data.Lens (Lens', lens, (.~))
 import Data.Path.Pathy as Pt
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
@@ -87,14 +87,14 @@ render state =
         [ HH.button
             [ HP.classes [ B.btn ]
             , HE.onClick (HE.input_ Dismiss)
-            , HP.buttonType HP.ButtonButton
+            , HP.type_ HP.ButtonButton
             ]
             [ HH.text "Cancel" ]
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
             , HP.disabled $ state.workspaceName == ""
             , HE.onClick (HE.input_ (Explore state.filePath state.workspaceName))
-            , HP.buttonType HP.ButtonButton
+            , HP.type_ HP.ButtonButton
             , ARIA.label "Explore file"
             ]
             [ HH.text "Explore" ]

@@ -23,10 +23,10 @@ import Data.Array (singleton)
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Dialog.Error.Component as Error
 import SlamData.FileSystem.Dialog.Download.Component as Download
@@ -186,8 +186,8 @@ render state =
       }
 
 eval ∷ Query ~> H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
-eval (Dismiss next) = H.set Nothing $> next
-eval (Show d next) = H.set (Just d) $> next
+eval (Dismiss next) = H.put Nothing $> next
+eval (Show d next) = H.put (Just d) $> next
 
 -- | Children can only close dialog. Other peeking in `FileSystem`
 peek ∷ ∀ a. ChildQuery a → DialogDSL Unit
@@ -200,26 +200,26 @@ peek =
   ⨁ explorePeek
 
 errorPeek ∷ ∀ a. Error.Query a → DialogDSL Unit
-errorPeek (Error.Dismiss _) = H.set Nothing
+errorPeek (Error.Dismiss _) = H.put Nothing
 
 sharePeek ∷ ∀ a. Share.Query a → DialogDSL Unit
-sharePeek (Share.Dismiss _) = H.set Nothing
+sharePeek (Share.Dismiss _) = H.put Nothing
 sharePeek _ = pure unit
 
 renamePeek ∷ ∀ a. Rename.Query a → DialogDSL Unit
-renamePeek (Rename.Dismiss _) = H.set Nothing
+renamePeek (Rename.Dismiss _) = H.put Nothing
 renamePeek _ = pure unit
 
 mountPeek ∷ ∀ a. Mount.QueryP a → DialogDSL Unit
 mountPeek = go ⨁ const (pure unit)
   where
-  go (Mount.Dismiss _) = H.set Nothing
+  go (Mount.Dismiss _) = H.put Nothing
   go _ = pure unit
 
 downloadPeek ∷ ∀ a. Download.Query a → DialogDSL Unit
-downloadPeek (Download.Dismiss _) = H.set Nothing
+downloadPeek (Download.Dismiss _) = H.put Nothing
 downloadPeek _ = pure unit
 
 explorePeek ∷ ∀ a. Explore.Query a → DialogDSL Unit
-explorePeek (Explore.Dismiss _) = H.set Nothing
+explorePeek (Explore.Dismiss _) = H.put Nothing
 explorePeek _ = pure unit

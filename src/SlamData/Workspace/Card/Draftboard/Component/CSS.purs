@@ -16,10 +16,10 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Draftboard.Component.CSS where
 
-import Halogen.HTML.Core (ClassName, className)
+import Halogen.HTML.Core (ClassName(..))
 
 grid :: ClassName
-grid = className "sd-board-grid"
+grid = ClassName "sd-board-grid"
 
 insetShadow :: ClassName
-insetShadow = className "sd-board-inset-shadow"
+insetShadow = ClassName "sd-board-inset-shadow"

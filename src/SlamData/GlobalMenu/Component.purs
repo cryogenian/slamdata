@@ -33,9 +33,8 @@ import Control.Monad.Eff.Exception as Exception
 
 import Halogen as H
 import Halogen.Component.Utils (subscribeToBus')
-import Halogen.HTML.Core (className)
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Menu.Component (MenuQuery(..), menuComponent) as HalogenMenu
 import Halogen.Menu.Component.State (MenuItem, makeMenu)
 import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
@@ -95,7 +94,7 @@ comp =
 render ∷ State → GlobalMenuHTML
 render state =
   HH.div
-    [ HP.classes $ [ className "sd-global-menu" ] ]
+    [ HP.classes $ [ HH.ClassName "sd-global-menu" ] ]
     [ HH.slot MenuSlot \_ →
         { component: HalogenMenu.menuComponent
         , initialState: H.parentState $ makeMenu helpMenu
@@ -245,7 +244,7 @@ authenticate =
 
   logOut ∷ GlobalMenuDSL Unit
   logOut = do
-    H.fromEff do
+    H.liftEff do
       AuthStore.clearIdToken keySuffix
       AuthStore.clearUnhashedNonce keySuffix
       AuthStore.clearProvider keySuffix
@@ -254,23 +253,23 @@ authenticate =
   logIn ∷ ProviderR → GlobalMenuDSL Unit
   logIn providerR = do
     { auth } ← H.liftH $ H.liftH $ Wiring.expose
-    idToken ← H.fromAff AVar.makeVar
-    H.fromAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
-    either signInFailure (const $ signInSuccess) =<< (H.fromAff $ AVar.takeVar idToken)
+    idToken ← H.liftAff AVar.makeVar
+    H.liftAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
+    either signInFailure (const $ signInSuccess) =<< (H.liftAff $ AVar.takeVar idToken)
 
   -- TODO: Reattempt failed actions without loosing state, remove reload.
   signInSuccess ∷ GlobalMenuDSL Unit
   signInSuccess = do
     { auth } ← H.liftH $ H.liftH $ Wiring.expose
-    (H.fromAff $ Bus.write SignInSuccess auth.signIn)
+    (H.liftAff $ Bus.write SignInSuccess auth.signIn)
       *> update
-      *> H.fromEff Browser.reload
+      *> H.liftEff Browser.reload
 
   signInFailure ∷ AuthenticationError → GlobalMenuDSL Unit
   signInFailure error = do
     { auth, bus } ← H.liftH $ H.liftH $ Wiring.expose
-    H.fromAff $ maybe (pure unit) (flip Bus.write bus.notify) (toNotificationOptions error)
-    H.fromAff $ (Bus.write SignInFailure auth.signIn)
+    H.liftAff $ maybe (pure unit) (flip Bus.write bus.notify) (toNotificationOptions error)
+    H.liftAff $ (Bus.write SignInFailure auth.signIn)
 
 presentHelp ∷ String → GlobalMenuDSL Unit
-presentHelp = H.fromEff ∘ Browser.newTab
+presentHelp = H.liftEff ∘ Browser.newTab

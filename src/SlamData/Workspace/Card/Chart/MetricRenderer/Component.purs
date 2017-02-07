@@ -21,8 +21,8 @@ import SlamData.Prelude
 import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -66,13 +66,13 @@ comp = H.component { render, eval }
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ HH.className "metric" ]
+    [ HP.classes [ HH.ClassName "metric" ]
     , HP.ref \el → H.action $ SetElement el
     ]
     [ HH.div
-      [ HP.classes [ HH.className "metric-value-and-label" ] ]
+      [ HP.classes [ HH.ClassName "metric-value-and-label" ] ]
       $ [ HH.div
-          [ HP.classes [ HH.className "metric-value" ] ]
+          [ HP.classes [ HH.ClassName "metric-value" ] ]
           [ HH.text state.value ] ]
           ⊕ foldMap renderLabel state.label
     ]
@@ -80,7 +80,7 @@ render state =
   renderLabel ∷ String → Array HTML
   renderLabel str =
     [ HH.div
-        [ HP.classes [ HH.className "metric-label" ] ]
+        [ HP.classes [ HH.ClassName "metric-label" ] ]
         [ HH.text str ]
     ]
 
@@ -107,4 +107,4 @@ availableFontSizes = [ 16, 24, 32, 48, 64, 96, 128, 160, 200 ]
 adjustFontSizes ∷ DSL Unit
 adjustFontSizes = do
   st ← H.get
-  for_ st.element \vel → H.fromEff (fitText availableFontSizes vel)
+  for_ st.element \vel → H.liftEff (fitText availableFontSizes vel)

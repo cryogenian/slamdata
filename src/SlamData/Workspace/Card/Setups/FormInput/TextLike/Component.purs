@@ -25,10 +25,10 @@ import Data.List as List
 
 import Halogen as H
 import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -118,12 +118,12 @@ renderPicker state = case state.picker of
 renderName ∷ ST.State → HTML
 renderName state =
   HH.form
-    [ HP.classes [ HH.className "chart-configure-input" ]
+    [ HP.classes [ HH.ClassName "chart-configure-input" ]
     , Cp.nonSubmit
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Name" ]
     , HH.input
-        [ HP.inputType HP.InputText
+        [ HP.type_ HP.InputText
         , HP.classes [ B.formControl ]
         , HP.placeholder "Form input label"
         , ARIA.label "Form input label"
