@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.Chart.MetricRenderer.Component where
 
 import SlamData.Prelude
 
-import DOM.HTML.Types (HTMLElement)
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -35,7 +33,6 @@ type State =
   , height ∷ Int
   , label ∷ Maybe String
   , value ∷ String
-  , element ∷ Maybe HTMLElement
   , valueHeight ∷ Int
   , labelHeight ∷ Int
   }
@@ -46,7 +43,6 @@ initialState =
   , height: 400
   , label: Nothing
   , value: ""
-  , element: Nothing
   , valueHeight: 0
   , labelHeight: 0
   }
@@ -55,19 +51,24 @@ data Query a
   = SetMetric MetricPort a
   | SetDimensions {width ∷ Int, height ∷ Int} a
   | GetLOD (LevelOfDetails → a)
-  | SetElement (Maybe HTMLElement) a
 
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+comp ∷ H.Component HH.HTML Query Unit Void Slam
+comp =
+  H.component
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render ∷ State → HTML
 render state =
   HH.div
     [ HP.classes [ HH.ClassName "metric" ]
-    , HP.ref \el → H.action $ SetElement el
+    , HP.ref refLabel
     ]
     [ HH.div
       [ HP.classes [ HH.ClassName "metric-value-and-label" ] ]
@@ -96,15 +97,14 @@ eval (SetDimensions dims next) = do
 eval (GetLOD continue) = do
   state ← H.get
   pure $ continue $ if (state.labelHeight + state.valueHeight) > state.height then Low else High
-eval (SetElement mbEl next) = do
-  for_ mbEl \el → do
-    H.modify _{element = Just el}
-  pure next
 
 availableFontSizes ∷ Array Int
 availableFontSizes = [ 16, 24, 32, 48, 64, 96, 128, 160, 200 ]
 
 adjustFontSizes ∷ DSL Unit
 adjustFontSizes = do
-  st ← H.get
-  for_ st.element \vel → H.liftEff (fitText availableFontSizes vel)
+  H.getHTMLElementRef refLabel >>= traverse_ \el →
+    H.liftEff $ fitText availableFontSizes el
+
+refLabel ∷ H.RefLabel
+refLabel = H.RefLabel "container"
