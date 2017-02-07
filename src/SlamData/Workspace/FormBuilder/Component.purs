@@ -69,7 +69,7 @@ eval (GetItems k) = do
     H.query (ItemSlot i) $ H.request Item.GetModel
 eval (SetItems items next) = do
   -- clear out the existing children
-  H.set emptyState
+  H.put emptyState
   U.replicateA (L.length items + 1) (H.modify addItem) :: FormBuilderDSL g (L.List Unit)
 
   let

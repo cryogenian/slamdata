@@ -69,7 +69,7 @@ evalCard = case _ of
     pure ∘ k =<< H.gets (Card.Table ∘ JTS.toModel)
   CC.Load card next → do
     case card of
-      Card.Table model → H.set $ JTS.fromModel model
+      Card.Table model → H.put $ JTS.fromModel model
       _ → pure unit
     pure next
   CC.ReceiveInput _ varMap next → do

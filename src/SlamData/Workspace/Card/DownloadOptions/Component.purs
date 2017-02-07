@@ -147,7 +147,7 @@ cardEval = case _ of
     map (k ∘ Card.DownloadOptions) H.get
   CC.Load card next → do
     case card of
-      Card.DownloadOptions st → H.set st
+      Card.DownloadOptions st → H.put st
       _ → pure unit
     pure next
   CC.ReceiveInput _ varMap next → do

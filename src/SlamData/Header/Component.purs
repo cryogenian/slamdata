@@ -120,7 +120,7 @@ peek (H.ChildF s q) =
 
   where
   peekGripper (Gripper.Notify st _) = do
-    H.set
+    H.put
       case st of
         Gripper.Closed → false
         _ → true

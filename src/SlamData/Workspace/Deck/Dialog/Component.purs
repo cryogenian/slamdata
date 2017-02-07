@@ -239,11 +239,11 @@ render state =
 
 
 eval ∷ Query ~> DSL
-eval (Dismiss next) = H.set Nothing $> next
-eval (FlipToFront next) = H.set Nothing $> next
-eval (SetDeckName _ next) = H.set Nothing $> next
-eval (Confirm _ _ next) = H.set Nothing $> next
-eval (Show d next) = H.set (Just d) $> next
+eval (Dismiss next) = H.put Nothing $> next
+eval (FlipToFront next) = H.put Nothing $> next
+eval (SetDeckName _ next) = H.put Nothing $> next
+eval (Confirm _ _ next) = H.put Nothing $> next
+eval (Show d next) = H.put (Just d) $> next
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek =

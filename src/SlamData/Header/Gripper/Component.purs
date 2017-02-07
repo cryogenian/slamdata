@@ -194,13 +194,13 @@ eval sel (Init next) = do
       H.subscribe $ H.eventSource attachAnimationEnd handleAnimationEnd
 
   { auth } ← H.liftH Wiring.expose
-  forever $ const (H.set $ Closing maxMargin) =<< H.fromAff (Bus.read auth.signIn)
+  forever $ const (H.put $ Closing maxMargin) =<< H.fromAff (Bus.read auth.signIn)
   pure next
 eval _ (StartDragging pos next) = do
   astate ← H.get
   case astate of
-    Closed → H.set (Dragging Down pos pos)
-    Opened → H.set (Dragging Up (pos - maxMargin) pos)
+    Closed → H.put (Dragging Down pos pos)
+    Opened → H.put (Dragging Up (pos - maxMargin) pos)
     _ → pure unit
   H.get >>= raise ∘ H.action ∘ Notify
   pure next
@@ -212,7 +212,7 @@ eval _ (StopDragging next) = do
         nextState Down = Opening
         nextState Up = Closing
       in
-        H.set (nextState dir $ current - s)
+        H.put (nextState dir $ current - s)
     _ → pure unit
   pure next
 eval _ (ChangePosition num next) = do
@@ -225,14 +225,14 @@ eval _ (ChangePosition num next) = do
       if num ≡ oldPos then oldDir else if num > oldPos then Down  else Up
   case astate of
     Dragging oldDir s old →
-      H.set (Dragging (direction old oldDir) s $ toSet s)
+      H.put (Dragging (direction old oldDir) s $ toSet s)
     _ → pure unit
   pure next
 eval _ (Animated next) = do
   astate ← H.get
   case astate of
-    Opening _ → H.set Opened
-    Closing _ → H.set Closed
+    Opening _ → H.put Opened
+    Closing _ → H.put Closed
     _ → pure unit
   H.get >>= raise ∘ H.action ∘ Notify
   pure next
