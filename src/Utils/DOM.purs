@@ -14,7 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Utils.DOM where
+module Utils.DOM
+  ( module Utils.DOM
+  , module DOM.Classy.Event
+  , module DOM.Event.Event
+  , module DOM.Event.Types
+  ) where
 
 import SlamData.Prelude
 
@@ -32,8 +37,10 @@ import Data.Array (uncons, sort, reverse)
 import Data.Nullable (toMaybe)
 
 import DOM (DOM)
+import DOM.Classy.Event (toEvent, fromEvent)
+import DOM.Event.Event (stopPropagation, preventDefault, target, currentTarget)
 import DOM.Event.EventTarget as EventTarget
-import DOM.Event.Types (EventTarget, EventType, Event)
+import DOM.Event.Types (EventTarget, EventType, Event, MouseEvent, KeyboardEvent, FocusEvent)
 import DOM.HTML (window)
 import DOM.HTML.Event.EventTypes as EventTypes
 import DOM.Node.Element (scrollWidth, scrollHeight)
