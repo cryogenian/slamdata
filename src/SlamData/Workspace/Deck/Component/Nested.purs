@@ -29,7 +29,7 @@ import Control.Monad.Eff (Eff)
 import Data.List (length)
 
 import Halogen as H
-import Halogen.Component.Opaque.Unsafe (opaque, opaqueQuery)
+--import Halogen.Component.Opaque.Unsafe (opaque, opaqueQuery)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as HE

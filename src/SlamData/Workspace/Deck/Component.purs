@@ -43,7 +43,7 @@ import DOM.HTML.HTMLElement (getBoundingClientRect)
 
 import Halogen as H
 import Halogen.Component.ChildPath (injSlot)
-import Halogen.Component.Opaque.Unsafe (opaqueState)
+--import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.Component.Utils (liftH', raise', sendAfter', subscribeToBus')
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP

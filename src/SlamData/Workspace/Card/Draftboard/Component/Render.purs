@@ -28,7 +28,7 @@ import Data.Rational (Rational, (%))
 import Data.Rational as Rational
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events.Handler as HEH
+--import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
@@ -94,9 +94,10 @@ renderOuterEdge edge orn bias =
     ]
     [ HH.span
         [ HP.classes [ HH.ClassName "sd-draftboard-edge-mid" ]
-        , HE.onMouseDown \e → do
-            HEH.stopPropagation
-            pure (Just (right (H.action (SplitStart orn bias true e))))
+          -- TODO: stopPropagation
+--        , HE.onMouseDown \e → do
+--            HEH.stopPropagation
+--            pure (Just (right (H.action (SplitStart orn bias true e))))
         ]
         [ ]
     ]
@@ -269,7 +270,8 @@ renderEdge st edge@{ orientation, vect } =
                 C.top (C.px (vect.y + loc.offset))
                 C.left (C.px vect.x)
                 C.width (C.px vect.z)
-        , HE.onMouseMove (\e → HEH.preventDefault $> Nothing)
+                -- TODO: preventDefault
+--        , HE.onMouseMove (\e → HEH.preventDefault $> Nothing)
         ]
         [ renderGuideLabel loc.ratio
         , HH.div

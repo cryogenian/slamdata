@@ -36,7 +36,7 @@ import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
 import Halogen as H
 import Halogen.CustomProps as CP
-import Halogen.HTML.Events.Handler as HEH
+--import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -152,10 +152,11 @@ renderPublishURI state =
                     , HP.disabled state.submitting
                     , HP.title "Published deck URL"
                     , ARIA.label "Published deck URL"
-                    , HE.onClick \e →
-                        HEH.stopPropagation
-                          $> (guard (not state.submitting)
-                              $> (H.action (SelectElement e.target)))
+                      -- TODO: preventDefault
+--                    , HE.onClick \e →
+--                        HEH.stopPropagation
+--                          $> (guard (not state.submitting)
+--                              $> (H.action (SelectElement e.target)))
                     ]
                   , HH.span
                       [ HP.classes [ B.inputGroupBtn ] ]

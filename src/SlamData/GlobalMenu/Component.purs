@@ -35,9 +35,9 @@ import Halogen as H
 import Halogen.Component.Utils (subscribeToBus')
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Menu.Component (MenuQuery(..), menuComponent) as HalogenMenu
-import Halogen.Menu.Component.State (MenuItem, makeMenu)
-import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
+--import Halogen.Menu.Component (MenuQuery(..), menuComponent) as HalogenMenu
+--import Halogen.Menu.Component.State (MenuItem, makeMenu)
+--import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
 
 import OIDC.Crypt as Crypt
 
@@ -56,7 +56,6 @@ import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Auth.Authentication (AuthenticationError, toNotificationOptions)
 import SlamData.Quasar.Auth.Store as AuthStore
 import SlamData.Wiring as Wiring
-
 
 data Query a
   = DismissSubmenu a

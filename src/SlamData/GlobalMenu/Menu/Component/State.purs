@@ -18,9 +18,9 @@ module SlamData.GlobalMenu.Menu.Component.State where
 
 import SlamData.Prelude
 
-import Halogen.Menu.Component as HalogenMenu
-import Halogen.Menu.Component.State as HalogenMenuState
-import Halogen.Menu.Submenu.Component.State as HalogenSubmenuState
+--import Halogen.Menu.Component as HalogenMenu
+--import Halogen.Menu.Component.State as HalogenMenuState
+--import Halogen.Menu.Submenu.Component.State as HalogenSubmenuState
 
 import Quasar.Advanced.Types (ProviderR)
 

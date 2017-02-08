@@ -74,7 +74,7 @@ import DOM.HTML.Types (HTMLElement)
 import Halogen (ChildF)
 
 import SlamData.Workspace.Card.Ace.Component.Query as Ace
-import SlamData.Workspace.Card.Variables.Component.Query as Variables
+--import SlamData.Workspace.Card.Variables.Component.Query as Variables
 import SlamData.Workspace.Card.Troubleshoot.Component.Query as Troubleshoot
 import SlamData.Workspace.Card.Cache.Component.Query as Cache
 import SlamData.Workspace.Card.Chart.Component.Query as Chart

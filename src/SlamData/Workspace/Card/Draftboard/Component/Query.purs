@@ -24,7 +24,7 @@ import SlamData.Prelude
 import DOM.HTML.Types (HTMLElement)
 import Halogen as H
 import Halogen.Component.Utils.Drag (DragEvent)
-import Halogen.HTML.Events.Types as HET
+--import Halogen.HTML.Events.Types as HET
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Draftboard.Layout (SplitBias, Edge)
 import SlamData.Workspace.Card.Draftboard.Orientation (Orientation)

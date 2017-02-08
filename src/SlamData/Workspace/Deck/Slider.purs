@@ -34,7 +34,7 @@ import CSS (CSS)
 import Halogen as H
 import Halogen.HTML.CSS (style)
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Events.Types (Event, MouseEvent)
+--import Halogen.HTML.Events.Types (Event, MouseEvent)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties (IProp(), I)
 import Halogen.HTML.Properties as HP

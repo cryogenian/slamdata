@@ -25,7 +25,7 @@ import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Events.Handler as HEH
+--import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
@@ -40,7 +40,7 @@ import SlamData.FileSystem.Search.Component.CSS as CSS
 import Text.SlamSearch (mkQuery)
 
 import Utils.Path (DirPath)
-import Utils.Debounced (debouncedEventSource)
+--import Utils.Debounced (debouncedEventSource)
 
 type State =
   { valid ∷ Boolean
@@ -141,7 +141,8 @@ render state =
                 ]
             , HH.button
                 [ HP.class_ CSS.searchClearButton
-                , HE.onClick (\_ → HEH.preventDefault $> Just (H.action Clear))
+                  -- TODO: preventDefault
+--                , HE.onClick (\_ → HEH.preventDefault $> Just (H.action Clear))
                 ]
                 [ if state.loading
                     then RC.busyFieldIcon "Search in progress"

@@ -23,7 +23,7 @@ import Data.Path.Pathy (printPath)
 
 import Halogen as H
 import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Handler as HEH
+--import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -153,8 +153,9 @@ btnDownload state =
               then [ B.disabled ]
               else [ ]
          , HP.disabled disabled
-         , HE.onClick \_ →
-             HEH.preventDefault $> Just (H.action (NewTab url))
+--           TODO: preventDefault
+--         , HE.onClick \_ →
+--             HEH.preventDefault $> Just (H.action (NewTab url))
          , ARIA.label "Proceed download"
          , HP.title "Proceed download"
          ]

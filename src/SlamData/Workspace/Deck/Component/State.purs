@@ -78,7 +78,7 @@ import DOM.HTML.Types (HTMLElement)
 import Data.Array as A
 import Data.Lens (Lens', lens, Prism', prism')
 
-import Halogen.Component.Opaque.Unsafe (OpaqueState)
+--import Halogen.Component.Opaque.Unsafe (OpaqueState)
 
 import Quasar.Advanced.Types (ProviderR)
 

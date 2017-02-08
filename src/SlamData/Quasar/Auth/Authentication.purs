@@ -25,8 +25,8 @@ module SlamData.Quasar.Auth.Authentication
   ) where
 
 import Control.Coroutine as Coroutine
-import Control.Coroutine.Stalling (($$?))
-import Control.Coroutine.Stalling as StallingCoroutine
+--import Control.Coroutine.Stalling (($$?))
+--import Control.Coroutine.Stalling as StallingCoroutine
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (AVar, AVAR, AffAVar)

@@ -27,7 +27,7 @@ import Data.String as S
 
 import Halogen as H
 import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Handler as HEH
+--import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -159,8 +159,9 @@ render dialog =
     $ HH.form
         [ HP.classes [ Rc.renameDialogForm ]
         , Cp.nonSubmit
-        , HE.onClick \_ →
-            HEH.stopPropagation $> Just (H.action (SetShowList false))
+          -- TODO: preventDefault
+--        , HE.onClick \_ →
+--            HEH.stopPropagation $> Just (H.action (SetShowList false))
         ]
         [ nameInput
         , dirDropdownField
@@ -205,8 +206,9 @@ render dialog =
           [ HP.classes [ B.inputGroupBtn ] ]
           [ HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
-              , HE.onClick \_ →
-                  HEH.stopPropagation $> Just (H.action ToggleShowList)
+                -- todo: preventDefault
+--              , HE.onClick \_ →
+--                  HEH.stopPropagation $> Just (H.action ToggleShowList)
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
               ]

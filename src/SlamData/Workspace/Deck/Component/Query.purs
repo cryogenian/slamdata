@@ -23,8 +23,8 @@ import SlamData.Prelude
 
 import DOM.HTML.Types (HTMLElement)
 
-import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
-import Halogen.HTML.Events.Types (Event, MouseEvent)
+--import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
+--import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import SlamData.GlobalError (GlobalError)
 import SlamData.Workspace.Card.CardId (CardId)

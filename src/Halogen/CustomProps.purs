@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module Halogen.CustomProps where
-
+{-
 import SlamData.Prelude
 
 import Halogen.HTML.Core as H
@@ -44,3 +44,4 @@ videoType = unsafeCoerce unrefined
   where
   unrefined ∷ String → H.Prop i
   unrefined = H.prop (H.propName "type") (Just $ H.attrName "type")
+-}

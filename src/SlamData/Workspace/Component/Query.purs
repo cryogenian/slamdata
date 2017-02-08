@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Data.List (List)
 
 import Halogen as H
-import Halogen.HTML.Events.Types as HET
+--import Halogen.HTML.Events.Types as HET
 
 import Quasar.Advanced.Types (ProviderR)
 

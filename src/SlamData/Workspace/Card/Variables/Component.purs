@@ -25,7 +25,7 @@ import Halogen as H
 import Halogen.HTML as HH
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Variables.Component.State (State, initialState)
+--import SlamData.Workspace.Card.Variables.Component.State (State, initialState)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card

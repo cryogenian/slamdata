@@ -41,7 +41,7 @@ import DOM.Node.Types (elementToNode)
 import DOM.Node.ParentNode (querySelector)
 
 import Halogen (Driver, runUI, parentState, interpret)
-import Halogen.Util (runHalogenAff, awaitBody)
+--import Halogen.Util (runHalogenAff, awaitBody)
 
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)

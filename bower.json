@@ -33,7 +33,7 @@
     "purescript-halogen-bootstrap": "^5.0.0-rc.1",
     "purescript-halogen-css": "^5.0.0-rc.1",
     "purescript-halogen-echarts": "^4.0.0-rc.1",
-    "purescript-halogen-menu": "^3.0.0",
+    "purescript-halogen-menu": "4.0.0-rc.1",
     "purescript-halogen": "^1.0.0-rc.2",
     "purescript-js-timers": "^2.0.0",
     "purescript-jtable": "^4.0.0-rc.1",

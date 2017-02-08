@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Data.Lens ((^.))
 
 import Halogen.HTML.Core (HTML, ClassName)
-import Halogen.HTML.Events.Handler as EH
+--import Halogen.HTML.Events.Handler as EH
 import Halogen.HTML.Events as E
 import Halogen.HTML as H
 import Halogen.HTML.Properties as P
@@ -40,7 +40,12 @@ sorting state =
   H.div
       [ P.classes [ B.colXs4, CSS.toolbarSort ] ]
       [ H.a
-          [ E.onClick \_ → EH.preventDefault $> Just (action Resort) ]
+
+          -- TODO: preventDefault
+          [ ]
+--          [ E.onClick \_ →
+--             EH.preventDefault $>
+--             Just (action Resort) ]
           [ H.text "Name"
           , H.i
               [ chevron (state ^. _sort)

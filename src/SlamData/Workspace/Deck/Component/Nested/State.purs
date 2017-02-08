@@ -22,7 +22,7 @@ module SlamData.Workspace.Deck.Component.Nested.State
 
 import SlamData.Prelude
 import DOM.HTML.Types (HTMLElement)
-import Halogen.Driver as HD
+--import Halogen.Driver as HD
 
 import SlamData.Effects (SlamDataRawEffects)
 import SlamData.Workspace.Deck.Component.Query as DCQ

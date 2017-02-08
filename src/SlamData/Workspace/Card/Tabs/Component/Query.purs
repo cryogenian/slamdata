@@ -24,7 +24,7 @@ import SlamData.Prelude
 
 import Halogen as H
 import Halogen.Component.Utils.Drag (DragEvent)
-import Halogen.HTML.Events.Types as HET
+--import Halogen.HTML.Events.Types as HET
 
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ

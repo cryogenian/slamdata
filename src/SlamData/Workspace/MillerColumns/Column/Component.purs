@@ -43,7 +43,7 @@ import SlamData.Workspace.MillerColumns.Column.Options (ColumnOptions, InitialIt
 import SlamData.Workspace.MillerColumns.Column.Component.Query (ItemQuery(..), ItemQuery', Query(..), Query')
 import SlamData.Workspace.MillerColumns.Column.Component.State (ColumnState(..), State, State', initialState)
 
-import Utils.Debounced (debouncedEventSource)
+--import Utils.Debounced (debouncedEventSource)
 
 type HTML a i s f = H.ParentHTML s (Query a) (ItemQuery' a f) Slam i
 type DSL a i s f = H.ParentDSL (State a i) s (Query a) (ItemQuery' a f) Slam i

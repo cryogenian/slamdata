@@ -41,7 +41,7 @@ import CSS.Transition (easeOut)
 import Halogen as H
 import Halogen.Component.Utils (raise)
 import Halogen.HTML.CSS as CSS
-import Halogen.HTML.Events.Handler as HEH
+--import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -90,8 +90,9 @@ render sel state =
         [ HH.ClassName "header-gripper"
         , HH.ClassName $ className state
         ]
-    , HE.onMouseDown \evt →
-        HEH.preventDefault $> Just (H.action $ StartDragging evt.clientY)
+        -- TODO: preventDefault
+--    , HE.onMouseDown \evt →
+--        HEH.preventDefault $> Just (H.action $ StartDragging evt.clientY)
     , ARIA.label $ label state
     ]
     [ CSS.stylesheet $ renderStyles sel state ]

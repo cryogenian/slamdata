@@ -25,7 +25,7 @@ import Data.Json.JTable as JT
 import Data.String (singleton)
 
 import Halogen as H
-import Halogen.HTML.Events.Handler as HEH
+--import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -119,9 +119,11 @@ pageField pageValue totalPages =
 submittable ∷ Array (H.ComponentHTML QueryP) → H.ComponentHTML QueryP
 submittable =
   HH.form
-    [ HE.onSubmit \_ →
-        HEH.preventDefault $> Just (H.action (right ∘ Update))
-    ]
+  [ ]
+  -- TODO: preventDefault
+--    [ HE.onSubmit \_ →
+--        HEH.preventDefault $> Just (H.action (right ∘ Update))
+--    ]
 
 nextButtons ∷ Boolean → H.ComponentHTML QueryP
 nextButtons enabled =

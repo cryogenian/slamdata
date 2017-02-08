@@ -39,9 +39,9 @@ import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 import DOM (DOM)
 
 import Halogen.Component (parentState, interpret)
-import Halogen.Driver (Driver, runUI)
+--import Halogen.Driver (Driver, runUI)
 import Halogen.Query (action)
-import Halogen.Util (runHalogenAff, awaitBody)
+--import Halogen.Util (runHalogenAff, awaitBody)
 
 import Quasar.Error as QE
 

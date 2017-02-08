@@ -24,7 +24,7 @@ import SlamData.Prelude
 
 import Halogen as H
 import Halogen.Component.Utils.Drag (DragEvent)
-import Halogen.HTML.Events.Types as HET
+--import Halogen.HTML.Events.Types as HET
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.ChildSlot (ChildQuery, ChildSlot)

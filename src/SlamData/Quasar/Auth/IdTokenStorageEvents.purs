@@ -18,8 +18,8 @@ module SlamData.Quasar.Auth.IdTokenStorageEvents where
 
 import SlamData.Prelude
 
-import Control.Coroutine.Stalling (StallingProducer)
-import Control.Coroutine.Stalling as StallingCoroutine
+--import Control.Coroutine.Stalling (StallingProducer)
+--import Control.Coroutine.Stalling as StallingCoroutine
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
