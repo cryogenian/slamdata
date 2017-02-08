@@ -15,12 +15,3 @@ limitations under the License.
 -}
 
 module SlamData.GlobalMenu.Component.State where
-
-type State =
-  { loggedIn :: Boolean
-  }
-
-initialState :: State
-initialState =
-  { loggedIn: false
-  }
