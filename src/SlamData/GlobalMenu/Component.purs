@@ -107,9 +107,10 @@ eval (DismissSubmenu next) = do
 eval (HandleGlobalError error next) = case error of
   GlobalError.Unauthorized _ → update $> next
   _ → pure next
-eval (HandleMenuMessage (Menu.Selected a) next) = case a of
-  Authenticate providerR → authenticate providerR
-  PresentHelp uri → presentHelp uri
+eval (HandleMenuMessage (Menu.Selected a) next) = do
+  case a of
+    Authenticate providerR → authenticate providerR
+    PresentHelp uri → presentHelp uri
   pure next
 
 update ∷ DSL Unit
