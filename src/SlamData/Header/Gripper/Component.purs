@@ -21,8 +21,13 @@ import SlamData.Prelude
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Rec.Class (forever)
 
+import Data.Int as Int
 import Data.Nullable as N
+
+import DOM.Event.Event as DEE
 import DOM.Event.EventTarget as Etr
+import DOM.Event.MouseEvent as DEM
+import DOM.Event.Types as DET
 import DOM.HTML (window)
 import DOM.HTML.Event.EventTypes as Etp
 import DOM.HTML.Types as Ht
@@ -39,9 +44,7 @@ import CSS.Time (sec)
 import CSS.Transition (easeOut)
 
 import Halogen as H
-import Halogen.Component.Utils (raise)
 import Halogen.HTML.CSS as CSS
---import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -54,7 +57,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 data Query a
   = Init a
-  | StartDragging Number a
+  | StartDragging DET.MouseEvent a
   | StopDragging a
   | ChangePosition Number a
   | Animated a
@@ -69,6 +72,8 @@ data State
   | Opening Number
   | Closing Number
 
+data Message = Notify State
+
 initialState ∷ State
 initialState = Closed
 
@@ -77,10 +82,12 @@ type DSL = H.ComponentDSL State Query Slam
 
 comp ∷ String → H.Component State Query Slam
 comp querySelector = H.lifecycleComponent
-  { render: render querySelector
+  { initialState: const Closed
+  , render: render querySelector
   , eval: eval querySelector
-  , initializer: Just (H.action Init)
+  , initializer: Just $ H.action Init
   , finalizer: Nothing
+  , receiver: const Nothing
   }
 
 render ∷ String → State → HTML
@@ -90,26 +97,26 @@ render sel state =
         [ HH.ClassName "header-gripper"
         , HH.ClassName $ className state
         ]
-        -- TODO: preventDefault
---    , HE.onMouseDown \evt →
---        HEH.preventDefault $> Just (H.action $ StartDragging evt.clientY)
+    , HE.onMouseDown $ HE.input StartDragging
     , ARIA.label $ label state
     ]
     [ CSS.stylesheet $ renderStyles sel state ]
   where
   label ∷ State → String
-  label Closed = "Show header"
-  label (Opening _) = "Show header"
-  label (Dragging Down _ _) = "Show header"
-  label _ = "Hide header"
+  label = case _ of
+    Closed → "Show header"
+    Opening _ →  "Show header"
+    Dragging Down _ _ → "Show header"
+    _ → "Hide header"
 
   className ∷ State → String
-  className Opened = "sd-header-gripper-opened"
-  className Closed = "sd-header-gripper-closed"
-  className (Opening _) = "sd-header-gripper-opening"
-  className (Closing _) = "sd-header-gripper-closing"
-  className (Dragging Down _ _) = "sd-header-gripper-dragging-down"
-  className (Dragging Up _ _) = "sd-header-gripper-dragging-up"
+  className = case _ of
+    Opened → "sd-header-gripper-opened"
+    Closed → "sd-header-gripper-closed"
+    Opening _ → "sd-header-gripper-opening"
+    Closing _ → "sd-header-gripper-closing"
+    Dragging Down _ _ → "sd-header-gripper-dragging-down"
+    Dragging Up _ _ → "sd-header-gripper-dragging-up"
 
 
 maxMargin ∷ Number
@@ -197,13 +204,14 @@ eval sel (Init next) = do
   { auth } ← H.liftH Wiring.expose
   forever $ const (H.put $ Closing maxMargin) =<< H.liftAff (Bus.read auth.signIn)
   pure next
-eval _ (StartDragging pos next) = do
-  astate ← H.get
-  case astate of
+eval _ (StartDragging evt next) = do
+  H.liftEff $ DEE.preventDefault $ DET.mouseEventToEvent evt
+  let pos = Int.toNumber $ DEM.clientY evt
+  H.get >>= case _ of
     Closed → H.put (Dragging Down pos pos)
     Opened → H.put (Dragging Up (pos - maxMargin) pos)
     _ → pure unit
-  H.get >>= raise ∘ H.action ∘ Notify
+  H.get >>= H.raise ∘ Notify
   pure next
 eval _ (StopDragging next) = do
   astate ← H.get
@@ -235,8 +243,5 @@ eval _ (Animated next) = do
     Opening _ → H.put Opened
     Closing _ → H.put Closed
     _ → pure unit
-  H.get >>= raise ∘ H.action ∘ Notify
-  pure next
-
-eval _ (Notify _ next) =
+  H.get >>= raise ∘ Notify
   pure next
