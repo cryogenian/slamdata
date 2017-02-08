@@ -32,6 +32,8 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.FormBuilder.Component as FB
 import SlamData.Workspace.FormBuilder.Item.Component as Item
 
+type State = Unit
+
 type HTML = H.ParentHTML (FB.StateP Slam) CC.CardEvalQuery FB.QueryP Slam Unit
 type DSL = H.ParentDSL State (FB.StateP Slam) CC.CardEvalQuery FB.QueryP Slam Unit
 
