@@ -15,7 +15,9 @@ limitations under the License.
 -}
 
 module SlamData.ActionList.Component
-  ( component
+  ( actionListComp
+  , component
+  , MkConf
   , module A
   , module ST
   , module Q

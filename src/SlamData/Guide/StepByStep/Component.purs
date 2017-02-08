@@ -16,6 +16,7 @@ limitations under the License.
 module SlamData.Guide.StepByStep.Component where
 
 import SlamData.Prelude
+
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 
 import Data.Array as Array
@@ -37,7 +38,7 @@ type Step =
 
 type State =
   { steps ∷ Array Step
-  , activeStep ∷ Maybe Int
+  , activeStep ∷ Int
   }
 
 data Query a
@@ -51,7 +52,7 @@ data Message = Dismissed
 initialState ∷ Array Step → State
 initialState steps =
   { steps
-  , activeStep: if Array.null steps then Nothing else Just 0
+  , activeStep: 0
   }
 
 component
@@ -79,18 +80,15 @@ render st =
         (Array.mapWithIndex renderStep st.steps <> buttons)
     ]
   where
-  activeIx ∷ Int
-  activeIx = fromMaybe (-1) st.activeStep
-
   last ∷ Boolean
-  last = Array.length st.steps - 1 ≡ activeIx
+  last = Array.length st.steps - 1 ≡ st.activeStep
 
   renderStep ∷ Int → Step → H.ComponentHTML Query
   renderStep ix { imageUri, text } =
     HH.div
       [ HP.classes $
           [ HH.ClassName "sd-step-by-step-guide-step" ]
-          <> (guard (ix ≡ activeIx) $> HH.ClassName "active")
+          <> (guard (ix ≡ st.activeStep) $> HH.ClassName "active")
       ]
       [ HH.img [ HP.src imageUri ]
       , HH.p_ [ HH.text text ]
@@ -123,17 +121,11 @@ eval = case _ of
   Dismiss next →
     H.raise Dismissed $> next
   Next next → do
-    H.modify \st → st { activeStep = (_ + 1) <$> st.activeStep }
+    H.modify \st → st { activeStep = st.activeStep + 1 }
     pure next
   SetSteps steps next → do
     st ← H.get
-    case Array.length steps, st.activeStep of
-      0, _ →
-        H.put { steps, activeStep: Nothing }
-      n, Just ix | n - 1 < ix →
-        H.put { steps, activeStep: Just (n - 1) }
-      n, Just ix →
-        H.put { steps, activeStep: Just ix }
-      n, Nothing →
-        H.put { steps, activeStep: Just 0 }
+    case Array.length steps of
+      0 → H.put { steps, activeStep: 0 }
+      n → H.put { steps, activeStep: clamp 0 (n - 1) st.activeStep }
     pure next
