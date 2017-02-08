@@ -28,10 +28,11 @@ import Data.List (List, (:))
 import Data.List as List
 import Data.String as String
 
+import DOM.Event.Event (preventDefault)
+import DOM.Event.Types (Event)
+
 import Halogen as H
-import Halogen.Component.Utils (raise)
 import Halogen.HTML as HH
-import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
@@ -84,9 +85,11 @@ data Query a
   | Save (PTRM.Model → a)
   | StepPage PageStep a
   | SetCustomPage String a
-  | UpdatePage a
+  | UpdatePage Event a
   | ChangePageSize String a
-  | ModelUpdated a
+
+data Message
+  = ModelUpdated
 
 data PageStep
   = First
@@ -94,11 +97,17 @@ data PageStep
   | Next
   | Last
 
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Message Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component =
+  H.component
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render ∷ State → HTML
 render st =
@@ -235,7 +244,8 @@ render st =
 
   pageField currentPage customPage totalPages =
     HH.div_
-      [ submittable UpdatePage
+      [ HH.form
+          [ HE.onSubmit (HE.input UpdatePage) ]
           [ HH.text "Page"
           , HH.input
               [ HP.type_ HP.InputNumber
@@ -244,12 +254,6 @@ render st =
               ]
           , HH.text $ "of " <> show totalPages
           ]
-      ]
-
-  submittable ctr =
-    HH.form
-      [ HE.onSubmit \_ →
-          HEH.preventDefault $> Just (H.action ctr)
       ]
 
   nextButtons enabled =
@@ -307,7 +311,8 @@ eval = case _ of
   SetCustomPage page next → do
     H.modify _ { customPage = Just page }
     pure next
-  UpdatePage next → do
+  UpdatePage ev next → do
+    H.liftEff $ preventDefault ev
     st ← H.get
     for_ st.customPage \page → do
       let
@@ -324,7 +329,7 @@ eval = case _ of
       pageSize  = Int.floor (readFloat size)
     H.modify _ { pageSize = pageSize }
     for st.input (ifSimpleQuery pageQuery pageTree)
-    raise (H.action ModelUpdated)
+    H.raise ModelUpdated
     pure next
   Load model next → do
     H.modify _ { pageSize = model.pageSize }
@@ -332,8 +337,6 @@ eval = case _ of
   Save k → do
     { pageSize } ← H.get
     pure $ k { pageSize }
-  ModelUpdated next →
-    pure next
 
 ifSimpleQuery
   ∷ (Input → DSL Unit)

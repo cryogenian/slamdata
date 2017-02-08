@@ -16,20 +16,9 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Common.EvalQuery
   ( CardEvalQuery(..)
+  , CardEvalMessage(..)
   , ModelUpdateType(..)
-  , raiseUpdatedC
-  , raiseUpdatedC'
-  , raiseUpdatedP
-  , raiseUpdatedP'
   ) where
-
-import SlamData.Prelude
-
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Class (class MonadAff)
-
-import Halogen as H
-import Halogen.Component.Utils (raise, raise')
 
 import SlamData.Workspace.Card.Eval.Monad (EvalState)
 import SlamData.Workspace.Card.Model (AnyCardModel)
@@ -55,9 +44,6 @@ import SlamData.Workspace.Card.Port as Port
 -- |
 -- | - `SetDimensions` is used to notify the card of the size of the deck upon
 -- |   resize and initialisation.
--- |
--- | - `ModelUpdated` is a query the card sends to itself so that the deck can
--- |   peek the query and know that the deck needs saving/evaluating.
 data CardEvalQuery a
   = Activate a
   | Deactivate a
@@ -67,8 +53,10 @@ data CardEvalQuery a
   | ReceiveInput Port.Port Port.DataMap a
   | ReceiveOutput Port.Port Port.DataMap a
   | ReceiveDimensions { width ∷ Number, height ∷ Number } a
-  | ZoomIn a
-  | ModelUpdated ModelUpdateType a
+
+data CardEvalMessage
+  = ZoomIn
+  | ModelUpdated ModelUpdateType
 
 -- | This type is used to indicate whether a model update only affects the
 -- | internal state of the card (and therefore only requires saving), or whether
@@ -78,39 +66,3 @@ data ModelUpdateType
   = StateOnlyUpdate
   | EvalModelUpdate
   | EvalStateUpdate EvalState
-
--- | Raises a `ModelUpdateType` self-query for a card that is a standalone
--- | component.
-raiseUpdatedC
-  ∷ ∀ s g eff
-  . MonadAff (avar ∷ AVAR | eff) g
-  ⇒ ModelUpdateType
-  → H.ComponentDSL s CardEvalQuery g Unit
-raiseUpdatedC updateType = raise $ H.action $ ModelUpdated updateType
-
--- | Raises a `ModelUpdateType` self-query for a card that is a standalone
--- | component with an expanded query algebra.
-raiseUpdatedC'
-  ∷ ∀ f s g eff
-  . MonadAff (avar ∷ AVAR | eff) g
-  ⇒ ModelUpdateType
-  → H.ComponentDSL s (CardEvalQuery ⨁ f) g Unit
-raiseUpdatedC' updateType = raise $ left $ H.action $ ModelUpdated updateType
-
--- | Raises a `ModelUpdateType` self-query for a card that is a parent
--- | component.
-raiseUpdatedP
-  ∷ ∀ s s' f' p g eff
-  . MonadAff (avar ∷ AVAR | eff) g
-  ⇒ ModelUpdateType
-  → H.ParentDSL s s' CardEvalQuery f' g p Unit
-raiseUpdatedP updateType = raise' $ H.action $ ModelUpdated updateType
-
--- | Raises a `ModelUpdateType` self-query for a card that is a parent
--- | component with an expanded query algebra.
-raiseUpdatedP'
-  ∷ ∀ s s' f f' p g eff
-  . MonadAff (avar ∷ AVAR | eff) g
-  ⇒ ModelUpdateType
-  → H.ParentDSL s s' (CardEvalQuery ⨁ f) f' g p Unit
-raiseUpdatedP' updateType = raise' $ left $ H.action $ ModelUpdated updateType
