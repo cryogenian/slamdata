@@ -16,11 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.Query where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (ColorScheme)
@@ -38,5 +35,3 @@ data Query a
   | SetMaxValue String a
   | ToggleReversedScheme a
   | Select (Selection SelectAction) a
-
-type Query' = CardEvalQuery ⨁ Query

@@ -24,7 +24,6 @@ import SlamData.Prelude
 import Halogen.Component.Utils.Drag (DragEvent)
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 
 import Utils.DOM as DOM
 
@@ -42,5 +41,3 @@ data Query a
   | OrderOverColumn Int a
   | OrderOutColumn Int a
   | ChooseAggregation Int (Maybe Ag.Aggregation) a
-
-type Query' = CardEvalQuery ⨁ Query

@@ -37,21 +37,26 @@ import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Search.Component.Query (Query, SearchQuery(UpdateSearch))
+import SlamData.Workspace.Card.Search.Component.Query (Query(..))
 import SlamData.Workspace.Card.Search.Component.State (State, _searchString, initialState)
 
-type DSL = H.ComponentDSL State Query Slam
-type HTML = H.ComponentHTML Query
+type DSL = H.ComponentDSL State (CC.InnerCardQuery Query) CC.CardEvalMessage Slam
+type HTML = H.ComponentHTML (CC.InnerCardQuery Query)
 
-searchComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+searchComponent ∷ CC.CardOptions → CC.CardComponent
 searchComponent options =
   CC.makeCardComponent
     { options
     , cardType: CT.Search
-    , component: H.component { render, eval }
+    , component: H.component
+        { render
+        , eval: coproduct cardEval searchEval
+        , initialState: id
+        , receiver: const Nothing
+        }
     , initialState: initialState
     , _State: CC._SearchState
-    , _Query: CC.makeQueryPrism CC._SearchQuery
+    , _Query: CC._SearchQuery
     }
 
 render ∷ State → HTML
@@ -72,9 +77,6 @@ render state =
         ]
         [ glyph B.glyphiconRemove ]
     ]
-
-eval ∷ Query ~> DSL
-eval = coproduct cardEval searchEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -98,13 +100,9 @@ cardEval = case _ of
     pure next
   CC.ReceiveDimensions _ next →
     pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
 
-searchEval ∷ SearchQuery ~> DSL
+searchEval ∷ Query ~> DSL
 searchEval (UpdateSearch str next) = do
   H.modify (_searchString .~ str)
-  CC.raiseUpdatedC' CC.EvalModelUpdate
+  H.raise $ CC.ModelUpdated CC.EvalModelUpdate
   pure next

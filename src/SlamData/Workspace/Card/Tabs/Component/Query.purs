@@ -14,16 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Tabs.Component.Query
-  ( Query(..)
-  , Query'
-  ) where
-
-import SlamData.Prelude
+module SlamData.Workspace.Card.Tabs.Component.Query where
 
 import Halogen.Component.Utils.Drag (DragEvent)
 
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Eval.Deck as Deck
 
 import Utils.DOM as DOM
@@ -35,5 +29,3 @@ data Query a
   | Ordering Int DragEvent a
   | OrderOver Int a
   | OrderOut Int a
-
-type Query' = Coproduct CardEvalQuery Query

@@ -14,14 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Draftboard.Component.Query
-  ( Query(..)
-  , Query'
-  ) where
+module SlamData.Workspace.Card.Draftboard.Component.Query where
 
 import SlamData.Prelude
 import Halogen.Component.Utils.Drag (DragEvent)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Draftboard.Layout (SplitBias, Edge)
 import SlamData.Workspace.Card.Draftboard.Orientation (Orientation)
 import SlamData.Workspace.Card.Draftboard.Pane (Cursor)
@@ -36,5 +32,3 @@ data Query a
   | AddDeck Cursor a
   | DeleteCell Cursor a
   | Grabbing (DeckId × Cursor) DragEvent a
-
-type Query' = Coproduct CardEvalQuery Query

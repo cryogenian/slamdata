@@ -16,11 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Area.Component.Query where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
 
@@ -35,5 +32,3 @@ data Query a
   | ToggleSmooth a
   | ToggleStacked a
   | Select (Selection SelectAction) a
-
-type Query' = CardEvalQuery ⨁ Query

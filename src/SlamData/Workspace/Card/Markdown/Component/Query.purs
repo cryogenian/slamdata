@@ -16,9 +16,4 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Markdown.Component.Query where
 
-import SlamData.Prelude
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-
 data Query a = Init a
-
-type Query' = CardEvalQuery ⨁ Query

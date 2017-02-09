@@ -16,11 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Line.Component.Query where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
 
@@ -40,5 +37,3 @@ data Query a
   | SetMinSymbolSize String a
   | ToggleOptionalMarkers a
   | Select (Selection SelectAction) a
-
-type Query' = CardEvalQuery ⨁ Query

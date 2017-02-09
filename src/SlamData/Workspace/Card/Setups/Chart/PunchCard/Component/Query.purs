@@ -16,11 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.PunchCard.Component.Query where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
 
@@ -35,5 +32,3 @@ data Query a
   | ToggleCircularLayout a
   | SetMinSymbolSize String a
   | SetMaxSymbolSize String a
-
-type Query' = CardEvalQuery ⨁ Query

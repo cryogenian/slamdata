@@ -16,9 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Table.Component.Query where
 
-import SlamData.Prelude
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-
 data Query a
   = StepPage PageStep a
   | ChangePageSize String a
@@ -32,5 +29,3 @@ data PageStep
   | Prev
   | Next
   | Last
-
-type Query' = Coproduct CardEvalQuery Query
