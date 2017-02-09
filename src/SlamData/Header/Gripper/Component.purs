@@ -80,8 +80,8 @@ initialState = Closed
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
 
-comp ∷ String → H.Component State Query Slam
-comp querySelector = H.lifecycleComponent
+component ∷ String → H.Component State Query Slam
+component querySelector = H.lifecycleComponent
   { initialState: const Closed
   , render: render querySelector
   , eval: eval querySelector

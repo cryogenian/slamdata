@@ -12,15 +12,9 @@ limitations under the License.
 -}
 
 module SlamData.GlobalMenu.Component
-  ( comp
-  , MenuSlot
-  , QueryP
-  , StateP
-  , ChildQuery
+  ( component
   , Query(..)
-  , ChildSlot
-  , ChildState
-  , module SlamData.GlobalMenu.Component.State
+  , State
   ) where
 
 import SlamData.Prelude
@@ -37,9 +31,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Menu.Component as Menu
 import Halogen.Query.EventSource as ES
---import Halogen.Menu.Component (MenuQuery(..), menuComponent) as HalogenMenu
---import Halogen.Menu.Component.State (MenuItem, makeMenu)
---import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
 
 import OIDC.Crypt as Crypt
 
@@ -49,9 +40,6 @@ import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.GlobalError (GlobalError)
 import SlamData.GlobalError as GlobalError
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
-import SlamData.GlobalMenu.Component.State (State, initialState)
-import SlamData.GlobalMenu.Menu.Component.Query (QueryP) as MenuQuery
-import SlamData.GlobalMenu.Menu.Component.State as MenuState
 import SlamData.Monad (Slam)
 import SlamData.Quasar as Api
 import SlamData.Quasar.Auth as Auth
@@ -210,7 +198,7 @@ helpMenu =
   ]
 
 queryMenu
-  ∷ Menu.Query MenuState.AuthenticateOrPresentHelp Unit
+  ∷ Menu.Query AuthenticateOrPresentHelp Unit
   → DSL Unit
 queryMenu q = void ∘ H.query unit
 
