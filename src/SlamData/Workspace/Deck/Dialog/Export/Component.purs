@@ -89,11 +89,11 @@ type State =
   , loading ∷ Boolean
   }
 
-initialState ∷ SharingInput → State
-initialState =
-  { presentingAs: URI
-  , varMaps: Map.empty
-  , sharingInput: _
+initialState ∷ Input → State
+initialState input =
+  { presentingAs: input.presentingAs
+  , varMaps: input.varMaps
+  , sharingInput: input.sharingInput
   , permToken: Nothing
   , canRevoke: false
   , shouldGenerateToken: false
@@ -104,6 +104,12 @@ initialState =
   , errored: false
   , submitting: false
   , loading: true
+  }
+
+type Input =
+  { sharingInput ∷ SharingInput
+  , presentingAs ∷ PresentAs
+  , varMaps ∷ Map.Map CID.CardId Port.VarMap
   }
 
 data Query a
@@ -119,10 +125,10 @@ data Message = Dismiss
 copyButtonRef ∷ H.RefLabel
 copyButtonRef = H.RefLabel "copy"
 
-component ∷ SharingInput → H.Component HH.HTML Query Unit Message Slam
-component sharing =
+component ∷ H.Component HH.HTML Query Input Message Slam
+component =
   H.lifecycleComponent
-    { initialState: \_ → initialState sharing
+    { initialState
     , render
     , eval
     , initializer: Just (H.action Init)

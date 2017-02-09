@@ -15,7 +15,9 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Deck.Dialog.Reason.Component
-  ( Query(..)
+  ( State
+  , Query(..)
+  , Message(..)
   , component
   ) where
 
@@ -37,12 +39,14 @@ type State =
   , cardPaths ∷ Array (Array InsertableCardType)
   }
 
-data Query a = Dismiss a
+data Query a = Raise Message a
 
-component ∷ ∀ m. State → H.Component HH.HTML Query Unit Void m
-component initialState =
+data Message = Dismiss
+
+component ∷ ∀ m. H.Component HH.HTML Query State Message m
+component =
   H.component
-    { initialState: const initialState
+    { initialState: id
     , render
     , eval
     , receiver: const Nothing
@@ -70,7 +74,7 @@ render state =
       [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
       [ HH.button
           [ HP.classes [ B.btn ]
-          , HE.onClick (HE.input_ $ Dismiss)
+          , HE.onClick (HE.input_ (Raise Dismiss))
           ]
           [ HH.text "Dismiss" ]
       ]
@@ -103,5 +107,5 @@ render state =
       [ HP.classes [HH.ClassName "deck-dialog-cardpath-card" ] ]
       [ HH.text $ print card ]
 
-eval ∷ ∀ m. Query ~> H.ComponentDSL State Query Void m
-eval (Dismiss next) = pure next
+eval ∷ ∀ m. Query ~> H.ComponentDSL State Query Message m
+eval (Raise msg next) = H.raise msg $> next

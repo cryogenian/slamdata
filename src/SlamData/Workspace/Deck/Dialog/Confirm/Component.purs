@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.Dialog.Confirm.Component
   ( Query(..)
+  , Message(..)
+  , State
   , component
   ) where
 
@@ -34,12 +36,14 @@ type State =
   , confirm ∷ String
   }
 
-data Query a = Confirm Boolean a
+data Query a = Raise Message a
 
-component ∷ ∀ m. State → H.Component HH.HTML Query Unit Void m
-component initialState =
+data Message = Confirm Boolean
+
+component ∷ ∀ m. H.Component HH.HTML Query State Message m
+component =
   H.component
-    { initialState: const initialState
+    { initialState: id
     , render
     , eval
     , receiver: const Nothing
@@ -57,17 +61,17 @@ render state =
     , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         [ HH.button
             [ HP.classes [ B.btn ]
-            , HE.onClick (HE.input_ $ Confirm false)
+            , HE.onClick (HE.input_ $ Raise (Confirm false))
             ]
             [ HH.text state.cancel ]
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
-            , HE.onClick (HE.input_ $ Confirm true)
+            , HE.onClick (HE.input_ $ Raise (Confirm true))
             ]
             [ HH.text state.confirm
             ]
         ]
     ]
 
-eval ∷ ∀ m. Query ~> H.ComponentDSL State Query Void m
-eval (Confirm _ next) = pure next
+eval ∷ ∀ m. Query ~> H.ComponentDSL State Query Message m
+eval (Raise msg next) = H.raise msg $> next
