@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Component.Query
   ( CardQuery(..)
   , InnerCardQuery
   , _CardEvalQuery
-  , _AnyCardQuery
+  , _CardQuery
   , AnyCardQuery(..)
   , _AceQuery
   , _MarkdownQuery
@@ -60,7 +60,7 @@ module SlamData.Workspace.Card.Component.Query
   , _SetupStaticQuery
   , _FormInputQuery
   , _TabsQuery
-  , module SlamData.Workspace.Card.Common.EvalQuery
+  , module EQ
   ) where
 
 import SlamData.Prelude
@@ -68,13 +68,13 @@ import SlamData.Prelude
 import Data.Lens (Prism', prism')
 import Data.Lens.Prism.Coproduct (_Left, _Right)
 
-import DOM.HTML.Types (HTMLElement)
+import Halogen as H
 
 import SlamData.Workspace.Card.Ace.Component.Query as Ace
 import SlamData.Workspace.Card.Troubleshoot.Component.Query as Troubleshoot
 import SlamData.Workspace.Card.Cache.Component.Query as Cache
 import SlamData.Workspace.Card.Chart.Component.Query as Chart
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
+import SlamData.Workspace.Card.Common.EvalQuery as EQ
 import SlamData.Workspace.Card.Download.Component.Query as Download
 import SlamData.Workspace.Card.DownloadOptions.Component.Query as DOpts
 import SlamData.Workspace.Card.Draftboard.Component.Query as Draftboard
@@ -113,16 +113,16 @@ data CardQuery a
   | ActivateCard a
   | DeactivateCard a
   | UpdateDimensions a
-  | SetElement (Maybe HTMLElement) a
-  | HandleEvalMessage (Card.EvalMessage) a
+  | HandleEvalMessage (Card.EvalMessage) (H.SubscribeStatus → a)
+  | HandleCardMessage (EQ.CardEvalMessage) a
 
-type InnerCardQuery = Coproduct CardEvalQuery AnyCardQuery
+type InnerCardQuery f = Coproduct EQ.CardEvalQuery f
 
-_CardEvalQuery ∷ ∀ a. Prism' (InnerCardQuery a) (CardEvalQuery a)
+_CardEvalQuery ∷ ∀ f a. Prism' (InnerCardQuery f a) (EQ.CardEvalQuery a)
 _CardEvalQuery = _Left
 
-_AnyCardQuery ∷ ∀ a. Prism' (InnerCardQuery a) (AnyCardQuery a)
-_AnyCardQuery = _Right
+_CardQuery ∷ ∀ f a. Prism' (InnerCardQuery f a) (f a)
+_CardQuery = _Right
 
 data AnyCardQuery a
   = AceQuery (Ace.Query' a)
@@ -131,7 +131,7 @@ data AnyCardQuery a
   | TableQuery (Table.Query' a)
   | ChartQuery (Chart.Query' a)
   | DownloadQuery (Download.Query' a)
-  | VariablesQuery (CardEvalQuery a)
+  | VariablesQuery (EQ.CardEvalQuery a)
   | TroubleshootQuery (Troubleshoot.Query' a)
   | CacheQuery (Cache.Query' a)
   | OpenQuery (Open.Query' a)
@@ -196,7 +196,7 @@ _DownloadQuery = prism' DownloadQuery case _ of
   DownloadQuery q → Just q
   _ → Nothing
 
-_VariablesQuery ∷ ∀ a. Prism' (AnyCardQuery a) (CardEvalQuery a)
+_VariablesQuery ∷ ∀ a. Prism' (AnyCardQuery a) (EQ.CardEvalQuery a)
 _VariablesQuery = prism' VariablesQuery case _ of
   VariablesQuery q → Just q
   _ → Nothing

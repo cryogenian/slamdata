@@ -28,8 +28,8 @@ import Halogen (Component)
 import Halogen.HTML as HH
 
 import SlamData.Workspace.Card.Common (CardOptions)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.Component.Query (AnyCardQuery)
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery, CardEvalMessage)
+import SlamData.Workspace.Card.Component.Query (AnyCardQuery, InnerCardQuery)
 import SlamData.Workspace.Card.Component.State (AnyCardState)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Monad (Slam)
@@ -37,11 +37,11 @@ import SlamData.Monad (Slam)
 -- | The properties required by both types of card definition.
 type CardDef s f r =
   { options ∷ CardOptions
-  , component ∷ Component HH.HTML f Unit Void Slam
+  , component ∷ Component HH.HTML (InnerCardQuery f) s CardEvalMessage Slam
   , cardType ∷ CardType
   , initialState ∷ s
   , _State ∷ APrism' AnyCardState s
-  , _Query ∷ ∀ a. APrism' (Coproduct CardEvalQuery AnyCardQuery a) (f a)
+  , _Query ∷ ∀ a. APrism' (AnyCardQuery a) (f a)
   | r
   }
 

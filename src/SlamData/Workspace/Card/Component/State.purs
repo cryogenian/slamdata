@@ -17,8 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.Component.State
   ( CardState(..)
   , initialCardState
-  , _element
-  , _breaker
+  , _sub
   , _pending
   , AnyCardState
   , _AceState
@@ -69,11 +68,10 @@ module SlamData.Workspace.Card.Component.State
 import SlamData.Prelude
 
 import Control.Monad.Aff.Bus (BusRW)
-import Control.Monad.Aff.EventLoop (Breaker)
 
 import Data.Lens (Lens', lens, Prism', prism')
 
-import DOM.HTML.Types (HTMLElement)
+import Halogen as H
 
 import SlamData.Workspace.Card.Ace.Component.State as Ace
 import SlamData.Workspace.Card.Troubleshoot.Component.State as Troubleshoot
@@ -115,8 +113,7 @@ import SlamData.Workspace.Card.Tabs.Component.State as Tabs
 
 -- | The common state value for deck cards.
 type CardState =
-  { element ∷ Maybe HTMLElement
-  , breaker ∷ Maybe (Breaker Unit)
+  { sub ∷ H.SubscribeStatus
   , pending ∷ Boolean
   , bus ∷ Maybe (BusRW Card.EvalMessage)
   }
@@ -124,17 +121,13 @@ type CardState =
 -- | Creates an initial `CardState` value for an editor card.
 initialCardState ∷ CardState
 initialCardState =
-  { element: Nothing
-  , breaker: Nothing
+  { sub: H.Listening
   , pending: true
   , bus: Nothing
   }
 
-_element ∷ Lens' CardState (Maybe HTMLElement)
-_element = lens _.element _{element = _}
-
-_breaker ∷ Lens' CardState (Maybe (Breaker Unit))
-_breaker = lens _.breaker _{breaker = _}
+_sub ∷ Lens' CardState H.SubscribeStatus
+_sub = lens _.sub _{sub = _}
 
 _pending ∷ Lens' CardState Boolean
 _pending = lens _.pending _{pending = _}
