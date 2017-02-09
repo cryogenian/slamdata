@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Draftboard.Component.State
   ( State
-  , StateP
   , SplitOpts
   , SplitLocation
   , ResizeLocation
@@ -38,20 +37,12 @@ import Data.Map as Map
 import Data.Rational (Rational)
 import DOM.HTML.Types (HTMLElement)
 
-import Halogen as H
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Draftboard.Component.Query (QueryC)
 import SlamData.Workspace.Card.Draftboard.Layout (SplitBias, Rect, Edge, Cell)
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Model (Model)
 import SlamData.Workspace.Card.Draftboard.Orientation (Orientation)
 import SlamData.Workspace.Card.Draftboard.Pane (Pane(..), Cursor, walkWithCursor)
-import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
-import SlamData.Workspace.Deck.Component.Nested.State as DNS
 import SlamData.Workspace.Deck.DeckId (DeckId)
-
-type StateP = H.ParentState State DNS.State QueryC DNQ.QueryP Slam DeckId
 
 data MoveLocation
   = Floating Number Number

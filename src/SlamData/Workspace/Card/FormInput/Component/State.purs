@@ -21,13 +21,8 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor(..))
 import Data.Lens (lens, Lens')
 
-import Halogen (ParentState)
-
-import SlamData.Workspace.Card.FormInput.Component.ChildSlot (ChildState, ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Monad (Slam)
 
 type State =
   { levelOfDetails ∷ LevelOfDetails
@@ -43,9 +38,6 @@ _formInputType = lens _.formInputType _ { formInputType = _ }
 
 _cursor ∷ ∀ a r. Lens' { cursor ∷ a | r } a
 _cursor = lens _.cursor _ { cursor = _ }
-
-type StateP =
-  ParentState State ChildState CardEvalQuery ChildQuery Slam ChildSlot
 
 initialState ∷ State
 initialState =

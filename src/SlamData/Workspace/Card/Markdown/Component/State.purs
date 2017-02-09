@@ -15,26 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Markdown.Component.State
-  ( StateP
-  , module Core
+  ( module Core
   ) where
 
-import SlamData.Prelude
-
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.Markdown.Component.Query (Query)
-import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Markdown.Component.State.Core as Core
-import Text.Markdown.SlamDown.Halogen.Component as SDH
-
-type StateP =
-  ParentState
-    Core.State
-    (SDH.SlamDownState VM.VarMapValue)
-    (CardEvalQuery ⨁ Query)
-    (SDH.SlamDownQuery VM.VarMapValue)
-    Slam
-    Unit

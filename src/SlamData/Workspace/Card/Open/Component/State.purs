@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Open.Component.State
   ( State
-  , StateP
   , initialState
   , _selected
   , _levelOfDetails
@@ -27,16 +26,8 @@ import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
 
-import Halogen (ParentState)
-
 import SlamData.FileSystem.Resource as R
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Monad (Slam)
-
-import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
-
-import Utils.Path (AnyPath)
 
 type State =
   { selected ∷ Maybe R.Resource
@@ -59,12 +50,3 @@ _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
 _loading ∷ ∀ a r. Lens' {loading ∷ a|r} a
 _loading = lens (_.loading) (_{loading = _})
-
-type StateP =
-  ParentState
-    State
-    (MCI.BasicColumnsState R.Resource AnyPath)
-    CardEvalQuery
-    (MCI.BasicColumnsQuery R.Resource AnyPath)
-    Slam
-    Unit

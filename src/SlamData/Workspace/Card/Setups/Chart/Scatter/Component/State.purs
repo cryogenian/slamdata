@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Chart.Scatter.Component.State
   ( initialState
   , State
-  , StateP
   , _abscissa
   , _abscissaAgg
   , _ordinate
@@ -32,11 +31,7 @@ module SlamData.Workspace.Card.Setups.Chart.Scatter.Component.State
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Component.Query (QueryC, Selection)
+import SlamData.Workspace.Card.Setups.Chart.Scatter.Component.Query (Selection)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as M
@@ -59,9 +54,6 @@ initialState =
   , parallel: M.initialState.parallel
   , picker: DS.initial.picker
   }
-
-type StateP =
-  ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
 _abscissa ∷ ∀ r a. Lens' { abscissa ∷ a | r } a
 _abscissa = lens _.abscissa _{ abscissa = _ }

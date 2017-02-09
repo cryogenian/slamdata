@@ -25,6 +25,7 @@ import SlamData.Prelude
 import Data.Lens (APrism', Prism', prism', review, preview)
 
 import Halogen (Component)
+import Halogen.HTML as HH
 
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
@@ -36,7 +37,7 @@ import SlamData.Monad (Slam)
 -- | The properties required by both types of card definition.
 type CardDef s f r =
   { options ∷ CardOptions
-  , component ∷ Component s f Slam
+  , component ∷ Component HH.HTML f Unit Void Slam
   , cardType ∷ CardType
   , initialState ∷ s
   , _State ∷ APrism' AnyCardState s

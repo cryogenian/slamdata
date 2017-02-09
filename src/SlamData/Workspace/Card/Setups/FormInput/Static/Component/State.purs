@@ -18,18 +18,13 @@ module SlamData.Workspace.Card.Setups.FormInput.Static.Component.State
   ( initialState
   , _value
   , State
-  , StateP
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Setups.FormInput.Static.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.FormInput.Static.Component.Query (QueryC, Selection)
+import SlamData.Workspace.Card.Setups.FormInput.Static.Component.Query (Selection)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.FormInput.Static.Model as M
@@ -43,9 +38,6 @@ initialState =
   , picker: DS.initial.picker
   , value: M.initialState.value
   }
-
-type StateP =
-  ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
 _value ∷ ∀ r a. Lens' { value ∷ a | r } a
 _value = lens _.value _ { value = _ }

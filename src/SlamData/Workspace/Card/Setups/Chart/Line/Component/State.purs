@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Chart.Line.Component.State
   ( initialState
   , State
-  , StateP
   , _dimension
   , _series
   , _value
@@ -32,11 +31,7 @@ module SlamData.Workspace.Card.Setups.Chart.Line.Component.State
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Setups.Chart.Line.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Line.Component.Query (QueryC, Selection)
+import SlamData.Workspace.Card.Setups.Chart.Line.Component.Query (Selection)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.Chart.Line.Model as M
@@ -61,9 +56,6 @@ initialState =
   , picker: DS.initial.picker
   , optionalMarkers: M.initialState.optionalMarkers
   }
-
-type StateP =
-  ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
 _dimension ∷ ∀ r a. Lens' { dimension ∷ a | r } a
 _dimension = lens _.dimension _{ dimension = _ }

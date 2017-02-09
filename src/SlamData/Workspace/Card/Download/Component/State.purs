@@ -32,7 +32,6 @@ type State =
   , fileName ∷ String
   }
 
-
 _url ∷ ∀ a r. Lens' {url ∷ a | r} a
 _url = lens (_.url) (_{url = _})
 

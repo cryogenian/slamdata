@@ -20,13 +20,8 @@ import SlamData.Prelude
 
 import Data.Lens (lens, Lens')
 
-import Halogen (ParentState)
-
-import SlamData.Workspace.Card.Chart.Component.ChildSlot (ChildState, ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Monad (Slam)
 
 type State =
   { width ∷ Int
@@ -40,9 +35,6 @@ _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
 _chartType ∷ ∀ a r. Lens' {chartType ∷ a|r} a
 _chartType = lens (_.chartType) (_{chartType = _})
-
-type StateP =
-  ParentState State ChildState CardEvalQuery ChildQuery Slam ChildSlot
 
 initialState :: State
 initialState =

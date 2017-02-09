@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.State
   ( State
-  , StateP
   , OrderingOpts
   , Selecting(..)
   , initialState
@@ -31,18 +30,10 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor)
 import Data.Array as Array
 
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.ChildSlot as PCS
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query (QueryC)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Model, Column(..))
-
-type StateP =
-  ParentState State PCS.ChildState QueryC PCS.ChildQuery Slam PCS.ChildSlot
 
 data Selecting = Dim | Col
 

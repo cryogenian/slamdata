@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Component.State
   ( CardState(..)
-  , CardStateP
   , initialCardState
   , _element
   , _breaker
@@ -76,15 +75,10 @@ import Data.Lens (Lens', lens, Prism', prism')
 
 import DOM.HTML.Types (HTMLElement)
 
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Ace.Component.State as Ace
---import SlamData.Workspace.Card.Variables.Component.State as Variables
 import SlamData.Workspace.Card.Troubleshoot.Component.State as Troubleshoot
 import SlamData.Workspace.Card.Cache.Component.State as Cache
 import SlamData.Workspace.Card.Chart.Component.State as Chart
-import SlamData.Workspace.Card.Component.Query (CardQuery, InnerCardQuery)
 import SlamData.Workspace.Card.Download.Component.State as Download
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DOpts
 import SlamData.Workspace.Card.Draftboard.Component.State as Draftboard
@@ -127,8 +121,6 @@ type CardState =
   , bus ∷ Maybe (BusRW Card.EvalMessage)
   }
 
-type CardStateP = ParentState CardState AnyCardState CardQuery InnerCardQuery Slam Unit
-
 -- | Creates an initial `CardState` value for an editor card.
 initialCardState ∷ CardState
 initialCardState =
@@ -148,56 +140,56 @@ _pending ∷ Lens' CardState Boolean
 _pending = lens _.pending _{pending = _}
 
 data AnyCardState
-  = AceState Ace.StateP
-  | MarkdownState Markdown.StateP
+  = AceState Ace.State
+  | MarkdownState Markdown.State
   | SearchState Search.State
   | TableState Table.State
-  | ChartState Chart.StateP
+  | ChartState Chart.State
   | DownloadState Download.State
-  | VariablesState Variables.StateP
+  | VariablesState Unit
   | TroubleshootState Troubleshoot.State
-  | NextState Next.StateP
+  | NextState Next.State
   | CacheState Cache.State
-  | OpenState Open.StateP
+  | OpenState Open.State
   | DownloadOptionsState DOpts.State
-  | DraftboardState Draftboard.StateP
+  | DraftboardState Draftboard.State
   | ErrorState Error.State
   | PendingState Pending.State
-  | BuildMetricState BuildMetric.StateP
-  | BuildSankeyState BuildSankey.StateP
-  | BuildGaugeState BuildGauge.StateP
-  | BuildGraphState BuildGraph.StateP
-  | BuildPieState BuildPie.StateP
-  | BuildBarState BuildBar.StateP
-  | BuildLineState BuildLine.StateP
-  | BuildAreaState BuildArea.StateP
-  | BuildScatterState BuildScatter.StateP
-  | BuildFunnelState BuildFunnel.StateP
-  | BuildRadarState BuildRadar.StateP
-  | BuildPivotTableState BuildPivotTable.StateP
-  | BuildBoxplotState BuildBoxplot.StateP
-  | BuildHeatmapState BuildHeatmap.StateP
-  | BuildPunchCardState BuildPunchCard.StateP
-  | BuildCandlestickState BuildCandlestick.StateP
-  | BuildParallelState BuildParallel.StateP
-  | SetupDropdownState SetupLabeled.StateP
-  | SetupRadioState SetupLabeled.StateP
-  | SetupCheckboxState SetupLabeled.StateP
-  | SetupTextState SetupTextLike.StateP
-  | SetupNumericState SetupTextLike.StateP
-  | SetupDateState SetupTextLike.StateP
-  | SetupTimeState SetupTextLike.StateP
-  | SetupDatetimeState SetupTextLike.StateP
-  | SetupStaticState SetupStatic.StateP
-  | FormInputState FormInput.StateP
-  | TabsState Tabs.StateP
+  | BuildMetricState BuildMetric.State
+  | BuildSankeyState BuildSankey.State
+  | BuildGaugeState BuildGauge.State
+  | BuildGraphState BuildGraph.State
+  | BuildPieState BuildPie.State
+  | BuildBarState BuildBar.State
+  | BuildLineState BuildLine.State
+  | BuildAreaState BuildArea.State
+  | BuildScatterState BuildScatter.State
+  | BuildFunnelState BuildFunnel.State
+  | BuildRadarState BuildRadar.State
+  | BuildPivotTableState BuildPivotTable.State
+  | BuildBoxplotState BuildBoxplot.State
+  | BuildHeatmapState BuildHeatmap.State
+  | BuildPunchCardState BuildPunchCard.State
+  | BuildCandlestickState BuildCandlestick.State
+  | BuildParallelState BuildParallel.State
+  | SetupDropdownState SetupLabeled.State
+  | SetupRadioState SetupLabeled.State
+  | SetupCheckboxState SetupLabeled.State
+  | SetupTextState SetupTextLike.State
+  | SetupNumericState SetupTextLike.State
+  | SetupDateState SetupTextLike.State
+  | SetupTimeState SetupTextLike.State
+  | SetupDatetimeState SetupTextLike.State
+  | SetupStaticState SetupStatic.State
+  | FormInputState FormInput.State
+  | TabsState Tabs.State
 
-_AceState ∷ Prism' AnyCardState Ace.StateP
+_AceState ∷ Prism' AnyCardState Ace.State
 _AceState = prism' AceState case _ of
   AceState s → Just s
   _ → Nothing
 
-_MarkdownState ∷ Prism' AnyCardState Markdown.StateP
+_MarkdownState ∷ Prism' AnyCardState Markdown.State
 _MarkdownState = prism' MarkdownState case _ of
   MarkdownState s → Just s
   _ → Nothing
@@ -212,7 +204,7 @@ _TableState = prism' TableState case _ of
   TableState s → Just s
   _ → Nothing
 
-_ChartState ∷ Prism' AnyCardState Chart.StateP
+_ChartState ∷ Prism' AnyCardState Chart.State
 _ChartState = prism' ChartState case _ of
   ChartState s → Just s
   _ → Nothing
@@ -222,7 +214,7 @@ _DownloadState = prism' DownloadState case _ of
   DownloadState s → Just s
   _ → Nothing
 
-_VariablesState ∷ Prism' AnyCardState Variables.StateP
+_VariablesState ∷ Prism' AnyCardState Unit
 _VariablesState = prism' VariablesState case _ of
   VariablesState s → Just s
   _ → Nothing
@@ -232,7 +224,7 @@ _TroubleshootState = prism' TroubleshootState case _ of
   TroubleshootState s → Just s
   _ → Nothing
 
-_NextState ∷ Prism' AnyCardState Next.StateP
+_NextState ∷ Prism' AnyCardState Next.State
 _NextState = prism' NextState case _ of
   NextState s → Just s
   _ → Nothing
@@ -242,7 +234,7 @@ _CacheState = prism' CacheState case _ of
   CacheState s → Just s
   _ → Nothing
 
-_OpenState ∷ Prism' AnyCardState Open.StateP
+_OpenState ∷ Prism' AnyCardState Open.State
 _OpenState = prism' OpenState case _ of
   OpenState s → Just s
   _ → Nothing
@@ -252,7 +244,7 @@ _DownloadOptionsState = prism' DownloadOptionsState case _ of
   DownloadOptionsState s → Just s
   _ → Nothing
 
-_DraftboardState ∷ Prism' AnyCardState Draftboard.StateP
+_DraftboardState ∷ Prism' AnyCardState Draftboard.State
 _DraftboardState = prism' DraftboardState case _ of
   DraftboardState s → Just s
   _ → Nothing
@@ -267,142 +259,142 @@ _PendingState = prism' PendingState case _ of
   PendingState s → Just s
   _ → Nothing
 
-_BuildMetricState ∷ Prism' AnyCardState BuildMetric.StateP
+_BuildMetricState ∷ Prism' AnyCardState BuildMetric.State
 _BuildMetricState = prism' BuildMetricState case _ of
   BuildMetricState s → Just s
   _ → Nothing
 
-_BuildSankeyState ∷ Prism' AnyCardState BuildSankey.StateP
+_BuildSankeyState ∷ Prism' AnyCardState BuildSankey.State
 _BuildSankeyState = prism' BuildSankeyState case _ of
   BuildSankeyState s → Just s
   _ → Nothing
 
-_BuildGaugeState ∷ Prism' AnyCardState BuildGauge.StateP
+_BuildGaugeState ∷ Prism' AnyCardState BuildGauge.State
 _BuildGaugeState = prism' BuildGaugeState case _ of
   BuildGaugeState s → Just s
   _ → Nothing
 
-_BuildGraphState ∷ Prism' AnyCardState BuildGraph.StateP
+_BuildGraphState ∷ Prism' AnyCardState BuildGraph.State
 _BuildGraphState = prism' BuildGraphState case _ of
   BuildGraphState s → Just s
   _ → Nothing
 
-_BuildPieState ∷ Prism' AnyCardState BuildPie.StateP
+_BuildPieState ∷ Prism' AnyCardState BuildPie.State
 _BuildPieState = prism' BuildPieState case _ of
   BuildPieState s → Just s
   _ → Nothing
 
-_BuildBarState ∷ Prism' AnyCardState BuildBar.StateP
+_BuildBarState ∷ Prism' AnyCardState BuildBar.State
 _BuildBarState = prism' BuildBarState case _ of
   BuildBarState s → Just s
   _ → Nothing
 
-_BuildLineState ∷ Prism' AnyCardState BuildLine.StateP
+_BuildLineState ∷ Prism' AnyCardState BuildLine.State
 _BuildLineState = prism' BuildLineState case _ of
   BuildLineState s → Just s
   _ → Nothing
 
-_BuildAreaState ∷ Prism' AnyCardState BuildArea.StateP
+_BuildAreaState ∷ Prism' AnyCardState BuildArea.State
 _BuildAreaState = prism' BuildAreaState case _ of
   BuildAreaState s → Just s
   _ → Nothing
 
-_BuildScatterState ∷ Prism' AnyCardState BuildScatter.StateP
+_BuildScatterState ∷ Prism' AnyCardState BuildScatter.State
 _BuildScatterState = prism' BuildScatterState case _ of
   BuildScatterState s → Just s
   _ → Nothing
 
-_BuildRadarState ∷ Prism' AnyCardState BuildRadar.StateP
+_BuildRadarState ∷ Prism' AnyCardState BuildRadar.State
 _BuildRadarState = prism' BuildRadarState case _ of
   BuildRadarState s → Just s
   _ → Nothing
 
-_BuildPivotTableState ∷ Prism' AnyCardState BuildPivotTable.StateP
+_BuildPivotTableState ∷ Prism' AnyCardState BuildPivotTable.State
 _BuildPivotTableState = prism' BuildPivotTableState case _ of
   BuildPivotTableState s → Just s
   _ → Nothing
 
-_BuildFunnelState ∷ Prism' AnyCardState BuildFunnel.StateP
+_BuildFunnelState ∷ Prism' AnyCardState BuildFunnel.State
 _BuildFunnelState = prism' BuildFunnelState case _ of
   BuildFunnelState s → Just s
   _ → Nothing
 
-_BuildBoxplotState ∷ Prism' AnyCardState BuildBoxplot.StateP
+_BuildBoxplotState ∷ Prism' AnyCardState BuildBoxplot.State
 _BuildBoxplotState = prism' BuildBoxplotState case _ of
   BuildBoxplotState s → Just s
   _ → Nothing
 
-_BuildHeatmapState ∷ Prism' AnyCardState BuildHeatmap.StateP
+_BuildHeatmapState ∷ Prism' AnyCardState BuildHeatmap.State
 _BuildHeatmapState = prism' BuildHeatmapState case _ of
   BuildHeatmapState s → Just s
   _ → Nothing
 
-_BuildPunchCardState ∷ Prism' AnyCardState BuildPunchCard.StateP
+_BuildPunchCardState ∷ Prism' AnyCardState BuildPunchCard.State
 _BuildPunchCardState = prism' BuildPunchCardState case _ of
   BuildPunchCardState s → Just s
   _ → Nothing
 
-_BuildCandlestickState ∷ Prism' AnyCardState BuildCandlestick.StateP
+_BuildCandlestickState ∷ Prism' AnyCardState BuildCandlestick.State
 _BuildCandlestickState = prism' BuildCandlestickState case _ of
   BuildCandlestickState s → Just s
   _ → Nothing
 
-_BuildParallelState ∷ Prism' AnyCardState BuildParallel.StateP
+_BuildParallelState ∷ Prism' AnyCardState BuildParallel.State
 _BuildParallelState = prism' BuildParallelState case _ of
   BuildParallelState s → Just s
   _ → Nothing
 
-_SetupDropdownState ∷ Prism' AnyCardState SetupLabeled.StateP
+_SetupDropdownState ∷ Prism' AnyCardState SetupLabeled.State
 _SetupDropdownState = prism' SetupDropdownState case _ of
   SetupDropdownState s → Just s
   _ → Nothing
 
-_SetupRadioState ∷ Prism' AnyCardState SetupLabeled.StateP
+_SetupRadioState ∷ Prism' AnyCardState SetupLabeled.State
 _SetupRadioState = prism' SetupRadioState case _ of
   SetupRadioState s → Just s
   _ → Nothing
 
-_SetupCheckboxState ∷ Prism' AnyCardState SetupLabeled.StateP
+_SetupCheckboxState ∷ Prism' AnyCardState SetupLabeled.State
 _SetupCheckboxState = prism' SetupCheckboxState case _ of
   SetupCheckboxState s → Just s
   _ → Nothing
 
-_SetupTextState ∷ Prism' AnyCardState SetupTextLike.StateP
+_SetupTextState ∷ Prism' AnyCardState SetupTextLike.State
 _SetupTextState = prism' SetupTextState case _ of
   SetupTextState s → Just s
   _ → Nothing
 
-_SetupNumericState ∷ Prism' AnyCardState SetupTextLike.StateP
+_SetupNumericState ∷ Prism' AnyCardState SetupTextLike.State
 _SetupNumericState = prism' SetupNumericState case _ of
   SetupNumericState s → Just s
   _ → Nothing
 
-_SetupDateState ∷ Prism' AnyCardState SetupTextLike.StateP
+_SetupDateState ∷ Prism' AnyCardState SetupTextLike.State
 _SetupDateState = prism' SetupDateState case _ of
   SetupDateState s → Just s
   _ → Nothing
 
-_SetupTimeState ∷ Prism' AnyCardState SetupTextLike.StateP
+_SetupTimeState ∷ Prism' AnyCardState SetupTextLike.State
 _SetupTimeState = prism' SetupTimeState case _ of
   SetupTimeState s → Just s
   _ → Nothing
 
-_SetupDatetimeState ∷ Prism' AnyCardState SetupTextLike.StateP
+_SetupDatetimeState ∷ Prism' AnyCardState SetupTextLike.State
 _SetupDatetimeState = prism' SetupDatetimeState case _ of
   SetupDatetimeState s → Just s
   _ → Nothing
 
-_SetupStaticState ∷ Prism' AnyCardState SetupStatic.StateP
+_SetupStaticState ∷ Prism' AnyCardState SetupStatic.State
 _SetupStaticState = prism' SetupStaticState case _ of
   SetupStaticState s → Just s
   _ → Nothing
 
-_FormInputState ∷ Prism' AnyCardState FormInput.StateP
+_FormInputState ∷ Prism' AnyCardState FormInput.State
 _FormInputState = prism' FormInputState case _ of
   FormInputState s → Just s
   _ → Nothing
 
-_TabsState ∷ Prism' AnyCardState Tabs.StateP
+_TabsState ∷ Prism' AnyCardState Tabs.State
 _TabsState = prism' TabsState case _ of
   TabsState s → Just s
   _ → Nothing
