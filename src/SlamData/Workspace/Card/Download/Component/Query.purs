@@ -16,9 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Download.Component.Query where
 
-import SlamData.Prelude
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 
-type Query = Const Void
-
-type QueryP = CardEvalQuery ⨁ Query
+type Query' = CardEvalQuery

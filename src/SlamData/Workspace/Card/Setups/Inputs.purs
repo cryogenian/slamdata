@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Inputs where
 
 import SlamData.Prelude
+
 import Data.Array as Array
 
 import Halogen as H
@@ -167,9 +168,9 @@ selectInput conf (Select { options, value }) =
       , HP.disabled isDisabled
       , HE.onSelectedIndexChange \ix →
           case defaultWhen, ix of
-            true, 0 → pure (Just (conf.query (Choose Nothing) unit))
-            true, _ → pure (Array.index options (ix - 1) <#> \val → conf.query (Choose (Just val)) unit)
-            _   , _ → pure (Array.index options ix <#> \val → conf.query (Choose (Just val)) unit)
+            true, 0 → Just (conf.query (Choose Nothing) unit)
+            true, _ → Array.index options (ix - 1) <#> \val → conf.query (Choose (Just val)) unit
+            _   , _ → Array.index options ix <#> \val → conf.query (Choose (Just val)) unit
       ]
       if defaultWhen
         then

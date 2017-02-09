@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Table.Component.Query where
 
 import SlamData.Prelude
-
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 
 data Query a
@@ -34,4 +33,4 @@ data PageStep
   | Next
   | Last
 
-type QueryP = Coproduct CardEvalQuery Query
+type Query' = Coproduct CardEvalQuery Query

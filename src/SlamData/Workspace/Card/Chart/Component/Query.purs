@@ -16,11 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Chart.Component.Query where
 
-import SlamData.Prelude
-
-import Halogen (ChildF)
-
-import SlamData.Workspace.Card.Chart.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 
-type QueryP = CardEvalQuery ⨁ ChildF ChildSlot ChildQuery
+type Query' = CardEvalQuery

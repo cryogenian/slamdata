@@ -16,28 +16,24 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Tabs.Component.Query
   ( Query(..)
-  , QueryP
-  , QueryC
+  , Query'
   ) where
 
 import SlamData.Prelude
 
-import Halogen as H
 import Halogen.Component.Utils.Drag (DragEvent)
---import Halogen.HTML.Events.Types as HET
 
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Eval.Deck as Deck
+
+import Utils.DOM as DOM
 
 data Query a
   = AddTab a
   | HandleMessage Deck.Id Deck.EvalMessage a
-  | OrderStart Int (HET.Event HET.MouseEvent) a
+  | OrderStart Int DOM.MouseEvent a
   | Ordering Int DragEvent a
   | OrderOver Int a
   | OrderOut Int a
 
-type QueryC = Coproduct CardEvalQuery Query
-
-type QueryP = H.ParentQuery QueryC DNQ.QueryP Deck.Id
+type Query' = Coproduct CardEvalQuery Query

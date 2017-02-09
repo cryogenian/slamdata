@@ -23,4 +23,4 @@ data Query a
   = UpdatePathString String a
   | ConfirmPathString a
 
-type QueryP = Coproduct CardEvalQuery Query
+type Query' = Coproduct CardEvalQuery Query

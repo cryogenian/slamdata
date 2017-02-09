@@ -21,14 +21,15 @@ module SlamData.Workspace.Deck.Component.Nested.State
   ) where
 
 import SlamData.Prelude
+import Control.Monad.Aff (Aff)
+
 import DOM.HTML.Types (HTMLElement)
---import Halogen.Driver as HD
 
 import SlamData.Effects (SlamDataRawEffects)
 import SlamData.Workspace.Deck.Component.Query as DCQ
 
 -- Newtyped because of impredicativity
-newtype Driver = Driver (HD.Driver DCQ.QueryP SlamDataRawEffects)
+newtype Driver = Driver (DCQ.Query ~> Aff SlamDataRawEffects)
 
 type State =
   { el ∷ Maybe HTMLElement

@@ -16,16 +16,14 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.Component.Nested.Query
   ( Query(..)
-  , QueryP
+  , Query'
   ) where
 
 import SlamData.Prelude
-import DOM.HTML.Types (HTMLElement)
 import SlamData.Workspace.Deck.Component.Query as DCQ
 
 data Query a
   = Init a
   | Finish a
-  | Ref (Maybe HTMLElement) a
 
-type QueryP = Coproduct Query DCQ.Query
+type Query' = Coproduct Query DCQ.Query

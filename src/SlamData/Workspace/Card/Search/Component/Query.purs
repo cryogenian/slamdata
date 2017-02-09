@@ -15,14 +15,13 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Search.Component.Query
-  ( SearchQuery(..)
-  , Query
+  ( Query(..)
+  , Query'
   ) where
 
 import SlamData.Prelude
-
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 
-data SearchQuery a = UpdateSearch String a
+data Query a = UpdateSearch String a
 
-type Query = Coproduct CardEvalQuery SearchQuery
+type Query' = Coproduct CardEvalQuery Query

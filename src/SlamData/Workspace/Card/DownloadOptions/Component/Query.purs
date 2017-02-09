@@ -27,4 +27,4 @@ data Query a
   | ToggleCompress a
   | TargetTyped String a
 
-type QueryP = CardEvalQuery ⨁ Query
+type Query' = CardEvalQuery ⨁ Query

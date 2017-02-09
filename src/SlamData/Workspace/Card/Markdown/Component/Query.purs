@@ -17,15 +17,8 @@ limitations under the License.
 module SlamData.Workspace.Card.Markdown.Component.Query where
 
 import SlamData.Prelude
-
-import Halogen (ChildF)
-
-import Text.Markdown.SlamDown.Halogen.Component.Query (SlamDownQuery)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.Port.VarMap as VM
 
 data Query a = Init a
 
-type QueryP
-  = (CardEvalQuery ⨁ Query)
-  ⨁ (ChildF Unit (SlamDownQuery VM.VarMapValue))
+type Query' = CardEvalQuery ⨁ Query

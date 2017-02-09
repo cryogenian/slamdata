@@ -16,20 +16,22 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.Common where
 
+import SlamData.Prelude
+
 import Data.List as L
 
 import Halogen as H
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.AccessType (AccessType)
-import SlamData.Workspace.Deck.Component.ChildSlot (ChildSlot, ChildQuery, ChildState)
+import SlamData.Workspace.Deck.Component.ChildSlot (ChildSlot, ChildQuery)
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
-type DeckHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+type DeckHTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 
-type DeckDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type DeckDSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
 
 type DeckOptions =
   { accessType ∷ AccessType

@@ -16,21 +16,16 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.Component.Query
   ( Query(..)
-  , QueryP
   ) where
 
 import SlamData.Prelude
-
-import DOM.HTML.Types (HTMLElement)
-
---import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
---import Halogen.HTML.Events.Types (Event, MouseEvent)
-
 import SlamData.GlobalError (GlobalError)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Eval.Deck (EvalMessage)
 import SlamData.Wiring (DeckMessage)
+
+import Utils.DOM as DOM
 
 data Query a
   = Init a
@@ -39,22 +34,19 @@ data Query a
   | Finish a
   | Publish a
   | FlipDeck a
-  | GrabDeck (Event MouseEvent) a
+  | GrabDeck DOM.MouseEvent a
   | UpdateCardSize a
   | ZoomIn a
   | ZoomOut a
-  | StartSliding (Event MouseEvent) GripperDef a
-  | StopSlidingAndSnap (Event MouseEvent) a
-  | UpdateSliderPosition (Event MouseEvent) a
-  | SetCardElement (Maybe HTMLElement) a
+  | StartSliding DOM.MouseEvent GripperDef a
+  | StopSlidingAndSnap DOM.MouseEvent a
+  | UpdateSliderPosition DOM.MouseEvent a
   | StopSliderTransition a
   | Focus a
-  | Defocus (Event MouseEvent) a
+  | Defocus DOM.MouseEvent a
   | HandleEval EvalMessage a
   | HandleMessage DeckMessage a
   | HandleError GlobalError a
   | DismissedCardGuide a
   | DismissDialog a
   | GetActiveCard (Maybe CardId → a)
-
-type QueryP = OpaqueQuery Query

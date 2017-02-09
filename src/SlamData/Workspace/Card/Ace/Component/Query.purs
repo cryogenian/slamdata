@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Ace.Component.Query (Query(..), QueryP) where
+module SlamData.Workspace.Card.Ace.Component.Query
+  ( Query(..)
+  , Query'
+  ) where
 
 import SlamData.Prelude
-
-import Ace.Halogen.Component as Ace
-import Halogen (ChildF)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 
 data Query a
@@ -27,4 +27,4 @@ data Query a
   | RunFromNotification a
   | Finalize a
 
-type QueryP = (CardEvalQuery ⨁ Query) ⨁ (ChildF Unit Ace.AceQuery)
+type Query' = CardEvalQuery ⨁ Query

@@ -15,8 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Deck.Component.State
-  ( StateP
-  , State
+  ( State
   , DisplayMode(..)
   , Dialog(..)
   , ResponsiveSize(..)
@@ -78,8 +77,6 @@ import DOM.HTML.Types (HTMLElement)
 import Data.Array as A
 import Data.Lens (Lens', lens, Prism', prism')
 
---import Halogen.Component.Opaque.Unsafe (OpaqueState)
-
 import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Effects (SlamDataEffects)
@@ -89,8 +86,6 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
 import Utils (hush)
-
-type StateP = OpaqueState State
 
 data Dialog
   = Dialog

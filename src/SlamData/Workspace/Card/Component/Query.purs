@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Component.Query
   ( CardQuery(..)
-  , CardQueryP
   , InnerCardQuery
   , _CardEvalQuery
   , _AnyCardQuery
@@ -71,10 +70,7 @@ import Data.Lens.Prism.Coproduct (_Left, _Right)
 
 import DOM.HTML.Types (HTMLElement)
 
-import Halogen (ChildF)
-
 import SlamData.Workspace.Card.Ace.Component.Query as Ace
---import SlamData.Workspace.Card.Variables.Component.Query as Variables
 import SlamData.Workspace.Card.Troubleshoot.Component.Query as Troubleshoot
 import SlamData.Workspace.Card.Cache.Component.Query as Cache
 import SlamData.Workspace.Card.Chart.Component.Query as Chart
@@ -120,8 +116,6 @@ data CardQuery a
   | SetElement (Maybe HTMLElement) a
   | HandleEvalMessage (Card.EvalMessage) a
 
-type CardQueryP = Coproduct CardQuery (ChildF Unit InnerCardQuery)
-
 type InnerCardQuery = Coproduct CardEvalQuery AnyCardQuery
 
 _CardEvalQuery ∷ ∀ a. Prism' (InnerCardQuery a) (CardEvalQuery a)
@@ -131,243 +125,243 @@ _AnyCardQuery ∷ ∀ a. Prism' (InnerCardQuery a) (AnyCardQuery a)
 _AnyCardQuery = _Right
 
 data AnyCardQuery a
-  = AceQuery (Ace.QueryP a)
-  | MarkdownQuery (Markdown.QueryP a)
-  | SearchQuery (Search.Query a)
-  | TableQuery (Table.QueryP a)
-  | ChartQuery (Chart.QueryP a)
-  | DownloadQuery (Download.QueryP a)
-  | VariablesQuery (Variables.QueryP a)
-  | TroubleshootQuery (Troubleshoot.QueryP a)
-  | CacheQuery (Cache.QueryP a)
-  | OpenQuery (Open.QueryP a)
-  | DownloadOptionsQuery (DOpts.QueryP a)
-  | DraftboardQuery (Draftboard.QueryP a)
-  | BuildMetricQuery (BuildMetric.QueryP a)
-  | BuildSankeyQuery (BuildSankey.QueryP a)
-  | BuildGaugeQuery (BuildGauge.QueryP a)
-  | BuildGraphQuery (BuildGraph.QueryP a)
-  | BuildPieQuery (BuildPie.QueryP a)
-  | BuildBarQuery (BuildBar.QueryP a)
-  | BuildLineQuery (BuildLine.QueryP a)
-  | BuildAreaQuery (BuildArea.QueryP a)
-  | BuildScatterQuery (BuildScatter.QueryP a)
-  | BuildRadarQuery (BuildRadar.QueryP a)
-  | BuildPivotTableQuery (BuildPivotTable.QueryP a)
-  | BuildFunnelQuery (BuildFunnel.QueryP a)
-  | BuildBoxplotQuery (BuildBoxplot.QueryP a)
-  | BuildHeatmapQuery (BuildHeatmap.QueryP a)
-  | BuildPunchCardQuery (BuildPunchCard.QueryP a)
-  | BuildCandlestickQuery (BuildCandlestick.QueryP a)
-  | BuildParallelQuery (BuildParallel.QueryP a)
-  | SetupDropdownQuery (SetupLabeled.QueryP a)
-  | SetupRadioQuery (SetupLabeled.QueryP a)
-  | SetupCheckboxQuery (SetupLabeled.QueryP a)
-  | SetupTextQuery (SetupTextLike.QueryP a)
-  | SetupNumericQuery (SetupTextLike.QueryP a)
-  | SetupDateQuery (SetupTextLike.QueryP a)
-  | SetupTimeQuery (SetupTextLike.QueryP a)
-  | SetupDatetimeQuery (SetupTextLike.QueryP a)
-  | SetupStaticQuery (SetupStatic.QueryP a)
-  | FormInputQuery (FormInput.QueryP a)
-  | TabsQuery (Tabs.QueryP a)
+  = AceQuery (Ace.Query' a)
+  | MarkdownQuery (Markdown.Query' a)
+  | SearchQuery (Search.Query' a)
+  | TableQuery (Table.Query' a)
+  | ChartQuery (Chart.Query' a)
+  | DownloadQuery (Download.Query' a)
+  | VariablesQuery (CardEvalQuery a)
+  | TroubleshootQuery (Troubleshoot.Query' a)
+  | CacheQuery (Cache.Query' a)
+  | OpenQuery (Open.Query' a)
+  | DownloadOptionsQuery (DOpts.Query' a)
+  | DraftboardQuery (Draftboard.Query' a)
+  | BuildMetricQuery (BuildMetric.Query' a)
+  | BuildSankeyQuery (BuildSankey.Query' a)
+  | BuildGaugeQuery (BuildGauge.Query' a)
+  | BuildGraphQuery (BuildGraph.Query' a)
+  | BuildPieQuery (BuildPie.Query' a)
+  | BuildBarQuery (BuildBar.Query' a)
+  | BuildLineQuery (BuildLine.Query' a)
+  | BuildAreaQuery (BuildArea.Query' a)
+  | BuildScatterQuery (BuildScatter.Query' a)
+  | BuildRadarQuery (BuildRadar.Query' a)
+  | BuildPivotTableQuery (BuildPivotTable.Query' a)
+  | BuildFunnelQuery (BuildFunnel.Query' a)
+  | BuildBoxplotQuery (BuildBoxplot.Query' a)
+  | BuildHeatmapQuery (BuildHeatmap.Query' a)
+  | BuildPunchCardQuery (BuildPunchCard.Query' a)
+  | BuildCandlestickQuery (BuildCandlestick.Query' a)
+  | BuildParallelQuery (BuildParallel.Query' a)
+  | SetupDropdownQuery (SetupLabeled.Query' a)
+  | SetupRadioQuery (SetupLabeled.Query' a)
+  | SetupCheckboxQuery (SetupLabeled.Query' a)
+  | SetupTextQuery (SetupTextLike.Query' a)
+  | SetupNumericQuery (SetupTextLike.Query' a)
+  | SetupDateQuery (SetupTextLike.Query' a)
+  | SetupTimeQuery (SetupTextLike.Query' a)
+  | SetupDatetimeQuery (SetupTextLike.Query' a)
+  | SetupStaticQuery (SetupStatic.Query' a)
+  | FormInputQuery (FormInput.Query' a)
+  | TabsQuery (Tabs.Query' a)
 
-_AceQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Ace.QueryP a)
+_AceQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Ace.Query' a)
 _AceQuery = prism' AceQuery case _ of
   AceQuery q → Just q
   _ → Nothing
 
-_MarkdownQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Markdown.QueryP a)
+_MarkdownQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Markdown.Query' a)
 _MarkdownQuery = prism' MarkdownQuery case _ of
   MarkdownQuery q → Just q
   _ → Nothing
 
-_SearchQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Search.Query a)
+_SearchQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Search.Query' a)
 _SearchQuery = prism' SearchQuery case _ of
   SearchQuery q → Just q
   _ → Nothing
 
-_TableQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Table.QueryP a)
+_TableQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Table.Query' a)
 _TableQuery = prism' TableQuery case _ of
   TableQuery q → Just q
   _ → Nothing
 
-_ChartQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Chart.QueryP a)
+_ChartQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Chart.Query' a)
 _ChartQuery = prism' ChartQuery case _ of
   ChartQuery q → Just q
   _ → Nothing
 
-_DownloadQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Download.QueryP a)
+_DownloadQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Download.Query' a)
 _DownloadQuery = prism' DownloadQuery case _ of
   DownloadQuery q → Just q
   _ → Nothing
 
-_VariablesQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Variables.QueryP a)
+_VariablesQuery ∷ ∀ a. Prism' (AnyCardQuery a) (CardEvalQuery a)
 _VariablesQuery = prism' VariablesQuery case _ of
   VariablesQuery q → Just q
   _ → Nothing
 
-_TroubleshootQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Troubleshoot.QueryP a)
+_TroubleshootQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Troubleshoot.Query' a)
 _TroubleshootQuery = prism' TroubleshootQuery case _ of
   TroubleshootQuery q → Just q
   _ → Nothing
 
-_CacheQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Cache.QueryP a)
+_CacheQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Cache.Query' a)
 _CacheQuery = prism' CacheQuery case _ of
   CacheQuery q → Just q
   _ → Nothing
 
-_OpenQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Open.QueryP a)
+_OpenQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Open.Query' a)
 _OpenQuery = prism' OpenQuery case _ of
   OpenQuery q → Just q
   _ → Nothing
 
-_DownloadOptionsQuery ∷ ∀ a. Prism' (AnyCardQuery a) (DOpts.QueryP a)
+_DownloadOptionsQuery ∷ ∀ a. Prism' (AnyCardQuery a) (DOpts.Query' a)
 _DownloadOptionsQuery = prism' DownloadOptionsQuery case _ of
   DownloadOptionsQuery q → Just q
   _ → Nothing
 
-_DraftboardQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Draftboard.QueryP a)
+_DraftboardQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Draftboard.Query' a)
 _DraftboardQuery = prism' DraftboardQuery case _ of
   DraftboardQuery q → Just q
   _ → Nothing
 
-_BuildMetricQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildMetric.QueryP a)
+_BuildMetricQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildMetric.Query' a)
 _BuildMetricQuery = prism' BuildMetricQuery case _ of
   BuildMetricQuery q → Just q
   _ → Nothing
 
-_BuildSankeyQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildSankey.QueryP a)
+_BuildSankeyQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildSankey.Query' a)
 _BuildSankeyQuery = prism' BuildSankeyQuery case _ of
   BuildSankeyQuery q → Just q
   _ → Nothing
 
-_BuildGaugeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildGauge.QueryP a)
+_BuildGaugeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildGauge.Query' a)
 _BuildGaugeQuery = prism' BuildGaugeQuery case _ of
   BuildGaugeQuery q → Just q
   _ → Nothing
 
-_BuildGraphQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildGraph.QueryP a)
+_BuildGraphQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildGraph.Query' a)
 _BuildGraphQuery = prism' BuildGraphQuery case _ of
   BuildGraphQuery q → Just q
   _ → Nothing
 
-_BuildPieQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildPie.QueryP a)
+_BuildPieQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildPie.Query' a)
 _BuildPieQuery = prism' BuildPieQuery case _ of
   BuildPieQuery q → Just q
   _ → Nothing
 
-_BuildBarQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildBar.QueryP a)
+_BuildBarQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildBar.Query' a)
 _BuildBarQuery = prism' BuildBarQuery case _ of
   BuildBarQuery q → Just q
   _ → Nothing
 
-_BuildLineQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildLine.QueryP a)
+_BuildLineQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildLine.Query' a)
 _BuildLineQuery = prism' BuildLineQuery case _ of
   BuildLineQuery q → Just q
   _ → Nothing
 
-_BuildAreaQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildArea.QueryP a)
+_BuildAreaQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildArea.Query' a)
 _BuildAreaQuery = prism' BuildAreaQuery case _ of
   BuildAreaQuery q → Just q
   _ → Nothing
 
-_BuildScatterQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildScatter.QueryP a)
+_BuildScatterQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildScatter.Query' a)
 _BuildScatterQuery = prism' BuildScatterQuery case _ of
   BuildScatterQuery q → Just q
   _ → Nothing
 
-_BuildRadarQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildRadar.QueryP a)
+_BuildRadarQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildRadar.Query' a)
 _BuildRadarQuery = prism' BuildRadarQuery case _ of
   BuildRadarQuery q → Just q
   _ → Nothing
 
-_BuildPivotTableQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildPivotTable.QueryP a)
+_BuildPivotTableQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildPivotTable.Query' a)
 _BuildPivotTableQuery = prism' BuildPivotTableQuery case _ of
   BuildPivotTableQuery q → Just q
   _ → Nothing
 
-_BuildFunnelQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildFunnel.QueryP a)
+_BuildFunnelQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildFunnel.Query' a)
 _BuildFunnelQuery = prism' BuildFunnelQuery case _ of
   BuildFunnelQuery q → Just q
   _ → Nothing
 
-_BuildBoxplotQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildBoxplot.QueryP a)
+_BuildBoxplotQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildBoxplot.Query' a)
 _BuildBoxplotQuery = prism' BuildBoxplotQuery case _ of
   BuildBoxplotQuery q → Just q
   _ → Nothing
 
-_BuildHeatmapQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildHeatmap.QueryP a)
+_BuildHeatmapQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildHeatmap.Query' a)
 _BuildHeatmapQuery = prism' BuildHeatmapQuery case _ of
   BuildHeatmapQuery q → Just q
   _ → Nothing
 
-_BuildPunchCardQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildPunchCard.QueryP a)
+_BuildPunchCardQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildPunchCard.Query' a)
 _BuildPunchCardQuery = prism' BuildPunchCardQuery case _ of
   BuildPunchCardQuery q → Just q
   _ → Nothing
 
-_BuildCandlestickQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildCandlestick.QueryP a)
+_BuildCandlestickQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildCandlestick.Query' a)
 _BuildCandlestickQuery = prism' BuildCandlestickQuery case _ of
   BuildCandlestickQuery q → Just q
   _ → Nothing
 
-_BuildParallelQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildParallel.QueryP a)
+_BuildParallelQuery ∷ ∀ a. Prism' (AnyCardQuery a) (BuildParallel.Query' a)
 _BuildParallelQuery = prism' BuildParallelQuery case _ of
   BuildParallelQuery q → Just q
   _ → Nothing
 
-_SetupDropdownQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.QueryP a)
+_SetupDropdownQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.Query' a)
 _SetupDropdownQuery = prism' SetupDropdownQuery case _ of
   SetupDropdownQuery q → Just q
   _ → Nothing
 
-_SetupRadioQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.QueryP a)
+_SetupRadioQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.Query' a)
 _SetupRadioQuery = prism' SetupRadioQuery case _ of
   SetupRadioQuery q → Just q
   _ → Nothing
 
-_SetupCheckboxQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.QueryP a)
+_SetupCheckboxQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupLabeled.Query' a)
 _SetupCheckboxQuery = prism' SetupCheckboxQuery case _ of
   SetupCheckboxQuery q → Just q
   _ → Nothing
 
-_SetupTextQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
+_SetupTextQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.Query' a)
 _SetupTextQuery = prism' SetupTextQuery case _ of
   SetupTextQuery q → Just q
   _ → Nothing
 
-_SetupNumericQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
+_SetupNumericQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.Query' a)
 _SetupNumericQuery = prism' SetupNumericQuery case _ of
   SetupNumericQuery q → Just q
   _ → Nothing
 
-_SetupDateQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
+_SetupDateQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.Query' a)
 _SetupDateQuery = prism' SetupDateQuery case _ of
   SetupDateQuery q → Just q
   _ → Nothing
 
-_SetupTimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
+_SetupTimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.Query' a)
 _SetupTimeQuery = prism' SetupTimeQuery case _ of
   SetupTimeQuery q → Just q
   _ → Nothing
 
-_SetupDatetimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.QueryP a)
+_SetupDatetimeQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupTextLike.Query' a)
 _SetupDatetimeQuery = prism' SetupDatetimeQuery case _ of
   SetupDatetimeQuery q → Just q
   _ → Nothing
 
-_SetupStaticQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupStatic.QueryP a)
+_SetupStaticQuery ∷ ∀ a. Prism' (AnyCardQuery a) (SetupStatic.Query' a)
 _SetupStaticQuery = prism' SetupStaticQuery case _ of
   SetupStaticQuery q → Just q
   _ → Nothing
 
-_FormInputQuery ∷ ∀ a. Prism' (AnyCardQuery a) (FormInput.QueryP a)
+_FormInputQuery ∷ ∀ a. Prism' (AnyCardQuery a) (FormInput.Query' a)
 _FormInputQuery = prism' FormInputQuery case _ of
   FormInputQuery q → Just q
   _ → Nothing
 
-_TabsQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Tabs.QueryP a)
+_TabsQuery ∷ ∀ a. Prism' (AnyCardQuery a) (Tabs.Query' a)
 _TabsQuery = prism' TabsQuery case _ of
   TabsQuery q → Just q
   _ → Nothing

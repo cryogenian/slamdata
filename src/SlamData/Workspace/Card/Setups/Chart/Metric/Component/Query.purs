@@ -20,10 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
 
-import Halogen (ChildF)
-
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.Setups.Chart.Metric.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
 
@@ -36,5 +33,4 @@ data Query a
   | SetLabel String a
   | Select (Selection SelectAction) a
 
-type QueryC = CardEvalQuery ⨁ Query
-type QueryP = QueryC ⨁ (ChildF ChildSlot ChildQuery)
+type Query' = CardEvalQuery ⨁ Query
