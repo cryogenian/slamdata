@@ -16,38 +16,72 @@ limitations under the License.
 
 module Halogen.Component.Utils.Debounced
   ( DebounceTrigger(..)
-  , fireDebouncedQuery'
+  , runDebounceTrigger
+  , debouncedEventSource
+  , fireDebouncedQuery
   ) where
 
 import Prelude
 
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.Aff (cancel, forkAff, later')
+import Control.Monad.Aff.AVar (AVAR, makeVar, makeVar', peekVar, putVar, takeVar)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Eff.Exception as Exn
 
-import Data.Lens (Lens', view, (?~))
+import Data.Either as E
+import Data.Foldable (traverse_)
+import Data.Int as Int
+import Data.Lens (Prism', preview, (.~))
 import Data.Maybe (Maybe(..))
-import Data.Time.Duration (Milliseconds)
+import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
-import Halogen.Component.Utils (debouncedEventSource)
+import Halogen.Query.EventSource as ES
 
 newtype DebounceTrigger f g = DebounceTrigger ((∀ a. a → f a) → g Unit)
+
+runDebounceTrigger ∷ ∀ f g. DebounceTrigger f g -> (∀ a. a → f a) → g Unit
+runDebounceTrigger (DebounceTrigger dt) = dt
 
 -- | Fires the specified debouced H.query trigger with the passed H.query. This
 -- | function also handles constructing the initial trigger if it has not yet
 -- | been created.
-fireDebouncedQuery'
+fireDebouncedQuery
   ∷ ∀ s f g p o m eff
   . (MonadAff (avar ∷ AVAR | eff) m)
   ⇒ Milliseconds
-  → Lens' s (Maybe (DebounceTrigger f m))
+  → Prism' s (DebounceTrigger f m)
   → (∀ a. a → f a)
   → H.HalogenM s f g p o m Unit
-fireDebouncedQuery' ms lens act = do
-  DebounceTrigger t ← H.gets (view lens) >>= case _ of
+fireDebouncedQuery ms lens act = do
+  DebounceTrigger t ← H.gets (preview lens) >>= case _ of
     Just t' → pure t'
     Nothing → do
-      t' ← DebounceTrigger <$> debouncedEventSource ms
-      H.modify (lens ?~ t')
+      t' ← debouncedEventSource ms
+      H.modify (lens .~ t')
       pure t'
   H.lift $ t act
+
+debouncedEventSource
+  ∷ ∀ s f g p o m eff
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Milliseconds
+  → H.HalogenM s f g p o m (DebounceTrigger f m)
+debouncedEventSource (Milliseconds ms) = do
+  emitVar ← liftAff makeVar
+  cancelVar ← liftAff $ makeVar' Nothing
+  let
+    source ∷ ES.EventSource f m
+    source = ES.EventSource $ pure
+      { producer: ES.produceAff (liftAff <<< putVar emitVar)
+      , done: pure unit
+      }
+
+    push ∷ DebounceTrigger f m
+    push = DebounceTrigger $ \k -> liftAff do
+      emit ← peekVar emitVar
+      takeVar cancelVar >>= traverse_ (flip cancel $ Exn.error "Debounced")
+      putVar cancelVar <<< Just =<< forkAff do
+        later' (Int.floor ms) $ emit $ E.Left $ k ES.Listening
+
+  H.subscribe source $> push

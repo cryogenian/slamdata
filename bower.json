@@ -56,7 +56,7 @@
     "purescript-zclipboard": "^3.0.0",
     "purescript-aff-bus": "^1.0.0",
     "purescript-aff-future": "^1.0.0",
-    "purescript-dom-classy": "^1.0.0"
+    "purescript-dom-classy": "^1.2.0"
   },
   "devDependencies": {
     "purescript-chalky": "^2.0.0",

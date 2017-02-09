@@ -88,27 +88,3 @@ affEventSource k source = ES.EventSource do
       loop.run
     done = liftAff (EventLoop.break' =<< takeVar breaker)
   pure { producer, done }
-
-debouncedEventSource
-  ∷ ∀ s f g p o m eff
-  . MonadAff (avar ∷ AVAR | eff) m
-  ⇒ Milliseconds
-  → H.HalogenM s f g p o m ((∀ a. a → f a) → m Unit)
-debouncedEventSource (Milliseconds ms) = do
-  emitVar ← liftAff makeVar
-  cancelVar ← liftAff $ makeVar' Nothing
-  let
-    source ∷ ES.EventSource f m
-    source = ES.EventSource $ pure
-      { producer: ES.produceAff (liftAff <<< putVar emitVar)
-      , done: pure unit
-      }
-
-    push ∷ (∀ a. a → f a) → m Unit
-    push k = liftAff do
-      emit ← peekVar emitVar
-      takeVar cancelVar >>= traverse_ (flip cancel $ Exn.error "Debounced")
-      putVar cancelVar <<< Just =<< forkAff do
-        later' (Int.floor ms) $ emit $ E.Left $ k ES.Listening
-
-  H.subscribe source $> push

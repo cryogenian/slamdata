@@ -16,17 +16,14 @@ limitations under the License.
 
 module SlamData.Workspace.MillerColumns.Column.Component.Query
   ( Query(..)
-  , Query'
-  , module SlamData.Workspace.MillerColumns.Column.Component.ItemQuery
+  , module SlamData.Workspace.MillerColumns.Column.Component.Item
   ) where
 
 import SlamData.Prelude
 
-import DOM.HTML.Types (HTMLElement)
+import DOM.Node.Types (Element)
 
-import Halogen as H
-
-import SlamData.Workspace.MillerColumns.Column.Component.ItemQuery (ItemQuery(..), ItemQuery')
+import SlamData.Workspace.MillerColumns.Column.Component.Item (ItemQuery(..), ItemQuery')
 
 data Query a b
   = Init b
@@ -35,6 +32,4 @@ data Query a b
   | Deselect b
   | HandleFilterChange String b
   | UpdateFilter String b
-  | HandleScroll HTMLElement b
-
-type Query' a i f = Coproduct (Query a) (H.ChildF i (ItemQuery' a f))
+  | HandleScroll Element b

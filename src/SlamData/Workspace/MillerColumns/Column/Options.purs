@@ -21,28 +21,20 @@ import SlamData.Prelude
 import Data.List as L
 
 import Halogen as H
+import Halogen.HTML as HH
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.MillerColumns.Column.Component.Query (ItemQuery')
+import SlamData.Workspace.MillerColumns.Column.Component.Item (ItemMessage', ItemQuery', ItemState)
 
 type LoadParams i = { path ∷ L.List i, filter ∷ String, offset ∷ Maybe Int }
 
-type ColumnOptions a i s f =
+type ColumnOptions a i f m =
   { render
       ∷ L.List i
       → a
-      → InitialItemState
-      → { component ∷ H.Component s (ItemQuery' a f) Slam
-         , initialState ∷ s
-         }
+      → H.Component HH.HTML (ItemQuery' f) ItemState (ItemMessage' a m) Slam
   , label ∷ a → String
   , load ∷ LoadParams i → Slam { items ∷ L.List a, nextOffset ∷ Maybe Int }
   , isLeaf ∷ L.List i → Boolean
   , id ∷ a → i
   }
-
-data InitialItemState = Selected | Deselected
-derive instance eqInitialItemState ∷ Eq InitialItemState
-derive instance ordInitialItemState ∷ Ord InitialItemState
-
-type ItemHTML = H.ComponentHTML (Const Void)

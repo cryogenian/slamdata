@@ -20,11 +20,11 @@ import SlamData.Prelude
 
 import Data.List (List(..))
 
-import Halogen as H
-
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Column.Options (LoadParams)
-import SlamData.Workspace.MillerColumns.Column.Component.Query (Query, ItemQuery')
+import SlamData.Workspace.MillerColumns.Column.Component.Query (Query)
+
+import Halogen.Component.Utils.Debounced (DebounceTrigger(..))
 
 data ColumnState = Loading | Loaded
 
@@ -44,17 +44,8 @@ type State a i =
   , nextOffset ∷ Maybe Int
   , lastLoadParams ∷ Maybe (LoadParams i)
   , tick ∷ Int
-  , filterTrigger ∷ Query a Unit → Slam Unit
+  , filterTrigger ∷ DebounceTrigger (Query a) Slam
   }
-
-type State' a i s f =
-  H.ParentState
-    (State a i)
-    s
-    (Query a)
-    (ItemQuery' a f)
-    Slam
-    i
 
 initialState ∷ ∀ a i. State a i
 initialState =
@@ -65,5 +56,5 @@ initialState =
   , nextOffset: Nothing
   , lastLoadParams: Nothing
   , tick: 0
-  , filterTrigger: const (pure unit)
+  , filterTrigger: DebounceTrigger (const (pure unit))
   }
