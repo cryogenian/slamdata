@@ -18,7 +18,11 @@ module SlamData.Workspace.Card.Common.EvalQuery
   ( CardEvalQuery(..)
   , CardEvalMessage(..)
   , ModelUpdateType(..)
+  , modelUpdate
+  , stateUpdate
   ) where
+
+import SlamData.Prelude
 
 import SlamData.Workspace.Card.Eval.Monad (EvalState)
 import SlamData.Workspace.Card.Model (AnyCardModel)
@@ -66,3 +70,9 @@ data ModelUpdateType
   = StateOnlyUpdate
   | EvalModelUpdate
   | EvalStateUpdate EvalState
+
+modelUpdate ∷ CardEvalMessage
+modelUpdate = ModelUpdated EvalModelUpdate
+
+stateUpdate ∷ EvalState → CardEvalMessage
+stateUpdate = ModelUpdated ∘ EvalStateUpdate

@@ -104,5 +104,5 @@ cardEval = case _ of
 searchEval ∷ Query ~> DSL
 searchEval (UpdateSearch str next) = do
   H.modify (_searchString .~ str)
-  H.raise $ CC.ModelUpdated CC.EvalModelUpdate
+  H.raise CC.modelUpdate
   pure next
