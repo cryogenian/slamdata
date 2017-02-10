@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Component
   ( CardComponent
-  , CardDef
+  , InnerCardComponent
   , makeCardComponent
   , module SlamData.Workspace.Card.Common
   , module CQ
@@ -51,20 +51,20 @@ import SlamData.Workspace.Eval.Persistence as P
 type CardComponent = H.Component HH.HTML CQ.CardQuery Unit Void Slam
 type CardDSL f = H.ParentDSL CS.CardState CQ.CardQuery (CQ.InnerCardQuery f) Unit Void Slam
 type CardHTML f = H.ParentHTML CQ.CardQuery (CQ.InnerCardQuery f) Unit Slam
-
-type CardDef f =
-  { options ∷ CardOptions
-  , component ∷ H.Component HH.HTML (CQ.InnerCardQuery f) Unit EQ.CardEvalMessage Slam
-  , cardType ∷ CardType
-  }
+type InnerCardComponent f = H.Component HH.HTML (CQ.InnerCardQuery f) Unit EQ.CardEvalMessage Slam
 
 cardRef ∷ H.RefLabel
 cardRef = H.RefLabel "card"
 
 -- | Constructs a card component from a record with the necessary properties and
 -- | a render function.
-makeCardComponent ∷ ∀ f. CardDef f → CardComponent
-makeCardComponent def =
+makeCardComponent
+  ∷ ∀ f
+  . CardType
+  → InnerCardComponent f
+  → CardOptions
+  → CardComponent
+makeCardComponent cardType component options =
   H.lifecycleParentComponent
     { render
     , eval
@@ -75,28 +75,28 @@ makeCardComponent def =
     }
   where
   displayCoord ∷ Card.DisplayCoord
-  displayCoord = def.options.cursor × def.options.cardId
+  displayCoord = options.cursor × options.cardId
 
   render ∷ CS.CardState → CardHTML f
   render st =
     HH.div
       [ HP.classes $ [ CSS.deckCard ]
-      , ARIA.label $ (cardName def.cardType) ⊕ " card"
+      , ARIA.label $ (cardName cardType) ⊕ " card"
       , HP.ref cardRef
       ]
       $ fold [cardLabel, card]
     where
     cardLabel ∷ Array (CardHTML f)
     cardLabel
-      | def.cardType `elem` [ Draftboard ] = []
+      | cardType `elem` [ Draftboard ] = []
       | otherwise =
           [ HH.div
               [ HP.classes [CSS.cardHeader]
               ]
               [ HH.div
                   [ HP.class_ CSS.cardName ]
-                  [ HH.img [ HP.src $ cardIconDarkSrc def.cardType ]
-                  , HH.p_ [ HH.text $ cardName def.cardType ]
+                  [ HH.img [ HP.src $ cardIconDarkSrc cardType ]
+                  , HH.p_ [ HH.text $ cardName cardType ]
                   ]
               ]
           ]
@@ -106,8 +106,8 @@ makeCardComponent def =
         then []
         else
           [ HH.div
-              [ HP.classes (cardClasses def.cardType) ]
-              [ HH.slot unit def.component unit (HE.input CQ.HandleCardMessage) ]
+              [ HP.classes (cardClasses cardType) ]
+              [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
           ]
 
   eval ∷ CQ.CardQuery ~> CardDSL f
@@ -156,7 +156,7 @@ makeCardComponent def =
 
   initializeInnerCard ∷ CardDSL f Unit
   initializeInnerCard = do
-    cell ← H.lift $ P.getCard def.options.cardId
+    cell ← H.lift $ P.getCard options.cardId
     for_ cell \{ bus, model, input, output, state } → do
       H.subscribe $ busEventSource (H.request ∘ CQ.HandleEvalMessage) bus
       H.modify _

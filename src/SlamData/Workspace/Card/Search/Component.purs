@@ -44,16 +44,12 @@ type DSL = H.ComponentDSL State (CC.InnerCardQuery Query) CC.CardEvalMessage Sla
 type HTML = H.ComponentHTML (CC.InnerCardQuery Query)
 
 searchComponent ∷ CC.CardOptions → CC.CardComponent
-searchComponent options =
-  CC.makeCardComponent
-    { options
-    , cardType: CT.Search
-    , component: H.component
-        { render
-        , eval: coproduct cardEval searchEval
-        , initialState: const initialState
-        , receiver: const Nothing
-        }
+searchComponent =
+  CC.makeCardComponent CT.Search $ H.component
+    { render
+    , eval: coproduct cardEval searchEval
+    , initialState: const initialState
+    , receiver: const Nothing
     }
 
 render ∷ State → HTML
