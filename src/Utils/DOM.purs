@@ -25,11 +25,8 @@ import SlamData.Prelude
 
 import Data.Nullable as Nullable
 
-import Control.Coroutine (Producer)
-import Control.Coroutine.Aff as AffCoroutine
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 
@@ -123,20 +120,6 @@ onResize cb = do
   window
     >>= windowToEventTarget
     >>> EventTarget.addEventListener EventTypes.resize listener false
-
-eventProducer
-  ∷ forall eff
-  . EventType
-  → Boolean
-  → EventTarget
-  → Producer Event (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit
-eventProducer eventType capture eventTarget =
-  AffCoroutine.produce \emit →
-    EventTarget.addEventListener
-      eventType
-      (EventTarget.eventListener $ emit <<< Left)
-      capture
-      eventTarget
 
 openPopup ∷ ∀ eff. String → Eff (dom ∷ DOM | eff) (Maybe Window)
 openPopup stringUrl = do

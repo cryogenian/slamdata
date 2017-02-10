@@ -18,7 +18,7 @@ module Utils.LocalStorage
   ( getLocalStorage
   , setLocalStorage
   , removeLocalStorage
-  , getStorageEventProducer
+  , onStorageEvent
   , StorageEvent
   ) where
 
@@ -26,10 +26,6 @@ import Prelude
 
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Coroutine as Coroutine
-import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Rec.Class as MonadRecClass
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonParser, encodeJson, printJson)
 import Data.Either (Either(..))
@@ -39,11 +35,10 @@ import Data.Maybe (Maybe(..), maybe)
 import Unsafe.Coerce as U
 
 import DOM (DOM)
-import DOM.Event.Types (Event, EventTarget, EventType(..))
+import DOM.Event.Types (Event, EventType(..))
+import DOM.Event.EventTarget as EventTarget
 import DOM.HTML as DOMHTML
 import DOM.HTML.Types as DOMHTMLTypes
-
-import Utils.DOM as DOMUtils
 
 foreign import setLocalStorageImpl
   ∷ forall eff. Fn2 String String (Eff (dom ∷ DOM | eff) Unit)
@@ -52,18 +47,15 @@ foreign import getLocalStorageImpl
 foreign import removeLocalStorageImpl
   ∷ forall eff . String → (Eff (dom ∷ DOM | eff)) Unit
 
-type StorageEvent a =
-  { target ∷ EventTarget
-  , bubbles ∷ Boolean
-  , cancelable ∷ Boolean
-  , key ∷ Foreign
-  , oldValue ∷ a
-  , newValue ∷ a
+type StorageEvent =
+  { key ∷ String
+  , oldValue ∷ String
+  , newValue ∷ String
   , url ∷ String
   , storageArea ∷ Foreign
   }
 
-eventToStorageEvent ∷ Event → StorageEvent Foreign
+eventToStorageEvent ∷ Event → StorageEvent
 eventToStorageEvent = U.unsafeCoerce
 
 setLocalStorage
@@ -88,16 +80,12 @@ removeLocalStorage
 removeLocalStorage k =
   liftEff $ removeLocalStorageImpl k
 
-getStorageEventProducer
-  ∷ forall eff
-  . Boolean
-  → Eff (dom ∷ DOM, avar :: AVAR | eff) (Coroutine.Producer (StorageEvent Foreign) (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit)
-getStorageEventProducer capture =
-  (_ Coroutine.$~ eventToStorageEventTransformer) <$> windowEventProducer "storage"
-  where
-  eventToStorageEventTransformer =
-    MonadRecClass.forever $ Coroutine.transform eventToStorageEvent
-
-  windowEventProducer s =
-    DOMUtils.eventProducer (EventType s) capture
-      <$> (DOMHTMLTypes.windowToEventTarget <$> DOMHTML.window)
+onStorageEvent
+  ∷ ∀ eff
+  . (StorageEvent → Eff (dom ∷ DOM | eff) Unit)
+  → Eff (dom ∷ DOM | eff) (Eff (dom ∷ DOM | eff) Unit)
+onStorageEvent cb = do
+  win ← DOMHTMLTypes.windowToEventTarget <$> DOMHTML.window
+  let listener = EventTarget.eventListener (cb <<< eventToStorageEvent)
+  EventTarget.addEventListener (EventType "storage") listener false win
+  pure $ EventTarget.removeEventListener (EventType "storage") listener false win
