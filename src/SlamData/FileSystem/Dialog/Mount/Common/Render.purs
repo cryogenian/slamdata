@@ -26,8 +26,9 @@ import Data.Profunctor.Strong (first, second)
 import Data.String.Regex as Rx
 import Data.String.Regex.Flags as RXF
 
+import DOM.HTML.Indexed (HTMLinput)
+
 import Halogen as H
-import Halogen.CustomProps as CP
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -98,7 +99,7 @@ input
   ∷ ∀ s p
   . s
   → Traversal' s String
-  → Array (CP.InputProp (SettingsQuery s))
+  → Array (HH.IProp HTMLinput (SettingsQuery s Unit))
   → H.HTML p (SettingsQuery s)
 input state lens =
   input' id state lens -- can't eta reduce further here as the typechecker doesn't like it
@@ -110,7 +111,7 @@ input'
   . (String → String)
   → s
   → Traversal' s String
-  → Array (CP.InputProp (SettingsQuery s))
+  → Array (HH.IProp HTMLinput (SettingsQuery s Unit))
   → H.HTML p (SettingsQuery s)
 input' f state lens attrs =
   HH.input
