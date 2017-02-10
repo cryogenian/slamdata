@@ -16,7 +16,9 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Ace.Component.Query where
 
+import Ace.Halogen.Component (AceMessage)
+
 data Query a
   = Init a
-  | RunFromNotification a
-  | Finalize a
+  | RunQuery a
+  | HandleAce AceMessage a

@@ -17,32 +17,19 @@ limitations under the License.
 module SlamData.Workspace.Card.Ace.Component.State
   ( State
   , initialState
-  , _levelOfDetails
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.EventLoop (Breaker)
-
-import Data.Lens (Lens', lens)
-
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type State =
-  { levelOfDetails ∷ LevelOfDetails
-  , dirty ∷ Boolean
+  { dirty ∷ Boolean
   , trigger ∷ Maybe (AVar Unit)
-  , breaker ∷ Maybe (Breaker Unit)
   }
 
 initialState ∷ State
 initialState =
-  { levelOfDetails: High
-  , dirty: false
+  { dirty: false
   , trigger: Nothing
-  , breaker: Nothing
   }
-
-_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a |r} a
-_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})

@@ -30,10 +30,8 @@ import Ace.Halogen.Component as AC
 import Ace.Types (Editor)
 
 import Control.Monad.Aff.AVar (makeVar, takeVar)
-import Control.Monad.Aff.EventLoop as EventLoop
 
 import Data.Array as Array
-import Data.Lens ((.~))
 import Data.String as Str
 import Data.StrMap as SM
 
@@ -50,9 +48,8 @@ import SlamData.Notification as N
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.Ace.Component.Query (Query(..))
-import SlamData.Workspace.Card.Ace.Component.State (State, initialState, _levelOfDetails)
+import SlamData.Workspace.Card.Ace.Component.State (State, initialState)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
@@ -60,47 +57,40 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.Ace (getRangeRecs, readOnly)
 
-type DSL = H.ParentDSL State AC.AceState (CC.CardEvalQuery ⨁ Query) AC.AceQuery Slam Unit
-type HTML = H.ParentHTML AC.AceState (CC.CardEvalQuery ⨁ Query) AC.AceQuery Slam Unit
+type DSL = H.ParentDSL State (CC.InnerCardQuery Query) AC.AceQuery Unit CC.CardEvalMessage Slam
+type HTML = H.ParentHTML (CC.InnerCardQuery Query) AC.AceQuery Unit Slam
 
-aceComponent ∷ CT.AceMode → CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-aceComponent mode options = CC.makeCardComponent
-  { options
-  , cardType: CT.Ace mode
-  , component: H.lifecycleParentComponent
-      { render: render mode
-      , eval: eval mode
-      , peek: Just (peek ∘ H.runChildF)
-      , initializer: Just $ right $ H.action Init
-      , finalizer: Just $ right $ H.action Finalize
-      }
-  , initialState: H.parentState initialState
-  , _State: CC._AceState
-  , _Query: CC.makeQueryPrism' CC._AceQuery
-  }
-
-eval ∷ CT.AceMode → (CC.CardEvalQuery ⨁ Query) ~> DSL
-eval mode = cardEval mode ⨁ evalComponent
+aceComponent ∷ CT.AceMode → CC.CardOptions → CC.CardComponent
+aceComponent mode =
+  CC.makeCardComponent (CT.Ace mode) $ H.lifecycleParentComponent
+    { render: render mode
+    , eval: evalCard mode ⨁ evalComponent
+    , initialState: const initialState
+    , initializer: Just $ right $ H.action Init
+    , finalizer: Nothing
+    , receiver: const Nothing
+    }
 
 evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
     trigger ← H.liftAff $ makeVar
-    breaker ← subscribeToASource'
-      (const $ right $ H.action RunFromNotification)
+    H.modify _ { trigger = Just trigger }
+    H.subscribe $ affEventSource
+      (const $ right $ RunQuery H.Listening)
       (takeVar trigger)
-    H.modify (_ { trigger = Just trigger, breaker = Just breaker })
     pure next
-  RunFromNotification next → do
-    CC.raiseUpdatedP' CC.EvalModelUpdate
+  RunQuery next → do
+    H.raise CC.modelUpdate
+    H.modify _ { dirty = false }
     pure next
-  Finalize next → do
-    breaker ← H.gets _.breaker
-    H.liftAff $ for_ breaker EventLoop.break'
+  HandleAce (AC.TextChanged str) next → do
+    unlessM (H.gets _.dirty) do
+      H.modify _ { dirty = true }
     pure next
 
-cardEval ∷ CT.AceMode → CC.CardEvalQuery ~> DSL
-cardEval mode = case _ of
+evalCard ∷ CT.AceMode → CC.CardEvalQuery ~> DSL
+evalCard mode = case _ of
   CC.Activate next → do
     mbEditor ← H.query unit $ H.request AC.GetEditor
     for_ (join mbEditor) $ H.liftEff ∘ Editor.focus
@@ -152,25 +142,10 @@ cardEval mode = case _ of
     pure next
   CC.ReceiveState _ next → do
     pure next
-  CC.ReceiveDimensions dims next → do
-    H.modify
-      $ _levelOfDetails
-      .~ if dims.width < 240.0 then Low else High
+  CC.ReceiveDimensions dims reply → do
     mbEditor ← H.query unit $ H.request AC.GetEditor
     for_ (join mbEditor) $ H.liftEff ∘ Editor.resize Nothing
-    pure next
-  CC.ModelUpdated _ next → do
-    H.modify _ { dirty = false }
-    pure next
-  CC.ZoomIn next →
-    pure next
-
-peek ∷ ∀ x. AC.AceQuery x → DSL Unit
-peek = case _ of
-  AC.TextChanged _ →
-    unlessM (H.gets _.dirty) do
-      H.modify _ { dirty = true }
-  _ → pure unit
+    pure $ reply if dims.width < 240.0 then Low else High
 
 aceSetup ∷ CT.AceMode → Editor → Slam Unit
 aceSetup mode editor = H.liftEff do
@@ -181,18 +156,8 @@ aceSetup mode editor = H.liftEff do
 
 render ∷ CT.AceMode → State → HTML
 render mode state =
-  HH.div_
-    [ renderHighLOD mode state
-    , renderLowLOD (CT.cardIconLightImg $ CT.Ace mode) left state.levelOfDetails
-    ]
-
-renderHighLOD ∷ CT.AceMode → State → HTML
-renderHighLOD mode state =
   HH.div
-    [ HP.classes
-        $ [ CSS.cardInput, CSS.aceContainer ]
-        ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
-    ]
+    [ HP.classes [ CSS.cardInput, CSS.aceContainer ] ]
     [ HH.div [ HP.class_ (HH.ClassName "sd-ace-inset-shadow") ] []
     , HH.div
         [ HP.class_ (HH.ClassName "sd-ace-toolbar") ]
@@ -201,14 +166,12 @@ renderHighLOD mode state =
             , HP.disabled (not state.dirty)
             , HP.title "Run Query"
             , ARIA.label "Run query"
-            , HE.onClick (HE.input_ (left <<< CC.ModelUpdated CC.EvalModelUpdate))
+            , HE.onClick (HE.input_ (right ∘ RunQuery))
             ]
             [ glyph B.glyphiconPlay
             , HH.text "Run Query"
             ]
         ]
-    , HH.slot unit \_ →
-        { component: AC.aceComponent (aceSetup mode) (Just AC.Live)
-        , initialState: AC.initialAceState
-        }
+    , HH.slot unit (AC.aceComponent (aceSetup mode) (Just AC.Live)) unit
+        (Just ∘ right ∘ H.action ∘ HandleAce)
     ]
