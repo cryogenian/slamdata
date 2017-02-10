@@ -51,12 +51,9 @@ searchComponent options =
     , component: H.component
         { render
         , eval: coproduct cardEval searchEval
-        , initialState: id
+        , initialState: const initialState
         , receiver: const Nothing
         }
-    , initialState: initialState
-    , _State: CC._SearchState
-    , _Query: CC._SearchQuery
     }
 
 render ∷ State → HTML

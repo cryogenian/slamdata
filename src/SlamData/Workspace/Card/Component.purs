@@ -16,8 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Component
   ( CardComponent
+  , CardDef
   , makeCardComponent
-  , module SlamData.Workspace.Card.Component.Def
   , module SlamData.Workspace.Card.Common
   , module CQ
   , module CS
@@ -42,7 +42,6 @@ import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, ca
 import SlamData.Workspace.Card.Common.EvalQuery as EQ
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component.CSS as CSS
-import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.State as CS
 import SlamData.Workspace.Eval.Card as Card
@@ -53,22 +52,33 @@ type CardComponent = H.Component HH.HTML CQ.CardQuery Unit Void Slam
 type CardDSL f = H.ParentDSL CS.CardState CQ.CardQuery (CQ.InnerCardQuery f) Unit Void Slam
 type CardHTML f = H.ParentHTML CQ.CardQuery (CQ.InnerCardQuery f) Unit Slam
 
+type CardDef f =
+  { options ∷ CardOptions
+  , component ∷ H.Component HH.HTML (CQ.InnerCardQuery f) Unit EQ.CardEvalMessage Slam
+  , cardType ∷ CardType
+  }
+
 cardRef ∷ H.RefLabel
 cardRef = H.RefLabel "card"
 
--- | Card component factory
-makeCardComponent
-  ∷ ∀ s f
-  . CardDef s f ()
-  → CardComponent
-makeCardComponent def = makeCardComponentPart def render
+-- | Constructs a card component from a record with the necessary properties and
+-- | a render function.
+makeCardComponent ∷ ∀ f. CardDef f → CardComponent
+makeCardComponent def =
+  H.lifecycleParentComponent
+    { render
+    , eval
+    , initialState: const (CS.initialCardState)
+    , initializer: Just (H.action CQ.Initialize)
+    , finalizer: Just (H.action CQ.Finalize)
+    , receiver: const Nothing
+    }
   where
-  render
-    ∷ H.Component HH.HTML (CQ.InnerCardQuery f) s EQ.CardEvalMessage Slam
-    → s
-    → CS.CardState
-    → CardHTML f
-  render component initialState st =
+  displayCoord ∷ Card.DisplayCoord
+  displayCoord = def.options.cursor × def.options.cardId
+
+  render ∷ CS.CardState → CardHTML f
+  render st =
     HH.div
       [ HP.classes $ [ CSS.deckCard ]
       , ARIA.label $ (cardName def.cardType) ⊕ " card"
@@ -97,31 +107,8 @@ makeCardComponent def = makeCardComponentPart def render
         else
           [ HH.div
               [ HP.classes (cardClasses def.cardType) ]
-              [ HH.slot unit component initialState (HE.input CQ.HandleCardMessage) ]
+              [ HH.slot unit def.component unit (HE.input CQ.HandleCardMessage) ]
           ]
-
--- | Constructs a card component from a record with the necessary properties and
--- | a render function.
-makeCardComponentPart
-  ∷ ∀ s f r
-  . CardDef s f r
-  → (H.Component HH.HTML (CQ.InnerCardQuery f) s EQ.CardEvalMessage Slam
-     → s
-     → CS.CardState
-     → CardHTML f)
-  → CardComponent
-makeCardComponentPart def render =
-  H.lifecycleParentComponent
-    { render: render def.component def.initialState
-    , eval
-    , initialState: const (CS.initialCardState)
-    , initializer: Just (H.action CQ.Initialize)
-    , finalizer: Just (H.action CQ.Finalize)
-    , receiver: const Nothing
-    }
-  where
-  displayCoord ∷ Card.DisplayCoord
-  displayCoord = def.options.cursor × def.options.cardId
 
   eval ∷ CQ.CardQuery ~> CardDSL f
   eval = case _ of
