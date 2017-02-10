@@ -17,22 +17,16 @@ limitations under the License.
 module SlamData.Workspace.Card.Component.Query
   ( CardQuery(..)
   , InnerCardQuery
-  , _CardEvalQuery
-  , _CardQuery
   , module EQ
   ) where
 
 import SlamData.Prelude
-
-import Data.Lens (Prism')
-import Data.Lens.Prism.Coproduct (_Left, _Right)
 
 import Halogen as H
 
 import SlamData.Workspace.Card.Common.EvalQuery as EQ
 import SlamData.Workspace.Eval.Card as Card
 
--- | The common query algebra for a card.
 data CardQuery a
   = Initialize a
   | Finalize a
@@ -41,11 +35,6 @@ data CardQuery a
   | UpdateDimensions a
   | HandleEvalMessage (Card.EvalMessage) (H.SubscribeStatus → a)
   | HandleCardMessage (EQ.CardEvalMessage) a
+  | ZoomIn a
 
 type InnerCardQuery f = Coproduct EQ.CardEvalQuery f
-
-_CardEvalQuery ∷ ∀ f a. Prism' (InnerCardQuery f a) (EQ.CardEvalQuery a)
-_CardEvalQuery = _Left
-
-_CardQuery ∷ ∀ f a. Prism' (InnerCardQuery f a) (f a)
-_CardQuery = _Right

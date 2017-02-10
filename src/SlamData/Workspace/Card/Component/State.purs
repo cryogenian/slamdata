@@ -15,39 +15,30 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Component.State
-  ( CardState(..)
-  , initialCardState
-  , _sub
-  , _pending
+  ( CardState
+  , initialState
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Aff.Bus (BusRW)
 
-import Data.Lens (Lens', lens)
-
 import Halogen as H
 
 import SlamData.Workspace.Eval.Card as Card
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
--- | The common state value for deck cards.
 type CardState =
   { sub ∷ H.SubscribeStatus
   , pending ∷ Boolean
   , bus ∷ Maybe (BusRW Card.EvalMessage)
+  , levelOfDetails ∷ LevelOfDetails
   }
 
--- | Creates an initial `CardState` value for an editor card.
-initialCardState ∷ CardState
-initialCardState =
+initialState ∷ CardState
+initialState =
   { sub: H.Listening
   , pending: true
   , bus: Nothing
+  , levelOfDetails: High
   }
-
-_sub ∷ Lens' CardState H.SubscribeStatus
-_sub = lens _.sub _{sub = _}
-
-_pending ∷ Lens' CardState Boolean
-_pending = lens _.pending _{pending = _}

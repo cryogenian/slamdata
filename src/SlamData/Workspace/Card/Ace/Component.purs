@@ -43,14 +43,14 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.Component.Utils (subscribeToASource')
+import Halogen.Component.Utils (affEventSource)
 
 import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
-import SlamData.Workspace.Card.Ace.Component.Query (Query(..), QueryP)
-import SlamData.Workspace.Card.Ace.Component.State (State, StateP, initialState, _levelOfDetails)
+import SlamData.Workspace.Card.Ace.Component.Query (Query(..))
+import SlamData.Workspace.Card.Ace.Component.State (State, initialState, _levelOfDetails)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC

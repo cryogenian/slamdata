@@ -70,7 +70,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Next.Component.ChildSlot as NextCS
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Class (navigate, Routes(..))
+import SlamData.Workspace.Class (navigateToDeck)
 import SlamData.Workspace.Deck.BackSide as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, ChildQuery, ChildSlot, cpDialog, cpBackSide, cpNext)
@@ -650,16 +650,3 @@ shouldPresentFlipGuide =
   liftH'
     $ either (const true) not
     <$> LocalStorage.getLocalStorage Guide.dismissedFlipGuideKey
-
-navigateToDeck ∷ L.List DeckId → DeckDSL Unit
-navigateToDeck = case _ of
-  L.Nil → navigateToIndex
-  cursor → do
-    { path, accessType, varMaps } ← liftH' Wiring.expose
-    urlVarMaps ← H.liftEff $ readRef varMaps
-    navigate $ WorkspaceRoute path cursor (WA.Load accessType) urlVarMaps
-
-navigateToIndex ∷ DeckDSL Unit
-navigateToIndex = do
-  { path } ← liftH' Wiring.expose
-  void $ H.liftEff $ Browser.setHref $ parentURL $ Left path

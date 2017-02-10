@@ -27,6 +27,7 @@ import SlamData.Prelude
 import SlamData.Workspace.Card.Eval.Monad (EvalState)
 import SlamData.Workspace.Card.Model (AnyCardModel)
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails)
 
 -- | The query algebra shared by the inner parts of a card component.
 -- |
@@ -56,11 +57,10 @@ data CardEvalQuery a
   | ReceiveState EvalState a
   | ReceiveInput Port.Port Port.DataMap a
   | ReceiveOutput Port.Port Port.DataMap a
-  | ReceiveDimensions { width ∷ Number, height ∷ Number } a
+  | ReceiveDimensions { width ∷ Number, height ∷ Number } (LevelOfDetails → a)
 
 data CardEvalMessage
-  = ZoomIn
-  | ModelUpdated ModelUpdateType
+  = ModelUpdated ModelUpdateType
 
 -- | This type is used to indicate whether a model update only affects the
 -- | internal state of the card (and therefore only requires saving), or whether

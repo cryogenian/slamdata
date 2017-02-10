@@ -36,8 +36,10 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
+import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import SlamData.Workspace.Class (navigateToDeck)
 import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, cardIconDarkSrc)
 import SlamData.Workspace.Card.Common.EvalQuery as EQ
 import SlamData.Workspace.Card.Common (CardOptions)
@@ -46,6 +48,7 @@ import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.State as CS
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Persistence as P
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 -- | Type synonym for the full type of a card component.
 type CardComponent = H.Component HH.HTML CQ.CardQuery Unit Void Slam
@@ -68,7 +71,7 @@ makeCardComponent cardType component options =
   H.lifecycleParentComponent
     { render
     , eval
-    , initialState: const (CS.initialCardState)
+    , initialState: const (CS.initialState)
     , initializer: Just (H.action CQ.Initialize)
     , finalizer: Just (H.action CQ.Finalize)
     , receiver: const Nothing
@@ -86,6 +89,9 @@ makeCardComponent cardType component options =
       ]
       $ fold [cardLabel, card]
     where
+    icon ∷ CardHTML f
+    icon = HH.img [ HP.src $ cardIconDarkSrc cardType ]
+
     cardLabel ∷ Array (CardHTML f)
     cardLabel
       | cardType `elem` [ Draftboard ] = []
@@ -95,19 +101,36 @@ makeCardComponent cardType component options =
               ]
               [ HH.div
                   [ HP.class_ CSS.cardName ]
-                  [ HH.img [ HP.src $ cardIconDarkSrc cardType ]
+                  [ icon
                   , HH.p_ [ HH.text $ cardName cardType ]
                   ]
               ]
           ]
+
     card ∷ Array (CardHTML f)
     card =
-      if st.pending
-        then []
-        else
+      case st.levelOfDetails of
+        _ | st.pending → []
+        High →
           [ HH.div
-              [ HP.classes (cardClasses cardType) ]
+              [ HP.classes $ cardClasses cardType ]
               [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
+          ]
+        Low →
+          [ HH.div
+              [ HP.classes $ cardClasses cardType <> [ B.hidden ] ]
+              [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
+          , HH.div
+              [ HP.class_ (HH.ClassName "card-input-minimum-lod") ]
+              [ HH.button
+                  [ ARIA.label "Zoom or resize"
+                  , HP.title "Zoom or resize"
+                  , HE.onClick (HE.input_ CQ.ZoomIn)
+                  ]
+                  [ icon
+                  , HH.text "Zoom or resize"
+                  ]
+              ]
           ]
 
   eval ∷ CQ.CardQuery ~> CardDSL f
@@ -126,7 +149,10 @@ makeCardComponent cardType component options =
       H.getHTMLElementRef cardRef >>= traverse_ \el → do
         { width, height } ← H.liftEff (getBoundingClientRect el)
         unless (width ≡ zero ∧ height ≡ zero) do
-          queryInnerCard $ EQ.ReceiveDimensions { width, height }
+          st ← H.get
+          mbLod ← H.query unit $ left $ H.request (EQ.ReceiveDimensions { width, height })
+          for_ mbLod \lod → when (st.levelOfDetails ≠ lod) do
+            H.modify _ { levelOfDetails = lod }
       pure next
     CQ.HandleEvalMessage msg reply → do
       H.gets _.sub >>= \sub → do
@@ -151,7 +177,9 @@ makeCardComponent cardType component options =
         EQ.ModelUpdated (EQ.EvalStateUpdate es) → do
           H.lift $ P.publishCardStateChange displayCoord es
         EQ.ModelUpdated EQ.StateOnlyUpdate → pure unit
-        EQ.ZoomIn → pure unit -- TODO???
+      pure next
+    CQ.ZoomIn next → do
+      H.lift $ navigateToDeck options.cursor
       pure next
 
   initializeInnerCard ∷ CardDSL f Unit
