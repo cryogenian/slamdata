@@ -36,7 +36,7 @@ instance showColumnState ∷ Show ColumnState where
     Loading → "Loading"
     Loaded → "Loaded"
 
-type State a i =
+type State a i o =
   { items ∷ List a
   , state ∷ ColumnState
   , selected ∷ Maybe a
@@ -44,10 +44,10 @@ type State a i =
   , nextOffset ∷ Maybe Int
   , lastLoadParams ∷ Maybe (LoadParams i)
   , tick ∷ Int
-  , filterTrigger ∷ DebounceTrigger (Query a) Slam
+  , filterTrigger ∷ DebounceTrigger (Query a i o) Slam
   }
 
-initialState ∷ ∀ a i. State a i
+initialState ∷ ∀ a i o. State a i o
 initialState =
   { items: Nil
   , state: Loading

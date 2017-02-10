@@ -54,6 +54,5 @@ loadFromTree f label tree { path, filter } =
       in
         { items, nextOffset: Nothing }
 
-initialStateFromTree ∷ ∀ a i. (a → i) → Tree a → S.State a i
-initialStateFromTree f tree =
-  S.initialState { path = L.singleton $ f $ extract tree }
+initialStateFromTree ∷ ∀ a i. (a → i) → Tree a → S.State i
+initialStateFromTree f = L.singleton <<< f <<< extract

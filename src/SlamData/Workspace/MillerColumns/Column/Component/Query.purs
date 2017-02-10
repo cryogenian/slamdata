@@ -16,16 +16,19 @@ limitations under the License.
 
 module SlamData.Workspace.MillerColumns.Column.Component.Query
   ( Query(..)
-  , module SlamData.Workspace.MillerColumns.Column.Component.Item
+  , Message(..)
+  , Message'
   ) where
 
 import SlamData.Prelude
 
+import Data.List (List)
+
 import DOM.Node.Types (Element)
 
-import SlamData.Workspace.MillerColumns.Column.Component.Item (ItemQuery(..), ItemQuery')
+import SlamData.Workspace.MillerColumns.Column.Component.Item (ItemMessage')
 
-data Query a b
+data Query a i o b
   = Init b
   | SetSelection (Maybe a) b
   | GetSelection (Maybe a → b)
@@ -33,3 +36,11 @@ data Query a b
   | HandleFilterChange String b
   | UpdateFilter String b
   | HandleScroll Element b
+  | HandleMessage i (ItemMessage' a o) b
+
+data Message a i
+  = Initialized
+  | Selected (List i) a
+  | Deselected
+
+type Message' a i o = Either (Message a i) o

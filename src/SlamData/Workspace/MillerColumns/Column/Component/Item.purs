@@ -18,13 +18,9 @@ module SlamData.Workspace.MillerColumns.Column.Component.Item where
 
 import SlamData.Prelude
 
-data ItemQuery a = ToggleHighlight Boolean a
-
-type ItemQuery' f = Coproduct ItemQuery f
-
 data ItemMessage a = RaisePopulate a
 
-type ItemMessage' a m = Either (ItemMessage a) m
+type ItemMessage' a o = Either (ItemMessage a) o
 
 data ItemState = Selected | Deselected
 
