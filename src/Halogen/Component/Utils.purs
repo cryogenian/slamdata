@@ -18,17 +18,14 @@ module Halogen.Component.Utils where
 
 import Prelude
 
-import Control.Monad.Aff (Aff, Canceler, cancel, forkAff, later')
-import Control.Monad.Aff.AVar (AVAR, AVar, makeVar, makeVar', putVar, takeVar, peekVar)
+import Control.Monad.Aff (Aff, Canceler, forkAff, later')
+import Control.Monad.Aff.AVar (AVAR, AVar, makeVar, putVar, takeVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
-import Control.Monad.Eff.Exception as Exn
 
 import Data.Either as E
-import Data.Foldable (traverse_)
 import Data.Int as Int
-import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
