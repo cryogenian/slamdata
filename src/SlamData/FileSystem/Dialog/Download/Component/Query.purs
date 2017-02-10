@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.FileSystem.Dialog.Download.Component.Query where
 
 import SlamData.Download.Model
+import DOM.Event.Types (Event, MouseEvent)
 import Network.HTTP.RequestHeader (RequestHeader)
 
 data Query a
@@ -24,7 +25,8 @@ data Query a
   | ToggleCompress a
   | SetOutput OutputType a
   | Dismiss a
-  | NewTab String a
+  | NewTab String MouseEvent a
   | ModifyCSVOpts (CSVOptions -> CSVOptions) a
   | ModifyJSONOpts (JSONOptions -> JSONOptions) a
   | SetAuthHeaders (Array RequestHeader) a
+  | PreventDefault Event a

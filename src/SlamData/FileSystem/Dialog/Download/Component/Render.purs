@@ -22,8 +22,6 @@ import Data.Lens ((.~))
 import Data.Path.Pathy (printPath)
 
 import Halogen as H
-import Halogen.CustomProps as Cp
---import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -50,7 +48,7 @@ render state =
   [ modalHeader "Download"
   , modalBody
       $ HH.form
-          [ Cp.nonSubmit
+          [ HE.onSubmit $ HE.input PreventDefault
           , HP.classes [ Rc.dialogDownload ]
           ]
       [ resField state
@@ -153,9 +151,7 @@ btnDownload state =
               then [ B.disabled ]
               else [ ]
          , HP.disabled disabled
---           TODO: preventDefault
---         , HE.onClick \_ →
---             HEH.preventDefault $> Just (H.action (NewTab url))
+         , HE.onClick $ HE.input (NewTab url)
          , ARIA.label "Proceed download"
          , HP.title "Proceed download"
          ]
