@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Table.Component.Query where
 
+import DOM.Event.Types (Event)
+
 data Query a
   = StepPage PageStep a
   | ChangePageSize String a
@@ -23,6 +25,7 @@ data Query a
   | SetCustomPageSize String a
   | StartEnterCustomPageSize a
   | Update a
+  | PreventDefault Event a
 
 data PageStep
   = First
