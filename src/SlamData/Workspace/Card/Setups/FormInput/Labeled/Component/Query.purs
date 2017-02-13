@@ -18,7 +18,11 @@ module SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.Query where
 
 import Data.Argonaut (JCursor)
 
+import DOM.Event.Types (Event)
+
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
 
 data Selection f
   = Value (f JCursor)
@@ -28,3 +32,5 @@ data Selection f
 data Query a
   = Select (Selection SelectAction) a
   | UpdateName String a
+  | HandleDPMessage (Message JCursorNode) a
+  | PreventDefault Event a

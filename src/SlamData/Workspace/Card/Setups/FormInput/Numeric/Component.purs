@@ -18,14 +18,10 @@ module SlamData.Workspace.Card.Setups.FormInput.Numeric.Component
   ( numericSetupComponent
   ) where
 
-import Halogen as H
-
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component (textLikeSetupComponent)
-import SlamData.Workspace.Card.Setups.FormInput.Numeric.Def (def)
 
-numericSetupComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+numericSetupComponent ∷ CC.CardOptions → CC.CardComponent
 numericSetupComponent =
-  textLikeSetupComponent FIT.Numeric def
+  textLikeSetupComponent FIT.Numeric _.value

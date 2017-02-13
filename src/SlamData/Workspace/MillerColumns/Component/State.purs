@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.MillerColumns.Component.State where
 
-import Data.List (List(..), (:))
+import Data.List (List, (:))
 import Data.List as L
 import Data.Traversable (scanr)
 
