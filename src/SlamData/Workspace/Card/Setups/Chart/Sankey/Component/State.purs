@@ -37,7 +37,6 @@ type State = M.ReducedState (DS.CommonState JCursor Selection ())
 initialState ∷ State
 initialState =
   { axes: M.initialState.axes
-  , levelOfDetails: DS.initial.levelOfDetails
   , source: M.initialState.source
   , target: M.initialState.target
   , value: M.initialState.value
