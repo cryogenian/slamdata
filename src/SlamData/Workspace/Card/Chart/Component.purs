@@ -60,21 +60,15 @@ chartComponent =
 
 render ∷ State → HTML
 render state =
-  let
-    dims =
-      { width: state.dimensions.width - 6
-      , height: state.dimensions.height
-      }
-  in
-    HH.div
-      [ HP.classes [ RC.chartOutput, HH.ClassName "card-input-maximum-lod" ] ]
-      case state.chartType of
-        Just ChT.Metric →
-          [ HH.slot' cpMetric unit Metric.comp dims absurd ]
-        Just ChT.PivotTable →
-          [ HH.slot' cpPivotTable unit Pivot.component unit (Just ∘ right <$> handlePivotTableMessage) ]
-        _ →
-          [ HH.slot' cpECharts unit HEC.echarts (Tuple (dims { height = dims.height - 60 }) unit) (const Nothing) ]
+  HH.div
+    [ HP.classes [ RC.chartOutput, HH.ClassName "card-input-maximum-lod" ] ]
+    case state.chartType of
+      Just ChT.Metric →
+        [ HH.slot' cpMetric unit Metric.comp state.dimensions absurd ]
+      Just ChT.PivotTable →
+        [ HH.slot' cpPivotTable unit Pivot.component unit (Just ∘ right <$> handlePivotTableMessage) ]
+      _ →
+        [ HH.slot' cpECharts unit HEC.echarts (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit) (const Nothing) ]
 
 renderButton ∷ ChartType → Array HTML
 renderButton ct =
@@ -126,6 +120,11 @@ evalCard = case _ of
     pure next
   CC.ReceiveDimensions dims reply → do
     state ← H.get
+    let
+      widthPadding = 6
+      intWidth = floor dims.width - widthPadding
+      intHeight = floor dims.height
+    H.modify (_ { dimensions = { width: intWidth, height: intHeight } })
     reply <$> maybe (pure LOD.High) lodByChartType state.chartType
 
 

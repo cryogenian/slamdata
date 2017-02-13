@@ -19,23 +19,18 @@ module SlamData.Workspace.Card.FormInput.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor(..))
-import Data.Lens (lens, Lens')
 
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 
 type State =
-  { formInputType ∷ Maybe FormInputType
+  { dimensions ∷ { width ∷ Int, height ∷ Int }
+  , formInputType ∷ Maybe FormInputType
   , cursor ∷ JCursor
   }
 
-_formInputType ∷ ∀ a r. Lens' { formInputType ∷ a | r } a
-_formInputType = lens _.formInputType _ { formInputType = _ }
-
-_cursor ∷ ∀ a r. Lens' { cursor ∷ a | r } a
-_cursor = lens _.cursor _ { cursor = _ }
-
 initialState ∷ State
 initialState =
-  { formInputType: Nothing
+  { dimensions: { width: 600, height: 400 }
+  , formInputType: Nothing
   , cursor: JCursorTop
   }

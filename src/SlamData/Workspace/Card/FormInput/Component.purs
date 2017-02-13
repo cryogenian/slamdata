@@ -63,7 +63,7 @@ render state =
   where
   textLike = [ HH.slot' CS.cpTextLike unit TextLike.comp unit handleUpdate ]
   labeled = [ HH.slot' CS.cpLabeled unit Labeled.comp unit handleUpdate ]
-  metric = [ HH.slot' CS.cpMetric unit Metric.comp unit absurd ]
+  metric = [ HH.slot' CS.cpMetric unit Metric.comp state.dimensions absurd ]
 
 handleUpdate ∷ ∀ a. a → Maybe (CC.InnerCardQuery Query Unit)
 handleUpdate _ = Nothing
@@ -124,11 +124,10 @@ evalCard = case _ of
     pure next
   CC.ReceiveDimensions dims reply → do
     let
-      heightPadding = 60
       widthPadding = 6
       intWidth = floor dims.width - widthPadding
       intHeight = floor dims.height
-    H.query' CS.cpMetric unit $ H.action $ Metric.SetDimensions {width: intWidth, height: intHeight}
+    H.modify (_ { dimensions = { width: intWidth, height: intHeight } })
     mbLod ← H.query' CS.cpMetric unit $ H.request Metric.GetLOD
     pure $ reply
       case mbLod of
