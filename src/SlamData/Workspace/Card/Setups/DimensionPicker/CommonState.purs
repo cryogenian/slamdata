@@ -18,18 +18,15 @@ module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState where
 
 import SlamData.Prelude
 
-import SlamData.Workspace.LevelOfDetails(LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Inputs (PickerOptions)
 
 type CommonState a sel r =
-  ( levelOfDetails ∷ LevelOfDetails
-  , picker ∷ Maybe (PickerOptions a sel)
+  ( picker ∷ Maybe (PickerOptions a sel)
   | r)
 
 initial ∷ ∀ a sel. Record (CommonState a sel ())
 initial =
-  { levelOfDetails: High
-  , picker: Nothing
+  { picker: Nothing
   }
 
 showPicker
