@@ -32,10 +32,10 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Events as HE
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
 import SlamData.Form.Select (Select, _value)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -65,9 +65,7 @@ funnelBuilderComponent =
 render ∷ ST.State → HTML
 render state =
   HH.div
-    [ HP.classes
-        $ [ CSS.chartEditor ]
-        ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
+    [ HP.classes [ CSS.chartEditor ]
     ]
     [ renderCategory state
     , renderValue state

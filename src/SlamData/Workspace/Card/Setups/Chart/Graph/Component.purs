@@ -34,10 +34,10 @@ import Halogen.Themes.Bootstrap3 as B
 
 import Global (readFloat, isNaN)
 
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
 import SlamData.Form.Select (_value)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -67,9 +67,7 @@ graphBuilderComponent =
 render ∷ ST.State → HTML
 render state =
   HH.div
-    [ HP.classes
-      $ [ CSS.chartEditor ]
-      ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
+    [ HP.classes [ CSS.chartEditor ]
     ]
     [ renderSource state
     , renderTarget state
