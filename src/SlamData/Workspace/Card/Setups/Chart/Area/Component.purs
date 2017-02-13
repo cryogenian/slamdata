@@ -34,14 +34,12 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
 import SlamData.Form.Select (_value)
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 
@@ -59,7 +57,7 @@ type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
 
 areaBuilderComponent ∷ CC.CardOptions → CC.CardComponent
-areaBuilderComponent options =
+areaBuilderComponent =
   CC.makeCardComponent (CT.ChartOptions CHT.Area) $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
@@ -82,7 +80,7 @@ render state =
     , renderPicker state
     ]
 
-selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁  Q.QueryC)
+selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁  Q.Query)
 selecting f q _ = right (Q.Select (f q) unit)
 
 renderPicker ∷ ST.State → HTML
@@ -184,9 +182,6 @@ renderIsSmooth state =
         ]
     ]
 
-eval ∷ Q.QueryC ~> DSL
-eval = cardEval ⨁ setupEval
-
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.Activate next →
@@ -219,7 +214,7 @@ cardEval = case _ of
 raiseUpdate ∷ DSL Unit
 raiseUpdate = do
   H.modify M.behaviour.synchronize
-  H.raise CC.modelUpdated
+  H.raise CC.modelUpdate
 
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
@@ -230,15 +225,15 @@ setupEval = case _ of
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{axisLabelAngle = fl}
-      CC.raiseUpdatedP' CC.EvalModelUpdate
+      H.raise CC.modelUpdate
     pure next
   Q.ToggleSmooth next → do
     H.modify \s → s{isSmooth = not s.isSmooth}
-    CC.raiseUpdatedP' CC.EvalModelUpdate
+    H.raise CC.modelUpdate
     pure next
   Q.ToggleStacked next → do
     H.modify \s → s{isStacked = not s.isStacked}
-    CC.raiseUpdatedP' CC.EvalModelUpdate
+    H.raise CC.modelUpdate
     pure next
   Q.Select sel next → do
     case sel of
@@ -251,7 +246,7 @@ setupEval = case _ of
     DPC.Dismiss → do
       H.modify _ { picker = Nothing }
       pure next
-    DPC.Confirm value _ → do
+    DPC.Confirm value → do
       st ← H.get
       let
         value' = flattenJCursors value
