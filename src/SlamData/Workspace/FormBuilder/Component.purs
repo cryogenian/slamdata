@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.FormBuilder.Component
   ( Query(..)
+  , Message(..)
   , ItemSlot(..)
   , formBuilderComponent
   , module SlamData.Workspace.FormBuilder.Component.State
@@ -42,14 +43,16 @@ data Query a
   | SetItems (L.List Item.Model) a
   | HandleItem ItemSlot Item.Message a
 
+data Message = ItemUpdated
+
 newtype ItemSlot = ItemSlot ItemId
 derive newtype instance eqItemSlot ∷ Eq ItemSlot
 derive newtype instance ordItemSlot ∷ Ord ItemSlot
 
-type DSL m = H.ParentDSL State Query Item.Query ItemSlot Void m
+type DSL m = H.ParentDSL State Query Item.Query ItemSlot Message m
 type HTML m = H.ParentHTML Query Item.Query ItemSlot m
 
-formBuilderComponent ∷ ∀ m. H.Component HH.HTML Query Unit Void m
+formBuilderComponent ∷ ∀ m. H.Component HH.HTML Query Unit Message m
 formBuilderComponent =
   H.parentComponent
     { initialState: const initialState
@@ -84,6 +87,7 @@ eval = case _ of
       Item.NameChanged "" → H.modify (removeItem i)
       _ → pure unit
     addItemIfNecessary slotId
+    H.raise ItemUpdated
     pure next
 
 addItemIfNecessary ∷ ∀ m. ItemSlot → DSL m Unit
