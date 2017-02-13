@@ -18,38 +18,30 @@ module SlamData.Workspace.Card.Chart.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpR, cpL, (:>))
+import Halogen.Component.ChildPath as CP
 import Halogen.ECharts as HEC
 
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as MR
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Component as PR
 
-type ChildState =
-  MR.State ⊹ PR.State ⊹ HEC.EChartsState
+type ChildQuery = MR.Query ⨁ PR.Query ⨁ HEC.EChartsQuery ⨁ Const Void
 
-type ChildQuery =
-  MR.Query ⨁ PR.Query ⨁ HEC.EChartsQuery
-
-type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit
+type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Void
 
 cpMetric
-  ∷ ChildPath
-      MR.State ChildState
+  ∷ CP.ChildPath
       MR.Query ChildQuery
       Unit ChildSlot
-cpMetric = cpL
+cpMetric = CP.cp1
 
 cpPivotTable
-  ∷ ChildPath
-      PR.State ChildState
+  ∷ CP.ChildPath
       PR.Query ChildQuery
       Unit ChildSlot
-cpPivotTable = cpR :> cpL
+cpPivotTable = CP.cp2
 
 cpECharts
-  ∷ ChildPath
-      HEC.EChartsState ChildState
+  ∷ CP.ChildPath
       HEC.EChartsQuery ChildQuery
       Unit ChildSlot
-cpECharts = cpR :> cpR
+cpECharts = CP.cp3
