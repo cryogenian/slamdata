@@ -416,7 +416,7 @@ cardModelOfType (port × varMap) = case _ of
   CT.Troubleshoot → Troubleshoot
   CT.Cache → Cache Nothing
   CT.Open → Open R.root
-  CT.DownloadOptions → DownloadOptions $ DLO.initialState (runFileName ∘ fileName <$> Port.extractFilePath varMap)
+  CT.DownloadOptions → DownloadOptions $ DLO.initialState { targetName = runFileName ∘ fileName <$> Port.extractFilePath varMap }
   CT.Draftboard → Draftboard DB.emptyModel
   CT.Tabs → Tabs Tabs.initialModel
 
