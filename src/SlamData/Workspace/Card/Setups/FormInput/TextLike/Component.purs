@@ -70,9 +70,7 @@ textLikeSetupComponent fit projection =
 render ∷ ST.State → HTML
 render state =
   HH.div
-    [ HP.classes
-        $ [ CSS.chartEditor ]
-        ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
+    [ HP.classes [ CSS.chartEditor ]
     ]
     [ renderName state
     , HH.hr_

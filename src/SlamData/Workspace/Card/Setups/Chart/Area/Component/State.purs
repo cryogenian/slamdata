@@ -44,7 +44,6 @@ initialState =
   , value: M.initialState.value
   , valueAgg: M.initialState.valueAgg
   , series: M.initialState.series
-  , levelOfDetails: DS.initial.levelOfDetails
   , picker: DS.initial.picker
   }
 

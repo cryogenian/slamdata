@@ -41,7 +41,6 @@ initialState =
   , value: M.initialState.value
   , series: M.initialState.series
   , parallel: M.initialState.parallel
-  , levelOfDetails: DS.initial.levelOfDetails
   , picker: DS.initial.picker
   }
 

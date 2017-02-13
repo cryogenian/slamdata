@@ -44,7 +44,6 @@ initialState =
   , valueAgg: M.initialState.valueAgg
   , stack: M.initialState.stack
   , parallel: M.initialState.parallel
-  , levelOfDetails: DS.initial.levelOfDetails
   , picker: DS.initial.picker
   }
 
