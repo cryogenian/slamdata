@@ -22,30 +22,25 @@ import SlamData.Prelude
 import CSS as C
 import Data.Array as Array
 import Data.List (List)
-import Data.List as List
 import Data.Ratio as Ratio
 import Data.Rational (Rational, (%))
 import Data.Rational as Rational
 import Halogen as H
 import Halogen.HTML as HH
---import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.HTML.CSS as HC
-import Halogen.Themes.Bootstrap3 as B
 import Math as Math
-import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Card.Common (CardOptions)
-import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Draftboard.Component.Common (DraftboardHTML)
+import SlamData.Workspace.Card.Draftboard.Component.Common (DraftboardHTML, rootRef)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..))
 import SlamData.Workspace.Card.Draftboard.Component.State (State, MoveLocation(..), SplitLocation)
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
-import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
-import SlamData.Workspace.Deck.Component.Nested.State as DNS
-import SlamData.Workspace.Deck.DeckId (DeckId, toString)
+import SlamData.Workspace.Deck.Component.Query as DCQ
+import SlamData.Workspace.Deck.DeckId (DeckId)
+import Utils.DOM as DOM
 
 render ∷ CardOptions → State → DraftboardHTML
 render opts st =
@@ -59,28 +54,14 @@ render opts st =
     , renderOuterEdge "left" Orn.Horizontal Layout.SideA
     , renderOuterEdge "right" Orn.Horizontal Layout.SideB
     , renderOuterEdge "bottom" Orn.Vertical Layout.SideB
-    , if not (List.null opts.deck.displayCursor) && st.layout == Pane.Cell Nothing
-        then
-          HH.div
-            [ HP.classes [ HH.ClassName "card-input-minimum-lod" ] ]
-            [ HH.button
-                [ ARIA.label "Zoom"
-                , HP.title "Zoom"
-                , HE.onClick (HE.input_ (left ∘ CC.ZoomIn))
-                ]
-                [ glyph B.glyphiconZoomIn
-                , HH.text "Zoom"
-                ]
-            ]
-        else
-          HH.div
-            [ HP.classes [ HH.ClassName "sd-draftboard-root" ]
-            , HP.ref (right ∘ H.action ∘ SetRoot)
-            ]
-            [ renderLayout opts st st.cellLayout st.edgeLayout
-            , maybe (HH.text "") renderGuide st.splitLocation
-            , maybe (HH.text "") renderMoving st.moveLocation
-            ]
+    , HH.div
+        [ HP.classes [ HH.ClassName "sd-draftboard-root" ]
+        , HP.ref rootRef
+        ]
+        [ renderLayout opts st st.cellLayout st.edgeLayout
+        , maybe (HH.text "") renderGuide st.splitLocation
+        , maybe (HH.text "") renderMoving st.moveLocation
+        ]
     ]
 
 renderOuterEdge ∷ String → Orn.Orientation → Layout.SplitBias → DraftboardHTML
@@ -94,10 +75,8 @@ renderOuterEdge edge orn bias =
     ]
     [ HH.span
         [ HP.classes [ HH.ClassName "sd-draftboard-edge-mid" ]
-          -- TODO: stopPropagation
---        , HE.onMouseDown \e → do
---            HEH.stopPropagation
---            pure (Just (right (H.action (SplitStart orn bias true e))))
+        , HE.onMouseDown \e →
+            Just (right (H.action (SplitStart orn bias true e)))
         ]
         [ ]
     ]
@@ -194,12 +173,15 @@ renderCell opts st { cursor, value, rect } =
          C.left (C.px rect.left)
          C.width (C.px rect.width)
          C.height (C.px rect.height)
-     ] <> (maybe [] (\deckId → [ HP.key (toString deckId) ]) value))
+     ])
     [ HH.div
         [ HP.classes [ HH.ClassName "sd-draftboard-cell-content" ] ]
         case value of
           Just deckId →
-            [ HH.slot deckId (mkDeckComponent deckId) ]
+            [ HH.slot deckId (mkDeckComponent deckId) unit case _ of
+                DCQ.GrabbedDeck ev →
+                  Just (right (H.action (GrabStart deckId ev)))
+            ]
           _ →
             [ HH.div
                 [ HP.classes [ HH.ClassName "sd-draftboard-cell-empty" ] ]
@@ -230,17 +212,12 @@ renderCell opts st { cursor, value, rect } =
             ]
     ]
   where
-  mkDeckComponent deckId _ =
-    let
-      deckOpts =
-        { accessType: opts.deck.accessType
-        , cursor: opts.cursor
-        , displayCursor: opts.displayCursor
-        , deckId
-        }
-    in
-      { component: opts.deckComponent deckOpts
-      , initialState: DNS.initialState
+  mkDeckComponent deckId =
+    opts.deckComponent
+      { accessType: opts.deck.accessType
+      , cursor: opts.cursor
+      , displayCursor: opts.displayCursor
+      , deckId
       }
 
 renderEdge ∷ State → Layout.Edge Number → DraftboardHTML
@@ -270,8 +247,7 @@ renderEdge st edge@{ orientation, vect } =
                 C.top (C.px (vect.y + loc.offset))
                 C.left (C.px vect.x)
                 C.width (C.px vect.z)
-                -- TODO: preventDefault
---        , HE.onMouseMove (\e → HEH.preventDefault $> Nothing)
+        , HE.onMouseMove (Just ∘ right ∘ H.action ∘ PreventDefault ∘ DOM.toEvent)
         ]
         [ renderGuideLabel loc.ratio
         , HH.div

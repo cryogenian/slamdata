@@ -62,27 +62,34 @@ renderError err =
 renderDeck ∷ DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
 renderDeck opts deckComponent st =
   HH.div
-    (deckClasses st
-     ⊕ deckProperties opts
-     ⊕ Slider.containerProperties st)
+    [ HP.classes
+        [ HH.ClassName "sd-deck-nested"
+        , HH.ClassName ("sd-deck-level-" <> show (L.length opts.displayCursor + 1))
+        ]
+    ]
     [ HH.div
-        [ HP.class_ CSS.deckFrame
-          -- TODO: preventDefault
---        , HE.onMouseDown \ev →
---            if st.focused && not (L.null opts.displayCursor)
---              then HEH.stopPropagation *> pure (Just (Defocus ev unit))
---              else pure Nothing
-        ]
-        $ frameElements opts st ⊕ [ renderName st.name ]
-    , HH.div
-        [ HP.class_ CSS.deck
-        , HP.key "deck"
-        ]
-        [ Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
-        , renderBackside
-            $ DCS.isFlipSide st.displayMode
-        , renderDialogBackdrop $ DCS.hasDialog st.displayMode
-        , renderDialog $ DCS.hasDialog st.displayMode
+        (deckClasses st
+        ⊕ deckProperties opts
+        ⊕ Slider.containerProperties st)
+        [ HH.div
+            [ HP.class_ CSS.deckFrame
+              -- TODO: preventDefault
+    --        , HE.onMouseDown \ev →
+    --            if st.focused && not (L.null opts.displayCursor)
+    --              then HEH.stopPropagation *> pure (Just (Defocus ev unit))
+    --              else pure Nothing
+            ]
+            $ frameElements opts st ⊕ [ renderName st.name ]
+        , HH.div
+            [ HP.class_ CSS.deck
+            , HP.key "deck"
+            ]
+            [ Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
+            , renderBackside
+                $ DCS.isFlipSide st.displayMode
+            , renderDialogBackdrop $ DCS.hasDialog st.displayMode
+            , renderDialog $ DCS.hasDialog st.displayMode
+            ]
         ]
     ]
 

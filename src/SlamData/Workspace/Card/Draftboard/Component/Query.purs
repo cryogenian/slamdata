@@ -31,4 +31,6 @@ data Query a
   | Resizing DragEvent a
   | AddDeck Cursor a
   | DeleteCell Cursor a
+  | GrabStart DeckId DOM.MouseEvent a
   | Grabbing (DeckId × Cursor) DragEvent a
+  | PreventDefault DOM.Event a
