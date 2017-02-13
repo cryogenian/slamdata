@@ -41,7 +41,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Column.Component as Column
 import SlamData.Workspace.MillerColumns.Component.Query (Query(..), Message(..), Message')
-import SlamData.Workspace.MillerColumns.Component.State (State, columnPaths, initialState)
+import SlamData.Workspace.MillerColumns.Component.State (State, columnPaths)
 
 import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions) as Exports
 
@@ -54,13 +54,13 @@ component
   ∷ ∀ a i f o
   . Ord i
   ⇒ Column.ColumnOptions a i f o
-  → H.Component HH.HTML (Query a i o) Unit (Message' a i o) Slam
+  → H.Component HH.HTML (Query a i o) (L.List i) (Message' a i o) Slam
 component colSpec =
   H.parentComponent
-    { initialState: const initialState
+    { initialState: id
     , render
     , eval
-    , receiver: const Nothing
+    , receiver: HE.input ChangeRoot
     }
   where
 
@@ -88,6 +88,11 @@ component colSpec =
   eval = case _ of
     Populate path next → do
       H.put path
+      pure next
+    ChangeRoot root next → do
+      currentPath ← H.get
+      let prefix = L.take (L.length root) root
+      when (prefix /= root) $ H.put root
       pure next
     HandleMessage colPath msg next → do
       case msg of

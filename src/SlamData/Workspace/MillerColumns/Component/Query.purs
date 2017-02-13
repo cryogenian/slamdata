@@ -23,6 +23,7 @@ import SlamData.Workspace.MillerColumns.Column.Component as Column
 
 data Query a i o b
   = Populate (List i) b
+  | ChangeRoot (List i) b
   | HandleMessage (List i) (Column.Message' a i o) b
 
 data Message a i

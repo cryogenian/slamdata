@@ -24,9 +24,6 @@ import SlamData.Workspace.MillerColumns.Column.Component as Column
 
 type State = List
 
-initialState ∷ ∀ i. State i
-initialState = Nil
-
 -- | Get a list of paths for the columns.
 columnPaths
   ∷ ∀ a i f o

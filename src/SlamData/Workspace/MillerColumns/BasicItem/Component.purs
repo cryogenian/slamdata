@@ -39,8 +39,10 @@ type DSL a = H.ComponentDSL Boolean Query (MCI.ItemMessage' a Void) Slam
 
 type ItemSpec a =
   { label ∷ a → String
-  , render ∷ a → H.ComponentHTML (Const Void)
+  , render ∷ a → BasicItemHTML
   }
+
+type BasicItemHTML = H.ComponentHTML (Const Void)
 
 type BasicColumnOptions a i = MC.ColumnOptions a i Query Void
 
