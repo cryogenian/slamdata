@@ -41,7 +41,6 @@ type State = M.ReducedState (DS.CommonState JCursor Selection ())
 initialState ∷ State
 initialState =
   { axes: M.initialState.axes
-  , levelOfDetails: DS.initial.levelOfDetails
   , axisLabelAngle: M.initialState.axisLabelAngle
   , minSize: M.initialState.minSize
   , maxSize: M.initialState.maxSize
