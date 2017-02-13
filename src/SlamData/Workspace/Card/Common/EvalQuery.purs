@@ -61,6 +61,7 @@ data CardEvalQuery a
 
 data CardEvalMessage
   = ModelUpdated ModelUpdateType
+  | LODChanged LevelOfDetails
 
 -- | This type is used to indicate whether a model update only affects the
 -- | internal state of the card (and therefore only requires saving), or whether

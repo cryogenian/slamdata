@@ -20,13 +20,16 @@ import SlamData.Prelude
 
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Port (MetricPort)
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.DOM (fitText)
+
+type Dimensions = { width ∷ Int, height ∷ Int }
 
 type State =
   { width ∷ Int
@@ -37,10 +40,10 @@ type State =
   , labelHeight ∷ Int
   }
 
-initialState ∷ State
-initialState =
-  { width: 600
-  , height: 400
+initialState ∷ Dimensions → State
+initialState { width, height } =
+  { width
+  , height
   , label: Nothing
   , value: ""
   , valueHeight: 0
@@ -49,19 +52,19 @@ initialState =
 
 data Query a
   = SetMetric MetricPort a
-  | SetDimensions {width ∷ Int, height ∷ Int} a
+  | SetDimensions Dimensions a
   | GetLOD (LevelOfDetails → a)
 
 type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component HH.HTML Query Unit Void Slam
+comp ∷ H.Component HH.HTML Query Dimensions Void Slam
 comp =
   H.component
-    { initialState: const initialState
+    { initialState
     , render
     , eval
-    , receiver: const Nothing
+    , receiver: HE.input SetDimensions
     }
 
 render ∷ State → HTML

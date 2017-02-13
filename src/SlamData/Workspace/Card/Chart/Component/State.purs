@@ -18,28 +18,15 @@ module SlamData.Workspace.Card.Chart.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (lens, Lens')
-
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type State =
-  { width ∷ Int
-  , height ∷ Int
-  , levelOfDetails ∷ LevelOfDetails
-  , chartType ∷ Maybe ChartType
+  { chartType ∷ Maybe ChartType
+  , dimensions ∷ { width ∷ Int, height ∷ Int }
   }
-
-_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a|r} a
-_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
-
-_chartType ∷ ∀ a r. Lens' {chartType ∷ a|r} a
-_chartType = lens (_.chartType) (_{chartType = _})
 
 initialState :: State
 initialState =
-  { width: 600
-  , height: 400
-  , levelOfDetails: High
-  , chartType: Nothing
+  { chartType: Nothing
+  , dimensions: { width: 600, height: 400 }
   }

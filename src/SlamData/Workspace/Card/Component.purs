@@ -180,6 +180,9 @@ makeCardComponent cardType component options =
         EQ.ModelUpdated (EQ.EvalStateUpdate es) → do
           H.lift $ P.publishCardStateChange displayCoord es
         EQ.ModelUpdated EQ.StateOnlyUpdate → pure unit
+        EQ.LODChanged lod → do
+          st ← H.get
+          when (st.levelOfDetails ≠ lod) $ H.modify (_ { levelOfDetails = lod })
       pure next
     CQ.ZoomIn next → do
       H.lift $ navigateToDeck options.cursor
