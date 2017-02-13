@@ -20,6 +20,9 @@ import Data.Argonaut (JCursor)
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import Utils.DOM as DOM
 
 data Selection f
   = Abscissa (f JCursor)
@@ -32,3 +35,5 @@ data Query a
   | ToggleCircularLayout a
   | SetMinSymbolSize String a
   | SetMaxSymbolSize String a
+  | HandleDPMessage (Message JCursorNode) a
+  | PreventDefault DOM.Event a
