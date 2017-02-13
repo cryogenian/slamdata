@@ -20,6 +20,9 @@ import Data.Argonaut (JCursor)
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import Utils.DOM as DOM
 
 data Selection f
   = Value (f JCursor)
@@ -29,3 +32,5 @@ data Query a
   = SetFormatter String a
   | SetLabel String a
   | Select (Selection SelectAction) a
+  | HandleDPMessage (Message JCursorNode) a
+  | PreventDefault DOM.Event a
