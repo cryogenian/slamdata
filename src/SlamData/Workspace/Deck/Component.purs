@@ -154,7 +154,7 @@ eval opts = case _ of
       then void $ H.liftEff $ Browser.setHref $ parentURL $ Left path
       else navigateToDeck opts.cursor
     pure next
-  StartSliding mouseEvent gDef next → do
+  StartSliding gDef mouseEvent next → do
     H.gets _.deckElement >>= traverse_ \el → do
       width ← getBoundingClientWidth el
       H.modify (DCS._cardElementWidth ?~ width)

@@ -20,20 +20,22 @@ module SlamData.Workspace.Deck.Gripper
   , module SlamData.Workspace.Deck.Gripper.Def
   ) where
 
+import SlamData.Prelude
+
 import Data.Array as Array
-import Halogen as H
-import Halogen.HTML.Core (ClassName)
+import Data.Bifoldable (bifoldMap)
+
 import Halogen.HTML as HH
+import Halogen.HTML.Core (ClassName)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
+
+import SlamData.Render.CSS as ClassNames
 import SlamData.Workspace.Deck.Common (DeckHTML)
 import SlamData.Workspace.Deck.Component.Query (Query(StartSliding))
 import SlamData.Workspace.Deck.Component.State (DisplayCard, eqDisplayCard)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
-import SlamData.Prelude
-import SlamData.Render.CSS as ClassNames
-import Data.Bifoldable (bifoldMap)
 
 gripperDefsForCard
   ∷ Array DisplayCard
@@ -72,8 +74,7 @@ renderGrippers isActiveCard isGrabbed =
   render gripperDef =
     HH.button
       ([ HP.classes [ gripperClassName gripperDef ]
-       , HE.onMouseDown \e →
-             pure $ Just (H.action (StartSliding e gripperDef))
+       , HE.onMouseDown $ HE.input (StartSliding gripperDef)
        , ARIA.grabbed $ show $ isGrabbed
        , ARIA.disabled $ show $ (not $ isAvailable gripperDef) || (not $ isActiveCard)
        ]
