@@ -39,7 +39,6 @@ type State = M.ReducedState (DS.CommonState JCursor Selection ())
 initialState ∷ State
 initialState =
   { axes: M.initialState.axes
-  , levelOfDetails: DS.initial.levelOfDetails
   , picker: DS.initial.picker
   , dims: M.initialState.dims
   , aggs: M.initialState.aggs
