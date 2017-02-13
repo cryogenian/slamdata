@@ -22,16 +22,11 @@ import Data.Argonaut (JCursor(..))
 import Data.Lens (lens, Lens')
 
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type State =
-  { levelOfDetails ∷ LevelOfDetails
-  , formInputType ∷ Maybe FormInputType
+  { formInputType ∷ Maybe FormInputType
   , cursor ∷ JCursor
   }
-
-_levelOfDetails ∷ ∀ a r. Lens' { levelOfDetails ∷ a | r } a
-_levelOfDetails = lens _.levelOfDetails _ { levelOfDetails = _ }
 
 _formInputType ∷ ∀ a r. Lens' { formInputType ∷ a | r } a
 _formInputType = lens _.formInputType _ { formInputType = _ }
@@ -41,7 +36,6 @@ _cursor = lens _.cursor _ { cursor = _ }
 
 initialState ∷ State
 initialState =
-  { levelOfDetails: High
-  , formInputType: Nothing
+  { formInputType: Nothing
   , cursor: JCursorTop
   }

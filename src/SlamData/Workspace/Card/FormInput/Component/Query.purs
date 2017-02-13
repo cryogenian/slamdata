@@ -16,6 +16,4 @@ limitations under the License.
 
 module SlamData.Workspace.Card.FormInput.Component.Query where
 
-import SlamData.Prelude
-
-type Query = Const Void
+data Query a = RaiseUpdate a
