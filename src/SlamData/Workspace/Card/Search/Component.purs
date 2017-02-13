@@ -17,12 +17,9 @@ limitations under the License.
 module SlamData.Workspace.Card.Search.Component
   ( searchComponent
   , module SlamData.Workspace.Card.Search.Component.Query
-  , module SlamData.Workspace.Card.Search.Component.State
   ) where
 
 import SlamData.Prelude
-
-import Data.Lens ((.~))
 
 import Halogen as H
 import Halogen.HTML.Events as HE
@@ -31,17 +28,17 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Monad (Slam)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Search.Component.Query (Query(..))
-import SlamData.Workspace.Card.Search.Component.State (State, _searchString, initialState)
+import SlamData.Workspace.Card.Search.Component.State (State, initialState)
+import SlamData.Workspace.LevelOfDetails as LOD
 
-type DSL = H.ComponentDSL State (CC.InnerCardQuery Query) CC.CardEvalMessage Slam
-type HTML = H.ComponentHTML (CC.InnerCardQuery Query)
+type DSL = CC.InnerCardDSL State Query
+type HTML = CC.InnerCardHTML Query
 
 searchComponent ∷ CC.CardOptions → CC.CardComponent
 searchComponent =
@@ -82,7 +79,7 @@ cardEval = case _ of
     pure ∘ k $ Card.Search input
   CC.Load card next → do
     case card of
-      Card.Search input → H.modify $ _searchString .~ input
+      Card.Search input → H.modify (_ { searchString = input })
       _ → pure unit
     pure next
   CC.ReceiveInput _ _ next →
@@ -91,11 +88,11 @@ cardEval = case _ of
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions _ next →
-    pure next
+  CC.ReceiveDimensions _ reply →
+    pure $ reply LOD.High
 
 searchEval ∷ Query ~> DSL
 searchEval (UpdateSearch str next) = do
-  H.modify (_searchString .~ str)
+  H.modify (_ { searchString = str })
   H.raise CC.modelUpdate
   pure next
