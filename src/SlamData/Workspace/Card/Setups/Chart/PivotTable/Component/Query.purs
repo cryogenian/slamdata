@@ -21,6 +21,9 @@ import SlamData.Prelude
 import Halogen.Component.Utils.Drag (DragEvent)
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Column (ColumnNode)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DP
 
 import Utils.DOM as DOM
 
@@ -38,3 +41,5 @@ data Query a
   | OrderOverColumn Int a
   | OrderOutColumn Int a
   | ChooseAggregation Int (Maybe Ag.Aggregation) a
+  | HandleDimPicker (DP.Message JCursorNode) a
+  | HandleColPicker (DP.Message ColumnNode) a

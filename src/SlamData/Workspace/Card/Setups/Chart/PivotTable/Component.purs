@@ -39,49 +39,36 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.HTML.CSS as HC
 
 import SlamData.Form.Select as S
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.Column (groupColumns, flattenColumns)
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.ChildSlot as PCS
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query (Query(..), QueryC)
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query (Query(..))
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.State (State, Selecting(..), modelFromState, stateFromModel, initialState, reorder, setColumnAggregation)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-type DSL = H.ParentDSL State PCS.ChildState QueryC PCS.ChildQuery Slam PCS.ChildSlot
+type DSL = CC.InnerCardParentDSL State Query PCS.ChildQuery PCS.ChildSlot
 
-type HTML = H.ParentHTML PCS.ChildState QueryC PCS.ChildQuery Slam PCS.ChildSlot
+type HTML = CC.InnerCardParentHTML Query PCS.ChildQuery PCS.ChildSlot
 
 pivotTableBuilderComponent ∷ CC.CardOptions → CC.CardComponent
-pivotTableBuilderComponent options = CC.makeCardComponent
-  { options
-  , cardType: CT.ChartOptions CHT.PivotTable
-  , component: H.parentComponent
-      { render
-      , eval: coproduct evalCard evalOptions
-      , peek: Just peek
-      }
-  , initialState: H.parentState initialState
-  , _State: CC._BuildPivotTableState
-  , _Query: CC.makeQueryPrism' CC._BuildPivotTableQuery
-  }
+pivotTableBuilderComponent =
+  CC.makeCardComponent (CT.ChartOptions CHT.PivotTable) $ H.parentComponent
+    { render
+    , eval: coproduct evalCard evalOptions
+    , initialState: const initialState
+    , receiver: const Nothing
+    }
 
 render ∷ State → HTML
 render st =
-  if st.levelOfDetails ≡ High
-    then renderHighLOD st
-    else renderLowLOD (CT.cardIconDarkImg (CT.ChartOptions CHT.PivotTable)) left st.levelOfDetails
-
-renderHighLOD ∷ State → HTML
-renderHighLOD st =
   HH.div
     [ HP.classes [ HH.ClassName "sd-pivot-options" ] ]
     [ HH.div
@@ -100,27 +87,27 @@ renderHighLOD st =
   where
   renderSelect = case _ of
     Col →
-      HH.slot' PCS.cpCol unit \_ →
-        { component: DPC.picker
-            { title: "Choose column"
-            , label: DPC.labelNode showColumn
-            , render: DPC.renderNode showColumn
-            , values: selectColumnValues st
-            , isSelectable: DPC.isLeafPath
-            }
-        , initialState: H.parentState DPC.initialState
-        }
+      HH.slot' PCS.cpCol unit
+        (DPC.picker
+          { title: "Choose column"
+          , label: DPC.labelNode showColumn
+          , render: DPC.renderNode showColumn
+          , values: selectColumnValues st
+          , isSelectable: DPC.isLeafPath
+          })
+        unit
+        (Just ∘ right ∘ H.action ∘ HandleColPicker)
     Dim →
-      HH.slot' PCS.cpDim unit \_ →
-        { component: DPC.picker
-            { title: "Choose dimension"
-            , label: DPC.labelNode showJCursor
-            , render: DPC.renderNode showJCursor
-            , values: selectDimensionValues st
-            , isSelectable: DPC.isLeafPath
-            }
-        , initialState: H.parentState DPC.initialState
-        }
+      HH.slot' PCS.cpDim unit
+        (DPC.picker
+          { title: "Choose dimension"
+          , label: DPC.labelNode showJCursor
+          , render: DPC.renderNode showJCursor
+          , values: selectDimensionValues st
+          , isSelectable: DPC.isLeafPath
+          })
+        unit
+        (Just ∘ right ∘ H.action ∘ HandleDimPicker)
 
   renderedDimensions =
     let
@@ -323,18 +310,11 @@ evalCard = case _ of
     for_ (evalState ^? _Axes) \axes → do
       H.modify _ { axes = axes }
     pure next
-  CC.ReceiveDimensions dims next → do
-    H.modify _
-      { levelOfDetails =
-          if dims.width < 540.0 || dims.height < 360.0
-            then Low
-            else High
-      }
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions dims reply → do
+    pure $ reply
+      if dims.width < 540.0 || dims.height < 360.0
+        then Low
+        else High
 
 evalOptions ∷ Query ~> DSL
 evalOptions = case _ of
@@ -347,12 +327,12 @@ evalOptions = case _ of
   RemoveDimension slot next → do
     H.modify \st →
       st { dimensions = Array.filter (not ∘ eq slot ∘ fst) st.dimensions }
-    CC.raiseUpdatedP' CC.EvalModelUpdate
+    H.raise CC.modelUpdate
     pure next
   RemoveColumn slot next → do
     H.modify \st →
       st { columns = Array.filter (not ∘ eq slot ∘ fst) st.columns }
-    CC.raiseUpdatedP' CC.EvalModelUpdate
+    H.raise CC.modelUpdate
     pure next
   OrderDimensionStart slot ev next → do
     let
@@ -361,7 +341,8 @@ evalOptions = case _ of
         , over: Nothing
         , offset: 0.0
         }
-    Drag.subscribe' ev (right ∘ H.action ∘ OrderingDimension slot)
+    H.subscribe $ Drag.dragEventSource ev \drag →
+      Just (right (OrderingDimension slot drag H.Listening))
     H.modify _ { orderingDimension = Just opts }
     pure next
   OrderingDimension slot ev next → do
@@ -377,7 +358,7 @@ evalOptions = case _ of
                 { orderingDimension = Nothing
                 , dimensions = reorder slot slot' st.dimensions
                 }
-              CC.raiseUpdatedP' CC.EvalModelUpdate
+              H.raise CC.modelUpdate
             Nothing →
               H.modify _ { orderingDimension = Nothing }
     pure next
@@ -398,7 +379,8 @@ evalOptions = case _ of
         , over: Nothing
         , offset: 0.0
         }
-    Drag.subscribe' ev (right ∘ H.action ∘ OrderingColumn slot)
+    H.subscribe $ Drag.dragEventSource ev \drag →
+      Just (right (OrderingColumn slot drag H.Listening))
     H.modify _ { orderingColumn = Just opts }
     pure next
   OrderingColumn slot ev next → do
@@ -414,7 +396,7 @@ evalOptions = case _ of
                 { orderingColumn = Nothing
                 , columns = reorder slot slot' st.columns
                 }
-              CC.raiseUpdatedP' CC.EvalModelUpdate
+              H.raise CC.modelUpdate
             Nothing →
               H.modify _ { orderingColumn = Nothing }
     pure next
@@ -431,39 +413,34 @@ evalOptions = case _ of
   ChooseAggregation slot ag next → do
     st ← H.get
     H.modify (setColumnAggregation slot ag)
-    CC.raiseUpdatedP' CC.EvalModelUpdate
+    H.raise CC.modelUpdate
     pure next
-
-peek ∷ ∀ a. H.ChildF PCS.ChildSlot PCS.ChildQuery a → DSL Unit
-peek =
-  (coproduct
-    (coproduct peekSelectDim (const (pure unit)))
-    (coproduct peekSelectCol (const (pure unit))))
-  ∘ H.runChildF
-  where
-  peekSelectDim = case _ of
-    DPC.Dismiss _ →
-      H.modify _ { selecting = Nothing }
-    DPC.Confirm value _ → do
-      st ← H.get
-      H.modify _
-        { fresh = st.fresh + 1
-        , dimensions = Array.snoc st.dimensions (st.fresh × (flattenJCursors value))
-        , selecting = Nothing
-        }
-      CC.raiseUpdatedP' CC.EvalModelUpdate
-
-  peekSelectCol = case _ of
-    DPC.Dismiss _ →
-      H.modify _ { selecting = Nothing }
-    DPC.Confirm value _ → do
-      st ← H.get
-      H.modify _
-        { fresh = st.fresh + 1
-        , columns = Array.snoc st.columns (st.fresh × (flattenColumns value))
-        , selecting = Nothing
-        }
-      CC.raiseUpdatedP' CC.EvalModelUpdate
+  HandleDimPicker msg next → do
+    case msg of
+      DPC.Dismiss →
+        H.modify _ { selecting = Nothing }
+      DPC.Confirm value → do
+        st ← H.get
+        H.modify _
+          { fresh = st.fresh + 1
+          , dimensions = Array.snoc st.dimensions (st.fresh × (flattenJCursors value))
+          , selecting = Nothing
+          }
+        H.raise CC.modelUpdate
+    pure next
+  HandleColPicker msg next → do
+    case msg of
+      DPC.Dismiss →
+        H.modify _ { selecting = Nothing }
+      DPC.Confirm value → do
+        st ← H.get
+        H.modify _
+          { fresh = st.fresh + 1
+          , columns = Array.snoc st.columns (st.fresh × (flattenColumns value))
+          , selecting = Nothing
+          }
+        H.raise CC.modelUpdate
+    pure next
 
 selectColumnValues ∷ State → Cofree List (Either Column Column)
 selectColumnValues st =

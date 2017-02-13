@@ -30,7 +30,6 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor)
 import Data.Array as Array
 
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Model, Column(..))
@@ -39,7 +38,6 @@ data Selecting = Dim | Col
 
 type State =
   { axes ∷ Axes
-  , levelOfDetails ∷ LevelOfDetails
   , fresh ∷ Int
   , dimensions ∷ Array (Int × JCursor)
   , columns ∷ Array (Int × Column)
@@ -57,7 +55,6 @@ type OrderingOpts =
 initialState ∷ State
 initialState =
   { axes: initialAxes
-  , levelOfDetails: High
   , fresh: 0
   , dimensions: []
   , columns: []

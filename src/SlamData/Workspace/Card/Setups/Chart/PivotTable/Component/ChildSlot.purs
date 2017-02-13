@@ -18,28 +18,18 @@ module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
+import Halogen.Component.ChildPath (ChildPath, cp1, cp2)
 
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DP
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Column (ColumnNode)
 
-type ChildSlot = Unit ⊹ Unit
+type ChildSlot = Unit ⊹ Unit ⊹ Void
 
-type ChildState = DP.StateP JCursorNode ⊹ DP.StateP ColumnNode
+type ChildQuery = DP.Query JCursorNode ⨁ DP.Query ColumnNode ⨁ Const Void
 
-type ChildQuery = DP.QueryP JCursorNode ⨁ DP.QueryP ColumnNode
+cpDim ∷ ChildPath (DP.Query JCursorNode) ChildQuery Unit ChildSlot
+cpDim = cp1
 
-cpDim
-  ∷ ChildPath
-      (DP.StateP JCursorNode) ChildState
-      (DP.QueryP JCursorNode) ChildQuery
-      Unit ChildSlot
-cpDim = cpL
-
-cpCol
-  ∷ ChildPath
-      (DP.StateP ColumnNode) ChildState
-      (DP.QueryP ColumnNode) ChildQuery
-      Unit ChildSlot
-cpCol = cpR
+cpCol ∷ ChildPath (DP.Query ColumnNode) ChildQuery Unit ChildSlot
+cpCol = cp2
