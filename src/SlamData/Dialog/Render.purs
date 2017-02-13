@@ -18,7 +18,7 @@ module SlamData.Dialog.Render where
 
 import SlamData.Prelude
 
-import Halogen.HTML.Events as HE
+--import Halogen.HTML.Events as HE
 -- TODO : stopPropagation
 --import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML as H

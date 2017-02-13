@@ -18,7 +18,6 @@ module SlamData.Quasar.Aff where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (liftEff)
