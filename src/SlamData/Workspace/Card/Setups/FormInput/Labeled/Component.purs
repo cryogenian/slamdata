@@ -48,8 +48,8 @@ import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.State as ST
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.Query as Q
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model as M
 
-type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery
-type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
 
 labeledSetupComponent
   ∷ FIT.FormInputType

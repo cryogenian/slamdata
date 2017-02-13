@@ -43,8 +43,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.Path as PU
 
-type CacheDSL = H.ComponentDSL State (CC.InnerCardQuery Query) CC.CardEvalMessage Slam
-type CacheHTML = H.ComponentHTML (CC.InnerCardQuery Query)
+type CacheDSL = CC.InnerCardDSL State Query
+type CacheHTML = CC.InnerCardHTML Query
 
 cacheCardComponent ∷ CC.CardOptions → CC.CardComponent
 cacheCardComponent =

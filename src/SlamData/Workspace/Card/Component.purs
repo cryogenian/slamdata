@@ -62,8 +62,8 @@ type CardHTML f = H.ParentHTML CQ.CardQuery (CQ.InnerCardQuery f) Unit Slam
 type InnerCardComponent f = H.Component HH.HTML (CQ.InnerCardQuery f) Unit EQ.CardEvalMessage Slam
 type InnerCardDSL s f = H.ComponentDSL s (CQ.InnerCardQuery f) CQ.CardEvalMessage Slam
 type InnerCardHTML f = H.ComponentHTML (CQ.InnerCardQuery f)
-type InnerCardParentDSL s f g = H.ParentDSL s (CQ.InnerCardQuery f) g Unit CQ.CardEvalMessage Slam
-type InnerCardParentHTML f g = H.ParentHTML (CQ.InnerCardQuery f) g Unit Slam
+type InnerCardParentDSL s f g p = H.ParentDSL s (CQ.InnerCardQuery f) g p CQ.CardEvalMessage Slam
+type InnerCardParentHTML f g p = H.ParentHTML (CQ.InnerCardQuery f) g p Slam
 
 cardRef ∷ H.RefLabel
 cardRef = H.RefLabel "card"

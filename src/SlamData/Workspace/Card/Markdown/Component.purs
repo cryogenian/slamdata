@@ -46,8 +46,8 @@ import SlamData.Workspace.LevelOfDetails as LOD
 import Text.Markdown.SlamDown.Halogen.Component as SD
 
 type MarkdownQuery = SD.SlamDownQuery Port.VarMapValue
-type HTML = CC.InnerCardParentHTML Query MarkdownQuery
-type DSL = CC.InnerCardParentDSL State Query MarkdownQuery
+type HTML = CC.InnerCardParentHTML Query MarkdownQuery Unit
+type DSL = CC.InnerCardParentDSL State Query MarkdownQuery Unit
 
 markdownComponent ∷ CC.CardOptions → CC.CardComponent
 markdownComponent options =

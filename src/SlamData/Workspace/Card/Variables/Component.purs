@@ -34,8 +34,8 @@ import SlamData.Workspace.LevelOfDetails as LOD
 type State = Unit
 data Query a = HandleMessage FB.Message a
 
-type DSL = CC.InnerCardParentDSL State Query FB.Query
-type HTML = CC.InnerCardParentHTML Query FB.Query
+type DSL = CC.InnerCardParentDSL State Query FB.Query Unit
+type HTML = CC.InnerCardParentHTML Query FB.Query Unit
 
 variablesComponent ∷ CC.CardOptions → CC.CardComponent
 variablesComponent =

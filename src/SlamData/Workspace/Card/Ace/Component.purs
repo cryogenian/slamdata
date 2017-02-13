@@ -57,8 +57,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.Ace (getRangeRecs, readOnly)
 
-type DSL = CC.InnerCardParentDSL State Query AC.AceQuery
-type HTML = CC.InnerCardParentHTML Query AC.AceQuery
+type DSL = CC.InnerCardParentDSL State Query AC.AceQuery Unit
+type HTML = CC.InnerCardParentHTML Query AC.AceQuery Unit
 
 aceComponent ∷ CT.AceMode → CC.CardOptions → CC.CardComponent
 aceComponent mode =

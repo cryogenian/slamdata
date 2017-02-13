@@ -52,8 +52,8 @@ import SlamData.Workspace.MillerColumns.Component as MC
 import Utils.Path (AnyPath)
 
 type ColumnsQuery = MC.Query R.Resource AnyPath Void
-type DSL = CC.InnerCardParentDSL State Query ColumnsQuery
-type HTML =  CC.InnerCardParentHTML Query ColumnsQuery
+type DSL = CC.InnerCardParentDSL State Query ColumnsQuery Unit
+type HTML =  CC.InnerCardParentHTML Query ColumnsQuery Unit
 
 openComponent ∷ CC.CardOptions → CC.CardComponent
 openComponent =

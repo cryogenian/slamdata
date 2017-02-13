@@ -24,7 +24,6 @@ import Data.Lens ((^?))
 import Halogen as H
 import Halogen.HTML as HH
 
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
@@ -40,8 +39,8 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-type DSL = H.ParentDSL State (CC.InnerCardQuery Query) CS.ChildQuery CS.ChildSlot CC.CardEvalMessage Slam
-type HTML = H.ParentHTML (CC.InnerCardQuery Query) CS.ChildQuery CS.ChildSlot Slam
+type DSL = CC.InnerCardParentDSL State Query CS.ChildQuery CS.ChildSlot
+type HTML = CC.InnerCardParentHTML Query CS.ChildQuery CS.ChildSlot
 
 formInputComponent ∷ CC.CardOptions → CC.CardComponent
 formInputComponent =
