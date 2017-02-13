@@ -131,7 +131,7 @@ evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   UpdateSelection selected next → do
     H.put selected
-    H.raise $ CC.ModelUpdated CC.EvalModelUpdate
+    H.raise CC.modelUpdate
     pure next
 
 itemSpec ∷ MCI.BasicColumnOptions R.Resource AnyPath

@@ -84,5 +84,5 @@ evalCard = case _ of
 evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   HandleMessage FB.ItemUpdated next → do
-    H.raise $ CC.ModelUpdated CC.EvalModelUpdate
+    H.raise $ CC.modelUpdate
     pure next
