@@ -22,18 +22,15 @@ module SlamData.Workspace.Card.Component.Query
 
 import SlamData.Prelude
 
-import Halogen as H
-
 import SlamData.Workspace.Card.Common.EvalQuery as EQ
 import SlamData.Workspace.Eval.Card as Card
 
 data CardQuery a
   = Initialize a
-  | Finalize a
   | ActivateCard a
   | DeactivateCard a
   | UpdateDimensions a
-  | HandleEvalMessage (Card.EvalMessage) (H.SubscribeStatus → a)
+  | HandleEvalMessage (Card.EvalMessage) a
   | HandleCardMessage (EQ.CardEvalMessage) a
   | ZoomIn a
 

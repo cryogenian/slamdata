@@ -16,4 +16,10 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Markdown.Component.Query where
 
-data Query a = Init a
+import SlamData.Workspace.Card.Port as Port
+
+import Text.Markdown.SlamDown.Halogen.Component as SD
+
+data Query a
+  = Init a
+  | HandleMessage (SD.SlamDownMessage Port.VarMapValue) a

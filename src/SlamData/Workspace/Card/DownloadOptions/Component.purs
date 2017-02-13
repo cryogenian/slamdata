@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.DownloadOptions.Component (comp) where
+module SlamData.Workspace.Card.DownloadOptions.Component (component) where
 
 import SlamData.Prelude
 
@@ -28,61 +28,44 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Download.Model as DL
 import SlamData.Download.Render as DLR
-import SlamData.Monad (Slam)
 import SlamData.Render.CSS as RC
-import SlamData.Workspace.Card.CardType (CardType(DownloadOptions))
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
-import SlamData.Workspace.Card.DownloadOptions.Component.Query (QueryP, Query(..))
-import SlamData.Workspace.Card.DownloadOptions.Component.State (State, _compress, _options, _source, initialState, _levelOfDetails)
+import SlamData.Workspace.Card.DownloadOptions.Component.Query (Query(..))
+import SlamData.Workspace.Card.DownloadOptions.Component.State (State, _options, initialState)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.LevelOfDetails as LOD
 
-type HTML = H.ComponentHTML QueryP
-type DSL = H.ComponentDSL State QueryP Slam
+type DSL = CC.InnerCardDSL State Query
+type HTML = CC.InnerCardHTML Query
 
-comp ∷ CC.CardOptions → CC.CardComponent
-comp options = CC.makeCardComponent
-  { options
-  , cardType: DownloadOptions
-  , component: H.component {render, eval}
-  , initialState: initialState Nothing
-  , _State: CC._DownloadOptionsState
-  , _Query: CC.makeQueryPrism CC._DownloadOptionsQuery
-  }
+component ∷ CC.CardOptions → CC.CardComponent
+component =
+  CC.makeCardComponent CT.DownloadOptions $ H.component
+    { render: render
+    , eval: evalCard ⨁ evalComponent
+    , initialState: const initialState
+    , receiver: const Nothing
+    }
 
 render ∷ State → HTML
 render state =
-  HH.div_
-    [ renderHighLOD state
-    , renderLowLOD (CT.cardIconLightImg CT.DownloadOptions) left state.levelOfDetails
-    ]
-
-renderHighLOD ∷ State → HTML
-renderHighLOD state =
   case state.source of
     Nothing →
       HH.div
-        [ HP.classes
-            $ [ B.alert, B.alertDanger ]
-            ⊕ hideClasses
-        ]
+        [ HP.classes [ B.alert, B.alertDanger ] ]
         [ HH.text "The current input cannot be downloaded" ]
     Just _ →
       HH.div
         [ HP.classes
-            $ [ RC.downloadCardEditor
-              , HH.ClassName "card-input-maximum-lod"
-              ]
-            ⊕ hideClasses
+            [ RC.downloadCardEditor
+            , HH.ClassName "card-input-maximum-lod"
+            ]
         ]
         [ renderDownloadTypeSelector state
         , renderDownloadConfiguration state
         ]
-  where
-  hideClasses = guard (state.levelOfDetails ≠ High) $> B.hidden
 
 renderDownloadConfiguration ∷ State → HTML
 renderDownloadConfiguration state =
@@ -134,11 +117,8 @@ renderDownloadTypeSelector state =
         ]
     ]
 
-eval ∷ QueryP ~> DSL
-eval = coproduct cardEval downloadOptsEval
-
-cardEval ∷ CC.CardEvalQuery ~> DSL
-cardEval = case _ of
+evalCard ∷ CC.CardEvalQuery ~> DSL
+evalCard = case _ of
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -151,26 +131,20 @@ cardEval = case _ of
       _ → pure unit
     pure next
   CC.ReceiveInput _ varMap next → do
-    H.modify $ _source .~ Port.extractFilePath varMap
+    H.modify (_ { source = Port.extractFilePath varMap })
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions dims next → do
-    H.modify
-      $ _levelOfDetails
-      .~ if dims.width < 504.0 ∨ dims.height < 192.0
-           then Low
-           else High
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions dims reply → do
+    pure $ reply
+      if dims.width < 504.0 ∨ dims.height < 192.0
+      then LOD.Low
+      else LOD.High
 
-downloadOptsEval ∷ Query ~> DSL
-downloadOptsEval q = do
+evalComponent ∷ Query ~> DSL
+evalComponent q = do
   n ← case q of
     SetOutput ty next → do
       options ← H.gets _.options
@@ -184,8 +158,8 @@ downloadOptsEval q = do
     ModifyJSONOpts fn next →
       H.modify (_options ∘ _Right %~ fn) $> next
     ToggleCompress next →
-      H.modify (_compress %~ not) $> next
+      H.modify (\st → st { compress = not st.compress }) $> next
     TargetTyped s next →
-      H.modify _ { targetName = Just s } $> next
-  CC.raiseUpdatedC' CC.EvalModelUpdate
+      H.modify (_ { targetName = Just s }) $> next
+  H.raise CC.modelUpdate
   pure n

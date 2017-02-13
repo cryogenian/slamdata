@@ -17,8 +17,6 @@ limitations under the License.
 module SlamData.FileSystem.Dialog.Mount.SQL2.Component
   ( comp
   , Query
-  , QueryP
-  , StateP
   , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
   , module SlamData.FileSystem.Dialog.Mount.SQL2.Component.State
   ) where
@@ -31,12 +29,12 @@ import Data.StrMap as Sm
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceQuery(..), AceState, Autocomplete(..), aceComponent, initialAceState)
+import Ace.Halogen.Component (AceQuery(..), Autocomplete(..), aceComponent)
 import Ace.Types (Editor)
 
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
+import Halogen.HTML.Elements.Keyed as HHEK
 
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
@@ -46,25 +44,25 @@ import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Query as API
 
 type Query = SettingsQuery State
-type StateP = H.ParentState State AceState Query AceQuery Slam Unit
-type QueryP = Coproduct Query (H.ChildF Unit AceQuery)
-type SQLMountDSL = H.ParentDSL State AceState Query AceQuery Slam Unit
-type SQLMountHTML = H.ParentHTML AceState Query AceQuery Slam Unit
+type SQLMountDSL = H.ParentDSL State Query AceQuery Unit Unit Slam
+type SQLMountHTML = H.ParentHTML Query AceQuery Unit Slam
 
-comp ∷ H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Nothing }
+comp ∷ H.Component HH.HTML Query Unit Unit Slam
+comp =
+  H.parentComponent
+    { initialState: const initialState, render, eval, receiver: const Nothing }
 
 render ∷ State → SQLMountHTML
 render state@{ initialQuery } =
-  HH.div
-    [ HP.key "mount-sql2" ]
-    [ section "SQL² query"
-        [ HH.slot unit \_ →
-            { component: aceComponent (aceSetup initialQuery) (Just Live)
-            , initialState: initialAceState
-            }
+  HHEK.div_
+    [ "mount-sql2" × section "SQL² query"
+        [ HH.slot
+            unit
+            (aceComponent (aceSetup initialQuery) (Just Live))
+            unit
+            (const Nothing)
         ]
-    , section "Query variables" [ propList _vars state ]
+    , "mount-sql2" × section "Query variables" [ propList _vars state ]
     ]
 
 eval ∷ Query ~> SQLMountDSL

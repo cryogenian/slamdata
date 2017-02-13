@@ -38,7 +38,7 @@ data Query a
   | UpdateCardSize a
   | ZoomIn a
   | ZoomOut a
-  | StartSliding DOM.MouseEvent GripperDef a
+  | StartSliding GripperDef DOM.MouseEvent a
   | StopSlidingAndSnap DOM.MouseEvent a
   | UpdateSliderPosition DOM.MouseEvent a
   | StopSliderTransition a

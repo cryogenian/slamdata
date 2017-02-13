@@ -33,27 +33,27 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.CSS as CSS
-import SlamData.Workspace.Card.Cache.Component.Query (QueryP, Query(..))
+import SlamData.Workspace.Card.Cache.Component.Query (Query(..))
 import SlamData.Workspace.Card.Cache.Component.State (State, _confirmedPath, _pathString, initialState)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.Path as PU
 
-type CacheHTML = H.ComponentHTML QueryP
-type CacheDSL = H.ComponentDSL State QueryP Slam
+type CacheDSL = H.ComponentDSL State (CC.InnerCardQuery Query) CC.CardEvalMessage Slam
+type CacheHTML = H.ComponentHTML (CC.InnerCardQuery Query)
 
 cacheCardComponent ∷ CC.CardOptions → CC.CardComponent
-cacheCardComponent options = CC.makeCardComponent
-  { options
-  , cardType: CT.Cache
-  , component: H.component { render, eval }
-  , initialState: initialState
-  , _State: CC._CacheState
-  , _Query: CC.makeQueryPrism CC._CacheQuery
-  }
+cacheCardComponent =
+  CC.makeCardComponent CT.Cache $ H.component
+    { render
+    , eval: coproduct cardEval saveEval
+    , initialState: const initialState
+    , receiver: const Nothing
+    }
 
 render ∷ State → CacheHTML
 render state =
@@ -74,9 +74,6 @@ render state =
           ]
           [ HH.text "Confirm" ]
     ]
-
-eval ∷ QueryP ~> CacheDSL
-eval = coproduct cardEval saveEval
 
 cardEval ∷ CC.CardEvalQuery ~> CacheDSL
 cardEval = case _ of
@@ -104,12 +101,8 @@ cardEval = case _ of
     pure next
   CC.ReceiveState input next →
     pure next
-  CC.ReceiveDimensions _ next →
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions _ reply →
+    pure (reply High)
 
 saveEval ∷ Query ~> CacheDSL
 saveEval = case _ of
@@ -118,5 +111,5 @@ saveEval = case _ of
   ConfirmPathString next → do
     pathString ← H.gets _.pathString
     H.modify $ \st → st { confirmedPath = PU.parseFilePath =<< pathString }
-    CC.raiseUpdatedC' CC.EvalModelUpdate
+    H.raise CC.modelUpdate
     pure next

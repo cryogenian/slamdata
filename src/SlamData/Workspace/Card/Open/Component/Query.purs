@@ -18,4 +18,6 @@ module SlamData.Workspace.Card.Open.Component.Query where
 
 import SlamData.Prelude
 
-type Query = Const Void
+import SlamData.FileSystem.Resource as R
+
+data Query a = UpdateSelection (Maybe R.Resource) a
