@@ -82,7 +82,7 @@ makeCardComponent cardType component options =
     , eval
     , initialState: const (CS.initialState)
     , initializer: Just (H.action CQ.Initialize)
-    , finalizer: Just (H.action CQ.Finalize)
+    , finalizer: Nothing
     , receiver: const Nothing
     }
   where
@@ -147,9 +147,6 @@ makeCardComponent cardType component options =
     CQ.Initialize next → do
       initializeInnerCard
       pure next
-    CQ.Finalize next → do
-      H.modify _ { sub = H.Done }
-      pure next
     CQ.ActivateCard next →
       queryInnerCard EQ.Activate $> next
     CQ.DeactivateCard next →
@@ -163,21 +160,18 @@ makeCardComponent cardType component options =
           for_ mbLod \lod → when (st.levelOfDetails ≠ lod) do
             H.modify _ { levelOfDetails = lod }
       pure next
-    CQ.HandleEvalMessage msg reply → do
-      H.gets _.sub >>= \sub → do
-        case sub of
-          H.Done → pure unit
-          H.Listening → case msg of
-            Card.Pending source (evalPort × varMap) → do
-              queryInnerCard $ EQ.ReceiveInput evalPort varMap
-            Card.Complete source (evalPort × varMap) → do
-              queryInnerCard $ EQ.ReceiveOutput evalPort varMap
-            Card.StateChange source evalState →
-              queryInnerCard $ EQ.ReceiveState evalState
-            Card.ModelChange source evalModel →
-              when (source ≠ displayCoord) do
-                queryInnerCard $ EQ.Load evalModel
-        pure (reply sub)
+    CQ.HandleEvalMessage msg next → do
+      case msg of
+        Card.Pending source (evalPort × varMap) → do
+          queryInnerCard $ EQ.ReceiveInput evalPort varMap
+        Card.Complete source (evalPort × varMap) → do
+          queryInnerCard $ EQ.ReceiveOutput evalPort varMap
+        Card.StateChange source evalState →
+          queryInnerCard $ EQ.ReceiveState evalState
+        Card.ModelChange source evalModel →
+          when (source ≠ displayCoord) do
+            queryInnerCard $ EQ.Load evalModel
+      pure next
     CQ.HandleCardMessage msg next → do
       case msg of
         EQ.ModelUpdated EQ.EvalModelUpdate → do
@@ -195,7 +189,7 @@ makeCardComponent cardType component options =
   initializeInnerCard = do
     cell ← H.lift $ P.getCard options.cardId
     for_ cell \{ bus, model, input, output, state } → do
-      H.subscribe $ busEventSource (H.request ∘ CQ.HandleEvalMessage) bus
+      H.subscribe $ busEventSource (\msg → CQ.HandleEvalMessage msg H.Listening) bus
       H.modify _
         { bus = Just bus
         , pending = false

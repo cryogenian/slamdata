@@ -23,22 +23,18 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Bus (BusRW)
 
-import Halogen as H
-
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type CardState =
-  { sub ∷ H.SubscribeStatus
-  , pending ∷ Boolean
+  { pending ∷ Boolean
   , bus ∷ Maybe (BusRW Card.EvalMessage)
   , levelOfDetails ∷ LevelOfDetails
   }
 
 initialState ∷ CardState
 initialState =
-  { sub: H.Listening
-  , pending: true
+  { pending: true
   , bus: Nothing
   , levelOfDetails: High
   }
