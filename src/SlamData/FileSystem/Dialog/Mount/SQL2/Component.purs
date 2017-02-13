@@ -44,15 +44,17 @@ import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Query as API
 
 type Query = SettingsQuery State
-type SQLMountDSL = H.ParentDSL State Query AceQuery Unit Unit Slam
-type SQLMountHTML = H.ParentHTML Query AceQuery Unit Slam
 
 comp ∷ H.Component HH.HTML Query Unit Unit Slam
 comp =
   H.parentComponent
-    { initialState: const initialState, render, eval, receiver: const Nothing }
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
-render ∷ State → SQLMountHTML
+render ∷ State → H.ParentHTML Query AceQuery Unit Slam
 render state@{ initialQuery } =
   HHEK.div_
     [ "mount-sql2" × section "SQL² query"
@@ -65,7 +67,7 @@ render state@{ initialQuery } =
     , "mount-sql2" × section "Query variables" [ propList _vars state ]
     ]
 
-eval ∷ Query ~> SQLMountDSL
+eval ∷ Query ~> H.ParentDSL State Query AceQuery Unit Unit Slam
 eval (ModifyState f next) = H.modify (processState <<< f) $> next
 eval (Validate k) = do
   sql ← fromMaybe "" <$> H.query unit (H.request GetText)

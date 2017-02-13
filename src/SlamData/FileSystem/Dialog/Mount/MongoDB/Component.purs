@@ -32,28 +32,30 @@ import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Mount as QM
 
-import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MCS
 import SlamData.FileSystem.Resource (Mount(..))
-import SlamData.Quasar.Mount as API
+import SlamData.Monad (Slam)
 import SlamData.Quasar.Error as QE
+import SlamData.Quasar.Mount as API
 import SlamData.Render.CSS as Rc
 
 type Query = SettingsQuery MCS.State
 
-type HTML = H.ComponentHTML Query
+comp ∷ H.Component HH.HTML Query Unit Void Slam
+comp =
+  H.component
+    { initialState: const MCS.initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
-comp ∷ H.Component MCS.State Query Slam
-comp = H.component { render, eval }
-
-render ∷ MCS.State → HTML
+render ∷ MCS.State → H.ComponentHTML Query
 render state =
   HH.div
-    [ HP.key "mount-mongodb"
-    , HP.class_ Rc.mountMongoDB
-    ]
+    [ HP.class_ Rc.mountMongoDB ]
     [ MCR.section "Server(s)" [ MCR.hosts state MCS._hosts ]
     , MCR.section "Authentication"
         [ HH.div
@@ -68,7 +70,7 @@ render state =
     , MCR.section "Settings" [ MCR.propList MCS._props state ]
     ]
 
-eval ∷ Query ~> H.ComponentDSL MCS.State Query Slam
+eval ∷ Query ~> H.ComponentDSL MCS.State Query Void Slam
 eval = case _ of
   ModifyState f next →
     H.modify (MCS.processState <<< f) $> next

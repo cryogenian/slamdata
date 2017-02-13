@@ -42,17 +42,19 @@ import SlamData.Render.CSS as Rc
 
 type Query = SettingsQuery MCS.State
 
-type HTML = H.ComponentHTML Query
+comp ∷ H.Component HH.HTML Query Unit Void Slam
+comp =
+  H.component
+    { initialState: const MCS.initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
-comp ∷ H.Component MCS.State Query Slam
-comp = H.component { render, eval }
-
-render ∷ MCS.State → HTML
+render ∷ MCS.State → H.ComponentHTML Query
 render state =
   HH.div
-    [ HP.key "mount-spark"
-    , HP.class_ Rc.mountSpark
-    ]
+    [ HP.class_ Rc.mountSpark ]
     [ MCR.section "Spark Server" [ MCR.host state MCS._sparkHost ]
     , MCR.section "HDFS Server" [ MCR.host state MCS._hdfsHost ]
     , MCR.section "Root"
@@ -62,7 +64,7 @@ render state =
         ]
     ]
 
-eval ∷ Query ~> H.ComponentDSL MCS.State Query Slam
+eval ∷ Query ~> H.ComponentDSL MCS.State Query Void Slam
 eval = case _ of
   ModifyState f next →
     H.modify f $> next

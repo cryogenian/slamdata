@@ -18,27 +18,21 @@ module SlamData.FileSystem.Dialog.Mount.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
+import Halogen.Component.ChildPath as CP
 
-import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
+import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
-
-type ChildState
-  = MongoDB.State
-  ⊹ SQL2.StateP
-  ⊹ Couchbase.State
-  ⊹ MarkLogic.State
-  ⊹ Spark.State
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 
 type ChildQuery
   = MongoDB.Query
-  ⨁ SQL2.QueryP
+  ⨁ SQL2.Query
   ⨁ Couchbase.Query
   ⨁ MarkLogic.Query
   ⨁ Spark.Query
+  ⨁ Const Void
 
 type ChildSlot
   = Unit
@@ -46,18 +40,19 @@ type ChildSlot
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
+  ⊹ Void
 
-cpMongoDB ∷ ChildPath MongoDB.State ChildState MongoDB.Query ChildQuery Unit ChildSlot
-cpMongoDB = cpL
+cpMongoDB ∷ CP.ChildPath MongoDB.Query ChildQuery Unit ChildSlot
+cpMongoDB = CP.cp1
 
-cpSQL ∷ ChildPath SQL2.StateP ChildState SQL2.QueryP ChildQuery Unit ChildSlot
-cpSQL = cpR :> cpL
+cpSQL ∷ CP.ChildPath SQL2.Query ChildQuery Unit ChildSlot
+cpSQL = CP.cp2
 
-cpCouchbase ∷ ChildPath Couchbase.State ChildState Couchbase.Query ChildQuery Unit ChildSlot
-cpCouchbase = cpR :> cpR :> cpL
+cpCouchbase ∷ CP.ChildPath Couchbase.Query ChildQuery Unit ChildSlot
+cpCouchbase = CP.cp3
 
-cpMarkLogic ∷ ChildPath MarkLogic.State ChildState MarkLogic.Query ChildQuery Unit ChildSlot
-cpMarkLogic = cpR :> cpR :> cpR :> cpL
+cpMarkLogic ∷ CP.ChildPath MarkLogic.Query ChildQuery Unit ChildSlot
+cpMarkLogic = CP.cp4
 
-cpSpark ∷ ChildPath Spark.State ChildState Spark.Query ChildQuery Unit ChildSlot
-cpSpark = cpR :> cpR :> cpR :> cpR
+cpSpark ∷ CP.ChildPath Spark.Query ChildQuery Unit ChildSlot
+cpSpark = CP.cp5
