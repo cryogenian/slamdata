@@ -20,8 +20,9 @@ import SlamData.Prelude
 
 import Data.Lens ((^.))
 
+import DOM.Event.Types as DET
+
 import Halogen.HTML.Core (HTML, ClassName)
---import Halogen.HTML.Events.Handler as EH
 import Halogen.HTML.Events as E
 import Halogen.HTML as H
 import Halogen.HTML.Properties as P
@@ -38,23 +39,18 @@ import SlamData.Common.Sort (Sort(..))
 sorting ∷ ∀ a. State → HTML a (Query Unit)
 sorting state =
   H.div
-      [ P.classes [ B.colXs4, CSS.toolbarSort ] ]
-      [ H.a
-
-          -- TODO: preventDefault
-          [ ]
---          [ E.onClick \_ →
---             EH.preventDefault $>
---             Just (action Resort) ]
-          [ H.text "Name"
-          , H.i
-              [ chevron (state ^. _sort)
-              , ARIA.label $ label (state ^. _sort)
-              , P.title $ label (state ^. _sort)
-              ]
-              []
-          ]
+    [ P.classes [ B.colXs4, CSS.toolbarSort ] ]
+    [ H.a
+      [ E.onClick \e → Just $ PreventDefault $ action $ Resort $ DET.mouseEventToEvent ]
+      [ H.text "Name"
+      , H.i
+        [ chevron (state ^. _sort)
+        , ARIA.label $ label (state ^. _sort)
+        , P.title $ label (state ^. _sort)
+        ]
+        []
       ]
+    ]
   where
   chevron Asc = P.classes [ B.glyphicon, B.glyphiconChevronUp ]
   chevron Desc = P.classes [ B.glyphicon, B.glyphiconChevronDown ]

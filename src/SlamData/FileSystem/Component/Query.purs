@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.FileSystem.Component.Query where
 
 import DOM.HTML.Types (HTMLElement)
+import DOM.Event.Types (Event)
 
 import SlamData.Common.Sort (Sort)
 import SlamData.FileSystem.Routing.Salt (Salt)
@@ -45,3 +46,4 @@ data Query a
   | DismissIntroVideo a
   | Init a
   | HandleError GlobalError a
+  | PreventDefault Event (Query a)

@@ -25,9 +25,10 @@ import Data.Lens ((^.), (%~), (.~), (?~), lens, Lens')
 import Data.Path.Pathy (printPath, parseAbsDir, sandbox, rootDir, (</>))
 import Data.String as S
 
+import DOM.Event.Types (Event, mouseEventToEvent)
+import DOM.Event.Event as DEE
+
 import Halogen as H
-import Halogen.CustomProps as Cp
---import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -137,6 +138,8 @@ data Query a
   | DirClicked R.Resource a
   | SetSiblings (Array R.Resource) a
   | AddDirs (Array R.Resource) a
+  | PreventDefault Event a
+  | StopPropagation Event (Query a)
   | Init a
 
 type DSL = H.ComponentDSL State Query Slam
@@ -158,10 +161,8 @@ render dialog =
   , modalBody
     $ HH.form
         [ HP.classes [ Rc.renameDialogForm ]
-        , Cp.nonSubmit
-          -- TODO: preventDefault
---        , HE.onClick \_ →
---            HEH.stopPropagation $> Just (H.action (SetShowList false))
+        , HE.onSubmit $ HE.input PreventDefault
+        , HE.onClick \e → Just $ StopPropagation (mouseEventToEvent e) $ H.action $ SetShowList false
         ]
         [ nameInput
         , dirDropdownField
@@ -206,9 +207,8 @@ render dialog =
           [ HP.classes [ B.inputGroupBtn ] ]
           [ HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
-                -- todo: preventDefault
---              , HE.onClick \_ →
---                  HEH.stopPropagation $> Just (H.action ToggleShowList)
+              , HE.onClick \e →
+                   Just $ StopPropagation (mouseEventToEvent e) $ action $ ToggleShowList
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
               ]
@@ -241,6 +241,12 @@ render dialog =
 
 eval :: Query ~> DSL
 eval (Dismiss next) = pure next
+eval (PreventDefault e next) = do
+  H.liftEff $ DEE.preventDefault e
+  pure next
+eval (StopPropagation e q) = do
+  H.liftEff $ DEE.stopPropagation e
+  eval q
 eval (SetShowList bool next) = do
   H.modify (_showList .~ bool)
   H.modify validate

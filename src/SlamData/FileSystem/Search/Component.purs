@@ -23,14 +23,16 @@ import Data.Lens (lens, Lens', (.~))
 import Data.Path.Pathy (printPath, rootDir)
 import Data.Time.Duration (Milliseconds(..))
 
+import DOM.Event.Types (Event, mouseEventToEvent)
+
 import Halogen as H
 import Halogen.HTML.Events as HE
---import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils as HU
+import Halogen.Component.Utils.Debounced (debouncedEventSource)
 
 import SlamData.Config as Config
 import SlamData.Monad (Slam)
@@ -40,7 +42,6 @@ import SlamData.FileSystem.Search.Component.CSS as CSS
 import Text.SlamSearch (mkQuery)
 
 import Utils.Path (DirPath)
---import Utils.Debounced (debouncedEventSource)
 
 type State =
   { valid ∷ Boolean
@@ -95,6 +96,7 @@ data Query a
   | IsSearching (Boolean → a)
   | IsLoading (Boolean → a)
   | SetPath DirPath  a
+  | PreventDefault Event (Query a)
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
@@ -141,8 +143,7 @@ render state =
                 ]
             , HH.button
                 [ HP.class_ CSS.searchClearButton
-                  -- TODO: preventDefault
---                , HE.onClick (\_ → HEH.preventDefault $> Just (H.action Clear))
+                , HE.onClick \e → Just $ PreventDefault (mouseEventToEvent e) $ H.action Clear
                 ]
                 [ if state.loading
                     then RC.busyFieldIcon "Search in progress"
@@ -163,6 +164,9 @@ render state =
         ]
 
 eval ∷ Query ~> DSL
+eval (PreventDefault e q) = do
+  H.liftEff $ DEE.preventDefault e
+  eval q
 eval (Focus bool next) = H.modify (_focused .~ bool) $> next
 eval (Clear next) = pure next
 eval (Typed str next) = do
