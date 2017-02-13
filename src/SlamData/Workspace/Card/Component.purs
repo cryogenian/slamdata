@@ -17,6 +17,10 @@ limitations under the License.
 module SlamData.Workspace.Card.Component
   ( CardComponent
   , InnerCardComponent
+  , InnerCardDSL
+  , InnerCardHTML
+  , InnerCardParentDSL
+  , InnerCardParentHTML
   , makeCardComponent
   , module SlamData.Workspace.Card.Common
   , module CQ
@@ -54,7 +58,12 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type CardComponent = H.Component HH.HTML CQ.CardQuery Unit Void Slam
 type CardDSL f = H.ParentDSL CS.CardState CQ.CardQuery (CQ.InnerCardQuery f) Unit Void Slam
 type CardHTML f = H.ParentHTML CQ.CardQuery (CQ.InnerCardQuery f) Unit Slam
+
 type InnerCardComponent f = H.Component HH.HTML (CQ.InnerCardQuery f) Unit EQ.CardEvalMessage Slam
+type InnerCardDSL s f = H.ComponentDSL s (CQ.InnerCardQuery f) CQ.CardEvalMessage Slam
+type InnerCardHTML f = H.ComponentHTML (CQ.InnerCardQuery f)
+type InnerCardParentDSL s f = H.ComponentDSL s (CQ.InnerCardQuery f) CQ.CardEvalMessage Slam
+type InnerCardParentHTML f = H.ComponentHTML (CQ.InnerCardQuery f)
 
 cardRef ∷ H.RefLabel
 cardRef = H.RefLabel "card"
