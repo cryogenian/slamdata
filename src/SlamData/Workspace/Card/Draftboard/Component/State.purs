@@ -35,7 +35,6 @@ import Data.Function (on)
 import Data.List as List
 import Data.Map as Map
 import Data.Rational (Rational)
-import DOM.HTML.Types (HTMLElement)
 
 import SlamData.Workspace.Card.Draftboard.Layout (SplitBias, Rect, Edge, Cell)
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
@@ -55,7 +54,6 @@ type State =
   , splitLocation ∷ Maybe SplitLocation
   , resizeLocation ∷ Maybe ResizeLocation
   , moveLocation ∷ Maybe MoveLocation
-  , root ∷ Maybe HTMLElement
   , rootRect ∷ Rect Number
   , cellLayout ∷ List.List (Cell (Maybe DeckId) Number)
   , edgeLayout ∷ List.List (Edge Number)
@@ -96,7 +94,6 @@ initialState =
   , splitLocation: Nothing
   , resizeLocation: Nothing
   , moveLocation: Nothing
-  , root: Nothing
   , rootRect: initialRect
   , cellLayout: mempty
   , edgeLayout: mempty

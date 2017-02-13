@@ -19,6 +19,8 @@ module Halogen.Component.Utils.Drag
   , DragData
   , DragEvent(..)
   , DragEffects
+  , PageCoord
+  , mouseEventToPageCoord
   ) where
 
 import Prelude

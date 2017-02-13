@@ -20,6 +20,6 @@ import SlamData.Prelude
 import Halogen as H
 import Halogen.HTML as HH
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Deck.Component.Nested.Query (Query')
+import SlamData.Workspace.Deck.Component.Query (Query, Message)
 
-type DeckComponent = H.Component HH.HTML Query' Unit Void Slam
+type DeckComponent = H.Component HH.HTML Query Unit Message Slam

@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.Component.Query
   ( Query(..)
+  , Message(..)
   ) where
 
 import SlamData.Prelude
@@ -34,7 +35,6 @@ data Query a
   | Finish a
   | Publish a
   | FlipDeck a
-  | GrabDeck DOM.MouseEvent a
   | UpdateCardSize a
   | ZoomIn a
   | ZoomOut a
@@ -50,3 +50,6 @@ data Query a
   | DismissedCardGuide a
   | DismissDialog a
   | GetActiveCard (Maybe CardId → a)
+
+data Message
+  = GrabbedDeck DOM.MouseEvent
