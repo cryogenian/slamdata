@@ -39,7 +39,6 @@ type State = M.ReducedState (DS.CommonState JCursor Selection ())
 initialState ∷ State
 initialState =
   { axes: M.initialState.axes
-  , levelOfDetails: DS.initial.levelOfDetails
   , minValue: M.initialState.minValue
   , maxValue: M.initialState.maxValue
   , isSchemeReversed: M.initialState.isSchemeReversed
