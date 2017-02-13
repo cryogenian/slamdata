@@ -23,6 +23,7 @@ import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
+import Halogen.HTML.Events as HE
 
 import SlamData.Config as Config
 import SlamData.Config.Version as CV
@@ -34,21 +35,24 @@ import SlamData.Render.CSS as Rc
 type State
   = Boolean
 
-data Query
+data Query a
   = HandleGripper Gripper.Message a
   | QueryGripper (Gripper.Query Unit) a
 
 type ChildState =
   Gripper.State
-  ⊹ GlobalMenu.StateP
+  ⊹ GlobalMenu.State
+  ⊹ Void
 
 type ChildQuery =
   Gripper.Query
-  ⨁ GlobalMenu.QueryP
+  ⨁ GlobalMenu.Query
+  ⨁ Const Void
 
 type ChildSlot =
   Unit
   ⊹ Unit
+  ⊹ Void
 
 type DSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
 type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
@@ -99,6 +103,6 @@ eval = case _ of
       Gripper.Closed → false
       _ → true
     pure next
-  QueryGripper q st → do
-    H.query' CP.cp1 unit $ H.action q
+  QueryGripper q next → do
+    H.query' CP.cp1 unit q
     pure next

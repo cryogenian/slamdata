@@ -49,6 +49,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
+import Halogen.Query.EventSource as ES
 
 import SlamData.Monad (Slam)
 import SlamData.Wiring as Wiring
@@ -61,7 +62,6 @@ data Query a
   | StopDragging a
   | ChangePosition Number a
   | Animated a
-  | Notify State a
 
 data Direction = Up | Down
 
@@ -78,9 +78,9 @@ initialState ∷ State
 initialState = Closed
 
 type HTML = H.ComponentHTML Query
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Message Slam
 
-component ∷ String → H.Component State Query Slam
+component ∷ String → H.Component HH.HTML Query Unit Message Slam
 component querySelector = H.lifecycleComponent
   { initialState: const Closed
   , render: render querySelector
@@ -182,10 +182,11 @@ eval sel (Init next) = do
     attachMouseMove f =
       Etr.addEventListener Etp.mousemove (Etr.eventListener f) false docTarget
 
-    handleMouseUp e =
-      pure $ H.action $ StopDragging
+    handleMouseUp e = do
+      pure $ StopDragging ES.Listening
+
     handleMouseMove e = do
-      pure $ H.action $ ChangePosition (evntify e).clientY
+      pure $ ChangePosition (evntify e).clientY ES.Listening
 
   H.subscribe $ H.eventSource attachMouseUp handleMouseUp
   H.subscribe $ H.eventSource attachMouseMove handleMouseMove
@@ -197,11 +198,11 @@ eval sel (Init next) = do
           $ Dt.elementToEventTarget navEl
 
       handleAnimationEnd e =
-        pure $ H.action Animated
+        pure $ Animated ES.Listening
     in
       H.subscribe $ H.eventSource attachAnimationEnd handleAnimationEnd
 
-  { auth } ← H.liftH Wiring.expose
+  { auth } ← H.lift Wiring.expose
   forever $ const (H.put $ Closing maxMargin) =<< H.liftAff (Bus.read auth.signIn)
   pure next
 eval _ (StartDragging evt next) = do
@@ -243,5 +244,5 @@ eval _ (Animated next) = do
     Opening _ → H.put Opened
     Closing _ → H.put Closed
     _ → pure unit
-  H.get >>= raise ∘ Notify
+  H.get >>= H.raise ∘ Notify
   pure next

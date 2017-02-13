@@ -14,6 +14,7 @@ limitations under the License.
 module SlamData.GlobalMenu.Component
   ( component
   , Query(..)
+  , AuthenticateOrPresentHelp(..)
   , State
   ) where
 
@@ -31,6 +32,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Menu.Component as Menu
 import Halogen.Query.EventSource as ES
+import Halogen.HTML.Events as HE
 
 import OIDC.Crypt as Crypt
 
@@ -54,18 +56,18 @@ data AuthenticateOrPresentHelp
 data Query a
   = DismissSubmenu a
   | HandleGlobalError GlobalError a
-  | HanldeMenuMessage Menu.Message a
+  | HandleMenuMessage (Menu.Message AuthenticateOrPresentHelp) a
   | Init a
 
 type State =
   { loggedIn ∷ Boolean
   }
 
-type HTML = H.ParentHTML Query Menu.Query Unit Slam
-type DSL = H.ParentDSL State Query Menu.Query Unit Void Slam
 
+type HTML = H.ParentHTML Query (Menu.Query AuthenticateOrPresentHelp) Unit Slam
+type DSL = H.ParentDSL State Query (Menu.Query AuthenticateOrPresentHelp) Unit Void Slam
 
-component ∷ H.Component HH.HTML Query Unit Unit Slam
+component ∷ H.Component HH.HTML Query Unit Void Slam
 component =
   H.lifecycleParentComponent
     { initialState: \_ → { loggedIn: false }
@@ -86,11 +88,11 @@ render state =
 eval ∷ Query ~> DSL
 eval (Init next) = do
   { bus } ← H.lift Wiring.expose
-  H.subscribe (flip HandleGlobalError ES.Listening) $ busEventSource bus.globalError
+  H.subscribe $ busEventSource (flip HandleGlobalError ES.Listening) bus.globalError
   update
   pure next
 eval (DismissSubmenu next) = do
-  queryMenu $ H.action Menu.DismissSubmenu
+  H.query unit $ H.action $ Menu.DismissSubmenu
   pure next
 eval (HandleGlobalError error next) = case error of
   GlobalError.Unauthorized _ → update $> next
@@ -115,7 +117,7 @@ update = do
   where
   putEmailToMenu ∷ Crypt.Payload → DSL Unit
   putEmailToMenu payload = do
-    queryMenu
+    H.query unit
       $ H.action
       $ Menu.Set
         { chosen: Nothing
@@ -138,11 +140,11 @@ update = do
     H.modify _{ loggedIn = true }
 
   retrieveProvidersAndUpdateMenu ∷ DSL Unit
-  retrieveProvidersAndUpdateMenu = do
+  retrieveProvidersAndUpdateMenu = void do
     eProviders ← Api.retrieveAuthProviders
-    queryMenu
+    H.query unit
       $ H.action
-      $ HalogenMenu.SetMenu
+      $ Menu.Set
           { chosen: Nothing
           , submenus: case eProviders of
               Right (Just providers) →
@@ -161,7 +163,7 @@ update = do
               _ → helpMenu
           }
 
-helpMenu ∷ Array (MenuItem AuthenticateOrPresentHelp)
+helpMenu ∷ Array (Menu.MenuItem AuthenticateOrPresentHelp)
 helpMenu =
   [ { label: "Help"
     , submenu:
@@ -196,11 +198,6 @@ helpMenu =
       ]
     }
   ]
-
-queryMenu
-  ∷ Menu.Query AuthenticateOrPresentHelp Unit
-  → DSL Unit
-queryMenu q = void ∘ H.query unit
 
 authenticate ∷ Maybe ProviderR → DSL Unit
 authenticate = maybe logOut logIn
