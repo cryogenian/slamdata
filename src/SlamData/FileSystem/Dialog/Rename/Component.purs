@@ -142,16 +142,18 @@ data Query a
   | StopPropagation Event (Query a)
   | Init a
 
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
 
-comp :: H.Component State Query Slam
+comp ∷ H.Component HH.HTML Query Unit Void Slam
 comp =
   H.lifecycleComponent
-    { render
+    { initialState: const initialState
+    , render
     , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
+    , receiver: const Nothing
     }
 
 render ∷ State → HTML
@@ -207,8 +209,9 @@ render dialog =
           [ HP.classes [ B.inputGroupBtn ] ]
           [ HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
-              , HE.onClick \e →
-                   Just $ StopPropagation (mouseEventToEvent e) $ action $ ToggleShowList
+              -- TODO:
+              -- , HE.onClick \e →
+              --      Just $ StopPropagation (mouseEventToEvent e) $ action $ ToggleShowList
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
               ]
@@ -239,7 +242,7 @@ render dialog =
              ]
     [ HH.text (R.resourcePath res) ]
 
-eval :: Query ~> DSL
+eval ∷ Query ~> DSL
 eval (Dismiss next) = pure next
 eval (PreventDefault e next) = do
   H.liftEff $ DEE.preventDefault e
@@ -282,7 +285,7 @@ eval (Submit next) = do
     state ← H.get
     let src = state.initial
         tgt = R.getPath $ renameSlam state
-    result ← H.liftH $ API.move src tgt
+    result ← H.lift $ API.move src tgt
     case result of
       Left e ->
         case GE.fromQError e of

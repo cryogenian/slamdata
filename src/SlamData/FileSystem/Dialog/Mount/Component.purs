@@ -16,8 +16,6 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.Component
   ( comp
-  , QueryP
-  , StateP
   , module SlamData.FileSystem.Dialog.Mount.Component.ChildSlot
   , module SlamData.FileSystem.Dialog.Mount.Component.Query
   , module MCS
@@ -40,7 +38,7 @@ import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Monad (Slam)
 import SlamData.GlobalError as GE
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as SQ
-import SlamData.FileSystem.Dialog.Mount.Component.ChildSlot (ChildState, ChildQuery, ChildSlot, cpSQL, cpMongoDB, cpCouchbase, cpMarkLogic, cpSpark)
+import SlamData.FileSystem.Dialog.Mount.Component.ChildSlot
 import SlamData.FileSystem.Dialog.Mount.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Mount.Component.State as MCS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
@@ -52,18 +50,16 @@ import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.Quasar.FS as Api
 import SlamData.Render.CSS as Rc
 
-type DSL = H.ParentDSL MCS.State ChildState Query ChildQuery Slam ChildSlot
-type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+type DSL = H.ParentDSL MCS.State Query ChildQuery ChildSlot Void Slam
+type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 
-type StateP = H.ParentState MCS.State ChildState Query ChildQuery Slam ChildSlot
-type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
-
-comp ∷ H.Component StateP QueryP Slam
+comp ∷ H.Component HH.HTML Query Unit Void Slam
 comp =
   H.parentComponent
-    { render
+    { initialState: const MCS.initialState
+    , render
     , eval
-    , peek: Just (peek ∘ H.runChildF)
+    , receiver: const Nothing
     }
 
 render ∷ MCS.State → HTML
@@ -72,7 +68,9 @@ render state@{ new } =
     [ modalHeader "Mount"
     , modalBody $
         HH.form
-          [ CP.nonSubmit, HP.class_ Rc.dialogMount ]
+          [ HE.input PreventDefault
+          , HP.class_ Rc.dialogMount
+          ]
           $ (guard new $> fldName state)
           <> (guard new $> selScheme state)
           <> maybe [] (pure ∘ settings) state.settings
@@ -87,20 +85,15 @@ render state@{ new } =
   settings ∷ MCS.MountSettings → HTML
   settings ss = case ss of
     MCS.MongoDB initialState →
-      HH.slot' cpMongoDB unit \_ →
-        { component: MongoDB.comp, initialState }
+      HH.slot' cpMongoDB unit MongoDB.comp absurd
     MCS.SQL2 initialState →
-      HH.slot' cpSQL unit \_ →
-        { component: SQL2.comp, initialState: H.parentState initialState }
+      HH.slot' cpSQL unit SQL2.comp absurd
     MCS.Couchbase initialState →
-      HH.slot' cpCouchbase unit \_ →
-        { component: Couchbase.comp, initialState }
+      HH.slot' cpCouchbase unit Couchbase.comp absurd
     MCS.MarkLogic initialState →
-      HH.slot' cpMarkLogic unit \_ →
-        { component: MarkLogic.comp, initialState }
+      HH.slot' cpMarkLogic unit MarkLogic.comp absurd
     MCS.SparkHDFS initialState →
-      HH.slot' cpSpark unit \_ →
-        { component: Spark.comp, initialState }
+      HH.slot' cpSpark unit Spark.comp absurd
 
 fldName ∷ MCS.State → HTML
 fldName state =
