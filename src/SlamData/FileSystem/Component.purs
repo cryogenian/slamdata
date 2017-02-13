@@ -33,6 +33,7 @@ import Data.Argonaut (jsonParser, jsonEmptyObject)
 import Data.Array as Array
 import Data.Foldable as F
 import Data.Lens ((.~), preview)
+import Data.MediaType (MediaType(..))
 import Data.MediaType.Common (textCSV, applicationJSON)
 import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir)
 import Data.String as S
@@ -44,7 +45,6 @@ import DOM.Event.Event as DEE
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, injSlot, prjQuery, injQuery)
 import Halogen.Component.Utils (subscribeToBus')
-import Halogen.CustomProps as CustomProps
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Core as HC
@@ -181,9 +181,9 @@ renderIntroVideo =
         ]
         [ HH.text "Welcome to SlamData!" ]
     , HH.video
-        [ CustomProps.autoplay true ]
+        [ HP.autoplay true ]
         [ HH.source
-            [ CustomProps.videoType "video/mp4"
+            [ HP.videoType (MediaType "video/mp4")
             , HP.src "video/getting-started.mp4"
             ]
         ]

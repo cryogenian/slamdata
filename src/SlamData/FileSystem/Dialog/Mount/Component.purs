@@ -31,7 +31,6 @@ import Data.Lens (set, (.~), (?~))
 import Ace.Halogen.Component (AceQuery(..))
 
 import Halogen as H
-import Halogen.CustomProps as CP
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
