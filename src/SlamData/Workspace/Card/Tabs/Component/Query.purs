@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Tabs.Component.Query where
 
+import Halogen as H
 import Halogen.Component.Utils.Drag (DragEvent)
 
 import SlamData.Workspace.Eval.Deck as Deck
@@ -24,7 +25,7 @@ import Utils.DOM as DOM
 
 data Query a
   = AddTab a
-  | HandleMessage Deck.Id Deck.EvalMessage a
+  | HandleMessage Deck.Id Deck.EvalMessage (H.SubscribeStatus → a)
   | OrderStart Int DOM.MouseEvent a
   | Ordering Int DragEvent a
   | OrderOver Int a

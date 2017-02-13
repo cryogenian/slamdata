@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.Tabs.Component.State where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.EventLoop (Breaker)
-
 import Data.Array as Array
 
 import SlamData.Workspace.Card.Tabs.Model (Model)
@@ -27,7 +25,6 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 
 type Tab =
   { deckId ∷ DeckId
-  , breaker ∷ Breaker Unit
   , name ∷ String
   , loaded ∷ Boolean
   }
