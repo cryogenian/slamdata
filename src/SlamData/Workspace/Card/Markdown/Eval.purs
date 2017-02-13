@@ -36,7 +36,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Markdown.Component.State.Core as MDS
+import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 
