@@ -115,7 +115,7 @@ eval = case _ of
       H.liftEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
     pure next
   SelectElement ev next → do
-    H.liftEff $ DOM.currentTarget
+    H.liftEff $ DOM.currentTarget ev
       # readHTMLElement ∘ toForeign
       # runExcept
       # traverse_ select

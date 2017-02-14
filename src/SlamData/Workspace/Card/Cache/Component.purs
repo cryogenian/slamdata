@@ -31,7 +31,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
-import SlamData.Monad (Slam)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.Cache.Component.Query (Query(..))
 import SlamData.Workspace.Card.Cache.Component.State (State, _confirmedPath, _pathString, initialState)
