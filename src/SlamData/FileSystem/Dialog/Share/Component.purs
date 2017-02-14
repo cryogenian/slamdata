@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Share.Component
   ( Query(..)
-  , Message(..)
   , component
   ) where
 
@@ -36,8 +35,9 @@ import Halogen.Themes.Bootstrap3 as B
 import DOM.HTML.Types (htmlElementToElement, readHTMLElement)
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Render.Common (glyph)
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.Monad (Slam)
+import SlamData.Render.Common (glyph)
 
 import Utils.DOM as DOM
 
@@ -49,8 +49,6 @@ data Query a
   | ReceiveUrl String a
   | Init a
   | Cancel a
-
-data Message = Dismiss
 
 copyButtonRef ∷ H.RefLabel
 copyButtonRef = H.RefLabel "copy"

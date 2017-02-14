@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Mount.Component
-  ( comp
+  ( component
   , module SlamData.FileSystem.Dialog.Mount.Component.Query
   , module MCS
   ) where
@@ -32,27 +32,29 @@ import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Monad (Slam)
-import SlamData.GlobalError as GE
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as SQ
 import SlamData.FileSystem.Dialog.Mount.Component.ChildSlot as CS
 import SlamData.FileSystem.Dialog.Mount.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Mount.Component.State as MCS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
-import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
+import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
+import SlamData.GlobalError as GE
+import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as Api
-import SlamData.Render.CSS as Rc
+import SlamData.Render.CSS as RC
+
 import Utils.DOM as DOM
 
-type DSL = H.ParentDSL MCS.State Query CS.ChildQuery CS.ChildSlot Void Slam
+type DSL = H.ParentDSL MCS.State Query CS.ChildQuery CS.ChildSlot Message Slam
 type HTML = H.ParentHTML Query CS.ChildQuery CS.ChildSlot Slam
 
-comp ∷ H.Component HH.HTML Query MCS.Input Void Slam
-comp =
+component ∷ H.Component HH.HTML Query MCS.Input Message Slam
+component =
   H.parentComponent
     { initialState: MCS.initialState
     , render
@@ -67,7 +69,7 @@ render state@{ new } =
     , modalBody $
         HH.form
           [ HE.onSubmit $ HE.input PreventDefault
-          , HP.class_ Rc.dialogMount
+          , HP.class_ RC.dialogMount
           ]
           $ (guard new $> fldName state)
           <> (guard new $> selScheme state)
@@ -96,7 +98,7 @@ render state@{ new } =
 fldName ∷ MCS.State → HTML
 fldName state =
   HH.div
-    [ HP.classes [B.formGroup, Rc.mountName] ]
+    [ HP.classes [B.formGroup, RC.mountName] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Name" ]
         , HH.input
@@ -133,7 +135,7 @@ btnCancel ∷ HTML
 btnCancel =
   HH.button
     [ HP.classes [B.btn]
-    , HE.onClick (HE.input_ Dismiss)
+    , HE.onClick (HE.input_ RaiseDismiss)
     ]
     [ HH.text "Cancel" ]
 
@@ -150,7 +152,7 @@ btnMount state@{ new, saving } =
 
 progressSpinner ∷ MCS.State → HTML
 progressSpinner { saving } =
-  HH.img [ HP.src "img/spin.gif", HP.class_ (Rc.mountProgressSpinner saving) ]
+  HH.img [ HP.src "img/spin.gif", HP.class_ (RC.mountProgressSpinner saving) ]
 
 eval ∷ Query ~> DSL
 eval (ModifyState f next) = H.modify f *> validateInput $> next
@@ -160,8 +162,12 @@ eval (SelectScheme newScheme next) = do
     H.modify (MCS._settings .~ map MCS.initialSettings newScheme)
     validateInput
   pure next
-eval (Dismiss next) = pure next
-eval (NotifySave next) = pure next
+eval (RaiseDismiss next) = do
+  H.raise Dismiss
+  pure next
+eval (NotifySave next) = do
+  H.raise Dismiss
+  pure next
 eval (Save k) = do
   { parent, name, new } ← H.get
   H.modify (MCS._saving .~ true)

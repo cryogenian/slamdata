@@ -24,7 +24,7 @@ data Query a
   = TargetTyped String a
   | ToggleCompress a
   | SetOutput OutputType a
-  | Dismiss a
+  | RaiseDismiss a
   | NewTab String MouseEvent a
   | ModifyCSVOpts (CSVOptions -> CSVOptions) a
   | ModifyJSONOpts (JSONOptions -> JSONOptions) a

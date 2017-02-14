@@ -121,7 +121,7 @@ message state =
 btnCancel ∷ State → H.ComponentHTML Query
 btnCancel state =
   HH.button [ HP.classes [ B.btn ]
-           , HE.onClick (HE.input_ Dismiss)
+           , HE.onClick (HE.input_ RaiseDismiss)
            , ARIA.label "Cancel download"
            , HP.title "Cancel download"
            ]

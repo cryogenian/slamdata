@@ -15,8 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Download.Component
-  ( comp
-  , module SlamData.FileSystem.Dialog.Download.Component.State
+  ( component
   , module SlamData.FileSystem.Dialog.Download.Component.Query
   ) where
 
@@ -24,7 +23,7 @@ import SlamData.Prelude
 
 import Control.UI.Browser (newTab)
 
-import Data.Lens ((.~), _Right, (%~), _Left)
+import Data.Lens (_Left, _Right, (%~))
 
 import DOM.Classy.Event as DOM
 
@@ -32,28 +31,29 @@ import Halogen as H
 import Halogen.HTML as HH
 
 import SlamData.Download.Model as D
-import SlamData.Monad (Slam)
-import SlamData.FileSystem.Resource (Resource)
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Download.Component.Render (render)
-import SlamData.FileSystem.Dialog.Download.Component.State (State, _authHeaders,  _compress, _error, _options, _source, _targetName, checkExists, initialState, validate)
+import SlamData.FileSystem.Dialog.Download.Component.State (State, _options, initialState, validate)
+import SlamData.FileSystem.Resource (Resource)
+import SlamData.Monad (Slam)
 
-comp ∷ Resource → H.Component HH.HTML Query Unit Void Slam
-comp res =
+component ∷ H.Component HH.HTML Query Resource Message Slam
+component =
   H.component
-    { initialState: const (initialState res)
+    { initialState: initialState
     , render
     , eval
     , receiver: const Nothing
     }
 
-eval ∷ Query ~> H.ComponentDSL State Query Void Slam
+eval ∷ Query ~> H.ComponentDSL State Query Message Slam
 eval = case _ of
   TargetTyped s next → do
-    H.modify $ validate ∘ (_targetName .~ D.validFilename s)
+    H.modify $ validate ∘ (_ { targetName = D.validFilename s })
     pure next
   ToggleCompress next → do
-    H.modify $ validate ∘ (_compress %~ not)
+    H.modify $ validate ∘ \st -> st { compress = not st.compress }
     pure next
   SetOutput ty next → do
     let
@@ -73,10 +73,11 @@ eval = case _ of
       DOM.preventDefault ev
       newTab url
     pure next
-  Dismiss next →
+  RaiseDismiss next → do
+    H.raise Dismiss
     pure next
   SetAuthHeaders as next → do
-    H.modify (_authHeaders .~ as) $> next
+    H.modify (_ { authHeaders = as }) $> next
   PreventDefault ev next → do
     H.liftEff $ DOM.preventDefault ev
     pure next

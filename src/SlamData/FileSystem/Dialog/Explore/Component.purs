@@ -27,10 +27,11 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Config as Config
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.Monad (Slam)
 import SlamData.Render.Common (formGroup)
-import SlamData.Config as Config
 
 import Utils.Path as UP
 
@@ -48,10 +49,10 @@ initialState fp =
 data Query a
   = Explore UP.FilePath String a
   | NameTyped String a
-  | Dismiss a
+  | RaiseDismiss a
 
-comp ∷ H.Component HH.HTML Query UP.FilePath Void Slam
-comp =
+component ∷ H.Component HH.HTML Query UP.FilePath Message Slam
+component =
   H.component
     { initialState
     , render
@@ -85,7 +86,7 @@ render state =
     , modalFooter
         [ HH.button
             [ HP.classes [ B.btn ]
-            , HE.onClick (HE.input_ Dismiss)
+            , HE.onClick (HE.input_ RaiseDismiss)
             , HP.type_ HP.ButtonButton
             ]
             [ HH.text "Cancel" ]
@@ -104,9 +105,11 @@ render state =
     directory = Pt.printPath $ UP.getDir anyPath
     fileName = UP.getNameStr anyPath
 
-eval ∷ Query ~> H.ComponentDSL State Query Void Slam
+eval ∷ Query ~> H.ComponentDSL State Query Message Slam
 eval = case _ of
-  Dismiss next → pure next
+  RaiseDismiss next → do
+    H.raise Dismiss
+    pure next
   Explore res name next → pure next
   NameTyped name next → do
     H.modify (_ { workspaceName = name })

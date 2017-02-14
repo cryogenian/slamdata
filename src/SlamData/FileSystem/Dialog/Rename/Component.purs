@@ -37,13 +37,14 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config as Config
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Monad (Slam)
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
+import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as API
-import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (formGroup)
+import SlamData.Render.CSS as Rc
 
 import Utils.Path (DirPath, dropWorkspaceExt)
 
@@ -129,7 +130,7 @@ validate r
       $ throwError "An item with this name already exists in the target folder"
 
 data Query a
-  = Dismiss a
+  = RaiseDismiss a
   | SetShowList Boolean a
   | ToggleShowList a
   | Submit a
@@ -142,11 +143,11 @@ data Query a
   | StopPropagation Event (Query a)
   | Init a
 
-type DSL = H.ComponentDSL State Query Void Slam
+type DSL = H.ComponentDSL State Query Message Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component HH.HTML Query R.Resource Void Slam
-comp =
+component ∷ H.Component HH.HTML Query R.Resource Message Slam
+component =
   H.lifecycleComponent
     { initialState
     , render
@@ -174,7 +175,7 @@ render dialog =
   , modalFooter
       [ HH.button
           [ HP.classes [ B.btn ]
-          , HE.onClick (HE.input_ Dismiss)
+          , HE.onClick (HE.input_ RaiseDismiss)
           ]
           [ HH.text "Cancel" ]
       , HH.button
@@ -243,7 +244,9 @@ render dialog =
     [ HH.text (R.resourcePath res) ]
 
 eval ∷ Query ~> DSL
-eval (Dismiss next) = pure next
+eval (RaiseDismiss next) = do
+  H.raise Dismiss
+  pure next
 eval (PreventDefault e next) = do
   H.liftEff $ DEE.preventDefault e
   pure next
