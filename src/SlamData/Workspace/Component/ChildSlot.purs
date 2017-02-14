@@ -18,40 +18,22 @@ module SlamData.Workspace.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
+import Halogen.Component.ChildPath as CP
 
 import SlamData.Header.Component as Header
 import SlamData.Notification.Component as Notify
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
-import SlamData.Workspace.Deck.Component.Nested.State as DNS
+import SlamData.Workspace.Deck.Component.Query as DCQ
 
-type ChildQuery =
-  DNQ.QueryP ⨁ Header.QueryP ⨁ Notify.Query
+type ChildQuery = DCQ.Query ⨁ Header.Query ⨁ Notify.Query ⨁ Const Void
 
-type ChildState =
-  DNS.State ⊹ Header.StateP ⊹ Notify.State
+type ChildSlot = DeckId ⊹ Unit ⊹ Unit ⊹ Void
 
-type ChildSlot =
-  DeckId ⊹ Unit ⊹ Unit
+cpDeck ∷ CP.ChildPath DCQ.Query ChildQuery DeckId ChildSlot
+cpDeck = CP.cp1
 
-cpDeck
-  ∷ ChildPath
-      DNS.State ChildState
-      DNQ.QueryP ChildQuery
-      DeckId ChildSlot
-cpDeck = cpL
+cpHeader ∷ CP.ChildPath Header.Query ChildQuery Unit ChildSlot
+cpHeader = CP.cp2
 
-cpHeader
-  ∷ ChildPath
-      Header.StateP ChildState
-      Header.QueryP ChildQuery
-      Unit ChildSlot
-cpHeader = cpR :> cpL
-
-cpNotify
-  ∷ ChildPath
-      Notify.State ChildState
-      Notify.Query ChildQuery
-      Unit ChildSlot
-cpNotify = cpR :> cpR
+cpNotify ∷ CP.ChildPath Notify.Query ChildQuery Unit ChildSlot
+cpNotify = CP.cp3

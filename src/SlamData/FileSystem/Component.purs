@@ -17,7 +17,7 @@ limitations under the License.
 module SlamData.FileSystem.Component
   ( module SlamData.FileSystem.Component.State
   , module SlamData.FileSystem.Component.Query
-  , module SlamData.FileSystem.Component.Install
+  , module SlamData.FileSystem.Component.ChildSlot
   , comp
   ) where
 
@@ -59,8 +59,8 @@ import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.CSS as FileSystemClassNames
-import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, toListing, toDialog, toSearch, toFs)
-import SlamData.FileSystem.Component.Install as Install
+import SlamData.FileSystem.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, QueryP, StateP, toListing, toDialog, toSearch, toFs)
+import SlamData.FileSystem.Component.ChildSlot as Install
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)

@@ -24,7 +24,6 @@ import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Component as TLR
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Component as LR
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as M
 
-type ChildState = TLR.State ⊹ LR.State ⊹ M.State ⊹ Void
 type ChildQuery = TLR.Query ⨁ LR.Query ⨁ M.Query ⨁ Const Void
 type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Void
 

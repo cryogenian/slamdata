@@ -39,11 +39,6 @@ data Query a
   = HandleGripper Gripper.Message a
   | QueryGripper (Gripper.Query Unit) a
 
-type ChildState =
-  Gripper.State
-  ⊹ GlobalMenu.State
-  ⊹ Void
-
 type ChildQuery =
   Gripper.Query
   ⨁ GlobalMenu.Query
