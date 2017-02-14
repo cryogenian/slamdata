@@ -18,9 +18,6 @@ module SlamData.Header.Gripper.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Rec.Class (forever)
-
 import Data.Int as Int
 import Data.Nullable as N
 
@@ -44,6 +41,7 @@ import CSS.Time (sec)
 import CSS.Transition (easeOut)
 
 import Halogen as H
+import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
@@ -63,6 +61,7 @@ data Query a
   | ChangePosition Number a
   | Animated a
   | PreventDefault DET.Event (Query a)
+  | Close a
 
 data Direction = Up | Down
 
@@ -211,7 +210,8 @@ eval sel (Init next) = do
       H.subscribe $ H.eventSource attachAnimationEnd handleAnimationEnd
 
   { auth } ← H.lift Wiring.expose
-  forever $ const (H.put $ Closing maxMargin) =<< H.liftAff (Bus.read auth.signIn)
+
+  H.subscribe $ busEventSource (const (Close H.Listening)) auth.signIn
   pure next
 eval _ (StartDragging pos next) = do
   H.get >>= case _ of
@@ -252,3 +252,5 @@ eval _ (Animated next) = do
     _ → pure unit
   H.get >>= H.raise ∘ Notify
   pure next
+eval _ (Close next) =
+  H.put (Closing maxMargin) $> next

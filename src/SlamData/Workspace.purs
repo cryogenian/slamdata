@@ -163,7 +163,6 @@ routeSignal = do
         =<< body
         =<< document
         =<< window
-
     void $ forkAff case action of
       Load _ → driver.query $ H.action $ Workspace.Load deckId
       New → driver.query $ H.action Workspace.New

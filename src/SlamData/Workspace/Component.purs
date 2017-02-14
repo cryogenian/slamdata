@@ -21,7 +21,6 @@ module SlamData.Workspace.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (makeVar, peekVar, takeVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Ref (readRef)
@@ -161,13 +160,8 @@ eval = case _ of
     -- TODO:
     -- when (AT.isEditable accessType) do
     --   H.modify _ { cardGuideStep = cardGuideStep }
-    H.subscribe $ busEventSource
-      (H.request ∘ PresentStepByStepGuide)
-      bus.stepByStep
-    H.subscribe
-      $ throttledEventSource_ (Milliseconds 100.0) onResize (H.request Resize)
-    -- The deck component isn't initialised before this later has completed
-    H.liftAff $ Aff.later (pure unit)
+    H.subscribe $ busEventSource (H.request ∘ PresentStepByStepGuide) bus.stepByStep
+    H.subscribe $ throttledEventSource_ (Milliseconds 100.0) onResize (H.request Resize)
     when (isNothing cardGuideStep) do
       void $ queryDeck $ H.action Deck.DismissedCardGuide
     pure next
