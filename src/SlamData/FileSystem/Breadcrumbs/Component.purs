@@ -20,7 +20,7 @@ module SlamData.FileSystem.Breadcrumbs.Component
   , rootBreadcrumb
   , mkBreadcrumbs
   , Query(..)
-  , comp
+  , component
   ) where
 
 import SlamData.Prelude
@@ -71,15 +71,21 @@ mkBreadcrumbs path sort salt =
       Just dir → go result' dir
       Nothing → rootBreadcrumb : result
 
-data Query a = Update DirPath Sort Salt a
+data Query a = Set State a
 
-comp ∷ State → H.Component HH.HTML Query Unit Void Slam
-comp initialState =
+type Input =
+  { path ∷ DirPath
+  , sort ∷ Sort
+  , salt ∷ Salt
+  }
+
+component ∷ State → H.Component HH.HTML Query Input Void Slam
+component initialState =
   H.component
     { initialState: const initialState
     , render
     , eval
-    , receiver: const Nothing
+    , receiver
     }
 
 render ∷ State → H.ComponentHTML Query
@@ -96,7 +102,11 @@ render r =
         ]
     ]
 
+receiver ∷ Input → Maybe (Query Unit)
+receiver { path, sort, salt } =
+  Just $ H.action $ Set $ mkBreadcrumbs path sort salt
+
 eval ∷ Query ~> H.ComponentDSL State Query Void Slam
-eval (Update path sort salt next) = do
-  H.put $ mkBreadcrumbs path sort salt
+eval (Set st next) = do
+  H.put st
   pure next

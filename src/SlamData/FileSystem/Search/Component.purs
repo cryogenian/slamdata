@@ -31,7 +31,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.Component.Utils as HU
 import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger, DebounceTrigger)
 
 import SlamData.Config as Config
@@ -89,7 +88,7 @@ data Query a
   | Typed String a
   | Clear a
   | Validate a
-  | Submit a
+  | TrySubmit a
   | GetValue (String → a)
   | SetLoading Boolean a
   | SetValue String a
@@ -99,11 +98,15 @@ data Query a
   | SetPath DirPath  a
   | PreventDefault Event (Query a)
 
-type HTML = H.ComponentHTML Query
-type DSL = H.ComponentDSL State Query Void Slam
+data Message
+  = Cleared
+  | Submit
 
-comp ∷ H.Component HH.HTML Query Unit Void Slam
-comp = H.component
+type HTML = H.ComponentHTML Query
+type DSL = H.ComponentDSL State Query Message Slam
+
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component = H.component
   { render
   , eval
   , initialState: const initialState
@@ -115,7 +118,7 @@ render state =
   HH.div
     [ HP.classes [ CSS.search ] ]
     [ HH.form
-        [ HE.onSubmit (HE.input_ Submit)]
+        [ HE.onSubmit (HE.input_ TrySubmit)]
         [ HH.div
             [ HP.classes searchClasses ]
             [ HH.div
@@ -192,10 +195,12 @@ eval (Validate next) = do
     Left _ | val ≠ "" → H.modify (_valid .~ false)
     _ → do
       H.modify (_valid .~ true)
-      HU.sendAfter (Milliseconds zero) Submit
+      H.raise Submit
       pure unit
   pure next
-eval (Submit next) = pure next
+eval (TrySubmit next) = do
+  H.raise Submit
+  pure next
 eval (GetValue continue) = map continue $ H.gets _.value
 eval (SetLoading bool next) = H.modify (_loading .~ bool) $> next
 eval (SetValue tv next) = H.modify (_value .~ tv) $> next

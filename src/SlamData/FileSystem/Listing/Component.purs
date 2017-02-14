@@ -68,15 +68,19 @@ data Query a
   | Get (Array Item → a)
   | HandleItemAction ItemSlot Item.Message a
 
+data Message
+  = Added (Array Item)
+  | ItemMessage Item.Message
+
 data ItemSlot = ItemSlot Int Item
 derive instance eqItemSlot ∷ Eq ItemSlot
 derive instance ordItemSlot ∷ Ord ItemSlot
 
 type HTML = H.ParentHTML Query Item.Query ItemSlot Slam
-type DSL = H.ParentDSL State Query Item.Query ItemSlot Void Slam
+type DSL = H.ParentDSL State Query Item.Query ItemSlot Message Slam
 
-comp ∷ H.Component HH.HTML Query Unit Void Slam
-comp =
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component =
   H.parentComponent
     { initialState: const initialState
     , render
@@ -94,18 +98,21 @@ eval ∷ Query ~> DSL
 eval = case _ of
   Reset next →
     H.modify (_items .~ mempty) $> next
-  Add item next →
-    H.modify (_items %~ nub <<< cons item) $> next
+  Add item next → do
+    H.modify (_items %~ nub <<< cons item)
+    H.raise $ Added [ item ]
+    pure next
   Adds items next → do
     H.modify (_items <>~ items)
     H.modify (_items %~ nub)
+    H.raise $ Added items
     pure next
   SortBy sortFn next →
     H.modify (_items %~ sortBy sortFn) $> next
   SetIsSearching bool next →
     do
     H.modify (_isSearching .~ bool)
-    items <- H.gets _.items
+    items ← H.gets _.items
     for_ (zipItems ItemSlot items) \slot →
       H.query slot $ H.action $ Item.SetIsSearching bool
     pure next
@@ -114,16 +121,17 @@ eval = case _ of
   SetIsHidden bool next →
     do
     H.modify (_isHidden .~ bool)
-    items <- H.gets _.items
+    items ← H.gets _.items
     for_ (zipItems ItemSlot items) \slot →
       H.query slot $ H.action $ Item.SetIsHidden bool
     pure next
   Get continue →
     continue <$> H.gets _.items
   HandleItemAction p msg next → do
+    H.raise $ ItemMessage msg
     case msg of
       Item.Selected → do
-        items <- H.gets _.items
+        items ← H.gets _.items
         for_ (zipItems ItemSlot items) \slot →
           unless (slot == p) $ void $ H.query slot $ H.action Item.Deselect
       _ →
@@ -133,8 +141,7 @@ eval = case _ of
 install ∷ State → Int → Item → HTML
 install { isSearching, isHidden } ix item =
   let slotId = ItemSlot ix item
-  in
-    HH.slot
+  in HH.slot
       slotId
       (Item.component
         { isSearching: isSearching

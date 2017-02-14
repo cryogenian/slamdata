@@ -66,8 +66,8 @@ type ChildQuery
 
 type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Void
 
-comp ∷ H.Component HH.HTML Query Unit Message Slam
-comp =
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component =
   H.parentComponent
     { initialState: const Nothing
     , render

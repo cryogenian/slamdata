@@ -21,7 +21,8 @@ module SlamData.Notification.Component
   , RenderMode(..)
   , Expanded
   , DetailsPresented
-  , comp
+  , Message(..)
+  , component
   , initialState
   , renderModeFromAccessType
   ) where
@@ -131,12 +132,14 @@ data Status
   = Current
   | Dismissed
 
+data Message = Message
+
 type NotifyHTML = H.ComponentHTML Query
 
-type NotifyDSL = H.ComponentDSL State Query Void Slam
+type NotifyDSL = H.ComponentDSL State Query Message Slam
 
-comp ∷ RenderMode → H.Component HH.HTML Query Unit Void Slam
-comp renderMode =
+component ∷ RenderMode → H.Component HH.HTML Query Unit Message Slam
+component renderMode =
   H.lifecycleComponent
     { initialState: const (initialState renderMode)
     , render

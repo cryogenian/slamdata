@@ -18,7 +18,7 @@ module SlamData.FileSystem.Component
   ( module SlamData.FileSystem.Component.State
   , module SlamData.FileSystem.Component.Query
   , module SlamData.FileSystem.Component.ChildSlot
-  , comp
+  , component
   ) where
 
 import SlamData.Prelude
@@ -44,12 +44,13 @@ import DOM.Event.Event as DEE
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, injSlot, prjQuery, injQuery)
-import Halogen.Component.Utils (subscribeToBus')
+import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Core as HC
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Query.EventSource as ES
 
 import Quasar.Data (QData(..))
 import Quasar.Mount as QM
@@ -59,8 +60,8 @@ import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.CSS as FileSystemClassNames
-import SlamData.FileSystem.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, QueryP, StateP, toListing, toDialog, toSearch, toFs)
-import SlamData.FileSystem.Component.ChildSlot as Install
+import SlamData.FileSystem.Component.ChildSlot (ChildQuery, ChildSlot)
+import SlamData.FileSystem.Component.ChildSlot as CS
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)
@@ -104,15 +105,16 @@ import Utils.DOM as D
 import Utils.LocalStorage as LocalStorage
 import Utils.Path (DirPath, getNameStr)
 
-type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
-type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
+type DSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
 
-comp ∷ H.Component StateP QueryP Slam
-comp =
+component ∷ H.Component HH.HTML Query Unit Void Slam
+component =
   H.lifecycleParentComponent
     { render
     , eval
-    , peek: Just (peek ∘ H.runChildF)
+    , receiver: const Nothing
+    , initialState: const initialState
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
@@ -123,39 +125,21 @@ render state@{ version, sort, salt, path } =
     [ HP.classes [ FileSystemClassNames.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
     ]
-    ([ HH.slot' Install.cpHeader unit \_ →
-          { component: Header.comp
-          , initialState: H.parentState Header.initialState
-          }
-
-     , content
-         [ HH.slot' Install.cpSearch unit \_ →
-              { component: Search.comp
-              , initialState: Search.initialState
-              }
-         , HH.div_
-             [ HH.slot' Install.cpBreadcrumbs unit \_ →
-                 { component: Breadcrumbs.comp
-                 , initialState: Breadcrumbs.mkBreadcrumbs path sort salt
-                 }
-             , toolbar state
-             ]
-         , row [ sorting state ]
-         , HH.slot' Install.cpListing unit \_ →
-             { component: Listing.comp
-             , initialState: H.parentState Listing.initialState
-             }
-         ]
-     , HH.slot' Install.cpDialog unit \_ →
-         { component: Dialog.comp
-         , initialState: H.parentState Dialog.initialState
-         }
-     , HH.slot' Install.cpNotify unit \_ →
-         { component: NC.comp
-         , initialState: NC.initialState (NC.renderModeFromAccessType Editable)
-         }
-     ] ⊕ (guard state.presentIntroVideo $> renderIntroVideo)
-       ⊕ (guard state.presentIntroVideo $> renderIntroVideoBackdrop))
+    $ [ HH.slot' CS.cpHeader unit Header.component unit absurd
+      , content
+      , HH.slot' CS.cpSearch unit Search.component unit $ HE.input HandleSearch
+      , HH.div_
+          [ HH.slot' CS.cpBreadcrumbs unit Breadcrumbs.component {path, sort, salt} absurd
+          , toolbar state
+          ]
+      , row [ sorting state ]
+      , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
+      , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
+      , HH.slot' CS.cpNotify unit (NC.component $ NC.renderModeFromAccessType Editable) unit
+          $ HE.input HandleNotifications
+      ]
+    ⊕ (guard state.presentIntroVideo $> renderIntroVideo)
+    ⊕ (guard state.presentIntroVideo $> renderIntroVideoBackdrop)
 
 renderIntroVideoBackdrop ∷ HTML
 renderIntroVideoBackdrop =
@@ -170,20 +154,20 @@ renderIntroVideo =
   HH.div
     [ HP.class_ $ HC.ClassName "deck-dialog" ]
     [ HH.div
-        [ HCSS.style
-            $ (CSS.paddingLeft CSS.nil)
-            *> (CSS.paddingRight CSS.nil)
+        [ HCSS.style do
+             CSS.paddingLeft CSS.nil
+             CSS.paddingRight CSS.nil
         ]
     [ HH.h4
-        [ HCSS.style
-            $ (CSS.paddingLeft $ CSS.rem 1.0)
-            *> (CSS.paddingRight $ CSS.rem 1.0)
+        [ HCSS.style do
+            CSS.paddingLeft $ CSS.rem 1.0
+            CSS.paddingRight $ CSS.rem 1.0
         ]
         [ HH.text "Welcome to SlamData!" ]
     , HH.video
         [ HP.autoplay true ]
         [ HH.source
-            [ HP.videoType (MediaType "video/mp4")
+            [ HP.type_ (MediaType "video/mp4")
             , HP.src "video/getting-started.mp4"
             ]
         ]
@@ -200,134 +184,244 @@ renderIntroVideo =
     ]
 
 eval ∷ Query ~> DSL
-eval (Init next) = do
-  { bus } ← H.liftH $ H.liftH Wiring.expose
-  whenM
-    (not <$> dismissedIntroVideoBefore)
-    (H.modify $ State._presentIntroVideo .~ true)
-  subscribeToBus' (H.action ∘ HandleError) bus.globalError
-  pure next
-eval (PreventDefault e q) = do
-  H.liftEff $ DEE.preventDefault e
-  eval q
-eval (Resort next) = do
-  { sort, salt, path } ← H.get
-  searchValue ← H.query' Install.cpSearch unit (H.request Search.GetValue)
-  H.liftEff $ setLocation $ browseURL searchValue (notSort sort) salt path
-  pure next
-eval (SetPath path next) = H.modify (State._path .~ path) *> updateBreadcrumbs $> next
-eval (SetSort sort next) = do
-  H.modify (State._sort .~ sort)
-  updateBreadcrumbs
-  resort
-  pure next
-eval (SetSalt salt next) = H.modify (State._salt .~ salt) *> updateBreadcrumbs $> next
-eval (SetIsMount isMount next) = H.modify (State._isMount .~ isMount) $> next
-eval (ShowHiddenFiles next) = do
-  H.modify (State._showHiddenFiles .~ true)
-  queryListing $ H.action (Listing.SetIsHidden false)
-  pure next
-eval (HideHiddenFiles next) = do
-  H.modify (State._showHiddenFiles .~ false)
-  queryListing $ H.action (Listing.SetIsHidden true)
-  pure next
-eval (Configure next) = do
-  path ← H.gets _.path
-  configure (R.Database path)
-  pure next
-eval (MakeMount next) = do
-  path ← H.gets _.path
-  showDialog (Dialog.Mount path "" Nothing)
-  pure next
-eval (MakeFolder next) = do
-  result ← runExceptT do
-    path ← lift $ H.gets _.path
-    dirName ← ExceptT $ API.getNewName path Config.newFolderName
-    let dirPath = path </> dir dirName
+eval = case _ of
+  Init next → do
+    w ← H.lift Wiring.expose
+    whenM
+      (not <$> dismissedIntroVideoBefore)
+      (H.modify $ State._presentIntroVideo .~ true)
+    H.subscribe $ busEventSource (flip HandleError ES.Listening) w.bus.globalError
+    pure next
+  PreventDefault e q → do
+    H.liftEff $ DEE.preventDefault e
+    eval q
+  Resort next → do
+    st ← H.get
+    searchValue ← H.query' CS.cpSearch unit (H.request Search.GetValue)
+    H.liftEff $ setLocation $ browseURL searchValue (notSort st.sort) st.salt st.path
+    pure next
+  SetPath path next → do
+    H.modify $ State._path .~ path
+    pure next
+  SetSort sort next → do
+    H.modify $ State._sort .~ sort
+    resort
+    pure next
+  SetSalt salt next → do
+    H.modify $ State._salt .~ salt
+    pure next
+  SetIsMount isMount next → do
+    H.modify $ State._isMount .~ isMount
+    pure next
+  SetVersion version next → do
+    H.modify $ State._version .~ Just version
+    pure next
+
+  ShowHiddenFiles next → do
+    H.modify $ State._showHiddenFiles .~ true
+    H.query' CS.cpListing unit $ H.action $ Listing.SetIsHidden false
+    pure next
+  HideHiddenFiles next → do
+    H.modify $ State._showHiddenFiles .~ false
+    H.query' CS.cpListing unit $ H.action $ Listing.SetIsHidden true
+    pure next
+
+  Configure next → do
+    path ← H.gets _.path
+    configure $ R.Database path
+    pure next
+  MakeMount next → do
+    path ← H.gets _.path
+    showDialog $ Dialog.Mount path "" Nothing
+    pure next
+  MakeFolder next → do
+    result ← runExceptT do
+      path ← lift $ H.gets _.path
+      dirName ← ExceptT $ API.getNewName path Config.newFolderName
+      let
+        dirPath = path </> dir dirName
         dirRes = R.Directory dirPath
         dirItem = PhantomItem dirRes
         hiddenFile = dirPath </> file (Config.folderMark)
-    lift $ queryListing $ H.action (Listing.Add dirItem)
-    ExceptT $ API.save hiddenFile jsonEmptyObject
-    lift $ queryListing $ H.action (Listing.Filter (_ ≠ dirItem))
-    pure dirRes
-  case result of
-    Left err →
-      case GE.fromQError err of
+      H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Add dirItem
+      ExceptT $ API.save hiddenFile jsonEmptyObject
+      H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Filter (_ ≠ dirItem)
+      pure dirRes
+    case result of
+      Left err → case GE.fromQError err of
         Left msg →
           showDialog $ Dialog.Error
             $ "There was a problem creating the directory: " ⊕ msg
         Right ge →
           GE.raiseGlobalError ge
-    Right dirRes →
-      void $ queryListing $ H.action $ Listing.Add (Item dirRes)
-  pure next
+      Right dirRes →
+        void $ H.query' CS.cpListing $ H.action $ Listing.Add $ Item dirRes
+    pure next
+  MakeWorkspace next → do
+    path ← H.gets _.path
+    let
+      newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
+    name ← API.getNewName path newWorkspaceName
+    case name of
+      Left err →
+        case GE.fromQError err of
+          Left msg →
+            -- This error isn't strictly true as we're not actually creating the
+            -- workspace here, but saying there was a problem "creating a name for the
+            -- workspace" would be a little strange
+            showDialog $ Dialog.Error
+              $ "There was a problem creating the workspace: " ⊕ msg
+          Right ge →
+            GE.raiseGlobalError ge
+      Right name' → do
+        H.liftEff $ setLocation $ mkWorkspaceURL (path </> dir name') New
+    pure next
+  UploadFile el next → do
+    mbInput ← H.liftEff $ D.querySelector "input" el
+    for_ mbInput \input →
+      void $ H.liftEff $ Be.raiseEvent "click" input
+    pure next
+  FileListChanged el next → do
+    fileArr ← map Cf.fileListToArray $ (H.liftAff $ Cf.files el)
+    H.liftEff $ clearValue el
+    -- TODO: notification? this shouldn't be a runtime exception anyway!
+    -- let err ∷ Slam Unit
+    --     err = throwError $ error "empty filelist"
+    -- in H.liftAff err
+    for_ (Array.head fileArr) uploadFileSelected
+    pure next
+  Download next → do
+    path ← H.gets _.path
+    download $ R.Directory path
+    pure next
 
-eval (MakeWorkspace next) = do
-  path ← H.gets _.path
-  let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
-  name ← API.getNewName path newWorkspaceName
-  case name of
-    Left err →
-      case GE.fromQError err of
-        Left msg →
-          -- This error isn't strictly true as we're not actually creating the
-          -- workspace here, but saying there was a problem "creating a name for the
-          -- workspace" would be a little strange
-          showDialog $ Dialog.Error
-            $ "There was a problem creating the workspace: " ⊕ msg
-        Right ge →
-          GE.raiseGlobalError ge
-    Right name' → do
-      H.liftEff $ setLocation $ mkWorkspaceURL (path </> dir name') New
-  pure next
+  DismissSignInSubmenu next → do
+    dismissSignInSubmenu
+    pure next
+  DismissMountGuide next → do
+    dismissMountGuide
+    pure next
+  DismissIntroVideo next → do
+    dismissIntroVideo
+    pure next
 
-eval (UploadFile el next) = do
-  mbInput ← H.liftEff $ D.querySelector "input" el
-  for_ mbInput \input →
-    void $ H.liftEff $ Be.raiseEvent "click" input
-  pure next
+  HandleError ge next → do
+    showDialog $ Dialog.Error $ GE.print ge
+    pure next
+  HandleListing _ next → do
+    pure next
+  HandleDialog _ next → do
+    pure next
+  HandleNotifications _ next → do
+    pure next
+  HandleSearch _ next → do
+    pure next
 
-eval (FileListChanged el next) = do
-  fileArr ← map Cf.fileListToArray $ (H.liftAff $ Cf.files el)
-  H.liftEff $ clearValue el
-  case Array.head fileArr of
-    Nothing →
-      -- TODO: notification? this shouldn't be a runtime exception anyway!
-      -- let err ∷ Slam Unit
-      --     err = throwError $ error "empty filelist"
-      -- in H.liftAff err
-      pure unit
-    Just f → uploadFileSelected f
-  pure next
+{-  | Array.length items < 2 = do
+      resort
+      pure next
+  | otherwise = do
+      path ← H.gets _.path
+      presentMountGuide items path
+      resort
+      pure next
+-}
 
-eval (Download next) = do
-  path ← H.gets _.path
-  download (R.Directory path)
-  pure next
+{-
+  Item.Open res → do
+    { sort, salt, path } ← H.get
+    loc ← H.liftEff locationString
+    for_ (preview R._filePath res) \fp →
+      showDialog $ Dialog.Explore fp
+    for_ (preview R._dirPath res) \dp →
+      H.liftEff $ setLocation $ browseURL Nothing sort salt dp
+    for_ (preview R._Workspace res) \wp →
+      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
+    pure next
+  Item.Configure (R.Mount mount) → do
+    configure mount
+    pure next
+  Item.Move res → do
+    showDialog $ Dialog.Rename res
+    flip getDirectories rootDir \x →
+      void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
+    pure next
+  Item.Remove res → do
+    -- Replace actual item with phantom
+    queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
+    queryListing $ H.action $ Listing.Add (PhantomItem res)
+    -- Save order of items during deletion (or phantom will be on top of list)
+    resort
+    -- Try to delete
+    mbTrashFolder ← H.liftH $ H.liftH $ API.delete res
+    -- Remove phantom resource after we have response from server
+    queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
+    case mbTrashFolder of
+      Left err → do
+        -- Error occured: put item back and show dialog
+        void $ queryListing $ H.action $ Listing.Add (Item res)
+        case GE.fromQError err of
+          Left m →
+            showDialog $ Dialog.Error m
+          Right ge →
+            GE.raiseGlobalError ge
+      Right mbRes →
+        -- Item has been deleted: probably add trash folder
+        for_ mbRes \res' →
+          void $ queryListing $ H.action $ Listing.Add (Item res')
 
-eval (SetVersion version next) = H.modify (State._version .~ Just version) $> next
-eval (DismissSignInSubmenu next) = dismissSignInSubmenu $> next
-eval (DismissMountGuide next) = dismissMountGuide $> next
-eval (DismissIntroVideo next) = dismissIntroVideo $> next
-eval (HandleError ge next) = do
-  showDialog $ Dialog.Error $ GE.print ge
-  pure next
+    listing ← fromMaybe [] <$> (queryListing $ H.request Listing.Get)
+    path ← H.gets _.path
+    presentMountGuide listing path
 
+    resort
+    pure next
+  Item.Share res → do
+    path ← H.gets _.path
+    loc ← map (_ ⊕ "/") $ H.liftEff locationString
+    for_ (preview R._filePath res) \fp → do
+      let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
+      name ← API.getNewName path newWorkspaceName
+      case name of
+        Left err →
+          case GE.fromQError err of
+            Left m →
+              showDialog $ Dialog.Error
+                $ "There was a problem creating the workspace: " ⊕ m
+            Right ge →
+              GE.raiseGlobalError ge
+        Right name' → do
+          showDialog (Dialog.Share $ append loc $  mkWorkspaceURL (path </> dir name') $ Exploring fp)
+    for_ (preview R._Workspace res) \wp → do
+      showDialog (Dialog.Share $ append loc $ mkWorkspaceURL wp (Load ReadOnly))
+    pure next
+  Item.Download res → do
+    download res
+    pure next
+  _ → pure next
+-}
+
+
+
+dismissedMountGuideKey ∷ String
+dismissedMountGuideKey = "dismissed-mount-guide"
+
+dismissedIntroVideoKey ∷ String
+dismissedIntroVideoKey = "dismissed-intro-video"
 
 dismissMountGuide ∷ DSL Unit
 dismissMountGuide = do
-  H.liftH $ H.liftH $ LocalStorage.setLocalStorage dismissedMountGuideKey true
-  H.modify (State._presentMountGuide .~ false)
+  H.lift $ LocalStorage.setLocalStorage dismissedMountGuideKey true
+  H.modify $ State._presentMountGuide .~ false
 
 dismissIntroVideo ∷ DSL Unit
 dismissIntroVideo = do
-  H.liftH $ H.liftH $ LocalStorage.setLocalStorage dismissedIntroVideoKey true
-  H.modify (State._presentIntroVideo .~ false)
+  H.lift $ LocalStorage.setLocalStorage dismissedIntroVideoKey true
+  H.modify $ State._presentIntroVideo .~ false
 
 dismissedIntroVideoBefore ∷ DSL Boolean
 dismissedIntroVideoBefore =
-  H.liftH $ H.liftH $ either (const false) id <$> LocalStorage.getLocalStorage dismissedIntroVideoKey
+  H.lift $ either (const false) id <$> LocalStorage.getLocalStorage dismissedIntroVideoKey
 
 uploadFileSelected ∷ Cf.File → DSL Unit
 uploadFileSelected f = do
@@ -352,14 +446,14 @@ uploadFileSelected f = do
                  else if isApplicationJSON content'
                       then applicationJSON
                       else API.ldJSON
-      queryListing $ H.action (Listing.Add fileItem)
+      H.query' CS.cpListing unit $ H.action (Listing.Add fileItem)
       f' ← API.makeFile fileName (CustomData mime content')
-      queryListing $ H.action $
+      H.query' CS.cpListing unit $ H.action $
         Listing.Filter (not ∘ eq res ∘ itemResource)
       case f' of
         Left err → handleError err
         Right _ →
-          void $ queryListing $ H.action $ Listing.Add (Item res)
+          void $ H.query' CS.cpListing unit $ H.action $ Listing.Add (Item res)
 
   where
   isApplicationJSON ∷ String → Boolean
@@ -378,7 +472,7 @@ uploadFileSelected f = do
     case GE.fromQError err of
       Left msg → showDialog $ Dialog.Error msg
       Right ge → GE.raiseGlobalError ge
-
+{-
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek
   = listingPeek
@@ -388,13 +482,6 @@ peek
   ⨁ const (pure unit)
   ⨁ peekNotification
 
-listingPeek ∷ ∀ a. Listing.QueryP a → DSL Unit
-listingPeek = go ⨁ (itemPeek ∘ H.runChildF)
-  where
-  go (Listing.Add _ _) = resort
-  go (Listing.Adds items _) = (presentMountGuide items =<< H.gets _.path) *> resort
-  go _ = pure unit
-
 peekNotification ∷ ∀ a. NC.Query a → DSL Unit
 peekNotification =
   case _ of
@@ -402,13 +489,13 @@ peekNotification =
       queryHeaderGripper $ Gripper.StartDragging 0.0 unit
       queryHeaderGripper $ Gripper.StopDragging unit
     _ → pure unit
-
+-}
 presentMountGuide ∷ ∀ a. Array a → DirPath → DSL Unit
 presentMountGuide xs path = do
   isSearching ←
-    map (fromMaybe false) $ H.query' Install.cpSearch unit (H.request Search.IsSearching)
+    map (fromMaybe false) $ H.query' CS.cpSearch unit (H.request Search.IsSearching)
   isLoading ←
-    map (fromMaybe true)  $ H.query' Install.cpSearch unit (H.request Search.IsLoading)
+    map (fromMaybe true)  $ H.query' CS.cpSearch unit (H.request Search.IsLoading)
 
   H.modify
     ∘ (State._presentMountGuide .~ _)
@@ -419,83 +506,13 @@ presentMountGuide xs path = do
   where
   dismissedBefore ∷ DSL (Either String Boolean)
   dismissedBefore =
-    H.liftH $ H.liftH $ LocalStorage.getLocalStorage dismissedMountGuideKey
-
-dismissedMountGuideKey ∷ String
-dismissedMountGuideKey = "dismissed-mount-guide"
-
-dismissedIntroVideoKey ∷ String
-dismissedIntroVideoKey = "dismissed-intro-video"
-
-itemPeek ∷ ∀ a. Item.Query a → DSL Unit
-itemPeek (Item.Open res _) = do
-  { sort, salt, path } ← H.get
-  loc ← H.liftEff locationString
-  for_ (preview R._filePath res) \fp →
-    showDialog $ Dialog.Explore fp
-  for_ (preview R._dirPath res) \dp →
-    H.liftEff $ setLocation $ browseURL Nothing sort salt dp
-  for_ (preview R._Workspace res) \wp →
-    H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
+    H.lift $ LocalStorage.getLocalStorage dismissedMountGuideKey
 
 
-itemPeek (Item.Configure (R.Mount mount) _) = configure mount
-itemPeek (Item.Move res _) = do
-  showDialog $ Dialog.Rename res
-  flip getDirectories rootDir \x →
-    void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
-itemPeek (Item.Remove res _) = do
-  -- Replace actual item with phantom
-  queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
-  queryListing $ H.action $ Listing.Add (PhantomItem res)
-  -- Save order of items during deletion (or phantom will be on top of list)
-  resort
-  -- Try to delete
-  mbTrashFolder ← H.liftH $ H.liftH $ API.delete res
-  -- Remove phantom resource after we have response from server
-  queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
-  case mbTrashFolder of
-    Left err → do
-      -- Error occured: put item back and show dialog
-      void $ queryListing $ H.action $ Listing.Add (Item res)
-      case GE.fromQError err of
-        Left msg →
-          showDialog $ Dialog.Error msg
-        Right ge →
-          GE.raiseGlobalError ge
-    Right mbRes →
-      -- Item has been deleted: probably add trash folder
-      for_ mbRes \res' →
-        void $ queryListing $ H.action $ Listing.Add (Item res')
 
-  listing ← fromMaybe [] <$> (queryListing $ H.request Listing.Get)
-  path ← H.gets _.path
-  presentMountGuide listing path
+--itemPeek ∷ ∀ a. Item.Query a → DSL Unit
 
-  resort
-
-itemPeek (Item.Share res _) = do
-  path ← H.gets _.path
-  loc ← map (_ ⊕ "/") $ H.liftEff locationString
-  for_ (preview R._filePath res) \fp → do
-    let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
-    name ← API.getNewName path newWorkspaceName
-    case name of
-      Left err →
-        case GE.fromQError err of
-          Left msg →
-            showDialog $ Dialog.Error
-              $ "There was a problem creating the workspace: " ⊕ msg
-          Right ge →
-            GE.raiseGlobalError ge
-      Right name' → do
-        showDialog (Dialog.Share $ append loc $  mkWorkspaceURL (path </> dir name') $ Exploring fp)
-  for_ (preview R._Workspace res) \wp → do
-    showDialog (Dialog.Share $ append loc $ mkWorkspaceURL wp (Load ReadOnly))
-
-itemPeek (Item.Download res _) = download res
-itemPeek _ = pure unit
-
+{-
 searchPeek ∷ ∀ a. Search.Query a → DSL Unit
 searchPeek (Search.Clear _) = do
   salt ← H.liftEff newSalt
@@ -507,7 +524,8 @@ searchPeek (Search.Submit _) = do
   value ← H.query' Install.cpSearch unit $ H.request Search.GetValue
   H.liftEff $ setLocation $ browseURL value sort salt path
 searchPeek _ = pure unit
-
+-}
+{-
 dialogPeek ∷ ∀ a. Dialog.QueryP a → DSL Unit
 dialogPeek = const (pure unit) ⨁ dialogChildrenPeek ∘ H.runChildF
 
@@ -551,30 +569,19 @@ mountPeek = go ⨁ const (pure unit)
         dismissMountGuide
         resort
   go _ = pure unit
-
+-}
 dismissSignInSubmenu ∷ DSL Unit
-dismissSignInSubmenu = querySignIn $ H.action GlobalMenu.DismissSubmenu
-  where
-  querySignIn ∷ ∀ a. GlobalMenu.Query a → DSL Unit
-  querySignIn =
-    void
-      ∘ H.query' Install.cpHeader unit
-      ∘ right
-      ∘ H.ChildF (injSlot Header.cpGlobalMenu unit)
-      ∘ right
-      ∘ left
-
-updateBreadcrumbs ∷ DSL Unit
-updateBreadcrumbs = do
-  { path, sort, salt } ← H.get
-  void $ H.query' Install.cpBreadcrumbs unit $ H.action (Breadcrumbs.Update path sort salt)
+dismissSignInSubmenu =
+  H.query' CS.cpHeader unit
+    $ H.action Header.QueryGlobalMenu
+    $ H.action GlobalMenu.DismissSubmenu
 
 resort ∷ DSL Unit
 resort = do
   sort ← H.gets _.sort
-  H.query' Install.cpSearch unit (H.request Search.IsSearching)
+  H.query' CS.cpSearch unit (H.request Search.IsSearching)
     >>= traverse_ \isSearching →
-      void $ queryListing $ H.action $ Listing.SortBy (sortItem isSearching sort)
+      void $ H.query' CS.cpListing unit $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
 configure ∷ R.Mount → DSL Unit
 configure m =
@@ -613,9 +620,9 @@ configure m =
 
 download ∷ R.Resource → DSL Unit
 download res = do
-  hs ← H.liftH $ H.liftH API.authHeaders
-  showDialog (Dialog.Download res)
-  queryDialog Dialog.cpDownload (H.action $ Download.SetAuthHeaders hs)
+--  hs ← H.lift API.authHeaders
+--  showDialog (Dialog.Download res)
+--  queryDialog Dialog.cpDownload (H.action $ Download.SetAuthHeaders hs)
   pure unit
 
 getChildren
@@ -634,20 +641,24 @@ getChildren pred cont start = do
     _ → pure unit
 
 getDirectories ∷ (Array R.Resource → DSL Unit) → DirPath → DSL Unit
-getDirectories = getChildren (R.isDirectory ∨ R.isDatabaseMount)
+getDirectories = getChildren $ R.isDirectory ∨ R.isDatabaseMount
 
 showDialog ∷ Dialog.Dialog → DSL Unit
-showDialog = void ∘ H.query' Install.cpDialog unit ∘ left ∘ H.action ∘ Dialog.Show
+showDialog = void ∘ H.query' CS.cpDialog unit ∘ H.action ∘ Dialog.Show
 
-hideDialog ∷ DSL Unit
-hideDialog = void $ H.query' Install.cpDialog unit $ left (H.action Dialog.Dismiss)
+--hideDialog ∷ DSL Unit
+--hideDialog = void $ H.query' CS.cpDialog unit $ H.action Dialog.Dismiss
 
+{-
 queryListing ∷ ∀ a. Listing.Query a → DSL (Maybe a)
 queryListing = H.query' Install.cpListing unit ∘ left
-
+-}
+{-
 queryItem ∷ ∀ a. Listing.ItemSlot → Item.Query a → DSL (Maybe a)
 queryItem slot = H.query' Install.cpListing unit ∘ right ∘ H.ChildF slot
+-}
 
+{-
 queryDialog
   ∷ ∀ s f a
   . ChildPath s Dialog.ChildState f Dialog.ChildQuery Unit Dialog.ChildSlot
@@ -655,7 +666,9 @@ queryDialog
   → DSL (Maybe a)
 queryDialog cp =
   H.query' Install.cpDialog unit ∘ right ∘ H.ChildF (injSlot cp unit) ∘ injQuery cp
+-}
 
+{-
 queryHeaderGripper ∷ ∀ a. Gripper.Query a → DSL Unit
 queryHeaderGripper =
   void
@@ -663,3 +676,4 @@ queryHeaderGripper =
     ∘ right
     ∘ H.ChildF (injSlot Header.cpGripper unit)
     ∘ injQuery Header.cpGripper
+-}

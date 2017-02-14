@@ -38,6 +38,7 @@ type State
 data Query a
   = HandleGripper Gripper.Message a
   | QueryGripper (Gripper.Query Unit) a
+  | QueryGlobalMenu (GlobalMenu.Query Unit) a
   | Dismiss a
 
 type ChildQuery = Gripper.Query ⨁ GlobalMenu.Query ⨁ Const Void
@@ -94,6 +95,9 @@ eval = case _ of
     pure next
   QueryGripper q next → do
     H.query' CP.cp1 unit q
+    pure next
+  QueryGlobalMenu q next → do
+    H.query' CP.cp2 unit q
     pure next
   Dismiss next → do
     H.query' CP.cp2 unit $ H.action GlobalMenu.DismissSubmenu

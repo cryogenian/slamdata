@@ -22,6 +22,10 @@ import DOM.Event.Types (Event)
 import SlamData.Common.Sort (Sort)
 import SlamData.FileSystem.Routing.Salt (Salt)
 import SlamData.GlobalError (GlobalError)
+import SlamData.FileSystem.Listing.Component as Listing
+import SlamData.FileSystem.Search.Component as Search
+import SlamData.FileSystem.Dialog.Component.Message as Dialog
+import SlamData.Notification.Component as Notification
 
 import Utils.Path (DirPath)
 
@@ -45,5 +49,9 @@ data Query a
   | DismissMountGuide a
   | DismissIntroVideo a
   | Init a
-  | HandleError GlobalError a
   | PreventDefault Event (Query a)
+  | HandleError GlobalError a
+  | HandleListing Listing.Message a
+  | HandleDialog Dialog.Message a
+  | HandleNotifications Notification.Message a
+  | HandleSearch Search.Message a

@@ -51,7 +51,7 @@ import SlamData.Common.Sort (Sort(..))
 import SlamData.Config as Config
 import SlamData.Config.Version (slamDataVersion)
 import SlamData.Effects (SlamDataEffects, SlamDataRawEffects)
-import SlamData.FileSystem.Component (QueryP, Query(..), toListing, toDialog, toSearch, toFs, initialState, comp)
+import SlamData.FileSystem.Component (QueryP, Query(..), toListing, toDialog, toSearch, toFs, initialState, component)
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..))
@@ -82,7 +82,7 @@ main = do
   runHalogenAff do
     permissionTokenHashes ← liftEff $ Permission.retrieveTokenHashes
     wiring ← Wiring.make rootDir Editable mempty permissionTokenHashes
-    let ui = interpret (runSlam wiring) comp
+    let ui = interpret (runSlam wiring) component
     driver ← runUI ui (parentState initialState) =<< awaitBody
 
     fork do

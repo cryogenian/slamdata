@@ -132,7 +132,7 @@ render accessType state =
         [ HH.slot' cpGuide FlipGuide Guide.component GuideData.flipGuideSteps (HE.input (HandleGuideMessage FlipGuide)) ]
 
   notifications =
-    pure $ HH.slot' cpNotify unit (NC.comp (NC.renderModeFromAccessType accessType)) unit absurd
+    pure $ HH.slot' cpNotify unit (NC.component (NC.renderModeFromAccessType accessType)) unit (const Nothing)
 
   header = do
     guard $ AT.isEditable accessType
