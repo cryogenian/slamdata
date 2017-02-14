@@ -145,10 +145,10 @@ data Query a
 type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component HH.HTML Query Unit Void Slam
+comp ∷ H.Component HH.HTML Query R.Resource Void Slam
 comp =
   H.lifecycleComponent
-    { initialState: const initialState
+    { initialState
     , render
     , eval
     , initializer: Just (H.action Init)

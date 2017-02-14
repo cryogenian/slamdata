@@ -38,14 +38,14 @@ import Halogen.HTML.Elements.Keyed as HHEK
 
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State (State, _initialQuery, _vars, emptyVar, initialState, isEmptyVar, processState, rxEmpty, stateFromViewInfo)
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Query as API
 
 type Query = SettingsQuery State
 
-comp ∷ H.Component HH.HTML Query Unit Unit Slam
+comp ∷ H.Component HH.HTML Query Unit SettingsMessage Slam
 comp =
   H.parentComponent
     { initialState: const initialState
@@ -62,13 +62,16 @@ render state@{ initialQuery } =
             unit
             (aceComponent (aceSetup initialQuery) (Just Live))
             unit
-            (const Nothing)
+            (const (Just (H.action (ModifyState id))))
         ]
     , "mount-sql2" × section "Query variables" [ propList _vars state ]
     ]
 
-eval ∷ Query ~> H.ParentDSL State Query AceQuery Unit Unit Slam
-eval (ModifyState f next) = H.modify (processState <<< f) $> next
+eval ∷ Query ~> H.ParentDSL State Query AceQuery Unit SettingsMessage Slam
+eval (ModifyState f next) = do
+  H.modify (processState <<< f)
+  H.raise Modified
+  pure next
 eval (Validate k) = do
   sql ← fromMaybe "" <$> H.query unit (H.request GetText)
   pure $ k if sql == "" then Just "Please enter a query" else Nothing

@@ -20,8 +20,6 @@ import SlamData.Prelude
 
 import Data.Lens ((^.))
 
-import DOM.Event.Types as DET
-
 import Halogen.HTML.Core (HTML, ClassName)
 import Halogen.HTML.Events as E
 import Halogen.HTML as H
@@ -30,18 +28,20 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Guide as Guide
+import SlamData.Guide.Notification as Guide
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _isMount, _sort)
 import SlamData.Common.Sort (Sort(..))
+
+import Utils.DOM as DOM
 
 sorting ∷ ∀ a. State → HTML a (Query Unit)
 sorting state =
   H.div
     [ P.classes [ B.colXs4, CSS.toolbarSort ] ]
     [ H.a
-      [ E.onClick \e → Just $ PreventDefault $ action $ Resort $ DET.mouseEventToEvent ]
+      [ E.onClick \e → Just $ PreventDefault (DOM.toEvent e) $ action $ Resort ]
       [ H.text "Name"
       , H.i
         [ chevron (state ^. _sort)
@@ -98,7 +98,7 @@ toolbar state =
     H.li_
       [ H.input
           [ P.type_ P.InputFile
-          , E.onChange $ E.input (FileListChanged <<< _.target)
+          , E.onChange (map (action <<< FileListChanged) <<< DOM.fromNode <<< DOM.target)
           , P.id_ "upload"
           ]
       , H.label

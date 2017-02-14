@@ -31,3 +31,4 @@ data Query a
   | NotifySave a
   | Save (Maybe Mount -> a)
   | PreventDefault Event a
+  | Validate a

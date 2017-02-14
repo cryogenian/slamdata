@@ -35,7 +35,7 @@ import Quasar.Mount as QM
 import Quasar.Mount.MarkLogic (Format(..))
 
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MCS
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Monad (Slam)
@@ -47,7 +47,7 @@ type Query = SettingsQuery MCS.State
 
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component HH.HTML Query Unit Void Slam
+comp ∷ H.Component HH.HTML Query Unit SettingsMessage Slam
 comp =
   H.component
     { initialState: const MCS.initialState
@@ -94,10 +94,12 @@ render state =
       ]
 
 
-eval ∷ Query ~> H.ComponentDSL MCS.State Query Void Slam
+eval ∷ Query ~> H.ComponentDSL MCS.State Query SettingsMessage Slam
 eval = case _ of
-  ModifyState f next →
-    H.modify f $> next
+  ModifyState f next → do
+    H.modify f
+    H.raise Modified
+    pure next
   Validate k →
     k <<< either Just (const Nothing) <<< MCS.toConfig <$> H.get
   Submit parent name k →

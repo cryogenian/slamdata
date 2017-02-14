@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.Component
   ( comp
-  , module SlamData.FileSystem.Dialog.Mount.Component.ChildSlot
   , module SlamData.FileSystem.Dialog.Mount.Component.Query
   , module MCS
   ) where
@@ -25,8 +24,6 @@ import SlamData.Prelude
 
 import Data.Argonaut (jsonParser, decodeJson, (.?))
 import Data.Lens (set, (.~), (?~))
-
-import Ace.Halogen.Component (AceQuery(..))
 
 import Halogen as H
 import Halogen.HTML.Events as HE
@@ -38,7 +35,7 @@ import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Monad (Slam)
 import SlamData.GlobalError as GE
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as SQ
-import SlamData.FileSystem.Dialog.Mount.Component.ChildSlot
+import SlamData.FileSystem.Dialog.Mount.Component.ChildSlot as CS
 import SlamData.FileSystem.Dialog.Mount.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Mount.Component.State as MCS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
@@ -49,14 +46,15 @@ import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.Quasar.FS as Api
 import SlamData.Render.CSS as Rc
+import Utils.DOM as DOM
 
-type DSL = H.ParentDSL MCS.State Query ChildQuery ChildSlot Void Slam
-type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
+type DSL = H.ParentDSL MCS.State Query CS.ChildQuery CS.ChildSlot Void Slam
+type HTML = H.ParentHTML Query CS.ChildQuery CS.ChildSlot Slam
 
-comp ∷ H.Component HH.HTML Query Unit Void Slam
+comp ∷ H.Component HH.HTML Query MCS.Input Void Slam
 comp =
   H.parentComponent
-    { initialState: const MCS.initialState
+    { initialState: MCS.initialState
     , render
     , eval
     , receiver: const Nothing
@@ -68,7 +66,7 @@ render state@{ new } =
     [ modalHeader "Mount"
     , modalBody $
         HH.form
-          [ HE.input PreventDefault
+          [ HE.onSubmit $ HE.input PreventDefault
           , HP.class_ Rc.dialogMount
           ]
           $ (guard new $> fldName state)
@@ -85,15 +83,15 @@ render state@{ new } =
   settings ∷ MCS.MountSettings → HTML
   settings ss = case ss of
     MCS.MongoDB initialState →
-      HH.slot' cpMongoDB unit MongoDB.comp absurd
+      HH.slot' CS.cpMongoDB unit MongoDB.comp unit (HE.input_ Validate)
     MCS.SQL2 initialState →
-      HH.slot' cpSQL unit SQL2.comp absurd
+      HH.slot' CS.cpSQL unit SQL2.comp unit (HE.input_ Validate)
     MCS.Couchbase initialState →
-      HH.slot' cpCouchbase unit Couchbase.comp absurd
+      HH.slot' CS.cpCouchbase unit Couchbase.comp unit (HE.input_ Validate)
     MCS.MarkLogic initialState →
-      HH.slot' cpMarkLogic unit MarkLogic.comp absurd
+      HH.slot' CS.cpMarkLogic unit MarkLogic.comp unit (HE.input_ Validate)
     MCS.SparkHDFS initialState →
-      HH.slot' cpSpark unit Spark.comp absurd
+      HH.slot' CS.cpSpark unit Spark.comp unit (HE.input_ Validate)
 
 fldName ∷ MCS.State → HTML
 fldName state =
@@ -183,28 +181,14 @@ eval (Save k) = do
         Nothing → pure Nothing
       H.modify (MCS._saving .~ false)
       pure $ k mount
+eval (PreventDefault ev next) = H.liftEff (DOM.preventDefault ev) $> next
+eval (Validate next) = validateInput $> next
 
 handleQError ∷ Api.QError → DSL Unit
 handleQError err =
   case GE.fromQError err of
     Left msg → H.modify (MCS._message ?~ formatError msg)
     Right ge → GE.raiseGlobalError ge
-
-peek ∷ forall x. ChildQuery x → DSL Unit
-peek =
-  peekSQ
-  ⨁  (peekSQ ⨁ peekAce ∘ H.runChildF)
-  ⨁  peekSQ
-  ⨁  peekSQ
-  ⨁  peekSQ
-  where
-  peekSQ ∷ forall s. SQ.SettingsQuery s x → DSL Unit
-  peekSQ (SQ.ModifyState _ _ ) = validateInput
-  peekSQ _ = pure unit
-
-  peekAce ∷ AceQuery x → DSL Unit
-  peekAce (TextChanged _) = validateInput
-  peekAce _ = pure unit
 
 validateInput ∷ DSL Unit
 validateInput = do
@@ -227,9 +211,9 @@ formatError err =
 querySettings ∷ forall a. (forall s. SQ.SettingsQuery s a) → DSL (Maybe a)
 querySettings q = (map MCS.scheme <$> H.gets _.settings) >>= \s →
   case s of
-    Just MS.MongoDB → H.query' cpMongoDB unit q
-    Just MS.SQL2 → H.query' cpSQL unit (left q)
-    Just MS.Couchbase → H.query' cpCouchbase unit q
-    Just MS.MarkLogic → H.query' cpMarkLogic unit q
-    Just MS.SparkHDFS → H.query' cpSpark unit q
+    Just MS.MongoDB → H.query' CS.cpMongoDB unit q
+    Just MS.SQL2 → H.query' CS.cpSQL unit q
+    Just MS.Couchbase → H.query' CS.cpCouchbase unit q
+    Just MS.MarkLogic → H.query' CS.cpMarkLogic unit q
+    Just MS.SparkHDFS → H.query' CS.cpSpark unit q
     _ → pure Nothing

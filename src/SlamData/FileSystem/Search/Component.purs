@@ -32,7 +32,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils as HU
-import Halogen.Component.Utils.Debounced (debouncedEventSource)
+import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger, DebounceTrigger)
 
 import SlamData.Config as Config
 import SlamData.Monad (Slam)
@@ -41,6 +41,7 @@ import SlamData.FileSystem.Search.Component.CSS as CSS
 
 import Text.SlamSearch (mkQuery)
 
+import Utils.DOM as DOM
 import Utils.Path (DirPath)
 
 type State =
@@ -49,7 +50,7 @@ type State =
   , value ∷ String
   , loading ∷ Boolean
   , path ∷ DirPath
-  , trigger ∷ Maybe (Query Unit → Slam Unit)
+  , trigger ∷ Maybe (DebounceTrigger Query Slam)
   }
 
 initialState ∷ State
@@ -99,10 +100,15 @@ data Query a
   | PreventDefault Event (Query a)
 
 type HTML = H.ComponentHTML Query
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Void Slam
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+comp ∷ H.Component HH.HTML Query Unit Void Slam
+comp = H.component
+  { render
+  , eval
+  , initialState: const initialState
+  , receiver: const Nothing
+  }
 
 render ∷ State → HTML
 render state =
@@ -165,7 +171,7 @@ render state =
 
 eval ∷ Query ~> DSL
 eval (PreventDefault e q) = do
-  H.liftEff $ DEE.preventDefault e
+  H.liftEff $ DOM.preventDefault e
   eval q
 eval (Focus bool next) = H.modify (_focused .~ bool) $> next
 eval (Clear next) = pure next
@@ -175,13 +181,10 @@ eval (Typed str next) = do
   t ← case state.trigger of
     Just t' → pure t'
     Nothing → do
-      t' ←
-        debouncedEventSource
-          H.subscribe
-          (Milliseconds Config.searchTimeout)
+      t' ← debouncedEventSource (Milliseconds Config.searchTimeout)
       H.modify (_trigger .~ pure t')
       pure t'
-  H.liftH $ t $ H.action Validate
+  H.lift $ runDebounceTrigger t Validate
   pure next
 eval (Validate next) = do
   val ← H.gets _.value
@@ -189,7 +192,7 @@ eval (Validate next) = do
     Left _ | val ≠ "" → H.modify (_valid .~ false)
     _ → do
       H.modify (_valid .~ true)
-      HU.sendAfter (Milliseconds zero) $ H.action Submit
+      HU.sendAfter (Milliseconds zero) Submit
       pure unit
   pure next
 eval (Submit next) = pure next

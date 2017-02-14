@@ -17,6 +17,7 @@ limitations under the License.
 module Utils.DOM
   ( module Utils.DOM
   , module DOM.Classy.Event
+  , module DOM.Classy.HTMLElement
   , module DOM.Classy.Node
   , module DOM.Event.Types
   , module DOM.Node.Types
@@ -37,6 +38,7 @@ import Data.Nullable (toMaybe)
 import DOM (DOM)
 import DOM.Classy.Event (toEvent, fromEvent, target, currentTarget, stopPropagation, preventDefault)
 import DOM.Classy.Node (toNode, fromNode)
+import DOM.Classy.HTMLElement (toHTMLElement, fromHTMLElement)
 import DOM.Event.EventTarget as EventTarget
 import DOM.Event.Types (EventTarget, EventType, Event, MouseEvent, KeyboardEvent, FocusEvent)
 import DOM.HTML (window)

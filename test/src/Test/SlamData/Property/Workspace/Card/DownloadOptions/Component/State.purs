@@ -9,7 +9,6 @@ import Prelude
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
 import SlamData.Workspace.Card.DownloadOptions.Component.State as M
-import SlamData.Workspace.LevelOfDetails as LOD
 
 import Test.Property.Utils.Path (runArbFilePath)
 import Test.SlamData.Property.Download.Model (runArbCSVOptions, runArbJSONOptions)
@@ -23,7 +22,7 @@ runArbState (ArbState s) = s
 
 instance arbitraryArbState :: Arbitrary ArbState where
   arbitrary = do
-    r <- { compress: _, options: _, source: _, targetName: _, levelOfDetails: LOD.High}
+    r <- { compress: _, options: _, source: _, targetName: _ }
          <$> arbitrary
          <*> (map (bimap runArbCSVOptions runArbJSONOptions) arbitrary)
          <*> (map (map runArbFilePath) arbitrary)
