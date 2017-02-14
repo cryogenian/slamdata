@@ -96,7 +96,12 @@ render accessType state =
         ⊕ [ HH.ClassName "sd-workspace" ]
     , HE.onClick (HE.input DismissAll)
     ]
-    (header ⊕ deck ⊕ notifications ⊕ renderCardGuide ⊕ renderFlipGuide)
+    [ header
+    , deck
+    , notifications
+    , cardGuide
+    , flipGuide
+    ]
   where
   renderError err =
     HH.div
@@ -111,34 +116,33 @@ render accessType state =
       ]
 
   renderSignInButton providerR =
-      HH.button
-        [ HE.onClick $ HE.input_ $ SignIn providerR
-        , HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
-        , HP.type_ HP.ButtonButton
-        ]
-        [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
+    HH.button
+      [ HE.onClick $ HE.input_ $ SignIn providerR
+      , HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
+      , HP.type_ HP.ButtonButton
+      ]
+      [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
 
-  renderCardGuide =
-    pure $
-      HH.div
-        [ HP.classes (guard (state.guide /= Just CardGuide) $> B.hidden) ]
-        [ HH.slot' cpGuide CardGuide Guide.component GuideData.cardGuideSteps (HE.input (HandleGuideMessage CardGuide)) ]
+  cardGuide =
+    HH.div
+      [ HP.classes (guard (state.guide /= Just CardGuide) $> B.hidden) ]
+      [ HH.slot' cpGuide CardGuide Guide.component GuideData.cardGuideSteps (HE.input (HandleGuideMessage CardGuide)) ]
 
-  renderFlipGuide =
-    pure $
-      HH.div
-        [ HP.classes (guard (state.guide /= Just FlipGuide) $> B.hidden) ]
-        [ HH.slot' cpGuide FlipGuide Guide.component GuideData.flipGuideSteps (HE.input (HandleGuideMessage FlipGuide)) ]
+  flipGuide =
+    HH.div
+      [ HP.classes (guard (state.guide /= Just FlipGuide) $> B.hidden) ]
+      [ HH.slot' cpGuide FlipGuide Guide.component GuideData.flipGuideSteps (HE.input (HandleGuideMessage FlipGuide)) ]
 
   notifications =
-    pure $ HH.slot' cpNotify unit (NC.component (NC.renderModeFromAccessType accessType)) unit (const Nothing)
+    HH.slot' cpNotify unit (NC.component (NC.renderModeFromAccessType accessType)) unit (const Nothing)
 
-  header = do
-    guard $ AT.isEditable accessType
-    pure $ HH.slot' cpHeader unit Header.component unit absurd
+  header =
+    if AT.isEditable accessType
+      then HH.slot' cpHeader unit Header.component unit absurd
+      else HH.text ""
 
   deck =
-    pure case state.stateMode, state.cursor of
+    case state.stateMode, state.cursor of
       Error error, _ → renderError error
       Loading, _ →
         HH.div
