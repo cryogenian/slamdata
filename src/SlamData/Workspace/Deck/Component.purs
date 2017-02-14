@@ -82,10 +82,10 @@ import Utils (hush)
 import Utils.DOM as DOM
 import Utils.LocalStorage as LocalStorage
 
-component ∷ DeckOptions → (DeckOptions → DeckComponent) → DeckComponent
-component opts deckComponent =
+component ∷ DeckOptions → DeckComponent
+component opts =
   H.lifecycleParentComponent
-    { render: render opts deckComponent
+    { render: render opts
     , eval: eval opts
     , initialState: const DCS.initialState
     , receiver: const Nothing
@@ -93,14 +93,14 @@ component opts deckComponent =
     , finalizer: Nothing
     }
 
-render ∷ DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
-render opts deckComponent st =
+render ∷ DeckOptions → DCS.State → DeckHTML
+render opts st =
   case st.loadError of
     Just error →
       HH.div
         [ HP.class_ $ HH.ClassName "sd-workspace-error" ]
         [ DCR.renderError error ]
-    _ → DCR.renderDeck opts deckComponent st
+    _ → DCR.renderDeck opts component st
 
 eval ∷ DeckOptions → Query ~> DeckDSL
 eval opts = case _ of

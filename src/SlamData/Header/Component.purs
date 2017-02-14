@@ -38,18 +38,12 @@ type State
 data Query a
   = HandleGripper Gripper.Message a
   | QueryGripper (Gripper.Query Unit) a
+  | Dismiss a
 
-type ChildQuery =
-  Gripper.Query
-  ⨁ GlobalMenu.Query
-  ⨁ Const Void
+type ChildQuery = Gripper.Query ⨁ GlobalMenu.Query ⨁ Const Void
 
-type ChildSlot =
-  Unit
-  ⊹ Unit
-  ⊹ Void
+type ChildSlot = Unit ⊹ Unit ⊹ Void
 
-type DSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
 type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 
 component ∷ H.Component HH.HTML Query Unit Void Slam
@@ -91,7 +85,7 @@ logo mbVersion =
       ]
     ⊕ foldMap (pure ∘ HH.div_ ∘ pure ∘ HH.text) mbVersion
 
-eval ∷ Query ~> DSL
+eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Void Slam
 eval = case _ of
   HandleGripper (Gripper.Notify st) next → do
     H.put case st of
@@ -100,4 +94,7 @@ eval = case _ of
     pure next
   QueryGripper q next → do
     H.query' CP.cp1 unit q
+    pure next
+  Dismiss next → do
+    H.query' CP.cp2 unit $ H.action GlobalMenu.DismissSubmenu
     pure next

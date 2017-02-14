@@ -14,26 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Component.State where
+module SlamData.Workspace.Component.GuideSlot where
 
 import SlamData.Prelude
 
-import Data.List (List)
-
-import Quasar.Advanced.Types (ProviderR)
-
-import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.StateMode (StateMode(..))
-
-type State =
-  { cursor ∷ List DeckId
-  , stateMode ∷ StateMode
-  , providers ∷ Array ProviderR
-  }
-
-initialState ∷ State
-initialState =
-  { cursor: mempty
-  , stateMode: Loading
-  , providers: mempty
-  }
+data GuideSlot = FlipGuide | CardGuide
+derive instance eqGuideSlot ∷ Eq GuideSlot
+derive instance ordGuideSlot ∷ Ord GuideSlot

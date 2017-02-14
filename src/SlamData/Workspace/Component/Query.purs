@@ -16,39 +16,28 @@ limitations under the License.
 
 module SlamData.Workspace.Component.Query where
 
-import SlamData.Prelude
-
 import Data.List (List)
 
+import DOM.Event.Types (MouseEvent)
+
 import Halogen as H
---import Halogen.HTML.Events.Types as HET
 
 import Quasar.Advanced.Types (ProviderR)
 
+import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Wiring (StepByStepGuide)
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot)
+import SlamData.Workspace.Component.GuideSlot (GuideSlot)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
 import Utils.Path as UP
 
 data Query a
   = Init a
-  | DismissAll (HET.Event HET.MouseEvent) a
+  | DismissAll MouseEvent a
   | New a
   | Load (List DeckId) a
   | ExploreFile UP.FilePath a
-  | PresentStepByStepGuide StepByStepGuide a
-  | CardGuideStepNext a
-  | CardGuideDismiss a
-  | FlipGuideStepNext a
-  | FlipGuideDismiss a
-  | Resize a
+  | PresentStepByStepGuide StepByStepGuide (H.SubscribeStatus → a)
+  | HandleGuideMessage GuideSlot Guide.Message a
+  | Resize (H.SubscribeStatus → a)
   | SignIn ProviderR a
-
-type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
-
-toWorkspace ∷ H.Action Query → QueryP Unit
-toWorkspace = left ∘ H.action
-
-fromWorkspace ∷ ∀ a. (∀ i. (a → i) → Query i) → QueryP a
-fromWorkspace r = left (H.request r)
