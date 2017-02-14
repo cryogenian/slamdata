@@ -46,7 +46,6 @@ import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Config as Config
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
-import SlamData.Guide as Guide
 import SlamData.Quasar as Api
 import SlamData.Wiring (DeckMessage(..))
 import SlamData.Wiring as Wiring
@@ -76,6 +75,7 @@ import SlamData.Workspace.Eval.Card as EC
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse as ET
+import SlamData.Workspace.Guide as Guide
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 
 import Utils (hush)
@@ -576,7 +576,7 @@ presentFlipGuideFirstTime ∷ DeckDSL Unit
 presentFlipGuideFirstTime = do
   whenM shouldPresentFlipGuide do
     { bus } ← H.lift Wiring.expose
-    H.liftAff $ Bus.write Wiring.FlipGuide bus.stepByStep
+    H.liftAff $ Bus.write Guide.FlipGuide bus.stepByStep
 
 shouldPresentFlipGuide ∷ DeckDSL Boolean
 shouldPresentFlipGuide =

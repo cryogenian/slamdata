@@ -20,12 +20,12 @@ import SlamData.Prelude
 
 import Halogen.Component.ChildPath as CP
 
+import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Header.Component as Header
 import SlamData.Notification.Component as Notify
-import SlamData.Guide.StepByStep.Component as Guide
-import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Component.Query as DCQ
-import SlamData.Workspace.Component.GuideSlot (GuideSlot)
+import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Guide (GuideType)
 
 type ChildQuery
   = DCQ.Query
@@ -34,7 +34,7 @@ type ChildQuery
   ⨁ Guide.Query
   ⨁ Const Void
 
-type ChildSlot = DeckId ⊹ Unit ⊹ Unit ⊹ GuideSlot ⊹ Void
+type ChildSlot = DeckId ⊹ Unit ⊹ Unit ⊹ GuideType ⊹ Void
 
 cpDeck ∷ CP.ChildPath DCQ.Query ChildQuery DeckId ChildSlot
 cpDeck = CP.cp1
@@ -45,5 +45,5 @@ cpHeader = CP.cp2
 cpNotify ∷ CP.ChildPath Notify.Query ChildQuery Unit ChildSlot
 cpNotify = CP.cp3
 
-cpGuide ∷ CP.ChildPath Guide.Query ChildQuery GuideSlot ChildSlot
+cpGuide ∷ CP.ChildPath Guide.Query ChildQuery GuideType ChildSlot
 cpGuide = CP.cp4

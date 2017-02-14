@@ -25,9 +25,8 @@ import Halogen as H
 import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Guide.StepByStep.Component as Guide
-import SlamData.Wiring (StepByStepGuide)
-import SlamData.Workspace.Component.GuideSlot (GuideSlot)
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Guide (GuideType)
 
 import Utils.Path as UP
 
@@ -37,7 +36,7 @@ data Query a
   | New a
   | Load (List DeckId) a
   | ExploreFile UP.FilePath a
-  | PresentStepByStepGuide StepByStepGuide (H.SubscribeStatus → a)
-  | HandleGuideMessage GuideSlot Guide.Message a
+  | PresentStepByStepGuide GuideType (H.SubscribeStatus → a)
+  | HandleGuideMessage GuideType Guide.Message a
   | Resize (H.SubscribeStatus → a)
   | SignIn ProviderR a

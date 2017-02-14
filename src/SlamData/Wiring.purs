@@ -22,7 +22,6 @@ module SlamData.Wiring
   , CacheWiring
   , BusWiring
   , DeckMessage(..)
-  , StepByStepGuide(..)
   , ActiveState
   , PendingEval
   , PendingSave
@@ -41,20 +40,21 @@ import Control.Monad.Eff.Ref (Ref, newRef)
 
 import Data.StrMap (StrMap)
 
+import SlamData.AuthenticationMode (AllowedAuthenticationModes, allowedAuthenticationModesForAccessType)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
+import SlamData.GlobalMenu.Bus (SignInBus)
 import SlamData.Notification as N
 import SlamData.Quasar.Auth.Authentication as Auth
-import SlamData.AuthenticationMode (AllowedAuthenticationModes, allowedAuthenticationModesForAccessType)
-import SlamData.GlobalMenu.Bus (SignInBus)
+import SlamData.Wiring.Cache (Cache)
+import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
-import SlamData.Wiring.Cache (Cache)
-import SlamData.Wiring.Cache as Cache
+import SlamData.Workspace.Guide (GuideType)
 
 import Quasar.Advanced.Types (TokenHash)
 
@@ -62,10 +62,6 @@ import Utils.Path (DirPath)
 
 data DeckMessage
   = DeckFocused DeckId
-
-data StepByStepGuide
-  = CardGuide
-  | FlipGuide
 
 type ActiveState =
   { cardIndex ∷ Int
@@ -109,7 +105,7 @@ type BusWiring =
   { decks ∷ Bus.BusRW DeckMessage
   , notify ∷ Bus.BusRW N.NotificationOptions
   , globalError ∷ Bus.BusRW GE.GlobalError
-  , stepByStep ∷ Bus.BusRW StepByStepGuide
+  , stepByStep ∷ Bus.BusRW GuideType
   }
 
 type WiringR =

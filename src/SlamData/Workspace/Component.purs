@@ -45,7 +45,6 @@ import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
-import SlamData.Guide as GuideData
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Header.Component as Header
 import SlamData.Monad (Slam)
@@ -61,13 +60,14 @@ import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Class (navigate, Routes(..))
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck, cpGuide, cpHeader, cpNotify)
-import SlamData.Workspace.Component.GuideSlot (GuideSlot(..))
 import SlamData.Workspace.Component.Query (Query(..))
 import SlamData.Workspace.Component.State (State, initialState)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse as ET
+import SlamData.Workspace.Guide (GuideType(..))
+import SlamData.Workspace.Guide as GuideData
 import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils (endSentence)
