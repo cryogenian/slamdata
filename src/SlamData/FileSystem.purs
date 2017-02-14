@@ -38,10 +38,9 @@ import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 
 import DOM (DOM)
 
-import Halogen.Component (interpret)
---import Halogen.Driver (Driver, runUI)
-import Halogen.Query (action)
---import Halogen.Util (runHalogenAff, awaitBody)
+import Halogen as H
+import Halogen.Aff as HA
+import Halogen.VDom.Driver (runUI, HalogenIO)
 
 import Quasar.Error as QE
 
@@ -50,16 +49,13 @@ import Routing (matchesAff)
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Config as Config
 import SlamData.Config.Version (slamDataVersion)
-import SlamData.Effects (SlamDataEffects, SlamDataRawEffects)
-import SlamData.FileSystem.Component (QueryP, Query(..), toListing, toDialog, toSearch, toFs, initialState, component)
-import SlamData.FileSystem.Dialog.Component as Dialog
-import SlamData.FileSystem.Listing.Component as Listing
+import SlamData.Effects (SlamDataEffects)
+import SlamData.FileSystem.Component (Query(..), component)
 import SlamData.FileSystem.Listing.Item (Item(..))
 import SlamData.FileSystem.Resource (getPath)
 import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
-import SlamData.FileSystem.Search.Component as Search
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam, runSlam)
 import SlamData.Quasar.Auth.Permission as Permission
@@ -73,21 +69,23 @@ import Text.SlamSearch.Types (SearchQuery)
 
 import Utils.Path (DirPath, hidePath, renderPath)
 
+type FileSystemIO = HalogenIO Query Void (Aff SlamDataEffects)
+
 main ∷ Eff SlamDataEffects Unit
 main = do
   AceConfig.set AceConfig.basePath $ Config.baseUrl ⊕ "js/ace"
   AceConfig.set AceConfig.modePath $ Config.baseUrl ⊕ "js/ace"
   AceConfig.set AceConfig.themePath $ Config.baseUrl ⊕ "js/ace"
 
-  runHalogenAff do
+  HA.runHalogenAff do
     permissionTokenHashes ← liftEff $ Permission.retrieveTokenHashes
     wiring ← Wiring.make rootDir Editable mempty permissionTokenHashes
-    let ui = interpret (runSlam wiring) component
-    driver ← runUI ui (parentState initialState) =<< awaitBody
+    let ui = H.hoist (runSlam wiring) component
+    driver ← runUI ui unit =<< HA.awaitBody
 
     fork do
       setSlamDataTitle slamDataVersion
-      driver $ left $ action $ SetVersion slamDataVersion
+      driver.query $ H.action $ SetVersion slamDataVersion
 
     runSlam wiring $ fork $ routeSignal driver
 
@@ -119,7 +117,7 @@ _requestMap = lens _.requestMap _{ requestMap = _ }
 _queue ∷ ∀ a r. Lens' { queue ∷ a | r } a
 _queue = lens _.queue _{ queue = _ }
 
-routeSignal ∷ Driver QueryP SlamDataRawEffects → Slam Unit
+routeSignal ∷ FileSystemIO → Slam Unit
 routeSignal driver = do
   avar ←
     liftAff $ makeVar' initialListingState
@@ -131,7 +129,7 @@ routeSignal driver = do
     $ redirects driver avar
 
 redirects
-  ∷ Driver QueryP SlamDataRawEffects
+  ∷ FileSystemIO
   → AVar ListingState
   → Maybe Routes → Routes
   → Slam Unit
@@ -157,9 +155,9 @@ redirects driver var mbOld = case _ of
       $ putVar var initialListingState
 
     liftAff
-      $ driver
-      $ toListing
-      $ Listing.SetIsSearching
+      $ driver.query
+      $ H.action
+      $ SetIsSearching
       $ isSearchQuery query
 
     let
@@ -174,16 +172,13 @@ redirects driver var mbOld = case _ of
 
     if isNewPage
       then do
-      liftAff do
-        driver $ toListing Listing.Reset
-        driver $ toFs $ SetPath queryParts.path
-        driver $ toFs $ SetSort sort
-        driver $ toFs $ SetSalt salt
-        driver $ toFs $ SetIsMount false
-        driver $ toSearch $ Search.SetLoading true
-        driver $ toSearch $ Search.SetValue $ fromMaybe "" queryParts.query
-        driver $ toSearch $ Search.SetValid true
-        driver $ toSearch $ Search.SetPath queryParts.path
+      liftAff $ driver.query $ H.action $ Transition
+        { path: queryParts.path
+        , query: queryParts.query
+        , sort
+        , salt
+        , isMount: false
+        }
 
       let
         p = listingProducer var query queryParts.path
@@ -195,21 +190,17 @@ redirects driver var mbOld = case _ of
       when (isNothing queryParts.query)
         $ checkMount queryParts.path driver
       else
-        liftAff $ driver $ toSearch $ Search.SetLoading false
+        liftAff $ driver.query $ H.action $ SetLoading false
 
 
 checkMount
   ∷ DirPath
-  → Driver QueryP SlamDataRawEffects
+  → FileSystemIO
   → Slam Unit
 checkMount path driver = do
   let
     setIsMount =
-      liftAff
-        $ driver
-        $ left
-        $ action
-        $ SetIsMount true
+      liftAff $ driver.query $ H.action $ SetIsMount true
 
   Quasar.mountInfo (Left path) >>= case _ of
     -- When Quasar has no mounts configured we want to enable the root to be
@@ -331,25 +322,25 @@ listingProducer var query startingDir = produceSlam $ go startingDir 0
     foldl add zero ∘ M.values
 
 listingConsumer
-  ∷ Driver QueryP SlamDataRawEffects
+  ∷ FileSystemIO
   → Consumer (Array Item) Slam (Maybe QE.QError)
 listingConsumer driver = consumer \is → do
   liftAff
-    $ driver
-    $ toListing
-    $ Listing.Adds is
+    $ driver.query
+    $ H.action
+    $ AddListings is
   pure Nothing
 
 listingProcessHandler
-  ∷ Driver QueryP SlamDataRawEffects
+  ∷ FileSystemIO
   → Maybe QE.QError
   → Slam Unit
 listingProcessHandler driver = case _ of
   Nothing →
     liftAff
-      $ driver
-      $ toSearch
-      $ Search.SetLoading false
+      $ driver.query
+      $ H.action
+      $ SetLoading false
 
   Just err → case GE.fromQError err of
     Left msg →
@@ -361,10 +352,9 @@ listingProcessHandler driver = case _ of
   where
   presentError message =
     liftAff
-      $ driver
-      $ toDialog
-      $ Dialog.Show
-      $ Dialog.Error message
+      $ driver.query
+      $ H.action
+      $ ShowError message
 
 updateURL
   ∷ Maybe String

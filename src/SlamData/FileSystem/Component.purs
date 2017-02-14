@@ -155,29 +155,29 @@ renderIntroVideo =
              CSS.paddingLeft CSS.nil
              CSS.paddingRight CSS.nil
         ]
-    [ HH.h4
-        [ HCSS.style do
-            CSS.paddingLeft $ CSS.rem 1.0
-            CSS.paddingRight $ CSS.rem 1.0
-        ]
-        [ HH.text "Welcome to SlamData!" ]
-    , HH.video
-        [ HP.autoplay true ]
-        [ HH.source
-            [ HP.type_ (MediaType "video/mp4")
-            , HP.src "video/getting-started.mp4"
+        [ HH.h4
+            [ HCSS.style do
+                CSS.paddingLeft $ CSS.rem 1.0
+                CSS.paddingRight $ CSS.rem 1.0
+            ]
+            [ HH.text "Welcome to SlamData!" ]
+        , HH.video
+            [ HP.autoplay true ]
+            [ HH.source
+                [ HP.type_ (MediaType "video/mp4")
+                , HP.src "video/getting-started.mp4"
+                ]
+            ]
+        , RenderDialog.modalFooter
+            [ HH.button
+                [ HP.type_ HP.ButtonButton
+                , HE.onClick $ HE.input_ DismissIntroVideo
+                , HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
+                , HCSS.style $ CSS.marginRight $ CSS.rem 1.0
+                ]
+                [ HH.text "Skip video" ]
             ]
         ]
-    , RenderDialog.modalFooter
-        [ HH.button
-            [ HP.type_ HP.ButtonButton
-            , HE.onClick $ HE.input_ DismissIntroVideo
-            , HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
-            , HCSS.style $ CSS.marginRight $ CSS.rem 1.0
-            ]
-            [ HH.text "Skip video" ]
-        ]
-    ]
     ]
 
 eval ∷ Query ~> DSL
@@ -189,6 +189,20 @@ eval = case _ of
       (H.modify $ State._presentIntroVideo .~ true)
     H.subscribe $ busEventSource (flip HandleError ES.Listening) w.bus.globalError
     pure next
+  Transition page next → do
+    H.modify
+      $ (State._isMount .~ page.isMount)
+      ∘ (State._salt .~ page.salt)
+      ∘ (State._sort .~ page.sort)
+      ∘ (State._path .~ page.path)
+    H.query' CS.cpListing unit $ H.action $ Listing.Reset
+    H.query' CS.cpSearch unit $ H.action $ Search.SetLoading true
+    H.query' CS.cpSearch unit $ H.action $ Search.SetValue $ fromMaybe "" page.query
+    H.query' CS.cpSearch unit $ H.action $ Search.SetValid true
+    H.query' CS.cpSearch unit $ H.action $ Search.SetPath page.path
+    resort
+    pure next
+
   PreventDefault e q → do
     H.liftEff $ DEE.preventDefault e
     eval q
@@ -362,6 +376,18 @@ eval = case _ of
       Search.Submit → do
         H.query' CS.cpSearch unit $ H.request Search.GetValue
     H.liftEff $ setLocation $ browseURL value st.sort salt st.path
+    pure next
+  SetLoading bool next → do
+    H.query' CS.cpSearch unit $ H.action $ Search.SetLoading bool
+    pure next
+  SetIsSearching bool next → do
+    H.query' CS.cpListing unit $ H.action $ Listing.SetIsSearching bool
+    pure next
+  AddListings items next → do
+    H.query' CS.cpListing unit $ H.action $ Listing.Adds items
+    pure next
+  ShowError message next → do
+    H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.Error message
     pure next
 
 handleItemMessage ∷ Item.Message → DSL Unit
