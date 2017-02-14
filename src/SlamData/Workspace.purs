@@ -18,7 +18,7 @@ module SlamData.Workspace (main) where
 
 import SlamData.Prelude
 
-import Control.Coroutine (runProcess, await, ($$))
+import Control.Coroutine (Producer, Consumer, runProcess, await, ($$))
 import Control.Coroutine.Aff (produce)
 import Control.Monad.Aff (Aff, forkAff)
 import Control.Monad.Eff (Eff)
@@ -30,6 +30,7 @@ import Ace.Config as AceConfig
 
 import Data.Map.Diff as Diff
 import Data.Nullable (toMaybe)
+import Data.StrMap as SM
 
 import DOM.HTML.Document (body)
 import DOM.HTML (window)
@@ -53,6 +54,7 @@ import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
+import SlamData.Workspace.Card.Port.VarMap (URLVarMap)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse (resolveUrlVarMaps)
@@ -80,9 +82,11 @@ routeSignal = do
   runProcess (routeProducer $$ routeConsumer Nothing)
 
   where
+  routeProducer ∷ Producer Routes (Aff SlamDataEffects) Unit
   routeProducer = produce \emit →
     Routing.matches' UP.decodeURIPath routing \_ → emit ∘ Left
 
+  routeConsumer ∷ Maybe RouterState → Consumer Routes (Aff SlamDataEffects) Unit
   routeConsumer state  = do
     new ← await
     case new, state of
@@ -110,6 +114,11 @@ routeSignal = do
             lift $ setup new driver
             routeConsumer (Just (RouterState new wiring driver))
 
+  diffVarMaps
+    ∷ Wiring
+    → SM.StrMap URLVarMap
+    → SM.StrMap URLVarMap
+    → Aff SlamDataEffects Unit
   diffVarMaps (Wiring wiring) vm1 vm2 = do
     decks ← Cache.snapshot wiring.eval.decks
     cards ← Cache.snapshot wiring.eval.cards
@@ -121,6 +130,7 @@ routeSignal = do
       $ Diff.updated
       $ Diff.diff vm1' vm2'
 
+  reload ∷ Wiring → Routes → Consumer Routes (Aff SlamDataEffects) Unit
   reload (Wiring wiring) new@(WorkspaceRoute path _ action varMaps) = do
     wiring' ←
       if path ≡ wiring.path
@@ -129,12 +139,14 @@ routeSignal = do
     lift $ removeFromBody ".sd-workspace"
     mount wiring' new
 
+  mount ∷ Wiring → Routes → Consumer Routes (Aff SlamDataEffects) Unit
   mount wiring new@(WorkspaceRoute _ _ action _) = do
     let ui = H.hoist (runSlam wiring) $ Workspace.component (toAccessType action)
     driver ← lift $ runUI ui unit =<< awaitBody'
     lift $ setup new driver
     routeConsumer (Just (RouterState new wiring driver))
 
+  setup ∷ Routes → WorkspaceIO → Aff SlamDataEffects Unit
   setup new@(WorkspaceRoute _ deckId action varMaps) driver = do
     when (toAccessType action ≡ AT.ReadOnly) do
       isEmbedded ←
@@ -152,7 +164,7 @@ routeSignal = do
         =<< document
         =<< window
 
-    forkAff case action of
+    void $ forkAff case action of
       Load _ → driver.query $ H.action $ Workspace.Load deckId
       New → driver.query $ H.action Workspace.New
       Exploring fp → driver.query $ H.action $ Workspace.ExploreFile fp
