@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Next.Component
  ( nextCardComponent
- , Message
+ , Message(..)
  , module SlamData.Workspace.Card.Next.Component.Query
  , module SlamData.Workspace.Card.Next.Component.State
  , module NA
@@ -150,3 +150,6 @@ eval = case _ of
         input ← H.gets _.input
         H.raise $ PresentReason input cardType
     pure next
+  ToActionList query → unsafePartial do
+    Just res ← H.query' CS.cpActionList unit query
+    pure res

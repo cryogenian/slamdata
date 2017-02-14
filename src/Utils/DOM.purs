@@ -17,8 +17,9 @@ limitations under the License.
 module Utils.DOM
   ( module Utils.DOM
   , module DOM.Classy.Event
-  , module DOM.Event.Event
+  , module DOM.Classy.Node
   , module DOM.Event.Types
+  , module DOM.Node.Types
   ) where
 
 import SlamData.Prelude
@@ -34,8 +35,8 @@ import Data.Array (uncons, sort, reverse)
 import Data.Nullable (toMaybe)
 
 import DOM (DOM)
-import DOM.Classy.Event (toEvent, fromEvent)
-import DOM.Event.Event (stopPropagation, preventDefault, target, currentTarget)
+import DOM.Classy.Event (toEvent, fromEvent, target, currentTarget, stopPropagation, preventDefault)
+import DOM.Classy.Node (toNode, fromNode)
 import DOM.Event.EventTarget as EventTarget
 import DOM.Event.Types (EventTarget, EventType, Event, MouseEvent, KeyboardEvent, FocusEvent)
 import DOM.HTML (window)
@@ -45,7 +46,7 @@ import DOM.HTML.HTMLElement (offsetWidth, offsetHeight)
 import DOM.HTML.Types (Window, HTMLElement, htmlElementToElement, htmlDocumentToDocument, windowToEventTarget)
 import DOM.HTML.Window (document)
 import DOM.Node.ParentNode as P
-import DOM.Node.Types (elementToParentNode, Element, documentToEventTarget)
+import DOM.Node.Types (Node, elementToParentNode, Element, documentToEventTarget)
 
 import Utils.Aff as AffUtils
 import Unsafe.Coerce (unsafeCoerce)
@@ -55,7 +56,7 @@ foreign import onLoad ∷ ∀ e. Eff e Unit → Eff e Unit
 foreign import blur ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM|e) Unit
 foreign import focus ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM|e) Unit
 foreign import getTextWidth ∷ ∀ eff. String → String → Eff (dom ∷ DOM | eff) Number
-foreign import elementEq ∷ ∀ eff. HTMLElement → HTMLElement → Eff (dom ∷ DOM | eff) Boolean
+foreign import nodeEq ∷ ∀ eff. Node → Node → Eff (dom ∷ DOM | eff) Boolean
 foreign import getOffsetClientRect ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) DOMRect
 foreign import close ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Unit
 foreign import closed ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Boolean

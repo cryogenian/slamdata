@@ -34,10 +34,10 @@ import Halogen.HTML.Properties as HP
 type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
 
-errorCardComponent ∷ H.Component HH.HTML Query Unit Void Slam
+errorCardComponent ∷ H.Component HH.HTML Query String Void Slam
 errorCardComponent =
   H.component
-    { initialState: const initialState
+    { initialState: initialState { message = _ }
     , render
     , eval
     , receiver: const Nothing

@@ -415,7 +415,7 @@ eval (SelectElement ev next) = do
   H.liftEff do
     DOM.stopPropagation ev
     when (not st.submitting) do
-      DOM.currentTarget
+      DOM.currentTarget ev
         # readHTMLElement ∘ toForeign
         # runExcept
         # traverse_ select

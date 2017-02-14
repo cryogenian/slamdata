@@ -24,9 +24,7 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.List as L
 
-import Halogen as H
 import Halogen.HTML.Events as HE
---import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
@@ -38,7 +36,7 @@ import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as RCSS
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Component.CSS as CCSS
-import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML)
+import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, sizerRef)
 import SlamData.Workspace.Deck.Component.CSS as CSS
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpDialog, cpActionFilter)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
@@ -73,8 +71,8 @@ renderDeck opts deckComponent st =
         ⊕ Slider.containerProperties st)
         [ HH.div
             [ HP.class_ CSS.deckFrame
+            , HE.onMouseDown $ HE.input Defocus
               -- TODO: preventDefault
-    --        , HE.onMouseDown \ev →
     --            if st.focused && not (L.null opts.displayCursor)
     --              then HEH.stopPropagation *> pure (Just (Defocus ev unit))
     --              else pure Nothing
@@ -82,7 +80,6 @@ renderDeck opts deckComponent st =
             $ frameElements opts st ⊕ [ renderName st.name ]
         , HH.div
             [ HP.class_ CSS.deck
-            , HP.key "deck"
             ]
             [ Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
             , renderBackside
@@ -117,7 +114,7 @@ renderDeck opts deckComponent st =
       ]
       [ backside ]
 
-deckClasses ∷ ∀ r. DCS.State → Array (HP.IProp (HP.InteractiveEvents (HP.GlobalProperties r)) (Query Unit))
+deckClasses ∷ ∀ r. DCS.State → Array (HP.IProp (class ∷ String | r) (Query Unit))
 deckClasses st =
   pure $ HP.classes $
     [ CSS.deckContainer
@@ -125,11 +122,10 @@ deckClasses st =
     , if st.focused then CSS.focused else CSS.unfocused
     ]
 
-deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp (HP.InteractiveEvents (HP.GlobalProperties r)) (Query Unit))
+deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp r (Query Unit))
 deckProperties opts =
-  [ HP.key "deck-container"
-  , HP.ref (H.action ∘ SetCardElement)
-  ] ⊕ [ ]
+  [ HP.ref sizerRef
+  ]
   --(guard (L.length opts.displayCursor <= 1)
        -- TODO: preventDefafult
 --        $> HE.onMouseDown \_ → HEH.stopPropagation $> Just (H.action Focus))
@@ -163,10 +159,7 @@ childFrameElements st =
 
 dialogSlot ∷ DeckHTML
 dialogSlot =
-  HH.slot' cpDialog unit \_ →
-    { component: Dialog.comp
-    , initialState: H.parentState Dialog.initialState
-    }
+  HH.slot' cpDialog unit Dialog.component unit (HE.input HandleDialog)
 
 backside ∷ DeckHTML
 backside =
@@ -177,14 +170,12 @@ backside =
             [ HP.class_ CCSS.deckCard ]
             [ HH.div
                 [ HP.class_ RCSS.deckBackSide ]
-                [ HH.slot' cpActionFilter unit \_ →
-                    { component: ActionFilter.comp "Filter deck and card actions"
-                    , initialState: ActionFilter.initialState
-                    }
-                , HH.slot' cpBackSide unit \_ →
-                    { component: ActionList.comp
-                    , initialState: ActionList.initialState []
-                    }
+                [ HH.slot' cpActionFilter unit ActionFilter.component
+                    "Filter deck and card actions"
+                    (HE.input HandleBackFilter)
+                , HH.slot' cpBackSide unit ActionList.component
+                    unit
+                    (HE.input HandleBackAction)
                 ]
             ]
         ]
@@ -226,7 +217,7 @@ moveGripper ∷ DeckHTML
 moveGripper =
   HH.button
     [ HP.classes [ CSS.grabDeck ]
-    , HE.onMouseDown (HE.input GrabDeck)
+    , HE.onMouseDown (HE.input HandleGrab)
     , ARIA.label "Grab deck"
     , HP.title "Grab deck"
     ]

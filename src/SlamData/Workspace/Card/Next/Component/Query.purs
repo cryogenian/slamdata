@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Next.Component.Query where
 
+import SlamData.ActionList.Component.Query as ALQ
 import SlamData.Workspace.Card.Next.NextAction (NextAction)
 import SlamData.Workspace.Card.Port (Port)
 
@@ -25,3 +26,4 @@ data Query a
   | UpdateInput Port a
   | HandleFilter String a
   | HandleAction NextAction a
+  | ToActionList (ALQ.Query NextAction a)

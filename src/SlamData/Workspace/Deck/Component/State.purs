@@ -23,7 +23,7 @@ module SlamData.Workspace.Deck.Component.State
   , MetaCard(..)
   , DisplayCard
   , CardDef
-  , initialDeck
+  , initialState
   , isFlipSide
   , isFrontSide
   , hasDialog
@@ -52,7 +52,6 @@ module SlamData.Workspace.Deck.Component.State
   , _NextActionCard
   , _ErrorCard
   , addMetaCard
-  , addBreaker
   , findLastCardIndex
   , findLastCard
   , findLastRealCard
@@ -69,10 +68,7 @@ module SlamData.Workspace.Deck.Component.State
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.EventLoop (Breaker)
 import Control.Monad.Aff (Canceler)
-
-import DOM.HTML.Types (HTMLElement)
 
 import Data.Array as A
 import Data.Lens (Lens', lens, Prism', prism')
@@ -177,16 +173,13 @@ type State =
   , slidingTo ∷ Maybe GripperDef
   , focused ∷ Boolean
   , finalized ∷ Boolean
-  , deckElement ∷ Maybe HTMLElement
   , responsiveSize ∷ ResponsiveSize
   , fadeTransition ∷ Fade
-  , breakers ∷ Array (Breaker Unit)
   , providers ∷ Array ProviderR
   }
 
--- | Constructs a default `State` value.
-initialDeck ∷ State
-initialDeck =
+initialState ∷ State
+initialState =
   { name: ""
   , loadError: Nothing
   , displayMode: FrontSide NoDialog
@@ -203,10 +196,8 @@ initialDeck =
   , slidingTo: Nothing
   , focused: false
   , finalized: false
-  , deckElement: Nothing
   , responsiveSize: XLarge
   , fadeTransition: FadeNone
-  , breakers: mempty
   , providers: mempty
   }
 
@@ -308,9 +299,6 @@ addMetaCard card state =
   state { displayCards = A.snoc init (Left card) }
   where
   init = A.filter isRight state.displayCards
-
-addBreaker ∷ Breaker Unit → State → State
-addBreaker breaker state = state { breakers = A.snoc state.breakers breaker }
 
 findLastCardIndex ∷ State → Maybe Int
 findLastCardIndex st =

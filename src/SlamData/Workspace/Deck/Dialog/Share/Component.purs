@@ -444,7 +444,7 @@ eval = case _ of
   ChangeShareResume sr next →
     H.modify _ { shareResume = sr } $> next
   SelectElement ev next → do
-    H.liftEff $ DOM.currentTarget
+    H.liftEff $ DOM.currentTarget ev
       # readHTMLElement ∘ toForeign
       # runExcept
       # traverse_ select

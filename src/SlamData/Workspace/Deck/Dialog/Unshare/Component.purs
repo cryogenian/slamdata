@@ -485,7 +485,7 @@ eval = case _ of
             ∘ (_groupPermissions ∘ ix name ∘ _state ?~ RevokeError)
     pure next
   SelectElement ev next → do
-    H.liftEff $ DOM.currentTarget
+    H.liftEff $ DOM.currentTarget ev
       # readHTMLElement ∘ toForeign
       # runExcept
       # traverse_ select
