@@ -40,11 +40,12 @@ import DOM.Node.Node (removeChild)
 import DOM.Node.Types (elementToNode)
 import DOM.Node.ParentNode (querySelector)
 
-import Halogen (Driver, runUI, parentState, interpret)
---import Halogen.Util (runHalogenAff, awaitBody)
+import Halogen as H
+import Halogen.Aff as HA
+import Halogen.VDom.Driver (runUI, HalogenIO)
 
 import SlamData.Config as Config
-import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
+import SlamData.Effects (SlamDataEffects)
 import SlamData.Monad (runSlam)
 import SlamData.Wiring (Wiring(..))
 import SlamData.Wiring as Wiring
@@ -63,14 +64,15 @@ import Routing as Routing
 
 import Utils.Path as UP
 
-data RouterState = RouterState Routes Wiring (Driver Workspace.QueryP SlamDataRawEffects)
+type WorkspaceIO = HalogenIO Workspace.Query Void (Aff SlamDataEffects)
+data RouterState = RouterState Routes Wiring WorkspaceIO
 
 main ∷ Eff SlamDataEffects Unit
 main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
-  runHalogenAff $ forkAff routeSignal
+  HA.runHalogenAff $ forkAff routeSignal
   StyleLoader.loadStyles
 
 routeSignal ∷ Aff SlamDataEffects Unit
@@ -128,8 +130,8 @@ routeSignal = do
     mount wiring' new
 
   mount wiring new@(WorkspaceRoute _ _ action _) = do
-    let ui = interpret (runSlam wiring) $ Workspace.comp (toAccessType action)
-    driver ← lift $ runUI ui (parentState Workspace.initialState) =<< awaitBody'
+    let ui = H.hoist (runSlam wiring) $ Workspace.component (toAccessType action)
+    driver ← lift $ runUI ui unit =<< awaitBody'
     lift $ setup new driver
     routeConsumer (Just (RouterState new wiring driver))
 
@@ -151,17 +153,14 @@ routeSignal = do
         =<< window
 
     forkAff case action of
-      Load _ →
-        driver $ Workspace.toWorkspace $ Workspace.Load deckId
-      New →
-        driver $ Workspace.toWorkspace $ Workspace.New
-      Exploring fp →
-        driver $ Workspace.toWorkspace $ Workspace.ExploreFile fp
+      Load _ → driver.query $ H.action $ Workspace.Load deckId
+      New → driver.query $ H.action Workspace.New
+      Exploring fp → driver.query $ H.action $ Workspace.ExploreFile fp
 
 awaitBody' ∷ Aff SlamDataEffects HTMLElement
 awaitBody' = do
   body ← liftEff $ map toMaybe $ window >>= document >>= body
-  maybe awaitBody pure body
+  maybe HA.awaitBody pure body
 
 removeFromBody ∷ String → Aff SlamDataEffects Unit
 removeFromBody sel = liftEff $ void $ runMaybeT do

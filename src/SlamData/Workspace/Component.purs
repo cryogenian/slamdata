@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Component
-  ( comp
+  ( component
   , module SlamData.Workspace.Component.Query
   ) where
 
@@ -78,8 +78,8 @@ import Utils.LocalStorage as LocalStorage
 type WorkspaceHTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 type WorkspaceDSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
 
-comp ∷ AT.AccessType → H.Component HH.HTML Query Unit Void Slam
-comp accessType =
+component ∷ AT.AccessType → H.Component HH.HTML Query Unit Void Slam
+component accessType =
   H.lifecycleParentComponent
     { initialState: const initialState
     , render: render accessType
