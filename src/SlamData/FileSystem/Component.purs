@@ -88,7 +88,6 @@ import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Header.Component as Header
 import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Monad (Slam)
-import SlamData.Notification as N
 import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
@@ -312,9 +311,19 @@ eval = case _ of
     pure next
   HandleDialog _ next → do
     pure next
-  HandleNotifications _ next → do
+  HandleNotifications NC.ExpandGlobalMenu next → do
+    H.query' CS.cpHeader unit $ H.action $ Header.QueryGripper $ H.action Gripper.StartDragging 0.0
+    H.query' CS.cpHeader unit $ H.action $ Header.QueryGripper $ H.action Gripper.StopDragging
     pure next
-  HandleSearch _ next → do
+  HandleSearch m next → do
+    salt ← H.liftEff newSalt
+    st ← H.get
+    value ← case m of
+      Search.Cleared →
+        pure Nothing
+      Search.Submit → do
+        H.query' CS.cpSearch unit $ H.request Search.GetValue
+    H.liftEff $ setLocation $ browseURL value st.sort salt st.path
     pure next
 
 {-  | Array.length items < 2 = do
@@ -482,13 +491,6 @@ peek
   ⨁ const (pure unit)
   ⨁ peekNotification
 
-peekNotification ∷ ∀ a. NC.Query a → DSL Unit
-peekNotification =
-  case _ of
-    NC.Action N.ExpandGlobalMenu _ → do
-      queryHeaderGripper $ Gripper.StartDragging 0.0 unit
-      queryHeaderGripper $ Gripper.StopDragging unit
-    _ → pure unit
 -}
 presentMountGuide ∷ ∀ a. Array a → DirPath → DSL Unit
 presentMountGuide xs path = do
@@ -513,17 +515,7 @@ presentMountGuide xs path = do
 --itemPeek ∷ ∀ a. Item.Query a → DSL Unit
 
 {-
-searchPeek ∷ ∀ a. Search.Query a → DSL Unit
-searchPeek (Search.Clear _) = do
-  salt ← H.liftEff newSalt
-  { sort, path } ← H.get
-  H.liftEff $ setLocation $ browseURL Nothing sort salt path
-searchPeek (Search.Submit _) = do
-  salt ← H.liftEff newSalt
-  { sort, path } ← H.get
-  value ← H.query' Install.cpSearch unit $ H.request Search.GetValue
-  H.liftEff $ setLocation $ browseURL value sort salt path
-searchPeek _ = pure unit
+
 -}
 {-
 dialogPeek ∷ ∀ a. Dialog.QueryP a → DSL Unit

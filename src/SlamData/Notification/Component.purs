@@ -132,7 +132,7 @@ data Status
   = Current
   | Dismissed
 
-data Message = Message
+data Message = ExpandGlobalMenu
 
 type NotifyHTML = H.ComponentHTML Query
 
@@ -300,6 +300,9 @@ eval = case _ of
         when (isNothing st.current) drainQueue
     pure $ reply H.Listening
   Dismiss next → dismissNotification $> next
+  Action N.ExpandGlobalMenu next → do
+    H.raise ExpandGlobalMenu
+    pure next
   Action _ next → dismissNotification $> next
   ToggleDetail next → do
     current ← H.gets _.current

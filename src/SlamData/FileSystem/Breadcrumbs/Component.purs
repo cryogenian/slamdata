@@ -34,9 +34,9 @@ import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Common.Sort (Sort)
+import SlamData.Common.Sort (Sort(..))
 import SlamData.FileSystem.Routing (browseURL)
-import SlamData.FileSystem.Routing.Salt (Salt)
+import SlamData.FileSystem.Routing.Salt (Salt(..))
 
 import Utils.Path (DirPath)
 
@@ -79,10 +79,10 @@ type Input =
   , salt ∷ Salt
   }
 
-component ∷ State → H.Component HH.HTML Query Input Void Slam
-component initialState =
+component ∷ H.Component HH.HTML Query Input Void Slam
+component =
   H.component
-    { initialState: const initialState
+    { initialState: const { breadcrumbs: Nil, sort: Asc, salt: Salt "" }
     , render
     , eval
     , receiver
