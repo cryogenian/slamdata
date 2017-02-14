@@ -37,7 +37,7 @@ import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
-import SlamData.FileSystem.Resource (Resource)
+import SlamData.FileSystem.Resource (Resource, Mount)
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Deck.Component.CSS as CSS
 
@@ -56,6 +56,10 @@ type State = Maybe Dialog
 data Query a
   = Show Dialog a
   | RaiseDismiss a
+  | QueryRename (Rename.Query Unit) a
+  | SaveMount (Maybe Mount → a)
+  | HandleChild Message a
+  | AddDirsToRename (Array Resource) a
 
 type ChildQuery
   = Error.Query
@@ -99,18 +103,31 @@ render state =
     Share str →
       HH.slot' CP.cp2 unit Share.component str (HE.input_ RaiseDismiss)
     Rename res →
-      HH.slot' CP.cp3 unit Rename.component res (HE.input_ RaiseDismiss)
+      HH.slot' CP.cp3 unit Rename.component res (HE.input HandleChild)
     Download resource headers →
       HH.slot' CP.cp4 unit Download.component { resource, headers } (HE.input_ RaiseDismiss)
     Mount parent name settings →
-      HH.slot' CP.cp5 unit Mount.component { parent, name, settings } (HE.input_ RaiseDismiss)
+      HH.slot' CP.cp5 unit Mount.component { parent, name, settings } (HE.input HandleChild)
     Explore fp →
       HH.slot' CP.cp6 unit Explore.component fp (HE.input_ RaiseDismiss)
 
 eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 eval = case _ of
-  Show d next → H.put (Just d) $> next
+  QueryRename q next → do
+    H.query' CP.cp3 unit q
+    pure next
+  SaveMount reply → do
+    map (reply ∘ join) $ H.query' CP.cp5 unit $ H.request Mount.Save
+  Show d next → do
+    H.put (Just d)
+    pure next
   RaiseDismiss next → do
     H.put Nothing
     H.raise Dismiss
+    pure next
+  HandleChild m next → do
+    H.raise m
+    pure next
+  AddDirsToRename dirs next → do
+    H.query' CP.cp3 unit $ H.action $ Rename.AddDirs dirs
     pure next

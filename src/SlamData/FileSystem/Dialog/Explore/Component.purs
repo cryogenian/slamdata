@@ -47,7 +47,7 @@ initialState fp =
   }
 
 data Query a
-  = Explore UP.FilePath String a
+  = TryExplore UP.FilePath String a
   | NameTyped String a
   | RaiseDismiss a
 
@@ -93,7 +93,7 @@ render state =
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
             , HP.disabled $ state.workspaceName == ""
-            , HE.onClick (HE.input_ (Explore state.filePath state.workspaceName))
+            , HE.onClick (HE.input_ (TryExplore state.filePath state.workspaceName))
             , HP.type_ HP.ButtonButton
             , ARIA.label "Explore file"
             ]
@@ -110,7 +110,9 @@ eval = case _ of
   RaiseDismiss next → do
     H.raise Dismiss
     pure next
-  Explore res name next → pure next
+  TryExplore res name next → do
+    H.raise $ ExploreFile res name
+    pure next
   NameTyped name next → do
     H.modify (_ { workspaceName = name })
     pure next

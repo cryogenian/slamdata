@@ -43,7 +43,6 @@ import Data.String.Regex.Flags as RXF
 import DOM.Event.Event as DEE
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath, injSlot, prjQuery, injQuery)
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
@@ -67,15 +66,13 @@ import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)
 import SlamData.FileSystem.Component.State as State
 import SlamData.FileSystem.Dialog.Component as Dialog
-import SlamData.FileSystem.Dialog.Download.Component as Download
-import SlamData.FileSystem.Dialog.Explore.Component as Explore
+import SlamData.FileSystem.Dialog.Component.Message as DialogMessage
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
-import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
@@ -320,7 +317,37 @@ eval = case _ of
         presentMountGuide items path
         resort
         pure next
-  HandleDialog _ next → do
+  HandleDialog DialogMessage.Dismiss next →
+    pure next
+  HandleDialog DialogMessage.MountSave next → do
+    mount ←
+      H.query' CS.cpDialog unit $ H.request Dialog.SaveMount
+    for_ (join mount) \m → do
+      hideDialog
+      -- check if we just edited the mount for the current directory, as if
+      -- so, we don't want to add an item to the list for it
+      isCurrentMount ← case m of
+        R.Database path' → (\p → path' ≡ (p </> dir "")) <$> H.gets _.path
+        _ → pure false
+      unless isCurrentMount do
+        H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount m)
+        dismissMountGuide
+        resort
+    pure next
+  HandleDialog (DialogMessage.ExploreFile fp initialName) next → do
+    { path } ← H.get
+    let newWorkspaceName = initialName ⊕ "." ⊕ Config.workspaceExtension
+    name ← API.getNewName path newWorkspaceName
+    case name of
+      Left err →
+        case GE.fromQError err of
+          Left msg →
+            showDialog $ Dialog.Error
+            $ "There was a problem creating the workspace: " ⊕ msg
+          Right ge →
+            GE.raiseGlobalError ge
+      Right name' →
+        H.liftEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
     pure next
   HandleNotifications NC.ExpandGlobalMenu next → do
     H.query' CS.cpHeader unit $ H.action $ Header.QueryGripper $ H.action $ Gripper.StartDragging 0.0
@@ -356,8 +383,8 @@ handleItemMessage = case _ of
     pure unit
   Item.Move res → do
     showDialog $ Dialog.Rename res
---    flip getDirectories rootDir \x →
---      void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
+    flip getDirectories rootDir \x →
+      void $ H.query' CS.cpDialog unit $ H.action $ Dialog.AddDirsToRename x
   Item.Remove res → do
     -- Replace actual item with phantom
     H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
@@ -478,17 +505,7 @@ uploadFileSelected f = do
     case GE.fromQError err of
       Left msg → showDialog $ Dialog.Error msg
       Right ge → GE.raiseGlobalError ge
-{-
-peek ∷ ∀ a. ChildQuery a → DSL Unit
-peek
-  = listingPeek
-  ⨁ searchPeek
-  ⨁ const (pure unit)
-  ⨁ dialogPeek
-  ⨁ const (pure unit)
-  ⨁ peekNotification
 
--}
 presentMountGuide ∷ ∀ a. Array a → DirPath → DSL Unit
 presentMountGuide xs path = do
   isSearching ←
@@ -507,58 +524,6 @@ presentMountGuide xs path = do
   dismissedBefore =
     H.lift $ LocalStorage.getLocalStorage dismissedMountGuideKey
 
-
-
---itemPeek ∷ ∀ a. Item.Query a → DSL Unit
-
-{-
-
--}
-{-
-dialogPeek ∷ ∀ a. Dialog.QueryP a → DSL Unit
-dialogPeek = const (pure unit) ⨁ dialogChildrenPeek ∘ H.runChildF
-
-dialogChildrenPeek ∷ ∀ a. Dialog.ChildQuery a → DSL Unit
-dialogChildrenPeek q = do
-  for_ (prjQuery Dialog.cpMount q) mountPeek
-  for_ (prjQuery Dialog.cpExplore q) explorePeek
-
-explorePeek ∷ ∀ a. Explore.Query a → DSL Unit
-explorePeek (Explore.Explore fp initialName next) = do
-  { path } ← H.get
-  let newWorkspaceName = initialName ⊕ "." ⊕ Config.workspaceExtension
-  name ← API.getNewName path newWorkspaceName
-  case name of
-    Left err →
-      case GE.fromQError err of
-        Left msg →
-          showDialog $ Dialog.Error
-            $ "There was a problem creating the workspace: " ⊕ msg
-        Right ge →
-          GE.raiseGlobalError ge
-    Right name' →
-      H.liftEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
-explorePeek _ = pure unit
-
-mountPeek ∷ ∀ a. Mount.QueryP a → DSL Unit
-mountPeek = go ⨁ const (pure unit)
-  where
-  go ∷ Mount.Query a → DSL Unit
-  go (Mount.NotifySave _) = do
-    mount ← queryDialog Dialog.cpMount $ left (H.request Mount.Save)
-    for_ (join mount) \m → do
-      hideDialog
-      -- check if we just edited the mount for the current directory, as if
-      -- so, we don't want to add an item to the list for it
-      isCurrentMount ← case m of
-        R.Database path' → (\p → path' ≡ (p </> dir "")) <$> H.gets _.path
-        _ → pure false
-      unless isCurrentMount do
-        queryListing $ H.action $ Listing.Add $ Item (R.Mount m)
-        dismissMountGuide
-        resort
-  go _ = pure unit
--}
 dismissSignInSubmenu ∷ DSL Unit
 dismissSignInSubmenu =
   void
@@ -637,13 +602,3 @@ showDialog = void ∘ H.query' CS.cpDialog unit ∘ H.action ∘ Dialog.Show
 hideDialog ∷ DSL Unit
 hideDialog =
   void $ H.query' CS.cpDialog unit $ H.action Dialog.RaiseDismiss
-
-{-
-queryDialog
-  ∷ ∀ s f a
-  . ChildPath s Dialog.ChildState f Dialog.ChildQuery Unit Dialog.ChildSlot
-  → f a
-  → DSL (Maybe a)
-queryDialog cp =
-  H.query' Install.cpDialog unit ∘ right ∘ H.ChildF (injSlot cp unit) ∘ injQuery cp
--}

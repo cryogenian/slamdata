@@ -166,7 +166,7 @@ eval (RaiseDismiss next) = do
   H.raise Dismiss
   pure next
 eval (NotifySave next) = do
-  H.raise Dismiss
+  H.raise MountSave
   pure next
 eval (Save k) = do
   { parent, name, new } ← H.get
