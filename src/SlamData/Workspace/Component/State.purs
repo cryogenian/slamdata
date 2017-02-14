@@ -24,11 +24,13 @@ import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.StateMode (StateMode(..))
+import SlamData.Workspace.Guide (GuideType)
 
 type State =
   { cursor ∷ List DeckId
   , stateMode ∷ StateMode
   , providers ∷ Array ProviderR
+  , guide ∷ Maybe GuideType
   }
 
 initialState ∷ State
@@ -36,4 +38,5 @@ initialState =
   { cursor: mempty
   , stateMode: Loading
   , providers: mempty
+  , guide: Nothing
   }

@@ -37,9 +37,10 @@ import Halogen as H
 
 import Halogen.Component.Utils (busEventSource)
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
-import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
@@ -119,10 +120,16 @@ render accessType state =
         [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
 
   renderCardGuide =
-    pure $ HH.slot' cpGuide CardGuide Guide.component GuideData.cardGuideSteps (HE.input (HandleGuideMessage CardGuide))
+    pure $
+      HH.div
+        [ HP.classes (guard (state.guide /= Just CardGuide) $> B.hidden) ]
+        [ HH.slot' cpGuide CardGuide Guide.component GuideData.cardGuideSteps (HE.input (HandleGuideMessage CardGuide)) ]
 
   renderFlipGuide =
-    pure $ HH.slot' cpGuide FlipGuide Guide.component GuideData.flipGuideSteps (HE.input (HandleGuideMessage FlipGuide))
+    pure $
+      HH.div
+        [ HP.classes (guard (state.guide /= Just FlipGuide) $> B.hidden) ]
+        [ HH.slot' cpGuide FlipGuide Guide.component GuideData.flipGuideSteps (HE.input (HandleGuideMessage FlipGuide)) ]
 
   notifications =
     pure $ HH.slot' cpNotify unit (NC.comp (NC.renderModeFromAccessType accessType)) unit absurd
@@ -151,6 +158,7 @@ eval = case _ of
   Init next → do
     { bus, accessType } ← H.lift Wiring.expose
     cardGuideStep ← initialCardGuideStep
+    -- TODO:
     -- when (AT.isEditable accessType) do
     --   H.modify _ { cardGuideStep = cardGuideStep }
     H.subscribe $ busEventSource
@@ -163,11 +171,8 @@ eval = case _ of
     when (isNothing cardGuideStep) do
       void $ queryDeck $ H.action Deck.DismissedCardGuide
     pure next
-  PresentStepByStepGuide stepByStepGuide reply → do
-    -- TODO: show guide
-    -- case stepByStepGuide of
-    --   Wiring.CardGuide → H.modify (_cardGuideStep .~ Just 0)
-    --   Wiring.FlipGuide → H.modify (_flipGuideStep .~ Just 0)
+  PresentStepByStepGuide guideType reply → do
+    H.modify (_ { guide = Just guideType })
     pure $ reply H.Listening
   DismissAll ev next → do
     void $ H.query' cpHeader unit $ H.action Header.Dismiss
@@ -220,11 +225,10 @@ eval = case _ of
     case slot of
       CardGuide → do
         H.lift $ LocalStorage.setLocalStorage GuideData.dismissedCardGuideKey true
-        -- H.modify (_cardGuideStep .~ Nothing)
         void $ queryDeck $ H.action Deck.DismissedCardGuide
       FlipGuide → do
         H.lift $ LocalStorage.setLocalStorage GuideData.dismissedFlipGuideKey true
-        -- H.modify (_flipGuideStep .~ Nothing)
+    H.modify (_ { guide = Nothing })
     pure next
 
   where
@@ -286,6 +290,7 @@ runFreshWorkspace cards = do
   urlVarMaps ← H.liftEff $ readRef varMaps
   navigate $ WorkspaceRoute path cursor (WA.Load accessType) urlVarMaps
 
+-- TODO:
 -- peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
 -- peek = (const (pure unit)) ⨁ const (pure unit) ⨁ peekNotification
 --   where
