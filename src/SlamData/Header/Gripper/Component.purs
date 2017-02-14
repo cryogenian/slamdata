@@ -58,10 +58,11 @@ import Unsafe.Coerce (unsafeCoerce)
 
 data Query a
   = Init a
-  | StartDragging DET.MouseEvent a
+  | StartDragging Number a
   | StopDragging a
   | ChangePosition Number a
   | Animated a
+  | PreventDefault DET.Event (Query a)
 
 data Direction = Up | Down
 
@@ -97,7 +98,11 @@ render sel state =
         [ HH.ClassName "header-gripper"
         , HH.ClassName $ className state
         ]
-    , HE.onMouseDown $ HE.input StartDragging
+    , HE.onMouseDown \e →
+        Just
+          $ PreventDefault (DET.mouseEventToEvent e)
+          $ H.action
+          $ StartDragging (Int.toNumber $ DEM.clientY e)
     , ARIA.label $ label state
     ]
     [ CSS.stylesheet $ renderStyles sel state ]
@@ -161,6 +166,9 @@ mkAnimation sel marginFrom marginTo = do
       forwards
 
 eval ∷ String → (Query ~> DSL)
+eval s (PreventDefault evt q) = do
+  H.liftEff $ DEE.preventDefault evt
+  eval s q
 eval sel (Init next) = do
   doc ←
     H.liftEff
@@ -205,9 +213,7 @@ eval sel (Init next) = do
   { auth } ← H.lift Wiring.expose
   forever $ const (H.put $ Closing maxMargin) =<< H.liftAff (Bus.read auth.signIn)
   pure next
-eval _ (StartDragging evt next) = do
-  H.liftEff $ DEE.preventDefault $ DET.mouseEventToEvent evt
-  let pos = Int.toNumber $ DEM.clientY evt
+eval _ (StartDragging pos next) = do
   H.get >>= case _ of
     Closed → H.put (Dragging Down pos pos)
     Opened → H.put (Dragging Up (pos - maxMargin) pos)

@@ -34,11 +34,10 @@ import SlamData.Download.Model as D
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Download.Component.Render (render)
-import SlamData.FileSystem.Dialog.Download.Component.State (State, _options, initialState, validate)
-import SlamData.FileSystem.Resource (Resource)
+import SlamData.FileSystem.Dialog.Download.Component.State (Input, State, _options, initialState, validate)
 import SlamData.Monad (Slam)
 
-component ∷ H.Component HH.HTML Query Resource Message Slam
+component ∷ H.Component HH.HTML Query Input Message Slam
 component =
   H.component
     { initialState: initialState

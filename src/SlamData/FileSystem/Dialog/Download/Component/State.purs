@@ -35,8 +35,13 @@ type State =
   , authHeaders ∷ Array RequestHeader
   }
 
-initialState ∷ Resource → State
-initialState res =
+type Input =
+  { resource ∷ Resource
+  , headers ∷ Array RequestHeader
+  }
+
+initialState ∷ Input → State
+initialState {resource: res, headers} =
   { source: res
   , targetName:
       let name = resourceName res
@@ -44,7 +49,7 @@ initialState res =
   , compress: false
   , options: Left initialCSVOptions
   , error: Nothing
-  , authHeaders: []
+  , authHeaders: headers
   }
 
 _options ∷ Lens' State (Either CSVOptions JSONOptions)

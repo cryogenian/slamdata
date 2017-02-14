@@ -27,6 +27,8 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
+import Network.HTTP.RequestHeader (RequestHeader)
+
 import SlamData.Dialog.Error.Component as Error
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Explore.Component as Explore
@@ -46,7 +48,7 @@ data Dialog
   | Share String
   | Rename Resource
   | Mount DirPath String (Maybe MountSettings)
-  | Download Resource
+  | Download Resource (Array RequestHeader)
   | Explore FilePath
 
 type State = Maybe Dialog
@@ -98,8 +100,8 @@ render state =
       HH.slot' CP.cp2 unit Share.component str (HE.input_ RaiseDismiss)
     Rename res →
       HH.slot' CP.cp3 unit Rename.component res (HE.input_ RaiseDismiss)
-    Download res →
-      HH.slot' CP.cp4 unit Download.component res (HE.input_ RaiseDismiss)
+    Download resource headers →
+      HH.slot' CP.cp4 unit Download.component { resource, headers } (HE.input_ RaiseDismiss)
     Mount parent name settings →
       HH.slot' CP.cp5 unit Mount.component { parent, name, settings } (HE.input_ RaiseDismiss)
     Explore fp →
@@ -108,4 +110,7 @@ render state =
 eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 eval = case _ of
   Show d next → H.put (Just d) $> next
-  RaiseDismiss next → H.raise Dismiss $> next
+  RaiseDismiss next → do
+    H.put Nothing
+    H.raise Dismiss
+    pure next

@@ -38,7 +38,7 @@ import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 
 import DOM (DOM)
 
-import Halogen.Component (parentState, interpret)
+import Halogen.Component (interpret)
 --import Halogen.Driver (Driver, runUI)
 import Halogen.Query (action)
 --import Halogen.Util (runHalogenAff, awaitBody)

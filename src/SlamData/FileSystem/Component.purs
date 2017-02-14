@@ -126,13 +126,14 @@ render state@{ version, sort, salt, path } =
     ]
     $ [ HH.slot' CS.cpHeader unit Header.component unit absurd
       , content
-      , HH.slot' CS.cpSearch unit Search.component unit $ HE.input HandleSearch
-      , HH.div_
-          [ HH.slot' CS.cpBreadcrumbs unit Breadcrumbs.component {path, sort, salt} absurd
-          , toolbar state
+          [ HH.slot' CS.cpSearch unit Search.component unit $ HE.input HandleSearch
+          , HH.div_
+            [ HH.slot' CS.cpBreadcrumbs unit Breadcrumbs.component {path, sort, salt} absurd
+            , toolbar state
+            ]
+          , row [ sorting state ]
+          , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
           ]
-      , row [ sorting state ]
-      , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
       , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
       , HH.slot' CS.cpNotify unit (NC.component $ NC.renderModeFromAccessType Editable) unit
           $ HE.input HandleNotifications
@@ -254,7 +255,7 @@ eval = case _ of
         Right ge →
           GE.raiseGlobalError ge
       Right dirRes →
-        void $ H.query' CS.cpListing $ H.action $ Listing.Add $ Item dirRes
+        void $ H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item dirRes
     pure next
   MakeWorkspace next → do
     path ← H.gets _.path
@@ -307,12 +308,22 @@ eval = case _ of
   HandleError ge next → do
     showDialog $ Dialog.Error $ GE.print ge
     pure next
-  HandleListing _ next → do
+  HandleListing (Listing.ItemMessage m) next → do
+    handleItemMessage m
     pure next
+  HandleListing (Listing.Added items) next
+    | Array.length items < 2 → do
+        resort
+        pure next
+    | otherwise → do
+        path ← H.gets _.path
+        presentMountGuide items path
+        resort
+        pure next
   HandleDialog _ next → do
     pure next
   HandleNotifications NC.ExpandGlobalMenu next → do
-    H.query' CS.cpHeader unit $ H.action $ Header.QueryGripper $ H.action Gripper.StartDragging 0.0
+    H.query' CS.cpHeader unit $ H.action $ Header.QueryGripper $ H.action $ Gripper.StartDragging 0.0
     H.query' CS.cpHeader unit $ H.action $ Header.QueryGripper $ H.action Gripper.StopDragging
     pure next
   HandleSearch m next → do
@@ -326,17 +337,10 @@ eval = case _ of
     H.liftEff $ setLocation $ browseURL value st.sort salt st.path
     pure next
 
-{-  | Array.length items < 2 = do
-      resort
-      pure next
-  | otherwise = do
-      path ← H.gets _.path
-      presentMountGuide items path
-      resort
-      pure next
--}
-
-{-
+handleItemMessage ∷ Item.Message → DSL Unit
+handleItemMessage = case _ of
+  Item.Selected →
+    pure unit
   Item.Open res → do
     { sort, salt, path } ← H.get
     loc ← H.liftEff locationString
@@ -346,29 +350,28 @@ eval = case _ of
       H.liftEff $ setLocation $ browseURL Nothing sort salt dp
     for_ (preview R._Workspace res) \wp →
       H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
-    pure next
   Item.Configure (R.Mount mount) → do
     configure mount
-    pure next
+  Item.Configure _ →
+    pure unit
   Item.Move res → do
     showDialog $ Dialog.Rename res
-    flip getDirectories rootDir \x →
-      void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
-    pure next
+--    flip getDirectories rootDir \x →
+--      void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
   Item.Remove res → do
     -- Replace actual item with phantom
-    queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
-    queryListing $ H.action $ Listing.Add (PhantomItem res)
+    H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
+    H.query' CS.cpListing unit $ H.action $ Listing.Add $ PhantomItem res
     -- Save order of items during deletion (or phantom will be on top of list)
     resort
     -- Try to delete
-    mbTrashFolder ← H.liftH $ H.liftH $ API.delete res
+    mbTrashFolder ← H.lift $ API.delete res
     -- Remove phantom resource after we have response from server
-    queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
+    H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
     case mbTrashFolder of
       Left err → do
         -- Error occured: put item back and show dialog
-        void $ queryListing $ H.action $ Listing.Add (Item res)
+        void $ H.query' CS.cpListing unit $ H.action $ Listing.Add (Item res)
         case GE.fromQError err of
           Left m →
             showDialog $ Dialog.Error m
@@ -377,14 +380,13 @@ eval = case _ of
       Right mbRes →
         -- Item has been deleted: probably add trash folder
         for_ mbRes \res' →
-          void $ queryListing $ H.action $ Listing.Add (Item res')
+          void $ H.query' CS.cpListing unit $ H.action $ Listing.Add (Item res')
 
-    listing ← fromMaybe [] <$> (queryListing $ H.request Listing.Get)
+    listing ← fromMaybe [] <$> (H.query' CS.cpListing unit $ H.request Listing.Get)
     path ← H.gets _.path
     presentMountGuide listing path
 
     resort
-    pure next
   Item.Share res → do
     path ← H.gets _.path
     loc ← map (_ ⊕ "/") $ H.liftEff locationString
@@ -403,13 +405,8 @@ eval = case _ of
           showDialog (Dialog.Share $ append loc $  mkWorkspaceURL (path </> dir name') $ Exploring fp)
     for_ (preview R._Workspace res) \wp → do
       showDialog (Dialog.Share $ append loc $ mkWorkspaceURL wp (Load ReadOnly))
-    pure next
-  Item.Download res → do
+  Item.Download res →
     download res
-    pure next
-  _ → pure next
--}
-
 
 
 dismissedMountGuideKey ∷ String
@@ -564,9 +561,9 @@ mountPeek = go ⨁ const (pure unit)
 -}
 dismissSignInSubmenu ∷ DSL Unit
 dismissSignInSubmenu =
-  H.query' CS.cpHeader unit
-    $ H.action Header.QueryGlobalMenu
-    $ H.action GlobalMenu.DismissSubmenu
+  void
+    $ H.query' CS.cpHeader unit
+    $ Header.QueryGlobalMenu (H.action GlobalMenu.DismissSubmenu) unit
 
 resort ∷ DSL Unit
 resort = do
@@ -612,9 +609,8 @@ configure m =
 
 download ∷ R.Resource → DSL Unit
 download res = do
---  hs ← H.lift API.authHeaders
---  showDialog (Dialog.Download res)
---  queryDialog Dialog.cpDownload (H.action $ Download.SetAuthHeaders hs)
+  hs ← H.lift API.authHeaders
+  showDialog $ Dialog.Download res hs
   pure unit
 
 getChildren
@@ -638,17 +634,9 @@ getDirectories = getChildren $ R.isDirectory ∨ R.isDatabaseMount
 showDialog ∷ Dialog.Dialog → DSL Unit
 showDialog = void ∘ H.query' CS.cpDialog unit ∘ H.action ∘ Dialog.Show
 
---hideDialog ∷ DSL Unit
---hideDialog = void $ H.query' CS.cpDialog unit $ H.action Dialog.Dismiss
-
-{-
-queryListing ∷ ∀ a. Listing.Query a → DSL (Maybe a)
-queryListing = H.query' Install.cpListing unit ∘ left
--}
-{-
-queryItem ∷ ∀ a. Listing.ItemSlot → Item.Query a → DSL (Maybe a)
-queryItem slot = H.query' Install.cpListing unit ∘ right ∘ H.ChildF slot
--}
+hideDialog ∷ DSL Unit
+hideDialog =
+  void $ H.query' CS.cpDialog unit $ H.action Dialog.RaiseDismiss
 
 {-
 queryDialog
@@ -658,14 +646,4 @@ queryDialog
   → DSL (Maybe a)
 queryDialog cp =
   H.query' Install.cpDialog unit ∘ right ∘ H.ChildF (injSlot cp unit) ∘ injQuery cp
--}
-
-{-
-queryHeaderGripper ∷ ∀ a. Gripper.Query a → DSL Unit
-queryHeaderGripper =
-  void
-    ∘ H.query' Install.cpHeader unit
-    ∘ right
-    ∘ H.ChildF (injSlot Header.cpGripper unit)
-    ∘ injQuery Header.cpGripper
 -}
