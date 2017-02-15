@@ -23,6 +23,7 @@ import Data.Lens ((^?))
 
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
@@ -61,12 +62,10 @@ render state =
                  then textLike
                  else metric
   where
-  textLike = [ HH.slot' CS.cpTextLike unit TextLike.comp unit handleUpdate ]
-  labeled = [ HH.slot' CS.cpLabeled unit Labeled.comp unit handleUpdate ]
+  textLike = [ HH.slot' CS.cpTextLike unit TextLike.comp unit $ HE.input_ $ right ∘ RaiseUpdate ]
+  labeled = [ HH.slot' CS.cpLabeled unit Labeled.comp unit $ HE.input_ $ right ∘ RaiseUpdate ]
   metric = [ HH.slot' CS.cpMetric unit Metric.comp state.dimensions absurd ]
 
-handleUpdate ∷ ∀ a. a → Maybe (CC.InnerCardQuery Query Unit)
-handleUpdate _ = Nothing
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
