@@ -141,7 +141,9 @@ picker opts =
               ] <>
                 case st.selection of
                   Just sel | opts.isSelectable sel →
-                    [ HE.onClick $ HE.input_ $ RaiseMessage $ Confirm (List.reverse sel) ]
+                    [ HE.onClick $ HE.input_ $ RaiseMessage $ Confirm (List.reverse sel)
+                    , HP.disabled false
+                    ]
                   _ →
                     [ HP.disabled true ])
               [ HH.text "Confirm" ]
