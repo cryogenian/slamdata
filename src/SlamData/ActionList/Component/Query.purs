@@ -18,7 +18,6 @@ module SlamData.ActionList.Component.Query where
 
 import SlamData.Prelude
 
-import DOM.HTML.Types (HTMLElement)
 import SlamData.ActionList.Action (Action, Dimensions)
 
 data Query a next
@@ -28,4 +27,3 @@ data Query a next
   | CalculateBoundingRect next
   | GetBoundingRect (Maybe Dimensions → next)
   | SetBoundingRect Dimensions next
-  | SetBoundingElement (Maybe HTMLElement) next

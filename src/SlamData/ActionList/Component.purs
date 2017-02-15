@@ -70,6 +70,9 @@ actionListComp mkConf actions =
     , receiver: const Nothing
     }
 
+elementRef ∷ H.RefLabel
+elementRef = H.RefLabel "bounding-element"
+
 component ∷ ∀ a. Eq a ⇒ H.Component HH.HTML (Q.Query a) Unit (M.Message a) Slam
 component = actionListComp A.defaultConf []
 
@@ -81,7 +84,7 @@ render mkConf state =
       ⊕ conf.classes
     ]
     [ HH.ul
-        [ HP.ref (H.RefLabel "bounding-element") ]
+        [ HP.ref elementRef ]
         $ renderButtons (String.toLower state.filterString) conf
 
     ]
@@ -231,7 +234,7 @@ updateActions newActions state =
 getBoundingDOMRect ∷ ∀ a. DSL a (Maybe DOMRect)
 getBoundingDOMRect =
   traverse (H.liftEff ∘ DOMUtils.getOffsetClientRect)
-    =<< H.gets _.boundingElement
+    =<< H.getHTMLElementRef elementRef
 
 eval ∷ ∀ a. Eq a ⇒ Q.Query a ~> DSL a
 eval =
@@ -269,5 +272,3 @@ eval =
       H.modify _{ boundingDimensions = A.maybeNotZero dimensions } $> next
     Q.GetBoundingRect continue →
       continue <$> H.gets _.boundingDimensions
-    Q.SetBoundingElement element next →
-      H.modify _{ boundingElement = element } $> next

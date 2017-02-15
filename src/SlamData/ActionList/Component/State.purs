@@ -18,15 +18,12 @@ module SlamData.ActionList.Component.State where
 
 import SlamData.Prelude
 
-import DOM.HTML.Types (HTMLElement)
-
 import SlamData.ActionList.Action (Action, Dimensions)
 
 type State a =
   { actions ∷ Array (Action a)
   , previousActions ∷ Array (Action a)
   , filterString ∷ String
-  , boundingElement ∷ Maybe HTMLElement
   , boundingDimensions ∷ Maybe Dimensions
   }
 
@@ -35,6 +32,5 @@ initialState actions =
   { actions
   , previousActions: [ ]
   , filterString: ""
-  , boundingElement: Nothing
   , boundingDimensions: Nothing
   }
