@@ -123,10 +123,11 @@ eval = case _ of
     pure next
   RaiseDismiss next → do
     H.put Nothing
-    H.raise Dismiss
     pure next
   HandleChild m next → do
-    H.raise m
+    case m of
+      Dismiss → H.put Nothing
+      _ → H.raise m
     pure next
   AddDirsToRename dirs next → do
     H.query' CP.cp3 unit $ H.action $ Rename.AddDirs dirs
