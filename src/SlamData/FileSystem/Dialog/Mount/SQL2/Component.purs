@@ -57,14 +57,14 @@ comp =
 render ∷ State → H.ParentHTML Query AceQuery Unit Slam
 render state@{ initialQuery } =
   HHEK.div_
-    [ "mount-sql2" × section "SQL² query"
+    [ "mount-sql2-query" × section "SQL² query"
         [ HH.slot
             unit
             (aceComponent (aceSetup initialQuery) (Just Live))
             unit
             (const (Just (H.action (ModifyState id))))
         ]
-    , "mount-sql2" × section "Query variables" [ propList _vars state ]
+    , "mount-sql2-vars" × section "Query variables" [ propList _vars state ]
     ]
 
 eval ∷ Query ~> H.ParentDSL State Query AceQuery Unit SettingsMessage Slam
