@@ -101,15 +101,15 @@ render state =
     Error str →
       HH.slot' CP.cp1 unit Error.component str (HE.input_ RaiseDismiss)
     Share str →
-      HH.slot' CP.cp2 unit Share.component str (HE.input_ RaiseDismiss)
+      HH.slot' CP.cp2 unit Share.component str (HE.input HandleChild)
     Rename res →
       HH.slot' CP.cp3 unit Rename.component res (HE.input HandleChild)
     Download resource headers →
-      HH.slot' CP.cp4 unit Download.component { resource, headers } (HE.input_ RaiseDismiss)
+      HH.slot' CP.cp4 unit Download.component { resource, headers } (HE.input HandleChild)
     Mount parent name settings →
       HH.slot' CP.cp5 unit Mount.component { parent, name, settings } (HE.input HandleChild)
     Explore fp →
-      HH.slot' CP.cp6 unit Explore.component fp (HE.input_ RaiseDismiss)
+      HH.slot' CP.cp6 unit Explore.component fp (HE.input HandleChild)
 
 eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 eval = case _ of
