@@ -28,6 +28,7 @@ module SlamData.Wiring
   , make
   , unWiring
   , expose
+  , focusDeck
   ) where
 
 import SlamData.Prelude
@@ -172,3 +173,14 @@ make path accessType vm permissionTokenHashes = liftAff do
     globalError ← Bus.make
     stepByStep ← Bus.make
     pure { decks, notify, globalError, stepByStep }
+
+focusDeck
+  ∷ ∀ m
+  . ( MonadAsk Wiring m
+    , MonadAff SlamDataEffects m
+    )
+  ⇒ DeckId
+  → m Unit
+focusDeck deckId = do
+  { bus } ← expose
+  liftAff $ Bus.write (DeckFocused deckId) bus.decks

@@ -174,8 +174,9 @@ eval = case _ of
     pure $ reply H.Listening
   DismissAll ev next → do
     void $ H.query' cpHeader unit $ H.action Header.Dismiss
-    eq ← H.liftEff $ nodeEq (DOM.toNode (DOM.target ev)) (DOM.toNode (DOM.currentTarget ev))
-    when eq $ void $ queryDeck $ H.action Deck.Focus
+    H.gets _.cursor >>= List.head >>> traverse_ \deckId → do
+      eq ← H.liftEff $ nodeEq (DOM.toNode (DOM.target ev)) (DOM.toNode (DOM.currentTarget ev))
+      when eq $ Wiring.focusDeck deckId
     pure next
   Resize reply → do
     queryDeck (H.action Deck.UpdateCardSize)
@@ -211,7 +212,6 @@ eval = case _ of
             for_ (GE.fromQError err) GE.raiseGlobalError
           Right _ → loadCursor cursor
       _ → loadCursor cursor
-    void $ queryDeck $ H.action Deck.Focus
     pure next
   SignIn providerR next → do
     { auth } ← H.lift Wiring.expose
@@ -243,6 +243,7 @@ eval = case _ of
       { stateMode = Ready
       , cursor = cursor'
       }
+    for_ (List.head cursor') Wiring.focusDeck
 
   hydrateCursor cursor = H.lift do
     wiring ← Wiring.expose
@@ -274,7 +275,7 @@ runFreshWorkspace cards = do
     { stateMode = Ready
     , cursor = pure deckId
     }
-  void $ queryDeck $ H.action Deck.Focus
+  Wiring.focusDeck deckId
   let
     wait =
       H.liftAff (Bus.read cell.bus) >>= case _ of

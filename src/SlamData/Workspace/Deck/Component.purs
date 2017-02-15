@@ -162,8 +162,9 @@ eval opts = case _ of
     when sliderTransition $
       H.modify $ DCS._sliderTransition .~ false
     pure next
-  Focus next → do
+  Focus ev next → do
     st ← H.get
+    H.liftEff $ DOM.stopPropagation ev
     when (not st.focused) do
       H.modify (DCS._focused .~ true)
       { bus } ← H.lift Wiring.expose
@@ -172,12 +173,14 @@ eval opts = case _ of
     pure next
   Defocus ev next → do
     st ← H.get
+    H.liftEff $ DOM.stopPropagation ev
     isFrame ← H.liftEff $ DOM.nodeEq (DOM.target ev) (DOM.currentTarget ev)
-    when (st.focused && isFrame) $
-      for_ (L.last opts.cursor) \rootId → do
-        { bus } ← H.lift Wiring.expose
-        H.liftAff $ Bus.write (DeckFocused rootId) bus.decks
-    H.modify (DCS._presentAccessNextActionCardGuide .~ false)
+    when (st.focused && not (L.null opts.displayCursor)) do
+      H.modify (DCS._presentAccessNextActionCardGuide .~ false)
+      when isFrame do
+        for_ (L.last opts.cursor) \rootId → do
+          { bus } ← H.lift Wiring.expose
+          H.liftAff $ Bus.write (DeckFocused rootId) bus.decks
     pure next
   DismissedCardGuide next → do
     when (L.null opts.displayCursor) $ void do

@@ -29,6 +29,7 @@ import Data.Rational (Rational, (%))
 import Halogen as H
 import Halogen.Component.Utils.Drag as Drag
 
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
@@ -359,7 +360,7 @@ addDeck opts cursor = do
   H.modify
     $ updateLayout (fromMaybe st.layout layout)
     ∘ _ { inserting = false }
-  void $ H.query deckId (H.action DCQ.Focus)
+  H.lift $ Wiring.focusDeck deckId
 
 groupDeck
   ∷ Orn.Orientation

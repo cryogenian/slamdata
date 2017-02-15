@@ -46,7 +46,7 @@ data Query a
   | StopSlidingAndSnap DOM.MouseEvent a
   | UpdateSliderPosition DOM.MouseEvent a
   | StopSliderTransition a
-  | Focus a
+  | Focus DOM.MouseEvent a
   | Defocus DOM.MouseEvent a
   | DismissedCardGuide a
   | DismissDialog a

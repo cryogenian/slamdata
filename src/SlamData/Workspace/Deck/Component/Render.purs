@@ -46,6 +46,7 @@ import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Slider as Slider
 
 import Utils (endSentence)
+import Utils.DOM as DOM
 
 renderError ∷ ∀ f a. String → HH.HTML a (f Unit)
 renderError err =
@@ -72,10 +73,6 @@ renderDeck opts deckComponent st =
         [ HH.div
             [ HP.class_ CSS.deckFrame
             , HE.onMouseDown $ HE.input Defocus
-              -- TODO: preventDefault
-    --            if st.focused && not (L.null opts.displayCursor)
-    --              then HEH.stopPropagation *> pure (Just (Defocus ev unit))
-    --              else pure Nothing
             ]
             $ frameElements opts st ⊕ [ renderName st.name ]
         , HH.div
@@ -122,13 +119,10 @@ deckClasses st =
     , if st.focused then CSS.focused else CSS.unfocused
     ]
 
-deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp r (Query Unit))
+deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp (onMouseDown ∷ DOM.MouseEvent | r) (Query Unit))
 deckProperties opts =
-  [ HP.ref sizerRef
-  ]
-  --(guard (L.length opts.displayCursor <= 1)
-       -- TODO: preventDefafult
---        $> HE.onMouseDown \_ → HEH.stopPropagation $> Just (H.action Focus))
+  [ HP.ref sizerRef ]
+  <> (guard (L.length opts.displayCursor <= 1) $> HE.onMouseDown (HE.input Focus))
 
 renderName ∷ String → DeckHTML
 renderName name =
