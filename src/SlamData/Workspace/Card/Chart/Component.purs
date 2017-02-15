@@ -103,11 +103,9 @@ evalCard = case _ of
         H.modify (_ { chartType = Just r.chartType })
         H.query' cpECharts unit $ H.action $ HEC.Reset r.options
         H.query' cpECharts unit $ H.action HEC.Resize
-        H.raise ∘ CC.LODChanged <$> lodByChartType r.chartType
       ValueMetric metric, _ → void do
         H.modify (_ { chartType = Just ChT.Metric })
         H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
-        H.raise ∘ CC.LODChanged <$> lodByChartType ChT.Metric
       PivotTable port, Just resource → void do
         H.modify (_ { chartType = Just ChT.PivotTable })
         H.query' cpPivotTable unit $ H.action $ Pivot.Update port resource
