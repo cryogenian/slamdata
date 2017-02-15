@@ -31,7 +31,6 @@ import Data.Lens ((.~))
 import Halogen as H
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
@@ -63,7 +62,7 @@ nextCardComponent = H.parentComponent
   { initialState
   , render
   , eval
-  , receiver: HE.input UpdateInput
+  , receiver: const Nothing
   }
 
 render ∷ State → HTML
