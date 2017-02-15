@@ -80,8 +80,11 @@ render state =
 
 eval ∷ Query ~> DSL
 eval = case _ of
-  Set s next → do
-    H.modify _{ filter = s }
+  Set newFilter next → do
+    oldFilter ← H.gets _.filter
+    when (oldFilter /= newFilter) do
+      H.modify _{ filter = newFilter }
+      H.raise $ FilterChanged newFilter
     pure next
   Get cont → do
     H.gets $ cont ∘ _.filter
