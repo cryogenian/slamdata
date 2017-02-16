@@ -300,9 +300,8 @@ eval = case _ of
           }
         when (isNothing st.current) drainQueue
     pure $ reply H.Listening
-  Dismiss next → dismissNotification $> next
-  Action N.ExpandGlobalMenu next → do
-    H.raise N.ExpandGlobalMenu
+  Dismiss next → do
+    dismissNotification
     pure next
   Action act next → do
     dismissNotification
