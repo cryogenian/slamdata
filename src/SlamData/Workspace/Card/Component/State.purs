@@ -27,14 +27,12 @@ import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type CardState =
-  { pending ∷ Boolean
-  , bus ∷ Maybe (BusRW Card.EvalMessage)
+  { bus ∷ Maybe (BusRW Card.EvalMessage)
   , levelOfDetails ∷ LevelOfDetails
   }
 
 initialState ∷ CardState
 initialState =
-  { pending: true
-  , bus: Nothing
+  { bus: Nothing
   , levelOfDetails: High
   }

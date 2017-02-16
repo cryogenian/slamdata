@@ -119,7 +119,6 @@ makeCardComponent cardType component options =
     card ∷ Array (CardHTML f)
     card =
       case st.levelOfDetails of
-        _ | st.pending → []
         High →
           [ HH.div
               [ HP.classes $ cardClasses cardType ]
@@ -152,14 +151,7 @@ makeCardComponent cardType component options =
     CQ.DeactivateCard next →
       queryInnerCard EQ.Deactivate $> next
     CQ.UpdateDimensions next → do
-      H.getHTMLElementRef cardRef >>= traverse_ \el → do
-        { width, height } ← H.liftEff (getBoundingClientRect el)
-        unless (width ≡ zero ∧ height ≡ zero) do
-          st ← H.get
-          mbLod ← H.query unit $ left $ H.request (EQ.ReceiveDimensions { width, height })
-          for_ mbLod \lod → when (st.levelOfDetails ≠ lod) do
-            H.modify _ { levelOfDetails = lod }
-      pure next
+      updateDimensions $> next
     CQ.HandleEvalMessage msg next → do
       case msg of
         Card.Pending source (evalPort × varMap) → do
@@ -190,15 +182,21 @@ makeCardComponent cardType component options =
     cell ← H.lift $ P.getCard options.cardId
     for_ cell \{ bus, model, input, output, state } → do
       H.subscribe $ busEventSource (\msg → CQ.HandleEvalMessage msg H.Listening) bus
-      H.modify _
-        { bus = Just bus
-        , pending = false
-        }
+      H.modify _ { bus = Just bus }
       queryInnerCard $ EQ.Load model
       for_ input (queryInnerCard ∘ uncurry EQ.ReceiveInput)
       for_ state (queryInnerCard ∘ EQ.ReceiveState)
       for_ output (queryInnerCard ∘ uncurry EQ.ReceiveOutput)
-      eval (CQ.UpdateDimensions unit)
+      updateDimensions
+
+  updateDimensions ∷ CardDSL f Unit
+  updateDimensions = do
+    st ← H.get
+    H.getHTMLElementRef cardRef >>= traverse_ \el → do
+      { width, height } ← H.liftEff (getBoundingClientRect el)
+      mbLod ← H.query unit $ left $ H.request (EQ.ReceiveDimensions { width, height })
+      for_ mbLod \lod → when (st.levelOfDetails ≠ lod) do
+        H.modify _ { levelOfDetails = lod }
 
 queryInnerCard ∷ ∀ f. H.Action EQ.CardEvalQuery → CardDSL f Unit
 queryInnerCard q =
