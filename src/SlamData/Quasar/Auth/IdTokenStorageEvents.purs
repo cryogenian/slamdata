@@ -31,7 +31,7 @@ pullIdTokenFromStorageEvent ∷ ∀ eff. Aff (dom ∷ DOM, ref ∷ REF | eff) (E
 pullIdTokenFromStorageEvent = makeAff' \onError onSuccess → do
   ref ← newRef Nothing
   remove ← LocalStorage.onStorageEvent \ev → unsafePartial do
-    when (isIdTokenKeyEvent ev.newValue) do
+    when (isIdTokenKeyEvent ev.key) do
       Just remove' ← readRef ref
       onSuccess (parseIdToken ev.newValue)
       remove'
