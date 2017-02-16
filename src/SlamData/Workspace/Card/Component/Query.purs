@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Component.Query
   ( CardQuery(..)
+  , Input
   , InnerCardQuery
   , module EQ
   ) where
@@ -25,11 +26,15 @@ import SlamData.Prelude
 import SlamData.Workspace.Card.Common.EvalQuery as EQ
 import SlamData.Workspace.Eval.Card as Card
 
+type Input =
+  { active ∷ Boolean
+  }
+
 data CardQuery a
   = Initialize a
-  | ActivateCard a
-  | DeactivateCard a
   | UpdateDimensions a
+  | PreloadCard a
+  | HandleInput Input a
   | HandleEvalMessage (Card.EvalMessage) a
   | HandleCardMessage (EQ.CardEvalMessage) a
   | ZoomIn a

@@ -29,7 +29,7 @@ import Control.Monad.Aff.Bus as Bus
 import Control.UI.Browser as Browser
 
 import Data.Array as Array
-import Data.Lens ((.~), (%~), (?~), _Left, _Just, is)
+import Data.Lens ((.~), (%~), _Left, _Just, is)
 import Data.List as L
 import Data.List ((:))
 import Data.Set as Set
@@ -70,6 +70,7 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckPath (deckPath, deckPath')
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
+import SlamData.Workspace.Deck.Gripper.Def as GD
 import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Eval.Card as EC
 import SlamData.Workspace.Eval.Deck as ED
@@ -142,14 +143,11 @@ eval opts = case _ of
   StartSliding gDef mouseEvent next → do
     H.getHTMLElementRef sizerRef >>= traverse_ \el → do
       width ← getBoundingClientWidth el
-      H.modify (DCS._cardElementWidth ?~ width)
-      Slider.startSliding mouseEvent gDef
+      Slider.startSliding mouseEvent gDef width
+      preloadCard gDef
     pure next
   StopSlidingAndSnap mouseEvent next → do
     st ← H.get
-    for_ st.activeCardIndex \oldIndex →
-      for_ (DCS.cardIdFromIndex oldIndex st) \cardId →
-        void $ queryCardEval cardId $ H.action CQ.DeactivateCard
     Slider.stopSlidingAndSnap mouseEvent
     updateActiveState opts
     when (DCS.activeCard st # is (_Just ∘ _Left ∘ DCS._NextActionCard)) do
@@ -373,9 +371,6 @@ updateActiveState opts = do
   { cache } ← H.lift Wiring.expose
   for_ st.activeCardIndex \cardIndex →
     H.lift $ Cache.put opts.deckId { cardIndex } cache.activeState
-  case DCS.activeCard st of
-    Just (Right { cardId }) → void $ queryCardEval cardId $ H.action CQ.ActivateCard
-    _ → pure unit
 
 updateBackSide ∷ DeckOptions → DeckDSL Unit
 updateBackSide { deckId, displayCursor } = do
@@ -555,6 +550,17 @@ getDeckTree deckId = do
   decks ← H.lift $ Cache.snapshot wiring.eval.decks
   cards ← H.lift $ Cache.snapshot wiring.eval.cards
   pure (ET.unfoldEvalTree decks cards deckId)
+
+preloadCard ∷ GD.GripperDef → DeckDSL Unit
+preloadCard gDef = do
+  st ← H.get
+  let
+    ix = case gDef of
+      GD.Previous true → (_ - 1) <$> st.activeCardIndex
+      GD.Next true → (_ + 1) <$> st.activeCardIndex
+      _ → Nothing
+  for_ (ix >>= flip DCS.cardIdFromIndex st) \cardId → do
+    void $ queryCardEval cardId $ H.action CQ.PreloadCard
 
 updateCardSize ∷ DeckDSL Unit
 updateCardSize = do

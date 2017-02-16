@@ -89,12 +89,11 @@ render opts deckComponent st visible =
     | nestedLayout && index ≠ activeIndex = HH.text ""
     | otherwise = renderCard opts deckComponent st activeIndex index card
 
-startSliding ∷ DOM.MouseEvent → GripperDef → DeckDSL Unit
-startSliding mouseEvent gDef = do
-  cardWidth ← H.gets _.cardElementWidth
+startSliding ∷ DOM.MouseEvent → GripperDef → Number → DeckDSL Unit
+startSliding mouseEvent gDef cardWidth = do
   H.modify
     $ (DCS._initialSliderX .~ Just (Int.toNumber (ME.screenX mouseEvent)))
-    ∘ (DCS._initialSliderCardWidth .~ cardWidth)
+    ∘ (DCS._initialSliderCardWidth .~ Just cardWidth)
     ∘ (DCS._sliderTransition .~ false)
     ∘ (DCS._fadeTransition .~ DCS.FadeIn)
     ∘ (DCS._displayMode .~ (DCS.FrontSide DCS.NoDialog))
@@ -277,7 +276,7 @@ renderCard opts deckComponent st activeIndex index card =
   where
   cardComponent = pure case card of
     Left m → renderMeta st m
-    Right cd → renderDef opts deckComponent st cd
+    Right cd → renderDef opts deckComponent st (index ≡ activeIndex) cd
 
   classes =
     [ ClassNames.card
@@ -342,9 +341,10 @@ renderDef
   ∷ DeckOptions
   → (DeckOptions → DeckComponent)
   → State
+  → Boolean
   → DCS.CardDef
   → DeckHTML
-renderDef opts deckComponent st { cardType, cardId } =
+renderDef opts deckComponent st active { cardType, cardId } =
   let
     cardOpts =
       { deck: opts
@@ -353,7 +353,10 @@ renderDef opts deckComponent st { cardType, cardId } =
       , displayCursor: opts.deckId : opts.displayCursor
       , cardId
       }
-  in HH.slot' ChildSlot.cpCard cardId (Factory.cardComponent cardType cardOpts) unit absurd
+    component =
+      Factory.cardComponent cardType cardOpts
+  in
+    HH.slot' ChildSlot.cpCard cardId component { active } absurd
 
 loadingPanel ∷ DeckHTML
 loadingPanel =

@@ -41,7 +41,6 @@ module SlamData.Workspace.Deck.Component.State
   , _initialSliderCardWidth
   , _sliderTransition
   , _sliderTranslateX
-  , _cardElementWidth
   , _slidingTo
   , _breakers
   , _focused
@@ -169,7 +168,6 @@ type State =
   , initialSliderCardWidth ∷ Maybe Number
   , sliderTransition ∷ Boolean
   , sliderTranslateX ∷ Number
-  , cardElementWidth ∷ Maybe Number
   , slidingTo ∷ Maybe GripperDef
   , focused ∷ Boolean
   , finalized ∷ Boolean
@@ -192,7 +190,6 @@ initialState =
   , initialSliderCardWidth: Nothing
   , sliderTransition: false
   , sliderTranslateX: 0.0
-  , cardElementWidth: Nothing
   , slidingTo: Nothing
   , focused: false
   , finalized: false
@@ -256,10 +253,6 @@ _sliderTransition = lens _.sliderTransition _{sliderTransition = _}
 -- | The current x translation of the card slider during the slide interaction.
 _sliderTranslateX ∷ ∀ a r. Lens' {sliderTranslateX ∷ a |r} a
 _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
-
--- | The width of card
-_cardElementWidth ∷ ∀ a r. Lens' {cardElementWidth ∷ a|r} a
-_cardElementWidth = lens _.cardElementWidth _{cardElementWidth = _}
 
 _slidingTo ∷ ∀ a r. Lens' {slidingTo ∷ a|r} a
 _slidingTo = lens _.slidingTo _{slidingTo = _}

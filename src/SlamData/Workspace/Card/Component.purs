@@ -55,7 +55,7 @@ import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 -- | Type synonym for the full type of a card component.
-type CardComponent = H.Component HH.HTML CQ.CardQuery Unit Void Slam
+type CardComponent = H.Component HH.HTML CQ.CardQuery CQ.Input Void Slam
 type CardDSL f = H.ParentDSL CS.CardState CQ.CardQuery (CQ.InnerCardQuery f) Unit Void Slam
 type CardHTML f = H.ParentHTML CQ.CardQuery (CQ.InnerCardQuery f) Unit Slam
 
@@ -80,10 +80,10 @@ makeCardComponent cardType component options =
   H.lifecycleParentComponent
     { render
     , eval
-    , initialState: const (CS.initialState)
+    , initialState: CS.initialState
     , initializer: Just (H.action CQ.Initialize)
     , finalizer: Nothing
-    , receiver: const Nothing
+    , receiver: HE.input CQ.HandleInput
     }
   where
   displayCoord ∷ Card.DisplayCoord
@@ -118,13 +118,15 @@ makeCardComponent cardType component options =
 
     card ∷ Array (CardHTML f)
     card =
-      case st.levelOfDetails of
-        High →
+      case st.status, st.levelOfDetails of
+        CS.Pending, _ →
+          []
+        _, High →
           [ HH.div
               [ HP.classes $ cardClasses cardType ]
               [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
           ]
-        Low →
+        _, Low →
           [ HH.div
               [ HP.classes $ cardClasses cardType <> [ B.hidden ] ]
               [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
@@ -144,14 +146,37 @@ makeCardComponent cardType component options =
   eval ∷ CQ.CardQuery ~> CardDSL f
   eval = case _ of
     CQ.Initialize next → do
-      initializeInnerCard
+      st ← H.get
+      when (st.status ≡ CS.Active) do
+        initializeInnerCard
+        queryInnerCard EQ.Activate
       pure next
-    CQ.ActivateCard next →
-      queryInnerCard EQ.Activate $> next
-    CQ.DeactivateCard next →
-      queryInnerCard EQ.Deactivate $> next
     CQ.UpdateDimensions next → do
       updateDimensions $> next
+    CQ.PreloadCard next → do
+      st ← H.get
+      when (st.status ≡ CS.Pending) do
+        H.modify _ { status = CS.Initialized }
+        initializeInnerCard
+      pure next
+    CQ.HandleInput input next → do
+      st ← H.get
+      case st.status of
+        CS.Pending | input.active → do
+          H.modify _ { status = CS.Active }
+          initializeInnerCard
+          queryInnerCard EQ.Activate
+        CS.Initialized | input.active → do
+          H.modify _ { status = CS.Active }
+          queryInnerCard EQ.Activate
+        CS.Inactive | input.active → do
+          H.modify _ { status = CS.Active }
+          queryInnerCard EQ.Activate
+        CS.Active | not input.active → do
+          H.modify _ { status = CS.Inactive }
+          queryInnerCard EQ.Deactivate
+        _ → pure unit
+      pure next
     CQ.HandleEvalMessage msg next → do
       case msg of
         Card.Pending source (evalPort × varMap) → do
@@ -182,7 +207,7 @@ makeCardComponent cardType component options =
     cell ← H.lift $ P.getCard options.cardId
     for_ cell \{ bus, model, input, output, state } → do
       H.subscribe $ busEventSource (\msg → CQ.HandleEvalMessage msg H.Listening) bus
-      H.modify _ { bus = Just bus }
+      H.modify _ { bus = Just bus, status = CS.Active }
       queryInnerCard $ EQ.Load model
       for_ input (queryInnerCard ∘ uncurry EQ.ReceiveInput)
       for_ state (queryInnerCard ∘ EQ.ReceiveState)

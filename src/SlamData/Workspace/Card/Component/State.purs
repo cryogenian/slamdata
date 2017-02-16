@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Component.State
   ( CardState
+  , Status(..)
   , initialState
   ) where
 
@@ -23,16 +24,27 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Bus (BusRW)
 
+import SlamData.Workspace.Card.Component.Query (Input)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
+data Status
+  = Pending
+  | Initialized
+  | Active
+  | Inactive
+
+derive instance eqStatus ∷ Eq Status
+
 type CardState =
-  { bus ∷ Maybe (BusRW Card.EvalMessage)
+  { status ∷ Status
+  , bus ∷ Maybe (BusRW Card.EvalMessage)
   , levelOfDetails ∷ LevelOfDetails
   }
 
-initialState ∷ CardState
-initialState =
-  { bus: Nothing
+initialState ∷ Input → CardState
+initialState input =
+  { status: if input.active then Active else Pending
+  , bus: Nothing
   , levelOfDetails: High
   }
