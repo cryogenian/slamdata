@@ -41,7 +41,6 @@ import Halogen.Component.Utils.Throttled (throttledEventSource_)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
@@ -127,14 +126,14 @@ render accessType state =
       [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
 
   cardGuide =
-    HH.div
-      [ HP.classes (guard (state.guide /= Just CardGuide) $> B.hidden) ]
-      [ HH.slot' cpGuide CardGuide Guide.component GuideData.cardGuideSteps (HE.input (HandleGuideMessage CardGuide)) ]
+    if state.guide ≡ Just CardGuide
+      then HH.div_ [ HH.slot' cpGuide CardGuide Guide.component GuideData.cardGuideSteps (HE.input (HandleGuideMessage CardGuide)) ]
+      else HH.text ""
 
   flipGuide =
-    HH.div
-      [ HP.classes (guard (state.guide /= Just FlipGuide) $> B.hidden) ]
-      [ HH.slot' cpGuide FlipGuide Guide.component GuideData.flipGuideSteps (HE.input (HandleGuideMessage FlipGuide)) ]
+    if state.guide ≡ Just FlipGuide
+      then HH.div_ [ HH.slot' cpGuide FlipGuide Guide.component GuideData.flipGuideSteps (HE.input (HandleGuideMessage FlipGuide)) ]
+      else HH.text ""
 
   notifications =
     HH.slot' cpNotify unit (NC.component (NC.renderModeFromAccessType accessType)) unit (const Nothing)
