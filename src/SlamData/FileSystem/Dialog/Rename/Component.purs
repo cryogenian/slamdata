@@ -25,7 +25,6 @@ import Data.Lens ((^.), (%~), (.~), (?~), lens, Lens')
 import Data.Path.Pathy (printPath, parseAbsDir, sandbox, rootDir, (</>))
 import Data.String as S
 
-import DOM.Event.Types (Event, mouseEventToEvent)
 import DOM.Event.Event as DEE
 
 import Halogen as H
@@ -47,6 +46,7 @@ import SlamData.Render.Common (formGroup)
 import SlamData.Render.CSS as Rc
 
 import Utils.Path (DirPath, dropWorkspaceExt)
+import Utils.DOM as DOM
 
 type State =
   { showList ∷ Boolean
@@ -139,8 +139,8 @@ data Query a
   | DirClicked R.Resource a
   | SetSiblings (Array R.Resource) a
   | AddDirs (Array R.Resource) a
-  | PreventDefault Event a
-  | StopPropagation Event (Query a)
+  | PreventDefault DOM.Event a
+  | StopPropagation DOM.Event (Query a)
   | Init a
 
 type DSL = H.ComponentDSL State Query Message Slam
@@ -165,7 +165,7 @@ render dialog =
     $ HH.form
         [ HP.classes [ Rc.renameDialogForm ]
         , HE.onSubmit $ HE.input PreventDefault
-        , HE.onClick \e → Just $ StopPropagation (mouseEventToEvent e) $ H.action $ SetShowList false
+        , HE.onClick \e → Just $ StopPropagation (DOM.toEvent e) $ H.action $ SetShowList false
         ]
         [ nameInput
         , dirDropdownField
@@ -210,9 +210,8 @@ render dialog =
           [ HP.classes [ B.inputGroupBtn ] ]
           [ HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
-              -- TODO:
-              -- , HE.onClick \e →
-              --      Just $ StopPropagation (mouseEventToEvent e) $ action $ ToggleShowList
+              , HE.onClick \e →
+                   Just $ StopPropagation (DOM.toEvent e) $ H.action $ ToggleShowList
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
               ]
