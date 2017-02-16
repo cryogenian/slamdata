@@ -18,21 +18,15 @@ module SlamData.Dialog.Render where
 
 import SlamData.Prelude
 
---import Halogen.HTML.Events as HE
--- TODO : stopPropagation
---import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML as H
 
 import SlamData.Render.Common (classedDiv)
 
 modalDialog :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
 modalDialog children =
+  -- I think we don't need stopPropagation and preventDefault anymore
   (classedDiv $ H.ClassName "deck-dialog")
-  [ H.div
-    [ ]
---    [ HE.onClick (\_ -> HEH.stopPropagation $> Nothing)
---    , HE.onMouseDown (\_ -> HEH.stopPropagation $> Nothing)
---    ]
+  [ H.div_
     children
   ]
 
