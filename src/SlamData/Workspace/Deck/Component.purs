@@ -169,7 +169,6 @@ eval opts = case _ of
       H.modify (DCS._focused .~ true)
       { bus } ← H.lift Wiring.expose
       H.liftAff $ Bus.write (DeckFocused opts.deckId) bus.decks
-      presentAccessNextActionCardGuideAfterDelay
     pure next
   Defocus ev next → do
     st ← H.get
@@ -197,8 +196,9 @@ eval opts = case _ of
     st ← H.get
     case msg of
       DeckFocused focusedDeckId → do
-        when (opts.deckId ≡ focusedDeckId && not st.focused) $
+        when (opts.deckId ≡ focusedDeckId && not st.focused) do
           H.modify (DCS._focused .~ true)
+          presentAccessNextActionCardGuideAfterDelay
         when (opts.deckId ≠ focusedDeckId && st.focused) $
           H.modify (DCS._focused .~ false)
     pure next

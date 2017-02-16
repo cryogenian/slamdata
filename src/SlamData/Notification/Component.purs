@@ -25,6 +25,7 @@ module SlamData.Notification.Component
   , component
   , initialState
   , renderModeFromAccessType
+  , module N
   ) where
 
 import SlamData.Prelude
@@ -132,7 +133,7 @@ data Status
   = Current
   | Dismissed
 
-data Message = ExpandGlobalMenu
+type Message = N.Action
 
 type NotifyHTML = H.ComponentHTML Query
 
@@ -301,9 +302,12 @@ eval = case _ of
     pure $ reply H.Listening
   Dismiss next → dismissNotification $> next
   Action N.ExpandGlobalMenu next → do
-    H.raise ExpandGlobalMenu
+    H.raise N.ExpandGlobalMenu
     pure next
-  Action _ next → dismissNotification $> next
+  Action act next → do
+    dismissNotification
+    H.raise act
+    pure next
   ToggleDetail next → do
     current ← H.gets _.current
     for_ current \curr →

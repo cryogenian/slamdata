@@ -25,6 +25,7 @@ import Halogen as H
 import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Guide.StepByStep.Component as Guide
+import SlamData.Notification as N
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Guide (GuideType)
 
@@ -37,6 +38,7 @@ data Query a
   | Load (List DeckId) a
   | ExploreFile UP.FilePath a
   | PresentStepByStepGuide GuideType (H.SubscribeStatus → a)
-  | HandleGuideMessage GuideType Guide.Message a
   | Resize (H.SubscribeStatus → a)
   | SignIn ProviderR a
+  | HandleGuideMessage GuideType Guide.Message a
+  | HandleNotification N.Action a

@@ -367,6 +367,8 @@ eval = case _ of
     H.query' CS.cpHeader unit $ H.action $ Header.QueryGripper $ H.action $ Gripper.StartDragging 0.0
     H.query' CS.cpHeader unit $ H.action $ Header.QueryGripper $ H.action Gripper.StopDragging
     pure next
+  HandleNotifications _ next →
+    pure next
   HandleSearch m next → do
     salt ← H.liftEff newSalt
     st ← H.get

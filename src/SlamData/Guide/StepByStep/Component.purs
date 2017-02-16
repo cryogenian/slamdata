@@ -46,6 +46,7 @@ data Query a
   | Dismiss a
   | Next a
   | SetSteps (Array Step) a
+  | SetActiveStep Int a
 
 data Message = Dismissed
 
@@ -122,6 +123,12 @@ eval = case _ of
     H.raise Dismissed $> next
   Next next → do
     H.modify \st → st { activeStep = st.activeStep + 1 }
+    pure next
+  SetActiveStep ix next → do
+    st ← H.get
+    case Array.length st.steps of
+      0 → H.modify _ { activeStep = 0 }
+      n → H.modify _ { activeStep = clamp 0 (n - 1) ix }
     pure next
   SetSteps steps next → do
     st ← H.get

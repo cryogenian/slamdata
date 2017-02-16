@@ -21,9 +21,11 @@ module SlamData.Workspace.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (makeVar, peekVar, takeVar)
+import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar (makeVar, peekVar, takeVar, putVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Ref (readRef)
+import Control.Monad.Fork (fork)
 import Control.UI.Browser as Browser
 
 import Data.List as List
@@ -47,6 +49,7 @@ import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Header.Component as Header
+import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Monad (Slam)
 import SlamData.Notification.Component as NC
 import SlamData.Quasar as Quasar
@@ -159,15 +162,9 @@ render accessType state =
 eval ∷ Query ~> WorkspaceDSL
 eval = case _ of
   Init next → do
-    { bus, accessType } ← H.lift Wiring.expose
-    cardGuideStep ← initialCardGuideStep
-    -- TODO:
-    -- when (AT.isEditable accessType) do
-    --   H.modify _ { cardGuideStep = cardGuideStep }
+    { bus } ← H.lift Wiring.expose
     H.subscribe $ busEventSource (H.request ∘ PresentStepByStepGuide) bus.stepByStep
     H.subscribe $ throttledEventSource_ (Milliseconds 100.0) onResize (H.request Resize)
-    when (isNothing cardGuideStep) do
-      void $ queryDeck $ H.action Deck.DismissedCardGuide
     pure next
   PresentStepByStepGuide guideType reply → do
     H.modify (_ { guide = Just guideType })
@@ -184,15 +181,17 @@ eval = case _ of
   New next → do
     st ← H.get
     when (List.null st.cursor) do
-      runFreshWorkspace mempty
+      fork $ runFreshWorkspace mempty
+      initializeGuides
     pure next
   ExploreFile res next → do
     st ← H.get
     when (List.null st.cursor) do
-      runFreshWorkspace
+      fork $ runFreshWorkspace
         [ CM.Open (R.File res)
         , CM.Table JT.emptyModel
         ]
+      initializeGuides
     pure next
   Load cursor next → do
     st ← H.get
@@ -212,6 +211,7 @@ eval = case _ of
             for_ (GE.fromQError err) GE.raiseGlobalError
           Right _ → loadCursor cursor
       _ → loadCursor cursor
+    initializeGuides
     pure next
   SignIn providerR next → do
     { auth } ← H.lift Wiring.expose
@@ -228,6 +228,8 @@ eval = case _ of
         H.lift $ LocalStorage.setLocalStorage GuideData.dismissedFlipGuideKey true
     H.modify (_ { guide = Nothing })
     pure next
+  HandleNotification msg next →
+    handleNotification msg $> next
 
   where
   loadCursor cursor = do
@@ -289,18 +291,27 @@ runFreshWorkspace cards = do
   urlVarMaps ← H.liftEff $ readRef varMaps
   navigate $ WorkspaceRoute path cursor (WA.Load accessType) urlVarMaps
 
--- TODO:
--- peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
--- peek = (const (pure unit)) ⨁ const (pure unit) ⨁ peekNotification
---   where
---   peekNotification ∷ NC.Query a → WorkspaceDSL Unit
---   peekNotification = case _ of
---     NC.Action N.ExpandGlobalMenu _ → do
---       queryHeaderGripper $ Gripper.StartDragging 0.0 unit
---       queryHeaderGripper $ Gripper.StopDragging unit
---     NC.Action (N.Fulfill var) _ →
---       void $ H.liftAff $ Aff.attempt $ putVar var unit
---     _ → pure unit
+initializeGuides ∷ WorkspaceDSL Unit
+initializeGuides = do
+  { bus, accessType } ← H.lift Wiring.expose
+  initialCardGuideStep >>= case _ of
+    Nothing → do
+      void $ queryDeck $ H.action Deck.DismissedCardGuide
+    Just ix → when (AT.isEditable accessType) do
+      void $ H.query' cpGuide CardGuide $ H.action $ Guide.SetActiveStep ix
+      H.modify _ { guide = Just CardGuide }
+
+handleNotification ∷ NC.Action → WorkspaceDSL Unit
+handleNotification = case _ of
+  NC.ExpandGlobalMenu → do
+    queryHeaderGripper $ Gripper.StartDragging 0.0 unit
+    queryHeaderGripper $ Gripper.StopDragging unit
+  NC.Fulfill var →
+    void $ H.liftAff $ Aff.attempt $ putVar var unit
+
+queryHeaderGripper ∷ Gripper.Query Unit → WorkspaceDSL Unit
+queryHeaderGripper q =
+  void $ H.query' cpHeader unit $ Header.QueryGripper q unit
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck q = do
