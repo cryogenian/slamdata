@@ -136,7 +136,7 @@ render accessType state =
       else HH.text ""
 
   notifications =
-    HH.slot' cpNotify unit (NC.component (NC.renderModeFromAccessType accessType)) unit (const Nothing)
+    HH.slot' cpNotify unit (NC.component (NC.renderModeFromAccessType accessType)) unit (HE.input HandleNotification)
 
   header =
     if AT.isEditable accessType

@@ -163,4 +163,6 @@ render state =
 eval ∷ Query ~> DSL
 eval = case _ of
   Show dialog next → H.put (Just dialog) $> next
-  Raise msg next → H.raise msg $> next
+  Raise msg next → next <$ case msg of
+    Dismiss → H.put Nothing *> H.raise msg
+    _ → H.raise msg

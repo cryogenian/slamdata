@@ -356,11 +356,11 @@ render state =
               ]
               [ HH.text "Dismiss" ]
           ]
-        ⊕ foldMap renderShare state.tokenSecret
+        ⊕ (guard (isNothing state.tokenSecret) *> renderShare)
     ]
 
-  renderShare ∷ String → Array HTML
-  renderShare _ =
+  renderShare ∷ Array HTML
+  renderShare =
     [ HH.button
         [ HP.classes
             $ [ B.btn, B.btnPrimary ]
