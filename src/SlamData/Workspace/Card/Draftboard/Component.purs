@@ -87,10 +87,7 @@ evalCard opts = case _ of
     st ← H.get
     recalcRect
     void $ H.queryAll $ H.action DCQ.UpdateCardSize
-    pure $ reply
-      if not (List.null opts.deck.displayCursor) && st.layout == Pane.Cell Nothing
-      then Low
-      else High
+    pure $ reply High
 
 evalBoard ∷ CardOptions → Query ~> DraftboardDSL
 evalBoard opts = case _ of

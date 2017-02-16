@@ -152,7 +152,9 @@ makeCardComponent cardType component options =
         queryInnerCard EQ.Activate
       pure next
     CQ.UpdateDimensions next → do
-      updateDimensions $> next
+      st ← H.get
+      when (st.status ≠ CS.Pending) updateDimensions
+      pure next
     CQ.PreloadCard next → do
       st ← H.get
       when (st.status ≡ CS.Pending) do
@@ -208,11 +210,11 @@ makeCardComponent cardType component options =
     for_ cell \{ bus, model, input, output, state } → do
       H.subscribe $ busEventSource (\msg → CQ.HandleEvalMessage msg H.Listening) bus
       H.modify _ { bus = Just bus, status = CS.Active }
+      updateDimensions
       queryInnerCard $ EQ.Load model
       for_ input (queryInnerCard ∘ uncurry EQ.ReceiveInput)
       for_ state (queryInnerCard ∘ EQ.ReceiveState)
       for_ output (queryInnerCard ∘ uncurry EQ.ReceiveOutput)
-      updateDimensions
 
   updateDimensions ∷ CardDSL f Unit
   updateDimensions = do
