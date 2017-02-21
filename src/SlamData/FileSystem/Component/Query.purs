@@ -16,16 +16,33 @@ limitations under the License.
 
 module SlamData.FileSystem.Component.Query where
 
+import SlamData.Prelude
+
 import DOM.HTML.Types (HTMLElement)
+import DOM.Event.Types (Event)
 
 import SlamData.Common.Sort (Sort)
 import SlamData.FileSystem.Routing.Salt (Salt)
 import SlamData.GlobalError (GlobalError)
+import SlamData.FileSystem.Listing.Component as Listing
+import SlamData.FileSystem.Listing.Item (Item)
+import SlamData.FileSystem.Search.Component as Search
+import SlamData.FileSystem.Dialog.Component.Message as Dialog
+import SlamData.Notification.Component as Notification
 
 import Utils.Path (DirPath)
 
+type PageTransition =
+  { path ∷ DirPath
+  , query ∷ Maybe String
+  , sort ∷ Sort
+  , salt ∷ Salt
+  , isMount ∷ Boolean
+  }
+
 data Query a
   = Resort a
+  | Transition PageTransition a
   | SetPath DirPath a
   | SetSort Sort a
   | SetSalt Salt a
@@ -44,4 +61,13 @@ data Query a
   | DismissMountGuide a
   | DismissIntroVideo a
   | Init a
+  | PreventDefault Event (Query a)
   | HandleError GlobalError a
+  | HandleListing Listing.Message a
+  | HandleDialog Dialog.Message a
+  | HandleNotifications Notification.Message a
+  | HandleSearch Search.Message a
+  | SetLoading Boolean a
+  | SetIsSearching Boolean a
+  | AddListings (Array Item) a
+  | ShowError String a

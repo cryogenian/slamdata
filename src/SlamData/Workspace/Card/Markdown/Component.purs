@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Markdown.Component
   ( markdownComponent
   , module SlamData.Workspace.Card.Markdown.Component.Query
-  , module SlamData.Workspace.Card.Markdown.Component.State
   ) where
 
 import SlamData.Prelude
@@ -29,87 +28,60 @@ import Data.Lens ((^?))
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 
-import SlamData.Monad (Slam)
+import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Markdown.Component.Query (Query(..))
+import SlamData.Workspace.Card.Markdown.Component.State (State, initialState)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Common (CardOptions)
-import SlamData.Workspace.Deck.DeckId as DID
-import SlamData.Workspace.Card.Markdown.Component.Query (Query(..), QueryP)
-import SlamData.Workspace.Card.Markdown.Component.State (State, StateP, initialState, formStateToVarMap)
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Render.CSS as CSS
+import SlamData.Workspace.Deck.DeckId as DID
+import SlamData.Workspace.LevelOfDetails as LOD
 
 import Text.Markdown.SlamDown.Halogen.Component as SD
 
-markdownComponent ∷ CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-markdownComponent options = CC.makeCardComponent
-  { options
-  , cardType: CT.Markdown
-  , component:
-      H.lifecycleParentComponent
-        { render: render ("card-" <> uniqueCardId)
-        , eval
-        , peek: Just (peek ∘ H.runChildF)
-        , initializer: Just $ right (H.action Init)
-        , finalizer: Nothing
-        }
-  , initialState: H.parentState initialState
-  , _State: CC._MarkdownState
-  , _Query: CC.makeQueryPrism' CC._MarkdownQuery
-  }
+type MarkdownQuery = SD.SlamDownQuery Port.VarMapValue
+type HTML = CC.InnerCardParentHTML Query MarkdownQuery Unit
+type DSL = CC.InnerCardParentDSL State Query MarkdownQuery Unit
+
+markdownComponent ∷ CC.CardOptions → CC.CardComponent
+markdownComponent options =
+  CC.makeCardComponent CT.Markdown (H.lifecycleParentComponent
+    { render: render uniqueCardId
+    , eval: evalCard ⨁ evalComponent
+    , initialState: const initialState
+    , initializer: Just $ right $ H.action Init
+    , finalizer: Nothing
+    , receiver: const Nothing
+    }) options
   where
   uniqueCardId =
     foldMap DID.toString options.cursor <> CID.toString options.cardId
 
-type MarkdownHTML a =
-  H.ParentHTML
-    (SD.SlamDownState Port.VarMapValue)
-    (CC.CardEvalQuery ⨁ Query)
-    (SD.SlamDownQuery Port.VarMapValue)
-    Slam
-    a
-
-type MarkdownDSL =
-  H.ParentDSL
-    State
-    (SD.SlamDownState Port.VarMapValue)
-    (CC.CardEvalQuery ⨁ Query)
-    (SD.SlamDownQuery Port.VarMapValue)
-    Slam
-    Unit
-
 render
   ∷ String
   → State
-  → MarkdownHTML Unit
+  → HTML
 render formName st =
   case st.browserFeatures of
     Nothing → HH.div_ []
     Just browserFeatures → do
       HH.div
         [ HP.class_ CSS.form ]
-        [ HH.slot unit \_ →
-            { component: SD.slamDownComponent { formName, browserFeatures }
-            , initialState: SD.emptySlamDownState
-            }
+        [ HH.slot
+            unit
+            (SD.slamDownComponent { formName, browserFeatures })
+            unit
+            (HE.input (map right ∘ HandleMessage))
         ]
 
-eval ∷ (CC.CardEvalQuery ⨁ Query) ~> MarkdownDSL
-eval = evalCEQ ⨁ evalQ
-
-evalQ ∷ Query ~> MarkdownDSL
-evalQ (Init next) = do
-  browserFeatures ← H.fromEff detectBrowserFeatures
-  H.modify (_ { browserFeatures = Just browserFeatures })
-  pure next
-
-evalCEQ ∷ CC.CardEvalQuery ~> MarkdownDSL
-evalCEQ = case _ of
+evalCard ∷ CC.CardEvalQuery ~> DSL
+evalCard = case _ of
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -136,17 +108,15 @@ evalCEQ = case _ of
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions _ next →
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions _ reply →
+    pure $ reply LOD.High
 
-peek ∷ ∀ x. SD.SlamDownQuery Port.VarMapValue x → MarkdownDSL Unit
-peek = case _ of
-  SD.TextBoxChanged _ _ _ → CC.raiseUpdatedP' CC.EvalModelUpdate
-  SD.CheckBoxChanged _ _ _ _ → CC.raiseUpdatedP' CC.EvalModelUpdate
-  SD.DropDownChanged _ _ _ → CC.raiseUpdatedP' CC.EvalModelUpdate
-  SD.RadioButtonChanged _ _ _ → CC.raiseUpdatedP' CC.EvalModelUpdate
-  _ → pure unit
+evalComponent ∷ Query ~> DSL
+evalComponent = case _ of
+  Init next → do
+    browserFeatures ← H.liftEff detectBrowserFeatures
+    H.modify (_ { browserFeatures = Just browserFeatures })
+    pure next
+  HandleMessage _ next → do
+    H.raise CC.modelUpdate
+    pure next

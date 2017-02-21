@@ -16,21 +16,18 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.FormInput.Static.Component.Query where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 
-import Halogen as H
+import DOM.Event.Types (Event)
 
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
-import SlamData.Workspace.Card.Setups.FormInput.Static.Component.ChildSlot (ChildQuery, ChildSlot)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
 
 data Selection f
   = Value (f JCursor)
 
 data Query a
   = Select (Selection SelectAction) a
-
-type QueryC = CardEvalQuery ⨁ Query
-type QueryP = QueryC ⨁ H.ChildF ChildSlot ChildQuery
+  | HandleDPMessage (Message JCursorNode) a
+  | PreventDefault Event a

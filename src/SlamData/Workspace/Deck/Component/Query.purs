@@ -16,45 +16,49 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.Component.Query
   ( Query(..)
-  , QueryP
+  , Message(..)
   ) where
 
 import SlamData.Prelude
-
-import DOM.HTML.Types (HTMLElement)
-
-import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
-import Halogen.HTML.Events.Types (Event, MouseEvent)
-
 import SlamData.GlobalError (GlobalError)
+import SlamData.ActionList.Filter.Component as ActionF
+import SlamData.ActionList.Component as Action
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.Next.Component as Next
+import SlamData.Workspace.Deck.BackSide as Back
+import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Eval.Deck (EvalMessage)
 import SlamData.Wiring (DeckMessage)
+
+import Utils.DOM as DOM
 
 data Query a
   = Init a
   | PresentAccessNextActionCardGuide a
   | HideAccessNextActionCardGuide a
-  | Finish a
   | Publish a
   | FlipDeck a
-  | GrabDeck (Event MouseEvent) a
   | UpdateCardSize a
   | ZoomIn a
   | ZoomOut a
-  | StartSliding (Event MouseEvent) GripperDef a
-  | StopSlidingAndSnap (Event MouseEvent) a
-  | UpdateSliderPosition (Event MouseEvent) a
-  | SetCardElement (Maybe HTMLElement) a
+  | StartSliding GripperDef DOM.MouseEvent a
+  | StopSlidingAndSnap DOM.MouseEvent a
+  | UpdateSliderPosition DOM.MouseEvent a
   | StopSliderTransition a
-  | Focus a
-  | Defocus (Event MouseEvent) a
-  | HandleEval EvalMessage a
-  | HandleMessage DeckMessage a
-  | HandleError GlobalError a
+  | Focus DOM.MouseEvent a
+  | Defocus DOM.MouseEvent a
   | DismissedCardGuide a
   | DismissDialog a
   | GetActiveCard (Maybe CardId → a)
+  | HandleEval EvalMessage a
+  | HandleMessage DeckMessage a
+  | HandleError GlobalError a
+  | HandleNextAction Next.Message a
+  | HandleDialog Dialog.Message a
+  | HandleBackFilter ActionF.Message a
+  | HandleBackAction (Action.Message Back.BackAction) a
+  | HandleGrab DOM.MouseEvent a
 
-type QueryP = OpaqueQuery Query
+data Message
+  = GrabbedDeck DOM.MouseEvent

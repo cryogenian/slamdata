@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.Draftboard.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (later)
-
 import Data.Foldable (and, all, find)
 import Data.Int as Int
 import Data.List (List(..), (:))
@@ -29,9 +27,9 @@ import Data.Ord (abs)
 import Data.Rational (Rational, (%))
 
 import Halogen as H
-import Halogen.Component.Utils (liftH')
 import Halogen.Component.Utils.Drag as Drag
 
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
@@ -39,36 +37,33 @@ import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Common (CardOptions)
-import SlamData.Workspace.Card.Draftboard.Component.Common (DraftboardDSL)
+import SlamData.Workspace.Card.Draftboard.Component.Common (DraftboardDSL, rootRef)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..))
 import SlamData.Workspace.Card.Draftboard.Component.Render (render)
 import SlamData.Workspace.Card.Draftboard.Component.State (MoveLocation(..), initialState, modelFromState, updateRect, updateLayout)
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (emptyDeck)
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-import Utils.DOM (getOffsetClientRect)
+import Utils.DOM as DOM
 
 draftboardComponent ∷ CardOptions → CC.CardComponent
-draftboardComponent options = CC.makeCardComponent
-  { options
-  , cardType: CT.Draftboard
-  , component: H.parentComponent
-      { render: render options
-      , eval: coproduct evalCard (evalBoard options)
-      , peek: Just (peek options)
-      }
-  , initialState: H.parentState initialState
-  , _State: CC._DraftboardState
-  , _Query: CC.makeQueryPrism' CC._DraftboardQuery
-  }
+draftboardComponent options =
+  CC.makeCardComponent CT.Draftboard component options
+  where
+  component = H.parentComponent
+    { render: render options
+    , eval: coproduct (evalCard options) (evalBoard options)
+    , initialState: const initialState
+    , receiver: const Nothing
+    }
 
-evalCard ∷ CC.CardEvalQuery ~> DraftboardDSL
-evalCard = case _ of
+evalCard ∷ CardOptions → CC.CardEvalQuery ~> DraftboardDSL
+evalCard opts = case _ of
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -79,9 +74,7 @@ evalCard = case _ of
     case card of
       Card.Draftboard model → do
         H.modify (updateLayout model.layout)
-        -- TODO: Why??? Remove this when we update to newer Halogen
-        H.fromAff (later (pure unit))
-        void $ H.queryAll (right (H.action DCQ.UpdateCardSize))
+        void $ H.queryAll $ H.action DCQ.UpdateCardSize
       _ → pure unit
     pure next
   CC.ReceiveInput _ _ next →
@@ -90,24 +83,19 @@ evalCard = case _ of
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions dims next → do
+  CC.ReceiveDimensions dims reply → do
+    st ← H.get
     recalcRect
-    H.queryAll (right (H.action DCQ.UpdateCardSize))
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+    void $ H.queryAll $ H.action DCQ.UpdateCardSize
+    pure $ reply High
 
 evalBoard ∷ CardOptions → Query ~> DraftboardDSL
 evalBoard opts = case _ of
-  SetRoot el next → do
-    st ← H.get
-    H.modify _ { root = el }
-    pure next
   SplitStart orientation bias root ev next → do
+    H.liftEff $ DOM.stopPropagation (DOM.toEvent ev)
     st ← H.get
-    Drag.subscribe' ev (right ∘ H.action ∘ Splitting)
+    H.subscribe $ Drag.dragEventSource ev \drag →
+      Just (right (Splitting drag H.Listening))
     H.modify _ { splitOpts = Just { orientation, bias, root } }
     pure next
   Splitting ev next → do
@@ -176,11 +164,12 @@ evalBoard opts = case _ of
         H.modify
           $ updateLayout (fromMaybe st.layout result)
           ∘ _ { splitOpts = Nothing, splitLocation = Nothing }
-        H.queryAll (right (H.action DCQ.UpdateCardSize))
-        CC.raiseUpdatedP' CC.EvalModelUpdate
+        H.queryAll $ H.action DCQ.UpdateCardSize
+        H.raise CC.modelUpdate
     pure next
   ResizeStart edge ev next → do
     let
+      ev' = Drag.mouseEventToPageCoord ev
       loc =
         { edge
         , ratio: edge.ratio
@@ -188,10 +177,11 @@ evalBoard opts = case _ of
         , collapse: Nothing
         , offset: 0.0
         , initial: case edge.orientation of
-            Orn.Horizontal → ev.pageX
-            Orn.Vertical   → ev.pageY
+            Orn.Horizontal → ev'.pageX
+            Orn.Vertical   → ev'.pageY
         }
-    Drag.subscribe' ev (right ∘ H.action ∘ Resizing)
+    H.subscribe $ Drag.dragEventSource ev \drag →
+      Just (right (Resizing drag H.Listening))
     H.modify _ { resizeLocation = Just loc }
     pure next
   Resizing ev next → do
@@ -243,16 +233,22 @@ evalBoard opts = case _ of
         H.modify
           $ updateLayout (fromMaybe st.layout result)
           ∘ _ { resizeLocation = Nothing }
-        H.queryAll (right (H.action DCQ.UpdateCardSize))
-        CC.raiseUpdatedP' CC.EvalModelUpdate
+        H.queryAll $ H.action DCQ.UpdateCardSize
+        H.raise CC.modelUpdate
     pure next
   DeleteCell cursor next → do
     st ← H.get
     let
       result = Layout.deleteCell cursor st.layout
     H.modify (updateLayout (fromMaybe st.layout result))
-    H.queryAll (right (H.action DCQ.UpdateCardSize))
-    CC.raiseUpdatedP' CC.EvalModelUpdate
+    H.queryAll $ H.action DCQ.UpdateCardSize
+    H.raise CC.modelUpdate
+    pure next
+  GrabStart deckId ev next → do
+    st ← H.get
+    for_ (Map.lookup deckId st.cursors) \cursor →
+      H.subscribe $ Drag.dragEventSource ev \drag →
+        Just (right (Grabbing (deckId × cursor) drag H.Listening))
     pure next
   Grabbing (deckId × cursor) ev next → do
     st ← H.get
@@ -297,28 +293,15 @@ evalBoard opts = case _ of
             H.modify
               $ updateLayout (fromMaybe st.layout result)
               ∘ _ { moveLocation = Nothing }
-            void $ queryDeck deckId $ H.action DCQ.UpdateCardSize
-        CC.raiseUpdatedP' CC.EvalModelUpdate
+            void $ H.query deckId $ H.action DCQ.UpdateCardSize
+        H.raise CC.modelUpdate
     pure next
   AddDeck cursor next → do
     addDeck opts cursor
-    CC.raiseUpdatedP' CC.EvalModelUpdate
+    H.raise CC.modelUpdate
     pure next
-
-peek ∷ ∀ a. CardOptions → H.ChildF DeckId DNQ.QueryP a → DraftboardDSL Unit
-peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
-  where
-  peekDeck ∷ DCQ.Query a → DraftboardDSL Unit
-  peekDeck q' = do
-    st ← H.get
-    for_ (Map.lookup deckId st.cursors) \cursor →
-      case q' of
-        DCQ.GrabDeck ev _ → do
-          startDragging ev (Grabbing (deckId × cursor))
-        _ → pure unit
-
-  startDragging ev tag =
-    void $ Drag.subscribe' ev $ right ∘ H.action ∘ tag
+  PreventDefault ev next →
+    H.liftEff (DOM.preventDefault ev) $> next
 
 isCollapsing
   ∷ ∀ a
@@ -360,22 +343,21 @@ overlapping x y = find go
 
 recalcRect ∷ DraftboardDSL Unit
 recalcRect = do
-  st ← H.get
-  for_ st.root \root → do
-    rect ← H.fromEff (getOffsetClientRect root)
+  H.getHTMLElementRef rootRef >>= traverse_ \root → do
+    rect ← H.liftEff (DOM.getOffsetClientRect root)
     H.modify (updateRect rect)
 
 addDeck ∷ CardOptions → Pane.Cursor → DraftboardDSL Unit
 addDeck opts cursor = do
-  deckId × _ ← liftH' $ P.freshDeck emptyDeck (ED.Completed Port.emptyOut)
-  liftH' $ P.linkToParent opts.cardId deckId
+  deckId × _ ← H.lift $ P.freshDeck emptyDeck (ED.Completed Port.emptyOut)
+  H.lift $ P.linkToParent opts.cardId deckId
   st ← H.get
   let
     layout = Pane.modifyAt (const (Pane.Cell (Just deckId))) cursor st.layout
   H.modify
     $ updateLayout (fromMaybe st.layout layout)
     ∘ _ { inserting = false }
-  void $ queryDeck deckId (H.action DCQ.Focus)
+  H.lift $ Wiring.focusDeck deckId
 
 groupDeck
   ∷ Orn.Orientation
@@ -384,10 +366,7 @@ groupDeck
   → DeckId
   → DraftboardDSL Unit
 groupDeck orn bias deckFrom deckTo = do
-  mbActive ← queryDeck deckTo (H.request DCQ.GetActiveCard)
+  mbActive ← H.query deckTo (H.request DCQ.GetActiveCard)
   for_ mbActive case _ of
-    Just coord → liftH' $ P.groupDeck orn bias deckFrom deckTo coord
-    Nothing → liftH' $ P.wrapAndGroupDeck orn bias deckFrom deckTo
-
-queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
-queryDeck slot = H.query slot ∘ right
+    Just coord → H.lift $ P.groupDeck orn bias deckFrom deckTo coord
+    Nothing → H.lift $ P.wrapAndGroupDeck orn bias deckFrom deckTo

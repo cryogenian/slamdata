@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Chart.Pie.Component.State
   ( initialState
   , State
-  , StateP
   , _value
   , _valueAgg
   , _category
@@ -29,11 +28,7 @@ module SlamData.Workspace.Card.Setups.Chart.Pie.Component.State
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Setups.Chart.Pie.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Pie.Component.Query (QueryC, Selection)
+import SlamData.Workspace.Card.Setups.Chart.Pie.Component.Query (Selection)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.Chart.Pie.Model as M
@@ -43,7 +38,6 @@ type State = M.ReducedState (DS.CommonState JCursor Selection ())
 initialState ∷ State
 initialState =
   { axes: M.initialState.axes
-  , levelOfDetails: DS.initial.levelOfDetails
   , category: M.initialState.category
   , value: M.initialState.value
   , valueAgg: M.initialState.valueAgg
@@ -51,9 +45,6 @@ initialState =
   , parallel: M.initialState.parallel
   , picker: DS.initial.picker
   }
-
-type StateP =
-  ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
 _value ∷ ∀ r a. Lens' { value ∷ a | r } a
 _value = lens _.value _{ value = _ }

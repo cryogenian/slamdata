@@ -14,15 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Deck.Dialog.Reason.Component where
+module SlamData.Workspace.Deck.Dialog.Reason.Component
+  ( State
+  , Query(..)
+  , Message(..)
+  , component
+  ) where
 
 import SlamData.Prelude
 
 import Data.Array as Array
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CardType
@@ -34,65 +39,73 @@ type State =
   , cardPaths ∷ Array (Array InsertableCardType)
   }
 
-data Query a = Dismiss a
+data Query a = Raise Message a
 
-comp ∷ ∀ g. Functor g ⇒ H.Component State Query g
-comp = H.component { render, eval } where
+data Message = Dismiss
 
-  render ∷ State → H.ComponentHTML Query
-  render state =
-    HH.div
-    [ HP.classes [ HH.className "deck-dialog-embed" ] ]
-    [ HH.h4_
-        [ HH.text
-          $ "Couldn't insert a "
-          <> CardType.cardName state.attemptedCardType
-          <> " card into this deck"
-        ]
-    , HH.div
-        [ HP.classes [ HH.className "deck-dialog-body" ] ]
-        [ HH.p_
-            [ HH.text state.reason
-            ]
-        , HH.p_ renderCardPathsMessage
-        , HH.div_ $ map renderCardPath state.cardPaths
-        ]
-    , HH.div
-        [ HP.classes [ HH.className "deck-dialog-footer" ] ]
-        [ HH.button
-            [ HP.classes [ B.btn ]
-            , HE.onClick (HE.input_ $ Dismiss)
-            ]
-            [ HH.text "Dismiss" ]
-        ]
-    ]
-    where
-    renderCardPathsMessage =
-      case Array.length state.cardPaths of
-        0 → []
-        i →
-          [ HH.text
-              $ "To be able to insert a "
-              <> show (CardType.cardName state.attemptedCardType)
-              <> " card here you can add " <> setsOfCardsText i <> " first:"
+component ∷ ∀ m. H.Component HH.HTML Query State Message m
+component =
+  H.component
+    { initialState: id
+    , render
+    , eval
+    , receiver: const Nothing
+    }
+
+render ∷ State → H.ComponentHTML Query
+render state =
+  HH.div
+  [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
+  [ HH.h4_
+      [ HH.text
+        $ "Couldn't insert a "
+        <> CardType.cardName state.attemptedCardType
+        <> " card into this deck"
+      ]
+  , HH.div
+      [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
+      [ HH.p_
+          [ HH.text state.reason
           ]
+      , HH.p_ renderCardPathsMessage
+      , HH.div_ $ map renderCardPath state.cardPaths
+      ]
+  , HH.div
+      [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
+      [ HH.button
+          [ HP.classes [ B.btn ]
+          , HE.onClick (HE.input_ (Raise Dismiss))
+          ]
+          [ HH.text "Dismiss" ]
+      ]
+  ]
+  where
+  renderCardPathsMessage =
+    case Array.length state.cardPaths of
+      0 → []
+      i →
+        [ HH.text
+            $ "To be able to insert a "
+            <> show (CardType.cardName state.attemptedCardType)
+            <> " card here you can add " <> setsOfCardsText i <> " first:"
+        ]
 
-    onlySingleCardPaths = Array.nub (Array.length <$> state.cardPaths) == [1]
+  onlySingleCardPaths = Array.nub (Array.length <$> state.cardPaths) == [1]
 
-    setsOfCardsText =
-      case _ of
-        1 → if onlySingleCardPaths then "this card" else "these cards in order"
-        _ → if onlySingleCardPaths then "any of these cards" else "any of these sets of cards in order"
+  setsOfCardsText =
+    case _ of
+      1 → if onlySingleCardPaths then "this card" else "these cards in order"
+      _ → if onlySingleCardPaths then "any of these cards" else "any of these sets of cards in order"
 
-    renderCardPath cardPath =
-      HH.p
-        [ HP.classes [ HH.className "deck-dialog-cardpath" ] ]
-        (map renderCard cardPath)
+  renderCardPath cardPath =
+    HH.p
+      [ HP.classes [ HH.ClassName "deck-dialog-cardpath" ] ]
+      (map renderCard cardPath)
 
-    renderCard card =
-      HH.span
-        [ HP.classes [HH.className "deck-dialog-cardpath-card" ] ]
-        [ HH.text $ print card ]
+  renderCard card =
+    HH.span
+      [ HP.classes [HH.ClassName "deck-dialog-cardpath-card" ] ]
+      [ HH.text $ print card ]
 
-  eval ∷ Query ~> H.ComponentDSL State Query g
-  eval (Dismiss next) = pure next
+eval ∷ ∀ m. Query ~> H.ComponentDSL State Query Message m
+eval (Raise msg next) = H.raise msg $> next

@@ -29,22 +29,22 @@ import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
 import Data.List ((:))
 
+import DOM.Event.MouseEvent as ME
+
 import CSS (CSS)
 
 import Halogen as H
-import Halogen.HTML.CSS.Indexed (style)
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Events.Types (Event, MouseEvent)
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed (IProp(), I)
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.CSS (style)
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties (IProp())
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Render.CSS as ClassNames
-import SlamData.Guide as Guide
+import SlamData.Guide.Notification as Guide
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CardId
-import SlamData.Workspace.Card.Component as CardC
 import SlamData.Workspace.Card.Component.CSS as CardCSS
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Factory as Factory
@@ -63,12 +63,12 @@ import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
 
 import Utils as Utils
 import Utils.CSS as CSSUtils
+import Utils.DOM as DOM
 
 render ∷ DeckOptions → (DeckOptions → DeckComponent) → State → Boolean → DeckHTML
 render opts deckComponent st visible =
   HH.div
-    [ HP.key "deck-cards"
-    , HP.classes ([ ClassNames.cardSlider ] ⊕ (guard (not visible) $> ClassNames.invisible))
+    [ HP.classes ([ ClassNames.cardSlider ] ⊕ (guard (not visible) $> ClassNames.invisible))
     , HE.onTransitionEnd $ HE.input_ DCQ.StopSliderTransition
     , style do
         cardSliderTransformCSS (DCS.activeCardIndex st) st.sliderTranslateX
@@ -89,31 +89,30 @@ render opts deckComponent st visible =
     | nestedLayout && index ≠ activeIndex = HH.text ""
     | otherwise = renderCard opts deckComponent st activeIndex index card
 
-startSliding ∷ Event MouseEvent → GripperDef → DeckDSL Unit
-startSliding mouseEvent gDef = do
-  cardWidth ← H.gets _.cardElementWidth
+startSliding ∷ DOM.MouseEvent → GripperDef → Number → DeckDSL Unit
+startSliding mouseEvent gDef cardWidth = do
   H.modify
-    $ (DCS._initialSliderX .~ Just mouseEvent.screenX)
-    ∘ (DCS._initialSliderCardWidth .~ cardWidth)
+    $ (DCS._initialSliderX .~ Just (Int.toNumber (ME.screenX mouseEvent)))
+    ∘ (DCS._initialSliderCardWidth .~ Just cardWidth)
     ∘ (DCS._sliderTransition .~ false)
     ∘ (DCS._fadeTransition .~ DCS.FadeIn)
     ∘ (DCS._displayMode .~ (DCS.FrontSide DCS.NoDialog))
     ∘ (DCS._slidingTo ?~ gDef)
 
-stopSlidingAndSnap ∷ Event MouseEvent → DeckDSL Unit
+stopSlidingAndSnap ∷ DOM.MouseEvent → DeckDSL Unit
 stopSlidingAndSnap mEvent =
   H.modify
     $ stopSliding
     ∘ snap
     ∘ stateUpdateSliderPosition mEvent
 
-stateUpdateSliderPosition ∷ Event MouseEvent → State → State
+stateUpdateSliderPosition ∷ DOM.MouseEvent → State → State
 stateUpdateSliderPosition mouseEvent =
-  maybe id (Lens.set DCS._sliderTranslateX ∘ translateXCalc mouseEvent.screenX)
+  maybe id (Lens.set DCS._sliderTranslateX ∘ translateXCalc (Int.toNumber (ME.screenX mouseEvent)))
     <$> _.initialSliderX
     <*> id
 
-updateSliderPosition ∷ Event MouseEvent → DeckDSL Unit
+updateSliderPosition ∷ DOM.MouseEvent → DeckDSL Unit
 updateSliderPosition = H.modify ∘ stateUpdateSliderPosition
 
 translateXCalc ∷ Number → Number → Number
@@ -207,15 +206,13 @@ dropEffect false = "none"
 containerProperties
   ∷ ∀ a
   . State
-  → Array (IProp (onMouseUp ∷ I, onMouseLeave ∷ I, onMouseMove ∷ I | a) (Query Unit))
+  → Array (IProp (onMouseUp ∷ DOM.MouseEvent, onMouseLeave ∷ DOM.MouseEvent, onMouseMove ∷ DOM.MouseEvent | a) (Query Unit))
 containerProperties st =
   [ ARIA.dropEffect $ dropEffect $ willChangeActiveCardWhenDropped st ]
     ⊕ (guard (isJust st.initialSliderX)
-         $> (HE.onMouseUp \e →
-                pure $ Just (H.action (DCQ.StopSlidingAndSnap e))))
+         $> (HE.onMouseUp \e → Just (H.action (DCQ.StopSlidingAndSnap e))))
     ⊕ (guard (isJust st.initialSliderX)
-         $> (HE.onMouseLeave \e →
-                pure $ Just (H.action (DCQ.StopSlidingAndSnap e))))
+         $> (HE.onMouseLeave \e → Just (H.action (DCQ.StopSlidingAndSnap e))))
     ⊕ (guard (isJust st.initialSliderX)
          $> (HE.onMouseMove $ HE.input DCQ.UpdateSliderPosition))
 
@@ -258,8 +255,7 @@ renderCard
   → DeckHTML
 renderCard opts deckComponent st activeIndex index card =
   HH.div
-    [ HP.key (cardKey card)
-    , HP.classes classes
+    [ HP.classes classes
     , style $ cardPositionCSS index
     ]
     if opts.accessType == AT.ReadOnly
@@ -280,11 +276,11 @@ renderCard opts deckComponent st activeIndex index card =
   where
   cardComponent = pure case card of
     Left m → renderMeta st m
-    Right cd → renderDef opts deckComponent st cd
+    Right cd → renderDef opts deckComponent st (index ≡ activeIndex) cd
 
   classes =
     [ ClassNames.card
-    , HH.className case st.fadeTransition of
+    , HH.ClassName case st.fadeTransition of
         DCS.FadeIn   → "sd-fade-in"
         DCS.FadeOut  → "sd-fade-out"
         DCS.FadeNone → "sd-fade-none"
@@ -296,7 +292,7 @@ renderCard opts deckComponent st activeIndex index card =
   renderGuide =
     Guide.render
       Guide.RightArrow
-      (HH.className "sd-access-next-card-guide")
+      (HH.ClassName "sd-access-next-card-guide")
       DCQ.HideAccessNextActionCardGuide
       guideText
 
@@ -326,27 +322,18 @@ renderMeta st card =
     [ case card of
         DCS.PendingCard →
           HH.div
-            [ HP.classes [ HH.className "sd-card-pending" ] ]
-            [ HH.slot' ChildSlot.cpPending unit \_ →
-                { component: Pending.pendingCardComponent
-                , initialState: Pending.initialState
-                }
+            [ HP.classes [ HH.ClassName "sd-card-pending" ] ]
+            [ HH.slot' ChildSlot.cpPending unit Pending.pendingCardComponent unit absurd
             ]
         DCS.ErrorCard message →
           HH.div
-            [ HP.classes [ HH.className "sd-card-error" ] ]
-            [ HH.slot' ChildSlot.cpError unit \_ →
-                { component: Error.errorCardComponent
-                , initialState: { message }
-                }
+            [ HP.classes [ HH.ClassName "sd-card-error" ] ]
+            [ HH.slot' ChildSlot.cpError unit Error.errorCardComponent message absurd
             ]
         DCS.NextActionCard input →
           HH.div
-            [ HP.classes [ HH.className "sd-card-next-action" ] ]
-            [ HH.slot' ChildSlot.cpNext unit \_ →
-                { component: Next.nextCardComponent
-                , initialState: H.parentState (Next.initialState input)
-                }
+            [ HP.classes [ HH.ClassName "sd-card-next-action" ] ]
+            [ HH.slot' ChildSlot.cpNext unit Next.nextCardComponent input (HE.input DCQ.HandleNextAction)
             ]
     ]
 
@@ -354,27 +341,27 @@ renderDef
   ∷ DeckOptions
   → (DeckOptions → DeckComponent)
   → State
+  → Boolean
   → DCS.CardDef
   → DeckHTML
-renderDef opts deckComponent st { cardType, cardId } =
-  HH.slot' ChildSlot.cpCard cardId \_ →
-    let
-      cardOpts =
-        { deck: opts
-        , deckComponent
-        , cursor: opts.deckId : opts.cursor
-        , displayCursor: opts.deckId : opts.displayCursor
-        , cardId
-        }
-    in
-      { component: Factory.cardComponent cardType cardOpts
-      , initialState: H.parentState CardC.initialCardState
+renderDef opts deckComponent st active { cardType, cardId } =
+  let
+    cardOpts =
+      { deck: opts
+      , deckComponent
+      , cursor: opts.deckId : opts.cursor
+      , displayCursor: opts.deckId : opts.displayCursor
+      , cardId
       }
+    component =
+      Factory.cardComponent cardType cardOpts
+  in
+    HH.slot' ChildSlot.cpCard cardId component { active } absurd
 
 loadingPanel ∷ DeckHTML
 loadingPanel =
   HH.div
-    [ HP.classes [ HH.className "sd-pending-overlay" ] ]
+    [ HP.classes [ HH.ClassName "sd-pending-overlay" ] ]
     [ HH.div_
         [ HH.i_ []
         , HH.span_ [ HH.text "Please wait while this card is evaluated" ]

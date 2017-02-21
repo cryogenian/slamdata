@@ -18,36 +18,29 @@ module SlamData.Workspace.Card.FormInput.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpR, cpL, (:>))
+import Halogen.Component.ChildPath as CP
 
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Component as TLR
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Component as LR
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as M
 
-type ChildState =
-  TLR.State ⊹ LR.State ⊹ M.State
-type ChildQuery =
-  TLR.Query ⨁ LR.Query ⨁ M.Query
-type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit
+type ChildQuery = TLR.Query ⨁ LR.Query ⨁ M.Query ⨁ Const Void
+type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Void
 
 cpTextLike
-  ∷ ChildPath
-      TLR.State ChildState
+  ∷ CP.ChildPath
       TLR.Query ChildQuery
       Unit ChildSlot
-cpTextLike = cpL
+cpTextLike = CP.cp1
 
 cpLabeled
-  ∷ ChildPath
-      LR.State ChildState
+  ∷ CP.ChildPath
       LR.Query ChildQuery
       Unit ChildSlot
-cpLabeled = cpR :> cpL
+cpLabeled = CP.cp2
 
 cpMetric
-  ∷ ChildPath
-      M.State ChildState
+  ∷ CP.ChildPath
       M.Query ChildQuery
       Unit ChildSlot
-cpMetric = cpR :> cpR
+cpMetric = CP.cp3

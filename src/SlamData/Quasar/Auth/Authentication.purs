@@ -24,16 +24,12 @@ module SlamData.Quasar.Auth.Authentication
   , RequestIdTokenMessage
   ) where
 
-import Control.Coroutine as Coroutine
-import Control.Coroutine.Stalling (($$?))
-import Control.Coroutine.Stalling as StallingCoroutine
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (AVar, AVAR, AffAVar)
+import Control.Monad.Aff.AVar (AVar, AVAR)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus (BusRW, BusW)
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Aff.Future (Future)
 import Control.Monad.Aff.Future as Future
 import Control.Monad.Eff (Eff)
@@ -72,7 +68,7 @@ import SlamData.Config as Config
 import SlamData.Notification (NotificationOptions)
 import SlamData.Notification as Notification
 import SlamData.Prelude
-import SlamData.Quasar.Auth.IdTokenStorageEvents (getIdTokenStorageEvents)
+import SlamData.Quasar.Auth.IdTokenStorageEvents (pullIdTokenFromStorageEvent)
 import SlamData.Quasar.Auth.Keys as AuthKeys
 import SlamData.Quasar.Auth.Store as AuthStore
 
@@ -110,18 +106,6 @@ type AuthEffects eff =
   , dom ∷ DOM
   , random ∷ RANDOM
   | eff)
-
-firstValueFromStallingProducer
-  ∷ forall o eff
-  . StallingCoroutine.StallingProducer o (Aff (avar ∷ AVAR | eff)) Unit
-  → AffAVar eff o
-firstValueFromStallingProducer producer = do
-  firstValue ← AVar.makeVar
-  Aff.forkAff
-    $ StallingCoroutine.runStallingProcess
-        (producer $$? (Coroutine.consumer \o → liftAff (AVar.putVar firstValue o) $> Just unit))
-  val ← AVar.takeVar firstValue
-  pure val
 
 writeOnlyBus ∷ ∀ a. BusRW a → BusW a
 writeOnlyBus = snd ∘ Bus.split
@@ -341,7 +325,7 @@ getIdTokenFromLSOnChange
   → UnhashedNonce
   → Aff (AuthEffects eff) EIdToken
 getIdTokenFromLSOnChange providerR unhashedNonce =
-  getUnverifiedIdTokenFromLSOnChange
+  pullIdTokenFromStorageEvent
     >>= case _ of
       Left localStorageError →
         pure $ Left $ IdTokenUnavailable localStorageError
@@ -350,12 +334,6 @@ getIdTokenFromLSOnChange providerR unhashedNonce =
           (Left ∘ IdTokenInvalid ∘ Just )
           (if _ then Right idToken else Left $ IdTokenInvalid Nothing)
           <$> (liftEff $ verify providerR unhashedNonce idToken)
-
-getUnverifiedIdTokenFromLSOnChange
-  ∷ ∀ eff
-  . Aff (AuthEffects eff) (Either String IdToken)
-getUnverifiedIdTokenFromLSOnChange =
-  _.newValue <$> (firstValueFromStallingProducer =<< liftEff getIdTokenStorageEvents)
 
 runParseError ∷ ParseError → String
 runParseError (ParseError s) = s

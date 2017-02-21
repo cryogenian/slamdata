@@ -19,50 +19,58 @@ module SlamData.ActionList.Filter.Component where
 import SlamData.Prelude
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
 
 type State =
-  { filter ∷ String }
-
-initialState ∷ State
-initialState =
-  { filter: "" }
+  { description ∷ String
+  , filter ∷ String
+  }
 
 data Query a
   = Set String a
   | Get (String → a)
+  | UpdateDescription String a
+
+data Message = FilterChanged String
+
+type Input = String
 
 type HTML = H.ComponentHTML Query
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Message Slam
 
-comp ∷ String → H.Component State Query Slam
-comp descr =
+component ∷ H.Component HH.HTML Query Input Message Slam
+component =
   H.component
-    { render: render descr
+    { initialState:
+        { description: _
+        , filter: ""
+        }
+    , render
     , eval
+    , receiver: HE.input UpdateDescription
     }
 
-render ∷ String → State → HTML
-render descr state =
-  HH.form [ HP.classes [ HH.className "sd-action-filter" ] ]
+render ∷ State → HTML
+render state =
+  HH.form [ HP.classes [ HH.ClassName "sd-action-filter" ] ]
     [ HH.div_
         [ HH.div
-            [ HP.classes [ HH.className "sd-action-filter-icon" ] ]
+            [ HP.classes [ HH.ClassName "sd-action-filter-icon" ] ]
             [ RC.searchFieldIcon ]
         , HH.input
             [ HP.value state.filter
             , HE.onValueInput $ HE.input \s → Set s
-            , ARIA.label descr
-            , HP.placeholder descr
+            , ARIA.label state.description
+            , HP.placeholder state.description
             ]
         , HH.button
-            [ HP.buttonType HP.ButtonButton
+            [ HP.type_ HP.ButtonButton
             , HE.onClick $ HE.input_ $ Set ""
             , HP.enabled $ state.filter ≠ ""
             ]
@@ -72,8 +80,16 @@ render descr state =
 
 eval ∷ Query ~> DSL
 eval = case _ of
-  Set s next → do
-    H.modify _{ filter = s }
+  Set newFilter next → do
+    oldFilter ← H.gets _.filter
+    when (oldFilter /= newFilter) do
+      H.modify _{ filter = newFilter }
+      H.raise $ FilterChanged newFilter
     pure next
   Get cont → do
     H.gets $ cont ∘ _.filter
+  UpdateDescription newDesc next -> do
+    oldDesc ← H.gets _.description
+    when (oldDesc /= newDesc) $
+      H.modify _{ description = newDesc }
+    pure next

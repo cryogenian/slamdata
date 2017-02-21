@@ -16,16 +16,16 @@ limitations under the License.
 
 module SlamData.FileSystem.Component.CSS where
 
-import Halogen.HTML.Core (className, ClassName)
+import Halogen.HTML.Core (ClassName(..))
 
 filesystem ∷ ClassName
-filesystem = className "filesystem"
+filesystem = ClassName "filesystem"
 
 toolbarSort ∷ ClassName
-toolbarSort = className "toolbar-sort"
+toolbarSort = ClassName "toolbar-sort"
 
 toolbarMenu ∷ ClassName
-toolbarMenu = className "toolbar-menu"
+toolbarMenu = ClassName "toolbar-menu"
 
 hiddenFileInput ∷ ClassName
-hiddenFileInput = className "hidden-file-input"
+hiddenFileInput = ClassName "hidden-file-input"

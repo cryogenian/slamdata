@@ -14,15 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Search.Component.Query
-  ( SearchQuery(..)
-  , Query
-  ) where
+module SlamData.Workspace.Card.Search.Component.Query where
 
-import SlamData.Prelude
-
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-
-data SearchQuery a = UpdateSearch String a
-
-type Query = Coproduct CardEvalQuery SearchQuery
+data Query a = UpdateSearch String a

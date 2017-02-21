@@ -26,42 +26,46 @@ import SlamData.Prelude
 import Data.Path.Pathy (dir, (</>))
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Mount as QM
 import Quasar.Mount.MarkLogic (Format(..))
 
-import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MCS
 import SlamData.FileSystem.Resource (Mount(..))
-import SlamData.Quasar.Mount as API
+import SlamData.Monad (Slam)
 import SlamData.Quasar.Error as QE
+import SlamData.Quasar.Mount as API
 import SlamData.Render.CSS as Rc
 
 type Query = SettingsQuery MCS.State
 
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component MCS.State Query Slam
-comp = H.component { render, eval }
+comp ∷ H.Component HH.HTML Query Unit SettingsMessage Slam
+comp =
+  H.component
+    { initialState: const MCS.initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render ∷ MCS.State → HTML
 render state =
   HH.div
-    [ HP.key "mount-marklogic"
-    , HP.class_ Rc.mountMarkLogic
-    ]
+    [ HP.class_ Rc.mountMarkLogic ]
     [ MCR.section "Server" [ MCR.host state MCS._host' ]
     , MCR.section "Authentication"
         [ HH.div
             [ HP.class_ Rc.mountUserInfo ]
             [ MCR.label "Username" [ MCR.input state MCS._user [] ]
-            , MCR.label "Password" [ MCR.input state MCS._password [ HP.inputType HP.InputPassword ] ]
+            , MCR.label "Password" [ MCR.input state MCS._password [ HP.type_ HP.InputPassword ] ]
             ]
         ]
     , MCR.section "Root"
@@ -81,7 +85,7 @@ render state =
   formatRadio lbl val =
     HH.label_
       [ HH.input
-          [ HP.inputType HP.InputRadio
+          [ HP.type_ HP.InputRadio
           , HP.name "mlformat"
           , HP.checked (state.format ≡ val)
           , HE.onValueChange (HE.input_ (ModifyState _ { format = val }))
@@ -90,10 +94,12 @@ render state =
       ]
 
 
-eval ∷ Query ~> H.ComponentDSL MCS.State Query Slam
+eval ∷ Query ~> H.ComponentDSL MCS.State Query SettingsMessage Slam
 eval = case _ of
-  ModifyState f next →
-    H.modify f $> next
+  ModifyState f next → do
+    H.modify f
+    H.raise Modified
+    pure next
   Validate k →
     k <<< either Just (const Nothing) <<< MCS.toConfig <$> H.get
   Submit parent name k →

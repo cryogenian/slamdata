@@ -17,50 +17,47 @@ limitations under the License.
 module SlamData.Workspace.Card.Download.Component
   ( downloadComponent
   , module SlamData.Workspace.Card.Download.Component.Query
-  , module SlamData.Workspace.Card.Download.Component.State
   ) where
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (.~))
+import Data.Lens ((^?))
 import Data.Path.Pathy (printPath)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import Global as Global
 
 import Quasar.Paths as Paths
 
 import SlamData.Download.Model as D
-import SlamData.Monad (Slam)
 import SlamData.Quasar (reqHeadersToJSON, encodeURI)
 import SlamData.Quasar.Auth as API
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Download.Component.Query (Query, QueryP)
-import SlamData.Workspace.Card.Download.Component.State (State, _fileName, _levelOfDetails, _url, initialState)
+import SlamData.Workspace.Card.Download.Component.Query (Query)
+import SlamData.Workspace.Card.Download.Component.State (State, initialState)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.LevelOfDetails as LOD
 
 import Utils.DOM (getTextWidthPure)
 
-type HTML = H.ComponentHTML QueryP
-type DSL = H.ComponentDSL State QueryP Slam
+type HTML = CC.InnerCardHTML Query
+type DSL = CC.InnerCardDSL State Query
 
 downloadComponent ∷ CC.CardOptions → CC.CardComponent
-downloadComponent options = CC.makeCardComponent
-  { options
-  , cardType: CT.Download
-  , component: H.component { render, eval }
-  , initialState: initialState
-  , _State: CC._DownloadState
-  , _Query: CC.makeQueryPrism CC._DownloadQuery
-  }
+downloadComponent =
+  CC.makeCardComponent CT.Download $ H.component
+    { render: render
+    , eval: evalCard ⨁ (absurd ∘ unwrap)
+    , initialState: const initialState
+    , receiver: const Nothing
+    }
 
 render ∷ State → HTML
 render state =
@@ -76,17 +73,14 @@ render state =
 
 buttonText ∷ State → String
 buttonText state
-  | state.levelOfDetails ≡ Low = "Download"
+  | state.levelOfDetails ≡ LOD.Low = "Download"
   | otherwise = fullDownloadString state
 
 fullDownloadString ∷ State → String
 fullDownloadString state = "Download " ⊕ state.fileName
 
-eval ∷ QueryP ~> DSL
-eval = coproduct cardEval (absurd ∘ unwrap)
-
-cardEval ∷ CC.CardEvalQuery ~> DSL
-cardEval = case _ of
+evalCard ∷ CC.CardEvalQuery ~> DSL
+evalCard = case _ of
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -102,29 +96,22 @@ cardEval = case _ of
     pure next
   CC.ReceiveState _ next → do
     pure next
-  CC.ReceiveDimensions dims next → do
+  CC.ReceiveDimensions dims reply → do
     textWidth ← H.gets $ flip getTextWidthPure "normal 14px Ubuntu" ∘ _.fileName
     let
       buttonPadding = 24.0
       cardPadding = 24.0
       grippersWidth = 48.0
-    H.modify
-      $ _levelOfDetails
-      .~ if dims.width < textWidth + buttonPadding + cardPadding + grippersWidth
-           then Low
-           else High
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+    H.modify (_ { levelOfDetails =
+        if dims.width < textWidth + buttonPadding + cardPadding + grippersWidth
+        then LOD.Low
+        else LOD.High })
+    pure $ reply LOD.High
 
 handleDownloadPort ∷ Port.DownloadPort → DSL Unit
 handleDownloadPort opts = do
-  hs ← H.liftH API.authHeaders
-  H.modify
-    $ (_url .~ url hs)
-    ∘ (_fileName .~ (opts.targetName ⊕ ext))
+  hs ← H.lift API.authHeaders
+  H.modify (_ { url = url hs, fileName = opts.targetName ⊕ ext })
   where
   ext = D.extension opts.compress opts.options
 

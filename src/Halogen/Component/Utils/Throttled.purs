@@ -17,15 +17,18 @@ limitations under the License.
 module Halogen.Component.Utils.Throttled
   ( ThrottleEffects
   , throttledEventSource_
+  , throttledEventSource_'
   ) where
 
 import Prelude
 
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Ref (REF, Ref, newRef, readRef, writeRef)
 import Control.Monad.Eff.Timer (TIMER, setTimeout)
+import Control.Monad.Free.Trans as FT
 
 import Data.Either (Either(..))
 import Data.Int as Int
@@ -36,20 +39,54 @@ import Halogen.Query.EventSource as ES
 type ThrottleEffects eff = (ref :: REF, avar :: AVAR, timer :: TIMER | eff)
 
 throttledEventSource_
-  ∷ forall eff f g
-  . (Monad g, Affable (ThrottleEffects eff) g)
+  ∷ forall eff f m
+  . MonadAff (ThrottleEffects eff) m
   ⇒ Milliseconds
   → (Eff (ThrottleEffects eff) Unit -> Eff (ThrottleEffects eff) Unit)
-  → Eff (ThrottleEffects eff) (f Unit)
-  → ES.EventSource f g
-throttledEventSource_ (Milliseconds ms) attach handle =
-  ES.EventSource $
-    ES.produce \emit -> do
-      throttled ← newRef false
-      attach do
-        readRef throttled >>= if _
-          then pure unit
-          else do
-            writeRef throttled true
-            setTimeout (Int.floor ms) $ writeRef throttled false
-            emit <<< Left =<< handle
+  → f ES.SubscribeStatus
+  → ES.EventSource f m
+throttledEventSource_ ms attach query = ES.EventSource do
+  throttled ← liftEff $ newRef false
+  trailing ← liftEff $ newRef false
+  let producer = ES.produce (attach <<< throttledProducer throttled trailing ms query)
+  pure
+    { producer: FT.hoistFreeT liftAff producer
+    , done: pure unit
+    }
+
+throttledEventSource_'
+  ∷ forall eff f m
+  . MonadAff (ThrottleEffects eff) m
+  ⇒ Milliseconds
+  → (Eff (ThrottleEffects eff) Unit -> Eff (ThrottleEffects eff) (Eff (ThrottleEffects eff) Unit))
+  → f ES.SubscribeStatus
+  → ES.EventSource f m
+throttledEventSource_' ms attach query = ES.EventSource do
+  throttled ← liftEff $ newRef false
+  trailing ← liftEff $ newRef false
+  { producer, cancel } ← liftAff $
+    ES.produce' (attach <<< throttledProducer throttled trailing ms query)
+  pure
+    { producer: FT.hoistFreeT liftAff producer
+    , done: liftAff $ void $ cancel unit
+    }
+
+throttledProducer
+  ∷ forall eff a r
+  . Ref Boolean
+  → Ref Boolean
+  → Milliseconds
+  → a
+  → (Either a r -> Eff (ThrottleEffects eff) Unit)
+  → Eff (ThrottleEffects eff) Unit
+throttledProducer throttled trailing (Milliseconds ms) query emit = do
+  readRef throttled >>= if _
+    then writeRef trailing true
+    else do
+      writeRef throttled true
+      setTimeout (Int.floor ms) do
+        tr ← readRef trailing
+        writeRef throttled false
+        writeRef trailing false
+        when tr (emit $ Left query)
+      emit $ Left query

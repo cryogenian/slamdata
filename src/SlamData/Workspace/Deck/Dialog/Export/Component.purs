@@ -25,6 +25,7 @@ import Control.UI.Browser (select, locationString)
 
 import Data.Argonaut (encodeJson)
 import Data.Foldable as F
+import Data.Foreign (toForeign)
 import Data.Map as Map
 import Data.Path.Pathy as Pathy
 import Data.StrMap as SM
@@ -32,17 +33,14 @@ import Data.String as Str
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 
-import DOM.HTML.Types (HTMLElement, htmlElementToElement)
+import DOM.HTML.Types (htmlElementToElement, readHTMLElement)
 
 import Halogen as H
-import Halogen.CustomProps as CP
-import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.Component.Utils (raise)
 
 import OIDC.Crypt as OIDC
 
@@ -63,6 +61,7 @@ import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL)
 
 import Quasar.Advanced.Types as QTA
 
+import Utils.DOM as DOM
 import Utils (hush, prettyJson)
 import Utils.Path as UP
 
@@ -72,7 +71,7 @@ data PresentAs = IFrame | URI
 
 derive instance eqPresentAs ∷ Eq PresentAs
 
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Message Slam
 
 type State =
   { presentingAs ∷ PresentAs
@@ -90,11 +89,11 @@ type State =
   , loading ∷ Boolean
   }
 
-initialState ∷ SharingInput → State
-initialState =
-  { presentingAs: URI
-  , varMaps: Map.empty
-  , sharingInput: _
+initialState ∷ Input → State
+initialState input =
+  { presentingAs: input.presentingAs
+  , varMaps: input.varMaps
+  , sharingInput: input.sharingInput
   , permToken: Nothing
   , canRevoke: false
   , shouldGenerateToken: false
@@ -107,29 +106,48 @@ initialState =
   , loading: true
   }
 
+type Input =
+  { sharingInput ∷ SharingInput
+  , presentingAs ∷ PresentAs
+  , varMaps ∷ Map.Map CID.CardId Port.VarMap
+  }
+
 data Query a
-  = SelectElement HTMLElement a
-  | Init (Maybe HTMLElement) a
-  | Dismiss a
+  = SelectElement DOM.Event a
+  | Init a
   | Revoke a
   | ToggleShouldGenerateToken a
+  | PreventDefault DOM.Event a
+  | HandleCancel a
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+data Message = Dismiss
+
+copyButtonRef ∷ H.RefLabel
+copyButtonRef = H.RefLabel "copy"
+
+component ∷ H.Component HH.HTML Query Input Message Slam
+component =
+  H.lifecycleComponent
+    { initialState
+    , render
+    , eval
+    , initializer: Just (H.action Init)
+    , finalizer: Nothing
+    , receiver: const Nothing
+    }
 
 render ∷ State → H.ComponentHTML Query
 render state
   | state.presentingAs ≡ URI = renderPublishURI state
   | otherwise = renderPublishIFrame state
 
-
 renderPublishURI ∷ State → H.ComponentHTML Query
 renderPublishURI state =
-  HH.div [ HP.classes [ HH.className "deck-dialog-share" ] ]
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-share" ] ]
     [ HH.h4_ [ HH.text "Publish deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
             ⊕ if state.loading then [ ] else [ B.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -137,34 +155,31 @@ renderPublishURI state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-body" ]
+            $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         [ HH.p_ message
         , HH.form
-            [ CP.nonSubmit ]
+            [ HE.onSubmit (HE.input PreventDefault) ]
             [ HH.div
                 [ HP.classes [ B.inputGroup ] ]
                 $ [ HH.input
                     [ HP.classes [ B.formControl ]
                     , HP.value state.copyVal
-                    , HP.readonly true
+                    , HP.readOnly true
                     , HP.disabled state.submitting
                     , HP.title "Published deck URL"
                     , ARIA.label "Published deck URL"
-                    , HE.onClick \e →
-                        HEH.stopPropagation
-                          $> (guard (not state.submitting)
-                              $> (H.action (SelectElement e.target)))
+                    , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
                     ]
                   , HH.span
                       [ HP.classes [ B.inputGroupBtn ] ]
                       [ HH.button
                         [ HP.classes [ B.btn, B.btnDefault ]
-                        , HE.onClick (HE.input_ Dismiss)
-                        , HP.ref (H.action ∘ Init)
+                        , HE.onClick (HE.input_ HandleCancel)
+                        , HP.ref copyButtonRef
                         , HP.id_ "copy-button"
-                        , HP.buttonType HP.ButtonButton
+                        , HP.type_ HP.ButtonButton
                         , HP.disabled state.submitting
                         ]
                         [ glyph B.glyphiconCopy ]
@@ -174,7 +189,7 @@ renderPublishURI state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-footer" ]
+            $ [ HH.ClassName "deck-dialog-footer" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         $ [ HH.div
@@ -188,8 +203,8 @@ renderPublishURI state =
               ]
           , HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
-              , HE.onClick (HE.input_ Dismiss)
-              , HP.buttonType HP.ButtonButton
+              , HE.onClick (HE.input_ HandleCancel)
+              , HP.type_ HP.ButtonButton
               ]
               [ HH.text "Cancel" ]
           ]
@@ -199,7 +214,7 @@ renderPublishURI state =
                  , HE.onClick (HE.input_ Revoke)
                  , ARIA.label "Revoke access to this deck"
                  , HP.title "Revoke access to this deck"
-                 , HP.buttonType HP.ButtonButton
+                 , HP.type_ HP.ButtonButton
                  , HP.enabled $ state.canRevoke ∧ not state.submitting
                  ]
                  [ HH.text "Revoke" ])
@@ -237,11 +252,11 @@ renderPublishURI state =
 
 renderPublishIFrame ∷ State → H.ComponentHTML Query
 renderPublishIFrame state =
-  HH.div [ HP.classes [ HH.className "deck-dialog-embed" ] ]
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
     [ HH.h4_ [ HH.text  "Embed deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
             ⊕ if state.loading then [ ] else [ B.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -249,30 +264,26 @@ renderPublishIFrame state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-body" ]
+            $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         [ HH.form
-          [ CP.nonSubmit
-          ]
+          [ HE.onSubmit (HE.input PreventDefault) ]
           [ HH.div
               [ HP.classes [ B.formGroup ] ]
                 [ HH.textarea
                   [ HP.classes [ B.formControl, Rc.embedBox ]
-                  , HP.readonly true
+                  , HP.readOnly true
                   , HP.value state.copyVal
-                  , HE.onClick \e →
-                      HEH.stopPropagation
-                        $> (guard (not state.submitting)
-                            $> (H.action (SelectElement e.target)))
+                  , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
                   ]
                 , HH.button
                   [ HP.id_ "copy-button"
                   , HP.classes
                       $ [ B.btn, B.btnDefault, B.btnXs ]
-                      ⊕ [ HH.className "textarea-copy-button" ]
-                  , HP.ref (H.action ∘ Init)
-                  , HP.buttonType HP.ButtonButton
+                      ⊕ [ HH.ClassName "textarea-copy-button" ]
+                  , HP.ref copyButtonRef
+                  , HP.type_ HP.ButtonButton
                   , HP.disabled state.submitting
                   ]
                   [ glyph B.glyphiconCopy ]
@@ -280,7 +291,7 @@ renderPublishIFrame state =
                   [ (if state.isLoggedIn then HH.label_ else HH.p_)
                     $ ((guard state.isLoggedIn)
                        $> HH.input
-                           [ HP.inputType HP.InputCheckbox
+                           [ HP.type_ HP.InputCheckbox
                            , HP.checked state.shouldGenerateToken
                            , HP.disabled state.submitting
                            , HE.onChecked (HE.input_ ToggleShouldGenerateToken)
@@ -292,7 +303,7 @@ renderPublishIFrame state =
         ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-footer" ]
+            $ [ HH.ClassName "deck-dialog-footer" ]
             ⊕ if state.loading then [ B.hidden ] else [ ]
         ]
         $ [ HH.div
@@ -306,8 +317,8 @@ renderPublishIFrame state =
               ]
           , HH.button
               [ HP.classes [ B.btn ]
-              , HE.onClick (HE.input_ Dismiss)
-              , HP.buttonType HP.ButtonButton
+              , HE.onClick (HE.input_ HandleCancel)
+              , HP.type_ HP.ButtonButton
               ]
               [ HH.text "Cancel" ]
           ]
@@ -317,7 +328,7 @@ renderPublishIFrame state =
                 , HE.onClick (HE.input_ Revoke)
                 , HP.title "Revoke access to this deck"
                 , ARIA.label "Revoke access to this deck"
-                , HP.buttonType HP.ButtonButton
+                , HP.type_ HP.ButtonButton
                 , HP.enabled $ state.canRevoke ∧ not state.submitting
                 ]
                 [ HH.text "Revoke" ])
@@ -344,22 +355,20 @@ renderPublishIFrame state =
 
 
 eval ∷ Query ~> DSL
-eval (Dismiss next) = pure next
-eval (Init mbEl next) = next <$ do
+eval (Init next) = next <$ do
   state ← H.get
-
-  copyRef ← H.fromEff $ newRef ""
+  copyRef ← H.liftEff $ newRef ""
   H.modify _{copyRef = Just copyRef}
 
-  for_ mbEl \htmlEl →
-    H.fromEff
+  H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl →
+    H.liftEff
     $ Z.make (htmlElementToElement htmlEl)
     >>= Z.onCopy \z → do
       val ← readRef copyRef
       Z.setData "text/plain" val z
 
   -- To know if user is authed
-  mbAuthToken ← H.liftH Auth.getIdToken
+  mbAuthToken ← H.lift Auth.getIdToken
   case mbAuthToken of
     Nothing →
       H.modify _{ permToken = Nothing
@@ -401,7 +410,17 @@ eval (Init mbEl next) = next <$ do
                       }
   updateCopyVal
 
-eval (SelectElement el next) = next <$ H.fromEff (select el)
+eval (SelectElement ev next) = do
+  st ← H.get
+  H.liftEff do
+    DOM.stopPropagation ev
+    when (not st.submitting) do
+      DOM.currentTarget ev
+        # readHTMLElement ∘ toForeign
+        # runExcept
+        # traverse_ select
+  pure next
+
 eval (Revoke next) = do
   mbPermToken ← H.gets _.permToken
   for_ mbPermToken \tok → do
@@ -410,7 +429,7 @@ eval (Revoke next) = do
     H.modify _{submitting = false}
     case deleteRes of
       Left _ → H.modify _{ errored = true }
-      Right _ → raise $ Dismiss unit
+      Right _ → H.raise Dismiss
   pure next
 
 eval (ToggleShouldGenerateToken next) = next <$ do
@@ -418,7 +437,7 @@ eval (ToggleShouldGenerateToken next) = next <$ do
   case state.permToken of
     Nothing →
       unless state.shouldGenerateToken do
-        mbOIDC ← H.liftH Auth.getIdToken
+        mbOIDC ← H.lift Auth.getIdToken
         workspacePath ← H.gets (_.workspacePath ∘ _.sharingInput)
         for_ mbOIDC \oidc → do
           let
@@ -446,6 +465,11 @@ eval (ToggleShouldGenerateToken next) = next <$ do
   H.modify _{shouldGenerateToken = not state.shouldGenerateToken}
   updateCopyVal
 
+eval (PreventDefault ev next) =
+  H.liftEff (DOM.preventDefault ev) $> next
+eval (HandleCancel next) =
+  H.raise Dismiss $> next
+
 workspaceTokenName ∷ UP.DirPath → OIDC.IdToken → QTA.TokenName
 workspaceTokenName workspacePath idToken =
   let
@@ -464,13 +488,13 @@ workspaceTokenName workspacePath idToken =
 
 updateCopyVal ∷ DSL Unit
 updateCopyVal = do
-  locString ← H.fromEff locationString
+  locString ← H.liftEff locationString
   state ← H.get
   let
     copyVal = renderCopyVal locString state
 
   H.modify _{ copyVal = copyVal }
-  H.fromEff $ for_ state.copyRef \r → writeRef r copyVal
+  H.liftEff $ for_ state.copyRef \r → writeRef r copyVal
 
 renderCopyVal ∷ String → State → String
 renderCopyVal locString state

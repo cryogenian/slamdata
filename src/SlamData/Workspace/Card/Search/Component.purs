@@ -17,41 +17,36 @@ limitations under the License.
 module SlamData.Workspace.Card.Search.Component
   ( searchComponent
   , module SlamData.Workspace.Card.Search.Component.Query
-  , module SlamData.Workspace.Card.Search.Component.State
   ) where
 
 import SlamData.Prelude
 
-import Data.Lens ((.~))
-
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Monad (Slam)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Search.Component.Query (Query, SearchQuery(UpdateSearch))
-import SlamData.Workspace.Card.Search.Component.State (State, _searchString, initialState)
+import SlamData.Workspace.Card.Search.Component.Query (Query(..))
+import SlamData.Workspace.Card.Search.Component.State (State, initialState)
+import SlamData.Workspace.LevelOfDetails as LOD
 
-type DSL = H.ComponentDSL State Query Slam
-type HTML = H.ComponentHTML Query
+type DSL = CC.InnerCardDSL State Query
+type HTML = CC.InnerCardHTML Query
 
-searchComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-searchComponent options =
-  CC.makeCardComponent
-    { options
-    , cardType: CT.Search
-    , component: H.component { render, eval }
-    , initialState: initialState
-    , _State: CC._SearchState
-    , _Query: CC.makeQueryPrism CC._SearchQuery
+searchComponent ∷ CC.CardOptions → CC.CardComponent
+searchComponent =
+  CC.makeCardComponent CT.Search $ H.component
+    { render
+    , eval: coproduct cardEval searchEval
+    , initialState: const initialState
+    , receiver: const Nothing
     }
 
 render ∷ State → HTML
@@ -59,7 +54,7 @@ render state =
   HH.div
     [ HP.class_ CSS.form ]
     [ HH.input
-        [ HP.inputType HP.InputText
+        [ HP.type_ HP.InputText
         , HP.placeholder "Search string"
         , ARIA.label "Search string"
         , HE.onValueInput $ HE.input \str → right ∘ UpdateSearch str
@@ -73,9 +68,6 @@ render state =
         [ glyph B.glyphiconRemove ]
     ]
 
-eval ∷ Query ~> DSL
-eval = coproduct cardEval searchEval
-
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.Activate next →
@@ -87,7 +79,7 @@ cardEval = case _ of
     pure ∘ k $ Card.Search input
   CC.Load card next → do
     case card of
-      Card.Search input → H.modify $ _searchString .~ input
+      Card.Search input → H.modify (_ { searchString = input })
       _ → pure unit
     pure next
   CC.ReceiveInput _ _ next →
@@ -96,15 +88,11 @@ cardEval = case _ of
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions _ next →
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions _ reply →
+    pure $ reply LOD.High
 
-searchEval ∷ SearchQuery ~> DSL
+searchEval ∷ Query ~> DSL
 searchEval (UpdateSearch str next) = do
-  H.modify (_searchString .~ str)
-  CC.raiseUpdatedC' CC.EvalModelUpdate
+  H.modify (_ { searchString = str })
+  H.raise CC.modelUpdate
   pure next

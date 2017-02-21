@@ -26,21 +26,18 @@ import Data.List as List
 import Global (readFloat, isNaN)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
 import SlamData.Form.Select (_value)
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 
@@ -54,36 +51,25 @@ import SlamData.Workspace.Card.Setups.Chart.Scatter.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as M
 import SlamData.Workspace.Card.Eval.State (_Axes)
 
-type DSL =
-  H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
+import Utils.DOM as DOM
 
-type HTML =
-  H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 
-scatterBuilderComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-scatterBuilderComponent options = CC.makeCardComponent
-  { options
-  , cardType: CT.ChartOptions CHT.Scatter
-  , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
-  , initialState: H.parentState ST.initialState
-  , _State: CC._BuildScatterState
-  , _Query: CC.makeQueryPrism' CC._BuildScatterQuery
-  }
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+
+scatterBuilderComponent ∷ CC.CardOptions → CC.CardComponent
+scatterBuilderComponent =
+  CC.makeCardComponent (CT.ChartOptions CHT.Scatter) $ H.parentComponent
+    { render
+    , eval: cardEval ⨁ scatterBuilderEval
+    , initialState: const ST.initialState
+    , receiver: const Nothing
+    }
 
 render ∷ ST.State → HTML
 render state =
-  HH.div_
-    [ renderHighLOD state
-    , renderLowLOD (CT.cardIconDarkImg $ CT.ChartOptions CHT.Scatter) left state.levelOfDetails
-    ]
-
-renderHighLOD ∷ ST.State → HTML
-renderHighLOD state =
   HH.div
-    [ HP.classes
-        $ [ CSS.chartEditor ]
-        ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
-    ]
+    [ HP.classes [ CSS.chartEditor ] ]
     [ renderAbscissa state
     , renderOrdinate state
     , renderSize state
@@ -94,35 +80,34 @@ renderHighLOD state =
     , renderPicker state
     ]
 
-selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting ∷ ∀ f a. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
 selecting f q _ = right (Q.Select (f q) unit)
 
 renderPicker ∷ ST.State → HTML
 renderPicker state = case state.picker of
   Nothing → HH.text ""
   Just { options, select } →
-    HH.slot unit \_ →
-      { component: DPC.picker
-          { title: case select of
-              Q.Abscissa _ → "Choose x-axis"
-              Q.Ordinate _ → "Choose y-axis"
-              Q.Size _     → "Choose size"
-              Q.Series _   → "Choose series"
-              Q.Parallel _ → "Choose category"
-              _ → ""
-          , label: DPC.labelNode show
-          , render: DPC.renderNode show
-          , values: groupJCursors (List.fromFoldable options)
-          , isSelectable: DPC.isLeafPath
-          }
-      , initialState: H.parentState DPC.initialState
-      }
+    let
+      conf =
+        { title: case select of
+            Q.Abscissa _ → "Choose x-axis"
+            Q.Ordinate _ → "Choose y-axis"
+            Q.Size _     → "Choose size"
+            Q.Series _   → "Choose series"
+            Q.Parallel _ → "Choose category"
+            _ → ""
+        , label: DPC.labelNode show
+        , render: DPC.renderNode show
+        , values: groupJCursors (List.fromFoldable options)
+        , isSelectable: DPC.isLeafPath
+        }
+    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
 
 renderAbscissa ∷ ST.State → HTML
 renderAbscissa state =
   HH.form
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ BCI.pickerWithSelect
         (BCI.primary (Just "X-Axis") (selecting Q.Abscissa))
@@ -135,7 +120,7 @@ renderOrdinate ∷ ST.State → HTML
 renderOrdinate state =
   HH.form
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ BCI.pickerWithSelect
         (BCI.primary (Just "Y-Axis") (selecting Q.Ordinate))
@@ -148,7 +133,7 @@ renderSize ∷ ST.State → HTML
 renderSize state =
   HH.form
     [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ BCI.pickerWithSelect
         (BCI.primary (Just "Bubble size") (selecting Q.Size))
@@ -161,7 +146,7 @@ renderSeries ∷ ST.State → HTML
 renderSeries state =
   HH.form
     [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ BCI.pickerInput
         (BCI.secondary (Just "Series") (selecting Q.Series))
@@ -172,7 +157,7 @@ renderParallel ∷ ST.State → HTML
 renderParallel state =
   HH.form
     [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ BCI.pickerInput
         (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
@@ -183,7 +168,7 @@ renderMinSize ∷ ST.State → HTML
 renderMinSize state =
   HH.form
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Min size" ]
     , HH.input
@@ -198,7 +183,7 @@ renderMaxSize ∷ ST.State → HTML
 renderMaxSize state =
   HH.form
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max size" ]
     , HH.input
@@ -208,10 +193,6 @@ renderMaxSize state =
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMaxSymbolSize s)
         ]
     ]
-
-
-eval ∷ Q.QueryC ~> DSL
-eval = cardEval ⨁ scatterBuilderEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -235,37 +216,33 @@ cardEval = case _ of
       H.modify _{axes = axes}
       H.modify M.behaviour.synchronize
     pure next
-  CC.ReceiveDimensions dims next → do
-    H.modify
-      _ { levelOfDetails =
-            if dims.width < 576.0 ∨ dims.height < 416.0
-              then Low
-              else High
-        }
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions dims reply → do
+    pure $ reply
+      if dims.width < 576.0 ∨ dims.height < 416.0
+      then Low
+      else High
 
 raiseUpdate ∷ DSL Unit
 raiseUpdate = do
   H.modify M.behaviour.synchronize
-  CC.raiseUpdatedP' CC.EvalModelUpdate
+  H.raise CC.modelUpdate
 
 scatterBuilderEval ∷ Q.Query ~> DSL
 scatterBuilderEval = case _ of
+  Q.PreventDefault e next → do
+    H.liftEff $ DOM.preventDefault e
+    pure next
   Q.SetMinSymbolSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{minSize = fl}
-      CC.raiseUpdatedP' CC.EvalModelUpdate
+      H.raise CC.modelUpdate
     pure next
   Q.SetMaxSymbolSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{maxSize = fl}
-      CC.raiseUpdatedP' CC.EvalModelUpdate
+      H.raise CC.modelUpdate
     pure next
   Q.Select sel next → do
     case sel of
@@ -278,22 +255,11 @@ scatterBuilderEval = case _ of
       Q.Series a      → updatePicker ST._series Q.Series a
       Q.Parallel a    → updatePicker ST._parallel Q.Parallel a
     pure next
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-  updateSelect l = case _ of
-    BCI.Open _    → pure unit
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek = coproduct peekPicker (const (pure unit))
-  where
-  peekPicker = case _ of
-    DPC.Dismiss _ →
+  Q.HandleDPMessage msg next → case msg of
+    DPC.Dismiss → do
       H.modify _ { picker = Nothing }
-    DPC.Confirm value _ → do
+      pure next
+    DPC.Confirm value → do
       st ← H.get
       let
         value' = flattenJCursors value
@@ -306,3 +272,13 @@ peek = coproduct peekPicker (const (pure unit))
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
+      pure next
+
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+
+  updateSelect l = case _ of
+    BCI.Open _    → pure unit
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate

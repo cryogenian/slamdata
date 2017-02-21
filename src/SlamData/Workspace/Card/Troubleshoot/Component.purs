@@ -21,36 +21,35 @@ import SlamData.Prelude
 import Data.StrMap as SM
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Troubleshoot.Component.Query (QueryP)
-import SlamData.Workspace.Card.Troubleshoot.Component.State (State, initialState)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Troubleshoot.Component.Query (Query)
+import SlamData.Workspace.Card.Troubleshoot.Component.State (State, initialState)
+import SlamData.Workspace.LevelOfDetails as LOD
 
-type TroubleshootDSL = H.ComponentDSL State QueryP Slam
+type DSL = CC.InnerCardDSL State Query
+type HTML = CC.InnerCardHTML Query
 
-troubleshootComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-troubleshootComponent options =
-  CC.makeCardComponent
-    { options
-    , cardType: CT.Troubleshoot
-    , component: H.component { render, eval }
-    , initialState: initialState
-    , _State: CC._TroubleshootState
-    , _Query: CC.makeQueryPrism CC._TroubleshootQuery
+troubleshootComponent ∷ CC.CardOptions → CC.CardComponent
+troubleshootComponent =
+  CC.makeCardComponent CT.Troubleshoot $ H.component
+    { render: render
+    , eval: evalCard ⨁ (absurd ∘ unwrap)
+    , initialState: const initialState
+    , receiver: const Nothing
     }
 
-render ∷ State → H.ComponentHTML QueryP
+render ∷ State → HTML
 render { varMap } =
   HH.table
     [ HP.classes
-        [ HH.className "form-builder"
+        [ HH.ClassName "form-builder"
         , B.table
         , B.tableStriped
         ]
@@ -65,7 +64,7 @@ render { varMap } =
     ]
 
   where
-    renderItem ∷ String → Port.VarMapValue → Array (H.ComponentHTML QueryP)
+    renderItem ∷ String → Port.VarMapValue → Array HTML
     renderItem name val =
       [ HH.tr_
           [ HH.td_ [ HH.text name ]
@@ -73,10 +72,7 @@ render { varMap } =
           ]
       ]
 
-eval ∷ QueryP ~> TroubleshootDSL
-eval = coproduct evalCard (absurd ∘ unwrap)
-
-evalCard ∷ CC.CardEvalQuery ~> TroubleshootDSL
+evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
   CC.Activate next →
     pure next
@@ -93,9 +89,5 @@ evalCard = case _ of
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions _ next →
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions _ reply →
+    pure $ reply LOD.High

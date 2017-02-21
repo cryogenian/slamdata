@@ -29,118 +29,94 @@ import Data.List ((:))
 import Data.List as L
 
 import DOM (DOM)
-import DOM.HTML.HTMLElement (offsetWidth) as DOM
-import DOM.HTML.Types (HTMLElement, htmlElementToElement)
-import DOM.Node.Element (scrollWidth, setScrollLeft) as DOM
+import DOM.Classy.HTMLElement as DOM
+import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
-import Halogen.Component.Utils (raise')
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Column.Component as Column
-import SlamData.Workspace.MillerColumns.Component.Query (Query(..), Query')
-import SlamData.Workspace.MillerColumns.Component.State (State, State', columnPaths, initialState)
+import SlamData.Workspace.MillerColumns.Component.Query (Query(..), Message(..), Message')
+import SlamData.Workspace.MillerColumns.Component.State (State, columnPaths)
 
-import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions, InitialItemState(..), ItemQuery(..), ItemQuery', ItemHTML) as Exports
+import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions) as Exports
 
-type HTML a i s f = H.ParentHTML (Column.State' a i s f) (Query a i) (Column.Query' a i f) Slam (L.List i)
-type DSL a i s f = H.ParentDSL (State a i) (Column.State' a i s f) (Query a i) (Column.Query' a i f) Slam (L.List i)
+type HTML a i o = H.ParentHTML (Query a i o) (Column.Query a i o) (L.List i) Slam
+type DSL a i o = H.ParentDSL (State i) (Query a i o) (Column.Query a i o) (L.List i) (Message' a i o) Slam
 
-type RenderRec a i s f = { path ∷ L.List i, html ∷ Array (HTML a i s f) }
+type RenderRec a i o = { path ∷ L.List i, html ∷ Array (HTML a i o) }
 
 component
-  ∷ ∀ a i s f
+  ∷ ∀ a i f o
   . Ord i
-  ⇒ Column.ColumnOptions a i s f
-  → H.Component (State' a i s f) (Query' a i f) Slam
-component colSpec = H.parentComponent { render, eval, peek: Just peek }
+  ⇒ Column.ColumnOptions a i f o
+  → H.Component HH.HTML (Query a i o) (L.List i) (Message' a i o) Slam
+component colSpec =
+  H.parentComponent
+    { initialState: id
+    , render
+    , eval
+    , receiver: HE.input ChangeRoot
+    }
   where
 
-  render ∷ State a i → HTML a i s f
+  render ∷ State i → HTML a i o
   render state =
     HH.div
-      [ HP.class_ (HH.className "sd-miller-columns")
-      , HP.ref (H.action ∘ Ref)
+      [ HP.class_ (HH.ClassName "sd-miller-columns")
+      , HP.ref containerRef
       ]
       $ _.html
       $ foldr goColumn { path: L.Nil, html: [] } (columnPaths colSpec state)
 
-  goColumn ∷ L.List i → RenderRec a i s f → RenderRec a i s f
+  goColumn ∷ L.List i → RenderRec a i o → RenderRec a i o
   goColumn path acc = { path, html: acc.html <> [renderColumn path] }
 
-  renderColumn ∷ L.List i → HTML a i s f
+  renderColumn ∷ L.List i → HTML a i o
   renderColumn colPath =
     HH.div
-      [ HP.class_ (HH.className "sd-miller-column")
+      [ HP.class_ (HH.ClassName "sd-miller-column")
       , ARIA.label "Column"
-      , HP.ref (\_ → H.action Extended)
       ]
-      [ HH.slot colPath \_ →
-          { component: Column.component colSpec colPath
-          , initialState: H.parentState Column.initialState
-          }
-      ]
+      [ HH.slot colPath (Column.component colSpec colPath) unit (HE.input (HandleMessage colPath)) ]
 
-  eval ∷ Query a i ~> DSL a i s f
+  eval ∷ Query a i o ~> DSL a i o
   eval = case _ of
-    Ref mel next → do
-      H.modify (_ { element = mel })
-      pure next
-    Extended next → do
-      traverse_ (H.fromEff ∘ scrollToRight) =<< H.gets _.element
-      pure next
     Populate path next → do
-      H.modify (_ { path = path })
+      H.put path
       pure next
-    RaiseSelected _ _ next → do
+    ChangeRoot root next → do
+      currentPath ← H.get
+      let prefix = L.take (L.length root) root
+      when (prefix /= root) $ H.put root
       pure next
-
-  peek ∷ ∀ x. H.ChildF (L.List i) (Column.Query' a i f) x → DSL a i s f Unit
-  peek (H.ChildF colPath q) =
-    coproduct (peekColumn colPath) (peekColumnItem colPath) q
-
-  peekColumn
-    ∷ ∀ x
-    . L.List i
-    → Column.Query a x
-    → DSL a i s f Unit
-  peekColumn colPath = case _ of
-    Column.Deselect _ → do
-      raise' $ H.action $ Populate colPath
-      void $ H.query colPath $ left $ H.action $ Column.SetSelection Nothing
-      let prevCol = L.drop 1 colPath
-      selection ← join <$> H.query prevCol (left (H.request Column.GetSelection))
-      let selPath = maybe prevCol (\s → colSpec.id s : prevCol) selection
-      raise' $ H.action $ RaiseSelected selPath selection
-    _ → pure unit
-
-  peekColumnItem
-    ∷ ∀ x
-    . L.List i
-    → H.ChildF i (Column.ItemQuery' a f) x
-    → DSL a i s f Unit
-  peekColumnItem colPath (H.ChildF itemId q) =
-    coproduct (peekColumnItemCommon itemId colPath) (const (pure unit)) q
-
-  peekColumnItemCommon
-    ∷ ∀ x
-    . i
-    → L.List i
-    → Column.ItemQuery a x
-    → DSL a i s f Unit
-  peekColumnItemCommon itemId colPath = case _ of
-    Column.RaisePopulate selection _ → do
-      let itemPath = itemId : colPath
-      raise' $ H.action $ Populate itemPath
-      raise' $ H.action $ RaiseSelected itemPath (Just selection)
-      void $ H.query colPath $ left $ H.action $ Column.SetSelection (Just selection)
-    _ → pure unit
+    HandleMessage colPath msg next → do
+      case msg of
+        Left Column.Initialized →
+          traverse_ (H.liftEff ∘ scrollToRight) =<< H.getHTMLElementRef containerRef
+        Left Column.Deselected → do
+          H.put colPath
+          void $ H.query colPath $ H.action $ Column.SetSelection Nothing
+          let prevCol = L.drop 1 colPath
+          selection ← join <$> H.query prevCol (H.request Column.GetSelection)
+          let selPath = maybe prevCol (\s → colSpec.id s : prevCol) selection
+          H.raise $ Left (SelectionChanged selPath selection)
+        Left (Column.Selected itemPath selection) → do
+          H.put itemPath
+          void $ H.query colPath $ H.action $ Column.SetSelection (Just selection)
+          H.raise $ Left (SelectionChanged itemPath (Just selection))
+        Right o →
+          H.raise (Right o)
+      pure next
 
 scrollToRight ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Unit
-scrollToRight hel = do
-  let el = htmlElementToElement hel
-  maxScroll ← (-) <$> DOM.scrollWidth el <*> DOM.offsetWidth hel
+scrollToRight el = do
+  maxScroll ← (-) <$> DOM.scrollWidth el <*> DOM.offsetWidth el
   DOM.setScrollLeft maxScroll el
+
+containerRef ∷ H.RefLabel
+containerRef = H.RefLabel "container"

@@ -20,7 +20,7 @@ module SlamData.FileSystem.Breadcrumbs.Component
   , rootBreadcrumb
   , mkBreadcrumbs
   , Query(..)
-  , comp
+  , component
   ) where
 
 import SlamData.Prelude
@@ -29,58 +29,70 @@ import Data.List (List(..), (:), reverse)
 import Data.Path.Pathy (rootDir, runDirName, dirName, parentDir)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Common.Sort (Sort)
+import SlamData.Common.Sort (Sort(..))
 import SlamData.FileSystem.Routing (browseURL)
-import SlamData.FileSystem.Routing.Salt (Salt)
+import SlamData.FileSystem.Routing.Salt (Salt(..))
 
 import Utils.Path (DirPath)
 
 type State =
-  { breadcrumbs :: List Breadcrumb
-  , sort :: Sort
-  , salt :: Salt
+  { breadcrumbs ∷ List Breadcrumb
+  , sort ∷ Sort
+  , salt ∷ Salt
   }
 
 type Breadcrumb =
-  { name :: String
-  , link :: DirPath
+  { name ∷ String
+  , link ∷ DirPath
   }
 
-rootBreadcrumb :: Breadcrumb
+rootBreadcrumb ∷ Breadcrumb
 rootBreadcrumb =
   { name: "Home"
   , link: rootDir
   }
 
-mkBreadcrumbs :: DirPath -> Sort -> Salt -> State
+mkBreadcrumbs ∷ DirPath → Sort → Salt → State
 mkBreadcrumbs path sort salt =
   { breadcrumbs: reverse $ go Nil path
   , sort: sort
   , salt: salt
   }
   where
-  go :: List Breadcrumb -> DirPath -> List Breadcrumb
+  go ∷ List Breadcrumb → DirPath → List Breadcrumb
   go result p =
     let result' = { name: maybe "" runDirName (dirName p), link: p } : result
     in case parentDir p of
-      Just dir -> go result' dir
-      Nothing -> rootBreadcrumb : result
+      Just dir → go result' dir
+      Nothing → rootBreadcrumb : result
 
-data Query a = Update DirPath Sort Salt a
+data Query a = Set State a
 
-comp :: H.Component State Query Slam
-comp = H.component { render, eval }
+type Input =
+  { path ∷ DirPath
+  , sort ∷ Sort
+  , salt ∷ Salt
+  }
 
-render :: State -> H.ComponentHTML Query
+component ∷ H.Component HH.HTML Query Input Void Slam
+component =
+  H.component
+    { initialState: const { breadcrumbs: Nil, sort: Asc, salt: Salt "" }
+    , render
+    , eval
+    , receiver
+    }
+
+render ∷ State → H.ComponentHTML Query
 render r =
   HH.ol
     [ HP.classes [ B.breadcrumb, B.colXs7 ] ]
-    $ foldl (\views model -> view model <> views) [ ] r.breadcrumbs
+    $ foldl (\views model → view model <> views) [ ] r.breadcrumbs
   where
   view b =
     [ HH.li_
@@ -90,7 +102,11 @@ render r =
         ]
     ]
 
-eval :: Query ~> H.ComponentDSL State Query Slam
-eval (Update path sort salt next) = do
-  H.set $ mkBreadcrumbs path sort salt
+receiver ∷ Input → Maybe (Query Unit)
+receiver { path, sort, salt } =
+  Just $ H.action $ Set $ mkBreadcrumbs path sort salt
+
+eval ∷ Query ~> H.ComponentDSL State Query Void Slam
+eval (Set st next) = do
+  H.put st
   pure next

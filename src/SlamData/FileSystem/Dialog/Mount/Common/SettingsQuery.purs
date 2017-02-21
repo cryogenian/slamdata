@@ -28,3 +28,6 @@ data SettingsQuery s a
   = ModifyState (s -> s) a
   | Validate (Maybe String -> a)
   | Submit DirPath String (Either QError Mount -> a)
+
+data SettingsMessage
+  = Modified

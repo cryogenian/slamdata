@@ -22,47 +22,46 @@ import Data.Array as A
 import Data.List as L
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Variables.Component.State (State, initialState)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.FormBuilder.Component as FB
-import SlamData.Workspace.FormBuilder.Item.Component as Item
+import SlamData.Workspace.LevelOfDetails as LOD
 
-type HTML = H.ParentHTML (FB.StateP Slam) CC.CardEvalQuery FB.QueryP Slam Unit
-type DSL = H.ParentDSL State (FB.StateP Slam) CC.CardEvalQuery FB.QueryP Slam Unit
+type State = Unit
+data Query a = HandleMessage FB.Message a
 
-variablesComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-variablesComponent options =
-  CC.makeCardComponent
-    { options
-    , cardType: CT.Variables
-    , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
-    , initialState: H.parentState initialState
-    , _State: CC._VariablesState
-    , _Query: CC.makeQueryPrism CC._VariablesQuery
+type DSL = CC.InnerCardParentDSL State Query FB.Query Unit
+type HTML = CC.InnerCardParentHTML Query FB.Query Unit
+
+variablesComponent ∷ CC.CardOptions → CC.CardComponent
+variablesComponent =
+  CC.makeCardComponent CT.Variables $ H.parentComponent
+    { render: render
+    , eval: evalCard ⨁ evalComponent
+    , initialState: const unit
+    , receiver: const Nothing
     }
 
-render
-  ∷ State
-  → HTML
+render ∷ State → HTML
 render _ =
-  HH.slot unit \_ →
-   { component : FB.formBuilderComponent
-   , initialState : H.parentState FB.initialState
-   }
+  HH.slot
+    unit
+    FB.formBuilderComponent
+    unit
+    (HE.input $ map right ∘ HandleMessage)
 
-eval ∷ CC.CardEvalQuery ~> DSL
-eval = case _ of
+evalCard ∷ CC.CardEvalQuery ~> DSL
+evalCard = case _ of
   CC.Activate next →
     pure next
   CC.Deactivate next →
     pure next
   CC.Save k →
-    H.query unit (H.request (FB.GetItems ⋙ left)) <#>
+    H.query unit (H.request FB.GetItems) <#>
       maybe [] A.fromFoldable
         ⋙ { items: _ }
         ⋙ Card.Variables
@@ -70,7 +69,7 @@ eval = case _ of
   CC.Load card next → do
     case card of
       Card.Variables { items } →
-        void ∘ H.query unit $ H.action (FB.SetItems (L.fromFoldable items) ⋙ left)
+        void ∘ H.query unit $ H.action (FB.SetItems (L.fromFoldable items))
       _ → pure unit
     pure next
   CC.ReceiveInput _ _ next →
@@ -79,17 +78,11 @@ eval = case _ of
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions _ next →
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions _ reply →
+    pure $ reply LOD.High
 
-peek ∷ ∀ x. FB.QueryP x → DSL Unit
-peek = const (pure unit) ⨁ peekItemQuery ∘ H.runChildF
-
-peekItemQuery ∷ ∀ x. Item.Query x → DSL Unit
-peekItemQuery = case _ of
-  Item.Update _ → CC.raiseUpdatedP CC.EvalModelUpdate
-  _ → pure unit
+evalComponent ∷ Query ~> DSL
+evalComponent = case _ of
+  HandleMessage FB.ItemUpdated next → do
+    H.raise $ CC.modelUpdate
+    pure next

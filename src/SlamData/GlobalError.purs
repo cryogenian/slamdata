@@ -19,10 +19,7 @@ module SlamData.GlobalError where
 
 import SlamData.Prelude
 
-import Control.Monad.Free (Free, liftF)
-
-import Halogen.Query.EventSource as ES
-import Halogen.Query.HalogenF as HF
+import Halogen.Query (HalogenM)
 
 import Quasar.Error as QE
 
@@ -43,14 +40,8 @@ instance globalErrorDSLMaybeT ∷ (Monad m, GlobalErrorDSL m) ⇒ GlobalErrorDSL
 instance globalErrorDSLExceptT ∷ (Monad m, GlobalErrorDSL m) ⇒ GlobalErrorDSL (ExceptT e m) where
   raiseGlobalError = lift ∘ raiseGlobalError
 
-instance globalErrorDSLFree ∷ GlobalErrorDSL m ⇒ GlobalErrorDSL (Free m) where
-  raiseGlobalError = liftF ∘ raiseGlobalError
-
-instance globalErrorDSLHFC ∷ GlobalErrorDSL g ⇒ GlobalErrorDSL (HF.HalogenFP ES.EventSource s f g) where
-  raiseGlobalError = HF.QueryHF ∘ raiseGlobalError
-
-instance globalErrorDSLHFP ∷ GlobalErrorDSL g ⇒ GlobalErrorDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
-  raiseGlobalError = HF.QueryHF ∘ raiseGlobalError
+instance globalErrorDSLHalogenM ∷ (Monad m, GlobalErrorDSL m) ⇒ GlobalErrorDSL (HalogenM s f g p o m) where
+  raiseGlobalError = lift ∘ raiseGlobalError
 
 fromQError ∷ QE.QError → Either String GlobalError
 fromQError = case _ of

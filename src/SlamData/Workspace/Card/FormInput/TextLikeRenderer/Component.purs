@@ -21,18 +21,20 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor(..))
 import Data.Time.Duration (Milliseconds(..))
 
+import DOM.Classy.Event as DOM
+import DOM.Event.Types (Event)
+
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.Component.Utils (sendAfter)
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.CustomProps as Cp
-import Halogen.Component.Utils (raise, sendAfter)
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
-import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
+import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
+import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
 
 type State =
   { label ∷ Maybe String
@@ -54,62 +56,77 @@ data Query a
   | ValueChanged String a
   | Save (M.Model → a)
   | Load M.Model a
-  | Updated a
+  | PreventDefault Event a
+  | RaiseUpdated a
 
-type DSL = H.ComponentDSL State Query Slam
+data Message = Updated
+
+type DSL = H.ComponentDSL State Query Message Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+comp ∷ H.Component HH.HTML Query Unit Message Slam
+comp =
+  H.component
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render ∷ State → HTML
 render state =
   HH.form
-    [ Cp.nonSubmit ]
+    [ HE.onSubmit (HE.input PreventDefault) ]
     $ foldMap (\n → [ HH.h3_  [ HH.text n ] ]) state.label
     ⊕ [ HH.input
           [ HP.classes [ B.formControl ]
           , HP.value state.value
-          , HP.inputType $ inputTypeFromFIT state.formInputType
+          , HP.type_ $ inputTypeFromFIT state.formInputType
           , HE.onValueInput $ HE.input ValueChanged
           ]
       ]
 
 eval ∷ Query ~> DSL
-eval (ValueChanged s next) = do
-  H.modify _{ value = s }
-  raise $ H.action Updated
-  pure next
-eval (Setup p next) = do
-  st ← H.get
-  H.modify _
-    { label = if p.name ≡ "" then Nothing else Just p.name
-    , formInputType = p.formInputType
-    , cursor = p.cursor
-    -- If cursor field is changed we remove user selected value
-    -- I'm not sure that this is the most convenient way of
-    -- doing this, but empty data produced by incorrect `value` here is kinda weird
-    , value = if p.cursor ≠ st.cursor then "" else st.value
-    }
-  when (st.cursor ≠ p.cursor) $ void $ sendAfter (Milliseconds 200.0) $ H.action Updated
-  pure next
-eval (Save cont) = do
-  st ← H.get
-  pure
-    $ cont
-      { value: st.value
-      , cursor: st.cursor
-      , formInputType: st.formInputType
+eval = case _ of
+  ValueChanged s next → do
+    H.modify _{ value = s }
+    H.raise Updated
+    pure next
+  Setup p next → do
+    st ← H.get
+    H.modify _
+      { label = if p.name ≡ "" then Nothing else Just p.name
+      , formInputType = p.formInputType
+      , cursor = p.cursor
+      -- If cursor field is changed we remove user selected value
+      -- I'm not sure that this is the most convenient way of
+      -- doing this, but empty data produced by incorrect `value` here is kinda weird
+      , value = if p.cursor ≠ st.cursor then "" else st.value
       }
-eval (Load m next) = do
-  H.modify _
-    { value = m.value
-    , formInputType = m.formInputType
-    , cursor = m.cursor
-    }
-  pure next
-eval (Updated next) =
-  pure next
+    when (st.cursor ≠ p.cursor) $
+      void $ sendAfter (Milliseconds 200.0) RaiseUpdated
+    pure next
+  Save cont → do
+    st ← H.get
+    pure
+      $ cont
+        { value: st.value
+        , cursor: st.cursor
+        , formInputType: st.formInputType
+        }
+  Load m next → do
+    H.modify _
+      { value = m.value
+      , formInputType = m.formInputType
+      , cursor = m.cursor
+      }
+    pure next
+  PreventDefault ev next → do
+    H.liftEff $ DOM.preventDefault ev
+    pure next
+  RaiseUpdated next → do
+    H.raise Updated
+    pure next
 
 inputTypeFromFIT ∷ FormInputType → HP.InputType
 inputTypeFromFIT = case _ of

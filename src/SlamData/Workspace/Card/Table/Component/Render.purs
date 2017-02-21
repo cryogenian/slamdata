@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Table.Component.Render (render) where
+module SlamData.Workspace.Card.Table.Component.Render (HTML, render) where
 
 import SlamData.Prelude
 
@@ -24,20 +24,18 @@ import Data.Int as Int
 import Data.Json.JTable as JT
 import Data.String (singleton)
 
-import Halogen as H
-import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Table.Component.Query (QueryP, PageStep(..), Query(..))
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Table.Component.Query (PageStep(..), Query(..))
 import SlamData.Workspace.Card.Table.Component.State (State, currentPageInfo)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+
+type HTML = CC.InnerCardHTML Query
 
 -- | A value that holds all possible states for an inputtable value: the current
 -- | actual value, and a possible pending user-entered or selected value.
@@ -53,29 +51,23 @@ fromInputValue { current, pending } =
     Nothing → show current
     Just pending' → either id show pending'
 
-render ∷ State → H.ComponentHTML QueryP
-render state =
-  if state.levelOfDetails ≡ High
-    then renderHighLOD state
-    else renderLowLOD (CT.cardIconLightImg CT.Table) left state.levelOfDetails
-
-renderHighLOD ∷ State → H.ComponentHTML QueryP
-renderHighLOD st =
+render ∷ State → HTML
+render st =
   HH.div_
     $ flip foldMap st.result \result →
         let
           p = currentPageInfo st
         in
           [ HH.div
-              [ HP.classes [ HH.className "sd-card-table-content" ] ]
+              [ HP.classes [ HH.ClassName "sd-card-table-content" ] ]
               [ right <$> JT.renderJTable jTableOpts result.json ]
           , HH.div
-            [ HP.classes [CSS.pagination, CSS.form] ]
-            [ prevButtons (p.page <= 1)
-            , pageField { current: p.page, pending: st.page } p.totalPages
-            , nextButtons (p.page >= p.totalPages)
-            , pageSizeControls st.isEnteringPageSize { current: p.pageSize, pending: st.pageSize }
-            ]
+              [ HP.classes [CSS.pagination, CSS.form] ]
+              [ prevButtons (p.page <= 1)
+              , pageField { current: p.page, pending: st.page } p.totalPages
+              , nextButtons (p.page >= p.totalPages)
+              , pageSizeControls st.isEnteringPageSize { current: p.pageSize, pending: st.pageSize }
+              ]
           ]
 
 jTableOpts ∷ JT.JTableOpts
@@ -84,7 +76,7 @@ jTableOpts = JT.jTableOptsDefault
   , columnOrdering = JT.alphaOrdering
   }
 
-prevButtons ∷ Boolean → H.ComponentHTML QueryP
+prevButtons ∷ Boolean → HTML
 prevButtons enabled =
   HH.div
     [ HP.class_ CSS.formButtonGroup ]
@@ -102,28 +94,27 @@ prevButtons enabled =
         [ glyph B.glyphiconStepBackward ]
     ]
 
-pageField ∷ InputValue Int → Int → H.ComponentHTML QueryP
+pageField ∷ InputValue Int → Int → HTML
 pageField pageValue totalPages =
   HH.div_
     [ submittable
         [ HH.text "Page"
         , HH.input
-            [ HP.inputType HP.InputNumber
+            [ HP.type_ HP.InputNumber
             , HP.value (fromInputValue pageValue)
-            , HE.onValueInput (HE.input (\x → right ∘ SetCustomPage x))
+            , HE.onValueInput (HE.input (map right ∘ SetCustomPage))
             ]
         , HH.text $ "of " <> show totalPages
         ]
     ]
 
-submittable ∷ Array (H.ComponentHTML QueryP) → H.ComponentHTML QueryP
+submittable ∷ Array HTML → HTML
 submittable =
   HH.form
-    [ HE.onSubmit \_ →
-        HEH.preventDefault $> Just (H.action (right ∘ Update))
+    [ HE.onSubmit (HE.input (map right ∘ PreventDefault))
     ]
 
-nextButtons ∷ Boolean → H.ComponentHTML QueryP
+nextButtons ∷ Boolean → HTML
 nextButtons enabled =
   HH.div
     [ HP.class_ CSS.formButtonGroup ]
@@ -139,24 +130,23 @@ nextButtons enabled =
         [ glyph B.glyphiconFastForward ]
     ]
 
-pageSizeControls ∷ Boolean → InputValue Int → H.ComponentHTML QueryP
+pageSizeControls ∷ Boolean → InputValue Int → HTML
 pageSizeControls showCustom pageSize =
   HH.div_
     [ submittable
          $ [ HH.text "Per page:" ]
          ⊕ [ if showCustom
              then HH.input
-                [ HP.inputType HP.InputNumber
+                [ HP.type_ HP.InputNumber
                 , HP.value (fromInputValue pageSize)
-                , HE.onValueInput (HE.input (\v → right ∘ SetCustomPageSize v))
+                , HE.onValueInput (HE.input (map right ∘ SetCustomPageSize))
                 ]
              else HH.select
                 [ HE.onValueChange
-                    (HE.input \v →
-                      right ∘
-                        if v ≡ "Custom"
-                        then StartEnterCustomPageSize
-                        else ChangePageSize v)
+                    (HE.input \v → map right $
+                      if v ≡ "Custom"
+                      then StartEnterCustomPageSize
+                      else ChangePageSize v)
                 ]
                 pageOptions
            ]

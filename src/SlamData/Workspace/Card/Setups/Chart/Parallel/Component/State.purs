@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Chart.Parallel.Component.State
   ( initialState
   , State
-  , StateP
   , _dimension
   , _aggregation
   , _series
@@ -30,11 +29,7 @@ import Data.Argonaut (JCursor)
 import Data.Lens (Traversal', Lens', lens)
 import Data.Lens.Index (ix)
 
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Setups.Chart.Parallel.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Parallel.Component.Query (QueryC, Selection)
+import SlamData.Workspace.Card.Setups.Chart.Parallel.Component.Query (Selection)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.Chart.Parallel.Model as M
@@ -44,15 +39,11 @@ type State = M.ReducedState (DS.CommonState JCursor Selection ())
 initialState ∷ State
 initialState =
   { axes: M.initialState.axes
-  , levelOfDetails: DS.initial.levelOfDetails
   , picker: DS.initial.picker
   , dims: M.initialState.dims
   , aggs: M.initialState.aggs
   , series: M.initialState.series
   }
-
-type StateP =
-  ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
 _series ∷ ∀ r a. Lens' { series ∷ a | r } a
 _series = lens _.series _{ series = _ }

@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.State
   ( initialState
   , State
-  , StateP
   , _abscissa
   , _ordinate
   , _value
@@ -30,11 +29,7 @@ module SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.State
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.Query (QueryC, Selection)
+import SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.Query (Selection)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model as M
@@ -44,7 +39,6 @@ type State = M.ReducedState (DS.CommonState JCursor Selection ())
 initialState ∷ State
 initialState =
   { axes: M.initialState.axes
-  , levelOfDetails: DS.initial.levelOfDetails
   , minValue: M.initialState.minValue
   , maxValue: M.initialState.maxValue
   , isSchemeReversed: M.initialState.isSchemeReversed
@@ -56,9 +50,6 @@ initialState =
   , colorScheme: M.initialState.colorScheme
   , picker: DS.initial.picker
   }
-
-type StateP =
-  ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
 _abscissa ∷ ∀ a r. Lens' { abscissa ∷ a | r } a
 _abscissa = lens _.abscissa _{ abscissa = _ }

@@ -18,10 +18,9 @@ module SlamData.Workspace (main) where
 
 import SlamData.Prelude
 
-import Control.Coroutine (runProcess, await, ($$))
+import Control.Coroutine (Producer, Consumer, runProcess, await, ($$))
 import Control.Coroutine.Aff (produce)
 import Control.Monad.Aff (Aff, forkAff)
-import Control.Monad.Aff.Free (fromEff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (writeRef)
@@ -31,6 +30,7 @@ import Ace.Config as AceConfig
 
 import Data.Map.Diff as Diff
 import Data.Nullable (toMaybe)
+import Data.StrMap as SM
 
 import DOM.HTML.Document (body)
 import DOM.HTML (window)
@@ -41,11 +41,12 @@ import DOM.Node.Node (removeChild)
 import DOM.Node.Types (elementToNode)
 import DOM.Node.ParentNode (querySelector)
 
-import Halogen (Driver, runUI, parentState, interpret)
-import Halogen.Util (runHalogenAff, awaitBody)
+import Halogen as H
+import Halogen.Aff as HA
+import Halogen.VDom.Driver (runUI, HalogenIO)
 
 import SlamData.Config as Config
-import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
+import SlamData.Effects (SlamDataEffects)
 import SlamData.Monad (runSlam)
 import SlamData.Wiring (Wiring(..))
 import SlamData.Wiring as Wiring
@@ -53,6 +54,7 @@ import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
+import SlamData.Workspace.Card.Port.VarMap (URLVarMap)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse (resolveUrlVarMaps)
@@ -64,14 +66,15 @@ import Routing as Routing
 
 import Utils.Path as UP
 
-data RouterState = RouterState Routes Wiring (Driver Workspace.QueryP SlamDataRawEffects)
+type WorkspaceIO = HalogenIO Workspace.Query Void (Aff SlamDataEffects)
+data RouterState = RouterState Routes Wiring WorkspaceIO
 
 main ∷ Eff SlamDataEffects Unit
 main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
-  runHalogenAff $ forkAff routeSignal
+  HA.runHalogenAff $ forkAff routeSignal
   StyleLoader.loadStyles
 
 routeSignal ∷ Aff SlamDataEffects Unit
@@ -79,15 +82,17 @@ routeSignal = do
   runProcess (routeProducer $$ routeConsumer Nothing)
 
   where
+  routeProducer ∷ Producer Routes (Aff SlamDataEffects) Unit
   routeProducer = produce \emit →
     Routing.matches' UP.decodeURIPath routing \_ → emit ∘ Left
 
+  routeConsumer ∷ Maybe RouterState → Consumer Routes (Aff SlamDataEffects) Unit
   routeConsumer state  = do
     new ← await
     case new, state of
       -- Initialize the Workspace component
       WorkspaceRoute path deckId action varMaps, Nothing → do
-        permissionTokenHashes ← lift $ fromEff Permission.retrieveTokenHashes
+        permissionTokenHashes ← lift $ liftEff Permission.retrieveTokenHashes
         wiring ← lift $ Wiring.make path (toAccessType action) varMaps permissionTokenHashes
         mount wiring new
 
@@ -109,6 +114,11 @@ routeSignal = do
             lift $ setup new driver
             routeConsumer (Just (RouterState new wiring driver))
 
+  diffVarMaps
+    ∷ Wiring
+    → SM.StrMap URLVarMap
+    → SM.StrMap URLVarMap
+    → Aff SlamDataEffects Unit
   diffVarMaps (Wiring wiring) vm1 vm2 = do
     decks ← Cache.snapshot wiring.eval.decks
     cards ← Cache.snapshot wiring.eval.cards
@@ -120,6 +130,7 @@ routeSignal = do
       $ Diff.updated
       $ Diff.diff vm1' vm2'
 
+  reload ∷ Wiring → Routes → Consumer Routes (Aff SlamDataEffects) Unit
   reload (Wiring wiring) new@(WorkspaceRoute path _ action varMaps) = do
     wiring' ←
       if path ≡ wiring.path
@@ -128,12 +139,14 @@ routeSignal = do
     lift $ removeFromBody ".sd-workspace"
     mount wiring' new
 
+  mount ∷ Wiring → Routes → Consumer Routes (Aff SlamDataEffects) Unit
   mount wiring new@(WorkspaceRoute _ _ action _) = do
-    let ui = interpret (runSlam wiring) $ Workspace.comp (toAccessType action)
-    driver ← lift $ runUI ui (parentState Workspace.initialState) =<< awaitBody'
+    let ui = H.hoist (runSlam wiring) $ Workspace.component (toAccessType action)
+    driver ← lift $ runUI ui unit =<< awaitBody'
     lift $ setup new driver
     routeConsumer (Just (RouterState new wiring driver))
 
+  setup ∷ Routes → WorkspaceIO → Aff SlamDataEffects Unit
   setup new@(WorkspaceRoute _ deckId action varMaps) driver = do
     when (toAccessType action ≡ AT.ReadOnly) do
       isEmbedded ←
@@ -150,19 +163,15 @@ routeSignal = do
         =<< body
         =<< document
         =<< window
-
-    forkAff case action of
-      Load _ →
-        driver $ Workspace.toWorkspace $ Workspace.Load deckId
-      New →
-        driver $ Workspace.toWorkspace $ Workspace.New
-      Exploring fp →
-        driver $ Workspace.toWorkspace $ Workspace.ExploreFile fp
+    void $ forkAff case action of
+      Load _ → driver.query $ H.action $ Workspace.Load deckId
+      New → driver.query $ H.action Workspace.New
+      Exploring fp → driver.query $ H.action $ Workspace.ExploreFile fp
 
 awaitBody' ∷ Aff SlamDataEffects HTMLElement
 awaitBody' = do
   body ← liftEff $ map toMaybe $ window >>= document >>= body
-  maybe awaitBody pure body
+  maybe HA.awaitBody pure body
 
 removeFromBody ∷ String → Aff SlamDataEffects Unit
 removeFromBody sel = liftEff $ void $ runMaybeT do

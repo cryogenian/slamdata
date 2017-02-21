@@ -14,58 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Component.State
-  ( State
-  , initialState
-  , _cursor
-  , _stateMode
-  , _cardGuideStep
-  , _flipGuideStep
-  , cardGuideStepNext
-  , flipGuideStepNext
-  ) where
+module SlamData.Workspace.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (Lens', lens)
 import Data.List (List)
 
 import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.StateMode (StateMode(..))
+import SlamData.Workspace.Guide (GuideType)
 
 type State =
   { cursor ∷ List DeckId
   , stateMode ∷ StateMode
-  , cardGuideStep ∷ Maybe Int
-  , flipGuideStep ∷ Maybe Int
   , providers ∷ Array ProviderR
+  , guide ∷ Maybe GuideType
   }
 
 initialState ∷ State
 initialState =
   { cursor: mempty
   , stateMode: Loading
-  , cardGuideStep: Nothing
-  , flipGuideStep: Nothing
   , providers: mempty
+  , guide: Nothing
   }
-
-_cursor ∷ ∀ a r. Lens' { cursor ∷ a | r } a
-_cursor = lens _.cursor _ { cursor = _ }
-
-_stateMode ∷ Lens' State StateMode
-_stateMode = lens _.stateMode _ { stateMode = _ }
-
-_cardGuideStep ∷ Lens' State (Maybe Int)
-_cardGuideStep = lens _.cardGuideStep _ { cardGuideStep = _ }
-
-_flipGuideStep ∷ Lens' State (Maybe Int)
-_flipGuideStep = lens _.flipGuideStep _ { flipGuideStep = _ }
-
-cardGuideStepNext ∷ State → State
-cardGuideStepNext st = st { cardGuideStep = add 1 <$> st.cardGuideStep }
-
-flipGuideStepNext ∷ State → State
-flipGuideStepNext st = st { flipGuideStep = add 1 <$> st.flipGuideStep }

@@ -16,16 +16,13 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Metric.Component.Query where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 
-import Halogen (ChildF)
-
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.Setups.Chart.Metric.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import Utils.DOM as DOM
 
 data Selection f
   = Value (f JCursor)
@@ -35,6 +32,5 @@ data Query a
   = SetFormatter String a
   | SetLabel String a
   | Select (Selection SelectAction) a
-
-type QueryC = CardEvalQuery ⨁ Query
-type QueryP = QueryC ⨁ (ChildF ChildSlot ChildQuery)
+  | HandleDPMessage (Message JCursorNode) a
+  | PreventDefault DOM.Event a

@@ -16,9 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Table.Component.Query where
 
-import SlamData.Prelude
-
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
+import DOM.Event.Types (Event)
 
 data Query a
   = StepPage PageStep a
@@ -27,11 +25,10 @@ data Query a
   | SetCustomPageSize String a
   | StartEnterCustomPageSize a
   | Update a
+  | PreventDefault Event a
 
 data PageStep
   = First
   | Prev
   | Next
   | Last
-
-type QueryP = Coproduct CardEvalQuery Query

@@ -14,25 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.MillerColumns.Component.Query
-  ( Query(..)
-  , Query'
-  ) where
+module SlamData.Workspace.MillerColumns.Component.Query where
 
 import SlamData.Prelude
 
 import Data.List (List)
-
-import DOM.HTML.Types (HTMLElement)
-
-import Halogen as H
-
 import SlamData.Workspace.MillerColumns.Column.Component as Column
 
-data Query a i b
-  = Ref (Maybe HTMLElement) b
-  | Populate (List i) b
-  | Extended b
-  | RaiseSelected (List i) (Maybe a) b
+data Query a i o b
+  = Populate (List i) b
+  | ChangeRoot (List i) b
+  | HandleMessage (List i) (Column.Message' a i o) b
 
-type Query' a i f = Coproduct (Query a i) (H.ChildF (List i) (Column.Query' a i f))
+data Message a i
+  = SelectionChanged (List i) (Maybe a)
+
+type Message' a i o = Either (Message a i) o

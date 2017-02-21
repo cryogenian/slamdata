@@ -18,23 +18,22 @@ module SlamData.FileSystem.Dialog.Explore.Component where
 
 import SlamData.Prelude
 
-import Data.Lens (Lens', lens, (.~))
 import Data.Path.Pathy as Pt
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Config as Config
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.Monad (Slam)
 import SlamData.Render.Common (formGroup)
-import SlamData.Config as Config
 
 import Utils.Path as UP
-
 
 type State =
   { filePath ∷ UP.FilePath
@@ -47,21 +46,19 @@ initialState fp =
   , workspaceName: Config.newWorkspaceName
   }
 
-
-_filePath ∷ ∀ a r. Lens' {filePath ∷ a |r} a
-_filePath = lens (_.filePath) (_{filePath = _})
-
-_workspaceName ∷ ∀ a r. Lens' {workspaceName ∷ a|r} a
-_workspaceName = lens (_.workspaceName) (_{workspaceName = _})
-
-
 data Query a
-  = Explore UP.FilePath String a
+  = TryExplore UP.FilePath String a
   | NameTyped String a
-  | Dismiss a
+  | RaiseDismiss a
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+component ∷ H.Component HH.HTML Query UP.FilePath Message Slam
+component =
+  H.component
+    { initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render ∷ State → H.ComponentHTML Query
 render state =
@@ -69,32 +66,35 @@ render state =
     [ modalHeader "Explore file"
     , modalBody
       $ HH.form_
-          [ HH.h4_ [ HH.text
-                       $ "Create a new workspace in "
-                       ⊕ directory
-                       ⊕ " to explore "
-                       ⊕ fileName ]
+          [ HH.h4_
+              [ HH.text
+                  $ "Create a new workspace in "
+                  ⊕ directory
+                  ⊕ " to explore "
+                  ⊕ fileName
+              ]
           , formGroup
-              [ HH.input [ HP.classes [ B.formControl ]
-                         , HP.value state.workspaceName
-                         , HP.placeholder "New workspace name"
-                         , ARIA.label "New workspace name"
-                         , HE.onValueInput (HE.input NameTyped)
-                         ]
+              [ HH.input
+                  [ HP.classes [ B.formControl ]
+                  , HP.value state.workspaceName
+                  , HP.placeholder "New workspace name"
+                  , ARIA.label "New workspace name"
+                  , HE.onValueInput (HE.input NameTyped)
+                  ]
               ]
           ]
     , modalFooter
         [ HH.button
             [ HP.classes [ B.btn ]
-            , HE.onClick (HE.input_ Dismiss)
-            , HP.buttonType HP.ButtonButton
+            , HE.onClick (HE.input_ RaiseDismiss)
+            , HP.type_ HP.ButtonButton
             ]
             [ HH.text "Cancel" ]
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
             , HP.disabled $ state.workspaceName == ""
-            , HE.onClick (HE.input_ (Explore state.filePath state.workspaceName))
-            , HP.buttonType HP.ButtonButton
+            , HE.onClick (HE.input_ (TryExplore state.filePath state.workspaceName))
+            , HP.type_ HP.ButtonButton
             , ARIA.label "Explore file"
             ]
             [ HH.text "Explore" ]
@@ -105,7 +105,14 @@ render state =
     directory = Pt.printPath $ UP.getDir anyPath
     fileName = UP.getNameStr anyPath
 
-eval ∷ Query ~> (H.ComponentDSL State Query Slam)
-eval (Dismiss next) = pure next
-eval (Explore res name next) = pure next
-eval (NameTyped name next) = H.modify (_workspaceName .~ name) $> next
+eval ∷ Query ~> H.ComponentDSL State Query Message Slam
+eval = case _ of
+  RaiseDismiss next → do
+    H.raise Dismiss
+    pure next
+  TryExplore res name next → do
+    H.raise $ ExploreFile res name
+    pure next
+  NameTyped name next → do
+    H.modify (_ { workspaceName = name })
+    pure next

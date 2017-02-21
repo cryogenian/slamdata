@@ -18,14 +18,10 @@ module SlamData.Workspace.Card.Setups.FormInput.Datetime.Component
   ( datetimeSetupComponent
   ) where
 
-import Halogen as H
-
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component (textLikeSetupComponent)
-import SlamData.Workspace.Card.Setups.FormInput.Datetime.Def (def)
 
-datetimeSetupComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+datetimeSetupComponent ∷ CC.CardOptions → CC.CardComponent
 datetimeSetupComponent =
-  textLikeSetupComponent FIT.Datetime def
+  textLikeSetupComponent FIT.Datetime _.datetime

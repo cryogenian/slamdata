@@ -18,35 +18,29 @@ module SlamData.Quasar.Auth.IdTokenStorageEvents where
 
 import SlamData.Prelude
 
-import Control.Coroutine.Stalling (StallingProducer)
-import Control.Coroutine.Stalling as StallingCoroutine
-import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff)
+import Control.Monad.Aff (Aff, Canceler(..), makeAff')
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
 import Data.Argonaut (decodeJson, jsonParser)
-import Data.Foreign as Foreign
 import DOM (DOM)
 import OIDC.Crypt.Types (IdToken(..))
 import SlamData.Quasar.Auth.Keys as AuthKeys
-import Utils.LocalStorage (StorageEvent)
 import Utils.LocalStorage as LocalStorage
 
-getIdTokenStorageEvents
-  ∷ ∀ eff
-  . Eff (dom :: DOM, avar :: AVAR | eff) (StallingProducer (StorageEvent (Either String IdToken)) (Aff (dom :: DOM, avar :: AVAR | eff)) Unit)
-getIdTokenStorageEvents =
-  StallingCoroutine.mapStallingProducer valuesToEitherStringIdTokens
-    ∘ StallingCoroutine.filter isIdTokenKeyEvent
-    ∘ StallingCoroutine.producerToStallingProducer
-    <$> LocalStorage.getStorageEventProducer false
+pullIdTokenFromStorageEvent ∷ ∀ eff. Aff (dom ∷ DOM, ref ∷ REF | eff) (Either String IdToken)
+pullIdTokenFromStorageEvent = makeAff' \onError onSuccess → do
+  ref ← newRef Nothing
+  remove ← LocalStorage.onStorageEvent \ev → unsafePartial do
+    when (isIdTokenKeyEvent ev.key) do
+      Just remove' ← readRef ref
+      onSuccess (parseIdToken ev.newValue)
+      remove'
+  writeRef ref (Just remove)
+  pure $ Canceler \_ → liftEff remove $> true
+
   where
-  isIdTokenKeyEvent o =
-    runExcept (Foreign.readString o.key)
-      == (Right $ AuthKeys.hyphenatedSuffix AuthKeys.idTokenLocalStorageKey AuthKeys.fromRedirectSuffix)
-  valuesToEitherStringIdTokens e =
-    e
-      { newValue = foreignToEitherStringIdToken e.newValue
-      , oldValue = foreignToEitherStringIdToken e.oldValue
-      }
-  foreignToEitherStringIdToken =
-    map IdToken <=< decodeJson <=< jsonParser <=< lmap show ∘ runExcept ∘ Foreign.readString
+  isIdTokenKeyEvent =
+    eq (AuthKeys.hyphenatedSuffix AuthKeys.idTokenLocalStorageKey AuthKeys.fromRedirectSuffix)
+
+  parseIdToken =
+    map IdToken <=< decodeJson <=< jsonParser

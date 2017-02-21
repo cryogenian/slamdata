@@ -22,38 +22,40 @@ module SlamData.Wiring
   , CacheWiring
   , BusWiring
   , DeckMessage(..)
-  , StepByStepGuide(..)
   , ActiveState
   , PendingEval
   , PendingSave
   , make
   , unWiring
   , expose
+  , focusDeck
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Aff.AVar (AVar, makeVar)
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (Ref, newRef)
 
 import Data.StrMap (StrMap)
 
+import SlamData.AuthenticationMode (AllowedAuthenticationModes, allowedAuthenticationModesForAccessType)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
+import SlamData.GlobalMenu.Bus (SignInBus)
 import SlamData.Notification as N
 import SlamData.Quasar.Auth.Authentication as Auth
-import SlamData.AuthenticationMode (AllowedAuthenticationModes, allowedAuthenticationModesForAccessType)
-import SlamData.GlobalMenu.Bus (SignInBus)
+import SlamData.Wiring.Cache (Cache)
+import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
-import SlamData.Wiring.Cache (Cache)
-import SlamData.Wiring.Cache as Cache
+import SlamData.Workspace.Guide (GuideType)
 
 import Quasar.Advanced.Types (TokenHash)
 
@@ -61,10 +63,6 @@ import Utils.Path (DirPath)
 
 data DeckMessage
   = DeckFocused DeckId
-
-data StepByStepGuide
-  = CardGuide
-  | FlipGuide
 
 type ActiveState =
   { cardIndex ∷ Int
@@ -108,7 +106,7 @@ type BusWiring =
   { decks ∷ Bus.BusRW DeckMessage
   , notify ∷ Bus.BusRW N.NotificationOptions
   , globalError ∷ Bus.BusRW GE.GlobalError
-  , stepByStep ∷ Bus.BusRW StepByStepGuide
+  , stepByStep ∷ Bus.BusRW GuideType
   }
 
 type WiringR =
@@ -128,29 +126,29 @@ unWiring (Wiring w) = w
 
 expose
   ∷ ∀ m
-  . (MonadAsk Wiring m)
+  . MonadAsk Wiring m
   ⇒ m WiringR
 expose = unWiring <$> ask
 
 make
   ∷ ∀ m
-  . (Affable SlamDataEffects m)
+  . MonadAff SlamDataEffects m
   ⇒ DirPath
   → AccessType
   → StrMap Port.URLVarMap
   → Array TokenHash
   → m Wiring
-make path accessType vm permissionTokenHashes = fromAff do
+make path accessType vm permissionTokenHashes = liftAff do
   eval ← makeEval
   auth ← makeAuth
   cache ← makeCache
   bus ← makeBus
-  varMaps ← fromEff (newRef vm)
+  varMaps ← liftEff (newRef vm)
   pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus }
 
   where
   makeEval = do
-    tick ← fromEff (newRef 0)
+    tick ← liftEff (newRef 0)
     root ← makeVar
     cards ← Cache.make
     decks ← Cache.make
@@ -159,7 +157,7 @@ make path accessType vm permissionTokenHashes = fromAff do
     pure { tick, root, cards, decks, pendingEvals, pendingSaves }
 
   makeAuth = do
-    hasIdentified ← fromEff (newRef false)
+    hasIdentified ← liftEff (newRef false)
     requestToken ← Auth.authentication
     signIn ← Bus.make
     let allowedModes = allowedAuthenticationModesForAccessType accessType
@@ -175,3 +173,14 @@ make path accessType vm permissionTokenHashes = fromAff do
     globalError ← Bus.make
     stepByStep ← Bus.make
     pure { decks, notify, globalError, stepByStep }
+
+focusDeck
+  ∷ ∀ m
+  . ( MonadAsk Wiring m
+    , MonadAff SlamDataEffects m
+    )
+  ⇒ DeckId
+  → m Unit
+focusDeck deckId = do
+  { bus } ← expose
+  liftAff $ Bus.write (DeckFocused deckId) bus.decks

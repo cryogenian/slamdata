@@ -18,15 +18,7 @@ module SlamData.Workspace.Card.Next.Component.State where
 
 import Data.Lens (Lens', lens)
 
-import Halogen as H
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Next.Component.Query (Query)
-import SlamData.Workspace.Card.Next.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Port (Port)
-
-type StateP =
-  H.ParentState State CS.ChildState Query CS.ChildQuery Slam CS.ChildSlot
 
 type State =
   { input ∷ Port
@@ -35,9 +27,9 @@ type State =
 
 initialState ∷ Port → State
 initialState input =
-    { input
-    , presentAddCardGuide: false
-    }
+  { input
+  , presentAddCardGuide: false
+  }
 
 _input ∷ ∀ a r. Lens' { input ∷ a | r } a
 _input = lens _.input (_ { input = _ })

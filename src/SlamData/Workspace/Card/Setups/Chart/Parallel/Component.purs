@@ -27,17 +27,14 @@ import Data.Lens ((^?), (.~), (?~))
 import Data.List as List
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Form.Select (Select, _value, emptySelect, trySelect')
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
@@ -54,68 +51,55 @@ import SlamData.Workspace.Card.Setups.Chart.Parallel.Model as M
 import SlamData.Workspace.Card.Eval.State (_Axes)
 
 import Utils.Array (enumerate)
+import Utils.DOM as DOM
 
-type DSL =
-  H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 
-type HTML =
-  H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
-parallelBuilderComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-parallelBuilderComponent options = CC.makeCardComponent
-  { options
-  , cardType: CT.ChartOptions CHT.Parallel
-  , component: H.parentComponent {render, eval, peek: Just (peek ∘ H.runChildF) }
-  , initialState: H.parentState ST.initialState
-  , _State: CC._BuildParallelState
-  , _Query: CC.makeQueryPrism' CC._BuildParallelQuery
-  }
+parallelBuilderComponent ∷ CC.CardOptions → CC.CardComponent
+parallelBuilderComponent =
+  CC.makeCardComponent (CT.ChartOptions CHT.Parallel) $ H.parentComponent
+    { render
+    , eval: cardEval ⨁ chartEval
+    , initialState: const ST.initialState
+    , receiver: const Nothing
+    }
 
 render ∷ ST.State → HTML
 render state =
-  HH.div_
-    [ renderHighLOD state
-    , renderLowLOD (CT.cardIconDarkImg $ CT.ChartOptions CHT.Parallel) left state.levelOfDetails
-    ]
-
-renderHighLOD ∷ ST.State → HTML
-renderHighLOD state =
   HH.div
-    [ HP.classes
-        $ [ CSS.chartEditor ]
-        ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
-    ]
+    [ HP.classes [ CSS.chartEditor ] ]
     $ ( renderDimensions state)
     ⊕ [ renderSeries state
       , renderPicker state
       ]
 
-selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
-selecting f q a = right (Q.Select (f q) a)
+selecting ∷ ∀ f a. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
+selecting f q _ = right (Q.Select (f q) unit)
 
 renderPicker ∷ ST.State → HTML
 renderPicker state = case state.picker of
   Nothing → HH.text ""
-  Just picker →
-    HH.slot unit \_ →
-      { component: DPC.picker
-          { title: case picker.select of
-               Q.Dimension _ _ → "Choose dimension"
-               Q.Series _ → "Choose series"
-               _ → ""
-          , label: DPC.labelNode show
-          , render: DPC.renderNode show
-          , values: groupJCursors (List.fromFoldable picker.options)
-          , isSelectable: DPC.isLeafPath
-          }
-      , initialState: H.parentState DPC.initialState
-      }
+  Just { options, select } →
+    let
+      conf =
+        { title: case select of
+            Q.Dimension _ _ → "Choose dimension"
+            Q.Series _ → "Choose series"
+            _ → ""
+        , label: DPC.labelNode show
+        , render: DPC.renderNode show
+        , values: groupJCursors (List.fromFoldable options)
+        , isSelectable: DPC.isLeafPath
+        }
+    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
 
 renderSeries ∷ ST.State → HTML
 renderSeries state =
   HH.form
     [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ BCI.pickerInput
         (BCI.secondary (Just "Series") (selecting Q.Series))
@@ -129,7 +113,7 @@ renderDimensions state =
   renderDimension (i × dim × agg) =
     HH.form
       [ HP.classes [ CSS.chartConfigureForm, CSS.withAggregation ]
-      , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
       ]
       [ BCI.pickerWithSelect
           ((if i ≡ 0 then BCI.primary else BCI.secondary)
@@ -139,10 +123,6 @@ renderDimensions state =
           (BCI.aggregation (Just "Dimension aggregation") (selecting (Q.Aggregation i)))
           (fromMaybe emptySelect $ state.aggs !! i)
     ]
-
-
-eval ∷ Q.QueryC ~> DSL
-eval = cardEval ⨁ chartEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -172,24 +152,48 @@ cardEval = case _ of
       H.modify _ { axes = axes }
       H.modify M.behaviour.synchronize
     pure next
-  CC.ReceiveDimensions dims next → do
-    H.modify _
-      { levelOfDetails =
-           if dims.width < 576.0 ∨ dims.height < 416.0
-           then Low
-           else High
-      }
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions dims reply →
+    pure $ reply
+      if dims.width < 576.0 ∨ dims.height < 416.0
+      then Low
+      else High
 
 chartEval ∷ Q.Query ~> DSL
-chartEval (Q.Select sel next) = next <$ case sel of
-  Q.Dimension i a → updateDimension i a
-  Q.Aggregation i a → updateSelect (ST._aggregation i) a
-  Q.Series a → updatePicker ST._series Q.Series a
+chartEval = case _ of
+  Q.PreventDefault e next → do
+    H.liftEff $ DOM.preventDefault e
+    pure next
+  Q.Select sel next → do
+    case sel of
+      Q.Dimension i a → updateDimension i a
+      Q.Aggregation i a → updateSelect (ST._aggregation i) a
+      Q.Series a → updatePicker ST._series Q.Series a
+    pure next
+  Q.HandleDPMessage msg next → case msg of
+    DPC.Dismiss → do
+      H.modify _{picker = Nothing}
+      pure next
+    DPC.Confirm value → do
+      st ← H.get
+      let
+        v = flattenJCursors value
+      for_ st.picker \p → case p.select of
+        Q.Dimension i _ → do
+          let
+            selected =
+              fromMaybe st.dims $ A.modifyAt i (trySelect' v) st.dims
+            newDims = case A.last selected of
+              Nothing → selected
+              Just _ → A.snoc selected emptySelect
+            newAggs = case A.last selected of
+              Nothing → st.aggs
+              Just _ → A.snoc st.aggs emptySelect
+          H.modify _ { dims = newDims, aggs = newAggs }
+        Q.Series _ → H.modify (ST._series ∘ _value ?~ v)
+        _ → pure unit
+      H.modify _{ picker = Nothing }
+      raiseUpdate
+      pure next
 
   where
   updatePicker l q = case _ of
@@ -232,35 +236,7 @@ chartEval (Q.Select sel next) = next <$ case sel of
     BCI.Open _ → pure unit
     BCI.Choose a → H.modify (l ∘ _value .~ a) *> raiseUpdate
 
-
-peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek = peekPicker ⨁ (const $ pure unit)
-  where
-  peekPicker = case _ of
-    DPC.Dismiss _ →
-      H.modify _{picker = Nothing}
-    DPC.Confirm value _ → do
-      st ← H.get
-      let
-        v = flattenJCursors value
-      for_ st.picker \p → case p.select of
-        Q.Dimension i _ → do
-          let
-            selected =
-              fromMaybe st.dims $ A.modifyAt i (trySelect' v) st.dims
-            newDims = case A.last selected of
-              Nothing → selected
-              Just _ → A.snoc selected emptySelect
-            newAggs = case A.last selected of
-              Nothing → st.aggs
-              Just _ → A.snoc st.aggs emptySelect
-          H.modify _ { dims = newDims, aggs = newAggs }
-        Q.Series _ → H.modify (ST._series ∘ _value ?~ v)
-        _ → pure unit
-      H.modify _{ picker = Nothing }
-      raiseUpdate
-
 raiseUpdate ∷ DSL Unit
 raiseUpdate = do
   H.modify M.behaviour.synchronize
-  CC.raiseUpdatedP' CC.EvalModelUpdate
+  H.raise CC.modelUpdate

@@ -14,27 +14,53 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Markdown.Component.State
-  ( StateP
-  , module Core
-  ) where
+module SlamData.Workspace.Card.Markdown.Component.State where
+
+import Control.Monad.Eff.Class (class MonadEff)
 
 import SlamData.Prelude
-
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.Markdown.Component.Query (Query)
 import SlamData.Workspace.Card.Port.VarMap as VM
-import SlamData.Workspace.Card.Markdown.Component.State.Core as Core
+import SlamData.Workspace.Card.Markdown.Interpret as MDI
+
+import Data.BrowserFeatures (BrowserFeatures)
+import Data.JSDate (LOCALE)
+import Data.StrMap as SM
+
+import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Halogen.Component as SDH
 
-type StateP =
-  ParentState
-    Core.State
-    (SDH.SlamDownState VM.VarMapValue)
-    (CardEvalQuery ⨁ Query)
-    (SDH.SlamDownQuery VM.VarMapValue)
-    Slam
-    Unit
+type State =
+  { browserFeatures ∷ Maybe BrowserFeatures
+  , input ∷ Maybe (SD.SlamDownP VM.VarMapValue)
+  }
+
+initialState ∷ State
+initialState =
+  { browserFeatures: Nothing
+  , input: Nothing
+  }
+
+formStateToVarMap
+  ∷ ∀ m e
+  . (MonadEff (locale ∷ LOCALE | e) m, Applicative m)
+  ⇒ SDH.SlamDownFormState VM.VarMapValue
+  → SDH.SlamDownFormState VM.VarMapValue
+  → m VM.VarMap
+formStateToVarMap desc st =
+  SM.foldM
+    (\m k field → do
+       v ← valueForKey k field
+       pure $ SM.insert k v m)
+    SM.empty
+    desc
+
+  where
+    valueForKey
+      ∷ String
+      → SDH.FormFieldValue VM.VarMapValue
+      → m VM.VarMapValue
+    valueForKey k field =
+      fromMaybe (MDI.formFieldEmptyValue field) <$>
+        case SM.lookup k st of
+          Just v → MDI.formFieldValueToVarMapValue v
+          Nothing → MDI.formFieldValueToVarMapValue field

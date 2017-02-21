@@ -20,26 +20,23 @@ module SlamData.Workspace.Card.Setups.FormInput.Labeled.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (.~), APrism', preview)
+import Data.Lens ((^?), (?~), (.~), preview)
 import Data.List as List
 
+import DOM.Event.Event as DEE
+
 import Halogen as H
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Form.Select as S
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Component.State as CCS
-import SlamData.Workspace.Card.Component.Query as CCQ
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Setups.CSS as CSS
@@ -51,50 +48,26 @@ import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.State as ST
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.Query as Q
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model as M
 
-type DSL =
-  H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
-
-type HTML =
-  H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
-
-type LabeledDef =
-  { _State ∷ APrism' CCS.AnyCardState ST.StateP
-  , _Query ∷ ∀ a. APrism' (Coproduct CC.CardEvalQuery CCQ.AnyCardQuery a) (Q.QueryP a)
-  }
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
 
 labeledSetupComponent
   ∷ FIT.FormInputType
-  → LabeledDef
   → CC.CardOptions
-  → H.Component CC.CardStateP CC.CardQueryP Slam
-labeledSetupComponent fit pair options = CC.makeCardComponent
-  { cardType: CT.SetupFormInput fit
-  , options
-  , component:
-      H.parentComponent
-        { render: render fit
-        , eval: eval fit
-        , peek: Just (peek ∘ H.runChildF)
-        }
-  , initialState: H.parentState ST.initialState
-  , _State: pair._State
-  , _Query: pair._Query
-  }
+  → CC.CardComponent
+labeledSetupComponent fit =
+  CC.makeCardComponent (CT.SetupFormInput fit) $ H.parentComponent
+    { render
+    , eval: (cardEval fit) ⨁ setupEval
+    , receiver: const Nothing
+    , initialState: const ST.initialState
+    }
 
-
-render ∷ FIT.FormInputType → ST.State → HTML
-render fit state =
-  HH.div_
-    [ renderHighLOD state
-    , renderLowLOD (CT.cardIconDarkImg $ CT.SetupFormInput fit) left state.levelOfDetails
-    ]
-
-renderHighLOD ∷ ST.State → HTML
-renderHighLOD state =
+render ∷ ST.State → HTML
+render state =
   HH.div
-    [ HP.classes
-        $ [ CSS.chartEditor ]
-        ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
+    [ HP.classes [ CSS.chartEditor ]
+
     ]
     [ renderName state
     , HH.hr_
@@ -104,37 +77,35 @@ renderHighLOD state =
     , renderPicker state
     ]
 
-selecting ∷ ∀ a. (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
+selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
 selecting f q a = right (Q.Select (f q) a)
-
 
 renderPicker ∷ ST.State → HTML
 renderPicker state = case state.picker of
   Nothing → HH.text ""
   Just r →
-    HH.slot unit \_ →
-      { component: DPC.picker
-          { title: case r.select of
-               Q.Value _ → "Choose value"
-               Q.Label _ → "Choose label"
-               Q.Selected _ → "Choose selected"
-          , label: DPC.labelNode show
-          , render: DPC.renderNode show
-          , values: groupJCursors $ List.fromFoldable r.options
-          , isSelectable: DPC.isLeafPath
-          }
-      , initialState: H.parentState DPC.initialState
-      }
+    let
+      conf =
+        { title: case r.select of
+             Q.Value _ → "Choose value"
+             Q.Label _ → "Choose label"
+             Q.Selected _ → "Choose selected"
+        , label: DPC.labelNode show
+        , render: DPC.renderNode show
+        , values: groupJCursors $ List.fromFoldable r.options
+        , isSelectable: DPC.isLeafPath
+        }
+    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
 
 renderName ∷ ST.State → HTML
 renderName state =
   HH.form
-    [ HP.classes [ HH.className "chart-configure-input" ]
-    , Cp.nonSubmit
+    [ HP.classes [ HH.ClassName "chart-configure-input" ]
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Name" ]
     , HH.input
-        [ HP.inputType HP.InputText
+        [ HP.type_ HP.InputText
         , HP.classes [ B.formControl ]
         , HP.placeholder "Form input label"
         , ARIA.label "Form input label"
@@ -147,7 +118,7 @@ renderLabel ∷ ST.State → HTML
 renderLabel state =
   HH.form
     [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ BCI.pickerInput
          (BCI.secondary (Just "Label") (selecting Q.Label))
@@ -158,7 +129,7 @@ renderSelected ∷ ST.State → HTML
 renderSelected state =
   HH.form
     [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ BCI.pickerInput
          (BCI.secondary (Just "Selected") (selecting Q.Selected))
@@ -169,15 +140,12 @@ renderValue ∷ ST.State → HTML
 renderValue state =
   HH.form
     [ HP.classes [ CSS.chartConfigureForm ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ BCI.pickerInput
         (BCI.primary (Just "Value") (selecting Q.Value))
         state.value
     ]
-
-eval ∷ FIT.FormInputType → Q.QueryC ~> DSL
-eval fit = cardEval fit ⨁ chartEval
 
 cardEval ∷ FIT.FormInputType → CC.CardEvalQuery ~> DSL
 cardEval fi = case _ of
@@ -191,10 +159,6 @@ cardEval fi = case _ of
   CC.Load m next → do
     H.modify $ M.behaviour.load $ join $ preview Card._SetupLabeledInput m
     pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
   CC.ReceiveInput _ _ next →
     pure next
   CC.ReceiveOutput _ _ next →
@@ -204,42 +168,36 @@ cardEval fi = case _ of
       H.modify _{axes = axes}
       H.modify M.behaviour.synchronize
     pure next
-  CC.ReceiveDimensions dims next → do
-    H.modify _
-      { levelOfDetails = if dims.width < 576.0 ∨ dims.height < 416.0
-                           then Low
-                           else High
-      }
-    pure next
-
+  CC.ReceiveDimensions dims reply → do
+    pure $ reply
+      if dims.width < 576.0 ∨ dims.height < 416.0
+      then Low
+      else High
 
 raiseUpdate ∷ DSL Unit
 raiseUpdate = do
   H.modify M.behaviour.synchronize
-  CC.raiseUpdatedP' CC.EvalModelUpdate
+  H.raise CC.modelUpdate
 
-chartEval ∷ Q.Query ~> DSL
-chartEval (Q.UpdateName str next) = do
-  H.modify _ { name = str }
-  raiseUpdate
-  pure next
-chartEval (Q.Select sel next) = next <$ case sel of
-  Q.Value a → updatePicker ST._value Q.Value a
-  Q.Label a → updatePicker ST._label Q.Label a
-  Q.Selected a → updatePicker ST._selected Q.Selected a
+setupEval ∷ Q.Query ~> DSL
+setupEval = case _ of
+  Q.PreventDefault e next → do
+    H.liftEff $ DEE.preventDefault e
+    pure next
+  Q.UpdateName str next → do
+    H.modify _ { name = str }
+    raiseUpdate
+    pure next
+  Q.Select sel next → next <$ case sel of
+    Q.Value a → updatePicker ST._value Q.Value a
+    Q.Label a → updatePicker ST._label Q.Label a
+    Q.Selected a → updatePicker ST._selected Q.Selected a
 
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a → H.modify (l ∘ S._value .~ a) *> raiseUpdate
-
-peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek = peekPicker ⨁ (const $ pure unit)
-  where
-  peekPicker = case _ of
-    DPC.Dismiss _ →
-      H.modify _ { picker = Nothing }
-    DPC.Confirm value _ → do
+  Q.HandleDPMessage m next → case m of
+    DPC.Dismiss → do
+      H.modify _{ picker = Nothing }
+      pure next
+    DPC.Confirm value → do
       st ← H.get
       let
         v = flattenJCursors value
@@ -249,3 +207,8 @@ peek = peekPicker ⨁ (const $ pure unit)
         Q.Selected _ → H.modify $ ST._selected ∘ S._value ?~ v
       H.modify _ { picker = Nothing }
       raiseUpdate
+      pure next
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a → H.modify (l ∘ S._value .~ a) *> raiseUpdate

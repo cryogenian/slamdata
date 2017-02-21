@@ -14,15 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Download.Component.State
-  ( State
-  , initialState
-  , _url
-  , _levelOfDetails
-  , _fileName
-  ) where
-
-import Data.Lens (Lens', lens)
+module SlamData.Workspace.Card.Download.Component.State where
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
@@ -31,16 +23,6 @@ type State =
   , levelOfDetails ∷ LevelOfDetails
   , fileName ∷ String
   }
-
-
-_url ∷ ∀ a r. Lens' {url ∷ a | r} a
-_url = lens (_.url) (_{url = _})
-
-_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a|r} a
-_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
-
-_fileName ∷ ∀ a r. Lens' {fileName ∷ a |r} a
-_fileName = lens (_.fileName) (_{fileName = _})
 
 initialState ∷ State
 initialState =

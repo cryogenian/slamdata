@@ -77,7 +77,7 @@ cardComponent =
     CT.Troubleshoot → troubleshootComponent
     CT.Cache → cacheCardComponent
     CT.Open → openComponent
-    CT.DownloadOptions → DOpts.comp
+    CT.DownloadOptions → DOpts.component
     CT.Draftboard → draftboardComponent
     CT.ChartOptions CT.Metric → metricBuilderComponent
     CT.ChartOptions CT.Sankey → sankeyBuilderComponent

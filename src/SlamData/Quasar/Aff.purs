@@ -18,13 +18,13 @@ module SlamData.Quasar.Aff where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar as AVar
-import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Eff.Random (RANDOM)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE)
+import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Now (NOW)
+import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Ref as Ref
 
 import Control.Monad.Reader.Trans (runReaderT)
@@ -55,11 +55,11 @@ type Wiring r =
 -- | may arise, which allows for convenient catching of 404 errors.
 runQuasarF
   ∷ ∀ eff m a
-  . (Monad m, Affable (QEff eff) m)
+  . (Monad m, MonadAff (QEff eff) m)
   ⇒ Maybe OIDC.IdToken
   → QF.QuasarAFC a
   → m a
 runQuasarF idToken qf = do
-  (fromAff ∷ ∀ x. Aff (QEff eff) x → m x) do
-    permissions ← fromEff retrieveTokenHashes
+  liftAff do
+    permissions ← liftEff retrieveTokenHashes
     runReaderT (QFA.eval qf) { basePath: "", idToken, permissions }

@@ -22,14 +22,14 @@ import Halogen as H
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.AccessType (AccessType)
-import SlamData.Workspace.Deck.Component.ChildSlot (ChildSlot, ChildQuery, ChildState)
-import SlamData.Workspace.Deck.Component.Query (Query)
+import SlamData.Workspace.Deck.Component.ChildSlot (ChildSlot, ChildQuery)
+import SlamData.Workspace.Deck.Component.Query (Query, Message)
 import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
-type DeckHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+type DeckHTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 
-type DeckDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type DeckDSL = H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 
 type DeckOptions =
   { accessType ∷ AccessType
@@ -37,3 +37,6 @@ type DeckOptions =
   , displayCursor ∷ L.List DeckId -- Relative cursor within the UI
   , deckId ∷ DeckId
   }
+
+sizerRef ∷ H.RefLabel
+sizerRef = H.RefLabel "sizer"

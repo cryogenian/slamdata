@@ -14,14 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Troubleshoot.Component.Query
-  ( Query
-  , QueryP
-  ) where
+module SlamData.Workspace.Card.Troubleshoot.Component.Query where
 
 import SlamData.Prelude
 
-import SlamData.Workspace.Card.Common.EvalQuery as NC
-
 type Query = Const Void
-type QueryP = Coproduct NC.CardEvalQuery Query

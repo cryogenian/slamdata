@@ -15,8 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Deck.Component.State
-  ( StateP
-  , State
+  ( State
   , DisplayMode(..)
   , Dialog(..)
   , ResponsiveSize(..)
@@ -24,7 +23,7 @@ module SlamData.Workspace.Deck.Component.State
   , MetaCard(..)
   , DisplayCard
   , CardDef
-  , initialDeck
+  , initialState
   , isFlipSide
   , isFrontSide
   , hasDialog
@@ -42,7 +41,6 @@ module SlamData.Workspace.Deck.Component.State
   , _initialSliderCardWidth
   , _sliderTransition
   , _sliderTranslateX
-  , _cardElementWidth
   , _slidingTo
   , _breakers
   , _focused
@@ -53,7 +51,6 @@ module SlamData.Workspace.Deck.Component.State
   , _NextActionCard
   , _ErrorCard
   , addMetaCard
-  , addBreaker
   , findLastCardIndex
   , findLastCard
   , findLastRealCard
@@ -70,15 +67,10 @@ module SlamData.Workspace.Deck.Component.State
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.EventLoop (Breaker)
 import Control.Monad.Aff (Canceler)
-
-import DOM.HTML.Types (HTMLElement)
 
 import Data.Array as A
 import Data.Lens (Lens', lens, Prism', prism')
-
-import Halogen.Component.Opaque.Unsafe (OpaqueState)
 
 import Quasar.Advanced.Types (ProviderR)
 
@@ -89,8 +81,6 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
 import Utils (hush)
-
-type StateP = OpaqueState State
 
 data Dialog
   = Dialog
@@ -178,20 +168,16 @@ type State =
   , initialSliderCardWidth ∷ Maybe Number
   , sliderTransition ∷ Boolean
   , sliderTranslateX ∷ Number
-  , cardElementWidth ∷ Maybe Number
   , slidingTo ∷ Maybe GripperDef
   , focused ∷ Boolean
   , finalized ∷ Boolean
-  , deckElement ∷ Maybe HTMLElement
   , responsiveSize ∷ ResponsiveSize
   , fadeTransition ∷ Fade
-  , breakers ∷ Array (Breaker Unit)
   , providers ∷ Array ProviderR
   }
 
--- | Constructs a default `State` value.
-initialDeck ∷ State
-initialDeck =
+initialState ∷ State
+initialState =
   { name: ""
   , loadError: Nothing
   , displayMode: FrontSide NoDialog
@@ -204,14 +190,11 @@ initialDeck =
   , initialSliderCardWidth: Nothing
   , sliderTransition: false
   , sliderTranslateX: 0.0
-  , cardElementWidth: Nothing
   , slidingTo: Nothing
   , focused: false
   , finalized: false
-  , deckElement: Nothing
   , responsiveSize: XLarge
   , fadeTransition: FadeNone
-  , breakers: mempty
   , providers: mempty
   }
 
@@ -271,10 +254,6 @@ _sliderTransition = lens _.sliderTransition _{sliderTransition = _}
 _sliderTranslateX ∷ ∀ a r. Lens' {sliderTranslateX ∷ a |r} a
 _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
 
--- | The width of card
-_cardElementWidth ∷ ∀ a r. Lens' {cardElementWidth ∷ a|r} a
-_cardElementWidth = lens _.cardElementWidth _{cardElementWidth = _}
-
 _slidingTo ∷ ∀ a r. Lens' {slidingTo ∷ a|r} a
 _slidingTo = lens _.slidingTo _{slidingTo = _}
 
@@ -313,9 +292,6 @@ addMetaCard card state =
   state { displayCards = A.snoc init (Left card) }
   where
   init = A.filter isRight state.displayCards
-
-addBreaker ∷ Breaker Unit → State → State
-addBreaker breaker state = state { breakers = A.snoc state.breakers breaker }
 
 findLastCardIndex ∷ State → Maybe Int
 findLastCardIndex st =

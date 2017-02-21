@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Next.Component
  ( nextCardComponent
+ , Message(..)
  , module SlamData.Workspace.Card.Next.Component.Query
  , module SlamData.Workspace.Card.Next.Component.State
  , module NA
@@ -28,36 +29,40 @@ import CSS as CSS
 import Data.Lens ((.~))
 
 import Halogen as H
-import Halogen.Component.Utils as HU
-import Halogen.HTML.CSS.Indexed as HCSS
-import Halogen.HTML.Indexed as HH
+import Halogen.HTML.CSS as HCSS
+import Halogen.HTML as HH
 
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Monad (Slam)
-import SlamData.Guide as Guide
+import SlamData.Guide.Notification as Guide
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Next.NextAction as NA
-import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(..), _AddCardType, _PresentReason)
-import SlamData.Workspace.Card.Next.Component.State (StateP, State, initialState)
 import SlamData.Workspace.Card.Next.Component.ChildSlot as CS
+import SlamData.Workspace.Card.Next.Component.Query (Query(..))
+import SlamData.Workspace.Card.Next.Component.State (State, initialState)
 import SlamData.Workspace.Card.Next.Component.State as State
 import SlamData.Workspace.Card.Port as Port
 
 import Utils.LocalStorage as LocalStorage
 
 type HTML =
-  H.ParentHTML CS.ChildState Query CS.ChildQuery Slam CS.ChildSlot
+  H.ParentHTML Query CS.ChildQuery CS.ChildSlot Slam
 
 type DSL =
-  H.ParentDSL State CS.ChildState Query CS.ChildQuery Slam CS.ChildSlot
+  H.ParentDSL State Query CS.ChildQuery CS.ChildSlot Message Slam
 
-nextCardComponent ∷ H.Component StateP QueryP Slam
+data Message
+  = AddCard CT.CardType
+  | PresentReason Port.Port CT.CardType
+
+nextCardComponent ∷ H.Component HH.HTML Query Port.Port Message Slam
 nextCardComponent = H.parentComponent
-  { render
+  { initialState
+  , render
   , eval
-  , peek: Just (peek ∘ H.runChildF)
+  , receiver: const Nothing
   }
 
 render ∷ State → HTML
@@ -67,17 +72,21 @@ render state =
     $ (guard state.presentAddCardGuide $>
         Guide.render
           Guide.DownArrow
-          (HH.className "sd-add-card-guide")
+          (HH.ClassName "sd-add-card-guide")
           (DismissAddCardGuide)
           (addCardGuideText state.input))
-    ⊕ [ HH.slot' CS.cpActionFilter unit \_ →
-           { component: ActionFilter.comp "Filter next actions"
-           , initialState: ActionFilter.initialState
-           }
-      , HH.slot' CS.cpActionList unit \_ →
-        { component: ActionList.comp
-        , initialState: ActionList.initialState $ NA.fromPort state.input
-        }
+    ⊕ [ HH.slot' CS.cpActionFilter unit
+          ActionFilter.component
+          "Filter next actions"
+          case _ of
+            ActionFilter.FilterChanged str →
+              Just $ H.action $ HandleFilter str
+      , HH.slot' CS.cpActionList unit
+          (ActionList.actionListComp ActionList.defaultConf (NA.fromPort state.input))
+          unit
+          case _ of
+            ActionList.Selected a →
+              Just $ H.action $ HandleAction a
       ]
   where
   addCardGuideText = case _ of
@@ -105,12 +114,12 @@ dismissedAddCardGuideKey = "dismissedAddCardGuide"
 
 getDismissedAddCardGuideBefore ∷ DSL Boolean
 getDismissedAddCardGuideBefore =
-  H.liftH $ H.liftH $ either (const $ false) id <$>
+  H.lift $ either (const $ false) id <$>
     LocalStorage.getLocalStorage dismissedAddCardGuideKey
 
 storeDismissedAddCardGuide ∷ DSL Unit
 storeDismissedAddCardGuide =
-  H.liftH $ H.liftH $ LocalStorage.setLocalStorage dismissedAddCardGuideKey true
+  H.lift $ LocalStorage.setLocalStorage dismissedAddCardGuideKey true
 
 dismissAddCardGuide ∷ DSL Unit
 dismissAddCardGuide =
@@ -120,33 +129,26 @@ dismissAddCardGuide =
 eval ∷ Query ~> DSL
 eval = case _ of
   UpdateInput input next → updateActions input $> next
-  AddCard _ next → dismissAddCardGuide $> next
-  PresentReason input cardType next → pure next
   DismissAddCardGuide next → dismissAddCardGuide $> next
-  PresentAddCardGuide next →
-    (H.modify
-       ∘ (State._presentAddCardGuide .~ _)
-       ∘ not =<< getDismissedAddCardGuideBefore)
-       $> next
-
-peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek = actionListPeek ⨁ actionFilterPeek
-
-actionListPeek ∷ ∀ a. ActionList.Query NA.NextAction a → DSL Unit
-actionListPeek = case _ of
-  ActionList.Selected (ActionList.Do {action}) _ → case action of
-    NA.Insert cardType →
-      HU.raise' $ H.action $ AddCard cardType
-    NA.FindOutHowToInsert cardType → do
-      input ← H.gets _.input
-      HU.raise' $ H.action $ PresentReason input cardType
-  _ → pure unit
-
-actionFilterPeek ∷ ∀ a. ActionFilter.Query a → DSL Unit
-actionFilterPeek = case _ of
-  ActionFilter.Set str _ → do
+  PresentAddCardGuide next → do
+    H.modify
+      ∘ (State._presentAddCardGuide .~ _)
+      ∘ not =<< getDismissedAddCardGuideBefore
+    pure next
+  HandleFilter str next → do
     H.query' CS.cpActionList unit
       $ H.action
       $ ActionList.UpdateFilter str
-    pure unit
-  _ → pure unit
+    pure next
+  HandleAction act next → do
+    case act of
+      NA.Insert cardType → do
+        dismissAddCardGuide
+        H.raise $ AddCard cardType
+      NA.FindOutHowToInsert cardType → do
+        input ← H.gets _.input
+        H.raise $ PresentReason input cardType
+    pure next
+  ToActionList query → unsafePartial do
+    Just res ← H.query' CS.cpActionList unit query
+    pure res

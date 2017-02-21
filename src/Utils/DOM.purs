@@ -14,17 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Utils.DOM where
+module Utils.DOM
+  ( module Utils.DOM
+  , module DOM.Classy.Event
+  , module DOM.Classy.HTMLElement
+  , module DOM.Classy.Node
+  , module DOM.Event.Types
+  , module DOM.Node.Types
+  ) where
 
 import SlamData.Prelude
 
 import Data.Nullable as Nullable
 
-import Control.Coroutine (Producer)
-import Control.Coroutine.Aff as AffCoroutine
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 
@@ -32,8 +36,11 @@ import Data.Array (uncons, sort, reverse)
 import Data.Nullable (toMaybe)
 
 import DOM (DOM)
+import DOM.Classy.Event (toEvent, fromEvent, target, currentTarget, stopPropagation, preventDefault)
+import DOM.Classy.Node (toNode, fromNode)
+import DOM.Classy.HTMLElement (toHTMLElement, fromHTMLElement)
 import DOM.Event.EventTarget as EventTarget
-import DOM.Event.Types (EventTarget, EventType, Event)
+import DOM.Event.Types (EventTarget, EventType, Event, MouseEvent, KeyboardEvent, FocusEvent)
 import DOM.HTML (window)
 import DOM.HTML.Event.EventTypes as EventTypes
 import DOM.Node.Element (scrollWidth, scrollHeight)
@@ -41,7 +48,7 @@ import DOM.HTML.HTMLElement (offsetWidth, offsetHeight)
 import DOM.HTML.Types (Window, HTMLElement, htmlElementToElement, htmlDocumentToDocument, windowToEventTarget)
 import DOM.HTML.Window (document)
 import DOM.Node.ParentNode as P
-import DOM.Node.Types (elementToParentNode, Element, documentToEventTarget)
+import DOM.Node.Types (Node, elementToParentNode, Element, documentToEventTarget)
 
 import Utils.Aff as AffUtils
 import Unsafe.Coerce (unsafeCoerce)
@@ -51,7 +58,7 @@ foreign import onLoad ∷ ∀ e. Eff e Unit → Eff e Unit
 foreign import blur ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM|e) Unit
 foreign import focus ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM|e) Unit
 foreign import getTextWidth ∷ ∀ eff. String → String → Eff (dom ∷ DOM | eff) Number
-foreign import elementEq ∷ ∀ eff. HTMLElement → HTMLElement → Eff (dom ∷ DOM | eff) Boolean
+foreign import nodeEq ∷ ∀ eff. Node → Node → Eff (dom ∷ DOM | eff) Boolean
 foreign import getOffsetClientRect ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) DOMRect
 foreign import close ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Unit
 foreign import closed ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Boolean
@@ -116,20 +123,6 @@ onResize cb = do
   window
     >>= windowToEventTarget
     >>> EventTarget.addEventListener EventTypes.resize listener false
-
-eventProducer
-  ∷ forall eff
-  . EventType
-  → Boolean
-  → EventTarget
-  → Producer Event (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit
-eventProducer eventType capture eventTarget =
-  AffCoroutine.produce \emit →
-    EventTarget.addEventListener
-      eventType
-      (EventTarget.eventListener $ emit <<< Left)
-      capture
-      eventTarget
 
 openPopup ∷ ∀ eff. String → Eff (dom ∷ DOM | eff) (Maybe Window)
 openPopup stringUrl = do

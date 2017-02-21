@@ -14,15 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Variables.Component.Query
-  ( QueryP
-  ) where
+module SlamData.ActionList.Component.Message where
 
-import SlamData.Prelude
-
-import Halogen as H
-
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.FormBuilder.Component as FB
-
-type QueryP = Coproduct CardEvalQuery (H.ChildF Unit FB.QueryP)
+data Message a = Selected a

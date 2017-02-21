@@ -16,18 +16,16 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.Query where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 
-import Halogen as H
+import DOM.Event.Types (Event)
 
 import SlamData.Common.Align (Align)
 import SlamData.Common.Sort (Sort)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
 
 data Selection f
   = Category (f JCursor)
@@ -37,9 +35,7 @@ data Selection f
   | Order (f Sort)
   | Align (f Align)
 
-data Query a =
-  Select (Selection SelectAction) a
-
-type QueryC = CardEvalQuery ⨁ Query
-
-type QueryP = QueryC ⨁ H.ChildF ChildSlot ChildQuery
+data Query a
+  = Select (Selection SelectAction) a
+  | PreventDefault Event a
+  | HandleDPMessage (Message JCursorNode) a

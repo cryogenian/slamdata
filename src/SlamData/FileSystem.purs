@@ -23,12 +23,12 @@ import Ace.Config as AceConfig
 import Control.Coroutine (Producer, Consumer, consumer, producer, ($$), runProcess)
 
 import Control.Monad.Aff (Aff, later')
-import Control.Monad.Aff.Free (fromAff, fromEff)
 import Control.Monad.Aff.AVar (AVar, makeVar, makeVar', modifyVar, putVar, takeVar)
+import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Fork (Canceler(..), fork, cancel)
 import Control.Monad.Eff.Exception (Error, error)
+import Control.Monad.Fork (Canceler(..), fork, cancel)
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (null, filter, mapMaybe, take, drop)
@@ -38,10 +38,9 @@ import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 
 import DOM (DOM)
 
-import Halogen.Component (parentState, interpret)
-import Halogen.Driver (Driver, runUI)
-import Halogen.Query (action)
-import Halogen.Util (runHalogenAff, awaitBody)
+import Halogen as H
+import Halogen.Aff as HA
+import Halogen.VDom.Driver (runUI, HalogenIO)
 
 import Quasar.Error as QE
 
@@ -50,16 +49,13 @@ import Routing (matchesAff)
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Config as Config
 import SlamData.Config.Version (slamDataVersion)
-import SlamData.Effects (SlamDataEffects, SlamDataRawEffects)
-import SlamData.FileSystem.Component (QueryP, Query(..), toListing, toDialog, toSearch, toFs, initialState, comp)
-import SlamData.FileSystem.Dialog.Component as Dialog
-import SlamData.FileSystem.Listing.Component as Listing
+import SlamData.Effects (SlamDataEffects)
+import SlamData.FileSystem.Component (Query(..), component)
 import SlamData.FileSystem.Listing.Item (Item(..))
 import SlamData.FileSystem.Resource (getPath)
 import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
-import SlamData.FileSystem.Search.Component as Search
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam, runSlam)
 import SlamData.Quasar.Auth.Permission as Permission
@@ -73,21 +69,23 @@ import Text.SlamSearch.Types (SearchQuery)
 
 import Utils.Path (DirPath, hidePath, renderPath)
 
+type FileSystemIO = HalogenIO Query Void (Aff SlamDataEffects)
+
 main ∷ Eff SlamDataEffects Unit
 main = do
   AceConfig.set AceConfig.basePath $ Config.baseUrl ⊕ "js/ace"
   AceConfig.set AceConfig.modePath $ Config.baseUrl ⊕ "js/ace"
   AceConfig.set AceConfig.themePath $ Config.baseUrl ⊕ "js/ace"
 
-  runHalogenAff do
+  HA.runHalogenAff do
     permissionTokenHashes ← liftEff $ Permission.retrieveTokenHashes
     wiring ← Wiring.make rootDir Editable mempty permissionTokenHashes
-    let ui = interpret (runSlam wiring) comp
-    driver ← runUI ui (parentState initialState) =<< awaitBody
+    let ui = H.hoist (runSlam wiring) component
+    driver ← runUI ui unit =<< HA.awaitBody
 
     fork do
       setSlamDataTitle slamDataVersion
-      driver $ left $ action $ SetVersion slamDataVersion
+      driver.query $ H.action $ SetVersion slamDataVersion
 
     runSlam wiring $ fork $ routeSignal driver
 
@@ -119,19 +117,19 @@ _requestMap = lens _.requestMap _{ requestMap = _ }
 _queue ∷ ∀ a r. Lens' { queue ∷ a | r } a
 _queue = lens _.queue _{ queue = _ }
 
-routeSignal ∷ Driver QueryP SlamDataRawEffects → Slam Unit
+routeSignal ∷ FileSystemIO → Slam Unit
 routeSignal driver = do
   avar ←
-    fromAff $ makeVar' initialListingState
+    liftAff $ makeVar' initialListingState
 
   routeTpl ←
-    fromAff $ matchesAff routing
+    liftAff $ matchesAff routing
 
   flip uncurry routeTpl
     $ redirects driver avar
 
 redirects
-  ∷ Driver QueryP SlamDataRawEffects
+  ∷ FileSystemIO
   → AVar ListingState
   → Maybe Routes → Routes
   → Slam Unit
@@ -149,17 +147,17 @@ redirects driver var mbOld = case _ of
       updateURL queryParts.query sort Nothing queryParts.path
 
   Salted sort query salt → do
-    {canceler} ← fromAff $ takeVar var
+    {canceler} ← liftAff $ takeVar var
 
     cancel canceler $ error "cancel search"
 
-    fromAff
+    liftAff
       $ putVar var initialListingState
 
-    fromAff
-      $ driver
-      $ toListing
-      $ Listing.SetIsSearching
+    liftAff
+      $ driver.query
+      $ H.action
+      $ SetIsSearching
       $ isSearchQuery query
 
     let
@@ -174,16 +172,13 @@ redirects driver var mbOld = case _ of
 
     if isNewPage
       then do
-      fromAff do
-        driver $ toListing Listing.Reset
-        driver $ toFs $ SetPath queryParts.path
-        driver $ toFs $ SetSort sort
-        driver $ toFs $ SetSalt salt
-        driver $ toFs $ SetIsMount false
-        driver $ toSearch $ Search.SetLoading true
-        driver $ toSearch $ Search.SetValue $ fromMaybe "" queryParts.query
-        driver $ toSearch $ Search.SetValid true
-        driver $ toSearch $ Search.SetPath queryParts.path
+      liftAff $ driver.query $ H.action $ Transition
+        { path: queryParts.path
+        , query: queryParts.query
+        , sort
+        , salt
+        , isMount: false
+        }
 
       let
         p = listingProducer var query queryParts.path
@@ -195,21 +190,17 @@ redirects driver var mbOld = case _ of
       when (isNothing queryParts.query)
         $ checkMount queryParts.path driver
       else
-        fromAff $ driver $ toSearch $ Search.SetLoading false
+        liftAff $ driver.query $ H.action $ SetLoading false
 
 
 checkMount
   ∷ DirPath
-  → Driver QueryP SlamDataRawEffects
+  → FileSystemIO
   → Slam Unit
 checkMount path driver = do
   let
     setIsMount =
-      fromAff
-        $ driver
-        $ left
-        $ action
-        $ SetIsMount true
+      liftAff $ driver.query $ H.action $ SetIsMount true
 
   Quasar.mountInfo (Left path) >>= case _ of
     -- When Quasar has no mounts configured we want to enable the root to be
@@ -231,19 +222,19 @@ listingProducer
 listingProducer var query startingDir = produceSlam $ go startingDir 0
   where
   go dir depth emit = do
-    fromAff
+    liftAff
       $ flip modifyVar var
       $ _requestMap %~ M.alter memThisRequest depth
 
     canceler ←
       map Canceler $ fork $ runRequest dir depth emit
 
-    fromAff
+    liftAff
       $ flip modifyVar var
       $ _canceler <>~ canceler
 
   runRequest dir depth emit = do
-    fromAff $ later' requestDelay $ pure unit
+    liftAff $ later' requestDelay $ pure unit
     Quasar.children dir >>= case _ of
       Left e → case GE.fromQError e of
         -- Do not show error message notification if we're in root or searching
@@ -255,19 +246,19 @@ listingProducer var query startingDir = produceSlam $ go startingDir 0
       Right cs →
         getChildren depth emit cs
 
-    fromAff
+    liftAff
       $ flip modifyVar var
       $ _requestMap %~ M.alter markThisRequestAsFinished depth
 
     st@{canceler: c, requestMap: r} ←
-      fromAff $ takeVar var
+      liftAff $ takeVar var
 
     if allRequestsAreFinished r
       then do
-      fromAff $ putVar var initialListingState
+      liftAff $ putVar var initialListingState
       emit $ Right Nothing
       else
-      fromAff $ putVar var st
+      liftAff $ putVar var st
 
   getChildren depth emit ress = do
     let
@@ -286,12 +277,12 @@ listingProducer var query startingDir = produceSlam $ go startingDir 0
 
     if isSearchQuery query
       then do
-      fromAff
+      liftAff
         $ flip modifyVar var
         $ _queue %~ flip append next
 
       st ←
-        fromAff $ takeVar var
+        liftAff $ takeVar var
 
       let
         running = runningRequests st.requestMap
@@ -299,7 +290,7 @@ listingProducer var query startingDir = produceSlam $ go startingDir 0
         toRun = take count st.queue
         toPut = drop count st.queue
 
-      fromAff
+      liftAff
         $ putVar var
         $ st{queue = toPut}
 
@@ -331,25 +322,25 @@ listingProducer var query startingDir = produceSlam $ go startingDir 0
     foldl add zero ∘ M.values
 
 listingConsumer
-  ∷ Driver QueryP SlamDataRawEffects
+  ∷ FileSystemIO
   → Consumer (Array Item) Slam (Maybe QE.QError)
 listingConsumer driver = consumer \is → do
-  fromAff
-    $ driver
-    $ toListing
-    $ Listing.Adds is
+  liftAff
+    $ driver.query
+    $ H.action
+    $ AddListings is
   pure Nothing
 
 listingProcessHandler
-  ∷ Driver QueryP SlamDataRawEffects
+  ∷ FileSystemIO
   → Maybe QE.QError
   → Slam Unit
 listingProcessHandler driver = case _ of
   Nothing →
-    fromAff
-      $ driver
-      $ toSearch
-      $ Search.SetLoading false
+    liftAff
+      $ driver.query
+      $ H.action
+      $ SetLoading false
 
   Just err → case GE.fromQError err of
     Left msg →
@@ -360,11 +351,10 @@ listingProcessHandler driver = case _ of
 
   where
   presentError message =
-    fromAff
-      $ driver
-      $ toDialog
-      $ Dialog.Show
-      $ Dialog.Error message
+    liftAff
+      $ driver.query
+      $ H.action
+      $ ShowError message
 
 updateURL
   ∷ Maybe String
@@ -372,7 +362,7 @@ updateURL
   → Maybe Salt
   → DirPath
   → Slam Unit
-updateURL query sort salt path = fromEff do
+updateURL query sort salt path = liftEff do
   salt' ← maybe newSalt pure salt
   replaceLocation $ browseURL query sort salt' path
 
@@ -396,6 +386,6 @@ produceSlam
   . ((a ⊹ r → Slam Unit) → Slam Unit)
   → Producer a Slam r
 produceSlam recv = do
-  v ← lift $ fromAff makeVar
-  lift $ fork $ recv $ fromAff ∘ putVar v
-  producer $ fromAff $ takeVar v
+  v ← lift $ liftAff makeVar
+  lift $ fork $ recv $ liftAff ∘ putVar v
+  producer $ liftAff $ takeVar v

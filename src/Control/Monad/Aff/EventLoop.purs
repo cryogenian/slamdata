@@ -26,7 +26,7 @@ module Control.Monad.Aff.EventLoop
 
 import Prelude
 import Control.Monad.Aff.AVar (AffAVar, AVAR, makeVar', takeVar, putVar)
-import Control.Monad.Aff.Free (class Affable, fromAff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
 import Data.Maybe (Maybe(..), maybe)
 
@@ -53,13 +53,13 @@ make go = do
       Nothing → maybe (Loop unit) Done <$> go
       Just a → pure (Done a)
 
--- | Like `make` but with an Affable constraint.
+-- | Like `make` but with an MonadAff constraint.
 make'
   ∷ ∀ eff m a
-  . (Affable (avar ∷ AVAR | eff) m, MonadRec m)
+  . (MonadAff (avar ∷ AVAR | eff) m, MonadRec m)
   ⇒ m (Maybe a)
   → m { breaker ∷ Breaker a, run ∷ m a }
-make' go = fromAff do
+make' go = liftAff do
   breaker ← makeVar' Nothing
   pure
     { breaker: Breaker \a → putVar breaker (Just a)
@@ -68,8 +68,8 @@ make' go = fromAff do
 
   where
   loop breaker _ = do
-    res ← fromAff (takeVar breaker)
-    fromAff (putVar breaker Nothing)
+    res ← liftAff (takeVar breaker)
+    liftAff (putVar breaker Nothing)
     case res of
       Nothing → maybe (Loop unit) Done <$> go
       Just a → pure (Done a)
@@ -83,7 +83,7 @@ forever go =
 
 forever'
   ∷ ∀ eff m a
-  . (Affable (avar ∷ AVAR | eff) m, MonadRec m)
+  . (MonadAff (avar ∷ AVAR | eff) m, MonadRec m)
   ⇒ m a
   → m { breaker ∷ Breaker Unit, run ∷ m Unit }
 forever' go =

@@ -16,16 +16,13 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.PunchCard.Component.Query where
 
-import SlamData.Prelude
-
 import Data.Argonaut (JCursor)
 
-import Halogen as H
-
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
-import SlamData.Workspace.Card.Setups.Chart.PunchCard.Component.ChildSlot (ChildQuery, ChildSlot)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import Utils.DOM as DOM
 
 data Selection f
   = Abscissa (f JCursor)
@@ -38,7 +35,5 @@ data Query a
   | ToggleCircularLayout a
   | SetMinSymbolSize String a
   | SetMaxSymbolSize String a
-
-type QueryC = CardEvalQuery ⨁ Query
-
-type QueryP = QueryC ⨁ H.ChildF ChildSlot ChildQuery
+  | HandleDPMessage (Message JCursorNode) a
+  | PreventDefault DOM.Event a

@@ -16,8 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.DownloadOptions.Component.Query where
 
-import SlamData.Prelude
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Download.Model (CSVOptions, JSONOptions, OutputType)
 
 data Query a
@@ -26,5 +24,3 @@ data Query a
   | ModifyJSONOpts (JSONOptions → JSONOptions) a
   | ToggleCompress a
   | TargetTyped String a
-
-type QueryP = CardEvalQuery ⨁ Query

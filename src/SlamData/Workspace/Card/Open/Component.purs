@@ -17,20 +17,19 @@ limitations under the License.
 module SlamData.Workspace.Card.Open.Component
   ( openComponent
   , module SlamData.Workspace.Card.Open.Component.Query
-  , module SlamData.Workspace.Card.Open.Component.State
   ) where
 
 import SlamData.Prelude
 
 import Data.Array as A
-import Data.Lens ((.~), (?~), view)
+import Data.Lens (view)
 import Data.List as L
 import Data.Path.Pathy as Path
 import Data.Unfoldable (unfoldr)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.FileSystem.Resource as R
@@ -41,65 +40,48 @@ import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as Quasar
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Open.Component.Query (QueryP)
-import SlamData.Workspace.Card.Open.Component.State (State, StateP, _levelOfDetails, _selected, _loading, initialState)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.Card.Open.Component.Query (Query(..))
+import SlamData.Workspace.Card.Open.Component.State (State, initialState)
+import SlamData.Workspace.LevelOfDetails as LOD
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 import SlamData.Workspace.MillerColumns.Column.BasicFilter as MCF
-import SlamData.Workspace.MillerColumns.Column.Component as MCC
 import SlamData.Workspace.MillerColumns.Component as MC
 
 import Utils.Path (AnyPath)
 
-type DSL = H.ParentDSL State (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQuery (MCI.BasicColumnsQuery R.Resource AnyPath) Slam Unit
-type HTML = H.ParentHTML (MCI.BasicColumnsState R.Resource AnyPath) CC.CardEvalQuery (MCI.BasicColumnsQuery R.Resource AnyPath) Slam Unit
+type ColumnsQuery = MC.Query R.Resource AnyPath Void
+type DSL = CC.InnerCardParentDSL State Query ColumnsQuery Unit
+type HTML =  CC.InnerCardParentHTML Query ColumnsQuery Unit
 
-openComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-openComponent options =
-  CC.makeCardComponent
-    { options
-    , cardType: CT.Open
-    , component: H.parentComponent
-        { render
-        , eval
-        , peek: Just (peek ∘ H.runChildF)
-        }
-    , initialState: H.parentState initialState
-    , _State: CC._OpenState
-    , _Query: CC.makeQueryPrism CC._OpenQuery
+openComponent ∷ CC.CardOptions → CC.CardComponent
+openComponent =
+  CC.makeCardComponent CT.Open $ H.parentComponent
+    { render: render
+    , eval: evalCard ⨁ evalComponent
+    , initialState: const initialState
+    , receiver: const Nothing
     }
 
 render ∷ State → HTML
 render state =
-  HH.div_
-    [ renderHighLOD state
-    , renderLowLOD (CT.cardIconLightImg CT.Open) id state.levelOfDetails
-    ]
+  HH.slot unit (MC.component itemSpec) (pure (Left Path.rootDir)) handleMessage
 
-renderHighLOD ∷ State → HTML
-renderHighLOD state =
-  HH.div
-    [ HP.classes
-        $ (guard (state.loading) $> HH.className "loading")
-        <> (guard (state.levelOfDetails ≠ High) $> B.hidden)
-    ]
-    [ HH.slot unit \_ →
-        { component: MC.component itemSpec
-        , initialState: H.parentState MC.initialState
-        }
-    ]
+handleMessage ∷ MC.Message' R.Resource AnyPath Void → Maybe (CC.InnerCardQuery Query Unit)
+handleMessage =
+  either
+    (\(MC.SelectionChanged _ sel) → Just $ H.action $ right ∘ UpdateSelection sel)
+    absurd
 
-renderItem ∷ R.Resource → MC.ItemHTML
+renderItem ∷ R.Resource → MCI.BasicItemHTML
 renderItem r =
   HH.div
     [ HP.classes
-        [ HH.className "sd-miller-column-item-inner"
+        [ HH.ClassName "sd-miller-column-item-inner"
         , either
-            (const $ HH.className "sd-miller-column-item-node")
-            (const $ HH.className "sd-miller-column-item-leaf")
+            (const $ HH.ClassName "sd-miller-column-item-node")
+            (const $ HH.ClassName "sd-miller-column-item-leaf")
             (R.getPath r)
         ]
     ]
@@ -109,7 +91,7 @@ renderItem r =
         ]
     ]
 
-glyphForResource ∷ R.Resource → MC.ItemHTML
+glyphForResource ∷ R.Resource → MCI.BasicItemHTML
 glyphForResource = case _ of
   R.File _ → glyph B.glyphiconFile
   R.Workspace _ → glyph B.glyphiconBook
@@ -117,23 +99,19 @@ glyphForResource = case _ of
   R.Mount (R.Database _) → glyph B.glyphiconHdd
   R.Mount (R.View _) → glyph B.glyphiconFile
 
-eval ∷ CC.CardEvalQuery ~> DSL
-eval = case _ of
+evalCard ∷ CC.CardEvalQuery ~> DSL
+evalCard = case _ of
   CC.Activate next →
     pure next
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    mbRes ← H.gets _.selected
+    mbRes ← H.get
     pure $ k $ Card.Open (fromMaybe R.root mbRes)
   CC.Load (Card.Open res) next → do
     let selectedResources = toResourceList res
-    void $ H.query unit $ left $ H.action $ MC.Populate $ R.getPath <$> selectedResources
-    for_ selectedResources \sel → do
-      for_ (getColPath sel) \colPath →
-        H.query unit $ right $
-          H.ChildF colPath $ left $ H.action $ MCC.SetSelection (Just sel)
-    H.modify (_selected ?~ res)
+    void $ H.query unit $ H.action $ MC.Populate $ R.getPath <$> selectedResources
+    H.put (Just res)
     pure next
   CC.Load _ next →
     pure next
@@ -143,27 +121,18 @@ eval = case _ of
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions dims next → do
-    H.modify $
-      _levelOfDetails .~
-        if dims.width < 250.0 ∨ dims.height < 50.0
-        then Low
-        else High
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions dims reply → do
+    pure $ reply
+      if dims.width < 250.0 ∨ dims.height < 50.0
+      then LOD.Low
+      else LOD.High
 
-peek ∷ ∀ x. MCI.BasicColumnsQuery R.Resource AnyPath x → DSL Unit
-peek = coproduct (peekColumns) (const (pure unit))
-  where
-  peekColumns ∷ MC.Query R.Resource AnyPath x → DSL Unit
-  peekColumns = case _ of
-    MC.RaiseSelected _ selected _ → do
-      H.modify (_selected .~ selected)
-      CC.raiseUpdatedP CC.EvalModelUpdate
-    _ → pure unit
+evalComponent ∷ Query ~> DSL
+evalComponent = case _ of
+  UpdateSelection selected next → do
+    H.put selected
+    H.raise CC.modelUpdate
+    pure next
 
 itemSpec ∷ MCI.BasicColumnOptions R.Resource AnyPath
 itemSpec =

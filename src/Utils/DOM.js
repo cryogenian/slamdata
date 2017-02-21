@@ -47,10 +47,10 @@ exports.getTextWidth = function(text) {
     };
 };
 
-exports.elementEq = function(a) {
+exports.nodeEq = function(a) {
     return function(b) {
         return function() {
-            return a == b;
+            return a === b;
         };
     };
 };

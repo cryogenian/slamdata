@@ -26,40 +26,42 @@ import SlamData.Prelude
 import Data.Path.Pathy (dir, (</>))
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Mount as QM
 
-import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MCS
 import SlamData.FileSystem.Resource (Mount(..))
-import SlamData.Quasar.Mount as API
+import SlamData.Monad (Slam)
 import SlamData.Quasar.Error as QE
+import SlamData.Quasar.Mount as API
 import SlamData.Render.CSS as Rc
 
 type Query = SettingsQuery MCS.State
 
-type HTML = H.ComponentHTML Query
+comp ∷ H.Component HH.HTML Query Unit SettingsMessage Slam
+comp =
+  H.component
+    { initialState: const MCS.initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
-comp ∷ H.Component MCS.State Query Slam
-comp = H.component { render, eval }
-
-render ∷ MCS.State → HTML
+render ∷ MCS.State → H.ComponentHTML Query
 render state =
   HH.div
-    [ HP.key "mount-mongodb"
-    , HP.class_ Rc.mountMongoDB
-    ]
+    [ HP.class_ Rc.mountMongoDB ]
     [ MCR.section "Server(s)" [ MCR.hosts state MCS._hosts ]
     , MCR.section "Authentication"
         [ HH.div
             [ HP.classes [B.formGroup, Rc.mountUserInfo] ]
             [ MCR.label "Username" [ MCR.input state MCS._user [] ]
-            , MCR.label "Password" [ MCR.input state MCS._password [ HP.inputType HP.InputPassword ] ]
+            , MCR.label "Password" [ MCR.input state MCS._password [ HP.type_ HP.InputPassword ] ]
             ]
         , HH.div
             [ HP.class_ Rc.mountPath ]
@@ -68,10 +70,12 @@ render state =
     , MCR.section "Settings" [ MCR.propList MCS._props state ]
     ]
 
-eval ∷ Query ~> H.ComponentDSL MCS.State Query Slam
+eval ∷ Query ~> H.ComponentDSL MCS.State Query SettingsMessage Slam
 eval = case _ of
-  ModifyState f next →
-    H.modify (MCS.processState <<< f) $> next
+  ModifyState f next → do
+    H.modify (MCS.processState <<< f)
+    H.raise Modified
+    pure next
   Validate k →
     k ∘ either Just (const Nothing) ∘ MCS.toConfig <$> H.get
   Submit parent name k →

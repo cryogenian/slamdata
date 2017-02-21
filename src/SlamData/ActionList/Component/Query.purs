@@ -18,14 +18,12 @@ module SlamData.ActionList.Component.Query where
 
 import SlamData.Prelude
 
-import DOM.HTML.Types (HTMLElement)
 import SlamData.ActionList.Action (Action, Dimensions)
 
 data Query a next
-  = Selected (Action a) next
+  = HandleSelected (Action a) next
   | UpdateFilter String next
   | UpdateActions (Array (Action a)) next
   | CalculateBoundingRect next
   | GetBoundingRect (Maybe Dimensions → next)
   | SetBoundingRect Dimensions next
-  | SetBoundingElement (Maybe HTMLElement) next

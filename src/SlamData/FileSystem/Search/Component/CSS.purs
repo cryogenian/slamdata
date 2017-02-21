@@ -16,34 +16,34 @@ limitations under the License.
 
 module SlamData.FileSystem.Search.Component.CSS where
 
-import Halogen.HTML.Core (className, ClassName)
+import Halogen.HTML.Core (ClassName(..))
 
 search ∷ ClassName
-search = className "search"
+search = ClassName "search"
 
 searchInput ∷ ClassName
-searchInput = className "search-input"
+searchInput = ClassName "search-input"
 
 searchPath ∷ ClassName
-searchPath = className "search-path"
+searchPath = ClassName "search-path"
 
 searchPathActive ∷ ClassName
-searchPathActive = className "search-path-active"
+searchPathActive = ClassName "search-path-active"
 
 searchAffix ∷ ClassName
-searchAffix = className "search-affix"
+searchAffix = ClassName "search-affix"
 
 searchPathBody ∷ ClassName
-searchPathBody = className "search-path-body"
+searchPathBody = ClassName "search-path-body"
 
 searchAffixEmpty ∷ ClassName
-searchAffixEmpty = className "search-affix-empty"
+searchAffixEmpty = ClassName "search-affix-empty"
 
 searchEmpty ∷ ClassName
-searchEmpty = className "search-empty"
+searchEmpty = ClassName "search-empty"
 
 searchClearButton ∷ ClassName
-searchClearButton = className "search-clear-button"
+searchClearButton = ClassName "search-clear-button"
 
 searchIcon ∷ ClassName
-searchIcon = className "search-icon"
+searchIcon = ClassName "search-icon"

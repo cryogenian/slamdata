@@ -18,15 +18,17 @@ module SlamData.Workspace.Card.Setups.FormInput.Text.Component
   ( textSetupComponent
   ) where
 
-import Halogen as H
+import SlamData.Prelude
 
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Component as CC
-
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component (textLikeSetupComponent)
-import SlamData.Workspace.Card.Setups.FormInput.Text.Def (def)
 
-textSetupComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
+textSetupComponent ∷ CC.CardOptions → CC.CardComponent
 textSetupComponent =
-  textLikeSetupComponent FIT.Text def
+  textLikeSetupComponent FIT.Text \ax →
+      ax.value
+      ⊕ ax.category
+      ⊕ ax.time
+      ⊕ ax.date
+      ⊕ ax.datetime

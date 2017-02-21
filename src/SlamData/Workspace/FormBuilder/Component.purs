@@ -16,9 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.FormBuilder.Component
   ( Query(..)
-  , ItemSlot
-  , StateP
-  , QueryP
+  , Message(..)
+  , ItemSlot(..)
   , formBuilderComponent
   , module SlamData.Workspace.FormBuilder.Component.State
   ) where
@@ -30,8 +29,9 @@ import Data.List as L
 import Data.Unfoldable as U
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
@@ -39,89 +39,69 @@ import SlamData.Workspace.FormBuilder.Item.Component as Item
 
 -- | The query signature for the FormBuilder component
 data Query a
-  = GetItems (L.List Item.Model -> a)
+  = GetItems (L.List Item.Model → a)
   | SetItems (L.List Item.Model) a
+  | HandleItem ItemSlot Item.Message a
+
+data Message = ItemUpdated
 
 newtype ItemSlot = ItemSlot ItemId
-derive instance genericItemSlot :: Generic ItemSlot
-derive instance eqItemSlot :: Eq ItemSlot
-derive instance ordItemSlot :: Ord ItemSlot
+derive newtype instance eqItemSlot ∷ Eq ItemSlot
+derive newtype instance ordItemSlot ∷ Ord ItemSlot
 
-type StateP g = H.ParentState State Item.State Query Item.Query g ItemSlot
-type QueryP = Coproduct Query (H.ChildF ItemSlot Item.Query)
+type DSL m = H.ParentDSL State Query Item.Query ItemSlot Message m
+type HTML m = H.ParentHTML Query Item.Query ItemSlot m
 
-type FormBuilderDSL g = H.ParentDSL State Item.State Query Item.Query g ItemSlot
-type FormBuilderHTML g = H.ParentHTML Item.State Query Item.Query g ItemSlot
-
-formBuilderComponent
-  :: forall g
-   . (Applicative g)
-  => H.Component (StateP g) QueryP g
+formBuilderComponent ∷ ∀ m. H.Component HH.HTML Query Unit Message m
 formBuilderComponent =
-  H.parentComponent { render, eval, peek: Just peek }
+  H.parentComponent
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
-eval :: forall g. Applicative g => Query ~> FormBuilderDSL g
-eval (GetItems k) = do
-  { items } <- H.get
-  -- the last item is always empty
-  let properItems = L.init items # fromMaybe L.Nil
-  k <<< L.catMaybes <$> for properItems \i ->
-    H.query (ItemSlot i) $ H.request Item.GetModel
-eval (SetItems items next) = do
-  -- clear out the existing children
-  H.set emptyState
-  U.replicateA (L.length items + 1) (H.modify addItem) :: FormBuilderDSL g (L.List Unit)
+eval ∷ ∀ m. Query ~> DSL m
+eval = case _ of
+  GetItems k → do
+    { items } ← H.get
+    -- the last item is always empty
+    let properItems = L.init items # fromMaybe L.Nil
+    k <<< L.catMaybes <$> for properItems \i →
+      H.query (ItemSlot i) $ H.request Item.GetModel
+  SetItems items next → do
+    -- clear out the existing children
+    H.put emptyState
+    U.replicateA (L.length items + 1) (H.modify addItem) ∷ DSL m (L.List Unit)
 
-  let
-    stepItem i m =
-      H.query (ItemSlot i) (H.action (Item.SetModel m))
-        $> i + 1
+    let
+      stepItem i m =
+        H.query (ItemSlot i) (H.action (Item.SetModel m))
+          $> i + 1
 
-  -- step through `items` and initialize each child component
-  void $ L.foldM stepItem 0 items
-  pure next
+    -- step through `items` and initialize each child component
+    void $ L.foldM stepItem 0 items
+    pure next
+  HandleItem slotId@(ItemSlot i) msg next → do
+    case msg of
+      Item.NameChanged "" → H.modify (removeItem i)
+      _ → pure unit
+    addItemIfNecessary slotId
+    H.raise ItemUpdated
+    pure next
 
-peek
-  :: forall g a
-   . H.ChildF ItemSlot Item.Query a
-  -> FormBuilderDSL g Unit
-peek (H.ChildF (ItemSlot i) q) =
-  case q of
-    Item.Update uq ->
-      case uq of
-        Item.UpdateName str _ -> do
-          when (str == "") $
-            H.modify $ removeItem i
-          addItemIfNecessary
-        Item.UpdateFieldType _ _ ->
-          addItemIfNecessary
-        Item.UpdateDefaultValue _ _ ->
-          addItemIfNecessary
-    Item.SetModel _ _ ->
-      addItemIfNecessary
-    _ ->
-      pure unit
+addItemIfNecessary ∷ ∀ m. ItemSlot → DSL m Unit
+addItemIfNecessary (ItemSlot i) = do
+  { nextId } ← H.get
+  when (i == nextId - 1) $ H.modify addItem
 
-  where
-    addItemIfNecessary = do
-      { nextId } <- H.get
-      when (i == nextId - 1) $
-        H.modify addItem
-
-
-render
-  :: forall g
-   . (Functor g)
-  => State
-  -> FormBuilderHTML g
+render ∷ ∀ m. State → HTML m
 render = renderTable <<< _.items
   where
-    renderTable
-      :: L.List ItemId
-      -> FormBuilderHTML g
+    renderTable ∷ L.List ItemId → HTML m
     renderTable items =
       HH.table
-        [ HP.classes [ HH.className "form-builder", RC.form ] ]
+        [ HP.classes [ HH.ClassName "form-builder", RC.form ] ]
         [ HH.thead_
             [ HH.tr_
                 [ HH.th_ [ HH.text "Name" ]
@@ -132,11 +112,7 @@ render = renderTable <<< _.items
         , HH.tbody_ $ A.fromFoldable (renderItem <$> items)
         ]
 
-    renderItem
-      :: ItemId
-      -> FormBuilderHTML g
+    renderItem ∷ ItemId → HTML m
     renderItem itemId =
-      HH.slot (ItemSlot itemId) \_ ->
-        { component: Item.itemComponent
-        , initialState: Item.initialState
-        }
+      let slotId = ItemSlot itemId
+      in HH.slot slotId Item.component unit (HE.input (HandleItem slotId))

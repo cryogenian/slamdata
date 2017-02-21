@@ -18,32 +18,24 @@ module SlamData.Workspace.Card.Next.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
+import Halogen.Component.ChildPath (ChildPath, cp1, cp2)
 
-import SlamData.ActionList.Component.State as ALS
 import SlamData.ActionList.Component.Query as ALQ
 import SlamData.ActionList.Filter.Component as ALF
 import SlamData.Workspace.Card.Next.NextAction as NA
 
-type ChildSlot =
-  Unit ⊹ Unit
+type ChildSlot = Unit ⊹ Unit ⊹ Void
 
-type ChildState =
-  ALS.State NA.NextAction ⊹ ALF.State
-
-type ChildQuery =
-  ALQ.Query NA.NextAction ⨁ ALF.Query
+type ChildQuery = ALQ.Query NA.NextAction ⨁ ALF.Query ⨁ Const Void
 
 cpActionList
   ∷ ChildPath
-      (ALS.State NA.NextAction) ChildState
       (ALQ.Query NA.NextAction) ChildQuery
       Unit ChildSlot
-cpActionList = cpL
+cpActionList = cp1
 
 cpActionFilter
   ∷ ChildPath
-      ALF.State ChildState
       ALF.Query ChildQuery
       Unit ChildSlot
-cpActionFilter = cpR
+cpActionFilter = cp2

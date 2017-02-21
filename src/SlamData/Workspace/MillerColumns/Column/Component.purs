@@ -23,65 +23,70 @@ module SlamData.Workspace.MillerColumns.Column.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Fork.Class (fork)
+
 import Data.Array as A
-import Data.List ((:))
 import Data.List as L
+import Data.List ((:))
 import Data.Time.Duration (Milliseconds(..))
 
-import DOM.HTML.Types (htmlElementToElement) as DOM
-import DOM.Node.Element (scrollTop, scrollHeight, clientHeight) as DOM
+import DOM.Classy.Event (currentTarget) as DOM
+import DOM.Classy.Node (fromNode) as DOM
+import DOM.Classy.Element (scrollTop, scrollHeight, clientHeight) as DOM
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
-import SlamData.Workspace.MillerColumns.Column.Options (ColumnOptions, InitialItemState(..), ItemHTML, LoadParams)
-import SlamData.Workspace.MillerColumns.Column.Component.Query (ItemQuery(..), ItemQuery', Query(..), Query')
-import SlamData.Workspace.MillerColumns.Column.Component.State (ColumnState(..), State, State', initialState)
+import SlamData.Workspace.MillerColumns.Column.Options (ColumnOptions, LoadParams)
+import SlamData.Workspace.MillerColumns.Column.Component.Query (Message(..), Message', Query(..))
+import SlamData.Workspace.MillerColumns.Column.Component.State (ColumnState(..), State, initialState)
+import SlamData.Workspace.MillerColumns.Column.Component.Item as I
 
-import Utils.Debounced (debouncedEventSource)
+import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger)
 
-type HTML a i s f = H.ParentHTML s (Query a) (ItemQuery' a f) Slam i
-type DSL a i s f = H.ParentDSL (State a i) s (Query a) (ItemQuery' a f) Slam i
+type HTML a i f o = H.ParentHTML (Query a i o) f i Slam
+type DSL a i f o = H.ParentDSL (State a i o) (Query a i o) f i (Message' a i o) Slam
 
 component
-  ∷ ∀ a i s f
+  ∷ ∀ a i f o
   . Ord i
-  ⇒ ColumnOptions a i s f
+  ⇒ ColumnOptions a i f o
   → L.List i
-  → H.Component (State' a i s f) (Query' a i f) Slam
+  → H.Component HH.HTML (Query a i o) Unit (Message' a i o) Slam
 component ispec colPath =
   H.lifecycleParentComponent
-    { render
+    { initialState: const initialState
+    , render
     , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
-    , peek: Nothing
+    , receiver: const Nothing
     }
   where
 
-  render ∷ State a i → HTML a i s f
+  render ∷ State a i o → HTML a i f o
   render { items, state, selected, filterText } =
     let
       listItems = A.fromFoldable (renderItem selected <$> items)
     in
       HH.div_
         [ HH.div
-            [ HP.class_ (HH.className "sd-miller-column-filter") ]
+            [ HP.class_ (HH.ClassName "sd-miller-column-filter") ]
             [ HH.div
-                [ HP.class_ (HH.className "sd-action-filter-icon") ]
+                [ HP.class_ (HH.ClassName "sd-action-filter-icon") ]
                 [ RC.searchFieldIcon ]
             , HH.input
-                [ HP.class_ (HH.className "sd-form-input")
+                [ HP.class_ (HH.ClassName "sd-form-input")
                 , HP.value filterText
                 , HE.onValueInput (HE.input HandleFilterChange)
                 ]
             , HH.button
-                [ HP.buttonType HP.ButtonButton
+                [ HP.type_ HP.ButtonButton
                 , HE.onClick (HE.input_ (UpdateFilter ""))
                 , HP.enabled (filterText /= "")
                 ]
@@ -89,22 +94,22 @@ component ispec colPath =
             ]
         , renderSelected selected
         , HH.ul
-            [ HE.onScroll (HE.input (HandleScroll <<< _.currentTarget)) ]
+            [ HE.onScroll \e -> H.action <<< HandleScroll <$> DOM.fromNode (DOM.currentTarget e) ]
             $ listItems
             <> (guard (state == Loading) $> loadIndicator)
         ]
 
-  loadIndicator ∷ HTML a i s f
+  loadIndicator ∷ HTML a i f o
   loadIndicator =
     HH.li
-      [ HP.class_ (HH.className "sd-miller-column-loading") ]
+      [ HP.class_ (HH.ClassName "sd-miller-column-loading") ]
       [ HH.span_ [ HH.text "Loading..." ] ]
 
-  renderSelected ∷ Maybe a → HTML a i s f
+  renderSelected ∷ Maybe a → HTML a i f o
   renderSelected = case _ of
     Nothing →
       HH.div
-        [ HP.class_ (HH.className "sd-miller-column-selection") ]
+        [ HP.class_ (HH.ClassName "sd-miller-column-selection") ]
         [ HH.span_ [ HH.text "No selection" ] ]
     Just x →
       let
@@ -113,69 +118,74 @@ component ispec colPath =
       in
         HH.div
           [ HP.classes
-              [ HH.className "sd-miller-column-selection"
-              , HH.className "selected"
+              [ HH.ClassName "sd-miller-column-selection"
+              , HH.ClassName "selected"
               ]
           , HP.title deselLabel
           , ARIA.label deselLabel
           , HE.onClick $ HE.input_ Deselect
           ]
           [ HH.span
-              [ HP.class_ (HH.className "sd-miller-column-selection-label") ]
+              [ HP.class_ (HH.ClassName "sd-miller-column-selection-label") ]
               [ HH.text label ]
           , RC.clearFieldIcon deselLabel
           ]
 
-  renderItem ∷ Maybe a → a → HTML a i s f
+  renderItem ∷ Maybe a → a → HTML a i f o
   renderItem selected item =
     let
       itemId = ispec.id item
       selectedId = ispec.id <$> selected
     in
-      HH.slot itemId \_ →
-        ispec.render
-          (itemId : colPath)
-          item
-          (if Just itemId == selectedId then Selected else Deselected)
+      HH.slot
+        itemId
+        (ispec.render (itemId : colPath) item)
+        (if Just itemId == selectedId then I.Selected else I.Deselected)
+        (HE.input (HandleMessage itemId))
 
-  eval ∷ Query a ~> DSL a i s f
+  eval ∷ Query a i o ~> DSL a i f o
   eval = case _ of
     Init next → do
-      trigger ← debouncedEventSource H.subscribe' (Milliseconds 750.0)
+      trigger ← debouncedEventSource (Milliseconds 750.0)
       H.modify (_ { filterTrigger = trigger })
-      load
+      fork load
+      H.raise (Left Initialized)
       pure next
     SetSelection selected next → do
-      H.gets _.selected >>= traverse \s →
-        H.query (ispec.id s) $ left $ H.action $ ToggleHighlight false
       H.modify (_ { selected = selected })
-      for_ selected \s →
-        H.query (ispec.id s) $ left $ H.action $ ToggleHighlight true
       pure next
     GetSelection k →
       k <$> H.gets _.selected
     Deselect next → do
+      H.raise (Left Deselected)
       pure next
     HandleFilterChange text next → do
       trigger ← H.gets _.filterTrigger
       H.modify (\st → st { tick = st.tick + 1, filterText = text })
-      H.liftH $ H.liftH $ trigger $ H.action (UpdateFilter text)
+      lift $ runDebounceTrigger trigger (UpdateFilter text)
       pure next
     UpdateFilter text next → do
       H.modify (_ { filterText = text, items = L.Nil, lastLoadParams = Nothing })
       load
       pure next
-    HandleScroll el next → do
-      remain ← H.fromEff do
-        let ul = DOM.htmlElementToElement el
+    HandleScroll ul next → do
+      remain ← H.liftEff do
         height <- DOM.clientHeight ul
         scrollTop <- DOM.scrollTop ul
         scrollHeight <- DOM.scrollHeight ul
         pure (scrollHeight - height - scrollTop)
       when (remain < 20.0) load
       pure next
+    HandleMessage itemId msg next → do
+      case msg of
+        Left (I.RaisePopulate a) → do
+          H.modify (_ { selected = Just a })
+          H.raise $ Left $ Selected (itemId : colPath) a
+        Right o → do
+          H.raise $ Right o
+      pure next
 
-  load ∷ DSL a i s f Unit
+  load ∷ DSL a i f o Unit
   load = do
     { filterText, nextOffset, lastLoadParams, tick } ← H.get
     let
@@ -187,7 +197,7 @@ component ispec colPath =
         currentTick = tick + 1
         params = { path: colPath, filter: filterText, offset: nextOffset }
       H.modify (_ { state = Loading, lastLoadParams = Just params, tick = currentTick })
-      result ← H.liftH (H.liftH (ispec.load params))
+      result ← lift (ispec.load params)
       postLoadTick ← H.gets _.tick
       when (currentTick == postLoadTick) $
         H.modify \st' → st'

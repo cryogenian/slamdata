@@ -18,24 +18,13 @@ module SlamData.Workspace.Card.Tabs.Component.State where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.EventLoop (Breaker)
-
 import Data.Array as Array
 
-import Halogen as H
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Tabs.Component.Query (QueryC)
 import SlamData.Workspace.Card.Tabs.Model (Model)
-import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
-import SlamData.Workspace.Deck.Component.Nested.State as DNS
 import SlamData.Workspace.Deck.DeckId (DeckId)
-
-type StateP = H.ParentState State DNS.State QueryC DNQ.QueryP Slam DeckId
 
 type Tab =
   { deckId ∷ DeckId
-  , breaker ∷ Breaker Unit
   , name ∷ String
   , loaded ∷ Boolean
   }

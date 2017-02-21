@@ -20,10 +20,12 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.AVar (makeVar, takeVar, putVar)
 import Control.Monad.Eff.Ref (newRef, modifyRef, readRef)
+import Control.Monad.Fork.Class (fork)
 import Control.UI.Browser (select)
 
 import Data.Array as Arr
 import Data.Foldable as F
+import Data.Foreign (toForeign)
 import Data.Lens (Lens', lens, (.~), (%~), (?~))
 import Data.Lens.Index (ix)
 import Data.List as L
@@ -32,14 +34,14 @@ import Data.Map as Map
 import Data.StrMap as SM
 import Data.Path.Pathy as Pt
 
-import DOM.HTML.Types (HTMLElement, htmlElementToElement)
+import DOM.HTML.Types (htmlElementToElement, readHTMLElement)
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Elements.Keyed as HK
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.CustomProps as Cp
 
 import Quasar.Advanced.Types as QTA
 
@@ -49,13 +51,14 @@ import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), printShareResume)
 import SlamData.Workspace.Deck.Dialog.Share.Model as Model
 
+import Utils.DOM as DOM
 import Utils.Path (parseFilePath)
 import Utils.Foldable (chunkedParTraverse, splitList)
 
 import ZClipboard as Z
 
 type HTML = H.ComponentHTML Query
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Message Slam
 
 type PermissionId = Set.Set QTA.PermissionId
 
@@ -72,7 +75,6 @@ type Permission =
   , actions ∷ Map.Map QTA.PermissionId QTA.ActionR
   , state ∷ Maybe PermissionState
   }
-
 
 data Modifyable = User | Group
 
@@ -139,37 +141,43 @@ _errored ∷ ∀ a r. Lens' {errored ∷ a|r} a
 _errored = lens (_.errored) (_{errored = _})
 
 data Query a
-  = Dismiss a
-  | InitZClipboard String (Maybe HTMLElement) a
-  | Init a
-  | SelectElement HTMLElement a
-  | PermissionResumeChanged String String a
+  = Init a
+  | SelectElement DOM.Event a
+  | ChangePermissionResume String String a
   | Unshare String a
-  | UnshareToken QTA.TokenId  a
+  | UnshareToken QTA.TokenId a
+  | PreventDefault DOM.Event a
+  | Done a
 
+data Message = Dismiss
 
 type AdjustedPermissions =
   { users ∷ SM.StrMap Permission
   , groups ∷ SM.StrMap Permission
   }
 
-comp ∷ H.Component State Query Slam
-comp =
+copyButtonRef ∷ QTA.TokenId → H.RefLabel
+copyButtonRef tokenId = H.RefLabel $ "copy" <> QTA.runTokenId tokenId
+
+component ∷ H.Component HH.HTML Query Model.SharingInput Message Slam
+component =
   H.lifecycleComponent
     { render
     , eval
+    , initialState
     , initializer: Just (H.action Init)
     , finalizer: Nothing
+    , receiver: const Nothing
     }
 
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ HH.className "deck-dialog-unshare" ] ]
+    [ HP.classes [ HH.ClassName "deck-dialog-unshare" ] ]
     [ HH.h4_ [ HH.text "Unshare deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
             ⊕ if state.loading then [ ] else [ B.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -178,11 +186,11 @@ render state =
 
     , HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-body" ]
+            $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ (if state.loading then [ B.hidden ] else [ ])
         ]
         [ HH.form
-            [ Cp.nonSubmit ]
+            [ HE.onSubmit $ HE.input PreventDefault ]
             $ (if SM.isEmpty state.userPermissions
                  then
                    [ ]
@@ -201,8 +209,10 @@ render state =
                  then
                    [ ]
                  else
-                   [ HH.h5_ [ HH.text "Tokens" ] ]
-                   ⊕ map renderToken state.tokenPermissions
+                   [ HH.h5_ [ HH.text "Tokens" ]
+                   , HK.div_ $ state.tokenPermissions <#> \token →
+                      QTA.runTokenId token.tokenId × renderToken token
+                   ]
               )
             ⊕ (if SM.isEmpty state.userPermissions
                   ∧ SM.isEmpty state.groupPermissions
@@ -227,7 +237,7 @@ render state =
       in
        HH.div
         [ HP.classes
-            $ [ HH.className "deck-dialog-footer" ]
+            $ [ HH.ClassName "deck-dialog-footer" ]
             ⊕ (if state.loading then [ B.hidden ] else [ ])
         ]
         [ HH.div
@@ -245,12 +255,10 @@ render state =
                   else
                     "This action couldn't be performed. "
                     ⊕ "Please check your network connection and try again."
-
             ]
-
         , HH.button
-            [ HE.onClick (HE.input_ Dismiss)
-            , HP.buttonType HP.ButtonButton
+            [ HE.onClick (HE.input_ Done)
+            , HP.type_ HP.ButtonButton
             , HP.classes [ B.btn, B.btnDefault ]
             , HP.disabled somethingHappening
             ]
@@ -259,18 +267,16 @@ render state =
 
     ]
 
-
-
 renderUserOrGroup ∷ (String × Permission) → Array HTML
 renderUserOrGroup (name × perm) =
   [ HH.div
-      [ HP.class_ $ HH.className "sd-unshare-subject" ]
+      [ HP.class_ $ HH.ClassName "sd-unshare-subject" ]
       [ HH.label_ [ HH.text name ]
       , HH.div
           [ HP.classes $ if perm.state ≡ Just ModifyError then [ B.hasError ] else [ ] ]
           [ HH.select
               [ HP.classes [ B.formControl ]
-              , HE.onValueChange (HE.input (PermissionResumeChanged name))
+              , HE.onValueChange (HE.input (ChangePermissionResume name))
               , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
               ]
               [ HH.option
@@ -313,28 +319,28 @@ renderUserOrGroup (name × perm) =
 renderToken ∷ TokenPermission → HTML
 renderToken token =
   HH.div
-    [ HP.class_ $ HH.className "sd-unshare-subject" ]
+    [ HP.class_ $ HH.ClassName "sd-unshare-subject" ]
     [ HH.label_
         [ HH.text $ fromMaybe "Untitled token" token.name
         ]
     , HH.span
-        [ HP.classes [ HH.className "sd-unshare-subject-access-type" ] ]
+        [ HP.classes [ HH.ClassName "sd-unshare-subject-access-type" ] ]
         [ HH.text $ printShareResume token.resume ]
     , HH.div
         [ HP.classes
-            $ [ HH.className "sd-url" ]
+            $ [ HH.ClassName "sd-url" ]
             ⊕ if token.state ≡ Just ModifyError then [ B.hasError ] else [ ]
         ]
         [ HH.input
-            [ HP.readonly true
+            [ HP.readOnly true
             , HP.title "Token secret"
             , HP.value token.secret
-            , HE.onClick $ HE.input (SelectElement ∘ _.target)
+            , HE.onClick $ HE.input (SelectElement ∘ DOM.toEvent)
             , HP.disabled $ isJust token.state
         ]
         , HH.button
             [ HP.classes [ B.btn, B.btnDefault ]
-            , HP.ref (H.action ∘ InitZClipboard token.secret)
+            , HP.ref $ copyButtonRef token.tokenId
             , HP.disabled $ token.state ≡ Just Modifying ∨ token.state ≡ Just Unsharing
             ]
             [ glyph B.glyphiconCopy ]
@@ -354,134 +360,146 @@ renderToken token =
                 ]
             ]
         ]
-  ]
+    ]
 
 
 eval ∷ Query ~> DSL
-eval (Init next) = next <$ do
-  tokensRes ← Q.tokenList
-  sharingInput ← H.gets _.sharingInput
-  case tokensRes of
-    Left e → H.modify (_{errored = true})
-    Right toks →
-      let
-        tokenPerms = prepareAndFilterTokens toks sharingInput
-      in
-        H.modify (_{tokenPermissions = tokenPerms})
+eval = case _ of
+  Init next → do
+    _ ← fork do
+      sharingInput ← H.gets _.sharingInput
+      Q.tokenList >>= case _ of
+        Left e →
+          H.modify _ { errored = true }
+        Right toks → do
+          let tokenPerms = prepareAndFilterTokens toks sharingInput
+          H.modify _ { tokenPermissions = tokenPerms }
+          for_ tokenPerms initZClipboard
+      Q.permissionList false >>= case _ of
+        Left e →
+          H.modify _
+            { errored = true
+            , loading = false
+            }
+        Right ps → do
+          let adjusted = adjustPermissions ps sharingInput
+          H.modify _
+            { userPermissions = adjusted.users
+            , groupPermissions = adjusted.groups
+            , loading = false
+            }
+    pure next
+-- eval (InitZClipboard token mbEl next) =
+--   next <$ for_ mbEl \el → do
+--     H.liftEff $ Z.make (htmlElementToElement el)
+--       >>= Z.onCopy (Z.setData "text/plain" token)
+  ChangePermissionResume name string next → do
+    state ← H.get
+    H.modify (_{errored = false})
+    let
+      mbUserPerms = SM.lookup name state.userPermissions
+      mbGroupPerms = SM.lookup name state.groupPermissions
+      newResume = case string of
+        "view" → View
+        _ → Edit
+      oldResume = case string of
+        "view" → Edit
+        _ → View
 
-  permsRes ← Q.permissionList false
-  case permsRes of
-    Left e → H.modify (_{errored = true})
-    Right ps →
-      let
-        adjusted = adjustPermissions ps sharingInput
-      in
-        H.modify (_{ userPermissions = adjusted.users
-                   , groupPermissions = adjusted.groups
-                   })
-  H.modify (_{ loading = false})
-eval (InitZClipboard token mbEl next) =
-  next <$ for_ mbEl \el → do
-    H.fromEff $ Z.make (htmlElementToElement el)
-      >>= Z.onCopy (Z.setData "text/plain" token)
-eval (Dismiss next) = pure next
-eval (SelectElement el next) =
-  next <$ H.fromEff (select el)
-eval (PermissionResumeChanged name string next) = next <$ do
-  state ← H.get
-  H.modify (_{errored = false})
-  let
-    mbUserPerms = SM.lookup name state.userPermissions
-    mbGroupPerms = SM.lookup name state.groupPermissions
+    for_ mbUserPerms \perms → do
+      H.modify
+        $ (_userPermissions ∘ ix name ∘ _state ?~ Modifying)
+        ∘ (_userPermissions ∘ ix name ∘ _resume .~ newResume)
+      (succeeded × actionMap) ←
+        changePermissionResumeForUser name state.sharingInput newResume perms
+      H.modify
+        $ (_userPermissions ∘ ix name ∘ _actions .~ actionMap)
+        ∘ if succeeded
+          then
+            (_userPermissions ∘ ix name ∘ _state .~ Nothing)
+          else
+            (_userPermissions ∘ ix name ∘ _state ?~ ModifyError)
+            ∘ (_userPermissions ∘ ix name ∘ _resume .~ oldResume)
 
-    newResume | string ≡ "view" = View
-              | otherwise = Edit
+    for_ mbGroupPerms \perms → do
+      H.modify
+        $ (_groupPermissions ∘ ix name ∘ _state ?~ Modifying)
+        ∘ (_groupPermissions ∘ ix name ∘ _resume .~ newResume)
 
-    oldResume | string ≡ "view" = Edit
-              | otherwise = View
+      (succeeded × actionMap)  ←
+        changePermissionResumeForGroup name state.sharingInput newResume perms
+      H.modify
+        $ (_groupPermissions ∘ ix name ∘ _actions .~ actionMap)
+        ∘ if succeeded
+          then
+            (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
+          else
+            (_groupPermissions ∘ ix name ∘ _state ?~ ModifyError)
+            ∘ (_groupPermissions ∘ ix name ∘ _resume .~ oldResume)
+    pure next
+  UnshareToken tokenId next → do
+    state ← H.get
+    let mtix = Arr.findIndex (\x → x.tokenId ≡ tokenId) state.tokenPermissions
+    for_ mtix \tix → do
+      H.modify $ _tokenPermissions ∘ ix tix ∘ _state ?~ Unsharing
+      Q.deleteToken tokenId >>= case _ of
+        Left _ →
+          H.modify
+            $ (_tokenPermissions ∘ ix tix ∘ _state ?~ RevokeError)
+            ∘ (_errored .~ false)
+        Right _ →
+          H.modify
+            $ _tokenPermissions %~ Arr.filter (\x → x.tokenId ≠ tokenId)
+    pure next
+  Unshare name next → do
+    state ← H.get
+    H.modify _ { errored = false }
+    let
+      mbUserPerms = SM.lookup name state.userPermissions
+      mbGroupPerms = SM.lookup name state.groupPermissions
 
-  for_ mbUserPerms \perms → do
-    H.modify
-      $ (_userPermissions ∘ ix name ∘ _state ?~ Modifying)
-      ∘ (_userPermissions ∘ ix name ∘ _resume .~ newResume)
-    (succeeded × actionMap) ←
-      changePermissionResumeForUser name state.sharingInput newResume perms
-    H.modify
-      $ (_userPermissions ∘ ix name ∘ _actions .~ actionMap)
-      ∘ if succeeded
-        then
-          (_userPermissions ∘ ix name ∘ _state .~ Nothing)
-        else
-          (_userPermissions ∘ ix name ∘ _state ?~ ModifyError)
-          ∘ (_userPermissions ∘ ix name ∘ _resume .~ oldResume)
-
-  for_ mbGroupPerms \perms → do
-    H.modify
-      $ (_groupPermissions ∘ ix name ∘ _state ?~ Modifying)
-      ∘ (_groupPermissions ∘ ix name ∘ _resume .~ newResume)
-
-    (succeeded × actionMap)  ←
-      changePermissionResumeForGroup name state.sharingInput newResume perms
-    H.modify
-      $ (_groupPermissions ∘ ix name ∘ _actions .~ actionMap)
-      ∘ if succeeded
-        then
-          (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
-        else
-          (_groupPermissions ∘ ix name ∘ _state ?~ ModifyError)
-          ∘ (_groupPermissions ∘ ix name ∘ _resume .~ oldResume)
-
-
-eval (UnshareToken tokenId next) = next <$ do
-  state ← H.get
-  let
-    mtix = Arr.findIndex (\x → x.tokenId ≡ tokenId) state.tokenPermissions
-
-  for_ mtix \tix → do
-    H.modify $ _tokenPermissions ∘ ix tix ∘ _state ?~ Unsharing
-
-    Q.deleteToken tokenId >>= case _ of
-      Left _ →
-        H.modify
-          $ (_tokenPermissions ∘ ix tix ∘ _state ?~ RevokeError)
-          ∘ (_errored .~ false)
-
-      Right _ →
-        H.modify
-          $ _tokenPermissions %~ Arr.filter (\x → x.tokenId ≠ tokenId)
-
-eval (Unshare name next) = next <$ do
-  state ← H.get
-  H.modify (_{errored = false})
-  let
-    mbUserPerms = SM.lookup name state.userPermissions
-    mbGroupPerms = SM.lookup name state.groupPermissions
-
-  for_ mbUserPerms \userPerms → do
-    H.modify $ _userPermissions ∘ ix name ∘ _state ?~ Unsharing
-    leftPids ← deletePermission userPerms.actions
-    H.modify
+    for_ mbUserPerms \userPerms → do
+      H.modify $ _userPermissions ∘ ix name ∘ _state ?~ Unsharing
+      leftPids ← deletePermission userPerms.actions
       if Map.isEmpty leftPids
         then
-        (_userPermissions %~ SM.delete name)
-        ∘ (_userPermissions ∘ ix name ∘ _state .~ Nothing)
+          H.modify
+            $ (_userPermissions %~ SM.delete name)
+            ∘ (_userPermissions ∘ ix name ∘ _state .~ Nothing)
         else
-        (_userPermissions ∘ ix name ∘ _actions .~ leftPids)
-        ∘ (_userPermissions ∘ ix name ∘ _state ?~ RevokeError)
+          H.modify
+            $ (_userPermissions ∘ ix name ∘ _actions .~ leftPids)
+            ∘ (_userPermissions ∘ ix name ∘ _state ?~ RevokeError)
 
-
-  for_ mbGroupPerms \groupPerms → do
-    H.modify $ _groupPermissions ∘ ix name ∘ _state ?~ Unsharing
-    leftPids ← deletePermission groupPerms.actions
-    H.modify
+    for_ mbGroupPerms \groupPerms → do
+      H.modify $ _groupPermissions ∘ ix name ∘ _state ?~ Unsharing
+      leftPids ← deletePermission groupPerms.actions
       if Map.isEmpty leftPids
         then
-        (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
-        ∘ (_groupPermissions %~ SM.delete name)
+          H.modify
+            $ (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
+            ∘ (_groupPermissions %~ SM.delete name)
         else
-        (_groupPermissions ∘ ix name ∘ _actions .~ leftPids)
-        ∘ (_groupPermissions ∘ ix name ∘ _state ?~ RevokeError)
+          H.modify
+            $ (_groupPermissions ∘ ix name ∘ _actions .~ leftPids)
+            ∘ (_groupPermissions ∘ ix name ∘ _state ?~ RevokeError)
+    pure next
+  SelectElement ev next → do
+    H.liftEff $ DOM.currentTarget ev
+      # readHTMLElement ∘ toForeign
+      # runExcept
+      # traverse_ select
+    pure next
+  PreventDefault ev next →
+    H.liftEff (DOM.preventDefault ev) $> next
+  Done next →
+    H.raise Dismiss $> next
 
+initZClipboard ∷ TokenPermission → DSL Unit
+initZClipboard token =
+  H.getHTMLElementRef (copyButtonRef token.tokenId) >>= traverse_ \htmlEl →
+    H.liftEff $ Z.make (htmlElementToElement htmlEl)
+      >>= Z.onCopy (Z.setData "text/plain" token.secret)
 
 changePermissionResumeForUser
   ∷ String
@@ -539,19 +557,19 @@ deletePermission
   ∷ Map.Map QTA.PermissionId QTA.ActionR
   → DSL (Map.Map QTA.PermissionId QTA.ActionR)
 deletePermission permissionMap = do
-  r ← H.fromEff $ newRef $ Map.empty × Map.size permissionMap
-  resultVar ← H.fromAff makeVar
-  H.liftH $ chunkedParTraverse (go r resultVar) (Map.toList permissionMap) (splitList 20) L.concat
-  H.fromAff $ takeVar resultVar
+  r ← H.liftEff $ newRef $ Map.empty × Map.size permissionMap
+  resultVar ← H.liftAff makeVar
+  H.lift $ chunkedParTraverse (go r resultVar) (Map.toList permissionMap) (splitList 20) L.concat
+  H.liftAff $ takeVar resultVar
   where
   go r resultVar (pid × act) = do
     result ← Q.deletePermission pid
-    H.fromEff $ modifyRef r \(acc × count) → acc × (count - 1)
+    H.liftEff $ modifyRef r \(acc × count) → acc × (count - 1)
     case result of
-      Left _ → H.fromEff $ modifyRef r \(acc × count) → (Map.insert pid act acc) × count
+      Left _ → H.liftEff $ modifyRef r \(acc × count) → (Map.insert pid act acc) × count
       Right _ → pure unit
-    (acc × count) ← H.fromEff $ readRef r
-    when (count ≡ 0) $ H.fromAff $ putVar resultVar acc
+    (acc × count) ← H.liftEff $ readRef r
+    when (count ≡ 0) $ H.liftAff $ putVar resultVar acc
 
 
 adjustPermissions ∷ Array QTA.PermissionR → Model.SharingInput → AdjustedPermissions

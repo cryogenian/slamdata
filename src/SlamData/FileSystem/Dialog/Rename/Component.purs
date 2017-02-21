@@ -25,26 +25,28 @@ import Data.Lens ((^.), (%~), (.~), (?~), lens, Lens')
 import Data.Path.Pathy (printPath, parseAbsDir, sandbox, rootDir, (</>))
 import Data.String as S
 
+import DOM.Event.Event as DEE
+
 import Halogen as H
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config as Config
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Monad (Slam)
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
+import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as API
-import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (formGroup)
+import SlamData.Render.CSS as Rc
 
 import Utils.Path (DirPath, dropWorkspaceExt)
+import Utils.DOM as DOM
 
 type State =
   { showList ∷ Boolean
@@ -128,7 +130,7 @@ validate r
       $ throwError "An item with this name already exists in the target folder"
 
 data Query a
-  = Dismiss a
+  = RaiseDismiss a
   | SetShowList Boolean a
   | ToggleShowList a
   | Submit a
@@ -137,18 +139,22 @@ data Query a
   | DirClicked R.Resource a
   | SetSiblings (Array R.Resource) a
   | AddDirs (Array R.Resource) a
+  | PreventDefault DOM.Event a
+  | StopPropagation DOM.Event (Query a)
   | Init a
 
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Message Slam
 type HTML = H.ComponentHTML Query
 
-comp :: H.Component State Query Slam
-comp =
+component ∷ H.Component HH.HTML Query R.Resource Message Slam
+component =
   H.lifecycleComponent
-    { render
+    { initialState
+    , render
     , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
+    , receiver: const Nothing
     }
 
 render ∷ State → HTML
@@ -158,9 +164,8 @@ render dialog =
   , modalBody
     $ HH.form
         [ HP.classes [ Rc.renameDialogForm ]
-        , Cp.nonSubmit
-        , HE.onClick \_ →
-            HEH.stopPropagation $> Just (H.action (SetShowList false))
+        , HE.onSubmit $ HE.input PreventDefault
+        , HE.onClick \e → Just $ StopPropagation (DOM.toEvent e) $ H.action $ SetShowList false
         ]
         [ nameInput
         , dirDropdownField
@@ -170,7 +175,7 @@ render dialog =
   , modalFooter
       [ HH.button
           [ HP.classes [ B.btn ]
-          , HE.onClick (HE.input_ Dismiss)
+          , HE.onClick (HE.input_ RaiseDismiss)
           ]
           [ HH.text "Cancel" ]
       , HH.button
@@ -194,7 +199,7 @@ render dialog =
   dirDropdownField ∷ HTML
   dirDropdownField =
     HH.div
-      [ HP.classes [ B.inputGroup, HH.className "file-list-field" ] ]
+      [ HP.classes [ B.inputGroup, HH.ClassName "file-list-field" ] ]
       [ HH.input
           [ HP.classes [ B.formControl ]
           , HP.placeholder "New directory"
@@ -205,8 +210,8 @@ render dialog =
           [ HP.classes [ B.inputGroupBtn ] ]
           [ HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
-              , HE.onClick \_ →
-                  HEH.stopPropagation $> Just (H.action ToggleShowList)
+              , HE.onClick \e →
+                   Just $ StopPropagation (DOM.toEvent e) $ H.action $ ToggleShowList
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
               ]
@@ -237,8 +242,16 @@ render dialog =
              ]
     [ HH.text (R.resourcePath res) ]
 
-eval :: Query ~> DSL
-eval (Dismiss next) = pure next
+eval ∷ Query ~> DSL
+eval (RaiseDismiss next) = do
+  H.raise Dismiss
+  pure next
+eval (PreventDefault e next) = do
+  H.liftEff $ DEE.preventDefault e
+  pure next
+eval (StopPropagation e q) = do
+  H.liftEff $ DEE.stopPropagation e
+  eval q
 eval (SetShowList bool next) = do
   H.modify (_showList .~ bool)
   H.modify validate
@@ -274,7 +287,7 @@ eval (Submit next) = do
     state ← H.get
     let src = state.initial
         tgt = R.getPath $ renameSlam state
-    result ← H.liftH $ API.move src tgt
+    result ← H.lift $ API.move src tgt
     case result of
       Left e ->
         case GE.fromQError e of
@@ -283,7 +296,7 @@ eval (Submit next) = do
       Right x ->
         maybe
           presentSourceMissingError
-          (const $ H.modify (_error .~ Nothing) *> H.fromEff reload)
+          (const $ H.modify (_error .~ Nothing) *> H.liftEff reload)
           x
     pure unit
 

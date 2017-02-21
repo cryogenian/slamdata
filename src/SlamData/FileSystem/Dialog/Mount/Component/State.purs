@@ -38,6 +38,12 @@ type State =
   , settings ∷ Maybe MountSettings
   }
 
+type Input =
+  { parent ∷ DirPath
+  , name ∷ String
+  , settings ∷ Maybe MountSettings
+  }
+
 data MountSettings
   = MongoDB MongoDB.State
   | SQL2 SQL2.State
@@ -71,8 +77,8 @@ _saving = lens _.saving (_ { saving = _ })
 _settings ∷ Lens' State (Maybe MountSettings)
 _settings = lens _.settings _{settings = _}
 
-initialState ∷ DirPath → String → Maybe MountSettings → State
-initialState parent name settings =
+initialState ∷ Input → State
+initialState { parent, name, settings } =
   { new: isNothing settings
   , parent
   , settings

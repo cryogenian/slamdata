@@ -18,20 +18,17 @@ module SlamData.Workspace.Deck.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
+import Halogen.Component.ChildPath as CP
 
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
-import SlamData.Workspace.Card.Component.Query (CardQueryP)
-import SlamData.Workspace.Card.Component.State (CardStateP)
+import SlamData.Workspace.Card.Component.Query (CardQuery)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Error.Component as Error
 import SlamData.Workspace.Card.Pending.Component as Pending
 import SlamData.Workspace.Deck.BackSide as Back
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
-
-type BackSideSlot = Unit
 
 type ChildSlot
   = CardId
@@ -41,70 +38,37 @@ type ChildSlot
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
+  ⊹ Void
 
 type ChildQuery
-  = CardQueryP
+  = CardQuery
   ⨁ ActionList.Query Back.BackAction
-  ⨁ Dialog.QueryP
-  ⨁ Next.QueryP
+  ⨁ Dialog.Query
+  ⨁ Next.Query
   ⨁ Error.Query
   ⨁ Pending.Query
   ⨁ ActionFilter.Query
+  ⨁ Const Void
 
-type ChildState
-  = CardStateP
-  ⊹ ActionList.State Back.BackAction
-  ⊹ Dialog.StateP
-  ⊹ Next.StateP
-  ⊹ Error.State
-  ⊹ Pending.State
-  ⊹ ActionFilter.State
+type ChildPath q s = CP.ChildPath q ChildQuery s ChildSlot
 
-cpCard
-  ∷ ChildPath
-      CardStateP ChildState
-      CardQueryP ChildQuery
-      CardId ChildSlot
-cpCard = cpL
+cpCard ∷ ChildPath CardQuery CardId
+cpCard = CP.cp1
 
-cpBackSide
-  ∷ ChildPath
-      (ActionList.State Back.BackAction) ChildState
-      (ActionList.Query Back.BackAction) ChildQuery
-      Unit ChildSlot
-cpBackSide = cpR :> cpL
+cpBackSide ∷ ChildPath (ActionList.Query Back.BackAction) Unit
+cpBackSide = CP.cp2
 
-cpDialog
-  ∷ ChildPath
-      Dialog.StateP ChildState
-      Dialog.QueryP ChildQuery
-      Unit ChildSlot
-cpDialog = cpR :> cpR :> cpL
+cpDialog ∷ ChildPath Dialog.Query Unit
+cpDialog = CP.cp3
 
-cpNext
-  ∷ ChildPath
-      Next.StateP ChildState
-      Next.QueryP ChildQuery
-      Unit ChildSlot
-cpNext = cpR :> cpR :> cpR :> cpL
+cpNext ∷ ChildPath Next.Query Unit
+cpNext = CP.cp4
 
-cpError
-  ∷ ChildPath
-      Error.State ChildState
-      Error.Query ChildQuery
-      Unit ChildSlot
-cpError = cpR :> cpR :> cpR :> cpR :> cpL
+cpError ∷ ChildPath Error.Query Unit
+cpError = CP.cp5
 
-cpPending
-  ∷ ChildPath
-      Pending.State ChildState
-      Pending.Query ChildQuery
-      Unit ChildSlot
-cpPending = cpR :> cpR :> cpR :> cpR :> cpR :> cpL
+cpPending ∷ ChildPath Pending.Query Unit
+cpPending = CP.cp6
 
-cpActionFilter
-  ∷ ChildPath
-      ActionFilter.State ChildState
-      ActionFilter.Query ChildQuery
-      Unit ChildSlot
-cpActionFilter = cpR :> cpR :> cpR :> cpR :> cpR :> cpR
+cpActionFilter ∷ ChildPath ActionFilter.Query Unit
+cpActionFilter = CP.cp7

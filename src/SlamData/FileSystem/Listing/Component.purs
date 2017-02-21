@@ -22,8 +22,9 @@ import Data.Array (zipWith, range, length, cons, sortBy, filter, nub)
 import Data.Lens ((.~), (%~), (<>~), lens, Lens')
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
@@ -32,100 +33,120 @@ import SlamData.FileSystem.Listing.Item.Component as Item
 import SlamData.Render.CSS as Rc
 
 type State =
-  { items :: Array Item
-  , isSearching :: Boolean
-  , isHidden :: Boolean
+  { items ∷ Array Item
+  , isSearching ∷ Boolean
+  , isHidden ∷ Boolean
   }
 
-initialState :: State
+initialState ∷ State
 initialState =
   { items: [ ]
   , isSearching: false
   , isHidden: true
   }
 
-_items :: Lens' State (Array Item)
+_items ∷ Lens' State (Array Item)
 _items = lens _.items _{items = _}
 
-_isSearching :: Lens' State Boolean
+_isSearching ∷ Lens' State Boolean
 _isSearching = lens _.isSearching _{isSearching = _}
 
-_isHidden :: Lens' State Boolean
+_isHidden ∷ Lens' State Boolean
 _isHidden = lens _.isHidden _{isHidden = _}
 
-zipItems :: forall a. (Int -> Item -> a) -> Array Item -> Array a
+zipItems ∷ forall a. (Int → Item → a) → Array Item → Array a
 zipItems f items = zipWith f (0 `range` length items) items
 
 data Query a
   = Reset a
   | Add Item a
   | Adds (Array Item) a
-  | SortBy (Item -> Item -> Ordering) a
+  | SortBy (Item → Item → Ordering) a
   | SetIsSearching Boolean a
-  | Filter (Item -> Boolean) a
+  | Filter (Item → Boolean) a
   | SetIsHidden Boolean a
-  | Get (Array Item -> a)
+  | Get (Array Item → a)
+  | HandleItemAction ItemSlot Item.Message a
+
+data Message
+  = Added (Array Item)
+  | ItemMessage Item.Message
 
 data ItemSlot = ItemSlot Int Item
+derive instance eqItemSlot ∷ Eq ItemSlot
+derive instance ordItemSlot ∷ Ord ItemSlot
 
-derive instance eqItemSlot :: Eq ItemSlot
+type HTML = H.ParentHTML Query Item.Query ItemSlot Slam
+type DSL = H.ParentDSL State Query Item.Query ItemSlot Message Slam
 
-derive instance ordItemSlot :: Ord ItemSlot
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component =
+  H.parentComponent
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
-type StateP = H.ParentState State Item.State Query Item.Query Slam ItemSlot
-type QueryP = Coproduct Query (H.ChildF ItemSlot Item.Query)
-
-type HTML = H.ParentHTML Item.State Query Item.Query Slam ItemSlot
-type DSL = H.ParentDSL State Item.State Query Item.Query Slam ItemSlot
-
-comp :: H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Just peek }
-
-render :: State -> HTML
+render ∷ State → HTML
 render state@{ items } =
   HH.div
     [ HP.classes [ B.listGroup, Rc.results ] ]
     $ zipItems (install state) items
 
-eval :: Query ~> DSL
-eval (Reset next) = H.modify (_items .~ mempty) $> next
-eval (Add item next) = H.modify (_items %~ nub <<< cons item) $> next
-eval (Adds items next) = do
-  H.modify (_items <>~ items)
-  H.modify (_items %~ nub)
-  pure next
-eval (SortBy sortFn next) = H.modify (_items %~ sortBy sortFn) $> next
-eval (SetIsSearching bool next) = do
-  H.modify (_isSearching .~ bool)
-  items <- H.gets _.items
-  for_ (zipItems ItemSlot items) \slot ->
-    H.query slot $ H.action $ Item.SetIsSearching bool
-  pure next
-eval (Filter filterFn next) = H.modify (_items %~ filter filterFn) $> next
-eval (SetIsHidden bool next) = do
-  H.modify (_isHidden .~ bool)
-  items <- H.gets _.items
-  for_ (zipItems ItemSlot items) \slot ->
-    H.query slot $ H.action $ Item.SetIsHidden bool
-  pure next
-eval (Get continue) = continue <$> H.gets _.items
+eval ∷ Query ~> DSL
+eval = case _ of
+  Reset next →
+    H.modify (_items .~ mempty) $> next
+  Add item next → do
+    H.modify (_items %~ nub <<< cons item)
+    H.raise $ Added [ item ]
+    pure next
+  Adds items next → do
+    H.modify (_items <>~ items)
+    H.modify (_items %~ nub)
+    H.raise $ Added items
+    pure next
+  SortBy sortFn next →
+    H.modify (_items %~ sortBy sortFn) $> next
+  SetIsSearching bool next →
+    do
+    H.modify (_isSearching .~ bool)
+    items ← H.gets _.items
+    for_ (zipItems ItemSlot items) \slot →
+      H.query slot $ H.action $ Item.SetIsSearching bool
+    pure next
+  Filter filterFn next →
+    H.modify (_items %~ filter filterFn) $> next
+  SetIsHidden bool next →
+    do
+    H.modify (_isHidden .~ bool)
+    items ← H.gets _.items
+    for_ (zipItems ItemSlot items) \slot →
+      H.query slot $ H.action $ Item.SetIsHidden bool
+    pure next
+  Get continue →
+    continue <$> H.gets _.items
+  HandleItemAction p msg next → do
+    H.raise $ ItemMessage msg
+    case msg of
+      Item.Selected → do
+        items ← H.gets _.items
+        for_ (zipItems ItemSlot items) \slot →
+          unless (slot == p) $ void $ H.query slot $ H.action Item.Deselect
+      _ →
+        pure unit
+    pure next
 
-peek :: forall x. H.ChildF ItemSlot Item.Query x -> DSL Unit
-peek (H.ChildF p (Item.Toggle _)) = void do
-  items <- H.gets _.items
-  for_ (zipItems ItemSlot items) \slot ->
-    if slot == p
-    then pure $ pure unit
-    else H.query slot $ H.action Item.Deselect
-peek _ = pure unit
-
-install :: State -> Int -> Item -> HTML
+install ∷ State → Int → Item → HTML
 install { isSearching, isHidden } ix item =
-  HH.slot (ItemSlot ix item) \_ ->
-    { component: Item.comp
-    , initialState:
+  let slotId = ItemSlot ix item
+  in HH.slot
+      slotId
+      (Item.component
         { isSearching: isSearching
         , isHidden: isHidden
         , item: item
-        }
-    }
+        })
+      unit
+      (HE.input (HandleItemAction slotId))

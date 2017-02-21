@@ -22,18 +22,13 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Component.State
   , _stack
   , _parallel
   , State
-  , StateP
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
 import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
-import Halogen (ParentState)
-
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Setups.Chart.Bar.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query (QueryC, Selection)
+import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query (Selection)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as M
@@ -49,12 +44,8 @@ initialState =
   , valueAgg: M.initialState.valueAgg
   , stack: M.initialState.stack
   , parallel: M.initialState.parallel
-  , levelOfDetails: DS.initial.levelOfDetails
   , picker: DS.initial.picker
   }
-
-type StateP =
-  ParentState State CS.ChildState QueryC CS.ChildQuery Slam CS.ChildSlot
 
 _category ∷ ∀ r a. Lens' { category ∷ a | r } a
 _category = lens _.category _{ category = _ }

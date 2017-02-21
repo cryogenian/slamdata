@@ -15,8 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Download.Component
-  ( comp
-  , module SlamData.FileSystem.Dialog.Download.Component.State
+  ( component
   , module SlamData.FileSystem.Dialog.Download.Component.Query
   ) where
 
@@ -24,43 +23,60 @@ import SlamData.Prelude
 
 import Control.UI.Browser (newTab)
 
-import Data.Lens ((.~), _Right, (%~), _Left)
+import Data.Lens (_Left, _Right, (%~))
+
+import DOM.Classy.Event as DOM
 
 import Halogen as H
+import Halogen.HTML as HH
 
 import SlamData.Download.Model as D
-import SlamData.Monad (Slam)
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Download.Component.Render (render)
-import SlamData.FileSystem.Dialog.Download.Component.State (State, _authHeaders,  _compress, _error, _options, _source, _targetName, checkExists, initialState, validate)
+import SlamData.FileSystem.Dialog.Download.Component.State (Input, State, _options, initialState, validate)
+import SlamData.Monad (Slam)
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+component ∷ H.Component HH.HTML Query Input Message Slam
+component =
+  H.component
+    { initialState: initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
-eval ∷ Query ~> (H.ComponentDSL State Query Slam)
-eval (TargetTyped s next) = do
-  H.modify $ validate ∘ (_targetName .~ D.validFilename s)
-  pure next
-eval (ToggleCompress next) = do
-  H.modify $ validate ∘ (_compress %~ not)
-  pure next
-eval (SetOutput ty next) = do
-  let
-    options = case ty of
-      D.CSV → Left ∘ either id (const D.initialCSVOptions)
-      D.JSON → Right ∘ either (const D.initialJSONOptions) id
-  H.modify $ validate ∘ (_options %~ options)
-  pure next
-eval (ModifyCSVOpts fn next) = do
-  H.modify $ validate ∘ (_options ∘ _Left %~ fn)
-  pure next
-eval (ModifyJSONOpts fn next) = do
-  H.modify $ validate ∘ (_options ∘ _Right %~ fn)
-  pure next
-eval (NewTab url next) = do
-  H.fromEff $ newTab url
-  pure next
-eval (Dismiss next) =
-  pure next
-eval (SetAuthHeaders as next) = do
-  H.modify (_authHeaders .~ as) $> next
+eval ∷ Query ~> H.ComponentDSL State Query Message Slam
+eval = case _ of
+  TargetTyped s next → do
+    H.modify $ validate ∘ (_ { targetName = D.validFilename s })
+    pure next
+  ToggleCompress next → do
+    H.modify $ validate ∘ \st -> st { compress = not st.compress }
+    pure next
+  SetOutput ty next → do
+    let
+      options = case ty of
+        D.CSV → Left ∘ either id (const D.initialCSVOptions)
+        D.JSON → Right ∘ either (const D.initialJSONOptions) id
+    H.modify $ validate ∘ (_options %~ options)
+    pure next
+  ModifyCSVOpts fn next → do
+    H.modify $ validate ∘ (_options ∘ _Left %~ fn)
+    pure next
+  ModifyJSONOpts fn next → do
+    H.modify $ validate ∘ (_options ∘ _Right %~ fn)
+    pure next
+  NewTab url ev next → do
+    H.liftEff do
+      DOM.preventDefault ev
+      newTab url
+    pure next
+  RaiseDismiss next → do
+    H.raise Dismiss
+    pure next
+  SetAuthHeaders as next → do
+    H.modify (_ { authHeaders = as }) $> next
+  PreventDefault ev next → do
+    H.liftEff $ DOM.preventDefault ev
+    pure next

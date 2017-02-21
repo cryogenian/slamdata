@@ -16,13 +16,13 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Component.CSS where
 
-import Halogen.HTML.Core (className, ClassName)
+import Halogen.HTML.Core (ClassName(..))
 
 deckCard ∷ ClassName
-deckCard = className "sd-deck-card"
+deckCard = ClassName "sd-deck-card"
 
 cardHeader ∷ ClassName
-cardHeader = className "sd-card-header"
+cardHeader = ClassName "sd-card-header"
 
 cardName ∷ ClassName
-cardName = className "sd-card-name"
+cardName = ClassName "sd-card-name"

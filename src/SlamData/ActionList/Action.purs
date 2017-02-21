@@ -468,5 +468,5 @@ defaultConf boundingDimensions as =
   in
     { buttons
     , leavesASpace: actionSize.leavesASpace
-    , classes: [ HH.className "with-filter" ]
+    , classes: [ HH.ClassName "with-filter" ]
     }

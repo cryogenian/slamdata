@@ -21,23 +21,25 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor(..))
 import Data.Array as Arr
 import Data.List as List
-import Data.Set as Set
 import Data.Map as Map
+import Data.Set as Set
 import Data.Time.Duration (Milliseconds(..))
 
+import DOM.Classy.Event as DOM
+import DOM.Event.Types (Event)
+
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.Component.Utils (sendAfter)
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.CustomProps as Cp
-import Halogen.Component.Utils (sendAfter, raise)
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Port (SetupLabeledFormInputPort)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as M
+import SlamData.Workspace.Card.Port (SetupLabeledFormInputPort)
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 type State =
   { formInputType ∷ FormInputType
@@ -62,17 +64,27 @@ data Query a
   | SetSelected (Set.Set Sem.Semantics) a
   | Load M.Model a
   | Save (M.Model → a)
-  | Updated a
+  | PreventDefault Event a
+  | RaiseUpdated a
 
-type DSL = H.ComponentDSL State Query Slam
+data Message = Updated
+
+type DSL = H.ComponentDSL State Query Message Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+comp ∷ H.Component HH.HTML Query Unit Message Slam
+comp =
+  H.component
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render ∷ State → HTML
 render state =
-  HH.form [ Cp.nonSubmit ]
+  HH.form
+    [ HE.onSubmit (HE.input PreventDefault) ]
     $ foldMap (\n → [ HH.h3_ [ HH.text n ] ]) state.label
     ⊕ case state.formInputType of
       Dropdown → renderDropdown state
@@ -85,7 +97,7 @@ renderDropdown state =
   [ HH.select
       [ HP.classes [ B.formControl ]
       , HE.onSelectedIndexChange \ix →
-         pure (Arr.index optionList ix <#> fst ⋙ flip ItemSelected unit)
+          H.action ∘ ItemSelected ∘ fst <$> Arr.index optionList ix
       ]
       $ map renderOption optionList
   ]
@@ -102,7 +114,7 @@ renderDropdown state =
 renderCheckbox ∷ State → Array HTML
 renderCheckbox state =
   [ HH.form
-     [ Cp.nonSubmit ]
+     [ HE.onSubmit (HE.input PreventDefault) ]
      $ map renderOneInput optionList
   ]
   where
@@ -115,7 +127,7 @@ renderCheckbox state =
       [ HP.classes [ B.checkbox ] ]
       [ HH.label_
         [ HH.input
-            [ HP.inputType HP.InputCheckbox
+            [ HP.type_ HP.InputCheckbox
             , HP.checked $ Set.member sem state.selected
             , HE.onValueChange (HE.input_ $ ItemSelected sem)
             ]
@@ -126,7 +138,7 @@ renderCheckbox state =
 renderRadio ∷ State → Array HTML
 renderRadio state =
   [ HH.form
-     [ Cp.nonSubmit ]
+     [ HE.onSubmit (HE.input PreventDefault) ]
      $ map renderOneInput optionList
   ]
   where
@@ -139,7 +151,7 @@ renderRadio state =
       [ HP.classes [ B.radio ]  ]
       [ HH.label_
           [ HH.input
-            [ HP.inputType HP.InputRadio
+            [ HP.type_ HP.InputRadio
             , HP.checked $ Set.member sem state.selected
             , HE.onValueChange (HE.input_ $ ItemSelected sem)
             ]
@@ -148,74 +160,79 @@ renderRadio state =
       ]
 
 eval ∷ Query ~> DSL
-eval (Setup conf next) = do
-  st ← H.get
-  let
-    selectedFromConf
-      -- If this is checkbox and selected values field is empty then
-      -- there is no sense in setting default value (and it's actually empty :) )
-      | Set.isEmpty conf.selectedValues ∧ conf.formInputType ≠ Checkbox =
-          foldMap Set.singleton $ List.head $ Map.keys conf.valueLabelMap
-      | otherwise =
-          conf.selectedValues
-    selected
-      -- When cursor is changed we use default selection from input
-      | st.cursor ≠ conf.cursor =
-          selectedFromConf
-      -- Same if user didn't interact with form input
-      | Set.isEmpty st.selected =
-          selectedFromConf
-      -- If port is the same and user already selected something we preserve selected values
-      | otherwise =
-          st.selected
+eval = case _ of
+  Setup conf next → do
+    st ← H.get
+    let
+      selectedFromConf
+        -- If this is checkbox and selected values field is empty then
+        -- there is no sense in setting default value (and it's actually empty :) )
+        | Set.isEmpty conf.selectedValues ∧ conf.formInputType ≠ Checkbox =
+            foldMap Set.singleton $ List.head $ Map.keys conf.valueLabelMap
+        | otherwise =
+            conf.selectedValues
+      selected
+        -- When cursor is changed we use default selection from input
+        | st.cursor ≠ conf.cursor =
+            selectedFromConf
+        -- Same if user didn't interact with form input
+        | Set.isEmpty st.selected =
+            selectedFromConf
+        -- If port is the same and user already selected something we preserve selected values
+        | otherwise =
+            st.selected
 
-  H.modify _
-    { formInputType = conf.formInputType
-    , selected = selected
-    , valueLabelMap = conf.valueLabelMap
-    , label = if conf.name ≡ "" then Nothing else Just conf.name
-    , cursor = conf.cursor
-    }
-
-  when (st.cursor ≠ conf.cursor)
-    $ void $ sendAfter (Milliseconds 200.0) $ H.action Updated
-  pure next
-eval (ItemSelected sem next) = do
-  st ← H.get
-  case st.formInputType of
-    Checkbox → do
-      let
-        selected =
-          if Set.member sem st.selected
-            then Set.delete sem st.selected
-            else Set.insert sem st.selected
-      H.modify _{ selected = selected }
-    _ → H.modify _{ selected = Set.singleton sem }
-  raise $ H.action Updated
-  pure next
-eval (SetSelected set next) = do
-  st ← H.get
-  let
-    selected = case st.formInputType of
-      Checkbox → set
-      _ → Set.fromFoldable $ List.head $ List.fromFoldable set
-  when (selected ≠ st.selected)
-    $ H.modify _{ selected = selected }
-  pure next
-eval (Load m next) = do
-  H.modify _
-    { formInputType = m.formInputType
-    , selected = m.selected
-    , cursor = m.cursor
-    }
-  pure next
-eval (Save continue) = do
-  st ← H.get
-  pure
-    $ continue
-      { formInputType: st.formInputType
-      , selected: st.selected
-      , cursor: st.cursor
+    H.modify _
+      { formInputType = conf.formInputType
+      , selected = selected
+      , valueLabelMap = conf.valueLabelMap
+      , label = if conf.name ≡ "" then Nothing else Just conf.name
+      , cursor = conf.cursor
       }
-eval (Updated next) =
-  pure next
+
+    when (st.cursor ≠ conf.cursor)
+      $ void $ sendAfter (Milliseconds 200.0) RaiseUpdated
+    pure next
+  ItemSelected sem next → do
+    st ← H.get
+    case st.formInputType of
+      Checkbox → do
+        let
+          selected =
+            if Set.member sem st.selected
+              then Set.delete sem st.selected
+              else Set.insert sem st.selected
+        H.modify _{ selected = selected }
+      _ → H.modify _{ selected = Set.singleton sem }
+    H.raise Updated
+    pure next
+  SetSelected set next → do
+    st ← H.get
+    let
+      selected = case st.formInputType of
+        Checkbox → set
+        _ → Set.fromFoldable $ List.head $ List.fromFoldable set
+    when (selected ≠ st.selected)
+      $ H.modify _{ selected = selected }
+    pure next
+  Load m next → do
+    H.modify _
+      { formInputType = m.formInputType
+      , selected = m.selected
+      , cursor = m.cursor
+      }
+    pure next
+  Save continue → do
+    st ← H.get
+    pure
+      $ continue
+        { formInputType: st.formInputType
+        , selected: st.selected
+        , cursor: st.cursor
+        }
+  PreventDefault ev next → do
+    H.liftEff $ DOM.preventDefault ev
+    pure next
+  RaiseUpdated next → do
+    H.raise Updated
+    pure next

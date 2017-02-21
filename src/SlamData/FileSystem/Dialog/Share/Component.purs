@@ -15,58 +15,70 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Share.Component
-  ( State(..)
-  , Query(..)
-  , comp
+  ( Query(..)
+  , component
   ) where
 
 import SlamData.Prelude
 
 import Control.UI.Browser (select)
 
+import Data.Foreign (toForeign)
+
 import Halogen as H
-import Halogen.CustomProps as CP
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import DOM.HTML.Types (HTMLElement, htmlElementToElement)
+import DOM.HTML.Types (htmlElementToElement, readHTMLElement)
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Render.Common (glyph)
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.Monad (Slam)
+import SlamData.Render.Common (glyph)
+
+import Utils.DOM as DOM
 
 import ZClipboard as Z
 
-newtype State = State String
-
 data Query a
-  = SelectElement HTMLElement a
-  | InitZClipboard (Maybe HTMLElement) a
-  | Dismiss a
+  = SelectElement DOM.Event a
+  | PreventDefault DOM.Event a
+  | ReceiveUrl String a
+  | Init a
+  | Cancel a
 
-newtype Slot = Slot String
+copyButtonRef ∷ H.RefLabel
+copyButtonRef = H.RefLabel "copy"
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+component ∷ H.Component HH.HTML Query String Message Slam
+component =
+  H.lifecycleComponent
+    { initialState: id
+    , initializer: Just (H.action Init)
+    , finalizer: Nothing
+    , receiver: HE.input ReceiveUrl
+    , render
+    , eval
+    }
 
-render ∷ State → H.ComponentHTML Query
-render (State url) =
+render ∷ String → H.ComponentHTML Query
+render url =
   modalDialog
     [ modalHeader "Link to deck"
     , modalBody
         $ HH.form
-            [ CP.nonSubmit ]
+            [ HE.onSubmit (HE.input PreventDefault) ]
             [ HH.div
                 [ HP.classes [ B.inputGroup ]
-                , HE.onClick $ HE.input (SelectElement ∘ _.target)
+                , HE.onClick $ HE.input (SelectElement ∘ DOM.toEvent)
                 ]
                 [ HH.input
                     [ HP.classes [ B.formControl ]
                     , HP.value url
-                    , HP.readonly true
+                    , HP.readOnly true
                     , HP.title "Sharing URL"
                     , ARIA.label "Sharing URL"
                     ]
@@ -74,8 +86,8 @@ render (State url) =
                     [ HP.classes [ B.inputGroupBtn ] ]
                     [ HH.button
                         [ HP.classes [ B.btn, B.btnDefault ]
-                        , HE.onClick (HE.input_ Dismiss)
-                        , HP.ref (H.action ∘ InitZClipboard)
+                        , HE.onClick (HE.input_ Cancel)
+                        , HP.ref copyButtonRef
                         , HP.id_ "copy-button"
                         ]
                         [ glyph B.glyphiconCopy ]
@@ -86,18 +98,31 @@ render (State url) =
         [ HH.button
             [ HP.id_ "copy-button"
             , HP.classes [ B.btn, B.btnDefault ]
-            , HE.onClick (HE.input_ Dismiss)
+            , HE.onClick (HE.input_ Cancel)
             ]
             [ HH.text "Dismiss" ]
         ]
     ]
 
-eval ∷ Query ~> (H.ComponentDSL State Query Slam)
-eval (Dismiss next) = pure next
-eval (InitZClipboard (Just htmlEl) next) = do
-  State url ← H.get
-  let el = htmlElementToElement htmlEl
-  H.fromEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
-  pure next
-eval (InitZClipboard _ next) = pure next
-eval (SelectElement el next) = H.fromEff (select el) $> next
+eval ∷ Query ~> H.ComponentDSL String Query Message Slam
+eval = case _ of
+  Init next → do
+    url ← H.get
+    H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl → do
+      let el = htmlElementToElement htmlEl
+      H.liftEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
+    pure next
+  SelectElement ev next → do
+    H.liftEff $ DOM.currentTarget ev
+      # readHTMLElement ∘ toForeign
+      # runExcept
+      # traverse_ select
+    pure next
+  PreventDefault ev next →
+    H.liftEff (DOM.preventDefault ev) $> next
+  ReceiveUrl url next → do
+    st ← H.get
+    when (st ≠ url) $ H.put url
+    pure next
+  Cancel next →
+    H.raise Dismiss $> next

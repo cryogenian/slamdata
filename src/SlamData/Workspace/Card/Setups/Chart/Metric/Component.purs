@@ -25,24 +25,19 @@ import Data.List as List
 import Data.String as S
 
 import Halogen as H
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-
-import SlamData.Monad (Slam)
 
 import SlamData.Form.Select (_value)
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
@@ -53,37 +48,26 @@ import SlamData.Workspace.Card.Setups.Chart.Metric.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Metric.Model as M
 import SlamData.Workspace.Card.Eval.State (_Axes)
 
-type DSL =
-  H.ParentDSL ST.State CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
-type HTML =
-  H.ParentHTML CS.ChildState Q.QueryC CS.ChildQuery Slam CS.ChildSlot
+import Utils.DOM as DOM
 
-metricBuilderComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-metricBuilderComponent options = CC.makeCardComponent
-  { options
-  , cardType: CT.ChartOptions CHT.Metric
-  , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
-  , initialState: H.parentState ST.initialState
-  , _State: CC._BuildMetricState
-  , _Query: CC.makeQueryPrism' CC._BuildMetricQuery
-  }
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
+
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+
+metricBuilderComponent ∷ CC.CardOptions → CC.CardComponent
+metricBuilderComponent =
+  CC.makeCardComponent (CT.ChartOptions CHT.Metric) $ H.parentComponent
+    { render
+    , eval: cardEval ⨁ metricEval
+    , initialState: const ST.initialState
+    , receiver: const Nothing
+    }
 
 render ∷ ST.State → HTML
 render state =
-  HH.div_
-    [ renderHighLOD state
-    , renderLowLOD (CT.cardIconDarkImg $ CT.ChartOptions Metric) left state.levelOfDetails
-    ]
-
-renderHighLOD ∷ ST.State → HTML
-renderHighLOD state =
   HH.div
-    [ HP.classes
-        $ [ CSS.chartEditor ]
-        ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
-    ]
+    [ HP.classes [ CSS.chartEditor ] ]
     [ renderValue state
-
     , HH.hr_
     , renderFormatter state
     , renderFormatterInstruction
@@ -93,25 +77,24 @@ renderHighLOD state =
     , renderPicker state
     ]
 
-selecting ∷ ∀ a . (a → Q.Selection BCI.SelectAction) → a → H.Action Q.QueryC
-selecting f q a = right (Q.Select (f q) a)
+selecting ∷ ∀ f a. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
+selecting f q _ = right (Q.Select (f q) unit)
 
 renderPicker ∷ ST.State → HTML
 renderPicker state = case state.picker of
   Nothing → HH.text ""
   Just { options, select } →
-    HH.slot unit \_ →
-      { component: DPC.picker
-          { title: case select of
-              Q.Value _    → "Choose measure"
-              _ → ""
-          , label: DPC.labelNode show
-          , render: DPC.renderNode show
-          , values: groupJCursors (List.fromFoldable options)
-          , isSelectable: DPC.isLeafPath
-          }
-      , initialState: H.parentState DPC.initialState
-      }
+    let
+      conf =
+        { title: case select of
+            Q.Value _    → "Choose measure"
+            _ → ""
+        , label: DPC.labelNode show
+        , render: DPC.renderNode show
+        , values: groupJCursors (List.fromFoldable options)
+        , isSelectable: DPC.isLeafPath
+        }
+    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
 
 renderFormatterInstruction ∷ HTML
 renderFormatterInstruction =
@@ -148,7 +131,7 @@ renderValue ∷ ST.State → HTML
 renderValue state =
   HH.form
     [ HP.classes [ CSS.chartConfigureForm, CSS.withAggregation ]
-    , Cp.nonSubmit
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ BCI.pickerWithSelect
         (BCI.secondary (Just "Measure") (selecting Q.Value))
@@ -160,8 +143,8 @@ renderValue state =
 renderFormatter ∷ ST.State → HTML
 renderFormatter state =
   HH.form
-    [ HP.classes [ HH.className "chart-configure-input" ]
-    , Cp.nonSubmit
+    [ HP.classes [ HH.ClassName "chart-configure-input" ]
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Value formatter" ]
     , HH.input
@@ -174,8 +157,8 @@ renderFormatter state =
 renderLabel ∷ ST.State → HTML
 renderLabel state =
   HH.form
-    [ HP.classes [ HH.className "chart-configure-input" ]
-    , Cp.nonSubmit
+    [ HP.classes [ HH.ClassName "chart-configure-input" ]
+    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label" ]
     , HH.input
@@ -184,10 +167,6 @@ renderLabel state =
         ⊕ [ ARIA.label "Label" ]
         ⊕ [ HE.onValueInput $ HE.input (\s → right ∘ Q.SetLabel s) ]
     ]
-
-
-eval ∷ Q.QueryC ~> DSL
-eval = cardEval ⨁ metricEval
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -212,55 +191,40 @@ cardEval = case _ of
       H.modify _{axes = axes}
       H.modify M.behaviour.synchronize
     pure next
-  CC.ReceiveDimensions dims next → do
-    H.modify
-      _{levelOfDetails =
-           if dims.width < 576.0 ∨ dims.height < 416.0
-             then Low
-             else High
-       }
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions dims reply →
+    pure $ reply
+      if dims.width < 576.0 ∨ dims.height < 416.0
+      then Low
+      else High
 
 raiseUpdate ∷ DSL Unit
 raiseUpdate = do
   H.modify M.behaviour.synchronize
-  CC.raiseUpdatedP' CC.EvalModelUpdate
+  H.raise CC.modelUpdate
 
 metricEval ∷ Q.Query ~> DSL
 metricEval = case _ of
+  Q.PreventDefault e next → do
+    H.liftEff $ DOM.preventDefault e
+    pure next
   Q.SetFormatter str next → do
     H.modify _{formatter = if S.trim str ≡ "" then Nothing else Just str }
-    CC.raiseUpdatedP' CC.EvalModelUpdate
+    H.raise CC.modelUpdate
     pure next
   Q.SetLabel str next → do
     H.modify _{label = if S.trim str ≡ "" then Nothing else Just str }
-    CC.raiseUpdatedP' CC.EvalModelUpdate
+    H.raise CC.modelUpdate
     pure next
   Q.Select sel next → do
     case sel of
       Q.Value a    → updatePicker ST._value Q.Value a
       Q.ValueAgg a → updateSelect ST._valueAgg a
     pure next
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-  updateSelect l = case _ of
-    BCI.Open _    → pure unit
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek = coproduct peekPicker (const (pure unit))
-  where
-  peekPicker = case _ of
-    DPC.Dismiss _ →
+  Q.HandleDPMessage msg next → case msg of
+    DPC.Dismiss → do
       H.modify _ { picker = Nothing }
-    DPC.Confirm value _ → do
+      pure next
+    DPC.Confirm value → do
       st ← H.get
       let
         value' = flattenJCursors value
@@ -269,3 +233,13 @@ peek = coproduct peekPicker (const (pure unit))
         _ → pure unit
       H.modify _ { picker = Nothing }
       raiseUpdate
+      pure next
+
+  where
+  updatePicker l q = case _ of
+    BCI.Open opts → H.modify (ST.showPicker q opts)
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+
+  updateSelect l = case _ of
+    BCI.Open _    → pure unit
+    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate

@@ -17,16 +17,20 @@ limitations under the License.
 module SlamData.Workspace.Card.Draftboard.Component.Common
   ( DraftboardDSL
   , DraftboardHTML
+  , rootRef
   ) where
 
 import Halogen as H
 import SlamData.Monad (Slam)
+import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Draftboard.Component.State (State)
-import SlamData.Workspace.Card.Draftboard.Component.Query (QueryC)
-import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
-import SlamData.Workspace.Deck.Component.Nested.State as DNS
+import SlamData.Workspace.Card.Draftboard.Component.Query (Query)
+import SlamData.Workspace.Deck.Component.Query as DNQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
-type DraftboardDSL = H.ParentDSL State DNS.State QueryC DNQ.QueryP Slam DeckId
+type DraftboardDSL = H.ParentDSL State (CC.InnerCardQuery Query) DNQ.Query DeckId CC.CardEvalMessage Slam
 
-type DraftboardHTML = H.ParentHTML DNS.State QueryC DNQ.QueryP Slam DeckId
+type DraftboardHTML = H.ParentHTML (CC.InnerCardQuery Query) DNQ.Query DeckId Slam
+
+rootRef ∷ H.RefLabel
+rootRef = H.RefLabel "root"

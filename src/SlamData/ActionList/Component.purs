@@ -15,10 +15,13 @@ limitations under the License.
 -}
 
 module SlamData.ActionList.Component
-  ( comp
+  ( actionListComp
+  , component
+  , MkConf
   , module A
   , module ST
   , module Q
+  , module M
   ) where
 
 import SlamData.Prelude
@@ -30,23 +33,24 @@ import Data.Foldable as Foldable
 import Data.String as String
 
 import Halogen as H
-import Halogen.HTML.CSS.Indexed as HCSS
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML as HH
+import Halogen.HTML.CSS as HCSS
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.ActionList.Action as A
 import SlamData.ActionList.Component.State as ST
 import SlamData.ActionList.Component.Query as Q
+import SlamData.ActionList.Component.Message as M
 
 import Utils.DOM (DOMRect)
 import Utils.DOM as DOMUtils
 import Utils.CSS as CSSUtils
 
 type HTML a = H.ComponentHTML (Q.Query a)
-type DSL a = H.ComponentDSL (ST.State a) (Q.Query a) Slam
+type DSL a = H.ComponentDSL (ST.State a) (Q.Query a) (M.Message a) Slam
 
 type MkConf a =
   A.Dimensions → Array (A.Action a) → A.ActionListConf a
@@ -54,27 +58,33 @@ type MkConf a =
 actionListComp
   ∷ ∀ a. Eq a
   ⇒ MkConf a
-  → H.Component (ST.State a) (Q.Query a) Slam
-actionListComp mkConf =
+  → Array (A.Action a)
+  → H.Component HH.HTML (Q.Query a) Unit (M.Message a) Slam
+actionListComp mkConf actions =
   H.lifecycleComponent
-    { render: render mkConf
+    { initialState: const (ST.initialState actions)
+    , render: render mkConf
     , initializer: Just $ H.action Q.CalculateBoundingRect
     , finalizer: Nothing
     , eval
+    , receiver: const Nothing
     }
 
-comp ∷ ∀ a. Eq a ⇒ H.Component (ST.State a) (Q.Query a) Slam
-comp = actionListComp A.defaultConf
+elementRef ∷ H.RefLabel
+elementRef = H.RefLabel "bounding-element"
+
+component ∷ ∀ a. Eq a ⇒ H.Component HH.HTML (Q.Query a) Unit (M.Message a) Slam
+component = actionListComp A.defaultConf []
 
 render ∷ ∀ a. MkConf a → ST.State a → HTML a
 render mkConf state =
   HH.div
     [ HP.classes
-      $ [ HH.className "sd-action-list" ]
+      $ [ HH.ClassName "sd-action-list" ]
       ⊕ conf.classes
     ]
     [ HH.ul
-        [ HP.ref $ H.action ∘ Q.SetBoundingElement ]
+        [ HP.ref elementRef ]
         $ renderButtons (String.toLower state.filterString) conf
 
     ]
@@ -108,11 +118,11 @@ renderSpaceFillerButton metrics =
     ]
     [ HH.button
         [ HP.classes
-            [ HH.className "sd-button"
-            , HH.className "sd-button-warning"
+            [ HH.ClassName "sd-button"
+            , HH.ClassName "sd-button-warning"
             ]
         , HP.disabled true
-        , HP.buttonType HP.ButtonButton
+        , HP.type_ HP.ButtonButton
         ]
         []
     ]
@@ -182,10 +192,10 @@ renderButton filterString { presentation, metrics, action, lines } =
   attrs =
     [ HP.title $ A.pluckActionDescription action
     , HP.disabled $ (not enabled) || (A.isDisabled action)
-    , HP.buttonType HP.ButtonButton
+    , HP.type_ HP.ButtonButton
     , ARIA.label $ A.pluckActionDescription action
     , HP.classes classes
-    , HE.onClick $ HE.input_ $ Q.Selected action
+    , HE.onClick $ HE.input_ $ Q.HandleSelected action
     , HCSS.style $ CSS.position CSS.relative
     ]
 
@@ -193,10 +203,10 @@ renderButton filterString { presentation, metrics, action, lines } =
   classes =
     if A.isHighlighted action && enabled
       then
-        [ HH.className "sd-button" ]
+        [ HH.ClassName "sd-button" ]
       else
-        [ HH.className "sd-button"
-        , HH.className "sd-button-warning"
+        [ HH.ClassName "sd-button"
+        , HH.ClassName "sd-button-warning"
         ]
 
 updateActions ∷ ∀ a. Eq a ⇒ Array (A.Action a) → ST.State a → ST.State a
@@ -223,8 +233,8 @@ updateActions newActions state =
 
 getBoundingDOMRect ∷ ∀ a. DSL a (Maybe DOMRect)
 getBoundingDOMRect =
-  traverse (H.fromEff ∘ DOMUtils.getOffsetClientRect)
-    =<< H.gets _.boundingElement
+  traverse (H.liftEff ∘ DOMUtils.getOffsetClientRect)
+    =<< H.getHTMLElementRef elementRef
 
 eval ∷ ∀ a. Eq a ⇒ Q.Query a ~> DSL a
 eval =
@@ -232,10 +242,11 @@ eval =
     Q.UpdateFilter str next → do
       H.modify _{ filterString = str }
       pure next
-    Q.Selected action next → do
+    Q.HandleSelected action next → do
       st ← H.get
       case action of
-        A.Do _ → pure unit
+        A.Do a → do
+          H.raise (M.Selected a.action)
         A.Drill {children} →
           H.modify _
             { actions = A.GoBack `Array.cons` children
@@ -261,5 +272,3 @@ eval =
       H.modify _{ boundingDimensions = A.maybeNotZero dimensions } $> next
     Q.GetBoundingRect continue →
       continue <$> H.gets _.boundingDimensions
-    Q.SetBoundingElement element next →
-      H.modify _{ boundingElement = element } $> next

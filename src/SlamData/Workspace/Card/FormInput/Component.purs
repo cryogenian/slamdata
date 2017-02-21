@@ -22,19 +22,17 @@ import Data.Int (floor)
 import Data.Lens ((^?))
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 
-import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State (_AutoSelect)
 import SlamData.Workspace.Card.FormInput.Component.ChildSlot as CS
-import SlamData.Workspace.Card.FormInput.Component.State as ST
+import SlamData.Workspace.Card.FormInput.Component.Query (Query(..))
+import SlamData.Workspace.Card.FormInput.Component.State (State, initialState)
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Component as Labeled
 import SlamData.Workspace.Card.FormInput.Model as M
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Component as TextLike
@@ -42,38 +40,21 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-type HTML =
-  H.ParentHTML CS.ChildState CC.CardEvalQuery CS.ChildQuery Slam CS.ChildSlot
-type DSL =
-  H.ParentDSL ST.State CS.ChildState CC.CardEvalQuery CS.ChildQuery Slam CS.ChildSlot
+type DSL = CC.InnerCardParentDSL State Query CS.ChildQuery CS.ChildSlot
+type HTML = CC.InnerCardParentHTML Query CS.ChildQuery CS.ChildSlot
 
-formInputComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-formInputComponent options = CC.makeCardComponent
-  { options
-  , cardType: CT.FormInput
-  , component: H.parentComponent
-      { render
-      , eval
-      , peek: Just (peek ∘ H.runChildF)
-      }
-  , initialState: H.parentState ST.initialState
-  , _State: CC._FormInputState
-  , _Query: CC.makeQueryPrism CC._FormInputQuery
-  }
+formInputComponent ∷ CC.CardOptions → CC.CardComponent
+formInputComponent =
+  CC.makeCardComponent CT.FormInput $ H.parentComponent
+    { render
+    , eval: evalCard ⨁ evalComponent
+    , initialState: const initialState
+    , receiver: const Nothing
+    }
 
-render ∷ ST.State → HTML
+render ∷ State → HTML
 render state =
   HH.div_
-    [ renderHighLOD state
-    , renderLowLOD (CT.cardIconDarkImg CT.FormInput) id state.levelOfDetails
-    ]
-
-renderHighLOD ∷ ST.State → HTML
-renderHighLOD state =
-  HH.div
-    [ HP.classes
-        (guard (state.levelOfDetails ≠ High) $> B.hidden )
-    ]
     $ flip foldMap state.formInputType \fit →
         if FIT.isLabeled fit
           then labeled
@@ -81,27 +62,13 @@ renderHighLOD state =
                  then textLike
                  else metric
   where
-  textLike =
-    [ HH.slot' CS.cpTextLike unit \_ →
-       { component: TextLike.comp
-       , initialState: TextLike.initialState
-       }
-    ]
-  labeled =
-    [ HH.slot' CS.cpLabeled unit \_ →
-       { component: Labeled.comp
-       , initialState: Labeled.initialState
-       }
-    ]
-  metric =
-    [ HH.slot' CS.cpMetric unit \_ →
-       { component: Metric.comp
-       , initialState: Metric.initialState
-       }
-    ]
+  textLike = [ HH.slot' CS.cpTextLike unit TextLike.comp unit $ HE.input_ $ right ∘ RaiseUpdate ]
+  labeled = [ HH.slot' CS.cpLabeled unit Labeled.comp unit $ HE.input_ $ right ∘ RaiseUpdate ]
+  metric = [ HH.slot' CS.cpMetric unit Metric.comp state.dimensions absurd ]
 
-eval ∷ CC.CardEvalQuery ~> DSL
-eval = case _ of
+
+evalCard ∷ CC.CardEvalQuery ~> DSL
+evalCard = case _ of
   CC.Activate next →
     pure next
   CC.Deactivate next →
@@ -145,9 +112,6 @@ eval = case _ of
       CategoricalMetric metric → do
         H.modify _{ formInputType = Just FIT.Static }
         H.query' CS.cpMetric unit $ H.action $ Metric.SetMetric metric
-        mbLod ← H.query' CS.cpMetric unit $ H.request Metric.GetLOD
-        for mbLod \lod →
-          H.modify _{ levelOfDetails = lod }
         pure next
       _ →
         pure next
@@ -157,34 +121,20 @@ eval = case _ of
     for_ (evalState ^? _AutoSelect)
       $ H.query' CS.cpLabeled unit ∘ H.action ∘ Labeled.SetSelected
     pure next
-  CC.ReceiveDimensions dims next → do
-    H.modify _{levelOfDetails = if dims.width < 240.0 then Low else High}
+  CC.ReceiveDimensions dims reply → do
     let
-      heightPadding = 60
       widthPadding = 6
       intWidth = floor dims.width - widthPadding
       intHeight = floor dims.height
-    H.query' CS.cpMetric unit $ H.action $ Metric.SetDimensions {width: intWidth, height: intHeight}
+    H.modify (_ { dimensions = { width: intWidth, height: intHeight } })
     mbLod ← H.query' CS.cpMetric unit $ H.request Metric.GetLOD
-    H.modify case mbLod of
-      Nothing →
-        _{ levelOfDetails = if dims.width < 240.0 then Low else High }
-      Just lod →
-        _{ levelOfDetails = lod }
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+    pure $ reply
+      case mbLod of
+        Nothing → if dims.width < 240.0 then Low else High
+        Just lod → lod
 
-peek ∷ ∀ a. CS.ChildQuery a → DSL Unit
-peek = textLikePeek ⨁ labeledPeek ⨁ const (pure unit)
-  where
-  textLikePeek = case _ of
-    TextLike.Updated _ →
-      CC.raiseUpdatedP CC.EvalModelUpdate
-    _ → pure unit
-  labeledPeek = case _ of
-    Labeled.Updated _ →
-      CC.raiseUpdatedP CC.EvalModelUpdate
-    _ → pure unit
+evalComponent ∷ Query ~> DSL
+evalComponent = case _ of
+  RaiseUpdate next → do
+    H.raise CC.modelUpdate
+    pure next

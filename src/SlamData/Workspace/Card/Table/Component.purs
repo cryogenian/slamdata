@@ -22,40 +22,39 @@ module SlamData.Workspace.Card.Table.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Except.Trans as ET
 import Control.Monad.Error.Class as EC
+import Control.Monad.Except.Trans as ET
 
 import Data.Argonaut.Core as JSON
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
 
+import DOM.Classy.Event as DOM
+
 import Halogen as H
 
-import SlamData.Monad (Slam)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Table.Component.Query (QueryP, PageStep(..), Query(..))
+import SlamData.Workspace.Card.Table.Component.Query (PageStep(..), Query(..))
 import SlamData.Workspace.Card.Table.Component.Render (render)
 import SlamData.Workspace.Card.Table.Component.State as JTS
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.Path (FilePath)
 
-type DSL = H.ComponentDSL JTS.State QueryP Slam
+type DSL = CC.InnerCardDSL JTS.State Query
 
-tableComponent ∷ CC.CardOptions → H.Component CC.CardStateP CC.CardQueryP Slam
-tableComponent options =
-  CC.makeCardComponent
-    { options
-    , cardType: CT.Table
-    , component: H.component { render, eval: evalCard ⨁ evalTable }
-    , initialState: JTS.initialState
-    , _State: CC._TableState
-    , _Query: CC.makeQueryPrism CC._TableQuery
+tableComponent ∷ CC.CardOptions → CC.CardComponent
+tableComponent =
+  CC.makeCardComponent CT.Table $ H.component
+    { render
+    , eval: evalCard ⨁ evalTable
+    , initialState: const JTS.initialState
+    , receiver: const Nothing
     }
 
 -- | Evaluates generic card queries.
@@ -69,7 +68,7 @@ evalCard = case _ of
     pure ∘ k =<< H.gets (Card.Table ∘ JTS.toModel)
   CC.Load card next → do
     case card of
-      Card.Table model → H.set $ JTS.fromModel model
+      Card.Table model → H.put $ JTS.fromModel model
       _ → pure unit
     pure next
   CC.ReceiveInput _ varMap next → do
@@ -79,21 +78,15 @@ evalCard = case _ of
     pure next
   CC.ReceiveState _ next →
     pure next
-  CC.ReceiveDimensions dims next → do
-    H.modify
-      $ JTS._levelOfDetails
-      .~ if dims.width < 360.0 ∨ dims.height < 240.0
-           then Low
-           else High
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  CC.ReceiveDimensions dims reply → do
+    pure $ reply
+      if dims.width < 360.0 ∨ dims.height < 240.0
+      then Low
+      else High
 
 runTable
   ∷ Port.DataMap
-  → ET.ExceptT QE.QError (H.ComponentDSL JTS.State QueryP Slam) Unit
+  → ET.ExceptT QE.QError DSL Unit
 runTable varMap = case Port.extractResource varMap of
   Just (Port.Path fp) → updateTable fp Nothing Nothing
   Just (Port.View fp tag vm) → updateTable fp (Just tag) (Just (Port.flattenResources vm))
@@ -103,7 +96,7 @@ updateTable
   ∷ FilePath
   → Maybe String
   → Maybe Port.VarMap
-  → ET.ExceptT QE.QError (H.ComponentDSL JTS.State QueryP Slam) Unit
+  → ET.ExceptT QE.QError DSL Unit
 updateTable resource tag varMap = do
   oldInput ← lift $ H.gets _.input
   when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
@@ -138,7 +131,7 @@ resetState ∷ DSL Unit
 resetState = H.modify (JTS._result .~ Nothing)
 
 -- | Evaluates table-specific card queries.
-evalTable ∷ Query ~> (H.ComponentDSL JTS.State QueryP Slam)
+evalTable ∷ Query ~> DSL
 evalTable = case _ of
   StepPage step next → do
     H.modify (JTS.stepPage step)
@@ -156,10 +149,13 @@ evalTable = case _ of
     H.modify (JTS.setPage page) $> next
   Update next →
     refresh $> next
+  PreventDefault ev next → do
+    H.liftEff $ DOM.preventDefault ev
+    pure next
 
 refresh ∷ DSL Unit
 refresh = do
   input ← H.gets _.input
   for_ input \ {resource, tag, varMap} →
     void $ ET.runExceptT $ updateTable resource tag varMap
-  CC.raiseUpdatedC' CC.StateOnlyUpdate
+  H.raise $ CC.ModelUpdated CC.StateOnlyUpdate

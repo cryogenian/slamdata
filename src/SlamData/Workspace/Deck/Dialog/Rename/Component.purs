@@ -19,60 +19,81 @@ module SlamData.Workspace.Deck.Dialog.Rename.Component where
 import SlamData.Prelude
 
 import Halogen as H
-import Halogen.CustomProps as CP
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import Utils.DOM as DOM
 
-type State = { newName ∷ String }
+type State = { name ∷ String }
 
-data Query a = SetNewName String a | Rename String a | Dismiss a
+data Query a
+  = UpdateName String a
+  | PreventDefault DOM.Event a
+  | Save a
+  | Cancel a
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+data Message
+  = Dismiss
+  | Rename String
+
+component ∷ H.Component HH.HTML Query String Message Slam
+component =
+  H.component
+    { initialState: { name: _ }
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
 render ∷ State → H.ComponentHTML Query
-render { newName } =
-  HH.div [ HP.classes [ HH.className "deck-dialog-rename" ] ]
+render { name } =
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-rename" ] ]
     [ HH.h4_ [ HH.text  "Rename deck" ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
         [ HH.form
-          [ CP.nonSubmit ]
+          [ HE.onSubmit (HE.input PreventDefault) ]
           [ HH.div
               [ HP.classes [ B.formGroup ]
               ]
               [ HH.input
-                  [ HE.onValueInput $ HE.input SetNewName
-                  , HP.value newName
-                  , HP.inputType HP.InputText
+                  [ HE.onValueInput (HE.input UpdateName)
+                  , HP.value name
+                  , HP.type_ HP.InputText
                   , HP.classes [ B.formControl ]
                   , ARIA.label "Deck name"
                   ]
               ]
           ]
         ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         [ HH.button
             [ HP.classes [ B.btn, B.btnDefault ]
-            , HE.onClick (HE.input_ Dismiss)
-            , HP.buttonType HP.ButtonButton
+            , HE.onClick (HE.input_ Cancel)
+            , HP.type_ HP.ButtonButton
             ]
             [ HH.text "Dismiss" ]
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
-            , HE.onClick (HE.input_ $ Rename newName)
-            , HP.buttonType HP.ButtonButton
+            , HE.onClick (HE.input_ Save)
+            , HP.type_ HP.ButtonButton
             ]
             [ HH.text "Save"
             ]
         ]
     ]
 
-eval ∷ Query ~> H.ComponentDSL State Query Slam
-eval (SetNewName string next) = H.modify (_ { newName = string }) $> next
-eval (Rename string next) = pure next
-eval (Dismiss next) = pure next
+eval ∷ Query ~> H.ComponentDSL State Query Message Slam
+eval = case _ of
+  UpdateName name next →
+    H.modify _ { name = name } $> next
+  PreventDefault ev next →
+    H.liftEff (DOM.preventDefault ev) $> next
+  Save next → do
+    H.raise ∘ Rename =<< H.gets _.name
+    pure next
+  Cancel next →
+    H.raise Dismiss $> next

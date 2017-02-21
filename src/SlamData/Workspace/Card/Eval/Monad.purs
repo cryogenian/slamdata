@@ -45,7 +45,6 @@ import SlamData.Prelude hiding (throwError)
 import Control.Applicative.Free (FreeAp, liftFreeAp, foldFreeAp)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
-import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Free (Free, liftF, resume)
 import Control.Monad.State.Class (class MonadState)
@@ -147,9 +146,6 @@ instance monadEffCardEvalM ∷ MonadEff eff (CardEvalM eff) where
 
 instance monadAffCardEvalM ∷ MonadAff eff (CardEvalM eff) where
   liftAff = CardEvalM ∘ liftF ∘ Aff
-
-instance affableCardEvalM ∷ Affable eff (CardEvalM eff) where
-  fromAff = CardEvalM ∘ liftF ∘ Aff
 
 instance quasarDSLCardEvalM ∷ QuasarDSL (CardEvalM eff) where
   liftQuasar = CardEvalM ∘ liftF ∘ Quasar

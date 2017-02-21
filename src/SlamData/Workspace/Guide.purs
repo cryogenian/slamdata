@@ -13,110 +13,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -}
-module SlamData.Guide where
 
-import Prelude
-import Data.Array as Array
-import Data.Maybe (Maybe(..), maybe)
-import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Events.Handler as EH
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+module SlamData.Workspace.Guide where
 
-type Step = { imageUri ∷ String, text ∷ String }
-data Arrow = RightArrow | DownArrow
+import SlamData.Prelude
 
-arrowClassName ∷ Arrow → HH.ClassName
-arrowClassName =
-  case _ of
-    RightArrow -> HH.className "sd-guide-right-arrow"
-    DownArrow -> HH.className "sd-guide-down-arrow"
+import SlamData.Guide.StepByStep.Component (Step)
 
-render ∷ ∀ f a. Arrow → HH.ClassName → (Unit → f Unit) → String → HH.HTML a (f Unit)
-render arrow className dismissQuery text =
-  HH.div
-    [ HP.classes [ HH.className "sd-guide", className ] ]
-    [ HH.div
-        [ HP.classes
-            [ HH.className "sd-notification"
-            , arrowClassName arrow
-            ]
-        ]
-        [ HH.div
-            [ HP.class_ $ HH.className "sd-notification-text" ]
-            [ HH.text text ]
-        , HH.div
-            [ HP.class_ $ HH.className "sd-notification-buttons" ]
-            [ HH.button
-                [ HP.classes [ HH.className "sd-notification-dismiss" ]
-                , HE.onClick (HE.input_ dismissQuery)
-                , ARIA.label "Dismiss"
-                ]
-                [ HH.text "×" ]
-            ]
-        ]
-    ]
+data GuideType
+  = CardGuide
+  | FlipGuide
 
-renderStepByStepWithArray
-  ∷ ∀ f a
-  . { next ∷ Unit → f Unit, dismiss ∷ Unit → f Unit }
-  → Maybe Int
-  → Array Step
-  → Array (HH.HTML a (f Unit))
-renderStepByStepWithArray queries stepIndex steps =
-  maybe [] pure do
-    index ← stepIndex
-    step ← Array.index steps index
-    pure
-      $ renderStepByStep
-          queries
-          step.imageUri
-          step.text
-          (index == Array.length steps - 1)
-
-renderStepByStep
-  ∷ ∀ f a
-  . { next ∷ Unit → f Unit, dismiss ∷ Unit → f Unit }
-  → String
-  → String
-  → Boolean
-  → HH.HTML a (f Unit)
-renderStepByStep queries imageUri text last =
-  HH.div
-    [ HE.onClick \_ → EH.stopPropagation $> Just (H.action $ queries.dismiss)
-    , HP.class_ $ HH.className "sd-step-by-step-guide-backdrop"
-    ]
-    [ HH.div
-      [ HP.class_ $ HH.className "sd-step-by-step-guide"
-      , HE.onClick (\_ → EH.stopPropagation $> Nothing)
-      ]
-      ([ HH.img [ HP.src imageUri ] , HH.p_ [ HH.text text ] ] <> pure buttons)
-    ]
-      where
-      buttons =
-        HH.div_
-          $ if last
-            then
-              [ HH.button
-                  [ HE.onClick \_ → EH.stopPropagation $> Just (H.action queries.dismiss) ]
-                  [ HH.text "Get started!" ]
-              ]
-            else
-              [ HH.button
-                 [ HE.onClick \_ → EH.stopPropagation $> Just (H.action queries.next) ]
-                 [ HH.text "Next" ]
-              , HH.button
-                 [ HE.onClick \_ → EH.stopPropagation $> Just (H.action queries.dismiss) ]
-                  [ HH.text "Skip" ]
-              ]
-
-preloadStepByStepWithArray ∷ ∀ a f. Array Step → HH.HTML a f
-preloadStepByStepWithArray steps =
-  HH.div
-    [ ARIA.hidden "true" ]
-    ((\url → HH.img [ HP.src url ]) <<< _.imageUri <$> steps)
+derive instance eqGuideSlot ∷ Eq GuideType
+derive instance ordGuideSlot ∷ Ord GuideType
 
 cardGuideSteps ∷ Array Step
 cardGuideSteps =

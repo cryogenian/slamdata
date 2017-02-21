@@ -14,37 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query
-  ( Query(..)
-  , QueryC
-  , QueryP
-  ) where
+module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query where
 
 import SlamData.Prelude
 
-import Halogen as H
 import Halogen.Component.Utils.Drag (DragEvent)
-import Halogen.HTML.Events.Types as HET
 
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.ChildSlot (ChildQuery, ChildSlot)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Column (ColumnNode)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DP
+
+import Utils.DOM as DOM
 
 data Query a
   = AddDimension a
   | RemoveDimension Int a
   | AddColumn a
   | RemoveColumn Int a
-  | OrderDimensionStart Int (HET.Event HET.MouseEvent) a
+  | OrderDimensionStart Int DOM.MouseEvent a
   | OrderingDimension Int DragEvent a
   | OrderOverDimension Int a
   | OrderOutDimension Int a
-  | OrderColumnStart Int (HET.Event HET.MouseEvent) a
+  | OrderColumnStart Int DOM.MouseEvent a
   | OrderingColumn Int DragEvent a
   | OrderOverColumn Int a
   | OrderOutColumn Int a
   | ChooseAggregation Int (Maybe Ag.Aggregation) a
-
-type QueryC = CardEvalQuery ⨁ Query
-
-type QueryP = QueryC ⨁ H.ChildF ChildSlot ChildQuery
+  | HandleDimPicker (DP.Message JCursorNode) a
+  | HandleColPicker (DP.Message ColumnNode) a

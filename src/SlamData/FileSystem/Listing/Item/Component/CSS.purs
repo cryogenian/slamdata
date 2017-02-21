@@ -16,25 +16,25 @@ limitations under the License.
 
 module SlamData.FileSystem.Listing.Item.Component.CSS where
 
-import Halogen.HTML.Core (className, ClassName)
+import Halogen.HTML.Core (ClassName(..))
 
 selected ∷ ClassName
-selected = className "selected"
+selected = ClassName "selected"
 
 phantom ∷ ClassName
-phantom = className "phantom"
+phantom = ClassName "phantom"
 
 itemIcon ∷ ClassName
-itemIcon = className "item-icon"
+itemIcon = ClassName "item-icon"
 
 itemToolbar ∷ ClassName
-itemToolbar = className "item-toolbar"
+itemToolbar = ClassName "item-toolbar"
 
 itemContent ∷ ClassName
-itemContent = className "item-content"
+itemContent = ClassName "item-content"
 
 itemHidden ∷ ClassName
-itemHidden = className "item-hidden"
+itemHidden = ClassName "item-hidden"
 
 fileAction ∷ ClassName
-fileAction = className "file-action"
+fileAction = ClassName "file-action"

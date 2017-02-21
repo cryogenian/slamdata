@@ -16,8 +16,12 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Component
   ( CardComponent
+  , InnerCardComponent
+  , InnerCardDSL
+  , InnerCardHTML
+  , InnerCardParentDSL
+  , InnerCardParentHTML
   , makeCardComponent
-  , module SlamData.Workspace.Card.Component.Def
   , module SlamData.Workspace.Card.Common
   , module CQ
   , module CS
@@ -26,139 +30,154 @@ module SlamData.Workspace.Card.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (later)
-import Control.Monad.Aff.EventLoop (break')
-import Control.Monad.Aff.Free (fromAff)
-
 import Data.Foldable (elem)
-import Data.Lens (Prism', (.~), review, preview, clonePrism)
 
 import DOM.HTML.HTMLElement (getBoundingClientRect)
 
 import Halogen as H
-import Halogen.Component.Utils (subscribeToBus', liftH')
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.Component.Utils (busEventSource)
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
+import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import SlamData.Workspace.Class (navigateToDeck)
 import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, cardIconDarkSrc)
 import SlamData.Workspace.Card.Common.EvalQuery as EQ
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component.CSS as CSS
-import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.State as CS
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Persistence as P
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 -- | Type synonym for the full type of a card component.
-type CardComponent = H.Component CS.CardStateP CQ.CardQueryP Slam
-type CardDSL = H.ParentDSL CS.CardState CS.AnyCardState CQ.CardQuery CQ.InnerCardQuery Slam Unit
-type CardHTML = H.ParentHTML CS.AnyCardState CQ.CardQuery CQ.InnerCardQuery Slam Unit
+type CardComponent = H.Component HH.HTML CQ.CardQuery CQ.Input Void Slam
+type CardDSL f = H.ParentDSL CS.CardState CQ.CardQuery (CQ.InnerCardQuery f) Unit Void Slam
+type CardHTML f = H.ParentHTML CQ.CardQuery (CQ.InnerCardQuery f) Unit Slam
 
--- | Card component factory
+type InnerCardComponent f = H.Component HH.HTML (CQ.InnerCardQuery f) Unit EQ.CardEvalMessage Slam
+type InnerCardDSL s f = H.ComponentDSL s (CQ.InnerCardQuery f) CQ.CardEvalMessage Slam
+type InnerCardHTML f = H.ComponentHTML (CQ.InnerCardQuery f)
+type InnerCardParentDSL s f g p = H.ParentDSL s (CQ.InnerCardQuery f) g p CQ.CardEvalMessage Slam
+type InnerCardParentHTML f g p = H.ParentHTML (CQ.InnerCardQuery f) g p Slam
+
+cardRef ∷ H.RefLabel
+cardRef = H.RefLabel "card"
+
+-- | Constructs a card component from a record with the necessary properties and
+-- | a render function.
 makeCardComponent
-  ∷ ∀ s f
-  . CardDef s f ()
+  ∷ ∀ f
+  . CardType
+  → InnerCardComponent f
+  → CardOptions
   → CardComponent
-makeCardComponent def = makeCardComponentPart def render
+makeCardComponent cardType component options =
+  H.lifecycleParentComponent
+    { render
+    , eval
+    , initialState: CS.initialState
+    , initializer: Just (H.action CQ.Initialize)
+    , finalizer: Nothing
+    , receiver: HE.input CQ.HandleInput
+    }
   where
-  render
-    ∷ H.Component CS.AnyCardState CQ.InnerCardQuery Slam
-    → CS.AnyCardState
-    → CS.CardState
-    → CardHTML
-  render component initialState st =
+  displayCoord ∷ Card.DisplayCoord
+  displayCoord = options.cursor × options.cardId
+
+  render ∷ CS.CardState → CardHTML f
+  render st =
     HH.div
       [ HP.classes $ [ CSS.deckCard ]
-      , ARIA.label $ (cardName def.cardType) ⊕ " card"
-      , HP.ref (H.action ∘ CQ.SetElement)
+      , ARIA.label $ (cardName cardType) ⊕ " card"
+      , HP.ref cardRef
       ]
       $ fold [cardLabel, card]
     where
-    cardLabel ∷ Array CardHTML
+    icon ∷ CardHTML f
+    icon = HH.img [ HP.src $ cardIconDarkSrc cardType ]
+
+    cardLabel ∷ Array (CardHTML f)
     cardLabel
-      | def.cardType `elem` [ Draftboard ] = []
+      | cardType `elem` [ Draftboard ] = []
       | otherwise =
           [ HH.div
               [ HP.classes [CSS.cardHeader]
               ]
               [ HH.div
                   [ HP.class_ CSS.cardName ]
-                  [ HH.img [ HP.src $ cardIconDarkSrc def.cardType ]
-                  , HH.p_ [ HH.text $ cardName def.cardType ]
+                  [ icon
+                  , HH.p_ [ HH.text $ cardName cardType ]
                   ]
               ]
           ]
-    card ∷ Array CardHTML
+
+    card ∷ Array (CardHTML f)
     card =
-      if st.pending
-        then []
-        else
+      case st.status, st.levelOfDetails of
+        CS.Pending, _ →
+          []
+        _, High →
           [ HH.div
-              [ HP.classes $ cardClasses def.cardType ]
-              [ HH.slot unit \_ → { component, initialState } ]
+              [ HP.classes $ cardClasses cardType ]
+              [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
+          ]
+        _, Low →
+          [ HH.div
+              [ HP.classes $ cardClasses cardType <> [ B.hidden ] ]
+              [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
+          , HH.div
+              [ HP.class_ (HH.ClassName "card-input-minimum-lod") ]
+              [ HH.button
+                  [ ARIA.label "Zoom or resize"
+                  , HP.title "Zoom or resize"
+                  , HE.onClick (HE.input_ CQ.ZoomIn)
+                  ]
+                  [ icon
+                  , HH.text "Zoom or resize"
+                  ]
+              ]
           ]
 
--- | Constructs a card component from a record with the necessary properties and
--- | a render function.
-makeCardComponentPart
-  ∷ ∀ s f r
-  . CardDef s f r
-  → (H.Component CS.AnyCardState CQ.InnerCardQuery Slam
-     → CS.AnyCardState
-     → CS.CardState
-     → CardHTML)
-  → CardComponent
-makeCardComponentPart def render =
-  H.lifecycleParentComponent
-    { render: render component initialState
-    , eval
-    , peek: Just (coproduct peek (const (pure unit)) ∘ H.runChildF)
-    , initializer: Just (H.action CQ.Initialize)
-    , finalizer: Just (H.action CQ.Finalize)
-    }
-  where
-
-  displayCoord ∷ Card.DisplayCoord
-  displayCoord = def.options.cursor × def.options.cardId
-
-  _State ∷ Prism' CS.AnyCardState s
-  _State = clonePrism def._State
-
-  _Query ∷ ∀ a. Prism' (CQ.InnerCardQuery a) (f a)
-  _Query = clonePrism def._Query
-
-  component ∷ H.Component CS.AnyCardState CQ.InnerCardQuery Slam
-  component =
-    H.transform
-      (review _State) (preview _State)
-      (review _Query) (preview _Query)
-      def.component
-
-  initialState ∷ CS.AnyCardState
-  initialState = review _State def.initialState
-
-  eval ∷ CQ.CardQuery ~> CardDSL
+  eval ∷ CQ.CardQuery ~> CardDSL f
   eval = case _ of
     CQ.Initialize next → do
-      initializeInnerCard
+      st ← H.get
+      when (st.status ≡ CS.Active) do
+        initializeInnerCard
+        queryInnerCard EQ.Activate
       pure next
-    CQ.Finalize next → do
-      H.gets _.breaker >>= traverse_ (fromAff ∘ break')
-      pure next
-    CQ.ActivateCard next →
-      queryInnerCard EQ.Activate $> next
-    CQ.DeactivateCard next →
-      queryInnerCard EQ.Deactivate $> next
-    CQ.SetElement el next →
-      H.modify (CS._element .~ el) $> next
     CQ.UpdateDimensions next → do
-      H.gets _.element >>= traverse_ \el -> do
-        { width, height } ← H.fromEff (getBoundingClientRect el)
-        unless (width ≡ zero ∧ height ≡ zero) do
-          queryInnerCard $ EQ.ReceiveDimensions { width, height }
+      st ← H.get
+      when (st.status ≠ CS.Pending) updateDimensions
+      pure next
+    CQ.PreloadCard next → do
+      st ← H.get
+      when (st.status ≡ CS.Pending) do
+        H.modify _ { status = CS.Initialized }
+        initializeInnerCard
+      pure next
+    CQ.HandleInput input next → do
+      st ← H.get
+      case st.status of
+        CS.Pending | input.active → do
+          H.modify _ { status = CS.Active }
+          initializeInnerCard
+          queryInnerCard EQ.Activate
+        CS.Initialized | input.active → do
+          H.modify _ { status = CS.Active }
+          queryInnerCard EQ.Activate
+        CS.Inactive | input.active → do
+          H.modify _ { status = CS.Active }
+          queryInnerCard EQ.Activate
+        CS.Active | not input.active → do
+          H.modify _ { status = CS.Inactive }
+          queryInnerCard EQ.Deactivate
+        _ → pure unit
       pure next
     CQ.HandleEvalMessage msg next → do
       case msg of
@@ -172,37 +191,40 @@ makeCardComponentPart def render =
           when (source ≠ displayCoord) do
             queryInnerCard $ EQ.Load evalModel
       pure next
+    CQ.HandleCardMessage msg next → do
+      case msg of
+        EQ.ModelUpdated EQ.EvalModelUpdate → do
+          model ← H.query unit (left (H.request EQ.Save))
+          for_ model (H.lift ∘ P.publishCardChange displayCoord)
+        EQ.ModelUpdated (EQ.EvalStateUpdate es) → do
+          H.lift $ P.publishCardStateChange displayCoord es
+        EQ.ModelUpdated EQ.StateOnlyUpdate → pure unit
+      pure next
+    CQ.ZoomIn next → do
+      H.lift $ navigateToDeck options.cursor
+      pure next
 
-  initializeInnerCard ∷ CardDSL Unit
+  initializeInnerCard ∷ CardDSL f Unit
   initializeInnerCard = do
-    cell ← liftH' $ P.getCard def.options.cardId
+    cell ← H.lift $ P.getCard options.cardId
     for_ cell \{ bus, model, input, output, state } → do
-      breaker ← subscribeToBus' (H.action ∘ CQ.HandleEvalMessage) bus
-      H.modify _
-        { breaker = Just breaker
-        , bus = Just bus
-        , pending = false
-        }
-      -- TODO: We need to defer these because apparently Halogen has bad
-      -- ordering with regard to child initializers. This should be fixed
-      -- in Halogen Next.
-      H.fromAff $ later (pure unit)
+      H.subscribe $ busEventSource (\msg → CQ.HandleEvalMessage msg H.Listening) bus
+      H.modify _ { bus = Just bus, status = CS.Active }
+      updateDimensions
       queryInnerCard $ EQ.Load model
       for_ input (queryInnerCard ∘ uncurry EQ.ReceiveInput)
       for_ state (queryInnerCard ∘ EQ.ReceiveState)
       for_ output (queryInnerCard ∘ uncurry EQ.ReceiveOutput)
-      eval (CQ.UpdateDimensions unit)
 
-  peek ∷ ∀ a. EQ.CardEvalQuery a → CardDSL Unit
-  peek = case _ of
-    EQ.ModelUpdated EQ.EvalModelUpdate _ → do
-      model ← H.query unit (left (H.request EQ.Save))
-      for_ model (liftH' ∘ P.publishCardChange displayCoord)
-    EQ.ModelUpdated (EQ.EvalStateUpdate es) _ → do
-      liftH' $ P.publishCardStateChange displayCoord es
-    _ →
-      pure unit
+  updateDimensions ∷ CardDSL f Unit
+  updateDimensions = do
+    st ← H.get
+    H.getHTMLElementRef cardRef >>= traverse_ \el → do
+      { width, height } ← H.liftEff (getBoundingClientRect el)
+      mbLod ← H.query unit $ left $ H.request (EQ.ReceiveDimensions { width, height })
+      for_ mbLod \lod → when (st.levelOfDetails ≠ lod) do
+        H.modify _ { levelOfDetails = lod }
 
-queryInnerCard ∷ H.Action EQ.CardEvalQuery → CardDSL Unit
+queryInnerCard ∷ ∀ f. H.Action EQ.CardEvalQuery → CardDSL f Unit
 queryInnerCard q =
   void $ H.query unit (left (H.action q))

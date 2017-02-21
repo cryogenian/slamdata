@@ -18,61 +18,65 @@ module SlamData.Workspace.Card.Chart.MetricRenderer.Component where
 
 import SlamData.Prelude
 
-import DOM.HTML.Types (HTMLElement)
-
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Port (MetricPort)
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.DOM (fitText)
+
+type Dimensions = { width ∷ Int, height ∷ Int }
 
 type State =
   { width ∷ Int
   , height ∷ Int
   , label ∷ Maybe String
   , value ∷ String
-  , element ∷ Maybe HTMLElement
   , valueHeight ∷ Int
   , labelHeight ∷ Int
   }
 
-initialState ∷ State
-initialState =
-  { width: 600
-  , height: 400
+initialState ∷ Dimensions → State
+initialState { width, height } =
+  { width
+  , height
   , label: Nothing
   , value: ""
-  , element: Nothing
   , valueHeight: 0
   , labelHeight: 0
   }
 
 data Query a
   = SetMetric MetricPort a
-  | SetDimensions {width ∷ Int, height ∷ Int} a
+  | SetDimensions Dimensions a
   | GetLOD (LevelOfDetails → a)
-  | SetElement (Maybe HTMLElement) a
 
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+comp ∷ H.Component HH.HTML Query Dimensions Void Slam
+comp =
+  H.component
+    { initialState
+    , render
+    , eval
+    , receiver: HE.input SetDimensions
+    }
 
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ HH.className "metric" ]
-    , HP.ref \el → H.action $ SetElement el
+    [ HP.classes [ HH.ClassName "metric" ]
+    , HP.ref refLabel
     ]
     [ HH.div
-      [ HP.classes [ HH.className "metric-value-and-label" ] ]
+      [ HP.classes [ HH.ClassName "metric-value-and-label" ] ]
       $ [ HH.div
-          [ HP.classes [ HH.className "metric-value" ] ]
+          [ HP.classes [ HH.ClassName "metric-value" ] ]
           [ HH.text state.value ] ]
           ⊕ foldMap renderLabel state.label
     ]
@@ -80,7 +84,7 @@ render state =
   renderLabel ∷ String → Array HTML
   renderLabel str =
     [ HH.div
-        [ HP.classes [ HH.className "metric-label" ] ]
+        [ HP.classes [ HH.ClassName "metric-label" ] ]
         [ HH.text str ]
     ]
 
@@ -96,15 +100,14 @@ eval (SetDimensions dims next) = do
 eval (GetLOD continue) = do
   state ← H.get
   pure $ continue $ if (state.labelHeight + state.valueHeight) > state.height then Low else High
-eval (SetElement mbEl next) = do
-  for_ mbEl \el → do
-    H.modify _{element = Just el}
-  pure next
 
 availableFontSizes ∷ Array Int
 availableFontSizes = [ 16, 24, 32, 48, 64, 96, 128, 160, 200 ]
 
 adjustFontSizes ∷ DSL Unit
 adjustFontSizes = do
-  st ← H.get
-  for_ st.element \vel → H.fromEff (fitText availableFontSizes vel)
+  H.getHTMLElementRef refLabel >>= traverse_ \el →
+    H.liftEff $ fitText availableFontSizes el
+
+refLabel ∷ H.RefLabel
+refLabel = H.RefLabel "container"

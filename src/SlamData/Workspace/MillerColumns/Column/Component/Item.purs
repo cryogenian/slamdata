@@ -14,13 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.GlobalMenu.Component.State where
+module SlamData.Workspace.MillerColumns.Column.Component.Item where
 
-type State =
-  { loggedIn :: Boolean
-  }
+import SlamData.Prelude
 
-initialState :: State
-initialState =
-  { loggedIn: false
-  }
+data ItemMessage a = RaisePopulate a
+
+type ItemMessage' a o = Either (ItemMessage a) o
+
+data ItemState = Selected | Deselected
+
+derive instance eqItemState ∷ Eq ItemState
+derive instance ordItemState ∷ Ord ItemState

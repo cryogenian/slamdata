@@ -14,44 +14,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.MillerColumns.BasicItem.Component
-  ( BasicColumnOptions
-  , BasicColumnsQuery
-  , BasicColumnsState
-  , Query
-  , State
-  , ItemSpec
-  , component
-  ) where
+module SlamData.Workspace.MillerColumns.BasicItem.Component where
 
 import SlamData.Prelude
 
 import Data.List as L
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Workspace.MillerColumns.Component as MC
+import SlamData.Workspace.MillerColumns.Column.Component.Item as MCI
 import SlamData.Monad (Slam)
 
-type Query a = MC.ItemQuery' a (Const Void)
+data Query a
+  = UpdateState MCI.ItemState a
+  | Selected a
 
-type State = { selected ∷ Boolean }
-
-type HTML a = H.ComponentHTML (Query a)
-type DSL a m p = H.ComponentDSL State (Query a) m p
+type HTML = H.ComponentHTML Query
+type DSL a = H.ComponentDSL Boolean Query (MCI.ItemMessage' a Void) Slam
 
 type ItemSpec a =
   { label ∷ a → String
-  , render ∷ a → H.ComponentHTML (Const Void)
+  , render ∷ a → BasicItemHTML
   }
 
-type BasicColumnOptions a i = MC.ColumnOptions a i State (Const Void)
-type BasicColumnsQuery a i = MC.Query' a i (Const Void)
-type BasicColumnsState a i = MC.State' a i State (Const Void)
+type BasicItemHTML = H.ComponentHTML (Const Void)
+
+type BasicColumnOptions a i = MC.ColumnOptions a i Query Void
 
 component
   ∷ ∀ a i
@@ -59,35 +52,35 @@ component
   ⇒ ItemSpec a
   → L.List i
   → a
-  → MC.InitialItemState
-  → { component ∷ H.Component State (Query a) Slam
-    , initialState ∷ State
+  → H.Component HH.HTML Query MCI.ItemState (MCI.ItemMessage' a Void) Slam
+component ispec path item =
+  H.component
+    { initialState: (_ == MCI.Selected)
+    , render
+    , eval
+    , receiver: HE.input UpdateState
     }
-component ispec path item itemState =
-  { component: H.component { render, eval }
-  , initialState: { selected: itemState == MC.Selected }
-  }
   where
-  render ∷ State → HTML a
-  render state =
+  render ∷ Boolean → HTML
+  render selected =
     let
       label = ispec.label item
     in
       HH.li
         [ HP.title label
-        , HE.onClick $ HE.input_ $ left <<< MC.RaisePopulate item
+        , HE.onClick $ HE.input_ Selected
         , ARIA.label ("Select " <> label)
-        , HP.classes $ (guard state.selected $> HH.className "selected")
+        , HP.classes $ (guard selected $> HH.ClassName "selected")
         ]
         [ absurd ∘ unwrap <$> ispec.render item ]
 
-  eval ∷ Query a ~> DSL a Slam
-  eval = coproduct evalItemQuery (absurd <<< unwrap)
-
-  evalItemQuery ∷ MC.ItemQuery a ~> DSL a Slam
-  evalItemQuery = case _ of
-    MC.RaisePopulate _ next →
+  eval ∷ Query ~> DSL a
+  eval = case _ of
+    UpdateState state next → do
+      let new = state == MCI.Selected
+      old ← H.get
+      when (old /= new) $ H.put new
       pure next
-    MC.ToggleHighlight b next → do
-      H.modify (_ { selected = b })
+    Selected next → do
+      H.raise $ Left $ MCI.RaisePopulate item
       pure next

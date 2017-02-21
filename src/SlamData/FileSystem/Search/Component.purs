@@ -23,14 +23,15 @@ import Data.Lens (lens, Lens', (.~))
 import Data.Path.Pathy (printPath, rootDir)
 import Data.Time.Duration (Milliseconds(..))
 
+import DOM.Event.Types (Event, mouseEventToEvent)
+
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.Component.Utils as HU
+import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger, DebounceTrigger)
 
 import SlamData.Config as Config
 import SlamData.Monad (Slam)
@@ -39,8 +40,8 @@ import SlamData.FileSystem.Search.Component.CSS as CSS
 
 import Text.SlamSearch (mkQuery)
 
+import Utils.DOM as DOM
 import Utils.Path (DirPath)
-import Utils.Debounced (debouncedEventSource)
 
 type State =
   { valid ∷ Boolean
@@ -48,7 +49,7 @@ type State =
   , value ∷ String
   , loading ∷ Boolean
   , path ∷ DirPath
-  , trigger ∷ Maybe (Query Unit → Slam Unit)
+  , trigger ∷ Maybe (DebounceTrigger Query Slam)
   }
 
 initialState ∷ State
@@ -87,7 +88,7 @@ data Query a
   | Typed String a
   | Clear a
   | Validate a
-  | Submit a
+  | TrySubmit a
   | GetValue (String → a)
   | SetLoading Boolean a
   | SetValue String a
@@ -95,19 +96,29 @@ data Query a
   | IsSearching (Boolean → a)
   | IsLoading (Boolean → a)
   | SetPath DirPath  a
+  | PreventDefault Event (Query a)
+
+data Message
+  = Cleared
+  | Submit
 
 type HTML = H.ComponentHTML Query
-type DSL = H.ComponentDSL State Query Slam
+type DSL = H.ComponentDSL State Query Message Slam
 
-comp ∷ H.Component State Query Slam
-comp = H.component { render, eval }
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component = H.component
+  { render
+  , eval
+  , initialState: const initialState
+  , receiver: const Nothing
+  }
 
 render ∷ State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.search ] ]
     [ HH.form
-        [ HE.onSubmit (HE.input_ Submit)]
+        [ HE.onSubmit (HE.input_ TrySubmit)]
         [ HH.div
             [ HP.classes searchClasses ]
             [ HH.div
@@ -141,7 +152,7 @@ render state =
                 ]
             , HH.button
                 [ HP.class_ CSS.searchClearButton
-                , HE.onClick (\_ → HEH.preventDefault $> Just (H.action Clear))
+                , HE.onClick \e → Just $ PreventDefault (mouseEventToEvent e) $ H.action Clear
                 ]
                 [ if state.loading
                     then RC.busyFieldIcon "Search in progress"
@@ -162,6 +173,9 @@ render state =
         ]
 
 eval ∷ Query ~> DSL
+eval (PreventDefault e q) = do
+  H.liftEff $ DOM.preventDefault e
+  eval q
 eval (Focus bool next) = H.modify (_focused .~ bool) $> next
 eval (Clear next) = pure next
 eval (Typed str next) = do
@@ -170,13 +184,10 @@ eval (Typed str next) = do
   t ← case state.trigger of
     Just t' → pure t'
     Nothing → do
-      t' ←
-        debouncedEventSource
-          H.subscribe
-          (Milliseconds Config.searchTimeout)
+      t' ← debouncedEventSource (Milliseconds Config.searchTimeout)
       H.modify (_trigger .~ pure t')
       pure t'
-  H.liftH $ t $ H.action Validate
+  H.lift $ runDebounceTrigger t Validate
   pure next
 eval (Validate next) = do
   val ← H.gets _.value
@@ -184,10 +195,12 @@ eval (Validate next) = do
     Left _ | val ≠ "" → H.modify (_valid .~ false)
     _ → do
       H.modify (_valid .~ true)
-      HU.sendAfter (Milliseconds zero) $ H.action Submit
+      H.raise Submit
       pure unit
   pure next
-eval (Submit next) = pure next
+eval (TrySubmit next) = do
+  H.raise Submit
+  pure next
 eval (GetValue continue) = map continue $ H.gets _.value
 eval (SetLoading bool next) = H.modify (_loading .~ bool) $> next
 eval (SetValue tv next) = H.modify (_value .~ tv) $> next

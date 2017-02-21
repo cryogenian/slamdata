@@ -17,16 +17,28 @@ limitations under the License.
 module SlamData.Workspace.Class
   ( class WorkspaceDSL
   , navigate
+  , navigateToDeck
+  , navigateToIndex
   , module SlamData.Workspace.Routing
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Free (Free, liftF)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Eff.Ref (REF, readRef)
+import Control.UI.Browser as Browser
 
-import Halogen.Query.EventSource as ES
-import Halogen.Query.HalogenF as HF
+import Data.List as L
 
+import DOM (DOM)
+
+import Halogen.Query (HalogenM)
+
+import SlamData.FileSystem.Routing (parentURL)
+import SlamData.Wiring (Wiring)
+import SlamData.Wiring as Wiring
+import SlamData.Workspace.Action as WA
+import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Routing (Routes(..))
 
 class WorkspaceDSL (m ∷ * → *) where
@@ -38,11 +50,30 @@ instance workspaceDSLMaybeT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (Mayb
 instance workspaceDSLExceptT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (ExceptT e m) where
   navigate = lift ∘ navigate
 
-instance workspaceDSLFree ∷ WorkspaceDSL m ⇒ WorkspaceDSL (Free m) where
-  navigate = liftF ∘ navigate
+instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (HalogenM s f g p o m) where
+  navigate = lift ∘ navigate
 
-instance workspaceDSLHFC ∷ WorkspaceDSL g ⇒ WorkspaceDSL (HF.HalogenFP ES.EventSource s f g) where
-  navigate = HF.QueryHF ∘ navigate
+navigateToDeck
+  ∷ ∀ m eff
+  . ( MonadAsk Wiring m
+    , MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
+    , WorkspaceDSL m
+    )
+  ⇒ L.List DeckId
+  → m Unit
+navigateToDeck = case _ of
+  L.Nil → navigateToIndex
+  cursor → do
+    { path, accessType, varMaps } ← Wiring.expose
+    urlVarMaps ← liftEff $ readRef varMaps
+    navigate $ WorkspaceRoute path cursor (WA.Load accessType) urlVarMaps
 
-instance workspaceDSLHFP ∷ WorkspaceDSL g ⇒ WorkspaceDSL (HF.HalogenFP ES.ParentEventSource s f (Free (HF.HalogenFP ES.EventSource s' f' g))) where
-  navigate = HF.QueryHF ∘ navigate
+navigateToIndex
+  ∷ ∀ m eff
+  . ( MonadAsk Wiring m
+    , MonadEff (dom ∷ DOM | eff) m
+    )
+  ⇒ m Unit
+navigateToIndex = do
+  { path } ← Wiring.expose
+  void $ liftEff $ Browser.setHref $ parentURL $ Left path

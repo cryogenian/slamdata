@@ -15,41 +15,41 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Component
-  ( comp
-  , module SlamData.Workspace.Component.State
+  ( component
   , module SlamData.Workspace.Component.Query
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, peekVar)
+import Control.Monad.Aff.AVar (makeVar, peekVar, takeVar, putVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Ref (readRef)
+import Control.Monad.Fork (fork)
 import Control.UI.Browser as Browser
 
-import Data.Lens ((.~))
 import Data.List as List
 import Data.Time.Duration (Milliseconds(..))
 
+import DOM.Classy.Event (currentTarget, target) as DOM
+import DOM.Classy.Node (toNode) as DOM
+
 import Halogen as H
-import Halogen.Component.ChildPath (injSlot, injQuery)
-import Halogen.Component.Utils (liftH', subscribeToBus')
+
+import Halogen.Component.Utils (busEventSource)
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
-import SlamData.GlobalMenu.Component as GlobalMenu
-import SlamData.Guide as Guide
+import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Header.Component as Header
 import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Monad (Slam)
-import SlamData.Notification as N
 import SlamData.Notification.Component as NC
 import SlamData.Quasar as Quasar
 import SlamData.Quasar.Auth.Authentication as Authentication
@@ -61,48 +61,53 @@ import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Class (navigate, Routes(..))
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
-import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, toWorkspace)
-import SlamData.Workspace.Component.State (State, _stateMode, _flipGuideStep, _cardGuideStep, initialState)
-import SlamData.Workspace.Component.State as State
+import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck, cpGuide, cpHeader, cpNotify)
+import SlamData.Workspace.Component.Query (Query(..))
+import SlamData.Workspace.Component.State (State, initialState)
 import SlamData.Workspace.Deck.Component as Deck
-import SlamData.Workspace.Deck.Component.Nested as DN
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse as ET
+import SlamData.Workspace.Guide (GuideType(..))
+import SlamData.Workspace.Guide as GuideData
 import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils (endSentence)
-import Utils.DOM (onResize, elementEq)
+import Utils.DOM (onResize, nodeEq)
 import Utils.LocalStorage as LocalStorage
 
-type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
-type WorkspaceHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
-type WorkspaceDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type WorkspaceHTML = H.ParentHTML Query ChildQuery ChildSlot Slam
+type WorkspaceDSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
 
-comp ∷ AT.AccessType → H.Component StateP QueryP Slam
-comp accessType =
+component ∷ AT.AccessType → H.Component HH.HTML Query Unit Void Slam
+component accessType =
   H.lifecycleParentComponent
-    { render: render accessType
+    { initialState: const initialState
+    , render: render accessType
     , eval
-    , peek: Just (peek ∘ H.runChildF)
     , initializer: Just $ Init unit
     , finalizer: Nothing
+    , receiver: const Nothing
     }
 
 render ∷ AT.AccessType → State → WorkspaceHTML
 render accessType state =
   HH.div
     [ HP.classes
-        $ (guard (AT.isReadOnly accessType) $> HH.className "sd-published")
-        ⊕ [ HH.className "sd-workspace" ]
+        $ (guard (AT.isReadOnly accessType) $> HH.ClassName "sd-published")
+        ⊕ [ HH.ClassName "sd-workspace" ]
     , HE.onClick (HE.input DismissAll)
     ]
-    (preloadGuides ⊕ header ⊕ deck ⊕ notifications ⊕ renderCardGuide ⊕ renderFlipGuide)
+    [ header
+    , deck
+    , notifications
+    , cardGuide
+    , flipGuide
+    ]
   where
   renderError err =
     HH.div
-      [ HP.classes [ HH.className "sd-workspace-error" ] ]
+      [ HP.classes [ HH.ClassName "sd-workspace-error" ] ]
       [ HH.h1_
           [ HH.text "Couldn't load this SlamData workspace." ]
       , HH.p_
@@ -113,120 +118,85 @@ render accessType state =
       ]
 
   renderSignInButton providerR =
-      HH.button
-        [ HE.onClick $ HE.input_ $ SignIn providerR
-        , HP.classes [ HH.className "btn", HH.className "btn-primary" ]
-        , HP.buttonType HP.ButtonButton
-        ]
-        [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
+    HH.button
+      [ HE.onClick $ HE.input_ $ SignIn providerR
+      , HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary" ]
+      , HP.type_ HP.ButtonButton
+      ]
+      [ HH.text $ "Sign in with " ⊕ providerR.displayName ]
 
-  renderCardGuide =
-    Guide.renderStepByStepWithArray
-      { next: CardGuideStepNext, dismiss: CardGuideDismiss }
-      state.cardGuideStep
-      Guide.cardGuideSteps
+  cardGuide =
+    if state.guide ≡ Just CardGuide
+      then HH.div_ [ HH.slot' cpGuide CardGuide Guide.component GuideData.cardGuideSteps (HE.input (HandleGuideMessage CardGuide)) ]
+      else HH.text ""
 
-  renderFlipGuide =
-    Guide.renderStepByStepWithArray
-      { next: FlipGuideStepNext, dismiss: FlipGuideDismiss }
-      state.flipGuideStep
-      Guide.flipGuideSteps
-
-  preloadGuides =
-    Guide.preloadStepByStepWithArray
-      <$> [ Guide.cardGuideSteps, Guide.flipGuideSteps ]
+  flipGuide =
+    if state.guide ≡ Just FlipGuide
+      then HH.div_ [ HH.slot' cpGuide FlipGuide Guide.component GuideData.flipGuideSteps (HE.input (HandleGuideMessage FlipGuide)) ]
+      else HH.text ""
 
   notifications =
-    pure $ HH.slot' cpNotify unit \_ →
-      { component: NC.comp
-      , initialState: NC.initialState (NC.renderModeFromAccessType accessType)
-      }
+    HH.slot' cpNotify unit (NC.component (NC.renderModeFromAccessType accessType)) unit (HE.input HandleNotification)
 
-  header = do
-    guard $ AT.isEditable accessType
-    pure $ HH.slot' cpHeader unit \_ →
-      { component: Header.comp
-      , initialState: H.parentState Header.initialState
-      }
+  header =
+    if AT.isEditable accessType
+      then HH.slot' cpHeader unit Header.component unit absurd
+      else HH.text ""
 
   deck =
-    pure case state.stateMode, state.cursor of
+    case state.stateMode, state.cursor of
       Error error, _ → renderError error
       Loading, _ →
         HH.div
-          [ HP.class_ $ HH.className "sd-pending-overlay" ]
+          [ HP.class_ $ HH.ClassName "sd-pending-overlay" ]
           [ HH.div_
               [ HH.i_ []
               , HH.span_ [ HH.text "Please wait while the workspace loads" ]
               ]
           ]
       _, List.Cons deckId cursor →
-        HH.slot' cpDeck deckId \_ →
-          { component: DN.comp { accessType, cursor, displayCursor: mempty, deckId }
-          , initialState: DN.initialState
-          }
+        HH.slot' cpDeck deckId (Deck.component { accessType, cursor, displayCursor: mempty, deckId }) unit (const Nothing)
       _, _ → HH.text "Error"
 
 eval ∷ Query ~> WorkspaceDSL
 eval = case _ of
   Init next → do
-    { bus, accessType } ← liftH' Wiring.expose
-    cardGuideStep ← initialCardGuideStep
-    when (AT.isEditable accessType) do
-      H.modify _ { cardGuideStep = cardGuideStep }
-    subscribeToBus'
-      (H.action ∘ PresentStepByStepGuide)
-      bus.stepByStep
-    H.subscribe'
-      $ throttledEventSource_ (Milliseconds 100.0) onResize
-      $ pure (H.action Resize)
-    -- The deck component isn't initialised before this later has completed
-    H.fromAff $ Aff.later (pure unit)
-    when (isNothing cardGuideStep) do
-      void $ queryDeck $ H.action Deck.DismissedCardGuide
+    { bus } ← H.lift Wiring.expose
+    H.subscribe $ busEventSource (H.request ∘ PresentStepByStepGuide) bus.stepByStep
+    H.subscribe $ throttledEventSource_ (Milliseconds 100.0) onResize (H.request Resize)
     pure next
-  PresentStepByStepGuide stepByStepGuide next →
-    case stepByStepGuide of
-      Wiring.CardGuide → H.modify (_cardGuideStep .~ Just 0) $> next
-      Wiring.FlipGuide → H.modify (_flipGuideStep .~ Just 0) $> next
-  CardGuideStepNext next →
-    H.modify State.cardGuideStepNext $> next
-  CardGuideDismiss next → do
-    liftH' $ LocalStorage.setLocalStorage Guide.dismissedCardGuideKey true
-    H.modify (_cardGuideStep .~ Nothing)
-    queryDeck $ H.action Deck.DismissedCardGuide
-    pure next
-  FlipGuideStepNext next →
-    H.modify State.flipGuideStepNext $> next
-  FlipGuideDismiss next → do
-    liftH' $ LocalStorage.setLocalStorage Guide.dismissedFlipGuideKey true
-    H.modify (_flipGuideStep .~ Nothing)
-    pure next
+  PresentStepByStepGuide guideType reply → do
+    H.modify (_ { guide = Just guideType })
+    pure $ reply H.Listening
   DismissAll ev next → do
-    querySignIn $ H.action GlobalMenu.DismissSubmenu
-    eq ← H.fromEff $ elementEq ev.target ev.currentTarget
-    when eq $ void $ queryDeck $ H.action Deck.Focus
+    void $ H.query' cpHeader unit $ H.action Header.Dismiss
+    H.gets _.cursor >>= List.head >>> traverse_ \deckId → do
+      eq ← H.liftEff $ nodeEq (DOM.toNode (DOM.target ev)) (DOM.toNode (DOM.currentTarget ev))
+      when eq $ Wiring.focusDeck deckId
     pure next
-  Resize next →
-    queryDeck (H.action Deck.UpdateCardSize) $> next
+  Resize reply → do
+    queryDeck (H.action Deck.UpdateCardSize)
+    pure $ reply H.Listening
   New next → do
     st ← H.get
     when (List.null st.cursor) do
-      runFreshWorkspace mempty
+      fork $ runFreshWorkspace mempty
+      initializeGuides
     pure next
   ExploreFile res next → do
     st ← H.get
     when (List.null st.cursor) do
-      runFreshWorkspace
+      fork $ runFreshWorkspace
         [ CM.Open (R.File res)
         , CM.Table JT.emptyModel
         ]
+      initializeGuides
     pure next
   Load cursor next → do
     st ← H.get
     case st.stateMode of
       Loading → do
-        rootId ← liftH' P.loadWorkspace
+        rootId ← H.lift P.loadWorkspace
         case rootId of
           Left err → do
             providers ←
@@ -240,22 +210,33 @@ eval = case _ of
             for_ (GE.fromQError err) GE.raiseGlobalError
           Right _ → loadCursor cursor
       _ → loadCursor cursor
-    void $ queryDeck $ H.action Deck.Focus
+    initializeGuides
     pure next
   SignIn providerR next → do
-    { auth } ← liftH' Wiring.expose
-    idToken ← H.fromAff makeVar
-    H.fromAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
-    either signInFailure (const $ signInSuccess) =<< (H.fromAff $ takeVar idToken)
+    { auth } ← H.lift Wiring.expose
+    idToken ← H.liftAff makeVar
+    H.liftAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
+    either signInFailure (const $ signInSuccess) =<< (H.liftAff $ takeVar idToken)
     pure next
+  HandleGuideMessage slot Guide.Dismissed next → do
+    case slot of
+      CardGuide → do
+        H.lift $ LocalStorage.setLocalStorage GuideData.dismissedCardGuideKey true
+        void $ queryDeck $ H.action Deck.DismissedCardGuide
+      FlipGuide → do
+        H.lift $ LocalStorage.setLocalStorage GuideData.dismissedFlipGuideKey true
+    H.modify (_ { guide = Nothing })
+    pure next
+  HandleNotification msg next →
+    handleNotification msg $> next
 
   where
   loadCursor cursor = do
     cursor' ←
       if List.null cursor
         then do
-          wiring ← liftH' Wiring.expose
-          rootId ← H.fromAff $ peekVar wiring.eval.root
+          wiring ← H.lift Wiring.expose
+          rootId ← H.liftAff $ peekVar wiring.eval.root
           pure (pure rootId)
         else
           hydrateCursor cursor
@@ -263,8 +244,9 @@ eval = case _ of
       { stateMode = Ready
       , cursor = cursor'
       }
+    for_ (List.head cursor') Wiring.focusDeck
 
-  hydrateCursor cursor = liftH' do
+  hydrateCursor cursor = H.lift do
     wiring ← Wiring.expose
     ET.hydrateCursor
       <$> Cache.snapshot wiring.eval.decks
@@ -275,75 +257,68 @@ eval = case _ of
     AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider
 
   signInSuccess = do
-    { auth } ← liftH' Wiring.expose
-    H.fromAff $ Bus.write SignInSuccess $ auth.signIn
-    H.fromEff Browser.reload
+    { auth } ← H.lift Wiring.expose
+    H.liftAff $ Bus.write SignInSuccess $ auth.signIn
+    H.liftEff Browser.reload
 
   signInFailure error = do
-    { auth, bus } ← liftH' Wiring.expose
-    H.fromAff do
+    { auth, bus } ← H.lift Wiring.expose
+    H.liftAff do
       for_ (Authentication.toNotificationOptions error) $
         flip Bus.write bus.notify
       Bus.write SignInFailure auth.signIn
 
 runFreshWorkspace ∷ Array CM.AnyCardModel → WorkspaceDSL Unit
 runFreshWorkspace cards = do
-  { path, accessType, varMaps, bus } ← liftH' Wiring.expose
-  deckId × cell ← liftH' $ P.freshWorkspace cards
+  { path, accessType, varMaps, bus } ← H.lift Wiring.expose
+  deckId × cell ← H.lift $ P.freshWorkspace cards
   H.modify _
     { stateMode = Ready
     , cursor = pure deckId
     }
-  void $ queryDeck $ H.action Deck.Focus
+  Wiring.focusDeck deckId
   let
     wait =
-      H.fromAff (Bus.read cell.bus) >>= case _ of
+      H.liftAff (Bus.read cell.bus) >>= case _ of
         ED.Pending _ → wait
         ED.Complete _ _ → wait
         ED.CardComplete _ → wait
         ED.CardChange _ → H.gets _.cursor
         ED.NameChange _ → H.gets _.cursor
   cursor ← wait
-  liftH' P.saveWorkspace
-  urlVarMaps ← H.fromEff $ readRef varMaps
+  H.lift P.saveWorkspace
+  urlVarMaps ← H.liftEff $ readRef varMaps
   navigate $ WorkspaceRoute path cursor (WA.Load accessType) urlVarMaps
 
-peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
-peek = (const (pure unit)) ⨁ const (pure unit) ⨁ peekNotification
-  where
-  peekNotification ∷ NC.Query a → WorkspaceDSL Unit
-  peekNotification = case _ of
-    NC.Action N.ExpandGlobalMenu _ → do
-      queryHeaderGripper $ Gripper.StartDragging 0.0 unit
-      queryHeaderGripper $ Gripper.StopDragging unit
-    NC.Action (N.Fulfill var) _ →
-      void $ H.fromAff $ Aff.attempt $ putVar var unit
-    _ → pure unit
+initializeGuides ∷ WorkspaceDSL Unit
+initializeGuides = do
+  { bus, accessType } ← H.lift Wiring.expose
+  initialCardGuideStep >>= case _ of
+    Nothing → do
+      void $ queryDeck $ H.action Deck.DismissedCardGuide
+    Just ix → when (AT.isEditable accessType) do
+      void $ H.query' cpGuide CardGuide $ H.action $ Guide.SetActiveStep ix
+      H.modify _ { guide = Just CardGuide }
+
+handleNotification ∷ NC.Action → WorkspaceDSL Unit
+handleNotification = case _ of
+  NC.ExpandGlobalMenu → do
+    queryHeaderGripper $ Gripper.StartDragging 0.0 unit
+    queryHeaderGripper $ Gripper.StopDragging unit
+  NC.Fulfill var →
+    void $ H.liftAff $ Aff.attempt $ putVar var unit
+
+queryHeaderGripper ∷ Gripper.Query Unit → WorkspaceDSL Unit
+queryHeaderGripper q =
+  void $ H.query' cpHeader unit $ Header.QueryGripper q unit
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck q = do
   deckId ← H.gets (List.head ∘ _.cursor)
-  join <$> for deckId \d → H.query' cpDeck d (right q)
-
-queryHeaderGripper ∷ ∀ a. Gripper.Query a → WorkspaceDSL Unit
-queryHeaderGripper =
-  void
-    ∘ H.query' cpHeader unit
-    ∘ right
-    ∘ H.ChildF (injSlot Header.cpGripper unit)
-    ∘ injQuery Header.cpGripper
-
-querySignIn ∷ ∀ a. GlobalMenu.Query a → WorkspaceDSL Unit
-querySignIn =
-  void
-    ∘ H.query' cpHeader unit
-    ∘ right
-    ∘ H.ChildF (injSlot Header.cpGlobalMenu unit)
-    ∘ injQuery Header.cpGlobalMenu
-    ∘ left
+  join <$> for deckId \d → H.query' cpDeck d q
 
 initialCardGuideStep ∷ WorkspaceDSL (Maybe Int)
 initialCardGuideStep =
-  liftH'
+  H.lift
     $ either (const $ Just 0) (if _ then Nothing else Just 0)
-    <$> LocalStorage.getLocalStorage Guide.dismissedCardGuideKey
+    <$> LocalStorage.getLocalStorage GuideData.dismissedCardGuideKey

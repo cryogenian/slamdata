@@ -14,14 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Deck.Dialog.Confirm.Component where
+module SlamData.Workspace.Deck.Dialog.Confirm.Component
+  ( Query(..)
+  , Message(..)
+  , State
+  , component
+  ) where
 
 import SlamData.Prelude
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 type State =
@@ -31,34 +36,42 @@ type State =
   , confirm ∷ String
   }
 
-data Query a = Confirm Boolean a
+data Query a = Raise Message a
 
-comp ∷ ∀ g. Functor g ⇒ H.Component State Query g
-comp = H.component { render, eval } where
+data Message = Confirm Boolean
 
-  render ∷ State → H.ComponentHTML Query
-  render state =
-    HH.div [ HP.classes [ HH.className "deck-dialog-embed" ] ]
-      [ HH.h4_ [ HH.text  state.title ]
-      , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
-          [ HH.p_
-              [ HH.text state.body
-              ]
-          ]
-      , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
-          [ HH.button
-              [ HP.classes [ B.btn ]
-              , HE.onClick (HE.input_ $ Confirm false)
-              ]
-              [ HH.text state.cancel ]
-          , HH.button
-              [ HP.classes [ B.btn, B.btnPrimary ]
-              , HE.onClick (HE.input_ $ Confirm true)
-              ]
-              [ HH.text state.confirm
-              ]
-          ]
-      ]
+component ∷ ∀ m. H.Component HH.HTML Query State Message m
+component =
+  H.component
+    { initialState: id
+    , render
+    , eval
+    , receiver: const Nothing
+    }
 
-  eval ∷ Query ~> H.ComponentDSL State Query g
-  eval (Confirm _ next) = pure next
+render ∷ State → H.ComponentHTML Query
+render state =
+  HH.div [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
+    [ HH.h4_ [ HH.text  state.title ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
+        [ HH.p_
+            [ HH.text state.body
+            ]
+        ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
+        [ HH.button
+            [ HP.classes [ B.btn ]
+            , HE.onClick (HE.input_ $ Raise (Confirm false))
+            ]
+            [ HH.text state.cancel ]
+        , HH.button
+            [ HP.classes [ B.btn, B.btnPrimary ]
+            , HE.onClick (HE.input_ $ Raise (Confirm true))
+            ]
+            [ HH.text state.confirm
+            ]
+        ]
+    ]
+
+eval ∷ ∀ m. Query ~> H.ComponentDSL State Query Message m
+eval (Raise msg next) = H.raise msg $> next

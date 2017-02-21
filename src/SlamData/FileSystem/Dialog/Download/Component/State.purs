@@ -19,7 +19,7 @@ module SlamData.FileSystem.Dialog.Download.Component.State where
 import SlamData.Prelude
 
 import Data.Array (findIndex)
-import Data.Lens (Lens', lens, (?~), (.~))
+import Data.Lens (Lens', lens)
 
 import Network.HTTP.RequestHeader (RequestHeader)
 
@@ -35,42 +35,30 @@ type State =
   , authHeaders ∷ Array RequestHeader
   }
 
-initialState ∷ Resource → State
-initialState res =
+type Input =
+  { resource ∷ Resource
+  , headers ∷ Array RequestHeader
+  }
+
+initialState ∷ Input → State
+initialState {resource: res, headers} =
   { source: res
   , targetName:
       let name = resourceName res
-      in Right $ if name ≡ "" then "archive" else name
+      in Right if name ≡ "" then "archive" else name
   , compress: false
   , options: Left initialCSVOptions
   , error: Nothing
-  , authHeaders: []
+  , authHeaders: headers
   }
-
-_source ∷ Lens' State Resource
-_source = lens _.source (_ { source = _ })
-
-_targetName ∷ Lens' State (Either String String)
-_targetName = lens _.targetName (_ { targetName = _ })
-
-_compress ∷ Lens' State Boolean
-_compress = lens _.compress (_ { compress = _ })
 
 _options ∷ Lens' State (Either CSVOptions JSONOptions)
 _options = lens _.options (_ { options = _ })
 
-_error ∷ Lens' State (Maybe String)
-_error = lens _.error (_ { error = _ })
-
-_authHeaders ∷ ∀ a r. Lens' {authHeaders ∷ a | r} a
-_authHeaders = lens _.authHeaders (_{authHeaders = _})
-
 validate ∷ State → State
 validate r
-  | isLeft (r.targetName) =
-    r # _error ?~ "Please enter a valid target filename"
-  | otherwise =
-    r # _error .~ Nothing
+  | isLeft (r.targetName) = r { error = Just "Please enter a valid target filename" }
+  | otherwise = r { error = Nothing }
 
 checkExists ∷ Resource → Array Resource → Boolean
 checkExists r rs =

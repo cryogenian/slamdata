@@ -22,12 +22,10 @@ import Data.Lens ((.~))
 import Data.Path.Pathy (printPath)
 
 import Halogen as H
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Handler as HEH
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import Global as Global
@@ -50,7 +48,7 @@ render state =
   [ modalHeader "Download"
   , modalBody
       $ HH.form
-          [ Cp.nonSubmit
+          [ HE.onSubmit $ HE.input PreventDefault
           , HP.classes [ Rc.dialogDownload ]
           ]
       [ resField state
@@ -84,7 +82,7 @@ chkCompress state =
     [ HH.label_
       [ HH.span_ [ HH.text "Compress" ]
       , HH.input
-          [ HP.inputType HP.InputCheckbox
+          [ HP.type_ HP.InputCheckbox
           , HP.enabled $ isFile state.source
           , HP.checked $ compressed state
           , HE.onValueChange (HE.input_ ToggleCompress)
@@ -123,7 +121,7 @@ message state =
 btnCancel ∷ State → H.ComponentHTML Query
 btnCancel state =
   HH.button [ HP.classes [ B.btn ]
-           , HE.onClick (HE.input_ Dismiss)
+           , HE.onClick (HE.input_ RaiseDismiss)
            , ARIA.label "Cancel download"
            , HP.title "Cancel download"
            ]
@@ -153,8 +151,7 @@ btnDownload state =
               then [ B.disabled ]
               else [ ]
          , HP.disabled disabled
-         , HE.onClick \_ →
-             HEH.preventDefault $> Just (H.action (NewTab url))
+         , HE.onClick $ HE.input (NewTab url)
          , ARIA.label "Proceed download"
          , HP.title "Proceed download"
          ]

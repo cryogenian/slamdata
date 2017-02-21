@@ -23,6 +23,4 @@ import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
 
 type ChildSlot = Unit
 
-type ChildState = DP.StateP JCursorNode
-
-type ChildQuery = DP.QueryP JCursorNode
+type ChildQuery = DP.Query JCursorNode

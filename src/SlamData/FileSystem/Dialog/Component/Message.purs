@@ -14,12 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Halogen.CustomEvents where
+module SlamData.FileSystem.Dialog.Component.Message where
 
-import DOM.Event.Types (Event) as DOM
-import Halogen.HTML.Events.Types (Event, MouseEvent)
+import Utils.Path as UP
 
-import Unsafe.Coerce (unsafeCoerce)
-
-domEventToMouseEvent ∷ DOM.Event → Event MouseEvent
-domEventToMouseEvent = unsafeCoerce
+data Message
+  = Dismiss
+  | MountSave
+  | ExploreFile UP.FilePath String

@@ -21,35 +21,36 @@ import SlamData.Prelude
 import Data.Lens ((^.))
 
 import Halogen.HTML.Core (HTML, ClassName)
-import Halogen.HTML.Events.Handler as EH
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.HTML.Events as E
+import Halogen.HTML as H
+import Halogen.HTML.Properties as P
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Guide as Guide
+import SlamData.Guide.Notification as Guide
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _isMount, _sort)
 import SlamData.Common.Sort (Sort(..))
 
+import Utils.DOM as DOM
+
 sorting ∷ ∀ a. State → HTML a (Query Unit)
 sorting state =
   H.div
-      [ P.classes [ B.colXs4, CSS.toolbarSort ] ]
-      [ H.a
-          [ E.onClick \_ → EH.preventDefault $> Just (action Resort) ]
-          [ H.text "Name"
-          , H.i
-              [ chevron (state ^. _sort)
-              , ARIA.label $ label (state ^. _sort)
-              , P.title $ label (state ^. _sort)
-              ]
-              []
-          ]
+    [ P.classes [ B.colXs4, CSS.toolbarSort ] ]
+    [ H.a
+      [ E.onClick \e → Just $ PreventDefault (DOM.toEvent e) $ action $ Resort ]
+      [ H.text "Name"
+      , H.i
+        [ chevron (state ^. _sort)
+        , ARIA.label $ label (state ^. _sort)
+        , P.title $ label (state ^. _sort)
+        ]
+        []
       ]
+    ]
   where
   chevron Asc = P.classes [ B.glyphicon, B.glyphiconChevronUp ]
   chevron Desc = P.classes [ B.glyphicon, B.glyphiconChevronDown ]
@@ -63,7 +64,7 @@ toolbar state =
     $ ( guard state.presentMountGuide $>
         Guide.render
           Guide.RightArrow
-          (H.className "sd-mount-guide")
+          (H.ClassName "sd-mount-guide")
           DismissMountGuide
           "To begin exploring data, please press the Mount button"
       )
@@ -96,8 +97,8 @@ toolbar state =
   file =
     H.li_
       [ H.input
-          [ P.inputType P.InputFile
-          , E.onChange $ E.input (FileListChanged <<< _.target)
+          [ P.type_ P.InputFile
+          , E.onChange (map (action <<< FileListChanged) <<< DOM.fromNode <<< DOM.target)
           , P.id_ "upload"
           ]
       , H.label
