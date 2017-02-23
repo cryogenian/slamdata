@@ -57,15 +57,15 @@ component
   . Ord i
   ⇒ ColumnOptions a i f o
   → L.List i
-  → H.Component HH.HTML (Query a i o) Unit (Message' a i o) Slam
+  → H.Component HH.HTML (Query a i o) (Maybe a) (Message' a i o) Slam
 component ispec colPath =
   H.lifecycleParentComponent
-    { initialState: const initialState
+    { initialState
     , render
     , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
-    , receiver: const Nothing
+    , receiver: HE.input SetSelection
     }
   where
 

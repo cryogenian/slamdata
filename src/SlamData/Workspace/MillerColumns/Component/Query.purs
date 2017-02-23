@@ -22,9 +22,9 @@ import Data.List (List)
 import SlamData.Workspace.MillerColumns.Column.Component as Column
 
 data Query a i o b
-  = Populate (List i) b
-  | ChangeRoot (List i) b
-  | HandleMessage (List i) (Column.Message' a i o) b
+  = Populate (i × List a) b
+  | ChangeRoot (i × List a) b
+  | HandleMessage Int (List i) (Column.Message' a i o) b
 
 data Message a i
   = SelectionChanged (List i) (Maybe a)

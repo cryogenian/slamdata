@@ -16,19 +16,29 @@ limitations under the License.
 
 module SlamData.Workspace.MillerColumns.Component.State where
 
-import Data.List (List, (:))
+import SlamData.Prelude
+
+import Data.List ((:))
 import Data.List as L
 import Data.Traversable (scanr)
 
 import SlamData.Workspace.MillerColumns.Column.Component as Column
 
-type State = List
+type State a i = i × L.List a
 
--- | Get a list of paths for the columns.
+-- | Mash the values in the state into a list where each item corresponds to a
+-- | path for a column and the selected item within that column.
 columnPaths
   ∷ ∀ a i f o
   . Column.ColumnOptions a i f o
-  → State i
-  → List (List i)
-columnPaths { isLeaf } path =
-  L.dropWhile isLeaf (scanr (:) L.Nil path)
+  → State a i
+  → L.List (Int × Maybe a × L.List i)
+columnPaths colSpec (root × selection) =
+  let
+    paths = scanr (:) L.Nil $ (colSpec.id <$> selection) `L.snoc` root
+    sels = Nothing : (Just <$> selection)
+    cols = snd $ foldr (\item (i × acc) → i + 1 × ((i × item) : acc)) (0 × L.Nil) $ L.zip sels paths
+  in
+    case L.head paths of
+      Just selPath | colSpec.isLeaf selPath → L.drop 1 cols
+      _ → cols
