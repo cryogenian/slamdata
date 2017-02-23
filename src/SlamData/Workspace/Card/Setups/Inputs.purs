@@ -18,7 +18,9 @@ module SlamData.Workspace.Card.Setups.Inputs where
 
 import SlamData.Prelude
 
+import Data.Argonaut as J
 import Data.Array as Array
+import Data.List as List
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -28,6 +30,8 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Form.Select (Select(..), stringVal, class OptionVal)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, showJCursor)
 
 type Select' a = Boolean × Select a
 
@@ -60,26 +64,24 @@ type SelectConfig r =
   }
 
 primary
-  ∷ ∀ a i
-  . Show a
-  ⇒ Maybe String
-  → (SelectAction a → H.Action i)
-  → PickerConfig a i
+  ∷ ∀ i
+  . Maybe String
+  → (SelectAction J.JCursor → H.Action i)
+  → PickerConfig J.JCursor i
 primary lbl =
   { disableWhen: (_ < 2)
   , defaultWhen: (_ < 1)
   , ariaLabel: lbl
   , defaultOption: "Choose " ⊕ fromMaybe "source" lbl
-  , showValue: show
+  , showValue: showJCursor
   , query: _
   }
 
 secondary
-  ∷ ∀ a i
-  . Show a
-  ⇒ Maybe String
-  → (SelectAction a → H.Action i)
-  → PickerConfig a i
+  ∷ ∀ i
+  . Maybe String
+  → (SelectAction J.JCursor → H.Action i)
+  → PickerConfig J.JCursor i
 secondary lbl =
   { disableWhen: (_ < 1)
   , defaultWhen: const true
@@ -205,3 +207,12 @@ pickerWithSelect conf1 sel1@(Select { options, value }) conf2 sel2 =
           then selectInput (conf2 { disableWhen = const true }) sel2
           else selectInput conf2 sel2
       ]
+
+dimensionPicker ∷ ∀ f. Foldable f ⇒ f (J.JCursor) → String → DPC.PickerOptions (Either J.JCursor J.JCursor)
+dimensionPicker options title =
+  { title
+  , label: DPC.labelNode showJCursor
+  , render: DPC.renderNode showJCursor
+  , values: groupJCursors (List.fromFoldable options)
+  , isSelectable: DPC.isLeafPath
+  }

@@ -49,7 +49,8 @@ groupJCursors ls = discriminateNodes $ Cofree.mkCofree J.JCursorTop (group ls)
       push (J.JField ix J.JCursorTop) next m
     J.JIndex ix next →
       push (J.JIndex ix J.JCursorTop) next m
-    J.JCursorTop → m
+    J.JCursorTop →
+      Map.insert cur mempty m
 
   push k v =
     Map.alter
@@ -67,3 +68,8 @@ flattenJCursors (c : cs) =
     J.JCursorTop  → flattenJCursors cs
     J.JField ix _ → J.JField ix (flattenJCursors cs)
     J.JIndex ix _ → J.JIndex ix (flattenJCursors cs)
+
+showJCursor ∷ J.JCursor → String
+showJCursor (J.JField i c) = i <> show c
+showJCursor J.JCursorTop = "value"
+showJCursor c = show c

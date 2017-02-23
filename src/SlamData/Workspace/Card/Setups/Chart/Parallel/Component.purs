@@ -24,7 +24,6 @@ import Data.Argonaut (JCursor)
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Lens ((^?), (.~), (?~))
-import Data.List as List
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -42,7 +41,7 @@ import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Axis (eqAxes, initialAxes)
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
 import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.Parallel.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Parallel.Component.State as ST
@@ -84,15 +83,11 @@ renderPicker state = case state.picker of
   Just { options, select } →
     let
       conf =
-        { title: case select of
+        BCI.dimensionPicker options
+          case select of
             Q.Dimension _ _ → "Choose dimension"
             Q.Series _ → "Choose series"
             _ → ""
-        , label: DPC.labelNode show
-        , render: DPC.renderNode show
-        , values: groupJCursors (List.fromFoldable options)
-        , isSelectable: DPC.isLeafPath
-        }
     in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
 
 renderSeries ∷ ST.State → HTML

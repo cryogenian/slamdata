@@ -24,7 +24,6 @@ module SlamData.Workspace.Card.Setups.FormInput.Static.Component
 import SlamData.Prelude
 
 import Data.Lens ((^?), (?~), (.~))
-import Data.List as List
 
 import DOM.Event.Event as DEE
 
@@ -42,7 +41,7 @@ import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
 import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.FormInput.Static.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.FormInput.Static.Component.State as ST
@@ -80,13 +79,9 @@ renderPicker state = case state.picker of
   Just r →
     let
       conf =
-        { title: case r.select of
-             Q.Value _ → "Choose value"
-        , label: DPC.labelNode show
-        , render: DPC.renderNode show
-        , values: groupJCursors $ List.fromFoldable r.options
-        , isSelectable: DPC.isLeafPath
-        }
+        BCI.dimensionPicker r.options
+          case r.select of
+            Q.Value _ → "Choose value"
     in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
 
 renderValue ∷ ST.State → HTML
