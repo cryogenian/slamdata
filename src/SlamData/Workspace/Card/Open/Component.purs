@@ -66,7 +66,7 @@ openComponent =
 
 render ∷ State → HTML
 render state =
-  HH.slot unit (MC.component itemSpec) (pure (Left Path.rootDir)) handleMessage
+  HH.slot unit (MC.component itemSpec) (pathToColumnData (Left Path.rootDir)) handleMessage
 
 handleMessage ∷ MC.Message' R.Resource AnyPath Void → Maybe (CC.InnerCardQuery Query Unit)
 handleMessage =
@@ -109,8 +109,7 @@ evalCard = case _ of
     mbRes ← H.get
     pure $ k $ Card.Open (fromMaybe R.root mbRes)
   CC.Load (Card.Open res) next → do
-    let selectedResources = toResourceList res
-    void $ H.query unit $ H.action $ MC.Populate $ R.getPath <$> selectedResources
+    void $ H.query unit $ H.action $ MC.Populate $ pathToColumnData $ R.getPath res
     H.put (Just res)
     pure next
   CC.Load _ next →
@@ -142,17 +141,17 @@ itemSpec =
       }
   , label: R.resourceName
   , load
-  , isLeaf: maybe true isRight ∘ L.head
+  , isLeaf: isRight
   , id: R.getPath
   }
 
 load
   ∷ ∀ r
-  . { path ∷ L.List AnyPath, filter ∷ String | r }
+  . { path ∷ AnyPath, filter ∷ String | r }
   → Slam { items ∷ L.List R.Resource, nextOffset ∷ Maybe Int }
 load { path, filter } =
-  case L.head path of
-    Just (Left p) →
+  case path of
+    Left p →
       Quasar.children p >>= case _ of
         Left err → handleError err $> noResult
         Right rs → do
@@ -183,15 +182,13 @@ handleError err =
 -- | little bit, as some of the intermediate steps may be mounts, etc. but we
 -- | don't know that so always produce directories, but for the usage here that
 -- | doesn't matter.
-toResourceList ∷ R.Resource → L.List R.Resource
-toResourceList res =
-  (unfoldr \r → Tuple r <$> go r) res `L.snoc` R.Directory Path.rootDir
-  where
-  go ∷ R.Resource → Maybe R.Resource
-  go = map (R.Directory ∘ fst) ∘ either Path.peel Path.peel ∘ R.getPath
-
-getColPath ∷ R.Resource → Maybe (L.List AnyPath)
-getColPath = maybe Nothing (Just ∘ toPathList ∘ Left ∘ fst) ∘ either Path.peel Path.peel ∘ R.getPath
+pathToColumnData ∷ AnyPath → AnyPath × L.List R.Resource
+pathToColumnData path =
+  case L.unsnoc (toPathList path) of
+    Just { init, last } →
+      last × map (either R.Directory R.File) init
+    Nothing →
+      Left Path.rootDir × L.Nil
 
 toPathList ∷ AnyPath → L.List AnyPath
 toPathList res =

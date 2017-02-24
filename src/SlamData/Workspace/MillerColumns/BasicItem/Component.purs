@@ -18,8 +18,6 @@ module SlamData.Workspace.MillerColumns.BasicItem.Component where
 
 import SlamData.Prelude
 
-import Data.List as L
-
 import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
@@ -50,7 +48,7 @@ component
   ∷ ∀ a i
   . Eq i
   ⇒ ItemSpec a
-  → L.List i
+  → i
   → a
   → H.Component HH.HTML Query MCI.ItemState (MCI.ItemMessage' a Void) Slam
 component ispec path item =

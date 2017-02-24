@@ -22,10 +22,10 @@ import Control.Comonad.Cofree (Cofree)
 import Control.Comonad.Cofree as Cofree
 
 import Data.Argonaut as J
-import Data.List (List(..), (:))
+import Data.List (List, (:))
 import Data.Map as Map
 
-import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes, unNode)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes)
 
 type JCursorNode = Either J.JCursor J.JCursor
 
@@ -59,17 +59,10 @@ groupJCursors ls = discriminateNodes $ Cofree.mkCofree J.JCursorTop (group ls)
         Nothing → Just (pure v)
       k
 
-flattenJCursors
-  ∷ List JCursorNode
-  → J.JCursor
-flattenJCursors Nil = J.JCursorTop
-flattenJCursors (c : cs) =
-  case unNode c of
-    J.JCursorTop  → flattenJCursors cs
-    J.JField ix _ → J.JField ix (flattenJCursors cs)
-    J.JIndex ix _ → J.JIndex ix (flattenJCursors cs)
-
 showJCursor ∷ J.JCursor → String
 showJCursor (J.JField i c) = i <> show c
 showJCursor J.JCursorTop = "value"
 showJCursor c = show c
+
+flattenJCursors ∷ JCursorNode → J.JCursor
+flattenJCursors = either id id

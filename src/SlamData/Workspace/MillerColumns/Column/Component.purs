@@ -27,7 +27,6 @@ import Control.Monad.Fork.Class (fork)
 
 import Data.Array as A
 import Data.List as L
-import Data.List ((:))
 import Data.Time.Duration (Milliseconds(..))
 
 import DOM.Classy.Event (currentTarget) as DOM
@@ -56,16 +55,16 @@ component
   ∷ ∀ a i f o
   . Ord i
   ⇒ ColumnOptions a i f o
-  → L.List i
-  → H.Component HH.HTML (Query a i o) Unit (Message' a i o) Slam
+  → i
+  → H.Component HH.HTML (Query a i o) (Maybe a) (Message' a i o) Slam
 component ispec colPath =
   H.lifecycleParentComponent
-    { initialState: const initialState
+    { initialState
     , render
     , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
-    , receiver: const Nothing
+    , receiver: HE.input SetSelection
     }
   where
 
@@ -139,7 +138,7 @@ component ispec colPath =
     in
       HH.slot
         itemId
-        (ispec.render (itemId : colPath) item)
+        (ispec.render itemId item)
         (if Just itemId == selectedId then I.Selected else I.Deselected)
         (HE.input (HandleMessage itemId))
 
@@ -180,7 +179,7 @@ component ispec colPath =
       case msg of
         Left (I.RaisePopulate a) → do
           H.modify (_ { selected = Just a })
-          H.raise $ Left $ Selected (itemId : colPath) a
+          H.raise $ Left $ Selected itemId a
         Right o → do
           H.raise $ Right o
       pure next

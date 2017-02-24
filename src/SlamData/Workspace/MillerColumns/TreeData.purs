@@ -22,37 +22,33 @@ import Control.Comonad (extract)
 import Control.Comonad.Cofree as CF
 
 import Data.Foldable (find)
-import Data.List ((:))
 import Data.List as L
 
-import SlamData.Workspace.MillerColumns.Component.State as S
 import SlamData.Workspace.MillerColumns.Column.BasicFilter (mkFilter)
+import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
 
 type Tree a = CF.Cofree L.List a
 
+-- | This is only suitable for use when every `a` in the tree is unique.
 loadFromTree
-  ∷ ∀ m a i r
-  . (Eq i, Applicative m)
-  ⇒ (a → i)
-  → (a → String)
+  ∷ ∀ m a r
+  . (Eq a, Applicative m)
+  ⇒ (a → String)
   → Tree a
-  → { path ∷ L.List i, filter ∷ String | r }
+  → { path ∷ a, filter ∷ String | r }
   → m { items ∷ L.List a, nextOffset ∷ Maybe Int }
-loadFromTree f label tree { path, filter } =
-  pure $ go tree $ L.drop 1 $ L.reverse $ path
+loadFromTree label tree { path, filter } =
+  let
+    labelFilter = mkFilter filter ∘ label
+    items = L.filter labelFilter $ go $ pure tree
+  in
+    pure { items, nextOffset: Nothing }
   where
-  go ∷ Tree a → L.List i → { items ∷ L.List a, nextOffset ∷ Maybe Int }
-  go subtree = case _ of
-    x : xs →
-      case find (\node → f (extract node) == x) (CF.tail subtree) of
-        Nothing → { items: L.Nil, nextOffset: Nothing }
-        Just subtree' → go subtree' xs
-    _ →
-      let
-        labelFilter = mkFilter filter ∘ label
-        items = L.filter labelFilter (extract <$> CF.tail subtree)
-      in
-        { items, nextOffset: Nothing }
+  go ∷ L.List (Tree a) → L.List a
+  go branches =
+    case find (\node → CF.head node == path) branches of
+      Just subtree → extract <$> CF.tail subtree
+      Nothing → CF.tail <$> branches >>= go
 
-initialStateFromTree ∷ ∀ a i. (a → i) → Tree a → S.State i
-initialStateFromTree f = L.singleton <<< f <<< extract
+initialStateFromTree ∷ ∀ a. Tree a → ColumnsData a a
+initialStateFromTree t = extract t × L.Nil

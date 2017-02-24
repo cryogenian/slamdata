@@ -22,8 +22,6 @@ module SlamData.Workspace.MillerColumns.Column.Component.Query
 
 import SlamData.Prelude
 
-import Data.List (List)
-
 import DOM.Node.Types (Element)
 
 import SlamData.Workspace.MillerColumns.Column.Component.Item (ItemMessage')
@@ -40,7 +38,7 @@ data Query a i o b
 
 data Message a i
   = Initialized
-  | Selected (List i) a
+  | Selected i a
   | Deselected
 
 type Message' a i o = Either (Message a i) o

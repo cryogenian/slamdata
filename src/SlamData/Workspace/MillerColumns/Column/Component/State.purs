@@ -47,11 +47,11 @@ type State a i o =
   , filterTrigger ∷ DebounceTrigger (Query a i o) Slam
   }
 
-initialState ∷ ∀ a i o. State a i o
+initialState ∷ ∀ a i o. Maybe a → State a i o
 initialState =
   { items: Nil
   , state: Loading
-  , selected: Nothing
+  , selected: _
   , filterText: ""
   , nextOffset: Nothing
   , lastLoadParams: Nothing

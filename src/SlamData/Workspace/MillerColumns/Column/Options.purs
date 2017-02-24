@@ -26,15 +26,12 @@ import Halogen.HTML as HH
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Column.Component.Item (ItemMessage', ItemState)
 
-type LoadParams i = { path ∷ L.List i, filter ∷ String, offset ∷ Maybe Int }
+type LoadParams i = { path ∷ i, filter ∷ String, offset ∷ Maybe Int }
 
 type ColumnOptions a i f o =
-  { render
-      ∷ L.List i
-      → a
-      → H.Component HH.HTML f ItemState (ItemMessage' a o) Slam
+  { render ∷ i → a → H.Component HH.HTML f ItemState (ItemMessage' a o) Slam
   , label ∷ a → String
   , load ∷ LoadParams i → Slam { items ∷ L.List a, nextOffset ∷ Maybe Int }
-  , isLeaf ∷ L.List i → Boolean
+  , isLeaf ∷ i → Boolean
   , id ∷ a → i
   }
