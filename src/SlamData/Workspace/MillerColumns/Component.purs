@@ -42,18 +42,18 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Column.Component as Column
 import SlamData.Workspace.MillerColumns.Component.Query (Query(..), Message(..), Message')
-import SlamData.Workspace.MillerColumns.Component.State (State, columnPaths)
+import SlamData.Workspace.MillerColumns.Component.State (ColumnsData, columnPaths)
 
 import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions) as Exports
 
 type HTML a i o = H.ParentHTML (Query a i o) (Column.Query a i o) i Slam
-type DSL a i o = H.ParentDSL (State a i) (Query a i o) (Column.Query a i o) i (Message' a i o) Slam
+type DSL a i o = H.ParentDSL (ColumnsData a i) (Query a i o) (Column.Query a i o) i (Message' a i o) Slam
 
 component
   ∷ ∀ a i f o
   . Ord i
   ⇒ Column.ColumnOptions a i f o
-  → H.Component HH.HTML (Query a i o) (State a i) (Message' a i o) Slam
+  → H.Component HH.HTML (Query a i o) (ColumnsData a i) (Message' a i o) Slam
 component colSpec =
   H.parentComponent
     { initialState: id
@@ -63,13 +63,12 @@ component colSpec =
     }
   where
 
-  render ∷ State a i → HTML a i o
+  render ∷ ColumnsData a i → HTML a i o
   render state =
     HH.div
       [ HP.class_ (HH.ClassName "sd-miller-columns")
       , HP.ref containerRef
       ]
-      $ A.reverse
       $ A.fromFoldable
       $ map renderColumn (columnPaths colSpec state)
 

@@ -18,12 +18,12 @@ module SlamData.Workspace.MillerColumns.Component.Query where
 
 import SlamData.Prelude
 
-import Data.List (List)
 import SlamData.Workspace.MillerColumns.Column.Component as Column
+import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
 
 data Query a i o b
-  = Populate (i × List a) b
-  | ChangeRoot (i × List a) b
+  = Populate (ColumnsData a i) b
+  | ChangeRoot (ColumnsData a i) b
   | HandleMessage Int i (Column.Message' a i o) b
 
 data Message a i

@@ -25,6 +25,7 @@ import Data.Foldable (find)
 import Data.List as L
 
 import SlamData.Workspace.MillerColumns.Column.BasicFilter (mkFilter)
+import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
 
 type Tree a = CF.Cofree L.List a
 
@@ -49,5 +50,5 @@ loadFromTree label tree { path, filter } =
       Just subtree → extract <$> CF.tail subtree
       Nothing → CF.tail <$> branches >>= go
 
-initialStateFromTree ∷ ∀ a. Tree a → a × L.List a
+initialStateFromTree ∷ ∀ a. Tree a → ColumnsData a a
 initialStateFromTree t = extract t × L.Nil
