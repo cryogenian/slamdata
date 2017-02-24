@@ -274,6 +274,7 @@ handleBackSide opts = case _ of
         let
           active = DCS.activeCard st
           activeIx = DCS.activeCardIndex st
+        switchToFrontside
         for_ (join $ hush <$> active) \{ cardId } → do
           when (activeIx > 0) do
             H.modify _ { activeCardIndex = Just (activeIx - 1) }
@@ -281,7 +282,6 @@ handleBackSide opts = case _ of
           H.lift $ P.removeCard opts.deckId cardId
           H.modify
             $ (DCS._presentAccessNextActionCardGuide .~ false)
-        switchToFrontside
       Back.Rename → do
         showDialog $ Dialog.Rename st.name
       Back.Share → do
@@ -563,15 +563,13 @@ preloadCard gDef = do
     void $ queryCardEval cardId $ H.action CQ.PreloadCard
 
 updateCardSize ∷ DeckDSL Unit
-updateCardSize = do
-  H.queryAll' cpCard $ H.action CQ.UpdateDimensions
-  displayMode ← H.gets _.displayMode
-  if DCS.isFrontSide displayMode
-    then queryNextActionList $ H.action ActionList.CalculateBoundingRect
-    else queryBacksideActionList $ H.action ActionList.CalculateBoundingRect
-  H.getHTMLElementRef sizerRef >>= traverse_ \el → do
-    { width } ← H.liftEff $ getBoundingClientRect el
+updateCardSize =
+  H.getHTMLElementRef sizerRef >>= traverse_ \el → void do
+    { width, height } ← H.liftEff $ getBoundingClientRect el
     H.modify $ DCS._responsiveSize .~ breakpoint width
+    queryNextActionList $ H.action ActionList.CalculateBoundingRect
+    queryBacksideActionList $ H.action ActionList.CalculateBoundingRect
+    H.queryAll' cpCard $ H.action CQ.UpdateDimensions
   where
   breakpoint w
     | w < 240.0 = DCS.XSmall
