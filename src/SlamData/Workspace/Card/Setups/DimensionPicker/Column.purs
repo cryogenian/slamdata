@@ -22,10 +22,10 @@ import Control.Comonad.Cofree (Cofree)
 import Control.Comonad.Cofree as Cofree
 
 import Data.Argonaut as J
-import Data.List (List(..), (:))
+import Data.List (List, (:))
 import Data.Map as Map
 
-import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes, unNode)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
 
 type ColumnNode = Either Column Column
@@ -74,21 +74,5 @@ groupColumns ls =
         Nothing → Just (pure v)
       k
 
-flattenColumns
-  ∷ List ColumnNode
-  → Column
-flattenColumns Nil =
-  Column { value: J.JCursorTop, valueAggregation: Nothing }
-flattenColumns (c : cs) =
-  case unNode c of
-    Count → Count
-    Column { value } →
-      case value of
-        J.JField ix _ → mapValue (J.JField ix) (flattenColumns cs)
-        J.JIndex ix _ → mapValue (J.JIndex ix) (flattenColumns cs)
-        J.JCursorTop → flattenColumns cs
-  where
-  mapValue f = case _ of
-    Count → Count
-    Column { value, valueAggregation } →
-      Column { value: f value, valueAggregation }
+flattenColumns ∷ ColumnNode → Column
+flattenColumns = either id id
