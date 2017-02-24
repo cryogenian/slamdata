@@ -20,7 +20,6 @@ module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component
 
 import SlamData.Prelude
 
-import Data.Argonaut as J
 import Data.Array as Array
 import Data.Int (toNumber)
 import Data.Lens ((^?))
@@ -37,8 +36,8 @@ import Halogen.HTML.CSS as HC
 import SlamData.Form.Select as S
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.Column (flattenColumns)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Column (flattenColumns, showColumn)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors, showJCursor)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.ChildSlot as PCS
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query (Query(..))
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.State as PS
@@ -278,12 +277,6 @@ render st =
       ]
       [ HH.text (maybe "Tabulate" S.stringVal ctr) ]
 
-  showColumn (Column { value }) = showJCursor value
-  showColumn Count = "COUNT"
-
-  showJCursor (J.JField i c) = i <> show c
-  showJCursor c = show c
-
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
   CC.Activate next →
@@ -316,11 +309,13 @@ evalOptions ∷ Query ~> DSL
 evalOptions = case _ of
   AddDimension next → do
     st ← H.get
-    H.modify _ { selecting = Just (PS.Dim (PS.selectDimensionValues st.axes)) }
+    let vals = PS.selectDimensionValues st.axes
+    H.modify _ { selecting = Just (PS.Dim vals) }
     pure next
   AddColumn next → do
     st ← H.get
-    H.modify _ { selecting = Just (PS.Col (PS.selectColumnValues st.axes)) }
+    let vals = PS.selectColumnValues st.axes
+    H.modify _ { selecting = Just (PS.Col vals) }
     pure next
   RemoveDimension slot next → do
     H.modify \st →

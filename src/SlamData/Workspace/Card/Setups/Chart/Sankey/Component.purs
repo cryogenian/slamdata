@@ -21,7 +21,6 @@ module SlamData.Workspace.Card.Setups.Chart.Sankey.Component
 import SlamData.Prelude
 
 import Data.Lens ((^?), (?~), (.~))
-import Data.List as List
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -37,7 +36,7 @@ import SlamData.Workspace.Card.CardType.ChartType as CHT
 
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
 import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.Sankey.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Sankey.Component.State as ST
@@ -79,16 +78,12 @@ renderPicker state = case state.picker of
   Just { options, select } →
     let
       conf =
-        { title: case select of
+        BCI.dimensionPicker options
+          case select of
             Q.Value _  → "Choose weight"
             Q.Source _ → "Choose source"
             Q.Target _ → "Choose target"
             _ → ""
-        , label: DPC.labelNode show
-        , render: DPC.renderNode show
-        , values: groupJCursors (List.fromFoldable options)
-        , isSelectable: DPC.isLeafPath
-        }
     in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
 
 renderSource ∷ ST.State → HTML

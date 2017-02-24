@@ -21,7 +21,6 @@ module SlamData.Workspace.Card.Setups.Chart.PunchCard.Component
 import SlamData.Prelude
 
 import Data.Lens ((^?), (.~), (?~))
-import Data.List as List
 
 import Global (readFloat, isNaN)
 
@@ -42,7 +41,7 @@ import SlamData.Workspace.Card.CardType.ChartType as CHT
 
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, flattenJCursors)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
 import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.PunchCard.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.PunchCard.Component.State as ST
@@ -87,18 +86,14 @@ renderPicker state = case state.picker of
   Just { options, select } →
     let
       conf =
-        { title: case select × state.circular of
+        BCI.dimensionPicker options
+          case select × state.circular of
             (Q.Abscissa _) × true  → "Choose angular axis"
             (Q.Abscissa _) × _ → "Choose x-axis"
             (Q.Ordinate _) × true → "Choose radial axis"
             (Q.Ordinate _) × _ → "Choose y-axis"
             (Q.Value _) × _ → "Choose measure"
             _ → ""
-        , label: DPC.labelNode show
-        , render: DPC.renderNode show
-        , values: groupJCursors (List.fromFoldable options)
-        , isSelectable: DPC.isLeafPath
-        }
     in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
 
 renderAbscissa ∷ ST.State → HTML

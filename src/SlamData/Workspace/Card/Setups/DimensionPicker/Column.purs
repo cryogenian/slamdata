@@ -25,8 +25,9 @@ import Data.Argonaut as J
 import Data.List (List, (:))
 import Data.Map as Map
 
-import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (showJCursor)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes)
 
 type ColumnNode = Either Column Column
 
@@ -65,7 +66,8 @@ groupColumns ls =
             (Column { value: J.JIndex ix J.JCursorTop, valueAggregation: Nothing })
             (Column { value: next, valueAggregation})
             m
-        J.JCursorTop → m
+        J.JCursorTop →
+          Map.insert col mempty m
 
   push k v =
     Map.alter
@@ -73,6 +75,10 @@ groupColumns ls =
         Just vs → Just (v : vs)
         Nothing → Just (pure v)
       k
+
+showColumn ∷ Column → String
+showColumn (Column { value }) = showJCursor value
+showColumn Count = "COUNT"
 
 flattenColumns ∷ ColumnNode → Column
 flattenColumns = either id id
