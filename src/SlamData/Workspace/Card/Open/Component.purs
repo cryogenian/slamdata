@@ -141,17 +141,17 @@ itemSpec =
       }
   , label: R.resourceName
   , load
-  , isLeaf: maybe true isRight ∘ L.head
+  , isLeaf: isRight
   , id: R.getPath
   }
 
 load
   ∷ ∀ r
-  . { path ∷ L.List AnyPath, filter ∷ String | r }
+  . { path ∷ AnyPath, filter ∷ String | r }
   → Slam { items ∷ L.List R.Resource, nextOffset ∷ Maybe Int }
 load { path, filter } =
-  case L.head path of
-    Just (Left p) →
+  case path of
+    Left p →
       Quasar.children p >>= case _ of
         Left err → handleError err $> noResult
         Right rs → do

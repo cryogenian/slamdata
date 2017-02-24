@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Data.List ((:))
 import Data.List as L
-import Data.Traversable (scanr)
 
 import SlamData.Workspace.MillerColumns.Column.Component as Column
 
@@ -32,10 +31,10 @@ columnPaths
   ∷ ∀ a i f o
   . Column.ColumnOptions a i f o
   → State a i
-  → L.List (Int × Maybe a × L.List i)
+  → L.List (Int × Maybe a × i)
 columnPaths colSpec (root × selection) =
   let
-    paths = scanr (:) L.Nil $ (colSpec.id <$> selection) `L.snoc` root
+    paths = (colSpec.id <$> selection) `L.snoc` root
     sels = Nothing : (Just <$> selection)
     cols = snd $ foldr (\item (i × acc) → i + 1 × ((i × item) : acc)) (0 × L.Nil) $ L.zip sels paths
   in

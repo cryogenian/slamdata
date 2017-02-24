@@ -24,6 +24,7 @@ import SlamData.Prelude
 
 import Control.Monad.Eff (Eff)
 
+import Data.Array as A
 import Data.List ((:))
 import Data.List as L
 import Data.Profunctor.Strong (second)
@@ -45,10 +46,8 @@ import SlamData.Workspace.MillerColumns.Component.State (State, columnPaths)
 
 import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions) as Exports
 
-type HTML a i o = H.ParentHTML (Query a i o) (Column.Query a i o) (L.List i) Slam
-type DSL a i o = H.ParentDSL (State a i) (Query a i o) (Column.Query a i o) (L.List i) (Message' a i o) Slam
-
-type RenderRec a i o = { path ∷ Maybe a × L.List i, html ∷ Array (HTML a i o) }
+type HTML a i o = H.ParentHTML (Query a i o) (Column.Query a i o) i Slam
+type DSL a i o = H.ParentDSL (State a i) (Query a i o) (Column.Query a i o) i (Message' a i o) Slam
 
 component
   ∷ ∀ a i f o
@@ -70,14 +69,12 @@ component colSpec =
       [ HP.class_ (HH.ClassName "sd-miller-columns")
       , HP.ref containerRef
       ]
-      $ _.html
-      $ foldr goColumn { path: Nothing × L.Nil, html: [] } (columnPaths colSpec state)
+      $ A.reverse
+      $ A.fromFoldable
+      $ map renderColumn (columnPaths colSpec state)
 
-  goColumn ∷ Int × Maybe a × L.List i → RenderRec a i o → RenderRec a i o
-  goColumn (i × path) acc = { path, html: acc.html <> [renderColumn i path] }
-
-  renderColumn ∷ Int → Maybe a × L.List i → HTML a i o
-  renderColumn i (sel × colPath) =
+  renderColumn ∷ Int × Maybe a × i → HTML a i o
+  renderColumn (i × sel × colPath) =
     HH.div
       [ HP.class_ (HH.ClassName "sd-miller-column")
       , ARIA.label "Column"
@@ -103,10 +100,8 @@ component colSpec =
           traverse_ (H.liftEff ∘ scrollToRight) =<< H.getHTMLElementRef containerRef
         Left Column.Deselected → do
           H.modify $ second \sels → L.drop (L.length sels - colIndex) sels
-          let prevCol = L.drop 1 colPath
-          selection ← join <$> H.query prevCol (H.request Column.GetSelection)
-          let selPath = maybe prevCol (\s → colSpec.id s : prevCol) selection
-          H.raise $ Left (SelectionChanged selPath selection)
+          root × sel ← second L.head <$> H.get
+          H.raise $ Left (SelectionChanged (maybe root colSpec.id sel) sel)
         Left (Column.Selected itemPath item) → do
           H.modify $ second \sels → item : L.drop (L.length sels - colIndex) sels
           H.raise $ Left (SelectionChanged itemPath (Just item))

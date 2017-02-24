@@ -18,9 +18,6 @@ module SlamData.Workspace.Card.Setups.DimensionPicker.Component where
 
 import SlamData.Prelude
 
-import Data.List (List)
-import Data.List as List
-
 import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
@@ -34,15 +31,15 @@ import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Workspace.MillerColumns.TreeData as MCT
 
 data Query s a
-  = UpdateSelection (List s) a
+  = UpdateSelection (Maybe s) a
   | RaiseMessage (Message s) a
 
 data Message s
   = Dismiss
-  | Confirm (List s)
+  | Confirm s
 
 type State s =
-  { selection ∷ Maybe (List s)
+  { selection ∷ Maybe s
   }
 
 initialState ∷ ∀ s. State s
@@ -61,15 +58,15 @@ type PickerOptions s =
   , render ∷ s → MCI.BasicItemHTML
   , title  ∷ String
   , values ∷ MCT.Tree s
-  , isSelectable ∷ List s → Boolean
+  , isSelectable ∷ s → Boolean
   }
 
 pickerOptionsToColumnOptions ∷ ∀ s. Eq s ⇒ PickerOptions s → MCI.BasicColumnOptions s s
 pickerOptionsToColumnOptions { label, render, values, isSelectable } =
   { render: MCI.component { render, label }
-  , label: label
-  , load: MCT.loadFromTree id label values
-  , id: id
+  , label
+  , load: MCT.loadFromTree label values
+  , id
   , isLeaf: isSelectable
   }
 
@@ -89,8 +86,8 @@ renderNode f node =
     ]
     [ HH.span_ [ HH.text (either f f node) ] ]
 
-isLeafPath ∷ ∀ a. List (Either a a) → Boolean
-isLeafPath = maybe true isRight ∘ List.head
+isLeafPath ∷ ∀ a. Either a a → Boolean
+isLeafPath = isRight
 
 picker
   ∷ ∀ s
@@ -107,7 +104,7 @@ picker opts =
   where
 
   columnOptions = pickerOptionsToColumnOptions opts
-  columnState = MCT.initialStateFromTree columnOptions.id opts.values
+  columnState = MCT.initialStateFromTree opts.values
 
   render ∷ State s → HTML s
   render st =
@@ -141,7 +138,7 @@ picker opts =
               ] <>
                 case st.selection of
                   Just sel | opts.isSelectable sel →
-                    [ HE.onClick $ HE.input_ $ RaiseMessage $ Confirm (List.reverse sel)
+                    [ HE.onClick $ HE.input_ $ RaiseMessage $ Confirm sel
                     , HP.disabled false
                     ]
                   _ →
@@ -153,13 +150,13 @@ picker opts =
   handleMessage ∷ MC.Message' s s Void → Maybe (Query s Unit)
   handleMessage =
     either
-      (\(MC.SelectionChanged sel _) → Just $ H.action $ UpdateSelection sel)
+      (\(MC.SelectionChanged _ sel) → Just $ H.action $ UpdateSelection sel)
       absurd
 
   eval ∷ Query s ~> DSL s
   eval = case _ of
     UpdateSelection sel next → do
-      H.modify (_ { selection = Just sel })
+      H.modify (_ { selection = sel })
       pure next
     RaiseMessage msg next → do
       H.raise msg
