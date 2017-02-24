@@ -189,10 +189,12 @@ render st =
           [ HP.classes (notificationClasses status n.options.notification) ]
           [ HH.div
               [ HP.class_ (HH.ClassName "sd-notification-text") ]
-              [ HH.text (notificationText n.options.notification)
-              , renderAction n
-              , renderDetail n
-              ]
+              ([ HH.text (notificationText n.options.notification) ]
+              <> case n.options of
+                   { detail: Just opts, actionOptions: Just aopts } → [ renderMessage aopts, renderDetail n opts ]
+                   { detail: Just opts } → [ renderDetail n opts ]
+                   { actionOptions: Just aopts } → [ renderMessage aopts, renderAction aopts ]
+                   _ → [])
           , HH.div
               [ HP.class_ (HH.ClassName "sd-notification-buttons") ]
               [ HH.button
@@ -217,48 +219,48 @@ render st =
           <> "."
       ]
 
-  renderDetail n =
-    n.options.detail
-      # maybe
-        (HH.text "")
-        (\(N.Details d) → HH.div
-          [ HP.class_ (HH.ClassName "sd-notification-detail") ]
-          [ HH.button
-              [ HP.classes [ HH.ClassName "btn", HH.ClassName "btn-default", HH.ClassName "btn-sm" ]
-              , HP.type_ HP.ButtonButton
-              , HE.onClick (HE.input_ ToggleDetail)
-              ]
-              [ HH.text
-                  case n.detailsPresented of
-                    DetailsPresented → "Hide detail"
-                    DetailsHidden → "Show detail"
-              ]
-          , n.options.actionOptions
-             # maybe
-               (HH.text "")
-               (\(N.ActionOptions a) →
-                  HH.button
-                    [ HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary", HH.ClassName "btn-sm" ]
-                    , HP.type_ HP.ButtonButton
-                    , HE.onClick (HE.input_ $ Action a.action)
-                    ]
-                    [ HH.text a.actionMessage ])
-          , case n.detailsPresented of
-              DetailsPresented →
-                HH.div
-                  [ HP.class_ (HH.ClassName "sd-notification-detail") ]
-                  [ HH.p_ [ HH.text d ] ]
-              DetailsHidden → HH.text ""
-          ])
+  renderDetail n (N.Details d) =
+    HH.div
+      [ HP.class_ (HH.ClassName "sd-notification-detail") ]
+      [ HH.button
+          [ HP.classes [ HH.ClassName "btn", HH.ClassName "btn-default", HH.ClassName "btn-sm" ]
+          , HP.type_ HP.ButtonButton
+          , HE.onClick (HE.input_ ToggleDetail)
+          ]
+          [ HH.text
+              case n.detailsPresented of
+                DetailsPresented → "Hide detail"
+                DetailsHidden → "Show detail"
+          ]
+      , n.options.actionOptions
+          # maybe (HH.text "") renderActionButton
+      , case n.detailsPresented of
+          DetailsPresented →
+            HH.div
+              [ HP.class_ (HH.ClassName "sd-notification-detail") ]
+              [ HH.p_ [ HH.text d ] ]
+          DetailsHidden → HH.text ""
+      ]
 
-  renderAction n =
-    n.options.actionOptions
-      # maybe
-        (HH.text "")
-        (\(N.ActionOptions a) →
+  renderAction opts@(N.ActionOptions a) =
+    HH.div
+      [ HP.class_ (HH.ClassName "sd-notification-detail") ]
+      [ renderActionButton opts ]
+
+  renderActionButton (N.ActionOptions a) =
+    HH.button
+      [ HP.classes [ HH.ClassName "btn", HH.ClassName "btn-primary", HH.ClassName "btn-sm" ]
+      , HP.type_ HP.ButtonButton
+      , HE.onClick (HE.input_ $ Action a.action)
+      ]
+      [ HH.text a.actionMessage ]
+
+  renderMessage (N.ActionOptions { message })
+      | message ≡ "" = HH.text ""
+      | otherwise =
           HH.div
             [ HP.class_ (HH.ClassName "sd-notification-detail") ]
-            [ HH.p_ [ HH.text a.message ] ])
+            [ HH.p_ [ HH.text message ] ]
 
   notificationClasses status n =
     [ HH.ClassName "sd-notification"
