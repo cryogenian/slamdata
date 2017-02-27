@@ -33,7 +33,7 @@ import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..), Query(..))
-import SlamData.Workspace.Card.Table.Component.State (State, currentPageInfo)
+import SlamData.Workspace.Card.Table.Component.State (State, currentPageInfo, Result(..))
 
 type HTML = CC.InnerCardHTML Query
 
@@ -53,23 +53,44 @@ fromInputValue { current, pending } =
 
 render ∷ State → HTML
 render st =
-  HH.div_
-    $ flip foldMap st.result \result →
-        let
-          p = currentPageInfo st
-        in
-          [ HH.div
-              [ HP.classes [ HH.ClassName "sd-card-table-content" ] ]
-              [ right <$> JT.renderJTable jTableOpts result.json ]
-          , HH.div
-              [ HP.classes [CSS.pagination, CSS.form] ]
-              [ prevButtons (p.page <= 1)
-              , pageField { current: p.page, pending: st.page } p.totalPages
-              , nextButtons (p.page >= p.totalPages)
-              , pageSizeControls st.isEnteringPageSize { current: p.pageSize, pending: st.pageSize }
-              ]
-          ]
-
+  HH.div_ $ case st.result of
+    Loading → renderLoading
+    Empty → renderEmpty
+    Errored e → renderError e
+    Ready result → renderResult result
+  where
+  renderLoading =
+    A.singleton
+    $ HH.div
+      [ HP.classes [ B.alert, B.alertInfo ] ]
+      [ HH.img [ HP.src "img/blue-spin.svg" ]
+      , HH.text "Loading"
+      ]
+  renderEmpty =
+    A.singleton
+    $ HH.div
+      [ HP.classes [ B.alert, B.alertWarning ] ]
+      [ HH.text "Selected resource is empty" ]
+  renderError e =
+    A.singleton
+    $ HH.pre
+      [ HP.classes [ B.alert, B.alertDanger ] ]
+      [ HH.text e ]
+  renderResult result =
+    let
+      p = currentPageInfo st
+    in
+     [ HH.div
+       [ HP.classes [ HH.ClassName "sd-card-table-content" ] ]
+       [ right <$> JT.renderJTable jTableOpts result.json ]
+     , HH.div
+       [ HP.classes [CSS.pagination, CSS.form] ]
+       [ prevButtons (p.page <= 1)
+       , pageField { current: p.page, pending: st.page } p.totalPages
+       , nextButtons (p.page >= p.totalPages)
+       , pageSizeControls st.isEnteringPageSize { current: p.pageSize, pending: st.pageSize }
+       ]
+     ]
 jTableOpts ∷ JT.JTableOpts
 jTableOpts = JT.jTableOptsDefault
   { style = JT.noStyle

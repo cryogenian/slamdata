@@ -16,11 +16,13 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Table.Component.State
   ( State
-  , Result
+  , Result(..)
+  , ResultR
   , Input
   , initialState
   , _input
   , _result
+  , _Result
   , _page
   , _pageSize
   , _isEnteringPageSize
@@ -43,7 +45,7 @@ import SlamData.Prelude
 import Data.Argonaut (Json)
 import Data.Foldable (maximum)
 import Data.Int as Int
-import Data.Lens ((^?), (?~), Lens', lens, _Just)
+import Data.Lens ((^?), (?~), Lens', lens, _Just, Prism', prism', Traversal')
 
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..))
 import SlamData.Workspace.Card.Table.Model (Model)
@@ -55,25 +57,37 @@ import Utils.Path (FilePath)
 -- | The state for the Table card component.
 type State =
   { input ∷ Maybe Input
-  , result ∷ Maybe Result
-  , page ∷ Maybe (Either String Int)
+  , result ∷ Result
+  , page ∷ Maybe (String ⊹ Int)
   , pageSize ∷ Maybe (Either String Int)
   , isEnteringPageSize ∷ Boolean
   , levelOfDetails ∷ LevelOfDetails
   }
 
+
 -- | The current result value being displayed.
-type Result =
+type ResultR =
   { json ∷ Json
   , page ∷ Int
   , pageSize ∷ Int
   }
 
+data Result
+  = Loading
+  | Errored String
+  | Empty
+  | Ready ResultR
+
+_ResultR ∷ Prism' Result ResultR
+_ResultR = prism' Ready case _ of
+  Ready r → Just r
+  _ → Nothing
+
 -- | An empty initial state for the Table card component.
 initialState ∷ State
 initialState =
   { input: Nothing
-  , result: Nothing
+  , result: Loading
   , page: Nothing
   , pageSize: Nothing
   , isEnteringPageSize: false
@@ -87,6 +101,9 @@ _input = lens _.input (_ { input = _ })
 
 _result ∷ ∀ a r. Lens' {result ∷ a|r} a
 _result = lens _.result (_ { result = _ })
+
+_Result ∷ Traversal' State ResultR
+_Result = _result ∘ _ResultR
 
 _page ∷ ∀ a r. Lens' {page ∷ a |r} a
 _page = lens _.page (_ { page = _ })
@@ -122,14 +139,15 @@ _size = lens _.size (_ { size = _ })
 _tag ∷ ∀ a r. Lens' {tag ∷ a|r} a
 _tag = lens _.tag _{tag = _}
 
+
 -- | A record with information about the current page number, page size, and
 -- | total number of pages.
 type PageInfo = { page ∷ Int, pageSize ∷ Int, totalPages ∷ Int }
 
 currentPageInfo ∷ State → PageInfo
 currentPageInfo st =
-  let page = fromMaybe 1 $ _.page <$> st.result
-      pageSize = fromMaybe 0 $ _.pageSize <$> st.result
+  let page = fromMaybe 1 $ _.page <$> st ^? _Result
+      pageSize = fromMaybe 0 $ _.pageSize <$> st ^? _Result
       total = fromMaybe 0 $ st ^? _input ∘ _Just ∘ _size
       totalPages = calcTotalPages pageSize total
   in { page, pageSize, totalPages }
@@ -139,10 +157,10 @@ currentPageInfo st =
 pendingPageInfo ∷ State → PageInfo
 pendingPageInfo st =
   let customPage = either Int.fromString pure =<< st.page
-      actualPage = _.page <$> st.result
+      actualPage = _.page <$> st ^? _Result
       page = fromMaybe 1 $ customPage <|> actualPage
       customPageSize = either Int.fromString pure =<< st.pageSize
-      actualPageSize = _.pageSize <$> st.result
+      actualPageSize = _.pageSize <$> st ^? _Result
       pageSize = fromMaybe 10 $ customPageSize <|> actualPageSize
       total = fromMaybe 0 $ st ^? _input ∘ _Just ∘ _size
       totalPages = calcTotalPages pageSize total
@@ -166,12 +184,12 @@ pageStepValue ∷ PageStep → State → Int
 pageStepValue step st = go step
   where
   page =
-    fromMaybe 1 $ _.page <$> st.result
+    fromMaybe 1 $ _.page <$> st ^? _Result
 
   totalPages =
     fromMaybe 1
       $ calcTotalPages
-      <$> (_.pageSize <$> st.result)
+      <$> (_.pageSize <$> st ^? _Result)
       <*> (st ^? _input ∘ _Just ∘ _size)
 
   go First = 1
@@ -201,8 +219,8 @@ setPageSize size = _pageSize ?~ Left size
 
 toModel ∷ State → Model
 toModel st =
-  { page: (_.page <$> st.result) <|> (either (const Nothing) Just =<< st.page)
-  , pageSize: (_.pageSize <$> st.result) <|> (either (const Nothing) Just =<< st.pageSize)
+  { page: (_.page <$> st ^? _Result) <|> (either (const Nothing) Just =<< st.page)
+  , pageSize: (_.pageSize <$> st ^? _Result) <|> (either (const Nothing) Just =<< st.pageSize)
   }
 
 fromModel ∷ Model → State

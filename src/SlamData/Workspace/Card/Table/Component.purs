@@ -25,9 +25,10 @@ import SlamData.Prelude
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
 
-import Data.Argonaut.Core as JSON
+import Data.Argonaut as JSON
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
+--import Data.Lens ((.~))
 
 import DOM.Classy.Event as DOM
 
@@ -102,7 +103,8 @@ updateTable resource tag varMap = do
   when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
     $ lift $ resetState
 
-  size ← liftQ $ Quasar.count resource
+  let size = 1000
+--  size ← liftQ $ Quasar.count resource
 
   lift $ H.modify $ JTS._input ?~ { resource, size, tag, varMap }
   p ← lift $ H.gets JTS.pendingPageInfo
@@ -113,7 +115,10 @@ updateTable resource tag varMap = do
   lift
     $ H.modify
     $ (JTS._isEnteringPageSize .~ false)
-    ∘ (JTS._result ?~
+--    ∘ (JTS._result .~ JTS.Empty)
+--    ∘ (JTS._result .~ JTS.Errored "Errored")
+--    ∘ (JTS._result .~ Nothing)
+    ∘ (JTS._result .~ JTS.Ready
          { json: JSON.fromArray items
          , page: p.page
          , pageSize: p.pageSize
@@ -128,7 +133,7 @@ liftQ m = either EC.throwError pure =<< m
 
 -- | Resets the state while preserving settings like page size.
 resetState ∷ DSL Unit
-resetState = H.modify (JTS._result .~ Nothing)
+resetState = H.modify (JTS._result .~ JTS.Loading)
 
 -- | Evaluates table-specific card queries.
 evalTable ∷ Query ~> DSL
