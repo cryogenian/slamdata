@@ -42,7 +42,7 @@
     "purescript-jtable": "^4.0.0-rc.1",
     "purescript-maps": "^2.0.1",
     "purescript-markdown": "^8.0.0",
-    "purescript-markdown-halogen": "^4.0.0-rc.2",
+    "purescript-markdown-halogen": "^4.0.0-rc.3",
     "purescript-minimatch": "^0.2.0",
     "purescript-oidc-crypt-utils": "^5.0.0",
     "purescript-parallel": "^2.1.0",
