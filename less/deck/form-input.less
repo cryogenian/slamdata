@@ -1,4 +1,84 @@
 .sd-card-form-input {
-    padding-left: 6px;
-    padding-right: 6px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.sd-dimension-button {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.sd-dimension-button-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2.4rem;
+  border-bottom: 1px solid #eee;
+
+  input {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    margin: 0;
+    padding: 0 1rem;
+    text-align: center;
+    font-size: 1.2;
+    line-height: 2.4rem;
+    font-weight: bold;
+  }
+}
+
+.sd-dimension-button-toolbar {
+  position: absolute;
+  top: 2.4rem;
+  left: 0;
+  right: 0;
+  z-index: 2;
+
+  .sd-dismiss-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .sd-configure-button {
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    i {
+      position: relative;
+      top: 2px;
+    }
+  }
+}
+
+.sd-dimension-button-display {
+  position: absolute;
+  top: 2.4rem;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+}
+
+.sd-dimension-button-transform {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  color: #aaa;
+}
+
+.sd-dimension-button-value {
+  display: block;
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }

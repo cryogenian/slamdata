@@ -131,3 +131,31 @@ form.sd-action-filter {
     opacity: 0.5;
   }
 }
+
+.sd-action-select {
+  ul {
+    li {
+      button {
+        background: #337ab7;
+
+        &:not(.sd-button-warning):not(:disabled) {
+          background: darken(#337ab7, 20%);
+        }
+      }
+    }
+  }
+
+  .sd-picker-dialog-toolbar {
+    border-top: none;
+  }
+
+  .no-options {
+    position: absolute;
+    top: 50%;
+    margin-top: -1rem;
+    width: 100%;
+    text-align: center;
+    line-height: 2rem;
+    opacity: .6;
+  }
+}

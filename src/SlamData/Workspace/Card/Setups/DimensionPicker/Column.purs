@@ -35,7 +35,7 @@ type ColumnNode = Either Column Column
 groupColumns ∷ L.List Column → CF.Cofree L.List ColumnNode
 groupColumns cs =
   let
-    root = Column { value: J.JCursorTop, valueAggregation: Nothing }
+    root = Column J.JCursorTop
     tree = constructTree unfoldColumn root cs
   in
     discriminateNodes
@@ -46,12 +46,11 @@ groupColumns cs =
 unfoldColumn :: Column → Maybe (Tuple Column Column)
 unfoldColumn col = case col of
   Count → Nothing
-  Column { value, valueAggregation } →
-    unfoldJCursor value <#> \(Tuple cur rest) →
-      Tuple col (Column { value: rest, valueAggregation: Nothing })
+  Column value →
+    unfoldJCursor value <#> \(Tuple _ rest) → Tuple col (Column rest)
 
 showColumn ∷ (J.JCursor → String) → Column → String
-showColumn f (Column { value }) = f value
+showColumn f (Column value ) = f value
 showColumn _ Count = "COUNT"
 
 flattenColumns ∷ ColumnNode → Column
