@@ -21,30 +21,30 @@ import SlamData.Prelude
 import Quasar.Types (SQL)
 
 import SlamData.FileSystem.Resource as R
-import SlamData.Workspace.Card.Setups.Chart.Metric.Model as BuildMetric
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Model as BuildSankey
+import SlamData.Workspace.Card.DownloadOptions.Component.State as Download
+import SlamData.Workspace.Card.FormInput.Model as FormInput
+import SlamData.Workspace.Card.Markdown.Model as Markdown
+import SlamData.Workspace.Card.Setups.Chart.Area.Model as BuildArea
+import SlamData.Workspace.Card.Setups.Chart.Bar.Model as BuildBar
+import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as BuildBoxplot
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval as BuildCandlestick
+import SlamData.Workspace.Card.Setups.Chart.Funnel.Model as BuildFunnel
 import SlamData.Workspace.Card.Setups.Chart.Gauge.Model as BuildGauge
 import SlamData.Workspace.Card.Setups.Chart.Graph.Model as BuildGraph
-import SlamData.Workspace.Card.Setups.Chart.Pie.Model as BuildPie
-import SlamData.Workspace.Card.Setups.Chart.Radar.Model as BuildRadar
-import SlamData.Workspace.Card.Setups.Chart.Area.Model as BuildArea
-import SlamData.Workspace.Card.Setups.Chart.Line.Model as BuildLine
-import SlamData.Workspace.Card.Setups.Chart.Bar.Model as BuildBar
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as BuildScatter
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Model as BuildFunnel
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model as BuildHeatmap
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as BuildBoxplot
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as BuildPivotTable
-import SlamData.Workspace.Card.DownloadOptions.Component.State as Download
-import SlamData.Workspace.Card.Markdown.Model as Markdown
-import SlamData.Workspace.Card.Variables.Model as Variables
-import SlamData.Workspace.Card.Setups.Chart.PunchCard.Eval as BuildPunchCard
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval as BuildCandlestick
+import SlamData.Workspace.Card.Setups.Chart.Line.Model as BuildLine
+import SlamData.Workspace.Card.Setups.Chart.Metric.Model as BuildMetric
 import SlamData.Workspace.Card.Setups.Chart.Parallel.Eval as BuildParallel
+import SlamData.Workspace.Card.Setups.Chart.Pie.Model as BuildPie
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as BuildPivotTable
+import SlamData.Workspace.Card.Setups.Chart.PunchCard.Eval as BuildPunchCard
+import SlamData.Workspace.Card.Setups.Chart.Radar.Model as BuildRadar
+import SlamData.Workspace.Card.Setups.Chart.Sankey.Model as BuildSankey
+import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as BuildScatter
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model as SetupLabeled
-import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as SetupTextLike
 import SlamData.Workspace.Card.Setups.FormInput.Static.Model as SetupStatic
-import SlamData.Workspace.Card.FormInput.Model as FormInput
+import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as SetupTextLike
+import SlamData.Workspace.Card.Variables.Model as Variables
 
 data Eval
   = Pass
@@ -87,6 +87,7 @@ data Eval
   | SetupDatetime SetupTextLike.Model
   | SetupStatic SetupStatic.Model
   | FormInput FormInput.Model
+  | Table
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -130,3 +131,4 @@ tagEval = case _ of
   SetupDatetime _ → "SetupDatetime"
   SetupStatic _ → "SetupStatic"
   FormInput _ → "FormInput"
+  Table → "Table"

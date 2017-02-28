@@ -149,12 +149,20 @@ publishCardChange source@(_ × cardId) model = do
     getDeck deckId >>= traverse_
       (flip Eval.publish (Deck.CardChange cardId))
 
-publishCardStateChange ∷ ∀ m. PersistEnv m (Card.DisplayCoord → Card.State → m Unit)
-publishCardStateChange source@(_ × cardId) state = do
+publishCardStateChange
+  ∷ ∀ m
+  . PersistEnv m
+  ( Card.DisplayCoord
+  → (Maybe Card.State → Maybe Card.State)
+  → m Unit
+  )
+publishCardStateChange source@(_ × cardId) fn = do
   { eval } ← Wiring.expose
   card ← noteError "Card not found" =<< Cache.get cardId eval.cards
-  Cache.put cardId (card { state = Just state }) eval.cards
-  Eval.publish card (Card.StateChange source state)
+  let card' = card { state = fn card.state }
+  Cache.put cardId card' eval.cards
+  for_ card'.state \state →
+    Eval.publish card $ Card.StateChange source state
 
 populateGraph
   ∷ ∀ f m

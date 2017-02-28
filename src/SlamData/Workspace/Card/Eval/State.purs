@@ -19,6 +19,7 @@ module SlamData.Workspace.Card.Eval.State
   , initialEvalState
   , AnalysisR
   , AutoSelectR
+  , TableR
   , _Analysis
   , _Axes
   , _Records
@@ -26,6 +27,7 @@ module SlamData.Workspace.Card.Eval.State
   , _LastUsedResource
   , _AutoSelect
   , _ActiveTab
+  , _Table
   ) where
 
 import SlamData.Prelude
@@ -51,10 +53,19 @@ type AutoSelectR =
   , autoSelect ∷ Set.Set Sem.Semantics
   }
 
+type TableR =
+  { resource ∷ Resource
+  , result ∷ String ⊹ Array Json
+  , page ∷ Int
+  , pageSize ∷ Int
+  , size ∷ Int
+  }
+
 data EvalState
   = Analysis AnalysisR
   | AutoSelect AutoSelectR
   | ActiveTab Int
+  | Table TableR
 
 initialEvalState ∷ CM.AnyCardModel → Maybe EvalState
 initialEvalState = case _ of
@@ -79,6 +90,7 @@ _Records = wander \f s → case s of
 _Resource ∷ Traversal' EvalState Resource
 _Resource = wander \f s → case s of
   Analysis r@{ resource } → Analysis ∘ r { resource = _} <$> f resource
+  Table r@{ resource } → Table ∘ r { resource = _ } <$> f resource
   _ → pure s
 
 _LastUsedResource ∷ Traversal' EvalState Resource
@@ -95,3 +107,13 @@ _ActiveTab ∷ Prism' EvalState Int
 _ActiveTab = prism' ActiveTab case _ of
   ActiveTab n → Just n
   _ → Nothing
+
+_Table ∷ Prism' EvalState TableR
+_Table = prism' Table case _ of
+  Table r → Just r
+  _ → Nothing
+
+_ResourceSize ∷ Traversal' EvalState Int
+_ResourceSize = wander \f s → case s of
+  Table r@{ size } → Table ∘ r { size = _ } <$> f size
+  _ → pure s

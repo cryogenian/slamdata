@@ -28,7 +28,6 @@ module SlamData.Workspace.Card.Table.Component.State
   , _isEnteringPageSize
   , _resource
   , _size
-  , _levelOfDetails
   , PageInfo
   , currentPageInfo
   , pendingPageInfo
@@ -50,9 +49,6 @@ import Data.Lens ((^?), (?~), Lens', lens, _Just, Prism', prism', Traversal')
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..))
 import SlamData.Workspace.Card.Table.Model (Model)
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-
-import Utils.Path (FilePath)
 
 -- | The state for the Table card component.
 type State =
@@ -61,9 +57,7 @@ type State =
   , page ∷ Maybe (String ⊹ Int)
   , pageSize ∷ Maybe (Either String Int)
   , isEnteringPageSize ∷ Boolean
-  , levelOfDetails ∷ LevelOfDetails
   }
-
 
 -- | The current result value being displayed.
 type ResultR =
@@ -91,7 +85,6 @@ initialState =
   , page: Nothing
   , pageSize: Nothing
   , isEnteringPageSize: false
-  , levelOfDetails: High
   }
 
 -- | The current card input - a resource location for the results, and the size
@@ -115,15 +108,10 @@ _pageSize = lens _.pageSize (_ { pageSize = _ })
 _isEnteringPageSize ∷ ∀ a r. Lens' {isEnteringPageSize ∷ a|r} a
 _isEnteringPageSize = lens _.isEnteringPageSize (_ { isEnteringPageSize = _ })
 
-_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a|r} a
-_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
-
 -- | The card input state.
 type Input =
-  { resource ∷ FilePath
-  , tag ∷ Maybe String
+  { resource ∷ Port.Resource
   , size ∷ Int
-  , varMap ∷ Maybe Port.VarMap
   }
 
 -- | The resource to load pages of data from.
@@ -133,12 +121,6 @@ _resource = lens _.resource (_ { resource = _ })
 -- | The total size of the resource's result set.
 _size ∷ ∀ a r. Lens' {size ∷ a|r} a
 _size = lens _.size (_ { size = _ })
-
--- | This is used to determine if query producing temporary resource has
--- | been changed. It holds sql query.
-_tag ∷ ∀ a r. Lens' {tag ∷ a|r} a
-_tag = lens _.tag _{tag = _}
-
 
 -- | A record with information about the current page number, page size, and
 -- | total number of pages.

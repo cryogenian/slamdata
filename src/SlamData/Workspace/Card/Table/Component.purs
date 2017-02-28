@@ -27,7 +27,7 @@ import Control.Monad.Except.Trans as ET
 
 import Data.Argonaut as JSON
 import Data.Int as Int
-import Data.Lens ((.~), (?~))
+import Data.Lens ((.~), (?~), (^.), (^?))
 import Data.Array as Arr
 
 import DOM.Classy.Event as DOM
@@ -38,14 +38,13 @@ import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..), Query(..))
 import SlamData.Workspace.Card.Table.Component.Render (render)
 import SlamData.Workspace.Card.Table.Component.State as JTS
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-
-import Utils.Path (FilePath)
 
 type DSL = CC.InnerCardDSL JTS.State Query
 
@@ -77,7 +76,9 @@ evalCard = case _ of
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
-  CC.ReceiveState _ next →
+  CC.ReceiveState s next → do
+    for_ (s ^? ES._Table) \t → do
+      traceAnyA t
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply
@@ -89,27 +90,24 @@ runTable
   ∷ Port.DataMap
   → DSL Unit
 runTable varMap = case Port.extractResource varMap of
-  Just (Port.Path fp) → updateTable fp Nothing Nothing
-  Just (Port.View fp tag vm) → updateTable fp (Just tag) (Just (Port.flattenResources vm))
+  Just resource → updateTable resource
   _ → H.modify $ JTS._result .~ JTS.Errored "Expected a TaggedResource input"
 
 updateTable
-  ∷ FilePath
-  → Maybe String
-  → Maybe Port.VarMap
+  ∷ Port.Resource
   → DSL Unit
-updateTable resource tag varMap = do
+updateTable resource = do
   r ← ET.runExceptT do
     oldInput ← lift $ H.gets _.input
-    when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
+    when ((oldInput <#> _.resource) ≠ pure resource)
       $ lift $ resetState
 
-    size ← liftQ $ Quasar.count resource
-    lift $ H.modify $ JTS._input ?~ { resource, size, tag, varMap }
+    size ← liftQ $ Quasar.count $ resource ^. Port._filePath
+    lift $ H.modify $ JTS._input ?~ { resource, size }
     p ← lift $ H.gets JTS.pendingPageInfo
 
     items ←
-      liftQ $ Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
+      liftQ $ Quasar.sample (resource ^. Port._filePath) ((p.page - 1) * p.pageSize) p.pageSize
 
     let
       result
@@ -163,6 +161,5 @@ evalTable = case _ of
 refresh ∷ DSL Unit
 refresh = do
   input ← H.gets _.input
-  for_ input \ {resource, tag, varMap} →
-    updateTable resource tag varMap
-  H.raise $ CC.ModelUpdated CC.StateOnlyUpdate
+  for_ input $ _.resource ⋙ updateTable
+  H.raise $ CC.modelUpdate
