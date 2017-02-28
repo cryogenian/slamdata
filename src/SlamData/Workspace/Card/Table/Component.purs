@@ -28,7 +28,7 @@ import Control.Monad.Except.Trans as ET
 import Data.Argonaut as JSON
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
---import Data.Lens ((.~))
+import Data.Array as Arr
 
 import DOM.Classy.Event as DOM
 
@@ -73,7 +73,7 @@ evalCard = case _ of
       _ → pure unit
     pure next
   CC.ReceiveInput _ varMap next → do
-    ET.runExceptT (runTable varMap)
+    runTable varMap
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
@@ -87,42 +87,44 @@ evalCard = case _ of
 
 runTable
   ∷ Port.DataMap
-  → ET.ExceptT QE.QError DSL Unit
+  → DSL Unit
 runTable varMap = case Port.extractResource varMap of
   Just (Port.Path fp) → updateTable fp Nothing Nothing
   Just (Port.View fp tag vm) → updateTable fp (Just tag) (Just (Port.flattenResources vm))
-  _ → QE.throw "Expected a TaggedResource input"
+  _ → H.modify $ JTS._result .~ JTS.Errored "Expected a TaggedResource input"
 
 updateTable
   ∷ FilePath
   → Maybe String
   → Maybe Port.VarMap
-  → ET.ExceptT QE.QError DSL Unit
+  → DSL Unit
 updateTable resource tag varMap = do
-  oldInput ← lift $ H.gets _.input
-  when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
-    $ lift $ resetState
+  r ← ET.runExceptT do
+    oldInput ← lift $ H.gets _.input
+    when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
+      $ lift $ resetState
 
-  let size = 1000
---  size ← liftQ $ Quasar.count resource
+    size ← liftQ $ Quasar.count resource
+    lift $ H.modify $ JTS._input ?~ { resource, size, tag, varMap }
+    p ← lift $ H.gets JTS.pendingPageInfo
 
-  lift $ H.modify $ JTS._input ?~ { resource, size, tag, varMap }
-  p ← lift $ H.gets JTS.pendingPageInfo
+    items ←
+      liftQ $ Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
 
-  items ← liftQ $
-    Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
+    let
+      result
+        | Arr.null items = JTS.Empty
+        | otherwise = JTS.Ready
+            { json: JSON.fromArray items
+            , page: p.page
+            , pageSize: p.pageSize
+            }
 
-  lift
-    $ H.modify
-    $ (JTS._isEnteringPageSize .~ false)
---    ∘ (JTS._result .~ JTS.Empty)
---    ∘ (JTS._result .~ JTS.Errored "Errored")
---    ∘ (JTS._result .~ Nothing)
-    ∘ (JTS._result .~ JTS.Ready
-         { json: JSON.fromArray items
-         , page: p.page
-         , pageSize: p.pageSize
-         })
+    pure result
+  H.modify case r of
+    Left s → JTS._result .~ JTS.Errored (QE.printQError s)
+    Right result → (JTS._result .~ result) ∘ (JTS._isEnteringPageSize .~ false)
+
 
 liftQ
   ∷ ∀ m a
@@ -162,5 +164,5 @@ refresh ∷ DSL Unit
 refresh = do
   input ← H.gets _.input
   for_ input \ {resource, tag, varMap} →
-    void $ ET.runExceptT $ updateTable resource tag varMap
+    updateTable resource tag varMap
   H.raise $ CC.ModelUpdated CC.StateOnlyUpdate

@@ -59,13 +59,11 @@ render st =
     Errored e → renderError e
     Ready result → renderResult result
   where
+  -- This is _loading_ but since we display semitransparent div with spinner on
+  -- top of loading deck there is no reason to display anything else
   renderLoading =
-    A.singleton
-    $ HH.div
-      [ HP.classes [ B.alert, B.alertInfo ] ]
-      [ HH.img [ HP.src "img/blue-spin.svg" ]
-      , HH.text "Loading"
-      ]
+    [ ]
+
   renderEmpty =
     A.singleton
     $ HH.div
