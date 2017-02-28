@@ -42,12 +42,12 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Column.Component as Column
 import SlamData.Workspace.MillerColumns.Component.Query (Query(..), Message(..), Message')
-import SlamData.Workspace.MillerColumns.Component.State (ColumnsData, columnPaths)
+import SlamData.Workspace.MillerColumns.Component.State (State, ColumnsData, modifyColumns, columnPaths)
 
 import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions) as Exports
 
-type HTML a i o = H.ParentHTML (Query a i o) (Column.Query a i o) i Slam
-type DSL a i o = H.ParentDSL (ColumnsData a i) (Query a i o) (Column.Query a i o) i (Message' a i o) Slam
+type HTML a i o = H.ParentHTML (Query a i o) (Column.Query a i o) (Int × i) Slam
+type DSL a i o = H.ParentDSL (State a i) (Query a i o) (Column.Query a i o) (Int × i) (Message' a i o) Slam
 
 component
   ∷ ∀ a i f o
@@ -56,56 +56,66 @@ component
   → H.Component HH.HTML (Query a i o) (ColumnsData a i) (Message' a i o) Slam
 component colSpec =
   H.parentComponent
-    { initialState: id
+    { initialState: { cycle: 0, columns: _ }
     , render
     , eval
     , receiver: HE.input ChangeRoot
     }
   where
 
-  render ∷ ColumnsData a i → HTML a i o
+  render ∷ State a i → HTML a i o
   render state =
     HH.div
       [ HP.class_ (HH.ClassName "sd-miller-columns")
       , HP.ref containerRef
       ]
       $ A.fromFoldable
-      $ map renderColumn (columnPaths colSpec state)
+      $ map (renderColumn state.cycle) (columnPaths colSpec state.columns)
 
-  renderColumn ∷ Int × Maybe a × i → HTML a i o
-  renderColumn (i × sel × colPath) =
+  renderColumn ∷ Int → Int × Maybe a × i → HTML a i o
+  renderColumn cycle (i × sel × colPath) =
     HH.div
       [ HP.class_ (HH.ClassName "sd-miller-column")
       , ARIA.label "Column"
       ]
-      [ HH.slot colPath (Column.component colSpec colPath) sel (HE.input (HandleMessage i colPath)) ]
+      [ HH.slot
+          (cycle × colPath)
+          (Column.component colSpec colPath)
+          sel
+          (HE.input (HandleMessage i colPath))
+      ]
 
   eval ∷ Query a i o ~> DSL a i o
   eval = case _ of
-    Populate path next → do
-      H.put path
+    Populate cols next → do
+      H.modify (_ { columns = cols })
       pure next
-    ChangeRoot st@(newRoot × newSelections) next → do
-      (root × selections) ← H.get
+    ChangeRoot cols@(newRoot × newSelections) next → do
+      (root × selections) ← H.gets _.columns
       let
         prefix = L.drop (L.length selections - L.length newSelections) selections
         oldIds = colSpec.id <$> prefix
         newIds = colSpec.id <$> newSelections
-      when (root /= newRoot || oldIds /= newIds) $ H.put st
+      when (root /= newRoot || oldIds /= newIds) $ H.modify (_ { columns = cols })
       pure next
     HandleMessage colIndex colPath msg next → do
       case msg of
         Left Column.Initialized →
           traverse_ (H.liftEff ∘ scrollToRight) =<< H.getHTMLElementRef containerRef
         Left Column.Deselected → do
-          H.modify $ second \sels → L.drop (L.length sels - colIndex) sels
-          root × sel ← second L.head <$> H.get
+          H.modify $ modifyColumns $ second \sels →
+            L.drop (L.length sels - colIndex) sels
+          root × sel ← second L.head <$> H.gets _.columns
           H.raise $ Left (SelectionChanged (maybe root colSpec.id sel) sel)
         Left (Column.Selected itemPath item) → do
-          H.modify $ second \sels → item : L.drop (L.length sels - colIndex) sels
+          H.modify $ modifyColumns $ second \sels →
+            item : L.drop (L.length sels - colIndex) sels
           H.raise $ Left (SelectionChanged itemPath (Just item))
         Right o →
           H.raise (Right o)
+      pure next
+    Reload next → do
+      H.modify \st → st { cycle = st.cycle + 1 }
       pure next
 
 scrollToRight ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Unit
