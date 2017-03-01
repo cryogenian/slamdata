@@ -91,7 +91,7 @@ deleteFile ∷ String → SlamFeature Unit
 deleteFile name =
   Feature.click (XPath.anywhere $ XPaths.selectFile name)
     *> Feature.click (XPath.anywhere $ XPaths.removeFile name)
-    *> Feature.expectNotPresented (XPath.anywhere $ XPaths.selectFile name)
+    *> Feature.expectNotPresented (XPath.anywhere $ XPath.nodeWithExactText XPath.any name)
 
 shareFile ∷ String → SlamFeature Unit
 shareFile name = do
