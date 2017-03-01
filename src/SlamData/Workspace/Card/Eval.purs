@@ -105,7 +105,7 @@ evalCard trans port varMap = map (_ `union` varMap) <$> case trans, port of
   Error msg, _ → CEM.throw msg
   _, Port.CardError msg → CEM.throw msg
   Pass, _ → pure (port × varMap)
-  Table, _ → Table.eval port varMap
+  Table m, _ → Table.eval m port varMap
   Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
   Composite, _ → Port.varMapOut <$> Common.evalComposite
   Terminal, _ → pure Port.terminalOut
@@ -190,5 +190,5 @@ modelToEval = case _ of
   Model.SetupDatetime model → SetupDatetime model
   Model.FormInput model → FormInput model
   Model.Tabs _ → Terminal
-  Model.Table _ → Table
+  Model.Table model → Table model
   _ → Pass

@@ -63,7 +63,6 @@ render st =
   -- top of loading deck there is no reason to display anything else
   renderLoading =
     [ ]
-
   renderEmpty =
     A.singleton
     $ HH.div

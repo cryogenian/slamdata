@@ -45,6 +45,7 @@ import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model as SetupLabeled
 import SlamData.Workspace.Card.Setups.FormInput.Static.Model as SetupStatic
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as SetupTextLike
 import SlamData.Workspace.Card.Variables.Model as Variables
+import SlamData.Workspace.Card.Table.Model as Table
 
 data Eval
   = Pass
@@ -87,7 +88,7 @@ data Eval
   | SetupDatetime SetupTextLike.Model
   | SetupStatic SetupStatic.Model
   | FormInput FormInput.Model
-  | Table
+  | Table Table.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -131,4 +132,4 @@ tagEval = case _ of
   SetupDatetime _ → "SetupDatetime"
   SetupStatic _ → "SetupStatic"
   FormInput _ → "FormInput"
-  Table → "Table"
+  Table _ → "Table"
