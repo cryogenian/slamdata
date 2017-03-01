@@ -23,6 +23,18 @@ import Data.List as L
 
 import SlamData.Workspace.MillerColumns.Column.Component as Column
 
+type State a i =
+  { cycle ∷ Int
+  , columns ∷ ColumnsData a i
+  }
+
+modifyColumns
+  ∷ ∀ a i
+  . (ColumnsData a i → ColumnsData a i)
+  → State a i
+  → State a i
+modifyColumns f st = { cycle: st.cycle, columns: f st.columns }
+
 -- | The current state of the columns component - the `i` value is the root
 -- | path id, the list of `a`s is the items selected in each column. The list
 -- | is in "reverse" order, where the head item corresponds to the last

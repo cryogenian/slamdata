@@ -25,6 +25,7 @@ data Query a i o b
   = Populate (ColumnsData a i) b
   | ChangeRoot (ColumnsData a i) b
   | HandleMessage Int i (Column.Message' a i o) b
+  | Reload b
 
 data Message a i
   = SelectionChanged i (Maybe a)
