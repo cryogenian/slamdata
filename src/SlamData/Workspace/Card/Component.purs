@@ -196,9 +196,8 @@ makeCardComponent cardType component options =
         EQ.ModelUpdated EQ.EvalModelUpdate → do
           model ← H.query unit (left (H.request EQ.Save))
           for_ model (H.lift ∘ P.publishCardChange displayCoord)
-        EQ.ModelUpdated (EQ.EvalStateUpdate es) → do
-          H.lift $ P.publishCardStateChange displayCoord es
-        EQ.ModelUpdated EQ.StateOnlyUpdate → pure unit
+        EQ.ModelUpdated (EQ.EvalStateUpdate fn) → do
+          H.lift $ P.publishCardStateChange displayCoord fn
       pure next
     CQ.ZoomIn next → do
       H.lift $ navigateToDeck options.cursor

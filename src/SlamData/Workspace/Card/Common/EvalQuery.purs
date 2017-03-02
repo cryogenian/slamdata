@@ -67,12 +67,14 @@ data CardEvalMessage
 -- | the model changes in a way that will affect the evaluated output of the
 -- | card.
 data ModelUpdateType
-  = StateOnlyUpdate
-  | EvalModelUpdate
-  | EvalStateUpdate EvalState
+  = EvalModelUpdate
+  | EvalStateUpdate (Maybe EvalState → Maybe EvalState)
 
 modelUpdate ∷ CardEvalMessage
 modelUpdate = ModelUpdated EvalModelUpdate
 
 stateUpdate ∷ EvalState → CardEvalMessage
-stateUpdate = ModelUpdated ∘ EvalStateUpdate
+stateUpdate = ModelUpdated ∘ EvalStateUpdate ∘ const ∘ Just
+
+stateAlter ∷ (Maybe EvalState → Maybe EvalState) → CardEvalMessage
+stateAlter = ModelUpdated ∘ EvalStateUpdate

@@ -31,6 +31,19 @@ import Data.StrMap (union)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
+import SlamData.Workspace.Card.Cache.Eval as Cache
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.DownloadOptions.Eval as DOptions
+import SlamData.Workspace.Card.Eval.Common as Common
+import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Eval.Transition (Eval(..), tagEval)
+import SlamData.Workspace.Card.FormInput.Eval as FormInput
+import SlamData.Workspace.Card.Markdown.Eval as MDE
+import SlamData.Workspace.Card.Model as Model
+import SlamData.Workspace.Card.Open.Eval as Open
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Query.Eval as Query
+import SlamData.Workspace.Card.Search.Eval as Search
 import SlamData.Workspace.Card.Setups.Chart.Area.Eval as BuildArea
 import SlamData.Workspace.Card.Setups.Chart.Bar.Eval as BuildBar
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Eval as BuildBoxplot
@@ -48,27 +61,15 @@ import SlamData.Workspace.Card.Setups.Chart.PunchCard.Eval as BuildPunchCard
 import SlamData.Workspace.Card.Setups.Chart.Radar.Eval as BuildRadar
 import SlamData.Workspace.Card.Setups.Chart.Sankey.Eval as BuildSankey
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Eval as BuildScatter
-import SlamData.Workspace.Card.Cache.Eval as Cache
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.DownloadOptions.Eval as DOptions
-import SlamData.Workspace.Card.Eval.Common as Common
-import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Eval.Transition (Eval(..), tagEval)
-import SlamData.Workspace.Card.Markdown.Eval as MDE
-import SlamData.Workspace.Card.Model as Model
-import SlamData.Workspace.Card.Open.Eval as Open
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Query.Eval as Query
-import SlamData.Workspace.Card.Search.Eval as Search
-import SlamData.Workspace.Card.Setups.FormInput.Labeled.Eval as SetupLabeled
 import SlamData.Workspace.Card.Setups.FormInput.Date.Eval as SetupDate
 import SlamData.Workspace.Card.Setups.FormInput.Datetime.Eval as SetupDatetime
+import SlamData.Workspace.Card.Setups.FormInput.Labeled.Eval as SetupLabeled
 import SlamData.Workspace.Card.Setups.FormInput.Numeric.Eval as SetupNumeric
+import SlamData.Workspace.Card.Setups.FormInput.Static.Eval as SetupStatic
 import SlamData.Workspace.Card.Setups.FormInput.Text.Eval as SetupText
 import SlamData.Workspace.Card.Setups.FormInput.Time.Eval as SetupTime
-import SlamData.Workspace.Card.Setups.FormInput.Static.Eval as SetupStatic
+import SlamData.Workspace.Card.Table.Eval as Table
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
-import SlamData.Workspace.Card.FormInput.Eval as FormInput
 
 runCard
   ∷ ∀ f m
@@ -104,6 +105,7 @@ evalCard trans port varMap = map (_ `union` varMap) <$> case trans, port of
   Error msg, _ → CEM.throw msg
   _, Port.CardError msg → CEM.throw msg
   Pass, _ → pure (port × varMap)
+  Table m, _ → Table.eval m port varMap
   Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
   Composite, _ → Port.varMapOut <$> Common.evalComposite
   Terminal, _ → pure Port.terminalOut
@@ -188,4 +190,5 @@ modelToEval = case _ of
   Model.SetupDatetime model → SetupDatetime model
   Model.FormInput model → FormInput model
   Model.Tabs _ → Terminal
+  Model.Table model → Table model
   _ → Pass

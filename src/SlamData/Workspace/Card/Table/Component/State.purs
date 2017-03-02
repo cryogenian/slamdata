@@ -16,26 +16,24 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Table.Component.State
   ( State
-  , Result
-  , Input
+  , Result(..)
+  , ResultR
   , initialState
-  , _input
   , _result
+  , _Result
   , _page
   , _pageSize
   , _isEnteringPageSize
-  , _resource
   , _size
-  , _levelOfDetails
   , PageInfo
   , currentPageInfo
-  , pendingPageInfo
   , stepPage
   , setPage
   , resizePage
   , setPageSize
   , toModel
   , fromModel
+  , calcTotalPages
   ) where
 
 import SlamData.Prelude
@@ -43,50 +41,52 @@ import SlamData.Prelude
 import Data.Argonaut (Json)
 import Data.Foldable (maximum)
 import Data.Int as Int
-import Data.Lens ((^?), (?~), Lens', lens, _Just)
+import Data.Lens ((^?), (?~), Lens', lens, _Just, Prism', prism', Traversal')
 
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..))
 import SlamData.Workspace.Card.Table.Model (Model)
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-
-import Utils.Path (FilePath)
 
 -- | The state for the Table card component.
 type State =
-  { input ∷ Maybe Input
-  , result ∷ Maybe Result
-  , page ∷ Maybe (Either String Int)
+  { size ∷ Maybe Int
+  , result ∷ Result
+  , page ∷ Maybe (String ⊹ Int)
   , pageSize ∷ Maybe (Either String Int)
   , isEnteringPageSize ∷ Boolean
-  , levelOfDetails ∷ LevelOfDetails
   }
 
 -- | The current result value being displayed.
-type Result =
+type ResultR =
   { json ∷ Json
   , page ∷ Int
   , pageSize ∷ Int
   }
 
--- | An empty initial state for the Table card component.
+data Result
+  = Loading
+  | Errored String
+  | Empty
+  | Ready ResultR
+
+_ResultR ∷ Prism' Result ResultR
+_ResultR = prism' Ready case _ of
+  Ready r → Just r
+  _ → Nothing
+
 initialState ∷ State
 initialState =
-  { input: Nothing
-  , result: Nothing
+  { size: Nothing
+  , result: Loading
   , page: Nothing
   , pageSize: Nothing
   , isEnteringPageSize: false
-  , levelOfDetails: High
   }
-
--- | The current card input - a resource location for the results, and the size
--- | of the result set.
-_input ∷ ∀ a r. Lens' {input ∷ a|r} a
-_input = lens _.input (_ { input = _ })
 
 _result ∷ ∀ a r. Lens' {result ∷ a|r} a
 _result = lens _.result (_ { result = _ })
+
+_Result ∷ Traversal' State ResultR
+_Result = _result ∘ _ResultR
 
 _page ∷ ∀ a r. Lens' {page ∷ a |r} a
 _page = lens _.page (_ { page = _ })
@@ -94,33 +94,12 @@ _page = lens _.page (_ { page = _ })
 _pageSize ∷ ∀ a r. Lens' {pageSize ∷ a|r} a
 _pageSize = lens _.pageSize (_ { pageSize = _ })
 
+_size ∷ ∀ a r. Lens' {size ∷ a|r} a
+_size = lens _.size _{ size = _ }
+
 -- | Specifies whether the custom page size entry is currently enabled.
 _isEnteringPageSize ∷ ∀ a r. Lens' {isEnteringPageSize ∷ a|r} a
 _isEnteringPageSize = lens _.isEnteringPageSize (_ { isEnteringPageSize = _ })
-
-_levelOfDetails ∷ ∀ a r. Lens' {levelOfDetails ∷ a|r} a
-_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
-
--- | The card input state.
-type Input =
-  { resource ∷ FilePath
-  , tag ∷ Maybe String
-  , size ∷ Int
-  , varMap ∷ Maybe Port.VarMap
-  }
-
--- | The resource to load pages of data from.
-_resource ∷ ∀ a r. Lens' {resource ∷ a|r} a
-_resource = lens _.resource (_ { resource = _ })
-
--- | The total size of the resource's result set.
-_size ∷ ∀ a r. Lens' {size ∷ a|r} a
-_size = lens _.size (_ { size = _ })
-
--- | This is used to determine if query producing temporary resource has
--- | been changed. It holds sql query.
-_tag ∷ ∀ a r. Lens' {tag ∷ a|r} a
-_tag = lens _.tag _{tag = _}
 
 -- | A record with information about the current page number, page size, and
 -- | total number of pages.
@@ -128,26 +107,17 @@ type PageInfo = { page ∷ Int, pageSize ∷ Int, totalPages ∷ Int }
 
 currentPageInfo ∷ State → PageInfo
 currentPageInfo st =
-  let page = fromMaybe 1 $ _.page <$> st.result
-      pageSize = fromMaybe 0 $ _.pageSize <$> st.result
-      total = fromMaybe 0 $ st ^? _input ∘ _Just ∘ _size
-      totalPages = calcTotalPages pageSize total
-  in { page, pageSize, totalPages }
-
--- | Compute page info from the current state, preferring user-entered pending
--- | values if they are present and succesfully parseable.
-pendingPageInfo ∷ State → PageInfo
-pendingPageInfo st =
-  let customPage = either Int.fromString pure =<< st.page
-      actualPage = _.page <$> st.result
-      page = fromMaybe 1 $ customPage <|> actualPage
-      customPageSize = either Int.fromString pure =<< st.pageSize
-      actualPageSize = _.pageSize <$> st.result
-      pageSize = fromMaybe 10 $ customPageSize <|> actualPageSize
-      total = fromMaybe 0 $ st ^? _input ∘ _Just ∘ _size
-      totalPages = calcTotalPages pageSize total
-      page' = min page totalPages
-  in { page: page', pageSize, totalPages }
+  let
+    result = st ^? _Result
+    page = fromMaybe 1 $ map _.page result
+    pageSize = fromMaybe 0 $ map _.pageSize result
+    itemCount = fromMaybe 0 $ st ^? _size ∘ _Just
+    total = calcTotalPages {pageSize, itemCount}
+  in
+    { page
+    , pageSize
+    , totalPages: total
+    }
 
 -- | Changes the current page based on a PageStep increment.
 stepPage ∷ PageStep → State → State
@@ -166,30 +136,35 @@ pageStepValue ∷ PageStep → State → Int
 pageStepValue step st = go step
   where
   page =
-    fromMaybe 1 $ _.page <$> st.result
+    fromMaybe 1 $ _.page <$> st ^? _Result
 
-  totalPages =
-    fromMaybe 1
-      $ calcTotalPages
-      <$> (_.pageSize <$> st.result)
-      <*> (st ^? _input ∘ _Just ∘ _size)
+  total =
+    totalPages st
 
   go First = 1
-  go Last = totalPages
+  go Last = total
   go Prev
     | page <= 1 = 1
     | otherwise = page - 1
   go Next
-    | page >= totalPages = totalPages
+    | page >= total = total
     | otherwise = page + 1
+
+totalPages ∷ State → Int
+totalPages st =
+  fromMaybe 1
+    $ map calcTotalPages
+    $ { pageSize: _, itemCount: _}
+    <$> (_.pageSize <$> st ^? _Result)
+    <*> (st ^? _size ∘ _Just)
 
 -- | Calculates the total number of pages for a given page size and total
 -- | number of results.
-calcTotalPages ∷ Int → Int → Int
-calcTotalPages _ 0 = 1
-calcTotalPages 0 _ = 1
-calcTotalPages pageSize total =
-  fromMaybe 1 $ maximum [1, Int.ceil (Int.toNumber total / Int.toNumber pageSize)]
+calcTotalPages ∷ { pageSize ∷ Int, itemCount ∷ Int } → Int
+calcTotalPages { pageSize: 0} = 1
+calcTotalPages { itemCount: 0} = 1
+calcTotalPages { pageSize, itemCount} =
+  fromMaybe 1 $ maximum [1, Int.ceil (Int.toNumber itemCount / Int.toNumber pageSize)]
 
 -- | Sets the pending page size based on a concrete numeric value.
 resizePage ∷ Int → State → State
@@ -201,8 +176,8 @@ setPageSize size = _pageSize ?~ Left size
 
 toModel ∷ State → Model
 toModel st =
-  { page: (_.page <$> st.result) <|> (either (const Nothing) Just =<< st.page)
-  , pageSize: (_.pageSize <$> st.result) <|> (either (const Nothing) Just =<< st.pageSize)
+  { page: either Int.fromString Just =<< st.page
+  , pageSize: either Int.fromString Just =<< st.pageSize
   }
 
 fromModel ∷ Model → State
