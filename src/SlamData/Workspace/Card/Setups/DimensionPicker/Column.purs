@@ -18,63 +18,37 @@ module SlamData.Workspace.Card.Setups.DimensionPicker.Column where
 
 import SlamData.Prelude
 
-import Control.Comonad.Cofree (Cofree)
-import Control.Comonad.Cofree as Cofree
+import Control.Comonad (extract)
+import Control.Comonad.Cofree as CF
 
 import Data.Argonaut as J
-import Data.List (List, (:))
-import Data.Map as Map
+import Data.List ((:))
+import Data.List as L
 
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (showJCursor)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (showJCursor, unfoldJCursor)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes)
+import SlamData.Workspace.MillerColumns.TreeData (constructTree)
 
 type ColumnNode = Either Column Column
 
-groupColumns
-  ∷ List Column
-  → Cofree List ColumnNode
-groupColumns ls =
-  discriminateNodes $
-    Cofree.mkCofree
-      (Column { value: J.JCursorTop, valueAggregation: Nothing })
-      (group ls)
+groupColumns ∷ L.List Column → CF.Cofree L.List ColumnNode
+groupColumns cs =
+  let
+    root = Column { value: J.JCursorTop, valueAggregation: Nothing }
+    tree = constructTree unfoldColumn root cs
+  in
+    discriminateNodes
+      if extract <$> CF.tail tree == pure Count
+      then CF.mkCofree root (CF.mkCofree Count L.Nil : CF.mkCofree root L.Nil : L.Nil)
+      else tree
 
-  where
-  group l =
-    fin (foldl go Map.empty l)
-
-  fin m =
-    map (uncurry Cofree.mkCofree) (Map.toList (map group m))
-
-  go m col = case col of
-    Count →
-      Map.insert Count mempty m
-    Column { value, valueAggregation } →
-      case value of
-        J.JField ix J.JCursorTop →
-          Map.insert col mempty m
-        J.JIndex ix J.JCursorTop →
-          Map.insert col mempty m
-        J.JField ix next →
-          push
-            (Column { value: J.JField ix J.JCursorTop, valueAggregation: Nothing })
-            (Column { value: next, valueAggregation})
-            m
-        J.JIndex ix next →
-          push
-            (Column { value: J.JIndex ix J.JCursorTop, valueAggregation: Nothing })
-            (Column { value: next, valueAggregation})
-            m
-        J.JCursorTop →
-          Map.insert col mempty m
-
-  push k v =
-    Map.alter
-      case _ of
-        Just vs → Just (v : vs)
-        Nothing → Just (pure v)
-      k
+unfoldColumn :: Column → Maybe (Tuple Column Column)
+unfoldColumn col = case col of
+  Count → Nothing
+  Column { value, valueAggregation } →
+    unfoldJCursor value <#> \(Tuple cur rest) →
+      Tuple col (Column { value: rest, valueAggregation: Nothing })
 
 showColumn ∷ Column → String
 showColumn (Column { value }) = showJCursor value

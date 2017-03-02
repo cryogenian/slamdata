@@ -18,46 +18,31 @@ module SlamData.Workspace.Card.Setups.DimensionPicker.JCursor where
 
 import SlamData.Prelude
 
-import Control.Comonad.Cofree (Cofree)
-import Control.Comonad.Cofree as Cofree
+import Control.Comonad.Cofree as CF
 
 import Data.Argonaut as J
-import Data.List (List, (:))
-import Data.Map as Map
+import Data.List as L
 
+import SlamData.Workspace.MillerColumns.TreeData (constructTree)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes)
 
 type JCursorNode = Either J.JCursor J.JCursor
 
-groupJCursors
-  ∷ List J.JCursor
-  → Cofree List JCursorNode
-groupJCursors ls = discriminateNodes $ Cofree.mkCofree J.JCursorTop (group ls)
-  where
-  group l =
-    fin (foldl go Map.empty l)
+groupJCursors ∷ L.List J.JCursor → CF.Cofree L.List JCursorNode
+groupJCursors cs =
+  let
+    tree = constructTree unfoldJCursor J.JCursorTop cs
+  in
+    discriminateNodes
+      if L.null (CF.tail tree)
+      then CF.mkCofree J.JCursorTop (pure (CF.mkCofree J.JCursorTop L.Nil))
+      else tree
 
-  fin m =
-    map (uncurry Cofree.mkCofree) (Map.toList (map group m))
-
-  go m cur = case cur of
-    J.JField ix J.JCursorTop →
-      Map.insert cur mempty m
-    J.JIndex ix J.JCursorTop →
-      Map.insert cur mempty m
-    J.JField ix next →
-      push (J.JField ix J.JCursorTop) next m
-    J.JIndex ix next →
-      push (J.JIndex ix J.JCursorTop) next m
-    J.JCursorTop →
-      Map.insert cur mempty m
-
-  push k v =
-    Map.alter
-      case _ of
-        Just vs → Just (v : vs)
-        Nothing → Just (pure v)
-      k
+unfoldJCursor ∷ J.JCursor → Maybe (Tuple J.JCursor J.JCursor)
+unfoldJCursor cur = case J.insideOut cur of
+  J.JCursorTop → Nothing
+  J.JField label rest → Just (Tuple cur (J.insideOut rest))
+  J.JIndex index rest → Just (Tuple cur (J.insideOut rest))
 
 showJCursor ∷ J.JCursor → String
 showJCursor (J.JField i c) = i <> show c
