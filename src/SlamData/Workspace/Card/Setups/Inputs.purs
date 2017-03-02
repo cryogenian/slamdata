@@ -31,7 +31,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Form.Select (Select(..), stringVal, class OptionVal)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, showJCursor)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, showJCursor, showJCursorTip)
 
 type Select' a = Boolean × Select a
 
@@ -211,8 +211,8 @@ pickerWithSelect conf1 sel1@(Select { options, value }) conf2 sel2 =
 dimensionPicker ∷ ∀ f. Foldable f ⇒ f (J.JCursor) → String → DPC.PickerOptions (Either J.JCursor J.JCursor)
 dimensionPicker options title =
   { title
-  , label: DPC.labelNode showJCursor
-  , render: DPC.renderNode showJCursor
+  , label: DPC.labelNode showJCursorTip
+  , render: DPC.renderNode showJCursorTip
   , values: groupJCursors (List.fromFoldable options)
   , isSelectable: DPC.isLeafPath
   }
