@@ -18,18 +18,25 @@ module SlamData.Workspace.Card.Setups.DimensionPicker.JCursor where
 
 import SlamData.Prelude
 
-import Control.Comonad.Cofree (Cofree)
+import Control.Comonad.Cofree as CF
 
 import Data.Argonaut as J
-import Data.List (List)
+import Data.List as L
 
 import SlamData.Workspace.MillerColumns.TreeData (constructTree)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes)
 
 type JCursorNode = Either J.JCursor J.JCursor
 
-groupJCursors ∷ List J.JCursor → Cofree List JCursorNode
-groupJCursors = discriminateNodes ∘ constructTree unfoldJCursor J.JCursorTop
+groupJCursors ∷ L.List J.JCursor → CF.Cofree L.List JCursorNode
+groupJCursors cs =
+  let
+    tree = constructTree unfoldJCursor J.JCursorTop cs
+  in
+    discriminateNodes
+      if L.null (CF.tail tree)
+      then CF.mkCofree J.JCursorTop (pure (CF.mkCofree J.JCursorTop L.Nil))
+      else tree
 
 unfoldJCursor ∷ J.JCursor → Maybe (Tuple J.JCursor J.JCursor)
 unfoldJCursor cur = case J.insideOut cur of

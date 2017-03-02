@@ -18,10 +18,10 @@ module SlamData.Workspace.Card.Setups.DimensionPicker.Column where
 
 import SlamData.Prelude
 
-import Control.Comonad.Cofree (Cofree)
+import Control.Comonad.Cofree as CF
 
 import Data.Argonaut as J
-import Data.List (List)
+import Data.List as L
 
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (showJCursor, unfoldJCursor)
@@ -30,12 +30,16 @@ import SlamData.Workspace.MillerColumns.TreeData (constructTree)
 
 type ColumnNode = Either Column Column
 
-groupColumns ∷ List Column → Cofree List ColumnNode
-groupColumns =
-  discriminateNodes ∘
-    constructTree
-      unfoldColumn
-      (Column { value: J.JCursorTop, valueAggregation: Nothing })
+groupColumns ∷ L.List Column → CF.Cofree L.List ColumnNode
+groupColumns cs =
+  let
+    root = Column { value: J.JCursorTop, valueAggregation: Nothing }
+    tree = constructTree unfoldColumn root cs
+  in
+    discriminateNodes
+      if L.null (CF.tail tree)
+      then CF.mkCofree root (pure (CF.mkCofree root L.Nil))
+      else tree
 
 unfoldColumn :: Column → Maybe (Tuple Column Column)
 unfoldColumn col = case col of
