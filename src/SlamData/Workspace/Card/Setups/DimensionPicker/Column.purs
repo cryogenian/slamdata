@@ -26,7 +26,7 @@ import Data.List ((:))
 import Data.List as L
 
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (showJCursor, unfoldJCursor)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (unfoldJCursor)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes)
 import SlamData.Workspace.MillerColumns.TreeData (constructTree)
 
@@ -50,9 +50,9 @@ unfoldColumn col = case col of
     unfoldJCursor value <#> \(Tuple cur rest) →
       Tuple col (Column { value: rest, valueAggregation: Nothing })
 
-showColumn ∷ Column → String
-showColumn (Column { value }) = showJCursor value
-showColumn Count = "COUNT"
+showColumn ∷ (J.JCursor → String) → Column → String
+showColumn f (Column { value }) = f value
+showColumn _ Count = "COUNT"
 
 flattenColumns ∷ ColumnNode → Column
 flattenColumns = either id id

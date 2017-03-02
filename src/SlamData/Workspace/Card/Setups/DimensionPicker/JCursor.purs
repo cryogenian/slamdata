@@ -49,5 +49,12 @@ showJCursor (J.JField i c) = i <> show c
 showJCursor J.JCursorTop = "value"
 showJCursor c = show c
 
+showJCursorTip ∷ J.JCursor → String
+showJCursorTip (J.JField i J.JCursorTop) = i
+showJCursorTip (J.JIndex i J.JCursorTop) = "[" <> show i <> "]"
+showJCursorTip (J.JField i cur) = showJCursorTip cur
+showJCursorTip (J.JIndex i cur) = showJCursorTip cur
+showJCursorTip J.JCursorTop = "value"
+
 flattenJCursors ∷ JCursorNode → J.JCursor
 flattenJCursors = either id id

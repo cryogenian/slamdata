@@ -37,7 +37,7 @@ import SlamData.Form.Select as S
 import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.Column (flattenColumns, showColumn)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors, showJCursor)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors, showJCursor, showJCursorTip)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.ChildSlot as PCS
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query (Query(..))
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.State as PS
@@ -85,8 +85,8 @@ render st =
       HH.slot' PCS.cpCol unit
         (DPC.picker
           { title: "Choose column"
-          , label: DPC.labelNode showColumn
-          , render: DPC.renderNode showColumn
+          , label: DPC.labelNode (showColumn showJCursorTip)
+          , render: DPC.renderNode (showColumn showJCursorTip)
           , values
           , isSelectable: DPC.isLeafPath
           })
@@ -96,8 +96,8 @@ render st =
       HH.slot' PCS.cpDim unit
         (DPC.picker
           { title: "Choose dimension"
-          , label: DPC.labelNode showJCursor
-          , render: DPC.renderNode showJCursor
+          , label: DPC.labelNode showJCursorTip
+          , render: DPC.renderNode showJCursorTip
           , values
           , isSelectable: DPC.isLeafPath
           })
@@ -216,7 +216,7 @@ render st =
                   [ HP.classes [ HH.ClassName "sd-pivot-options-label" ]
                   , HE.onMouseDown (HE.input (\e → right ∘ OrderColumnStart slot e))
                   ]
-                  [ HH.text (showColumn col)
+                  [ HH.text (showColumn showJCursor col)
                   ]
               , HH.button
                   [ HP.classes [ HH.ClassName "sd-dismiss-button" ]
