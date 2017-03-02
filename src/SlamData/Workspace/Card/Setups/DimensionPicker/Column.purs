@@ -18,9 +18,11 @@ module SlamData.Workspace.Card.Setups.DimensionPicker.Column where
 
 import SlamData.Prelude
 
+import Control.Comonad (extract)
 import Control.Comonad.Cofree as CF
 
 import Data.Argonaut as J
+import Data.List ((:))
 import Data.List as L
 
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
@@ -37,8 +39,8 @@ groupColumns cs =
     tree = constructTree unfoldColumn root cs
   in
     discriminateNodes
-      if L.null (CF.tail tree)
-      then CF.mkCofree root (pure (CF.mkCofree root L.Nil))
+      if extract <$> CF.tail tree == pure Count
+      then CF.mkCofree root (CF.mkCofree Count L.Nil : CF.mkCofree root L.Nil : L.Nil)
       else tree
 
 unfoldColumn :: Column → Maybe (Tuple Column Column)
