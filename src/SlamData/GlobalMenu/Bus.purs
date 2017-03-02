@@ -13,8 +13,11 @@ limitations under the License.
 
 module SlamData.GlobalMenu.Bus where
 
-import Control.Monad.Aff.Bus
+import Control.Monad.Aff.Bus as Bus
+import SlamData.Prelude
 
-type SignInBus = BusRW SignInMessage
+type SignInBus = Bus.BusRW SignInMessage
 
 data SignInMessage = SignInSuccess | SignInFailure | SignOutRequest
+
+derive instance eqSignInMessage ∷ Eq SignInMessage

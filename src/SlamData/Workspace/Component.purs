@@ -28,24 +28,25 @@ import Control.Monad.Eff.Ref (readRef)
 import Control.Monad.Fork (fork)
 import Control.UI.Browser as Browser
 
+import Data.Coyoneda (liftCoyoneda)
 import Data.List as List
 import Data.Time.Duration (Milliseconds(..))
-
 import DOM.Classy.Event (currentTarget, target) as DOM
 import DOM.Classy.Node (toNode) as DOM
 
 import Halogen as H
-
 import Halogen.Component.Utils (busEventSource)
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Query.EventSource as ES
 
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
+import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Header.Component as Header
 import SlamData.Header.Gripper.Component as Gripper
@@ -71,6 +72,7 @@ import SlamData.Workspace.Eval.Traverse as ET
 import SlamData.Workspace.Guide (GuideType(..))
 import SlamData.Workspace.Guide as GuideData
 import SlamData.Workspace.StateMode (StateMode(..))
+import SlamData.Workspace.StateMode as StateMode
 
 import Utils (endSentence)
 import Utils.DOM (onResize, nodeEq)
@@ -161,8 +163,9 @@ render accessType state =
 eval ∷ Query ~> WorkspaceDSL
 eval = case _ of
   Init next → do
-    { bus } ← H.lift Wiring.expose
+    { auth, bus } ← H.lift Wiring.expose
     H.subscribe $ busEventSource (H.request ∘ PresentStepByStepGuide) bus.stepByStep
+    H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) auth.signIn
     H.subscribe $ throttledEventSource_ (Milliseconds 100.0) onResize (H.request Resize)
     pure next
   PresentStepByStepGuide guideType reply → do
@@ -229,6 +232,13 @@ eval = case _ of
     pure next
   HandleNotification msg next →
     handleNotification msg $> next
+  HandleSignInMessage msg next → do
+    stateMode ← H.gets _.stateMode
+    when
+      (msg ≡ GlobalMenu.SignInSuccess ∧ StateMode.isError stateMode)
+      (H.liftEff Browser.reload)
+    pure next
+
 
   where
   loadCursor cursor = do
@@ -303,19 +313,22 @@ initializeGuides = do
 handleNotification ∷ NC.Action → WorkspaceDSL Unit
 handleNotification = case _ of
   NC.ExpandGlobalMenu → do
-    queryHeaderGripper $ Gripper.StartDragging 0.0 unit
-    queryHeaderGripper $ Gripper.StopDragging unit
+    gripperState ← queryHeaderGripper $ H.request Gripper.GetState
+    when (gripperState ≠ Just Gripper.Opened) do
+      queryHeaderGripper $ H.action $ Gripper.StartDragging 0.0
+      queryHeaderGripper $ H.action Gripper.StopDragging
+      pure unit
   NC.Fulfill var →
     void $ H.liftAff $ Aff.attempt $ putVar var unit
-
-queryHeaderGripper ∷ Gripper.Query Unit → WorkspaceDSL Unit
-queryHeaderGripper q =
-  void $ H.query' cpHeader unit $ Header.QueryGripper q unit
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck q = do
   deckId ← H.gets (List.head ∘ _.cursor)
   join <$> for deckId \d → H.query' cpDeck d q
+
+queryHeaderGripper ∷ ∀ a. Gripper.Query a → WorkspaceDSL (Maybe a)
+queryHeaderGripper =
+   H.query' cpHeader unit ∘ Header.QueryGripper ∘ liftCoyoneda
 
 initialCardGuideStep ∷ WorkspaceDSL (Maybe Int)
 initialCardGuideStep =

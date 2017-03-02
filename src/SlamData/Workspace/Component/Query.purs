@@ -24,6 +24,7 @@ import Halogen as H
 
 import Quasar.Advanced.Types (ProviderR)
 
+import SlamData.GlobalMenu.Bus (SignInMessage)
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Notification as N
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -42,3 +43,4 @@ data Query a
   | SignIn ProviderR a
   | HandleGuideMessage GuideType Guide.Message a
   | HandleNotification N.Action a
+  | HandleSignInMessage SignInMessage a

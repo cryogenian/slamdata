@@ -16,29 +16,31 @@ limitations under the License.
 
 module SlamData.Header.Component where
 
-import SlamData.Prelude
+import Data.Coyoneda (Coyoneda)
+import Data.Coyoneda as Coyoneda
 
+import SlamData.Prelude
 import Halogen as H
+import Halogen.Query.HalogenM as HQ
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.HTML.Events as HE
-
 import SlamData.Config as Config
 import SlamData.Config.Version as CV
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Header.Gripper.Component as Gripper
-import SlamData.Monad (Slam)
 import SlamData.Render.CSS as Rc
+import SlamData.Monad (Slam)
 
 type State
   = Boolean
 
 data Query a
   = HandleGripper Gripper.Message a
-  | QueryGripper (Gripper.Query Unit) a
-  | QueryGlobalMenu (GlobalMenu.Query Unit) a
+  | QueryGripper (Coyoneda Gripper.Query a)
+  | QueryGlobalMenu (Coyoneda GlobalMenu.Query a)
   | Dismiss a
 
 type ChildQuery = Gripper.Query ⨁ GlobalMenu.Query ⨁ Const Void
@@ -93,12 +95,18 @@ eval = case _ of
       Gripper.Closed → false
       _ → true
     pure next
-  QueryGripper q next → do
-    H.query' CP.cp1 unit q
-    pure next
-  QueryGlobalMenu q next → do
-    H.query' CP.cp2 unit q
-    pure next
+  QueryGripper iq → do
+    iq # Coyoneda.unCoyoneda \k q -> do
+      result <- H.query' CP.cp1 unit q
+      case result of
+        Nothing -> HQ.halt "Inner component query failed (this should be impossible)"
+        Just a -> pure (k a)
+  QueryGlobalMenu iq → do
+    iq # Coyoneda.unCoyoneda \k q -> do
+      result <- H.query' CP.cp2 unit q
+      case result of
+        Nothing -> HQ.halt "Inner component query failed (this should be impossible)"
+        Just a -> pure (k a)
   Dismiss next → do
     H.query' CP.cp2 unit $ H.action GlobalMenu.DismissSubmenu
     pure next

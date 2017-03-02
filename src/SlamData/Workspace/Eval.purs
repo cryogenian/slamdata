@@ -25,7 +25,7 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Eff.Ref (readRef, modifyRef)
+import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Fork (class MonadFork, fork)
 
 import Data.Array as Array
@@ -40,6 +40,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Wiring (Wiring)
+import SlamData.GlobalError as GlobalError
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
@@ -69,7 +70,7 @@ evalGraph sources = do
     resolveUrlVarMaps
       <$> Cache.snapshot eval.decks
       <*> Cache.snapshot eval.cards
-      <*> liftEff (readRef varMaps)
+      <*> liftEff (Ref.readRef varMaps)
   flip parTraverse_ sources \source →
     runEvalLoop path eval.decks eval.cards tick urlVarMaps source (snd source)
 
@@ -143,6 +144,15 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
       for_ result.state (publish card ∘ Card.StateChange source)
       publish card (Card.Complete source cardOutput)
       goNext history' cardOutput card.next
+      { auth, bus } ← Wiring.expose
+      case result.output of
+        Left error → do
+          liftEff $ Ref.writeRef auth.retryEval (Just cardId)
+          traverse_
+            (liftAff ∘ flip Bus.write bus.notify ∘ GlobalError.toNotificationOptions)
+            (GlobalError.fromQError error)
+        Right _ →
+          liftEff $ Ref.writeRef auth.retryEval Nothing
 
     goNext ∷ Array Card.Id → Card.Out → Set (Either Deck.Id Card.Id) -> m Unit
     goNext history cardInput next = do
@@ -192,10 +202,10 @@ nextTick ∷ ∀ m. (MonadAff SlamDataEffects m, MonadAsk Wiring m) ⇒ m Int
 nextTick = do
   { eval } ← Wiring.expose
   liftEff do
-    modifyRef eval.tick (add 1)
-    readRef eval.tick
+    Ref.modifyRef eval.tick (add 1)
+    Ref.readRef eval.tick
 
 currentTick ∷ ∀ m. (MonadAff SlamDataEffects m, MonadAsk Wiring m) ⇒ m Int
 currentTick = do
   { eval } ← Wiring.expose
-  liftEff (readRef eval.tick)
+  liftEff (Ref.readRef eval.tick)

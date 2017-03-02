@@ -28,3 +28,9 @@ data StateMode
   = Loading
   | Ready
   | Error QError
+
+isError ∷ StateMode → Boolean
+isError =
+  case _ of
+    Error _ → true
+    _ → false

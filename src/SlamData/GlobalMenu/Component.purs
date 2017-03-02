@@ -14,6 +14,7 @@ limitations under the License.
 module SlamData.GlobalMenu.Component
   ( component
   , Query(..)
+  , module SlamData.GlobalMenu.Bus
   , AuthenticateOrPresentHelp(..)
   , State
   ) where
@@ -24,6 +25,7 @@ import Control.UI.Browser as Browser
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff as Eff
+import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Eff.Exception as Exception
 
 import Halogen as H
@@ -39,6 +41,7 @@ import OIDC.Crypt as Crypt
 import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.AuthenticationMode as AuthenticationMode
+import SlamData.Workspace.Eval.Card as EvalCard
 import SlamData.GlobalError (GlobalError)
 import SlamData.GlobalError as GlobalError
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
@@ -48,6 +51,7 @@ import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Auth.Authentication (AuthenticationError, toNotificationOptions)
 import SlamData.Quasar.Auth.Store as AuthStore
 import SlamData.Wiring as Wiring
+import SlamData.Workspace.Eval.Persistence as Persistence
 
 data AuthenticateOrPresentHelp
   = Authenticate (Maybe ProviderR)
@@ -207,11 +211,12 @@ authenticate = maybe logOut logIn
     AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider
 
   logOut ∷ DSL Unit
-  logOut = H.liftEff do
-    AuthStore.clearIdToken keySuffix
-    AuthStore.clearUnhashedNonce keySuffix
-    AuthStore.clearProvider keySuffix
-    Browser.reload
+  logOut = do
+    H.liftEff do
+      AuthStore.clearIdToken keySuffix
+      AuthStore.clearUnhashedNonce keySuffix
+      AuthStore.clearProvider keySuffix
+    update
 
   logIn ∷ ProviderR → DSL Unit
   logIn providerR = do
@@ -220,13 +225,16 @@ authenticate = maybe logOut logIn
     H.liftAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
     either signInFailure (const $ signInSuccess) =<< (H.liftAff $ AVar.takeVar idToken)
 
-  -- TODO: Reattempt failed actions without loosing state, remove reload.
   signInSuccess ∷ DSL Unit
   signInSuccess = do
-    { auth } ← H.lift Wiring.expose
-    H.liftAff $ Bus.write SignInSuccess auth.signIn
+    wiring ← Wiring.expose
     update
-    H.liftEff Browser.reload
+    traverse_ (lift ∘ Persistence.queueEvalImmediate ∘ EvalCard.toAll)
+      =<< (H.liftEff $ Ref.readRef wiring.auth.retryEval)
+    whenM
+      (H.liftEff $ Ref.readRef wiring.auth.retrySave)
+      (void $ lift $ Persistence.saveWorkspace)
+    H.liftAff $ Bus.write SignInSuccess wiring.auth.signIn
 
   signInFailure ∷ AuthenticationError → DSL Unit
   signInFailure error = do

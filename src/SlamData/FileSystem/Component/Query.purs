@@ -24,6 +24,7 @@ import DOM.Event.Types (Event)
 import SlamData.Common.Sort (Sort)
 import SlamData.FileSystem.Routing.Salt (Salt)
 import SlamData.GlobalError (GlobalError)
+import SlamData.GlobalMenu.Bus (SignInMessage)
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item)
 import SlamData.FileSystem.Search.Component as Search
@@ -66,6 +67,7 @@ data Query a
   | HandleListing Listing.Message a
   | HandleDialog Dialog.Message a
   | HandleNotifications Notification.Message a
+  | HandleSignInMessage SignInMessage a
   | HandleSearch Search.Message a
   | SetLoading Boolean a
   | SetIsSearching Boolean a

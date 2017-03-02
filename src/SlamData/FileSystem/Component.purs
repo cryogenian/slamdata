@@ -23,14 +23,16 @@ module SlamData.FileSystem.Component
 
 import SlamData.Prelude
 
-import CSS as CSS
-
+import Control.UI.Browser (setLocation, locationString, clearValue)
+import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
-import Control.UI.Browser (setLocation, locationString, clearValue)
+
+import CSS as CSS
 
 import Data.Argonaut (jsonParser, jsonEmptyObject)
 import Data.Array as Array
+import Data.Coyoneda (liftCoyoneda)
 import Data.Foldable as F
 import Data.Lens ((.~), preview)
 import Data.MediaType (MediaType(..))
@@ -45,8 +47,8 @@ import DOM.Event.Event as DEE
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
-import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Core as HC
+import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
@@ -58,9 +60,9 @@ import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
-import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.FileSystem.Component.ChildSlot as CS
+import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)
@@ -71,8 +73,8 @@ import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
@@ -188,6 +190,7 @@ eval = case _ of
       (not <$> dismissedIntroVideoBefore)
       (H.modify $ State._presentIntroVideo .~ true)
     H.subscribe $ busEventSource (flip HandleError ES.Listening) w.bus.globalError
+    H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) w.auth.signIn
     pure next
   Transition page next → do
     H.modify
@@ -364,8 +367,11 @@ eval = case _ of
         H.liftEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
     pure next
   HandleNotifications NC.ExpandGlobalMenu next → do
-    H.query' CS.cpHeader unit $ H.action $ Header.QueryGripper $ H.action $ Gripper.StartDragging 0.0
-    H.query' CS.cpHeader unit $ H.action $ Header.QueryGripper $ H.action Gripper.StopDragging
+    gripperState ← queryHeaderGripper $ H.request Gripper.GetState
+    when (gripperState ≠ Just Gripper.Opened) do
+      queryHeaderGripper $ H.action $ Gripper.StartDragging 0.0
+      queryHeaderGripper $ H.action Gripper.StopDragging
+      pure unit
     pure next
   HandleNotifications _ next →
     pure next
@@ -390,6 +396,9 @@ eval = case _ of
     pure next
   ShowError message next → do
     H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.Error message
+    pure next
+  HandleSignInMessage message next → do
+    when (message ≡ GlobalMenu.SignInSuccess) (H.liftEff Browser.reload)
     pure next
 
 handleItemMessage ∷ Item.Message → DSL Unit
@@ -554,9 +563,7 @@ presentMountGuide xs path = do
 
 dismissSignInSubmenu ∷ DSL Unit
 dismissSignInSubmenu =
-  void
-    $ H.query' CS.cpHeader unit
-    $ Header.QueryGlobalMenu (H.action GlobalMenu.DismissSubmenu) unit
+  void $ queryGlobalMenu (H.action GlobalMenu.DismissSubmenu)
 
 resort ∷ DSL Unit
 resort = do
@@ -630,3 +637,11 @@ showDialog = void ∘ H.query' CS.cpDialog unit ∘ H.action ∘ Dialog.Show
 hideDialog ∷ DSL Unit
 hideDialog =
   void $ H.query' CS.cpDialog unit $ H.action Dialog.RaiseDismiss
+
+queryHeaderGripper ∷ ∀ a. Gripper.Query a → DSL (Maybe a)
+queryHeaderGripper =
+   H.query' CS.cpHeader unit ∘ Header.QueryGripper ∘ liftCoyoneda
+
+queryGlobalMenu ∷ ∀ a. GlobalMenu.Query a → DSL (Maybe a)
+queryGlobalMenu =
+   H.query' CS.cpHeader unit ∘ Header.QueryGlobalMenu ∘ liftCoyoneda

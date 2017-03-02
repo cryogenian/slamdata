@@ -23,8 +23,8 @@ module SlamData.Wiring
   , BusWiring
   , DeckMessage(..)
   , ActiveState
-  , PendingEval
-  , PendingSave
+  , DebounceEval
+  , DebounceSave
   , make
   , unWiring
   , expose
@@ -32,12 +32,13 @@ module SlamData.Wiring
   ) where
 
 import SlamData.Prelude
-
-import Control.Monad.Aff.AVar (AVar, makeVar)
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Ref (Ref, newRef)
+import Control.Monad.Eff.Ref (Ref)
+import Control.Monad.Eff.Ref as Ref
 
 import Data.StrMap (StrMap)
 
@@ -49,8 +50,8 @@ import SlamData.Notification as N
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
-import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.Port.VarMap as Port
+import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
@@ -68,13 +69,13 @@ type ActiveState =
   { cardIndex ∷ Int
   }
 
-type PendingEval =
+type DebounceEval =
   { source ∷ Card.DisplayCoord
   , graph ∷ EvalGraph
   , avar ∷ AVar Unit
   }
 
-type PendingSave =
+type DebounceSave =
   { avar ∷ AVar Unit
   }
 
@@ -86,8 +87,8 @@ type EvalWiring =
   -- We need to use AVars for debounce state rather than storing Cancelers,
   -- because the Canceler would need to reference `Slam` resulting in a
   -- circular dependency.
-  , pendingEvals ∷ Cache Card.Id PendingEval
-  , pendingSaves ∷ Cache DirPath PendingSave
+  , debounceEvals ∷ Cache Card.Id DebounceEval
+  , debounceSaves ∷ Cache DirPath DebounceSave
   }
 
 type AuthWiring =
@@ -96,6 +97,9 @@ type AuthWiring =
   , signIn ∷ SignInBus
   , allowedModes ∷ AllowedAuthenticationModes
   , permissionTokenHashes ∷ Array TokenHash
+  , retryEval ∷ Ref (Maybe Card.CardId)
+  , retrySave ∷ Ref Boolean
+  , retryCardUI ∷ Ref (Array Card.CardId)
   }
 
 type CacheWiring =
@@ -143,25 +147,44 @@ make path accessType vm permissionTokenHashes = liftAff do
   auth ← makeAuth
   cache ← makeCache
   bus ← makeBus
-  varMaps ← liftEff (newRef vm)
+  varMaps ← liftEff (Ref.newRef vm)
   pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus }
 
   where
   makeEval = do
-    tick ← liftEff (newRef 0)
-    root ← makeVar
+    tick ← liftEff $ Ref.newRef 0
+    root ← AVar.makeVar
     cards ← Cache.make
     decks ← Cache.make
-    pendingEvals ← Cache.make
-    pendingSaves ← Cache.make
-    pure { tick, root, cards, decks, pendingEvals, pendingSaves }
+    debounceEvals ← Cache.make
+    debounceSaves ← Cache.make
+    pure
+      { tick
+      , root
+      , cards
+      , decks
+      , debounceEvals
+      , debounceSaves
+      }
 
   makeAuth = do
-    hasIdentified ← liftEff (newRef false)
+    hasIdentified ← liftEff (Ref.newRef false)
     requestToken ← Auth.authentication
     signIn ← Bus.make
+    retryEval ← liftEff $ Ref.newRef Nothing
+    retrySave ← liftEff $ Ref.newRef false
+    retryCardUI ← liftEff $ Ref.newRef []
     let allowedModes = allowedAuthenticationModesForAccessType accessType
-    pure { hasIdentified, requestToken, signIn, allowedModes, permissionTokenHashes }
+    pure
+      { hasIdentified
+      , requestToken
+      , signIn
+      , allowedModes
+      , permissionTokenHashes
+      , retryEval
+      , retrySave
+      , retryCardUI
+      }
 
   makeCache = do
     activeState ← Cache.make

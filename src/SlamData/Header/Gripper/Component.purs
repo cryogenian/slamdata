@@ -62,6 +62,7 @@ data Query a
   | Animated a
   | PreventDefault DET.Event (Query a)
   | Close a
+  | GetState (State → a)
 
 data Direction = Up | Down
 
@@ -71,6 +72,9 @@ data State
   | Dragging Direction Number Number
   | Opening Number
   | Closing Number
+
+derive instance eqDirection :: Eq Direction
+derive instance eqState :: Eq State
 
 data Message = Notify State
 
@@ -238,7 +242,7 @@ eval _ (ChangePosition num next) = do
       let diff = num - s
       in s + if diff < 0.0 then 0.0 else if diff > maxMargin then maxMargin else diff
     direction oldPos oldDir =
-      if num ≡ oldPos then oldDir else if num > oldPos then Down  else Up
+      if num ≡ oldPos then oldDir else if num > oldPos then Down else Up
   case astate of
     Dragging oldDir s old →
       H.put (Dragging (direction old oldDir) s $ toSet s)
@@ -254,3 +258,5 @@ eval _ (Animated next) = do
   pure next
 eval _ (Close next) =
   H.put (Closing maxMargin) $> next
+eval _ (GetState k) =
+  k <$> H.get

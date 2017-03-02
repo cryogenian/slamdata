@@ -28,21 +28,25 @@ import Data.Path.Pathy as Path
 import Data.Unfoldable (unfoldr)
 
 import Halogen as H
+import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
+import SlamData.GlobalMenu.Bus as GMB
 import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as Quasar
 import SlamData.Render.Common (glyph)
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Open.Component.Query (Query(..))
+import SlamData.Workspace.Card.Open.Component.Query as Q
 import SlamData.Workspace.Card.Open.Component.State (State, initialState)
 import SlamData.Workspace.LevelOfDetails as LOD
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
@@ -57,11 +61,13 @@ type HTML =  CC.InnerCardParentHTML Query ColumnsQuery Unit
 
 openComponent ∷ CC.CardOptions → CC.CardComponent
 openComponent =
-  CC.makeCardComponent CT.Open $ H.parentComponent
+  CC.makeCardComponent CT.Open $ H.lifecycleParentComponent
     { render: render
-    , eval: evalCard ⨁ evalComponent
+    , eval: evalCard ⨁ evalOpen
     , initialState: const initialState
     , receiver: const Nothing
+    , initializer: Just $ right $ H.action Init
+    , finalizer: Nothing
     }
 
 render ∷ State → HTML
@@ -99,6 +105,22 @@ glyphForResource = case _ of
   R.Mount (R.Database _) → glyph B.glyphiconHdd
   R.Mount (R.View _) → glyph B.glyphiconFile
 
+evalOpen ∷ Query ~> DSL
+evalOpen = case _ of
+  Q.Init next → do
+    { auth } ← Wiring.expose
+    H.subscribe
+      $ busEventSource (\msg -> right (Q.HandleSignInMessage msg H.Listening)) auth.signIn
+    pure next
+  Q.HandleSignInMessage message next → do
+    when (message ≡ GMB.SignInSuccess) do
+      void $ H.query unit $ H.action $ MC.Reload
+    pure next
+  Q.UpdateSelection selected next → do
+    H.put selected
+    H.raise CC.modelUpdate
+    pure next
+
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
   CC.Activate next →
@@ -125,13 +147,6 @@ evalCard = case _ of
       if dims.width < 250.0 ∨ dims.height < 50.0
       then LOD.Low
       else LOD.High
-
-evalComponent ∷ Query ~> DSL
-evalComponent = case _ of
-  UpdateSelection selected next → do
-    H.put selected
-    H.raise CC.modelUpdate
-    pure next
 
 itemSpec ∷ MCI.BasicColumnOptions R.Resource AnyPath
 itemSpec =
