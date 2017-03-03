@@ -20,7 +20,6 @@ module SlamData.Workspace.Deck.Component.Render
   ) where
 
 import SlamData.Prelude
-
 import Data.Array as A
 import Data.List as L
 
@@ -29,22 +28,23 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as RCSS
+import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Component.CSS as CCSS
-import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, sizerRef)
+import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML)
+import SlamData.Workspace.Deck.Common as Common
 import SlamData.Workspace.Deck.Component.CSS as CSS
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpDialog, cpActionFilter)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..))
+import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Slider as Slider
-
+import SlamData.Guide.Notification as Guide
 import Utils (endSentence)
 import Utils.DOM as DOM
 
@@ -66,28 +66,58 @@ renderDeck opts deckComponent st =
         , HH.ClassName ("sd-deck-level-" <> show (L.length opts.displayCursor + 1))
         ]
     ]
-    [ HH.div
-        (deckClasses st
-        ⊕ deckProperties opts
-        ⊕ Slider.containerProperties st)
-        [ HH.div
-            [ HP.class_ CSS.deckFrame
-            , HE.onMouseDown $ HE.input Defocus
-            ]
-            $ frameElements opts st ⊕ [ renderName st.name ]
-        , HH.div
-            [ HP.class_ CSS.deck
-            ]
-            [ Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
-            , renderBackside
-                $ DCS.isFlipSide st.displayMode
-            , renderDialogBackdrop $ DCS.hasDialog st.displayMode
-            , renderDialog $ DCS.hasDialog st.displayMode
-            ]
-        ]
-    ]
+    $ [ HH.div
+          (deckClasses st
+          ⊕ deckProperties opts
+          ⊕ Slider.containerProperties st)
+          [ HH.div
+              [ HP.class_ CSS.deckFrame
+              , HE.onMouseDown $ HE.input Defocus
+              ]
+              $ frameElements opts st ⊕ [ renderName st.name ]
+          , HH.div
+              [ HP.class_ CSS.deck
+              ]
+              [ Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
+              , renderBackside
+                  $ DCS.isFlipSide st.displayMode
+              , renderDialogBackdrop $ DCS.hasDialog st.displayMode
+              , renderDialog $ DCS.hasDialog st.displayMode
+              ]
+          ]
+      ]
+      <> (guard presentFocusDeckHint $> renderFocusDeckHint)
+      <> (guard presentFocusDeckFrameHint $> renderFocusDeckFrameHint)
+
 
   where
+  presentFocusDeckHint ∷ Boolean
+  presentFocusDeckHint =
+    Common.willBePresentedWithChildFrameWhenFocused opts st
+      ∧ (not st.focused)
+      ∧ (not st.focusDeckHintDismissed)
+
+  presentFocusDeckFrameHint ∷ Boolean
+  presentFocusDeckFrameHint =
+    Common.willBePresentedWithChildFrameWhenFocused opts st
+      ∧ st.focused
+      ∧ (not st.focusDeckFrameHintDismissed)
+
+  renderFocusDeckHint ∷ DeckHTML
+  renderFocusDeckHint =
+    Guide.render
+      Guide.DownArrow
+      (HH.ClassName "sd-focus-deck-hint")
+      DCQ.DismissFocusDeckHint
+      "This Deck is wrapped in a Dashboard Card and unfocused. To do more with this Deck focus it by clicking or tapping on it."
+
+  renderFocusDeckFrameHint ∷ DeckHTML
+  renderFocusDeckFrameHint =
+    Guide.render
+      Guide.UpArrow
+      (HH.ClassName "sd-focus-deck-frame-hint")
+      DCQ.DismissFocusDeckFrameHint
+      "This Deck is focused. To do more with the containing Deck focus it by clicking or tapping on the empty space in this Deck Frame."
 
   renderDialogBackdrop visible =
     HH.div
@@ -121,7 +151,7 @@ deckClasses st =
 
 deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp (onMouseDown ∷ DOM.MouseEvent | r) (Query Unit))
 deckProperties opts =
-  [ HP.ref sizerRef ]
+  [ HP.ref Common.sizerRef ]
   <> (guard (L.length opts.displayCursor <= 1) $> HE.onMouseDown (HE.input Focus))
 
 renderName ∷ String → DeckHTML

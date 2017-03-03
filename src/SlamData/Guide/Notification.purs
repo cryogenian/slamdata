@@ -23,11 +23,13 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 data Arrow
   = RightArrow
+  | UpArrow
   | DownArrow
 
 arrowClassName ∷ Arrow → HH.ClassName
 arrowClassName = case _ of
   RightArrow → HH.ClassName "sd-guide-right-arrow"
+  UpArrow → HH.ClassName "sd-guide-up-arrow"
   DownArrow → HH.ClassName "sd-guide-down-arrow"
 
 render ∷ ∀ f a. Arrow → HH.ClassName → (Unit → f Unit) → String → HH.HTML a (f Unit)

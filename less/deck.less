@@ -267,6 +267,22 @@ button.sd-zoom-deck {
   width: 20rem;
 }
 
+.sd-focus-deck-hint {
+  position: absolute;
+  top: .8rem;
+  left: 50%;
+  transform: translate(-50%, 0);
+  z-index: 9999;
+}
+
+.sd-focus-deck-frame-hint {
+  position: absolute;
+  top: ~"calc(0.5rem + 2px)";
+  left: ~"calc(1.5rem + 1px)";
+  width: ~"calc(50% - (1.5rem + 1px))";;
+  z-index: 9999;
+}
+
 @import "deck/card";
 @import "deck/ace-card";
 @import "deck/variables-card";

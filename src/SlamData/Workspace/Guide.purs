@@ -97,3 +97,9 @@ dismissedCardGuideKey = "dismissedCardGuide"
 
 dismissedFlipGuideKey ∷ String
 dismissedFlipGuideKey = "dismissedFlipGuide"
+
+dismissedFocusDeckHintKey ∷ String
+dismissedFocusDeckHintKey = "dismissedFocusDeckHint"
+
+dismissedFocusDeckFrameHintKey ∷ String
+dismissedFocusDeckFrameHintKey = "dismissedFocusDeckFrameHint"

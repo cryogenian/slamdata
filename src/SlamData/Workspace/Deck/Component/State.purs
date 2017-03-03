@@ -34,6 +34,8 @@ module SlamData.Workspace.Deck.Component.State
   , _activeCardIndex
   , _pendingCardIndex
   , _presentAccessNextActionCardGuideCanceler
+  , _focusDeckHintDismissed
+  , _focusDeckFrameHintDismissed
   , _presentAccessNextActionCardGuide
   , _loadError
   , _displayMode
@@ -81,6 +83,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
 import Utils (hush)
+
 
 data Dialog
   = Dialog
@@ -174,6 +177,8 @@ type State =
   , responsiveSize ∷ ResponsiveSize
   , fadeTransition ∷ Fade
   , providers ∷ Array ProviderR
+  , focusDeckHintDismissed ∷ Boolean
+  , focusDeckFrameHintDismissed ∷ Boolean
   }
 
 initialState ∷ State
@@ -196,6 +201,8 @@ initialState =
   , responsiveSize: XLarge
   , fadeTransition: FadeNone
   , providers: mempty
+  , focusDeckHintDismissed: true
+  , focusDeckFrameHintDismissed: true
   }
 
 -- | The name of the deck. Initially Nothing.
@@ -271,6 +278,12 @@ _fadeTransition = lens _.fadeTransition _{fadeTransition = _}
 
 _providers ∷ ∀ a r. Lens' {providers ∷ a|r} a
 _providers = lens _.providers _{providers = _}
+
+_focusDeckHintDismissed ∷ ∀ a r. Lens' {focusDeckHintDismissed ∷ a|r} a
+_focusDeckHintDismissed = lens _.focusDeckHintDismissed _{focusDeckHintDismissed = _}
+
+_focusDeckFrameHintDismissed ∷ ∀ a r. Lens' {focusDeckFrameHintDismissed ∷ a|r} a
+_focusDeckFrameHintDismissed = lens _.focusDeckFrameHintDismissed _{focusDeckFrameHintDismissed = _}
 
 _NextActionCard ∷ Prism' MetaCard Port.Port
 _NextActionCard = prism' NextActionCard case _ of
