@@ -55,7 +55,6 @@
     "fs": "^0.0.2",
     "jsrsasign": "^5.0.5",
     "minimatch": "^3.0.0",
-    "virtual-dom": "^2.1.1",
     "zeroclipboard": "^2.2.0"
   }
 }
