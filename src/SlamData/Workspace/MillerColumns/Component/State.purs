@@ -64,11 +64,11 @@ type ColumnsData a i = i × L.List a
 -- | ]
 -- | ```
 columnPaths
-  ∷ ∀ a i f o
-  . Column.ColumnOptions a i f o
+  ∷ ∀ a i f g o
+  . Column.ColumnOptions a i f g o
   → ColumnsData a i
   → L.List (Int × Maybe a × i)
-columnPaths colSpec (root × selection) =
+columnPaths (Column.ColumnOptions colSpec) (root × selection) =
   let
     paths = (colSpec.id <$> selection) `L.snoc` root
     sels = Nothing : (Just <$> selection)
