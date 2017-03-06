@@ -18,7 +18,7 @@ module SlamData.FileSystem.Dialog.Mount.SQL2.Component
   ( comp
   , Query
   , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
-  , module SlamData.FileSystem.Dialog.Mount.SQL2.Component.State
+  , module MCS
   ) where
 
 import SlamData.Prelude
@@ -39,13 +39,13 @@ import Halogen.HTML.Elements.Keyed as HHEK
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State (State, _initialQuery, _vars, emptyVar, isEmptyVar, processState, rxEmpty, stateFromViewInfo)
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as MCS
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Query as API
 
-type Query = SettingsQuery State
+type Query = SettingsQuery MCS.State
 
-comp ∷ State → H.Component HH.HTML Query Unit SettingsMessage Slam
+comp ∷ MCS.State → H.Component HH.HTML Query Unit SettingsMessage Slam
 comp initialState =
   H.parentComponent
     { initialState: const initialState
@@ -54,7 +54,7 @@ comp initialState =
     , receiver: const Nothing
     }
 
-render ∷ State → H.ParentHTML Query AceQuery Unit Slam
+render ∷ MCS.State → H.ParentHTML Query AceQuery Unit Slam
 render state@{ initialQuery } =
   HHEK.div_
     [ "mount-sql2-query" × section "SQL² query"
@@ -64,25 +64,26 @@ render state@{ initialQuery } =
             unit
             (const (Just (H.action (ModifyState id))))
         ]
-    , "mount-sql2-vars" × section "Query variables" [ propList _vars state ]
+    , "mount-sql2-vars" × section "Query variables" [ propList MCS._vars state ]
     ]
 
-eval ∷ Query ~> H.ParentDSL State Query AceQuery Unit SettingsMessage Slam
-eval (ModifyState f next) = do
-  H.modify (processState <<< f)
-  H.raise Modified
-  pure next
-eval (Validate k) = do
-  sql ← fromMaybe "" <$> H.query unit (H.request GetText)
-  pure $ k if sql == "" then Just "Please enter a query" else Nothing
-eval (Submit parent name k) = do
-  sql ← fromMaybe "" <$> H.query unit (H.request GetText)
-  vars ← Sm.fromFoldable <<< filter (not isEmptyVar) <$> H.gets _.vars
-  let destPath = parent Pt.</> Pt.file name
-      view = R.View $ destPath
-      dest = R.Mount view
-  result ← API.viewQuery (Left parent) destPath sql vars
-  pure $ k $ map (const view) result
+eval ∷ Query ~> H.ParentDSL MCS.State Query AceQuery Unit SettingsMessage Slam
+eval = case _ of
+  ModifyState f next → do
+    H.modify (MCS.processState <<< f)
+    H.raise Modified
+    pure next
+  Validate k → do
+    sql ← fromMaybe "" <$> H.query unit (H.request GetText)
+    pure $ k if sql == "" then Just "Please enter a query" else Nothing
+  Submit parent name k → do
+    sql ← fromMaybe "" <$> H.query unit (H.request GetText)
+    vars ← Sm.fromFoldable <<< filter (not MCS.isEmptyVar) <$> H.gets _.vars
+    let destPath = parent Pt.</> Pt.file name
+        view = R.View $ destPath
+        dest = R.Mount view
+    result ← API.viewQuery (Left parent) destPath sql vars
+    pure $ k $ map (const view) result
 
 aceSetup ∷ Maybe String → Editor → Slam Unit
 aceSetup initialQuery editor = H.liftEff do
