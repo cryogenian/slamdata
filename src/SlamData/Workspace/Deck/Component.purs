@@ -187,7 +187,7 @@ eval opts = case _ of
           H.liftAff $ Bus.write (DeckFocused rootId) bus.decks
     when
       (Common.willBePresentedWithChildFrameWhenFocused opts st)
-      dismissFocusDeckHint
+      dismissFocusDeckFrameHint
     pure next
   DismissedCardGuide next → do
     when (L.null opts.displayCursor) $ void do
@@ -229,7 +229,7 @@ eval opts = case _ of
     dismissFocusDeckHint
     pure next
   DismissFocusDeckFrameHint next → do
-    dismissFocusDeckHint
+    dismissFocusDeckFrameHint
     pure next
   where
   getBoundingClientWidth =
