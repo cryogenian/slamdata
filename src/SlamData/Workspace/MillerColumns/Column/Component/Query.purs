@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.MillerColumns.Column.Component.Query
   ( Query(..)
+  , Query'
   , Message(..)
   , Message'
   ) where
@@ -35,6 +36,8 @@ data Query a i o b
   | UpdateFilter String b
   | HandleScroll Element b
   | HandleMessage i (ItemMessage' a o) b
+
+type Query' a i o f = Coproduct (Query a i o) f
 
 data Message a i
   = Initialized

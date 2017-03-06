@@ -51,6 +51,7 @@ import SlamData.Workspace.Card.Open.Component.State (State, initialState)
 import SlamData.Workspace.LevelOfDetails as LOD
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 import SlamData.Workspace.MillerColumns.Column.BasicFilter as MCF
+import SlamData.Workspace.MillerColumns.Column.Component as MCC
 import SlamData.Workspace.MillerColumns.Component as MC
 
 import Utils.Path (AnyPath)
@@ -72,7 +73,7 @@ openComponent =
 
 render ∷ State → HTML
 render state =
-  HH.slot unit (MC.component itemSpec) (pathToColumnData (Left Path.rootDir)) handleMessage
+  HH.slot unit (MC.component columnOptions) (pathToColumnData (Left Path.rootDir)) handleMessage
 
 handleMessage ∷ MC.Message' R.Resource AnyPath Void → Maybe (CC.InnerCardQuery Query Unit)
 handleMessage =
@@ -148,17 +149,16 @@ evalCard = case _ of
       then LOD.Low
       else LOD.High
 
-itemSpec ∷ MCI.BasicColumnOptions R.Resource AnyPath
-itemSpec =
-  { render: MCI.component
-      { label: R.resourceName
-      , render: renderItem
-      }
-  , label: R.resourceName
-  , load
-  , isLeaf: isRight
-  , id: R.getPath
-  }
+columnOptions ∷ MCI.BasicColumnOptions R.Resource AnyPath (Const Void)
+columnOptions =
+  MC.ColumnOptions
+    { renderColumn: MCC.component
+    , renderItem: MCI.component { label: R.resourceName, render: renderItem }
+    , label: R.resourceName
+    , load
+    , isLeaf: isRight
+    , id: R.getPath
+    }
 
 load
   ∷ ∀ r

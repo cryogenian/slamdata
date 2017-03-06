@@ -27,6 +27,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
+import SlamData.Workspace.MillerColumns.Column.Component as MCC
 import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Workspace.MillerColumns.TreeData as MCT
 
@@ -61,14 +62,16 @@ type PickerOptions s =
   , isSelectable ∷ s → Boolean
   }
 
-pickerOptionsToColumnOptions ∷ ∀ s. Eq s ⇒ PickerOptions s → MCI.BasicColumnOptions s s
+pickerOptionsToColumnOptions ∷ ∀ s. Ord s ⇒ PickerOptions s → MCI.BasicColumnOptions s s (Const Void)
 pickerOptionsToColumnOptions { label, render, values, isSelectable } =
-  { render: MCI.component { render, label }
-  , label
-  , load: MCT.loadFromTree label values
-  , id
-  , isLeaf: isSelectable
-  }
+  MC.ColumnOptions
+    { renderColumn: MCC.component
+    , renderItem: MCI.component { render, label }
+    , label
+    , load: MCT.loadFromTree label values
+    , id
+    , isLeaf: isSelectable
+    }
 
 labelNode ∷ ∀ s. (s → String) → Either s s → String
 labelNode f = either f f
