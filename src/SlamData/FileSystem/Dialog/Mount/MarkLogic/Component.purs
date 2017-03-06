@@ -47,10 +47,10 @@ type Query = SettingsQuery MCS.State
 
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component HH.HTML Query Unit SettingsMessage Slam
-comp =
+comp ∷ MCS.State → H.Component HH.HTML Query Unit SettingsMessage Slam
+comp initialState =
   H.component
-    { initialState: const MCS.initialState
+    { initialState: const initialState
     , render
     , eval
     , receiver: const Nothing
