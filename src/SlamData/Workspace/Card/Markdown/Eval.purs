@@ -163,21 +163,31 @@ evalEmbeddedQueries sm dir =
     mresult ← A.head <$> runQuery sql
     result ←
       maybe (CEM.throw "No results") (pure ∘ extractSingletonObject) mresult
-    case tb × (EJSON.unroll result) of
-      (SD.PlainText _) × (EJSON.String str) →
+    case tb, (EJSON.unroll result) of
+      (SD.PlainText _), (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
-      (SD.Numeric _) × (EJSON.Decimal a) →
+      (SD.Numeric _), (EJSON.Decimal a) →
         pure ∘ SD.Numeric $ pure a
-      (SD.Time prec _) × (EJSON.Time str) →
+      (SD.Time prec _), (EJSON.Time str) →
         SD.Time prec ∘ pure <$> parse parseSqlTime str
-      (SD.Date _) × (EJSON.Date str) →
+      (SD.Time prec _), (EJSON.Timestamp str) →
+        liftEff (parseSqlTimeStamp str) >>=
+          case _ of
+            Left msg → CEM.throw msg
+            Right dt → pure $ SD.Time prec (pure dt.time)
+      (SD.Date _), (EJSON.Date str) →
         SD.Date ∘ pure <$> parse parseSqlDate str
-      (SD.DateTime prec _) × (EJSON.Timestamp str) → do
+      (SD.Date _), (EJSON.Timestamp str) →
+        liftEff (parseSqlTimeStamp str) >>=
+          case _ of
+            Left msg → CEM.throw msg
+            Right dt → pure $ SD.Date (pure dt.date)
+      (SD.DateTime prec _), (EJSON.Timestamp str) → do
         liftEff (parseSqlTimeStamp str) >>=
           case _ of
             Left msg → CEM.throw msg
             Right dt → pure $ SD.DateTime prec (pure dt)
-      _ → CEM.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
+      _, _ → CEM.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
     where
       parse ∷ ∀ s a. P.Parser s a → s → m a
       parse p str =
