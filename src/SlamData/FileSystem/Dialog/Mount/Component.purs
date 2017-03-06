@@ -85,15 +85,15 @@ render state@{ new } =
   settings ∷ MCS.MountSettings → HTML
   settings ss = case ss of
     MCS.MongoDB initialState →
-      HH.slot' CS.cpMongoDB unit MongoDB.comp unit (HE.input_ Validate)
+      HH.slot' CS.cpMongoDB unit (MongoDB.comp initialState) unit (HE.input_ Validate)
     MCS.SQL2 initialState →
-      HH.slot' CS.cpSQL unit SQL2.comp unit (HE.input_ Validate)
+      HH.slot' CS.cpSQL unit (SQL2.comp initialState) unit (HE.input_ Validate)
     MCS.Couchbase initialState →
-      HH.slot' CS.cpCouchbase unit Couchbase.comp unit (HE.input_ Validate)
+      HH.slot' CS.cpCouchbase unit (Couchbase.comp initialState) unit (HE.input_ Validate)
     MCS.MarkLogic initialState →
-      HH.slot' CS.cpMarkLogic unit MarkLogic.comp unit (HE.input_ Validate)
+      HH.slot' CS.cpMarkLogic unit (MarkLogic.comp initialState) unit (HE.input_ Validate)
     MCS.SparkHDFS initialState →
-      HH.slot' CS.cpSpark unit Spark.comp unit (HE.input_ Validate)
+      HH.slot' CS.cpSpark unit (Spark.comp initialState) unit (HE.input_ Validate)
 
 fldName ∷ MCS.State → HTML
 fldName state =

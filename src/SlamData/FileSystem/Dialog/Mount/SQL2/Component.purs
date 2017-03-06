@@ -39,14 +39,14 @@ import Halogen.HTML.Elements.Keyed as HHEK
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State (State, _initialQuery, _vars, emptyVar, initialState, isEmptyVar, processState, rxEmpty, stateFromViewInfo)
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State (State, _initialQuery, _vars, emptyVar, isEmptyVar, processState, rxEmpty, stateFromViewInfo)
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Query as API
 
 type Query = SettingsQuery State
 
-comp ∷ H.Component HH.HTML Query Unit SettingsMessage Slam
-comp =
+comp ∷ State → H.Component HH.HTML Query Unit SettingsMessage Slam
+comp initialState =
   H.parentComponent
     { initialState: const initialState
     , render
