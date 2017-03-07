@@ -20,6 +20,18 @@ module SlamData.Workspace.Card.Factory
   ) where
 
 import SlamData.Workspace.Card.Ace.Component (aceComponent)
+import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Chart.Component (chartComponent)
+import SlamData.Workspace.Card.Common (CardOptions)
+import SlamData.Workspace.Card.Component (CardComponent)
+import SlamData.Workspace.Card.Download.Component (downloadComponent)
+import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
+import SlamData.Workspace.Card.Draftboard.Component (draftboardComponent)
+import SlamData.Workspace.Card.FormInput.Component (formInputComponent)
+import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
+import SlamData.Workspace.Card.Open.Component (openComponent)
+import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Setups.Chart.Area.Component (areaBuilderComponent)
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component (barBuilderComponent)
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component (boxplotBuilderComponent)
@@ -37,17 +49,6 @@ import SlamData.Workspace.Card.Setups.Chart.PunchCard.Component (punchCardBuilde
 import SlamData.Workspace.Card.Setups.Chart.Radar.Component (radarBuilderComponent)
 import SlamData.Workspace.Card.Setups.Chart.Sankey.Component (sankeyBuilderComponent)
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Component (scatterBuilderComponent)
-import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Chart.Component (chartComponent)
-import SlamData.Workspace.Card.Common (CardOptions)
-import SlamData.Workspace.Card.Component (CardComponent)
-import SlamData.Workspace.Card.Download.Component (downloadComponent)
-import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
-import SlamData.Workspace.Card.Draftboard.Component (draftboardComponent)
-import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
-import SlamData.Workspace.Card.Open.Component (openComponent)
-import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Setups.FormInput.Checkbox.Component (checkboxSetupComponent)
 import SlamData.Workspace.Card.Setups.FormInput.Date.Component (dateSetupComponent)
 import SlamData.Workspace.Card.Setups.FormInput.Datetime.Component (datetimeSetupComponent)
@@ -57,11 +58,11 @@ import SlamData.Workspace.Card.Setups.FormInput.Radio.Component (radioSetupCompo
 import SlamData.Workspace.Card.Setups.FormInput.Static.Component (staticSetupComponent)
 import SlamData.Workspace.Card.Setups.FormInput.Text.Component (textSetupComponent)
 import SlamData.Workspace.Card.Setups.FormInput.Time.Component (timeSetupComponent)
+import SlamData.Workspace.Card.StructureEditor.Component as StructureEditor
 import SlamData.Workspace.Card.Table.Component (tableComponent)
+import SlamData.Workspace.Card.Tabs.Component (tabsComponent)
 import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
 import SlamData.Workspace.Card.Variables.Component (variablesComponent)
-import SlamData.Workspace.Card.FormInput.Component (formInputComponent)
-import SlamData.Workspace.Card.Tabs.Component (tabsComponent)
 
 
 cardComponent ∷ CT.CardType → CardOptions → CardComponent
@@ -107,3 +108,4 @@ cardComponent =
     CT.SetupFormInput CT.Datetime → datetimeSetupComponent
     CT.FormInput → formInputComponent
     CT.Tabs → tabsComponent
+    CT.StructureEditor → StructureEditor.component

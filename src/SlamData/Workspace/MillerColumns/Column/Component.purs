@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.MillerColumns.Column.Component
   ( component
+  , component'
   , module SlamData.Workspace.MillerColumns.Column.Options
   , module SlamData.Workspace.MillerColumns.Column.Component.Query
   , module SlamData.Workspace.MillerColumns.Column.Component.State

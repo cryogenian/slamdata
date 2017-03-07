@@ -44,6 +44,7 @@ data InsertableCardType
   | TableCard
   | TroubleshootCard
   | TabsCard
+  | StructureEditorCard
 
 data InsertableCardIOType
   = Chart
@@ -78,6 +79,7 @@ inputs =
   , TableCard × [ Data ]
   , TroubleshootCard × [ Chart, Form, Data, Download, Markdown, Variables ]
   , TabsCard × [ None ]
+  , StructureEditorCard × [ Data ]
   ]
 
 -- Cards only have one output type, treat this as a Map or turn it into one.
@@ -99,6 +101,7 @@ outputs =
   , ShowMarkdownCard × Variables
   , TableCard × Data
   , TroubleshootCard × Variables
+  , StructureEditorCard × Data
   ]
 
 cardsToExcludeFromPaths ∷ Array InsertableCardType
@@ -278,6 +281,7 @@ toCardType = case _ of
   TableCard → Just CardType.Table
   TroubleshootCard → Just CardType.Troubleshoot
   TabsCard → Just CardType.Tabs
+  StructureEditorCard → Just CardType.StructureEditor
 
 print ∷ InsertableCardType → String
 print = case _ of
@@ -337,6 +341,7 @@ printAction = case _ of
   TableCard → Just "tabulate"
   TroubleshootCard → Just "troubleshoot"
   TabsCard → Nothing
+  StructureEditorCard → Nothing
 
 fromCardType ∷ CardType → InsertableCardType
 fromCardType =
@@ -358,6 +363,7 @@ fromCardType =
     CardType.SetupFormInput _ → SetupFormCard
     CardType.FormInput → ShowFormCard
     CardType.Tabs → TabsCard
+    CardType.StructureEditor → StructureEditorCard
 
 all ∷ Array InsertableCardType
 all =
@@ -378,4 +384,5 @@ all =
   , CacheCard
   , SetupVariablesCard
   , TroubleshootCard
+  , StructureEditorCard
   ]

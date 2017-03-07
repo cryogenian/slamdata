@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Model where
 
 import SlamData.Prelude
-
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
 import Data.Array as Array
@@ -70,6 +69,7 @@ import SlamData.Workspace.Card.Setups.FormInput.Static.Model as SetupStatic
 import SlamData.Workspace.Card.Setups.FormInput.Text.Model as SetupText
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as SetupTextLike
 import SlamData.Workspace.Card.Setups.FormInput.Time.Model as SetupTime
+import SlamData.Workspace.Card.StructureEditor.Model as StructureEditor
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Tabs.Model as Tabs
 import SlamData.Workspace.Card.Variables.Model as Variables
@@ -118,6 +118,7 @@ data AnyCardModel
   | SetupStatic SetupStatic.Model
   | FormInput FormInput.Model
   | Tabs Tabs.Model
+  | StructureEditor StructureEditor.Model
 
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
   arbitrary =
@@ -159,6 +160,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , SetupStatic <$> SetupStatic.genModel
       , FormInput <$> FormInput.genModel
       , Tabs <$> Tabs.genModel
+      , StructureEditor <$> StructureEditor.genModel
       ]
 
 updateCardModel ∷ AnyCardModel → AnyCardModel → AnyCardModel
@@ -213,6 +215,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
     SetupStatic x, SetupStatic y → SetupStatic.eqModel x y
     FormInput x, FormInput y → FormInput.eqModel x y
     Tabs x, Tabs y → Tabs.eqModel x y
+    StructureEditor x, StructureEditor y → x == y
     _, _ → false
 
 
@@ -265,6 +268,7 @@ modelCardType = case _ of
   SetupStatic _ → CT.SetupFormInput Static
   FormInput _ → CT.FormInput
   Tabs _ → CT.Tabs
+  StructureEditor _ → CT.StructureEditor
 
 encode ∷ AnyCardModel → J.Json
 encode card =
@@ -321,6 +325,7 @@ encodeCardModel = case _ of
   SetupStatic model → SetupStatic.encode model
   FormInput model → FormInput.encode model
   Tabs model → Tabs.encode model
+  StructureEditor model → StructureEditor.encode model
 
 decodeCardModel
   ∷ CT.CardType
@@ -367,6 +372,7 @@ decodeCardModel = case _ of
   CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
   CT.Draftboard → map Draftboard ∘ DB.decode
   CT.Tabs → map Tabs ∘ Tabs.decode
+  CT.StructureEditor → map StructureEditor ∘ StructureEditor.decode
 
   where
     -- For backwards compat
@@ -416,6 +422,7 @@ cardModelOfType (port × varMap) = case _ of
   CT.DownloadOptions → DownloadOptions $ DLO.initialState { targetName = runFileName ∘ fileName <$> Port.extractFilePath varMap }
   CT.Draftboard → Draftboard DB.emptyModel
   CT.Tabs → Tabs Tabs.initialModel
+  CT.StructureEditor → StructureEditor StructureEditor.initialModel
 
 singletonDraftboard ∷ DeckId → AnyCardModel
 singletonDraftboard deckId =
