@@ -17,26 +17,23 @@ limitations under the License.
 module SlamData.Workspace.FormBuilder.Item.Component
   ( Query(..)
   , Message(..)
-  , module SlamData.Workspace.FormBuilder.Item.Component.State
+  , module State
   , component
   ) where
 
 import SlamData.Prelude
-
-import Data.Lens ((^?), (.~), (?~))
-import Data.Lens as Lens
-
 import DOM.HTML.Indexed as DI
-import DOM.HTML.Indexed.StepValue (StepValue(..))
-
+import Data.Lens as Lens
 import Halogen as H
+import Halogen.HTML as HH
 import Halogen.HTML.Core as HC
 import Halogen.HTML.Events as HE
-import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
-import SlamData.Workspace.FormBuilder.Item.Component.State (Model, State, EqModel(..), _defaultValue, _fieldType, _model, _name, decode, defaultValueToVarMapValue, emptyValueOfFieldType, encode, initialModel, initialState, runEqModel)
+import DOM.HTML.Indexed.StepValue (StepValue(..))
+import Data.Lens ((^?), (.~), (?~))
+import SlamData.Workspace.FormBuilder.Item.Component.State (Model, State)
+import SlamData.Workspace.FormBuilder.Item.Component.State as State
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
 
 data Query a
@@ -45,6 +42,8 @@ data Query a
   | UpdateDefaultValue String a
   | SetModel Model a
   | GetModel (Model → a)
+  | EnableInput a
+  | DisableInput a
 
 data Message
   = NameChanged String
@@ -57,7 +56,7 @@ type DSL = H.ComponentDSL State Query Message
 component ∷ ∀ g. H.Component HH.HTML Query Unit Message g
 component =
   H.component
-    { initialState: const initialState
+    { initialState: const State.initialState
     , render
     , eval
     , receiver: const Nothing
@@ -66,7 +65,7 @@ component =
 render
   ∷ State
   → HTML
-render { model } =
+render { model, enabled } =
   HH.tr_
     [ HH.td_ [ nameField ]
     , HH.td_ [ typeField ]
@@ -83,6 +82,7 @@ render { model } =
       , HP.value model.name
       , HE.onValueInput (HE.input UpdateName)
       , HP.placeholder "Variable name"
+      , HP.disabled $ not enabled
       ]
 
   quotedName ∷ String → String
@@ -94,6 +94,7 @@ render { model } =
     HH.select
       [ HE.onValueChange (HE.input UpdateFieldType)
       , ARIA.label $ "Type of " <> (quotedName model.name) <> " variable"
+      , HP.disabled $ not enabled
       ]
       (typeOption <$> allFieldTypes)
 
@@ -123,6 +124,7 @@ render { model } =
                   $ "Default value of "
                   <> (quotedName model.name)
                   <> " variable is \"true\""
+              , HP.disabled $ not enabled
               ]
           , HH.span_ [ HH.text model.name ]
           ]
@@ -133,6 +135,7 @@ render { model } =
                , HE.onValueInput (HE.input UpdateDefaultValue)
                , ARIA.label lbl
                , HP.placeholder lbl
+               , HP.disabled $ not enabled
                ]
 
     where
@@ -170,20 +173,26 @@ render { model } =
 eval ∷ ∀ m. Query ~> DSL m
 eval = case _ of
   UpdateName str next → do
-    H.modify $ _model ∘ _name .~ str
+    H.modify $ State._model ∘ State._name .~ str
     H.raise $ NameChanged str
     pure next
   UpdateFieldType str next → do
     for_ (str ^? _FieldTypeDisplayName) \ty → do
-      H.modify $ _model ∘ _fieldType .~ ty
+      H.modify $ State._model ∘ State._fieldType .~ ty
     H.raise $ FieldTypeChanged str
     pure next
   UpdateDefaultValue str next → do
-    H.modify $ _model ∘ _defaultValue ?~ str
+    H.modify $ State._model ∘ State._defaultValue ?~ str
     H.raise $ DefaultValueChanged str
     pure next
   SetModel m next → do
-    H.modify $ _model .~ m
+    H.modify $ State._model .~ m
     pure next
   GetModel k →
-    k ∘ Lens.view _model <$> H.get
+    k ∘ Lens.view State._model <$> H.get
+  EnableInput next → do
+    H.modify (State._enabled .~ true)
+    pure next
+  DisableInput next → do
+    H.modify (State._enabled .~ false)
+    pure next

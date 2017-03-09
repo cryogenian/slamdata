@@ -25,6 +25,8 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
+import SlamData.Wiring as Wiring
+import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
@@ -71,6 +73,12 @@ evalCard = case _ of
       Card.Variables { items } →
         void ∘ H.query unit $ H.action (FB.SetItems (L.fromFoldable items))
       _ → pure unit
+    (_.accessType <$> H.lift Wiring.expose)
+      >>= case _ of
+        AccessType.Editable →
+          H.query unit $ H.action FB.EnableInputs
+        AccessType.ReadOnly →
+          H.query unit $ H.action FB.DisableInputs
     pure next
   CC.ReceiveInput _ _ next →
     pure next

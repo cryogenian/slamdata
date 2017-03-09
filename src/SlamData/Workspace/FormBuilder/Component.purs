@@ -23,25 +23,24 @@ module SlamData.Workspace.FormBuilder.Component
   ) where
 
 import SlamData.Prelude
-
 import Data.Array as A
 import Data.List as L
 import Data.Unfoldable as U
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import SlamData.Render.CSS as RC
-import SlamData.Workspace.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
 import SlamData.Workspace.FormBuilder.Item.Component as Item
+import SlamData.Workspace.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
 
 -- | The query signature for the FormBuilder component
 data Query a
   = GetItems (L.List Item.Model → a)
   | SetItems (L.List Item.Model) a
   | HandleItem ItemSlot Item.Message a
+  | EnableInputs a
+  | DisableInputs a
 
 data Message = ItemUpdated
 
@@ -89,6 +88,17 @@ eval = case _ of
     addItemIfNecessary slotId
     H.raise ItemUpdated
     pure next
+  EnableInputs next → do
+    queryAllItems $ H.action Item.EnableInput
+    pure next
+  DisableInputs next → do
+    queryAllItems $ H.action Item.DisableInput
+    pure next
+
+queryAllItems ∷ ∀ a m. Item.Query a → DSL m (L.List (Maybe a))
+queryAllItems query = do
+  items ← H.gets _.items
+  for items \item → H.query (ItemSlot item) query
 
 addItemIfNecessary ∷ ∀ m. ItemSlot → DSL m Unit
 addItemIfNecessary (ItemSlot i) = do
