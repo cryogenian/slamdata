@@ -25,6 +25,7 @@ import Data.Lens (Prism', prism')
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Transform.DatePart as DP
+import SlamData.Workspace.Card.Setups.Transform.String as S
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -32,8 +33,8 @@ import Test.StrongCheck.Gen as Gen
 data Transform
   = DatePart DP.DatePart
   | TimePart DP.TimePart
-  | DateTimePart DP.DateTimePart
   | Aggregation Ag.Aggregation
+  | String S.StringOperation
   | Count
 
 _Aggregation ∷ Prism' Transform Ag.Aggregation
@@ -45,16 +46,16 @@ foldTransform
   ∷ ∀ r
   . (DP.DatePart → r)
   → (DP.TimePart → r)
-  → (DP.DateTimePart → r)
   → (Ag.Aggregation → r)
+  → (S.StringOperation → r)
   → (Unit → r)
   → Transform
   → r
 foldTransform a b c d e = case _ of
   DatePart z → a z
   TimePart z → b z
-  DateTimePart z → c z
-  Aggregation z → d z
+  Aggregation z → c z
+  String z → d z
   Count → e unit
 
 prettyPrintTransform ∷ Transform → String
@@ -62,8 +63,8 @@ prettyPrintTransform =
   foldTransform
     DP.prettyPrintDate
     DP.prettyPrintTime
-    DP.prettyPrintDateTime
     Ag.printAggregation
+    S.prettyPrintStringOperation
     \_ → "Count"
 
 printTransform ∷ Transform → String → String
@@ -71,12 +72,13 @@ printTransform =
   foldTransform
     (datePart ∘ DP.printDate)
     (datePart ∘ DP.printTime)
-    (datePart ∘ DP.printDateTime)
     aggregation
+    stringOp
     (const count)
   where
   count value = "COUNT(" <> value <> ")"
   datePart part value = "DATE_PART(\"" <> part <> "\", " <> value <> ")"
+  stringOp op value = S.prettyPrintStringOperation op <> "(" <> value <> ")"
   aggregation ag value = case ag of
     Ag.Minimum → "MIN(" <> value <> ")"
     Ag.Maximum → "MAX(" <> value <> ")"
@@ -90,15 +92,18 @@ timeTransforms ∷ Array Transform
 timeTransforms = TimePart <$> DP.timeParts
 
 dateTimeTransforms ∷ Array Transform
-dateTimeTransforms = DateTimePart <$> DP.dateTimeParts
+dateTimeTransforms = dateTransforms <> timeTransforms
 
 aggregationTransforms ∷ Array Transform
 aggregationTransforms = Aggregation <$> Ag.allAggregations
 
+stringTransforms ∷ Array Transform
+stringTransforms = String <$> S.stringOperations
+
 axisTransforms ∷ Ax.AxisType → Array Transform
 axisTransforms axis = Array.cons Count case axis of
   Ax.Measure → aggregationTransforms
-  Ax.Category → mempty
+  Ax.Category → stringTransforms
   Ax.Date → dateTransforms
   Ax.Time → timeTransforms
   Ax.DateTime → dateTimeTransforms
@@ -110,8 +115,8 @@ instance encodeJsonTransform ∷ EncodeJson Transform where
   encodeJson = case _ of
     DatePart value → "type" := "date" ~> "value" := value ~> jsonEmptyObject
     TimePart value → "type" := "time" ~> "value" := value ~> jsonEmptyObject
-    DateTimePart value → "type" := "datetime" ~> "value" := value ~> jsonEmptyObject
     Aggregation value → "type" := "aggregation" ~> "value" := value ~> jsonEmptyObject
+    String value → "type" := "string" ~> "value" := value ~> jsonEmptyObject
     Count → "type" := "count" ~> jsonEmptyObject
 
 instance decodeJsonTransform ∷ DecodeJson Transform where
@@ -120,8 +125,8 @@ instance decodeJsonTransform ∷ DecodeJson Transform where
     obj .? "type" >>= case _ of
       "date" → DatePart <$> obj .? "value"
       "time" → TimePart <$> obj .? "value"
-      "datetime" → DateTimePart <$> obj .? "value"
       "aggregation" → Aggregation <$> obj .? "value"
+      "string" → String <$> obj .? "value"
       "count" → pure Count
       ty → throwError $ "Invalid transformation type: " <> ty
 
@@ -129,6 +134,6 @@ instance arbitraryTransform ∷ Arbitrary Transform where
   arbitrary = Gen.chooseInt 1 5 >>= case _ of
     1 → DatePart <$> arbitrary
     2 → TimePart <$> arbitrary
-    3 → DateTimePart <$> arbitrary
-    4 → Aggregation <$> arbitrary
+    3 → Aggregation <$> arbitrary
+    4 → String <$> arbitrary
     _ → pure Count
