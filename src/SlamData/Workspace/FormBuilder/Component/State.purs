@@ -19,7 +19,6 @@ module SlamData.Workspace.FormBuilder.Component.State
   , ItemId
   , emptyState
   , initialState
-
   , addItem
   , removeItem
   ) where
@@ -28,35 +27,32 @@ import SlamData.Prelude
 
 import Data.List as L
 
+import SlamData.Workspace.AccessType as AT
+
 type ItemId = Int
 
 type State =
-  { items :: L.List ItemId
-  , nextId :: ItemId
+  { items ∷ L.List ItemId
+  , nextId ∷ ItemId
+  , accessType ∷ AT.AccessType
   }
 
-
-emptyState :: State
+emptyState ∷ State
 emptyState =
-  { items : L.Nil
-  , nextId : 0
+  { items: L.Nil
+  , nextId: 0
+  , accessType: AT.Editable
   }
 
-initialState :: State
+initialState ∷ State
 initialState = addItem emptyState
 
-addItem
-  :: State
-  -> State
+addItem ∷ State → State
 addItem st =
   st { nextId = st.nextId + 1
      , items = st.items `L.snoc` st.nextId
      }
 
-removeItem
-  :: ItemId
-  -> State
-  -> State
+removeItem ∷ ItemId → State → State
 removeItem i st =
   st { items = L.filter (_ /= i) st.items }
-

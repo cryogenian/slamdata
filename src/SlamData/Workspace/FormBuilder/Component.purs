@@ -31,16 +31,16 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Render.CSS as RC
-import SlamData.Workspace.FormBuilder.Item.Component as Item
+import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
+import SlamData.Workspace.FormBuilder.Item.Component as Item
 
 -- | The query signature for the FormBuilder component
 data Query a
   = GetItems (L.List Item.Model → a)
   | SetItems (L.List Item.Model) a
   | HandleItem ItemSlot Item.Message a
-  | EnableInputs a
-  | DisableInputs a
+  | SetAccessType AT.AccessType a
 
 data Message = ItemUpdated
 
@@ -70,8 +70,10 @@ eval = case _ of
       H.query (ItemSlot i) $ H.request Item.GetModel
   SetItems items next → do
     -- clear out the existing children
-    H.put emptyState
-    U.replicateA (L.length items + 1) (H.modify addItem) ∷ DSL m (L.List Unit)
+    accessType ← H.gets _.accessType
+    H.put $ emptyState { accessType = accessType }
+    let numExtra = if AT.isEditable accessType then 1 else 0
+    U.replicateA (L.length items + numExtra) (H.modify addItem) ∷ DSL m (L.List Unit)
 
     let
       stepItem i m =
@@ -88,17 +90,9 @@ eval = case _ of
     addItemIfNecessary slotId
     H.raise ItemUpdated
     pure next
-  EnableInputs next → do
-    queryAllItems $ H.action Item.EnableInput
+  SetAccessType accessType next → do
+    H.modify (_ { accessType = accessType })
     pure next
-  DisableInputs next → do
-    queryAllItems $ H.action Item.DisableInput
-    pure next
-
-queryAllItems ∷ ∀ a m. Item.Query a → DSL m (L.List (Maybe a))
-queryAllItems query = do
-  items ← H.gets _.items
-  for items \item → H.query (ItemSlot item) query
 
 addItemIfNecessary ∷ ∀ m. ItemSlot → DSL m Unit
 addItemIfNecessary (ItemSlot i) = do
@@ -106,7 +100,7 @@ addItemIfNecessary (ItemSlot i) = do
   when (i == nextId - 1) $ H.modify addItem
 
 render ∷ ∀ m. State → HTML m
-render = renderTable <<< _.items
+render state = renderTable state.items
   where
     renderTable ∷ L.List ItemId → HTML m
     renderTable items =
@@ -125,4 +119,4 @@ render = renderTable <<< _.items
     renderItem ∷ ItemId → HTML m
     renderItem itemId =
       let slotId = ItemSlot itemId
-      in HH.slot slotId Item.component unit (HE.input (HandleItem slotId))
+      in HH.slot slotId Item.component (AT.isEditable state.accessType) (HE.input (HandleItem slotId))
