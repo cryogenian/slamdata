@@ -45,6 +45,7 @@ import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..), ColumnDimension)
+import SlamData.Workspace.Card.Setups.Transform as T
 
 import Global (readFloat)
 import Utils (hush)
@@ -155,9 +156,9 @@ render st =
     _ → default
 
   columnHeading default col = case col ^? D._value ∘ D._projection of
-    Just Count → "COUNT"
-    Just _     → default
-    Nothing    → ""
+    Just All → "*"
+    Just _   → default
+    Nothing  → ""
 
   renderRows cols =
     map HH.tr_ ∘ foldTree (renderLeaves cols) renderHeadings
@@ -176,7 +177,7 @@ render st =
 
   renderValue = case _, _ of
     0, D.Static _ → renderJson
-    0, D.Projection _ Count → J.foldJsonNumber "" (FN.format numFormatter)
+    0, D.Projection (Just T.Count) _ → J.foldJsonNumber "" (FN.format numFormatter)
     0, D.Projection _ (Column _) → foldJsonArray' renderJson (maybe "" renderJson ∘ flip Array.index 0)
     i, D.Projection _ (Column _) → foldJsonArray' (const "") (maybe "" renderJson ∘ flip Array.index i)
     _, _ → const ""

@@ -136,7 +136,7 @@ setGroupByTransform = modifyDimension _dimensions ∘ Lens.set (D._value ∘ D._
 selectColumnValues ∷ Axes → Cofree List ColumnNode
 selectColumnValues axes =
   groupColumns
-    (PTM.Count : List.fromFoldable
+    (PTM.All : List.fromFoldable
       (map PTM.Column
         (axes.category <> axes.value <> axes.time <> axes.date <> axes.datetime)))
 

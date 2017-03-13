@@ -39,19 +39,19 @@ groupColumns cs =
     tree = constructTree unfoldColumn root cs
   in
     discriminateNodes
-      if extract <$> CF.tail tree == pure Count
-      then CF.mkCofree root (CF.mkCofree Count L.Nil : CF.mkCofree root L.Nil : L.Nil)
+      if extract <$> CF.tail tree == pure All
+      then CF.mkCofree root (CF.mkCofree All L.Nil : CF.mkCofree root L.Nil : L.Nil)
       else tree
 
 unfoldColumn :: Column → Maybe (Tuple Column Column)
 unfoldColumn col = case col of
-  Count → Just $ Tuple Count $ Column J.JCursorTop
+  All → Just $ Tuple All $ Column J.JCursorTop
   Column value →
     unfoldJCursor value <#> \(Tuple _ rest) → Tuple col (Column rest)
 
 showColumn ∷ (J.JCursor → String) → Column → String
 showColumn f (Column value ) = f value
-showColumn _ Count = "COUNT"
+showColumn _ All = "*"
 
 flattenColumns ∷ ColumnNode → Column
 flattenColumns = either id id

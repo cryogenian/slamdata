@@ -19,6 +19,7 @@ module SlamData.Workspace.Card.Setups.Transform where
 import SlamData.Prelude
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), (.?), jsonEmptyObject)
+import Data.Array as Array
 import Data.Lens (Prism', prism')
 
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -33,6 +34,7 @@ data Transform
   | TimePart DP.TimePart
   | DateTimePart DP.DateTimePart
   | Aggregation Ag.Aggregation
+  | Count
 
 _Aggregation ∷ Prism' Transform Ag.Aggregation
 _Aggregation = prism' Aggregation case _ of
@@ -45,13 +47,15 @@ foldTransform
   → (DP.TimePart → r)
   → (DP.DateTimePart → r)
   → (Ag.Aggregation → r)
+  → (Unit → r)
   → Transform
   → r
-foldTransform a b c d = case _ of
+foldTransform a b c d e = case _ of
   DatePart z → a z
   TimePart z → b z
   DateTimePart z → c z
   Aggregation z → d z
+  Count → e unit
 
 prettyPrintTransform ∷ Transform → String
 prettyPrintTransform =
@@ -60,6 +64,7 @@ prettyPrintTransform =
     DP.prettyPrintTime
     DP.prettyPrintDateTime
     Ag.printAggregation
+    \_ → "Count"
 
 printTransform ∷ Transform → String → String
 printTransform =
@@ -68,21 +73,15 @@ printTransform =
     (datePart ∘ DP.printTime)
     (datePart ∘ DP.printDateTime)
     aggregation
+    (const count)
   where
-  datePart part value  = "DATE_PART(\"" <> part <> "\", " <> value <> ")"
+  count value = "COUNT(" <> value <> ")"
+  datePart part value = "DATE_PART(\"" <> part <> "\", " <> value <> ")"
   aggregation ag value = case ag of
     Ag.Minimum → "MIN(" <> value <> ")"
     Ag.Maximum → "MAX(" <> value <> ")"
     Ag.Average → "AVG(" <> value <> ")"
     Ag.Sum     → "SUM(" <> value <> ")"
-
-transformOptions ∷ Transform → Array Transform
-transformOptions =
-  foldTransform
-    (const dateTransforms)
-    (const timeTransforms)
-    (const dateTimeTransforms)
-    (const aggregationTransforms)
 
 dateTransforms ∷ Array Transform
 dateTransforms = DatePart <$> DP.dateParts
@@ -97,7 +96,7 @@ aggregationTransforms ∷ Array Transform
 aggregationTransforms = Aggregation <$> Ag.allAggregations
 
 axisTransforms ∷ Ax.AxisType → Array Transform
-axisTransforms = case _ of
+axisTransforms axis = Array.cons Count case axis of
   Ax.Measure → aggregationTransforms
   Ax.Category → mempty
   Ax.Date → dateTransforms
@@ -113,6 +112,7 @@ instance encodeJsonTransform ∷ EncodeJson Transform where
     TimePart value → "type" := "time" ~> "value" := value ~> jsonEmptyObject
     DateTimePart value → "type" := "datetime" ~> "value" := value ~> jsonEmptyObject
     Aggregation value → "type" := "aggregation" ~> "value" := value ~> jsonEmptyObject
+    Count → "type" := "count" ~> jsonEmptyObject
 
 instance decodeJsonTransform ∷ DecodeJson Transform where
   decodeJson json = do
@@ -122,11 +122,13 @@ instance decodeJsonTransform ∷ DecodeJson Transform where
       "time" → TimePart <$> obj .? "value"
       "datetime" → DateTimePart <$> obj .? "value"
       "aggregation" → Aggregation <$> obj .? "value"
+      "count" → pure Count
       ty → throwError $ "Invalid transformation type: " <> ty
 
 instance arbitraryTransform ∷ Arbitrary Transform where
-  arbitrary = Gen.chooseInt 1 4 >>= case _ of
+  arbitrary = Gen.chooseInt 1 5 >>= case _ of
     1 → DatePart <$> arbitrary
     2 → TimePart <$> arbitrary
     3 → DateTimePart <$> arbitrary
-    _ → Aggregation <$> arbitrary
+    4 → Aggregation <$> arbitrary
+    _ → pure Count

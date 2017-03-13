@@ -20,7 +20,9 @@ module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component
 
 import SlamData.Prelude
 
+import Data.Argonaut as J
 import Data.Array as Array
+import Data.Foldable as F
 import Data.Int (toNumber)
 import Data.Lens ((^?), (.~), _Just)
 
@@ -326,8 +328,8 @@ evalOptions = case _ of
       groupBy = st.dimensions ^? UL.lookup slot ∘ D._value
       selection = join $ groupBy ^? _Just ∘ D._transform
       options = case groupBy of
-        Just (D.Projection (Just t) _) → T.transformOptions t
-        Just (D.Projection _ cursor) → T.axisTransforms (Ax.axisType cursor st.axes)
+        Just (D.Projection mbTr cursor) →
+          transformOptions (T.axisTransforms (Ax.axisType cursor st.axes)) mbTr
         _ → mempty
       selecting = PS.SelectTransform (ForGroupBy slot) selection options
     H.modify _ { selecting = Just selecting }
@@ -335,8 +337,12 @@ evalOptions = case _ of
   Configure (ForColumn slot) next → do
     st ← H.get
     let
-      selection = st.columns ^? UL.lookup slot ∘ D._value ∘ D._transform ∘ _Just
-      options = T.aggregationTransforms
+      col = st.columns ^? UL.lookup slot ∘ D._value
+      selection = join $ col ^? _Just ∘ D._transform
+      options = case col of
+        Just (D.Projection mbTr (PTM.Column cursor)) →
+          transformOptions (T.axisTransforms (Ax.axisType cursor st.axes)) mbTr
+        _ → mempty
       selecting = PS.SelectTransform (ForColumn slot) selection options
     H.modify _ { selecting = Just selecting }
     pure next
@@ -440,7 +446,10 @@ evalOptions = case _ of
         st ← H.get
         let
           value' = flattenColumns value
-          cell = D.projectionWithCategory (PTM.defaultColumnCategory value') value'
+          cell = case value' of
+            PTM.All | not (rootAxes st.axes) →
+              D.Dimension (Just (D.Static "count")) (D.Projection (Just T.Count) PTM.All)
+            _ → D.projectionWithCategory (PTM.defaultColumnCategory value') value'
         H.modify _
           { fresh = st.fresh + 1
           , columns = Array.snoc st.columns (st.fresh × cell)
@@ -460,3 +469,19 @@ evalOptions = case _ of
               ForColumn slot → PS.setColumnTransform mbt slot
     H.raise CC.modelUpdate
     pure next
+
+transformOptions ∷ Array T.Transform → Maybe T.Transform → Array T.Transform
+transformOptions options = case _ of
+  Just t | not (F.elem t options) → Array.cons t options
+  _ → options
+
+rootAxes ∷ Ax.Axes → Boolean
+rootAxes ax =
+  onlyTop ax.value
+  || onlyTop ax.time
+  || onlyTop ax.category
+  || onlyTop ax.date
+  || onlyTop ax.datetime
+  where
+    onlyTop [ J.JCursorTop ] = true
+    onlyTop _ = false

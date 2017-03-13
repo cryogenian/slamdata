@@ -134,7 +134,8 @@ genPort isSimpleQuery model =
     Left  (D.Dimension _ (D.Static _)) → "static"
     Left  (D.Dimension _ (D.Projection _ value)) → topName value
     Right (D.Dimension _ (D.Static _)) → "static"
-    Right (D.Dimension _ (D.Projection _ PTM.Count)) → "count"
+    Right (D.Dimension _ (D.Projection (Just T.Count) PTM.All)) → "count"
+    Right (D.Dimension _ (D.Projection _ PTM.All)) → "all"
     Right (D.Dimension _ (D.Projection _ (PTM.Column value))) → topName value
 
   uniqueTag n taken a =
@@ -169,5 +170,5 @@ escapeDimension = case _ of
 escapeColumn ∷ ∀ a. D.Dimension a PTM.Column → Maybe T.Transform × String
 escapeColumn = case _ of
   D.Dimension _ (D.Static str) → Nothing × escapeString str
-  D.Dimension _ (D.Projection tr PTM.Count) → tr × "COUNT(*)"
+  D.Dimension _ (D.Projection tr PTM.All) → tr × "*"
   D.Dimension _ (D.Projection tr (PTM.Column cur)) → tr × "row" <> CEC.escapeCursor cur

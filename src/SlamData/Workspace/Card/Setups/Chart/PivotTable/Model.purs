@@ -37,7 +37,7 @@ type Model =
   , columns ∷ Array ColumnDimension
   }
 
-data Column = Count | Column JCursor
+data Column = All | Column JCursor
 
 type ColumnDimension = D.Dimension Void Column
 
@@ -98,7 +98,10 @@ decode js
         pure $ D.Dimension
           (Just (defaultColumnCategory value))
           (D.Projection (Just valueAggregation) value)
-      "count" → pure $ D.projection Count
+      "count" →
+        pure $ D.Dimension
+          (Just (D.Static "count"))
+          (D.Projection (Just T.Count) All)
       ty → throwError $ "Invalid column type: " <> ty
 
 derive instance eqColumn ∷ Eq Column
@@ -106,19 +109,19 @@ derive instance ordColumn ∷ Ord Column
 
 instance arbitraryColumn ∷ Arbitrary Column where
   arbitrary = arbitrary >>= if _
-    then pure Count
+    then pure All
     else Column ∘ runArbJCursor <$> arbitrary
 
 instance encodeJsonColumn ∷ EncodeJson Column where
   encodeJson = case _ of
-    Count → "type" := "count" ~> jsonEmptyObject
+    All → "type" := "all" ~> jsonEmptyObject
     Column j → "type" := "column" ~> "value" := j ~> jsonEmptyObject
 
 instance decodeJsonColumn ∷ DecodeJson Column where
   decodeJson json = do
     obj ← decodeJson json
     obj .? "type" >>= case _ of
-      "count" → pure Count
+      "all" → pure All
       "column" → Column <$> obj .? "value"
       ty → throwError $ "Invalid column type: " <> ty
 
@@ -139,5 +142,5 @@ defaultJCursorCategory = D.Static ∘ String.joinWith "_" ∘ go [] ∘ insideOu
 
 defaultColumnCategory ∷ ∀ a. Column → D.Category a
 defaultColumnCategory = case _ of
-  Count → D.Static "count"
+  All → D.Static "all"
   Column j → defaultJCursorCategory j
