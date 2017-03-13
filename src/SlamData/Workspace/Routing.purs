@@ -29,6 +29,7 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Foldable as F
 import Data.Json.Extended as EJSON
+import Data.Json.Extended.Signature.Render as EJR
 import Data.List as L
 import Data.Map as Map
 import Data.Maybe as M
@@ -40,6 +41,8 @@ import Data.String.Regex.Flags as RXF
 import Data.StrMap as SM
 
 import Global (encodeURIComponent)
+
+import Matryoshka (project)
 
 import Routing.Match (Match)
 import Routing.Match (eitherMatch, list) as Match
@@ -170,11 +173,11 @@ varMapsForURL = SM.fromFoldable ∘ map (bimap CID.toString (map go)) ∘ Map.to
     -- | the field type here... -gb
     fromMaybe q $ Str.stripPrefix (Str.Pattern "`") =<< Str.stripSuffix (Str.Pattern "`") q
 
-  goEJson ej = case EJSON.unroll ej of
+  goEJson ej = case project ej of
     EJSON.String str → str
-    EJSON.Timestamp str → str
-    EJSON.Date str → str
-    EJSON.Time str → str
+    EJSON.Timestamp dt → EJR.renderTimestamp dt
+    EJSON.Date d → EJR.renderDate d
+    EJSON.Time t → EJR.renderTime t
     EJSON.Interval str → str
     EJSON.ObjectId str → str
     _ → EJSON.renderEJson ej
