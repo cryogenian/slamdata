@@ -35,6 +35,7 @@ import SlamData.Render.Common as RC
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, showJCursor, showJCursorTip)
+import SlamData.Workspace.Card.Setups.Transform as T
 
 import Utils.DOM as DOM
 
@@ -294,7 +295,7 @@ dimensionButton opts =
   renderTransform t =
     HH.span
       [ HP.classes [ HH.ClassName "sd-dimension-button-transform" ] ]
-      [ HH.text (D.prettyPrintTransform t) ]
+      [ HH.text (T.prettyPrintTransform t) ]
 
   renderValue v =
     HH.span

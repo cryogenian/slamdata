@@ -20,7 +20,7 @@ import Data.Argonaut (JCursor)
 
 import DOM.Event.Types (Event)
 
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
+import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)

@@ -37,7 +37,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.Metric.Model (Model, MetricR, initialState, behaviour)
 import SlamData.Workspace.Card.Setups.Semantics (getValues)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Behaviour as B
 
 eval

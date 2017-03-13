@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Aggregation where
+module SlamData.Workspace.Card.Setups.Transform.Aggregation where
 
 import SlamData.Prelude
 

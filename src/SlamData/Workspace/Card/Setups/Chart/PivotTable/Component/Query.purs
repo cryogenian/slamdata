@@ -19,10 +19,10 @@ module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query where
 import Halogen.Component.Utils.Drag (DragEvent)
 
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
-import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionPicker.Column (ColumnNode)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.Transform as T
 
 import Utils.DOM as DOM
 
@@ -42,4 +42,4 @@ data Query a
   | OrderOut ForDimension a
   | HandleGroupByPicker (DPC.Message JCursorNode) a
   | HandleColumnPicker (DPC.Message ColumnNode) a
-  | HandleTransformPicker ForDimension (AS.Message D.Transform) a
+  | HandleTransformPicker ForDimension (AS.Message T.Transform) a

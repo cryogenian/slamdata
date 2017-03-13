@@ -31,7 +31,7 @@ import SlamData.Form.Select ((⊝))
 import SlamData.Form.Select as S
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Behaviour as SB
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, nonMaybeAggregationSelect)
+import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, nonMaybeAggregationSelect)
 
 type FunnelR =
   { category ∷ JCursor

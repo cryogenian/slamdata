@@ -39,6 +39,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Transform as T
 
 import Utils.Path (FilePath)
 
@@ -83,7 +84,7 @@ mkSql options resource =
     dimLen = Array.length port.dimensions
     dimVals = map escapeDimension <$> port.dimensions
     colVals = map escapeColumn <$> port.columns
-    groupBy = map (\(_ × tr × val) → maybe val (flip D.printTransform val) tr) dimVals
+    groupBy = map (\(_ × tr × val) → maybe val (flip T.printTransform val) tr) dimVals
     dims = map (\(n × tr × val) → groupByTransform tr val <> " AS " <> Port.escapeIdentifier n) dimVals
     cols =
       map
@@ -149,23 +150,23 @@ topName = case _ of
   J.JIndex _ cs → topName cs
   J.JCursorTop → "value"
 
-groupByTransform ∷ Maybe D.Transform → String → String
-groupByTransform (Just tr) b = D.printTransform tr b
+groupByTransform ∷ Maybe T.Transform → String → String
+groupByTransform (Just tr) b = T.printTransform tr b
 groupByTransform Nothing b   = b
 
-columnTransform ∷ Maybe D.Transform → String → String
-columnTransform (Just tr) b = D.printTransform tr b
+columnTransform ∷ Maybe T.Transform → String → String
+columnTransform (Just tr) b = T.printTransform tr b
 columnTransform Nothing b   = "[" <> b <> " ...]"
 
 escapeString ∷ String → String
 escapeString = J.printJson <<< J.encodeJson
 
-escapeDimension ∷ ∀ a. D.Dimension a J.JCursor → Maybe D.Transform × String
+escapeDimension ∷ ∀ a. D.Dimension a J.JCursor → Maybe T.Transform × String
 escapeDimension = case _ of
   D.Dimension _ (D.Static str) → Nothing × escapeString str
   D.Dimension _ (D.Projection tr cur) → tr × "row" <> CEC.escapeCursor cur
 
-escapeColumn ∷ ∀ a. D.Dimension a PTM.Column → Maybe D.Transform × String
+escapeColumn ∷ ∀ a. D.Dimension a PTM.Column → Maybe T.Transform × String
 escapeColumn = case _ of
   D.Dimension _ (D.Static str) → Nothing × escapeString str
   D.Dimension _ (D.Projection tr PTM.Count) → tr × "COUNT(*)"

@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Setups.Chart.Sankey.Component.Query where
 
 import Data.Argonaut (JCursor)
 
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
+import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)

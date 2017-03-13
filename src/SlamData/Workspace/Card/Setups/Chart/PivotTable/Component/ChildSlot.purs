@@ -21,10 +21,10 @@ import SlamData.Prelude
 import Halogen.Component.ChildPath (ChildPath, cp1, cp2, cp3)
 
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
-import SlamData.Workspace.Card.Setups.Dimension (Transform)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DP
 import SlamData.Workspace.Card.Setups.DimensionPicker.Column (ColumnNode)
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.Transform (Transform)
 
 type ChildSlot
   = Unit

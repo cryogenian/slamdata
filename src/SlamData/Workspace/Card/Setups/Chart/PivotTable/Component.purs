@@ -44,6 +44,7 @@ import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query (Query(..
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.State as PS
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Inputs as I
+import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
@@ -115,7 +116,7 @@ render st =
         { options
         , selection
         , title: "Choose transformation"
-        , label: D.prettyPrintTransform
+        , label: T.prettyPrintTransform
         }
         (Just ∘ right ∘ H.action ∘ HandleTransformPicker slot)
 
@@ -325,8 +326,8 @@ evalOptions = case _ of
       groupBy = st.dimensions ^? UL.lookup slot ∘ D._value
       selection = join $ groupBy ^? _Just ∘ D._transform
       options = case groupBy of
-        Just (D.Projection (Just t) _) → D.transformOptions t
-        Just (D.Projection _ cursor) → D.axisTransforms (Ax.axisType cursor st.axes)
+        Just (D.Projection (Just t) _) → T.transformOptions t
+        Just (D.Projection _ cursor) → T.axisTransforms (Ax.axisType cursor st.axes)
         _ → mempty
       selecting = PS.SelectTransform (ForGroupBy slot) selection options
     H.modify _ { selecting = Just selecting }
@@ -335,7 +336,7 @@ evalOptions = case _ of
     st ← H.get
     let
       selection = st.columns ^? UL.lookup slot ∘ D._value ∘ D._transform ∘ _Just
-      options = D.aggregationTransforms
+      options = T.aggregationTransforms
       selecting = PS.SelectTransform (ForColumn slot) selection options
     H.modify _ { selecting = Just selecting }
     pure next

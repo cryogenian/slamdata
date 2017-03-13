@@ -26,6 +26,7 @@ import Data.Newtype (un)
 import Data.String as String
 
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Transform as T
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -93,7 +94,7 @@ decode js
     obj .? "columnType" >>= case _ of
       "value" → do
         value ← Column <$> obj .? "value"
-        valueAggregation ← D.Aggregation <$> obj .? "valueAggregation"
+        valueAggregation ← T.Aggregation <$> obj .? "valueAggregation"
         pure $ D.Dimension
           (Just (defaultColumnCategory value))
           (D.Projection (Just valueAggregation) value)
@@ -126,7 +127,7 @@ isSimple { dimensions, columns } =
   Array.null dimensions && F.all simpleCol columns
   where
   simpleCol = case _ of
-    D.Dimension _ (D.Projection (Just (D.Aggregation _)) _) → false
+    D.Dimension _ (D.Projection (Just (T.Aggregation _)) _) → false
     _ → true
 
 defaultJCursorCategory ∷ ∀ a. JCursor → D.Category a

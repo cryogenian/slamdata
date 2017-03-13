@@ -30,7 +30,7 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (parseColorScheme)
 
 import SlamData.Form.Select as S
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), printChartType)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Chart.Pie.Model (PieR)
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model (BarR)
 import SlamData.Workspace.Card.Setups.Chart.Line.Model (LineR)

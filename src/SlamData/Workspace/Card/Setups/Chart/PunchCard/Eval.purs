@@ -44,7 +44,7 @@ import Global (infinity)
 import SlamData.Quasar.Class (class QuasarDSL )
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(PunchCard))
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)

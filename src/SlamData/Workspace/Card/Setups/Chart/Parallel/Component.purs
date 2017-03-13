@@ -36,7 +36,7 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation)
+import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
 
 import SlamData.Workspace.Card.Setups.Axis (eqAxes, initialAxes)
 import SlamData.Workspace.Card.Setups.CSS as CSS

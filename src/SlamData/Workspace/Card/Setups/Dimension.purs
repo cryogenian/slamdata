@@ -19,12 +19,11 @@ module SlamData.Workspace.Card.Setups.Dimension where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), (.?), jsonEmptyObject)
-import Data.Lens (Lens', lens, Traversal', wander, Prism', prism')
+import Data.Lens (Lens', lens, Traversal', wander)
 import Data.Newtype (un)
 
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.DatePart as DP
+import SlamData.Workspace.Card.Setups.Transform (Transform(..))
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -37,12 +36,6 @@ data Dimension a b
 data Category p
   = Static String
   | Projection (Maybe Transform) p
-
-data Transform
-  = DatePart DP.DatePart
-  | TimePart DP.TimePart
-  | DateTimePart DP.DateTimePart
-  | Aggregation Ag.Aggregation
 
 projection ∷ ∀ a b. b → Dimension a b
 projection = Dimension Nothing <<< Projection Nothing
@@ -73,11 +66,6 @@ _projection = wander \f → case _ of
   Projection t p → Projection t <$> f p
   c → pure c
 
-_Aggregation ∷ Prism' Transform Ag.Aggregation
-_Aggregation = prism' Aggregation case _ of
-  Aggregation a → Just a
-  _ → Nothing
-
 printCategory ∷ ∀ p. (p → String) → Category p → String
 printCategory f = case _ of
   Static str → str
@@ -88,78 +76,11 @@ isStatic = case _ of
   Static _ → true
   _ → false
 
-foldTransform
-  ∷ ∀ r
-  . (DP.DatePart → r)
-  → (DP.TimePart → r)
-  → (DP.DateTimePart → r)
-  → (Ag.Aggregation → r)
-  → Transform
-  → r
-foldTransform a b c d = case _ of
-  DatePart z → a z
-  TimePart z → b z
-  DateTimePart z → c z
-  Aggregation z → d z
-
-prettyPrintTransform ∷ Transform → String
-prettyPrintTransform =
-  foldTransform
-    DP.prettyPrintDate
-    DP.prettyPrintTime
-    DP.prettyPrintDateTime
-    Ag.printAggregation
-
-printTransform ∷ Transform → String → String
-printTransform =
-  foldTransform
-    (datePart ∘ DP.printDate)
-    (datePart ∘ DP.printTime)
-    (datePart ∘ DP.printDateTime)
-    aggregation
-  where
-  datePart part value  = "DATE_PART(\"" <> part <> "\", " <> value <> ")"
-  aggregation ag value = case ag of
-    Ag.Minimum → "MIN(" <> value <> ")"
-    Ag.Maximum → "MAX(" <> value <> ")"
-    Ag.Average → "AVG(" <> value <> ")"
-    Ag.Sum     → "SUM(" <> value <> ")"
-
-transformOptions ∷ Transform → Array Transform
-transformOptions =
-  foldTransform
-    (const dateTransforms)
-    (const timeTransforms)
-    (const dateTimeTransforms)
-    (const aggregationTransforms)
-
-dateTransforms ∷ Array Transform
-dateTransforms = DatePart <$> DP.dateParts
-
-timeTransforms ∷ Array Transform
-timeTransforms = TimePart <$> DP.timeParts
-
-dateTimeTransforms ∷ Array Transform
-dateTimeTransforms = DateTimePart <$> DP.dateTimeParts
-
-aggregationTransforms ∷ Array Transform
-aggregationTransforms = Aggregation <$> Ag.allAggregations
-
-axisTransforms ∷ Ax.AxisType → Array Transform
-axisTransforms = case _ of
-  Ax.Measure → aggregationTransforms
-  Ax.Category → mempty
-  Ax.Date → dateTransforms
-  Ax.Time → timeTransforms
-  Ax.DateTime → dateTimeTransforms
-
 derive instance eqDimension ∷ (Eq a, Eq b) ⇒ Eq (Dimension a b)
 derive instance eqCategory ∷ Eq p ⇒ Eq (Category p)
-derive instance eqTransform ∷ Eq Transform
 
 derive instance ordDimension ∷ (Ord a, Ord b) ⇒ Ord (Dimension a b)
 derive instance ordCategory ∷ Ord p ⇒ Ord (Category p)
-derive instance ordTransform ∷ Ord Transform
 
 derive instance functorDimension ∷ Functor (Dimension a)
 derive instance functorCategory ∷ Functor Category
@@ -175,13 +96,6 @@ instance encodeJsonCategory ∷ EncodeJson p ⇒ EncodeJson (Category p) where
     Static value → "type" := "static" ~> "value" := value ~> jsonEmptyObject
     Projection transform value → "type" := "projection" ~> "value" := value ~> "transform" := transform ~> jsonEmptyObject
 
-instance encodeJsonTransform ∷ EncodeJson Transform where
-  encodeJson = case _ of
-    DatePart value → "type" := "date" ~> "value" := value ~> jsonEmptyObject
-    TimePart value → "type" := "time" ~> "value" := value ~> jsonEmptyObject
-    DateTimePart value → "type" := "datetime" ~> "value" := value ~> jsonEmptyObject
-    Aggregation value → "type" := "aggregation" ~> "value" := value ~> jsonEmptyObject
-
 instance decodeJsonDimension ∷ (DecodeJson a, DecodeJson b) ⇒ DecodeJson (Dimension a b) where
   decodeJson json = do
     obj ← decodeJson json
@@ -195,16 +109,6 @@ instance decodeJsonCategory ∷ DecodeJson p ⇒ DecodeJson (Category p) where
       "projection" → Projection <$> obj .? "transform" <*> obj .? "value"
       ty → throwError $ "Invalid category type: " <> ty
 
-instance decodeJsonTransform ∷ DecodeJson Transform where
-  decodeJson json = do
-    obj ← decodeJson json
-    obj .? "type" >>= case _ of
-      "date" → DatePart <$> obj .? "value"
-      "time" → TimePart <$> obj .? "value"
-      "datetime" → DateTimePart <$> obj .? "value"
-      "aggregation" → Aggregation <$> obj .? "value"
-      ty → throwError $ "Invalid transformation type: " <> ty
-
 instance arbitraryDimension ∷ (Arbitrary a, Arbitrary b) ⇒ Arbitrary (Dimension a b) where
   arbitrary = Dimension <$> arbitrary <*> arbitrary
 
@@ -212,13 +116,6 @@ instance arbitraryCategory ∷ Arbitrary p ⇒ Arbitrary (Category p) where
   arbitrary = Gen.chooseInt 1 2 >>= case _ of
     1 → Static <$> arbitrary
     _ → Projection <$> arbitrary <*> arbitrary
-
-instance arbitraryTransform ∷ Arbitrary Transform where
-  arbitrary = Gen.chooseInt 1 4 >>= case _ of
-    1 → DatePart <$> arbitrary
-    2 → TimePart <$> arbitrary
-    3 → DateTimePart <$> arbitrary
-    _ → Aggregation <$> arbitrary
 
 newtype DimensionWithStaticCategory a = DimensionWithStaticCategory (Dimension Void a)
 

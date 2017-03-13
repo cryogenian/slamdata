@@ -45,7 +45,7 @@ import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRectangula
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (Model, HeatmapR, initialState, behaviour)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getColorScheme)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Heatmap))
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Eval.Monad as CEM

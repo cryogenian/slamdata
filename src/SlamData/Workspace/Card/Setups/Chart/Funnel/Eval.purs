@@ -43,7 +43,7 @@ import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (Model, FunnelR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Funnel))
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.Monad as CEM
