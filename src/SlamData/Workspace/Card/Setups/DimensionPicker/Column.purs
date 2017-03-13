@@ -45,7 +45,7 @@ groupColumns cs =
 
 unfoldColumn :: Column → Maybe (Tuple Column Column)
 unfoldColumn col = case col of
-  Count → Nothing
+  Count → Just $ Tuple Count $ Column J.JCursorTop
   Column value →
     unfoldJCursor value <#> \(Tuple _ rest) → Tuple col (Column rest)
 
