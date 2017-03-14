@@ -23,6 +23,7 @@ import Data.Array as Array
 import Data.Lens (Lens', lens, Traversal', wander)
 import Data.Newtype (un)
 import Data.String as String
+import Data.Traversable (sequenceDefault)
 
 import SlamData.Workspace.Card.Setups.Transform (Transform(..))
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
@@ -88,8 +89,49 @@ derive instance ordCategory ∷ Ord p ⇒ Ord (Category p)
 derive instance functorDimension ∷ Functor (Dimension a)
 derive instance functorCategory ∷ Functor Category
 
+instance applyCategory ∷ Apply Category where
+  apply (Static s) _ = Static s
+  apply _ (Static s) = Static s
+  apply (Projection a f) (Projection b v) = Projection (a <|> b) $ f v
+
+instance applicativeCategory ∷ Applicative Category where
+  pure s = Projection Nothing s
+
+instance applyDimension ∷ Apply (Dimension a) where
+  apply (Dimension a f) (Dimension b v) =
+    Dimension (a <|> b) $ apply f v
+
+instance applicativeDimension ∷ Applicative (Dimension a) where
+  pure a = Dimension Nothing $ pure a
+
 instance bifunctorDimension ∷ Bifunctor Dimension where
   bimap f g (Dimension a b) = Dimension (map f <$> a) (g <$> b)
+
+instance foldableCategory ∷ Foldable Category where
+  foldMap f = case _ of
+    Static _ → mempty
+    Projection _ v → f v
+  foldl f acc = case _ of
+    Static _ → acc
+    Projection _ v → f acc v
+  foldr f acc = case _ of
+    Static _ → acc
+    Projection _ v → f v acc
+
+instance traversableCategory ∷ Traversable Category where
+  traverse f = case _ of
+    Static s → pure $ Static s
+    Projection t v → Projection t <$> f v
+  sequence = sequenceDefault
+
+instance foldableDimension ∷ Foldable (Dimension a) where
+  foldMap f (Dimension _ pr) = foldMap f pr
+  foldl f acc (Dimension _ pr) = foldl f acc pr
+  foldr f acc (Dimension _ pr) = foldr f acc pr
+
+instance traversableDimension ∷ Traversable (Dimension a) where
+  traverse f (Dimension a pr) = Dimension a <$> traverse f pr
+  sequence = sequenceDefault
 
 instance encodeJsonDimension ∷ (EncodeJson a, EncodeJson b) ⇒ EncodeJson (Dimension a b) where
   encodeJson (Dimension category value) = "value" := value ~> "category" := category ~> jsonEmptyObject

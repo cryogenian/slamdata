@@ -20,20 +20,23 @@ import Data.Argonaut (JCursor)
 
 import DOM.Event.Types (Event)
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
+import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
+--import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
 import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.Transform as T
 
 data Selection f
   = Category (f JCursor)
   | Value (f JCursor)
-  | ValueAgg (f Aggregation)
   | Stack (f JCursor)
   | Parallel (f JCursor)
+
 
 data Query a
   = SetAxisLabelAngle String a
   | Select (Selection SelectAction) a
   | PreventDefault Event a
   | HandleDPMessage (Message JCursorNode) a
+  | HandleTransformPicker (AS.Message T.Transform) a

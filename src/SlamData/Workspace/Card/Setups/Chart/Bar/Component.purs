@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (.~))
+import Data.Lens ((^.), (^?)) -- ((^?), (?~), (.~), (^.))
 
 import DOM.Event.Event as DEE
 
@@ -42,8 +42,9 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 
 import SlamData.Workspace.Card.Setups.CSS as CSS
+import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor ({-flattenJCursors, -} showJCursor)
 import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.State as ST
@@ -51,9 +52,11 @@ import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as M
 import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Setups.Inputs as I
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
-type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
-type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
 barBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 barBuilderComponent =
@@ -75,10 +78,21 @@ render state =
     , HH.hr_
     , row [ renderAxisLabelAngle state ]
     , renderPicker state
+    , renderTransform state
     ]
 
 selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
 selecting f q _ = right (Q.Select (f q) unit)
+
+renderTransform ∷ ST.State → HTML
+renderTransform state =
+  HH.slot' CS.cpTransform unit AS.component
+    { options: T.aggregationTransforms
+    , selection: Just $ T.Aggregation Ag.Sum
+    , title: "Choose transformation"
+    , label: T.prettyPrintTransform
+    }
+    (Just ∘ right ∘ H.action ∘ Q.HandleTransformPicker)
 
 renderPicker ∷ ST.State → HTML
 renderPicker state = case state.picker of
@@ -92,55 +106,63 @@ renderPicker state = case state.picker of
             Q.Value _    → "Choose measure"
             Q.Stack _    → "Choose stack"
             Q.Parallel _ → "Choose parallel"
-            _ → ""
-    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
+    in HH.slot' CS.cpPicker unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
 
 renderCategory ∷ ST.State → HTML
 renderCategory state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Category") (selecting Q.Category))
-        state.category
-    ]
-
+  I.dimensionButton
+    { configurable: false
+    , dimension: sequence $ state.category ^. _value
+    , showLabel: absurd
+    , showDefaultLabel: foldMap showJCursor
+    , showValue: foldMap showJCursor
+    , onLabelChange: const Nothing
+    , onDismiss: const Nothing
+    , onConfigure: const Nothing
+    , onMouseDown: const Nothing
+    }
 
 renderValue ∷ ST.State → HTML
 renderValue state =
-  HH.form
-    [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerWithSelect
-        (BCI.secondary (Just "Measure") (selecting Q.Value))
-        state.value
-        (BCI.aggregation (Just "Measure Aggregation") (selecting Q.ValueAgg))
-        state.valueAgg
-    ]
+  I.dimensionButton
+    { configurable: true
+    , dimension: sequence $ state.value ^. _value
+    , showLabel: absurd
+    , showDefaultLabel: foldMap showJCursor
+    , showValue: foldMap showJCursor
+    , onLabelChange: const Nothing
+    , onDismiss: const Nothing
+    , onConfigure: const Nothing
+    , onMouseDown: const Nothing
+    }
 
 renderStack ∷ ST.State → HTML
 renderStack state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Stack") (selecting Q.Stack))
-        state.stack
-    ]
+  I.dimensionButton
+    { configurable: false
+    , dimension: sequence $ state.stack ^. _value
+    , showLabel: absurd
+    , showDefaultLabel: foldMap showJCursor
+    , showValue: foldMap showJCursor
+    , onLabelChange: const Nothing
+    , onDismiss: const Nothing
+    , onConfigure: const Nothing
+    , onMouseDown: const Nothing
+    }
 
 renderParallel ∷ ST.State → HTML
 renderParallel state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
-        state.parallel
-    ]
+  I.dimensionButton
+    { configurable: false
+    , dimension: sequence $ state.parallel ^. _value
+    , showLabel: absurd
+    , showDefaultLabel: foldMap showJCursor
+    , showValue: foldMap showJCursor
+    , onLabelChange: const Nothing
+    , onDismiss: const Nothing
+    , onConfigure: const Nothing
+    , onMouseDown: const Nothing
+    }
 
 renderAxisLabelAngle ∷ ST.State → HTML
 renderAxisLabelAngle state =
@@ -203,35 +225,31 @@ setupEval = case _ of
       H.raise CC.modelUpdate
     pure next
   Q.Select sel next → do
-    case sel of
-      Q.Category a → updatePicker ST._category Q.Category a
-      Q.Value a    → updatePicker ST._value Q.Value a
-      Q.ValueAgg a → updateSelect ST._valueAgg a
-      Q.Stack a    → updatePicker ST._stack Q.Stack a
-      Q.Parallel a → updatePicker ST._parallel Q.Parallel a
+--    case sel of
+--      Q.Category a → updatePicker ST._category Q.Category a
+--      Q.Value a    → updatePicker ST._value Q.Value a
+--      Q.Stack a    → updatePicker ST._stack Q.Stack a
+--      Q.Parallel a → updatePicker ST._parallel Q.Parallel a
     pure next
   Q.HandleDPMessage m next → case m of
     DPC.Dismiss → do
       H.modify _{ picker = Nothing }
       pure next
     DPC.Confirm value → do
-      st ← H.get
-      let
-        value' = flattenJCursors value
-      for_ st.picker \{ select } → case select of
-        Q.Category _ → H.modify (ST._category ∘ _value ?~ value')
-        Q.Value _    → H.modify (ST._value ∘ _value ?~ value')
-        Q.Stack _    → H.modify (ST._stack ∘ _value ?~ value')
-        Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ value')
-        _ → pure unit
+--      st ← H.get
+--      let
+--        value' = flattenJCursors value
+--      for_ st.picker \{ select } → case select of
+--        Q.Category _ → H.modify (ST._category ∘ _value ?~ value')
+--        Q.Value _    → H.modify (ST._value ∘ _value ?~ value')
+--        Q.Stack _    → H.modify (ST._stack ∘ _value ?~ value')
+--        Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ value')
       H.modify _ { picker = Nothing }
       raiseUpdate
       pure next
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-  updateSelect l = case _ of
-    BCI.Open _    → pure unit
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+--  where
+--  updatePicker l q = case _ of
+--    BCI.Open opts → H.modify (ST.showPicker q opts)
+--    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+  Q.HandleTransformPicker _ next →
+    pure next
