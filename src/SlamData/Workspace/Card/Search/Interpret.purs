@@ -217,33 +217,6 @@ needUnq s =
   || s == "true"
   || s == "false"
 
-needDate ∷ String → Boolean
-needDate = RX.test dateRegex
-  where
-    dateRegex =
-      unsafePartial fromRight $
-        RX.regex
-          """^(((19|20)([2468][048]|[13579][26]|0[48])|2000)[-]02[-]29|((19|20)[0-9]{2}[-](0[4678]|1[02])[-](0[1-9]|[12][0-9]|30)|(19|20)[0-9]{2}[-](0[1359]|11)[-](0[1-9]|[12][0-9]|3[01])|(19|20)[0-9]{2}[-]02[-](0[1-9]|1[0-9]|2[0-8])))$"""
-          RXF.noFlags
-
-needTime ∷ String → Boolean
-needTime = RX.test timeRegex
-  where
-    timeRegex =
-      unsafePartial fromRight $
-        RX.regex
-          "^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
-          RXF.noFlags
-
-needDateTime ∷ String → Boolean
-needDateTime = RX.test dtRegex
-  where
-    dtRegex =
-      unsafePartial fromRight $
-        RX.regex
-          "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
-          RXF.noFlags
-
 needInterval ∷ String → Boolean
 needInterval = RX.test intervalRegex
   where

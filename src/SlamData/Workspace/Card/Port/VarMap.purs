@@ -36,7 +36,7 @@ import Data.Argonaut.Core (jsonSingletonObject)
 import Data.Argonaut.Decode (class DecodeJson, decodeJson)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 
-import Matryoshka (project)
+import Matryoshka (Algebra, cata)
 
 import Text.Markdown.SlamDown.Syntax.Value as SDV
 
@@ -108,12 +108,8 @@ displayVarMapValue val =
     SetLiteral as → "(" <> F.intercalate ", " (displayVarMapValue <$> as) <> ")"
     QueryExpr str → str
 
-displayEJsonF
-  ∷ ∀ a
-  . (a → String)
-  → EJSON.EJsonF a
-  → String
-displayEJsonF rec =
+displayEJsonF ∷ Algebra EJSON.EJsonF String
+displayEJsonF =
   case _ of
     EJSON.Null → "null"
     EJSON.Boolean b → if b then "true" else "false"
@@ -125,48 +121,17 @@ displayEJsonF rec =
     EJSON.Date d → EJR.renderDate d
     EJSON.Interval str → str
     EJSON.ObjectId str → str
-    EJSON.Array ds → squares $ commaSep ds
-    EJSON.Map ds → braces $ renderPairs ds
+    EJSON.Array ds → "[" <> commaSep ds <> "]"
+    EJSON.Map (EJSON.EJsonMap ds) → "(" <> commaSep (map renderPair ds) <> ")"
   where
-    commaSep
-      ∷ ∀ f
-      . (Functor f, F.Foldable f)
-      ⇒ f a
-      → String
-    commaSep =
-      F.intercalate "," <<<
-        map rec
-
-    renderPairs
-      ∷ Array (Tuple a a)
-      → String
-    renderPairs =
-      F.intercalate ", " <<<
-        map \(Tuple k v) →
-          rec k <> ": " <> rec v
-
-    parens
-      ∷ String
-      → String
-    parens str =
-      "(" <> str <> ")"
-
-    squares
-      ∷ String
-      → String
-    squares str =
-      "[" <> str <> "]"
-
-    braces
-      ∷ String
-      → String
-    braces str =
-      "{" <> str <> "}"
+  commaSep ∷ Array String → String
+  commaSep = F.intercalate ","
+  renderPair ∷ Tuple String String → String
+  renderPair (Tuple k v) = k <> ": " <> v
 
 -- | A more readable, but forgetful renderer
 displayEJson ∷ EJSON.EJson → String
-displayEJson c = displayEJsonF displayEJson (project c)
-
+displayEJson = cata displayEJsonF
 
 instance valueVarMapValue ∷ SDV.Value VarMapValue where
   stringValue = Literal <<< EJSON.string
