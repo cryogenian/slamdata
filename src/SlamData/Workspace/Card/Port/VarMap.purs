@@ -122,7 +122,7 @@ displayEJsonF =
     EJSON.Interval str → str
     EJSON.ObjectId str → str
     EJSON.Array ds → "[" <> commaSep ds <> "]"
-    EJSON.Map (EJSON.EJsonMap ds) → "(" <> commaSep (map renderPair ds) <> ")"
+    EJSON.Map (EJSON.EJsonMap ds) → "{ " <> commaSep (map renderPair ds) <> " }"
   where
   commaSep ∷ Array String → String
   commaSep = F.intercalate ","
