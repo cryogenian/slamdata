@@ -19,16 +19,22 @@ module Utils where
 import SlamData.Prelude
 
 import Data.Argonaut as J
+import Data.Array as Array
+import Data.Int as Int
 import Data.String as S
 
-import Global (readFloat, isNaN)
+import Global (readFloat, isNaN, isFinite)
 
 stringToNumber ∷ String → Maybe Number
 stringToNumber s =
-  let n = readFloat s in
-  if isNaN n
-  then Nothing
-  else Just n
+  if isNaN n || not isFinite n
+    then Nothing
+    else Just n
+  where
+  n = readFloat s
+
+stringToInt ∷ String → Maybe Int
+stringToInt = map Int.floor ∘ stringToNumber
 
 singletonValue' ∷ ∀ a m. (Foldable m) ⇒ m a → Either Int (Maybe a)
 singletonValue' =
@@ -52,6 +58,17 @@ replicate n m = go n mempty
   where
   go i acc | i <= 0 = acc
   go i acc = go (i - 1) (acc <> m)
+
+chunksOf ∷ ∀ a. Int → Array a → Array (Array a)
+chunksOf = go []
+  where
+  go ∷ Array (Array a) → Int → Array a → Array (Array a)
+  go acc n [] = acc
+  go acc n as =
+    let ch = Array.take n as
+    in if Array.length ch ≡ n
+        then go (Array.snoc acc ch) n (Array.drop n as)
+        else Array.snoc acc ch
 
 hush ∷ ∀ a b. Either a b → Maybe b
 hush = either (\_ → Nothing) (Just)

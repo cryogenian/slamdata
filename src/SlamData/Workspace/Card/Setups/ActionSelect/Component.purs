@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.ActionSelect.Component where
+module SlamData.Workspace.Card.Setups.ActionSelect.Component
+  ( module SlamData.Workspace.Card.Setups.ActionSelect.Component
+  , module ASO
+  ) where
 
 import SlamData.Prelude
 import Data.Array as Array
@@ -22,93 +25,160 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Component.ChildPath (cpL, cpR)
 import SlamData.Monad (Slam)
 import SlamData.ActionList.Component as ALC
 import SlamData.Workspace.Card.Setups.Dialog as CSD
+import SlamData.Workspace.Card.Setups.ActionSelect.Option as ASO
 
 data Query s a
   = Init a
   | HandleSelect (ALC.Message (Maybe s)) a
+  | HandleSelecting (Maybe s) a
   | HandleConfirm (Maybe s) a
   | HandleDismiss a
+  | HandleConfirmSelecting s a
+  | HandleDismissSelecting a
   | UpdateDimensions a
 
 data Message s
   = Dismiss
   | Confirm (Maybe s)
 
-type State s =
+type State' s r =
   { options ∷ Array s
-  , selection ∷ Maybe s
+  , selection ∷ Maybe (s × s)
   , title ∷ String
-  , label ∷ s → String
+  , toSelection ∷ s → Maybe (ASO.Option s Slam)
+  , toLabel ∷ s → String
+  | r
   }
 
-type DSL s = H.ParentDSL (State s) (Query s) (ALC.Query (Maybe s)) Unit (Message s) Slam
-type HTML s = H.ParentHTML (Query s) (ALC.Query (Maybe s)) Unit Slam
+type Props s = State' s ()
+
+type State s = State' s
+  ( selecting ∷ Maybe (Selecting s)
+  , previousSelection ∷ Maybe (s × s)
+  )
+
+type Selecting s =
+  { component ∷ ASO.Option s Slam
+  , value ∷ Maybe s
+  , option ∷ s
+  }
+
+type ChildQuery s = (ALC.Query (Maybe s)) ⨁ Const Void
+type ChildSlot = Unit ⊹ Unit
+
+type DSL s = H.ParentDSL (State s) (Query s) (ChildQuery s) ChildSlot (Message s) Slam
+type HTML s = H.ParentHTML (Query s) (ChildQuery s) ChildSlot Slam
 
 selectConf ∷ ∀ s. Eq s ⇒ ALC.MkConf (Maybe s)
-selectConf = map updateConf <$> ALC.defaultConf
-  where
-  updateConf conf = conf
-    { buttons = _ { presentation = ALC.TextOnly } <$> conf.buttons
-    , classes = []
-    }
+selectConf = map (_ { classes = [] }) <$> ALC.defaultConf
 
-component ∷ ∀ s. Eq s ⇒ H.Component HH.HTML (Query s) (State s) (Message s) Slam
+component ∷ ∀ s. Eq s ⇒ H.Component HH.HTML (Query s) (Props s) (Message s) Slam
 component =
   H.lifecycleParentComponent
     { render
     , eval
-    , initialState: id
+    , initialState
     , receiver: const Nothing
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
   where
+  initialState ∷ Props s → State s
+  initialState { options, selection, title, toSelection, toLabel } =
+    { options
+    , selection
+    , title
+    , toSelection
+    , toLabel
+    , selecting: Nothing
+    , previousSelection: Nothing
+    }
+
   render ∷ State s → HTML s
-  render st =
+  render st = case st.selecting of
+    Nothing  → renderSelect st
+    Just sel → renderSelecting st sel
+
+  renderSelect ∷ State s → HTML s
+  renderSelect st =
     let
       isNull = Array.null st.options
       content =
         if isNull
           then [ HH.p [ HP.classes [ HH.ClassName "no-options" ] ] [ HH.text "No available options" ] ]
-          else [ HH.slot unit (ALC.actionListComp selectConf []) unit (HE.input HandleSelect) ]
+          else [ HH.slot' cpL unit (ALC.actionListComp selectConf []) unit (HE.input HandleSelect) ]
     in
       CSD.pickerDialog
         { onDismiss: HandleDismiss
         , onConfirm: HandleConfirm
-        , selection: Just st.selection
+        , selection: Just (snd <$> st.selection)
         , isSelectable: const (not isNull)
         , classes: [ HH.ClassName "sd-action-select" ]
         , title: [ HH.text st.title ]
         , content
         }
 
+  renderSelecting ∷ State s → Selecting s → HTML s
+  renderSelecting st selecting =
+    CSD.pickerDialog
+      { onDismiss: HandleDismissSelecting
+      , onConfirm: HandleConfirmSelecting
+      , selection: selecting.value
+      , isSelectable: const true
+      , classes: []
+      , title: [ HH.text (st.toLabel selecting.option) ]
+      , content: [ HH.slot' cpR unit (unwrap selecting.component) selecting.value (HE.input HandleSelecting) ]
+      }
+
   eval ∷ Query s ~> DSL s
   eval = case _ of
     Init next → do
       updateActions
       pure next
-    HandleSelect (ALC.Selected selection) next → do
+    HandleSelect (ALC.Selected mbOption) next → do
       st ← H.get
-      if st.selection ≡ selection
-        then H.modify _ { selection = Nothing }
-        else H.modify _ { selection = selection }
+      let
+        prev = fst <$> st.previousSelection
+        curr = fst <$> st.selection
+      case mbOption of
+        Just option | curr ≠ mbOption →
+          case st.toSelection option of
+            Nothing → H.modify _ { selection = Just (option × option) }
+            Just comp → do
+              let
+                value = fromMaybe option do
+                  guard (prev ≡ mbOption)
+                  snd <$> st.previousSelection
+                selecting = { option, value: Just value, component: comp }
+              H.modify _ { selecting = Just selecting }
+        _ → clearSelection
       updateActions
+      pure next
+    HandleSelecting value next → do
+      H.modify \st → st { selecting = _ { value = value } <$> st.selecting }
       pure next
     HandleDismiss next →
       H.raise Dismiss $> next
+    HandleDismissSelecting next → do
+      H.modify _ { selecting = Nothing }
+      updateActions
+      pure next
     HandleConfirm selection next →
       H.raise (Confirm selection) $> next
+    HandleConfirmSelecting value next →
+      H.raise (Confirm (Just value)) $> next
     UpdateDimensions next →
-      H.query unit (H.action ALC.CalculateBoundingRect) $> next
+      H.query' cpL unit (H.action ALC.CalculateBoundingRect) $> next
 
 mkAction ∷ forall s. Eq s ⇒ Maybe s → (s → String) → s → ALC.Action (Maybe s)
-mkAction selection label action =
+mkAction selection toLabel action =
   ALC.mkDo
-    { name: label action
-    , description: label action
+    { name: toLabel action
+    , description: toLabel action
     , iconSrc: ""
     , highlighted: selection ≡ Just action
     , disabled: false
@@ -118,4 +188,12 @@ mkAction selection label action =
 updateActions ∷ ∀ s. Eq s ⇒ DSL s Unit
 updateActions = do
   st ← H.get
-  void $ H.query unit $ H.action $ ALC.UpdateActions (mkAction st.selection st.label <$> st.options)
+  let toAction = mkAction (fst <$> st.selection) st.toLabel
+  void $ H.query' cpL unit $ H.action $ ALC.UpdateActions (toAction <$> st.options)
+
+clearSelection ∷ ∀ s. DSL s Unit
+clearSelection =
+  H.modify \st → st
+    { selection = Nothing
+    , previousSelection = st.selection
+    }

@@ -463,7 +463,12 @@ defaultConf boundingDimensions as =
       | textDoesNotFitWithIcon = TextOnly
       | otherwise = IconAndText
 
-    buttons = map _{ presentation = presentation } buttonConfs
+    buttons = buttonConfs <#> \conf → conf
+      { presentation =
+        if pluckActionIconSrc conf.action ≡ ""
+          then TextOnly
+          else presentation
+      }
 
   in
     { buttons

@@ -25,6 +25,7 @@ import Data.Lens (Prism', prism')
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Transform.DatePart as DP
+import SlamData.Workspace.Card.Setups.Transform.Numeric as N
 import SlamData.Workspace.Card.Setups.Transform.String as S
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
@@ -35,11 +36,17 @@ data Transform
   | TimePart DP.TimePart
   | Aggregation Ag.Aggregation
   | String S.StringOperation
+  | Numeric N.NumericOperation
   | Count
 
 _Aggregation ∷ Prism' Transform Ag.Aggregation
 _Aggregation = prism' Aggregation case _ of
   Aggregation a → Just a
+  _ → Nothing
+
+_Numeric ∷ Prism' Transform N.NumericOperation
+_Numeric = prism' Numeric case _ of
+  Numeric a → Just a
   _ → Nothing
 
 foldTransform
@@ -48,15 +55,17 @@ foldTransform
   → (DP.TimePart → r)
   → (Ag.Aggregation → r)
   → (S.StringOperation → r)
+  → (N.NumericOperation → r)
   → (Unit → r)
   → Transform
   → r
-foldTransform a b c d e = case _ of
+foldTransform a b c d e f = case _ of
   DatePart z → a z
   TimePart z → b z
   Aggregation z → c z
   String z → d z
-  Count → e unit
+  Numeric z → e z
+  Count → f unit
 
 prettyPrintTransform ∷ Transform → String
 prettyPrintTransform =
@@ -65,6 +74,7 @@ prettyPrintTransform =
     DP.prettyPrintTime
     Ag.printAggregation
     S.prettyPrintStringOperation
+    N.prettyPrintNumericOperation
     \_ → "Count"
 
 printTransform ∷ Transform → String → String
@@ -74,11 +84,13 @@ printTransform =
     (datePart ∘ DP.printTime)
     aggregation
     stringOp
+    N.printNumericOperation
     (const count)
   where
   count value = "COUNT(" <> value <> ")"
   datePart part value = "DATE_PART(\"" <> part <> "\", " <> value <> ")"
   stringOp op value = S.prettyPrintStringOperation op <> "(" <> value <> ")"
+  numericOp op value = value -- TODO
   aggregation ag value = case ag of
     Ag.Minimum → "MIN(" <> value <> ")"
     Ag.Maximum → "MAX(" <> value <> ")"
@@ -100,9 +112,19 @@ aggregationTransforms = Aggregation <$> Ag.allAggregations
 stringTransforms ∷ Array Transform
 stringTransforms = String <$> S.stringOperations
 
-axisTransforms ∷ Ax.AxisType → Array Transform
-axisTransforms axis = Array.cons Count case axis of
-  Ax.Measure → aggregationTransforms
+numericTransforms ∷ Maybe Transform → Array Transform
+numericTransforms = case _ of
+  Just (Numeric p) →
+    N.numericOperations <#> case p, _ of
+      N.Floor _, N.Floor _ → Numeric p
+      N.Round _, N.Round _ → Numeric p
+      N.Ceil _, N.Ceil _ → Numeric p
+      _, a → Numeric a
+  _ → Numeric <$> N.numericOperations
+
+axisTransforms ∷ Ax.AxisType → Maybe Transform → Array Transform
+axisTransforms axis prev = Array.cons Count case axis of
+  Ax.Measure → aggregationTransforms <> numericTransforms prev
   Ax.Category → stringTransforms
   Ax.Date → dateTransforms
   Ax.Time → timeTransforms
@@ -117,6 +139,7 @@ instance encodeJsonTransform ∷ EncodeJson Transform where
     TimePart value → "type" := "time" ~> "value" := value ~> jsonEmptyObject
     Aggregation value → "type" := "aggregation" ~> "value" := value ~> jsonEmptyObject
     String value → "type" := "string" ~> "value" := value ~> jsonEmptyObject
+    Numeric value → "type" := "numeric" ~> "value" := value ~> jsonEmptyObject
     Count → "type" := "count" ~> jsonEmptyObject
 
 instance decodeJsonTransform ∷ DecodeJson Transform where
@@ -127,13 +150,15 @@ instance decodeJsonTransform ∷ DecodeJson Transform where
       "time" → TimePart <$> obj .? "value"
       "aggregation" → Aggregation <$> obj .? "value"
       "string" → String <$> obj .? "value"
+      "numeric" → Numeric <$> obj .? "value"
       "count" → pure Count
       ty → throwError $ "Invalid transformation type: " <> ty
 
 instance arbitraryTransform ∷ Arbitrary Transform where
-  arbitrary = Gen.chooseInt 1 5 >>= case _ of
+  arbitrary = Gen.chooseInt 1 6 >>= case _ of
     1 → DatePart <$> arbitrary
     2 → TimePart <$> arbitrary
     3 → Aggregation <$> arbitrary
     4 → String <$> arbitrary
+    5 → Numeric <$> arbitrary
     _ → pure Count
