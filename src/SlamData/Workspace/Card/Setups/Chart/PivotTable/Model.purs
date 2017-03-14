@@ -18,19 +18,17 @@ module SlamData.Workspace.Card.Setups.Chart.PivotTable.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor(..), Json, class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), isNull, (.?), jsonEmptyObject)
-import Data.Argonaut.JCursor (insideOut)
+import Data.Argonaut (JCursor, Json, class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), isNull, (.?), jsonEmptyObject)
 import Data.Array as Array
 import Data.Foldable as F
 import Data.Newtype (un)
-import Data.String as String
 
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
 type Model =
   { dimensions ∷ Array GroupByDimension
@@ -54,7 +52,7 @@ eqModel r1 r2 = r1.dimensions == r2.dimensions && r1.columns == r2.columns
 
 genModel ∷ Gen.Gen Model
 genModel = do
-  dimensions ← map (map runArbJCursor ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+  dimensions ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
   columns ← map (un D.DimensionWithStaticCategory) <$> arbitrary
   pure { dimensions, columns }
 
@@ -82,8 +80,7 @@ decode js
 
   decodeLegacyDimension ∷ Json → Either String GroupByDimension
   decodeLegacyDimension json = do
-    value ← decodeJson json
-    pure $ D.projectionWithCategory (defaultJCursorCategory value) value
+    map D.defaultJCursorDimension $ decodeJson json
 
   decodeColumn ∷ Json → Either String ColumnDimension
   decodeColumn json = decodeJson json <|> decodeLegacyColumn json
@@ -110,7 +107,7 @@ derive instance ordColumn ∷ Ord Column
 instance arbitraryColumn ∷ Arbitrary Column where
   arbitrary = arbitrary >>= if _
     then pure All
-    else Column ∘ runArbJCursor <$> arbitrary
+    else Column ∘ un ArbJCursor <$> arbitrary
 
 instance encodeJsonColumn ∷ EncodeJson Column where
   encodeJson = case _ of
@@ -133,14 +130,7 @@ isSimple { dimensions, columns } =
     D.Dimension _ (D.Projection (Just (T.Aggregation _)) _) → false
     _ → true
 
-defaultJCursorCategory ∷ ∀ a. JCursor → D.Category a
-defaultJCursorCategory = D.Static ∘ String.joinWith "_" ∘ go [] ∘ insideOut
-  where
-  go label (JField field _) = Array.cons field label
-  go label (JIndex ix next) = go (Array.cons (show ix) label) next
-  go label _ = Array.cons "value" label
-
 defaultColumnCategory ∷ ∀ a. Column → D.Category a
 defaultColumnCategory = case _ of
   All → D.Static "all"
-  Column j → defaultJCursorCategory j
+  Column j → D.defaultJCursorCategory j

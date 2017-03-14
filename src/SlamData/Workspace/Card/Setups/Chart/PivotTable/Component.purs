@@ -430,7 +430,7 @@ evalOptions = case _ of
         st ← H.get
         let
           value' = flattenJCursors value
-          cell = D.projectionWithCategory (PTM.defaultJCursorCategory value') value'
+          cell = D.projectionWithCategory (D.defaultJCursorCategory value') value'
         H.modify _
           { fresh = st.fresh + 1
           , dimensions = Array.snoc st.dimensions (st.fresh × cell)

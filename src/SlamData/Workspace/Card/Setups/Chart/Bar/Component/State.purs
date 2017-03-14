@@ -41,7 +41,6 @@ initialState =
   , axisLabelAngle: M.initialState.axisLabelAngle
   , category: M.initialState.category
   , value: M.initialState.value
-  , valueAgg: M.initialState.valueAgg
   , stack: M.initialState.stack
   , parallel: M.initialState.parallel
   , picker: DS.initial.picker

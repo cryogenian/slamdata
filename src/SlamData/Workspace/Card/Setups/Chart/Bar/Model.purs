@@ -18,18 +18,15 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Argonaut (Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
 import Data.Lens ((^.))
 import Data.Newtype (un)
-
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, nonMaybeAggregationSelect)
 import SlamData.Workspace.Card.Setups.Behaviour as SB
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Form.Select as S
@@ -67,10 +64,10 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    category ← map (un ArbJCursor ∘ un D.DimensionWithStaticCategory) arbitrary
-    value ← map (un ArbJCursor ∘ un D.DimensionWithStaticCategory) arbitrary
-    stack ← map (un ArbJCursor ∘ un D.DimensionWithStaticCategory) <$> arbitrary
-    parallel ← map (un ArbJCursor ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    category ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    value ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    stack ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    parallel ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     axisLabelAngle ← arbitrary
     pure { category, value, stack, parallel, axisLabelAngle }
 
@@ -91,8 +88,8 @@ decode js
   | otherwise = map Just $ decode' js <|> decodeLegacy js
   where
   decode' ∷ Json → String ⊹ BarR
-  decode' = do
-    obj ← decodeJson js
+  decode' js' = do
+    obj ← decodeJson js'
     configType ← obj .? "configType"
     unless (configType ≡ "bar")
       $ throwError "This config is not bar"
@@ -109,28 +106,28 @@ decode js
          }
 
   decodeLegacy ∷ Json → String ⊹ BarR
-  decodeLegacy = do
-    obj ← decodeJson js
+  decodeLegacy js' = do
+    obj ← decodeJson js'
     configType ← obj .? "configType"
     unless (configType ≡ "bar")
       $ throwError "This config is not bar"
-    category ← map (Just $ D.Static "TODO") $ obj .? "category"
+    category ← map D.defaultJCursorDimension $ obj .? "category"
     val ← obj .? "value"
     valAggregation ← obj .? "valueAggregation"
-    let
-      value =
-        D.Dimension (Just $ D.Static "TODO") (D.Projection (Just valAggregation) val)
-    stack ← map (map (Just $ D.Static "TODO")) $ obj .? "stack"
-    parallel ← map (map (Just $ D.Static "TODO")) $ obj .? "parallel"
+    let value =
+          D.Dimension
+            (Just $ D.defaultJCursorCategory val)
+            (D.Projection (Just valAggregation) val)
+    stack ← map (map D.defaultJCursorDimension) $ obj .? "stack"
+    parallel ← map (map D.defaultJCursorDimension) $ obj .? "parallel"
     axisLabelAngle ← obj .? "axisLabelAngle"
     pure { category, value, stack, parallel, axisLabelAngle }
 
 type ReducedState r =
-  { value ∷ S.Select JCursor
-  , valueAgg ∷ S.Select Aggregation
-  , category ∷ S.Select JCursor
-  , stack ∷ S.Select JCursor
-  , parallel ∷ S.Select JCursor
+  { value ∷ S.Select D.LabeledJCursor
+  , category ∷ S.Select D.LabeledJCursor
+  , stack ∷ S.Select D.LabeledJCursor
+  , parallel ∷ S.Select D.LabeledJCursor
   , axisLabelAngle ∷ Number
   , axes ∷ Ax.Axes
   | r }
@@ -138,7 +135,6 @@ type ReducedState r =
 initialState ∷ ReducedState ()
 initialState =
   { value: S.emptySelect
-  , valueAgg: S.emptySelect
   , category: S.emptySelect
   , stack: S.emptySelect
   , parallel: S.emptySelect
@@ -159,6 +155,7 @@ behaviour =
         S.setPreviousValueFrom (Just st.category)
           $ S.autoSelect
           $ S.newSelect
+          $ map D.defaultJCursorDimension
           $ st.axes.category
           ⊕ st.axes.value
           ⊕ st.axes.time
@@ -169,32 +166,30 @@ behaviour =
         S.setPreviousValueFrom (Just st.value)
           $ S.autoSelect
           $ S.newSelect
+          $ map D.defaultJCursorDimension
           $ st.axes.value
-
-      newValueAggregation =
-        S.setPreviousValueFrom (Just st.valueAgg)
-          $ nonMaybeAggregationSelect
 
       newStack =
         S.setPreviousValueFrom (Just st.stack)
           $ S.newSelect
+          $ (map D.defaultJCursorDimension
           $ S.ifSelected [ newCategory ]
           $ st.axes.category
-          ⊕ st.axes.time
+          ⊕ st.axes.time)
           ⊝ newCategory
 
       newParallel =
         S.setPreviousValueFrom (Just st.parallel)
           $ S.newSelect
+          $ (map D.defaultJCursorDimension
           $ S.ifSelected [ newCategory ]
           $ st.axes.category
-          ⊕ st.axes.time
+          ⊕ st.axes.time)
           ⊝ newCategory
           ⊝ newStack
     in
       st { category = newCategory
          , value = newValue
-         , valueAgg = newValueAggregation
          , stack = newStack
          , parallel = newParallel
          }
@@ -204,7 +199,6 @@ behaviour =
     st { axisLabelAngle = m.axisLabelAngle
        , category = S.fromSelected $ Just m.category
        , value = S.fromSelected $ Just m.value
-       , valueAgg = S.fromSelected $ Just m.valueAggregation
        , stack = S.fromSelected m.stack
        , parallel = S.fromSelected m.parallel
        }
@@ -212,11 +206,9 @@ behaviour =
   save st =
     { category: _
     , value: _
-    , valueAggregation: _
     , stack: st.stack ^. S._value
     , parallel: st.parallel ^. S._value
     , axisLabelAngle: st.axisLabelAngle
     }
     <$> (st.category ^. S._value)
     <*> (st.value ^. S._value)
-    <*> (st.valueAgg ^. S._value)

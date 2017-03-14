@@ -24,22 +24,23 @@ import Data.Array as A
 import Data.Lens (view)
 import Data.Int as Int
 
-import SlamData.Common.Sort (Sort(..))
 import SlamData.Common.Align (Align(..))
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (parseColorScheme)
-
+import SlamData.Common.Sort (Sort(..))
 import SlamData.Form.Select as S
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), printChartType)
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.Pie.Model (PieR)
-import SlamData.Workspace.Card.Setups.Chart.Bar.Model (BarR)
-import SlamData.Workspace.Card.Setups.Chart.Line.Model (LineR)
 import SlamData.Workspace.Card.Setups.Chart.Area.Model (AreaR)
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (ScatterR)
-import SlamData.Workspace.Card.Setups.Chart.Radar.Model (RadarR)
+import SlamData.Workspace.Card.Setups.Chart.Bar.Model (BarR)
+import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (BoxplotR)
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (parseColorScheme)
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (FunnelR)
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (HeatmapR)
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (BoxplotR)
+import SlamData.Workspace.Card.Setups.Chart.Line.Model (LineR)
+import SlamData.Workspace.Card.Setups.Chart.Pie.Model (PieR)
+import SlamData.Workspace.Card.Setups.Chart.Radar.Model (RadarR)
+import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (ScatterR)
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 type ChartConfiguration =
   { series ∷ Array (S.Select J.JCursor)
@@ -201,29 +202,34 @@ decode cturs js = do
   decodeBar cc bo = pure $ cturs.bar
     let
       category =
-        cc.series A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
       value =
         cc.measures A.!! 0 >>= view S._value
-      valueAggregation =
-        join $ cc.aggregations A.!! 0 >>= view S._value
+      agg =
+        map T.Aggregation $ join $ cc.aggregations A.!! 0 >>= view S._value
       stack =
-        (cc.series A.!! 1 >>= view S._value) <|> (cc.series A.!! 2 >>= view S._value)
+        map D.defaultJCursorDimension
+        $ (cc.series A.!! 1 >>= view S._value)
+        <|> (cc.series A.!! 2 >>= view S._value)
       parallel =
-        cc.series A.!! 2 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 2 >>= view S._value
       axisLabelAngle =
         Int.toNumber bo.axisLabelAngle
+
+      mbValue = value <#> \v →
+        D.Dimension (Just $ D.defaultJCursorCategory v) (D.Projection agg v)
 
       barR =
         { category: _
         , value: _
-        , valueAggregation: _
         , stack
         , parallel
         , axisLabelAngle
         }
         <$> category
-        <*> value
-        <*> valueAggregation
+        <*> mbValue
     in
       barR
 

@@ -18,9 +18,11 @@ module SlamData.Workspace.Card.Setups.Dimension where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), (.?), jsonEmptyObject)
+import Data.Argonaut (JCursor(..), class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), (.?), jsonEmptyObject, insideOut)
+import Data.Array as Array
 import Data.Lens (Lens', lens, Traversal', wander)
 import Data.Newtype (un)
+import Data.String as String
 
 import SlamData.Workspace.Card.Setups.Transform (Transform(..))
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
@@ -132,3 +134,15 @@ instance arbitraryDimensionWithStaticCategory ∷ Arbitrary a ⇒ Arbitrary (Dim
 
 instance arbitraryStaticCategory ∷ Arbitrary StaticCategory where
   arbitrary = StaticCategory ∘ Static <$> arbitrary
+
+defaultJCursorCategory ∷ ∀ a. JCursor → Category a
+defaultJCursorCategory =
+  Static ∘ String.joinWith "_" ∘ go [] ∘ insideOut
+  where
+  go label (JField field _) = Array.cons field label
+  go label (JIndex ix next) = go (Array.cons (show ix) label) next
+  go label _ = Array.cons "value" label
+
+defaultJCursorDimension ∷ JCursor → LabeledJCursor
+defaultJCursorDimension jc =
+  projectionWithCategory (defaultJCursorCategory jc) jc
