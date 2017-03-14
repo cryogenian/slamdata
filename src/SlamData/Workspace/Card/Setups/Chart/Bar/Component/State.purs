@@ -25,15 +25,18 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Component.State
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
-import Data.Argonaut (JCursor)
+import SlamData.Prelude
+
+--import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
-import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query (Selection)
+import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query (ProjectionField, TransformField)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
+--import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as M
 
-type State = M.ReducedState (DS.CommonState JCursor Selection ())
+type State =
+  M.ReducedState ( selected ∷ Maybe (ProjectionField ⊹ TransformField) )
 
 initialState ∷ State
 initialState =
@@ -43,7 +46,7 @@ initialState =
   , value: M.initialState.value
   , stack: M.initialState.stack
   , parallel: M.initialState.parallel
-  , picker: DS.initial.picker
+  , selected: Nothing
   }
 
 _category ∷ ∀ r a. Lens' { category ∷ a | r } a
@@ -60,3 +63,6 @@ _stack = lens _.stack _{ stack = _ }
 
 _parallel ∷ ∀ r a. Lens' { parallel ∷ a | r } a
 _parallel = lens _.parallel _{ parallel = _ }
+
+_selected ∷ ∀ r a. Lens' { selected ∷ a | r } a
+_selected = lens _.selected _{ selected = _ }

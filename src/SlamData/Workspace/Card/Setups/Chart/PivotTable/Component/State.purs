@@ -121,7 +121,13 @@ reorder tag1 tag2 arr =
     _, Just i2 → init <> Array.take i2 rest <> subj <> Array.drop i2 rest
     _, _ → arr
 
-modifyDimension ∷ ∀ a b. Lens.Lens' State (Array (Int × D.Dimension a b)) → (D.Dimension a b → D.Dimension a b) → Int → State → State
+modifyDimension
+  ∷ ∀ a b
+  . Lens.Lens' State (Array (Int × D.Dimension a b))
+  → (D.Dimension a b → D.Dimension a b)
+  → Int
+  → State
+  → State
 modifyDimension dimLens f tag = Lens.over dimLens (map go)
   where
   go (tag' × a) | tag == tag' = tag × f a

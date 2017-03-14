@@ -20,7 +20,8 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^.), (^?)) -- ((^?), (?~), (.~), (^.))
+import Data.Lens (_Just, (^.), (^?), (.~), (?~))
+import Data.List as List
 
 import DOM.Event.Event as DEE
 
@@ -44,14 +45,14 @@ import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor ({-flattenJCursors, -} showJCursor)
-import SlamData.Workspace.Card.Setups.Inputs as BCI
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors, showJCursor, showJCursorTip, groupJCursors)
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as M
 import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Setups.Inputs as I
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
@@ -77,36 +78,40 @@ render state =
     , renderParallel state
     , HH.hr_
     , row [ renderAxisLabelAngle state ]
-    , renderPicker state
-    , renderTransform state
+    , renderSelection state
     ]
 
-selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
-selecting f q _ = right (Q.Select (f q) unit)
-
-renderTransform ∷ ST.State → HTML
-renderTransform state =
-  HH.slot' CS.cpTransform unit AS.component
-    { options: T.aggregationTransforms
-    , selection: Just $ T.Aggregation Ag.Sum
-    , title: "Choose transformation"
-    , label: T.prettyPrintTransform
-    }
-    (Just ∘ right ∘ H.action ∘ Q.HandleTransformPicker)
-
-renderPicker ∷ ST.State → HTML
-renderPicker state = case state.picker of
+renderSelection ∷ ST.State → HTML
+renderSelection state = case state.selected of
   Nothing → HH.text ""
-  Just { options, select } →
+  Just (Right _) →
+    HH.slot' CS.cpTransform unit AS.component
+      { options: T.aggregationTransforms
+      , selection: Just $ T.Aggregation Ag.Sum
+      , title: "Choose transformation"
+      , label: T.prettyPrintTransform
+      }
+      (Just ∘ right ∘ H.action ∘ Q.HandleTransformPicker)
+  Just (Left pf) →
     let
       conf =
-        BCI.dimensionPicker options
-          case select of
-            Q.Category _ → "Choose category"
-            Q.Value _    → "Choose measure"
-            Q.Stack _    → "Choose stack"
-            Q.Parallel _ → "Choose parallel"
-    in HH.slot' CS.cpPicker unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
+        { title: case pf of
+             Q.Category → "Choose category"
+             Q.Value → "Choose measure"
+             Q.Stack → "Choose stack"
+             Q.Parallel → "Choose parallel"
+        , label: DPC.labelNode showJCursorTip
+        , render: DPC.renderNode showJCursorTip
+        , values: groupJCursors $ List.fromFoldable []
+        , isSelectable: DPC.isLeafPath
+        }
+    in
+      HH.slot'
+        CS.cpPicker
+        unit
+        (DPC.picker conf)
+        unit
+        (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage pf)
 
 renderCategory ∷ ST.State → HTML
 renderCategory state =
@@ -114,12 +119,12 @@ renderCategory state =
     { configurable: false
     , dimension: sequence $ state.category ^. _value
     , showLabel: absurd
-    , showDefaultLabel: foldMap showJCursor
+    , showDefaultLabel: maybe "Select category" showJCursor
     , showValue: foldMap showJCursor
     , onLabelChange: const Nothing
     , onDismiss: const Nothing
     , onConfigure: const Nothing
-    , onMouseDown: const Nothing
+    , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Category
     }
 
 renderValue ∷ ST.State → HTML
@@ -129,11 +134,11 @@ renderValue state =
     , dimension: sequence $ state.value ^. _value
     , showLabel: absurd
     , showDefaultLabel: foldMap showJCursor
-    , showValue: foldMap showJCursor
+    , showValue: maybe "Select measure" showJCursor
     , onLabelChange: const Nothing
     , onDismiss: const Nothing
     , onConfigure: const Nothing
-    , onMouseDown: const Nothing
+    , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Value
     }
 
 renderStack ∷ ST.State → HTML
@@ -142,12 +147,12 @@ renderStack state =
     { configurable: false
     , dimension: sequence $ state.stack ^. _value
     , showLabel: absurd
-    , showDefaultLabel: foldMap showJCursor
+    , showDefaultLabel: maybe "Select stack" showJCursor
     , showValue: foldMap showJCursor
     , onLabelChange: const Nothing
     , onDismiss: const Nothing
     , onConfigure: const Nothing
-    , onMouseDown: const Nothing
+    , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Stack
     }
 
 renderParallel ∷ ST.State → HTML
@@ -156,12 +161,12 @@ renderParallel state =
     { configurable: false
     , dimension: sequence $ state.parallel ^. _value
     , showLabel: absurd
-    , showDefaultLabel: foldMap showJCursor
+    , showDefaultLabel: maybe "Select parallel" showJCursor
     , showValue: foldMap showJCursor
     , onLabelChange: const Nothing
     , onDismiss: const Nothing
     , onConfigure: const Nothing
-    , onMouseDown: const Nothing
+    , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Parallel
     }
 
 renderAxisLabelAngle ∷ ST.State → HTML
@@ -224,32 +229,31 @@ setupEval = case _ of
       H.modify _{axisLabelAngle = fl}
       H.raise CC.modelUpdate
     pure next
-  Q.Select sel next → do
---    case sel of
---      Q.Category a → updatePicker ST._category Q.Category a
---      Q.Value a    → updatePicker ST._value Q.Value a
---      Q.Stack a    → updatePicker ST._stack Q.Stack a
---      Q.Parallel a → updatePicker ST._parallel Q.Parallel a
+  Q.Select fp next → do
+    traceAnyA fp
     pure next
-  Q.HandleDPMessage m next → case m of
+  Q.HandleDPMessage fp m next → case m of
     DPC.Dismiss → do
-      H.modify _{ picker = Nothing }
+      H.modify _{ selected = Nothing }
       pure next
     DPC.Confirm value → do
---      st ← H.get
---      let
---        value' = flattenJCursors value
---      for_ st.picker \{ select } → case select of
---        Q.Category _ → H.modify (ST._category ∘ _value ?~ value')
---        Q.Value _    → H.modify (ST._value ∘ _value ?~ value')
---        Q.Stack _    → H.modify (ST._stack ∘ _value ?~ value')
---        Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ value')
-      H.modify _ { picker = Nothing }
+      st ← H.get
+      let
+        value' = flattenJCursors value
+      H.modify case fp of
+        Q.Category → ST._category ∘ _value ?~ D.projection value'
+        Q.Value → ST._category ∘ _value ?~ D.projection value'
+        Q.Stack → ST._category ∘ _value ?~ D.projection value'
+        Q.Parallel → ST._category ∘ _value ?~ D.projection value'
+      H.modify _ { selected = Nothing }
       raiseUpdate
       pure next
---  where
---  updatePicker l q = case _ of
---    BCI.Open opts → H.modify (ST.showPicker q opts)
---    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-  Q.HandleTransformPicker _ next →
+  Q.HandleTransformPicker msg next → do
+    case msg of
+      AS.Dismiss →
+        H.modify _{ selected = Nothing }
+      AS.Confirm mbt →
+        H.modify
+          $ _{ selected = Nothing }
+          ∘ (ST._value ∘ _value ∘ _Just ∘ D._value ∘ D._transform  .~ mbt)
     pure next
