@@ -94,11 +94,11 @@ decode js
     obj .? "columnType" >>= case _ of
       "value" → do
         value ← Column <$> obj .? "value"
-        valueAggregation ← T.Aggregation <$> obj .? "valueAggregation"
+        valueAggregation ← map T.Aggregation <$> obj .? "valueAggregation"
         pure $ D.Dimension
           (Just (defaultColumnCategory value))
-          (D.Projection (Just valueAggregation) value)
-      "count" →
+          (D.Projection valueAggregation value)
+      "count" → do
         pure $ D.Dimension
           (Just (D.Static "count"))
           (D.Projection (Just T.Count) All)
