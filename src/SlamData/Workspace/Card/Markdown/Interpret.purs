@@ -18,13 +18,8 @@ module SlamData.Workspace.Card.Markdown.Interpret
 
 import SlamData.Prelude
 
-import Control.Monad.Eff (runPure)
-import Control.Monad.Eff.Exception (try)
-
 import Data.Array as A
 import Data.Identity (Identity(..))
-import Data.Int as Int
-import Data.JSDate as JSD
 import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.Maybe as M
@@ -32,7 +27,6 @@ import Data.Maybe as M
 import SlamData.Workspace.Card.Port.VarMap as VM
 
 import Text.Markdown.SlamDown as SD
-import Text.Markdown.SlamDown.Pretty as SDPR
 import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
 -- The use of this function in formFieldValueToVarMapValue is suspicious, and
@@ -82,10 +76,9 @@ formFieldValueToVarMapValue v =
         case tb' of
           SD.PlainText (Identity x) → pure $ EJSON.string x
           SD.Numeric (Identity x) → pure $ EJSON.decimal x
-          SD.Date _ → pure ∘ EJSON.date $ SDPR.prettyPrintTextBoxValue tb'
-          SD.Time _ _ → pure ∘ EJSON.time $ SDPR.prettyPrintTextBoxValue tb'
-          SD.DateTime _ (Identity localDateTime) →
-            pure $ EJSON.timestamp $ either (const "") id $ mkdate localDateTime
+          SD.Date (Identity x) → pure $ EJSON.date x
+          SD.Time _ (Identity x) → pure $ EJSON.time x
+          SD.DateTime _ (Identity x) → pure $ EJSON.timestamp x
       SD.CheckBoxes (Identity sel) _ →
         pure ∘ VM.SetLiteral ∘ A.fromFoldable $ L.mapMaybe (map VM.Literal ∘ getLiteral) sel
       SD.RadioButtons (Identity x) _ →
@@ -102,15 +95,3 @@ formFieldValueToVarMapValue v =
       → MaybeT n a
     liftMaybe =
       MaybeT ∘ pure
-
-    mkdate localDateTime = runPure $ try $
-      JSD.toISOString $
-        JSD.jsdate
-          { year: Int.toNumber localDateTime.date.year
-          , month: (Int.toNumber localDateTime.date.month) - one
-          , day: Int.toNumber localDateTime.date.day
-          , hour: Int.toNumber localDateTime.time.hours
-          , minute: Int.toNumber localDateTime.time.minutes
-          , second: Int.toNumber $ fromMaybe 0 localDateTime.time.seconds
-          , millisecond: 0.0
-          }

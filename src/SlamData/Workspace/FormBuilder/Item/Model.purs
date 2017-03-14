@@ -26,7 +26,6 @@ module SlamData.Workspace.FormBuilder.Item.Model
   , EqModel(..)
   , runEqModel
   , defaultValueToVarMapValue
-  , emptyValueOfFieldType
   , module SlamData.Workspace.FormBuilder.Item.FieldType
   ) where
 
@@ -34,14 +33,17 @@ import SlamData.Prelude
 
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Argonaut as J
-import Data.Lens (Lens', lens)
+import Data.DateTime as DT
 import Data.Json.Extended as EJSON
+import Data.Json.Extended.Signature.Parse as EJP
+import Data.Lens (Lens', lens)
 import Data.String as Str
 
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
 
-import Text.Parsing.Parser as P
+import Text.Parsing.Parser (runParser) as P
+import Text.Parsing.Parser.Combinators (try) as P
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -105,24 +107,6 @@ decode =
     defaultValue ← map fixValue <$> obj .? "defaultValue"
     pure { name, fieldType, defaultValue }
 
-emptyValueOfFieldType
-  ∷ FieldType
-  → Port.VarMapValue
-emptyValueOfFieldType tau =
-  case tau of
-    StringFieldType → Port.Literal $ EJSON.string ""
-    BooleanFieldType → Port.Literal $ EJSON.boolean true
-    NumericFieldType → Port.Literal $ EJSON.decimal zero
-    DateTimeFieldType → Port.Literal $ EJSON.timestamp ""
-    DateFieldType → Port.Literal $ EJSON.date ""
-    TimeFieldType → Port.Literal $ EJSON.time ""
-    IntervalFieldType → Port.Literal $ EJSON.interval ""
-    ObjectIdFieldType → Port.Literal $ EJSON.objectId ""
-    ArrayFieldType → Port.Literal $ EJSON.array mempty
-    ObjectFieldType → Port.Literal $ EJSON.map mempty
-    SqlExprFieldType → Port.QueryExpr ""
-    SqlIdentifierFieldType → Port.QueryExpr "``"
-
 defaultValueToVarMapValue
   ∷ FieldType
   → String
@@ -130,9 +114,9 @@ defaultValueToVarMapValue
 defaultValueToVarMapValue ty str =
   case ty of
     StringFieldType → Just $ Port.Literal $ EJSON.string str
-    DateTimeFieldType → Just $ Port.Literal $ EJSON.timestamp (fixupDateTime str)
-    DateFieldType → Just $ Port.Literal $ EJSON.date (fixupDate str)
-    TimeFieldType → Just $ Port.Literal $ EJSON.time (fixupTime str)
+    DateTimeFieldType → Port.Literal <$> parseTimestamp str
+    DateFieldType → Port.Literal <$> parseDate str
+    TimeFieldType → Port.Literal <$> parseTime str
     IntervalFieldType → Just $ Port.Literal $ EJSON.interval str
     ObjectIdFieldType → Just $ Port.Literal $ EJSON.objectId str
     SqlExprFieldType → Just $ Port.QueryExpr $ str
@@ -142,17 +126,31 @@ defaultValueToVarMapValue ty str =
       P.runParser str EJSON.parseEJson
         # either (\_ → Nothing) (Port.Literal >>> Just)
 
+parseTimestamp ∷ String → Maybe EJSON.EJson
+parseTimestamp str =
+  case P.runParser (tweak str) EJP.parseTimestamp of
+    Left _ → Nothing
+    Right dt → Just $ EJSON.timestamp dt
   where
-  -- TODO: we _really_ should have a better representation for date/time in ejson
-  fixupDateTime :: String -> String
-  fixupDateTime dt =
-    let
-      t = Str.drop 11 dt
-      t' = fromMaybe t (Str.stripSuffix (Str.Pattern "Z") t)
-    in
-      Str.take 11 dt <> fixupTime t' <> "Z"
-  fixupTime :: String -> String
-  fixupTime t = if Str.length t == 5 then t <> ":00" else t
+  tweak ∷ String → String
+  tweak s
+    | Str.length s == 19 = s <> "Z"
+    | Str.charAt 10 s == Just ' ' = tweak (Str.take 10 s <> "T" <> Str.drop 11 s)
+    | otherwise = s
+
+parseTime ∷ String → Maybe EJSON.EJson
+parseTime str =
+  either (const Nothing) (Just ∘ EJSON.time) $
+    P.runParser str (P.try fromTimestamp <|> EJP.parseTime)
+  where
+  fromTimestamp = DT.time <$> EJP.parseTimestamp
+
+parseDate ∷ String → Maybe EJSON.EJson
+parseDate str =
+  either (const Nothing) (Just ∘ EJSON.date) $
+    P.runParser str (P.try fromTimestamp <|> EJP.parseDate)
+  where
+  fromTimestamp = DT.date <$> EJP.parseTimestamp
 
 -- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
 -- connector issue that cannot represent dates distinct from datetimes.

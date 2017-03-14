@@ -18,19 +18,19 @@ module SlamData.Workspace.Card.Markdown.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
 import Data.Array as A
+import Data.DateTime as DT
 import Data.Identity (Identity)
-import Data.Int as Int
-import Data.JSDate as JSD
 import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.String as S
 import Data.StrMap as SM
+
+import Matryoshka (project)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -41,14 +41,10 @@ import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 
 import Text.Markdown.SlamDown as SD
-import Text.Markdown.SlamDown.Traverse as SDT
 import Text.Markdown.SlamDown.Eval as SDE
-import Text.Markdown.SlamDown.Parser as SDP
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
-
-import Text.Parsing.Parser as P
-import Text.Parsing.Parser.Combinators as PC
-import Text.Parsing.Parser.String as PS
+import Text.Markdown.SlamDown.Parser as SDP
+import Text.Markdown.SlamDown.Traverse as SDT
 
 import Utils.Path (DirPath)
 
@@ -143,8 +139,8 @@ evalEmbeddedQueries sm dir =
     ∷ EJSON.EJson
     → EJSON.EJson
   extractSingletonObject lit =
-    case EJSON.unroll lit of
-      EJSON.Map [key × val] → val
+    case project lit of
+      EJSON.Map (EJSON.EJsonMap [key × val]) → val
       _ → lit
 
   evalValue
@@ -163,37 +159,22 @@ evalEmbeddedQueries sm dir =
     mresult ← A.head <$> runQuery sql
     result ←
       maybe (CEM.throw "No results") (pure ∘ extractSingletonObject) mresult
-    case tb, (EJSON.unroll result) of
+    case tb, project result of
       (SD.PlainText _), (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
       (SD.Numeric _), (EJSON.Decimal a) →
         pure ∘ SD.Numeric $ pure a
-      (SD.Time prec _), (EJSON.Time str) →
-        SD.Time prec ∘ pure <$> parse parseSqlTime str
-      (SD.Time prec _), (EJSON.Timestamp str) →
-        liftEff (parseSqlTimeStamp str) >>=
-          case _ of
-            Left msg → CEM.throw msg
-            Right dt → pure $ SD.Time prec (pure dt.time)
-      (SD.Date _), (EJSON.Date str) →
-        SD.Date ∘ pure <$> parse parseSqlDate str
-      (SD.Date _), (EJSON.Timestamp str) →
-        liftEff (parseSqlTimeStamp str) >>=
-          case _ of
-            Left msg → CEM.throw msg
-            Right dt → pure $ SD.Date (pure dt.date)
-      (SD.DateTime prec _), (EJSON.Timestamp str) → do
-        liftEff (parseSqlTimeStamp str) >>=
-          case _ of
-            Left msg → CEM.throw msg
-            Right dt → pure $ SD.DateTime prec (pure dt)
+      (SD.Time prec _), (EJSON.Time time) →
+        pure ∘ SD.Time prec $ pure time
+      (SD.Time prec _), (EJSON.Timestamp dt) →
+        pure ∘ SD.Time prec $ pure $ DT.time dt
+      (SD.Date _), (EJSON.Date d) →
+        pure ∘ SD.Date $ pure d
+      (SD.Date _), (EJSON.Timestamp dt) →
+        pure ∘ SD.Date $ pure $ DT.date dt
+      (SD.DateTime prec _), (EJSON.Timestamp dt) →
+        pure ∘ SD.DateTime prec $ pure dt
       _, _ → CEM.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
-    where
-      parse ∷ ∀ s a. P.Parser s a → s → m a
-      parse p str =
-        case P.runParser str p of
-          Left err → CEM.throw $ "Parse error: " ⊕ show err
-          Right a → pure a
 
   evalList
     ∷ String
@@ -217,77 +198,3 @@ evalEmbeddedQueries sm dir =
     {inputs} ← CEM.liftQ $ Quasar.compile (Left dir) code sm
     CEM.addSources inputs
     CEM.liftQ $ Quasar.queryEJsonVM dir code sm
-
-parseDigit ∷ P.Parser String Int
-parseDigit =
-  PC.choice
-    [ 0 <$ PS.string "0"
-    , 1 <$ PS.string "1"
-    , 2 <$ PS.string "2"
-    , 3 <$ PS.string "3"
-    , 4 <$ PS.string "4"
-    , 5 <$ PS.string "5"
-    , 6 <$ PS.string "6"
-    , 7 <$ PS.string "7"
-    , 8 <$ PS.string "8"
-    , 9 <$ PS.string "9"
-    ]
-
-many1
-  ∷ ∀ s a
-  . P.Parser s a
-  → P.Parser s (L.List a)
-many1 p =
-  L.Cons
-    <$> p
-    <*> L.many p
-
-parseNat ∷ P.Parser String Int
-parseNat =
-  many1 parseDigit
-    <#> foldl (\a i → a * 10 + i) 0
-
-hyphen ∷ P.Parser String Unit
-hyphen = void $ PS.string "-"
-
-colon ∷ P.Parser String Unit
-colon = void $ PS.string ":"
-
-parseSqlDate ∷ P.Parser String SD.DateValue
-parseSqlDate = do
-  year ← parseNat
-  hyphen
-  month ← parseNat
-  hyphen
-  day ← parseNat
-  pure { year, month, day }
-
-parseSqlTime ∷ P.Parser String SD.TimeValue
-parseSqlTime = do
-  hours ← parseNat
-  colon
-  minutes ← parseNat
-  colon
-  seconds ← Just <$> parseNat
-  pure { hours, minutes, seconds }
-
--- | Parses a date-time string into the user's current locale.
-parseSqlTimeStamp
-  ∷ ∀ eff
-  . String
-  → Eff (locale :: JSD.LOCALE | eff) (Either String SD.DateTimeValue)
-parseSqlTimeStamp str = do
-  d <- JSD.parse str
-  case JSD.isValid d of
-    false → pure $ Left $ "Invalid date: " ⊕ show str
-    true → do
-      year ← Int.round <$> JSD.getFullYear d
-      month ← (_ + 1) ∘ Int.round <$> JSD.getMonth d
-      day ← Int.round <$> JSD.getDate d
-      hours ← Int.round <$> JSD.getHours d
-      minutes ← Int.round <$> JSD.getMinutes d
-      seconds ← Just ∘ Int.round <$> JSD.getSeconds d
-      pure $ Right
-        { date: { year , month , day }
-        , time: { hours , minutes, seconds }
-        }

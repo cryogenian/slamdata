@@ -28,7 +28,9 @@ import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 
 import Data.Json.Extended as EJSON
+import Data.Json.Extended.Signature.Parse as EJP
 
+import Text.Parsing.Parser as P
 import Text.SlamSearch.Types as SS
 
 import Utils as Utils
@@ -38,16 +40,16 @@ import Utils as Utils
 -- which is then serialized separately. Blocked by SD-1391.
 
 queryToSQL
-  :: Array String
-  -> SS.SearchQuery
-  -> String
+  ∷ Array String
+  → SS.SearchQuery
+  → String
 queryToSQL fields query =
      "SELECT"
   <> (if needDistinct whereClause then " DISTINCT " else " ")
   <> topFields
   <> " from {{path}} where " <> whereOrFalse
   where
-    topFields :: String
+    topFields ∷ String
     topFields =
         S.joinWith ", "
       $ nub
@@ -59,15 +61,15 @@ queryToSQL fields query =
       $ map (RX.match topFieldRegex)
       $ fields
 
-    topFieldRegex :: RX.Regex
+    topFieldRegex ∷ RX.Regex
     topFieldRegex =
       unsafePartial fromRight $
         RX.regex "^\\.[^\\.\\[]+|^\\[.+\\]/" RXF.noFlags
 
-    whereOrFalse :: String
+    whereOrFalse ∷ String
     whereOrFalse = if whereClause == "()" then "FALSE" else whereClause
 
-    whereClause :: String
+    whereClause ∷ String
     whereClause =
         S.joinWith " OR "
       $ map oneWhereInput
@@ -75,53 +77,53 @@ queryToSQL fields query =
       $ unwrap
       $ map (termToSQL fields) query
 
-    oneWhereInput :: List String -> String
+    oneWhereInput ∷ List String → String
     oneWhereInput s = pars $ S.joinWith " AND " $ fromFoldable s
 
-needDistinct :: String -> Boolean
+needDistinct ∷ String → Boolean
 needDistinct input =
   (isJust $ S.indexOf (S.Pattern "{*}") input) || (isJust $ S.indexOf (S.Pattern "[*]") input)
 
 termToSQL
-  :: Array String
-  -> SS.Term
-  -> String
+  ∷ Array String
+  → SS.Term
+  → String
 termToSQL fields (SS.Term {include: include, predicate: p, labels: ls}) =
   if not include
     then "NOT " <> pars (termToSQL fields $ SS.Term {include: true, predicate: p, labels: ls})
     else renderPredicate $ labelsProjection fields (fromFoldable ls)
   where
-    renderPredicate :: Array String -> String
+    renderPredicate ∷ Array String → String
     renderPredicate prj =
       S.joinWith " OR " (predicateToSQL p <$> prj)
 
 predicateToSQL
-  :: SS.Predicate
-  -> String
-  -> String
+  ∷ SS.Predicate
+  → String
+  → String
 predicateToSQL (SS.Contains (SS.Text v)) s =
   S.joinWith " OR " $
     [s <> " ~* " <> EJSON.renderEJson (EJSON.string (globToRegex (containsToGlob v)))]
     <> (if needUnq v then renderLowercased v else [])
-    <> (if not (needDateTime v) && needDate v then render date else [ ])
-    <> (if needTime v then render time  else [])
-    <> (if needDateTime v then render ts else [])
+    <> (if not isJust ts then maybe [] render date else [])
+    <> (maybe [] render time)
+    <> (maybe [] render ts)
     <> (if needInterval v then render i else [])
 
   where
-    containsToGlob :: String -> String
+    containsToGlob ∷ String → String
     containsToGlob v' =
       if hasSpecialChars v'
       then v'
       else "*" <> v' <> "*"
 
-    hasSpecialChars :: String -> Boolean
+    hasSpecialChars ∷ String → Boolean
     hasSpecialChars v' =
       isJust (S.indexOf (S.Pattern "*") v') || isJust (S.indexOf (S.Pattern "?") v')
 
-    date = EJSON.renderEJson $ EJSON.date v
-    time = EJSON.renderEJson $ EJSON.time v
-    ts = EJSON.renderEJson $ EJSON.timestamp v
+    date = parseEJsonValue EJSON.date EJP.parseDate v
+    time = parseEJsonValue EJSON.time EJP.parseTime v
+    ts = parseEJsonValue EJSON.timestamp EJP.parseTimestamp v
     i = EJSON.renderEJson $ EJSON.interval v
 
     renderLowercased v' = [ "LOWER(" <> s <> ") = " <> v']
@@ -131,17 +133,19 @@ predicateToSQL (SS.Range (SS.Text v) (SS.Text v')) s =
   S.joinWith " OR " $
     [ forR' (quote v) (quote v') ]
     <> (if needUnq v && needUnq v' then [ forR v v' ] else [ ])
-    <> (if needDate v && needDate v' then [ forR date date' ] else [ ])
+    <> case date, date' of
+      Just d, Just d' → [ forR d d' ]
+      _, _ → []
 
   where
-    date = EJSON.renderEJson $ EJSON.date v
-    date' = EJSON.renderEJson $ EJSON.date v'
+    date = parseEJsonValue EJSON.date EJP.parseDate v
+    date' = parseEJsonValue EJSON.date EJP.parseDate v'
 
-    forR' :: String -> String -> String
+    forR' ∷ String → String → String
     forR' a b =
       fold ["(LOWER(", s, ") >=", a, " AND LOWER(", s, ") <= ", b, ")"]
 
-    forR :: String -> String -> String
+    forR ∷ String → String → String
     forR a b =
       fold ["(", s, " >= ", a, " AND ", s, " <= ", b, ")"]
 
@@ -159,12 +163,12 @@ predicateToSQL (SS.Lte v) s = renderBinRel s "<=" v
 predicateToSQL (SS.Ne v) s = renderBinRel s "<>" v
 predicateToSQL (SS.Like v) s = s <> " ~* " <> EJSON.renderEJson (EJSON.string v)
 
-globToRegex :: String -> String
+globToRegex ∷ String → String
 globToRegex =
-  (\x -> "^" <> x <> "$")
-    <<< RX.replace askRegex "."
-    <<< RX.replace starRegex ".*"
-    <<< RX.replace globEscapeRegex "\\$&"
+  (\x → "^" <> x <> "$")
+    ∘ RX.replace askRegex "."
+    ∘ RX.replace starRegex ".*"
+    ∘ RX.replace globEscapeRegex "\\$&"
   where
     globEscapeRegex =
       unsafePartial fromRight $
@@ -180,67 +184,40 @@ globToRegex =
         RX.regex "\\?" RXF.global
 
 renderBinRel
-  :: String
-  -> String
-  -> SS.Value
-  -> String
+  ∷ String
+  → String
+  → SS.Value
+  → String
 renderBinRel s op v = pars $
   S.joinWith " OR " $
     [ forV' (quote unquoted) ]
     <> (if needUnq unquoted then [ forV unquoted ] else [])
-    <> (if not (needDateTime unquoted) && needDate unquoted then [ forV date ] else [])
-    <> (if needTime unquoted then [ forV time ] else [])
-    <> (if needDateTime unquoted then [ forV ts ] else [])
+    <> (maybe [] (pure ∘ forV) time)
+    <> (if not isJust ts then maybe [] (pure ∘ forV) date else [])
+    <> (maybe [] (pure ∘ forV) ts)
     <> (if needInterval unquoted then [ forV i ] else [])
   where
     unquoted = valueToSQL v
-    date = EJSON.renderEJson $ EJSON.date unquoted
-    time = EJSON.renderEJson $ EJSON.time unquoted
-    ts = EJSON.renderEJson $ EJSON.timestamp unquoted
+    date = parseEJsonValue EJSON.date EJP.parseDate unquoted
+    time = parseEJsonValue EJSON.time EJP.parseTime unquoted
+    ts = parseEJsonValue EJSON.timestamp EJP.parseTimestamp unquoted
     i = EJSON.renderEJson $ EJSON.interval unquoted
-
     forV' v' = fold ["LOWER(", s, ") ", op, " ", v']
     forV v' = fold [s, " ", op, " ", v']
 
+parseEJsonValue ∷ ∀ a. (a → EJSON.EJson) → P.Parser String a → String → Maybe String
+parseEJsonValue f p input =
+  either (const Nothing) (Just ∘ EJSON.renderEJson ∘ f) $ P.runParser input p
+
 -- | Whether the string should be rendered without quotes
-needUnq :: String -> Boolean
+needUnq ∷ String → Boolean
 needUnq s =
   fromMaybe false ((show >>> (_ == s)) <$> Int.fromString s)
   || fromMaybe false ((show >>> (_ == s)) <$> Utils.stringToNumber s)
   || s == "true"
   || s == "false"
 
-
-needDate :: String -> Boolean
-needDate = RX.test dateRegex
-  where
-    dateRegex =
-      unsafePartial fromRight $
-        RX.regex
-          """^(((19|20)([2468][048]|[13579][26]|0[48])|2000)[-]02[-]29|((19|20)[0-9]{2}[-](0[4678]|1[02])[-](0[1-9]|[12][0-9]|30)|(19|20)[0-9]{2}[-](0[1359]|11)[-](0[1-9]|[12][0-9]|3[01])|(19|20)[0-9]{2}[-]02[-](0[1-9]|1[0-9]|2[0-8])))$"""
-          RXF.noFlags
-
-
-needTime :: String -> Boolean
-needTime = RX.test timeRegex
-  where
-    timeRegex =
-      unsafePartial fromRight $
-        RX.regex
-          "^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
-          RXF.noFlags
-
-
-needDateTime :: String -> Boolean
-needDateTime = RX.test dtRegex
-  where
-    dtRegex =
-      unsafePartial fromRight $
-        RX.regex
-          "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
-          RXF.noFlags
-
-needInterval :: String -> Boolean
+needInterval ∷ String → Boolean
 needInterval = RX.test intervalRegex
   where
     intervalRegex =
@@ -249,30 +226,30 @@ needInterval = RX.test intervalRegex
           "P((([0-9]*\\.?[0-9]*)Y)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)W)?(([0-9]*\\.?[0-9]*)D)?)?(T(([0-9]*\\.?[0-9]*)H)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)S)?)?"
           RXF.noFlags
 
-valueToSQL :: SS.Value -> String
+valueToSQL ∷ SS.Value → String
 valueToSQL =
   case _ of
-    SS.Text v -> v
-    SS.Tag v -> v
+    SS.Text v → v
+    SS.Tag v → v
 
-labelsProjection :: Array String -> Array SS.Label -> Array String
+labelsProjection ∷ Array String → Array SS.Label → Array String
 labelsProjection fields ls =
   nub
   $ RX.replace arrFieldRgx "[*]"
   <$> RX.replace firstDot ""
   <$> filter (RX.test $ labelsRegex ls) fields
   where
-    arrFieldRgx :: RX.Regex
+    arrFieldRgx ∷ RX.Regex
     arrFieldRgx =
       unsafePartial fromRight $
         RX.regex "\\[\\d+\\]" RXF.global
 
-labelsRegex :: Array SS.Label -> RX.Regex
+labelsRegex ∷ Array SS.Label → RX.Regex
 labelsRegex [] = unsafePartial fromRight $ RX.regex ".*" RXF.noFlags
 labelsRegex ls =
   unsafePartial fromRight $ RX.regex ("^" <> (foldMap mapFn ls) <> "$") RXF.ignoreCase
   where
-  mapFn :: SS.Label -> String
+  mapFn ∷ SS.Label → String
   mapFn (SS.Meta l) = mapFn (SS.Common l)
   mapFn (SS.Common "{*}") = "(\\.[^\\.]+)"
   mapFn (SS.Common "[*]") = "(\\[\\d+\\])"
@@ -284,17 +261,17 @@ labelsRegex ls =
       $ l
     | otherwise = "(\\.`" <> l <> "`|\\." <> l <> ")"
 
-  openSquare :: RX.Regex
+  openSquare ∷ RX.Regex
   openSquare = unsafePartial fromRight $ RX.regex "\\[" RXF.noFlags
 
-  closeSquare :: RX.Regex
+  closeSquare ∷ RX.Regex
   closeSquare = unsafePartial fromRight $ RX.regex "\\]" RXF.noFlags
 
-firstDot :: RX.Regex
+firstDot ∷ RX.Regex
 firstDot = unsafePartial fromRight $ RX.regex "^\\." RXF.noFlags
 
-quote :: String -> String
+quote ∷ String → String
 quote s = EJSON.renderEJson $ EJSON.string s
 
-pars :: String -> String
+pars ∷ String → String
 pars s = "(" <> s <> ")"
