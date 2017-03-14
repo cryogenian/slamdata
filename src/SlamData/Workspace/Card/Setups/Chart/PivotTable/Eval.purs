@@ -37,8 +37,9 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Transform as T
 
 import Utils.Path (FilePath)
 
@@ -81,18 +82,16 @@ mkSql options resource =
     isSimple = PTM.isSimple options
     port = genPort isSimple options
     dimLen = Array.length port.dimensions
-    groupBy = map (\(_ × value) → "row" <> CEC.escapeCursor value) port.dimensions
-    dims =
-      Array.mapWithIndex
-        (\i (n × value) → "row" <> CEC.escapeCursor value <> " AS " <> Port.escapeIdentifier n)
-        port.dimensions
+    dimVals = map escapeDimension <$> port.dimensions
+    colVals = map escapeColumn <$> port.columns
+    groupBy = map (\(_ × tr × val) → maybe val (flip T.printTransform val) tr) dimVals
+    dims = map (\(n × tr × val) → groupByTransform tr val <> " AS " <> Port.escapeIdentifier n) dimVals
     cols =
-      Array.mapWithIndex
-        case _, _ of
-          i, n × PTM.Column c | isSimple → "row" <> CEC.escapeCursor c.value <> " AS " <> Port.escapeIdentifier n
-          i, n × PTM.Column c → sqlAggregation c.valueAggregation ("row" <> CEC.escapeCursor c.value) <> " AS " <> Port.escapeIdentifier n
-          i, n × PTM.Count    → "COUNT(*) AS " <> Port.escapeIdentifier n
-        port.columns
+      map
+        case _ of
+          n × Nothing × val | isSimple → val <> " AS " <> Port.escapeIdentifier n
+          n × tr × val → columnTransform tr val <> " AS " <> Port.escapeIdentifier n
+        colVals
     head =
       [ "SELECT " <> String.joinWith ", " (dims <> cols)
       , "FROM {{path}} AS row"
@@ -132,9 +131,12 @@ genPort isSimpleQuery model =
           }
 
   genName = case _ of
-    Left j → topName j
-    Right PTM.Count → "count"
-    Right (PTM.Column { value }) → topName value
+    Left  (D.Dimension _ (D.Static _)) → "static"
+    Left  (D.Dimension _ (D.Projection _ value)) → topName value
+    Right (D.Dimension _ (D.Static _)) → "static"
+    Right (D.Dimension _ (D.Projection (Just T.Count) PTM.All)) → "count"
+    Right (D.Dimension _ (D.Projection _ PTM.All)) → "all"
+    Right (D.Dimension _ (D.Projection _ (PTM.Column value))) → topName value
 
   uniqueTag n taken a =
     let name = if n ≡ 1 then a else a <> "_" <> show n
@@ -149,10 +151,24 @@ topName = case _ of
   J.JIndex _ cs → topName cs
   J.JCursorTop → "value"
 
-sqlAggregation ∷ Maybe Ag.Aggregation → String → String
-sqlAggregation a b = case a of
-  Just Ag.Minimum → "MIN(" <> b <> ")"
-  Just Ag.Maximum → "MAX(" <> b <> ")"
-  Just Ag.Average → "AVG(" <> b <> ")"
-  Just Ag.Sum     → "SUM(" <> b <> ")"
-  _ → "[" <> b <> " ...]"
+groupByTransform ∷ Maybe T.Transform → String → String
+groupByTransform (Just tr) b = T.printTransform tr b
+groupByTransform Nothing b   = b
+
+columnTransform ∷ Maybe T.Transform → String → String
+columnTransform (Just tr) b = T.printTransform tr b
+columnTransform Nothing b   = "[" <> b <> " ...]"
+
+escapeString ∷ String → String
+escapeString = J.printJson <<< J.encodeJson
+
+escapeDimension ∷ ∀ a. D.Dimension a J.JCursor → Maybe T.Transform × String
+escapeDimension = case _ of
+  D.Dimension _ (D.Static str) → Nothing × escapeString str
+  D.Dimension _ (D.Projection tr cur) → tr × "row" <> CEC.escapeCursor cur
+
+escapeColumn ∷ ∀ a. D.Dimension a PTM.Column → Maybe T.Transform × String
+escapeColumn = case _ of
+  D.Dimension _ (D.Static str) → Nothing × escapeString str
+  D.Dimension _ (D.Projection tr PTM.All) → tr × "row"
+  D.Dimension _ (D.Projection tr (PTM.Column cur)) → tr × "row" <> CEC.escapeCursor cur

@@ -16,30 +16,30 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query where
 
-import SlamData.Prelude
-
 import Halogen.Component.Utils.Drag (DragEvent)
 
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Column (ColumnNode)
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DP
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.Transform as T
 
 import Utils.DOM as DOM
 
+data ForDimension
+  = ForGroupBy Int
+  | ForColumn Int
+
 data Query a
-  = AddDimension a
-  | RemoveDimension Int a
+  = AddGroupBy a
   | AddColumn a
-  | RemoveColumn Int a
-  | OrderDimensionStart Int DOM.MouseEvent a
-  | OrderingDimension Int DragEvent a
-  | OrderOverDimension Int a
-  | OrderOutDimension Int a
-  | OrderColumnStart Int DOM.MouseEvent a
-  | OrderingColumn Int DragEvent a
-  | OrderOverColumn Int a
-  | OrderOutColumn Int a
-  | ChooseAggregation Int (Maybe Ag.Aggregation) a
-  | HandleDimPicker (DP.Message JCursorNode) a
-  | HandleColPicker (DP.Message ColumnNode) a
+  | Remove ForDimension a
+  | ChangeLabel ForDimension String a
+  | Configure ForDimension a
+  | OrderStart ForDimension DOM.MouseEvent a
+  | Ordering ForDimension DragEvent a
+  | OrderOver ForDimension a
+  | OrderOut ForDimension a
+  | HandleGroupByPicker (DPC.Message JCursorNode) a
+  | HandleColumnPicker (DPC.Message ColumnNode) a
+  | HandleTransformPicker ForDimension (AS.Message T.Transform) a

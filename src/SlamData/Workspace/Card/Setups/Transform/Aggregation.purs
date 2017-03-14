@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Aggregation where
+module SlamData.Workspace.Card.Setups.Transform.Aggregation where
 
 import SlamData.Prelude
 
 import Data.Argonaut (fromString, class EncodeJson, class DecodeJson, decodeJson)
-import Data.Foldable (sum, product, maximum, minimum)
+import Data.Foldable (sum, maximum, minimum)
 import Data.List as L
 
 import SlamData.Form.Select (class OptionVal, Select(..))
@@ -32,7 +32,6 @@ data Aggregation
   | Minimum
   | Average
   | Sum
-  | Product
 
 allAggregations ∷ Array Aggregation
 allAggregations =
@@ -40,7 +39,6 @@ allAggregations =
   , Minimum
   , Average
   , Sum
-  , Product
   ]
 
 defaultAggregation ∷ Aggregation
@@ -51,14 +49,13 @@ printAggregation Maximum = "Maximum"
 printAggregation Minimum = "Minimum"
 printAggregation Average = "Average"
 printAggregation Sum = "Sum"
-printAggregation Product = "Product"
 
+-- TODO: Product??
 parseAggregation ∷ String → Either String Aggregation
 parseAggregation "Maximum" = pure Maximum
 parseAggregation "Minimum" = pure Minimum
 parseAggregation "Average" = pure Average
 parseAggregation "Sum" = pure Sum
-parseAggregation "Product" = pure Product
 parseAggregation _ = Left "Incorrect aggregation string"
 
 runAggregation
@@ -75,7 +72,6 @@ runAggregation Average nums =
   where
   normalize (Tuple count sum) = sum / count
 runAggregation Sum nums = sum nums
-runAggregation Product nums = product nums
 
 aggregationSelect ∷ Select (Maybe Aggregation)
 aggregationSelect =

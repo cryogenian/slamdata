@@ -19,13 +19,11 @@ module SlamData.Workspace.Card.Setups.DimensionPicker.Component where
 import SlamData.Prelude
 
 import Halogen as H
-import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import SlamData.Workspace.Card.Setups.Dialog as CSD
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 import SlamData.Workspace.MillerColumns.Column.Component as MCC
 import SlamData.Workspace.MillerColumns.Component as MC
@@ -111,44 +109,15 @@ picker opts =
 
   render ∷ State s → HTML s
   render st =
-    HH.div
-      [ HP.classes [ HH.ClassName "sd-dimension-picker" ] ]
-      [ HH.div
-          [ HP.classes [ HH.ClassName "sd-dimension-picker-title" ] ]
-          [ HH.h1_ [ HH.text opts.title ]
-          , HH.button
-              [ HP.classes [ HH.ClassName "sd-dismiss-button" ]
-              , HP.title "Dismiss"
-              , ARIA.label "Dismiss"
-              , HE.onClick $ HE.input_ $ RaiseMessage Dismiss
-              ]
-              [ HH.text "×"]
-          ]
-      , HH.div
-          [ HP.classes [ HH.ClassName "sd-dimension-picker-content" ] ]
-          [ HH.slot unit (MC.component columnOptions) columnState handleMessage ]
-      , HH.div
-          [ HP.classes [ HH.ClassName "sd-dimension-picker-toolbar" ] ]
-          [ HH.button
-              [ HP.classes [ B.btn, B.btnDefault ]
-              , ARIA.label "Dismiss"
-              , HE.onClick $ HE.input_ $ RaiseMessage Dismiss
-              ]
-              [ HH.text "Dismiss" ]
-          , HH.button
-              ([ HP.classes [ B.btn, B.btnPrimary ]
-              , ARIA.label ""
-              ] <>
-                case st.selection of
-                  Just sel | opts.isSelectable sel →
-                    [ HE.onClick $ HE.input_ $ RaiseMessage $ Confirm sel
-                    , HP.disabled false
-                    ]
-                  _ →
-                    [ HP.disabled true ])
-              [ HH.text "Confirm" ]
-          ]
-      ]
+    CSD.pickerDialog
+      { onDismiss: RaiseMessage Dismiss
+      , onConfirm: RaiseMessage ∘ Confirm
+      , selection: st.selection
+      , isSelectable: opts.isSelectable
+      , classes: [ HH.ClassName "sd-dimension-picker" ]
+      , title: [ HH.text opts.title ]
+      , content: [ HH.slot unit (MC.component columnOptions) columnState handleMessage ]
+      }
 
   handleMessage ∷ MC.Message' s s Void → Maybe (Query s Unit)
   handleMessage =

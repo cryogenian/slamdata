@@ -18,37 +18,30 @@ module SlamData.Workspace.Card.Setups.Chart.PivotTable.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), isNull, (.?), jsonEmptyObject)
+import Data.Argonaut (JCursor(..), Json, class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), isNull, (.?), jsonEmptyObject)
+import Data.Argonaut.JCursor (insideOut)
 import Data.Array as Array
 import Data.Foldable as F
-import Data.Lens (Prism', prism')
+import Data.Newtype (un)
+import Data.String as String
 
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Transform as T
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
 type Model =
-  { dimensions ∷ Array JCursor
-  , columns ∷ Array Column
+  { dimensions ∷ Array GroupByDimension
+  , columns ∷ Array ColumnDimension
   }
 
-data Column
-  = Count
-  | Column
-      { value ∷ JCursor
-      , valueAggregation ∷ Maybe (Ag.Aggregation)
-      }
+data Column = All | Column JCursor
 
-_Column
-  ∷ Prism' Column
-      { value ∷ JCursor
-      , valueAggregation ∷ Maybe (Ag.Aggregation)
-      }
-_Column = prism' Column case _ of
-  Column r → Just r
-  _ → Nothing
+type ColumnDimension = D.Dimension Void Column
+
+type GroupByDimension = D.Dimension Void JCursor
 
 initialModel ∷ Model
 initialModel =
@@ -61,8 +54,8 @@ eqModel r1 r2 = r1.dimensions == r2.dimensions && r1.columns == r2.columns
 
 genModel ∷ Gen.Gen Model
 genModel = do
-  dimensions ← map runArbJCursor <$> arbitrary
-  columns ← arbitrary
+  dimensions ← map (map runArbJCursor ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+  columns ← map (un D.DimensionWithStaticCategory) <$> arbitrary
   pure { dimensions, columns }
 
 encode ∷ Model → Json
@@ -80,46 +73,74 @@ decode js
       configType ← obj .? "configType"
       unless (configType ≡ "pivot") do
         throwError "Not a valid pivot table configuration"
-      dimensions ← obj .? "dimensions"
-      columns ← obj .? "columns"
+      dimensions ← traverse decodeDimension =<< obj .? "dimensions"
+      columns ← traverse decodeColumn =<< obj .? "columns"
       pure { dimensions, columns }
+  where
+  decodeDimension ∷ Json → Either String GroupByDimension
+  decodeDimension json = decodeJson json <|> decodeLegacyDimension json
+
+  decodeLegacyDimension ∷ Json → Either String GroupByDimension
+  decodeLegacyDimension json = do
+    value ← decodeJson json
+    pure $ D.projectionWithCategory (defaultJCursorCategory value) value
+
+  decodeColumn ∷ Json → Either String ColumnDimension
+  decodeColumn json = decodeJson json <|> decodeLegacyColumn json
+
+  decodeLegacyColumn ∷ Json → Either String ColumnDimension
+  decodeLegacyColumn json = do
+    obj ← decodeJson json
+    obj .? "columnType" >>= case _ of
+      "value" → do
+        value ← Column <$> obj .? "value"
+        valueAggregation ← map T.Aggregation <$> obj .? "valueAggregation"
+        pure $ D.Dimension
+          (Just (defaultColumnCategory value))
+          (D.Projection valueAggregation value)
+      "count" → do
+        pure $ D.Dimension
+          (Just (D.Static "count"))
+          (D.Projection (Just T.Count) All)
+      ty → throwError $ "Invalid column type: " <> ty
 
 derive instance eqColumn ∷ Eq Column
 derive instance ordColumn ∷ Ord Column
 
 instance arbitraryColumn ∷ Arbitrary Column where
-  arbitrary = do
-    value ← runArbJCursor <$> arbitrary
-    valueAggregation ← arbitrary
-    pure $ Column { value, valueAggregation }
+  arbitrary = arbitrary >>= if _
+    then pure All
+    else Column ∘ runArbJCursor <$> arbitrary
 
 instance encodeJsonColumn ∷ EncodeJson Column where
-  encodeJson (Column c) =
-    "columnType" := "value"
-    ~> "value" := c.value
-    ~> "valueAggregation" := c.valueAggregation
-    ~> jsonEmptyObject
-  encodeJson Count =
-    "columnType" := "count"
-    ~> jsonEmptyObject
+  encodeJson = case _ of
+    All → "type" := "all" ~> jsonEmptyObject
+    Column j → "type" := "column" ~> "value" := j ~> jsonEmptyObject
 
 instance decodeJsonColumn ∷ DecodeJson Column where
   decodeJson json = do
     obj ← decodeJson json
-    columnType ← obj .? "columnType"
-    case columnType of
-      "value" → do
-        value ← obj .? "value"
-        valueAggregation ← obj .? "valueAggregation"
-        pure $ Column { value, valueAggregation }
-      "count" → do
-        pure Count
-      _ →
-        Left $ "Not a valid column type: " <> columnType
+    obj .? "type" >>= case _ of
+      "all" → pure All
+      "column" → Column <$> obj .? "value"
+      ty → throwError $ "Invalid column type: " <> ty
 
 isSimple ∷ Model → Boolean
 isSimple { dimensions, columns } =
   Array.null dimensions && F.all simpleCol columns
   where
-  simpleCol (Column { valueAggregation: Nothing }) = true
-  simpleCol _ = false
+  simpleCol = case _ of
+    D.Dimension _ (D.Projection (Just (T.Aggregation _)) _) → false
+    _ → true
+
+defaultJCursorCategory ∷ ∀ a. JCursor → D.Category a
+defaultJCursorCategory = D.Static ∘ String.joinWith "_" ∘ go [] ∘ insideOut
+  where
+  go label (JField field _) = Array.cons field label
+  go label (JIndex ix next) = go (Array.cons (show ix) label) next
+  go label _ = Array.cons "value" label
+
+defaultColumnCategory ∷ ∀ a. Column → D.Category a
+defaultColumnCategory = case _ of
+  All → D.Static "all"
+  Column j → defaultJCursorCategory j

@@ -18,14 +18,17 @@ module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.State
   ( State
   , OrderingOpts
   , Selecting(..)
-  , Dimensions
+  , PickerTree
   , initialState
   , modelFromState
   , stateFromModel
+  , _columns
+  , _dimensions
   , reorder
-  , setColumnAggregation
+  , setColumnTransform
+  , setGroupByTransform
   , selectColumnValues
-  , selectDimensionValues
+  , selectGroupByValues
   ) where
 
 import SlamData.Prelude
@@ -34,26 +37,30 @@ import Control.Comonad.Cofree (Cofree)
 
 import Data.Argonaut (JCursor)
 import Data.Array as Array
+import Data.Lens as Lens
 import Data.List (List, (:))
 import Data.List as List
 
 import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Model, Column(..))
-import SlamData.Workspace.Card.Setups.DimensionPicker.Column (groupColumns)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors)
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query (ForDimension)
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionPicker.Column (groupColumns, ColumnNode)
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, JCursorNode)
+import SlamData.Workspace.Card.Setups.Transform as T
 
 data Selecting
-  = Dim (Dimensions JCursor)
-  | Col (Dimensions Column)
+  = SelectGroupBy (PickerTree JCursor)
+  | SelectColumn (PickerTree PTM.Column)
+  | SelectTransform ForDimension (Maybe T.Transform) (Array T.Transform)
 
-type Dimensions a = Cofree List (Either a a)
+type PickerTree a = Cofree List (Either a a)
 
 type State =
   { axes ∷ Axes
   , fresh ∷ Int
-  , dimensions ∷ Array (Int × JCursor)
-  , columns ∷ Array (Int × Column)
+  , dimensions ∷ Array (Int × PTM.GroupByDimension)
+  , columns ∷ Array (Int × PTM.ColumnDimension)
   , orderingColumn ∷ Maybe OrderingOpts
   , orderingDimension ∷ Maybe OrderingOpts
   , selecting ∷ Maybe Selecting
@@ -76,13 +83,13 @@ initialState =
   , selecting: Nothing
   }
 
-modelFromState ∷ State → Model
+modelFromState ∷ State → PTM.Model
 modelFromState st =
   { dimensions: map snd st.dimensions
   , columns: map snd st.columns
   }
 
-stateFromModel ∷ Model → State → State
+stateFromModel ∷ PTM.Model → State → State
 stateFromModel r st =
   let
     l1 = Array.length r.dimensions
@@ -92,6 +99,12 @@ stateFromModel r st =
     fresh = l1 + l2
   in
     st { dimensions = dims, columns = cols, fresh = fresh }
+
+_columns ∷ Lens.Lens' State (Array (Int × PTM.ColumnDimension))
+_columns = Lens.lens _.columns _ { columns = _ }
+
+_dimensions ∷ Lens.Lens' State (Array (Int × PTM.GroupByDimension))
+_dimensions = Lens.lens _.dimensions _ { dimensions = _ }
 
 reorder ∷ ∀ a. Int → Int → Array (Int × a) → Array (Int × a)
 reorder tag1 tag2 arr | tag1 == tag2 = arr
@@ -108,29 +121,27 @@ reorder tag1 tag2 arr =
     _, Just i2 → init <> Array.take i2 rest <> subj <> Array.drop i2 rest
     _, _ → arr
 
-setColumnAggregation ∷ Int → Maybe Ag.Aggregation → State → State
-setColumnAggregation tag ag st = st { columns = map go st.columns }
+modifyDimension ∷ ∀ a b. Lens.Lens' State (Array (Int × D.Dimension a b)) → (D.Dimension a b → D.Dimension a b) → Int → State → State
+modifyDimension dimLens f tag = Lens.over dimLens (map go)
   where
-  go (tag' × Column col) | tag == tag' = tag × Column (col { valueAggregation = ag })
+  go (tag' × a) | tag == tag' = tag × f a
   go a = a
 
-selectColumnValues ∷ Axes → Cofree List (Either Column Column)
+setColumnTransform ∷ Maybe T.Transform → Int → State → State
+setColumnTransform = modifyDimension _columns ∘ Lens.set (D._value ∘ D._transform)
+
+setGroupByTransform ∷ Maybe T.Transform → Int → State → State
+setGroupByTransform = modifyDimension _dimensions ∘ Lens.set (D._value ∘ D._transform)
+
+selectColumnValues ∷ Axes → Cofree List ColumnNode
 selectColumnValues axes =
   groupColumns
-    (Count : List.fromFoldable
-      (map (Column ∘ { value: _, valueAggregation: Nothing })
-        (Array.sort
-          (axes.category
-           <> axes.time
-           <> axes.value
-           <> axes.date
-           <> axes.datetime))))
+    (PTM.All : List.fromFoldable
+      (map PTM.Column
+        (axes.category <> axes.value <> axes.time <> axes.date <> axes.datetime)))
 
-selectDimensionValues ∷ Axes → Cofree List (Either JCursor JCursor)
-selectDimensionValues axes =
+selectGroupByValues ∷ Axes → Cofree List JCursorNode
+selectGroupByValues axes =
   groupJCursors
     (List.fromFoldable
-      (Array.sort
-        (axes.category
-         <> axes.time
-         <> axes.value)))
+      (axes.category <> axes.value <> axes.time <> axes.date <> axes.datetime))

@@ -20,6 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Array as Array
+import Data.Lens ((^.))
 import Data.List as List
 
 import Halogen as H
@@ -30,8 +31,13 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Form.Select (Select(..), stringVal, class OptionVal)
+import SlamData.Render.Common as RC
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, showJCursor, showJCursorTip)
+import SlamData.Workspace.Card.Setups.Transform as T
+
+import Utils.DOM as DOM
 
 type Select' a = Boolean × Select a
 
@@ -216,3 +222,82 @@ dimensionPicker options title =
   , values: groupJCursors (List.fromFoldable options)
   , isSelectable: DPC.isLeafPath
   }
+
+type DimensionOptions a b i =
+  { configurable ∷ Boolean
+  , dimension ∷ D.Dimension a b
+  , showLabel ∷ a → String
+  , showDefaultLabel ∷ b → String
+  , showValue ∷ b → String
+  , onLabelChange ∷ String → Maybe (i Unit)
+  , onDismiss ∷ DOM.MouseEvent → Maybe (i Unit)
+  , onConfigure ∷ DOM.MouseEvent → Maybe (i Unit)
+  , onMouseDown ∷ DOM.MouseEvent → Maybe (i Unit)
+  }
+
+dimensionButton ∷ ∀ a b p i . DimensionOptions a b i → H.HTML p i
+dimensionButton opts =
+  HH.div
+    [ HP.classes [ HH.ClassName "sd-dimension-button" ] ]
+    [ HH.div
+        [ HP.classes [ HH.ClassName "sd-dimension-button-label" ] ]
+        [ HH.input
+            [ HP.type_ HP.InputText
+            , HP.value labelText
+            , HE.onValueInput opts.onLabelChange
+            , HP.placeholder defaultLabel
+            ]
+        ]
+    , HH.div
+        [ HP.classes [ HH.ClassName "sd-dimension-button-toolbar" ] ]
+        [ HH.button
+            [ HP.classes [ HH.ClassName "sd-dismiss-button" ]
+            , HP.title "Dismiss"
+            , ARIA.label "Dismiss"
+            , HE.onClick opts.onDismiss
+            ]
+            [ HH.text "×"]
+        , if opts.configurable && not (D.isStatic value)
+            then
+              HH.button
+                [ HP.classes
+                    [ HH.ClassName "sd-configure-button"
+                    , HH.ClassName "sd-discrete-button"
+                    ]
+                , HP.title "Configure"
+                , ARIA.label "Configure"
+                , HE.onClick opts.onConfigure
+                ]
+                [ RC.glyph B.glyphiconCog ]
+            else HH.text ""
+        ]
+    , HH.button
+        [ HP.classes [ HH.ClassName "sd-dimension-button-display" ]
+        , HE.onMouseDown opts.onMouseDown
+        ]
+        case value of
+          D.Static str → [ renderValue str ]
+          D.Projection Nothing v → [ renderValue (opts.showValue v) ]
+          D.Projection (Just t) v → [ renderTransform t, renderValue (opts.showValue v) ]
+    ]
+  where
+  value = opts.dimension ^. D._value
+  label = opts.dimension ^. D._category
+
+  labelText = case label of
+    Just (D.Static str) → str
+    _ → ""
+
+  defaultLabel = case value of
+    D.Static str → str
+    D.Projection _ p → opts.showDefaultLabel p
+
+  renderTransform t =
+    HH.span
+      [ HP.classes [ HH.ClassName "sd-dimension-button-transform" ] ]
+      [ HH.text (T.prettyPrintTransform t) ]
+
+  renderValue v =
+    HH.span
+      [ HP.classes [ HH.ClassName "sd-dimension-button-value" ] ]
+      [ HH.text v ]

@@ -6,13 +6,8 @@
   bottom: 0;
   overflow: hidden !important;
 
-  .sd-dismiss-button {
-    position: absolute;
-    top: 0;
-    right: 0;
-  }
-
-  .sd-dimension-picker {
+  .sd-dimension-picker,
+  .sd-action-select {
     position: absolute;
     top: 0;
     left: 0;
@@ -68,10 +63,12 @@
   &.ordering {
     z-index: 10;
     pointer-events: none;
+    opacity: 0.9;
 
     .sd-pivot-options-dim-inner {
-      height: ~"calc(100% + 1px)";
-      border-bottom: 1px solid #ddd;
+      height: ~"calc(100% + 2px)";
+      border-bottom: 2px solid #ccc;
+      border-top: 2px solid #ccc;
       box-shadow: 0 0 8px rgba(0,0,0,.2);
     }
 
@@ -84,7 +81,7 @@
       bottom: 0;
       z-index: -1;
       background: #eee;
-      border-top: 1px solid #ddd;
+      border-top: 2px solid #ddd;
       box-shadow: inset 0 0 8px rgba(0,0,0,.1);
     }
   }
@@ -101,7 +98,7 @@
   width: 100%;
   height: 100%;
   background: #fff;
-  border-top: 1px solid #ddd;
+  border-top: 2px solid #ddd;
 }
 
 .sd-pivot-options-cols {
@@ -109,7 +106,7 @@
   top: 0;
   left: 25%;
   right: 0;
-  bottom: 0;
+  height: 25%;
 }
 
 .sd-pivot-options-col {
@@ -119,11 +116,13 @@
 
   &.ordering {
     z-index: 10;
+    opacity: 0.9;
     pointer-events: none;
 
     .sd-pivot-options-col-inner {
-      width: ~"calc(100% + 1px)";
-      border-right: 1px solid #ddd;
+      width: ~"calc(100% + 2px)";
+      border-right: 2px solid #ccc;
+      border-left: 2px solid #ccc;
       box-shadow: 0 0 8px rgba(0,0,0,.2);
     }
 
@@ -136,7 +135,7 @@
       bottom: 0;
       z-index: -1;
       background: #eee;
-      border-left: 1px solid #ddd;
+      border-left: 2px solid #ddd;
       box-shadow: inset 0 0 8px rgba(0,0,0,.1);
     }
   }
@@ -153,45 +152,23 @@
   width: 100%;
   height: 100%;
   background: #fff;
-  border-left: 1px solid #ddd;
+  border-left: 2px solid #ddd;
 }
 
 .sd-pivot-options-col-value {
   width: 100%;
-  height: 25%;
+  height: 100%;
   position: relative;
 }
 
-.sd-pivot-options-col-aggregation {
-  width: 100%;
-  height: 75%;
-  border-top: 1px solid #ddd;
-  position: relative;
-
-  .list-group {
-    position: absolute;
-    top: -1px;
-    left: 0;
-    width: 100%;
-    border-bottom: 1px solid #ddd;
-    border-top: 1px solid #ddd;
-  }
-
-  .list-group-item {
-    border-left: none;
-    border-right: none;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-
-    &.active {
-      background: #f5f5f5;
-      color: inherit;
-      border-top-color: inherit;
-      border-bottom-color: inherit;
-      z-index: 1;
-    }
-  }
+.sd-pivot-options-preview {
+  position: absolute;
+  top: 25%;
+  left: 25%;
+  right: 0;
+  bottom: 0;
+  border-top: 2px solid #ddd;
+  border-left: 2px solid #ddd;
 }
 
 .sd-pivot-options-plus {

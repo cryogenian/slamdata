@@ -18,7 +18,7 @@ module Test.Property.ArbAggregation where
 
 import SlamData.Prelude
 
-import SlamData.Workspace.Card.Setups.Chart.Aggregation (Aggregation, allAggregations)
+import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, allAggregations)
 
 import Test.StrongCheck.Arbitrary (class Arbitrary)
 import Test.StrongCheck.Gen (allInArray)

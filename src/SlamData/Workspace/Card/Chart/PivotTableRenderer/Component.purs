@@ -23,7 +23,7 @@ import Data.Array as Array
 import Data.Foldable as F
 import Data.Formatter.Number as FN
 import Data.Int as Int
-import Data.Lens ((^.))
+import Data.Lens ((^.), (^?))
 import Data.List (List, (:))
 import Data.List as List
 import Data.String as String
@@ -43,8 +43,9 @@ import SlamData.Render.CSS.New as CSS
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..), ColumnDimension)
+import SlamData.Workspace.Card.Setups.Transform as T
 
 import Global (readFloat)
 import Utils (hush)
@@ -133,8 +134,7 @@ render st =
                 then HH.div [ HP.classes [ HH.ClassName "loading" ] ] []
                 else HH.text ""
         ]
-    _ →
-      HH.text ""
+    _ → HH.text ""
   where
   renderTable dims cols tree =
     if st.count ≡ 0
@@ -145,15 +145,20 @@ render st =
       else
         HH.table_
             $ [ HH.tr_
-                $ (dims <#> \d → HH.th_ [ HH.text (fst d) ])
-                ⊕ (cols <#> case _ of
-                      n × Column { value } →
-                        HH.th_ [ HH.text n ]
-                      _ × Count →
-                        HH.th_ [ HH.text "COUNT" ])
+                $ (dims <#> \(n × dim) → HH.th_ [ HH.text (headingText n dim) ])
+                ⊕ (cols <#> \(n × col) → HH.th_ [ HH.text (headingText (columnHeading n col) col) ])
             ]
             ⊕ renderRows cols tree
 
+  headingText ∷ ∀ a. String → D.Dimension Void a → String
+  headingText default = case _ of
+    D.Dimension (Just (D.Static str)) _ → str
+    _ → default
+
+  columnHeading default col = case col ^? D._value ∘ D._projection of
+    Just All → "*"
+    Just _   → default
+    Nothing  → ""
 
   renderRows cols =
     map HH.tr_ ∘ foldTree (renderLeaves cols) renderHeadings
@@ -166,27 +171,16 @@ render st =
       rowLen = sizeOfRow cols row
     in
       Array.range 0 (rowLen - 1) <#> \rowIx →
-        flip foldMap cols \(c × col) →
-          let
-            text = J.cursorGet (topField c) row <#> case rowIx, col of
-              0, Column { valueAggregation: Just ag } →
-                foldJsonArray'
-                  renderJson
-                  (show ∘ Ag.runAggregation ag ∘ jsonNumbers)
-              _, Column { valueAggregation: Just ag } →
-                foldJsonArray'
-                  (const "")
-                  (maybe "" renderJson ∘ flip Array.index rowIx)
-              _, Column _ →
-                foldJsonArray'
-                  renderJson
-                  (maybe "" renderJson ∘ flip Array.index rowIx)
-              0, Count →
-                J.foldJsonNumber "" (FN.format numFormatter)
-              _, Count →
-                const ""
-            in
-              [ HH.td_ [ HH.text (fromMaybe "" text) ] ]
+        cols <#> \(c × col) →
+          let text = renderValue rowIx (col ^. D._value) <$> J.cursorGet (topField c) row
+          in HH.td_ [ HH.text (fromMaybe "" text) ]
+
+  renderValue = case _, _ of
+    0, D.Static _ → renderJson
+    0, D.Projection (Just T.Count) _ → J.foldJsonNumber "" (FN.format numFormatter)
+    0, D.Projection _ (Column _) → foldJsonArray' renderJson (maybe "" renderJson ∘ flip Array.index 0)
+    i, D.Projection _ _ → foldJsonArray' (const "") (maybe "" renderJson ∘ flip Array.index i)
+    _, _ → const ""
 
   jsonNumbers =
     Array.mapMaybe (J.foldJsonNumber Nothing Just)
@@ -206,10 +200,7 @@ render st =
         []
 
   renderJson =
-    J.foldJson show show showPrettyNum id show show
-
-  showJCursor (J.JField i c) = i <> show c
-  showJCursor c = show c
+    J.foldJson show show showPrettyNum id (J.printJson ∘ J.fromArray) (J.printJson ∘ J.fromObject)
 
   showPrettyNum n =
     let s = show n
@@ -400,13 +391,13 @@ calcPageCount ∷ Int → Int → Int
 calcPageCount count size =
   Int.ceil (Int.toNumber count / Int.toNumber size)
 
-sizeOfRow ∷ Array (String × Column) → J.Json → Int
+sizeOfRow ∷ Array (String × ColumnDimension) → J.Json → Int
 sizeOfRow columns row =
   fromMaybe 1
     (F.maximum
       (Array.mapMaybe
         case _ of
-          c × Column { valueAggregation: Just _ } → Just 1
+          c × (D.Dimension _ (D.Projection (Just _) _)) → Just 1
           c × _ → J.foldJsonArray 1 Array.length <$> J.cursorGet (topField c) row
         columns))
 

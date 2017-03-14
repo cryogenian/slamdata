@@ -18,11 +18,9 @@ module SlamData.Workspace.Card.Setups.DimensionPicker.Column where
 
 import SlamData.Prelude
 
-import Control.Comonad (extract)
 import Control.Comonad.Cofree as CF
 
 import Data.Argonaut as J
-import Data.List ((:))
 import Data.List as L
 
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
@@ -35,24 +33,20 @@ type ColumnNode = Either Column Column
 groupColumns ∷ L.List Column → CF.Cofree L.List ColumnNode
 groupColumns cs =
   let
-    root = Column { value: J.JCursorTop, valueAggregation: Nothing }
-    tree = constructTree unfoldColumn root cs
+    root = Column J.JCursorTop
   in
     discriminateNodes
-      if extract <$> CF.tail tree == pure Count
-      then CF.mkCofree root (CF.mkCofree Count L.Nil : CF.mkCofree root L.Nil : L.Nil)
-      else tree
+      (constructTree unfoldColumn root cs)
 
 unfoldColumn :: Column → Maybe (Tuple Column Column)
 unfoldColumn col = case col of
-  Count → Nothing
-  Column { value, valueAggregation } →
-    unfoldJCursor value <#> \(Tuple cur rest) →
-      Tuple col (Column { value: rest, valueAggregation: Nothing })
+  All → Just $ Tuple All $ Column J.JCursorTop
+  Column value →
+    unfoldJCursor value <#> \(Tuple _ rest) → Tuple col (Column rest)
 
 showColumn ∷ (J.JCursor → String) → Column → String
-showColumn f (Column { value }) = f value
-showColumn _ Count = "COUNT"
+showColumn f (Column value ) = f value
+showColumn _ All = "*"
 
 flattenColumns ∷ ColumnNode → Column
 flattenColumns = either id id

@@ -100,8 +100,8 @@ type ChartInstructionsPort =
   }
 
 type PivotTablePort =
-  { dimensions ∷ Array (String × JCursor)
-  , columns ∷ Array (String × PTM.Column)
+  { dimensions ∷ Array (String × PTM.GroupByDimension)
+  , columns ∷ Array (String × PTM.ColumnDimension)
   , isSimpleQuery ∷ Boolean
   }
 

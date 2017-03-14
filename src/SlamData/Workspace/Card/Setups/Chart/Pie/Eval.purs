@@ -41,7 +41,7 @@ import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Pie.Model (Model, PieR, initialState, behaviour)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Pie))
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.Monad as CEM

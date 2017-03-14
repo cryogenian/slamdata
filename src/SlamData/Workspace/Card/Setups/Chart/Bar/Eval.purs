@@ -40,7 +40,7 @@ import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, BarR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
-import SlamData.Workspace.Card.Setups.Chart.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
