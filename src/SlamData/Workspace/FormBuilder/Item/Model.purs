@@ -127,9 +127,16 @@ defaultValueToVarMapValue ty str =
         # either (\_ → Nothing) (Port.Literal >>> Just)
 
 parseTimestamp ∷ String → Maybe EJSON.EJson
-parseTimestamp str = case P.runParser str EJP.parseTimestamp of
-  Left _ → Nothing
-  Right dt → Just $ EJSON.timestamp dt
+parseTimestamp str =
+  case P.runParser (tweak str) EJP.parseTimestamp of
+    Left _ → Nothing
+    Right dt → Just $ EJSON.timestamp dt
+  where
+  tweak ∷ String → String
+  tweak s
+    | Str.length s == 19 = s <> "Z"
+    | Str.charAt 10 s == Just ' ' = tweak (Str.take 10 s <> "T" <> Str.drop 11 s)
+    | otherwise = s
 
 parseTime ∷ String → Maybe EJSON.EJson
 parseTime str =
