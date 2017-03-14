@@ -179,7 +179,7 @@ render st =
     0, D.Static _ → renderJson
     0, D.Projection (Just T.Count) _ → J.foldJsonNumber "" (FN.format numFormatter)
     0, D.Projection _ (Column _) → foldJsonArray' renderJson (maybe "" renderJson ∘ flip Array.index 0)
-    i, D.Projection _ (Column _) → foldJsonArray' (const "") (maybe "" renderJson ∘ flip Array.index i)
+    i, D.Projection _ _ → foldJsonArray' (const "") (maybe "" renderJson ∘ flip Array.index i)
     _, _ → const ""
 
   jsonNumbers =
@@ -200,7 +200,7 @@ render st =
         []
 
   renderJson =
-    J.foldJson show show showPrettyNum id show show
+    J.foldJson show show showPrettyNum id (J.printJson ∘ J.fromArray) (J.printJson ∘ J.fromObject)
 
   showPrettyNum n =
     let s = show n

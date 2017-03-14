@@ -170,5 +170,5 @@ escapeDimension = case _ of
 escapeColumn ∷ ∀ a. D.Dimension a PTM.Column → Maybe T.Transform × String
 escapeColumn = case _ of
   D.Dimension _ (D.Static str) → Nothing × escapeString str
-  D.Dimension _ (D.Projection tr PTM.All) → tr × "*"
+  D.Dimension _ (D.Projection tr PTM.All) → tr × "row"
   D.Dimension _ (D.Projection tr (PTM.Column cur)) → tr × "row" <> CEC.escapeCursor cur

@@ -342,6 +342,8 @@ evalOptions = case _ of
       options = case col of
         Just (D.Projection mbTr (PTM.Column cursor)) →
           transformOptions (T.axisTransforms (Ax.axisType cursor st.axes)) mbTr
+        Just (D.Projection mbTr PTM.All) | rootAxes st.axes →
+          transformOptions (T.axisTransforms (Ax.axisType J.JCursorTop st.axes)) mbTr
         _ → mempty
       selecting = PS.SelectTransform (ForColumn slot) selection options
     H.modify _ { selecting = Just selecting }
