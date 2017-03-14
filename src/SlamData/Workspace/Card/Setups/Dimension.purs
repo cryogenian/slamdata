@@ -29,6 +29,7 @@ import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
 
 type JCursorDimension = Dimension JCursor JCursor
+type LabeledJCursor = Dimension Void JCursor
 
 data Dimension a b
   = Dimension (Maybe (Category a)) (Category b)

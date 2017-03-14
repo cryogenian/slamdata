@@ -20,13 +20,15 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
 import Data.Lens ((^.))
+import Data.Newtype (un)
 
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, nonMaybeAggregationSelect)
 import SlamData.Workspace.Card.Setups.Behaviour as SB
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -34,11 +36,10 @@ import SlamData.Form.Select as S
 import SlamData.Form.Select ((⊝))
 
 type BarR =
-  { category ∷ JCursor
-  , value ∷ JCursor
-  , valueAggregation ∷ Ag.Aggregation
-  , stack ∷ Maybe JCursor
-  , parallel ∷ Maybe JCursor
+  { category ∷ D.LabeledJCursor
+  , value ∷ D.LabeledJCursor
+  , stack ∷ Maybe D.LabeledJCursor
+  , parallel ∷ Maybe D.LabeledJCursor
   , axisLabelAngle ∷ Number
   }
 
@@ -51,7 +52,6 @@ eqBarR ∷ BarR → BarR → Boolean
 eqBarR r1 r2 =
   r1.category ≡ r2.category
   ∧ r1.value ≡ r2.value
-  ∧ r1.valueAggregation ≡ r2.valueAggregation
   ∧ r1.stack ≡ r2.stack
   ∧ r1.parallel ≡ r2.parallel
   ∧ r1.axisLabelAngle ≡ r2.axisLabelAngle
@@ -67,13 +67,12 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    category ← map runArbJCursor arbitrary
-    value ← map runArbJCursor arbitrary
-    valueAggregation ← arbitrary
-    stack ← map (map runArbJCursor) arbitrary
-    parallel ← map (map runArbJCursor) arbitrary
+    category ← map (un ArbJCursor ∘ un D.DimensionWithStaticCategory) arbitrary
+    value ← map (un ArbJCursor ∘ un D.DimensionWithStaticCategory) arbitrary
+    stack ← map (un ArbJCursor ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    parallel ← map (un ArbJCursor ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     axisLabelAngle ← arbitrary
-    pure { category, value, valueAggregation, stack, parallel, axisLabelAngle }
+    pure { category, value, stack, parallel, axisLabelAngle }
 
 encode ∷ Model → Json
 encode Nothing = jsonNull
@@ -81,7 +80,6 @@ encode (Just r) =
   "configType" := "bar"
   ~> "category" := r.category
   ~> "value" := r.value
-  ~> "valueAggregation" := r.valueAggregation
   ~> "stack" := r.stack
   ~> "parallel" := r.parallel
   ~> "axisLabelAngle" := r.axisLabelAngle
@@ -90,18 +88,42 @@ encode (Just r) =
 decode ∷ Json → String ⊹ Model
 decode js
   | isNull js = pure Nothing
-  | otherwise = map Just do
+  | otherwise = map Just $ decode' js <|> decodeLegacy js
+  where
+  decode' ∷ Json → String ⊹ BarR
+  decode' = do
     obj ← decodeJson js
     configType ← obj .? "configType"
     unless (configType ≡ "bar")
       $ throwError "This config is not bar"
     category ← obj .? "category"
     value ← obj .? "value"
-    valueAggregation ← obj .? "valueAggregation"
     stack ← obj .? "stack"
     parallel ← obj .? "parallel"
     axisLabelAngle ← obj .? "axisLabelAngle"
-    pure { category, value, valueAggregation, stack, parallel, axisLabelAngle }
+    pure { category
+         , value
+         , stack
+         , parallel
+         , axisLabelAngle
+         }
+
+  decodeLegacy ∷ Json → String ⊹ BarR
+  decodeLegacy = do
+    obj ← decodeJson js
+    configType ← obj .? "configType"
+    unless (configType ≡ "bar")
+      $ throwError "This config is not bar"
+    category ← map (Just $ D.Static "TODO") $ obj .? "category"
+    val ← obj .? "value"
+    valAggregation ← obj .? "valueAggregation"
+    let
+      value =
+        D.Dimension (Just $ D.Static "TODO") (D.Projection (Just valAggregation) val)
+    stack ← map (map (Just $ D.Static "TODO")) $ obj .? "stack"
+    parallel ← map (map (Just $ D.Static "TODO")) $ obj .? "parallel"
+    axisLabelAngle ← obj .? "axisLabelAngle"
+    pure { category, value, stack, parallel, axisLabelAngle }
 
 type ReducedState r =
   { value ∷ S.Select JCursor

@@ -53,7 +53,7 @@
     "purescript-rationals": "^2.1.0",
     "purescript-routing": "^3.0.0",
     "purescript-search": "^2.0.0",
-    "purescript-strongcheck-argonaut": "^1.0.0",
+    "purescript-strongcheck-argonaut": "^1.1.0",
     "purescript-these": "^2.0.0",
     "purescript-tuples": "^3.0.0",
     "purescript-uri": "^2.0.0",

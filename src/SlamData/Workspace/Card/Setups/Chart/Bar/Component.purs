@@ -50,6 +50,7 @@ import SlamData.Workspace.Card.Setups.Chart.Bar.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as M
 import SlamData.Workspace.Card.Eval.State (_Axes)
+import SlamData.Workspace.Card.Setups.Inputs as I
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
