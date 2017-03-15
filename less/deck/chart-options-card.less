@@ -12,13 +12,15 @@
         margin-bottom: 0;
     }
 
-    .sd-dimension-picker {
+    .sd-dimension-picker,
+    .sd-action-select {
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
         background: #fff;
+        z-index: 10;
     }
 
     hr {
@@ -43,37 +45,36 @@
         padding: 0;
         display: inline-block;
         float: left;
+        background: white;
         position: relative;
         vertical-align: top;
-        border: none;
+        border: 2px solid #ddd;
+        &:not(:first-of-type) {
+            border-left: none;
+        }
 
         padding: 0;
         display: inline-block;
         float: left;
+        height: 25%;
 
         .sd-size-xsmall & {
             width: 100%;
-            padding-bottom: 100%;
         }
         .sd-size-small & {
-            width: 50%;
-            padding-bottom: 50%;
+            width: 100%;
         }
         .sd-size-medium & {
-            width: 33.33333%;
-            padding-bottom: 33.33333%;
+            width: 50%;
         }
         .sd-size-large & {
-            width: 25%;
-            padding-bottom: 25%;
+            width: 33.33333%;
         }
         .sd-size-xlarge & {
-            width: 20%;
-            padding-bottom: 20%;
+            width: 25%;
         }
         .sd-size-xxlarge & {
-            width: 16.66666%;
-            padding-bottom: 16.66666%;
+            width: 20%;
         }
         div.sd-picker-with-select {
             position: absolute;

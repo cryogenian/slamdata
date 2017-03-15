@@ -84,14 +84,14 @@ render state =
 renderSelection ∷ ST.State → HTML
 renderSelection state = case state.selected of
   Nothing → HH.text ""
-  Just (Right _) →
+  Just (Right tp) →
     HH.slot' CS.cpTransform unit AS.component
       { options: T.aggregationTransforms
       , selection: Just $ T.Aggregation Ag.Sum
       , title: "Choose transformation"
       , label: T.prettyPrintTransform
       }
-      (Just ∘ right ∘ H.action ∘ Q.HandleTransformPicker)
+      (Just ∘ right ∘ H.action ∘ Q.HandleTransformPicker tp)
   Just (Left pf) →
     let
       conf =
@@ -115,59 +115,64 @@ renderSelection state = case state.selected of
 
 renderCategory ∷ ST.State → HTML
 renderCategory state =
-  I.dimensionButton
+  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  [ I.dimensionButton
     { configurable: false
     , dimension: sequence $ state.category ^. _value
     , showLabel: absurd
-    , showDefaultLabel: maybe "Select category" showJCursor
-    , showValue: foldMap showJCursor
+    , showDefaultLabel: maybe "Category label" showJCursor
+    , showValue: maybe "Select category" showJCursor
     , onLabelChange: const Nothing
-    , onDismiss: const Nothing
+    , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Category
     , onConfigure: const Nothing
     , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Category
-    }
+    } ]
 
 renderValue ∷ ST.State → HTML
 renderValue state =
-  I.dimensionButton
+  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  [ I.dimensionButton
     { configurable: true
     , dimension: sequence $ state.value ^. _value
     , showLabel: absurd
-    , showDefaultLabel: foldMap showJCursor
+    , showDefaultLabel: maybe "Measure label" showJCursor
     , showValue: maybe "Select measure" showJCursor
     , onLabelChange: const Nothing
-    , onDismiss: const Nothing
-    , onConfigure: const Nothing
+    , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Value
+    , onConfigure: HE.input_ $ right ∘ Q.Configure Q.ValueAggregation
     , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Value
     }
+  ]
 
 renderStack ∷ ST.State → HTML
 renderStack state =
-  I.dimensionButton
+  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  [ I.dimensionButton
     { configurable: false
     , dimension: sequence $ state.stack ^. _value
     , showLabel: absurd
-    , showDefaultLabel: maybe "Select stack" showJCursor
-    , showValue: foldMap showJCursor
+    , showDefaultLabel: maybe "Stack label" showJCursor
+    , showValue: maybe "Select stack" showJCursor
     , onLabelChange: const Nothing
-    , onDismiss: const Nothing
+    , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Stack
     , onConfigure: const Nothing
     , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Stack
     }
-
+  ]
 renderParallel ∷ ST.State → HTML
 renderParallel state =
-  I.dimensionButton
+  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  [ I.dimensionButton
     { configurable: false
     , dimension: sequence $ state.parallel ^. _value
     , showLabel: absurd
-    , showDefaultLabel: maybe "Select parallel" showJCursor
-    , showValue: foldMap showJCursor
+    , showDefaultLabel: maybe "Parallel label" showJCursor
+    , showValue: maybe "Select parallel" showJCursor
     , onLabelChange: const Nothing
-    , onDismiss: const Nothing
+    , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Parallel
     , onConfigure: const Nothing
     , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Parallel
-    }
+    } ]
 
 renderAxisLabelAngle ∷ ST.State → HTML
 renderAxisLabelAngle state =
@@ -230,7 +235,19 @@ setupEval = case _ of
       H.raise CC.modelUpdate
     pure next
   Q.Select fp next → do
-    traceAnyA fp
+    H.modify _{ selected = Just $ Left fp }
+    pure next
+  Q.Configure tp next → do
+    H.modify _{ selected = Just $ Right tp }
+    pure next
+  Q.Dismiss fp next → do
+    H.modify case fp of
+      Q.Category → ST._category ∘ _value .~ Nothing
+      Q.Value → ST._value ∘ _value .~ Nothing
+      Q.Stack → ST._stack ∘ _value .~ Nothing
+      Q.Parallel → ST._parallel ∘ _value .~ Nothing
+    H.modify _{ selected = Nothing }
+    raiseUpdate
     pure next
   Q.HandleDPMessage fp m next → case m of
     DPC.Dismiss → do
@@ -248,7 +265,7 @@ setupEval = case _ of
       H.modify _ { selected = Nothing }
       raiseUpdate
       pure next
-  Q.HandleTransformPicker msg next → do
+  Q.HandleTransformPicker _ msg next → do
     case msg of
       AS.Dismiss →
         H.modify _{ selected = Nothing }

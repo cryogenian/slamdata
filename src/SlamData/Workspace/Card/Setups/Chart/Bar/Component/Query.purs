@@ -41,5 +41,7 @@ data Query a
   | Select ProjectionField a
 --  | Select (Selection SelectAction) a
   | PreventDefault Event a
-  | HandleDPMessage ProjectionField(Message JCursorNode) a
-  | HandleTransformPicker (AS.Message T.Transform) a
+  | HandleDPMessage ProjectionField (Message JCursorNode) a
+  | HandleTransformPicker TransformField  (AS.Message T.Transform) a
+  | Dismiss ProjectionField a
+  | Configure TransformField a
