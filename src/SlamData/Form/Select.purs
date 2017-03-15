@@ -21,6 +21,7 @@ module SlamData.Form.Select where
 import SlamData.Prelude
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, JCursor, decodeJson, jsonEmptyObject, (.?), (~>), (:=))
+import Data.Array as Arr
 import Data.Array (filter, length, head, (!!), elemIndex)
 import Data.Lens (Lens', lens, view, (^.), (?~), (.~))
 import Data.Monoid.Conj (Conj(..))
@@ -141,6 +142,17 @@ setPreviousValueFrom
   ∷ ∀ a. (Eq a) ⇒ Maybe (Select a) → Select a → Select a
 setPreviousValueFrom mbSel target  =
   (maybe id trySelect' $ mbSel >>= view _value) $ target
+
+setPreviousValueOn
+  ∷ ∀ a b. (Eq b) ⇒ (a → b) → Select a → Select a → Select a
+setPreviousValueOn toB (Select source) initialTarget@(Select target) =
+  let mbIx = Arr.findIndex (eq (map toB source.value) ∘ Just ∘ toB) target.options
+      modifiedOptions = fromMaybe target.options do
+        ix ← mbIx
+        val ← source.value
+        Arr.updateAt ix val target.options
+  in maybe initialTarget (const $ Select { value: source.value, options: modifiedOptions }) mbIx
+
 
 instance eqSelect ∷ (Eq a) ⇒ Eq (Select a) where
   eq (Select r) (Select rr) =

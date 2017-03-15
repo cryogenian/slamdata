@@ -20,7 +20,8 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Component
 
 import SlamData.Prelude
 
-import Data.Lens (_Just, (^.), (^?), (.~), (?~))
+import Data.Array as Arr
+import Data.Lens (view, _Just, (^.), (^?), (.~), (?~))
 import Data.List as List
 
 import DOM.Event.Event as DEE
@@ -37,7 +38,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (_value)
+import SlamData.Form.Select (_value, _options)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -102,7 +103,15 @@ renderSelection state = case state.selected of
              Q.Parallel → "Choose parallel"
         , label: DPC.labelNode showJCursorTip
         , render: DPC.renderNode showJCursorTip
-        , values: groupJCursors $ List.fromFoldable []
+          -- TODO
+        , values: groupJCursors
+            $ List.fromFoldable
+            $ map (view $ D._value ∘ D._projection)
+            case pf of
+              Q.Value → state.value ^. _options
+              Q.Category → state.category ^. _options
+              Q.Stack → state.stack ^. _options
+              Q.Parallel →  state.parallel ^. _options
         , isSelectable: DPC.isLeafPath
         }
     in
@@ -120,12 +129,16 @@ renderCategory state =
     { configurable: false
     , dimension: sequence $ state.category ^. _value
     , showLabel: absurd
-    , showDefaultLabel: maybe "Category label" showJCursor
-    , showValue: maybe "Select category" showJCursor
-    , onLabelChange: const Nothing
+    , showDefaultLabel: maybe "Category label" showJCursor ∘ spy
+    , showValue: maybe "Select category" showJCursor ∘ spy
+    , onLabelChange: HE.input \l → right ∘ Q.LabelChanged Q.Category l
     , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Category
     , onConfigure: const Nothing
-    , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Category
+    , onClick: HE.input_ $ right ∘ Q.Select Q.Category
+    , onMouseDown: const Nothing
+    , onLabelClick: const Nothing
+    , disabled: Arr.null $ state.category ^. _options
+    , dismissable: isJust $ state.category ^. _value
     } ]
 
 renderValue ∷ ST.State → HTML
@@ -137,10 +150,14 @@ renderValue state =
     , showLabel: absurd
     , showDefaultLabel: maybe "Measure label" showJCursor
     , showValue: maybe "Select measure" showJCursor
-    , onLabelChange: const Nothing
+    , onLabelChange: HE.input \l → right ∘ Q.LabelChanged Q.Value l
     , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Value
     , onConfigure: HE.input_ $ right ∘ Q.Configure Q.ValueAggregation
-    , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Value
+    , onClick: HE.input_ $ right ∘ Q.Select Q.Value
+    , onLabelClick: const Nothing
+    , onMouseDown: const Nothing
+    , disabled: Arr.null $ state.value ^. _options
+    , dismissable: isJust $ state.value ^. _value
     }
   ]
 
@@ -153,10 +170,14 @@ renderStack state =
     , showLabel: absurd
     , showDefaultLabel: maybe "Stack label" showJCursor
     , showValue: maybe "Select stack" showJCursor
-    , onLabelChange: const Nothing
+    , onLabelChange: HE.input \l → right ∘ Q.LabelChanged Q.Stack l
     , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Stack
     , onConfigure: const Nothing
-    , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Stack
+    , onClick: HE.input_ $ right ∘ Q.Select Q.Stack
+    , onLabelClick: const Nothing
+    , onMouseDown: const Nothing
+    , disabled: Arr.null $ state.stack ^. _options
+    , dismissable: isJust $ state.stack ^. _value
     }
   ]
 renderParallel ∷ ST.State → HTML
@@ -168,10 +189,14 @@ renderParallel state =
     , showLabel: absurd
     , showDefaultLabel: maybe "Parallel label" showJCursor
     , showValue: maybe "Select parallel" showJCursor
-    , onLabelChange: const Nothing
+    , onLabelChange: HE.input \l → right ∘ Q.LabelChanged Q.Parallel l
     , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Parallel
     , onConfigure: const Nothing
-    , onMouseDown: HE.input_ $ right ∘ Q.Select Q.Parallel
+    , onClick: HE.input_ $ right ∘ Q.Select Q.Parallel
+    , onLabelClick: const Nothing
+    , onMouseDown: const Nothing
+    , disabled: Arr.null $ state.parallel ^. _options
+    , dismissable: isJust $ state.parallel ^. _value
     } ]
 
 renderAxisLabelAngle ∷ ST.State → HTML
@@ -249,6 +274,14 @@ setupEval = case _ of
     H.modify _{ selected = Nothing }
     raiseUpdate
     pure next
+  Q.LabelChanged fp str next → do
+    H.modify case fp of
+      Q.Category → ST._category ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
+      Q.Value → ST._value ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
+      Q.Stack → ST._stack ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
+      Q.Parallel → ST._parallel ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
+    -- TODO
+    pure next
   Q.HandleDPMessage fp m next → case m of
     DPC.Dismiss → do
       H.modify _{ selected = Nothing }
@@ -259,9 +292,9 @@ setupEval = case _ of
         value' = flattenJCursors value
       H.modify case fp of
         Q.Category → ST._category ∘ _value ?~ D.projection value'
-        Q.Value → ST._category ∘ _value ?~ D.projection value'
-        Q.Stack → ST._category ∘ _value ?~ D.projection value'
-        Q.Parallel → ST._category ∘ _value ?~ D.projection value'
+        Q.Value → ST._value ∘ _value ?~ D.projection value'
+        Q.Stack → ST._stack ∘ _value ?~ D.projection value'
+        Q.Parallel → ST._parallel ∘ _value ?~ D.projection value'
       H.modify _ { selected = Nothing }
       raiseUpdate
       pure next
@@ -269,8 +302,9 @@ setupEval = case _ of
     case msg of
       AS.Dismiss →
         H.modify _{ selected = Nothing }
-      AS.Confirm mbt →
+      AS.Confirm mbt → do
         H.modify
           $ _{ selected = Nothing }
           ∘ (ST._value ∘ _value ∘ _Just ∘ D._value ∘ D._transform  .~ mbt)
+        raiseUpdate
     pure next

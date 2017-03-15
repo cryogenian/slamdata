@@ -70,6 +70,11 @@ _projection = wander \f → case _ of
   Projection t p → Projection t <$> f p
   c → pure c
 
+_Static ∷ ∀ p. Traversal' (Category p) String
+_Static = wander \f → case _ of
+  Static s → map Static $ f s
+  c → pure c
+
 printCategory ∷ ∀ p. (p → String) → Category p → String
 printCategory f = case _ of
   Static str → str

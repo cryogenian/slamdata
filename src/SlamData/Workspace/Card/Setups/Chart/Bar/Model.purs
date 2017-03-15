@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens ((^.))
+import Data.Lens ((^.), view)
 import Data.Newtype (un)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
@@ -151,8 +151,11 @@ behaviour =
   where
   synchronize st =
     let
+      setPreviousValueFrom =
+        S.setPreviousValueOn (view $ D._value ∘ D._projection)
+
       newCategory =
-        S.setPreviousValueFrom (Just st.category)
+        setPreviousValueFrom st.category
           $ S.autoSelect
           $ S.newSelect
           $ map D.defaultJCursorDimension
@@ -163,14 +166,15 @@ behaviour =
           ⊕ st.axes.datetime
 
       newValue =
-        S.setPreviousValueFrom (Just st.value)
+        setPreviousValueFrom st.value
           $ S.autoSelect
           $ S.newSelect
-          $ map D.defaultJCursorDimension
-          $ st.axes.value
+          $ (map D.defaultJCursorDimension
+          $ st.axes.value)
+          ⊝ newCategory
 
       newStack =
-        S.setPreviousValueFrom (Just st.stack)
+        setPreviousValueFrom st.stack
           $ S.newSelect
           $ (map D.defaultJCursorDimension
           $ S.ifSelected [ newCategory ]
@@ -179,7 +183,7 @@ behaviour =
           ⊝ newCategory
 
       newParallel =
-        S.setPreviousValueFrom (Just st.parallel)
+        setPreviousValueFrom st.parallel
           $ S.newSelect
           $ (map D.defaultJCursorDimension
           $ S.ifSelected [ newCategory ]

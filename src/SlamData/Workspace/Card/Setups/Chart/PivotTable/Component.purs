@@ -164,6 +164,10 @@ render st =
               , onDismiss: HE.input_ (right ∘ Remove (ForGroupBy slot))
               , onConfigure: HE.input_ (right ∘ Configure (ForGroupBy slot))
               , onMouseDown: HE.input (\e → right ∘ OrderStart (ForGroupBy slot) e)
+              , onClick: const Nothing
+              , onLabelClick: const Nothing
+              , disabled: false
+              , dismissable: true
               }
           ]
       ]
@@ -234,6 +238,10 @@ render st =
               , onDismiss: HE.input_ (right ∘ Remove (ForColumn slot))
               , onConfigure: HE.input_ (right ∘ Configure (ForColumn slot))
               , onMouseDown: HE.input (\e → right ∘ OrderStart (ForColumn slot) e)
+              , onClick: const Nothing
+              , onLabelClick: const Nothing
+              , disabled: false
+              , dismissable: true
               }
           ]
       ]

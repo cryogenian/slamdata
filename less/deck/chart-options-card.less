@@ -45,14 +45,20 @@
         padding: 0;
         display: inline-block;
         float: left;
-        background: white;
+        background: transparent;
         position: relative;
         vertical-align: top;
         border: 2px solid #ddd;
         &:not(:first-of-type) {
             border-left: none;
         }
-
+        .sd-dimension-button-disabled {
+            *, & {
+                background-color: #f8f8f8;
+                border-color: #ddd;
+                color: #aaa;
+            }
+        }
         padding: 0;
         display: inline-block;
         float: left;
@@ -76,83 +82,11 @@
         .sd-size-xxlarge & {
             width: 20%;
         }
-        div.sd-picker-with-select {
-            position: absolute;
-            width: ~"calc(100% - 1px)";
-            height: ~"calc(100% - 1px)";
-            background: #ccc;
-            .sd-picker-input {
-                width: 100%;
-                height: ~"calc(100% - 2rem - 1px)";
-                button.sd-picker-main-button {
-                    height: 100%;
-                    background: #999;
-                    &:disabled {
-                        background: #bbb;
-                    }
-                    &:not(:disabled):hover {
-                        &:hover {
-                            background: #337ab7;
-                        }
-                    }
-                    color: #fff;
-                    padding-top: ~"calc(2rem + 7px)";
-                    text-align: center;
-                    text-overflow: ellipsis;
-                    overflow: hidden;
-                }
-                button.sd-dismiss-button {
-                    postion: absolute;
-                    top: 0;
-                    right: 0;
-                    color: #fff;
-                }
-            }
-            select, option {
-                height: 2rem;
-                background: #999;
-                &:disabled {
-                    background: #bbb;
-                }
-                &:not(:disabled):hover {
-                    &:hover {
-                        background: #337ab7;
-                    }
-                }
-                color: #fff;
-                text-shadow:0 1px 0 #aaa;
-                text-align: center;
-                text-align-last: center;
-            }
-        }
-        > .sd-picker-input {
-            width: 100%;
-            position: absolute;
-            height: ~"calc(100% - 1px)";
-            button.sd-picker-main-button {
-                position: absolute;
-                width: ~"calc(100% - 1px)";
-                height: 100%;
-                background: #999;
-                color: #fff;
-                text-align: center;
-                text-overflow: ellipsis;
-                overflow: hidden;
-                &:disabled {
-                    background: #bbb;
-                }
-                &:not(:disabled):hover {
-                    &:hover {
-                        background: #337ab7;
-                    }
-                }
-            }
-        }
         button.sd-dismiss-button {
             position: absolute;
             top: 0;
             right: 0;
-            color: #fff;
+            color: #aaa;
             background: transparent;
 
         }
