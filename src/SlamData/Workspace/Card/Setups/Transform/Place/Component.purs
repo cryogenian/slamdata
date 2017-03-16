@@ -21,7 +21,6 @@ import Control.Monad.Eff.Random (randomInt)
 import Data.Array as Array
 import Data.Foldable as F
 import Data.Lens as Lens
-import Data.Ord (abs)
 import Data.Profunctor (dimap)
 import Halogen as H
 import Halogen.Component.Profunctor (ProComponent(..))
@@ -38,16 +37,15 @@ data Query a
   | ChangePlace Int a
 
 type State =
-  { left ∷ Array String
-  , right ∷ Array String
+  { digits ∷ Array Int
   , place ∷ Int
   }
 
 type DSL = H.ComponentDSL State Query (Maybe N.Place) Slam
 type HTML = H.ComponentHTML Query
 
-component ∷ ProComponent HH.HTML Query Slam (Maybe N.Place) (Maybe N.Place)
-component =
+component ∷ (Int → Int → Int) → ProComponent HH.HTML Query Slam (Maybe N.Place) (Maybe N.Place)
+component operation =
   ProComponent $ H.lifecycleComponent
     { initialState
     , render
@@ -58,7 +56,7 @@ component =
     }
   where
   initialState ∷ Maybe (N.Place) → State
-  initialState = { left: [], right: [], place: _ } ∘ case _ of
+  initialState = { digits: [], place: _ } ∘ case _ of
     Just (N.Place n) → clamp (-10) 10 n
     Nothing → 0
 
@@ -66,9 +64,10 @@ component =
   render st =
     HH.div
       [ HP.classes [ HH.ClassName "sd-place-value-picker" ] ]
-      [ HH.p
+      [ HH.label_ [ HH.text "Place" ]
+      , HH.p
           [ HP.classes [ HH.ClassName "place-value" ] ]
-          (renderNumber st.left st.right st.place)
+          (renderNumber st.digits st.place)
       , HH.p_
           [ HH.input
               [ HP.type_ HP.InputRange
@@ -83,69 +82,54 @@ component =
   bold ∷ String → HTML
   bold a = HH.b_ [ HH.text a ]
 
-  renderNumber ∷ Array String → Array String → Int → Array HTML
-  renderNumber ls rs = case _ of
-    n | n < 0 →
-      let
-        head = Array.slice (abs n) (abs n + 1) rs
-        leading = Array.reverse (Array.take 3 ls)
-        decimals = Array.take (abs n - 1) rs
-      in
-        map HH.text leading
-        <> [ HH.text "." ]
-        <> map HH.text decimals
-        <> map bold head
-        <> [ HH.text "0" ]
-    n →
-      let
-        pad = Array.replicate n "0"
-        head = Array.slice n (n + 1) rs
-        leading = Array.slice (n + 1) (n + 3) rs
-        nums = map HH.text pad <> map bold head <> map HH.text leading
-        chunks = chunksOf 3 nums
-        commas = Array.reverse (F.intercalate [ HH.text "," ] chunks)
-      in
-        commas <> [ HH.text ".0" ]
+  renderNumber ∷ Array Int → Int → Array HTML
+  renderNumber ds n =
+    let
+      pivotIx = 10 + n
+      digitIx = pivotIx + 1
+      fn      = operation $ fromMaybe 0 $ Array.index ds pivotIx
+      ds'     = flip Array.mapWithIndex ds case _, _ of
+                  ix, val | ix ≡ digitIx → bold $ show (fn val)
+                          | ix < digitIx → HH.text "0"
+                          | otherwise    → HH.text $ show val
+      nths    = Array.reverse $ Array.take 11 ds'
+      ns      = Array.reverse $ F.intercalate [ HH.text "," ] $ chunksOf 3 (Array.drop 11 ds')
+    in
+      ns <> [ HH.text "." ] <> nths
 
   eval ∷ Query ~> DSL
   eval = case _ of
     Init next → do
-      numbers ← map show <$> genNumbers
-      H.modify _
-        { left = Array.take 16 numbers
-        , right = Array.drop 16 numbers
-        }
+      digits ← genDigits
+      H.modify _ { digits = digits }
       pure next
     ChangePlace n next → do
-      numbers ← map show <$> genNumbers
-      H.modify _
-        { left = Array.take 16 numbers
-        , right = Array.drop 16 numbers
-        , place = n
-        }
+      H.modify _ { place = n }
       H.raise (Just (N.Place n))
       pure next
 
-genNumbers ∷ DSL (Array Int)
-genNumbers = H.liftEff $ sequence (Array.replicate 32 (randomInt 1 9))
+genDigits ∷ DSL (Array Int)
+genDigits =
+  -- We only do 1 - 8 to simplify the operation
+  H.liftEff $ sequence (Array.replicate 23 (randomInt 1 8))
 
 transformFloor ∷ H.Component HH.HTML Query (Maybe T.Transform) (Maybe T.Transform) Slam
 transformFloor =
   unwrap $ dimap
     (Lens.preview (Lens._Just ∘ T._Numeric ∘ N._Floor))
     (map (T.Numeric ∘ N.Floor))
-    component
+    (component (const id))
 
 transformRound ∷ H.Component HH.HTML Query (Maybe T.Transform) (Maybe T.Transform) Slam
 transformRound =
   unwrap $ dimap
     (Lens.preview (Lens._Just ∘ T._Numeric ∘ N._Round))
     (map (T.Numeric ∘ N.Round))
-    component
+    (component \n → if n < 5 then id else (_ + 1))
 
 transformCeil ∷ H.Component HH.HTML Query (Maybe T.Transform) (Maybe T.Transform) Slam
 transformCeil =
   unwrap $ dimap
     (Lens.preview (Lens._Just ∘ T._Numeric ∘ N._Ceil))
     (map (T.Numeric ∘ N.Ceil))
-    component
+    (component (const (_ + 1)))
