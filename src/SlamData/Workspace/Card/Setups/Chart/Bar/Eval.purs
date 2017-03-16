@@ -39,7 +39,7 @@ import ECharts.Types.Phantom as ETP
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, BarR, initialState, behaviour)
+import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, ModelR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Transform as T
@@ -75,7 +75,7 @@ type BarStacks =
   , series ∷ Array BarSeries
   }
 
-buildBarData ∷ BarR → JArray → Array BarStacks
+buildBarData ∷ ModelR → JArray → Array BarStacks
 buildBarData r records = series
   where
   -- | maybe stack >> maybe parallel >> category >> values
@@ -144,13 +144,13 @@ buildBarData r records = series
   mkBarSeries (name × items) =
     [{ name
      , items:
-       map (Ag.runAggregation
+         map (Ag.runAggregation
             (fromMaybe Ag.Sum $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) )
        items
      }]
 
 
-buildBar ∷ Axes → BarR → JArray → DSL OptionI
+buildBar ∷ Axes → ModelR → JArray → DSL OptionI
 buildBar axes r records = do
   E.tooltip E.triggerAxis
 

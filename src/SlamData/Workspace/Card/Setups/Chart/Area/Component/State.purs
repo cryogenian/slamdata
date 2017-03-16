@@ -17,22 +17,22 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Chart.Area.Component.State
   ( initialState
   , _value
-  , _valueAgg
   , _series
   , _dimension
   , State
   , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
-import Data.Argonaut (JCursor)
+import SlamData.Prelude
+
 import Data.Lens (Lens', lens)
 
-import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query (Selection)
+import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query (ProjectionField, TransformField)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.Chart.Area.Model as M
 
-type State = M.ReducedState (DS.CommonState JCursor Selection ())
+type State =
+  M.ReducedState ( selected ∷ Maybe (ProjectionField ⊹ TransformField) )
 
 initialState ∷ State
 initialState =
@@ -42,9 +42,8 @@ initialState =
   , isSmooth: M.initialState.isSmooth
   , dimension: M.initialState.dimension
   , value: M.initialState.value
-  , valueAgg: M.initialState.valueAgg
   , series: M.initialState.series
-  , picker: DS.initial.picker
+  , selected: Nothing
   }
 
 _dimension ∷ ∀ r a. Lens' { dimension ∷ a | r } a
@@ -52,9 +51,6 @@ _dimension = lens _.dimension _{ dimension = _ }
 
 _value ∷ ∀ r a. Lens' { value ∷ a | r } a
 _value = lens _.value _{ value = _ }
-
-_valueAgg ∷ ∀ r a. Lens' { valueAgg ∷ a | r } a
-_valueAgg = lens _.valueAgg _{ valueAgg = _ }
 
 _series ∷ ∀ r a. Lens' { series ∷ a | r } a
 _series = lens _.series _{ series = _ }

@@ -82,6 +82,11 @@ except (Select r) subtrahend@(Select rr) =
           then Nothing
           else r.value
 
+
+exceptOn ∷ ∀ a b. (Eq b) ⇒ (a → b) → Select a → Array a → Array a
+exceptOn fn (Select rr) =
+  filter $ not ∘ eq (map fn rr.value) ∘ Just ∘ fn
+
 -- | Filter array to exclude value of `Select`
 except' ∷ ∀ a. (Eq a) ⇒ Select a → Array a → Array a
 except' sel arr = filter (\x → Just x /= (sel ^. _value)) arr

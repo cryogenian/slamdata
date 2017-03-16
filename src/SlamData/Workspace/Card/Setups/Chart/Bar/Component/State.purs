@@ -27,12 +27,10 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Component.State
 
 import SlamData.Prelude
 
---import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query (ProjectionField, TransformField)
 import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
---import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as M
 
 type State =

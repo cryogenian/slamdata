@@ -91,6 +91,7 @@ renderSelection state = case state.selected of
       , selection: Just $ T.Aggregation Ag.Sum
       , title: "Choose transformation"
       , label: T.prettyPrintTransform
+      , deselectable: false
       }
       (Just ∘ right ∘ H.action ∘ Q.HandleTransformPicker tp)
   Just (Left pf) →
@@ -103,7 +104,6 @@ renderSelection state = case state.selected of
              Q.Parallel → "Choose parallel"
         , label: DPC.labelNode showJCursorTip
         , render: DPC.renderNode showJCursorTip
-          -- TODO
         , values: groupJCursors
             $ List.fromFoldable
             $ map (view $ D._value ∘ D._projection)
@@ -280,7 +280,6 @@ setupEval = case _ of
       Q.Value → ST._value ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
       Q.Stack → ST._stack ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
       Q.Parallel → ST._parallel ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
-    -- TODO
     pure next
   Q.HandleDPMessage fp m next → case m of
     DPC.Dismiss → do
@@ -292,7 +291,7 @@ setupEval = case _ of
         value' = flattenJCursors value
       H.modify case fp of
         Q.Category → ST._category ∘ _value ?~ D.projection value'
-        Q.Value → ST._value ∘ _value ?~ D.projection value'
+        Q.Value → ST._value ∘ _value ?~ D.projectionWithAggregation (Just Ag.Sum) value'
         Q.Stack → ST._stack ∘ _value ?~ D.projection value'
         Q.Parallel → ST._parallel ∘ _value ?~ D.projection value'
       H.modify _ { selected = Nothing }

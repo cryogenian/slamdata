@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Argonaut (Json, JObject, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
 import Data.Lens ((^.), view)
 import Data.Newtype (un)
 
@@ -30,9 +30,8 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Behaviour as SB
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Form.Select as S
-import SlamData.Form.Select ((⊝))
 
-type BarR =
+type ModelR =
   { category ∷ D.LabeledJCursor
   , value ∷ D.LabeledJCursor
   , stack ∷ Maybe D.LabeledJCursor
@@ -40,13 +39,13 @@ type BarR =
   , axisLabelAngle ∷ Number
   }
 
-type Model = Maybe BarR
+type Model = Maybe ModelR
 
 initialModel ∷ Model
 initialModel = Nothing
 
-eqBarR ∷ BarR → BarR → Boolean
-eqBarR r1 r2 =
+eqR ∷ ModelR → ModelR → Boolean
+eqR r1 r2 =
   r1.category ≡ r2.category
   ∧ r1.value ≡ r2.value
   ∧ r1.stack ≡ r2.stack
@@ -55,7 +54,7 @@ eqBarR r1 r2 =
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqBarR r1 r2
+eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -85,14 +84,18 @@ encode (Just r) =
 decode ∷ Json → String ⊹ Model
 decode js
   | isNull js = pure Nothing
-  | otherwise = map Just $ decode' js <|> decodeLegacy js
+  | otherwise = map Just $ decode' js
   where
-  decode' ∷ Json → String ⊹ BarR
+  decode' ∷ Json → String ⊹ ModelR
   decode' js' = do
     obj ← decodeJson js'
     configType ← obj .? "configType"
     unless (configType ≡ "bar")
-      $ throwError "This config is not bar"
+      $ throwError "This config is not a bar"
+    decodeR obj <|> decodeLegacyR obj
+
+  decodeR ∷ JObject → String ⊹ ModelR
+  decodeR obj = do
     category ← obj .? "category"
     value ← obj .? "value"
     stack ← obj .? "stack"
@@ -105,12 +108,8 @@ decode js
          , axisLabelAngle
          }
 
-  decodeLegacy ∷ Json → String ⊹ BarR
-  decodeLegacy js' = do
-    obj ← decodeJson js'
-    configType ← obj .? "configType"
-    unless (configType ≡ "bar")
-      $ throwError "This config is not bar"
+  decodeLegacyR ∷ JObject → String ⊹ ModelR
+  decodeLegacyR obj = do
     category ← map D.defaultJCursorDimension $ obj .? "category"
     val ← obj .? "value"
     valAggregation ← obj .? "valueAggregation"
@@ -121,7 +120,12 @@ decode js
     stack ← map (map D.defaultJCursorDimension) $ obj .? "stack"
     parallel ← map (map D.defaultJCursorDimension) $ obj .? "parallel"
     axisLabelAngle ← obj .? "axisLabelAngle"
-    pure { category, value, stack, parallel, axisLabelAngle }
+    pure { category
+         , value
+         , stack
+         , parallel
+         , axisLabelAngle
+         }
 
 type ReducedState r =
   { value ∷ S.Select D.LabeledJCursor
@@ -152,7 +156,10 @@ behaviour =
   synchronize st =
     let
       setPreviousValueFrom =
-        S.setPreviousValueOn (view $ D._value ∘ D._projection)
+        S.setPreviousValueOn $ view $ D._value ∘ D._projection
+
+      except =
+        S.exceptOn $ view $ D._value ∘ D._projection
 
       newCategory =
         setPreviousValueFrom st.category
@@ -169,28 +176,28 @@ behaviour =
         setPreviousValueFrom st.value
           $ S.autoSelect
           $ S.newSelect
+          $ except newCategory
           $ (map D.defaultJCursorDimension
           $ st.axes.value)
-          ⊝ newCategory
 
       newStack =
         setPreviousValueFrom st.stack
           $ S.newSelect
-          $ (map D.defaultJCursorDimension
+          $ except newCategory
+          $ map D.defaultJCursorDimension
           $ S.ifSelected [ newCategory ]
           $ st.axes.category
-          ⊕ st.axes.time)
-          ⊝ newCategory
+          ⊕ st.axes.time
 
       newParallel =
         setPreviousValueFrom st.parallel
           $ S.newSelect
-          $ (map D.defaultJCursorDimension
+          $ except newStack
+          $ except newCategory
+          $ map D.defaultJCursorDimension
           $ S.ifSelected [ newCategory ]
           $ st.axes.category
-          ⊕ st.axes.time)
-          ⊝ newCategory
-          ⊝ newStack
+          ⊕ st.axes.time
     in
       st { category = newCategory
          , value = newValue

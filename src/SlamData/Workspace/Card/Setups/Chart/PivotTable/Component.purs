@@ -119,6 +119,7 @@ render st =
         , selection
         , title: "Choose transformation"
         , label: T.prettyPrintTransform
+        , deselectable: true
         }
         (Just ∘ right ∘ H.action ∘ HandleTransformPicker slot)
 

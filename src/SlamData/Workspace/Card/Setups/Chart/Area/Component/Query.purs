@@ -16,25 +16,30 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Area.Component.Query where
 
-import Data.Argonaut (JCursor)
-
 import DOM.Event.Types (Event)
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
+import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.Transform as T
 
-data Selection f
-  = Dimension (f JCursor)
-  | Value (f JCursor)
-  | ValueAgg (f Aggregation)
-  | Series (f JCursor)
+
+data ProjectionField
+  = Dimension
+  | Value
+  | Series
+
+data TransformField
+  = ValueAggregation
 
 data Query a
   = SetAxisLabelAngle String a
   | ToggleSmooth a
   | ToggleStacked a
-  | Select (Selection SelectAction) a
-  | HandleDPMessage (Message JCursorNode) a
+  | HandleDPMessage ProjectionField (Message JCursorNode) a
+  | HandleTransformPicker TransformField (AS.Message T.Transform) a
+  | Dismiss ProjectionField a
+  | Configure TransformField a
+  | LabelChanged ProjectionField String a
   | PreventDefault Event a
+  | Select ProjectionField a

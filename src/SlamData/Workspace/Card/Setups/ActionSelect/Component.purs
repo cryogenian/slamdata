@@ -26,6 +26,7 @@ type State s =
   , selection ∷ Maybe s
   , title ∷ String
   , label ∷ s → String
+  , deselectable ∷ Boolean
   }
 
 type DSL s = H.ParentDSL (State s) (Query s) (ALC.Query (Maybe s)) Unit (Message s) Slam
@@ -76,7 +77,7 @@ component =
       pure next
     HandleSelect (ALC.Selected selection) next → do
       st ← H.get
-      if st.selection ≡ selection
+      if st.deselectable ∧ st.selection ≡ selection
         then H.modify _ { selection = Nothing }
         else H.modify _ { selection = selection }
       updateActions
