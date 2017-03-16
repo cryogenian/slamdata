@@ -30,7 +30,7 @@ import SlamData.Form.Select as S
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), printChartType)
 import SlamData.Workspace.Card.Setups.Chart.Area.Model as Area
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as Bar
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (BoxplotR)
+import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as Boxplot
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (parseColorScheme)
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (FunnelR)
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (HeatmapR)
@@ -102,7 +102,7 @@ decode
     , radar ∷ Maybe RadarR → a
     , funnel ∷ Maybe FunnelR → a
     , heatmap ∷ Maybe HeatmapR → a
-    , boxplot ∷ Maybe BoxplotR → a
+    , boxplot ∷ Maybe Boxplot.ModelR → a
     }
   → J.Json
   → String ⊹ a
@@ -413,13 +413,17 @@ decode cturs js = do
   decodeBoxplot cc bo = pure $ cturs.boxplot
     let
       dimension =
-        cc.dimensions A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.dimensions A.!! 0 >>= view S._value
       value =
-        cc.measures A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.measures A.!! 0 >>= view S._value
       series =
-        cc.series A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
       parallel =
-        cc.series A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
 
       boxplotR =
         { dimension: _

@@ -18,33 +18,33 @@ module SlamData.Workspace.Card.Setups.Chart.Boxplot.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens ((^.))
+import Data.Argonaut (JObject, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens (view, (^.))
+import Data.Newtype (un)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Behaviour as SB
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Form.Select as S
-import SlamData.Form.Select ((⊝))
 
-type BoxplotR =
-  { dimension ∷ JCursor
-  , value ∷ JCursor
-  , series ∷ Maybe JCursor
-  , parallel ∷ Maybe JCursor
+type ModelR =
+  { dimension ∷ D.LabeledJCursor
+  , value ∷ D.LabeledJCursor
+  , series ∷ Maybe D.LabeledJCursor
+  , parallel ∷ Maybe D.LabeledJCursor
   }
 
-type Model = Maybe BoxplotR
+type Model = Maybe ModelR
 
 initialModel ∷ Model
 initialModel = Nothing
 
-
-eqBoxplotR ∷ BoxplotR → BoxplotR → Boolean
-eqBoxplotR r1 r2 =
+eqR ∷ ModelR → ModelR → Boolean
+eqR r1 r2 =
   r1.dimension ≡ r2.dimension
   ∧ r1.value ≡ r2.value
   ∧ r1.series ≡ r2.series
@@ -52,7 +52,7 @@ eqBoxplotR r1 r2 =
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqBoxplotR r1 r2
+eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -61,10 +61,10 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    dimension ← map runArbJCursor arbitrary
-    value ← map runArbJCursor arbitrary
-    series ← map (map runArbJCursor) arbitrary
-    parallel ← map (map runArbJCursor) arbitrary
+    dimension ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    value ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    series ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    parallel ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     pure { dimension, value, series, parallel }
 
 encode ∷ Model → Json
@@ -84,19 +84,31 @@ decode js
     obj ← decodeJson js
     configType ← obj .? "configType"
     unless (configType ≡ "boxplot")
-      $ throwError "THis is not boxplot"
+      $ throwError "This is not boxplot"
+    decodeR obj <|> decodeLegacyR obj
+  where
+  decodeR ∷ JObject → String ⊹ ModelR
+  decodeR obj = do
     dimension ← obj .? "dimension"
     value ← obj .? "value"
     series ← obj .? "series"
     parallel ← obj .? "parallel"
     pure { dimension, value, series, parallel }
 
+  decodeLegacyR ∷ JObject → String ⊹ ModelR
+  decodeLegacyR obj = do
+    dimension ← map D.defaultJCursorDimension $ obj .? "dimension"
+    value ← map D.defaultJCursorDimension $ obj .? "value"
+    series ← map (map D.defaultJCursorDimension) $ obj .? "series"
+    parallel ← map (map D.defaultJCursorDimension) $ obj .? "parallel"
+    pure { dimension, value, series, parallel }
+
 type ReducedState r =
   { axes ∷ Ax.Axes
-  , dimension ∷ S.Select JCursor
-  , value ∷ S.Select JCursor
-  , series ∷ S.Select JCursor
-  , parallel ∷ S.Select JCursor
+  , dimension ∷ S.Select D.LabeledJCursor
+  , value ∷ S.Select D.LabeledJCursor
+  , series ∷ S.Select D.LabeledJCursor
+  , parallel ∷ S.Select D.LabeledJCursor
   | r}
 
 initialState ∷ ReducedState ()
@@ -118,38 +130,48 @@ behaviour =
   where
   synchronize st =
     let
+      setPreviousValueFrom =
+        S.setPreviousValueOn $ view $ D._value ∘ D._projection
+
+      except =
+        S.exceptOn $ view $ D._value ∘ D._projection
+
       newDimension =
-        S.setPreviousValueFrom (Just st.dimension)
+        setPreviousValueFrom st.dimension
           $ S.autoSelect
           $ S.newSelect
+          $ map D.defaultJCursorDimension
           $ st.axes.category
           ⊕ st.axes.time
           ⊕ st.axes.date
           ⊕ st.axes.datetime
 
       newValue =
-        S.setPreviousValueFrom (Just st.value)
+        setPreviousValueFrom st.value
           $ S.autoSelect
           $ S.newSelect
+          $ map D.defaultJCursorDimension
           $ st.axes.value
-          ⊝ newDimension
 
       newSeries =
-        S.setPreviousValueFrom (Just st.series)
+        setPreviousValueFrom st.series
           $ S.newSelect
+          $ except newDimension
+          $ map D.defaultJCursorDimension
           $ S.ifSelected [newDimension]
           $ st.axes.category
           ⊕ st.axes.time
-          ⊝ newDimension
 
       newParallel =
-        S.setPreviousValueFrom (Just st.parallel)
+        setPreviousValueFrom st.parallel
           $ S.newSelect
+          $ except newDimension
+          $ except newSeries
+          $ map D.defaultJCursorDimension
           $ S.ifSelected [newDimension]
           $ st.axes.category
           ⊕ st.axes.time
-          ⊝ newDimension
-          ⊝ newSeries
+
     in
      st { value = newValue
         , dimension = newDimension

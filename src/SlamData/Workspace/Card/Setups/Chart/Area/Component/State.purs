@@ -20,7 +20,6 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Component.State
   , _series
   , _dimension
   , State
-  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
 import SlamData.Prelude
@@ -28,7 +27,6 @@ import SlamData.Prelude
 import Data.Lens (Lens', lens)
 
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query (ProjectionField, TransformField)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.Chart.Area.Model as M
 
 type State =

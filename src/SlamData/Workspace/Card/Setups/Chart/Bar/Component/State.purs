@@ -22,7 +22,6 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Component.State
   , _stack
   , _parallel
   , State
-  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
 import SlamData.Prelude
@@ -30,7 +29,6 @@ import SlamData.Prelude
 import Data.Lens (Lens', lens)
 
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query (ProjectionField, TransformField)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as M
 
 type State =

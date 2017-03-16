@@ -29,6 +29,7 @@ import Control.Monad.Throw (class MonadThrow)
 import Data.Argonaut (JArray, Json)
 import Data.Array ((!!))
 import Data.Array as A
+import Data.Lens ((^?), preview)
 import Data.Map as M
 import Data.Int as Int
 import Data.Set as Set
@@ -44,11 +45,12 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Behaviour as B
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (Model, BoxplotR, initialState, behaviour)
+import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (Model, ModelR, initialState, behaviour)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 
 import Utils.Array (enumerate)
@@ -91,7 +93,7 @@ type BoxplotItem = Maybe
 boundIQR ∷ Maybe Number
 boundIQR = Just 1.5
 
-buildBoxplotData ∷ BoxplotR → JArray → Array OnOneBoxplot
+buildBoxplotData ∷ ModelR → JArray → Array OnOneBoxplot
 buildBoxplotData r records = series
   where
   -- | maybe parallel >> maybe series >> dimension >> values
@@ -107,16 +109,16 @@ buildBoxplotData r records = series
     let
       getMaybeStringFromJson = getMaybeString js
       getValuesFromJson = getValues js
-    in case getMaybeStringFromJson r.dimension of
+    in case getMaybeStringFromJson =<< (r.dimension ^? D._value ∘ D._projection) of
       Nothing → acc
       Just dimensionKey →
         let
           mbParallel =
-            getMaybeStringFromJson =<< r.parallel
+            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.parallel
           mbSeries =
-            getMaybeStringFromJson =<< r.series
+            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.series
           values =
-            getValuesFromJson $ pure r.value
+            getValuesFromJson $ r.value ^? D._value ∘ D._projection
 
           alterParallelFn
             ∷ Maybe (Maybe String >> String >> Array Number)
@@ -210,7 +212,7 @@ buildBoxplotData r records = series
   series ∷ Array OnOneBoxplot
   series = adjustRectangularPositions rawSeries
 
-buildBoxplot ∷ BoxplotR → JArray → DSL OptionI
+buildBoxplot ∷ ModelR → JArray → DSL OptionI
 buildBoxplot r records = do
   E.tooltip do
     E.triggerItem

@@ -129,8 +129,8 @@ renderCategory state =
     { configurable: false
     , dimension: sequence $ state.category ^. _value
     , showLabel: absurd
-    , showDefaultLabel: maybe "Category label" showJCursor ∘ spy
-    , showValue: maybe "Select category" showJCursor ∘ spy
+    , showDefaultLabel: maybe "Category label" showJCursor
+    , showValue: maybe "Select category" showJCursor
     , onLabelChange: HE.input \l → right ∘ Q.LabelChanged Q.Category l
     , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Category
     , onConfigure: const Nothing

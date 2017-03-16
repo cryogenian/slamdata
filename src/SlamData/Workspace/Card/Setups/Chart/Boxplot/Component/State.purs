@@ -21,18 +21,17 @@ module SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.State
   , _parallel
   , _series
   , State
-  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
   ) where
 
-import Data.Argonaut (JCursor)
+import SlamData.Prelude
+
 import Data.Lens (Lens', lens)
 
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.Query (Selection)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
+import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.Query (ProjectionField, TransformField)
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as M
 
-type State = M.ReducedState (DS.CommonState JCursor Selection ())
+type State =
+  M.ReducedState ( selected ∷ Maybe ( ProjectionField ⊹ TransformField ) )
 
 initialState ∷ State
 initialState =
@@ -41,7 +40,7 @@ initialState =
   , value: M.initialState.value
   , series: M.initialState.series
   , parallel: M.initialState.parallel
-  , picker: DS.initial.picker
+  , selected: Nothing
   }
 
 _dimension ∷ ∀ r a. Lens' { dimension ∷ a | r } a

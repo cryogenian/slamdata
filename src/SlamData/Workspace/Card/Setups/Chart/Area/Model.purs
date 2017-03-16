@@ -200,7 +200,6 @@ behaviour =
       newSeries =
         setPreviousValueFrom st.series
           $ S.newSelect
-          $ spy
           $ except newDimension
           $ except newValue
           $ map D.defaultJCursorDimension

@@ -16,21 +16,29 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.Query where
 
-import Data.Argonaut (JCursor)
+import SlamData.Prelude
 
 import DOM.Event.Types (Event)
 
-import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
+import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.Transform as T
 
-data Selection f
-  = Dimension (f JCursor)
-  | Value (f JCursor)
-  | Series (f JCursor)
-  | Parallel (f JCursor)
+data ProjectionField
+  = Dimension
+  | Value
+  | Series
+  | Parallel
+
+type TransformField
+  = Void
 
 data Query a
-  = Select (Selection SelectAction) a
+  = Select ProjectionField a
   | PreventDefault Event a
-  | HandleDPMessage (Message JCursorNode) a
+  | HandleDPMessage ProjectionField (Message JCursorNode) a
+  | HandleTransformPicker TransformField  (AS.Message T.Transform) a
+  | Dismiss ProjectionField a
+  | Configure TransformField a
+  | LabelChanged ProjectionField String a

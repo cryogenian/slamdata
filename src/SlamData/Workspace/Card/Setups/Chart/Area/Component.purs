@@ -130,8 +130,8 @@ renderDimension state =
     { configurable: false
     , dimension: sequence $ state.dimension ^. _value
     , showLabel: absurd
-    , showDefaultLabel: maybe "Dimension label" showJCursor ∘ spy
-    , showValue: maybe "Select dimension" showJCursor ∘ spy
+    , showDefaultLabel: maybe "Dimension label" showJCursor
+    , showValue: maybe "Select dimension" showJCursor
     , onLabelChange: HE.input \l → right ∘ Q.LabelChanged Q.Dimension l
     , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Dimension
     , onConfigure: const Nothing

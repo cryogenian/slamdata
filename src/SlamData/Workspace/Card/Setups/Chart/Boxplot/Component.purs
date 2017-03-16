@@ -20,7 +20,9 @@ module SlamData.Workspace.Card.Setups.Chart.Boxplot.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (.~))
+import Data.Array as Arr
+import Data.Lens (view, _Just, (^?), (?~), (.~), (^.))
+import Data.List as List
 
 import DOM.Event.Event as DEE
 
@@ -31,23 +33,24 @@ import Halogen.HTML.Events as HE
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (_value)
+import SlamData.Form.Select (_value, _options)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
-import SlamData.Workspace.Card.Setups.Inputs as BCI
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors, showJCursor, showJCursorTip, groupJCursors)
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as M
+import SlamData.Workspace.Card.Setups.Inputs as I
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Eval.State (_Axes)
 
-type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
-type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
 boxplotBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 boxplotBuilderComponent =
@@ -66,69 +69,118 @@ render state =
     , renderValue state
     , renderSeries state
     , renderParallel state
-    , renderPicker state
+    , renderSelection state
     ]
 
-selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
-selecting f q _ = right (Q.Select (f q) unit)
-
-renderPicker ∷ ST.State → HTML
-renderPicker state = case state.picker of
+renderSelection ∷ ST.State → HTML
+renderSelection state = case state.selected of
   Nothing → HH.text ""
-  Just { options, select } →
+  Just (Right tp) →
+    absurd tp
+  Just (Left pf) →
     let
       conf =
-        BCI.dimensionPicker options
-          case select of
-            Q.Dimension _   → "Choose dimension"
-            Q.Value _       → "Choose measure"
-            Q.Series _      → "Choose series"
-            Q.Parallel _    → "Choose parallel"
-    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
+        { title: case pf of
+             Q.Dimension → "Choose dimension"
+             Q.Value → "Choose measure"
+             Q.Series → "Choose series"
+             Q.Parallel → "Choose parallel"
+        , label: DPC.labelNode showJCursorTip
+        , render: DPC.renderNode showJCursorTip
+        , values: groupJCursors
+            $ List.fromFoldable
+            $ map (view $ D._value ∘ D._projection)
+            case pf of
+              Q.Dimension → state.dimension ^. _options
+              Q.Value → state.value ^. _options
+              Q.Series → state.series ^. _options
+              Q.Parallel →  state.parallel ^. _options
+        , isSelectable: DPC.isLeafPath
+        }
+    in
+      HH.slot'
+        CS.cpPicker
+        unit
+        (DPC.picker conf)
+        unit
+        (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage pf)
 
 renderDimension ∷ ST.State → HTML
 renderDimension state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Dimension") (selecting Q.Dimension))
-        state.dimension
-    ]
+  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  [ I.dimensionButton
+    { configurable: false
+    , dimension: sequence $ state.dimension ^. _value
+    , showLabel: absurd
+    , showDefaultLabel: maybe "Dimension label" showJCursor
+    , showValue: maybe "Select dimension" showJCursor
+    , onLabelChange: HE.input \l → right ∘ Q.LabelChanged Q.Dimension l
+    , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Dimension
+    , onConfigure: const Nothing
+    , onClick: HE.input_ $ right ∘ Q.Select Q.Dimension
+    , onMouseDown: const Nothing
+    , onLabelClick: const Nothing
+    , disabled: Arr.null $ state.dimension ^. _options
+    , dismissable: isJust $ state.dimension ^. _value
+    } ]
 
 renderValue ∷ ST.State → HTML
 renderValue state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Measure") (selecting Q.Value))
-        state.value
-    ]
+  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  [ I.dimensionButton
+    { configurable: false
+    , dimension: sequence $ state.value ^. _value
+    , showLabel: absurd
+    , showDefaultLabel: maybe "Value label" showJCursor
+    , showValue: maybe "Select value" showJCursor
+    , onLabelChange: HE.input \l → right ∘ Q.LabelChanged Q.Value l
+    , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Value
+    , onConfigure: const Nothing
+    , onClick: HE.input_ $ right ∘ Q.Select Q.Value
+    , onMouseDown: const Nothing
+    , onLabelClick: const Nothing
+    , disabled: Arr.null $ state.value ^. _options
+    , dismissable: isJust $ state.value ^. _value
+    } ]
 
 renderSeries ∷ ST.State → HTML
 renderSeries state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Series") (selecting Q.Series))
-        state.series
-    ]
+  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  [ I.dimensionButton
+    { configurable: false
+    , dimension: sequence $ state.series ^. _value
+    , showLabel: absurd
+    , showDefaultLabel: maybe "Series label" showJCursor
+    , showValue: maybe "Select series" showJCursor
+    , onLabelChange: HE.input \l → right ∘ Q.LabelChanged Q.Series l
+    , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Series
+    , onConfigure: const Nothing
+    , onClick: HE.input_ $ right ∘ Q.Select Q.Series
+    , onMouseDown: const Nothing
+    , onLabelClick: const Nothing
+    , disabled: Arr.null $ state.series ^. _options
+    , dismissable: isJust $ state.series ^. _value
+    } ]
+
 
 renderParallel ∷ ST.State → HTML
 renderParallel state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
-        state.parallel
-    ]
+  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  [ I.dimensionButton
+    { configurable: false
+    , dimension: sequence $ state.parallel ^. _value
+    , showLabel: absurd
+    , showDefaultLabel: maybe "Parallel label" showJCursor
+    , showValue: maybe "Select parallel" showJCursor
+    , onLabelChange: HE.input \l → right ∘ Q.LabelChanged Q.Parallel l
+    , onDismiss: HE.input_ $ right ∘ Q.Dismiss Q.Parallel
+    , onConfigure: const Nothing
+    , onClick: HE.input_ $ right ∘ Q.Select Q.Parallel
+    , onMouseDown: const Nothing
+    , onLabelClick: const Nothing
+    , disabled: Arr.null $ state.parallel ^. _options
+    , dismissable: isJust $ state.parallel ^. _value
+    } ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -169,30 +221,42 @@ setupEval = case _ of
   Q.PreventDefault e next → do
     H.liftEff $ DEE.preventDefault e
     pure next
-  Q.Select sel next → do
-    case sel of
-      Q.Value a     → updatePicker ST._value Q.Value a
-      Q.Dimension a → updatePicker ST._dimension Q.Dimension a
-      Q.Series a    → updatePicker ST._series Q.Series a
-      Q.Parallel a  → updatePicker ST._parallel Q.Parallel a
+  Q.Select fp next → do
+    H.modify _{ selected = Just $ Left fp }
     pure next
-  Q.HandleDPMessage m next → case m of
+  Q.Configure v _ → do
+    absurd v
+  Q.Dismiss fp next → do
+    H.modify case fp of
+      Q.Dimension → ST._dimension ∘ _value .~ Nothing
+      Q.Value → ST._value ∘ _value .~ Nothing
+      Q.Series → ST._series ∘ _value .~ Nothing
+      Q.Parallel → ST._parallel ∘ _value .~ Nothing
+    H.modify _{ selected = Nothing }
+    raiseUpdate
+    pure next
+  Q.LabelChanged fp str next → do
+    H.modify case fp of
+      Q.Dimension → ST._dimension ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
+      Q.Value → ST._value ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
+      Q.Series → ST._series ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
+      Q.Parallel → ST._parallel ∘ _value ∘ _Just ∘ D._category ∘ _Just ∘ D._Static .~ str
+    pure next
+  Q.HandleDPMessage fp m next → case m of
     DPC.Dismiss → do
-      H.modify _ { picker = Nothing }
+      H.modify _{ selected = Nothing }
       pure next
     DPC.Confirm value → do
       st ← H.get
       let
         value' = flattenJCursors value
-      for_ st.picker \{ select } → case select of
-        Q.Value _     → H.modify (ST._value ∘ _value ?~ value')
-        Q.Dimension _ → H.modify (ST._dimension ∘ _value ?~ value')
-        Q.Series _    → H.modify (ST._series ∘ _value ?~ value')
-        Q.Parallel _  → H.modify (ST._parallel ∘ _value ?~ value')
-      H.modify _ { picker = Nothing }
+      H.modify case fp of
+        Q.Dimension → ST._dimension ∘ _value ?~ D.projection value'
+        Q.Value → ST._value ∘ _value ?~ D.projection value'
+        Q.Series → ST._series ∘ _value ?~ D.projection value'
+        Q.Parallel → ST._parallel ∘ _value ?~ D.projection value'
+      H.modify _ { selected = Nothing }
       raiseUpdate
       pure next
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+  Q.HandleTransformPicker v _ _ → do
+    absurd v

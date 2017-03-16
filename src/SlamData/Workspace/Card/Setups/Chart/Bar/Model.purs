@@ -177,8 +177,8 @@ behaviour =
           $ S.autoSelect
           $ S.newSelect
           $ except newCategory
-          $ (map D.defaultJCursorDimension
-          $ st.axes.value)
+          $ map D.defaultJCursorDimension
+          $ st.axes.value
 
       newStack =
         setPreviousValueFrom st.stack
