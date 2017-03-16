@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.FormBuilder.Item.Component.State
   ( State
   , _model
-  , _enabled
   , initialState
   , module SlamData.Workspace.FormBuilder.Item.Model
   ) where
@@ -28,17 +27,12 @@ import SlamData.Workspace.FormBuilder.Item.Model
 
 type State =
   { model ∷ Model
-  , enabled ∷ Boolean
   }
 
 _model ∷ Lens' State Model
 _model = lens _.model _ { model = _ }
 
-_enabled ∷ Lens' State Boolean
-_enabled = lens _.enabled _ { enabled = _ }
-
-initialState ∷ Boolean → State
+initialState ∷ State
 initialState =
   { model: initialModel
-  , enabled: _
   }

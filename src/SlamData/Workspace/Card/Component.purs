@@ -32,6 +32,8 @@ import SlamData.Prelude
 
 import Data.Foldable (elem)
 
+import Data.Lens ((.~))
+
 import DOM.HTML.HTMLElement (getBoundingClientRect)
 
 import Halogen as H
@@ -43,13 +45,16 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Class (navigateToDeck)
-import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, cardIconDarkSrc)
-import SlamData.Workspace.Card.Common.EvalQuery as EQ
+import SlamData.Wiring as Wiring
+import SlamData.Workspace.AccessType as AccessType
+import SlamData.Workspace.Card.CardType (CardType(..))
+import SlamData.Workspace.Card.CardType as CardType
 import SlamData.Workspace.Card.Common (CardOptions)
+import SlamData.Workspace.Card.Common.EvalQuery as EQ
 import SlamData.Workspace.Card.Component.CSS as CSS
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.State as CS
+import SlamData.Workspace.Class (navigateToDeck)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -93,13 +98,13 @@ makeCardComponent cardType component options =
   render st =
     HH.div
       [ HP.classes $ [ CSS.deckCard ]
-      , ARIA.label $ (cardName cardType) ⊕ " card"
+      , ARIA.label $ (CardType.cardName cardType) ⊕ " card"
       , HP.ref cardRef
       ]
       $ fold [cardLabel, card]
     where
     icon ∷ CardHTML f
-    icon = HH.img [ HP.src $ cardIconDarkSrc cardType ]
+    icon = HH.img [ HP.src $ CardType.cardIconDarkSrc cardType ]
 
     cardLabel ∷ Array (CardHTML f)
     cardLabel
@@ -111,7 +116,7 @@ makeCardComponent cardType component options =
               [ HH.div
                   [ HP.class_ CSS.cardName ]
                   [ icon
-                  , HH.p_ [ HH.text $ cardName cardType ]
+                  , HH.p_ [ HH.text $ CardType.cardName cardType ]
                   ]
               ]
           ]
@@ -122,13 +127,17 @@ makeCardComponent cardType component options =
         CS.Pending, _ →
           []
         _, High →
-          [ HH.div
-              [ HP.classes $ cardClasses cardType ]
+          [ HH.fieldset
+              [ HP.classes $ CardType.cardClasses cardType
+              , HP.disabled disabled
+              ]
               [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
           ]
         _, Low →
-          [ HH.div
-              [ HP.classes $ cardClasses cardType <> [ B.hidden ] ]
+          [ HH.fieldset
+              [ HP.classes $ CardType.cardClasses cardType <> [ B.hidden ]
+              , HP.disabled disabled
+              ]
               [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
           , HH.div
               [ HP.class_ (HH.ClassName "card-input-minimum-lod") ]
@@ -143,6 +152,11 @@ makeCardComponent cardType component options =
               ]
           ]
 
+    disabled ∷ Boolean
+    disabled =
+      (not $ CardType.consumerInteractable cardType)
+        ∧ (AccessType.isReadOnly st.accessType)
+
   eval ∷ CQ.CardQuery ~> CardDSL f
   eval = case _ of
     CQ.Initialize next → do
@@ -150,6 +164,8 @@ makeCardComponent cardType component options =
       when (st.status ≡ CS.Active) do
         initializeInnerCard
         queryInnerCard EQ.Activate
+      H.modify ∘ (CS._accessType .~ _)
+        =<< _.accessType <$> H.lift Wiring.expose
       pure next
     CQ.UpdateDimensions next → do
       st ← H.get

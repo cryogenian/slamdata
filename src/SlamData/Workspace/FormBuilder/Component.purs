@@ -104,19 +104,24 @@ render state = renderTable state.items
   where
     renderTable ∷ L.List ItemId → HTML m
     renderTable items =
-      HH.table
-        [ HP.classes [ HH.ClassName "form-builder", RC.form ] ]
-        [ HH.thead_
-            [ HH.tr_
-                [ HH.th_ [ HH.text "Name" ]
-                , HH.th_ [ HH.text "Type" ]
-                , HH.th_ [ HH.text "Default value" ]
+      if L.length items > 0
+        then
+          HH.table
+            [ HP.classes [ HH.ClassName "form-builder", RC.form ] ]
+            [ HH.thead_
+                [ HH.tr_
+                    [ HH.th_ [ HH.text "Name" ]
+                    , HH.th_ [ HH.text "Type" ]
+                    , HH.th_ [ HH.text "Default value" ]
+                    ]
                 ]
+            , HH.tbody_ $ A.fromFoldable (renderItem <$> items)
             ]
-        , HH.tbody_ $ A.fromFoldable (renderItem <$> items)
-        ]
+        else
+          HH.text "No variables."
+
 
     renderItem ∷ ItemId → HTML m
     renderItem itemId =
       let slotId = ItemSlot itemId
-      in HH.slot slotId Item.component (AT.isEditable state.accessType) (HE.input (HandleItem slotId))
+      in HH.slot slotId Item.component unit (HE.input (HandleItem slotId))
