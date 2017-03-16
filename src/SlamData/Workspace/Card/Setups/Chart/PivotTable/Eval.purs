@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.PivotTable.Eval
   ) where
 
 import Control.Monad.State (class MonadState, get, put)
-import Control.Monad.Throw (class MonadThrow)
+import Control.Monad.Throw (class MonadThrow, throw)
 
 import Data.Argonaut as J
 import Data.Array as Array
@@ -40,6 +40,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Axis (buildAxes)
 
 import Utils.Path (FilePath)
 
@@ -64,7 +65,7 @@ eval options varMap resource = do
     case state of
       Just (CEM.Analysis { axes: ax, resource: resource' })
         | resource' ≡ resource → pure ax
-      _ → CEM.liftQ (QQ.axes filePath 300)
+      _ → either throw (pure ∘ buildAxes) =<< QQ.sample filePath 0 300
   let
     state' = { axes, records: [], resource }
     view = Port.View r (snd query) varMap
