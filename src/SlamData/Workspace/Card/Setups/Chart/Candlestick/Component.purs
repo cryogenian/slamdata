@@ -305,13 +305,12 @@ setupEval = case _ of
       st ← H.get
       let v = flattenJCursors value
       H.modify case fp of
-        Q.Dimension → ST._dimension ∘ _value ?~ v
-        Q.High → ST._high ∘ _value ?~ v
-        Q.Low → ST._low ∘ _value ?~ v
-        Q.Open → ST._open ∘ _value ?~ v
-        Q.Close → ST._close ∘ _value ?~ v
-        Q.Parallel → ST._parallel ∘ _value ?~ v
-
+        Q.Dimension → ST._dimension ∘ _value ?~ D.projection v
+        Q.High → ST._high ∘ _value ?~ D.projectionWithAggregation (Just Ag.Sum) v
+        Q.Low → ST._low ∘ _value ?~ D.projectionWithAggregation (Just Ag.Sum) v
+        Q.Open → ST._open ∘ _value ?~ D.projectionWithAggregation (Just Ag.Sum) v
+        Q.Close → ST._close ∘ _value ?~ D.projectionWithAggregation (Just Ag.Sum) v
+        Q.Parallel → ST._parallel ∘ _value ?~ D.projection v
       H.modify _ { selected = Nothing }
       raiseUpdate
       pure next
@@ -320,13 +319,12 @@ setupEval = case _ of
       AS.Dismiss →
         H.modify _{ selected = Nothing }
       AS.Confirm mbt → do
-        H.modify
-          $ _ { selected = Nothing }
-          ∘ case tp of
-              Q.HighAggregation → ST._high ∘ _value ∘ _Just ∘ D._value ∘ D._transform .~ mbt
-              Q.LowAggregation →  ST._low ∘ _value ∘ _Just ∘ D._value ∘ D._transform .~ mbt
-              Q.OpenAggregation →  ST._open ∘ _value ∘ _Just ∘ D._value ∘ D._transform .~ mbt
-              Q.CloseAggregation →  ST._close ∘ _value ∘ _Just ∘ D._value ∘ D._transform .~ mbt
+        H.modify case tp of
+          Q.HighAggregation → ST._high ∘ _value ∘ _Just ∘ D._value ∘ D._transform .~ mbt
+          Q.LowAggregation →  ST._low ∘ _value ∘ _Just ∘ D._value ∘ D._transform .~ mbt
+          Q.OpenAggregation →  ST._open ∘ _value ∘ _Just ∘ D._value ∘ D._transform .~ mbt
+          Q.CloseAggregation →  ST._close ∘ _value ∘ _Just ∘ D._value ∘ D._transform .~ mbt
+        H.modify _{ selected = Nothing }
         raiseUpdate
     pure next
 
