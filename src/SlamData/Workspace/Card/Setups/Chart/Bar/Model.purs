@@ -29,6 +29,7 @@ import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Behaviour as SB
 import SlamData.Workspace.Card.Setups.Axis as Ax
+
 import SlamData.Form.Select as S
 
 type ModelR =
@@ -111,12 +112,10 @@ decode js
   decodeLegacyR ∷ JObject → String ⊹ ModelR
   decodeLegacyR obj = do
     category ← map D.defaultJCursorDimension $ obj .? "category"
-    val ← obj .? "value"
-    valAggregation ← obj .? "valueAggregation"
-    let value =
-          D.Dimension
-            (Just $ D.defaultJCursorCategory val)
-            (D.Projection (Just valAggregation) val)
+    value ←
+      D.pairToDimension
+      <$> (obj .? "value")
+      <*> (obj .? "valueAggregation")
     stack ← map (map D.defaultJCursorDimension) $ obj .? "stack"
     parallel ← map (map D.defaultJCursorDimension) $ obj .? "parallel"
     axisLabelAngle ← obj .? "axisLabelAngle"

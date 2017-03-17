@@ -33,11 +33,11 @@ data TransformField
   = ValueAggregation
 
 data Query a
-  = SetAxisLabelAngle String a
+  = PreventDefault Event a
+  | SetAxisLabelAngle String a
   | Select ProjectionField a
-  | PreventDefault Event a
-  | HandleDPMessage ProjectionField (Message JCursorNode) a
-  | HandleTransformPicker TransformField  (AS.Message T.Transform) a
   | Dismiss ProjectionField a
   | Configure TransformField a
   | LabelChanged ProjectionField String a
+  | HandleDPMessage ProjectionField (Message JCursorNode) a
+  | HandleTransformPicker TransformField  (AS.Message T.Transform) a

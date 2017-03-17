@@ -26,6 +26,7 @@ import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
+import Data.Lens ((^?), preview, _Just)
 import Data.Map as M
 
 import ECharts.Monad (DSL)
@@ -34,18 +35,20 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Candlestick))
-import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (CandlestickR, Model, behaviour, initialState)
 import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (ModelR, Model, behaviour, initialState)
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import Utils.Foldable (enumeratedFor_)
 
@@ -82,7 +85,7 @@ type OnOneGrid =
 
 type CandlestickData = Array OnOneGrid
 
-buildCandlestickData ∷ CandlestickR → JArray → CandlestickData
+buildCandlestickData ∷ ModelR → JArray → CandlestickData
 buildCandlestickData r records = series
   where
   dataMap ∷ Maybe String >> String >> HLOC (Array Number)
@@ -97,23 +100,23 @@ buildCandlestickData r records = series
     let
       getMaybeString = Sem.getMaybeString js
       getValues = Sem.getValues js
-    in case getMaybeString r.dimension of
+    in case getMaybeString =<< (r.dimension ^? D._value ∘ D._projection)  of
       Nothing → acc
       Just dimKey →
         let
           high =
-            getValues $ pure r.high
+            getValues $ r.high ^? D._value ∘ D._projection
           low =
-            getValues $ pure r.low
+            getValues $ r.low ^? D._value ∘ D._projection
           open =
-            getValues $ pure r.open
+            getValues $ r.open ^? D._value ∘ D._projection
           close =
-            getValues $ pure r.close
+            getValues $ r.close ^? D._value ∘ D._projection
 
           hloc = {high, low, open, close}
 
           mbParallel =
-            getMaybeString =<< r.parallel
+            getMaybeString =<< (preview $ D._value ∘ D._projection) =<< r.parallel
 
           alterParallelFn
             ∷ Maybe (String >> HLOC (Array Number))
@@ -155,16 +158,24 @@ buildCandlestickData r records = series
 
   aggregateHLOC ∷ HLOC (Array Number) → HLOC Number
   aggregateHLOC rr =
-    { high: Ag.runAggregation r.highAggregation rr.high
-    , low: Ag.runAggregation r.lowAggregation rr.low
-    , open: Ag.runAggregation r.openAggregation rr.open
-    , close: Ag.runAggregation r.closeAggregation rr.close
+    { high:
+        Ag.runAggregation
+          (fromMaybe Ag.Sum $ r.high ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) rr.high
+    , low:
+        Ag.runAggregation
+          (fromMaybe Ag.Sum $ r.low ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) rr.low
+    , open:
+        Ag.runAggregation
+          (fromMaybe Ag.Sum $ r.open ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) rr.open
+    , close:
+        Ag.runAggregation
+          (fromMaybe Ag.Sum $ r.close ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) rr.close
     }
 
   series ∷ CandlestickData
   series = BCP.adjustRectangularPositions rawSeries
 
-buildCandlestick ∷ Ax.Axes → CandlestickR → JArray → DSL OptionI
+buildCandlestick ∷ Ax.Axes → ModelR → JArray → DSL OptionI
 buildCandlestick axes r records = do
   E.tooltip do
     E.triggerAxis
@@ -188,8 +199,14 @@ buildCandlestick axes r records = do
   xValues ∷ OnOneGrid → Array String
   xValues  = sortX ∘ foldMap A.singleton ∘ M.keys ∘ _.items
 
+  xAxisType ∷ Ax.AxisType
+  xAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType <$> (r.dimension ^? D._value ∘ D._projection) <*> pure axes
+
+
   sortX ∷ Array String → Array String
-  sortX = A.sortBy $ Ax.compareWithAxisType $ Ax.axisType r.dimension axes
+  sortX = A.sortBy $ Ax.compareWithAxisType xAxisType
 
   xAxes = enumeratedFor_ candlestickData \(ix × serie) → E.addXAxis do
     E.gridIndex ix

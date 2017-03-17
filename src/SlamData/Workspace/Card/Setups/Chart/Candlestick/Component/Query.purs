@@ -16,28 +16,32 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.Query where
 
-import Data.Argonaut (JCursor)
-
 import DOM.Event.Types (Event)
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
+import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.Transform as T
 
-data Selection f
-  = Dimension (f JCursor)
-  | High (f JCursor)
-  | HighAgg (f Aggregation)
-  | Low (f JCursor)
-  | LowAgg (f Aggregation)
-  | Open (f JCursor)
-  | OpenAgg (f Aggregation)
-  | Close (f JCursor)
-  | CloseAgg (f Aggregation)
-  | Parallel (f JCursor)
+data ProjectionField
+  = Dimension
+  | High
+  | Low
+  | Open
+  | Close
+  | Parallel
+
+data TransformField
+  = HighAggregation
+  | LowAggregation
+  | OpenAggregation
+  | CloseAggregation
 
 data Query a
-  = Select (Selection SelectAction) a
-  | PreventDefault Event a
-  | HandleDPMessage (Message JCursorNode) a
+  = PreventDefault Event a
+  | Select ProjectionField a
+  | Dismiss ProjectionField a
+  | Configure TransformField a
+  | LabelChanged ProjectionField String a
+  | HandleDPMessage ProjectionField (Message JCursorNode) a
+  | HandleTransformPicker TransformField  (AS.Message T.Transform) a

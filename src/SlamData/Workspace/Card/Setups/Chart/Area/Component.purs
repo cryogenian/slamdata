@@ -105,7 +105,6 @@ renderSelection state = case state.selected of
              Q.Series → "Choose series"
         , label: DPC.labelNode showJCursorTip
         , render: DPC.renderNode showJCursorTip
-          -- TODO
         , values: groupJCursors
             $ List.fromFoldable
             $ map (view $ D._value ∘ D._projection)

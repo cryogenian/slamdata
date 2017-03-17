@@ -124,12 +124,10 @@ decode js
   decodeLegacyR ∷ JObject → String ⊹ ModelR
   decodeLegacyR obj = do
     dimension ← map D.defaultJCursorDimension $ obj .? "dimension"
-    val ← obj .? "value"
-    valAggregation ← obj .? "valueAggregation"
-    let value =
-          D.Dimension
-            (Just $ D.defaultJCursorCategory val)
-            (D.Projection (Just valAggregation) val)
+    value ←
+      D.pairToDimension
+      <$> (obj .? "value")
+      <*> (obj .? "valueAggregation")
     series ← map (map D.defaultJCursorDimension) $ obj .? "series"
     isStacked ← obj .? "isStacked"
     isSmooth ← obj .? "isSmooth"

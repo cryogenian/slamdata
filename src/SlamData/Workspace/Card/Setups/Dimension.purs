@@ -193,3 +193,7 @@ defaultJCursorCategory =
 defaultJCursorDimension ∷ JCursor → LabeledJCursor
 defaultJCursorDimension jc =
   projectionWithCategory (defaultJCursorCategory jc) jc
+
+pairToDimension ∷ JCursor → Ag.Aggregation → LabeledJCursor
+pairToDimension v a =
+  Dimension (Just $ defaultJCursorCategory v) (Projection (Just $ Aggregation a) v)

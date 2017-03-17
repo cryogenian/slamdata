@@ -94,15 +94,15 @@ decodeBO = J.decodeJson >=> \obj →
 
 decode
   ∷ ∀ a
-  . { pie ∷ Maybe PieR → a
-    , line ∷ Maybe LineR → a
+  . { area ∷ Maybe Area.ModelR → a
     , bar ∷ Maybe Bar.ModelR → a
-    , area ∷ Maybe Area.ModelR → a
-    , scatter ∷ Maybe ScatterR → a
-    , radar ∷ Maybe RadarR → a
+    , boxplot ∷ Maybe Boxplot.ModelR → a
     , funnel ∷ Maybe FunnelR → a
     , heatmap ∷ Maybe HeatmapR → a
-    , boxplot ∷ Maybe Boxplot.ModelR → a
+    , line ∷ Maybe LineR → a
+    , pie ∷ Maybe PieR → a
+    , radar ∷ Maybe RadarR → a
+    , scatter ∷ Maybe ScatterR → a
     }
   → J.Json
   → String ⊹ a
@@ -121,119 +121,8 @@ decode cturs js = do
     Heatmap → decodeHeatmap cc bo
     Boxplot → decodeBoxplot cc bo
     chty → throwError $ printChartType chty ⊕ " should be decoded already"
+
   where
-  decodePie ∷ ChartConfiguration → String ⊹ a
-  decodePie cc = pure $ cturs.pie
-    let
-      category =
-        cc.series A.!! 0 >>= view S._value
-      donut =
-        cc.series A.!! 1 >>= view S._value
-      parallel =
-        cc.series A.!! 2 >>= view S._value
-      value =
-        cc.measures A.!! 0 >>= view S._value
-      valueAggregation =
-        join $ cc.aggregations A.!! 0 >>= view S._value
-
-      pieR =
-        { category: _
-        , value: _
-        , valueAggregation: _
-        , donut
-        , parallel
-        }
-        <$> category
-        <*> value
-        <*> valueAggregation
-
-    in
-      pieR
-
-  decodeLine ∷ ChartConfiguration → BuildOptions → String ⊹ a
-  decodeLine cc bo = pure $ cturs.line
-    let
-      dimension =
-        cc.dimensions A.!! 0 >>= view S._value
-      series =
-        cc.series A.!! 0 >>= view S._value
-      value =
-        cc.measures A.!! 0 >>= view S._value
-      valueAggregation =
-        fromMaybe Ag.Sum $ join $ cc.aggregations A.!! 0 >>= view S._value
-      secondValue =
-        cc.measures A.!! 1 >>= view S._value
-      secondValueAggregation =
-        fromMaybe (Just Ag.Sum) $ cc.aggregations A.!! 1 >>= view S._value
-
-      size =
-        Nothing
-      sizeAggregation =
-        Just Ag.Sum
-      minSize =
-        2.0
-      maxSize =
-        20.0
-      axisLabelAngle =
-        Int.toNumber bo.axisLabelAngle
-      optionalMarkers =
-        false
-
-      lineR =
-        { dimension: _
-        , value: _
-        , valueAggregation
-        , secondValue
-        , secondValueAggregation
-        , size
-        , sizeAggregation
-        , minSize
-        , maxSize
-        , axisLabelAngle
-        , series
-        , optionalMarkers
-        }
-        <$> dimension
-        <*> value
-    in
-      lineR
-
-  decodeBar ∷ ChartConfiguration → BuildOptions → String ⊹ a
-  decodeBar cc bo = pure $ cturs.bar
-    let
-      category =
-        map D.defaultJCursorDimension
-        $ cc.series A.!! 0 >>= view S._value
-      value =
-        cc.measures A.!! 0 >>= view S._value
-      agg =
-        map T.Aggregation $ join $ cc.aggregations A.!! 0 >>= view S._value
-      stack =
-        map D.defaultJCursorDimension
-        $ (cc.series A.!! 1 >>= view S._value)
-        <|> (cc.series A.!! 2 >>= view S._value)
-      parallel =
-        map D.defaultJCursorDimension
-        $ cc.series A.!! 2 >>= view S._value
-      axisLabelAngle =
-        Int.toNumber bo.axisLabelAngle
-
-      mbValue = value <#> \v →
-        D.Dimension (Just $ D.defaultJCursorCategory v) (D.Projection agg v)
-
-      barR =
-        { category: _
-        , value: _
-        , stack
-        , parallel
-        , axisLabelAngle
-        }
-        <$> category
-        <*> mbValue
-    in
-      barR
-
-
   decodeArea ∷ ChartConfiguration → BuildOptions → String ⊹ a
   decodeArea cc bo = pure $ cturs.area
     let
@@ -270,70 +159,67 @@ decode cturs js = do
     in
       areaR
 
-  decodeScatter ∷ ChartConfiguration → BuildOptions → String ⊹ a
-  decodeScatter cc bo = pure $ cturs.scatter
-    let
-      abscissa =
-        cc.measures A.!! 0 >>= view S._value
-      ordinate =
-        cc.measures A.!! 1 >>= view S._value
-      size =
-        cc.measures A.!! 2 >>= view S._value
-      abscissaAggregation =
-        fromMaybe Nothing $ cc.aggregations A.!! 0 >>= view S._value
-      ordinateAggregation =
-        fromMaybe Nothing $ cc.aggregations A.!! 1 >>= view S._value
-      sizeAggregation =
-        cc.aggregations A.!! 2 >>= view S._value
-      series =
-        cc.series A.!! 0 >>= view S._value
-      minSize =
-        bo.bubbleMinSize
-      maxSize =
-        bo.bubbleMaxSize
-      scatterR =
-        { abscissa: _
-        , ordinate: _
-        , size
-        , abscissaAggregation
-        , ordinateAggregation
-        , sizeAggregation
-        , parallel: Nothing
-        , series
-        , minSize
-        , maxSize
-        }
-        <$> abscissa
-        <*> ordinate
-    in
-      scatterR
-
-  decodeRadar ∷ ChartConfiguration → BuildOptions → String ⊹ a
-  decodeRadar cc bo = pure $ cturs.radar
+  decodeBar ∷ ChartConfiguration → BuildOptions → String ⊹ a
+  decodeBar cc bo = pure $ cturs.bar
     let
       category =
-        cc.dimensions A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
       value =
         cc.measures A.!! 0 >>= view S._value
-      valueAggregation =
-        join $ cc.aggregations A.!! 0 >>= view S._value
-      multiple =
-        cc.series A.!! 0 >>= view S._value
+      agg =
+        map T.Aggregation $ join $ cc.aggregations A.!! 0 >>= view S._value
+      stack =
+        map D.defaultJCursorDimension
+        $ (cc.series A.!! 1 >>= view S._value)
+        <|> (cc.series A.!! 2 >>= view S._value)
       parallel =
-        cc.series A.!! 1 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 2 >>= view S._value
+      axisLabelAngle =
+        Int.toNumber bo.axisLabelAngle
 
-      radarR =
+      mbValue = value <#> \v →
+        D.Dimension (Just $ D.defaultJCursorCategory v) (D.Projection agg v)
+
+      barR =
         { category: _
         , value: _
-        , valueAggregation: _
-        , multiple
+        , stack
         , parallel
+        , axisLabelAngle
         }
         <$> category
-        <*> value
-        <*> valueAggregation
+        <*> mbValue
     in
-      radarR
+      barR
+
+  decodeBoxplot ∷ ChartConfiguration → BuildOptions → String ⊹ a
+  decodeBoxplot cc bo = pure $ cturs.boxplot
+    let
+      dimension =
+        map D.defaultJCursorDimension
+        $ cc.dimensions A.!! 0 >>= view S._value
+      value =
+        map D.defaultJCursorDimension
+        $ cc.measures A.!! 0 >>= view S._value
+      series =
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
+      parallel =
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
+
+      boxplotR =
+        { dimension: _
+        , value: _
+        , series
+        , parallel
+        }
+        <$> dimension
+        <*> value
+    in
+      boxplotR
 
   decodeFunnel ∷ ChartConfiguration → BuildOptions → String ⊹ a
   decodeFunnel cc bo = pure $ cturs.funnel
@@ -408,30 +294,143 @@ decode cturs js = do
         <*> colorScheme
     in
       heatMapR
-
-  decodeBoxplot ∷ ChartConfiguration → BuildOptions → String ⊹ a
-  decodeBoxplot cc bo = pure $ cturs.boxplot
+  decodeLine ∷ ChartConfiguration → BuildOptions → String ⊹ a
+  decodeLine cc bo = pure $ cturs.line
     let
       dimension =
-        map D.defaultJCursorDimension
-        $ cc.dimensions A.!! 0 >>= view S._value
-      value =
-        map D.defaultJCursorDimension
-        $ cc.measures A.!! 0 >>= view S._value
+        cc.dimensions A.!! 0 >>= view S._value
       series =
-        map D.defaultJCursorDimension
-        $ cc.series A.!! 0 >>= view S._value
-      parallel =
-        map D.defaultJCursorDimension
-        $ cc.series A.!! 0 >>= view S._value
+        cc.series A.!! 0 >>= view S._value
+      value =
+        cc.measures A.!! 0 >>= view S._value
+      valueAggregation =
+        fromMaybe Ag.Sum $ join $ cc.aggregations A.!! 0 >>= view S._value
+      secondValue =
+        cc.measures A.!! 1 >>= view S._value
+      secondValueAggregation =
+        fromMaybe (Just Ag.Sum) $ cc.aggregations A.!! 1 >>= view S._value
 
-      boxplotR =
+      size =
+        Nothing
+      sizeAggregation =
+        Just Ag.Sum
+      minSize =
+        2.0
+      maxSize =
+        20.0
+      axisLabelAngle =
+        Int.toNumber bo.axisLabelAngle
+      optionalMarkers =
+        false
+
+      lineR =
         { dimension: _
         , value: _
+        , valueAggregation
+        , secondValue
+        , secondValueAggregation
+        , size
+        , sizeAggregation
+        , minSize
+        , maxSize
+        , axisLabelAngle
         , series
-        , parallel
+        , optionalMarkers
         }
         <$> dimension
         <*> value
     in
-      boxplotR
+      lineR
+
+  decodePie ∷ ChartConfiguration → String ⊹ a
+  decodePie cc = pure $ cturs.pie
+    let
+      category =
+        cc.series A.!! 0 >>= view S._value
+      donut =
+        cc.series A.!! 1 >>= view S._value
+      parallel =
+        cc.series A.!! 2 >>= view S._value
+      value =
+        cc.measures A.!! 0 >>= view S._value
+      valueAggregation =
+        join $ cc.aggregations A.!! 0 >>= view S._value
+
+      pieR =
+        { category: _
+        , value: _
+        , valueAggregation: _
+        , donut
+        , parallel
+        }
+        <$> category
+        <*> value
+        <*> valueAggregation
+
+    in
+      pieR
+
+  decodeRadar ∷ ChartConfiguration → BuildOptions → String ⊹ a
+  decodeRadar cc bo = pure $ cturs.radar
+    let
+      category =
+        cc.dimensions A.!! 0 >>= view S._value
+      value =
+        cc.measures A.!! 0 >>= view S._value
+      valueAggregation =
+        join $ cc.aggregations A.!! 0 >>= view S._value
+      multiple =
+        cc.series A.!! 0 >>= view S._value
+      parallel =
+        cc.series A.!! 1 >>= view S._value
+
+      radarR =
+        { category: _
+        , value: _
+        , valueAggregation: _
+        , multiple
+        , parallel
+        }
+        <$> category
+        <*> value
+        <*> valueAggregation
+    in
+      radarR
+
+  decodeScatter ∷ ChartConfiguration → BuildOptions → String ⊹ a
+  decodeScatter cc bo = pure $ cturs.scatter
+    let
+      abscissa =
+        cc.measures A.!! 0 >>= view S._value
+      ordinate =
+        cc.measures A.!! 1 >>= view S._value
+      size =
+        cc.measures A.!! 2 >>= view S._value
+      abscissaAggregation =
+        fromMaybe Nothing $ cc.aggregations A.!! 0 >>= view S._value
+      ordinateAggregation =
+        fromMaybe Nothing $ cc.aggregations A.!! 1 >>= view S._value
+      sizeAggregation =
+        cc.aggregations A.!! 2 >>= view S._value
+      series =
+        cc.series A.!! 0 >>= view S._value
+      minSize =
+        bo.bubbleMinSize
+      maxSize =
+        bo.bubbleMaxSize
+      scatterR =
+        { abscissa: _
+        , ordinate: _
+        , size
+        , abscissaAggregation
+        , ordinateAggregation
+        , sizeAggregation
+        , parallel: Nothing
+        , series
+        , minSize
+        , maxSize
+        }
+        <$> abscissa
+        <*> ordinate
+    in
+      scatterR
