@@ -18,8 +18,8 @@ module SlamData.Workspace.Card.Setups.Chart.Candlestick.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JObject, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens ((^.), view)
+import Data.Argonaut (JCursor(..), JObject, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
+import Data.Lens (Lens', lens, (^.), view)
 import Data.Newtype (un)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
@@ -27,9 +27,20 @@ import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Behaviour as SB
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Form.Select as S
+
+import SlamData.Workspace.Card.Setups.ActionSelect.Component.Message as AS
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component.Message (Message)
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+
+type JCursorNode = JCursor ⊹ JCursor
+
+showJCursor ∷ JCursor → String
+showJCursor (JField i c) = i <> show c
+showJCursor JCursorTop = "value"
+showJCursor c = show c
 
 type ModelR =
   { dimension ∷ D.LabeledJCursor
@@ -148,7 +159,7 @@ decode js
          , parallel
          }
 
-type ReducedState r =
+type State =
   { axes ∷ Ax.Axes
   , dimension ∷ S.Select D.LabeledJCursor
   , high ∷ S.Select D.LabeledJCursor
@@ -156,9 +167,11 @@ type ReducedState r =
   , open ∷ S.Select D.LabeledJCursor
   , close ∷ S.Select D.LabeledJCursor
   , parallel ∷ S.Select D.LabeledJCursor
-  | r }
+  , selected ∷ Maybe (ProjectionField ⊹ ProjectionField)
+  }
 
-initialState ∷ ReducedState ()
+
+initialState ∷ State
 initialState =
   { axes: Ax.initialAxes
   , dimension: S.emptySelect
@@ -167,16 +180,11 @@ initialState =
   , open: S.emptySelect
   , close: S.emptySelect
   , parallel: S.emptySelect
+  , selected: Nothing
   }
 
-behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
-behaviour =
-  { synchronize
-  , load
-  , save
-  }
-  where
-  synchronize st =
+synchronize ∷ State → State
+synchronize st =
     let
       setPreviousValueFrom =
         S.setPreviousValueOn $ view $ D._value ∘ D._projection
@@ -237,26 +245,140 @@ behaviour =
         , dimension = newDimension
         , parallel = newParallel
         }
-  load Nothing st = st
-  load (Just m) st =
-    st{ dimension = S.fromSelected $ Just m.dimension
-      , open = S.fromSelected $ Just m.open
-      , close = S.fromSelected $ Just m.close
-      , high = S.fromSelected $ Just m.high
-      , low = S.fromSelected $ Just m.low
-      , parallel = S.fromSelected m.parallel
-      }
 
-  save st =
-    { dimension: _
-    , open: _
-    , close: _
-    , high: _
-    , low: _
-    , parallel: st.parallel ^. S._value
+load ∷ Model → State → State
+load Nothing st = st
+load (Just m) st =
+  st{ dimension = S.fromSelected $ Just m.dimension
+    , open = S.fromSelected $ Just m.open
+    , close = S.fromSelected $ Just m.close
+    , high = S.fromSelected $ Just m.high
+    , low = S.fromSelected $ Just m.low
+    , parallel = S.fromSelected m.parallel
     }
-    <$> (st.dimension ^. S._value)
-    <*> (st.open ^. S._value)
-    <*> (st.close ^. S._value)
-    <*> (st.high ^. S._value)
-    <*> (st.low ^. S._value)
+
+save ∷ State → Model
+save st =
+  { dimension: _
+  , open: _
+  , close: _
+  , high: _
+  , low: _
+  , parallel: st.parallel ^. S._value
+  }
+  <$> (st.dimension ^. S._value)
+  <*> (st.open ^. S._value)
+  <*> (st.close ^. S._value)
+  <*> (st.high ^. S._value)
+  <*> (st.low ^. S._value)
+
+_dimension ∷ ∀ r a. Lens' { dimension ∷ a | r} a
+_dimension = lens _.dimension _{ dimension = _ }
+
+_high ∷ ∀ r a. Lens' { high ∷ a | r} a
+_high = lens _.high _{ high = _ }
+
+_low ∷ ∀ r a. Lens' { low ∷ a | r} a
+_low = lens _.low _{ low = _ }
+
+_open ∷ ∀ r a. Lens' { open ∷ a | r} a
+_open = lens _.open _{ open = _ }
+
+_close ∷ ∀ r a. Lens' { close ∷ a | r} a
+_close = lens _.close _{ close = _ }
+
+_parallel ∷ ∀ r a. Lens' { parallel ∷ a | r} a
+_parallel = lens _.parallel _{ parallel = _ }
+
+_parallel' ∷ ∀ r a. Lens' { parallel ∷ a | r} a
+_parallel' = lens _.parallel \s _ → s
+
+_dimension' ∷ ∀ r a. Lens' { dimension ∷ a | r} a
+_dimension' = lens _.dimension \s _ → s
+
+
+data ProjectionField
+  = Dimension
+  | High
+  | Low
+  | Open
+  | Close
+  | Parallel
+
+data FieldQuery a
+  = Select a
+  | Dismiss a
+  | Configure a
+  | LabelChanged a
+  | HandleDPMessage (Message JCursorNode) a
+  | HandleTransformPicker (AS.Message T.Transform) a
+
+fieldLens ∷ ProjectionField → Lens' State (S.Select D.LabeledJCursor)
+fieldLens = case _ of
+  Dimension → _dimension
+  High → _high
+  Low → _low
+  Close → _close
+  Open → _open
+  Parallel → _parallel
+
+transformLens ∷ ProjectionField → Lens' State (S.Select D.LabeledJCursor)
+transformLens = case _ of
+  Dimension → _dimension'
+  High → _high
+  Close → _close
+  Open → _open
+  Parallel → _parallel'
+  Low → _low
+
+confirmedVal ∷ ProjectionField → JCursor → D.LabeledJCursor
+confirmedVal fld v = case fld of
+  Dimension → D.projection v
+  High → D.projectionWithAggregation (Just Ag.Sum) v
+  Low →  D.projectionWithAggregation (Just Ag.Sum) v
+  Open →  D.projectionWithAggregation (Just Ag.Sum) v
+  Close →  D.projectionWithAggregation (Just Ag.Sum) v
+  Parallel → D.projection v
+
+chooseLabel ∷ ProjectionField → String
+chooseLabel = case _ of
+  Dimension → "Choose dimension"
+  Open → "Choose measure for open position"
+  Close → "Choose measure for close position"
+  High → "Choose measure for high position"
+  Low → "Choose measure for low position"
+  Parallel → "Choose parallel"
+
+showDefaultLabel ∷ ProjectionField → Maybe JCursor → String
+showDefaultLabel fld = flip maybe showJCursor case fld of
+  Dimension → "Dimension label"
+  Open → "Open position label"
+  Close → "Close position label"
+  High → "High position label"
+  Low → "Low position label"
+  Parallel → "Parallel label"
+
+showValue ∷ ProjectionField → Maybe JCursor → String
+showValue fld = flip maybe showJCursor case fld of
+  Dimension → "Select dimension"
+  Open → "Select open"
+  Close → "Select close"
+  High → "Select high"
+  Low → "Select low"
+  Parallel → "Select parallel"
+
+allFields ∷ Array ProjectionField
+allFields =
+  [ Dimension
+  , Open
+  , Close
+  , High
+  , Low
+  , Parallel
+  ]
+
+type MiscQuery = Const Void
+
+data Query a
+  = OnField ProjectionField (FieldQuery a)
+  | Misc (MiscQuery a)

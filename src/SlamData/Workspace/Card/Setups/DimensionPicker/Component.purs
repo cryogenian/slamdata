@@ -14,7 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.DimensionPicker.Component where
+module SlamData.Workspace.Card.Setups.DimensionPicker.Component
+  ( module M
+  , initialState
+  , State
+  , Query(..)
+  , ChildQuery
+  , ChildSlot
+  , renderNode
+  , isLeafPath
+  , labelNode
+  , pickerOptionsToColumnOptions
+  , picker
+  , PickerOptions
+  ) where
 
 import SlamData.Prelude
 
@@ -27,14 +40,11 @@ import SlamData.Workspace.Card.Setups.Dialog as CSD
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Workspace.MillerColumns.TreeData as MCT
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component.Message as M
 
 data Query s a
   = UpdateSelection (Maybe s) a
-  | RaiseMessage (Message s) a
-
-data Message s
-  = Dismiss
-  | Confirm s
+  | RaiseMessage (M.Message s) a
 
 type State s =
   { selection ∷ Maybe s
@@ -49,7 +59,7 @@ type ChildQuery s = MC.Query s s Void
 type ChildSlot = Unit
 
 type HTML s = H.ParentHTML (Query s) (ChildQuery s) ChildSlot Slam
-type DSL s = H.ParentDSL (State s) (Query s) (ChildQuery s) ChildSlot (Message s) Slam
+type DSL s = H.ParentDSL (State s) (Query s) (ChildQuery s) ChildSlot (M.Message s) Slam
 
 type PickerOptions s =
   { label  ∷ s → String
@@ -91,7 +101,7 @@ picker
   ∷ ∀ s
   . Ord s
   ⇒ PickerOptions s
-  → H.Component HH.HTML (Query s) Unit (Message s) Slam
+  → H.Component HH.HTML (Query s) Unit (M.Message s) Slam
 picker opts =
   H.parentComponent
     { initialState: const initialState
@@ -107,8 +117,8 @@ picker opts =
   render ∷ State s → HTML s
   render st =
     CSD.pickerDialog
-      { onDismiss: RaiseMessage Dismiss
-      , onConfirm: RaiseMessage ∘ Confirm
+      { onDismiss: RaiseMessage M.Dismiss
+      , onConfirm: RaiseMessage ∘ M.Confirm
       , selection: st.selection
       , isSelectable: opts.isSelectable
       , classes: [ HH.ClassName "sd-dimension-picker" ]

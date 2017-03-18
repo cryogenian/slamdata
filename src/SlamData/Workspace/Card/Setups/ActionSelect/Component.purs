@@ -1,4 +1,12 @@
-module SlamData.Workspace.Card.Setups.ActionSelect.Component where
+module SlamData.Workspace.Card.Setups.ActionSelect.Component
+  ( module SlamData.Workspace.Card.Setups.ActionSelect.Component.Message
+  , Query(..)
+  , State
+  , selectConf
+  , component
+  , mkAction
+  , updateActions
+  ) where
 
 import SlamData.Prelude
 import Data.Array as Array
@@ -9,6 +17,7 @@ import Halogen.HTML.Properties as HP
 import SlamData.Monad (Slam)
 import SlamData.ActionList.Component as ALC
 import SlamData.Workspace.Card.Setups.Dialog as CSD
+import SlamData.Workspace.Card.Setups.ActionSelect.Component.Message (Message(..))
 
 data Query s a
   = Init a
@@ -16,10 +25,6 @@ data Query s a
   | HandleConfirm (Maybe s) a
   | HandleDismiss a
   | UpdateDimensions a
-
-data Message s
-  = Dismiss
-  | Confirm (Maybe s)
 
 type State s =
   { options ∷ Array s

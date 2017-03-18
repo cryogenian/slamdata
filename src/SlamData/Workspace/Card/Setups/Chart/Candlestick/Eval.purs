@@ -40,7 +40,8 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Behaviour as B
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (ModelR, Model, behaviour, initialState)
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (ModelR, Model, initialState)
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model as M
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
@@ -62,7 +63,7 @@ eval
   → Port.Resource
   → m Port.Port
 eval m = BCE.buildChartEval Candlestick buildCandlestick m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+  M.save $ M.synchronize $ M.load m initialState{axes = axes}
 
 type HLOC a =
   { low ∷ a
