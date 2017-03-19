@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((.~), (^.), (^?))
+import Data.Lens ((.~), (^.), (^?), (%~))
 
 import Global (readFloat, isNaN)
 
@@ -38,7 +38,7 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.CSS as CSS
-import SlamData.Workspace.Card.Setups.Chart.Area.Component.ChildSlot as CS
+import SlamData.Workspace.Card.Setups.Common.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.State as ST
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor as DJ
@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
+type DSL = CC.InnerCardParentDSL ST.State (Q.QueryR Q.MiscQuery) CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
 areaBuilderComponent ∷ CC.CardOptions → CC.CardComponent
@@ -200,15 +200,15 @@ setupEval = case _ of
     Q.SetAxisLabelAngle str next → do
       let fl = readFloat str
       unless (isNaN fl) do
-        H.modify _{axisLabelAngle = fl}
+        H.modify $ ST._axisLabelAngle .~ fl
         raiseUpdate
       pure next
     Q.ToggleSmooth next → do
-      H.modify \s → s{isSmooth = not s.isSmooth}
+      H.modify $ ST._isSmooth %~ not
       raiseUpdate
       pure next
     Q.ToggleStacked next → do
-      H.modify \s → s{isStacked = not s.isStacked}
+      H.modify $ ST._isStacked %~ not
       raiseUpdate
       pure next
   Q.OnField fld fldQuery → case fldQuery of

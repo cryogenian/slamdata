@@ -14,27 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Area.Component.Query where
+module SlamData.Workspace.Card.Setups.Chart.Area.Component.Query
+  ( Query
+  , MiscQuery(..)
+  , module Q
+  ) where
 
-import SlamData.Workspace.Card.Setups.ActionSelect.Component.Message as AS
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component.Message (Message)
-import SlamData.Workspace.Card.Setups.Chart.Area.Component.State (Projection)
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
-
-data FieldQuery a
-  = Select a
-  | Dismiss a
-  | Configure a
-  | LabelChanged String a
-  | HandleDPMessage (Message JCursorNode) a
-  | HandleTransformPicker (AS.Message T.Transform) a
+import SlamData.Workspace.Card.Setups.Common.Query as Q
 
 data MiscQuery a
   = ToggleSmooth a
   | SetAxisLabelAngle String a
   | ToggleStacked a
 
-data Query a
-  = Misc (MiscQuery a)
-  | OnField Projection (FieldQuery a)
+type Query = Q.QueryR MiscQuery

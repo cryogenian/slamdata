@@ -35,11 +35,14 @@ import Unsafe.Coerce (unsafeCoerce)
 
 -- TODO: move it somewhere, it should live in different place with group/flatten
 showJCursor ∷ J.JCursor → String
-showJCursor (J.JField i c) = i <> show c
-showJCursor J.JCursorTop = "value"
-showJCursor c = show c
+showJCursor = case _ of
+  J.JCursorTop → "value"
+  J.JField i c → i ⊕ show c
+  c → show c
 
-
+-- | Datatype used with `at` and `ix` and returns `Just index`
+-- | e.g. `idReflection ^? ix 2 ≡ Just 2`
+-- | `idReflection ^. at foo ≡ Just foo`
 newtype Reflection a = Reflection (a → a)
 derive instance newtypeReflection ∷ Newtype (Reflection a) _
 
@@ -53,7 +56,6 @@ instance reflectionAt ∷ At (Reflection a) a a where
     get (Reflection f) = Just $ f a
     set st _ = st
 
-
 idReflection ∷ ∀ a. Reflection a
 idReflection = Reflection id
 
@@ -66,13 +68,13 @@ type StateR r =
 
 type DimensionMap = SM.StrMap D.LabeledJCursor
 
-type ProjectionU a = Lens' (SM.StrMap a) (Maybe a)
+type ProjectionU m a b = At m a b ⇒ Lens' m (Maybe b)
 data Projection
 
-pack ∷ ∀ a. ProjectionU a → Projection
+pack ∷ ∀ m a b. ProjectionU m a b → Projection
 pack = unsafeCoerce
 
-unpack ∷ ∀ a. Projection → ProjectionU a
+unpack ∷ ∀ m a b. Projection → ProjectionU m a b
 unpack = unsafeCoerce
 
 _axes ∷ ∀ a r. Lens' { axes ∷ a | r } a
@@ -135,8 +137,13 @@ _secondValue = _dimMap ∘ at "secondValue"
 _donut ∷ ∀ r. Lens' (StateR r) (Maybe D.LabeledJCursor)
 _donut = _dimMap ∘ at "donut"
 
+-- Encode integer indices of List LabeledJCursor as Strings
 _dimIx ∷ ∀ r. Int → Lens' (StateR r) (Maybe D.LabeledJCursor)
 _dimIx i = _dimMap ∘ at (show i)
+
+-- Determine if this is integer index :)
+mbDimIx ∷ Projection → Maybe Int
+mbDimIx fld = Int.fromString =<< idReflection ^. unpack fld
 
 _dims ∷ ∀ r. Lens' (StateR r) (L.List D.LabeledJCursor)
 _dims = _dimMap ∘ lens get set
@@ -151,6 +158,7 @@ _dims = _dimMap ∘ lens get set
 transforms ∷ ∀ r. StateR r → Array T.Transform
 transforms _ = T.aggregationTransforms
 
+-- TODO: encode all set/show/etc for dimIx precisely
 setValue ∷ ∀ r. Projection → J.JCursor → StateR r → StateR r
 setValue fld v =
   _dimMap ∘ unpack fld ?~ wrapFn v

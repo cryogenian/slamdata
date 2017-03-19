@@ -21,6 +21,9 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Component.State
   , load
   , save
   , initialState
+  , _axisLabelAngle
+  , _isSmooth
+  , _isStacked
   , State
   , module C
   ) where

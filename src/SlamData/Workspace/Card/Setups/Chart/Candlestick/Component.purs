@@ -33,7 +33,7 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.CSS as CSS
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.ChildSlot as CS
+import SlamData.Workspace.Card.Setups.Common.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.State as ST
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor as DJ

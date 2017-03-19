@@ -15,50 +15,139 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Setups.Chart.Bar.Component.State
-  ( initialState
-  , _category
-  , _value
-  , _valueAgg
-  , _stack
-  , _parallel
+  ( allFields
+  , cursors
+  , disabled
+  , load
+  , save
+  , initialState
+  , _axisLabelAngle
   , State
+  , module C
   ) where
 
 import SlamData.Prelude
 
-import Data.Lens (Lens', lens)
+import Data.Argonaut as J
+import Data.Lens (Traversal', Lens', lens, _Just, (^.), (.~), (^?))
+import Data.Lens.At (at)
+import Data.List as List
+import Data.Set as Set
+import Data.StrMap as SM
 
-import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query (ProjectionField, TransformField)
-import SlamData.Workspace.Card.Setups.Chart.Bar.Model as M
+import SlamData.Workspace.Card.Model as M
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.Common.State as C
+import SlamData.Workspace.Card.Setups.Dimension as D
 
-type State =
-  M.ReducedState ( selected ∷ Maybe (ProjectionField ⊹ TransformField) )
+type State = C.StateR
+  ( isSmooth ∷ Boolean
+  , isStacked ∷ Boolean
+  , axisLabelAngle ∷ Number
+  )
+
+allFields ∷ Array C.Projection
+allFields =
+  [ C.pack (at "category" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  , C.pack (at "value" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  , C.pack (at "stack" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  , C.pack (at "parallel" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  ]
+
+_axisLabelAngle ∷ Lens' State Number
+_axisLabelAngle = lens _.axisLabelAngle _{ axisLabelAngle = _ }
+
+cursors ∷ State → List.List J.JCursor
+cursors st = case st.selected of
+  Just (Left lns) → List.fromFoldable $ fldCursors lns st
+  _ → List.Nil
+
+disabled ∷ C.Projection → State → Boolean
+disabled fld st = Set.isEmpty $ fldCursors fld st
+
+fldCursors ∷ C.Projection → State → Set.Set J.JCursor
+fldCursors fld st =
+  fromMaybe Set.empty $ cursorMap st ^. C.unpack fld
+
+cursorMap ∷ State → SM.StrMap (Set.Set J.JCursor)
+cursorMap st =
+  let
+    mbDelete ∷ ∀ a. Ord a ⇒ Maybe a → Set.Set a → Set.Set a
+    mbDelete mbA s = maybe s (flip Set.delete s) mbA
+
+    ifSelected ∷ ∀ a. Ord a ⇒ Maybe a → Set.Set a → Set.Set a
+    ifSelected mbA s = case mbA of
+      Nothing → Set.empty
+      _ → s
+
+    _projection ∷ Traversal' (Maybe D.LabeledJCursor) J.JCursor
+    _projection = _Just ∘ D._value ∘ D._projection
+
+    axes = st ^. C._axes
+
+    category =
+      axes.category
+      ⊕ axes.time
+      ⊕ axes.value
+      ⊕ axes.date
+      ⊕ axes.datetime
+
+    value =
+      mbDelete (st ^? C._category ∘ _projection)
+      $ axes.value
+
+    stack =
+      mbDelete (st ^? C._category ∘ _projection)
+      $ mbDelete (st ^? C._value ∘ _projection)
+      $ ifSelected (st ^? C._category ∘ _projection)
+      $ axes.value
+      ⊕ axes.time
+
+    parallel =
+      mbDelete (st ^? C._category ∘ _projection)
+      $ mbDelete (st ^? C._value ∘ _projection)
+      $ mbDelete (st ^? C._stack ∘ _projection)
+      $ ifSelected (st ^? C._category ∘ _projection)
+      $ axes.category
+      ⊕ axes.time
+
+  in
+   SM.fromFoldable
+     [ "category" × category
+     , "value" × value
+     , "stack" × stack
+     , "parallel" × parallel
+     ]
 
 initialState ∷ State
 initialState =
-  { axes: M.initialState.axes
-  , axisLabelAngle: M.initialState.axisLabelAngle
-  , category: M.initialState.category
-  , value: M.initialState.value
-  , stack: M.initialState.stack
-  , parallel: M.initialState.parallel
+  { axes: Ax.initialAxes
+  , dimMap: SM.empty
   , selected: Nothing
+
+  , isSmooth: false
+  , isStacked: false
+  , axisLabelAngle: 0.0
   }
 
-_category ∷ ∀ r a. Lens' { category ∷ a | r } a
-_category = lens _.category _{ category = _ }
+load ∷ M.AnyCardModel → State → State
+load = case _ of
+  M.BuildBar (Just m) →
+    ( C._category .~ Just m.category )
+    ∘ ( C._value .~ Just m.value )
+    ∘ ( C._stack .~ m.stack )
+    ∘ ( C._parallel .~ m.parallel )
+    ∘ ( _axisLabelAngle .~ m.axisLabelAngle )
+  _ → id
 
-_value ∷ ∀ r a. Lens' { value ∷ a | r } a
-_value = lens _.value _{ value = _ }
-
-_valueAgg ∷ ∀ r a. Lens' { valueAgg ∷ a | r } a
-_valueAgg = lens _.valueAgg _{ valueAgg = _ }
-
-_stack ∷ ∀ r a. Lens' { stack ∷ a | r } a
-_stack = lens _.stack _{ stack = _ }
-
-_parallel ∷ ∀ r a. Lens' { parallel ∷ a | r } a
-_parallel = lens _.parallel _{ parallel = _ }
-
-_selected ∷ ∀ r a. Lens' { selected ∷ a | r } a
-_selected = lens _.selected _{ selected = _ }
+save ∷ State → M.AnyCardModel
+save st =
+  M.BuildBar
+  $ { category: _
+    , value: _
+    , stack: st ^. C._stack
+    , parallel: st ^. C._parallel
+    , axisLabelAngle: st ^. _axisLabelAngle
+    }
+  <$> (st ^. C._category)
+  <*> (st ^. C._value)

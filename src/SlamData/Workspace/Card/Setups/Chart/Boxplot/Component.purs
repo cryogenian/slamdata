@@ -41,7 +41,7 @@ import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors, showJCursor, showJCursorTip, groupJCursors)
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.ChildSlot as CS
+import SlamData.Workspace.Card.Setups.Common.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as M

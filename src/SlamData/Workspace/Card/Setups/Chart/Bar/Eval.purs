@@ -39,7 +39,7 @@ import ECharts.Types.Phantom as ETP
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, ModelR, initialState, behaviour)
+import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, ModelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Transform as T
@@ -51,7 +51,6 @@ import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
 
 eval
   ∷ ∀ m
@@ -62,8 +61,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Bar buildBar m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Bar buildBar m \axes → m
 
 type BarSeries =
   { name ∷ Maybe String

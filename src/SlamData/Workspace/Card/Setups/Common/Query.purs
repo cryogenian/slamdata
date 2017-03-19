@@ -30,6 +30,6 @@ data FieldQuery a
   | HandleDPMessage (Message JCursorNode) a
   | HandleTransformPicker (AS.Message T.Transform) a
 
-data Query misc a
+data QueryR misc a
   = Misc (misc a)
   | OnField Projection (FieldQuery a)
