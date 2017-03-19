@@ -27,7 +27,7 @@ import Control.Monad.Throw (class MonadThrow)
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Lens ((^?), preview, _Just)
-import Data.Map as M
+import Data.Map as Map
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -39,9 +39,7 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Candlestick))
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Behaviour as B
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (ModelR, Model, initialState)
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model as M
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (ModelR, Model)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
@@ -50,7 +48,6 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-
 import Utils.Foldable (enumeratedFor_)
 
 eval
@@ -62,8 +59,9 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Candlestick buildCandlestick m \axes →
-  M.save $ M.synchronize $ M.load m initialState{axes = axes}
+-- TODO: why this sync here? for autoselect or?
+eval m = BCE.buildChartEval Candlestick buildCandlestick m \axes → m
+--  ST.save $ ST.synchronize $ ST.load m initialState{axes = axes}
 
 type HLOC a =
   { low ∷ a
@@ -91,7 +89,7 @@ buildCandlestickData r records = series
   where
   dataMap ∷ Maybe String >> String >> HLOC (Array Number)
   dataMap =
-    foldl dataMapFoldFn M.empty records
+    foldl dataMapFoldFn Map.empty records
 
   dataMapFoldFn
     ∷ Maybe String >> String >> HLOC (Array Number)
@@ -123,9 +121,9 @@ buildCandlestickData r records = series
             ∷ Maybe (String >> HLOC (Array Number))
             → Maybe (String >> HLOC (Array Number))
           alterParallelFn Nothing =
-            Just $ M.singleton dimKey hloc
+            Just $ Map.singleton dimKey hloc
           alterParallelFn (Just parallel) =
-            Just $ M.alter alterDimFn dimKey parallel
+            Just $ Map.alter alterDimFn dimKey parallel
 
           alterDimFn
             ∷ Maybe (HLOC (Array Number))
@@ -138,11 +136,11 @@ buildCandlestickData r records = series
                  , close: close ⊕ r'.close
                  }
         in
-          M.alter alterParallelFn mbParallel acc
+          Map.alter alterParallelFn mbParallel acc
 
   rawSeries ∷ CandlestickData
   rawSeries =
-    foldMap mkOneGridData $ M.toList dataMap
+    foldMap mkOneGridData $ Map.toList dataMap
 
   mkOneGridData
     ∷ Maybe String × (String >> HLOC (Array Number))
@@ -198,7 +196,7 @@ buildCandlestick axes r records = do
   candlestickData = buildCandlestickData r records
 
   xValues ∷ OnOneGrid → Array String
-  xValues  = sortX ∘ foldMap A.singleton ∘ M.keys ∘ _.items
+  xValues  = sortX ∘ foldMap A.singleton ∘ Map.keys ∘ _.items
 
   xAxisType ∷ Ax.AxisType
   xAxisType =
@@ -224,7 +222,7 @@ buildCandlestick axes r records = do
     E.xAxisIndex ix
     E.yAxisIndex ix
     E.buildItems $ for_ (xValues serie) \dim →
-      for_ (M.lookup dim serie.items) \{high, low, open, close} → E.addItem $ E.buildValues do
+      for_ (Map.lookup dim serie.items) \{high, low, open, close} → E.addItem $ E.buildValues do
         E.addValue open
         E.addValue close
         E.addValue low

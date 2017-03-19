@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Setups.Chart.Boxplot.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (JObject, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens (view, (^.))
+import Data.Lens ((^.))
 import Data.Newtype (un)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
@@ -128,8 +128,8 @@ behaviour =
   , save
   }
   where
-  synchronize st =
-    let
+  synchronize st = st
+{-    let
       setPreviousValueFrom =
         S.setPreviousValueOn $ view $ D._value ∘ D._projection
 
@@ -178,7 +178,7 @@ behaviour =
         , series = newSeries
         , parallel = newParallel
         }
-
+-}
   load Nothing st = st
   load (Just m) st =
     st { value = S.fromSelected $ Just m.value

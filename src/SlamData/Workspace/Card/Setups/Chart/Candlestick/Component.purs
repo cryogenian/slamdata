@@ -20,38 +20,32 @@ module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component
 
 import SlamData.Prelude
 
-import Data.Array as Arr
-import Data.Lens (view, _Just, (^?), (.~), (?~), (^.))
-import Data.List as List
+import Data.Lens ((.~), (^.), (^?))
 
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.HTML.Events as HE
+--import Halogen.HTML.Events as HE
 
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (_value, _options)
-import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-
-import SlamData.Workspace.Card.Setups.CSS as CSS
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State as ES
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors, showJCursorTip, groupJCursors)
-
+import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model as M
-import SlamData.Workspace.Card.Eval.State (_Axes)
-import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.Query as Q
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.State as ST
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor as DJ
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.Inputs as I
+import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-type DSL = CC.InnerCardParentDSL M.State M.Query CS.ChildQuery CS.ChildSlot
-type HTML = CC.InnerCardParentHTML M.Query CS.ChildQuery CS.ChildSlot
-
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
 candlestickBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 candlestickBuilderComponent =
@@ -59,23 +53,23 @@ candlestickBuilderComponent =
     { render
     , eval: cardEval ⨁ setupEval
     , receiver: const Nothing
-    , initialState: const M.initialState
+    , initialState: const ST.initialState
     }
 
-render ∷ M.State → HTML
+render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    $ ( renderButton state <$> M.allFields )
+    $ ( renderButton state <$> ST.allFields )
     ⊕ [ renderSelection state ]
 
-renderSelection ∷ M.State → HTML
-renderSelection state = case state.selected of
+renderSelection ∷ ST.State → HTML
+renderSelection state = case state ^. ST._selected of
   Nothing → HH.text ""
   Just (Right tp) →
     HH.slot' CS.cpTransform unit AS.component
-      { options: T.aggregationTransforms
+      { options: ST.transforms state
       , selection: Just $ T.Aggregation Ag.Sum
       , title: "Choose transformation"
       , label: T.prettyPrintTransform
@@ -86,13 +80,10 @@ renderSelection state = case state.selected of
   Just (Left pf) →
     let
       conf =
-        { title: M.chooseLabel pf
-        , label: DPC.labelNode showJCursorTip
-        , render: DPC.renderNode showJCursorTip
-        , values: groupJCursors
-            $ List.fromFoldable
-            $ map (view $ D._value ∘ D._projection)
-            $ state ^. M.fieldLens pf ∘ _options
+        { title: ST.chooseLabel pf
+        , label: DPC.labelNode DJ.showJCursorTip
+        , render: DPC.renderNode DJ.showJCursorTip
+        , values: DJ.groupJCursors $ ST.cursors state
         , isSelectable: DPC.isLeafPath
         }
     in
@@ -105,23 +96,23 @@ renderSelection state = case state.selected of
 --        (Just ∘ right ∘ H.action ∘ M.OnField pf ∘ M.HandleDPMessage)
 
 
-renderButton ∷ M.ProjectionField → M.State → HTML
-renderButton fld state =
+renderButton ∷ ST.State → ST.Projection → HTML
+renderButton state fld =
   HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
   [ I.dimensionButton
     { configurable: false
-    , dimension: sequence $ state ^. (M.fieldLens fld ∘ _value)
+    , dimension: sequence $ ST.getSelected fld state
     , showLabel: absurd
-    , showDefaultLabel: M.showDefaultLabel fld
-    , showValue: M.showValue fld
-    , onLabelChange: HE.input \l → right ∘ M.OnField fld ∘ M.LabelChanged l
-    , onDismiss: HE.input_ $ right ∘ M.OnField fld ∘ M.Dismiss
-    , onConfigure: HE.input_ $ right ∘ M.OnField fld ∘ M.Configure
-    , onClick: HE.input_ $ right ∘ M.OnField fld ∘ M.Select
+    , showDefaultLabel: ST.showDefaultLabel fld
+    , showValue: ST.showValue fld
+    , onLabelChange: const Nothing --HE.input \l → right ∘ M.OnField fld ∘ M.LabelChanged l
+    , onDismiss: const Nothing --HE.input_ $ right ∘ M.OnFieldxo fld ∘ M.Dismiss
+    , onConfigure: const Nothing --HE.input_ $ right ∘ M.OnField fld ∘ M.Configure
+    , onClick: const Nothing --HE.input_ $ right ∘ M.OnField fld ∘ M.Select
     , onMouseDown: const Nothing
     , onLabelClick: const Nothing
-    , disabled: Arr.null $ state ^. (M.fieldLens fld ∘ _options)
-    , dismissable: isJust $ state ^. (M.fieldLens fld ∘ _value)
+    , disabled: ST.disabled fld state
+    , dismissable: isJust $ ST.getSelected fld state
     } ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
@@ -132,9 +123,9 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    pure $ k $ Card.BuildCandlestick $ M.save st
+    pure $ k $ Card.BuildCandlestick $ ST.save st
   CC.Load (Card.BuildCandlestick m) next → do
-    H.modify $ M.load m
+    H.modify $ ST.load m
     pure next
   CC.Load card next →
     pure next
@@ -143,9 +134,8 @@ cardEval = case _ of
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
-    for_ (evalState ^? _Axes) \axes → do
-      H.modify _{axes = axes}
-      H.modify M.synchronize
+    for_ (evalState ^? ES._Axes) \axes → do
+      H.modify $ ST._axes .~ axes
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply
@@ -153,48 +143,45 @@ cardEval = case _ of
       then Low
       else High
 
-setupEval ∷ M.Query ~> DSL
+setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
-  M.Misc q →
+  Q.Misc q →
     absurd $ unwrap q
-  M.OnField fld fldQuery → case fldQuery of
-    M.Select next → do
-      H.modify _{ selected = Just $ Left fld }
+  Q.OnField fld fldQuery → case fldQuery of
+    Q.Select next → do
+      H.modify $ ST.select fld
       pure next
-    M.Configure next → do
-      H.modify _{ selected = Just $ Right fld }
+    Q.Configure next → do
+      H.modify $ ST.configure fld
       pure next
-    M.Dismiss next → do
-      H.modify $ M.fieldLens ∘ _value .~ Nothing
+    Q.Dismiss next → do
+      H.modify $ ST.clear fld
       pure next
-    M.LabelChanged str next → do
-      H.modify $ M.fieldLens fld ∘ _value ∘ _Just ∘ D._category ∘ D._Static .~ str
+    Q.LabelChanged str next → do
+      H.modify $ ST.setLabel fld str
       pure next
-    M.HandleDPMessage m next → case m of
+    Q.HandleDPMessage m next → case m of
       DPC.Dismiss → do
-        H.modify _ { selected = Nothing }
+        H.modify ST.deselect
         pure next
       DPC.Confirm value → do
         st ← H.get
-        let v = flattenJCursors value
         H.modify
-          $ (M.fieldLens fld ∘ _value ?~ M.confirmedVal v)
-          ∘ _{ selected = Nothing }
+          $ ( ST.setValue fld $ DJ.flattenJCursors value )
+          ∘ ( ST.deselect )
         raiseUpdate
         pure next
-    M.HandleTransformPicker msg next → do
+    Q.HandleTransformPicker msg next → do
       case msg of
         AS.Dismiss →
-          H.modify _{ selected = Nothing }
+          H.modify ST.deselect
         AS.Confirm mbt → do
           H.modify
-            $ M.transformLens fld ∘ _value ∘ _Just ∘ D._value ∘ D._transform .~ mbt
-            ∘ _{ selected = Nothing }
+            $ ST.deselect
+            ∘ ST.setTransform fld mbt
           raiseUpdate
       pure next
 
-
 raiseUpdate ∷ DSL Unit
 raiseUpdate = do
-  H.modify M.synchronize
   H.raise CC.modelUpdate

@@ -492,5 +492,4 @@ rootAxes ax =
   || onlyTop ax.date
   || onlyTop ax.datetime
   where
-    onlyTop [ J.JCursorTop ] = true
-    onlyTop _ = false
+  onlyTop = eq [ J.JCursorTop ] ∘ Array.fromFoldable

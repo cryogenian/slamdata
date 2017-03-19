@@ -20,6 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json, JObject, jsonEmptyObject, (~>), (:=), (.?))
 import Data.Lens ((^.))
+import Data.Set as Set
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -89,7 +90,7 @@ initialState =
   , axes: Ax.initialAxes
   }
 
-behaviour ∷ ∀ r. (Ax.Axes → Array JCursor) → SB.Behaviour (ReducedState r) Model
+behaviour ∷ ∀ r. (Ax.Axes → Set.Set JCursor) → SB.Behaviour (ReducedState r) Model
 behaviour valueProjection =
   { synchronize
   , load

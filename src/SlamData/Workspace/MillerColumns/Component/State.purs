@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Data.List ((:))
 import Data.List as L
 
-import SlamData.Workspace.MillerColumns.Column.Component as Column
+import SlamData.Workspace.MillerColumns.Column.Options as Column
 
 type State a i =
   { cycle ∷ Int

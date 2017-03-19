@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Model where
 import SlamData.Prelude
 
 import Data.Argonaut (Json, JObject, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens ((^.), view)
+import Data.Lens ((^.))
 import Data.Newtype (un)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
@@ -152,8 +152,8 @@ behaviour =
   , save
   }
   where
-  synchronize st =
-    let
+  synchronize st = st
+{-    let
       setPreviousValueFrom =
         S.setPreviousValueOn $ view $ D._value ∘ D._projection
 
@@ -203,7 +203,7 @@ behaviour =
          , stack = newStack
          , parallel = newParallel
          }
-
+-}
   load Nothing st = st
   load (Just m) st =
     st { axisLabelAngle = m.axisLabelAngle

@@ -25,6 +25,7 @@ import Data.Array as Arr
 import Data.Array (filter, length, head, (!!), elemIndex)
 import Data.Lens (Lens', lens, view, (^.), (?~), (.~))
 import Data.Monoid.Conj (Conj(..))
+import Data.Set as Set
 import Test.StrongCheck.Arbitrary as SC
 
 class (Eq a) ⇐ OptionVal a where
@@ -61,8 +62,8 @@ _value = _Select ∘ lens _.value _{value = _}
 emptySelect ∷ ∀ a. Select a
 emptySelect = Select { options: [ ], value: Nothing}
 
-newSelect ∷ ∀ a. Array a → Select a
-newSelect as = Select { options: as, value: Nothing }
+newSelect ∷ ∀ a f. Foldable f ⇒ f a → Select a
+newSelect as = Select { options: Arr.fromFoldable as, value: Nothing }
 
 fromSelected ∷ ∀ a. Maybe a → Select a
 fromSelected = case _ of
@@ -82,10 +83,11 @@ except (Select r) subtrahend@(Select rr) =
           then Nothing
           else r.value
 
-
-exceptOn ∷ ∀ a b. (Eq b) ⇒ (a → b) → Select a → Array a → Array a
-exceptOn fn (Select rr) =
-  filter $ not ∘ eq (map fn rr.value) ∘ Just ∘ fn
+exceptOn ∷ ∀ a b. (Ord b) ⇒ (a → b) → Select a → Set.Set b → Set.Set b
+exceptOn fn (Select rr) st =
+  case rr.value of
+    Nothing → st
+    Just k → Set.delete (fn k) st
 
 -- | Filter array to exclude value of `Select`
 except' ∷ ∀ a. (Eq a) ⇒ Select a → Array a → Array a
@@ -131,17 +133,20 @@ trySelect' a sel =
 -- | ```
 infixl 2 exceptFlipped as ⊝
 
-exceptFlipped ∷ ∀ a. (Eq a) ⇒ Array a → Select a → Array a
-exceptFlipped = flip except'
+exceptFlipped ∷ ∀ a. Ord a ⇒ Set.Set a → Select a → Set.Set a
+exceptFlipped st (Select { value }) =
+  maybe st (flip Set.delete st) value
 
 ifSelected
   ∷ ∀ f m a b
-  . (Foldable f, MonadPlus m)
+  . (Foldable f, Monoid (m b))
   ⇒ f (Select a)
   → m b
   → m b
 ifSelected sels arr =
-  guard (alaF Conj foldMap (isJust ∘ view _value) sels) *> arr
+  if alaF Conj foldMap (isJust ∘ view _value) sels
+    then arr
+    else mempty
 
 setPreviousValueFrom
   ∷ ∀ a. (Eq a) ⇒ Maybe (Select a) → Select a → Select a
