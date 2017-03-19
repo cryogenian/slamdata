@@ -79,9 +79,6 @@ fldCursors fld st =
 cursorMap ∷ State → SM.StrMap (Set.Set J.JCursor)
 cursorMap st =
   let
-    mbDelete ∷ ∀ a. Ord a ⇒ Maybe a → Set.Set a → Set.Set a
-    mbDelete mbA s = maybe s (flip Set.delete s) mbA
-
     _projection ∷ Traversal' (Maybe D.LabeledJCursor) J.JCursor
     _projection = _Just ∘ D._value ∘ D._projection
 
@@ -95,12 +92,12 @@ cursorMap st =
       ⊕ axes.datetime
 
     value =
-      mbDelete (st ^? C._dimension ∘ _projection)
+      C.mbDelete (st ^? C._dimension ∘ _projection)
       $ axes.value
 
     series =
-      mbDelete (st ^? C._dimension ∘ _projection)
-      $ mbDelete (st ^? C._value ∘ _projection)
+      C.mbDelete (st ^? C._dimension ∘ _projection)
+      $ C.mbDelete (st ^? C._value ∘ _projection)
       $ axes.value
 
   in

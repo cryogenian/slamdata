@@ -72,14 +72,6 @@ fldCursors fld st =
 cursorMap ∷ State → SM.StrMap (Set.Set J.JCursor)
 cursorMap st =
   let
-    mbDelete ∷ ∀ a. Ord a ⇒ Maybe a → Set.Set a → Set.Set a
-    mbDelete mbA s = maybe s (flip Set.delete s) mbA
-
-    ifSelected ∷ ∀ a. Ord a ⇒ Maybe a → Set.Set a → Set.Set a
-    ifSelected mbA s = case mbA of
-      Nothing → Set.empty
-      _ → s
-
     _projection ∷ Traversal' (Maybe D.LabeledJCursor) J.JCursor
     _projection = _Just ∘ D._value ∘ D._projection
 
@@ -93,21 +85,21 @@ cursorMap st =
       ⊕ axes.datetime
 
     value =
-      mbDelete (st ^? C._category ∘ _projection)
+      C.mbDelete (st ^? C._category ∘ _projection)
       $ axes.value
 
     stack =
-      mbDelete (st ^? C._category ∘ _projection)
-      $ mbDelete (st ^? C._value ∘ _projection)
-      $ ifSelected (st ^? C._category ∘ _projection)
+      C.mbDelete (st ^? C._category ∘ _projection)
+      $ C.mbDelete (st ^? C._value ∘ _projection)
+      $ C.ifSelected (st ^? C._category ∘ _projection)
       $ axes.value
       ⊕ axes.time
 
     parallel =
-      mbDelete (st ^? C._category ∘ _projection)
-      $ mbDelete (st ^? C._value ∘ _projection)
-      $ mbDelete (st ^? C._stack ∘ _projection)
-      $ ifSelected (st ^? C._category ∘ _projection)
+      C.mbDelete (st ^? C._category ∘ _projection)
+      $ C.mbDelete (st ^? C._value ∘ _projection)
+      $ C.mbDelete (st ^? C._stack ∘ _projection)
+      $ C.ifSelected (st ^? C._category ∘ _projection)
       $ axes.category
       ⊕ axes.time
 

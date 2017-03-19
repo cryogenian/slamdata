@@ -153,9 +153,11 @@ setupEval = case _ of
       pure next
     Q.Dismiss next → do
       H.modify $ ST.clear fld
+      raiseUpdate
       pure next
     Q.LabelChanged str next → do
       H.modify $ ST.setLabel fld str
+      raiseUpdate
       pure next
     Q.HandleDPMessage m next → case m of
       DPC.Dismiss → do

@@ -66,9 +66,6 @@ fldCursors fld st =
 cursorMap ∷ State → SM.StrMap (Set.Set J.JCursor)
 cursorMap st =
   let
-    mbDelete ∷ ∀ a. Ord a ⇒ Maybe a → Set.Set a → Set.Set a
-    mbDelete mbA s = maybe s (flip Set.delete s) mbA
-
     _projection ∷ Traversal' (Maybe D.LabeledJCursor) J.JCursor
     _projection = _Just ∘ D._value ∘ D._projection
 
@@ -77,16 +74,16 @@ cursorMap st =
     open =
       axes.value
     close =
-      mbDelete (st ^? C._open ∘ _projection)
+      C.mbDelete (st ^? C._open ∘ _projection)
       $ axes.value
     high =
-      mbDelete (st ^? C._open ∘ _projection)
-      $ mbDelete (st ^? C._close ∘ _projection)
+      C.mbDelete (st ^? C._open ∘ _projection)
+      $ C.mbDelete (st ^? C._close ∘ _projection)
       $ axes.value
     low =
-      mbDelete (st ^? C._open ∘ _projection)
-      $ mbDelete (st ^? C._close ∘ _projection)
-      $ mbDelete (st ^? C._high ∘ _projection)
+      C.mbDelete (st ^? C._open ∘ _projection)
+      $ C.mbDelete (st ^? C._close ∘ _projection)
+      $ C.mbDelete (st ^? C._high ∘ _projection)
       $ axes.value
     dimension =
       axes.category
@@ -94,7 +91,8 @@ cursorMap st =
       ⊕ axes.date
       ⊕ axes.datetime
     parallel =
-      mbDelete (st ^? C._dimension ∘ _projection)
+      C.mbDelete (st ^? C._dimension ∘ _projection)
+      $ C.ifSelected (st ^? C._dimension ∘ _projection)
       $ axes.category
 
   in

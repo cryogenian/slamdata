@@ -24,6 +24,7 @@ import Data.Lens (wander, Lens', _Just, lens, (^.), (.~), (?~))
 import Data.Lens.At (class At, at)
 import Data.Lens.Index (class Index)
 import Data.List as L
+import Data.Set as Set
 import Data.StrMap as SM
 
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -277,3 +278,11 @@ deselect =
 
 getSelected ∷ ∀ r. Projection → StateR r → Maybe D.LabeledJCursor
 getSelected fld state = state ^. _dimMap ∘ unpack fld
+
+mbDelete ∷ ∀ a. Ord a ⇒ Maybe a → Set.Set a → Set.Set a
+mbDelete mb s = maybe s (flip Set.delete s) mb
+
+ifSelected ∷ ∀ a. Ord a ⇒ Maybe a → Set.Set a → Set.Set a
+ifSelected mb s = case mb of
+  Nothing → Set.empty
+  _ → s

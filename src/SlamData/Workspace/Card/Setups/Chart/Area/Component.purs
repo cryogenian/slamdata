@@ -220,16 +220,17 @@ setupEval = case _ of
       pure next
     Q.Dismiss next → do
       H.modify $ ST.clear fld
+      raiseUpdate
       pure next
     Q.LabelChanged str next → do
       H.modify $ ST.setLabel fld str
+      raiseUpdate
       pure next
     Q.HandleDPMessage m next → case m of
       DPC.Dismiss → do
         H.modify ST.deselect
         pure next
       DPC.Confirm value → do
-        st ← H.get
         H.modify
           $ ( ST.setValue fld $ DJ.flattenJCursors value )
           ∘ ( ST.deselect )
