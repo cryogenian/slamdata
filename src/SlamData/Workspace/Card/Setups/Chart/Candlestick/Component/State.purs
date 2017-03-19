@@ -25,8 +25,8 @@ import Data.List as List
 import Data.Set as Set
 import Data.StrMap as SM
 
+import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model as M
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
@@ -123,28 +123,30 @@ cursorMap st =
     _projection ∷ Traversal' (Maybe D.LabeledJCursor) J.JCursor
     _projection = _Just ∘ D._value ∘ D._projection
 
+    axes = st ^. _axes
+
     open =
-      st.axes.value
+      axes.value
     close =
       mbDelete (st ^? _open ∘ _projection)
-      $ st.axes.value
+      $ axes.value
     high =
       mbDelete (st ^? _open ∘ _projection)
       $ mbDelete (st ^? _close ∘ _projection)
-      $ st.axes.value
+      $ axes.value
     low =
       mbDelete (st ^? _open ∘ _projection)
       $ mbDelete (st ^? _close ∘ _projection)
       $ mbDelete (st ^? _high ∘ _projection)
-      $ st.axes.value
+      $ axes.value
     dimension =
-      st.axes.category
-      ⊕ st.axes.time
-      ⊕ st.axes.date
-      ⊕ st.axes.datetime
+      axes.category
+      ⊕ axes.time
+      ⊕ axes.date
+      ⊕ axes.datetime
     parallel =
       mbDelete (st ^? _dimension ∘ _projection)
-      $ st.axes.category
+      $ axes.category
 
   in
    SM.fromFoldable
@@ -159,26 +161,27 @@ cursorMap st =
 transforms ∷ State → Array T.Transform
 transforms _ = T.aggregationTransforms
 
-load ∷ M.Model → State → State
-load Nothing st = st
-load (Just m) st =
-  st
-    # ( _dimension .~ Just m.dimension )
+load ∷ M.AnyCardModel → State → State
+load = case _ of
+  M.BuildCandlestick (Just m) →
+    ( _dimension .~ Just m.dimension )
     ∘ ( _open .~ Just m.open )
     ∘ ( _close .~ Just m.close )
     ∘ ( _low .~ Just m.low )
     ∘ ( _high .~ Just m.high )
     ∘ ( _parallel .~ m.parallel )
+  _ → id
 
-save ∷ State → M.Model
+save ∷ State → M.AnyCardModel
 save st =
-  { dimension: _
-  , open: _
-  , close: _
-  , high: _
-  , low: _
-  , parallel: st ^. _parallel
-  }
+  M.BuildCandlestick
+  $ { dimension: _
+    , open: _
+    , close: _
+    , high: _
+    , low: _
+    , parallel: st ^. _parallel
+    }
   <$> (st ^. _dimension)
   <*> (st ^. _open)
   <*> (st ^. _close)

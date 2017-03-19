@@ -16,30 +16,25 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Area.Component.Query where
 
-import DOM.Event.Types (Event)
-
-import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.ActionSelect.Component.Message as AS
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component.Message (Message)
+import SlamData.Workspace.Card.Setups.Chart.Area.Component.State (Projection)
 import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
 
+data FieldQuery a
+  = Select a
+  | Dismiss a
+  | Configure a
+  | LabelChanged String a
+  | HandleDPMessage (Message JCursorNode) a
+  | HandleTransformPicker (AS.Message T.Transform) a
 
-data ProjectionField
-  = Dimension
-  | Value
-  | Series
-
-data TransformField
-  = ValueAggregation
+data MiscQuery a
+  = ToggleSmooth a
+  | SetAxisLabelAngle String a
+  | ToggleStacked a
 
 data Query a
-  = SetAxisLabelAngle String a
-  | ToggleSmooth a
-  | ToggleStacked a
-  | HandleDPMessage ProjectionField (Message JCursorNode) a
-  | HandleTransformPicker TransformField (AS.Message T.Transform) a
-  | Dismiss ProjectionField a
-  | Configure TransformField a
-  | LabelChanged ProjectionField String a
-  | PreventDefault Event a
-  | Select ProjectionField a
+  = Misc (MiscQuery a)
+  | OnField Projection (FieldQuery a)

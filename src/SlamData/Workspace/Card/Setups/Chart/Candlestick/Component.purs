@@ -25,13 +25,12 @@ import Data.Lens ((.~), (^.), (^?))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
---import Halogen.HTML.Events as HE
+import Halogen.HTML.Events as HE
 
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.ChildSlot as CS
@@ -64,6 +63,26 @@ render state =
     $ ( renderButton state <$> ST.allFields )
     ⊕ [ renderSelection state ]
 
+renderButton ∷ ST.State → ST.Projection → HTML
+renderButton state fld =
+  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  [ I.dimensionButton
+    { configurable: false
+    , dimension: sequence $ ST.getSelected fld state
+    , showLabel: absurd
+    , showDefaultLabel: ST.showDefaultLabel fld
+    , showValue: ST.showValue fld
+    , onLabelChange: HE.input \l → right ∘ Q.OnField fld ∘ Q.LabelChanged l
+    , onDismiss: HE.input_ $ right ∘ Q.OnField fld ∘ Q.Dismiss
+    , onConfigure: HE.input_ $ right ∘ Q.OnField fld ∘ Q.Configure
+    , onClick: HE.input_ $ right ∘ Q.OnField fld ∘ Q.Select
+    , onMouseDown: const Nothing
+    , onLabelClick: const Nothing
+    , disabled: ST.disabled fld state
+    , dismissable: isJust $ ST.getSelected fld state
+    } ]
+
+
 renderSelection ∷ ST.State → HTML
 renderSelection state = case state ^. ST._selected of
   Nothing → HH.text ""
@@ -75,8 +94,7 @@ renderSelection state = case state ^. ST._selected of
       , label: T.prettyPrintTransform
       , deselectable: false
       }
-      (const Nothing)
---      (Just ∘ right ∘ H.action ∘ M.OnField tp ∘ M.HandleTransformPicker)
+      (HE.input \m → right ∘ Q.OnField tp ∘ Q.HandleTransformPicker m)
   Just (Left pf) →
     let
       conf =
@@ -92,28 +110,9 @@ renderSelection state = case state ^. ST._selected of
         unit
         (DPC.picker conf)
         unit
-        (const Nothing)
---        (Just ∘ right ∘ H.action ∘ M.OnField pf ∘ M.HandleDPMessage)
+        (HE.input \m → right ∘ Q.OnField pf ∘ Q.HandleDPMessage m)
 
 
-renderButton ∷ ST.State → ST.Projection → HTML
-renderButton state fld =
-  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
-  [ I.dimensionButton
-    { configurable: false
-    , dimension: sequence $ ST.getSelected fld state
-    , showLabel: absurd
-    , showDefaultLabel: ST.showDefaultLabel fld
-    , showValue: ST.showValue fld
-    , onLabelChange: const Nothing --HE.input \l → right ∘ M.OnField fld ∘ M.LabelChanged l
-    , onDismiss: const Nothing --HE.input_ $ right ∘ M.OnFieldxo fld ∘ M.Dismiss
-    , onConfigure: const Nothing --HE.input_ $ right ∘ M.OnField fld ∘ M.Configure
-    , onClick: const Nothing --HE.input_ $ right ∘ M.OnField fld ∘ M.Select
-    , onMouseDown: const Nothing
-    , onLabelClick: const Nothing
-    , disabled: ST.disabled fld state
-    , dismissable: isJust $ ST.getSelected fld state
-    } ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -123,11 +122,9 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    pure $ k $ Card.BuildCandlestick $ ST.save st
-  CC.Load (Card.BuildCandlestick m) next → do
+    pure $ k $ ST.save st
+  CC.Load m next → do
     H.modify $ ST.load m
-    pure next
-  CC.Load card next →
     pure next
   CC.ReceiveInput _ _ next →
     pure next
@@ -183,5 +180,5 @@ setupEval = case _ of
       pure next
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = do
+raiseUpdate =
   H.raise CC.modelUpdate
