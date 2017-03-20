@@ -16,20 +16,19 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.ActionSelect.Component
   ( module SlamData.Workspace.Card.Setups.ActionSelect.Component
-  , module ASO
   ) where
 
 import SlamData.Prelude
 import Data.Array as Array
 import Halogen as H
+import Halogen.Component.Proxy as HCP
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Component.ChildPath (cpL, cpR)
+import Halogen.Component.ChildPath (cp1, cp2)
 import SlamData.Monad (Slam)
 import SlamData.ActionList.Component as ALC
 import SlamData.Workspace.Card.Setups.Dialog as CSD
-import SlamData.Workspace.Card.Setups.ActionSelect.Option as ASO
 
 data Query s a
   = Init a
@@ -45,11 +44,13 @@ data Message s
   = Dismiss
   | Confirm (Maybe s)
 
+type OptionComponent s = HCP.ProxyComponent (Maybe s) (Maybe s) Slam
+
 type State' s r =
   { options ∷ Array s
   , selection ∷ Maybe (s × s)
   , title ∷ String
-  , toSelection ∷ s → Maybe (ASO.Option s Slam)
+  , toSelection ∷ s → Maybe (OptionComponent s)
   , toLabel ∷ s → String
   | r
   }
@@ -62,13 +63,20 @@ type State s = State' s
   )
 
 type Selecting s =
-  { component ∷ ASO.Option s Slam
+  { component ∷ OptionComponent s
   , value ∷ Maybe s
   , option ∷ s
   }
 
-type ChildQuery s = (ALC.Query (Maybe s)) ⨁ Const Void
-type ChildSlot = Unit ⊹ Unit
+type ChildQuery s
+  = ALC.Query (Maybe s)
+  ⨁ HCP.ProxyQ (Maybe s) (Maybe s)
+  ⨁ Const Void
+
+type ChildSlot
+  = Unit
+  ⊹ Unit
+  ⊹ Void
 
 type DSL s = H.ParentDSL (State s) (Query s) (ChildQuery s) ChildSlot (Message s) Slam
 type HTML s = H.ParentHTML (Query s) (ChildQuery s) ChildSlot Slam
@@ -110,7 +118,7 @@ component =
       content =
         if isNull
           then [ HH.p [ HP.classes [ HH.ClassName "no-options" ] ] [ HH.text "No available options" ] ]
-          else [ HH.slot' cpL unit (ALC.actionListComp selectConf []) unit (HE.input HandleSelect) ]
+          else [ HH.slot' cp1 unit (ALC.actionListComp selectConf []) unit (HE.input HandleSelect) ]
     in
       CSD.pickerDialog
         { onDismiss: HandleDismiss
@@ -131,7 +139,7 @@ component =
       , isSelectable: const true
       , classes: []
       , title: [ HH.text (st.toLabel selecting.option) ]
-      , content: [ HH.slot' cpR unit (unwrap selecting.component) selecting.value (HE.input HandleSelecting) ]
+      , content: [ HH.slot' cp2 unit selecting.component selecting.value (HE.input HandleSelecting) ]
       }
 
   eval ∷ Query s ~> DSL s
@@ -172,7 +180,7 @@ component =
     HandleConfirmSelecting value next →
       H.raise (Confirm (Just value)) $> next
     UpdateDimensions next →
-      H.query' cpL unit (H.action ALC.CalculateBoundingRect) $> next
+      H.query' cp1 unit (H.action ALC.CalculateBoundingRect) $> next
 
 mkAction ∷ forall s. Eq s ⇒ Maybe s → (s → String) → s → ALC.Action (Maybe s)
 mkAction selection toLabel action =
@@ -189,7 +197,7 @@ updateActions ∷ ∀ s. Eq s ⇒ DSL s Unit
 updateActions = do
   st ← H.get
   let toAction = mkAction (fst <$> st.selection) st.toLabel
-  void $ H.query' cpL unit $ H.action $ ALC.UpdateActions (toAction <$> st.options)
+  void $ H.query' cp1 unit $ H.action $ ALC.UpdateActions (toAction <$> st.options)
 
 clearSelection ∷ ∀ s. DSL s Unit
 clearSelection =

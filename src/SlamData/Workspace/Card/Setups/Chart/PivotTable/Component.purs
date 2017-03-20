@@ -28,6 +28,7 @@ import Data.Lens ((^?), (.~), _Just)
 
 import CSS as C
 import Halogen as H
+import Halogen.Component.Proxy as HCP
 import Halogen.Component.Utils.Drag as Drag
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -122,9 +123,9 @@ render st =
         , title: "Choose transformation"
         , toLabel: T.prettyPrintTransform
         , toSelection: case _ of
-            T.Numeric (N.Floor _) → Just $ AS.option TPC.transformFloor
-            T.Numeric (N.Round _) → Just $ AS.option TPC.transformRound
-            T.Numeric (N.Ceil _) → Just $ AS.option TPC.transformCeil
+            T.Numeric (N.Floor _) → Just $ HCP.proxy TPC.transformFloor
+            T.Numeric (N.Round _) → Just $ HCP.proxy TPC.transformRound
+            T.Numeric (N.Ceil _) → Just $ HCP.proxy TPC.transformCeil
             _ → Nothing
         }
         (Just ∘ right ∘ H.action ∘ HandleTransformPicker slot)

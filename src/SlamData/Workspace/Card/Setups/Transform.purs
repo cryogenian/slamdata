@@ -90,7 +90,6 @@ printTransform =
   count value = "COUNT(" <> value <> ")"
   datePart part value = "DATE_PART(\"" <> part <> "\", " <> value <> ")"
   stringOp op value = S.prettyPrintStringOperation op <> "(" <> value <> ")"
-  numericOp op value = value -- TODO
   aggregation ag value = case ag of
     Ag.Minimum → "MIN(" <> value <> ")"
     Ag.Maximum → "MAX(" <> value <> ")"
