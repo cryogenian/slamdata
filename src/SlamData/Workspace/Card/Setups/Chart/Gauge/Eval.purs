@@ -28,23 +28,25 @@ import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Map as M
+import Data.Lens ((^?), preview, _Just)
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Gauge.Model (Model, GaugeR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Gauge))
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (RadialPosition, adjustRadialPositions)
-import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Chart.Gauge.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 eval
   ∷ ∀ m
@@ -55,8 +57,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Gauge (const buildGauge) m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Gauge (const buildGauge) m \axes → m
 
 ----------------------------------------------------------------------
 -- GAUGE BUILDER
@@ -73,7 +74,7 @@ type GaugeSerie =
   , items ∷ Array GaugeItem
   )
 
-buildGaugeData ∷ GaugeR → JArray → Array GaugeSerie
+buildGaugeData ∷ ModelR → JArray → Array GaugeSerie
 buildGaugeData r records = series
   where
   valueAndSizeMap ∷ Maybe String >> Maybe String >> Array Number
@@ -90,11 +91,11 @@ buildGaugeData r records = series
        getValuesFromJson = getValues js
 
        mbParallel =
-         getMaybeStringFromJson =<< r.parallel
+         getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.parallel
        mbMultiple =
-         getMaybeStringFromJson =<< r.multiple
+         getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.multiple
        values =
-         getValuesFromJson $ pure r.value
+         getValuesFromJson $ r.value ^? D._value ∘ D._projection
 
        alterFn
          ∷ Maybe (Maybe String >> Array Number)
@@ -118,7 +119,10 @@ buildGaugeData r records = series
       pairs = A.fromFoldable $ M.toList mp
       items = pairs <#> \(name × values) →
         { name
-        , value: Ag.runAggregation r.valueAggregation values
+        , value:
+            Ag.runAggregation
+              (fromMaybe Ag.Sum $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation)
+              values
         }
 
     in [ { radius: Nothing
@@ -137,7 +141,7 @@ buildGaugeData r records = series
   series = adjustRadialPositions unpositionedSeries
 
 
-buildGauge ∷ GaugeR → JArray → DSL OptionI
+buildGauge ∷ ModelR → JArray → DSL OptionI
 buildGauge r records = do
   E.tooltip do
     E.textStyle do

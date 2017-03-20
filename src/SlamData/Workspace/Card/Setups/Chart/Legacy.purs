@@ -32,7 +32,7 @@ import SlamData.Workspace.Card.Setups.Chart.Area.Model as Area
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as Bar
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as Boxplot
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (parseColorScheme)
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (FunnelR)
+import SlamData.Workspace.Card.Setups.Chart.Funnel.Model as Funnel
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (HeatmapR)
 import SlamData.Workspace.Card.Setups.Chart.Line.Model (LineR)
 import SlamData.Workspace.Card.Setups.Chart.Pie.Model (PieR)
@@ -97,7 +97,7 @@ decode
   . { area ∷ Maybe Area.ModelR → a
     , bar ∷ Maybe Bar.ModelR → a
     , boxplot ∷ Maybe Boxplot.ModelR → a
-    , funnel ∷ Maybe FunnelR → a
+    , funnel ∷ Maybe Funnel.ModelR → a
     , heatmap ∷ Maybe HeatmapR → a
     , line ∷ Maybe LineR → a
     , pie ∷ Maybe PieR → a
@@ -225,13 +225,17 @@ decode cturs js = do
   decodeFunnel cc bo = pure $ cturs.funnel
     let
       category =
-        cc.dimensions A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.dimensions A.!! 0 >>= view S._value
+      agg =
+        join $ cc.aggregations A.!! 0 >>= view S._value
       value =
         cc.measures A.!! 0 >>= view S._value
-      valueAggregation =
-        join $ cc.aggregations A.!! 0 >>= view S._value
+      mbValue =
+        D.pairToDimension <$> value <*> agg
       series =
-        cc.series A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
       order = case bo.funnelOrder of
         "ascending" → Asc
         _ → Desc
@@ -243,14 +247,12 @@ decode cturs js = do
       funnelR =
         { category: _
         , value: _
-        , valueAggregation: _
         , order
         , align
         , series
         }
         <$> category
-        <*> value
-        <*> valueAggregation
+        <*> mbValue
     in
       funnelR
 

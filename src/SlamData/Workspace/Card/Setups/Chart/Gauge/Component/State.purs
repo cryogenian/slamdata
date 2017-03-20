@@ -14,44 +14,102 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
+
 module SlamData.Workspace.Card.Setups.Chart.Gauge.Component.State
-  ( initialState
+  ( allFields
+  , cursors
+  , disabled
+  , load
+  , save
+  , initialState
   , State
-  , _value
-  , _valueAgg
-  , _multiple
-  , _parallel
-  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  , module C
   ) where
 
-import Data.Argonaut (JCursor)
-import Data.Lens (Lens', lens)
+import SlamData.Prelude
 
-import SlamData.Workspace.Card.Setups.Chart.Gauge.Component.Query (Selection)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
-import SlamData.Workspace.Card.Setups.Chart.Gauge.Model as M
+import Data.Argonaut as J
+import Data.Lens (Traversal', Lens', _Just, (^.), (.~), (^?))
+import Data.Lens.At (at)
+import Data.List as List
+import Data.Set as Set
+import Data.StrMap as SM
 
-type State = M.ReducedState (DS.CommonState JCursor Selection ())
+import SlamData.Workspace.Card.Model as M
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.Common.State as C
+import SlamData.Workspace.Card.Setups.Dimension as D
+
+type State = C.StateR ()
+
+allFields ∷ Array C.Projection
+allFields =
+  [ C.pack (at "value" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  , C.pack (at "multiple" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  , C.pack (at "parallel" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  ]
+
+cursors ∷ State → List.List J.JCursor
+cursors st = case st.selected of
+  Just (Left lns) → List.fromFoldable $ fldCursors lns st
+  _ → List.Nil
+
+disabled ∷ C.Projection → State → Boolean
+disabled fld st = Set.isEmpty $ fldCursors fld st
+
+fldCursors ∷ C.Projection → State → Set.Set J.JCursor
+fldCursors fld st =
+  fromMaybe Set.empty $ cursorMap st ^. C.unpack fld
+
+cursorMap ∷ State → SM.StrMap (Set.Set J.JCursor)
+cursorMap st =
+  let
+    _projection ∷ Traversal' (Maybe D.LabeledJCursor) J.JCursor
+    _projection = _Just ∘ D._value ∘ D._projection
+
+    axes = st ^. C._axes
+
+    value =
+      axes.value
+
+    multiple =
+      C.ifSelected (st ^? C._value ∘ _projection)
+      $ axes.category
+      ⊕ axes.time
+
+    parallel =
+      C.mbDelete (st ^? C._multiple ∘ _projection)
+      $ C.ifSelected (st ^? C._value ∘ _projection)
+      $ axes.category
+      ⊕ axes.time
+
+  in
+   SM.fromFoldable
+     [ "value" × value
+     , "multiple" × multiple
+     , "parallel" × parallel
+     ]
 
 initialState ∷ State
 initialState =
-  { axes: M.initialState.axes
-  , value: M.initialState.value
-  , valueAgg: M.initialState.valueAgg
-  , multiple: M.initialState.multiple
-  , parallel: M.initialState.parallel
-  , picker: DS.initial.picker
+  { axes: Ax.initialAxes
+  , dimMap: SM.empty
+  , selected: Nothing
   }
 
-_value ∷ ∀ r a. Lens' { value ∷ a | r } a
-_value = lens _.value _{ value = _ }
+load ∷ M.AnyCardModel → State → State
+load = case _ of
+  M.BuildGauge (Just m) →
+    ( C._value .~ Just m.value )
+    ∘ ( C._multiple .~ m.multiple )
+    ∘ ( C._parallel .~ m.parallel )
+  _ → id
 
-_valueAgg ∷ ∀ r a. Lens' { valueAgg ∷ a | r } a
-_valueAgg = lens _.valueAgg _{ valueAgg = _ }
-
-_multiple ∷ ∀ r a. Lens' { multiple ∷ a | r } a
-_multiple = lens _.multiple _{ multiple = _ }
-
-_parallel ∷ ∀ r a. Lens' { parallel ∷ a | r } a
-_parallel = lens _.parallel _{ parallel = _ }
+save ∷ State → M.AnyCardModel
+save st =
+  M.BuildGauge
+  $ { value: _
+    , multiple: st ^. C._multiple
+    , parallel: st ^. C._parallel
+    }
+  <$> (st ^. C._value)

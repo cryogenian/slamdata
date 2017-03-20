@@ -14,54 +14,125 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
+
 module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.State
-  ( initialState
-  , State
-  , _category
-  , _value
-  , _valueAgg
-  , _series
-  , _order
+  ( allFields
+  , cursors
+  , disabled
+  , load
+  , save
+  , initialState
   , _align
-  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
+  , _order
+  , State
+  , module C
   ) where
 
-import Data.Argonaut (JCursor)
-import Data.Lens (Lens', lens)
+import SlamData.Prelude
 
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Component.Query (Selection)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Model as M
+import Data.Argonaut as J
+import Data.Lens (Traversal', Lens', lens, _Just, (^.), (.~), (^?))
+import Data.Lens.At (at)
+import Data.List as List
+import Data.Set as Set
+import Data.StrMap as SM
 
-type State = M.ReducedState (DS.CommonState JCursor Selection ())
+import SlamData.Common.Align (Align(..))
+import SlamData.Common.Sort (Sort(..))
+import SlamData.Workspace.Card.Model as M
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.Common.State as C
+import SlamData.Workspace.Card.Setups.Dimension as D
 
-initialState ∷ State
-initialState =
-  { axes: M.initialState.axes
-  , category: M.initialState.category
-  , value: M.initialState.value
-  , valueAgg: M.initialState.valueAgg
-  , series: M.initialState.series
-  , align: M.initialState.align
-  , order: M.initialState.order
-  , picker: DS.initial.picker
-  }
-
-_category ∷ ∀ a r. Lens' { category ∷ a | r } a
-_category = lens _.category _{ category = _ }
-
-_value ∷ ∀ a r. Lens' { value ∷ a | r } a
-_value = lens _.value _{ value = _ }
-
-_valueAgg ∷ ∀ a r. Lens' { valueAgg ∷ a | r } a
-_valueAgg = lens _.valueAgg _{ valueAgg = _ }
-
-_series ∷ ∀ a r. Lens' { series ∷ a | r } a
-_series = lens _.series _{ series = _ }
+type State = C.StateR
+  ( align ∷ Align
+  , order ∷ Sort
+  )
 
 _align ∷ ∀ a r. Lens' { align ∷ a | r } a
 _align = lens _.align _{ align = _ }
 
 _order ∷ ∀ a r. Lens' { order ∷ a | r } a
 _order = lens _.order _{ order = _ }
+
+
+allFields ∷ Array C.Projection
+allFields =
+  [ C.pack (at "category" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  , C.pack (at "value" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  , C.pack (at "series" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  ]
+
+cursors ∷ State → List.List J.JCursor
+cursors st = case st.selected of
+  Just (Left lns) → List.fromFoldable $ fldCursors lns st
+  _ → List.Nil
+
+disabled ∷ C.Projection → State → Boolean
+disabled fld st = Set.isEmpty $ fldCursors fld st
+
+fldCursors ∷ C.Projection → State → Set.Set J.JCursor
+fldCursors fld st =
+  fromMaybe Set.empty $ cursorMap st ^. C.unpack fld
+
+cursorMap ∷ State → SM.StrMap (Set.Set J.JCursor)
+cursorMap st =
+  let
+    _projection ∷ Traversal' (Maybe D.LabeledJCursor) J.JCursor
+    _projection = _Just ∘ D._value ∘ D._projection
+
+    axes = st ^. C._axes
+
+    category =
+      axes.category
+      ⊕ axes.time
+      ⊕ axes.date
+      ⊕ axes.datetime
+
+    value =
+      axes.value
+
+    series =
+      C.mbDelete (st ^? C._category ∘ _projection)
+      $ C.ifSelected (st ^? C._category ∘ _projection)
+      $ axes.value
+      ⊕ axes.time
+
+  in
+   SM.fromFoldable
+     [ "category" × category
+     , "value" × value
+     , "series" × series
+     ]
+
+initialState ∷ State
+initialState =
+  { axes: Ax.initialAxes
+  , dimMap: SM.empty
+  , selected: Nothing
+
+  , align: CenterAlign
+  , order: Asc
+  }
+
+load ∷ M.AnyCardModel → State → State
+load = case _ of
+  M.BuildFunnel (Just m) →
+    ( C._category .~ Just m.category )
+    ∘ ( C._value .~ Just m.value )
+    ∘ ( C._series .~ m.series )
+    ∘ ( _align .~ m.align )
+    ∘ ( _order .~ m.order )
+  _ → id
+
+save ∷ State → M.AnyCardModel
+save st =
+  M.BuildFunnel
+  $ { category: _
+    , value: _
+    , series: st ^. C._series
+    , align: st ^. _align
+    , order: st ^. _order
+    }
+  <$> (st ^. C._category)
+  <*> (st ^. C._value)

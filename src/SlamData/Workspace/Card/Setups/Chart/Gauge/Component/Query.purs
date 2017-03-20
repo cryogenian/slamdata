@@ -14,24 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Gauge.Component.Query where
+module SlamData.Workspace.Card.Setups.Chart.Gauge.Component.Query
+  ( Query
+  , MiscQuery
+  , module Q
+  ) where
 
-import Data.Argonaut (JCursor)
+import SlamData.Prelude
 
-import DOM.Event.Types (Event)
+import SlamData.Workspace.Card.Setups.Common.Query as Q
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
-
-data Selection f
-  = Value (f JCursor)
-  | ValueAgg (f Aggregation)
-  | Multiple (f JCursor)
-  | Parallel (f JCursor)
-
-data Query a
-  = Select (Selection SelectAction) a
-  | PreventDefault Event a
-  | HandleDPMessage (Message JCursorNode) a
+type MiscQuery = Const Void
+type Query = Q.QueryR MiscQuery

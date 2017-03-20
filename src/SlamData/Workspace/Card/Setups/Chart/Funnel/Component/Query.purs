@@ -14,28 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.Query where
-
-import Data.Argonaut (JCursor)
-
-import DOM.Event.Types (Event)
+module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.Query
+  ( Query
+  , MiscQuery(..)
+  , module Q
+  ) where
 
 import SlamData.Common.Align (Align)
 import SlamData.Common.Sort (Sort)
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import SlamData.Workspace.Card.Setups.Common.Query as Q
+import SlamData.Workspace.Card.Setups.Inputs as BCI
 
-data Selection f
-  = Category (f JCursor)
-  | Value (f JCursor)
-  | ValueAgg (f Aggregation)
-  | Series (f JCursor)
-  | Order (f Sort)
-  | Align (f Align)
+data MiscQuery a
+  = SelectAlign (BCI.SelectAction Align) a
+  | SelectOrder (BCI.SelectAction Sort) a
 
-data Query a
-  = Select (Selection SelectAction) a
-  | PreventDefault Event a
-  | HandleDPMessage (Message JCursorNode) a
+type Query = Q.QueryR MiscQuery
