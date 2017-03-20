@@ -18,15 +18,16 @@ module SlamData.Workspace.Card.Component.State
   ( CardState
   , Status(..)
   , initialState
+  , _accessType
   ) where
 
 import SlamData.Prelude
-
-import Control.Monad.Aff.Bus (BusRW)
-
-import SlamData.Workspace.Card.Component.Query (Input)
+import Data.Lens (Lens', lens)
 import SlamData.Workspace.Eval.Card as Card
+import Control.Monad.Aff.Bus (BusRW)
+import SlamData.Workspace.Card.Component.Query (Input)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.AccessType (AccessType(ReadOnly))
 
 data Status
   = Pending
@@ -40,6 +41,7 @@ type CardState =
   { status ∷ Status
   , bus ∷ Maybe (BusRW Card.EvalMessage)
   , levelOfDetails ∷ LevelOfDetails
+  , accessType ∷ AccessType
   }
 
 initialState ∷ Input → CardState
@@ -47,4 +49,8 @@ initialState input =
   { status: if input.active then Active else Pending
   , bus: Nothing
   , levelOfDetails: High
+  , accessType: ReadOnly
   }
+
+_accessType ∷ Lens' CardState AccessType
+_accessType = lens _.accessType (_ { accessType = _ })

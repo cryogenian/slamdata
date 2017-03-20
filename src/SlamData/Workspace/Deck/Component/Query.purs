@@ -29,7 +29,7 @@ import SlamData.Workspace.Deck.BackSide as Back
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Eval.Deck (EvalMessage)
-import SlamData.Wiring (DeckMessage)
+import SlamData.Wiring (DeckMessage, HintDismissalMessage)
 
 import Utils.DOM as DOM
 
@@ -53,12 +53,15 @@ data Query a
   | GetActiveCard (Maybe CardId → a)
   | HandleEval EvalMessage a
   | HandleMessage DeckMessage a
+  | HandleHintDismissalMessage HintDismissalMessage a
   | HandleError GlobalError a
   | HandleNextAction Next.Message a
   | HandleDialog Dialog.Message a
   | HandleBackFilter ActionF.Message a
   | HandleBackAction (Action.Message Back.BackAction) a
   | HandleGrab DOM.MouseEvent a
+  | DismissFocusDeckHint a
+  | DismissFocusDeckFrameHint a
 
 data Message
   = GrabbedDeck DOM.MouseEvent

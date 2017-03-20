@@ -22,20 +22,16 @@ module SlamData.Workspace.Deck.Component
   ) where
 
 import SlamData.Prelude
-
 import Control.Monad.Aff as Aff
 import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Aff.Bus as Bus
 import Control.UI.Browser as Browser
-
 import Data.Array as Array
 import Data.Lens ((.~), (%~), _Left, _Just, is)
-import Data.List as L
 import Data.List ((:))
+import Data.List as L
 import Data.Set as Set
-
 import DOM.HTML.HTMLElement (getBoundingClientRect)
-
 import Halogen as H
 import Halogen.Component.Utils (sendAfter, busEventSource)
 import Halogen.HTML as HH
@@ -66,9 +62,10 @@ import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, cpDialog, cpBackSide
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..), Message(..))
 import SlamData.Workspace.Deck.Component.Render as DCR
+import SlamData.Workspace.Deck.Common as Common
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.DeckPath (deckPath, deckPath')
+import SlamData.Workspace.Deck.DeckPath (deckPath')
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Gripper.Def as GD
 import SlamData.Workspace.Deck.Slider as Slider
@@ -79,7 +76,7 @@ import SlamData.Workspace.Eval.Traverse as ET
 import SlamData.Workspace.Guide as Guide
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 
-import Utils (hush)
+import Utils as Utils
 import Utils.DOM as DOM
 import Utils.LocalStorage as LocalStorage
 
@@ -108,8 +105,15 @@ eval opts = case _ of
   Init next → do
     { bus } ← H.lift Wiring.expose
     H.subscribe $ busEventSource (\msg → HandleMessage msg H.Listening) bus.decks
+    H.subscribe $ busEventSource (\msg → HandleHintDismissalMessage msg H.Listening) bus.hintDismissals
     when (L.null opts.displayCursor) do
       H.subscribe $ busEventSource (\msg → HandleError msg H.Listening) bus.globalError
+    H.modify
+      ∘ (DCS._focusDeckHintDismissed .~ _)
+      =<< (H.lift $ Utils.rightBool <$> LocalStorage.getLocalStorage Guide.dismissedFocusDeckHintKey)
+    H.modify
+      ∘ (DCS._focusDeckFrameHintDismissed .~ _)
+      =<< (H.lift $ Utils.rightBool <$> LocalStorage.getLocalStorage Guide.dismissedFocusDeckFrameHintKey)
     updateCardSize
     loadDeck opts
     pure next
@@ -167,6 +171,9 @@ eval opts = case _ of
       H.modify (DCS._focused .~ true)
       { bus } ← H.lift Wiring.expose
       H.liftAff $ Bus.write (DeckFocused opts.deckId) bus.decks
+    when
+      (Common.willBePresentedWithChildFrameWhenFocused opts st)
+      dismissFocusDeckHint
     pure next
   Defocus ev next → do
     st ← H.get
@@ -178,6 +185,9 @@ eval opts = case _ of
         for_ (L.last opts.cursor) \rootId → do
           { bus } ← H.lift Wiring.expose
           H.liftAff $ Bus.write (DeckFocused rootId) bus.decks
+    when
+      (Common.willBePresentedWithChildFrameWhenFocused opts st)
+      dismissFocusDeckFrameHint
     pure next
   DismissedCardGuide next → do
     when (L.null opts.displayCursor) $ void do
@@ -185,7 +195,7 @@ eval opts = case _ of
     pure next
   GetActiveCard k → do
     active ← H.gets DCS.activeCard
-    pure (k (hush ∘ map _.cardId =<< active))
+    pure (k (Utils.hush ∘ map _.cardId =<< active))
   DismissDialog next →
     H.modify (DCS._displayMode %~ DCS.noDialog) $> next
   HandleEval msg next →
@@ -200,6 +210,13 @@ eval opts = case _ of
         when (opts.deckId ≠ focusedDeckId && st.focused) $
           H.modify (DCS._focused .~ false)
     pure next
+  HandleHintDismissalMessage msg next → do
+    case msg of
+      Wiring.DeckFrameFocusHintDismissed →
+        H.modify (DCS._focusDeckFrameHintDismissed .~ true)
+      Wiring.DeckFocusHintDismissed →
+        H.modify (DCS._focusDeckHintDismissed .~ true)
+    pure next
   HandleError ge next → do
     showDialog $ Dialog.Error $ GE.print ge
     pure next
@@ -208,9 +225,29 @@ eval opts = case _ of
   HandleBackFilter msg next → handleBackSideFilter msg $> next
   HandleBackAction msg next → handleBackSide opts msg $> next
   HandleGrab ev next → H.raise (GrabbedDeck ev) $> next
+  DismissFocusDeckHint next → do
+    dismissFocusDeckHint
+    pure next
+  DismissFocusDeckFrameHint next → do
+    dismissFocusDeckFrameHint
+    pure next
   where
   getBoundingClientWidth =
     H.liftEff ∘ map _.width ∘ getBoundingClientRect
+
+dismissFocusDeckHint ∷ DeckDSL Unit
+dismissFocusDeckHint = do
+  wiring ← H.lift Wiring.expose
+  H.liftAff $ Bus.write Wiring.DeckFocusHintDismissed wiring.bus.hintDismissals
+  H.modify (DCS._focusDeckHintDismissed .~ true)
+  H.lift $ LocalStorage.setLocalStorage Guide.dismissedFocusDeckHintKey true
+
+dismissFocusDeckFrameHint ∷ DeckDSL Unit
+dismissFocusDeckFrameHint = do
+  wiring ← H.lift Wiring.expose
+  H.liftAff $ Bus.write Wiring.DeckFrameFocusHintDismissed wiring.bus.hintDismissals
+  H.modify (DCS._focusDeckFrameHintDismissed .~ true)
+  H.lift $ LocalStorage.setLocalStorage Guide.dismissedFocusDeckFrameHintKey true
 
 -- If an ActionList has the style display: none; then calculating its dimensions
 -- will give 0, 0. (This is Mapped to Nothing.)
@@ -275,7 +312,7 @@ handleBackSide opts = case _ of
           active = DCS.activeCard st
           activeIx = DCS.activeCardIndex st
         switchToFrontside
-        for_ (join $ hush <$> active) \{ cardId } → do
+        for_ (join $ Utils.hush <$> active) \{ cardId } → do
           when (activeIx > 0) do
             H.modify _ { activeCardIndex = Just (activeIx - 1) }
             updateActiveState opts
@@ -305,7 +342,7 @@ handleBackSide opts = case _ of
           then deleteDeck opts
           else showDialog Dialog.DeleteDeck
       Back.Mirror → do
-        let mirrorCard = (hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
+        let mirrorCard = (Utils.hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
         deck ← H.lift $ P.getDeck opts.deckId
         case deck >>= _.parent, mirrorCard <#> _.cardId of
           Just parentId, Just cardId | not (L.null opts.displayCursor) → do
@@ -376,8 +413,8 @@ updateBackSide ∷ DeckOptions → DeckDSL Unit
 updateBackSide { deckId, displayCursor } = do
   st ← H.get
   let
-    ty = join (hush <$> DCS.activeCard st)
-    tys = Array.mapMaybe hush st.displayCards
+    ty = join (Utils.hush <$> DCS.activeCard st)
+    tys = Array.mapMaybe Utils.hush st.displayCards
   void ∘ H.query' cpBackSide unit ∘ H.action ∘ ActionList.UpdateActions
     =<< getUpdatedBackActions { deckId, displayCursor } ty tys
 

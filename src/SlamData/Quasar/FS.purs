@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Quasar.FS
   ( children
-  , transitiveChildren
   , getNewName
   , move
   , listing

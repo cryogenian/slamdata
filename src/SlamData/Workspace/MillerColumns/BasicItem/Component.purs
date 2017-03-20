@@ -42,7 +42,7 @@ type ItemSpec a =
 
 type BasicItemHTML = H.ComponentHTML (Const Void)
 
-type BasicColumnOptions a i = MC.ColumnOptions a i Query Void
+type BasicColumnOptions a i g = MC.ColumnOptions a i Query g Void
 
 component
   ∷ ∀ a i

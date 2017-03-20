@@ -22,8 +22,6 @@ module SlamData.Workspace.Card.Ace.Component
   , module SlamData.Workspace.Card.Ace.Component.State
   ) where
 
-import SlamData.Prelude
-
 import Ace.Editor as Editor
 import Ace.EditSession as Session
 import Ace.Halogen.Component as AC
@@ -36,17 +34,20 @@ import Data.String as Str
 import Data.StrMap as SM
 
 import Halogen as H
+import Halogen.Component.Utils (affEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.Component.Utils (affEventSource)
 
 import SlamData.Monad (Slam)
 import SlamData.Notification as N
+import SlamData.Prelude
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
+import SlamData.Wiring as Wiring
+import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.Ace.Component.Query (Query(..))
 import SlamData.Workspace.Card.Ace.Component.State (State, initialState)
 import SlamData.Workspace.Card.CardType as CT
@@ -148,11 +149,15 @@ evalCard mode = case _ of
     pure $ reply if dims.width < 240.0 then Low else High
 
 aceSetup ∷ CT.AceMode → Editor → Slam Unit
-aceSetup mode editor = H.liftEff do
-  Editor.setTheme "ace/theme/chrome" editor
-  Editor.setEnableLiveAutocompletion true editor
-  Editor.setEnableBasicAutocompletion true editor
-  Session.setMode (CT.aceMode mode) =<< Editor.getSession editor
+aceSetup mode editor = do
+  H.liftEff $ Editor.setTheme "ace/theme/chrome" editor
+  H.liftEff $ Editor.setEnableLiveAutocompletion true editor
+  H.liftEff $ Editor.setEnableBasicAutocompletion true editor
+  H.liftEff $ Session.setMode (CT.aceMode mode) =<< Editor.getSession editor
+  whenM (AccessType.isReadOnly ∘ _.accessType <$> Wiring.expose) do
+    H.liftEff $ Editor.setReadOnly true editor
+    H.liftEff $ Editor.setHighlightActiveLine false editor
+    H.liftEff $ Editor.setStyle "sd-disabled" editor
 
 render ∷ CT.AceMode → State → HTML
 render mode state =

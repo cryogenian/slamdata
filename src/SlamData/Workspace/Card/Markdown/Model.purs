@@ -22,18 +22,20 @@ module SlamData.Workspace.Card.Markdown.Model
 
 import SlamData.Prelude
 
-import Data.Functor.Compose (Compose(..))
 import Data.Argonaut (Json, JObject, jsonEmptyObject, encodeJson, decodeJson, (~>), (:=), (.?))
+import Data.DateTime as DT
+import Data.Enum (fromEnum, toEnum)
+import Data.Functor.Compose (Compose(..))
 import Data.HugeNum as HN
 import Data.StrMap as SM
 import Data.Traversable as T
-import SlamData.Workspace.Card.Port.VarMap as VM
 
-import Text.Markdown.SlamDown as SD
-import Text.Markdown.SlamDown.Halogen.Component.State as SDS
+import SlamData.Workspace.Card.Port.VarMap as VM
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
+import Text.Markdown.SlamDown as SD
+import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
 -- | The serialization model used for markdown cards.
 type Model =
@@ -450,28 +452,30 @@ decodeTextBox =
         >=> HN.fromString
         >>> maybe (Left "Error decoding number") Right
 
-    decodeDateTime ∷ Json → Either String SD.DateTimeValue
+    decodeDateTime ∷ Json → Either String DT.DateTime
     decodeDateTime =
-      decodeJson >=> \obj → do
-        date ← obj .? "date" >>= decodeDate
-        time ← obj .? "time" >>= decodeTime
-        pure { date, time }
+      decodeJson >=> \obj →
+        DT.DateTime
+          <$> (obj .? "date" >>= decodeDate)
+          <*> (obj .? "time" >>= decodeTime)
 
-    decodeDate ∷ Json → Either String SD.DateValue
+    decodeDate ∷ Json → Either String DT.Date
     decodeDate =
       decodeJson >=> \obj → do
         year ← obj .? "year"
         month ← obj .? "month"
         day ← obj .? "day"
-        pure { year, month, day }
+        maybe (Left "Invalid date value") Right $
+          join $ DT.exactDate <$> toEnum year <*> toEnum month <*> toEnum day
 
-    decodeTime ∷ Json → Either String SD.TimeValue
+    decodeTime ∷ Json → Either String DT.Time
     decodeTime =
       decodeJson >=> \obj → do
         hours ← obj .? "hours"
         minutes ← obj .? "minutes"
         seconds ← (obj .? "seconds") <|> pure Nothing
-        pure { hours, minutes, seconds }
+        maybe (Left "Invalid time value") Right $
+          DT.Time <$> toEnum hours <*> toEnum minutes <*> toEnum (fromMaybe 0 seconds) <*> pure bottom
 
     decodePrecision ∷ JObject -> SD.TimePrecision
     decodePrecision obj =
@@ -510,18 +514,19 @@ encodeTextBox tb =
         ~> jsonEmptyObject
 
   where
-    encodeDate { year, month, day } =
-      "year" := year
-        ~> "month" := month
-        ~> "day" := day
+    encodeDate d =
+      "year" := fromEnum (DT.year d)
+        ~> "month" := fromEnum (DT.month d)
+        ~> "day" := fromEnum (DT.day d)
         ~> jsonEmptyObject
 
-    encodeTime { hours, minutes } =
-      "hours" := hours
-        ~> "minutes" := minutes
+    encodeTime t =
+      "hours" := fromEnum (DT.hour t)
+        ~> "minutes" := fromEnum (DT.minute t)
+        ~> "seconds" := fromEnum (DT.second t)
         ~> jsonEmptyObject
 
-    encodeDateTime { date, time } =
+    encodeDateTime (DT.DateTime date time) =
       "date" := encodeDate date
         ~> "time" := encodeTime time
         ~> jsonEmptyObject

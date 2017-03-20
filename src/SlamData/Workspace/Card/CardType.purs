@@ -26,6 +26,7 @@ module SlamData.Workspace.Card.CardType
   , aceCardName
   , aceCardClasses
   , aceMode
+  , consumerInteractable
   , module SlamData.Workspace.Card.CardType.FormInputType
   , module SlamData.Workspace.Card.CardType.ChartType
   ) where
@@ -268,6 +269,28 @@ cardIconLightSrc cardType =
 cardIconLightImg ∷ ∀ a b. CardType → H.HTML a b
 cardIconLightImg cardType =
   HH.img [ HP.src $ cardIconLightSrc cardType ]
+
+-- Used to disable inputs, buttons and selects as well as a whitelist for
+-- localstorage card persistence. Interactability available to consumers may be
+-- disabled or limited elsewhere.
+consumerInteractable ∷ CardType → Boolean
+consumerInteractable = case _ of
+  Ace _ → false
+  Search → true
+  ChartOptions _ → false
+  SetupFormInput _ → false
+  Chart → true
+  FormInput → true
+  Markdown → true
+  Table → true
+  Download → true
+  DownloadOptions → false
+  Variables → false
+  Troubleshoot → false
+  Cache → false
+  Open → false
+  Draftboard → true
+  Tabs → true
 
 cardClasses ∷ CardType → Array H.ClassName
 cardClasses = case _ of

@@ -44,17 +44,17 @@ import SlamData.Workspace.MillerColumns.Column.Component as Column
 import SlamData.Workspace.MillerColumns.Component.Query (Query(..), Message(..), Message')
 import SlamData.Workspace.MillerColumns.Component.State (State, ColumnsData, modifyColumns, columnPaths)
 
-import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions) as Exports
+import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions(..)) as Exports
 
-type HTML a i o = H.ParentHTML (Query a i o) (Column.Query a i o) (Int × i) Slam
-type DSL a i o = H.ParentDSL (State a i) (Query a i o) (Column.Query a i o) (Int × i) (Message' a i o) Slam
+type HTML a i o f = H.ParentHTML (Query a i o) (Column.Query' a i o f) (Int × i) Slam
+type DSL a i o f = H.ParentDSL (State a i) (Query a i o) (Column.Query' a i o f) (Int × i) (Message' a i o) Slam
 
 component
-  ∷ ∀ a i f o
+  ∷ ∀ a i f g o
   . Ord i
-  ⇒ Column.ColumnOptions a i f o
+  ⇒ Column.ColumnOptions a i f g o
   → H.Component HH.HTML (Query a i o) (ColumnsData a i) (Message' a i o) Slam
-component colSpec =
+component opts@(Column.ColumnOptions colSpec) =
   H.parentComponent
     { initialState: { cycle: 0, columns: _ }
     , render
@@ -63,16 +63,16 @@ component colSpec =
     }
   where
 
-  render ∷ State a i → HTML a i o
+  render ∷ State a i → HTML a i o g
   render state =
     HH.div
       [ HP.class_ (HH.ClassName "sd-miller-columns")
       , HP.ref containerRef
       ]
       $ A.fromFoldable
-      $ map (renderColumn state.cycle) (columnPaths colSpec state.columns)
+      $ map (renderColumn state.cycle) (columnPaths opts state.columns)
 
-  renderColumn ∷ Int → Int × Maybe a × i → HTML a i o
+  renderColumn ∷ Int → Int × Maybe a × i → HTML a i o g
   renderColumn cycle (i × sel × colPath) =
     HH.div
       [ HP.class_ (HH.ClassName "sd-miller-column")
@@ -80,12 +80,12 @@ component colSpec =
       ]
       [ HH.slot
           (cycle × colPath)
-          (Column.component colSpec colPath)
+          (colSpec.renderColumn opts colPath)
           sel
           (HE.input (HandleMessage i colPath))
       ]
 
-  eval ∷ Query a i o ~> DSL a i o
+  eval ∷ Query a i o ~> DSL a i o g
   eval = case _ of
     Populate cols next → do
       H.modify (_ { columns = cols })

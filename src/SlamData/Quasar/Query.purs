@@ -18,7 +18,6 @@ module SlamData.Quasar.Query
   ( SQL
   , templated
   , compile
-  , query
   , queryEJson
   , queryEJsonVM
   , viewQuery
@@ -27,7 +26,6 @@ module SlamData.Quasar.Query
   , sample
   , count
   , fields
-  , axes
   , module Quasar.Error
   ) where
 
@@ -51,8 +49,6 @@ import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
 
 import SlamData.Quasar.Error (throw)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
-
-import SlamData.Workspace.Card.Setups.Axis (buildAxes, Axes)
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
@@ -80,15 +76,6 @@ compile path sql varMap =
     sql' = maybe sql (flip templated sql) $ either (const Nothing) Just path
   in
     liftQuasar $ QF.compileQuery backendPath sql' varMap
-
-query
-  ∷ ∀ m
-  . QuasarDSL m
-  ⇒ DirPath
-  → SQL
-  → m (Either QError JS.JArray)
-query path sql =
-  liftQuasar $ QF.readQuery Readable path sql SM.empty Nothing
 
 queryEJson
   ∷ ∀ m
@@ -228,12 +215,3 @@ fields file = runExceptT do
     goTuple ∷ Array String → Tuple String JS.Json → Array String
     goTuple acc (key × json) =
       go (map (\x → x ⊕ ".`" ⊕ key ⊕ "`") acc) json
-
-axes
-  ∷ ∀ m
-  . (Monad m, QuasarDSL m)
-  ⇒ FilePath
-  → Int
-  → m (QError ⊹ Axes)
-axes file =
-  runExceptT ∘ map buildAxes ∘ ExceptT ∘ sample file 0

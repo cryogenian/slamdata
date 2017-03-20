@@ -23,17 +23,15 @@ module SlamData.Workspace.FormBuilder.Component
   ) where
 
 import SlamData.Prelude
-
 import Data.Array as A
 import Data.List as L
 import Data.Unfoldable as U
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import SlamData.Render.CSS as RC
+import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
 import SlamData.Workspace.FormBuilder.Item.Component as Item
 
@@ -42,6 +40,7 @@ data Query a
   = GetItems (L.List Item.Model → a)
   | SetItems (L.List Item.Model) a
   | HandleItem ItemSlot Item.Message a
+  | SetAccessType AT.AccessType a
 
 data Message = ItemUpdated
 
@@ -71,8 +70,10 @@ eval = case _ of
       H.query (ItemSlot i) $ H.request Item.GetModel
   SetItems items next → do
     -- clear out the existing children
-    H.put emptyState
-    U.replicateA (L.length items + 1) (H.modify addItem) ∷ DSL m (L.List Unit)
+    accessType ← H.gets _.accessType
+    H.put $ emptyState { accessType = accessType }
+    let numExtra = if AT.isEditable accessType then 1 else 0
+    U.replicateA (L.length items + numExtra) (H.modify addItem) ∷ DSL m (L.List Unit)
 
     let
       stepItem i m =
@@ -89,6 +90,9 @@ eval = case _ of
     addItemIfNecessary slotId
     H.raise ItemUpdated
     pure next
+  SetAccessType accessType next → do
+    H.modify (_ { accessType = accessType })
+    pure next
 
 addItemIfNecessary ∷ ∀ m. ItemSlot → DSL m Unit
 addItemIfNecessary (ItemSlot i) = do
@@ -96,21 +100,26 @@ addItemIfNecessary (ItemSlot i) = do
   when (i == nextId - 1) $ H.modify addItem
 
 render ∷ ∀ m. State → HTML m
-render = renderTable <<< _.items
+render state = renderTable state.items
   where
     renderTable ∷ L.List ItemId → HTML m
     renderTable items =
-      HH.table
-        [ HP.classes [ HH.ClassName "form-builder", RC.form ] ]
-        [ HH.thead_
-            [ HH.tr_
-                [ HH.th_ [ HH.text "Name" ]
-                , HH.th_ [ HH.text "Type" ]
-                , HH.th_ [ HH.text "Default value" ]
+      if L.length items > 0
+        then
+          HH.table
+            [ HP.classes [ HH.ClassName "form-builder", RC.form ] ]
+            [ HH.thead_
+                [ HH.tr_
+                    [ HH.th_ [ HH.text "Name" ]
+                    , HH.th_ [ HH.text "Type" ]
+                    , HH.th_ [ HH.text "Default value" ]
+                    ]
                 ]
+            , HH.tbody_ $ A.fromFoldable (renderItem <$> items)
             ]
-        , HH.tbody_ $ A.fromFoldable (renderItem <$> items)
-        ]
+        else
+          HH.text "No variables."
+
 
     renderItem ∷ ItemId → HTML m
     renderItem itemId =

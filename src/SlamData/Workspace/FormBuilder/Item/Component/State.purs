@@ -26,13 +26,13 @@ import Data.Lens (Lens', lens)
 import SlamData.Workspace.FormBuilder.Item.Model
 
 type State =
-  { model :: Model
+  { model ∷ Model
   }
 
-_model :: Lens' State Model
+_model ∷ Lens' State Model
 _model = lens _.model _ { model = _ }
 
-initialState :: State
+initialState ∷ State
 initialState =
-  { model : initialModel
+  { model: initialModel
   }
