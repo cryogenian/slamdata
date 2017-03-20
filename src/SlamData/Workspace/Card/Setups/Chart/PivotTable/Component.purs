@@ -28,6 +28,7 @@ import Data.Lens ((^?), (.~), _Just)
 
 import CSS as C
 import Halogen as H
+import Halogen.Component.Proxy as HCP
 import Halogen.Component.Utils.Drag as Drag
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -47,6 +48,8 @@ import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.State as PS
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Inputs as I
 import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Numeric as N
+import SlamData.Workspace.Card.Setups.Transform.Place.Component as TPC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
@@ -116,9 +119,14 @@ render st =
     PS.SelectTransform slot selection options →
       HH.slot' PCS.cpTransform unit AS.component
         { options
-        , selection
+        , selection: (\a → a × a) <$> selection
         , title: "Choose transformation"
-        , label: T.prettyPrintTransform
+        , toLabel: T.prettyPrintTransform
+        , toSelection: case _ of
+            T.Numeric (N.Floor _) → Just $ HCP.proxy TPC.transformFloor
+            T.Numeric (N.Round _) → Just $ HCP.proxy TPC.transformRound
+            T.Numeric (N.Ceil _) → Just $ HCP.proxy TPC.transformCeil
+            _ → Nothing
         }
         (Just ∘ right ∘ H.action ∘ HandleTransformPicker slot)
 
@@ -329,7 +337,7 @@ evalOptions = case _ of
       selection = join $ groupBy ^? _Just ∘ D._transform
       options = case groupBy of
         Just (D.Projection mbTr cursor) →
-          transformOptions (T.axisTransforms (Ax.axisType cursor st.axes)) mbTr
+          transformOptions (T.axisTransforms (Ax.axisType cursor st.axes) mbTr) mbTr
         _ → mempty
       selecting = PS.SelectTransform (ForGroupBy slot) selection options
     H.modify _ { selecting = Just selecting }
@@ -341,9 +349,9 @@ evalOptions = case _ of
       selection = join $ col ^? _Just ∘ D._transform
       options = case col of
         Just (D.Projection mbTr (PTM.Column cursor)) →
-          transformOptions (T.axisTransforms (Ax.axisType cursor st.axes)) mbTr
+          transformOptions (T.axisTransforms (Ax.axisType cursor st.axes) mbTr) mbTr
         Just (D.Projection mbTr PTM.All) | rootAxes st.axes →
-          transformOptions (T.axisTransforms (Ax.axisType J.JCursorTop st.axes)) mbTr
+          transformOptions (T.axisTransforms (Ax.axisType J.JCursorTop st.axes) mbTr) mbTr
         _ → mempty
       selecting = PS.SelectTransform (ForColumn slot) selection options
     H.modify _ { selecting = Just selecting }
