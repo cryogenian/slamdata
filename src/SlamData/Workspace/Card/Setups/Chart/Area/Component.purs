@@ -30,6 +30,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
+import Halogen.Component.ChildPath (ChildPath, cp1)
 
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
@@ -48,8 +49,23 @@ import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-type DSL = CC.InnerCardParentDSL ST.State (Q.QueryR Q.MiscQuery) CS.ChildQuery CS.ChildSlot
+import SlamData.Workspace.Card.Setups.Common.Component as SC
+
+import Unsafe.Coerce (unsafeCoerce)
+
+type DSL = CC.InnerCardParentDSL ST.State  (Q.QueryR Q.MiscQuery) CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+
+type ChildSlot = Unit ⊹ Void
+type ChildQuery = SC.Query ⨁ Const Void
+
+type Path a b = ChildPath a ChildQuery b ChildSlot
+
+cpDims ∷ Path SC.Query Unit
+cpDims = cp1
+
+package ∷ SC.Package
+package = unsafeCoerce unit
 
 areaBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 areaBuilderComponent =
@@ -64,62 +80,11 @@ render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    $ ( renderButton state <$> ST.allFields )
-    ⊕ [ HH.hr_
-      , row [ renderIsStacked state, renderIsSmooth state ]
-      , row [ renderAxisLabelAngle state ]
-      , renderSelection state
-      ]
-
-renderSelection ∷ ST.State → HTML
-renderSelection state = case state ^. ST._selected of
-  Nothing → HH.text ""
-  Just (Right tp) →
-    HH.slot' CS.cpTransform unit AS.component
-      { options: ST.transforms state
-      , selection: Just $ T.Aggregation Ag.Sum
-      , title: "Choose transformation"
-      , label: T.prettyPrintTransform
-      , deselectable: false
-      }
-      (HE.input \m → right ∘ Q.OnField tp ∘ Q.HandleTransformPicker m)
-  Just (Left pf) →
-    let
-      conf =
-        { title: ST.chooseLabel pf
-        , label: DPC.labelNode DJ.showJCursorTip
-        , render: DPC.renderNode DJ.showJCursorTip
-        , values: DJ.groupJCursors $ ST.cursors state
-        , isSelectable: DPC.isLeafPath
-        }
-    in
-      HH.slot'
-        CS.cpPicker
-        unit
-        (DPC.picker conf)
-        unit
-        (HE.input \m → right ∘ Q.OnField pf ∘ Q.HandleDPMessage m)
-
-
-renderButton ∷ ST.State → ST.Projection → HTML
-renderButton state fld =
-  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
-  [ I.dimensionButton
-    { configurable: false
-    , dimension: sequence $ ST.getSelected fld state
-    , showLabel: absurd
-    , showDefaultLabel: ST.showDefaultLabel fld
-    , showValue: ST.showValue fld
-    , onLabelChange: HE.input \l → right ∘ Q.OnField fld ∘ Q.LabelChanged l
-    , onDismiss: HE.input_ $ right ∘ Q.OnField fld ∘ Q.Dismiss
-    , onConfigure: HE.input_ $ right ∘ Q.OnField fld ∘ Q.Configure
-    , onClick: HE.input_ $ right ∘ Q.OnField fld ∘ Q.Select
-    , onMouseDown: const Nothing
-    , onLabelClick: const Nothing
-    , disabled: ST.disabled fld state
-    , dismissable: isJust $ ST.getSelected fld state
-    } ]
-
+    [ HH.slot' cpDims unit (CS.component package) unit $ HE.input Q.HandleDims
+    , HH.hr_
+    , row [ renderIsStacked state, renderIsSmooth state ]
+    , row [ renderAxisLabelAngle state ]
+    ]
 
 renderAxisLabelAngle ∷ ST.State → HTML
 renderAxisLabelAngle state =
@@ -131,7 +96,7 @@ renderAxisLabelAngle state =
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.axisLabelAngle
         , ARIA.label "Axis label angle"
-        , HE.onValueChange $ HE.input \l → right ∘ Q.Misc ∘ Q.SetAxisLabelAngle l
+        , HE.onValueChange $ HE.input \l → right ∘ Q.SetAxisLabelAngle l
         ]
     ]
 
@@ -145,7 +110,7 @@ renderIsStacked state =
         [ HP.type_ HP.InputCheckbox
         , HP.checked state.isStacked
         , ARIA.label "Stacked"
-        , HE.onChecked $ HE.input_ $ right ∘ Q.Misc ∘ Q.ToggleStacked
+        , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleStacked
         ]
 
     ]
@@ -160,7 +125,7 @@ renderIsSmooth state =
         [ HP.type_ HP.InputCheckbox
         , HP.checked state.isSmooth
         , ARIA.label "Smooth"
-        , HE.onChecked $ HE.input_ $ right ∘ Q.Misc ∘ Q.ToggleSmooth
+        , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleSmooth
         ]
     ]
 
@@ -174,7 +139,7 @@ cardEval = case _ of
     st ← H.get
     pure $ k $ ST.save st
   CC.Load m next → do
-    H.modify $ ST.load m
+    H.query' cpDims unit $ H.action SC.Load m
     pure next
   CC.ReceiveInput _ _ next →
     pure next
@@ -196,21 +161,24 @@ raiseUpdate =
 
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
-  Q.Misc mQuery → case mQuery of
-    Q.SetAxisLabelAngle str next → do
-      let fl = readFloat str
-      unless (isNaN fl) do
-        H.modify $ ST._axisLabelAngle .~ fl
-        raiseUpdate
-      pure next
-    Q.ToggleSmooth next → do
-      H.modify $ ST._isSmooth %~ not
+  Q.SetAxisLabelAngle str next → do
+    let fl = readFloat str
+    unless (isNaN fl) do
+      H.modify $ ST._axisLabelAngle .~ fl
       raiseUpdate
-      pure next
-    Q.ToggleStacked next → do
-      H.modify $ ST._isStacked %~ not
-      raiseUpdate
-      pure next
+    pure next
+  Q.ToggleSmooth next → do
+    H.modify $ ST._isSmooth %~ not
+    raiseUpdate
+    pure next
+  Q.ToggleStacked next → do
+    H.modify $ ST._isStacked %~ not
+    raiseUpdate
+    pure next
+  Q.HandleDims q next → do
+    case q of
+      SC.Update → raiseUpdate
+    pure next
   Q.OnField fld fldQuery → case fldQuery of
     Q.Select next → do
       H.modify $ ST.select fld

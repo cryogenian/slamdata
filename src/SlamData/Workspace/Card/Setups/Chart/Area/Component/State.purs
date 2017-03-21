@@ -14,46 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Area.Component.State
-  ( allFields
-  , cursors
-  , disabled
-  , load
-  , save
-  , initialState
-  , _axisLabelAngle
-  , _isSmooth
-  , _isStacked
-  , State
-  , module C
-  ) where
+module SlamData.Workspace.Card.Setups.Chart.Area.Component.State where
 
-import SlamData.Prelude
+import Data.Lens (Lens', lens)
 
-import Data.Argonaut as J
-import Data.Lens (Traversal', Lens', lens, _Just, (^.), (.~), (^?))
-import Data.Lens.At (at)
-import Data.List as List
-import Data.Set as Set
-import Data.StrMap as SM
-
-import SlamData.Workspace.Card.Model as M
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Common.State as C
-import SlamData.Workspace.Card.Setups.Dimension as D
-
-type State = C.StateR
-  ( isSmooth ∷ Boolean
+type State =
+  { isSmooth ∷ Boolean
   , isStacked ∷ Boolean
   , axisLabelAngle ∷ Number
-  )
-
-allFields ∷ Array C.Projection
-allFields =
-  [ C.pack (at "dimension" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  , C.pack (at "value" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  , C.pack (at "series" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  ]
+  }
 
 _isSmooth ∷ Lens' State Boolean
 _isSmooth = lens _.isSmooth _{ isSmooth = _ }
@@ -63,6 +32,15 @@ _isStacked = lens _.isStacked _{ isStacked = _ }
 
 _axisLabelAngle ∷ Lens' State Number
 _axisLabelAngle = lens _.axisLabelAngle _{ axisLabelAngle = _ }
+
+{-
+allFields ∷ Array C.Projection
+allFields =
+  [ C.pack (at "dimension" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  , C.pack (at "value" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  , C.pack (at "series" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  ]
+
 
 cursors ∷ State → List.List J.JCursor
 cursors st = case st.selected of
@@ -141,3 +119,4 @@ save st =
     }
   <$> (st ^. C._dimension)
   <*> (st ^. C._value)
+-}

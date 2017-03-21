@@ -20,11 +20,10 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Component.Query
   , module Q
   ) where
 
-import SlamData.Workspace.Card.Setups.Common.Query as Q
+import SlamData.Workspace.Card.Setups.Common.Component as Q
 
-data MiscQuery a
+data Query a
   = ToggleSmooth a
   | SetAxisLabelAngle String a
   | ToggleStacked a
-
-type Query = Q.QueryR MiscQuery
+  | HandleDims Q.Message a

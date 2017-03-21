@@ -60,6 +60,8 @@ render state =
     [ HP.classes [ CSS.chartEditor ]
     ]
     $ ( renderButton state <$> ST.allFields )
+    ⊕ [ renderSelection state ]
+
 renderSelection ∷ ST.State → HTML
 renderSelection state = case state ^. ST._selected of
   Nothing → HH.text ""

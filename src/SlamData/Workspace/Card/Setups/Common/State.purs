@@ -68,6 +68,8 @@ type StateR r =
   }
 
 type DimensionMap = SM.StrMap D.LabeledJCursor
+emptyDimMap ∷ DimensionMap
+emptyDimMap = SM.empty
 
 type ProjectionU m a b = At m a b ⇒ Lens' m (Maybe b)
 data Projection
