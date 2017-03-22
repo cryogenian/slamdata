@@ -34,7 +34,8 @@ import Data.Map as Map
 import Data.StrMap as SM
 import Data.Path.Pathy as Pt
 
-import DOM.HTML.Types (htmlElementToElement, readHTMLElement)
+import DOM.HTML.Types (readHTMLElement)
+import DOM.Classy.Element (toElement)
 
 import Halogen as H
 import Halogen.HTML.Events as HE
@@ -55,7 +56,7 @@ import Utils.DOM as DOM
 import Utils.Path (parseFilePath)
 import Utils.Foldable (chunkedParTraverse, splitList)
 
-import ZClipboard as Z
+import Clipboard as C
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Message Slam
@@ -374,7 +375,7 @@ eval = case _ of
         Right toks → do
           let tokenPerms = prepareAndFilterTokens toks sharingInput
           H.modify _ { tokenPermissions = tokenPerms }
-          for_ tokenPerms initZClipboard
+          for_ tokenPerms initClipboard
       Q.permissionList false >>= case _ of
         Left e →
           H.modify _
@@ -389,10 +390,7 @@ eval = case _ of
             , loading = false
             }
     pure next
--- eval (InitZClipboard token mbEl next) =
---   next <$ for_ mbEl \el → do
---     H.liftEff $ Z.make (htmlElementToElement el)
---       >>= Z.onCopy (Z.setData "text/plain" token)
+
   ChangePermissionResume name string next → do
     state ← H.get
     H.modify (_{errored = false})
@@ -495,11 +493,10 @@ eval = case _ of
   Done next →
     H.raise Dismiss $> next
 
-initZClipboard ∷ TokenPermission → DSL Unit
-initZClipboard token =
+initClipboard ∷ TokenPermission → DSL Unit
+initClipboard token =
   H.getHTMLElementRef (copyButtonRef token.tokenId) >>= traverse_ \htmlEl →
-    H.liftEff $ Z.make (htmlElementToElement htmlEl)
-      >>= Z.onCopy (Z.setData "text/plain" token.secret)
+    H.liftEff $ C.fromElement (toElement htmlEl) (pure token.secret)
 
 changePermissionResumeForUser
   ∷ String

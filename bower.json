@@ -57,7 +57,7 @@
     "purescript-these": "^2.0.0",
     "purescript-tuples": "^3.0.0",
     "purescript-uri": "^2.0.0",
-    "purescript-zclipboard": "^3.0.0"
+    "purescript-clipboard": "^0.1.0"
   },
   "devDependencies": {
     "purescript-chalky": "^2.0.0",
