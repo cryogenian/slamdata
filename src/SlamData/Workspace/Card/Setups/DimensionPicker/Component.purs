@@ -60,7 +60,7 @@ type PickerOptions s =
   , isSelectable ∷ s → Boolean
   }
 
-pickerOptionsToColumnOptions ∷ ∀ s. Ord s ⇒ PickerOptions s → MCI.BasicColumnOptions s s (Const Void)
+pickerOptionsToColumnOptions ∷ ∀ s. Ord s ⇒ PickerOptions s → MCI.BasicColumnOptions s s
 pickerOptionsToColumnOptions { label, render, values, isSelectable } =
   MC.ColumnOptions
     { renderColumn: MCC.component

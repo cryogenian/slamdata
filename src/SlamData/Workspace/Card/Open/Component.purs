@@ -149,7 +149,7 @@ evalCard = case _ of
       then LOD.Low
       else LOD.High
 
-columnOptions ∷ MCI.BasicColumnOptions R.Resource AnyPath (Const Void)
+columnOptions ∷ MCI.BasicColumnOptions R.Resource AnyPath
 columnOptions =
   MC.ColumnOptions
     { renderColumn: MCC.component

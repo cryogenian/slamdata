@@ -29,12 +29,12 @@ import SlamData.Workspace.MillerColumns.Column.Component.Item (ItemMessage', Ite
 
 type LoadParams i = { path ∷ i, filter ∷ String, offset ∷ Maybe Int }
 
-type ColumnComponent a i o g =
-  H.Component HH.HTML (Column.Query' a i o g) (Maybe a) (Column.Message' a i o) Slam
+type ColumnComponent a i o =
+  H.Component HH.HTML (Column.Query' a i o) (Maybe a) (Column.Message' a i o) Slam
 
-newtype ColumnOptions a i f g o =
+newtype ColumnOptions a i f o =
   ColumnOptions
-    { renderColumn ∷ ColumnOptions a i f g o → i → ColumnComponent a i o g
+    { renderColumn ∷ ColumnOptions a i f o → i → ColumnComponent a i o
     , renderItem ∷ i → a → H.Component HH.HTML f ItemState (ItemMessage' a o) Slam
     , label ∷ a → String
     , load ∷ LoadParams i → Slam { items ∷ L.List a, nextOffset ∷ Maybe Int }
