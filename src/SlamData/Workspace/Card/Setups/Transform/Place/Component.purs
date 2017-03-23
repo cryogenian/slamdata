@@ -71,8 +71,8 @@ component operation =
       , HH.p_
           [ HH.input
               [ HP.type_ HP.InputRange
-              , HP.prop (HH.PropName "min") (-10)
-              , HP.prop (HH.PropName "max") 10
+              , HP.min (-10.0)
+              , HP.max 10.0
               , HP.value (show (-st.place))
               , HE.onValueInput (map (H.action ∘ ChangePlace ∘ negate) ∘ stringToInt)
               ]
