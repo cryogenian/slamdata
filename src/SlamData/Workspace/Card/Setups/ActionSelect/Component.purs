@@ -44,7 +44,7 @@ data Message s
   = Dismiss
   | Confirm (Maybe s)
 
-type OptionComponent s = HCP.ProxyComponent (Maybe s) (Maybe s) Slam
+type OptionComponent s = HCP.ProxyComponent (Const Void) (Maybe s) (Maybe s) Slam
 
 type State' s r =
   { options ∷ Array s
@@ -70,7 +70,7 @@ type Selecting s =
 
 type ChildQuery s
   = ALC.Query (Maybe s)
-  ⨁ HCP.ProxyQ (Maybe s) (Maybe s)
+  ⨁ HCP.ProxyQ (Const Void) (Maybe s) (Maybe s)
   ⨁ Const Void
 
 type ChildSlot
