@@ -18,21 +18,51 @@ module Halogen.Component.Proxy
   ( ProxyQ
   , ProxyComponent
   , proxy
+  , proxyF
+  , proxy'
   ) where
 
 import Prelude
+
+import Data.Const (Const)
+import Data.Coyoneda (Coyoneda, unCoyoneda)
+import Data.Functor.Coproduct (Coproduct, right)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
+
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
+import Halogen.Query.HalogenM as HQ
 
-data ProxyQ i o a
-  = Receive i a
+data ProxyQ f i o a
+  = Query (Coyoneda f a)
+  | Receive i a
   | Raise o a
 
-type ProxyComponent i o m = H.Component HH.HTML (ProxyQ i o) i o m
+type ProxyComponent f i o m = H.Component HH.HTML (ProxyQ f i o) i o m
 
-proxy ∷ ∀ f i o m. H.Component HH.HTML f i o m → H.Component HH.HTML (ProxyQ i o) i o m
-proxy component =
+proxy
+  ∷ ∀ f i o m
+  . H.Component HH.HTML f i o m
+  → H.Component HH.HTML (ProxyQ (Const Void) i o) i o m
+proxy = proxy' (const (absurd <<< unwrap))
+
+proxyF
+  ∷ ∀ f g i o m
+  . H.Component HH.HTML (Coproduct f g) i o m
+  → H.Component HH.HTML (ProxyQ g i o) i o m
+proxyF = proxy' \k q ->
+  H.query unit (right q) >>= case _ of
+    Nothing -> HQ.halt "Proxy inner component query failed (this should be impossible)"
+    Just a -> pure (k a)
+
+proxy'
+  ∷ ∀ f g i o m
+  . (∀ a b. (b → a) → g b → H.ParentDSL i (ProxyQ g i o) f Unit o m a)
+  → H.Component HH.HTML f i o m
+  → H.Component HH.HTML (ProxyQ g i o) i o m
+proxy' evalQuery component =
   H.parentComponent
     { initialState: id
     , render
@@ -40,11 +70,11 @@ proxy component =
     , receiver: HE.input Receive
     }
   where
-  render ∷ i → H.ParentHTML (ProxyQ i o) f Unit m
+  render ∷ i → H.ParentHTML (ProxyQ g i o) f Unit m
   render i = HH.slot unit component i (HE.input Raise)
 
-  eval ∷ ProxyQ i o ~> H.ParentDSL i (ProxyQ i o) f Unit o m
+  eval ∷ ProxyQ g i o ~> H.ParentDSL i (ProxyQ g i o) f Unit o m
   eval = case _ of
+    Query iq → unCoyoneda evalQuery iq
     Receive i next → H.put i $> next
     Raise o next → H.raise o $> next
-

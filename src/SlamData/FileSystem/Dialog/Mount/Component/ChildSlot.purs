@@ -24,6 +24,7 @@ import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
+import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component as SparkLocal
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 
 type ChildQuery
@@ -32,10 +33,12 @@ type ChildQuery
   ⨁ Couchbase.Query
   ⨁ MarkLogic.Query
   ⨁ Spark.Query
+  ⨁ SparkLocal.Query
   ⨁ Const Void
 
 type ChildSlot
   = Unit
+  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -56,3 +59,6 @@ cpMarkLogic = CP.cp4
 
 cpSpark ∷ CP.ChildPath Spark.Query ChildQuery Unit ChildSlot
 cpSpark = CP.cp5
+
+cpSparkLocal ∷ CP.ChildPath SparkLocal.Query ChildQuery Unit ChildSlot
+cpSparkLocal = CP.cp6
