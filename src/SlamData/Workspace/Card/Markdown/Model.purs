@@ -15,7 +15,6 @@ module SlamData.Workspace.Card.Markdown.Model
   ( Model
   , encode
   , decode
-  , eqModel
   , genModel
   , emptyModel
   ) where
@@ -39,26 +38,15 @@ import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
 -- | The serialization model used for markdown cards.
 type Model =
-  { input ∷ SD.SlamDownP VM.VarMapValue
-  , state ∷ SDS.SlamDownFormState VM.VarMapValue
-  }
+  SDS.SlamDownFormState VM.VarMapValue
 
 genModel ∷ Gen.Gen Model
-genModel = do
-  input ← SC.arbitrary
-  state ← SM.fromFoldable <$> Gen.arrayOf (Tuple <$> SC.arbitrary <*> SC.arbitrary)
-  pure { input, state }
-
-eqModel ∷ Model → Model → Boolean
-eqModel m1 m2 =
-  m1.input ≡ m2.input
-    && m1.state ≡ m2.state
+genModel =
+  SM.fromFoldable <$> Gen.arrayOf (Tuple <$> SC.arbitrary <*> SC.arbitrary)
 
 emptyModel ∷ Model
 emptyModel =
-  { input: SD.SlamDown mempty
-  , state: SM.empty
-  }
+  SM.empty
 
 -- | For getting parse error messages that are suitable for diagnostics.
 traceError
@@ -75,9 +63,8 @@ traceError lbl e =
 encode
   ∷ Model
   → Json
-encode { input, state }
-  = "input" := encodeSlamDown input
-  ~> "state" := map encodeFormFieldValue state
+encode state
+  = "state" := map encodeFormFieldValue state
   ~> jsonEmptyObject
 
 -- | Attempts to decode a JSON value as the model.
@@ -85,248 +72,8 @@ decode
   ∷ Json
   → Either String Model
 decode =
-  decodeJson >=> \obj → do
-    input ← decodeSlamDown =<< obj .? "input"
-    state ← traverse decodeFormFieldValue =<< obj .? "state"
-    pure { input, state }
-
-encodeSlamDown
-  ∷ SD.SlamDownP VM.VarMapValue
-  → Json
-encodeSlamDown (SD.SlamDown bs)
-  = "doc" := "slamdown"
-  ~> "blocks" := map encodeBlock bs
-  ~> jsonEmptyObject
-
-decodeSlamDown
-  ∷ Json
-  → Either String (SD.SlamDownP VM.VarMapValue)
-decodeSlamDown =
-  decodeJson >=> \obj → do
-    docTag ← obj .? "doc"
-    case docTag of
-      "slamdown" → SD.SlamDown <$> (traverse decodeBlock =<< obj .? "blocks")
-      _ → Left $ "expected 'doc' to be 'slamdown', found '" ⊕ docTag ⊕ "'"
-
-encodeBlock
-  ∷ SD.Block VM.VarMapValue
-  → Json
-encodeBlock (SD.Paragraph is)
-  = "type" := "para"
-  ~> "content" := map encodeInline is
-  ~> jsonEmptyObject
-encodeBlock (SD.Header level is)
-  = "type" := "header"
-  ~> "level" := level
-  ~> "content" := map encodeInline is
-  ~> jsonEmptyObject
-encodeBlock (SD.Blockquote bs)
-  = "type" := "blockquote"
-  ~> "content" := map encodeBlock bs
-  ~> jsonEmptyObject
-encodeBlock (SD.Lst lt bss)
-  = "type" := "list"
-  ~> "listType" := encodeListType lt
-  ~> "content" := map (map encodeBlock) bss
-  ~> jsonEmptyObject
-encodeBlock (SD.CodeBlock cbt ls)
-  = "type" := "codeblock"
-  ~> "codeType" := encodeCodeBlockType cbt
-  ~> "content" := ls
-  ~> jsonEmptyObject
-encodeBlock (SD.LinkReference label uri)
-  = "type" := "linkref"
-  ~> "label" := label
-  ~> "uri" := uri
-  ~> jsonEmptyObject
-encodeBlock SD.Rule
-  = "type" := "rule"
-  ~> jsonEmptyObject
-
-decodeBlock
-  ∷ Json
-  → Either String (SD.Block VM.VarMapValue)
-decodeBlock =
-  decodeJson >=> \obj → do
-    ty ← obj .? "type"
-    case ty of
-      "para" →
-        SD.Paragraph
-          <$> (traverse decodeInline =<< obj .? "content")
-      "header" →
-        SD.Header
-          <$> obj .? "level"
-          <*> (traverse decodeInline =<< obj .? "content")
-      "blockquote" →
-        SD.Blockquote
-          <$> (traverse decodeBlock =<< obj .? "content")
-      "list" →
-        SD.Lst
-          <$> (decodeListType =<< obj .? "listType")
-          <*> (traverse (traverse decodeBlock) =<< obj .? "content")
-      "codeblock" →
-        SD.CodeBlock
-          <$> (decodeCodeBlockType =<< obj .? "codeType")
-          <*> obj .? "content"
-      "linkref" →
-        SD.LinkReference
-          <$> obj .? "label"
-          <*> obj .? "uri"
-      "rule" → pure SD.Rule
-      _ → Left $ "unknown block type '" ⊕ ty ⊕ "'"
-
-encodeInline
-  ∷ SD.Inline VM.VarMapValue
-  → Json
-encodeInline (SD.Str s)
-   = "type" := "str"
-  ~> "value" := s
-  ~> jsonEmptyObject
-encodeInline (SD.Entity e)
-   = "type" := "entity"
-  ~> "value" := e
-  ~> jsonEmptyObject
-encodeInline SD.Space
-   = "type" := "space"
-  ~> jsonEmptyObject
-encodeInline SD.SoftBreak
-   = "type" := "softbreak"
-  ~> jsonEmptyObject
-encodeInline SD.LineBreak
-   = "type" := "linebreak"
-  ~> jsonEmptyObject
-encodeInline (SD.Emph is)
-   = "type" := "em"
-  ~> "value" := map encodeInline is
-  ~> jsonEmptyObject
-encodeInline (SD.Strong is)
-   = "type" := "strong"
-  ~> "value" := map encodeInline is
-  ~> jsonEmptyObject
-encodeInline (SD.Code evaluated code)
-   = "type" := "code"
-  ~> "evaluated" := evaluated
-  ~> "value" := code
-  ~> jsonEmptyObject
-encodeInline (SD.Link is lt)
-   = "type" := "link"
-  ~> "value" := map encodeInline is
-  ~> "target" := encodeLinkTarget lt
-  ~> jsonEmptyObject
-encodeInline (SD.Image is uri)
-   = "type" := "image"
-  ~> "value" := map encodeInline is
-  ~> "uri" := uri
-  ~> jsonEmptyObject
-encodeInline (SD.FormField label required field)
-   = "type" := "field"
-  ~> "label" := label
-  ~> "required" := required
-  ~> "field" := encodeFormField field
-  ~> jsonEmptyObject
-
-decodeInline
-  ∷ Json
-  → Either String (SD.Inline VM.VarMapValue)
-decodeInline =
-  decodeJson >=> \obj → do
-    ty ← obj .? "type"
-    case ty of
-      "str" → SD.Str <$> obj .? "value"
-      "entity" → SD.Entity <$> obj .? "value"
-      "space" → pure SD.Space
-      "softbreak" → pure SD.SoftBreak
-      "linebreak" → pure SD.LineBreak
-      "em" → SD.Emph <$> (traverse decodeInline =<< obj .? "value")
-      "strong" → SD.Strong <$> (traverse decodeInline =<< obj .? "value")
-      "code" →
-        SD.Code
-          <$> obj .? "evaluated"
-          <*> obj .? "value"
-      "link" →
-        SD.Link
-          <$> (traverse decodeInline =<< obj .? "value")
-          <*> (decodeLinkTarget =<< obj .? "target")
-      "image" →
-        SD.Image
-          <$> (traverse decodeInline =<< obj .? "value")
-          <*> obj .? "uri"
-      "field" →
-        SD.FormField
-          <$> obj .? "label"
-          <*> obj .? "required"
-          <*> (decodeFormField =<< obj .? "field")
-      _ → Left $ "unknown inline type '" ⊕ ty ⊕ "'"
-
-encodeListType
-  ∷ SD.ListType
-  → Json
-encodeListType (SD.Bullet s)
-  = "type" := "bullet"
-  ~> "inner" := s
-  ~> jsonEmptyObject
-encodeListType (SD.Ordered s)
-  = "type" := "ordered"
-  ~> "inner" := s
-  ~> jsonEmptyObject
-
-decodeListType
-  ∷ Json
-  → Either String SD.ListType
-decodeListType =
-  decodeJson >=> \obj → do
-    ty ← obj .? "type"
-    inner ← obj .? "inner"
-    case ty of
-      "bullet" → pure $ SD.Bullet inner
-      "ordered" → pure $ SD.Ordered inner
-      _ → Left ("unknown list type '" ⊕ ty ⊕ "'")
-
-encodeCodeBlockType
-  ∷ SD.CodeBlockType
-  → Json
-encodeCodeBlockType SD.Indented
-   = "type" := "indented"
-  ~> jsonEmptyObject
-encodeCodeBlockType (SD.Fenced evaluated info)
-   = "type" := "fenced"
-  ~> "evaluated" := evaluated
-  ~> "info" := info
-  ~> jsonEmptyObject
-
-decodeCodeBlockType
-  ∷ Json
-  → Either String SD.CodeBlockType
-decodeCodeBlockType =
-  decodeJson >=> \obj → do
-    ty ← obj .? "type"
-    case ty of
-      "indented" → pure SD.Indented
-      "fenced" → SD.Fenced <$> obj .? "evaluated" <*> obj .? "info"
-      _ → Left $ "unknown code block type '" ⊕ ty ⊕ "'"
-
-encodeLinkTarget
-  ∷ SD.LinkTarget
-  → Json
-encodeLinkTarget (SD.InlineLink uri)
-   = "type" := "inline"
-  ~> "uri" := uri
-  ~> jsonEmptyObject
-encodeLinkTarget (SD.ReferenceLink ref)
-   = "type" := "reference"
-  ~> "ref" := ref
-  ~> jsonEmptyObject
-
-decodeLinkTarget
-  ∷ Json
-  → Either String SD.LinkTarget
-decodeLinkTarget =
-  decodeJson >=> \obj → do
-    ty ← obj .? "type"
-    case ty of
-      "inline" → SD.InlineLink <$> obj .? "uri"
-      "reference" → SD.ReferenceLink <$> obj .? "ref"
-      _ → Left $ "unknown code link target type '" ⊕ ty ⊕ "'"
+  decodeJson >=> \obj →
+    traverse decodeFormFieldValue =<< obj .? "state"
 
 encodeExpr
   ∷ ∀ a

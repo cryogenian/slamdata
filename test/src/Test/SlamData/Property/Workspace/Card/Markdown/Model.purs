@@ -56,13 +56,11 @@ instance arbitraryJsonEncodableVarMapValue ∷ Arbitrary JsonEncodableVarMapValu
 checkSerialization ∷ forall eff. SC eff Unit
 checkSerialization =
   quickCheck $ map getJsonEncodableVarMapValue >>> \(SDS.SlamDownState { document, formState }) →
-    let model = { input: document, state: formState }
-    in case M.decode (M.encode model) of
+    case M.decode (M.encode formState) of
       Left err → Failed $ "Decode failed: " <> err
-      Right model' →
+      Right state →
         fold
-         [ model.input == model'.input <?> "input mismatch: " <> show model.input <> " vs. " <> show model'.input
-         , model.state == model'.state <?> "state mismatch: " <> show model.state <> " vs. " <> show model'.state
+         [ state == state <?> "state mismatch: " <> show state <> " vs. " <> show state
          ]
 
 unsafeRunLocale

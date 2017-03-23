@@ -87,22 +87,20 @@ evalCard = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    input ← fromMaybe mempty <$> H.gets _.input
-    state ← fromMaybe SM.empty <$> H.query unit (H.request SD.GetFormState)
-    pure ∘ k $ Card.Markdown { input, state }
+    state ← H.gets _.state
+    pure ∘ k $ Card.Markdown state
   CC.Load card next → do
     case card of
-      Card.Markdown { input, state } →
-        void $ do
-          H.modify (_ { input = Just input })
-          H.query unit $ H.action (SD.SetDocument input)
-          H.query unit $ H.action (SD.PopulateForm state)
+      Card.Markdown state → void $ do
+        H.modify (_ { state = state })
+        H.query unit $ H.action (SD.PopulateForm state)
       _ → pure unit
     pure next
   CC.ReceiveInput input _ next → do
     for_ (input ^? Port._SlamDown) \sd → do
-      H.modify (_ { input = Just sd })
+      state ← H.gets _.state
       void $ H.query unit $ H.action (SD.SetDocument sd)
+      void $ H.query unit $ H.action (SD.PopulateForm state)
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
@@ -118,5 +116,7 @@ evalComponent = case _ of
     H.modify (_ { browserFeatures = Just browserFeatures })
     pure next
   HandleMessage _ next → do
+    state ← fromMaybe SM.empty <$> H.query unit (H.request SD.GetFormState)
+    H.modify (_ { state = state })
     H.raise CC.modelUpdate
     pure next

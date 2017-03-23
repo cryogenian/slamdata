@@ -59,7 +59,7 @@ evalMarkdownForm
   → m Port.Out
 evalMarkdownForm model doc varMap = do
   let inputState = SDH.formStateFromDocument doc
-  thisVarMap ← liftEff $ MDS.formStateToVarMap inputState model.state
+  thisVarMap ← liftEff $ MDS.formStateToVarMap inputState model
   pure (Port.Variables × map Right thisVarMap `SM.union` varMap)
 
 evalMarkdown
