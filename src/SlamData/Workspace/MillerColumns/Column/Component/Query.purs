@@ -27,7 +27,7 @@ import DOM.Node.Types (Element)
 
 import Halogen.Component.Proxy (ProxyQ)
 
-import SlamData.Workspace.MillerColumns.Column.Component.Item (ItemMessage')
+import SlamData.Workspace.MillerColumns.Column.Component.Item as Item
 
 data Query a i o b
   = Init b
@@ -37,7 +37,7 @@ data Query a i o b
   | HandleFilterChange String b
   | UpdateFilter String b
   | HandleScroll Element b
-  | HandleMessage i (ItemMessage' a o) b
+  | HandleMessage i (Item.Message' a o) b
 
 type Query' a i o = ProxyQ (Query a i o) (Maybe a) (Message' a i o)
 

@@ -50,9 +50,9 @@ type HTML a i o = H.ParentHTML (Query a i o) (Column.Query' a i o) (Int × i) Sl
 type DSL a i o = H.ParentDSL (State a i) (Query a i o) (Column.Query' a i o) (Int × i) (Message' a i o) Slam
 
 component
-  ∷ ∀ a i f o
+  ∷ ∀ a i o
   . Ord i
-  ⇒ Column.ColumnOptions a i f o
+  ⇒ Column.ColumnOptions a i o
   → H.Component HH.HTML (Query a i o) (ColumnsData a i) (Message' a i o) Slam
 component opts@(Column.ColumnOptions colSpec) =
   H.parentComponent
