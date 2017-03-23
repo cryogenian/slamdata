@@ -26,8 +26,8 @@ import Data.Argonaut (jsonParser, decodeJson, (.?))
 import Data.Lens (set, (.~), (?~))
 
 import Halogen as H
-import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
@@ -40,9 +40,10 @@ import SlamData.FileSystem.Dialog.Mount.Component.State as MCS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
+import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component as SparkLocal
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as Api
@@ -94,6 +95,8 @@ render state@{ new } =
       HH.slot' CS.cpMarkLogic unit (MarkLogic.comp initialState) unit (HE.input_ Validate)
     MCS.SparkHDFS initialState →
       HH.slot' CS.cpSpark unit (Spark.comp initialState) unit (HE.input_ Validate)
+    MCS.SparkLocal initialState ->
+      HH.slot' CS.cpSparkLocal unit (SparkLocal.comp initialState) unit (HE.input_ Validate)
 
 fldName ∷ MCS.State → HTML
 fldName state =

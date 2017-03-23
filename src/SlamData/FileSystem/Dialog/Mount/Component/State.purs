@@ -24,6 +24,7 @@ import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
+import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 
@@ -50,6 +51,7 @@ data MountSettings
   | Couchbase Couchbase.State
   | MarkLogic MarkLogic.State
   | SparkHDFS SparkHDFS.State
+  | SparkLocal SparkLocal.State
 
 initialSettings ∷ MS.Scheme → MountSettings
 initialSettings = case _ of
@@ -58,6 +60,7 @@ initialSettings = case _ of
   MS.Couchbase → Couchbase Couchbase.initialState
   MS.MarkLogic → MarkLogic MarkLogic.initialState
   MS.SparkHDFS → SparkHDFS SparkHDFS.initialState
+  MS.SparkLocal → SparkLocal SparkLocal.initialState
 
 _new ∷ Lens' State Boolean
 _new = lens _.new (_ { new = _ })
@@ -94,6 +97,7 @@ scheme = case _ of
   Couchbase _ → MS.Couchbase
   MarkLogic _ → MS.MarkLogic
   SparkHDFS _ → MS.SparkHDFS
+  SparkLocal _ → MS.SparkLocal
 
 -- | Checks whether the state is saveable: no validation errors, and has a name
 -- | entered/type selected.
