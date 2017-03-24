@@ -30,7 +30,6 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Lens (Traversal', Lens', lens, _Just, (^.), (.~), (^?))
-import Data.Lens.At (at)
 import Data.List as List
 import Data.Set as Set
 import Data.StrMap as SM
@@ -48,10 +47,10 @@ type State = C.StateR
 
 allFields ∷ Array C.Projection
 allFields =
-  [ C.pack (at "category" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  , C.pack (at "value" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  , C.pack (at "stack" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  , C.pack (at "parallel" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  [ C._category
+  , C._value
+  , C._stack
+  , C._parallel
   ]
 
 _axisLabelAngle ∷ Lens' State Number
@@ -85,21 +84,21 @@ cursorMap st =
       ⊕ axes.datetime
 
     value =
-      C.mbDelete (st ^? C._category ∘ _projection)
+      C.mbDelete (st ^? C._dimMap ∘ C.unpack C._category ∘ _projection)
       $ axes.value
 
     stack =
-      C.mbDelete (st ^? C._category ∘ _projection)
-      $ C.mbDelete (st ^? C._value ∘ _projection)
-      $ C.ifSelected (st ^? C._category ∘ _projection)
+      C.mbDelete (st ^? C._dimMap ∘ C.unpack C._category ∘ _projection)
+      $ C.mbDelete (st ^? C._dimMap ∘ C.unpack C._value ∘ _projection)
+      $ C.ifSelected (st ^? C._dimMap ∘ C.unpack C._category ∘ _projection)
       $ axes.value
       ⊕ axes.time
 
     parallel =
-      C.mbDelete (st ^? C._category ∘ _projection)
-      $ C.mbDelete (st ^? C._value ∘ _projection)
-      $ C.mbDelete (st ^? C._stack ∘ _projection)
-      $ C.ifSelected (st ^? C._category ∘ _projection)
+      C.mbDelete (st ^? C._dimMap ∘ C.unpack C._category ∘ _projection)
+      $ C.mbDelete (st ^? C._dimMap ∘ C.unpack C._value ∘ _projection)
+      $ C.mbDelete (st ^? C._dimMap ∘ C.unpack C._stack ∘ _projection)
+      $ C.ifSelected (st ^? C._dimMap ∘ C.unpack C._category ∘ _projection)
       $ axes.category
       ⊕ axes.time
 
@@ -125,10 +124,10 @@ initialState =
 load ∷ M.AnyCardModel → State → State
 load = case _ of
   M.BuildBar (Just m) →
-    ( C._category .~ Just m.category )
-    ∘ ( C._value .~ Just m.value )
-    ∘ ( C._stack .~ m.stack )
-    ∘ ( C._parallel .~ m.parallel )
+    ( C._dimMap ∘ C.unpack C._category .~ Just m.category )
+    ∘ ( C._dimMap ∘ C.unpack C._value .~ Just m.value )
+    ∘ ( C._dimMap ∘ C.unpack C._stack .~ m.stack )
+    ∘ ( C._dimMap ∘ C.unpack C._parallel .~ m.parallel )
     ∘ ( _axisLabelAngle .~ m.axisLabelAngle )
   _ → id
 
@@ -137,9 +136,9 @@ save st =
   M.BuildBar
   $ { category: _
     , value: _
-    , stack: st ^. C._stack
-    , parallel: st ^. C._parallel
+    , stack: st ^. C._dimMap ∘ C.unpack C._stack
+    , parallel: st ^. C._dimMap ∘ C.unpack C._parallel
     , axisLabelAngle: st ^. _axisLabelAngle
     }
-  <$> (st ^. C._category)
-  <*> (st ^. C._value)
+  <$> (st ^. C._dimMap ∘ C.unpack C._category)
+  <*> (st ^. C._dimMap ∘ C.unpack C._value)

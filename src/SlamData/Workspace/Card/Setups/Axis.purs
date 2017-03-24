@@ -41,6 +41,9 @@ data AxisType
   | Date
   | DateTime
 
+derive instance eqAxisType ∷ Eq AxisType
+derive instance ordAxisType ∷ Ord AxisType
+
 compatible ∷ AxisType → Sem.Semantics → Boolean
 compatible Measure = case _ of
   Sem.Value _ → true

@@ -14,24 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Model
-  ( AnyCardModel(..)
-  , encode
-  , decode
-  , decodeCardModel
-  , cardModelOfType
-  , modelCardType
-  , singletonDraftboard
-  , singletonTabs
-  , splitDraftboard
-  , mirrorInParent
-  , childDeckIds
-  , updatePointer
-  , setupLabeledFormInput
-  , _SetupLabeledInput
-  , setupTextLikeInput
-  , _SetupTextLikeInput
-  ) where
+module SlamData.Workspace.Card.Model where
 
 import SlamData.Prelude
 
@@ -41,7 +24,7 @@ import Data.Rational ((%))
 
 import Data.Array as Array
 import Data.List as L
-import Data.Lens (Traversal', wander)
+import Data.Lens (Traversal', wander, Prism', prism')
 import Data.Path.Pathy (fileName, runFileName)
 
 import SlamData.FileSystem.Resource as R
@@ -517,3 +500,59 @@ setupTextLikeInput fit m = case fit of
   Time → SetupTime m
   Datetime → SetupDatetime m
   _ → SetupText m
+
+
+_BuildMetric ∷ Prism' AnyCardModel BuildMetric.Model
+_BuildMetric = prism' BuildMetric case _ of
+  BuildMetric a → Just a
+  _ → Nothing
+
+_BuildSankey ∷ Prism' AnyCardModel BuildSankey.Model
+_BuildSankey = prism' BuildSankey case _ of
+  BuildSankey a → Just a
+  _ → Nothing
+
+_BuildGauge ∷ Prism' AnyCardModel BuildGauge.Model
+_BuildGauge = prism' BuildGauge case _ of
+  BuildGauge a → Just a
+  _ → Nothing
+
+_BuildGraph ∷ Prism' AnyCardModel BuildGraph.Model
+_BuildGraph = prism' BuildGraph case _ of
+  BuildGraph a → Just a
+  _ → Nothing
+
+_BuildPie ∷ Prism' AnyCardModel BuildPie.Model
+_BuildPie = prism' BuildPie case _ of
+  BuildPie a → Just a
+  _ → Nothing
+
+_BuildRadar ∷ Prism' AnyCardModel BuildRadar.Model
+_BuildRadar = prism' BuildRadar case _ of
+  BuildRadar a → Just a
+  _ → Nothing
+
+_BuildBar ∷ Prism' AnyCardModel BuildBar.Model
+_BuildBar = prism' BuildBar case _ of
+  BuildBar a → Just a
+  _ → Nothing
+
+_BuildLine ∷ Prism' AnyCardModel BuildLine.Model
+_BuildLine = prism' BuildLine case _ of
+  BuildLine a → Just a
+  _ → Nothing
+
+_BuildArea ∷ Prism' AnyCardModel BuildArea.Model
+_BuildArea = prism' BuildArea case _ of
+  BuildArea a → Just a
+  _ → Nothing
+
+_BuildScatter ∷ Prism' AnyCardModel BuildScatter.Model
+_BuildScatter = prism' BuildScatter case _ of
+  BuildScatter a → Just a
+  _ → Nothing
+
+_BuildFunnel ∷ Prism' AnyCardModel BuildFunnel.Model
+_BuildFunnel = prism' BuildFunnel case _ of
+  BuildFunnel a → Just a
+  _ → Nothing

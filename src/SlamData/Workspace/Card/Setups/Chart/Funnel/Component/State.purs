@@ -32,7 +32,6 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Lens (Traversal', Lens', lens, _Just, (^.), (.~), (^?))
-import Data.Lens.At (at)
 import Data.List as List
 import Data.Set as Set
 import Data.StrMap as SM
@@ -58,9 +57,9 @@ _order = lens _.order _{ order = _ }
 
 allFields ∷ Array C.Projection
 allFields =
-  [ C.pack (at "category" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  , C.pack (at "value" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  , C.pack (at "series" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  [ C._category
+  , C._value
+  , C._series
   ]
 
 cursors ∷ State → List.List J.JCursor
@@ -93,8 +92,8 @@ cursorMap st =
       axes.value
 
     series =
-      C.mbDelete (st ^? C._category ∘ _projection)
-      $ C.ifSelected (st ^? C._category ∘ _projection)
+      C.mbDelete (st ^? C._dimMap ∘ C.unpack C._category ∘ _projection)
+      $ C.ifSelected (st ^? C._dimMap ∘ C.unpack C._category ∘ _projection)
       $ axes.value
       ⊕ axes.time
 
@@ -118,9 +117,9 @@ initialState =
 load ∷ M.AnyCardModel → State → State
 load = case _ of
   M.BuildFunnel (Just m) →
-    ( C._category .~ Just m.category )
-    ∘ ( C._value .~ Just m.value )
-    ∘ ( C._series .~ m.series )
+    ( C._dimMap ∘ C.unpack C._category .~ Just m.category )
+    ∘ ( C._dimMap ∘ C.unpack C._value .~ Just m.value )
+    ∘ ( C._dimMap ∘ C.unpack C._series .~ m.series )
     ∘ ( _align .~ m.align )
     ∘ ( _order .~ m.order )
   _ → id
@@ -130,9 +129,9 @@ save st =
   M.BuildFunnel
   $ { category: _
     , value: _
-    , series: st ^. C._series
+    , series: st ^. C._dimMap ∘ C.unpack C._series
     , align: st ^. _align
     , order: st ^. _order
     }
-  <$> (st ^. C._category)
-  <*> (st ^. C._value)
+  <$> (st ^. C._dimMap ∘ C.unpack C._category)
+  <*> (st ^. C._dimMap ∘ C.unpack C._value)

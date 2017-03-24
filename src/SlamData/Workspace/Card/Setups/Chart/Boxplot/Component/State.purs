@@ -28,8 +28,7 @@ module SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.State
 import SlamData.Prelude
 
 import Data.Argonaut as J
-import Data.Lens (Traversal', Lens', _Just, (^.), (.~), (^?))
-import Data.Lens.At (at)
+import Data.Lens (Traversal', _Just, (^.), (.~), (^?))
 import Data.List as List
 import Data.Set as Set
 import Data.StrMap as SM
@@ -43,10 +42,10 @@ type State = C.StateR ()
 
 allFields ∷ Array C.Projection
 allFields =
-  [ C.pack (at "dimension" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  , C.pack (at "value" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  , C.pack (at "series" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
-  , C.pack (at "parallel" ∷ ∀ a. Lens' (SM.StrMap a) (Maybe a))
+  [ C._dimension
+  , C._value
+  , C._series
+  , C._parallel
   ]
 
 cursors ∷ State → List.List J.JCursor
@@ -80,14 +79,14 @@ cursorMap st =
     value =
       axes.value
     series=
-      C.mbDelete (st ^? C._dimension ∘ _projection)
-      $ C.ifSelected (st ^? C._dimension ∘ _projection)
+      C.mbDelete (st ^? C._dimMap ∘ C.unpack C._dimension ∘ _projection)
+      $ C.ifSelected (st ^? C._dimMap ∘ C.unpack C._dimension ∘ _projection)
       $ axes.category
       ⊕ axes.time
     parallel =
-      C.mbDelete (st ^? C._dimension ∘ _projection)
-      $ C.mbDelete (st ^? C._series ∘ _projection)
-      $ C.ifSelected (st ^? C._dimension ∘ _projection)
+      C.mbDelete (st ^? C._dimMap ∘ C.unpack C._dimension ∘ _projection)
+      $ C.mbDelete (st ^? C._dimMap ∘ C.unpack C._series ∘ _projection)
+      $ C.ifSelected (st ^? C._dimMap ∘ C.unpack C._dimension ∘ _projection)
       $ axes.category
       ⊕ axes.time
 
@@ -109,10 +108,10 @@ initialState =
 load ∷ M.AnyCardModel → State → State
 load = case _ of
   M.BuildBoxplot (Just m) →
-    ( C._dimension .~ Just m.dimension )
-    ∘ ( C._value .~ Just m.value )
-    ∘ ( C._series .~ m.series )
-    ∘ ( C._parallel .~ m.parallel )
+    ( C._dimMap ∘ C.unpack C._dimension .~ Just m.dimension )
+    ∘ ( C._dimMap ∘ C.unpack C._value .~ Just m.value )
+    ∘ ( C._dimMap ∘ C.unpack C._series .~ m.series )
+    ∘ ( C._dimMap ∘ C.unpack C._parallel .~ m.parallel )
   _ → id
 
 save ∷ State → M.AnyCardModel
@@ -120,8 +119,8 @@ save st =
   M.BuildBoxplot
   $ { dimension: _
     , value: _
-    , series: st ^. C._series
-    , parallel: st ^. C._parallel
+    , series: st ^. C._dimMap ∘ C.unpack C._series
+    , parallel: st ^. C._dimMap ∘ C.unpack C._parallel
     }
-  <$> (st ^. C._dimension)
-  <*> (st ^. C._value)
+  <$> (st ^. C._dimMap ∘ C.unpack C._dimension)
+  <*> (st ^. C._dimMap ∘ C.unpack C._value)

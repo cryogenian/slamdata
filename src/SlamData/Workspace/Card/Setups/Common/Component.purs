@@ -3,8 +3,9 @@ module SlamData.Workspace.Card.Setups.Common.Component where
 import SlamData.Prelude
 
 import Data.Argonaut as J
-import Data.Lens ((^.))
+import Data.Lens ((^.), (.~), (^?), _Just, (%~))
 import Data.List as L
+import Data.Set as Set
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -12,7 +13,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Model as Model
+import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Common.ChildSlot as CS
@@ -24,7 +25,8 @@ import SlamData.Workspace.Card.Setups.Inputs as I
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.CSS as CSS
+import SlamData.Workspace.Card.Setups.Package as P
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 data FieldQuery a
   = Select a
@@ -36,8 +38,9 @@ data FieldQuery a
 
 data Query a
   = OnField ST.Projection (FieldQuery a)
-  | Get (State → a)
-  | Load Model.AnyCardModel  a
+  | Load (Maybe M.AnyCardModel) a
+  | Save M.AnyCardModel (Maybe M.AnyCardModel → a)
+  | SetAxes Ax.Axes a
 
 data Message = Update
 
@@ -46,13 +49,7 @@ type State = ST.StateR ()
 type HTML = H.ParentHTML Query CS.ChildQuery CS.ChildSlot Slam
 type DSL = H.ParentDSL State Query CS.ChildQuery CS.ChildSlot Message Slam
 
-type Package =
-  { allFields ∷ Array ST.Projection
-  , disabled ∷ ST.Projection → State → Boolean
-  , cursors ∷ State → L.List J.JCursor
-  , configurable ∷ ST.Projection → State → Boolean
-  , load ∷ Model.AnyCardModel → State → State
-  }
+type Package = P.Package M.AnyCardModel (Set.Set J.JCursor)
 
 initialState ∷ ∀ a. a → State
 initialState _ =
@@ -61,6 +58,26 @@ initialState _ =
   , selected: Nothing
   }
 
+projectionCursors ∷ ST.Projection → Package → State →  Set.Set J.JCursor
+projectionCursors prj pack state =
+  fromMaybe Set.empty
+    $ pack.cursorMap state.dimMap state.axes
+    ^. ST.unpack prj
+
+selectedCursors ∷ Package → State → L.List J.JCursor
+selectedCursors pack state = case state.selected of
+  Just (Left lns) → L.fromFoldable $ projectionCursors lns pack state
+  _ → L.Nil
+
+isDisabled ∷ ST.Projection → Package → State → Boolean
+isDisabled prj pack state =
+  Set.isEmpty $ projectionCursors prj pack state
+
+isConfigurable ∷ ST.Projection → Package → State → Boolean
+isConfigurable prj pack state =
+  let
+    axis = state.dimMap ^? ST.unpack prj ∘ _Just ∘ D._value ∘ D._projection
+  in maybe false (eq Ax.Measure) $ Ax.axisType <$> axis <*> pure state.axes
 
 component ∷ Package → H.Component HH.HTML Query Unit Message Slam
 component package =
@@ -73,8 +90,8 @@ component package =
 
 render ∷ Package → State → HTML
 render pack state =
-  HH.div [ HP.classes [ CSS.chartEditor ] ]
-  $ ( renderButton pack state <$> pack.allFields )
+  HH.div [ HP.classes [ HH.ClassName "sd-axes-selector" ] ]
+  $ ( foldMap (pure ∘ renderButton pack state) pack.allFields )
   ⊕ [ renderSelection pack state ]
 
 renderSelection ∷ Package → State → HTML
@@ -95,7 +112,7 @@ renderSelection pack state = case state ^. ST._selected of
         { title: ST.chooseLabel pf
         , label: DPC.labelNode DJ.showJCursorTip
         , render: DPC.renderNode DJ.showJCursorTip
-        , values: DJ.groupJCursors $ pack.cursors state
+        , values: DJ.groupJCursors $ selectedCursors pack state
         , isSelectable: DPC.isLeafPath
         }
     in
@@ -110,7 +127,7 @@ renderButton ∷ Package → State → ST.Projection → HTML
 renderButton pack state fld =
   HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
   [ I.dimensionButton
-    { configurable: pack.configurable fld state
+    { configurable: isConfigurable fld pack state
     , dimension: sequence $ ST.getSelected fld state
     , showLabel: absurd
     , showDefaultLabel: ST.showDefaultLabel fld
@@ -121,16 +138,21 @@ renderButton pack state fld =
     , onClick: HE.input_ $ OnField fld ∘ Select
     , onMouseDown: const Nothing
     , onLabelClick: const Nothing
-    , disabled: pack.disabled fld state
+    , disabled: isDisabled fld pack state
     , dismissable: isJust $ ST.getSelected fld state
     } ]
 
 eval ∷ Package → Query ~> DSL
 eval package = case _ of
-  Get k →
-    map k $ H.get
+  Save m k → do
+    st ← H.get
+    pure $ k $ package.save st.dimMap m
   Load m next → do
-    H.modify $ package.load m
+    st ← H.get
+    H.modify $ ST._dimMap %~ package.load m
+    pure next
+  SetAxes ax next → do
+    H.modify $ ST._axes .~ ax
     pure next
   OnField fld fldQuery → case fldQuery of
     Select next → do

@@ -73,13 +73,13 @@ cursorMap st =
       axes.value
 
     multiple =
-      C.ifSelected (st ^? C._value ∘ _projection)
+      C.ifSelected (st ^? C._dimMap ∘ C.unpack C._value ∘ _projection)
       $ axes.category
       ⊕ axes.time
 
     parallel =
-      C.mbDelete (st ^? C._multiple ∘ _projection)
-      $ C.ifSelected (st ^? C._value ∘ _projection)
+      C.mbDelete (st ^? C._dimMap ∘ C.unpack C._multiple ∘ _projection)
+      $ C.ifSelected (st ^? C._dimMap ∘ C.unpack C._value ∘ _projection)
       $ axes.category
       ⊕ axes.time
 
@@ -100,16 +100,16 @@ initialState =
 load ∷ M.AnyCardModel → State → State
 load = case _ of
   M.BuildGauge (Just m) →
-    ( C._value .~ Just m.value )
-    ∘ ( C._multiple .~ m.multiple )
-    ∘ ( C._parallel .~ m.parallel )
+    ( C._dimMap ∘ C.unpack C._value .~ Just m.value )
+    ∘ ( C._dimMap ∘ C.unpack C._multiple .~ m.multiple )
+    ∘ ( C._dimMap ∘ C.unpack C._parallel .~ m.parallel )
   _ → id
 
 save ∷ State → M.AnyCardModel
 save st =
   M.BuildGauge
   $ { value: _
-    , multiple: st ^. C._multiple
-    , parallel: st ^. C._parallel
+    , multiple: st ^. C._dimMap ∘ C.unpack C._multiple
+    , parallel: st ^. C._dimMap ∘ C.unpack C._parallel
     }
-  <$> (st ^. C._value)
+  <$> (st ^. C._dimMap ∘ C.unpack C._value)

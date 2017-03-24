@@ -20,7 +20,12 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((.~), (^.), (^?), (%~))
+
+import Data.Argonaut as J
+import Data.Lens (Traversal', _Just, (.~), (^?), (%~), (^.), (?~))
+import Data.List as L
+import Data.Set as Set
+import Data.StrMap as SM
 
 import Global (readFloat, isNaN)
 
@@ -37,24 +42,18 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
-import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
+import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
-import SlamData.Workspace.Card.Setups.Common.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.State as ST
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor as DJ
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.Inputs as I
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import SlamData.Workspace.Card.Setups.Common.Component as SC
+import SlamData.Workspace.Card.Setups.Common.State as C
 
-import Unsafe.Coerce (unsafeCoerce)
-
-type DSL = CC.InnerCardParentDSL ST.State  (Q.QueryR Q.MiscQuery) CS.ChildQuery CS.ChildSlot
-type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+type DSL = CC.InnerCardParentDSL ST.State Q.Query ChildQuery ChildSlot
+type HTML = CC.InnerCardParentHTML Q.Query ChildQuery ChildSlot
 
 type ChildSlot = Unit ⊹ Void
 type ChildQuery = SC.Query ⨁ Const Void
@@ -65,7 +64,79 @@ cpDims ∷ Path SC.Query Unit
 cpDims = cp1
 
 package ∷ SC.Package
-package = unsafeCoerce unit
+package =
+  { allFields: L.fromFoldable [ C._dimension, C._value, C._series ]
+  , cursorMap
+  , load
+  , save
+  }
+  where
+  cursorMap ∷ SC.State → SM.StrMap (Set.Set J.JCursor)
+  cursorMap st =
+    let
+      _projection ∷ Traversal' (Maybe D.LabeledJCursor) J.JCursor
+      _projection = _Just ∘ D._value ∘ D._projection
+
+      axes = st ^. C._axes
+
+      dimension =
+        axes.category
+        ⊕ axes.time
+        ⊕ axes.value
+        ⊕ axes.date
+        ⊕ axes.datetime
+
+      value =
+        C.mbDelete (st ^? C._dimMap ∘ C.unpack C._dimension ∘ _projection)
+        $ axes.value
+
+      series =
+        C.mbDelete (st ^? C._dimMap ∘ C.unpack C._dimension ∘ _projection)
+        $ C.mbDelete (st ^? C._dimMap ∘ C.unpack C._value ∘ _projection)
+        $ C.ifSelected (st ^? C._dimMap ∘ C.unpack C._dimension ∘ _projection)
+        $ axes.value
+        ⊕ axes.time
+        ⊕ axes.datetime
+        ⊕ axes.category
+
+    in
+     SM.empty
+       # ( C.unpack C._dimension ?~ dimension )
+       ∘ ( C.unpack C._value ?~ value )
+       ∘ ( C.unpack C._series ?~ series)
+
+  fldCursors ∷ C.Projection → SC.State → Set.Set J.JCursor
+  fldCursors fld st = fromMaybe Set.empty $ cursorMap st ^. C.unpack fld
+
+  cursors ∷ SC.State → L.List J.JCursor
+  cursors st = case st.selected of
+    Just (Left lns) → L.fromFoldable $ fldCursors lns st
+    _ → L.Nil
+
+  disabled ∷ C.Projection → SC.State → Boolean
+  disabled fld st = Set.isEmpty $ fldCursors fld st
+
+  save ∷ SC.State → M.AnyCardModel
+  save st =
+    M.BuildArea
+    $ { dimension: _
+      , value: _
+      , series: st ^. C._dimMap ∘ C.unpack C._series
+      , axisLabelAngle: 0.0
+      , isSmooth: false
+      , isStacked: false
+      }
+    <$> (st ^. C._dimMap ∘ C.unpack C._dimension)
+    <*> (st ^. C._dimMap ∘ C.unpack C._value)
+
+  load ∷ M.AnyCardModel → SC.State → SC.State
+  load = case _ of
+    M.BuildArea (Just m) →
+      ( C._dimMap ∘ C.unpack C._dimension .~ Just m.dimension )
+      ∘ ( C._dimMap ∘ C.unpack C._value .~ Just m.value )
+      ∘ ( C._dimMap ∘ C.unpack C._series .~ m.series )
+    _ → id
+
 
 areaBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 areaBuilderComponent =
@@ -80,7 +151,7 @@ render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    [ HH.slot' cpDims unit (CS.component package) unit $ HE.input Q.HandleDims
+    [ HH.slot' cpDims unit (SC.component package) unit $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderIsStacked state, renderIsSmooth state ]
     , row [ renderAxisLabelAngle state ]
@@ -137,9 +208,19 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    pure $ k $ ST.save st
+    m ← H.query' cpDims unit $ H.request SC.Save
+    let
+      model = case m of
+        Just (M.BuildArea (Just r)) →
+          M.BuildArea $ Just r { axisLabelAngle = st.axisLabelAngle
+                               , isStacked = st.isStacked
+                               , isSmooth = st.isSmooth
+                               }
+        _ → M.BuildArea Nothing
+
+    pure $ k model
   CC.Load m next → do
-    H.query' cpDims unit $ H.action SC.Load m
+    H.query' cpDims unit $ H.action $ SC.Load m
     pure next
   CC.ReceiveInput _ _ next →
     pure next
@@ -147,7 +228,7 @@ cardEval = case _ of
     pure next
   CC.ReceiveState evalState next → do
     for_ (evalState ^? ES._Axes) \axes → do
-      H.modify $ ST._axes .~ axes
+      H.query' cpDims unit $ H.action $ SC.SetAxes axes
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply
@@ -179,38 +260,3 @@ setupEval = case _ of
     case q of
       SC.Update → raiseUpdate
     pure next
-  Q.OnField fld fldQuery → case fldQuery of
-    Q.Select next → do
-      H.modify $ ST.select fld
-      pure next
-    Q.Configure next → do
-      H.modify $ ST.configure fld
-      pure next
-    Q.Dismiss next → do
-      H.modify $ ST.clear fld
-      raiseUpdate
-      pure next
-    Q.LabelChanged str next → do
-      H.modify $ ST.setLabel fld str
-      raiseUpdate
-      pure next
-    Q.HandleDPMessage m next → case m of
-      DPC.Dismiss → do
-        H.modify ST.deselect
-        pure next
-      DPC.Confirm value → do
-        H.modify
-          $ ( ST.setValue fld $ DJ.flattenJCursors value )
-          ∘ ( ST.deselect )
-        raiseUpdate
-        pure next
-    Q.HandleTransformPicker msg next → do
-      case msg of
-        AS.Dismiss →
-          H.modify ST.deselect
-        AS.Confirm mbt → do
-          H.modify
-            $ ST.deselect
-            ∘ ST.setTransform fld mbt
-          raiseUpdate
-      pure next

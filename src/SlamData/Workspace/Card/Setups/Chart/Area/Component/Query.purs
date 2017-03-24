@@ -15,9 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Setups.Chart.Area.Component.Query
-  ( Query
-  , MiscQuery(..)
-  , module Q
+  ( Query(..)
   ) where
 
 import SlamData.Workspace.Card.Setups.Common.Component as Q

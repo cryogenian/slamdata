@@ -41,6 +41,9 @@ data Category p
   = Static String
   | Projection (Maybe Transform) p
 
+topDimension ∷ LabeledJCursor
+topDimension = Dimension Nothing $ Projection Nothing JCursorTop
+
 projection ∷ ∀ a b. b → Dimension a b
 projection = Dimension Nothing <<< Projection Nothing
 
