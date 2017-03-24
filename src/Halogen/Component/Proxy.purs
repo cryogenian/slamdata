@@ -21,6 +21,7 @@ module Halogen.Component.Proxy
   , proxyQI
   , proxyQL
   , proxyQR
+  , proxyTrans
   , proxy'
   ) where
 
@@ -54,26 +55,27 @@ proxyQI
   ∷ ∀ f i o m
   . H.Component HH.HTML f i o m
   → H.Component HH.HTML (ProxyQ f i o) i o m
-proxyQI = proxy' \k q ->
-  H.query unit q >>= case _ of
-    Nothing -> HQ.halt "Proxy inner component query failed (this should be impossible)"
-    Just a -> pure (k a)
+proxyQI = proxyTrans id
 
 proxyQL
   ∷ ∀ f g i o m
   . H.Component HH.HTML (Coproduct f g) i o m
   → H.Component HH.HTML (ProxyQ f i o) i o m
-proxyQL = proxy' \k q ->
-  H.query unit (left q) >>= case _ of
-    Nothing -> HQ.halt "Proxy inner component query failed (this should be impossible)"
-    Just a -> pure (k a)
+proxyQL = proxyTrans left
 
 proxyQR
   ∷ ∀ f g i o m
   . H.Component HH.HTML (Coproduct f g) i o m
   → H.Component HH.HTML (ProxyQ g i o) i o m
-proxyQR = proxy' \k q ->
-  H.query unit (right q) >>= case _ of
+proxyQR = proxyTrans right
+
+proxyTrans
+  ∷ ∀ f g i o m
+  . (g ~> f)
+  → H.Component HH.HTML f i o m
+  → H.Component HH.HTML (ProxyQ g i o) i o m
+proxyTrans η = proxy' \k q ->
+  H.query unit (η q) >>= case _ of
     Nothing -> HQ.halt "Proxy inner component query failed (this should be impossible)"
     Just a -> pure (k a)
 
