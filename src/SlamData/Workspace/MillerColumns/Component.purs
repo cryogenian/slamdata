@@ -46,13 +46,13 @@ import SlamData.Workspace.MillerColumns.Component.State (State, ColumnsData, mod
 
 import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions(..)) as Exports
 
-type HTML a i o f = H.ParentHTML (Query a i o) (Column.Query' a i o f) (Int × i) Slam
-type DSL a i o f = H.ParentDSL (State a i) (Query a i o) (Column.Query' a i o f) (Int × i) (Message' a i o) Slam
+type HTML a i o = H.ParentHTML (Query a i o) (Column.Query' a i o) (Int × i) Slam
+type DSL a i o = H.ParentDSL (State a i) (Query a i o) (Column.Query' a i o) (Int × i) (Message' a i o) Slam
 
 component
-  ∷ ∀ a i f g o
+  ∷ ∀ a i o
   . Ord i
-  ⇒ Column.ColumnOptions a i f g o
+  ⇒ Column.ColumnOptions a i o
   → H.Component HH.HTML (Query a i o) (ColumnsData a i) (Message' a i o) Slam
 component opts@(Column.ColumnOptions colSpec) =
   H.parentComponent
@@ -63,7 +63,7 @@ component opts@(Column.ColumnOptions colSpec) =
     }
   where
 
-  render ∷ State a i → HTML a i o g
+  render ∷ State a i → HTML a i o
   render state =
     HH.div
       [ HP.class_ (HH.ClassName "sd-miller-columns")
@@ -72,7 +72,7 @@ component opts@(Column.ColumnOptions colSpec) =
       $ A.fromFoldable
       $ map (renderColumn state.cycle) (columnPaths opts state.columns)
 
-  renderColumn ∷ Int → Int × Maybe a × i → HTML a i o g
+  renderColumn ∷ Int → Int × Maybe a × i → HTML a i o
   renderColumn cycle (i × sel × colPath) =
     HH.div
       [ HP.class_ (HH.ClassName "sd-miller-column")
@@ -85,7 +85,7 @@ component opts@(Column.ColumnOptions colSpec) =
           (HE.input (HandleMessage i colPath))
       ]
 
-  eval ∷ Query a i o ~> DSL a i o g
+  eval ∷ Query a i o ~> DSL a i o
   eval = case _ of
     Populate cols next → do
       H.modify (_ { columns = cols })
