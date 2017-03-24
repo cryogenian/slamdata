@@ -121,6 +121,7 @@ setValue fld v =
       ∘ (T.unpackProjection Pr._ordinate ?~ (D.projectionWithAggregation $ Just Ag.Sum))
       ∘ (T.unpackProjection Pr._secondValue ?~ (D.projectionWithAggregation $ Just Ag.Sum))
       ∘ (T.unpackProjection Pr._donut ?~ D.projection)
+      ∘ (T.unpackProjection Pr._multiple ?~ D.projection)
 
 showValue ∷ T.Projection → Maybe J.JCursor → String
 showValue fld c = do
@@ -144,6 +145,7 @@ showValue fld c = do
       ∘ (T.unpackProjection Pr._ordinate ?~ "Select Y-Axis")
       ∘ (T.unpackProjection Pr._secondValue ?~ "Select the second measure")
       ∘ (T.unpackProjection Pr._donut ?~ "Select donut")
+      ∘ (T.unpackProjection Pr._multiple ?~ "Select multiple")
 
 chooseLabel ∷ T.Projection → String
 chooseLabel fld = fromMaybe "" $ labels ^. T.unpackProjection fld
@@ -190,6 +192,7 @@ showDefaultLabel fld c =
       ∘ (T.unpackProjection Pr._ordinate ?~ "Y-Axis label")
       ∘ (T.unpackProjection Pr._secondValue ?~ "Measure#2 label")
       ∘ (T.unpackProjection Pr._donut ?~ "Donut label")
+      ∘ (T.unpackProjection Pr._multiple ?~ "Multiple label")
 
 setTransform ∷ T.Projection → Maybe Tr.Transform → State → State
 setTransform fld t = _dimMap ∘ T.unpackProjection fld ∘ _Just ∘ D._value ∘ D._transform .~ t
