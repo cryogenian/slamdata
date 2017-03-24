@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component
-  ( candlestickBuilderComponent
+module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component where
+{-  ( candlestickBuilderComponent
   ) where
 
 import SlamData.Prelude
@@ -184,3 +184,4 @@ setupEval = case _ of
 raiseUpdate ∷ DSL Unit
 raiseUpdate =
   H.raise CC.modelUpdate
+-}

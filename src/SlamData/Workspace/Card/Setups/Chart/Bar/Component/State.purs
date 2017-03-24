@@ -14,18 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Bar.Component.State
-  ( allFields
-  , cursors
-  , disabled
-  , load
-  , save
-  , initialState
-  , _axisLabelAngle
-  , State
-  , module C
-  ) where
-
+module SlamData.Workspace.Card.Setups.Chart.Bar.Component.State where
+{-
 import SlamData.Prelude
 
 import Data.Argonaut as J
@@ -142,3 +132,4 @@ save st =
     }
   <$> (st ^. C._dimMap ∘ C.unpack C._category)
   <*> (st ^. C._dimMap ∘ C.unpack C._value)
+-}

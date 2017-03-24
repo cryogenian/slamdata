@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Component.Query
   ( Query(..)
   ) where
 
-import SlamData.Workspace.Card.Setups.Common.Component as Q
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
 
 data Query a
   = ToggleSmooth a

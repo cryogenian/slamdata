@@ -20,12 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Component
 
 import SlamData.Prelude
 
-
-import Data.Argonaut as J
-import Data.Lens (Traversal', _Just, (.~), (^?), (%~), (^.), (?~))
-import Data.List as L
-import Data.Set as Set
-import Data.StrMap as SM
+import Data.Lens (_Just, (.~), (^?), (%~))
 
 import Global (readFloat, isNaN)
 
@@ -46,97 +41,54 @@ import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.State as ST
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.Card.Setups.Chart.Area.Model as AM
 import SlamData.Workspace.Card.Setups.Dimension as D
-
-import SlamData.Workspace.Card.Setups.Common.Component as SC
-import SlamData.Workspace.Card.Setups.Common.State as C
+import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.Package.DSL as P
+import SlamData.Workspace.Card.Setups.Package.Lenses as PL
+import SlamData.Workspace.Card.Setups.Package.Projection as PP
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query ChildQuery ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query ChildQuery ChildSlot
 
 type ChildSlot = Unit ⊹ Void
-type ChildQuery = SC.Query ⨁ Const Void
+type ChildQuery = DQ.Query ⨁ Const Void
 
 type Path a b = ChildPath a ChildQuery b ChildSlot
 
-cpDims ∷ Path SC.Query Unit
+cpDims ∷ Path DQ.Query Unit
 cpDims = cp1
 
-package ∷ SC.Package
-package =
-  { allFields: L.fromFoldable [ C._dimension, C._value, C._series ]
-  , cursorMap
-  , load
-  , save
-  }
-  where
-  cursorMap ∷ SC.State → SM.StrMap (Set.Set J.JCursor)
-  cursorMap st =
-    let
-      _projection ∷ Traversal' (Maybe D.LabeledJCursor) J.JCursor
-      _projection = _Just ∘ D._value ∘ D._projection
+package ∷ P.PackageM AM.ModelR Unit
+package = do
+  dimension ←
+    P.field PL._dimension PP._dimension
+      >>= P.addSource _.time
+      >>= P.addSource _.value
+      >>= P.addSource _.date
+      >>= P.addSource _.datetime
+      >>= P.addSource _.category
 
-      axes = st ^. C._axes
+  value ←
+    P.field PL._value PP._value
+      >>= P.isFilteredBy dimension
+      >>= P.addSource _.value
 
-      dimension =
-        axes.category
-        ⊕ axes.time
-        ⊕ axes.value
-        ⊕ axes.date
-        ⊕ axes.datetime
+  series ←
+    P.field PL._series PP._series
+      >>= P.optional
+      >>= P.addSource _.time
+      >>= P.addSource _.value
+      >>= P.addSource _.date
+      >>= P.addSource _.datetime
+      >>= P.addSource _.category
+      >>= P.isFilteredBy value
+      >>= P.isFilteredBy dimension
+      >>= P.isActiveWhen dimension
 
-      value =
-        C.mbDelete (st ^? C._dimMap ∘ C.unpack C._dimension ∘ _projection)
-        $ axes.value
-
-      series =
-        C.mbDelete (st ^? C._dimMap ∘ C.unpack C._dimension ∘ _projection)
-        $ C.mbDelete (st ^? C._dimMap ∘ C.unpack C._value ∘ _projection)
-        $ C.ifSelected (st ^? C._dimMap ∘ C.unpack C._dimension ∘ _projection)
-        $ axes.value
-        ⊕ axes.time
-        ⊕ axes.datetime
-        ⊕ axes.category
-
-    in
-     SM.empty
-       # ( C.unpack C._dimension ?~ dimension )
-       ∘ ( C.unpack C._value ?~ value )
-       ∘ ( C.unpack C._series ?~ series)
-
-  fldCursors ∷ C.Projection → SC.State → Set.Set J.JCursor
-  fldCursors fld st = fromMaybe Set.empty $ cursorMap st ^. C.unpack fld
-
-  cursors ∷ SC.State → L.List J.JCursor
-  cursors st = case st.selected of
-    Just (Left lns) → L.fromFoldable $ fldCursors lns st
-    _ → L.Nil
-
-  disabled ∷ C.Projection → SC.State → Boolean
-  disabled fld st = Set.isEmpty $ fldCursors fld st
-
-  save ∷ SC.State → M.AnyCardModel
-  save st =
-    M.BuildArea
-    $ { dimension: _
-      , value: _
-      , series: st ^. C._dimMap ∘ C.unpack C._series
-      , axisLabelAngle: 0.0
-      , isSmooth: false
-      , isStacked: false
-      }
-    <$> (st ^. C._dimMap ∘ C.unpack C._dimension)
-    <*> (st ^. C._dimMap ∘ C.unpack C._value)
-
-  load ∷ M.AnyCardModel → SC.State → SC.State
-  load = case _ of
-    M.BuildArea (Just m) →
-      ( C._dimMap ∘ C.unpack C._dimension .~ Just m.dimension )
-      ∘ ( C._dimMap ∘ C.unpack C._value .~ Just m.value )
-      ∘ ( C._dimMap ∘ C.unpack C._series .~ m.series )
-    _ → id
-
+  pure unit
 
 areaBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 areaBuilderComponent =
@@ -146,16 +98,19 @@ areaBuilderComponent =
     , receiver: const Nothing
     , initialState: const ST.initialState
     }
+
 render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    [ HH.slot' cpDims unit (SC.component package) unit $ HE.input \l → right ∘ Q.HandleDims l
+    [ HH.slot' cpDims unit (DM.component (M._BuildArea ∘ _Just ) package) unit
+        $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderIsStacked state, renderIsSmooth state ]
     , row [ renderAxisLabelAngle state ]
     ]
+
 
 renderAxisLabelAngle ∷ ST.State → HTML
 renderAxisLabelAngle state =
@@ -183,7 +138,6 @@ renderIsStacked state =
         , ARIA.label "Stacked"
         , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleStacked
         ]
-
     ]
 
 renderIsSmooth ∷ ST.State → HTML
@@ -208,19 +162,21 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    m ← H.query' cpDims unit $ H.request SC.Save
     let
-      model = case m of
-        Just (M.BuildArea (Just r)) →
-          M.BuildArea $ Just r { axisLabelAngle = st.axisLabelAngle
-                               , isStacked = st.isStacked
-                               , isSmooth = st.isSmooth
-                               }
-        _ → M.BuildArea Nothing
-
-    pure $ k model
+      inp = M.BuildArea $ Just
+        { axisLabelAngle: st.axisLabelAngle
+        , isStacked: st.isStacked
+        , isSmooth: st.isSmooth
+        , dimension: D.topDimension
+        , value: D.topDimension
+        , series: Nothing
+        }
+    out ← H.query' cpDims unit $ H.request $ DQ.Save inp
+    pure $ k case join out of
+      Nothing → M.BuildArea Nothing
+      Just a → a
   CC.Load m next → do
-    H.query' cpDims unit $ H.action $ SC.Load m
+    H.query' cpDims unit $ H.action $ DQ.Load $ Just m
     pure next
   CC.ReceiveInput _ _ next →
     pure next
@@ -228,7 +184,7 @@ cardEval = case _ of
     pure next
   CC.ReceiveState evalState next → do
     for_ (evalState ^? ES._Axes) \axes → do
-      H.query' cpDims unit $ H.action $ SC.SetAxes axes
+      H.query' cpDims unit $ H.action $ DQ.SetAxes axes
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply
@@ -258,5 +214,5 @@ setupEval = case _ of
     pure next
   Q.HandleDims q next → do
     case q of
-      SC.Update → raiseUpdate
+      DQ.Update → raiseUpdate
     pure next

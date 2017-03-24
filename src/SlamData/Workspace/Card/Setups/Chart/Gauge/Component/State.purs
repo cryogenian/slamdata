@@ -15,8 +15,8 @@ limitations under the License.
 -}
 
 
-module SlamData.Workspace.Card.Setups.Chart.Gauge.Component.State
-  ( allFields
+module SlamData.Workspace.Card.Setups.Chart.Gauge.Component.State where
+{-  ( allFields
   , cursors
   , disabled
   , load
@@ -113,3 +113,4 @@ save st =
     , parallel: st ^. C._dimMap ∘ C.unpack C._parallel
     }
   <$> (st ^. C._dimMap ∘ C.unpack C._value)
+-}

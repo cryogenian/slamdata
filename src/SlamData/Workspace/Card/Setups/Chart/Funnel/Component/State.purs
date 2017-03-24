@@ -15,8 +15,8 @@ limitations under the License.
 -}
 
 
-module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.State
-  ( allFields
+module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.State where
+{-  ( allFields
   , cursors
   , disabled
   , load
@@ -135,3 +135,4 @@ save st =
     }
   <$> (st ^. C._dimMap ∘ C.unpack C._category)
   <*> (st ^. C._dimMap ∘ C.unpack C._value)
+-}

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.State
-  ( allFields
+module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.State where
+{-  ( allFields
   , cursors
   , disabled
   , load
@@ -137,3 +137,4 @@ save st =
   <*> (st ^. C._dimMap ∘ C.unpack C._close)
   <*> (st ^. C._dimMap ∘ C.unpack C._high)
   <*> (st ^. C._dimMap ∘ C.unpack C._low)
+-}
