@@ -14,19 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.Query
-  ( Query
-  , MiscQuery(..)
-  , module Q
-  ) where
+module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.Query where
 
 import SlamData.Common.Align (Align)
 import SlamData.Common.Sort (Sort)
-import SlamData.Workspace.Card.Setups.Common.Query as Q
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Inputs as BCI
 
-data MiscQuery a
+data Query a
   = SelectAlign (BCI.SelectAction Align) a
   | SelectOrder (BCI.SelectAction Sort) a
-
-type Query = Q.QueryR MiscQuery
+  | HandleDims Q.Message a

@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component where
-{-  ( candlestickBuilderComponent
+module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component
+  ( candlestickBuilderComponent
   ) where
 
 import SlamData.Prelude
 
-import Data.Lens ((.~), (^.), (^?))
+import Data.Lens ((^?), (.~), (^.), _Just)
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -31,20 +31,65 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
-import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
+import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
-import SlamData.Workspace.Card.Setups.Common.ChildSlot as CS
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Component.State as ST
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor as DJ
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.Inputs as I
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model as CM
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.Package.DSL as P
+import SlamData.Workspace.Card.Setups.Package.Lenses as PL
+import SlamData.Workspace.Card.Setups.Package.Projection as PP
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+
+package ∷ P.PackageM CM.ModelR Unit
+package = do
+  dimension ←
+    P.field PL._dimension PP._dimension
+      >>= P.addSource _.category
+      >>= P.addSource _.time
+      >>= P.addSource _.date
+      >>= P.addSource _.datetime
+
+  open ←
+    P.field PL._open PP._open
+      >>= P.addSource _.value
+
+  close ←
+    P.field PL._close PP._close
+      >>= P.addSource _.value
+      >>= P.isFilteredBy open
+
+  high ←
+    P.field PL._high PP._high
+      >>= P.addSource _.value
+      >>= P.isFilteredBy open
+      >>= P.isFilteredBy close
+
+  low ←
+    P.field PL._low PP._low
+      >>= P.addSource _.value
+      >>= P.isFilteredBy open
+      >>= P.isFilteredBy close
+      >>= P.isFilteredBy high
+
+  parallel ←
+    P.field PL._parallel PP._parallel
+      >>= P.addSource _.category
+      >>= P.addSource _.time
+      >>= P.addSource _.date
+      >>= P.addSource _.datetime
+      >>= P.isFilteredBy dimension
+      >>= P.isActiveWhen dimension
+      >>= P.optional
+
+  pure unit
 
 candlestickBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 candlestickBuilderComponent =
@@ -60,59 +105,9 @@ render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    $ ( renderButton state <$> ST.allFields )
-    ⊕ [ renderSelection state ]
-
-renderButton ∷ ST.State → ST.Projection → HTML
-renderButton state fld =
-  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
-  [ I.dimensionButton
-    { configurable: false
-    , dimension: sequence $ ST.getSelected fld state
-    , showLabel: absurd
-    , showDefaultLabel: ST.showDefaultLabel fld
-    , showValue: ST.showValue fld
-    , onLabelChange: HE.input \l → right ∘ Q.OnField fld ∘ Q.LabelChanged l
-    , onDismiss: HE.input_ $ right ∘ Q.OnField fld ∘ Q.Dismiss
-    , onConfigure: HE.input_ $ right ∘ Q.OnField fld ∘ Q.Configure
-    , onClick: HE.input_ $ right ∘ Q.OnField fld ∘ Q.Select
-    , onMouseDown: const Nothing
-    , onLabelClick: const Nothing
-    , disabled: ST.disabled fld state
-    , dismissable: isJust $ ST.getSelected fld state
-    } ]
-
-
-renderSelection ∷ ST.State → HTML
-renderSelection state = case state ^. ST._selected of
-  Nothing → HH.text ""
-  Just (Right tp) →
-    HH.slot' CS.cpTransform unit AS.component
-      { options: ST.transforms state
-      , selection: Just $ T.Aggregation Ag.Sum
-      , title: "Choose transformation"
-      , label: T.prettyPrintTransform
-      , deselectable: false
-      }
-      (HE.input \m → right ∘ Q.OnField tp ∘ Q.HandleTransformPicker m)
-  Just (Left pf) →
-    let
-      conf =
-        { title: ST.chooseLabel pf
-        , label: DPC.labelNode DJ.showJCursorTip
-        , render: DPC.renderNode DJ.showJCursorTip
-        , values: DJ.groupJCursors $ ST.cursors state
-        , isSelectable: DPC.isLeafPath
-        }
-    in
-      HH.slot'
-        CS.cpPicker
-        unit
-        (DPC.picker conf)
-        unit
-        (HE.input \m → right ∘ Q.OnField pf ∘ Q.HandleDPMessage m)
-
-
+    [ HH.slot' CS.cpDims unit (DM.component (M._BuildCandlestick ∘ _Just) package) unit
+        $ HE.input \l → right ∘ Q.HandleDims l
+    ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -122,9 +117,21 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    pure $ k $ ST.save st
+    let
+      inp = M.BuildCandlestick $ Just
+        { dimension: D.topDimension
+        , open: D.topDimension
+        , close: D.topDimension
+        , high: D.topDimension
+        , low: D.topDimension
+        , parallel: Nothing
+        }
+    out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
+    pure $ k case join out of
+      Nothing → M.BuildCandlestick Nothing
+      Just a → a
   CC.Load m next → do
-    H.modify $ ST.load m
+    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     pure next
   CC.ReceiveInput _ _ next →
     pure next
@@ -132,7 +139,7 @@ cardEval = case _ of
     pure next
   CC.ReceiveState evalState next → do
     for_ (evalState ^? ES._Axes) \axes → do
-      H.modify $ ST._axes .~ axes
+      H.query' CS.cpDims unit $ H.action $ DQ.SetAxes axes
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply
@@ -140,48 +147,13 @@ cardEval = case _ of
       then Low
       else High
 
-setupEval ∷ Q.Query ~> DSL
-setupEval = case _ of
-  Q.Misc q →
-    absurd $ unwrap q
-  Q.OnField fld fldQuery → case fldQuery of
-    Q.Select next → do
-      H.modify $ ST.select fld
-      pure next
-    Q.Configure next → do
-      H.modify $ ST.configure fld
-      pure next
-    Q.Dismiss next → do
-      H.modify $ ST.clear fld
-      raiseUpdate
-      pure next
-    Q.LabelChanged str next → do
-      H.modify $ ST.setLabel fld str
-      raiseUpdate
-      pure next
-    Q.HandleDPMessage m next → case m of
-      DPC.Dismiss → do
-        H.modify ST.deselect
-        pure next
-      DPC.Confirm value → do
-        st ← H.get
-        H.modify
-          $ ( ST.setValue fld $ DJ.flattenJCursors value )
-          ∘ ( ST.deselect )
-        raiseUpdate
-        pure next
-    Q.HandleTransformPicker msg next → do
-      case msg of
-        AS.Dismiss →
-          H.modify ST.deselect
-        AS.Confirm mbt → do
-          H.modify
-            $ ST.deselect
-            ∘ ST.setTransform fld mbt
-          raiseUpdate
-      pure next
-
 raiseUpdate ∷ DSL Unit
 raiseUpdate =
   H.raise CC.modelUpdate
--}
+
+setupEval ∷ Q.Query ~> DSL
+setupEval = case _ of
+  Q.HandleDims q next → do
+    case q of
+      DQ.Update → raiseUpdate
+    pure next

@@ -14,15 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query
-  ( Query
-  , MiscQuery(..)
-  , module Q
-  ) where
+module SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query where
 
-import SlamData.Workspace.Card.Setups.Common.Query as Q
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
 
-data MiscQuery a
+data Query a
   = SetAxisLabelAngle String a
-
-type Query = Q.QueryR MiscQuery
+  | HandleDims Q.Message a

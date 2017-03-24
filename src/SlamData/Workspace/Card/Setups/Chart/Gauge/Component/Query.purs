@@ -14,15 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Gauge.Component.Query
-  ( Query
-  , MiscQuery
-  , module Q
-  ) where
+module SlamData.Workspace.Card.Setups.Chart.Gauge.Component.Query where
 
-import SlamData.Prelude
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
 
-import SlamData.Workspace.Card.Setups.Common.Query as Q
-
-type MiscQuery = Const Void
-type Query = Q.QueryR MiscQuery
+data Query a = HandleDims Q.Message a

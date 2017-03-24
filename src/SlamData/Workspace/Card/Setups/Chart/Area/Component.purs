@@ -30,7 +30,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.Component.ChildPath (ChildPath, cp1)
+
 
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
@@ -41,6 +41,7 @@ import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.State as ST
+import SlamData.Workspace.Card.Setups.Chart.Area.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Area.Model as AM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
@@ -50,16 +51,8 @@ import SlamData.Workspace.Card.Setups.Package.Lenses as PL
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-type DSL = CC.InnerCardParentDSL ST.State Q.Query ChildQuery ChildSlot
-type HTML = CC.InnerCardParentHTML Q.Query ChildQuery ChildSlot
-
-type ChildSlot = Unit ⊹ Void
-type ChildQuery = DQ.Query ⨁ Const Void
-
-type Path a b = ChildPath a ChildQuery b ChildSlot
-
-cpDims ∷ Path DQ.Query Unit
-cpDims = cp1
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
 package ∷ P.PackageM AM.ModelR Unit
 package = do
@@ -104,7 +97,7 @@ render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    [ HH.slot' cpDims unit (DM.component (M._BuildArea ∘ _Just ) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component (M._BuildArea ∘ _Just ) package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderIsStacked state, renderIsSmooth state ]
@@ -171,12 +164,12 @@ cardEval = case _ of
         , value: D.topDimension
         , series: Nothing
         }
-    out ← H.query' cpDims unit $ H.request $ DQ.Save inp
+    out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
     pure $ k case join out of
       Nothing → M.BuildArea Nothing
       Just a → a
   CC.Load m next → do
-    H.query' cpDims unit $ H.action $ DQ.Load $ Just m
+    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     pure next
   CC.ReceiveInput _ _ next →
     pure next
@@ -184,7 +177,7 @@ cardEval = case _ of
     pure next
   CC.ReceiveState evalState next → do
     for_ (evalState ^? ES._Axes) \axes → do
-      H.query' cpDims unit $ H.action $ DQ.SetAxes axes
+      H.query' CS.cpDims unit $ H.action $ DQ.SetAxes axes
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply

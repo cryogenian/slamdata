@@ -556,3 +556,8 @@ _BuildFunnel ∷ Prism' AnyCardModel BuildFunnel.Model
 _BuildFunnel = prism' BuildFunnel case _ of
   BuildFunnel a → Just a
   _ → Nothing
+
+_BuildCandlestick ∷ Prism' AnyCardModel BuildCandlestick.Model
+_BuildCandlestick = prism' BuildCandlestick case _ of
+  BuildCandlestick a → Just a
+  _ → Nothing
