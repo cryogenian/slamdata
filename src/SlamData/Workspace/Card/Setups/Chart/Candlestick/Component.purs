@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Candlestick.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (.~), (^.), _Just)
+import Data.Lens ((^?), _Just)
 
 import Halogen as H
 import Halogen.HTML as HH

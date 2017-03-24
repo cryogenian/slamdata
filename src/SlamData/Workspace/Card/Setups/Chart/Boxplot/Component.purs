@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Boxplot.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (.~), (^.), _Just)
+import Data.Lens ((^?), _Just)
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -96,7 +96,7 @@ render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    [ HH.slot' CS.cpDims unit (DM.component (M._BuildBar ∘ _Just) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component (M._BuildBoxplot ∘ _Just) package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     ]
 

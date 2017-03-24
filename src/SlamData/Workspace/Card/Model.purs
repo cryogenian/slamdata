@@ -561,3 +561,8 @@ _BuildCandlestick ∷ Prism' AnyCardModel BuildCandlestick.Model
 _BuildCandlestick = prism' BuildCandlestick case _ of
   BuildCandlestick a → Just a
   _ → Nothing
+
+_BuildBoxplot ∷ Prism' AnyCardModel BuildBoxplot.Model
+_BuildBoxplot = prism' BuildBoxplot case _ of
+  BuildBoxplot a → Just a
+  _ → Nothing

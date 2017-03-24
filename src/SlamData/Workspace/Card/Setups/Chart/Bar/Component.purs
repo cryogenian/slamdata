@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^.), (^?), (.~), _Just)
+import Data.Lens ((^?), (.~), _Just)
 
 import Global (readFloat, isNaN)
 

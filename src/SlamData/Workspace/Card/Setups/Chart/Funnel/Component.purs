@@ -20,7 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Funnel.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (.~), (^.), _Just)
+import Data.Lens ((^?), (.~), _Just)
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -69,7 +69,7 @@ package = do
 
   series ←
     P.field PL._series PP._series
-      >>= P.addSource _.series
+      >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.addSource _.date
       >>= P.addSource _.datetime
@@ -97,7 +97,6 @@ render state =
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderOrder state, renderAlign state ]
-    , renderSelection state
     ]
 
 renderOrder ∷ ST.State → HTML

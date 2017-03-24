@@ -89,10 +89,10 @@ addSource
 addSource prj fld = liftF $ T.Source fld (T.packAxesProjection prj) id
 
 isFilteredBy ∷ ∀ m. T.Field m → T.Field m → T.PackageM m (T.Field m)
-isFilteredBy source filter = liftF $ T.Depends { filter, source } id
+isFilteredBy filter source = liftF $ T.Depends { filter, source } id
 
 isActiveWhen ∷ ∀ m. T.Field m → T.Field m → T.PackageM m (T.Field m)
-isActiveWhen source guard = liftF $ T.ActiveGuard { source, guard } id
+isActiveWhen guard source = liftF $ T.ActiveGuard { source, guard } id
 
 modifyField ∷ ∀ m. (T.Field m → T.Field m) → T.Field m → T.PackageM m (T.Field m)
 modifyField fn f = liftF $ T.ModifyField fn f id
