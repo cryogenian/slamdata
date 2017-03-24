@@ -66,12 +66,14 @@ axesComposer =
   where
   filter ∷ T.Projection → T.DimensionMap → Set.Set J.JCursor → Set.Set J.JCursor
   filter prj dimMap s =
-    maybe s (flip Set.delete s) $ dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
+    maybe s (flip Set.delete s)
+      $ dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
 
   guard ∷ T.Projection → T.DimensionMap → Set.Set J.JCursor → Set.Set J.JCursor
-  guard prj dimMap s = case dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection of
-    Nothing → Set.empty
-    _ → s
+  guard prj dimMap s =
+    case dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection of
+      Nothing → Set.empty
+      _ → s
 
 projectionCursors ∷ T.Projection → Package → State → Set.Set J.JCursor
 projectionCursors prj pack state =

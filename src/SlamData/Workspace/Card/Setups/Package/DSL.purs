@@ -16,7 +16,7 @@ import Control.Monad.State (State, modify, execState, gets)
 
 import Data.Lens (Lens, Prism', view, withPrism, _Just, (%~), (?~), (^.), (.~), (^?))
 import Data.List as L
-import Data.Monoid.Endo (Endo(..))
+--import Data.Monoid.Endo (Endo(..))
 import Data.StrMap as SM
 
 import SlamData.Workspace.Card.Setups.Package.Types as T
@@ -126,7 +126,8 @@ interpret axc pack =
     let
       foldfn acc f =
         let
-          ss = foldMap (\p → T.unpackAxesProjection p axes) $ f ^. T._axesPrjs
+          o = spy axes
+          ss = traceAny "ss" \_ → spy $ foldMap (\p → spy $ T.unpackAxesProjection p axes) $ f ^. T._axesPrjs
           filtered = foldl (\sm prj → axc.filter prj dimMap sm) ss $ L.reverse $ f ^. T._filters
           guarded = foldl (\sm prj → axc.guard prj dimMap sm) filtered $ L.reverse $ f ^. T._guards
         in acc # T.unpackProjection (f ^. T._projection) ?~ guarded
@@ -137,11 +138,13 @@ interpret axc pack =
   load Nothing state = state
   load (Just m) state =
     let
-      foldFn fld =
-        Endo $ T.unpackProjection (fld ^. T._projection) .~ (m ^. T.unpackAnyLens (fld ^. T._lens))
-      modifier = unwrap $ foldMap foldFn fields
+      -- Unsafe, using _mandatory to determine if it's `Maybe` or not
+      foldFn acc fld = acc
+        # if fld ^. T._mandatory
+          then T.unpackProjection (fld ^. T._projection) ?~ (m ^. T.unpackAnyLens (fld ^. T._lens))
+          else T.unpackProjection (fld ^. T._projection) .~ (m ^. T.unpackAnyLens (fld ^. T._lens))
     in
-     modifier state
+      foldl foldFn state fields
 
   save ∷ T.DimensionMap → m → Maybe m
   save dimMap m =

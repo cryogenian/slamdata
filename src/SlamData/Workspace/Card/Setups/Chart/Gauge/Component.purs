@@ -118,6 +118,7 @@ cardEval = case _ of
     pure next
   CC.ReceiveState evalState next → do
     for_ (evalState ^? ES._Axes) \axes → do
+      traceAnyA axes
       H.query' CS.cpDims unit $ H.action $ DQ.SetAxes axes
     pure next
   CC.ReceiveDimensions dims reply → do
