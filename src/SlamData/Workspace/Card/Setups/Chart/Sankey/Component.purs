@@ -20,41 +20,55 @@ module SlamData.Workspace.Card.Setups.Chart.Sankey.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (.~))
+import Data.Lens ((^?), _Just)
 
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (_value)
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State as ES
+import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
-import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.Sankey.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Sankey.Component.Query as Q
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Model as M
-import SlamData.Workspace.Card.Eval.State (_Axes)
-
-import Utils.DOM as DOM
+import SlamData.Workspace.Card.Setups.Chart.Sankey.Component.State as ST
+import SlamData.Workspace.Card.Setups.Chart.Sankey.Model as SM
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.Package.DSL as P
+import SlamData.Workspace.Card.Setups.Package.Lenses as PL
+import SlamData.Workspace.Card.Setups.Package.Projection as PP
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
-
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+
+package ∷ P.PackageM SM.ModelR Unit
+package = do
+  source ←
+    P.field PL._source PP._source
+      >>= P.addSource _.category
+
+  target ←
+    P.field PL._target PP._target
+      >>= P.addSource _.category
+      >>= P.isFilteredBy source
+
+  value ←
+    P.field PL._value PP._value
+      >>= P.addSource _.value
+  pure unit
 
 sankeyBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 sankeyBuilderComponent =
   CC.makeCardComponent (CT.ChartOptions CHT.Sankey) $ H.parentComponent
     { render
-    , eval: cardEval ⨁ chartEval
+    , eval: cardEval ⨁ setupEval
     , initialState: const ST.initialState
     , receiver: const Nothing
     }
@@ -63,63 +77,10 @@ render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ] ]
-    [ renderSource state
-    , renderTarget state
-    , renderValue state
-    , renderPicker state
+    [ HH.slot' CS.cpDims unit (DM.component (M._BuildSankey ∘ _Just) package) unit
+        $ HE.input \l → right ∘ Q.HandleDims l
     ]
 
-selecting ∷ ∀ f a. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
-selecting f q a = right (Q.Select (f q) a)
-
-renderPicker ∷ ST.State → HTML
-renderPicker state = case state.picker of
-  Nothing → HH.text ""
-  Just { options, select } →
-    let
-      conf =
-        BCI.dimensionPicker options
-          case select of
-            Q.Value _  → "Choose weight"
-            Q.Source _ → "Choose source"
-            Q.Target _ → "Choose target"
-            _ → ""
-    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
-
-renderSource ∷ ST.State → HTML
-renderSource state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Link source") (selecting Q.Source))
-        state.source
-    ]
-
-renderTarget ∷ ST.State → HTML
-renderTarget state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Link target") (selecting Q.Target))
-        state.target
-    ]
-
-renderValue ∷ ST.State → HTML
-renderValue state =
-  HH.form
-    [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerWithSelect
-        (BCI.secondary (Just "Weight") (selecting Q.Value))
-        state.value
-        (BCI.aggregation (Just "Weight Aggregation") (selecting Q.ValueAgg))
-        state.valueAgg
-    ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -127,67 +88,42 @@ cardEval = case _ of
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k →
-    H.gets $ k ∘ Card.BuildSankey ∘ M.behaviour.save
-  CC.Load (Card.BuildSankey model) next → do
-    H.modify $ M.behaviour.load model
-    pure next
-  CC.Load card next →
+  CC.Save k → do
+    st ← H.get
+    let
+      inp = M.BuildSankey $ Just
+        { source: D.topDimension
+        , target: D.topDimension
+        , value: D.topDimension
+        }
+    out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
+    pure $ k case join out of
+      Nothing → M.BuildSankey Nothing
+      Just a → a
+  CC.Load m next → do
+    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     pure next
   CC.ReceiveInput _ _ next →
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
-    for_ (evalState ^? _Axes) \axes → do
-      H.modify _{axes = axes}
-      H.modify M.behaviour.synchronize
+    for_ (evalState ^? ES._Axes) \axes → do
+      H.query' CS.cpDims unit $ H.action $ DQ.SetAxes axes
     pure next
-  CC.ReceiveDimensions dims reply →
+  CC.ReceiveDimensions dims reply → do
     pure $ reply
       if dims.width < 576.0 ∨ dims.height < 416.0
       then Low
       else High
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = do
-  H.modify M.behaviour.synchronize
+raiseUpdate =
   H.raise CC.modelUpdate
 
-chartEval ∷ Q.Query ~> DSL
-chartEval = case _ of
-  Q.PreventDefault e next → do
-    H.liftEff $ DOM.preventDefault e
+setupEval ∷ Q.Query ~> DSL
+setupEval = case _ of
+  Q.HandleDims q next → do
+    case q of
+      DQ.Update _ → raiseUpdate
     pure next
-  Q.Select sel next → do
-    case sel of
-      Q.Value a    → updatePicker ST._value Q.Value a
-      Q.ValueAgg a → updateSelect ST._valueAgg a
-      Q.Source a   → updatePicker ST._source Q.Source a
-      Q.Target a   → updatePicker ST._target Q.Target a
-    pure next
-  Q.HandleDPMessage msg next → case msg of
-    DPC.Dismiss → do
-      H.modify _ { picker = Nothing }
-      pure next
-    DPC.Confirm value → do
-      st ← H.get
-      let
-        value' = flattenJCursors value
-      for_ st.picker \{ select } → case select of
-        Q.Value _  → H.modify (ST._value ∘ _value ?~ value')
-        Q.Source _ → H.modify (ST._source ∘ _value ?~ value')
-        Q.Target _ → H.modify (ST._target ∘ _value ?~ value')
-        _ → pure unit
-      H.modify _ { picker = Nothing }
-      raiseUpdate
-      pure next
-
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-  updateSelect l = case _ of
-    BCI.Open _    → pure unit
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate

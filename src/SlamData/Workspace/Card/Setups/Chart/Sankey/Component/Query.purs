@@ -16,21 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Sankey.Component.Query where
 
-import Data.Argonaut (JCursor)
-
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
-import Utils.DOM as DOM
-
-data Selection f
-  = Source (f JCursor)
-  | Target (f JCursor)
-  | Value (f JCursor)
-  | ValueAgg (f Aggregation)
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
 
 data Query a
-  = Select (Selection SelectAction) a
-  | HandleDPMessage (Message JCursorNode) a
-  | PreventDefault DOM.Event a
+  = HandleDims Q.Message a

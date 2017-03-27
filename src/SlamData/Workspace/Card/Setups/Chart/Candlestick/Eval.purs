@@ -158,17 +158,17 @@ buildCandlestickData r records = series
   aggregateHLOC ∷ HLOC (Array Number) → HLOC Number
   aggregateHLOC rr =
     { high:
-        Ag.runAggregation
-          (fromMaybe Ag.Sum $ r.high ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) rr.high
+        flip Ag.runAggregation rr.high
+        $ fromMaybe Ag.Sum $ r.high ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
     , low:
-        Ag.runAggregation
-          (fromMaybe Ag.Sum $ r.low ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) rr.low
+        flip Ag.runAggregation rr.low
+        $ fromMaybe Ag.Sum $ r.low ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
     , open:
-        Ag.runAggregation
-          (fromMaybe Ag.Sum $ r.open ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) rr.open
+        flip Ag.runAggregation rr.open
+        $ fromMaybe Ag.Sum $ r.open ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
     , close:
-        Ag.runAggregation
-          (fromMaybe Ag.Sum $ r.close ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) rr.close
+        flip Ag.runAggregation rr.close
+        $ fromMaybe Ag.Sum $ r.close ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
     }
 
   series ∷ CandlestickData
