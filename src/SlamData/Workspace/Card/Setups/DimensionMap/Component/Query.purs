@@ -24,4 +24,4 @@ data Query a
   | Save M.AnyCardModel (Maybe M.AnyCardModel → a)
   | SetAxes Ax.Axes a
 
-data Message = Update
+data Message = Update (Maybe PT.Projection)

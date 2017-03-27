@@ -115,11 +115,11 @@ eval package = case _ of
       pure next
     Q.Dismiss next → do
       H.modify $ ST.clear fld
-      H.raise Q.Update
+      H.raise $ Q.Update Nothing
       pure next
     Q.LabelChanged str next → do
       H.modify $ ST.setLabel fld str
-      H.raise Q.Update
+      H.raise $ Q.Update Nothing
       pure next
     Q.HandleDPMessage m next → case m of
       DPC.Dismiss → do
@@ -129,7 +129,7 @@ eval package = case _ of
         H.modify
           $ ( ST.setValue fld $ DJ.flattenJCursors value )
           ∘ ( ST.deselect )
-        H.raise Q.Update
+        H.raise $ Q.Update $ Just fld
         pure next
     Q.HandleTransformPicker msg next → do
       case msg of
@@ -139,5 +139,5 @@ eval package = case _ of
           H.modify
             $ ST.deselect
             ∘ ST.setTransform fld mbt
-          H.raise Q.Update
+          H.raise $ Q.Update $ Just fld
       pure next

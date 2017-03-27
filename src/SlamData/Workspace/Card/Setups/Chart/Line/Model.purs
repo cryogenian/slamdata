@@ -18,53 +18,41 @@ module SlamData.Workspace.Card.Setups.Chart.Line.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens ((^.))
+import Data.Argonaut as J
+import Data.Argonaut ((~>), (:=), (.?))
+import Data.Functor.Compose (Compose(..))
+import Data.Newtype (un)
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, nonMaybeAggregationSelect)
-import SlamData.Workspace.Card.Setups.Behaviour as SB
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Form.Select as S
-import SlamData.Form.Select ((⊝))
-
-
-type LineR =
-  { dimension ∷ JCursor
-  , value ∷ JCursor
-  , valueAggregation ∷ Ag.Aggregation
-  , secondValue ∷ Maybe JCursor
-  , secondValueAggregation ∷ Maybe Ag.Aggregation
-  , series ∷ Maybe JCursor
-  , size ∷ Maybe JCursor
-  , sizeAggregation ∷ Maybe Ag.Aggregation
+type ModelR =
+  { dimension ∷ D.LabeledJCursor
+  , value ∷ D.LabeledJCursor
+  , secondValue ∷ Maybe D.LabeledJCursor
+  , series ∷ Maybe D.LabeledJCursor
+  , size ∷ Maybe D.LabeledJCursor
   , maxSize ∷ Number
   , minSize ∷ Number
   , axisLabelAngle ∷ Number
   , optionalMarkers ∷ Boolean
   }
 
-type Model = Maybe LineR
+type Model = Maybe ModelR
 
 initialModel ∷ Model
 initialModel = Nothing
 
-
-eqLineR ∷ LineR → LineR → Boolean
-eqLineR r1 r2 =
+eqR ∷ ModelR → ModelR → Boolean
+eqR r1 r2 =
   r1.dimension ≡ r2.dimension
   ∧ r1.value ≡ r2.value
-  ∧ r1.valueAggregation ≡ r2.valueAggregation
   ∧ r1.secondValue ≡ r2.secondValue
-  ∧ r1.secondValueAggregation ≡ r2.secondValueAggregation
   ∧ r1.series ≡ r2.series
   ∧ r1.size ≡ r2.size
-  ∧ r1.sizeAggregation ≡ r2.sizeAggregation
   ∧ r1.maxSize ≡ r2.maxSize
   ∧ r1.minSize ≡ r2.minSize
   ∧ r1.axisLabelAngle ≡ r2.axisLabelAngle
@@ -72,7 +60,7 @@ eqLineR r1 r2 =
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqLineR r1 r2
+eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -81,85 +69,106 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    dimension ← map runArbJCursor arbitrary
-    value ← map runArbJCursor arbitrary
-    valueAggregation ← arbitrary
-    secondValue ← map (map runArbJCursor) arbitrary
-    secondValueAggregation ← arbitrary
-    series ← map (map runArbJCursor) arbitrary
-    size ← map (map runArbJCursor) arbitrary
-    sizeAggregation ← arbitrary
+    dimension ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    value ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    secondValue ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    series ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    size ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     maxSize ← arbitrary
     minSize ← arbitrary
     axisLabelAngle ← arbitrary
     optionalMarkers ← arbitrary
     pure { dimension
          , value
-         , valueAggregation
          , secondValue
-         , secondValueAggregation
          , series
          , size
-         , sizeAggregation
          , maxSize
          , minSize
          , axisLabelAngle
          , optionalMarkers
          }
 
-encode ∷ Model → Json
-encode Nothing = jsonNull
+encode ∷ Model → J.Json
+encode Nothing = J.jsonNull
 encode (Just r) =
   "configType" := "line"
   ~> "dimension" := r.dimension
   ~> "value" := r.value
-  ~> "valueAggregation" := r.valueAggregation
   ~> "secondValue" := r.secondValue
-  ~> "secondValueAggregation" := r.secondValueAggregation
   ~> "series" := r.series
   ~> "size" := r.size
-  ~> "sizeAggregation" := r.sizeAggregation
   ~> "maxSize" := r.maxSize
   ~> "minSize" := r.minSize
   ~> "axisLabelAngle" := r.axisLabelAngle
   ~> "optionalMarkers" := r.optionalMarkers
-  ~> jsonEmptyObject
+  ~> J.jsonEmptyObject
 
-decode ∷ Json → String ⊹ Model
+decode ∷ J.Json → String ⊹ Model
 decode js
-  | isNull js = pure Nothing
+  | J.isNull js = pure Nothing
   | otherwise = map Just do
-    obj ← decodeJson js
+    obj ← J.decodeJson js
     configType ← obj .? "configType"
     unless (configType ≡ "line")
       $ throwError "This config is not line"
+    decodeR obj <|> decodeLegacyR obj
+  where
+  decodeR ∷ J.JObject → String ⊹ ModelR
+  decodeR obj = do
     dimension ← obj .? "dimension"
     value ← obj .? "value"
-    valueAggregation ← obj .? "valueAggregation"
     secondValue ← obj .? "secondValue"
-    secondValueAggregation ← obj .? "secondValueAggregation"
     series ← obj .? "series"
     size ← obj .? "size"
-    sizeAggregation ← obj .? "sizeAggregation"
     maxSize ← obj .? "maxSize"
     minSize ← obj .? "minSize"
     axisLabelAngle ← obj .? "axisLabelAngle"
-    optionalMarkers ←
-      (obj .? "optionalMarkers") <|> (pure false)
+    optionalMarkers ← obj .? "optionalMarkers"
     pure { dimension
          , value
-         , valueAggregation
          , secondValue
-         , secondValueAggregation
          , series
          , size
-         , sizeAggregation
          , maxSize
          , minSize
          , axisLabelAngle
          , optionalMarkers
          }
 
+  decodeLegacyR ∷ J.JObject → String ⊹ ModelR
+  decodeLegacyR obj = do
+    dimension ← map D.defaultJCursorDimension $ obj .? "dimension"
+    value ←
+      D.pairToDimension
+      <$> (obj .? "value")
+      <*> (obj .? "valueAggregation")
+    secondValue ←
+      unwrap
+      $ D.pairToDimension
+      <$> (Compose $ obj .? "secondValue")
+      <*> (Compose $ obj .? "secondValueAggregation")
+    series ← map D.defaultJCursorDimension <$> obj .? "series"
+    size ←
+      unwrap
+      $ D.pairToDimension
+      <$> (Compose $ obj .? "size")
+      <*> (Compose $ obj .? "sizeAggregation")
+    minSize ← obj .? "minSize"
+    maxSize ← obj .? "maxSize"
+    axisLabelAngle ← obj .? "axisLabelAngle"
+    optionalMarkers ← (obj .? "optionalMarkers") <|> pure false
+    pure { dimension
+         , value
+         , secondValue
+         , series
+         , size
+         , minSize
+         , maxSize
+         , axisLabelAngle
+         , optionalMarkers
+         }
+{-
 
 type ReducedState r =
   { axes ∷ Ax.Axes
@@ -299,3 +308,4 @@ behaviour =
     <$> (st.dimension ^. S._value)
     <*> (st.value ^. S._value)
     <*> (st.valueAgg ^. S._value)
+-}

@@ -210,5 +210,5 @@ setupEval = case _ of
     pure next
   Q.HandleDims q next → do
     case q of
-      DQ.Update → raiseUpdate
+      DQ.Update _ → raiseUpdate
     pure next

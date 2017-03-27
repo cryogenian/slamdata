@@ -34,7 +34,7 @@ import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as Boxplot
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (parseColorScheme)
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Model as Funnel
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model as Heatmap
-import SlamData.Workspace.Card.Setups.Chart.Line.Model (LineR)
+import SlamData.Workspace.Card.Setups.Chart.Line.Model as Line
 import SlamData.Workspace.Card.Setups.Chart.Pie.Model (PieR)
 import SlamData.Workspace.Card.Setups.Chart.Radar.Model (RadarR)
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (ScatterR)
@@ -99,7 +99,7 @@ decode
     , boxplot ∷ Maybe Boxplot.ModelR → a
     , funnel ∷ Maybe Funnel.ModelR → a
     , heatmap ∷ Maybe Heatmap.ModelR → a
-    , line ∷ Maybe LineR → a
+    , line ∷ Maybe Line.ModelR → a
     , pie ∷ Maybe PieR → a
     , radar ∷ Maybe RadarR → a
     , scatter ∷ Maybe ScatterR → a
@@ -304,22 +304,26 @@ decode cturs js = do
   decodeLine cc bo = pure $ cturs.line
     let
       dimension =
-        cc.dimensions A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.dimensions A.!! 0 >>= view S._value
       series =
-        cc.series A.!! 0 >>= view S._value
-      value =
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
+      val =
         cc.measures A.!! 0 >>= view S._value
-      valueAggregation =
-        fromMaybe Ag.Sum $ join $ cc.aggregations A.!! 0 >>= view S._value
-      secondValue =
+      valAgg =
+        join $ cc.aggregations A.!! 0 >>= view S._value
+      value =
+        D.pairToDimension <$> val <*> valAgg
+      secondVal =
         cc.measures A.!! 1 >>= view S._value
-      secondValueAggregation =
-        fromMaybe (Just Ag.Sum) $ cc.aggregations A.!! 1 >>= view S._value
+      secondValAgg =
+        join $ cc.aggregations A.!! 1 >>= view S._value
+      secondValue =
+        D.pairToDimension <$> secondVal <*> secondValAgg
 
       size =
         Nothing
-      sizeAggregation =
-        Just Ag.Sum
       minSize =
         2.0
       maxSize =
@@ -332,11 +336,8 @@ decode cturs js = do
       lineR =
         { dimension: _
         , value: _
-        , valueAggregation
         , secondValue
-        , secondValueAggregation
         , size
-        , sizeAggregation
         , minSize
         , maxSize
         , axisLabelAngle
