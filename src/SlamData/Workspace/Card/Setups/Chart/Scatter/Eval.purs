@@ -29,6 +29,7 @@ import Control.Monad.Throw (class MonadThrow)
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
+import Data.Lens ((^?), _Just)
 import Data.Map as M
 import Data.Set as Set
 
@@ -41,17 +42,18 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (Model, ScatterR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Scatter))
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getTransparentColor)
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getTransparentColor)
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import Utils.Foldable (enumeratedFor_)
 
@@ -64,8 +66,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Scatter (const buildScatter) m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Scatter (const buildScatter) m \axes → m
 
 type ScatterSeries =
   { name ∷ Maybe String
@@ -84,7 +85,7 @@ type OnOneGrid =
 
 type ScatterData = Array ScatterSeries
 
-buildScatterData ∷ ScatterR → JArray → ScatterData
+buildScatterData ∷ ModelR → JArray → ScatterData
 buildScatterData r records = series
   where
   -- | maybe parallel >> maybe series >> array xs × array ys × array rs
@@ -102,17 +103,17 @@ buildScatterData r records = series
       getMaybeStringFromJson = getMaybeString js
 
       mbSeries =
-        getMaybeStringFromJson =<< r.series
+        getMaybeStringFromJson =<< r.series ^? _Just ∘ D._value ∘ D._projection
 
       mbParallel =
-        getMaybeStringFromJson =<< r.parallel
+        getMaybeStringFromJson =<< r.parallel ^? _Just ∘ D._value ∘ D._projection
 
       xs =
-        getValuesFromJson $ pure r.abscissa
+        getValuesFromJson $ r.abscissa ^? D._value ∘ D._projection
       ys =
-        getValuesFromJson $ pure r.ordinate
+        getValuesFromJson $ r.ordinate ^? D._value ∘ D._projection
       rs =
-        getValuesFromJson r.size
+        getValuesFromJson $ r.size ^? _Just ∘ D._value ∘ D._projection
 
       alterParallelFn
         ∷ Maybe (Maybe String >> (Array Number × Array Number × Array Number))
@@ -173,7 +174,7 @@ buildScatterData r records = series
           max (A.length xs) $ max (A.length ys) (A.length rs)
 
         abscissas =
-          case r.abscissaAggregation of
+          case r.abscissa ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation of
             Nothing → xs
             Just ag →
               let
@@ -181,7 +182,7 @@ buildScatterData r records = series
               in
                 map (const v) $ A.range 0 $ len - 1
         ordinates =
-          case r.ordinateAggregation of
+          case r.ordinate ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation of
             Nothing → ys
             Just ag →
               let
@@ -190,7 +191,7 @@ buildScatterData r records = series
                 map (const v) $ A.range 0 $ len - 1
 
         sizes =
-          case join $ r.sizeAggregation of
+          case r.size ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation of
             Just ag →
               let
                 v = Ag.runAggregation ag rs
@@ -228,7 +229,7 @@ buildScatterData r records = series
       map (\x → x{r = relativeSize x.r}) items
 
 
-buildScatter ∷ ScatterR → JArray → DSL OptionI
+buildScatter ∷ ModelR → JArray → DSL OptionI
 buildScatter r records = do
   E.tooltip do
     E.triggerAxis

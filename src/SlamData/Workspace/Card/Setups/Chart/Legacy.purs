@@ -37,7 +37,7 @@ import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model as Heatmap
 import SlamData.Workspace.Card.Setups.Chart.Line.Model as Line
 import SlamData.Workspace.Card.Setups.Chart.Pie.Model (PieR)
 import SlamData.Workspace.Card.Setups.Chart.Radar.Model (RadarR)
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (ScatterR)
+import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as Scatter
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
@@ -102,7 +102,7 @@ decode
     , line ∷ Maybe Line.ModelR → a
     , pie ∷ Maybe PieR → a
     , radar ∷ Maybe RadarR → a
-    , scatter ∷ Maybe ScatterR → a
+    , scatter ∷ Maybe Scatter.ModelR → a
     }
   → J.Json
   → String ⊹ a
@@ -407,20 +407,28 @@ decode cturs js = do
   decodeScatter ∷ ChartConfiguration → BuildOptions → String ⊹ a
   decodeScatter cc bo = pure $ cturs.scatter
     let
-      abscissa =
+      abs =
         cc.measures A.!! 0 >>= view S._value
-      ordinate =
+      ord =
         cc.measures A.!! 1 >>= view S._value
-      size =
+      siz =
         cc.measures A.!! 2 >>= view S._value
-      abscissaAggregation =
+      absAgg =
         fromMaybe Nothing $ cc.aggregations A.!! 0 >>= view S._value
-      ordinateAggregation =
+      ordAgg =
         fromMaybe Nothing $ cc.aggregations A.!! 1 >>= view S._value
-      sizeAggregation =
+      sizeAgg =
         cc.aggregations A.!! 2 >>= view S._value
+      abscissa =
+        flip D.pairWithMaybeAggregation absAgg <$> abs
+      ordinate =
+        flip D.pairWithMaybeAggregation ordAgg <$> ord
+      size =
+        D.pairWithMaybeAggregation <$> siz <*> sizeAgg
+
       series =
-        cc.series A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
       minSize =
         bo.bubbleMinSize
       maxSize =
@@ -429,9 +437,6 @@ decode cturs js = do
         { abscissa: _
         , ordinate: _
         , size
-        , abscissaAggregation
-        , ordinateAggregation
-        , sizeAggregation
         , parallel: Nothing
         , series
         , minSize

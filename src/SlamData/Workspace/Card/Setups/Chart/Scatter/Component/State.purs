@@ -14,66 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Scatter.Component.State
-  ( initialState
-  , State
-  , _abscissa
-  , _abscissaAgg
-  , _ordinate
-  , _ordinateAgg
-  , _size
-  , _sizeAgg
-  , _series
-  , _parallel
-  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
-  ) where
+module SlamData.Workspace.Card.Setups.Chart.Scatter.Component.State where
 
-import Data.Argonaut (JCursor)
-import Data.Lens (Lens', lens)
-
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Component.Query (Selection)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as M
-
-type State = M.ReducedState (DS.CommonState JCursor Selection ())
+type State =
+  { minSize ∷ Number
+  , maxSize ∷ Number
+  }
 
 initialState ∷ State
 initialState =
-  { axes: M.initialState.axes
-  , minSize: M.initialState.minSize
-  , maxSize: M.initialState.maxSize
-  , abscissa: M.initialState.abscissa
-  , abscissaAgg: M.initialState.abscissaAgg
-  , ordinate: M.initialState.ordinate
-  , ordinateAgg: M.initialState.ordinateAgg
-  , size: M.initialState.size
-  , sizeAgg: M.initialState.sizeAgg
-  , series: M.initialState.series
-  , parallel: M.initialState.parallel
-  , picker: DS.initial.picker
+  { minSize: 1.0
+  , maxSize: 50.0
   }
-
-_abscissa ∷ ∀ r a. Lens' { abscissa ∷ a | r } a
-_abscissa = lens _.abscissa _{ abscissa = _ }
-
-_abscissaAgg ∷ ∀ r a. Lens' { abscissaAgg ∷ a | r } a
-_abscissaAgg = lens _.abscissaAgg _{ abscissaAgg = _ }
-
-_ordinate ∷ ∀ r a. Lens' { ordinate ∷ a | r } a
-_ordinate = lens _.ordinate _{ ordinate = _ }
-
-_ordinateAgg ∷ ∀ r a. Lens' { ordinateAgg ∷ a | r } a
-_ordinateAgg = lens _.ordinateAgg _{ ordinateAgg = _ }
-
-_size ∷ ∀ r a. Lens' { size ∷ a | r } a
-_size = lens _.size _{ size = _ }
-
-_sizeAgg ∷ ∀ r a. Lens' { sizeAgg ∷ a | r } a
-_sizeAgg = lens _.sizeAgg _{ sizeAgg = _ }
-
-_series ∷ ∀ r a. Lens' { series ∷ a | r } a
-_series = lens _.series _{ series = _ }
-
-_parallel ∷ ∀ r a. Lens' { parallel ∷ a | r} a
-_parallel = lens _.parallel _{parallel = _}

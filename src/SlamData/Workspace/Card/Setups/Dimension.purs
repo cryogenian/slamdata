@@ -199,4 +199,8 @@ defaultJCursorDimension jc =
 
 pairToDimension ∷ JCursor → Ag.Aggregation → LabeledJCursor
 pairToDimension v a =
-  Dimension (Just $ defaultJCursorCategory v) (Projection (Just $ Aggregation a) v)
+  pairWithMaybeAggregation v $ Just a
+
+pairWithMaybeAggregation ∷ JCursor → Maybe Ag.Aggregation → LabeledJCursor
+pairWithMaybeAggregation v a =
+  Dimension (Just $ defaultJCursorCategory v) (Projection (map Aggregation a) v)
