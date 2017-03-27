@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.PunchCard.Model where
 
-
 import SlamData.Prelude
 
 import Data.Argonaut as J
@@ -28,6 +27,7 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
+
 
 type ModelR =
   { abscissa ∷ D.LabeledJCursor

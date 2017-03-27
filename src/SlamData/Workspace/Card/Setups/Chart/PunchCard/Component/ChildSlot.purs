@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.PunchCard.Component.ChildSlot where
 
-
 import SlamData.Prelude
 
 import Halogen.Component.ChildPath (ChildPath, cp1)

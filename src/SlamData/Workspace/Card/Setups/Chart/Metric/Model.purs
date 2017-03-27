@@ -18,42 +18,36 @@ module SlamData.Workspace.Card.Setups.Chart.Metric.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, (.?), (:=), (~>), jsonEmptyObject, jsonNull, isNull, decodeJson)
-import Data.Lens ((^.))
+import Data.Argonaut as J
+import Data.Argonaut ((~>), (:=), (.?))
+import Data.Newtype (un)
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, nonMaybeAggregationSelect)
-import SlamData.Workspace.Card.Setups.Behaviour as SB
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Form.Select as S
-
-type MetricR =
-  { value ∷ JCursor
-  , valueAggregation ∷ Ag.Aggregation
+type ModelR =
+  { value ∷ D.LabeledJCursor
   , label ∷ Maybe String
   , formatter ∷ Maybe String
   }
 
-type Model = Maybe MetricR
+type Model = Maybe ModelR
 
 initialModel ∷ Model
 initialModel = Nothing
 
-eqMetricR ∷ MetricR → MetricR → Boolean
-eqMetricR r1 r2 =
+eqR ∷ ModelR → ModelR → Boolean
+eqR r1 r2 =
   r1.value ≡ r2.value
-  ∧ r1.valueAggregation ≡ r2.valueAggregation
   ∧ r1.label ≡ r2.label
   ∧ r1.formatter ≡ r2.formatter
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqMetricR r1 r2
+eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -61,89 +55,44 @@ genModel = do
   isNothing ← arbitrary
   if isNothing
     then pure Nothing
-    else do
-    value ← map runArbJCursor arbitrary
-    valueAggregation ← arbitrary
+    else map Just do
+    value ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
     label ← arbitrary
     formatter ← arbitrary
-    pure $ Just { value, valueAggregation, label, formatter }
+    pure { value, label, formatter }
 
-encode ∷ Model → Json
-encode Nothing = jsonNull
+encode ∷ Model → J.Json
+encode Nothing = J.jsonNull
 encode (Just r) =
   "configType" := "metric"
   ~> "value" := r.value
-  ~> "valueAggregation" := r.valueAggregation
   ~> "label" := r.label
   ~> "formatter" := r.formatter
-  ~> jsonEmptyObject
+  ~> J.jsonEmptyObject
 
-decode ∷ Json → String ⊹ Model
+decode ∷ J.Json → String ⊹ Model
 decode js
-  | isNull js = pure Nothing
-  | otherwise = do
-    obj ← decodeJson js
+  | J.isNull js = pure Nothing
+  | otherwise = map Just do
+    obj ← J.decodeJson js
     configType ← obj .? "configType"
     unless (configType ≡ "metric")
       $ throwError "Incorrect build metric model"
+    decodeR obj <|> decodeLegacyR obj
+  where
+  decodeR ∷ J.JObject → String ⊹ ModelR
+  decodeR obj = do
     value ← obj .? "value"
-    valueAggregation ← obj .? "valueAggregation"
     label ← obj .? "label"
     formatter ← obj .? "formatter"
-    pure $ Just {value, valueAggregation, label, formatter }
+    pure {value, label, formatter }
 
-
-type ReducedState r =
-  { value ∷ S.Select JCursor
-  , valueAgg ∷ S.Select Aggregation
-  , label ∷ Maybe String
-  , formatter ∷ Maybe String
-  , axes ∷ Ax.Axes
-  | r}
-
-behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
-behaviour =
-  { synchronize
-  , load
-  , save
-  }
-  where
-  synchronize st =
-    let
-      newValue =
-        S.setPreviousValueFrom (Just st.value)
-          $ S.autoSelect
-          $ S.newSelect
-          $ st.axes.value
-
-      newValueAggregation =
-        S.setPreviousValueFrom (Just st.valueAgg)
-          $ nonMaybeAggregationSelect
-    in
-     st{ value = newValue
-       , valueAgg = newValueAggregation
-       }
-  load Nothing st = st
-  load (Just m) st =
-    st{ formatter = m.formatter
-      , label = m.label
-      , value = S.fromSelected $ Just m.value
-      , valueAgg = S.fromSelected $ Just m.valueAggregation
-      }
-  save st =
-    { value: _
-    , valueAggregation: _
-    , label: st.label
-    , formatter: st.formatter
-    }
-    <$> (st.value ^. S._value)
-    <*> (st.valueAgg ^. S._value)
-
-initialState ∷ ReducedState ()
-initialState =
-    { value: S.emptySelect
-    , valueAgg: S.emptySelect
-    , label: Nothing
-    , formatter: Nothing
-    , axes: Ax.initialAxes
-    }
+  decodeLegacyR ∷ J.JObject → String ⊹ ModelR
+  decodeLegacyR obj = do
+    value ←
+      D.pairToDimension
+      <$> (obj .? "value")
+      <*> (obj .? "valueAggregation")
+    label ← obj .? "label"
+    formatter ← obj .? "formatter"
+    pure { value, label, formatter }

@@ -14,36 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Metric.Component.State
-  ( initialState
-  , _value
-  , _valueAgg
-  , State
-  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
-  ) where
+module SlamData.Workspace.Card.Setups.Chart.Metric.Component.State where
 
-import Data.Argonaut (JCursor)
-import Data.Lens (Lens', lens)
+import SlamData.Prelude
 
-import SlamData.Workspace.Card.Setups.Chart.Metric.Component.Query (Selection)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
-import SlamData.Workspace.Card.Setups.Chart.Metric.Model as M
-
-type State = M.ReducedState (DS.CommonState JCursor Selection ())
+type State =
+  { label ∷ Maybe String
+  , formatter ∷ Maybe String
+  }
 
 initialState ∷ State
 initialState =
-  { axes: M.initialState.axes
-  , label: M.initialState.label
-  , formatter: M.initialState.formatter
-  , value: M.initialState.value
-  , valueAgg: M.initialState.valueAgg
-  , picker: DS.initial.picker
+  { label: Nothing
+  , formatter: Nothing
   }
-
-_value ∷ ∀ r a. Lens' { value ∷ a | r } a
-_value = lens _.value _{ value = _ }
-
-_valueAgg ∷ ∀ r a. Lens' { valueAgg ∷ a | r } a
-_valueAgg = lens _.valueAgg _{ valueAgg = _ }

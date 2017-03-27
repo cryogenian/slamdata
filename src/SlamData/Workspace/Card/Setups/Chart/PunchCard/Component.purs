@@ -156,7 +156,7 @@ cardEval = case _ of
         }
     out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
     pure $ k case join out of
-      Nothing → M.BuildBar Nothing
+      Nothing → M.BuildPunchCard Nothing
       Just a → a
   CC.Load m next → do
     H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
