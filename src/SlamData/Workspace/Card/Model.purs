@@ -571,3 +571,8 @@ _BuildHeatmap ∷ Prism' AnyCardModel BuildHeatmap.Model
 _BuildHeatmap = prism' BuildHeatmap case _ of
   BuildHeatmap a → Just a
   _ → Nothing
+
+_BuildPunchCard ∷ Prism' AnyCardModel BuildPunchCard.Model
+_BuildPunchCard = prism' BuildPunchCard case _ of
+  BuildPunchCard a → Just a
+  _ → Nothing
