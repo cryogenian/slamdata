@@ -81,13 +81,14 @@ package = do
 
   parallel ←
     P.field PL._parallel PP._parallel
+      >>= P.optional
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.addSource _.date
       >>= P.addSource _.datetime
       >>= P.isFilteredBy dimension
       >>= P.isActiveWhen dimension
-      >>= P.optional
+
 
   pure unit
 

@@ -70,20 +70,22 @@ package = do
 
   stack ←
     P.field PL._stack PP._stack
+      >>= P.optional
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.isFilteredBy category
       >>= P.isActiveWhen category
-      >>= P.optional
+
 
   parallel ←
     P.field PL._parallel PP._parallel
+      >>= P.optional
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.isFilteredBy category
       >>= P.isFilteredBy stack
       >>= P.isActiveWhen category
-      >>= P.optional
+
 
   pure unit
 

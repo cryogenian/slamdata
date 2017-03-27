@@ -30,6 +30,7 @@ import Data.Foldable as F
 import Data.Foreign as FR
 import Data.Foreign.Class (readProp)
 import Data.Int as Int
+import Data.Lens ((^?), preview, _Just)
 import Data.Map as M
 import Data.String as Str
 import Data.String.Regex as Rgx
@@ -46,14 +47,15 @@ import Global (infinity)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Graph.Model (Model, GraphR, initialState, behaviour)
+import SlamData.Workspace.Card.Setups.Chart.Graph.Model (Model, ModelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Graph))
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
 
 eval
   ∷ ∀ m
@@ -64,8 +66,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Graph (const buildGraph) m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Graph (const buildGraph) m \axes → m
 
 type EdgeItem =
   { source ∷ String
@@ -83,7 +84,7 @@ type GraphItem =
 
 type GraphData = Array GraphItem × Array EdgeItem
 
-buildGraphData ∷ JArray → GraphR → GraphData
+buildGraphData ∷ JArray → ModelR → GraphData
 buildGraphData records r =
   nodes × edges
   where
@@ -101,13 +102,13 @@ buildGraphData records r =
       getMaybeStringFromJson = Sem.getMaybeString js
       getValuesFromJson = Sem.getValues js
       mbSource =
-        getMaybeStringFromJson r.source
+        getMaybeStringFromJson =<< r.source ^? D._value ∘ D._projection
       mbTarget =
-        getMaybeStringFromJson r.target
+        getMaybeStringFromJson =<< r.target ^? D._value ∘ D._projection
       mbColor =
-        getMaybeStringFromJson =<< r.color
+        getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.color
       values =
-        getValuesFromJson r.size
+        getValuesFromJson $ r.size ^? _Just ∘ D._value ∘ D._projection
 
       colorAlterFn
         ∷ Maybe (Maybe String × Maybe String >> Array Number)
@@ -143,7 +144,9 @@ buildGraphData records r =
     [ { size: Nothing
       , source
       , target
-      , value: map (\ag → Ag.runAggregation ag values) r.sizeAggregation
+      , value: map
+          (\ag → Ag.runAggregation ag values)
+          (r.size ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation)
       , category
       , name: mkName source target category
       } ]
@@ -204,7 +207,7 @@ sourceRgx = unsafePartial fromRight $ Rgx.regex "source:([^:]+)" RXF.noFlags
 categoryRgx ∷ Rgx.Regex
 categoryRgx = unsafePartial fromRight $ Rgx.regex "category:([^:]+)" RXF.noFlags
 
-buildGraph ∷ GraphR → JArray → DSL OptionI
+buildGraph ∷ ModelR → JArray → DSL OptionI
 buildGraph r records = do
   E.tooltip do
     E.triggerItem
@@ -232,7 +235,7 @@ buildGraph r records = do
           ⊕ (foldMap (\v → "<br /> value: " ⊕ show v) mbVal)
           ⊕ (foldMap (\a → "<br /> value aggregation: "
                            ⊕ (Str.toLower $ Ag.printAggregation a))
-             r.sizeAggregation)
+             $ r.size ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation)
       in fromMaybe itemTooltip do
         guard $ dataType ≡ "edge"
         source ← either (const Nothing) Just $ runExcept $ FR.readString =<< readProp "source" fItem

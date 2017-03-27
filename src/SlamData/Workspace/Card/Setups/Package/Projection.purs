@@ -61,6 +61,12 @@ _secondValue = T.packProjection $ at "secondValue"
 _donut ∷ T.Projection
 _donut = T.packProjection $ at "donut"
 
+_size ∷ T.Projection
+_size = T.packProjection $ at "size"
+
+_color ∷ T.Projection
+_color = T.packProjection $ at "color"
+
 -- Encode integer indices of List LabeledJCursor as Strings
 _dimIx ∷ Int → T.Projection
 _dimIx i = T.packProjection $ at (show i)

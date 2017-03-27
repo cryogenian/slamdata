@@ -28,8 +28,8 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Events as HE
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Common.Align (Align(..), alignSelect)
-import SlamData.Common.Sort (Sort(..), sortSelect)
+import SlamData.Common.Align (alignSelect)
+import SlamData.Common.Sort (sortSelect)
 import SlamData.Form.Select as S
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
@@ -69,13 +69,14 @@ package = do
 
   series ←
     P.field PL._series PP._series
+      >>= P.optional
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.addSource _.date
       >>= P.addSource _.datetime
       >>= P.isFilteredBy category
       >>= P.isActiveWhen category
-      >>= P.optional
+
 
   pure unit
 
@@ -134,8 +135,8 @@ cardEval = case _ of
         { category: D.topDimension
         , value: D.topDimension
         , series: Nothing
-        , order: Asc
-        , align: LeftAlign
+        , order: st.order
+        , align: st.align
         }
     out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
     pure $ k case join out of
@@ -170,6 +171,7 @@ setupEval = case _ of
         H.modify $ ST._align .~ a
       _ →
         pure unit
+    raiseUpdate
     pure next
   Q.SelectOrder m next → do
     case m of
@@ -177,6 +179,7 @@ setupEval = case _ of
         H.modify $ ST._order .~ o
       _ →
         pure unit
+    raiseUpdate
     pure next
   Q.HandleDims q next → do
     case q of

@@ -52,3 +52,9 @@ _secondValue = lens _.secondValue _{ secondValue = _ }
 
 _donut ∷ ∀ a b r. Lens { donut ∷ a | r } { donut ∷ b | r } a b
 _donut = lens _.donut _{ donut = _ }
+
+_size ∷ ∀ a b r. Lens { size ∷ a | r } { size ∷ b | r } a b
+_size = lens _.size _{ size = _ }
+
+_color ∷ ∀ a b r. Lens { color ∷ a | r } { color ∷ b | r } a b
+_color = lens _.color _{ color = _ }

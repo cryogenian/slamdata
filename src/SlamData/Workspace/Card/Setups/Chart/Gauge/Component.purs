@@ -56,16 +56,16 @@ package = do
 
   parallel ←
     P.field PL._parallel PP._parallel
+      >>= P.optional
       >>= P.addSource _.category
       >>= P.addSource _.time
-      >>= P.optional
       >>= P.isActiveWhen value
 
   multiple ←
     P.field PL._multiple PP._multiple
+      >>= P.optional
       >>= P.addSource _.category
       >>= P.addSource _.time
-      >>= P.optional
       >>= P.isActiveWhen value
       >>= P.isFilteredBy parallel
 

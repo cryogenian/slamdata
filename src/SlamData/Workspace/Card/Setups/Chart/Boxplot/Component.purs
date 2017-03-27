@@ -65,20 +65,22 @@ package = do
 
   series ←
     P.field PL._series PP._series
+      >>= P.optional
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.isFilteredBy dimension
       >>= P.isActiveWhen dimension
-      >>= P.optional
+
 
   parallel ←
     P.field PL._parallel PP._parallel
+      >>= P.optional
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.isFilteredBy dimension
       >>= P.isFilteredBy series
       >>= P.isActiveWhen dimension
-      >>= P.optional
+
 
   pure unit
 
