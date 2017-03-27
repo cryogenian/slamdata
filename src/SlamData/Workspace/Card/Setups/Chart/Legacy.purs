@@ -33,7 +33,7 @@ import SlamData.Workspace.Card.Setups.Chart.Bar.Model as Bar
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as Boxplot
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (parseColorScheme)
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Model as Funnel
-import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (HeatmapR)
+import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model as Heatmap
 import SlamData.Workspace.Card.Setups.Chart.Line.Model (LineR)
 import SlamData.Workspace.Card.Setups.Chart.Pie.Model (PieR)
 import SlamData.Workspace.Card.Setups.Chart.Radar.Model (RadarR)
@@ -98,7 +98,7 @@ decode
     , bar ∷ Maybe Bar.ModelR → a
     , boxplot ∷ Maybe Boxplot.ModelR → a
     , funnel ∷ Maybe Funnel.ModelR → a
-    , heatmap ∷ Maybe HeatmapR → a
+    , heatmap ∷ Maybe Heatmap.ModelR → a
     , line ∷ Maybe LineR → a
     , pie ∷ Maybe PieR → a
     , radar ∷ Maybe RadarR → a
@@ -260,15 +260,20 @@ decode cturs js = do
   decodeHeatmap cc bo = pure $ cturs.heatmap
     let
       abscissa =
-        cc.dimensions A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.dimensions A.!! 0 >>= view S._value
       ordinate =
-        cc.dimensions A.!! 1 >>= view S._value
-      value =
+        map D.defaultJCursorDimension
+        $ cc.dimensions A.!! 1 >>= view S._value
+      val =
         cc.measures A.!! 0 >>= view S._value
-      valueAggregation =
+      agg =
         join $ cc.aggregations A.!! 0 >>= view S._value
+      value =
+        D.pairToDimension <$> val <*> agg
       series =
-        cc.series A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
       colorScheme =
         either (const Nothing) Just $ parseColorScheme bo.colorScheme
       isColorSchemeReversed =
@@ -282,7 +287,6 @@ decode cturs js = do
         { abscissa: _
         , ordinate: _
         , value: _
-        , valueAggregation: _
         , series
         , colorScheme: _
         , isColorSchemeReversed
@@ -292,10 +296,10 @@ decode cturs js = do
         <$> abscissa
         <*> ordinate
         <*> value
-        <*> valueAggregation
         <*> colorScheme
     in
       heatMapR
+
   decodeLine ∷ ChartConfiguration → BuildOptions → String ⊹ a
   decodeLine cc bo = pure $ cturs.line
     let

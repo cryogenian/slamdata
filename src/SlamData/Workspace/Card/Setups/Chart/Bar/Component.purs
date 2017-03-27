@@ -145,6 +145,8 @@ cardEval = case _ of
       Just a → a
   CC.Load m next → do
     H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    for_ (m ^? M._BuildBar ∘ _Just) \r →
+      H.modify _{ axisLabelAngle = r.axisLabelAngle }
     pure next
   CC.ReceiveInput _ _ next →
     pure next

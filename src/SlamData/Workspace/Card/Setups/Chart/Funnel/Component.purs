@@ -140,10 +140,12 @@ cardEval = case _ of
         }
     out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
     pure $ k case join out of
-      Nothing → M.BuildCandlestick Nothing
+      Nothing → M.BuildFunnel Nothing
       Just a → a
   CC.Load m next → do
     H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    for_ (m ^? M._BuildFunnel ∘ _Just) \r →
+      H.modify _{ align = r.align, order = r.order }
     pure next
   CC.ReceiveInput _ _ next →
     pure next

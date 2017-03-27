@@ -566,3 +566,8 @@ _BuildBoxplot ∷ Prism' AnyCardModel BuildBoxplot.Model
 _BuildBoxplot = prism' BuildBoxplot case _ of
   BuildBoxplot a → Just a
   _ → Nothing
+
+_BuildHeatmap ∷ Prism' AnyCardModel BuildHeatmap.Model
+_BuildHeatmap = prism' BuildHeatmap case _ of
+  BuildHeatmap a → Just a
+  _ → Nothing

@@ -170,6 +170,8 @@ cardEval = case _ of
       Just a → a
   CC.Load m next → do
     H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    for_ (m ^? M._BuildArea ∘ _Just) \r →
+      H.modify _{ isStacked = r.isStacked, isSmooth = r.isSmooth }
     pure next
   CC.ReceiveInput _ _ next →
     pure next
