@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exception
-import Control.Monad.Eff.Ref (Ref, newRef, readRef, writeRef)
 import Control.UI.Browser (select, locationString)
 
 import Data.Argonaut (encodeJson)
@@ -33,8 +32,8 @@ import Data.String as Str
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 
-import DOM.HTML.Types (htmlElementToElement, readHTMLElement)
-
+import DOM.HTML.Types (readHTMLElement)
+import DOM.Classy.Element (toElement)
 import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
@@ -65,7 +64,7 @@ import Utils.DOM as DOM
 import Utils (hush, prettyJson)
 import Utils.Path as UP
 
-import ZClipboard as Z
+import Clipboard as C
 
 data PresentAs = IFrame | URI
 
@@ -82,11 +81,11 @@ type State =
   , shouldGenerateToken ∷ Boolean
   , hovered ∷ Boolean
   , isLoggedIn ∷ Boolean
-  , copyRef ∷ Maybe (Ref String)
   , copyVal ∷ String
   , errored ∷ Boolean
   , submitting ∷ Boolean
   , loading ∷ Boolean
+  , clipboard ∷ Maybe C.Clipboard
   }
 
 initialState ∷ Input → State
@@ -99,11 +98,11 @@ initialState input =
   , shouldGenerateToken: false
   , hovered: false
   , isLoggedIn: false
-  , copyRef: Nothing
   , copyVal: ""
   , errored: false
   , submitting: false
   , loading: true
+  , clipboard: Nothing
   }
 
 type Input =
@@ -357,16 +356,6 @@ renderPublishIFrame state =
 eval ∷ Query ~> DSL
 eval (Init next) = next <$ do
   state ← H.get
-  copyRef ← H.liftEff $ newRef ""
-  H.modify _{copyRef = Just copyRef}
-
-  H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl →
-    H.liftEff
-    $ Z.make (htmlElementToElement htmlEl)
-    >>= Z.onCopy \z → do
-      val ← readRef copyRef
-      Z.setData "text/plain" val z
-
   -- To know if user is authed
   mbAuthToken ← H.lift Auth.getIdToken
   case mbAuthToken of
@@ -476,7 +465,7 @@ workspaceTokenName workspacePath idToken =
     payload =
       hush $ Eff.runPure $ Exception.try $ OIDC.readPayload idToken
     email =
-      fromMaybe "unknown user" $ OIDC.runEmail <$> (OIDC.pluckEmail =<< payload)
+      fromMaybe "unknown user" $ unwrap <$> (OIDC.pluckEmail =<< payload)
     workspace =
       Pathy.printPath workspacePath
   in
@@ -494,7 +483,14 @@ updateCopyVal = do
     copyVal = renderCopyVal locString state
 
   H.modify _{ copyVal = copyVal }
-  H.liftEff $ for_ state.copyRef \r → writeRef r copyVal
+  clipboard ← H.gets _.clipboard
+  case clipboard of
+    Just c -> H.liftEff $ C.destroy c
+    Nothing -> pure unit
+  H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl → do
+    newClipboard ← H.liftEff $ C.fromElement (toElement htmlEl) (pure copyVal)
+    H.modify _{ clipboard = Just newClipboard }
+
 
 renderCopyVal ∷ String → State → String
 renderCopyVal locString state

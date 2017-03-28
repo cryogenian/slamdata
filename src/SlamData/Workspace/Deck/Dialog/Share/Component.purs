@@ -26,7 +26,8 @@ import Data.String as Str
 import Data.Path.Pathy (rootDir, (</>), file)
 import Data.Path.Pathy as Pt
 
-import DOM.HTML.Types (htmlElementToElement, readHTMLElement)
+import DOM.HTML.Types (readHTMLElement)
+import DOM.Classy.Element (toElement)
 
 import Halogen as H
 import Halogen.HTML.Events as HE
@@ -44,7 +45,7 @@ import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), sharingActio
 import Utils.DOM as DOM
 import Utils.Path (rootFile, FilePath)
 
-import ZClipboard as Z
+import Clipboard as C
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Message Slam
@@ -457,11 +458,10 @@ eval = case _ of
 emailIsIncorrect ∷ String → Boolean
 emailIsIncorrect = not ∘ Str.contains (Str.Pattern "@")
 
-initZClipboard ∷ String → DSL Unit
-initZClipboard token =
+initClipboard ∷ String → DSL Unit
+initClipboard token =
   H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl →
-    H.liftEff $ Z.make (htmlElementToElement htmlEl)
-      >>= Z.onCopy (Z.setData "text/plain" token)
+    H.liftEff $ C.fromElement (toElement htmlEl) (pure token)
 
 shareToken ∷ State → DSL Unit
 shareToken state = do
@@ -477,7 +477,7 @@ shareToken state = do
         { tokenSecret = Just tokenSecret
         , submitting = false
         }
-      initZClipboard tokenSecret
+      initClipboard tokenSecret
 
 sharePermission ∷ State → DSL Unit
 sharePermission state = do

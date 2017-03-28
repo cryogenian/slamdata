@@ -24,6 +24,7 @@ import Data.Argonaut (class DecodeJson, class EncodeJson, JCursor, decodeJson, j
 import Data.Array as Arr
 import Data.Array (filter, length, head, (!!), elemIndex)
 import Data.Lens (Lens', lens, view, (^.), (?~), (.~))
+import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Monoid.Conj (Conj(..))
 import Data.Set as Set
 import Test.StrongCheck.Arbitrary as SC
@@ -45,19 +46,38 @@ type SelectR a =
   , value ∷ Maybe a
   }
 
-newtype Select a = Select (SelectR a)
+newtype Select a = Select { options ∷ Array a, value ∷ Maybe a }
 
-isSelected ∷ ∀ a. Select a → Boolean
-isSelected (Select {value}) = isJust value
+derive instance newtypeSelect ∷ Newtype (Select a) _
+derive instance eqSelect ∷ Eq a ⇒ Eq (Select a)
+derive instance functorSelect ∷ Functor Select
 
-_Select ∷ ∀ a. Lens' (Select a) (SelectR a)
-_Select = lens (\(Select obj) → obj) (const Select)
+instance encodeJsonSelect ∷ (EncodeJson a) ⇒ EncodeJson (Select a) where
+  encodeJson (Select r) =
+    "options" := r.options ~> "value" := r.value ~> jsonEmptyObject
+
+instance decodeJsonSelect ∷ (DecodeJson a) ⇒ DecodeJson (Select a) where
+  decodeJson json = do
+    obj ← decodeJson json
+    r ← { options: _ , value: _ } <$> (obj .? "options") <*> (obj .? "value")
+    pure $ Select r
+
+instance showSelect ∷ (Show a) ⇒ Show (Select a) where
+  show (Select s) =
+    "(Select {options = " <> show s.options <> ", value = " <> show s.value <> "})"
+
+instance arbitrarySelect ∷ (SC.Arbitrary a) ⇒ SC.Arbitrary (Select a) where
+  arbitrary = do
+    value ← SC.arbitrary
+    options ← SC.arbitrary
+    pure $ Select { value, options }
+
 
 _options ∷ ∀ a. Lens' (Select a) (Array a)
-_options = _Select ∘ lens _.options _{options = _}
+_options = _Newtype ∘ lens _.options _{options = _}
 
 _value ∷ ∀ a. Lens' (Select a) (Maybe a)
-_value = _Select ∘ lens _.value _{value = _}
+_value = _Newtype ∘ lens _.value _{value = _}
 
 emptySelect ∷ ∀ a. Select a
 emptySelect = Select { options: [ ], value: Nothing}
@@ -83,29 +103,9 @@ except (Select r) subtrahend@(Select rr) =
           then Nothing
           else r.value
 
-exceptOn ∷ ∀ a b. (Ord b) ⇒ (a → b) → Select a → Set.Set b → Set.Set b
-exceptOn fn (Select rr) st =
-  case rr.value of
-    Nothing → st
-    Just k → Set.delete (fn k) st
-
 -- | Filter array to exclude value of `Select`
 except' ∷ ∀ a. (Eq a) ⇒ Select a → Array a → Array a
 except' sel arr = filter (\x → Just x /= (sel ^. _value)) arr
-
-filterSelect ∷ ∀ a. (Eq a) ⇒ Select a → a → Select a
-filterSelect (Select r) val =
-  Select
-    { options: filter (_ /= val) r.options
-    , value: if Just val == r.value then Nothing else r.value
-    }
--- This function returns `Select` without provided value if it is
--- `Just a` or `emptySelect` if second argument is `Nothing`
--- This is useful in case we want to make two connected selects
--- where dependent select is disabled when main has no value.
-filterSelect' ∷ ∀ a. (Eq a) ⇒ Select a → Maybe a → Select a
-filterSelect' sel val =
-  maybe emptySelect (filterSelect sel) val
 
 -- | If there is only one option (opt) set value to be `Just opt`
 autoSelect ∷ ∀ a. (Eq a) ⇒ Select a → Select a
@@ -152,41 +152,3 @@ setPreviousValueFrom
   ∷ ∀ a. (Eq a) ⇒ Maybe (Select a) → Select a → Select a
 setPreviousValueFrom mbSel target  =
   (maybe id trySelect' $ mbSel >>= view _value) $ target
-
-setPreviousValueOn
-  ∷ ∀ a b. (Eq b) ⇒ (a → b) → Select a → Select a → Select a
-setPreviousValueOn toB (Select source) initialTarget@(Select target) =
-  let mbIx = Arr.findIndex (eq (map toB source.value) ∘ Just ∘ toB) target.options
-      modifiedOptions = fromMaybe target.options do
-        ix ← mbIx
-        val ← source.value
-        Arr.updateAt ix val target.options
-  in maybe initialTarget (const $ Select { value: source.value, options: modifiedOptions }) mbIx
-
-
-instance eqSelect ∷ (Eq a) ⇒ Eq (Select a) where
-  eq (Select r) (Select rr) =
-       r.value == rr.value
-    && r.options == rr.options
-
-derive instance functorSelect ∷ Functor Select
-
-instance encodeJsonSelect ∷ (EncodeJson a) ⇒ EncodeJson (Select a) where
-  encodeJson (Select r) =
-    "options" := r.options ~> "value" := r.value ~> jsonEmptyObject
-
-instance decodeJsonSelect ∷ (DecodeJson a) ⇒ DecodeJson (Select a) where
-  decodeJson json = do
-    obj ← decodeJson json
-    r ← { options: _ , value: _ } <$> (obj .? "options") <*> (obj .? "value")
-    pure $ Select r
-
-instance showSelect ∷ (Show a) ⇒ Show (Select a) where
-  show (Select s) =
-    "(Select {options = " <> show s.options <> ", value = " <> show s.value <> "})"
-
-instance arbitrarySelect ∷ (SC.Arbitrary a) ⇒ SC.Arbitrary (Select a) where
-  arbitrary = do
-    value ← SC.arbitrary
-    options ← SC.arbitrary
-    pure $ Select { value, options }

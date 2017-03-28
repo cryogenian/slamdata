@@ -32,8 +32,8 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import DOM.HTML.Types (htmlElementToElement, readHTMLElement)
-
+import DOM.HTML.Types (readHTMLElement)
+import DOM.Classy.Element (toElement)
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.Monad (Slam)
@@ -41,7 +41,7 @@ import SlamData.Render.Common (glyph)
 
 import Utils.DOM as DOM
 
-import ZClipboard as Z
+import Clipboard as C
 
 data Query a
   = SelectElement DOM.Event a
@@ -109,8 +109,7 @@ eval = case _ of
   Init next → do
     url ← H.get
     H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl → do
-      let el = htmlElementToElement htmlEl
-      H.liftEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
+      H.liftEff $ C.fromElement (toElement htmlEl) (pure url)
     pure next
   SelectElement ev next → do
     H.liftEff $ DOM.currentTarget ev

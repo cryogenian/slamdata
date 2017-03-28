@@ -1,9 +1,12 @@
 {-
 Copyright 2016 SlamData, Inc.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,13 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.GlobalMenu.Bus where
+module SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State
+  ( State
+  , initialState
+  , fromConfig
+  , toConfig
+  , module SL
+  ) where
 
-import Control.Monad.Aff.Bus as Bus
 import SlamData.Prelude
 
-type SignInBus = Bus.BusRW SignInMessage
+import Data.Path.Pathy as P
 
-data SignInMessage = SignInSuccess | SignInFailure | SignOutRequest
+import Quasar.Mount.SparkLocal (Config)
+import Quasar.Mount.SparkLocal as SL
 
-derive instance eqSignInMessage ∷ Eq SignInMessage
+type State =
+  { path ∷ String }
+
+initialState ∷ State
+initialState =
+  { path: "" }
+
+fromConfig ∷ Config → State
+fromConfig path =
+  { path: P.printPath path }
+
+toConfig ∷ State → Either String Config
+toConfig { path } =
+  maybe (Left $ "Invalid path: " <> path) Right (SL.parseDirPath path)

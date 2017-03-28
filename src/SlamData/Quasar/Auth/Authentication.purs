@@ -362,7 +362,7 @@ verifyWithJwk providerR unhashedNonce idToken jwk = do
       (Seconds 1.0)
       idToken
       providerR.openIDConfiguration.issuer
-      providerR.clientID
+      providerR.clientId
       unhashedNonce
       jwk
 

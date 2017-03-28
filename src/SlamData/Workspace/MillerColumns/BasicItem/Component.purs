@@ -19,6 +19,7 @@ module SlamData.Workspace.MillerColumns.BasicItem.Component where
 import SlamData.Prelude
 
 import Halogen as H
+import Halogen.Component.Proxy (proxy)
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -26,14 +27,13 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Workspace.MillerColumns.Column.Component.Item as MCI
-import SlamData.Monad (Slam)
 
 data Query a
-  = UpdateState MCI.ItemState a
+  = UpdateState MCI.State a
   | Selected a
 
 type HTML = H.ComponentHTML Query
-type DSL a = H.ComponentDSL Boolean Query (MCI.ItemMessage' a Void) Slam
+type DSL a m = H.ComponentDSL Boolean Query (MCI.Message' a Void) m
 
 type ItemSpec a =
   { label ∷ a → String
@@ -42,16 +42,25 @@ type ItemSpec a =
 
 type BasicItemHTML = H.ComponentHTML (Const Void)
 
-type BasicColumnOptions a i g = MC.ColumnOptions a i Query g Void
+type BasicColumnOptions a i = MC.ColumnOptions a i Void
 
 component
-  ∷ ∀ a i
+  ∷ ∀ a i m
   . Eq i
   ⇒ ItemSpec a
   → i
   → a
-  → H.Component HH.HTML Query MCI.ItemState (MCI.ItemMessage' a Void) Slam
-component ispec path item =
+  → H.Component HH.HTML (MCI.Query a Void) MCI.State (MCI.Message' a Void) m
+component ispec path = proxy ∘ component' ispec path
+
+component'
+  ∷ ∀ a i m
+  . Eq i
+  ⇒ ItemSpec a
+  → i
+  → a
+  → H.Component HH.HTML Query MCI.State (MCI.Message' a Void) m
+component' ispec path item =
   H.component
     { initialState: (_ == MCI.Selected)
     , render
@@ -72,7 +81,7 @@ component ispec path item =
         ]
         [ absurd ∘ unwrap <$> ispec.render item ]
 
-  eval ∷ Query ~> DSL a
+  eval ∷ Query ~> DSL a m
   eval = case _ of
     UpdateState state next → do
       let new = state == MCI.Selected

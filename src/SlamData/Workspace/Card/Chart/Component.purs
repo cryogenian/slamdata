@@ -68,7 +68,7 @@ render state =
       Just ChT.PivotTable →
         [ HH.slot' cpPivotTable unit Pivot.component unit (Just ∘ right <$> handlePivotTableMessage) ]
       _ →
-        [ HH.slot' cpECharts unit HEC.echarts (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit) (const Nothing) ]
+        [ HH.slot' cpECharts unit (HEC.echarts Nothing) (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit) (const Nothing) ]
 
 renderButton ∷ ChartType → Array HTML
 renderButton ct =

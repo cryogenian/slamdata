@@ -64,8 +64,8 @@ type ColumnsData a i = i × L.List a
 -- | ]
 -- | ```
 columnPaths
-  ∷ ∀ a i f g o
-  . Column.ColumnOptions a i f g o
+  ∷ ∀ a i o
+  . Column.ColumnOptions a i o
   → ColumnsData a i
   → L.List (Int × Maybe a × i)
 columnPaths (Column.ColumnOptions colSpec) (root × selection) =

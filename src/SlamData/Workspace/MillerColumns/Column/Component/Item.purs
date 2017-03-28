@@ -18,11 +18,15 @@ module SlamData.Workspace.MillerColumns.Column.Component.Item where
 
 import SlamData.Prelude
 
-data ItemMessage a = RaisePopulate a
+import Halogen.Component.Proxy (ProxyQ)
 
-type ItemMessage' a o = Either (ItemMessage a) o
+type Query a o = ProxyQ (Const Void) State (Message' a o)
 
-data ItemState = Selected | Deselected
+data Message a = RaisePopulate a
 
-derive instance eqItemState ∷ Eq ItemState
-derive instance ordItemState ∷ Ord ItemState
+type Message' a o = Either (Message a) o
+
+data State = Selected | Deselected
+
+derive instance eqState ∷ Eq State
+derive instance ordState ∷ Ord State

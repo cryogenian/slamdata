@@ -26,7 +26,7 @@ import Data.JSDate (LOCALE)
 import ECharts.Types (ECHARTS)
 import Halogen.Aff (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
-import ZClipboard (ZCLIPBOARD)
+
 
 type SlamDataEffects = HalogenEffects SlamDataRawEffects
 
@@ -39,6 +39,5 @@ type SlamDataRawEffects =
   , file ∷ READ_FILE
   , now ∷ NOW
   , timer ∷ TIMER
-  , zClipboard ∷ ZCLIPBOARD
   , locale ∷ LOCALE
   )

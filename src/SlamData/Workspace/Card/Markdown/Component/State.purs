@@ -21,23 +21,23 @@ import Control.Monad.Eff.Class (class MonadEff)
 import SlamData.Prelude
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Markdown.Interpret as MDI
+import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.JSDate (LOCALE)
 import Data.StrMap as SM
 
-import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Halogen.Component as SDH
 
 type State =
   { browserFeatures ∷ Maybe BrowserFeatures
-  , input ∷ Maybe (SD.SlamDownP VM.VarMapValue)
+  , state ∷ SDS.SlamDownFormState VM.VarMapValue
   }
 
 initialState ∷ State
 initialState =
   { browserFeatures: Nothing
-  , input: Nothing
+  , state: SM.empty
   }
 
 formStateToVarMap

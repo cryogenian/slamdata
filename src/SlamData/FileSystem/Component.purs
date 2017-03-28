@@ -74,6 +74,7 @@ import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
+import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
@@ -598,6 +599,7 @@ configure m =
       QM.CouchbaseConfig config → Mount.Couchbase (Couchbase.fromConfig config)
       QM.MarkLogicConfig config → Mount.MarkLogic (MarkLogic.fromConfig config)
       QM.SparkHDFSConfig config → Mount.SparkHDFS (Spark.fromConfig config)
+      QM.SparkLocalConfig config → Mount.SparkLocal (SparkLocal.fromConfig config)
 
     raiseError err = case GE.fromQError err of
       Left msg →

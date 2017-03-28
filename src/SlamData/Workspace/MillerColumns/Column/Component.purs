@@ -34,6 +34,7 @@ import DOM.Classy.Node (fromNode) as DOM
 import DOM.Classy.Element (scrollTop, scrollHeight, clientHeight) as DOM
 
 import Halogen as H
+import Halogen.Component.Proxy (proxyQI)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -41,34 +42,42 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
-import SlamData.Workspace.MillerColumns.Column.Options (ColumnOptions(..), LoadParams)
+import SlamData.Workspace.MillerColumns.Column.Component.Item as Item
 import SlamData.Workspace.MillerColumns.Column.Component.Query (Message(..), Message', Query(..), Query')
 import SlamData.Workspace.MillerColumns.Column.Component.State (ColumnState(..), State, initialState)
-import SlamData.Workspace.MillerColumns.Column.Component.Item as I
+import SlamData.Workspace.MillerColumns.Column.Options (ColumnOptions(..), LoadParams)
 
 import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger)
 
-type HTML a i f o = H.ParentHTML (Query' a i o (Const Void)) f i Slam
-type DSL a i f o = H.ParentDSL (State a i o) (Query' a i o (Const Void)) f i (Message' a i o) Slam
+type HTML a i o = H.ParentHTML (Query a i o) (Item.Query a o) i Slam
+type DSL a i o = H.ParentDSL (State a i o) (Query a i o) (Item.Query a o) i (Message' a i o) Slam
 
 component
-  ∷ ∀ a i f o
+  ∷ ∀ a i o
   . Ord i
-  ⇒ ColumnOptions a i f (Const Void) o
+  ⇒ ColumnOptions a i o
   → i
-  → H.Component HH.HTML (Query' a i o (Const Void)) (Maybe a) (Message' a i o) Slam
-component (ColumnOptions colSpec) colPath =
+  → H.Component HH.HTML (Query' a i o) (Maybe a) (Message' a i o) Slam
+component opts = proxyQI ∘ component' opts
+
+component'
+  ∷ ∀ a i o
+  . Ord i
+  ⇒ ColumnOptions a i o
+  → i
+  → H.Component HH.HTML (Query a i o) (Maybe a) (Message' a i o) Slam
+component' (ColumnOptions colSpec) colPath =
   H.lifecycleParentComponent
     { initialState
     , render
-    , eval: coproduct eval (absurd ∘ unwrap)
-    , initializer: Just $ left $ H.action Init
+    , eval
+    , initializer: Just (H.action Init)
     , finalizer: Nothing
-    , receiver: HE.input $ map left ∘ SetSelection
+    , receiver: HE.input SetSelection
     }
   where
 
-  render ∷ State a i o → HTML a i f o
+  render ∷ State a i o → HTML a i o
   render { items, state, selected, filterText } =
     let
       listItems = A.fromFoldable (renderItem selected <$> items)
@@ -82,29 +91,29 @@ component (ColumnOptions colSpec) colPath =
             , HH.input
                 [ HP.class_ (HH.ClassName "sd-form-input")
                 , HP.value filterText
-                , HE.onValueInput (HE.input (map left ∘ HandleFilterChange))
+                , HE.onValueInput (HE.input HandleFilterChange)
                 ]
             , HH.button
                 [ HP.type_ HP.ButtonButton
-                , HE.onClick (HE.input_ (left ∘ UpdateFilter ""))
+                , HE.onClick (HE.input_ (UpdateFilter ""))
                 , HP.enabled (filterText /= "")
                 ]
                 [ RC.clearFieldIcon "Clear filter" ]
             ]
         , renderSelected selected
         , HH.ul
-            [ HE.onScroll \e -> H.action ∘ map left ∘ HandleScroll <$> DOM.fromNode (DOM.currentTarget e) ]
+            [ HE.onScroll \e -> H.action ∘ HandleScroll <$> DOM.fromNode (DOM.currentTarget e) ]
             $ listItems
             <> (guard (state == Loading) $> loadIndicator)
         ]
 
-  loadIndicator ∷ HTML a i f o
+  loadIndicator ∷ HTML a i o
   loadIndicator =
     HH.li
       [ HP.class_ (HH.ClassName "sd-miller-column-loading") ]
       [ HH.span_ [ HH.text "Loading..." ] ]
 
-  renderSelected ∷ Maybe a → HTML a i f o
+  renderSelected ∷ Maybe a → HTML a i o
   renderSelected = case _ of
     Nothing →
       HH.div
@@ -122,7 +131,7 @@ component (ColumnOptions colSpec) colPath =
               ]
           , HP.title deselLabel
           , ARIA.label deselLabel
-          , HE.onClick $ HE.input_ (left ∘ Deselect)
+          , HE.onClick $ HE.input_ Deselect
           ]
           [ HH.span
               [ HP.class_ (HH.ClassName "sd-miller-column-selection-label") ]
@@ -130,7 +139,7 @@ component (ColumnOptions colSpec) colPath =
           , RC.clearFieldIcon deselLabel
           ]
 
-  renderItem ∷ Maybe a → a → HTML a i f o
+  renderItem ∷ Maybe a → a → HTML a i o
   renderItem selected item =
     let
       itemId = colSpec.id item
@@ -139,10 +148,10 @@ component (ColumnOptions colSpec) colPath =
       HH.slot
         itemId
         (colSpec.renderItem itemId item)
-        (if Just itemId == selectedId then I.Selected else I.Deselected)
-        (HE.input (map left ∘ HandleMessage itemId))
+        (if Just itemId == selectedId then Item.Selected else Item.Deselected)
+        (HE.input (HandleMessage itemId))
 
-  eval ∷ Query a i o ~> DSL a i f o
+  eval ∷ Query a i o ~> DSL a i o
   eval = case _ of
     Init next → do
       trigger ← debouncedEventSource (Milliseconds 750.0)
@@ -161,7 +170,7 @@ component (ColumnOptions colSpec) colPath =
     HandleFilterChange text next → do
       trigger ← H.gets _.filterTrigger
       H.modify (\st → st { tick = st.tick + 1, filterText = text })
-      lift $ runDebounceTrigger trigger (left ∘ UpdateFilter text)
+      lift $ runDebounceTrigger trigger (UpdateFilter text)
       pure next
     UpdateFilter text next → do
       H.modify (_ { filterText = text, items = L.Nil, lastLoadParams = Nothing })
@@ -177,14 +186,14 @@ component (ColumnOptions colSpec) colPath =
       pure next
     HandleMessage itemId msg next → do
       case msg of
-        Left (I.RaisePopulate a) → do
+        Left (Item.RaisePopulate a) → do
           H.modify (_ { selected = Just a })
           H.raise $ Left $ Selected itemId a
         Right o → do
           H.raise $ Right o
       pure next
 
-  load ∷ DSL a i f o Unit
+  load ∷ DSL a i o Unit
   load = do
     { filterText, nextOffset, lastLoadParams, tick } ← H.get
     let

@@ -69,10 +69,11 @@ renderSelection pack state = case state ^. ST._selected of
   Just (Right tp) →
     HH.slot' CS.cpTransform unit AS.component
       { options: ST.transforms state
-      , selection: Just $ Tr.Aggregation Ag.Sum
+      , selection: (\a → a × a) <$> (Just $ Tr.Aggregation Ag.Sum)
       , title: "Choose transformation"
-      , label: Tr.prettyPrintTransform
+      , toLabel: Tr.prettyPrintTransform
       , deselectable: false
+      , toSelection: const Nothing
       }
       (HE.input \m → Q.OnField tp ∘ Q.HandleTransformPicker m)
   Just (Left pf) →

@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Quasar.Auth.Store where
 
 import SlamData.Prelude
+
 import Control.Monad.Eff (Eff)
 import DOM (DOM)
 import OIDC.Crypt.Types as OIDCT
@@ -28,7 +29,7 @@ storeIdToken ∷ ∀ e. String → Either String OIDCT.IdToken → Eff (dom ∷ 
 storeIdToken keySuffix idToken =
   LS.setLocalStorage
     (AuthKeys.hyphenatedSuffix AuthKeys.idTokenLocalStorageKey keySuffix)
-    $ OIDCT.runIdToken
+    $ unwrap
     <$> idToken
 
 storeProvider ∷ ∀ e. String → QAT.Provider → Eff (dom ∷ DOM | e) Unit

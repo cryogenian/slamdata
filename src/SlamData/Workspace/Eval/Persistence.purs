@@ -28,13 +28,14 @@ import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Throw (class MonadThrow, throw, note, noteError)
 
 import Data.Array as Array
+import Data.Functor.Compose (Compose(Compose))
 import Data.Lens ((^?))
-import Data.List as List
 import Data.List (List(..), (:))
+import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Path.Pathy as Pathy
 import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as Pathy
 import Data.Rational ((%))
 import Data.Set (Set)
 import Data.Set as Set
@@ -46,7 +47,7 @@ import SlamData.Quasar.Error as QE
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
-import SlamData.Workspace.AccessType (isEditable)
+import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
@@ -56,14 +57,16 @@ import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Eval as Eval
+import SlamData.Workspace.Eval.Card (AnyCardModel)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (pendingGraph, EvalGraph)
 import SlamData.Workspace.Eval.Traverse (TraverseCard(..), TraverseDeck(..), unfoldModelTree, isCyclical)
-import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Legacy (isLegacy, loadCompatWorkspace, pruneLegacyData)
+import SlamData.Workspace.Model as WM
 
 import Utils.Aff (laterVar)
+import Utils.LocalStorage as LocalStorage
 
 defaultSaveDebounce ∷ Int
 defaultSaveDebounce = 500
@@ -95,11 +98,18 @@ loadWorkspace ∷ ∀ f m. Persist f m (m (Either QE.QError Deck.Id))
 loadWorkspace = runExceptT do
   { path, eval, accessType } ← Wiring.expose
   stat × ws ← ExceptT $ loadCompatWorkspace path
+  cards ← case accessType of
+    AccessType.Editable →
+      pure ws.cards
+    AccessType.ReadOnly →
+      lift
+        $ Map.unionWith CM.updateCardModel ws.cards
+        <$> getLocallyStoredCards ws.rootId
   liftAff $ putVar eval.root ws.rootId
   graph ← note (QE.msgToQError "Cannot build graph") $
-    unfoldModelTree ws.decks ws.cards ws.rootId
+    unfoldModelTree ws.decks cards ws.rootId
   lift $ populateGraph mempty mempty Nothing graph
-  when (isLegacy stat && isEditable accessType) do
+  when (isLegacy stat && AccessType.isEditable accessType) do
     ExceptT saveWorkspace
     void $ lift $ pruneLegacyData path -- Not imperative that this succeeds
   pure ws.rootId
@@ -109,13 +119,42 @@ saveWorkspace = runExceptT do
   { path, eval, auth } ← Wiring.expose
   decks ← map _.model <$> Cache.snapshot eval.decks
   cards ← map _.model <$> Cache.snapshot eval.cards
-  rootId ← liftAff $ peekVar eval.root
+  rootId ← lift $ getRootDeckId
   let
     json = WM.encode { rootId, decks, cards }
     file = path </> Pathy.file "index"
   result ← Quasar.save file json
   liftEff $ Ref.writeRef auth.retrySave (isLeft result)
   ExceptT $ pure result
+
+saveCardLocally ∷ ∀ f m. Persist f m (Card.Id → m (Either QE.QError Unit))
+saveCardLocally cardId = runExceptT do
+  rootDeckId ← lift getRootDeckId
+  lift ∘ saveCardsLocally rootDeckId
+    =<< Map.insert cardId
+    <$> ExceptT (note noCardFound <$> getCardModel cardId)
+    <*> ExceptT (Right <$> getLocallyStoredCards rootDeckId)
+  where
+  noCardFound ∷ QE.QError
+  noCardFound =
+    QE.msgToQError $ "No card with id " ⊕ show cardId ⊕ " found."
+
+getRootDeckId ∷ ∀ m. PersistEnv m (m Deck.Id)
+getRootDeckId =
+  liftAff ∘ peekVar ∘ _.root ∘ _.eval =<< Wiring.expose
+
+cardsLocalStorageKey ∷ Deck.Id → String
+cardsLocalStorageKey deckId =
+  "sd-cards-" ⊕ DID.toString deckId
+
+saveCardsLocally ∷ ∀ m. PersistEnv m (Deck.Id → Map CID.CardId AnyCardModel → m Unit)
+saveCardsLocally =
+  LocalStorage.setLocalStorage ∘ cardsLocalStorageKey
+
+getLocallyStoredCards ∷ ∀ m. PersistEnv m (Deck.Id → m (Map CID.CardId AnyCardModel))
+getLocallyStoredCards deckId =
+  either (const Map.empty) id
+    <$> (LocalStorage.getLocalStorage $ cardsLocalStorageKey deckId)
 
 putDeck ∷ ∀ m. PersistEnv m (Deck.Id → Deck.Model → m Unit)
 putDeck deckId deck = do
@@ -137,6 +176,10 @@ getCard cardId = do
   { eval } ← Wiring.expose
   Cache.get cardId eval.cards
 
+getCardModel ∷ ∀ m. PersistEnv m (Card.Id → m (Maybe Card.Model))
+getCardModel =
+  unwrap ∘ map _.model ∘ Compose ∘ getCard
+
 getCards ∷ ∀ m. PersistEnv m (Array Card.Id → m (Maybe (Array Card.Cell)))
 getCards = map sequence ∘ traverse getCard
 
@@ -147,7 +190,7 @@ publishCardChange source@(_ × cardId) model = do
   card ← noteError "Card not found" =<< Cache.get cardId eval.cards
   graph ← snapshotGraph cardId
   queueEval' defaultEvalDebounce source graph
-  queueSaveDefault
+  queueSaveDefault $ Just cardId
   Eval.publish card (Card.ModelChange source model)
   for_ card.decks \deckId →
     getDeck deckId >>= traverse_
@@ -215,7 +258,7 @@ rebuildGraph = do
   { eval } ← Wiring.expose
   decks ← Cache.snapshot eval.decks
   cards ← Cache.snapshot eval.cards
-  rootId ← liftAff $ peekVar eval.root
+  rootId ← getRootDeckId
   graph ← noteError "Cannot rebuild graph" $
     unfoldModelTree (_.model <$> decks) (_.model <$> cards) rootId
   Cache.restore mempty eval.decks
@@ -229,17 +272,20 @@ snapshotGraph cardId = do
   cards ← Cache.snapshot eval.cards
   pure (pendingGraph (pure cardId) { decks, cards })
 
-queueSave ∷ ∀ f m. Persist f m (Int → m Unit)
-queueSave ms = do
+queueSave ∷ ∀ f m. Persist f m (Int → Maybe Card.Id → m Unit)
+queueSave ms cardId = do
   { eval, path, accessType } ← Wiring.expose
-  when (isEditable accessType) do
-    debounce ms path { avar: _ } eval.debounceSaves (pure unit) do
-      void saveWorkspace
+  debounce ms path { avar: _ } eval.debounceSaves (pure unit)
+    case accessType of
+      AccessType.Editable →
+        void saveWorkspace
+      AccessType.ReadOnly →
+        for_ cardId saveCardLocally
 
-queueSaveImmediate ∷ ∀ f m. Persist f m (m Unit)
+queueSaveImmediate ∷ ∀ f m. Persist f m (Maybe Card.Id → m Unit)
 queueSaveImmediate = queueSave 0
 
-queueSaveDefault ∷ ∀ f m. Persist f m (m Unit)
+queueSaveDefault ∷ ∀ f m. Persist f m (Maybe Card.Id → m Unit)
 queueSaveDefault = queueSave defaultSaveDebounce
 
 queueEval' ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → EvalGraph → m Unit)
@@ -315,7 +361,7 @@ deleteDeck deckId = do
   Cache.remove deckId eval.decks
   case cell.parent of
     Nothing → do
-      rootId ← liftAff $ peekVar eval.root
+      rootId ← getRootDeckId
       when (rootId ≡ deckId) $ void do
         Quasar.delete (Left path)
     Just oldParentId → do
@@ -323,7 +369,7 @@ deleteDeck deckId = do
       putCard oldParentId oldParentModel
       rebuildGraph
       publishCardChange (Card.toAll oldParentId) oldParentModel
-      queueSaveDefault
+      queueSaveDefault Nothing
   pure cell.parent
 
 wrapDeck ∷ ∀ f m. Persist f m (Deck.Id → Card.AnyCardModel → m Deck.Id)
@@ -332,7 +378,7 @@ wrapDeck deckId cardModel = do
   parentCardId × _ ← freshCard (Just Card.emptyOut) Set.empty cardModel
   parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId } (Deck.NeedsEval parentCardId)
   updateRootOrParent deckId parentDeckId cell.parent
-  queueSaveDefault
+  queueSaveDefault Nothing
   pure parentDeckId
 
 wrapAndMirrorDeck ∷ ∀ f m. Persist f m (Card.Id → Deck.Id → m Deck.Id)
@@ -347,7 +393,7 @@ wrapAndMirrorDeck cardId deckId = do
   parentDeckId × _ ← freshDeck DM.emptyDeck { cards = pure parentCardId } (Deck.NeedsEval parentCardId)
   cloneActiveStateTo ({ cardIndex: _ } <$> mstate.index) mirrorDeckId deckId
   updateRootOrParent deckId parentDeckId cell.parent
-  queueSaveDefault
+  queueSaveDefault Nothing
   pure parentDeckId
 
 mirrorDeck ∷ ∀ f m. Persist f m (Card.Id → Card.Id → Deck.Id → m Deck.Id)
@@ -362,7 +408,7 @@ mirrorDeck parentId cardId deckId = do
   putCard parentId parentModel
   rebuildGraph
   publishCardChange (Card.toAll parentId) parentModel
-  queueSaveDefault
+  queueSaveDefault Nothing
   pure mirrorDeckId
 
 unwrapDeck ∷ ∀ f m. Persist f m (Deck.Id → m Deck.Id)
@@ -374,7 +420,7 @@ unwrapDeck deckId = do
   child ← noteError "Child not found" =<< getDeck childId
   Cache.remove deckId eval.decks
   updateRootOrParent deckId childId cell.parent
-  queueSaveDefault
+  queueSaveDefault Nothing
   pure childId
   where
     immediateChild ∷ Array Card.Model → Maybe Deck.Id
@@ -398,7 +444,7 @@ collapseDeck deckId cardId = do
   putCard cardId parentModel'
   rebuildGraph
   publishCardChange (Card.toAll cardId) parentModel'
-  queueSaveDefault
+  queueSaveDefault Nothing
   where
     collapse ∷ Card.Model → Array Card.Model → Maybe Card.Model
     collapse parent child = case parent, child of
@@ -432,7 +478,6 @@ wrapAndGroupDeck orn bias deckId siblingId = do
       putCard oldParentId oldParent'
       rebuildGraph
       publishCardChange (Card.toAll oldParentId) oldParent'
-      queueSaveDefault
     _ → do
       throw (Exn.error "Cannot group deck")
 
@@ -455,7 +500,7 @@ groupDeck orn bias deckId siblingId newParentId = do
         parent' = CM.Draftboard { layout: layout' }
       publishCardChange (Card.toAll newParentId) child'
       publishCardChange (Card.toAll oldParentId) parent'
-      queueSaveDefault
+      queueSaveDefault Nothing
     _, _ →
       wrapAndGroupDeck orn bias deckId siblingId
 
@@ -464,7 +509,7 @@ renameDeck deckId name = do
   cell ← noteError "Deck not found" =<< getDeck deckId
   putDeck deckId (cell.model { name = name })
   Eval.publish cell (Deck.NameChange name)
-  queueSaveDefault
+  queueSaveDefault Nothing
   for_ cell.parent (queueEvalDefault ∘ Card.toAll)
   pure unit
 
@@ -480,7 +525,7 @@ addCard deckId cty = do
   putDeck deckId deck.model { cards = Array.snoc deck.model.cards cardId }
   rebuildGraph
   Eval.publish deck (Deck.CardChange cardId)
-  queueSaveDefault
+  queueSaveDefault Nothing
   queueEvalImmediate (Card.toAll cardId)
   pure cardId
 
@@ -499,7 +544,7 @@ removeCard deckId cardId = do
     MaybeT $ pure card.output
   putDeck deckId deck'
   rebuildGraph
-  queueSaveDefault
+  queueSaveDefault Nothing
   Eval.publish deck (Deck.Complete cardIds.init (fromMaybe Card.emptyOut output))
 
 updateRootOrParent ∷ ∀ f m. Persist f m (Deck.Id → Deck.Id → Maybe Card.Id → m Unit)
