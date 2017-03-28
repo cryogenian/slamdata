@@ -41,10 +41,10 @@ import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Component.State as ST
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Model as FM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Package.DSL as P
 import SlamData.Workspace.Card.Setups.Package.Lenses as PL
@@ -54,8 +54,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
-package ∷ P.PackageM FM.ModelR Unit
-package = do
+package ∷ DS.Package
+package = P.onPrism (M._BuildFunnel ∘ _Just) $ DS.interpret do
   category ←
     P.field PL._category PP._category
       >>= P.addSource _.category
@@ -68,8 +68,7 @@ package = do
       >>= P.addSource _.value
 
   series ←
-    P.field PL._series PP._series
-      >>= P.optional
+    P.optional PL._series PP._series
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.addSource _.date
@@ -94,7 +93,7 @@ render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    [ HH.slot' CS.cpDims unit (DM.component (M._BuildFunnel ∘ _Just) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderOrder state, renderAlign state ]

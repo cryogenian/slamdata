@@ -30,10 +30,11 @@ import SlamData.Prelude
 import Control.Monad.Free (liftF, foldFree, hoistFree)
 import Control.Monad.State (State, modify, execState, gets)
 
-import Data.Lens (Lens, Prism', view, withPrism, _Just, (%~), (?~), (^.), (.~), (^?))
+import Data.Lens (ALens', Prism', view, withPrism, _Just, (%~), (?~), (^.), (.~), (^?), cloneLens)
 import Data.List as L
 import Data.StrMap as SM
 
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Package.Types as T
 
 hoistField
@@ -43,25 +44,30 @@ hoistField
   → T.PackageFF f m
   ~> T.PackageFF ff m
 hoistField fn bn = case _ of
-  T.DefineField ml p c →
-    T.DefineField ml p $ c ∘ bn
+  T.MandatoryField ml p c →
+    T.MandatoryField ml p $ c ∘ bn
+  T.OptionalField ml p c →
+    T.OptionalField ml p $ c ∘ bn
   T.Source f a c →
     T.Source (fn f) a $ c ∘ bn
   T.Depends { filter, source } c →
     T.Depends {filter: fn filter, source: fn source} $ c ∘ bn
   T.ActiveGuard { guard, source } c →
     T.ActiveGuard { guard: fn guard, source: fn source } $ c ∘ bn
-  T.ModifyField ff f c →
-    T.ModifyField (\fld → fn $ ff $ bn fld) (fn f) $ c ∘ bn
 
 indexify ∷ ∀ m. T.PackageFF (T.Field m) m ~> T.PackageFF (Int × (T.Field m)) m
 indexify = hoistField (\fld → 0 × fld) snd
 
 fieldF ∷ ∀ m. T.PackageFF (Int × (T.Field m)) m ~> State (L.List (T.Field m))
 fieldF = case _ of
-  T.DefineField lens projection c → do
+  T.MandatoryField lens projection c → do
     len ← gets L.length
-    let fld = T.newField lens projection
+    let fld = T.mandatoryField lens projection
+    modify $ L.Cons fld
+    pure $ c $ len × fld
+  T.OptionalField lens projection c → do
+    len ← gets L.length
+    let fld = T.optionalField lens projection
     modify $ L.Cons fld
     pure $ c $ len × fld
   T.Source fld a c → do
@@ -88,13 +94,12 @@ fieldF = case _ of
             (T._guards %~ L.Cons (snd guard ^. T._projection))
             st
     pure $ c source
-  T.ModifyField fn fld@(ix × f) c → do
-    let r = fn fld
-    modify \st → fromMaybe st $ L.updateAt ix (snd r) st
-    pure $ c r
 
-field ∷ ∀ s m a b. Lens s m a b → T.Projection → T.PackageM m (T.Field m)
-field l p = liftF $ T.DefineField (T.packAnyLens l) p id
+field ∷ ∀ m. ALens' m D.LabeledJCursor → T.Projection → T.PackageM m (T.Field m)
+field l p = liftF $ T.MandatoryField l p id
+
+optional ∷ ∀ m. ALens' m (Maybe D.LabeledJCursor) → T.Projection → T.PackageM m (T.Field m)
+optional l p = liftF $ T.OptionalField l p id
 
 addSource
   ∷ ∀ m a
@@ -108,12 +113,6 @@ isFilteredBy filter source = liftF $ T.Depends { filter, source } id
 
 isActiveWhen ∷ ∀ m. T.Field m → T.Field m → T.PackageM m (T.Field m)
 isActiveWhen guard source = liftF $ T.ActiveGuard { source, guard } id
-
-modifyField ∷ ∀ m. (T.Field m → T.Field m) → T.Field m → T.PackageM m (T.Field m)
-modifyField fn f = liftF $ T.ModifyField fn f id
-
-optional ∷ ∀ m. (T.Field m) → T.PackageM m (T.Field m)
-optional = modifyField $ T._mandatory .~ false
 
 interpret ∷ ∀ m a s. Monoid s ⇒ T.AxesComposer s → T.PackageM m a → T.Package m s
 interpret axc pack =
@@ -154,9 +153,9 @@ interpret axc pack =
     let
       -- Unsafe, using _mandatory to determine if it's `Maybe` or not
       foldFn acc fld = acc
-        # if fld ^. T._mandatory
-          then T.unpackProjection (fld ^. T._projection) ?~ (m ^. T.unpackAnyLens (fld ^. T._lens))
-          else T.unpackProjection (fld ^. T._projection) .~ (m ^. T.unpackAnyLens (fld ^. T._lens))
+        # case fld ^. T._lens of
+            Right lens → T.unpackProjection (fld ^. T._projection) .~ (m ^. cloneLens lens)
+            Left lens → T.unpackProjection (fld ^. T._projection) ?~ (m ^. cloneLens lens)
     in
       foldl foldFn state fields
 
@@ -167,12 +166,11 @@ interpret axc pack =
       foldfn acc fld =
         let
           v = dimMap ^. T.unpackProjection (fld ^. T._projection)
-          lns = T.unpackAnyLens (fld ^. T._lens)
-        in if not $ fld ^. T._mandatory
-           then Just $ acc # T.unpackAnyLens (fld ^. T._lens) .~ v
-           else do
-             val ← v
-             pure $ acc # lns .~ val
+        in case fld ^. T._lens of
+          Right lens → Just $ acc # cloneLens lens .~ v
+          Left lens → do
+            val ← v
+            pure $ acc # cloneLens lens .~ val
     in
      L.foldM foldfn m fields
 

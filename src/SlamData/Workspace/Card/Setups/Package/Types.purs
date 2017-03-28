@@ -18,15 +18,12 @@ module SlamData.Workspace.Card.Setups.Package.Types
   ( Package
   , DimensionMap
   , emptyDimMap
-  , AnyLens
-  , packAnyLens
-  , unpackAnyLens
   , AxesProjection
   , packAxesProjection
   , unpackAxesProjection
   , Field
-  , newField
-  , _mandatory
+  , mandatoryField
+  , optionalField
   , _guards
   , _filters
   , _projection
@@ -50,12 +47,11 @@ import SlamData.Prelude
 
 import Control.Monad.Free (Free)
 
-import Data.Lens (Lens, Lens', wander, lens)
+import Data.Lens (ALens', Lens', wander, lens)
 import Data.Lens.At (class At)
 import Data.Lens.Index (class Index)
 import Data.List as L
 import Data.StrMap as SM
-import Data.Lens.Iso.Newtype (_Newtype)
 
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Dimension (LabeledJCursor) as D
@@ -72,14 +68,6 @@ type Package m s =
 type DimensionMap = SM.StrMap D.LabeledJCursor
 emptyDimMap ∷ DimensionMap
 emptyDimMap = SM.empty
-
-data AnyLens m
-
-packAnyLens ∷ ∀ s m a b. Lens s m a b → AnyLens m
-packAnyLens = unsafeCoerce
-
-unpackAnyLens ∷ ∀ s m a b. AnyLens m → Lens s m a b
-unpackAnyLens = unsafeCoerce
 
 data AxesProjection
 
@@ -98,51 +86,53 @@ packProjection = unsafeCoerce
 unpackProjection ∷ ∀ m a b. Projection → ProjectionU m a b
 unpackProjection = unsafeCoerce
 
-newtype Field m = Field
+type Field m =
   { projection ∷ Projection
-  , mandatory ∷ Boolean
-  , lens ∷ AnyLens m
+  , lens ∷ (ALens' m D.LabeledJCursor) ⊹ (ALens' m (Maybe D.LabeledJCursor))
   , axesPrjs ∷ L.List AxesProjection
   , guards ∷ L.List Projection
   , filters ∷ L.List Projection
   }
 
-newField ∷ ∀ m. AnyLens m → Projection → Field m
-newField lens projection = Field
-  { lens
+mandatoryField ∷ ∀ m. ALens' m D.LabeledJCursor → Projection → Field m
+mandatoryField lens projection =
+  { lens: Left lens
   , projection
   , axesPrjs: L.Nil
   , guards: L.Nil
   , filters: L.Nil
-  , mandatory: true
   }
 
-derive instance newtypeField ∷ Newtype (Field m) _
+optionalField ∷ ∀ m. ALens' m (Maybe D.LabeledJCursor) → Projection → Field m
+optionalField lens projection =
+  { lens: Right lens
+  , projection
+  , axesPrjs: L.Nil
+  , guards: L.Nil
+  , filters: L.Nil
+  }
 
 _projection ∷ ∀ m. Lens' (Field m) Projection
-_projection = _Newtype ∘ lens _.projection _{ projection = _ }
+_projection = lens _.projection _{ projection = _ }
 
-_mandatory ∷ ∀ m. Lens' (Field m) Boolean
-_mandatory = _Newtype ∘ lens _.mandatory _{ mandatory = _ }
-
-_lens ∷ ∀ m. Lens' (Field m) (AnyLens m)
-_lens = _Newtype ∘ lens _.lens _{ lens = _ }
+_lens ∷ ∀ m. Lens' (Field m) ((ALens' m D.LabeledJCursor) ⊹ (ALens' m (Maybe D.LabeledJCursor)))
+_lens = lens _.lens _{ lens = _ }
 
 _axesPrjs ∷ ∀ m. Lens' (Field m) (L.List AxesProjection)
-_axesPrjs = _Newtype ∘ lens _.axesPrjs _{ axesPrjs = _ }
+_axesPrjs = lens _.axesPrjs _{ axesPrjs = _ }
 
 _guards ∷ ∀ m. Lens' (Field m) (L.List Projection)
-_guards = _Newtype ∘ lens _.guards _{ guards = _ }
+_guards = lens _.guards _{ guards = _ }
 
 _filters ∷ ∀ m. Lens' (Field m) (L.List Projection)
-_filters = _Newtype ∘ lens _.filters _{ filters = _ }
+_filters = lens _.filters _{ filters = _ }
 
 data PackageFF f m next
-  = DefineField (AnyLens m) Projection (f → next)
+  = MandatoryField (ALens' m D.LabeledJCursor) Projection (f → next)
+  | OptionalField (ALens' m (Maybe D.LabeledJCursor)) Projection (f → next)
   | Source f AxesProjection (f → next)
   | Depends { filter ∷ f, source ∷ f } (f → next)
   | ActiveGuard { guard ∷ f, source ∷ f } (f → next)
-  | ModifyField (f → f) f (f → next)
 
 type PackageF m = PackageFF (Field m) m
 

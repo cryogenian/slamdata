@@ -36,10 +36,10 @@ import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Sankey.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Sankey.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Sankey.Component.State as ST
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Model as SM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Package.DSL as P
 import SlamData.Workspace.Card.Setups.Package.Lenses as PL
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
@@ -48,8 +48,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
-package ∷ P.PackageM SM.ModelR Unit
-package = do
+package ∷ DS.Package
+package = P.onPrism (M._BuildSankey ∘ _Just) $ DS.interpret do
   source ←
     P.field PL._source PP._source
       >>= P.addSource _.category
@@ -77,7 +77,7 @@ render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ] ]
-    [ HH.slot' CS.cpDims unit (DM.component (M._BuildSankey ∘ _Just) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     ]
 

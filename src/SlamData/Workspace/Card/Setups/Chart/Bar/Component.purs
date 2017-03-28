@@ -41,10 +41,10 @@ import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.State as ST
-import SlamData.Workspace.Card.Setups.Chart.Bar.Model as BM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Package.DSL as P
 import SlamData.Workspace.Card.Setups.Package.Lenses as PL
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
@@ -53,8 +53,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
-package ∷ P.PackageM BM.ModelR Unit
-package = do
+package ∷ DS.Package
+package = P.onPrism (M._BuildBar ∘ _Just) $ DS.interpret do
   category ←
     P.field PL._category PP._category
       >>= P.addSource _.category
@@ -69,8 +69,7 @@ package = do
       >>= P.isFilteredBy category
 
   stack ←
-    P.field PL._stack PP._stack
-      >>= P.optional
+    P.optional PL._stack PP._stack
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.isFilteredBy category
@@ -78,8 +77,7 @@ package = do
 
 
   parallel ←
-    P.field PL._parallel PP._parallel
-      >>= P.optional
+    P.optional PL._parallel PP._parallel
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.isFilteredBy category
@@ -102,7 +100,7 @@ render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]  ]
-    [ HH.slot' CS.cpDims unit (DM.component (M._BuildBar ∘ _Just) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     ,  HH.hr_
     , row [ renderAxisLabelAngle state ]

@@ -41,10 +41,10 @@ import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Graph.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Graph.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Graph.Component.State as ST
-import SlamData.Workspace.Card.Setups.Chart.Graph.Model as GM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Package.DSL as P
 import SlamData.Workspace.Card.Setups.Package.Lenses as PL
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
@@ -53,8 +53,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
-package ∷ P.PackageM GM.ModelR Unit
-package = do
+package ∷ DS.Package
+package = P.onPrism (M._BuildGraph ∘ _Just) $ DS.interpret do
   source ←
     P.field PL._source PP._source
       >>= P.addSource _.category
@@ -65,13 +65,11 @@ package = do
       >>= P.isFilteredBy source
 
   size ←
-    P.field PL._size PP._size
-      >>= P.optional
+    P.optional PL._size PP._size
       >>= P.addSource _.value
 
   color ←
-    P.field PL._color PP._color
-      >>= P.optional
+    P.optional PL._color PP._color
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.isFilteredBy source
@@ -94,7 +92,7 @@ render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    [ HH.slot' CS.cpDims unit (DM.component (M._BuildGraph ∘ _Just) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderMaxSize state, renderMinSize state ]

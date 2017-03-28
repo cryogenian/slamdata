@@ -42,10 +42,10 @@ import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Area.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Area.Model as AM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Package.DSL as P
 import SlamData.Workspace.Card.Setups.Package.Lenses as PL
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
@@ -54,8 +54,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
-package ∷ P.PackageM AM.ModelR Unit
-package = do
+package ∷ DS.Package
+package = P.onPrism (M._BuildArea ∘ _Just) $ DS.interpret do
   dimension ←
     P.field PL._dimension PP._dimension
       >>= P.addSource _.time
@@ -70,8 +70,7 @@ package = do
       >>= P.addSource _.value
 
   series ←
-    P.field PL._series PP._series
-      >>= P.optional
+    P.optional PL._series PP._series
       >>= P.addSource _.time
       >>= P.addSource _.value
       >>= P.addSource _.date
@@ -97,7 +96,7 @@ render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    [ HH.slot' CS.cpDims unit (DM.component (M._BuildArea ∘ _Just ) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderIsStacked state, renderIsSmooth state ]

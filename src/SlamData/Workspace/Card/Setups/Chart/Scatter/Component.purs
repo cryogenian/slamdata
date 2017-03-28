@@ -41,22 +41,20 @@ import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Component.State as ST
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as SM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Package.DSL as P
 import SlamData.Workspace.Card.Setups.Package.Lenses as PL
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
-
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
-
-package ∷ P.PackageM SM.ModelR Unit
-package = do
+package ∷ DS.Package
+package = P.onPrism (M._BuildScatter ∘ _Just) $ DS.interpret do
   abscissa ←
     P.field PL._abscissa PP._abscissa
       >>= P.addSource _.value
@@ -65,18 +63,15 @@ package = do
       >>= P.addSource _.value
       >>= P.isFilteredBy abscissa
   size ←
-    P.field PL._size PP._size
-      >>= P.optional
+    P.optional PL._size PP._size
       >>= P.addSource _.value
       >>= P.isFilteredBy abscissa
       >>= P.isFilteredBy ordinate
   series ←
-    P.field PL._series PP._series
-      >>= P.optional
+    P.optional PL._series PP._series
       >>= P.addSource _.category
   parallel ←
-    P.field PL._parallel PP._parallel
-      >>= P.optional
+    P.optional PL._parallel PP._parallel
       >>= P.addSource _.category
       >>= P.isFilteredBy series
   pure unit
@@ -94,7 +89,7 @@ render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ] ]
-    [ HH.slot' CS.cpDims unit (DM.component (M._BuildScatter ∘ _Just) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderMinSize state, renderMaxSize state ]

@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Setups.DimensionMap.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut as J
-import Data.Lens (Prism', Lens', _Just, lens, (^.), (.~), (?~), (^?), (%~))
+import Data.Lens (Lens', _Just, lens, (^.), (.~), (?~), (^?), (%~))
 import Data.List as L
 import Data.Set as Set
 import Data.StrMap as SM
@@ -34,9 +34,8 @@ import SlamData.Workspace.Card.Setups.Package.Projection as Pr
 
 type Package = T.Package M.AnyCardModel (Set.Set J.JCursor)
 
-interpret ∷ ∀ m a. Prism' M.AnyCardModel m → T.PackageM m a → Package
-interpret prsm dsl =
-  T.onPrism prsm $ T.interpret axesComposer dsl
+interpret ∷ ∀ m. T.PackageM m Unit → T.Package m (Set.Set J.JCursor)
+interpret = T.interpret axesComposer
 
 type State =
   { axes ∷ Ax.Axes

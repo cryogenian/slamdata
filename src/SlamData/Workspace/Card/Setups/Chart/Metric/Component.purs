@@ -39,10 +39,10 @@ import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Metric.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Metric.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Metric.Component.State as ST
-import SlamData.Workspace.Card.Setups.Chart.Metric.Model as MM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Package.DSL as P
 import SlamData.Workspace.Card.Setups.Package.Lenses as PL
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
@@ -51,8 +51,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
-package ∷ P.PackageM MM.ModelR Unit
-package = do
+package ∷ DS.Package
+package = P.onPrism (M._BuildMetric ∘ _Just) $ DS.interpret do
   P.field PL._value PP._value
     >>= P.addSource _.value
   pure unit
@@ -70,7 +70,7 @@ render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ] ]
-    [ HH.slot' CS.cpDims unit (DM.component (M._BuildMetric ∘ _Just) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , renderFormatter state

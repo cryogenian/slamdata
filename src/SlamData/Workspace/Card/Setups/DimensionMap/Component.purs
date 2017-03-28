@@ -18,9 +18,7 @@ module SlamData.Workspace.Card.Setups.DimensionMap.Component where
 
 import SlamData.Prelude
 
-import Data.Argonaut as J
-import Data.Lens (Prism', (^.), (.~), (%~))
-import Data.Set as Set
+import Data.Lens ((^.), (.~), (%~))
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -28,7 +26,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
@@ -43,35 +40,14 @@ import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 type HTML = H.ParentHTML Q.Query CS.ChildQuery CS.ChildSlot Slam
 type DSL = H.ParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot Q.Message Slam
 
-component'
-  ∷ ∀ m
-  . Prism' M.AnyCardModel m
-  → T.Package m (Set.Set J.JCursor)
-  → H.Component HH.HTML Q.Query Unit Q.Message Slam
-component' prsm pack =
+component ∷ ST.Package → H.Component HH.HTML Q.Query Unit Q.Message Slam
+component package =
   H.parentComponent
     { initialState: ST.initialState
     , render: render package
     , eval: eval package
     , receiver: const Nothing
     }
-  where
-  package = T.onPrism prsm pack
-
-component
-  ∷ ∀ a m
-  . Prism' M.AnyCardModel m
-  → T.PackageM m a
-  → H.Component HH.HTML Q.Query Unit Q.Message Slam
-component prsm dsl =
-  H.parentComponent
-    { initialState: ST.initialState
-    , render: render package
-    , eval: eval package
-    , receiver: const Nothing
-    }
-  where
-  package = ST.interpret prsm dsl
 
 render ∷ ST.Package → ST.State → HTML
 render pack state =

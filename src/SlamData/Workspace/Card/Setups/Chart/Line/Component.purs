@@ -41,10 +41,10 @@ import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Line.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Line.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Line.Component.State as ST
-import SlamData.Workspace.Card.Setups.Chart.Line.Model as LM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Package.DSL as P
 import SlamData.Workspace.Card.Setups.Package.Lenses as PL
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
@@ -53,8 +53,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
-package ∷ P.PackageM LM.ModelR Unit
-package = do
+package ∷ DS.Package
+package = P.onPrism (M._BuildLine ∘ _Just) $ DS.interpret do
   dimension ←
     P.field PL._dimension PP._dimension
       >>= P.addSource _.category
@@ -69,14 +69,12 @@ package = do
       >>= P.isFilteredBy dimension
 
   secondValue ←
-    P.field PL._secondValue PP._secondValue
-      >>= P.optional
+    P.optional PL._secondValue PP._secondValue
       >>= P.addSource _.value
       >>= P.isFilteredBy value
 
   size ←
-    P.field PL._size PP._size
-      >>= P.optional
+    P.optional PL._size PP._size
       >>= P.addSource _.value
       >>= P.isFilteredBy dimension
       >>= P.isFilteredBy value
@@ -84,8 +82,7 @@ package = do
       >>= P.isActiveWhen value
 
   series ←
-    P.field PL._series PP._series
-      >>= P.optional
+    P.optional PL._series PP._series
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.isFilteredBy dimension
@@ -110,7 +107,7 @@ render state =
     [ HP.classes [ CSS.chartEditor ]
 
     ]
-    [ HH.slot' CS.cpDims unit (DM.component (M._BuildLine ∘ _Just) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , renderOptionalMarkers state

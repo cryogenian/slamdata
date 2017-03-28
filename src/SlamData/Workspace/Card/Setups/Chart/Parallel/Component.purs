@@ -45,7 +45,9 @@ import SlamData.Workspace.Card.Setups.Chart.Parallel.Model as PM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Package.Types as TP
+import SlamData.Workspace.Card.Setups.Package.DSL as P
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
@@ -55,8 +57,8 @@ type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
 -- This one is special because it cannot be encoded using PackageM due to
 -- dynamic nature of available fields
-package ∷ TP.Package PM.ModelR (Set.Set JCursor)
-package =
+package ∷ DS.Package
+package = P.onPrism (M._BuildParallel ∘ _Just)
   { allFields
   , cursorMap
   , save
@@ -141,7 +143,7 @@ render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ] ]
-    [ HH.slot' CS.cpDims unit (DM.component' (M._BuildParallel ∘ _Just) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     ]
 

@@ -37,10 +37,10 @@ import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.Chart.Radar.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Chart.Radar.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Chart.Radar.Component.State as ST
-import SlamData.Workspace.Card.Setups.Chart.Radar.Model as RM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Package.DSL as P
 import SlamData.Workspace.Card.Setups.Package.Lenses as PL
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
@@ -49,8 +49,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
-package ∷ P.PackageM RM.ModelR Unit
-package = do
+package ∷ DS.Package
+package = P.onPrism (M._BuildRadar ∘ _Just) $ DS.interpret do
   category ←
     P.field PL._category PP._category
       >>= P.addSource _.category
@@ -63,16 +63,14 @@ package = do
       >>= P.addSource _.value
 
   multiple ←
-    P.field PL._multiple PP._multiple
-      >>= P.optional
+    P.optional PL._multiple PP._multiple
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.isFilteredBy category
       >>= P.isActiveWhen category
 
   parallel ←
-    P.field PL._parallel PP._parallel
-      >>= P.optional
+    P.optional PL._parallel PP._parallel
       >>= P.addSource _.category
       >>= P.addSource _.time
       >>= P.isFilteredBy category
@@ -95,7 +93,7 @@ render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ] ]
-    [ HH.slot' CS.cpDims unit (DM.component (M._BuildRadar ∘ _Just) package) unit
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     ]
 
