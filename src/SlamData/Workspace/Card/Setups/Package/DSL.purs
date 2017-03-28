@@ -141,7 +141,7 @@ interpret axc pack =
     let
       foldfn acc f =
         let
-          ss = foldMap (\p → spy $ T.unpackAxesProjection p axes) $ f ^. T._axesPrjs
+          ss = foldMap (\p → T.unpackAxesProjection p axes) $ f ^. T._axesPrjs
           filtered = foldl (\sm prj → axc.filter prj dimMap sm) ss $ L.reverse $ f ^. T._filters
           guarded = foldl (\sm prj → axc.guard prj dimMap sm) filtered $ L.reverse $ f ^. T._guards
         in acc # T.unpackProjection (f ^. T._projection) ?~ guarded
