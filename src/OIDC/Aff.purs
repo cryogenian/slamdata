@@ -18,10 +18,10 @@ import SlamData.Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Random (random, RANDOM)
 import Control.UI.Browser (hostAndProtocol, getHref)
+import DOM (DOM)
+import Data.List as L
 import Data.URI (printURI, runParseURI)
 import Data.URI.Types as URI
-import Data.List as L
-import DOM (DOM)
 import OIDC.Crypt as Cryptography
 import Quasar.Advanced.Types (ProviderR)
 import Text.Parsing.StringParser (ParseError)
@@ -63,10 +63,10 @@ getAuthenticationUri prompt unhashedNonce pr redirectURIStr = do
         $ L.fromFoldable
         $ map (map Just)
           [ Tuple "response_type"  "id_token token"
-          , Tuple "client_id" $ Cryptography.runClientID pr.clientID
+          , Tuple "client_id" $ unwrap pr.clientId
           , Tuple "redirect_uri" redirectURIStr
           , Tuple "scope" "openid email"
-          , Tuple "nonce" $ Cryptography.runHashedNonce nonce
+          , Tuple "nonce" $ unwrap nonce
           , Tuple "prompt" $ printPrompt prompt
           , Tuple "display" "popup"
           ]

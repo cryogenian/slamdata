@@ -128,7 +128,7 @@ update = do
         , submenus:
             [ { label:
                 fromMaybe "unknown user"
-                $ map Crypt.runEmail
+                $ map unwrap
                 $ Crypt.pluckEmail
                 $ payload
               , submenu:

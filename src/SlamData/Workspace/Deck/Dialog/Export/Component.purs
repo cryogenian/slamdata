@@ -465,7 +465,7 @@ workspaceTokenName workspacePath idToken =
     payload =
       hush $ Eff.runPure $ Exception.try $ OIDC.readPayload idToken
     email =
-      fromMaybe "unknown user" $ OIDC.runEmail <$> (OIDC.pluckEmail =<< payload)
+      fromMaybe "unknown user" $ unwrap <$> (OIDC.pluckEmail =<< payload)
     workspace =
       Pathy.printPath workspacePath
   in
