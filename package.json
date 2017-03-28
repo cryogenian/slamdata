@@ -30,8 +30,10 @@
   "private": true,
   "devDependencies": {
     "chalk": "^1.1.1",
+    "change-case": "^3.0.1",
     "chromedriver": "^2.24.1",
     "expose-loader": "^0.7.1",
+    "glob": "^7.1.1",
     "gulp": "^3.9.0",
     "gulp-content-filter": "0.0.0",
     "gulp-footer": "^1.0.5",
@@ -39,6 +41,7 @@
     "gulp-less": "^3.0.5",
     "gulp-purescript": "^1.0.0",
     "gulp-replace": "^0.5.4",
+    "gulp-svg-sprite": "^1.3.6",
     "gulp-trimlines": "^1.0.0",
     "json-loader": "^0.5.4",
     "platform": "^1.3.0",
@@ -48,6 +51,7 @@
     "rimraf": "^2.4.3",
     "run-sequence": "^1.1.5",
     "selenium-webdriver": "2.53.2",
+    "webpack": "^1.14.0",
     "webpack-stream": "^2.1.0"
   },
   "dependencies": {

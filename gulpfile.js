@@ -4,9 +4,12 @@ var gulp = require("gulp"),
     header = require("gulp-header"),
     contentFilter = require("gulp-content-filter"),
     purescript = require("gulp-purescript"),
+    svgSprite = require("gulp-svg-sprite"),
     webpack = require("webpack-stream"),
     rimraf = require("rimraf"),
     fs = require("fs"),
+    changeCase = require("change-case"),
+    glob = require("glob"),
     trimlines = require("gulp-trimlines"),
     less = require("gulp-less"),
     sequence = require("run-sequence"),
@@ -48,17 +51,19 @@ gulp.task('prevent-css-transitions-and-remove-fixed-positions', function() {
 });
 
 gulp.task("clean", function () {
-    [
-        "output",
-        "tmp",
-        "public/js/file.js",
-        "public/js/filesystem.js",
-        "public/js/workspace.js",
-        "public/js/auth_redirect.js",
-        "public/css/main.css"
-    ].forEach(function (path) {
-        rimraf.sync(path);
-    });
+  [
+    "output",
+    "public/img/icon-sprite.svg",
+    "public/js/file.js",
+    "public/js/filesystem.js",
+    "public/js/workspace.js",
+    "public/js/auth_redirect.js",
+    "public/css/main.css",
+    "src/SlamData/Render/Icon.purs",
+    "tmp"
+  ].forEach(function (path) {
+    rimraf.sync(path);
+  });
 });
 
 gulp.task("make", function() {
@@ -235,5 +240,92 @@ gulp.task("less", function() {
 });
 mkWatch("watch-less", "less", ["less/**/*.less"]);
 
-gulp.task("full", ["clean", "add-headers", "trim-whitespace", "less", "make-bundle"]);
-gulp.task("default", ["less", "make-bundle"]);
+
+gulp.task("svg-icons", () =>
+  gulp.src("icons/**/*.svg")
+    .pipe(svgSprite({
+      shape: {
+        dimensions: { maxWidth: 32, maxHeight: 32 },
+        id: {
+          // `file.stem` not supported in this vinyl version :/
+          // using this to override the default behavior of adding the
+          // directory to the id
+          generator: (name, file) => path.parse(name).name.replace(/\s/, "-")
+        }
+      },
+      mode: {
+        symbol: {
+          render: { css: false, scss: false },
+          prefix: ".sd-icon--%s",
+          dest: "public/img",
+          sprite: "icon-sprite.svg"
+        }
+      }
+    }))
+    .pipe(gulp.dest("./"))
+);
+
+
+gulp.task("icons-purs", () =>
+  glob("icons/**/*.svg", {}, (err, files) => {
+    if (err) {
+      throw err
+      return
+    }
+
+    const { exports, html } = files.reduce((acc, file) => {
+      // get unique file names
+      const p = path.parse(file);
+      if (p == null) {
+        console.error("[icon-purs-adt]", file, "didn't parse.");
+      }
+      const name = p.name.replace(/\s/, "-");
+      if (!acc.includes(name)) {
+        acc.push(name);
+      } else {
+        console.warn("[icon-purs-adt]:", name, "is a duplicate name & is being ignored.");
+      }
+      return acc;
+    }, []).reduce((acc, name) => {
+      // make an array for exports and one for the HTML
+      const camelName = changeCase.camelCase(name);
+      const html = `${camelName} ∷  ∀ p i. HH.HTML p i
+${camelName} = iconHelper "${name}"`;
+      acc.exports.push(camelName);
+      acc.html.push(html)
+      return acc;
+    }, { exports: [], html: [] });
+
+    const pursData = `module Slamdata.Render.Icon
+  ( ${exports.join("\n  , ")}
+  ) where
+
+import SlamData.Prelude
+
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+
+iconHelper ∷ ∀ p i. String → HH.HTML p i
+iconHelper s =
+  HH.element (HH.ElemName "svg")
+    [ HP.class_ $ HH.ClassName "sd-icon" ]
+    [ HH.element (HH.ElemName "use")
+        [ HP.prop (HH.PropName "xlink:href") $ "/img/icon-sprite.svg#" <> s ]
+        []
+    ]
+
+${html.join("\n\n")}
+`;
+
+    fs.writeFileSync(path.join("src", "SlamData", "Render", "Icon.purs"), pursData)
+  })
+);
+
+
+gulp.task("icons", function() {
+  gulp.start("svg-icons", "icons-purs");
+});
+
+
+gulp.task("full", ["clean", "add-headers", "trim-whitespace", "less", "icons", "make-bundle"]);
+gulp.task("default", ["less", "icons", "make-bundle"]);
