@@ -269,8 +269,8 @@ gulp.task("svg-icons", () =>
 gulp.task("icons-purs", () =>
   glob("icons/**/*.svg", {}, (err, files) => {
     if (err) {
-      throw err
-      return
+      throw err;
+      return;
     }
 
     const { exports, html } = files.reduce((acc, file) => {
@@ -292,7 +292,7 @@ gulp.task("icons-purs", () =>
       const html = `${camelName} ∷  ∀ p i. HH.HTML p i
 ${camelName} = iconHelper "${name}"`;
       acc.exports.push(camelName);
-      acc.html.push(html)
+      acc.html.push(html);
       return acc;
     }, { exports: [], html: [] });
 
@@ -317,15 +317,11 @@ iconHelper s =
 ${html.join("\n\n")}
 `;
 
-    fs.writeFileSync(path.join("src", "SlamData", "Render", "Icon.purs"), pursData)
+    fs.writeFileSync(path.join("src", "SlamData", "Render", "Icon.purs"), pursData);
   })
 );
 
 
-gulp.task("icons", function() {
-  gulp.start("svg-icons", "icons-purs");
-});
-
-
-gulp.task("full", ["clean", "add-headers", "trim-whitespace", "less", "icons", "make-bundle"]);
-gulp.task("default", ["less", "icons", "make-bundle"]);
+gulp.task("icons", [ "svg-icons", "icons-purs" ]);
+gulp.task("full", [ "clean", "add-headers", "trim-whitespace", "less", "icons", "make-bundle" ]);
+gulp.task("default", [ "less", "icons", "make-bundle" ]);
