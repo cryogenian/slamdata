@@ -16,7 +16,6 @@ import Control.Monad.State (State, modify, execState, gets)
 
 import Data.Lens (Lens, Prism', view, withPrism, _Just, (%~), (?~), (^.), (.~), (^?))
 import Data.List as L
---import Data.Monoid.Endo (Endo(..))
 import Data.StrMap as SM
 
 import SlamData.Workspace.Card.Setups.Package.Types as T
@@ -114,9 +113,9 @@ interpret axc pack =
     $ foldFree fieldF
     $ hoistFree indexify pack
 
-  allFields ∷ L.List T.Projection
+  allFields ∷ T.DimensionMap → T.AxisTypeAnnotated s → L.List T.Projection
   allFields =
-    L.reverse $ map (view T._projection) fields
+    const $ const $ L.reverse $ map (view T._projection) fields
 
   cursorMap
     ∷ T.DimensionMap

@@ -47,7 +47,7 @@ import SlamData.Workspace.Card.Setups.Dimension (LabeledJCursor) as D
 import Unsafe.Coerce (unsafeCoerce)
 
 type Package m s =
-  { allFields ∷ L.List Projection
+  { allFields ∷ DimensionMap → Ax.AxisTypeAnnotated s → L.List Projection
   , cursorMap ∷ DimensionMap → Ax.AxisTypeAnnotated s → SM.StrMap s
   , save ∷ DimensionMap → m → Maybe m
   , load ∷ Maybe m → DimensionMap → DimensionMap

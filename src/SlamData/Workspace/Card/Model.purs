@@ -576,3 +576,8 @@ _BuildPunchCard ∷ Prism' AnyCardModel BuildPunchCard.Model
 _BuildPunchCard = prism' BuildPunchCard case _ of
   BuildPunchCard a → Just a
   _ → Nothing
+
+_BuildParallel ∷ Prism' AnyCardModel BuildParallel.Model
+_BuildParallel = prism' BuildParallel case _ of
+  BuildParallel a → Just a
+  _ → Nothing

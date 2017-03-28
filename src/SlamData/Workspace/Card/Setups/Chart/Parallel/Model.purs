@@ -18,42 +18,34 @@ module SlamData.Workspace.Card.Setups.Chart.Parallel.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Array as A
-import Data.Lens ((^.))
+import Data.Argonaut as J
+import Data.Argonaut ((~>), (:=), (.?))
+import Data.Newtype (un)
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, nonMaybeAggregationSelect)
-import SlamData.Workspace.Card.Setups.Behaviour as SB
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Form.Select as S
-import SlamData.Form.Select ((⊝))
-
-type ParallelR =
-  { dims ∷ Array JCursor
-  , aggs ∷ Array Ag.Aggregation
-  , series ∷ JCursor
+type ModelR =
+  { dims ∷ Array D.LabeledJCursor
+  , series ∷ D.LabeledJCursor
   }
 
-type Model = Maybe ParallelR
+type Model = Maybe ModelR
 
 initialModel ∷ Model
 initialModel = Nothing
 
-eqParallelR ∷ ParallelR → ParallelR → Boolean
-eqParallelR r1 r2 =
+eqR ∷ ModelR → ModelR → Boolean
+eqR r1 r2 =
   r1.dims ≡ r2.dims
   ∧ r1.series ≡ r2.series
-  ∧ r1.aggs ≡ r2.aggs
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqParallelR r1 r2
+eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -62,34 +54,43 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    dims ← map (map runArbJCursor) arbitrary
-    aggs ← arbitrary
-    series ← map runArbJCursor arbitrary
-    pure { dims, aggs, series }
+    dims ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    series ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    pure { dims, series }
 
 
-encode ∷ Model → Json
-encode Nothing = jsonNull
+encode ∷ Model → J.Json
+encode Nothing = J.jsonNull
 encode (Just r) =
   "configType" := "parallel"
   ~> "dims" := r.dims
   ~> "series" := r.series
-  ~> "aggs" := r.aggs
-  ~> jsonEmptyObject
+  ~> J.jsonEmptyObject
 
-decode ∷ Json → String ⊹ Model
+decode ∷ J.Json → String ⊹ Model
 decode js
-  | isNull js = pure Nothing
+  | J.isNull js = pure Nothing
   | otherwise = map Just do
-    obj ← decodeJson js
+    obj ← J.decodeJson js
     configType ← obj .? "configType"
     unless (configType ≡ "parallel")
       $ throwError "This config is not parallel"
+    decodeR obj <|> decodeLegacyR obj
+  where
+  decodeR ∷ J.JObject → String ⊹ ModelR
+  decodeR obj = do
     dims ← obj .? "dims"
     series ← obj .? "series"
-    aggs ← obj .? "aggs"
-    pure { dims, series, aggs }
+    pure { dims, series }
 
+  decodeLegacyR ∷ J.JObject → String ⊹ ModelR
+  decodeLegacyR obj = do
+    series ← map D.defaultJCursorDimension $ obj .? "series"
+    dprs ← obj .? "dims"
+    aggs ← obj .? "aggs"
+    let dims = D.pairToDimension <$> dprs <*> aggs
+    pure { dims, series }
+{-
 type ReducedState r =
   { axes ∷ Ax.Axes
   , dims ∷ Array (S.Select JCursor)
@@ -159,3 +160,4 @@ behaviour =
          , aggs: A.catMaybes $ map (_ ^. S._value) st.aggs
          , series
          }
+-}

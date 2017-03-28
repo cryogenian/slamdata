@@ -42,6 +42,8 @@ import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
+import Data.Lens ((^?), _Just)
+import Data.Lens.Index (ix)
 import Data.Map as M
 
 import ECharts.Monad (DSL)
@@ -50,16 +52,17 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Parallel.Model (ParallelR, Model, initialState, behaviour)
-import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Parallel))
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Parallel.Model (ModelR, Model)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import Utils.Array (enumerate)
 import Utils.Foldable (enumeratedFor_)
@@ -73,16 +76,14 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Parallel (const buildParallel) m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
-
+eval m = BCE.buildChartEval Parallel (const buildParallel) m \axes → m
 
 type Series =
   { name ∷ Maybe String
   , items ∷ Array (Maybe Number)
   }
 
-buildParallelData ∷ ParallelR → JArray → Array Series
+buildParallelData ∷ ModelR → JArray → Array Series
 buildParallelData r records = series
   where
   -- | maybe series >> data mapped to r.dims
@@ -100,9 +101,9 @@ buildParallelData r records = series
       getValues = Sem.getValues js
 
       mbSeries =
-        getMaybeString r.series
+        getMaybeString =<< r.series ^? D._value ∘ D._projection
       values =
-        map (getValues ∘ pure) r.dims
+        r.dims <#> \rr → getValues $ rr ^? D._value ∘ D._projection
 
       alterSeriesFn
         ∷ Maybe (Array (Array Number))
@@ -130,15 +131,15 @@ buildParallelData r records = series
   aggregateValues
     ∷ Int × (Array Number)
     → Maybe Number
-  aggregateValues (ix × vals)
+  aggregateValues (i × vals)
     | A.null vals = Nothing
     | otherwise = do
-      agg ← r.aggs A.!! ix
+      agg ← r.dims ^? ix i ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
       pure $ Ag.runAggregation agg vals
 
 
 
-buildParallel ∷ ParallelR → JArray → DSL OptionI
+buildParallel ∷ ModelR → JArray → DSL OptionI
 buildParallel r records = do
   E.parallel do
     E.left $ ET.Percent 5.0
@@ -170,4 +171,4 @@ buildParallel r records = do
 
   axes = enumeratedFor_ r.dims \(dimIx × dim) → E.addParallelAxis do
     E.dim dimIx
-    E.name $ show dim
+    traverse_ (E.name ∘ show) $ dim ^? D._value ∘ D._projection

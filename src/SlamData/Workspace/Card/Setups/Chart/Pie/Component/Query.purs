@@ -17,5 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Chart.Pie.Component.Query where
 
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
+
 data Query a
   = HandleDims Q.Message a
