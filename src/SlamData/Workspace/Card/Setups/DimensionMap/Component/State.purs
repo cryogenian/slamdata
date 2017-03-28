@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Setups.DimensionMap.Component.State where
 import SlamData.Prelude
 
 import Data.Argonaut as J
-import Data.Lens (Prism', Lens', _Just, lens, (^.), (.~), (?~), (^?))
+import Data.Lens (Prism', Lens', _Just, lens, (^.), (.~), (?~), (^?), (%~))
 import Data.List as L
 import Data.Set as Set
 import Data.StrMap as SM
@@ -102,8 +102,20 @@ transforms _ = Tr.aggregationTransforms
 
 setValue ∷ T.Projection → J.JCursor → State → State
 setValue fld v =
-  _dimMap ∘ T.unpackProjection fld ?~ wrapFn v
+  (_dimMap ∘ T.unpackProjection fld ?~ wrapFn v)
+  ∘ (_dimMap %~ deselectJCursor v)
+
   where
+  deselectJCursor ∷ J.JCursor → T.DimensionMap → T.DimensionMap
+  deselectJCursor jc dimMap =
+     let
+       foldFn acc k mbVal =
+         SM.update
+           (\val → if Just jc ≡ val ^? D._value ∘ D._projection then Nothing else Just val)
+           k acc
+     in
+       SM.fold foldFn SM.empty dimMap
+
   wrapFn = fromMaybe D.projection $ wrapFns ^. T.unpackProjection fld
   wrapFns =
     SM.empty

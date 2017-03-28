@@ -18,46 +18,38 @@ module SlamData.Workspace.Card.Setups.Chart.Pie.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens ((^.))
+import Data.Argonaut as J
+import Data.Argonaut ((~>), (:=), (.?))
+import Data.Newtype (un)
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, nonMaybeAggregationSelect)
-import SlamData.Workspace.Card.Setups.Behaviour as SB
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Form.Select as S
-import SlamData.Form.Select ((⊝))
-
-
-type PieR =
-  { category ∷ JCursor
-  , value ∷ JCursor
-  , valueAggregation ∷ Ag.Aggregation
-  , donut ∷ Maybe JCursor
-  , parallel ∷ Maybe JCursor
+type ModelR =
+  { category ∷ D.LabeledJCursor
+  , value ∷ D.LabeledJCursor
+  , donut ∷ Maybe D.LabeledJCursor
+  , parallel ∷ Maybe D.LabeledJCursor
   }
 
-type Model = Maybe PieR
+type Model = Maybe ModelR
 
 initialModel ∷ Model
 initialModel = Nothing
 
-eqPieR ∷ PieR → PieR → Boolean
-eqPieR r1 r2 =
+eqR ∷ ModelR → ModelR → Boolean
+eqR r1 r2 =
   r1.category ≡ r2.category
   ∧ r1.value ≡ r2.value
-  ∧ r1.valueAggregation ≡ r2.valueAggregation
   ∧ r1.donut ≡ r2.donut
   ∧ r1.parallel ≡ r2.parallel
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqPieR r1 r2
+eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -66,132 +58,51 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    category ← map runArbJCursor arbitrary
-    value ← map runArbJCursor arbitrary
-    valueAggregation ← arbitrary
-    donut ← map (map runArbJCursor) arbitrary
-    parallel ← map (map runArbJCursor) arbitrary
+    category ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    value ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    donut ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    parallel ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     pure { category
          , value
-         , valueAggregation
          , donut
          , parallel
          }
 
-encode ∷ Model → Json
-encode Nothing = jsonNull
+encode ∷ Model → J.Json
+encode Nothing = J.jsonNull
 encode (Just r) =
   "configType" := "pie"
   ~> "category" := r.category
   ~> "value" := r.value
-  ~> "valueAggregation" := r.valueAggregation
   ~> "donut" := r.donut
   ~> "parallel" := r.parallel
-  ~> jsonEmptyObject
+  ~> J.jsonEmptyObject
 
-decode ∷ Json → String ⊹ Model
+decode ∷ J.Json → String ⊹ Model
 decode js
-  | isNull js = pure Nothing
+  | J.isNull js = pure Nothing
   | otherwise = map Just do
-    obj ← decodeJson js
+    obj ← J.decodeJson js
     configType ← obj .? "configType"
     unless (configType ≡ "pie")
       $ throwError "This config is not pie"
+    decodeR obj <|> decodeLegacyR obj
+  where
+  decodeR ∷ J.JObject → String ⊹ ModelR
+  decodeR obj = do
     category ← obj .? "category"
     value ← obj .? "value"
-    valueAggregation ← obj .? "valueAggregation"
     donut ← obj .? "donut"
     parallel ← obj .? "parallel"
-    pure { category, value, valueAggregation, donut, parallel }
+    pure { category, value, donut, parallel }
 
-type ReducedState r =
-  { axes ∷ Ax.Axes
-  , category ∷ S.Select JCursor
-  , value ∷ S.Select JCursor
-  , valueAgg ∷ S.Select Aggregation
-  , donut ∷ S.Select JCursor
-  , parallel ∷ S.Select JCursor
-  | r}
-
-initialState ∷ ReducedState ()
-initialState =
-  { axes: Ax.initialAxes
-  , category: S.emptySelect
-  , value: S.emptySelect
-  , valueAgg: S.emptySelect
-  , donut: S.emptySelect
-  , parallel: S.emptySelect
-  }
-
-
-behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
-behaviour =
-  { synchronize
-  , load
-  , save
-  }
-  where
-  synchronize st =
-    let
-      newValue =
-        S.setPreviousValueFrom (Just st.value)
-          $ S.autoSelect
-          $ S.newSelect
-          $ st.axes.value
-
-      newValueAggregation =
-        S.setPreviousValueFrom (Just st.valueAgg)
-          $ nonMaybeAggregationSelect
-
-      newCategory =
-        S.setPreviousValueFrom (Just st.category)
-          $ S.autoSelect
-          $ S.newSelect
-          $ st.axes.category
-          ⊕ st.axes.time
-          ⊕ st.axes.date
-          ⊕ st.axes.datetime
-
-      newDonut =
-        S.setPreviousValueFrom (Just st.donut)
-          $ S.newSelect
-          $ S.ifSelected [newCategory]
-          $ st.axes.category
-          ⊕ st.axes.time
-          ⊝ newCategory
-
-      newParallel =
-        S.setPreviousValueFrom (Just st.parallel)
-          $ S.newSelect
-          $ S.ifSelected [newCategory]
-          $ st.axes.category
-          ⊕ st.axes.time
-          ⊝ newCategory
-          ⊝ newDonut
-    in
-      st{ value = newValue
-        , valueAgg = newValueAggregation
-        , category = newCategory
-        , donut = newDonut
-        , parallel = newParallel
-        }
-
-  load Nothing st = st
-  load (Just m) st =
-    st{ value = S.fromSelected $ Just m.value
-      , valueAgg = S.fromSelected $ Just m.valueAggregation
-      , category = S.fromSelected $ Just m.category
-      , donut = S.fromSelected m.donut
-      , parallel = S.fromSelected m.parallel
-      }
-
-  save st =
-    { value: _
-    , valueAggregation: _
-    , category: _
-    , parallel: st.parallel ^. S._value
-    , donut: st.donut ^. S._value
-    }
-    <$> (st.value ^. S._value)
-    <*> (st.valueAgg ^. S._value)
-    <*> (st.category ^. S._value)
+  decodeLegacyR ∷ J.JObject → String ⊹ ModelR
+  decodeLegacyR obj = do
+    category ← map D.defaultJCursorDimension $ obj .? "category"
+    value ←
+      D.pairToDimension
+      <$> (obj .? "value")
+      <*> (obj .? "valueAggregation")
+    donut ← map D.defaultJCursorDimension <$> obj .? "donut"
+    parallel ← map D.defaultJCursorDimension <$> obj .? "parallel"
+    pure { category, value, donut, parallel }

@@ -35,7 +35,7 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (parseColorScheme)
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Model as Funnel
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model as Heatmap
 import SlamData.Workspace.Card.Setups.Chart.Line.Model as Line
-import SlamData.Workspace.Card.Setups.Chart.Pie.Model (PieR)
+import SlamData.Workspace.Card.Setups.Chart.Pie.Model as Pie
 import SlamData.Workspace.Card.Setups.Chart.Radar.Model (RadarR)
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as Scatter
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -100,7 +100,7 @@ decode
     , funnel ∷ Maybe Funnel.ModelR → a
     , heatmap ∷ Maybe Heatmap.ModelR → a
     , line ∷ Maybe Line.ModelR → a
-    , pie ∷ Maybe PieR → a
+    , pie ∷ Maybe Pie.ModelR → a
     , radar ∷ Maybe RadarR → a
     , scatter ∷ Maybe Scatter.ModelR → a
     }
@@ -353,27 +353,29 @@ decode cturs js = do
   decodePie cc = pure $ cturs.pie
     let
       category =
-        cc.series A.!! 0 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 0 >>= view S._value
       donut =
-        cc.series A.!! 1 >>= view S._value
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 1 >>= view S._value
       parallel =
-        cc.series A.!! 2 >>= view S._value
-      value =
+        map D.defaultJCursorDimension
+        $ cc.series A.!! 2 >>= view S._value
+      val =
         cc.measures A.!! 0 >>= view S._value
-      valueAggregation =
+      agg =
         join $ cc.aggregations A.!! 0 >>= view S._value
+      value =
+        D.pairToDimension <$> val <*> agg
 
       pieR =
         { category: _
         , value: _
-        , valueAggregation: _
         , donut
         , parallel
         }
         <$> category
         <*> value
-        <*> valueAggregation
-
     in
       pieR
 
