@@ -27,6 +27,7 @@ import Control.Monad.Throw (class MonadThrow)
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
+import Data.Lens ((^?), _Just)
 import Data.Map as M
 import Data.Set as Set
 import Data.Int as Int
@@ -38,18 +39,19 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning
-  (RadialPosition, adjustRadialPositions, radialTitles)
-import SlamData.Workspace.Card.Setups.Chart.Radar.Model (Model, RadarR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Radar))
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning
+  (RadialPosition, adjustRadialPositions, radialTitles)
+import SlamData.Workspace.Card.Setups.Chart.Radar.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import Utils.Array (enumerate)
 
@@ -63,8 +65,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Radar (const buildRadar) m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Radar (const buildRadar) m \axes → m
 
 -- | One radar serie. Actually just data for echarts radar series
 type RadarSerie =
@@ -79,7 +80,7 @@ type SeriesOnRadar =
     , series ∷ Array RadarSerie
     )
 
-buildRadarData ∷ RadarR → JArray → Array SeriesOnRadar
+buildRadarData ∷ ModelR → JArray → Array SeriesOnRadar
 buildRadarData r records = series
   where
   -- | maybe parallel >> maybe multiple series >> category name >> values
@@ -95,16 +96,16 @@ buildRadarData r records = series
     let
       getMaybeStringFromJson = getMaybeString js
       getValuesFromJson = getValues js
-    in case getMaybeStringFromJson r.category of
+    in case getMaybeStringFromJson =<< r.category ^? D._value ∘ D._projection of
       Nothing → acc
       Just categoryKey →
         let
           mbParallel =
-            getMaybeStringFromJson =<< r.parallel
+            getMaybeStringFromJson =<< r.parallel ^? _Just ∘ D._value ∘ D._projection
           mbMultiple =
-            getMaybeStringFromJson =<< r.multiple
+            getMaybeStringFromJson =<< r.multiple ^? _Just ∘ D._value ∘ D._projection
           values =
-            getValuesFromJson $ pure r.value
+            getValuesFromJson $ r.value ^? D._value ∘ D._projection
 
           alterParallelFn
             ∷ Maybe (Maybe String >> String >> Array Number)
@@ -150,14 +151,18 @@ buildRadarData r records = series
     → Array RadarSerie
   mkMultipleSeries (name × itemsData) =
     [{ name
-     , items: map (Ag.runAggregation r.valueAggregation) itemsData
+     , items:
+         flip map itemsData
+         $ Ag.runAggregation
+         $ fromMaybe Ag.Sum
+         $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
      }]
 
 
   series ∷ Array SeriesOnRadar
   series = adjustRadialPositions unpositionedSeries
 
-buildRadar ∷ RadarR → JArray → DSL OptionI
+buildRadar ∷ ModelR → JArray → DSL OptionI
 buildRadar r records = do
   E.tooltip do
     E.triggerItem
