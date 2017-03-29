@@ -19,6 +19,7 @@ public/css/*.css
 /src/SlamData/Render/Icon.purs
 .*
 npm-debug.log
+yarn.lock
 !.gitignore
 !.travis.yml
 !.editorconfig
