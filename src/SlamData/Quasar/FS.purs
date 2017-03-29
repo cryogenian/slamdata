@@ -57,6 +57,7 @@ import SlamData.Quasar.Data as QD
 import SlamData.Workspace.Legacy (isLegacy, loadCompatWorkspace, pruneLegacyData)
 import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Card.Model as CM
+import SlamData.Workspace.Card.Open.Model as Open
 
 import Utils.Array (enumerate)
 import Utils.Ace (RangeRec)
@@ -210,7 +211,7 @@ move src tgt = do
         if newM ≡ m
           then Nothing
           else pure $ CM.Cache newM
-    CM.Open r →
+    CM.Open (Just (Open.Resource r)) →
       let
         newR = fromMaybe r do
           rel ←
@@ -226,7 +227,7 @@ move src tgt = do
       in
         if newR ≡ r
           then Nothing
-          else pure $ CM.Open newR
+          else pure $ CM.Open (Just (Open.Resource newR))
     CM.Ace mode m →
       let
         wsStr ∷ String

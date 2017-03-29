@@ -21,10 +21,13 @@ module SlamData.Workspace.Card.Open.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Ref as Ref
+
 import Data.Array as A
 import Data.Lens (view)
 import Data.List as L
 import Data.Path.Pathy as Path
+import Data.String as S
 import Data.Unfoldable (unfoldr)
 
 import Halogen as H
@@ -48,6 +51,9 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Open.Component.Query (Query(..))
 import SlamData.Workspace.Card.Open.Component.Query as Q
 import SlamData.Workspace.Card.Open.Component.State (State, initialState)
+import SlamData.Workspace.Card.Open.Model as Open
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.LevelOfDetails as LOD
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 import SlamData.Workspace.MillerColumns.Column.BasicFilter as MCF
@@ -56,7 +62,26 @@ import SlamData.Workspace.MillerColumns.Component as MC
 
 import Utils.Path (AnyPath)
 
-type ColumnsQuery = MC.Query R.Resource AnyPath Void
+data AnyItem a
+  = Root
+  | Variables
+  | Variable VM.Var
+  | Resource a
+
+anyItemToOpen ∷ AnyItem' → Maybe Open.Open
+anyItemToOpen = case _ of
+  Variable v → Just (Open.Variable v)
+  Resource r → Just (Open.Resource r)
+  _ → Nothing
+
+derive instance eqAnyItem ∷ Eq a ⇒ Eq (AnyItem a)
+derive instance ordAnyItem ∷ Ord a ⇒ Ord (AnyItem a)
+derive instance functorAnyItem ∷ Functor AnyItem
+
+type AnyPath' = AnyItem AnyPath
+type AnyItem' = AnyItem R.Resource
+
+type ColumnsQuery = MC.Query AnyItem' AnyPath' Void
 type DSL = CC.InnerCardParentDSL State Query ColumnsQuery Unit
 type HTML =  CC.InnerCardParentHTML Query ColumnsQuery Unit
 
@@ -73,30 +98,57 @@ openComponent =
 
 render ∷ State → HTML
 render state =
-  HH.slot unit (MC.component columnOptions) (pathToColumnData (Left Path.rootDir)) handleMessage
+  case state.currentVars of
+    Just ref → HH.slot unit (MC.component $ columnOptions ref) (pathToColumnData Root) handleMessage
+    Nothing → HH.text ""
 
-handleMessage ∷ MC.Message' R.Resource AnyPath Void → Maybe (CC.InnerCardQuery Query Unit)
-handleMessage =
-  either
-    (\(MC.SelectionChanged _ sel) → Just $ H.action $ right ∘ UpdateSelection sel)
-    absurd
+handleMessage ∷ MC.Message' AnyItem' AnyPath' Void → Maybe (CC.InnerCardQuery Query Unit)
+handleMessage = either handleSelection absurd
+  where
+  runInput ∷ Maybe Open.Open → Maybe (CC.InnerCardQuery Query Unit)
+  runInput sel = Just $ H.action $ right ∘ UpdateSelection sel
 
-renderItem ∷ R.Resource → MCI.BasicItemHTML
+  handleSelection ∷ MC.Message AnyItem' AnyPath' → Maybe (CC.InnerCardQuery Query Unit)
+  handleSelection (MC.SelectionChanged _ sel) = runInput (anyItemToOpen =<< sel)
+
+renderItem ∷ AnyItem' → MCI.BasicItemHTML
 renderItem r =
   HH.div
     [ HP.classes
         [ HH.ClassName "sd-miller-column-item-inner"
-        , either
-            (const $ HH.ClassName "sd-miller-column-item-node")
-            (const $ HH.ClassName "sd-miller-column-item-leaf")
-            (R.getPath r)
+        , if isLeaf (isRight ∘ R.getPath) r
+            then HH.ClassName "sd-miller-column-item-leaf"
+            else HH.ClassName "sd-miller-column-item-node"
         ]
     ]
     [ HH.span_
-        [ glyphForResource r
-        , HH.text (R.resourceName r)
+        [ itemGlyph r
+        , HH.text (itemName r)
         ]
     ]
+
+isLeaf ∷ ∀ a. (a → Boolean) → AnyItem a → Boolean
+isLeaf f = case _ of
+  Root → false
+  Variables → false
+  Variable _ → true
+  Resource r → f r
+
+itemName ∷ AnyItem' → String
+itemName = case _ of
+  Root → ""
+  Variables → "Variables"
+  Variable v → unwrap v
+  Resource r
+    | r ≡ R.Directory Path.rootDir → "Filesystem"
+    | otherwise → R.resourceName r
+
+itemGlyph ∷ AnyItem' → MCI.BasicItemHTML
+itemGlyph = case _ of
+  Root → HH.text ""
+  Variables → glyph B.glyphiconTags
+  Variable _ → glyph B.glyphiconTag
+  Resource r → glyphForResource r
 
 glyphForResource ∷ R.Resource → MCI.BasicItemHTML
 glyphForResource = case _ of
@@ -112,13 +164,15 @@ evalOpen = case _ of
     { auth } ← Wiring.expose
     H.subscribe
       $ busEventSource (\msg -> right (Q.HandleSignInMessage msg H.Listening)) auth.signIn
+    currentVars ← H.liftEff $ Ref.newRef mempty
+    H.modify _ { currentVars = Just currentVars }
     pure next
   Q.HandleSignInMessage message next → do
     when (message ≡ GMB.SignInSuccess) do
       void $ H.query unit $ H.action $ MC.Reload
     pure next
-  Q.UpdateSelection selected next → do
-    H.put selected
+  Q.UpdateSelection selection next → do
+    H.modify _ { selection = selection }
     H.raise CC.modelUpdate
     pure next
 
@@ -129,15 +183,22 @@ evalCard = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    mbRes ← H.get
-    pure $ k $ Card.Open (fromMaybe R.root mbRes)
+    k ∘ Card.Open <$> H.gets _.selection
   CC.Load (Card.Open res) next → do
-    void $ H.query unit $ H.action $ MC.Populate $ pathToColumnData $ R.getPath res
-    H.put (Just res)
+    queryPopulate res
+    H.modify _ { selection = res }
     pure next
   CC.Load _ next →
     pure next
-  CC.ReceiveInput _ _ next →
+  CC.ReceiveInput _ varMap next → do
+    let vars = VM.variables $ Port.flattenResources varMap
+    st ← H.get
+    for_ st.currentVars (H.liftEff ∘ flip Ref.writeRef vars)
+    -- We need to reload the variables column in response to a new varMap,
+    -- but only if it might be visible.
+    case st.selection of
+      Just (Open.Resource _) → pure unit
+      _ → void $ H.query unit $ H.action $ MC.Reload
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
@@ -149,34 +210,58 @@ evalCard = case _ of
       then LOD.Low
       else LOD.High
 
-columnOptions ∷ MCI.BasicColumnOptions R.Resource AnyPath
-columnOptions =
+queryPopulate ∷ Maybe Open.Open → DSL Unit
+queryPopulate = case _ of
+  Just (Open.Resource r) → query $ Resource $ R.getPath r
+  Just (Open.Variable v) → query $ Variable v
+  Nothing → query Root
+  where
+  query = void ∘ H.query unit ∘ H.action ∘ MC.Populate ∘ pathToColumnData
+
+columnOptions ∷ Ref.Ref (L.List VM.Var) → MCI.BasicColumnOptions AnyItem' AnyPath'
+columnOptions varsRef =
   MC.ColumnOptions
     { renderColumn: MCC.component
-    , renderItem: MCI.component { label: R.resourceName, render: renderItem }
-    , label: R.resourceName
+    , renderItem: MCI.component { label: itemName, render: renderItem }
+    , label: itemName
     , load
-    , isLeaf: isRight
-    , id: R.getPath
+    , isLeaf: isLeaf isRight
+    , id: map R.getPath
     }
 
-load
-  ∷ ∀ r
-  . { path ∷ AnyPath, filter ∷ String | r }
-  → Slam { items ∷ L.List R.Resource, nextOffset ∷ Maybe Int }
-load { path, filter } =
-  case path of
-    Left p →
-      Quasar.children p >>= case _ of
+  where
+  load ∷ MC.LoadParams AnyPath' → Slam { items ∷ L.List AnyItem', nextOffset ∷ Maybe Int }
+  load { filter, path } = case path of
+    Root →
+      pure
+        { items: L.fromFoldable [ rootDirectory, Variables ]
+        , nextOffset: Nothing
+        }
+    Variables → do
+      vars ← H.liftEff $ Ref.readRef varsRef
+      let
+        filter' = S.toLower filter
+        filterFn (VM.Var v) = S.contains (S.Pattern filter') $ S.toLower v
+        vars'
+          | filter ≡ "" = vars
+          | otherwise   = L.filter filterFn vars
+      pure
+        { items: Variable <$> vars'
+        , nextOffset: Nothing
+        }
+    Resource (Left r) → do
+      Quasar.children r >>= case _ of
         Left err → handleError err $> noResult
         Right rs → do
           let filenameFilter = MCF.mkFilter filter
           pure
-            { items: L.fromFoldable (A.filter (filenameFilter ∘ view R._name) rs)
+            { items: L.fromFoldable (Resource <$> A.filter (filenameFilter ∘ view R._name) rs)
             , nextOffset: Nothing
             }
-    _ → pure noResult
-  where
+    Resource _ → pure noResult
+    Variable v → pure noResult
+
+  noResult ∷ { items ∷ L.List AnyItem', nextOffset ∷ Maybe Int }
   noResult = { items: L.Nil, nextOffset: Nothing }
 
 handleError ∷ QE.QError → Slam Unit
@@ -197,13 +282,15 @@ handleError err =
 -- | little bit, as some of the intermediate steps may be mounts, etc. but we
 -- | don't know that so always produce directories, but for the usage here that
 -- | doesn't matter.
-pathToColumnData ∷ AnyPath → AnyPath × L.List R.Resource
-pathToColumnData path =
-  case L.unsnoc (toPathList path) of
-    Just { init, last } →
-      last × map (either R.Directory R.File) init
-    Nothing →
-      Left Path.rootDir × L.Nil
+pathToColumnData ∷ AnyPath' → AnyPath' × L.List AnyItem'
+pathToColumnData = case _ of
+  Root → Root × L.Nil
+  Variables → Root × pure Variables
+  Variable v → Root × L.fromFoldable [ Variable v, Variables ]
+  Resource r → Root × map (Resource ∘ either R.Directory R.File) (toPathList r)
+
+rootDirectory ∷ AnyItem'
+rootDirectory = Resource (R.Directory Path.rootDir)
 
 toPathList ∷ AnyPath → L.List AnyPath
 toPathList res =

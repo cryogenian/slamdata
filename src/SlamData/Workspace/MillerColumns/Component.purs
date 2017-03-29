@@ -44,7 +44,7 @@ import SlamData.Workspace.MillerColumns.Column.Component as Column
 import SlamData.Workspace.MillerColumns.Component.Query (Query(..), Message(..), Message')
 import SlamData.Workspace.MillerColumns.Component.State (State, ColumnsData, modifyColumns, columnPaths)
 
-import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions(..)) as Exports
+import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions(..), LoadParams) as Exports
 
 type HTML a i o = H.ParentHTML (Query a i o) (Column.Query' a i o) (Int × i) Slam
 type DSL a i o = H.ParentDSL (State a i) (Query a i o) (Column.Query' a i o) (Int × i) (Message' a i o) Slam
