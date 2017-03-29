@@ -15,7 +15,7 @@
   "scripts": {
     "clean": "gulp clean && rimraf .pulp-cache",
     "postinstall": "node script/get-quasar.js",
-    "build": "gulp replace-crlf less make-bundle",
+    "build": "gulp replace-crlf less icons make-bundle",
     "build-lite": "gulp replace-crlf less bundle",
     "property-tests": "gulp bundle-property-tests && node tmp/js/property-tests",
     "test": "gulp bundle-test && node test",

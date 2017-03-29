@@ -28,11 +28,12 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Guide.Notification as Guide
+import SlamData.Common.Sort (Sort(..))
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _isMount, _sort)
-import SlamData.Common.Sort (Sort(..))
+import SlamData.Guide.Notification as Guide
+import Slamdata.Render.Icon as I
 
 import Utils.DOM as DOM
 
@@ -85,7 +86,7 @@ toolbar state =
     else toolItem ShowHiddenFiles "Show hidden files" B.glyphiconEyeOpen
 
   download ∷ HTML p (Query Unit)
-  download = toolItem Download "Download" B.glyphiconCloudDownload
+  download = toolItem' Download "Download" I.cloudDownload
 
   mount ∷ HTML p (Query Unit)
   mount = toolItem MakeMount "Mount database" B.glyphiconHdd
@@ -128,5 +129,18 @@ toolItem func title icon =
             , P.classes [ B.glyphicon, icon ]
             ]
             []
+        ]
+    ]
+
+toolItem' ∷ ∀ p f. (Unit → f Unit) → String → HTML p (f Unit) → HTML p (f Unit)
+toolItem' func title icon =
+  H.li_
+    [ H.button
+        [ ARIA.label title
+        , P.title title
+        , E.onClick (E.input_ func)
+        ]
+        [ icon
+        , H.text title
         ]
     ]

@@ -198,7 +198,7 @@ gulp.task("bundle", [
   mkBundleTask("auth_redirect", "SlamData.AuthRedirect"),
 ]);
 
-gulp.task("make-bundle", function () {
+gulp.task("make-bundle", [ "icons-purs" ], function () {
     sequence("make", "bundle");
 });
 
@@ -245,12 +245,12 @@ gulp.task("svg-icons", () =>
   gulp.src("icons/**/*.svg")
     .pipe(svgSprite({
       shape: {
-        dimensions: { maxWidth: 32, maxHeight: 32 },
+        //dimensions: { maxWidth: 32, maxHeight: 32 },
         id: {
           // `file.stem` not supported in this vinyl version :/
           // using this to override the default behavior of adding the
           // directory to the id
-          generator: (name, file) => path.parse(name).name.replace(/\s/, "-")
+          generator: (name, file) => path.parse(name).name.replace(/\s/g, "-")
         }
       },
       mode: {
@@ -279,7 +279,7 @@ gulp.task("icons-purs", () =>
       if (p == null) {
         console.error("[icon-purs-adt]", file, "didn't parse.");
       }
-      const name = p.name.replace(/\s/, "-");
+      const name = p.name.replace(/\s/g, "-");
       if (!acc.includes(name)) {
         acc.push(name);
       } else {
@@ -289,7 +289,7 @@ gulp.task("icons-purs", () =>
     }, []).reduce((acc, name) => {
       // make an array for exports and one for the HTML
       const camelName = changeCase.camelCase(name);
-      const html = `${camelName} ∷  ∀ p i. HH.HTML p i
+      const html = `${camelName} ∷ ∀ p i. H.HTML p i
 ${camelName} = iconHelper "${name}"`;
       acc.exports.push(camelName);
       acc.html.push(html);
@@ -302,15 +302,18 @@ ${camelName} = iconHelper "${name}"`;
 
 import SlamData.Prelude
 
-import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
+import Halogen.HTML as H
+import Halogen.HTML.Properties as P
 
-iconHelper ∷ ∀ p i. String → HH.HTML p i
+iconHelper ∷ ∀ p i. String → H.HTML p i
 iconHelper s =
-  HH.element (HH.ElemName "svg")
-    [ HP.class_ $ HH.ClassName "sd-icon" ]
-    [ HH.element (HH.ElemName "use")
-        [ HP.prop (HH.PropName "xlink:href") $ "/img/icon-sprite.svg#" <> s ]
+  H.element (H.ElemName "svg")
+    [ P.class_ $ H.ClassName $ "sd-icon sd-icon-" <> s
+    , P.attr (H.AttrName "xmlns") "http://www.w3.org/2000/svg"
+    , P.attr (H.AttrName "xmlns:xlink") "http://www.w3.org/1999/xlink"
+    ]
+    [ H.element (H.ElemName "use")
+        [ P.attr (H.AttrName "xlink:href") $ "img/icon-sprite.svg#" <> s ]
         []
     ]
 
