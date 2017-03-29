@@ -310,10 +310,11 @@ iconHelper s =
   H.element (H.ElemName "svg")
     [ P.class_ $ H.ClassName $ "sd-icon sd-icon-" <> s
     , P.attr (H.AttrName "xmlns") "http://www.w3.org/2000/svg"
-    , P.attr (H.AttrName "xmlns:xlink") "http://www.w3.org/1999/xlink"
     ]
     [ H.element (H.ElemName "use")
-        [ P.attr (H.AttrName "xlink:href") $ "img/icon-sprite.svg#" <> s ]
+        [ P.attr (H.AttrName "xmlns:xlink") "http://www.w3.org/1999/xlink"
+        , P.attr (H.AttrName "xlink:href") $ "img/icon-sprite.svg#" <> s
+        ]
         []
     ]
 
