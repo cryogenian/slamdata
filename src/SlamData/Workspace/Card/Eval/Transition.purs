@@ -20,10 +20,10 @@ import SlamData.Prelude
 
 import Quasar.Types (SQL)
 
-import SlamData.FileSystem.Resource as R
 import SlamData.Workspace.Card.DownloadOptions.Component.State as Download
 import SlamData.Workspace.Card.FormInput.Model as FormInput
 import SlamData.Workspace.Card.Markdown.Model as Markdown
+import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Setups.Chart.Area.Model as BuildArea
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as BuildBar
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as BuildBoxplot
@@ -58,7 +58,7 @@ data Eval
   | Error String
   | Markdown String
   | MarkdownForm Markdown.Model
-  | Open R.Resource
+  | Open Open.Model
   | Variables Variables.Model
   | DownloadOptions Download.State
   | BuildMetric BuildMetric.Model
@@ -101,7 +101,7 @@ tagEval = case _ of
   Cache str → "Cache " <> show str
   Error str → "Error " <> show str
   Markdown str → "Markdown " <> show str
-  Open res → "Open " <> show res
+  Open _ → "Open"
   MarkdownForm m → "MarkdownForm"
   Variables m → "Variables"
   DownloadOptions m → "DownloadOptions"

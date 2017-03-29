@@ -18,10 +18,10 @@ module SlamData.Workspace.Card.Open.Component.Query where
 
 import SlamData.Prelude
 
-import SlamData.FileSystem.Resource as R
 import SlamData.GlobalMenu.Bus as GMB
+import SlamData.Workspace.Card.Open.Model (Open)
 
 data Query a
   = Init a
   | HandleSignInMessage GMB.SignInMessage a
-  | UpdateSelection (Maybe R.Resource) a
+  | UpdateSelection (Maybe Open) a

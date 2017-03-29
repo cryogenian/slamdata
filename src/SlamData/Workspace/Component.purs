@@ -60,6 +60,7 @@ import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.Model as CM
+import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Class (navigate, Routes(..))
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck, cpGuide, cpHeader, cpNotify)
@@ -190,7 +191,7 @@ eval = case _ of
     st ← H.get
     when (List.null st.cursor) do
       fork $ runFreshWorkspace
-        [ CM.Open (R.File res)
+        [ CM.Open (Just (Open.Resource (R.File res)))
         , CM.Table JT.emptyModel
         ]
       initializeGuides
