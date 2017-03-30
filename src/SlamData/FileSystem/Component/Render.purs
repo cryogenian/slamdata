@@ -70,26 +70,26 @@ toolbar state =
           "To begin exploring data, please press the Mount button"
       )
     <> [ H.ul
-         [ P.classes [ B.listInline, B.pullRight ] ]
-         $ configure <> [ showHide, download, mount, folder, file, workspace ]
+         [ P.classes [ B.listInline ] ]
+         $ [ workspace, folder, showHide, download, file, mount ] <> configure
        ]
   where
   configure ∷ Array (HTML p (Query Unit))
   configure = do
     guard $ state ^. _isMount
-    pure $ toolItem Configure "Configure mount" B.glyphiconWrench
+    pure $ toolItem' Configure "Configure mount" I.wrechesCrossed
 
   showHide ∷ HTML p (Query Unit)
   showHide =
     if state ^. _showHiddenFiles
-    then toolItem HideHiddenFiles "Hide hidden files" B.glyphiconEyeClose
-    else toolItem ShowHiddenFiles "Show hidden files" B.glyphiconEyeOpen
+    then toolItem' HideHiddenFiles "Hide hidden files" I.eyeHidden
+    else toolItem' ShowHiddenFiles "Show hidden files" I.eyeVisible
 
   download ∷ HTML p (Query Unit)
   download = toolItem' Download "Download" I.cloudDownload
 
   mount ∷ HTML p (Query Unit)
-  mount = toolItem MakeMount "Mount database" B.glyphiconHdd
+  mount = toolItem' MakeMount "Mount database" I.databaseCreate
 
   folder ∷ HTML p (Query Unit)
   folder = toolItem' MakeFolder "Create folder" I.folderCreate
@@ -105,7 +105,7 @@ toolbar state =
       , H.label
           [ P.for "upload"
           , P.title "Upload file"
-          , P.class_ $ H.ClassName "tool-item
+          , P.class_ $ H.ClassName "tool-item"
           , ARIA.label "Upload file"
           ]
           [ I.cloudUpload
@@ -119,7 +119,7 @@ toolbar state =
       ]
 
   workspace ∷ HTML p (Query Unit)
-  workspace = toolItem' MakeWorkspace "Create Workspace" I.workspaceCreate
+  workspace = toolItem' MakeWorkspace "Create workspace" I.workspaceCreate
 
 toolItem ∷ ∀ p f. (Unit → f Unit) → String → ClassName → HTML p (f Unit)
 toolItem func title icon =

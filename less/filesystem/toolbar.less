@@ -1,38 +1,87 @@
 .toolbar-sort {
-    padding-top: 14px;
-    padding-bottom: 10px;
-    cursor: pointer;
+  padding-top: 14px;
+  padding-bottom: 10px;
+  cursor: pointer;
 
-    i {
-      margin-left: 10px;
-    }
+  i {
+    margin-left: 10px;
+  }
 }
 .toolbar-menu {
-    input[type=file] {
-        width: 0.1px;
-        height: 0.1px;
-        opacity: 0;
-        overflow: hidden;
-        position: absolute;
-        z-index: -1;
+  width: 100%;
+  padding-right: 0;
+
+  input[type=file] {
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    position: absolute;
+    z-index: -1;
+  }
+
+  ul.list-inline {
+    margin-top: 8px;
+    margin-bottom: 0;
+  }
+
+  i {
+    padding-left: 10px;
+    font-size: 16px;
+    line-height: 40px;
+    position: relative;
+    overflow: hidden;
+    color: #337ab7;
+
+    &:hover {
+      color: #23527c
     }
-    padding-right: 0;
-    ul.list-inline {
-        margin-top: 8px;
-        margin-bottom: 0;
+  }
+
+  // TODO HAX HERE
+  padding: 0;
+  margin: 0;
+
+  .pull-right {
+    float: none !important;
+  }
+
+  > ul {
+    display: flex;
+    justify-content: space-between;
+
+    > li {
+      padding: 0 9px;
+
+      &:first-of-type {
+        padding-left: 0;
+      }
+
+      &:last-of-type {
+        padding-right: 0;
+      }
     }
-    i {
-        padding-left: 10px;
-        font-size: 16px;
-        line-height: 40px;
-        position: relative;
-        overflow: hidden;
-        color: #337ab7;
-        &:hover {
-            color: #23527c
-        }
-    }
-    width: 100%;
+  }
+
+  .sd-icon {
+    display: block;
+    padding: 0;
+    color: inherit;
+    font-size: 2.8em;
+  }
+
+  .tool-item {
+    font-size: 13px;
+    text-align: center;
+    color: #555;
+  }
+
+  .tool-item-label {
+    display: block;
+    font-weight: 400;
+    text-transform: capitalize;
+  }
+  // TODO /HAX
 }
 
 .sd-mount-guide {
