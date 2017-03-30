@@ -114,7 +114,7 @@ evalCard trans port varMap = map (_ `union` varMap) <$> case trans, port of
   MarkdownForm model, Port.SlamDown doc → MDE.evalMarkdownForm model doc varMap
   Search query, _ → Search.evalSearch query =<< CEM.extractResource varMap
   Cache path, _ → Cache.eval path =<< CEM.extractResource varMap
-  Open res, _ → Open.evalOpen res
+  Open res, _ → Open.evalOpen res varMap
   Variables model, _ → VariablesE.eval model
   BuildMetric model, _ → CEM.tapResource (BuildMetric.eval model) varMap
   BuildSankey model, _ → CEM.tapResource (BuildSankey.eval model) varMap

@@ -263,7 +263,7 @@ selectInMillerColumns ps = do
 
 selectFileForLastOpenCard ∷ String → SlamFeature Unit
 selectFileForLastOpenCard s =
-  selectInMillerColumns $ S.split (S.Pattern "/") s
+  selectInMillerColumns $ pure "Filesystem" <> S.split (S.Pattern "/") s
 
 selectInChartBuilder ∷ Array String → SlamFeature Unit
 selectInChartBuilder ps = do
