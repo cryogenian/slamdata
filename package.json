@@ -38,6 +38,7 @@
     "gulp-content-filter": "0.0.0",
     "gulp-footer": "^1.0.5",
     "gulp-header": "^1.7.1",
+    "gulp-inject": "^4.2.0",
     "gulp-less": "^3.0.5",
     "gulp-purescript": "^1.0.0",
     "gulp-replace": "^0.5.4",

@@ -92,7 +92,7 @@ toolbar state =
   mount = toolItem MakeMount "Mount database" B.glyphiconHdd
 
   folder ∷ HTML p (Query Unit)
-  folder = toolItem MakeFolder "Create folder" B.glyphiconFolderClose
+  folder = toolItem' MakeFolder "Create folder" I.folderCreate
 
   file ∷ HTML p (Query Unit)
   file =
@@ -105,16 +105,21 @@ toolbar state =
       , H.label
           [ P.for "upload"
           , P.title "Upload file"
+          , P.class_ $ H.ClassName "tool-item
           , ARIA.label "Upload file"
           ]
-          [ H.i
-              [ P.classes [ B.glyphicon, B.glyphiconCloudUpload, CSS.hiddenFileInput ] ]
-              []
+          [ I.cloudUpload
+          , H.span [ P.class_ $ H.ClassName "tool-item-label" ]
+            [ H.text "Upload File" ]
+
+            --H.i
+            --  [ P.classes [ B.glyphicon, B.glyphiconCloudUpload, CSS.hiddenFileInput ] ]
+            --  []
           ]
       ]
 
   workspace ∷ HTML p (Query Unit)
-  workspace = toolItem MakeWorkspace "Create workspace" B.glyphiconBook
+  workspace = toolItem' MakeWorkspace "Create Workspace" I.workspaceCreate
 
 toolItem ∷ ∀ p f. (Unit → f Unit) → String → ClassName → HTML p (f Unit)
 toolItem func title icon =
@@ -138,9 +143,11 @@ toolItem' func title icon =
     [ H.button
         [ ARIA.label title
         , P.title title
+        , P.class_ $ H.ClassName "tool-item"
         , E.onClick (E.input_ func)
         ]
         [ icon
-        , H.text title
+        , H.span [ P.class_ $ H.ClassName "tool-item-label" ]
+          [ H.text title ]
         ]
     ]

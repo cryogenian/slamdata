@@ -3,6 +3,7 @@
 var gulp = require("gulp"),
     header = require("gulp-header"),
     contentFilter = require("gulp-content-filter"),
+    inject = require("gulp-inject"),
     purescript = require("gulp-purescript"),
     svgSprite = require("gulp-svg-sprite"),
     webpack = require("webpack-stream"),
@@ -241,29 +242,43 @@ gulp.task("less", function() {
 mkWatch("watch-less", "less", ["less/**/*.less"]);
 
 
-gulp.task("svg-icons", () =>
-  gulp.src("icons/**/*.svg")
-    .pipe(svgSprite({
-      shape: {
-        //dimensions: { maxWidth: 32, maxHeight: 32 },
-        id: {
-          // `file.stem` not supported in this vinyl version :/
-          // using this to override the default behavior of adding the
-          // directory to the id
-          generator: (name, file) => path.parse(name).name.replace(/\s/g, "-")
+gulp.task("svg-icons", () => {
+  const svgSymbols =
+    gulp.src("icons/**/*.svg")
+      .pipe(svgSprite({
+        svg: {
+          xmlDeclaration: false,
+          doctypeDeclaration: false,
+          rootAttributes: {
+            "aria-hidden": "true",
+            style: "display:none"
+          }
+        },
+        shape: {
+          dimensions: { maxWidth: 32, maxHeight: 32, precision: 3 },
+          id: {
+            // `file.stem` not supported in this vinyl version :/
+            // using this to override the default behavior of adding
+            // the directory to the id
+            generator: (name, file) => `sd-icon--${path.parse(name).name.replace(/\s/g, "-")}`
+          }
+        },
+        mode: {
+          symbol: {
+            render: { css: false, scss: false },
+          }
         }
-      },
-      mode: {
-        symbol: {
-          render: { css: false, scss: false },
-          prefix: ".sd-icon--%s",
-          dest: "public/img",
-          sprite: "icon-sprite.svg"
-        }
-      }
+      }))
+
+  gulp.src("html/**/*.html")
+    .pipe(inject(svgSymbols, {
+      starttag: "<!-- icon-symbols -->",
+      endtag: "<!-- /icon-symbols -->",
+      removeTags: true,
+      transform: (filePath, file) => file.contents.toString("utf8")
     }))
-    .pipe(gulp.dest("./"))
-);
+    .pipe(gulp.dest('./public'));
+});
 
 
 gulp.task("icons-purs", () =>
@@ -278,7 +293,7 @@ gulp.task("icons-purs", () =>
       const p = path.parse(file);
       if (p == null) {
         console.error("[icon-purs-adt]", file, "didn't parse.");
-      }
+}
       const name = p.name.replace(/\s/g, "-");
       if (!acc.includes(name)) {
         acc.push(name);
@@ -307,16 +322,21 @@ import Halogen.HTML.Properties as P
 
 iconHelper ∷ ∀ p i. String → H.HTML p i
 iconHelper s =
-  H.element (H.ElemName "svg")
-    [ P.class_ $ H.ClassName $ "sd-icon sd-icon-" <> s
-    , P.attr (H.AttrName "xmlns") "http://www.w3.org/2000/svg"
-    ]
-    [ H.element (H.ElemName "use")
-        [ P.attr (H.AttrName "xmlns:xlink") "http://www.w3.org/1999/xlink"
-        , P.attr (H.AttrName "xlink:href") $ "img/icon-sprite.svg#" <> s
-        ]
+  let
+    svgElem = H.elementNS $ H.Namespace "http://www.w3.org/2000/svg"
+    xlinkAttr = H.attrNS $ H.Namespace "http://www.w3.org/1999/xlink"
+  in
+    -- oddly, I suppose do to namespacing, class on <svg> not picked up
+    -- wrapping it seems to work though
+    H.i
+      [ P.class_ $ H.ClassName $ "sd-icon sd-icon--" <> s ]
+      [ svgElem (H.ElemName "svg")
         []
-    ]
+        [ svgElem (H.ElemName "use")
+          [ xlinkAttr (H.AttrName "xlink:href") $ "#sd-icon--" <> s ]
+          []
+        ]
+      ]
 
 ${html.join("\n\n")}
 `;
