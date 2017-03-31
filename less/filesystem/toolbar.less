@@ -51,6 +51,9 @@
     justify-content: space-between;
 
     > li {
+      @no-of-icons: 7;
+      flex: 0 1 percentage(1/@no-of-icons);
+      min-width: percentage(1/@no-of-icons);
       padding: 0 9px;
 
       &:first-of-type {
