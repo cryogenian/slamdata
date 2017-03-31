@@ -17,16 +17,24 @@ limitations under the License.
 module SlamData.Workspace.Card.Chart.Component.State where
 
 import SlamData.Prelude
+import ECharts.Theme (Theme)
 
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 
+-- We shouldn't render ECharts before we determine what theme should be used,
+-- because it doesn't allow to change theme, after chart is initialized.
+-- For that reason we use double `Maybe` for `theme`
+-- * `Nothing` means theme is not initialized,
+-- * `Just Nothing` means there is no custom theme.
 type State =
   { chartType ∷ Maybe ChartType
+  , theme ∷ Maybe (Maybe Theme)
   , dimensions ∷ { width ∷ Int, height ∷ Int }
   }
 
 initialState :: State
 initialState =
   { chartType: Nothing
+  , theme: Nothing
   , dimensions: { width: 600, height: 400 }
   }
