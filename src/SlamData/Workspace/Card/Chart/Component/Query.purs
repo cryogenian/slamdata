@@ -16,4 +16,4 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Chart.Component.Query where
 
-data Query a = RaiseUpdate a
+data Query a = Init a | RaiseUpdate a
