@@ -290,8 +290,6 @@ handleDialog ∷ DeckOptions → Dialog.Message → DeckDSL Unit
 handleDialog opts = case _ of
   Dialog.Dismiss → do
     H.modify (DCS._displayMode %~ DCS.noDialog)
-  Dialog.FlipToFront →
-    switchToFrontside
   Dialog.SetDeckName name → do
     void $ H.lift $ P.renameDeck opts.deckId name
     switchToFrontside

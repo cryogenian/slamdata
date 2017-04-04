@@ -97,7 +97,6 @@ import SlamData.Quasar.Mount (mountInfo) as API
 import SlamData.Render.Common (content, row)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action (Action(..), AccessType(..))
-import SlamData.Workspace.Deck.Component.CSS as ClassNames
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 
 import Utils.DOM as D
@@ -144,7 +143,7 @@ render state@{ version, sort, salt, path } =
 renderIntroVideoBackdrop ∷ HTML
 renderIntroVideoBackdrop =
   HH.div
-    [ HP.class_ ClassNames.dialogBackdrop
+    [ HP.class_ (HH.ClassName "deck-dialog-backdrop")
     , HE.onMouseDown $ HE.input_ DismissIntroVideo
     ]
     []
