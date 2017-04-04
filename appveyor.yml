@@ -11,8 +11,8 @@ install:
 - bower install
 
 build_script:
-- npm run psa
+- npm run build:psa
 
 test_script:
-- npm run property-tests
+- npm run test:property
 - npm test
