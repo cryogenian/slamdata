@@ -39,7 +39,7 @@
   "private": true,
   "devDependencies": {
     "chalk": "^1.1.1",
-    "chromedriver": "^2.24.1",
+    "chromedriver": "^2.28.0",
     "expose-loader": "^0.7.1",
     "gulp": "^3.9.0",
     "gulp-content-filter": "0.0.0",

@@ -173,6 +173,10 @@ removeFile ∷ String → String
 removeFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Remove"
 
+editWorkspace ∷ String → String
+editWorkspace name =
+  XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Edit"
+
 shareFile ∷ String → String
 shareFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Share"

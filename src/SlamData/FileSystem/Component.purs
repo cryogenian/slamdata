@@ -405,6 +405,10 @@ handleItemMessage ∷ Item.Message → DSL Unit
 handleItemMessage = case _ of
   Item.Selected →
     pure unit
+  Item.Edit res → do
+    loc ← H.liftEff locationString
+    for_ (preview R._Workspace res) \wp →
+      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
   Item.Open res → do
     { sort, salt, path } ← H.get
     loc ← H.liftEff locationString
@@ -413,7 +417,7 @@ handleItemMessage = case _ of
     for_ (preview R._dirPath res) \dp →
       H.liftEff $ setLocation $ browseURL Nothing sort salt dp
     for_ (preview R._Workspace res) \wp →
-      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
+      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load ReadOnly)
   Item.Configure (R.Mount mount) → do
     configure mount
   Item.Configure _ →

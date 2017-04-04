@@ -67,6 +67,7 @@ data Message
   = Open Resource
   | Configure Resource
   | Move Resource
+  | Edit Resource
   | Download Resource
   | Remove Resource
   | Share Resource
@@ -207,7 +208,7 @@ itemActions presentActions item | otherwise =
     [ HP.classes [ B.listInline, B.pullRight ]
     , HCSS.style $ marginBottom (px zero)
     ]
-    (conf ⊕ common ⊕ share)
+    (edit ⊕ conf ⊕ common ⊕ share)
   where
   r ∷ Resource
   r = itemResource item
@@ -216,10 +217,13 @@ itemActions presentActions item | otherwise =
   conf = guard (isMount r) $>
     itemAction Configure "Configure" B.glyphiconWrench
 
+  edit ∷ Array HTML
+  edit = guard (isWorkspace r) $>
+    itemAction Edit "Edit" B.glyphiconPencil
+
   common ∷ Array HTML
   common =
-    [
-      itemAction Move "Move / rename" B.glyphiconMove
+    [ itemAction Move "Move / rename" B.glyphiconMove
     , itemAction Download "Download" B.glyphiconCloudDownload
     , itemAction Remove "Remove" B.glyphiconTrash
     ]
@@ -239,3 +243,4 @@ itemActions presentActions item | otherwise =
           ]
           [ HH.i [ HP.classes [ B.glyphicon, cls ] ] [] ]
       ]
+
