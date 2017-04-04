@@ -10,6 +10,7 @@
 /test/image/diff.*
 /jars/
 /public/**/*.html
+!/public/auth_redirect.html
 public/js/*.js
 !public/js/ace*
 !public/js/keyboard*
@@ -20,6 +21,7 @@ public/css/*.css
 .*
 npm-debug.log
 yarn.lock
+.yarnclean
 !.gitignore
 !.travis.yml
 !.editorconfig

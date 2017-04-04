@@ -34,7 +34,6 @@ import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
@@ -43,7 +42,7 @@ import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as Quasar
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
@@ -146,17 +145,18 @@ itemName = case _ of
 itemGlyph ∷ AnyItem' → MCI.BasicItemHTML
 itemGlyph = case _ of
   Root → HH.text ""
-  Variables → glyph B.glyphiconTags
-  Variable _ → glyph B.glyphiconTag
+  -- TODO: deeefinitely not the right icons
+  Variables → I.wrenchesCrossed --I.tags
+  Variable _ → I.wrenchesCrossed --I.tag
   Resource r → glyphForResource r
 
 glyphForResource ∷ R.Resource → MCI.BasicItemHTML
 glyphForResource = case _ of
-  R.File _ → glyph B.glyphiconFile
-  R.Workspace _ → glyph B.glyphiconBook
-  R.Directory _ → glyph B.glyphiconFolderOpen
-  R.Mount (R.Database _) → glyph B.glyphiconHdd
-  R.Mount (R.View _) → glyph B.glyphiconFile
+  R.File _ → I.file
+  R.Workspace _ → I.workspace
+  R.Directory _ → I.folderCreate
+  R.Mount (R.Database _) → I.databaseCreate
+  R.Mount (R.View _) → I.file
 
 evalOpen ∷ Query ~> DSL
 evalOpen = case _ of

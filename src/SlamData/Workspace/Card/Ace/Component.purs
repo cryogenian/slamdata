@@ -39,13 +39,12 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Prelude
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
+import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.Ace.Component.Query (Query(..))
@@ -173,7 +172,7 @@ render mode state =
             , ARIA.label "Run query"
             , HE.onClick (HE.input_ (right ∘ RunQuery))
             ]
-            [ glyph B.glyphiconPlay
+            [ I.playerPlay
             , HH.text "Run Query"
             ]
         ]

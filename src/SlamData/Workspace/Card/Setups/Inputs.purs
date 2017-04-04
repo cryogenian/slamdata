@@ -31,7 +31,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Form.Select (Select(..), stringVal, class OptionVal)
-import SlamData.Render.Common as RC
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, showJCursor, showJCursorTip)
@@ -268,7 +268,7 @@ dimensionButton opts =
                 , ARIA.label "Configure"
                 , HE.onClick opts.onConfigure
                 ]
-                [ RC.glyph B.glyphiconCog ]
+                [ I.cog ]
             else HH.text ""
         ]
     , HH.button

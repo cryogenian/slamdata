@@ -32,9 +32,6 @@ row = HH.div [ HP.class_ B.row ]
 content ∷ ∀ p f. Array (HTML p f) → HTML p f
 content = HH.div [ HP.class_ Rc.content ]
 
-glyph ∷ ∀ p f. ClassName → HTML p f
-glyph g = HH.i [ HP.classes [ B.glyphicon, g ] ] [ ]
-
 fadeWhen ∷ Boolean → Array ClassName
 fadeWhen true = [ B.fade ]
 fadeWhen false = [ B.fade, B.in_ ]

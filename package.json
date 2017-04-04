@@ -35,6 +35,8 @@
     "expose-loader": "^0.7.1",
     "glob": "^7.1.1",
     "gulp": "^3.9.0",
+    "gulp-cached": "^1.1.1",
+    "gulp-cheerio": "^0.6.2",
     "gulp-content-filter": "0.0.0",
     "gulp-footer": "^1.0.5",
     "gulp-header": "^1.7.1",

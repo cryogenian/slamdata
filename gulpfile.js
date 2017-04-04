@@ -2,6 +2,8 @@
 
 var gulp = require("gulp"),
     header = require("gulp-header"),
+    cache = require("gulp-cached"),
+    cheerio = require("gulp-cheerio"),
     contentFilter = require("gulp-content-filter"),
     inject = require("gulp-inject"),
     purescript = require("gulp-purescript"),
@@ -199,7 +201,7 @@ gulp.task("bundle", [
   mkBundleTask("auth_redirect", "SlamData.AuthRedirect"),
 ]);
 
-gulp.task("make-bundle", [ "icons-purs" ], function () {
+gulp.task("make-bundle", [ "icon-purs" ], function () {
     sequence("make", "bundle");
 });
 
@@ -243,8 +245,51 @@ mkWatch("watch-less", "less", ["less/**/*.less"]);
 
 
 gulp.task("svg-icons", () => {
+  // TODO: figure out how to use this
+  const iconAttribution = {};
+
+  const pathRemoveAttrs = [
+    "color",
+    "font-family",
+    "font-weight",
+    "overflow",
+    "style"
+  ];
+
   const svgSymbols =
     gulp.src("icons/**/*.svg")
+      .pipe(cache("iconing"))
+      // adjust SVGs from Project Noun
+      .pipe(cheerio({
+        parserOptions: { xmlMode: true },
+        run: ($, file) => {
+          const name = changeCase.titleCase(path.parse(file.path).name);
+          const svg = $("svg");
+          // inject the title for accessibility
+          svg.prepend(`<title>${name}</title>`);
+          const text = svg.find("text");
+          // not the best check, but I'm assuming these are Project Noun
+          // files
+          if (text.length > 0) {
+            const v = svg.attr("viewBox").match(/\d+/g);
+            if (v.length === 4) {
+              // squaring up the viewbox based on smaller value
+              const s = Math.min(v[2], v[3]);
+              svg.attr("viewBox", `0 0 ${s} ${s}`);
+            }
+            // push icon into the attribution object
+            const a = text.map(function() { return $(this).text() }).get().join(" ");
+            iconAttribution[a] = a in iconAttribution
+              ? iconAttribution[a].concat(name)
+              : iconAttribution[a] = [name];
+          }
+          text.remove();
+          // these irrelevant attrs need to be removed
+          const path_ = svg.find("path");
+          pathRemoveAttrs.forEach((attr) => path_.removeAttr(attr));
+        }
+      }))
+      // Transform the SVGs into a symbol sprite
       .pipe(svgSprite({
         svg: {
           xmlDeclaration: false,
@@ -255,7 +300,7 @@ gulp.task("svg-icons", () => {
           }
         },
         shape: {
-          dimensions: { maxWidth: 32, maxHeight: 32, precision: 3 },
+          dimensions: { maxWidth: 100, maxHeight: 100, precision: 3 },
           id: {
             // `file.stem` not supported in this vinyl version :/
             // using this to override the default behavior of adding
@@ -270,6 +315,8 @@ gulp.task("svg-icons", () => {
         }
       }))
 
+
+  // inject symbols into html files
   gulp.src("html/**/*.html")
     .pipe(inject(svgSymbols, {
       starttag: "<!-- icon-symbols -->",
@@ -281,7 +328,7 @@ gulp.task("svg-icons", () => {
 });
 
 
-gulp.task("icons-purs", () =>
+gulp.task("icon-purs", () =>
   glob("icons/**/*.svg", {}, (err, files) => {
     if (err) {
       throw err;
@@ -298,7 +345,7 @@ gulp.task("icons-purs", () =>
       if (!acc.includes(name)) {
         acc.push(name);
       } else {
-        console.warn("[icon-purs-adt]:", name, "is a duplicate name & is being ignored.");
+        console.warn("[icon-purs-adt]:", name, "from", file, "is a duplicate name & is being ignored.");
       }
       return acc;
     }, []).reduce((acc, name) => {
@@ -311,7 +358,7 @@ ${camelName} = iconHelper "${name}"`;
       return acc;
     }, { exports: [], html: [] });
 
-    const pursData = `module Slamdata.Render.Icon
+    const pursData = `module SlamData.Render.Icon
   ( ${exports.join("\n  , ")}
   ) where
 
@@ -326,8 +373,8 @@ iconHelper s =
     svgElem = H.elementNS $ H.Namespace "http://www.w3.org/2000/svg"
     xlinkAttr = H.attrNS $ H.Namespace "http://www.w3.org/1999/xlink"
   in
-    -- oddly, I suppose do to namespacing, class on <svg> not picked up
-    -- wrapping it seems to work though
+    -- oddly, I suppose do to namespacing, the CSS class on <svg> not
+    -- picked up wrapping it seems to work though
     H.i
       [ P.class_ $ H.ClassName $ "sd-icon sd-icon--" <> s ]
       [ svgElem (H.ElemName "svg")
@@ -346,6 +393,6 @@ ${html.join("\n\n")}
 );
 
 
-gulp.task("icons", [ "svg-icons", "icons-purs" ]);
+gulp.task("icons", [ "svg-icons", "icon-purs" ]);
 gulp.task("full", [ "clean", "add-headers", "trim-whitespace", "less", "icons", "make-bundle" ]);
 gulp.task("default", [ "less", "icons", "make-bundle" ]);
