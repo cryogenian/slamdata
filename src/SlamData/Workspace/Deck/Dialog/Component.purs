@@ -63,7 +63,6 @@ data Query a
 
 data Message
   = Dismiss
-  | FlipToFront
   | Confirm Dialog Boolean
   | SetDeckName String
 
@@ -158,7 +157,7 @@ render state =
         , reason
         , cardPaths
         }
-        \Reason.Dismiss → Just $ H.action $ Raise FlipToFront
+        \Reason.Dismiss → Just $ H.action $ Raise Dismiss
 
 eval ∷ Query ~> DSL
 eval = case _ of
