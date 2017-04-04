@@ -51,9 +51,6 @@ grabDeck = ClassName "sd-grab-deck"
 resizeDeck ∷ ClassName
 resizeDeck = ClassName "sd-resize-deck"
 
-dialogBackdrop ∷ ClassName
-dialogBackdrop = ClassName "deck-dialog-backdrop"
-
 -------------------------------------------------------------------------------
 
 invisible ∷ ClassName

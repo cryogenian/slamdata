@@ -29,6 +29,7 @@ import Data.Map as Map
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 import SlamData.Dialog.Error.Component as Error
@@ -101,11 +102,23 @@ component =
     , receiver: const Nothing
     }
 
-render ∷ State → HTML
-render state =
+renderDialogBackdrop ∷ HTML
+renderDialogBackdrop =
   HH.div
-    [ HP.classes [ HH.ClassName "deck-dialog" ] ]
-    $ foldMap (pure ∘ dialog) state
+    [ HP.classes $ [ HH.ClassName "deck-dialog-backdrop" ]
+    , HE.onClick $ HE.input_ $ Raise Dismiss
+    ]
+    [ ]
+
+render ∷ State → HTML
+render = case _ of
+  Nothing ->
+    HH.text ""
+  Just s ->
+    HH.div_
+      [ renderDialogBackdrop
+      , HH.div [ HP.classes [ HH.ClassName "deck-dialog" ] ] [ dialog s ]
+      ]
   where
   dialog = case _ of
     Rename name →

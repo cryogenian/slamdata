@@ -81,7 +81,6 @@ renderDeck opts deckComponent st =
               [ Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
               , renderBackside
                   $ DCS.isFlipSide st.displayMode
-              , renderDialogBackdrop $ DCS.hasDialog st.displayMode
               , renderDialog $ DCS.hasDialog st.displayMode
               ]
           ]
@@ -118,14 +117,6 @@ renderDeck opts deckComponent st =
       (HH.ClassName "sd-focus-deck-frame-hint")
       DCQ.DismissFocusDeckFrameHint
       "This Deck is focused. To do more with the containing Deck focus it by clicking or tapping on the empty space in this Deck Frame."
-
-  renderDialogBackdrop visible =
-    HH.div
-      [ HP.classes $ [CSS.dialogBackdrop] ⊕ (guard (not visible) $> CSS.invisible)
-      , HE.onClick $ HE.input_ DismissDialog
-      , ARIA.hidden $ show $ not visible
-      ]
-      [ ]
 
   renderDialog visible =
     HH.div
