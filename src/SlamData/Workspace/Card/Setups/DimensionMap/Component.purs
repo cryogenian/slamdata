@@ -87,7 +87,7 @@ renderSelection pack state = case state ^. ST._selected of
 
 renderButton ∷ ST.Package → ST.State → T.Projection → HTML
 renderButton pack state fld =
-  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  HH.div [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
   [ I.dimensionButton
     { configurable: ST.isConfigurable fld pack state
     , dimension: sequence $ ST.getSelected fld state
