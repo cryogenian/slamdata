@@ -100,20 +100,21 @@ transforms ∷ State → Array Tr.Transform
 transforms _ = Tr.aggregationTransforms
 
 setValue ∷ T.Projection → J.JCursor → State → State
-setValue fld v =
-  (_dimMap ∘ T.unpackProjection fld ?~ wrapFn v)
-  ∘ (_dimMap %~ deselectJCursor v)
-
+setValue fld cursor state
+  | (Just cursor) ≡
+    (state ^? _dimMap ∘ T.unpackProjection fld ∘ _Just ∘ D._value ∘ D._projection) =
+      state
+  | otherwise =
+      state
+        # (_dimMap ∘ T.unpackProjection fld ?~ wrapFn cursor)
+        ∘ (_dimMap %~ deselectJCursor cursor)
   where
   deselectJCursor ∷ J.JCursor → T.DimensionMap → T.DimensionMap
   deselectJCursor jc dimMap =
-     let
-       foldFn acc k mbVal =
-         SM.update
-           (\val → if Just jc ≡ val ^? D._value ∘ D._projection then Nothing else Just val)
-           k acc
-     in
-       SM.fold foldFn SM.empty dimMap
+    SM.fromFoldable
+    $ L.filter (\(k × d) → Just jc ≠ (d ^? D._value ∘ D._projection))
+    $ SM.toUnfoldable dimMap
+
 
   wrapFn = fromMaybe D.projection $ wrapFns ^. T.unpackProjection fld
   wrapFns =
@@ -135,6 +136,7 @@ setValue fld v =
       ∘ (T.unpackProjection Pr._secondValue ?~ (D.projectionWithAggregation $ Just Ag.Sum))
       ∘ (T.unpackProjection Pr._donut ?~ D.projection)
       ∘ (T.unpackProjection Pr._multiple ?~ D.projection)
+      ∘ (T.unpackProjection Pr._size ?~ (D.projectionWithAggregation $ Just Ag.Sum))
 
 showValue ∷ T.Projection → Maybe J.JCursor → String
 showValue fld c = do
@@ -159,6 +161,7 @@ showValue fld c = do
       ∘ (T.unpackProjection Pr._secondValue ?~ "Select the second measure")
       ∘ (T.unpackProjection Pr._donut ?~ "Select donut")
       ∘ (T.unpackProjection Pr._multiple ?~ "Select multiple")
+      ∘ (T.unpackProjection Pr._size ?~ "Select size")
 
 chooseLabel ∷ T.Projection → String
 chooseLabel fld = fromMaybe "" $ labels ^. T.unpackProjection fld
@@ -181,6 +184,7 @@ chooseLabel fld = fromMaybe "" $ labels ^. T.unpackProjection fld
       ∘ (T.unpackProjection Pr._ordinate ?~ "Choose Y-Axis")
       ∘ (T.unpackProjection Pr._secondValue ?~ "Choose the second measure")
       ∘ (T.unpackProjection Pr._donut ?~ "Choose donut")
+      ∘ (T.unpackProjection Pr._size ?~ "Choose size")
 
 
 showDefaultLabel ∷ T.Projection → Maybe J.JCursor → String
@@ -206,6 +210,7 @@ showDefaultLabel fld c =
       ∘ (T.unpackProjection Pr._secondValue ?~ "Measure#2 label")
       ∘ (T.unpackProjection Pr._donut ?~ "Donut label")
       ∘ (T.unpackProjection Pr._multiple ?~ "Multiple label")
+      ∘ (T.unpackProjection Pr._size ?~ "Size label")
 
 setTransform ∷ T.Projection → Maybe Tr.Transform → State → State
 setTransform fld t = _dimMap ∘ T.unpackProjection fld ∘ _Just ∘ D._value ∘ D._transform .~ t
