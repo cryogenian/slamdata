@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Model where
 
+import SlamData.Prelude
+
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
 import Data.Array as Array
@@ -24,9 +26,7 @@ import Data.List as L
 import Data.Path.Pathy (fileName, runFileName)
 import Data.Rational ((%))
 import Data.StrMap as StrMap
-import SlamData.Prelude
 
-import SlamData.FileSystem.Resource as R
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
@@ -39,6 +39,7 @@ import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.FormInput.Model as FormInput
 import SlamData.Workspace.Card.Markdown.Model as MD
+import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Query.Model as Query
 import SlamData.Workspace.Card.Setups.Chart.Area.Model as BuildArea
@@ -86,7 +87,7 @@ data AnyCardModel
   | Variables Variables.Model
   | Troubleshoot
   | Cache (Maybe String)
-  | Open R.Resource
+  | Open Open.Model
   | DownloadOptions DLO.State
   | Draftboard DB.Model
   | BuildMetric BuildMetric.Model
@@ -289,7 +290,7 @@ encodeCardModel = case _ of
   Variables model → Variables.encode model
   Troubleshoot → J.jsonEmptyObject
   Cache model → J.encodeJson model
-  Open res → J.encodeJson res
+  Open res → Open.encode res
   DownloadOptions model → DLO.encode model
   Draftboard model → DB.encode model
   BuildMetric model → BuildMetric.encode model
@@ -370,8 +371,7 @@ decodeCardModel = case _ of
   where
     -- For backwards compat
     decodeOpen j =
-      J.decodeJson j
-      <|> (map (fromMaybe R.root) $ J.decodeJson j)
+      Open.decode j <|> (map Open.Resource <$> J.decodeJson j)
 
 cardModelOfType ∷ Port.Out → CT.CardType → AnyCardModel
 cardModelOfType (port × varMap) = case _ of
@@ -412,7 +412,7 @@ cardModelOfType (port × varMap) = case _ of
   CT.Variables → Variables Variables.emptyModel
   CT.Troubleshoot → Troubleshoot
   CT.Cache → Cache Nothing
-  CT.Open → Open R.root
+  CT.Open → Open Nothing
   CT.DownloadOptions → DownloadOptions $ DLO.initialState { targetName = runFileName ∘ fileName <$> Port.extractFilePath varMap }
   CT.Draftboard → Draftboard DB.emptyModel
   CT.Tabs → Tabs Tabs.initialModel

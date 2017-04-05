@@ -32,6 +32,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
 import SlamData.Render.CSS as RC
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType, chartDarkIconSrc)
 import SlamData.Workspace.Card.CardType.ChartType as ChT
@@ -45,18 +46,24 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..), extractResource)
 import SlamData.Workspace.LevelOfDetails as LOD
-
 type HTML = CC.InnerCardParentHTML Query ChildQuery ChildSlot
 type DSL = CC.InnerCardParentDSL State Query ChildQuery ChildSlot
 
 chartComponent ∷ CC.CardOptions → CC.CardComponent
 chartComponent =
-  CC.makeCardComponent CT.Chart $ H.parentComponent
+  CC.makeCardComponent CT.Chart $ H.lifecycleParentComponent
     { render: render
     , eval: evalCard ⨁ evalComponent
     , initialState: const initialState
+    , initializer: Just $ right $ H.action Init
+    , finalizer: Nothing
     , receiver: const Nothing
     }
+
+renderEchart ∷ State → Array HTML
+renderEchart state = foldMap pure $ chart <$> state.theme
+  where
+    chart theme = HH.slot' cpECharts unit (HEC.echarts theme) (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit) (const Nothing)
 
 render ∷ State → HTML
 render state =
@@ -67,8 +74,7 @@ render state =
         [ HH.slot' cpMetric unit Metric.comp state.dimensions absurd ]
       Just ChT.PivotTable →
         [ HH.slot' cpPivotTable unit Pivot.component unit (Just ∘ right <$> handlePivotTableMessage) ]
-      _ →
-        [ HH.slot' cpECharts unit (HEC.echarts Nothing) (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit) (const Nothing) ]
+      _ → renderEchart state
 
 renderButton ∷ ChartType → Array HTML
 renderButton ct =
@@ -162,6 +168,10 @@ lodByChartType = case _ of
 
 evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
+  Init next → do
+    { echarts } ← H.lift Wiring.expose
+    H.modify _{ theme = Just echarts.theme }
+    pure next
   RaiseUpdate next → do
     H.raise CC.modelUpdate
     pure next

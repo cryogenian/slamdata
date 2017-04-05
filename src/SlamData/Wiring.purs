@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Wiring
   ( Wiring(..)
   , WiringR
+  , EChartsWiring
   , EvalWiring
   , AuthWiring
   , CacheWiring
@@ -52,6 +53,7 @@ import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.Card.Port.VarMap as Port
+import SlamData.Workspace.EChartThemeLoader as EChartThemeLoader
 import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Eval.Card as Card
@@ -62,6 +64,7 @@ import SlamData.Workspace.Guide (GuideType)
 import Quasar.Advanced.Types (TokenHash)
 
 import Utils.Path (DirPath)
+import ECharts.Theme as ETheme
 
 data DeckMessage
   = DeckFocused DeckId
@@ -72,6 +75,10 @@ data HintDismissalMessage
 
 type ActiveState =
   { cardIndex ∷ Int
+  }
+
+type EChartsWiring =
+  { theme ∷ Maybe ETheme.Theme
   }
 
 type DebounceEval =
@@ -127,6 +134,7 @@ type WiringR =
   , auth ∷ AuthWiring
   , cache ∷ CacheWiring
   , bus ∷ BusWiring
+  , echarts ∷ EChartsWiring
   }
 
 newtype Wiring = Wiring WiringR
@@ -153,10 +161,14 @@ make path accessType vm permissionTokenHashes = liftAff do
   auth ← makeAuth
   cache ← makeCache
   bus ← makeBus
+  echarts ← makeEcharts
   varMaps ← liftEff (Ref.newRef vm)
-  pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus }
+  pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus, echarts }
 
   where
+  makeEcharts = do
+    theme <- EChartThemeLoader.load
+    pure { theme }
   makeEval = do
     tick ← liftEff $ Ref.newRef 0
     root ← AVar.makeVar

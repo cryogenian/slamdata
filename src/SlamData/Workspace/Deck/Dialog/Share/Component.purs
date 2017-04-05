@@ -174,12 +174,10 @@ render state =
   renderBody ∷ Array HTML
   renderBody =
     [ HH.div
-       [ HP.classes [ HH.ClassName "deck-dialog-body" ]
-       , HE.onClick ( HE.input_ DismissError )
-       ]
+       [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
        ( renderLoading
        ⊕ foldMap renderTokenSecret state.tokenSecret
-       ⊕ renderSubjectForm
+       ⊕ renderFieldsetWrapper renderSubjectForm
        )
     ]
 
@@ -225,6 +223,16 @@ render state =
             ]
         ]
     ]
+
+  renderFieldsetWrapper :: Array HTML -> Array HTML
+  renderFieldsetWrapper c =
+    let
+      isFatalError = case _ of
+        Just Connection -> true
+        Just GroupList -> true
+        _ -> false
+    in
+      [ HH.fieldset [ HP.disabled (isFatalError state.error) ] c ]
 
   renderSubjectForm ∷ Array HTML
   renderSubjectForm =
@@ -323,7 +331,6 @@ render state =
                       ∧ (state.error ≡ Just Connection ∨ state.error ≡ Just GroupList)
                       then [ ]
                       else [ B.hidden ])
-            , HE.onClick (HE.input_ DismissError)
             ]
             [ HH.text
                 if state.error ≡ Just Connection

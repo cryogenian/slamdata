@@ -97,7 +97,6 @@ import SlamData.Quasar.Mount (mountInfo) as API
 import SlamData.Render.Common (content, row)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action (Action(..), AccessType(..))
-import SlamData.Workspace.Deck.Component.CSS as ClassNames
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 
 import Utils.DOM as D
@@ -144,7 +143,7 @@ render state@{ version, sort, salt, path } =
 renderIntroVideoBackdrop ∷ HTML
 renderIntroVideoBackdrop =
   HH.div
-    [ HP.class_ ClassNames.dialogBackdrop
+    [ HP.class_ (HH.ClassName "deck-dialog-backdrop")
     , HE.onMouseDown $ HE.input_ DismissIntroVideo
     ]
     []
@@ -406,6 +405,10 @@ handleItemMessage ∷ Item.Message → DSL Unit
 handleItemMessage = case _ of
   Item.Selected →
     pure unit
+  Item.Edit res → do
+    loc ← H.liftEff locationString
+    for_ (preview R._Workspace res) \wp →
+      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
   Item.Open res → do
     { sort, salt, path } ← H.get
     loc ← H.liftEff locationString
@@ -414,7 +417,7 @@ handleItemMessage = case _ of
     for_ (preview R._dirPath res) \dp →
       H.liftEff $ setLocation $ browseURL Nothing sort salt dp
     for_ (preview R._Workspace res) \wp →
-      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
+      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load ReadOnly)
   Item.Configure (R.Mount mount) → do
     configure mount
   Item.Configure _ →

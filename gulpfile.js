@@ -4,7 +4,6 @@ var gulp = require("gulp"),
     header = require("gulp-header"),
     contentFilter = require("gulp-content-filter"),
     purescript = require("gulp-purescript"),
-    webpack = require("webpack-stream"),
     rimraf = require("rimraf"),
     fs = require("fs"),
     trimlines = require("gulp-trimlines"),
@@ -12,7 +11,8 @@ var gulp = require("gulp"),
     sequence = require("run-sequence"),
     replace = require("gulp-replace"),
     footer = require("gulp-footer"),
-    path = require("path");
+    path = require("path"),
+    webpack = require("webpack-stream");
 
 var slamDataSources = [
   "src/**/*.purs",
@@ -45,27 +45,6 @@ gulp.task('prevent-css-transitions-and-remove-fixed-positions', function() {
     .pipe(footer(css))
     .pipe(replace('fixed', 'absolute'))
     .pipe(gulp.dest('public/css'));
-});
-
-gulp.task("clean", function () {
-    [
-        "output",
-        "tmp",
-        "public/js/file.js",
-        "public/js/filesystem.js",
-        "public/js/workspace.js",
-        "public/js/auth_redirect.js",
-        "public/css/main.css"
-    ].forEach(function (path) {
-        rimraf.sync(path);
-    });
-});
-
-gulp.task("make", function() {
-  return purescript.psc({
-    src: testSources,
-    ffi: foreigns
-  });
 });
 
 gulp.task("add-headers", ["replace-headers"], function () {
@@ -144,7 +123,6 @@ gulp.task("trim-whitespace", function () {
             .pipe(gulp.dest("."));
 });
 
-var bundleTasks = [];
 
 var mkBundleTask = function (name, main) {
 
@@ -167,7 +145,24 @@ var mkBundleTask = function (name, main) {
                       "package.json": path.join(__dirname, "package.json")
                   }
               },
-              output: { filename: name + ".js" },
+            output: { filename: name + ".js" },
+            plugins: [
+              new webpack.webpack.optimize.UglifyJsPlugin({
+                comments: false,
+                compress: {
+                  unused: true,
+                  dead_code: true,
+                  warnings: false,
+                  drop_debugger: true,
+                  conditionals: true,
+                  evaluate: true,
+                  drop_console: true,
+                  sequences: true,
+                  booleans: true,
+                },
+                sourceMap: false
+              }),
+            ],
               module: {
                   loaders: [
                       {
@@ -193,12 +188,15 @@ gulp.task("bundle", [
   mkBundleTask("auth_redirect", "SlamData.AuthRedirect"),
 ]);
 
-gulp.task("make-bundle", function () {
-    sequence("make", "bundle");
+gulp.task("make", function() {
+  return purescript.psc({
+    src: testSources,
+    ffi: foreigns
+  });
 });
 
-gulp.task("bundle-test", ["bundle"], function() {
-    sequence("less", "prevent-css-transitions-and-remove-fixed-positions", function() {
+gulp.task("bundle-test", function() {
+    sequence("prevent-css-transitions-and-remove-fixed-positions", function() {
         return purescript.pscBundle({
             src: "output/**/*.js",
             output: "test/index.js",
@@ -228,12 +226,4 @@ mkWatch("watch-file", "bundle-file", allSources);
 mkWatch("watch-workspace", "bundle-workspace", allSources);
 mkWatch("watch-auth_redirect", "bundle-auth_redirect", allSources);
 
-gulp.task("less", function() {
-  return gulp.src(["less/main.less"])
-    .pipe(less({ paths: ["less/**/*.less"] }))
-    .pipe(gulp.dest("public/css"));
-});
-mkWatch("watch-less", "less", ["less/**/*.less"]);
-
-gulp.task("full", ["clean", "add-headers", "trim-whitespace", "less", "make-bundle"]);
-gulp.task("default", ["less", "make-bundle"]);
+gulp.task("full", ["clean", "add-headers", "trim-whitespace"]);

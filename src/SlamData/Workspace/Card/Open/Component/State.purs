@@ -18,9 +18,20 @@ module SlamData.Workspace.Card.Open.Component.State where
 
 import SlamData.Prelude
 
-import SlamData.FileSystem.Resource as R
+import Control.Monad.Eff.Ref (Ref)
 
-type State = Maybe R.Resource
+import Data.List as L
+
+import SlamData.Workspace.Card.Open.Model (Open)
+import SlamData.Workspace.Card.Port.VarMap as VM
+
+type State =
+  { selection ∷ Maybe Open
+  , currentVars ∷ Maybe (Ref (L.List VM.Var))
+  }
 
 initialState ∷ State
-initialState = Nothing
+initialState =
+  { selection: Nothing
+  , currentVars: Nothing
+  }
