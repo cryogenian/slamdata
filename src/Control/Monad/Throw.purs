@@ -36,3 +36,4 @@ note err = maybe (throw err) pure
 
 noteError ∷ ∀ m a. MonadThrow Exn.Error m ⇒ String → Maybe a → m a
 noteError = note <<< Exn.error
+

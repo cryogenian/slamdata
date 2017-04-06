@@ -21,8 +21,8 @@ import SlamData.Workspace.Card.Next.NextAction (NextAction)
 import SlamData.Workspace.Card.Port (Port)
 
 data Query a
-  = DismissAddCardGuide a
-  | PresentAddCardGuide a
+  = DismissAddCardHint a
+  | PresentAddCardHint a
   | UpdateInput Port a
   | HandleFilter String a
   | HandleAction NextAction a

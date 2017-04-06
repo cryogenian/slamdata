@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -}
-module SlamData.Guide.Notification where
+module SlamData.Hint where
 
 import Prelude
 import Halogen.HTML as HH
@@ -28,14 +28,14 @@ data Arrow
 
 arrowClassName ∷ Arrow → HH.ClassName
 arrowClassName = case _ of
-  RightArrow → HH.ClassName "sd-guide-right-arrow"
-  UpArrow → HH.ClassName "sd-guide-up-arrow"
-  DownArrow → HH.ClassName "sd-guide-down-arrow"
+  RightArrow → HH.ClassName "sd-hint-right-arrow"
+  UpArrow → HH.ClassName "sd-hint-up-arrow"
+  DownArrow → HH.ClassName "sd-hint-down-arrow"
 
 render ∷ ∀ f a. Arrow → HH.ClassName → (Unit → f Unit) → String → HH.HTML a (f Unit)
 render arrow className dismissQuery text =
   HH.div
-    [ HP.classes [ HH.ClassName "sd-guide", className ] ]
+    [ HP.classes [ HH.ClassName "sd-hint", className ] ]
     [ HH.div
         [ HP.classes
             [ HH.ClassName "sd-notification"

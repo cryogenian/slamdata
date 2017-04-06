@@ -18,29 +18,14 @@ module SlamData.Quasar.Auth.IdTokenStorageEvents where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff, Canceler(..), makeAff')
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
-import Data.Argonaut (decodeJson, jsonParser)
+import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.AVar (AVAR)
 import DOM (DOM)
-import OIDC.Crypt.Types (IdToken(..))
-import SlamData.Quasar.Auth.Keys as AuthKeys
-import Utils.LocalStorage as LocalStorage
+import OIDC.Crypt.Types (IdToken)
+import SlamData.LocalStorage.Class as LocalStorage
+import SlamData.Quasar.Auth.Keys (fromRedirectSuffix)
+import SlamData.LocalStorage.Keys as LocalStorageKeys
 
-pullIdTokenFromStorageEvent ∷ ∀ eff. Aff (dom ∷ DOM, ref ∷ REF | eff) (Either String IdToken)
-pullIdTokenFromStorageEvent = makeAff' \onError onSuccess → do
-  ref ← newRef Nothing
-  remove ← LocalStorage.onStorageEvent \ev → unsafePartial do
-    when (isIdTokenKeyEvent ev.key) do
-      Just remove' ← readRef ref
-      onSuccess (parseIdToken ev.newValue)
-      remove'
-  writeRef ref (Just remove)
-  pure $ Canceler \_ → liftEff remove $> true
+pullIdTokenFromStorageEvent ∷ ∀ eff. Aff (dom ∷ DOM, avar ∷ AVAR | eff) (Either String IdToken)
+pullIdTokenFromStorageEvent = LocalStorage.awaitChange $ LocalStorageKeys.idTokenLocalStorageKey fromRedirectSuffix
 
-  where
-  isIdTokenKeyEvent =
-    eq (AuthKeys.hyphenatedSuffix AuthKeys.idTokenLocalStorageKey AuthKeys.fromRedirectSuffix)
-
-  parseIdToken =
-    map IdToken <=< decodeJson <=< jsonParser

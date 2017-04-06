@@ -16,23 +16,5 @@ limitations under the License.
 
 module SlamData.Quasar.Auth.Keys where
 
-import Prelude ((<>))
-
-idTokenLocalStorageKey ∷ String
-idTokenLocalStorageKey = "sd-auth-id-token"
-
-keyStringLocalStorageKey ∷ String
-keyStringLocalStorageKey = "sd-auth-csrf"
-
-nonceLocalStorageKey ∷ String
-nonceLocalStorageKey = "sd-auth-replay"
-
-providerLocalStorageKey ∷ String
-providerLocalStorageKey = "sd-auth-provider"
-
 fromRedirectSuffix ∷ String
 fromRedirectSuffix = "from-redirect"
-
-hyphenatedSuffix ∷ String → String → String
-hyphenatedSuffix string suffix = string <> "-" <> suffix
-

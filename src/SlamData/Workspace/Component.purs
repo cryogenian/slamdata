@@ -50,6 +50,8 @@ import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Header.Component as Header
 import SlamData.Header.Gripper.Component as Gripper
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LSK
 import SlamData.Monad (Slam)
 import SlamData.Notification.Component as NC
 import SlamData.Quasar as Quasar
@@ -77,7 +79,6 @@ import SlamData.Workspace.StateMode as StateMode
 
 import Utils (endSentence)
 import Utils.DOM (onResize, nodeEq)
-import Utils.LocalStorage as LocalStorage
 
 type WorkspaceHTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 type WorkspaceDSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
@@ -225,10 +226,10 @@ eval = case _ of
   HandleGuideMessage slot Guide.Dismissed next → do
     case slot of
       CardGuide → do
-        H.lift $ LocalStorage.setLocalStorage GuideData.dismissedCardGuideKey true
+        LS.persist LSK.dismissedCardGuideKey true
         void $ queryDeck $ H.action Deck.DismissedCardGuide
       FlipGuide → do
-        H.lift $ LocalStorage.setLocalStorage GuideData.dismissedFlipGuideKey true
+        LS.persist LSK.dismissedFlipGuideKey true
     H.modify (_ { guide = Nothing })
     pure next
   HandleNotification msg next →
@@ -333,6 +334,5 @@ queryHeaderGripper =
 
 initialCardGuideStep ∷ WorkspaceDSL (Maybe Int)
 initialCardGuideStep =
-  H.lift
-    $ either (const $ Just 0) (if _ then Nothing else Just 0)
-    <$> LocalStorage.getLocalStorage GuideData.dismissedCardGuideKey
+  either (const $ Just 0) (if _ then Nothing else Just 0)
+    <$> LS.retrieve LSK.dismissedCardGuideKey
