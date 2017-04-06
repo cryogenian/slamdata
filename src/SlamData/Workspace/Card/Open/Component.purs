@@ -112,19 +112,24 @@ handleMessage = either handleSelection absurd
 
 renderItem ∷ AnyItem' → MCI.BasicItemHTML
 renderItem r =
-  HH.div
-    [ HP.classes
-        [ HH.ClassName "sd-miller-column-item-inner"
-        , if isLeaf (isRight ∘ R.getPath) r
-            then HH.ClassName "sd-miller-column-item-leaf"
-            else HH.ClassName "sd-miller-column-item-node"
-        ]
-    ]
-    [ HH.span_
-        [ itemGlyph r
-        , HH.text (itemName r)
-        ]
-    ]
+  let
+    leaf ∷ Boolean
+    leaf = isLeaf (isRight ∘ R.getPath) r
+  in
+    HH.div
+      [ HP.classes
+          [ HH.ClassName "sd-miller-column-item-inner"
+          , HH.ClassName $ if leaf
+              then "sd-miller-column-item-leaf"
+              else "sd-miller-column-item-node"
+          ]
+      ] $ join
+      [ pure $ HH.span_
+          [ itemGlyph r
+          , HH.text (itemName r)
+          ]
+      , guard (not leaf) $> I.chevronRightSm
+      ]
 
 isLeaf ∷ ∀ a. (a → Boolean) → AnyItem a → Boolean
 isLeaf f = case _ of
@@ -145,17 +150,16 @@ itemName = case _ of
 itemGlyph ∷ AnyItem' → MCI.BasicItemHTML
 itemGlyph = case _ of
   Root → HH.text ""
-  -- TODO: deeefinitely not the right icons
-  Variables → I.wrenchesCrossed --I.tags
-  Variable _ → I.wrenchesCrossed --I.tag
-  Resource r → glyphForResource r
+  Variables → I.tagsSm
+  Variable _ → I.tagSm
+  Resource r → iconForResource r
 
-glyphForResource ∷ R.Resource → MCI.BasicItemHTML
-glyphForResource = case _ of
+iconForResource ∷ R.Resource → MCI.BasicItemHTML
+iconForResource = case _ of
   R.File _ → I.file
-  R.Workspace _ → I.workspace
-  R.Directory _ → I.folderCreate
-  R.Mount (R.Database _) → I.databaseCreate
+  R.Workspace _ → I.workspaceSm
+  R.Directory _ → I.folderSm
+  R.Mount (R.Database _) → I.database
   R.Mount (R.View _) → I.file
 
 evalOpen ∷ Query ~> DSL

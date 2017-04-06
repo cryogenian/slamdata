@@ -39,12 +39,14 @@
       cursor: pointer;
       font-weight: bold;
       padding-right: 25px;
+
       .sd-clear-field-icon {
         position: absolute;
         top: 50%;
         margin-top: -0.5rem;
         right: 6px;
       }
+
       .sd-miller-column-selection-label {
         opacity: 1;
       }
@@ -67,7 +69,6 @@
     position: relative;
     box-sizing: border-box;
     z-index: 1;
-
     height: 2.25rem;
     line-height: 2.25rem;
   }
@@ -113,17 +114,30 @@
     color: #fff;
   }
 
-  li+li {
+  li + li {
     margin-top: -1px;
     border-top: 1px solid #ddd;
   }
 
-  +.sd-miller-column {
+  + .sd-miller-column {
     margin-left: -1px;
   }
 }
 
 .sd-miller-column-item-inner {
+  position: relative;
+
+  .sd-icon--chevron-right-sm {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    margin: auto;
+    font-size: 0.75em;
+    vertical-align: text-top;
+  }
+
   span {
     display: block;
     position: relative;
@@ -131,26 +145,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  &.sd-miller-column-item-node {
-    span {
-      width: ~"calc(100% - 16px)";
-    }
-
-    &::after {
-      position: absolute;
-      right: 6px;
-      top: 10px;
-
-      content: "\e080";
-      font-family: "Glyphicons Halflings";
-      font-style: normal;
-      font-weight: 400;
-      line-height: 1;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
   }
 }
 
