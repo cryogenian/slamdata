@@ -15,7 +15,8 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.MillerColumns.Component
-  ( component
+  ( MillerColumnsComponent
+  , component
   , module SlamData.Workspace.MillerColumns.Component.Query
   , module Exports
   ) where
@@ -38,13 +39,16 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
+import Halogen.Component.Proxy (queryQ)
 
 import SlamData.Monad (Slam)
+import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions(..)) as Exports
 import SlamData.Workspace.MillerColumns.Column.Component as Column
+import SlamData.Workspace.MillerColumns.Column.Component.Request (LoadRequest, LoadResponse) as Exports
 import SlamData.Workspace.MillerColumns.Component.Query (Query(..), Message(..), Message')
 import SlamData.Workspace.MillerColumns.Component.State (State, ColumnsData, modifyColumns, columnPaths)
 
-import SlamData.Workspace.MillerColumns.Column.Component (ColumnOptions(..), LoadParams) as Exports
+type MillerColumnsComponent a i o = H.Component HH.HTML (Query a i o) (ColumnsData a i) (Message' a i o) Slam
 
 type HTML a i o = H.ParentHTML (Query a i o) (Column.Query' a i o) (Int × i) Slam
 type DSL a i o = H.ParentDSL (State a i) (Query a i o) (Column.Query' a i o) (Int × i) (Message' a i o) Slam
@@ -53,7 +57,7 @@ component
   ∷ ∀ a i o
   . Ord i
   ⇒ Column.ColumnOptions a i o
-  → H.Component HH.HTML (Query a i o) (ColumnsData a i) (Message' a i o) Slam
+  → MillerColumnsComponent a i o
 component opts@(Column.ColumnOptions colSpec) =
   H.parentComponent
     { initialState: { cycle: 0, columns: _ }
@@ -111,11 +115,17 @@ component opts@(Column.ColumnOptions colSpec) =
           H.modify $ modifyColumns $ second \sels →
             item : L.drop (L.length sels - colIndex) sels
           H.raise $ Left (SelectionChanged itemPath (Just item))
+        Left (Column.LoadRequest req) → do
+          H.raise $ Left (LoadRequest (colPath × req))
         Right o →
           H.raise (Right o)
       pure next
     Reload next → do
       H.modify \st → st { cycle = st.cycle + 1 }
+      pure next
+    FulfilLoadRequest (colPath × response) next → do
+      cycle ← H.gets _.cycle
+      H.query (cycle × colPath) $ queryQ $ H.action $ Column.FulfilLoadRequest response
       pure next
 
 scrollToRight ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Unit

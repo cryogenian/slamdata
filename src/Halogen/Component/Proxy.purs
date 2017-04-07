@@ -17,6 +17,7 @@ limitations under the License.
 module Halogen.Component.Proxy
   ( ProxyQ
   , ProxyComponent
+  , queryQ
   , proxy
   , proxyQI
   , proxyQL
@@ -28,7 +29,7 @@ module Halogen.Component.Proxy
 import Prelude
 
 import Data.Const (Const)
-import Data.Coyoneda (Coyoneda, unCoyoneda)
+import Data.Coyoneda (Coyoneda, liftCoyoneda, unCoyoneda)
 import Data.Functor.Coproduct (Coproduct, left, right)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
@@ -42,6 +43,9 @@ data ProxyQ f i o a
   = Query (Coyoneda f a)
   | Receive i a
   | Raise o a
+
+queryQ ∷ ∀ f i o. f ~> ProxyQ f i o
+queryQ = Query <<< liftCoyoneda
 
 type ProxyComponent f i o m = H.Component HH.HTML (ProxyQ f i o) i o m
 

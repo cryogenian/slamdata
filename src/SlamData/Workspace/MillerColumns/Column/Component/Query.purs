@@ -19,6 +19,7 @@ module SlamData.Workspace.MillerColumns.Column.Component.Query
   , Query'
   , Message(..)
   , Message'
+  , module SlamData.Workspace.MillerColumns.Column.Component.Request
   ) where
 
 import SlamData.Prelude
@@ -28,6 +29,7 @@ import DOM.Node.Types (Element)
 import Halogen.Component.Proxy (ProxyQ)
 
 import SlamData.Workspace.MillerColumns.Column.Component.Item as Item
+import SlamData.Workspace.MillerColumns.Column.Component.Request (LoadRequest, LoadResponse)
 
 data Query a i o b
   = Init b
@@ -38,6 +40,7 @@ data Query a i o b
   | UpdateFilter String b
   | HandleScroll Element b
   | HandleMessage i (Item.Message' a o) b
+  | FulfilLoadRequest (LoadResponse a) b
 
 type Query' a i o = ProxyQ (Query a i o) (Maybe a) (Message' a i o)
 
@@ -45,5 +48,6 @@ data Message a i
   = Initialized
   | Selected i a
   | Deselected
+  | LoadRequest LoadRequest
 
 type Message' a i o = Either (Message a i) o
