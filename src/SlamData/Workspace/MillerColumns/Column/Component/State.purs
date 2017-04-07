@@ -21,8 +21,8 @@ import SlamData.Prelude
 import Data.List (List(..))
 
 import SlamData.Monad (Slam)
-import SlamData.Workspace.MillerColumns.Column.Options (LoadParams)
 import SlamData.Workspace.MillerColumns.Column.Component.Query (Query)
+import SlamData.Workspace.MillerColumns.Column.Component.Request (RequestId(..), LoadRequest)
 
 import Halogen.Component.Utils.Debounced (DebounceTrigger(..))
 
@@ -42,8 +42,8 @@ type State a i o =
   , selected ∷ Maybe a
   , filterText ∷ String
   , nextOffset ∷ Maybe Int
-  , lastLoadParams ∷ Maybe (LoadParams i)
-  , tick ∷ Int
+  , lastLoadRequest ∷ Maybe LoadRequest
+  , lastRequestId ∷ RequestId
   , filterTrigger ∷ DebounceTrigger (Query a i o) Slam
   }
 
@@ -54,7 +54,7 @@ initialState =
   , selected: _
   , filterText: ""
   , nextOffset: Nothing
-  , lastLoadParams: Nothing
-  , tick: 0
+  , lastLoadRequest: Nothing
+  , lastRequestId: RequestId 0
   , filterTrigger: DebounceTrigger (const (pure unit))
   }
