@@ -159,7 +159,7 @@ buildLineData r records = series
       Nothing → {symbolSize: zero, value: zero}
       Just valAgg →
         let
-          value = Ag.runAggregation valAgg ss
+          value = Ag.runAggregation valAgg rs
           symbolSize
             | r.optionalMarkers = Int.floor r.minSize
             | otherwise =
