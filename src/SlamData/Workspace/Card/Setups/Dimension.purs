@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor(..), class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), (.?), jsonEmptyObject, insideOut)
 import Data.Array as Array
-import Data.Lens (Lens', lens, Traversal', wander)
+import Data.Lens (Lens', lens, Traversal', wander, _Just)
 import Data.Newtype (un)
 import Data.String as String
 import Data.Traversable (sequenceDefault)
@@ -78,6 +78,9 @@ _Static = wander \f → case _ of
   Static s → map Static $ f s
   c → pure c
 
+_staticCategory ∷ ∀ a b. Traversal' (Dimension a b) String
+_staticCategory = _category ∘ _Just ∘ _Static
+
 printCategory ∷ ∀ p. (p → String) → Category p → String
 printCategory f = case _ of
   Static str → str
@@ -87,6 +90,12 @@ isStatic ∷ ∀ p. Category p → Boolean
 isStatic = case _ of
   Static _ → true
   _ → false
+
+jcursorLabel ∷ LabeledJCursor → String
+jcursorLabel = case _ of
+  Dimension (Just (Static label)) _ → label
+  Dimension _ (Static label) → label
+  Dimension _ (Projection _ jcursor) → prettyPrintJCursor jcursor
 
 derive instance eqDimension ∷ (Eq a, Eq b) ⇒ Eq (Dimension a b)
 derive instance eqCategory ∷ Eq p ⇒ Eq (Category p)
@@ -184,6 +193,16 @@ instance arbitraryDimensionWithStaticCategory ∷ Arbitrary a ⇒ Arbitrary (Dim
 
 instance arbitraryStaticCategory ∷ Arbitrary StaticCategory where
   arbitrary = StaticCategory ∘ Static <$> arbitrary
+
+prettyPrintJCursor ∷ JCursor → String
+prettyPrintJCursor = go ""
+  where
+  go "" (JField f n) = go f n
+  go "" (JIndex i n) = go (show i) n
+  go "" JCursorTop = "value"
+  go s (JField f n) = go (s <> "." <> f) n
+  go s (JIndex i n) = go (s <> "[" <> show i <> "]") n
+  go s JCursorTop = s
 
 defaultJCursorCategory ∷ ∀ a. JCursor → Category a
 defaultJCursorCategory =

@@ -57,6 +57,8 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
+import Utils (hush')
+
 eval
   ∷ ∀ m
   . ( MonadState CEM.CardState m
@@ -226,7 +228,7 @@ buildGraph r records = do
         mbCat = join $ Rgx.match categoryRgx name >>= flip A.index 1
 
         mbVal ∷ Maybe Number
-        mbVal = if FR.isUndefined $ FR.toForeign value then Nothing else Just value
+        mbVal = hush' $ FR.readNumber value
 
         itemTooltip ∷ String
         itemTooltip =

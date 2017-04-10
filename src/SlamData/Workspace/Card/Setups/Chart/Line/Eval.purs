@@ -214,9 +214,10 @@ buildLineData r records = series
 
 buildLine ∷ Axes → ModelR → JArray → DSL OptionI
 buildLine axes r records = do
-  E.tooltip case r.size of
-    Just _ → E.triggerItem
-    Nothing → E.triggerAxis
+  E.tooltip do
+    if isJust r.size then E.triggerItem else E.triggerAxis
+    E.textStyle $ E.fontSize 12
+
   E.colors colors
   E.grid BCP.cartesian
   E.series series
@@ -269,11 +270,10 @@ buildLine axes r records = do
   seriesNames = case r.series of
     Just _ → A.fromFoldable $ foldMap (_.name ⋙ foldMap Set.singleton) lineData
     Nothing →
-      map show
-      $ A.catMaybes
-      [ r.value ^? D._value ∘ D._projection
-      , r.secondValue ^? _Just ∘ D._value ∘ D._projection
-      ]
+      A.catMaybes
+        [ Just $ D.jcursorLabel r.value
+        , D.jcursorLabel <$> r.secondValue
+        ]
 
   needTwoAxes ∷ Boolean
   needTwoAxes = isJust r.secondValue
@@ -295,7 +295,7 @@ buildLine axes r records = do
         Just _ →
           for_ lineSerie.name E.name
         Nothing →
-          traverse_ (E.name ∘ show) $ r.value ^? D._value ∘ D._projection
+          E.name $ D.jcursorLabel r.value
 
     when needTwoAxes $ E.line do
       E.buildItems $ for_ xValues \key →
@@ -312,7 +312,7 @@ buildLine axes r records = do
         Just _ →
           for_ lineSerie.name E.name
         Nothing →
-          traverse_ (E.name ∘ show) $ r.secondValue ^? _Just ∘ D._value ∘ D._projection
+          for_ r.secondValue (E.name ∘ D.jcursorLabel)
 
   yAxis ∷ DSL ETP.YAxisI
   yAxis = do

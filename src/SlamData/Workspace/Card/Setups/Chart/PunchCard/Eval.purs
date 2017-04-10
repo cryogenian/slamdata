@@ -29,6 +29,7 @@ import Control.Monad.Throw (class MonadThrow)
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
+import Data.Foreign (readNumber)
 import Data.Int as Int
 import Data.Lens ((^?), _Just)
 import Data.Map as M
@@ -55,6 +56,8 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+
+import Utils (hush')
 import Utils.Array (enumerate)
 
 eval
@@ -143,9 +146,9 @@ buildPunchCard axes r records = do
       E.fontSize 12
     E.formatterItemArrayValue \{value} →
       let
-        xIx = map Int.ceil $ value A.!! 0
-        yIx = map Int.ceil $ value A.!! 1
-        val = value A.!! 2
+        xIx = (map Int.ceil ∘ hush' ∘ readNumber) =<< value A.!! 0
+        yIx = (map Int.ceil ∘ hush' ∘ readNumber) =<< value A.!! 1
+        val = (hush' ∘ readNumber) =<< value A.!! 2
 
         xStr = foldMap ("abscissa: " ⊕ _) $ xIx >>= A.index abscissaValues
         yStr = foldMap ("<br />ordinate: " ⊕ _) $ yIx >>= A.index ordinateValues

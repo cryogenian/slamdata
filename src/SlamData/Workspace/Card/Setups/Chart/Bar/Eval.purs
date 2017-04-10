@@ -45,6 +45,7 @@ import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -150,7 +151,18 @@ buildBarData r records = series
 
 buildBar ∷ Axes → ModelR → JArray → DSL OptionI
 buildBar axes r records = do
-  E.tooltip E.triggerAxis
+  let
+    cols =
+      [ { label: D.jcursorLabel r.category, value: CCT.formatValueIx 0 }
+      , { label: D.jcursorLabel r.value, value: CCT.formatValueIx 1 }
+      ]
+    seriesFn dim = [ { label: D.jcursorLabel dim, value: _.seriesName } ]
+    opts = foldMap seriesFn if isJust r.parallel then r.parallel else r.stack
+
+  E.tooltip do
+    E.formatterAxis (CCT.tableFormatter (pure ∘ _.color) (cols <> opts))
+    E.textStyle $ E.fontSize 12
+    E.triggerAxis
 
   E.colors colors
 

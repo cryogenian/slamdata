@@ -39,6 +39,7 @@
     "purescript-halogen-css": "^5.0.0",
     "purescript-halogen-echarts": "^5.0.0",
     "purescript-halogen-menu": "4.0.0",
+    "purescript-halogen-vdom-string-renderer": "^0.1.0",
     "purescript-js-timers": "^2.0.0",
     "purescript-jtable": "^4.0.0",
     "purescript-maps": "^2.0.1",
@@ -57,7 +58,8 @@
     "purescript-these": "^2.0.0",
     "purescript-tuples": "^3.0.0",
     "purescript-uri": "^2.0.0",
-    "purescript-clipboard": "^0.1.0"
+    "purescript-clipboard": "^0.1.0",
+    "purescript-echarts": "56061619d882ace577315f59b14a904261630889"
   },
   "devDependencies": {
     "purescript-chalky": "^2.0.0",
@@ -70,5 +72,8 @@
     "purescript-quasar-test-starter": "quasar-test-starter#^0.2.0",
     "purescript-strongcheck": "^2.0.0",
     "purescript-webdriver": "^3.0.0"
+  },
+  "resolutions": {
+    "purescript-echarts": "56061619d882ace577315f59b14a904261630889"
   }
 }

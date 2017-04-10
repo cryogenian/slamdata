@@ -48,6 +48,7 @@ import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
@@ -128,7 +129,16 @@ buildAreaData r records = series
 
 buildArea ∷ Ax.Axes → ModelR → JArray → DSL OptionI
 buildArea axes r records = do
+  let
+    cols =
+      [ { label: D.jcursorLabel r.dimension, value: CCT.formatValueIx 0 }
+      , { label: D.jcursorLabel r.value, value: CCT.formatValueIx 1 }
+      ]
+    opts = flip foldMap r.series \dim →
+      [ { label: D.jcursorLabel dim, value: _.seriesName } ]
+
   E.tooltip do
+    E.formatterAxis (CCT.tableFormatter (pure ∘ _.color) (cols <> opts))
     E.triggerAxis
     E.textStyle do
       E.fontFamily "Ubuntu, sans"

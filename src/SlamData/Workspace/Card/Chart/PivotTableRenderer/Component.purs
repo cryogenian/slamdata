@@ -21,12 +21,10 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Foldable as F
-import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.Lens ((^.), (^?))
 import Data.List (List, (:))
 import Data.List as List
-import Data.String as String
 
 import DOM.Event.Event (preventDefault)
 import DOM.Event.Types (Event)
@@ -48,7 +46,7 @@ import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..), Column
 import SlamData.Workspace.Card.Setups.Transform as T
 
 import Global (readFloat)
-import Utils (hush)
+import Utils (hush, showPrettyNumber, showFormattedNumber)
 
 type Input =
   { port ∷ Port.PivotTablePort
@@ -177,7 +175,7 @@ render st =
 
   renderValue = case _, _ of
     0, D.Static _ → renderJson
-    0, D.Projection (Just T.Count) _ → J.foldJsonNumber "" (FN.format numFormatter)
+    0, D.Projection (Just T.Count) _ → J.foldJsonNumber "" showFormattedNumber
     0, D.Projection _ (Column _) → foldJsonArray' renderJson (maybe "" renderJson ∘ flip Array.index 0)
     i, D.Projection _ _ → foldJsonArray' (const "") (maybe "" renderJson ∘ flip Array.index i)
     _, _ → const ""
@@ -200,19 +198,7 @@ render st =
         []
 
   renderJson =
-    J.foldJson show show showPrettyNum id (J.printJson ∘ J.fromArray) (J.printJson ∘ J.fromObject)
-
-  showPrettyNum n =
-    let s = show n
-    in fromMaybe s (String.stripSuffix (String.Pattern ".0") s)
-
-  numFormatter =
-    { comma: true
-    , before: 0
-    , after: 0
-    , abbreviations: false
-    , sign: false
-    }
+    J.foldJson show show showPrettyNumber id (J.printJson ∘ J.fromArray) (J.printJson ∘ J.fromObject)
 
   prevButtons enabled =
     HH.div
