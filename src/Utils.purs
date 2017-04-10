@@ -33,6 +33,11 @@ stringToNumber s =
   where
   n = readFloat s
 
+stringToBoolean ∷ String → Maybe Boolean
+stringToBoolean "true" = Just true
+stringToBoolean "false" = Just false
+stringToBoolean _ = Nothing
+
 stringToInt ∷ String → Maybe Int
 stringToInt = map Int.floor ∘ stringToNumber
 

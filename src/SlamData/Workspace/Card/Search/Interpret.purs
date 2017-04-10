@@ -20,152 +20,206 @@ module SlamData.Workspace.Card.Search.Interpret
 
 import SlamData.Prelude
 
-import Data.Array (filter, catMaybes, head, nub, fromFoldable)
+import Data.Foldable as F
 import Data.Int as Int
+import Data.Json.Extended as Ej
+import Data.Lens ((.~), (?~))
+import Data.List ((:))
 import Data.List as L
 import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
-import Data.Json.Extended as EJSON
-import Data.Json.Extended.Signature.Parse as EJP
+import Data.String.Regex.Unsafe as URX
 
-import Text.Parsing.Parser as P
 import Text.SlamSearch.Types as SS
 
-import SqlSquare (Sql)
+import Matryoshka (Algebra, embed, cata, Transform, transAna, ana, Coalgebra)
+
+import Quasar.Types (FilePath)
+
+import SqlSquare (Sql, SqlF(..))
 import SqlSquare as Sql
 
 import Utils as Utils
 
 
 
--- TODO: We need to really obliterate this module and replace these regular
--- expressions and ad hoc renderers with something that targets a SQL^2 A(S/B)T,
--- which is then serialized separately. Blocked by SD-1391.
-
 queryToSQL
-  ∷ L.List Sql String
+  ∷ L.List Sql
   → SS.SearchQuery
-  → S.Sql
-queryToSQL fields query =
-     "SELECT"
-  <> (if needDistinct whereClause then " DISTINCT " else " ")
-  <> topFields
-  <> " from {{path}} where " <> whereOrFalse
+  → FilePath
+  → Sql
+queryToSQL fields searchQuery path =
+  Sql.buildSelect
+    $ (Sql._isDistinct .~ isDistinct searchQuery)
+    ∘ (Sql._projections .~ projections fields)
+    ∘ (Sql._relations ?~ Sql.TableRelation { alias: Nothing, path: Left path })
+    ∘ (Sql._filter ?~ filter fields searchQuery)
+
+isDistinct ∷ SS.SearchQuery → Boolean
+isDistinct = F.any isDistinctTerm
   where
-    topFields ∷ String
-    topFields =
-        S.joinWith ", "
-      $ nub
-      $ map (RX.replace firstDot "")
-      $ catMaybes
-      $ map join
-      $ map head
-      $ catMaybes
-      $ map (RX.match topFieldRegex)
-      $ fields
+  isDistinctTerm ∷ SS.Term → Boolean
+  isDistinctTerm (SS.Term { labels }) = F.any isDistinctLabel labels
 
-    topFieldRegex ∷ RX.Regex
-    topFieldRegex =
-      unsafePartial fromRight $
-        RX.regex "^\\.[^\\.\\[]+|^\\[.+\\]/" RXF.noFlags
+  isDistinctLabel ∷ SS.Label → Boolean
+  isDistinctLabel l = case ssLabelString l of
+    "[*]" → true
+    "{*}" → true
+    "*" → true
+    s → isJust $ labelInt s
 
-    whereOrFalse ∷ String
-    whereOrFalse = if whereClause == "()" then "FALSE" else whereClause
+labelInt ∷ String → Maybe Int
+labelInt s =
+  Int.fromString s
+  <|> (S.stripSuffix (S.Pattern "]") s
+       >>= S.stripPrefix (S.Pattern "[")
+       >>= Int.fromString)
 
-    whereClause ∷ String
-    whereClause =
-        S.joinWith " OR "
-      $ map oneWhereInput
-      $ fromFoldable
-      $ unwrap
-      $ map (termToSQL fields) query
 
-    oneWhereInput ∷ List String → String
-    oneWhereInput s = pars $ S.joinWith " AND " $ fromFoldable s
+ssLabelString ∷ SS.Label → String
+ssLabelString = case _ of
+  SS.Meta s → s
+  SS.Common s → s
 
-needDistinct ∷ String → Boolean
-needDistinct input =
-  (isJust $ S.indexOf (S.Pattern "{*}") input) || (isJust $ S.indexOf (S.Pattern "[*]") input)
+ssValueString ∷ SS.Value → String
+ssValueString = case _ of
+  SS.Text v → v
+  SS.Tag v → v
 
-termToSQL
-  ∷ Array String
-  → SS.Term
-  → String
-termToSQL fields (SS.Term {include: include, predicate: p, labels: ls}) =
-  if not include
-    then "NOT " <> pars (termToSQL fields $ SS.Term {include: true, predicate: p, labels: ls})
-    else renderPredicate $ labelsProjection fields (fromFoldable ls)
-  where
-    renderPredicate ∷ Array String → String
-    renderPredicate prj =
-      S.joinWith " OR " (predicateToSQL p <$> prj)
 
-predicateToSQL
-  ∷ SS.Predicate
-  → String
-  → String
-predicateToSQL (SS.Contains (SS.Text v)) s =
-  S.joinWith " OR " $
-    [s <> " ~* " <> EJSON.renderEJson (EJSON.string (globToRegex (containsToGlob v)))]
-    <> (if needUnq v then renderLowercased v else [])
-    <> (if not isJust ts then maybe [] render date else [])
-    <> (maybe [] render time)
-    <> (maybe [] render ts)
-    <> (if needInterval v then render i else [])
+topFieldF ∷ Algebra (SqlF Ej.EJsonF) (Maybe Sql)
+topFieldF = case _ of
+  Splice Nothing → Just $ embed $ Splice Nothing
+  Ident s → Just $ embed $ Ident s
+  Literal (Ej.Integer i) → Just $ embed $ Literal $ Ej.Integer i
+  Literal (Ej.String s) → Just $ embed $ Literal $ Ej.String s
+  Binop { op: Sql.FieldDeref, lhs } → lhs
+  Binop { op: Sql.IndexDeref, lhs } → lhs
+  Unop { expr } → expr
+  _ → Nothing
 
-  where
-    containsToGlob ∷ String → String
-    containsToGlob v' =
-      if hasSpecialChars v'
-      then v'
-      else "*" <> v' <> "*"
+projections ∷ L.List Sql → L.List (Sql.Projection Sql)
+projections =
+  map Sql.projection --(Sql.Projection ∘ { expr: _, alias: Nothing})
+  ∘ L.nub
+  ∘ L.catMaybes
+  ∘ map (cata topFieldF)
 
-    hasSpecialChars ∷ String → Boolean
-    hasSpecialChars v' =
-      isJust (S.indexOf (S.Pattern "*") v') || isJust (S.indexOf (S.Pattern "?") v')
+filter ∷ L.List Sql → SS.SearchQuery → Sql
+filter fs =
+  ands
+  ∘ map ors
+  ∘ unwrap
+  ∘ map (termToSql $ map flattenIndex fs)
 
-    date = parseEJsonValue EJSON.date EJP.parseDate v
-    time = parseEJsonValue EJSON.time EJP.parseTime v
-    ts = parseEJsonValue EJSON.timestamp EJP.parseTimestamp v
-    i = EJSON.renderEJson $ EJSON.interval v
+ands ∷ L.List Sql → Sql
+ands = case _ of
+  L.Nil → Sql.bool true
+  hd : L.Nil → Sql.pars hd
+  hd : tl → F.foldl (\acc sql → Sql.binop Sql.And acc $ Sql.pars sql) hd tl
 
-    renderLowercased v' = [ "LOWER(" <> s <> ") = " <> v']
-    render v' = [s <> " = " <> v']
+ors ∷ L.List Sql → Sql
+ors = case _ of
+  L.Nil → Sql.bool false
+  hd : L.Nil → Sql.pars hd
+  hd : tl → F.foldl (\acc sql → Sql.binop Sql.Or acc $ Sql.pars sql) hd tl
 
-predicateToSQL (SS.Range (SS.Text v) (SS.Text v')) s =
-  S.joinWith " OR " $
-    [ forR' (quote v) (quote v') ]
-    <> (if needUnq v && needUnq v' then [ forR v v' ] else [ ])
-    <> case date, date' of
-      Just d, Just d' → [ forR d d' ]
-      _, _ → []
+flattenIndex ∷ Sql → Sql
+flattenIndex = transAna flattenIndexT
 
-  where
-    date = parseEJsonValue EJSON.date EJP.parseDate v
-    date' = parseEJsonValue EJSON.date EJP.parseDate v'
+flattenIndexT ∷ ∀ t. Transform t (SqlF Ej.EJsonF) (SqlF Ej.EJsonF)
+flattenIndexT = case _ of
+  Binop { op: Sql.IndexDeref, lhs } → Unop { op: Sql.FlattenArrayValues, expr: lhs }
+  s → s
 
-    forR' ∷ String → String → String
-    forR' a b =
-      fold ["(LOWER(", s, ") >=", a, " AND LOWER(", s, ") <= ", b, ")"]
+termToSql ∷ L.List Sql → SS.Term → Sql
+termToSql fs (SS.Term { include, predicate, labels })
+  | not include =
+      Sql.unop Sql.Not $ termToSql fs $ SS.Term { include: true, predicate, labels }
+  | otherwise =
+      ors
+        $ map (predicateToSql predicate)
+        $ if L.null labels then fs else pure $ labelsToField labels
 
-    forR ∷ String → String → String
-    forR a b =
-      fold ["(", s, " >= ", a, " AND ", s, " <= ", b, ")"]
+labelsToField ∷ L.List SS.Label → Sql
+labelsToField = ana labelToFieldF ∘ map ssLabelString ∘ L.reverse
 
-predicateToSQL (SS.Range (SS.Tag val) val') s =
-  predicateToSQL (SS.Range (SS.Text val) val') s
-predicateToSQL (SS.Range val (SS.Tag val')) s =
-  predicateToSQL (SS.Range val (SS.Text val')) s
-predicateToSQL (SS.Contains (SS.Tag v)) s =
-  predicateToSQL (SS.Contains (SS.Text v)) s
-predicateToSQL (SS.Eq v) s = renderBinRel s "=" v
-predicateToSQL (SS.Gt v) s = renderBinRel s ">" v
-predicateToSQL (SS.Gte v) s = renderBinRel s ">=" v
-predicateToSQL (SS.Lt v) s = renderBinRel s "<" v
-predicateToSQL (SS.Lte v) s = renderBinRel s "<=" v
-predicateToSQL (SS.Ne v) s = renderBinRel s "<>" v
-predicateToSQL (SS.Like v) s = s <> " ~* " <> EJSON.renderEJson (EJSON.string v)
+labelToFieldF ∷ Coalgebra (SqlF Ej.EJsonF) (L.List String)
+labelToFieldF = case _ of
+  L.Nil → Sql.Splice Nothing
+  hd : L.Nil → case labelInt hd of
+    Just i → Sql.Literal $ Ej.Integer i
+    Nothing → Sql.Ident hd
+  hd : tl → case labelInt hd of
+    Just i → Sql.Binop { op: Sql.IndexDeref,  lhs: tl, rhs: pure hd }
+    Nothing → case hd of
+      "[*]" → Sql.Unop { op: Sql.FlattenArrayValues, expr: tl }
+      "{*}" → Sql.Unop { op: Sql.FlattenMapValues, expr: tl }
+      "*" → Sql.Unop { op: Sql.FlattenMapValues, expr: tl }
+      a → Sql.Binop { op: Sql.FieldDeref, lhs: tl, rhs: pure hd }
+
+
+predicateToSql ∷ SS.Predicate → Sql → Sql
+predicateToSql pr field = case pr of
+  SS.Contains (SS.Tag v) →
+    predicateToSql (SS.Contains $ SS.Text v) field
+  SS.Contains (SS.Text v) →
+    ors
+    $ (pure
+         $ Sql.invokeFunction "SEARCH"
+         $ field
+         : (Sql.string $ globToRegex $ containsToGlob v)
+         : Sql.bool true
+         : L.Nil )
+    ⊕ (sqlFromSearchStr v <#> Sql.binop Sql.Eq field)
+  SS.Range (SS.Tag val) vv →
+    predicateToSql (SS.Range (SS.Text val) vv) field
+  SS.Range vv (SS.Tag val) →
+    predicateToSql (SS.Range vv $ SS.Text val) field
+  SS.Range (SS.Text v) (SS.Text vv) →
+    ors
+    $ ( pure $ Sql.binop Sql.And
+        ( Sql.pars $ Sql.binop Sql.Ge (lower field) (lower $ Sql.string v))
+        ( Sql.pars $ Sql.binop Sql.Le (lower field) (lower $ Sql.string vv)))
+    ⊕ do
+      start ← sqlFromSearchStr v
+      end ← sqlFromSearchStr vv
+      pure $ Sql.binop Sql.And
+        ( Sql.pars $ Sql.binop Sql.Ge field start )
+        ( Sql.pars $ Sql.binop Sql.Le field end )
+  SS.Eq v → renderBinRel field Sql.Eq $ ssValueString v
+  SS.Gt v → renderBinRel field Sql.Gt $ ssValueString v
+  SS.Lt v → renderBinRel field Sql.Lt $ ssValueString v
+  SS.Ne v → renderBinRel field Sql.Neq $ ssValueString v
+  SS.Gte v → renderBinRel field Sql.Ge $ ssValueString v
+  SS.Lte v → renderBinRel field Sql.Le $ ssValueString v
+  SS.Like v →
+    Sql.invokeFunction "SEARCH"
+      $ field : Sql.string v : Sql.bool true : L.Nil
+
+renderBinRel ∷ Sql → Sql.BinaryOperator → String → Sql
+renderBinRel field op v =
+  ors
+  $ ( pure $ Sql.binop op (lower field) (lower $ Sql.string v))
+  ⊕ ( sqlFromSearchStr v <#> Sql.binop op field )
+
+sqlFromSearchStr ∷ String → L.List Sql
+sqlFromSearchStr v =
+  (flip F.foldMap (Utils.stringToNumber v) $ pure ∘ Sql.num)
+  ⊕ (flip F.foldMap (Int.fromString v) $ pure ∘ Sql.int)
+  ⊕ (flip F.foldMap (Utils.stringToBoolean v) $ pure ∘ Sql.bool)
+  ⊕ ((guard ((not $ needDateTime v) && needDate v)) $>
+       Sql.invokeFunction "DATE" (Sql.string v : L.Nil))
+  ⊕ (guard (needTime v) $>
+       Sql.invokeFunction "TIME" (Sql.string v : L.Nil))
+  ⊕ (guard (needDateTime v) $>
+       Sql.invokeFunction "TIMESTAMP" (Sql.string v : L.Nil))
+  ⊕ (guard (needInterval v) $>
+       Sql.invokeFunction "INTERVAL" (Sql.string v : L.Nil))
+
+lower ∷ Sql → Sql
+lower = Sql.invokeFunction "LOWER" ∘ pure
 
 globToRegex ∷ String → String
 globToRegex =
@@ -174,108 +228,58 @@ globToRegex =
     ∘ RX.replace starRegex ".*"
     ∘ RX.replace globEscapeRegex "\\$&"
   where
-    globEscapeRegex =
-      unsafePartial fromRight $
-        RX.regex
-          "[\\-\\[\\]\\/\\{\\}\\(\\)\\+\\.\\\\\\^\\$\\|]"
-          RXF.global
+  globEscapeRegex =
+    URX.unsafeRegex
+    "[\\-\\[\\]\\/\\{\\}\\(\\)\\+\\.\\\\\\^\\$\\|]"
+    RXF.global
 
-    starRegex =
-      unsafePartial fromRight $
-        RX.regex "\\*" RXF.global
-    askRegex =
-      unsafePartial fromRight $
-        RX.regex "\\?" RXF.global
+  starRegex =
+    URX.unsafeRegex
+    "\\*" RXF.global
+  askRegex =
+    URX.unsafeRegex
+    "\\?" RXF.global
 
-renderBinRel
-  ∷ String
-  → String
-  → SS.Value
-  → String
-renderBinRel s op v = pars $
-  S.joinWith " OR " $
-    [ forV' (quote unquoted) ]
-    <> (if needUnq unquoted then [ forV unquoted ] else [])
-    <> (maybe [] (pure ∘ forV) time)
-    <> (if not isJust ts then maybe [] (pure ∘ forV) date else [])
-    <> (maybe [] (pure ∘ forV) ts)
-    <> (if needInterval unquoted then [ forV i ] else [])
+containsToGlob ∷ String → String
+containsToGlob v
+  | hasSpecialChars v = v
+  | otherwise = "*" <> v <> "*"
+
+hasSpecialChars ∷ String → Boolean
+hasSpecialChars v =
+  isJust (S.indexOf (S.Pattern "*") v) || isJust (S.indexOf (S.Pattern "?") v)
+
+
+needDate ∷ String → Boolean
+needDate = RX.test dateRegex
   where
-    unquoted = valueToSQL v
-    date = parseEJsonValue EJSON.date EJP.parseDate unquoted
-    time = parseEJsonValue EJSON.time EJP.parseTime unquoted
-    ts = parseEJsonValue EJSON.timestamp EJP.parseTimestamp unquoted
-    i = EJSON.renderEJson $ EJSON.interval unquoted
-    forV' v' = fold ["LOWER(", s, ") ", op, " ", v']
-    forV v' = fold [s, " ", op, " ", v']
+  dateRegex =
+    URX.unsafeRegex
+      """^(((19|20)([2468][048]|[13579][26]|0[48])|2000)[-]02[-]29|((19|20)[0-9]{2}[-](0[4678]|1[02])[-](0[1-9]|[12][0-9]|30)|(19|20)[0-9]{2}[-](0[1359]|11)[-](0[1-9]|[12][0-9]|3[01])|(19|20)[0-9]{2}[-]02[-](0[1-9]|1[0-9]|2[0-8])))$"""
+      RXF.noFlags
 
-parseEJsonValue ∷ ∀ a. (a → EJSON.EJson) → P.Parser String a → String → Maybe String
-parseEJsonValue f p input =
-  either (const Nothing) (Just ∘ EJSON.renderEJson ∘ f) $ P.runParser input p
 
--- | Whether the string should be rendered without quotes
-needUnq ∷ String → Boolean
-needUnq s =
-  fromMaybe false ((show >>> (_ == s)) <$> Int.fromString s)
-  || fromMaybe false ((show >>> (_ == s)) <$> Utils.stringToNumber s)
-  || s == "true"
-  || s == "false"
+needTime ∷ String → Boolean
+needTime = RX.test timeRegex
+  where
+  timeRegex =
+    URX.unsafeRegex
+      "^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
+      RXF.noFlags
+
+
+needDateTime ∷ String → Boolean
+needDateTime = RX.test dtRegex
+  where
+  dtRegex =
+    URX.unsafeRegex
+      "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
+      RXF.noFlags
 
 needInterval ∷ String → Boolean
 needInterval = RX.test intervalRegex
   where
-    intervalRegex =
-      unsafePartial fromRight $
-        RX.regex
-          "P((([0-9]*\\.?[0-9]*)Y)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)W)?(([0-9]*\\.?[0-9]*)D)?)?(T(([0-9]*\\.?[0-9]*)H)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)S)?)?"
-          RXF.noFlags
-
-valueToSQL ∷ SS.Value → String
-valueToSQL =
-  case _ of
-    SS.Text v → v
-    SS.Tag v → v
-
-labelsProjection ∷ Array String → Array SS.Label → Array String
-labelsProjection fields ls =
-  nub
-  $ RX.replace arrFieldRgx "[*]"
-  <$> RX.replace firstDot ""
-  <$> filter (RX.test $ labelsRegex ls) fields
-  where
-    arrFieldRgx ∷ RX.Regex
-    arrFieldRgx =
-      unsafePartial fromRight $
-        RX.regex "\\[\\d+\\]" RXF.global
-
-labelsRegex ∷ Array SS.Label → RX.Regex
-labelsRegex [] = unsafePartial fromRight $ RX.regex ".*" RXF.noFlags
-labelsRegex ls =
-  unsafePartial fromRight $ RX.regex ("^" <> (foldMap mapFn ls) <> "$") RXF.ignoreCase
-  where
-  mapFn ∷ SS.Label → String
-  mapFn (SS.Meta l) = mapFn (SS.Common l)
-  mapFn (SS.Common "{*}") = "(\\.[^\\.]+)"
-  mapFn (SS.Common "[*]") = "(\\[\\d+\\])"
-  mapFn (SS.Common "*") = "(\\.[^\\.]+|\\[\\d+\\])"
-  mapFn (SS.Common l)
-    | RX.test (unsafePartial fromRight $ RX.regex "\\[\\d+\\]" RXF.noFlags) l =
-        RX.replace openSquare "\\["
-      $ RX.replace closeSquare "\\]"
-      $ l
-    | otherwise = "(\\.`" <> l <> "`|\\." <> l <> ")"
-
-  openSquare ∷ RX.Regex
-  openSquare = unsafePartial fromRight $ RX.regex "\\[" RXF.noFlags
-
-  closeSquare ∷ RX.Regex
-  closeSquare = unsafePartial fromRight $ RX.regex "\\]" RXF.noFlags
-
-firstDot ∷ RX.Regex
-firstDot = unsafePartial fromRight $ RX.regex "^\\." RXF.noFlags
-
-quote ∷ String → String
-quote s = EJSON.renderEJson $ EJSON.string s
-
-pars ∷ String → String
-pars s = "(" <> s <> ")"
+  intervalRegex =
+    URX.unsafeRegex
+      "P((([0-9]*\\.?[0-9]*)Y)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)W)?(([0-9]*\\.?[0-9]*)D)?)?(T(([0-9]*\\.?[0-9]*)H)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)S)?)?"
+      RXF.noFlags

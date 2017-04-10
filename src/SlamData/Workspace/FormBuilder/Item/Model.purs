@@ -33,20 +33,20 @@ import SlamData.Prelude
 
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Argonaut as J
-import Data.DateTime as DT
-import Data.Json.Extended as EJSON
-import Data.Json.Extended.Signature.Parse as EJP
+import Data.Formatter.DateTime as Fd
+import Data.List as L
 import Data.Lens (Lens', lens)
 import Data.String as Str
 
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
 
-import Text.Parsing.Parser (runParser) as P
-import Text.Parsing.Parser.Combinators (try) as P
+import SqlSquare as Sql
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
+
+import Utils (hush)
 
 type Model =
   { name ∷ String
@@ -111,48 +111,59 @@ defaultValueToVarMapValue
   ∷ FieldType
   → String
   → Maybe Port.VarMapValue
-defaultValueToVarMapValue ty str =
-  case ty of
-    StringFieldType → Just $ Port.Literal $ EJSON.string str
-    DateTimeFieldType → Port.Literal <$> parseTimestamp str
-    DateFieldType → Port.Literal <$> parseDate str
-    TimeFieldType → Port.Literal <$> parseTime str
-    IntervalFieldType → Just $ Port.Literal $ EJSON.interval str
-    ObjectIdFieldType → Just $ Port.Literal $ EJSON.objectId str
-    SqlExprFieldType → Just $ Port.QueryExpr $ str
-    SqlIdentifierFieldType → Just $ Port.QueryExpr $ "`" ⊕ str ⊕ "`"
+defaultValueToVarMapValue ty str = map Port.VarMapValue $  case ty of
+    StringFieldType →
+      Just $ Sql.string str
+    DateTimeFieldType → do
+      guard
+        $ isRight
+        $ Fd.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ"
+        $ tweak str
+      pure
+        $ Sql.invokeFunction "TIMESTAMP"
+        $ L.singleton
+        $ Sql.string str
+    DateFieldType → do
+      guard
+        $ isRight
+        $ Fd.unformatDateTime "YYYY-MM-DD" str
+      pure
+        $ Sql.invokeFunction "DATE"
+        $ L.singleton
+        $ Sql.string str
+    TimeFieldType → do
+      guard
+        $ isRight
+        $ Fd.unformatDateTime "HH:mm:ss" str
+      pure
+        $ Sql.invokeFunction "TIME"
+        $ L.singleton
+        $ Sql.string str
+    IntervalFieldType →
+      pure
+        $ Sql.invokeFunction "INTERVAL"
+        $ L.singleton
+        $ Sql.string str
+    ObjectIdFieldType →
+      pure
+        $ Sql.invokeFunction "OID"
+        $ L.singleton
+        $ Sql.string str
+
+    SqlExprFieldType →
+      hush $ Sql.parse str
+    SqlIdentifierFieldType →
+      pure $ Sql.ident str
     _ | str == "" → Nothing
-    _ →
-      P.runParser str EJSON.parseEJson
-        # either (\_ → Nothing) (Port.Literal >>> Just)
+    _ → hush $ Sql.parse str
 
-parseTimestamp ∷ String → Maybe EJSON.EJson
-parseTimestamp str =
-  case P.runParser (tweak str) EJP.parseTimestamp of
-    Left _ → Nothing
-    Right dt → Just $ EJSON.timestamp dt
-  where
-  tweak ∷ String → String
-  tweak s
-    | Str.length s == 19 = s <> "Z"
-    | Str.charAt 10 s == Just ' ' = tweak (Str.take 10 s <> "T" <> Str.drop 11 s)
-    | otherwise = s
-
-parseTime ∷ String → Maybe EJSON.EJson
-parseTime str =
-  either (const Nothing) (Just ∘ EJSON.time) $
-    P.runParser str (P.try fromTimestamp <|> EJP.parseTime)
-  where
-  fromTimestamp = DT.time <$> EJP.parseTimestamp
-
-parseDate ∷ String → Maybe EJSON.EJson
-parseDate str =
-  either (const Nothing) (Just ∘ EJSON.date) $
-    P.runParser str (P.try fromTimestamp <|> EJP.parseDate)
-  where
-  fromTimestamp = DT.date <$> EJP.parseTimestamp
+tweak ∷ String → String
+tweak s
+  | Str.length s ≡ 19 = s <> "Z"
+  | Str.charAt 10 s ≡ Just ' ' = tweak (Str.take 10 s <> "T" <> Str.drop 11 s)
+  | otherwise = s
 
 -- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
 -- connector issue that cannot represent dates distinct from datetimes.
-fixupDate :: String -> String
+fixupDate ∷ String → String
 fixupDate = Str.take 10

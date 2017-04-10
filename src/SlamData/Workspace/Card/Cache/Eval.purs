@@ -69,12 +69,13 @@ eval'
 eval' tmp resource = do
   let
     filePath = resource ^. Port._filePath
+    backendPath = fromMaybe Path.rootDir $ Path.parentDir filePath
     sql =
       Sql.buildSelect
         $ (Sql._projections .~ (pure $ Sql.projection $ Sql.splice Nothing))
         ∘ (Sql._relations ?~ (Sql.TableRelation {alias: Nothing, path: Left filePath}))
   outputResource ← CEM.liftQ $
-    QQ.fileQuery filePath tmp sql SM.empty
+    QQ.fileQuery backendPath tmp sql SM.empty
   CEM.liftQ $ QFS.messageIfFileNotFound
     outputResource
     "Error saving file, please try another location"

@@ -53,8 +53,9 @@ import SlamData.Workspace.Card.Ace.Component.State (State, initialState)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+
+import SqlSquare as Sql
 
 import Utils.Ace (getRangeRecs, readOnly)
 
@@ -133,7 +134,7 @@ evalCard mode = case _ of
       pure $ flip Array.mapMaybe vars \var → do
         guard $ Str.contains (Str.Pattern inp') (Str.toLower var)
         pure
-          { value: ":" <> Port.escapeIdentifier var
+          { value: ":" <> Sql.printIdent var
           , score: 200.0
           , caption: Just var
           , meta: "var"
