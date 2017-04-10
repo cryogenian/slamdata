@@ -85,7 +85,7 @@ render ∷ State → H.ParentHTML Query ChildQuery ChildSlot Slam
 render state =
   HH.div_
     [ HH.div
-        [ HP.classes $ [ CSS.dialogBackdrop ] ⊕ (guard (isNothing state) $> CSS.invisible)
+        [ HP.classes $ [ HH.ClassName "deck-dialog-backdrop" ] ⊕ (guard (isNothing state) $> CSS.invisible)
         , HE.onMouseDown (HE.input_ RaiseDismiss)
         , ARIA.hidden $ show $ isNothing state
         ]

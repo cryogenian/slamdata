@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Open.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Ref as Ref
+import Control.Monad.State as CMS
 
 import Data.Array as A
 import Data.Lens (view)
@@ -38,7 +38,6 @@ import Halogen.HTML.Properties as HP
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Bus as GMB
-import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as Quasar
@@ -47,9 +46,13 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Open.Component.Query (Query(..))
+import SlamData.Workspace.Card.Open.Component.Query (Query)
 import SlamData.Workspace.Card.Open.Component.Query as Q
 import SlamData.Workspace.Card.Open.Component.State (State, initialState)
+<<<<<<< HEAD
+=======
+import SlamData.Workspace.Card.Open.Item (AnyItem(..), AnyItem', AnyPath', anyItemToOpen)
+>>>>>>> master
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
@@ -57,10 +60,12 @@ import SlamData.Workspace.LevelOfDetails as LOD
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 import SlamData.Workspace.MillerColumns.Column.BasicFilter as MCF
 import SlamData.Workspace.MillerColumns.Column.Component as MCC
+import SlamData.Workspace.MillerColumns.Column.Component.Request as MCR
 import SlamData.Workspace.MillerColumns.Component as MC
 
 import Utils.Path (AnyPath)
 
+<<<<<<< HEAD
 data AnyItem a
   = Root
   | Variables
@@ -80,6 +85,8 @@ derive instance functorAnyItem ∷ Functor AnyItem
 type AnyPath' = AnyItem AnyPath
 type AnyItem' = AnyItem R.Resource
 
+=======
+>>>>>>> master
 type ColumnsQuery = MC.Query AnyItem' AnyPath' Void
 type DSL = CC.InnerCardParentDSL State Query ColumnsQuery Unit
 type HTML =  CC.InnerCardParentHTML Query ColumnsQuery Unit
@@ -91,24 +98,23 @@ openComponent =
     , eval: evalCard ⨁ evalOpen
     , initialState: const initialState
     , receiver: const Nothing
-    , initializer: Just $ right $ H.action Init
+    , initializer: Just $ right $ H.action Q.Init
     , finalizer: Nothing
     }
 
 render ∷ State → HTML
-render state =
-  case state.currentVars of
-    Just ref → HH.slot unit (MC.component $ columnOptions ref) (pathToColumnData Root) handleMessage
-    Nothing → HH.text ""
+render _ = HH.slot unit columnsComponent (pathToColumnData Root) handleMessage
 
 handleMessage ∷ MC.Message' AnyItem' AnyPath' Void → Maybe (CC.InnerCardQuery Query Unit)
 handleMessage = either handleSelection absurd
   where
   runInput ∷ Maybe Open.Open → Maybe (CC.InnerCardQuery Query Unit)
-  runInput sel = Just $ H.action $ right ∘ UpdateSelection sel
+  runInput sel = Just $ H.action $ right ∘ Q.UpdateSelection sel
 
   handleSelection ∷ MC.Message AnyItem' AnyPath' → Maybe (CC.InnerCardQuery Query Unit)
-  handleSelection (MC.SelectionChanged _ sel) = runInput (anyItemToOpen =<< sel)
+  handleSelection = case _ of
+    MC.SelectionChanged _ sel → runInput (anyItemToOpen =<< sel)
+    MC.LoadRequest req → Just $ right $ H.action $ Q.HandleLoadRequest req
 
 renderItem ∷ AnyItem' → MCI.BasicItemHTML
 renderItem r =
@@ -179,6 +185,10 @@ evalOpen = case _ of
     H.modify _ { selection = selection }
     H.raise CC.modelUpdate
     pure next
+  Q.HandleLoadRequest req@(path × _) next → do
+    res ← load req
+    H.query unit $ H.action $ MC.FulfilLoadRequest (path × res)
+    pure next
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
@@ -196,11 +206,10 @@ evalCard = case _ of
     pure next
   CC.ReceiveInput _ varMap next → do
     let vars = VM.variables $ Port.flattenResources varMap
-    st ← H.get
-    for_ st.currentVars (H.liftEff ∘ flip Ref.writeRef vars)
+    selection ← CMS.state \st -> st.selection × (st { currentVars = vars })
     -- We need to reload the variables column in response to a new varMap,
     -- but only if it might be visible.
-    case st.selection of
+    case selection of
       Just (Open.Resource _) → pure unit
       _ → void $ H.query unit $ H.action $ MC.Reload
     pure next
@@ -222,27 +231,27 @@ queryPopulate = case _ of
   where
   query = void ∘ H.query unit ∘ H.action ∘ MC.Populate ∘ pathToColumnData
 
-columnOptions ∷ Ref.Ref (L.List VM.Var) → MCI.BasicColumnOptions AnyItem' AnyPath'
-columnOptions varsRef =
-  MC.ColumnOptions
+columnsComponent ∷ MC.MillerColumnsComponent AnyItem' AnyPath' Void
+columnsComponent =
+  MC.component $ MC.ColumnOptions
     { renderColumn: MCC.component
     , renderItem: MCI.component { label: itemName, render: renderItem }
     , label: itemName
-    , load
     , isLeaf: isLeaf isRight
     , id: map R.getPath
     }
 
-  where
-  load ∷ MC.LoadParams AnyPath' → Slam { items ∷ L.List AnyItem', nextOffset ∷ Maybe Int }
-  load { filter, path } = case path of
+load ∷ AnyPath' × MCR.LoadRequest → DSL (MCR.LoadResponse AnyItem')
+load (path × { filter, requestId }) =
+  case path of
     Root →
       pure
-        { items: L.fromFoldable [ rootDirectory, Variables ]
+        { requestId
+        , items: L.fromFoldable [ rootDirectory, Variables ]
         , nextOffset: Nothing
         }
     Variables → do
-      vars ← H.liftEff $ Ref.readRef varsRef
+      vars ← H.gets _.currentVars
       let
         filter' = S.toLower filter
         filterFn (VM.Var v) = S.contains (S.Pattern filter') $ S.toLower v
@@ -250,7 +259,8 @@ columnOptions varsRef =
           | filter ≡ "" = vars
           | otherwise   = L.filter filterFn vars
       pure
-        { items: Variable <$> vars'
+        { requestId
+        , items: Variable <$> vars'
         , nextOffset: Nothing
         }
     Resource (Left r) → do
@@ -259,16 +269,17 @@ columnOptions varsRef =
         Right rs → do
           let filenameFilter = MCF.mkFilter filter
           pure
-            { items: L.fromFoldable (Resource <$> A.filter (filenameFilter ∘ view R._name) rs)
+            { requestId
+            , items: L.fromFoldable (Resource <$> A.filter (filenameFilter ∘ view R._name) rs)
             , nextOffset: Nothing
             }
     Resource _ → pure noResult
     Variable v → pure noResult
+  where
+  noResult ∷ MCR.LoadResponse AnyItem'
+  noResult = { requestId, items: L.Nil, nextOffset: Nothing }
 
-  noResult ∷ { items ∷ L.List AnyItem', nextOffset ∷ Maybe Int }
-  noResult = { items: L.Nil, nextOffset: Nothing }
-
-handleError ∷ QE.QError → Slam Unit
+handleError ∷ QE.QError → DSL Unit
 handleError err =
   case GE.fromQError err of
     Left msg →

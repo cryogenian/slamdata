@@ -18,7 +18,6 @@ module SlamData.Monad where
 
 import SlamData.Prelude
 
-import Data.Array as Array
 import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Bus as Bus
@@ -33,8 +32,11 @@ import Control.Monad.Throw (class MonadThrow)
 import Control.Parallel (parallel, sequential)
 import Control.UI.Browser (locationObject)
 
+import Data.Argonaut as Argonaut
+import Data.Array as Array
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
+import Data.Exists as Exists
 
 import DOM.HTML.Location (setHash)
 
@@ -56,6 +58,8 @@ import SlamData.Workspace.Class (class WorkspaceDSL)
 import SlamData.Workspace.Deck.DeckId as DeckId
 import SlamData.Workspace.Routing as Routing
 import SlamData.Monad.Auth (getIdTokenSilently)
+import SlamData.LocalStorage as LS
+import SlamData.LocalStorage.Class (class LocalStorageDSL)
 
 import Utils (hush)
 
@@ -65,6 +69,7 @@ data SlamF eff a
   = Aff (Aff eff a)
   | GetAuthIdToken (Maybe OIDC.IdToken → a)
   | Quasar (QA.QuasarAFC a)
+  | LocalStorage (Exists.Exists (LS.LocalStorageF a))
   | Notify N.NotificationOptions a
   | Halt GE.GlobalError a
   | Par (SlamA eff a)
@@ -123,6 +128,16 @@ instance globalErrorDSLSlamM ∷ GE.GlobalErrorDSL (SlamM eff) where
 instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
   navigate = SlamM ∘ liftF ∘ flip Navigate unit
 
+instance localStorageDSLSlamM :: LocalStorageDSL (SlamM eff) where
+  persist key value =
+    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Persist Argonaut.encodeJson key value unit
+  retrieve key =
+    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Retrieve Argonaut.decodeJson key id
+  remove key =
+    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Remove key unit
+  awaitChange key =
+    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.AwaitChange Argonaut.decodeJson key id
+
 newtype SlamA eff a = SlamA (FreeAp (SlamM eff) a)
 
 derive newtype instance functorSlamA ∷ Functor (SlamA eff)
@@ -157,6 +172,8 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
         _ →
           pure unit
       runQuasarF (maybe Nothing hush idToken) qf
+    LocalStorage lse →
+      Exists.runExists LS.run lse
     Notify no a → do
       Bus.write no bus.notify
       pure a

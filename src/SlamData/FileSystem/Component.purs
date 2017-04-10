@@ -60,9 +60,9 @@ import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
+import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.FileSystem.Component.ChildSlot as CS
-import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)
@@ -73,9 +73,9 @@ import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
@@ -87,6 +87,8 @@ import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Header.Component as Header
 import SlamData.Header.Gripper.Component as Gripper
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LSK
 import SlamData.Monad (Slam)
 import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
@@ -97,11 +99,9 @@ import SlamData.Quasar.Mount (mountInfo) as API
 import SlamData.Render.Common (content, row)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action (Action(..), AccessType(..))
-import SlamData.Workspace.Deck.Component.CSS as ClassNames
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 
 import Utils.DOM as D
-import Utils.LocalStorage as LocalStorage
 import Utils.Path (DirPath, getNameStr)
 
 type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
@@ -144,7 +144,7 @@ render state@{ version, sort, salt, path } =
 renderIntroVideoBackdrop ∷ HTML
 renderIntroVideoBackdrop =
   HH.div
-    [ HP.class_ ClassNames.dialogBackdrop
+    [ HP.class_ (HH.ClassName "deck-dialog-backdrop")
     , HE.onMouseDown $ HE.input_ DismissIntroVideo
     ]
     []
@@ -313,8 +313,8 @@ eval = case _ of
   DismissSignInSubmenu next → do
     dismissSignInSubmenu
     pure next
-  DismissMountGuide next → do
-    dismissMountGuide
+  DismissMountHint next → do
+    dismissMountHint
     pure next
   DismissIntroVideo next → do
     dismissIntroVideo
@@ -332,7 +332,7 @@ eval = case _ of
         pure next
     | otherwise → do
         path ← H.gets _.path
-        presentMountGuide items path
+        presentMountHint items path
         resort
         pure next
   HandleDialog DialogMessage.Dismiss next →
@@ -349,7 +349,7 @@ eval = case _ of
         _ → pure false
       unless isCurrentMount do
         H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount m)
-        dismissMountGuide
+        dismissMountHint
         resort
     pure next
   HandleDialog (DialogMessage.ExploreFile fp initialName) next → do
@@ -406,6 +406,10 @@ handleItemMessage ∷ Item.Message → DSL Unit
 handleItemMessage = case _ of
   Item.Selected →
     pure unit
+  Item.Edit res → do
+    loc ← H.liftEff locationString
+    for_ (preview R._Workspace res) \wp →
+      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
   Item.Open res → do
     { sort, salt, path } ← H.get
     loc ← H.liftEff locationString
@@ -414,7 +418,7 @@ handleItemMessage = case _ of
     for_ (preview R._dirPath res) \dp →
       H.liftEff $ setLocation $ browseURL Nothing sort salt dp
     for_ (preview R._Workspace res) \wp →
-      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
+      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load ReadOnly)
   Item.Configure (R.Mount mount) → do
     configure mount
   Item.Configure _ →
@@ -449,7 +453,7 @@ handleItemMessage = case _ of
 
     listing ← fromMaybe [] <$> (H.query' CS.cpListing unit $ H.request Listing.Get)
     path ← H.gets _.path
-    presentMountGuide listing path
+    presentMountHint listing path
 
     resort
   Item.Share res → do
@@ -474,25 +478,19 @@ handleItemMessage = case _ of
     download res
 
 
-dismissedMountGuideKey ∷ String
-dismissedMountGuideKey = "dismissed-mount-guide"
-
-dismissedIntroVideoKey ∷ String
-dismissedIntroVideoKey = "dismissed-intro-video"
-
-dismissMountGuide ∷ DSL Unit
-dismissMountGuide = do
-  H.lift $ LocalStorage.setLocalStorage dismissedMountGuideKey true
-  H.modify $ State._presentMountGuide .~ false
+dismissMountHint ∷ DSL Unit
+dismissMountHint = do
+  LS.persist LSK.dismissedMountHintKey true
+  H.modify $ State._presentMountHint .~ false
 
 dismissIntroVideo ∷ DSL Unit
 dismissIntroVideo = do
-  H.lift $ LocalStorage.setLocalStorage dismissedIntroVideoKey true
+  LS.persist LSK.dismissedIntroVideoKey true
   H.modify $ State._presentIntroVideo .~ false
 
 dismissedIntroVideoBefore ∷ DSL Boolean
 dismissedIntroVideoBefore =
-  H.lift $ either (const false) id <$> LocalStorage.getLocalStorage dismissedIntroVideoKey
+  either (const false) id <$> LS.retrieve LSK.dismissedIntroVideoKey
 
 uploadFileSelected ∷ Cf.File → DSL Unit
 uploadFileSelected f = do
@@ -544,15 +542,15 @@ uploadFileSelected f = do
       Left msg → showDialog $ Dialog.Error msg
       Right ge → GE.raiseGlobalError ge
 
-presentMountGuide ∷ ∀ a. Array a → DirPath → DSL Unit
-presentMountGuide xs path = do
+presentMountHint ∷ ∀ a. Array a → DirPath → DSL Unit
+presentMountHint xs path = do
   isSearching ←
     map (fromMaybe false) $ H.query' CS.cpSearch unit (H.request Search.IsSearching)
   isLoading ←
     map (fromMaybe true)  $ H.query' CS.cpSearch unit (H.request Search.IsLoading)
 
   H.modify
-    ∘ (State._presentMountGuide .~ _)
+    ∘ (State._presentMountHint .~ _)
     ∘ ((Array.null xs ∧ path ≡ rootDir ∧ not (isSearching ∧ isLoading)) ∧ _)
     ∘ not
     ∘ either (const false) id
@@ -560,7 +558,7 @@ presentMountGuide xs path = do
   where
   dismissedBefore ∷ DSL (Either String Boolean)
   dismissedBefore =
-    H.lift $ LocalStorage.getLocalStorage dismissedMountGuideKey
+    LS.retrieve LSK.dismissedMountHintKey
 
 dismissSignInSubmenu ∷ DSL Unit
 dismissSignInSubmenu =

@@ -22,17 +22,17 @@ import SlamData.Workspace.Card.Port (Port)
 
 type State =
   { input ∷ Port
-  , presentAddCardGuide ∷ Boolean
+  , presentAddCardHint ∷ Boolean
   }
 
 initialState ∷ Port → State
 initialState input =
   { input
-  , presentAddCardGuide: false
+  , presentAddCardHint: false
   }
 
 _input ∷ ∀ a r. Lens' { input ∷ a | r } a
 _input = lens _.input (_ { input = _ })
 
-_presentAddCardGuide ∷ ∀ a r. Lens' { presentAddCardGuide ∷ a | r } a
-_presentAddCardGuide = lens _.presentAddCardGuide (_ { presentAddCardGuide = _ })
+_presentAddCardHint ∷ ∀ a r. Lens' { presentAddCardHint ∷ a | r } a
+_presentAddCardHint = lens _.presentAddCardHint (_ { presentAddCardHint = _ })

@@ -43,7 +43,7 @@ import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Slider as Slider
-import SlamData.Guide.Notification as Guide
+import SlamData.Hint as Hint
 import Utils (endSentence)
 import Utils.DOM as DOM
 
@@ -80,7 +80,6 @@ renderDeck opts deckComponent st =
               [ Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
               , renderBackside
                   $ DCS.isFlipSide st.displayMode
-              , renderDialogBackdrop $ DCS.hasDialog st.displayMode
               , renderDialog $ DCS.hasDialog st.displayMode
               ]
           ]
@@ -104,27 +103,19 @@ renderDeck opts deckComponent st =
 
   renderFocusDeckHint ∷ DeckHTML
   renderFocusDeckHint =
-    Guide.render
-      Guide.DownArrow
+    Hint.render
+      Hint.DownArrow
       (HH.ClassName "sd-focus-deck-hint")
       DCQ.DismissFocusDeckHint
       "This Deck is wrapped in a Dashboard Card and unfocused. To do more with this Deck focus it by clicking or tapping on it."
 
   renderFocusDeckFrameHint ∷ DeckHTML
   renderFocusDeckFrameHint =
-    Guide.render
-      Guide.UpArrow
+    Hint.render
+      Hint.UpArrow
       (HH.ClassName "sd-focus-deck-frame-hint")
       DCQ.DismissFocusDeckFrameHint
       "This Deck is focused. To do more with the containing Deck focus it by clicking or tapping on the empty space in this Deck Frame."
-
-  renderDialogBackdrop visible =
-    HH.div
-      [ HP.classes $ [CSS.dialogBackdrop] ⊕ (guard (not visible) $> CSS.invisible)
-      , HE.onClick $ HE.input_ DismissDialog
-      , ARIA.hidden $ show $ not visible
-      ]
-      [ ]
 
   renderDialog visible =
     HH.div

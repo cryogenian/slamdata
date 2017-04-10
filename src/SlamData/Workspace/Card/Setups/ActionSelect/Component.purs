@@ -46,12 +46,14 @@ data Message s
 
 type OptionComponent s = HCP.ProxyComponent (Const Void) (Maybe s) (Maybe s) Slam
 
+type Label = { text ∷ String, icon ∷ Maybe String }
+
 type State' s r =
   { options ∷ Array s
   , selection ∷ Maybe (s × s)
   , title ∷ String
   , toSelection ∷ s → Maybe (OptionComponent s)
-  , toLabel ∷ s → String
+  , toLabel ∷ s → Label
   | r
   }
 
@@ -138,7 +140,7 @@ component =
       , selection: selecting.value
       , isSelectable: const true
       , classes: []
-      , title: [ HH.text (st.toLabel selecting.option) ]
+      , title: [ HH.text (st.toLabel selecting.option).text ]
       , content: [ HH.slot' cp2 unit selecting.component selecting.value (HE.input HandleSelecting) ]
       }
 
@@ -182,15 +184,17 @@ component =
     UpdateDimensions next →
       H.query' cp1 unit (H.action ALC.CalculateBoundingRect) $> next
 
-mkAction ∷ forall s. Eq s ⇒ Maybe s → (s → String) → s → ALC.Action (Maybe s)
+mkAction ∷ forall s. Eq s ⇒ Maybe s → (s → Label) → s → ALC.Action (Maybe s)
 mkAction selection toLabel action =
-  ALC.mkDo
-    { name: toLabel action
-    , description: toLabel action
-    , iconSrc: ""
-    , highlighted: selection ≡ Just action
-    , disabled: false
-    , action: Just action
+  let label = toLabel action
+  in
+    ALC.mkDo
+      { name: label.text
+      , description: label.text
+      , iconSrc: fromMaybe "" label.icon
+      , highlighted: selection ≡ Just action
+      , disabled: false
+      , action: Just action
     }
 
 updateActions ∷ ∀ s. Eq s ⇒ DSL s Unit

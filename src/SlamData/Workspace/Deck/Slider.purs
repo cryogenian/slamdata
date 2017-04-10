@@ -42,7 +42,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Render.CSS as ClassNames
-import SlamData.Guide.Notification as Guide
+import SlamData.Hint as Hint
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component.CSS as CardCSS
@@ -270,7 +270,7 @@ renderCard opts deckComponent st activeIndex index card =
         (Gripper.gripperDefsForCard st.displayCards card)
         ⊕ [ HH.div
               (cardProperties st card)
-              (cardComponent ⊕ (guard presentAccessNextActionCardGuide $> renderGuide))
+              (cardComponent ⊕ (guard presentAccessNextActionCardGuide $> renderHint))
           , loadingPanel
           ]
   where
@@ -289,18 +289,18 @@ renderCard opts deckComponent st activeIndex index card =
       ⊕ (guard (cardSelected st card) $> ClassNames.cardActive)
       ⊕ (guard (cardPending st card) $> ClassNames.pending)
 
-  renderGuide =
-    Guide.render
-      Guide.RightArrow
-      (HH.ClassName "sd-access-next-card-guide")
+  renderHint =
+    Hint.render
+      Hint.RightArrow
+      (HH.ClassName "sd-access-next-card-hint")
       DCQ.HideAccessNextActionCardGuide
-      guideText
+      hintText
 
   output ∷ Maybe ICT.InsertableCardIOType
   output = ICT.outputFor ∘ ICT.fromCardType ∘ _.cardType =<< Utils.hush card
 
-  guideText ∷ String
-  guideText =
+  hintText ∷ String
+  hintText =
     "To do more with "
       ⊕ (fromMaybe "" $ ICT.printIOType' =<< output)
       ⊕ " click or drag this gripper to the left and add a new card to the deck."

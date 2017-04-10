@@ -93,6 +93,11 @@ deleteFile name =
     *> Feature.click (XPath.anywhere $ XPaths.removeFile name)
     *> Feature.expectNotPresented (XPath.anywhere $ XPath.nodeWithExactText XPath.any name)
 
+editWorkspace ∷ String → SlamFeature Unit
+editWorkspace name =
+  Feature.click (XPath.anywhere $ XPaths.selectFile name)
+    *> Feature.click (XPath.anywhere $ XPaths.editWorkspace name)
+
 shareFile ∷ String → SlamFeature Unit
 shareFile name = do
   Feature.click (XPath.anywhere $ XPaths.selectFile name)
@@ -157,7 +162,7 @@ createWorkspaceInTestFolder name = do
   nameDeck name
   browseTestFolder
   renameFile "Untitled Workspace" name
-  accessFile $ name <> ".slam"
+  editWorkspace $ name <> ".slam"
 
 createFolder ∷ SlamFeature Unit
 createFolder = Feature.click $ XPath.anywhere XPaths.createFolder

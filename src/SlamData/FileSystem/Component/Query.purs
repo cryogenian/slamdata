@@ -59,7 +59,7 @@ data Query a
   | FileListChanged HTMLElement a
   | SetVersion String a
   | DismissSignInSubmenu a
-  | DismissMountGuide a
+  | DismissMountHint a
   | DismissIntroVideo a
   | Init a
   | PreventDefault Event (Query a)

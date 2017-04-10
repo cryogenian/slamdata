@@ -39,10 +39,24 @@ npm install
 #### Build
 
 ```
-npm run build
+npm run build:prod
 ```
 
 After this task finishes the `public` directory will contain the complete SlamData front-end app.
+
+#### Dev
+
+```
+npm run build:dev
+```
+
+Webpack will run a watch on files in the `output` directory for any changes and automatically rebundle when they are updated.
+To complete the development workflow it is recommended to also have watch runing on the `src` directory to the `.purs` files so they will recompile automatically on saves.
+This can be achieved by using `psc-ide` with editor of choice, or alternatively run:
+
+```
+npm run build:dev-pulp
+```
 
 ## Use with Quasar
 

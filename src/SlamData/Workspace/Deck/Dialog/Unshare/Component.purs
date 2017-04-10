@@ -188,7 +188,9 @@ render state =
     , HH.div
         [ HP.classes
             $ [ HH.ClassName "deck-dialog-body" ]
-            ⊕ (if state.loading then [ B.hidden ] else [ ])
+            ⊕ (if SM.isEmpty state.userPermissions
+                  ∧ SM.isEmpty state.groupPermissions
+                  ∧ Arr.null state.tokenPermissions then [ B.hidden ] else [ ])
         ]
         [ HH.form
             [ HE.onSubmit $ HE.input PreventDefault ]
@@ -238,7 +240,7 @@ render state =
       in
        HH.div
         [ HP.classes
-            $ [ HH.ClassName "deck-dialog-footer" ]
+            $ [ HH.ClassName "deck-dialog-footer share" ]
             ⊕ (if state.loading then [ B.hidden ] else [ ])
         ]
         [ HH.div

@@ -21,6 +21,9 @@ module SlamData.AuthRedirect
 import SlamData.Prelude
 
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Aff (runAff)
+import Control.Monad.Aff.AVar (AVAR)
 
 import DOM as DOM
 import DOM.HTML (window)
@@ -35,7 +38,7 @@ import OIDC.Crypt.Types (IdToken)
 
 import Utils.DOM as DOMUtils
 
-type RedirectEffects = (dom :: DOM.DOM)
+type RedirectEffects = (dom :: DOM.DOM, avar :: AVAR)
 
 type RedirectState = Payload.RedirectHashPayload
 
@@ -46,4 +49,8 @@ parseIdToken :: String -> Either String IdToken
 parseIdToken = Payload.parseUriHash >>> map _.idToken >>> lmap show
 
 main :: Eff RedirectEffects Unit
-main = (getHash >>= parseIdToken >>> AuthStore.storeIdToken AuthKeys.fromRedirectSuffix) *> (window >>= DOMUtils.close)
+main =
+  void $ runAff
+    (const $ pure unit)
+    (const $ pure unit)
+    $ ((liftEff getHash >>= parseIdToken >>> AuthStore.storeIdToken AuthKeys.fromRedirectSuffix) *> liftEff (window >>= DOMUtils.close))

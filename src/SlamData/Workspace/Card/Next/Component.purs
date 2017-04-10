@@ -34,18 +34,18 @@ import Halogen.HTML as HH
 
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
+import SlamData.Hint as Hint
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LSK
 import SlamData.Monad (Slam)
-import SlamData.Guide.Notification as Guide
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.InsertableCardType as ICT
-import SlamData.Workspace.Card.Next.NextAction as NA
 import SlamData.Workspace.Card.Next.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Next.Component.Query (Query(..))
 import SlamData.Workspace.Card.Next.Component.State (State, initialState)
 import SlamData.Workspace.Card.Next.Component.State as State
+import SlamData.Workspace.Card.Next.NextAction as NA
 import SlamData.Workspace.Card.Port as Port
-
-import Utils.LocalStorage as LocalStorage
 
 type HTML =
   H.ParentHTML Query CS.ChildQuery CS.ChildSlot Slam
@@ -69,12 +69,12 @@ render ∷ State → HTML
 render state =
   HH.div
     [ HCSS.style $ CSS.width (CSS.pct 100.0) *> CSS.height (CSS.pct 100.0) ]
-    $ (guard state.presentAddCardGuide $>
-        Guide.render
-          Guide.DownArrow
+    $ (guard state.presentAddCardHint $>
+        Hint.render
+          Hint.DownArrow
           (HH.ClassName "sd-add-card-guide")
-          (DismissAddCardGuide)
-          (addCardGuideText state.input))
+          (DismissAddCardHint)
+          (addCardHintText state.input))
     ⊕ [ HH.slot' CS.cpActionFilter unit
           ActionFilter.component
           "Filter next actions"
@@ -89,7 +89,7 @@ render state =
               Just $ H.action $ HandleAction a
       ]
   where
-  addCardGuideText = case _ of
+  addCardHintText = case _ of
     Port.Initial → "To get this deck started press one of these buttons to add a card."
     _            → "To do more with this deck press one of these buttons to add a card."
 
@@ -109,31 +109,27 @@ possibleToGetTo ∷ Port.Port → CT.CardType → Boolean
 possibleToGetTo input =
   ICT.possibleToGetTo (ICT.fromPort input) ∘ ICT.fromCardType
 
-dismissedAddCardGuideKey ∷ String
-dismissedAddCardGuideKey = "dismissedAddCardGuide"
+getDismissedAddCardHintBefore ∷ DSL Boolean
+getDismissedAddCardHintBefore =
+  either (const $ false) id <$> LS.retrieve LSK.dismissedAddCardHintKey
 
-getDismissedAddCardGuideBefore ∷ DSL Boolean
-getDismissedAddCardGuideBefore =
-  H.lift $ either (const $ false) id <$>
-    LocalStorage.getLocalStorage dismissedAddCardGuideKey
+storeDismissedAddCardHint ∷ DSL Unit
+storeDismissedAddCardHint =
+  LS.persist LSK.dismissedAddCardHintKey true
 
-storeDismissedAddCardGuide ∷ DSL Unit
-storeDismissedAddCardGuide =
-  H.lift $ LocalStorage.setLocalStorage dismissedAddCardGuideKey true
-
-dismissAddCardGuide ∷ DSL Unit
-dismissAddCardGuide =
-  H.modify (State._presentAddCardGuide .~ false)
-    *> storeDismissedAddCardGuide
+dismissAddCardHint ∷ DSL Unit
+dismissAddCardHint =
+  H.modify (State._presentAddCardHint .~ false)
+    *> storeDismissedAddCardHint
 
 eval ∷ Query ~> DSL
 eval = case _ of
   UpdateInput input next → updateActions input $> next
-  DismissAddCardGuide next → dismissAddCardGuide $> next
-  PresentAddCardGuide next → do
+  DismissAddCardHint next → dismissAddCardHint $> next
+  PresentAddCardHint next → do
     H.modify
-      ∘ (State._presentAddCardGuide .~ _)
-      ∘ not =<< getDismissedAddCardGuideBefore
+      ∘ (State._presentAddCardHint .~ _)
+      ∘ not =<< getDismissedAddCardHintBefore
     pure next
   HandleFilter str next → do
     H.query' CS.cpActionList unit
@@ -143,7 +139,7 @@ eval = case _ of
   HandleAction act next → do
     case act of
       NA.Insert cardType → do
-        dismissAddCardGuide
+        dismissAddCardHint
         H.raise $ AddCard cardType
       NA.FindOutHowToInsert cardType → do
         input ← H.gets _.input

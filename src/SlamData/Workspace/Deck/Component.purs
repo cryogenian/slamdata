@@ -42,6 +42,8 @@ import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Config as Config
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.GlobalError as GE
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LSK
 import SlamData.Quasar as Api
 import SlamData.Wiring (DeckMessage(..))
 import SlamData.Wiring as Wiring
@@ -58,11 +60,11 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Class (navigateToDeck)
 import SlamData.Workspace.Deck.BackSide as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL, sizerRef)
+import SlamData.Workspace.Deck.Common as Common
 import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, cpDialog, cpBackSide, cpNext)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..), Message(..))
 import SlamData.Workspace.Deck.Component.Render as DCR
-import SlamData.Workspace.Deck.Common as Common
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckPath (deckPath')
@@ -78,7 +80,6 @@ import SlamData.Workspace.Routing (mkWorkspaceURL)
 
 import Utils as Utils
 import Utils.DOM as DOM
-import Utils.LocalStorage as LocalStorage
 
 component ∷ DeckOptions → DeckComponent
 component opts =
@@ -110,10 +111,10 @@ eval opts = case _ of
       H.subscribe $ busEventSource (\msg → HandleError msg H.Listening) bus.globalError
     H.modify
       ∘ (DCS._focusDeckHintDismissed .~ _)
-      =<< (H.lift $ Utils.rightBool <$> LocalStorage.getLocalStorage Guide.dismissedFocusDeckHintKey)
+      =<< (Utils.rightBool <$> LS.retrieve LSK.dismissedFocusDeckHintKey)
     H.modify
       ∘ (DCS._focusDeckFrameHintDismissed .~ _)
-      =<< (H.lift $ Utils.rightBool <$> LocalStorage.getLocalStorage Guide.dismissedFocusDeckFrameHintKey)
+      =<< (Utils.rightBool <$> LS.retrieve LSK.dismissedFocusDeckFrameHintKey)
     updateCardSize
     loadDeck opts
     pure next
@@ -191,7 +192,7 @@ eval opts = case _ of
     pure next
   DismissedCardGuide next → do
     when (L.null opts.displayCursor) $ void do
-      queryNextAction (Next.PresentAddCardGuide unit)
+      queryNextAction (Next.PresentAddCardHint unit)
     pure next
   GetActiveCard k → do
     active ← H.gets DCS.activeCard
@@ -240,14 +241,14 @@ dismissFocusDeckHint = do
   wiring ← H.lift Wiring.expose
   H.liftAff $ Bus.write Wiring.DeckFocusHintDismissed wiring.bus.hintDismissals
   H.modify (DCS._focusDeckHintDismissed .~ true)
-  H.lift $ LocalStorage.setLocalStorage Guide.dismissedFocusDeckHintKey true
+  LS.persist LSK.dismissedFocusDeckHintKey true
 
 dismissFocusDeckFrameHint ∷ DeckDSL Unit
 dismissFocusDeckFrameHint = do
   wiring ← H.lift Wiring.expose
   H.liftAff $ Bus.write Wiring.DeckFrameFocusHintDismissed wiring.bus.hintDismissals
   H.modify (DCS._focusDeckFrameHintDismissed .~ true)
-  H.lift $ LocalStorage.setLocalStorage Guide.dismissedFocusDeckFrameHintKey true
+  LS.persist LSK.dismissedFocusDeckFrameHintKey true
 
 -- If an ActionList has the style display: none; then calculating its dimensions
 -- will give 0, 0. (This is Mapped to Nothing.)
@@ -290,8 +291,6 @@ handleDialog ∷ DeckOptions → Dialog.Message → DeckDSL Unit
 handleDialog opts = case _ of
   Dialog.Dismiss → do
     H.modify (DCS._displayMode %~ DCS.noDialog)
-  Dialog.FlipToFront →
-    switchToFrontside
   Dialog.SetDeckName name → do
     void $ H.lift $ P.renameDeck opts.deckId name
     switchToFrontside
@@ -442,18 +441,15 @@ calculateUnwrappable { displayCursor, deckId } { cardId } =
       Card.Draftboard _, _ : L.Nil, _ → cardLen ≡ 1 && mirrorLen ≡ 1
       _, _, _ → false
 
-dismissedAccessNextActionCardGuideKey ∷ String
-dismissedAccessNextActionCardGuideKey = "dismissedAccessNextActionCardGuide"
-
 getDismissedAccessNextActionCardGuideBefore ∷ DeckDSL Boolean
 getDismissedAccessNextActionCardGuideBefore =
   H.lift
     $ either (const $ false) id
-    <$> LocalStorage.getLocalStorage dismissedAccessNextActionCardGuideKey
+    <$> LS.retrieve LSK.dismissedAccessNextActionCardHintKey
 
 storeDismissedAccessNextActionCardGuide ∷ DeckDSL Unit
 storeDismissedAccessNextActionCardGuide =
-  H.lift $ LocalStorage.setLocalStorage dismissedAccessNextActionCardGuideKey true
+  LS.persist LSK.dismissedAccessNextActionCardHintKey true
 
 presentAccessNextActionCardGuideAfterDelay ∷ DeckDSL Unit
 presentAccessNextActionCardGuideAfterDelay = do
@@ -626,4 +622,4 @@ shouldPresentFlipGuide ∷ DeckDSL Boolean
 shouldPresentFlipGuide =
   H.lift
     $ either (const true) not
-    <$> LocalStorage.getLocalStorage Guide.dismissedFlipGuideKey
+    <$> LS.retrieve LSK.dismissedFlipGuideKey
