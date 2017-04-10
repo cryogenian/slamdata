@@ -82,8 +82,8 @@ toolbar state =
   showHide ∷ HTML p (Query Unit)
   showHide =
     if state ^. _showHiddenFiles
-    then toolItem HideHiddenFiles "Hide hidden files" I.eyeVisible
-    else toolItem ShowHiddenFiles "Show hidden files" I.eyeHidden
+    then toolItem HideHiddenFiles "Hide hidden files" I.eyeVisibleSm
+    else toolItem ShowHiddenFiles "Show hidden files" I.eyeHiddenSm
 
   download ∷ HTML p (Query Unit)
   download = toolItem Download "Download" I.cloudDownload
@@ -108,10 +108,7 @@ toolbar state =
           , P.class_ $ H.ClassName "tool-item"
           , ARIA.label "Upload file"
           ]
-          [ I.cloudUpload
-          , H.span [ P.class_ $ H.ClassName "tool-item-label" ]
-            [ H.text "Upload File" ]
-          ]
+          [ I.cloudUpload ]
       ]
 
   workspace ∷ HTML p (Query Unit)
@@ -126,8 +123,5 @@ toolItem func title icon =
         , P.class_ $ H.ClassName "tool-item"
         , E.onClick (E.input_ func)
         ]
-        [ icon
-        , H.span [ P.class_ $ H.ClassName "tool-item-label" ]
-          [ H.text title ]
-        ]
+        [ icon ]
     ]

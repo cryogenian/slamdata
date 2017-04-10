@@ -49,10 +49,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Open.Component.Query (Query)
 import SlamData.Workspace.Card.Open.Component.Query as Q
 import SlamData.Workspace.Card.Open.Component.State (State, initialState)
-<<<<<<< HEAD
-=======
 import SlamData.Workspace.Card.Open.Item (AnyItem(..), AnyItem', AnyPath', anyItemToOpen)
->>>>>>> master
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
@@ -65,28 +62,6 @@ import SlamData.Workspace.MillerColumns.Component as MC
 
 import Utils.Path (AnyPath)
 
-<<<<<<< HEAD
-data AnyItem a
-  = Root
-  | Variables
-  | Variable VM.Var
-  | Resource a
-
-anyItemToOpen ∷ AnyItem' → Maybe Open.Open
-anyItemToOpen = case _ of
-  Variable v → Just (Open.Variable v)
-  Resource r → Just (Open.Resource r)
-  _ → Nothing
-
-derive instance eqAnyItem ∷ Eq a ⇒ Eq (AnyItem a)
-derive instance ordAnyItem ∷ Ord a ⇒ Ord (AnyItem a)
-derive instance functorAnyItem ∷ Functor AnyItem
-
-type AnyPath' = AnyItem AnyPath
-type AnyItem' = AnyItem R.Resource
-
-=======
->>>>>>> master
 type ColumnsQuery = MC.Query AnyItem' AnyPath' Void
 type DSL = CC.InnerCardParentDSL State Query ColumnsQuery Unit
 type HTML =  CC.InnerCardParentHTML Query ColumnsQuery Unit
