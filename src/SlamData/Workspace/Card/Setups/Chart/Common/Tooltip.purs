@@ -19,9 +19,9 @@ module SlamData.Workspace.Card.Setups.Chart.Common.Tooltip where
 import SlamData.Prelude
 import Color as Color
 import CSS as CSS
-import Data.Array as A
 import Data.Foreign (F, Foreign, readNumber, typeOf) as Frn
-import Data.Foreign.Index (index) as Frn
+import Data.Foreign.Index (index, prop) as Frn
+import ECharts.Types as ET
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HC
 import Halogen.HTML.Properties as HP
@@ -37,11 +37,6 @@ type ColumnFormatter a =
 
 type Color = String
 
-tableFormatterPar ∷ ∀ a. (a → Maybe String) → Array (Array (ColumnFormatter a)) → Array a → String
-tableFormatterPar getColor ts as =
-  foldMap (uncurry (tableFormatter getColor))
-    $ A.zipWith (\a b → a × pure b) ts as
-
 tableFormatter ∷ ∀ a. (a → Maybe String) → Array (ColumnFormatter a) → Array a → String
 tableFormatter getColor cols as = VDS.render absurd (unwrap table)
   where
@@ -56,7 +51,7 @@ tableFormatter getColor cols as = VDS.render absurd (unwrap table)
   cell r f = HH.td_ [ HH.text (f.value r) ]
 
   color = case _ of
-    Nothing → HH.text ""
+    Nothing → HH.td_ [ HH.text "" ]
     Just c →
       HH.td_
         [ HH.span
@@ -66,16 +61,36 @@ tableFormatter getColor cols as = VDS.render absurd (unwrap table)
             []
         ]
 
-type FormatterInput r = { value ∷ Frn.Foreign | r }
+tableRows ∷ Array (String × String) → String
+tableRows rows = VDS.render absurd (unwrap table)
+  where
+  table =
+    HH.table
+      [ HP.class_ $ HH.ClassName "sd-chart-tooltip-table" ]
+      (renderRow <$> rows)
+
+  renderRow (header × value) =
+    HH.tr_
+      [ HH.th_ [ HH.text header ]
+      , HH.td_ [ HH.text value ]
+      ]
+
+type FormatterInput r = { value ∷ Frn.Foreign, data ∷ ET.Item | r }
 
 valueIx ∷ ∀ a r. (Frn.Foreign → Frn.F a) → Int → FormatterInput r → Maybe a
 valueIx read ix inp = hush' (read =<< Frn.index ix inp.value)
+
+dataProp ∷ ∀ a r. (Frn.Foreign → Frn.F a) → String → FormatterInput r → Maybe a
+dataProp read prop { data: ET.Item inp } = hush' (read =<< Frn.prop prop inp)
 
 formatValueIx ∷ ∀ r. Int → FormatterInput r → String
 formatValueIx ix = maybe "" formatForeign ∘ valueIx pure ix
 
 formatNumberValueIx ∷ ∀ r. Int → FormatterInput r → String
 formatNumberValueIx ix = showFormattedNumber ∘ fromMaybe zero ∘ valueIx Frn.readNumber ix
+
+formatDataProp ∷ ∀ r. String → FormatterInput r → String
+formatDataProp p = maybe "" formatForeign ∘ dataProp pure p
 
 formatNumber ∷ ∀ r. FormatterInput r → String
 formatNumber = showFormattedNumber ∘ fromMaybe zero ∘ hush' ∘ Frn.readNumber ∘ _.value

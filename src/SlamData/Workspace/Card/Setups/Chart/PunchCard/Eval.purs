@@ -49,6 +49,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.PunchCard.Model (ModelR, Model)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
@@ -148,13 +149,13 @@ buildPunchCard axes r records = do
       let
         xIx = (map Int.ceil ∘ hush' ∘ readNumber) =<< value A.!! 0
         yIx = (map Int.ceil ∘ hush' ∘ readNumber) =<< value A.!! 1
-        val = (hush' ∘ readNumber) =<< value A.!! 2
-
-        xStr = foldMap ("abscissa: " ⊕ _) $ xIx >>= A.index abscissaValues
-        yStr = foldMap ("<br />ordinate: " ⊕ _) $ yIx >>= A.index ordinateValues
-        valStr = foldMap (("<br />value: " ⊕ _) ∘ show) val
+        val = CCT.formatForeign <$> value A.!! 2
       in
-        xStr ⊕ yStr ⊕ valStr
+        CCT.tableRows $ A.catMaybes
+          [ map (D.jcursorLabel r.abscissa × _) $ xIx >>= A.index abscissaValues
+          , map (D.jcursorLabel r.ordinate × _) $ yIx >>= A.index ordinateValues
+          , map (D.jcursorLabel r.value × _) val
+          ]
 
   E.colors colors
 

@@ -42,6 +42,7 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType(Sankey))
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
@@ -73,7 +74,14 @@ type SankeyData = Array SankeyItem
 
 buildSankey ∷ ModelR → JArray → DSL OptionI
 buildSankey r records = do
+  let
+    cols =
+      [ { label: D.jcursorLabel r.source, value: CCT.formatDataProp "source" }
+      , { label: D.jcursorLabel r.target, value: CCT.formatDataProp "target" }
+      , { label: D.jcursorLabel r.value, value: CCT.formatDataProp "value" }
+      ]
   E.tooltip do
+    E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
     E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"

@@ -42,6 +42,7 @@ import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (ModelR, Model)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -181,6 +182,14 @@ buildCandlestick axes r records = do
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
+    E.formatterAxis $ foldMap \fmt →
+      CCT.tableRows
+        [ D.jcursorLabel r.dimension × fmt.name
+        , D.jcursorLabel r.open × CCT.formatValueIx 0 fmt
+        , D.jcursorLabel r.close × CCT.formatValueIx 1 fmt
+        , D.jcursorLabel r.low × CCT.formatValueIx 2 fmt
+        , D.jcursorLabel r.high × CCT.formatValueIx 3 fmt
+        ]
 
   BCP.rectangularTitles candlestickData
   BCP.rectangularGrids candlestickData
