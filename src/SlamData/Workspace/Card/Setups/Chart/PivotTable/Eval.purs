@@ -42,6 +42,8 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Axis (buildAxes)
 
+import SqlSquare (Sql)
+
 import Utils.Path (FilePath)
 
 eval
@@ -70,14 +72,14 @@ eval options varMap resource = do
     state' = { axes, records: [], resource }
     view = Port.View r (snd query) varMap
     output = Port.PivotTable (fst query) × SM.singleton Port.defaultResourceVar (Left view)
-    backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir r)
+    backendPath = fromMaybe Path.rootDir (Path.parentDir r)
   put (Just (CEM.Analysis state'))
   when (Array.null options.columns) do
     CEM.throw "Please select a column to display"
   CEM.liftQ $ QQ.viewQuery backendPath r (snd query) SM.empty
   pure output
 
-mkSql ∷ PTM.Model → FilePath → Port.PivotTablePort × String
+mkSql ∷ PTM.Model → FilePath → Port.PivotTablePort × Sql
 mkSql options resource =
   let
     isSimple = PTM.isSimple options

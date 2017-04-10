@@ -28,6 +28,9 @@ import SlamData.Workspace.Card.Setups.Transform.DatePart as DP
 import SlamData.Workspace.Card.Setups.Transform.Numeric as N
 import SlamData.Workspace.Card.Setups.Transform.String as S
 
+import SqlSquare (Sql)
+import SqlSquare as Sql
+
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
 
@@ -66,6 +69,8 @@ foldTransform a b c d e f = case _ of
   String z → d z
   Numeric z → e z
   Count → f unit
+
+
 
 prettyPrintTransform ∷ Transform → String
 prettyPrintTransform =

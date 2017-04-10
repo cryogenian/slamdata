@@ -53,10 +53,9 @@ module SlamData.Workspace.Card.Port
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
+import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view, (.~), (?~))
 import Data.List as List
 import Data.Map as Map
-import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
 
@@ -68,7 +67,10 @@ import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
-import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), renderVarMapValue, emptyVarMap, escapeIdentifier)
+import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), emptyVarMap)
+
+import SqlSquare as Sql
+
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
@@ -169,7 +171,13 @@ flattenResources = map go
     go (Right val) = val
 
 resourceToVarMapValue ∷ Resource → VarMapValue
-resourceToVarMapValue r = QueryExpr (escapeIdentifier (Path.printPath (r ^. _filePath)))
+resourceToVarMapValue r =
+  VarMapValue
+    $ Sql.buildSelect
+    $ (Sql._projections
+       .~ (pure $ Sql.projection (Sql.splice Nothing)))
+    ∘ (Sql._relations
+       ?~ (Sql.TableRelation { path: Left $ r ^. _filePath, alias: Nothing }))
 
 defaultResourceVar ∷ String
 defaultResourceVar = "results"
@@ -210,12 +218,12 @@ _SlamDown = wander \f s → case s of
   _ → pure s
 
 _CardError ∷ Prism' Port String
-_CardError = prism' CardError \p → case p of
+_CardError = prism' CardError $ case _ of
   CardError x → Just x
   _ → Nothing
 
 _DownloadOptions ∷ Prism' Port DownloadPort
-_DownloadOptions = prism' DownloadOptions \p → case p of
+_DownloadOptions = prism' DownloadOptions $ case _ of
   DownloadOptions p' → Just p'
   _ → Nothing
 

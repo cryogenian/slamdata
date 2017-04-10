@@ -22,27 +22,31 @@ import SlamData.Prelude
 
 import Data.Array (filter, catMaybes, head, nub, fromFoldable)
 import Data.Int as Int
-import Data.List (List)
+import Data.List as L
 import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
-
 import Data.Json.Extended as EJSON
 import Data.Json.Extended.Signature.Parse as EJP
 
 import Text.Parsing.Parser as P
 import Text.SlamSearch.Types as SS
 
+import SqlSquare (Sql)
+import SqlSquare as Sql
+
 import Utils as Utils
+
+
 
 -- TODO: We need to really obliterate this module and replace these regular
 -- expressions and ad hoc renderers with something that targets a SQL^2 A(S/B)T,
 -- which is then serialized separately. Blocked by SD-1391.
 
 queryToSQL
-  ∷ Array String
+  ∷ L.List Sql String
   → SS.SearchQuery
-  → String
+  → S.Sql
 queryToSQL fields query =
      "SELECT"
   <> (if needDistinct whereClause then " DISTINCT " else " ")

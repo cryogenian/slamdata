@@ -28,14 +28,16 @@ import Control.Monad.Writer.Class (class MonadTell)
 import Control.Monad.State (class MonadState, get, put)
 
 import Data.Foldable as F
-import Data.Lens ((^.), preview)
+import Data.Lens ((^.), preview, (.~), (?~))
 import Data.List as List
 import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
+import Data.Json.Extended as EJS
 
-import Quasar.Types (SQL)
+import Matryoshka (embed)
+
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
@@ -51,7 +53,10 @@ import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-eval
+import SqlSquare (Sql)
+import SqlSquare as Sql
+
+evaln
   ∷ ∀ m
   . ( MonadAff SlamDataEffects m
     , MonadAsk CEM.CardEnv m
@@ -61,7 +66,7 @@ eval
     , QuasarDSL m
     , ParQuasarDSL m
     )
-  ⇒ SQL
+  ⇒ Sql
   → String
   → Port.VarMapValue
   → Port.Resource
@@ -70,7 +75,7 @@ eval sql var val r = do
   resource ← CEM.temporaryOutputResource
   let
     backendPath =
-      Left $ fromMaybe Path.rootDir (Path.parentDir (r ^. Port._filePath))
+      fromMaybe Path.rootDir (Path.parentDir (r ^. Port._filePath))
 
   { inputs } ←
     CEM.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
@@ -79,7 +84,7 @@ eval sql var val r = do
   validateResources inputs
   CEM.addSources inputs
   CEM.liftQ do
-    QQ.viewQuery backendPath resource sql SM.empty
+    QQ.viewQuery resource sql SM.empty
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   let
     var' =
@@ -146,13 +151,21 @@ evalLabeled m p r = do
         _     → selection
 
     sql =
-      "SELECT * FROM `"
-      <> Path.printPath (r ^. Port._filePath)
-      <> "` AS res"
-      <> " WHERE res"
-      <> (escapeCursor p.cursor)
-      <> " IN "
-      <> selection
+      Sql.buildSelect
+        $ (Sql._projections .~ (pure $ Sql.projection $ Sql.splice Nothing))
+        ∘ (Sql._relations
+            ?~ Sql.TableRelation { alias: Just "res", path: r ^. Port._filePath })
+        ∘ (Sql._filter
+             ?~ Sql.Binop
+                  { op: Sql.In
+                  , lhs: embed $ Sql.Binop
+                           { op: Sql.FieldDeref
+                           , lhs: Sql.ident "res"
+                           , rhs: QQ.jcursorToSql p.cursor
+                           }
+                  -- TODO
+                  , rhs: embed $ Sql.SetLiteral $ L.Nil
+                  })
 
   put $ Just $ CEM.AutoSelect {lastUsedResource: r, autoSelect: selected}
 
@@ -180,12 +193,20 @@ evalTextLike m p r = do
       | otherwise = m.value
 
     sql =
-      "SELECT * FROM `"
-      <> Path.printPath (r ^. Port._filePath)
-      <> "` AS res"
-      <> " WHERE res"
-      <> (escapeCursor p.cursor)
-      <> " = "
-      <> selection
+      Sql.buildSelect
+        $ (Sql._projections .~ (pure $ Sql.projection $ Sql.splice Nothing))
+        ∘ (Sql._relations
+            ?~ Sql.TableRelation { alias: Just "res", path: r ^. Port._filePath })
+        ∘ (Sql._filter
+             ?~ Sql.Binop
+                  { op: Sql.Eq
+                  , lhs: embed $ Sql.Binop
+                           { op: Sql.FieldDeref
+                           , lhs: Sql.ident "res"
+                           , rhs: QQ.jcursorToSql p.cursor
+                           }
+                  -- TODO
+                  , rhs: embed $ Sql.Literal $ EJS.Null
+                  })
 
   eval sql p.name (Port.QueryExpr selection) r

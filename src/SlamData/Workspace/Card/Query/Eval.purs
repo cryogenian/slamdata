@@ -54,7 +54,7 @@ evalQuery sql varMap = do
   let
     varMap' = Port.renderVarMapValue <$> Port.flattenResources varMap
     backendPath =
-      Left $ fromMaybe Path.rootDir (Path.parentDir resource)
+      fromMaybe Path.rootDir (Path.parentDir resource)
   { inputs } ←
     CEM.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
       QQ.compile backendPath sql varMap'

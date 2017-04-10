@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
-import Data.Lens ((^.))
+import Data.Lens ((^.), (.~), (?~))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 
@@ -32,6 +32,8 @@ import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+
+import SqlSquare as Sql
 
 import Utils.Path as PU
 
@@ -65,9 +67,14 @@ eval'
   → Port.Resource
   → m Port.Resource
 eval' tmp resource = do
-  let filePath = resource ^. Port._filePath
+  let
+    filePath = resource ^. Port._filePath
+    sql =
+      Sql.buildSelect
+        $ (Sql._projections .~ (pure $ Sql.projection $ Sql.splice Nothing))
+        ∘ (Sql._relations ?~ (Sql.TableRelation {alias: Nothing, path: Left filePath}))
   outputResource ← CEM.liftQ $
-    QQ.fileQuery filePath tmp "select * from {{path}}" SM.empty
+    QQ.fileQuery filePath tmp sql SM.empty
   CEM.liftQ $ QFS.messageIfFileNotFound
     outputResource
     "Error saving file, please try another location"

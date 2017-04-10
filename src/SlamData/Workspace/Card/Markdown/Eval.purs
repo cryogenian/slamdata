@@ -195,6 +195,6 @@ evalEmbeddedQueries sm dir =
     ∷ String
     → m (Array EJSON.EJson)
   runQuery code = do
-    {inputs} ← CEM.liftQ $ Quasar.compile (Left dir) code sm
+    {inputs} ← CEM.liftQ $ Quasar.compile dir code sm
     CEM.addSources inputs
     CEM.liftQ $ Quasar.queryEJsonVM dir code sm

@@ -61,7 +61,7 @@ evalOpen model varMap = case model of
     let
       sql = "SELECT * FROM :" <> VM.escapeIdentifier var
       varMap' = Port.renderVarMapValue <$> Port.flattenResources varMap
-      backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir res)
+      backendPath = fromMaybe Path.rootDir (Path.parentDir res)
     CEM.liftQ $ QQ.viewQuery backendPath res sql varMap'
     pure (Port.resourceOut (Port.View res sql varMap))
 
