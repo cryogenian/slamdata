@@ -137,6 +137,7 @@ setValue fld cursor state
       ∘ (T.unpackProjection Pr._donut ?~ D.projection)
       ∘ (T.unpackProjection Pr._multiple ?~ D.projection)
       ∘ (T.unpackProjection Pr._size ?~ (D.projectionWithAggregation $ Just Ag.Sum))
+      ∘ (T.unpackProjection Pr._color ?~ D.projection)
 
 showValue ∷ T.Projection → Maybe J.JCursor → String
 showValue fld c = do
@@ -156,12 +157,13 @@ showValue fld c = do
       ∘ (T.unpackProjection Pr._stack ?~ "Select stack")
       ∘ (T.unpackProjection Pr._source ?~ "Select source")
       ∘ (T.unpackProjection Pr._target ?~ "Select target")
-      ∘ (T.unpackProjection Pr._abscissa ?~ "Select X-Axis")
-      ∘ (T.unpackProjection Pr._ordinate ?~ "Select Y-Axis")
-      ∘ (T.unpackProjection Pr._secondValue ?~ "Select the second measure")
+      ∘ (T.unpackProjection Pr._abscissa ?~ "Select x-axis")
+      ∘ (T.unpackProjection Pr._ordinate ?~ "Select y-axis")
+      ∘ (T.unpackProjection Pr._secondValue ?~ "Select measure")
       ∘ (T.unpackProjection Pr._donut ?~ "Select donut")
       ∘ (T.unpackProjection Pr._multiple ?~ "Select multiple")
       ∘ (T.unpackProjection Pr._size ?~ "Select size")
+      ∘ (T.unpackProjection Pr._color ?~ "Select color")
 
 chooseLabel ∷ T.Projection → String
 chooseLabel fld = fromMaybe "" $ labels ^. T.unpackProjection fld
@@ -182,9 +184,10 @@ chooseLabel fld = fromMaybe "" $ labels ^. T.unpackProjection fld
       ∘ (T.unpackProjection Pr._target ?~ "Choose target")
       ∘ (T.unpackProjection Pr._abscissa ?~ "Choose X-Axis")
       ∘ (T.unpackProjection Pr._ordinate ?~ "Choose Y-Axis")
-      ∘ (T.unpackProjection Pr._secondValue ?~ "Choose the second measure")
+      ∘ (T.unpackProjection Pr._secondValue ?~ "Choose measure")
       ∘ (T.unpackProjection Pr._donut ?~ "Choose donut")
       ∘ (T.unpackProjection Pr._size ?~ "Choose size")
+      ∘ (T.unpackProjection Pr._color ?~ "Choose color")
 
 
 showDefaultLabel ∷ T.Projection → Maybe J.JCursor → String
@@ -207,10 +210,11 @@ showDefaultLabel fld c =
       ∘ (T.unpackProjection Pr._target ?~ "Target label")
       ∘ (T.unpackProjection Pr._abscissa ?~ "X-Axis label")
       ∘ (T.unpackProjection Pr._ordinate ?~ "Y-Axis label")
-      ∘ (T.unpackProjection Pr._secondValue ?~ "Measure#2 label")
+      ∘ (T.unpackProjection Pr._secondValue ?~ "Measure #2 label")
       ∘ (T.unpackProjection Pr._donut ?~ "Donut label")
       ∘ (T.unpackProjection Pr._multiple ?~ "Multiple label")
       ∘ (T.unpackProjection Pr._size ?~ "Size label")
+      ∘ (T.unpackProjection Pr._color ?~ "Color label")
 
 setTransform ∷ T.Projection → Maybe Tr.Transform → State → State
 setTransform fld t = _dimMap ∘ T.unpackProjection fld ∘ _Just ∘ D._value ∘ D._transform .~ t

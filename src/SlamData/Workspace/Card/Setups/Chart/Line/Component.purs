@@ -110,7 +110,7 @@ render state =
     [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
-    , renderOptionalMarkers state
+    , row [ renderOptionalMarkers state ]
     , HH.hr_
     , row [ renderMinSize state, renderMaxSize state ]
     , HH.hr_
@@ -134,16 +134,20 @@ renderAxisLabelAngle state =
 renderOptionalMarkers ∷ ST.State → HTML
 renderOptionalMarkers state =
   HH.div
-    [ HP.classes [ HH.ClassName "chart-optional-markers" ]
+    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
     [ HH.label
         [ HP.classes [ B.controlLabel ] ]
-        [ HH.text "Enable data point markers (disables Measure #3)" ]
-    , HH.input
-        [ HP.type_ HP.InputCheckbox
-        , HP.checked state.optionalMarkers
-        , ARIA.label "Enable data point markers"
-        , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleOptionalMarkers
+        [ HH.input
+            [ HP.type_ HP.InputCheckbox
+            , HP.checked state.optionalMarkers
+            , ARIA.label "Show data point markers"
+            , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleOptionalMarkers
+            ]
+        , HH.text "Show markers"
+        ]
+    , HH.small_
+        [ HH.text " (disables size measure)"
         ]
     ]
 
@@ -155,7 +159,7 @@ renderMinSize state =
     ]
     [ HH.label
         [ HP.classes [ B.controlLabel ] ]
-        [ HH.text if state.optionalMarkers then "Size" else "Min size" ]
+        [ HH.text if state.optionalMarkers then "Size" else "Minimum size" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.minSize
@@ -169,7 +173,7 @@ renderMaxSize state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max size" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Maximum size" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.maxSize
