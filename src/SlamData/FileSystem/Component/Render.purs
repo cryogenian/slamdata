@@ -28,11 +28,11 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Common.Sort (Sort(..))
 import SlamData.Hint as Hint
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _isMount, _sort)
-import SlamData.Guide.Notification as Guide
 import SlamData.Render.Icon as I
 
 import Utils.DOM as DOM

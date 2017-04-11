@@ -217,7 +217,7 @@ itemActions presentActions item | otherwise =
 
   edit ∷ Array HTML
   edit = guard (isWorkspace r) $>
-    itemAction Edit "Edit" B.glyphiconPencil
+    itemAction Edit "Edit" I.editSm
 
   common ∷ Array HTML
   common =

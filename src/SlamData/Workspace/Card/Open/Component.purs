@@ -149,8 +149,6 @@ evalOpen = case _ of
     { auth } ← Wiring.expose
     H.subscribe
       $ busEventSource (\msg -> right (Q.HandleSignInMessage msg H.Listening)) auth.signIn
-    currentVars ← H.liftEff $ Ref.newRef mempty
-    H.modify _ { currentVars = Just currentVars }
     pure next
   Q.HandleSignInMessage message next → do
     when (message ≡ GMB.SignInSuccess) do

@@ -16,6 +16,8 @@ public/js/*.js
 !public/js/keyboard*
 !public/js/echarts*
 public/css/*.css
+public/index.html
+public/workspace.html
 !public/css/bootstrap*.css
 /src/SlamData/Render/Icon.purs
 .*
