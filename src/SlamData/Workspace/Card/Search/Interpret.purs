@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Search.Interpret
-  ( queryToSQL
+  ( queryToSql
   ) where
 
 import SlamData.Prelude
@@ -43,13 +43,12 @@ import SqlSquare as Sql
 import Utils as Utils
 
 
-
-queryToSQL
+queryToSql
   ∷ L.List Sql
   → SS.SearchQuery
   → FilePath
   → Sql
-queryToSQL fields searchQuery path =
+queryToSql fields searchQuery path =
   Sql.buildSelect
     $ (Sql._isDistinct .~ isDistinct searchQuery)
     ∘ (Sql._projections .~ projections fields)
