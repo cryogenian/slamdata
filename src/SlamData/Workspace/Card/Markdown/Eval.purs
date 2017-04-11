@@ -30,7 +30,7 @@ import Data.List as L
 import Data.String as S
 import Data.StrMap as SM
 
-import Matryoshka (project)
+import Matryoshka (project, embed)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -40,12 +40,15 @@ import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 
+import SqlSquare as Sql
+
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 import Text.Markdown.SlamDown.Parser as SDP
 import Text.Markdown.SlamDown.Traverse as SDT
 
+import Utils (hush)
 import Utils.Path (DirPath)
 
 evalMarkdownForm
@@ -78,7 +81,7 @@ evalMarkdown str varMap = do
   case SDP.parseMd str of
     Left e → CEM.throw e
     Right sd → do
-      let sm = Port.renderVarMapValue <$> Port.flattenResources varMap
+      let sm = map Sql.print $ Port.flattenResources varMap
       doc ← evalEmbeddedQueries sm path sd
       pure (Port.SlamDown doc × varMap)
 
@@ -119,9 +122,9 @@ evalEmbeddedQueries sm dir =
     → m Port.VarMapValue
   evalCode mid code
     | languageIsSql mid =
-        Port.Literal ∘ extractCodeValue <$> runQuery code
+        embed ∘ Sql.Literal ∘ extractCodeValue <$> runQuery code
     | otherwise =
-        pure $ Port.QueryExpr code
+        hush $ Sql.parse code
 
   extractCodeValue ∷ Array EJSON.EJson → EJSON.EJson
   extractCodeValue [ej] = extractSingletonObject ej

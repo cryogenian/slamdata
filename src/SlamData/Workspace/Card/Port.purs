@@ -67,7 +67,7 @@ import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
-import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), emptyVarMap)
+import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), emptyVarMap, _VarMapValue)
 
 import SqlSquare as Sql
 

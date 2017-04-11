@@ -16,6 +16,7 @@ module SlamData.Workspace.Card.Port.VarMap
   , VarMap
   , URLVarMap
   , VarMapValue(..)
+  , _VarMapValue
   , emptyVarMap
   , variables
   ) where
@@ -25,6 +26,8 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.Json.Extended as EJSON
 import Data.List as L
+import Data.Lens.Iso.Newtype (_Newtype)
+import Data.Lens.Types (Iso')
 import Data.StrMap as SM
 
 import Data.Argonaut ((.?), Json)
@@ -51,6 +54,10 @@ derive newtype instance arbitraryVar ∷ SC.Arbitrary Var
 derive instance newtypeVar :: Newtype Var _
 
 newtype VarMapValue = VarMapValue Sql
+
+_VarMapValue ∷ Iso' VarMapValue Sql
+_VarMapValue = _Newtype
+
 
 derive instance newtypeVarMapValue ∷ Newtype VarMapValue _
 
