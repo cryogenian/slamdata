@@ -26,6 +26,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.CSS as HC
 import Halogen.HTML.Properties as HP
 import Halogen.VDom.DOM.StringRenderer as VDS
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import Unsafe.Coerce (unsafeCoerce)
 
 import Utils (showFormattedNumber, hush')
@@ -83,6 +84,11 @@ valueIx read ix inp = hush' (read =<< Frn.index ix inp.value)
 dataProp ∷ ∀ a r. (Frn.Foreign → Frn.F a) → String → FormatterInput r → Maybe a
 dataProp read prop { data: ET.Item inp } = hush' (read =<< Frn.prop prop inp)
 
+assocProp ∷ ∀ a r. (Frn.Foreign → Frn.F a) → String → FormatterInput r → Maybe a
+assocProp read prop { data: inp } = do
+  assoc ← BCE.deref inp
+  hush' $ read =<< Frn.prop prop assoc
+
 formatValueIx ∷ ∀ r. Int → FormatterInput r → String
 formatValueIx ix = maybe "" formatForeign ∘ valueIx pure ix
 
@@ -91,6 +97,9 @@ formatNumberValueIx ix = showFormattedNumber ∘ fromMaybe zero ∘ valueIx Frn.
 
 formatDataProp ∷ ∀ r. String → FormatterInput r → String
 formatDataProp p = maybe "" formatForeign ∘ dataProp pure p
+
+formatAssocProp ∷ ∀ r. String → FormatterInput r → String
+formatAssocProp p = maybe "" formatForeign ∘ assocProp pure p
 
 formatNumber ∷ ∀ r. FormatterInput r → String
 formatNumber = showFormattedNumber ∘ fromMaybe zero ∘ hush' ∘ Frn.readNumber ∘ _.value

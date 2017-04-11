@@ -19,6 +19,8 @@ module SlamData.Workspace.Card.Setups.Common.Eval
   , buildChartEval'
   , analyze
   , type (>>)
+  , assoc
+  , deref
   ) where
 
 import SlamData.Prelude
@@ -28,11 +30,15 @@ import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut (Json)
 import Data.Array as A
+import Data.Foreign (Foreign, toForeign)
+import Data.Foreign.Index (prop)
 import Data.Lens ((^.))
 import Data.Map as M
 
 import ECharts.Monad (DSL)
-import ECharts.Types.Phantom (OptionI)
+import ECharts.Monad as EM
+import ECharts.Types as ET
+import ECharts.Types.Phantom (OptionI, I)
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
@@ -40,6 +46,8 @@ import SlamData.Workspace.Card.Setups.Axis (Axes, buildAxes)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+
+import Utils (hush')
 
 infixr 3 type M.Map as >>
 
@@ -97,3 +105,9 @@ analyze resource = case _ of
     records ← CEM.liftQ (QQ.all (resource ^. Port._filePath))
     let axes = buildAxes (A.take 300 records)
     pure (records × axes)
+
+assoc ∷ ∀ a i. a → DSL (value ∷ I | i)
+assoc = EM.set "$$assoc" <<< toForeign
+
+deref ∷ ET.Item → Maybe Foreign
+deref (ET.Item item) = hush' $ prop "$$assoc" item

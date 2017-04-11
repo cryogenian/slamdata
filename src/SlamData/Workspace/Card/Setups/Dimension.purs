@@ -93,7 +93,7 @@ isStatic = case _ of
 
 jcursorLabel ∷ LabeledJCursor → String
 jcursorLabel = case _ of
-  Dimension (Just (Static label)) _ → label
+  Dimension (Just (Static label)) _ | label ≠ "" → label
   Dimension _ (Static label) → label
   Dimension _ (Projection _ jcursor) → prettyPrintJCursor jcursor
 

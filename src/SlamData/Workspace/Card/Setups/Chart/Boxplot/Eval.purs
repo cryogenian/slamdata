@@ -269,13 +269,15 @@ buildBoxplot r records = do
         >>= flip A.elemIndex serieNames
         >>= (colors !! _)
 
-    E.tooltip $ E.formatterItem \param →
-      param.name ⊕ "<br/>"
-      ⊕ "Upper: " ⊕ CCT.formatNumberValueIx 4 param ⊕ "<br/>"
-      ⊕ "Q3: " ⊕ CCT.formatNumberValueIx 3 param ⊕ "<br/>"
-      ⊕ "Median: " ⊕ CCT.formatNumberValueIx 2 param ⊕ "<br/>"
-      ⊕ "Q2: " ⊕ CCT.formatNumberValueIx 1 param ⊕ "<br/>"
-      ⊕ "Lower: " ⊕ CCT.formatNumberValueIx 0 param
+    E.tooltip $ E.formatterItem \item →
+      CCT.tableRows
+        [ D.jcursorLabel r.dimension × item.name
+        , "Upper" × CCT.formatNumberValueIx 4 item
+        , "Q3" × CCT.formatNumberValueIx 3 item
+        , "Median" × CCT.formatNumberValueIx 2 item
+        , "Q2" × CCT.formatNumberValueIx 1 item
+        , "Lower" × CCT.formatNumberValueIx 0 item
+        ]
 
     E.buildItems
       $ for_ xAxisLabels \key → case M.lookup key serie.items of

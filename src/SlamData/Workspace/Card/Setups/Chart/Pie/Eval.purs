@@ -42,6 +42,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Pie.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
@@ -158,7 +159,19 @@ buildPieData r records = series
 
 buildPie ∷ ModelR → JArray → DSL OptionI
 buildPie r records = do
-  E.tooltip E.triggerItem
+  let
+    cols =
+      [ { label: D.jcursorLabel r.category, value: CCT.formatAssocProp "key" }
+      , { label: D.jcursorLabel r.value, value: CCT.formatAssocProp "value" }
+      ]
+    opts = A.catMaybes
+      [ r.donut <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
+      ]
+
+  E.tooltip do
+    E.formatterItem (CCT.tableFormatter (Just ∘ _.color) (cols <> opts) ∘ pure)
+    E.textStyle $ E.fontSize 12
+    E.triggerItem
 
   E.colors colors
 
@@ -223,3 +236,4 @@ buildPie r records = do
         E.addItem do
           E.value value
           E.name $ foldMap (flip append ":") name ⊕ key
+          BCE.assoc { key, value }
