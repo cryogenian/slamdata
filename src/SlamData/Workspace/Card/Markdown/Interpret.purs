@@ -105,11 +105,6 @@ formFieldValueToVarMapValue v = runMaybeT case v of
       $ embed
       $ Sql.SetLiteral
       $ L.mapMaybe (getLiteral) sel
---    pure
---    $ embed
---    $ Sql.SetLiteral
---    ?foo sel
---    $ L.mapMaybe (map Sql.Literal ∘ getLiteral) sel
   SD.RadioButtons (Identity x) _ →
     map VM.VarMapValue $ getLiteral x
   SD.DropDown mx _ → map VM.VarMapValue do

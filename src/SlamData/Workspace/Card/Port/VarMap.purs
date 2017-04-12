@@ -28,6 +28,7 @@ import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Lens.Types (Iso')
+import Data.String as S
 import Data.StrMap as SM
 
 import Data.Argonaut ((.?), Json)
@@ -99,8 +100,13 @@ instance decodeJsonVarMapValue :: DecodeJson VarMapValue where
       lmap show $ SqlP.parse queryStr
 
 instance valueVarMapValue ∷ SDV.Value VarMapValue where
-  stringValue = VarMapValue ∘ embed ∘ Sql.Literal ∘ EJSON.String
-  renderValue = Sql.print ∘ unwrap
+  stringValue = VarMapValue ∘ Sql.string
+  renderValue v =
+    let p = Sql.print $ unwrap v
+    in
+     fromMaybe p
+     $ S.stripSuffix (S.Pattern "\"") p
+     >>= S.stripPrefix (S.Pattern "\"")
 
 instance arbitraryVarMapValue ∷ SC.Arbitrary VarMapValue where
   arbitrary = map VarMapValue $ Sql.arbitrarySqlOfSize 2

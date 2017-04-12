@@ -42,7 +42,7 @@ import Data.Path.Pathy as P
 import Data.Set as Set
 import Data.StrMap as SM
 
-import Matryoshka (Coalgebra, ana)
+import Matryoshka (Coalgebra, ana, project, embed)
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (JSONMode(..))
@@ -197,8 +197,15 @@ jcCoalgebra = case _ of
     JS.JIndex i c → Sql.Binop { op: Sql.IndexDeref, lhs: JC c, rhs: I i }
     JS.JField f c → Sql.Binop { op: Sql.FieldDeref, lhs: JC c, rhs: S f }
 
+removeTopSplice ∷ Sql → Sql
+removeTopSplice = project ⋙ case _ of
+  op@(Sql.Binop { lhs, rhs }) → case project lhs of
+    Sql.Splice Nothing → rhs
+    _ → embed op
+  a → embed a
+
 jcursorToSql ∷ JS.JCursor → Sql
-jcursorToSql = ana jcCoalgebra ∘ JC ∘ JS.insideOut
+jcursorToSql = removeTopSplice ∘ ana jcCoalgebra ∘ JC ∘ JS.insideOut
 
 allFields ∷ JS.JArray → L.List Sql
 allFields =

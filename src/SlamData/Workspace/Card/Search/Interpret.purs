@@ -88,12 +88,12 @@ ssValueString = case _ of
 
 topFieldF ∷ Algebra (SqlF Ej.EJsonF) (Maybe Sql)
 topFieldF = case _ of
-  Splice Nothing → Just $ embed $ Splice Nothing
+  Splice (Just a) → a
   Ident s → Just $ embed $ Ident s
   Literal (Ej.Integer i) → Just $ embed $ Literal $ Ej.Integer i
   Literal (Ej.String s) → Just $ embed $ Literal $ Ej.String s
-  Binop { op: Sql.FieldDeref, lhs } → lhs
-  Binop { op: Sql.IndexDeref, lhs } → lhs
+  Binop { op: Sql.FieldDeref, lhs, rhs } → lhs <|> rhs
+  Binop { op: Sql.IndexDeref, lhs, rhs } → lhs <|> rhs
   Unop { expr } → expr
   _ → Nothing
 
@@ -129,7 +129,6 @@ flattenIndex = transAna flattenIndexT
 flattenIndexT ∷ ∀ t. Transform t (SqlF Ej.EJsonF) (SqlF Ej.EJsonF)
 flattenIndexT = case _ of
   Binop { op: Sql.IndexDeref, lhs } → Unop { op: Sql.FlattenArrayValues, expr: lhs }
-  Binop { op: Sql.FieldDeref, lhs } → Unop { op: Sql.FlattenMapValues, expr: lhs }
   s → s
 
 termToSql ∷ L.List Sql → SS.Term → Sql
@@ -208,7 +207,7 @@ sqlFromSearchStr v =
   (flip F.foldMap (Utils.stringToNumber v) $ pure ∘ Sql.num)
   ⊕ (flip F.foldMap (Int.fromString v) $ pure ∘ Sql.int)
   ⊕ (flip F.foldMap (Utils.stringToBoolean v) $ pure ∘ Sql.bool)
-  ⊕ ((guard ((not $ needDateTime v) && needDate v)) $>
+  ⊕ ((guard ((not $ needDateTime v) ∧ needDate v)) $>
        Sql.invokeFunction "DATE" (Sql.string v : L.Nil))
   ⊕ (guard (needTime v) $>
        Sql.invokeFunction "TIME" (Sql.string v : L.Nil))
@@ -246,7 +245,7 @@ containsToGlob v
 
 hasSpecialChars ∷ String → Boolean
 hasSpecialChars v =
-  isJust (S.indexOf (S.Pattern "*") v) || isJust (S.indexOf (S.Pattern "?") v)
+  isJust (S.indexOf (S.Pattern "*") v) ∨ isJust (S.indexOf (S.Pattern "?") v)
 
 
 needDate ∷ String → Boolean
