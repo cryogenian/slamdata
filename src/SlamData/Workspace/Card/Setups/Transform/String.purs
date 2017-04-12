@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Transform.String where
 
 import SlamData.Prelude
+import SqlSquare as Sql
 import Data.Argonaut as J
 import Test.StrongCheck.Arbitrary (class Arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -25,6 +26,14 @@ data StringOperation
   = Lower
   | Upper
   | Length
+
+applyStringOperation ∷ StringOperation → Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
+applyStringOperation op (Sql.Projection { expr, alias }) =
+  Sql.Projection
+  { alias
+  , expr: Sql.invokeFunction (printStringOperation op) $ pure expr
+  }
+
 
 stringOperations ∷ Array StringOperation
 stringOperations =

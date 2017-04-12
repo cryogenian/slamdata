@@ -16,9 +16,11 @@ limitations under the License.
 
 module SlamData.Quasar.Query
   ( compile
+  , compile'
   , queryEJson
   , queryEJsonVM
   , viewQuery
+  , viewQuery'
   , all
   , sample
   , count
@@ -63,7 +65,17 @@ compile
   → SM.StrMap String
   → m (Either QError CompileResultR)
 compile backendPath sql varMap =
-  liftQuasar $ QF.compileQuery backendPath (print sql) varMap
+  compile' backendPath (print sql) varMap
+
+compile'
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ DirPath
+  → String
+  → SM.StrMap String
+  → m (Either QError CompileResultR)
+compile' backendPath sql varMap =
+  liftQuasar $ QF.compileQuery backendPath sql varMap
 
 queryEJson
   ∷ ∀ m
@@ -92,12 +104,22 @@ viewQuery
   → Sql
   → SM.StrMap String
   → m (Either QError Unit)
-viewQuery dest sql vars = do
+viewQuery dest sql vars = viewQuery' dest (print sql) vars
+
+-- | Runs a query creating a view mount for the query.
+viewQuery'
+  ∷ ∀ m
+  . (QuasarDSL m, Monad m)
+  ⇒ FilePath
+  → String
+  → SM.StrMap String
+  → m (Either QError Unit)
+viewQuery' dest sql vars = do
   liftQuasar $
     QF.deleteMount (Right dest)
   liftQuasar $
     QF.updateMount (Right dest) (QM.ViewConfig
-      { query: print sql
+      { query: sql
       , vars
       })
 

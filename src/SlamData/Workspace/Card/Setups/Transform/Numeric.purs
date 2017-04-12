@@ -21,6 +21,7 @@ import Data.Argonaut as J
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Lens (Prism', prism')
 import Data.Ord (abs)
+import SqlSquare as Sql
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
 
@@ -37,6 +38,39 @@ numericOperations =
   , Round (Place 0)
   , Ceil (Place 0)
   ]
+
+applyNumericOperation ∷ NumericOperation → Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
+applyNumericOperation no (Sql.Projection { expr, alias }) =
+  Sql.Projection
+    { alias, expr: mkExpr no }
+  where
+  floor e =
+    Sql.binop Sql.Minus e $ Sql.pars $ Sql.binop Sql.Mod e $ Sql.int 1
+  round e =
+    floor $ Sql.pars $ Sql.binop Sql.Plus e $ Sql.num 0.5
+  ceil e =
+    Sql.match (Sql.pars $ Sql.binop Sql.Mod e $ Sql.int 1)
+      (pure ( Sql.when (Sql.int zero) # Sql.then_ e ))
+      (pure $ floor $ Sql.pars $ Sql.binop Sql.Plus e $ Sql.int 1)
+
+  adjust (Place n) e
+    | n ≡ 0 = Sql.pars e
+    | n < 0 = adjust (Place (-n)) e
+    | otherwise =
+      Sql.pars
+      $ Sql.binop Sql.Div
+        ( Sql.pars $ Sql.binop Sql.Mult e
+            ( Sql.binop Sql.Pow (Sql.num 10.0) (Sql.int n)))
+        ( Sql.pars $ Sql.binop Sql.Pow (Sql.num 10.0) (Sql.int n))
+
+  mkExpr = case _ of
+    Floor n →
+      adjust n $ floor expr
+    Round n →
+      adjust n $ round expr
+    Ceil n →
+      adjust n $ ceil expr
+
 
 printNumericOperation ∷ NumericOperation → String → String
 printNumericOperation = case _ of

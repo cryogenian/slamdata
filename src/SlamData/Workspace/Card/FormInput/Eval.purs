@@ -27,14 +27,12 @@ import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 import Control.Monad.State (class MonadState, get, put)
 
-import Data.Foldable as F
 import Data.Lens ((^.), preview, (.~), (?~))
-import Data.List as List
+import Data.List as L
 import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
-import Data.Json.Extended as EJS
 
 import Matryoshka (embed)
 
@@ -44,7 +42,7 @@ import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
-import SlamData.Workspace.Card.Eval.Common (validateResources, escapeCursor)
+import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as CES
 import SlamData.Workspace.Card.Port as Port
@@ -56,7 +54,15 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SqlSquare (Sql)
 import SqlSquare as Sql
 
-evaln
+import Utils (stringToNumber)
+
+
+-- | I removed additional variable from this (It used to be `QueryExpr`)
+-- | not sure that this is right decision, but it's just part of sql expression
+-- | encoded as string. And it's actually can't be used to query anything
+-- | because it's kinda `"foo"` or `("foo", "bar", true)`
+-- | @cryogenian
+eval
   ∷ ∀ m
   . ( MonadAff SlamDataEffects m
     , MonadAsk CEM.CardEnv m
@@ -67,11 +73,9 @@ evaln
     , ParQuasarDSL m
     )
   ⇒ Sql
-  → String
-  → Port.VarMapValue
   → Port.Resource
   → m Port.Out
-eval sql var val r = do
+eval sql r = do
   resource ← CEM.temporaryOutputResource
   let
     backendPath =
@@ -87,14 +91,9 @@ eval sql var val r = do
     QQ.viewQuery resource sql SM.empty
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   let
-    var' =
-      if var ≡ Port.defaultResourceVar
-         then var <> "2"
-         else var
     varMap =
       SM.fromFoldable
-        [ Port.defaultResourceVar × Left (Port.View resource sql SM.empty)
-        , var' × Right val
+        [ Port.defaultResourceVar × Left (Port.View resource (Sql.print sql) SM.empty)
         ]
   pure (Port.ResourceKey Port.defaultResourceVar × varMap)
 
@@ -134,42 +133,33 @@ evalLabeled m p r = do
           Set.empty
       -- default selection is empty, new resource this is not checkbox: take first value
       | Set.isEmpty p.selectedValues =
-          Set.fromFoldable $ List.head $ Map.keys p.valueLabelMap
+          Set.fromFoldable $ L.head $ Map.keys p.valueLabelMap
       -- new resource, not checkbox: take default selection
       | otherwise =
           p.selectedValues
 
     semantics =
-      foldMap Sem.semanticsToSQLStrings selected
-
-    selection =
-      "(" <> (F.intercalate "," semantics) <> ")"
-
-    prettySelection =
-      case semantics of
-        [ a ] → a
-        _     → selection
+      foldMap Sem.semanticsToSql selected
 
     sql =
       Sql.buildSelect
         $ (Sql._projections .~ (pure $ Sql.projection $ Sql.splice Nothing))
         ∘ (Sql._relations
-            ?~ Sql.TableRelation { alias: Just "res", path: r ^. Port._filePath })
+            ?~ Sql.TableRelation { alias: Just "res", path: Left $ r ^. Port._filePath })
         ∘ (Sql._filter
-             ?~ Sql.Binop
+             ?~ (embed $ Sql.Binop
                   { op: Sql.In
                   , lhs: embed $ Sql.Binop
                            { op: Sql.FieldDeref
                            , lhs: Sql.ident "res"
                            , rhs: QQ.jcursorToSql p.cursor
                            }
-                  -- TODO
-                  , rhs: embed $ Sql.SetLiteral $ L.Nil
-                  })
+                  , rhs: embed $ Sql.SetLiteral $ L.fromFoldable semantics
+                  }))
 
   put $ Just $ CEM.AutoSelect {lastUsedResource: r, autoSelect: selected}
 
-  eval sql p.name (Port.QueryExpr prettySelection) r
+  eval sql r
 
 evalTextLike
   ∷ ∀ m
@@ -188,25 +178,26 @@ evalTextLike
 evalTextLike m p r = do
   cardState ← get
   let
-    selection
-      | p.formInputType ≡ FIT.Text = show m.value
-      | otherwise = m.value
-
+    selection = case p.formInputType of
+      FIT.Numeric → maybe Sql.null Sql.num $ stringToNumber m.value
+      FIT.Time → Sql.invokeFunction "TIME" $ pure $ Sql.string m.value
+      FIT.Date → Sql.invokeFunction "DATE" $ pure $ Sql.string m.value
+      FIT.Datetime → Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string m.value
+      _ → Sql.string m.value
     sql =
       Sql.buildSelect
         $ (Sql._projections .~ (pure $ Sql.projection $ Sql.splice Nothing))
         ∘ (Sql._relations
-            ?~ Sql.TableRelation { alias: Just "res", path: r ^. Port._filePath })
+            ?~ Sql.TableRelation { alias: Just "res", path: Left $ r ^. Port._filePath })
         ∘ (Sql._filter
-             ?~ Sql.Binop
+             ?~ (embed $ Sql.Binop
                   { op: Sql.Eq
                   , lhs: embed $ Sql.Binop
                            { op: Sql.FieldDeref
                            , lhs: Sql.ident "res"
                            , rhs: QQ.jcursorToSql p.cursor
                            }
-                  -- TODO
-                  , rhs: embed $ Sql.Literal $ EJS.Null
-                  })
+                  , rhs: selection
+                  }))
 
-  eval sql p.name (Port.QueryExpr selection) r
+  eval sql r

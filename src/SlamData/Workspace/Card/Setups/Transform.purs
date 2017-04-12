@@ -3,7 +3,7 @@ Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+nYou may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
@@ -20,6 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), (.?), jsonEmptyObject)
 import Data.Array as Array
+import Data.List as L
 import Data.Lens (Prism', prism')
 
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -81,6 +82,28 @@ prettyPrintTransform =
     S.prettyPrintStringOperation
     N.prettyPrintNumericOperation
     \_ → "Count"
+
+applyTransform ∷ Transform → Sql.Projection Sql → Sql.Projection Sql
+applyTransform =
+  foldTransform
+    DP.applyDateTransform
+    DP.applyTimeTransform
+    aggregation
+    S.applyStringOperation
+    N.applyNumericOperation
+    (const count)
+  where
+  count (Sql.Projection {alias, expr}) =
+    Sql.Projection { alias, expr: Sql.invokeFunction "COUNT" $ L.singleton expr }
+  aggregation ag (Sql.Projection {alias, expr}) =
+    let
+      funcName = case ag of
+        Ag.Minimum → "MIN"
+        Ag.Maximum → "MAX"
+        Ag.Average → "AVG"
+        Ag.Sum → "SUM"
+    in Sql.Projection { alias, expr: Sql.invokeFunction funcName $ L.singleton expr }
+
 
 printTransform ∷ Transform → String → String
 printTransform =

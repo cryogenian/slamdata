@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, foldJson, cursorGet, jsonEmptyObject, (~>), (:=), (.?), decodeJson)
 import Data.Array as A
 import Data.Enum (fromEnum, toEnum)
+import Data.Formatter.DateTime as Fd
 import Data.Int as Int
 import Data.List (List(..), catMaybes)
 import Data.List as L
@@ -28,9 +29,10 @@ import Data.Map (Map, keys, update, lookup, fromFoldable)
 import Data.String (take)
 import Data.String.Regex (Regex, regex, match)
 import Data.String.Regex.Flags as RXF
-import Data.Time as Dt
-import Data.Date as Dd
-import Data.DateTime as Ddt
+import Data.DateTime as DT
+
+import SqlSquare (Sql)
+import SqlSquare as Sql
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -43,9 +45,9 @@ data Semantics
   | Money Number String
   | Bool Boolean
   | Category String
-  | Time Dt.Time
-  | Date Dd.Date
-  | DateTime Ddt.DateTime
+  | Time DT.Time
+  | Date DT.Date
+  | DateTime DT.DateTime
 
 derive instance eqSemantics ∷ Eq Semantics
 derive instance ordSemantics ∷ Ord Semantics
@@ -73,7 +75,7 @@ instance encodeJsonChartSemantics ∷ EncodeJson Semantics where
       "semanticsType" := "category"
       ~> "value" := c
       ~> jsonEmptyObject
-    Time (Dt.Time h m s ms) →
+    Time (DT.Time h m s ms) →
       "semanticsType" := "time"
       ~> "hour" := (fromEnum h)
       ~> "minute" := (fromEnum m)
@@ -82,15 +84,15 @@ instance encodeJsonChartSemantics ∷ EncodeJson Semantics where
       ~> jsonEmptyObject
     Date d →
       "semanticsType" := "date"
-      ~> "year" := (fromEnum $ Dd.year d)
-      ~> "month" := (fromEnum $ Dd.month d)
-      ~> "day" := (fromEnum $ Dd.day d)
+      ~> "year" := (fromEnum $ DT.year d)
+      ~> "month" := (fromEnum $ DT.month d)
+      ~> "day" := (fromEnum $ DT.day d)
       ~> jsonEmptyObject
-    DateTime (Ddt.DateTime d (Dt.Time h m s ms)) →
+    DateTime (DT.DateTime d (DT.Time h m s ms)) →
       "semanticsType" := "datetime"
-      ~> "year" := (fromEnum $ Dd.year d)
-      ~> "month" := (fromEnum $ Dd.month d)
-      ~> "day" := (fromEnum $ Dd.day d)
+      ~> "year" := (fromEnum $ DT.year d)
+      ~> "month" := (fromEnum $ DT.month d)
+      ~> "day" := (fromEnum $ DT.day d)
       ~> "hour" := (fromEnum h)
       ~> "minute" := (fromEnum m)
       ~> "second" := (fromEnum s)
@@ -139,7 +141,7 @@ instance decodeJsonChartSemantics ∷ DecodeJson Semantics where
       millisecond ← obj .? "millisecond"
       let
         mbTime =
-          Dt.Time
+          DT.Time
           <$> (toEnum hour)
           <*> (toEnum minute)
           <*> (toEnum second)
@@ -161,7 +163,7 @@ instance decodeJsonChartSemantics ∷ DecodeJson Semantics where
           y ← toEnum year
           m ← toEnum month
           d ← toEnum day
-          Dd.exactDate y m d
+          DT.exactDate y m d
       case mbDate of
         Nothing → Left "Incorrect date"
         Just d → pure d
@@ -173,7 +175,7 @@ instance decodeJsonChartSemantics ∷ DecodeJson Semantics where
     decodeDatetime obj = do
       t ← decodeTime' obj
       d ← decodeDate' obj
-      pure $ DateTime $ Ddt.DateTime d t
+      pure $ DateTime $ DT.DateTime d t
 
 instance arbitraryChartSemantics ∷ Arbitrary Semantics where
   arbitrary = do
@@ -204,7 +206,7 @@ instance arbitraryChartSemantics ∷ Arbitrary Semantics where
       7 → do
         t ← genTime
         d ← genDate
-        pure $ DateTime $ Ddt.DateTime d t
+        pure $ DateTime $ DT.DateTime d t
       _ → pure $ Value 0.0
     where
     genTime = do
@@ -213,31 +215,31 @@ instance arbitraryChartSemantics ∷ Arbitrary Semantics where
       second ← map (fromMaybe bottom ∘ toEnum) $ Gen.chooseInt 0 59
       millisecond ← map (fromMaybe bottom ∘ toEnum)
                     $Gen.chooseInt 0 999
-      pure $ Dt.Time hour minute second millisecond
+      pure $ DT.Time hour minute second millisecond
     genDate = do
       day ← map (fromMaybe bottom ∘ toEnum) $ Gen.chooseInt 0 31
       month ← map (fromMaybe bottom ∘ toEnum) $ Gen.chooseInt 0 12
       year ← map (fromMaybe bottom ∘ toEnum) $ Gen.chooseInt 0 9999
-      pure $ Dd.canonicalDate day month year
+      pure $ DT.canonicalDate day month year
 
-printTime ∷ Dt.Time → String
+printTime ∷ DT.Time → String
 printTime time =
   let
-    hour = fromEnum $ Dt.hour time
-    minute = fromEnum $ Dt.minute time
-    second = fromEnum $ Dt.second time
-    millisecond = fromEnum $ Dt.millisecond time
+    hour = fromEnum $ DT.hour time
+    minute = fromEnum $ DT.minute time
+    second = fromEnum $ DT.second time
+    millisecond = fromEnum $ DT.millisecond time
     show' n = (if n > 9 then "" else "0") ⊕ show n
   in
     show' hour ⊕ ":" ⊕ show' minute ⊕ ":" ⊕ show' second ⊕ "." ⊕ show millisecond
 -- We _can_ user purescript-formatters here, but printing semantics is used
 -- heavily in axis analysis, so, simple printing used here instead of Μ stuff
-printDate ∷ Dd.Date → String
+printDate ∷ DT.Date → String
 printDate date =
   let
-    year = fromEnum $ Dd.year date
-    month = fromEnum $ Dd.month date
-    day = fromEnum $ Dd.day date
+    year = fromEnum $ DT.year date
+    month = fromEnum $ DT.month date
+    day = fromEnum $ DT.day date
     show' n = (if n > 9 then "" else "0") ⊕ show n
   in
     show year ⊕ "-" ⊕ show' month ⊕ "-" ⊕ show' day
@@ -250,7 +252,29 @@ printSemantics (Category s) = s
 printSemantics (Bool b) = show b
 printSemantics (Time t) = printTime t
 printSemantics (Date d) = printDate d
-printSemantics (DateTime (Ddt.DateTime d t)) = printDate d ⊕ "T" ⊕ printTime t
+printSemantics (DateTime (DT.DateTime d t)) = printDate d ⊕ "T" ⊕ printTime t
+
+semanticsToSql ∷ Semantics → Array Sql
+semanticsToSql = case _ of
+  Value v → [ Sql.num v ]
+  Percent v → [ Sql.num $ v / 100.0, Sql.string $ show v <> "%" ]
+  Money v m → [ Sql.string $ show v <> m ]
+  Category s → [ Sql.string s ]
+  Bool b → [ Sql.bool b ]
+  Time t →
+    foldMap
+      (pure ∘ Sql.invokeFunction "DATE" ∘ pure ∘ Sql.string)
+      $ Fd.formatDateTime "YYYY-MM-DD"
+      $ DT.DateTime bottom t
+  Date d →
+    foldMap
+      (pure ∘ Sql.invokeFunction "TIME" ∘ pure ∘ Sql.string)
+      $ Fd.formatDateTime "HH:mm:ss"
+      $ DT.DateTime d bottom
+  DateTime dt →
+    foldMap
+      (pure ∘ Sql.invokeFunction "TIMESTAMP" ∘ pure ∘ Sql.string)
+      $ Fd.formatDateTime "YYYY-MM-DDTHH:mm:ssZ" dt
 
 semanticsToSQLStrings ∷ Semantics → Array String
 semanticsToSQLStrings (Value v) = [ show v ]
@@ -260,7 +284,7 @@ semanticsToSQLStrings (Category s) = [ show s ]
 semanticsToSQLStrings (Bool b) = [ show b ]
 semanticsToSQLStrings (Time t) = [ show $ printTime t ]
 semanticsToSQLStrings (Date d) = [ show $ printDate d ]
-semanticsToSQLStrings (DateTime (Ddt.DateTime d t)) = [ show $ printDate d <> " " <> printTime t ]
+semanticsToSQLStrings (DateTime (DT.DateTime d t)) = [ show $ printDate d <> " " <> printTime t ]
 
 semanticsToNumber ∷ Semantics → Maybe Number
 semanticsToNumber (Value v) = pure v
@@ -269,15 +293,15 @@ semanticsToNumber (Percent v) = pure v
 semanticsToNumber (Bool b) = pure if b then one else zero
 semanticsToNumber _ = Nothing
 
-semanticsToTime ∷ Semantics → Maybe Dt.Time
+semanticsToTime ∷ Semantics → Maybe DT.Time
 semanticsToTime (Time t) = pure t
 semanticsToTime _ = Nothing
 
-semanticsToDate ∷ Semantics → Maybe Dd.Date
+semanticsToDate ∷ Semantics → Maybe DT.Date
 semanticsToDate (Date d) = pure d
 semanticsToDate _ = Nothing
 
-semanticsToDateTime ∷ Semantics → Maybe Ddt.DateTime
+semanticsToDateTime ∷ Semantics → Maybe DT.DateTime
 semanticsToDateTime (DateTime dt) = pure dt
 semanticsToDateTime _ = Nothing
 
@@ -374,7 +398,7 @@ analyzeDate str = do
   year ← (join $ matches A.!! 1) >>= Int.fromString >>= toEnum
   month ← (join $ matches A.!! 2) >>= Int.fromString >>= toEnum
   day ← (join $ matches A.!! 3) >>= Int.fromString >>= toEnum
-  date ← Dd.exactDate year month day
+  date ← DT.exactDate year month day
   pure $ Date date
 
 analyzeTime ∷ String → Maybe Semantics
@@ -385,7 +409,7 @@ analyzeTime str = do
   let
     second = fromMaybe bottom $ (join $ matches A.!! 3) >>= Int.fromString >>= toEnum
     millisecond = fromMaybe bottom $ (join $ matches A.!! 4) >>= Int.fromString >>= toEnum
-  pure $ Time $ Dt.Time hour minute second millisecond
+  pure $ Time $ DT.Time hour minute second millisecond
 
 analyzeDatetime ∷ String → Maybe Semantics
 analyzeDatetime str = do
@@ -398,12 +422,12 @@ analyzeDatetime str = do
   let
     second = fromMaybe bottom $ (join $ matches A.!! 7) >>= Int.fromString >>= toEnum
     millisecond = fromMaybe bottom $  (join $ matches A.!! 8) >>= Int.fromString >>= toEnum
-    time = Dt.Time hour minute second millisecond
+    time = DT.Time hour minute second millisecond
 
-  date ← Dd.exactDate year month day
+  date ← DT.exactDate year month day
   pure
     $ DateTime
-    $ Ddt.DateTime date time
+    $ DT.DateTime date time
 
 jsonToSemantics ∷ Json → Map JCursor Semantics
 jsonToSemantics j =
