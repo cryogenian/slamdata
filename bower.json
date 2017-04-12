@@ -25,7 +25,7 @@
     "purescript-argonaut-codecs": "^2.1.0",
     "purescript-css": "^2.0.0",
     "purescript-datetime": "^2.0.0",
-    "purescript-dom": "^3.1.0",
+    "purescript-dom": "^3.8.0",
     "purescript-dom-classy": "^1.3.0",
     "purescript-ejson": "^7.0.0",
     "purescript-fixed-points": "^3.0.0",
@@ -44,7 +44,7 @@
     "purescript-jtable": "^4.0.0",
     "purescript-maps": "^2.0.1",
     "purescript-markdown": "^9.0.0",
-    "purescript-markdown-halogen": "^5.0.0",
+    "purescript-markdown-halogen": "^5.0.1",
     "purescript-minimatch": "^0.2.0",
     "purescript-oidc-crypt-utils": "^6.0.0",
     "purescript-parallel": "^2.1.0",
@@ -59,7 +59,8 @@
     "purescript-tuples": "^3.0.0",
     "purescript-uri": "^2.0.0",
     "purescript-clipboard": "^0.1.0",
-    "purescript-echarts": "56061619d882ace577315f59b14a904261630889"
+    "purescript-echarts": "56061619d882ace577315f59b14a904261630889",
+    "purescript-type-equality": "^1.1.0"
   },
   "devDependencies": {
     "purescript-chalky": "^2.0.0",

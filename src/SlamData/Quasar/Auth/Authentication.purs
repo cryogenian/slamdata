@@ -61,7 +61,7 @@ import Data.Traversable as T
 import OIDC.Aff as OIDCAff
 import OIDC.Crypt as OIDCCrypt
 import OIDC.Crypt.JSONWebKey (JSONWebKey)
-import OIDC.Crypt.Types (IdToken(..), UnhashedNonce(..))
+import OIDC.Crypt.Types (IdToken, UnhashedNonce)
 import Quasar.Advanced.Types (ProviderR)
 import Quasar.Advanced.Types as QAT
 import SlamData.Config as Config
@@ -69,13 +69,13 @@ import SlamData.Notification (NotificationOptions)
 import SlamData.Notification as Notification
 import SlamData.Prelude
 import SlamData.Quasar.Auth.IdTokenStorageEvents (pullIdTokenFromStorageEvent)
-import SlamData.Quasar.Auth.Keys as AuthKeys
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LSK
 import SlamData.Quasar.Auth.Store as AuthStore
 
 import Text.Parsing.StringParser (ParseError(..))
 
 import Utils (passover)
-import Utils.LocalStorage as LocalStorage
 import Utils.DOM as DOMUtils
 
 data AuthenticationError
@@ -157,7 +157,7 @@ getIdTokenSilently
   → Aff (AuthEffects eff) EIdToken
 getIdTokenSilently message = do
   unhashedNonce ← liftEff OIDCAff.getRandomUnhashedNonce
-  liftEff $ AuthStore.storeUnhashedNonce message.keySuffix unhashedNonce
+  AuthStore.storeUnhashedNonce message.keySuffix unhashedNonce
   appendHiddenRequestIFrameToBody unhashedNonce
     >>= case _ of
       Left error → pure $ Left error
@@ -183,7 +183,7 @@ getIdTokenUsingPrompt
   → Aff (AuthEffects eff) EIdToken
 getIdTokenUsingPrompt message = do
   unhashedNonce ← liftEff OIDCAff.getRandomUnhashedNonce
-  liftEff $ AuthStore.storeUnhashedNonce message.keySuffix unhashedNonce
+  AuthStore.storeUnhashedNonce message.keySuffix unhashedNonce
   sequential
     $ parallel (getIdTokenFromLSOnChange message.providerR unhashedNonce)
     <|> parallel (prompt unhashedNonce)
@@ -259,7 +259,7 @@ createElement name =
     =<< DOMHTMLWindow.document
     =<< DOMHTML.window
 
-removeBodyChild ∷ ∀ eff.  Node → Eff (AuthEffects eff) (Either String Node)
+removeBodyChild ∷ ∀ eff.  Node → Eff (AuthEffects eff) (Either String Node)
 removeBodyChild child =
   either (pure ∘ Left) (map Right ∘ DOMNode.removeChild child) =<< getBodyNode
 
@@ -288,10 +288,10 @@ getIdToken message =
         getIdTokenUsingLocalStorage message
           >>= maybe (getIdTokenSilently message) (pure ∘ Right)
     -- Store provider and idToken for future local storage gets and reauthentications
-    liftEff $ case eIdToken of
+    case eIdToken of
       Left _ →
-        AuthStore.clearProvider message.keySuffix
-          *> AuthStore.clearIdToken message.keySuffix
+        AuthStore.removeProvider message.keySuffix
+          *> AuthStore.removeIdToken message.keySuffix
       Right idToken →
         AuthStore.storeProvider message.keySuffix (QAT.Provider message.providerR)
           *> AuthStore.storeIdToken message.keySuffix (Right idToken)
@@ -308,16 +308,12 @@ getIdTokenUsingLocalStorage message = do
     Tuple _ _ → pure Nothing
 
 getUnverifiedIdTokenUsingLocalStorage ∷ ∀ eff. String → Aff (AuthEffects eff) (Either String IdToken)
-getUnverifiedIdTokenUsingLocalStorage keySuffix =
-  flip bind (map IdToken)
-    <$> LocalStorage.getLocalStorage
-          (AuthKeys.hyphenatedSuffix AuthKeys.idTokenLocalStorageKey keySuffix)
+getUnverifiedIdTokenUsingLocalStorage =
+  map join ∘ LS.retrieve ∘ LSK.idTokenLocalStorageKey
 
 getUnhashedNonceUsingLocalStorage ∷ ∀ eff. String → Aff (AuthEffects eff) (Either String UnhashedNonce)
 getUnhashedNonceUsingLocalStorage keySuffix =
-  rmap UnhashedNonce
-    <$> LocalStorage.getLocalStorage
-          (AuthKeys.hyphenatedSuffix AuthKeys.nonceLocalStorageKey keySuffix)
+  LS.retrieve (LSK.nonceLocalStorageKey keySuffix)
 
 getIdTokenFromLSOnChange
   ∷ ∀ eff

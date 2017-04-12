@@ -45,7 +45,8 @@ import SlamData.Render.Common as RC
 import SlamData.Workspace.MillerColumns.Column.Component.Item as Item
 import SlamData.Workspace.MillerColumns.Column.Component.Query (Message(..), Message', Query(..), Query')
 import SlamData.Workspace.MillerColumns.Column.Component.State (ColumnState(..), State, initialState)
-import SlamData.Workspace.MillerColumns.Column.Options (ColumnOptions(..), LoadParams)
+import SlamData.Workspace.MillerColumns.Column.Component.Request as Req
+import SlamData.Workspace.MillerColumns.Column.Options (ColumnOptions(..))
 
 import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger)
 
@@ -169,11 +170,11 @@ component' (ColumnOptions colSpec) colPath =
       pure next
     HandleFilterChange text next → do
       trigger ← H.gets _.filterTrigger
-      H.modify (\st → st { tick = st.tick + 1, filterText = text })
+      H.modify (\st → st { lastRequestId = Req.succ st.lastRequestId, filterText = text })
       lift $ runDebounceTrigger trigger (UpdateFilter text)
       pure next
     UpdateFilter text next → do
-      H.modify (_ { filterText = text, items = L.Nil, lastLoadParams = Nothing })
+      H.modify (_ { filterText = text, items = L.Nil, lastLoadRequest = Nothing })
       load
       pure next
     HandleScroll ul next → do
@@ -192,24 +193,26 @@ component' (ColumnOptions colSpec) colPath =
         Right o → do
           H.raise $ Right o
       pure next
+    FulfilLoadRequest { requestId, items, nextOffset } next → do
+      expectedId ← H.gets _.lastRequestId
+      when (requestId == expectedId) $
+        H.modify \st' → st'
+          { items = st'.items <> items
+          , nextOffset = nextOffset
+          , state = Loaded
+          }
+      pure next
 
   load ∷ DSL a i o Unit
   load = do
-    { filterText, nextOffset, lastLoadParams, tick } ← H.get
+    { filterText, nextOffset, lastLoadRequest, lastRequestId } ← H.get
     let
-      shouldLoad = case lastLoadParams of
+      shouldLoad = case lastLoadRequest of
         Nothing → true
         Just { filter, offset } → filter /= filterText || offset /= nextOffset
     when shouldLoad do
       let
-        currentTick = tick + 1
-        params = { path: colPath, filter: filterText, offset: nextOffset }
-      H.modify (_ { state = Loading, lastLoadParams = Just params, tick = currentTick })
-      result ← lift (colSpec.load params)
-      postLoadTick ← H.gets _.tick
-      when (currentTick == postLoadTick) $
-        H.modify \st' → st'
-          { items = st'.items <> result.items
-          , nextOffset = result.nextOffset
-          , state = Loaded
-          }
+        requestId = Req.succ lastRequestId
+        params = { requestId, filter: filterText, offset: nextOffset }
+      H.modify (_ { state = Loading, lastLoadRequest = Just params, lastRequestId = requestId })
+      H.raise $ Left $ LoadRequest params

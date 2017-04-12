@@ -30,7 +30,7 @@ type State =
   { path :: DirPath
   , salt :: Salt
   , sort :: Sort
-  , presentMountGuide :: Boolean
+  , presentMountHint :: Boolean
   , version :: Maybe String
   , isMount :: Boolean
   , showHiddenFiles :: Boolean
@@ -43,8 +43,8 @@ _version = lens _.version _{version = _}
 _sort :: Lens' State Sort
 _sort = lens _.sort _{sort = _}
 
-_presentMountGuide :: Lens' State Boolean
-_presentMountGuide = lens _.presentMountGuide _{presentMountGuide = _}
+_presentMountHint :: Lens' State Boolean
+_presentMountHint = lens _.presentMountHint _{presentMountHint = _}
 
 _salt :: Lens' State Salt
 _salt = lens _.salt _{salt = _}
@@ -65,7 +65,7 @@ initialState :: State
 initialState =
   { path: rootDir
   , salt: Salt ""
-  , presentMountGuide: false
+  , presentMountHint: false
   , sort: Asc
   , version: Nothing
   , isMount: false

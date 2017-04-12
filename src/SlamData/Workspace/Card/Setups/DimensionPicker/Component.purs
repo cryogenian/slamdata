@@ -38,6 +38,7 @@ import Halogen.HTML.Properties as HP
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Setups.Dialog as CSD
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
+import SlamData.Workspace.MillerColumns.Column.Component.Request as MCR
 import SlamData.Workspace.MillerColumns.Column.Component as MCC
 import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Workspace.MillerColumns.TreeData as MCT
@@ -46,6 +47,7 @@ import SlamData.Workspace.Card.Setups.DimensionPicker.Component.Message as M
 data Query s a
   = UpdateSelection (Maybe s) a
   | RaiseMessage (M.Message s) a
+  | HandleLoadRequest (s × MCR.LoadRequest) a
 
 type State s =
   { selection ∷ Maybe s
@@ -71,12 +73,11 @@ type PickerOptions s =
   }
 
 pickerOptionsToColumnOptions ∷ ∀ s. Ord s ⇒ PickerOptions s → MCI.BasicColumnOptions s s
-pickerOptionsToColumnOptions { label, render, values, isSelectable } =
+pickerOptionsToColumnOptions { label, render, isSelectable } =
   MC.ColumnOptions
     { renderColumn: MCC.component
     , renderItem: MCI.component { render, label }
     , label
-    , load: MCT.loadFromTree label values
     , id
     , isLeaf: isSelectable
     }
@@ -130,10 +131,9 @@ picker opts =
       }
 
   handleMessage ∷ MC.Message' s s Void → Maybe (Query s Unit)
-  handleMessage =
-    either
-      (\(MC.SelectionChanged _ sel) → Just $ H.action $ UpdateSelection sel)
-      absurd
+  handleMessage = flip either absurd case _ of
+    MC.SelectionChanged _ sel → Just $ H.action $ UpdateSelection sel
+    MC.LoadRequest req → Just $ H.action $ HandleLoadRequest req
 
   eval ∷ Query s ~> DSL s
   eval = case _ of
@@ -142,4 +142,8 @@ picker opts =
       pure next
     RaiseMessage msg next → do
       H.raise msg
+      pure next
+    HandleLoadRequest req next → do
+      let res = MCT.loadFromTree opts.label opts.values req
+      H.query unit $ H.action $ MC.FulfilLoadRequest res
       pure next

@@ -63,7 +63,7 @@ renderSelection pack state = case state ^. ST._selected of
       { options: ST.transforms state
       , selection: (\a → a × a) <$> (Just $ Tr.Aggregation Ag.Sum)
       , title: "Choose transformation"
-      , toLabel: Tr.prettyPrintTransform
+      , toLabel: \t -> { text: Tr.prettyPrintTransform t, icon: Nothing }
       , deselectable: false
       , toSelection: const Nothing
       }

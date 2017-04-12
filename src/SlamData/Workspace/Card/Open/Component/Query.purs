@@ -20,8 +20,11 @@ import SlamData.Prelude
 
 import SlamData.GlobalMenu.Bus as GMB
 import SlamData.Workspace.Card.Open.Model (Open)
+import SlamData.Workspace.MillerColumns.Column.Component.Request (LoadRequest)
+import SlamData.Workspace.Card.Open.Item (AnyPath')
 
 data Query a
   = Init a
   | HandleSignInMessage GMB.SignInMessage a
   | UpdateSelection (Maybe Open) a
+  | HandleLoadRequest (AnyPath' × LoadRequest) a

@@ -19,6 +19,7 @@ module SlamData.Workspace.MillerColumns.Component.Query where
 import SlamData.Prelude
 
 import SlamData.Workspace.MillerColumns.Column.Component as Column
+import SlamData.Workspace.MillerColumns.Column.Component.Request (LoadRequest, LoadResponse)
 import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
 
 data Query a i o b
@@ -26,8 +27,10 @@ data Query a i o b
   | ChangeRoot (ColumnsData a i) b
   | HandleMessage Int i (Column.Message' a i o) b
   | Reload b
+  | FulfilLoadRequest (i × LoadResponse a) b
 
 data Message a i
   = SelectionChanged i (Maybe a)
+  | LoadRequest (i × LoadRequest)
 
 type Message' a i o = Either (Message a i) o

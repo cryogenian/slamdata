@@ -28,6 +28,7 @@ import Data.Set as S
 import Data.Unfoldable (unfoldr)
 
 import SlamData.Workspace.MillerColumns.Column.BasicFilter (mkFilter)
+import SlamData.Workspace.MillerColumns.Column.Component.Request (LoadRequest, LoadResponse)
 import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
 
 type Tree a = CF.Cofree L.List a
@@ -44,18 +45,18 @@ constructTree unfold root as =
 
 -- | This is only suitable for use when every `a` in the tree is unique.
 loadFromTree
-  ∷ ∀ m a r
-  . (Eq a, Applicative m)
+  ∷ ∀ a
+  . Eq a
   ⇒ (a → String)
   → Tree a
-  → { path ∷ a, filter ∷ String | r }
-  → m { items ∷ L.List a, nextOffset ∷ Maybe Int }
-loadFromTree label tree { path, filter } =
+  → a × LoadRequest
+  → a × LoadResponse a
+loadFromTree label tree (path × { requestId, filter }) =
   let
     labelFilter = mkFilter filter ∘ label
     items = L.filter labelFilter $ go $ pure tree
   in
-    pure { items, nextOffset: Nothing }
+    path × { requestId, items, nextOffset: Nothing }
   where
   go ∷ L.List (Tree a) → L.List a
   go branches =

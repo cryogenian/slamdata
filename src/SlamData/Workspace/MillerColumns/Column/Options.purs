@@ -18,16 +18,12 @@ module SlamData.Workspace.MillerColumns.Column.Options where
 
 import SlamData.Prelude
 
-import Data.List as L
-
 import Halogen as H
 import Halogen.HTML as HH
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Column.Component.Query as Column
 import SlamData.Workspace.MillerColumns.Column.Component.Item as Item
-
-type LoadParams i = { path ∷ i, filter ∷ String, offset ∷ Maybe Int }
 
 type ColumnComponent a i o =
   H.Component HH.HTML (Column.Query' a i o) (Maybe a) (Column.Message' a i o) Slam
@@ -40,7 +36,6 @@ newtype ColumnOptions a i o =
     { renderColumn ∷ ColumnOptions a i o → i → ColumnComponent a i o
     , renderItem ∷ i → a → ItemComponent a o
     , label ∷ a → String
-    , load ∷ LoadParams i → Slam { items ∷ L.List a, nextOffset ∷ Maybe Int }
     , isLeaf ∷ i → Boolean
     , id ∷ a → i
     }

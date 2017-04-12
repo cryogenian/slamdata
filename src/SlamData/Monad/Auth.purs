@@ -21,8 +21,6 @@ import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
 import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
 import SlamData.AuthenticationMode (AuthenticationMode, AllowedAuthenticationModes)
@@ -31,11 +29,11 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Prelude
 import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth.Authentication as Auth
-import SlamData.Quasar.Auth.Keys as AuthKeys
 import SlamData.Quasar.Error (QError)
 import SlamData.Quasar.Error as QError
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LSK
 import Utils (passover, singletonValue)
-import Utils.LocalStorage as LocalStorage
 
 getIdTokenSilently ∷ AllowedAuthenticationModes → Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
 getIdTokenSilently interactionlessSignIn idTokenRequestBus = do
@@ -52,7 +50,7 @@ getIdTokenSilently interactionlessSignIn idTokenRequestBus = do
   getWithProviderFromLocalStorage ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
   getWithProviderFromLocalStorage =
     shiftAffErrorsIntoQError $ traverse (get AuthenticationMode.ChosenProvider)
-      =<< liftEff getProviderFromLocalStorage
+      =<< getProviderFromLocalStorage
 
   getWithSingletonProviderFromQuasar ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
   getWithSingletonProviderFromQuasar =
@@ -84,12 +82,11 @@ getIdTokenSilently interactionlessSignIn idTokenRequestBus = do
       (const $ Left $ unauthorizedError $ Just tooManyProvidersMessage)
 
   -- Get previously chosen provider from local storage
-  getProviderFromLocalStorage ∷ Eff SlamDataEffects (Either QError QAT.ProviderR)
+  getProviderFromLocalStorage ∷ Aff SlamDataEffects (Either QError QAT.ProviderR)
   getProviderFromLocalStorage =
     lmap (unauthorizedError ∘ Just) ∘ map QAT.runProvider
-      <$> LocalStorage.getLocalStorage
-            (AuthKeys.hyphenatedSuffix
-               AuthKeys.providerLocalStorageKey
+      <$> LS.retrieve
+            (LSK.providerLocalStorageKey
                $ AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider)
 
   noProvidersMessage ∷ String

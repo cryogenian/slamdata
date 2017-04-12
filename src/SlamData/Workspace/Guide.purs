@@ -91,15 +91,3 @@ flipGuideSteps =
     , text: "Thanks for exploring your Deck's flip side with us. If you get stuck or want to learn more please check out the help menu."
     }
   ]
-
-dismissedCardGuideKey ∷ String
-dismissedCardGuideKey = "dismissedCardGuide"
-
-dismissedFlipGuideKey ∷ String
-dismissedFlipGuideKey = "dismissedFlipGuide"
-
-dismissedFocusDeckHintKey ∷ String
-dismissedFocusDeckHintKey = "dismissedFocusDeckHint"
-
-dismissedFocusDeckFrameHintKey ∷ String
-dismissedFocusDeckFrameHintKey = "dismissedFocusDeckFrameHint"

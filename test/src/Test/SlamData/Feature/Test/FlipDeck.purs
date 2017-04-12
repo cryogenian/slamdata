@@ -62,7 +62,7 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
     Expect.textInDisplayMarkdownCard "Quarterly"
-    warnMsg "SD-1538, we don't know if workspace has been saved already"
+    warnMsg "https://github.com/slamdata/slamdata/issues/1077, we don't know if workspace has been saved already"
     later 1000 $ pure unit
     Interact.flipDeck
     Expect.backsideMenuPresented

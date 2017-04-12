@@ -28,7 +28,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Guide.Notification as Guide
+import SlamData.Hint as Hint
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _isMount, _sort)
@@ -61,11 +61,11 @@ toolbar ∷ ∀ p. State → HTML p (Query Unit)
 toolbar state =
   H.div
     [ P.classes [ B.colXs5, CSS.toolbarMenu ] ]
-    $ ( guard state.presentMountGuide $>
-        Guide.render
-          Guide.RightArrow
+    $ ( guard state.presentMountHint $>
+        Hint.render
+          Hint.RightArrow
           (H.ClassName "sd-mount-guide")
-          DismissMountGuide
+          DismissMountHint
           "To begin exploring data, please press the Mount button"
       )
     <> [ H.ul
