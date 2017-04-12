@@ -114,20 +114,17 @@ setValue fld cursor state
     $ L.filter (\(k × d) → Just jc ≠ (d ^? D._value ∘ D._projection))
     $ SM.toUnfoldable dimMap
 
-  wrapFn =
-    maybe D.projection _.dimension $ DMD.defaults ^. T.unpackProjection fld
+  wrapFn = (DMD.getDefaults fld).dimension
 
 showValue ∷ T.Projection → Maybe J.JCursor → String
 showValue fld c = do
-  fromMaybe "" $ map showJCursor c <|> (_.value <$> DMD.defaults ^. T.unpackProjection fld)
+  fromMaybe (DMD.getDefaults fld).value $ map showJCursor c
 
 chooseLabel ∷ T.Projection → String
-chooseLabel fld =
-  maybe "" _.select $ DMD.defaults ^. T.unpackProjection fld
+chooseLabel = _.select ∘ DMD.getDefaults
 
 showDefaultLabel ∷ T.Projection → Maybe J.JCursor → String
-showDefaultLabel fld c =
-  fromMaybe "" $ (_.label <$> DMD.defaults ^. T.unpackProjection fld) <|> map showJCursor c
+showDefaultLabel = const ∘ _.label ∘ DMD.getDefaults
 
 setTransform ∷ T.Projection → Maybe Tr.Transform → State → State
 setTransform fld t = _dimMap ∘ T.unpackProjection fld ∘ _Just ∘ D._value ∘ D._transform .~ t

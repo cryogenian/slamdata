@@ -16,13 +16,14 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.DimensionMap.Defaults
   ( ProjectionDefaults
-  , defaults
+  , getDefaults
+  , dynamicMeasure
   ) where
 
 import SlamData.Prelude
 import Data.Argonaut (JCursor)
-import Data.Array as A
-import Data.Lens ((?~))
+import Data.Int as Int
+import Data.Lens ((?~), (^.))
 import Data.StrMap as SM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Package.DSL as T
@@ -39,8 +40,13 @@ type ProjectionDefaults =
 jcursorProjection ∷ JCursor → D.Dimension Void JCursor
 jcursorProjection = D.projection
 
+getDefaults ∷ T.Projection → ProjectionDefaults
+getDefaults prj = case defaults ^. T.unpackProjection prj of
+  Just a  → a
+  Nothing → dynamicMeasure prj
+
 defaults ∷ SM.StrMap ProjectionDefaults
-defaults = foldr insertProjection SM.empty (statics <> dynamics)
+defaults = foldr insertProjection SM.empty statics
   where
   insertProjection (prj × val) =
     T.unpackProjection prj ?~ val
@@ -163,11 +169,12 @@ statics =
       }
   ]
 
-dynamics ∷ Array (T.Projection × ProjectionDefaults)
-dynamics = A.range 0 30 <#> \ix →
-  Pr._dimIx ix ×
-    { dimension: jcursorProjection
-    , label: "Measure #" <> show (ix + 1)
-    , value: "Choose measure"
-    , select: "Choose measure"
-    }
+dynamicMeasure ∷ T.Projection → ProjectionDefaults
+dynamicMeasure prj =
+  { dimension: jcursorProjection
+  , label: "Measure" <> maybe "" (\o → " #" <> show o) offset
+  , value: "Choose measure"
+  , select: "Choose measure"
+  }
+  where
+  offset = map (add 1) ∘ Int.fromString =<< T.idReflection ^. T.unpackProjection prj
