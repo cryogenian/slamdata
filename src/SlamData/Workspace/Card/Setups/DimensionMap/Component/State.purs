@@ -27,10 +27,9 @@ import Data.StrMap as SM
 import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Defaults as DMD
 import SlamData.Workspace.Card.Setups.Transform as Tr
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Package.DSL as T
-import SlamData.Workspace.Card.Setups.Package.Projection as Pr
 
 type Package = T.Package M.AnyCardModel (Set.Set J.JCursor)
 
@@ -115,106 +114,20 @@ setValue fld cursor state
     $ L.filter (\(k × d) → Just jc ≠ (d ^? D._value ∘ D._projection))
     $ SM.toUnfoldable dimMap
 
-
-  wrapFn = fromMaybe D.projection $ wrapFns ^. T.unpackProjection fld
-  wrapFns =
-    SM.empty
-      # (T.unpackProjection Pr._dimension ?~ D.projection)
-      ∘ (T.unpackProjection Pr._high ?~ (D.projectionWithAggregation $ Just Ag.Sum))
-      ∘ (T.unpackProjection Pr._low ?~ (D.projectionWithAggregation $ Just Ag.Sum))
-      ∘ (T.unpackProjection Pr._open ?~ (D.projectionWithAggregation $ Just Ag.Sum))
-      ∘ (T.unpackProjection Pr._close ?~ (D.projectionWithAggregation $ Just Ag.Sum))
-      ∘ (T.unpackProjection Pr._parallel ?~ D.projection)
-      ∘ (T.unpackProjection Pr._value ?~ (D.projectionWithAggregation $ Just Ag.Sum))
-      ∘ (T.unpackProjection Pr._series ?~ D.projection)
-      ∘ (T.unpackProjection Pr._category ?~ D.projection)
-      ∘ (T.unpackProjection Pr._stack ?~ D.projection)
-      ∘ (T.unpackProjection Pr._source ?~ D.projection)
-      ∘ (T.unpackProjection Pr._target ?~ D.projection)
-      ∘ (T.unpackProjection Pr._abscissa ?~ D.projection)
-      ∘ (T.unpackProjection Pr._ordinate ?~ (D.projectionWithAggregation $ Just Ag.Sum))
-      ∘ (T.unpackProjection Pr._secondValue ?~ (D.projectionWithAggregation $ Just Ag.Sum))
-      ∘ (T.unpackProjection Pr._donut ?~ D.projection)
-      ∘ (T.unpackProjection Pr._multiple ?~ D.projection)
-      ∘ (T.unpackProjection Pr._size ?~ (D.projectionWithAggregation $ Just Ag.Sum))
-      ∘ (T.unpackProjection Pr._color ?~ D.projection)
+  wrapFn =
+    maybe D.projection _.dimension $ DMD.defaults ^. T.unpackProjection fld
 
 showValue ∷ T.Projection → Maybe J.JCursor → String
 showValue fld c = do
-  fromMaybe "" $ map showJCursor c <|> (values ^. T.unpackProjection fld)
-  where
-  values =
-    SM.empty
-      # (T.unpackProjection Pr._dimension ?~ "Select dimension")
-      ∘ (T.unpackProjection Pr._high ?~ "Select high")
-      ∘ (T.unpackProjection Pr._low ?~ "Select low")
-      ∘ (T.unpackProjection Pr._open ?~ "Select open")
-      ∘ (T.unpackProjection Pr._close ?~ "Select close")
-      ∘ (T.unpackProjection Pr._parallel ?~ "Select parallel")
-      ∘ (T.unpackProjection Pr._value ?~ "Select measure")
-      ∘ (T.unpackProjection Pr._series ?~ "Select series")
-      ∘ (T.unpackProjection Pr._category ?~ "Select category")
-      ∘ (T.unpackProjection Pr._stack ?~ "Select stack")
-      ∘ (T.unpackProjection Pr._source ?~ "Select source")
-      ∘ (T.unpackProjection Pr._target ?~ "Select target")
-      ∘ (T.unpackProjection Pr._abscissa ?~ "Select x-axis")
-      ∘ (T.unpackProjection Pr._ordinate ?~ "Select y-axis")
-      ∘ (T.unpackProjection Pr._secondValue ?~ "Select measure")
-      ∘ (T.unpackProjection Pr._donut ?~ "Select donut")
-      ∘ (T.unpackProjection Pr._multiple ?~ "Select multiple")
-      ∘ (T.unpackProjection Pr._size ?~ "Select size")
-      ∘ (T.unpackProjection Pr._color ?~ "Select color")
+  fromMaybe "" $ map showJCursor c <|> (_.value <$> DMD.defaults ^. T.unpackProjection fld)
 
 chooseLabel ∷ T.Projection → String
-chooseLabel fld = fromMaybe "" $ labels ^. T.unpackProjection fld
-  where
-  labels =
-    SM.empty
-      # (T.unpackProjection Pr._dimension ?~ "Choose dimension")
-      ∘ (T.unpackProjection Pr._high ?~ "Choose measure for high position")
-      ∘ (T.unpackProjection Pr._low ?~ "Choose measure for close position")
-      ∘ (T.unpackProjection Pr._open ?~ "Choose measure for open position")
-      ∘ (T.unpackProjection Pr._close ?~ "Choose measure for close position")
-      ∘ (T.unpackProjection Pr._parallel ?~ "Choose measure for low position")
-      ∘ (T.unpackProjection Pr._value ?~ "Choose measure")
-      ∘ (T.unpackProjection Pr._series ?~ "Choose series")
-      ∘ (T.unpackProjection Pr._category ?~ "Choose category")
-      ∘ (T.unpackProjection Pr._stack ?~ "Choose stack")
-      ∘ (T.unpackProjection Pr._source ?~ "Choose source")
-      ∘ (T.unpackProjection Pr._target ?~ "Choose target")
-      ∘ (T.unpackProjection Pr._abscissa ?~ "Choose X-Axis")
-      ∘ (T.unpackProjection Pr._ordinate ?~ "Choose Y-Axis")
-      ∘ (T.unpackProjection Pr._secondValue ?~ "Choose measure")
-      ∘ (T.unpackProjection Pr._donut ?~ "Choose donut")
-      ∘ (T.unpackProjection Pr._size ?~ "Choose size")
-      ∘ (T.unpackProjection Pr._color ?~ "Choose color")
-
+chooseLabel fld =
+  maybe "" _.select $ DMD.defaults ^. T.unpackProjection fld
 
 showDefaultLabel ∷ T.Projection → Maybe J.JCursor → String
 showDefaultLabel fld c =
-  fromMaybe "" $ (labels ^. T.unpackProjection fld) <|> map showJCursor c
-  where
-  labels =
-    SM.empty
-      # (T.unpackProjection Pr._dimension ?~ "Dimension label")
-      ∘ (T.unpackProjection Pr._high ?~ "High position label")
-      ∘ (T.unpackProjection Pr._low ?~ "Low position label")
-      ∘ (T.unpackProjection Pr._open ?~ "Open position label")
-      ∘ (T.unpackProjection Pr._close ?~ "Close position label")
-      ∘ (T.unpackProjection Pr._parallel ?~ "Parallel label")
-      ∘ (T.unpackProjection Pr._value ?~ "Measure label")
-      ∘ (T.unpackProjection Pr._series ?~ "Series label")
-      ∘ (T.unpackProjection Pr._category ?~ "Category label")
-      ∘ (T.unpackProjection Pr._stack ?~ "Stack label")
-      ∘ (T.unpackProjection Pr._source ?~ "Source label")
-      ∘ (T.unpackProjection Pr._target ?~ "Target label")
-      ∘ (T.unpackProjection Pr._abscissa ?~ "X-Axis label")
-      ∘ (T.unpackProjection Pr._ordinate ?~ "Y-Axis label")
-      ∘ (T.unpackProjection Pr._secondValue ?~ "Measure #2 label")
-      ∘ (T.unpackProjection Pr._donut ?~ "Donut label")
-      ∘ (T.unpackProjection Pr._multiple ?~ "Multiple label")
-      ∘ (T.unpackProjection Pr._size ?~ "Size label")
-      ∘ (T.unpackProjection Pr._color ?~ "Color label")
+  fromMaybe "" $ (_.label <$> DMD.defaults ^. T.unpackProjection fld) <|> map showJCursor c
 
 setTransform ∷ T.Projection → Maybe Tr.Transform → State → State
 setTransform fld t = _dimMap ∘ T.unpackProjection fld ∘ _Just ∘ D._value ∘ D._transform .~ t
