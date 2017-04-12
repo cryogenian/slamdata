@@ -105,25 +105,6 @@ applyTransform =
     in Sql.Projection { alias, expr: Sql.invokeFunction funcName $ L.singleton expr }
 
 
-printTransform ∷ Transform → String → String
-printTransform =
-  foldTransform
-    (datePart ∘ DP.printDate)
-    (datePart ∘ DP.printTime)
-    aggregation
-    stringOp
-    N.printNumericOperation
-    (const count)
-  where
-  count value = "COUNT(" <> value <> ")"
-  datePart part value = "DATE_PART(\"" <> part <> "\", " <> value <> ")"
-  stringOp op value = S.prettyPrintStringOperation op <> "(" <> value <> ")"
-  aggregation ag value = case ag of
-    Ag.Minimum → "MIN(" <> value <> ")"
-    Ag.Maximum → "MAX(" <> value <> ")"
-    Ag.Average → "AVG(" <> value <> ")"
-    Ag.Sum     → "SUM(" <> value <> ")"
-
 dateTransforms ∷ Array Transform
 dateTransforms = DatePart <$> DP.dateParts
 

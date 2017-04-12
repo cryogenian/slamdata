@@ -73,7 +73,7 @@ evalOpen model varMap = case model of
         fromMaybe Path.rootDir $ Path.parentDir res
 
     CEM.liftQ $ QQ.viewQuery res sql varMap'
-    pure $ Port.resourceOut $ Port.View res (Sql.print sql) varMap
+    pure $ Port.resourceOut $ Port.View res (Sql.print $ sql) varMap
 
   where
   noResource ∷ ∀ a. m a

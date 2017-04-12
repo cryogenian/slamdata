@@ -86,7 +86,6 @@ ssValueString = case _ of
   SS.Text v → v
   SS.Tag v → v
 
-
 topFieldF ∷ Algebra (SqlF Ej.EJsonF) (Maybe Sql)
 topFieldF = case _ of
   Splice Nothing → Just $ embed $ Splice Nothing
@@ -100,7 +99,7 @@ topFieldF = case _ of
 
 projections ∷ L.List Sql → L.List (Sql.Projection Sql)
 projections =
-  map Sql.projection --(Sql.Projection ∘ { expr: _, alias: Nothing})
+  map Sql.projection
   ∘ L.nub
   ∘ L.catMaybes
   ∘ map (cata topFieldF)
@@ -110,7 +109,7 @@ filter fs =
   ands
   ∘ map ors
   ∘ unwrap
-  ∘ map (termToSql $ map flattenIndex fs)
+  ∘ map (termToSql $ L.nub $ map flattenIndex fs)
 
 ands ∷ L.List Sql → Sql
 ands = case _ of
@@ -130,6 +129,7 @@ flattenIndex = transAna flattenIndexT
 flattenIndexT ∷ ∀ t. Transform t (SqlF Ej.EJsonF) (SqlF Ej.EJsonF)
 flattenIndexT = case _ of
   Binop { op: Sql.IndexDeref, lhs } → Unop { op: Sql.FlattenArrayValues, expr: lhs }
+  Binop { op: Sql.FieldDeref, lhs } → Unop { op: Sql.FlattenMapValues, expr: lhs }
   s → s
 
 termToSql ∷ L.List Sql → SS.Term → Sql

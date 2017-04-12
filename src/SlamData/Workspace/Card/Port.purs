@@ -53,11 +53,12 @@ module SlamData.Workspace.Card.Port
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view, (.~), (?~))
+import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
 import Data.List as List
 import Data.Map as Map
 import Data.Set as Set
 import Data.StrMap as SM
+import Data.Path.Pathy as Path
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
@@ -172,12 +173,7 @@ flattenResources = map go
 
 resourceToVarMapValue ∷ Resource → VarMapValue
 resourceToVarMapValue r =
-  VarMapValue
-    $ Sql.buildSelect
-    $ (Sql._projections
-       .~ (pure $ Sql.projection (Sql.splice Nothing)))
-    ∘ (Sql._relations
-       ?~ (Sql.TableRelation { path: Left $ r ^. _filePath, alias: Nothing }))
+  VarMapValue $ Sql.ident $ Path.printPath $ r ^. _filePath
 
 defaultResourceVar ∷ String
 defaultResourceVar = "results"

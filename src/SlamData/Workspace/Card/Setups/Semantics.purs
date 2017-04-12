@@ -276,16 +276,6 @@ semanticsToSql = case _ of
       (pure ∘ Sql.invokeFunction "TIMESTAMP" ∘ pure ∘ Sql.string)
       $ Fd.formatDateTime "YYYY-MM-DDTHH:mm:ssZ" dt
 
-semanticsToSQLStrings ∷ Semantics → Array String
-semanticsToSQLStrings (Value v) = [ show v ]
-semanticsToSQLStrings (Percent v) = [ "\"" <> show v <> "%\"", show (v/100.0) ]
-semanticsToSQLStrings (Money v m) = [ "\"" <> show v <> show m <> "\"" ]
-semanticsToSQLStrings (Category s) = [ show s ]
-semanticsToSQLStrings (Bool b) = [ show b ]
-semanticsToSQLStrings (Time t) = [ show $ printTime t ]
-semanticsToSQLStrings (Date d) = [ show $ printDate d ]
-semanticsToSQLStrings (DateTime (DT.DateTime d t)) = [ show $ printDate d <> " " <> printTime t ]
-
 semanticsToNumber ∷ Semantics → Maybe Number
 semanticsToNumber (Value v) = pure v
 semanticsToNumber (Money v _) = pure v
