@@ -3,7 +3,7 @@
 .sd-card-chart-options, .sd-form-input-setup {
 
     .sd-axes-selector {
-        padding: 0 5px;
+        padding: 0;
     }
 
     > div {
@@ -46,14 +46,15 @@
         }
     }
     form.chart-configure-form, div.chart-configure-form {
-        margin: 0;
         padding: 0;
         display: inline-block;
         background: transparent;
         position: relative;
         vertical-align: top;
         border: 2px solid #ddd;
-
+        left: 5px;
+        height: 10rem;
+        margin: 6px -1px 0 -1px;
 
         .sd-dimension-button-disabled {
             *, & {
@@ -62,10 +63,6 @@
                 color: #aaa;
             }
         }
-        padding: 0;
-        display: inline-block;
-        height: 10rem;
-        margin: 6px -2px 0 0;
 
         .sd-size-xsmall & {
             width: 100%;
