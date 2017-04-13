@@ -28,6 +28,7 @@ import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Int as Int
+import Data.Lens ((^?), _Just)
 import Data.Map as M
 import Data.Set as Set
 
@@ -38,19 +39,20 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Line.Model (Model, LineR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Line))
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Chart.Line.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 eval
   ∷ ∀ m
@@ -61,8 +63,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Line buildLine m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Line buildLine m \axes → m
 
 type LineSerie =
   { name ∷ Maybe String
@@ -70,7 +71,7 @@ type LineSerie =
   , rightItems ∷ String >> {value ∷ Number, symbolSize ∷ Int}
   }
 
-buildLineData ∷ LineR → JArray → Array LineSerie
+buildLineData ∷ ModelR → JArray → Array LineSerie
 buildLineData r records = series
   where
   -- | maybe series >> dimension >> left values × right values × symbol sizes
@@ -86,19 +87,19 @@ buildLineData r records = series
     let
       getMaybeStringFromJson = getMaybeString js
       getValuesFromJson = getValues js
-    in case getMaybeStringFromJson r.dimension of
+    in case getMaybeStringFromJson =<< r.dimension ^? D._value ∘ D._projection of
       Nothing → acc
       Just dimKey →
         let
           mbSeries =
-            getMaybeStringFromJson =<< r.series
+            getMaybeStringFromJson =<< r.series ^? _Just ∘ D._value ∘ D._projection
           leftValues =
-            getValuesFromJson $ pure r.value
+            getValuesFromJson $ r.value ^? D._value ∘ D._projection
           rightValues =
-            getValuesFromJson r.secondValue
+            getValuesFromJson $ r.secondValue ^? _Just ∘ D._value ∘ D._projection
           sizes
             | r.optionalMarkers = [ ]
-            | otherwise = getValuesFromJson r.size
+            | otherwise = getValuesFromJson $ r.size ^? _Just ∘ D._value ∘ D._projection
 
           alterSeriesFn
             ∷ Maybe (String >> (Array Number × Array Number × Array Number))
@@ -136,24 +137,36 @@ buildLineData r records = series
     → {value ∷ Number, symbolSize ∷ Int}
   mkLeftItem (ls × _ × ss) =
     let
-      value = Ag.runAggregation r.valueAggregation ls
+      value =
+        flip Ag.runAggregation ls
+        $ fromMaybe Ag.Sum
+        $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
       symbolSize
         | r.optionalMarkers = Int.floor r.minSize
-        | otherwise = maybe zero (\ag → Int.floor $ Ag.runAggregation ag ss) r.sizeAggregation
+        | otherwise =
+          Int.floor
+          $ flip Ag.runAggregation ss
+          $ fromMaybe Ag.Sum
+          $ r.size ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
+
     in {value, symbolSize}
 
   mkRightItem
     ∷ Array Number × Array Number × Array Number
     → {value ∷ Number, symbolSize ∷ Int}
   mkRightItem (_ × rs × ss) =
-    case r.secondValueAggregation of
+    case r.secondValue ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation  of
       Nothing → {symbolSize: zero, value: zero}
       Just valAgg →
         let
-          value = Ag.runAggregation valAgg rs
+          value = Ag.runAggregation valAgg ss
           symbolSize
             | r.optionalMarkers = Int.floor r.minSize
-            | otherwise = maybe zero (\ag → Int.floor $ Ag.runAggregation ag ss) r.sizeAggregation
+            | otherwise =
+              Int.floor
+              $ flip Ag.runAggregation ss
+              $ fromMaybe Ag.Sum
+              $ r.size ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
         in {value, symbolSize}
 
 
@@ -199,7 +212,7 @@ buildLineData r records = series
         map (\x → x{symbolSize = relativeSize x.symbolSize}) items
 
 
-buildLine ∷ Axes → LineR → JArray → DSL OptionI
+buildLine ∷ Axes → ModelR → JArray → DSL OptionI
 buildLine axes r records = do
   E.tooltip case r.size of
     Just _ → E.triggerItem
@@ -232,11 +245,18 @@ buildLine axes r records = do
   lineData ∷ Array LineSerie
   lineData = buildLineData r records
 
+  xAxisType ∷ Ax.AxisType
+  xAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType
+    <$> (r.dimension ^? D._value ∘ D._projection)
+    <*> (pure axes)
+
   xAxisConfig ∷ Ax.EChartsAxisConfiguration
-  xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.dimension axes
+  xAxisConfig = Ax.axisConfiguration xAxisType
 
   xSortFn ∷ String → String → Ordering
-  xSortFn = Ax.compareWithAxisType $ Ax.axisType r.dimension axes
+  xSortFn = Ax.compareWithAxisType xAxisType
 
   xValues ∷ Array String
   xValues =
@@ -248,7 +268,12 @@ buildLine axes r records = do
   seriesNames ∷ Array String
   seriesNames = case r.series of
     Just _ → A.fromFoldable $ foldMap (_.name ⋙ foldMap Set.singleton) lineData
-    Nothing → map show $ A.catMaybes [ Just r.value, r.secondValue ]
+    Nothing →
+      map show
+      $ A.catMaybes
+      [ r.value ^? D._value ∘ D._projection
+      , r.secondValue ^? _Just ∘ D._value ∘ D._projection
+      ]
 
   needTwoAxes ∷ Boolean
   needTwoAxes = isJust r.secondValue
@@ -270,7 +295,7 @@ buildLine axes r records = do
         Just _ →
           for_ lineSerie.name E.name
         Nothing →
-          E.name $ show r.value
+          traverse_ (E.name ∘ show) $ r.value ^? D._value ∘ D._projection
 
     when needTwoAxes $ E.line do
       E.buildItems $ for_ xValues \key →
@@ -287,7 +312,7 @@ buildLine axes r records = do
         Just _ →
           for_ lineSerie.name E.name
         Nothing →
-          traverse_ (E.name ∘ show) r.secondValue
+          traverse_ (E.name ∘ show) $ r.secondValue ^? _Just ∘ D._value ∘ D._projection
 
   yAxis ∷ DSL ETP.YAxisI
   yAxis = do

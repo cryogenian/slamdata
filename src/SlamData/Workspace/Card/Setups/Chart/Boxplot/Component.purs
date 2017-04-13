@@ -20,34 +20,67 @@ module SlamData.Workspace.Card.Setups.Chart.Boxplot.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (.~))
-
-import DOM.Event.Event as DEE
+import Data.Lens ((^?), _Just)
 
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Events as HE
 
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Form.Select (_value)
-import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State as ES
+import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
-import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.Query as Q
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as M
-import SlamData.Workspace.Card.Eval.State (_Axes)
+import SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.State as ST
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
+import SlamData.Workspace.Card.Setups.Package.DSL as P
+import SlamData.Workspace.Card.Setups.Package.Lenses as PL
+import SlamData.Workspace.Card.Setups.Package.Projection as PP
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
-type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+
+package ∷ DS.Package
+package = P.onPrism (M._BuildBoxplot ∘ _Just) $ DS.interpret do
+  dimension ←
+    P.field PL._dimension PP._dimension
+      >>= P.addSource _.category
+      >>= P.addSource _.value
+      >>= P.addSource _.time
+      >>= P.addSource _.date
+      >>= P.addSource _.datetime
+
+  value ←
+    P.field PL._value PP._value
+      >>= P.addSource _.value
+      >>= P.isFilteredBy dimension
+
+  series ←
+    P.optional PL._series PP._series
+      >>= P.addSource _.category
+      >>= P.addSource _.time
+      >>= P.isFilteredBy dimension
+      >>= P.isActiveWhen dimension
+
+
+  parallel ←
+    P.optional PL._parallel PP._parallel
+      >>= P.addSource _.category
+      >>= P.addSource _.time
+      >>= P.isFilteredBy dimension
+      >>= P.isFilteredBy series
+      >>= P.isActiveWhen dimension
+
+
+  pure unit
 
 boxplotBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 boxplotBuilderComponent =
@@ -57,78 +90,16 @@ boxplotBuilderComponent =
     , receiver: const Nothing
     , initialState: const ST.initialState
     }
+
 render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    [ renderDimension state
-    , renderValue state
-    , renderSeries state
-    , renderParallel state
-    , renderPicker state
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
+        $ HE.input \l → right ∘ Q.HandleDims l
     ]
 
-selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
-selecting f q _ = right (Q.Select (f q) unit)
-
-renderPicker ∷ ST.State → HTML
-renderPicker state = case state.picker of
-  Nothing → HH.text ""
-  Just { options, select } →
-    let
-      conf =
-        BCI.dimensionPicker options
-          case select of
-            Q.Dimension _   → "Choose dimension"
-            Q.Value _       → "Choose measure"
-            Q.Series _      → "Choose series"
-            Q.Parallel _    → "Choose parallel"
-    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
-
-renderDimension ∷ ST.State → HTML
-renderDimension state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Dimension") (selecting Q.Dimension))
-        state.dimension
-    ]
-
-renderValue ∷ ST.State → HTML
-renderValue state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Measure") (selecting Q.Value))
-        state.value
-    ]
-
-renderSeries ∷ ST.State → HTML
-renderSeries state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Series") (selecting Q.Series))
-        state.series
-    ]
-
-renderParallel ∷ ST.State → HTML
-renderParallel state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
-        state.parallel
-    ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -138,61 +109,41 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    pure $ k $ Card.BuildBoxplot $ M.behaviour.save st
-  CC.Load (Card.BuildBoxplot model) next → do
-    H.modify $ M.behaviour.load model
-    pure next
-  CC.Load card next →
+    let
+      inp = M.BuildBoxplot $ Just
+        { dimension: D.topDimension
+        , value: D.topDimension
+        , series: Nothing
+        , parallel: Nothing
+        }
+    out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
+    pure $ k case join out of
+      Nothing → M.BuildBoxplot Nothing
+      Just a → a
+  CC.Load m next → do
+    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     pure next
   CC.ReceiveInput _ _ next →
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
-    for_ (evalState ^? _Axes) \axes → do
-      H.modify _{axes = axes}
-      H.modify M.behaviour.synchronize
+    for_ (evalState ^? ES._Axes) \axes → do
+      H.query' CS.cpDims unit $ H.action $ DQ.SetAxes axes
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply
-      if dims.height < 516.0 ∨ dims.height < 416.0
+      if dims.width < 576.0 ∨ dims.height < 416.0
       then Low
       else High
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = do
-  H.modify M.behaviour.synchronize
+raiseUpdate =
   H.raise CC.modelUpdate
 
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
-  Q.PreventDefault e next → do
-    H.liftEff $ DEE.preventDefault e
+  Q.HandleDims q next → do
+    case q of
+      DQ.Update _ → raiseUpdate
     pure next
-  Q.Select sel next → do
-    case sel of
-      Q.Value a     → updatePicker ST._value Q.Value a
-      Q.Dimension a → updatePicker ST._dimension Q.Dimension a
-      Q.Series a    → updatePicker ST._series Q.Series a
-      Q.Parallel a  → updatePicker ST._parallel Q.Parallel a
-    pure next
-  Q.HandleDPMessage m next → case m of
-    DPC.Dismiss → do
-      H.modify _ { picker = Nothing }
-      pure next
-    DPC.Confirm value → do
-      st ← H.get
-      let
-        value' = flattenJCursors value
-      for_ st.picker \{ select } → case select of
-        Q.Value _     → H.modify (ST._value ∘ _value ?~ value')
-        Q.Dimension _ → H.modify (ST._dimension ∘ _value ?~ value')
-        Q.Series _    → H.modify (ST._series ∘ _value ?~ value')
-        Q.Parallel _  → H.modify (ST._parallel ∘ _value ?~ value')
-      H.modify _ { picker = Nothing }
-      raiseUpdate
-      pure next
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate

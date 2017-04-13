@@ -16,26 +16,12 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Funnel.Component.Query where
 
-import Data.Argonaut (JCursor)
-
-import DOM.Event.Types (Event)
-
 import SlamData.Common.Align (Align)
 import SlamData.Common.Sort (Sort)
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
-
-data Selection f
-  = Category (f JCursor)
-  | Value (f JCursor)
-  | ValueAgg (f Aggregation)
-  | Series (f JCursor)
-  | Order (f Sort)
-  | Align (f Align)
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
+import SlamData.Workspace.Card.Setups.Inputs as BCI
 
 data Query a
-  = Select (Selection SelectAction) a
-  | PreventDefault Event a
-  | HandleDPMessage (Message JCursorNode) a
+  = SelectAlign (BCI.SelectAction Align) a
+  | SelectOrder (BCI.SelectAction Sort) a
+  | HandleDims Q.Message a

@@ -122,6 +122,7 @@ render st =
         , selection: (\a → a × a) <$> selection
         , title: "Choose transformation"
         , toLabel: \t -> { text: T.prettyPrintTransform t, icon: Nothing }
+        , deselectable: true
         , toSelection: case _ of
             T.Numeric (N.Floor _) → Just $ HCP.proxy TPC.transformFloor
             T.Numeric (N.Round _) → Just $ HCP.proxy TPC.transformRound
@@ -172,6 +173,10 @@ render st =
               , onDismiss: HE.input_ (right ∘ Remove (ForGroupBy slot))
               , onConfigure: HE.input_ (right ∘ Configure (ForGroupBy slot))
               , onMouseDown: HE.input (\e → right ∘ OrderStart (ForGroupBy slot) e)
+              , onClick: const Nothing
+              , onLabelClick: const Nothing
+              , disabled: false
+              , dismissable: true
               }
           ]
       ]
@@ -242,6 +247,10 @@ render st =
               , onDismiss: HE.input_ (right ∘ Remove (ForColumn slot))
               , onConfigure: HE.input_ (right ∘ Configure (ForColumn slot))
               , onMouseDown: HE.input (\e → right ∘ OrderStart (ForColumn slot) e)
+              , onClick: const Nothing
+              , onLabelClick: const Nothing
+              , disabled: false
+              , dismissable: true
               }
           ]
       ]
@@ -440,7 +449,7 @@ evalOptions = case _ of
         st ← H.get
         let
           value' = flattenJCursors value
-          cell = D.projectionWithCategory (PTM.defaultJCursorCategory value') value'
+          cell = D.projectionWithCategory (D.defaultJCursorCategory value') value'
         H.modify _
           { fresh = st.fresh + 1
           , dimensions = Array.snoc st.dimensions (st.fresh × cell)
@@ -493,5 +502,4 @@ rootAxes ax =
   || onlyTop ax.date
   || onlyTop ax.datetime
   where
-    onlyTop [ J.JCursorTop ] = true
-    onlyTop _ = false
+  onlyTop = eq [ J.JCursorTop ] ∘ Array.fromFoldable

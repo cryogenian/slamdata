@@ -20,11 +20,9 @@ module SlamData.Workspace.Card.Setups.Chart.Line.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (.~), (?~))
+import Data.Lens ((^?), _Just)
 
 import Global (readFloat, isNaN)
-
-import DOM.Event.Event as DEE
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -33,27 +31,66 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (_value)
-
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State as ES
+import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
-import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.Line.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Line.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Line.Component.Query as Q
-import SlamData.Workspace.Card.Setups.Chart.Line.Model as M
-import SlamData.Workspace.Card.Eval.State (_Axes)
+import SlamData.Workspace.Card.Setups.Chart.Line.Component.State as ST
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
+import SlamData.Workspace.Card.Setups.Package.DSL as P
+import SlamData.Workspace.Card.Setups.Package.Lenses as PL
+import SlamData.Workspace.Card.Setups.Package.Projection as PP
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+
+package ∷ DS.Package
+package = P.onPrism (M._BuildLine ∘ _Just) $ DS.interpret do
+  dimension ←
+    P.field PL._dimension PP._dimension
+      >>= P.addSource _.category
+      >>= P.addSource _.value
+      >>= P.addSource _.time
+      >>= P.addSource _.date
+      >>= P.addSource _.datetime
+
+  value ←
+    P.field PL._value PP._value
+      >>= P.addSource _.value
+      >>= P.isFilteredBy dimension
+
+  secondValue ←
+    P.optional PL._secondValue PP._secondValue
+      >>= P.addSource _.value
+      >>= P.isFilteredBy value
+
+  size ←
+    P.optional PL._size PP._size
+      >>= P.addSource _.value
+      >>= P.isFilteredBy dimension
+      >>= P.isFilteredBy value
+      >>= P.isFilteredBy secondValue
+      >>= P.isActiveWhen value
+
+  series ←
+    P.optional PL._series PP._series
+      >>= P.addSource _.category
+      >>= P.addSource _.time
+      >>= P.isFilteredBy dimension
+      >>= P.isActiveWhen dimension
+
+  pure unit
+
+
 
 lineBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 lineBuilderComponent =
@@ -70,105 +107,20 @@ render state =
     [ HP.classes [ CSS.chartEditor ]
 
     ]
-    [ renderDimension state
-    , renderValue state
-    , renderSecondValue state
-    , renderSeries state
-    , renderSize state
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
+        $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , renderOptionalMarkers state
     , HH.hr_
     , row [ renderMinSize state, renderMaxSize state ]
     , HH.hr_
     , row [ renderAxisLabelAngle state ]
-    , renderPicker state
-    ]
-
-selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
-selecting f q _ = right (Q.Select (f q) unit)
-
-renderPicker ∷ ST.State → HTML
-renderPicker state = case state.picker of
-  Nothing → HH.text ""
-  Just { options, select } →
-    let
-      conf =
-        BCI.dimensionPicker options
-          case select of
-            Q.Dimension _   → "Choose dimension"
-            Q.Value _       → "Choose measure #1"
-            Q.SecondValue _ → "Choose measure #2"
-            Q.Size _        → "Choose measure #3"
-            Q.Series _      → "Choose series"
-            _ → ""
-    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
-
-renderDimension ∷ ST.State → HTML
-renderDimension state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Dimension") (selecting Q.Dimension))
-        state.dimension
-    ]
-
-renderValue ∷ ST.State → HTML
-renderValue state =
-  HH.form
-    [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerWithSelect
-        (BCI.secondary (Just "Measure #1") (selecting Q.Value))
-        state.value
-        (BCI.aggregation (Just "Measure Aggregation #1") (selecting Q.ValueAgg))
-        state.valueAgg
-    ]
-
-renderSecondValue ∷ ST.State → HTML
-renderSecondValue state =
-  HH.form
-    [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerWithSelect
-        (BCI.secondary (Just "Measure #2") (selecting Q.SecondValue))
-        state.secondValue
-        (BCI.aggregation (Just "Measure Aggregation #2") (selecting Q.SecondValueAgg))
-        state.secondValueAgg
-    ]
-
-renderSeries ∷ ST.State → HTML
-renderSeries state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Series") (selecting Q.Series))
-        state.series
-    ]
-
-renderSize ∷ ST.State → HTML
-renderSize state =
-  HH.form
-    [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerWithSelect
-        (BCI.secondary (Just "Measure #3") (selecting Q.Size))
-        state.size
-        (BCI.aggregation (Just "Measure Aggregation #3") (selecting Q.SizeAgg))
-        state.sizeAgg
     ]
 
 renderAxisLabelAngle ∷ ST.State → HTML
 renderAxisLabelAngle state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label angle" ]
     , HH.input
@@ -181,9 +133,8 @@ renderAxisLabelAngle state =
 
 renderOptionalMarkers ∷ ST.State → HTML
 renderOptionalMarkers state =
-  HH.form
+  HH.div
     [ HP.classes [ HH.ClassName "chart-optional-markers" ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label
         [ HP.classes [ B.controlLabel ] ]
@@ -199,9 +150,8 @@ renderOptionalMarkers state =
 
 renderMinSize ∷ ST.State → HTML
 renderMinSize state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label
         [ HP.classes [ B.controlLabel ] ]
@@ -216,9 +166,8 @@ renderMinSize state =
 
 renderMaxSize ∷ ST.State → HTML
 renderMaxSize state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max size" ]
     , HH.input
@@ -230,6 +179,7 @@ renderMaxSize state =
         ]
     ]
 
+
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.Activate next →
@@ -237,20 +187,39 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    H.gets $ k ∘ Card.BuildLine ∘ M.behaviour.save
-  CC.Load (Card.BuildLine model) next → do
-    H.modify $ M.behaviour.load model
-    pure next
-  CC.Load card next →
+    st ← H.get
+    let
+      inp = M.BuildLine $ Just
+        { dimension: D.topDimension
+        , value: D.topDimension
+        , secondValue: Nothing
+        , series: Nothing
+        , size: Nothing
+        , optionalMarkers: st.optionalMarkers
+        , axisLabelAngle: st.axisLabelAngle
+        , minSize: st.minSize
+        , maxSize: st.maxSize
+        }
+    out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
+    pure $ k case join out of
+      Nothing → M.BuildLine Nothing
+      Just a → a
+  CC.Load m next → do
+    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    for_ (m ^? M._BuildLine ∘ _Just) \r →
+      H.modify _{ axisLabelAngle = r.axisLabelAngle
+                , optionalMarkers = r.optionalMarkers
+                , minSize = r.minSize
+                , maxSize = r.maxSize
+                }
     pure next
   CC.ReceiveInput _ _ next →
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
-    for_ (evalState ^? _Axes) \axes → do
-      H.modify _{axes = axes}
-      H.modify M.behaviour.synchronize
+    for_ (evalState ^? ES._Axes) \axes → do
+      H.query' CS.cpDims unit $ H.action $ DQ.SetAxes axes
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply
@@ -259,20 +228,16 @@ cardEval = case _ of
       else High
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = do
-  H.modify M.behaviour.synchronize
+raiseUpdate =
   H.raise CC.modelUpdate
 
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
-  Q.PreventDefault e next → do
-    H.liftEff $ DEE.preventDefault e
-    pure next
   Q.SetAxisLabelAngle str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{ axisLabelAngle = fl }
-      H.raise CC.modelUpdate
+      raiseUpdate
     pure next
   Q.SetMinSymbolSize str next → do
     let fl = readFloat str
@@ -281,85 +246,25 @@ setupEval = case _ of
         st{ minSize = fl
           , maxSize = if st.maxSize > fl then st.maxSize else fl
           }
-      H.raise CC.modelUpdate
+      raiseUpdate
     pure next
   Q.SetMaxSymbolSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify \st →
         st{ maxSize = fl
-           , minSize = if st.minSize < fl then st.minSize else fl
-           }
-      H.raise CC.modelUpdate
+          , minSize = if st.minSize < fl then st.minSize else fl
+          }
+      raiseUpdate
     pure next
   Q.ToggleOptionalMarkers next → do
     H.modify \st → st{ optionalMarkers = not st.optionalMarkers }
-    H.raise CC.modelUpdate
+    raiseUpdate
     pure next
-  Q.Select sel next → do
-    case sel of
-      Q.Dimension a →
-        updatePicker ST._dimension Q.Dimension a
-      Q.Value a →
-        updatePicker ST._value Q.Value a
-      Q.ValueAgg a →
-        updateSelect ST._valueAgg a
-      Q.SecondValue a →
-        updatePicker ST._secondValue Q.SecondValue a
-      Q.SecondValueAgg a →
-        updateSelect ST._secondValueAgg a
-      Q.Size a → case a of
-        BCI.Open opts → do
-          H.modify $ ST.showPicker Q.Size opts
-        BCI.Choose v → do
-          H.modify
-            $ (ST._size ∘ _value .~ v)
-            ∘ _{ optionalMarkers = false }
-          raiseUpdate
-      Q.SizeAgg a → case a of
-        BCI.Open _ →
-          pure unit
-        BCI.Choose v → do
-          H.modify
-            $ (ST._sizeAgg ∘ _value .~ v)
-            ∘ _{ optionalMarkers = false }
-          raiseUpdate
-      Q.Series a →
-        updatePicker ST._series Q.Series a
+  Q.HandleDims q next → do
+    case q of
+      DQ.Update fld → do
+        when ((fld >>= PP.printProjection) ≡ Just "size")
+          $ H.modify _{ optionalMarkers = false }
+        raiseUpdate
     pure next
-  Q.HandleDPMessage m next → case m of
-    DPC.Dismiss → do
-      H.modify _ { picker = Nothing }
-      pure next
-    DPC.Confirm value → do
-      st ← H.get
-      let
-        value' = flattenJCursors value
-      for_ st.picker \{ select } → case select of
-        Q.Dimension _ →
-          H.modify (ST._dimension ∘ _value ?~ value')
-        Q.Value _ →
-          H.modify (ST._value ∘ _value ?~ value')
-        Q.SecondValue _ →
-          H.modify (ST._secondValue ∘ _value ?~ value')
-        Q.Size _ → do
-          H.modify
-            $ (ST._size ∘ _value ?~ value')
-            ∘ _{ optionalMarkers = false }
-        Q.Series _ → do
-          H.modify
-            $ (ST._series ∘ _value ?~ value')
-            ∘ _{ optionalMarkers = false }
-
-        _ → pure unit
-      H.modify _ { picker = Nothing }
-      raiseUpdate
-      pure next
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-  updateSelect l = case _ of
-    BCI.Open _    → pure unit
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate

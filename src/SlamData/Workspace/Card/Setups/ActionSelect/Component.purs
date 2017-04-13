@@ -13,10 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -}
-
-module SlamData.Workspace.Card.Setups.ActionSelect.Component
-  ( module SlamData.Workspace.Card.Setups.ActionSelect.Component
-  ) where
+module SlamData.Workspace.Card.Setups.ActionSelect.Component where
 
 import SlamData.Prelude
 import Data.Array as Array
@@ -52,6 +49,7 @@ type State' s r =
   { options ∷ Array s
   , selection ∷ Maybe (s × s)
   , title ∷ String
+  , deselectable ∷ Boolean
   , toSelection ∷ s → Maybe (OptionComponent s)
   , toLabel ∷ s → Label
   | r
@@ -98,8 +96,9 @@ component =
     }
   where
   initialState ∷ Props s → State s
-  initialState { options, selection, title, toSelection, toLabel } =
+  initialState { options, selection, title, toSelection, toLabel, deselectable } =
     { options
+    , deselectable
     , selection
     , title
     , toSelection
@@ -165,7 +164,7 @@ component =
                   snd <$> st.previousSelection
                 selecting = { option, value: Just value, component: comp }
               H.modify _ { selecting = Just selecting }
-        _ → clearSelection
+        _ → unless st.deselectable clearSelection
       updateActions
       pure next
     HandleSelecting value next → do

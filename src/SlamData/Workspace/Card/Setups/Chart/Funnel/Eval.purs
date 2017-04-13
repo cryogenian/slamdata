@@ -28,6 +28,7 @@ import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Map as M
 import Data.Set as Set
+import Data.Lens ((^?), preview, _Just)
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -40,15 +41,16 @@ import SlamData.Common.Align (Align(..))
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (Model, FunnelR, initialState, behaviour)
+import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (Model, ModelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Funnel))
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
 
 eval
   ∷ ∀ m
@@ -59,8 +61,8 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Funnel (const buildFunnel) m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Funnel (const buildFunnel) m \axes → m
+
 
 type FunnelSeries =
   { name ∷ Maybe String
@@ -72,7 +74,7 @@ type FunnelSeries =
   , fontSize ∷ Maybe Int
   }
 
-buildFunnelData ∷ FunnelR → JArray → Array FunnelSeries
+buildFunnelData ∷ ModelR → JArray → Array FunnelSeries
 buildFunnelData r records = series
   where
   -- | maybe series >> category >> values
@@ -88,14 +90,14 @@ buildFunnelData r records = series
     let
       getMaybeStringFromJson = getMaybeString js
       getValuesFromJson = getValues js
-    in case getMaybeStringFromJson r.category of
+    in case getMaybeStringFromJson =<< (r.category ^? D._value ∘ D._projection) of
       Nothing → acc
       Just categoryKey →
         let
           mbSeries =
-            getMaybeStringFromJson =<< r.series
+            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.series
           values =
-            getValuesFromJson $ pure r.value
+            getValuesFromJson (r.value ^? D._value ∘ D._projection)
 
           alterSeriesFn
             ∷ Maybe (String >> Array Number)
@@ -127,7 +129,9 @@ buildFunnelData r records = series
      , w: Nothing
      , h: Nothing
      , fontSize: Nothing
-     , items: map (Ag.runAggregation r.valueAggregation) ss
+     , items:
+         map (Ag.runAggregation
+              ( fromMaybe Ag.Sum $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation)) ss
      }]
 
   series ∷ Array FunnelSeries
@@ -137,7 +141,7 @@ buildFunnelData r records = series
   adjustPosition = BCP.adjustRectangularPositions
 
 
-buildFunnel ∷ FunnelR → JArray → DSL OptionI
+buildFunnel ∷ ModelR → JArray → DSL OptionI
 buildFunnel r records = do
   E.tooltip do
     E.triggerItem

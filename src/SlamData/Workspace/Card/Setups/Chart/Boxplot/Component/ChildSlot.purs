@@ -18,8 +18,14 @@ module SlamData.Workspace.Card.Setups.Chart.Boxplot.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DP
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
+import Halogen.Component.ChildPath (ChildPath, cp1)
 
-type ChildSlot = Unit
-type ChildQuery = DP.Query JCursorNode
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+
+type ChildSlot = Unit ⊹ Void
+type ChildQuery = DQ.Query ⨁ Const Void
+
+type Path a b = ChildPath a ChildQuery b ChildSlot
+
+cpDims ∷ Path DQ.Query Unit
+cpDims = cp1

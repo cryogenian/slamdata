@@ -22,6 +22,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
 import Data.Lens ((^?), (?~), (.~), preview)
+import Data.Set as Set
 
 import DOM.Event.Event as DEE
 
@@ -55,7 +56,7 @@ type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
 
 textLikeSetupComponent
   ∷ FIT.FormInputType
-  → (Ax.Axes → Array JCursor)
+  → (Ax.Axes → Set.Set JCursor)
   → CC.CardOptions
   → CC.CardComponent
 textLikeSetupComponent fit projection =
@@ -119,7 +120,7 @@ renderValue state =
         state.value
     ]
 
-cardEval ∷ FIT.FormInputType → (Ax.Axes → Array JCursor) → CC.CardEvalQuery ~> DSL
+cardEval ∷ FIT.FormInputType → (Ax.Axes → Set.Set JCursor) → CC.CardEvalQuery ~> DSL
 cardEval fit proj = case _ of
   CC.Activate next →
     pure next
@@ -147,12 +148,12 @@ cardEval fit proj = case _ of
       else High
 
 
-raiseUpdate ∷ (Ax.Axes → Array JCursor) → DSL Unit
+raiseUpdate ∷ (Ax.Axes → Set.Set JCursor) → DSL Unit
 raiseUpdate proj = do
   H.modify (M.behaviour proj).synchronize
   H.raise CC.modelUpdate
 
-setupEval ∷ (Ax.Axes → Array JCursor) → Q.Query ~> DSL
+setupEval ∷ (Ax.Axes → Set.Set JCursor) → Q.Query ~> DSL
 setupEval proj = case _ of
   Q.PreventDefault e next → do
     H.liftEff $ DEE.preventDefault e

@@ -28,6 +28,7 @@ import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Map as M
 import Data.Set as Set
+import Data.Lens ((^?), preview, _Just)
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -36,19 +37,20 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, BarR, initialState, behaviour)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Axis (Axes)
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 eval
   ∷ ∀ m
@@ -59,8 +61,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Bar buildBar m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Bar buildBar m \axes → m
 
 type BarSeries =
   { name ∷ Maybe String
@@ -72,7 +73,7 @@ type BarStacks =
   , series ∷ Array BarSeries
   }
 
-buildBarData ∷ BarR → JArray → Array BarStacks
+buildBarData ∷ ModelR → JArray → Array BarStacks
 buildBarData r records = series
   where
   -- | maybe stack >> maybe parallel >> category >> values
@@ -88,16 +89,16 @@ buildBarData r records = series
     let
       getMaybeStringFromJson = getMaybeString js
       getValuesFromJson = getValues js
-    in case getMaybeStringFromJson r.category of
+    in case getMaybeStringFromJson =<< (r.category ^? D._value ∘ D._projection) of
       Nothing → acc
       Just categoryKey →
         let
           mbStack =
-            getMaybeStringFromJson =<< r.stack
+            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.stack
           mbParallel =
-            getMaybeStringFromJson =<< r.parallel
+            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.parallel
           values =
-            getValuesFromJson $ pure r.value
+            getValuesFromJson (r.value ^? D._value ∘ D._projection)
 
           alterStackFn
             ∷ Maybe (Maybe String >> String >> Array Number)
@@ -140,11 +141,14 @@ buildBarData r records = series
     → Array BarSeries
   mkBarSeries (name × items) =
     [{ name
-     , items: map (Ag.runAggregation r.valueAggregation) items
+     , items:
+         map (Ag.runAggregation
+            (fromMaybe Ag.Sum $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) )
+       items
      }]
 
 
-buildBar ∷ Axes → BarR → JArray → DSL OptionI
+buildBar ∷ Axes → ModelR → JArray → DSL OptionI
 buildBar axes r records = do
   E.tooltip E.triggerAxis
 
@@ -185,8 +189,14 @@ buildBar axes r records = do
   barData ∷ Array BarStacks
   barData = buildBarData r records
 
+  xAxisType ∷ Ax.AxisType
+  xAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType <$> (r.category ^? D._value ∘ D._projection) <*> pure axes
+
+
   xAxisConfig ∷ Ax.EChartsAxisConfiguration
-  xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.category axes
+  xAxisConfig = Ax.axisConfiguration xAxisType
 
   seriesNames ∷ Array String
   seriesNames = case r.parallel of
@@ -205,8 +215,9 @@ buildBar axes r records = do
                  ⋙ foldMap (_.items
                             ⋙ M.keys
                             ⋙ Set.fromFoldable)) barData
+
   xSortFn ∷ String → String → Ordering
-  xSortFn = Ax.compareWithAxisType $ Ax.axisType r.category axes
+  xSortFn = Ax.compareWithAxisType xAxisType
 
   series ∷ ∀ i. DSL (bar ∷ ETP.I|i)
   series = for_ barData \stacked →

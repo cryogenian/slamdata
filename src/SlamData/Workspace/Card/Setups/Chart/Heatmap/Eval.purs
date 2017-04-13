@@ -28,6 +28,7 @@ import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
+import Data.Lens ((^?), _Just)
 import Data.Map as M
 import Data.Int as Int
 import Data.Set as Set
@@ -39,18 +40,19 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRectangularPositions, rectangularGrids, rectangularTitles)
-import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (Model, HeatmapR, initialState, behaviour)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getColorScheme)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Heatmap))
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getColorScheme)
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRectangularPositions, rectangularGrids, rectangularTitles)
+import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import Utils.Array (enumerate)
 
@@ -63,8 +65,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Heatmap buildHeatmap m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Heatmap buildHeatmap m \axes → m
 
 type HeatmapSeries =
   { x ∷ Maybe Number
@@ -76,7 +77,7 @@ type HeatmapSeries =
   , items ∷ (String × String) >> Number
   }
 
-buildHeatmapData ∷ HeatmapR → JArray → Array HeatmapSeries
+buildHeatmapData ∷ ModelR → JArray → Array HeatmapSeries
 buildHeatmapData r records = series
   where
   -- | maybe series >> pair of abscissa and ordinate >> values
@@ -93,16 +94,16 @@ buildHeatmapData r records = series
       getMaybeStringFromJson = getMaybeString js
       getValuesFromJson = getValues js
       mbAbscissa =
-        getMaybeStringFromJson r.abscissa
+        getMaybeStringFromJson =<< r.abscissa ^? D._value ∘ D._projection
       mbOrdinate =
-        getMaybeStringFromJson r.ordinate
+        getMaybeStringFromJson =<< r.ordinate ^? D._value ∘ D._projection
     in case mbAbscissa × mbOrdinate of
       (Just abscissaKey) × (Just ordinateKey) →
         let
           mbSeries =
-            getMaybeStringFromJson =<< r.series
+            getMaybeStringFromJson =<< r.series ^? _Just ∘ D._value ∘ D._projection
           values =
-            getValuesFromJson $ pure r.value
+            getValuesFromJson $ r.value ^? D._value ∘ D._projection
 
           alterSeriesFn
             ∷ Maybe ((String × String) >> Array Number)
@@ -135,14 +136,18 @@ buildHeatmapData r records = series
      , w: Nothing
      , h: Nothing
      , fontSize: Nothing
-     , items: map (Ag.runAggregation r.valueAggregation) items
+     , items:
+         flip map items
+           $ Ag.runAggregation
+           $ fromMaybe Ag.Sum
+           $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
      }]
 
   series ∷ Array HeatmapSeries
   series = adjustRectangularPositions rawSeries
 
 
-buildHeatmap ∷ Ax.Axes → HeatmapR → JArray → DSL OptionI
+buildHeatmap ∷ Ax.Axes → ModelR → JArray → DSL OptionI
 buildHeatmap axes r records = do
   E.tooltip do
     E.triggerAxis
@@ -223,8 +228,12 @@ buildHeatmap axes r records = do
       E.width 1
     E.splitArea E.hidden
 
-  abscissaAxisType = Ax.axisType r.abscissa axes
-  ordinateAxisType = Ax.axisType r.ordinate axes
+  abscissaAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType <$> (r.abscissa ^? D._value ∘ D._projection) <*> pure axes
+  ordinateAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType <$> (r.ordinate ^? D._value ∘ D._projection) <*> pure axes
 
   abscissaAxisCfg = Ax.axisConfiguration abscissaAxisType
   ordinateAxisCfg = Ax.axisConfiguration ordinateAxisType

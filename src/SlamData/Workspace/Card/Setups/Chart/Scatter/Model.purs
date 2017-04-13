@@ -18,65 +18,37 @@ module SlamData.Workspace.Card.Setups.Chart.Scatter.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, encodeJson, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens ((^.))
+import Data.Argonaut as J
+import Data.Argonaut ((~>), (:=), (.?))
+import Data.Functor.Compose (Compose(..))
+import Data.Newtype (un)
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, aggregationSelectWithNone)
-import SlamData.Workspace.Card.Setups.Behaviour as SB
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Form.Select as S
-import SlamData.Form.Select ((⊝))
-
-type ScatterR =
-  { abscissa ∷ JCursor
-  , ordinate ∷ JCursor
-  , size ∷ Maybe JCursor
-  , abscissaAggregation ∷ Maybe Ag.Aggregation
-  , ordinateAggregation ∷ Maybe Ag.Aggregation
-  , sizeAggregation ∷ Maybe (Maybe Ag.Aggregation)
-  , parallel ∷ Maybe JCursor
-  , series ∷ Maybe JCursor
+type ModelR =
+  { abscissa ∷ D.LabeledJCursor
+  , ordinate ∷ D.LabeledJCursor
+  , size ∷ Maybe D.LabeledJCursor
+  , parallel ∷ Maybe D.LabeledJCursor
+  , series ∷ Maybe D.LabeledJCursor
   , minSize ∷ Number
   , maxSize ∷ Number
   }
 
-encodeMbMbAggregation ∷ Maybe (Maybe Ag.Aggregation) → Json
-encodeMbMbAggregation = case _ of
-  Nothing → jsonNull
-  Just Nothing → encodeJson "just nothing"
-  Just a → encodeJson a
-
-decodeMbMbAggregation ∷ Json → String ⊹ Maybe (Maybe Ag.Aggregation)
-decodeMbMbAggregation js
-  | isNull js = pure Nothing
-  | otherwise =
-    let
-      decodeJustNothing json =
-        decodeJson json >>= case _ of
-          "just nothing" → Right $ Just Nothing
-          _ → Left "This is not just nothing"
-
-    in decodeJustNothing js <|> decodeJson js
-
-type Model = Maybe ScatterR
+type Model = Maybe ModelR
 
 initialModel ∷ Model
 initialModel = Nothing
 
-eqScatterR ∷ ScatterR → ScatterR → Boolean
-eqScatterR r1 r2 =
+eqR ∷ ModelR → ModelR → Boolean
+eqR r1 r2 =
   r1.abscissa ≡ r2.abscissa
   ∧ r1.ordinate ≡ r2.ordinate
   ∧ r1.size ≡ r2.size
-  ∧ r1.abscissaAggregation ≡ r2.abscissaAggregation
-  ∧ r1.ordinateAggregation ≡ r2.ordinateAggregation
-  ∧ r1.sizeAggregation ≡ r2.sizeAggregation
   ∧ r1.parallel ≡ r2.parallel
   ∧ r1.series ≡ r2.series
   ∧ r1.minSize ≡ r2.minSize
@@ -84,7 +56,7 @@ eqScatterR r1 r2 =
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqScatterR r1 r2
+eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -93,193 +65,89 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    abscissa ← map runArbJCursor arbitrary
-    ordinate ← map runArbJCursor arbitrary
-    size ← map (map runArbJCursor) arbitrary
-    abscissaAggregation ← arbitrary
-    ordinateAggregation ← arbitrary
-    sizeAggregation ← arbitrary
-    series ← map (map runArbJCursor) arbitrary
-    parallel ← map (map runArbJCursor) arbitrary
+    abscissa ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    ordinate ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    size ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    series ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    parallel ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     minSize ← arbitrary
     maxSize ← arbitrary
     pure { abscissa
          , ordinate
          , size
-         , abscissaAggregation
-         , ordinateAggregation
-         , sizeAggregation
          , series
          , parallel
          , minSize
          , maxSize
          }
 
-encode ∷ Model → Json
-encode Nothing = jsonNull
+encode ∷ Model → J.Json
+encode Nothing = J.jsonNull
 encode (Just r) =
   "configType" := "scatter"
   ~> "abscissa" := r.abscissa
   ~> "ordinate" := r.ordinate
   ~> "size" := r.size
-  ~> "abscissaAggregation" := r.abscissaAggregation
-  ~> "ordinateAggregation" := r.ordinateAggregation
-  ~> "sizeAggregation" := encodeMbMbAggregation r.sizeAggregation
   ~> "series" := r.series
   ~> "parallel" := r.parallel
   ~> "minSize" := r.minSize
   ~> "maxSize" := r.maxSize
-  ~> jsonEmptyObject
+  ~> J.jsonEmptyObject
 
-decode ∷ Json → String ⊹ Model
+decode ∷ J.Json → String ⊹ Model
 decode js
-  | isNull js = pure Nothing
+  | J.isNull js = pure Nothing
   | otherwise = map Just do
-    obj ← decodeJson js
+    obj ← J.decodeJson js
     configType ← obj .? "configType"
     unless (configType ≡ "scatter")
       $ throwError "This config is not scatter"
+    decodeR obj <|> decodeLegacyR obj
+  where
+  decodeR ∷ J.JObject → String ⊹ ModelR
+  decodeR obj = do
     abscissa ← obj .? "abscissa"
     ordinate ← obj .? "ordinate"
     size ← obj .? "size"
-    abscissaAggregation ← obj .? "abscissaAggregation"
-    ordinateAggregation ← obj .? "ordinateAggregation"
-    sizeAggregation ← (obj .? "sizeAggregation") >>= decodeMbMbAggregation
     series ← obj .? "series"
-    parallel ← (obj .? "parallel") <|> (pure Nothing)
+    parallel ← obj .? "parallel"
     minSize ← obj .? "minSize"
     maxSize ← obj .? "maxSize"
     pure { abscissa
          , ordinate
          , size
-         , abscissaAggregation
-         , ordinateAggregation
-         , sizeAggregation
          , series
          , parallel
          , minSize
          , maxSize
          }
 
-type ReducedState r =
-  { axes ∷ Ax.Axes
-  , minSize ∷ Number
-  , maxSize ∷ Number
-  , abscissa ∷ S.Select JCursor
-  , abscissaAgg ∷ S.Select (Maybe Aggregation)
-  , ordinate ∷ S.Select JCursor
-  , ordinateAgg ∷ S.Select (Maybe Aggregation)
-  , size ∷ S.Select JCursor
-  , sizeAgg ∷ S.Select (Maybe Aggregation)
-  , series ∷ S.Select JCursor
-  , parallel ∷ S.Select JCursor
-  | r}
-
-initialState ∷ ReducedState ()
-initialState =
-  { axes: Ax.initialAxes
-  , minSize: 10.0
-  , maxSize: 50.0
-  , abscissa: S.emptySelect
-  , abscissaAgg: S.emptySelect
-  , ordinate: S.emptySelect
-  , ordinateAgg: S.emptySelect
-  , size: S.emptySelect
-  , sizeAgg: S.emptySelect
-  , series: S.emptySelect
-  , parallel: S.emptySelect
-  }
-
-behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
-behaviour =
-  { synchronize
-  , load
-  , save
-  }
-  where
-  synchronize st =
-    let
-      newAbscissa =
-        S.setPreviousValueFrom (Just st.abscissa)
-          $ S.autoSelect
-          $ S.newSelect
-          $ st.axes.value
-
-      newAbscissaAggregation =
-        S.setPreviousValueFrom (Just st.abscissaAgg)
-          $ aggregationSelectWithNone
-
-      newOrdinate =
-        S.setPreviousValueFrom (Just st.ordinate)
-          $ S.autoSelect
-          $ S.newSelect
-          $ st.axes.value
-          ⊝ newAbscissa
-
-      newOrdinateAggregation =
-        S.setPreviousValueFrom (Just st.ordinateAgg)
-          $ aggregationSelectWithNone
-
-      newSize =
-        S.setPreviousValueFrom (Just st.size)
-          $ S.newSelect
-          $ st.axes.value
-          ⊝ newAbscissa
-          ⊝ newOrdinate
-
-      newSizeAggregation =
-        S.setPreviousValueFrom (Just st.sizeAgg)
-          $ aggregationSelectWithNone
-
-      newSeries =
-        S.setPreviousValueFrom (Just st.series)
-          $ S.newSelect
-          $ st.axes.category
-
-      newParallel =
-        S.setPreviousValueFrom (Just st.parallel)
-          $ S.newSelect
-          $ st.axes.category
-          ⊝ newSeries
-
-    in
-      st{ abscissa = newAbscissa
-        , abscissaAgg = newAbscissaAggregation
-        , ordinate = newOrdinate
-        , ordinateAgg = newOrdinateAggregation
-        , size = newSize
-        , sizeAgg = newSizeAggregation
-        , series = newSeries
-        , parallel = newParallel
-        }
-
-  load Nothing st = st
-  load (Just m) st =
-    st{ abscissa = S.fromSelected $ Just m.abscissa
-      , abscissaAgg = S.fromSelected $ Just m.abscissaAggregation
-      , ordinate = S.fromSelected $ Just m.ordinate
-      , ordinateAgg = S.fromSelected $ Just m.ordinateAggregation
-      , size = S.fromSelected m.size
-      , sizeAgg = S.fromSelected m.sizeAggregation
-      , series = S.fromSelected m.series
-      , parallel = S.fromSelected m.parallel
-      , minSize = m.minSize
-      , maxSize = m.maxSize
-      }
-
-  save st =
-    { abscissa: _
-    , abscissaAggregation: _
-    , ordinate: _
-    , ordinateAggregation: _
-    , size: st.size ^. S._value
-    , sizeAggregation: st.sizeAgg ^. S._value
-    , series: st.series ^. S._value
-    , parallel: st.parallel ^. S._value
-    , minSize: (st.minSize ∷ Number)
-    , maxSize: (st.maxSize ∷ Number)
-    }
-    <$> (st.abscissa ^. S._value)
-    <*> (st.abscissaAgg ^. S._value)
-    <*> (st.ordinate ^. S._value)
-    <*> (st.ordinateAgg ^. S._value)
+  decodeLegacyR ∷ J.JObject → String ⊹ ModelR
+  decodeLegacyR obj = do
+    abscissa ←
+      D.pairToDimension
+      <$> (obj .? "abscissa")
+      <*> (obj .? "abscissaAggregation")
+    ordinate ←
+      D.pairToDimension
+      <$> (obj .? "ordinate")
+      <*> (obj .? "ordinateAggregation")
+    size ←
+      unwrap
+      $ D.pairToDimension
+      <$> (Compose $ obj .? "size")
+      <*> (Compose $ obj .? "sizeAggregation")
+    series ←
+      map D.defaultJCursorDimension <$> obj .? "series"
+    parallel ←
+      (map D.defaultJCursorDimension <$> obj .? "parallel") <|> pure Nothing
+    minSize ← obj .? "minSize"
+    maxSize ← obj .? "maxSize"
+    pure { abscissa
+         , ordinate
+         , size
+         , series
+         , parallel
+         , minSize
+         , maxSize
+         }

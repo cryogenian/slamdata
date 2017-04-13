@@ -16,29 +16,9 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Scatter.Component.Query where
 
-import SlamData.Prelude
-
-import Data.Argonaut (JCursor)
-
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
-import Utils.DOM as DOM
-
-data Selection f
-  = Abscissa (f JCursor)
-  | AbscissaAgg (f (Maybe Aggregation))
-  | Ordinate (f JCursor)
-  | OrdinateAgg (f (Maybe Aggregation))
-  | Size (f JCursor)
-  | SizeAgg (f (Maybe Aggregation))
-  | Series (f JCursor)
-  | Parallel (f JCursor)
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
 
 data Query a
   = SetMinSymbolSize String a
   | SetMaxSymbolSize String a
-  | Select (Selection SelectAction) a
-  | HandleDPMessage (Message JCursorNode) a
-  | PreventDefault DOM.Event a
+  | HandleDims Q.Message a

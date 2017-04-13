@@ -14,7 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.DimensionPicker.Component where
+module SlamData.Workspace.Card.Setups.DimensionPicker.Component
+  ( initialState
+  , State
+  , Query(..)
+  , ChildQuery
+  , ChildSlot
+  , renderNode
+  , isLeafPath
+  , labelNode
+  , pickerOptionsToColumnOptions
+  , picker
+  , PickerOptions
+  , module SlamData.Workspace.Card.Setups.DimensionPicker.Component.Message
+  ) where
 
 import SlamData.Prelude
 
@@ -27,6 +40,7 @@ import SlamData.Workspace.Card.Setups.Dialog as CSD
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 import SlamData.Workspace.MillerColumns.Column.Component.Request as MCR
 import SlamData.Workspace.MillerColumns.Column.Component as MCC
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component.Message (Message(..))
 import SlamData.Workspace.MillerColumns.Component as MC
 import SlamData.Workspace.MillerColumns.TreeData as MCT
 
@@ -34,10 +48,6 @@ data Query s a
   = UpdateSelection (Maybe s) a
   | RaiseMessage (Message s) a
   | HandleLoadRequest (s × MCR.LoadRequest) a
-
-data Message s
-  = Dismiss
-  | Confirm s
 
 type State s =
   { selection ∷ Maybe s

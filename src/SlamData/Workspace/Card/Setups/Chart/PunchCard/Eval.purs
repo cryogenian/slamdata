@@ -30,6 +30,7 @@ import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Int as Int
+import Data.Lens ((^?), _Just)
 import Data.Map as M
 import Data.Set as Set
 
@@ -42,18 +43,18 @@ import ECharts.Types.Phantom as ETP
 import Global (infinity)
 
 import SlamData.Quasar.Class (class QuasarDSL )
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(PunchCard))
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Setups.Chart.PunchCard.Model (PunchCardR, Model, initialState, behaviour)
-import SlamData.Workspace.Card.Setups.Behaviour as B
-
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.PunchCard.Model (ModelR, Model)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import Utils.Array (enumerate)
 
 eval
@@ -65,12 +66,11 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval PunchCard buildPunchCard m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval PunchCard buildPunchCard m \axes → m
 
 type PunchCardData = (String × String) >> (Int × Number)
 
-buildPunchCardData ∷ PunchCardR → JArray → PunchCardData
+buildPunchCardData ∷ ModelR → JArray → PunchCardData
 buildPunchCardData r records = map addSymbolSize aggregated
   where
   dataMap ∷ (String × String) >> Array Number
@@ -87,11 +87,11 @@ buildPunchCardData r records = map addSymbolSize aggregated
       getMaybeStringFromJson = getMaybeString js
 
       mbAbscissa =
-        getMaybeStringFromJson r.abscissa
+        getMaybeStringFromJson =<< r.abscissa ^? D._value ∘ D._projection
       mbOrdinate =
-        getMaybeStringFromJson r.ordinate
+        getMaybeStringFromJson =<< r.ordinate ^? D._value ∘ D._projection
       values =
-        getValuesFromJson $ pure r.value
+        getValuesFromJson $ r.value ^? D._value ∘ D._projection
 
     in case mbAbscissa × mbOrdinate of
       (Just abscissa) × (Just ordinate) →
@@ -107,7 +107,11 @@ buildPunchCardData r records = map addSymbolSize aggregated
       _ → acc
 
   aggregated ∷ (String × String) >> Number
-  aggregated = map (Ag.runAggregation r.valueAggregation) dataMap
+  aggregated =
+    flip map dataMap
+    $ Ag.runAggregation
+    $ fromMaybe Ag.Sum
+    $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
 
   minValue ∷ Number
   minValue = fromMaybe (-1.0 * infinity) $ F.minimum aggregated
@@ -130,7 +134,7 @@ buildPunchCardData r records = map addSymbolSize aggregated
         (Int.ceil (r.maxSize - sizeDistance / distance * (maxValue - val))) × val
 
 
-buildPunchCard ∷ Ax.Axes → PunchCardR → JArray → DSL OptionI
+buildPunchCard ∷ Ax.Axes → ModelR → JArray → DSL OptionI
 buildPunchCard axes r records = do
   E.tooltip do
     E.triggerItem
@@ -188,9 +192,23 @@ buildPunchCard axes r records = do
     E.axisLabel $ E.margin $ margin + 2
     E.items $ map ET.strItem ordinateValues
 
+  xAxisType ∷ Ax.AxisType
+  xAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType
+    <$> (r.abscissa ^? D._value ∘ D._projection)
+    <*> pure axes
+
+  yAxisType ∷ Ax.AxisType
+  yAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType
+    <$> (r.ordinate ^? D._value ∘ D._projection)
+    <*> pure axes
+
   abscissaValues ∷ Array String
   abscissaValues =
-    A.sortBy (Ax.compareWithAxisType $ Ax.axisType r.abscissa axes)
+    A.sortBy (Ax.compareWithAxisType xAxisType)
       $ A.fromFoldable
       $ Set.fromFoldable
       $ map fst
@@ -198,7 +216,7 @@ buildPunchCard axes r records = do
 
   ordinateValues ∷ Array String
   ordinateValues =
-    A.sortBy (Ax.compareWithAxisType $ Ax.axisType r.ordinate axes)
+    A.sortBy (Ax.compareWithAxisType yAxisType)
       $ A.fromFoldable
       $ Set.fromFoldable
       $ map snd
