@@ -94,6 +94,8 @@ isConfigurable prj pack state =
     axis = state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
   in maybe false (eq Ax.Measure) $ Ax.axisType <$> axis <*> pure state.axes
 
+getTransform ∷ T.Projection → State → Maybe Tr.Transform
+getTransform tp state = state.dimMap ^? T.unpackProjection tp ∘ _Just ∘ D._value ∘ D._transform ∘ _Just
 
 transforms ∷ State → Array Tr.Transform
 transforms _ = Tr.aggregationTransforms

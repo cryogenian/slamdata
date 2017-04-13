@@ -59,11 +59,11 @@ package = P.onPrism (M._BuildScatter ∘ _Just) $ DS.interpret do
     P.field PL._abscissa PP._abscissa
       >>= P.addSource _.value
   ordinate ←
-    P.field PL._ordinate PP._ordinate
+    P.field PL._ordinate PP._scatterOrdinate
       >>= P.addSource _.value
       >>= P.isFilteredBy abscissa
   size ←
-    P.optional PL._size PP._size
+    P.optional PL._size PP._scatterSize
       >>= P.addSource _.value
       >>= P.isFilteredBy abscissa
       >>= P.isFilteredBy ordinate
@@ -93,7 +93,6 @@ render state =
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderMinSize state, renderMaxSize state ]
-
     ]
 
 renderMinSize ∷ ST.State → HTML
@@ -123,8 +122,6 @@ renderMaxSize state =
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMaxSymbolSize s)
         ]
     ]
-
-
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of

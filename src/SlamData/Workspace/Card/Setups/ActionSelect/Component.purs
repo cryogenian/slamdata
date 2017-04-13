@@ -164,7 +164,7 @@ component =
                   snd <$> st.previousSelection
                 selecting = { option, value: Just value, component: comp }
               H.modify _ { selecting = Just selecting }
-        _ → unless st.deselectable clearSelection
+        _ → when st.deselectable clearSelection
       updateActions
       pure next
     HandleSelecting value next → do
