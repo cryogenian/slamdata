@@ -26,6 +26,7 @@ import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
+import Data.Lens ((^?), _Just)
 import Data.Map as M
 import Data.Set as Set
 
@@ -36,17 +37,19 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Pie.Model (Model, PieR, initialState, behaviour)
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Pie))
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Pie.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 eval
   ∷ ∀ m
@@ -57,8 +60,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Pie (const buildPie) m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Pie (const buildPie) m \axes → m
 
 type OnePieSeries =
   RadialPosition
@@ -72,7 +74,7 @@ type DonutSeries =
   , items ∷ String >> Number
   )
 
-buildPieData ∷ PieR → JArray → Array OnePieSeries
+buildPieData ∷ ModelR → JArray → Array OnePieSeries
 buildPieData r records = series
   where
   -- | maybe parallel >> maybe donut >> category name >> values
@@ -88,16 +90,16 @@ buildPieData r records = series
     let
       getValuesFromJson = getValues js
       getMaybeStringFromJson = getMaybeString js
-    in case getMaybeStringFromJson r.category of
+    in case getMaybeStringFromJson =<< r.category ^? D._value ∘ D._projection of
       Nothing → acc
       Just categoryKey →
         let
           mbParallel =
-            getMaybeStringFromJson =<< r.parallel
+            getMaybeStringFromJson =<< r.parallel ^? _Just ∘ D._value ∘ D._projection
           mbDonut =
-            getMaybeStringFromJson =<< r.donut
+            getMaybeStringFromJson =<< r.donut ^? _Just ∘ D._value ∘ D._projection
           values =
-            getValuesFromJson $ pure r.value
+            getValuesFromJson $ r.value ^? D._value ∘ D._projection
 
           alterParallelFn
             ∷ Maybe (Maybe String >> String >> Array Number)
@@ -145,15 +147,31 @@ buildPieData r records = series
   mkDonutSeries (name × items) =
     [{ name
      , radius: Nothing
-     , items: map (Ag.runAggregation r.valueAggregation) items
+     , items:
+         flip map items
+         $ Ag.runAggregation
+         $ fromMaybe Ag.Sum
+         $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
      }]
 
   series ∷ Array OnePieSeries
   series = map (\x → x{series = adjustDonutRadiuses x.series}) $ adjustRadialPositions rawSeries
 
-buildPie ∷ PieR → JArray → DSL OptionI
+buildPie ∷ ModelR → JArray → DSL OptionI
 buildPie r records = do
-  E.tooltip E.triggerItem
+  let
+    cols =
+      [ { label: D.jcursorLabel r.category, value: CCT.formatAssocProp "key" }
+      , { label: D.jcursorLabel r.value, value: CCT.formatAssocProp "value" }
+      ]
+    opts = A.catMaybes
+      [ r.donut <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
+      ]
+
+  E.tooltip do
+    E.formatterItem (CCT.tableFormatter (Just ∘ _.color) (cols <> opts) ∘ pure)
+    E.textStyle $ E.fontSize 12
+    E.triggerItem
 
   E.colors colors
 
@@ -218,3 +236,4 @@ buildPie r records = do
         E.addItem do
           E.value value
           E.name $ foldMap (flip append ":") name ⊕ key
+          BCE.assoc { key, value }

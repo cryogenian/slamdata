@@ -26,6 +26,7 @@ import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
+import Data.Lens ((^?), _Just)
 import Data.Map as M
 
 import ECharts.Monad (DSL)
@@ -36,14 +37,17 @@ import ECharts.Types.Phantom as ETP
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Model (Model, SankeyR, initialState, behaviour)
+import SlamData.Workspace.Card.Setups.Chart.Sankey.Model (Model, ModelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Sankey))
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Dimension as D
+
 
 eval
   ∷ ∀ m
@@ -54,8 +58,7 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Sankey (const buildSankey) m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Sankey (const buildSankey) m \axes → m
 
 ----------------------------------------------------------------------
 -- SANKEY BUILDER
@@ -69,9 +72,16 @@ type SankeyItem =
 
 type SankeyData = Array SankeyItem
 
-buildSankey ∷ SankeyR → JArray → DSL OptionI
+buildSankey ∷ ModelR → JArray → DSL OptionI
 buildSankey r records = do
+  let
+    cols =
+      [ { label: D.jcursorLabel r.source, value: CCT.formatDataProp "source" }
+      , { label: D.jcursorLabel r.target, value: CCT.formatDataProp "target" }
+      , { label: D.jcursorLabel r.value, value: CCT.formatDataProp "value" }
+      ]
   E.tooltip do
+    E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
     E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
@@ -102,7 +112,7 @@ buildSankey r records = do
       (E.addItem ∘ E.name)
 
 
-buildSankeyData ∷ JArray → SankeyR → SankeyData
+buildSankeyData ∷ JArray → ModelR → SankeyData
 buildSankeyData records r = items
   where
   --| source × target >> values
@@ -120,11 +130,11 @@ buildSankeyData records r = items
       getMaybeStringFromJson = Sem.getMaybeString js
 
       mbSource =
-        getMaybeStringFromJson r.source
+        getMaybeStringFromJson =<< r.source ^? D._value ∘ D._projection
       mbTarget =
-        getMaybeStringFromJson r.target
+        getMaybeStringFromJson =<< r.target ^? D._value ∘ D._projection
       values =
-        getValuesFromJson $ pure r.value
+        getValuesFromJson $ r.value ^? D._value ∘ D._projection
 
       alterFn ∷ Maybe (Array Number) → Maybe (Array Number)
       alterFn Nothing = Just values
@@ -143,5 +153,8 @@ buildSankeyData records r = items
   mkItem ((source × target) × values) =
     [ { source
       , target
-      , weight: Ag.runAggregation r.valueAggregation values
+      , weight:
+          flip Ag.runAggregation values
+          $ fromMaybe Ag.Sum
+          $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
       } ]

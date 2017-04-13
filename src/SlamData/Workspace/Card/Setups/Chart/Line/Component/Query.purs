@@ -16,30 +16,11 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Line.Component.Query where
 
-import Data.Argonaut (JCursor)
-
-import DOM.Event.Types (Event)
-
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation)
-import SlamData.Workspace.Card.Setups.Inputs (SelectAction)
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component (Message)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
-
-data Selection f
-  = Dimension (f JCursor)
-  | Value (f JCursor)
-  | ValueAgg (f Aggregation)
-  | SecondValue (f JCursor)
-  | SecondValueAgg (f Aggregation)
-  | Size (f JCursor)
-  | SizeAgg (f Aggregation)
-  | Series (f JCursor)
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
 
 data Query a
   = SetAxisLabelAngle String a
   | SetMaxSymbolSize String a
   | SetMinSymbolSize String a
   | ToggleOptionalMarkers a
-  | Select (Selection SelectAction) a
-  | PreventDefault Event a
-  | HandleDPMessage (Message JCursorNode) a
+  | HandleDims Q.Message a

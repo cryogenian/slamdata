@@ -27,6 +27,7 @@ import Control.Monad.Throw (class MonadThrow)
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Formatter.Number as FN
+import Data.Lens ((^?), _Just)
 import Data.String as Str
 import Data.String.Regex as Rgx
 import Data.String.Regex.Flags as RXF
@@ -35,10 +36,11 @@ import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Chart.Metric.Model (Model, MetricR, initialState, behaviour)
+import SlamData.Workspace.Card.Setups.Chart.Metric.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Semantics (getValues)
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 eval
   ∷ ∀ m
@@ -53,9 +55,9 @@ eval m =
   BCE.buildChartEval'
     (\_ b c → Port.ValueMetric (buildMetric b c))
     m
-    (\axes → B.defaultModel behaviour m initialState{axes = axes})
+    (const m)
 
-buildMetric ∷ MetricR → JArray → Port.MetricPort
+buildMetric ∷ ModelR → JArray → Port.MetricPort
 buildMetric r records =
   { value, label: r.label }
   where
@@ -78,8 +80,10 @@ buildMetric r records =
 
   metricValue ∷ Number
   metricValue =
-    Ag.runAggregation r.valueAggregation $ foldMap foldFn records
+    flip Ag.runAggregation (foldMap foldFn records)
+    $ fromMaybe Ag.Sum
+    $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
 
   foldFn ∷ Json → Array Number
   foldFn js =
-    getValues js $ pure r.value
+    getValues js $ r.value ^? D._value ∘ D._projection

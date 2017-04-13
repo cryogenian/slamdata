@@ -20,10 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Heatmap.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (.~))
-import Data.Lens as Lens
-
-import DOM.Event.Event as DEE
+import Data.Lens ((^?), _Just)
 
 import Global (readFloat, isNaN)
 
@@ -34,27 +31,67 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Render.Common (row)
-import SlamData.Form.Select (_value, Select)
 
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.Component as CC
+import SlamData.Form.Select as S
+import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State as ES
+import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
-import SlamData.Workspace.Card.Setups.Inputs as BCI
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colorSchemeSelect)
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.Query as Q
-import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model as M
-import SlamData.Workspace.Card.Eval.State (_Axes)
+import SlamData.Workspace.Card.Setups.Chart.Heatmap.Component.State as ST
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
+import SlamData.Workspace.Card.Setups.Inputs as BCI
+import SlamData.Workspace.Card.Setups.Package.DSL as P
+import SlamData.Workspace.Card.Setups.Package.Lenses as PL
+import SlamData.Workspace.Card.Setups.Package.Projection as PP
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+
+package ∷ DS.Package
+package = P.onPrism (M._BuildHeatmap ∘ _Just) $ DS.interpret do
+  abscissa ←
+    P.field PL._abscissa PP._abscissa
+      >>= P.addSource _.category
+      >>= P.addSource _.value
+      >>= P.addSource _.time
+      >>= P.addSource _.date
+      >>= P.addSource _.datetime
+
+  ordinate ←
+    P.field PL._ordinate PP._ordinate
+      >>= P.addSource _.category
+      >>= P.addSource _.value
+      >>= P.addSource _.time
+      >>= P.addSource _.date
+      >>= P.addSource _.datetime
+      >>= P.isFilteredBy abscissa
+
+  value ←
+    P.field PL._value PP._value
+      >>= P.addSource _.value
+      >>= P.isFilteredBy abscissa
+      >>= P.isFilteredBy ordinate
+
+  series ←
+    P.optional PL._series PP._series
+      >>= P.addSource _.category
+      >>= P.addSource _.time
+      >>= P.isFilteredBy abscissa
+      >>= P.isFilteredBy ordinate
+      >>= P.isActiveWhen abscissa
+      >>= P.isActiveWhen ordinate
+
+  pure unit
 
 heatmapBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 heatmapBuilderComponent =
@@ -71,107 +108,38 @@ render state =
     [ HP.classes [ CSS.chartEditor ]
 
     ]
-    [ renderAbscissa state
-    , renderOrdinate state
-    , renderValue state
-    , renderSeries state
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
+        $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderColorScheme state, renderIsReversedScheme state ]
     , HH.hr_
     , row [ renderMinVal state, renderMaxVal state ]
-    , renderPicker state
-    ]
-
-selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
-selecting f q _ = right (Q.Select (f q) unit)
-
-renderPicker ∷ ST.State → HTML
-renderPicker state = case state.picker of
-  Nothing → HH.text ""
-  Just { options, select } →
-    let
-      conf =
-        BCI.dimensionPicker options
-          case select of
-            Q.Abscissa _ → "Choose x-axis"
-            Q.Ordinate _ → "Choose y-axis"
-            Q.Value _ → "Choose measure"
-            Q.Series _ → "Choose series"
-            _ → ""
-    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
-
-renderAbscissa ∷ ST.State → HTML
-renderAbscissa state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "X-Axis") (selecting Q.Abscissa))
-        state.abscissa
-    ]
-
-renderOrdinate ∷ ST.State → HTML
-renderOrdinate state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Y-Axis") (selecting Q.Ordinate))
-        state.ordinate
-    ]
-
-renderValue ∷ ST.State → HTML
-renderValue state =
-  HH.form
-    [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerWithSelect
-        (BCI.primary (Just "Measure") (selecting Q.Value))
-        state.value
-        (BCI.dropdown (Just "Measure aggregation") (selecting Q.ValueAgg))
-        state.valueAgg
-    ]
-
-renderSeries ∷ ST.State → HTML
-renderSeries state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Series") (selecting Q.Series))
-        state.series
     ]
 
 renderMinVal ∷ ST.State → HTML
 renderMinVal state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Min color rendering value" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Minimum value" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.minValue
-        , ARIA.label "Min color rendering value"
+        , ARIA.label "Minimum value"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMinValue s)
         ]
     ]
 
 renderMaxVal ∷ ST.State → HTML
 renderMaxVal state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max color rendering value" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Maximum value" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.maxValue
-        , ARIA.label "Max color rendering value"
+        , ARIA.label "Maximum value"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMaxValue s)
         ]
     ]
@@ -179,30 +147,29 @@ renderMaxVal state =
 
 renderIsReversedScheme ∷ ST.State → HTML
 renderIsReversedScheme state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Reverse color scheme" ]
-    , HH.input
-        [ HP.type_ HP.InputCheckbox
-        , HP.checked state.isSchemeReversed
-        , ARIA.label "Reverse color scheme"
-        , HE.onChecked $ HE.input_ (right ∘ Q.ToggleReversedScheme)
+    [ HH.label [ HP.classes [ B.controlLabel ] ]
+        [ HH.input
+            [ HP.type_ HP.InputCheckbox
+            , HP.checked state.isColorSchemeReversed
+            , ARIA.label "Reverse color scheme"
+            , HE.onChecked $ HE.input_ (right ∘ Q.ToggleReversedScheme)
+            ]
+        , HH.text "Reversed"
         ]
     ]
 
-
 renderColorScheme ∷ ST.State → HTML
 renderColorScheme state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Color scheme" ]
     , BCI.selectInput
-        (BCI.dropdown (Just "Color scheme") (selecting Q.ColorScheme))
-        state.colorScheme
+        (BCI.dropdown (Just "Color scheme") (\l → right ∘ Q.SelectColorScheme l))
+        (S.trySelect' state.colorScheme colorSchemeSelect)
     ]
 
 
@@ -212,84 +179,77 @@ cardEval = case _ of
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k →
-    H.gets $ k ∘ Card.BuildHeatmap ∘ M.behaviour.save
-  CC.Load (Card.BuildHeatmap model) next → do
-    H.modify $ M.behaviour.load model
-    pure next
-  CC.Load card next →
+  CC.Save k → do
+    st ← H.get
+    let
+      inp = M.BuildHeatmap $ Just
+        { abscissa: D.topDimension
+        , ordinate: D.topDimension
+        , value: D.topDimension
+        , series: Nothing
+        , colorScheme: st.colorScheme
+        , isColorSchemeReversed: st.isColorSchemeReversed
+        , minValue: st.minValue
+        , maxValue: st.maxValue
+        }
+    out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
+    pure $ k case join out of
+      Nothing → M.BuildHeatmap Nothing
+      Just a → a
+  CC.Load m next → do
+    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    for_ (m ^? M._BuildHeatmap ∘ _Just) \r →
+      H.modify _{ colorScheme = r.colorScheme
+                , isColorSchemeReversed = r.isColorSchemeReversed
+                , minValue = r.minValue
+                , maxValue = r.maxValue
+                }
     pure next
   CC.ReceiveInput _ _ next →
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
-    for_ (evalState ^? _Axes) \axes → do
-      H.modify _{axes = axes}
-      H.modify M.behaviour.synchronize
+    for_ (evalState ^? ES._Axes) \axes → do
+      H.query' CS.cpDims unit $ H.action $ DQ.SetAxes axes
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply
-      if dims.width < 516.0 ∨ dims.height < 416.0
+      if dims.width < 576.0 ∨ dims.height < 416.0
       then Low
       else High
 
+raiseUpdate ∷ DSL Unit
+raiseUpdate =
+  H.raise CC.modelUpdate
+
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
-  Q.PreventDefault e next → do
-    H.liftEff $ DEE.preventDefault e
+  Q.SelectColorScheme m next → do
+    case m of
+      BCI.Choose (Just a) →
+        H.modify _{ colorScheme = a }
+      _ →
+        pure unit
+    raiseUpdate
     pure next
   Q.SetMinValue str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{minValue = fl}
-      H.raise CC.modelUpdate
+      raiseUpdate
     pure next
   Q.SetMaxValue str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{maxValue = fl}
-      H.raise CC.modelUpdate
+      raiseUpdate
     pure next
   Q.ToggleReversedScheme next → do
-    H.modify \x → x{isSchemeReversed = not x.isSchemeReversed}
-    H.raise CC.modelUpdate
+    H.modify \x → x{isColorSchemeReversed = not x.isColorSchemeReversed}
+    raiseUpdate
     pure next
-  Q.Select sel next → next <$ case sel of
-    Q.Abscissa a    → updatePicker ST._abscissa Q.Abscissa a
-    Q.Ordinate a    → updatePicker ST._ordinate Q.Ordinate a
-    Q.Value a       → updatePicker ST._value Q.Value a
-    Q.ValueAgg a    → updateSelect ST._valueAgg a
-    Q.Series a      → updatePicker ST._series Q.Series a
-    Q.ColorScheme a → updateSelect ST._colorScheme a
-  Q.HandleDPMessage m next → case m of
-    DPC.Dismiss → do
-      H.modify _{ picker = Nothing }
-      pure next
-    DPC.Confirm value → do
-      st ← H.get
-      let
-        value' = flattenJCursors value
-      for_ st.picker \v → case v.select of
-        Q.Abscissa _ → H.modify $ ST._abscissa ∘ _value ?~ value'
-        Q.Ordinate _ → H.modify $ ST._ordinate ∘ _value ?~ value'
-        Q.Value _    → H.modify $ ST._value ∘ _value ?~ value'
-        Q.Series _   → H.modify $ ST._series ∘ _value ?~ value'
-        _ → pure unit
-      H.modify _{ picker = Nothing }
-      raiseUpdate
-      pure next
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-  updateSelect ∷ ∀ x. Lens.Lens' ST.State (Select x) → BCI.SelectAction x → DSL Unit
-  updateSelect l = case _ of
-    BCI.Open _   → pure unit
-    BCI.Choose a → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-raiseUpdate ∷ DSL Unit
-raiseUpdate = do
-  H.modify M.behaviour.synchronize
-  H.raise CC.modelUpdate
+  Q.HandleDims q next → do
+    case q of
+      DQ.Update _ → raiseUpdate
+    pure next

@@ -20,9 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (.~))
-
-import DOM.Event.Event as DEE
+import Data.Lens ((^?), (.~), _Just)
 
 import Global (readFloat, isNaN)
 
@@ -33,26 +31,61 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (_value)
-import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State as ES
+import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
-import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Bar.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Bar.Component.Query as Q
-import SlamData.Workspace.Card.Setups.Chart.Bar.Model as M
-import SlamData.Workspace.Card.Eval.State (_Axes)
+import SlamData.Workspace.Card.Setups.Chart.Bar.Component.State as ST
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
+import SlamData.Workspace.Card.Setups.Package.DSL as P
+import SlamData.Workspace.Card.Setups.Package.Lenses as PL
+import SlamData.Workspace.Card.Setups.Package.Projection as PP
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
-type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+
+package ∷ DS.Package
+package = P.onPrism (M._BuildBar ∘ _Just) $ DS.interpret do
+  category ←
+    P.field PL._category PP._category
+      >>= P.addSource _.category
+      >>= P.addSource _.value
+      >>= P.addSource _.time
+      >>= P.addSource _.date
+      >>= P.addSource _.datetime
+
+  value ←
+    P.field PL._value PP._value
+      >>= P.addSource _.value
+      >>= P.isFilteredBy category
+
+  stack ←
+    P.optional PL._stack PP._stack
+      >>= P.addSource _.category
+      >>= P.addSource _.time
+      >>= P.isFilteredBy category
+      >>= P.isActiveWhen category
+
+
+  parallel ←
+    P.optional PL._parallel PP._parallel
+      >>= P.addSource _.category
+      >>= P.addSource _.time
+      >>= P.isFilteredBy category
+      >>= P.isFilteredBy stack
+      >>= P.isActiveWhen category
+
+
+  pure unit
 
 barBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 barBuilderComponent =
@@ -67,85 +100,16 @@ render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]  ]
-    [ renderCategory state
-    , renderValue state
-    , renderStack state
-    , renderParallel state
-    , HH.hr_
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
+        $ HE.input \l → right ∘ Q.HandleDims l
+    ,  HH.hr_
     , row [ renderAxisLabelAngle state ]
-    , renderPicker state
-    ]
-
-selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
-selecting f q _ = right (Q.Select (f q) unit)
-
-renderPicker ∷ ST.State → HTML
-renderPicker state = case state.picker of
-  Nothing → HH.text ""
-  Just { options, select } →
-    let
-      conf =
-        BCI.dimensionPicker options
-          case select of
-            Q.Category _ → "Choose category"
-            Q.Value _    → "Choose measure"
-            Q.Stack _    → "Choose stack"
-            Q.Parallel _ → "Choose parallel"
-            _ → ""
-    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
-
-renderCategory ∷ ST.State → HTML
-renderCategory state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Category") (selecting Q.Category))
-        state.category
-    ]
-
-
-renderValue ∷ ST.State → HTML
-renderValue state =
-  HH.form
-    [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerWithSelect
-        (BCI.secondary (Just "Measure") (selecting Q.Value))
-        state.value
-        (BCI.aggregation (Just "Measure Aggregation") (selecting Q.ValueAgg))
-        state.valueAgg
-    ]
-
-renderStack ∷ ST.State → HTML
-renderStack state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Stack") (selecting Q.Stack))
-        state.stack
-    ]
-
-renderParallel ∷ ST.State → HTML
-renderParallel state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Parallel") (selecting Q.Parallel))
-        state.parallel
     ]
 
 renderAxisLabelAngle ∷ ST.State → HTML
 renderAxisLabelAngle state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label angle" ]
     , HH.input
@@ -156,6 +120,7 @@ renderAxisLabelAngle state =
         ]
     ]
 
+
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.Activate next →
@@ -164,20 +129,30 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    pure $ k $ Card.BuildBar $ M.behaviour.save st
-  CC.Load (Card.BuildBar model) next → do
-    H.modify $ M.behaviour.load model
+    let
+      inp = M.BuildBar $ Just
+        { axisLabelAngle: st.axisLabelAngle
+        , category: D.topDimension
+        , value: D.topDimension
+        , stack: Nothing
+        , parallel: Nothing
+        }
+    out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
+    pure $ k case join out of
+      Nothing → M.BuildBar Nothing
+      Just a → a
+  CC.Load m next → do
+    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    for_ (m ^? M._BuildBar ∘ _Just) \r →
+      H.modify _{ axisLabelAngle = r.axisLabelAngle }
     pure next
-  CC.Load card next →
-    pure next
-  CC.ReceiveInput _ _ next → do
+  CC.ReceiveInput _ _ next →
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
-    for_ (evalState ^? _Axes) \axes → do
-      H.modify _{axes = axes}
-      H.modify M.behaviour.synchronize
+    for_ (evalState ^? ES._Axes) \axes → do
+      H.query' CS.cpDims unit $ H.action $ DQ.SetAxes axes
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply
@@ -186,51 +161,18 @@ cardEval = case _ of
       else High
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = do
-  H.modify M.behaviour.synchronize
+raiseUpdate =
   H.raise CC.modelUpdate
 
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
-  Q.PreventDefault e next → do
-    H.liftEff $ DEE.preventDefault e
-    pure next
   Q.SetAxisLabelAngle str next → do
     let fl = readFloat str
     unless (isNaN fl) do
-      H.modify _{axisLabelAngle = fl}
-      H.raise CC.modelUpdate
-    pure next
-  Q.Select sel next → do
-    case sel of
-      Q.Category a → updatePicker ST._category Q.Category a
-      Q.Value a    → updatePicker ST._value Q.Value a
-      Q.ValueAgg a → updateSelect ST._valueAgg a
-      Q.Stack a    → updatePicker ST._stack Q.Stack a
-      Q.Parallel a → updatePicker ST._parallel Q.Parallel a
-    pure next
-  Q.HandleDPMessage m next → case m of
-    DPC.Dismiss → do
-      H.modify _{ picker = Nothing }
-      pure next
-    DPC.Confirm value → do
-      st ← H.get
-      let
-        value' = flattenJCursors value
-      for_ st.picker \{ select } → case select of
-        Q.Category _ → H.modify (ST._category ∘ _value ?~ value')
-        Q.Value _    → H.modify (ST._value ∘ _value ?~ value')
-        Q.Stack _    → H.modify (ST._stack ∘ _value ?~ value')
-        Q.Parallel _ → H.modify (ST._parallel ∘ _value ?~ value')
-        _ → pure unit
-      H.modify _ { picker = Nothing }
+      H.modify $ ST._axisLabelAngle .~ fl
       raiseUpdate
-      pure next
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-  updateSelect l = case _ of
-    BCI.Open _    → pure unit
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+    pure next
+  Q.HandleDims q next → do
+    case q of
+      DQ.Update _ → raiseUpdate
+    pure next

@@ -23,6 +23,7 @@ import Control.Monad.State (class MonadState)
 import Control.Monad.Throw (class MonadThrow)
 
 import Data.Argonaut (JCursor)
+import Data.Set as Set
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
@@ -39,7 +40,7 @@ eval
     , MonadThrow CEM.CardError m
     , QuasarDSL m
     )
-  ⇒ ( Ax.Axes → Array JCursor )
+  ⇒ ( Ax.Axes → Set.Set JCursor )
   → FormInputType
   → Model
   → Port.Resource

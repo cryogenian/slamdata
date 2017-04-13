@@ -14,47 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Area.Component.State
-  ( initialState
-  , _value
-  , _valueAgg
-  , _series
-  , _dimension
-  , State
-  , module SlamData.Workspace.Card.Setups.DimensionPicker.CommonState
-  ) where
+module SlamData.Workspace.Card.Setups.Chart.Area.Component.State where
 
-import Data.Argonaut (JCursor)
 import Data.Lens (Lens', lens)
 
-import SlamData.Workspace.Card.Setups.Chart.Area.Component.Query (Selection)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState (showPicker)
-import SlamData.Workspace.Card.Setups.DimensionPicker.CommonState as DS
-import SlamData.Workspace.Card.Setups.Chart.Area.Model as M
-
-type State = M.ReducedState (DS.CommonState JCursor Selection ())
+type State =
+  { isSmooth ∷ Boolean
+  , isStacked ∷ Boolean
+  , axisLabelAngle ∷ Number
+  }
 
 initialState ∷ State
 initialState =
-  { axes: M.initialState.axes
-  , axisLabelAngle: M.initialState.axisLabelAngle
-  , isStacked: M.initialState.isStacked
-  , isSmooth: M.initialState.isSmooth
-  , dimension: M.initialState.dimension
-  , value: M.initialState.value
-  , valueAgg: M.initialState.valueAgg
-  , series: M.initialState.series
-  , picker: DS.initial.picker
+  { isSmooth: false
+  , isStacked: false
+  , axisLabelAngle: 0.0
   }
 
-_dimension ∷ ∀ r a. Lens' { dimension ∷ a | r } a
-_dimension = lens _.dimension _{ dimension = _ }
+_isSmooth ∷ Lens' State Boolean
+_isSmooth = lens _.isSmooth _{ isSmooth = _ }
 
-_value ∷ ∀ r a. Lens' { value ∷ a | r } a
-_value = lens _.value _{ value = _ }
+_isStacked ∷ Lens' State Boolean
+_isStacked = lens _.isStacked _{ isStacked = _ }
 
-_valueAgg ∷ ∀ r a. Lens' { valueAgg ∷ a | r } a
-_valueAgg = lens _.valueAgg _{ valueAgg = _ }
-
-_series ∷ ∀ r a. Lens' { series ∷ a | r } a
-_series = lens _.series _{ series = _ }
+_axisLabelAngle ∷ Lens' State Number
+_axisLabelAngle = lens _.axisLabelAngle _{ axisLabelAngle = _ }

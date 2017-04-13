@@ -121,7 +121,13 @@ reorder tag1 tag2 arr =
     _, Just i2 → init <> Array.take i2 rest <> subj <> Array.drop i2 rest
     _, _ → arr
 
-modifyDimension ∷ ∀ a b. Lens.Lens' State (Array (Int × D.Dimension a b)) → (D.Dimension a b → D.Dimension a b) → Int → State → State
+modifyDimension
+  ∷ ∀ a b
+  . Lens.Lens' State (Array (Int × D.Dimension a b))
+  → (D.Dimension a b → D.Dimension a b)
+  → Int
+  → State
+  → State
 modifyDimension dimLens f tag = Lens.over dimLens (map go)
   where
   go (tag' × a) | tag == tag' = tag × f a
@@ -136,12 +142,22 @@ setGroupByTransform = modifyDimension _dimensions ∘ Lens.set (D._value ∘ D._
 selectColumnValues ∷ Axes → Cofree List ColumnNode
 selectColumnValues axes =
   groupColumns
-    (PTM.All : List.fromFoldable
-      (map PTM.Column
-        (axes.category <> axes.value <> axes.time <> axes.date <> axes.datetime)))
+    $ PTM.All
+    : map PTM.Column
+    ( List.fromFoldable
+    $ axes.category
+    ⊕ axes.value
+    ⊕ axes.time
+    ⊕ axes.date
+    ⊕ axes.datetime
+    )
 
 selectGroupByValues ∷ Axes → Cofree List JCursorNode
 selectGroupByValues axes =
   groupJCursors
-    (List.fromFoldable
-      (axes.category <> axes.value <> axes.time <> axes.date <> axes.datetime))
+    $ List.fromFoldable
+    $ axes.category
+    ⊕ axes.value
+    ⊕ axes.time
+    ⊕ axes.date
+    ⊕ axes.datetime

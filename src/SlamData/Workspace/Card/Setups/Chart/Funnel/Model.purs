@@ -18,48 +18,43 @@ module SlamData.Workspace.Card.Setups.Chart.Funnel.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens ((^.))
+import Data.Argonaut as J
+import Data.Argonaut ((~>), (:=), (.?))
+import Data.Newtype (un)
+
+import SlamData.Common.Align (Align)
+import SlamData.Common.Sort (Sort)
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
-import SlamData.Common.Align (Align, alignSelect)
-import SlamData.Common.Sort (Sort, sortSelect)
-import SlamData.Form.Select ((⊝))
-import SlamData.Form.Select as S
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Behaviour as SB
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, nonMaybeAggregationSelect)
-
-type FunnelR =
-  { category ∷ JCursor
-  , value ∷ JCursor
-  , valueAggregation ∷ Aggregation
-  , series ∷ Maybe JCursor
+type ModelR =
+  { category ∷ D.LabeledJCursor
+  , value ∷ D.LabeledJCursor
+  , series ∷ Maybe D.LabeledJCursor
   , order ∷ Sort
   , align ∷ Align
   }
 
-type Model = Maybe FunnelR
+type Model = Maybe ModelR
 
 initialModel ∷ Model
 initialModel = Nothing
 
 
-eqFunnelR ∷ FunnelR → FunnelR → Boolean
-eqFunnelR r1 r2 =
+eqR ∷ ModelR → ModelR → Boolean
+eqR r1 r2 =
   r1.category ≡ r2.category
   ∧ r1.value ≡ r2.value
-  ∧ r1.valueAggregation ≡ r2.valueAggregation
   ∧ r1.series ≡ r2.series
   ∧ r1.order ≡ r2.order
   ∧ r1.align ≡ r2.align
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqFunnelR r1 r2
+eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -68,135 +63,51 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    category ← map runArbJCursor arbitrary
-    value ← map runArbJCursor arbitrary
-    valueAggregation ← arbitrary
-    series ← map (map runArbJCursor) arbitrary
+    category ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    value ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    series ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     order ← arbitrary
     align ← arbitrary
-    pure { category, value, valueAggregation, series, order, align }
+    pure { category, value, series, order, align }
 
-encode ∷ Model → Json
-encode Nothing = jsonNull
+encode ∷ Model → J.Json
+encode Nothing = J.jsonNull
 encode (Just r) =
   "configType" := "funnel"
   ~> "category" := r.category
   ~> "value" := r.value
-  ~> "valueAggregation" := r.valueAggregation
   ~> "series" := r.series
   ~> "order" := r.order
   ~> "align" := r.align
-  ~> jsonEmptyObject
+  ~> J.jsonEmptyObject
 
-decode ∷ Json → String ⊹ Model
+decode ∷ J.Json → String ⊹ Model
 decode js
-  | isNull js = pure Nothing
+  | J.isNull js = pure Nothing
   | otherwise = map Just do
-    obj ← decodeJson js
+    obj ← J.decodeJson js
     configType ← obj .? "configType"
     unless (configType ≡ "funnel")
-      $ throwError "This config is not funnel"
+      $ throwError "This is not a funnel"
+    decodeR obj <|> decodeLegacyR obj
+  where
+  decodeR ∷ J.JObject → String ⊹ ModelR
+  decodeR obj = do
     category ← obj .? "category"
     value ← obj .? "value"
-    valueAggregation ← obj .? "valueAggregation"
     series ← obj .? "series"
     order ← obj .? "order"
     align ← obj .? "align"
-    pure { category, value, valueAggregation, series, order, align }
+    pure { category, value, series, order, align }
 
-type ReducedState r =
-  { axes ∷ Ax.Axes
-  , category ∷ S.Select JCursor
-  , value ∷ S.Select JCursor
-  , valueAgg ∷ S.Select Aggregation
-  , series ∷ S.Select JCursor
-  , align ∷ S.Select Align
-  , order ∷ S.Select Sort
-  | r}
-
-initialState ∷ ReducedState ()
-initialState =
-  { axes:Ax.initialAxes
-  , category: S.emptySelect
-  , value: S.emptySelect
-  , valueAgg: S.emptySelect
-  , series: S.emptySelect
-  , align: S.emptySelect
-  , order: S.emptySelect
-  }
-
-behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
-behaviour =
-  { synchronize
-  , load
-  , save
-  }
-  where
-  synchronize st =
-    let
-      newCategory =
-        S.setPreviousValueFrom (Just st.category)
-          $ S.autoSelect
-          $ S.newSelect
-          $ st.axes.category
-          ⊕ st.axes.time
-          ⊕ st.axes.date
-          ⊕ st.axes.datetime
-
-      newValue =
-        S.setPreviousValueFrom (Just st.value)
-          $ S.autoSelect
-          $ S.newSelect
-          $ st.axes.value
-
-      newValueAggregation =
-        S.setPreviousValueFrom (Just st.valueAgg)
-          $ nonMaybeAggregationSelect
-
-      newSeries =
-        S.setPreviousValueFrom (Just st.series)
-          $ S.newSelect
-          $ S.ifSelected [ newCategory ]
-          $ st.axes.category
-          ⊕ st.axes.time
-          ⊝ newCategory
-
-      newOrder =
-        S.setPreviousValueFrom (Just st.order)
-          $ sortSelect
-
-      newAlign =
-        S.setPreviousValueFrom (Just st.align)
-          $ alignSelect
-    in
-     st{ value = newValue
-       , valueAgg = newValueAggregation
-       , category = newCategory
-       , series = newSeries
-       , align = newAlign
-       , order = newOrder
-       }
-
-  load Nothing st = st
-  load (Just m) st =
-    st{ value = S.fromSelected $ Just m.value
-      , valueAgg = S.fromSelected $ Just m.valueAggregation
-      , category = S.fromSelected $ Just m.category
-      , series = S.fromSelected m.series
-      , align = S.fromSelected $ Just m.align
-      , order = S.fromSelected $ Just m.order
-      }
-
-  save st =
-    { category: _
-    , value: _
-    , valueAggregation: _
-    , series: st.series ^. S._value
-    , order: _
-    , align: _
-    }
-    <$> (st.category ^. S._value)
-    <*> (st.value ^. S._value)
-    <*> (st.valueAgg ^. S._value)
-    <*> (st.order ^. S._value)
-    <*> (st.align ^. S._value)
+  decodeLegacyR ∷ J.JObject → String ⊹ ModelR
+  decodeLegacyR obj = do
+    category ← map D.defaultJCursorDimension $ obj .? "category"
+    value ←
+      D.pairToDimension
+      <$> (obj .? "value")
+      <*> (obj .? "valueAggregation")
+    series ← map (map D.defaultJCursorDimension) $ obj .? "series"
+    order ← obj .? "order"
+    align ← obj .? "align"
+    pure { category, value, series, order, align }

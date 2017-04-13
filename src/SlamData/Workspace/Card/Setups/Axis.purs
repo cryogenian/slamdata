@@ -24,6 +24,7 @@ import Data.Foldable as F
 import Data.List (List(..))
 import Data.List as L
 import Data.Map as M
+import Data.Set as Set
 
 import ECharts.Types as ET
 
@@ -31,7 +32,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor)
 
 data AxisType
   = Measure
@@ -39,6 +40,9 @@ data AxisType
   | Time
   | Date
   | DateTime
+
+derive instance eqAxisType ∷ Eq AxisType
+derive instance ordAxisType ∷ Ord AxisType
 
 compatible ∷ AxisType → Sem.Semantics → Boolean
 compatible Measure = case _ of
@@ -94,50 +98,50 @@ type AxisTypeAnnotated a =
   , datetime ∷ a
   }
 
-type Axes = AxisTypeAnnotated (Array JCursor)
+type Axes = AxisTypeAnnotated (Set.Set JCursor)
 
 axisType ∷ JCursor → Axes → AxisType
 axisType c axes
-  | F.elem c axes.value = Measure
-  | F.elem c axes.time = Time
-  | F.elem c axes.date = Date
-  | F.elem c axes.datetime = DateTime
+  | Set.member c axes.value = Measure
+  | Set.member c axes.time = Time
+  | Set.member c axes.date = Date
+  | Set.member c axes.datetime = DateTime
   | otherwise = Category
 
 genAxes ∷ Gen.Gen Axes
 genAxes = do
-  value ← map (map runArbJCursor) arbitrary
-  time ← map (map runArbJCursor) arbitrary
-  category ← map (map runArbJCursor) arbitrary
-  date ← map (map runArbJCursor) arbitrary
-  datetime ← map (map runArbJCursor) arbitrary
+  value ← map (Set.fromFoldable ∘ map unwrap) (arbitrary ∷ Gen.Gen (Array ArbJCursor))
+  time ← map (Set.fromFoldable ∘ map unwrap) (arbitrary ∷ Gen.Gen (Array ArbJCursor))
+  category ← map (Set.fromFoldable ∘ map unwrap) (arbitrary ∷ Gen.Gen (Array ArbJCursor))
+  date ← map (Set.fromFoldable ∘ map unwrap) (arbitrary ∷ Gen.Gen (Array ArbJCursor))
+  datetime ← map (Set.fromFoldable ∘ map unwrap) (arbitrary ∷ Gen.Gen (Array ArbJCursor))
   pure {value, time, category, date, datetime}
 
 encodeAxes ∷ Axes → Json
 encodeAxes axes =
-  "value" := axes.value
-  ~> "time" := axes.time
-  ~> "category" := axes.category
-  ~> "date" := axes.date
-  ~> "datetime" := axes.datetime
+  "value" := A.fromFoldable axes.value
+  ~> "time" := A.fromFoldable axes.time
+  ~> "category" := A.fromFoldable axes.category
+  ~> "date" := A.fromFoldable axes.date
+  ~> "datetime" := A.fromFoldable axes.datetime
   ~> jsonEmptyObject
 
 decodeAxes ∷ JObject → String ⊹ Axes
 decodeAxes js = do
-  value ← js .? "value"
-  category ← js .? "category"
-  time ← js .? "time"
-  date ← ((js .? "date") <|> pure [])
-  datetime ← ((js .? "datetime") <|> pure [])
+  value ← map Set.fromFoldable ((js .? "value") ∷ String ⊹ Array JCursor)
+  category ← map Set.fromFoldable ((js .? "category") ∷ String ⊹ Array JCursor)
+  time ← map Set.fromFoldable ((js .? "time") ∷ String ⊹ Array JCursor)
+  date ← map Set.fromFoldable ((js .? "date") <|> pure [])
+  datetime ← map Set.fromFoldable ((js .? "datetime") <|> pure [])
   pure {value, category, time, date, datetime}
 
 initialAxes ∷ Axes
 initialAxes =
-  { value: []
-  , time: []
-  , category: []
-  , date: []
-  , datetime: []
+  { value: Set.empty
+  , time: Set.empty
+  , category: Set.empty
+  , date: Set.empty
+  , datetime: Set.empty
   }
 
 eqAxes ∷ Axes → Axes → Boolean
@@ -160,11 +164,11 @@ buildAxes rs =
   foldFn ∷ Axes → JCursor × Maybe AxisType → Axes
   foldFn acc (_ × Nothing) = acc
   foldFn acc (cursor × (Just at)) = case at of
-    Measure → acc { value = A.cons cursor acc.value }
-    Category → acc { category = A.cons cursor acc.category }
-    Time → acc { time = A.cons cursor acc.time }
-    Date → acc { date = A.cons cursor acc.date }
-    DateTime → acc { datetime = A.cons cursor acc.datetime }
+    Measure → acc { value = Set.insert cursor acc.value }
+    Category → acc { category = Set.insert cursor acc.category }
+    Time → acc { time = Set.insert cursor acc.time }
+    Date → acc { date = Set.insert cursor acc.date }
+    DateTime → acc { datetime = Set.insert cursor acc.datetime }
 
 checkSemantics ∷ List (Maybe Sem.Semantics) → Maybe AxisType
 checkSemantics lst =

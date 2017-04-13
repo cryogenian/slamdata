@@ -18,9 +18,12 @@ module SlamData.Workspace.Card.Setups.Dimension where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), (.?), jsonEmptyObject)
-import Data.Lens (Lens', lens, Traversal', wander)
+import Data.Argonaut (JCursor(..), class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), (.?), jsonEmptyObject, insideOut)
+import Data.Array as Array
+import Data.Lens (Lens', lens, Traversal', wander, _Just)
 import Data.Newtype (un)
+import Data.String as String
+import Data.Traversable (sequenceDefault)
 
 import SlamData.Workspace.Card.Setups.Transform (Transform(..))
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
@@ -29,6 +32,7 @@ import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
 
 type JCursorDimension = Dimension JCursor JCursor
+type LabeledJCursor = Dimension Void JCursor
 
 data Dimension a b
   = Dimension (Maybe (Category a)) (Category b)
@@ -36,6 +40,9 @@ data Dimension a b
 data Category p
   = Static String
   | Projection (Maybe Transform) p
+
+topDimension ∷ LabeledJCursor
+topDimension = Dimension Nothing $ Projection Nothing JCursorTop
 
 projection ∷ ∀ a b. b → Dimension a b
 projection = Dimension Nothing <<< Projection Nothing
@@ -66,6 +73,14 @@ _projection = wander \f → case _ of
   Projection t p → Projection t <$> f p
   c → pure c
 
+_Static ∷ ∀ p. Traversal' (Category p) String
+_Static = wander \f → case _ of
+  Static s → map Static $ f s
+  c → pure c
+
+_staticCategory ∷ ∀ a b. Traversal' (Dimension a b) String
+_staticCategory = _category ∘ _Just ∘ _Static
+
 printCategory ∷ ∀ p. (p → String) → Category p → String
 printCategory f = case _ of
   Static str → str
@@ -76,6 +91,12 @@ isStatic = case _ of
   Static _ → true
   _ → false
 
+jcursorLabel ∷ LabeledJCursor → String
+jcursorLabel = case _ of
+  Dimension (Just (Static label)) _ | label ≠ "" → label
+  Dimension _ (Static label) → label
+  Dimension _ (Projection _ jcursor) → prettyPrintJCursor jcursor
+
 derive instance eqDimension ∷ (Eq a, Eq b) ⇒ Eq (Dimension a b)
 derive instance eqCategory ∷ Eq p ⇒ Eq (Category p)
 
@@ -85,8 +106,49 @@ derive instance ordCategory ∷ Ord p ⇒ Ord (Category p)
 derive instance functorDimension ∷ Functor (Dimension a)
 derive instance functorCategory ∷ Functor Category
 
+instance applyCategory ∷ Apply Category where
+  apply (Static s) _ = Static s
+  apply _ (Static s) = Static s
+  apply (Projection a f) (Projection b v) = Projection (a <|> b) $ f v
+
+instance applicativeCategory ∷ Applicative Category where
+  pure s = Projection Nothing s
+
+instance applyDimension ∷ Apply (Dimension a) where
+  apply (Dimension a f) (Dimension b v) =
+    Dimension (a <|> b) $ apply f v
+
+instance applicativeDimension ∷ Applicative (Dimension a) where
+  pure a = Dimension Nothing $ pure a
+
 instance bifunctorDimension ∷ Bifunctor Dimension where
   bimap f g (Dimension a b) = Dimension (map f <$> a) (g <$> b)
+
+instance foldableCategory ∷ Foldable Category where
+  foldMap f = case _ of
+    Static _ → mempty
+    Projection _ v → f v
+  foldl f acc = case _ of
+    Static _ → acc
+    Projection _ v → f acc v
+  foldr f acc = case _ of
+    Static _ → acc
+    Projection _ v → f v acc
+
+instance traversableCategory ∷ Traversable Category where
+  traverse f = case _ of
+    Static s → pure $ Static s
+    Projection t v → Projection t <$> f v
+  sequence = sequenceDefault
+
+instance foldableDimension ∷ Foldable (Dimension a) where
+  foldMap f (Dimension _ pr) = foldMap f pr
+  foldl f acc (Dimension _ pr) = foldl f acc pr
+  foldr f acc (Dimension _ pr) = foldr f acc pr
+
+instance traversableDimension ∷ Traversable (Dimension a) where
+  traverse f (Dimension a pr) = Dimension a <$> traverse f pr
+  sequence = sequenceDefault
 
 instance encodeJsonDimension ∷ (EncodeJson a, EncodeJson b) ⇒ EncodeJson (Dimension a b) where
   encodeJson (Dimension category value) = "value" := value ~> "category" := category ~> jsonEmptyObject
@@ -131,3 +193,33 @@ instance arbitraryDimensionWithStaticCategory ∷ Arbitrary a ⇒ Arbitrary (Dim
 
 instance arbitraryStaticCategory ∷ Arbitrary StaticCategory where
   arbitrary = StaticCategory ∘ Static <$> arbitrary
+
+prettyPrintJCursor ∷ JCursor → String
+prettyPrintJCursor = go ""
+  where
+  go "" (JField f n) = go f n
+  go "" (JIndex i n) = go (show i) n
+  go "" JCursorTop = "value"
+  go s (JField f n) = go (s <> "." <> f) n
+  go s (JIndex i n) = go (s <> "[" <> show i <> "]") n
+  go s JCursorTop = s
+
+defaultJCursorCategory ∷ ∀ a. JCursor → Category a
+defaultJCursorCategory =
+  Static ∘ String.joinWith "_" ∘ go [] ∘ insideOut
+  where
+  go label (JField field _) = Array.cons field label
+  go label (JIndex ix next) = go (Array.cons (show ix) label) next
+  go label _ = Array.cons "value" label
+
+defaultJCursorDimension ∷ JCursor → LabeledJCursor
+defaultJCursorDimension jc =
+  projectionWithCategory (defaultJCursorCategory jc) jc
+
+pairToDimension ∷ JCursor → Ag.Aggregation → LabeledJCursor
+pairToDimension v a =
+  pairWithMaybeAggregation v $ Just a
+
+pairWithMaybeAggregation ∷ JCursor → Maybe Ag.Aggregation → LabeledJCursor
+pairWithMaybeAggregation v a =
+  Dimension (Just $ defaultJCursorCategory v) (Projection (map Aggregation a) v)

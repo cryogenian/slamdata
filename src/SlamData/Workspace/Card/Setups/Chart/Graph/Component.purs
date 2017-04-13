@@ -20,9 +20,7 @@ module SlamData.Workspace.Card.Setups.Chart.Graph.Component
 
 import SlamData.Prelude
 
-import Data.Lens ((^?), (?~), (.~))
-
-import DOM.Event.Event as DEE
+import Data.Lens ((^?), _Just)
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -33,26 +31,51 @@ import Halogen.Themes.Bootstrap3 as B
 
 import Global (readFloat, isNaN)
 
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Render.Common (row)
-import SlamData.Form.Select (_value)
-import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
-
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State as ES
+import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
-import SlamData.Workspace.Card.Setups.Inputs as BCI
 import SlamData.Workspace.Card.Setups.Chart.Graph.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Chart.Graph.Component.State as ST
 import SlamData.Workspace.Card.Setups.Chart.Graph.Component.Query as Q
-import SlamData.Workspace.Card.Setups.Chart.Graph.Model as M
-import SlamData.Workspace.Card.Eval.State (_Axes)
+import SlamData.Workspace.Card.Setups.Chart.Graph.Component.State as ST
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as DS
+import SlamData.Workspace.Card.Setups.Package.DSL as P
+import SlamData.Workspace.Card.Setups.Package.Lenses as PL
+import SlamData.Workspace.Card.Setups.Package.Projection as PP
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
-type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
+type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
+type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
+
+package ∷ DS.Package
+package = P.onPrism (M._BuildGraph ∘ _Just) $ DS.interpret do
+  source ←
+    P.field PL._source PP._source
+      >>= P.addSource _.category
+
+  target ←
+    P.field PL._target PP._target
+      >>= P.addSource _.category
+      >>= P.isFilteredBy source
+
+  size ←
+    P.optional PL._size PP._size
+      >>= P.addSource _.value
+
+  color ←
+    P.optional PL._color PP._color
+      >>= P.addSource _.category
+      >>= P.addSource _.time
+      >>= P.isFilteredBy source
+      >>= P.isFilteredBy target
+
+  pure unit
 
 graphBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 graphBuilderComponent =
@@ -63,90 +86,24 @@ graphBuilderComponent =
     , initialState: const ST.initialState
     }
 
+
 render ∷ ST.State → HTML
 render state =
   HH.div
     [ HP.classes [ CSS.chartEditor ]
     ]
-    [ renderSource state
-    , renderTarget state
-    , renderSize state
-    , renderColor state
+    [ HH.slot' CS.cpDims unit (DM.component package) unit
+        $ HE.input \l → right ∘ Q.HandleDims l
+    , HH.hr_
+    , row [ renderCircular state ]
     , HH.hr_
     , row [ renderMaxSize state, renderMinSize state ]
-    , row [ renderCircular state ]
-    , renderPicker state
-    ]
-
-selecting ∷ ∀ a f. (a → Q.Selection BCI.SelectAction) → a → H.Action (f ⨁ Q.Query)
-selecting f q a = right (Q.Select (f q) a)
-
-renderPicker ∷ ST.State → HTML
-renderPicker state = case state.picker of
-  Nothing → HH.text ""
-  Just { options, select } →
-    let
-      conf =
-        BCI.dimensionPicker options
-          case select of
-            Q.Source _    → "Choose edge source"
-            Q.Target _    → "Choose edge target"
-            Q.Size _      → "Choose node size"
-            Q.Color _     → "Choose node category"
-            _ → ""
-    in HH.slot unit (DPC.picker conf) unit (Just ∘ right ∘ H.action ∘ Q.HandleDPMessage)
-
-renderSource ∷ ST.State → HTML
-renderSource state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.primary (Just "Edge source") (selecting Q.Source))
-        state.source
-    ]
-
-renderTarget ∷ ST.State → HTML
-renderTarget state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Edge target") (selecting Q.Target))
-        state.target
-    ]
-
-renderSize ∷ ST.State → HTML
-renderSize state =
-  HH.form
-    [ HP.classes [ CSS.withAggregation, CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerWithSelect
-        (BCI.secondary (Just "Node size") (selecting Q.Size))
-        state.size
-        (BCI.aggregation (Just "Node size aggregation") (selecting Q.SizeAgg))
-        state.sizeAgg
-    ]
-
-renderColor ∷ ST.State → HTML
-renderColor state =
-  HH.form
-    [ HP.classes [ CSS.chartConfigureForm ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
-    ]
-    [ BCI.pickerInput
-        (BCI.secondary (Just "Node category") (selecting Q.Color))
-        state.color
     ]
 
 renderMaxSize ∷ ST.State → HTML
 renderMaxSize state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max node size" ]
     , HH.input
@@ -159,9 +116,8 @@ renderMaxSize state =
 
 renderMinSize ∷ ST.State → HTML
 renderMinSize state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Min node size" ]
     , HH.input
@@ -174,18 +130,20 @@ renderMinSize state =
 
 renderCircular ∷ ST.State → HTML
 renderCircular state =
-  HH.form
+  HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
-    , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Circular layout" ]
-    , HH.input
-        [ HP.type_ HP.InputCheckbox
-        , HP.checked state.circular
-        , ARIA.label "Circular layout"
-        , HE.onChecked $ HE.input_ (right ∘ Q.ToggleCircularLayout)
+    [ HH.label [ HP.classes [ B.controlLabel ] ]
+        [ HH.input
+            [ HP.type_ HP.InputCheckbox
+            , HP.checked state.circular
+            , ARIA.label "Circular layout"
+            , HE.onChecked $ HE.input_ (right ∘ Q.ToggleCircularLayout)
+            ]
+        , HH.text "Circular layout"
         ]
     ]
+
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -193,21 +151,34 @@ cardEval = case _ of
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k →
-    H.gets $ k ∘ Card.BuildGraph ∘ M.behaviour.save
-  CC.Load (Card.BuildGraph model) next → do
-    H.modify $ M.behaviour.load model
-    pure next
-  CC.Load card next →
+  CC.Save k → do
+    st ← H.get
+    let
+      inp = M.BuildGraph $ Just
+        { source: D.topDimension
+        , target: D.topDimension
+        , size: Nothing
+        , color: Nothing
+        , minSize: st.minSize
+        , maxSize: st.maxSize
+        , circular: st.circular
+        }
+    out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
+    pure $ k case join out of
+      Nothing → M.BuildGraph Nothing
+      Just a → a
+  CC.Load m next → do
+    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    for_ (m ^? M._BuildGraph ∘ _Just) \r →
+      H.modify _{ minSize = r.minSize, maxSize = r.maxSize, circular = r.circular }
     pure next
   CC.ReceiveInput _ _ next →
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
-    for_ (evalState ^? _Axes) \axes → do
-      H.modify _{axes = axes}
-      H.modify M.behaviour.synchronize
+    for_ (evalState ^? ES._Axes) \axes → do
+      H.query' CS.cpDims unit $ H.action $ DQ.SetAxes axes
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply
@@ -216,62 +187,28 @@ cardEval = case _ of
       else High
 
 raiseUpdate ∷ DSL Unit
-raiseUpdate = do
-  H.modify M.behaviour.synchronize
+raiseUpdate =
   H.raise CC.modelUpdate
 
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
-  Q.PreventDefault e next → do
-    H.liftEff $ DEE.preventDefault e
-    pure next
   Q.ToggleCircularLayout next → do
     H.modify \x → x{circular = not x.circular}
-    H.raise CC.modelUpdate
+    raiseUpdate
     pure next
   Q.SetMinNodeSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{minSize = fl}
-      H.raise CC.modelUpdate
+      raiseUpdate
     pure next
   Q.SetMaxNodeSize str next → do
     let fl = readFloat str
     unless (isNaN fl) do
       H.modify _{maxSize = fl}
-      H.raise CC.modelUpdate
-    pure next
-  Q.Select sel next → do
-    case sel of
-      Q.Source a  → updatePicker ST._source Q.Source a
-      Q.Target a  → updatePicker ST._target Q.Target a
-      Q.Size a    → updatePicker ST._size Q.Size a
-      Q.SizeAgg a → updateSelect ST._sizeAgg a
-      Q.Color a   → updatePicker ST._color Q.Color a
-    pure next
-  Q.HandleDPMessage m next → case m of
-    DPC.Dismiss → do
-      H.modify _ { picker = Nothing }
-      pure next
-    DPC.Confirm value → do
-      st ← H.get
-      let
-        value' = flattenJCursors value
-      for_ st.picker \{ select } → case select of
-        Q.Source _ → H.modify (ST._source ∘ _value ?~ value')
-        Q.Target _ → H.modify (ST._target ∘ _value ?~ value')
-        Q.Size _   → H.modify (ST._size ∘ _value ?~ value')
-        Q.Color _  → H.modify (ST._color ∘ _value ?~ value')
-        _ → pure unit
-      H.modify _ { picker = Nothing }
       raiseUpdate
-      pure next
-
-  where
-  updatePicker l q = case _ of
-    BCI.Open opts → H.modify (ST.showPicker q opts)
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
-
-  updateSelect l = case _ of
-    BCI.Open _    → pure unit
-    BCI.Choose a  → H.modify (l ∘ _value .~ a) *> raiseUpdate
+    pure next
+  Q.HandleDims q next → do
+    case q of
+      DQ.Update _ → raiseUpdate
+    pure next

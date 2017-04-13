@@ -173,6 +173,7 @@ awaitBody' = do
   body ← liftEff $ map toMaybe $ window >>= document >>= body
   maybe HA.awaitBody pure body
 
+
 removeFromBody ∷ String → Aff SlamDataEffects Unit
 removeFromBody sel = liftEff $ void $ runMaybeT do
   body ← MaybeT $ map toMaybe $ window >>= document >>= body

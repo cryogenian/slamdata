@@ -18,43 +18,36 @@ module SlamData.Workspace.Card.Setups.Chart.Gauge.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens ((^.))
+import Data.Argonaut as J
+import Data.Argonaut ((~>), (:=), (.?))
+import Data.Newtype (un)
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, nonMaybeAggregationSelect)
-import SlamData.Workspace.Card.Setups.Behaviour as SB
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Form.Select ((⊝))
-import SlamData.Form.Select as S
-
-type GaugeR =
-  { value ∷ JCursor
-  , valueAggregation ∷ Ag.Aggregation
-  , parallel ∷ Maybe JCursor
-  , multiple ∷ Maybe JCursor
+type ModelR =
+  { value ∷ D.LabeledJCursor
+  , parallel ∷ Maybe D.LabeledJCursor
+  , multiple ∷ Maybe D.LabeledJCursor
   }
 
-type Model = Maybe GaugeR
+type Model = Maybe ModelR
 
 initialModel ∷ Model
 initialModel = Nothing
 
-eqGaugeR ∷ GaugeR → GaugeR → Boolean
-eqGaugeR r1 r2 =
+eqR ∷ ModelR → ModelR → Boolean
+eqR r1 r2 =
   r1.value ≡ r2.value
-  ∧ r1.valueAggregation ≡ r2.valueAggregation
   ∧ r1.parallel ≡ r2.parallel
   ∧ r1.multiple ≡ r2.multiple
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqGaugeR r1 r2
+eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -62,117 +55,56 @@ genModel = do
   isNothing ← arbitrary
   if isNothing
     then pure Nothing
-    else do
-    value ← map runArbJCursor arbitrary
-    valueAggregation ← arbitrary
-    parallel ← map (map runArbJCursor) arbitrary
-    multiple ← map (map runArbJCursor) arbitrary
-    pure
-      $ Just { value
-             , valueAggregation
-             , parallel
-             , multiple
-             }
+    else map Just do
+    value ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    parallel ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    multiple ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    pure { value
+         , parallel
+         , multiple
+         }
 
-encode ∷ Model → Json
-encode Nothing = jsonNull
+encode ∷ Model → J.Json
+encode Nothing = J.jsonNull
 encode (Just r) =
   "configType" := "gauge"
   ~> "value" := r.value
-  ~> "valueAggregation" := r.valueAggregation
   ~> "parallel" := r.parallel
   ~> "multiple" := r.multiple
-  ~> jsonEmptyObject
+  ~> J.jsonEmptyObject
 
-decode ∷ Json → String ⊹ Model
+decode ∷ J.Json → String ⊹ Model
 decode js
-  | isNull js = pure Nothing
-  | otherwise = do
-    obj ← decodeJson js
+  | J.isNull js = pure Nothing
+  | otherwise = map Just $ decode' js
+  where
+  decode' ∷ J.Json → String ⊹ ModelR
+  decode' js' = do
+    obj ← J.decodeJson js'
     configType ← obj .? "configType"
     unless (configType ≡ "gauge")
-      $ throwError "This config is not gauge"
+      $ throwError "This config is not a gauge"
+    decodeR obj <|> decodeLegacyR obj
+
+  decodeR ∷ J.JObject → String ⊹ ModelR
+  decodeR obj = do
     value ← obj .? "value"
-    valueAggregation ← obj .? "valueAggregation"
     parallel ← obj .? "parallel"
     multiple ← obj .? "multiple"
-    pure $ Just { value
-                , valueAggregation
-                , parallel
-                , multiple
-                }
+    pure { value
+         , parallel
+         , multiple
+         }
 
-type ReducedState r =
-  { axes ∷ Ax.Axes
-  , value ∷ S.Select JCursor
-  , valueAgg ∷ S.Select Aggregation
-  , multiple ∷ S.Select JCursor
-  , parallel ∷ S.Select JCursor
-  | r}
-
-initialState ∷ ReducedState ()
-initialState =
-  { axes: Ax.initialAxes
-  , value: S.emptySelect
-  , valueAgg: S.emptySelect
-  , multiple: S.emptySelect
-  , parallel: S.emptySelect
-  }
-
-behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
-behaviour =
-  { synchronize
-  , load
-  , save
-  }
-  where
-  synchronize st =
-    let
-      newValue =
-        S.setPreviousValueFrom (Just st.value)
-          $ S.autoSelect
-          $ S.newSelect
-          $ st.axes.value
-
-      newValueAggregation =
-        S.setPreviousValueFrom (Just st.valueAgg)
-          $ nonMaybeAggregationSelect
-
-      newParallel =
-        S.setPreviousValueFrom (Just st.parallel)
-          $ S.newSelect
-          $ S.ifSelected [newValue]
-          $ st.axes.category
-          ⊕ st.axes.time
-
-      newMultiple =
-        S.setPreviousValueFrom (Just st.multiple)
-          $ S.newSelect
-          $ S.ifSelected [newValue]
-          $ st.axes.category
-          ⊕ st.axes.time
-          ⊝ newParallel
-
-    in
-      st{ value = newValue
-        , valueAgg = newValueAggregation
-        , parallel = newParallel
-        , multiple = newMultiple
-        }
-
-  load Nothing st = st
-  load (Just m) st =
-    st{ value = S.fromSelected $ Just m.value
-      , valueAgg = S.fromSelected $ Just m.valueAggregation
-      , multiple = S.fromSelected m.multiple
-      , parallel = S.fromSelected m.parallel
-      }
-
-  save st =
-    { value: _
-    , valueAggregation: _
-    , parallel: st.parallel ^. S._value
-    , multiple: st.multiple ^. S._value
-    }
-    <$> (st.value ^. S._value)
-    <*> (st.valueAgg ^. S._value)
+  decodeLegacyR ∷ J.JObject → String ⊹ ModelR
+  decodeLegacyR obj = do
+    value ←
+      D.pairToDimension
+      <$> (obj .? "value")
+      <*> (obj .? "valueAggregation")
+    multiple ← map (map D.defaultJCursorDimension) $ obj .? "multiple"
+    parallel ← map (map D.defaultJCursorDimension) $ obj .? "parallel"
+    pure { value
+         , multiple
+         , parallel
+         }
