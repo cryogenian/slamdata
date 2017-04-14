@@ -30,7 +30,6 @@ import Data.Array ((!!))
 import Data.Array as A
 import Data.Function (on)
 import Data.Lens ((^?), _Just, (^.), (.~), (?~))
-import Data.List ((:))
 import Data.List as L
 import Data.Map as M
 import Data.NonEmpty as NE
@@ -48,8 +47,8 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Semantics as Sem
@@ -110,7 +109,6 @@ eval m resource = do
         CEM.liftQ $ QQ.query backendPath $ buildSql r path
       pure $ buildArea axes results r
 
-
 buildSql ∷ ModelR → PU.FilePath → Sql.Sql
 buildSql r path =
   Sql.buildSelect
@@ -119,29 +117,16 @@ buildSql r path =
     ∘ ( Sql._groupBy ?~ buildGroupBy r )
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r =
-  ( applyMeasure $ Sql.projection measureF # Sql.as "measure" )
-  : ( Sql.projection dimensionF # Sql.as "dimension" )
-  : ( Sql.projection seriesF # Sql.as "series" )
-  : L.Nil
+buildProjections r = L.fromFoldable
+  [ r.value # SCC.projectJCursor # Sql.as "measure" # applyMeasure
+  , r.dimension # SCC.projectJCursor # Sql.as "dimension"
+  , r.series # maybe SCC.projectNull SCC.projectJCursor # Sql.as "series"
+  ]
   where
-  measureF ∷ Sql.Sql
-  measureF =
-    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.value ^? D._value ∘ D._projection
-
-  dimensionF ∷ Sql.Sql
-  dimensionF =
-    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.dimension ^? D._value ∘ D._projection
-
-  seriesF ∷ Sql.Sql
-  seriesF =
-    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.series ^? _Just ∘ D._value ∘ D._projection
-
   applyMeasure ∷ Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
   applyMeasure p = case r.value ^? D._value ∘ D._transform ∘ _Just of
     Nothing → p
     Just t → T.applyTransform t p
-
 
 buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
 buildGroupBy r = Sql.GroupBy
