@@ -16,15 +16,19 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Common where
 
+import SlamData.Prelude
 import Data.Argonaut as J
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SqlSquare as Sql
 
-projectJCursor ∷ ∀ a. D.Dimension a J.JCursor → Sql.Projection Sql.Sql
-projectJCursor (D.Dimension _ cat) = Sql.projection case cat of
+jcursorSql ∷ ∀ a. D.Dimension a J.JCursor → Sql.Sql
+jcursorSql (D.Dimension _ cat) = case cat of
   D.Static str → Sql.string str
   D.Projection _ pr → QQ.jcursorToSql pr
 
-projectNull ∷ Sql.Projection Sql.Sql
-projectNull = Sql.projection Sql.null
+jcursorPrj ∷ ∀ a. D.Dimension a J.JCursor → Sql.Projection Sql.Sql
+jcursorPrj = Sql.projection ∘ jcursorSql
+
+nullPrj ∷ Sql.Projection Sql.Sql
+nullPrj = Sql.projection Sql.null

@@ -118,9 +118,9 @@ buildSql r path =
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
 buildProjections r = L.fromFoldable
-  [ r.value # SCC.projectJCursor # Sql.as "measure" # applyMeasure
-  , r.dimension # SCC.projectJCursor # Sql.as "dimension"
-  , r.series # maybe SCC.projectNull SCC.projectJCursor # Sql.as "series"
+  [ r.value # SCC.jcursorPrj # Sql.as "measure" # applyMeasure
+  , r.dimension # SCC.jcursorPrj # Sql.as "dimension"
+  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
   ]
   where
   applyMeasure ∷ Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
@@ -132,10 +132,9 @@ buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
 buildGroupBy r = Sql.GroupBy
   { keys, having: Nothing }
   where
-  keys =
-    L.fromFoldable $ join
-    [ foldMap (A.singleton ∘ QQ.jcursorToSql) $ r.dimension ^? D._value ∘ D._projection
-    , foldMap (A.singleton ∘ QQ.jcursorToSql) $ r.series ^? _Just ∘ D._value ∘ D._projection
+  keys = L.fromFoldable
+    [ r.dimension # SCC.jcursorSql
+    , r.series # maybe Sql.null SCC.jcursorSql
     ]
 
 buildArea ∷ Ax.Axes → JArray → ModelR → Port.Port
