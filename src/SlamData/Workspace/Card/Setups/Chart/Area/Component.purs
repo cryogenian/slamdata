@@ -100,6 +100,7 @@ render state =
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderIsStacked state, renderIsSmooth state ]
+    , HH.hr_
     , row [ renderAxisLabelAngle state ]
     ]
 
@@ -123,12 +124,14 @@ renderIsStacked state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Stacked" ]
-    , HH.input
-        [ HP.type_ HP.InputCheckbox
-        , HP.checked state.isStacked
-        , ARIA.label "Stacked"
-        , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleStacked
+    [ HH.label [ HP.classes [ B.controlLabel ] ]
+        [ HH.input
+            [ HP.type_ HP.InputCheckbox
+            , HP.checked state.isStacked
+            , ARIA.label "Stacked"
+            , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleStacked
+            ]
+        , HH.text "Stacked"
         ]
     ]
 
@@ -137,12 +140,14 @@ renderIsSmooth state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Smooth" ]
-    , HH.input
-        [ HP.type_ HP.InputCheckbox
-        , HP.checked state.isSmooth
-        , ARIA.label "Smooth"
-        , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleSmooth
+    [ HH.label [ HP.classes [ B.controlLabel ] ]
+        [ HH.input
+            [ HP.type_ HP.InputCheckbox
+            , HP.checked state.isSmooth
+            , ARIA.label "Smooth"
+            , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleSmooth
+            ]
+        , HH.text "Smooth"
         ]
     ]
 

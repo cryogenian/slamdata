@@ -63,7 +63,7 @@ renderSelection pack state = case state ^. ST._selected of
       { options: ST.transforms state
       , selection: (\a → a × a) <$> (Just $ Tr.Aggregation Ag.Sum)
       , title: "Choose transformation"
-      , toLabel: \t → { text: Tr.prettyPrintTransform t, icon: Nothing }
+      , toLabel: \t -> { text: Tr.prettyPrintTransform t, icon: Nothing }
       , deselectable: false
       , toSelection: const Nothing
       }
@@ -87,7 +87,7 @@ renderSelection pack state = case state ^. ST._selected of
 
 renderButton ∷ ST.Package → ST.State → T.Projection → HTML
 renderButton pack state fld =
-  HH.form [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
+  HH.div [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
   [ I.dimensionButton
     { configurable: ST.isConfigurable fld pack state
     , dimension: sequence $ ST.getSelected fld state

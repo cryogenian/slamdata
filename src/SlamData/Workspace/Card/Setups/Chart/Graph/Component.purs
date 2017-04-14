@@ -95,8 +95,9 @@ render state =
     [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
-    , row [ renderMaxSize state, renderMinSize state ]
     , row [ renderCircular state ]
+    , HH.hr_
+    , row [ renderMaxSize state, renderMinSize state ]
     ]
 
 renderMaxSize ∷ ST.State → HTML
@@ -132,12 +133,14 @@ renderCircular state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Circular layout" ]
-    , HH.input
-        [ HP.type_ HP.InputCheckbox
-        , HP.checked state.circular
-        , ARIA.label "Circular layout"
-        , HE.onChecked $ HE.input_ (right ∘ Q.ToggleCircularLayout)
+    [ HH.label [ HP.classes [ B.controlLabel ] ]
+        [ HH.input
+            [ HP.type_ HP.InputCheckbox
+            , HP.checked state.circular
+            , ARIA.label "Circular layout"
+            , HE.onChecked $ HE.input_ (right ∘ Q.ToggleCircularLayout)
+            ]
+        , HH.text "Circular layout"
         ]
     ]
 

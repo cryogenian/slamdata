@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Model where
 
+import SlamData.Prelude
+
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
 import Data.Array as Array
@@ -25,7 +27,6 @@ import Data.Path.Pathy (fileName, runFileName)
 import Data.Rational ((%))
 import Data.StrMap as StrMap
 
-import SlamData.Prelude
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))

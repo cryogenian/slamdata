@@ -21,6 +21,7 @@
     "build:lite": "gulp bundle",
     "build:prod": "npm run lint:crlf && npm run build:less && gulp bundle",
     "build:psa": "pulp build -I test/src -- --censor-lib --strict --stash",
+    "build:non-strict": "pulp build -I test/src -- --censor-lib --stash",
     "clean:files": "rimraf .pulp-cache output tmp public/js/file.js public/js/filesystem.js public/js/workspace.js public/js/auth_redirect.js public/css/main.css",
     "clean:bower": "rimraf output bower_components && bower install && pulp build",
     "clean:npm": "rimraf output node_components && npm cache clean && npm install",

@@ -19,6 +19,7 @@ module SlamData.Quasar.Query
   , compile'
   , queryEJson
   , queryEJsonVM
+  , query
   , viewQuery
   , viewQuery'
   , all
@@ -76,6 +77,15 @@ compile'
   → m (Either QError CompileResultR)
 compile' backendPath sql varMap =
   liftQuasar $ QF.compileQuery backendPath sql varMap
+
+query
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ DirPath
+  → Sql
+  → m (Either QError JS.JArray)
+query path sql =
+  liftQuasar $ QF.readQuery Readable path (print sql) SM.empty Nothing
 
 queryEJson
   ∷ ∀ m

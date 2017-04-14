@@ -48,6 +48,7 @@ import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
@@ -143,7 +144,16 @@ buildFunnelData r records = series
 
 buildFunnel ∷ ModelR → JArray → DSL OptionI
 buildFunnel r records = do
+  let
+    cols =
+      [ { label: D.jcursorLabel r.category, value: _.name }
+      , { label: D.jcursorLabel r.value, value: CCT.formatForeign ∘ _.value }
+      ]
+    opts = flip foldMap r.series \dim →
+      [ { label: D.jcursorLabel dim, value: _.seriesName } ]
+
   E.tooltip do
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
     E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"

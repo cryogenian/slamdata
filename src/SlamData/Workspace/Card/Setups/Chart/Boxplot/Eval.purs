@@ -47,6 +47,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -268,13 +269,15 @@ buildBoxplot r records = do
         >>= flip A.elemIndex serieNames
         >>= (colors !! _)
 
-    E.tooltip $ E.formatterItemArrayValue \param →
-      param.name ⊕ "<br/>"
-      ⊕ "Upper: " ⊕ show (fromMaybe zero $ param.value !! 4) ⊕ "<br/>"
-      ⊕ "Q3: " ⊕ show (fromMaybe zero $ param.value !! 3) ⊕ "<br/>"
-      ⊕ "Median: " ⊕ show (fromMaybe zero $ param.value !! 2) ⊕ "<br/>"
-      ⊕ "Q2: " ⊕ show (fromMaybe zero $ param.value !! 1)⊕ "<br/>"
-      ⊕ "Lower: " ⊕ show (fromMaybe zero $ param.value !! 0)
+    E.tooltip $ E.formatterItem \item →
+      CCT.tableRows
+        [ D.jcursorLabel r.dimension × item.name
+        , "Upper" × CCT.formatNumberValueIx 4 item
+        , "Q3" × CCT.formatNumberValueIx 3 item
+        , "Median" × CCT.formatNumberValueIx 2 item
+        , "Q2" × CCT.formatNumberValueIx 1 item
+        , "Lower" × CCT.formatNumberValueIx 0 item
+        ]
 
     E.buildItems
       $ for_ xAxisLabels \key → case M.lookup key serie.items of
@@ -303,9 +306,9 @@ buildBoxplot r records = do
       >>= flip A.elemIndex serieNames
       >>= (colors !! _)
 
-    E.tooltip $ E.formatterItemArrayValue \param →
+    E.tooltip $ E.formatterItem\param →
       param.name ⊕ "<br/>"
-      ⊕ show (fromMaybe zero $ param.value !! 1)
+      ⊕ CCT.formatNumberValueIx 0 param
 
     E.buildItems
       $ for_ (enumerate $ A.fromFoldable serie.items) \(ox × (outliers × _)) →

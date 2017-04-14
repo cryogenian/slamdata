@@ -90,8 +90,9 @@ render state =
     [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
-    , row [ renderMinSize state, renderMaxSize state ]
     , row [ renderCircular state ]
+    , HH.hr_
+    , row [ renderMinSize state, renderMaxSize state ]
     ]
 
 renderCircular ∷ ST.State → HTML
@@ -99,12 +100,14 @@ renderCircular state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Circular layout" ]
-    , HH.input
-        [ HP.type_ HP.InputCheckbox
-        , HP.checked state.circular
-        , ARIA.label "Circular layout"
-        , HE.onChecked $ HE.input_ (right ∘ Q.ToggleCircularLayout)
+    [ HH.label [ HP.classes [ B.controlLabel ] ]
+        [ HH.input
+            [ HP.type_ HP.InputCheckbox
+            , HP.checked state.circular
+            , ARIA.label "Circular layout"
+            , HE.onChecked $ HE.input_ (right ∘ Q.ToggleCircularLayout)
+            ]
+        , HH.text "Circular layout"
         ]
     ]
 
@@ -113,7 +116,7 @@ renderMinSize state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Min size" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Minimum size" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show state.minSize
@@ -127,7 +130,7 @@ renderMaxSize state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max size" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Maximum size" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show state.maxSize

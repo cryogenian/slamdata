@@ -171,4 +171,4 @@ buildParallel r records = do
 
   axes = enumeratedFor_ r.dims \(dimIx × dim) → E.addParallelAxis do
     E.dim dimIx
-    traverse_ (E.name ∘ show) $ dim ^? D._value ∘ D._projection
+    E.name $ D.jcursorLabel dim

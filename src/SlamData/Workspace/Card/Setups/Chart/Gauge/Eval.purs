@@ -40,6 +40,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (RadialPosition, adjustRadialPositions)
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Gauge.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
@@ -143,7 +144,17 @@ buildGaugeData r records = series
 
 buildGauge ∷ ModelR → JArray → DSL OptionI
 buildGauge r records = do
+  let
+    cols =
+      [ { label: D.jcursorLabel r.value, value: CCT.formatForeign ∘ _.value }
+      ]
+    opts = A.catMaybes
+      [ r.parallel <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
+      , r.multiple <#> \dim → { label: D.jcursorLabel dim, value: _.name }
+      ]
+
   E.tooltip do
+    E.formatterItem (CCT.tableFormatter (const Nothing) (cols <> opts) ∘ pure)
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12

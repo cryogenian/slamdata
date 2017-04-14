@@ -115,7 +115,7 @@ renderAlign state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Align" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Alignment" ]
     , BCI.selectInput
         (BCI.dropdown Nothing (\l → right ∘ Q.SelectAlign l))
         (S.trySelect' state.align alignSelect)

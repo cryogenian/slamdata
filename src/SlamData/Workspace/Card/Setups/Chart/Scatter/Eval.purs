@@ -47,6 +47,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getTransparentColor)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
@@ -231,7 +232,17 @@ buildScatterData r records = series
 
 buildScatter ∷ ModelR → JArray → DSL OptionI
 buildScatter r records = do
+  let
+    cols =
+      [ { label: D.jcursorLabel r.abscissa, value: CCT.formatValueIx 0 }
+      , { label: D.jcursorLabel r.ordinate, value: CCT.formatValueIx 1 }
+      ]
+    opts = A.catMaybes
+      [ r.size <#> \dim → { label: D.jcursorLabel dim, value: CCT.formatValueIx 2 }
+      , r.series <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
+      ]
   E.tooltip do
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
     E.triggerAxis
     E.textStyle do
       E.fontFamily "Ubuntu, sans"

@@ -29,6 +29,7 @@ import Control.Monad.Throw (class MonadThrow)
 import Data.Argonaut (JArray, Json)
 import Data.Array as A
 import Data.Foldable as F
+import Data.Foreign (readNumber)
 import Data.Int as Int
 import Data.Lens ((^?), _Just)
 import Data.Map as M
@@ -48,6 +49,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.PunchCard.Model (ModelR, Model)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
@@ -55,6 +57,8 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+
+import Utils (hush')
 import Utils.Array (enumerate)
 
 eval
@@ -143,15 +147,15 @@ buildPunchCard axes r records = do
       E.fontSize 12
     E.formatterItemArrayValue \{value} →
       let
-        xIx = map Int.ceil $ value A.!! 0
-        yIx = map Int.ceil $ value A.!! 1
-        val = value A.!! 2
-
-        xStr = foldMap ("abscissa: " ⊕ _) $ xIx >>= A.index abscissaValues
-        yStr = foldMap ("<br />ordinate: " ⊕ _) $ yIx >>= A.index ordinateValues
-        valStr = foldMap (("<br />value: " ⊕ _) ∘ show) val
+        xIx = (map Int.ceil ∘ hush' ∘ readNumber) =<< value A.!! 0
+        yIx = (map Int.ceil ∘ hush' ∘ readNumber) =<< value A.!! 1
+        val = CCT.formatForeign <$> value A.!! 2
       in
-        xStr ⊕ yStr ⊕ valStr
+        CCT.tableRows $ A.catMaybes
+          [ map (D.jcursorLabel r.abscissa × _) $ xIx >>= A.index abscissaValues
+          , map (D.jcursorLabel r.ordinate × _) $ yIx >>= A.index ordinateValues
+          , map (D.jcursorLabel r.value × _) val
+          ]
 
   E.colors colors
 

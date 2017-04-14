@@ -46,6 +46,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getColorScheme)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRectangularPositions, rectangularGrids, rectangularTitles)
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
@@ -160,6 +161,12 @@ buildHeatmap axes r records = do
         E.color $ C.rgba 170 170 170 0.6
         E.widthNum 0.2
         E.solidLine
+    E.formatterItem \item →
+      CCT.tableRows
+        [ D.jcursorLabel r.abscissa × CCT.formatAssocProp "abscissa" item
+        , D.jcursorLabel r.ordinate × CCT.formatAssocProp "ordinate" item
+        , D.jcursorLabel r.value × CCT.formatAssocProp "value" item
+        ]
 
   E.animationEnabled false
 
@@ -210,10 +217,12 @@ buildHeatmap axes r records = do
     E.buildItems
       $ for_ (enumerate $ xValues serie) \(xIx × abscissa) →
           for_ (enumerate $ yValues serie) \(yIx × ordinate) →
-            for_ (M.lookup (abscissa × ordinate) serie.items) \val → E.addItem $ E.buildValues do
-              E.addValue $ Int.toNumber xIx
-              E.addValue $ Int.toNumber yIx
-              E.addValue val
+            for_ (M.lookup (abscissa × ordinate) serie.items) \value → E.addItem do
+              BCE.assoc { abscissa, ordinate, value }
+              E.buildValues do
+                E.addValue $ Int.toNumber xIx
+                E.addValue $ Int.toNumber yIx
+                E.addValue value
 
   mkAxis ∷ ∀ i. Int → DSL (ETP.AxisI (gridIndex ∷ ETP.I|i))
   mkAxis ix = do

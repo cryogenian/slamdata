@@ -18,8 +18,11 @@ module Utils where
 
 import SlamData.Prelude
 
+import Control.Monad.Except (Except)
+
 import Data.Argonaut as J
 import Data.Array as Array
+import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.String as S
 
@@ -78,6 +81,9 @@ chunksOf = go []
 hush ∷ ∀ a b. Either a b → Maybe b
 hush = either (\_ → Nothing) (Just)
 
+hush' ∷ ∀ a b. Except a b → Maybe b
+hush' = hush ∘ runExcept
+
 rightBool ∷ ∀ a. Either a Boolean → Boolean
 rightBool = either (const false) id
 
@@ -95,6 +101,20 @@ lowercaseFirstChar s = S.toLower (S.take 1 s) <> S.drop 1 s
 
 words ∷ String → Array String
 words = S.split $ S.Pattern " "
+
+showPrettyNumber ∷ Number → String
+showPrettyNumber n =
+  let s = show n
+  in fromMaybe s (S.stripSuffix (S.Pattern ".0") s)
+
+showFormattedNumber ∷ Number → String
+showFormattedNumber = FN.format
+  { comma: true
+  , before: 0
+  , after: 0
+  , abbreviations: false
+  , sign: false
+  }
 
 foreign import prettyJson ∷ J.Json → String
 

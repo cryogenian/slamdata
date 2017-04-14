@@ -121,11 +121,11 @@ renderMinVal state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Min color rendering value" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Minimum value" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.minValue
-        , ARIA.label "Min color rendering value"
+        , ARIA.label "Minimum value"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMinValue s)
         ]
     ]
@@ -135,11 +135,11 @@ renderMaxVal state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Max color rendering value" ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Maximum value" ]
     , HH.input
         [ HP.classes [ B.formControl ]
         , HP.value $ show $ state.maxValue
-        , ARIA.label "Max color rendering value"
+        , ARIA.label "Maximum value"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMaxValue s)
         ]
     ]
@@ -150,15 +150,16 @@ renderIsReversedScheme state =
   HH.div
     [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Reverse color scheme" ]
-    , HH.input
-        [ HP.type_ HP.InputCheckbox
-        , HP.checked state.isColorSchemeReversed
-        , ARIA.label "Reverse color scheme"
-        , HE.onChecked $ HE.input_ (right ∘ Q.ToggleReversedScheme)
+    [ HH.label [ HP.classes [ B.controlLabel ] ]
+        [ HH.input
+            [ HP.type_ HP.InputCheckbox
+            , HP.checked state.isColorSchemeReversed
+            , ARIA.label "Reverse color scheme"
+            , HE.onChecked $ HE.input_ (right ∘ Q.ToggleReversedScheme)
+            ]
+        , HH.text "Reversed"
         ]
     ]
-
 
 renderColorScheme ∷ ST.State → HTML
 renderColorScheme state =

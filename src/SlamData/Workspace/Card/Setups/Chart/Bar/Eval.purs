@@ -21,14 +21,20 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
+import Control.Monad.State (class MonadState, put, get)
 import Control.Monad.Throw (class MonadThrow)
+import Control.Monad.Writer.Class (class MonadTell)
 
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (JArray, Json, decodeJson, (.?))
+import Data.Function (on)
 import Data.Array as A
 import Data.Map as M
+import Data.NonEmpty as NE
 import Data.Set as Set
-import Data.Lens ((^?), preview, _Just)
+import Data.Lens ((^?), _Just, (^.), (.~), (?~))
+import Data.List ((:))
+import Data.List as L
+import Data.Path.Pathy as Path
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -37,6 +43,8 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Quasar.Query as QQ
+import SlamData.Quasar.FS as QFS
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
@@ -45,6 +53,7 @@ import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -52,16 +61,135 @@ import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
+import SqlSquare as Sql
+
+import Utils.Path as PU
+
 eval
   ∷ ∀ m
   . ( MonadState CEM.CardState m
     , MonadThrow CEM.CardError m
+    , MonadAsk CEM.CardEnv m
+    , MonadTell CEM.CardLog m
     , QuasarDSL m
     )
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Bar buildBar m \axes → m
+eval m resource = do
+  records × axes ← BCE.analyze resource =<< get
+  put $ Just $ CEM.Analysis { resource, records, axes }
+  case m of
+    Nothing → CEM.throw "Incorrect setup bar model"
+    Just r → do
+      output ← CEM.temporaryOutputResource
+      let
+        path = resource ^. Port._filePath
+        backendPath = fromMaybe Path.rootDir $ Path.parentDir path
+      results ←
+        CEM.liftQ $ QQ.query backendPath $ buildSql r path
+      pure $ buildBar results r
+
+buildSql ∷ ModelR → PU.FilePath → Sql.Sql
+buildSql r path =
+  Sql.buildSelect
+    $ ( Sql._projections .~ buildProjections r )
+    ∘ ( Sql._relations ?~ (Sql.TableRelation { path: Left path, alias: Nothing } ))
+    ∘ ( Sql._groupBy ?~ buildGroupBy r )
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r =
+  ( applyMeasure $ Sql.projection measureF # Sql.as "measure" )
+  : ( Sql.projection categoryF # Sql.as "category" )
+  : ( Sql.projection stackF # Sql.as "stack" )
+  : ( Sql.projection parallelF # Sql.as "parallel" )
+  : L.Nil
+  where
+  measureF ∷ Sql.Sql
+  measureF =
+    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.value ^? D._value ∘ D._projection
+
+  categoryF ∷ Sql.Sql
+  categoryF =
+    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.category ^? D._value ∘ D._projection
+
+  stackF ∷ Sql.Sql
+  stackF =
+    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.stack ^? _Just ∘ D._value ∘ D._projection
+
+  parallelF ∷ Sql.Sql
+  parallelF =
+    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.parallel ^? _Just ∘ D._value ∘ D._projection
+
+  applyMeasure ∷ Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
+  applyMeasure p = case r.value ^? D._value ∘ D._transform ∘ _Just of
+    Nothing → p
+    Just t → T.applyTransform t p
+
+
+buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
+buildGroupBy r = Sql.GroupBy
+  { keys, having: Nothing }
+  where
+  keys =
+    L.fromFoldable $ join
+    [ foldMap (A.singleton ∘ QQ.jcursorToSql) $ r.category ^? D._value ∘ D._projection
+    , foldMap (A.singleton ∘ QQ.jcursorToSql) $ r.stack ^? _Just ∘ D._value ∘ D._projection
+    , foldMap (A.singleton ∘ QQ.jcursorToSql) $ r.parallel ^? _Just ∘ D._value ∘ D._projection
+    ]
+
+type Item =
+  { measure ∷ Number
+  , category ∷ String
+  , parallel ∷ Maybe String
+  , stack ∷ Maybe String
+  }
+
+decodeItem ∷ Json → Either String Item
+decodeItem = decodeJson >=> \obj → do
+  measure ← obj .? "measure"
+  category ← obj .? "category"
+  parallel ← obj .? "parallel"
+  stack ← obj .? "stack"
+  pure { measure
+       , category
+       , parallel
+       , stack
+       }
+
+-- | groupped by parallel/stack/category
+buildBarData ∷ Array Json → Array (Array (Array (Array Item)))
+buildBarData jarr =
+  let
+    items ∷ Array Item
+    items = foldMap (foldMap A.singleton ∘ decodeItem) jarr
+  in
+   map (map (map $ NE.fromNonEmpty A.cons))
+   $ map (map (A.groupBy (eq `on` _.category)))
+   $ map (map $ NE.fromNonEmpty A.cons)
+   $ map (A.groupBy (eq `on` _.stack))
+   $ map (NE.fromNonEmpty A.cons)
+   $ A.groupBy (eq `on` _.parallel) items
+
+
+
+
+buildBar ∷ JArray → ModelR → Port.Port
+buildBar jarr m =
+  Port.ChartInstructions
+    { options: pure unit
+    , chartType: Bar
+    }
+
+
+{-
+  let
+    path = res ^. Port._filePath
+    backendPath
+  QQ.viewQuery
+  BCE.buildChartEval Bar buildBar m \axes → m
+
+
 
 type BarSeries =
   { name ∷ Maybe String
@@ -150,7 +278,18 @@ buildBarData r records = series
 
 buildBar ∷ Axes → ModelR → JArray → DSL OptionI
 buildBar axes r records = do
-  E.tooltip E.triggerAxis
+  let
+    cols =
+      [ { label: D.jcursorLabel r.category, value: CCT.formatValueIx 0 }
+      , { label: D.jcursorLabel r.value, value: CCT.formatValueIx 1 }
+      ]
+    seriesFn dim = [ { label: D.jcursorLabel dim, value: _.seriesName } ]
+    opts = foldMap seriesFn if isJust r.parallel then r.parallel else r.stack
+
+  E.tooltip do
+    E.formatterAxis (CCT.tableFormatter (pure ∘ _.color) (cols <> opts))
+    E.textStyle $ E.fontSize 12
+    E.triggerAxis
 
   E.colors colors
 
@@ -237,3 +376,4 @@ buildBar axes r records = do
         Nothing → do
           E.stack "default stack"
           for_ stacked.stack E.name
+-}
