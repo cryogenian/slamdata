@@ -18,41 +18,35 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, Json, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Data.Lens ((^.))
+import Data.Argonaut as J
+import Data.Argonaut ((~>), (:=), (.?))
+import Data.Newtype (un)
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
-import SlamData.Workspace.Card.Setups.Transform.Aggregation (Aggregation, nonMaybeAggregationSelect)
-import SlamData.Workspace.Card.Setups.Behaviour as SB
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Form.Select as S
-import SlamData.Form.Select ((⊝))
+type ModelR =
+  { dimension ∷ D.LabeledJCursor
+  , value ∷ D.LabeledJCursor
+  , series ∷ Maybe D.LabeledJCursor
 
-type AreaR =
-  { dimension ∷ JCursor
-  , value ∷ JCursor
-  , valueAggregation ∷ Ag.Aggregation
-  , series ∷ Maybe JCursor
   , isStacked ∷ Boolean
   , isSmooth ∷ Boolean
   , axisLabelAngle ∷ Number
   }
 
-type Model = Maybe AreaR
+type Model = Maybe ModelR
 
 initialModel ∷ Model
 initialModel = Nothing
 
-eqAreaR ∷ AreaR → AreaR → Boolean
-eqAreaR r1 r2 =
+eqR ∷ ModelR → ModelR → Boolean
+eqR r1 r2 =
   r1.dimension ≡ r2.dimension
   ∧ r1.value ≡ r2.value
-  ∧ r1.valueAggregation ≡ r2.valueAggregation
   ∧ r1.isStacked ≡ r2.isStacked
   ∧ r1.isSmooth ≡ r2.isSmooth
   ∧ r1.series ≡ r2.series
@@ -60,7 +54,7 @@ eqAreaR r1 r2 =
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
-eqModel (Just r1) (Just r2) = eqAreaR r1 r2
+eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
@@ -69,146 +63,78 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    dimension ← map runArbJCursor arbitrary
-    value ← map runArbJCursor arbitrary
-    valueAggregation ← arbitrary
+    dimension ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    value ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    series ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     isStacked ← arbitrary
     isSmooth ← arbitrary
-    series ← map (map runArbJCursor) arbitrary
+
     axisLabelAngle ← arbitrary
     pure { dimension
          , value
-         , valueAggregation
          , isStacked
          , isSmooth
          , series
          , axisLabelAngle
          }
 
-
-encode ∷ Model → Json
-encode Nothing = jsonNull
+encode ∷ Model → J.Json
+encode Nothing = J.jsonNull
 encode (Just r) =
   "configType" := "area"
   ~> "dimension" := r.dimension
   ~> "value" := r.value
-  ~> "valueAggregation" := r.valueAggregation
   ~> "isStacked" := r.isStacked
   ~> "isSmooth" := r.isSmooth
   ~> "series" := r.series
   ~> "axisLabelAngle" := r.axisLabelAngle
-  ~> jsonEmptyObject
+  ~> J.jsonEmptyObject
 
-decode ∷ Json → String ⊹ Model
+decode ∷ J.Json → String ⊹ Model
 decode js
-  | isNull js = pure Nothing
-  | otherwise = map Just do
-    obj ← decodeJson js
+  | J.isNull js = pure Nothing
+  | otherwise = map Just $ decode' js
+  where
+  decode' ∷ J.Json → String ⊹ ModelR
+  decode' js' = do
+    obj ← J.decodeJson js'
     configType ← obj .? "configType"
     unless (configType ≡ "area")
       $ throwError "This config is not area"
+    decodeR obj <|> decodeLegacyR obj
+
+  decodeR ∷ J.JObject → String ⊹ ModelR
+  decodeR obj = do
     dimension ← obj .? "dimension"
     value ← obj .? "value"
-    valueAggregation ← obj .? "valueAggregation"
+    series ← obj .? "series"
     isStacked ← obj .? "isStacked"
     isSmooth ← obj .? "isSmooth"
-    series ← obj .? "series"
     axisLabelAngle ← obj .? "axisLabelAngle"
+
     pure { dimension
          , value
-         , valueAggregation
          , isStacked
          , isSmooth
          , series
          , axisLabelAngle
          }
+  decodeLegacyR ∷ J.JObject → String ⊹ ModelR
+  decodeLegacyR obj = do
+    dimension ← map D.defaultJCursorDimension $ obj .? "dimension"
+    value ←
+      D.pairToDimension
+      <$> (obj .? "value")
+      <*> (obj .? "valueAggregation")
+    series ← map (map D.defaultJCursorDimension) $ obj .? "series"
+    isStacked ← obj .? "isStacked"
+    isSmooth ← obj .? "isSmooth"
+    axisLabelAngle ← obj .? "axisLabelAngle"
 
-
-type ReducedState r =
-  { axes ∷ Ax.Axes
-  , axisLabelAngle ∷ Number
-  , isStacked ∷ Boolean
-  , isSmooth ∷ Boolean
-  , dimension ∷ S.Select JCursor
-  , value ∷ S.Select JCursor
-  , valueAgg ∷ S.Select Aggregation
-  , series ∷ S.Select JCursor
-  | r}
-
-initialState ∷ ReducedState ()
-initialState =
-  { axes: Ax.initialAxes
-  , axisLabelAngle: zero
-  , isStacked: false
-  , isSmooth: false
-  , dimension: S.emptySelect
-  , value: S.emptySelect
-  , valueAgg: S.emptySelect
-  , series: S.emptySelect
-  }
-behaviour ∷ ∀ r. SB.Behaviour (ReducedState r) Model
-behaviour =
-  { synchronize
-  , load
-  , save
-  }
-  where
-  synchronize st =
-    let
-      newDimension =
-        S.setPreviousValueFrom (Just st.dimension)
-          $ S.autoSelect
-          $ S.newSelect
-          $ st.axes.category
-          ⊕ st.axes.time
-          ⊕ st.axes.value
-          ⊕ st.axes.date
-          ⊕ st.axes.datetime
-
-      newValue =
-        S.setPreviousValueFrom (Just st.value)
-          $ S.autoSelect
-          $ S.newSelect
-          $ st.axes.value
-
-      newValueAggregation =
-        S.setPreviousValueFrom (Just st.valueAgg)
-          $ nonMaybeAggregationSelect
-
-      newSeries =
-        S.setPreviousValueFrom (Just st.series)
-          $ S.newSelect
-          $ S.ifSelected [ newDimension ]
-          $ st.axes.category
-          ⊕ st.axes.time
-          ⊕ st.axes.date
-          ⊕ st.axes.datetime
-          ⊝ newDimension
-    in
-     st{ value = newValue
-       , valueAgg = newValueAggregation
-       , dimension = newDimension
-       , series = newSeries
-       }
-  load Nothing st = st
-  load (Just m) st =
-    st{ isStacked = m.isStacked
-      , isSmooth = m.isSmooth
-      , axisLabelAngle = m.axisLabelAngle
-      , value = S.fromSelected $ Just m.value
-      , valueAgg = S.fromSelected $ Just m.valueAggregation
-      , dimension = S.fromSelected $ Just m.dimension
-      , series = S.fromSelected m.series
-      }
-  save st =
-    { dimension: _
-    , value: _
-    , valueAggregation: _
-    , series: st.series ^. S._value
-    , isStacked: st.isStacked
-    , isSmooth: st.isSmooth
-    , axisLabelAngle: st.axisLabelAngle
-    }
-    <$> (st.dimension ^. S._value)
-    <*> (st.value ^. S._value)
-    <*> (st.valueAgg ^. S._value)
+    pure { dimension
+         , value
+         , isStacked
+         , isSmooth
+         , series
+         , axisLabelAngle
+         }

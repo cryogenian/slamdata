@@ -233,31 +233,43 @@ type DimensionOptions a b i =
   , onDismiss ∷ DOM.MouseEvent → Maybe (i Unit)
   , onConfigure ∷ DOM.MouseEvent → Maybe (i Unit)
   , onMouseDown ∷ DOM.MouseEvent → Maybe (i Unit)
+  , onClick ∷ DOM.MouseEvent → Maybe (i Unit)
+  , onLabelClick ∷ DOM.MouseEvent → Maybe (i Unit)
+  , disabled ∷ Boolean
+  , dismissable ∷ Boolean
   }
 
 dimensionButton ∷ ∀ a b p i . DimensionOptions a b i → H.HTML p i
 dimensionButton opts =
   HH.div
-    [ HP.classes [ HH.ClassName "sd-dimension-button" ] ]
+    [ HP.classes
+        $ [ HH.ClassName "sd-dimension-button" ]
+        ⊕ ( guard opts.disabled $> HH.ClassName "sd-dimension-button-disabled")
+    ]
     [ HH.div
         [ HP.classes [ HH.ClassName "sd-dimension-button-label" ] ]
         [ HH.input
             [ HP.type_ HP.InputText
+            , HP.disabled opts.disabled
             , HP.value labelText
             , HE.onValueInput opts.onLabelChange
+            , HE.onClick opts.onLabelClick
             , HP.placeholder defaultLabel
             ]
         ]
     , HH.div
         [ HP.classes [ HH.ClassName "sd-dimension-button-toolbar" ] ]
-        [ HH.button
+        $ ( guard opts.dismissable $>
+          ( HH.button
             [ HP.classes [ HH.ClassName "sd-dismiss-button" ]
             , HP.title "Dismiss"
             , ARIA.label "Dismiss"
             , HE.onClick opts.onDismiss
+            , HP.disabled opts.disabled
             ]
             [ HH.text "×"]
-        , if opts.configurable && not (D.isStatic value)
+          ) )
+        ⊕ [ if opts.configurable && not (D.isStatic value)
             then
               HH.button
                 [ HP.classes
@@ -267,13 +279,16 @@ dimensionButton opts =
                 , HP.title "Configure"
                 , ARIA.label "Configure"
                 , HE.onClick opts.onConfigure
+                , HP.disabled opts.disabled
                 ]
                 [ I.cog ]
             else HH.text ""
-        ]
+          ]
     , HH.button
         [ HP.classes [ HH.ClassName "sd-dimension-button-display" ]
         , HE.onMouseDown opts.onMouseDown
+        , HE.onClick opts.onClick
+        , HP.disabled opts.disabled
         ]
         case value of
           D.Static str → [ renderValue str ]

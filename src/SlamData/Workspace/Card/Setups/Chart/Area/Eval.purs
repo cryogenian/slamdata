@@ -27,6 +27,7 @@ import Control.Monad.Throw (class MonadThrow)
 import Data.Argonaut (JArray, Json)
 import Data.Array ((!!))
 import Data.Array as A
+import Data.Lens (preview, _Just, (^?))
 import Data.Map as M
 import Data.Set as Set
 
@@ -39,16 +40,18 @@ import ECharts.Types.Phantom as ETP
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, AreaR, initialState, behaviour)
+import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, ModelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Behaviour as B
 
 import Utils.Array (enumerate)
 
@@ -61,15 +64,14 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval m = BCE.buildChartEval Area buildArea m \axes →
-  B.defaultModel behaviour m initialState{axes = axes}
+eval m = BCE.buildChartEval Area buildArea m \axes → m
 
 type AreaSeries =
   { name ∷ Maybe String
   , items ∷ String >> Number
   }
 
-buildAreaData ∷ AreaR → JArray → Array AreaSeries
+buildAreaData ∷ ModelR → JArray → Array AreaSeries
 buildAreaData r records = series
   where
   -- | maybe series >> dimension >> values
@@ -85,14 +87,14 @@ buildAreaData r records = series
     let
       getValuesFromJson = getValues js
       getMaybeStringFromJson = getMaybeString js
-    in case getMaybeStringFromJson r.dimension of
+    in case getMaybeStringFromJson =<< (r.dimension ^? D._value ∘ D._projection) of
       Nothing → acc
       Just dimKey →
         let
           mbSeries =
-            getMaybeStringFromJson =<< r.series
+            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.series
           values =
-            getValuesFromJson $ pure r.value
+            getValuesFromJson (r.value ^? D._value ∘ D._projection)
 
           alterSeriesFn
             ∷ Maybe (String >> Array Number)
@@ -119,12 +121,24 @@ buildAreaData r records = series
     → Array AreaSeries
   mkAreaSerie (name × items) =
     [{ name
-     , items: map (Ag.runAggregation r.valueAggregation) items
+     , items:
+         map (Ag.runAggregation
+              (fromMaybe Ag.Sum $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) )
+           items
      }]
 
-buildArea ∷ Ax.Axes → AreaR → JArray → DSL OptionI
+buildArea ∷ Ax.Axes → ModelR → JArray → DSL OptionI
 buildArea axes r records = do
+  let
+    cols =
+      [ { label: D.jcursorLabel r.dimension, value: CCT.formatValueIx 0 }
+      , { label: D.jcursorLabel r.value, value: CCT.formatValueIx 1 }
+      ]
+    opts = flip foldMap r.series \dim →
+      [ { label: D.jcursorLabel dim, value: _.seriesName } ]
+
   E.tooltip do
+    E.formatterAxis (CCT.tableFormatter (pure ∘ _.color) (cols <> opts))
     E.triggerAxis
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
@@ -179,11 +193,16 @@ buildArea axes r records = do
   areaData ∷ Array (Int × AreaSeries)
   areaData = enumerate $ buildAreaData r records
 
+  xAxisType ∷ Ax.AxisType
+  xAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType <$> (r.dimension ^? D._value ∘ D._projection) <*> pure axes
+
   xAxisConfig ∷ Ax.EChartsAxisConfiguration
-  xAxisConfig = Ax.axisConfiguration $ Ax.axisType r.dimension axes
+  xAxisConfig = Ax.axisConfiguration xAxisType
 
   xSortFn ∷ String → String → Ordering
-  xSortFn = Ax.compareWithAxisType $ Ax.axisType r.dimension axes
+  xSortFn = Ax.compareWithAxisType xAxisType
 
   xValues ∷ Array String
   xValues =
