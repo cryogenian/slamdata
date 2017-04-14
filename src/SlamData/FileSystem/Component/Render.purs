@@ -29,10 +29,10 @@ import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Common.Sort (Sort(..))
-import SlamData.Hint as Hint
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _isMount, _sort)
+import SlamData.Hint as Hint
 import SlamData.Render.Icon as I
 
 import Utils.DOM as DOM
@@ -70,14 +70,14 @@ toolbar state =
           "To begin exploring data, please press the Mount button"
       )
     <> [ H.ul
-         [ P.classes [ B.listInline ] ]
+         [ P.classes [ B.listInline, B.pullRight ] ]
          $ [ workspace, folder, showHide, download, file, mount ] <> configure
        ]
   where
   configure ∷ Array (HTML p (Query Unit))
   configure = do
     guard $ state ^. _isMount
-    pure $ toolItem Configure "Configure mount" I.wrenchesCrossed
+    pure $ toolItem Configure "Configure mount" I.cog
 
   showHide ∷ HTML p (Query Unit)
   showHide =
@@ -86,13 +86,13 @@ toolbar state =
     else toolItem ShowHiddenFiles "Show hidden files" I.eyeHiddenSm
 
   download ∷ HTML p (Query Unit)
-  download = toolItem Download "Download" I.cloudDownload
+  download = toolItem Download "Download" I.cloudDownloadSm
 
   mount ∷ HTML p (Query Unit)
-  mount = toolItem MakeMount "Mount database" I.databaseCreate
+  mount = toolItem MakeMount "Mount database" I.databaseCreateSm
 
   folder ∷ HTML p (Query Unit)
-  folder = toolItem MakeFolder "Create folder" I.folderCreate
+  folder = toolItem MakeFolder "Create folder" I.folderCreateSm
 
   file ∷ HTML p (Query Unit)
   file =
@@ -108,11 +108,11 @@ toolbar state =
           , P.class_ $ H.ClassName "tool-item"
           , ARIA.label "Upload file"
           ]
-          [ I.cloudUpload ]
+          [ I.cloudUploadSm ]
       ]
 
   workspace ∷ HTML p (Query Unit)
-  workspace = toolItem MakeWorkspace "Create workspace" I.workspace
+  workspace = toolItem MakeWorkspace "Create workspace" I.workspaceSm
 
 toolItem ∷ ∀ p f. (Unit → f Unit) → String → HTML p (f Unit) → HTML p (f Unit)
 toolItem func title icon =
