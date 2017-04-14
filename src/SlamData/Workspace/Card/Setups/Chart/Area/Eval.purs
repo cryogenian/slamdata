@@ -129,8 +129,7 @@ buildProjections r = L.fromFoldable
     Just t → T.applyTransform t p
 
 buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
-buildGroupBy r = Sql.GroupBy
-  { keys, having: Nothing }
+buildGroupBy r = Sql.GroupBy { keys, having: Nothing }
   where
   keys = L.fromFoldable
     [ r.dimension # SCC.jcursorSql

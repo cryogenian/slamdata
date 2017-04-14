@@ -32,7 +32,6 @@ import Data.Map as M
 import Data.NonEmpty as NE
 import Data.Set as Set
 import Data.Lens ((^?), _Just, (^.), (.~), (?~))
-import Data.List ((:))
 import Data.List as L
 import Data.Path.Pathy as Path
 
@@ -51,6 +50,7 @@ import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
@@ -123,44 +123,25 @@ buildSql r path =
     ∘ ( Sql._groupBy ?~ buildGroupBy r )
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r =
-  ( applyMeasure $ Sql.projection measureF # Sql.as "measure" )
-  : ( Sql.projection categoryF # Sql.as "category" )
-  : ( Sql.projection stackF # Sql.as "stack" )
-  : ( Sql.projection parallelF # Sql.as "parallel" )
-  : L.Nil
+buildProjections r = L.fromFoldable
+  [ r.value # SCC.jcursorPrj # Sql.as "measure" # applyMeasure
+  , r.category # SCC.jcursorPrj # Sql.as "category"
+  , r.stack # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "stack"
+  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+  ]
   where
-  measureF ∷ Sql.Sql
-  measureF =
-    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.value ^? D._value ∘ D._projection
-
-  categoryF ∷ Sql.Sql
-  categoryF =
-    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.category ^? D._value ∘ D._projection
-
-  stackF ∷ Sql.Sql
-  stackF =
-    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.stack ^? _Just ∘ D._value ∘ D._projection
-
-  parallelF ∷ Sql.Sql
-  parallelF =
-    fromMaybe Sql.null $ map QQ.jcursorToSql $ r.parallel ^? _Just ∘ D._value ∘ D._projection
-
   applyMeasure ∷ Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
   applyMeasure p = case r.value ^? D._value ∘ D._transform ∘ _Just of
     Nothing → p
     Just t → T.applyTransform t p
 
-
 buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
-buildGroupBy r = Sql.GroupBy
-  { keys, having: Nothing }
+buildGroupBy r = Sql.GroupBy { keys, having: Nothing }
   where
-  keys =
-    L.fromFoldable $ join
-    [ foldMap (A.singleton ∘ QQ.jcursorToSql) $ r.category ^? D._value ∘ D._projection
-    , foldMap (A.singleton ∘ QQ.jcursorToSql) $ r.stack ^? _Just ∘ D._value ∘ D._projection
-    , foldMap (A.singleton ∘ QQ.jcursorToSql) $ r.parallel ^? _Just ∘ D._value ∘ D._projection
+  keys = L.fromFoldable
+    [ r.category # SCC.jcursorSql
+    , r.stack # maybe Sql.null SCC.jcursorSql
+    , r.parallel # maybe Sql.null SCC.jcursorSql
     ]
 
 buildBar ∷ Axes → JArray → ModelR → Port.Port
