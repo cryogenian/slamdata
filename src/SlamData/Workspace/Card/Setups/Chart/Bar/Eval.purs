@@ -44,7 +44,6 @@ import ECharts.Types.Phantom as ETP
 
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
-import SlamData.Quasar.FS as QFS
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
@@ -57,14 +56,41 @@ import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import SqlSquare as Sql
 
 import Utils.Path as PU
 
+type BarSeries =
+  { name ∷ Maybe String
+  , items ∷ String >> Number
+  }
+
+type BarStacks =
+  { stack ∷ Maybe String
+  , series ∷ Array BarSeries
+  }
+
+type Item =
+  { measure ∷ Number
+  , category ∷ String
+  , parallel ∷ Maybe String
+  , stack ∷ Maybe String
+  }
+
+decodeItem ∷ Json → Either String Item
+decodeItem = decodeJson >=> \obj → do
+  measure ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "measure"
+  category ← map (fromMaybe "" ∘ Sem.maybeString) $ obj .? "category"
+  parallel ← map Sem.maybeString $ obj .? "parallel"
+  stack ← map Sem.maybeString $ obj .? "stack"
+  pure { measure
+       , category
+       , parallel
+       , stack
+       }
 eval
   ∷ ∀ m
   . ( MonadState CEM.CardState m
@@ -82,13 +108,12 @@ eval m resource = do
   case m of
     Nothing → CEM.throw "Incorrect setup bar model"
     Just r → do
-      output ← CEM.temporaryOutputResource
       let
         path = resource ^. Port._filePath
         backendPath = fromMaybe Path.rootDir $ Path.parentDir path
       results ←
         CEM.liftQ $ QQ.query backendPath $ buildSql r path
-      pure $ buildBar results r
+      pure $ buildBar axes results r
 
 buildSql ∷ ModelR → PU.FilePath → Sql.Sql
 buildSql r path =
@@ -138,146 +163,55 @@ buildGroupBy r = Sql.GroupBy
     , foldMap (A.singleton ∘ QQ.jcursorToSql) $ r.parallel ^? _Just ∘ D._value ∘ D._projection
     ]
 
-type Item =
-  { measure ∷ Number
-  , category ∷ String
-  , parallel ∷ Maybe String
-  , stack ∷ Maybe String
-  }
+buildBar ∷ Axes → JArray → ModelR → Port.Port
+buildBar axes jarr m =
+  Port.ChartInstructions
+    { options: barOptions axes m $ buildBarData jarr
+    , chartType: Bar
+    }
 
-decodeItem ∷ Json → Either String Item
-decodeItem = decodeJson >=> \obj → do
-  measure ← obj .? "measure"
-  category ← obj .? "category"
-  parallel ← obj .? "parallel"
-  stack ← obj .? "stack"
-  pure { measure
-       , category
-       , parallel
-       , stack
-       }
-
--- | groupped by parallel/stack/category
-buildBarData ∷ Array Json → Array (Array (Array (Array Item)))
+buildBarData ∷ Array Json → Array BarStacks
 buildBarData jarr =
   let
     items ∷ Array Item
     items = foldMap (foldMap A.singleton ∘ decodeItem) jarr
+
+    stacksFn ∷ Array Item → Array { stack ∷ Maybe String, series ∷ Array Item }
+    stacksFn is  =
+      let
+        groupped =
+          map (NE.fromNonEmpty A.cons)
+          $ A.groupBy (eq `on` _.stack) is
+        recordify a =
+          { stack: A.head a >>= _.stack, series: a }
+      in
+        map recordify groupped
+
+    seriesFn ∷ Array Item → Array { name ∷ Maybe String, items ∷ Array Item }
+    seriesFn is =
+      let
+        groupped =
+          map (NE.fromNonEmpty A.cons)
+          $ A.groupBy (eq `on` _.parallel) is
+
+        recordify a =
+          { name: A.head a >>= _.parallel, items: a }
+      in
+        map recordify groupped
+
+    mappify ∷ Array Item → String >> Number
+    mappify = foldMap \{ measure, category } → M.singleton category measure
   in
-   map (map (map $ NE.fromNonEmpty A.cons))
-   $ map (map (A.groupBy (eq `on` _.category)))
-   $ map (map $ NE.fromNonEmpty A.cons)
-   $ map (A.groupBy (eq `on` _.stack))
-   $ map (NE.fromNonEmpty A.cons)
-   $ A.groupBy (eq `on` _.parallel) items
+    stacksFn items <#> \{stack, series} →
+      { stack
+      , series: seriesFn series <#> \{name, items} →
+          { name
+          , items: mappify items
+          }
+      }
 
-
-
-
-buildBar ∷ JArray → ModelR → Port.Port
-buildBar jarr m =
-  Port.ChartInstructions
-    { options: pure unit
-    , chartType: Bar
-    }
-
-
-{-
-  let
-    path = res ^. Port._filePath
-    backendPath
-  QQ.viewQuery
-  BCE.buildChartEval Bar buildBar m \axes → m
-
-
-
-type BarSeries =
-  { name ∷ Maybe String
-  , items ∷ String >> Number
-  }
-
-type BarStacks =
-  { stack ∷ Maybe String
-  , series ∷ Array BarSeries
-  }
-
-buildBarData ∷ ModelR → JArray → Array BarStacks
-buildBarData r records = series
-  where
-  -- | maybe stack >> maybe parallel >> category >> values
-  dataMap ∷ Maybe String >> Maybe String >> String >> Array Number
-  dataMap =
-    foldl dataMapFoldFn M.empty records
-
-  dataMapFoldFn
-    ∷ Maybe String >> Maybe String >> String >> Array Number
-    → Json
-    → Maybe String >> Maybe String >> String >> Array Number
-  dataMapFoldFn acc js =
-    let
-      getMaybeStringFromJson = getMaybeString js
-      getValuesFromJson = getValues js
-    in case getMaybeStringFromJson =<< (r.category ^? D._value ∘ D._projection) of
-      Nothing → acc
-      Just categoryKey →
-        let
-          mbStack =
-            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.stack
-          mbParallel =
-            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.parallel
-          values =
-            getValuesFromJson (r.value ^? D._value ∘ D._projection)
-
-          alterStackFn
-            ∷ Maybe (Maybe String >> String >> Array Number)
-            → Maybe (Maybe String >> String >> Array Number)
-          alterStackFn Nothing =
-            Just $ M.singleton mbParallel $ M.singleton categoryKey values
-          alterStackFn (Just parallel) =
-            Just $ M.alter alterParallelFn mbParallel parallel
-
-          alterParallelFn
-            ∷ Maybe (String >> Array Number)
-            → Maybe (String >> Array Number)
-          alterParallelFn Nothing =
-            Just $ M.singleton categoryKey values
-          alterParallelFn (Just category) =
-            Just $ M.alter alterCategoryFn categoryKey category
-
-          alterCategoryFn
-            ∷ Maybe (Array Number)
-            → Maybe (Array Number)
-          alterCategoryFn Nothing = Just values
-          alterCategoryFn (Just arr) = Just $ arr ⊕ values
-        in
-          M.alter alterStackFn mbStack acc
-
-  series ∷ Array BarStacks
-  series =
-    foldMap mkBarStack $ M.toList dataMap
-
-  mkBarStack
-    ∷ Maybe String × (Maybe String >> String >> Array Number)
-    → Array BarStacks
-  mkBarStack (stack × sers) =
-    [{ stack
-     , series: foldMap mkBarSeries $ M.toList sers
-     }]
-
-  mkBarSeries
-    ∷ Maybe String × (String >> Array Number)
-    → Array BarSeries
-  mkBarSeries (name × items) =
-    [{ name
-     , items:
-         map (Ag.runAggregation
-            (fromMaybe Ag.Sum $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) )
-       items
-     }]
-
-
-buildBar ∷ Axes → ModelR → JArray → DSL OptionI
-buildBar axes r records = do
+barOptions ∷ Axes → ModelR → Array BarStacks → DSL OptionI
+barOptions axes r barData = do
   let
     cols =
       [ { label: D.jcursorLabel r.category, value: CCT.formatValueIx 0 }
@@ -324,10 +258,6 @@ buildBar axes r records = do
   E.series series
 
   where
-
-  barData ∷ Array BarStacks
-  barData = buildBarData r records
-
   xAxisType ∷ Ax.AxisType
   xAxisType =
     fromMaybe Ax.Category
@@ -341,8 +271,9 @@ buildBar axes r records = do
   seriesNames = case r.parallel of
     Just _ →
       A.fromFoldable
-      $ foldMap (_.series ⋙ foldMap (_.name ⋙ foldMap Set.singleton ))
-        barData
+      $ flip foldMap barData
+      $ foldMap (Set.fromFoldable ∘ _.name)
+      ∘ _.series
     Nothing →
       A.catMaybes $ map _.stack barData
 
@@ -350,10 +281,10 @@ buildBar axes r records = do
   xValues =
     A.sortBy xSortFn
       $ A.fromFoldable
-      $ foldMap (_.series
-                 ⋙ foldMap (_.items
-                            ⋙ M.keys
-                            ⋙ Set.fromFoldable)) barData
+      $ flip foldMap barData
+      $ foldMap (Set.fromFoldable ∘ M.keys ∘ _.items)
+      ∘ _.series
+
 
   xSortFn ∷ String → String → Ordering
   xSortFn = Ax.compareWithAxisType xAxisType
@@ -376,4 +307,3 @@ buildBar axes r records = do
         Nothing → do
           E.stack "default stack"
           for_ stacked.stack E.name
--}

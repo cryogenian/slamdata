@@ -465,3 +465,9 @@ getValues js cursor =
 getSemantics ∷ Json → JCursor → Maybe Semantics
 getSemantics js cursor =
   cursorGet cursor js >>= analyzeJson
+
+maybeString ∷ Json → Maybe String
+maybeString = map printSemantics ∘ analyzeJson
+
+maybeNumber ∷ Json → Maybe Number
+maybeNumber = semanticsToNumber <=< analyzeJson
