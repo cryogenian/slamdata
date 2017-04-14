@@ -35,6 +35,7 @@ import Data.Path.Pathy as Path
 import Matryoshka (class Corecursive, class Recursive, Algebra, cata, embed, project, transCata)
 
 import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.MillerColumns.Column.BasicFilter (mkFilter)
 import SlamData.Workspace.MillerColumns.Component as MC
 
 import Utils.Path as PU
@@ -193,7 +194,8 @@ load path { requestId, filter } =
             Left _ →
               pure noResult
             Right records →
-              pure { requestId, items: analyse records path, nextOffset: Nothing }
+              let items = L.filter (mkFilter filter ∘ columnItemLabel) (analyse records path)
+              in pure { requestId, items, nextOffset: Nothing }
         _ → pure noResult
     _ → pure noResult
   where
