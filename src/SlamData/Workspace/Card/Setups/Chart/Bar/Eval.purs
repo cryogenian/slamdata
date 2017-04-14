@@ -21,19 +21,14 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState, put, get)
-import Control.Monad.Throw (class MonadThrow)
-import Control.Monad.Writer.Class (class MonadTell)
-
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Function (on)
 import Data.Array as A
 import Data.Map as M
 import Data.NonEmpty as NE
 import Data.Set as Set
-import Data.Lens ((^?), _Just, (^.), (.~), (?~))
+import Data.Lens ((^?))
 import Data.List as L
-import Data.Path.Pathy as Path
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -41,10 +36,7 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -57,11 +49,8 @@ import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Transform as T
 
 import SqlSquare as Sql
-
-import Utils.Path as PU
 
 type BarSeries =
   { name ∷ Maybe String
@@ -91,49 +80,17 @@ decodeItem = decodeJson >=> \obj → do
        , parallel
        , stack
        }
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , MonadAsk CEM.CardEnv m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m resource = do
-  records × axes ← BCE.analyze resource =<< get
-  put $ Just $ CEM.Analysis { resource, records, axes }
-  case m of
-    Nothing → CEM.throw "Incorrect setup bar model"
-    Just r → do
-      let
-        path = resource ^. Port._filePath
-        backendPath = fromMaybe Path.rootDir $ Path.parentDir path
-      results ←
-        CEM.liftQ $ QQ.query backendPath $ buildSql r path
-      pure $ buildBar axes results r
 
-buildSql ∷ ModelR → PU.FilePath → Sql.Sql
-buildSql r path =
-  Sql.buildSelect
-    $ ( Sql._projections .~ buildProjections r )
-    ∘ ( Sql._relations ?~ (Sql.TableRelation { path: Left path, alias: Nothing } ))
-    ∘ ( Sql._groupBy ?~ buildGroupBy r )
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildBar
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
 buildProjections r = L.fromFoldable
-  [ r.value # SCC.jcursorPrj # Sql.as "measure" # applyMeasure
+  [ r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
   , r.category # SCC.jcursorPrj # Sql.as "category"
   , r.stack # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "stack"
   , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
   ]
-  where
-  applyMeasure ∷ Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
-  applyMeasure p = case r.value ^? D._value ∘ D._transform ∘ _Just of
-    Nothing → p
-    Just t → T.applyTransform t p
 
 buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
 buildGroupBy r = Sql.GroupBy { keys, having: Nothing }
@@ -144,8 +101,8 @@ buildGroupBy r = Sql.GroupBy { keys, having: Nothing }
     , r.parallel # maybe Sql.null SCC.jcursorSql
     ]
 
-buildBar ∷ Axes → JArray → ModelR → Port.Port
-buildBar axes jarr m =
+buildBar ∷ ModelR → Axes → JArray → Port.Port
+buildBar m axes jarr =
   Port.ChartInstructions
     { options: barOptions axes m $ buildBarData jarr
     , chartType: Bar

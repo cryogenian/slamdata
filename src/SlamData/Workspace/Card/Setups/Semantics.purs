@@ -469,5 +469,11 @@ getSemantics js cursor =
 maybeString ∷ Json → Maybe String
 maybeString = map printSemantics ∘ analyzeJson
 
+requiredString ∷ String → Json → String
+requiredString str = fromMaybe str ∘ maybeString
+
 maybeNumber ∷ Json → Maybe Number
 maybeNumber = semanticsToNumber <=< analyzeJson
+
+requiredNumber ∷ Number → Json → Number
+requiredNumber num = fromMaybe num ∘ maybeNumber

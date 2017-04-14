@@ -71,8 +71,6 @@ foldTransform a b c d e f = case _ of
   Numeric z → e z
   Count → f unit
 
-
-
 prettyPrintTransform ∷ Transform → String
 prettyPrintTransform =
   foldTransform

@@ -21,19 +21,14 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState, put, get)
-import Control.Monad.Throw (class MonadThrow)
-import Control.Monad.Writer.Class (class MonadTell)
-
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Function (on)
-import Data.Lens ((^?), _Just, (^.), (.~), (?~))
+import Data.Lens ((^?))
 import Data.List as L
 import Data.Map as M
 import Data.NonEmpty as NE
-import Data.Path.Pathy as Path
 import Data.Set as Set
 
 import ECharts.Monad (DSL)
@@ -42,27 +37,22 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
-import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
 import SqlSquare as Sql
 
 import Utils.Array (enumerate)
-import Utils.Path as PU
 
 type Item =
   { dimension ∷ String
@@ -85,48 +75,15 @@ decodeItem = decodeJson >=> \obj → do
        , series
        }
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , MonadAsk CEM.CardEnv m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m resource = do
-  records × axes ← BCE.analyze resource =<< get
-  put $ Just $ CEM.Analysis { resource, records, axes }
-  case m of
-    Nothing → CEM.throw "Incorrect setup area model"
-    Just r → do
-      let
-        path = resource ^. Port._filePath
-        backendPath = fromMaybe Path.rootDir $ Path.parentDir path
-      results ←
-        CEM.liftQ $ QQ.query backendPath $ buildSql r path
-      pure $ buildArea axes results r
-
-buildSql ∷ ModelR → PU.FilePath → Sql.Sql
-buildSql r path =
-  Sql.buildSelect
-    $ ( Sql._projections .~ buildProjections r )
-    ∘ ( Sql._relations ?~ (Sql.TableRelation { path: Left path, alias: Nothing } ))
-    ∘ ( Sql._groupBy ?~ buildGroupBy r )
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildArea
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
 buildProjections r = L.fromFoldable
-  [ r.value # SCC.jcursorPrj # Sql.as "measure" # applyMeasure
+  [ r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
   , r.dimension # SCC.jcursorPrj # Sql.as "dimension"
   , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
   ]
-  where
-  applyMeasure ∷ Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
-  applyMeasure p = case r.value ^? D._value ∘ D._transform ∘ _Just of
-    Nothing → p
-    Just t → T.applyTransform t p
 
 buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
 buildGroupBy r = Sql.GroupBy { keys, having: Nothing }
@@ -136,8 +93,8 @@ buildGroupBy r = Sql.GroupBy { keys, having: Nothing }
     , r.series # maybe Sql.null SCC.jcursorSql
     ]
 
-buildArea ∷ Ax.Axes → JArray → ModelR → Port.Port
-buildArea axes jarr m =
+buildArea ∷ ModelR → Ax.Axes → JArray → Port.Port
+buildArea m axes jarr =
   Port.ChartInstructions
     { options: areaOptions axes m $ buildAreaData jarr
     , chartType: Area
