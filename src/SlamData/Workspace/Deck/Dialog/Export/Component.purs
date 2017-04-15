@@ -17,54 +17,47 @@ limitations under the License.
 module SlamData.Workspace.Deck.Dialog.Export.Component where
 
 import SlamData.Prelude
-
+import Clipboard as C
 import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exception
-import Control.UI.Browser (select, locationString)
-
-import Data.Argonaut (encodeJson)
 import Data.Foldable as F
-import Data.Foreign (toForeign)
 import Data.Map as Map
 import Data.Path.Pathy as Pathy
 import Data.StrMap as SM
 import Data.String as Str
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
-
-import DOM.HTML.Types (readHTMLElement)
-import DOM.Classy.Element (toElement)
 import Halogen as H
-import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-
 import OIDC.Crypt as OIDC
-
+import Quasar.Advanced.Types as QTA
 import SlamData.Config as Config
-import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.CSS as Rc
-import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId as DID
+import Utils.DOM as DOM
+import Utils.Path as UP
+import Control.Bind ((=<<))
+import Control.UI.Browser (select, locationString)
+import DOM.Classy.Element (toElement)
+import DOM.HTML.Types (readHTMLElement)
+import Data.Argonaut (encodeJson)
+import Data.Foreign (toForeign)
+import SlamData.Monad (Slam)
+import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Deck.DeckPath (deckPath')
 import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
 import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL)
-
-import Quasar.Advanced.Types as QTA
-
-import Utils.DOM as DOM
 import Utils (hush, prettyJson)
-import Utils.Path as UP
-
-import Clipboard as C
 
 data PresentAs = IFrame | URI
 
@@ -83,6 +76,9 @@ type State =
   , isLoggedIn ∷ Boolean
   , copyVal ∷ String
   , errored ∷ Boolean
+  , warning ∷ Maybe String
+  , presentStyleURLInput :: Boolean
+  , styleURL :: String
   , submitting ∷ Boolean
   , loading ∷ Boolean
   , clipboard ∷ Maybe C.Clipboard
@@ -100,10 +96,21 @@ initialState input =
   , isLoggedIn: false
   , copyVal: ""
   , errored: false
+  , warning: Nothing
+  , presentStyleURLInput: false
+  , styleURL: ""
   , submitting: false
   , loading: true
   , clipboard: Nothing
   }
+
+toggleStyleURLInput :: State -> State
+toggleStyleURLInput state =
+   state {presentStyleURLInput = not state.presentStyleURLInput}
+
+updateStyleURL :: String -> State -> State
+updateStyleURL styleURL state =
+  state { styleURL = styleURL }
 
 type Input =
   { sharingInput ∷ SharingInput
@@ -116,6 +123,8 @@ data Query a
   | Init a
   | Revoke a
   | ToggleShouldGenerateToken a
+  | ToggleStyleURLInput a
+  | UpdateStyleURL String a
   | PreventDefault DOM.Event a
   | HandleCancel a
 
@@ -183,6 +192,19 @@ renderPublishURI state =
                         ]
                         [ glyph B.glyphiconCopy ]
                       ]
+                  ]
+              , HH.div_
+                  [ HH.a
+                    [ HE.onClick (HE.input_ ToggleStyleURLInput) ]
+                    [ HH.text "Provide a URL with the CSS to customize look/feel"]
+                    ]
+              , HH.div_
+                  [ if state.presentStyleURLInput
+                      then HH.input
+                            [ HP.classes [ B.formControl ]
+                            , HE.onValueInput (HE.input UpdateStyleURL)
+                            ]
+                      else HH.text ""
                   ]
             ]
         ]
@@ -454,6 +476,12 @@ eval (ToggleShouldGenerateToken next) = next <$ do
   H.modify _{shouldGenerateToken = not state.shouldGenerateToken}
   updateCopyVal
 
+eval (ToggleStyleURLInput next) =
+  H.modify toggleStyleURLInput $> next
+
+eval (UpdateStyleURL styleURL next) =
+  H.modify (updateStyleURL styleURL) *> updateCopyVal $> next
+
 eval (PreventDefault ev next) =
   H.liftEff (DOM.preventDefault ev) $> next
 eval (HandleCancel next) =
@@ -563,7 +591,7 @@ renderVarMaps = indent <<< prettyJson <<< encodeJson <<< varMapsForURL
   indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" RXF.global) "$1      "
 
 renderURL ∷ String → State → String
-renderURL locationString state@{sharingInput, permToken, isLoggedIn} =
+renderURL locationString state@{sharingInput, permToken, isLoggedIn, styleURL} =
   locationString
   ⊕ "/"
   ⊕ Config.workspaceUrl
@@ -572,4 +600,5 @@ renderURL locationString state@{sharingInput, permToken, isLoggedIn} =
       (do guard isLoggedIn
           token ← permToken
           pure token.secret)
+  ⊕ if styleURL /= "" then "&stylesheets=" ⊕ styleURL else ""
   ⊕ mkWorkspaceHash (deckPath' sharingInput.workspacePath sharingInput.deckId) (WA.Load AT.ReadOnly) SM.empty
