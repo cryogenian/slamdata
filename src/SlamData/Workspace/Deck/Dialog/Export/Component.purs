@@ -23,7 +23,6 @@ import Control.Monad.Eff.Exception as Exception
 import Data.Foldable as F
 import Data.Map as Map
 import Data.List (List)
-import Data.Set (Set)
 import Data.Path.Pathy as Pathy
 import Data.Path.Pathy (Path, Abs, File, Sandboxed)
 import Data.StrMap as SM
@@ -67,17 +66,6 @@ import Utils (hush, prettyJson)
 
 data PresentAs = IFrame | URI
 
-newtype ExportWarning = ExportWarning String
-
-newtype ExportError = ExportError String
-
-derive newtype instance eqExportWarning ∷ Eq ExportWarning
-derive newtype instance ordExportWarning ∷ Ord ExportWarning
-
-derive newtype instance eqExportError ∷ Eq ExportError
-derive newtype instance ordExportError ∷ Ord ExportError
-
-
 derive instance eqPresentAs ∷ Eq PresentAs
 
 type DSL = H.ComponentDSL State Query Message Slam
@@ -92,8 +80,7 @@ type State =
   , hovered ∷ Boolean
   , isLoggedIn ∷ Boolean
   , copyVal ∷ String
-  , errored ∷ Boolean
-  , warningsAndErrors ∷ Set (Either ExportWarning ExportError)
+  , noNetworkAccessToAdvancedError ∷ Boolean
   , presentStyleUriInput :: Boolean
   , styleUri :: Maybe AbsoluteURI
   , submitting ∷ Boolean
@@ -108,12 +95,11 @@ initialState input =
   , sharingInput: input.sharingInput
   , permToken: Nothing
   , canRevoke: false
-  , shouldGenerateToken: false
+  , shouldGenerateToken: true
   , hovered: false
   , isLoggedIn: false
   , copyVal: ""
-  , errored: false
-  , warningsAndErrors: mempty
+  , noNetworkAccessToAdvancedError: false
   , presentStyleUriInput: false
   , styleUri: Nothing
   , submitting: false
@@ -180,105 +166,96 @@ render state
 
 renderPublishURI ∷ State → H.ComponentHTML Query
 renderPublishURI state =
-  HH.div [ HP.classes [ HH.ClassName "deck-dialog-share" ] ]
-    [ HH.h4_ [ HH.text "Publish deck" ]
-    , HH.div
-        [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
-            ⊕ if state.loading then [ ] else [ B.hidden ]
-        ]
-        [ HH.img [ HP.src "img/blue-spin.svg" ]
-        , HH.text "Loading"
-        ]
-    , HH.div
-        [ HP.classes
-            $ [ HH.ClassName "deck-dialog-body" ]
-            ⊕ if state.loading then [ B.hidden ] else [ ]
-        ]
-        [ HH.p_ message
-        , HH.form
-            [ HE.onSubmit (HE.input PreventDefault) ]
-            $ fold
-                [ pure $ HH.div
-                    [ HP.classes [ B.inputGroup ] ]
-                    $ [ HH.input
-                        [ HP.classes [ B.formControl ]
-                        , HP.value state.copyVal
-                        , HP.readOnly true
-                        , HP.disabled state.submitting
-                        , HP.title "Published deck Uri"
-                        , ARIA.label "Published deck Uri"
-                        , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
-                        ]
-                      , HH.span
-                          [ HP.classes [ B.inputGroupBtn ] ]
-                          [ HH.button
-                            [ HP.classes [ B.btn, B.btnDefault ]
-                            , HE.onClick (HE.input_ HandleCancel)
-                            , HP.ref copyButtonRef
-                            , HP.id_ "copy-button"
-                            , HP.type_ HP.ButtonButton
+  HH.div
+    [ HP.classes [ HH.ClassName "deck-dialog-share" ] ]
+    $ fold
+        [ pure $ HH.h4_ [ HH.text "Publish deck" ]
+        , guard state.loading $> HH.div
+            [ HP.classes [ B.alert, B.alertInfo, HH.ClassName "share-loading" ] ]
+            [ HH.img [ HP.src "img/blue-spin.svg" ]
+            , HH.text "Loading"
+            ]
+        , guard (not state.loading) $> HH.div
+            [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
+            [ HH.p_ message
+            , HH.form
+                [ HE.onSubmit (HE.input PreventDefault) ]
+                $ fold
+                    [ pure $ HH.div
+                        [ HP.classes [ B.inputGroup ] ]
+                        [ HH.input
+                            [ HP.classes [ B.formControl ]
+                            , HP.value state.copyVal
+                            , HP.readOnly true
                             , HP.disabled state.submitting
+                            , HP.title "Published deck Uri"
+                            , ARIA.label "Published deck Uri"
+                            , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
                             ]
-                            [ glyph B.glyphiconCopy ]
-                          ]
-                      ]
-                  , pure $ HH.div_
-                      [ HH.a
-                        [ HE.onClick (HE.input_ ToggleStyleUriInput) ]
-                        [ HH.text "Add a stylesheet Uri to customize look/feel."]
-                        ]
-                  , guard state.presentStyleUriInput
-                      $> HH.div_
-                          [ HH.input
-                                [ HP.classes [ B.formControl ]
-                                , HE.onValueInput (HE.input UpdateStyleUri)
+                        , HH.span
+                            [ HP.classes [ B.inputGroupBtn ] ]
+                            [ HH.button
+                                [ HP.classes [ B.btn, B.btnDefault ]
+                                , HE.onClick (HE.input_ HandleCancel)
+                                , HP.ref copyButtonRef
+                                , HP.id_ "copy-button"
+                                , HP.type_ HP.ButtonButton
+                                , HP.disabled state.submitting
                                 ]
-                          ]
+                                [ glyph B.glyphiconCopy ]
+                            ]
+                        ]
+                    , pure $ HH.div_
+                        [ HH.a
+                            [ HE.onClick (HE.input_ ToggleStyleUriInput) ]
+                            [ HH.text "Add a stylesheet Uri to customize look/feel."]
+                        ]
+                    , guard state.presentStyleUriInput $> HH.div_
+                        [ HH.input
+                            [ HP.classes [ B.formControl ]
+                            , HE.onValueInput (HE.input UpdateStyleUri)
+                            ]
+                        ]
+                    ]
+            ]
+        , pure $ HH.div
+            [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
+            $ fold
+                [ guard state.noNetworkAccessToAdvancedError $> HH.div
+                    [ HP.classes [ B.alert, B.alertDanger ] ]
+                    [ HH.text
+                        $ "Couldn't share/unshare deck. "
+                        ⊕ "Please check you network connection and try again"
+                    ]
+                , pure $ HH.button
+                    [ HP.classes [ B.btn, B.btnDefault ]
+                    , HE.onClick (HE.input_ HandleCancel)
+                    , HP.type_ HP.ButtonButton
+                    ]
+                    [ HH.text "Cancel" ]
+                , guard state.isLoggedIn $> HH.button
+                    [ HP.classes [ B.btn, B.btnInfo ]
+                    , HE.onClick (HE.input_ Revoke)
+                    , ARIA.label "Revoke access to this deck"
+                    , HP.title "Revoke access to this deck"
+                    , HP.type_ HP.ButtonButton
+                    , HP.enabled $ state.canRevoke ∧ not state.submitting
+                    ]
+                    [ HH.text "Revoke" ]
+                , pure $ HH.a
+                    (fold
+                       [ pure $ HP.classes $ fold
+                           [ pure B.btn
+                           , pure B.btnPrimary
+                           , guard state.submitting $> B.disabled
+                           ]
+                       , pure $ HP.target "_blank"
+                       , guard state.submitting $> HP.href state.copyVal
+                       ]
+                    )
+                    [ HH.text "Preview" ]
                 ]
         ]
-    , HH.div
-        [ HP.classes
-            $ [ HH.ClassName "deck-dialog-footer" ]
-            ⊕ if state.loading then [ B.hidden ] else [ ]
-        ]
-        $ [ HH.div
-              [ HP.classes
-                  $ [ B.alert, B.alertDanger ]
-                  ⊕ (if state.errored then [ ] else [ B.hidden ])
-              ]
-              [ HH.text
-                  $ "Couldn't share/unshare deck. "
-                  ⊕ "Please check you network connection and try again"
-              ]
-          , HH.button
-              [ HP.classes [ B.btn, B.btnDefault ]
-              , HE.onClick (HE.input_ HandleCancel)
-              , HP.type_ HP.ButtonButton
-              ]
-              [ HH.text "Cancel" ]
-          ]
-        ⊕ ((guard state.isLoggedIn)
-           $>  HH.button
-                 [ HP.classes [ B.btn, B.btnInfo ]
-                 , HE.onClick (HE.input_ Revoke)
-                 , ARIA.label "Revoke access to this deck"
-                 , HP.title "Revoke access to this deck"
-                 , HP.type_ HP.ButtonButton
-                 , HP.enabled $ state.canRevoke ∧ not state.submitting
-                 ]
-                 [ HH.text "Revoke" ])
-        ⊕ [ HH.a
-              ( [ HP.classes
-                    $ [ B.btn, B.btnPrimary ]
-                    ⊕ if state.submitting then [ B.disabled ] else [ ]
-                , HP.target "_blank"
-                ]
-                ⊕ if state.submitting then [ ] else [ HP.href state.copyVal ]
-              )
-              [ HH.text "Preview" ]
-          ]
-      ]
   where
   message
     | state.isLoggedIn =
@@ -291,14 +268,13 @@ renderPublishURI state =
             $ "Anyone with access to this link may be able to view this deck. "
             ⊕ "They may also be able to modify the link to view or edit any deck "
             ⊕ "in this workspace. Please see "
-        , HH.a [ HP.href "http://docs.slamdata.com/en/latest/securing-slamdata.html"
-               , HP.target  "_blank"
-               ]
+        , HH.a
+            [ HP.href "http://docs.slamdata.com/en/latest/securing-slamdata.html"
+            , HP.target  "_blank"
+            ]
             [ HH.text "Securing SlamData Community Edition" ]
-        , HH.text " for more information."
-        ]
-
-
+            , HH.text " for more information."
+            ]
 
 renderPublishIFrame ∷ State → H.ComponentHTML Query
 renderPublishIFrame state =
@@ -359,7 +335,7 @@ renderPublishIFrame state =
         $ [ HH.div
               [ HP.classes
                   $ [ B.alert, B.alertDanger ]
-                  ⊕ (if state.errored then [ ] else [ B.hidden ])
+                  ⊕ (if state.noNetworkAccessToAdvancedError then [ ] else [ B.hidden ])
               ]
               [ HH.text
                   $ "Couldn't share/unshare deck. "
@@ -421,7 +397,7 @@ eval (Init next) = next <$ do
       tokensRes ← Q.tokenList
       H.modify _{loading = false}
       case tokensRes of
-        Left _ → H.modify _{errored = true}
+        Left _ → H.modify _{noNetworkAccessToAdvancedError = true}
         Right tokens →
           let
             tokenName =
@@ -431,7 +407,7 @@ eval (Init next) = next <$ do
           in case oldToken of
             Just token → do
               H.modify _{ permToken = Just token
-                        , errored = false
+                        , noNetworkAccessToAdvancedError = false
                         }
             Nothing → do
               isURI ← (_ ≡ URI) <$> H.gets _.presentingAs
@@ -443,9 +419,9 @@ eval (Init next) = next <$ do
                     (sharingActions state.sharingInput View)
                 H.modify _{submitting = false}
                 H.modify case createdRes of
-                  Left _ →  _{errored = true}
+                  Left _ →  _{noNetworkAccessToAdvancedError = true}
                   Right newToken →
-                     _{ errored = false
+                     _{ noNetworkAccessToAdvancedError = false
                       , permToken = Just newToken
                       }
   updateCopyVal
@@ -468,7 +444,7 @@ eval (Revoke next) = do
     deleteRes ← Q.deleteToken tok.id
     H.modify _{submitting = false}
     case deleteRes of
-      Left _ → H.modify _{ errored = true }
+      Left _ → H.modify _{ noNetworkAccessToAdvancedError = true }
       Right _ → H.raise Dismiss
   pure next
 
@@ -489,19 +465,19 @@ eval (ToggleShouldGenerateToken next) = next <$ do
           H.modify case recreatedRes of
             Left _ →
               _ { permToken = Nothing
-                , errored = true
+                , noNetworkAccessToAdvancedError = true
                 }
             Right token →
               _ { permToken = Just token
-                , errored = false
+                , noNetworkAccessToAdvancedError = false
                 }
     Just tok → do
       H.modify _{submitting = true}
       deleteRes ← Q.deleteToken tok.id
       H.modify _{submitting = false}
       H.modify case deleteRes of
-        Left _ → _ { errored = true }
-        Right _ → _ { errored = false, permToken = Nothing }
+        Left _ → _ { noNetworkAccessToAdvancedError = true }
+        Right _ → _ { noNetworkAccessToAdvancedError = false, permToken = Nothing }
   H.modify _{shouldGenerateToken = not state.shouldGenerateToken}
   updateCopyVal
 
