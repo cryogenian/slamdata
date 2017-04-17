@@ -143,7 +143,7 @@ render = case _ of
     Embed sharingInput varMaps →
       HH.slot' CP.cp4 unit Export.component
         { sharingInput
-        , presentingAs: Export.IFrame
+        , presentingAs: Export.Embed
         , varMaps
         }
         \Export.Dismiss → Just $ H.action $ Raise Dismiss

@@ -64,7 +64,7 @@ import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(.
 import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL)
 import Utils (hush, prettyJson)
 
-data PresentAs = IFrame | URI
+data PresentAs = Embed | URI
 
 derive instance eqPresentAs ∷ Eq PresentAs
 
@@ -81,8 +81,8 @@ type State =
   , isLoggedIn ∷ Boolean
   , copyVal ∷ String
   , noNetworkAccessToAdvancedError ∷ Boolean
-  , presentStyleUriInput :: Boolean
-  , styleUri :: Maybe AbsoluteURI
+  , presentStyleURIInput :: Boolean
+  , styleURIString :: String
   , submitting ∷ Boolean
   , loading ∷ Boolean
   , clipboard ∷ Maybe C.Clipboard
@@ -100,26 +100,23 @@ initialState input =
   , isLoggedIn: false
   , copyVal: ""
   , noNetworkAccessToAdvancedError: false
-  , presentStyleUriInput: false
-  , styleUri: Nothing
+  , presentStyleURIInput: false
+  , styleURIString: ""
   , submitting: false
   , loading: true
   , clipboard: Nothing
   }
 
-toggleStyleUriInput :: State -> State
-toggleStyleUriInput state =
-   state {presentStyleUriInput = not state.presentStyleUriInput}
+toggleStyleURIInput :: State -> State
+toggleStyleURIInput state =
+   state {presentStyleURIInput = not state.presentStyleURIInput}
 
-updateStyleUri :: String -> State -> State
-updateStyleUri styleUri state =
-  case hush $ URI.runParseAbsoluteURI styleUri of
-    Just validAbsoluteUri →
-      if isJust $ styleURIPath validAbsoluteUri
-        then state { styleUri = Just validAbsoluteUri }
-        else state { styleUri = Nothing }
-    Nothing →
-      state { styleUri = Nothing }
+parseStyleURI :: String -> Maybe AbsoluteURI
+parseStyleURI styleURI = do
+  validAbsoluteURI ← hush $ URI.runParseAbsoluteURI styleURI
+  if isJust $ styleURIPath validAbsoluteURI
+    then Just validAbsoluteURI
+    else Nothing
   where
   styleURIPath ∷ AbsoluteURI → Maybe (Path Abs File Sandboxed)
   styleURIPath =
@@ -138,8 +135,8 @@ data Query a
   | Init a
   | Revoke a
   | ToggleShouldGenerateToken a
-  | ToggleStyleUriInput a
-  | UpdateStyleUri String a
+  | ToggleStyleURIInput a
+  | UpdateStyleURI String a
   | PreventDefault DOM.Event a
   | HandleCancel a
 
@@ -161,11 +158,11 @@ component =
 
 render ∷ State → H.ComponentHTML Query
 render state
-  | state.presentingAs ≡ URI = renderPublishURI state
-  | otherwise = renderPublishIFrame state
+  | state.presentingAs ≡ URI = renderPublishDialog state
+  | otherwise = renderEmbedDialog state
 
-renderPublishURI ∷ State → H.ComponentHTML Query
-renderPublishURI state =
+renderPublishDialog ∷ State → H.ComponentHTML Query
+renderPublishDialog state =
   HH.div
     [ HP.classes [ HH.ClassName "deck-dialog-share" ] ]
     $ fold
@@ -177,87 +174,98 @@ renderPublishURI state =
             ]
         , guard (not state.loading) $> HH.div
             [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
-            [ HH.p_ message
+            [ HH.p_ renderAccessMessage
             , HH.form
                 [ HE.onSubmit (HE.input PreventDefault) ]
                 $ fold
-                    [ pure $ HH.div
-                        [ HP.classes [ B.inputGroup ] ]
-                        [ HH.input
-                            [ HP.classes [ B.formControl ]
-                            , HP.value state.copyVal
-                            , HP.readOnly true
-                            , HP.disabled state.submitting
-                            , HP.title "Published deck Uri"
-                            , ARIA.label "Published deck Uri"
-                            , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
-                            ]
-                        , HH.span
-                            [ HP.classes [ B.inputGroupBtn ] ]
-                            [ HH.button
-                                [ HP.classes [ B.btn, B.btnDefault ]
-                                , HE.onClick (HE.input_ HandleCancel)
-                                , HP.ref copyButtonRef
-                                , HP.id_ "copy-button"
-                                , HP.type_ HP.ButtonButton
-                                , HP.disabled state.submitting
-                                ]
-                                [ glyph B.glyphiconCopy ]
-                            ]
-                        ]
+                    [ pure renderPublishUrl
                     , pure $ HH.div_
                         [ HH.a
-                            [ HE.onClick (HE.input_ ToggleStyleUriInput) ]
-                            [ HH.text "Add a stylesheet Uri to customize look/feel."]
+                            [ HE.onClick (HE.input_ ToggleStyleURIInput) ]
+                            [ HH.text "Add a stylesheet URI to customize look/feel."]
                         ]
-                    , guard state.presentStyleUriInput $> HH.div_
-                        [ HH.input
-                            [ HP.classes [ B.formControl ]
-                            , HE.onValueInput (HE.input UpdateStyleUri)
-                            ]
-                        ]
+                    , guard state.presentStyleURIInput $> HH.div
+                        (fold [ guard (isJust $ parseStyleURI state.styleURIString) $> HP.classes validInputClasses ])
+                        (fold
+                           [ pure $ HH.input
+                               [ HP.classes [ B.formControl ]
+                               , HE.onValueInput (HE.input UpdateStyleURI)
+                               ]
+                           , guard (isJust $ parseStyleURI state.styleURIString) $> HH.span
+                               [ HP.classes [ B.glyphicon, B.glyphiconOk, B.formControlFeedback ] ]
+                               []
+                           ])
                     ]
             ]
-        , pure $ HH.div
-            [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
-            $ fold
-                [ guard state.noNetworkAccessToAdvancedError $> HH.div
-                    [ HP.classes [ B.alert, B.alertDanger ] ]
-                    [ HH.text
-                        $ "Couldn't share/unshare deck. "
-                        ⊕ "Please check you network connection and try again"
-                    ]
-                , pure $ HH.button
-                    [ HP.classes [ B.btn, B.btnDefault ]
-                    , HE.onClick (HE.input_ HandleCancel)
-                    , HP.type_ HP.ButtonButton
-                    ]
-                    [ HH.text "Cancel" ]
-                , guard state.isLoggedIn $> HH.button
-                    [ HP.classes [ B.btn, B.btnInfo ]
-                    , HE.onClick (HE.input_ Revoke)
-                    , ARIA.label "Revoke access to this deck"
-                    , HP.title "Revoke access to this deck"
-                    , HP.type_ HP.ButtonButton
-                    , HP.enabled $ state.canRevoke ∧ not state.submitting
-                    ]
-                    [ HH.text "Revoke" ]
-                , pure $ HH.a
-                    (fold
-                       [ pure $ HP.classes $ fold
-                           [ pure B.btn
-                           , pure B.btnPrimary
-                           , guard state.submitting $> B.disabled
-                           ]
-                       , pure $ HP.target "_blank"
-                       , guard state.submitting $> HP.href state.copyVal
-                       ]
-                    )
-                    [ HH.text "Preview" ]
-                ]
+        , pure renderPublishFooter
         ]
   where
-  message
+  validInputClasses = [ B.hasSuccess, B.hasFeedback ]
+  renderPublishUrl =
+    HH.div
+      [ HP.classes [ B.inputGroup ] ]
+      [ HH.input
+          [ HP.classes [ B.formControl ]
+          , HP.value state.copyVal
+          , HP.readOnly true
+          , HP.disabled state.submitting
+          , HP.title "Published deck URI"
+          , ARIA.label "Published deck URI"
+          , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
+          ]
+      , HH.span
+          [ HP.classes [ B.inputGroupBtn ] ]
+          [ HH.button
+              [ HP.classes [ B.btn, B.btnDefault ]
+              , HE.onClick (HE.input_ HandleCancel)
+              , HP.ref copyButtonRef
+              , HP.id_ "copy-button"
+              , HP.type_ HP.ButtonButton
+              , HP.disabled state.submitting
+              ]
+              [ glyph B.glyphiconCopy ]
+          ]
+      ]
+
+  renderPublishFooter =
+    HH.div
+      [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
+      $ fold
+          [ guard state.noNetworkAccessToAdvancedError $> HH.div
+              [ HP.classes [ B.alert, B.alertDanger ] ]
+              [ HH.text
+                  $ "Couldn't share/unshare deck. "
+                  ⊕ "Please check you network connection and try again"
+              ]
+          , pure $ HH.button
+              [ HP.classes [ B.btn, B.btnDefault ]
+              , HE.onClick (HE.input_ HandleCancel)
+              , HP.type_ HP.ButtonButton
+              ]
+              [ HH.text "Cancel" ]
+          , guard state.isLoggedIn $> HH.button
+              [ HP.classes [ B.btn, B.btnInfo ]
+              , HE.onClick (HE.input_ Revoke)
+              , ARIA.label "Revoke access to this deck"
+              , HP.title "Revoke access to this deck"
+              , HP.type_ HP.ButtonButton
+              , HP.enabled $ state.canRevoke ∧ not state.submitting
+              ]
+              [ HH.text "Revoke" ]
+          , pure $ HH.a
+              (fold
+                 [ pure $ HP.classes $ fold
+                     [ pure B.btn
+                     , pure B.btnPrimary
+                     , guard state.submitting $> B.disabled
+                     ]
+                 , pure $ HP.target "_blank"
+                 , guard state.submitting $> HP.href state.copyVal
+                 ])
+              [ HH.text "Preview" ]
+          ]
+
+  renderAccessMessage
     | state.isLoggedIn =
         [ HH.text
           $ "Anyone has access to the following link "
@@ -276,8 +284,8 @@ renderPublishURI state =
             , HH.text " for more information."
             ]
 
-renderPublishIFrame ∷ State → H.ComponentHTML Query
-renderPublishIFrame state =
+renderEmbedDialog ∷ State → H.ComponentHTML Query
+renderEmbedDialog state =
   HH.div [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
     [ HH.h4_ [ HH.text  "Embed deck" ]
     , HH.div
@@ -481,14 +489,15 @@ eval (ToggleShouldGenerateToken next) = next <$ do
   H.modify _{shouldGenerateToken = not state.shouldGenerateToken}
   updateCopyVal
 
-eval (ToggleStyleUriInput next) =
-  H.modify toggleStyleUriInput $> next
+eval (ToggleStyleURIInput next) =
+  H.modify toggleStyleURIInput $> next
 
-eval (UpdateStyleUri styleUri next) =
-  H.modify (updateStyleUri styleUri) *> updateCopyVal $> next
+eval (UpdateStyleURI styleURI next) =
+  H.modify (_ { styleURIString = styleURI }) *> updateCopyVal $> next
 
 eval (PreventDefault ev next) =
   H.liftEff (DOM.preventDefault ev) $> next
+
 eval (HandleCancel next) =
   H.raise Dismiss $> next
 
@@ -528,14 +537,14 @@ updateCopyVal = do
 renderCopyVal ∷ String → State → Either String String
 renderCopyVal locString state
   | state.presentingAs ≡ URI =
-    URI.printURI <$> renderUri locString state
+    URI.printURI <$> renderURI locString state
   | otherwise
       = Right $ Str.joinWith "\n"
           [ """<!-- This is the DOM element that the deck will be inserted into. -->"""
           , """<!-- You can change the width and height and use a stylesheet to apply styling. -->"""
           , """<iframe frameborder="0" width="100%" height="800" id=""" ⊕ quoted deckDOMId ⊕ """></iframe>"""
           , """"""
-          , """<!-- To change a deck's variables after it has been inserted please use window.slamDataDeckUrl to create an new Uri then update the deck iframe's src parameter. -->"""
+          , """<!-- To change a deck's variables after it has been inserted please use window.slamDataDeckUrl to create an new URI then update the deck iframe's src parameter. -->"""
           , """<script type="text/javascript">"""
           , """  window.slamDataDeckUrl = function (options) {"""
           , """    var queryParts = function () {"""
@@ -561,11 +570,11 @@ renderCopyVal locString state
           , """<script type="text/javascript">"""
           , """  (function () {"""
           , """    var options = {"""
-          , """      slamDataUrl: """ ⊕ quoted workspaceUri ⊕ ""","""
+          , """      slamDataUrl: """ ⊕ quoted workspaceURI ⊕ ""","""
           , """      deckPath: """ ⊕ quoted deckPath ⊕ ""","""
           , """      deckId: """ ⊕ quoted deckId ⊕ ""","""
           , """      permissionTokens: [""" ⊕ maybe "" quoted token ⊕ """],"""
-          , """      stylesheetUrls: [], // An array of custom stylesheet Uris."""
+          , """      stylesheetUrls: [], // An array of custom stylesheet URIs."""
           , """      echartTheme: undefined,"""
           , """      vars: """ ⊕ renderVarMaps state.varMaps
           , """    };"""
@@ -584,7 +593,7 @@ renderCopyVal locString state
     where
     line = (_ ⊕ "\n")
     quoted s = "\"" ⊕ s ⊕ "\""
-    workspaceUri = locString ⊕ "/" ⊕ Config.workspaceUrl
+    workspaceURI = locString ⊕ "/" ⊕ Config.workspaceUrl
     deckId = DID.toString state.sharingInput.deckId
     deckDOMId = "sd-deck-" ⊕ deckId
     deckPath = UP.encodeURIPath (Pathy.printPath state.sharingInput.workspacePath)
@@ -595,8 +604,8 @@ renderVarMaps = indent <<< prettyJson <<< encodeJson <<< varMapsForURL
   where
   indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" RXF.global) "$1      "
 
-renderUri ∷ String → State → Either String URI.URI
-renderUri locationString state@{sharingInput, permToken, isLoggedIn, styleUri} =
+renderURI ∷ String → State → Either String URI.URI
+renderURI locationString state@{sharingInput, permToken, isLoggedIn, styleURIString} =
   case location of
     Nothing →
       Left "Bad SlamData config: workspacePath was not a valid absolute URI."
@@ -627,7 +636,7 @@ renderUri locationString state@{sharingInput, permToken, isLoggedIn, styleUri} =
 
   query ∷ List (Tuple String (Maybe String))
   query =
-    (guard (isJust styleUri) $> (Tuple "stylesheets" $ URI.printAbsoluteURI <$> styleUri))
+    (guard (isJust $ parseStyleURI styleURIString) $> (Tuple "stylesheets" $ Just styleURIString))
       ⊕ (guard isLoggedIn $> (Tuple "permissionToken" token))
 
   token ∷ Maybe String
