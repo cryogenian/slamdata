@@ -103,7 +103,7 @@ buildGraphData ∷ JArray → ModelR → GraphData
 buildGraphData jarr r =
   let
     items ∷ Array Item
-    items = spy $ foldMap (foldMap A.singleton ∘ decodeItem) jarr
+    items = foldMap (foldMap A.singleton ∘ decodeItem) jarr
 
     colors ∷ Array String
     colors = A.nub $ A.mapMaybe _.color items

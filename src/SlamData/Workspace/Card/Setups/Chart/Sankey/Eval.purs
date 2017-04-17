@@ -21,59 +21,71 @@ module SlamData.Workspace.Card.Setups.Chart.Sankey.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
-import Data.Lens ((^?), _Just)
-import Data.Map as M
+import Data.List as L
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Model (Model, ModelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Sankey))
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis (Axes)
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Sankey.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
+import SqlSquare as Sql
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Sankey (const buildSankey) m \axes → m
-
-----------------------------------------------------------------------
--- SANKEY BUILDER
-----------------------------------------------------------------------
-
-type SankeyItem =
+type Item =
   { source ∷ String
   , target ∷ String
   , weight ∷ Number
   }
 
-type SankeyData = Array SankeyItem
+decodeItem ∷ Json → String ⊹ Item
+decodeItem = decodeJson >=> \obj → do
+  source ← map (fromMaybe "" ∘ Sem.maybeString) $ obj .? "source"
+  target ← map (fromMaybe "" ∘ Sem.maybeString) $ obj .? "target"
+  weight ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "weight"
+  pure { source, target, weight }
 
-buildSankey ∷ ModelR → JArray → DSL OptionI
-buildSankey r records = do
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildSankey
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.source # SCC.jcursorPrj # Sql.as "source"
+  , r.target # SCC.jcursorPrj # Sql.as "target"
+  , r.value # SCC.jcursorPrj # Sql.as "weight"
+  ]
+
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable
+    [ r.source # SCC.jcursorSql
+    , r.target # SCC.jcursorSql
+    ]
+
+buildSankey ∷ ModelR → Axes → JArray → Port.Port
+buildSankey m _ jarr =
+  Port.ChartInstructions
+    { options: sankeyOptions m $ buildSankeyData jarr
+    , chartType: Sankey
+    }
+
+buildSankeyData ∷ JArray → Array Item
+buildSankeyData =
+  foldMap $ foldMap A.singleton ∘ decodeItem
+
+sankeyOptions ∷ ModelR → Array Item → DSL OptionI
+sankeyOptions r sankeyData = do
   let
     cols =
       [ { label: D.jcursorLabel r.source, value: CCT.formatDataProp "source" }
@@ -95,66 +107,14 @@ buildSankey r records = do
 
     E.lineStyle $ E.normal $ E.curveness 0.3
   where
-  sankeyData ∷ SankeyData
-  sankeyData = buildSankeyData records r
-
   links ∷ DSL ETP.LinksI
   links = for_ sankeyData \item → E.addLink do
     E.sourceName item.source
     E.targetName item.target
     E.value item.weight
 
-
   items ∷ DSL ETP.ItemsI
   items =
     for_
       (A.nub $ (_.source <$> sankeyData) ⊕ (_.target <$> sankeyData))
       (E.addItem ∘ E.name)
-
-
-buildSankeyData ∷ JArray → ModelR → SankeyData
-buildSankeyData records r = items
-  where
-  --| source × target >> values
-  dataMap ∷ (String × String) >> Array Number
-  dataMap =
-    foldl dataMapFoldFn M.empty records
-
-  dataMapFoldFn
-    ∷ M.Map (String × String) (Array Number)
-    → Json
-    → M.Map (String × String) (Array Number)
-  dataMapFoldFn acc js =
-    let
-      getValuesFromJson = Sem.getValues js
-      getMaybeStringFromJson = Sem.getMaybeString js
-
-      mbSource =
-        getMaybeStringFromJson =<< r.source ^? D._value ∘ D._projection
-      mbTarget =
-        getMaybeStringFromJson =<< r.target ^? D._value ∘ D._projection
-      values =
-        getValuesFromJson $ r.value ^? D._value ∘ D._projection
-
-      alterFn ∷ Maybe (Array Number) → Maybe (Array Number)
-      alterFn Nothing = Just values
-      alterFn (Just arr) = Just $ arr ⊕ values
-    in
-      case mbSource × mbTarget of
-        Just source × Just target →
-          M.alter alterFn (source × target) acc
-        _ → acc
-
-  items ∷ SankeyData
-  items =
-    foldMap mkItem $ M.toList dataMap
-
-  mkItem ∷ (String × String) × Array Number → Array SankeyItem
-  mkItem ((source × target) × values) =
-    [ { source
-      , target
-      , weight:
-          flip Ag.runAggregation values
-          $ fromMaybe Ag.Sum
-          $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
-      } ]
