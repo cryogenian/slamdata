@@ -29,7 +29,7 @@ import Utils.Path as PU
 buildBasicSql
   ∷ ∀ p
   . (p → L.List (Sql.Projection Sql.Sql))
-  → (p → Sql.GroupBy Sql.Sql)
+  → (p → Maybe (Sql.GroupBy Sql.Sql))
   → p
   → PU.FilePath
   → Sql.Sql
@@ -37,7 +37,7 @@ buildBasicSql buildProjections buildGroupBy r path =
   Sql.buildSelect
     $ ( Sql._projections .~ buildProjections r )
     ∘ ( Sql._relations ?~ (Sql.TableRelation { path: Left path, alias: Nothing } ))
-    ∘ ( Sql._groupBy ?~ buildGroupBy r )
+    ∘ ( Sql._groupBy .~ buildGroupBy r )
 
 applyTransform ∷ ∀ a b. D.Dimension a b → Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
 applyTransform dim p = case dim of
@@ -54,3 +54,8 @@ jcursorPrj = Sql.projection ∘ jcursorSql
 
 nullPrj ∷ Sql.Projection Sql.Sql
 nullPrj = Sql.projection Sql.null
+
+groupBy ∷ L.List Sql.Sql → Maybe (Sql.GroupBy Sql.Sql)
+groupBy keys
+  | L.null keys = Nothing
+  | otherwise   = Just $ Sql.GroupBy { keys, having: Nothing }

@@ -85,10 +85,9 @@ buildProjections r = L.fromFoldable
   , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
   ]
 
-buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
-buildGroupBy r = Sql.GroupBy { keys, having: Nothing }
-  where
-  keys = L.fromFoldable $ A.catMaybes
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable $ A.catMaybes
     [ Just r.dimension <#> SCC.jcursorSql
     , r.series <#> SCC.jcursorSql
     ]

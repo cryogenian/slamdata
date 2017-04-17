@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Setups.Chart.Pie.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, decodeJson, (.?))
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Lens ((^?), _Just)
 import Data.List as L
@@ -89,16 +89,15 @@ buildProjections r = L.fromFoldable
   , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
   ]
 
-buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
-buildGroupBy r = Sql.GroupBy { keys, having: Nothing }
-  where
-  keys = L.fromFoldable $ A.catMaybes
-    [ Just r.category <#> SCC.jcursorSql
-    , r.parallel <#> SCC.jcursorSql
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable $ A.catMaybes
+    [ r.parallel <#> SCC.jcursorSql
     , r.donut <#> SCC.jcursorSql
+    , Just r.category <#> SCC.jcursorSql
     ]
 
-buildPie ∷ ModelR → Axes → JArray → Port.Port
+buildPie ∷ ModelR → Axes → Array Json → Port.Port
 buildPie m _ jarr =
   Port.ChartInstructions
     { options: pieOptions m $ buildPieData m jarr
