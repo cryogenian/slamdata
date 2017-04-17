@@ -23,6 +23,7 @@ import Control.Monad.Eff.Exception as Exception
 import Data.Foldable as F
 import Data.Map as Map
 import Data.List (List)
+import Data.Set (Set)
 import Data.Path.Pathy as Pathy
 import Data.Path.Pathy (Path, Abs, File, Sandboxed)
 import Data.StrMap as SM
@@ -66,6 +67,17 @@ import Utils (hush, prettyJson)
 
 data PresentAs = IFrame | URI
 
+newtype ExportWarning = ExportWarning String
+
+newtype ExportError = ExportError String
+
+derive newtype instance eqExportWarning ∷ Eq ExportWarning
+derive newtype instance ordExportWarning ∷ Ord ExportWarning
+
+derive newtype instance eqExportError ∷ Eq ExportError
+derive newtype instance ordExportError ∷ Ord ExportError
+
+
 derive instance eqPresentAs ∷ Eq PresentAs
 
 type DSL = H.ComponentDSL State Query Message Slam
@@ -81,9 +93,9 @@ type State =
   , isLoggedIn ∷ Boolean
   , copyVal ∷ String
   , errored ∷ Boolean
-  , warning ∷ Maybe String
+  , warningsAndErrors ∷ Set (Either ExportWarning ExportError)
   , presentStyleUriInput :: Boolean
-  , styleUri :: String
+  , styleUri :: Maybe AbsoluteURI
   , submitting ∷ Boolean
   , loading ∷ Boolean
   , clipboard ∷ Maybe C.Clipboard
@@ -101,9 +113,9 @@ initialState input =
   , isLoggedIn: false
   , copyVal: ""
   , errored: false
-  , warning: Nothing
+  , warningsAndErrors: mempty
   , presentStyleUriInput: false
-  , styleUri: ""
+  , styleUri: Nothing
   , submitting: false
   , loading: true
   , clipboard: Nothing
@@ -115,7 +127,19 @@ toggleStyleUriInput state =
 
 updateStyleUri :: String -> State -> State
 updateStyleUri styleUri state =
-  state { styleUri = styleUri }
+  case hush $ URI.runParseAbsoluteURI styleUri of
+    Just validAbsoluteUri →
+      if isJust $ styleURIPath validAbsoluteUri
+        then state { styleUri = Just validAbsoluteUri }
+        else state { styleUri = Nothing }
+    Nothing →
+      state { styleUri = Nothing }
+  where
+  styleURIPath ∷ AbsoluteURI → Maybe (Path Abs File Sandboxed)
+  styleURIPath =
+    hush
+      <=< HierarchicalPart.uriPathAbs
+      <<< AbsoluteURI.hierarchicalPart
 
 type Input =
   { sharingInput ∷ SharingInput
@@ -512,25 +536,25 @@ updateCopyVal ∷ DSL Unit
 updateCopyVal = do
   locString ← H.liftEff locationString
   state ← H.get
-  let
-    copyVal = renderCopyVal locString state
+  case renderCopyVal locString state of
+    Right copyVal → do
+      H.modify _{ copyVal = copyVal }
+      clipboard ← H.gets _.clipboard
+      case clipboard of
+        Just c -> H.liftEff $ C.destroy c
+        Nothing -> pure unit
+      H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl → do
+        newClipboard ← H.liftEff $ C.fromElement (toElement htmlEl) (pure copyVal)
+        H.modify _ { clipboard = Just newClipboard }
+    Left error →
+      pure unit
 
-  H.modify _{ copyVal = copyVal }
-  clipboard ← H.gets _.clipboard
-  case clipboard of
-    Just c -> H.liftEff $ C.destroy c
-    Nothing -> pure unit
-  H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl → do
-    newClipboard ← H.liftEff $ C.fromElement (toElement htmlEl) (pure copyVal)
-    H.modify _{ clipboard = Just newClipboard }
-
-
-renderCopyVal ∷ String → State → String
+renderCopyVal ∷ String → State → Either String String
 renderCopyVal locString state
   | state.presentingAs ≡ URI =
-    renderUri locString state
+    URI.printURI <$> renderUri locString state
   | otherwise
-      = Str.joinWith "\n"
+      = Right $ Str.joinWith "\n"
           [ """<!-- This is the DOM element that the deck will be inserted into. -->"""
           , """<!-- You can change the width and height and use a stylesheet to apply styling. -->"""
           , """<iframe frameborder="0" width="100%" height="800" id=""" ⊕ quoted deckDOMId ⊕ """></iframe>"""
@@ -595,19 +619,19 @@ renderVarMaps = indent <<< prettyJson <<< encodeJson <<< varMapsForURL
   where
   indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" RXF.global) "$1      "
 
-renderUri ∷ String → State → String
+renderUri ∷ String → State → Either String URI.URI
 renderUri locationString state@{sharingInput, permToken, isLoggedIn, styleUri} =
   case location of
-    Nothing → ""
+    Nothing →
+      Left "Bad SlamData config: workspacePath was not a valid absolute URI."
     Just loc →
-      URI.printURI
-        $ URI.URI
-            (AbsoluteURI.uriScheme loc)
-            (URI.HierarchicalPart
-              (HierarchicalPart.authority $ AbsoluteURI.hierarchicalPart loc)
-              (Right <$> path))
-            (Just $ URI.Query query)
-            (Just fragment)
+      Right $ URI.URI
+        (AbsoluteURI.uriScheme loc)
+        (URI.HierarchicalPart
+          (HierarchicalPart.authority $ AbsoluteURI.hierarchicalPart loc)
+          (Right <$> path))
+        (Just $ URI.Query query)
+        (Just fragment)
   where
   location ∷ Maybe AbsoluteURI
   location =
@@ -627,7 +651,7 @@ renderUri locationString state@{sharingInput, permToken, isLoggedIn, styleUri} =
 
   query ∷ List (Tuple String (Maybe String))
   query =
-    (guard (styleUri ≠ "") $> (Tuple "stylesheets" $ Just styleUri))
+    (guard (isJust styleUri) $> (Tuple "stylesheets" $ URI.printAbsoluteURI <$> styleUri))
       ⊕ (guard isLoggedIn $> (Tuple "permissionToken" token))
 
   token ∷ Maybe String
