@@ -24,7 +24,6 @@ import SlamData.Prelude
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
-import Data.Lens ((^?), _Just)
 import Data.List as L
 import Data.Map as M
 import Data.Set as Set
@@ -41,15 +40,11 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning
-  (RadialPosition, adjustRadialPositions, radialTitles)
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Radar.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import SqlSquare as Sql
 
@@ -66,7 +61,7 @@ type RadarSerie =
 
 -- | All series that are drawn on one radar
 type SeriesOnRadar =
-  RadialPosition
+  BCP.RadialPosition
     ( name ∷ Maybe String
     , series ∷ Array RadarSerie
     )
@@ -110,73 +105,33 @@ buildPort m _ jarr =
     }
 
 buildData ∷ ModelR → Array Json → Array SeriesOnRadar
-buildData r records = series
+buildData r =
+  foldMap (foldMap A.singleton ∘ decodeItem)
+    >>> series
+    >>> BCP.adjustRadialPositions
+
   where
-  items ∷ Array Item
-  items = foldMap (foldMap A.singleton ∘ decodeItem) records
+  series ∷ Array Item → Array SeriesOnRadar
+  series =
+    BCE.groupOn _.parallel
+      >>> map \(name × items) →
+            { name
+            , x: Nothing
+            , y: Nothing
+            , radius: Nothing
+            , series: multiples items
+            }
 
-  -- | maybe parallel >> maybe multiple series >> category name >> values
-  dataMap ∷ Maybe String >> Maybe String >> String >> Array Number
-  dataMap = foldl dataMapFoldFn M.empty items
+  multiples ∷ Array Item → Array RadarSerie
+  multiples =
+    BCE.groupOn _.multiple
+      >>> map \(name × items) →
+            { name
+            , items: M.fromFoldable $ toPoint <$> items
+            }
 
-  dataMapFoldFn
-    ∷ Maybe String >> Maybe String >> String >> Array Number
-    → Item
-    → Maybe String >> Maybe String >> String >> Array Number
-  dataMapFoldFn acc item = M.alter alterParallelFn item.parallel acc
-    where
-    values =
-      pure item.measure
-
-    alterParallelFn
-      ∷ Maybe (Maybe String >> String >> Array Number)
-      → Maybe (Maybe String >> String >> Array Number)
-    alterParallelFn = case _ of
-      Nothing → Just $ M.singleton item.multiple $ M.singleton item.category values
-      Just multiple → Just $ M.alter alterMultipleFn item.multiple multiple
-
-    alterMultipleFn
-      ∷ Maybe (String >> Array Number)
-      → Maybe (String >> Array Number)
-    alterMultipleFn = case _ of
-      Nothing → Just $ M.singleton item.category values
-      Just category → Just $ M.alter alterCategoryFn item.category category
-
-    alterCategoryFn
-      ∷ Maybe (Array Number)
-      → Maybe (Array Number)
-    alterCategoryFn = case _ of
-      Nothing → Just values
-      Just arr → Just $ arr ⊕ values
-
-  unpositionedSeries ∷ Array SeriesOnRadar
-  unpositionedSeries = map mkSeriesOnRadar $ A.fromFoldable $ M.toList dataMap
-
-  mkSeriesOnRadar
-    ∷ Maybe String × (Maybe String >> String >> Array Number)
-    → SeriesOnRadar
-  mkSeriesOnRadar (name × seriesData) =
-    { name
-    , x: Nothing
-    , y: Nothing
-    , radius: Nothing
-    , series: map mkMultipleSeries $ A.fromFoldable $ M.toList seriesData
-    }
-
-  mkMultipleSeries
-    ∷ Maybe String × (String >> Array Number)
-    → RadarSerie
-  mkMultipleSeries (name × itemsData) =
-    { name
-    , items:
-        flip map itemsData
-        $ Ag.runAggregation
-        $ fromMaybe Ag.Sum
-        $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
-    }
-
-  series ∷ Array SeriesOnRadar
-  series = adjustRadialPositions unpositionedSeries
+  toPoint ∷ Item → Tuple String Number
+  toPoint item = item.category × item.measure
 
 buildOptions ∷ ModelR → Array SeriesOnRadar → DSL OptionI
 buildOptions r radarData = do
@@ -202,7 +157,7 @@ buildOptions r radarData = do
   E.series
     $ traverse_ E.radarSeries series
 
-  radialTitles radarData
+  BCP.radialTitles radarData
 
   where
   serieNames ∷ Array String
