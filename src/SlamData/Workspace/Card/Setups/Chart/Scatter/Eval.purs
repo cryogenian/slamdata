@@ -26,9 +26,7 @@ import Color as C
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
-import Data.Lens ((^?), _Just)
 import Data.List as L
-import Data.Map as M
 import Data.Set as Set
 
 import Global (infinity)
@@ -47,19 +45,16 @@ import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (Model, ModelR)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import SqlSquare as Sql
 
 import Utils.Foldable (enumeratedFor_)
 
 eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildScatter
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
 
 type ScatterSeries =
   { name ∷ Maybe String
@@ -71,9 +66,15 @@ type ScatterSeries =
   , series ∷ Array OnOneGrid
   }
 
+type ScatterItem =
+  { x ∷ Number
+  , y ∷ Number
+  , r ∷ Number
+  }
+
 type OnOneGrid =
   { name ∷ Maybe String
-  , items ∷ Array {x ∷ Number, y ∷ Number, r ∷ Number}
+  , items ∷ Array ScatterItem
   }
 
 type Item =
@@ -113,120 +114,49 @@ buildGroupBy r =
     , r.series <#> SCC.jcursorSql
     ]
 
-buildScatter ∷ ModelR → Axes → Array Json → Port.Port
-buildScatter m _ jarr =
+buildPort ∷ ModelR → Axes → Array Json → Port.Port
+buildPort m _ jarr =
   Port.ChartInstructions
-    { options: scatterOptions m $ buildScatterData m jarr
+    { options: buildOptions m $ buildData m jarr
     , chartType: Scatter
     }
 
-buildScatterData ∷ ModelR → Array Json → Array ScatterSeries
-buildScatterData r records = series
+buildData ∷ ModelR → Array Json → Array ScatterSeries
+buildData r =
+  foldMap (foldMap A.singleton ∘ decodeItem)
+    >>> series
+    >>> BCP.adjustRectangularPositions
+
   where
-  items ∷ Array Item
-  items = foldMap (foldMap A.singleton ∘ decodeItem) records
+  series ∷ Array Item → Array ScatterSeries
+  series =
+    BCE.groupOn _.parallel
+      >>> map \(name × is) →
+            { name
+            , x: Nothing
+            , y: Nothing
+            , w: Nothing
+            , h: Nothing
+            , fontSize: Nothing
+            , series: onOneGrids is
+            }
 
-  dataMap ∷ Maybe String >> Maybe String >> (Array Number × Array Number × Array Number)
-  dataMap = foldl dataMapFoldFn M.empty items
+  onOneGrids ∷ Array Item → Array OnOneGrid
+  onOneGrids =
+    BCE.groupOn _.series
+      >>> map \(name × is) →
+            { name
+            , items: adjustSymbolSizes $ toPoint <$> is
+            }
 
-  dataMapFoldFn
-    ∷ Maybe String >> Maybe String >> (Array Number × Array Number × Array Number)
-    → Item
-    → Maybe String >> Maybe String >> (Array Number × Array Number × Array Number)
-  dataMapFoldFn acc item = M.alter alterParallelFn item.parallel acc
-    where
-    xs = pure item.abscissa
-    ys = pure item.ordinate
-    rs = pure item.size
-
-    alterParallelFn
-      ∷ Maybe (Maybe String >> (Array Number × Array Number × Array Number))
-      → Maybe (Maybe String >> (Array Number × Array Number × Array Number))
-    alterParallelFn = case _ of
-      Nothing → Just $ M.singleton item.series $ xs × ys × rs
-      Just parallel → Just $ M.alter alterSeriesFn item.series parallel
-
-    alterSeriesFn
-      ∷ Maybe (Array Number × Array Number × Array Number)
-      → Maybe (Array Number × Array Number × Array Number)
-    alterSeriesFn = case _ of
-      Nothing → Just $ xs × ys × rs
-      Just (xxs × yys × rrs) → Just $ (xxs ⊕ xs) × (yys ⊕ ys) × (rrs ⊕ rs)
-
-  rawSeries ∷ Array ScatterSeries
-  rawSeries = foldMap (pure ∘ mkScatterSeries) $ M.toList dataMap
-
-  series ∷ Array ScatterSeries
-  series = BCP.adjustRectangularPositions rawSeries
-
-  mkScatterSeries
-    ∷ Maybe String × (Maybe String >> (Array Number × Array Number × Array Number))
-    → ScatterSeries
-  mkScatterSeries (name × mp) =
-    { name
-    , x: Nothing
-    , y: Nothing
-    , w: Nothing
-    , h: Nothing
-    , fontSize: Nothing
-    , series: foldMap (pure ∘ mkOneGrid) $ M.toList mp
+  toPoint ∷ Item → ScatterItem
+  toPoint item =
+    { x: item.abscissa
+    , y: item.ordinate
+    , r: item.size
     }
 
-  mkOneGrid
-    ∷ Maybe String × (Array Number × Array Number × Array Number)
-    → OnOneGrid
-  mkOneGrid (name × is) =
-    { name
-    , items: adjustSymbolSizes $ mkScatterItem is
-    }
-
-  mkScatterItem
-    ∷ Array Number × Array Number × Array Number
-    → Array { x ∷ Number, y ∷ Number, r ∷ Number }
-  mkScatterItem (xs × ys × rs)
-    | A.null xs = []
-    | A.null ys = []
-    | otherwise =
-      let
-        len =
-          max (A.length xs) $ max (A.length ys) (A.length rs)
-
-        abscissas =
-          case r.abscissa ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation of
-            Nothing → xs
-            Just ag →
-              let
-                v = Ag.runAggregation ag xs
-              in
-                map (const v) $ A.range 0 $ len - 1
-        ordinates =
-          case r.ordinate ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation of
-            Nothing → ys
-            Just ag →
-              let
-                v = Ag.runAggregation ag ys
-              in
-                map (const v) $ A.range 0 $ len - 1
-
-        sizes =
-          case r.size ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation of
-            Just ag →
-              let
-                v = Ag.runAggregation ag rs
-              in
-                map (const v) $ A.range 0 $ len - 1
-            Nothing
-              | A.null rs →
-                map (\_ → r.minSize) rs
-            Nothing →
-              rs
-        zipped = A.zip abscissas $ A.zip ordinates sizes
-      in
-        zipped <#> \(x × y × r) → {x, y, r}
-
-  adjustSymbolSizes
-    ∷ Array {x ∷ Number, y ∷ Number, r ∷ Number}
-    → Array {x ∷ Number, y ∷ Number, r ∷ Number}
+  adjustSymbolSizes ∷ Array ScatterItem → Array ScatterItem
   adjustSymbolSizes is =
     let
       minValue =
@@ -246,8 +176,8 @@ buildScatterData r records = series
     in
       map (\x → x{r = relativeSize x.r}) is
 
-scatterOptions ∷ ModelR → Array ScatterSeries → DSL OptionI
-scatterOptions r scatterData = do
+buildOptions ∷ ModelR → Array ScatterSeries → DSL OptionI
+buildOptions r scatterData = do
   let
     cols =
       [ { label: D.jcursorLabel r.abscissa, value: CCT.formatValueIx 0 }

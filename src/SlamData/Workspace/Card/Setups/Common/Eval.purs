@@ -23,6 +23,7 @@ module SlamData.Workspace.Card.Setups.Common.Eval
   , type (>>)
   , assoc
   , deref
+  , groupOn
   ) where
 
 import SlamData.Prelude
@@ -35,8 +36,10 @@ import Data.Argonaut (Json)
 import Data.Array as A
 import Data.Foreign (Foreign, toForeign)
 import Data.Foreign.Index (prop)
+import Data.Function (on)
 import Data.Lens ((^.))
 import Data.Map as M
+import Data.NonEmpty as NE
 import Data.Path.Pathy as Path
 
 import ECharts.Monad (DSL)
@@ -153,3 +156,6 @@ assoc = EM.set "$$assoc" <<< toForeign
 
 deref ∷ ET.Item → Maybe Foreign
 deref (ET.Item item) = hush' $ prop "$$assoc" item
+
+groupOn ∷ ∀ a b. Eq b ⇒ (a → b) → Array a → Array (b × Array a)
+groupOn f = A.groupBy (eq `on` f) >>> map \as → f (NE.head as) × NE.fromNonEmpty A.cons as
