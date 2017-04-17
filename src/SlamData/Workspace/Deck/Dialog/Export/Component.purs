@@ -22,7 +22,9 @@ import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exception
 import Data.Foldable as F
 import Data.Map as Map
+import Data.List (List)
 import Data.Path.Pathy as Pathy
+import Data.Path.Pathy (Path, Abs, File, Sandboxed)
 import Data.StrMap as SM
 import Data.String as Str
 import Data.String.Regex as RX
@@ -46,12 +48,15 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId as DID
 import Utils.DOM as DOM
 import Utils.Path as UP
-import Control.Bind ((=<<))
 import Control.UI.Browser (select, locationString)
 import DOM.Classy.Element (toElement)
 import DOM.HTML.Types (readHTMLElement)
 import Data.Argonaut (encodeJson)
 import Data.Foreign (toForeign)
+import Data.URI (AbsoluteURI)
+import Data.URI as URI
+import Data.URI.Types.AbsoluteURI as AbsoluteURI
+import Data.URI.Types.HierarchicalPart as HierarchicalPart
 import SlamData.Monad (Slam)
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Deck.DeckPath (deckPath')
@@ -77,8 +82,8 @@ type State =
   , copyVal ∷ String
   , errored ∷ Boolean
   , warning ∷ Maybe String
-  , presentStyleURLInput :: Boolean
-  , styleURL :: String
+  , presentStyleUriInput :: Boolean
+  , styleUri :: String
   , submitting ∷ Boolean
   , loading ∷ Boolean
   , clipboard ∷ Maybe C.Clipboard
@@ -97,20 +102,20 @@ initialState input =
   , copyVal: ""
   , errored: false
   , warning: Nothing
-  , presentStyleURLInput: false
-  , styleURL: ""
+  , presentStyleUriInput: false
+  , styleUri: ""
   , submitting: false
   , loading: true
   , clipboard: Nothing
   }
 
-toggleStyleURLInput :: State -> State
-toggleStyleURLInput state =
-   state {presentStyleURLInput = not state.presentStyleURLInput}
+toggleStyleUriInput :: State -> State
+toggleStyleUriInput state =
+   state {presentStyleUriInput = not state.presentStyleUriInput}
 
-updateStyleURL :: String -> State -> State
-updateStyleURL styleURL state =
-  state { styleURL = styleURL }
+updateStyleUri :: String -> State -> State
+updateStyleUri styleUri state =
+  state { styleUri = styleUri }
 
 type Input =
   { sharingInput ∷ SharingInput
@@ -123,8 +128,8 @@ data Query a
   | Init a
   | Revoke a
   | ToggleShouldGenerateToken a
-  | ToggleStyleURLInput a
-  | UpdateStyleURL String a
+  | ToggleStyleUriInput a
+  | UpdateStyleUri String a
   | PreventDefault DOM.Event a
   | HandleCancel a
 
@@ -169,44 +174,44 @@ renderPublishURI state =
         [ HH.p_ message
         , HH.form
             [ HE.onSubmit (HE.input PreventDefault) ]
-            [ HH.div
-                [ HP.classes [ B.inputGroup ] ]
-                $ [ HH.input
-                    [ HP.classes [ B.formControl ]
-                    , HP.value state.copyVal
-                    , HP.readOnly true
-                    , HP.disabled state.submitting
-                    , HP.title "Published deck URL"
-                    , ARIA.label "Published deck URL"
-                    , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
-                    ]
-                  , HH.span
-                      [ HP.classes [ B.inputGroupBtn ] ]
-                      [ HH.button
-                        [ HP.classes [ B.btn, B.btnDefault ]
-                        , HE.onClick (HE.input_ HandleCancel)
-                        , HP.ref copyButtonRef
-                        , HP.id_ "copy-button"
-                        , HP.type_ HP.ButtonButton
+            $ fold
+                [ pure $ HH.div
+                    [ HP.classes [ B.inputGroup ] ]
+                    $ [ HH.input
+                        [ HP.classes [ B.formControl ]
+                        , HP.value state.copyVal
+                        , HP.readOnly true
                         , HP.disabled state.submitting
+                        , HP.title "Published deck Uri"
+                        , ARIA.label "Published deck Uri"
+                        , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
                         ]
-                        [ glyph B.glyphiconCopy ]
-                      ]
-                  ]
-              , HH.div_
-                  [ HH.a
-                    [ HE.onClick (HE.input_ ToggleStyleURLInput) ]
-                    [ HH.text "Provide a URL with the CSS to customize look/feel"]
-                    ]
-              , HH.div_
-                  [ if state.presentStyleURLInput
-                      then HH.input
-                            [ HP.classes [ B.formControl ]
-                            , HE.onValueInput (HE.input UpdateStyleURL)
+                      , HH.span
+                          [ HP.classes [ B.inputGroupBtn ] ]
+                          [ HH.button
+                            [ HP.classes [ B.btn, B.btnDefault ]
+                            , HE.onClick (HE.input_ HandleCancel)
+                            , HP.ref copyButtonRef
+                            , HP.id_ "copy-button"
+                            , HP.type_ HP.ButtonButton
+                            , HP.disabled state.submitting
                             ]
-                      else HH.text ""
-                  ]
-            ]
+                            [ glyph B.glyphiconCopy ]
+                          ]
+                      ]
+                  , pure $ HH.div_
+                      [ HH.a
+                        [ HE.onClick (HE.input_ ToggleStyleUriInput) ]
+                        [ HH.text "Add a stylesheet Uri to customize look/feel."]
+                        ]
+                  , guard state.presentStyleUriInput
+                      $> HH.div_
+                          [ HH.input
+                                [ HP.classes [ B.formControl ]
+                                , HE.onValueInput (HE.input UpdateStyleUri)
+                                ]
+                          ]
+                ]
         ]
     , HH.div
         [ HP.classes
@@ -476,11 +481,11 @@ eval (ToggleShouldGenerateToken next) = next <$ do
   H.modify _{shouldGenerateToken = not state.shouldGenerateToken}
   updateCopyVal
 
-eval (ToggleStyleURLInput next) =
-  H.modify toggleStyleURLInput $> next
+eval (ToggleStyleUriInput next) =
+  H.modify toggleStyleUriInput $> next
 
-eval (UpdateStyleURL styleURL next) =
-  H.modify (updateStyleURL styleURL) *> updateCopyVal $> next
+eval (UpdateStyleUri styleUri next) =
+  H.modify (updateStyleUri styleUri) *> updateCopyVal $> next
 
 eval (PreventDefault ev next) =
   H.liftEff (DOM.preventDefault ev) $> next
@@ -523,14 +528,14 @@ updateCopyVal = do
 renderCopyVal ∷ String → State → String
 renderCopyVal locString state
   | state.presentingAs ≡ URI =
-    renderURL locString state
+    renderUri locString state
   | otherwise
       = Str.joinWith "\n"
           [ """<!-- This is the DOM element that the deck will be inserted into. -->"""
           , """<!-- You can change the width and height and use a stylesheet to apply styling. -->"""
           , """<iframe frameborder="0" width="100%" height="800" id=""" ⊕ quoted deckDOMId ⊕ """></iframe>"""
           , """"""
-          , """<!-- To change a deck's variables after it has been inserted please use window.slamDataDeckUrl to create an new URL then update the deck iframe's src parameter. -->"""
+          , """<!-- To change a deck's variables after it has been inserted please use window.slamDataDeckUrl to create an new Uri then update the deck iframe's src parameter. -->"""
           , """<script type="text/javascript">"""
           , """  window.slamDataDeckUrl = function (options) {"""
           , """    var queryParts = function () {"""
@@ -556,11 +561,11 @@ renderCopyVal locString state
           , """<script type="text/javascript">"""
           , """  (function () {"""
           , """    var options = {"""
-          , """      slamDataUrl: """ ⊕ quoted workspaceURL ⊕ ""","""
+          , """      slamDataUrl: """ ⊕ quoted workspaceUri ⊕ ""","""
           , """      deckPath: """ ⊕ quoted deckPath ⊕ ""","""
           , """      deckId: """ ⊕ quoted deckId ⊕ ""","""
           , """      permissionTokens: [""" ⊕ maybe "" quoted token ⊕ """],"""
-          , """      stylesheetUrls: [], // An array of custom stylesheet URLs."""
+          , """      stylesheetUrls: [], // An array of custom stylesheet Uris."""
           , """      echartTheme: undefined,"""
           , """      vars: """ ⊕ renderVarMaps state.varMaps
           , """    };"""
@@ -579,7 +584,7 @@ renderCopyVal locString state
     where
     line = (_ ⊕ "\n")
     quoted s = "\"" ⊕ s ⊕ "\""
-    workspaceURL = locString ⊕ "/" ⊕ Config.workspaceUrl
+    workspaceUri = locString ⊕ "/" ⊕ Config.workspaceUrl
     deckId = DID.toString state.sharingInput.deckId
     deckDOMId = "sd-deck-" ⊕ deckId
     deckPath = UP.encodeURIPath (Pathy.printPath state.sharingInput.workspacePath)
@@ -590,15 +595,42 @@ renderVarMaps = indent <<< prettyJson <<< encodeJson <<< varMapsForURL
   where
   indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" RXF.global) "$1      "
 
-renderURL ∷ String → State → String
-renderURL locationString state@{sharingInput, permToken, isLoggedIn, styleURL} =
-  locationString
-  ⊕ "/"
-  ⊕ Config.workspaceUrl
-  ⊕ foldMap
-      (append "?permissionTokens=" ∘ QTA.runTokenHash)
-      (do guard isLoggedIn
-          token ← permToken
-          pure token.secret)
-  ⊕ if styleURL /= "" then "&stylesheets=" ⊕ styleURL else ""
-  ⊕ mkWorkspaceHash (deckPath' sharingInput.workspacePath sharingInput.deckId) (WA.Load AT.ReadOnly) SM.empty
+renderUri ∷ String → State → String
+renderUri locationString state@{sharingInput, permToken, isLoggedIn, styleUri} =
+  case location of
+    Nothing → ""
+    Just loc →
+      URI.printURI
+        $ URI.URI
+            (AbsoluteURI.uriScheme loc)
+            (URI.HierarchicalPart
+              (HierarchicalPart.authority $ AbsoluteURI.hierarchicalPart loc)
+              (Right <$> path))
+            (Just $ URI.Query query)
+            (Just fragment)
+  where
+  location ∷ Maybe AbsoluteURI
+  location =
+    hush $ URI.runParseAbsoluteURI locationString
+
+  path ∷ Maybe (Path Abs File Sandboxed)
+  path =
+    UP.sandbox =<< Pathy.parseAbsFile ("/" ⊕ Config.workspaceUrl)
+
+  fragment ∷ String
+  fragment =
+    Str.drop 1
+      $ mkWorkspaceHash
+          (deckPath' sharingInput.workspacePath sharingInput.deckId)
+          (WA.Load AT.ReadOnly)
+          SM.empty
+
+  query ∷ List (Tuple String (Maybe String))
+  query =
+    (guard (styleUri ≠ "") $> (Tuple "stylesheets" $ Just styleUri))
+      ⊕ (guard isLoggedIn $> (Tuple "permissionToken" token))
+
+  token ∷ Maybe String
+  token =
+    QTA.runTokenHash ∘ _.secret <$> permToken
+
