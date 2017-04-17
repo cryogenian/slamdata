@@ -21,14 +21,11 @@ module SlamData.Workspace.Card.Setups.Chart.Funnel.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
+import Data.List as L
 import Data.Map as M
 import Data.Set as Set
-import Data.Lens ((^?), preview, _Just)
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -38,32 +35,23 @@ import ECharts.Types.Phantom as ETP
 
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Common.Align (Align(..))
-import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (Model, ModelR)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Funnel))
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Port as Port
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Funnel (const buildFunnel) m \axes → m
+import SqlSquare as Sql
 
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
 
 type FunnelSeries =
   { name ∷ Maybe String
@@ -75,75 +63,65 @@ type FunnelSeries =
   , fontSize ∷ Maybe Int
   }
 
-buildFunnelData ∷ ModelR → JArray → Array FunnelSeries
-buildFunnelData r records = series
+type Item =
+  { category ∷ String
+  , measure ∷ Number
+  , series ∷ Maybe String
+  }
+
+decodeItem ∷ Json → Either String Item
+decodeItem = decodeJson >=> \obj → do
+  category ← Sem.requiredString "" <$> obj .? "category"
+  measure ← Sem.requiredNumber zero <$> obj .? "measure"
+  series ← Sem.maybeString <$> obj .? "series"
+  pure { category, measure, series }
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.category # SCC.jcursorPrj # Sql.as "category"
+  , r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
+  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
+  ]
+
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable $ A.catMaybes
+    [ r.series <#> SCC.jcursorSql
+    , Just r.category <#> SCC.jcursorSql
+    ]
+
+buildPort ∷ ModelR → Axes → Array Json → Port.Port
+buildPort m _ jarr =
+  Port.ChartInstructions
+    { options: buildOptions m $ buildData m jarr
+    , chartType: Funnel
+    }
+
+buildData ∷ ModelR → Array Json → Array FunnelSeries
+buildData r =
+  foldMap (foldMap A.singleton ∘ decodeItem)
+    >>> series
+    >>> BCP.adjustRectangularPositions
+
   where
-  -- | maybe series >> category >> values
-  dataMap ∷ Maybe String >> String >> Array Number
-  dataMap =
-    foldl dataMapFoldFn M.empty records
+  series ∷ Array Item → Array FunnelSeries
+  series =
+    BCE.groupOn _.series
+      >>> map \(name × items) →
+            { name
+            , x: Nothing
+            , y: Nothing
+            , w: Nothing
+            , h: Nothing
+            , fontSize: Nothing
+            , items: M.fromFoldable $ toPoint <$> items
+            }
 
-  dataMapFoldFn
-    ∷ Maybe String >> String >> Array Number
-    → Json
-    → Maybe String >> String >> Array Number
-  dataMapFoldFn acc js =
-    let
-      getMaybeStringFromJson = getMaybeString js
-      getValuesFromJson = getValues js
-    in case getMaybeStringFromJson =<< (r.category ^? D._value ∘ D._projection) of
-      Nothing → acc
-      Just categoryKey →
-        let
-          mbSeries =
-            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.series
-          values =
-            getValuesFromJson (r.value ^? D._value ∘ D._projection)
+  toPoint ∷ Item → String × Number
+  toPoint item = item.category × item.measure
 
-          alterSeriesFn
-            ∷ Maybe (String >> Array Number)
-            → Maybe (String >> Array Number)
-          alterSeriesFn Nothing =
-            Just $ M.singleton categoryKey values
-          alterSeriesFn (Just sers) =
-            Just $ M.alter alterCategoryFn categoryKey sers
-
-          alterCategoryFn
-            ∷ Maybe (Array Number)
-            → Maybe (Array Number)
-          alterCategoryFn Nothing = Just values
-          alterCategoryFn (Just arr) = Just $ arr ⊕ values
-        in
-          M.alter alterSeriesFn mbSeries acc
-
-  rawSeries ∷ Array FunnelSeries
-  rawSeries =
-    foldMap mkOneSeries $ M.toList dataMap
-
-  mkOneSeries
-    ∷ Maybe String × (String >> Array Number)
-    → Array FunnelSeries
-  mkOneSeries (name × ss) =
-    [{ name
-     , x: Nothing
-     , y: Nothing
-     , w: Nothing
-     , h: Nothing
-     , fontSize: Nothing
-     , items:
-         map (Ag.runAggregation
-              ( fromMaybe Ag.Sum $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation)) ss
-     }]
-
-  series ∷ Array FunnelSeries
-  series = adjustPosition rawSeries
-
-  adjustPosition ∷ Array FunnelSeries → Array FunnelSeries
-  adjustPosition = BCP.adjustRectangularPositions
-
-
-buildFunnel ∷ ModelR → JArray → DSL OptionI
-buildFunnel r records = do
+buildOptions ∷ ModelR → Array FunnelSeries → DSL OptionI
+buildOptions r funnelData = do
   let
     cols =
       [ { label: D.jcursorLabel r.category, value: _.name }
@@ -172,9 +150,6 @@ buildFunnel r records = do
   E.series series
 
   where
-  funnelData ∷ Array FunnelSeries
-  funnelData = buildFunnelData r records
-
   legendNames ∷ Array String
   legendNames =
     A.fromFoldable
