@@ -96,7 +96,7 @@ decodeItem = decodeJson >=> \obj → do
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
 buildProjections r = L.fromFoldable
   [ r.abscissa # SCC.jcursorPrj # Sql.as "abscissa"
-  , r.ordinate # SCC.jcursorPrj # Sql.as "ordinate"
+  , r.ordinate # SCC.jcursorPrj # Sql.as "ordinate" # SCC.applyTransform r.ordinate
   , sizeF
   , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
   , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
@@ -111,7 +111,6 @@ buildGroupBy r =
   SCC.groupBy $ L.fromFoldable $ A.catMaybes
     [ r.parallel <#> SCC.jcursorSql
     , r.series <#> SCC.jcursorSql
-    , r.size <#> SCC.jcursorSql
     ]
 
 buildScatter ∷ ModelR → Axes → Array Json → Port.Port
