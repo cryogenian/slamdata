@@ -21,12 +21,10 @@ module SlamData.Workspace.Card.Setups.Chart.Pie.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Lens ((^?), _Just)
+import Data.List as L
 import Data.Map as M
 import Data.Set as Set
 
@@ -36,31 +34,25 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Pie))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Pie.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Pie (const buildPie) m \axes → m
+import SqlSquare as Sql
+
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPie
 
 type OnePieSeries =
   RadialPosition
@@ -74,91 +66,116 @@ type DonutSeries =
   , items ∷ String >> Number
   )
 
-buildPieData ∷ ModelR → JArray → Array OnePieSeries
+type Item =
+  { category ∷ String
+  , measure ∷ Number
+  , donut ∷ Maybe String
+  , parallel ∷ Maybe String
+  }
+
+decodeItem ∷ Json → Either String Item
+decodeItem = decodeJson >=> \obj → do
+  category ← Sem.requiredString "" <$> obj .? "category"
+  measure ← Sem.requiredNumber zero <$> obj .? "measure"
+  donut ← Sem.maybeString <$> obj .? "donut"
+  parallel ← Sem.maybeString <$> obj .? "parallel"
+  pure { category, measure, donut, parallel }
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.category # SCC.jcursorPrj # Sql.as "category"
+  , r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
+  , r.donut # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "donut"
+  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+  ]
+
+buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
+buildGroupBy r = Sql.GroupBy { keys, having: Nothing }
+  where
+  keys = L.fromFoldable $ A.catMaybes
+    [ Just r.category <#> SCC.jcursorSql
+    , r.parallel <#> SCC.jcursorSql
+    , r.donut <#> SCC.jcursorSql
+    ]
+
+buildPie ∷ ModelR → Axes → JArray → Port.Port
+buildPie m _ jarr =
+  Port.ChartInstructions
+    { options: pieOptions m $ buildPieData m jarr
+    , chartType: Pie
+    }
+
+buildPieData ∷ ModelR → Array Json → Array OnePieSeries
 buildPieData r records = series
   where
-  -- | maybe parallel >> maybe donut >> category name >> values
+  items ∷ Array Item
+  items = foldMap (foldMap A.singleton ∘ decodeItem) records
+
   dataMap ∷ Maybe String >> Maybe String >> String >> Array Number
-  dataMap =
-    foldl dataMapFoldFn M.empty records
+  dataMap = foldl dataMapFoldFn M.empty items
 
   dataMapFoldFn
     ∷ Maybe String >> Maybe String >> String >> Array Number
-    → Json
+    → Item
     → Maybe String >> Maybe String >> String >> Array Number
-  dataMapFoldFn acc js =
-    let
-      getValuesFromJson = getValues js
-      getMaybeStringFromJson = getMaybeString js
-    in case getMaybeStringFromJson =<< r.category ^? D._value ∘ D._projection of
-      Nothing → acc
-      Just categoryKey →
-        let
-          mbParallel =
-            getMaybeStringFromJson =<< r.parallel ^? _Just ∘ D._value ∘ D._projection
-          mbDonut =
-            getMaybeStringFromJson =<< r.donut ^? _Just ∘ D._value ∘ D._projection
-          values =
-            getValuesFromJson $ r.value ^? D._value ∘ D._projection
+  dataMapFoldFn acc item = M.alter alterParallelFn item.parallel acc
+    where
+    values =
+      pure item.measure
 
-          alterParallelFn
-            ∷ Maybe (Maybe String >> String >> Array Number)
-            → Maybe (Maybe String >> String >> Array Number)
-          alterParallelFn Nothing =
-            Just $ M.singleton mbDonut $ M.singleton categoryKey values
-          alterParallelFn (Just donut) =
-            Just $ M.alter alterDonutFn mbDonut donut
+    alterParallelFn
+      ∷ Maybe (Maybe String >> String >> Array Number)
+      → Maybe (Maybe String >> String >> Array Number)
+    alterParallelFn = case _ of
+      Nothing → Just $ M.singleton item.donut $ M.singleton item.category values
+      Just donut → Just $ M.alter alterDonutFn item.donut donut
 
-          alterDonutFn
-            ∷ Maybe (String >> Array Number)
-            → Maybe (String >> Array Number)
-          alterDonutFn Nothing =
-            Just $ M.singleton categoryKey values
-          alterDonutFn (Just category) =
-            Just $ M.alter alterCategoryFn categoryKey category
+    alterDonutFn
+      ∷ Maybe (String >> Array Number)
+      → Maybe (String >> Array Number)
+    alterDonutFn = case _ of
+      Nothing → Just $ M.singleton item.category values
+      Just category → Just $ M.alter alterCategoryFn item.category category
 
-          alterCategoryFn
-            ∷ Maybe (Array Number)
-            → Maybe (Array Number)
-          alterCategoryFn Nothing = Just values
-          alterCategoryFn (Just arr) = Just $ arr ⊕ values
-        in
-          M.alter alterParallelFn mbParallel acc
-
+    alterCategoryFn
+      ∷ Maybe (Array Number)
+      → Maybe (Array Number)
+    alterCategoryFn = case _ of
+      Nothing → Just values
+      Just arr → Just $ arr ⊕ values
 
   rawSeries ∷ Array OnePieSeries
-  rawSeries =
-    foldMap mkOnePieSeries $ M.toList dataMap
+  rawSeries = foldMap (pure ∘ mkOnePieSeries) $ M.toList dataMap
 
   mkOnePieSeries
     ∷ Maybe String × (Maybe String >> String >> Array Number)
-    → Array OnePieSeries
+    → OnePieSeries
   mkOnePieSeries (name × donutSeries) =
-    [{ name
-     , x: Nothing
-     , y: Nothing
-     , radius: Nothing
-     , series: foldMap mkDonutSeries $ M.toList donutSeries
-     }]
+    { name
+    , x: Nothing
+    , y: Nothing
+    , radius: Nothing
+    , series: foldMap (pure <<< mkDonutSeries) $ M.toList donutSeries
+    }
 
   mkDonutSeries
     ∷ Maybe String × (String >> Array Number)
-    → Array DonutSeries
-  mkDonutSeries (name × items) =
-    [{ name
-     , radius: Nothing
-     , items:
-         flip map items
-         $ Ag.runAggregation
-         $ fromMaybe Ag.Sum
-         $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
-     }]
+    → DonutSeries
+  mkDonutSeries (name × is) =
+    { name
+    , radius: Nothing
+    , items:
+        flip map is
+        $ Ag.runAggregation
+        $ fromMaybe Ag.Sum
+        $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
+    }
 
   series ∷ Array OnePieSeries
   series = map (\x → x{series = adjustDonutRadiuses x.series}) $ adjustRadialPositions rawSeries
 
-buildPie ∷ ModelR → JArray → DSL OptionI
-buildPie r records = do
+pieOptions ∷ ModelR → Array OnePieSeries → DSL OptionI
+pieOptions r pieData = do
   let
     cols =
       [ { label: D.jcursorLabel r.category, value: CCT.formatAssocProp "key" }
@@ -188,9 +205,6 @@ buildPie r records = do
   radialTitles pieData
 
   where
-  pieData ∷ Array OnePieSeries
-  pieData = buildPieData r records
-
   itemNames ∷ Array String
   itemNames =
     A.fromFoldable
