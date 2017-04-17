@@ -20,6 +20,7 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Lens ((.~), (?~))
 import Data.List as L
+import Data.NonEmpty as NE
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
@@ -37,7 +38,11 @@ buildBasicSql buildProjections buildGroupBy r path =
   Sql.buildSelect
     $ ( Sql._projections .~ buildProjections r )
     ∘ ( Sql._relations ?~ (Sql.TableRelation { path: Left path, alias: Nothing } ))
-    ∘ ( Sql._groupBy .~ buildGroupBy r )
+    ∘ ( Sql._groupBy .~ groups )
+    ∘ ( Sql._orderBy .~ orders )
+  where
+  groups = buildGroupBy r
+  orders = groups >>= groupByToOrderBy
 
 applyTransform ∷ ∀ a b. D.Dimension a b → Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
 applyTransform dim p = case dim of
@@ -59,3 +64,9 @@ groupBy ∷ L.List Sql.Sql → Maybe (Sql.GroupBy Sql.Sql)
 groupBy keys
   | L.null keys = Nothing
   | otherwise   = Just $ Sql.GroupBy { keys, having: Nothing }
+
+groupByToOrderBy ∷ Sql.GroupBy Sql.Sql → Maybe (Sql.OrderBy Sql.Sql)
+groupByToOrderBy (Sql.GroupBy { keys }) =
+  case Tuple Sql.ASC <$> keys of
+    head L.: tail → Just $ Sql.OrderBy $ NE.NonEmpty head tail
+    _ → Nothing

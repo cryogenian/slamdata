@@ -25,7 +25,7 @@ import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
 import Data.Int as Int
-import Data.Lens ((^?), _Just)
+import Data.Lens ((^?))
 import Data.List as L
 import Data.Map as M
 import Data.Set as Set
@@ -48,8 +48,6 @@ import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SqlSquare as Sql
 
 eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
@@ -57,8 +55,13 @@ eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buil
 
 type LineSerie =
   { name ∷ Maybe String
-  , leftItems ∷ String >> {value ∷ Number, symbolSize ∷ Int}
-  , rightItems ∷ String >> {value ∷ Number, symbolSize ∷ Int}
+  , leftItems ∷ String >> LineItem
+  , rightItems ∷ String >> LineItem
+  }
+
+type LineItem =
+  { value ∷ Number
+  , symbolSize ∷ Int
   }
 
 type Item =
@@ -106,92 +109,29 @@ buildLine m axes jarr =
     }
 
 buildLineData ∷ ModelR → Array Json → Array LineSerie
-buildLineData r jarr = series
+buildLineData r =
+  foldMap (foldMap A.singleton ∘ decodeItem)
+    >>> lineSeries
+
   where
-  items ∷ Array Item
-  items = foldMap (foldMap A.singleton ∘ decodeItem) jarr
+  lineSeries ∷ Array Item → Array LineSerie
+  lineSeries =
+    BCE.groupOn _.series
+      >>> map \(name × is) →
+            { name
+            , leftItems: adjustSymbolSizes $ M.fromFoldable (items (pure ∘ _.measure1) is)
+            , rightItems: adjustSymbolSizes $ M.fromFoldable (items _.measure2 is)
+            }
 
-  dataMap ∷ Maybe String >> String >> (Array Number × Array Number × Array Number)
-  dataMap =
-    foldl dataMapFoldFn M.empty items
+  items ∷ (Item → Maybe Number) → Array Item → Array (String × LineItem)
+  items f = A.mapMaybe \i →
+    Tuple i.category <$> case f i, i.size of
+      Nothing, _ → Nothing
+      Just value, _ | r.optionalMarkers → Just { value, symbolSize: Int.floor r.minSize }
+      Just value, Nothing → Just { value, symbolSize: Int.floor r.minSize }
+      Just value, Just size → Just { value, symbolSize: Int.floor size }
 
-  dataMapFoldFn
-    ∷ Maybe String >> String >> (Array Number × Array Number × Array Number)
-    → Item
-    → Maybe String >> String >> (Array Number × Array Number × Array Number)
-  dataMapFoldFn acc item = M.alter alterSeriesFn item.series acc
-    where
-    leftValues = pure item.measure1
-    rightValues = foldMap pure item.measure2
-    sizes | r.optionalMarkers = []
-          | otherwise = foldMap pure item.size
-
-    alterSeriesFn
-      ∷ Maybe (String >> (Array Number × Array Number × Array Number))
-      → Maybe (String >> (Array Number × Array Number × Array Number))
-    alterSeriesFn = case _ of
-      Just dims → Just $ M.alter alterDimFn item.category dims
-      Nothing → Just $ M.singleton item.category $ leftValues × rightValues × sizes
-
-    alterDimFn
-      ∷ Maybe (Array Number × Array Number × Array Number)
-      → Maybe (Array Number × Array Number × Array Number)
-    alterDimFn = case _ of
-      Just (ls × rs × ss) → Just $ (ls ⊕ leftValues) × (rs ⊕ rightValues) × (ss ⊕ sizes)
-      Nothing → Just $ leftValues × rightValues × sizes
-
-  series ∷ Array LineSerie
-  series = foldMap (pure ∘ mkLineSerie) $ M.toList dataMap
-
-  mkLineSerie
-    ∷ Maybe String × (String >> (Array Number × Array Number × Array Number))
-    → LineSerie
-  mkLineSerie (name × is) =
-    { name
-    , leftItems: adjustSymbolSizes $ map mkLeftItem is
-    , rightItems: adjustSymbolSizes $ map mkRightItem is
-    }
-
-  mkLeftItem
-    ∷ Array Number × Array Number × Array Number
-    → { value ∷ Number, symbolSize ∷ Int }
-  mkLeftItem (ls × _ × ss) = {value, symbolSize}
-    where
-    value =
-      flip Ag.runAggregation ls
-      $ fromMaybe Ag.Sum
-      $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
-    symbolSize
-      | r.optionalMarkers = Int.floor r.minSize
-      | otherwise =
-        Int.floor
-        $ flip Ag.runAggregation ss
-        $ fromMaybe Ag.Sum
-        $ r.size ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
-
-  mkRightItem
-    ∷ Array Number × Array Number × Array Number
-    → { value ∷ Number, symbolSize ∷ Int }
-  mkRightItem (_ × rs × ss) =
-    case r.secondValue ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation  of
-      Nothing → {symbolSize: zero, value: zero}
-      Just valAgg →
-        let
-          value = Ag.runAggregation valAgg rs
-          symbolSize
-            | r.optionalMarkers = Int.floor r.minSize
-            | otherwise =
-              Int.floor
-              $ flip Ag.runAggregation ss
-              $ fromMaybe Ag.Sum
-              $ r.size ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
-        in {value, symbolSize}
-
-  adjustSymbolSizes
-    ∷ ∀ f
-    . (Functor f, Foldable f)
-    ⇒ f {value ∷ Number, symbolSize ∷ Int}
-    → f {value ∷ Number, symbolSize ∷ Int}
+  adjustSymbolSizes ∷ ∀ f. (Functor f, Foldable f) ⇒ f LineItem → f LineItem
   adjustSymbolSizes is
     | r.optionalMarkers = is
     | otherwise =
