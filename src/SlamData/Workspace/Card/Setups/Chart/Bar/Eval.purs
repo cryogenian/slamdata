@@ -95,10 +95,10 @@ buildProjections r = L.fromFoldable
 buildGroupBy ∷ ModelR → Sql.GroupBy Sql.Sql
 buildGroupBy r = Sql.GroupBy { keys, having: Nothing }
   where
-  keys = L.fromFoldable
-    [ r.category # SCC.jcursorSql
-    , r.stack # maybe Sql.null SCC.jcursorSql
-    , r.parallel # maybe Sql.null SCC.jcursorSql
+  keys = L.fromFoldable $ A.catMaybes
+    [ Just r.category <#> SCC.jcursorSql
+    , r.stack <#> SCC.jcursorSql
+    , r.parallel <#> SCC.jcursorSql
     ]
 
 buildBar ∷ ModelR → Axes → JArray → Port.Port
