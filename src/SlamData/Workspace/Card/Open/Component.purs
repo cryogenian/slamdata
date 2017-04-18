@@ -89,7 +89,7 @@ handleMessage = either handleSelection absurd
 
   handleSelection ∷ MC.Message AnyItem' AnyPath' → Maybe (CC.InnerCardQuery Query Unit)
   handleSelection = case _ of
-    MC.SelectionChanged _ sel → runInput (anyItemToOpen =<< sel)
+    MC.SelectionChanged _ _ sel → runInput (anyItemToOpen =<< sel)
     MC.LoadRequest req → Just $ right $ H.action $ Q.HandleLoadRequest req
 
 renderItem ∷ AnyItem' → MCI.BasicItemHTML
