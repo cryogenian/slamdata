@@ -18,14 +18,15 @@ module SlamData.Workspace.Card.StructureEditor.Model where
 
 import SlamData.Prelude
 
-import Data.List (List(..))
+import Data.List as L
 import Data.Argonaut as J
+import Data.Argonaut ((:=), (.?), (~>))
 import SlamData.Workspace.Card.StructureEditor.Common as SEC
 import Test.StrongCheck.Gen as SC
 
 newtype Model
   = Model
-  { view :: List SEC.ColumnItem
+  { view :: L.List SEC.ColumnItem
   }
 
 derive instance eqModel ∷ Eq Model
@@ -35,14 +36,18 @@ derive instance newtypeModel ∷ Newtype Model _
 initialModel ∷ Model
 initialModel =
   Model
-    { view: Nil
+    { view: L.Nil
     }
 
 genModel ∷ SC.Gen Model
 genModel = pure initialModel
 
 encode ∷ Model → J.Json
-encode _ = J.jsonEmptyObject
+encode (Model {view}) =
+  "view" := (SEC.encodeColumnItem <$> view) ~> J.jsonEmptyObject
 
 decode ∷ J.Json → Either String Model
-decode _ = pure initialModel
+decode = J.decodeJson >=> \json -> do
+  jsonItems :: L.List J.Json <- json .? "view"
+  view <- traverse SEC.decodeColumnItem jsonItems
+  pure (Model {view})

@@ -18,6 +18,8 @@ module SlamData.Workspace.Card.StructureEditor.Common where
 
 import SlamData.Prelude
 
+import Data.Argonaut ((:=), (~>), (.?))
+import Data.Argonaut as J
 import Data.Array as A
 import Data.Eq (class Eq1, eq1)
 import Data.Functor.Coproduct (Coproduct(..))
@@ -30,8 +32,7 @@ import Data.List as L
 import Data.Map as M
 import Data.Newtype as N
 import Data.Ord (class Ord1, compare1)
-
-import Matryoshka (class Corecursive, class Recursive, Algebra, cata, embed, project, transCata)
+import Matryoshka (class Corecursive, class Recursive, Algebra, CoalgebraM, anaM, cata, embed, project, transCata)
 
 -- Helper until we have Eq1 / Ord1 instances for Coproduct in the core lib
 newtype CP1 f g a = CP1 (Coproduct f g a)
@@ -66,6 +67,18 @@ instance eq1ECursorF ∷ Eq1 ECursorF where eq1 = eq
 derive instance ordECursorF ∷ Ord a ⇒ Ord (ECursorF a)
 instance ord1ECursorF ∷ Ord1 ECursorF where compare1 = compare
 
+instance foldableECursorF ∷ Foldable ECursorF where
+  foldr f b = case _ of
+    OfValue _ a -> f a b
+  foldl f b = case _ of
+    OfValue _ a -> f b a
+  foldMap f = case _ of
+    OfValue _ a -> f a
+instance traversableECursorF ∷ Traversable ECursorF where
+  traverse f = case _ of
+    OfValue v a -> OfValue v <$> f a
+  sequence = traverse id
+
 newtype Cursor = Cursor (Mu (Coproduct EJC.CursorF ECursorF))
 
 derive instance newtypeCursor ∷ Newtype Cursor _
@@ -81,6 +94,58 @@ instance eqCursor :: Eq Cursor where
 
 instance ordCursor :: Ord Cursor where
   compare (Cursor x) (Cursor y) = compare (toCP1 x) (toCP1 y)
+
+encodeCursor :: Cursor -> J.Json
+encodeCursor = cata go
+  where
+    go ∷ Algebra (Coproduct EJC.CursorF ECursorF) J.Json
+    go = coproduct goCursorF goECursorF
+
+    goCursorF ∷ Algebra EJC.CursorF J.Json
+    goCursorF = case _ of
+      EJC.All ->
+        "tag" := "All" ~> J.jsonEmptyObject
+      EJC.AtKey key inner ->
+        "tag" := "AtKey"
+        ~> "key" := EJ.encodeEJson key
+        ~> "inner" := inner
+        ~> J.jsonEmptyObject
+      EJC.AtIndex ix inner ->
+        "tag" := "AtIndex"
+        ~> "ix" := ix
+        ~> "inner" := inner
+        ~> J.jsonEmptyObject
+
+    goECursorF ∷ Algebra ECursorF J.Json
+    goECursorF = case _ of
+      OfValue a inner ->
+        "tag" := "OfValue"
+        ~> "value" := EJ.encodeEJson a
+        ~> "inner" := inner
+        ~> J.jsonEmptyObject
+
+decodeCursor :: J.Json -> Either String Cursor
+decodeCursor = anaM go
+  where
+    go ∷ CoalgebraM (Either String) (Coproduct EJC.CursorF ECursorF) J.Json
+    go = J.decodeJson >=> \json -> do
+      tag <- json .? "tag"
+      case tag of
+        "All" -> do
+          pure (left EJC.All)
+        "AtKey" -> do
+          key <- EJ.decodeEJson =<< json .? "key"
+          inner <- json .? "inner"
+          pure (left (EJC.AtKey key inner))
+        "AtIndex" -> do
+          ix <- json .? "ix"
+          inner <- json .? "inner"
+          pure (left (EJC.AtIndex ix inner))
+        "OfValue" -> do
+          value <- EJ.decodeEJson =<< json .? "value"
+          inner <- json .? "inner"
+          pure (right (OfValue value inner))
+        _ -> Left ("unknown tag for Cursor: " <> show tag)
 
 all :: Cursor
 all = embed $ left $ EJC.All
@@ -120,6 +185,15 @@ data ColumnItem = ColumnItem Cursor Weight
 
 derive instance eqColumnItem ∷ Eq ColumnItem
 derive instance ordColumnItem ∷ Ord ColumnItem
+
+encodeColumnItem :: ColumnItem -> J.Json
+encodeColumnItem (ColumnItem cursor weight) =
+  "cursor" := encodeCursor cursor ~> J.jsonEmptyObject
+
+decodeColumnItem :: J.Json -> Either String ColumnItem
+decodeColumnItem = J.decodeJson >=> \json -> do
+  cursor <- decodeCursor =<< json .? "cursor"
+  pure (ColumnItem cursor (Weight 0.0))
 
 newtype Weight = Weight Number
 
