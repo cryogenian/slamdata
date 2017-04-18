@@ -45,8 +45,6 @@ import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
---import SlamData.Workspace.Card.Setups.Transform as T
---import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import SqlSquare as Sql
 
