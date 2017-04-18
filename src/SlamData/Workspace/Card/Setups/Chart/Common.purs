@@ -36,7 +36,8 @@ buildBasicSql
   → Sql.Sql
 buildBasicSql buildProjections buildGroupBy r path =
   Sql.buildSelect
-    $ ( Sql._projections .~ buildProjections r )
+    $ ( Sql._isDistinct .~ true)
+    ∘ ( Sql._projections .~ buildProjections r )
     ∘ ( Sql._relations ?~ (Sql.TableRelation { path: Left path, alias: Nothing } ))
     ∘ ( Sql._groupBy .~ groups )
     ∘ ( Sql._orderBy .~ orders )

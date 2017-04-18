@@ -18,6 +18,7 @@ module SlamData.Workspace.Card.Setups.DimensionMap.Defaults
   ( ProjectionDefaults
   , getDefaults
   , dynamicMeasure
+  , isFlat
   ) where
 
 import SlamData.Prelude
@@ -178,3 +179,9 @@ dynamicMeasure prj =
   }
   where
   offset = map (add 1) ∘ Int.fromString =<< T.idReflection ^. T.unpackProjection prj
+
+-- | Some projections shouldn't be aggregated
+isFlat ∷ T.Projection → Boolean
+isFlat prj = case T.idReflection ^. T.unpackProjection prj of
+  Just "flatValue" → true
+  _ → false
