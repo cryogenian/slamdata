@@ -30,12 +30,12 @@ import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as ST
+import SlamData.Workspace.Card.Setups.DimensionMap.Defaults as DMD
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor as DJ
 import SlamData.Workspace.Card.Setups.Package.DSL as T
 import SlamData.Workspace.Card.Setups.Inputs as I
 import SlamData.Workspace.Card.Setups.Transform as Tr
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 type HTML = H.ParentHTML Q.Query CS.ChildQuery CS.ChildSlot Slam
 type DSL = H.ParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot Q.Message Slam
@@ -61,10 +61,10 @@ renderSelection pack state = case state ^. ST._selected of
   Just (Right tp) →
     HH.slot' CS.cpTransform unit AS.component
       { options: ST.transforms state
-      , selection: (\a → a × a) <$> (Just $ Tr.Aggregation Ag.Sum)
+      , selection: (\a → a × a) <$> ST.getTransform tp state
       , title: "Choose transformation"
       , toLabel: \t -> { text: Tr.prettyPrintTransform t, icon: Nothing }
-      , deselectable: false
+      , deselectable: (DMD.getDefaults tp).deselectable
       , toSelection: const Nothing
       }
       (HE.input \m → Q.OnField tp ∘ Q.HandleTransformPicker m)

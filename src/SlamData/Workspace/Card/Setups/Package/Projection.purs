@@ -86,6 +86,12 @@ _size = T.packProjection $ at "size"
 _color ∷ T.Projection
 _color = T.packProjection $ at "color"
 
+_scatterOrdinate ∷ T.Projection
+_scatterOrdinate = T.packProjection $ at "scatterOrdinate"
+
+_scatterSize ∷ T.Projection
+_scatterSize = T.packProjection $ at "scatterSize"
+
 -- Encode integer indices of List LabeledJCursor as Strings
 _dimIx ∷ Int → T.Projection
 _dimIx i = T.packProjection $ at (show i)
