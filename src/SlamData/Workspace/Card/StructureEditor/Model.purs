@@ -30,6 +30,7 @@ newtype Model
 
 derive instance eqModel ∷ Eq Model
 derive instance ordModel ∷ Ord Model
+derive instance newtypeModel ∷ Newtype Model _
 
 initialModel ∷ Model
 initialModel =

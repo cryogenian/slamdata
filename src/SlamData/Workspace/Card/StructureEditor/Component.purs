@@ -36,7 +36,7 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.StructureEditor.Column.Component as SECC
-import SlamData.Workspace.Card.StructureEditor.Common (ColumnItem, ColumnPath, columnItemLabel, columnItemPath, columnPathIsLeaf, rootColumn, analyse)
+import SlamData.Workspace.Card.StructureEditor.Common as SEC
 import SlamData.Workspace.Card.StructureEditor.Component.ChildSlot as CS
 import SlamData.Workspace.Card.StructureEditor.Component.Query (Query(..))
 import SlamData.Workspace.Card.StructureEditor.Component.Query as Q
@@ -74,7 +74,7 @@ renderColumns =
     CS.cpColumns
     unit
     (MC.component columnOptions)
-    (rootColumn × L.Nil)
+    (SEC.rootColumn × L.Nil)
     (map right ∘ HE.input HandleColumnsMessage)
 
 columnOptions ∷ SECC.ColumnOptions
@@ -82,9 +82,9 @@ columnOptions =
   MC.ColumnOptions
     { renderColumn: SECC.component
     , renderItem: SEIC.component
-    , label: columnItemLabel
-    , isLeaf: columnPathIsLeaf
-    , id: columnItemPath
+    , label: SEC.columnItemLabel
+    , isLeaf: SEC.columnPathIsLeaf
+    , id: SEC.columnItemPath
     }
 
 evalStructureEditor ∷ Query ~> DSL
@@ -111,10 +111,10 @@ load
   ∷ ∀ m
   . Monad m
   ⇒ QQ.QuasarDSL m
-  ⇒ ColumnPath
+  ⇒ SEC.ColumnPath
   → MC.LoadRequest
   → Maybe PU.FilePath
-  → m (MC.LoadResponse ColumnItem)
+  → m (MC.LoadResponse SEC.ColumnItem)
 load path { requestId, filter } =
   case _ of
     Just resource → do
@@ -125,7 +125,7 @@ load path { requestId, filter } =
             Left _ →
               pure noResult
             Right records →
-              let items = L.filter (mkFilter filter ∘ columnItemLabel) (analyse records path)
+              let items = L.filter (mkFilter filter ∘ SEC.columnItemLabel) (SEC.analyse records path)
               in pure { requestId, items, nextOffset: Nothing }
         _ → pure noResult
     _ → pure noResult
@@ -142,7 +142,7 @@ evalCard = case _ of
     selectedPath ← H.gets _.selectedPath
     pure $ k $ Card.StructureEditor $ Model {view: selectedPath}
   CC.Load (Card.StructureEditor model) next → do
-    -- void $ H.query unit $ H.action $ MC.Populate $ unit × L.Nil
+    void $ H.query' CS.cpColumns unit $ H.action $ MC.Populate $ SEC.all × (unwrap model).view
     pure next
   CC.Load _ next →
     pure next
