@@ -139,8 +139,8 @@ evalCard = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    mbRes ← H.get
-    pure $ k $ Card.StructureEditor $ Model {}
+    selectedPath ← H.gets _.selectedPath
+    pure $ k $ Card.StructureEditor $ Model {view: selectedPath}
   CC.Load (Card.StructureEditor model) next → do
     -- void $ H.query unit $ H.action $ MC.Populate $ unit × L.Nil
     pure next

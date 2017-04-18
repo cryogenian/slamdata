@@ -18,15 +18,19 @@ module SlamData.Workspace.Card.StructureEditor.Component.State where
 
 import SlamData.Prelude
 
+import Data.List as L
+import SlamData.Workspace.Card.StructureEditor.Common as SEC
 import Utils.Path as PU
 
 type State =
   { cycle ∷ Int
   , resource ∷ Maybe PU.FilePath
+  , selectedPath ∷ L.List SEC.ColumnItem
   }
 
 initialState ∷ State
 initialState =
   { cycle: 0
   , resource: Nothing
+  , selectedPath: L.Nil
   }

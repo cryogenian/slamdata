@@ -18,16 +18,24 @@ module SlamData.Workspace.Card.StructureEditor.Model where
 
 import SlamData.Prelude
 
+import Data.List (List(..))
 import Data.Argonaut as J
+import SlamData.Workspace.Card.StructureEditor.Common as SEC
 import Test.StrongCheck.Gen as SC
 
-newtype Model = Model {}
+newtype Model
+  = Model
+  { view :: List SEC.ColumnItem
+  }
 
 derive instance eqModel ∷ Eq Model
 derive instance ordModel ∷ Ord Model
 
 initialModel ∷ Model
-initialModel = Model {}
+initialModel =
+  Model
+    { view: Nil
+    }
 
 genModel ∷ SC.Gen Model
 genModel = pure initialModel
