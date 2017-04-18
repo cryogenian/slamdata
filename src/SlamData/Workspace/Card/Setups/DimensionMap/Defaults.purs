@@ -189,14 +189,14 @@ statics =
       , deselectable: true
       }
   , Pr._scatterOrdinate ×
-      { dimension: jcursorProjection
+      { dimension: D.projectionWithAggregation $ Just Ag.Sum
       , label: "Y-axis"
       , value: "Choose y-axis"
       , select: "Choose y-axis"
       , deselectable: true
       }
   , Pr._scatterSize ×
-      { dimension: jcursorProjection
+      { dimension: D.projectionWithAggregation $ Just Ag.Sum
       , label: "Size"
       , value: "Choose size"
       , select: "Choose size"
@@ -219,6 +219,4 @@ dynamicMeasure prj =
 isFlat ∷ T.Projection → Boolean
 isFlat prj = case T.idReflection ^. T.unpackProjection prj of
   Just "flatValue" → true
-  Just "scatterSize" → true
-  Just "scatterOrdinate" → true
   _ → false

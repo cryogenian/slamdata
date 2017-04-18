@@ -122,7 +122,9 @@ eval m =
     x : xs → Just $ Sql.OrderBy $ Tuple Sql.ASC <$> NE.NonEmpty x xs
 
   addOrderBy ∷ Sql.Sql → Sql.Sql
-  addOrderBy = Sql._Select ∘ Sql._orderBy .~ orderBy
+  addOrderBy =
+    (Sql._Select ∘ Sql._orderBy .~ orderBy)
+    ∘ (Sql._Select ∘ Sql._isDistinct .~ true)
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
 buildProjections r = L.fromFoldable
@@ -131,14 +133,6 @@ buildProjections r = L.fromFoldable
   , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
   , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
   ]
-
---buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
---buildGroupBy r =
---  SCC.groupBy $ L.fromFoldable $ A.catMaybes
---    [ r.parallel <#> SCC.jcursorSql
---    , r.series <#> SCC.jcursorSql
---    , Just $ r.dimension # SCC.jcursorSql
---    ]
 
 buildBoxplot ∷ ModelR → Axes → JArray → Port.Port
 buildBoxplot m axes jarr =

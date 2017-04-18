@@ -21,48 +21,79 @@ module SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
-import Data.Lens ((^?), preview, _Just)
-import Data.Map as Map
+import Data.List as L
 
 import ECharts.Monad (DSL)
-import ECharts.Commands as E
-import ECharts.Types as ET
+--import ECharts.Commands as E
+--import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Candlestick))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (ModelR, Model)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+--import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
+--import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+--import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Dimension as D
+--import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import Utils.Foldable (enumeratedFor_)
+--import SlamData.Workspace.Card.Setups.Transform as T
+--import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
--- TODO: why this sync here? for autoselect or?
-eval m = BCE.buildChartEval Candlestick buildCandlestick m \axes → m
---  ST.save $ ST.synchronize $ ST.load m initialState{axes = axes}
+import SqlSquare as Sql
+
+--import Utils.Foldable (enumeratedFor_)
+
+type Item =
+  { dimension ∷ String
+  , high ∷ Number
+  , low ∷ Number
+  , open ∷ Number
+  , close ∷ Number
+  , parallel ∷ Maybe String
+  }
+
+decodeItem ∷ Json → String ⊹ Item
+decodeItem = decodeJson >=> \obj → do
+  dimension ← map (fromMaybe "" ∘ Sem.maybeString) $ obj .? "dimension"
+  high ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "high"
+  low ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "low"
+  open ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "open"
+  close ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "close"
+  parallel ← map Sem.maybeString $ obj .? "parallel"
+  pure { dimension, high, low, open, close, parallel }
+
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildCandlestick
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.dimension # SCC.jcursorPrj # Sql.as "dimension"
+  , r.high # SCC.jcursorPrj # Sql.as "high" # SCC.applyTransform r.high
+  , r.low # SCC.jcursorPrj # Sql.as "low" # SCC.applyTransform r.low
+  , r.open # SCC.jcursorPrj # Sql.as "open" # SCC.applyTransform r.open
+  , r.close # SCC.jcursorPrj # Sql.as "close" # SCC.applyTransform r.close
+  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+  ]
+
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable $ A.catMaybes
+    [ r.parallel <#> SCC.jcursorSql
+    , Just $ r.dimension # SCC.jcursorSql
+    ]
+
+buildCandlestick ∷ ModelR → Axes → JArray → Port.Port
+buildCandlestick m axes jarr =
+  Port.ChartInstructions
+    { options: kOptions axes m $ buildKData jarr
+    , chartType: Candlestick
+    }
 
 type HLOC a =
   { low ∷ a
@@ -83,8 +114,13 @@ type OnOneGrid =
   , items ∷ Series
   }
 
-type CandlestickData = Array OnOneGrid
+buildKData ∷ JArray → Array OnOneGrid
+buildKData _ = [ ]
 
+kOptions ∷ Axes → ModelR → Array OnOneGrid → DSL OptionI
+kOptions axes r kData =
+  pure unit
+{-
 buildCandlestickData ∷ ModelR → JArray → CandlestickData
 buildCandlestickData r records = series
   where
@@ -236,3 +272,4 @@ buildCandlestick axes r records = do
         E.addValue close
         E.addValue low
         E.addValue high
+-}
