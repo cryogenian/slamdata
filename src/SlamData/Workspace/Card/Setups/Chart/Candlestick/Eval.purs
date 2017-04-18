@@ -24,30 +24,33 @@ import SlamData.Prelude
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
 import Data.List as L
+import Data.Lens ((^?))
+import Data.Map as M
 
 import ECharts.Monad (DSL)
---import ECharts.Commands as E
---import ECharts.Types as ET
+import ECharts.Commands as E
+import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Candlestick))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
+import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (ModelR, Model)
---import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
---import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 --import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
---import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 --import SlamData.Workspace.Card.Setups.Transform as T
 --import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 
 import SqlSquare as Sql
 
---import Utils.Foldable (enumeratedFor_)
+import Utils.Foldable (enumeratedFor_)
 
 type Item =
   { dimension ∷ String
@@ -115,11 +118,87 @@ type OnOneGrid =
   }
 
 buildKData ∷ JArray → Array OnOneGrid
-buildKData _ = [ ]
+buildKData =
+  BCP.adjustRectangularPositions
+  ∘ oneGrids
+  ∘ foldMap (foldMap A.singleton ∘ decodeItem)
+  where
+  oneGrids ∷ Array Item → Array OnOneGrid
+  oneGrids =
+    BCE.groupOn _.parallel
+      ⋙ map \(name × is) →
+        { name
+        , x: Nothing
+        , y: Nothing
+        , w: Nothing
+        , h: Nothing
+        , fontSize: Nothing
+        , items: M.fromFoldable $ map toPoint is
+        }
+  toPoint ∷ Item → String × HLOC Number
+  toPoint {dimension, high, low, open, close } =
+    dimension × { high, low, open, close }
+
 
 kOptions ∷ Axes → ModelR → Array OnOneGrid → DSL OptionI
-kOptions axes r kData =
-  pure unit
+kOptions axes r kData = do
+  E.tooltip do
+    E.triggerAxis
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+{-    E.formatterAxis $ foldMap \fmt →
+      CCT.tableRows
+        [ D.jcursorLabel r.dimension × fmt.name
+        , D.jcursorLabel r.open × CCT.formatValueIx 0 fmt
+        , D.jcursorLabel r.close × CCT.formatValueIx 1 fmt
+        , D.jcursorLabel r.low × CCT.formatValueIx 2 fmt
+        , D.jcursorLabel r.high × CCT.formatValueIx 3 fmt
+        ]
+-}
+  BCP.rectangularTitles kData
+  BCP.rectangularGrids kData
+
+  E.colors colors
+
+  E.xAxes xAxes
+  E.yAxes yAxes
+  E.series series
+
+  where
+  xValues ∷ OnOneGrid → Array String
+  xValues  = sortX ∘ foldMap A.singleton ∘ M.keys ∘ _.items
+
+  xAxisType ∷ Ax.AxisType
+  xAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType <$> (r.dimension ^? D._value ∘ D._projection) <*> pure axes
+
+
+  sortX ∷ Array String → Array String
+  sortX = A.sortBy $ Ax.compareWithAxisType xAxisType
+
+  xAxes = enumeratedFor_ kData \(ix × serie) → E.addXAxis do
+    E.gridIndex ix
+    E.axisType ET.Category
+    E.axisLabel $ E.textStyle $ E.fontFamily "Ubuntu, sans"
+    E.items $ map ET.strItem $ xValues serie
+
+  yAxes = enumeratedFor_ kData \(ix × _) → E.addYAxis do
+    E.gridIndex ix
+    E.axisType ET.Value
+
+  series = enumeratedFor_  kData \(ix × serie) → E.candlestick do
+    for_ serie.name E.name
+    E.xAxisIndex ix
+    E.yAxisIndex ix
+    E.buildItems $ for_ (xValues serie) \dim →
+      for_ (M.lookup dim serie.items) \{high, low, open, close} → E.addItem $ E.buildValues do
+        E.addValue open
+        E.addValue close
+        E.addValue low
+        E.addValue high
+
 {-
 buildCandlestickData ∷ ModelR → JArray → CandlestickData
 buildCandlestickData r records = series
@@ -213,63 +292,4 @@ buildCandlestickData r records = series
 
 buildCandlestick ∷ Ax.Axes → ModelR → JArray → DSL OptionI
 buildCandlestick axes r records = do
-  E.tooltip do
-    E.triggerAxis
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
-    E.formatterAxis $ foldMap \fmt →
-      CCT.tableRows
-        [ D.jcursorLabel r.dimension × fmt.name
-        , D.jcursorLabel r.open × CCT.formatValueIx 0 fmt
-        , D.jcursorLabel r.close × CCT.formatValueIx 1 fmt
-        , D.jcursorLabel r.low × CCT.formatValueIx 2 fmt
-        , D.jcursorLabel r.high × CCT.formatValueIx 3 fmt
-        ]
-
-  BCP.rectangularTitles candlestickData
-  BCP.rectangularGrids candlestickData
-
-  E.colors colors
-
-  E.xAxes xAxes
-  E.yAxes yAxes
-  E.series series
-
-  where
-  candlestickData ∷ CandlestickData
-  candlestickData = buildCandlestickData r records
-
-  xValues ∷ OnOneGrid → Array String
-  xValues  = sortX ∘ foldMap A.singleton ∘ Map.keys ∘ _.items
-
-  xAxisType ∷ Ax.AxisType
-  xAxisType =
-    fromMaybe Ax.Category
-    $ Ax.axisType <$> (r.dimension ^? D._value ∘ D._projection) <*> pure axes
-
-
-  sortX ∷ Array String → Array String
-  sortX = A.sortBy $ Ax.compareWithAxisType xAxisType
-
-  xAxes = enumeratedFor_ candlestickData \(ix × serie) → E.addXAxis do
-    E.gridIndex ix
-    E.axisType ET.Category
-    E.axisLabel $ E.textStyle $ E.fontFamily "Ubuntu, sans"
-    E.items $ map ET.strItem $ xValues serie
-
-  yAxes = enumeratedFor_ candlestickData \(ix × _) → E.addYAxis do
-    E.gridIndex ix
-    E.axisType ET.Value
-
-  series = enumeratedFor_  candlestickData \(ix × serie) → E.candlestick do
-    for_ serie.name E.name
-    E.xAxisIndex ix
-    E.yAxisIndex ix
-    E.buildItems $ for_ (xValues serie) \dim →
-      for_ (Map.lookup dim serie.items) \{high, low, open, close} → E.addItem $ E.buildValues do
-        E.addValue open
-        E.addValue close
-        E.addValue low
-        E.addValue high
 -}
