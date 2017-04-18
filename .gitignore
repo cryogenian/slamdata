@@ -23,6 +23,7 @@ public/workspace.html
 .*
 npm-debug.log
 yarn.lock
+yarn-error.log
 .yarnclean
 !.gitignore
 !.travis.yml

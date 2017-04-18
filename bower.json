@@ -75,6 +75,7 @@
     "purescript-webdriver": "^3.0.0"
   },
   "resolutions": {
+    "purescript-halogen": "29abb28a5de0335e2fafb16868b5f22e12360d93",
     "purescript-echarts": "56061619d882ace577315f59b14a904261630889"
   }
 }
