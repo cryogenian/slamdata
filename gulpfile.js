@@ -198,7 +198,7 @@ gulp.task("bundle", [
   mkBundleTask("auth_redirect", "SlamData.AuthRedirect"),
 ]);
 
-gulp.task("make", [ "icons-purs" ], function() {
+gulp.task("make", [ "icon-purs" ], function() {
   return purescript.psc({
     src: testSources,
     ffi: foreigns
