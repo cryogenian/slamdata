@@ -30,15 +30,8 @@ import Data.List as L
 import Data.Map as M
 import Data.Newtype as N
 import Data.Ord (class Ord1, compare1)
-import Data.Path.Pathy as Path
 
 import Matryoshka (class Corecursive, class Recursive, Algebra, cata, embed, project, transCata)
-
-import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.MillerColumns.Column.BasicFilter (mkFilter)
-import SlamData.Workspace.MillerColumns.Component as MC
-
-import Utils.Path as PU
 
 -- Helper until we have Eq1 / Ord1 instances for Coproduct in the core lib
 newtype CP1 f g a = CP1 (Coproduct f g a)
@@ -175,28 +168,3 @@ countFreq total = compute ∘ foldl (flip go) M.empty
   go = M.alter (Just ∘ maybe 1 (_ + 1))
   compute ∷ M.Map a Int → M.Map a Weight
   compute = map (\count → Weight $ Int.toNumber count / Int.toNumber total)
-
-load
-  ∷ ∀ m
-  . Monad m
-  ⇒ QQ.QuasarDSL m
-  ⇒ ColumnPath
-  → MC.LoadRequest
-  → Maybe PU.FilePath
-  → m (MC.LoadResponse ColumnItem)
-load path { requestId, filter } =
-  case _ of
-    Just resource → do
-      case (fst <$> Path.peel resource) of
-        Just resourcePath → do
-          let sql = QQ.templated resource "SELECT * FROM {{path}} AS row LIMIT 1000"
-          QQ.queryEJson resourcePath sql >>= case _ of
-            Left _ →
-              pure noResult
-            Right records →
-              let items = L.filter (mkFilter filter ∘ columnItemLabel) (analyse records path)
-              in pure { requestId, items, nextOffset: Nothing }
-        _ → pure noResult
-    _ → pure noResult
-  where
-  noResult = { requestId, items: L.Nil, nextOffset: Nothing }

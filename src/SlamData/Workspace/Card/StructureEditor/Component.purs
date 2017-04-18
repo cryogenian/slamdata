@@ -22,21 +22,21 @@ module SlamData.Workspace.Card.StructureEditor.Component
 import SlamData.Prelude
 
 import Data.List as L
-
+import Data.Path.Pathy as Path
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import SlamData.GlobalMenu.Bus as GMB
+import SlamData.Quasar.Query as QQ
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.StructureEditor.Column.Component as SECC
-import SlamData.Workspace.Card.StructureEditor.Common (columnItemLabel, columnItemPath, columnPathIsLeaf, load, rootColumn)
+import SlamData.Workspace.Card.StructureEditor.Common (ColumnItem, ColumnPath, columnItemLabel, columnItemPath, columnPathIsLeaf, rootColumn, analyse)
 import SlamData.Workspace.Card.StructureEditor.Component.ChildSlot as CS
 import SlamData.Workspace.Card.StructureEditor.Component.Query (Query(..))
 import SlamData.Workspace.Card.StructureEditor.Component.Query as Q
@@ -44,7 +44,9 @@ import SlamData.Workspace.Card.StructureEditor.Component.State as S
 import SlamData.Workspace.Card.StructureEditor.Item.Component as SEIC
 import SlamData.Workspace.Card.StructureEditor.Model (Model(..))
 import SlamData.Workspace.LevelOfDetails as LOD
+import SlamData.Workspace.MillerColumns.Column.BasicFilter (mkFilter)
 import SlamData.Workspace.MillerColumns.Component as MC
+import Utils.Path as PU
 
 type DSL = CC.InnerCardParentDSL S.State Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Query CS.ChildQuery CS.ChildSlot
@@ -104,6 +106,31 @@ evalStructureEditor = case _ of
       _ →
         pure unit
     pure next
+
+load
+  ∷ ∀ m
+  . Monad m
+  ⇒ QQ.QuasarDSL m
+  ⇒ ColumnPath
+  → MC.LoadRequest
+  → Maybe PU.FilePath
+  → m (MC.LoadResponse ColumnItem)
+load path { requestId, filter } =
+  case _ of
+    Just resource → do
+      case (fst <$> Path.peel resource) of
+        Just resourcePath → do
+          let sql = QQ.templated resource "SELECT * FROM {{path}} AS row LIMIT 1000"
+          QQ.queryEJson resourcePath sql >>= case _ of
+            Left _ →
+              pure noResult
+            Right records →
+              let items = L.filter (mkFilter filter ∘ columnItemLabel) (analyse records path)
+              in pure { requestId, items, nextOffset: Nothing }
+        _ → pure noResult
+    _ → pure noResult
+  where
+  noResult = { requestId, items: L.Nil, nextOffset: Nothing }
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
