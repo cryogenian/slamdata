@@ -103,6 +103,9 @@ evalStructureEditor = case _ of
       Left (MC.LoadRequest (path × req)) → do
         res ← load path req =<< H.gets _.resource
         void $ H.query' CS.cpColumns unit $ H.action $ MC.FulfilLoadRequest (path × res)
+      Left (MC.SelectionChanged s _ _) → do
+        H.modify (_ {selectedPath = snd s})
+        H.raise CC.modelUpdate
       _ →
         pure unit
     pure next
