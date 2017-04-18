@@ -108,7 +108,6 @@ buildPData ∷ JArray → Array Item
 buildPData =
   foldMap $ foldMap A.singleton ∘ decodeItem
 
-
 pOptions ∷ Axes → ModelR → Array Item → DSL OptionI
 pOptions _ r pData = do
   E.parallel do
