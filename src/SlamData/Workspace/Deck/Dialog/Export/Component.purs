@@ -161,6 +161,29 @@ render state
   | state.presentingAs ≡ URI = renderPublishDialog state
   | otherwise = renderEmbedDialog state
 
+renderStyleURIInput ∷ State → H.ComponentHTML Query
+renderStyleURIInput state =
+  HH.div_ $ fold $
+    [ pure $ HH.div_
+        [ HH.a
+            [ HE.onClick (HE.input_ ToggleStyleURIInput) ]
+            [ HH.text "Add a stylesheet URI to customize look/feel."]
+        ]
+    , guard state.presentStyleURIInput $> HH.div
+        (fold [ guard (isJust $ parseStyleURI state.styleURIString) $> HP.classes validInputClasses ])
+        (fold
+           [ pure $ HH.input
+               [ HP.classes [ B.formControl ]
+               , HE.onValueInput (HE.input UpdateStyleURI)
+               ]
+           , guard (isJust $ parseStyleURI state.styleURIString) $> HH.span
+               [ HP.classes [ B.glyphicon, B.glyphiconOk, B.formControlFeedback ] ]
+               []
+           ])
+    ]
+  where
+  validInputClasses = [ B.hasSuccess, B.hasFeedback ]
+
 renderPublishDialog ∷ State → H.ComponentHTML Query
 renderPublishDialog state =
   HH.div
@@ -179,28 +202,12 @@ renderPublishDialog state =
                 [ HE.onSubmit (HE.input PreventDefault) ]
                 $ fold
                     [ pure renderPublishUrl
-                    , pure $ HH.div_
-                        [ HH.a
-                            [ HE.onClick (HE.input_ ToggleStyleURIInput) ]
-                            [ HH.text "Add a stylesheet URI to customize look/feel."]
-                        ]
-                    , guard state.presentStyleURIInput $> HH.div
-                        (fold [ guard (isJust $ parseStyleURI state.styleURIString) $> HP.classes validInputClasses ])
-                        (fold
-                           [ pure $ HH.input
-                               [ HP.classes [ B.formControl ]
-                               , HE.onValueInput (HE.input UpdateStyleURI)
-                               ]
-                           , guard (isJust $ parseStyleURI state.styleURIString) $> HH.span
-                               [ HP.classes [ B.glyphicon, B.glyphiconOk, B.formControlFeedback ] ]
-                               []
-                           ])
+                    , pure $ renderStyleURIInput state
                     ]
             ]
         , pure renderPublishFooter
         ]
   where
-  validInputClasses = [ B.hasSuccess, B.hasFeedback ]
   renderPublishUrl =
     HH.div
       [ HP.classes [ B.inputGroup ] ]
@@ -332,6 +339,7 @@ renderEmbedDialog state =
                            ])
                     ⊕ message
                   ]
+                , renderStyleURIInput state
                 ]
           ]
         ]
@@ -574,7 +582,7 @@ renderCopyVal locString state
           , """      deckPath: """ ⊕ quoted deckPath ⊕ ""","""
           , """      deckId: """ ⊕ quoted deckId ⊕ ""","""
           , """      permissionTokens: [""" ⊕ maybe "" quoted token ⊕ """],"""
-          , """      stylesheetUrls: [], // An array of custom stylesheet URIs."""
+          , """      stylesheetUrls: [""" ⊕ maybe "" quoted stylesheet ⊕ """], // An array of custom stylesheet URIs."""
           , """      echartTheme: undefined,"""
           , """      vars: """ ⊕ renderVarMaps state.varMaps
           , """    };"""
@@ -598,6 +606,7 @@ renderCopyVal locString state
     deckDOMId = "sd-deck-" ⊕ deckId
     deckPath = UP.encodeURIPath (Pathy.printPath state.sharingInput.workspacePath)
     token = QTA.runTokenHash <<< _.secret <$> state.permToken
+    stylesheet = parseStyleURI state.styleURIString $> state.styleURIString
 
 renderVarMaps ∷ Map.Map CID.CardId Port.VarMap → String
 renderVarMaps = indent <<< prettyJson <<< encodeJson <<< varMapsForURL
