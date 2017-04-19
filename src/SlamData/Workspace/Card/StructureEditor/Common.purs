@@ -56,7 +56,7 @@ instance ord1CP1 ∷ (Ord1 f, Ord1 g) ⇒ Ord1 (CP1 f g) where
       _, Left _ → GT
       Right a, Right b → compare1 a b
 
-toCP1 :: Mu (Coproduct EJC.CursorF ECursorF) → Mu (CP1 EJC.CursorF ECursorF)
+toCP1 ∷ Mu (Coproduct EJC.CursorF ECursorF) → Mu (CP1 EJC.CursorF ECursorF)
 toCP1 = transCata CP1
 
 data ECursorF a = OfValue EJ.EJson a
@@ -71,14 +71,14 @@ instance ord1ECursorF ∷ Ord1 ECursorF where compare1 = compare
 
 instance foldableECursorF ∷ Foldable ECursorF where
   foldr f b = case _ of
-    OfValue _ a -> f a b
+    OfValue _ a → f a b
   foldl f b = case _ of
-    OfValue _ a -> f b a
+    OfValue _ a → f b a
   foldMap f = case _ of
-    OfValue _ a -> f a
+    OfValue _ a → f a
 instance traversableECursorF ∷ Traversable ECursorF where
   traverse f = case _ of
-    OfValue v a -> OfValue v <$> f a
+    OfValue v a → OfValue v <$> f a
   sequence = traverse id
 
 newtype Cursor = Cursor (Mu (Coproduct EJC.CursorF ECursorF))
@@ -91,13 +91,13 @@ instance corecursiveCursor ∷ Corecursive Cursor (Coproduct EJC.CursorF ECursor
 instance recursiveCursor ∷ Recursive Cursor (Coproduct EJC.CursorF ECursorF) where
   project = N.traverse Cursor project
 
-instance eqCursor :: Eq Cursor where
+instance eqCursor ∷ Eq Cursor where
   eq (Cursor x) (Cursor y) = eq (toCP1 x) (toCP1 y)
 
-instance ordCursor :: Ord Cursor where
+instance ordCursor ∷ Ord Cursor where
   compare (Cursor x) (Cursor y) = compare (toCP1 x) (toCP1 y)
 
-genCursor :: SCG.Gen Cursor
+genCursor ∷ SCG.Gen Cursor
 genCursor = SCG.sized go
   where
     go size =
@@ -108,19 +108,19 @@ genCursor = SCG.sized go
         genSmallerCursor = SCG.resize (size - 1) genCursor
         genAll = pure $ embed $ left EJC.All
         genAtKey = do
-          key <- EJ.arbitraryJsonEncodableEJsonOfSize size
-          inner <- genSmallerCursor
+          key ← EJ.arbitraryJsonEncodableEJsonOfSize size
+          inner ← genSmallerCursor
           pure $ embed $ left $ EJC.AtKey key inner
         genAtIndex = do
-          ix <- SC.arbitrary
-          inner <- genSmallerCursor
+          ix ← SC.arbitrary
+          inner ← genSmallerCursor
           pure $ embed $ left $ EJC.AtIndex ix inner
         genOfValue = do
-          value <- EJ.arbitraryJsonEncodableEJsonOfSize size
-          inner <- genSmallerCursor
+          value ← EJ.arbitraryJsonEncodableEJsonOfSize size
+          inner ← genSmallerCursor
           pure $ embed $ right $ OfValue value inner
 
-encodeCursor :: Cursor -> J.Json
+encodeCursor ∷ Cursor → J.Json
 encodeCursor = cata go
   where
     go ∷ Algebra (Coproduct EJC.CursorF ECursorF) J.Json
@@ -128,14 +128,14 @@ encodeCursor = cata go
 
     goCursorF ∷ Algebra EJC.CursorF J.Json
     goCursorF = case _ of
-      EJC.All ->
+      EJC.All →
         "tag" := "All" ~> J.jsonEmptyObject
-      EJC.AtKey key inner ->
+      EJC.AtKey key inner →
         "tag" := "AtKey"
         ~> "key" := EJ.encodeEJson key
         ~> "inner" := inner
         ~> J.jsonEmptyObject
-      EJC.AtIndex ix inner ->
+      EJC.AtIndex ix inner →
         "tag" := "AtIndex"
         ~> "ix" := ix
         ~> "inner" := inner
@@ -143,36 +143,36 @@ encodeCursor = cata go
 
     goECursorF ∷ Algebra ECursorF J.Json
     goECursorF = case _ of
-      OfValue a inner ->
+      OfValue a inner →
         "tag" := "OfValue"
         ~> "value" := EJ.encodeEJson a
         ~> "inner" := inner
         ~> J.jsonEmptyObject
 
-decodeCursor :: J.Json -> Either String Cursor
+decodeCursor ∷ J.Json → Either String Cursor
 decodeCursor = anaM go
   where
     go ∷ CoalgebraM (Either String) (Coproduct EJC.CursorF ECursorF) J.Json
-    go = J.decodeJson >=> \json -> do
-      tag <- json .? "tag"
+    go = J.decodeJson >=> \json → do
+      tag ← json .? "tag"
       case tag of
-        "All" -> do
+        "All" → do
           pure (left EJC.All)
-        "AtKey" -> do
-          key <- EJ.decodeEJson =<< json .? "key"
-          inner <- json .? "inner"
+        "AtKey" → do
+          key ← EJ.decodeEJson =<< json .? "key"
+          inner ← json .? "inner"
           pure (left (EJC.AtKey key inner))
-        "AtIndex" -> do
-          ix <- json .? "ix"
-          inner <- json .? "inner"
+        "AtIndex" → do
+          ix ← json .? "ix"
+          inner ← json .? "inner"
           pure (left (EJC.AtIndex ix inner))
-        "OfValue" -> do
-          value <- EJ.decodeEJson =<< json .? "value"
-          inner <- json .? "inner"
+        "OfValue" → do
+          value ← EJ.decodeEJson =<< json .? "value"
+          inner ← json .? "inner"
           pure (right (OfValue value inner))
-        _ -> Left ("unknown tag for Cursor: " <> show tag)
+        _ → Left ("unknown tag for Cursor: " <> show tag)
 
-all :: Cursor
+all ∷ Cursor
 all = embed $ left $ EJC.All
 
 atKey ∷ EJ.EJson → Cursor → Cursor
@@ -241,7 +241,7 @@ analyse items path =
       $ countFreq (A.length items')
       $ foldl go L.Nil items'
   where
-  go :: L.List Cursor -> EJ.EJson -> L.List Cursor
+  go ∷ L.List Cursor → EJ.EJson → L.List Cursor
   go acc item = case project item of
     EJ.Map (EJ.EJsonMap kvs) →
       foldl (\acc' (Tuple k _) → atKey k path : acc') acc kvs

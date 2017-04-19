@@ -110,12 +110,12 @@ component opts@(Column.ColumnOptions colSpec) =
           H.modify $ modifyColumns $ second \sels →
             L.drop (L.length sels - colIndex) sels
           state ← H.gets _.columns
-          root × sel <- pure (second L.head state)
+          root × sel ← pure (second L.head state)
           H.raise $ Left (SelectionChanged state (maybe root colSpec.id sel) sel)
         Left (Column.Selected itemPath item) → do
           H.modify $ modifyColumns $ second \sels →
             item : L.drop (L.length sels - colIndex) sels
-          state <- H.gets _.columns
+          state ← H.gets _.columns
           H.raise $ Left (SelectionChanged state itemPath (Just item))
         Left (Column.LoadRequest req) → do
           H.raise $ Left (LoadRequest (colPath × req))

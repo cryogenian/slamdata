@@ -24,14 +24,14 @@ import Test.StrongCheck.Arbitrary (class Arbitrary)
 
 newtype SCModel = SCModel SEM.Model
 
-derive instance newtypeSCModel :: Newtype SCModel _
+derive instance newtypeSCModel ∷ Newtype SCModel _
 
-instance arbitrarySCModel :: Arbitrary SCModel where
+instance arbitrarySCModel ∷ Arbitrary SCModel where
   arbitrary = SCModel <$> SEM.genModel
 
-check :: forall eff. SC eff Unit
-check = quickCheck \(SCModel model) ->
+check ∷ ∀ eff. SC eff Unit
+check = quickCheck \(SCModel model) →
   case SEM.decode (SEM.encode model) of
-    Left err -> Failed $ "Decode failed: " <> err
-    Right model' ->
+    Left err → Failed $ "Decode failed: " <> err
+    Right model' →
       model == model' <?> "Model failed to decode as encoded value"

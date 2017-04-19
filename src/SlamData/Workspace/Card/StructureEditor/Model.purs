@@ -26,7 +26,7 @@ import Test.StrongCheck.Gen as SCG
 
 newtype Model
   = Model
-  { view :: L.List SEC.ColumnPath
+  { view ∷ L.List SEC.ColumnPath
   }
 
 derive instance eqModel ∷ Eq Model
@@ -41,7 +41,7 @@ initialModel =
 
 genModel ∷ SCG.Gen Model
 genModel = do
-  arbView <- L.fromFoldable <$> SCG.resize 5 (SCG.arrayOf SEC.genCursor)
+  arbView ← L.fromFoldable <$> SCG.resize 5 (SCG.arrayOf SEC.genCursor)
   pure (Model {view: arbView})
 
 encode ∷ Model → J.Json
@@ -49,7 +49,7 @@ encode (Model {view}) =
   "view" := map SEC.encodeCursor view ~> J.jsonEmptyObject
 
 decode ∷ J.Json → Either String Model
-decode = J.decodeJson >=> \json -> do
-  jsonItems :: L.List J.Json <- json .? "view"
-  view <- traverse SEC.decodeCursor jsonItems
+decode = J.decodeJson >=> \json → do
+  jsonItems ∷ L.List J.Json ← json .? "view"
+  view ← traverse SEC.decodeCursor jsonItems
   pure (Model {view})

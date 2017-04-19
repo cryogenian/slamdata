@@ -82,6 +82,6 @@ component' opts path =
 
   evalOuter ∷ Query ~> DSL
   evalOuter = case _ of
-    Raise msg next -> do
+    Raise msg next → do
       H.raise msg
       pure next

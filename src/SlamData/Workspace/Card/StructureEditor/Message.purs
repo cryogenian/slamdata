@@ -27,8 +27,8 @@ type ColumnMessage = ColumnPath × ColumnAction
 
 type Message = Either ColumnMessage ItemMessage
 
-columnMessage :: ColumnMessage -> Message
+columnMessage ∷ ColumnMessage → Message
 columnMessage = Left
 
-itemMessage :: ItemMessage -> Message
+itemMessage ∷ ItemMessage → Message
 itemMessage = Right
