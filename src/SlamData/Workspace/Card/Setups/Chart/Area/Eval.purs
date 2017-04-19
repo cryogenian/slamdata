@@ -24,11 +24,9 @@ import SlamData.Prelude
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Function (on)
 import Data.Lens ((^?))
 import Data.List as L
 import Data.Map as M
-import Data.NonEmpty as NE
 import Data.Set as Set
 
 import ECharts.Monad (DSL)
@@ -52,7 +50,7 @@ import SlamData.Workspace.Card.Port as Port
 
 import SqlSquare as Sql
 
-import Utils.Array (enumerate)
+import Utils.Foldable (enumeratedFor_)
 
 type Item =
   { dimension ∷ String
@@ -61,9 +59,9 @@ type Item =
   }
 
 type AreaSeries =
-  Int × { name ∷ Maybe String
-        , items ∷ String >> Number
-        }
+  { name ∷ Maybe String
+  , items ∷ String >> Number
+  }
 
 decodeItem ∷ Json → String ⊹ Item
 decodeItem = decodeJson >=> \obj → do
@@ -88,8 +86,8 @@ buildProjections r = L.fromFoldable
 buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
 buildGroupBy r =
   SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ Just r.dimension <#> SCC.jcursorSql
-    , r.series <#> SCC.jcursorSql
+    [ r.series <#> SCC.jcursorSql
+    , Just r.dimension <#> SCC.jcursorSql
     ]
 
 buildArea ∷ ModelR → Ax.Axes → JArray → Port.Port
@@ -100,30 +98,18 @@ buildArea m axes jarr =
     }
 
 buildAreaData ∷ Array Json → Array AreaSeries
-buildAreaData jarr =
-  let
-    items ∷ Array Item
-    items = foldMap (foldMap A.singleton ∘ decodeItem) jarr
-
-    seriesFn ∷ Array Item → Array { name ∷ Maybe String, items ∷ Array Item }
-    seriesFn is =
-      let
-        groupped =
-          map (NE.fromNonEmpty A.cons)
-          $ A.groupBy (eq `on` _.series) is
-
-        recordify a =
-          { name: A.head a >>= _.series, items: a }
-      in
-       map recordify groupped
-
-    mappify ∷ Array Item → String >> Number
-    mappify = foldMap \{ dimension, measure } → M.singleton dimension measure
-  in
-    enumerate $ seriesFn items <#> \{ name, items } →
-      { name
-      , items: mappify items
-      }
+buildAreaData =
+  series ∘ foldMap (foldMap A.singleton ∘ decodeItem)
+  where
+  series ∷ Array Item → Array AreaSeries
+  series =
+    BCE.groupOn _.series
+      ⋙ map \(name × items) →
+          { name
+          , items: M.fromFoldable $ map toPoint items
+          }
+  toPoint ∷ Item → String × Number
+  toPoint { dimension, measure } = dimension × measure
 
 areaOptions ∷ Ax.Axes → ModelR → Array AreaSeries → DSL OptionI
 areaOptions axes r areaData = do
@@ -203,17 +189,17 @@ areaOptions axes r areaData = do
   xValues =
     A.sortBy xSortFn
       $ A.fromFoldable
-      $ foldMap (snd ⋙_.items ⋙ M.keys ⋙ Set.fromFoldable)
+      $ foldMap (_.items ⋙ M.keys ⋙ Set.fromFoldable)
         areaData
 
   seriesNames ∷ Array String
   seriesNames =
     A.fromFoldable
-      $ foldMap (snd ⋙ _.name ⋙ Set.fromFoldable)
+      $ foldMap (_.name ⋙ Set.fromFoldable)
         areaData
 
   series ∷ ∀ i. DSL (line ∷ ETP.I|i)
-  series = for_ areaData \(ix × serie) → E.line do
+  series = enumeratedFor_ areaData \(ix × serie) → E.line do
     E.buildItems $ for_ xValues \key → do
       case M.lookup key serie.items of
         Nothing → E.missingItem

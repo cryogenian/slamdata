@@ -22,10 +22,8 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Eval
 import SlamData.Prelude
 
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
-import Data.Function (on)
 import Data.Array as A
 import Data.Map as M
-import Data.NonEmpty as NE
 import Data.Set as Set
 import Data.Lens ((^?))
 import Data.List as L
@@ -108,44 +106,25 @@ buildBar m axes jarr =
     }
 
 buildBarData ∷ Array Json → Array BarStacks
-buildBarData jarr =
-  let
-    items ∷ Array Item
-    items = foldMap (foldMap A.singleton ∘ decodeItem) jarr
-
-    stacksFn ∷ Array Item → Array { stack ∷ Maybe String, series ∷ Array Item }
-    stacksFn is  =
-      let
-        groupped =
-          map (NE.fromNonEmpty A.cons)
-          $ A.groupBy (eq `on` _.stack) is
-        recordify a =
-          { stack: A.head a >>= _.stack, series: a }
-      in
-        map recordify groupped
-
-    seriesFn ∷ Array Item → Array { name ∷ Maybe String, items ∷ Array Item }
-    seriesFn is =
-      let
-        groupped =
-          map (NE.fromNonEmpty A.cons)
-          $ A.groupBy (eq `on` _.parallel) is
-
-        recordify a =
-          { name: A.head a >>= _.parallel, items: a }
-      in
-        map recordify groupped
-
-    mappify ∷ Array Item → String >> Number
-    mappify = foldMap \{ measure, category } → M.singleton category measure
-  in
-    stacksFn items <#> \{stack, series} →
-      { stack
-      , series: seriesFn series <#> \{name, items} →
-          { name
-          , items: mappify items
+buildBarData =
+  stacks ∘ foldMap (foldMap A.singleton ∘ decodeItem)
+  where
+  stacks ∷ Array Item → Array BarStacks
+  stacks =
+    BCE.groupOn _.stack
+      ⋙ map \(stack × items) →
+          { stack
+          , series: series items
           }
-      }
+  series ∷ Array Item → Array BarSeries
+  series =
+    BCE.groupOn _.parallel
+      ⋙ map \(name × items) →
+          { name
+          , items: M.fromFoldable [ ] -- $ map toPoint items
+          }
+  toPoint ∷ Item → String × Number
+  toPoint { measure, category } = category × measure
 
 barOptions ∷ Axes → ModelR → Array BarStacks → DSL OptionI
 barOptions axes r barData = do
