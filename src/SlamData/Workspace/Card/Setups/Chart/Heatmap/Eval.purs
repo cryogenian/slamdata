@@ -53,7 +53,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 import SqlSquare as Sql
 
-import Utils.Array (enumerate)
+import Utils.Foldable (enumeratedFor_)
 
 eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
@@ -133,7 +133,7 @@ buildData r =
   toPoint item = (item.abscissa × item.ordinate) × item.measure
 
 buildOptions ∷ Ax.Axes → ModelR → Array HeatmapSeries → DSL OptionI
-buildOptions axes r heatmapSeries = do
+buildOptions axes r heatmapData = do
   E.tooltip do
     E.triggerAxis
     E.textStyle do
@@ -154,9 +154,10 @@ buildOptions axes r heatmapSeries = do
 
   E.animationEnabled false
 
-  BCP.rectangularTitles $ map snd heatmapData
+  BCP.rectangularTitles heatmapData
+    $ maybe "" D.jcursorLabel r.series
 
-  BCP.rectangularGrids $ map snd heatmapData
+  BCP.rectangularGrids heatmapData
 
   E.xAxes xAxes
 
@@ -181,9 +182,6 @@ buildOptions axes r heatmapSeries = do
   E.series series
 
   where
-  heatmapData ∷ Array (Int × HeatmapSeries)
-  heatmapData = enumerate heatmapSeries
-
   xValues ∷ HeatmapSeries → Array String
   xValues serie =
     sortX $ A.fromFoldable $ Set.fromFoldable $ map fst $ M.keys serie.items
@@ -193,14 +191,14 @@ buildOptions axes r heatmapSeries = do
     sortY $ A.fromFoldable $ Set.fromFoldable $ map snd $ M.keys serie.items
 
   series ∷ ∀ i. DSL (heatMap ∷ ETP.I|i)
-  series = for_ heatmapData \(ix × serie) → E.heatMap do
+  series = enumeratedFor_ heatmapData \(ix × serie) → E.heatMap do
     for_ serie.name E.name
     E.xAxisIndex ix
     E.yAxisIndex ix
 
     E.buildItems
-      $ for_ (enumerate $ xValues serie) \(xIx × abscissa) →
-          for_ (enumerate $ yValues serie) \(yIx × ordinate) →
+      $ enumeratedFor_ (xValues serie)  \(xIx × abscissa) →
+          enumeratedFor_ (yValues serie) \(yIx × ordinate) →
             for_ (M.lookup (abscissa × ordinate) serie.items) \value → E.addItem do
               BCE.assoc { abscissa, ordinate, value }
               E.buildValues do
@@ -232,12 +230,12 @@ buildOptions axes r heatmapSeries = do
   ordinateAxisCfg = Ax.axisConfiguration ordinateAxisType
 
   xAxes ∷ ∀ i. DSL (addXAxis ∷ ETP.I|i)
-  xAxes = for_ heatmapData \(ix × serie) → E.addXAxis do
+  xAxes = enumeratedFor_ heatmapData \(ix × serie) → E.addXAxis do
     mkAxis ix
     E.items $ map ET.strItem $ xValues serie
 
   yAxes ∷ ∀ i. DSL (addYAxis ∷ ETP.I|i)
-  yAxes = for_ heatmapData \(ix × serie) → E.addYAxis do
+  yAxes = enumeratedFor_ heatmapData \(ix × serie) → E.addYAxis do
     mkAxis ix
     E.items $ map ET.strItem $ yValues serie
 

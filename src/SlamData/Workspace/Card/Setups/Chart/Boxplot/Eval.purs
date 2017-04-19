@@ -213,3 +213,152 @@ buildBoxplotData =
         outliers = A.filter (\x → x < low ∨ x > high) sortedArr
       in
        outliers × Just {low, q1, q2, q3, high}
+
+
+boxplotOptions ∷ ModelR → Axes → Array OnOneBoxplot → DSL OptionI
+boxplotOptions r axes boxplotData = do
+  E.tooltip do
+    E.triggerItem
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+
+  rectangularTitles boxplotData
+    $ maybe "" D.jcursorLabel r.parallel
+
+  rectangularGrids boxplotData
+
+
+  E.legend do
+    E.topBottom
+    E.textStyle $ E.fontFamily "Ubuntu, sans"
+    E.items $ map ET.strItem serieNames
+
+  E.xAxes xAxes
+
+  E.yAxes yAxes
+
+  E.series series
+
+  where
+  serieNames ∷ Array String
+  serieNames =
+    A.fromFoldable
+    $ flip foldMap boxplotData
+    $ foldMap (Set.fromFoldable ∘ _.name)
+    ∘ _.series
+
+  series = enumeratedFor_ boxplotData \(ix × onOnePlot) → for_ onOnePlot.series \serie → do
+    E.boxPlot $ boxplotSerie $ ix × serie
+    E.scatter $ scatterSerie $ ix × serie
+
+  boxplotSerie (ix × serie) = do
+    for_ serie.name E.name
+
+    E.xAxisIndex ix
+    E.yAxisIndex ix
+
+    E.itemStyle $ E.normal do
+      E.borderWidth 2
+      E.borderColor
+        $ fromMaybe (C.rgba 0 0 0 0.5)
+        $ serie.name
+        >>= flip A.elemIndex serieNames
+        >>= (colors !! _)
+
+    E.tooltip $ E.formatterItem \item →
+      CCT.tableRows
+        [ D.jcursorLabel r.dimension × item.name
+        , "Upper" × CCT.formatNumberValueIx 4 item
+        , "Q3" × CCT.formatNumberValueIx 3 item
+        , "Median" × CCT.formatNumberValueIx 2 item
+        , "Q2" × CCT.formatNumberValueIx 1 item
+        , "Lower" × CCT.formatNumberValueIx 0 item
+        ]
+
+    E.buildItems
+      $ for_ xAxisLabels \key → case M.lookup key serie.items of
+        Nothing → E.missingItem
+        Just (_ × mbBP) → for_ mbBP \item → E.addItem $ E.buildValues do
+          E.addValue item.low
+          E.addValue item.q1
+          E.addValue item.q2
+          E.addValue item.q3
+          E.addValue item.high
+
+
+  scatterSerie (ix × serie) = do
+    for_ serie.name E.name
+    E.xAxisIndex ix
+    E.yAxisIndex ix
+    E.symbolSize
+      if isNothing serie.name ∨ serie.name ≡ Just ""
+        then 5
+        else 0
+    E.itemStyle $ E.normal
+      $ E.color
+      $ fromMaybe (C.rgba 0 0 0 0.5)
+      $ serie.name
+      >>= flip A.elemIndex serieNames
+      >>= (colors !! _)
+
+    E.tooltip $ E.formatterItem\param →
+      param.name ⊕ "<br/>"
+      ⊕ CCT.formatNumberValueIx 0 param
+
+    E.buildItems
+      $ enumeratedFor_ serie.items \(ox × (outliers × _)) →
+          for_ outliers \outlier → E.addItem $ E.buildValues do
+            E.addValue $ Int.toNumber ox
+            E.addValue outlier
+
+  grids ∷ Array (DSL ETP.GridI)
+  grids = boxplotData <#> \{x, y, w, h} → do
+    for_ x $ E.left ∘ ET.Percent
+    for_ y $ E.top ∘ ET.Percent
+    for_ w E.widthPct
+    for_ h E.heightPct
+
+  titles ∷ Array (DSL ETP.TitleI)
+  titles = boxplotData <#> \{x, y, name, fontSize} → do
+    for_ name E.text
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      for_ fontSize E.fontSize
+    for_ x $ E.left ∘ ET.Percent
+    for_ y $ E.top ∘ ET.Percent
+    E.textCenter
+    E.textMiddle
+
+  xAxisLabels ∷ Array String
+  xAxisLabels =
+    A.fromFoldable
+    $ flip foldMap boxplotData
+    $ foldMap (Set.fromFoldable ∘ M.keys ∘ _.items)
+    ∘ _.series
+
+  xAxes = enumeratedFor_ boxplotData \(ix × _) → E.addXAxis do
+    E.gridIndex ix
+    E.axisType ET.Category
+    E.axisLabel do
+      E.textStyle do
+        E.fontFamily "Ubuntu, sans"
+    E.axisLine $ E.lineStyle do
+      E.width 1
+    E.splitLine $ E.lineStyle do
+      E.width 1
+    E.splitArea E.hidden
+    E.items $ map ET.strItem xAxisLabels
+
+
+  yAxes = enumeratedFor_ boxplotData \(ix × _) → E.addYAxis do
+    E.gridIndex ix
+    E.axisType ET.Value
+    E.axisLabel do
+      E.textStyle do
+        E.fontFamily "Ubuntu, sans"
+    E.axisLine $ E.lineStyle do
+      E.width 1
+    E.splitLine $ E.lineStyle do
+      E.width 1
+    E.splitArea E.hidden

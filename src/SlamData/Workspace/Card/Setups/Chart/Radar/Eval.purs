@@ -41,6 +41,7 @@ import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Chart.Radar.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
@@ -158,6 +159,7 @@ buildOptions r radarData = do
     $ traverse_ E.radarSeries series
 
   BCP.radialTitles radarData
+    $ maybe "" D.jcursorLabel r.parallel
 
   where
   serieNames ∷ Array String

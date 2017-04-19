@@ -26,6 +26,8 @@ import Color as C
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
+import Data.Int as Int
+import Data.Lens ((.~))
 import Data.List as L
 import Data.Set as Set
 
@@ -54,7 +56,11 @@ import SqlSquare as Sql
 import Utils.Foldable (enumeratedFor_)
 
 eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
+eval =
+  BCE.chartSetupEval
+    (\a b → setDistinct $ SCC.buildBasicSql buildProjections buildGroupBy a b) buildPort
+  where
+  setDistinct = Sql._Select ∘ Sql._isDistinct .~ true
 
 type ScatterSeries =
   { name ∷ Maybe String
@@ -70,6 +76,7 @@ type ScatterItem =
   { x ∷ Number
   , y ∷ Number
   , r ∷ Number
+  , size ∷ Int
   }
 
 type OnOneGrid =
@@ -112,6 +119,7 @@ buildGroupBy r =
   SCC.groupBy $ L.fromFoldable $ A.catMaybes
     [ r.parallel <#> SCC.jcursorSql
     , r.series <#> SCC.jcursorSql
+    , Just $ r.abscissa # SCC.jcursorSql
     ]
 
 buildPort ∷ ModelR → Axes → Array Json → Port.Port
@@ -123,10 +131,10 @@ buildPort m _ jarr =
 
 buildData ∷ ModelR → Array Json → Array ScatterSeries
 buildData r =
-  foldMap (foldMap A.singleton ∘ decodeItem)
-    >>> series
-    >>> BCP.adjustRectangularPositions
-
+  BCP.adjustRectangularPositions
+  ∘ spy
+  ∘ series
+  ∘ foldMap (foldMap A.singleton ∘ decodeItem)
   where
   series ∷ Array Item → Array ScatterSeries
   series =
@@ -154,15 +162,18 @@ buildData r =
     { x: item.abscissa
     , y: item.ordinate
     , r: item.size
+    , size: zero
     }
 
   adjustSymbolSizes ∷ Array ScatterItem → Array ScatterItem
   adjustSymbolSizes is =
     let
+      values =
+        map _.r is
       minValue =
-        fromMaybe (-1.0 * infinity) $ map _.r $ F.maximumBy (\a b → compare a.r b.r) is
+        fromMaybe zero $ F.minimum values
       maxValue =
-        fromMaybe infinity $ map _.r $ F.maximumBy (\a b → compare a.r b.r) is
+        fromMaybe infinity $ F.maximum values
       distance =
         maxValue - minValue
       sizeDistance =
@@ -171,10 +182,11 @@ buildData r =
       relativeSize ∷ Number → Number
       relativeSize val
         | distance ≡ zero = val
+        | val < 0.0 = 0.0
         | otherwise =
             r.maxSize - sizeDistance / distance * (maxValue - val)
     in
-      map (\x → x{r = relativeSize x.r}) is
+      map (\x → x{size = spy $ Int.floor $ relativeSize x.r}) is
 
 buildOptions ∷ ModelR → Array ScatterSeries → DSL OptionI
 buildOptions r scatterData = do
@@ -189,7 +201,7 @@ buildOptions r scatterData = do
       ]
   E.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
-    E.triggerAxis
+    E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
@@ -203,6 +215,7 @@ buildOptions r scatterData = do
 
   BCP.rectangularGrids scatterData
   BCP.rectangularTitles scatterData
+    $ maybe "" D.jcursorLabel r.parallel
 
   E.grid BCP.cartesian
   E.xAxes $ valueAxes E.addXAxis
@@ -242,7 +255,9 @@ buildOptions r scatterData = do
       for_ (A.index colors $ mod ix $ A.length colors) \color → do
         E.itemStyle $ E.normal $ E.color $ getTransparentColor color 0.5
       E.symbol ET.Circle
-      E.buildItems $ for_ serie.items \item → E.addItem $ E.buildValues do
-        E.addValue item.x
-        E.addValue item.y
-        E.addValue item.r
+      E.buildItems $ for_ serie.items \item → E.addItem do
+        E.buildValues do
+          E.addValue item.x
+          E.addValue item.y
+          E.addValue item.r
+        when (isJust r.size) $ E.symbolSize item.size

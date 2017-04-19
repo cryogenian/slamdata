@@ -40,7 +40,7 @@ import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (ModelR, Model)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
---import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -145,7 +145,7 @@ kOptions axes r kData = do
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
-{-    E.formatterAxis $ foldMap \fmt →
+    E.formatterAxis $ foldMap \fmt →
       CCT.tableRows
         [ D.jcursorLabel r.dimension × fmt.name
         , D.jcursorLabel r.open × CCT.formatValueIx 0 fmt
@@ -153,8 +153,9 @@ kOptions axes r kData = do
         , D.jcursorLabel r.low × CCT.formatValueIx 2 fmt
         , D.jcursorLabel r.high × CCT.formatValueIx 3 fmt
         ]
--}
+
   BCP.rectangularTitles kData
+    $ maybe "" D.jcursorLabel r.parallel
   BCP.rectangularGrids kData
 
   E.colors colors

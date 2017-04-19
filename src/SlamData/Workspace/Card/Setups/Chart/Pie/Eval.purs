@@ -166,6 +166,7 @@ buildOptions r pieData = do
   E.series series
 
   radialTitles pieData
+    $ maybe "" D.jcursorLabel r.parallel
 
   where
   itemNames ∷ Array String

@@ -146,7 +146,7 @@ buildOptions r funnelData = do
   E.colors colors
 
   BCP.rectangularTitles funnelData
-
+    $ maybe "" D.jcursorLabel r.series
   E.series series
 
   where
