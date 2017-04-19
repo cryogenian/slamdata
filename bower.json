@@ -50,7 +50,7 @@
     "purescript-parallel": "^2.1.0",
     "purescript-pathy": "^3.0.1",
     "purescript-profunctor-lenses": "^2.1.0",
-    "purescript-quasar": "^20.0.0",
+    "purescript-quasar": "^21.0.0",
     "purescript-rationals": "^2.1.0",
     "purescript-routing": "^3.0.0",
     "purescript-search": "^2.0.0",
@@ -61,7 +61,7 @@
     "purescript-clipboard": "^0.1.0",
     "purescript-echarts": "56061619d882ace577315f59b14a904261630889",
     "purescript-type-equality": "^1.1.0",
-    "purescript-sqlsquare": "git://github.com/cryogenian/purescript-sqlsquare#parsers"
+    "purescript-sqlsquare": "^0.3.0"
   },
   "devDependencies": {
     "purescript-chalky": "^2.0.0",
