@@ -50,12 +50,6 @@ gulp.task('prevent-css-transitions-and-remove-fixed-positions', function() {
     .pipe(gulp.dest('public/css'));
 });
 
-gulp.task("make", function() {
-  return purescript.psc({
-    src: testSources,
-    ffi: foreigns
-  });
-});
 
 gulp.task("add-headers", ["replace-headers"], function () {
   // read in the license header

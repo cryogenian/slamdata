@@ -23,8 +23,8 @@ install:
   - wget -N https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -P $HOME/bin/
   - sudo dpkg -i $HOME/bin/google-chrome-stable_current_amd64.deb
 
-  - nvm install 7
-  - nvm use 7
+  - nvm install stable
+  - nvm use stable
   - npm install bower gulp -g
   - npm install
   - bower install
