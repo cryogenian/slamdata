@@ -191,8 +191,6 @@ itemView state@{ item } selected presentActions | otherwise =
 
   icon ∷ ∀ p i. Resource → HH.HTML p i
   icon = case _ of
-    -- TODO: view these and make sure they look good because they
-    -- probably do not
     File _ → I.file
     Workspace _ → I.workspaceSm
     Directory _ → I.folderSm
