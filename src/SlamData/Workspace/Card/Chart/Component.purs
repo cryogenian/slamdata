@@ -22,6 +22,7 @@ import Data.Array as A
 import Data.Foreign as F
 import Data.Foreign.Class (readProp)
 import Data.Int (toNumber, floor)
+import Data.Lens ((^?))
 import Data.String as S
 
 import Global (readFloat, isNaN)
@@ -43,6 +44,7 @@ import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
 import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Component as Pivot
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..), extractResource)
 import SlamData.Workspace.LevelOfDetails as LOD
@@ -107,8 +109,6 @@ evalCard = case _ of
     case input, extractResource varMap of
       ChartInstructions r, _ → void do
         H.modify (_ { chartType = Just r.chartType })
-        H.query' cpECharts unit $ H.action $ HEC.Reset r.options
-        H.query' cpECharts unit $ H.action HEC.Resize
       ValueMetric metric, _ → void do
         H.modify (_ { chartType = Just ChT.Metric })
         H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
@@ -120,7 +120,10 @@ evalCard = case _ of
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
-  CC.ReceiveState _ next →
+  CC.ReceiveState evalState next → do
+    for_ (evalState ^? ES._ChartOptions) \options → do
+      H.query' cpECharts unit $ H.action $ HEC.Reset options
+      H.query' cpECharts unit $ H.action HEC.Resize
     pure next
   CC.ReceiveDimensions dims reply → do
     state ← H.get

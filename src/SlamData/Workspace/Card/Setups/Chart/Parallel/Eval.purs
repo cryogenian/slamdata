@@ -97,10 +97,10 @@ buildGroupBy r =
   $ pure
   $ r.series # SCC.jcursorSql
 
-buildParallel ∷ ModelR → Axes → JArray → Port.Port
-buildParallel m axes jarr =
+buildParallel ∷ ModelR → Axes → Port.Port
+buildParallel m axes =
   Port.ChartInstructions
-    { options: pOptions axes m $ buildPData jarr
+    { options: pOptions axes m ∘ buildPData
     , chartType: Parallel
     }
 

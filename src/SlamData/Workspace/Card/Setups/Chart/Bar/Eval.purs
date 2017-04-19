@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, decodeJson, (.?))
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Function (on)
 import Data.Array as A
 import Data.Map as M
@@ -100,10 +100,10 @@ buildGroupBy r =
     , Just r.category <#> SCC.jcursorSql
     ]
 
-buildBar ∷ ModelR → Axes → JArray → Port.Port
-buildBar m axes jarr =
+buildBar ∷ ModelR → Axes → Port.Port
+buildBar m axes =
   Port.ChartInstructions
-    { options: barOptions axes m $ buildBarData jarr
+    { options: barOptions axes m ∘ buildBarData
     , chartType: Bar
     }
 

@@ -89,10 +89,10 @@ buildGroupBy r =
     , Just $ r.dimension # SCC.jcursorSql
     ]
 
-buildCandlestick ∷ ModelR → Axes → JArray → Port.Port
-buildCandlestick m axes jarr =
+buildCandlestick ∷ ModelR → Axes → Port.Port
+buildCandlestick m axes =
   Port.ChartInstructions
-    { options: kOptions axes m $ buildKData jarr
+    { options: kOptions axes m ∘ buildKData
     , chartType: Candlestick
     }
 

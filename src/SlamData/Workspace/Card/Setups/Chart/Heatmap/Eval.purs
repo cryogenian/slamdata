@@ -102,10 +102,10 @@ buildGroupBy r =
     , Just r.ordinate <#> SCC.jcursorSql
     ]
 
-buildPort ∷ ModelR → Ax.Axes → Array Json → Port.Port
-buildPort m axes jarr =
+buildPort ∷ ModelR → Ax.Axes → Port.Port
+buildPort m axes =
   Port.ChartInstructions
-    { options: buildOptions axes m $ buildData m jarr
+    { options: buildOptions axes m ∘ buildData m
     , chartType: Heatmap
     }
 

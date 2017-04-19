@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, decodeJson, (.?))
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Function (on)
@@ -92,10 +92,10 @@ buildGroupBy r =
     , r.series <#> SCC.jcursorSql
     ]
 
-buildArea ∷ ModelR → Ax.Axes → JArray → Port.Port
-buildArea m axes jarr =
+buildArea ∷ ModelR → Ax.Axes → Port.Port
+buildArea m axes =
   Port.ChartInstructions
-    { options: areaOptions axes m $ buildAreaData jarr
+    { options: areaOptions axes m ∘ buildAreaData
     , chartType: Area
     }
 

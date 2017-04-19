@@ -92,15 +92,15 @@ buildGroupBy r =
     , r.color <#> SCC.jcursorSql
     ]
 
-buildGraph ∷ ModelR → Axes → JArray → Port.Port
-buildGraph m axes jarr =
+buildGraph ∷ ModelR → Axes → Port.Port
+buildGraph m axes =
   Port.ChartInstructions
-    { options: graphOptions axes m $ buildGraphData jarr m
+    { options: graphOptions axes m ∘ buildGraphData m
     , chartType: Graph
     }
 
-buildGraphData ∷ JArray → ModelR → GraphData
-buildGraphData jarr r =
+buildGraphData ∷ ModelR → JArray → GraphData
+buildGraphData r jarr =
   let
     items ∷ Array Item
     items = foldMap (foldMap A.singleton ∘ decodeItem) jarr

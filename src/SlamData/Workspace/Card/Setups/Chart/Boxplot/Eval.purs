@@ -134,10 +134,10 @@ buildProjections r = L.fromFoldable
   , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
   ]
 
-buildBoxplot ∷ ModelR → Axes → JArray → Port.Port
-buildBoxplot m axes jarr =
+buildBoxplot ∷ ModelR → Axes → Port.Port
+buildBoxplot m axes =
   Port.ChartInstructions
-    { options: boxplotOptions m axes $ buildBoxplotData jarr
+    { options: boxplotOptions m axes ∘ buildBoxplotData
     , chartType: Boxplot
     }
 

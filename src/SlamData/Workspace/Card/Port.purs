@@ -52,7 +52,7 @@ module SlamData.Workspace.Card.Port
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
+import Data.Argonaut (JCursor, Json)
 import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
 import Data.List as List
 import Data.Map as Map
@@ -98,7 +98,7 @@ type MetricPort =
   }
 
 type ChartInstructionsPort =
-  { options ∷ DSL OptionI
+  { options ∷ Array Json → DSL OptionI
   , chartType ∷ ChartType
   }
 
@@ -223,7 +223,7 @@ _DownloadOptions = prism' DownloadOptions $ case _ of
   DownloadOptions p' → Just p'
   _ → Nothing
 
-_ChartInstructions ∷ Traversal' Port (DSL OptionI)
+_ChartInstructions ∷ Traversal' Port (Array Json → DSL OptionI)
 _ChartInstructions = wander \f s → case s of
   ChartInstructions o → ChartInstructions ∘ o{options = _} <$> f o.options
   _ → pure s

@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Setups.Chart.Line.Eval
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, Json, decodeJson, (.?))
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
 import Data.Int as Int
@@ -101,10 +101,10 @@ buildGroupBy r =
     , Just r.dimension <#> SCC.jcursorSql
     ]
 
-buildLine ∷ ModelR → Axes → JArray → Port.Port
-buildLine m axes jarr =
+buildLine ∷ ModelR → Axes → Port.Port
+buildLine m axes =
   Port.ChartInstructions
-    { options: lineOptions axes m $ buildLineData m jarr
+    { options: lineOptions axes m ∘ buildLineData m
     , chartType: Line
     }
 

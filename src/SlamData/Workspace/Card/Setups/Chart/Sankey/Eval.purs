@@ -73,10 +73,10 @@ buildGroupBy r =
     , r.target # SCC.jcursorSql
     ]
 
-buildSankey ∷ ModelR → Axes → JArray → Port.Port
-buildSankey m _ jarr =
+buildSankey ∷ ModelR → Axes → Port.Port
+buildSankey m _ =
   Port.ChartInstructions
-    { options: sankeyOptions m $ buildSankeyData jarr
+    { options: sankeyOptions m ∘ buildSankeyData
     , chartType: Sankey
     }
 

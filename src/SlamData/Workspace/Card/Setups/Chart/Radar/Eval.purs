@@ -98,10 +98,10 @@ buildGroupBy r =
     , Just r.category <#> SCC.jcursorSql
     ]
 
-buildPort ∷ ModelR → Axes → Array Json → Port.Port
-buildPort m _ jarr =
+buildPort ∷ ModelR → Axes → Port.Port
+buildPort m _ =
   Port.ChartInstructions
-    { options: buildOptions m $ buildData m jarr
+    { options: buildOptions m ∘ buildData m
     , chartType: Radar
     }
 
