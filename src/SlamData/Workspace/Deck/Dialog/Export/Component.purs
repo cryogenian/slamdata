@@ -48,7 +48,7 @@ import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.CSS as Rc
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
@@ -181,7 +181,7 @@ renderPublishURI state =
                         , HP.type_ HP.ButtonButton
                         , HP.disabled state.submitting
                         ]
-                        [ glyph B.glyphiconCopy ]
+                        [ I.copySm ]
                       ]
                   ]
             ]
@@ -285,7 +285,7 @@ renderPublishIFrame state =
                   , HP.type_ HP.ButtonButton
                   , HP.disabled state.submitting
                   ]
-                  [ glyph B.glyphiconCopy ]
+                  [ I.copySm ]
                 , HH.div [ HP.classes [ B.checkbox ] ]
                   [ (if state.isLoggedIn then HH.label_ else HH.p_)
                     $ ((guard state.isLoggedIn)

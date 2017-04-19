@@ -36,6 +36,7 @@ import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigg
 import SlamData.Config as Config
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
+import SlamData.Render.Icon as I
 import SlamData.FileSystem.Search.Component.CSS as CSS
 
 import Text.SlamSearch (mkQuery)
@@ -121,9 +122,7 @@ render state =
         [ HE.onSubmit (HE.input_ TrySubmit)]
         [ HH.div
             [ HP.classes searchClasses ]
-            [ HH.div
-                [ HP.class_ CSS.searchIcon ]
-                [ RC.searchFieldIcon ]
+            [ I.searchSm
             , HH.input
                 [ HP.classes [ B.formControl ]
                 , HP.value state.value

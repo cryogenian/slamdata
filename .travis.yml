@@ -23,8 +23,8 @@ install:
   - wget -N https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -P $HOME/bin/
   - sudo dpkg -i $HOME/bin/google-chrome-stable_current_amd64.deb
 
-  - nvm install 4
-  - nvm use 4
+  - nvm install stable
+  - nvm use stable
   - npm install bower gulp -g
   - npm install
   - bower install
@@ -34,6 +34,7 @@ before_script:
 script:
   - gulp add-headers trim-whitespace replace-crlf
   - if [[ $(git diff --shortstat 2> /dev/null | tail -n1) != "" ]]; then git status && echo -e "\033[31m\n^ CRLF/header/whitespace related problems found\033[0m\n" && exit 1; fi
+  - npm run build:icons
   - npm run build:psa
   - if test $TRAVIS_TAG; then npm run build:lite; else npm run test:property && npm test; fi
 before_deploy:

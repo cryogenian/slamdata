@@ -39,7 +39,7 @@ import Quasar.Advanced.Types as QT
 
 import SlamData.Quasar.Security as Q
 import SlamData.Monad (Slam)
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), sharingActions, SharingInput)
 
 import Utils.DOM as DOM
@@ -218,7 +218,7 @@ render state =
                     [ HP.classes [ B.btn, B.btnDefault ]
                     , HP.ref copyButtonRef
                     ]
-                    [ glyph B.glyphiconCopy ]
+                    [ I.copySm ]
                 ]
             ]
         ]

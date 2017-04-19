@@ -33,12 +33,11 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Query as QQ
 import SlamData.Render.CSS.New as CSS
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -208,13 +207,13 @@ render st =
           , HP.disabled (not enabled)
           , HE.onClick $ HE.input_ (StepPage First)
           ]
-          [ glyph B.glyphiconFastBackward ]
+          [ I.playerRewind ]
       , HH.button
           [ HP.class_ CSS.formButton
           , HP.disabled (not enabled)
           , HE.onClick $ HE.input_ (StepPage Prev)
           ]
-          [ glyph B.glyphiconStepBackward ]
+          [ I.playerPrevious ]
       ]
 
   pageField currentPage customPage totalPages =
@@ -238,12 +237,12 @@ render st =
           [ HP.disabled (not enabled)
           , HE.onClick $ HE.input_ (StepPage Next)
           ]
-          [ glyph B.glyphiconStepForward ]
+          [ I.playerNext ]
       , HH.button
           [ HP.disabled (not enabled)
           , HE.onClick $ HE.input_ (StepPage Last)
           ]
-          [ glyph B.glyphiconFastForward ]
+          [ I.playerFastForward ]
       ]
 
   pageSizeControls pageSize =
