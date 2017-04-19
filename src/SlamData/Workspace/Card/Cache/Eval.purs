@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
-import Data.Lens ((^.), (.~), (?~))
+import Data.Lens ((^.), (.~))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 
@@ -36,6 +36,7 @@ import SlamData.Workspace.Card.Port as Port
 import SqlSquare as Sql
 
 import Utils.Path as PU
+import Utils.SqlSquare (tableRelation, all)
 
 eval
   ∷ ∀ m
@@ -72,8 +73,8 @@ eval' tmp resource = do
     backendPath = fromMaybe Path.rootDir $ Path.parentDir filePath
     sql =
       Sql.buildSelect
-        $ (Sql._projections .~ (pure $ Sql.projection $ Sql.splice Nothing))
-        ∘ (Sql._relations ?~ (Sql.TableRelation {alias: Nothing, path: Left filePath}))
+        $ all
+        ∘ (Sql._relations .~ tableRelation filePath)
   outputResource ← CEM.liftQ $
     QQ.fileQuery backendPath tmp sql SM.empty
   CEM.liftQ $ QFS.messageIfFileNotFound

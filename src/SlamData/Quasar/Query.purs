@@ -36,7 +36,7 @@ import SlamData.Prelude
 import Data.Argonaut as JS
 import Data.Array as Arr
 import Data.Int as Int
-import Data.Lens ((.~), (?~))
+import Data.Lens ((.~))
 import Data.List as L
 import Data.Json.Extended as EJS
 import Data.Path.Pathy as P
@@ -55,6 +55,8 @@ import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
 import SqlSquare (Sql, print)
 import SqlSquare as Sql
+
+import Utils.SqlSquare (tableRelation)
 
 
 -- | Compiles a query.
@@ -174,16 +176,12 @@ count file = runExceptT do
     backendPath = fromMaybe P.rootDir (P.parentDir file)
     sql =
       Sql.buildSelect
-      $ (Sql._isDistinct .~ false)
       ∘ (Sql._projections
          .~ (L.singleton
                $ Sql.projection
                    (Sql.invokeFunction "COUNT" $ L.singleton $ Sql.splice Nothing)
                    #  Sql.as "total"))
-      ∘ (Sql._relations ?~ Sql.TableRelation { alias: Nothing, path: Left file })
-      ∘ (Sql._filter .~ Nothing)
-      ∘ (Sql._groupBy .~ Nothing)
-      ∘ (Sql._orderBy .~ Nothing)
+      ∘ (Sql._relations .~ tableRelation file)
   result ← ExceptT $ liftQuasar $
     QF.readQuery Readable backendPath (print sql) SM.empty Nothing
   pure $ fromMaybe 0 (readTotal result)

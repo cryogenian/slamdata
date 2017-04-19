@@ -27,14 +27,12 @@ import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 import Control.Monad.State (class MonadState, get, put)
 
-import Data.Lens ((^.), preview, (.~), (?~))
+import Data.Lens ((^.), preview, (?~), (.~))
 import Data.List as L
 import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
-
-import Matryoshka (embed)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Error as QE
@@ -55,6 +53,7 @@ import SqlSquare (Sql)
 import SqlSquare as Sql
 
 import Utils (stringToNumber)
+import Utils.SqlSquare (all, asRel, tableRelation)
 
 
 -- | I removed additional variable from this (It used to be `QueryExpr`)
@@ -143,19 +142,16 @@ evalLabeled m p r = do
 
     sql =
       Sql.buildSelect
-        $ (Sql._projections .~ (pure $ Sql.projection $ Sql.splice Nothing))
+        $ all
         ∘ (Sql._relations
-            ?~ Sql.TableRelation { alias: Just "res", path: Left $ r ^. Port._filePath })
+            .~ (tableRelation (r ^. Port._filePath) <#> asRel "res"))
         ∘ (Sql._filter
-             ?~ (embed $ Sql.Binop
-                  { op: Sql.In
-                  , lhs: embed $ Sql.Binop
-                           { op: Sql.FieldDeref
-                           , lhs: Sql.ident "res"
-                           , rhs: QQ.jcursorToSql p.cursor
-                           }
-                  , rhs: embed $ Sql.SetLiteral $ L.fromFoldable semantics
-                  }))
+             ?~ ( Sql.binop Sql.In
+                    ( Sql.binop Sql.FieldDeref
+                        ( Sql.ident "res" )
+                        ( QQ.jcursorToSql p.cursor ))
+                    ( Sql.set semantics )))
+
 
   put $ Just $ CEM.AutoSelect {lastUsedResource: r, autoSelect: selected}
 
@@ -186,18 +182,14 @@ evalTextLike m p r = do
       _ → Sql.string m.value
     sql =
       Sql.buildSelect
-        $ (Sql._projections .~ (pure $ Sql.projection $ Sql.splice Nothing))
+        $ all
         ∘ (Sql._relations
-            ?~ Sql.TableRelation { alias: Just "res", path: Left $ r ^. Port._filePath })
+            .~ ( tableRelation (r ^. Port._filePath) <#> asRel "res"))
         ∘ (Sql._filter
-             ?~ (embed $ Sql.Binop
-                  { op: Sql.Eq
-                  , lhs: embed $ Sql.Binop
-                           { op: Sql.FieldDeref
-                           , lhs: Sql.ident "res"
-                           , rhs: QQ.jcursorToSql p.cursor
-                           }
-                  , rhs: selection
-                  }))
+             ?~ ( Sql.binop Sql.Eq
+                    ( Sql.binop Sql.FieldDeref
+                        ( Sql.ident "res" )
+                        ( QQ.jcursorToSql p.cursor ))
+                    selection ))
 
   eval sql r

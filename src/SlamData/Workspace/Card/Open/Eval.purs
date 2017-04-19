@@ -23,7 +23,7 @@ import SlamData.Prelude
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
-import Data.Lens ((^?), (.~), (?~))
+import Data.Lens ((^?), (?~))
 import Data.Path.Pathy as Path
 
 import SlamData.FileSystem.Resource as R
@@ -38,6 +38,7 @@ import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquare as Sql
 
 import Utils.Path (FilePath)
+import Utils.SqlSquare (all)
 
 evalOpen
   ∷ ∀ m
@@ -63,10 +64,8 @@ evalOpen model varMap = case model of
     let
       sql =
         Sql.buildSelect
-          $ (Sql._projections
-             .~ (pure $ Sql.projection $ Sql.splice Nothing))
-          ∘ (Sql._relations
-             ?~ (Sql.VariRelation { vari: var, alias: Nothing }))
+          $ all
+          ∘ (Sql._relations ?~ Sql.VariRelation { vari: var, alias: Nothing })
       varMap' =
         map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
       backendPath =

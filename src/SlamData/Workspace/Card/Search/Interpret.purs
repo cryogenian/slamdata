@@ -41,6 +41,7 @@ import SqlSquare (Sql, SqlF(..))
 import SqlSquare as Sql
 
 import Utils as Utils
+import Utils.SqlSquare (tableRelation)
 
 
 queryToSql
@@ -52,7 +53,7 @@ queryToSql fields searchQuery path =
   Sql.buildSelect
     $ (Sql._isDistinct .~ isDistinct searchQuery)
     ∘ (Sql._projections .~ projections fields)
-    ∘ (Sql._relations ?~ Sql.TableRelation { alias: Nothing, path: Left path })
+    ∘ (Sql._relations .~ tableRelation path)
     ∘ (Sql._filter ?~ filter fields searchQuery)
 
 isDistinct ∷ SS.SearchQuery → Boolean

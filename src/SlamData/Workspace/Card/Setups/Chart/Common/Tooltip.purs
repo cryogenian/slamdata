@@ -48,7 +48,7 @@ tableFormatter getColor cols as = VDS.render absurd (unwrap table)
 
   headers = HH.tr_ ([ header "" ] <> map (header ∘ _.label) cols)
   header h = HH.th_ [ HH.text h ]
-  row r = HH.tr_ ([ color (getColor $ spy r) ] <> map (cell r) cols)
+  row r = HH.tr_ ([ color (getColor r) ] <> map (cell r) cols)
   cell r f = HH.td_ [ HH.text (f.value r) ]
 
   color = case _ of

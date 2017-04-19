@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Setups.Chart.Common where
 
 import SlamData.Prelude
 import Data.Argonaut as J
-import Data.Lens ((.~), (?~))
+import Data.Lens ((.~))
 import Data.List as L
 import Data.NonEmpty as NE
 import SlamData.Quasar.Query as QQ
@@ -26,6 +26,7 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 import SqlSquare as Sql
 import Utils.Path as PU
+import Utils.SqlSquare (tableRelation)
 
 buildBasicSql
   ∷ ∀ p
@@ -37,7 +38,7 @@ buildBasicSql
 buildBasicSql buildProjections buildGroupBy r path =
   Sql.buildSelect
     $ ( Sql._projections .~ buildProjections r )
-    ∘ ( Sql._relations ?~ (Sql.TableRelation { path: Left path, alias: Nothing } ))
+    ∘ ( Sql._relations .~ tableRelation path)
     ∘ ( Sql._groupBy .~ groups )
     ∘ ( Sql._orderBy .~ orders )
   where

@@ -132,7 +132,6 @@ buildPort m _ =
 buildData ∷ ModelR → Array Json → Array ScatterSeries
 buildData r =
   BCP.adjustRectangularPositions
-  ∘ spy
   ∘ series
   ∘ foldMap (foldMap A.singleton ∘ decodeItem)
   where
@@ -186,7 +185,7 @@ buildData r =
         | otherwise =
             r.maxSize - sizeDistance / distance * (maxValue - val)
     in
-      map (\x → x{size = spy $ Int.floor $ relativeSize x.r}) is
+      map (\x → x{size = Int.floor $ relativeSize x.r}) is
 
 buildOptions ∷ ModelR → Array ScatterSeries → DSL OptionI
 buildOptions r scatterData = do
