@@ -176,7 +176,7 @@ count file = runExceptT do
     backendPath = fromMaybe P.rootDir (P.parentDir file)
     sql =
       Sql.buildSelect
-      ∘ (Sql._projections
+      $ (Sql._projections
          .~ (L.singleton
                $ Sql.projection
                    (Sql.invokeFunction "COUNT" $ L.singleton $ Sql.splice Nothing)

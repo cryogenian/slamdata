@@ -77,7 +77,6 @@
   },
   "resolutions": {
     "purescript-echarts": "56061619d882ace577315f59b14a904261630889",
-    "purescript-ejson": "^8.0.0",
     "purescript-halogen": "29abb28a5de0335e2fafb16868b5f22e12360d93"
   }
 }
