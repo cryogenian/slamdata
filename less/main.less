@@ -167,36 +167,43 @@ ol.breadcrumb {
 }
 
 .new-card-menu {
-    list-style: none;
-    margin: 10px 9px;
-    padding: 0;
-    i.glyphicon {
-        font-size: 24px;
+  list-style: none;
+  margin: 10px 9px;
+  padding: 0;
+
+  .sd-icon {
+    font-size: 24px;
+  }
+
+  li {
+    float: left;
+
+    .fade {
+       display: none;
     }
-    li {
-        float: left;
-        .fade {
-            display: none;
-        }
-        .fade.in {
-            display: inline-block;
-        }
+
+    .fade.in {
+      display: inline-block;
     }
-    span {
-        padding: 10px;
-        display: block;
-        color: #aaa;
+  }
+
+  span {
+    padding: 10px;
+    display: block;
+    color: #aaa;
+  }
+
+  button {
+    padding: 10px;
+    background: none;
+    border: 0;
+    color: #337ab7;
+    cursor: pointer;
+
+    &:hover {
+      color: #286090;
     }
-    button {
-        padding: 10px;
-        background: none;
-        border: 0;
-        color: #337ab7;
-        cursor: pointer;
-        &:hover {
-            color: #286090;
-        }
-    }
+  }
 }
 
 .card-input {
@@ -317,10 +324,6 @@ div.chart-card-editor {
     }
 }
 
-.glyphicon-inactive {
-  color: gray;
-}
-
 .readonly-highlight {
     background-color: blue;
     opacity: 0.2;
@@ -401,3 +404,4 @@ button {
 @import "global-menu";
 @import "workspace";
 @import "button";
+@import "icon";

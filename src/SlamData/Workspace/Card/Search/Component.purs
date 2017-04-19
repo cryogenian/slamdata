@@ -26,10 +26,9 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
@@ -65,7 +64,7 @@ render state =
         , ARIA.label "Clear search string"
         , HE.onClick $ HE.input_ (right ∘ UpdateSearch "")
         ]
-        [ glyph B.glyphiconRemove ]
+        [ I.trashCanSm ]
     ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL

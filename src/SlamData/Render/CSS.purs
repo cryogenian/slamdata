@@ -154,9 +154,6 @@ actionIcon = ClassName "action-icon"
 chartOutput ∷ ClassName
 chartOutput = ClassName "chart-output"
 
-glyphiconInactive ∷ ClassName
-glyphiconInactive = ClassName "glyphicon-inactive"
-
 downloadCardEditor ∷ ClassName
 downloadCardEditor = ClassName "download-card-editor"
 

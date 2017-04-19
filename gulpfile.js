@@ -14,6 +14,9 @@ var gulp = require("gulp"),
     path = require("path"),
     webpack = require("webpack-stream");
 
+const { injectIconsIntoHTML, createIconPureScript } = require("./script/icons")
+
+
 var slamDataSources = [
   "src/**/*.purs",
 ];
@@ -46,6 +49,7 @@ gulp.task('prevent-css-transitions-and-remove-fixed-positions', function() {
     .pipe(replace('fixed', 'absolute'))
     .pipe(gulp.dest('public/css'));
 });
+
 
 gulp.task("add-headers", ["replace-headers"], function () {
   // read in the license header
@@ -188,7 +192,7 @@ gulp.task("bundle", [
   mkBundleTask("auth_redirect", "SlamData.AuthRedirect"),
 ]);
 
-gulp.task("make", function() {
+gulp.task("make", [ "icon-purs" ], function() {
   return purescript.psc({
     src: testSources,
     ffi: foreigns
@@ -226,4 +230,7 @@ mkWatch("watch-file", "bundle-file", allSources);
 mkWatch("watch-workspace", "bundle-workspace", allSources);
 mkWatch("watch-auth_redirect", "bundle-auth_redirect", allSources);
 
-gulp.task("full", ["clean", "add-headers", "trim-whitespace"]);
+gulp.task("inject-icons", injectIconsIntoHTML);
+gulp.task("icon-purs", createIconPureScript);
+gulp.task("icons", [ "inject-icons", "icon-purs" ]);
+gulp.task("full", [ "add-headers", "trim-whitespace" ]);

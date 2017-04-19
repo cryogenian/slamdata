@@ -27,11 +27,10 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Render.CSS as RCSS
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Component.CSS as CCSS
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML)
@@ -246,7 +245,7 @@ zoomInButton =
      , HP.title "Zoom in"
      , HE.onClick (HE.input_ ZoomIn)
      ]
-     [ glyph B.glyphiconZoomIn ]
+     [ I.zoomInSm ]
 
 zoomOutButton ∷ DeckHTML
 zoomOutButton =
@@ -256,7 +255,7 @@ zoomOutButton =
    , HP.title "Zoom out"
    , HE.onClick (HE.input_ ZoomOut)
    ]
-   [ glyph B.glyphiconZoomOut ]
+   [ I.zoomOutSm ]
 
 responsiveSize ∷ DCS.ResponsiveSize → String
 responsiveSize = case _ of
