@@ -111,9 +111,9 @@ buildPort m axes jarr =
 
 buildData ∷ ModelR → Array Json → Array HeatmapSeries
 buildData r =
-  foldMap (foldMap A.singleton ∘ decodeItem)
-    >>> series
-    >>> BCP.adjustRectangularPositions
+  BCP.adjustRectangularPositions
+  ∘ series
+  ∘ foldMap (foldMap A.singleton ∘ decodeItem)
 
   where
   series ∷ Array Item → Array HeatmapSeries
@@ -135,7 +135,7 @@ buildData r =
 buildOptions ∷ Ax.Axes → ModelR → Array HeatmapSeries → DSL OptionI
 buildOptions axes r heatmapData = do
   E.tooltip do
-    E.triggerAxis
+    E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
