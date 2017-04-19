@@ -143,9 +143,12 @@ evalCard = case _ of
     pure next
   CC.Save k → do
     selectedPath ← H.gets _.selectedPath
-    pure $ k $ Card.StructureEditor $ Model {view: selectedPath}
+    pure $ k $ Card.StructureEditor $ Model {view: SEC.columnItemPath <$> selectedPath}
   CC.Load (Card.StructureEditor model) next → do
-    void $ H.query' CS.cpColumns unit $ H.action $ MC.Populate $ SEC.all × (unwrap model).view
+    -- When restoring the state from the Model, we insert a dummy Weight.
+    -- The weight doesn't matter, because we only use the items in the column header.
+    let restoreColumnItem cp = SEC.ColumnItem cp (SEC.Weight 0.0)
+    void $ H.query' CS.cpColumns unit $ H.action $ MC.Populate $ SEC.all × map restoreColumnItem (unwrap model).view
     pure next
   CC.Load _ next →
     pure next

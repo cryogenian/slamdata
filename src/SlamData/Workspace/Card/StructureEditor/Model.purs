@@ -22,11 +22,11 @@ import Data.List as L
 import Data.Argonaut as J
 import Data.Argonaut ((:=), (.?), (~>))
 import SlamData.Workspace.Card.StructureEditor.Common as SEC
-import Test.StrongCheck.Gen as SC
+import Test.StrongCheck.Gen as SCG
 
 newtype Model
   = Model
-  { view :: L.List SEC.ColumnItem
+  { view :: L.List SEC.ColumnPath
   }
 
 derive instance eqModel ∷ Eq Model
@@ -39,15 +39,17 @@ initialModel =
     { view: L.Nil
     }
 
-genModel ∷ SC.Gen Model
-genModel = pure initialModel
+genModel ∷ SCG.Gen Model
+genModel = do
+  arbView <- L.fromFoldable <$> SCG.resize 5 (SCG.arrayOf SEC.genCursor)
+  pure (Model {view: arbView})
 
 encode ∷ Model → J.Json
 encode (Model {view}) =
-  "view" := (SEC.encodeColumnItem <$> view) ~> J.jsonEmptyObject
+  "view" := map SEC.encodeCursor view ~> J.jsonEmptyObject
 
 decode ∷ J.Json → Either String Model
 decode = J.decodeJson >=> \json -> do
   jsonItems :: L.List J.Json <- json .? "view"
-  view <- traverse SEC.decodeColumnItem jsonItems
+  view <- traverse SEC.decodeCursor jsonItems
   pure (Model {view})

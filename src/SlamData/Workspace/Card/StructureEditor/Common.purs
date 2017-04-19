@@ -33,6 +33,8 @@ import Data.Map as M
 import Data.Newtype as N
 import Data.Ord (class Ord1, compare1)
 import Matryoshka (class Corecursive, class Recursive, Algebra, CoalgebraM, anaM, cata, embed, project, transCata)
+import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as SCG
 
 -- Helper until we have Eq1 / Ord1 instances for Coproduct in the core lib
 newtype CP1 f g a = CP1 (Coproduct f g a)
@@ -94,6 +96,29 @@ instance eqCursor :: Eq Cursor where
 
 instance ordCursor :: Ord Cursor where
   compare (Cursor x) (Cursor y) = compare (toCP1 x) (toCP1 y)
+
+genCursor :: SCG.Gen Cursor
+genCursor = SCG.sized go
+  where
+    go size =
+      if size < 1
+        then genAll
+        else SCG.oneOf genAll [genAtKey, genAtIndex, genOfValue]
+      where
+        genSmallerCursor = SCG.resize (size - 1) genCursor
+        genAll = pure $ embed $ left EJC.All
+        genAtKey = do
+          key <- EJ.arbitraryJsonEncodableEJsonOfSize size
+          inner <- genSmallerCursor
+          pure $ embed $ left $ EJC.AtKey key inner
+        genAtIndex = do
+          ix <- SC.arbitrary
+          inner <- genSmallerCursor
+          pure $ embed $ left $ EJC.AtIndex ix inner
+        genOfValue = do
+          value <- EJ.arbitraryJsonEncodableEJsonOfSize size
+          inner <- genSmallerCursor
+          pure $ embed $ right $ OfValue value inner
 
 encodeCursor :: Cursor -> J.Json
 encodeCursor = cata go
@@ -185,15 +210,6 @@ data ColumnItem = ColumnItem Cursor Weight
 
 derive instance eqColumnItem ∷ Eq ColumnItem
 derive instance ordColumnItem ∷ Ord ColumnItem
-
-encodeColumnItem :: ColumnItem -> J.Json
-encodeColumnItem (ColumnItem cursor weight) =
-  "cursor" := encodeCursor cursor ~> J.jsonEmptyObject
-
-decodeColumnItem :: J.Json -> Either String ColumnItem
-decodeColumnItem = J.decodeJson >=> \json -> do
-  cursor <- decodeCursor =<< json .? "cursor"
-  pure (ColumnItem cursor (Weight 0.0))
 
 newtype Weight = Weight Number
 
