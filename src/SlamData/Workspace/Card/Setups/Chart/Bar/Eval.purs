@@ -121,7 +121,7 @@ buildBarData =
     BCE.groupOn _.parallel
       ⋙ map \(name × items) →
           { name
-          , items: M.fromFoldable [ ] -- $ map toPoint items
+          , items: M.fromFoldable $ map toPoint items
           }
   toPoint ∷ Item → String × Number
   toPoint { measure, category } = category × measure
