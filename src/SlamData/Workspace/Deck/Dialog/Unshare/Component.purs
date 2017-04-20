@@ -48,7 +48,7 @@ import Quasar.Advanced.Types as QTA
 
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Security as Q
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), printShareResume)
 import SlamData.Workspace.Deck.Dialog.Share.Model as Model
 
@@ -343,10 +343,11 @@ renderToken token =
         ]
         , HH.button
             [ HP.classes [ B.btn, B.btnDefault ]
+            , HP.title "Copy to clipboard"
             , HP.ref $ copyButtonRef token.tokenId
             , HP.disabled $ token.state ≡ Just Modifying ∨ token.state ≡ Just Unsharing
             ]
-            [ glyph B.glyphiconCopy ]
+            [ I.copySm ]
         ]
     , HH.div
         [ HP.classes $ if token.state ≡ Just RevokeError then [ B.hasError ] else [ ] ]

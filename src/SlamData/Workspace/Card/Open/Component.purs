@@ -34,7 +34,6 @@ import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
@@ -42,7 +41,7 @@ import SlamData.GlobalMenu.Bus as GMB
 import SlamData.Notification as N
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as Quasar
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
@@ -94,19 +93,24 @@ handleMessage = either handleSelection absurd
 
 renderItem ∷ AnyItem' → MCI.BasicItemHTML
 renderItem r =
-  HH.div
-    [ HP.classes
-        [ HH.ClassName "sd-miller-column-item-inner"
-        , if isLeaf (isRight ∘ R.getPath) r
-            then HH.ClassName "sd-miller-column-item-leaf"
-            else HH.ClassName "sd-miller-column-item-node"
-        ]
-    ]
-    [ HH.span_
-        [ itemGlyph r
-        , HH.text (itemName r)
-        ]
-    ]
+  let
+    leaf ∷ Boolean
+    leaf = isLeaf (isRight ∘ R.getPath) r
+  in
+    HH.div
+      [ HP.classes
+          [ HH.ClassName "sd-miller-column-item-inner"
+          , HH.ClassName $ if leaf
+              then "sd-miller-column-item-leaf"
+              else "sd-miller-column-item-node"
+          ]
+      ] $ join
+      [ pure $ HH.span_
+          [ itemGlyph r
+          , HH.text (itemName r)
+          ]
+      , guard (not leaf) $> I.chevronRightSm
+      ]
 
 isLeaf ∷ ∀ a. (a → Boolean) → AnyItem a → Boolean
 isLeaf f = case _ of
@@ -127,17 +131,17 @@ itemName = case _ of
 itemGlyph ∷ AnyItem' → MCI.BasicItemHTML
 itemGlyph = case _ of
   Root → HH.text ""
-  Variables → glyph B.glyphiconTags
-  Variable _ → glyph B.glyphiconTag
-  Resource r → glyphForResource r
+  Variables → I.tagsSm
+  Variable _ → I.tagSm
+  Resource r → iconForResource r
 
-glyphForResource ∷ R.Resource → MCI.BasicItemHTML
-glyphForResource = case _ of
-  R.File _ → glyph B.glyphiconFile
-  R.Workspace _ → glyph B.glyphiconBook
-  R.Directory _ → glyph B.glyphiconFolderOpen
-  R.Mount (R.Database _) → glyph B.glyphiconHdd
-  R.Mount (R.View _) → glyph B.glyphiconFile
+iconForResource ∷ R.Resource → MCI.BasicItemHTML
+iconForResource = case _ of
+  R.File _ → I.file
+  R.Workspace _ → I.workspaceSm
+  R.Directory _ → I.folderSm
+  R.Mount (R.Database _) → I.database
+  R.Mount (R.View _) → I.file
 
 evalOpen ∷ Query ~> DSL
 evalOpen = case _ of

@@ -29,8 +29,8 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..), Query(..))
 import SlamData.Workspace.Card.Table.Component.State (State, currentPageInfo, Result(..))
@@ -103,13 +103,13 @@ prevButtons enabled =
         , HP.disabled enabled
         , HE.onClick $ HE.input_ (right ∘ StepPage First)
         ]
-        [ glyph B.glyphiconFastBackward ]
+        [ I.playerRewind ]
     , HH.button
         [ HP.class_ CSS.formButton
         , HP.disabled enabled
         , HE.onClick $ HE.input_ (right ∘ StepPage Prev)
         ]
-        [ glyph B.glyphiconStepBackward ]
+        [ I.playerPrevious ]
     ]
 
 pageField ∷ InputValue Int → Int → HTML
@@ -140,12 +140,12 @@ nextButtons enabled =
         [ HP.disabled enabled
         , HE.onClick $ HE.input_ (right ∘ StepPage Next)
         ]
-        [ glyph B.glyphiconStepForward ]
+        [ I.playerNext ]
     , HH.button
         [ HP.disabled enabled
         , HE.onClick $ HE.input_ (right ∘ StepPage Last)
         ]
-        [ glyph B.glyphiconFastForward ]
+        [ I.playerFastForward ]
     ]
 
 pageSizeControls ∷ Boolean → InputValue Int → HTML
