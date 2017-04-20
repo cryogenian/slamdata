@@ -646,7 +646,7 @@ renderURI locationString state@{sharingInput, permToken, isLoggedIn, styleURIStr
   query ∷ List (Tuple String (Maybe String))
   query =
     (guard (isJust $ parseStyleURI styleURIString) $> (Tuple "stylesheets" $ Just styleURIString))
-      ⊕ (guard isLoggedIn $> (Tuple "permissionToken" token))
+      ⊕ (guard isLoggedIn $> (Tuple "permissionTokens" token))
 
   token ∷ Maybe String
   token =
