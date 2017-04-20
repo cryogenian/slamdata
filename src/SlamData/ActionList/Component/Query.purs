@@ -18,7 +18,8 @@ module SlamData.ActionList.Component.Query where
 
 import SlamData.Prelude
 
-import SlamData.ActionList.Action (Action, Dimensions)
+import RectanglePacking (Dimensions)
+import SlamData.ActionList.Action (Action)
 
 data Query a next
   = HandleSelected (Action a) next

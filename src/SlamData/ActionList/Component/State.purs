@@ -18,7 +18,8 @@ module SlamData.ActionList.Component.State where
 
 import SlamData.Prelude
 
-import SlamData.ActionList.Action (Action, Dimensions)
+import RectanglePacking (Dimensions)
+import SlamData.ActionList.Action (Action)
 
 type State a =
   { actions ∷ Array (Action a)

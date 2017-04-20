@@ -45,7 +45,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails as LOD
 
-import Utils.DOM (getTextWidthPure)
+import Utils.DOM (Font(Font), getTextWidthPure)
 
 type HTML = CC.InnerCardHTML Query
 type DSL = CC.InnerCardDSL State Query
@@ -97,7 +97,7 @@ evalCard = case _ of
   CC.ReceiveState _ next → do
     pure next
   CC.ReceiveDimensions dims reply → do
-    textWidth ← H.gets $ flip getTextWidthPure "normal 14px Ubuntu" ∘ _.fileName
+    textWidth ← H.gets $ flip getTextWidthPure (Font "normal 14px Ubuntu") ∘ _.fileName
     let
       buttonPadding = 24.0
       cardPadding = 24.0
