@@ -21,6 +21,8 @@ module SlamData.Workspace.Card.StructureEditor.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Future as Future
+import Data.Json.Extended (EJson)
 import Data.List as L
 import Data.Path.Pathy as Path
 import Halogen as H
@@ -101,7 +103,7 @@ evalStructureEditor = case _ of
   Q.HandleColumnsMessage msg next → do
     case msg of
       Left (MC.LoadRequest (path × req)) → do
-        res ← load path req =<< H.gets _.resource
+        res ← load path req
         void $ H.query' CS.cpColumns unit $ H.action $ MC.FulfilLoadRequest (path × res)
       Left (MC.SelectionChanged s _ _) → do
         H.modify (_ {selectedPath = snd s})
@@ -111,29 +113,26 @@ evalStructureEditor = case _ of
     pure next
 
 load
-  ∷ ∀ m
-  . Monad m
-  ⇒ QQ.QuasarDSL m
-  ⇒ SEC.ColumnPath
+  ∷ SEC.ColumnPath
   → MC.LoadRequest
-  → Maybe PU.FilePath
-  → m (MC.LoadResponse SEC.ColumnItem)
+  → DSL (MC.LoadResponse SEC.ColumnItem)
 load path { requestId, filter } =
-  case _ of
-    Just resource → do
-      case (fst <$> Path.peel resource) of
-        Just resourcePath → do
-          let sql = QQ.templated resource "SELECT * FROM {{path}} AS row LIMIT 1000"
-          QQ.queryEJson resourcePath sql >>= case _ of
-            Left _ →
-              pure noResult
-            Right records →
-              let items = L.filter (mkFilter filter ∘ SEC.columnItemLabel) (SEC.analyse records path)
-              in pure { requestId, items, nextOffset: Nothing }
-        _ → pure noResult
+  H.gets _.resource >>= case _ of
+    Just (_ × future) → do
+      records ← Future.wait future
+      let items = L.filter (mkFilter filter ∘ SEC.columnItemLabel) (SEC.analyse records path)
+      pure { requestId, items, nextOffset: Nothing }
     _ → pure noResult
   where
   noResult = { requestId, items: L.Nil, nextOffset: Nothing }
+
+fetchData ∷ PU.FilePath → DSL (Array EJson)
+fetchData path = do
+  case (fst <$> Path.peel path) of
+    Just resourcePath → do
+      let sql = QQ.templated path "SELECT * FROM {{path}} AS row LIMIT 1000"
+      either (const []) id <$> QQ.queryEJson resourcePath sql
+    _ → pure []
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
@@ -153,7 +152,12 @@ evalCard = case _ of
   CC.Load _ next →
     pure next
   CC.ReceiveInput x y next → do
-    H.modify \st → st { cycle = st.cycle + 1, resource = Port.extractFilePath y }
+    let newResource = Port.extractFilePath y
+    oldResource ← H.gets (map fst ∘ _.resource)
+    when (oldResource /= newResource) do
+      fut ← maybe (pure (pure [])) (Future.defer ∘ fetchData) newResource
+      let resource = map (_ × fut) (Port.extractFilePath y)
+      H.modify \st → st { cycle = st.cycle + 1, resource = resource }
     _ ← H.query' CS.cpColumns unit $ H.action MC.Reload
     pure next
   CC.ReceiveOutput _ _ next →
