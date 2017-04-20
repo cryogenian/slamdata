@@ -18,13 +18,14 @@ module SlamData.Workspace.Deck.Dialog.Export.Component where
 
 import SlamData.Prelude
 import Clipboard as C
+import Control.Apply (lift2)
 import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exception
 import Data.Foldable as F
 import Data.Map as Map
 import Data.List (List)
 import Data.Path.Pathy as Pathy
-import Data.Path.Pathy (Path, Abs, File, Sandboxed)
+import Data.Path.Pathy (Path, Abs, File, Sandboxed, (</>))
 import Data.StrMap as SM
 import Data.String as Str
 import Data.String.Regex as RX
@@ -49,14 +50,15 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId as DID
 import Utils.DOM as DOM
 import Utils.Path as UP
-import Control.UI.Browser (select, locationString)
+import Control.UI.Browser (select, getHref)
 import DOM.Classy.Element (toElement)
 import DOM.HTML.Types (readHTMLElement)
 import Data.Argonaut (encodeJson)
 import Data.Foreign (toForeign)
-import Data.URI (AbsoluteURI)
+import Data.URI (AbsoluteURI, URI)
 import Data.URI as URI
 import Data.URI.Types.AbsoluteURI as AbsoluteURI
+import Data.URI.Types.URI as URIT
 import Data.URI.Types.HierarchicalPart as HierarchicalPart
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Deck.DeckPath (deckPath')
@@ -527,7 +529,7 @@ workspaceTokenName workspacePath idToken =
 
 updateCopyVal ∷ DSL Unit
 updateCopyVal = do
-  locString ← H.liftEff locationString
+  locString ← H.liftEff getHref
   state ← H.get
   case renderCopyVal locString state of
     Right copyVal → do
@@ -601,7 +603,19 @@ renderCopyVal locString state
     where
     line = (_ ⊕ "\n")
     quoted s = "\"" ⊕ s ⊕ "\""
-    workspaceURI = locString ⊕ "/" ⊕ Config.workspaceUrl
+    workspaceURI =
+      either id URI.printURI
+        $ case hush $ URI.runParseURI locString of
+          Nothing →
+            Left "Bad SlamData config: workspacePath was not a valid absolute URI."
+          Just loc →
+            Right $ URI.URI
+              (URIT.uriScheme loc)
+              (URI.HierarchicalPart
+                (HierarchicalPart.authority $ URIT.hierarchicalPart loc)
+                (Right <$> filePathFromURI loc))
+              Nothing
+              Nothing
     deckId = DID.toString state.sharingInput.deckId
     deckDOMId = "sd-deck-" ⊕ deckId
     deckPath = UP.encodeURIPath (Pathy.printPath state.sharingInput.workspacePath)
@@ -615,26 +629,18 @@ renderVarMaps = indent <<< prettyJson <<< encodeJson <<< varMapsForURL
 
 renderURI ∷ String → State → Either String URI.URI
 renderURI locationString state@{sharingInput, permToken, isLoggedIn, styleURIString} =
-  case location of
+  case hush $ URI.runParseURI locationString of
     Nothing →
       Left "Bad SlamData config: workspacePath was not a valid absolute URI."
     Just loc →
       Right $ URI.URI
-        (AbsoluteURI.uriScheme loc)
+        (URIT.uriScheme loc)
         (URI.HierarchicalPart
-          (HierarchicalPart.authority $ AbsoluteURI.hierarchicalPart loc)
-          (Right <$> path))
+          (HierarchicalPart.authority $ URIT.hierarchicalPart loc)
+          (Right <$> filePathFromURI loc))
         (Just $ URI.Query query)
         (Just fragment)
   where
-  location ∷ Maybe AbsoluteURI
-  location =
-    hush $ URI.runParseAbsoluteURI locationString
-
-  path ∷ Maybe (Path Abs File Sandboxed)
-  path =
-    UP.sandbox =<< Pathy.parseAbsFile ("/" ⊕ Config.workspaceUrl)
-
   fragment ∷ String
   fragment =
     Str.drop 1
@@ -651,4 +657,10 @@ renderURI locationString state@{sharingInput, permToken, isLoggedIn, styleURIStr
   token ∷ Maybe String
   token =
     QTA.runTokenHash ∘ _.secret <$> permToken
+
+filePathFromURI ∷ URI → Maybe (Path Abs File Sandboxed)
+filePathFromURI =
+  hush
+    <=< HierarchicalPart.uriPathAbs
+    <<< URIT.hierarchicalPart
 
