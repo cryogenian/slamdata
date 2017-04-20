@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Lens ((^.))
 
-import Halogen.HTML.Core (HTML, ClassName)
+import Halogen.HTML.Core (HTML)
 import Halogen.HTML.Events as E
 import Halogen.HTML as H
 import Halogen.HTML.Properties as P
@@ -28,34 +28,35 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Hint as Hint
+import SlamData.Common.Sort (Sort(..))
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _isMount, _sort)
-import SlamData.Common.Sort (Sort(..))
+import SlamData.Hint as Hint
+import SlamData.Render.Icon as I
 
 import Utils.DOM as DOM
 
 sorting ∷ ∀ a. State → HTML a (Query Unit)
 sorting state =
-  H.div
-    [ P.classes [ B.colXs4, CSS.toolbarSort ] ]
-    [ H.a
-      [ E.onClick \e → Just $ PreventDefault (DOM.toEvent e) $ action $ Resort ]
-      [ H.text "Name"
-      , H.i
-        [ chevron (state ^. _sort)
-        , ARIA.label $ label (state ^. _sort)
-        , P.title $ label (state ^. _sort)
+  let
+    chevron ∷ { icon ∷ H.HTML a (Query Unit), label ∷ String }
+    chevron = case state ^. _sort of
+      Asc → { icon: I.chevronUpSm, label: "Sort files by name descending" }
+      Desc → { icon: I.chevronDownSm, label: "Sort files by name ascending" }
+  in
+    H.div
+      [ P.classes [ B.colXs4, CSS.toolbarSort ] ]
+      [ H.a
+        [ E.onClick \e → Just $ PreventDefault (DOM.toEvent e) $ action $ Resort ]
+        [ H.text "Name"
+        , H.span
+          [ ARIA.label $ chevron.label
+          , P.title $ chevron.label
+          ]
+          [ chevron.icon ]
         ]
-        []
       ]
-    ]
-  where
-  chevron Asc = P.classes [ B.glyphicon, B.glyphiconChevronUp ]
-  chevron Desc = P.classes [ B.glyphicon, B.glyphiconChevronDown ]
-  label Asc = "Sort files by name descending"
-  label Desc = "Sort files by name ascending"
 
 toolbar ∷ ∀ p. State → HTML p (Query Unit)
 toolbar state =
@@ -70,28 +71,28 @@ toolbar state =
       )
     <> [ H.ul
          [ P.classes [ B.listInline, B.pullRight ] ]
-         $ configure <> [ showHide, download, mount, folder, file, workspace ]
+         $ [ workspace, folder, showHide, download, file, mount ] <> configure
        ]
   where
   configure ∷ Array (HTML p (Query Unit))
   configure = do
     guard $ state ^. _isMount
-    pure $ toolItem Configure "Configure mount" B.glyphiconWrench
+    pure $ toolItem Configure "Configure mount" I.cog
 
   showHide ∷ HTML p (Query Unit)
   showHide =
     if state ^. _showHiddenFiles
-    then toolItem HideHiddenFiles "Hide hidden files" B.glyphiconEyeClose
-    else toolItem ShowHiddenFiles "Show hidden files" B.glyphiconEyeOpen
+    then toolItem HideHiddenFiles "Hide hidden files" I.eyeVisibleSm
+    else toolItem ShowHiddenFiles "Show hidden files" I.eyeHiddenSm
 
   download ∷ HTML p (Query Unit)
-  download = toolItem Download "Download" B.glyphiconCloudDownload
+  download = toolItem Download "Download" I.cloudDownloadSm
 
   mount ∷ HTML p (Query Unit)
-  mount = toolItem MakeMount "Mount database" B.glyphiconHdd
+  mount = toolItem MakeMount "Mount database" I.databaseCreateSm
 
   folder ∷ HTML p (Query Unit)
-  folder = toolItem MakeFolder "Create folder" B.glyphiconFolderClose
+  folder = toolItem MakeFolder "Create folder" I.folderCreateSm
 
   file ∷ HTML p (Query Unit)
   file =
@@ -104,29 +105,23 @@ toolbar state =
       , H.label
           [ P.for "upload"
           , P.title "Upload file"
+          , P.class_ $ H.ClassName "tool-item"
           , ARIA.label "Upload file"
           ]
-          [ H.i
-              [ P.classes [ B.glyphicon, B.glyphiconCloudUpload, CSS.hiddenFileInput ] ]
-              []
-          ]
+          [ I.cloudUploadSm ]
       ]
 
   workspace ∷ HTML p (Query Unit)
-  workspace = toolItem MakeWorkspace "Create workspace" B.glyphiconBook
+  workspace = toolItem MakeWorkspace "Create workspace" I.workspaceSm
 
-toolItem ∷ ∀ p f. (Unit → f Unit) → String → ClassName → HTML p (f Unit)
+toolItem ∷ ∀ p f. (Unit → f Unit) → String → HTML p (f Unit) → HTML p (f Unit)
 toolItem func title icon =
   H.li_
     [ H.button
         [ ARIA.label title
         , P.title title
+        , P.class_ $ H.ClassName "tool-item"
         , E.onClick (E.input_ func)
         ]
-        [ H.i
-            [ P.title title
-            , P.classes [ B.glyphicon, icon ]
-            ]
-            []
-        ]
+        [ icon ]
     ]

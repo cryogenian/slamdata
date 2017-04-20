@@ -37,7 +37,7 @@ import DOM.Classy.Element (toElement)
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.Monad (Slam)
-import SlamData.Render.Common (glyph)
+import SlamData.Render.Icon as I
 
 import Utils.DOM as DOM
 
@@ -90,7 +90,7 @@ render url =
                         , HP.ref copyButtonRef
                         , HP.id_ "copy-button"
                         ]
-                        [ glyph B.glyphiconCopy ]
+                        [ I.copySm ]
                     ]
                 ]
             ]

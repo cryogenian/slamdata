@@ -39,6 +39,8 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
+import RectanglePacking (Dimensions, maybeNotZero, domRectToDimensions)
+
 import SlamData.Monad (Slam)
 import SlamData.ActionList.Action as A
 import SlamData.ActionList.Component.State as ST
@@ -53,7 +55,7 @@ type HTML a = H.ComponentHTML (Q.Query a)
 type DSL a = H.ComponentDSL (ST.State a) (Q.Query a) (M.Message a) Slam
 
 type MkConf a =
-  A.Dimensions → Array (A.Action a) → A.ActionListConf a
+  Dimensions → Array (A.Action a) → A.ActionListConf a
 
 actionListComp
   ∷ ∀ a. Eq a
@@ -264,11 +266,11 @@ eval =
     Q.CalculateBoundingRect next → do
       H.modify
         ∘ flip _{ boundingDimensions = _ }
-        ∘ flip bind A.maybeNotZero
-        ∘ map A.domRectToDimensions
+        ∘ flip bind maybeNotZero
+        ∘ map domRectToDimensions
         =<< getBoundingDOMRect
       pure next
     Q.SetBoundingRect dimensions next →
-      H.modify _{ boundingDimensions = A.maybeNotZero dimensions } $> next
+      H.modify _{ boundingDimensions = maybeNotZero dimensions } $> next
     Q.GetBoundingRect continue →
       continue <$> H.gets _.boundingDimensions

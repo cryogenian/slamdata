@@ -38,6 +38,7 @@ import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
 import SlamData.FileSystem.Listing.Item.Component.CSS as CSS
 import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, resourcePath, isMount, isFile, isWorkspace, isViewMount, hiddenTopLevel)
+import SlamData.Render.Icon as I
 
 type State =
   { item ∷ Item
@@ -167,7 +168,8 @@ itemView state@{ item } selected presentActions | otherwise =
             [ HP.classes [ B.colXs8, CSS.itemContent ] ]
             [ HH.a
                 [ HE.onClick $ HE.input $ HandleAction (Open (itemResource item)) ]
-                [ HH.i [ iconClasses item ] []
+                [ HH.span [ HP.class_ $ CSS.itemIcon ]
+                  [ icon $ itemResource item ]
                 , HH.text $ itemName state
                 ]
             ]
@@ -187,19 +189,13 @@ itemView state@{ item } selected presentActions | otherwise =
   label | selected  = "Deselect " <> itemName state
   label | otherwise = "Select " <> itemName state
 
-iconClasses ∷ forall i r. Item → HP.IProp (class ∷ String | r) i
-iconClasses item = HP.classes
-  [ B.glyphicon
-  , CSS.itemIcon
-  , iconClass (itemResource item)
-  ]
-  where
-  iconClass ∷ Resource → HH.ClassName
-  iconClass (File _) = B.glyphiconFile
-  iconClass (Workspace _) = B.glyphiconBook
-  iconClass (Directory _) = B.glyphiconFolderOpen
-  iconClass (Mount (Database _)) = B.glyphiconHdd
-  iconClass (Mount (View _)) = B.glyphiconFile
+  icon ∷ ∀ p i. Resource → HH.HTML p i
+  icon = case _ of
+    File _ → I.file
+    Workspace _ → I.workspaceSm
+    Directory _ → I.folderSm
+    Mount (Database _) → I.databaseCreate
+    Mount (View _) → I.documentSm
 
 itemActions ∷ Boolean → Item → HTML
 itemActions presentActions item | not presentActions = HH.text ""
@@ -215,25 +211,25 @@ itemActions presentActions item | otherwise =
 
   conf ∷ Array HTML
   conf = guard (isMount r) $>
-    itemAction Configure "Configure" B.glyphiconWrench
+    itemAction Configure "Configure" I.cog
 
   edit ∷ Array HTML
   edit = guard (isWorkspace r) $>
-    itemAction Edit "Edit" B.glyphiconPencil
+    itemAction Edit "Edit" I.editSm
 
   common ∷ Array HTML
   common =
-    [ itemAction Move "Move / rename" B.glyphiconMove
-    , itemAction Download "Download" B.glyphiconCloudDownload
-    , itemAction Remove "Remove" B.glyphiconTrash
+    [ itemAction Move "Move / rename" I.exchangeSm
+    , itemAction Download "Download" I.cloudDownloadSm
+    , itemAction Remove "Remove" I.trashCanSm
     ]
 
   share ∷ Array HTML
   share = guard (isFile r || isWorkspace r || isViewMount r) $>
-    itemAction Share "Share" B.glyphiconShare
+    itemAction Share "Share" I.shareSm
 
-  itemAction ∷ (Resource → Message) → String → HH.ClassName → HTML
-  itemAction act label cls =
+  itemAction ∷ (Resource → Message) → String → HTML → HTML
+  itemAction act label icon =
     HH.li_
       [ HH.button
           [ HE.onClick $ HE.input $ HandleAction $ act (itemResource item)
@@ -241,6 +237,6 @@ itemActions presentActions item | otherwise =
           , ARIA.label label
           , HP.class_ CSS.fileAction
           ]
-          [ HH.i [ HP.classes [ B.glyphicon, cls ] ] [] ]
+          [ icon ]
       ]
 

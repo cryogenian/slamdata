@@ -41,6 +41,7 @@ import SlamData.Config as Config
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.CSS as Rc
+import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
@@ -58,7 +59,6 @@ import Data.URI as URI
 import Data.URI.Types.AbsoluteURI as AbsoluteURI
 import Data.URI.Types.HierarchicalPart as HierarchicalPart
 import SlamData.Monad (Slam)
-import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Deck.DeckPath (deckPath')
 import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
 import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL)
@@ -216,21 +216,21 @@ renderPublishDialog state =
           , HP.value state.copyVal
           , HP.readOnly true
           , HP.disabled state.submitting
-          , HP.title "Published deck URI"
-          , ARIA.label "Published deck URI"
+          , HP.title "Published deck URL"
+          , ARIA.label "Published deck URL"
           , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
           ]
       , HH.span
           [ HP.classes [ B.inputGroupBtn ] ]
           [ HH.button
-              [ HP.classes [ B.btn, B.btnDefault ]
-              , HE.onClick (HE.input_ HandleCancel)
-              , HP.ref copyButtonRef
-              , HP.id_ "copy-button"
-              , HP.type_ HP.ButtonButton
-              , HP.disabled state.submitting
-              ]
-              [ glyph B.glyphiconCopy ]
+            [ HP.classes [ B.btn, B.btnDefault ]
+            , HE.onClick (HE.input_ HandleCancel)
+            , HP.ref copyButtonRef
+            , HP.id_ "copy-button"
+            , HP.type_ HP.ButtonButton
+            , HP.disabled state.submitting
+            ]
+            [ I.copySm ]
           ]
       ]
 
@@ -327,7 +327,7 @@ renderEmbedDialog state =
                   , HP.type_ HP.ButtonButton
                   , HP.disabled state.submitting
                   ]
-                  [ glyph B.glyphiconCopy ]
+                  [ I.copySm ]
                 , HH.div [ HP.classes [ B.checkbox ] ]
                   [ (if state.isLoggedIn then HH.label_ else HH.p_)
                     $ ((guard state.isLoggedIn)
