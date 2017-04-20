@@ -105,7 +105,7 @@ evalStructureEditor = case _ of
         void $ H.query' CS.cpColumns unit $ H.action $ MC.FulfilLoadRequest (path × res)
       Left (MC.SelectionChanged s _ _) → do
         H.modify (_ {selectedPath = snd s})
-        H.raise CC.modelUpdate
+        H.raise CC.modelUpdateSilently
       _ →
         pure unit
     pure next
