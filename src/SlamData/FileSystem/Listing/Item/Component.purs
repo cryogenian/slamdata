@@ -194,7 +194,7 @@ itemView state@{ item } selected presentActions | otherwise =
     File _ → I.file
     Workspace _ → I.workspaceSm
     Directory _ → I.folderSm
-    Mount (Database _) → I.databaseCreate
+    Mount (Database _) → I.databaseSm
     Mount (View _) → I.documentSm
 
 itemActions ∷ Boolean → Item → HTML
@@ -220,7 +220,7 @@ itemActions presentActions item | otherwise =
   common ∷ Array HTML
   common =
     [ itemAction Move "Move / rename" I.exchangeSm
-    , itemAction Download "Download" I.cloudDownloadSm
+    , itemAction Download "Download" I.downloadSm
     , itemAction Remove "Remove" I.trashCanSm
     ]
 

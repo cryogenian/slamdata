@@ -86,7 +86,7 @@ toolbar state =
     else toolItem ShowHiddenFiles "Show hidden files" I.eyeHiddenSm
 
   download ∷ HTML p (Query Unit)
-  download = toolItem Download "Download" I.cloudDownloadSm
+  download = toolItem Download "Download" I.downloadSm
 
   mount ∷ HTML p (Query Unit)
   mount = toolItem MakeMount "Mount database" I.databaseCreateSm
@@ -108,7 +108,7 @@ toolbar state =
           , P.class_ $ H.ClassName "tool-item"
           , ARIA.label "Upload file"
           ]
-          [ I.cloudUploadSm ]
+          [ I.uploadSm ]
       ]
 
   workspace ∷ HTML p (Query Unit)
