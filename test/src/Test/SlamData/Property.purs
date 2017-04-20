@@ -34,7 +34,6 @@ import Test.SlamData.Property.Workspace.Deck.DeckId as Test.SlamData.Property.Wo
 import Test.SlamData.Property.Workspace.Deck.Model as Test.SlamData.Property.Workspace.Deck.Model
 import Test.SlamData.Property.Workspace.FormBuilder.Item.Model as Test.SlamData.Property.Workspace.FormBuilder.Item.Model
 import Test.SlamData.Property.Workspace.FormBuilder.Model as Test.SlamData.Property.Workspace.FormBuilder.Model
-import Test.SlamData.Property.Workspace.Card.StructureEditor.Model as Test.SlamData.Property.Workspace.Card.StructureEditor.Model
 
 import Test.StrongCheck (SC)
 
@@ -54,9 +53,6 @@ main = do
 
   log "Check SlamData.Workspace.Card.CardType..."
   Test.SlamData.Property.Workspace.Card.CardType.check
-
-  log "Check Test.SlamData.Property.Workspace.Card.StructureEditor.Model..."
-  Test.SlamData.Property.Workspace.Card.StructureEditor.Model.check
 
   log "Check SlamData.Workspace.Card.Model..."
   Test.SlamData.Property.Workspace.Card.Model.check
