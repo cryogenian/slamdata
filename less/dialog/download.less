@@ -1,15 +1,14 @@
 .dialog-download, .download-configuration {
     min-width: 700px;
-    .form-group {
+
+    .form-group:last-of-type {
         margin-bottom: 0;
-        +.form-group {
-            margin-top: 15px;
-        }
     }
 
     input[type=radio] {
         margin-right: 10px;
     }
+
     input[type=text] {
       width: 4rem;
     }
@@ -18,17 +17,21 @@
         line-height: 34px;
         width: 100%;
         margin-bottom: 0;
+
         input, select {
             font-weight: normal;
         }
+
         > span:first-child {
             width: 100px;
             display: block;
             float: left;
         }
+
         input.form-control {
             width: ~"calc(100% - 100px)";
         }
+
         select.form-control {
             width: auto;
         }
@@ -39,6 +42,7 @@
            width: ~"calc(100% - 100px - 33px)";
            float: left;
         }
+
         ul.file-list-group {
             width: 468px;
             left: 115px;
@@ -50,6 +54,7 @@
         label {
             position: relative;
         }
+
         input {
             background: transparent;
         }
@@ -59,11 +64,15 @@
             top: 0px;
             left: 113px;
             font-weight: normal;
-            span:nth-child(1) {
+
+            > span {
+              &:first-child {
                 color: transparent;
-            }
-            span:nth-child(2) {
+              }
+
+              &:last-child {
                 opacity: 0.5;
+              }
             }
         }
     }
@@ -72,14 +81,17 @@
         list-style: none;
         padding: 0;
         margin-top: 10px;
+
         li {
             float: left;
             display: block;
             width: 50%;
             margin: 5px 0;
+
             span {
                 width: 8rem;
             }
+
             input {
                 width: 4rem;
             }
@@ -91,6 +103,7 @@
             width: 25%;
             float: left;
         }
+
         ul {
             list-style: none;
             padding: 0;
@@ -98,11 +111,13 @@
             width: 75%;
 
             li {
+                display: block;
+
                 label {
                     cursor: pointer;
                     display: inline;
                 }
-                display: block;
+
                 input.form-control {
                     margin-left: 10px;
                     width: 4em;
@@ -127,6 +142,7 @@
             padding: 0;
             float: left;
             margin-bottom: 0px;
+
             li {
                 label {
                     cursor: pointer;
