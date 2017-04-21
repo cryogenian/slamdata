@@ -18,14 +18,13 @@ module SlamData.Workspace.Deck.Dialog.Export.Component where
 
 import SlamData.Prelude
 import Clipboard as C
-import Control.Apply (lift2)
 import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exception
 import Data.Foldable as F
 import Data.Map as Map
 import Data.List (List)
 import Data.Path.Pathy as Pathy
-import Data.Path.Pathy (Path, Abs, File, Sandboxed, (</>))
+import Data.Path.Pathy (Path, Abs, File, Sandboxed)
 import Data.StrMap as SM
 import Data.String as Str
 import Data.String.Regex as RX
@@ -38,7 +37,6 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import OIDC.Crypt as OIDC
 import Quasar.Advanced.Types as QTA
-import SlamData.Config as Config
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.CSS as Rc
