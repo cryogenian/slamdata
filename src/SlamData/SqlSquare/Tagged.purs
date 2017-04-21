@@ -22,6 +22,7 @@ import Data.Array as A
 import Data.Int as Int
 import Data.Formatter.DateTime as Fd
 import Data.DateTime as DT
+import Data.String as Str
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Data.String.Regex.Unsafe as URX
@@ -31,11 +32,22 @@ import SqlSquare as Sql
 
 import Utils (stringToNumber, stringToBoolean)
 
+tweak ∷ String → String
+tweak s
+  | Str.length s ≡ 19 = s <> "Z"
+  | Str.charAt 10 s ≡ Just ' ' = tweak (Str.take 10 s <> "T" <> Str.drop 11 s)
+  | otherwise = s
+
+-- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
+-- connector issue that cannot represent dates distinct from datetimes.
+fixupDate ∷ String → String
+fixupDate = Str.take 10
+
 parseTime ∷ String → String ⊹ DT.Time
-parseTime = map DT.time ∘ Fd.unformatDateTime "HH:mm:ss"
+parseTime = map DT.time ∘ Fd.unformatDateTime "HH:mm:ss" ∘ tweak
 
 parseDate ∷ String → String ⊹ DT.Date
-parseDate = map DT.date ∘ Fd.unformatDateTime "YYYY-MM-DD"
+parseDate = map DT.date ∘ Fd.unformatDateTime "YYYY-MM-DD" ∘ fixupDate
 
 parseDateTime ∷ String → String ⊹ DT.DateTime
 parseDateTime = Fd.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ"
@@ -64,6 +76,10 @@ intervalSql s = do
     URX.unsafeRegex
       "P((([0-9]*\\.?[0-9]*)Y)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)W)?(([0-9]*\\.?[0-9]*)D)?)?(T(([0-9]*\\.?[0-9]*)H)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)S)?)?"
       RXF.noFlags
+
+oidSql ∷ String → Sql
+oidSql =
+  Sql.invokeFunction "OID" ∘ pure ∘ Sql.string
 
 numSql ∷ String → Maybe Sql
 numSql s = do

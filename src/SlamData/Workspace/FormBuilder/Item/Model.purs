@@ -33,13 +33,11 @@ import SlamData.Prelude
 
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Argonaut as J
-import Data.Formatter.DateTime as Fd
-import Data.List as L
 import Data.Lens (Lens', lens)
-import Data.String as Str
 
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
+import SlamData.SqlSquare.Tagged as SqlT
 
 import SqlSquare as Sql
 
@@ -103,8 +101,7 @@ decode =
   J.decodeJson >=> \obj → do
     name ← obj .? "name"
     fieldType ← obj .? "fieldType"
-    let fixValue = if fieldType == DateFieldType then fixupDate else id
-    defaultValue ← map fixValue <$> obj .? "defaultValue"
+    defaultValue ← obj .? "defaultValue"
     pure { name, fieldType, defaultValue }
 
 defaultValueToVarMapValue
@@ -114,56 +111,19 @@ defaultValueToVarMapValue
 defaultValueToVarMapValue ty str = map Port.VarMapValue $  case ty of
     StringFieldType →
       Just $ Sql.string str
-    DateTimeFieldType → do
-      guard
-        $ isRight
-        $ Fd.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ"
-        $ tweak str
-      pure
-        $ Sql.invokeFunction "TIMESTAMP"
-        $ L.singleton
-        $ Sql.string str
-    DateFieldType → do
-      guard
-        $ isRight
-        $ Fd.unformatDateTime "YYYY-MM-DD" str
-      pure
-        $ Sql.invokeFunction "DATE"
-        $ L.singleton
-        $ Sql.string str
-    TimeFieldType → do
-      guard
-        $ isRight
-        $ Fd.unformatDateTime "HH:mm:ss" str
-      pure
-        $ Sql.invokeFunction "TIME"
-        $ L.singleton
-        $ Sql.string str
+    DateTimeFieldType →
+      SqlT.datetimeSql str
+    DateFieldType →
+      SqlT.dateSql str
+    TimeFieldType →
+      SqlT.timeSql str
     IntervalFieldType →
-      pure
-        $ Sql.invokeFunction "INTERVAL"
-        $ L.singleton
-        $ Sql.string str
+      SqlT.intervalSql str
     ObjectIdFieldType →
-      pure
-        $ Sql.invokeFunction "OID"
-        $ L.singleton
-        $ Sql.string str
-
+      pure $ SqlT.oidSql str
     SqlExprFieldType →
       hush $ Sql.parse str
     SqlIdentifierFieldType →
       pure $ Sql.ident str
     _ | str == "" → Nothing
     _ → hush $ Sql.parse str
-
-tweak ∷ String → String
-tweak s
-  | Str.length s ≡ 19 = s <> "Z"
-  | Str.charAt 10 s ≡ Just ' ' = tweak (Str.take 10 s <> "T" <> Str.drop 11 s)
-  | otherwise = s
-
--- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
--- connector issue that cannot represent dates distinct from datetimes.
-fixupDate ∷ String → String
-fixupDate = Str.take 10
