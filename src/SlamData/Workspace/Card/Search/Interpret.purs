@@ -37,10 +37,11 @@ import Matryoshka (Algebra, embed, cata, Transform, transAna, ana, Coalgebra)
 
 import Quasar.Types (FilePath)
 
+import SlamData.SqlSquare.Tagged as SqlT
+
 import SqlSquare (Sql, SqlF(..))
 import SqlSquare as Sql
 
-import Utils as Utils
 import Utils.SqlSquare (tableRelation)
 
 
@@ -204,18 +205,7 @@ renderBinRel field op v =
   ⊕ ( sqlFromSearchStr v <#> Sql.binop op field )
 
 sqlFromSearchStr ∷ String → L.List Sql
-sqlFromSearchStr v =
-  (flip F.foldMap (Utils.stringToNumber v) $ pure ∘ Sql.num)
-  ⊕ (flip F.foldMap (Int.fromString v) $ pure ∘ Sql.int)
-  ⊕ (flip F.foldMap (Utils.stringToBoolean v) $ pure ∘ Sql.bool)
-  ⊕ ((guard ((not $ needDateTime v) ∧ needDate v)) $>
-       Sql.invokeFunction "DATE" (Sql.string v : L.Nil))
-  ⊕ (guard (needTime v) $>
-       Sql.invokeFunction "TIME" (Sql.string v : L.Nil))
-  ⊕ (guard (needDateTime v) $>
-       Sql.invokeFunction "TIMESTAMP" (Sql.string v : L.Nil))
-  ⊕ (guard (needInterval v) $>
-       Sql.invokeFunction "INTERVAL" (Sql.string v : L.Nil))
+sqlFromSearchStr = L.fromFoldable ∘ SqlT.allSqls
 
 lower ∷ Sql → Sql
 lower = Sql.invokeFunction "LOWER" ∘ pure
@@ -247,38 +237,3 @@ containsToGlob v
 hasSpecialChars ∷ String → Boolean
 hasSpecialChars v =
   isJust (S.indexOf (S.Pattern "*") v) ∨ isJust (S.indexOf (S.Pattern "?") v)
-
-
-needDate ∷ String → Boolean
-needDate = RX.test dateRegex
-  where
-  dateRegex =
-    URX.unsafeRegex
-      """^(((19|20)([2468][048]|[13579][26]|0[48])|2000)[-]02[-]29|((19|20)[0-9]{2}[-](0[4678]|1[02])[-](0[1-9]|[12][0-9]|30)|(19|20)[0-9]{2}[-](0[1359]|11)[-](0[1-9]|[12][0-9]|3[01])|(19|20)[0-9]{2}[-]02[-](0[1-9]|1[0-9]|2[0-8])))$"""
-      RXF.noFlags
-
-
-needTime ∷ String → Boolean
-needTime = RX.test timeRegex
-  where
-  timeRegex =
-    URX.unsafeRegex
-      "^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
-      RXF.noFlags
-
-
-needDateTime ∷ String → Boolean
-needDateTime = RX.test dtRegex
-  where
-  dtRegex =
-    URX.unsafeRegex
-      "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
-      RXF.noFlags
-
-needInterval ∷ String → Boolean
-needInterval = RX.test intervalRegex
-  where
-  intervalRegex =
-    URX.unsafeRegex
-      "P((([0-9]*\\.?[0-9]*)Y)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)W)?(([0-9]*\\.?[0-9]*)D)?)?(T(([0-9]*\\.?[0-9]*)H)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)S)?)?"
-      RXF.noFlags

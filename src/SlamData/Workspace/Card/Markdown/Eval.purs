@@ -23,8 +23,6 @@ import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
 import Data.Array as A
-import Data.Formatter.DateTime as Fd
-import Data.DateTime as DT
 import Data.Identity (Identity)
 import Data.Json.Extended as EJSON
 import Data.List as L
@@ -41,6 +39,7 @@ import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 
+import SlamData.SqlSquare.Tagged as SqlT
 import SqlSquare as Sql
 
 import Text.Markdown.SlamDown as SD
@@ -168,15 +167,15 @@ evalEmbeddedQueries sm dir =
       (SD.Numeric _), (EJSON.Decimal a) →
         pure ∘ SD.Numeric $ pure a
       (SD.Time prec _), (EJSON.String time) →
-        case Fd.unformatDateTime "HH:mm:ss" time of
+        case SqlT.parseTime time of
           Left _ → CEM.throw $ "Incorrect time value: " ⊕ show time
-          Right r → pure ∘ SD.Time prec $ pure $ DT.time r
+          Right r → pure ∘ SD.Time prec $ pure r
       (SD.Date _), (EJSON.String d) →
-        case Fd.unformatDateTime "YYYY-MM-DD" d of
+        case SqlT.parseDate d of
           Left _ → CEM.throw $ "Incorrect date value: " ⊕ show d
-          Right r → pure ∘ SD.Date $ pure $ DT.date r
+          Right r → pure ∘ SD.Date $ pure r
       (SD.DateTime prec _), (EJSON.String dt) →
-        case Fd.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ" dt of
+        case SqlT.parseDateTime dt of
           Left _ → CEM.throw $ "Incorrect datetime value: " ⊕ show dt
           Right r → pure ∘ SD.DateTime prec $ pure r
       _, _ → CEM.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb

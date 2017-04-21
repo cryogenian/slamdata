@@ -162,7 +162,6 @@ mkWorkspaceHash path action varMap =
 varMapsForURL ∷ Map.Map CID.CardId Port.VarMap → SM.StrMap Port.URLVarMap
 varMapsForURL =
   SM.fromFoldable
-  -- I'm not very sure why there was stripping of backtics, just removed it @cryogenian
   ∘ map (bimap CID.toString (map $ Sql.print ∘ unwrap))
   ∘ Map.toList
 
