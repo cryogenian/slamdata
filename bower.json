@@ -60,7 +60,8 @@
     "purescript-uri": "^2.0.0",
     "purescript-clipboard": "^0.1.0",
     "purescript-echarts": "56061619d882ace577315f59b14a904261630889",
-    "purescript-type-equality": "^1.1.0"
+    "purescript-type-equality": "^1.1.0",
+    "purescript-line-wrapping": "^1.1.0"
   },
   "devDependencies": {
     "purescript-chalky": "^2.0.0",

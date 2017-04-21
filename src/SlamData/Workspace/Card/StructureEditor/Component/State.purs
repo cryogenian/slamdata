@@ -14,24 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.ActionList.Component.State where
+module SlamData.Workspace.Card.StructureEditor.Component.State where
 
 import SlamData.Prelude
 
-import RectanglePacking (Dimensions)
-import SlamData.ActionList.Action (Action)
+import Control.Monad.Aff.Future (Future)
+import Data.Json.Extended (EJson)
+import Data.List as L
+import SlamData.Workspace.Card.StructureEditor.Common as SEC
+import Utils.Path as PU
 
-type State a =
-  { actions ∷ Array (Action a)
-  , previousActions ∷ Array (Action a)
-  , filterString ∷ String
-  , boundingDimensions ∷ Maybe Dimensions
+type State =
+  { cycle ∷ Int
+  , resource ∷ Maybe (PU.FilePath × Future (Array EJson))
+  , selectedPath ∷ L.List SEC.ColumnItem
   }
 
-initialState ∷ ∀ a. Array (Action a) → State a
-initialState actions =
-  { actions
-  , previousActions: [ ]
-  , filterString: ""
-  , boundingDimensions: Nothing
+initialState ∷ State
+initialState =
+  { cycle: 0
+  , resource: Nothing
+  , selectedPath: L.Nil
   }

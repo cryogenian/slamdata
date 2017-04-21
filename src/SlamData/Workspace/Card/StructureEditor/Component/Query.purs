@@ -14,24 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.ActionList.Component.State where
+module SlamData.Workspace.Card.StructureEditor.Component.Query where
 
-import SlamData.Prelude
+import SlamData.GlobalMenu.Bus as GMB
+import SlamData.Workspace.Card.StructureEditor.Component.ChildSlot as CS
 
-import RectanglePacking (Dimensions)
-import SlamData.ActionList.Action (Action)
-
-type State a =
-  { actions ∷ Array (Action a)
-  , previousActions ∷ Array (Action a)
-  , filterString ∷ String
-  , boundingDimensions ∷ Maybe Dimensions
-  }
-
-initialState ∷ ∀ a. Array (Action a) → State a
-initialState actions =
-  { actions
-  , previousActions: [ ]
-  , filterString: ""
-  , boundingDimensions: Nothing
-  }
+data Query a
+  = Init a
+  | HandleSignInMessage GMB.SignInMessage a
+  | HandleColumnsMessage CS.ColumnsMessage a

@@ -53,11 +53,13 @@ import DOM.Node.Types (Node, elementToParentNode, Element, documentToEventTarget
 import Utils.Aff as AffUtils
 import Unsafe.Coerce (unsafeCoerce)
 
+newtype Font = Font String
+
 foreign import waitLoaded ∷ ∀ e. Aff (dom ∷ DOM |e) Unit
 foreign import onLoad ∷ ∀ e. Eff e Unit → Eff e Unit
 foreign import blur ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM|e) Unit
 foreign import focus ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM|e) Unit
-foreign import getTextWidth ∷ ∀ eff. String → String → Eff (dom ∷ DOM | eff) Number
+foreign import getTextWidth ∷ ∀ eff. String → Font → Eff (dom ∷ DOM | eff) Number
 foreign import nodeEq ∷ ∀ eff. Node → Node → Eff (dom ∷ DOM | eff) Boolean
 foreign import getOffsetClientRect ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) DOMRect
 foreign import close ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) Unit
@@ -77,7 +79,7 @@ foreign import open
 -- | of allocating canvas and should have `Eff (ref ∷ REF|e)` or `Eff (dom ∷ DOM|e)`
 -- | but since we don't use intermediate `canvas` anywhere it's safe to think about
 -- | this as pure function from font style and string to width.
-foreign import getTextWidthPure ∷ String → String → Number
+foreign import getTextWidthPure ∷ String → Font → Number
 
 fits ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Boolean
 fits el = (&&) <$> fitsHorizontally <*> fitsVertically

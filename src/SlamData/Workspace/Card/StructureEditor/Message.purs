@@ -14,24 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.ActionList.Component.State where
+module SlamData.Workspace.Card.StructureEditor.Message where
 
 import SlamData.Prelude
+import SlamData.Workspace.Card.StructureEditor.Common (ColumnPath)
 
-import RectanglePacking (Dimensions)
-import SlamData.ActionList.Action (Action)
+type ItemMessage = Void
 
-type State a =
-  { actions ∷ Array (Action a)
-  , previousActions ∷ Array (Action a)
-  , filterString ∷ String
-  , boundingDimensions ∷ Maybe Dimensions
-  }
+type ColumnAction = Void
 
-initialState ∷ ∀ a. Array (Action a) → State a
-initialState actions =
-  { actions
-  , previousActions: [ ]
-  , filterString: ""
-  , boundingDimensions: Nothing
-  }
+type ColumnMessage = ColumnPath × ColumnAction
+
+type Message = Either ColumnMessage ItemMessage
+
+columnMessage ∷ ColumnMessage → Message
+columnMessage = Left
+
+itemMessage ∷ ItemMessage → Message
+itemMessage = Right

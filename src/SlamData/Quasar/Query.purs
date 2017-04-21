@@ -27,6 +27,7 @@ module SlamData.Quasar.Query
   , count
   , fields
   , module Quasar.Error
+  , module Exports
   ) where
 
 import SlamData.Prelude
@@ -49,6 +50,8 @@ import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
 
 import SlamData.Quasar.Error (throw)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
+
+import SlamData.Quasar.Class (class QuasarDSL) as Exports
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String

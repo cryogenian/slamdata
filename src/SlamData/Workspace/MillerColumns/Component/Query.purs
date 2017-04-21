@@ -30,7 +30,7 @@ data Query a i o b
   | FulfilLoadRequest (i × LoadResponse a) b
 
 data Message a i
-  = SelectionChanged i (Maybe a)
+  = SelectionChanged (ColumnsData a i) i (Maybe a)
   | LoadRequest (i × LoadRequest)
 
 type Message' a i o = Either (Message a i) o
