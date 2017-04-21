@@ -20,6 +20,7 @@ import SlamData.Prelude
 import Clipboard as C
 import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exception
+import Control.Monad.Fork (fork)
 import Data.Foldable as F
 import Data.Map as Map
 import Data.List (List)
@@ -80,12 +81,11 @@ type State =
   , shouldGenerateToken ∷ Boolean
   , hovered ∷ Boolean
   , isLoggedIn ∷ Boolean
-  , copyVal ∷ String
+  , copyVal ∷ Maybe (Either ParseError String)
   , noNetworkAccessToAdvancedError ∷ Boolean
   , presentStyleURIInput :: Boolean
   , styleURIString :: String
   , submitting ∷ Boolean
-  , loading ∷ Boolean
   , clipboard ∷ Maybe C.Clipboard
   }
 
@@ -99,12 +99,11 @@ initialState input =
   , shouldGenerateToken: true
   , hovered: false
   , isLoggedIn: false
-  , copyVal: ""
+  , copyVal: Nothing
   , noNetworkAccessToAdvancedError: false
   , presentStyleURIInput: false
   , styleURIString: ""
   , submitting: false
-  , loading: true
   , clipboard: Nothing
   }
 
@@ -158,9 +157,42 @@ component =
     }
 
 render ∷ State → H.ComponentHTML Query
-render state
-  | state.presentingAs ≡ URI = renderPublishDialog state
-  | otherwise = renderEmbedDialog state
+render state =
+  case state.copyVal, state.presentingAs of
+    Nothing, URI →
+      renderLoadingDialog "Publish deck"
+    Nothing, Embed →
+      renderLoadingDialog "Embed deck"
+    Just (Left error), _ →
+      renderErrorDialog error
+    Just (Right copyVal), URI →
+      renderPublishDialog state copyVal
+    Just (Right copyVal), Embed →
+      renderEmbedDialog state copyVal
+
+renderLoadingDialog ∷ String → H.ComponentHTML Query
+renderLoadingDialog header =
+  HH.div
+    [ HP.classes [ HH.ClassName "deck-dialog-share" ] ]
+    [ HH.h4_ [ HH.text header ]
+    , HH.div
+        [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
+        [ HH.div
+            [ HP.class_ $ H.ClassName "sd-dialog-loading" ]
+            [ HH.img [ HP.src "img/spin.gif" ]
+            , HH.p_ [ HH.text "Loading..." ]
+            ]
+        ]
+    , HH.div
+        [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
+        [ HH.button
+            [ HP.classes [ B.btn, B.btnPrimary ]
+            , HE.onClick (HE.input_ HandleCancel)
+            , HP.type_ HP.ButtonButton
+            ]
+            [ HH.text "Cancel" ]
+        ]
+    ]
 
 renderStyleURIInput ∷ State → H.ComponentHTML Query
 renderStyleURIInput state =
@@ -185,36 +217,51 @@ renderStyleURIInput state =
   where
   validInputClasses = [ B.hasSuccess, B.hasFeedback ]
 
-renderPublishDialog ∷ State → H.ComponentHTML Query
-renderPublishDialog state =
+renderErrorDialog ∷ ParseError → H.ComponentHTML Query
+renderErrorDialog error =
   HH.div
     [ HP.classes [ HH.ClassName "deck-dialog-share" ] ]
-    $ fold
-        [ pure $ HH.h4_ [ HH.text "Publish deck" ]
-        , guard state.loading $> HH.div
-            [ HP.classes [ B.alert, B.alertInfo, HH.ClassName "share-loading" ] ]
-            [ HH.img [ HP.src "img/blue-spin.svg" ]
-            , HH.text "Loading"
-            ]
-        , guard (not state.loading) $> HH.div
-            [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
-            [ HH.p_ renderAccessMessage
-            , HH.form
-                [ HE.onSubmit (HE.input PreventDefault) ]
-                $ fold
-                    [ pure renderPublishUrl
-                    , pure $ renderStyleURIInput state
-                    ]
-            ]
-        , pure renderPublishFooter
+    [ HH.h4_ [ HH.text "Couldn't publish deck" ]
+    , HH.div
+        [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
+        [ HH.p_ [ HH.text "An error occured, please try refreshing and if the error persists then please contact SlamData." ]
+        , HH.small_ [ HH.text $ "Couldn't parse URL: " <> show error ]
         ]
+    , HH.div
+        [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
+        [ HH.button
+          [ HP.classes [ B.btn, B.btnPrimary ]
+          , HE.onClick (HE.input_ HandleCancel)
+          , HP.type_ HP.ButtonButton
+          ]
+          [ HH.text "Ok" ]
+        ]
+    ]
+
+renderPublishDialog ∷ State → String → H.ComponentHTML Query
+renderPublishDialog state copyVal =
+  HH.div
+    [ HP.classes [ HH.ClassName "deck-dialog-share" ] ]
+    [ HH.h4_ [ HH.text "Publish deck" ]
+    , HH.div
+        [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
+        [ HH.p_ renderAccessMessage
+        , HH.form
+            [ HE.onSubmit (HE.input PreventDefault) ]
+            $ fold
+                [ pure $ renderPublishUrl
+                , pure $ renderStyleURIInput state
+                ]
+        ]
+    , renderPublishFooter
+    ]
   where
   renderPublishUrl =
     HH.div
       [ HP.classes [ B.inputGroup ] ]
       [ HH.input
           [ HP.classes [ B.formControl ]
-          , HP.value state.copyVal
+          , HP.value copyVal
           , HP.readOnly true
           , HP.disabled state.submitting
           , HP.title "Published deck URL"
@@ -268,7 +315,7 @@ renderPublishDialog state =
                      , guard state.submitting $> B.disabled
                      ]
                  , pure $ HP.target "_blank"
-                 , guard state.submitting $> HP.href state.copyVal
+                 , guard state.submitting $> HP.href copyVal
                  ])
               [ HH.text "Preview" ]
           ]
@@ -292,23 +339,12 @@ renderPublishDialog state =
             , HH.text " for more information."
             ]
 
-renderEmbedDialog ∷ State → H.ComponentHTML Query
-renderEmbedDialog state =
+renderEmbedDialog ∷ State → String → H.ComponentHTML Query
+renderEmbedDialog state copyVal =
   HH.div [ HP.classes [ HH.ClassName "deck-dialog-embed" ] ]
     [ HH.h4_ [ HH.text  "Embed deck" ]
     , HH.div
-        [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
-            ⊕ if state.loading then [ ] else [ B.hidden ]
-        ]
-        [ HH.img [ HP.src "img/blue-spin.svg" ]
-        , HH.text "Loading"
-        ]
-    , HH.div
-        [ HP.classes
-            $ [ HH.ClassName "deck-dialog-body" ]
-            ⊕ if state.loading then [ B.hidden ] else [ ]
-        ]
+        [ HP.class_ $ HH.ClassName "deck-dialog-body" ]
         [ HH.form
           [ HE.onSubmit (HE.input PreventDefault) ]
           [ HH.div
@@ -316,7 +352,7 @@ renderEmbedDialog state =
                 [ HH.textarea
                   [ HP.classes [ B.formControl, Rc.embedBox ]
                   , HP.readOnly true
-                  , HP.value state.copyVal
+                  , HP.value copyVal
                   , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
                   ]
                 , HH.button
@@ -345,10 +381,7 @@ renderEmbedDialog state =
           ]
         ]
     , HH.div
-        [ HP.classes
-            $ [ HH.ClassName "deck-dialog-footer" ]
-            ⊕ if state.loading then [ B.hidden ] else [ ]
-        ]
+        [ HP.class_ $ HH.ClassName "deck-dialog-footer" ]
         $ [ HH.div
               [ HP.classes
                   $ [ B.alert, B.alertDanger ]
@@ -398,7 +431,7 @@ renderEmbedDialog state =
 
 
 eval ∷ Query ~> DSL
-eval (Init next) = next <$ do
+eval (Init next) = next <$ fork do
   state ← H.get
   -- To know if user is authed
   mbAuthToken ← H.lift Auth.getIdToken
@@ -407,12 +440,10 @@ eval (Init next) = next <$ do
       H.modify _{ permToken = Nothing
                 , canRevoke = false
                 , isLoggedIn = false
-                , loading = false
                 }
     Just oidcToken → do
       H.modify _{isLoggedIn = true, canRevoke = true}
       tokensRes ← Q.tokenList
-      H.modify _{loading = false}
       case tokensRes of
         Left _ → H.modify _{noNetworkAccessToAdvancedError = true}
         Right tokens →
@@ -530,9 +561,10 @@ updateCopyVal ∷ DSL Unit
 updateCopyVal = do
   locString ← H.liftEff getHref
   state ← H.get
-  case renderCopyVal locString state of
-    Right copyVal → do
-      H.modify _{ copyVal = copyVal }
+  let eitherCopyVal = renderCopyVal state <$> URI.runParseURI locString
+  H.modify _{ copyVal = Just eitherCopyVal }
+  for_ eitherCopyVal
+    \copyVal → do
       clipboard ← H.gets _.clipboard
       case clipboard of
         Just c -> H.liftEff $ C.destroy c
@@ -540,80 +572,77 @@ updateCopyVal = do
       H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl → do
         newClipboard ← H.liftEff $ C.fromElement (toElement htmlEl) (pure copyVal)
         H.modify _ { clipboard = Just newClipboard }
-    Left error →
-      pure unit
 
-renderCopyVal ∷ String → State → Either ParseError String
-renderCopyVal locString state
-  | state.presentingAs ≡ URI =
-    URI.printURI <$> renderURI locString state
-  | otherwise
-      = workspaceURI
-          <#> \uri →
-            Str.joinWith "\n"
-              [ """<!-- This is the DOM element that the deck will be inserted into. -->"""
-              , """<!-- You can change the width and height and use a stylesheet to apply styling. -->"""
-              , """<iframe frameborder="0" width="100%" height="800" id=""" ⊕ quoted deckDOMId ⊕ """></iframe>"""
-              , """"""
-              , """<!-- To change a deck's variables after it has been inserted please use window.slamDataDeckUrl to create an new URI then update the deck iframe's src parameter. -->"""
-              , """<script type="text/javascript">"""
-              , """  window.slamDataDeckUrl = function (options) {"""
-              , """    var queryParts = function () {"""
-              , """      var parts = [];"""
-              , """      if (options.echartTheme) {"""
-              , """        parts.push("echartTheme=" + encodeURIComponent(options.echartTheme));"""
-              , """      }"""
-              , """      if (options.permissionTokens && options.permissionTokens.length) {"""
-              , """        parts.push("permissionTokens=" + options.permissionTokens.join(","));"""
-              , """      }"""
-              , """      if (options.stylesheetUrls && options.stylesheetUrls.length) {"""
-              , """        parts.push("stylesheets=" + options.stylesheetUrls.map(encodeURIComponent).join(","));"""
-              , """      }"""
-              , """      return parts;"""
-              , """    };"""
-              , """    var queryString = "?" + queryParts().join("&");"""
-              , """    var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
-              , """    return options.slamDataUrl + queryString + "#" + options.deckPath + options.deckId + "/view" + varsParam;"""
-              , """  };"""
-              , """</script>"""
-              , """"""
-              , """<!-- This is the script which performs SlamData deck insertion. -->"""
-              , """<script type="text/javascript">"""
-              , """  (function () {"""
-              , """    var options = {"""
-              , """      slamDataUrl: """ ⊕ quoted (URI.printURI uri) ⊕ ""","""
-              , """      deckPath: """ ⊕ quoted deckPath ⊕ ""","""
-              , """      deckId: """ ⊕ quoted deckId ⊕ ""","""
-              , """      permissionTokens: [""" ⊕ maybe "" quoted token ⊕ """],"""
-              , """      stylesheetUrls: [""" ⊕ maybe "" quoted stylesheet ⊕ """], // An array of custom stylesheet URIs."""
-              , """      echartTheme: undefined,"""
-              , """      vars: """ ⊕ renderVarMaps state.varMaps
-              , """    };"""
-              , """"""
-              , """    var deckSelector = "iframe#sd-deck-" + options.deckId;"""
-              , """    var deckElement = document.querySelector(deckSelector);"""
-              , """"""
-              , """    if (deckElement) {"""
-              , """      deckElement.src = window.slamDataDeckUrl(options);"""
-              , """    } else {"""
-              , """      throw("SlamData: Couldn't locate " + deckSelector);"""
-              , """    }"""
-              , """  })();"""
-              , """</script>"""
-              ]
+renderCopyVal ∷ State → URI → String
+renderCopyVal state =
+  case state.presentingAs of
+    URI → URI.printURI ∘ renderPublishURI state
+    Embed → renderEmbedSource state
+
+renderEmbedSource ∷ State → URI → String
+renderEmbedSource state locationURI =
+  Str.joinWith "\n"
+    [ """<!-- This is the DOM element that the deck will be inserted into. -->"""
+    , """<!-- You can change the width and height and use a stylesheet to apply styling. -->"""
+    , """<iframe frameborder="0" width="100%" height="800" id=""" ⊕ quoted deckDOMId ⊕ """></iframe>"""
+    , """"""
+    , """<!-- To change a deck's variables after it has been inserted please use window.slamDataDeckUrl to create an new URI then update the deck iframe's src parameter. -->"""
+    , """<script type="text/javascript">"""
+    , """  window.slamDataDeckUrl = function (options) {"""
+    , """    var queryParts = function () {"""
+    , """      var parts = [];"""
+    , """      if (options.echartTheme) {"""
+    , """        parts.push("echartTheme=" + encodeURIComponent(options.echartTheme));"""
+    , """      }"""
+    , """      if (options.permissionTokens && options.permissionTokens.length) {"""
+    , """        parts.push("permissionTokens=" + options.permissionTokens.join(","));"""
+    , """      }"""
+    , """      if (options.stylesheetUrls && options.stylesheetUrls.length) {"""
+    , """        parts.push("stylesheets=" + options.stylesheetUrls.map(encodeURIComponent).join(","));"""
+    , """      }"""
+    , """      return parts;"""
+    , """    };"""
+    , """    var queryString = "?" + queryParts().join("&");"""
+    , """    var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
+    , """    return options.slamDataUrl + queryString + "#" + options.deckPath + options.deckId + "/view" + varsParam;"""
+    , """  };"""
+    , """</script>"""
+    , """"""
+    , """<!-- This is the script which performs SlamData deck insertion. -->"""
+    , """<script type="text/javascript">"""
+    , """  (function () {"""
+    , """    var options = {"""
+    , """      slamDataUrl: """ ⊕ quoted (URI.printURI workspaceURI) ⊕ ""","""
+    , """      deckPath: """ ⊕ quoted deckPath ⊕ ""","""
+    , """      deckId: """ ⊕ quoted deckId ⊕ ""","""
+    , """      permissionTokens: [""" ⊕ maybe "" quoted token ⊕ """],"""
+    , """      stylesheetUrls: [""" ⊕ maybe "" quoted stylesheet ⊕ """], // An array of custom stylesheet URIs."""
+    , """      echartTheme: undefined,"""
+    , """      vars: """ ⊕ renderVarMaps state.varMaps
+    , """    };"""
+    , """"""
+    , """    var deckSelector = "iframe#sd-deck-" + options.deckId;"""
+    , """    var deckElement = document.querySelector(deckSelector);"""
+    , """"""
+    , """    if (deckElement) {"""
+    , """      deckElement.src = window.slamDataDeckUrl(options);"""
+    , """    } else {"""
+    , """      throw("SlamData: Couldn't locate " + deckSelector);"""
+    , """    }"""
+    , """  })();"""
+    , """</script>"""
+    ]
     where
     line = (_ ⊕ "\n")
     quoted s = "\"" ⊕ s ⊕ "\""
     workspaceURI =
-      URI.runParseURI locString
-        <#> \loc →
-          URI.URI
-            (URIT.uriScheme loc)
-            (URI.HierarchicalPart
-              (HierarchicalPart.authority $ URIT.hierarchicalPart loc)
-              (Right <$> filePathFromURI loc))
-            Nothing
-            Nothing
+      URI.URI
+        (URIT.uriScheme locationURI)
+        (URI.HierarchicalPart
+          (HierarchicalPart.authority $ URIT.hierarchicalPart locationURI)
+          (Right <$> filePathFromURI locationURI))
+        Nothing
+        Nothing
     deckId = DID.toString state.sharingInput.deckId
     deckDOMId = "sd-deck-" ⊕ deckId
     deckPath = UP.encodeURIPath (Pathy.printPath state.sharingInput.workspacePath)
@@ -625,17 +654,15 @@ renderVarMaps = indent <<< prettyJson <<< encodeJson <<< varMapsForURL
   where
   indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" RXF.global) "$1      "
 
-renderURI ∷ String → State → Either ParseError URI.URI
-renderURI locationString state@{sharingInput, permToken, isLoggedIn, styleURIString} =
-  URI.runParseURI locationString
-    <#> \loc →
-      URI.URI
-        (URIT.uriScheme loc)
-        (URI.HierarchicalPart
-          (HierarchicalPart.authority $ URIT.hierarchicalPart loc)
-          (Right <$> filePathFromURI loc))
-        (Just $ URI.Query query)
-        (Just fragment)
+renderPublishURI ∷ State → URI → URI.URI
+renderPublishURI state@{sharingInput, permToken, isLoggedIn, styleURIString} locationURI =
+  URI.URI
+    (URIT.uriScheme locationURI)
+    (URI.HierarchicalPart
+      (HierarchicalPart.authority $ URIT.hierarchicalPart locationURI)
+      (Right <$> filePathFromURI locationURI))
+    (Just $ URI.Query query)
+    (Just fragment)
   where
   fragment ∷ String
   fragment =
