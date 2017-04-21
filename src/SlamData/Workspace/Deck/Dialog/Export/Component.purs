@@ -54,6 +54,7 @@ import DOM.HTML.Types (readHTMLElement)
 import Data.Argonaut (encodeJson)
 import Data.Foreign (toForeign)
 import Data.URI (AbsoluteURI, URI)
+import Text.Parsing.StringParser (ParseError)
 import Data.URI as URI
 import Data.URI.Types.AbsoluteURI as AbsoluteURI
 import Data.URI.Types.URI as URIT
@@ -542,78 +543,77 @@ updateCopyVal = do
     Left error →
       pure unit
 
-renderCopyVal ∷ String → State → Either String String
+renderCopyVal ∷ String → State → Either ParseError String
 renderCopyVal locString state
   | state.presentingAs ≡ URI =
     URI.printURI <$> renderURI locString state
   | otherwise
-      = Right $ Str.joinWith "\n"
-          [ """<!-- This is the DOM element that the deck will be inserted into. -->"""
-          , """<!-- You can change the width and height and use a stylesheet to apply styling. -->"""
-          , """<iframe frameborder="0" width="100%" height="800" id=""" ⊕ quoted deckDOMId ⊕ """></iframe>"""
-          , """"""
-          , """<!-- To change a deck's variables after it has been inserted please use window.slamDataDeckUrl to create an new URI then update the deck iframe's src parameter. -->"""
-          , """<script type="text/javascript">"""
-          , """  window.slamDataDeckUrl = function (options) {"""
-          , """    var queryParts = function () {"""
-          , """      var parts = [];"""
-          , """      if (options.echartTheme) {"""
-          , """        parts.push("echartTheme=" + encodeURIComponent(options.echartTheme));"""
-          , """      }"""
-          , """      if (options.permissionTokens && options.permissionTokens.length) {"""
-          , """        parts.push("permissionTokens=" + options.permissionTokens.join(","));"""
-          , """      }"""
-          , """      if (options.stylesheetUrls && options.stylesheetUrls.length) {"""
-          , """        parts.push("stylesheets=" + options.stylesheetUrls.map(encodeURIComponent).join(","));"""
-          , """      }"""
-          , """      return parts;"""
-          , """    };"""
-          , """    var queryString = "?" + queryParts().join("&");"""
-          , """    var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
-          , """    return options.slamDataUrl + queryString + "#" + options.deckPath + options.deckId + "/view" + varsParam;"""
-          , """  };"""
-          , """</script>"""
-          , """"""
-          , """<!-- This is the script which performs SlamData deck insertion. -->"""
-          , """<script type="text/javascript">"""
-          , """  (function () {"""
-          , """    var options = {"""
-          , """      slamDataUrl: """ ⊕ quoted workspaceURI ⊕ ""","""
-          , """      deckPath: """ ⊕ quoted deckPath ⊕ ""","""
-          , """      deckId: """ ⊕ quoted deckId ⊕ ""","""
-          , """      permissionTokens: [""" ⊕ maybe "" quoted token ⊕ """],"""
-          , """      stylesheetUrls: [""" ⊕ maybe "" quoted stylesheet ⊕ """], // An array of custom stylesheet URIs."""
-          , """      echartTheme: undefined,"""
-          , """      vars: """ ⊕ renderVarMaps state.varMaps
-          , """    };"""
-          , """"""
-          , """    var deckSelector = "iframe#sd-deck-" + options.deckId;"""
-          , """    var deckElement = document.querySelector(deckSelector);"""
-          , """"""
-          , """    if (deckElement) {"""
-          , """      deckElement.src = window.slamDataDeckUrl(options);"""
-          , """    } else {"""
-          , """      throw("SlamData: Couldn't locate " + deckSelector);"""
-          , """    }"""
-          , """  })();"""
-          , """</script>"""
-          ]
+      = workspaceURI
+          <#> \uri →
+            Str.joinWith "\n"
+              [ """<!-- This is the DOM element that the deck will be inserted into. -->"""
+              , """<!-- You can change the width and height and use a stylesheet to apply styling. -->"""
+              , """<iframe frameborder="0" width="100%" height="800" id=""" ⊕ quoted deckDOMId ⊕ """></iframe>"""
+              , """"""
+              , """<!-- To change a deck's variables after it has been inserted please use window.slamDataDeckUrl to create an new URI then update the deck iframe's src parameter. -->"""
+              , """<script type="text/javascript">"""
+              , """  window.slamDataDeckUrl = function (options) {"""
+              , """    var queryParts = function () {"""
+              , """      var parts = [];"""
+              , """      if (options.echartTheme) {"""
+              , """        parts.push("echartTheme=" + encodeURIComponent(options.echartTheme));"""
+              , """      }"""
+              , """      if (options.permissionTokens && options.permissionTokens.length) {"""
+              , """        parts.push("permissionTokens=" + options.permissionTokens.join(","));"""
+              , """      }"""
+              , """      if (options.stylesheetUrls && options.stylesheetUrls.length) {"""
+              , """        parts.push("stylesheets=" + options.stylesheetUrls.map(encodeURIComponent).join(","));"""
+              , """      }"""
+              , """      return parts;"""
+              , """    };"""
+              , """    var queryString = "?" + queryParts().join("&");"""
+              , """    var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
+              , """    return options.slamDataUrl + queryString + "#" + options.deckPath + options.deckId + "/view" + varsParam;"""
+              , """  };"""
+              , """</script>"""
+              , """"""
+              , """<!-- This is the script which performs SlamData deck insertion. -->"""
+              , """<script type="text/javascript">"""
+              , """  (function () {"""
+              , """    var options = {"""
+              , """      slamDataUrl: """ ⊕ quoted (URI.printURI uri) ⊕ ""","""
+              , """      deckPath: """ ⊕ quoted deckPath ⊕ ""","""
+              , """      deckId: """ ⊕ quoted deckId ⊕ ""","""
+              , """      permissionTokens: [""" ⊕ maybe "" quoted token ⊕ """],"""
+              , """      stylesheetUrls: [""" ⊕ maybe "" quoted stylesheet ⊕ """], // An array of custom stylesheet URIs."""
+              , """      echartTheme: undefined,"""
+              , """      vars: """ ⊕ renderVarMaps state.varMaps
+              , """    };"""
+              , """"""
+              , """    var deckSelector = "iframe#sd-deck-" + options.deckId;"""
+              , """    var deckElement = document.querySelector(deckSelector);"""
+              , """"""
+              , """    if (deckElement) {"""
+              , """      deckElement.src = window.slamDataDeckUrl(options);"""
+              , """    } else {"""
+              , """      throw("SlamData: Couldn't locate " + deckSelector);"""
+              , """    }"""
+              , """  })();"""
+              , """</script>"""
+              ]
     where
     line = (_ ⊕ "\n")
     quoted s = "\"" ⊕ s ⊕ "\""
     workspaceURI =
-      either id URI.printURI
-        $ case hush $ URI.runParseURI locString of
-          Nothing →
-            Left "Bad SlamData config: workspacePath was not a valid absolute URI."
-          Just loc →
-            Right $ URI.URI
-              (URIT.uriScheme loc)
-              (URI.HierarchicalPart
-                (HierarchicalPart.authority $ URIT.hierarchicalPart loc)
-                (Right <$> filePathFromURI loc))
-              Nothing
-              Nothing
+      URI.runParseURI locString
+        <#> \loc →
+          URI.URI
+            (URIT.uriScheme loc)
+            (URI.HierarchicalPart
+              (HierarchicalPart.authority $ URIT.hierarchicalPart loc)
+              (Right <$> filePathFromURI loc))
+            Nothing
+            Nothing
     deckId = DID.toString state.sharingInput.deckId
     deckDOMId = "sd-deck-" ⊕ deckId
     deckPath = UP.encodeURIPath (Pathy.printPath state.sharingInput.workspacePath)
@@ -625,13 +625,11 @@ renderVarMaps = indent <<< prettyJson <<< encodeJson <<< varMapsForURL
   where
   indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" RXF.global) "$1      "
 
-renderURI ∷ String → State → Either String URI.URI
+renderURI ∷ String → State → Either ParseError URI.URI
 renderURI locationString state@{sharingInput, permToken, isLoggedIn, styleURIString} =
-  case hush $ URI.runParseURI locationString of
-    Nothing →
-      Left "Bad SlamData config: workspacePath was not a valid absolute URI."
-    Just loc →
-      Right $ URI.URI
+  URI.runParseURI locationString
+    <#> \loc →
+      URI.URI
         (URIT.uriScheme loc)
         (URI.HierarchicalPart
           (HierarchicalPart.authority $ URIT.hierarchicalPart loc)
