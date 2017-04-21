@@ -66,7 +66,7 @@ import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(.
 import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL)
 import Utils (hush, prettyJson)
 
-data PresentAs = Embed | URI
+data PresentAs = Embed | Publish
 
 derive instance eqPresentAs ∷ Eq PresentAs
 
@@ -159,13 +159,13 @@ component =
 render ∷ State → H.ComponentHTML Query
 render state =
   case state.copyVal, state.presentingAs of
-    Nothing, URI →
+    Nothing, Publish →
       renderLoadingDialog "Publish deck"
     Nothing, Embed →
       renderLoadingDialog "Embed deck"
     Just (Left error), _ →
       renderErrorDialog error
-    Just (Right copyVal), URI →
+    Just (Right copyVal), Publish →
       renderPublishDialog state copyVal
     Just (Right copyVal), Embed →
       renderEmbedDialog state copyVal
@@ -458,8 +458,8 @@ eval (Init next) = next <$ fork do
                         , noNetworkAccessToAdvancedError = false
                         }
             Nothing → do
-              isURI ← (_ ≡ URI) <$> H.gets _.presentingAs
-              when (state.shouldGenerateToken ∨ isURI) do
+              isPublish ← (_ ≡ Publish) <$> H.gets _.presentingAs
+              when (state.shouldGenerateToken ∨ isPublish) do
                 H.modify _{submitting = true}
                 createdRes ←
                   Q.createToken
@@ -576,7 +576,7 @@ updateCopyVal = do
 renderCopyVal ∷ State → URI → String
 renderCopyVal state =
   case state.presentingAs of
-    URI → URI.printURI ∘ renderPublishURI state
+    Publish → URI.printURI ∘ renderPublishURI state
     Embed → renderEmbedSource state
 
 renderEmbedSource ∷ State → URI → String
