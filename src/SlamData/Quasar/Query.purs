@@ -29,6 +29,7 @@ module SlamData.Quasar.Query
   , fields
   , jcursorToSql
   , module Quasar.Error
+  , module SlamData.Quasar.Class
   ) where
 
 import SlamData.Prelude
@@ -57,7 +58,6 @@ import SqlSquare (Sql, print)
 import SqlSquare as Sql
 
 import Utils.SqlSquare (tableRelation)
-
 
 -- | Compiles a query.
 compile
