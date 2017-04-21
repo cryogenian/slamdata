@@ -22,45 +22,24 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Unsafe as Unsafe
 
 import Data.JSDate (LOCALE)
-import Data.Json.Extended as EJSON
 import Data.Set as Set
 import Data.StrMap as SM
 
 import SlamData.Workspace.Card.Markdown.Model as M
 import SlamData.Workspace.Card.Markdown.Component.State as MDS
-import SlamData.Workspace.Card.Port.VarMap as VM
 
 import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
 import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
-import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
-newtype JsonEncodableVarMapValue = JsonEncodableVarMapValue VM.VarMapValue
-
-derive instance eqJsonEncodableVarMapValue ∷ Eq JsonEncodableVarMapValue
-
-derive instance ordJsonEncodableVarMapValue ∷ Ord JsonEncodableVarMapValue
-
-getJsonEncodableVarMapValue
-  ∷ JsonEncodableVarMapValue
-  → VM.VarMapValue
-getJsonEncodableVarMapValue (JsonEncodableVarMapValue x) =
-  x
-
-instance arbitraryJsonEncodableVarMapValue ∷ Arbitrary JsonEncodableVarMapValue where
-  arbitrary =
-    JsonEncodableVarMapValue <$> do
-      VM.Literal <$> EJSON.arbitraryJsonEncodableEJsonOfSize 1
-        <|> VM.QueryExpr <$> arbitrary
-
-checkSerialization ∷ forall eff. SC eff Unit
+checkSerialization ∷ ∀ eff. SC eff Unit
 checkSerialization =
-  quickCheck $ map getJsonEncodableVarMapValue >>> \(SDS.SlamDownState { document, formState }) →
-    case M.decode (M.encode formState) of
+  quickCheck $ \(SDS.SlamDownState { document, formState }) →
+    case M.decode $ M.encode formState of
       Left err → Failed $ "Decode failed: " <> err
       Right state →
         fold
-         [ state == state <?> "state mismatch: " <> show state <> " vs. " <> show state
+         [ state ≡ state <?> "state mismatch: " <> show state <> " vs. " <> show state
          ]
 
 unsafeRunLocale
@@ -70,7 +49,7 @@ unsafeRunLocale
 unsafeRunLocale =
   Unsafe.unsafePerformEff
 
-checkVarMapConstruction ∷ forall eff. SC eff Unit
+checkVarMapConstruction ∷ ∀ eff. SC eff Unit
 checkVarMapConstruction =
   quickCheck \(SDS.SlamDownState { document, formState }) →
     let
@@ -79,10 +58,10 @@ checkVarMapConstruction =
       descKeys = Set.fromFoldable $ SM.keys inputState
       stateKeys = Set.fromFoldable $ SM.keys varMap
     in
-      descKeys == stateKeys
+      descKeys ≡ stateKeys
         <?> ("Keys mismatch: " <> show descKeys <> " vs. " <> show stateKeys)
 
-check ∷ forall eff. SC eff Unit
+check ∷ ∀ eff. SC eff Unit
 check = do
   checkVarMapConstruction
   checkSerialization

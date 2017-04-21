@@ -89,13 +89,16 @@ isDisabled prj pack state =
   Set.isEmpty $ projectionCursors prj pack state
 
 isConfigurable ∷ T.Projection → Package → State → Boolean
-isConfigurable prj pack state =
-  let
-    axis = state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
-  in maybe false (eq Ax.Measure) $ Ax.axisType <$> axis <*> pure state.axes
+isConfigurable prj pack state
+  | DMD.isFlat prj = false
+  | otherwise =
+    let
+      axis = state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
+    in maybe false (eq Ax.Measure) $ Ax.axisType <$> axis <*> pure state.axes
 
 getTransform ∷ T.Projection → State → Maybe Tr.Transform
-getTransform tp state = state.dimMap ^? T.unpackProjection tp ∘ _Just ∘ D._value ∘ D._transform ∘ _Just
+getTransform tp state =
+  state.dimMap ^? T.unpackProjection tp ∘ _Just ∘ D._value ∘ D._transform ∘ _Just
 
 transforms ∷ State → Array Tr.Transform
 transforms _ = Tr.aggregationTransforms

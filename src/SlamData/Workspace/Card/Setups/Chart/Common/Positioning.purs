@@ -158,18 +158,23 @@ adjustDonutRadiuses arr =
 radialTitles
   ∷ ∀ r i
   . Array (RadialPosition (name ∷ Maybe String |r))
+  → String
   → DSL (title ∷ ETP.I|i)
-radialTitles rposs = E.titles $ for_ rposs \{name, x, y} → E.title do
-  traverse_ E.text name
-  E.textStyle do
-    E.fontFamily "Ubuntu, sans"
-    E.fontSize 12
-  for_ x \left →
-    E.left $ ET.Percent $ left - 0.3
-  for_ y \top →
-    E.top $ ET.Percent $ top - (rowHeight * radialSpaceCoeff) / 2.0
-  E.textCenter
-  E.textBottom
+radialTitles rposs namePrefix =
+  let prefix
+        | namePrefix ≡ "" = ""
+        | otherwise = namePrefix ⊕ ": "
+  in E.titles $ for_ rposs \{name, x, y} → E.title do
+    for_ name \n → E.text $ prefix ⊕ n
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+    for_ x \left →
+      E.left $ ET.Percent $ left - 0.3
+    for_ y \top →
+      E.top $ ET.Percent $ top - (rowHeight * radialSpaceCoeff) / 2.0
+    E.textCenter
+    E.textBottom
   where
   numRows ∷ Int
   numRows = rowCount rposs
@@ -284,18 +289,24 @@ rectangularTitles
   ∷ ∀ r i f
   . Foldable f
   ⇒ f (RectangularPosition (name ∷ Maybe String |r))
+  → String
   → DSL (title ∷ ETP.I|i)
-rectangularTitles poss = E.titles $ for_ poss \{name, x, y, h, fontSize} → E.title do
-  traverse_ E.text name
-  E.textStyle do
-    E.fontFamily "Ubuntu, sans"
-    traverse_ E.fontSize fontSize
-  for_ y \top →
-    E.top $ ET.Percent $ top - 5.0
-  for_ x \left →
-    E.left $ ET.Percent $ left + colWidth / 2.0 - 0.3
-  E.textCenter
-  E.textMiddle
+rectangularTitles poss namePrefix =
+  let prefix
+        | namePrefix ≡ "" = ""
+        | otherwise = namePrefix ⊕ ": "
+  in E.titles $ for_ poss \{name, x, y, h, fontSize} → E.title do
+    for_ name \n → E.text $ prefix ⊕ n
+    traverse_ E.text name
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      traverse_ E.fontSize fontSize
+    for_ y \top →
+      E.top $ ET.Percent $ top - 5.0
+    for_ x \left →
+      E.left $ ET.Percent $ left + colWidth / 2.0 - 0.3
+    E.textCenter
+    E.textMiddle
   where
   arr = foldMap (A.singleton) poss
 

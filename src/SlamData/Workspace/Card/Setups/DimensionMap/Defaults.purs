@@ -18,6 +18,7 @@ module SlamData.Workspace.Card.Setups.DimensionMap.Defaults
   ( ProjectionDefaults
   , getDefaults
   , dynamicMeasure
+  , isFlat
   ) where
 
 import SlamData.Prelude
@@ -205,11 +206,17 @@ statics =
 
 dynamicMeasure ∷ T.Projection → ProjectionDefaults
 dynamicMeasure prj =
-  { dimension: jcursorProjection
+  { dimension: D.projectionWithAggregation $ Just Ag.Sum
   , label: "Measure" <> maybe "" (\o → " #" <> show o) offset
   , value: "Choose measure"
   , select: "Choose measure"
-  , deselectable: true
+  , deselectable: false
   }
   where
   offset = map (add 1) ∘ Int.fromString =<< T.idReflection ^. T.unpackProjection prj
+
+-- | Some projections shouldn't be aggregated
+isFlat ∷ T.Projection → Boolean
+isFlat prj = case T.idReflection ^. T.unpackProjection prj of
+  Just "flatValue" → true
+  _ → false

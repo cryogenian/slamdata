@@ -21,14 +21,12 @@ module SlamData.Workspace.Card.Setups.Chart.Bar.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Map as M
 import Data.Set as Set
-import Data.Lens ((^?), preview, _Just)
+import Data.Lens ((^?))
+import Data.List as L
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -36,33 +34,21 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Bar buildBar m \axes → m
+import SqlSquare as Sql
 
 type BarSeries =
   { name ∷ Maybe String
@@ -74,83 +60,74 @@ type BarStacks =
   , series ∷ Array BarSeries
   }
 
-buildBarData ∷ ModelR → JArray → Array BarStacks
-buildBarData r records = series
+type Item =
+  { measure ∷ Number
+  , category ∷ String
+  , parallel ∷ Maybe String
+  , stack ∷ Maybe String
+  }
+
+decodeItem ∷ Json → Either String Item
+decodeItem = decodeJson >=> \obj → do
+  measure ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "measure"
+  category ← map (fromMaybe "" ∘ Sem.maybeString) $ obj .? "category"
+  parallel ← map Sem.maybeString $ obj .? "parallel"
+  stack ← map Sem.maybeString $ obj .? "stack"
+  pure { measure
+       , category
+       , parallel
+       , stack
+       }
+
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildBar
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
+  , r.category # SCC.jcursorPrj # Sql.as "category"
+  , r.stack # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "stack"
+  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+  ]
+
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable $ A.catMaybes
+    [ r.parallel <#> SCC.jcursorSql
+    , r.stack <#> SCC.jcursorSql
+    , Just r.category <#> SCC.jcursorSql
+    ]
+
+buildBar ∷ ModelR → Axes → Port.Port
+buildBar m axes =
+  Port.ChartInstructions
+    { options: barOptions axes m ∘ buildBarData
+    , chartType: Bar
+    }
+
+buildBarData ∷ Array Json → Array BarStacks
+buildBarData =
+  stacks ∘ foldMap (foldMap A.singleton ∘ decodeItem)
   where
-  -- | maybe stack >> maybe parallel >> category >> values
-  dataMap ∷ Maybe String >> Maybe String >> String >> Array Number
-  dataMap =
-    foldl dataMapFoldFn M.empty records
-
-  dataMapFoldFn
-    ∷ Maybe String >> Maybe String >> String >> Array Number
-    → Json
-    → Maybe String >> Maybe String >> String >> Array Number
-  dataMapFoldFn acc js =
-    let
-      getMaybeStringFromJson = getMaybeString js
-      getValuesFromJson = getValues js
-    in case getMaybeStringFromJson =<< (r.category ^? D._value ∘ D._projection) of
-      Nothing → acc
-      Just categoryKey →
-        let
-          mbStack =
-            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.stack
-          mbParallel =
-            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.parallel
-          values =
-            getValuesFromJson (r.value ^? D._value ∘ D._projection)
-
-          alterStackFn
-            ∷ Maybe (Maybe String >> String >> Array Number)
-            → Maybe (Maybe String >> String >> Array Number)
-          alterStackFn Nothing =
-            Just $ M.singleton mbParallel $ M.singleton categoryKey values
-          alterStackFn (Just parallel) =
-            Just $ M.alter alterParallelFn mbParallel parallel
-
-          alterParallelFn
-            ∷ Maybe (String >> Array Number)
-            → Maybe (String >> Array Number)
-          alterParallelFn Nothing =
-            Just $ M.singleton categoryKey values
-          alterParallelFn (Just category) =
-            Just $ M.alter alterCategoryFn categoryKey category
-
-          alterCategoryFn
-            ∷ Maybe (Array Number)
-            → Maybe (Array Number)
-          alterCategoryFn Nothing = Just values
-          alterCategoryFn (Just arr) = Just $ arr ⊕ values
-        in
-          M.alter alterStackFn mbStack acc
-
-  series ∷ Array BarStacks
+  stacks ∷ Array Item → Array BarStacks
+  stacks =
+    BCE.groupOn _.stack
+      ⋙ map \(stack × items) →
+          { stack
+          , series: series items
+          }
+  series ∷ Array Item → Array BarSeries
   series =
-    foldMap mkBarStack $ M.toList dataMap
+    BCE.groupOn _.parallel
+      ⋙ map \(name × items) →
+          { name
+          , items: M.fromFoldable $ map toPoint items
+          }
+  toPoint ∷ Item → String × Number
+  toPoint { measure, category } = category × measure
 
-  mkBarStack
-    ∷ Maybe String × (Maybe String >> String >> Array Number)
-    → Array BarStacks
-  mkBarStack (stack × sers) =
-    [{ stack
-     , series: foldMap mkBarSeries $ M.toList sers
-     }]
-
-  mkBarSeries
-    ∷ Maybe String × (String >> Array Number)
-    → Array BarSeries
-  mkBarSeries (name × items) =
-    [{ name
-     , items:
-         map (Ag.runAggregation
-            (fromMaybe Ag.Sum $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) )
-       items
-     }]
-
-
-buildBar ∷ Axes → ModelR → JArray → DSL OptionI
-buildBar axes r records = do
+barOptions ∷ Axes → ModelR → Array BarStacks → DSL OptionI
+barOptions axes r barData = do
   let
     cols =
       [ { label: D.jcursorLabel r.category, value: CCT.formatValueIx 0 }
@@ -197,10 +174,6 @@ buildBar axes r records = do
   E.series series
 
   where
-
-  barData ∷ Array BarStacks
-  barData = buildBarData r records
-
   xAxisType ∷ Ax.AxisType
   xAxisType =
     fromMaybe Ax.Category
@@ -214,8 +187,9 @@ buildBar axes r records = do
   seriesNames = case r.parallel of
     Just _ →
       A.fromFoldable
-      $ foldMap (_.series ⋙ foldMap (_.name ⋙ foldMap Set.singleton ))
-        barData
+      $ flip foldMap barData
+      $ foldMap (Set.fromFoldable ∘ _.name)
+      ∘ _.series
     Nothing →
       A.catMaybes $ map _.stack barData
 
@@ -223,10 +197,10 @@ buildBar axes r records = do
   xValues =
     A.sortBy xSortFn
       $ A.fromFoldable
-      $ foldMap (_.series
-                 ⋙ foldMap (_.items
-                            ⋙ M.keys
-                            ⋙ Set.fromFoldable)) barData
+      $ flip foldMap barData
+      $ foldMap (Set.fromFoldable ∘ M.keys ∘ _.items)
+      ∘ _.series
+
 
   xSortFn ∷ String → String → Ordering
   xSortFn = Ax.compareWithAxisType xAxisType

@@ -24,23 +24,27 @@ import Control.Monad.Throw (class MonadThrow, throw)
 
 import Data.Argonaut as J
 import Data.Array as Array
-import Data.Lens ((^.))
+import Data.Lens ((^.), (.~), (?~), (<>~))
+import Data.List ((:))
+import Data.List as L
+import Data.NonEmpty as NE
 import Data.Map as Map
 import Data.Path.Pathy as Path
-import Data.String as String
 import Data.Set as Set
 import Data.StrMap as SM
 
 import SlamData.Prelude
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Axis (buildAxes)
+
+import SqlSquare (Sql)
+import SqlSquare as Sql
 
 import Utils.Path (FilePath)
 
@@ -68,45 +72,62 @@ eval options varMap resource = do
       _ → either throw (pure ∘ buildAxes) =<< QQ.sample filePath 0 300
   let
     state' = { axes, records: [], resource }
-    view = Port.View r (snd query) varMap
+    view = Port.View r (Sql.print $ snd query) varMap
     output = Port.PivotTable (fst query) × SM.singleton Port.defaultResourceVar (Left view)
-    backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir r)
+    backendPath = fromMaybe Path.rootDir (Path.parentDir r)
   put (Just (CEM.Analysis state'))
   when (Array.null options.columns) do
     CEM.throw "Please select a column to display"
-  CEM.liftQ $ QQ.viewQuery backendPath r (snd query) SM.empty
+  CEM.liftQ $ QQ.viewQuery r (snd query) SM.empty
   pure output
 
-mkSql ∷ PTM.Model → FilePath → Port.PivotTablePort × String
+mkSql ∷ PTM.Model → FilePath → Port.PivotTablePort × Sql
 mkSql options resource =
   let
     isSimple = PTM.isSimple options
     port = genPort isSimple options
-    dimLen = Array.length port.dimensions
-    dimVals = map escapeDimension <$> port.dimensions
-    colVals = map escapeColumn <$> port.columns
-    groupBy = map (\(_ × tr × val) → maybe val (flip T.printTransform val) tr) dimVals
-    dims = map (\(n × tr × val) → groupByTransform tr val <> " AS " <> Port.escapeIdentifier n) dimVals
-    cols =
-      map
-        case _ of
-          n × Nothing × val | isSimple → val <> " AS " <> Port.escapeIdentifier n
-          n × tr × val → columnTransform tr val <> " AS " <> Port.escapeIdentifier n
-        colVals
-    head =
-      [ "SELECT " <> String.joinWith ", " (dims <> cols)
-      , "FROM {{path}} AS row"
-      ]
-    tail =
-      [ "GROUP BY " <> String.joinWith ", " groupBy
-      , "ORDER BY " <> String.joinWith ", " groupBy
-      ]
+
+    dimVals = L.fromFoldable $ map escapeDimension <$> port.dimensions
+    colVals = L.fromFoldable $ map escapeColumn <$> port.columns
+
+    dimProjections ∷ L.List (Sql.Projection Sql)
+    dimProjections = dimVals <#> \(n × tr × prj) →
+      groupByTransform tr prj # Sql.as (Sql.printIdent n)
+
+    colProjections ∷ L.List (Sql.Projection Sql)
+    colProjections = colVals <#> case _ of
+      n × Nothing × val | isSimple → val # Sql.as (Sql.printIdent n)
+      n × tr × val → columnTransform tr val # Sql.as (Sql.printIdent n)
+
+    projectionExpr ∷ ∀ a. Sql.Projection a → a
+    projectionExpr (Sql.Projection { expr }) = expr
+
+    groupByFields ∷ L.List Sql
+    groupByFields = dimVals <#> \(_ × tr × val) →
+      projectionExpr $ maybe val (flip T.applyTransform val) tr
+
+
+    groupBy ∷ Maybe (Sql.GroupBy Sql)
+    groupBy = case groupByFields of
+      L.Nil → Nothing
+      xs → Just $ Sql.groupBy xs
+
+    orderBy ∷ Maybe (Sql.OrderBy Sql)
+    orderBy = case groupByFields of
+      L.Nil → Nothing
+      h:tl → Just $ Sql.OrderBy $ (Sql.ASC × h) NE.:| map (Sql.ASC × _) tl
+
+    projections ∷ L.List (Sql.Projection Sql)
+    projections = dimProjections <> colProjections
+
+    sql ∷ Sql
     sql =
-      QQ.templated resource $
-        String.joinWith " "
-          if dimLen == 0
-            then head
-            else head <> tail
+      Sql.buildSelect
+        $ ( Sql._projections <>~ projections)
+        ∘ ( Sql._relations
+              ?~ ( Sql.TableRelation { alias: Just "row", path: Left resource }))
+        ∘ ( Sql._groupBy .~ groupBy )
+        ∘ ( Sql._orderBy .~ orderBy )
   in
     port × sql
 
@@ -152,24 +173,24 @@ topName = case _ of
   J.JIndex _ cs → topName cs
   J.JCursorTop → "value"
 
-groupByTransform ∷ Maybe T.Transform → String → String
-groupByTransform (Just tr) b = T.printTransform tr b
+groupByTransform ∷ Maybe T.Transform → Sql.Projection Sql → Sql.Projection Sql
+groupByTransform (Just tr) b = T.applyTransform tr b
 groupByTransform Nothing b   = b
 
-columnTransform ∷ Maybe T.Transform → String → String
-columnTransform (Just tr) b = T.printTransform tr b
-columnTransform Nothing b   = "[" <> b <> " ...]"
+columnTransform ∷ Maybe T.Transform → Sql.Projection Sql → Sql.Projection Sql
+columnTransform (Just tr) b = T.applyTransform tr b
+columnTransform Nothing (Sql.Projection {alias, expr}) =
+  Sql.Projection { alias, expr: Sql.unop Sql.UnshiftArray expr }
 
-escapeString ∷ String → String
-escapeString = J.printJson <<< J.encodeJson
-
-escapeDimension ∷ ∀ a. D.Dimension a J.JCursor → Maybe T.Transform × String
+escapeDimension ∷ ∀ a. D.Dimension a J.JCursor → Maybe T.Transform × Sql.Projection Sql
 escapeDimension = case _ of
-  D.Dimension _ (D.Static str) → Nothing × escapeString str
-  D.Dimension _ (D.Projection tr cur) → tr × "row" <> CEC.escapeCursor cur
+  D.Dimension _ (D.Static str) → Nothing × (Sql.projection $ Sql.ident str)
+  D.Dimension _ (D.Projection tr cur) →
+    tr × (Sql.projection $ Sql.binop Sql.FieldDeref (Sql.ident "row") $ QQ.jcursorToSql cur)
 
-escapeColumn ∷ ∀ a. D.Dimension a PTM.Column → Maybe T.Transform × String
+escapeColumn ∷ ∀ a. D.Dimension a PTM.Column → Maybe T.Transform × Sql.Projection Sql
 escapeColumn = case _ of
-  D.Dimension _ (D.Static str) → Nothing × escapeString str
-  D.Dimension _ (D.Projection tr PTM.All) → tr × "row"
-  D.Dimension _ (D.Projection tr (PTM.Column cur)) → tr × "row" <> CEC.escapeCursor cur
+  D.Dimension _ (D.Static str) → Nothing × (Sql.projection $ Sql.ident str)
+  D.Dimension _ (D.Projection tr PTM.All) → tr × (Sql.projection $ Sql.ident "row")
+  D.Dimension _ (D.Projection tr (PTM.Column cur)) →
+    tr × (Sql.projection $ Sql.binop Sql.FieldDeref (Sql.ident "row") $ QQ.jcursorToSql cur)

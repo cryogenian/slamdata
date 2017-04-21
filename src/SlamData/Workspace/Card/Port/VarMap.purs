@@ -16,35 +16,33 @@ module SlamData.Workspace.Card.Port.VarMap
   , VarMap
   , URLVarMap
   , VarMapValue(..)
-  , renderVarMapValue
+  , _VarMapValue
   , emptyVarMap
-  , escapeIdentifier
   , variables
   ) where
 
 import SlamData.Prelude
 
 import Data.Array as A
-import Data.Foldable as F
-import Data.HugeNum as HN
 import Data.Json.Extended as EJSON
-import Data.Json.Extended.Signature.Render as EJR
 import Data.List as L
-import Data.String.Regex (test, replace) as Regex
-import Data.String.Regex.Flags (ignoreCase, global) as Regex
-import Data.String.Regex.Unsafe (unsafeRegex) as Regex
+import Data.Lens.Iso.Newtype (_Newtype)
+import Data.Lens.Types (Iso')
+import Data.String as S
 import Data.StrMap as SM
 
-import Data.Argonaut ((.?))
-import Data.Argonaut.Core (jsonSingletonObject)
+import Data.Argonaut ((.?), Json)
 import Data.Argonaut.Decode (class DecodeJson, decodeJson)
-import Data.Argonaut.Encode (class EncodeJson, encodeJson)
+import Data.Argonaut.Encode (class EncodeJson)
 
-import Matryoshka (Algebra, cata)
+import Matryoshka (embed, transAna)
+
+import SqlSquare (Sql)
+import SqlSquare as Sql
+import SqlSquare.Parser as SqlP
 
 import Text.Markdown.SlamDown.Syntax.Value as SDV
 
-import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Arbitrary as SC
 
 newtype Var = Var String
@@ -56,104 +54,62 @@ derive newtype instance encodeVar ∷ EncodeJson Var
 derive newtype instance arbitraryVar ∷ SC.Arbitrary Var
 derive instance newtypeVar :: Newtype Var _
 
-data VarMapValue
-  = Literal EJSON.EJson
-  | SetLiteral (Array VarMapValue)
-  | QueryExpr String -- TODO: syntax of SQL^2 queries
+newtype VarMapValue = VarMapValue Sql
 
-derive instance eqVarMapValue ∷ Eq VarMapValue
-derive instance ordVarMapValue ∷ Ord VarMapValue
+_VarMapValue ∷ Iso' VarMapValue Sql
+_VarMapValue = _Newtype
 
+
+derive instance newtypeVarMapValue ∷ Newtype VarMapValue _
+
+derive newtype instance eqVarMapValue ∷ Eq VarMapValue
+derive newtype instance ordVarMapValue ∷ Ord VarMapValue
 instance showVarMapValue ∷ Show VarMapValue where
-  show = renderVarMapValue
+  show (VarMapValue sql) = "(VarMapValue " ⊕ Sql.print sql ⊕ ")"
 
 instance encodeJsonVarMapValue ∷ EncodeJson VarMapValue where
-  encodeJson v =
-    case v of
-      Literal ejson →
-        jsonSingletonObject "literal" $
-          EJSON.encodeEJson ejson
-      SetLiteral as →
-        jsonSingletonObject "set" $
-          encodeJson as
-      QueryExpr str →
-        jsonSingletonObject "query" $
-          encodeJson str
+  encodeJson = Sql.encodeJson ∘ unwrap
+
 
 instance decodeJsonVarMapValue :: DecodeJson VarMapValue where
-  decodeJson json = do
-    obj <- decodeJson json
-    decodeLiteral obj
+  decodeJson json =
+    (map VarMapValue $ Sql.decodeJson json)
+    <|> (decodeLegacy json)
+    where
+    decodeLegacy = decodeJson >=> \obj →
+      map VarMapValue
+      $ decodeLiteral obj
       <|> decodeSetLiteral obj
       <|> decodeQueryExpr obj
 
-    where
-      decodeLiteral =
-        (_ .? "literal")
-          >=> EJSON.decodeEJson
-          >>> map Literal
+    decodeLiteral obj = do
+      (js ∷ Json) ← obj .? "literal"
+      (ejs ∷ EJSON.EJson) ←
+        EJSON.decodeEJson js
+      pure $ transAna Sql.Literal ejs
 
-      decodeSetLiteral =
-        (_ .? "set")
-          >=> decodeJson
-          >>> map SetLiteral
+    decodeSetLiteral obj = do
+      (arr ∷ Array Json) ← obj .? "set"
+      lst ←
+        map (L.fromFoldable ∘ map unwrap)
+        $ traverse decodeLegacy arr
+      pure $ embed $ Sql.SetLiteral lst
 
-      decodeQueryExpr  =
-        (_ .? "query")
-          >>> map QueryExpr
-
-renderVarMapValue
-  ∷ VarMapValue
-  → String
-renderVarMapValue val =
-  case val of
-    Literal lit → EJSON.renderEJson lit
-    SetLiteral as → "(" <> F.intercalate "," (renderVarMapValue <$> as) <> ")"
-    QueryExpr str → str
-
-displayVarMapValue
-  ∷ VarMapValue
-  → String
-displayVarMapValue val =
-  case val of
-    Literal lit → displayEJson lit
-    SetLiteral as → "(" <> F.intercalate ", " (displayVarMapValue <$> as) <> ")"
-    QueryExpr str → str
-
-displayEJsonF ∷ Algebra EJSON.EJsonF String
-displayEJsonF =
-  case _ of
-    EJSON.Null → "null"
-    EJSON.Boolean b → if b then "true" else "false"
-    EJSON.Integer i → show i
-    EJSON.Decimal a → HN.toString a
-    EJSON.String str → str
-    EJSON.Timestamp dt → EJR.renderTimestamp dt
-    EJSON.Time t → EJR.renderTime t
-    EJSON.Date d → EJR.renderDate d
-    EJSON.Interval str → str
-    EJSON.ObjectId str → str
-    EJSON.Array ds → "[" <> commaSep ds <> "]"
-    EJSON.Map (EJSON.EJsonMap ds) → "{ " <> commaSep (map renderPair ds) <> " }"
-  where
-  commaSep ∷ Array String → String
-  commaSep = F.intercalate ","
-  renderPair ∷ Tuple String String → String
-  renderPair (Tuple k v) = k <> ": " <> v
-
--- | A more readable, but forgetful renderer
-displayEJson ∷ EJSON.EJson → String
-displayEJson = cata displayEJsonF
+    decodeQueryExpr obj  = do
+      queryStr ← obj .? "query"
+      lmap show $ SqlP.parse queryStr
 
 instance valueVarMapValue ∷ SDV.Value VarMapValue where
-  stringValue = Literal <<< EJSON.string
-  renderValue = displayVarMapValue
+  stringValue = VarMapValue ∘ Sql.string
+  renderValue v =
+    let p = Sql.print $ unwrap v
+    in
+     fromMaybe p
+     $ S.stripSuffix (S.Pattern "\"") p
+     >>= S.stripPrefix (S.Pattern "\"")
 
 instance arbitraryVarMapValue ∷ SC.Arbitrary VarMapValue where
-  arbitrary =
-    Literal <$> EJSON.arbitraryJsonEncodableEJsonOfSize 1
-      <|> SetLiteral <$> Gen.arrayOf (Literal <$> EJSON.arbitraryJsonEncodableEJsonOfSize 1)
-      <|> QueryExpr <$> SC.arbitrary
+  arbitrary = map VarMapValue $ Sql.arbitrarySqlOfSize 2
 
 type VarMap = SM.StrMap VarMapValue
 
@@ -167,12 +123,3 @@ emptyVarMap = SM.empty
 
 variables ∷ VarMap → L.List Var
 variables = L.fromFoldable ∘ map Var ∘ A.sort ∘ SM.keys
-
-escapeIdentifier ∷ String → String
-escapeIdentifier str =
-  if Regex.test identifier str
-    then str
-    else "`" <> Regex.replace tick "\\`" str <> "`"
-  where
-    identifier = Regex.unsafeRegex "^[_a-z][_a-z0-9]*$" Regex.ignoreCase
-    tick = Regex.unsafeRegex "`" Regex.global

@@ -84,7 +84,6 @@ package = P.onPrism (M._BuildBar ∘ _Just) $ DS.interpret do
       >>= P.isFilteredBy stack
       >>= P.isActiveWhen category
 
-
   pure unit
 
 barBuilderComponent ∷ CC.CardOptions → CC.CardComponent

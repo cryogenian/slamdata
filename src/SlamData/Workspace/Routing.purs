@@ -28,21 +28,16 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Foldable as F
-import Data.Json.Extended as EJSON
-import Data.Json.Extended.Signature.Render as EJR
 import Data.List as L
 import Data.Map as Map
 import Data.Maybe as M
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
-import Data.String as Str
 import Data.String.Regex as R
 import Data.String.Regex.Flags as RXF
 import Data.StrMap as SM
 
 import Global (encodeURIComponent)
-
-import Matryoshka (project)
 
 import Routing.Match (Match)
 import Routing.Match (eitherMatch, list) as Match
@@ -54,6 +49,8 @@ import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId as DID
+
+import SqlSquare as Sql
 
 import Utils.Path as UP
 
@@ -163,24 +160,10 @@ mkWorkspaceHash path action varMap =
     <> maybe "" ("/" <> _) (renderVarMapQueryString varMap)
 
 varMapsForURL ∷ Map.Map CID.CardId Port.VarMap → SM.StrMap Port.URLVarMap
-varMapsForURL = SM.fromFoldable ∘ map (bimap CID.toString (map go)) ∘ Map.toList
-  where
-  go (Port.Literal ej) = goEJson ej
-  go (Port.SetLiteral as) = "(" <> F.intercalate "," (go <$> as) <> ")"
-  go (Port.QueryExpr q) =
-    -- | This is not entirely legit as it will strip backticks from SQL²
-    -- | expressions as well as identifiers, as we have no information about
-    -- | the field type here... -gb
-    fromMaybe q $ Str.stripPrefix (Str.Pattern "`") =<< Str.stripSuffix (Str.Pattern "`") q
-
-  goEJson ej = case project ej of
-    EJSON.String str → str
-    EJSON.Timestamp dt → EJR.renderTimestamp dt
-    EJSON.Date d → EJR.renderDate d
-    EJSON.Time t → EJR.renderTime t
-    EJSON.Interval str → str
-    EJSON.ObjectId str → str
-    _ → EJSON.renderEJson ej
+varMapsForURL =
+  SM.fromFoldable
+  ∘ map (bimap CID.toString (map $ Sql.print ∘ unwrap))
+  ∘ Map.toList
 
 decodeVarMaps ∷ String → Either String (SM.StrMap Port.URLVarMap)
 decodeVarMaps = J.jsonParser >=> J.decodeJson

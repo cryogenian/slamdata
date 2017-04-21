@@ -15,129 +15,138 @@ limitations under the License.
 -}
 
 module SlamData.Quasar.Query
-  ( SQL
-  , templated
-  , compile
+  ( compile
+  , compile'
   , queryEJson
   , queryEJsonVM
+  , query
   , viewQuery
-  , fileQuery
+  , viewQuery'
   , all
   , sample
   , count
+  , fileQuery
   , fields
+  , jcursorToSql
   , module Quasar.Error
-  , module Exports
+  , module SlamData.Quasar.Class
   ) where
 
 import SlamData.Prelude
 
-import Control.Apply (lift2)
-
 import Data.Argonaut as JS
 import Data.Array as Arr
 import Data.Int as Int
+import Data.Lens ((.~))
+import Data.List as L
 import Data.Json.Extended as EJS
 import Data.Path.Pathy as P
-import Data.String as S
+import Data.Set as Set
 import Data.StrMap as SM
+
+import Matryoshka (Coalgebra, ana, project, embed)
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (JSONMode(..))
 import Quasar.Error (QError)
 import Quasar.Mount as QM
-import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
+import Quasar.Types (DirPath, FilePath, CompileResultR)
 
-import SlamData.Quasar.Error (throw)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
-import SlamData.Quasar.Class (class QuasarDSL) as Exports
+import SqlSquare (Sql, print)
+import SqlSquare as Sql
 
--- | This is template string where actual path is encoded like {{path}}
-type SQL = String
-
--- | Replaces `{{path}}` placeholders in an SQL template string with a file
--- | path.
-templated ∷ FilePath → SQL → SQL
-templated res = S.replace (S.Pattern "{{path}}") (S.Replacement $ "`" ⊕ P.printPath res ⊕ "`")
+import Utils.SqlSquare (tableRelation)
 
 -- | Compiles a query.
--- |
--- | If a file path is provided for the input path the query can use the
--- | {{path}} template syntax to have the file's path inserted, and the file's
--- | parent directory will be used to determine the backend to use in Quasar.
 compile
   ∷ ∀ m
   . QuasarDSL m
-  ⇒ AnyPath
-  → SQL
+  ⇒ DirPath
+  → Sql
   → SM.StrMap String
   → m (Either QError CompileResultR)
-compile path sql varMap =
-  let
-    backendPath = either id (fromMaybe P.rootDir ∘ P.parentDir) path
-    sql' = maybe sql (flip templated sql) $ either (const Nothing) Just path
-  in
-    liftQuasar $ QF.compileQuery backendPath sql' varMap
+compile backendPath sql varMap =
+  compile' backendPath (print sql) varMap
+
+compile'
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ DirPath
+  → String
+  → SM.StrMap String
+  → m (Either QError CompileResultR)
+compile' backendPath sql varMap =
+  liftQuasar $ QF.compileQuery backendPath sql varMap
+
+query
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ DirPath
+  → Sql
+  → m (Either QError JS.JArray)
+query path sql =
+  liftQuasar $ QF.readQuery Readable path (print sql) SM.empty Nothing
 
 queryEJson
   ∷ ∀ m
   . QuasarDSL m
   ⇒ DirPath
-  → SQL
+  → Sql
   → m (Either QError (Array EJS.EJson))
 queryEJson path sql =
-  liftQuasar $ QF.readQueryEJson path sql SM.empty Nothing
+  liftQuasar $ QF.readQueryEJson path (print sql) SM.empty Nothing
 
 queryEJsonVM
   ∷ ∀ m
   . QuasarDSL m
   ⇒ DirPath
-  → SQL
+  → Sql
   → SM.StrMap String
   → m (Either QError (Array EJS.EJson))
 queryEJsonVM path sql vm =
-  liftQuasar $ QF.readQueryEJson path sql vm Nothing
+  liftQuasar $ QF.readQueryEJson path (print sql) vm Nothing
 
 -- | Runs a query creating a view mount for the query.
--- |
--- | If a file path is provided for the input path the query can use the
--- | {{path}} template syntax to have the file's path inserted.
 viewQuery
   ∷ ∀ m
   . (QuasarDSL m, Monad m)
-  ⇒ AnyPath
-  → FilePath
-  → SQL
+  ⇒ FilePath
+  → Sql
   → SM.StrMap String
   → m (Either QError Unit)
-viewQuery path dest sql vars = do
+viewQuery dest sql vars = viewQuery' dest (print sql) vars
+
+-- | Runs a query creating a view mount for the query.
+viewQuery'
+  ∷ ∀ m
+  . (QuasarDSL m, Monad m)
+  ⇒ FilePath
+  → String
+  → SM.StrMap String
+  → m (Either QError Unit)
+viewQuery' dest sql vars = do
   liftQuasar $
     QF.deleteMount (Right dest)
   liftQuasar $
     QF.updateMount (Right dest) (QM.ViewConfig
-      { query: maybe sql (flip templated sql) $ either (const Nothing) Just path
+      { query: sql
       , vars
       })
 
--- | Runs a query for a particular file (the query can use the {{path}} template
--- | syntax to have the file's path inserted), writing the results to a file.
--- | The query backend will be determined by the input file path.
--- |
--- | The returned value is the output path returned by Quasar. For some queries
--- | this will be the input file rather than the specified destination.
 fileQuery
   ∷ ∀ m
   . QuasarDSL m
-  ⇒ FilePath
+  ⇒ DirPath
   → FilePath
-  → SQL
+  → Sql
   → SM.StrMap String
   → m (Either QError FilePath)
-fileQuery file dest sql vars =
-  let backendPath = fromMaybe P.rootDir (P.parentDir file)
-  in liftQuasar $ map _.out <$>
-    QF.writeQuery backendPath dest (templated file sql) vars
+fileQuery backendPath dest sql vars =
+  liftQuasar $ map _.out <$>
+    QF.writeQuery backendPath dest (print sql) vars
+
 
 all
   ∷ ∀ m
@@ -163,10 +172,18 @@ count
   ⇒ FilePath
   → m (Either QError Int)
 count file = runExceptT do
-  let backendPath = fromMaybe P.rootDir (P.parentDir file)
-      sql = templated file "SELECT COUNT(*) as total FROM {{path}}"
+  let
+    backendPath = fromMaybe P.rootDir (P.parentDir file)
+    sql =
+      Sql.buildSelect
+      $ (Sql._projections
+         .~ (L.singleton
+               $ Sql.projection
+                   (Sql.invokeFunction "COUNT" $ L.singleton $ Sql.splice Nothing)
+                   #  Sql.as "total"))
+      ∘ (Sql._relations .~ tableRelation file)
   result ← ExceptT $ liftQuasar $
-    QF.readQuery Readable backendPath sql SM.empty Nothing
+    QF.readQuery Readable backendPath (print sql) SM.empty Nothing
   pure $ fromMaybe 0 (readTotal result)
   where
   readTotal ∷ JS.JArray → Maybe Int
@@ -177,44 +194,39 @@ count file = runExceptT do
       <=< JS.toObject
       <=< Arr.head
 
+data UnfoldableJC = JC JS.JCursor | S String | I Int
+
+jcCoalgebra ∷ Coalgebra (Sql.SqlF EJS.EJsonF) UnfoldableJC
+jcCoalgebra = case _ of
+  S s → Sql.Ident s
+  I i → Sql.Literal (EJS.Integer i)
+  JC cursor → case cursor of
+    JS.JCursorTop → Sql.Splice Nothing
+    JS.JIndex i c → Sql.Binop { op: Sql.IndexDeref, lhs: JC c, rhs: I i }
+    JS.JField f c → Sql.Binop { op: Sql.FieldDeref, lhs: JC c, rhs: S f }
+
+removeTopSplice ∷ Sql → Sql
+removeTopSplice = project ⋙ case _ of
+  op@(Sql.Binop { lhs, rhs }) → case project lhs of
+    Sql.Splice Nothing → rhs
+    _ → embed op
+  a → embed a
+
+jcursorToSql ∷ JS.JCursor → Sql
+jcursorToSql = removeTopSplice ∘ ana jcCoalgebra ∘ JC ∘ JS.insideOut
+
+allFields ∷ JS.JArray → L.List Sql
+allFields =
+  map jcursorToSql
+  ∘ L.fromFoldable
+  ∘ foldMap (Set.fromFoldable ∘ map fst)
+  ∘ map JS.toPrims
+
 fields
   ∷ ∀ m
   . (Monad m, QuasarDSL m)
   ⇒ FilePath
-  → m (Either QError (Array String))
+  → m (QError ⊹ (L.List Sql))
 fields file = runExceptT do
   jarr ← ExceptT $ sample file 0 100
-  case jarr of
-    [] → throw "empty file"
-    _ → pure $ Arr.nub $ getFields =<< jarr
-
-  where
-  -- The output of this function is mysterious, but luckily is used in just one place.
-  --
-  -- TODO: Rather than accumulating a an array of formatted strings, this should be refactored
-  -- to return an array of *arrays* of unformatted strings, which can then be formatted by the
-  -- client (e.g. to intercalate with dots and add backticks).
-  getFields ∷ JS.Json → Array String
-  getFields = Arr.filter (_ /= "") ∘ Arr.nub ∘ go []
-    where
-    go ∷ Array String → JS.Json → Array String
-    go [] json = go [""] json
-    go acc json
-      | JS.isObject json = maybe acc (goObj acc) $ JS.toObject json
-      | JS.isArray json = maybe acc (goArr acc) $ JS.toArray json
-      | otherwise = acc
-
-    goArr ∷ Array String → JS.JArray → Array String
-    goArr acc arr =
-      Arr.concat $ go (lift2 append acc $ mkArrIxs arr) <$> arr
-      where
-      mkArrIxs ∷ JS.JArray → Array String
-      mkArrIxs jarr =
-        map (\x → "[" ⊕ show x ⊕ "]") $ Arr.range 0 $ Arr.length jarr - 1
-
-    goObj ∷ Array String → JS.JObject → Array String
-    goObj acc = Arr.concat ∘ map (goTuple acc) ∘ Arr.fromFoldable ∘ SM.toList
-
-    goTuple ∷ Array String → Tuple String JS.Json → Array String
-    goTuple acc (key × json) =
-      go (map (\x → x ⊕ ".`" ⊕ key ⊕ "`") acc) json
+  pure $ allFields jarr

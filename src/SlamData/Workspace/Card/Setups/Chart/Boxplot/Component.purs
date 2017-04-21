@@ -59,7 +59,7 @@ package = P.onPrism (M._BuildBoxplot ∘ _Just) $ DS.interpret do
       >>= P.addSource _.datetime
 
   value ←
-    P.field PL._value PP._value
+    P.field PL._value PP._flatValue
       >>= P.addSource _.value
       >>= P.isFilteredBy dimension
 

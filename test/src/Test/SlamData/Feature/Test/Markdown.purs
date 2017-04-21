@@ -63,7 +63,7 @@ test = do
     Expect.fieldInLastMdCard "startTime" "time" ""
     Expect.fieldInLastMdCard "finishTime" "time" "20:39"
     Expect.labelInLastMdCard "event"
-    Expect.dropdownInLastMdCard "1500m" ["1000m", "1500m", "3000m"]
+    Expect.dropdownInLastMdCard "1500m" ["1500m", "1000m", "3000m"]
     Expect.labelInLastMdCard "gender"
     Expect.checkableFieldInLastMdCard "X" "checkbox" false
     Expect.checkableFieldInLastMdCard "W" "checkbox" false
@@ -267,7 +267,7 @@ test = do
     Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
-    Expect.fieldInLastMdCard "city" "text" "AGAWAM"
+    Expect.fieldInLastMdCard "city" "text" "ABINGTON"
     Interact.accessPreviousCardInLastDeck
     Interact.accessPreviousCardInLastDeck
     Interact.selectFromDropdownInLastDeck "state" "RI"

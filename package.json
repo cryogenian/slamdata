@@ -23,6 +23,7 @@
     "build:lite": "gulp bundle",
     "build:prod": "npm run lint:crlf && npm run build:less && npm run build:icons && gulp bundle",
     "build:psa": "pulp build -I test/src -- --censor-lib --strict --stash",
+    "build:non-strict": "pulp build -I test/src -- --censor-lib --stash",
     "clean:files": "rimraf .pulp-cache output tmp public/js/file.js public/js/filesystem.js public/js/workspace.js public/js/auth_redirect.js public/css/main.css",
     "clean:bower": "rimraf output bower_components && bower install && pulp build",
     "clean:npm": "rimraf output node_components && npm cache clean && npm install",
@@ -32,7 +33,8 @@
     "postinstall": "node script/get-quasar.js",
     "test": "gulp make && npm run build:prod && npm run build:less && gulp bundle-test && node test",
     "test:property": "gulp make && gulp bundle-property-tests && node tmp/js/property-tests",
-    "watch:less": "less-watch-compiler less/ public/css/ main.less"
+    "watch:less": "less-watch-compiler less/ public/css/ main.less",
+    "ide": "psc-ide-server"
   },
   "license": "Apache-2.0",
   "bugs": {

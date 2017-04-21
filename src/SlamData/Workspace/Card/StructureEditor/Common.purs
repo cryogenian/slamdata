@@ -108,7 +108,7 @@ genCursor = SCG.sized go
         genSmallerCursor = SCG.resize (size - 1) genCursor
         genAll = pure $ embed $ left EJC.All
         genAtKey = do
-          key ← EJ.arbitraryJsonEncodableEJsonOfSize size
+          key ← EJ.arbitraryEJsonOfSize size
           inner ← genSmallerCursor
           pure $ embed $ left $ EJC.AtKey key inner
         genAtIndex = do
@@ -116,7 +116,7 @@ genCursor = SCG.sized go
           inner ← genSmallerCursor
           pure $ embed $ left $ EJC.AtIndex ix inner
         genOfValue = do
-          value ← EJ.arbitraryJsonEncodableEJsonOfSize size
+          value ← EJ.arbitraryEJsonOfSize size
           inner ← genSmallerCursor
           pure $ embed $ right $ OfValue value inner
 

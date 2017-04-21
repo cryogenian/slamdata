@@ -23,14 +23,13 @@ import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
 import Data.Array as A
-import Data.DateTime as DT
 import Data.Identity (Identity)
 import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.String as S
 import Data.StrMap as SM
 
-import Matryoshka (project)
+import Matryoshka (project, transAna)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -39,6 +38,9 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
+
+import SlamData.SqlSquare.Tagged as SqlT
+import SqlSquare as Sql
 
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE
@@ -78,7 +80,7 @@ evalMarkdown str varMap = do
   case SDP.parseMd str of
     Left e → CEM.throw e
     Right sd → do
-      let sm = Port.renderVarMapValue <$> Port.flattenResources varMap
+      let sm = map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
       doc ← evalEmbeddedQueries sm path sd
       pure (Port.SlamDown doc × varMap)
 
@@ -119,9 +121,9 @@ evalEmbeddedQueries sm dir =
     → m Port.VarMapValue
   evalCode mid code
     | languageIsSql mid =
-        Port.Literal ∘ extractCodeValue <$> runQuery code
+        Port.VarMapValue ∘ transAna Sql.Literal ∘ extractCodeValue <$> runQuery code
     | otherwise =
-        pure $ Port.QueryExpr code
+        pure $ Port.VarMapValue $ Sql.null
 
   extractCodeValue ∷ Array EJSON.EJson → EJSON.EJson
   extractCodeValue [ej] = extractSingletonObject ej
@@ -131,9 +133,7 @@ evalEmbeddedQueries sm dir =
     ∷ Maybe SDE.LanguageId
     → Boolean
   languageIsSql =
-    maybe
-      true
-      ((_ ≡ "sql") ∘ S.toLower)
+    maybe true $ eq "sql" ∘ S.toLower
 
   extractSingletonObject
     ∷ EJSON.EJson
@@ -147,7 +147,9 @@ evalEmbeddedQueries sm dir =
     ∷ String
     → m Port.VarMapValue
   evalValue code = do
-    maybe (Port.Literal EJSON.null) (Port.Literal ∘ extractSingletonObject)
+    maybe
+      (Port.VarMapValue Sql.null)
+      (Port.VarMapValue ∘ transAna Sql.Literal ∘ extractSingletonObject)
       ∘ A.head
       <$> runQuery code
 
@@ -164,37 +166,42 @@ evalEmbeddedQueries sm dir =
         pure ∘ SD.PlainText $ pure str
       (SD.Numeric _), (EJSON.Decimal a) →
         pure ∘ SD.Numeric $ pure a
-      (SD.Time prec _), (EJSON.Time time) →
-        pure ∘ SD.Time prec $ pure time
-      (SD.Time prec _), (EJSON.Timestamp dt) →
-        pure ∘ SD.Time prec $ pure $ DT.time dt
-      (SD.Date _), (EJSON.Date d) →
-        pure ∘ SD.Date $ pure d
-      (SD.Date _), (EJSON.Timestamp dt) →
-        pure ∘ SD.Date $ pure $ DT.date dt
-      (SD.DateTime prec _), (EJSON.Timestamp dt) →
-        pure ∘ SD.DateTime prec $ pure dt
+      (SD.Time prec _), (EJSON.String time) →
+        case SqlT.parseTime time of
+          Left _ → CEM.throw $ "Incorrect time value: " ⊕ show time
+          Right r → pure ∘ SD.Time prec $ pure r
+      (SD.Date _), (EJSON.String d) →
+        case SqlT.parseDate d of
+          Left _ → CEM.throw $ "Incorrect date value: " ⊕ show d
+          Right r → pure ∘ SD.Date $ pure r
+      (SD.DateTime prec _), (EJSON.String dt) →
+        case SqlT.parseDateTime dt of
+          Left _ → CEM.throw $ "Incorrect datetime value: " ⊕ show dt
+          Right r → pure ∘ SD.DateTime prec $ pure r
       _, _ → CEM.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
 
   evalList
     ∷ String
     → m (L.List Port.VarMapValue)
   evalList code = do
-    items ← map extractSingletonObject <$> runQuery code
+    jitems ← map extractSingletonObject <$> runQuery code
     let limit = 500
     pure ∘ L.fromFoldable
-      $ if A.length items > limit
+      $ if A.length jitems > limit
           then
-          map Port.Literal
-            (A.take limit items)
+            ( map (Port.VarMapValue ∘ transAna Sql.Literal) $ A.take limit jitems )
             ⊕ [ SD.stringValue $ "<" ⊕ show limit ⊕ "item limit reached>" ]
           else
-          Port.Literal <$> items
+          map (Port.VarMapValue ∘ transAna Sql.Literal) jitems
 
   runQuery
     ∷ String
     → m (Array EJSON.EJson)
-  runQuery code = do
-    {inputs} ← CEM.liftQ $ Quasar.compile (Left dir) code sm
-    CEM.addSources inputs
-    CEM.liftQ $ Quasar.queryEJsonVM dir code sm
+  runQuery code =
+    let esql = Sql.parse code
+    in case esql of
+      Left e → CEM.throw "Error parsing sql query"
+      Right sql → do
+        {inputs} ← CEM.liftQ $ Quasar.compile dir sql sm
+        CEM.addSources inputs
+        CEM.liftQ $ Quasar.queryEJsonVM dir sql sm

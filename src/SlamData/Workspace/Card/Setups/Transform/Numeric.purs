@@ -20,7 +20,7 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Lens (Prism', prism')
-import Data.Ord (abs)
+import SqlSquare as Sql
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
 
@@ -38,40 +38,35 @@ numericOperations =
   , Ceil (Place 0)
   ]
 
-printNumericOperation ∷ NumericOperation → String → String
-printNumericOperation = case _ of
-  Floor a → placed floor' a
-  Round a → placed round' a
-  Ceil a  → placed ceil' a
+applyNumericOperation ∷ NumericOperation → Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
+applyNumericOperation no (Sql.Projection { expr, alias }) =
+  Sql.Projection
+    { alias, expr: mkExpr no }
   where
-  placed print (Place p) n
-    | p ≡ 0     = paren (print n)
-    | p > 0     = adjust print (show p) div' mul' n
-    | otherwise = adjust print (show (abs p)) mul' div' n
+  floor e =
+    Sql.binop Sql.Minus e $ Sql.pars $ Sql.binop Sql.Mod e $ Sql.int 1
+  round e =
+    floor $ Sql.pars $ Sql.binop Sql.Plus e $ Sql.num 0.5
+  ceil e =
+    Sql.match (Sql.pars $ Sql.binop Sql.Mod e $ Sql.int 1)
+      (pure ( Sql.when (Sql.int zero) # Sql.then_ e ))
+      (pure $ floor $ Sql.pars $ Sql.binop Sql.Plus e $ Sql.int 1)
 
-  adjust print p a b n =
-    paren (paren (print (paren (n <> a <> paren ("10" <> pow' <> p)))) <> b <> paren ("10" <> pow' <> p))
+  mult (Place n) e =
+    Sql.pars $ Sql.binop Sql.Mult (Sql.pars e)
+      ( Sql.binop Sql.Pow (Sql.num 10.0) (Sql.int $ negate n))
+  div (Place n) e =
+    Sql.binop Sql.Div (Sql.pars e)
+      ( Sql.pars $ Sql.binop Sql.Pow (Sql.num 10.0) (Sql.int $ negate n))
 
-  floor' n =
-    n <> sub' <> paren (n <> mod' <> "1")
+  mkExpr = case _ of
+    Floor n →
+      div n $ floor $ mult n expr
+    Round n →
+      div n $ round $ mult n expr
+    Ceil n →
+      div n $ ceil $ mult n expr
 
-  round' n =
-    floor' (paren (n <> add' <> "0.5"))
-
-  ceil' n =
-    "CASE " <> paren (n <> mod' <> "1")
-    <> " WHEN 0 THEN " <> n
-    <> " ELSE " <> floor' (paren (n <> add' <> "1"))
-    <> " END"
-
-  paren a = "(" <> a <> ")"
-  eq'  = " = "
-  sub' = " - "
-  add' = " + "
-  mul' = " * "
-  div' = " / "
-  pow' = " ^ "
-  mod' = " % "
 
 prettyPrintNumericOperation ∷ NumericOperation → String
 prettyPrintNumericOperation = case _ of

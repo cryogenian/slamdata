@@ -23,16 +23,16 @@ import SlamData.Prelude
 
 import Color as C
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Lens ((^?), preview)
+import Data.List as L
+import Data.List ((:))
+import Data.Lens ((.~))
 import Data.Map as M
 import Data.Int as Int
 import Data.Set as Set
+import Data.NonEmpty as NE
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -40,32 +40,29 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-import Utils.Array (enumerate)
+import SqlSquare as Sql
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Boxplot (const buildBoxplot) m \axes → m
+import Utils.Foldable (enumeratedFor_)
 
+type Item =
+  { dimension ∷ String
+  , value ∷ Number
+  , series ∷ Maybe String
+  , parallel ∷ Maybe String
+  }
 
 type OnOneBoxplot =
   { name ∷ Maybe String
@@ -93,89 +90,98 @@ type BoxplotItem = Maybe
 boundIQR ∷ Maybe Number
 boundIQR = Just 1.5
 
-buildBoxplotData ∷ ModelR → JArray → Array OnOneBoxplot
-buildBoxplotData r records = series
+decodeItem ∷ Json → String ⊹ Item
+decodeItem = decodeJson >=> \obj → do
+  dimension ← map (fromMaybe "" ∘ Sem.maybeString) $ obj .? "dimension"
+  value ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "value"
+  series ← map Sem.maybeString $ obj .? "series"
+  parallel ← map Sem.maybeString $ obj .? "parallel"
+  pure { dimension
+       , value
+       , series
+       , parallel
+       }
+
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval m =
+  BCE.chartSetupEval
+    (\md fp →
+      addOrderBy $ SCC.buildBasicSql buildProjections (const Nothing) md fp
+    ) buildBoxplot m
   where
-  -- | maybe parallel >> maybe series >> dimension >> values
-  dataMap ∷ Maybe String >> Maybe String >> String >> Array Number
-  dataMap =
-    foldl dataMapFoldFn M.empty records
+  fields ∷ ModelR → L.List Sql.Sql
+  fields r =
+    L.fromFoldable $ A.catMaybes
+      [ r.parallel <#> SCC.jcursorSql
+      , r.series <#> SCC.jcursorSql
+      , Just $ r.dimension # SCC.jcursorSql
+      ]
+  orderBy ∷ Maybe (Sql.OrderBy Sql.Sql)
+  orderBy = m >>= \r → case fields r of
+    L.Nil → Nothing
+    x : xs → Just $ Sql.OrderBy $ Tuple Sql.ASC <$> NE.NonEmpty x xs
 
-  dataMapFoldFn
-    ∷ Maybe String >> Maybe String >> String >> Array Number
-    → Json
-    → Maybe String >> Maybe String >> String >> Array Number
-  dataMapFoldFn acc js =
-    let
-      getMaybeStringFromJson = getMaybeString js
-      getValuesFromJson = getValues js
-    in case getMaybeStringFromJson =<< (r.dimension ^? D._value ∘ D._projection) of
-      Nothing → acc
-      Just dimensionKey →
-        let
-          mbParallel =
-            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.parallel
-          mbSeries =
-            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.series
-          values =
-            getValuesFromJson $ r.value ^? D._value ∘ D._projection
+  addOrderBy ∷ Sql.Sql → Sql.Sql
+  addOrderBy =
+    (Sql._Select ∘ Sql._orderBy .~ orderBy)
+    ∘ (Sql._Select ∘ Sql._isDistinct .~ true)
 
-          alterParallelFn
-            ∷ Maybe (Maybe String >> String >> Array Number)
-            → Maybe (Maybe String >> String >> Array Number)
-          alterParallelFn Nothing =
-            Just $ M.singleton mbSeries $ M.singleton dimensionKey values
-          alterParallelFn (Just parallel) =
-            Just $ M.alter alterSeriesFn mbSeries parallel
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.value # SCC.jcursorPrj # Sql.as "value"
+  , r.dimension # SCC.jcursorPrj # Sql.as "dimension"
+  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
+  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+  ]
 
-          alterSeriesFn
-            ∷ Maybe (String >> Array Number)
-            → Maybe (String >> Array Number)
-          alterSeriesFn Nothing =
-            Just $ M.singleton dimensionKey values
-          alterSeriesFn (Just dims) =
-            Just $ M.alter alterDimFn dimensionKey dims
+buildBoxplot ∷ ModelR → Axes → Port.Port
+buildBoxplot m axes =
+  Port.ChartInstructions
+    { options: boxplotOptions m axes ∘ buildBoxplotData
+    , chartType: Boxplot
+    }
 
-          alterDimFn
-            ∷ Maybe (Array Number)
-            → Maybe (Array Number)
-          alterDimFn Nothing = Just values
-          alterDimFn (Just arr) = Just $ arr ⊕ values
-        in
-          M.alter alterParallelFn mbParallel acc
+buildBoxplotData ∷ JArray → Array OnOneBoxplot
+buildBoxplotData =
+  adjustRectangularPositions
+  ∘ oneBoxplots
+  ∘ foldMap (foldMap A.singleton ∘ decodeItem)
+  where
+  oneBoxplots ∷ Array Item → Array OnOneBoxplot
+  oneBoxplots =
+    BCE.groupOn _.parallel
+      ⋙ map \(name × is) →
+        { name
+        , x: Nothing
+        , y: Nothing
+        , w: Nothing
+        , h: Nothing
+        , fontSize: Nothing
+        , series: boxplotSeries is
+        }
 
-  rawSeries ∷ Array OnOneBoxplot
-  rawSeries =
-    foldMap mkOneBoxplot $ M.toList dataMap
+  boxplotSeries ∷ Array Item → Array BoxplotSeries
+  boxplotSeries =
+    BCE.groupOn _.series
+      ⋙ map \(name × is) →
+        { name
+        , items: boxplotPoints is
+        }
 
-  mkOneBoxplot
-    ∷ Maybe String × (Maybe String >> String >> Array Number)
-    → Array OnOneBoxplot
-  mkOneBoxplot (name × sers) =
-    [{ name
-     , x: Nothing
-     , y: Nothing
-     , w: Nothing
-     , h: Nothing
-     , fontSize: Nothing
-     , series: foldMap mkBoxplotSeries $ M.toList sers
-     }]
+  boxplotPoints ∷ Array Item → String >> (Array Number × BoxplotItem)
+  boxplotPoints =
+    M.fromFoldable
+    ∘ map (map analyzeBoxplot)
+    ∘ BCE.groupOn _.dimension
 
-  mkBoxplotSeries
-    ∷ Maybe String × (String >> Array Number)
-    → Array BoxplotSeries
-  mkBoxplotSeries (name × items) =
-    [{ name
-     , items: map mkItemAndOutliers items
-     }]
-
-  mkItemAndOutliers
-    ∷ Array Number
-    → Array Number × BoxplotItem
-  mkItemAndOutliers arr
-    | A.null arr = [] × Nothing
+  analyzeBoxplot ∷ Array Item → Array Number × BoxplotItem
+  analyzeBoxplot is
+    | A.null is = [] × Nothing
     | otherwise =
       let
+        arr ∷ Array Number
+        arr = map _.value is
+
         sortedArr ∷ Array Number
         sortedArr = A.sort arr
 
@@ -203,26 +209,24 @@ buildBoxplotData r records = series
         high = case boundIQR of
           Just b → q3 + b * iqr
           _ → fromMaybe zero $ A.last sortedArr
-
         outliers ∷ Array Number
         outliers = A.filter (\x → x < low ∨ x > high) sortedArr
       in
-        outliers × Just {low, q1, q2, q3, high}
+       outliers × Just {low, q1, q2, q3, high}
 
-  series ∷ Array OnOneBoxplot
-  series = adjustRectangularPositions rawSeries
 
-buildBoxplot ∷ ModelR → JArray → DSL OptionI
-buildBoxplot r records = do
+boxplotOptions ∷ ModelR → Axes → Array OnOneBoxplot → DSL OptionI
+boxplotOptions r axes boxplotData = do
   E.tooltip do
     E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
 
-  rectangularTitles $ map snd boxplotData
+  rectangularTitles boxplotData
+    $ maybe "" D.jcursorLabel r.parallel
 
-  rectangularGrids $ map snd boxplotData
+  rectangularGrids boxplotData
 
 
   E.legend do
@@ -237,24 +241,17 @@ buildBoxplot r records = do
   E.series series
 
   where
-  boxplotData ∷ Array (Int × OnOneBoxplot)
-  boxplotData = enumerate $ buildBoxplotData r records
-
   serieNames ∷ Array String
   serieNames =
     A.fromFoldable
-      $ foldMap (snd
-                 ⋙_.series
-                 ⋙ foldMap (_.name
-                            ⋙ foldMap Set.singleton))
-      boxplotData
+    $ flip foldMap boxplotData
+    $ foldMap (Set.fromFoldable ∘ _.name)
+    ∘ _.series
 
---  series ∷ ∀ i. DSL (scatter ∷ ETP.I, boxplot ∷ ETP.I|i)
-  series = for_ boxplotData \(ix × onOnePlot) → for_ onOnePlot.series \serie → do
+  series = enumeratedFor_ boxplotData \(ix × onOnePlot) → for_ onOnePlot.series \serie → do
     E.boxPlot $ boxplotSerie $ ix × serie
     E.scatter $ scatterSerie $ ix × serie
 
---  boxplotSerie ∷ ∀ i. Int × _ → DSL (boxplot ∷ ETP.I|i)
   boxplotSerie (ix × serie) = do
     for_ serie.name E.name
 
@@ -290,7 +287,6 @@ buildBoxplot r records = do
           E.addValue item.high
 
 
---  scatterSerie ∷ ∀ i. Int × _ → DSL (scatter ∷ ETP.I|i)
   scatterSerie (ix × serie) = do
     for_ serie.name E.name
     E.xAxisIndex ix
@@ -311,20 +307,20 @@ buildBoxplot r records = do
       ⊕ CCT.formatNumberValueIx 0 param
 
     E.buildItems
-      $ for_ (enumerate $ A.fromFoldable serie.items) \(ox × (outliers × _)) →
+      $ enumeratedFor_ serie.items \(ox × (outliers × _)) →
           for_ outliers \outlier → E.addItem $ E.buildValues do
             E.addValue $ Int.toNumber ox
             E.addValue outlier
 
   grids ∷ Array (DSL ETP.GridI)
-  grids = boxplotData <#> \(_ × {x, y, w, h}) → do
+  grids = boxplotData <#> \{x, y, w, h} → do
     for_ x $ E.left ∘ ET.Percent
     for_ y $ E.top ∘ ET.Percent
     for_ w E.widthPct
     for_ h E.heightPct
 
   titles ∷ Array (DSL ETP.TitleI)
-  titles = boxplotData <#> \(_ × {x, y, name, fontSize}) → do
+  titles = boxplotData <#> \{x, y, name, fontSize} → do
     for_ name E.text
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
@@ -337,14 +333,11 @@ buildBoxplot r records = do
   xAxisLabels ∷ Array String
   xAxisLabels =
     A.fromFoldable
-      $ foldMap (snd ⋙
-                 _.series
-                 ⋙ foldMap (_.items
-                            ⋙ M.keys
-                            ⋙ Set.fromFoldable))
-      boxplotData
+    $ flip foldMap boxplotData
+    $ foldMap (Set.fromFoldable ∘ M.keys ∘ _.items)
+    ∘ _.series
 
-  xAxes = for_ boxplotData \(ix × _) → E.addXAxis do
+  xAxes = enumeratedFor_ boxplotData \(ix × _) → E.addXAxis do
     E.gridIndex ix
     E.axisType ET.Category
     E.axisLabel do
@@ -358,7 +351,7 @@ buildBoxplot r records = do
     E.items $ map ET.strItem xAxisLabels
 
 
-  yAxes = for_ boxplotData \(ix × _) → E.addYAxis do
+  yAxes = enumeratedFor_ boxplotData \(ix × _) → E.addYAxis do
     E.gridIndex ix
     E.axisType ET.Value
     E.axisLabel do

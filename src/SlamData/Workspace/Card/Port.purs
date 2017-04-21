@@ -52,13 +52,13 @@ module SlamData.Workspace.Card.Port
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
+import Data.Argonaut (JCursor, Json)
 import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
 import Data.List as List
 import Data.Map as Map
-import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
+import Data.Path.Pathy as Path
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
@@ -68,7 +68,10 @@ import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
-import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), renderVarMapValue, emptyVarMap, escapeIdentifier)
+import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), emptyVarMap, _VarMapValue)
+
+import SqlSquare as Sql
+
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
@@ -95,7 +98,7 @@ type MetricPort =
   }
 
 type ChartInstructionsPort =
-  { options ∷ DSL OptionI
+  { options ∷ Array Json → DSL OptionI
   , chartType ∷ ChartType
   }
 
@@ -169,7 +172,8 @@ flattenResources = map go
     go (Right val) = val
 
 resourceToVarMapValue ∷ Resource → VarMapValue
-resourceToVarMapValue r = QueryExpr (escapeIdentifier (Path.printPath (r ^. _filePath)))
+resourceToVarMapValue r =
+  VarMapValue $ Sql.ident $ Path.printPath $ r ^. _filePath
 
 defaultResourceVar ∷ String
 defaultResourceVar = "results"
@@ -210,16 +214,16 @@ _SlamDown = wander \f s → case s of
   _ → pure s
 
 _CardError ∷ Prism' Port String
-_CardError = prism' CardError \p → case p of
+_CardError = prism' CardError $ case _ of
   CardError x → Just x
   _ → Nothing
 
 _DownloadOptions ∷ Prism' Port DownloadPort
-_DownloadOptions = prism' DownloadOptions \p → case p of
+_DownloadOptions = prism' DownloadOptions $ case _ of
   DownloadOptions p' → Just p'
   _ → Nothing
 
-_ChartInstructions ∷ Traversal' Port (DSL OptionI)
+_ChartInstructions ∷ Traversal' Port (Array Json → DSL OptionI)
 _ChartInstructions = wander \f s → case s of
   ChartInstructions o → ChartInstructions ∘ o{options = _} <$> f o.options
   _ → pure s
