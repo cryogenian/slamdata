@@ -73,6 +73,7 @@ data CardType
   | DownloadOptions
   | Draftboard
   | Tabs
+  | StructureEditor
 
 derive instance eqCardType ∷ Eq CardType
 derive instance ordCardType ∷ Ord CardType
@@ -112,6 +113,7 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     DownloadOptions → "download-options"
     Draftboard → "draftboard"
     Tabs → "tabs"
+    StructureEditor → "structure-editor"
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
@@ -145,6 +147,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "download-options" → pure DownloadOptions
       "draftboard" → pure Draftboard
       "tabs" → pure Tabs
+      "structure-editor" → pure StructureEditor
       _ → Left "This is not basic card type"
 
 cardName ∷ CardType → String
@@ -165,6 +168,7 @@ cardName = case _ of
   DownloadOptions → "Setup Download"
   Draftboard → "Setup Dashboard"
   Tabs → "Setup Tabs"
+  StructureEditor → "Structure Viewer"
 
 cardIcon ∷ CardType → String
 cardIcon = case _ of
@@ -253,6 +257,8 @@ cardIcon = case _ of
     "dashboard"
   Tabs →
     "tabs"
+  StructureEditor →
+    "structureEditor"
 
 cardIconDarkSrc ∷ CardType → String
 cardIconDarkSrc cardType =
@@ -291,6 +297,7 @@ consumerInteractable = case _ of
   Open → false
   Draftboard → true
   Tabs → true
+  StructureEditor → false
 
 cardClasses ∷ CardType → Array H.ClassName
 cardClasses = case _ of
@@ -310,6 +317,7 @@ cardClasses = case _ of
   Open → [ H.ClassName "sd-card-open" ]
   Draftboard → [ H.ClassName "sd-card-draftboard" ]
   Tabs → [ H.ClassName "sd-card-tabs" ]
+  StructureEditor → [ H.ClassName "sd-structure-editor" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Setup Markdown"

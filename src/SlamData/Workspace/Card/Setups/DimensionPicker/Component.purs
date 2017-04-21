@@ -132,7 +132,7 @@ picker opts =
 
   handleMessage ∷ MC.Message' s s Void → Maybe (Query s Unit)
   handleMessage = flip either absurd case _ of
-    MC.SelectionChanged _ sel → Just $ H.action $ UpdateSelection sel
+    MC.SelectionChanged _ _ sel → Just $ H.action $ UpdateSelection sel
     MC.LoadRequest req → Just $ H.action $ HandleLoadRequest req
 
   eval ∷ Query s ~> DSL s

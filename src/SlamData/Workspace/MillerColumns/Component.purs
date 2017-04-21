@@ -109,12 +109,14 @@ component opts@(Column.ColumnOptions colSpec) =
         Left Column.Deselected → do
           H.modify $ modifyColumns $ second \sels →
             L.drop (L.length sels - colIndex) sels
-          root × sel ← second L.head <$> H.gets _.columns
-          H.raise $ Left (SelectionChanged (maybe root colSpec.id sel) sel)
+          state ← H.gets _.columns
+          root × sel ← pure (second L.head state)
+          H.raise $ Left (SelectionChanged state (maybe root colSpec.id sel) sel)
         Left (Column.Selected itemPath item) → do
           H.modify $ modifyColumns $ second \sels →
             item : L.drop (L.length sels - colIndex) sels
-          H.raise $ Left (SelectionChanged itemPath (Just item))
+          state ← H.gets _.columns
+          H.raise $ Left (SelectionChanged state itemPath (Just item))
         Left (Column.LoadRequest req) → do
           H.raise $ Left (LoadRequest (colPath × req))
         Right o →
