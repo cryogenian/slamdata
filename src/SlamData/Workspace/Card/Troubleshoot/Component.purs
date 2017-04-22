@@ -33,6 +33,8 @@ import SlamData.Workspace.Card.Troubleshoot.Component.Query (Query)
 import SlamData.Workspace.Card.Troubleshoot.Component.State (State, initialState)
 import SlamData.Workspace.LevelOfDetails as LOD
 
+import SqlSquare as Sql
+
 type DSL = CC.InnerCardDSL State Query
 type HTML = CC.InnerCardHTML Query
 
@@ -68,7 +70,7 @@ render { varMap } =
     renderItem name val =
       [ HH.tr_
           [ HH.td_ [ HH.text name ]
-          , HH.td_ [ HH.code_ [ HH.text $ Port.renderVarMapValue val ] ]
+          , HH.td_ [ HH.code_ [ HH.text $ Sql.print $ unwrap val ] ]
           ]
       ]
 

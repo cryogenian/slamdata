@@ -52,7 +52,7 @@ eval
   → Port.Resource
   → m Port.Port
 eval m =
-  BCE.buildChartEval'
+  BCE.analysisEval
     (\_ b c → Port.ValueMetric (buildMetric b c))
     m
     (const m)

@@ -23,6 +23,7 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Future as Future
 import Data.Json.Extended (EJson)
+import Data.Lens ((.~))
 import Data.List as L
 import Data.Path.Pathy as Path
 import Halogen as H
@@ -48,7 +49,9 @@ import SlamData.Workspace.Card.StructureEditor.Model (Model(..))
 import SlamData.Workspace.LevelOfDetails as LOD
 import SlamData.Workspace.MillerColumns.Column.BasicFilter (mkFilter)
 import SlamData.Workspace.MillerColumns.Component as MC
+import SqlSquare as Sql
 import Utils.Path as PU
+import Utils.SqlSquare as SU
 
 type DSL = CC.InnerCardParentDSL S.State Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Query CS.ChildQuery CS.ChildSlot
@@ -130,7 +133,11 @@ fetchData ∷ PU.FilePath → DSL (Array EJson)
 fetchData path = do
   case (fst <$> Path.peel path) of
     Just resourcePath → do
-      let sql = QQ.templated path "SELECT * FROM {{path}} AS row LIMIT 1000"
+      let
+        sql =
+          Sql.binop Sql.Limit
+            (Sql.buildSelect $ SU.all ∘ (Sql._relations .~ (SU.tableRelation path <#> SU.asRel "row")))
+            (Sql.int 1000)
       either (const []) id <$> QQ.queryEJson resourcePath sql
     _ → pure []
 

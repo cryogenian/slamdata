@@ -5,13 +5,13 @@ install:
 - PATH=C:\mongodb\bin\;%PATH%
 - java -version
 - mongod --version
-- ps: Install-Product node 4
+- ps: Install-Product node 6
 - npm install bower gulp -g
 - npm install
 - bower install
 
 build_script:
-- npm run build:psa
+- npm run build:prod
 
 test_script:
 - npm run test:property

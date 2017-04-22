@@ -39,6 +39,8 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Search.Interpret as Search
 
+import SqlSquare as Sql
+
 import Text.Parsing.Parser as PP
 import Text.SlamSearch as SS
 
@@ -71,10 +73,11 @@ evalSearch queryText resource = do
   outputResource ← CEM.temporaryOutputResource
 
   let
-    template = Search.queryToSQL fields query
-    sql = QQ.templated filePath template
+    sql = Search.queryToSql fields query filePath
+    backendPath = fromMaybe Path.rootDir $ Path.parentDir filePath
 
-  compileResult ← QQ.compile (Right filePath) sql SM.empty
+  compileResult ← QQ.compile backendPath sql SM.empty
+
   case compileResult of
     Left err →
       case GE.fromQError err of
@@ -85,9 +88,9 @@ evalSearch queryText resource = do
       CEM.addSources inputs
 
   CEM.liftQ do
-    QQ.viewQuery (Right filePath) outputResource template SM.empty
+    QQ.viewQuery outputResource sql SM.empty
     QFS.messageIfFileNotFound
       outputResource
       "Error making search temporary resource"
 
-  pure (Port.resourceOut (Port.View outputResource sql SM.empty))
+  pure $ Port.resourceOut $ Port.View outputResource (Sql.print sql) SM.empty

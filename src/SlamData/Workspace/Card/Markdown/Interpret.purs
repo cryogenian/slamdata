@@ -18,16 +18,22 @@ module SlamData.Workspace.Card.Markdown.Interpret
 
 import SlamData.Prelude
 
-import Data.Array as A
+import Data.DateTime as DT
 import Data.Identity (Identity(..))
-import Data.Json.Extended as EJSON
 import Data.List as L
+import Data.Formatter.DateTime as FD
 import Data.Maybe as M
+
+import Matryoshka (embed, project)
+
+import SqlSquare as Sql
 
 import SlamData.Workspace.Card.Port.VarMap as VM
 
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Halogen.Component.State as SDS
+
+import Utils (hush)
 
 -- The use of this function in formFieldValueToVarMapValue is suspicious, and
 -- lead me to think that we have not arranged our data structures properly. In
@@ -42,56 +48,74 @@ getLiteral
   ∷ ∀ m
   . (Plus m, Applicative m)
   ⇒ VM.VarMapValue
-  → m EJSON.EJson
-getLiteral (VM.Literal l) = pure l
-getLiteral _ = empty
+  → m Sql.Sql
+getLiteral (VM.VarMapValue s) = project s # case _ of
+  Sql.Literal e → pure s
+  _ → empty
 
 formFieldEmptyValue
   ∷ ∀ f a
   . SD.FormFieldP f a
   → VM.VarMapValue
 formFieldEmptyValue field =
-  case field of
-    SD.TextBox tb → VM.Literal
+  VM.VarMapValue case field of
+    SD.TextBox tb →
       case tb of
-        SD.PlainText _ → EJSON.string ""
-        SD.Numeric _ → EJSON.integer 0
-        SD.Date _ → EJSON.null
-        SD.Time _ _ → EJSON.null
-        SD.DateTime _ _ → EJSON.null
-    SD.CheckBoxes _ _ → VM.SetLiteral []
-    SD.RadioButtons _ _ → VM.Literal EJSON.null
-    SD.DropDown _ _ → VM.Literal EJSON.null
+        SD.PlainText _ → Sql.string ""
+        SD.Numeric _ → Sql.int 0
+        SD.Date _ → Sql.null
+        SD.Time _ _ → Sql.null
+        SD.DateTime _ _ → Sql.null
+    SD.CheckBoxes _ _ → Sql.set []
+    SD.RadioButtons _ _ → Sql.null
+    SD.DropDown _ _ → Sql.null
 
 formFieldValueToVarMapValue
   ∷ ∀ m
   . Monad m
   ⇒ SDS.FormFieldValue VM.VarMapValue
   → m (M.Maybe VM.VarMapValue)
-formFieldValueToVarMapValue v =
-  runMaybeT $
-    case v of
-      SD.TextBox tb → VM.Literal <$> do
-        tb' ← liftMaybe $ SD.traverseTextBox unwrap tb
-        case tb' of
-          SD.PlainText (Identity x) → pure $ EJSON.string x
-          SD.Numeric (Identity x) → pure $ EJSON.decimal x
-          SD.Date (Identity x) → pure $ EJSON.date x
-          SD.Time _ (Identity x) → pure $ EJSON.time x
-          SD.DateTime _ (Identity x) → pure $ EJSON.timestamp x
-      SD.CheckBoxes (Identity sel) _ →
-        pure ∘ VM.SetLiteral ∘ A.fromFoldable $ L.mapMaybe (map VM.Literal ∘ getLiteral) sel
-      SD.RadioButtons (Identity x) _ →
-        VM.Literal <$> getLiteral x
-      SD.DropDown mx _ → VM.Literal <$> do
-        Identity x ← liftMaybe mx
-        getLiteral x
+formFieldValueToVarMapValue v = runMaybeT case v of
+  SD.TextBox tb → map VM.VarMapValue do
+    tb' ←
+      liftMaybe $ SD.traverseTextBox unwrap tb
+    case tb' of
+      SD.PlainText (Identity x) →
+        pure $ Sql.string x
+      SD.Numeric (Identity x) →
+        pure $ Sql.hugeNum x
+      SD.Date (Identity x) →
+        liftMaybe
+        $ hush
+        $ FD.formatDateTime "YYYY-MM-DD" (DT.DateTime x bottom) <#> \s →
+          Sql.invokeFunction "DATE" $ pure $ Sql.string s
+      SD.Time _ (Identity x) →
+        liftMaybe
+        $ hush
+        $ FD.formatDateTime "HH:mm:ss" (DT.DateTime bottom x) <#> \s →
+          Sql.invokeFunction "TIME" $ pure $ Sql.string s
+      SD.DateTime _ (Identity x) →
+        liftMaybe
+        $ hush
+        $ FD.formatDateTime "YYYY-MM-DDTHH:mm:ssZ" x <#> \s →
+          Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string s
+  SD.CheckBoxes (Identity sel) _ →
+      pure
+      $ VM.VarMapValue
+      $ embed
+      $ Sql.SetLiteral
+      $ L.mapMaybe (getLiteral) sel
+  SD.RadioButtons (Identity x) _ →
+    map VM.VarMapValue $ getLiteral x
+  SD.DropDown mx _ → map VM.VarMapValue do
+    Identity x ← liftMaybe mx
+    getLiteral x
 
   where
-    liftMaybe
-      ∷ ∀ n a
-      . (Applicative n)
-      ⇒ Maybe a
-      → MaybeT n a
-    liftMaybe =
-      MaybeT ∘ pure
+  liftMaybe
+    ∷ ∀ n a
+    . (Applicative n)
+    ⇒ Maybe a
+    → MaybeT n a
+  liftMaybe =
+    MaybeT ∘ pure

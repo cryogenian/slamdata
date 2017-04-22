@@ -82,7 +82,7 @@ eval = case _ of
     let destPath = parent Pt.</> Pt.file name
         view = R.View $ destPath
         dest = R.Mount view
-    result ← API.viewQuery (Left parent) destPath sql vars
+    result ← API.viewQuery' destPath sql vars
     pure $ k $ map (const view) result
 
 aceSetup ∷ Maybe String → Editor → Slam Unit

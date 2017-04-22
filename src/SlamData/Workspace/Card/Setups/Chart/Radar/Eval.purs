@@ -21,13 +21,10 @@ module SlamData.Workspace.Card.Setups.Chart.Radar.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
-import Data.Lens ((^?), _Just)
+import Data.List as L
 import Data.Map as M
 import Data.Set as Set
 import Data.Int as Int
@@ -38,34 +35,24 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Radar))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning
-  (RadialPosition, adjustRadialPositions, radialTitles)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Chart.Radar.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Semantics as Sem
+
+import SqlSquare as Sql
 
 import Utils.Array (enumerate)
 
-
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Radar (const buildRadar) m \axes → m
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
 
 -- | One radar serie. Actually just data for echarts radar series
 type RadarSerie =
@@ -75,95 +62,80 @@ type RadarSerie =
 
 -- | All series that are drawn on one radar
 type SeriesOnRadar =
-  RadialPosition
+  BCP.RadialPosition
     ( name ∷ Maybe String
     , series ∷ Array RadarSerie
     )
 
-buildRadarData ∷ ModelR → JArray → Array SeriesOnRadar
-buildRadarData r records = series
+type Item =
+  { category ∷ String
+  , measure ∷ Number
+  , multiple ∷ Maybe String
+  , parallel ∷ Maybe String
+  }
+
+decodeItem ∷ Json → Either String Item
+decodeItem = decodeJson >=> \obj → do
+  category ← Sem.requiredString "" <$> obj .? "category"
+  measure ← Sem.requiredNumber zero <$> obj .? "measure"
+  multiple ← Sem.maybeString <$> obj .? "multiple"
+  parallel ← Sem.maybeString <$> obj .? "parallel"
+  pure { category, measure, multiple, parallel }
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.category # SCC.jcursorPrj # Sql.as "category"
+  , r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
+  , r.multiple # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "multiple"
+  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+  ]
+
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable $ A.catMaybes
+    [ r.parallel <#> SCC.jcursorSql
+    , r.multiple <#> SCC.jcursorSql
+    , Just r.category <#> SCC.jcursorSql
+    ]
+
+buildPort ∷ ModelR → Axes → Port.Port
+buildPort m _ =
+  Port.ChartInstructions
+    { options: buildOptions m ∘ buildData m
+    , chartType: Radar
+    }
+
+buildData ∷ ModelR → Array Json → Array SeriesOnRadar
+buildData r =
+  foldMap (foldMap A.singleton ∘ decodeItem)
+    >>> series
+    >>> BCP.adjustRadialPositions
+
   where
-  -- | maybe parallel >> maybe multiple series >> category name >> values
-  dataMap ∷ Maybe String >> Maybe String >> String >> Array Number
-  dataMap =
-    foldl dataMapFoldFn M.empty records
+  series ∷ Array Item → Array SeriesOnRadar
+  series =
+    BCE.groupOn _.parallel
+      >>> map \(name × items) →
+            { name
+            , x: Nothing
+            , y: Nothing
+            , radius: Nothing
+            , series: multiples items
+            }
 
-  dataMapFoldFn
-    ∷ Maybe String >> Maybe String >> String >> Array Number
-    → Json
-    → Maybe String >> Maybe String >> String >> Array Number
-  dataMapFoldFn acc js =
-    let
-      getMaybeStringFromJson = getMaybeString js
-      getValuesFromJson = getValues js
-    in case getMaybeStringFromJson =<< r.category ^? D._value ∘ D._projection of
-      Nothing → acc
-      Just categoryKey →
-        let
-          mbParallel =
-            getMaybeStringFromJson =<< r.parallel ^? _Just ∘ D._value ∘ D._projection
-          mbMultiple =
-            getMaybeStringFromJson =<< r.multiple ^? _Just ∘ D._value ∘ D._projection
-          values =
-            getValuesFromJson $ r.value ^? D._value ∘ D._projection
+  multiples ∷ Array Item → Array RadarSerie
+  multiples =
+    BCE.groupOn _.multiple
+      >>> map \(name × items) →
+            { name
+            , items: M.fromFoldable $ toPoint <$> items
+            }
 
-          alterParallelFn
-            ∷ Maybe (Maybe String >> String >> Array Number)
-            → Maybe (Maybe String >> String >> Array Number)
-          alterParallelFn Nothing =
-            Just $ M.singleton mbMultiple $ M.singleton categoryKey values
-          alterParallelFn (Just multiple) =
-            Just $ M.alter alterMultipleFn mbMultiple multiple
+  toPoint ∷ Item → Tuple String Number
+  toPoint item = item.category × item.measure
 
-          alterMultipleFn
-            ∷ Maybe (String >> Array Number)
-            → Maybe (String >> Array Number)
-          alterMultipleFn Nothing =
-            Just $ M.singleton categoryKey values
-          alterMultipleFn (Just category) =
-            Just $ M.alter alterCategoryFn categoryKey category
-
-          alterCategoryFn
-            ∷ Maybe (Array Number)
-            → Maybe (Array Number)
-          alterCategoryFn Nothing = Just values
-          alterCategoryFn (Just arr) = Just $ arr ⊕ values
-        in
-         M.alter alterParallelFn mbParallel acc
-
-  unpositionedSeries ∷ Array SeriesOnRadar
-  unpositionedSeries =
-    foldMap mkSeriesOnRadar $ M.toList dataMap
-
-  mkSeriesOnRadar
-    ∷ Maybe String × (Maybe String >> String >> Array Number)
-    → Array SeriesOnRadar
-  mkSeriesOnRadar (name × seriesData) =
-    [{ name
-     , x: Nothing
-     , y: Nothing
-     , radius: Nothing
-     , series: foldMap mkMultipleSeries $ M.toList seriesData
-     }]
-
-  mkMultipleSeries
-    ∷ Maybe String × (String >> Array Number)
-    → Array RadarSerie
-  mkMultipleSeries (name × itemsData) =
-    [{ name
-     , items:
-         flip map itemsData
-         $ Ag.runAggregation
-         $ fromMaybe Ag.Sum
-         $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
-     }]
-
-
-  series ∷ Array SeriesOnRadar
-  series = adjustRadialPositions unpositionedSeries
-
-buildRadar ∷ ModelR → JArray → DSL OptionI
-buildRadar r records = do
+buildOptions ∷ ModelR → Array SeriesOnRadar → DSL OptionI
+buildOptions r radarData = do
   E.tooltip do
     E.triggerItem
     E.textStyle do
@@ -186,12 +158,10 @@ buildRadar r records = do
   E.series
     $ traverse_ E.radarSeries series
 
-  radialTitles radarData
+  BCP.radialTitles radarData
+    $ maybe "" D.jcursorLabel r.parallel
 
   where
-  radarData ∷ Array SeriesOnRadar
-  radarData = buildRadarData r records
-
   serieNames ∷ Array String
   serieNames =
     A.fromFoldable

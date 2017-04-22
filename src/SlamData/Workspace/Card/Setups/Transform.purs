@@ -20,6 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, (~>), (:=), (.?), jsonEmptyObject)
 import Data.Array as Array
+import Data.List as L
 import Data.Lens (Prism', prism')
 
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -27,6 +28,9 @@ import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.Setups.Transform.DatePart as DP
 import SlamData.Workspace.Card.Setups.Transform.Numeric as N
 import SlamData.Workspace.Card.Setups.Transform.String as S
+
+import SqlSquare (Sql)
+import SqlSquare as Sql
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -77,24 +81,27 @@ prettyPrintTransform =
     N.prettyPrintNumericOperation
     \_ → "Count"
 
-printTransform ∷ Transform → String → String
-printTransform =
+applyTransform ∷ Transform → Sql.Projection Sql → Sql.Projection Sql
+applyTransform =
   foldTransform
-    (datePart ∘ DP.printDate)
-    (datePart ∘ DP.printTime)
+    DP.applyDateTransform
+    DP.applyTimeTransform
     aggregation
-    stringOp
-    N.printNumericOperation
+    S.applyStringOperation
+    N.applyNumericOperation
     (const count)
   where
-  count value = "COUNT(" <> value <> ")"
-  datePart part value = "DATE_PART(\"" <> part <> "\", " <> value <> ")"
-  stringOp op value = S.prettyPrintStringOperation op <> "(" <> value <> ")"
-  aggregation ag value = case ag of
-    Ag.Minimum → "MIN(" <> value <> ")"
-    Ag.Maximum → "MAX(" <> value <> ")"
-    Ag.Average → "AVG(" <> value <> ")"
-    Ag.Sum     → "SUM(" <> value <> ")"
+  count (Sql.Projection {alias, expr}) =
+    Sql.Projection { alias, expr: Sql.invokeFunction "COUNT" $ L.singleton expr }
+  aggregation ag (Sql.Projection {alias, expr}) =
+    let
+      funcName = case ag of
+        Ag.Minimum → "MIN"
+        Ag.Maximum → "MAX"
+        Ag.Average → "AVG"
+        Ag.Sum → "SUM"
+    in Sql.Projection { alias, expr: Sql.invokeFunction funcName $ L.singleton expr }
+
 
 dateTransforms ∷ Array Transform
 dateTransforms = DatePart <$> DP.dateParts

@@ -21,48 +21,31 @@ module SlamData.Workspace.Card.Setups.Chart.Gauge.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
-import Data.Map as M
-import Data.Lens ((^?), preview, _Just)
+import Data.List as L
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types.Phantom (OptionI)
 
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Gauge))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (RadialPosition, adjustRadialPositions)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Gauge.Model (Model, ModelR)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Gauge (const buildGauge) m \axes → m
+import SqlSquare as Sql
 
-----------------------------------------------------------------------
--- GAUGE BUILDER
-----------------------------------------------------------------------
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
 
 type GaugeItem =
   { name ∷ Maybe String
@@ -70,80 +53,68 @@ type GaugeItem =
   }
 
 type GaugeSerie =
-  RadialPosition
+  BCP.RadialPosition
   ( name ∷ Maybe String
   , items ∷ Array GaugeItem
   )
 
-buildGaugeData ∷ ModelR → JArray → Array GaugeSerie
-buildGaugeData r records = series
+type Item =
+  { measure ∷ Number
+  , parallel ∷ Maybe String
+  , multiple ∷ Maybe String
+  }
+
+decodeItem ∷ Json → Either String Item
+decodeItem = decodeJson >=> \obj → do
+  parallel ← Sem.maybeString <$> obj .? "parallel"
+  multiple ← Sem.maybeString <$> obj .? "multiple"
+  measure ← Sem.requiredNumber zero <$> obj .? "measure"
+  pure { measure, parallel, multiple }
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
+  , r.multiple # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "multiple"
+  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+  ]
+
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable $ A.catMaybes
+    [ r.parallel <#> SCC.jcursorSql
+    , r.multiple <#> SCC.jcursorSql
+    ]
+
+buildPort ∷ ModelR → Ax.Axes → Port.Port
+buildPort m _ =
+  Port.ChartInstructions
+    { options: buildOptions m ∘ buildData m
+    , chartType: Gauge
+    }
+
+buildData ∷ ModelR → Array Json → Array GaugeSerie
+buildData r =
+  foldMap (foldMap A.singleton ∘ decodeItem)
+    >>> series
+    >>> BCP.adjustRadialPositions
+
   where
-  valueAndSizeMap ∷ Maybe String >> Maybe String >> Array Number
-  valueAndSizeMap =
-    foldl foldFn M.empty records
+  series ∷ Array Item → Array GaugeSerie
+  series =
+    BCE.groupOn _.parallel
+      >>> map \(name × items) →
+            { name
+            , x: Nothing
+            , y: Nothing
+            , radius: Nothing
+            , items: toPoint <$> items
+            }
 
-  foldFn
-    ∷ Maybe String >> Maybe String >> Array Number
-    → Json
-    → Maybe String >> Maybe String >> Array Number
-  foldFn acc js =
-    let
-       getMaybeStringFromJson = getMaybeString js
-       getValuesFromJson = getValues js
+  toPoint ∷ Item → GaugeItem
+  toPoint item = { name: item.multiple, value: item.measure }
 
-       mbParallel =
-         getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.parallel
-       mbMultiple =
-         getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.multiple
-       values =
-         getValuesFromJson $ r.value ^? D._value ∘ D._projection
-
-       alterFn
-         ∷ Maybe (Maybe String >> Array Number)
-         → Maybe (Maybe String >> Array Number)
-       alterFn Nothing = Just $ M.singleton mbMultiple values
-       alterFn (Just multiple) =
-         Just $ M.alter alterMultiple mbMultiple multiple
-
-       alterMultiple
-         ∷ Maybe (Array Number)
-         → Maybe (Array Number)
-       alterMultiple Nothing = Just values
-       alterMultiple (Just arr) = Just $ arr ⊕ values
-    in
-      M.alter alterFn mbParallel acc
-
-  mkSerie ∷ Maybe String × (Maybe String >> Array Number) → Array GaugeSerie
-  mkSerie (name × mp) =
-    let
-      pairs ∷ Array (Maybe String × Array Number)
-      pairs = A.fromFoldable $ M.toList mp
-      items = pairs <#> \(name × values) →
-        { name
-        , value:
-            Ag.runAggregation
-              (fromMaybe Ag.Sum $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation)
-              values
-        }
-
-    in [ { radius: Nothing
-         , items
-         , x: Nothing
-         , y: Nothing
-         , name
-         }
-       ]
-
-  unpositionedSeries ∷ Array GaugeSerie
-  unpositionedSeries =
-    foldMap mkSerie $ M.toList valueAndSizeMap
-
-  series ∷ Array GaugeSerie
-  series = adjustRadialPositions unpositionedSeries
-
-
-buildGauge ∷ ModelR → JArray → DSL OptionI
-buildGauge r records = do
+buildOptions ∷ ModelR → Array GaugeSerie → DSL OptionI
+buildOptions r series = do
   let
     cols =
       [ { label: D.jcursorLabel r.value, value: CCT.formatForeign ∘ _.value }
@@ -201,8 +172,5 @@ buildGauge r records = do
         traverse_ E.name item.name
 
   where
-  series ∷ Array GaugeSerie
-  series = buildGaugeData r records
-
   allValues ∷ Array Number
   allValues = map _.value $ A.concatMap _.items series

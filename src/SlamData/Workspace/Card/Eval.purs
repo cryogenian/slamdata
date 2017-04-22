@@ -33,6 +33,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Chart.Eval as Chart
 import SlamData.Workspace.Card.DownloadOptions.Eval as DOptions
 import SlamData.Workspace.Card.Eval.Common as Common
 import SlamData.Workspace.Card.Eval.Monad as CEM
@@ -106,7 +107,7 @@ evalCard trans port varMap = map (_ `union` varMap) <$> case trans, port of
   _, Port.CardError msg → CEM.throw msg
   Pass, _ → pure (port × varMap)
   Table m, _ → Table.eval m port varMap
-  Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
+  Chart, Port.ChartInstructions { options } → CEM.tapResource (Chart.eval options) varMap
   Composite, _ → Port.varMapOut <$> Common.evalComposite
   Terminal, _ → pure Port.terminalOut
   Query sql, _ → Query.evalQuery sql varMap
@@ -117,22 +118,22 @@ evalCard trans port varMap = map (_ `union` varMap) <$> case trans, port of
   Open res, _ → Open.evalOpen res varMap
   Variables model, _ → VariablesE.eval model
   BuildMetric model, _ → CEM.tapResource (BuildMetric.eval model) varMap
-  BuildSankey model, _ → CEM.tapResource (BuildSankey.eval model) varMap
-  BuildGauge model, _ → CEM.tapResource (BuildGauge.eval model) varMap
-  BuildGraph model, _ → CEM.tapResource (BuildGraph.eval model) varMap
-  BuildPie model, _ → CEM.tapResource (BuildPie.eval model) varMap
-  BuildRadar model, _ → CEM.tapResource (BuildRadar.eval model) varMap
-  BuildArea model, _ → CEM.tapResource (BuildArea.eval model) varMap
-  BuildLine model, _ → CEM.tapResource (BuildLine.eval model) varMap
-  BuildBar model, _ → CEM.tapResource (BuildBar.eval model) varMap
-  BuildScatter model, _ → CEM.tapResource (BuildScatter.eval model) varMap
-  BuildFunnel model, _ → CEM.tapResource (BuildFunnel.eval model) varMap
-  BuildHeatmap model, _ → CEM.tapResource (BuildHeatmap.eval model) varMap
-  BuildBoxplot model, _ → CEM.tapResource (BuildBoxplot.eval model) varMap
+  BuildSankey model, _ → BuildSankey.eval model =<< CEM.extractResource varMap
+  BuildGauge model, _ → BuildGauge.eval model =<< CEM.extractResource varMap
+  BuildGraph model, _ → BuildGraph.eval model =<< CEM.extractResource varMap
+  BuildPie model, _ → BuildPie.eval model =<< CEM.extractResource varMap
+  BuildRadar model, _ → BuildRadar.eval model =<< CEM.extractResource varMap
+  BuildArea model, _ → BuildArea.eval model =<< CEM.extractResource varMap
+  BuildLine model, _ → BuildLine.eval model =<< CEM.extractResource varMap
+  BuildBar model, _ → BuildBar.eval model =<< CEM.extractResource varMap
+  BuildScatter model, _ → BuildScatter.eval model =<< CEM.extractResource varMap
+  BuildFunnel model, _ → BuildFunnel.eval model =<< CEM.extractResource varMap
+  BuildHeatmap model, _ → BuildHeatmap.eval model =<< CEM.extractResource varMap
+  BuildBoxplot model, _ → BuildBoxplot.eval model =<< CEM.extractResource varMap
   BuildPivotTable model, _ → BuildPivotTable.eval model varMap =<< CEM.extractResource varMap
-  BuildPunchCard model, _ → CEM.tapResource (BuildPunchCard.eval model) varMap
-  BuildCandlestick model, _ → CEM.tapResource (BuildCandlestick.eval model) varMap
-  BuildParallel model, _ → CEM.tapResource (BuildParallel.eval model) varMap
+  BuildPunchCard model, _ → BuildPunchCard.eval model =<< CEM.extractResource varMap
+  BuildCandlestick model, _ → BuildCandlestick.eval model =<< CEM.extractResource varMap
+  BuildParallel model, _ → BuildParallel.eval model =<< CEM.extractResource varMap
   SetupCheckbox model, _ → CEM.tapResource (SetupLabeled.eval model CT.Checkbox) varMap
   SetupRadio model, _ → CEM.tapResource (SetupLabeled.eval model CT.Radio) varMap
   SetupDropdown model, _ → CEM.tapResource (SetupLabeled.eval model CT.Dropdown) varMap

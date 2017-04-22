@@ -37,110 +37,79 @@ module SlamData.Workspace.Card.Setups.Chart.Parallel.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
-import Data.Lens ((^?), _Just)
-import Data.Lens.Index (ix)
-import Data.Map as M
+import Data.List as L
+import Data.StrMap as Sm
+import Data.String as S
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Parallel))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Parallel.Model (ModelR, Model)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+
+import SqlSquare as Sql
 
 import Utils.Array (enumerate)
 import Utils.Foldable (enumeratedFor_)
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Parallel (const buildParallel) m \axes → m
-
-type Series =
-  { name ∷ Maybe String
-  , items ∷ Array (Maybe Number)
+type Item =
+  { series ∷ String
+  , dims ∷ Array Number
   }
 
-buildParallelData ∷ ModelR → JArray → Array Series
-buildParallelData r records = series
+decodeItem ∷ Json → String ⊹ Item
+decodeItem = decodeJson >=> \obj → do
+  series ← map (fromMaybe "" ∘ Sem.maybeString) $ obj .? "series"
+  let
+    ks ∷ Array String
+    ks = map ("measure" ⊕ _) $ A.mapMaybe (S.stripPrefix $ S.Pattern "measure") $ Sm.keys obj
+
+  dims ← for ks \k →
+    map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? k
+
+  pure { dims, series }
+
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildParallel
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  $ [ r.series # SCC.jcursorPrj # Sql.as "series" ]
+  ⊕ ( map mkProjection $ enumerate r.dims )
   where
-  -- | maybe series >> data mapped to r.dims
-  dataMap ∷ Maybe String >> Array (Array Number)
-  dataMap =
-    foldl dataMapFoldFn M.empty records
+  mkProjection (ix × field) =
+    field # SCC.jcursorPrj # Sql.as ("measure" ⊕ show ix) # SCC.applyTransform field
 
-  dataMapFoldFn
-    ∷ Maybe String >> Array (Array Number)
-    → Json
-    → Maybe String >> Array (Array Number)
-  dataMapFoldFn acc js =
-    let
-      getMaybeString = Sem.getMaybeString js
-      getValues = Sem.getValues js
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy
+  $ pure
+  $ r.series # SCC.jcursorSql
 
-      mbSeries =
-        getMaybeString =<< r.series ^? D._value ∘ D._projection
-      values =
-        r.dims <#> \rr → getValues $ rr ^? D._value ∘ D._projection
+buildParallel ∷ ModelR → Axes → Port.Port
+buildParallel m axes =
+  Port.ChartInstructions
+    { options: pOptions axes m ∘ buildPData
+    , chartType: Parallel
+    }
 
-      alterSeriesFn
-        ∷ Maybe (Array (Array Number))
-        → Maybe (Array (Array Number))
-      alterSeriesFn Nothing =
-        Just values
-      alterSeriesFn (Just arrs) =
-        Just $ map (uncurry append) $ A.zip arrs values
+buildPData ∷ JArray → Array Item
+buildPData =
+  foldMap $ foldMap A.singleton ∘ decodeItem
 
-    in
-      M.alter alterSeriesFn mbSeries acc
-
-  series ∷ Array Series
-  series =
-    foldMap mkSeries $ M.toList dataMap
-
-  mkSeries
-    ∷ Maybe String × Array (Array Number)
-    → Array Series
-  mkSeries (name × values) =
-    [ { name
-      , items: map aggregateValues $ enumerate values
-      } ]
-
-  aggregateValues
-    ∷ Int × (Array Number)
-    → Maybe Number
-  aggregateValues (i × vals)
-    | A.null vals = Nothing
-    | otherwise = do
-      agg ← r.dims ^? ix i ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
-      pure $ Ag.runAggregation agg vals
-
-
-
-buildParallel ∷ ModelR → JArray → DSL OptionI
-buildParallel r records = do
+pOptions ∷ Axes → ModelR → Array Item → DSL OptionI
+pOptions _ r pData = do
   E.parallel do
     E.left $ ET.Percent 5.0
     E.right $ ET.Percent 18.0
@@ -157,17 +126,14 @@ buildParallel r records = do
     E.items $ map ET.strItem serieNames
 
   where
-  parallelData ∷ Array Series
-  parallelData = buildParallelData r records
+  serieNames = map _.series pData
 
-  serieNames = A.mapMaybe _.name parallelData
-
-  series = for_ parallelData \serie → E.parallelSeries do
-    traverse_ E.name serie.name
-    E.buildItems $ E.addItem $ E.buildValues $ for_ serie.items \val →  do
-      case val of
-        Nothing → E.missingValue
-        Just v → E.addValue v
+  series = for_ pData \serie → E.parallelSeries do
+    E.name serie.series
+    E.buildItems
+      $ E.addItem
+      $ E.buildValues
+      $ for_ serie.dims E.addValue
 
   axes = enumeratedFor_ r.dims \(dimIx × dim) → E.addParallelAxis do
     E.dim dimIx

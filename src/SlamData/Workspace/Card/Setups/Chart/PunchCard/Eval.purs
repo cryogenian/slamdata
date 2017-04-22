@@ -23,15 +23,13 @@ import SlamData.Prelude
 
 import Color as C
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
 import Data.Foreign (readNumber)
 import Data.Int as Int
-import Data.Lens ((^?), _Just)
+import Data.Lens ((^?))
+import Data.List as L
 import Data.Map as M
 import Data.Set as Set
 
@@ -43,79 +41,77 @@ import ECharts.Types.Phantom as ETP
 
 import Global (infinity)
 
-import SlamData.Quasar.Class (class QuasarDSL )
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(PunchCard))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.PunchCard.Model (ModelR, Model)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Semantics as Sem
+
+import SqlSquare as Sql
 
 import Utils (hush')
 import Utils.Array (enumerate)
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval PunchCard buildPunchCard m \axes → m
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
 
 type PunchCardData = (String × String) >> (Int × Number)
 
-buildPunchCardData ∷ ModelR → JArray → PunchCardData
-buildPunchCardData r records = map addSymbolSize aggregated
+type Item =
+  { abscissa ∷ String
+  , ordinate ∷ String
+  , measure ∷ Number
+  }
+
+decodeItem ∷ Json → Either String Item
+decodeItem = decodeJson >=> \obj → do
+  abscissa ← Sem.requiredString "" <$> obj .? "abscissa"
+  ordinate ← Sem.requiredString "" <$> obj .? "ordinate"
+  measure ← Sem.requiredNumber zero <$> obj .? "measure"
+  pure { abscissa, ordinate, measure }
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.abscissa # SCC.jcursorPrj # Sql.as "abscissa"
+  , r.ordinate # SCC.jcursorPrj # Sql.as "ordinate"
+  , r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
+  ]
+
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable
+    [ r.abscissa # SCC.jcursorSql
+    , r.ordinate # SCC.jcursorSql
+    ]
+
+buildPort ∷ ModelR → Ax.Axes → Port.Port
+buildPort m axes =
+  Port.ChartInstructions
+    { options: buildOptions axes m ∘ buildData m
+    , chartType: PunchCard
+    }
+
+buildData ∷ ModelR → Array Json → PunchCardData
+buildData r records = M.fromFoldable $ map addSymbolSize <$> items
+
   where
-  dataMap ∷ (String × String) >> Array Number
-  dataMap =
-    foldl dataMapFoldFn M.empty records
+  items ∷ Array ((String × String) × Number)
+  items =
+    records
+      # foldMap (foldMap A.singleton ∘ decodeItem)
+      # map toPoint
 
-  dataMapFoldFn
-    ∷ (String × String) >> Array Number
-    → Json
-    → (String × String) >> Array Number
-  dataMapFoldFn acc js =
-    let
-      getValuesFromJson = getValues js
-      getMaybeStringFromJson = getMaybeString js
+  toPoint ∷ Item → (String × String) × Number
+  toPoint item = (item.abscissa × item.ordinate) × item.measure
 
-      mbAbscissa =
-        getMaybeStringFromJson =<< r.abscissa ^? D._value ∘ D._projection
-      mbOrdinate =
-        getMaybeStringFromJson =<< r.ordinate ^? D._value ∘ D._projection
-      values =
-        getValuesFromJson $ r.value ^? D._value ∘ D._projection
-
-    in case mbAbscissa × mbOrdinate of
-      (Just abscissa) × (Just ordinate) →
-        let
-          alterFn
-            ∷ Maybe (Array Number)
-            → Maybe (Array Number)
-          alterFn Nothing =
-            Just values
-          alterFn (Just vs) =
-            Just $ values ⊕ vs
-        in M.alter alterFn (abscissa × ordinate) acc
-      _ → acc
-
-  aggregated ∷ (String × String) >> Number
-  aggregated =
-    flip map dataMap
-    $ Ag.runAggregation
-    $ fromMaybe Ag.Sum
-    $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
+  aggregated ∷ Array Number
+  aggregated = snd <$> items
 
   minValue ∷ Number
   minValue = fromMaybe (-1.0 * infinity) $ F.minimum aggregated
@@ -129,17 +125,14 @@ buildPunchCardData r records = map addSymbolSize aggregated
   sizeDistance ∷ Number
   sizeDistance = r.maxSize - r.minSize
 
-  addSymbolSize
-    ∷ Number
-    → Int × Number
+  addSymbolSize ∷ Number → Int × Number
   addSymbolSize val
     | distance ≡ zero = (Int.ceil val) × val
     | otherwise =
         (Int.ceil (r.maxSize - sizeDistance / distance * (maxValue - val))) × val
 
-
-buildPunchCard ∷ Ax.Axes → ModelR → JArray → DSL OptionI
-buildPunchCard axes r records = do
+buildOptions ∷ Ax.Axes → ModelR → PunchCardData → DSL OptionI
+buildOptions axes r punchCardData = do
   E.tooltip do
     E.triggerItem
     E.textStyle do
@@ -174,9 +167,6 @@ buildPunchCard axes r records = do
   E.series series
 
   where
-  punchCardData ∷ PunchCardData
-  punchCardData = buildPunchCardData r records
-
   abscissaAxis ∷ ∀ i. DSL (ETP.AxisI i)
   abscissaAxis = do
     E.axisType $ ET.Category

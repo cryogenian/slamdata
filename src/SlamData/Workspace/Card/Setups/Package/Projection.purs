@@ -26,6 +26,9 @@ import Data.StrMap as SM
 
 import SlamData.Workspace.Card.Setups.Package.Types as T
 
+_flatValue ∷ T.Projection
+_flatValue = T.packProjection $ at "flatValue"
+
 _open ∷ T.Projection
 _open = T.packProjection $ at "open"
 

@@ -23,14 +23,12 @@ import SlamData.Prelude
 
 import Color as C
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
-import Data.Lens ((^?), _Just)
-import Data.Map as M
+import Data.Int as Int
+import Data.Lens ((.~))
+import Data.List as L
 import Data.Set as Set
 
 import Global (infinity)
@@ -41,33 +39,28 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Scatter))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getTransparentColor)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (Model, ModelR)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Semantics as Sem
+
+import SqlSquare as Sql
 
 import Utils.Foldable (enumeratedFor_)
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Scatter (const buildScatter) m \axes → m
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval =
+  BCE.chartSetupEval
+    (\a b → setDistinct $ SCC.buildBasicSql buildProjections buildGroupBy a b) buildPort
+  where
+  setDistinct = Sql._Select ∘ Sql._isDistinct .~ true
 
 type ScatterSeries =
   { name ∷ Maybe String
@@ -79,143 +72,107 @@ type ScatterSeries =
   , series ∷ Array OnOneGrid
   }
 
-type OnOneGrid =
-  { name ∷ Maybe String
-  , items ∷ Array {x ∷ Number, y ∷ Number, r ∷ Number}
+type ScatterItem =
+  { x ∷ Number
+  , y ∷ Number
+  , r ∷ Number
+  , size ∷ Int
   }
 
-type ScatterData = Array ScatterSeries
+type OnOneGrid =
+  { name ∷ Maybe String
+  , items ∷ Array ScatterItem
+  }
 
-buildScatterData ∷ ModelR → JArray → ScatterData
-buildScatterData r records = series
+type Item =
+  { abscissa ∷ Number
+  , ordinate ∷ Number
+  , size ∷ Number
+  , parallel ∷ Maybe String
+  , series ∷ Maybe String
+  }
+
+decodeItem ∷ Json → Either String Item
+decodeItem = decodeJson >=> \obj → do
+  abscissa ← Sem.requiredNumber zero <$> obj .? "abscissa"
+  ordinate ← Sem.requiredNumber zero <$> obj .? "ordinate"
+  size ← Sem.requiredNumber zero <$> obj .? "size"
+  parallel ← Sem.maybeString <$> obj .? "parallel"
+  series ← Sem.maybeString <$> obj .? "series"
+  pure { abscissa, ordinate, size, parallel, series }
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.abscissa # SCC.jcursorPrj # Sql.as "abscissa"
+  , r.ordinate # SCC.jcursorPrj # Sql.as "ordinate" # SCC.applyTransform r.ordinate
+  , sizeF
+  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
+  ]
   where
-  -- | maybe parallel >> maybe series >> array xs × array ys × array rs
-  dataMap ∷ Maybe String >> Maybe String >> (Array Number × Array Number × Array Number)
-  dataMap =
-    foldl dataMapFoldFn M.empty records
+  sizeF = case r.size of
+    Just sv → sv # SCC.jcursorPrj # Sql.as "size" # SCC.applyTransform sv
+    Nothing → SCC.nullPrj # Sql.as "size"
 
-  dataMapFoldFn
-    ∷ Maybe String >> Maybe String >> (Array Number × Array Number × Array Number)
-    → Json
-    → Maybe String >> Maybe String >> (Array Number × Array Number × Array Number)
-  dataMapFoldFn acc js =
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable $ A.catMaybes
+    [ r.parallel <#> SCC.jcursorSql
+    , r.series <#> SCC.jcursorSql
+    , Just $ r.abscissa # SCC.jcursorSql
+    ]
+
+buildPort ∷ ModelR → Axes → Port.Port
+buildPort m _ =
+  Port.ChartInstructions
+    { options: buildOptions m ∘ buildData m
+    , chartType: Scatter
+    }
+
+buildData ∷ ModelR → Array Json → Array ScatterSeries
+buildData r =
+  BCP.adjustRectangularPositions
+  ∘ series
+  ∘ foldMap (foldMap A.singleton ∘ decodeItem)
+  where
+  series ∷ Array Item → Array ScatterSeries
+  series =
+    BCE.groupOn _.parallel
+      >>> map \(name × is) →
+            { name
+            , x: Nothing
+            , y: Nothing
+            , w: Nothing
+            , h: Nothing
+            , fontSize: Nothing
+            , series: onOneGrids is
+            }
+
+  onOneGrids ∷ Array Item → Array OnOneGrid
+  onOneGrids =
+    BCE.groupOn _.series
+      >>> map \(name × is) →
+            { name
+            , items: adjustSymbolSizes $ toPoint <$> is
+            }
+
+  toPoint ∷ Item → ScatterItem
+  toPoint item =
+    { x: item.abscissa
+    , y: item.ordinate
+    , r: item.size
+    , size: zero
+    }
+
+  adjustSymbolSizes ∷ Array ScatterItem → Array ScatterItem
+  adjustSymbolSizes is =
     let
-      getValuesFromJson = getValues js
-      getMaybeStringFromJson = getMaybeString js
-
-      mbSeries =
-        getMaybeStringFromJson =<< r.series ^? _Just ∘ D._value ∘ D._projection
-
-      mbParallel =
-        getMaybeStringFromJson =<< r.parallel ^? _Just ∘ D._value ∘ D._projection
-
-      xs =
-        getValuesFromJson $ r.abscissa ^? D._value ∘ D._projection
-      ys =
-        getValuesFromJson $ r.ordinate ^? D._value ∘ D._projection
-      rs =
-        getValuesFromJson $ r.size ^? _Just ∘ D._value ∘ D._projection
-
-      alterParallelFn
-        ∷ Maybe (Maybe String >> (Array Number × Array Number × Array Number))
-        → Maybe (Maybe String >> (Array Number × Array Number × Array Number))
-      alterParallelFn Nothing =
-        Just $ M.singleton mbSeries $ xs × ys × rs
-      alterParallelFn (Just parallel) =
-        Just $ M.alter alterSeriesFn mbSeries parallel
-
-      alterSeriesFn
-        ∷ Maybe (Array Number × Array Number × Array Number)
-        → Maybe (Array Number × Array Number × Array Number)
-      alterSeriesFn Nothing =
-        Just $ xs × ys × rs
-      alterSeriesFn (Just (xxs × yys × rrs)) =
-        Just $ (xxs ⊕ xs) × (yys ⊕ ys) × (rrs ⊕ rs)
-
-    in
-      M.alter alterParallelFn mbParallel acc
-
-  rawSeries ∷ Array ScatterSeries
-  rawSeries =
-    foldMap mkScatterSeries $ M.toList dataMap
-
-  series ∷ Array ScatterSeries
-  series = BCP.adjustRectangularPositions rawSeries
-
-  mkScatterSeries
-    ∷ Maybe String × (Maybe String >> (Array Number × Array Number × Array Number))
-    → Array ScatterSeries
-  mkScatterSeries (name × mp) =
-    [{ name
-     , x: Nothing
-     , y: Nothing
-     , w: Nothing
-     , h: Nothing
-     , fontSize: Nothing
-     , series: foldMap mkOneGrid $ M.toList mp
-     }]
-
-  mkOneGrid
-    ∷ Maybe String × (Array Number × Array Number × Array Number)
-    → Array OnOneGrid
-  mkOneGrid (name × items) =
-    [{ name
-     , items: adjustSymbolSizes $ mkScatterItem items
-     }]
-
-  mkScatterItem
-    ∷ (Array Number × Array Number × Array Number)
-    → Array {x ∷ Number, y ∷ Number, r ∷ Number }
-  mkScatterItem (xs × ys × rs)
-    | A.null xs = []
-    | A.null ys = []
-    | otherwise =
-      let
-        len =
-          max (A.length xs) $ max (A.length ys) (A.length rs)
-
-        abscissas =
-          case r.abscissa ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation of
-            Nothing → xs
-            Just ag →
-              let
-                v = Ag.runAggregation ag xs
-              in
-                map (const v) $ A.range 0 $ len - 1
-        ordinates =
-          case r.ordinate ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation of
-            Nothing → ys
-            Just ag →
-              let
-                v = Ag.runAggregation ag ys
-              in
-                map (const v) $ A.range 0 $ len - 1
-
-        sizes =
-          case r.size ^? _Just ∘ D._value ∘ D._transform ∘ _Just ∘ T._Aggregation of
-            Just ag →
-              let
-                v = Ag.runAggregation ag rs
-              in
-                map (const v) $ A.range 0 $ len - 1
-            Nothing
-              | A.null rs →
-                map (\_ → r.minSize) rs
-            Nothing →
-              rs
-        zipped = A.zip abscissas $ A.zip ordinates sizes
-      in
-        zipped <#> \(x × y × r) → {x, y, r}
-
-  adjustSymbolSizes
-    ∷ Array {x ∷ Number, y ∷ Number, r ∷ Number}
-    → Array {x ∷ Number, y ∷ Number, r ∷ Number}
-  adjustSymbolSizes items =
-    let
+      values =
+        map _.r is
       minValue =
-        fromMaybe (-1.0 * infinity) $ map _.r $ F.maximumBy (\a b → compare a.r b.r) items
+        fromMaybe zero $ F.minimum values
       maxValue =
-        fromMaybe infinity $ map _.r $ F.maximumBy (\a b → compare a.r b.r) items
+        fromMaybe infinity $ F.maximum values
       distance =
         maxValue - minValue
       sizeDistance =
@@ -224,14 +181,14 @@ buildScatterData r records = series
       relativeSize ∷ Number → Number
       relativeSize val
         | distance ≡ zero = val
+        | val < 0.0 = 0.0
         | otherwise =
             r.maxSize - sizeDistance / distance * (maxValue - val)
     in
-      map (\x → x{r = relativeSize x.r}) items
+      map (\x → x{size = Int.floor $ relativeSize x.r}) is
 
-
-buildScatter ∷ ModelR → JArray → DSL OptionI
-buildScatter r records = do
+buildOptions ∷ ModelR → Array ScatterSeries → DSL OptionI
+buildOptions r scatterData = do
   let
     cols =
       [ { label: D.jcursorLabel r.abscissa, value: CCT.formatValueIx 0 }
@@ -243,7 +200,7 @@ buildScatter r records = do
       ]
   E.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
-    E.triggerAxis
+    E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
@@ -257,6 +214,7 @@ buildScatter r records = do
 
   BCP.rectangularGrids scatterData
   BCP.rectangularTitles scatterData
+    $ maybe "" D.jcursorLabel r.parallel
 
   E.grid BCP.cartesian
   E.xAxes $ valueAxes E.addXAxis
@@ -270,9 +228,6 @@ buildScatter r records = do
   E.series series
 
   where
-  scatterData ∷ ScatterData
-  scatterData = buildScatterData r records
-
   valueAxes ∷ ∀ i a. (DSL (ETP.AxisI (gridIndex ∷ ETP.I|i)) → DSL a) → DSL a
   valueAxes addAxis = enumeratedFor_ scatterData \(ix × _) → addAxis do
     E.gridIndex ix
@@ -299,7 +254,9 @@ buildScatter r records = do
       for_ (A.index colors $ mod ix $ A.length colors) \color → do
         E.itemStyle $ E.normal $ E.color $ getTransparentColor color 0.5
       E.symbol ET.Circle
-      E.buildItems $ for_ serie.items \item → E.addItem $ E.buildValues do
-        E.addValue item.x
-        E.addValue item.y
-        E.addValue item.r
+      E.buildItems $ for_ serie.items \item → E.addItem do
+        E.buildValues do
+          E.addValue item.x
+          E.addValue item.y
+          E.addValue item.r
+        when (isJust r.size) $ E.symbolSize item.size

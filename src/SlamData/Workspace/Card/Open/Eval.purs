@@ -23,7 +23,7 @@ import SlamData.Prelude
 import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
 
-import Data.Lens ((^?))
+import Data.Lens ((^?), (?~))
 import Data.Path.Pathy as Path
 
 import SlamData.FileSystem.Resource as R
@@ -35,7 +35,10 @@ import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 
+import SqlSquare as Sql
+
 import Utils.Path (FilePath)
+import Utils.SqlSquare (all)
 
 evalOpen
   ∷ ∀ m
@@ -59,11 +62,17 @@ evalOpen model varMap = case model of
   Just (Open.Variable (VM.Var var)) → do
     res ← CEM.temporaryOutputResource
     let
-      sql = "SELECT * FROM :" <> VM.escapeIdentifier var
-      varMap' = Port.renderVarMapValue <$> Port.flattenResources varMap
-      backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir res)
-    CEM.liftQ $ QQ.viewQuery backendPath res sql varMap'
-    pure (Port.resourceOut (Port.View res sql varMap))
+      sql =
+        Sql.buildSelect
+          $ all
+          ∘ (Sql._relations ?~ Sql.VariRelation { vari: var, alias: Nothing })
+      varMap' =
+        map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
+      backendPath =
+        fromMaybe Path.rootDir $ Path.parentDir res
+
+    CEM.liftQ $ QQ.viewQuery res sql varMap'
+    pure $ Port.resourceOut $ Port.View res (Sql.print $ sql) varMap
 
   where
   noResource ∷ ∀ a. m a

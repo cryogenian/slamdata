@@ -46,7 +46,7 @@ eval
   → Port.Resource
   → m Port.Port
 eval valueProjection formInputType m =
-  BCE.buildChartEval' buildFn m modelFromAxes
+  BCE.analysisEval buildFn m modelFromAxes
   where
   -- We need to store axes to display selects
   buildFn axes conf records =

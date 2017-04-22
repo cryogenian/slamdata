@@ -23,10 +23,12 @@ import SlamData.Prelude
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.Port as Port
 
+import SqlSquare as Sql
+
 initialModel ∷ Port.Port → Ace.Model
 initialModel = case _ of
   Port.ResourceKey var →
-    { text: "SELECT * FROM :" <> Port.escapeIdentifier var
+    { text: "SELECT * FROM :" <> Sql.printIdent var
     , ranges: []
     }
   _ →

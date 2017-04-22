@@ -17,6 +17,8 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Transform.DatePart where
 
 import SlamData.Prelude
+import SqlSquare as Sql
+import Data.List as L
 import Data.Argonaut as J
 import Test.StrongCheck.Arbitrary (class Arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -87,6 +89,27 @@ printTime = case _ of
   Second → "second"
   Minute → "minute"
   Hour → "hour"
+
+applyDateTransform ∷ DatePart → Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
+applyDateTransform dp (Sql.Projection { alias, expr }) =
+  Sql.Projection
+    { alias
+    , expr:
+        Sql.invokeFunction "DATE_PART"
+        $ L.fromFoldable
+        [ Sql.string $ printDate dp, expr ]
+    }
+
+applyTimeTransform ∷ TimePart → Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
+applyTimeTransform tp (Sql.Projection { alias, expr }) =
+  Sql.Projection
+    { alias
+    , expr:
+        Sql.invokeFunction "DATE_PART"
+        $ L.fromFoldable
+        [ Sql.string $ printTime tp, expr ]
+    }
+
 
 printDateTime ∷ DateTimePart → String
 printDateTime = either printDate printTime

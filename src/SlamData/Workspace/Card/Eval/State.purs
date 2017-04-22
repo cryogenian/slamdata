@@ -28,6 +28,7 @@ module SlamData.Workspace.Card.Eval.State
   , _AutoSelect
   , _ActiveTab
   , _Table
+  , _ChartOptions
   ) where
 
 import SlamData.Prelude
@@ -36,6 +37,9 @@ import Data.Argonaut (Json)
 import Data.Array as Array
 import Data.Lens (Prism', prism', Traversal', wander)
 import Data.Set as Set
+
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Port (Resource)
@@ -66,6 +70,7 @@ data EvalState
   | AutoSelect AutoSelectR
   | ActiveTab Int
   | Table TableR
+  | ChartOptions (DSL OptionI)
 
 initialEvalState ∷ CM.AnyCardModel → Maybe EvalState
 initialEvalState = case _ of
@@ -111,6 +116,11 @@ _ActiveTab = prism' ActiveTab case _ of
 _Table ∷ Prism' EvalState TableR
 _Table = prism' Table case _ of
   Table r → Just r
+  _ → Nothing
+
+_ChartOptions ∷ Prism' EvalState (DSL OptionI)
+_ChartOptions = prism' ChartOptions case _ of
+  ChartOptions r → Just r
   _ → Nothing
 
 _ResourceSize ∷ Traversal' EvalState Int

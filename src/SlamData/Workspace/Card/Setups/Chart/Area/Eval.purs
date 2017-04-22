@@ -21,13 +21,11 @@ module SlamData.Workspace.Card.Setups.Chart.Area.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Lens (preview, _Just, (^?))
+import Data.Lens ((^?))
+import Data.List as L
 import Data.Map as M
 import Data.Set as Set
 
@@ -37,98 +35,84 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
-import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
-import Utils.Array (enumerate)
+import SqlSquare as Sql
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Area buildArea m \axes → m
+import Utils.Foldable (enumeratedFor_)
+
+type Item =
+  { dimension ∷ String
+  , measure ∷ Number
+  , series ∷ Maybe String
+  }
 
 type AreaSeries =
   { name ∷ Maybe String
   , items ∷ String >> Number
   }
 
-buildAreaData ∷ ModelR → JArray → Array AreaSeries
-buildAreaData r records = series
+decodeItem ∷ Json → String ⊹ Item
+decodeItem = decodeJson >=> \obj → do
+  measure ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "measure"
+  dimension ← map (fromMaybe "" ∘ Sem.maybeString) $ obj .? "dimension"
+  series ← map Sem.maybeString $ obj .? "series"
+  pure { measure
+       , dimension
+       , series
+       }
+
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildArea
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
+  , r.dimension # SCC.jcursorPrj # Sql.as "dimension"
+  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
+  ]
+
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable $ A.catMaybes
+    [ r.series <#> SCC.jcursorSql
+    , Just r.dimension <#> SCC.jcursorSql
+    ]
+
+buildArea ∷ ModelR → Ax.Axes → Port.Port
+buildArea m axes =
+  Port.ChartInstructions
+    { options: areaOptions axes m ∘ buildAreaData
+    , chartType: Area
+    }
+
+buildAreaData ∷ Array Json → Array AreaSeries
+buildAreaData =
+  series ∘ foldMap (foldMap A.singleton ∘ decodeItem)
   where
-  -- | maybe series >> dimension >> values
-  dataMap ∷ Maybe String >> String >> Array Number
-  dataMap =
-    foldl dataMapFoldFn M.empty records
-
-  dataMapFoldFn
-    ∷ Maybe String >> String >> Array Number
-    → Json
-    → Maybe String >> String >> Array Number
-  dataMapFoldFn acc js =
-    let
-      getValuesFromJson = getValues js
-      getMaybeStringFromJson = getMaybeString js
-    in case getMaybeStringFromJson =<< (r.dimension ^? D._value ∘ D._projection) of
-      Nothing → acc
-      Just dimKey →
-        let
-          mbSeries =
-            getMaybeStringFromJson =<< (preview $ D._value ∘ D._projection) =<< r.series
-          values =
-            getValuesFromJson (r.value ^? D._value ∘ D._projection)
-
-          alterSeriesFn
-            ∷ Maybe (String >> Array Number)
-            → Maybe (String >> Array Number)
-          alterSeriesFn Nothing =
-            Just $ M.singleton dimKey values
-          alterSeriesFn (Just dims) =
-            Just $ M.alter alterDimFn dimKey dims
-
-          alterDimFn
-            ∷ Maybe (Array Number)
-            → Maybe (Array Number)
-          alterDimFn Nothing = Just values
-          alterDimFn (Just arr) = Just $ arr ⊕ values
-        in
-          M.alter alterSeriesFn mbSeries acc
-
-  series ∷ Array AreaSeries
+  series ∷ Array Item → Array AreaSeries
   series =
-    foldMap mkAreaSerie $ M.toList dataMap
+    BCE.groupOn _.series
+      ⋙ map \(name × items) →
+          { name
+          , items: M.fromFoldable $ map toPoint items
+          }
+  toPoint ∷ Item → String × Number
+  toPoint { dimension, measure } = dimension × measure
 
-  mkAreaSerie
-    ∷ Maybe String × (String >> Array Number)
-    → Array AreaSeries
-  mkAreaSerie (name × items) =
-    [{ name
-     , items:
-         map (Ag.runAggregation
-              (fromMaybe Ag.Sum $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation) )
-           items
-     }]
-
-buildArea ∷ Ax.Axes → ModelR → JArray → DSL OptionI
-buildArea axes r records = do
+areaOptions ∷ Ax.Axes → ModelR → Array AreaSeries → DSL OptionI
+areaOptions axes r areaData = do
   let
     cols =
       [ { label: D.jcursorLabel r.dimension, value: CCT.formatValueIx 0 }
@@ -190,9 +174,6 @@ buildArea axes r records = do
   E.series series
 
   where
-  areaData ∷ Array (Int × AreaSeries)
-  areaData = enumerate $ buildAreaData r records
-
   xAxisType ∷ Ax.AxisType
   xAxisType =
     fromMaybe Ax.Category
@@ -208,17 +189,17 @@ buildArea axes r records = do
   xValues =
     A.sortBy xSortFn
       $ A.fromFoldable
-      $ foldMap (snd ⋙_.items ⋙ M.keys ⋙ Set.fromFoldable)
+      $ foldMap (_.items ⋙ M.keys ⋙ Set.fromFoldable)
         areaData
 
   seriesNames ∷ Array String
   seriesNames =
     A.fromFoldable
-      $ foldMap (snd ⋙ _.name ⋙ Set.fromFoldable)
+      $ foldMap (_.name ⋙ Set.fromFoldable)
         areaData
 
   series ∷ ∀ i. DSL (line ∷ ETP.I|i)
-  series = for_ areaData \(ix × serie) → E.line do
+  series = enumeratedFor_ areaData \(ix × serie) → E.line do
     E.buildItems $ for_ xValues \key → do
       case M.lookup key serie.items of
         Nothing → E.missingItem

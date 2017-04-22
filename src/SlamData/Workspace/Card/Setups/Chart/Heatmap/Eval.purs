@@ -23,12 +23,11 @@ import SlamData.Prelude
 
 import Color as C
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-
-import Data.Argonaut (JArray, Json)
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
-import Data.Lens ((^?), _Just)
+import Data.Foreign as Frn
+import Data.Lens ((^?))
+import Data.List as L
 import Data.Map as M
 import Data.Int as Int
 import Data.Set as Set
@@ -39,34 +38,25 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Heatmap))
-import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getColorScheme)
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRectangularPositions, rectangularGrids, rectangularTitles)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
+import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics (getMaybeString, getValues)
-import SlamData.Workspace.Card.Setups.Transform as T
-import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-import Utils.Array (enumerate)
+import SqlSquare as Sql
 
-eval
-  ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
-  ⇒ Model
-  → Port.Resource
-  → m Port.Port
-eval m = BCE.buildChartEval Heatmap buildHeatmap m \axes → m
+import Utils.Foldable (enumeratedFor_)
+
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
 
 type HeatmapSeries =
   { x ∷ Maybe Number
@@ -78,80 +68,74 @@ type HeatmapSeries =
   , items ∷ (String × String) >> Number
   }
 
-buildHeatmapData ∷ ModelR → JArray → Array HeatmapSeries
-buildHeatmapData r records = series
+type Item =
+  { abscissa ∷ String
+  , ordinate ∷ String
+  , measure ∷ Number
+  , series ∷ Maybe String
+  }
+
+decodeItem ∷ Json → Either String Item
+decodeItem = decodeJson >=> \obj → do
+  abscissa ← CCT.formatForeign ∘ jsonToForeign <$> obj .? "abscissa"
+  ordinate ← CCT.formatForeign ∘ jsonToForeign <$> obj .? "ordinate"
+  measure ← Sem.requiredNumber zero <$> obj .? "measure"
+  series ← Sem.maybeString <$> obj .? "series"
+  pure { abscissa, ordinate, measure, series }
   where
-  -- | maybe series >> pair of abscissa and ordinate >> values
-  dataMap ∷ Maybe String >> (String × String) >> Array Number
-  dataMap =
-    foldl dataMapFoldFn M.empty records
+  jsonToForeign ∷ Json → Frn.Foreign
+  jsonToForeign = Frn.toForeign
 
-  dataMapFoldFn
-    ∷ Maybe String >> (String × String) >> Array Number
-    → Json
-    → Maybe String >> (String × String) >> Array Number
-  dataMapFoldFn acc js =
-    let
-      getMaybeStringFromJson = getMaybeString js
-      getValuesFromJson = getValues js
-      mbAbscissa =
-        getMaybeStringFromJson =<< r.abscissa ^? D._value ∘ D._projection
-      mbOrdinate =
-        getMaybeStringFromJson =<< r.ordinate ^? D._value ∘ D._projection
-    in case mbAbscissa × mbOrdinate of
-      (Just abscissaKey) × (Just ordinateKey) →
-        let
-          mbSeries =
-            getMaybeStringFromJson =<< r.series ^? _Just ∘ D._value ∘ D._projection
-          values =
-            getValuesFromJson $ r.value ^? D._value ∘ D._projection
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.abscissa # SCC.jcursorPrj # Sql.as "abscissa"
+  , r.ordinate # SCC.jcursorPrj # Sql.as "ordinate"
+  , r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
+  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
+  ]
 
-          alterSeriesFn
-            ∷ Maybe ((String × String) >> Array Number)
-            → Maybe ((String × String) >> Array Number)
-          alterSeriesFn Nothing =
-            Just $ M.singleton (abscissaKey × ordinateKey) values
-          alterSeriesFn (Just sers) =
-            Just $ M.alter alterCoordFn (abscissaKey × ordinateKey) sers
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable $ A.catMaybes
+    [ r.series <#> SCC.jcursorSql
+    , Just r.abscissa <#> SCC.jcursorSql
+    , Just r.ordinate <#> SCC.jcursorSql
+    ]
 
-          alterCoordFn
-            ∷ Maybe (Array Number)
-            → Maybe (Array Number)
-          alterCoordFn Nothing = Just values
-          alterCoordFn (Just arr) = Just $ arr ⊕ values
-        in
-          M.alter alterSeriesFn mbSeries acc
-      _ → acc
+buildPort ∷ ModelR → Ax.Axes → Port.Port
+buildPort m axes =
+  Port.ChartInstructions
+    { options: buildOptions axes m ∘ buildData m
+    , chartType: Heatmap
+    }
 
-  rawSeries ∷ Array HeatmapSeries
-  rawSeries =
-    foldMap mkOneSeries $ M.toList dataMap
+buildData ∷ ModelR → Array Json → Array HeatmapSeries
+buildData r =
+  BCP.adjustRectangularPositions
+  ∘ series
+  ∘ foldMap (foldMap A.singleton ∘ decodeItem)
 
-  mkOneSeries
-    ∷ Maybe String × ((String × String) >> Array Number)
-    → Array HeatmapSeries
-  mkOneSeries (name × items) =
-    [{ name
-     , x: Nothing
-     , y: Nothing
-     , w: Nothing
-     , h: Nothing
-     , fontSize: Nothing
-     , items:
-         flip map items
-           $ Ag.runAggregation
-           $ fromMaybe Ag.Sum
-           $ r.value ^? D._value ∘ D._transform ∘ _Just ∘ T._Aggregation
-     }]
+  where
+  series ∷ Array Item → Array HeatmapSeries
+  series =
+    BCE.groupOn _.series
+      >>> map \(name × items) →
+            { name
+            , x: Nothing
+            , y: Nothing
+            , w: Nothing
+            , h: Nothing
+            , fontSize: Nothing
+            , items: M.fromFoldable $ toPoint <$> items
+            }
 
-  series ∷ Array HeatmapSeries
-  series = adjustRectangularPositions rawSeries
+  toPoint ∷ Item → (String × String) × Number
+  toPoint item = (item.abscissa × item.ordinate) × item.measure
 
-
-buildHeatmap ∷ Ax.Axes → ModelR → JArray → DSL OptionI
-buildHeatmap axes r records = do
+buildOptions ∷ Ax.Axes → ModelR → Array HeatmapSeries → DSL OptionI
+buildOptions axes r heatmapData = do
   E.tooltip do
-    E.triggerAxis
+    E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
@@ -170,9 +154,10 @@ buildHeatmap axes r records = do
 
   E.animationEnabled false
 
-  rectangularTitles $ map snd heatmapData
+  BCP.rectangularTitles heatmapData
+    $ maybe "" D.jcursorLabel r.series
 
-  rectangularGrids $ map snd heatmapData
+  BCP.rectangularGrids heatmapData
 
   E.xAxes xAxes
 
@@ -197,9 +182,6 @@ buildHeatmap axes r records = do
   E.series series
 
   where
-  heatmapData ∷ Array (Int × HeatmapSeries)
-  heatmapData = enumerate $ buildHeatmapData r records
-
   xValues ∷ HeatmapSeries → Array String
   xValues serie =
     sortX $ A.fromFoldable $ Set.fromFoldable $ map fst $ M.keys serie.items
@@ -209,14 +191,14 @@ buildHeatmap axes r records = do
     sortY $ A.fromFoldable $ Set.fromFoldable $ map snd $ M.keys serie.items
 
   series ∷ ∀ i. DSL (heatMap ∷ ETP.I|i)
-  series = for_ heatmapData \(ix × serie) → E.heatMap do
+  series = enumeratedFor_ heatmapData \(ix × serie) → E.heatMap do
     for_ serie.name E.name
     E.xAxisIndex ix
     E.yAxisIndex ix
 
     E.buildItems
-      $ for_ (enumerate $ xValues serie) \(xIx × abscissa) →
-          for_ (enumerate $ yValues serie) \(yIx × ordinate) →
+      $ enumeratedFor_ (xValues serie)  \(xIx × abscissa) →
+          enumeratedFor_ (yValues serie) \(yIx × ordinate) →
             for_ (M.lookup (abscissa × ordinate) serie.items) \value → E.addItem do
               BCE.assoc { abscissa, ordinate, value }
               E.buildValues do
@@ -248,12 +230,12 @@ buildHeatmap axes r records = do
   ordinateAxisCfg = Ax.axisConfiguration ordinateAxisType
 
   xAxes ∷ ∀ i. DSL (addXAxis ∷ ETP.I|i)
-  xAxes = for_ heatmapData \(ix × serie) → E.addXAxis do
+  xAxes = enumeratedFor_ heatmapData \(ix × serie) → E.addXAxis do
     mkAxis ix
     E.items $ map ET.strItem $ xValues serie
 
   yAxes ∷ ∀ i. DSL (addYAxis ∷ ETP.I|i)
-  yAxes = for_ heatmapData \(ix × serie) → E.addYAxis do
+  yAxes = enumeratedFor_ heatmapData \(ix × serie) → E.addYAxis do
     mkAxis ix
     E.items $ map ET.strItem $ yValues serie
 

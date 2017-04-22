@@ -21,10 +21,12 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Throw (class MonadThrow, throw)
 
-import Data.Argonaut as J
-import Data.Array as Array
+import Data.Lens ((^?), _Right, (<>~), (%~))
+import Data.List as L
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
+
+import Matryoshka (embed)
 
 import Quasar.Types (FilePath)
 
@@ -35,11 +37,7 @@ import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, sequenceQuasa
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
-escapeCursor ∷ J.JCursor → String
-escapeCursor = case _ of
-  J.JField c cs → "." <> Port.escapeIdentifier c <> escapeCursor cs
-  J.JIndex c cs → "[" <> show c <> "]" <> escapeCursor cs
-  J.JCursorTop  → ""
+import SqlSquare as Sql
 
 validateResources
   ∷ ∀ m t
@@ -65,36 +63,47 @@ evalComposite
   ⇒ m Port.DataMap
 evalComposite = do
   CEM.CardEnv { children } ← ask
-  pure (foldl mergeChildren SM.empty children)
+  pure $ foldl mergeChildren SM.empty children
   where
-    mergeChildren ∷ Port.DataMap → CEM.ChildOut → Port.DataMap
-    mergeChildren vm { namespace, varMap } =
-      case namespace of
-        "" → SM.fold (update id) vm varMap
-        ns → SM.fold (update \k → ns <> "." <> k) vm varMap
+  mergeChildren ∷ Port.DataMap → CEM.ChildOut → Port.DataMap
+  mergeChildren vm { namespace, varMap } = case namespace of
+    "" → SM.fold (update id) vm varMap
+    ns → SM.fold (update \k → ns <> "." <> k) vm varMap
 
-    update mkKey acc key val =
-      SM.alter
-        case val, _ of
-          Right (Port.SetLiteral s1), Just (Right (Port.SetLiteral s2)) →
-            Just (Right (Port.SetLiteral (s1 <> s2)))
-          _, rhs@(Just (Right (Port.SetLiteral s))) →
-            let
-              val' = toValue val
-            in if Array.elem val' s
-              then rhs
-              else Just (Right (Port.SetLiteral (Array.snoc s val')))
-          _, Just v →
-            let
-              v1 = toValue val
-              v2 = toValue v
-            in if v1 ≡ v2
-              then Just val
-              else Just (Right (Port.SetLiteral [ v1, v2 ]))
-          _, Nothing →
-            Just val
-        (mkKey key)
-        acc
+  alterFn
+    ∷ Port.Resource ⊹ Port.VarMapValue
+    → Maybe (Port.Resource ⊹ Port.VarMapValue)
+    → Maybe (Port.Resource ⊹ Port.VarMapValue)
+  alterFn val = case _ of
+    Nothing → Just val
+    Just v → case v ^? _Right ∘ Port._VarMapValue ∘ Sql._SetLiteral of
+      Nothing →
+        let
+          v1 ∷ Sql.Sql
+          v1 = toValue val
+          v2 ∷ Sql.Sql
+          v2 = toValue v
 
-    toValue =
-      either Port.resourceToVarMapValue id
+        in Just $ Right $ Port.VarMapValue $ embed $ Sql.SetLiteral $ L.fromFoldable [ v1, v2 ]
+      Just _ → Just case val ^? _Right ∘ Port._VarMapValue ∘ Sql._SetLiteral of
+        Nothing →
+          v # _Right ∘ Port._VarMapValue ∘ Sql._SetLiteral
+            %~ (\s → let val' = toValue val
+                     in if L.elem val' s
+                        then s
+                        else L.snoc s val')
+        Just news →
+          v # _Right ∘ Port._VarMapValue ∘ Sql._SetLiteral <>~ news
+
+  update
+    ∷ (String → String)
+    → Port.DataMap
+    → String
+    → Port.Resource ⊹ Port.VarMapValue
+    → Port.DataMap
+  update mkKey acc key val =
+    SM.alter (alterFn val) (mkKey key) acc
+
+  toValue ∷ Port.Resource ⊹ Port.VarMapValue → Sql.Sql
+  toValue =
+    unwrap ∘ either Port.resourceToVarMapValue id

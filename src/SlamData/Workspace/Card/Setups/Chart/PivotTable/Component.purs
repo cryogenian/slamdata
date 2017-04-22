@@ -121,8 +121,8 @@ render st =
         { options
         , selection: (\a → a × a) <$> selection
         , title: "Choose transformation"
-        , deselectable: true
         , toLabel: \t -> { text: T.prettyPrintTransform t, icon: Nothing }
+        , deselectable: true
         , toSelection: case _ of
             T.Numeric (N.Floor _) → Just $ HCP.proxy TPC.transformFloor
             T.Numeric (N.Round _) → Just $ HCP.proxy TPC.transformRound
