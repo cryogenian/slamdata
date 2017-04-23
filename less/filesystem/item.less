@@ -1,0 +1,25 @@
+.file-system-item {
+  justify-content: space-between;
+  align-items: center;
+  min-height: 2em;
+
+  &, .item-toolbar {
+    display: flex;
+    flex-flow: row nowrap;
+  }
+
+  .item-content {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .item-toolbar {
+    list-style: none;
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+  }
+}

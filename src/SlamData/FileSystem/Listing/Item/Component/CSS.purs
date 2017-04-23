@@ -18,6 +18,12 @@ module SlamData.FileSystem.Listing.Item.Component.CSS where
 
 import Halogen.HTML.Core (ClassName(..))
 
+fileSystemItem ∷ ClassName
+fileSystemItem = ClassName "file-system-item"
+
+fileSystemItemActions ∷ ClassName
+fileSystemItemActions = ClassName "file-system-item-actions"
+
 selected ∷ ClassName
 selected = ClassName "selected"
 

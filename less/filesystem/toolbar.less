@@ -8,9 +8,22 @@
     font-size: 0.5em;
   }
 }
+
+
 .toolbar-menu {
+  justify-content: flex-end;
   width: 100%;
-  padding-right: 0;
+
+  &, > ul {
+    display: flex;
+    flex-flow: row wrap;
+  }
+
+  > ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
 
   input[type=file] {
     width: 0.1px;
@@ -19,11 +32,6 @@
     overflow: hidden;
     position: absolute;
     z-index: -1;
-  }
-
-  ul.list-inline {
-    margin-top: 8px;
-    margin-bottom: 0;
   }
 
   button, label {
@@ -38,7 +46,7 @@
     overflow: hidden;
     color: #337ab7;
 
-    &:hover {
+    &:hover, &:focus {
       color: #23527c
     }
   }
