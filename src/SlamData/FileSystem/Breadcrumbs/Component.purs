@@ -31,7 +31,6 @@ import Data.Path.Pathy (rootDir, runDirName, dirName, parentDir)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.Common.Sort (Sort(..))
@@ -91,7 +90,7 @@ component =
 render ∷ State → H.ComponentHTML Query
 render r =
   HH.ol
-    [ HP.classes [ B.breadcrumb, B.colXs7 ] ]
+    [ HP.classes [ HH.ClassName "breadcrumb" ] ]
     $ foldl (\views model → view model <> views) [ ] r.breadcrumbs
   where
   view b =
