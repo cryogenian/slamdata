@@ -39,7 +39,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import OIDC.Crypt as OIDC
 
@@ -146,8 +145,8 @@ renderPublishURI state =
     [ HH.h4_ [ HH.text "Publish deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
-            ⊕ if state.loading then [ ] else [ B.hidden ]
+            $ [ Rc.alert, Rc.alertInfo, HH.ClassName "share-loading" ]
+            ⊕ if state.loading then [ ] else [ Rc.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
         , HH.text "Loading"
@@ -155,15 +154,15 @@ renderPublishURI state =
     , HH.div
         [ HP.classes
             $ [ HH.ClassName "deck-dialog-body" ]
-            ⊕ if state.loading then [ B.hidden ] else [ ]
+            ⊕ if state.loading then [ Rc.hidden ] else [ ]
         ]
         [ HH.p_ message
         , HH.form
             [ HE.onSubmit (HE.input PreventDefault) ]
             [ HH.div
-                [ HP.classes [ B.inputGroup ] ]
+                [ HP.classes [ Rc.inputGroup ] ]
                 $ [ HH.input
-                    [ HP.classes [ B.formControl ]
+                    [ HP.classes [ Rc.formControl ]
                     , HP.value state.copyVal
                     , HP.readOnly true
                     , HP.disabled state.submitting
@@ -172,9 +171,9 @@ renderPublishURI state =
                     , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
                     ]
                   , HH.span
-                      [ HP.classes [ B.inputGroupBtn ] ]
+                      [ HP.classes [ Rc.inputGroupBtn ] ]
                       [ HH.button
-                        [ HP.classes [ B.btn, B.btnDefault ]
+                        [ HP.classes [ Rc.btn, Rc.btnDefault ]
                         , HE.onClick (HE.input_ HandleCancel)
                         , HP.ref copyButtonRef
                         , HP.id_ "copy-button"
@@ -189,19 +188,19 @@ renderPublishURI state =
     , HH.div
         [ HP.classes
             $ [ HH.ClassName "deck-dialog-footer" ]
-            ⊕ if state.loading then [ B.hidden ] else [ ]
+            ⊕ if state.loading then [ Rc.hidden ] else [ ]
         ]
         $ [ HH.div
               [ HP.classes
-                  $ [ B.alert, B.alertDanger ]
-                  ⊕ (if state.errored then [ ] else [ B.hidden ])
+                  $ [ Rc.alert, Rc.alertDanger ]
+                  ⊕ (if state.errored then [ ] else [ Rc.hidden ])
               ]
               [ HH.text
                   $ "Couldn't share/unshare deck. "
                   ⊕ "Please check you network connection and try again"
               ]
           , HH.button
-              [ HP.classes [ B.btn, B.btnDefault ]
+              [ HP.classes [ Rc.btn, Rc.btnDefault ]
               , HE.onClick (HE.input_ HandleCancel)
               , HP.type_ HP.ButtonButton
               ]
@@ -209,7 +208,7 @@ renderPublishURI state =
           ]
         ⊕ ((guard state.isLoggedIn)
            $>  HH.button
-                 [ HP.classes [ B.btn, B.btnInfo ]
+                 [ HP.classes [ Rc.btn, Rc.btnInfo ]
                  , HE.onClick (HE.input_ Revoke)
                  , ARIA.label "Revoke access to this deck"
                  , HP.title "Revoke access to this deck"
@@ -219,8 +218,8 @@ renderPublishURI state =
                  [ HH.text "Revoke" ])
         ⊕ [ HH.a
               ( [ HP.classes
-                    $ [ B.btn, B.btnPrimary ]
-                    ⊕ if state.submitting then [ B.disabled ] else [ ]
+                    $ [ Rc.btn, Rc.btnPrimary ]
+                    ⊕ if state.submitting then [ Rc.disabled ] else [ ]
                 , HP.target "_blank"
                 ]
                 ⊕ if state.submitting then [ ] else [ HP.href state.copyVal ]
@@ -255,8 +254,8 @@ renderPublishIFrame state =
     [ HH.h4_ [ HH.text  "Embed deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
-            ⊕ if state.loading then [ ] else [ B.hidden ]
+            $ [ Rc.alert, Rc.alertInfo, HH.ClassName "share-loading" ]
+            ⊕ if state.loading then [ ] else [ Rc.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
         , HH.text "Loading"
@@ -264,14 +263,14 @@ renderPublishIFrame state =
     , HH.div
         [ HP.classes
             $ [ HH.ClassName "deck-dialog-body" ]
-            ⊕ if state.loading then [ B.hidden ] else [ ]
+            ⊕ if state.loading then [ Rc.hidden ] else [ ]
         ]
         [ HH.form
           [ HE.onSubmit (HE.input PreventDefault) ]
           [ HH.div
-              [ HP.classes [ B.formGroup ] ]
+              [ HP.classes [ Rc.formGroup ] ]
                 [ HH.textarea
-                  [ HP.classes [ B.formControl, Rc.embedBox ]
+                  [ HP.classes [ Rc.formControl, Rc.embedBox ]
                   , HP.readOnly true
                   , HP.value state.copyVal
                   , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
@@ -279,14 +278,14 @@ renderPublishIFrame state =
                 , HH.button
                   [ HP.id_ "copy-button"
                   , HP.classes
-                      $ [ B.btn, B.btnDefault, B.btnXs ]
+                      $ [ Rc.btn, Rc.btnDefault, Rc.btnXs ]
                       ⊕ [ HH.ClassName "textarea-copy-button" ]
                   , HP.ref copyButtonRef
                   , HP.type_ HP.ButtonButton
                   , HP.disabled state.submitting
                   ]
                   [ I.copySm ]
-                , HH.div [ HP.classes [ B.checkbox ] ]
+                , HH.div [ HP.classes [ Rc.checkbox ] ]
                   [ (if state.isLoggedIn then HH.label_ else HH.p_)
                     $ ((guard state.isLoggedIn)
                        $> HH.input
@@ -303,19 +302,19 @@ renderPublishIFrame state =
     , HH.div
         [ HP.classes
             $ [ HH.ClassName "deck-dialog-footer" ]
-            ⊕ if state.loading then [ B.hidden ] else [ ]
+            ⊕ if state.loading then [ Rc.hidden ] else [ ]
         ]
         $ [ HH.div
               [ HP.classes
-                  $ [ B.alert, B.alertDanger ]
-                  ⊕ (if state.errored then [ ] else [ B.hidden ])
+                  $ [ Rc.alert, Rc.alertDanger ]
+                  ⊕ (if state.errored then [ ] else [ Rc.hidden ])
               ]
               [ HH.text
                   $ "Couldn't share/unshare deck. "
                   ⊕ "Please check you network connection and try again"
               ]
           , HH.button
-              [ HP.classes [ B.btn ]
+              [ HP.classes [ Rc.btn ]
               , HE.onClick (HE.input_ HandleCancel)
               , HP.type_ HP.ButtonButton
               ]
@@ -323,7 +322,7 @@ renderPublishIFrame state =
           ]
         ⊕ ((guard state.isLoggedIn)
            $> HH.button
-                [ HP.classes [ B.btn, B.btnInfo ]
+                [ HP.classes [ Rc.btn, Rc.btnInfo ]
                 , HE.onClick (HE.input_ Revoke)
                 , HP.title "Revoke access to this deck"
                 , ARIA.label "Revoke access to this deck"

@@ -246,3 +246,61 @@ form = ClassName "sd-form"
 
 formButton ∷ ClassName
 formButton = ClassName "sd-form-button"
+
+
+-- Bootstrap-like
+-- Would be nice to hae something that concats
+
+formControl ∷ ClassName
+formControl = ClassName "form-control"
+
+formGroup ∷ ClassName
+formGroup = ClassName "form-group"
+
+inputGroup ∷ ClassName
+inputGroup = ClassName "input-group"
+
+inputGroupBtn ∷ ClassName
+inputGroupBtn = ClassName "input-group-btn"
+
+checkbox ∷ ClassName
+checkbox = ClassName "checkbox"
+
+hasError ∷ ClassName
+hasError = ClassName "has-error"
+
+btn ∷ ClassName
+btn = ClassName "btn"
+
+btnXs ∷ ClassName
+btnXs = ClassName "btn-xs"
+
+btnDefault ∷ ClassName
+btnDefault = ClassName "btn-default"
+
+btnPrimary ∷ ClassName
+btnPrimary = ClassName "btn-primary"
+
+btnInfo ∷ ClassName
+btnInfo = ClassName "btn-info"
+
+btnGroup ∷ ClassName
+btnGroup = ClassName "btn-group"
+
+alert ∷ ClassName
+alert = ClassName "alert"
+
+alertInfo ∷ ClassName
+alertInfo = ClassName "alert-info"
+
+alertDanger ∷ ClassName
+alertDanger = ClassName "alert-danger"
+
+hidden ∷ ClassName
+hidden = ClassName "hidden"
+
+disabled ∷ ClassName
+disabled = ClassName "disabled"
+
+srOnly ∷ ClassName
+srOnly = ClassName "hidden"

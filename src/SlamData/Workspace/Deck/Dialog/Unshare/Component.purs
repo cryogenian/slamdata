@@ -42,12 +42,12 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Elements.Keyed as HK
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Advanced.Types as QTA
 
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Security as Q
+import SlamData.Render.CSS as Rc
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), printShareResume)
 import SlamData.Workspace.Deck.Dialog.Share.Model as Model
@@ -178,8 +178,8 @@ render state =
     [ HH.h4_ [ HH.text "Unshare deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
-            ⊕ if state.loading then [ ] else [ B.hidden ]
+            $ [ Rc.alert, Rc.alertInfo, HH.ClassName "share-loading" ]
+            ⊕ if state.loading then [ ] else [ Rc.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
         , HH.text "Loading"
@@ -190,7 +190,7 @@ render state =
             $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ (if SM.isEmpty state.userPermissions
                   ∧ SM.isEmpty state.groupPermissions
-                  ∧ Arr.null state.tokenPermissions then [ B.hidden ] else [ ])
+                  ∧ Arr.null state.tokenPermissions then [ Rc.hidden ] else [ ])
         ]
         [ HH.form
             [ HE.onSubmit $ HE.input PreventDefault ]
@@ -241,12 +241,12 @@ render state =
        HH.div
         [ HP.classes
             $ [ HH.ClassName "deck-dialog-footer share" ]
-            ⊕ (if state.loading then [ B.hidden ] else [ ])
+            ⊕ (if state.loading then [ Rc.hidden ] else [ ])
         ]
         [ HH.div
             [ HP.classes
-                $ [ B.alert, B.alertDanger ]
-                ⊕ (if state.errored ∨ somethingErrored then [ ] else [ B.hidden ])
+                $ [ Rc.alert, Rc.alertDanger ]
+                ⊕ (if state.errored ∨ somethingErrored then [ ] else [ Rc.hidden ])
             ]
             [ HH.text
                 $ if state.errored
@@ -262,7 +262,7 @@ render state =
         , HH.button
             [ HE.onClick (HE.input_ Done)
             , HP.type_ HP.ButtonButton
-            , HP.classes [ B.btn, B.btnDefault ]
+            , HP.classes [ Rc.btn, Rc.btnDefault ]
             , HP.disabled somethingHappening
             ]
             [ HH.text "Done" ]
@@ -276,9 +276,9 @@ renderUserOrGroup (name × perm) =
       [ HP.class_ $ HH.ClassName "sd-unshare-subject" ]
       [ HH.label_ [ HH.text name ]
       , HH.div
-          [ HP.classes $ if perm.state ≡ Just ModifyError then [ B.hasError ] else [ ] ]
+          [ HP.classes $ if perm.state ≡ Just ModifyError then [ Rc.hasError ] else [ ] ]
           [ HH.select
-              [ HP.classes [ B.formControl ]
+              [ HP.classes [ Rc.formControl ]
               , HE.onValueChange (HE.input (ChangePermissionResume name))
               , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
               ]
@@ -305,9 +305,9 @@ renderUserOrGroup (name × perm) =
               ]
           ]
       , HH.div
-          [ HP.classes $ if perm.state ≡ Just RevokeError then [ B.hasError ] else [ ] ]
+          [ HP.classes $ if perm.state ≡ Just RevokeError then [ Rc.hasError ] else [ ] ]
           [ HH.button
-              [ HP.classes [ B.btn, B.btnPrimary ]
+              [ HP.classes [ Rc.btn, Rc.btnPrimary ]
               , HE.onClick (HE.input_ (Unshare name))
               , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
               ]
@@ -332,7 +332,7 @@ renderToken token =
     , HH.div
         [ HP.classes
             $ [ HH.ClassName "sd-url" ]
-            ⊕ if token.state ≡ Just ModifyError then [ B.hasError ] else [ ]
+            ⊕ if token.state ≡ Just ModifyError then [ Rc.hasError ] else [ ]
         ]
         [ HH.input
             [ HP.readOnly true
@@ -342,7 +342,7 @@ renderToken token =
             , HP.disabled $ isJust token.state
         ]
         , HH.button
-            [ HP.classes [ B.btn, B.btnDefault ]
+            [ HP.classes [ Rc.btn, Rc.btnDefault ]
             , HP.title "Copy to clipboard"
             , HP.ref $ copyButtonRef token.tokenId
             , HP.disabled $ token.state ≡ Just Modifying ∨ token.state ≡ Just Unsharing
@@ -350,11 +350,11 @@ renderToken token =
             [ I.copySm ]
         ]
     , HH.div
-        [ HP.classes $ if token.state ≡ Just RevokeError then [ B.hasError ] else [ ] ]
+        [ HP.classes $ if token.state ≡ Just RevokeError then [ Rc.hasError ] else [ ] ]
         [ HH.div
-            [ HP.class_ B.btnGroup ]
+            [ HP.class_ Rc.btnGroup ]
             [ HH.button
-                [ HP.classes [ B.btn, B.btnPrimary ]
+                [ HP.classes [ Rc.btn, Rc.btnPrimary ]
                 , HE.onClick (HE.input_ (UnshareToken token.tokenId))
                 , HP.disabled $ token.state ≡ Just Modifying ∨ token.state ≡ Just Unsharing
                 ]

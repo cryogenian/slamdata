@@ -28,7 +28,7 @@ import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
+import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CardType
 import SlamData.Workspace.Card.InsertableCardType (InsertableCardType, print)
@@ -73,7 +73,7 @@ render state =
   , HH.div
       [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
       [ HH.button
-          [ HP.classes [ B.btn ]
+          [ HP.classes [ Rc.btn ]
           , HE.onClick (HE.input_ (Raise Dismiss))
           ]
           [ HH.text "Dismiss" ]

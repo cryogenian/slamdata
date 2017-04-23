@@ -23,9 +23,9 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import SlamData.Render.CSS as Rc
 import Utils.DOM as DOM
 
 type State = { name ∷ String }
@@ -57,13 +57,13 @@ render { name } =
         [ HH.form
           [ HE.onSubmit (HE.input PreventDefault) ]
           [ HH.div
-              [ HP.classes [ B.formGroup ]
+              [ HP.classes [ Rc.formGroup ]
               ]
               [ HH.input
                   [ HE.onValueInput (HE.input UpdateName)
                   , HP.value name
                   , HP.type_ HP.InputText
-                  , HP.classes [ B.formControl ]
+                  , HP.classes [ Rc.formControl ]
                   , ARIA.label "Deck name"
                   ]
               ]
@@ -71,13 +71,13 @@ render { name } =
         ]
     , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         [ HH.button
-            [ HP.classes [ B.btn, B.btnDefault ]
+            [ HP.classes [ Rc.btn, Rc.btnDefault ]
             , HE.onClick (HE.input_ Cancel)
             , HP.type_ HP.ButtonButton
             ]
             [ HH.text "Dismiss" ]
         , HH.button
-            [ HP.classes [ B.btn, B.btnPrimary ]
+            [ HP.classes [ Rc.btn, Rc.btnPrimary ]
             , HE.onClick (HE.input_ Save)
             , HP.type_ HP.ButtonButton
             ]
