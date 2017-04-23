@@ -266,6 +266,9 @@ inputGroupBtn = ClassName "input-group-btn"
 checkbox ∷ ClassName
 checkbox = ClassName "checkbox"
 
+radio ∷ ClassName
+radio = ClassName "radio"
+
 hasError ∷ ClassName
 hasError = ClassName "has-error"
 
@@ -295,6 +298,15 @@ alertInfo = ClassName "alert-info"
 
 alertDanger ∷ ClassName
 alertDanger = ClassName "alert-danger"
+
+table ∷ ClassName
+table = "table"
+
+tableStriped ∷ ClassName
+tableStriped = "table-striped"
+
+active ∷ ClassName
+active = ClassName "active"
 
 hidden ∷ ClassName
 hidden = ClassName "hidden"

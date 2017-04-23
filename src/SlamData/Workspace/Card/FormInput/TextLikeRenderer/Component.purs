@@ -29,9 +29,9 @@ import Halogen.Component.Utils (sendAfter)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
@@ -79,7 +79,7 @@ render state =
     [ HE.onSubmit (HE.input PreventDefault) ]
     $ foldMap (\n → [ HH.h3_  [ HH.text n ] ]) state.label
     ⊕ [ HH.input
-          [ HP.classes [ B.formControl ]
+          [ HP.classes [ Rc.formControl ]
           , HP.value state.value
           , HP.type_ $ inputTypeFromFIT state.formInputType
           , HE.onValueInput $ HE.input ValueChanged
