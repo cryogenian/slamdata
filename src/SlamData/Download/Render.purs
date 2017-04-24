@@ -50,7 +50,7 @@ optionsCSV func opts =
       [ HH.label_
           [ HH.span_ [ HH.text label ]
           , HH.input
-              [ HP.classes [ H.ClassName "form-control" ]
+              [ HP.classes [ Rc.formControl ]
               , HP.value (opts ^. lens)
               , HE.onValueInput $ HE.input (func lens)
               ]
@@ -112,7 +112,7 @@ fldName
   → H.ComponentHTML q
 fldName options tgtValue query =
   HH.div
-    [ HP.classes [ H.ClassName "form-group", Rc.downloadTarget ] ]
+    [ HP.classes [ Rc.formGroup, Rc.downloadTarget ] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Target name" ]
         , HH.input

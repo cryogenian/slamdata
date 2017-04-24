@@ -22,6 +22,7 @@ import Data.StrMap as SM
 
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as CT

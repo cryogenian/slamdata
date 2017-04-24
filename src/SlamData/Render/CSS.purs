@@ -300,10 +300,10 @@ alertDanger ∷ ClassName
 alertDanger = ClassName "alert-danger"
 
 table ∷ ClassName
-table = "table"
+table = ClassName "table"
 
 tableStriped ∷ ClassName
-tableStriped = "table-striped"
+tableStriped = ClassName "table-striped"
 
 active ∷ ClassName
 active = ClassName "active"
