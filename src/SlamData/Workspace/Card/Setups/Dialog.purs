@@ -18,13 +18,13 @@ module SlamData.Workspace.Card.Setups.Dialog where
 
 import SlamData.Prelude
 
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
+
+import SlamData.Render.CSS as Rc
 
 type DialogOptions s p i =
   { onDismiss ∷ H.Action i
@@ -57,13 +57,13 @@ pickerDialog opts =
     , HH.div
         [ HP.classes [ HH.ClassName "sd-picker-dialog-toolbar" ] ]
         [ HH.button
-            [ HP.classes [ B.btn, B.btnDefault ]
+            [ HP.classes [ Rc.btn, Rc.btnDefault ]
             , ARIA.label "Dismiss"
             , HE.onClick $ HE.input_ opts.onDismiss
             ]
             [ HH.text "Dismiss" ]
         , HH.button
-            ([ HP.classes [ B.btn, B.btnPrimary ]
+            ([ HP.classes [ Rc.btn, Rc.btnPrimary ]
             , ARIA.label ""
             ] <>
               case opts.selection of
