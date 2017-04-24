@@ -49,11 +49,11 @@ import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-import SqlSquare (Sql)
-import SqlSquare as Sql
+import SqlSquared (Sql)
+import SqlSquared as Sql
 
 import Utils (stringToNumber)
-import Utils.SqlSquare (all, asRel, tableRelation)
+import Utils.SqlSquared (all, asRel, tableRelation)
 
 
 -- | I removed additional variable from this (It used to be `QueryExpr`)

@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildLine

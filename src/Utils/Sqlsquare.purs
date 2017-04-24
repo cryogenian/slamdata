@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Utils.SqlSquare where
+module Utils.SqlSquared where
 
 import SlamData.Prelude
 
 import Data.Lens ((.~))
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils.Path (FilePath)
 

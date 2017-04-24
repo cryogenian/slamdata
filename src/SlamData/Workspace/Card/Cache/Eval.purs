@@ -33,10 +33,10 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils.Path as PU
-import Utils.SqlSquare (tableRelation, all)
+import Utils.SqlSquared (tableRelation, all)
 
 eval
   ∷ ∀ m

@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Array as A
 import Data.Foreign as F
-import Data.Foreign.Class (readProp)
+import Data.Foreign.Index (readProp)
 import Data.Int (toNumber, floor)
 import Data.Lens ((^?))
 import Data.String as S

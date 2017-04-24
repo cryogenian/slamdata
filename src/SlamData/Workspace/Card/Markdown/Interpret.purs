@@ -26,7 +26,7 @@ import Data.Maybe as M
 
 import Matryoshka (embed, project)
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import SlamData.Workspace.Card.Port.VarMap as VM
 
