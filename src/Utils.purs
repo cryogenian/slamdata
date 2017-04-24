@@ -53,7 +53,7 @@ singletonValue' =
   f x (Left i) = Left $ i + 1
   initial = Right Nothing
 
-singletonValue ∷ ∀ a m n. (Applicative m, Foldable n) ⇒ m a → (Int → m a) → n a → m a
+singletonValue ∷ ∀ a m n. Applicative m ⇒ Foldable n ⇒ m a → (Int → m a) → n a → m a
 singletonValue noElements tooManyElements =
   either tooManyElements (maybe noElements pure) <<< singletonValue'
 

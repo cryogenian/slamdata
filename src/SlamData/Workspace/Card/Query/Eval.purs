@@ -39,13 +39,12 @@ import SqlSquare as Sql
 
 evalQuery
   ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk CEM.CardEnv m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    , ParQuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
+  ⇒ ParQuasarDSL m
   ⇒ String
   → Port.DataMap
   → m Port.Out

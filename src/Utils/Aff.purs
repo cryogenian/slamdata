@@ -36,9 +36,8 @@ untilA aff =
 
 laterVar
   ∷ ∀ eff m
-  . ( MonadAff (avar ∷ AVAR | eff) m
-    , MonadFork Exn.Error m
-    )
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ MonadFork Exn.Error m
   ⇒ Int
   → m Unit
   → m (AVar Unit)

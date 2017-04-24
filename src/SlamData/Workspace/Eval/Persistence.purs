@@ -77,25 +77,25 @@ defaultEvalDebounce ∷ Int
 defaultEvalDebounce = 500
 
 type Persist f m a =
-  ( MonadAff SlamDataEffects m
-  , MonadAsk Wiring m
-  , MonadFork Exn.Error m
-  , MonadThrow Exn.Error m
-  , Parallel f m
-  , QuasarDSL m
-  , LocalStorageDSL m
-  ) ⇒ a
+  MonadAff SlamDataEffects m
+  ⇒ MonadAsk Wiring m
+  ⇒ MonadFork Exn.Error m
+  ⇒ MonadThrow Exn.Error m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
+  ⇒ LocalStorageDSL m
+  ⇒ a
 
 type PersistEnv m a =
-  ( MonadAff SlamDataEffects m
-  , MonadAsk Wiring m
-  , MonadThrow Exn.Error m
-  ) ⇒ a
+  MonadAff SlamDataEffects m
+  ⇒ MonadAsk Wiring m
+  ⇒ MonadThrow Exn.Error m
+  ⇒ a
 
 type ForkAff m a =
-  ( MonadAff SlamDataEffects m
-  , MonadFork Exn.Error m
-  ) ⇒ a
+  MonadAff SlamDataEffects m
+  ⇒ MonadFork Exn.Error m
+  ⇒ a
 
 loadWorkspace ∷ ∀ f m. Persist f m (m (Either QE.QError Deck.Id))
 loadWorkspace = runExceptT do
@@ -233,7 +233,7 @@ populateGraph oldDecks oldCards rootParent root = do
         _, _ → makeDeckCell deck (Deck.evalStatusFromCards deck.cards)
       cardCells ←
         List.foldM (goCard eval deckId) mempty cards >>= case _ of
-          (lastId × last) : tail -> do
+          (lastId × last) : tail → do
             let last' = last { next = Set.insert (Left deckId) last.next }
             pure ((lastId × last') : tail)
           _ → do

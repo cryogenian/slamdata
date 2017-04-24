@@ -50,11 +50,10 @@ import Utils.Path (FilePath)
 
 eval
   ∷ ∀ m
-  . ( MonadAsk CEM.CardEnv m
-    , MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
+  . MonadAsk CEM.CardEnv m
+  ⇒ MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
   ⇒ PTM.Model
   → Port.DataMap
   → Port.Resource

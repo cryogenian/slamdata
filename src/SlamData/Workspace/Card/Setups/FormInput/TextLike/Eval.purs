@@ -36,10 +36,9 @@ import SlamData.Workspace.Card.Setups.Axis as Ax
 
 eval
   ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
+  . MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
   ⇒ ( Ax.Axes → Set.Set JCursor )
   → FormInputType
   → Model

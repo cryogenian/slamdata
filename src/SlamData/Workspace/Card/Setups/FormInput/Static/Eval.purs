@@ -36,10 +36,9 @@ import SlamData.Workspace.Card.Setups.Behaviour as B
 
 eval
   ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
+  . MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
   ⇒ Model
   → Port.Resource
   → m Port.Port

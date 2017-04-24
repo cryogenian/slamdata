@@ -55,12 +55,12 @@ import Utils.Path (DirPath)
 type Tick = Int
 
 type Eval f m a =
-  ( MonadAff SlamDataEffects m
-  , MonadAsk Wiring m
-  , MonadFork Exn.Error m
-  , Parallel f m
-  , QuasarDSL m
-  ) ⇒ a
+  MonadAff SlamDataEffects m
+  ⇒ MonadAsk Wiring m
+  ⇒ MonadFork Exn.Error m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
+  ⇒ a
 
 evalGraph ∷ ∀ f m. Eval f m (List Card.DisplayCoord → m Unit)
 evalGraph sources = do
@@ -154,7 +154,7 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
         Right _ →
           liftEff $ Ref.writeRef auth.retryEval Nothing
 
-    goNext ∷ Array Card.Id → Card.Out → Set (Either Deck.Id Card.Id) -> m Unit
+    goNext ∷ Array Card.Id → Card.Out → Set (Either Deck.Id Card.Id) → m Unit
     goNext history cardInput next = do
       let
         next' = List.fromFoldable next
@@ -198,14 +198,14 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
 publish ∷ ∀ m r a b. MonadAff SlamDataEffects m ⇒ { bus ∷ Bus.BusW' b a | r } → a → m Unit
 publish rec message = liftAff (Bus.write message rec.bus)
 
-nextTick ∷ ∀ m. (MonadAff SlamDataEffects m, MonadAsk Wiring m) ⇒ m Int
+nextTick ∷ ∀ m. MonadAff SlamDataEffects m ⇒ MonadAsk Wiring m ⇒ m Int
 nextTick = do
   { eval } ← Wiring.expose
   liftEff do
     Ref.modifyRef eval.tick (add 1)
     Ref.readRef eval.tick
 
-currentTick ∷ ∀ m. (MonadAff SlamDataEffects m, MonadAsk Wiring m) ⇒ m Int
+currentTick ∷ ∀ m. MonadAff SlamDataEffects m ⇒ MonadAsk Wiring m ⇒ m Int
 currentTick = do
   { eval } ← Wiring.expose
   liftEff (Ref.readRef eval.tick)

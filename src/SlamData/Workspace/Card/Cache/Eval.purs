@@ -40,11 +40,10 @@ import Utils.SqlSquare (tableRelation, all)
 
 eval
   ∷ ∀ m
-  . ( MonadAsk CEM.CardEnv m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    )
+  . MonadAsk CEM.CardEnv m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
   ⇒ Maybe String
   → Port.Resource
   → m Port.Out
@@ -60,10 +59,9 @@ eval mfp resource =
 
 eval'
   ∷ ∀ m
-  . ( MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    )
+  . MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → Port.Resource
   → m Port.Resource

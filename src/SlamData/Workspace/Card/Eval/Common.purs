@@ -41,12 +41,11 @@ import SqlSquare as Sql
 
 validateResources
   ∷ ∀ m t
-  . ( MonadAff SlamDataEffects m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    , ParQuasarDSL m
-    , Traversable t
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
+  ⇒ ParQuasarDSL m
+  ⇒ Traversable t
   ⇒ t FilePath
   → m Unit
 validateResources fs = do

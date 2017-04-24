@@ -42,7 +42,8 @@ initialState =
 
 formStateToVarMap
   ∷ ∀ m e
-  . (MonadEff (locale ∷ LOCALE | e) m, Applicative m)
+  . MonadEff (locale ∷ LOCALE | e) m
+  ⇒ Applicative m
   ⇒ SDH.SlamDownFormState VM.VarMapValue
   → SDH.SlamDownFormState VM.VarMapValue
   → m VM.VarMap

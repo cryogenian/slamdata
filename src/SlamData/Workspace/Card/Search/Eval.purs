@@ -46,13 +46,12 @@ import Text.SlamSearch as SS
 
 evalSearch
   ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk CEM.CardEnv m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    , ParQuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
+  ⇒ ParQuasarDSL m
   ⇒ String
   → Port.Resource
   → m Port.Out

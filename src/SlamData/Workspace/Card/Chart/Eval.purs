@@ -38,10 +38,9 @@ import SlamData.Workspace.Card.Eval.State as ES
 
 eval
   ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
+  . MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
   ⇒ (Array Json → DSL OptionI)
   → Port.Resource
   → m Port.Port

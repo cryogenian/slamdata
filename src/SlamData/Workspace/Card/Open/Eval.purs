@@ -42,11 +42,10 @@ import Utils.SqlSquare (all)
 
 evalOpen
   ∷ ∀ m
-  . ( MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , MonadAsk CEM.CardEnv m
-    , QuasarDSL m
-    )
+  . MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ QuasarDSL m
   ⇒ Open.Model
   → Port.DataMap
   → m Port.Out

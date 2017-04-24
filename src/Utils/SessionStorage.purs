@@ -33,35 +33,37 @@ import DOM (DOM)
 
 foreign import
   setSessionStorageImpl
-    :: forall e
+    ∷ ∀ e
      . Fn2
          String
          String
-         (Eff (dom :: DOM | e) Unit)
+         (Eff (dom ∷ DOM | e) Unit)
 
 foreign import
   getSessionStorageImpl
-    :: forall e a
+    ∷ ∀ e a
      . Fn3
          (Maybe a)
-         (a -> Maybe a)
+         (a → Maybe a)
          String
-         (Eff (dom :: DOM | e) (Maybe String))
+         (Eff (dom ∷ DOM | e) (Maybe String))
 
 setSessionStorage
-  :: forall a e g
-   . (EncodeJson a, MonadEff (dom :: DOM | e) g)
-  => String
-  -> a
-  -> g Unit
+  ∷ ∀ a e g
+  . EncodeJson a
+  ⇒ MonadEff (dom ∷ DOM | e) g
+  ⇒ String
+  → a
+  → g Unit
 setSessionStorage key =
   liftEff <<< runFn2 setSessionStorageImpl key <<< printJson <<< encodeJson
 
 getSessionStorage
-  :: forall a e g
-   . (DecodeJson a, MonadEff (dom :: DOM | e) g)
-  => String
-  -> g (Either String a)
+  ∷ ∀ a e g
+  . DecodeJson a
+  ⇒ MonadEff (dom ∷ DOM | e) g
+  ⇒ String
+  → g (Either String a)
 getSessionStorage key =
   liftEff $
     runFn3 getSessionStorageImpl Nothing Just key <#>

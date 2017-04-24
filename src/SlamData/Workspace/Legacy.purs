@@ -71,7 +71,7 @@ isLegacy Legacy = true
 isLegacy _ = false
 
 decodeWorkspace ∷ Json → Either String Workspace
-decodeWorkspace = decodeJson >=> \obj ->
+decodeWorkspace = decodeJson >=> \obj →
   { root: _
   } <$> obj .? "root"
 
@@ -118,11 +118,10 @@ decodeCard js = do
 
 loadGraph
   ∷ ∀ f m
-  . ( MonadAff SlamDataEffects m
-    , MonadFork Exn.Error m
-    , Parallel f m
-    , QuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadFork Exn.Error m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → Workspace
   → m (Either QE.QError Current.Workspace)
@@ -191,11 +190,10 @@ loadGraph path { root } = runExceptT do
 
 loadCompatWorkspace
   ∷ ∀ f m
-  . ( MonadAff SlamDataEffects m
-    , MonadFork Exn.Error m
-    , Parallel f m
-    , QuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadFork Exn.Error m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QE.QError (WorkspaceStatus × Current.Workspace))
 loadCompatWorkspace path = runExceptT do
@@ -207,10 +205,9 @@ loadCompatWorkspace path = runExceptT do
 
 pruneLegacyData
   ∷ ∀ f m
-  . ( Functor m
-    , Parallel f m
-    , QuasarDSL m
-    )
+  . Functor m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QE.QError Unit)
 pruneLegacyData path = runExceptT do

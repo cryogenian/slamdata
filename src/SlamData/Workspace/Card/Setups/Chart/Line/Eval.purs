@@ -73,7 +73,7 @@ type Item =
   }
 
 decodeItem ∷ Json → Either String Item
-decodeItem = decodeJson >=> \obj → do
+decodeItem = decodeJson >⇒ \obj → do
   category ← Sem.requiredString "" <$> obj .? "category"
   measure1 ← Sem.requiredNumber zero <$> obj .? "measure1"
   measure2 ← Sem.maybeNumber <$> obj .? "measure2"
@@ -131,7 +131,7 @@ buildLineData r =
       Just value, Nothing → Just { value, symbolSize: Int.floor r.minSize }
       Just value, Just size → Just { value, symbolSize: Int.floor size }
 
-  adjustSymbolSizes ∷ ∀ f. (Functor f, Foldable f) ⇒ f LineItem → f LineItem
+  adjustSymbolSizes ∷ ∀ f. Functor f ⇒ Foldable f ⇒ f LineItem → f LineItem
   adjustSymbolSizes is
     | r.optionalMarkers = is
     | otherwise =
