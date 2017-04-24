@@ -35,6 +35,7 @@ script:
   - gulp add-headers trim-whitespace replace-crlf
   - if [[ $(git diff --shortstat 2> /dev/null | tail -n1) != "" ]]; then git status && echo -e "\033[31m\n^ CRLF/header/whitespace related problems found\033[0m\n" && exit 1; fi
   - npm run build:icons
+  - npm run build:less
   - npm run build:psa
   - if test $TRAVIS_TAG; then npm run build:lite; else npm run test:property && npm test; fi
 before_deploy:

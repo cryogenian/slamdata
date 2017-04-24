@@ -31,8 +31,8 @@
     "lint:whitespace": "gulp trim-whitespace",
     "lint:crlf": "gulp replace-crlf",
     "postinstall": "node script/get-quasar.js",
-    "test": "npm run build:prod && npm run build:less && gulp bundle-test && node test",
-    "test:property": "npm run build:prod && gulp bundle-property-tests && node tmp/js/property-tests",
+    "test": "gulp bundle-test && node test",
+    "test:property": "gulp bundle-property-tests && node tmp/js/property-tests",
     "watch:less": "less-watch-compiler less/ public/css/ main.less",
     "ide": "psc-ide-server"
   },

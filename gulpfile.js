@@ -17,22 +17,6 @@ const slamDataSources = [
   "src/**/*.purs",
 ];
 
-const vendorSources = [
-  "bower_components/purescript-*/src/**/*.purs",
-];
-
-const sources = slamDataSources.concat(vendorSources);
-
-const testSources = [
-  "test/src/**/*.purs"
-].concat(sources);
-
-const foreigns = [
-  "src/**/*.js",
-  "bower_components/purescript-*/src/**/*.js",
-  "test/src/**/*.js"
-];
-
 function pursBundle(name, main) {
   return function(done) {
     const cmd = [
@@ -49,6 +33,51 @@ function pursBundle(name, main) {
         done();
       }
     });
+  };
+}
+
+function loadHeaders() {
+  try {
+    return fs.readdirSync("./headers").filter(function(name) {
+        return /.*\.header/.test(name);
+    });
+  } catch (e) {
+    return [];
+  }
+}
+
+function webpackConfig(name) {
+  return {
+    resolve: {
+      modulesDirectories: ["node_modules"],
+      alias: {
+        "package.json": path.join(__dirname, "package.json")
+      }
+    },
+    output: { filename: name + ".js" },
+    plugins: [
+      new webpack.webpack.optimize.UglifyJsPlugin({
+        comments: false,
+        compress: {
+          unused: true,
+          dead_code: true,
+          warnings: false,
+          drop_debugger: true,
+          conditionals: true,
+          evaluate: true,
+          drop_console: true,
+          sequences: true,
+          booleans: true,
+        },
+        sourceMap: false
+      }),
+    ],
+    module: {
+      loaders: [
+        { include: /\.json$/, loaders: ["json-loader"] },
+        { test: require.resolve("echarts"), loader: "expose?echarts" }
+      ]
+    }
   };
 }
 
@@ -87,105 +116,63 @@ gulp.task("add-headers", ["replace-headers"], function () {
 * + Remove `headers` folder
 **/
 gulp.task("replace-headers", function() {
-    var licenseHeader =
-            "{-\n" + fs.readFileSync('LICENSE.header', 'utf8') + "-}";
+  var licenseHeader =
+    "{-\n" + fs.readFileSync('LICENSE.header', 'utf8') + "-}";
 
-    return (function() {
-        // Extract old header files
-        try {
-            return fs.readdirSync("./headers").filter(function(name) {
-                return /.*\.header/.test(name);
-            });
-        } catch (e) {
-            // don't warn here, it's ok if `headers` folder is empty or doesn't exist
-            return [];
-        }
-    }()).map(function(name) {
-        // Read their content
-        var file = "./headers/" + name;
-        var fileContent;
-        try {
-            fileContent = "{-\n" + fs.readFileSync(file, "utf8") + "-}";
-        } catch (e) {
-            // warn here, we don't know maybe we must read this file but it has
-            // incorrect permissions
-            console.warn(e.message);
-            fileContent = undefined;
-        }
-        return fileContent;
-    }).filter(function(content) {
-        // Filter empty files and files with incorrect permissions
-        return typeof content !== "undefined";
-    }).reduce(function(acc, content) {
-        // Foldl gulp task
-        return function() {
-            return acc().pipe(replace(content, licenseHeader));
-        };
+  return loadHeaders()
+    .map(function(name) {
+      // Read their content
+      var file = "./headers/" + name;
+      var fileContent;
+      try {
+        fileContent = "{-\n" + fs.readFileSync(file, "utf8") + "-}";
+      } catch (e) {
+        // warn here, we don't know maybe we must read this file but it has
+        // incorrect permissions
+        console.warn(e.message);
+        fileContent = undefined;
+      }
+      return fileContent;
+    })
+    .filter(function(content) {
+      // Filter empty files and files with incorrect permissions
+      return typeof content !== "undefined";
+    })
+    .reduce(function(acc, content) {
+      // Foldl gulp task
+      return function() {
+        return acc().pipe(replace(content, licenseHeader));
+      };
     }, function() {
-        // Initial gulp task
-        return gulp.src(slamDataSources, {base: "./"});
-        // run gulp task
-    })().pipe(gulp.dest("./"));
+      // Initial gulp task
+      return gulp.src(slamDataSources, { base: "./" });
+    })()
+    .pipe(gulp.dest("./"));
 });
 
 gulp.task("replace-crlf", function() {
-    gulp.src(slamDataSources, {base: "./"})
-        .pipe(replace(/\r\n/g, "\n"))
-        .pipe(gulp.dest("./"));
+  gulp.src(slamDataSources, { base: "./" })
+    .pipe(replace(/\r\n/g, "\n"))
+    .pipe(gulp.dest("./"));
 });
 
 
 gulp.task("trim-whitespace", function () {
   var options = { leading: false };
-  return gulp.src(slamDataSources, {base: "./"})
-            .pipe(trimlines(options))
-            .pipe(gulp.dest("."));
+  return gulp.src(slamDataSources, { base: "./" })
+    .pipe(trimlines(options))
+    .pipe(gulp.dest("."));
 });
 
 
 var mkBundleTask = function (name, main) {
-  gulp.task("prebundle-" + name, pursBundle("tmp/" + name, main));
+  gulp.task("prebundle-" + name,
+    pursBundle("tmp/" + name, main));
+
   gulp.task("bundle-" + name, ["prebundle-" + name], function () {
     return gulp.src("tmp/" + name + ".js")
-          .pipe(webpack({
-              resolve: {
-                  modulesDirectories: ["node_modules"],
-                  alias: {
-                      "package.json": path.join(__dirname, "package.json")
-                  }
-              },
-            output: { filename: name + ".js" },
-            plugins: [
-              new webpack.webpack.optimize.UglifyJsPlugin({
-                comments: false,
-                compress: {
-                  unused: true,
-                  dead_code: true,
-                  warnings: false,
-                  drop_debugger: true,
-                  conditionals: true,
-                  evaluate: true,
-                  drop_console: true,
-                  sequences: true,
-                  booleans: true,
-                },
-                sourceMap: false
-              }),
-            ],
-              module: {
-                  loaders: [
-                      {
-                          include: /\.json$/,
-                          loaders: ["json-loader"]
-
-                      },
-                      {
-                          test: require.resolve("echarts"),
-                          loader: "expose?echarts"
-                      }
-                  ]
-              }
-          })).pipe(gulp.dest("public/js"));
+      .pipe(webpack(webpackConfig(name)))
+      .pipe(gulp.dest("public/js"));
   });
 
   return "bundle-" + name;
@@ -202,17 +189,6 @@ gulp.task("bundle-test", ["prevent-css-transitions-and-remove-fixed-positions"],
 
 gulp.task("bundle-property-tests",
   pursBundle("tmp/js/property-tests", "Test.SlamData.Property"));
-
-var mkWatch = function(name, target, files) {
-  gulp.task(name, [target], function() {
-    return gulp.watch(files, [target]);
-  });
-};
-
-var allSources = sources.concat(foreigns);
-mkWatch("watch-file", "bundle-file", allSources);
-mkWatch("watch-workspace", "bundle-workspace", allSources);
-mkWatch("watch-auth_redirect", "bundle-auth_redirect", allSources);
 
 gulp.task("inject-icons", injectIconsIntoHTML);
 gulp.task("icon-purs", createIconPureScript);
