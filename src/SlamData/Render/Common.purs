@@ -18,29 +18,29 @@ module SlamData.Render.Common where
 
 import SlamData.Prelude
 
+import Halogen as H
 import Halogen.HTML.Core (HTML, ClassName)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Render.CSS as Rc
 
 row ∷ ∀ p f. Array (HTML p f) → HTML p f
-row = HH.div [ HP.class_ B.row ]
+row = HH.div [ HP.class_ $ H.ClassName "row" ]
 
 content ∷ ∀ p f. Array (HTML p f) → HTML p f
 content = HH.div [ HP.class_ Rc.content ]
 
 fadeWhen ∷ Boolean → Array ClassName
-fadeWhen true = [ B.fade ]
-fadeWhen false = [ B.fade, B.in_ ]
+fadeWhen true = [ Rc.fade ]
+fadeWhen false = [ Rc.fade, Rc.in_ ]
 
 classedDiv ∷ ∀ f p. ClassName → Array (HTML p (f Unit)) → HTML p (f Unit)
 classedDiv cls = HH.div [ HP.classes [ cls ] ]
 
 formGroup ∷ ∀ f p. Array (HTML p (f Unit)) → HTML p (f Unit)
-formGroup = classedDiv B.formGroup
+formGroup = classedDiv Rc.formGroup
 
 searchFieldIcon ∷ ∀ f p. HTML p (f Unit)
 searchFieldIcon =

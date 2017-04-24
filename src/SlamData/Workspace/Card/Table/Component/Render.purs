@@ -27,8 +27,8 @@ import Data.String (singleton)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Render.CSS as Rc
 import SlamData.Render.CSS.New as CSS
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Component as CC
@@ -66,12 +66,12 @@ render st =
   renderEmpty =
     A.singleton
     $ HH.div
-      [ HP.classes [ B.alert, B.alertWarning ] ]
+      [ HP.classes [ Rc.alert, Rc.alertWarning ] ]
       [ HH.text "Selected resource is empty" ]
   renderError e =
     A.singleton
     $ HH.pre
-      [ HP.classes [ B.alert, B.alertDanger ] ]
+      [ HP.classes [ Rc.alert, Rc.alertDanger ] ]
       [ HH.text e ]
   renderResult result =
     let

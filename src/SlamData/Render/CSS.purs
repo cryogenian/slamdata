@@ -302,6 +302,9 @@ alertInfo = ClassName "alert-info"
 alertDanger ∷ ClassName
 alertDanger = ClassName "alert-danger"
 
+alertWarning ∷ ClassName
+alertWarning = ClassName "alert-warning"
+
 table ∷ ClassName
 table = ClassName "table"
 
@@ -316,6 +319,12 @@ hidden = ClassName "hidden"
 
 disabled ∷ ClassName
 disabled = ClassName "disabled"
+
+fade :: ClassName
+fade = ClassName "fade"
+
+in_ :: ClassName
+in_ = ClassName "in"
 
 srOnly ∷ ClassName
 srOnly = ClassName "hidden"
