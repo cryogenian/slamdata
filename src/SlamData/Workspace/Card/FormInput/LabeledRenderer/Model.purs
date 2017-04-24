@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Data.Argonaut ((:=), (.?), (~>))
 import Data.Argonaut as J
-impo
 import Data.Array as Arr
 import Data.Set as Set
 
