@@ -34,7 +34,8 @@ data Diff a
 
 diff
   ∷ ∀ k a
-  . (Ord k, Eq a)
+  . Ord k
+  ⇒ Eq a
   ⇒ Map k a
   → Map k a
   → Map k (Diff a)

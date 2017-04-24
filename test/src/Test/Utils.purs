@@ -13,27 +13,27 @@ import Data.Maybe (Maybe(..), maybe)
 import Node.Path (normalize)
 import Node.Process (PROCESS, cwd)
 
-ifFalse ∷ ∀ m. (Applicative m) ⇒ m Unit → Boolean → m Unit
+ifFalse ∷ ∀ m. Applicative m ⇒ m Unit → Boolean → m Unit
 ifFalse f boolean =
   if boolean then pure unit else f
 
-ifTrue ∷ ∀ m. (Applicative m) ⇒ m Unit → Boolean → m Unit
+ifTrue ∷ ∀ m. Applicative m ⇒ m Unit → Boolean → m Unit
 ifTrue f boolean =
   if boolean then f else pure unit
 
-passover ∷ ∀ a b m. (Applicative m) ⇒ (a → m b) → a → m a
+passover ∷ ∀ a b m. Applicative m ⇒ (a → m b) → a → m a
 passover f x =
   f x *> pure x
 
-orIfItFails ∷ ∀ a b m. (Alt m) ⇒ (a → m b) → (a → m b) → a → m b
+orIfItFails ∷ ∀ a b m. Alt m ⇒ (a → m b) → (a → m b) → a → m b
 orIfItFails f g x =
   f x <|> g x
 
-isEmpty ∷ ∀ a m. (Foldable m) ⇒ m a → Boolean
+isEmpty ∷ ∀ a m. Foldable m ⇒ m a → Boolean
 isEmpty =
   foldr (\_ _ → false) true
 
-singletonValue' ∷ ∀ a m. (Foldable m) ⇒ m a → Either Int (Maybe a)
+singletonValue' ∷ ∀ a m. Foldable m ⇒ m a → Either Int (Maybe a)
 singletonValue' =
   foldr f initial
   where
@@ -42,13 +42,14 @@ singletonValue' =
   f x (Left i) = Left $ i + 1
   initial = Right Nothing
 
-singletonValue ∷ ∀ a m n. (Applicative m, Foldable n) ⇒ m a → (Int → m a) → n a → m a
+singletonValue ∷ ∀ a m n. Applicative m ⇒ Foldable n ⇒ m a → (Int → m a) → n a → m a
 singletonValue noElements tooManyElements =
   either tooManyElements (maybe noElements pure) <<< singletonValue'
 
 throwIfEmpty
   ∷ ∀ a f m eff
-  . (Foldable f, MonadEff (err ∷ EXCEPTION | eff) m)
+  . Foldable f
+  ⇒ MonadEff (err ∷ EXCEPTION | eff) m
   ⇒ String
   → f a
   → m Unit
@@ -58,7 +59,8 @@ throwIfEmpty message xs
 
 throwIfNotEmpty
   ∷ ∀ a f m eff
-  . (Foldable f, MonadEff (err ∷ EXCEPTION | eff) m)
+  . Foldable f
+  ⇒ MonadEff (err ∷ EXCEPTION | eff) m
   ⇒ String
   → f a
   → m Unit
