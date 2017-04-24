@@ -85,7 +85,7 @@ type State =
   , noNetworkAccessToAdvancedError ∷ Boolean
   , presentStyleURIInput :: Boolean
   , styleURIString :: String
-  , submitting ∷ Boolean
+  , busyDoingTokenHTTP ∷ Boolean
   , clipboard ∷ Maybe C.Clipboard
   }
 
@@ -103,7 +103,7 @@ initialState input =
   , noNetworkAccessToAdvancedError: false
   , presentStyleURIInput: false
   , styleURIString: ""
-  , submitting: false
+  , busyDoingTokenHTTP: false
   , clipboard: Nothing
   }
 
@@ -263,7 +263,7 @@ renderPublishDialog state copyVal =
           [ HP.classes [ B.formControl ]
           , HP.value copyVal
           , HP.readOnly true
-          , HP.disabled state.submitting
+          , HP.disabled state.busyDoingTokenHTTP
           , HP.title "Published deck URL"
           , ARIA.label "Published deck URL"
           , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
@@ -276,7 +276,7 @@ renderPublishDialog state copyVal =
             , HP.ref copyButtonRef
             , HP.id_ "copy-button"
             , HP.type_ HP.ButtonButton
-            , HP.disabled state.submitting
+            , HP.disabled state.busyDoingTokenHTTP
             ]
             [ I.copySm ]
           ]
@@ -304,7 +304,7 @@ renderPublishDialog state copyVal =
               , ARIA.label "Revoke access to this deck"
               , HP.title "Revoke access to this deck"
               , HP.type_ HP.ButtonButton
-              , HP.enabled $ state.canRevoke ∧ not state.submitting
+              , HP.enabled $ state.canRevoke ∧ not state.busyDoingTokenHTTP
               ]
               [ HH.text "Revoke" ]
           , pure $ HH.a
@@ -312,10 +312,10 @@ renderPublishDialog state copyVal =
                  [ pure $ HP.classes $ fold
                      [ pure B.btn
                      , pure B.btnPrimary
-                     , guard state.submitting $> B.disabled
+                     , guard state.busyDoingTokenHTTP $> B.disabled
                      ]
                  , pure $ HP.target "_blank"
-                 , guard state.submitting $> HP.href copyVal
+                 , guard (not state.busyDoingTokenHTTP) $> HP.href copyVal
                  ])
               [ HH.text "Preview" ]
           ]
@@ -362,7 +362,7 @@ renderEmbedDialog state copyVal =
                       ⊕ [ HH.ClassName "textarea-copy-button" ]
                   , HP.ref copyButtonRef
                   , HP.type_ HP.ButtonButton
-                  , HP.disabled state.submitting
+                  , HP.disabled state.busyDoingTokenHTTP
                   ]
                   [ I.copySm ]
                 , HH.div [ HP.classes [ B.checkbox ] ]
@@ -371,7 +371,7 @@ renderEmbedDialog state copyVal =
                        $> HH.input
                            [ HP.type_ HP.InputCheckbox
                            , HP.checked state.shouldGenerateToken
-                           , HP.disabled state.submitting
+                           , HP.disabled state.busyDoingTokenHTTP
                            , HE.onChecked (HE.input_ ToggleShouldGenerateToken)
                            ])
                     ⊕ message
@@ -405,7 +405,7 @@ renderEmbedDialog state copyVal =
                 , HP.title "Revoke access to this deck"
                 , ARIA.label "Revoke access to this deck"
                 , HP.type_ HP.ButtonButton
-                , HP.enabled $ state.canRevoke ∧ not state.submitting
+                , HP.enabled $ state.canRevoke ∧ not state.busyDoingTokenHTTP
                 ]
                 [ HH.text "Revoke" ])
 
@@ -460,12 +460,12 @@ eval (Init next) = next <$ fork do
             Nothing → do
               isPublish ← (_ ≡ Publish) <$> H.gets _.presentingAs
               when (state.shouldGenerateToken ∨ isPublish) do
-                H.modify _{submitting = true}
+                H.modify _{busyDoingTokenHTTP = true}
                 createdRes ←
                   Q.createToken
                     tokenName
                     (sharingActions state.sharingInput View)
-                H.modify _{submitting = false}
+                H.modify _{busyDoingTokenHTTP = false}
                 H.modify case createdRes of
                   Left _ →  _{noNetworkAccessToAdvancedError = true}
                   Right newToken →
@@ -478,7 +478,7 @@ eval (SelectElement ev next) = do
   st ← H.get
   H.liftEff do
     DOM.stopPropagation ev
-    when (not st.submitting) do
+    when (not st.busyDoingTokenHTTP) do
       DOM.currentTarget ev
         # readHTMLElement ∘ toForeign
         # runExcept
@@ -488,9 +488,9 @@ eval (SelectElement ev next) = do
 eval (Revoke next) = do
   mbPermToken ← H.gets _.permToken
   for_ mbPermToken \tok → do
-    H.modify _{submitting = true}
+    H.modify _{busyDoingTokenHTTP = true}
     deleteRes ← Q.deleteToken tok.id
-    H.modify _{submitting = false}
+    H.modify _{busyDoingTokenHTTP = false}
     case deleteRes of
       Left _ → H.modify _{ noNetworkAccessToAdvancedError = true }
       Right _ → H.raise Dismiss
@@ -507,9 +507,9 @@ eval (ToggleShouldGenerateToken next) = next <$ do
           let
             actions = sharingActions state.sharingInput View
             tokenName = Just $ workspaceTokenName workspacePath oidc
-          H.modify _{submitting = true}
+          H.modify _{busyDoingTokenHTTP = true}
           recreatedRes ← Q.createToken tokenName actions
-          H.modify _{submitting = false}
+          H.modify _{busyDoingTokenHTTP = false}
           H.modify case recreatedRes of
             Left _ →
               _ { permToken = Nothing
@@ -520,9 +520,9 @@ eval (ToggleShouldGenerateToken next) = next <$ do
                 , noNetworkAccessToAdvancedError = false
                 }
     Just tok → do
-      H.modify _{submitting = true}
+      H.modify _{busyDoingTokenHTTP = true}
       deleteRes ← Q.deleteToken tok.id
-      H.modify _{submitting = false}
+      H.modify _{busyDoingTokenHTTP = false}
       H.modify case deleteRes of
         Left _ → _ { noNetworkAccessToAdvancedError = true }
         Right _ → _ { noNetworkAccessToAdvancedError = false, permToken = Nothing }
