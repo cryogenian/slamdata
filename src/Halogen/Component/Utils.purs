@@ -18,15 +18,14 @@ module Halogen.Component.Utils where
 
 import Prelude
 
-import Control.Monad.Aff (Aff, Canceler, forkAff, later')
+import Control.Monad.Aff (Aff, Canceler, forkAff, delay)
 import Control.Monad.Aff.AVar (AVAR, AVar, makeVar, putVar, takeVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 
 import Data.Either as E
-import Data.Int as Int
-import Data.Time.Duration (Milliseconds(..))
+import Data.Time.Duration (Milliseconds)
 
 import Halogen as H
 import Halogen.Query.EventSource as ES
@@ -49,11 +48,12 @@ oneTimeEventSource
   → (∀ a. a → f a)
   → AVar (Canceler (avar ∷ AVAR | eff))
   → H.EventSource f m
-oneTimeEventSource (Milliseconds ms) action cancelerVar = ES.EventSource do
+oneTimeEventSource ms action cancelerVar = ES.EventSource do
   let
     producer = ES.produceAff \emit → liftAff do
       let
-        delayedEmitter = later' (Int.floor ms) do
+        delayedEmitter = do
+          delay ms
           emit $ E.Left $ action ES.Done
           emit $ E.Right unit
       putVar cancelerVar =<< forkAff delayedEmitter

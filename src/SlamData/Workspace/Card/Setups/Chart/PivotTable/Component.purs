@@ -299,7 +299,7 @@ evalCard = case _ of
       H.modify _ { axes = axes }
     pure next
   CC.ReceiveDimensions dims reply → do
-    H.query' PCS.cpTransform unit (H.action AS.UpdateDimensions)
+    _ ← H.query' PCS.cpTransform unit (H.action AS.UpdateDimensions)
     pure $ reply
       if dims.width < 540.0 || dims.height < 360.0
         then Low

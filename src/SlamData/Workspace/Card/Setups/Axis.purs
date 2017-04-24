@@ -158,7 +158,8 @@ buildAxes rs =
     # Sem.jarrayToSemantics
     # checkPairs
     # map checkSemantics
-    # M.toList
+    # M.toUnfoldable
+    # asList
     # foldl foldFn initialAxes
   where
   foldFn ∷ Axes → JCursor × Maybe AxisType → Axes

@@ -75,7 +75,7 @@ eval' tmp resource = do
         ∘ (Sql._relations .~ tableRelation filePath)
   outputResource ← CEM.liftQ $
     QQ.fileQuery backendPath tmp sql SM.empty
-  CEM.liftQ $ QFS.messageIfFileNotFound
+  _ ← CEM.liftQ $ QFS.messageIfFileNotFound
     outputResource
     "Error saving file, please try another location"
   -- TODO: this error message is pretty obscure. I think it occurs when a query

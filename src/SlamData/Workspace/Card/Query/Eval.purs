@@ -59,7 +59,7 @@ evalQuery sql varMap = do
       QQ.compile' backendPath sql varMap'
   validateResources inputs
   CEM.addSources inputs
-  CEM.liftQ do
-    QQ.viewQuery' resource sql varMap'
+  _ ← CEM.liftQ do
+    _ ← QQ.viewQuery' resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   pure $ Port.resourceOut $ Port.View resource sql varMap

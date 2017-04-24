@@ -160,7 +160,7 @@ filterResources = SM.fold go SM.empty
     go m _ _ = m
 
 extractResource ∷ DataMap → Maybe Resource
-extractResource = map snd ∘ List.head ∘ SM.toList ∘ filterResources
+extractResource = map snd ∘ List.head ∘ SM.toUnfoldable ∘ filterResources
 
 extractFilePath ∷ DataMap → Maybe PU.FilePath
 extractFilePath = map (view _filePath) ∘ extractResource

@@ -96,7 +96,7 @@ eval (Init next) = do
   update
   pure next
 eval (DismissSubmenu next) = do
-  H.query unit $ H.action $ Menu.DismissSubmenu
+  _ ← H.query unit $ H.action $ Menu.DismissSubmenu
   pure next
 eval (HandleGlobalError error next) = case error of
   GlobalError.Unauthorized _ → update $> next
@@ -121,7 +121,7 @@ update = do
   where
   putEmailToMenu ∷ Crypt.Payload → DSL Unit
   putEmailToMenu payload = do
-    H.query unit
+    _ ← H.query unit
       $ H.action
       $ Menu.Set
         { chosen: Nothing

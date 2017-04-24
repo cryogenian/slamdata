@@ -221,7 +221,8 @@ buildOptions axes r punchCardData = do
     fromMaybe 6
       $ F.maximum
       $ foldMap (\((a × o) × (v × _)) → if Just a ≡ A.head abscissaValues then [v / 2] else [])
-      $ M.toList punchCardData
+      $ asList
+      $ M.toUnfoldable punchCardData
 
   series = E.scatter do
     if r.circular

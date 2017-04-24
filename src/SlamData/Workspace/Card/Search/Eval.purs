@@ -64,7 +64,7 @@ evalSearch queryText resource = do
     Right q → pure q
 
   fields ← CEM.liftQ do
-    QFS.messageIfFileNotFound
+    _ ← QFS.messageIfFileNotFound
       filePath
       ("Input resource " ⊕ Path.printPath filePath ⊕ " doesn't exist")
     QQ.fields filePath
@@ -86,8 +86,8 @@ evalSearch queryText resource = do
       validateResources inputs
       CEM.addSources inputs
 
-  CEM.liftQ do
-    QQ.viewQuery outputResource sql SM.empty
+  _ ← CEM.liftQ do
+    _ ← QQ.viewQuery outputResource sql SM.empty
     QFS.messageIfFileNotFound
       outputResource
       "Error making search temporary resource"

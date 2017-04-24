@@ -24,7 +24,6 @@ import DOM.WebStorage.Event.StorageEvent as DWSE
 import DOM.WebStorage.Event.Types as DWSET
 import Data.Argonaut (class DecodeJson, Json, decodeJson, jsonParser)
 import Data.Foreign (MultipleErrors, toForeign)
-import Data.Nullable as Nullable
 import Utils.Error as Error
 import Data.Maybe(Maybe(Just))
 
@@ -34,11 +33,11 @@ fromEvent =
 
 keyEq ∷ String → DWSET.StorageEvent → Boolean
 keyEq key event =
-  Nullable.toMaybe (DWSE.key event) == Just key
+  DWSE.key event == Just key
 
 newValue ∷ forall m. (MonadError String m) ⇒ DWSET.StorageEvent → m String
 newValue =
-  Error.fromMaybe "StorageEvent newValue is null." <<< Nullable.toMaybe <<< DWSE.newValue
+  Error.fromMaybe "StorageEvent newValue is null." <<< DWSE.newValue
 
 decodeNewValue' ∷ forall a m. (MonadError String m) ⇒ (Json -> m a) → DWSET.StorageEvent → m a
 decodeNewValue' decode =

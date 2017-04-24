@@ -174,7 +174,7 @@ buildOptions r funnelData = do
       E.emphasis do
         E.textStyle $ E.fontFamily "Ubuntu, sans"
         E.positionInside
-    E.buildItems $ for_ (M.toList items) \(name × value) → E.addItem do
+    E.buildItems $ for_ (asList $ M.toUnfoldable items) \(name × value) → E.addItem do
       E.name name
       E.value value
     traverse_ (E.top ∘ ET.Percent) y

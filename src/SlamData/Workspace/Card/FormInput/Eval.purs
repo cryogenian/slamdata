@@ -85,8 +85,8 @@ eval sql r = do
 
   validateResources inputs
   CEM.addSources inputs
-  CEM.liftQ do
-    QQ.viewQuery resource sql SM.empty
+  _ ← CEM.liftQ do
+    _ ← QQ.viewQuery resource sql SM.empty
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   let
     varMap =

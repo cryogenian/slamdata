@@ -20,7 +20,7 @@ import SlamData.Prelude
 import Color as Color
 import CSS as CSS
 import Data.Foreign (F, Foreign, readNumber, typeOf) as Frn
-import Data.Foreign.Index (index, prop) as Frn
+import Data.Foreign.Index (readIndex, readProp) as Frn
 import ECharts.Types as ET
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HC
@@ -79,15 +79,15 @@ tableRows rows = VDS.render absurd (unwrap table)
 type FormatterInput r = { value ∷ Frn.Foreign, data ∷ ET.Item | r }
 
 valueIx ∷ ∀ a r. (Frn.Foreign → Frn.F a) → Int → FormatterInput r → Maybe a
-valueIx read ix inp = hush' (read =<< Frn.index ix inp.value)
+valueIx read ix inp = hush' (read =<< Frn.readIndex ix inp.value)
 
 dataProp ∷ ∀ a r. (Frn.Foreign → Frn.F a) → String → FormatterInput r → Maybe a
-dataProp read prop { data: ET.Item inp } = hush' (read =<< Frn.prop prop inp)
+dataProp read prop { data: ET.Item inp } = hush' (read =<< Frn.readProp prop inp)
 
 assocProp ∷ ∀ a r. (Frn.Foreign → Frn.F a) → String → FormatterInput r → Maybe a
 assocProp read prop { data: inp } = do
   assoc ← BCE.deref inp
-  hush' $ read =<< Frn.prop prop assoc
+  hush' $ read =<< Frn.readProp prop assoc
 
 formatValueIx ∷ ∀ r. Int → FormatterInput r → String
 formatValueIx ix = maybe "" formatForeign ∘ valueIx pure ix

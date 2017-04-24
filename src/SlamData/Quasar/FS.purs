@@ -166,9 +166,9 @@ move src tgt = do
   let
     srcPath = R.getPath src
 
-  runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
+  _ ← runExceptT ∘ traverse_ cleanViewMounts $ srcPath ^? _Left
 
-  runExceptT case src of
+  _ ← runExceptT case src of
     R.Workspace wsDir → replacePathsInWorkspace wsDir
     _ → pure unit
 
@@ -190,7 +190,7 @@ move src tgt = do
     let
       updated =
         ws.cards
-          # Map.toList
+          # Map.toUnfoldable
           # List.mapMaybe (sequence ∘ map (replacePaths wsDir))
           # Map.fromFoldable
       ws' = ws { cards = Map.union updated ws.cards }
@@ -379,7 +379,7 @@ delete resource =
       d = (res ^. R._root) </> P.dir Config.trashFolder
       path = (res # R._root .~ d) ^. R._path
     name ← ExceptT $ getNewName d (res ^. R._name)
-    ExceptT $ move res (path # R._nameAnyPath .~ name)
+    _ ← ExceptT $ move res (path # R._nameAnyPath .~ name)
     pure ∘ Just $ R.Directory d
 
   alreadyInTrash ∷ R.Resource → Boolean
@@ -416,7 +416,7 @@ forceDelete res =
       ExceptT ∘ liftQuasar $ QF.deleteMount (R.getPath res)
     _ → do
       let path = R.getPath res
-      traverse cleanViewMounts $ path ^? _Left
+      traverse_ cleanViewMounts $ path ^? _Left
       ExceptT ∘ liftQuasar $ QF.deleteData path
 
 cleanViewMounts

@@ -118,7 +118,7 @@ evalCard mode = case _ of
   CC.Load card next → do
     case card of
       Card.Ace _ { text, ranges } → do
-        H.query unit $ H.action $ AC.SetText text
+        _ ← H.query unit $ H.action $ AC.SetText text
         mbEditor ← H.query unit $ H.request AC.GetEditor
         H.liftEff $ for_ (join mbEditor) \editor → do
           traverse_ (readOnly editor) ranges
@@ -128,7 +128,7 @@ evalCard mode = case _ of
     pure next
   CC.ReceiveInput _ varMaps next → do
     let vars = SM.keys varMaps
-    H.query unit $ H.action $ AC.SetCompleteFn \_ _ _ inp → do
+    _ ← H.query unit $ H.action $ AC.SetCompleteFn \_ _ _ inp → do
       let inp' = Str.toLower inp
       pure $ flip Array.mapMaybe vars \var → do
         guard $ Str.contains (Str.Pattern inp') (Str.toLower var)

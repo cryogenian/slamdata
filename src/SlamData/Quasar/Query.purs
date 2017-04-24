@@ -129,8 +129,7 @@ viewQuery'
   → SM.StrMap String
   → m (Either QError Unit)
 viewQuery' dest sql vars = do
-  liftQuasar $
-    QF.deleteMount (Right dest)
+  _ ← liftQuasar $ QF.deleteMount (Right dest)
   liftQuasar $
     QF.updateMount (Right dest) (QM.ViewConfig
       { query: sql

@@ -49,7 +49,7 @@ singletonValue noElements tooManyElements =
 throwIfEmpty
   ∷ ∀ a f m eff
   . Foldable f
-  ⇒ MonadEff (err ∷ EXCEPTION | eff) m
+  ⇒ MonadEff (exception ∷ EXCEPTION | eff) m
   ⇒ String
   → f a
   → m Unit
@@ -60,7 +60,7 @@ throwIfEmpty message xs
 throwIfNotEmpty
   ∷ ∀ a f m eff
   . Foldable f
-  ⇒ MonadEff (err ∷ EXCEPTION | eff) m
+  ⇒ MonadEff (exception ∷ EXCEPTION | eff) m
   ⇒ String
   → f a
   → m Unit

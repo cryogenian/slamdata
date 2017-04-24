@@ -7,6 +7,7 @@ import Data.Array as Arr
 import Data.Map as Map
 import Data.String as S
 import Data.StrMap as SM
+import Data.Time.Duration (Milliseconds(..))
 
 import Global (encodeURIComponent)
 
@@ -171,7 +172,7 @@ deleteFileInTestFolder ∷ String → SlamFeature Unit
 deleteFileInTestFolder name = browseTestFolder *> deleteFile name
 
 reopenCurrentWorkspace ∷ SlamFeature Unit
-reopenCurrentWorkspace = waitTime 2000 *> refresh
+reopenCurrentWorkspace = waitTime (Milliseconds 2000.0) *> refresh
 
 expandNewCardMenu ∷ SlamFeature Unit
 expandNewCardMenu = Feature.click (XPath.anywhere XPaths.insertCard)

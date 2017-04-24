@@ -183,7 +183,7 @@ localUrlVarMap = do
       (Map.lookup cardId urlVarMaps))
 
 extractResourceVar ∷ ∀ m. MonadThrow QError m ⇒ Port.DataMap → m (String × Port.Resource)
-extractResourceVar dm = case SM.toList (Port.filterResources dm) of
+extractResourceVar dm = case SM.toUnfoldable (Port.filterResources dm) of
   _ : _ : _ → throw "Multiple resources selected"
   r : _ → pure r
   _ → throw "No resource selected"

@@ -48,6 +48,9 @@ import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..), extractResource)
 import SlamData.Workspace.LevelOfDetails as LOD
+
+import Utils (hush')
+
 type HTML = CC.InnerCardParentHTML Query ChildQuery ChildSlot
 type DSL = CC.InnerCardParentDSL State Query ChildQuery ChildSlot
 
@@ -101,7 +104,7 @@ evalCard = case _ of
     case model of
       Card.Chart (Just (Chart.PivotTableRenderer m)) → do
         H.modify (_ { chartType = Just ChT.PivotTable })
-        H.query' cpPivotTable unit $ H.action $ Pivot.Load m
+        _ ← H.query' cpPivotTable unit $ H.action $ Pivot.Load m
         pure next
       _ →
         pure next
@@ -122,7 +125,7 @@ evalCard = case _ of
     pure next
   CC.ReceiveState evalState next → do
     for_ (evalState ^? ES._ChartOptions) \options → do
-      H.query' cpECharts unit $ H.action $ HEC.Reset options
+      _ ← H.query' cpECharts unit $ H.action $ HEC.Reset options
       H.query' cpECharts unit $ H.action HEC.Resize
     pure next
   CC.ReceiveDimensions dims reply → do
@@ -145,19 +148,16 @@ lodByChartType = case _ of
     { width, height } ← H.gets _.dimensions
     mbOpts ← H.query' cpECharts unit $ H.request HEC.GetOptions
     let
-      eToM ∷ ∀ a. F.F a → Maybe a
-      eToM = either (const Nothing) Just ∘ runExcept
-
       eBottom = do
         fOption ← join mbOpts
-        grids ← eToM $ readProp "grid" fOption
+        grids ← hush' $ F.readArray =<< readProp "grid" fOption
         grid ← A.head grids
-        eToM $ readProp "bottom" grid
+        hush' $ readProp "bottom" grid
 
-      eBottomPx = eToM ∘ F.readInt =<< eBottom
+      eBottomPx = hush' ∘ F.readInt =<< eBottom
 
       eBottomPct = do
-        pctStr ← eToM ∘ F.readString =<< eBottom
+        pctStr ← hush' ∘ F.readString =<< eBottom
         str ← S.stripSuffix (S.Pattern "%") pctStr
         let num = readFloat str
         guard (not $ isNaN num)

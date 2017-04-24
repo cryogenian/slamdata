@@ -44,8 +44,8 @@ eqModel r1 r2 =
 
 genModel ∷ Gen.Gen Model
 genModel = do
-  formInputmap runArbJCursor arbitraryrary
-  cursor ← J.genJCursor
+  formInputType ← arbitrary
+  cursor ← runArbJCursor <$> arbitrary
   selected ← map (Set.fromFoldable) $ Gen.arrayOf arbitrary
   pure { cursor
        , selected

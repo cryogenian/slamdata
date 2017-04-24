@@ -108,5 +108,5 @@ eval = case _ of
         Nothing -> HQ.halt "Inner component query failed (this should be impossible)"
         Just a -> pure (k a)
   Dismiss next → do
-    H.query' CP.cp2 unit $ H.action GlobalMenu.DismissSubmenu
+    _ ← H.query' CP.cp2 unit $ H.action GlobalMenu.DismissSubmenu
     pure next

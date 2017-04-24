@@ -34,7 +34,7 @@ import Control.Monad.Writer.Class (class MonadTell)
 import Data.Argonaut (Json)
 import Data.Array as A
 import Data.Foreign (Foreign, toForeign)
-import Data.Foreign.Index (prop)
+import Data.Foreign.Index (readProp)
 import Data.Function (on)
 import Data.Lens ((^.))
 import Data.Map as M
@@ -117,8 +117,8 @@ chartSetupEval buildSql buildPort m resource = do
         CEM.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
           QQ.compile backendPath sql SM.empty
 
-      CEM.liftQ do
-        QQ.viewQuery outputResource sql SM.empty
+      _ ← CEM.liftQ do
+        _ ← QQ.viewQuery outputResource sql SM.empty
         QFS.messageIfFileNotFound
           outputResource
           "Error making search temporary resource"
@@ -146,7 +146,7 @@ assoc ∷ ∀ a i. a → DSL (value ∷ I | i)
 assoc = EM.set "$$assoc" <<< toForeign
 
 deref ∷ ET.Item → Maybe Foreign
-deref (ET.Item item) = hush' $ prop "$$assoc" item
+deref (ET.Item item) = hush' $ readProp "$$assoc" item
 
 groupOn ∷ ∀ a b. Eq b ⇒ (a → b) → Array a → Array (b × Array a)
 groupOn f = A.groupBy (eq `on` f) >>> map \as → f (NE.head as) × NE.fromNonEmpty A.cons as

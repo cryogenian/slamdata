@@ -24,5 +24,5 @@ import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Exception (EXCEPTION)
 
 foreign import data ENV :: Effect
-foreign import getEnv :: forall eff. String -> Eff (env :: ENV, err :: EXCEPTION | eff) String
+foreign import getEnv :: forall eff. String -> Eff (env :: ENV, exception :: EXCEPTION | eff) String
 

@@ -16,18 +16,18 @@ limitations under the License.
 
 module Test.StrongCheck.Data.Argonaut where
 
+import Prelude
 import Data.Argonaut.JCursor (JCursor)
 import Data.Argonaut.JCursor.Gen (genJCursor)
-import Data.Newtype (class Newtype)
-import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
-import Test.StrongCheck.Gen as Gen
+import Data.Newtype (class Newtype, unwrap, wrap)
+import Test.StrongCheck.Arbitrary (class Arbitrary)
 
 newtype ArbJCursor = ArbJCursor JCursor
 
 derive instance newtypeArbJCursor ∷ Newtype ArbJCursor _
 
-instance arbitraryArbJCursor ∷ Arbitrary ArbJcursor where
-  arbitrary = genJCursor
+instance arbitraryArbJCursor ∷ Arbitrary ArbJCursor where
+  arbitrary = wrap <$> genJCursor
 
-runArbJCursor ∷ ArbJcursor → JCursor
+runArbJCursor ∷ ArbJCursor → JCursor
 runArbJCursor = unwrap

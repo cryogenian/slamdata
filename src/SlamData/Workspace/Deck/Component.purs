@@ -31,6 +31,7 @@ import Data.Lens ((.~), (%~), _Left, _Just, is)
 import Data.List ((:))
 import Data.List as L
 import Data.Set as Set
+import Data.Time.Duration (Milliseconds(..))
 import DOM.HTML.HTMLElement (getBoundingClientRect)
 import Halogen as H
 import Halogen.Component.Utils (sendAfter, busEventSource)
@@ -265,11 +266,11 @@ switchToFlipside ∷ DeckOptions → DeckDSL Unit
 switchToFlipside opts = do
   updateBackSide opts
   presentFlipGuideFirstTime
-  queryNextActionList $ H.action $ ActionList.CalculateBoundingRect
+  _ ← queryNextActionList $ H.action $ ActionList.CalculateBoundingRect
   nextBoundingRect ← queryNextActionList $ H.request ActionList.GetBoundingRect
   case nextBoundingRect of
     Just (Just dimensions) → do
-      queryBacksideActionList $ H.action $ ActionList.SetBoundingRect dimensions
+      _ ← queryBacksideActionList $ H.action $ ActionList.SetBoundingRect dimensions
       H.modify (DCS._displayMode .~ DCS.FlipSide DCS.NoDialog)
     _ → do
       H.modify (DCS._displayMode .~ DCS.FlipSide DCS.NoDialog)
@@ -277,11 +278,11 @@ switchToFlipside opts = do
 
 switchToFrontside ∷ DeckDSL Unit
 switchToFrontside = do
-  queryBacksideActionList $ H.action $ ActionList.CalculateBoundingRect
+  _ ← queryBacksideActionList $ H.action $ ActionList.CalculateBoundingRect
   flipSideBoundingRect ← queryBacksideActionList $ H.request ActionList.GetBoundingRect
   case flipSideBoundingRect of
     Just (Just dimensions) → do
-      queryNextActionList $ H.action $ ActionList.SetBoundingRect dimensions
+      _ ← queryNextActionList $ H.action $ ActionList.SetBoundingRect dimensions
       H.modify (DCS._displayMode .~ DCS.FrontSide DCS.NoDialog)
     _ → do
       H.modify (DCS._displayMode .~ DCS.FrontSide DCS.NoDialog)
@@ -345,7 +346,7 @@ handleBackSide opts = case _ of
         deck ← H.lift $ P.getDeck opts.deckId
         case deck >>= _.parent, mirrorCard <#> _.cardId of
           Just parentId, Just cardId | not (L.null opts.displayCursor) → do
-            H.lift $ P.mirrorDeck parentId cardId opts.deckId
+            _ ← H.lift $ P.mirrorDeck parentId cardId opts.deckId
             switchToFrontside
           _, Just cardId → do
             parentId ← H.lift $ P.wrapAndMirrorDeck cardId opts.deckId
@@ -373,9 +374,8 @@ handleBackSide opts = case _ of
 
 handleBackSideFilter ∷ ActionFilter.Message → DeckDSL Unit
 handleBackSideFilter = case _ of
-  ActionFilter.FilterChanged str → do
-    queryBacksideActionList $ H.action $ ActionList.UpdateFilter str
-    pure unit
+  ActionFilter.FilterChanged str →
+    void $ queryBacksideActionList $ H.action $ ActionList.UpdateFilter str
 
 showDialog ∷ Dialog.Dialog → DeckDSL Unit
 showDialog dlg = do
@@ -456,7 +456,7 @@ presentAccessNextActionCardGuideAfterDelay = do
   dismissedBefore ← getDismissedAccessNextActionCardGuideBefore
   focused ← H.gets _.focused
   when (not dismissedBefore && focused) do
-    cancelPresentAccessNextActionCardGuide
+    _ ← cancelPresentAccessNextActionCardGuide
     canceler ← sendAfter Config.addCardGuideDelay PresentAccessNextActionCardGuide
     H.modify $ DCS._presentAccessNextActionCardGuideCanceler .~ Just canceler
 
@@ -498,7 +498,7 @@ presentReason input cardType =
 deleteDeck ∷ DeckOptions → DeckDSL Unit
 deleteDeck opts = do
   st ← H.get
-  H.lift $ P.deleteDeck opts.deckId
+  _ ← H.lift $ P.deleteDeck opts.deckId
   navigateToDeck opts.cursor
   pure unit
 
@@ -511,7 +511,7 @@ loadDeck opts = mbLoadError =<< runMaybeT do
     ED.NeedsEval cardId → do
       let displayCards = [ Left DCS.PendingCard ]
       H.modify $ DCS.fromModel { name: deck.model.name, displayCards }
-      H.lift $ P.queueEval 13 (opts.deckId L.: opts.cursor × cardId)
+      H.lift $ P.queueEval (Milliseconds 13.0) (opts.deckId L.: opts.cursor × cardId)
     ED.PendingEval cardId → do
       st ← H.get
       active ← activeCardIndex
@@ -550,7 +550,7 @@ handleEval opts = case _ of
       Nothing →
         H.modify _ { loadError = Just "Deck references non-existent cards" }
       Just cardDefs → do
-        queryNextAction $ H.action $ Next.UpdateInput port
+        _ ← queryNextAction $ H.action $ Next.UpdateInput port
         H.modify (DCS.updateCompletedCards cardDefs port)
         updateActiveState opts
   ED.NameChange name → H.modify _ { name = name }
@@ -600,8 +600,8 @@ updateCardSize =
   H.getHTMLElementRef sizerRef >>= traverse_ \el → void do
     { width, height } ← H.liftEff $ getBoundingClientRect el
     H.modify $ DCS._responsiveSize .~ breakpoint width
-    queryNextActionList $ H.action ActionList.CalculateBoundingRect
-    queryBacksideActionList $ H.action ActionList.CalculateBoundingRect
+    _ ← queryNextActionList $ H.action ActionList.CalculateBoundingRect
+    _ ← queryBacksideActionList $ H.action ActionList.CalculateBoundingRect
     H.queryAll' cpCard $ H.action CQ.UpdateDimensions
   where
   breakpoint w

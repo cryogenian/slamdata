@@ -29,7 +29,6 @@ import Control.UI.Browser as Browser
 import Ace.Config as AceConfig
 
 import Data.Map.Diff as Diff
-import Data.Nullable (toMaybe)
 import Data.StrMap as SM
 
 import DOM.HTML.Document (body)
@@ -39,7 +38,7 @@ import DOM.HTML.Window (document)
 import DOM.Node.Element (setClassName)
 import DOM.Node.Node (removeChild)
 import DOM.Node.Types (elementToNode)
-import DOM.Node.ParentNode (querySelector)
+import DOM.Node.ParentNode (querySelector, QuerySelector(..))
 
 import Halogen as H
 import Halogen.Aff as HA
@@ -71,9 +70,9 @@ data RouterState = RouterState Routes Wiring WorkspaceIO
 
 main ∷ Eff SlamDataEffects Unit
 main = do
-  AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
-  AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
-  AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
+  _ ← AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
+  _ ← AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
+  _ ← AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   HA.runHalogenAff $ forkAff routeSignal
   StyleLoader.loadStyles
 
@@ -159,7 +158,6 @@ routeSignal = do
       void
         $ liftEff
         $ traverse (setClassName bodyClass ∘ htmlElementToElement)
-        ∘ toMaybe
         =<< body
         =<< document
         =<< window
@@ -170,12 +168,12 @@ routeSignal = do
 
 awaitBody' ∷ Aff SlamDataEffects HTMLElement
 awaitBody' = do
-  body ← liftEff $ map toMaybe $ window >>= document >>= body
+  body ← liftEff $ window >>= document >>= body
   maybe HA.awaitBody pure body
 
 
 removeFromBody ∷ String → Aff SlamDataEffects Unit
 removeFromBody sel = liftEff $ void $ runMaybeT do
-  body ← MaybeT $ map toMaybe $ window >>= document >>= body
-  root ← MaybeT $ map toMaybe $ window >>= document >>= htmlDocumentToParentNode >>> querySelector sel
+  body ← MaybeT $ window >>= document >>= body
+  root ← MaybeT $ window >>= document >>= htmlDocumentToParentNode >>> querySelector (QuerySelector sel)
   lift $ removeChild (elementToNode root) (htmlElementToNode body)

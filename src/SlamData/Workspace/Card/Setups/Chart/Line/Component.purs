@@ -209,7 +209,7 @@ cardEval = case _ of
       Nothing → M.BuildLine Nothing
       Just a → a
   CC.Load m next → do
-    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    _ ← H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     for_ (m ^? M._BuildLine ∘ _Just) \r →
       H.modify _{ axisLabelAngle = r.axisLabelAngle
                 , optionalMarkers = r.optionalMarkers

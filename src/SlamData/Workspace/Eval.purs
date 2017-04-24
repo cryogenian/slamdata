@@ -166,7 +166,7 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
         Cache.put deckId deck' decks
         publish deck (Deck.Complete history cardInput)
         pure deck.parent
-      fork $ parTraverse_ goInit parentCardIds
+      _ ← fork $ parTraverse_ goInit parentCardIds
       parTraverse_ (goNextCard history cardInput) cardIds
 
     goNextCard ∷ Array Card.Id → Card.Out → Card.Id → m Unit
