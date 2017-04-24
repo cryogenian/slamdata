@@ -26,11 +26,11 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Events as HE
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Common.Align (alignSelect)
 import SlamData.Common.Sort (sortSelect)
 import SlamData.Form.Select as S
+import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -102,9 +102,9 @@ render state =
 renderOrder ∷ ST.State → HTML
 renderOrder state =
   HH.div
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Order" ]
+    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Order" ]
     , BCI.selectInput
         (BCI.dropdown Nothing (\l → right ∘ Q.SelectOrder l))
         (S.trySelect' state.order sortSelect)
@@ -113,9 +113,9 @@ renderOrder state =
 renderAlign ∷ ST.State → HTML
 renderAlign state =
   HH.div
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Alignment" ]
+    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Alignment" ]
     , BCI.selectInput
         (BCI.dropdown Nothing (\l → right ∘ Q.SelectAlign l))
         (S.trySelect' state.align alignSelect)

@@ -263,6 +263,9 @@ inputGroup = ClassName "input-group"
 inputGroupBtn ∷ ClassName
 inputGroupBtn = ClassName "input-group-btn"
 
+controlLabel ∷ ClassName
+controlLabel = ClassName "control-label"
+
 checkbox ∷ ClassName
 checkbox = ClassName "checkbox"
 

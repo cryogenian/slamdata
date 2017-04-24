@@ -29,8 +29,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -108,11 +108,11 @@ render state =
 renderAxisLabelAngle ∷ ST.State → HTML
 renderAxisLabelAngle state =
   HH.div
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label angle" ]
+    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Label angle" ]
     , HH.input
-        [ HP.classes [ B.formControl ]
+        [ HP.classes [ Rc.formControl ]
         , HP.value $ show $ state.axisLabelAngle
         , ARIA.label "Axis label angle"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetAxisLabelAngle s)
