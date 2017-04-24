@@ -132,7 +132,8 @@ routeSignal driver = do
 redirects
   ∷ FileSystemIO
   → AVar ListingState
-  → Maybe Routes → Routes
+  → Maybe Routes
+  → Routes
   → Slam Unit
 redirects driver var mbOld = case _ of
   Index →

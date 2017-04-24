@@ -128,7 +128,7 @@ render state@{ version, sort, salt, path } =
       , content
           [ HH.slot' CS.cpSearch unit Search.component unit $ HE.input HandleSearch
           , HH.div_
-            [ HH.slot' CS.cpBreadcrumbs unit Breadcrumbs.component {path, sort, salt} absurd
+            [ Breadcrumbs.render { path, sort, salt }
             , toolbar state
             ]
           , row [ sorting state ]
