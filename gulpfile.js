@@ -1,41 +1,58 @@
 "use strict";
 
-var gulp = require("gulp"),
-    header = require("gulp-header"),
-    contentFilter = require("gulp-content-filter"),
-    purescript = require("gulp-purescript"),
-    rimraf = require("rimraf"),
-    fs = require("fs"),
-    trimlines = require("gulp-trimlines"),
-    less = require("gulp-less"),
-    sequence = require("run-sequence"),
-    replace = require("gulp-replace"),
-    footer = require("gulp-footer"),
-    path = require("path"),
-    webpack = require("webpack-stream");
-
+const gulp = require("gulp");
+const header = require("gulp-header");
+const contentFilter = require("gulp-content-filter");
+const rimraf = require("rimraf");
+const fs = require("fs");
+const trimlines = require("gulp-trimlines");
+const less = require("gulp-less");
+const sequence = require("run-sequence");
+const replace = require("gulp-replace");
+const footer = require("gulp-footer");
+const path = require("path");
+const exec = require("child_process").exec;
+const webpack = require("webpack-stream");
 const { injectIconsIntoHTML, createIconPureScript } = require("./script/icons")
 
-
-var slamDataSources = [
+const slamDataSources = [
   "src/**/*.purs",
 ];
 
-var vendorSources = [
+const vendorSources = [
   "bower_components/purescript-*/src/**/*.purs",
 ];
 
-var sources = slamDataSources.concat(vendorSources);
+const sources = slamDataSources.concat(vendorSources);
 
-var testSources = [
-    "test/src/**/*.purs"
+const testSources = [
+  "test/src/**/*.purs"
 ].concat(sources);
 
-var foreigns = [
+const foreigns = [
   "src/**/*.js",
   "bower_components/purescript-*/src/**/*.js",
   "test/src/**/*.js"
 ];
+
+function pursBundle(name, main) {
+  return function(done) {
+    const cmd = [
+      'purs bundle "output/**/*.js"',
+      '--output', name + '.js',
+      '--main', main,
+      '--module', main
+    ].join(' ');
+
+    exec(cmd, function(stderr, stdout) {
+      if (stderr) {
+        done(stderr);
+      } else {
+        done();
+      }
+    });
+  };
+}
 
 // Webdriver thinks elements which are obscured by elements with fixed positions
 // are visible. By and large fixed positions fall back gracefully to
@@ -129,17 +146,7 @@ gulp.task("trim-whitespace", function () {
 
 
 var mkBundleTask = function (name, main) {
-
-  gulp.task("prebundle-" + name, function() {
-    return purescript.pscBundle({
-      src: "output/**/*.js",
-      output: "tmp/" + name + ".js",
-      module: main,
-        main: main,
-        optimize: ["uncurry"]
-    });
-  });
-
+  gulp.task("prebundle-" + name, pursBundle("tmp/" + name, main));
   gulp.task("bundle-" + name, ["prebundle-" + name], function () {
     return gulp.src("tmp/" + name + ".js")
           .pipe(webpack({
@@ -192,32 +199,11 @@ gulp.task("bundle", [
   mkBundleTask("auth_redirect", "SlamData.AuthRedirect"),
 ]);
 
-gulp.task("make", [ "icon-purs" ], function() {
-  return purescript.psc({
-    src: testSources,
-    ffi: foreigns
-  });
-});
+gulp.task("bundle-test", ["prevent-css-transitions-and-remove-fixed-positions"],
+  pursBundle("test/index", "Test.SlamData.Feature.Main"));
 
-gulp.task("bundle-test", function() {
-    sequence("prevent-css-transitions-and-remove-fixed-positions", function() {
-        return purescript.pscBundle({
-            src: "output/**/*.js",
-            output: "test/index.js",
-            module: "Test.SlamData.Feature.Main",
-            main: "Test.SlamData.Feature.Main"
-        });
-    });
-});
-
-gulp.task("bundle-property-tests", function() {
-    return purescript.pscBundle({
-      src: "output/**/*.js",
-      output: "tmp/js/property-tests.js",
-      module: "Test.SlamData.Property",
-      main: "Test.SlamData.Property"
-    });
-});
+gulp.task("bundle-property-tests",
+  pursBundle("tmp/js/property-tests", "Test.SlamData.Property"));
 
 var mkWatch = function(name, target, files) {
   gulp.task(name, [target], function() {
