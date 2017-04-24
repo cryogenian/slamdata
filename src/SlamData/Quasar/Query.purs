@@ -111,7 +111,8 @@ queryEJsonVM path sql vm =
 -- | Runs a query creating a view mount for the query.
 viewQuery
   ∷ ∀ m
-  . (QuasarDSL m, Monad m)
+  . QuasarDSL m
+  ⇒ Monad m
   ⇒ FilePath
   → Sql
   → SM.StrMap String
@@ -121,7 +122,8 @@ viewQuery dest sql vars = viewQuery' dest (print sql) vars
 -- | Runs a query creating a view mount for the query.
 viewQuery'
   ∷ ∀ m
-  . (QuasarDSL m, Monad m)
+  . QuasarDSL m
+  ⇒ Monad m
   ⇒ FilePath
   → String
   → SM.StrMap String
@@ -168,7 +170,8 @@ sample file offset limit =
 
 count
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
+  . Monad m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → m (Either QError Int)
 count file = runExceptT do
@@ -224,7 +227,8 @@ allFields =
 
 fields
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
+  . Monad m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → m (QError ⊹ (L.List Sql))
 fields file = runExceptT do

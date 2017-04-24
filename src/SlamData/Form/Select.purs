@@ -139,7 +139,8 @@ exceptFlipped st (Select { value }) =
 
 ifSelected
   ∷ ∀ f m a b
-  . (Foldable f, Monoid (m b))
+  . Foldable f
+  ⇒ Monoid (m b)
   ⇒ f (Select a)
   → m b
   → m b

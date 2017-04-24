@@ -59,7 +59,8 @@ save path json = liftQuasar $ QF.writeFile path (JSON Readable [json])
 -- | `/data/fs` part of the path for the API.
 load
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → m (Either QError JS.Json)
 load path =
@@ -70,7 +71,8 @@ load path =
 
 delete
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ AnyPath
   → m (Either QError Unit)
 delete = liftQuasar ∘ QF.deleteData

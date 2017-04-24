@@ -55,7 +55,8 @@ type Wiring r =
 -- | may arise, which allows for convenient catching of 404 errors.
 runQuasarF
   ∷ ∀ eff m a
-  . (Monad m, MonadAff (QEff eff) m)
+  . Monad m
+  ⇒ MonadAff (QEff eff) m
   ⇒ Maybe OIDC.IdToken
   → QF.QuasarAFC a
   → m a

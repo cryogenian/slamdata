@@ -64,7 +64,8 @@ import Utils.Ace (RangeRec)
 
 children
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
+  . Monad m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
 children dir = runExceptT do
@@ -76,7 +77,8 @@ children dir = runExceptT do
 
 transitiveChildren
   ∷ ∀ f m
-  . (Parallel f m, QuasarDSL m)
+  . Parallel f m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
 transitiveChildren start = runExceptT do
@@ -84,7 +86,7 @@ transitiveChildren start = runExceptT do
   cs ← parTraverse go rs
   pure $ rs <> join cs
   where
-  go :: R.Resource → ExceptT QError m (Array R.Resource)
+  go ∷ R.Resource → ExceptT QError m (Array R.Resource)
   go r = case R.getPath r of
     Left dir → do
       crs ← ExceptT $ transitiveChildren dir
@@ -93,7 +95,8 @@ transitiveChildren start = runExceptT do
 
 listing
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
 listing p =
@@ -116,7 +119,8 @@ listing p =
 -- | the end of the name.
 getNewName
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
+  . Monad m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → String
   → m (Either QError String)
@@ -151,11 +155,10 @@ getNewName parent name = do
 -- | `Nothing` in case no resource existed at the requested source path.
 move
   ∷ ∀ f m
-  . ( MonadAff SlamDataEffects m
-    , MonadFork Error m
-    , QuasarDSL m
-    , Parallel f m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadFork Error m
+  ⇒ QuasarDSL m
+  ⇒ Parallel f m
   ⇒ R.Resource
   → AnyPath
   → m (Either QError (Maybe AnyPath))
@@ -349,11 +352,10 @@ move src tgt = do
 
 delete
   ∷ ∀ f m
-  . ( MonadAff SlamDataEffects m
-    , MonadFork Error m
-    , QuasarDSL m
-    , Parallel f m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadFork Error m
+  ⇒ QuasarDSL m
+  ⇒ Parallel f m
   ⇒ R.Resource
   → m (Either QError (Maybe R.Resource))
 delete resource =
@@ -404,7 +406,8 @@ delete resource =
 
 forceDelete
   ∷ ∀ f m
-  . (QuasarDSL m, Parallel f m)
+  . QuasarDSL m
+  ⇒ Parallel f m
   ⇒ R.Resource
   → ExceptT QError m Unit
 forceDelete res =
@@ -418,7 +421,8 @@ forceDelete res =
 
 cleanViewMounts
   ∷ ∀ f m
-  . (Parallel f m, QuasarDSL m)
+  . Parallel f m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → ExceptT QError m Unit
 cleanViewMounts =
@@ -433,7 +437,8 @@ cleanViewMounts =
 
 messageIfFileNotFound
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → String
   → m (Either QError (Maybe String))
@@ -448,7 +453,8 @@ messageIfFileNotFound path defaultMsg =
 
 dirNotAccessible
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Maybe QF.QError)
 dirNotAccessible path =
@@ -456,7 +462,8 @@ dirNotAccessible path =
 
 fileNotAccessible
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → m (Maybe QF.QError)
 fileNotAccessible path =
