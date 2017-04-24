@@ -37,7 +37,7 @@ import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, sequenceQuasa
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 validateResources
   ∷ ∀ m t

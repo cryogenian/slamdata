@@ -54,10 +54,10 @@ import Quasar.Types (DirPath, FilePath, CompileResultR)
 
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
-import SqlSquare (Sql, print)
-import SqlSquare as Sql
+import SqlSquared (Sql, print)
+import SqlSquared as Sql
 
-import Utils.SqlSquare (tableRelation)
+import Utils.SqlSquared (tableRelation)
 
 -- | Compiles a query.
 compile

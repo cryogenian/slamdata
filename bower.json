@@ -59,7 +59,7 @@
     "purescript-uri": "^3.0.0",
     "purescript-clipboard": "^0.2.0",
     "purescript-echarts": "^4.0.1",
-    "purescript-type-equality": "^2.0.0",
+    "purescript-type-equality": "^2.1.0",
     "purescript-sqlsquare": "^0.4.0",
     "purescript-line-wrapping": "^2.0.0"
   },

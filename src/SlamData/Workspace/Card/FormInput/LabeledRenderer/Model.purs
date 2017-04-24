@@ -20,6 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut ((:=), (.?), (~>))
 import Data.Argonaut as J
+import Data.Argonaut.JCursor.Gen (genJCursor)
 import Data.Array as Arr
 import Data.Set as Set
 
@@ -28,7 +29,6 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Arbitrary (arbitrary)
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
 type Model =
   { formInputType ∷ FormInputType
@@ -45,7 +45,7 @@ eqModel r1 r2 =
 genModel ∷ Gen.Gen Model
 genModel = do
   formInputType ← arbitrary
-  cursor ← map runArbJCursor arbitrary
+  cursor ← genJCursor
   selected ← map (Set.fromFoldable) $ Gen.arrayOf arbitrary
   pure { cursor
        , selected

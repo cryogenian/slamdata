@@ -20,12 +20,12 @@ import SlamData.Prelude
 
 import Data.Argonaut ((:=), (.?), (~>))
 import Data.Argonaut as J
+import Data.Argonaut.JCursor.Gen (genJCursor)
 
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Arbitrary (arbitrary)
-import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 
 type Model =
   { formInputType ∷ FormInputType
@@ -49,7 +49,7 @@ eqModel r1 r2 =
 genModel ∷ Gen.Gen Model
 genModel = do
   formInputType ← arbitrary
-  cursor ← map runArbJCursor arbitrary
+  cursor ← genJCursor
   value ← arbitrary
   pure { cursor
        , value

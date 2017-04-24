@@ -39,7 +39,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Search.Interpret as Search
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Text.Parsing.Parser as PP
 import Text.SlamSearch as SS

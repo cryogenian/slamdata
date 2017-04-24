@@ -54,7 +54,7 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Setups.Axis (Axes, buildAxes)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils (hush')
 import Utils.Path as PU

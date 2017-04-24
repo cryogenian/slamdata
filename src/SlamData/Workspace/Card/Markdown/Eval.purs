@@ -39,8 +39,8 @@ import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 
-import SlamData.SqlSquare.Tagged as SqlT
-import SqlSquare as Sql
+import SlamData.SqlSquared.Tagged as SqlT
+import SqlSquared as Sql
 
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE

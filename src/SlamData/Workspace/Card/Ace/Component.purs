@@ -54,7 +54,7 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils.Ace (getRangeRecs, readOnly)
 

@@ -50,7 +50,7 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId as DID
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils.Path as UP
 

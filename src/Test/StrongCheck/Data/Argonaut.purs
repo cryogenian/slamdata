@@ -14,24 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Query.Model
-  ( initialModel
-  ) where
+module Test.StrongCheck.Data.Argonaut where
 
-import SlamData.Prelude
+import Data.Argonaut.JCursor (JCursor)
+import Data.Argonaut.JCursor.Gen (genJCursor)
+import Data.Newtype (class Newtype)
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
+import Test.StrongCheck.Gen as Gen
 
-import SlamData.Workspace.Card.Ace.Model as Ace
-import SlamData.Workspace.Card.Port as Port
+newtype ArbJCursor = ArbJCursor JCursor
 
-import SqlSquared as Sql
+derive instance newtypeArbJCursor ∷ Newtype ArbJCursor _
 
-initialModel ∷ Port.Port → Ace.Model
-initialModel = case _ of
-  Port.ResourceKey var →
-    { text: "SELECT * FROM :" <> Sql.printIdent var
-    , ranges: []
-    }
-  _ →
-    { text: "SELECT \"Hello, World!\""
-    , ranges: []
-    }
+instance arbitraryArbJCursor ∷ Arbitrary ArbJcursor where
+  arbitrary = genJCursor
+
+runArbJCursor ∷ ArbJcursor → JCursor
+runArbJCursor = unwrap
