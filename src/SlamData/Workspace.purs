@@ -44,6 +44,7 @@ import Halogen as H
 import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI, HalogenIO)
 
+import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Monad (runSlam)
@@ -73,7 +74,9 @@ main = do
   _ ← AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
   _ ← AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   _ ← AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
-  HA.runHalogenAff $ forkAff routeSignal
+  HA.runHalogenAff do
+    void $ forkAff Analytics.enableAnalytics
+    void $ forkAff routeSignal
   StyleLoader.loadStyles
 
 routeSignal ∷ Aff SlamDataEffects Unit
