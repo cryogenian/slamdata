@@ -32,7 +32,6 @@ import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
@@ -41,13 +40,13 @@ import SlamData.Render.CSS as Rc
 section :: forall p i. String -> Array (H.HTML p i) -> H.HTML p i
 section title inner =
   HH.div
-    [ HP.classes [ B.panel, B.panelDefault ] ]
+    [ HP.classes [ Rc.panel, Rc.panelDefault ] ]
     [ HH.div
-        [ HP.class_ B.panelHeading ]
-        [ HH.text title ]
+      [ HP.class_ Rc.panelHeading ]
+      [ HH.text title ]
     , HH.div
-        [ HP.class_ B.panelBody ]
-        inner
+      [ HP.class_ Rc.panelBody ]
+      inner
     ]
 
 propListTable
@@ -58,24 +57,24 @@ propListTable inner =
   HH.div
     [ HP.class_ Rc.mountProps ]
     [ HH.table
-        [ HP.classes [B.table, B.tableBordered] ]
-        [ HH.thead_
-            [ HH.tr_
-                [ HH.th_ [ HH.text "Name" ]
-                , HH.th_ [ HH.text "Value" ]
-                ]
-            ]
-        , HH.tbody_
-            [ HH.tr_
-                [ HH.td
-                    [ HP.colSpan 2 ]
-                    [ HH.div
-                        [ HP.class_ Rc.mountPropsScrollbox ]
-                        [ HH.table_ inner ]
-                    ]
-                ]
-            ]
+      [ HP.classes [Rc.table, Rc.tableBordered] ]
+      [ HH.thead_
+        [ HH.tr_
+          [ HH.th_ [ HH.text "Name" ]
+          , HH.th_ [ HH.text "Value" ]
+          ]
         ]
+      , HH.tbody_
+        [ HH.tr_
+          [ HH.td
+            [ HP.colSpan 2 ]
+            [ HH.div
+              [ HP.class_ Rc.mountPropsScrollbox ]
+              [ HH.table_ inner ]
+            ]
+          ]
+        ]
+      ]
     ]
 
 propList
@@ -93,7 +92,7 @@ propList _props state = propListTable propRows
     where
     part :: Lens' (Tuple String String) String -> H.HTML p (SettingsQuery s)
     part lens = HH.td_ [ input state (_props <<< ix index <<< lens) classes ]
-    classes = [ HP.classes [B.formControl, B.inputSm] ]
+    classes = [ HP.classes [Rc.formControl, Rc.inputSm] ]
 
 -- | A labelled section within the form.
 label ∷ ∀ p i. String → Array (H.HTML p i) → H.HTML p i
@@ -121,7 +120,7 @@ input'
   → H.HTML p (SettingsQuery s)
 input' f state lens attrs =
   HH.input
-    $ [ HP.class_ B.formControl
+    $ [ HP.class_ Rc.formControl
       , HE.onValueInput (HE.input \val → ModifyState (lens .~ f val))
       , HP.value (state ^. lens)
       ]
@@ -138,9 +137,9 @@ hosts state lens =
     HH.div
       [ HP.class_ Rc.mountHost ]
       [ label "Host"
-          [ input' rejectNonHostname state (lens <<< ix index <<< MCS._host) [] ]
+        [ input' rejectNonHostname state (lens <<< ix index <<< MCS._host) [] ]
       , label "Port"
-          [ input' rejectNonPort state (lens <<< ix index <<< MCS._port) [] ]
+        [ input' rejectNonPort state (lens <<< ix index <<< MCS._port) [] ]
       ]
 
 host ∷ ∀ s. s → Lens' s MCS.MountHost → H.ComponentHTML (SettingsQuery s)
@@ -148,12 +147,12 @@ host state lens =
   HH.div
     [ HP.class_ Rc.mountHostList ]
     [ HH.div
-        [ HP.class_ Rc.mountHost ]
-        [ label "Host"
-            [ input' rejectNonHostname state (lens ∘ MCS._host) [] ]
-        , label "Port"
-            [ input' rejectNonPort state (lens ∘ MCS._port) [] ]
-        ]
+      [ HP.class_ Rc.mountHost ]
+      [ label "Host"
+        [ input' rejectNonHostname state (lens ∘ MCS._host) [] ]
+      , label "Port"
+        [ input' rejectNonPort state (lens ∘ MCS._port) [] ]
+      ]
     ]
 
 rejectNonHostname ∷ String → String

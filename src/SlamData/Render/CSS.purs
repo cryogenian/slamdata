@@ -263,6 +263,9 @@ inputGroup = ClassName "input-group"
 inputGroupBtn ∷ ClassName
 inputGroupBtn = ClassName "input-group-btn"
 
+inputSm ∷ ClassName
+inputSm = ClassName "input-sm"
+
 controlLabel ∷ ClassName
 controlLabel = ClassName "control-label"
 
@@ -296,6 +299,9 @@ btnGroup = ClassName "btn-group"
 listGroup ∷ ClassName
 listGroup = ClassName "list-group"
 
+listGroupItem ∷ ClassName
+listGroupItem = ClassName "list-group-item"
+
 alert ∷ ClassName
 alert = ClassName "alert"
 
@@ -314,6 +320,9 @@ alertWarning = ClassName "alert-warning"
 table ∷ ClassName
 table = ClassName "table"
 
+tableBordered ∷ ClassName
+tableBordered = ClassName "table-bordered"
+
 tableStriped ∷ ClassName
 tableStriped = ClassName "table-striped"
 
@@ -323,6 +332,18 @@ nav = ClassName "nav"
 navTabs ∷ ClassName
 navTabs = ClassName "nav-tabs"
 
+panel ∷ ClassName
+panel = ClassName "panel"
+
+panelDefault ∷ ClassName
+panelDefault = ClassName "panel-default"
+
+panelHeading ∷ ClassName
+panelHeading = ClassName "panel-heading"
+
+panelBody ∷ ClassName
+panelBody = ClassName "panel-body"
+
 active ∷ ClassName
 active = ClassName "active"
 
@@ -331,6 +352,9 @@ hidden = ClassName "hidden"
 
 disabled ∷ ClassName
 disabled = ClassName "disabled"
+
+caret ∷ ClassName
+caret = ClassName "caret"
 
 fade :: ClassName
 fade = ClassName "fade"

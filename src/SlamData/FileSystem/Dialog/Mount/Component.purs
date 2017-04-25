@@ -29,7 +29,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
@@ -47,7 +46,7 @@ import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component as SparkLocal
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as Api
-import SlamData.Render.CSS as RC
+import SlamData.Render.CSS as Rc
 
 import Utils.DOM as DOM
 
@@ -70,7 +69,7 @@ render state@{ new } =
     , modalBody $
         HH.form
           [ HE.onSubmit $ HE.input PreventDefault
-          , HP.class_ RC.dialogMount
+          , HP.class_ Rc.dialogMount
           ]
           $ (guard new $> fldName state)
           <> (guard new $> selScheme state)
@@ -101,11 +100,11 @@ render state@{ new } =
 fldName ∷ MCS.State → HTML
 fldName state =
   HH.div
-    [ HP.classes [B.formGroup, RC.mountName] ]
+    [ HP.classes [Rc.formGroup, Rc.mountName] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Name" ]
         , HH.input
-            [ HP.class_ B.formControl
+            [ HP.class_ Rc.formControl
             , HE.onValueInput $ HE.input (ModifyState ∘ set MCS._name)
             , HP.value (state.name)
             ]
@@ -115,11 +114,11 @@ fldName state =
 selScheme ∷ MCS.State → HTML
 selScheme state =
   HH.div
-    [ HP.class_ B.formGroup ]
+    [ HP.class_ Rc.formGroup ]
     [ HH.label_
         [ HH.span_ [ HH.text "Mount type" ]
         , HH.select
-            [ HP.class_ B.formControl
+            [ HP.class_ Rc.formControl
             , HE.onValueChange (HE.input SelectScheme ∘ MS.schemeFromString)
             ]
             $ [ HH.option_ [] ] <> schemeOptions
@@ -131,13 +130,13 @@ selScheme state =
 errorMessage ∷ String → HTML
 errorMessage msg =
   HH.div
-    [ HP.classes [ B.alert, B.alertDanger ] ]
+    [ HP.classes [ Rc.alert, Rc.alertDanger ] ]
     [ HH.text msg ]
 
 btnCancel ∷ HTML
 btnCancel =
   HH.button
-    [ HP.classes [B.btn]
+    [ HP.classes [Rc.btn]
     , HE.onClick (HE.input_ RaiseDismiss)
     ]
     [ HH.text "Cancel" ]
@@ -145,7 +144,7 @@ btnCancel =
 btnMount ∷ MCS.State → HTML
 btnMount state@{ new, saving } =
   HH.button
-    [ HP.classes [B.btn, B.btnPrimary]
+    [ HP.classes [Rc.btn, Rc.btnPrimary]
     , HP.enabled (not saving && MCS.canSave state)
     , HE.onClick (HE.input_ NotifySave)
     ]
@@ -155,7 +154,7 @@ btnMount state@{ new, saving } =
 
 progressSpinner ∷ MCS.State → HTML
 progressSpinner { saving } =
-  HH.img [ HP.src "img/spin.gif", HP.class_ (RC.mountProgressSpinner saving) ]
+  HH.img [ HP.src "img/spin.gif", HP.class_ $ Rc.mountProgressSpinner saving ]
 
 eval ∷ Query ~> DSL
 eval (ModifyState f next) = H.modify f *> validateInput $> next

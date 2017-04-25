@@ -25,13 +25,13 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config as Config
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.Monad (Slam)
 import SlamData.Render.Common (formGroup)
+import SlamData.Render.CSS as Rc
 
 import Utils.Path as UP
 
@@ -66,39 +66,39 @@ render state =
     [ modalHeader "Explore file"
     , modalBody
       $ HH.form_
-          [ HH.h4_
-              [ HH.text
-                  $ "Create a new workspace in "
-                  ⊕ directory
-                  ⊕ " to explore "
-                  ⊕ fileName
+        [ HH.h4_
+          [ HH.text
+            $ "Create a new workspace in "
+            <> directory
+            <> " to explore "
+            <> fileName
+          ]
+        , formGroup
+            [ HH.input
+              [ HP.classes [ Rc.formControl ]
+              , HP.value state.workspaceName
+              , HP.placeholder "New workspace name"
+              , ARIA.label "New workspace name"
+              , HE.onValueInput (HE.input NameTyped)
               ]
-          , formGroup
-              [ HH.input
-                  [ HP.classes [ B.formControl ]
-                  , HP.value state.workspaceName
-                  , HP.placeholder "New workspace name"
-                  , ARIA.label "New workspace name"
-                  , HE.onValueInput (HE.input NameTyped)
-                  ]
-              ]
+            ]
           ]
     , modalFooter
-        [ HH.button
-            [ HP.classes [ B.btn ]
-            , HE.onClick (HE.input_ RaiseDismiss)
-            , HP.type_ HP.ButtonButton
-            ]
-            [ HH.text "Cancel" ]
-        , HH.button
-            [ HP.classes [ B.btn, B.btnPrimary ]
-            , HP.disabled $ state.workspaceName == ""
-            , HE.onClick (HE.input_ (TryExplore state.filePath state.workspaceName))
-            , HP.type_ HP.ButtonButton
-            , ARIA.label "Explore file"
-            ]
-            [ HH.text "Explore" ]
+      [ HH.button
+        [ HP.classes [ Rc.btn ]
+        , HE.onClick (HE.input_ RaiseDismiss)
+        , HP.type_ HP.ButtonButton
         ]
+        [ HH.text "Cancel" ]
+      , HH.button
+        [ HP.classes [ Rc.btn, Rc.btnPrimary ]
+        , HP.disabled $ state.workspaceName == ""
+        , HE.onClick (HE.input_ (TryExplore state.filePath state.workspaceName))
+        , HP.type_ HP.ButtonButton
+        , ARIA.label "Explore file"
+        ]
+        [ HH.text "Explore" ]
+      ]
     ]
     where
     anyPath = Right state.filePath

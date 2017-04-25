@@ -29,7 +29,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Mount as QM
 import Quasar.Mount.MarkLogic (Format(..))
@@ -70,7 +69,7 @@ render state =
         ]
     , MCR.section "Root"
         [ HH.div
-            [ HP.classes [B.formGroup, Rc.mountPath] ]
+            [ HP.classes [Rc.formGroup, Rc.mountPath] ]
             [ MCR.label "Database" [ MCR.input state MCS._path [] ] ]
         , HH.div
             [ HP.class_ Rc.mountFormat ]

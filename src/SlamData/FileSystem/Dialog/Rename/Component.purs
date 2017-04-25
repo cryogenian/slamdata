@@ -32,7 +32,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config as Config
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
@@ -174,12 +173,12 @@ render dialog =
         ]
   , modalFooter
       [ HH.button
-          [ HP.classes [ B.btn ]
+          [ HP.classes [ Rc.btn ]
           , HE.onClick (HE.input_ RaiseDismiss)
           ]
           [ HH.text "Cancel" ]
       , HH.button
-          [ HP.classes [ B.btn, B.btnPrimary ]
+          [ HP.classes [ Rc.btn, Rc.btnPrimary ]
           , HP.disabled $ isJust $ dialog.error
           , HE.onClick (HE.input_ Submit)
           ]
@@ -189,7 +188,7 @@ render dialog =
   where
   nameInput ∷ HTML
   nameInput =
-    formGroup [ HH.input [ HP.classes [ B.formControl ]
+    formGroup [ HH.input [ HP.classes [ Rc.formControl ]
                         , HP.value (dialog.name)
                         , HP.placeholder "New name"
                         , HE.onValueInput (HE.input NameTyped)
@@ -199,42 +198,42 @@ render dialog =
   dirDropdownField ∷ HTML
   dirDropdownField =
     HH.div
-      [ HP.classes [ B.inputGroup, HH.ClassName "file-list-field" ] ]
+      [ HP.classes [ Rc.inputGroup, HH.ClassName "file-list-field" ] ]
       [ HH.input
-          [ HP.classes [ B.formControl ]
+          [ HP.classes [ Rc.formControl ]
           , HP.placeholder "New directory"
           , HE.onValueInput (HE.input DirTyped)
           , HP.value $ dialog ^. _typedDir
           ]
       , HH.span
-          [ HP.classes [ B.inputGroupBtn ] ]
+          [ HP.classes [ Rc.inputGroupBtn ] ]
           [ HH.button
-              [ HP.classes [ B.btn, B.btnDefault ]
+              [ HP.classes [ Rc.btn, Rc.btnDefault ]
               , HE.onClick \e →
                    Just $ StopPropagation (DOM.toEvent e) $ H.action $ ToggleShowList
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
               ]
-              [ HH.span [ HP.classes [ B.caret ] ] [ ] ]
+              [ HH.span [ HP.classes [ Rc.caret ] ] [ ] ]
           ]
       ]
   dirDropdownList ∷ HTML
   dirDropdownList =
     HH.ul
-      ([ HP.classes  [ B.listGroup, Rc.fileListGroup ] ]
+      ([ HP.classes  [ Rc.listGroup, Rc.fileListGroup ] ]
        <> if dialog.showList then [] else [ ARIA.hidden "true" ])
     $ renameItem <$> dialog.dirs
 
   errorMessage ∷ HTML
   errorMessage =
     HH.div
-      ([ HP.classes $ [ B.alert, B.alertDanger ] ]
+      ([ HP.classes $ [ Rc.alert, Rc.alertDanger ] ]
        <> if isJust dialog.error then [] else [ ARIA.hidden "true" ])
       $ maybe [ ] (pure <<< HH.text) (dialog.error)
 
   renameItem ∷ R.Resource → HTML
   renameItem res =
-    HH.button [ HP.classes ([ B.listGroupItem ]
+    HH.button [ HP.classes ([ Rc.listGroupItem ]
                           <> (if R.isHidden res
                               then [ ItemCSS.itemHidden ]
                               else [ ]))

@@ -30,7 +30,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Mount as QM
 
@@ -78,7 +77,7 @@ render state =
           <> state.availableProps
       updateFnKey = MCS.updatePropAt ix ∘ flip Tuple value
       updateFnVal = MCS.updatePropAt ix ∘ Tuple key
-      classes = [ B.formControl, B.inputSm ]
+      classes = [ Rc.formControl, Rc.inputSm ]
     in
     HH.tr_
       [ HH.td_

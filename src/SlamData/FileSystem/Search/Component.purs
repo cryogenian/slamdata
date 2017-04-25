@@ -30,7 +30,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger, DebounceTrigger)
 
 import SlamData.Config as Config
@@ -169,7 +168,7 @@ render state =
     , CSS.searchInput
     ]
     ⊕ A.catMaybes
-        [ if not state.valid then Just B.hasError else Nothing
+        [ if not state.valid then Just Rc.hasError else Nothing
         , if state.value ≡ "" then Just CSS.searchEmpty else Nothing
         ]
 
