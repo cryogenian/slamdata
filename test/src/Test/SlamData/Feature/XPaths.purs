@@ -288,7 +288,7 @@ sharingUrl ∷ String
 sharingUrl = "*" `XPath.nodeWithExactAriaLabel` "Sharing URL"
 
 publishingUrl ∷ String
-publishingUrl = "*" `XPath.nodeWithAriaLabel` "Published deck URL"
+publishingUrl = "*" `XPath.nodeWithExactAriaLabel` "Published deck URL"
 
 copySharingUrl ∷ String
 copySharingUrl = "*" `XPath.nodeWithExactText` "Copy"
