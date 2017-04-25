@@ -24,7 +24,7 @@ render dismiss =
             [ HH.h4_ [ HH.text "Attributions"]
             , HH.div
                 [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
-                attributions
+                [ attributions ]
             , HH.div
                 [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
                 [ HH.button
@@ -37,9 +37,8 @@ render dismiss =
         ]
     ]
 
-attributions ∷ ∀ p i. Array (HH.HTML p i)
-attributions = I.attributions <#> \(title × names) →
-  HH.section_
-    [ HH.h5_ [ HH.text title ]
-    , HH.p_ [ HH.text (String.joinWith ", " names) ]
-    ]
+attributions ∷ ∀ p i. HH.HTML p i
+attributions = HH.dl_ $ flip foldMap I.attributions \(title × names) →
+  [ HH.dt_ [ HH.text title ]
+  , HH.dd_ [ HH.text (String.joinWith ", " names) ]
+  ]

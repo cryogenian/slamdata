@@ -99,7 +99,7 @@ eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Void Slam
 eval = case _ of
   HandleGripper (Gripper.Notify st) next → do
     case st of
-      Gripper.Closed → H.modify _ { open = false }
+      Gripper.Closed → H.put { open: false, attributions: false }
       _ → H.modify _ { open = true }
     pure next
   QueryGripper iq → do
