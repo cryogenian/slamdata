@@ -241,7 +241,6 @@ eval = case _ of
       (H.liftEff Browser.reload)
     pure next
 
-
   where
   loadCursor cursor = do
     cursor' ←

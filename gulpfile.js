@@ -11,7 +11,11 @@ const footer = require("gulp-footer");
 const path = require("path");
 const exec = require("child_process").exec;
 const webpack = require("webpack-stream");
-const { injectIconsIntoHTML, createIconPureScript } = require("./script/icons")
+const { injectIconsIntoHTML, createIconPureScript } = require("./script/icons");
+
+// Coordinate icon attributions through a mutable map because I'm not
+// gulp-savvy enough to handle this. --nf
+const iconAttributions = {};
 
 const slamDataSources = [
   "src/**/*.purs",
@@ -190,7 +194,7 @@ gulp.task("bundle-test", ["prevent-css-transitions-and-remove-fixed-positions"],
 gulp.task("bundle-property-tests",
   pursBundle("tmp/js/property-tests", "Test.SlamData.Property"));
 
-gulp.task("inject-icons", injectIconsIntoHTML);
-gulp.task("icon-purs", createIconPureScript);
-gulp.task("icons", [ "inject-icons", "icon-purs" ]);
+gulp.task("inject-icons", () => injectIconsIntoHTML(iconAttributions));
+gulp.task("icons", ["inject-icons"], () => createIconPureScript(iconAttributions));
+
 gulp.task("full", [ "add-headers", "trim-whitespace" ]);

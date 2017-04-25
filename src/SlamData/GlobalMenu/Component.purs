@@ -14,9 +14,10 @@ limitations under the License.
 module SlamData.GlobalMenu.Component
   ( component
   , Query(..)
-  , module SlamData.GlobalMenu.Bus
+  , Message(..)
   , AuthenticateOrPresentHelp(..)
   , State
+  , module SlamData.GlobalMenu.Bus
   ) where
 
 import SlamData.Prelude
@@ -56,6 +57,7 @@ import SlamData.Workspace.Eval.Persistence as Persistence
 data AuthenticateOrPresentHelp
   = Authenticate (Maybe ProviderR)
   | PresentHelp String
+  | PresentAttribution
 
 data Query a
   = DismissSubmenu a
@@ -67,11 +69,13 @@ type State =
   { loggedIn ∷ Boolean
   }
 
+data Message =
+  PresentAttributionsDialog
 
 type HTML = H.ParentHTML Query (Menu.Query AuthenticateOrPresentHelp) Unit Slam
-type DSL = H.ParentDSL State Query (Menu.Query AuthenticateOrPresentHelp) Unit Void Slam
+type DSL = H.ParentDSL State Query (Menu.Query AuthenticateOrPresentHelp) Unit Message Slam
 
-component ∷ H.Component HH.HTML Query Unit Void Slam
+component ∷ H.Component HH.HTML Query Unit Message Slam
 component =
   H.lifecycleParentComponent
     { initialState: \_ → { loggedIn: false }
@@ -105,6 +109,7 @@ eval (HandleMenuMessage (Menu.Selected a) next) = do
   case a of
     Authenticate providerR → authenticate providerR
     PresentHelp uri → presentHelp uri
+    PresentAttribution → H.raise PresentAttributionsDialog
   pure next
 
 update ∷ DSL Unit
@@ -198,6 +203,10 @@ helpMenu =
       , { label: "Troubleshooting FAQ"
         , shortcutLabel: Nothing
         , value: PresentHelp "http://docs.slamdata.com/en/v4.1/troubleshooting-faq.html"
+        }
+      , { label: "Attributions"
+        , shortcutLabel: Nothing
+        , value: PresentAttribution
         }
       ]
     }

@@ -1,6 +1,5 @@
 "use strict"
 
-const cache = require("gulp-cached")
 const changeCase = require("change-case")
 const cheerio = require("gulp-cheerio")
 const fs = require("fs")
@@ -10,11 +9,7 @@ const inject = require("gulp-inject")
 const path = require("path")
 const svgSprite = require("gulp-svg-sprite")
 
-
-function injectIconsIntoHTML() {
-  // Srsly TODO: figure out how to use this to legally attribute authors
-  const iconAttribution = {}
-
+function injectIconsIntoHTML(iconAttribution) {
   const pathRemoveAttrs = [
     "color",
     "font-family",
@@ -25,7 +20,6 @@ function injectIconsIntoHTML() {
 
   const svgSymbols =
     gulp.src("icons/**/*.svg")
-      .pipe(cache("iconing"))
       // adjust SVGs from Project Noun
       .pipe(cheerio({
         parserOptions: { xmlMode: true },
@@ -93,7 +87,7 @@ function injectIconsIntoHTML() {
       }))
 
   // inject symbols into html files
-  gulp.src("html/**/*.html")
+  return gulp.src("html/**/*.html")
     .pipe(inject(svgSymbols, {
       starttag: "<!-- icon-symbols -->",
       endtag: "<!-- /icon-symbols -->",
@@ -104,7 +98,7 @@ function injectIconsIntoHTML() {
 }
 
 
-function createIconPureScript() {
+function createIconPureScript(iconAttribution) {
   glob("icons/**/*.svg", {}, (err, files) => {
     if (err) {
       throw err
@@ -144,8 +138,15 @@ ${camelName} = iconHelper "${name}"`
       return acc
     }, { exports: [], html: [] })
 
+    const iconData = Object.keys(iconAttribution).reduce((acc, name) => {
+      const line = `Tuple ${JSON.stringify(name)} ${JSON.stringify(iconAttribution[name])}`
+      acc.push(line);
+      return acc
+    }, [])
+
     const pursData = `module SlamData.Render.Icon
   ( ${exports.join("\n  , ")}
+  , attributions
   ) where
 
 import SlamData.Prelude
@@ -172,6 +173,9 @@ iconHelper s =
       ]
 
 ${html.join("\n\n")}
+
+attributions ∷ Array (Tuple String (Array String))
+attributions = [ ${iconData.join(", ")} ]
 `
 
     const path_ = path.join("src", "SlamData", "Render", "Icon.purs")
