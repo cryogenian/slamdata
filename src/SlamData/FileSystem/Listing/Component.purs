@@ -25,7 +25,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item (Item)
@@ -91,7 +90,7 @@ component =
 render ∷ State → HTML
 render state@{ items } =
   HH.div
-    [ HP.classes [ B.listGroup, Rc.results ] ]
+    [ HP.classes [ Rc.listGroup, Rc.results ] ]
     $ zipItems (install state) items
 
 eval ∷ Query ~> DSL

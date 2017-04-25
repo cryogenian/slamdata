@@ -26,7 +26,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import Global as Global
 
@@ -65,7 +64,7 @@ render state =
 resField ∷ State → H.ComponentHTML Query
 resField state =
   HH.div
-    [ HP.classes [ B.formGroup, Rc.downloadSource, B.clearfix ] ]
+    [ HP.classes [ Rc.formGroup, Rc.downloadSource ] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Source" ]
         , HH.text (resourcePath state.source)
@@ -78,7 +77,7 @@ compressed state = not isFile state.source || state.compress
 chkCompress ∷ State → H.ComponentHTML Query
 chkCompress state =
   HH.div
-    [ HP.classes [ B.formGroup ] ]
+    [ HP.classes [ Rc.formGroup ] ]
     [ HH.label_
       [ HH.span_ [ HH.text "Compress" ]
       , HH.input
@@ -93,9 +92,9 @@ chkCompress state =
 options ∷ State → H.ComponentHTML Query
 options state =
   let opts = state.options
-      active = [ HP.class_ B.active ]
-  in HH.div [ HP.classes [ B.formGroup ] ]
-     [ HH.ul [ HP.classes [ B.nav, B.navTabs ] ]
+      active = [ HP.class_ Rc.active ]
+  in HH.div [ HP.classes [ Rc.formGroup ] ]
+     [ HH.ul [ HP.classes [ Rc.nav, Rc.navTabs ] ]
        [ HH.li (if isLeft opts then active else [ ])
          [ HH.a [ HE.onClick (HE.input_ $ SetOutput D.CSV)
                ]
@@ -113,14 +112,14 @@ options state =
 message ∷ State → H.ComponentHTML Query
 message state =
   let msg = state.error
-  in HH.div [ HP.classes $ [ B.alert, B.alertDanger, B.alertDismissable ]
+  in HH.div [ HP.classes $ [ Rc.alert, Rc.alertDanger, Rc.alertDismissible ]
              ⊕ fadeWhen (isNothing msg)
            ]
      $ maybe [ ] (pure ∘ HH.text) msg
 
 btnCancel ∷ State → H.ComponentHTML Query
 btnCancel state =
-  HH.button [ HP.classes [ B.btn ]
+  HH.button [ HP.classes [ Rc.btn ]
            , HE.onClick (HE.input_ RaiseDismiss)
            , ARIA.label "Cancel download"
            , HP.title "Cancel download"
@@ -146,9 +145,9 @@ btnDownload state =
 
     disabled = isJust $ state.error
   in HH.button
-         [ HP.classes $ [ B.btn, B.btnPrimary ]
+         [ HP.classes $ [ Rc.btn, Rc.btnPrimary ]
            ⊕ if disabled
-              then [ B.disabled ]
+              then [ Rc.disabled ]
               else [ ]
          , HP.disabled disabled
          , HE.onClick $ HE.input (NewTab url)

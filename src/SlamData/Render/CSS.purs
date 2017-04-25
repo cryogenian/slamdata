@@ -293,8 +293,14 @@ btnInfo = ClassName "btn-info"
 btnGroup ∷ ClassName
 btnGroup = ClassName "btn-group"
 
+listGroup ∷ ClassName
+listGroup = ClassName "list-group"
+
 alert ∷ ClassName
 alert = ClassName "alert"
+
+alertDismissible ∷ ClassName
+alertDismissible = ClassName "alert-dismissible"
 
 alertInfo ∷ ClassName
 alertInfo = ClassName "alert-info"
@@ -310,6 +316,12 @@ table = ClassName "table"
 
 tableStriped ∷ ClassName
 tableStriped = ClassName "table-striped"
+
+nav ∷ ClassName
+nav = ClassName "nav"
+
+navTabs ∷ ClassName
+navTabs = ClassName "nav-tabs"
 
 active ∷ ClassName
 active = ClassName "active"
