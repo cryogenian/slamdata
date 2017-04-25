@@ -229,12 +229,12 @@ printIOType = case _ of
 
 printIOType' ∷ InsertableCardIOType → Maybe String
 printIOType' = case _ of
-  Form → Just "this form"
-  Chart → Just "this chart"
-  Data → Just "this data"
-  Download → Just "this download"
-  Markdown → Just "this markdown"
-  Variables → Just "these variables"
+  Form → Just "the form"
+  Chart → Just "the chart"
+  Data → Just "the data"
+  Download → Just "the download"
+  Markdown → Just "the markdown"
+  Variables → Just "the variables"
   _ → Nothing
 
 eitherOr ∷ Array String → String

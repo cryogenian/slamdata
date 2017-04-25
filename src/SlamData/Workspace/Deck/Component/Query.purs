@@ -35,8 +35,8 @@ import Utils.DOM as DOM
 
 data Query a
   = Init a
-  | PresentAccessNextActionCardGuide a
-  | HideAccessNextActionCardGuide a
+  | PresentAccessNextActionCardHint a
+  | HideAccessNextActionCardHint a
   | Publish a
   | FlipDeck a
   | UpdateCardSize a

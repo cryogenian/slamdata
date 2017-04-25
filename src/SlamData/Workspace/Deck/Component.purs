@@ -118,10 +118,15 @@ eval opts = case _ of
     updateCardSize
     loadDeck opts
     pure next
-  PresentAccessNextActionCardGuide next → do
-    H.modify (DCS._presentAccessNextActionCardGuide .~ true) $> next
-  HideAccessNextActionCardGuide next →
-    dismissAccessNextActionCardGuide $> next
+  PresentAccessNextActionCardHint next → do
+    st ← H.get
+    dismissedBefore ← getDismissedAccessNextActionCardHintBefore
+    when
+      (not dismissedBefore && isNothing st.initialSliderX && st.focused)
+      (H.modify (DCS._presentAccessNextActionCardHint .~ true))
+    pure next
+  HideAccessNextActionCardHint next →
+    dismissAccessNextActionCardHint $> next
   Publish next → do
     { path } ← H.lift Wiring.expose
     let deckPath = deckPath' path opts.deckId
@@ -155,15 +160,12 @@ eval opts = case _ of
     st ← H.get
     Slider.stopSlidingAndSnap mouseEvent
     updateActiveState opts
-    when (DCS.activeCard st # is (_Just ∘ _Left ∘ DCS._NextActionCard)) do
-      dismissAccessNextActionCardGuide
+    whenM nextActionCardIsActive dismissAccessNextActionCardHint
     pure next
   UpdateSliderPosition mouseEvent next →
     Slider.updateSliderPosition mouseEvent $> next
   StopSliderTransition next → do
-    sliderTransition ← H.gets _.sliderTransition
-    when sliderTransition $
-      H.modify $ DCS._sliderTransition .~ false
+    H.modify $ DCS._sliderTransition .~ false
     pure next
   Focus ev next → do
     st ← H.get
@@ -175,13 +177,17 @@ eval opts = case _ of
     when
       (Common.willBePresentedWithChildFrameWhenFocused opts st)
       dismissFocusDeckHint
+    nextActionCardIsActive' ← nextActionCardIsActive
+    when
+      (not nextActionCardIsActive' && not st.presentAccessNextActionCardHint)
+      presentAccessNextActionCardHintAfterDelay
     pure next
   Defocus ev next → do
     st ← H.get
+    H.modify (DCS._presentAccessNextActionCardHint .~ false)
     H.liftEff $ DOM.stopPropagation ev
     isFrame ← H.liftEff $ DOM.nodeEq (DOM.target ev) (DOM.currentTarget ev)
     when (st.focused && not (L.null opts.displayCursor)) do
-      H.modify (DCS._presentAccessNextActionCardGuide .~ false)
       when isFrame do
         for_ (L.last opts.cursor) \rootId → do
           { bus } ← H.lift Wiring.expose
@@ -207,9 +213,11 @@ eval opts = case _ of
       DeckFocused focusedDeckId → do
         when (opts.deckId ≡ focusedDeckId && not st.focused) do
           H.modify (DCS._focused .~ true)
-          presentAccessNextActionCardGuideAfterDelay
         when (opts.deckId ≠ focusedDeckId && st.focused) $
-          H.modify (DCS._focused .~ false)
+          H.modify
+            $ (DCS._focused .~ false)
+            ∘ (DCS._presentAccessNextActionCardHint .~ false)
+        whenM (not <$> nextActionCardIsActive) presentAccessNextActionCardHintAfterDelay
     pure next
   HandleHintDismissalMessage msg next → do
     case msg of
@@ -235,6 +243,11 @@ eval opts = case _ of
   where
   getBoundingClientWidth =
     H.liftEff ∘ map _.width ∘ getBoundingClientRect
+
+nextActionCardIsActive ∷ DeckDSL Boolean
+nextActionCardIsActive = do
+  st ← H.get
+  pure $ DCS.activeCard st # is (_Just ∘ _Left ∘ DCS._NextActionCard)
 
 dismissFocusDeckHint ∷ DeckDSL Unit
 dismissFocusDeckHint = do
@@ -316,8 +329,6 @@ handleBackSide opts = case _ of
             H.modify _ { activeCardIndex = Just (activeIx - 1) }
             updateActiveState opts
           H.lift $ P.removeCard opts.deckId cardId
-          H.modify
-            $ (DCS._presentAccessNextActionCardGuide .~ false)
       Back.Rename → do
         showDialog $ Dialog.Rename st.name
       Back.Share → do
@@ -441,47 +452,33 @@ calculateUnwrappable { displayCursor, deckId } { cardId } =
       Card.Draftboard _, _ : L.Nil, _ → cardLen ≡ 1 && mirrorLen ≡ 1
       _, _, _ → false
 
-getDismissedAccessNextActionCardGuideBefore ∷ DeckDSL Boolean
-getDismissedAccessNextActionCardGuideBefore =
+getDismissedAccessNextActionCardHintBefore ∷ DeckDSL Boolean
+getDismissedAccessNextActionCardHintBefore =
   H.lift
     $ either (const $ false) id
     <$> LS.retrieve LSK.dismissedAccessNextActionCardHintKey
 
-storeDismissedAccessNextActionCardGuide ∷ DeckDSL Unit
-storeDismissedAccessNextActionCardGuide =
+presentAccessNextActionCardHintAfterDelay ∷ DeckDSL Unit
+presentAccessNextActionCardHintAfterDelay = void do
+  H.modify (DCS._presentAccessNextActionCardHint .~ false)
+  H.gets _.presentAccessNextActionCardHintCanceler >>= traverse_ cancel
+  sendAfter Config.addCardGuideDelay PresentAccessNextActionCardHint
+    >>= H.modify ∘ (DCS._presentAccessNextActionCardHintCanceler .~ _) ∘ Just
+  where
+  cancel =
+    H.liftAff ∘ flip Aff.cancel (Exception.error "Cancelled")
+
+dismissAccessNextActionCardHint ∷ DeckDSL Unit
+dismissAccessNextActionCardHint = do
+  H.modify (DCS._presentAccessNextActionCardHint .~ false)
   LS.persist LSK.dismissedAccessNextActionCardHintKey true
-
-presentAccessNextActionCardGuideAfterDelay ∷ DeckDSL Unit
-presentAccessNextActionCardGuideAfterDelay = do
-  dismissedBefore ← getDismissedAccessNextActionCardGuideBefore
-  focused ← H.gets _.focused
-  when (not dismissedBefore && focused) do
-    cancelPresentAccessNextActionCardGuide
-    canceler ← sendAfter Config.addCardGuideDelay PresentAccessNextActionCardGuide
-    H.modify $ DCS._presentAccessNextActionCardGuideCanceler .~ Just canceler
-
-cancelPresentAccessNextActionCardGuide ∷ DeckDSL Boolean
-cancelPresentAccessNextActionCardGuide =
-  H.liftAff ∘ maybe (pure false) (flip Aff.cancel $ Exception.error "Cancelled")
-    =<< H.gets _.presentAccessNextActionCardGuideCanceler
-
-dismissAccessNextActionCardGuide ∷ DeckDSL Unit
-dismissAccessNextActionCardGuide =
-  H.gets _.presentAccessNextActionCardGuide >>=
-    flip when do
-      H.modify (DCS._presentAccessNextActionCardGuide .~ false)
-      storeDismissedAccessNextActionCardGuide
-
-resetAccessNextActionCardGuideDelay ∷ DeckDSL Unit
-resetAccessNextActionCardGuideDelay =
-  whenM cancelPresentAccessNextActionCardGuide
-    presentAccessNextActionCardGuideAfterDelay
 
 handleNextAction ∷ DeckOptions → Next.Message → DeckDSL Unit
 handleNextAction opts = case _ of
   Next.AddCard cardType → do
     void $ H.lift $ P.addCard opts.deckId cardType
     updateBackSide opts
+    whenM (not <$> nextActionCardIsActive) presentAccessNextActionCardHintAfterDelay
   Next.PresentReason input cardType → do
     presentReason input cardType
 

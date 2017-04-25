@@ -260,7 +260,7 @@ renderCard opts deckComponent st activeIndex index card =
     ]
     if opts.accessType == AT.ReadOnly
     then
-      [ HH.div (cardProperties st card) cardComponent
+      [ HH.div (cardProperties st card) [ cardComponent ]
       , loadingPanel
       ]
     else
@@ -270,11 +270,14 @@ renderCard opts deckComponent st activeIndex index card =
         (Gripper.gripperDefsForCard st.displayCards card)
         ⊕ [ HH.div
               (cardProperties st card)
-              (cardComponent ⊕ (guard presentAccessNextActionCardGuide $> renderHint))
+              $ fold
+                 [ pure cardComponent
+                 , guard (st.presentAccessNextActionCardHint && isLastCard) $> renderHint
+                 ]
           , loadingPanel
           ]
   where
-  cardComponent = pure case card of
+  cardComponent = case card of
     Left m → renderMeta st m
     Right cd → renderDef opts deckComponent st (index ≡ activeIndex) cd
 
@@ -293,24 +296,26 @@ renderCard opts deckComponent st activeIndex index card =
     Hint.render
       Hint.RightArrow
       (HH.ClassName "sd-access-next-card-hint")
-      DCQ.HideAccessNextActionCardGuide
+      DCQ.HideAccessNextActionCardHint
       hintText
 
-  output ∷ Maybe ICT.InsertableCardIOType
-  output = ICT.outputFor ∘ ICT.fromCardType ∘ _.cardType =<< Utils.hush card
+  insertableCardType ∷ Maybe ICT.InsertableCardType
+  insertableCardType = ICT.fromCardType ∘ _.cardType <$> Utils.hush card
+
+  outputType ∷ Maybe ICT.InsertableCardIOType
+  outputType = ICT.outputFor =<< insertableCardType
 
   hintText ∷ String
   hintText =
     "To do more with "
-      ⊕ (fromMaybe "" $ ICT.printIOType' =<< output)
+      ⊕ (fromMaybe "the output" $ ICT.printIOType' =<< outputType)
+      ⊕ " produced by this "
+      ⊕ (maybe "card" (\iot → ICT.print iot ⊕ " Card") insertableCardType)
       ⊕ " click or drag this gripper to the left and add a new card to the deck."
 
   isLastCard =
     fromMaybe false $
       DCS.eqDisplayCard card ∘ Right <$> DCS.findLastRealCard st
-
-  presentAccessNextActionCardGuide =
-    st.presentAccessNextActionCardGuide ∧ isLastCard ∧ st.focused
 
 renderMeta
   ∷ State
