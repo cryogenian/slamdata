@@ -41,7 +41,7 @@ type RedirectHashPayload =
 parameterParser :: P.Parser (Tuple String String)
 parameterParser = do
   key <- PC.many (PS.noneOf ['=']) <#> A.fromFoldable >>> S.fromCharArray
-  PS.char '='
+  _ <- PS.char '='
   val <- PC.many (PS.noneOf ['&']) <#> A.fromFoldable >>> S.fromCharArray
   pure $ Tuple key val
 
@@ -56,7 +56,7 @@ parametersParser =
 -- |
 uriHashParser :: P.Parser RedirectHashPayload
 uriHashParser = do
-  PS.char '#'
+  _ <- PS.char '#'
   params <- parametersParser
   let
     authUser = SM.lookup "authuser" params

@@ -74,11 +74,10 @@ import SlamData.Workspace.Card.Variables.Eval as VariablesE
 
 runCard
   ∷ ∀ f m
-  . ( MonadAff SlamDataEffects m
-    , QuasarDSL m
-    , Parallel f m
-    , Monad m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ QuasarDSL m
+  ⇒ Parallel f m
+  ⇒ Monad m
   ⇒ CEM.CardEnv
   → CEM.CardState
   → Eval
@@ -90,14 +89,13 @@ runCard env state trans input varMap =
 
 evalCard
   ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk CEM.CardEnv m
-    , MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    , ParQuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
+  ⇒ ParQuasarDSL m
   ⇒ Eval
   → Port.Port
   → Port.DataMap

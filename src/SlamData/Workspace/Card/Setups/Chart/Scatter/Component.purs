@@ -146,7 +146,7 @@ cardEval = case _ of
       Nothing → M.BuildScatter Nothing
       Just a → a
   CC.Load m next → do
-    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    _ ← H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     for_ (m ^? M._BuildScatter ∘ _Just) \r →
       H.modify _{ minSize = r.minSize, maxSize = r.maxSize }
     pure next

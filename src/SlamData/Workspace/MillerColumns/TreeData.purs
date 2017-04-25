@@ -41,7 +41,7 @@ constructTree unfold root as =
     edges = (\bs → L.zip (L.drop 1 bs `L.snoc` root) bs) ∘ unfoldr unfold =<< as
     graph = foldr (\(Tuple k v) → M.alter (Just ∘ maybe (S.singleton v) (S.insert v)) k) M.empty edges
   in
-    CF.unfoldCofree root id (maybe L.Nil L.fromFoldable ∘ flip M.lookup graph)
+    CF.unfoldCofree id (maybe L.Nil L.fromFoldable ∘ flip M.lookup graph) root
 
 -- | This is only suitable for use when every `a` in the tree is unique.
 loadFromTree

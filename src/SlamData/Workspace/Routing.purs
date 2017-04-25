@@ -50,7 +50,7 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId as DID
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils.Path as UP
 
@@ -163,7 +163,8 @@ varMapsForURL ∷ Map.Map CID.CardId Port.VarMap → SM.StrMap Port.URLVarMap
 varMapsForURL =
   SM.fromFoldable
   ∘ map (bimap CID.toString (map $ Sql.print ∘ unwrap))
-  ∘ Map.toList
+  ∘ asList
+  ∘ Map.toUnfoldable
 
 decodeVarMaps ∷ String → Either String (SM.StrMap Port.URLVarMap)
 decodeVarMaps = J.jsonParser >=> J.decodeJson

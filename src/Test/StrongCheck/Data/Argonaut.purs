@@ -14,4 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Common.Render where
+module Test.StrongCheck.Data.Argonaut where
+
+import Prelude
+import Data.Argonaut.JCursor (JCursor)
+import Data.Argonaut.JCursor.Gen (genJCursor)
+import Data.Newtype (class Newtype, unwrap, wrap)
+import Test.StrongCheck.Arbitrary (class Arbitrary)
+
+newtype ArbJCursor = ArbJCursor JCursor
+
+derive instance newtypeArbJCursor ∷ Newtype ArbJCursor _
+
+instance arbitraryArbJCursor ∷ Arbitrary ArbJCursor where
+  arbitrary = wrap <$> genJCursor
+
+runArbJCursor ∷ ArbJCursor → JCursor
+runArbJCursor = unwrap

@@ -33,18 +33,17 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils.Path as PU
-import Utils.SqlSquare (tableRelation, all)
+import Utils.SqlSquared (tableRelation, all)
 
 eval
   ∷ ∀ m
-  . ( MonadAsk CEM.CardEnv m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    )
+  . MonadAsk CEM.CardEnv m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
   ⇒ Maybe String
   → Port.Resource
   → m Port.Out
@@ -60,10 +59,9 @@ eval mfp resource =
 
 eval'
   ∷ ∀ m
-  . ( MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    )
+  . MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → Port.Resource
   → m Port.Resource
@@ -77,7 +75,7 @@ eval' tmp resource = do
         ∘ (Sql._relations .~ tableRelation filePath)
   outputResource ← CEM.liftQ $
     QQ.fileQuery backendPath tmp sql SM.empty
-  CEM.liftQ $ QFS.messageIfFileNotFound
+  _ ← CEM.liftQ $ QFS.messageIfFileNotFound
     outputResource
     "Error saving file, please try another location"
   -- TODO: this error message is pretty obscure. I think it occurs when a query

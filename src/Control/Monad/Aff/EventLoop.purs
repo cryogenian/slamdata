@@ -56,7 +56,8 @@ make go = do
 -- | Like `make` but with an MonadAff constraint.
 make'
   ∷ ∀ eff m a
-  . (MonadAff (avar ∷ AVAR | eff) m, MonadRec m)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ MonadRec m
   ⇒ m (Maybe a)
   → m { breaker ∷ Breaker a, run ∷ m a }
 make' go = liftAff do
@@ -83,7 +84,8 @@ forever go =
 
 forever'
   ∷ ∀ eff m a
-  . (MonadAff (avar ∷ AVAR | eff) m, MonadRec m)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ MonadRec m
   ⇒ m a
   → m { breaker ∷ Breaker Unit, run ∷ m Unit }
 forever' go =

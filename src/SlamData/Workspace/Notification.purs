@@ -33,21 +33,25 @@ import SlamData.Quasar.Error as QE
 
 type DetailedError =
   ∀ m
-  . (Monad m, N.NotifyDSL m, GE.GlobalErrorDSL m)
+  . Monad m
+  ⇒ N.NotifyDSL m
+  ⇒ GE.GlobalErrorDSL m
   ⇒ QE.QError
   → m Unit
 
 notifyError
   ∷ ∀ m
-  . (Monad m, N.NotifyDSL m, GE.GlobalErrorDSL m)
+  . Monad m
+  ⇒ N.NotifyDSL m
+  ⇒ GE.GlobalErrorDSL m
   ⇒ String
   → QE.QError
   → m Unit
 notifyError msg err = do
   case GE.fromQError err of
-    Left details ->
+    Left details →
       N.error msg (Just (N.Details details)) Nothing Nothing
-    Right ge ->
+    Right ge →
       GE.raiseGlobalError ge
 
 loadDeckFail ∷ DetailedError

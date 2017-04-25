@@ -22,7 +22,7 @@ import Ace.Config as AceConfig
 
 import Control.Coroutine (Producer, Consumer, consumer, producer, ($$), runProcess)
 
-import Control.Monad.Aff (Aff, later')
+import Control.Monad.Aff (Aff, delay)
 import Control.Monad.Aff.AVar (AVar, makeVar, makeVar', modifyVar, putVar, takeVar)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff)
@@ -35,6 +35,7 @@ import Data.Array (null, filter, mapMaybe, take, drop)
 import Data.Lens (Lens', lens, (%~), (<>~))
 import Data.Map as M
 import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
+import Data.Time.Duration (Milliseconds(..))
 
 import DOM (DOM)
 
@@ -74,18 +75,18 @@ type FileSystemIO = HalogenIO Query Void (Aff SlamDataEffects)
 
 main ∷ Eff SlamDataEffects Unit
 main = do
-  AceConfig.set AceConfig.basePath $ Config.baseUrl ⊕ "js/ace"
-  AceConfig.set AceConfig.modePath $ Config.baseUrl ⊕ "js/ace"
-  AceConfig.set AceConfig.themePath $ Config.baseUrl ⊕ "js/ace"
+  _ ← AceConfig.set AceConfig.basePath $ Config.baseUrl ⊕ "js/ace"
+  _ ← AceConfig.set AceConfig.modePath $ Config.baseUrl ⊕ "js/ace"
+  _ ← AceConfig.set AceConfig.themePath $ Config.baseUrl ⊕ "js/ace"
 
   HA.runHalogenAff do
-    fork Analytics.enableAnalytics
+    _ ← fork Analytics.enableAnalytics
     permissionTokenHashes ← liftEff $ Permission.retrieveTokenHashes
     wiring ← Wiring.make rootDir Editable mempty permissionTokenHashes
     let ui = H.hoist (runSlam wiring) component
     driver ← runUI ui unit =<< HA.awaitBody
 
-    fork do
+    _ ← fork do
       setSlamDataTitle slamDataVersion
       driver.query $ H.action $ SetVersion slamDataVersion
 
@@ -133,7 +134,8 @@ routeSignal driver = do
 redirects
   ∷ FileSystemIO
   → AVar ListingState
-  → Maybe Routes → Routes
+  → Maybe Routes
+  → Routes
   → Slam Unit
 redirects driver var mbOld = case _ of
   Index →
@@ -151,7 +153,7 @@ redirects driver var mbOld = case _ of
   Salted sort query salt → do
     {canceler} ← liftAff $ takeVar var
 
-    cancel canceler $ error "cancel search"
+    _ ← cancel canceler $ error "cancel search"
 
     liftAff
       $ putVar var initialListingState
@@ -236,7 +238,7 @@ listingProducer var query startingDir = produceSlam $ go startingDir 0
       $ _canceler <>~ canceler
 
   runRequest dir depth emit = do
-    liftAff $ later' requestDelay $ pure unit
+    liftAff $ delay requestDelay
     Quasar.children dir >>= case _ of
       Left e → case GE.fromQError e of
         -- Do not show error message notification if we're in root or searching
@@ -307,7 +309,7 @@ listingProducer var query startingDir = produceSlam $ go startingDir 0
     16
 
   requestDelay =
-    64
+    Milliseconds 64.0
 
   memThisRequest = case _ of
     Nothing → Just 1
@@ -389,5 +391,5 @@ produceSlam
   → Producer a Slam r
 produceSlam recv = do
   v ← lift $ liftAff makeVar
-  lift $ fork $ recv $ liftAff ∘ putVar v
+  _ ← lift $ fork $ recv $ liftAff ∘ putVar v
   producer $ liftAff $ takeVar v

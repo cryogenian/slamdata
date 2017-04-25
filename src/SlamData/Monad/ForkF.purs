@@ -28,7 +28,7 @@ data ForkF eff f x a = ForkF (f x) ((Error → Aff eff Boolean) → a)
 fork ∷ ∀ eff f x. f x → Fork f (Error → Aff eff Boolean)
 fork fx = mkFork $ ForkF fx id
 
-data Fork (f ∷ * → *) a
+data Fork (f ∷ Type → Type) a
 
 mkFork ∷ ∀ eff f x a. ForkF eff f x a → Fork f a
 mkFork = unsafeCoerce

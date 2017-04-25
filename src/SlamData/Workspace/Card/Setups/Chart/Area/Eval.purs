@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Port as Port
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils.Foldable (enumeratedFor_)
 

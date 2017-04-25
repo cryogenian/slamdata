@@ -33,7 +33,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 
 import Data.Array (uncons, sort, reverse)
-import Data.Nullable (toMaybe)
+import Data.Time.Duration (Milliseconds(..))
 
 import DOM (DOM)
 import DOM.Classy.Event (toEvent, fromEvent, target, currentTarget, stopPropagation, preventDefault)
@@ -111,8 +111,10 @@ querySelector
   → HTMLElement
   → Eff (dom ∷ DOM|e) (Maybe HTMLElement)
 querySelector str htmlEl =
-  map (toMaybe ⋙ map elementToHTMLElement)
-  $ P.querySelector str $ elementToParentNode $ htmlElementToElement htmlEl
+  map (map elementToHTMLElement)
+    $ P.querySelector (P.QuerySelector str)
+    $ elementToParentNode
+    $ htmlElementToElement htmlEl
 
 documentTarget ∷ ∀ e. Eff (dom ∷ DOM|e) EventTarget
 documentTarget = htmlDocumentToEventTarget <$> (document =<< window)
@@ -133,4 +135,6 @@ openPopup stringUrl = do
   Nullable.toMaybe <$> open stringUrl "SignIn" windowFeaturesStr window
 
 waitUntilWindowClosed ∷ ∀ eff. Window → Aff (dom ∷ DOM | eff) Unit
-waitUntilWindowClosed = AffUtils.untilA ∘ Aff.later' 250 ∘ liftEff ∘ closed
+waitUntilWindowClosed win = AffUtils.untilA do
+  Aff.delay (Milliseconds 250.0)
+  liftEff $ closed win

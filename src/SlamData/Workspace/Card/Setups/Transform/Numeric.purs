@@ -20,7 +20,7 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Lens (Prism', prism')
-import SqlSquare as Sql
+import SqlSquared as Sql
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen
 

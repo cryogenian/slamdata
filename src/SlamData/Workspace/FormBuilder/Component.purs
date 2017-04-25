@@ -73,7 +73,7 @@ eval = case _ of
     accessType ← H.gets _.accessType
     H.put $ emptyState { accessType = accessType }
     let numExtra = if AT.isEditable accessType then 1 else 0
-    U.replicateA (L.length items + numExtra) (H.modify addItem) ∷ DSL m (L.List Unit)
+    _ ← U.replicateA (L.length items + numExtra) (H.modify addItem) ∷ DSL m (L.List Unit)
 
     let
       stepItem i m =

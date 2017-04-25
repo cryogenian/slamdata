@@ -31,7 +31,8 @@ import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
 mountInfo
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
+  . Monad m
+  ⇒ QuasarDSL m
   ⇒ AnyPath
   → m (Either QError QM.MountConfig)
 mountInfo path = runExceptT do

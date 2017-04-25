@@ -22,7 +22,9 @@ import Data.List as L
 
 enumeratedFor_
   ∷ ∀ a b f m ix
-  . (Applicative m, Foldable f, Semiring ix)
+  . Applicative m
+  ⇒ Foldable f
+  ⇒ Semiring ix
   ⇒ f a
   → (ix × a → m b)
   → m Unit
@@ -51,7 +53,9 @@ splitList chunk inp =
 
 chunkedParTraverse
   ∷ ∀ f m t a b
-  . (Parallel f m, Traversable t, Applicative m)
+  . Parallel f m
+  ⇒ Traversable t
+  ⇒ Applicative m
   ⇒ (a → m b)
   → t a
   → (t a → t (t a))

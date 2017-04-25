@@ -159,13 +159,13 @@ addSource fp = tell (Set.singleton (Source fp))
 addCache ∷ ∀ m. (MonadTell (Set AdditionalSource) m) ⇒ FilePath → m Unit
 addCache fp = tell (Set.singleton (Cache fp))
 
-addSources ∷ ∀ f m. (Foldable f, MonadTell (Set AdditionalSource) m) ⇒ f FilePath → m Unit
+addSources ∷ ∀ f m. Foldable f ⇒ MonadTell (Set AdditionalSource) m ⇒ f FilePath → m Unit
 addSources fps = tell (foldMap (Set.singleton ∘ Source) fps)
 
-addCaches ∷ ∀ f m. (Foldable f, MonadTell (Set AdditionalSource) m) ⇒ f FilePath → m Unit
+addCaches ∷ ∀ f m. Foldable f ⇒ MonadTell (Set AdditionalSource) m ⇒ f FilePath → m Unit
 addCaches fps = tell (foldMap (Set.singleton ∘ Cache) fps)
 
-additionalSources ∷ ∀ f m. (Foldable f, MonadTell (Set AdditionalSource) m) ⇒ f AdditionalSource → m Unit
+additionalSources ∷ ∀ f m. Foldable f ⇒ MonadTell (Set AdditionalSource) m ⇒ f AdditionalSource → m Unit
 additionalSources = tell ∘ foldMap Set.singleton
 
 temporaryOutputResource ∷ ∀ m. MonadAsk CardEnv m ⇒ m FilePath
@@ -183,7 +183,7 @@ localUrlVarMap = do
       (Map.lookup cardId urlVarMaps))
 
 extractResourceVar ∷ ∀ m. MonadThrow QError m ⇒ Port.DataMap → m (String × Port.Resource)
-extractResourceVar dm = case SM.toList (Port.filterResources dm) of
+extractResourceVar dm = case SM.toUnfoldable (Port.filterResources dm) of
   _ : _ : _ → throw "Multiple resources selected"
   r : _ → pure r
   _ → throw "No resource selected"
@@ -202,11 +202,10 @@ liftQ = flip bind (either Throw.throw pure)
 
 runCardEvalM
   ∷ ∀ eff f m a
-  . ( QuasarDSL m
-    , MonadAff eff m
-    , Parallel f m
-    , Monad m
-    )
+  . QuasarDSL m
+  ⇒ MonadAff eff m
+  ⇒ Parallel f m
+  ⇒ Monad m
   ⇒ CardEnv
   → CardState
   → CardEvalM eff a

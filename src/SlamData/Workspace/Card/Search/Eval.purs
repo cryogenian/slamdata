@@ -39,20 +39,19 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Search.Interpret as Search
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Text.Parsing.Parser as PP
 import Text.SlamSearch as SS
 
 evalSearch
   ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk CEM.CardEnv m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    , ParQuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
+  ⇒ ParQuasarDSL m
   ⇒ String
   → Port.Resource
   → m Port.Out
@@ -65,7 +64,7 @@ evalSearch queryText resource = do
     Right q → pure q
 
   fields ← CEM.liftQ do
-    QFS.messageIfFileNotFound
+    _ ← QFS.messageIfFileNotFound
       filePath
       ("Input resource " ⊕ Path.printPath filePath ⊕ " doesn't exist")
     QQ.fields filePath
@@ -87,8 +86,8 @@ evalSearch queryText resource = do
       validateResources inputs
       CEM.addSources inputs
 
-  CEM.liftQ do
-    QQ.viewQuery outputResource sql SM.empty
+  _ ← CEM.liftQ do
+    _ ← QQ.viewQuery outputResource sql SM.empty
     QFS.messageIfFileNotFound
       outputResource
       "Error making search temporary resource"

@@ -34,7 +34,7 @@ import Control.Monad.Writer.Class (class MonadTell)
 import Data.Argonaut (Json)
 import Data.Array as A
 import Data.Foreign (Foreign, toForeign)
-import Data.Foreign.Index (prop)
+import Data.Foreign.Index (readProp)
 import Data.Function (on)
 import Data.Lens ((^.))
 import Data.Map as M
@@ -54,7 +54,7 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Setups.Axis (Axes, buildAxes)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils (hush')
 import Utils.Path as PU
@@ -63,10 +63,9 @@ infixr 3 type M.Map as >>
 
 analysisEval
   ∷ ∀ m p
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
+  . MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
   ⇒ (Axes → p → Array Json → Port.Port)
   → Maybe p
   → (Axes → Maybe p)
@@ -80,24 +79,22 @@ analysisEval build model defaultModel resource = do
     Nothing → CEM.throw "Please select an axis."
 
 type ChartSetupEval p m =
-  ( MonadState CEM.CardState m
-  , MonadThrow CEM.CardError m
-  , MonadAsk CEM.CardEnv m
-  , MonadTell CEM.CardLog m
-  , QuasarDSL m
-  )
+  MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
   ⇒ Maybe p
   → Port.Resource
   → m Port.Out
 
 chartSetupEval
   ∷ ∀ m p
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , MonadAsk CEM.CardEnv m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    )
+  . MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
   ⇒ (p → PU.FilePath → Sql.Sql)
   → (p → Axes → Port.Port)
   → Maybe p
@@ -120,8 +117,8 @@ chartSetupEval buildSql buildPort m resource = do
         CEM.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
           QQ.compile backendPath sql SM.empty
 
-      CEM.liftQ do
-        QQ.viewQuery outputResource sql SM.empty
+      _ ← CEM.liftQ do
+        _ ← QQ.viewQuery outputResource sql SM.empty
         QFS.messageIfFileNotFound
           outputResource
           "Error making search temporary resource"
@@ -132,9 +129,8 @@ chartSetupEval buildSql buildPort m resource = do
 
 analyze
   ∷ ∀ m
-  . ( MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
+  . MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
   ⇒ Port.Resource
   → CEM.CardState
   → m (Array Json × Axes)
@@ -150,7 +146,7 @@ assoc ∷ ∀ a i. a → DSL (value ∷ I | i)
 assoc = EM.set "$$assoc" <<< toForeign
 
 deref ∷ ET.Item → Maybe Foreign
-deref (ET.Item item) = hush' $ prop "$$assoc" item
+deref (ET.Item item) = hush' $ readProp "$$assoc" item
 
 groupOn ∷ ∀ a b. Eq b ⇒ (a → b) → Array a → Array (b × Array a)
 groupOn f = A.groupBy (eq `on` f) >>> map \as → f (NE.head as) × NE.fromNonEmpty A.cons as

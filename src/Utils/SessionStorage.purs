@@ -24,7 +24,7 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 
-import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonParser, encodeJson, printJson)
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonParser, encodeJson)
 import Data.Either (Either(..))
 import Data.Function.Uncurried (Fn3, Fn2, runFn3, runFn2)
 import Data.Maybe (Maybe(..), maybe)
@@ -33,35 +33,37 @@ import DOM (DOM)
 
 foreign import
   setSessionStorageImpl
-    :: forall e
+    ∷ ∀ e
      . Fn2
          String
          String
-         (Eff (dom :: DOM | e) Unit)
+         (Eff (dom ∷ DOM | e) Unit)
 
 foreign import
   getSessionStorageImpl
-    :: forall e a
+    ∷ ∀ e a
      . Fn3
          (Maybe a)
-         (a -> Maybe a)
+         (a → Maybe a)
          String
-         (Eff (dom :: DOM | e) (Maybe String))
+         (Eff (dom ∷ DOM | e) (Maybe String))
 
 setSessionStorage
-  :: forall a e g
-   . (EncodeJson a, MonadEff (dom :: DOM | e) g)
-  => String
-  -> a
-  -> g Unit
+  ∷ ∀ a e g
+  . EncodeJson a
+  ⇒ MonadEff (dom ∷ DOM | e) g
+  ⇒ String
+  → a
+  → g Unit
 setSessionStorage key =
-  liftEff <<< runFn2 setSessionStorageImpl key <<< printJson <<< encodeJson
+  liftEff <<< runFn2 setSessionStorageImpl key <<< show <<< encodeJson
 
 getSessionStorage
-  :: forall a e g
-   . (DecodeJson a, MonadEff (dom :: DOM | e) g)
-  => String
-  -> g (Either String a)
+  ∷ ∀ a e g
+  . DecodeJson a
+  ⇒ MonadEff (dom ∷ DOM | e) g
+  ⇒ String
+  → g (Either String a)
 getSessionStorage key =
   liftEff $
     runFn3 getSessionStorageImpl Nothing Just key <#>

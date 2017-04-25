@@ -84,7 +84,7 @@ throttledProducer throttled trailing (Milliseconds ms) query emit = do
     then writeRef trailing true
     else do
       writeRef throttled true
-      setTimeout (Int.floor ms) do
+      _ ← setTimeout (Int.floor ms) do
         tr ← readRef trailing
         writeRef throttled false
         writeRef trailing false

@@ -30,7 +30,7 @@ module Control.UI.File
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
+import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Aff (Aff, makeAff)
 
@@ -41,10 +41,10 @@ import DOM (DOM)
 import DOM.HTML.Types (HTMLElement)
 
 
-foreign import data FileReader :: *
-foreign import data File :: *
-foreign import data FileList :: *
-foreign import data READ_FILE :: !
+foreign import data FileReader :: Type
+foreign import data File :: Type
+foreign import data FileList :: Type
+foreign import data READ_FILE :: Effect
 
 foreign import fileListToArray :: FileList -> Array File
 foreign import name :: forall e. File -> Eff (file :: READ_FILE |e) String

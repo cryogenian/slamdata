@@ -35,18 +35,17 @@ import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils.Path (FilePath)
-import Utils.SqlSquare (all)
+import Utils.SqlSquared (all)
 
 evalOpen
   ∷ ∀ m
-  . ( MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , MonadAsk CEM.CardEnv m
-    , QuasarDSL m
-    )
+  . MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ QuasarDSL m
   ⇒ Open.Model
   → Port.DataMap
   → m Port.Out

@@ -54,10 +54,10 @@ import Quasar.Types (DirPath, FilePath, CompileResultR)
 
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
-import SqlSquare (Sql, print)
-import SqlSquare as Sql
+import SqlSquared (Sql, print)
+import SqlSquared as Sql
 
-import Utils.SqlSquare (tableRelation)
+import Utils.SqlSquared (tableRelation)
 
 -- | Compiles a query.
 compile
@@ -111,7 +111,8 @@ queryEJsonVM path sql vm =
 -- | Runs a query creating a view mount for the query.
 viewQuery
   ∷ ∀ m
-  . (QuasarDSL m, Monad m)
+  . QuasarDSL m
+  ⇒ Monad m
   ⇒ FilePath
   → Sql
   → SM.StrMap String
@@ -121,14 +122,14 @@ viewQuery dest sql vars = viewQuery' dest (print sql) vars
 -- | Runs a query creating a view mount for the query.
 viewQuery'
   ∷ ∀ m
-  . (QuasarDSL m, Monad m)
+  . QuasarDSL m
+  ⇒ Monad m
   ⇒ FilePath
   → String
   → SM.StrMap String
   → m (Either QError Unit)
 viewQuery' dest sql vars = do
-  liftQuasar $
-    QF.deleteMount (Right dest)
+  _ ← liftQuasar $ QF.deleteMount (Right dest)
   liftQuasar $
     QF.updateMount (Right dest) (QM.ViewConfig
       { query: sql
@@ -168,7 +169,8 @@ sample file offset limit =
 
 count
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
+  . Monad m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → m (Either QError Int)
 count file = runExceptT do
@@ -224,7 +226,8 @@ allFields =
 
 fields
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
+  . Monad m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → m (QError ⊹ (L.List Sql))
 fields file = runExceptT do

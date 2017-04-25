@@ -71,7 +71,7 @@ isLegacy Legacy = true
 isLegacy _ = false
 
 decodeWorkspace ∷ Json → Either String Workspace
-decodeWorkspace = decodeJson >=> \obj ->
+decodeWorkspace = decodeJson >=> \obj →
   { root: _
   } <$> obj .? "root"
 
@@ -118,11 +118,10 @@ decodeCard js = do
 
 loadGraph
   ∷ ∀ f m
-  . ( MonadAff SlamDataEffects m
-    , MonadFork Exn.Error m
-    , Parallel f m
-    , QuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadFork Exn.Error m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → Workspace
   → m (Either QE.QError Current.Workspace)
@@ -151,14 +150,14 @@ loadGraph path { root } = runExceptT do
 
     loadCards ∷ DeckId → Deck → ExceptT QE.QError m (Array CardId)
     loadCards deckId { mirror, cards: cardIds } = do
-      parTraverse loadDeck (Array.nub (fst <$> mirror))
+      parTraverse_ loadDeck (Array.nub (fst <$> mirror))
       mirrorIds ← traverse lookupCardId mirror
       cardIds' ← traverse (loadCard deckId) cardIds
       pure (mirrorIds <> cardIds')
 
     loadCard ∷ DeckId → Card → ExceptT QE.QError m CardId
     loadCard deckId { cardId, model } = do
-      parTraverse loadDeck (Card.childDeckIds model)
+      parTraverse_ loadDeck (Card.childDeckIds model)
       newId ← lift CID.make
       Cache.put (deckId × cardId) newId cardIdMap
       Cache.put newId model cards
@@ -180,7 +179,7 @@ loadGraph path { root } = runExceptT do
         , cards: Map.empty ∷ Map.Map CardId AnyCardModel
         }
     Just rootId → do
-      loadDeck rootId
+      _ ← loadDeck rootId
       decks' ← Cache.snapshot decks
       cards' ← Cache.snapshot cards
       pure
@@ -191,11 +190,10 @@ loadGraph path { root } = runExceptT do
 
 loadCompatWorkspace
   ∷ ∀ f m
-  . ( MonadAff SlamDataEffects m
-    , MonadFork Exn.Error m
-    , Parallel f m
-    , QuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadFork Exn.Error m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QE.QError (WorkspaceStatus × Current.Workspace))
 loadCompatWorkspace path = runExceptT do
@@ -207,10 +205,9 @@ loadCompatWorkspace path = runExceptT do
 
 pruneLegacyData
   ∷ ∀ f m
-  . ( Functor m
-    , Parallel f m
-    , QuasarDSL m
-    )
+  . Functor m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QE.QError Unit)
 pruneLegacyData path = runExceptT do

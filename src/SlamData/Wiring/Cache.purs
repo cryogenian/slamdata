@@ -46,20 +46,23 @@ unCache (Cache m) = m
 
 make
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ m (Cache k v)
 make = liftAff (Cache <$> makeVar' mempty)
 
 make'
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ Map k v
   → m (Cache k v)
 make' = liftAff ∘ map Cache ∘ makeVar'
 
 restore
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ Map k v
   → Cache k v
   → m Unit
@@ -68,7 +71,8 @@ restore m (Cache c) =
 
 get
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ k
   → Cache k v
   → m (Maybe v)
@@ -79,7 +83,8 @@ get key (Cache cache) = liftAff do
 
 alter
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ k
   → (Maybe v → m (Maybe v))
   → Cache k v
@@ -95,7 +100,8 @@ alter key fn (Cache cache) = do
 
 modify
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ k
   → (v → v)
   → Cache k v
@@ -105,7 +111,8 @@ modify key fn (Cache cache) = liftAff do
 
 put
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ k
   → v
   → Cache k v
@@ -115,7 +122,8 @@ put key val (Cache cache) = liftAff do
 
 remove
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ k
   → Cache k v
   → m (Maybe v)
@@ -131,7 +139,8 @@ remove key (Cache cache) = liftAff do
 
 clear
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ Cache k v
   → m Unit
 clear (Cache cache) = liftAff do
@@ -149,7 +158,8 @@ snapshot (Cache cache) = liftAff do
 
 merge
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ Map k v
   → Cache k v
   → m Unit
@@ -157,7 +167,8 @@ merge = mergeWith const
 
 mergeWith
   ∷ ∀ eff m k v
-  . (MonadAff (avar ∷ AVAR | eff) m, Ord k)
+  . MonadAff (avar ∷ AVAR | eff) m
+  ⇒ Ord k
   ⇒ (v → v → v)
   → Map k v
   → Cache k v

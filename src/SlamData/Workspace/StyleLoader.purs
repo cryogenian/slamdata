@@ -21,7 +21,6 @@ import SlamData.Prelude
 import Control.Monad.Eff (Eff)
 
 import Data.Array as Arr
-import Data.Nullable as N
 import Data.String as Str
 import Data.String.Regex as Rgx
 import Data.String.Regex.Flags as RXF
@@ -88,17 +87,17 @@ getHead
    . Eff (dom :: DOM|e) Node
 getHead = do
   doc <- window >>= Window.document
-  nullableHead <-
-    ParentNode.querySelector "head"
+  mbHead <-
+    ParentNode.querySelector (ParentNode.QuerySelector "head")
     $ htmlDocumentToParentNode doc
-  case map elementToNode $ N.toMaybe nullableHead of
+  case elementToNode <$> mbHead of
     Just head -> pure head
     Nothing -> do
       newHead <-
         map elementToNode
         $ createElement "head"
         $ htmlDocumentToDocument doc
-      Node.appendChild newHead $ htmlDocumentToNode doc
+      _ ← Node.appendChild newHead $ htmlDocumentToNode doc
       pure newHead
 
 loadStyles :: forall e. Eff (dom :: DOM|e) Unit

@@ -14,8 +14,10 @@ import Control.Monad.Eff.Ref (REF, newRef, modifyRef, readRef)
 import Control.Monad.Reader.Trans (runReaderT)
 
 import Data.Array as Arr
+import Data.Int as Int
 import Data.Posix.Signal (Signal(SIGTERM))
 import Data.String as S
+import Data.Time.Duration (Milliseconds(..))
 
 import DOM (DOM)
 
@@ -107,7 +109,7 @@ runTests config = do
     withCapabilities $ browserCapabilities Chrome
 
   let
-    defaultTimeout = config.selenium.waitTime
+    defaultTimeout = Milliseconds $ Int.toNumber config.selenium.waitTime
     readerInp = { config, defaultTimeout, driver }
 
   res ← attempt $ flip runReaderT readerInp do
@@ -121,7 +123,7 @@ copyFile
   ∷ ∀ e
   . String
   → String
-  → Aff (fs ∷ FS, avar ∷ AVAR, err ∷ EXCEPTION|e) Unit
+  → Aff (fs ∷ FS, avar ∷ AVAR, exception ∷ EXCEPTION|e) Unit
 copyFile source tgt = do
   apathize $ unlink to
   readFrom ← createReadStream from
@@ -136,14 +138,14 @@ copyFile source tgt = do
         (const $ pure unit)
         (putVar knot unit)
 
-  liftEff $ readFrom `pipe` writeTo
+  _ ← liftEff $ readFrom `pipe` writeTo
   takeVar knot
   where
   from = resolve [source] ""
   to = resolve [tgt] ""
 
-procStartMaxTimeout ∷ Int
-procStartMaxTimeout = 60000
+procStartMaxTimeout ∷ Milliseconds
+procStartMaxTimeout = Milliseconds 60000.0
 
 startProc
   ∷ String

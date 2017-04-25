@@ -23,7 +23,7 @@ import SlamData.Prelude
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.Port as Port
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 initialModel ∷ Port.Port → Ace.Model
 initialModel = case _ of

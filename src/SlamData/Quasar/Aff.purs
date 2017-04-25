@@ -43,7 +43,17 @@ import SlamData.GlobalMenu.Bus (SignInBus)
 
 import OIDC.Crypt as OIDC
 
-type QEff eff = (console ∷ CONSOLE, now ∷ NOW, random ∷ RANDOM, ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
+type QEff eff =
+  ( console ∷ CONSOLE
+  , now ∷ NOW
+  , random ∷ RANDOM
+  , ajax ∷ AX.AJAX
+  , dom ∷ DOM
+  , avar ∷ AVar.AVAR
+  , ref ∷ Ref.REF
+  , exception ∷ Exn.EXCEPTION
+  | eff
+  )
 
 type Wiring r =
   { requestIdTokenBus ∷ RequestIdTokenBus
@@ -55,7 +65,8 @@ type Wiring r =
 -- | may arise, which allows for convenient catching of 404 errors.
 runQuasarF
   ∷ ∀ eff m a
-  . (Monad m, MonadAff (QEff eff) m)
+  . Monad m
+  ⇒ MonadAff (QEff eff) m
   ⇒ Maybe OIDC.IdToken
   → QF.QuasarAFC a
   → m a
