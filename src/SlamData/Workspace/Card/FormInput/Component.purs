@@ -88,11 +88,11 @@ evalCard = case _ of
     case model of
       Card.FormInput (M.TextLike r) → do
         H.modify _{ formInputType = Just r.formInputType }
-        H.query' CS.cpTextLike unit $ H.action $ TextLike.Load r
+        _ ← H.query' CS.cpTextLike unit $ H.action $ TextLike.Load r
         pure next
       Card.FormInput (M.Labeled r) → do
         H.modify _{ formInputType = Just r.formInputType }
-        H.query' CS.cpLabeled unit $ H.action $ Labeled.Load r
+        _ ← H.query' CS.cpLabeled unit $ H.action $ Labeled.Load r
         pure next
       Card.FormInput M.Static → do
         H.modify _{ formInputType = Just FIT.Static }
@@ -103,15 +103,15 @@ evalCard = case _ of
     case input of
       SetupTextLikeFormInput p → do
         H.modify _{ formInputType = Just p.formInputType }
-        H.query' CS.cpTextLike unit $ H.action $ TextLike.Setup p
+        _ ← H.query' CS.cpTextLike unit $ H.action $ TextLike.Setup p
         pure next
       SetupLabeledFormInput p → do
         H.modify _{ formInputType = Just p.formInputType }
-        H.query' CS.cpLabeled unit $ H.action $ Labeled.Setup p
+        _ ← H.query' CS.cpLabeled unit $ H.action $ Labeled.Setup p
         pure next
       CategoricalMetric metric → do
         H.modify _{ formInputType = Just FIT.Static }
-        H.query' CS.cpMetric unit $ H.action $ Metric.SetMetric metric
+        _ ← H.query' CS.cpMetric unit $ H.action $ Metric.SetMetric metric
         pure next
       _ →
         pure next

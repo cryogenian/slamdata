@@ -199,14 +199,14 @@ render state =
                    [ ]
                  else
                    [ HH.h5_ [ HH.text "Users" ] ]
-                   ⊕ (foldMap renderUserOrGroup $ SM.toList state.userPermissions)
+                   ⊕ (foldMap renderUserOrGroup $ asList $ SM.toUnfoldable state.userPermissions)
               )
             ⊕ (if SM.isEmpty state.groupPermissions
                  then
                    [ ]
                  else
                    [ HH.h5_ [ HH.text "Groups" ] ]
-                   ⊕ (foldMap renderUserOrGroup $ SM.toList state.groupPermissions)
+                   ⊕ (foldMap renderUserOrGroup $ asList $ SM.toUnfoldable state.groupPermissions)
               )
             ⊕ (if Arr.null state.tokenPermissions
                  then
@@ -559,7 +559,7 @@ deletePermission
 deletePermission permissionMap = do
   r ← H.liftEff $ newRef $ Map.empty × Map.size permissionMap
   resultVar ← H.liftAff makeVar
-  H.lift $ chunkedParTraverse (go r resultVar) (Map.toList permissionMap) (splitList 20) L.concat
+  _ ← H.lift $ chunkedParTraverse (go r resultVar) (Map.toUnfoldable permissionMap) (splitList 20) L.concat
   H.liftAff $ takeVar resultVar
   where
   go r resultVar (pid × act) = do
@@ -588,7 +588,7 @@ adjustPermissions prs sharingInput =
       Set.fromFoldable $ map QTA.Action $ Model.sharingActions sharingInput View
 
 
-    obj = foldl objFoldFn { users: SM.empty, groups: SM.empty } $ Map.toList folded
+    obj = foldl objFoldFn { users: SM.empty, groups: SM.empty } $ asList $ Map.toUnfoldable folded
 
     -- Set.subset is sooooo slow :( @crygoenian
     subset ∷ ∀ a. Ord a ⇒ Set.Set a → Set.Set a → Boolean

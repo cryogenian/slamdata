@@ -64,7 +64,8 @@ import Utils.Ace (RangeRec)
 
 children
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
+  . Monad m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
 children dir = runExceptT do
@@ -76,7 +77,8 @@ children dir = runExceptT do
 
 transitiveChildren
   ∷ ∀ f m
-  . (Parallel f m, QuasarDSL m)
+  . Parallel f m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
 transitiveChildren start = runExceptT do
@@ -84,7 +86,7 @@ transitiveChildren start = runExceptT do
   cs ← parTraverse go rs
   pure $ rs <> join cs
   where
-  go :: R.Resource → ExceptT QError m (Array R.Resource)
+  go ∷ R.Resource → ExceptT QError m (Array R.Resource)
   go r = case R.getPath r of
     Left dir → do
       crs ← ExceptT $ transitiveChildren dir
@@ -93,7 +95,8 @@ transitiveChildren start = runExceptT do
 
 listing
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
 listing p =
@@ -116,7 +119,8 @@ listing p =
 -- | the end of the name.
 getNewName
   ∷ ∀ m
-  . (Monad m, QuasarDSL m)
+  . Monad m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → String
   → m (Either QError String)
@@ -151,11 +155,10 @@ getNewName parent name = do
 -- | `Nothing` in case no resource existed at the requested source path.
 move
   ∷ ∀ f m
-  . ( MonadAff SlamDataEffects m
-    , MonadFork Error m
-    , QuasarDSL m
-    , Parallel f m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadFork Error m
+  ⇒ QuasarDSL m
+  ⇒ Parallel f m
   ⇒ R.Resource
   → AnyPath
   → m (Either QError (Maybe AnyPath))
@@ -163,9 +166,9 @@ move src tgt = do
   let
     srcPath = R.getPath src
 
-  runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
+  _ ← runExceptT ∘ traverse_ cleanViewMounts $ srcPath ^? _Left
 
-  runExceptT case src of
+  _ ← runExceptT case src of
     R.Workspace wsDir → replacePathsInWorkspace wsDir
     _ → pure unit
 
@@ -187,7 +190,7 @@ move src tgt = do
     let
       updated =
         ws.cards
-          # Map.toList
+          # Map.toUnfoldable
           # List.mapMaybe (sequence ∘ map (replacePaths wsDir))
           # Map.fromFoldable
       ws' = ws { cards = Map.union updated ws.cards }
@@ -349,11 +352,10 @@ move src tgt = do
 
 delete
   ∷ ∀ f m
-  . ( MonadAff SlamDataEffects m
-    , MonadFork Error m
-    , QuasarDSL m
-    , Parallel f m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadFork Error m
+  ⇒ QuasarDSL m
+  ⇒ Parallel f m
   ⇒ R.Resource
   → m (Either QError (Maybe R.Resource))
 delete resource =
@@ -377,7 +379,7 @@ delete resource =
       d = (res ^. R._root) </> P.dir Config.trashFolder
       path = (res # R._root .~ d) ^. R._path
     name ← ExceptT $ getNewName d (res ^. R._name)
-    ExceptT $ move res (path # R._nameAnyPath .~ name)
+    _ ← ExceptT $ move res (path # R._nameAnyPath .~ name)
     pure ∘ Just $ R.Directory d
 
   alreadyInTrash ∷ R.Resource → Boolean
@@ -404,7 +406,8 @@ delete resource =
 
 forceDelete
   ∷ ∀ f m
-  . (QuasarDSL m, Parallel f m)
+  . QuasarDSL m
+  ⇒ Parallel f m
   ⇒ R.Resource
   → ExceptT QError m Unit
 forceDelete res =
@@ -413,12 +416,13 @@ forceDelete res =
       ExceptT ∘ liftQuasar $ QF.deleteMount (R.getPath res)
     _ → do
       let path = R.getPath res
-      traverse cleanViewMounts $ path ^? _Left
+      traverse_ cleanViewMounts $ path ^? _Left
       ExceptT ∘ liftQuasar $ QF.deleteData path
 
 cleanViewMounts
   ∷ ∀ f m
-  . (Parallel f m, QuasarDSL m)
+  . Parallel f m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → ExceptT QError m Unit
 cleanViewMounts =
@@ -433,7 +437,8 @@ cleanViewMounts =
 
 messageIfFileNotFound
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → String
   → m (Either QError (Maybe String))
@@ -448,7 +453,8 @@ messageIfFileNotFound path defaultMsg =
 
 dirNotAccessible
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Maybe QF.QError)
 dirNotAccessible path =
@@ -456,7 +462,8 @@ dirNotAccessible path =
 
 fileNotAccessible
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ FilePath
   → m (Maybe QF.QError)
 fileNotAccessible path =

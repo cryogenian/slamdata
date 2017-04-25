@@ -74,7 +74,7 @@ columnPaths (Column.ColumnOptions colSpec) (root × selection) =
     sels = Nothing : (Just <$> selection)
     cols = L.zip sels paths
   in
-    L.mapWithIndex (flip Tuple) $ L.reverse $
+    L.mapWithIndex Tuple $ L.reverse $
       case L.head paths of
         Just selPath | colSpec.isLeaf selPath → L.drop 1 cols
         _ → cols

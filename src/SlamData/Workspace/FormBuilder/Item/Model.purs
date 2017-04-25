@@ -37,9 +37,9 @@ import Data.Lens (Lens', lens)
 
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
-import SlamData.SqlSquare.Tagged as SqlT
+import SlamData.SqlSquared.Tagged as SqlT
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen

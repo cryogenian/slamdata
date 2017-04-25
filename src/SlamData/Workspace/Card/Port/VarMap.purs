@@ -37,9 +37,9 @@ import Data.Argonaut.Encode (class EncodeJson)
 
 import Matryoshka (embed, transAna)
 
-import SqlSquare (Sql)
-import SqlSquare as Sql
-import SqlSquare.Parser as SqlP
+import SqlSquared (Sql)
+import SqlSquared as Sql
+import SqlSquared.Parser as SqlP
 
 import Text.Markdown.SlamDown.Syntax.Value as SDV
 

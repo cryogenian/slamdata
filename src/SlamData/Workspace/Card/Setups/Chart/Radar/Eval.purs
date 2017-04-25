@@ -47,7 +47,7 @@ import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils.Array (enumerate)
 
@@ -170,12 +170,12 @@ buildOptions r radarData = do
         radarData
 
   series ∷ Array (DSL ETP.RadarSeriesI)
-  series = (enumerate radarData) <#> \(ix × {series}) → do
+  series = (enumerate radarData) <#> \(ix × {series: ss }) → do
     E.radarIndex $ Int.toNumber ix
     E.symbol ET.Circle
     let
-      allKeys = foldMap (Set.fromFoldable ∘ M.keys ∘ _.items) series
-    E.buildItems $ for_ series \serie → E.addItem do
+      allKeys = foldMap (Set.fromFoldable ∘ M.keys ∘ _.items) ss
+    E.buildItems $ for_ ss \serie → E.addItem do
       for_ serie.name E.name
       E.buildValues $ for_ allKeys \k →
         case M.lookup k serie.items of
@@ -209,9 +209,9 @@ buildOptions r radarData = do
       radarData
 
   radars ∷ Array (DSL ETP.RadarI)
-  radars = radarData <#> \{name, series, x, y, radius} → do
+  radars = radarData <#> \{name, series: ss, x, y, radius} → do
     let
-      allKeys = foldMap (Set.fromFoldable ∘ M.keys ∘ _.items) series
+      allKeys = foldMap (Set.fromFoldable ∘ M.keys ∘ _.items) ss
 
     E.indicators $ for_ allKeys \k → E.indicator do
       E.name k

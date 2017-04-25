@@ -46,7 +46,7 @@ import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils.Foldable (enumeratedFor_)
 

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.SqlSquare.Tagged where
+module SlamData.SqlSquared.Tagged where
 
 import SlamData.Prelude
 
@@ -27,8 +27,8 @@ import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Data.String.Regex.Unsafe as URX
 
-import SqlSquare (Sql)
-import SqlSquare as Sql
+import SqlSquared (Sql)
+import SqlSquared as Sql
 
 import Utils (stringToNumber, stringToBoolean)
 

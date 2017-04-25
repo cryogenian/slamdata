@@ -20,6 +20,8 @@ import Prelude
 
 import Control.Monad.Reader.Class (ask)
 
+import Data.Time.Duration (Milliseconds)
+
 import Selenium.Monad (later)
 
 import Test.Feature.Log (warnMsg)
@@ -32,7 +34,7 @@ type SlamFeature = Feature (SlamFeatureEffects ()) (config :: Config)
 getConfig :: SlamFeature Config
 getConfig = _.config <$> ask
 
-waitTime :: Int -> SlamFeature Unit
+waitTime :: Milliseconds -> SlamFeature Unit
 waitTime t = do
   warnMsg $ "Warning: Tests manually waited for " <> show t <> " milliseconds."
   later t $ pure unit

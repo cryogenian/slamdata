@@ -24,9 +24,9 @@ import Data.NonEmpty as NE
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
-import SqlSquare as Sql
+import SqlSquared as Sql
 import Utils.Path as PU
-import Utils.SqlSquare (tableRelation)
+import Utils.SqlSquared (tableRelation)
 
 buildBasicSql
   ∷ ∀ p

@@ -70,7 +70,7 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), emptyVarMap, _VarMapValue)
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
@@ -160,7 +160,7 @@ filterResources = SM.fold go SM.empty
     go m _ _ = m
 
 extractResource ∷ DataMap → Maybe Resource
-extractResource = map snd ∘ List.head ∘ SM.toList ∘ filterResources
+extractResource = map snd ∘ List.head ∘ SM.toUnfoldable ∘ filterResources
 
 extractFilePath ∷ DataMap → Maybe PU.FilePath
 extractFilePath = map (view _filePath) ∘ extractResource

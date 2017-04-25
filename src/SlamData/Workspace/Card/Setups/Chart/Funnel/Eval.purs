@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Port as Port
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
@@ -174,7 +174,7 @@ buildOptions r funnelData = do
       E.emphasis do
         E.textStyle $ E.fontFamily "Ubuntu, sans"
         E.positionInside
-    E.buildItems $ for_ (M.toList items) \(name × value) → E.addItem do
+    E.buildItems $ for_ (asList $ M.toUnfoldable items) \(name × value) → E.addItem do
       E.name name
       E.value value
     traverse_ (E.top ∘ ET.Percent) y

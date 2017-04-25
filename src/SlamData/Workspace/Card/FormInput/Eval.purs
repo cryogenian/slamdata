@@ -49,11 +49,11 @@ import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-import SqlSquare (Sql)
-import SqlSquare as Sql
+import SqlSquared (Sql)
+import SqlSquared as Sql
 
 import Utils (stringToNumber)
-import Utils.SqlSquare (all, asRel, tableRelation)
+import Utils.SqlSquared (all, asRel, tableRelation)
 
 
 -- | I removed additional variable from this (It used to be `QueryExpr`)
@@ -63,14 +63,13 @@ import Utils.SqlSquare (all, asRel, tableRelation)
 -- | @cryogenian
 eval
   ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk CEM.CardEnv m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , MonadState CEM.CardState m
-    , QuasarDSL m
-    , ParQuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ MonadState CEM.CardState m
+  ⇒ QuasarDSL m
+  ⇒ ParQuasarDSL m
   ⇒ Sql
   → Port.Resource
   → m Port.Out
@@ -86,8 +85,8 @@ eval sql r = do
 
   validateResources inputs
   CEM.addSources inputs
-  CEM.liftQ do
-    QQ.viewQuery resource sql SM.empty
+  _ ← CEM.liftQ do
+    _ ← QQ.viewQuery resource sql SM.empty
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   let
     varMap =
@@ -98,14 +97,13 @@ eval sql r = do
 
 evalLabeled
   ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk CEM.CardEnv m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , MonadState CEM.CardState m
-    , QuasarDSL m
-    , ParQuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ MonadState CEM.CardState m
+  ⇒ QuasarDSL m
+  ⇒ ParQuasarDSL m
   ⇒ LR.Model
   → Port.SetupLabeledFormInputPort
   → Port.Resource
@@ -159,14 +157,13 @@ evalLabeled m p r = do
 
 evalTextLike
   ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk CEM.CardEnv m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , MonadState CEM.CardState m
-    , QuasarDSL m
-    , ParQuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ MonadState CEM.CardState m
+  ⇒ QuasarDSL m
+  ⇒ ParQuasarDSL m
   ⇒ TLR.Model
   → Port.SetupTextLikeFormInputPort
   → Port.Resource

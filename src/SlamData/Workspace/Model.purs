@@ -81,12 +81,14 @@ encode ws =
 
   where
     cards =
-      Map.toList ws.cards
+      Map.toUnfoldable ws.cards
+        # asList
         # map (bimap CID.toString Card.encode)
         # StrMap.fromFoldable
 
     decks =
-      Map.toList ws.decks
+      Map.toUnfoldable ws.decks
+        # asList
         # map (bimap DID.toString Deck.encode)
         # StrMap.fromFoldable
 
@@ -94,7 +96,7 @@ eqWorkspace ∷ Workspace → Workspace → Boolean
 eqWorkspace w1 w2 =
   w1.rootId ≡ w2.rootId
   && w1.cards ≡ w2.cards
-  && F.and (List.zipWith eqDeckPair (Map.toList w1.decks) (Map.toList w2.decks))
+  && F.and (List.zipWith eqDeckPair (Map.toUnfoldable w1.decks) (Map.toUnfoldable w2.decks))
     where
       eqDeckPair d1 d2 =
         fst d1 ≡ fst d2 && Deck.eqDeck (snd d1) (snd d2)

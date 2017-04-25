@@ -1,6 +1,8 @@
 module Test.SlamData.Feature.Test.FlipDeck where
 
-import SlamData.Prelude (Unit, ($), bind, unit, pure)
+import SlamData.Prelude hiding (sequence)
+
+import Data.Time.Duration (Milliseconds(..))
 
 import Selenium.Monad (later, sequence)
 import Test.Feature.Log (successMsg, warnMsg)
@@ -63,7 +65,7 @@ test = do
     Interact.insertDisplayMarkdownCardInLastDeck
     Expect.textInDisplayMarkdownCard "Quarterly"
     warnMsg "https://github.com/slamdata/slamdata/issues/1077, we don't know if workspace has been saved already"
-    later 1000 $ pure unit
+    later (Milliseconds 1000.0) $ pure unit
     Interact.flipDeck
     Expect.backsideMenuPresented
     Interact.publishDeck

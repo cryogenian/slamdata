@@ -41,7 +41,7 @@ import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Routing (Routes(..))
 
-class WorkspaceDSL (m ∷ * → *) where
+class WorkspaceDSL (m ∷ Type → Type) where
   navigate ∷ Routes → m Unit
 
 instance workspaceDSLMaybeT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (MaybeT m) where
@@ -55,10 +55,9 @@ instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (Ha
 
 navigateToDeck
   ∷ ∀ m eff
-  . ( MonadAsk Wiring m
-    , MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
-    , WorkspaceDSL m
-    )
+  . MonadAsk Wiring m
+  ⇒ MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
+  ⇒ WorkspaceDSL m
   ⇒ L.List DeckId
   → m Unit
 navigateToDeck = case _ of
@@ -70,9 +69,8 @@ navigateToDeck = case _ of
 
 navigateToIndex
   ∷ ∀ m eff
-  . ( MonadAsk Wiring m
-    , MonadEff (dom ∷ DOM | eff) m
-    )
+  . MonadAsk Wiring m
+  ⇒ MonadEff (dom ∷ DOM | eff) m
   ⇒ m Unit
 navigateToIndex = do
   { path } ← Wiring.expose

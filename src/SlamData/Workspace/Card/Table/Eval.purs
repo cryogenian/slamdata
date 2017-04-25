@@ -36,10 +36,9 @@ import SlamData.Workspace.Card.Table.Model as M
 
 eval
   ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
+  . MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
   ⇒ M.Model
   → Port.Port
   → Port.DataMap

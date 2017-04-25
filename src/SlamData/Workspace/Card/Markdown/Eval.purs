@@ -39,8 +39,8 @@ import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 
-import SlamData.SqlSquare.Tagged as SqlT
-import SqlSquare as Sql
+import SlamData.SqlSquared.Tagged as SqlT
+import SqlSquared as Sql
 
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE
@@ -52,9 +52,8 @@ import Utils.Path (DirPath)
 
 evalMarkdownForm
   ∷ ∀ m
-  . ( MonadEff SlamDataEffects m
-    , Monad m
-    )
+  . MonadEff SlamDataEffects m
+  ⇒ Monad m
   ⇒ MD.Model
   → SD.SlamDownP Port.VarMapValue
   → Port.DataMap
@@ -66,12 +65,11 @@ evalMarkdownForm model doc varMap = do
 
 evalMarkdown
   ∷ ∀ m
-  . ( MonadEff SlamDataEffects m
-    , MonadAsk CEM.CardEnv m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    )
+  . MonadEff SlamDataEffects m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
   ⇒ String
   → Port.DataMap
   → m Port.Out
@@ -96,11 +94,10 @@ findFields = SDT.everything (const mempty) extractField
 
 evalEmbeddedQueries
   ∷ ∀ m
-  . ( MonadEff SlamDataEffects m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    )
+  . MonadEff SlamDataEffects m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
   ⇒ SM.StrMap String
   → DirPath
   → SD.SlamDownP Port.VarMapValue

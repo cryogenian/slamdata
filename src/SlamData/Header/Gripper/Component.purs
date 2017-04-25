@@ -19,7 +19,6 @@ module SlamData.Header.Gripper.Component where
 import SlamData.Prelude
 
 import Data.Int as Int
-import Data.Nullable as N
 
 import DOM.Event.Event as DEE
 import DOM.Event.EventTarget as Etr
@@ -179,9 +178,8 @@ eval sel (Init next) = do
       >>= Win.document
 
   mbNavEl ←
-    H.liftEff
-      $ Pn.querySelector sel (Ht.htmlDocumentToParentNode doc)
-      <#> N.toMaybe
+    H.liftEff $ Pn.querySelector (Pn.QuerySelector sel) (Ht.htmlDocumentToParentNode doc)
+
   let
     evntify ∷ ∀ a. a → { clientY ∷ Number }
     evntify = unsafeCoerce

@@ -23,17 +23,16 @@ module Halogen.Component.Utils.Debounced
 
 import Prelude
 
-import Control.Monad.Aff (cancel, forkAff, later')
+import Control.Monad.Aff (cancel, forkAff, delay)
 import Control.Monad.Aff.AVar (AVAR, makeVar, makeVar', peekVar, putVar, takeVar)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Exception as Exn
 
 import Data.Either as E
 import Data.Foldable (traverse_)
-import Data.Int as Int
 import Data.Lens (Prism', preview, (.~))
 import Data.Maybe (Maybe(..))
-import Data.Time.Duration (Milliseconds(..))
+import Data.Time.Duration (Milliseconds)
 
 import Halogen as H
 import Halogen.Query.EventSource as ES
@@ -67,7 +66,7 @@ debouncedEventSource
   . MonadAff (avar ∷ AVAR | eff) m
   ⇒ Milliseconds
   → H.HalogenM s f g p o m (DebounceTrigger f m)
-debouncedEventSource (Milliseconds ms) = do
+debouncedEventSource ms = do
   emitVar ← liftAff makeVar
   cancelVar ← liftAff $ makeVar' Nothing
   let
@@ -82,6 +81,7 @@ debouncedEventSource (Milliseconds ms) = do
       emit ← peekVar emitVar
       takeVar cancelVar >>= traverse_ (flip cancel $ Exn.error "Debounced")
       putVar cancelVar <<< Just =<< forkAff do
-        later' (Int.floor ms) $ emit $ E.Left $ k ES.Listening
+        delay ms
+        emit $ E.Left $ k ES.Listening
 
   H.subscribe source $> push

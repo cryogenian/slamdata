@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Data.Array (filter)
 import Data.Lens (Lens', lens)
-import Data.List as List
 import Data.String.Regex as Rx
 import Data.String.Regex.Flags as RXF
 import Data.StrMap as SM
@@ -46,7 +45,7 @@ stateFromViewInfo :: { query :: String, vars :: SM.StrMap String } -> State
 stateFromViewInfo { query, vars } =
   processState
     { initialQuery: Just query
-    , vars: List.toUnfoldable (SM.toList vars)
+    , vars: SM.toUnfoldable vars
     }
 
 emptyVar :: Tuple String String

@@ -39,7 +39,7 @@ variablesChartScenario =
 test ∷ SlamFeature Unit
 test =
   variablesChartScenario "Make embeddable patients-city charts" ["https://github.com/slamdata/slamdata/issues/1197"] do
-    tryRepeatedlyTo $ script """
+    _ ← tryRepeatedlyTo $ script """
       var run = function() {
         var __init = echarts.init;
         echarts.init = function (el) {

@@ -46,7 +46,7 @@ import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
@@ -193,8 +193,8 @@ buildOptions r pieData = do
       pure $ s ⊕ ":" ⊕ i
 
   series ∷ ∀ i. DSL (pie ∷ ETP.I|i)
-  series = for_ pieData \{x, y, radius: parallelR, series} →
-    for_ series \{radius, items, name} → E.pie do
+  series = for_ pieData \{x, y, radius: parallelR, series: ss} →
+    for_ ss \{radius, items, name} → E.pie do
       E.label do
         E.normal E.hidden
         E.emphasis E.hidden
@@ -210,7 +210,7 @@ buildOptions r pieData = do
 
       for_ name E.name
 
-      E.buildItems $ for_ (M.toList $ items) \(key × value) →
+      E.buildItems $ for_ (asList $ M.toUnfoldable $ items) \(key × value) →
         E.addItem do
           E.value value
           E.name $ foldMap (flip append ":") name ⊕ key

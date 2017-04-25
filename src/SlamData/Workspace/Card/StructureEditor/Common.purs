@@ -251,7 +251,7 @@ analyse items path =
     x →
       ofValue item path : acc
 
-countFreq ∷ ∀ f a. (Foldable f, Ord a) ⇒ Int → f a → M.Map a Weight
+countFreq ∷ ∀ f a. Foldable f ⇒ Ord a ⇒ Int → f a → M.Map a Weight
 countFreq total = compute ∘ foldl (flip go) M.empty
   where
   go ∷ a → M.Map a Int → M.Map a Int

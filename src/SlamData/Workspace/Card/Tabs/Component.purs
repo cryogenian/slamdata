@@ -178,7 +178,7 @@ evalCard = case _ of
   CC.ReceiveState _ next →
     pure next
   CC.ReceiveDimensions _ reply → do
-    H.queryAll (H.action DCQ.UpdateCardSize)
+    _ ← H.queryAll (H.action DCQ.UpdateCardSize)
     pure (reply High)
 
 evalTabs ∷ CardOptions → Query ~> TabsDSL

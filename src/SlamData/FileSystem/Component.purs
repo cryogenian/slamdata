@@ -128,7 +128,7 @@ render state@{ version, sort, salt, path } =
       , content
           [ HH.slot' CS.cpSearch unit Search.component unit $ HE.input HandleSearch
           , HH.div_
-            [ HH.slot' CS.cpBreadcrumbs unit Breadcrumbs.component {path, sort, salt} absurd
+            [ Breadcrumbs.render { path, sort, salt }
             , toolbar state
             ]
           , row [ sorting state ]
@@ -199,11 +199,11 @@ eval = case _ of
       ∘ (State._salt .~ page.salt)
       ∘ (State._sort .~ page.sort)
       ∘ (State._path .~ page.path)
-    H.query' CS.cpListing unit $ H.action $ Listing.Reset
-    H.query' CS.cpSearch unit $ H.action $ Search.SetLoading true
-    H.query' CS.cpSearch unit $ H.action $ Search.SetValue $ fromMaybe "" page.query
-    H.query' CS.cpSearch unit $ H.action $ Search.SetValid true
-    H.query' CS.cpSearch unit $ H.action $ Search.SetPath page.path
+    _ ← H.query' CS.cpListing unit $ H.action $ Listing.Reset
+    _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetLoading true
+    _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetValue $ fromMaybe "" page.query
+    _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetValid true
+    _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetPath page.path
     resort
     pure next
 
@@ -234,11 +234,11 @@ eval = case _ of
 
   ShowHiddenFiles next → do
     H.modify $ State._showHiddenFiles .~ true
-    H.query' CS.cpListing unit $ H.action $ Listing.SetIsHidden false
+    _ ← H.query' CS.cpListing unit $ H.action $ Listing.SetIsHidden false
     pure next
   HideHiddenFiles next → do
     H.modify $ State._showHiddenFiles .~ false
-    H.query' CS.cpListing unit $ H.action $ Listing.SetIsHidden true
+    _ ← H.query' CS.cpListing unit $ H.action $ Listing.SetIsHidden true
     pure next
 
   Configure next → do
@@ -258,9 +258,9 @@ eval = case _ of
         dirRes = R.Directory dirPath
         dirItem = PhantomItem dirRes
         hiddenFile = dirPath </> file (Config.folderMark)
-      H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Add dirItem
+      _ ← H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Add dirItem
       ExceptT $ API.save hiddenFile jsonEmptyObject
-      H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Filter (_ ≠ dirItem)
+      _ ← H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Filter (_ ≠ dirItem)
       pure dirRes
     case result of
       Left err → case GE.fromQError err of
@@ -348,7 +348,7 @@ eval = case _ of
         R.Database path' → (\p → path' ≡ (p </> dir "")) <$> H.gets _.path
         _ → pure false
       unless isCurrentMount do
-        H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount m)
+        _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount m)
         dismissMountHint
         resort
     pure next
@@ -370,8 +370,8 @@ eval = case _ of
   HandleNotifications NC.ExpandGlobalMenu next → do
     gripperState ← queryHeaderGripper $ H.request Gripper.GetState
     when (gripperState ≠ Just Gripper.Opened) do
-      queryHeaderGripper $ H.action $ Gripper.StartDragging 0.0
-      queryHeaderGripper $ H.action Gripper.StopDragging
+      _ ← queryHeaderGripper $ H.action $ Gripper.StartDragging 0.0
+      _ ← queryHeaderGripper $ H.action Gripper.StopDragging
       pure unit
     pure next
   HandleNotifications _ next →
@@ -387,16 +387,16 @@ eval = case _ of
     H.liftEff $ setLocation $ browseURL value st.sort salt st.path
     pure next
   SetLoading bool next → do
-    H.query' CS.cpSearch unit $ H.action $ Search.SetLoading bool
+    _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetLoading bool
     pure next
   SetIsSearching bool next → do
-    H.query' CS.cpListing unit $ H.action $ Listing.SetIsSearching bool
+    _ ← H.query' CS.cpListing unit $ H.action $ Listing.SetIsSearching bool
     pure next
   AddListings items next → do
-    H.query' CS.cpListing unit $ H.action $ Listing.Adds items
+    _ ← H.query' CS.cpListing unit $ H.action $ Listing.Adds items
     pure next
   ShowError message next → do
-    H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.Error message
+    _ ← H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.Error message
     pure next
   HandleSignInMessage message next → do
     when (message ≡ GlobalMenu.SignInSuccess) (H.liftEff Browser.reload)
@@ -429,14 +429,14 @@ handleItemMessage = case _ of
       void $ H.query' CS.cpDialog unit $ H.action $ Dialog.AddDirsToRename x
   Item.Remove res → do
     -- Replace actual item with phantom
-    H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
-    H.query' CS.cpListing unit $ H.action $ Listing.Add $ PhantomItem res
+    _ ← H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
+    _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ PhantomItem res
     -- Save order of items during deletion (or phantom will be on top of list)
     resort
     -- Try to delete
     mbTrashFolder ← H.lift $ API.delete res
     -- Remove phantom resource after we have response from server
-    H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
+    _ ← H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
     case mbTrashFolder of
       Left err → do
         -- Error occured: put item back and show dialog
@@ -515,10 +515,9 @@ uploadFileSelected f = do
                  else if isApplicationJSON content'
                       then applicationJSON
                       else API.ldJSON
-      H.query' CS.cpListing unit $ H.action (Listing.Add fileItem)
+      _ ← H.query' CS.cpListing unit $ H.action (Listing.Add fileItem)
       f' ← API.makeFile fileName (CustomData mime content')
-      H.query' CS.cpListing unit $ H.action $
-        Listing.Filter (not ∘ eq res ∘ itemResource)
+      _ ← H.query' CS.cpListing unit $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
       case f' of
         Left err → handleError err
         Right _ →

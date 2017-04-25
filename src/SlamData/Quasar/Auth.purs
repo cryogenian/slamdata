@@ -37,11 +37,12 @@ import SlamData.Quasar.Auth.Authentication (AuthEffects)
 import Quasar.Advanced.QuasarAF.Interpreter.Affjax (authHeader, permissionsHeader)
 
 class QuasarAuthDSL m where
-  getIdToken :: m (Maybe OIDC.IdToken)
+  getIdToken ∷ m (Maybe OIDC.IdToken)
 
 authHeaders
   ∷ ∀ m eff
-  . (MonadEff (AuthEffects eff) m, QuasarAuthDSL m)
+  . MonadEff (AuthEffects eff) m
+  ⇒ QuasarAuthDSL m
   ⇒ m (Array RequestHeader)
 authHeaders = do
   idToken ← getIdToken

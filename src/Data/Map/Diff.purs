@@ -34,11 +34,12 @@ data Diff a
 
 diff
   ∷ ∀ k a
-  . (Ord k, Eq a)
+  . Ord k
+  ⇒ Eq a
   ⇒ Map k a
   → Map k a
   → Map k (Diff a)
-diff old new = remove (foldl go (old × Map.empty) (Map.toList new))
+diff old new = remove (foldl go (old × Map.empty) (Map.toUnfoldable new ∷ List (Tuple k a)))
   where
     go (o × d) (k × v) = case Map.pop k o of
       Just (v' × o') | v ≡ v' →
@@ -56,7 +57,7 @@ updated
   . Ord k
   ⇒ Map k (Diff a)
   → List k
-updated = List.mapMaybe go ∘ Map.toList
+updated = List.mapMaybe go ∘ Map.toUnfoldable
   where
     go (k × d) = case d of
       Removed _ → Just k

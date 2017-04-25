@@ -31,8 +31,8 @@ import Data.String.Regex (Regex, regex, match)
 import Data.String.Regex.Flags as RXF
 import Data.DateTime as DT
 
-import SqlSquare (Sql)
-import SqlSquare as Sql
+import SqlSquared (Sql)
+import SqlSquared as Sql
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen

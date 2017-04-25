@@ -197,7 +197,7 @@ cardEval = case _ of
       Nothing → M.BuildHeatmap Nothing
       Just a → a
   CC.Load m next → do
-    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    _ ← H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     for_ (m ^? M._BuildHeatmap ∘ _Just) \r →
       H.modify _{ colorScheme = r.colorScheme
                 , isColorSchemeReversed = r.isColorSchemeReversed

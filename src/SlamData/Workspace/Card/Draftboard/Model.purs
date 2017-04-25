@@ -33,7 +33,7 @@ import Data.List as List
 import Data.Map as Map
 import Data.Maybe as Maybe
 import Data.Ratio as Ratio
-import Data.Rational (Rational(..), (%))
+import Data.Rational ((%))
 import Data.Rational as Rational
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
@@ -102,8 +102,9 @@ encodePane = case _ of
       ~> "panes" := map encodeSplit ps
       ~> J.jsonEmptyObject
   where
-  encodeSplit (Rational r × p) =
-    "ratio" := J.encodeJson (Ratio.numerator r × Ratio.denominator r)
+  encodeSplit (r × p) =
+    let r' = Rational.runRational r in
+    "ratio" := J.encodeJson (Ratio.numerator r' × Ratio.denominator r')
       ~> "pane" :=  encodePane p
       ~> J.jsonEmptyObject
 
@@ -193,7 +194,7 @@ migrateLayout decks =
   where
   deckList =
     List.sortBy (compare `on` (snd ⋙ \r → Math.sqrt ((r.x * r.x) + (r.y * r.y))))
-      $ Map.toList decks
+      $ Map.toUnfoldable decks
 
   total =
     let

@@ -23,6 +23,7 @@ import Control.Monad.Eff.Exception (EXCEPTION, throw)
 import Control.Monad.Reader.Class (ask)
 import Data.Either (either)
 import Data.Maybe (fromMaybe)
+import Data.Time.Duration (Milliseconds)
 import Node.Buffer (BUFFER)
 import Node.FS (FS)
 import Node.Process (PROCESS)
@@ -34,7 +35,7 @@ import Selenium.Types (ControlKey)
 
 type FeatureEffects eff =
     ( platform ∷ PLATFORM
-    , err ∷ EXCEPTION
+    , exception ∷ EXCEPTION
     , fs ∷ FS
     , process ∷ PROCESS
     , buffer ∷ BUFFER
@@ -62,7 +63,7 @@ getModifierKey = map modifierKey getPlatformString
 notMindingIfItsNotPossible ∷ forall eff o. Feature eff o Unit → Feature eff o Unit
 notMindingIfItsNotPossible = flip alt (pure unit)
 
-await' ∷ forall eff o. Int → String → Feature eff o Boolean → Feature eff o Unit
+await' ∷ forall eff o. Milliseconds → String → Feature eff o Boolean → Feature eff o Unit
 await' timeout msg check =
   attempt (Combinators.await timeout check)
     >>= either (const $ liftEff $ throw msg) (const $ pure unit)

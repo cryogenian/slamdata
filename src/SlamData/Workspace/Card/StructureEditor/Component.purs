@@ -49,8 +49,8 @@ import SlamData.Workspace.Card.StructureEditor.Model (Model(..))
 import SlamData.Workspace.LevelOfDetails as LOD
 import SlamData.Workspace.MillerColumns.Column.BasicFilter (mkFilter)
 import SlamData.Workspace.MillerColumns.Component as MC
-import SqlSquare as Sql
-import Utils.SqlSquare as SU
+import SqlSquared as Sql
+import Utils.SqlSquared as SU
 
 type DSL = CC.InnerCardParentDSL S.State Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Query CS.ChildQuery CS.ChildSlot
