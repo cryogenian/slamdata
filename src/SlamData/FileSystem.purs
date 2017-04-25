@@ -46,6 +46,7 @@ import Quasar.Error as QE
 
 import Routing (matchesAff)
 
+import SlamData.Analytics as Analytics
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Config as Config
 import SlamData.Config.Version (slamDataVersion)
@@ -78,6 +79,7 @@ main = do
   AceConfig.set AceConfig.themePath $ Config.baseUrl ⊕ "js/ace"
 
   HA.runHalogenAff do
+    fork Analytics.enableAnalytics
     permissionTokenHashes ← liftEff $ Permission.retrieveTokenHashes
     wiring ← Wiring.make rootDir Editable mempty permissionTokenHashes
     let ui = H.hoist (runSlam wiring) component

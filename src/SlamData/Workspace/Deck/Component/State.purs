@@ -33,10 +33,10 @@ module SlamData.Workspace.Deck.Component.State
   , _displayCards
   , _activeCardIndex
   , _pendingCardIndex
-  , _presentAccessNextActionCardGuideCanceler
+  , _presentAccessNextActionCardHintCanceler
   , _focusDeckHintDismissed
   , _focusDeckFrameHintDismissed
-  , _presentAccessNextActionCardGuide
+  , _presentAccessNextActionCardHint
   , _loadError
   , _displayMode
   , _initialSliderX
@@ -165,8 +165,8 @@ type State =
   , displayCards ∷ Array DisplayCard
   , pendingCardIndex ∷ Maybe Int
   , activeCardIndex ∷ Maybe Int
-  , presentAccessNextActionCardGuideCanceler ∷ Maybe (Canceler SlamDataEffects)
-  , presentAccessNextActionCardGuide ∷ Boolean
+  , presentAccessNextActionCardHintCanceler ∷ Maybe (Canceler SlamDataEffects)
+  , presentAccessNextActionCardHint ∷ Boolean
   , initialSliderX ∷ Maybe Number
   , initialSliderCardWidth ∷ Maybe Number
   , sliderTransition ∷ Boolean
@@ -189,8 +189,8 @@ initialState =
   , displayCards: mempty
   , pendingCardIndex: Nothing
   , activeCardIndex: Nothing
-  , presentAccessNextActionCardGuideCanceler: Nothing
-  , presentAccessNextActionCardGuide: false
+  , presentAccessNextActionCardHintCanceler: Nothing
+  , presentAccessNextActionCardHint: false
   , initialSliderX: Nothing
   , initialSliderCardWidth: Nothing
   , sliderTransition: false
@@ -225,12 +225,12 @@ _pendingCardIndex = lens _.pendingCardIndex _{pendingCardIndex = _}
 
 -- | An optional canceler for the delayed guiding of the user to add a card. Can
 -- | be used to reset the delay of this guiding.
-_presentAccessNextActionCardGuideCanceler ∷ ∀ a r. Lens' {presentAccessNextActionCardGuideCanceler ∷ a |r} a
-_presentAccessNextActionCardGuideCanceler = lens _.presentAccessNextActionCardGuideCanceler _{presentAccessNextActionCardGuideCanceler = _}
+_presentAccessNextActionCardHintCanceler ∷ ∀ a r. Lens' {presentAccessNextActionCardHintCanceler ∷ a |r} a
+_presentAccessNextActionCardHintCanceler = lens _.presentAccessNextActionCardHintCanceler _{presentAccessNextActionCardHintCanceler = _}
 
 -- | Whether the add card guide should be presented or not.
-_presentAccessNextActionCardGuide ∷ ∀ a r. Lens' {presentAccessNextActionCardGuide ∷ a |r} a
-_presentAccessNextActionCardGuide = lens _.presentAccessNextActionCardGuide _{presentAccessNextActionCardGuide = _}
+_presentAccessNextActionCardHint ∷ ∀ a r. Lens' {presentAccessNextActionCardHint ∷ a |r} a
+_presentAccessNextActionCardHint = lens _.presentAccessNextActionCardHint _{presentAccessNextActionCardHint = _}
 
 -- | Whether there was an error loading the deck.
 _loadError ∷ ∀ a r. Lens' {loadError ∷ a|r} a
