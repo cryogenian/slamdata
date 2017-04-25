@@ -23,7 +23,7 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Future as Future
 import Data.Json.Extended (EJson)
-import Data.Lens ((.~))
+import Data.Lens ((.~), view)
 import Data.List as L
 import Data.Path.Pathy as Path
 import Halogen as H
@@ -50,7 +50,6 @@ import SlamData.Workspace.LevelOfDetails as LOD
 import SlamData.Workspace.MillerColumns.Column.BasicFilter (mkFilter)
 import SlamData.Workspace.MillerColumns.Component as MC
 import SqlSquare as Sql
-import Utils.Path as PU
 import Utils.SqlSquare as SU
 
 type DSL = CC.InnerCardParentDSL S.State Query CS.ChildQuery CS.ChildSlot
@@ -129,9 +128,10 @@ load path { requestId, filter } =
   where
   noResult = { requestId, items: L.Nil, nextOffset: Nothing }
 
-fetchData ∷ PU.FilePath → DSL (Array EJson)
-fetchData path = do
-  case (fst <$> Path.peel path) of
+fetchData ∷ Port.Resource → DSL (Array EJson)
+fetchData res = do
+  let path = view Port._filePath res
+  case fst <$> Path.peel path of
     Just resourcePath → do
       let
         sql =
@@ -159,11 +159,11 @@ evalCard = case _ of
   CC.Load _ next →
     pure next
   CC.ReceiveInput x y next → do
-    let newResource = Port.extractFilePath y
+    let newResource = Port.extractResource y
     oldResource ← H.gets (map fst ∘ _.resource)
     when (oldResource /= newResource) do
       fut ← maybe (pure (pure [])) (Future.defer ∘ fetchData) newResource
-      let resource = map (_ × fut) (Port.extractFilePath y)
+      let resource = map (_ × fut) newResource
       H.modify \st → st { cycle = st.cycle + 1, resource = resource }
     _ ← H.query' CS.cpColumns unit $ H.action MC.Reload
     pure next
