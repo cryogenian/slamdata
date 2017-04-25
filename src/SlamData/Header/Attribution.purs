@@ -1,7 +1,6 @@
 module SlamData.Header.Attribution where
 
 import SlamData.Prelude
-import Data.String as String
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -39,6 +38,4 @@ render dismiss =
 
 attributions ∷ ∀ p i. HH.HTML p i
 attributions = HH.dl_ $ flip foldMap I.attributions \(title × names) →
-  [ HH.dt_ [ HH.text title ]
-  , HH.dd_ [ HH.text (String.joinWith ", " names) ]
-  ]
+  [ HH.dt_ [ HH.text title ] ] <> map (\n → HH.dd_ [ HH.text n ]) names
