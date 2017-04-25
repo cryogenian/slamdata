@@ -29,10 +29,6 @@
     max-height: 95%;
     max-width: 95%;
     background: white;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    padding-bottom: 1rem;
-    padding-top: 0;
     overflow-y: auto;
     overflow-x: hidden;
     transform: translate(-50%, -50%);
@@ -40,8 +36,9 @@
     flex-direction: column;
     h4 {
       flex: 0 0 auto;
-      margin-top: 2rem;
-      margin-bottom: 2rem;
+      line-height: 2;
+      padding: 1rem;
+      margin: 0;
     }
     .deck-dialog-body {
         flex: 1 1 auto;
@@ -49,6 +46,7 @@
         overflow-y: auto;
         overflow-x: hidden;
         min-height: 4rem;
+        padding: 0 1rem;
         form {
             .textarea-copy-button {
               position: absolute;
@@ -70,10 +68,9 @@
     }
     .deck-dialog-footer {
         flex: 0 0 auto;
-        margin-top: 2rem;
+        padding: 1rem;
         .btn {
           margin-left: 1rem;
-          margin-bottom: 1rem;
           float: right;
         }
         .alert-danger {
