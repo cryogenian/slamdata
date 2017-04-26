@@ -395,6 +395,10 @@ activateCategoryForChartBuilder ∷ SlamFeature Unit
 activateCategoryForChartBuilder =
   Feature.click $ XPath.last $ XPath.anywhere $ XPaths.chartCategorySelector
 
+activateMeasureForChartBuilder ∷ SlamFeature Unit
+activateMeasureForChartBuilder =
+  Feature.click $ XPath.last $ XPath.anywhere $ XPaths.chartMeasureSelector
+
 activateStackForChartBuilder ∷ SlamFeature Unit
 activateStackForChartBuilder =
   Feature.click $ XPath.last $ XPath.anywhere $ XPaths.chartStackSelector

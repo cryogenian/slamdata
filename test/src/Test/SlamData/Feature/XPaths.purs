@@ -316,13 +316,13 @@ variablesCardDefaultValueFor name =
     $ "Default value for \"" <> name <> "\" variable"
 
 chartCategorySelector ∷ String
-chartCategorySelector = XPath.anyWithExactAriaLabel "Category"
-
-chartStackSelector ∷ String
-chartStackSelector = XPath.anyWithExactAriaLabel "Stack"
+chartCategorySelector = XPath.anyWithExactText "Choose category"
 
 chartMeasureSelector ∷ String
-chartMeasureSelector = XPath.anyWithExactAriaLabel "Measure"
+chartMeasureSelector = XPath.anyWithExactText "Choose measure"
+
+chartStackSelector ∷ String
+chartStackSelector = XPath.anyWithExactText "Choose stack"
 
 chartSwitchToBar ∷ String
 chartSwitchToBar = XPath.anyWithExactSrc "img/bar.svg"
