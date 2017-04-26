@@ -21,17 +21,13 @@ module SlamData.Workspace.Card.Table.Eval
 import SlamData.Prelude
 
 import Control.Monad.State (class MonadState, put, get)
-import Control.Monad.Throw (class MonadThrow)
-
 import Data.Lens ((^.), (^?), _Just)
-
-import SlamData.Quasar.Query as Quasar
-import SlamData.Quasar.Error as QE
-
 import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Quasar.Error as QE
+import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Eval.State as ES
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Table.Model as M
 
 eval

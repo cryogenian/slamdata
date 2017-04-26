@@ -25,8 +25,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Fork (class MonadFork, fork)
-import Control.Monad.Throw (class MonadThrow, throw, note, noteError)
-
+import Control.Monad.Throw (throw, note, noteError)
 import Data.Array as Array
 import Data.Functor.Compose (Compose(Compose))
 import Data.Lens ((^?))
@@ -40,8 +39,10 @@ import Data.Rational ((%))
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Time.Duration (Milliseconds(..))
-
 import SlamData.Effects (SlamDataEffects)
+import SlamData.LocalStorage.Class (class LocalStorageDSL)
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LSK
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
@@ -65,10 +66,6 @@ import SlamData.Workspace.Eval.Graph (pendingGraph, EvalGraph)
 import SlamData.Workspace.Eval.Traverse (TraverseCard(..), TraverseDeck(..), unfoldModelTree, isCyclical)
 import SlamData.Workspace.Legacy (isLegacy, loadCompatWorkspace, pruneLegacyData)
 import SlamData.Workspace.Model as WM
-import SlamData.LocalStorage.Class (class LocalStorageDSL)
-import SlamData.LocalStorage.Class as LS
-import SlamData.LocalStorage.Keys as LSK
-
 import Utils.Aff (laterVar)
 
 defaultSaveDebounce ∷ Milliseconds

@@ -28,9 +28,7 @@ module SlamData.Workspace.Card.Setups.Common.Eval
 import SlamData.Prelude
 
 import Control.Monad.State (class MonadState, get, put)
-import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
-
 import Data.Argonaut (Json)
 import Data.Array as A
 import Data.Foreign (Foreign, toForeign)
@@ -41,21 +39,18 @@ import Data.Map as M
 import Data.NonEmpty as NE
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
-
 import ECharts.Monad (DSL)
 import ECharts.Monad as EM
 import ECharts.Types as ET
 import ECharts.Types.Phantom (I)
-
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.Setups.Axis (Axes, buildAxes)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis (Axes, buildAxes)
 import SqlSquared as Sql
-
 import Utils (hush')
 import Utils.Path as PU
 

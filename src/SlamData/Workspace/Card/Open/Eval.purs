@@ -20,12 +20,9 @@ module SlamData.Workspace.Card.Open.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
-
 import Data.Lens ((^?), (?~))
 import Data.Path.Pathy as Path
-
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.FS as QFS
@@ -34,9 +31,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
-
 import SqlSquared as Sql
-
 import Utils.Path (FilePath)
 import Utils.SqlSquared (all)
 

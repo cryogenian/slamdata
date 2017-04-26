@@ -21,20 +21,15 @@ module SlamData.Workspace.Card.Chart.Eval
 import SlamData.Prelude
 
 import Control.Monad.State (class MonadState, put)
-import Control.Monad.Throw (class MonadThrow)
-
 import Data.Argonaut (Json)
 import Data.Lens ((^.))
-
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
-
-import SlamData.Quasar.Query as QQ
-
 import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Eval.State as ES
+import SlamData.Workspace.Card.Port as Port
 
 eval
   ∷ ∀ m

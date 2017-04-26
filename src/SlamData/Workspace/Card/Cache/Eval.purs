@@ -18,23 +18,17 @@ module SlamData.Workspace.Card.Cache.Eval where
 
 import SlamData.Prelude
 
-import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
-
 import Data.Lens ((^.), (.~))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
-
 import Quasar.Types (FilePath)
-
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-
 import SqlSquared as Sql
-
 import Utils.Path as PU
 import Utils.SqlSquared (tableRelation, all)
 

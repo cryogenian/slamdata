@@ -17,7 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.DownloadOptions.Eval where
 
 import SlamData.Prelude
-import Control.Monad.Throw (class MonadThrow)
+
 import Data.Lens ((^.))
 import Data.Path.Pathy (runFileName, fileName)
 import SlamData.Download.Model as D
