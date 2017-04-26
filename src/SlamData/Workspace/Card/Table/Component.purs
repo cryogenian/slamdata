@@ -70,22 +70,18 @@ evalCard = case _ of
     pure next
   CC.ReceiveState s next → do
     for_ (s ^? ES._Table) \t →
-      H.modify case t.result of
-        Left e →
-          _{ result = JTS.Errored e
-           }
-        Right _ | t.size ≡ 0 →
-          _{ result = JTS.Empty
-           }
-        Right a | otherwise →
-          _{ result = JTS.Ready
-               { json: JSON.fromArray a
-               , page: t.page
-               , pageSize: t.pageSize
-               }
-           , size = Just t.size
-           , isEnteringPageSize = false
-           }
+      H.modify
+        if t.size == 0
+          then _{ result = Nothing }
+          else
+            _{ result = Just
+                 { json: JSON.fromArray t.result
+                 , page: t.page
+                 , pageSize: t.pageSize
+                 }
+             , size = Just t.size
+             , isEnteringPageSize = false
+             }
     pure next
   CC.ReceiveDimensions dims reply → do
     pure $ reply

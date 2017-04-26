@@ -59,7 +59,7 @@ type AutoSelectR =
 
 type TableR =
   { resource ∷ Resource
-  , result ∷ String ⊹ Array Json
+  , result ∷ Array Json
   , page ∷ Int
   , pageSize ∷ Int
   , size ∷ Int

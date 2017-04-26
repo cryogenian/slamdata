@@ -23,7 +23,6 @@ import SlamData.Prelude
 import Control.Monad.State (class MonadState, put, get)
 import Data.Lens ((^.), (^?), _Just)
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
@@ -46,7 +45,7 @@ eval model port varMap =
       let
         defaultState =
           { resource
-          , result: Right [ ]
+          , result: [ ]
           , size: 0
           , page: 1
           , pageSize: 10
@@ -59,30 +58,25 @@ eval model port varMap =
           fromMaybe state.page model.page
 
       unless (samePageAndResource rawTableState resource model) do
-        resultAndSize ← runExceptT do
+        resultAndSize ← do
           size ←
             case rawTableState of
               Just t | t.resource ≡ resource → pure t.size
-              _ → liftET $ Quasar.count $ resource ^. Port._filePath
-
+              _ → CEM.liftQ $ Quasar.count $ resource ^. Port._filePath
           result ←
-            liftET
-            $ Quasar.sample
-            (resource ^. Port._filePath)
-            ((page - 1) * pageSize)
-            pageSize
+            CEM.liftQ $
+              Quasar.sample
+                (resource ^. Port._filePath)
+                ((page - 1) * pageSize)
+                pageSize
           pure $ result × size
         put $ Just $ ES.Table
           { resource
-          , result: map fst resultAndSize
-          , size: either zero snd resultAndSize
+          , result: fst resultAndSize
+          , size: snd resultAndSize
           , page
           , pageSize
           }
-        either
-          CEM.throw
-          (const $ pure unit)
-          resultAndSize
 
       pure $ port × varMap
   where
@@ -92,6 +86,3 @@ eval model port varMap =
     t.resource ≡ resource
     ∧ Just t.page ≡ page
     ∧ Just t.pageSize ≡ pageSize
-
-  liftET ∷ ∀ a. m (CEM.CardError ⊹ a) → ExceptT String m a
-  liftET = ExceptT ∘ map (lmap QE.printQError)
