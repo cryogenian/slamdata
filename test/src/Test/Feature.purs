@@ -776,7 +776,7 @@ expectPresentedVisualElements properties xPath =
   message =
     withPropertiesMessage
       properties
-      "Expected to find only visually displayed elements"
+      "Expected to only visually find displayed elements"
 
 -- Utilities
 logCurrentScreen ∷ ∀ eff o. Feature eff o Unit

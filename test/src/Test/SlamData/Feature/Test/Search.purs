@@ -70,7 +70,7 @@ test = do
     Expect.cardsInTableColumnInLastCardToContain 2 "state" "OR"
     successMsg "Successfully searched within results"
 
-  searchScenario "Search with field names" ["https://github.com/slamdata/slamdata/issues/1190"] do
+  searchScenario "Search with field names" ["https://github.com/slamdata/slamdata/issues/1512"] do
     Interact.insertOpenCardInLastDeck
     Interact.selectFileForLastOpenCard "/test-mount/testDb/zips"
     Interact.accessNextCardInLastDeck
@@ -90,7 +90,7 @@ test = do
     Expect.cardsInTableColumnInLastCardToBeGT 1 "pop" "30000"
     successMsg "Successfully searched with field names"
 
-  searchScenario "Suppress search results" ["https://github.com/slamdata/slamdata/issues/1196"] do
+  searchScenario "Suppress search results" ["https://github.com/slamdata/slamdata/issues/1512"] do
     Interact.insertOpenCardInLastDeck
     Interact.selectFileForLastOpenCard "/test-mount/testDb/zips"
     Interact.accessNextCardInLastDeck
@@ -101,6 +101,8 @@ test = do
     Interact.insertPivotCard
     Interact.addColumn "city"
     Interact.addColumn "state"
+    Expect.columnHeaderInSetupPivotTableCard "city"
+    Expect.columnHeaderInSetupPivotTableCard "state"
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
     Expect.cardsInTableColumnInLastCardToContain 10 "city" "PORTLAND"

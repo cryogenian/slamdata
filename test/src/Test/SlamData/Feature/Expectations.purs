@@ -12,6 +12,11 @@ cardsInTableColumnInLastCardToEq
 cardsInTableColumnInLastCardToEq =
   cardsInTableColumnInLastCard XPath.tdWithThAndTextEq
 
+columnHeaderInSetupPivotTableCard
+  ∷ String → SlamFeature Unit
+columnHeaderInSetupPivotTableCard =
+  expectPresented <<< XPath.anywhere <<< XPath.nodeWithExactAttribute "placeholder" XPath.any
+
 cardsInTableColumnInLastCardToContain
   ∷ Int → String → String → SlamFeature Unit
 cardsInTableColumnInLastCardToContain =
@@ -155,7 +160,7 @@ categoryEnabledInLastBuildChartCard
   ∷ SlamFeature Unit
 categoryEnabledInLastBuildChartCard = do
   let
-    catXPath = XPath.last $ XPath.anywhere $ XPaths.chartCategorySelector
+    catXPath = XPath.last $ XPath.anywhere XPaths.chartCategorySelector
   expectPresented catXPath
   expectNotPresentedWithProperties
     (Map.singleton "disabled" (Just "true"))

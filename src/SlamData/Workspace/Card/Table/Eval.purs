@@ -45,7 +45,7 @@ eval model port varMap =
       let
         defaultState =
           { resource
-          , result: Right [ ]
+          , result: [ ]
           , size: 0
           , page: 1
           , pageSize: 10
@@ -63,16 +63,16 @@ eval model port varMap =
             case rawTableState of
               Just t | t.resource ≡ resource → pure t.size
               _ → CEM.liftQ $ Quasar.count $ resource ^. Port._filePath
-
-          result ← CEM.liftQ $
-            Quasar.sample
-            (resource ^. Port._filePath)
-            ((page - 1) * pageSize)
-            pageSize
+          result ←
+            CEM.liftQ $
+              Quasar.sample
+                (resource ^. Port._filePath)
+                ((page - 1) * pageSize)
+                pageSize
           pure $ result × size
         put $ Just $ ES.Table
           { resource
-          , result: Right (fst resultAndSize)
+          , result: fst resultAndSize
           , size: snd resultAndSize
           , page
           , pageSize
