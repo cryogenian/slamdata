@@ -25,11 +25,8 @@ import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class (class MonadThrow, throwError)
 import Data.Maybe (Maybe, maybe)
 
-throw :: forall a m e. MonadThrow e m => e -> m a
-throw = throwError
-
 note ∷ ∀ m e a. MonadThrow e m ⇒ e → Maybe a → m a
-note err = maybe (throw err) pure
+note err = maybe (throwError err) pure
 
 noteError ∷ ∀ m a. MonadThrow Exn.Error m ⇒ String → Maybe a → m a
 noteError = note <<< Exn.error

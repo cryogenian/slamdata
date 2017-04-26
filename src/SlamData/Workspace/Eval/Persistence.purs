@@ -25,7 +25,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Fork (class MonadFork, fork)
-import Control.Monad.Throw (throw, note, noteError)
+import Control.Monad.Throw (note, noteError)
 import Data.Array as Array
 import Data.Functor.Compose (Compose(Compose))
 import Data.Lens ((^?))
@@ -479,7 +479,7 @@ wrapAndGroupDeck orn bias deckId siblingId = do
       putCard oldParentId oldParent'
       rebuildGraph
       publishCardChange' (Card.toAll oldParentId) oldParent'
-    _ → throw (Exn.error "Cannot group deck")
+    _ → throwError (Exn.error "Cannot group deck")
 
 groupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → Card.Id → m Unit)
 groupDeck orn bias deckId siblingId newParentId = do
@@ -526,7 +526,7 @@ addDeckToDraftboard parentId cursor = do
       rebuildGraph
       publishCardChange' (Card.toAll parentId) parent'
       pure deckId
-    _ → throw (Exn.error "Not a draftboard")
+    _ → throwError (Exn.error "Not a draftboard")
 
 addDeckToTabs ∷ ∀ f m. Persist f m (Card.Id → m Deck.Id)
 addDeckToTabs parentId = do
@@ -539,7 +539,7 @@ addDeckToTabs parentId = do
       rebuildGraph
       publishCardChange' (Card.toAll parentId) parent'
       pure deckId
-    _ → throw (Exn.error "Not a tab set")
+    _ → throwError (Exn.error "Not a tab set")
 
 addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m Card.Id)
 addCard deckId cty = do
