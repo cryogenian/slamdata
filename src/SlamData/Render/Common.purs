@@ -42,12 +42,6 @@ classedDiv cls = HH.div [ HP.classes [ cls ] ]
 formGroup ∷ ∀ f p. Array (HTML p (f Unit)) → HTML p (f Unit)
 formGroup = classedDiv B.formGroup
 
-searchFieldIcon ∷ ∀ f p. HTML p (f Unit)
-searchFieldIcon =
-  HH.span
-    [ HP.class_ (HH.ClassName "sd-search-field-icon") ]
-    []
-
 clearFieldIcon ∷ ∀ f p. String → HTML p (f Unit)
 clearFieldIcon label =
   HH.span

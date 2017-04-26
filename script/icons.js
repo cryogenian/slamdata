@@ -153,6 +153,7 @@ import SlamData.Prelude
 
 import Halogen.HTML as H
 import Halogen.HTML.Properties as P
+import Halogen.HTML.Properties.ARIA as ARIA
 
 iconHelper ∷ ∀ p i. String → H.HTML p i
 iconHelper s =
@@ -163,7 +164,9 @@ iconHelper s =
     -- Oddly, I suppose do to namespacing, the CSS class on <svg> not
     -- picked up wrapping it seems to work though
     H.i
-      [ P.class_ $ H.ClassName $ "sd-icon sd-icon--" <> s ]
+      [ P.class_ $ H.ClassName $ "sd-icon sd-icon--" <> s
+      , ARIA.hidden "true"
+      ]
       [ svgElem (H.ElemName "svg")
         []
         [ svgElem (H.ElemName "use")
