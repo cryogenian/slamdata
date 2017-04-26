@@ -141,11 +141,11 @@ buildKData =
 kOptions ∷ Axes → ModelR → Array OnOneGrid → DSL OptionI
 kOptions axes r kData = do
   E.tooltip do
-    E.triggerAxis
+    E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
-    E.formatterAxis $ foldMap \fmt →
+    E.formatterItem \fmt →
       CCT.tableRows
         [ D.jcursorLabel r.dimension × fmt.name
         , D.jcursorLabel r.open × CCT.formatValueIx 0 fmt

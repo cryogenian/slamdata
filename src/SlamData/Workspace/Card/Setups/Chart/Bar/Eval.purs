@@ -137,9 +137,9 @@ barOptions axes r barData = do
     opts = foldMap seriesFn if isJust r.parallel then r.parallel else r.stack
 
   E.tooltip do
-    E.formatterAxis (CCT.tableFormatter (pure ∘ _.color) (cols <> opts))
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
     E.textStyle $ E.fontSize 12
-    E.triggerAxis
+    E.triggerItem
 
   E.colors colors
 
