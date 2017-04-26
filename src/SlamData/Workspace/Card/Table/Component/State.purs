@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Table.Component.State
   ( State
-  , Result(..)
   , ResultR
   , initialState
   , _result
@@ -41,15 +40,14 @@ import SlamData.Prelude
 import Data.Argonaut (Json)
 import Data.Foldable (maximum)
 import Data.Int as Int
-import Data.Lens ((^?), (?~), Lens', lens, _Just, Prism', prism', Traversal')
-
+import Data.Lens (Lens', Traversal', _Just, lens, (?~), (^?))
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..))
 import SlamData.Workspace.Card.Table.Model (Model)
 
 -- | The state for the Table card component.
 type State =
   { size ∷ Maybe Int
-  , result ∷ Result
+  , result ∷ Maybe ResultR
   , page ∷ Maybe (String ⊹ Int)
   , pageSize ∷ Maybe (Either String Int)
   , isEnteringPageSize ∷ Boolean
@@ -62,21 +60,10 @@ type ResultR =
   , pageSize ∷ Int
   }
 
-data Result
-  = Loading
-  | Errored String
-  | Empty
-  | Ready ResultR
-
-_ResultR ∷ Prism' Result ResultR
-_ResultR = prism' Ready case _ of
-  Ready r → Just r
-  _ → Nothing
-
 initialState ∷ State
 initialState =
   { size: Nothing
-  , result: Loading
+  , result: Nothing
   , page: Nothing
   , pageSize: Nothing
   , isEnteringPageSize: false
@@ -86,7 +73,7 @@ _result ∷ ∀ a r. Lens' {result ∷ a|r} a
 _result = lens _.result (_ { result = _ })
 
 _Result ∷ Traversal' State ResultR
-_Result = _result ∘ _ResultR
+_Result = _result ∘ _Just
 
 _page ∷ ∀ a r. Lens' {page ∷ a |r} a
 _page = lens _.page (_ { page = _ })

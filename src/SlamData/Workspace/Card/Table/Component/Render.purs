@@ -33,7 +33,7 @@ import SlamData.Render.CSS.New as CSS
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Table.Component.Query (PageStep(..), Query(..))
-import SlamData.Workspace.Card.Table.Component.State (State, currentPageInfo, Result(..))
+import SlamData.Workspace.Card.Table.Component.State (State, currentPageInfo)
 
 type HTML = CC.InnerCardHTML Query
 
@@ -54,25 +54,14 @@ fromInputValue { current, pending } =
 render ∷ State → HTML
 render st =
   HH.div_ $ case st.result of
-    Loading → renderLoading
-    Empty → renderEmpty
-    Errored e → renderError e
-    Ready result → renderResult result
+    Nothing → renderEmpty
+    Just result → renderResult result
   where
-  -- This is _loading_ but since we display semitransparent div with spinner on
-  -- top of loading deck there is no reason to display anything else
-  renderLoading =
-    [ ]
   renderEmpty =
     A.singleton
     $ HH.div
       [ HP.classes [ Rc.alert, Rc.alertWarning ] ]
       [ HH.text "Selected resource is empty" ]
-  renderError e =
-    A.singleton
-    $ HH.pre
-      [ HP.classes [ Rc.alert, Rc.alertDanger ] ]
-      [ HH.text e ]
   renderResult result =
     let
       p = currentPageInfo st

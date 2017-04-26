@@ -62,9 +62,6 @@ module SlamData.FileSystem.Resource
 import SlamData.Prelude
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, jsonEmptyObject, (~>), (:=), (.?))
-import Data.Foreign (ForeignError(..), fail) as F
-import Data.Foreign.Class (class IsForeign, readProp) as F
-import Data.Foreign.NullOrUndefined (unNullOrUndefined) as F
 import Data.Lens (lens, prism', Prism', Lens', Traversal', wander)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
@@ -369,33 +366,6 @@ derive instance eqMount ∷ Eq Mount
 
 instance resourceOrd ∷ Ord Resource where
   compare = sortResource resourcePath Asc
-
-instance resourceIsForeign ∷ F.IsForeign Resource where
-  read f = do
-    name ← F.readProp "name" f
-    ty ← F.readProp "type" f
-    mountType ←
-      F.readProp "mount" f
-      <#> F.unNullOrUndefined
-
-    template ← case ty of
-      "directory" →
-        pure case mountType of
-          Just "mongodb" →
-            newDatabase
-          _ →
-            maybe newDirectory (const newWorkspace)
-              $ S.stripSuffix (S.Pattern Config.workspaceExtension) name
-
-      "file" →
-        pure case mountType of
-          Just "view" →
-            newViewMount
-          _ →
-            newFile
-
-      _ → F.fail $ F.TypeMismatch "resource" "string"
-    pure $ setName template name
 
 instance encodeJsonResource ∷ EncodeJson Resource where
   encodeJson res =

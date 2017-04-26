@@ -114,7 +114,7 @@ render state =
 eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 eval = case _ of
   QueryRename q next → do
-    H.query' CP.cp3 unit q
+    _ ← H.query' CP.cp3 unit q
     pure next
   SaveMount reply → do
     map (reply ∘ join) $ H.query' CP.cp5 unit $ H.request Mount.Save
@@ -130,5 +130,5 @@ eval = case _ of
       _ → H.raise m
     pure next
   AddDirsToRename dirs next → do
-    H.query' CP.cp3 unit $ H.action $ Rename.AddDirs dirs
+    _ ← H.query' CP.cp3 unit $ H.action $ Rename.AddDirs dirs
     pure next

@@ -21,7 +21,7 @@ import Data.Lens (Traversal', wander)
 import Data.Traversable (traverse, class Traversable)
 import Data.Tuple (Tuple(..))
 
-lookup ∷ ∀ f a b. (Traversable f, Eq a) ⇒ a → Traversal' (f (Tuple a b)) b
+lookup ∷ ∀ f a b. Traversable f ⇒ Eq a ⇒ a → Traversal' (f (Tuple a b)) b
 lookup key = wander \f → traverse case _ of
   Tuple a b | a == key → Tuple a <$> f b
   pair → pure pair

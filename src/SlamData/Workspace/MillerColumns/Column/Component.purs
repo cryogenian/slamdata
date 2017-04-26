@@ -158,7 +158,7 @@ component' (ColumnOptions colSpec) colPath =
     Init next → do
       trigger ← debouncedEventSource (Milliseconds 750.0)
       H.modify (_ { filterTrigger = trigger })
-      fork load
+      _ ← fork load
       H.raise (Left Initialized)
       pure next
     SetSelection selected next → do

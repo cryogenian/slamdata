@@ -45,7 +45,7 @@ import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import Utils (hush')
 

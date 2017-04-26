@@ -37,7 +37,6 @@ import Data.Argonaut (Json)
 import Data.Argonaut as Argonaut
 import Data.Argonaut.Core as ArgonautCore
 import Data.Foreign (MultipleErrors)
-import Data.Nullable as Nullable
 import Utils.StorageEvent as StorageEventUtils
 
 newtype Key a = Key String
@@ -54,7 +53,6 @@ run :: forall a b eff. LocalStorageF a b -> Aff (dom :: DOM, avar :: AVAR | eff)
 run = case _ of
   Retrieve decode key k →
     k <<< (decode <=< Argonaut.jsonParser <=< note ("No key " <> unwrap key <> " in LocalStorage"))
-      <<< Nullable.toMaybe
       <$> (liftEff $ Storage.getItem (unwrap key) =<< Window.localStorage =<< HTML.window)
   Persist encode key json a → do
     liftEff

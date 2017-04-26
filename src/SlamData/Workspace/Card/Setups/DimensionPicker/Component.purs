@@ -145,5 +145,5 @@ picker opts =
       pure next
     HandleLoadRequest req next → do
       let res = MCT.loadFromTree opts.label opts.values req
-      H.query unit $ H.action $ MC.FulfilLoadRequest res
+      _ ← H.query unit $ H.action $ MC.FulfilLoadRequest res
       pure next

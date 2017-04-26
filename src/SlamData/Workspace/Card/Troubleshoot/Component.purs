@@ -33,7 +33,7 @@ import SlamData.Workspace.Card.Troubleshoot.Component.Query (Query)
 import SlamData.Workspace.Card.Troubleshoot.Component.State (State, initialState)
 import SlamData.Workspace.LevelOfDetails as LOD
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 type DSL = CC.InnerCardDSL State Query
 type HTML = CC.InnerCardHTML Query

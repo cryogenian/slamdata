@@ -17,7 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Transform.DatePart where
 
 import SlamData.Prelude
-import SqlSquare as Sql
+import SqlSquared as Sql
 import Data.List as L
 import Data.Argonaut as J
 import Test.StrongCheck.Arbitrary (class Arbitrary)

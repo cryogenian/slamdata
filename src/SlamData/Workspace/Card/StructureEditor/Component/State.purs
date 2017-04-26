@@ -21,12 +21,12 @@ import SlamData.Prelude
 import Control.Monad.Aff.Future (Future)
 import Data.Json.Extended (EJson)
 import Data.List as L
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.StructureEditor.Common as SEC
-import Utils.Path as PU
 
 type State =
   { cycle ∷ Int
-  , resource ∷ Maybe (PU.FilePath × Future (Array EJson))
+  , resource ∷ Maybe (Port.Resource × Future (Array EJson))
   , selectedPath ∷ L.List SEC.ColumnItem
   }
 

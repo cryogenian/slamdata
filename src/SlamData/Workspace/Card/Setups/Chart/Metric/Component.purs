@@ -53,7 +53,7 @@ type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
 package ∷ DS.Package
 package = P.onPrism (M._BuildMetric ∘ _Just) $ DS.interpret do
-  P.field PL._value PP._value
+  _ ← P.field PL._value PP._value
     >>= P.addSource _.value
   pure unit
 
@@ -157,7 +157,7 @@ cardEval = case _ of
       Nothing → M.BuildMetric Nothing
       Just a → a
   CC.Load m next → do
-    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    _ ← H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     for_ (m ^? M._BuildMetric ∘ _Just) \r →
       H.modify _{ label = r.label
                 , formatter = r.formatter

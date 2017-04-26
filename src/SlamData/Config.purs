@@ -17,7 +17,7 @@ limitations under the License.
 module SlamData.Config where
 
 import Prelude ((<>))
-import Data.Time.Duration (Milliseconds(Milliseconds))
+import Data.Time.Duration (Milliseconds(..))
 
 baseUrl :: String
 baseUrl = ""
@@ -34,8 +34,8 @@ darkIconsPath = "img/cardsDark"
 lightIconsPath ∷ String
 lightIconsPath = "img/cardsLight"
 
-searchTimeout :: Number
-searchTimeout = 500.0
+searchTimeout :: Milliseconds
+searchTimeout = Milliseconds 500.0
 
 slamDataHome :: String
 slamDataHome = baseUrl <> "index.html"
@@ -73,14 +73,14 @@ workspaceNameEditorId = "name-editor"
 defaultPageSize :: Int
 defaultPageSize = 10
 
-notifyTimeout :: Int
-notifyTimeout = 500
+notifyTimeout :: Milliseconds
+notifyTimeout = Milliseconds 500.0
 
-authenticationTimeout :: Int
-authenticationTimeout = 5000
+authenticationTimeout :: Milliseconds
+authenticationTimeout = Milliseconds 5000.0
 
-resizeEChartsTimeout :: Int
-resizeEChartsTimeout = 0
+resizeEChartsTimeout :: Milliseconds
+resizeEChartsTimeout = Milliseconds 0.0
 
 addCardGuideDelay :: Milliseconds
 addCardGuideDelay = Milliseconds 4000.0

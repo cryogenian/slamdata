@@ -197,7 +197,7 @@ render st =
         []
 
   renderJson =
-    J.foldJson show show showPrettyNumber id (J.printJson ∘ J.fromArray) (J.printJson ∘ J.fromObject)
+    J.foldJson show show showPrettyNumber id (show ∘ J.fromArray) (show ∘ J.fromObject)
 
   prevButtons enabled =
     HH.div
@@ -280,7 +280,7 @@ eval = case _ of
         Next  → st.pageIndex + 1
         Last  → st.pageCount - 1
     H.modify _ { pageIndex = pageIndex }
-    for st.input (ifSimpleQuery pageQuery pageTree)
+    for_ st.input (ifSimpleQuery pageQuery pageTree)
     pure next
   SetCustomPage page next → do
     H.modify _ { customPage = Just page }
@@ -302,7 +302,7 @@ eval = case _ of
     let
       pageSize  = Int.floor (readFloat size)
     H.modify _ { pageSize = pageSize }
-    for st.input (ifSimpleQuery pageQuery pageTree)
+    for_ st.input (ifSimpleQuery pageQuery pageTree)
     H.raise ModelUpdated
     pure next
   Load model next → do

@@ -99,7 +99,7 @@ renderGuide sp =
 
 renderGuideLabel ∷ Rational → DraftboardHTML
 renderGuideLabel ratio =
-  let ratio' = unRational ratio in
+  let ratio' = Rational.runRational ratio in
   HH.span
     [ HP.classes
         [ HH.ClassName "sd-draftboard-guide-label"
@@ -277,6 +277,3 @@ renderEdge st edge@{ orientation, vect } =
               Orn.Vertical   → C.width (C.px vect.z)
         ]
         [ ]
-
-unRational ∷ Rational → Ratio.Ratio Int
-unRational (Rational.Rational a) = a

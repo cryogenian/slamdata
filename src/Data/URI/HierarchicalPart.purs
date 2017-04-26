@@ -14,4 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Common.Render where
+module Data.URI.Types.HierarchicalPart where
+
+import Data.URI.Types
+import Data.Maybe (Maybe)
+
+authority ∷ HierarchicalPart → Maybe Authority
+authority (HierarchicalPart x _) =
+  x
+
+uriPathAbs ∷ HierarchicalPart → Maybe URIPathAbs
+uriPathAbs (HierarchicalPart _ x) =
+  x

@@ -127,7 +127,7 @@ component opts@(Column.ColumnOptions colSpec) =
       pure next
     FulfilLoadRequest (colPath × response) next → do
       cycle ← H.gets _.cycle
-      H.query (cycle × colPath) $ queryQ $ H.action $ Column.FulfilLoadRequest response
+      _ ← H.query (cycle × colPath) $ queryQ $ H.action $ Column.FulfilLoadRequest response
       pure next
 
 scrollToRight ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Unit

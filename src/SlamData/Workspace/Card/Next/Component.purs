@@ -132,7 +132,7 @@ eval = case _ of
       ∘ not =<< getDismissedAddCardHintBefore
     pure next
   HandleFilter str next → do
-    H.query' CS.cpActionList unit
+    _ ← H.query' CS.cpActionList unit
       $ H.action
       $ ActionList.UpdateFilter str
     pure next

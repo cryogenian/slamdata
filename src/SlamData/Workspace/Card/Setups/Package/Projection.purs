@@ -108,7 +108,9 @@ _dims = lens get set
   where
   get ∷ SM.StrMap a → L.List a
   get sm =
-    foldMap (\(k × v) → maybe L.Nil (const $ L.singleton v) $ Int.fromString k) $ SM.toList sm
+    foldMap (\(k × v) → maybe L.Nil (const $ L.singleton v) $ Int.fromString k)
+      $ asList
+      $ SM.toUnfoldable sm
 
   set ∷ SM.StrMap a → L.List a → SM.StrMap a
-  set sm lst = flip SM.union sm $ SM.fromFoldable $ flip L.mapWithIndex lst \v i → show i × v
+  set sm lst = flip SM.union sm $ SM.fromFoldable $ flip L.mapWithIndex lst \i v → show i × v

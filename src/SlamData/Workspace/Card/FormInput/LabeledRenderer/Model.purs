@@ -27,8 +27,8 @@ import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
+import Test.StrongCheck.Arbitrary (arbitrary)
 
 type Model =
   { formInputType ∷ FormInputType
@@ -45,7 +45,7 @@ eqModel r1 r2 =
 genModel ∷ Gen.Gen Model
 genModel = do
   formInputType ← arbitrary
-  cursor ← map runArbJCursor arbitrary
+  cursor ← runArbJCursor <$> arbitrary
   selected ← map (Set.fromFoldable) $ Gen.arrayOf arbitrary
   pure { cursor
        , selected

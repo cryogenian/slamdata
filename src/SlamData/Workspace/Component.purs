@@ -180,18 +180,18 @@ eval = case _ of
       when eq $ Wiring.focusDeck deckId
     pure next
   Resize reply → do
-    queryDeck (H.action Deck.UpdateCardSize)
+    _ ← queryDeck (H.action Deck.UpdateCardSize)
     pure $ reply H.Listening
   New next → do
     st ← H.get
     when (List.null st.cursor) do
-      fork $ runFreshWorkspace mempty
+      _ ← fork $ runFreshWorkspace mempty
       initializeGuides
     pure next
   ExploreFile res next → do
     st ← H.get
     when (List.null st.cursor) do
-      fork $ runFreshWorkspace
+      _ ← fork $ runFreshWorkspace
         [ CM.Open (Just (Open.Resource (R.File res)))
         , CM.Table JT.emptyModel
         ]
@@ -240,7 +240,6 @@ eval = case _ of
       (msg ≡ GlobalMenu.SignInSuccess ∧ StateMode.isError stateMode)
       (H.liftEff Browser.reload)
     pure next
-
 
   where
   loadCursor cursor = do
@@ -298,7 +297,7 @@ runFreshWorkspace cards = do
         ED.CardChange _ → H.gets _.cursor
         ED.NameChange _ → H.gets _.cursor
   cursor ← wait
-  H.lift P.saveWorkspace
+  _ ← H.lift P.saveWorkspace
   urlVarMaps ← H.liftEff $ readRef varMaps
   navigate $ WorkspaceRoute path cursor (WA.Load accessType) urlVarMaps
 
@@ -317,8 +316,8 @@ handleNotification = case _ of
   NC.ExpandGlobalMenu → do
     gripperState ← queryHeaderGripper $ H.request Gripper.GetState
     when (gripperState ≠ Just Gripper.Opened) do
-      queryHeaderGripper $ H.action $ Gripper.StartDragging 0.0
-      queryHeaderGripper $ H.action Gripper.StopDragging
+      _ ← queryHeaderGripper $ H.action $ Gripper.StartDragging 0.0
+      _ ← queryHeaderGripper $ H.action Gripper.StopDragging
       pure unit
   NC.Fulfill var →
     void $ H.liftAff $ Aff.attempt $ putVar var unit

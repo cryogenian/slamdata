@@ -19,8 +19,7 @@ module SlamData.FileSystem.Breadcrumbs.Component
   , Breadcrumb
   , rootBreadcrumb
   , mkBreadcrumbs
-  , Query(..)
-  , component
+  , render
   ) where
 
 import SlamData.Prelude
@@ -28,14 +27,12 @@ import SlamData.Prelude
 import Data.List (List(..), (:), reverse)
 import Data.Path.Pathy (rootDir, runDirName, dirName, parentDir)
 
-import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
-import SlamData.Monad (Slam)
-import SlamData.Common.Sort (Sort(..))
+import SlamData.Common.Sort (Sort)
 import SlamData.FileSystem.Routing (browseURL)
-import SlamData.FileSystem.Routing.Salt (Salt(..))
+import SlamData.FileSystem.Routing.Salt (Salt)
 
 import Utils.Path (DirPath)
 
@@ -64,13 +61,11 @@ mkBreadcrumbs path sort salt =
   }
   where
   go ∷ List Breadcrumb → DirPath → List Breadcrumb
-  go result p =
-    let result' = { name: maybe "" runDirName (dirName p), link: p } : result
+  go res p =
+    let res' = { name: maybe "" runDirName (dirName p), link: p } : res
     in case parentDir p of
-      Just dir → go result' dir
-      Nothing → rootBreadcrumb : result
-
-data Query a = Set State a
+      Just dir → go res' dir
+      Nothing → rootBreadcrumb : res
 
 type Input =
   { path ∷ DirPath
@@ -78,21 +73,13 @@ type Input =
   , salt ∷ Salt
   }
 
-component ∷ H.Component HH.HTML Query Input Void Slam
-component =
-  H.component
-    { initialState: const { breadcrumbs: Nil, sort: Asc, salt: Salt "" }
-    , render
-    , eval
-    , receiver
-    }
-
-render ∷ State → H.ComponentHTML Query
-render r =
+render ∷ ∀ q i. Input → HH.HTML q i
+render { path, sort, salt } =
   HH.ol
     [ HP.classes [ HH.ClassName "breadcrumb" ] ]
     $ foldl (\views model → view model <> views) [ ] r.breadcrumbs
   where
+  r = mkBreadcrumbs path sort salt
   view b =
     [ HH.li_
         [ HH.a
@@ -100,12 +87,3 @@ render r =
             [ HH.text b.name ]
         ]
     ]
-
-receiver ∷ Input → Maybe (Query Unit)
-receiver { path, sort, salt } =
-  Just $ H.action $ Set $ mkBreadcrumbs path sort salt
-
-eval ∷ Query ~> H.ComponentDSL State Query Void Slam
-eval (Set st next) = do
-  H.put st
-  pure next

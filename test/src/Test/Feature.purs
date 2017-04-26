@@ -51,6 +51,7 @@ import Data.List (toUnfoldable)
 import Data.List as L
 import Data.Map as Map
 import Data.String as String
+import Data.Time.Duration (Milliseconds(..))
 
 import Node.Buffer (toString)
 import Node.Encoding (Encoding(..))
@@ -228,7 +229,7 @@ printProperties =
   String.joinWith " "
     ∘ L.toUnfoldable
     ∘ map (uncurry printProperty)
-    ∘ Map.toList
+    ∘ Map.toUnfoldable
 
 noElementWithPropertiesError ∷ Properties → XPath → String
 noElementWithPropertiesError properties =
@@ -727,7 +728,7 @@ elementsWithProperties properties =
     → Feature eff o Properties
   getPropertiesForElement el =
     Map.fromFoldable
-      <$> traverse (\k → Tuple k <$> ((later 0 $ getAttribute el k))) propKeys
+      <$> traverse (\k → Tuple k <$> ((later (Milliseconds zero) $ getAttribute el k))) propKeys
 
   elementsPropertiesTuples
     ∷ ∀ t
@@ -775,7 +776,7 @@ expectPresentedVisualElements properties xPath =
   message =
     withPropertiesMessage
       properties
-      "Expected to find only visually displayed elements"
+      "Expected to only visually find displayed elements"
 
 -- Utilities
 logCurrentScreen ∷ ∀ eff o. Feature eff o Unit

@@ -254,6 +254,9 @@ formButton = ClassName "sd-form-button"
 formControl ∷ ClassName
 formControl = ClassName "form-control"
 
+formControlFeedback ∷ ClassName
+formControlFeedback = ClassName "form-control-feedback"
+
 formGroup ∷ ClassName
 formGroup = ClassName "form-group"
 
@@ -277,6 +280,12 @@ radio = ClassName "radio"
 
 hasError ∷ ClassName
 hasError = ClassName "has-error"
+
+hasFeedback ∷ ClassName
+hasFeedback = ClassName "has-feedback"
+
+hasSuccess ∷ ClassName
+hasSuccess = ClassName "has-success"
 
 btn ∷ ClassName
 btn = ClassName "btn"

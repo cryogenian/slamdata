@@ -29,8 +29,8 @@ import SlamData.Workspace.Card.Setups.Transform.DatePart as DP
 import SlamData.Workspace.Card.Setups.Transform.Numeric as N
 import SlamData.Workspace.Card.Setups.Transform.String as S
 
-import SqlSquare (Sql)
-import SqlSquare as Sql
+import SqlSquared (Sql)
+import SqlSquared as Sql
 
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen as Gen

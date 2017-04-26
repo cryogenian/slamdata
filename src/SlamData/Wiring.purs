@@ -167,7 +167,7 @@ make path accessType vm permissionTokenHashes = liftAff do
 
   where
   makeEcharts = do
-    theme <- EChartThemeLoader.load
+    theme ← EChartThemeLoader.load
     pure { theme }
   makeEval = do
     tick ← liftEff $ Ref.newRef 0
@@ -218,9 +218,8 @@ make path accessType vm permissionTokenHashes = liftAff do
 
 focusDeck
   ∷ ∀ m
-  . ( MonadAsk Wiring m
-    , MonadAff SlamDataEffects m
-    )
+  . MonadAsk Wiring m
+  ⇒ MonadAff SlamDataEffects m
   ⇒ DeckId
   → m Unit
 focusDeck deckId = do

@@ -161,7 +161,7 @@ evalBoard opts = case _ of
         H.modify
           $ updateLayout (fromMaybe st.layout result)
           ∘ _ { splitOpts = Nothing, splitLocation = Nothing }
-        H.queryAll $ H.action DCQ.UpdateCardSize
+        _ ← H.queryAll $ H.action DCQ.UpdateCardSize
         H.raise CC.modelUpdateSilently
     pure next
   ResizeStart edge ev next → do
@@ -230,7 +230,7 @@ evalBoard opts = case _ of
         H.modify
           $ updateLayout (fromMaybe st.layout result)
           ∘ _ { resizeLocation = Nothing }
-        H.queryAll $ H.action DCQ.UpdateCardSize
+        _ ← H.queryAll $ H.action DCQ.UpdateCardSize
         H.raise CC.modelUpdateSilently
     pure next
   DeleteCell cursor next → do
@@ -238,7 +238,7 @@ evalBoard opts = case _ of
     let
       result = Layout.deleteCell cursor st.layout
     H.modify (updateLayout (fromMaybe st.layout result))
-    H.queryAll $ H.action DCQ.UpdateCardSize
+    _ ← H.queryAll $ H.action DCQ.UpdateCardSize
     H.raise CC.modelUpdateSilently
     pure next
   GrabStart deckId ev next → do

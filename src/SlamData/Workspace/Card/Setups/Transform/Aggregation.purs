@@ -60,7 +60,9 @@ parseAggregation _ = Left "Incorrect aggregation string"
 
 runAggregation
   ∷ ∀  a f
-  . (Ord a, EuclideanRing a, Foldable f)
+  . Ord a
+  ⇒ EuclideanRing a
+  ⇒ Foldable f
   ⇒ Aggregation
   → f a
   → a

@@ -21,7 +21,6 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.Lens (lens, Lens', (.~))
 import Data.Path.Pathy (printPath, rootDir)
-import Data.Time.Duration (Milliseconds(..))
 
 import DOM.Event.Types (Event, mouseEventToEvent)
 
@@ -184,7 +183,7 @@ eval (Typed str next) = do
   t ← case state.trigger of
     Just t' → pure t'
     Nothing → do
-      t' ← debouncedEventSource (Milliseconds Config.searchTimeout)
+      t' ← debouncedEventSource Config.searchTimeout
       H.modify (_trigger .~ pure t')
       pure t'
   H.lift $ runDebounceTrigger t Validate

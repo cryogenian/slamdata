@@ -26,7 +26,7 @@ import Data.Maybe as M
 
 import Matryoshka (embed, project)
 
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 import SlamData.Workspace.Card.Port.VarMap as VM
 
@@ -46,7 +46,8 @@ import Utils (hush)
 
 getLiteral
   ∷ ∀ m
-  . (Plus m, Applicative m)
+  . Plus m
+  ⇒ Applicative m
   ⇒ VM.VarMapValue
   → m Sql.Sql
 getLiteral (VM.VarMapValue s) = project s # case _ of

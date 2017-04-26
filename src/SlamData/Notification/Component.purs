@@ -30,13 +30,11 @@ module SlamData.Notification.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (later', forkAff)
+import Control.Monad.Aff (delay, forkAff)
 import Control.Monad.Aff.AVar (AVar, makeVar, takeVar, putVar)
 
 import Data.Array as Array
 import Data.HeytingAlgebra (tt, ff, implies)
-import Data.Int as Int
-import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
@@ -348,8 +346,8 @@ drainQueue = do
 
       -- TODO: Make notifications with timeouts not disapear in ExpandableList
       -- render mode
-      for_ head.options.timeout \(Milliseconds ms) →
-        H.liftAff $ forkAff $ later' (Int.floor ms) (putVar head.dismiss unit)
+      for_ head.options.timeout \ms →
+        H.liftAff $ forkAff $ delay ms *> putVar head.dismiss unit
 
       H.liftAff $ takeVar head.dismiss
       drainQueue

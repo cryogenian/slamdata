@@ -19,6 +19,8 @@ module SlamData.Prelude
   , (∨), (∧), (⨁), (⊹)
   , flipCompose, applyRight, applyLeft
   , type (⨁), type (⊹), type (×)
+  , As, As1
+  , asList, asArray
   , module Prelude
   , module Control.Alt
   , module Control.Apply
@@ -58,7 +60,7 @@ import Control.Alt (class Alt, (<|>))
 import Control.Apply ((*>), (<*))
 import Control.Bind (join, (>=>), (<=<))
 import Control.Monad (when, unless)
-import Control.Monad.Error.Class (class MonadError, throwError, catchError)
+import Control.Monad.Error.Class (class MonadError, class MonadThrow, throwError, catchError)
 import Control.Monad.Except (ExceptT(..), runExcept, runExceptT, except)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ask)
@@ -76,6 +78,7 @@ import Data.Foldable (class Foldable, traverse_, for_, foldMap, foldl, foldr, fo
 import Data.Functor (($>), (<$))
 import Data.Functor.Coproduct (Coproduct, coproduct, left, right)
 import Data.Generic (class Generic)
+import Data.List (List)
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe', fromJust)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap, ala, alaF)
@@ -115,3 +118,10 @@ infixr 5 either as ⊹
 infixr 5 coproduct as ⨁
 
 infixr 4 type Tuple as ×
+
+type As a = a → a
+
+type As1 f = f ~> f
+
+asList = id ∷ As1 List
+asArray = id ∷ As1 Array

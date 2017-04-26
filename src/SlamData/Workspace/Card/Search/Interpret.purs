@@ -37,12 +37,12 @@ import Matryoshka (Algebra, embed, cata, Transform, transAna, ana, Coalgebra)
 
 import Quasar.Types (FilePath)
 
-import SlamData.SqlSquare.Tagged as SqlT
+import SlamData.SqlSquared.Tagged as SqlT
 
-import SqlSquare (Sql, SqlF(..))
-import SqlSquare as Sql
+import SqlSquared (Sql, SqlF(..))
+import SqlSquared as Sql
 
-import Utils.SqlSquare (tableRelation)
+import Utils.SqlSquared (tableRelation)
 
 
 queryToSql

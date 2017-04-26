@@ -55,8 +55,7 @@ import DOM.Node.Node as DOMNode
 import DOM.Node.Types (Node, Element)
 import Data.Foldable as F
 import Data.Foreign as Foreign
-import Data.Nullable as Nullable
-import Data.Time.Duration (Seconds(Seconds))
+import Data.Time.Duration (Seconds(..), Milliseconds(..))
 import Data.Traversable as T
 import OIDC.Aff as OIDCAff
 import OIDC.Crypt as OIDCCrypt
@@ -115,7 +114,7 @@ authentication ∷ ∀ eff. Aff (AuthEffects eff) RequestIdTokenBus
 authentication = do
   stateRef ← liftEff $ Ref.newRef Nothing
   requestBus ← Bus.make
-  Aff.forkAff $ forever (authenticate stateRef =<< Bus.read requestBus)
+  _ ← Aff.forkAff $ forever (authenticate stateRef =<< Bus.read requestBus)
   pure $ writeOnlyBus requestBus
 
 -- TODO: Allow multiple concurrent auth requests with different providers
@@ -165,7 +164,7 @@ getIdTokenSilently message = do
         idToken ← sequential
           $ parallel (getIdTokenFromLSOnChange message.providerR unhashedNonce)
           <|> parallel timeout
-        liftEff $ removeBodyChild iFrameNode
+        _ ← liftEff $ removeBodyChild iFrameNode
         pure idToken
   where
   appendHiddenRequestIFrameToBody unhashedNonce =
@@ -173,9 +172,9 @@ getIdTokenSilently message = do
       (pure ∘ Left)
       (liftEff ∘ map (lmap DOMError) ∘ appendHiddenIFrameToBody)
       =<< getAuthenticationUri OIDCAff.None unhashedNonce message.providerR
-  timeout =
-    Aff.later' Config.authenticationTimeout
-      $ pure $ Left $ IdTokenUnavailable "No id token received before timeout."
+  timeout = do
+    Aff.delay Config.authenticationTimeout
+    pure $ Left $ IdTokenUnavailable "No id token received before timeout."
 
 getIdTokenUsingPrompt
   ∷ ∀ eff
@@ -193,7 +192,8 @@ getIdTokenUsingPrompt message = do
       >>= case _ of
         Just window → do
           DOMUtils.waitUntilWindowClosed window
-          Aff.later' 250 (pure $ Left PromptDismissed)
+          Aff.delay (Milliseconds 250.0)
+          pure $ Left PromptDismissed
         Nothing →
           pure $ Left $ DOMError "`window.open` returned null"
   prompt unhashedNonce =
@@ -273,7 +273,6 @@ getBodyNode =
       (Left "Couldn't find body element.")
       Right
       ∘ map DOMHTMLTypes.htmlElementToNode
-      ∘ Nullable.toMaybe
 
 getIdToken
   ∷ ∀ eff

@@ -19,27 +19,25 @@ module SlamData.Workspace.Card.Setups.FormInput.TextLike.Eval
   , module SlamData.Workspace.Card.Setups.FormInput.TextLike.Model
   ) where
 
-import Control.Monad.State (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
+import SlamData.Prelude
 
+import Control.Monad.State (class MonadState)
 import Data.Argonaut (JCursor)
 import Data.Set as Set
-
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.Behaviour as B
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model (Model, behaviour, initialState)
-import SlamData.Workspace.Card.Setups.Behaviour as B
-import SlamData.Workspace.Card.Setups.Axis as Ax
 
 eval
   ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
+  . MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
   ⇒ ( Ax.Axes → Set.Set JCursor )
   → FormInputType
   → Model

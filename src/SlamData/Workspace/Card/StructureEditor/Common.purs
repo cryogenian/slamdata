@@ -21,8 +21,7 @@ import SlamData.Prelude
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
 import Data.Array as A
-import Data.Eq (class Eq1, eq1)
-import Data.Functor.Coproduct (Coproduct(..))
+import Data.Eq (class Eq1)
 import Data.Functor.Mu (Mu)
 import Data.Int as Int
 import Data.Json.Extended as EJ
@@ -31,33 +30,10 @@ import Data.List ((:))
 import Data.List as L
 import Data.Map as M
 import Data.Newtype as N
-import Data.Ord (class Ord1, compare1)
-import Matryoshka (class Corecursive, class Recursive, Algebra, CoalgebraM, anaM, cata, embed, project, transCata)
+import Data.Ord (class Ord1)
+import Matryoshka (class Corecursive, class Recursive, Algebra, CoalgebraM, anaM, cata, embed, project)
 import Test.StrongCheck as SC
 import Test.StrongCheck.Gen as SCG
-
--- Helper until we have Eq1 / Ord1 instances for Coproduct in the core lib
-newtype CP1 f g a = CP1 (Coproduct f g a)
-
-derive newtype instance functorCP1 ∷ (Functor f, Functor g) ⇒ Functor (CP1 f g)
-
-instance eq1CP1 ∷ (Eq1 f, Eq1 g) ⇒ Eq1 (CP1 f g) where
-  eq1 (CP1 (Coproduct x)) (CP1 (Coproduct y)) =
-    case x, y of
-      Left a, Left b → eq1 a b
-      Right a, Right b → eq1 a b
-      _, _ → false
-
-instance ord1CP1 ∷ (Ord1 f, Ord1 g) ⇒ Ord1 (CP1 f g) where
-  compare1 (CP1 (Coproduct x)) (CP1 (Coproduct y)) =
-    case x, y of
-      Left a, Left b → compare1 a b
-      Left _, _ → LT
-      _, Left _ → GT
-      Right a, Right b → compare1 a b
-
-toCP1 ∷ Mu (Coproduct EJC.CursorF ECursorF) → Mu (CP1 EJC.CursorF ECursorF)
-toCP1 = transCata CP1
 
 data ECursorF a = OfValue EJ.EJson a
 
@@ -83,6 +59,8 @@ instance traversableECursorF ∷ Traversable ECursorF where
 
 newtype Cursor = Cursor (Mu (Coproduct EJC.CursorF ECursorF))
 
+derive newtype instance eqCursor ∷ Eq Cursor
+derive newtype instance ordCursor ∷ Ord Cursor
 derive instance newtypeCursor ∷ Newtype Cursor _
 
 instance corecursiveCursor ∷ Corecursive Cursor (Coproduct EJC.CursorF ECursorF) where
@@ -90,12 +68,6 @@ instance corecursiveCursor ∷ Corecursive Cursor (Coproduct EJC.CursorF ECursor
 
 instance recursiveCursor ∷ Recursive Cursor (Coproduct EJC.CursorF ECursorF) where
   project = N.traverse Cursor project
-
-instance eqCursor ∷ Eq Cursor where
-  eq (Cursor x) (Cursor y) = eq (toCP1 x) (toCP1 y)
-
-instance ordCursor ∷ Ord Cursor where
-  compare (Cursor x) (Cursor y) = compare (toCP1 x) (toCP1 y)
 
 genCursor ∷ SCG.Gen Cursor
 genCursor = SCG.sized go
@@ -251,7 +223,7 @@ analyse items path =
     x →
       ofValue item path : acc
 
-countFreq ∷ ∀ f a. (Foldable f, Ord a) ⇒ Int → f a → M.Map a Weight
+countFreq ∷ ∀ f a. Foldable f ⇒ Ord a ⇒ Int → f a → M.Map a Weight
 countFreq total = compute ∘ foldl (flip go) M.empty
   where
   go ∷ a → M.Map a Int → M.Map a Int

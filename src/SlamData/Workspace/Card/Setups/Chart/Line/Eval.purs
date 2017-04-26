@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SqlSquare as Sql
+import SqlSquared as Sql
 
 eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildLine
@@ -131,7 +131,7 @@ buildLineData r =
       Just value, Nothing → Just { value, symbolSize: Int.floor r.minSize }
       Just value, Just size → Just { value, symbolSize: Int.floor size }
 
-  adjustSymbolSizes ∷ ∀ f. (Functor f, Foldable f) ⇒ f LineItem → f LineItem
+  adjustSymbolSizes ∷ ∀ f. Functor f ⇒ Foldable f ⇒ f LineItem → f LineItem
   adjustSymbolSizes is
     | r.optionalMarkers = is
     | otherwise =

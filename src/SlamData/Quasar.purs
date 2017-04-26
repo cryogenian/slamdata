@@ -97,7 +97,8 @@ reqHeadersToJSON = foldl go JS.jsonEmptyObject
 -- | Quasar responded with a valid array of OIDC providers.
 retrieveAuthProviders
   ∷ ∀ m
-  . (Functor m, QuasarDSL m)
+  . Functor m
+  ⇒ QuasarDSL m
   ⇒ m (Exn.Error ⊹ (Maybe (Array Auth.ProviderR)))
 retrieveAuthProviders =
   liftQuasar QF.authProviders <#> case _ of

@@ -22,24 +22,20 @@ module SlamData.Workspace.Card.Setups.FormInput.Static.Eval
 import SlamData.Prelude
 
 import Control.Monad.State (class MonadState, get, put)
-import Control.Monad.Throw (class MonadThrow)
-
 import Data.Array as Arr
-
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Setups.FormInput.Static.Model (Model, behaviour, initialState)
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.FormInput.Static.Model (Model, behaviour, initialState)
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 eval
   ∷ ∀ m
-  . ( MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
+  . MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
   ⇒ Model
   → Port.Resource
   → m Port.Port

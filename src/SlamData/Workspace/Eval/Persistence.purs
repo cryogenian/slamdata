@@ -25,8 +25,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Fork (class MonadFork, fork)
-import Control.Monad.Throw (class MonadThrow, throw, note, noteError)
-
+import Control.Monad.Throw (note, noteError)
 import Data.Array as Array
 import Data.Functor.Compose (Compose(Compose))
 import Data.Lens ((^?))
@@ -39,8 +38,11 @@ import Data.Path.Pathy as Pathy
 import Data.Rational ((%))
 import Data.Set (Set)
 import Data.Set as Set
-
+import Data.Time.Duration (Milliseconds(..))
 import SlamData.Effects (SlamDataEffects)
+import SlamData.LocalStorage.Class (class LocalStorageDSL)
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LSK
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
@@ -64,38 +66,34 @@ import SlamData.Workspace.Eval.Graph (pendingGraph, EvalGraph)
 import SlamData.Workspace.Eval.Traverse (TraverseCard(..), TraverseDeck(..), unfoldModelTree, isCyclical)
 import SlamData.Workspace.Legacy (isLegacy, loadCompatWorkspace, pruneLegacyData)
 import SlamData.Workspace.Model as WM
-import SlamData.LocalStorage.Class (class LocalStorageDSL)
-import SlamData.LocalStorage.Class as LS
-import SlamData.LocalStorage.Keys as LSK
-
 import Utils.Aff (laterVar)
 
-defaultSaveDebounce ∷ Int
-defaultSaveDebounce = 500
+defaultSaveDebounce ∷ Milliseconds
+defaultSaveDebounce = Milliseconds 500.0
 
-defaultEvalDebounce ∷ Int
-defaultEvalDebounce = 500
+defaultEvalDebounce ∷ Milliseconds
+defaultEvalDebounce = Milliseconds 500.0
 
 type Persist f m a =
-  ( MonadAff SlamDataEffects m
-  , MonadAsk Wiring m
-  , MonadFork Exn.Error m
-  , MonadThrow Exn.Error m
-  , Parallel f m
-  , QuasarDSL m
-  , LocalStorageDSL m
-  ) ⇒ a
+  MonadAff SlamDataEffects m
+  ⇒ MonadAsk Wiring m
+  ⇒ MonadFork Exn.Error m
+  ⇒ MonadThrow Exn.Error m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
+  ⇒ LocalStorageDSL m
+  ⇒ a
 
 type PersistEnv m a =
-  ( MonadAff SlamDataEffects m
-  , MonadAsk Wiring m
-  , MonadThrow Exn.Error m
-  ) ⇒ a
+  MonadAff SlamDataEffects m
+  ⇒ MonadAsk Wiring m
+  ⇒ MonadThrow Exn.Error m
+  ⇒ a
 
 type ForkAff m a =
-  ( MonadAff SlamDataEffects m
-  , MonadFork Exn.Error m
-  ) ⇒ a
+  MonadAff SlamDataEffects m
+  ⇒ MonadFork Exn.Error m
+  ⇒ a
 
 loadWorkspace ∷ ∀ f m. Persist f m (m (Either QE.QError Deck.Id))
 loadWorkspace = runExceptT do
@@ -233,7 +231,7 @@ populateGraph oldDecks oldCards rootParent root = do
         _, _ → makeDeckCell deck (Deck.evalStatusFromCards deck.cards)
       cardCells ←
         List.foldM (goCard eval deckId) mempty cards >>= case _ of
-          (lastId × last) : tail -> do
+          (lastId × last) : tail → do
             let last' = last { next = Set.insert (Left deckId) last.next }
             pure ((lastId × last') : tail)
           _ → do
@@ -275,7 +273,7 @@ snapshotGraph cardId = do
   cards ← Cache.snapshot eval.cards
   pure (pendingGraph (pure cardId) { decks, cards })
 
-queueSave ∷ ∀ f m. Persist f m (Int → Maybe Card.Id → m Unit)
+queueSave ∷ ∀ f m. Persist f m (Milliseconds → Maybe Card.Id → m Unit)
 queueSave ms cardId = do
   { eval, path, accessType } ← Wiring.expose
   debounce ms path { avar: _ } eval.debounceSaves (pure unit)
@@ -286,12 +284,12 @@ queueSave ms cardId = do
         for_ cardId saveCardLocally
 
 queueSaveImmediate ∷ ∀ f m. Persist f m (Maybe Card.Id → m Unit)
-queueSaveImmediate = queueSave 0
+queueSaveImmediate = queueSave (Milliseconds 0.0)
 
 queueSaveDefault ∷ ∀ f m. Persist f m (Maybe Card.Id → m Unit)
 queueSaveDefault = queueSave defaultSaveDebounce
 
-queueEval' ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → EvalGraph → m Unit)
+queueEval' ∷ ∀ f m. Persist f m (Milliseconds → Card.DisplayCoord → EvalGraph → m Unit)
 queueEval' ms source@(_ × cardId) graph =
   if Map.isEmpty graph.decks
     then pure unit
@@ -305,17 +303,17 @@ queueEval' ms source@(_ × cardId) graph =
           for_ (deck.status ^? Deck._PendingEval) (Eval.publish deck ∘ Deck.Pending))
         (Eval.evalGraph (pure source))
 
-queueEval ∷ ∀ f m. Persist f m (Int → Card.DisplayCoord → m Unit)
+queueEval ∷ ∀ f m. Persist f m (Milliseconds → Card.DisplayCoord → m Unit)
 queueEval ms source@(_ × cardId) =
   queueEval' ms source =<< snapshotGraph cardId
 
 queueEvalImmediate ∷ ∀ f m. Persist f m (Card.DisplayCoord → m Unit)
-queueEvalImmediate = queueEval 0
+queueEvalImmediate = queueEval (Milliseconds 0.0)
 
 queueEvalDefault ∷ ∀ f m. Persist f m (Card.DisplayCoord → m Unit)
 queueEvalDefault = queueEval defaultEvalDebounce
 
-queueEvalForDeck ∷ ∀ f m. Persist f m (Int → Deck.Id → m Unit)
+queueEvalForDeck ∷ ∀ f m. Persist f m (Milliseconds → Deck.Id → m Unit)
 queueEvalForDeck ms deckId =
   getDeck deckId >>= traverse_ \cell →
     for_ (Array.head cell.model.cards) (queueEval ms ∘ Card.toAll)
@@ -361,7 +359,7 @@ deleteDeck ∷ ∀ f m. Persist f m (Deck.Id → m (Maybe Card.Id))
 deleteDeck deckId = do
   { eval, path } ← Wiring.expose
   cell ← noteError "Deck not found" =<< getDeck deckId
-  Cache.remove deckId eval.decks
+  _ ← Cache.remove deckId eval.decks
   case cell.parent of
     Nothing → do
       rootId ← getRootDeckId
@@ -421,7 +419,7 @@ unwrapDeck deckId = do
   cards ← noteError "Cards not found" =<< getCards cell.model.cards
   childId ← noteError "Cannot unwrap deck" $ immediateChild (_.model <$> cards)
   child ← noteError "Child not found" =<< getDeck childId
-  Cache.remove deckId eval.decks
+  _ ← Cache.remove deckId eval.decks
   updateRootOrParent deckId childId cell.parent
   queueSaveDefault Nothing
   pure childId
@@ -481,7 +479,7 @@ wrapAndGroupDeck orn bias deckId siblingId = do
       putCard oldParentId oldParent'
       rebuildGraph
       publishCardChange' (Card.toAll oldParentId) oldParent'
-    _ → throw (Exn.error "Cannot group deck")
+    _ → throwError (Exn.error "Cannot group deck")
 
 groupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → Card.Id → m Unit)
 groupDeck orn bias deckId siblingId newParentId = do
@@ -528,7 +526,7 @@ addDeckToDraftboard parentId cursor = do
       rebuildGraph
       publishCardChange' (Card.toAll parentId) parent'
       pure deckId
-    _ → throw (Exn.error "Not a draftboard")
+    _ → throwError (Exn.error "Not a draftboard")
 
 addDeckToTabs ∷ ∀ f m. Persist f m (Card.Id → m Deck.Id)
 addDeckToTabs parentId = do
@@ -541,7 +539,7 @@ addDeckToTabs parentId = do
       rebuildGraph
       publishCardChange' (Card.toAll parentId) parent'
       pure deckId
-    _ → throw (Exn.error "Not a tab set")
+    _ → throwError (Exn.error "Not a tab set")
 
 addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m Card.Id)
 addCard deckId cty = do
@@ -636,7 +634,7 @@ debounce
   ∷ ∀ k m r
   . ForkAff m
   ( Ord k
-  ⇒ Int
+  ⇒ Milliseconds
   → k
   → (AVar Unit → { avar ∷ AVar Unit | r })
   → Cache.Cache k { avar ∷ AVar Unit | r }

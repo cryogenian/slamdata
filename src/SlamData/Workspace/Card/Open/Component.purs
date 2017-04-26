@@ -160,7 +160,7 @@ evalOpen = case _ of
     pure next
   Q.HandleLoadRequest req@(path × _) next → do
     res ← load req
-    H.query unit $ H.action $ MC.FulfilLoadRequest (path × res)
+    _ ← H.query unit $ H.action $ MC.FulfilLoadRequest (path × res)
     pure next
 
 evalCard ∷ CC.CardEvalQuery ~> DSL

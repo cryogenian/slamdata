@@ -20,8 +20,6 @@ module SlamData.Workspace.Card.Setups.Chart.PivotTable.Eval
   ) where
 
 import Control.Monad.State (class MonadState, get, put)
-import Control.Monad.Throw (class MonadThrow, throw)
-
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Lens ((^.), (.~), (?~), (<>~))
@@ -32,7 +30,6 @@ import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
-
 import SlamData.Prelude
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
@@ -42,19 +39,16 @@ import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Axis (buildAxes)
-
-import SqlSquare (Sql)
-import SqlSquare as Sql
-
+import SqlSquared (Sql)
+import SqlSquared as Sql
 import Utils.Path (FilePath)
 
 eval
   ∷ ∀ m
-  . ( MonadAsk CEM.CardEnv m
-    , MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , QuasarDSL m
-    )
+  . MonadAsk CEM.CardEnv m
+  ⇒ MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ QuasarDSL m
   ⇒ PTM.Model
   → Port.DataMap
   → Port.Resource
@@ -69,7 +63,7 @@ eval options varMap resource = do
     case state of
       Just (CEM.Analysis { axes: ax, resource: resource' })
         | resource' ≡ resource → pure ax
-      _ → either throw (pure ∘ buildAxes) =<< QQ.sample filePath 0 300
+      _ → either throwError (pure ∘ buildAxes) =<< QQ.sample filePath 0 300
   let
     state' = { axes, records: [], resource }
     view = Port.View r (Sql.print $ snd query) varMap

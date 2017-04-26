@@ -66,7 +66,7 @@ fromConfig { hosts, path, user, password, props } =
     , path: ""
     , user: maybe "" Global.decodeURIComponent user
     , password: maybe "" Global.decodeURIComponent password
-    , props: map (fromMaybe "") <$> A.fromFoldable (SM.toList props)
+    , props: map (fromMaybe "") <$> SM.toUnfoldable props
     }
 
 toConfig ∷ State → Either String Config

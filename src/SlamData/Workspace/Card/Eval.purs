@@ -24,11 +24,8 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State.Class (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
-
 import Data.StrMap (union)
-
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Workspace.Card.Cache.Eval as Cache
@@ -74,11 +71,10 @@ import SlamData.Workspace.Card.Variables.Eval as VariablesE
 
 runCard
   ∷ ∀ f m
-  . ( MonadAff SlamDataEffects m
-    , QuasarDSL m
-    , Parallel f m
-    , Monad m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ QuasarDSL m
+  ⇒ Parallel f m
+  ⇒ Monad m
   ⇒ CEM.CardEnv
   → CEM.CardState
   → Eval
@@ -90,14 +86,13 @@ runCard env state trans input varMap =
 
 evalCard
   ∷ ∀ m
-  . ( MonadAff SlamDataEffects m
-    , MonadAsk CEM.CardEnv m
-    , MonadState CEM.CardState m
-    , MonadThrow CEM.CardError m
-    , MonadTell CEM.CardLog m
-    , QuasarDSL m
-    , ParQuasarDSL m
-    )
+  . MonadAff SlamDataEffects m
+  ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadState CEM.CardState m
+  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ QuasarDSL m
+  ⇒ ParQuasarDSL m
   ⇒ Eval
   → Port.Port
   → Port.DataMap
@@ -108,6 +103,7 @@ evalCard trans port varMap = map (_ `union` varMap) <$> case trans, port of
   Pass, _ → pure (port × varMap)
   Table m, _ → Table.eval m port varMap
   Chart, Port.ChartInstructions { options } → CEM.tapResource (Chart.eval options) varMap
+  Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
   Composite, _ → Port.varMapOut <$> Common.evalComposite
   Terminal, _ → pure Port.terminalOut
   Query sql, _ → Query.evalQuery sql varMap

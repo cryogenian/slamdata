@@ -141,7 +141,7 @@ cardEval = case _ of
       Nothing → M.BuildBar Nothing
       Just a → a
   CC.Load m next → do
-    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    _ ← H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     for_ (m ^? M._BuildBar ∘ _Just) \r →
       H.modify _{ axisLabelAngle = r.axisLabelAngle }
     pure next

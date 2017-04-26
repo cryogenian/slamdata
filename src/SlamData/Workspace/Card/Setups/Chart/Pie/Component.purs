@@ -116,7 +116,7 @@ cardEval = case _ of
       Nothing → M.BuildPie Nothing
       Just a → a
   CC.Load m next → do
-    H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    _ ← H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     pure next
   CC.ReceiveInput _ _ next →
     pure next
