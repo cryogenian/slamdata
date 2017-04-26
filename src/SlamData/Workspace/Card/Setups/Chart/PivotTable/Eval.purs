@@ -63,7 +63,7 @@ eval options varMap resource = do
     case state of
       Just (CEM.Analysis { axes: ax, resource: resource' })
         | resource' ≡ resource → pure ax
-      _ → either throwError (pure ∘ buildAxes) =<< QQ.sample filePath 0 300
+      _ → buildAxes <$> CEM.liftQ (QQ.sample filePath 0 300)
   let
     state' = { axes, records: [], resource }
     view = Port.View r (Sql.print $ snd query) varMap

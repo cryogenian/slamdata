@@ -46,7 +46,7 @@ validateResources fs = do
   res ← sequenceQuasar (map (\path → Tuple path <$> QF.fileMetadata path) fs)
   for_ res case _ of
     path × Left reason →
-      throwError $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
+      throwError $ CEM.quasarToCardError $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
     _ →
       pure unit
 

@@ -36,6 +36,8 @@ module SlamData.Workspace.Card.Eval.Monad
   , throw
   , liftQ
   , runCardEvalM
+  , quasarToCardError
+  , cardToGlobalError
   , module SlamData.Workspace.Card.Eval.State
   , module SlamData.Workspace.Deck.AdditionalSource
   ) where
@@ -60,9 +62,10 @@ import Data.Set as Set
 import Data.StrMap as SM
 
 import Quasar.Advanced.QuasarAF as QA
-import Quasar.Error (QError)
+import Quasar.Error (QError, printQError)
 
 import SlamData.Effects (SlamDataEffects)
+import SlamData.GlobalError as GE
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, liftQuasar)
 import SlamData.Quasar.Error (msgToQError)
 import SlamData.Workspace.Card.CardId as CID
@@ -77,10 +80,20 @@ type CardLog = Set AdditionalSource
 
 type CardState = Maybe EvalState
 
-type CardError = QError
+newtype CardError = CardError QError
 
-type CardResult a =
-  { output ∷ Either QError a
+quasarToCardError :: QError -> CardError
+quasarToCardError = CardError
+
+cardToGlobalError ∷ CardError → Either String GE.GlobalError
+cardToGlobalError (CardError qError) = case qError of
+  QA.PaymentRequired → Right GE.PaymentRequired
+  QA.Unauthorized unauthDetails → Right $ GE.Unauthorized unauthDetails
+  QA.Forbidden → Right GE.Forbidden
+  err → Left (printQError err)
+
+type CardResult err a =
+  { output ∷ Either err a
   , sources ∷ Set.Set AdditionalSource
   , state ∷ CardState
   }
@@ -97,16 +110,16 @@ newtype CardEnv = CardEnv
   , children ∷ List ChildOut
   }
 
-data CardEvalF eff a
+data CardEvalF eff err a
   = Aff (Aff eff a)
   | Quasar (QA.QuasarAFC a)
   | ParQuasar (FreeAp QA.QuasarAFC a)
   | Tell (a × Set AdditionalSource)
   | State (CardState → a × CardState)
   | Ask (CardEnv → a)
-  | Throw QError
+  | Throw err
 
-instance functorCardEvalF ∷ Functor (CardEvalF eff) where
+instance functorCardEvalF ∷ Functor (CardEvalF eff err) where
   map f = case _ of
     Aff aff     → Aff (f <$> aff)
     Quasar q    → Quasar (f <$> q)
@@ -116,39 +129,39 @@ instance functorCardEvalF ∷ Functor (CardEvalF eff) where
     Ask a       → Ask (f <$> a)
     Throw err   → Throw err
 
-newtype CardEvalM eff a = CardEvalM (Free (CardEvalF eff) a)
+newtype CardEvalM eff err a = CardEvalM (Free (CardEvalF eff err) a)
 
-unCardEvalM ∷ ∀ eff. CardEvalM eff ~> Free (CardEvalF eff)
+unCardEvalM ∷ ∀ eff err. CardEvalM eff err ~> Free (CardEvalF eff err)
 unCardEvalM (CardEvalM a) = a
 
-derive newtype instance functorCardEvalM ∷ Functor (CardEvalM eff)
-derive newtype instance applyCardEvalM ∷ Apply (CardEvalM eff)
-derive newtype instance applicativeCardEvalM ∷ Applicative (CardEvalM eff)
-derive newtype instance bindCardEvalM ∷ Bind (CardEvalM eff)
-derive newtype instance monadCardEvalM ∷ Monad (CardEvalM eff)
+derive newtype instance functorCardEvalM ∷ Functor (CardEvalM eff err)
+derive newtype instance applyCardEvalM ∷ Apply (CardEvalM eff err)
+derive newtype instance applicativeCardEvalM ∷ Applicative (CardEvalM eff err)
+derive newtype instance bindCardEvalM ∷ Bind (CardEvalM eff err)
+derive newtype instance monadCardEvalM ∷ Monad (CardEvalM eff err)
 
-instance monadThrowCardEvalM ∷ MonadThrow QError (CardEvalM eff) where
+instance monadThrowCardEvalM ∷ MonadThrow err (CardEvalM eff err) where
   throwError = CardEvalM ∘ liftF ∘ Throw
 
-instance monadStateCardEvalM ∷ MonadState (Maybe EvalState) (CardEvalM eff) where
+instance monadStateCardEvalM ∷ MonadState (Maybe EvalState) (CardEvalM eff err) where
   state = CardEvalM ∘ liftF ∘ State
 
-instance monadAskCardEvalM ∷ MonadAsk CardEnv (CardEvalM eff) where
+instance monadAskCardEvalM ∷ MonadAsk CardEnv (CardEvalM eff err) where
   ask = CardEvalM (liftF (Ask id))
 
-instance monadTellCardEvalM ∷ MonadTell (Set AdditionalSource) (CardEvalM eff) where
+instance monadTellCardEvalM ∷ MonadTell (Set AdditionalSource) (CardEvalM eff err) where
   tell as = CardEvalM (liftF (Tell (unit × as)))
 
-instance monadEffCardEvalM ∷ MonadEff eff (CardEvalM eff) where
+instance monadEffCardEvalM ∷ MonadEff eff (CardEvalM eff err) where
   liftEff = CardEvalM ∘ liftF ∘ Aff ∘ liftEff
 
-instance monadAffCardEvalM ∷ MonadAff eff (CardEvalM eff) where
+instance monadAffCardEvalM ∷ MonadAff eff (CardEvalM eff err) where
   liftAff = CardEvalM ∘ liftF ∘ Aff
 
-instance quasarDSLCardEvalM ∷ QuasarDSL (CardEvalM eff) where
+instance quasarDSLCardEvalM ∷ QuasarDSL (CardEvalM eff err) where
   liftQuasar = CardEvalM ∘ liftF ∘ Quasar
 
-instance parQuasarDSLCardEvalM ∷ ParQuasarDSL (CardEvalM eff) where
+instance parQuasarDSLCardEvalM ∷ ParQuasarDSL (CardEvalM eff err) where
   sequenceQuasar = CardEvalM ∘ liftF ∘ ParQuasar ∘ traverse liftFreeAp
 
 addSource ∷ ∀ m. (MonadTell (Set AdditionalSource) m) ⇒ FilePath → m Unit
@@ -180,34 +193,34 @@ localUrlVarMap = do
     (fromMaybe mempty
       (Map.lookup cardId urlVarMaps))
 
-extractResourceVar ∷ ∀ m. MonadThrow QError m ⇒ Port.DataMap → m (String × Port.Resource)
+extractResourceVar ∷ ∀ m. MonadThrow CardError m ⇒ Port.DataMap → m (String × Port.Resource)
 extractResourceVar dm = case SM.toUnfoldable (Port.filterResources dm) of
   _ : _ : _ → throw "Multiple resources selected"
   r : _ → pure r
   _ → throw "No resource selected"
 
-extractResource ∷ ∀ m. MonadThrow QError m ⇒ Port.DataMap → m (Port.Resource)
+extractResource ∷ ∀ m. MonadThrow CardError m ⇒ Port.DataMap → m (Port.Resource)
 extractResource = map snd ∘ extractResourceVar
 
-tapResource ∷ ∀ m. MonadThrow QError m ⇒ (Port.Resource → m Port.Port) → Port.DataMap → m Port.Out
+tapResource ∷ ∀ m. MonadThrow CardError m ⇒ (Port.Resource → m Port.Port) → Port.DataMap → m Port.Out
 tapResource f dm = map (_ × dm) (f =<< extractResource dm)
 
-throw ∷ ∀ m a. MonadThrow QError m ⇒ String → m a
-throw = throwError ∘ msgToQError
+throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" => String → m a
+throw = throwError ∘ quasarToCardError ∘ msgToQError
 
-liftQ ∷ ∀ m a. MonadThrow QError m ⇒ m (Either QError a) → m a
-liftQ = flip bind (either throwError pure)
+liftQ ∷ ∀ m a. MonadThrow CardError m ⇒ m (Either QError a) → m a
+liftQ = flip bind (either (throwError ∘ quasarToCardError) pure)
 
 runCardEvalM
-  ∷ ∀ eff f m a
+  ∷ ∀ eff err f m a
   . QuasarDSL m
   ⇒ MonadAff eff m
   ⇒ Parallel f m
   ⇒ Monad m
   ⇒ CardEnv
   → CardState
-  → CardEvalM eff a
-  → m (CardResult a)
+  → CardEvalM eff err a
+  → m (CardResult err a)
 runCardEvalM env initialState (CardEvalM ce) = go initialState Set.empty ce
   where
     go st as ce' = case resume ce' of

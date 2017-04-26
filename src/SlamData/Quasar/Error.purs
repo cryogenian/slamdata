@@ -25,9 +25,6 @@ import Control.Monad.Eff.Exception as Exn
 
 import Quasar.Error (QError(..), UnauthorizedDetails(..), printQError)
 
-throw ∷ ∀ m a. (MonadError QError m) ⇒ String → m a
-throw = throwError ∘ msgToQError
-
 msgToQError :: String → QError
 msgToQError = Error ∘ Exn.error
 

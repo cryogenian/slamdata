@@ -44,6 +44,7 @@ import SlamData.GlobalError as GlobalError
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port.VarMap (URLVarMap)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
@@ -132,7 +133,7 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
         cardOutput =
           case result.output of
             Right out → out
-            Left  err → Card.portOut (Card.CardError (either id GE.print (GE.fromQError err)))
+            Left  err → Card.portOut (Card.CardError (either id GE.print (CEM.cardToGlobalError err)))
         card' = card
           { pending = Nothing
           , output = Just cardOutput
@@ -150,7 +151,7 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
           liftEff $ Ref.writeRef auth.retryEval (Just cardId)
           traverse_
             (liftAff ∘ flip Bus.write bus.notify ∘ GlobalError.toNotificationOptions)
-            (GlobalError.fromQError error)
+            (CEM.cardToGlobalError error)
         Right _ →
           liftEff $ Ref.writeRef auth.retryEval Nothing
 
