@@ -35,7 +35,7 @@
     "test:local": "npm run build:psa && webpack --progress --config webpack.config.dev.js && npm test",
     "test:property": "gulp bundle-property-tests && node tmp/js/property-tests",
     "watch:less": "less-watch-compiler less/ public/css/ main.less",
-    "ide": "psc-ide-server"
+    "ide": "purs ide server"
   },
   "license": "Apache-2.0",
   "bugs": {
