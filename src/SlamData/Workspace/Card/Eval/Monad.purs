@@ -18,7 +18,6 @@ module SlamData.Workspace.Card.Eval.Monad
   ( CardEval
   , CardLog
   , CardState
-  , CardError
   , CardEnv(..)
   , CardResult
   , CardEvalM
@@ -30,14 +29,7 @@ module SlamData.Workspace.Card.Eval.Monad
   , additionalSources
   , temporaryOutputResource
   , localUrlVarMap
-  , extractResourceVar
-  , extractResource
-  , tapResource
-  , throw
-  , liftQ
   , runCardEvalM
-  , quasarToCardError
-  , cardToGlobalError
   , module SlamData.Workspace.Card.Eval.State
   , module SlamData.Workspace.Deck.AdditionalSource
   ) where
@@ -79,18 +71,6 @@ type CardEval = CardEvalM SlamDataEffects
 type CardLog = Set AdditionalSource
 
 type CardState = Maybe EvalState
-
-newtype CardError = CardError QError
-
-quasarToCardError :: QError -> CardError
-quasarToCardError = CardError
-
-cardToGlobalError ∷ CardError → Either String GE.GlobalError
-cardToGlobalError (CardError qError) = case qError of
-  QA.PaymentRequired → Right GE.PaymentRequired
-  QA.Unauthorized unauthDetails → Right $ GE.Unauthorized unauthDetails
-  QA.Forbidden → Right GE.Forbidden
-  err → Left (printQError err)
 
 type CardResult err a =
   { output ∷ Either err a
@@ -192,24 +172,6 @@ localUrlVarMap = do
   pure
     (fromMaybe mempty
       (Map.lookup cardId urlVarMaps))
-
-extractResourceVar ∷ ∀ m. MonadThrow CardError m ⇒ Port.DataMap → m (String × Port.Resource)
-extractResourceVar dm = case SM.toUnfoldable (Port.filterResources dm) of
-  _ : _ : _ → throw "Multiple resources selected"
-  r : _ → pure r
-  _ → throw "No resource selected"
-
-extractResource ∷ ∀ m. MonadThrow CardError m ⇒ Port.DataMap → m (Port.Resource)
-extractResource = map snd ∘ extractResourceVar
-
-tapResource ∷ ∀ m. MonadThrow CardError m ⇒ (Port.Resource → m Port.Port) → Port.DataMap → m Port.Out
-tapResource f dm = map (_ × dm) (f =<< extractResource dm)
-
-throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" => String → m a
-throw = throwError ∘ quasarToCardError ∘ msgToQError
-
-liftQ ∷ ∀ m a. MonadThrow CardError m ⇒ m (Either QError a) → m a
-liftQ = flip bind (either (throwError ∘ quasarToCardError) pure)
 
 runCardEvalM
   ∷ ∀ eff err f m a
