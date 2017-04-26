@@ -28,7 +28,6 @@ import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Free (Free, liftF, foldFree)
 import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
-import Control.Monad.Throw (class MonadThrow)
 import Control.Parallel (parallel, sequential)
 import Control.UI.Browser (locationObject)
 
@@ -110,7 +109,7 @@ instance monadRecSlamM ∷ MonadRec (SlamM eff) where
     Done r → pure r
 
 instance monadThrow ∷ MonadThrow Error (SlamM eff) where
-  throw = liftAff ∘ throwError
+  throwError = liftAff ∘ throwError
 
 instance quasarAuthDSLSlamM ∷ QuasarAuthDSL (SlamM eff) where
   getIdToken = SlamM $ liftF $ GetAuthIdToken id

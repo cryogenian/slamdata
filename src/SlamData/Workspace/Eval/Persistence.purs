@@ -25,8 +25,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Fork (class MonadFork, fork)
-import Control.Monad.Throw (class MonadThrow, throw, note, noteError)
-
+import Control.Monad.Throw (note, noteError)
 import Data.Array as Array
 import Data.Functor.Compose (Compose(Compose))
 import Data.Lens ((^?))
@@ -40,8 +39,10 @@ import Data.Rational ((%))
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Time.Duration (Milliseconds(..))
-
 import SlamData.Effects (SlamDataEffects)
+import SlamData.LocalStorage.Class (class LocalStorageDSL)
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LSK
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
@@ -65,10 +66,6 @@ import SlamData.Workspace.Eval.Graph (pendingGraph, EvalGraph)
 import SlamData.Workspace.Eval.Traverse (TraverseCard(..), TraverseDeck(..), unfoldModelTree, isCyclical)
 import SlamData.Workspace.Legacy (isLegacy, loadCompatWorkspace, pruneLegacyData)
 import SlamData.Workspace.Model as WM
-import SlamData.LocalStorage.Class (class LocalStorageDSL)
-import SlamData.LocalStorage.Class as LS
-import SlamData.LocalStorage.Keys as LSK
-
 import Utils.Aff (laterVar)
 
 defaultSaveDebounce ∷ Milliseconds
@@ -482,7 +479,7 @@ wrapAndGroupDeck orn bias deckId siblingId = do
       putCard oldParentId oldParent'
       rebuildGraph
       publishCardChange' (Card.toAll oldParentId) oldParent'
-    _ → throw (Exn.error "Cannot group deck")
+    _ → throwError (Exn.error "Cannot group deck")
 
 groupDeck ∷ ∀ f m. Persist f m (Orn.Orientation → Layout.SplitBias → Deck.Id → Deck.Id → Card.Id → m Unit)
 groupDeck orn bias deckId siblingId newParentId = do
@@ -529,7 +526,7 @@ addDeckToDraftboard parentId cursor = do
       rebuildGraph
       publishCardChange' (Card.toAll parentId) parent'
       pure deckId
-    _ → throw (Exn.error "Not a draftboard")
+    _ → throwError (Exn.error "Not a draftboard")
 
 addDeckToTabs ∷ ∀ f m. Persist f m (Card.Id → m Deck.Id)
 addDeckToTabs parentId = do
@@ -542,7 +539,7 @@ addDeckToTabs parentId = do
       rebuildGraph
       publishCardChange' (Card.toAll parentId) parent'
       pure deckId
-    _ → throw (Exn.error "Not a tab set")
+    _ → throwError (Exn.error "Not a tab set")
 
 addCard ∷ ∀ f m. Persist f m (Deck.Id → CT.CardType → m Card.Id)
 addCard deckId cty = do

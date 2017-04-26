@@ -19,24 +19,18 @@ module SlamData.Workspace.Card.Eval.Common where
 import SlamData.Prelude
 
 import Control.Monad.Aff.Class (class MonadAff)
-import Control.Monad.Throw (class MonadThrow, throw)
-
 import Data.Lens ((^?), _Right, (<>~), (%~))
 import Data.List as L
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
-
 import Matryoshka (embed)
-
-import Quasar.Types (FilePath)
-
-import SlamData.Effects (SlamDataEffects)
 import Quasar.Advanced.QuasarAF as QF
-import SlamData.Quasar.Error as QE
+import Quasar.Types (FilePath)
+import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, sequenceQuasar)
+import SlamData.Quasar.Error as QE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-
 import SqlSquared as Sql
 
 validateResources
@@ -52,7 +46,7 @@ validateResources fs = do
   res ← sequenceQuasar (map (\path → Tuple path <$> QF.fileMetadata path) fs)
   for_ res case _ of
     path × Left reason →
-      throw $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
+      throwError $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
     _ →
       pure unit
 

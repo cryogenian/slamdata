@@ -24,11 +24,8 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State.Class (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
-
 import Data.StrMap (union)
-
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Workspace.Card.Cache.Eval as Cache

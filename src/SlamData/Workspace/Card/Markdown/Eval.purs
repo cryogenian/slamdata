@@ -19,35 +19,28 @@ module SlamData.Workspace.Card.Markdown.Eval
 import SlamData.Prelude
 
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
-
 import Data.Array as A
 import Data.Identity (Identity)
 import Data.Json.Extended as EJSON
 import Data.List as L
-import Data.String as S
 import Data.StrMap as SM
-
+import Data.String as S
 import Matryoshka (project, transAna)
-
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
+import SlamData.SqlSquared.Tagged as SqlT
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
-
-import SlamData.SqlSquared.Tagged as SqlT
 import SqlSquared as Sql
-
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 import Text.Markdown.SlamDown.Parser as SDP
 import Text.Markdown.SlamDown.Traverse as SDT
-
 import Utils.Path (DirPath)
 
 evalMarkdownForm

@@ -40,7 +40,7 @@ module SlamData.Workspace.Card.Eval.Monad
   , module SlamData.Workspace.Deck.AdditionalSource
   ) where
 
-import SlamData.Prelude hiding (throwError)
+import SlamData.Prelude
 
 import Control.Applicative.Free (FreeAp, liftFreeAp, foldFreeAp)
 import Control.Monad.Aff (Aff)
@@ -48,8 +48,6 @@ import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Free (Free, liftF, resume)
 import Control.Monad.State.Class (class MonadState)
-import Control.Monad.Throw (class MonadThrow)
-import Control.Monad.Throw as Throw
 import Control.Monad.Writer.Class (class MonadTell, tell)
 import Control.Parallel.Class (parallel, sequential)
 
@@ -130,7 +128,7 @@ derive newtype instance bindCardEvalM ∷ Bind (CardEvalM eff)
 derive newtype instance monadCardEvalM ∷ Monad (CardEvalM eff)
 
 instance monadThrowCardEvalM ∷ MonadThrow QError (CardEvalM eff) where
-  throw = CardEvalM ∘ liftF ∘ Throw
+  throwError = CardEvalM ∘ liftF ∘ Throw
 
 instance monadStateCardEvalM ∷ MonadState (Maybe EvalState) (CardEvalM eff) where
   state = CardEvalM ∘ liftF ∘ State
@@ -195,10 +193,10 @@ tapResource ∷ ∀ m. MonadThrow QError m ⇒ (Port.Resource → m Port.Port) �
 tapResource f dm = map (_ × dm) (f =<< extractResource dm)
 
 throw ∷ ∀ m a. MonadThrow QError m ⇒ String → m a
-throw = Throw.throw ∘ msgToQError
+throw = throwError ∘ msgToQError
 
 liftQ ∷ ∀ m a. MonadThrow QError m ⇒ m (Either QError a) → m a
-liftQ = flip bind (either Throw.throw pure)
+liftQ = flip bind (either throwError pure)
 
 runCardEvalM
   ∷ ∀ eff f m a
