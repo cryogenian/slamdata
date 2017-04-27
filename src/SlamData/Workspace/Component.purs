@@ -65,9 +65,9 @@ import SlamData.Workspace.Class (navigate, Routes(..))
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck, cpGuide, cpHeader, cpNotify, cpDialog)
 import SlamData.Workspace.Component.Query (Query(..))
 import SlamData.Workspace.Component.State (State, initialState)
-import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Common as DeckCommon
-import SlamData.Workspace.Deck.Dialog.Component as Dialog
+import SlamData.Workspace.Deck.Component as Deck
+import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse as ET

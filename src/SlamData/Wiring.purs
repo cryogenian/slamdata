@@ -38,6 +38,7 @@ module SlamData.Wiring
   ) where
 
 import SlamData.Prelude
+
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
@@ -45,9 +46,9 @@ import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (Ref)
 import Control.Monad.Eff.Ref as Ref
-
 import Data.StrMap (StrMap)
-
+import ECharts.Theme as ETheme
+import Quasar.Advanced.Types (TokenHash)
 import SlamData.AuthenticationMode (AllowedAuthenticationModes, allowedAuthenticationModesForAccessType)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
@@ -56,21 +57,17 @@ import SlamData.Notification as N
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
-import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.EChartThemeLoader as EChartThemeLoader
 import SlamData.Workspace.AccessType (AccessType)
+import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Options (DeckOptions)
+import SlamData.Workspace.Dialog.Types (Dialog)
+import SlamData.Workspace.EChartThemeLoader as EChartThemeLoader
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
 import SlamData.Workspace.Guide (GuideType)
-import SlamData.Workspace.Deck.Dialog.Types (Dialog)
-
-import Quasar.Advanced.Types (TokenHash)
-
 import Utils.Path (DirPath)
-import ECharts.Theme as ETheme
 
 -- TODO: DeckFocused should use DeckOptions too. It's not totally trivial though,
 -- as Defocus in the deck uses DeckFocused to focus the root of its cursor,

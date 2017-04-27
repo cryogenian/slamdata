@@ -22,9 +22,10 @@ module SlamData.Workspace.Deck.Component
   ) where
 
 import SlamData.Prelude
+
 import Control.Monad.Aff as Aff
-import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Eff.Exception as Exception
 import Control.UI.Browser as Browser
 import Data.Array as Array
 import Data.Lens ((.~), _Left, _Just, is)
@@ -37,7 +38,6 @@ import Halogen as H
 import Halogen.Component.Utils (sendAfter, busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Config as Config
@@ -69,16 +69,15 @@ import SlamData.Workspace.Deck.Component.Render as DCR
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckPath (deckPath')
-import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Gripper.Def as GD
 import SlamData.Workspace.Deck.Slider as Slider
+import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Eval.Card as EC
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse as ET
 import SlamData.Workspace.Guide as Guide
 import SlamData.Workspace.Routing (mkWorkspaceURL)
-
 import Utils as Utils
 import Utils.DOM as DOM
 

@@ -24,7 +24,7 @@ import SlamData.Header.Component as Header
 import SlamData.Notification.Component as Notify
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Dialog.Component as Dialog
+import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Guide (GuideType)
 
 type ChildQuery

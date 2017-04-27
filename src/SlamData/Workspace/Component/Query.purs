@@ -25,7 +25,7 @@ import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Notification as N
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Dialog.Component as Dialog
+import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Guide (GuideType)
 import Utils.Path as UP
 

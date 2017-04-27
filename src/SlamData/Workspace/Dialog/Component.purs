@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Deck.Dialog.Component
+module SlamData.Workspace.Dialog.Component
   ( Query(..)
   , Message(..)
   , ChildSlot
   , component
-  , module SlamData.Workspace.Deck.Dialog.Types
+  , module SlamData.Workspace.Dialog.Types
   ) where
 
 import SlamData.Prelude
@@ -31,14 +31,14 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
-import SlamData.Workspace.Deck.Dialog.Export.Component as Export
-import SlamData.Workspace.Deck.Dialog.Reason.Component as Reason
-import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
-import SlamData.Workspace.Deck.Dialog.Share.Component as Share
-import SlamData.Workspace.Deck.Dialog.Types (Dialog(..))
-import SlamData.Workspace.Deck.Dialog.Unshare.Component as Unshare
 import SlamData.Workspace.Deck.Options (DeckOptions)
+import SlamData.Workspace.Dialog.Confirm.Component as Confirm
+import SlamData.Workspace.Dialog.Export.Component as Export
+import SlamData.Workspace.Dialog.Reason.Component as Reason
+import SlamData.Workspace.Dialog.Rename.Component as Rename
+import SlamData.Workspace.Dialog.Share.Component as Share
+import SlamData.Workspace.Dialog.Types (Dialog(..))
+import SlamData.Workspace.Dialog.Unshare.Component as Unshare
 
 type State = Maybe Dialog
 

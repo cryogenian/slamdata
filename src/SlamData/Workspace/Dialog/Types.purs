@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Deck.Dialog.Types where
+module SlamData.Workspace.Dialog.Types where
 
 import Data.Map as Map
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
 import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Options (DeckOptions)
+import SlamData.Workspace.Dialog.Share.Model (SharingInput)
 
 data Dialog
   = Error DeckOptions String
