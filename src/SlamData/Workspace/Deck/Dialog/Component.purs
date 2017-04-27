@@ -45,7 +45,6 @@ type State = Maybe Dialog
 data Query a
   = Show Dialog a
   | Raise Message a
-  | Dismiss a
 
 data Message
   = Dismissed
@@ -159,7 +158,4 @@ render = case _ of
 eval ∷ Query ~> DSL
 eval = case _ of
   Show dialog next → H.put (Just dialog) $> next
-  Dismiss next → H.put Nothing *> H.raise Dismissed $> next
-  Raise msg next → next <$ case msg of
-    Dismissed → H.put Nothing *> H.raise msg
-    _ → H.raise msg
+  Raise msg next → H.put Nothing *> H.raise msg $> next
