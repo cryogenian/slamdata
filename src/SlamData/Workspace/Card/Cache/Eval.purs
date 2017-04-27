@@ -50,7 +50,7 @@ eval mfp resource =
     Just pt →
       case PU.parseAnyPath pt of
         Just (Right fp) → eval' fp resource
-        _ → CE.throw $ pt ⊕ " is not a valid file path"
+        _ → CE.throwCacheError (CE.CacheInvalidFilepath pt)
 
 eval'
   ∷ ∀ m
@@ -70,19 +70,13 @@ eval' tmp resource = do
         ∘ (Sql._relations .~ tableRelation filePath)
   outputResource ← CE.liftQ $
     QQ.fileQuery backendPath tmp sql SM.empty
-  _ ← CE.liftQ $ QFS.messageIfFileNotFound
-    outputResource
-    "Error saving file, please try another location"
-  -- TODO: this error message is pretty obscure. I think it occurs when a query
-  -- is like "SELECT * FROM t" and quasar does no work. I'm not sure what the
-  -- behaviour of Save should be in that case - perhaps instead of failing it
-  -- could create a view so that a resource will actually be created. Debateable
-  -- as to whether that is "right", but at least it means a resource will exist
-  -- in the expected location, and the rest of the deck can run as the Save
-  -- failing has not effect on the output. -gb
-  when (tmp /= outputResource)
-    $ CE.throw
-    $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
-  CEM.addSource filePath
+  checkResult ← QFS.messageIfFileNotFound outputResource CE.CacheErrorSavingFile
+  whenMaybe (either (Just ∘ CE.CacheQuasarError) id checkResult)
+    CE.throwCacheError
+  when (tmp /= outputResource) $
+    CE.throwCacheError (CE.CacheResourceNotModified outputResource)
   CEM.addCache outputResource
   pure (Port.Path outputResource)
+  where
+  whenMaybe ∷ ∀ a f. Applicative f ⇒ Maybe a → (a → f Unit) → f Unit
+  whenMaybe m f = maybe (pure unit) f m
