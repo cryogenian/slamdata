@@ -173,8 +173,7 @@ eval opts = case _ of
     H.liftEff $ DOM.stopPropagation ev
     when (not st.focused) do
       H.modify (DCS._focused .~ true)
-      { bus } ← H.lift Wiring.expose
-      H.liftAff $ Bus.write (DeckFocused opts.deckId) bus.decks
+      Wiring.focusDeck opts.deckId
     when
       (Common.willBePresentedWithChildFrameWhenFocused opts st)
       dismissFocusDeckHint
@@ -190,9 +189,7 @@ eval opts = case _ of
     isFrame ← H.liftEff $ DOM.nodeEq (DOM.target ev) (DOM.currentTarget ev)
     when (st.focused && not (L.null opts.displayCursor)) do
       when isFrame do
-        for_ (L.last opts.cursor) \rootId → do
-          { bus } ← H.lift Wiring.expose
-          H.liftAff $ Bus.write (DeckFocused rootId) bus.decks
+        for_ (L.last opts.cursor) \rootId → Wiring.focusDeck rootId
     when
       (Common.willBePresentedWithChildFrameWhenFocused opts st)
       dismissFocusDeckFrameHint
@@ -219,6 +216,12 @@ eval opts = case _ of
             $ (DCS._focused .~ false)
             ∘ (DCS._presentAccessNextActionCardHint .~ false)
         whenM (not <$> nextActionCardIsActive) presentAccessNextActionCardHintAfterDelay
+      SwitchToFront opts' → do
+        when (opts'.deckId ≡ opts.deckId && opts'.cursor ≡ opts.cursor)
+          switchToFrontside
+      SwitchToFlip opts' → do
+        when (opts'.deckId ≡ opts.deckId && opts'.cursor ≡ opts.cursor) $
+          switchToFlipside opts
     pure next
   HandleHintDismissalMessage msg next → do
     case msg of
@@ -305,16 +308,15 @@ handleDialog ∷ Dialog.Message → DeckDSL Unit
 handleDialog = case _ of
   Dialog.Dismiss → do
     H.modify (DCS._displayMode %~ DCS.noDialog)
-  Dialog.Confirm opts d b → do
-    case d of
-      Dialog.Rename opts' name → do
-        void $ H.lift $ P.renameDeck opts'.deckId name
-        switchToFrontside
-      Dialog.DeleteDeck opts' | b → do
-        switchToFlipside opts'
-        H.lift $ Common.deleteDeck opts'
-      _ →
-        switchToFlipside opts
+  Dialog.Confirm opts d b → case d of
+    Dialog.Rename opts' name → do
+      void $ H.lift $ P.renameDeck opts'.deckId name
+      Wiring.switchDeckToFront opts'
+    Dialog.DeleteDeck opts' | b → do
+      Wiring.switchDeckToFlip opts'
+      H.lift $ Common.deleteDeck opts'
+    _ →
+      Wiring.switchDeckToFlip opts
 
 handleBackSide ∷ DeckOptions → ActionList.Message Back.BackAction → DeckDSL Unit
 handleBackSide opts = case _ of

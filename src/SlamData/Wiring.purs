@@ -31,6 +31,8 @@ module SlamData.Wiring
   , unWiring
   , expose
   , focusDeck
+  , switchDeckToFront
+  , switchDeckToFlip
   ) where
 
 import SlamData.Prelude
@@ -56,6 +58,7 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.EChartThemeLoader as EChartThemeLoader
 import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Options (DeckOptions)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
@@ -66,8 +69,13 @@ import Quasar.Advanced.Types (TokenHash)
 import Utils.Path (DirPath)
 import ECharts.Theme as ETheme
 
+-- TODO: DeckFocused should use DeckOptions too. It's not totally trivial though,
+-- as Defocus in the deck uses DeckFocused to focus the root of its cursor,
+-- which we only have a DeckId for. -gb
 data DeckMessage
   = DeckFocused DeckId
+  | SwitchToFront DeckOptions
+  | SwitchToFlip DeckOptions
 
 data HintDismissalMessage
   = DeckFocusHintDismissed
@@ -225,3 +233,23 @@ focusDeck
 focusDeck deckId = do
   { bus } ← expose
   liftAff $ Bus.write (DeckFocused deckId) bus.decks
+
+switchDeckToFront
+  ∷ ∀ m
+  . MonadAsk Wiring m
+  ⇒ MonadAff SlamDataEffects m
+  ⇒ DeckOptions
+  → m Unit
+switchDeckToFront deckOpts = do
+  { bus } ← expose
+  liftAff $ Bus.write (SwitchToFront deckOpts) bus.decks
+
+switchDeckToFlip
+  ∷ ∀ m
+  . MonadAsk Wiring m
+  ⇒ MonadAff SlamDataEffects m
+  ⇒ DeckOptions
+  → m Unit
+switchDeckToFlip deckOpts = do
+  { bus } ← expose
+  liftAff $ Bus.write (SwitchToFlip deckOpts) bus.decks
