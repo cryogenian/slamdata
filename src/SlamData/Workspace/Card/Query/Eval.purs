@@ -28,6 +28,7 @@ import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
@@ -37,7 +38,7 @@ evalQuery
   ∷ ∀ m
   . MonadAff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
@@ -51,11 +52,11 @@ evalQuery sql varMap = do
     backendPath =
       fromMaybe Path.rootDir (Path.parentDir resource)
   { inputs } ←
-    CEM.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
+    CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
       QQ.compile' backendPath sql varMap'
   validateResources inputs
   CEM.addSources inputs
-  _ ← CEM.liftQ do
+  _ ← CE.liftQ do
     _ ← QQ.viewQuery' resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   pure $ Port.resourceOut $ Port.View resource sql varMap

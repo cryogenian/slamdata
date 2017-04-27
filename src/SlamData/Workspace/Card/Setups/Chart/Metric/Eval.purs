@@ -30,6 +30,7 @@ import Data.String as Str
 import Data.String.Regex as Rgx
 import Data.String.Regex.Flags as RXF
 import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.Metric.Model (Model, ModelR)
@@ -42,7 +43,7 @@ import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 eval
   ∷ ∀ m
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
   ⇒ Model
   → Port.Resource

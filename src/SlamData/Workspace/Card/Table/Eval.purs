@@ -24,6 +24,7 @@ import Control.Monad.State (class MonadState, put, get)
 import Data.Lens ((^.), (^?), _Just)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
@@ -32,7 +33,7 @@ import SlamData.Workspace.Card.Table.Model as M
 eval
   ∷ ∀ m
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
   ⇒ M.Model
   → Port.Port
@@ -40,7 +41,7 @@ eval
   → m Port.Out
 eval model port varMap =
   Port.extractResource varMap
-    # maybe (CEM.throw "Expected a TaggedResource input") \resource → do
+    # maybe (CE.throw "Expected a TaggedResource input") \resource → do
       rawTableState ← map (_ ^? _Just ∘ ES._Table ) get
       let
         defaultState =
@@ -62,9 +63,9 @@ eval model port varMap =
           size ←
             case rawTableState of
               Just t | t.resource ≡ resource → pure t.size
-              _ → CEM.liftQ $ Quasar.count $ resource ^. Port._filePath
+              _ → CE.liftQ $ Quasar.count $ resource ^. Port._filePath
           result ←
-            CEM.liftQ $
+            CE.liftQ $
               Quasar.sample
                 (resource ^. Port._filePath)
                 ((page - 1) * pageSize)

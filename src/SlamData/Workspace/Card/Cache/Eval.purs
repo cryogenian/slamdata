@@ -26,6 +26,7 @@ import Quasar.Types (FilePath)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SqlSquared as Sql
@@ -35,7 +36,7 @@ import Utils.SqlSquared (tableRelation, all)
 eval
   ∷ ∀ m
   . MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ Maybe String
@@ -49,11 +50,11 @@ eval mfp resource =
     Just pt →
       case PU.parseAnyPath pt of
         Just (Right fp) → eval' fp resource
-        _ → CEM.throw $ pt ⊕ " is not a valid file path"
+        _ → CE.throw $ pt ⊕ " is not a valid file path"
 
 eval'
   ∷ ∀ m
-  . MonadThrow CEM.CardError m
+  . MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ FilePath
@@ -67,9 +68,9 @@ eval' tmp resource = do
       Sql.buildSelect
         $ all
         ∘ (Sql._relations .~ tableRelation filePath)
-  outputResource ← CEM.liftQ $
+  outputResource ← CE.liftQ $
     QQ.fileQuery backendPath tmp sql SM.empty
-  _ ← CEM.liftQ $ QFS.messageIfFileNotFound
+  _ ← CE.liftQ $ QFS.messageIfFileNotFound
     outputResource
     "Error saving file, please try another location"
   -- TODO: this error message is pretty obscure. I think it occurs when a query
@@ -80,7 +81,7 @@ eval' tmp resource = do
   -- in the expected location, and the rest of the deck can run as the Save
   -- failing has not effect on the output. -gb
   when (tmp /= outputResource)
-    $ CEM.throw
+    $ CE.throw
     $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
   CEM.addSource filePath
   CEM.addCache outputResource

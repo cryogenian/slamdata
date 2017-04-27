@@ -26,6 +26,7 @@ import Data.Argonaut (JCursor)
 import Data.Set as Set
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -36,7 +37,7 @@ import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model (Model, behaviour
 eval
   ∷ ∀ m
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
   ⇒ ( Ax.Axes → Set.Set JCursor )
   → FormInputType

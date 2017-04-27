@@ -44,22 +44,15 @@ import Control.Monad.Free (Free, liftF, resume)
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Writer.Class (class MonadTell, tell)
 import Control.Parallel.Class (parallel, sequential)
-
-import Data.List (List, (:))
+import Data.List (List)
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Path
 import Data.Set (Set)
 import Data.Set as Set
-import Data.StrMap as SM
-
 import Quasar.Advanced.QuasarAF as QA
-import Quasar.Error (QError, printQError)
-
 import SlamData.Effects (SlamDataEffects)
-import SlamData.GlobalError as GE
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, liftQuasar)
-import SlamData.Quasar.Error (msgToQError)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Eval.State (EvalState(..))
 import SlamData.Workspace.Card.Port as Port

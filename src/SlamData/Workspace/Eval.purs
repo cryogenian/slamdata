@@ -27,7 +27,6 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Fork (class MonadFork, fork)
-
 import Data.Array as Array
 import Data.Lens (preview, _Left)
 import Data.List (List)
@@ -35,16 +34,15 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Set (Set)
-
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
+import SlamData.GlobalError as GlobalError
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Wiring (Wiring)
-import SlamData.GlobalError as GlobalError
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
-import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Port.VarMap (URLVarMap)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
@@ -133,7 +131,7 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
         cardOutput =
           case result.output of
             Right out → out
-            Left  err → Card.portOut (Card.CardError (either id GE.print (CEM.cardToGlobalError err)))
+            Left  err → Card.portOut (Card.CardError (either id GE.print (CE.cardToGlobalError err)))
         card' = card
           { pending = Nothing
           , output = Just cardOutput
@@ -151,7 +149,7 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
           liftEff $ Ref.writeRef auth.retryEval (Just cardId)
           traverse_
             (liftAff ∘ flip Bus.write bus.notify ∘ GlobalError.toNotificationOptions)
-            (CEM.cardToGlobalError error)
+            (CE.cardToGlobalError error)
         Right _ →
           liftEff $ Ref.writeRef auth.retryEval Nothing
 
