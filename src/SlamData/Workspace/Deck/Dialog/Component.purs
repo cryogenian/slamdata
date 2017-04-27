@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,16 +15,15 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Deck.Dialog.Component
-  ( Dialog(..)
-  , Query(..)
+  ( Query(..)
   , Message(..)
   , ChildSlot
   , component
+  , module SlamData.Workspace.Deck.Dialog.Types
   ) where
 
 import SlamData.Prelude
 
-import Data.Map as Map
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
@@ -32,28 +31,14 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.CardType (CardType)
-import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
-import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
 import SlamData.Workspace.Deck.Dialog.Export.Component as Export
 import SlamData.Workspace.Deck.Dialog.Reason.Component as Reason
 import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Deck.Dialog.Share.Component as Share
-import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
+import SlamData.Workspace.Deck.Dialog.Types (Dialog(..))
 import SlamData.Workspace.Deck.Dialog.Unshare.Component as Unshare
 import SlamData.Workspace.Deck.Options (DeckOptions)
-
-data Dialog
-  = Error DeckOptions String
-  | Embed DeckOptions SharingInput (Map.Map CardId Port.VarMap)
-  | Publish DeckOptions SharingInput (Map.Map CardId Port.VarMap)
-  | Reason DeckOptions CardType String (Array (Array InsertableCardType))
-  | Share DeckOptions SharingInput
-  | Unshare DeckOptions SharingInput
-  | Rename DeckOptions String
-  | DeleteDeck DeckOptions
 
 type State = Maybe Dialog
 
