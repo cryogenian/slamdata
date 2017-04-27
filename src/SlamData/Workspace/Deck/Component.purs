@@ -228,10 +228,10 @@ eval opts = case _ of
         H.modify (DCS._focusDeckHintDismissed .~ true)
     pure next
   HandleError ge next → do
-    showDialog $ Dialog.Error $ GE.print ge
+    showDialog $ Dialog.Error opts $ GE.print ge
     pure next
   HandleNextAction msg next → handleNextAction opts msg $> next
-  HandleDialog msg next → handleDialog opts msg $> next
+  HandleDialog msg next → handleDialog msg $> next
   HandleBackFilter msg next → handleBackSideFilter msg $> next
   HandleBackAction msg next → handleBackSide opts msg $> next
   HandleGrab ev next → H.raise (GrabbedDeck ev) $> next
@@ -301,18 +301,20 @@ switchToFrontside = do
       H.modify (DCS._displayMode .~ DCS.FrontSide DCS.NoDialog)
       void $ queryNextActionList $ H.action $ ActionList.CalculateBoundingRect
 
-handleDialog ∷ DeckOptions → Dialog.Message → DeckDSL Unit
-handleDialog opts = case _ of
+handleDialog ∷ Dialog.Message → DeckDSL Unit
+handleDialog = case _ of
   Dialog.Dismiss → do
     H.modify (DCS._displayMode %~ DCS.noDialog)
-  Dialog.SetDeckName name → do
-    void $ H.lift $ P.renameDeck opts.deckId name
-    switchToFrontside
-  Dialog.Confirm d b → do
-    switchToFlipside opts
+  Dialog.Confirm opts d b → do
     case d of
-      Dialog.DeleteDeck | b → deleteDeck opts
-      _ → pure unit
+      Dialog.Rename opts' name → do
+        void $ H.lift $ P.renameDeck opts'.deckId name
+        switchToFrontside
+      Dialog.DeleteDeck opts' | b → do
+        switchToFlipside opts'
+        deleteDeck opts'
+      _ →
+        switchToFlipside opts
 
 handleBackSide ∷ DeckOptions → ActionList.Message Back.BackAction → DeckDSL Unit
 handleBackSide opts = case _ of
@@ -331,27 +333,29 @@ handleBackSide opts = case _ of
             updateActiveState opts
           H.lift $ P.removeCard opts.deckId cardId
       Back.Rename → do
-        showDialog $ Dialog.Rename st.name
+        showDialog $ Dialog.Rename opts st.name
       Back.Share → do
         getDeckTree opts.deckId >>= traverse_
-          (showDialog ∘ Dialog.Share ∘ ET.getSharingInput path)
+          (showDialog ∘ Dialog.Share opts ∘ ET.getSharingInput path)
       Back.Unshare → do
         getDeckTree opts.deckId >>= traverse_
-          (showDialog ∘ Dialog.Unshare ∘ ET.getSharingInput path)
+          (showDialog ∘ Dialog.Unshare opts ∘ ET.getSharingInput path)
       Back.Embed → do
         getDeckTree opts.deckId >>= traverse_ \tree →
           showDialog $ Dialog.Embed
+            opts
             (ET.getSharingInput path tree)
             (ET.getVarMaps tree)
       Back.Publish → do
         getDeckTree opts.deckId >>= traverse_ \tree →
           showDialog $ Dialog.Publish
+            opts
             (ET.getSharingInput path tree)
             (ET.getVarMaps tree)
       Back.DeleteDeck →
         if Array.length st.displayCards <= 1
           then deleteDeck opts
-          else showDialog Dialog.DeleteDeck
+          else showDialog (Dialog.DeleteDeck opts)
       Back.Mirror → do
         let mirrorCard = (Utils.hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
         deck ← H.lift $ P.getDeck opts.deckId
@@ -480,17 +484,17 @@ handleNextAction opts = case _ of
     updateBackSide opts
     whenM (not <$> nextActionCardIsActive) presentAccessNextActionCardHintAfterDelay
   Next.PresentReason input cardType → do
-    presentReason input cardType
+    presentReason opts input cardType
 
-presentReason ∷ Port.Port → CT.CardType → DeckDSL Unit
-presentReason input cardType =
+presentReason ∷ DeckOptions → Port.Port → CT.CardType → DeckDSL Unit
+presentReason opts input cardType =
   showDialog dialog
   where
   insertableCardType = ICT.fromCardType cardType
   ioType = ICT.fromPort input
   reason = ICT.reason ioType cardType
   cardPaths = ICT.cardPathsBetween ioType insertableCardType
-  dialog = Dialog.Reason cardType reason cardPaths
+  dialog = Dialog.Reason opts cardType reason cardPaths
 
 deleteDeck ∷ DeckOptions → DeckDSL Unit
 deleteDeck opts = do

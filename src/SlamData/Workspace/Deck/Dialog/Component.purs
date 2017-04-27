@@ -25,13 +25,11 @@ module SlamData.Workspace.Deck.Dialog.Component
 import SlamData.Prelude
 
 import Data.Map as Map
-
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardId (CardId)
@@ -45,16 +43,17 @@ import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Deck.Dialog.Share.Component as Share
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Dialog.Unshare.Component as Unshare
+import SlamData.Workspace.Deck.Options (DeckOptions)
 
 data Dialog
-  = Error String
-  | Embed SharingInput (Map.Map CardId Port.VarMap)
-  | Publish SharingInput (Map.Map CardId Port.VarMap)
-  | Reason CardType String (Array (Array InsertableCardType))
-  | Share SharingInput
-  | Unshare SharingInput
-  | Rename String
-  | DeleteDeck
+  = Error DeckOptions String
+  | Embed DeckOptions SharingInput (Map.Map CardId Port.VarMap)
+  | Publish DeckOptions SharingInput (Map.Map CardId Port.VarMap)
+  | Reason DeckOptions CardType String (Array (Array InsertableCardType))
+  | Share DeckOptions SharingInput
+  | Unshare DeckOptions SharingInput
+  | Rename DeckOptions String
+  | DeleteDeck DeckOptions
 
 type State = Maybe Dialog
 
@@ -64,8 +63,7 @@ data Query a
 
 data Message
   = Dismiss
-  | Confirm Dialog Boolean
-  | SetDeckName String
+  | Confirm DeckOptions Dialog Boolean
 
 type ChildQuery =
   Rename.Query
@@ -120,27 +118,27 @@ render = case _ of
       , HH.div [ HP.classes [ HH.ClassName "deck-dialog" ] ] [ dialog s ]
       ]
   where
-  dialog = case _ of
-    Rename name →
+  dialog dlg = case dlg of
+    Rename opts name →
       HH.slot' CP.cp1 unit Rename.component name
         case _ of
           Rename.Dismiss → Just $ H.action $ Raise Dismiss
-          Rename.Rename name' → Just $ H.action $ Raise (SetDeckName name')
+          Rename.Rename name' → Just $ H.action $ Raise (Confirm opts (Rename opts name') true)
 
-    Error str →
+    Error _ str →
       HH.slot' CP.cp2 unit Error.nonModalComponent str
         \Error.Dismiss → Just $ H.action $ Raise Dismiss
 
-    DeleteDeck →
+    DeleteDeck opts →
       HH.slot' CP.cp3 unit Confirm.component
         { title: "Delete deck"
         , body: "Are you sure you want to delete this deck?"
         , cancel: "Cancel"
         , confirm: "Delete"
         }
-        \(Confirm.Confirm bool) → Just $ H.action $ Raise (Confirm DeleteDeck bool)
+        \(Confirm.Confirm bool) → Just $ H.action $ Raise (Confirm opts dlg bool)
 
-    Embed sharingInput varMaps →
+    Embed _ sharingInput varMaps →
       HH.slot' CP.cp4 unit Export.component
         { sharingInput
         , presentingAs: Export.Embed
@@ -148,7 +146,7 @@ render = case _ of
         }
         \Export.Dismiss → Just $ H.action $ Raise Dismiss
 
-    Publish sharingInput varMaps →
+    Publish _ sharingInput varMaps →
       HH.slot' CP.cp5 unit Export.component
         { sharingInput
         , presentingAs: Export.Publish
@@ -156,15 +154,15 @@ render = case _ of
         }
         \Export.Dismiss → Just $ H.action $ Raise Dismiss
 
-    Share sharingInput →
+    Share _ sharingInput →
       HH.slot' CP.cp6 unit Share.component sharingInput
         \Share.Dismiss → Just $ H.action $ Raise Dismiss
 
-    Unshare sharingInput →
+    Unshare _ sharingInput →
       HH.slot' CP.cp7 unit Unshare.component sharingInput
         \Unshare.Dismiss → Just $ H.action $ Raise Dismiss
 
-    Reason attemptedCardType reason cardPaths →
+    Reason _ attemptedCardType reason cardPaths →
       HH.slot' CP.cp8 unit Reason.component
         { attemptedCardType
         , reason
