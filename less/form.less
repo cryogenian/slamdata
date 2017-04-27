@@ -6,14 +6,15 @@
 .sd-form select,
 .sd-form-input {
   color: #333;
-  height: 2rem;
-  line-height: 2rem;
+  height: 2.5rem;
+  line-height: 2.5rem;
   box-sizing: border-box;
   margin: 0.5rem 0;
-  padding: 0 0.5rem;
+  padding: 0 0.75rem;
   border: 1px solid #ccc;
   box-shadow: inset 2px 3px 6px -3px @shade-tint;
   background: #fff;
+  color: rgb(51, 51, 51);
 }
 
 label.sd-option span {
@@ -23,13 +24,13 @@ label.sd-option span {
 .sd-form button,
 .sd-form-button {
   color: #333;
-  height: 2rem;
+  height: 2.5rem;
   // stupid value here keeps line height consistent between <button> and <a>
   // without breaking form alignment.
-  line-height: ~"calc(2rem - 1px)";
+  line-height: ~"calc(2.5rem - 1px)";
   text-decoration: none;
   display: inline-block;
-  min-width: 2rem;
+  min-width: 2.5rem;
   margin: 0.5rem 0;
   border: 1px solid #ccc;
   padding: 0 0.5rem;
@@ -135,7 +136,7 @@ label.sd-option span {
   width: 1rem;
   height: 1rem;
   background-size: 1rem 1rem;
-  vertical-align: text-bottom;
+  vertical-align: middle;
 }
 
 .sd-clear-field-icon {

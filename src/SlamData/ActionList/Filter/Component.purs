@@ -59,7 +59,8 @@ component =
 render ∷ State → HTML
 render state =
   HH.form [ HP.classes [ HH.ClassName "sd-action-filter" ] ]
-    [ HH.div_
+    [ HH.div
+        [ HP.class_ $ HH.ClassName "sd-form" ]
         [ HH.div
             [ HP.classes [ HH.ClassName "sd-action-filter-icon" ] ]
             [ RC.searchFieldIcon ]
@@ -67,6 +68,7 @@ render state =
             [ HP.value state.filter
             , HE.onValueInput $ HE.input \s → Set s
             , ARIA.label state.description
+            , HP.type_ HP.InputText
             , HP.placeholder state.description
             ]
         , HH.button

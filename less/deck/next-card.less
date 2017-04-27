@@ -1,7 +1,6 @@
 @import "common";
 
 .sd-action-list {
-
   display: flex;
   flex-direction: column;
   justify-content: space-around;
@@ -11,8 +10,9 @@
 
   width: 100%;
   height: 100%;
+
   &.with-filter {
-      height: ~"calc(100% - 3.6rem)";
+    height: ~"calc(100% - 3.6rem)";
   }
 
   .alert { // BS
@@ -28,48 +28,51 @@
     overflow: hidden;
     margin: 1px;
     padding: 0;
+
     li {
-        float: left;
-        margin: 0;
+      float: left;
+      margin: 0;
+      padding: 0;
+      position: relative;
+      border: 1px solid transparent;
+      vertical-align: top;
+
+      button {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: #bbb;
+        color: #fff;
         padding: 0;
+        margin: 0;
+        text-align: center;
         position: relative;
-        border: 1px solid transparent;
-        vertical-align: top;
-        button {
-            display: block;
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: #bbb;
-            color: #fff;
-            padding: 0;
-            margin: 0;
-            text-align: center;
-            position: relative;
-            img {
-                margin: 0;
-                padding: 0;
-            }
-            p {
-                padding: 0;
-                margin: 0;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                max-height: 100%;
-            }
-            &:not(.sd-button-warning):not(:disabled) {
-                background: #337ab7;
-            }
-            &:disabled {
-                background: #ddd;
-            }
-            &:not(:disabled):hover {
-                &:hover {
-                    opacity: 0.8;
-                }
-            }
+
+        img {
+          margin: 0;
+          padding: 0;
         }
+        p {
+          padding: 0;
+          margin: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-height: 100%;
+        }
+        &:not(.sd-button-warning):not(:disabled) {
+          background: #337ab7;
+        }
+        &:disabled {
+          background: #ddd;
+        }
+        &:not(:disabled):hover {
+          &:hover {
+            opacity: 0.8;
+          }
+        }
+      }
     }
   }
 }
@@ -91,6 +94,7 @@
 form.sd-action-filter {
   flex: 0 0 auto;
   width: 100%;
+
   div {
     padding: 0 @grid-size;
     margin: auto;
@@ -99,20 +103,13 @@ form.sd-action-filter {
   }
   input {
     width: 100%;
-    height: 2rem;
-    box-sizing: border-box;
-    margin: 0.8rem 0;
-    padding: 8px 1.6rem 8px;
-    border: 1px solid #ccc;
-    box-shadow: inset 2px 3px 6px -3px @shade-tint;
   }
   button {
     position: absolute;
     right: 1.5rem;
     opacity: 0.7;
     width: 1.8rem;
-    height: 2rem;
-    margin: 0.8rem 0;
+    margin: 0.5rem 0;
     border: 1px solid #ccc;
     padding: 0;
     background: transparent;
