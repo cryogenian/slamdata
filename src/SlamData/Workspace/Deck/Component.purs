@@ -27,7 +27,7 @@ import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Aff.Bus as Bus
 import Control.UI.Browser as Browser
 import Data.Array as Array
-import Data.Lens ((.~), (%~), _Left, _Just, is)
+import Data.Lens ((.~), _Left, _Just, is)
 import Data.List ((:))
 import Data.List as L
 import Data.Set as Set
@@ -201,8 +201,9 @@ eval opts = case _ of
   GetActiveCard k → do
     active ← H.gets DCS.activeCard
     pure (k (Utils.hush ∘ map _.cardId =<< active))
-  DismissDialog next →
-    H.modify (DCS._displayMode %~ DCS.noDialog) $> next
+  DismissDialog next → do
+    queryDialog $ H.action Dialog.Dismiss
+    pure next
   HandleEval msg next →
     handleEval opts msg $> next
   HandleMessage msg next → do
@@ -287,9 +288,9 @@ switchToFlipside opts = do
   case nextBoundingRect of
     Just (Just dimensions) → do
       _ ← queryBacksideActionList $ H.action $ ActionList.SetBoundingRect dimensions
-      H.modify (DCS._displayMode .~ DCS.FlipSide DCS.NoDialog)
+      H.modify (_ { displayMode = DCS.FlipSide })
     _ → do
-      H.modify (DCS._displayMode .~ DCS.FlipSide DCS.NoDialog)
+      H.modify (_ { displayMode = DCS.FlipSide })
       void $ queryBacksideActionList $ H.action $ ActionList.CalculateBoundingRect
 
 switchToFrontside ∷ DeckDSL Unit
@@ -299,24 +300,26 @@ switchToFrontside = do
   case flipSideBoundingRect of
     Just (Just dimensions) → do
       _ ← queryNextActionList $ H.action $ ActionList.SetBoundingRect dimensions
-      H.modify (DCS._displayMode .~ DCS.FrontSide DCS.NoDialog)
+      H.modify (_ { displayMode = DCS.FrontSide })
     _ → do
-      H.modify (DCS._displayMode .~ DCS.FrontSide DCS.NoDialog)
+      H.modify (_ { displayMode = DCS.FrontSide })
       void $ queryNextActionList $ H.action $ ActionList.CalculateBoundingRect
 
 handleDialog ∷ Dialog.Message → DeckDSL Unit
 handleDialog = case _ of
-  Dialog.Dismiss → do
-    H.modify (DCS._displayMode %~ DCS.noDialog)
-  Dialog.Confirm opts d b → case d of
-    Dialog.Rename opts' name → do
-      void $ H.lift $ P.renameDeck opts'.deckId name
-      Wiring.switchDeckToFront opts'
-    Dialog.DeleteDeck opts' | b → do
-      Wiring.switchDeckToFlip opts'
-      H.lift $ Common.deleteDeck opts'
-    _ →
-      Wiring.switchDeckToFlip opts
+  Dialog.Confirm opts d b → do
+    case d of
+      Dialog.Rename opts' name → do
+        void $ H.lift $ P.renameDeck opts'.deckId name
+        Wiring.switchDeckToFront opts'
+      Dialog.DeleteDeck opts' | b → do
+        Wiring.switchDeckToFlip opts'
+        H.lift $ Common.deleteDeck opts'
+      _ → do
+        Wiring.switchDeckToFlip opts
+    queryDialog $ H.action Dialog.Dismiss
+  Dialog.Dismissed →
+    pure unit
 
 handleBackSide ∷ DeckOptions → ActionList.Message Back.BackAction → DeckDSL Unit
 handleBackSide opts = case _ of
@@ -395,9 +398,7 @@ handleBackSideFilter = case _ of
     void $ queryBacksideActionList $ H.action $ ActionList.UpdateFilter str
 
 showDialog ∷ Dialog.Dialog → DeckDSL Unit
-showDialog dlg = do
-  queryDialog $ H.action $ Dialog.Show dlg
-  H.modify (DCS._displayMode %~ DCS.dialog)
+showDialog = queryDialog ∘ H.action ∘ Dialog.Show
 
 queryDialog ∷ Dialog.Query Unit → DeckDSL Unit
 queryDialog = void ∘ H.query' cpDialog unit

@@ -60,9 +60,10 @@ type State = Maybe Dialog
 data Query a
   = Show Dialog a
   | Raise Message a
+  | Dismiss a
 
 data Message
-  = Dismiss
+  = Dismissed
   | Confirm DeckOptions Dialog Boolean
 
 type ChildQuery =
@@ -104,7 +105,7 @@ renderDialogBackdrop ∷ HTML
 renderDialogBackdrop =
   HH.div
     [ HP.classes $ [ HH.ClassName "deck-dialog-backdrop" ]
-    , HE.onClick $ HE.input_ $ Raise Dismiss
+    , HE.onClick $ HE.input_ $ Raise Dismissed
     ]
     [ ]
 
@@ -122,12 +123,12 @@ render = case _ of
     Rename opts name →
       HH.slot' CP.cp1 unit Rename.component name
         case _ of
-          Rename.Dismiss → Just $ H.action $ Raise Dismiss
+          Rename.Dismiss → Just $ H.action $ Raise Dismissed
           Rename.Rename name' → Just $ H.action $ Raise (Confirm opts (Rename opts name') true)
 
     Error _ str →
       HH.slot' CP.cp2 unit Error.nonModalComponent str
-        \Error.Dismiss → Just $ H.action $ Raise Dismiss
+        \Error.Dismiss → Just $ H.action $ Raise Dismissed
 
     DeleteDeck opts →
       HH.slot' CP.cp3 unit Confirm.component
@@ -144,7 +145,7 @@ render = case _ of
         , presentingAs: Export.Embed
         , varMaps
         }
-        \Export.Dismiss → Just $ H.action $ Raise Dismiss
+        \Export.Dismiss → Just $ H.action $ Raise Dismissed
 
     Publish _ sharingInput varMaps →
       HH.slot' CP.cp5 unit Export.component
@@ -152,15 +153,15 @@ render = case _ of
         , presentingAs: Export.Publish
         , varMaps
         }
-        \Export.Dismiss → Just $ H.action $ Raise Dismiss
+        \Export.Dismiss → Just $ H.action $ Raise Dismissed
 
     Share _ sharingInput →
       HH.slot' CP.cp6 unit Share.component sharingInput
-        \Share.Dismiss → Just $ H.action $ Raise Dismiss
+        \Share.Dismiss → Just $ H.action $ Raise Dismissed
 
     Unshare _ sharingInput →
       HH.slot' CP.cp7 unit Unshare.component sharingInput
-        \Unshare.Dismiss → Just $ H.action $ Raise Dismiss
+        \Unshare.Dismiss → Just $ H.action $ Raise Dismissed
 
     Reason _ attemptedCardType reason cardPaths →
       HH.slot' CP.cp8 unit Reason.component
@@ -168,11 +169,12 @@ render = case _ of
         , reason
         , cardPaths
         }
-        \Reason.Dismiss → Just $ H.action $ Raise Dismiss
+        \Reason.Dismiss → Just $ H.action $ Raise Dismissed
 
 eval ∷ Query ~> DSL
 eval = case _ of
   Show dialog next → H.put (Just dialog) $> next
+  Dismiss next → H.put Nothing *> H.raise Dismissed $> next
   Raise msg next → next <$ case msg of
-    Dismiss → H.put Nothing *> H.raise msg
+    Dismissed → H.put Nothing *> H.raise msg
     _ → H.raise msg
