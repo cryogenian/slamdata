@@ -23,6 +23,7 @@ module SlamData.Wiring
   , CacheWiring
   , BusWiring
   , DeckMessage(..)
+  , WorkspaceMessage(..)
   , HintDismissalMessage(..)
   , ActiveState
   , DebounceEval
@@ -33,6 +34,7 @@ module SlamData.Wiring
   , focusDeck
   , switchDeckToFront
   , switchDeckToFlip
+  , showDialog
   ) where
 
 import SlamData.Prelude
@@ -63,6 +65,7 @@ import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
 import SlamData.Workspace.Guide (GuideType)
+import SlamData.Workspace.Deck.Dialog.Types (Dialog)
 
 import Quasar.Advanced.Types (TokenHash)
 
@@ -76,6 +79,9 @@ data DeckMessage
   = DeckFocused DeckId
   | SwitchToFront DeckOptions
   | SwitchToFlip DeckOptions
+
+data WorkspaceMessage
+  = ShowDialog Dialog
 
 data HintDismissalMessage
   = DeckFocusHintDismissed
@@ -128,6 +134,7 @@ type CacheWiring =
 
 type BusWiring =
   { decks ∷ Bus.BusRW DeckMessage
+  , workspace ∷ Bus.BusRW WorkspaceMessage
   , notify ∷ Bus.BusRW N.NotificationOptions
   , globalError ∷ Bus.BusRW GE.GlobalError
   , stepByStep ∷ Bus.BusRW GuideType
@@ -218,11 +225,12 @@ make path accessType vm permissionTokenHashes = liftAff do
 
   makeBus = do
     decks ← Bus.make
+    workspace ← Bus.make
     notify ← Bus.make
     globalError ← Bus.make
     stepByStep ← Bus.make
     hintDismissals ← Bus.make
-    pure { decks, notify, globalError, stepByStep, hintDismissals }
+    pure { decks, workspace, notify, globalError, stepByStep, hintDismissals }
 
 focusDeck
   ∷ ∀ m
@@ -253,3 +261,13 @@ switchDeckToFlip
 switchDeckToFlip deckOpts = do
   { bus } ← expose
   liftAff $ Bus.write (SwitchToFlip deckOpts) bus.decks
+
+showDialog
+  ∷ ∀ m
+  . MonadAsk Wiring m
+  ⇒ MonadAff SlamDataEffects m
+  ⇒ Dialog
+  → m Unit
+showDialog dialog = do
+  { bus } ← expose
+  liftAff $ Bus.write (ShowDialog dialog) bus.workspace

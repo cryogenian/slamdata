@@ -62,7 +62,7 @@ import SlamData.Workspace.Class (navigateToDeck)
 import SlamData.Workspace.Deck.BackSide as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Common as Common
-import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, cpDialog, cpBackSide, cpNext)
+import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, cpBackSide, cpNext)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..), Message(..))
 import SlamData.Workspace.Deck.Component.Render as DCR
@@ -201,9 +201,6 @@ eval opts = case _ of
   GetActiveCard k → do
     active ← H.gets DCS.activeCard
     pure (k (Utils.hush ∘ map _.cardId =<< active))
-  DismissDialog next → do
-    queryDialog $ H.action Dialog.Dismiss
-    pure next
   HandleEval msg next →
     handleEval opts msg $> next
   HandleMessage msg next → do
@@ -232,10 +229,9 @@ eval opts = case _ of
         H.modify (DCS._focusDeckHintDismissed .~ true)
     pure next
   HandleError ge next → do
-    showDialog $ Dialog.Error opts $ GE.print ge
+    Wiring.showDialog $ Dialog.Error opts $ GE.print ge
     pure next
   HandleNextAction msg next → handleNextAction opts msg $> next
-  HandleDialog msg next → handleDialog msg $> next
   HandleBackFilter msg next → handleBackSideFilter msg $> next
   HandleBackAction msg next → handleBackSide opts msg $> next
   HandleGrab ev next → H.raise (GrabbedDeck ev) $> next
@@ -305,22 +301,6 @@ switchToFrontside = do
       H.modify (_ { displayMode = DCS.FrontSide })
       void $ queryNextActionList $ H.action $ ActionList.CalculateBoundingRect
 
-handleDialog ∷ Dialog.Message → DeckDSL Unit
-handleDialog = case _ of
-  Dialog.Confirm opts d b → do
-    case d of
-      Dialog.Rename opts' name → do
-        void $ H.lift $ P.renameDeck opts'.deckId name
-        Wiring.switchDeckToFront opts'
-      Dialog.DeleteDeck opts' | b → do
-        Wiring.switchDeckToFlip opts'
-        H.lift $ Common.deleteDeck opts'
-      _ → do
-        Wiring.switchDeckToFlip opts
-    queryDialog $ H.action Dialog.Dismiss
-  Dialog.Dismissed →
-    pure unit
-
 handleBackSide ∷ DeckOptions → ActionList.Message Back.BackAction → DeckDSL Unit
 handleBackSide opts = case _ of
   ActionList.Selected action → do
@@ -338,29 +318,29 @@ handleBackSide opts = case _ of
             updateActiveState opts
           H.lift $ P.removeCard opts.deckId cardId
       Back.Rename → do
-        showDialog $ Dialog.Rename opts st.name
+        Wiring.showDialog $ Dialog.Rename opts st.name
       Back.Share → do
         getDeckTree opts.deckId >>= traverse_
-          (showDialog ∘ Dialog.Share opts ∘ ET.getSharingInput path)
+          (Wiring.showDialog ∘ Dialog.Share opts ∘ ET.getSharingInput path)
       Back.Unshare → do
         getDeckTree opts.deckId >>= traverse_
-          (showDialog ∘ Dialog.Unshare opts ∘ ET.getSharingInput path)
+          (Wiring.showDialog ∘ Dialog.Unshare opts ∘ ET.getSharingInput path)
       Back.Embed → do
         getDeckTree opts.deckId >>= traverse_ \tree →
-          showDialog $ Dialog.Embed
+          Wiring.showDialog $ Dialog.Embed
             opts
             (ET.getSharingInput path tree)
             (ET.getVarMaps tree)
       Back.Publish → do
         getDeckTree opts.deckId >>= traverse_ \tree →
-          showDialog $ Dialog.Publish
+          Wiring.showDialog $ Dialog.Publish
             opts
             (ET.getSharingInput path tree)
             (ET.getVarMaps tree)
       Back.DeleteDeck →
         if Array.length st.displayCards <= 1
           then H.lift $ Common.deleteDeck opts
-          else showDialog (Dialog.DeleteDeck opts)
+          else Wiring.showDialog (Dialog.DeleteDeck opts)
       Back.Mirror → do
         let mirrorCard = (Utils.hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
         deck ← H.lift $ P.getDeck opts.deckId
@@ -396,12 +376,6 @@ handleBackSideFilter ∷ ActionFilter.Message → DeckDSL Unit
 handleBackSideFilter = case _ of
   ActionFilter.FilterChanged str →
     void $ queryBacksideActionList $ H.action $ ActionList.UpdateFilter str
-
-showDialog ∷ Dialog.Dialog → DeckDSL Unit
-showDialog = queryDialog ∘ H.action ∘ Dialog.Show
-
-queryDialog ∷ Dialog.Query Unit → DeckDSL Unit
-queryDialog = void ∘ H.query' cpDialog unit
 
 queryBacksideActionList ∷ ∀ a. ActionList.Query Back.BackAction a → DeckDSL (Maybe a)
 queryBacksideActionList =
@@ -491,7 +465,7 @@ handleNextAction opts = case _ of
 
 presentReason ∷ DeckOptions → Port.Port → CT.CardType → DeckDSL Unit
 presentReason opts input cardType =
-  showDialog dialog
+  Wiring.showDialog dialog
   where
   insertableCardType = ICT.fromCardType cardType
   ioType = ICT.fromPort input
