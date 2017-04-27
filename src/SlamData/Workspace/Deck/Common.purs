@@ -19,15 +19,25 @@ module SlamData.Workspace.Deck.Common
   , module SlamData.Workspace.Deck.Options
   ) where
 
+import SlamData.Prelude
+
+import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Fork (class MonadFork)
 import Data.List as L
 import Halogen as H
+import SlamData.Effects (SlamDataEffects)
+import SlamData.LocalStorage.Class (class LocalStorageDSL)
 import SlamData.Monad (Slam)
-import SlamData.Prelude
+import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Wiring (Wiring)
 import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Class (class WorkspaceDSL, navigateToDeck)
 import SlamData.Workspace.Deck.Component.ChildSlot (ChildSlot, ChildQuery)
 import SlamData.Workspace.Deck.Component.Query (Query, Message)
 import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.Options (DeckOptions)
+import SlamData.Workspace.Eval.Persistence as P
 
 type DeckHTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 
@@ -39,3 +49,20 @@ willBePresentedWithChildFrameWhenFocused opts st =
 
 sizerRef ∷ H.RefLabel
 sizerRef = H.RefLabel "sizer"
+
+deleteDeck
+  ∷ ∀ f m
+  . MonadAff SlamDataEffects m
+  ⇒ MonadAsk Wiring m
+  ⇒ MonadFork Exn.Error m
+  ⇒ MonadThrow Exn.Error m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
+  ⇒ LocalStorageDSL m
+  => WorkspaceDSL m
+  => DeckOptions
+  -> m Unit
+deleteDeck opts = do
+  _ ← P.deleteDeck opts.deckId
+  _ ← navigateToDeck opts.cursor
+  pure unit

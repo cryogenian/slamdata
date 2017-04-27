@@ -60,7 +60,7 @@ import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Class (navigateToDeck)
 import SlamData.Workspace.Deck.BackSide as Back
-import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL, sizerRef)
+import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Common as Common
 import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, cpDialog, cpBackSide, cpNext)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
@@ -152,7 +152,7 @@ eval opts = case _ of
       else navigateToDeck opts.cursor
     pure next
   StartSliding gDef mouseEvent next → do
-    H.getHTMLElementRef sizerRef >>= traverse_ \el → do
+    H.getHTMLElementRef Common.sizerRef >>= traverse_ \el → do
       width ← getBoundingClientWidth el
       Slider.startSliding mouseEvent gDef width
       preloadCard gDef
@@ -312,7 +312,7 @@ handleDialog = case _ of
         switchToFrontside
       Dialog.DeleteDeck opts' | b → do
         switchToFlipside opts'
-        deleteDeck opts'
+        H.lift $ Common.deleteDeck opts'
       _ →
         switchToFlipside opts
 
@@ -354,7 +354,7 @@ handleBackSide opts = case _ of
             (ET.getVarMaps tree)
       Back.DeleteDeck →
         if Array.length st.displayCards <= 1
-          then deleteDeck opts
+          then H.lift $ Common.deleteDeck opts
           else showDialog (Dialog.DeleteDeck opts)
       Back.Mirror → do
         let mirrorCard = (Utils.hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
@@ -496,13 +496,6 @@ presentReason opts input cardType =
   cardPaths = ICT.cardPathsBetween ioType insertableCardType
   dialog = Dialog.Reason opts cardType reason cardPaths
 
-deleteDeck ∷ DeckOptions → DeckDSL Unit
-deleteDeck opts = do
-  st ← H.get
-  _ ← H.lift $ P.deleteDeck opts.deckId
-  navigateToDeck opts.cursor
-  pure unit
-
 loadDeck ∷ DeckOptions → DeckDSL Unit
 loadDeck opts = mbLoadError =<< runMaybeT do
   deck ← MaybeT $ H.lift $ P.getDeck opts.deckId
@@ -598,7 +591,7 @@ preloadCard gDef = do
 
 updateCardSize ∷ DeckDSL Unit
 updateCardSize =
-  H.getHTMLElementRef sizerRef >>= traverse_ \el → void do
+  H.getHTMLElementRef Common.sizerRef >>= traverse_ \el → void do
     { width, height } ← H.liftEff $ getBoundingClientRect el
     H.modify $ DCS._responsiveSize .~ breakpoint width
     _ ← queryNextActionList $ H.action ActionList.CalculateBoundingRect
