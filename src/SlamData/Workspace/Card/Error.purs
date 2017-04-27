@@ -14,29 +14,42 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Error where
+module SlamData.Workspace.Card.Error
+       ( module SlamData.Workspace.Card.Error
+       , module CCE
+       ) where
 
 import SlamData.Prelude
 
 import Quasar.Advanced.QuasarAF as QA
 import Quasar.Error (QError, printQError)
 import SlamData.GlobalError as GE
-import SlamData.Quasar.Error (msgToQError)
 
-newtype CardError = CardError QError
+import SlamData.Workspace.Card.Cache.Error as CCE
 
-quasarToCardError :: QError -> CardError
-quasarToCardError = CardError
+data CardError
+  = QuasarError QError
+  | StringlyTypedError String
+  | CacheCardError CCE.CacheError
+
+quasarToCardError ∷ QError → CardError
+quasarToCardError = QuasarError
 
 cardToGlobalError ∷ CardError → Either String GE.GlobalError
-cardToGlobalError (CardError qError) = case qError of
-  QA.PaymentRequired → Right GE.PaymentRequired
-  QA.Unauthorized unauthDetails → Right $ GE.Unauthorized unauthDetails
-  QA.Forbidden → Right GE.Forbidden
-  err → Left (printQError err)
+cardToGlobalError = case _ of
+  QuasarError qError → case qError of
+    QA.PaymentRequired → Right GE.PaymentRequired
+    QA.Unauthorized unauthDetails → Right (GE.Unauthorized unauthDetails)
+    QA.Forbidden → Right GE.Forbidden
+    err → Left (printQError err)
+  StringlyTypedError err → Left err
+  CacheCardError cce → Left (CCE.cacheErrorMessage cce)
 
-throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" => String → m a
-throw = throwError ∘ quasarToCardError ∘ msgToQError
+throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
+throw = throwError ∘ StringlyTypedError
+
+throwCacheError ∷ ∀ m a. MonadThrow CardError m ⇒ CCE.CacheError → m a
+throwCacheError = throwError ∘ CacheCardError
 
 liftQ ∷ ∀ m a. MonadThrow CardError m ⇒ m (Either QError a) → m a
 liftQ = flip bind (either (throwError ∘ quasarToCardError) pure)
