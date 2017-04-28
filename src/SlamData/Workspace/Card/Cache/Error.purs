@@ -21,6 +21,8 @@ import SlamData.Prelude
 import Data.Path.Pathy as Path
 import Quasar.Advanced.QuasarAF (QError, printQError)
 import Quasar.Types (FilePath)
+import SlamData.GlobalError as GE
+import Utils (hush)
 
 data CacheError
   = CacheInvalidFilepath String
@@ -28,12 +30,17 @@ data CacheError
   | CacheErrorSavingFile
   | CacheResourceNotModified FilePath
 
-instance showCacheError :: Show CacheError where
+instance showCacheError ∷ Show CacheError where
   show = case _ of
-    CacheInvalidFilepath fp -> "(CacheInvalidFilepath " <> show fp <> ")"
-    CacheQuasarError qErr -> "(CacheQuasarError " <> printQError qErr <> ")"
-    CacheErrorSavingFile -> "CacheErrorSavingFile"
-    CacheResourceNotModified fp -> "(CacheResourceNotModified " <> show fp <> ")"
+    CacheInvalidFilepath fp → "(CacheInvalidFilepath " <> show fp <> ")"
+    CacheQuasarError qErr → "(CacheQuasarError " <> printQError qErr <> ")"
+    CacheErrorSavingFile → "CacheErrorSavingFile"
+    CacheResourceNotModified fp → "(CacheResourceNotModified " <> show fp <> ")"
+
+cacheToGlobalError ∷ CacheError → Maybe GE.GlobalError
+cacheToGlobalError = case _ of
+  CacheQuasarError qErr → hush (GE.fromQError qErr)
+  _ → Nothing
 
 cacheErrorMessage ∷ Warn "More structure please" ⇒ CacheError → String
 cacheErrorMessage = case _ of

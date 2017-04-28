@@ -101,7 +101,7 @@ evalCard
   → m Port.Out
 evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   Error msg, _ → CE.throw msg
-  _, Port.CardError msg → CE.throw msg
+  _, Port.CardError err → throwError err
   Pass, _ → pure (port × varMap)
   Table m, _ → Table.eval m port varMap
   Chart, Port.ChartInstructions { options } → tapResource (Chart.eval options) varMap

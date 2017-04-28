@@ -35,7 +35,6 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Set (Set)
 import SlamData.Effects (SlamDataEffects)
-import SlamData.GlobalError as GE
 import SlamData.GlobalError as GlobalError
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Wiring (Wiring)
@@ -131,7 +130,7 @@ runEvalLoop path decks cards tick urlVarMaps source = goInit
         cardOutput =
           case result.output of
             Right out → out
-            Left  err → Card.portOut (Card.CardError (either id GE.print (CE.cardToGlobalError err)))
+            Left err → Card.portOut (Card.CardError err)
         card' = card
           { pending = Nothing
           , output = Just cardOutput

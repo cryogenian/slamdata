@@ -22,34 +22,38 @@ module SlamData.Workspace.Card.Error
 import SlamData.Prelude
 
 import Quasar.Advanced.QuasarAF as QA
-import Quasar.Error (QError, printQError)
+import Quasar.Error (QError)
 import SlamData.GlobalError as GE
-
 import SlamData.Workspace.Card.Cache.Error as CCE
+import Utils (hush)
 
 data CardError
   = QuasarError QError
   | StringlyTypedError String
   | CacheCardError CCE.CacheError
 
-instance showCardError :: Show CardError where
+instance showCardError ∷ Show CardError where
   show = case _ of
-    QuasarError err -> "(QuasarError " <> show err <> ")"
-    StringlyTypedError err -> "(StringlyTypedError " <> err <> ")"
-    CacheCardError err -> "(CacheCardError " <> show err <> ")"
+    QuasarError err → "(QuasarError " <> show err <> ")"
+    StringlyTypedError err → "(StringlyTypedError " <> err <> ")"
+    CacheCardError err → "(CacheCardError " <> show err <> ")"
+
+prettyPrintCardError ∷ CardError → String
+prettyPrintCardError ce = case cardToGlobalError ce of
+  Just ge → GE.print ge
+  Nothing → case ce of
+    QuasarError qError → QA.printQError qError
+    StringlyTypedError err → err
+    CacheCardError cce → CCE.cacheErrorMessage cce
 
 quasarToCardError ∷ QError → CardError
 quasarToCardError = QuasarError
 
-cardToGlobalError ∷ CardError → Either String GE.GlobalError
+cardToGlobalError ∷ CardError → Maybe GE.GlobalError
 cardToGlobalError = case _ of
-  QuasarError qError → case qError of
-    QA.PaymentRequired → Right GE.PaymentRequired
-    QA.Unauthorized unauthDetails → Right (GE.Unauthorized unauthDetails)
-    QA.Forbidden → Right GE.Forbidden
-    err → Left (printQError err)
-  StringlyTypedError err → Left err
-  CacheCardError cce → Left (CCE.cacheErrorMessage cce)
+  QuasarError qError → hush (GE.fromQError qError)
+  StringlyTypedError err → Nothing
+  CacheCardError cce → CCE.cacheToGlobalError cce
 
 throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
 throw = throwError ∘ StringlyTypedError
