@@ -75,29 +75,29 @@ render state =
           ]
         , formGroup
             [ HH.input
-              [ HP.classes [ Rc.formControl ]
-              , HP.value state.workspaceName
-              , HP.placeholder "New workspace name"
-              , ARIA.label "New workspace name"
-              , HE.onValueInput (HE.input NameTyped)
-              ]
+                [ HP.classes [ Rc.formControl ]
+                , HP.value state.workspaceName
+                , HP.placeholder "New workspace name"
+                , ARIA.label "New workspace name"
+                , HE.onValueInput (HE.input NameTyped)
+                ]
             ]
           ]
     , modalFooter
       [ HH.button
-        [ HP.classes [ Rc.btn ]
-        , HE.onClick (HE.input_ RaiseDismiss)
-        , HP.type_ HP.ButtonButton
-        ]
-        [ HH.text "Cancel" ]
+          [ HP.classes [ Rc.btn ]
+          , HE.onClick (HE.input_ RaiseDismiss)
+          , HP.type_ HP.ButtonButton
+          ]
+          [ HH.text "Cancel" ]
       , HH.button
-        [ HP.classes [ Rc.btn, Rc.btnPrimary ]
-        , HP.disabled $ state.workspaceName == ""
-        , HE.onClick (HE.input_ (TryExplore state.filePath state.workspaceName))
-        , HP.type_ HP.ButtonButton
-        , ARIA.label "Explore file"
-        ]
-        [ HH.text "Explore" ]
+          [ HP.classes [ Rc.btn, Rc.btnPrimary ]
+          , HP.disabled $ state.workspaceName == ""
+          , HE.onClick (HE.input_ (TryExplore state.filePath state.workspaceName))
+          , HP.type_ HP.ButtonButton
+          , ARIA.label "Explore file"
+          ]
+          [ HH.text "Explore" ]
       ]
     ]
     where

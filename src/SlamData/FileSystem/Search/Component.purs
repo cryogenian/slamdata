@@ -118,47 +118,47 @@ render state =
   HH.div
   [ HP.classes [ CSS.search ] ]
   [ HH.form
-    [ HE.onSubmit (HE.input_ TrySubmit)]
-    [ HH.div
-      [ HP.classes searchClasses ]
-      [ I.searchSm
-      , HH.input
-        [ HP.classes [ Rc.formControl ]
-        , HP.value state.value
-        , HE.onFocus (HE.input_ (Focus true))
-        , HE.onBlur (HE.input_ (Focus false))
-        , HE.onValueInput (HE.input Typed)
-        , HP.title "File search field"
-        , ARIA.label "File search field"
-        ]
-      , HH.span
-          [ HP.class_
-              if state.focused
-                then CSS.searchPathActive
-                else CSS.searchPath
-          ]
-          [ HH.span
-              [ HP.class_ CSS.searchPathBody ]
-              [ HH.text state.value ]
+      [ HE.onSubmit (HE.input_ TrySubmit)]
+      [ HH.div
+          [ HP.classes searchClasses ]
+          [ I.searchSm
+          , HH.input
+              [ HP.classes [ Rc.formControl ]
+              , HP.value state.value
+              , HE.onFocus (HE.input_ (Focus true))
+              , HE.onBlur (HE.input_ (Focus false))
+              , HE.onValueInput (HE.input Typed)
+              , HP.title "File search field"
+              , ARIA.label "File search field"
+              ]
           , HH.span
               [ HP.class_
-                  if state.value ≡ ""
-                    then CSS.searchAffixEmpty
-                    else CSS.searchAffix
+                  if state.focused
+                    then CSS.searchPathActive
+                    else CSS.searchPath
               ]
-              [ HH.text $ "path:" ⊕ printPath (state.path) ]
-          ]
-      , HH.button
-          [ HP.class_ CSS.searchClearButton
-          , HE.onClick \e →
-              Just $ PreventDefault (mouseEventToEvent e) $ H.action Clear
-          ]
-          [ if state.loading
-              then busyFieldIcon "Search in progress"
-              else clearFieldIcon "Clear search"
-          ]
+              [ HH.span
+                  [ HP.class_ CSS.searchPathBody ]
+                  [ HH.text state.value ]
+              , HH.span
+                  [ HP.class_
+                      if state.value ≡ ""
+                        then CSS.searchAffixEmpty
+                        else CSS.searchAffix
+                  ]
+                  [ HH.text $ "path:" ⊕ printPath (state.path) ]
+              ]
+          , HH.button
+              [ HP.class_ CSS.searchClearButton
+              , HE.onClick \e →
+                  Just $ PreventDefault (mouseEventToEvent e) $ H.action Clear
+              ]
+              [ if state.loading
+                  then busyFieldIcon "Search in progress"
+                  else clearFieldIcon "Clear search"
+              ]
+            ]
         ]
-      ]
     ]
   where
   searchClasses ∷ Array HH.ClassName

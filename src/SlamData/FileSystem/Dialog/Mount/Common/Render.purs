@@ -57,24 +57,24 @@ propListTable inner =
   HH.div
     [ HP.class_ Rc.mountProps ]
     [ HH.table
-      [ HP.classes [Rc.table, Rc.tableBordered] ]
-      [ HH.thead_
-        [ HH.tr_
-          [ HH.th_ [ HH.text "Name" ]
-          , HH.th_ [ HH.text "Value" ]
-          ]
-        ]
-      , HH.tbody_
-        [ HH.tr_
-          [ HH.td
-            [ HP.colSpan 2 ]
-            [ HH.div
-              [ HP.class_ Rc.mountPropsScrollbox ]
-              [ HH.table_ inner ]
+        [ HP.classes [Rc.table, Rc.tableBordered] ]
+        [ HH.thead_
+            [ HH.tr_
+              [ HH.th_ [ HH.text "Name" ]
+              , HH.th_ [ HH.text "Value" ]
+              ]
             ]
-          ]
+        , HH.tbody_
+            [ HH.tr_
+                [ HH.td
+                    [ HP.colSpan 2 ]
+                    [ HH.div
+                      [ HP.class_ Rc.mountPropsScrollbox ]
+                      [ HH.table_ inner ]
+                    ]
+                ]
+            ]
         ]
-      ]
     ]
 
 propList
@@ -137,9 +137,9 @@ hosts state lens =
     HH.div
       [ HP.class_ Rc.mountHost ]
       [ label "Host"
-        [ input' rejectNonHostname state (lens <<< ix index <<< MCS._host) [] ]
+          [ input' rejectNonHostname state (lens <<< ix index <<< MCS._host) [] ]
       , label "Port"
-        [ input' rejectNonPort state (lens <<< ix index <<< MCS._port) [] ]
+          [ input' rejectNonPort state (lens <<< ix index <<< MCS._port) [] ]
       ]
 
 host ∷ ∀ s. s → Lens' s MCS.MountHost → H.ComponentHTML (SettingsQuery s)
@@ -147,12 +147,12 @@ host state lens =
   HH.div
     [ HP.class_ Rc.mountHostList ]
     [ HH.div
-      [ HP.class_ Rc.mountHost ]
-      [ label "Host"
-        [ input' rejectNonHostname state (lens ∘ MCS._host) [] ]
-      , label "Port"
-        [ input' rejectNonPort state (lens ∘ MCS._port) [] ]
-      ]
+        [ HP.class_ Rc.mountHost ]
+        [ label "Host"
+          [ input' rejectNonHostname state (lens ∘ MCS._host) [] ]
+        , label "Port"
+          [ input' rejectNonPort state (lens ∘ MCS._port) [] ]
+        ]
     ]
 
 rejectNonHostname ∷ String → String
