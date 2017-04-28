@@ -436,16 +436,16 @@ cleanViewMounts =
       _ → pure unit
 
 messageIfFileNotFound
-  ∷ ∀ m
+  ∷ ∀ a m
   . Functor m
   ⇒ QuasarDSL m
   ⇒ FilePath
-  → String
-  → m (Either QError (Maybe String))
+  → a
+  → m (Either QError (Maybe a))
 messageIfFileNotFound path defaultMsg =
   handleResult <$> liftQuasar (QF.fileMetadata path)
   where
-  handleResult ∷ ∀ a. Either QF.QError a → Either QError (Maybe String)
+  handleResult ∷ ∀ b. Either QF.QError b → Either QError (Maybe a)
   handleResult (Left QF.NotFound) = Right (Just defaultMsg)
   handleResult (Left err) = Left err
   handleResult (Right _) = Right Nothing

@@ -79,6 +79,7 @@ import Quasar.Advanced.Types (ProviderR)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
@@ -103,7 +104,7 @@ data ResponsiveSize
 
 data MetaCard
   = PendingCard
-  | ErrorCard String
+  | ErrorCard CE.CardError
   | NextActionCard Port.Port
 
 data Fade
@@ -290,7 +291,7 @@ _NextActionCard = prism' NextActionCard case _ of
   NextActionCard a → Just a
   _ → Nothing
 
-_ErrorCard ∷ Prism' MetaCard String
+_ErrorCard ∷ Prism' MetaCard CE.CardError
 _ErrorCard = prism' ErrorCard case _ of
   ErrorCard a → Just a
   _ → Nothing

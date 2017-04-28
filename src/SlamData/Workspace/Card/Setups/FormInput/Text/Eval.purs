@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Control.Monad.State (class MonadState)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Eval as TL
@@ -29,7 +30,7 @@ import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model (Model)
 eval
   ∷ ∀ m
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
   ⇒ Model
   → Port.Resource

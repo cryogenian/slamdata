@@ -26,6 +26,7 @@ import Quasar.Types (FilePath)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SqlSquared as Sql
@@ -35,7 +36,7 @@ import Utils.SqlSquared (tableRelation, all)
 eval
   ∷ ∀ m
   . MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ Maybe String
@@ -49,11 +50,11 @@ eval mfp resource =
     Just pt →
       case PU.parseAnyPath pt of
         Just (Right fp) → eval' fp resource
-        _ → CEM.throw $ pt ⊕ " is not a valid file path"
+        _ → CE.throwCacheError (CE.CacheInvalidFilepath pt)
 
 eval'
   ∷ ∀ m
-  . MonadThrow CEM.CardError m
+  . MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ FilePath
@@ -67,21 +68,12 @@ eval' tmp resource = do
       Sql.buildSelect
         $ all
         ∘ (Sql._relations .~ tableRelation filePath)
-  outputResource ← CEM.liftQ $
+  outputResource ← CE.liftQ $
     QQ.fileQuery backendPath tmp sql SM.empty
-  _ ← CEM.liftQ $ QFS.messageIfFileNotFound
-    outputResource
-    "Error saving file, please try another location"
-  -- TODO: this error message is pretty obscure. I think it occurs when a query
-  -- is like "SELECT * FROM t" and quasar does no work. I'm not sure what the
-  -- behaviour of Save should be in that case - perhaps instead of failing it
-  -- could create a view so that a resource will actually be created. Debateable
-  -- as to whether that is "right", but at least it means a resource will exist
-  -- in the expected location, and the rest of the deck can run as the Save
-  -- failing has not effect on the output. -gb
-  when (tmp /= outputResource)
-    $ CEM.throw
-    $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
-  CEM.addSource filePath
+  checkResult ← QFS.messageIfFileNotFound outputResource CE.CacheErrorSavingFile
+  for_ (either (Just ∘ CE.CacheQuasarError) id checkResult)
+    CE.throwCacheError
+  when (tmp /= outputResource) $
+    CE.throwCacheError (CE.CacheResourceNotModified outputResource)
   CEM.addCache outputResource
   pure (Port.Path outputResource)
