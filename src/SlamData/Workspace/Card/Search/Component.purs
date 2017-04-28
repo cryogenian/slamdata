@@ -53,18 +53,18 @@ render state =
   HH.div
     [ HP.class_ Rc.form ]
     [ HH.input
-      [ HP.type_ HP.InputText
-      , HP.placeholder "Search string"
-      , ARIA.label "Search string"
-      , HE.onValueInput $ HE.input \str → right ∘ UpdateSearch str
-      , HP.value state.searchString
-      ]
+        [ HP.type_ HP.InputText
+        , HP.placeholder "Search string"
+        , ARIA.label "Search string"
+        , HE.onValueInput $ HE.input \str → right ∘ UpdateSearch str
+        , HP.value state.searchString
+        ]
     , HH.button
-      [ HP.title "Clear search string"
-      , ARIA.label "Clear search string"
-      , HE.onClick $ HE.input_ (right ∘ UpdateSearch "")
-      ]
-      [ I.trashCanSm ]
+        [ HP.title "Clear search string"
+        , ARIA.label "Clear search string"
+        , HE.onClick $ HE.input_ (right ∘ UpdateSearch "")
+        ]
+        [ I.trashCanSm ]
     ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
