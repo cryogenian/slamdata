@@ -46,6 +46,7 @@ import SlamData.Hint as Hint
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component.CSS as CardCSS
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Factory as Factory
 import SlamData.Workspace.Card.Next.Component as Next
@@ -330,10 +331,10 @@ renderMeta st card =
             [ HP.classes [ HH.ClassName "sd-card-pending" ] ]
             [ HH.slot' ChildSlot.cpPending unit Pending.pendingCardComponent unit absurd
             ]
-        DCS.ErrorCard message →
+        DCS.ErrorCard error →
           HH.div
             [ HP.classes [ HH.ClassName "sd-card-error" ] ]
-            [ HH.slot' ChildSlot.cpError unit Error.errorCardComponent message absurd
+            [ HH.slot' ChildSlot.cpError unit Error.errorCardComponent (CE.prettyPrintCardError error) absurd
             ]
         DCS.NextActionCard input →
           HH.div

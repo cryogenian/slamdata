@@ -24,6 +24,7 @@ import SlamData.Prelude
 import Control.Monad.State (class MonadState, get, put)
 import Data.Array as Arr
 import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Behaviour as B
@@ -34,7 +35,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 eval
   ∷ ∀ m
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
   ⇒ Model
   → Port.Resource
@@ -44,9 +45,9 @@ eval m resource = do
   put (Just (CEM.Analysis { resource, records, axes }))
   case m <|> B.defaultModel behaviour m initialState{axes = axes} of
     Nothing →
-      CEM.throw "Please select axis."
+      CE.throw "Please select axis."
     Just conf → case Arr.head records >>= flip Sem.getMaybeString conf.value of
       Nothing →
-        CEM.throw $ show conf.value <> " axis is not presented in this resource"
+        CE.throw $ show conf.value <> " axis is not presented in this resource"
       Just value →
         pure $ Port.CategoricalMetric { value, label: Nothing }

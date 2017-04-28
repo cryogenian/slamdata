@@ -42,7 +42,6 @@ module SlamData.Workspace.Card.Port
   , _Variables
   , _SlamDown
   , _DownloadOptions
-  , _CardError
   , _Metric
   , _ChartInstructions
   , _PivotTable
@@ -64,6 +63,7 @@ import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Download.Model (DownloadOptions)
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
@@ -126,7 +126,7 @@ data Port
   = Initial
   | Terminal
   | Variables
-  | CardError String
+  | CardError CE.CardError
   | ResourceKey String
   | SetupLabeledFormInput SetupLabeledFormInputPort
   | SetupTextLikeFormInput SetupTextLikeFormInputPort
@@ -142,7 +142,7 @@ tagPort  = case _ of
   Initial → "Initial"
   Terminal → "Terminal"
   Variables → "Variables"
-  CardError str → "CardError: " ⊕ show str
+  CardError err → "CardError: " ⊕ show err
   ResourceKey str → "ResourceKey: " ⊕ show str
   SetupLabeledFormInput _ → "SetupLabeledFormInput"
   SetupTextLikeFormInput _ → "SetupTextLikeFormInput"
@@ -212,11 +212,6 @@ _SlamDown ∷ Traversal' Port (SD.SlamDownP VarMapValue)
 _SlamDown = wander \f s → case s of
   SlamDown sd → SlamDown <$> f sd
   _ → pure s
-
-_CardError ∷ Prism' Port String
-_CardError = prism' CardError $ case _ of
-  CardError x → Just x
-  _ → Nothing
 
 _DownloadOptions ∷ Prism' Port DownloadPort
 _DownloadOptions = prism' DownloadOptions $ case _ of

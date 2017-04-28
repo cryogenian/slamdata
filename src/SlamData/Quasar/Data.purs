@@ -24,14 +24,12 @@ module SlamData.Quasar.Data
 import SlamData.Prelude
 
 import Data.Argonaut as JS
-
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (QData(..), JSONMode(..))
 import Quasar.Error (QError)
 import Quasar.Types (FilePath, AnyPath)
-
-import SlamData.Quasar.Error (throw)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
+import SlamData.Quasar.Error (msgToQError)
 
 makeFile
   ∷ ∀ m
@@ -66,7 +64,7 @@ load
 load path =
   liftQuasar (QF.readFile Readable path Nothing) <#> case _ of
     Right [file] → Right file
-    Right _ → throw "Unexpected result when loading value from file"
+    Right _ → throwError $ msgToQError "Unexpected result when loading value from file"
     Left err → Left err
 
 delete
