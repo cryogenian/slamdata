@@ -71,12 +71,9 @@ eval' tmp resource = do
   outputResource ← CE.liftQ $
     QQ.fileQuery backendPath tmp sql SM.empty
   checkResult ← QFS.messageIfFileNotFound outputResource CE.CacheErrorSavingFile
-  whenMaybe (either (Just ∘ CE.CacheQuasarError) id checkResult)
+  for_ (either (Just ∘ CE.CacheQuasarError) id checkResult)
     CE.throwCacheError
   when (tmp /= outputResource) $
     CE.throwCacheError (CE.CacheResourceNotModified outputResource)
   CEM.addCache outputResource
   pure (Port.Path outputResource)
-  where
-  whenMaybe ∷ ∀ a f. Applicative f ⇒ Maybe a → (a → f Unit) → f Unit
-  whenMaybe m f = maybe (pure unit) f m
