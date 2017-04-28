@@ -17,15 +17,23 @@ limitations under the License.
 module SlamData.Workspace.Card.Cache.Error where
 
 import SlamData.Prelude
-import Quasar.Types (FilePath)
+
 import Data.Path.Pathy as Path
 import Quasar.Advanced.QuasarAF (QError, printQError)
+import Quasar.Types (FilePath)
 
 data CacheError
   = CacheInvalidFilepath String
   | CacheQuasarError QError
   | CacheErrorSavingFile
   | CacheResourceNotModified FilePath
+
+instance showCacheError :: Show CacheError where
+  show = case _ of
+    CacheInvalidFilepath fp -> "(CacheInvalidFilepath " <> show fp <> ")"
+    CacheQuasarError qErr -> "(CacheQuasarError " <> printQError qErr <> ")"
+    CacheErrorSavingFile -> "CacheErrorSavingFile"
+    CacheResourceNotModified fp -> "(CacheResourceNotModified " <> show fp <> ")"
 
 cacheErrorMessage ∷ Warn "More structure please" ⇒ CacheError → String
 cacheErrorMessage = case _ of

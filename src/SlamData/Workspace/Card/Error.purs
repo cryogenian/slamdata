@@ -32,6 +32,12 @@ data CardError
   | StringlyTypedError String
   | CacheCardError CCE.CacheError
 
+instance showCardError :: Show CardError where
+  show = case _ of
+    QuasarError err -> "(QuasarError " <> show err <> ")"
+    StringlyTypedError err -> "(StringlyTypedError " <> err <> ")"
+    CacheCardError err -> "(CacheCardError " <> show err <> ")"
+
 quasarToCardError ∷ QError → CardError
 quasarToCardError = QuasarError
 
