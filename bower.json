@@ -35,7 +35,6 @@
     "purescript-functors": "^2.0.0",
     "purescript-generics": "^4.0.0",
     "purescript-halogen": "^2.0.0",
-    "purescript-halogen-bootstrap": "^6.0.0",
     "purescript-halogen-css": "^6.0.0",
     "purescript-halogen-echarts": "^6.0.0",
     "purescript-halogen-menu": "5.0.0",
