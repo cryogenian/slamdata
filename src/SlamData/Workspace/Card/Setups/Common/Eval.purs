@@ -29,7 +29,7 @@ import SlamData.Prelude
 
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
-import Data.Argonaut (Json)
+import Data.Argonaut as J
 import Data.Array as A
 import Data.Foreign (Foreign, toForeign)
 import Data.Foreign.Index (readProp)
@@ -62,7 +62,7 @@ analysisEval
   . MonadState CEM.CardState m
   ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
-  ⇒ (Axes → p → Array Json → Port.Port)
+  ⇒ (Axes → p → Array J.Json → Port.Port)
   → Maybe p
   → (Axes → Maybe p)
   → Port.Resource
@@ -129,14 +129,20 @@ analyze
   ⇒ QuasarDSL m
   ⇒ Port.Resource
   → CEM.CardState
-  → m (Array Json × Axes)
+  → m (Array J.Json × Axes)
 analyze resource = case _ of
   Just (CEM.Analysis st) | resource ≡ st.resource →
     pure (st.records × st.axes)
   _ → do
-    records ← CE.liftQ (QQ.all (resource ^. Port._filePath))
-    let axes = buildAxes (A.take 300 records)
+    records ← CE.liftQ (QQ.sample (resource ^. Port._filePath) 0 300)
+    let axes = buildAxes (unwrapValue <$> records)
     pure (records × axes)
+  where
+  unwrapValue json =
+    json # J.foldJsonObject json \obj →
+      case SM.keys obj, SM.lookup "value" obj of
+        ["value"], Just value → value
+        _, _ → json
 
 assoc ∷ ∀ a i. a → DSL (value ∷ I | i)
 assoc = EM.set "$$assoc" <<< toForeign

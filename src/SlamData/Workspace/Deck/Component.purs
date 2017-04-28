@@ -339,11 +339,13 @@ handleBackSide opts = case _ of
         getDeckTree opts.deckId >>= traverse_
           (showDialog ∘ Dialog.Unshare ∘ ET.getSharingInput path)
       Back.Embed → do
+        _ ← H.lift P.saveWorkspace
         getDeckTree opts.deckId >>= traverse_ \tree →
           showDialog $ Dialog.Embed
             (ET.getSharingInput path tree)
             (ET.getVarMaps tree)
       Back.Publish → do
+        _ ← H.lift P.saveWorkspace
         getDeckTree opts.deckId >>= traverse_ \tree →
           showDialog $ Dialog.Publish
             (ET.getSharingInput path tree)
