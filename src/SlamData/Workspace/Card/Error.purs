@@ -55,7 +55,9 @@ cardToGlobalError = case _ of
   StringlyTypedError err → Nothing
   CacheCardError cce → CCE.cacheToGlobalError cce
 
-throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
+-- TODO(Christoph): use this warn constraint to track down unstructured error messages
+-- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
+throw ∷ ∀ m a. MonadThrow CardError m ⇒ String → m a
 throw = throwError ∘ StringlyTypedError
 
 throwCacheError ∷ ∀ m a. MonadThrow CardError m ⇒ CCE.CacheError → m a

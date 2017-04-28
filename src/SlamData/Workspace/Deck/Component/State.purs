@@ -77,7 +77,6 @@ import Data.Lens (Lens', lens, Prism', prism')
 import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Effects (SlamDataEffects)
-import SlamData.GlobalError as GE
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Error as CE

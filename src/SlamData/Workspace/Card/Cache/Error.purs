@@ -42,7 +42,9 @@ cacheToGlobalError = case _ of
   CacheQuasarError qErr → hush (GE.fromQError qErr)
   _ → Nothing
 
-cacheErrorMessage ∷ Warn "More structure please" ⇒ CacheError → String
+-- TODO(Christoph): Instead of just showing a String, render a pretty Error Card
+-- for these errors
+cacheErrorMessage ∷ CacheError → String
 cacheErrorMessage = case _ of
    CacheInvalidFilepath fp →
      fp <> " is not a valid file path"
