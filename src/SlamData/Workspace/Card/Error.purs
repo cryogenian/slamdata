@@ -15,13 +15,12 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Error
-       ( module SlamData.Workspace.Card.Error
-       , module CCE
-       ) where
+  ( module SlamData.Workspace.Card.Error
+  , module CCE
+  ) where
 
 import SlamData.Prelude
 
-import Quasar.Advanced.QuasarAF as QA
 import Quasar.Error (QError)
 import SlamData.GlobalError as GE
 import SlamData.Workspace.Card.Cache.Error as CCE
@@ -37,14 +36,6 @@ instance showCardError ∷ Show CardError where
     QuasarError err → "(QuasarError " <> show err <> ")"
     StringlyTypedError err → "(StringlyTypedError " <> err <> ")"
     CacheCardError err → "(CacheCardError " <> show err <> ")"
-
-prettyPrintCardError ∷ CardError → String
-prettyPrintCardError ce = case cardToGlobalError ce of
-  Just ge → GE.print ge
-  Nothing → case ce of
-    QuasarError qError → QA.printQError qError
-    StringlyTypedError err → err
-    CacheCardError cce → CCE.cacheErrorMessage cce
 
 quasarToCardError ∷ QError → CardError
 quasarToCardError = QuasarError
