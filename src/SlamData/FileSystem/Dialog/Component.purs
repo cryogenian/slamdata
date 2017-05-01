@@ -83,8 +83,7 @@ component =
 
 render ∷ State → H.ParentHTML Query ChildQuery ChildSlot Slam
 render state =
-  HH.div
-    [ HP.class_ $ HH.ClassName "deck-dialog-container" ]
+  HH.div_
     [ HH.div
         [ HP.classes $ [ HH.ClassName "deck-dialog-backdrop" ] ⊕ (guard (isNothing state) $> CSS.invisible)
         , HE.onMouseDown (HE.input_ RaiseDismiss)

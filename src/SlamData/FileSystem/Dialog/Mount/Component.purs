@@ -107,9 +107,7 @@ fldName state =
         , HH.input
             [ HP.class_ B.formControl
             , HE.onValueInput $ HE.input (ModifyState ∘ set MCS._name)
-            , HP.type_ HP.InputText
             , HP.value (state.name)
-            , HP.required true
             ]
         ]
     ]
