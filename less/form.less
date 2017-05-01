@@ -16,6 +16,16 @@
   background: #fff;
 }
 
+input[type=text] {
+  &:invalid {
+    border-color: #a00;
+  }
+
+  &:valid {
+    border-color: #0a0;
+  }
+}
+
 label.sd-option span {
   margin-left: 0.5rem;
 }

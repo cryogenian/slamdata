@@ -1,99 +1,112 @@
-.deck-dialog-backdrop {
+.deck-dialog-backdrop, .deck-dialog {
   position: fixed;
   top: 0;
+  right: 0;
+  bottom: 0;
   left: 0;
-  height: 100%;
   width: 100%;
-  background: rgba(0, 0, 0, 0.625);
+  min-height: 100%;
+}
+
+.deck-dialog-backdrop {
+  position: fixed;
   z-index: 9000;
+  background: rgba(0, 0, 0, 0.625);
 }
 
 .deck-dialog {
-  width: 100%;
-  height: 100%;
-  position: fixed;
-  left: 0;
-  top: 0;
+  display: flex;
+  flex-flow: column nowrap;
   z-index: 9001;
+  overflow: auto;
+  padding: 1rem;
   pointer-events: none;
 }
 
 .deck-dialog > div {
-    z-index: 9001;
-    pointer-events: auto;
-    box-shadow: 0 19px 38px rgba(0, 0, 0, 0.666), 0 15px 12px rgba(0, 0, 0, 0.666);
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    min-width: 45%;
-    max-height: 95%;
-    max-width: 95%;
-    background: white;
-    overflow-y: auto;
-    overflow-x: hidden;
-    transform: translate(-50%, -50%);
-    display: flex !important;
-    flex-direction: column;
-    h4 {
-      flex: 0 0 auto;
-      line-height: 2;
-      padding: 1rem;
-      margin: 0;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 9001;
+  box-shadow: 0 19px 38px rgba(0, 0, 0, 0.4), 0 15px 12px rgba(0, 0, 0, 0.4);
+  min-height: 0;
+  min-width: 45%;
+  max-width: 100%;
+  margin: auto;
+  padding: 1rem;
+  background: #fff;
+  overflow-y: auto;
+  //display: flex !important;
+  //flex-direction: column;
+  pointer-events: auto;
+
+  h4 {
+    flex: 0 0 auto;
+    line-height: 2;
+    padding-bottom: 1rem;
+    margin: 0;
+  }
+
+  .deck-dialog-body {
+    position: relative;
+    min-height: 4rem;
+
+    form {
+      .textarea-copy-button {
+        position: absolute;
+        top: 0;
+        right: 0;
+      }
     }
-    .deck-dialog-body {
-        flex: 1 1 auto;
-        position: relative;
-        overflow-y: auto;
-        overflow-x: hidden;
-        min-height: 4rem;
-        padding: 0 1rem;
-        form {
-            .textarea-copy-button {
-              position: absolute;
-              top: 0;
-              right: 0;
-            }
-        }
-    }
-    .deck-dialog-cardpath-card {
-      white-space: nowrap;
-      display: inline-block;
-      font-size: 0.8rem;
-    }
-    .deck-dialog-cardpath-card:not(:first-child)::before {
+  }
+
+  .deck-dialog-cardpath-card {
+    white-space: nowrap;
+    display: inline-block;
+    font-size: 0.8rem;
+
+    &:not(:first-child)::before {
       content: " ➜ ";
     }
-    .deck-dialog-cardpath-card:not(:last-child) {
+
+    &:not(:last-child) {
       margin-right: 0.25rem;
     }
-    .deck-dialog-footer {
-        flex: 0 0 auto;
-        padding: 1rem;
-        .btn {
-          margin-left: 1rem;
-          float: right;
-        }
-        .alert-danger {
-          margin-bottom: 1em;
-        }
+  }
+
+  .deck-dialog-footer {
+    flex: 0 0 auto;
+    padding: 1rem;
+
+    .btn {
+      margin-left: 1rem;
+      float: right;
     }
-    .deck-dialog-footer.share {
-      margin-top: 0em;
+
+    .alert-danger {
+      margin-bottom: 1em;
     }
-    textarea {
-        resize: none;
-        height: 10rem;
-        min-height: 60px;
-    }
-    video {
-      max-width: 100%;
-      width: 100%;
-      border-bottom: 1px solid #ccc;
-      border-top: 1px solid #ccc;
-    }
-    .container-fluid {
-      padding: 0;
-    }
+  }
+
+  .deck-dialog-footer.share {
+    margin-top: 0em;
+  }
+
+  textarea {
+    resize: none;
+    height: 10rem;
+    min-height: 60px;
+  }
+
+  video {
+    max-width: 100%;
+    width: 100%;
+    border-bottom: 1px solid #ccc;
+    border-top: 1px solid #ccc;
+  }
+
+  .container-fluid {
+    padding: 0;
+  }
 }
 
 .sd-dialog-loading {
