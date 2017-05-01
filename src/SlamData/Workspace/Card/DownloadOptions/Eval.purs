@@ -17,15 +17,20 @@ limitations under the License.
 module SlamData.Workspace.Card.DownloadOptions.Eval where
 
 import SlamData.Prelude
-import Control.Monad.Throw (class MonadThrow)
+
 import Data.Lens ((^.))
 import Data.Path.Pathy (runFileName, fileName)
 import SlamData.Download.Model as D
 import SlamData.Workspace.Card.DownloadOptions.Component.State as Download
-import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Port as Port
 
-eval ∷ ∀ m. MonadThrow CEM.CardError m ⇒ Download.State → Port.Resource → m Port.Port
+eval
+  ∷ ∀ m
+  . MonadThrow CE.CardError m
+  ⇒ Download.State
+  → Port.Resource
+  → m Port.Port
 eval { compress, options, targetName } resource = case targetName of
   Nothing →
     -- For legacy download options. Otherwise this shouldn't be Nothing.
@@ -38,7 +43,7 @@ eval { compress, options, targetName } resource = case targetName of
   Just "" → required
   Just fn → do
     when (isLeft (D.validFilename fn)) do
-      CEM.throw $ "Invalid target filename: " <> fn
+      CE.throw $ "Invalid target filename: " <> fn
     pure $ Port.DownloadOptions
       { compress
       , options
@@ -47,4 +52,4 @@ eval { compress, options, targetName } resource = case targetName of
       }
 
   where
-    required = CEM.throw "Target filename required"
+    required = CE.throw "Target filename required"

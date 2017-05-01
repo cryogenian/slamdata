@@ -13,6 +13,12 @@ module.exports = {
   output: {
      filename: './public/js/[name].js'
   },
+  module: {
+    loaders: [{
+      test: require.resolve('echarts'),
+      loader: 'expose-loader?echarts'
+    }]
+  },
   resolve: {
     alias: {
       "package.json": path.join(__dirname, "package.json")

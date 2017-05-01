@@ -167,7 +167,7 @@ loadGraph path { root } = runExceptT do
     lookupCardId coord = do
       cid ← Cache.get coord cardIdMap
       case cid of
-        Nothing → QE.throw $ "Card id not found for coord: " <> show coord
+        Nothing → throwError $ QE.msgToQError $ "Card id not found for coord: " <> show coord
         Just c  → pure c
 
   case root of
@@ -201,7 +201,7 @@ loadCompatWorkspace path = runExceptT do
   case Current.decode root, decodeWorkspace root of
     Right ws, _ → pure (Current × ws)
     _, Right ws → map (Legacy × _) $ ExceptT $ loadGraph path ws
-    Left err, _ → QE.throw err
+    Left err, _ → throwError $ QE.msgToQError err
 
 pruneLegacyData
   ∷ ∀ f m

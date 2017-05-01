@@ -28,10 +28,8 @@ module SlamData.Workspace.Card.Setups.Common.Eval
 import SlamData.Prelude
 
 import Control.Monad.State (class MonadState, get, put)
-import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
-
-import Data.Argonaut (Json)
+import Data.Argonaut as J
 import Data.Array as A
 import Data.Foreign (Foreign, toForeign)
 import Data.Foreign.Index (readProp)
@@ -41,21 +39,19 @@ import Data.Map as M
 import Data.NonEmpty as NE
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
-
 import ECharts.Monad (DSL)
 import ECharts.Monad as EM
 import ECharts.Types as ET
 import ECharts.Types.Phantom (I)
-
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.Setups.Axis (Axes, buildAxes)
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis (Axes, buildAxes)
 import SqlSquared as Sql
-
 import Utils (hush')
 import Utils.Path as PU
 
@@ -64,9 +60,9 @@ infixr 3 type M.Map as >>
 analysisEval
   ∷ ∀ m p
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
-  ⇒ (Axes → p → Array Json → Port.Port)
+  ⇒ (Axes → p → Array J.Json → Port.Port)
   → Maybe p
   → (Axes → Maybe p)
   → Port.Resource
@@ -76,11 +72,11 @@ analysisEval build model defaultModel resource = do
   put (Just (CEM.Analysis { resource, records, axes }))
   case model <|> defaultModel axes of
     Just ch → pure $ build axes ch records
-    Nothing → CEM.throw "Please select an axis."
+    Nothing → CE.throw "Please select an axis."
 
 type ChartSetupEval p m =
   MonadState CEM.CardState m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
@@ -91,7 +87,7 @@ type ChartSetupEval p m =
 chartSetupEval
   ∷ ∀ m p
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
@@ -104,7 +100,7 @@ chartSetupEval buildSql buildPort m resource = do
   records × axes ← analyze resource =<< get
   put $ Just $ CEM.Analysis { resource, records, axes }
   case m of
-    Nothing → CEM.throw "Incorrect chart setup model"
+    Nothing → CE.throw "Incorrect chart setup model"
     Just r → do
       let
         path = resource ^. Port._filePath
@@ -114,10 +110,10 @@ chartSetupEval buildSql buildPort m resource = do
       outputResource ← CEM.temporaryOutputResource
 
       { inputs } ←
-        CEM.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
+        CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
           QQ.compile backendPath sql SM.empty
 
-      _ ← CEM.liftQ do
+      _ ← CE.liftQ do
         _ ← QQ.viewQuery outputResource sql SM.empty
         QFS.messageIfFileNotFound
           outputResource
@@ -129,18 +125,24 @@ chartSetupEval buildSql buildPort m resource = do
 
 analyze
   ∷ ∀ m
-  . MonadThrow CEM.CardError m
+  . MonadThrow CE.CardError m
   ⇒ QuasarDSL m
   ⇒ Port.Resource
   → CEM.CardState
-  → m (Array Json × Axes)
+  → m (Array J.Json × Axes)
 analyze resource = case _ of
   Just (CEM.Analysis st) | resource ≡ st.resource →
     pure (st.records × st.axes)
   _ → do
-    records ← CEM.liftQ (QQ.all (resource ^. Port._filePath))
-    let axes = buildAxes (A.take 300 records)
+    records ← CE.liftQ (QQ.sample (resource ^. Port._filePath) 0 300)
+    let axes = buildAxes (unwrapValue <$> records)
     pure (records × axes)
+  where
+  unwrapValue json =
+    json # J.foldJsonObject json \obj →
+      case SM.keys obj, SM.lookup "value" obj of
+        ["value"], Just value → value
+        _, _ → json
 
 assoc ∷ ∀ a i. a → DSL (value ∷ I | i)
 assoc = EM.set "$$assoc" <<< toForeign

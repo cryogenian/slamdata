@@ -20,29 +20,25 @@ module SlamData.Workspace.Card.Open.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
-
 import Data.Lens ((^?), (?~))
 import Data.Path.Pathy as Path
-
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
-
 import SqlSquared as Sql
-
 import Utils.Path (FilePath)
 import Utils.SqlSquared (all)
 
 evalOpen
   ∷ ∀ m
-  . MonadThrow CEM.CardError m
+  . MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ QuasarDSL m
@@ -57,7 +53,7 @@ evalOpen model varMap = case model of
       Nothing → do
         CEM.addSource filePath
         pure (Port.resourceOut (Port.Path filePath))
-      Just err → CEM.throw err
+      Just err → CE.throw err
   Just (Open.Variable (VM.Var var)) → do
     res ← CEM.temporaryOutputResource
     let
@@ -70,15 +66,15 @@ evalOpen model varMap = case model of
       backendPath =
         fromMaybe Path.rootDir $ Path.parentDir res
 
-    CEM.liftQ $ QQ.viewQuery res sql varMap'
+    CE.liftQ $ QQ.viewQuery res sql varMap'
     pure $ Port.resourceOut $ Port.View res (Sql.print $ sql) varMap
 
   where
   noResource ∷ ∀ a. m a
   noResource =
-    CEM.throw "No resource is selected"
+    CE.throw "No resource is selected"
 
   checkPath ∷ FilePath → m (Maybe String)
   checkPath filePath =
-    CEM.liftQ $ QFS.messageIfFileNotFound filePath $
+    CE.liftQ $ QFS.messageIfFileNotFound filePath $
       "File " ⊕ Path.printPath filePath ⊕ " doesn't exist"

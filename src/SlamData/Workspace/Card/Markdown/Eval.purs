@@ -19,35 +19,29 @@ module SlamData.Workspace.Card.Markdown.Eval
 import SlamData.Prelude
 
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Throw (class MonadThrow)
 import Control.Monad.Writer.Class (class MonadTell)
-
 import Data.Array as A
 import Data.Identity (Identity)
 import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.String as S
 import Data.StrMap as SM
-
 import Matryoshka (project, transAna)
-
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
+import SlamData.SqlSquared.Tagged as SqlT
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
-
-import SlamData.SqlSquared.Tagged as SqlT
 import SqlSquared as Sql
-
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 import Text.Markdown.SlamDown.Parser as SDP
 import Text.Markdown.SlamDown.Traverse as SDT
-
 import Utils.Path (DirPath)
 
 evalMarkdownForm
@@ -67,7 +61,7 @@ evalMarkdown
   ∷ ∀ m
   . MonadEff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ String
@@ -76,7 +70,7 @@ evalMarkdown
 evalMarkdown str varMap = do
   CEM.CardEnv { path } ← ask
   case SDP.parseMd str of
-    Left e → CEM.throw e
+    Left e → CE.throw e
     Right sd → do
       let sm = map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
       doc ← evalEmbeddedQueries sm path sd
@@ -95,7 +89,7 @@ findFields = SDT.everything (const mempty) extractField
 evalEmbeddedQueries
   ∷ ∀ m
   . MonadEff SlamDataEffects m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ SM.StrMap String
@@ -157,7 +151,7 @@ evalEmbeddedQueries sm dir =
     let sql = unwrap $ SD.traverseTextBox (map \_ → Const unit) tb
     mresult ← A.head <$> runQuery sql
     result ←
-      maybe (CEM.throw "No results") (pure ∘ extractSingletonObject) mresult
+      maybe (CE.throw "No results") (pure ∘ extractSingletonObject) mresult
     case tb, project result of
       (SD.PlainText _), (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
@@ -165,17 +159,17 @@ evalEmbeddedQueries sm dir =
         pure ∘ SD.Numeric $ pure a
       (SD.Time prec _), (EJSON.String time) →
         case SqlT.parseTime time of
-          Left _ → CEM.throw $ "Incorrect time value: " ⊕ show time
+          Left _ → CE.throw $ "Incorrect time value: " ⊕ show time
           Right r → pure ∘ SD.Time prec $ pure r
       (SD.Date _), (EJSON.String d) →
         case SqlT.parseDate d of
-          Left _ → CEM.throw $ "Incorrect date value: " ⊕ show d
+          Left _ → CE.throw $ "Incorrect date value: " ⊕ show d
           Right r → pure ∘ SD.Date $ pure r
       (SD.DateTime prec _), (EJSON.String dt) →
         case SqlT.parseDateTime dt of
-          Left _ → CEM.throw $ "Incorrect datetime value: " ⊕ show dt
+          Left _ → CE.throw $ "Incorrect datetime value: " ⊕ show dt
           Right r → pure ∘ SD.DateTime prec $ pure r
-      _, _ → CEM.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
+      _, _ → CE.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
 
   evalList
     ∷ String
@@ -197,8 +191,8 @@ evalEmbeddedQueries sm dir =
   runQuery code =
     let esql = Sql.parse code
     in case esql of
-      Left e → CEM.throw "Error parsing sql query"
+      Left e → CE.throw "Error parsing sql query"
       Right sql → do
-        {inputs} ← CEM.liftQ $ Quasar.compile dir sql sm
+        {inputs} ← CE.liftQ $ Quasar.compile dir sql sm
         CEM.addSources inputs
-        CEM.liftQ $ Quasar.queryEJsonVM dir sql sm
+        CE.liftQ $ Quasar.queryEJsonVM dir sql sm

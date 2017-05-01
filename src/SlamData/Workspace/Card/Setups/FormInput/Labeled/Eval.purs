@@ -22,26 +22,24 @@ module SlamData.Workspace.Card.Setups.FormInput.Labeled.Eval
 import SlamData.Prelude
 
 import Control.Monad.State (class MonadState, get, put)
-import Control.Monad.Throw (class MonadThrow)
-
 import Data.Array as Arr
 import Data.Map as Map
 import Data.Set as Set
-
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
-import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model (Model, behaviour, initialState)
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Behaviour as B
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model (Model, behaviour, initialState)
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 eval
   ∷ ∀ m
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
   ⇒ Model
   → FormInputType
@@ -51,10 +49,10 @@ eval m formInputType resource = do
   records × axes ← BCE.analyze resource =<< get
   put (Just (CEM.Analysis { resource, axes, records}))
   case m <|> B.defaultModel behaviour m initialState{axes = axes} of
-    Nothing → CEM.throw "Please select axis"
+    Nothing → CE.throw "Please select axis"
     Just conf → do
       when (Arr.null records)
-        $ CEM.throw "The resource is empty"
+        $ CE.throw "The resource is empty"
       selectedValues × valueLabelMap × _ × _ ←
         Arr.foldM (foldFn conf) (Set.empty × Map.empty × 0 × 0) records
       pure
@@ -68,14 +66,14 @@ eval m formInputType resource = do
   where
   foldFn conf acc@(selected × vlmap × keyCount × selectedCount) record = do
     when (keyCount > FIT.maximumCountOfEntries formInputType)
-      $ CEM.throw
+      $ CE.throw
       $ "The "
       ⊕ FIT.printFormInputType formInputType
       ⊕ " form input can't take more than "
       ⊕ show (FIT.maximumCountOfEntries formInputType)
       ⊕ ". Please use 'limit' or 'group by'"
     when (selectedCount > FIT.maximumCountOfSelectedValues formInputType)
-      $ CEM.throw
+      $ CE.throw
       $ "The "
       ⊕ FIT.printFormInputType formInputType
       ⊕ " form input can't have more than "
@@ -92,7 +90,7 @@ eval m formInputType resource = do
             pure $ (keyCount + one) × Map.insert value mbNewLabel vlmap
           Just mbExistingLabel → do
             when (mbExistingLabel ≠ mbNewLabel)
-              $ CEM.throw
+              $ CE.throw
               $ "Labels must be unique. Please, use other axis."
             pure $ keyCount × vlmap
     newSelCount × newSelected ←

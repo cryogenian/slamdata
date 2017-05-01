@@ -23,35 +23,31 @@ module SlamData.Workspace.Card.FormInput.Eval
 import SlamData.Prelude
 
 import Control.Monad.Aff.Class (class MonadAff)
-import Control.Monad.Throw (class MonadThrow)
-import Control.Monad.Writer.Class (class MonadTell)
 import Control.Monad.State (class MonadState, get, put)
-
+import Control.Monad.Writer.Class (class MonadTell)
 import Data.Lens ((^.), preview, (?~), (.~))
 import Data.List as L
 import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
-
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
+import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as CES
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.FormInput.Model (Model(..))
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
+import SlamData.Workspace.Card.FormInput.Model (Model(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
 import SqlSquared (Sql)
 import SqlSquared as Sql
-
 import Utils (stringToNumber)
 import Utils.SqlSquared (all, asRel, tableRelation)
 
@@ -65,7 +61,7 @@ eval
   ∷ ∀ m
   . MonadAff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ MonadState CEM.CardState m
   ⇒ QuasarDSL m
@@ -80,12 +76,12 @@ eval sql r = do
       fromMaybe Path.rootDir (Path.parentDir (r ^. Port._filePath))
 
   { inputs } ←
-    CEM.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
+    CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
       QQ.compile backendPath sql SM.empty
 
   validateResources inputs
   CEM.addSources inputs
-  _ ← CEM.liftQ do
+  _ ← CE.liftQ do
     _ ← QQ.viewQuery resource sql SM.empty
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   let
@@ -99,7 +95,7 @@ evalLabeled
   ∷ ∀ m
   . MonadAff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ MonadState CEM.CardState m
   ⇒ QuasarDSL m
@@ -159,7 +155,7 @@ evalTextLike
   ∷ ∀ m
   . MonadAff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CEM.CardError m
+  ⇒ MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ MonadState CEM.CardState m
   ⇒ QuasarDSL m
