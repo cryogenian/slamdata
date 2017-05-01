@@ -14,38 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Deck.Dialog.Share.Component where
+module SlamData.Workspace.Dialog.Share.Component where
 
 import SlamData.Prelude
 
+import Clipboard as C
 import Control.UI.Browser (select)
-
 import Data.Array as Arr
 import Data.Foreign (toForeign)
-import Data.String as Str
 import Data.Path.Pathy (rootDir, (</>), file)
 import Data.Path.Pathy as Pt
-
-import DOM.HTML.Types (readHTMLElement)
+import Data.String as Str
 import DOM.Classy.Element (toElement)
-
+import DOM.HTML.Types (readHTMLElement)
 import Halogen as H
-import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
-
 import Quasar.Advanced.Types as QT
-
-import SlamData.Quasar.Security as Q
 import SlamData.Monad (Slam)
+import SlamData.Quasar.Security as Q
 import SlamData.Render.Icon as I
-import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), sharingActions, SharingInput)
-
+import SlamData.Workspace.Dialog.Share.Model (ShareResume(..), sharingActions, SharingInput)
 import Utils.DOM as DOM
 import Utils.Path (rootFile, FilePath)
-
-import Clipboard as C
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Message Slam

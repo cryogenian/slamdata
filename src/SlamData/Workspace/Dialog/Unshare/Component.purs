@@ -14,49 +14,42 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Deck.Dialog.Unshare.Component where
+module SlamData.Workspace.Dialog.Unshare.Component where
 
 import SlamData.Prelude
 
+import Clipboard as C
 import Control.Monad.Aff.AVar (makeVar, takeVar, putVar)
 import Control.Monad.Eff.Ref (newRef, modifyRef, readRef)
 import Control.Monad.Fork.Class (fork)
 import Control.UI.Browser (select)
-
 import Data.Array as Arr
 import Data.Foldable as F
 import Data.Foreign (toForeign)
 import Data.Lens (Lens', lens, (.~), (%~), (?~))
 import Data.Lens.Index (ix)
 import Data.List as L
-import Data.Set as Set
 import Data.Map as Map
-import Data.StrMap as SM
 import Data.Path.Pathy as Pt
-
-import DOM.HTML.Types (readHTMLElement)
+import Data.Set as Set
+import Data.StrMap as SM
 import DOM.Classy.Element (toElement)
-
+import DOM.HTML.Types (readHTMLElement)
 import Halogen as H
-import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Elements.Keyed as HK
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap3 as B
-
 import Quasar.Advanced.Types as QTA
-
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Security as Q
 import SlamData.Render.Icon as I
-import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), printShareResume)
-import SlamData.Workspace.Deck.Dialog.Share.Model as Model
-
+import SlamData.Workspace.Dialog.Share.Model (ShareResume(..), printShareResume)
+import SlamData.Workspace.Dialog.Share.Model as Model
 import Utils.DOM as DOM
-import Utils.Path (parseFilePath)
 import Utils.Foldable (chunkedParTraverse, splitList)
-
-import Clipboard as C
+import Utils.Path (parseFilePath)
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Message Slam

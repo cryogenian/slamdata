@@ -23,6 +23,7 @@ module SlamData.Wiring
   , CacheWiring
   , BusWiring
   , DeckMessage(..)
+  , WorkspaceMessage(..)
   , HintDismissalMessage(..)
   , ActiveState
   , DebounceEval
@@ -31,9 +32,13 @@ module SlamData.Wiring
   , unWiring
   , expose
   , focusDeck
+  , switchDeckToFront
+  , switchDeckToFlip
+  , showDialog
   ) where
 
 import SlamData.Prelude
+
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
@@ -41,9 +46,9 @@ import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (Ref)
 import Control.Monad.Eff.Ref as Ref
-
 import Data.StrMap (StrMap)
-
+import ECharts.Theme as ETheme
+import Quasar.Advanced.Types (TokenHash)
 import SlamData.AuthenticationMode (AllowedAuthenticationModes, allowedAuthenticationModesForAccessType)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
@@ -52,22 +57,28 @@ import SlamData.Notification as N
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
-import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.EChartThemeLoader as EChartThemeLoader
 import SlamData.Workspace.AccessType (AccessType)
+import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Options (DeckOptions)
+import SlamData.Workspace.Dialog.Types (Dialog)
+import SlamData.Workspace.EChartThemeLoader as EChartThemeLoader
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
 import SlamData.Workspace.Guide (GuideType)
-
-import Quasar.Advanced.Types (TokenHash)
-
 import Utils.Path (DirPath)
-import ECharts.Theme as ETheme
 
+-- TODO: DeckFocused should use DeckOptions too. It's not totally trivial though,
+-- as Defocus in the deck uses DeckFocused to focus the root of its cursor,
+-- which we only have a DeckId for. -gb
 data DeckMessage
   = DeckFocused DeckId
+  | SwitchToFront DeckOptions
+  | SwitchToFlip DeckOptions
+
+data WorkspaceMessage
+  = ShowDialog Dialog
 
 data HintDismissalMessage
   = DeckFocusHintDismissed
@@ -120,6 +131,7 @@ type CacheWiring =
 
 type BusWiring =
   { decks ∷ Bus.BusRW DeckMessage
+  , workspace ∷ Bus.BusRW WorkspaceMessage
   , notify ∷ Bus.BusRW N.NotificationOptions
   , globalError ∷ Bus.BusRW GE.GlobalError
   , stepByStep ∷ Bus.BusRW GuideType
@@ -210,11 +222,12 @@ make path accessType vm permissionTokenHashes = liftAff do
 
   makeBus = do
     decks ← Bus.make
+    workspace ← Bus.make
     notify ← Bus.make
     globalError ← Bus.make
     stepByStep ← Bus.make
     hintDismissals ← Bus.make
-    pure { decks, notify, globalError, stepByStep, hintDismissals }
+    pure { decks, workspace, notify, globalError, stepByStep, hintDismissals }
 
 focusDeck
   ∷ ∀ m
@@ -225,3 +238,33 @@ focusDeck
 focusDeck deckId = do
   { bus } ← expose
   liftAff $ Bus.write (DeckFocused deckId) bus.decks
+
+switchDeckToFront
+  ∷ ∀ m
+  . MonadAsk Wiring m
+  ⇒ MonadAff SlamDataEffects m
+  ⇒ DeckOptions
+  → m Unit
+switchDeckToFront deckOpts = do
+  { bus } ← expose
+  liftAff $ Bus.write (SwitchToFront deckOpts) bus.decks
+
+switchDeckToFlip
+  ∷ ∀ m
+  . MonadAsk Wiring m
+  ⇒ MonadAff SlamDataEffects m
+  ⇒ DeckOptions
+  → m Unit
+switchDeckToFlip deckOpts = do
+  { bus } ← expose
+  liftAff $ Bus.write (SwitchToFlip deckOpts) bus.decks
+
+showDialog
+  ∷ ∀ m
+  . MonadAsk Wiring m
+  ⇒ MonadAff SlamDataEffects m
+  ⇒ Dialog
+  → m Unit
+showDialog dialog = do
+  { bus } ← expose
+  liftAff $ Bus.write (ShowDialog dialog) bus.workspace

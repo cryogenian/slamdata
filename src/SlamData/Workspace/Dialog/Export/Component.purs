@@ -14,22 +14,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Deck.Dialog.Export.Component where
+module SlamData.Workspace.Dialog.Export.Component where
 
 import SlamData.Prelude
+
 import Clipboard as C
 import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Fork (fork)
+import Control.UI.Browser (select, getHref)
+import Data.Argonaut (encodeJson)
 import Data.Foldable as F
-import Data.Map as Map
+import Data.Foreign (toForeign)
 import Data.List (List)
-import Data.Path.Pathy as Pathy
+import Data.Map as Map
 import Data.Path.Pathy (Path, Abs, File, Sandboxed)
-import Data.StrMap as SM
+import Data.Path.Pathy as Pathy
 import Data.String as Str
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
+import Data.StrMap as SM
+import Data.URI (AbsoluteURI, URI)
+import Data.URI as URI
+import Data.URI.Types.AbsoluteURI as AbsoluteURI
+import Data.URI.Types.HierarchicalPart as HierarchicalPart
+import Data.URI.Types.URI as URIT
+import DOM.Classy.Element (toElement)
+import DOM.HTML.Types (readHTMLElement)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -38,6 +49,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import OIDC.Crypt as OIDC
 import Quasar.Advanced.Types as QTA
+import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.CSS as Rc
@@ -47,24 +59,13 @@ import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId as DID
+import SlamData.Workspace.Deck.DeckPath (deckPath')
+import SlamData.Workspace.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
+import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL)
+import Text.Parsing.StringParser (ParseError)
+import Utils (hush, prettyJson)
 import Utils.DOM as DOM
 import Utils.Path as UP
-import Control.UI.Browser (select, getHref)
-import DOM.Classy.Element (toElement)
-import DOM.HTML.Types (readHTMLElement)
-import Data.Argonaut (encodeJson)
-import Data.Foreign (toForeign)
-import Data.URI (AbsoluteURI, URI)
-import Text.Parsing.StringParser (ParseError)
-import Data.URI as URI
-import Data.URI.Types.AbsoluteURI as AbsoluteURI
-import Data.URI.Types.URI as URIT
-import Data.URI.Types.HierarchicalPart as HierarchicalPart
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Deck.DeckPath (deckPath')
-import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
-import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL)
-import Utils (hush, prettyJson)
 
 data PresentAs = Embed | Publish
 
@@ -686,4 +687,3 @@ filePathFromURI =
   hush
     <=< HierarchicalPart.uriPathAbs
     <<< URIT.hierarchicalPart
-
