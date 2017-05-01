@@ -18,23 +18,23 @@ module SlamData.Workspace.Card.Cache.Error where
 
 import SlamData.Prelude
 
-import Quasar.Advanced.QuasarAF (QError, printQError)
-import Quasar.Types (FilePath)
+import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
 import Utils (hush)
+import Utils.Path (FilePath)
 
 data CacheError
   = CacheInvalidFilepath String
   | CacheQuasarError QError
-  | CacheErrorSavingFile
-  | CacheResourceNotModified FilePath
+  | CacheErrorSavingFile FilePath
+  | CacheResourceNotModified
 
 instance showCacheError ∷ Show CacheError where
   show = case _ of
     CacheInvalidFilepath fp → "(CacheInvalidFilepath " <> show fp <> ")"
-    CacheQuasarError qErr → "(CacheQuasarError " <> printQError qErr <> ")"
-    CacheErrorSavingFile → "CacheErrorSavingFile"
-    CacheResourceNotModified fp → "(CacheResourceNotModified " <> show fp <> ")"
+    CacheQuasarError qErr → "(CacheQuasarError " <> show qErr <> ")"
+    CacheErrorSavingFile fp → "(CacheErrorSavingFile " <> show fp <> ")"
+    CacheResourceNotModified → "CacheResourceNotModified"
 
 cacheToGlobalError ∷ CacheError → Maybe GE.GlobalError
 cacheToGlobalError = case _ of

@@ -16,15 +16,18 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Error.Component.State where
 
+import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Error (CardError)
 
 type State =
   { error ∷ CardError
   , expanded ∷ Boolean
+  , accessType ∷ AccessType
   }
 
 initialState ∷ CardError → State
 initialState =
   { error: _
   , expanded: false
+  , accessType: Editable
   }
