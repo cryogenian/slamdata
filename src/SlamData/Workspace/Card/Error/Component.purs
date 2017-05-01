@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Error.Component.Query (Query, initiality)
 import SlamData.Workspace.Card.Error.Component.State (State, initialState)
 import SlamData.Render.CSS as CSS
+import SlamData.Workspace.Card.Error (CardError, prettyPrintCardError)
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -34,10 +35,10 @@ import Halogen.HTML.Properties as HP
 type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
 
-errorCardComponent ∷ H.Component HH.HTML Query String Void Slam
+errorCardComponent ∷ H.Component HH.HTML Query CardError Void Slam
 errorCardComponent =
   H.component
-    { initialState: initialState { message = _ }
+    { initialState: initialState
     , render
     , eval
     , receiver: const Nothing
@@ -47,7 +48,7 @@ render ∷ State → HTML
 render st =
   HH.div
     [ HP.classes [ CSS.cardFailures ] ]
-    [ HH.text st.message ]
+    [ HH.text (prettyPrintCardError st.error) ]
 
 eval ∷ Query ~> DSL
 eval = initiality
