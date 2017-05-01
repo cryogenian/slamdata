@@ -331,17 +331,15 @@ handleNotification = case _ of
 
 handleDialog ∷ Dialog.Message → WorkspaceDSL Unit
 handleDialog = case _ of
-  Dialog.Confirm opts d b → do
-    case d of
-      Dialog.Rename opts' name → do
-        void $ H.lift $ P.renameDeck opts'.deckId name
-        Wiring.switchDeckToFront opts'
-      Dialog.DeleteDeck opts' | b → do
-        Wiring.switchDeckToFlip opts'
-        H.lift $ DeckCommon.deleteDeck opts'
-      _ → do
-        Wiring.switchDeckToFlip opts
-    -- queryDialog $ H.action Dialog.Dismiss
+  Dialog.Confirm opts d b → case d of
+    Dialog.Rename opts' name | b → do
+      void $ H.lift $ P.renameDeck opts'.deckId name
+      Wiring.switchDeckToFront opts'
+    Dialog.DeleteDeck opts' | b → do
+      Wiring.switchDeckToFlip opts'
+      H.lift $ DeckCommon.deleteDeck opts'
+    _ →
+      Wiring.switchDeckToFlip opts
   Dialog.Dismissed →
     pure unit
 
