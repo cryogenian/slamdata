@@ -28,11 +28,9 @@ import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Error.Component as Error
 import SlamData.Workspace.Card.Pending.Component as Pending
 import SlamData.Workspace.Deck.BackSide as Back
-import SlamData.Workspace.Deck.Dialog.Component as Dialog
 
 type ChildSlot
   = CardId
-  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -43,7 +41,6 @@ type ChildSlot
 type ChildQuery
   = CardQuery
   ⨁ ActionList.Query Back.BackAction
-  ⨁ Dialog.Query
   ⨁ Next.Query
   ⨁ Error.Query
   ⨁ Pending.Query
@@ -58,17 +55,14 @@ cpCard = CP.cp1
 cpBackSide ∷ ChildPath (ActionList.Query Back.BackAction) Unit
 cpBackSide = CP.cp2
 
-cpDialog ∷ ChildPath Dialog.Query Unit
-cpDialog = CP.cp3
-
 cpNext ∷ ChildPath Next.Query Unit
-cpNext = CP.cp4
+cpNext = CP.cp3
 
 cpError ∷ ChildPath Error.Query Unit
-cpError = CP.cp5
+cpError = CP.cp4
 
 cpPending ∷ ChildPath Pending.Query Unit
-cpPending = CP.cp6
+cpPending = CP.cp5
 
 cpActionFilter ∷ ChildPath ActionFilter.Query Unit
-cpActionFilter = CP.cp7
+cpActionFilter = CP.cp6

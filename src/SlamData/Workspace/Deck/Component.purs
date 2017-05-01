@@ -22,12 +22,13 @@ module SlamData.Workspace.Deck.Component
   ) where
 
 import SlamData.Prelude
+
 import Control.Monad.Aff as Aff
-import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Eff.Exception as Exception
 import Control.UI.Browser as Browser
 import Data.Array as Array
-import Data.Lens ((.~), (%~), _Left, _Just, is)
+import Data.Lens ((.~), _Left, _Just, is)
 import Data.List ((:))
 import Data.List as L
 import Data.Set as Set
@@ -37,7 +38,6 @@ import Halogen as H
 import Halogen.Component.Utils (sendAfter, busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Config as Config
@@ -60,25 +60,24 @@ import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Class (navigateToDeck)
 import SlamData.Workspace.Deck.BackSide as Back
-import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL, sizerRef)
+import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Common as Common
-import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, cpDialog, cpBackSide, cpNext)
+import SlamData.Workspace.Deck.Component.ChildSlot (cpCard, cpBackSide, cpNext)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..), Message(..))
 import SlamData.Workspace.Deck.Component.Render as DCR
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckPath (deckPath')
-import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Gripper.Def as GD
 import SlamData.Workspace.Deck.Slider as Slider
+import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Eval.Card as EC
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse as ET
 import SlamData.Workspace.Guide as Guide
 import SlamData.Workspace.Routing (mkWorkspaceURL)
-
 import Utils as Utils
 import Utils.DOM as DOM
 
@@ -152,7 +151,7 @@ eval opts = case _ of
       else navigateToDeck opts.cursor
     pure next
   StartSliding gDef mouseEvent next → do
-    H.getHTMLElementRef sizerRef >>= traverse_ \el → do
+    H.getHTMLElementRef Common.sizerRef >>= traverse_ \el → do
       width ← getBoundingClientWidth el
       Slider.startSliding mouseEvent gDef width
       preloadCard gDef
@@ -173,8 +172,7 @@ eval opts = case _ of
     H.liftEff $ DOM.stopPropagation ev
     when (not st.focused) do
       H.modify (DCS._focused .~ true)
-      { bus } ← H.lift Wiring.expose
-      H.liftAff $ Bus.write (DeckFocused opts.deckId) bus.decks
+      Wiring.focusDeck opts.deckId
     when
       (Common.willBePresentedWithChildFrameWhenFocused opts st)
       dismissFocusDeckHint
@@ -190,9 +188,7 @@ eval opts = case _ of
     isFrame ← H.liftEff $ DOM.nodeEq (DOM.target ev) (DOM.currentTarget ev)
     when (st.focused && not (L.null opts.displayCursor)) do
       when isFrame do
-        for_ (L.last opts.cursor) \rootId → do
-          { bus } ← H.lift Wiring.expose
-          H.liftAff $ Bus.write (DeckFocused rootId) bus.decks
+        for_ (L.last opts.cursor) \rootId → Wiring.focusDeck rootId
     when
       (Common.willBePresentedWithChildFrameWhenFocused opts st)
       dismissFocusDeckFrameHint
@@ -204,8 +200,6 @@ eval opts = case _ of
   GetActiveCard k → do
     active ← H.gets DCS.activeCard
     pure (k (Utils.hush ∘ map _.cardId =<< active))
-  DismissDialog next →
-    H.modify (DCS._displayMode %~ DCS.noDialog) $> next
   HandleEval msg next →
     handleEval opts msg $> next
   HandleMessage msg next → do
@@ -219,6 +213,12 @@ eval opts = case _ of
             $ (DCS._focused .~ false)
             ∘ (DCS._presentAccessNextActionCardHint .~ false)
         whenM (not <$> nextActionCardIsActive) presentAccessNextActionCardHintAfterDelay
+      SwitchToFront opts' → do
+        when (opts'.deckId ≡ opts.deckId && opts'.cursor ≡ opts.cursor)
+          switchToFrontside
+      SwitchToFlip opts' → do
+        when (opts'.deckId ≡ opts.deckId && opts'.cursor ≡ opts.cursor) $
+          switchToFlipside opts
     pure next
   HandleHintDismissalMessage msg next → do
     case msg of
@@ -228,10 +228,9 @@ eval opts = case _ of
         H.modify (DCS._focusDeckHintDismissed .~ true)
     pure next
   HandleError ge next → do
-    showDialog $ Dialog.Error $ GE.print ge
+    Wiring.showDialog $ Dialog.Error opts $ GE.print ge
     pure next
   HandleNextAction msg next → handleNextAction opts msg $> next
-  HandleDialog msg next → handleDialog opts msg $> next
   HandleBackFilter msg next → handleBackSideFilter msg $> next
   HandleBackAction msg next → handleBackSide opts msg $> next
   HandleGrab ev next → H.raise (GrabbedDeck ev) $> next
@@ -284,9 +283,9 @@ switchToFlipside opts = do
   case nextBoundingRect of
     Just (Just dimensions) → do
       _ ← queryBacksideActionList $ H.action $ ActionList.SetBoundingRect dimensions
-      H.modify (DCS._displayMode .~ DCS.FlipSide DCS.NoDialog)
+      H.modify (_ { displayMode = DCS.FlipSide })
     _ → do
-      H.modify (DCS._displayMode .~ DCS.FlipSide DCS.NoDialog)
+      H.modify (_ { displayMode = DCS.FlipSide })
       void $ queryBacksideActionList $ H.action $ ActionList.CalculateBoundingRect
 
 switchToFrontside ∷ DeckDSL Unit
@@ -296,23 +295,10 @@ switchToFrontside = do
   case flipSideBoundingRect of
     Just (Just dimensions) → do
       _ ← queryNextActionList $ H.action $ ActionList.SetBoundingRect dimensions
-      H.modify (DCS._displayMode .~ DCS.FrontSide DCS.NoDialog)
+      H.modify (_ { displayMode = DCS.FrontSide })
     _ → do
-      H.modify (DCS._displayMode .~ DCS.FrontSide DCS.NoDialog)
+      H.modify (_ { displayMode = DCS.FrontSide })
       void $ queryNextActionList $ H.action $ ActionList.CalculateBoundingRect
-
-handleDialog ∷ DeckOptions → Dialog.Message → DeckDSL Unit
-handleDialog opts = case _ of
-  Dialog.Dismiss → do
-    H.modify (DCS._displayMode %~ DCS.noDialog)
-  Dialog.SetDeckName name → do
-    void $ H.lift $ P.renameDeck opts.deckId name
-    switchToFrontside
-  Dialog.Confirm d b → do
-    switchToFlipside opts
-    case d of
-      Dialog.DeleteDeck | b → deleteDeck opts
-      _ → pure unit
 
 handleBackSide ∷ DeckOptions → ActionList.Message Back.BackAction → DeckDSL Unit
 handleBackSide opts = case _ of
@@ -331,29 +317,31 @@ handleBackSide opts = case _ of
             updateActiveState opts
           H.lift $ P.removeCard opts.deckId cardId
       Back.Rename → do
-        showDialog $ Dialog.Rename st.name
+        Wiring.showDialog $ Dialog.Rename opts st.name
       Back.Share → do
         getDeckTree opts.deckId >>= traverse_
-          (showDialog ∘ Dialog.Share ∘ ET.getSharingInput path)
+          (Wiring.showDialog ∘ Dialog.Share opts ∘ ET.getSharingInput path)
       Back.Unshare → do
         getDeckTree opts.deckId >>= traverse_
-          (showDialog ∘ Dialog.Unshare ∘ ET.getSharingInput path)
+          (Wiring.showDialog ∘ Dialog.Unshare opts ∘ ET.getSharingInput path)
       Back.Embed → do
         _ ← H.lift P.saveWorkspace
         getDeckTree opts.deckId >>= traverse_ \tree →
-          showDialog $ Dialog.Embed
+          Wiring.showDialog $ Dialog.Embed
+            opts
             (ET.getSharingInput path tree)
             (ET.getVarMaps tree)
       Back.Publish → do
         _ ← H.lift P.saveWorkspace
         getDeckTree opts.deckId >>= traverse_ \tree →
-          showDialog $ Dialog.Publish
+          Wiring.showDialog $ Dialog.Publish
+            opts
             (ET.getSharingInput path tree)
             (ET.getVarMaps tree)
       Back.DeleteDeck →
         if Array.length st.displayCards <= 1
-          then deleteDeck opts
-          else showDialog Dialog.DeleteDeck
+          then H.lift $ Common.deleteDeck opts
+          else Wiring.showDialog (Dialog.DeleteDeck opts)
       Back.Mirror → do
         let mirrorCard = (Utils.hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
         deck ← H.lift $ P.getDeck opts.deckId
@@ -389,14 +377,6 @@ handleBackSideFilter ∷ ActionFilter.Message → DeckDSL Unit
 handleBackSideFilter = case _ of
   ActionFilter.FilterChanged str →
     void $ queryBacksideActionList $ H.action $ ActionList.UpdateFilter str
-
-showDialog ∷ Dialog.Dialog → DeckDSL Unit
-showDialog dlg = do
-  queryDialog $ H.action $ Dialog.Show dlg
-  H.modify (DCS._displayMode %~ DCS.dialog)
-
-queryDialog ∷ Dialog.Query Unit → DeckDSL Unit
-queryDialog = void ∘ H.query' cpDialog unit
 
 queryBacksideActionList ∷ ∀ a. ActionList.Query Back.BackAction a → DeckDSL (Maybe a)
 queryBacksideActionList =
@@ -482,24 +462,17 @@ handleNextAction opts = case _ of
     updateBackSide opts
     whenM (not <$> nextActionCardIsActive) presentAccessNextActionCardHintAfterDelay
   Next.PresentReason input cardType → do
-    presentReason input cardType
+    presentReason opts input cardType
 
-presentReason ∷ Port.Port → CT.CardType → DeckDSL Unit
-presentReason input cardType =
-  showDialog dialog
+presentReason ∷ DeckOptions → Port.Port → CT.CardType → DeckDSL Unit
+presentReason opts input cardType =
+  Wiring.showDialog dialog
   where
   insertableCardType = ICT.fromCardType cardType
   ioType = ICT.fromPort input
   reason = ICT.reason ioType cardType
   cardPaths = ICT.cardPathsBetween ioType insertableCardType
-  dialog = Dialog.Reason cardType reason cardPaths
-
-deleteDeck ∷ DeckOptions → DeckDSL Unit
-deleteDeck opts = do
-  st ← H.get
-  _ ← H.lift $ P.deleteDeck opts.deckId
-  navigateToDeck opts.cursor
-  pure unit
+  dialog = Dialog.Reason opts cardType reason cardPaths
 
 loadDeck ∷ DeckOptions → DeckDSL Unit
 loadDeck opts = mbLoadError =<< runMaybeT do
@@ -596,7 +569,7 @@ preloadCard gDef = do
 
 updateCardSize ∷ DeckDSL Unit
 updateCardSize =
-  H.getHTMLElementRef sizerRef >>= traverse_ \el → void do
+  H.getHTMLElementRef Common.sizerRef >>= traverse_ \el → void do
     { width, height } ← H.liftEff $ getBoundingClientRect el
     H.modify $ DCS._responsiveSize .~ breakpoint width
     _ ← queryNextActionList $ H.action ActionList.CalculateBoundingRect

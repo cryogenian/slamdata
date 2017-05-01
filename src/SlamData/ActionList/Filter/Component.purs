@@ -26,6 +26,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
+import SlamData.Render.Icon as I
 
 type State =
   { description ∷ String
@@ -63,7 +64,7 @@ render state =
         [ HP.class_ $ HH.ClassName "sd-form" ]
         [ HH.div
             [ HP.classes [ HH.ClassName "sd-action-filter-icon" ] ]
-            [ RC.searchFieldIcon ]
+            [ I.searchSm ]
         , HH.input
             [ HP.value state.filter
             , HE.onValueInput $ HE.input \s → Set s

@@ -27,7 +27,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
-import SlamData.Render.CSS as CSS
+import SlamData.Render.CSS as Rc
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
@@ -51,7 +51,7 @@ searchComponent =
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.class_ CSS.form ]
+    [ HP.class_ Rc.form ]
     [ HH.input
         [ HP.type_ HP.InputText
         , HP.placeholder "Search string"

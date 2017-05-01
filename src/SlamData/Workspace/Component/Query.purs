@@ -17,19 +17,16 @@ limitations under the License.
 module SlamData.Workspace.Component.Query where
 
 import Data.List (List)
-
 import DOM.Event.Types (MouseEvent)
-
 import Halogen as H
-
 import Quasar.Advanced.Types (ProviderR)
-
 import SlamData.GlobalMenu.Bus (SignInMessage)
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Notification as N
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Guide (GuideType)
-
 import Utils.Path as UP
 
 data Query a
@@ -44,3 +41,5 @@ data Query a
   | HandleGuideMessage GuideType Guide.Message a
   | HandleNotification N.Action a
   | HandleSignInMessage SignInMessage a
+  | HandleWorkspace Wiring.WorkspaceMessage a
+  | HandleDialog Dialog.Message a

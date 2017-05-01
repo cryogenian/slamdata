@@ -53,6 +53,7 @@
           margin: 0;
           padding: 0;
         }
+
         p {
           padding: 0;
           margin: 0;
@@ -61,15 +62,18 @@
           white-space: nowrap;
           max-height: 100%;
         }
+
         &:not(.sd-button-warning):not(:disabled) {
           background: #337ab7;
         }
+
         &:disabled {
           background: #ddd;
         }
+
         &:not(:disabled):hover {
           &:hover {
-            opacity: 0.8;
+              opacity: 0.8;
           }
         }
       }
@@ -101,9 +105,17 @@ form.sd-action-filter {
     max-width: 30rem;
     position: relative;
   }
+
   input {
     width: 100%;
+    height: 2rem;
+    box-sizing: border-box;
+    margin: 0.8rem 0;
+    padding: 8px 1.6rem 8px 1.7rem;
+    border: 1px solid #ccc;
+    box-shadow: inset 2px 3px 6px -3px @shade-tint;
   }
+
   button {
     position: absolute;
     right: 1.5rem;
@@ -116,16 +128,23 @@ form.sd-action-filter {
     border: 0;
     transition: opacity ease-out 0.25s;
   }
+
   button:disabled {
     opacity: 0;
   }
+
   .sd-action-filter-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     position: absolute;
-    top: 0.8rem;
-    height: 34px;
-    line-height: 34px;
-    padding: 0 8px;
+    top: 0;
+    bottom: 0;
+    height: 100%;
+    margin: auto;
+    padding: 0 7px;
     opacity: 0.5;
+    font-size: 1.125em;
   }
 }
 

@@ -97,7 +97,7 @@ startSliding mouseEvent gDef cardWidth = do
     ∘ (DCS._initialSliderCardWidth .~ Just cardWidth)
     ∘ (DCS._sliderTransition .~ false)
     ∘ (DCS._fadeTransition .~ DCS.FadeIn)
-    ∘ (DCS._displayMode .~ (DCS.FrontSide DCS.NoDialog))
+    ∘ (DCS._displayMode .~ DCS.FrontSide)
     ∘ (DCS._slidingTo ?~ gDef)
 
 stopSlidingAndSnap ∷ DOM.MouseEvent → DeckDSL Unit
