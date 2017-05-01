@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Deck.Component.State
   ( State
   , DisplayMode(..)
-  , Dialog(..)
   , ResponsiveSize(..)
   , Fade(..)
   , MetaCard(..)
@@ -26,9 +25,6 @@ module SlamData.Workspace.Deck.Component.State
   , initialState
   , isFlipSide
   , isFrontSide
-  , hasDialog
-  , dialog
-  , noDialog
   , _name
   , _displayCards
   , _activeCardIndex
@@ -85,14 +81,9 @@ import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
 import Utils (hush)
 
-
-data Dialog
-  = Dialog
-  | NoDialog
-
 data DisplayMode
-  = FrontSide Dialog
-  | FlipSide Dialog
+  = FrontSide
+  | FlipSide
 
 data ResponsiveSize
   = XSmall
@@ -112,8 +103,6 @@ data Fade
   | FadeIn
   | FadeOut
 
-derive instance eqDialog ∷ Eq Dialog
-
 derive instance eqDisplayMode ∷ Eq DisplayMode
 
 derive instance eqResponsiveSize ∷ Eq ResponsiveSize
@@ -121,36 +110,10 @@ derive instance eqResponsiveSize ∷ Eq ResponsiveSize
 derive instance eqFade ∷ Eq Fade
 
 isFlipSide ∷ DisplayMode → Boolean
-isFlipSide =
-  case _ of
-    FlipSide _ → true
-    FrontSide _ → false
+isFlipSide = (_ == FlipSide)
 
 isFrontSide ∷ DisplayMode → Boolean
-isFrontSide =
-  case _ of
-    FrontSide _ → true
-    FlipSide _ → false
-
-hasDialog ∷ DisplayMode → Boolean
-hasDialog =
-  case _ of
-    FlipSide Dialog → true
-    FrontSide Dialog → true
-    FlipSide NoDialog → false
-    FrontSide NoDialog → false
-
-dialog ∷ DisplayMode → DisplayMode
-dialog =
-  case _ of
-    FlipSide _ → FlipSide Dialog
-    FrontSide _ → FrontSide Dialog
-
-noDialog ∷ DisplayMode → DisplayMode
-noDialog =
-  case _ of
-    FlipSide _ → FlipSide NoDialog
-    FrontSide _ → FrontSide NoDialog
+isFrontSide = (_ == FrontSide)
 
 type CardDef =
   { cardId ∷ CardId
@@ -186,7 +149,7 @@ initialState ∷ State
 initialState =
   { name: ""
   , loadError: Nothing
-  , displayMode: FrontSide NoDialog
+  , displayMode: FrontSide
   , displayCards: mempty
   , pendingCardIndex: Nothing
   , activeCardIndex: Nothing
@@ -332,7 +295,7 @@ fromModel { name, displayCards } state =
   state
     { name = name
     , displayCards = displayCards
-    , displayMode = FrontSide NoDialog
+    , displayMode = FrontSide
     , activeCardIndex = Nothing
     , initialSliderX = Nothing
     }

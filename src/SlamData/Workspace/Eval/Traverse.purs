@@ -38,13 +38,12 @@ import Data.Map as Map
 import Data.Set as Set
 import Data.StrMap (StrMap)
 import Data.StrMap as StrMap
-
-import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.CardId as CID
+import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Variables.Eval as Variables
-import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.DeckId as DID
+import SlamData.Workspace.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 

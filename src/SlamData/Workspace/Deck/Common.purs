@@ -14,31 +14,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Deck.Common where
-
-import Data.List as L
-
-import Halogen as H
+module SlamData.Workspace.Deck.Common
+  ( module SlamData.Workspace.Deck.Common
+  , module SlamData.Workspace.Deck.Options
+  ) where
 
 import SlamData.Prelude
+
+import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Fork (class MonadFork)
+import Data.List as L
+import Halogen as H
+import SlamData.Effects (SlamDataEffects)
+import SlamData.LocalStorage.Class (class LocalStorageDSL)
 import SlamData.Monad (Slam)
-import SlamData.Workspace.AccessType (AccessType)
+import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Wiring (Wiring)
 import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Class (class WorkspaceDSL, navigateToDeck)
 import SlamData.Workspace.Deck.Component.ChildSlot (ChildSlot, ChildQuery)
 import SlamData.Workspace.Deck.Component.Query (Query, Message)
 import SlamData.Workspace.Deck.Component.State (State)
-import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Options (DeckOptions)
+import SlamData.Workspace.Eval.Persistence as P
 
 type DeckHTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 
 type DeckDSL = H.ParentDSL State Query ChildQuery ChildSlot Message Slam
-
-type DeckOptions =
-  { accessType ∷ AccessType
-  , cursor ∷ L.List DeckId -- Absolute cursor within the graph
-  , displayCursor ∷ L.List DeckId -- Relative cursor within the UI
-  , deckId ∷ DeckId
-  }
 
 willBePresentedWithChildFrameWhenFocused ∷ DeckOptions → State → Boolean
 willBePresentedWithChildFrameWhenFocused opts st =
@@ -46,3 +49,20 @@ willBePresentedWithChildFrameWhenFocused opts st =
 
 sizerRef ∷ H.RefLabel
 sizerRef = H.RefLabel "sizer"
+
+deleteDeck
+  ∷ ∀ f m
+  . MonadAff SlamDataEffects m
+  ⇒ MonadAsk Wiring m
+  ⇒ MonadFork Exn.Error m
+  ⇒ MonadThrow Exn.Error m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
+  ⇒ LocalStorageDSL m
+  => WorkspaceDSL m
+  => DeckOptions
+  -> m Unit
+deleteDeck opts = do
+  _ ← P.deleteDeck opts.deckId
+  _ ← navigateToDeck opts.cursor
+  pure unit

@@ -36,12 +36,11 @@ import SlamData.Workspace.Card.Component.CSS as CCSS
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML)
 import SlamData.Workspace.Deck.Common as Common
 import SlamData.Workspace.Deck.Component.CSS as CSS
-import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpDialog, cpActionFilter)
+import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpActionFilter)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..))
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Hint as Hint
 import Utils (endSentence)
@@ -78,9 +77,7 @@ renderDeck opts deckComponent st =
               [ HP.class_ CSS.deck
               ]
               [ Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
-              , renderBackside
-                  $ DCS.isFlipSide st.displayMode
-              , renderDialog $ DCS.hasDialog st.displayMode
+              , renderBackside $ DCS.isFlipSide st.displayMode
               ]
           ]
       ]
@@ -116,13 +113,6 @@ renderDeck opts deckComponent st =
       (HH.ClassName "sd-focus-deck-frame-hint")
       DCQ.DismissFocusDeckFrameHint
       "This Deck is focused. To do more with the containing Deck focus it by clicking or tapping on the empty space in this Deck Frame."
-
-  renderDialog visible =
-    HH.div
-      [ HP.classes $ [] ⊕ (guard (not visible) $> CSS.invisible)
-      , ARIA.hidden $ show $ not visible
-      ]
-      [ dialogSlot ]
 
   renderBackside visible =
     HH.div
@@ -172,10 +162,6 @@ childFrameElements st =
   , deckIndicator st
   , renderName st.name
   ]
-
-dialogSlot ∷ DeckHTML
-dialogSlot =
-  HH.slot' cpDialog unit Dialog.component unit (HE.input HandleDialog)
 
 backside ∷ DeckHTML
 backside =
