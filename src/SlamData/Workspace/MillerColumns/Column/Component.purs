@@ -43,6 +43,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
+import SlamData.Render.Icon as I
 import SlamData.Workspace.MillerColumns.Column.Component.Item as Item
 import SlamData.Workspace.MillerColumns.Column.Component.Query (Message(..), Message', Query(..), Query')
 import SlamData.Workspace.MillerColumns.Column.Component.State (ColumnState(..), State, initialState)
@@ -89,7 +90,7 @@ component' (ColumnOptions colSpec) colPath =
             [ HP.class_ (HH.ClassName "sd-miller-column-filter") ]
             [ HH.div
                 [ HP.class_ (HH.ClassName "sd-action-filter-icon") ]
-                [ RC.searchFieldIcon ]
+                [ I.searchSm ]
             , HH.input
                 [ HP.class_ (HH.ClassName "sd-form-input")
                 , HP.value filterText
