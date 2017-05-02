@@ -34,7 +34,7 @@ import SlamData.Monad (Slam)
 import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
-import SlamData.Workspace.Card.Cache.Error as CCE
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Error (CardError(..), cardToGlobalError)
 import SlamData.Workspace.Card.Error.Component.Query (Query(..))
 import SlamData.Workspace.Card.Error.Component.State (State, initialState)
@@ -75,8 +75,11 @@ printQErrorWithDetails = case _ of
 
 printQErrorDetails ∷ QA.QError → HTML
 printQErrorDetails = case _ of
-  QA.ErrorMessage { raw } → HH.pre_ [ HH.text (prettyJson (J.fromObject raw)) ]
+  QA.ErrorMessage { raw } → printQErrorRaw raw
   err → HH.text (QA.printQError err)
+
+printQErrorRaw ∷ J.JObject → HTML
+printQErrorRaw raw = HH.pre_ [ HH.text (prettyJson (J.fromObject raw)) ]
 
 prettyPrintCardError ∷ State → CardError → HTML
 prettyPrintCardError state ce = case cardToGlobalError ce of
@@ -86,7 +89,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     StringlyTypedError err → HH.text err
     CacheCardError cce → cacheErrorMessage state cce
     -- TODO(Christoph): Render an actual error cards
-    QueryCardError qce → HH.text (show qce)
+    QueryCardError qce → queryErrorMessage state qce
 
 collapsible ∷ String → HTML → Boolean → HTML
 collapsible title content expanded =
@@ -105,7 +108,40 @@ collapsible title content expanded =
             [ content ]
       ]
 
-cacheErrorMessage ∷ State → CCE.CacheError → HTML
+queryErrorMessage ∷ State → CE.QueryError → HTML
+queryErrorMessage { accessType, expanded } err =
+  case accessType of
+    Editable → renderDetails err
+    ReadOnly →
+      HH.div_
+        [ HH.p_ [ HH.text "A problem occurred in the query card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
+        ]
+  where
+  renderDetails = case _ of
+    CE.QueryCompileError qErr →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "An error occurred during query compilation." ]
+          , case qErr of
+              QA.ErrorMessage {title, message, raw} →
+                pure $ HH.div_
+                  $ join
+                    [ pure $ HH.p_ [ HH.text (fromMaybe "" title) ]
+                    , pure $ HH.p_ [ HH.text message ]
+                    , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorRaw raw) expanded
+                    ]
+              err' →
+                guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails err') expanded
+          ]
+    CE.QueryRetrieveResultError qErr →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "An error occurred when retrieving the query result." ]
+          , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails qErr) expanded
+          ]
+
+cacheErrorMessage ∷ State → CE.CacheError → HTML
 cacheErrorMessage { accessType, expanded } err =
   case accessType of
     Editable → renderDetails err
@@ -116,7 +152,7 @@ cacheErrorMessage { accessType, expanded } err =
         ]
   where
   renderDetails = case _ of
-    CCE.CacheInvalidFilepath fp →
+    CE.CacheInvalidFilepath fp →
       HH.div_
         $ join
           [ pure $ HH.h1_ [ HH.text "There is a problem in the configuration of the cache card." ]
@@ -127,14 +163,14 @@ cacheErrorMessage { accessType, expanded } err =
               ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
-    CCE.CacheQuasarError qe →
+    CE.CacheQuasarError qe →
       HH.div_
         $ join
           [ pure $ HH.h1_ [ HH.text "Caching the result of a query failed." ]
           , pure $ HH.p_ [ HH.text "The Quasar analytics engine returned an error while verifying the cache result." ]
           , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails qe) expanded
           ]
-    CCE.CacheErrorSavingFile fp →
+    CE.CacheErrorSavingFile fp →
       HH.div_
         $ join
           [ pure $ HH.h1_ [ HH.text "Caching the result of a query failed." ]
@@ -145,7 +181,7 @@ cacheErrorMessage { accessType, expanded } err =
               ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and provide an alternative path to fix this error." ]
           ]
-    CCE.CacheResourceNotModified →
+    CE.CacheResourceNotModified →
       HH.div_
         $ join
           [ pure $ HH.h1_ [ HH.text "Caching the result of a query failed." ]
