@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.Error
   ( module SlamData.Workspace.Card.Error
   , module CCE
+  , module CQE
   ) where
 
 import SlamData.Prelude
@@ -24,18 +25,21 @@ import SlamData.Prelude
 import Quasar.Error (QError)
 import SlamData.GlobalError as GE
 import SlamData.Workspace.Card.Cache.Error as CCE
+import SlamData.Workspace.Card.Query.Error as CQE
 import Utils (hush)
 
 data CardError
   = QuasarError QError
   | StringlyTypedError String
   | CacheCardError CCE.CacheError
+  | QueryCardError CQE.QueryError
 
 instance showCardError ∷ Show CardError where
   show = case _ of
     QuasarError err → "(QuasarError " <> show err <> ")"
     StringlyTypedError err → "(StringlyTypedError " <> err <> ")"
     CacheCardError err → "(CacheCardError " <> show err <> ")"
+    QueryCardError err → "(QueryCardError " <> show err <> ")"
 
 quasarToCardError ∷ QError → CardError
 quasarToCardError = QuasarError
@@ -44,7 +48,8 @@ cardToGlobalError ∷ CardError → Maybe GE.GlobalError
 cardToGlobalError = case _ of
   QuasarError qError → hush (GE.fromQError qError)
   StringlyTypedError err → Nothing
-  CacheCardError cce → CCE.cacheToGlobalError cce
+  CacheCardError err → CCE.cacheToGlobalError err
+  QueryCardError err → CQE.queryToGlobalError err
 
 -- TODO(Christoph): use this warn constraint to track down unstructured error messages
 -- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
@@ -53,6 +58,14 @@ throw = throwError ∘ StringlyTypedError
 
 throwCacheError ∷ ∀ m a. MonadThrow CardError m ⇒ CCE.CacheError → m a
 throwCacheError = throwError ∘ CacheCardError
+
+throwQueryError ∷ ∀ m a. MonadThrow CardError m ⇒ CQE.QueryError → m a
+throwQueryError = throwError ∘ QueryCardError
+
+liftQueryError ∷ ∀ m a. MonadThrow CardError m ⇒ (Either CQE.QueryError a) → m a
+liftQueryError x = case lmap QueryCardError x of
+  Left err → throwError err
+  Right v → pure v
 
 liftQ ∷ ∀ m a. MonadThrow CardError m ⇒ m (Either QError a) → m a
 liftQ = flip bind (either (throwError ∘ quasarToCardError) pure)

@@ -85,6 +85,8 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     QuasarError qError → printQErrorWithDetails qError
     StringlyTypedError err → HH.text err
     CacheCardError cce → cacheErrorMessage state cce
+    -- TODO(Christoph): Render an actual error cards
+    QueryCardError qce → HH.text (show qce)
 
 collapsible ∷ String → HTML → Boolean → HTML
 collapsible title content expanded =
