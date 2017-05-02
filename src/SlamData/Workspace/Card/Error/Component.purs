@@ -27,9 +27,11 @@ import Data.Path.Pathy as Path
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Quasar.Advanced.QuasarAF as QA
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
+import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Cache.Error as CCE
@@ -85,20 +87,21 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     CacheCardError cce → cacheErrorMessage state cce
 
 collapsible ∷ String → HTML → Boolean → HTML
-collapsible title content expanded
-  | expanded =
-      HH.div_
-        [ HH.button
-            [ HE.onClick $ HE.input_ (ToggleExpanded false) ]
-            [ HH.text title ]
-        , content
-        ]
-  | otherwise =
-      HH.div_
-        [ HH.button
-            [ HE.onClick $ HE.input_ (ToggleExpanded true) ]
-            [ HH.text title ]
-        ]
+collapsible title content expanded =
+  HH.div
+    [ HP.classes [ H.ClassName "sd-collapsible-error" ] ]
+    $ join
+      [ pure $
+          HH.button
+            [ HE.onClick $ HE.input_ (ToggleExpanded (not expanded)) ]
+            [ if expanded then I.chevronDownSm else I.chevronRightSm
+            , HH.span_ [ HH.text title ]
+            ]
+      , guard expanded $>
+          HH.div
+            [ HP.class_ (H.ClassName "sd-collapsible-error-content") ]
+            [ content ]
+      ]
 
 cacheErrorMessage ∷ State → CCE.CacheError → HTML
 cacheErrorMessage { accessType, expanded } err =
