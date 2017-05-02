@@ -123,23 +123,24 @@ queryErrorMessage { accessType, expanded } err =
       HH.div_
         $ join
           [ pure $ HH.h1_ [ HH.text "An error occurred during query compilation." ]
-          , case qErr of
-              QA.ErrorMessage {title, message, raw} →
-                pure $ HH.div_
-                  $ join
-                    [ pure $ HH.p_ [ HH.text (fromMaybe "" title) ]
-                    , pure $ HH.p_ [ HH.text message ]
-                    , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorRaw raw) expanded
-                    ]
-              err' →
-                guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails err') expanded
+          , renderMore qErr
           ]
     CE.QueryRetrieveResultError qErr →
       HH.div_
         $ join
           [ pure $ HH.h1_ [ HH.text "An error occurred when retrieving the query result." ]
-          , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails qErr) expanded
+          , renderMore qErr
           ]
+  renderMore = case _ of
+    QA.ErrorMessage {title, message, raw} →
+      pure $ HH.div_
+        $ join
+          [ foldMap (\t -> pure $ HH.p_ [ HH.text t ]) title
+          , pure $ HH.p_ [ HH.text message ]
+          , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorRaw raw) expanded
+          ]
+    err' →
+      guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails err') expanded
 
 cacheErrorMessage ∷ State → CE.CacheError → HTML
 cacheErrorMessage { accessType, expanded } err =

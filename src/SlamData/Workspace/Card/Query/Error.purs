@@ -24,6 +24,7 @@ import Utils (hush)
 
 data QueryError
   = QueryCompileError QError
+  -- ???: It's not entirely clear how this arises, the QueryCompileError case seems to catch the test cases we tried -gb
   | QueryRetrieveResultError QError
 
 instance showQueryError ∷ Show QueryError where
