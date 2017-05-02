@@ -32,3 +32,4 @@ data Query a
   | Save (Maybe Mount -> a)
   | PreventDefault Event a
   | Validate a
+  | RaiseMountDelete a

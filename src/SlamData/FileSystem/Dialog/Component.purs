@@ -32,7 +32,6 @@ import Network.HTTP.RequestHeader (RequestHeader)
 import SlamData.Dialog.Error.Component as Error
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Explore.Component as Explore
-import SlamData.FileSystem.Dialog.Mount.Component (MountSettings)
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
@@ -41,13 +40,13 @@ import SlamData.FileSystem.Resource (Resource, Mount)
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Deck.Component.CSS as CSS
 
-import Utils.Path (DirPath, FilePath)
+import Utils.Path (FilePath)
 
 data Dialog
   = Error String
   | Share String
   | Rename Resource
-  | Mount DirPath String (Maybe MountSettings)
+  | Mount Mount.Input
   | Download Resource (Array RequestHeader)
   | Explore FilePath
 
@@ -106,8 +105,8 @@ render state =
       HH.slot' CP.cp3 unit Rename.component res (HE.input HandleChild)
     Download resource headers →
       HH.slot' CP.cp4 unit Download.component { resource, headers } (HE.input HandleChild)
-    Mount parent name settings →
-      HH.slot' CP.cp5 unit Mount.component { parent, name, settings } (HE.input HandleChild)
+    Mount input →
+      HH.slot' CP.cp5 unit Mount.component input (HE.input HandleChild)
     Explore fp →
       HH.slot' CP.cp6 unit Explore.component fp (HE.input HandleChild)
 

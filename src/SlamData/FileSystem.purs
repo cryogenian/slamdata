@@ -31,7 +31,7 @@ import Control.Monad.Eff.Exception (Error, error)
 import Control.Monad.Fork (Canceler(..), fork, cancel)
 import Control.UI.Browser (setTitle, replaceLocation)
 
-import Data.Array (null, filter, mapMaybe, take, drop)
+import Data.Array (filter, mapMaybe, take, drop)
 import Data.Lens (Lens', lens, (%~), (<>~))
 import Data.Map as M
 import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
@@ -62,7 +62,6 @@ import SlamData.GlobalError as GE
 import SlamData.Monad (Slam, runSlam)
 import SlamData.Quasar.Auth.Permission as Permission
 import SlamData.Quasar.FS (children) as Quasar
-import SlamData.Quasar.Mount (mountInfo) as Quasar
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
 
@@ -192,31 +191,10 @@ redirects driver var mbOld = case _ of
       listingProcessHandler driver =<< runProcess process
 
       when (isNothing queryParts.query)
-        $ checkMount queryParts.path driver
+        $ liftAff $ driver.query $ H.action $ CheckIsMount queryParts.path
+      liftAff $ driver.query $ H.action $ CheckIsUnconfigured
       else
         liftAff $ driver.query $ H.action $ SetLoading false
-
-
-checkMount
-  ∷ DirPath
-  → FileSystemIO
-  → Slam Unit
-checkMount path driver = do
-  let
-    setIsMount =
-      liftAff $ driver.query $ H.action $ SetIsMount true
-
-  Quasar.mountInfo (Left path) >>= case _ of
-    -- When Quasar has no mounts configured we want to enable the root to be
-    -- configured as a mount - if `/` is not a mount and also has no children
-    -- then we know it's in this unconfigured state.
-    Left _ | path ≡ rootDir →
-      void $ Quasar.children path >>= traverse \children →
-        when (null children) $ setIsMount
-    Left _ →
-      pure unit
-    Right _ →
-      setIsMount
 
 listingProducer
   ∷ AVar ListingState
