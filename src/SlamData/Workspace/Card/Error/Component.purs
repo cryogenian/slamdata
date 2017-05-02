@@ -27,11 +27,9 @@ import Data.Path.Pathy as Path
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 import Quasar.Advanced.QuasarAF as QA
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
-import SlamData.Render.CSS as CSS
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Cache.Error as CCE
@@ -57,10 +55,7 @@ errorCardComponent =
     }
 
 render ∷ State → HTML
-render st =
-  HH.div
-    [ HP.classes [ CSS.cardFailures ] ]
-    [ prettyPrintCardError st st.error ]
+render st = prettyPrintCardError st st.error
 
 eval ∷ Query ~> DSL
 eval = case _ of
@@ -111,15 +106,15 @@ cacheErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the cache card, please contact the author of this workspace." ]
-        , collapsible "Details" (renderDetails err) expanded
+        [ HH.p_ [ HH.text "A problem occurred in the cache card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
         ]
   where
   renderDetails = case _ of
     CCE.CacheInvalidFilepath fp →
       HH.div_
         $ join
-          [ pure $ HH.p_ [ HH.text "There was a problem in the configuration of the cache card." ]
+          [ pure $ HH.h1_ [ HH.text "There is a problem in the configuration of the cache card." ]
           , pure $ HH.p_
               [ HH.text "The provided path "
               , HH.code_ [ HH.text fp ]
@@ -130,17 +125,16 @@ cacheErrorMessage { accessType, expanded } err =
     CCE.CacheQuasarError qe →
       HH.div_
         $ join
-          [ pure $ HH.p_ [ HH.text "A problem occurred when running the previous card." ]
-          , pure $ HH.p_ [ HH.text "Caching the result of a query failed." ]
+          [ pure $ HH.h1_ [ HH.text "Caching the result of a query failed." ]
           , pure $ HH.p_ [ HH.text "The Quasar analytics engine returned an error while verifying the cache result." ]
           , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails qe) expanded
           ]
     CCE.CacheErrorSavingFile fp →
       HH.div_
         $ join
-          [ pure $ HH.p_ [ HH.text "A problem occurred when running the previous card." ]
+          [ pure $ HH.h1_ [ HH.text "Caching the result of a query failed." ]
           , pure $ HH.p_
-              [ HH.text "Caching the result of a query failed, the file "
+              [ HH.text "The file "
               , HH.code_ [ HH.text (Path.printPath fp) ]
               , HH.text " could not be written to."
               ]
@@ -149,7 +143,8 @@ cacheErrorMessage { accessType, expanded } err =
     CCE.CacheResourceNotModified →
       HH.div_
         $ join
-          [ pure $ HH.p_ [ HH.text "There was a problem running the cache card." ]
+          [ pure $ HH.h1_ [ HH.text "Caching the result of a query failed." ]
           , pure $ HH.p_ [ HH.text "Caching can only be applied to queries that perform at least one transformation on an existing data set." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Delete the cache card to fix this error." ]
+          -- TODO: only show this solution when there are no following cards?
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and delete it to fix this error." ]
           ]
