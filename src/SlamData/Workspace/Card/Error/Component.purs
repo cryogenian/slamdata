@@ -167,7 +167,7 @@ cacheErrorMessage { accessType, expanded } err =
     CE.CacheQuasarError qe →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "Caching the result of a query failed." ]
+          [ pure $ HH.h1_ [ I.warningSm, HH.text " Caching the result of a query failed." ]
           , pure $ HH.p_ [ HH.text "The Quasar analytics engine returned an error while verifying the cache result." ]
           , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails qe) expanded
           ]
