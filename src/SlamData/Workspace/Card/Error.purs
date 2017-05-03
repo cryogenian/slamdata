@@ -63,8 +63,8 @@ cardToGlobalError = case _ of
   CacheCardError err → CCE.cacheToGlobalError err
   QueryCardError err → CQE.queryToGlobalError err
   DownloadOptionsCardError _ → Nothing
-  MarkdownCardError err → CMDE.markdownToGlobalError err
-  OpenCardError err → COE.openToGlobalError err
+  MarkdownCardError _ → Nothing
+  OpenCardError _ → Nothing
 
 -- TODO(Christoph): use this warn constraint to track down unstructured error messages
 -- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a

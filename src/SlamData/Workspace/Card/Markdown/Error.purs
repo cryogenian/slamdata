@@ -18,11 +18,6 @@ module SlamData.Workspace.Card.Markdown.Error where
 
 import SlamData.Prelude
 
-import Quasar.Advanced.QuasarAF (QError)
-import SlamData.GlobalError as GE
-import Utils (hush)
-import Utils.Path (FilePath)
-
 data MarkdownError
   = MarkdownParseError {markdown ∷ String, error ∷ String}
   | MarkdownSqlParseError {sql ∷ String, error ∷ String}
@@ -47,8 +42,3 @@ instance showMarkdownError ∷ Show MarkdownError where
       "(MarkdownInvalidDateTimeValue { datetime: " <> show datetime <> ", error: " <> show error <> " })"
     MarkdownTypeError t1 t2 →
       "(MarkdownTypeError " <> show t1 <> " " <> show t2 <> ")"
-
-markdownToGlobalError ∷ MarkdownError → Maybe GE.GlobalError
-markdownToGlobalError = case _ of
-  -- CacheQuasarError qErr → hush (GE.fromQError qErr)
-  _ → Nothing

@@ -18,11 +18,6 @@ module SlamData.Workspace.Card.Open.Error where
 
 import SlamData.Prelude
 
-import Quasar.Advanced.QuasarAF (QError)
-import SlamData.GlobalError as GE
-import Utils (hush)
-import Utils.Path (FilePath)
-
 data OpenError
   = OpenFileNotFound String
   | OpenNoResourceSelected
@@ -36,8 +31,3 @@ instance showMarkdownError ∷ Show OpenError where
       "OpenNoResourceSelected"
     OpenNoFileSelected →
       "OpenNoFileSelected"
-
-openToGlobalError ∷ OpenError → Maybe GE.GlobalError
-openToGlobalError = case _ of
-  -- CacheQuasarError qErr → hush (GE.fromQError qErr)
-  _ → Nothing
