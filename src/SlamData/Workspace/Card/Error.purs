@@ -20,6 +20,7 @@ module SlamData.Workspace.Card.Error
   , module CQE
   , module CDLOE
   , module CMDE
+  , module COE
   ) where
 
 import SlamData.Prelude
@@ -30,6 +31,7 @@ import SlamData.Workspace.Card.Cache.Error as CCE
 import SlamData.Workspace.Card.Query.Error as CQE
 import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.DownloadOptions.Error as CDLOE
+import SlamData.Workspace.Card.Open.Error as COE
 import Utils (hush)
 
 data CardError
@@ -39,6 +41,7 @@ data CardError
   | QueryCardError CQE.QueryError
   | DownloadOptionsCardError CDLOE.DownloadOptionsError
   | MarkdownCardError CMDE.MarkdownError
+  | OpenCardError COE.OpenError
 
 instance showCardError ∷ Show CardError where
   show = case _ of
@@ -48,6 +51,7 @@ instance showCardError ∷ Show CardError where
     QueryCardError err → "(QueryCardError " <> show err <> ")"
     DownloadOptionsCardError err → "(DownloadOptionsCardError " <> show err <> ")"
     MarkdownCardError err → "(MarkdownCardError " <> show err <> ")"
+    OpenCardError err → "(OpenError " <> show err <> ")"
 
 quasarToCardError ∷ QError → CardError
 quasarToCardError = QuasarError
@@ -60,6 +64,7 @@ cardToGlobalError = case _ of
   QueryCardError err → CQE.queryToGlobalError err
   DownloadOptionsCardError _ → Nothing
   MarkdownCardError err → CMDE.markdownToGlobalError err
+  OpenCardError err → COE.openToGlobalError err
 
 -- TODO(Christoph): use this warn constraint to track down unstructured error messages
 -- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
@@ -82,6 +87,9 @@ throwDownloadOptionsError = throwError ∘ DownloadOptionsCardError
 
 throwMarkdownError ∷ ∀ m a. MonadThrow CardError m ⇒ CMDE.MarkdownError → m a
 throwMarkdownError = throwError ∘ MarkdownCardError
+
+throwOpenError ∷ ∀ m a. MonadThrow CardError m ⇒ COE.OpenError → m a
+throwOpenError = throwError ∘ OpenCardError
 
 liftQ ∷ ∀ m a. MonadThrow CardError m ⇒ m (Either QError a) → m a
 liftQ = flip bind (either (throwError ∘ quasarToCardError) pure)

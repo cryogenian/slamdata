@@ -91,6 +91,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     QueryCardError qce → queryErrorMessage state qce
     MarkdownCardError mde → markdownErrorMessage state mde
     DownloadOptionsCardError dloe → downloadOptionsErrorMessage state dloe
+    OpenCardError oce → openErrorMessage state oce
 
 collapsible ∷ String → HTML → Boolean → HTML
 collapsible title content expanded =
@@ -295,5 +296,39 @@ downloadOptionsErrorMessage { accessType, expanded } err =
           [ pure $ HH.h1_ [ HH.text "The provided filename was invalid." ]
           , pure $ HH.p_
               [ HH.code_ [ HH.text fn ], HH.text " is not a valid filepath." ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          ]
+
+openErrorMessage ∷ State → CE.OpenError → HTML
+openErrorMessage { accessType, expanded } err =
+  case accessType of
+    Editable → renderDetails err
+    ReadOnly →
+      HH.div_
+        [ HH.p_ [ HH.text "A problem occurred in the Open card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
+        ]
+  where
+  renderDetails = case _ of
+    CE.OpenFileNotFound fp →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "File not found" ]
+          , pure $ HH.p_
+              [ HH.code_ [ HH.text fp ], HH.text " did not exist." ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          ]
+    CE.OpenNoResourceSelected →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "No resource was selected." ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select either a file or a variable to fix this error." ]
+          ]
+    CE.OpenNoFileSelected →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "Invalid resource type" ]
+          , pure $ HH.p_
+              [ HH.text "Only files or variables can be chosen in the Open card" ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
