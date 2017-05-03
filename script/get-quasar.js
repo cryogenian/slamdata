@@ -52,24 +52,26 @@ function fetchReleaseAsset(options, destFile, k) {
       throw "Asset location not found";
     };
     https.get(assetLocation, function (assetResponse) {
-      var contentLength = parseInt(assetResponse.headers['content-length'], 10);
-      var downloaded = 0;
-      var lastUpdate = 0;
-      assetResponse.on("data", function (chunk) {
-        downloaded += chunk.length;
-        var percent = Math.round(downloaded / contentLength * 10000) / 100;
-        var now = Date.now();
-        if (now - lastUpdate > 500) {
+      if (process.stdout.isTTY) {
+        var contentLength = parseInt(assetResponse.headers['content-length'], 10);
+        var downloaded = 0;
+        var lastUpdate = 0;
+        assetResponse.on("data", function (chunk) {
+          downloaded += chunk.length;
+          var percent = Math.round(downloaded / contentLength * 10000) / 100;
+          var now = Date.now();
+          if (now - lastUpdate > 500) {
+            process.stdout.clearLine();
+            process.stdout.cursorTo(0);
+            process.stdout.write("Downloading... " + percent + "%");
+            lastUpdate = now;
+          }
+        });
+        assetResponse.on("end", function (chunk) {
           process.stdout.clearLine();
           process.stdout.cursorTo(0);
-          process.stdout.write("Downloading... " + percent + "%");
-          lastUpdate = now;
-        }
-      });
-      assetResponse.on("end", function (chunk) {
-        process.stdout.clearLine();
-        process.stdout.cursorTo(0);
-      });
+        });
+      }
       assetResponse.pipe(destFile);
       destFile.on("finish", k);
     });
