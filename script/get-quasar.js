@@ -150,6 +150,10 @@ function main() {
 
   var quasarDistribution = "quasar";
 
+  if (!fs.existsSync("./jars")){
+    fs.mkdirSync("./jars");
+  }
+
   checkQuasarVersion(quasarDistribution)
     .then(isOk =>
       isOk === true
