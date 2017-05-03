@@ -71,7 +71,7 @@
     "purescript-node-path": "^2.0.0",
     "purescript-node-process": "^4.0.0",
     "purescript-platform": "^3.0.0",
-    "purescript-quasar-test-starter": "garyb/quasar-test-starter#205d0aee5180885ef994e74eeb333493f0b8e052",
+    "purescript-quasar-test-starter": "quasar-test-starter#^0.4.0",
     "purescript-strongcheck": "^3.1.0",
     "purescript-webdriver": "^4.0.0"
   }
