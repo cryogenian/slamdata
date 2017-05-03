@@ -49,6 +49,9 @@ infixl 6 renameDirExt as <./>
 renameDirExt :: forall a s. Path a Dir s -> String -> Path a Dir s
 renameDirExt p ext = renameDir (changeDirExt $ const ext) p
 
+addDirExt :: forall a s. String -> Path a Dir s -> Path a Dir s
+addDirExt ext = renameDir (\(DirName d) -> DirName $ d <> "." <> ext)
+
 rootify :: DirPath -> Path Rel Dir Sandboxed
 rootify p = fromMaybe (dir "/") $ relativeTo p rootDir
 
