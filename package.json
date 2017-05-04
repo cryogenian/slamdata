@@ -5,7 +5,7 @@
     "type": "git",
     "url": "https://github.com/slamdata/slamdata"
   },
-  "version": "v4.2.0-qa-prerelease-1",
+  "version": "v4.2.0-qa-prerelease-2",
   "contributors": [
     "Maxim Zimaliev <zimaliev@yandex.ru>",
     "Gary Burgess <gary@slamdata.com>",
@@ -16,7 +16,8 @@
   ],
   "scripts": {
     "all": "npm run clean:files && npm run lint:headers && npm run lint:whitespace ",
-    "build:dev": "webpack --progress --config webpack.config.dev.js --watch",
+    "bundle:dev": "webpack --progress --config webpack.config.dev.js",
+    "bundle:watch": "webpack --progress --config webpack.config.dev.js --watch",
     "build:dev-pulp": "pulp --watch build",
     "build:icons": "gulp icons",
     "build:less": "lessc less/main.less public/css/main.css --autoprefix=\"> 2%, last 1 versions, Firefox ESR, not Explorer < 11\"",
@@ -27,6 +28,7 @@
     "clean:files": "rimraf .pulp-cache output tmp public/js/file.js public/js/filesystem.js public/js/workspace.js public/js/auth_redirect.js public/css/main.css",
     "clean:bower": "rimraf output bower_components && bower install",
     "clean:npm": "rimraf output node_components && npm cache clean && npm install",
+    "ide": "purs ide server",
     "lint:headers": "gulp add-headers",
     "lint:whitespace": "gulp trim-whitespace",
     "lint:crlf": "gulp replace-crlf",
@@ -35,7 +37,7 @@
     "test:local": "npm run build:psa && webpack --progress --config webpack.config.dev.js && npm test",
     "test:property": "gulp bundle-property-tests && node tmp/js/property-tests",
     "watch:less": "less-watch-compiler less/ public/css/ main.less",
-    "ide": "purs ide server"
+    "versionify": "gulp versionify"
   },
   "license": "Apache-2.0",
   "bugs": {
@@ -47,14 +49,17 @@
     "chalk": "^1.1.1",
     "change-case": "^3.0.1",
     "chromedriver": "^2.28.0",
+    "del": "^2.2.2",
     "expose-loader": "^0.7.1",
     "glob": "^7.1.1",
     "gulp": "^3.9.0",
     "gulp-cheerio": "^0.6.2",
     "gulp-content-filter": "0.0.0",
+    "gulp-file": "^0.3.0",
     "gulp-footer": "^1.0.5",
     "gulp-header": "^1.7.1",
     "gulp-inject": "^4.2.0",
+    "gulp-rename": "^1.2.2",
     "gulp-replace": "^0.5.4",
     "gulp-svg-sprite": "^1.3.6",
     "gulp-trimlines": "^1.0.0",
@@ -69,6 +74,7 @@
     "purs-loader": "^2.4.2",
     "rimraf": "^2.4.3",
     "selenium-webdriver": "2.53.2",
+    "vinyl-paths": "^2.1.0",
     "webpack": "^2.3.2",
     "webpack-stream": "^2.1.0"
   },

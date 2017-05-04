@@ -120,7 +120,7 @@ validate r
       <> " is a reserved extension"
 
     when (isJust $ S.indexOf (S.Pattern "/") name)
-      $ throwError "Please entera valid name for the file"
+      $ throwError "Please enter a valid name for the file"
 
     let nameWithExt = if R.isWorkspace (r.initial)
                       then name <> "." <> Config.workspaceExtension
@@ -132,13 +132,12 @@ data Query a
   = RaiseDismiss a
   | SetShowList Boolean a
   | ToggleShowList a
-  | Submit a
   | NameTyped String a
   | DirTyped String a
   | DirClicked R.Resource a
   | SetSiblings (Array R.Resource) a
   | AddDirs (Array R.Resource) a
-  | PreventDefault DOM.Event a
+  | PreventDefaultAndRename DOM.Event a
   | StopPropagation DOM.Event (Query a)
   | Init a
 
@@ -158,33 +157,35 @@ component =
 
 render ∷ State → HTML
 render dialog =
-  modalDialog
-  [ modalHeader "Move/rename"
-  , modalBody
-    $ HH.form
-        [ HP.classes [ Rc.renameDialogForm ]
-        , HE.onSubmit $ HE.input PreventDefault
-        , HE.onClick \e → Just $ StopPropagation (DOM.toEvent e) $ H.action $ SetShowList false
-        ]
-        [ nameInput
-        , dirDropdownField
-        , dirDropdownList
-        , errorMessage
-        ]
-  , modalFooter
-      [ HH.button
-          [ HP.classes [ Rc.btn ]
-          , HE.onClick (HE.input_ RaiseDismiss)
+  HH.form
+    [ HE.onSubmit $ HE.input PreventDefaultAndRename ]
+    [ modalDialog
+      [ modalHeader "Move/rename"
+      , modalBody
+        $ HH.div
+            [ HP.classes [ Rc.renameDialogForm ]
+            , HE.onClick \e → Just $ StopPropagation (DOM.toEvent e) $ H.action $ SetShowList false
+            ]
+            [ nameInput
+            , dirDropdownField
+            , dirDropdownList
+            , errorMessage
+            ]
+      , modalFooter
+          [ HH.button
+              [ HP.type_ HP.ButtonButton
+              , HP.classes [ Rc.btn ]
+              , HE.onClick (HE.input_ RaiseDismiss)
+              ]
+              [ HH.text "Cancel" ]
+          , HH.button
+              [ HP.classes [ Rc.btn, Rc.btnPrimary ]
+              , HP.disabled $ isJust $ dialog.error
+              ]
+              [ HH.text "Rename" ]
           ]
-          [ HH.text "Cancel" ]
-      , HH.button
-          [ HP.classes [ Rc.btn, Rc.btnPrimary ]
-          , HP.disabled $ isJust $ dialog.error
-          , HE.onClick (HE.input_ Submit)
-          ]
-          [ HH.text "Rename" ]
       ]
-  ]
+    ]
   where
   nameInput ∷ HTML
   nameInput =
@@ -200,7 +201,8 @@ render dialog =
     HH.div
       [ HP.classes [ Rc.inputGroup, HH.ClassName "file-list-field" ] ]
       [ HH.input
-          [ HP.classes [ Rc.formControl ]
+          [ HP.type_ HP.InputText
+          , HP.classes [ Rc.formControl ]
           , HP.placeholder "New directory"
           , HE.onValueInput (HE.input DirTyped)
           , HP.value $ dialog ^. _typedDir
@@ -208,7 +210,8 @@ render dialog =
       , HH.span
           [ HP.classes [ Rc.inputGroupBtn ] ]
           [ HH.button
-              [ HP.classes [ Rc.btn, Rc.btnDefault ]
+              [ HP.type_ HP.ButtonButton
+              , HP.classes [ Rc.btn, Rc.btnDefault ]
               , HE.onClick \e →
                    Just $ StopPropagation (DOM.toEvent e) $ H.action $ ToggleShowList
               , ARIA.label "Select a destination folder"
@@ -233,20 +236,16 @@ render dialog =
 
   renameItem ∷ R.Resource → HTML
   renameItem res =
-    HH.button [ HP.classes ([ Rc.listGroupItem ]
-                          <> (if R.isHidden res
-                              then [ ItemCSS.itemHidden ]
-                              else [ ]))
-             , HE.onClick (HE.input_ (DirClicked res))
-             ]
-    [ HH.text (R.resourcePath res) ]
+    HH.button
+      [ HP.classes ([ Rc.listGroupItem ] <> (guard (R.isHidden res) $> ItemCSS.itemHidden))
+      , HE.onClick (HE.input_ (DirClicked res))
+      , HP.type_ HP.ButtonButton
+      ]
+      [ HH.text (R.resourcePath res) ]
 
 eval ∷ Query ~> DSL
 eval (RaiseDismiss next) = do
   H.raise Dismiss
-  pure next
-eval (PreventDefault e next) = do
-  H.liftEff $ DEE.preventDefault e
   pure next
 eval (StopPropagation e q) = do
   H.liftEff $ DEE.stopPropagation e
@@ -259,7 +258,8 @@ eval (ToggleShowList next) = do
   H.modify (_showList %~ not)
   H.modify validate
   pure next
-eval (Submit next) = do
+eval (PreventDefaultAndRename ev next) = do
+  H.liftEff $ DEE.preventDefault ev
   dirStr <- endingInSlash <$> H.gets _.typedDir
   maybe presentDirNotExistError moveIfDirAccessible (parsedDir dirStr)
   pure next

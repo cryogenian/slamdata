@@ -186,18 +186,23 @@ buildBoxplotData =
         sortedArr = A.sort arr
 
         quantile ∷ Array Number → Number → Maybe Number
-        quantile inp p = do
+        quantile inp p =
           let
-            h = Int.toNumber (A.length inp - one) * p + one
-            h' = Int.floor h
-            v = arr !! (h' - one)
-            v' = inp !! h'
-            e = h - Int.toNumber h'
-          if e > 0.0
-            then case v × v' of
-              Just jv × Just jv' → Just $ jv + e * (jv' - jv)
-              _ → Nothing
-            else v
+            quantileItemIxNum =
+              Int.toNumber (A.length inp - one) * p + one
+            quantileItemIxInt =
+              Int.floor quantileItemIxNum
+            quantileItemBottom =
+              inp !! (quantileItemIxInt - one)
+            quantileItemTop =
+              inp !! quantileItemIxInt
+            ixesDiff =
+              quantileItemIxNum - Int.toNumber quantileItemIxInt
+          in if ixesDiff > 0.0
+             then case quantileItemBottom × quantileItemTop of
+               Just bItem × Just tItem → Just $ bItem + ixesDiff * (tItem - bItem)
+               _ → Nothing
+             else quantileItemBottom
 
         q1 = fromMaybe zero $ quantile sortedArr 0.25
         q2 = fromMaybe zero $ quantile sortedArr 0.5
@@ -272,7 +277,7 @@ boxplotOptions r axes boxplotData = do
         , "Upper" × CCT.formatNumberValueIx 4 item
         , "Q3" × CCT.formatNumberValueIx 3 item
         , "Median" × CCT.formatNumberValueIx 2 item
-        , "Q2" × CCT.formatNumberValueIx 1 item
+        , "Q1" × CCT.formatNumberValueIx 1 item
         , "Lower" × CCT.formatNumberValueIx 0 item
         ]
 

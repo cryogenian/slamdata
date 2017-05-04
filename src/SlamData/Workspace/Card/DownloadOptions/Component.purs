@@ -70,7 +70,7 @@ renderDownloadConfiguration ∷ State → HTML
 renderDownloadConfiguration state =
   HH.div
     [ HP.classes [ Rc.downloadConfiguration ] ]
-    [ DLR.fldName state.options (fromMaybe "" state.targetName) (\s → right ∘ TargetTyped s)
+    [ DLR.fldName false state.options (fromMaybe "" state.targetName) (\s → right ∘ TargetTyped s)
     , either optionsCSV optionsJSON state.options
     ]
 

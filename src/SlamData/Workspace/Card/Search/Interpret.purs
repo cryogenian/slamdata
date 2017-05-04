@@ -108,8 +108,8 @@ projections =
 
 filter ∷ L.List Sql → SS.SearchQuery → Sql
 filter fs =
-  ands
-  ∘ map ors
+  ors
+  ∘ map ands
   ∘ unwrap
   ∘ map (termToSql $ L.nub $ map flattenIndex fs)
 
