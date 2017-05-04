@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Setups.Chart.Common.Tooltip where
 import SlamData.Prelude
 import Color as Color
 import CSS as CSS
-import Data.Foreign (F, Foreign, readNumber, typeOf) as Frn
+import Data.Foreign (F, Foreign, readNumber, typeOf, toForeign) as Frn
 import Data.Foreign.Index (readIndex, readProp) as Frn
 import ECharts.Types as ET
 import Halogen.HTML as HH
@@ -81,6 +81,19 @@ type FormatterInput r = { value ∷ Frn.Foreign, data ∷ ET.Item | r }
 valueIx ∷ ∀ a r. (Frn.Foreign → Frn.F a) → Int → FormatterInput r → Maybe a
 valueIx read ix inp = hush' (read =<< Frn.readIndex ix inp.value)
 
+foreignName ∷ ∀ r a. { name ∷ a | r} → { name ∷ Frn.Foreign | r}
+foreignName r = r{ name = Frn.toForeign r.name }
+
+nameIx ∷ ∀ a r. (Frn.Foreign → Frn.F a) → Int → FormatterInput r → Maybe a
+nameIx read ix inp = hush' do
+  names ← Frn.readProp "name" item
+  res ← Frn.readIndex ix names
+  read res
+  where
+  unItem (ET.Item f) = f
+  item = unItem inp.data
+
+
 dataProp ∷ ∀ a r. (Frn.Foreign → Frn.F a) → String → FormatterInput r → Maybe a
 dataProp read prop { data: ET.Item inp } = hush' (read =<< Frn.readProp prop inp)
 
@@ -103,6 +116,9 @@ formatAssocProp p = maybe "" formatForeign ∘ assocProp pure p
 
 formatNumber ∷ ∀ r. FormatterInput r → String
 formatNumber = showFormattedNumber ∘ fromMaybe zero ∘ hush' ∘ Frn.readNumber ∘ _.value
+
+formatNameIx ∷ ∀ r. Int → FormatterInput r → String
+formatNameIx ix = maybe "" formatForeign ∘ nameIx pure ix
 
 formatForeign ∷ Frn.Foreign → String
 formatForeign val = case Frn.typeOf val of

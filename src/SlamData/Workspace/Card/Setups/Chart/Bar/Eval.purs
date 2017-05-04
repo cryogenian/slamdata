@@ -133,8 +133,13 @@ barOptions axes r barData = do
       [ { label: D.jcursorLabel r.category, value: CCT.formatValueIx 0 }
       , { label: D.jcursorLabel r.value, value: CCT.formatValueIx 1 }
       ]
-    seriesFn dim = [ { label: D.jcursorLabel dim, value: _.seriesName } ]
-    opts = foldMap seriesFn if isJust r.parallel then r.parallel else r.stack
+    seriesFn ix dim =
+      { label: D.jcursorLabel dim, value: CCT.formatNameIx ix }
+    opts =
+      A.catMaybes
+      [ seriesFn 0 <$> r.stack
+      , seriesFn (fromMaybe 0 $ r.stack *> pure 1) <$> r.parallel
+      ]
 
   E.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
@@ -212,7 +217,10 @@ barOptions axes r barData = do
         case M.lookup key serie.items of
           Nothing → E.missingItem
           Just v → E.addItem do
-            E.name key
+            E.buildNames do
+              for_ stacked.stack $ E.addName
+              for_ serie.name $ E.addName
+              E.addName $ "key:" ⊕ key
             E.buildValues do
               E.addStringValue key
               E.addValue v
