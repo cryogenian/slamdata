@@ -32,6 +32,8 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.HTML.CSS as HC
 import Math as Math
+
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Draftboard.Component.Common (DraftboardHTML, rootRef)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..))
@@ -200,14 +202,14 @@ renderCell opts st { cursor, value, rect } =
                         C.width (C.px size)
                         C.height (C.px size)
                     ]
-                    [ HH.span_ [] ]
+                    [ I.addCircle ]
                 , HH.button
                     [ HP.classes [ HH.ClassName "delete-cell" ]
                     , HP.title "Delete cell"
                     , ARIA.label "Delete cell"
                     , HE.onClick (HE.input_ (right ∘ DeleteCell cursor))
                     ]
-                    [ HH.text "×"]
+                    [ I.closeSm ]
                 ]
             ]
     ]

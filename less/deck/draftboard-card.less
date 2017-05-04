@@ -34,7 +34,7 @@
   outline: none;
 
   &:hover {
-    background: rgba(0,0,0,.06);
+    background: rgba(0, 0, 0, 0.06);
   }
 
   &.sd-draftboard-edge-top {
@@ -154,7 +154,7 @@
   position: absolute;
   z-index: 10;
   border-style: dotted;
-  border-color: blue;
+  border-color: #337ab7;
   border-width: 0;
   pointer-events: none;
 
@@ -245,7 +245,7 @@
   background: transparent;
   padding: 0;
   margin: 0;
-  border-color: blue;
+  border-color: #337ab7;
   border-style: solid;
   border-width: 0;
   outline: none;
@@ -321,7 +321,7 @@
     left: -4px;
     width: 1px;
     border-width: 0 3px 7px 3px;
-    border-bottom-color: blue;
+    border-bottom-color: #337ab7;
   }
 
   .vertical.gt & {
@@ -333,7 +333,7 @@
     left: -4px;
     width: 1px;
     border-width: 7px 3px 0 3px;
-    border-top-color: blue;
+    border-top-color: #337ab7;
   }
 
   .horizontal & {
@@ -351,7 +351,7 @@
     top: -4px;
     height: 1px;
     border-width: 3px 7px 3px 0;
-    border-right-color: blue;
+    border-right-color: #337ab7;
   }
 
   .horizontal.gt & {
@@ -363,7 +363,7 @@
     top: -4px;
     height: 1px;
     border-width: 3px 0 3px 7px;
-    border-left-color: blue;
+    border-left-color: #337ab7;
   }
 }
 
@@ -378,46 +378,16 @@
 
   .insert-cell {
     position: absolute;
-
-    > span {
-      position: absolute;
-      top: @grid-size;
-      left: @grid-size;
-      right: @grid-size;
-      bottom: @grid-size;
-
-
-      &::before,
-      &::after {
-        position: absolute;
-        content: "";
-        background: #337ab7;
-      }
-
-      &::before {
-        top: 20%;
-        left: 45%;
-        height: 60%;
-        width: 10%;
-      }
-
-      &::after {
-        top: 45%;
-        left: 20%;
-        width: 60%;
-        height: 10%;
-      }
-    }
+    font-size: 4.5rem;
+    color: #337ab7;
   }
-
 
   .delete-cell {
     position: absolute;
     top: 0;
     right: 0;
-    width: @grid-size;
-    height: @grid-size;
-    line-height: @grid-size;
+    width: @grid-size * 2;
+    height: @grid-size * 2;
     text-align: center;
     font-size: 1.5rem;
     color: #aaa;
