@@ -21,6 +21,7 @@ module SlamData.Workspace.Card.Error
   , module CDLOE
   , module CMDE
   , module COE
+  , module CTE
   ) where
 
 import SlamData.Prelude
@@ -28,10 +29,11 @@ import SlamData.Prelude
 import Quasar.Error (QError)
 import SlamData.GlobalError as GE
 import SlamData.Workspace.Card.Cache.Error as CCE
-import SlamData.Workspace.Card.Query.Error as CQE
-import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.DownloadOptions.Error as CDLOE
+import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.Open.Error as COE
+import SlamData.Workspace.Card.Query.Error as CQE
+import SlamData.Workspace.Card.Table.Error as CTE
 import Utils (hush)
 
 data CardError
@@ -42,6 +44,7 @@ data CardError
   | DownloadOptionsCardError CDLOE.DownloadOptionsError
   | MarkdownCardError CMDE.MarkdownError
   | OpenCardError COE.OpenError
+  | TableCardError CTE.TableError
 
 instance showCardError ∷ Show CardError where
   show = case _ of
@@ -52,6 +55,7 @@ instance showCardError ∷ Show CardError where
     DownloadOptionsCardError err → "(DownloadOptionsCardError " <> show err <> ")"
     MarkdownCardError err → "(MarkdownCardError " <> show err <> ")"
     OpenCardError err → "(OpenError " <> show err <> ")"
+    TableCardError err → "(TableCardError " <> show err <> ")"
 
 quasarToCardError ∷ QError → CardError
 quasarToCardError = QuasarError
@@ -65,6 +69,7 @@ cardToGlobalError = case _ of
   DownloadOptionsCardError _ → Nothing
   MarkdownCardError _ → Nothing
   OpenCardError _ → Nothing
+  TableCardError err → CTE.tableToGlobalError err
 
 -- TODO(Christoph): use this warn constraint to track down unstructured error messages
 -- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
@@ -90,6 +95,12 @@ throwMarkdownError = throwError ∘ MarkdownCardError
 
 throwOpenError ∷ ∀ m a. MonadThrow CardError m ⇒ COE.OpenError → m a
 throwOpenError = throwError ∘ OpenCardError
+
+throwTableError ∷ ∀ m a. MonadThrow CardError m ⇒ CTE.TableError → m a
+throwTableError = throwError ∘ TableCardError
+
+liftTableQ ∷ ∀ a m. Monad m ⇒ MonadThrow CardError m ⇒ m (Either QError a) → m a
+liftTableQ = flip bind (either (throwTableError ∘ CTE.TableQuasarError) pure)
 
 liftQ ∷ ∀ m a. MonadThrow CardError m ⇒ m (Either QError a) → m a
 liftQ = flip bind (either (throwError ∘ quasarToCardError) pure)

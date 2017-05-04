@@ -92,6 +92,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     MarkdownCardError mde → markdownErrorMessage state mde
     DownloadOptionsCardError dloe → downloadOptionsErrorMessage state dloe
     OpenCardError oce → openErrorMessage state oce
+    TableCardError tce → tableErrorMessage state tce
 
 collapsible ∷ String → HTML → Boolean → HTML
 collapsible title content expanded =
@@ -330,5 +331,30 @@ openErrorMessage { accessType, expanded } err =
           [ pure $ HH.h1_ [ HH.text "Invalid resource type" ]
           , pure $ HH.p_
               [ HH.text "Only files or variables can be chosen in the Open card" ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          ]
+
+tableErrorMessage ∷ State → CE.TableError → HTML
+tableErrorMessage { accessType, expanded } err =
+  case accessType of
+    Editable → renderDetails err
+    ReadOnly →
+      HH.div_
+        [ HH.p_ [ HH.text "A problem occurred in the Preview Table card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
+        ]
+  where
+  renderDetails = case _ of
+    CE.TableMissingResourceInputError →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "Expected a TaggedResource input." ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          ]
+    CE.TableQuasarError qErr →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "A error occured during fetching of the preview data." ]
+          , pure $ printQErrorWithDetails qErr
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
