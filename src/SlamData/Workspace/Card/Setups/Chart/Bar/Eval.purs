@@ -189,13 +189,15 @@ barOptions axes r barData = do
   xAxisConfig = Ax.axisConfiguration xAxisType
 
   seriesNames ∷ Array String
-  seriesNames = case r.parallel of
-    Just _ →
+  seriesNames = case r.stack, r.parallel of
+    Nothing, Nothing →
+      [ ]
+    Nothing, Just _ →
       A.fromFoldable
       $ flip foldMap barData
       $ foldMap (Set.fromFoldable ∘ _.name)
       ∘ _.series
-    Nothing →
+    _, _ →
       A.catMaybes $ map _.stack barData
 
   xValues ∷ Array String
@@ -224,10 +226,11 @@ barOptions axes r barData = do
             E.buildValues do
               E.addStringValue key
               E.addValue v
-      case r.parallel of
-        Just _ → do
-          for_ stacked.stack E.stack
+      for_ stacked.stack E.name
+      case r.parallel, r.stack of
+        Just _, Nothing →
           for_ serie.name E.name
-        Nothing → do
+        Just _, Just _ →
+          for_ serie.name E.stack
+        _, _ →
           E.stack "default stack"
-          for_ stacked.stack E.name
