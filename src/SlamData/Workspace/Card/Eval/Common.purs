@@ -78,7 +78,11 @@ evalComposite = do
           v2 ∷ Sql.Sql
           v2 = toValue v
 
-        in Just $ Right $ Port.VarMapValue $ embed $ Sql.SetLiteral $ L.fromFoldable [ v1, v2 ]
+        in
+          Just
+            if v1 ≡ v2
+              then val
+              else Right $ Port.VarMapValue $ embed $ Sql.SetLiteral $ L.fromFoldable [ v1, v2 ]
       Just _ → Just case val ^? _Right ∘ Port._VarMapValue ∘ Sql._SetLiteral of
         Nothing →
           v # _Right ∘ Port._VarMapValue ∘ Sql._SetLiteral
