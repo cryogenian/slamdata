@@ -133,8 +133,13 @@ barOptions axes r barData = do
       [ { label: D.jcursorLabel r.category, value: CCT.formatValueIx 0 }
       , { label: D.jcursorLabel r.value, value: CCT.formatValueIx 1 }
       ]
-    seriesFn dim = [ { label: D.jcursorLabel dim, value: _.seriesName } ]
-    opts = foldMap seriesFn if isJust r.parallel then r.parallel else r.stack
+    seriesFn ix dim =
+      { label: D.jcursorLabel dim, value: CCT.formatNameIx ix }
+    opts =
+      A.catMaybes
+      [ seriesFn 0 <$> r.stack
+      , seriesFn (fromMaybe 0 $ r.stack $> 1) <$> r.parallel
+      ]
 
   E.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
@@ -184,13 +189,15 @@ barOptions axes r barData = do
   xAxisConfig = Ax.axisConfiguration xAxisType
 
   seriesNames ∷ Array String
-  seriesNames = case r.parallel of
-    Just _ →
+  seriesNames = case r.stack, r.parallel of
+    Nothing, Nothing →
+      [ ]
+    Nothing, Just _ →
       A.fromFoldable
       $ flip foldMap barData
       $ foldMap (Set.fromFoldable ∘ _.name)
       ∘ _.series
-    Nothing →
+    _, _ →
       A.catMaybes $ map _.stack barData
 
   xValues ∷ Array String
@@ -212,14 +219,18 @@ barOptions axes r barData = do
         case M.lookup key serie.items of
           Nothing → E.missingItem
           Just v → E.addItem do
-            E.name key
+            E.buildNames do
+              for_ stacked.stack $ E.addName
+              for_ serie.name $ E.addName
+              E.addName $ "key:" ⊕ key
             E.buildValues do
               E.addStringValue key
               E.addValue v
-      case r.parallel of
-        Just _ → do
-          for_ stacked.stack E.stack
+      for_ stacked.stack E.name
+      case r.parallel, r.stack of
+        Just _, Nothing →
           for_ serie.name E.name
-        Nothing → do
+        Just _, Just _ →
+          for_ serie.name E.stack
+        _, _ →
           E.stack "default stack"
-          for_ stacked.stack E.name
