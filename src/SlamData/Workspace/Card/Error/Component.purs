@@ -93,6 +93,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     DownloadOptionsCardError dloe → downloadOptionsErrorMessage state dloe
     OpenCardError oce → openErrorMessage state oce
     TableCardError tce → tableErrorMessage state tce
+    FormInputStaticCardError fise → formInputStaticErrorMessage state fise
 
 collapsible ∷ String → HTML → Boolean → HTML
 collapsible title content expanded =
@@ -356,5 +357,33 @@ tableErrorMessage { accessType, expanded } err =
         $ join
           [ pure $ HH.h1_ [ HH.text "A error occured during fetching of the preview data." ]
           , pure $ printQErrorWithDetails qErr
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          ]
+
+formInputStaticErrorMessage ∷ State → CE.FormInputStaticError → HTML
+formInputStaticErrorMessage { accessType, expanded } err =
+  case accessType of
+    Editable → renderDetails err
+    ReadOnly →
+      HH.div_
+        [ HH.p_ [ HH.text "A problem occurred in the Forminput static card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
+        ]
+  where
+  renderDetails = case _ of
+    CE.FIStaticNoAxis →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput static card." ]
+          , pure $ HH.p_
+              [ HH.text "No axis was selected" ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+          ]
+    CE.FIStaticMissingAxis axis →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput static card." ]
+          , pure $ HH.p_
+              [ HH.text "The selected axis was not present in the data." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
