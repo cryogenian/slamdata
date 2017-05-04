@@ -26,7 +26,7 @@ import Control.Alt ((<|>))
 import Data.Array (intersect, null, (:))
 import Data.Char as Ch
 import Data.Either (Either(..), either, fromRight)
-import Data.Maybe (Maybe, maybe, fromMaybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Path.Pathy (Sandboxed, Unsandboxed, Abs, Path, File, Rel, Dir, DirName(..), FileName(..), peel, rootDir, (</>), file, canonicalize, printPath, parseAbsDir, parseAbsFile, dir, relativeTo, renameDir)
 import Data.Path.Pathy as P
 import Data.String as S
@@ -46,11 +46,13 @@ import Text.SlamSearch.Parser.Tokens (keyChars)
 
 infixl 6 renameDirExt as <./>
 
+newtype Extension = Extension String
+
 renameDirExt :: forall a s. Path a Dir s -> String -> Path a Dir s
 renameDirExt p ext = renameDir (changeDirExt $ const ext) p
 
 addDirExt :: forall a s. String -> Path a Dir s -> Path a Dir s
-addDirExt ext = renameDir (\(DirName d) -> DirName $ d <> "." <> ext)
+addDirExt ext = renameDir \(DirName d) -> DirName $ dropExt (Extension ext) d <> "." <> ext
 
 rootify :: DirPath -> Path Rel Dir Sandboxed
 rootify p = fromMaybe (dir "/") $ relativeTo p rootDir
@@ -94,8 +96,16 @@ takeDirExt :: DirName -> String
 takeDirExt (DirName d) =
   maybe "" (\idx -> S.drop (idx + 1) d) $ S.lastIndexOf (S.Pattern ".") d
 
+dropExt ∷ Extension → String → String
+dropExt (Extension ext) name =
+  fromMaybe name do
+    idx ← S.lastIndexOf (S.Pattern ".") name
+    if S.drop (idx + 1) name == ext
+      then pure $ S.take idx name
+      else Nothing
+
 dropWorkspaceExt :: String -> String
-dropWorkspaceExt name = S.take (S.length name - S.length Config.workspaceExtension - 1) name
+dropWorkspaceExt = dropExt (Extension Config.workspaceExtension)
 
 decodeURIPath :: String -> String
 decodeURIPath uri =
