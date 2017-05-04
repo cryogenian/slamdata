@@ -138,7 +138,7 @@ barOptions axes r barData = do
     opts =
       A.catMaybes
       [ seriesFn 0 <$> r.stack
-      , seriesFn (fromMaybe 0 $ r.stack *> pure 1) <$> r.parallel
+      , seriesFn (fromMaybe 0 $ r.stack $> 1) <$> r.parallel
       ]
 
   E.tooltip do
