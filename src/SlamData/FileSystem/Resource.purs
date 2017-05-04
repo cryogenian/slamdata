@@ -188,7 +188,7 @@ root = Directory P.rootDir
 
 mkWorkspace ∷ PU.AnyPath → Resource
 mkWorkspace ap =
-  either (Workspace ∘ (_ <./> Config.workspaceExtension)) go ap
+  either (Workspace ∘ PU.addDirExt Config.workspaceExtension) go ap
   where
   go ∷ PU.FilePath → Resource
   go p = maybe newWorkspace id do
