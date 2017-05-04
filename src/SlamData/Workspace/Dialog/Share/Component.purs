@@ -228,7 +228,7 @@ render state =
         _ -> false
     in
       [ HH.fieldset [ HP.disabled (isFatalError state.error) ] c ]
-      
+
   renderSubjectForm ∷ Array HTML
   renderSubjectForm =
     [ HH.div
