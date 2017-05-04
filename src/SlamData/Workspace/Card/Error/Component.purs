@@ -352,10 +352,17 @@ tableErrorMessage { accessType, expanded } err =
           [ pure $ HH.h1_ [ HH.text "Expected a TaggedResource input." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
-    CE.TableQuasarError qErr →
+    CE.TableCountQuasarError qErr →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "A error occured during fetching of the preview data." ]
+          [ pure $ HH.h1_ [ HH.text "A error occured when counting the preview data." ]
+          , pure $ printQErrorWithDetails qErr
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          ]
+    CE.TableSampleQuasarError qErr →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "A error occured during sampling of the preview data." ]
           , pure $ printQErrorWithDetails qErr
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]

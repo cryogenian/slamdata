@@ -63,14 +63,14 @@ eval model port varMap =
           size ←
             case rawTableState of
               Just t | t.resource ≡ resource → pure t.size
-              _ → CE.liftTableQ $ Quasar.count $ resource ^. Port._filePath
-          result ←
-            CE.liftTableQ $
-              Quasar.sample
-                (resource ^. Port._filePath)
-                ((page - 1) * pageSize)
-                pageSize
-          pure $ result × size
+              _ → Quasar.count (resource ^. Port._filePath) >>= case _ of
+                Left err → CE.throwTableError (CE.TableCountQuasarError err)
+                Right result → pure result
+          sampleResult ← Quasar.sample (resource ^. Port._filePath) ((page - 1) * pageSize) pageSize
+          case sampleResult of
+            Left err → CE.throwTableError (CE.TableSampleQuasarError err)
+            Right result →
+              pure $ result × size
         put $ Just $ ES.Table
           { resource
           , result: fst resultAndSize

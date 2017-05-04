@@ -24,14 +24,17 @@ import Utils (hush)
 
 data TableError
   = TableMissingResourceInputError
-  | TableQuasarError QError
+  | TableCountQuasarError QError
+  | TableSampleQuasarError QError
 
 instance showTableError ∷ Show TableError where
   show = case _ of
     TableMissingResourceInputError → "TableMissingResourceInputError"
-    TableQuasarError err → "(TableSamplingQuasarError " <> show err <> ")"
+    TableCountQuasarError err → "(TableCountQuasarError " <> show err <> ")"
+    TableSampleQuasarError err → "(TableSampleQuasarError " <> show err <> ")"
 
 tableToGlobalError ∷ TableError → Maybe GE.GlobalError
 tableToGlobalError = case _ of
-  TableQuasarError qErr → hush (GE.fromQError qErr)
+  TableCountQuasarError qErr → hush (GE.fromQError qErr)
+  TableSampleQuasarError qErr → hush (GE.fromQError qErr)
   _ → Nothing

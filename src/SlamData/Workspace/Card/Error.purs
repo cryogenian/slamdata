@@ -104,9 +104,6 @@ throwOpenError = throwError ∘ OpenCardError
 throwTableError ∷ ∀ m a. MonadThrow CardError m ⇒ CTE.TableError → m a
 throwTableError = throwError ∘ TableCardError
 
-liftTableQ ∷ ∀ a m. Monad m ⇒ MonadThrow CardError m ⇒ m (Either QError a) → m a
-liftTableQ = flip bind (either (throwTableError ∘ CTE.TableQuasarError) pure)
-
 throwFormInputStaticError ∷ ∀ m a. MonadThrow CardError m ⇒ FISE.FormInputStaticError → m a
 throwFormInputStaticError = throwError ∘ FormInputStaticCardError
 
