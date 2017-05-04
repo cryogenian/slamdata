@@ -178,31 +178,31 @@ helpMenu =
     , submenu:
       [ { label: "User guide"
         , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.1/users-guide.html"
+        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/users-guide.html"
         }
       , { label: "Administrator guide"
         , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.1/administration-guide.html"
+        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/administration-guide.html"
         }
       , { label: "Developer guide"
         , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.1/developers-guide.html"
+        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/developers-guide.html"
         }
       , { label: "Helpful tips"
         , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.1/helpful-tips.html"
+        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/helpful-tips.html"
         }
       , { label: "SQL² reference"
         , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.1/sql-squared-reference.html"
+        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/sql-squared-reference.html"
         }
       , { label: "SlamDown reference"
         , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.1/slamdown-reference.html"
+        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/slamdown-reference.html"
         }
       , { label: "Troubleshooting FAQ"
         , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.1/troubleshooting-faq.html"
+        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/troubleshooting-faq.html"
         }
       , { label: "Attributions"
         , shortcutLabel: Nothing
