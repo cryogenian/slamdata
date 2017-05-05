@@ -193,11 +193,11 @@ test = do
     Interact.addColumn "type"
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
-    Expect.cardsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
-    Expect.cardsInTableColumnInLastCardToEq 2 "country" "AUT"
-    Expect.cardsInTableColumnInLastCardToEq 2 "gender" "W"
-    Expect.cardsInTableColumnInLastCardToBeGT 2 "year" "1924"
-    Expect.cardsInTableColumnInLastCardToNotEq 2 "type" "Silver"
+    Expect.cellsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
+    Expect.cellsInTableColumnInLastCardToEq 2 "country" "AUT"
+    Expect.cellsInTableColumnInLastCardToEq 2 "gender" "W"
+    Expect.cellsInTableColumnInLastCardToBeGT 2 "year" "1924"
+    Expect.cellsInTableColumnInLastCardToNotEq 2 "type" "Silver"
     successMsg "Ok, Filtered query results with fields"
 
   mdScenario "Filter query results by changing field values" ["https://github.com/slamdata/slamdata/issues/1512"] do
@@ -242,10 +242,10 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.accessNextCardInLastDeck
     Interact.accessNextCardInLastDeck
-    Expect.cardsInTableColumnInLastCardToEq 8 "discipline" "Luge"
-    Expect.cardsInTableColumnInLastCardToEqOneOf 8 "gender" ["M", "X"]
-    Expect.cardsInTableColumnInLastCardToBeGT 8 "year" "1950"
-    Expect.cardsInTableColumnInLastCardToNotEq 8 "type" "Gold"
+    Expect.cellsInTableColumnInLastCardToEq 8 "discipline" "Luge"
+    Expect.cellsInTableColumnInLastCardToEqOneOf 8 "gender" ["M", "X"]
+    Expect.cellsInTableColumnInLastCardToBeGT 8 "year" "1950"
+    Expect.cellsInTableColumnInLastCardToNotEq 8 "type" "Gold"
     successMsg "Ok, Filtered query results by changing field values"
 
   mdScenario "Markdown chaining" [] do

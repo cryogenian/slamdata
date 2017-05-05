@@ -377,3 +377,8 @@ enabledNextCardGripper =
 deck :: String
 deck =
   XPath.anyWithExactAriaLabel $ "Deck"
+
+followingLastPreviousCardGripper :: String -> String
+followingLastPreviousCardGripper = XPath.following lastPreviousCardGripperXPath
+  where
+  lastPreviousCardGripperXPath = XPath.last $ XPath.anywhere previousCardGripper
