@@ -122,7 +122,9 @@ collapsible title content expanded =
     $ join
       [ pure $
           HH.button
-            [ HE.onClick $ HE.input_ (ToggleExpanded (not expanded)) ]
+            [ HP.class_ (H.ClassName "sd-form-button")
+            , HE.onClick $ HE.input_ (ToggleExpanded (not expanded))
+            ]
             [ if expanded then I.chevronDownSm else I.chevronRightSm
             , HH.span_ [ HH.text title ]
             ]
