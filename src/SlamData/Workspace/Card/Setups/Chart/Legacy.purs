@@ -328,7 +328,7 @@ decode cturs js = do
       size =
         Nothing
       minSize =
-        2.0
+        10.0
       maxSize =
         20.0
       axisLabelAngle =
