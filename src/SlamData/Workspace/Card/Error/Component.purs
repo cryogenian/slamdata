@@ -94,10 +94,18 @@ printQErrorRaw raw = HH.pre_ [ HH.text (prettyJson (J.fromObject raw)) ]
 
 prettyPrintCardError ∷ State → CardError → HTML
 prettyPrintCardError state ce = case cardToGlobalError ce of
-  Just ge → HH.text (GE.print ge)
+  Just ge →
+    HH.div_
+      [ errorTitle [ HH.text (GE.print ge) ] ]
   Nothing → case ce of
-    QuasarError qError → printQErrorWithDetails qError
-    StringlyTypedError err → HH.text err
+    QuasarError qError →
+      HH.div_
+        [ errorTitle [ HH.text "An error occurred." ]
+        , printQErrorWithDetails qError
+        ]
+    StringlyTypedError err →
+      HH.div_
+        [ errorTitle [ HH.text err ] ]
     CacheCardError cce → cacheErrorMessage state cce
     QueryCardError qce → queryErrorMessage state qce
     MarkdownCardError mde → markdownErrorMessage state mde
