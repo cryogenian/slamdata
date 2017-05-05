@@ -47,7 +47,7 @@ test = do
     Interact.addColumn "pop"
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
-    Expect.cardsInTableColumnInLastCardToContain 25 "city" "SPRINGFIELD"
+    Expect.cellsInTableColumnInLastCardToContain 25 "city" "SPRINGFIELD"
     successMsg "Successfully searched for a city"
 
   searchScenario "Search within results" [] do
@@ -66,8 +66,8 @@ test = do
     Interact.addColumn "state"
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
-    Expect.cardsInTableColumnInLastCardToContain 2 "city" "SPRINGFIELD"
-    Expect.cardsInTableColumnInLastCardToContain 2 "state" "OR"
+    Expect.cellsInTableColumnInLastCardToContain 2 "city" "SPRINGFIELD"
+    Expect.cellsInTableColumnInLastCardToContain 2 "state" "OR"
     successMsg "Successfully searched within results"
 
   searchScenario "Search with field names" ["https://github.com/slamdata/slamdata/issues/1512"] do
@@ -85,9 +85,9 @@ test = do
     Interact.addColumn "pop"
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
-    Expect.cardsInTableColumnInLastCardToContain 1 "city" "SPRINGFIELD"
-    Expect.cardsInTableColumnInLastCardToContain 1 "state" "OR"
-    Expect.cardsInTableColumnInLastCardToBeGT 1 "pop" "30000"
+    Expect.cellsInTableColumnInLastCardToContain 1 "city" "SPRINGFIELD"
+    Expect.cellsInTableColumnInLastCardToContain 1 "state" "OR"
+    Expect.cellsInTableColumnInLastCardToBeGT 1 "pop" "30000"
     successMsg "Successfully searched with field names"
 
   searchScenario "Suppress search results" ["https://github.com/slamdata/slamdata/issues/1512"] do
@@ -105,6 +105,6 @@ test = do
     Expect.columnHeaderInSetupPivotTableCard "state"
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
-    Expect.cardsInTableColumnInLastCardToContain 10 "city" "PORTLAND"
-    Expect.cardsInTableColumnInLastCardToNotEq 10 "state" "OR"
+    Expect.cellsInTableColumnInLastCardToContain 10 "city" "PORTLAND"
+    Expect.cellsInTableColumnInLastCardToNotEq 10 "state" "OR"
     successMsg "Successfully suppressed search results"
