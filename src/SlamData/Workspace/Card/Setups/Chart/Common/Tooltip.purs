@@ -76,7 +76,7 @@ tableRows rows = VDS.render absurd (unwrap table)
       , HH.td_ [ HH.text value ]
       ]
 
-type FormatterInput r = { value ∷ Frn.Foreign, data ∷ ET.Item | r }
+type FormatterInput r = { value ∷ Frn.Foreign, data ∷ ET.Item, seriesIndex ∷ Int | r }
 
 valueIx ∷ ∀ a r. (Frn.Foreign → Frn.F a) → Int → FormatterInput r → Maybe a
 valueIx read ix inp = hush' (read =<< Frn.readIndex ix inp.value)
@@ -86,12 +86,16 @@ foreignName r = r{ name = Frn.toForeign r.name }
 
 nameIx ∷ ∀ a r. (Frn.Foreign → Frn.F a) → Int → FormatterInput r → Maybe a
 nameIx read ix inp = hush' do
-  names ← Frn.readProp "name" item
+  names ← Frn.readProp "name" $ unItem inp.data
   res ← Frn.readIndex ix names
   read res
-  where
-  unItem (ET.Item f) = f
-  item = unItem inp.data
+
+unItem ∷ ET.Item → Frn.Foreign
+unItem (ET.Item f) = f
+
+symbolSize ∷ ∀ a r. (Frn.Foreign → Frn.F a) → FormatterInput r → Maybe a
+symbolSize read inp = hush' do
+  read =<< Frn.readProp "symbolSize" (unItem inp.data)
 
 
 dataProp ∷ ∀ a r. (Frn.Foreign → Frn.F a) → String → FormatterInput r → Maybe a
@@ -119,6 +123,9 @@ formatNumber = showFormattedNumber ∘ fromMaybe zero ∘ hush' ∘ Frn.readNumb
 
 formatNameIx ∷ ∀ r. Int → FormatterInput r → String
 formatNameIx ix = maybe "" formatForeign ∘ nameIx pure ix
+
+formatSymbolSize ∷ ∀ r. FormatterInput r → String
+formatSymbolSize = maybe "" formatForeign ∘ symbolSize pure
 
 formatForeign ∷ Frn.Foreign → String
 formatForeign val = case Frn.typeOf val of

@@ -26,7 +26,7 @@ type State =
 initialState ∷ State
 initialState =
   { axisLabelAngle: 0.0
-  , minSize: 1.0
+  , minSize: 10.0
   , maxSize: 50.0
   , optionalMarkers: false
   }
