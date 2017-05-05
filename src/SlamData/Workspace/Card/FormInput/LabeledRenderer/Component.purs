@@ -58,6 +58,14 @@ initialState =
   , cursor: JCursorTop
   }
 
+optionList ∷ State → Array (Sem.Semantics × Maybe String)
+optionList state =
+  Arr.sortBy sortFn $ Map.toUnfoldable state.valueLabelMap
+  where
+  sortFn (a × al) (b × bl) =
+    compare al bl
+    ⊕ compare (Sem.printSemantics a) (Sem.printSemantics b)
+
 data Query a
   = Setup SetupLabeledFormInputPort a
   | ItemSelected Sem.Semantics a
@@ -97,13 +105,12 @@ renderDropdown state =
   [ HH.select
       [ HP.classes [ B.formControl ]
       , HE.onSelectedIndexChange \ix →
-          H.action ∘ ItemSelected ∘ fst <$> Arr.index optionList ix
+          H.action ∘ ItemSelected ∘ fst <$> Arr.index options ix
       ]
-      $ map renderOption optionList
+      $ map renderOption options
   ]
   where
-  optionList ∷ Array (Sem.Semantics × Maybe String)
-  optionList = Map.toUnfoldable state.valueLabelMap
+  options = optionList state
 
   renderOption ∷ Sem.Semantics × Maybe String → HTML
   renderOption (sem × label) =
@@ -115,11 +122,10 @@ renderCheckbox ∷ State → Array HTML
 renderCheckbox state =
   [ HH.form
      [ HE.onSubmit (HE.input PreventDefault) ]
-     $ map renderOneInput optionList
+     $ map renderOneInput options
   ]
   where
-  optionList ∷ Array (Sem.Semantics × Maybe String)
-  optionList = Map.toUnfoldable state.valueLabelMap
+  options = optionList state
 
   renderOneInput ∷ Sem.Semantics × Maybe String → HTML
   renderOneInput (sem × label) =
@@ -139,11 +145,10 @@ renderRadio ∷ State → Array HTML
 renderRadio state =
   [ HH.form
      [ HE.onSubmit (HE.input PreventDefault) ]
-     $ map renderOneInput optionList
+     $ map renderOneInput options
   ]
   where
-  optionList ∷ Array (Sem.Semantics × Maybe String)
-  optionList = Map.toUnfoldable state.valueLabelMap
+  options = optionList state
 
   renderOneInput ∷ Sem.Semantics × Maybe String → HTML
   renderOneInput (sem × label) =
