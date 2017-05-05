@@ -1,4 +1,5 @@
 @import "normalize";
+@import "bootstrap";
 
 @font-face {
   font-family: Ubuntu;
@@ -28,33 +29,30 @@
 
 html {
   font-size: 16px;
+  background: #fff;
 }
 
 body {
-    padding: 0;
-    font-family: Ubuntu, Arial, Helvetica, sans-serif;
+  height: 100%;
+  padding: 0;
+  font-family: Ubuntu, Arial, Helvetica, sans-serif;
+
+  div.filesystem, div.workspace {
     height: 100%;
-    div.filesystem, div.workspace {
-        height: 100%;
-        width: 100%;
-    }
-    background: #fff;
+    width: 100%;
+  }
 }
 
 ::-webkit-input-placeholder {
-    color: #e0e0e0;
-}
-
-:-moz-placeholder { /* Firefox 18- */
-    color: #e0e0e0;
+  color: #e0e0e0;
 }
 
 ::-moz-placeholder {  /* Firefox 19+ */
-    color: #e0e0e0;
+  color: #e0e0e0;
 }
 
 :-ms-input-placeholder {
-    color: #e0e0e0;
+  color: #e0e0e0;
 }
 
 
@@ -63,98 +61,105 @@ body {
 }
 
 .content {
-    max-width: 750px;
-    margin: auto;
-    padding: 50px 15px 0px 15px;
+  max-width: 750px;
+  margin: auto;
+  padding: 50px 15px 0px 15px;
 }
 
 button:focus {
-    outline:0;
+  outline: 0;
 }
 
 .file-list-field {
-    width: 568px;
-    img.search-clear {
-        top: 9px;
-    }
+  width: 568px;
+
+  img.search-clear {
+    top: 9px;
+  }
 }
 
 .file-list-group {
-    min-width: 568px;
-    height: 150px;
-    overflow-y: scroll;
-    border-bottom: 1px solid #ddd;
+  min-width: 568px;
+  height: 150px;
+  overflow-y: scroll;
+  border-bottom: 1px solid #ddd;
 
-    li {
-        margin: 0;
-        padding: 0;
-    }
+  li {
+    margin: 0;
+    padding: 0;
+  }
 }
 
 .item-icon {
-    margin-right: 20px;
+  margin-right: 20px;
 }
+
 .item-toolbar {
-    padding-right: 0px;
-    display: none;
+  display: none;
+  padding-right: 0px;
 }
 
 .list-group-item:hover .item-toolbar, .item-toolbar.selected {
-    display: block;
+  display: block;
 }
 
 .list-group-item.phantom {
-    color: #999;
-    img {
-        width: 16px;
-        margin-right: 18px;
-    }
+  color: #999;
+
+  img {
+    width: 16px;
+    margin-right: 18px;
+  }
 }
 
 .item-content {
-    padding-left: 5px;
-    a {
-        cursor: pointer;
-    }
+  padding-left: 5px;
+
+  a {
+      cursor: pointer;
+  }
 }
+
 .item-hidden {
-    font-style: italic;
-    opacity: 0.5;
+  font-style: italic;
+  opacity: 0.5;
 }
+
 a.item-hidden, button.list-group-item.item-hidden {
-    font-style: italic;
-    opacity: 1;
-    color: #aaa;
+  font-style: italic;
+  opacity: 1;
+  color: #aaa;
 }
 
 select.form-control, input.form-control, button.form-control {
-    border-radius: 0;
-    -webkit-appearance: none;
+  border-radius: 0;
+  appearance: none;
 }
+
 .list-group {
+  border-radius: 0;
+
+  a, li, .list-group-item {
     border-radius: 0;
-    .list-group-item {
-        border-radius: 0;
-    }
-    a, li {
-        border-radius: 0;
-    }
+  }
 }
 
 .fade {
-    z-index: -100500;
-    &.in {
-        z-index: 100500;
-    }
+  z-index: -100500;
+
+  &.in {
+      z-index: 100500;
+  }
 }
 
 ol.breadcrumb {
-    padding-left: 0;
-    margin-bottom: 6px;
-    margin-top: 12px;
-    >li+li:before {
-        padding-right: 1px;
-    }
+  padding-left: 0;
+  margin-bottom: 6px;
+  margin-top: 12px;
+
+  > li + li::before {
+      padding-right: 1px;
+  }
 }
 
 .toolbar-menu,
@@ -164,14 +169,14 @@ ol.breadcrumb {
   }
 
   button, label {
-      background: none;
-      border: 0;
-      padding: 0 .5rem;
-      color: #337ab7;
+    background: none;
+    border: 0;
+    padding: 0 .5rem;
+    color: #337ab7;
 
-      &:hover {
-          color: #23527c
-      }
+    &:hover {
+      color: #23527c
+    }
   }
 }
 
@@ -216,22 +221,26 @@ ol.breadcrumb {
 }
 
 .card-input {
-    textarea {
-        width: 100%;
-        height: 100%;
+  textarea {
+    width: 100%;
+    height: 100%;
+  }
+
+  &.fade {
+    height: 0;
+
+    &.in {
+      height: auto;
     }
-    &.fade {
-        height: 0;
-    }
-    &.fade.in {
-        height: auto;
-    }
-    .ace_editor {
-        min-height: 1em;
-    }
-    .ace_gutter-layer {
-        width: 61px !important;
-    }
+  }
+
+  .ace_editor {
+    min-height: 1em;
+  }
+
+  .ace_gutter-layer {
+    width: 61px !important;
+  }
 }
 
 .sd-invisible {
@@ -239,144 +248,158 @@ ol.breadcrumb {
 }
 
 .page-input {
-    display: inline-block;
-    margin: 0 4px;
+  display: inline-block;
+  margin: 0 4px;
 
-    input {
-        display: inline-block;
-        text-align: center;
-        width: 3.5em;
-        margin: 0 4px;
-    }
+  input {
+    display: inline-block;
+    text-align: center;
+    width: 3.5em;
+    margin: 0 4px;
+  }
 }
 
 .page-size {
+  display: inline-block;
+  margin-left: 10px;
+
+  select, input {
     display: inline-block;
-    margin-left: 10px;
-    select, input {
-        display: inline-block;
-        margin-left: 4px;
-        width: 5em;
-    }
+    margin-left: 4px;
+    width: 5em;
+  }
 }
 
 .echarts-container {
-    &.main {
-        height: 300px;
-        width: 600px;
-    }
-    &.miniature {
-        height: 100px;
-        width: 200px;
-    }
+  &.main {
+    height: 300px;
+    width: 600px;
+  }
+
+  &.miniature {
+    height: 100px;
+    width: 200px;
+  }
 }
 
 .file-list-group.aggregation {
-    border-top: 1px solid #ddd;
-    border-right: 1px solid #ddd;
-    width: ~"calc(100% - 105px)";
+  border-top: 1px solid #ddd;
+  border-right: 1px solid #ddd;
+  width: ~"calc(100% - 105px)";
 }
 
 div.loading-message.alert.alert-info {
-    text-align: center;
-    line-height: 130px;
-    font-size: 28px;
+  text-align: center;
+  line-height: 130px;
+  font-size: 28px;
 }
 
 .modal {
-    position: fixed;
-    .download-type-selector {
-        width: 60px;
-        height: 160px;
-        background-color: #f0f0f0;
-        img {
-            width: 32px;
-            height: 32px;
-            padding: 6px;
-            background-color: #aaa;
-            cursor: pointer;
-            margin-left: 16px;
-            margin-top: 8px;
-            left: 50%;
-            &.active, &:hover {
-                background-color: #337ab7;
-            }
-        }
-    }
+  position: fixed;
 
-    .download-configuration {
-        margin-left: 60px;
-        padding-top: 10px;
+  .download-type-selector {
+    width: 60px;
+    height: 160px;
+    background-color: #f0f0f0;
+    img {
+      width: 32px;
+      height: 32px;
+      padding: 6px;
+      background-color: #aaa;
+      cursor: pointer;
+      margin-left: 16px;
+      margin-top: 8px;
+      left: 50%;
+
+      &.active, &:hover {
+        background-color: #337ab7;
+      }
     }
+  }
+
+  .download-configuration {
+    margin-left: 60px;
+    padding-top: 10px;
+  }
 }
+
 div.chart-card-editor {
-    min-height: 160px;
-    padding-left: 15px;
-    padding-right: 15px;
-    .download-type-selector {
-        width: 60px;
-        height: 160px;
-        background-color: #f0f0f0;
-        img {
-            width: 32px;
-            height: 32px;
-            padding: 6px;
-            background-color: #aaa;
-            cursor: pointer;
-            margin-left: 16px;
-            margin-top: 8px;
-            left: 50%;
-            &.active, &:hover {
-                background-color: #337ab7;
-            }
-        }
+  min-height: 160px;
+  padding-left: 15px;
+  padding-right: 15px;
+
+  .download-type-selector {
+    width: 60px;
+    height: 160px;
+    background-color: #f0f0f0;
+
+    img {
+      width: 32px;
+      height: 32px;
+      padding: 6px;
+      background-color: #aaa;
+      cursor: pointer;
+      margin-left: 16px;
+      margin-top: 8px;
+      left: 50%;
+
+      &.active, &:hover {
+        background-color: #337ab7;
+      }
     }
+  }
 }
 
 .readonly-highlight {
-    background-color: blue;
-    opacity: 0.2;
-    position: absolute;
+  background-color: blue;
+  opacity: 0.2;
+  position: absolute;
 }
 
 .sql-mount-var-pair {
-    margin-top: 4px;
-    &:last-of-type {
-        margin-bottom: 6px;
-    }
-    button {
-        position: relative;
-        left: ~"calc(100% - 40px)";
-    }
-    input {
-        width: ~"calc(100% - 60px)";
-        display: inline-block;
-        margin-left: 10px;
-    }
-}
-.sql-mount-add-var-pair-button {
+  margin-top: 4px;
+
+  &:last-of-type {
+    margin-bottom: 6px;
+  }
+
+  button {
     position: relative;
-    left: ~"calc(100% - 40px)"
+    left: ~"calc(100% - 40px)";
+  }
+
+  input {
+    width: ~"calc(100% - 60px)";
+    display: inline-block;
+    margin-left: 10px;
+  }
 }
+
+.sql-mount-add-var-pair-button {
+  position: relative;
+  left: ~"calc(100% - 40px)"
+}
+
 .sql-mount-form {
-    .ace_editor {
-        border: #ccc 1px solid;
-        margin-top: 6px;
-        margin-bottom: 4px;
-    }
-    > label {
-        margin-top: 14px;
-        display: block;
-        font-weight: normal;
-        font-size: 16px;
-    }
+  .ace_editor {
+    border: #ccc 1px solid;
+    margin-top: 6px;
+    margin-bottom: 4px;
+  }
+
+  > label {
+    display: block;
+    margin-top: 14px;
+    font-weight: normal;
+    font-size: 16px;
+  }
 }
 
 button {
-    img.glyph-image {
-        width: 48px;
-        margin-top: -18px;
-    }
+  img.glyph-image {
+    width: 48px;
+    margin-top: -18px;
+  }
 }
 
 .noselect {
@@ -394,7 +417,6 @@ button {
   .noselect;
 }
 
-@import "bootstrap";
 @import "bootstrap-overloads";
 @import "deck";
 @import "dialog/download";
