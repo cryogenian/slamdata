@@ -203,10 +203,11 @@ markdownErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the markdown card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text "A problem occurred in the Markdown card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
+  -- TODO: explain which field for all these cases? -gb
   renderDetails = case _ of
     CE.MarkdownParseError {markdown, error} →
       HH.div_
@@ -248,14 +249,14 @@ markdownErrorMessage { accessType, expanded } err =
     CE.MarkdownInvalidDateTimeValue { datetime, error } →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An invalid datetime value was provided." ]
+          [ pure $ HH.h1_ [ HH.text "An invalid timestamp value was provided." ]
           , pure $ renderParseError error datetime
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.MarkdownTypeError t1 t2 →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An type mismatch occurred." ]
+          [ pure $ HH.h1_ [ HH.text "A type mismatch occurred when populating a field in the Markdown card." ]
           , pure $ HH.p_
               [ HH.text "We encountered the following type:"
               , HH.br_
@@ -283,7 +284,7 @@ downloadOptionsErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the download options card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text "A problem occurred in the Download Options card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -291,13 +292,13 @@ downloadOptionsErrorMessage { accessType, expanded } err =
     CE.DownloadOptionsFilenameRequired →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "No filename was provided." ]
+          [ pure $ HH.h1_ [ HH.text "No filename was provided in the Download Options card." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.DownloadOptionsFilenameInvalid fn →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "The provided filename was invalid." ]
+          [ pure $ HH.h1_ [ HH.text "The filename provided in the Download Options card is invalid." ]
           , pure $ HH.p_
               [ HH.code_ [ HH.text fn ], HH.text " is not a valid filepath." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
@@ -317,24 +318,22 @@ openErrorMessage { accessType, expanded } err =
     CE.OpenFileNotFound fp →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "File not found" ]
+          [ pure $ HH.h1_ [ HH.text "A file that was selected in the Open card could not be found." ]
           , pure $ HH.p_
-              [ HH.code_ [ HH.text fp ], HH.text " did not exist." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+              [ HH.code_ [ HH.text fp ], HH.text " does not exist." ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and make a new selection to fix this error." ]
           ]
     CE.OpenNoResourceSelected →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "No resource was selected." ]
+          [ pure $ HH.h1_ [ HH.text "No resource was selected in the Open card." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select either a file or a variable to fix this error." ]
           ]
     CE.OpenNoFileSelected →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "Invalid resource type" ]
-          , pure $ HH.p_
-              [ HH.text "Only files or variables can be chosen in the Open card" ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          [ pure $ HH.h1_ [ HH.text "The resource selected in the Open card is of an invalid type" ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select a file or variable to fix this error." ]
           ]
 
 tableErrorMessage ∷ State → CE.TableError → HTML
