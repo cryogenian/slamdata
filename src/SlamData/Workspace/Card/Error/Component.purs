@@ -34,6 +34,7 @@ import SlamData.Monad (Slam)
 import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
+import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..), cardName)
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Error (CardError(..), cardToGlobalError)
@@ -140,7 +141,7 @@ queryErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the query card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (Ace SQLMode) <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -174,7 +175,7 @@ cacheErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the cache card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Cache <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -182,7 +183,7 @@ cacheErrorMessage { accessType, expanded } err =
     CE.CacheInvalidFilepath fp →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "There is a problem in the configuration of the cache card." ]
+          [ pure $ errorTitle [ HH.text $ "There is a problem in the configuration of the " <> cardName Cache <> " card." ]
           , pure $ HH.p_
               [ HH.text "The provided path "
               , HH.code_ [ HH.text fp ]
@@ -223,7 +224,7 @@ markdownErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the Markdown card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (Ace MarkdownMode) <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -276,7 +277,7 @@ markdownErrorMessage { accessType, expanded } err =
     CE.MarkdownTypeError t1 t2 →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "A type mismatch occurred when populating a field in the Markdown card." ]
+          [ pure $ errorTitle [ HH.text $ "A type mismatch occurred when populating a field in the " <> cardName (Ace MarkdownMode) <> " card." ]
           , pure $ HH.p_
               [ HH.text "We encountered the following type:"
               , HH.br_
@@ -304,7 +305,7 @@ downloadOptionsErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the Download Options card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName DownloadOptions <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -312,13 +313,13 @@ downloadOptionsErrorMessage { accessType, expanded } err =
     CE.DownloadOptionsFilenameRequired →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "No filename was provided in the Download Options card." ]
+          [ pure $ errorTitle [ HH.text $ "No filename was provided in the " <> cardName DownloadOptions <> " card." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.DownloadOptionsFilenameInvalid fn →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "The filename provided in the Download Options card is invalid." ]
+          [ pure $ errorTitle [ HH.text $ "The filename provided in the " <> cardName DownloadOptions <> " card is invalid." ]
           , pure $ HH.p_
               [ HH.code_ [ HH.text fn ], HH.text " is not a valid filepath." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
@@ -330,7 +331,7 @@ openErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the Open card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Open <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -338,7 +339,7 @@ openErrorMessage { accessType, expanded } err =
     CE.OpenFileNotFound fp →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "A file that was selected in the Open card could not be found." ]
+          [ pure $ errorTitle [ HH.text $ "A file that was selected in the " <> cardName Open <> " card could not be found." ]
           , pure $ HH.p_
               [ HH.code_ [ HH.text fp ], HH.text " does not exist." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and make a new selection to fix this error." ]
@@ -346,13 +347,13 @@ openErrorMessage { accessType, expanded } err =
     CE.OpenNoResourceSelected →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "No resource was selected in the Open card." ]
+          [ pure $ errorTitle [ HH.text $ "No resource was selected in the " <> cardName Open <> " card." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select either a file or a variable to fix this error." ]
           ]
     CE.OpenNoFileSelected →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "The resource selected in the Open card is of an invalid type" ]
+          [ pure $ errorTitle [ HH.text $ "The resource selected in the " <> cardName Open <> " card is of an invalid type" ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select a file or variable to fix this error." ]
           ]
 
@@ -362,14 +363,14 @@ tableErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the Preview Table card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Table <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
   renderDetails = case _ of
     CE.TableMissingResourceInputError →
       HH.div_
-        [ errorTitle [ HH.text "The preview table card requires data as an input." ] ]
+        [ errorTitle [ HH.text $ "The " <> cardName Table <> " card requires data as an input." ] ]
     CE.TableCountQuasarError qErr →
       HH.div_
         $ join
@@ -389,7 +390,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the Forminput static card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (SetupFormInput FIT.Static) <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -397,7 +398,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
     CE.FIStaticNoAxis →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput static card." ]
+          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput FIT.Static) <> " card." ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -405,7 +406,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
     CE.FIStaticMissingAxis axis →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput static card." ]
+          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput FIT.Static) <> " card." ]
           , pure $ HH.p_
               [ HH.text "The selected axis was not present in the data." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
@@ -416,24 +417,33 @@ formInputLabeledErrorMessage { accessType, expanded } err =
   case accessType of
     Editable → renderDetails err
     ReadOnly →
-      HH.div_
-        [ HH.p_ [ HH.text "A problem occurred in the Forminput labeled card, please notify the author of this workspace." ]
-        , collapsible "Error details" (renderDetails err) expanded
-        ]
+      let
+        fit = extractType err
+      in
+        HH.div_
+          [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (SetupFormInput fit) <> " card, please notify the author of this workspace." ]
+          , collapsible "Error details" (renderDetails err) expanded
+          ]
   where
+  extractType = case _ of
+    CE.FILabeledNoAxisError fit → fit
+    CE.FILabeledEmptyResourceError fit → fit
+    CE.FILabeledTooManyEntries { formInputType } → formInputType
+    CE.FILabeledTooManySelected { formInputType } → formInputType
+    CE.FILabeledNonUniqueLabelError fit _ → fit
   renderDetails = case _ of
-    CE.FILabeledNoAxisError →
+    CE.FILabeledNoAxisError fit →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput labeled card." ]
+          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput fit) <> " card." ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]
-    CE.FILabeledEmptyResourceError →
+    CE.FILabeledEmptyResourceError fit →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput labeled card." ]
+          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput fit) <> " card." ]
           , pure $ HH.p_
               [ HH.text "The selected resource was empty." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -450,7 +460,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
       in
         HH.div_
           $ join
-            [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput labeled card." ]
+            [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput formInputType) <> " card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
             , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -467,16 +477,16 @@ formInputLabeledErrorMessage { accessType, expanded } err =
       in
         HH.div_
           $ join
-            [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput labeled card." ]
+            [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput formInputType) <> " card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
             , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
             ]
     -- TODO: Use the label argument for a better error message
-    CE.FILabeledNonUniqueLabelError label →
+    CE.FILabeledNonUniqueLabelError fit label →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput labeled card." ]
+          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput fit) <> " card." ]
           , pure $ HH.p_
               [ HH.text "Labels must be unique. Please, use other axis." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]

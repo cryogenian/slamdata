@@ -20,8 +20,8 @@ import SlamData.Prelude
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 
 data FormInputLabeledError
-  = FILabeledNoAxisError
-  | FILabeledEmptyResourceError
+  = FILabeledNoAxisError FormInputType
+  | FILabeledEmptyResourceError FormInputType
   | FILabeledTooManyEntries
     { formInputType ∷ FormInputType
     , maximum ∷ Int
@@ -32,12 +32,12 @@ data FormInputLabeledError
     , maximum ∷ Int
     , selectedCount ∷ Int
     }
-  | FILabeledNonUniqueLabelError (Maybe String)
+  | FILabeledNonUniqueLabelError FormInputType (Maybe String)
 
 instance showFormInputLabeledError ∷ Show FormInputLabeledError where
   show = case _ of
-    FILabeledNoAxisError → "FILabeledNoAxisError"
-    FILabeledEmptyResourceError → "FILabeledEmptyResourceError"
+    FILabeledNoAxisError fit → "(FILabeledNoAxisError " <> show fit <> ")"
+    FILabeledEmptyResourceError fit → "(FILabeledEmptyResourceError " <> show fit <> ")"
     FILabeledTooManyEntries { formInputType, maximum, entryCount } →
       "(FILabeledTooManyEntries "
       <> "{ formInputType: " <> show formInputType
@@ -50,5 +50,5 @@ instance showFormInputLabeledError ∷ Show FormInputLabeledError where
       <> ", maximum: " <> show maximum
       <> ", selectedCount: " <> show selectedCount
       <> " })"
-    FILabeledNonUniqueLabelError label →
-      "(FILabeledNonUniqueLabelError " <> show label <> ")"
+    FILabeledNonUniqueLabelError fit label →
+      "(FILabeledNonUniqueLabelError " <> show fit <> " " <> show label <> ")"

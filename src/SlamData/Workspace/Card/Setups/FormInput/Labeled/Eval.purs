@@ -49,10 +49,10 @@ eval m formInputType resource = do
   records × axes ← BCE.analyze resource =<< get
   put (Just (CEM.Analysis { resource, axes, records}))
   case m <|> B.defaultModel behaviour m initialState{axes = axes} of
-    Nothing → CE.throwFormInputLabeledError CE.FILabeledNoAxisError
+    Nothing → CE.throwFormInputLabeledError (CE.FILabeledNoAxisError formInputType)
     Just conf → do
       when (Arr.null records)
-        $ CE.throwFormInputLabeledError CE.FILabeledEmptyResourceError
+        $ CE.throwFormInputLabeledError (CE.FILabeledEmptyResourceError formInputType)
       selectedValues × valueLabelMap × _ × _ ←
         Arr.foldM (foldFn conf) (Set.empty × Map.empty × 0 × 0) records
       pure
@@ -90,7 +90,7 @@ eval m formInputType resource = do
             pure $ (keyCount + one) × Map.insert value mbNewLabel vlmap
           Just mbExistingLabel → do
             when (mbExistingLabel ≠ mbNewLabel) $
-              CE.throwFormInputLabeledError (CE.FILabeledNonUniqueLabelError mbExistingLabel)
+              CE.throwFormInputLabeledError (CE.FILabeledNonUniqueLabelError formInputType mbExistingLabel)
             pure $ keyCount × vlmap
     newSelCount × newSelected ←
       pure $ case conf.selected >>= Sem.getSemantics record of
