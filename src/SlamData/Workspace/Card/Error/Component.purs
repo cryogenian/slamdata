@@ -173,7 +173,7 @@ cacheErrorMessage { accessType, expanded } err =
     CE.CacheQuasarError qe →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ I.warningSm, HH.text " Caching the result of a query failed." ]
+          [ pure $ HH.h1_ [ I.warningSm, HH.text "Caching the result of a query failed." ]
           , pure $ HH.p_ [ HH.text "The Quasar analytics engine returned an error while verifying the cache result." ]
           , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails qe) expanded
           ]
@@ -191,7 +191,10 @@ cacheErrorMessage { accessType, expanded } err =
     CE.CacheResourceNotModified →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "Caching the result of a query failed." ]
+          [ pure $ HH.h1_
+              [ I.warningSm
+              , HH.span_ [ HH.text "Caching the result of a query failed." ]
+              ]
           , pure $ HH.p_ [ HH.text "Caching can only be applied to queries that perform at least one transformation on an existing data set." ]
           -- TODO: only show this solution when there are no following cards?
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and delete it to fix this error." ]
