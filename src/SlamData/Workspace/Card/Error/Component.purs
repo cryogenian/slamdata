@@ -63,6 +63,13 @@ render st =
     [ HP.class_ (H.ClassName "sd-error-container") ]
     [ prettyPrintCardError st st.error ]
 
+errorTitle ∷ Array HTML → HTML
+errorTitle title =
+  HH.h1_
+    [ I.warningSm
+    , HH.span_ title
+    ]
+
 eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
@@ -131,13 +138,13 @@ queryErrorMessage { accessType, expanded } err =
     CE.QueryCompileError qErr →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An error occurred during query compilation." ]
+          [ pure $ errorTitle [ HH.text "An error occurred during query compilation." ]
           , renderMore qErr
           ]
     CE.QueryRetrieveResultError qErr →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An error occurred when retrieving the query result." ]
+          [ pure $ errorTitle [ HH.text "An error occurred when retrieving the query result." ]
           , renderMore qErr
           ]
   renderMore = case _ of
@@ -165,7 +172,7 @@ cacheErrorMessage { accessType, expanded } err =
     CE.CacheInvalidFilepath fp →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "There is a problem in the configuration of the cache card." ]
+          [ pure $ errorTitle [ HH.text "There is a problem in the configuration of the cache card." ]
           , pure $ HH.p_
               [ HH.text "The provided path "
               , HH.code_ [ HH.text fp ]
@@ -176,14 +183,14 @@ cacheErrorMessage { accessType, expanded } err =
     CE.CacheQuasarError qe →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ I.warningSm, HH.text "Caching the result of a query failed." ]
+          [ pure $ errorTitle [ HH.text "Caching the result of a query failed." ]
           , pure $ HH.p_ [ HH.text "The Quasar analytics engine returned an error while verifying the cache result." ]
           , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails qe) expanded
           ]
     CE.CacheErrorSavingFile fp →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "Caching the result of a query failed." ]
+          [ pure $ errorTitle [ HH.text "Caching the result of a query failed." ]
           , pure $ HH.p_
               [ HH.text "The file "
               , HH.code_ [ HH.text (Path.printPath fp) ]
@@ -194,10 +201,7 @@ cacheErrorMessage { accessType, expanded } err =
     CE.CacheResourceNotModified →
       HH.div_
         $ join
-          [ pure $ HH.h1_
-              [ I.warningSm
-              , HH.span_ [ HH.text "Caching the result of a query failed." ]
-              ]
+          [ pure $ errorTitle [ HH.text "Caching the result of a query failed." ]
           , pure $ HH.p_ [ HH.text "Caching can only be applied to queries that perform at least one transformation on an existing data set." ]
           -- TODO: only show this solution when there are no following cards?
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and delete it to fix this error." ]
@@ -218,7 +222,7 @@ markdownErrorMessage { accessType, expanded } err =
     CE.MarkdownParseError {markdown, error} →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "Parsing the provided Markdown failed." ]
+          [ pure $ errorTitle [ HH.text "Parsing the provided Markdown failed." ]
           , pure $ HH.p_
               [ HH.text "We encountered the following parse error: "
               , HH.code_ [ HH.text error ]
@@ -228,41 +232,41 @@ markdownErrorMessage { accessType, expanded } err =
     CE.MarkdownSqlParseError {sql, error} →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "Parsing SQL embedded inside Markdown failed." ]
+          [ pure $ errorTitle [ HH.text "Parsing SQL embedded inside Markdown failed." ]
           , pure $ renderParseError error sql
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.MarkdownNoTextBoxResults →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "A text box field did not return any results." ]
+          [ pure $ errorTitle [ HH.text "A text box field did not return any results." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.MarkdownInvalidTimeValue { time, error } →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An invalid time value was provided." ]
+          [ pure $ errorTitle [ HH.text "An invalid time value was provided." ]
           , pure $ renderParseError error time
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.MarkdownInvalidDateValue { date, error } →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An invalid date value was provided." ]
+          [ pure $ errorTitle [ HH.text "An invalid date value was provided." ]
           , pure $ renderParseError error date
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.MarkdownInvalidDateTimeValue { datetime, error } →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An invalid timestamp value was provided." ]
+          [ pure $ errorTitle [ HH.text "An invalid timestamp value was provided." ]
           , pure $ renderParseError error datetime
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.MarkdownTypeError t1 t2 →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "A type mismatch occurred when populating a field in the Markdown card." ]
+          [ pure $ errorTitle [ HH.text "A type mismatch occurred when populating a field in the Markdown card." ]
           , pure $ HH.p_
               [ HH.text "We encountered the following type:"
               , HH.br_
@@ -298,13 +302,13 @@ downloadOptionsErrorMessage { accessType, expanded } err =
     CE.DownloadOptionsFilenameRequired →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "No filename was provided in the Download Options card." ]
+          [ pure $ errorTitle [ HH.text "No filename was provided in the Download Options card." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.DownloadOptionsFilenameInvalid fn →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "The filename provided in the Download Options card is invalid." ]
+          [ pure $ errorTitle [ HH.text "The filename provided in the Download Options card is invalid." ]
           , pure $ HH.p_
               [ HH.code_ [ HH.text fn ], HH.text " is not a valid filepath." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
@@ -324,7 +328,7 @@ openErrorMessage { accessType, expanded } err =
     CE.OpenFileNotFound fp →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "A file that was selected in the Open card could not be found." ]
+          [ pure $ errorTitle [ HH.text "A file that was selected in the Open card could not be found." ]
           , pure $ HH.p_
               [ HH.code_ [ HH.text fp ], HH.text " does not exist." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and make a new selection to fix this error." ]
@@ -332,13 +336,13 @@ openErrorMessage { accessType, expanded } err =
     CE.OpenNoResourceSelected →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "No resource was selected in the Open card." ]
+          [ pure $ errorTitle [ HH.text "No resource was selected in the Open card." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select either a file or a variable to fix this error." ]
           ]
     CE.OpenNoFileSelected →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "The resource selected in the Open card is of an invalid type" ]
+          [ pure $ errorTitle [ HH.text "The resource selected in the Open card is of an invalid type" ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select a file or variable to fix this error." ]
           ]
 
@@ -356,20 +360,20 @@ tableErrorMessage { accessType, expanded } err =
     CE.TableMissingResourceInputError →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "Expected a TaggedResource input." ]
+          [ pure $ errorTitle [ HH.text "Expected a TaggedResource input." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.TableCountQuasarError qErr →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "A error occured when counting the preview data." ]
+          [ pure $ errorTitle [ HH.text "A error occured when counting the preview data." ]
           , pure $ printQErrorWithDetails qErr
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.TableSampleQuasarError qErr →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "A error occured during sampling of the preview data." ]
+          [ pure $ errorTitle [ HH.text "A error occured during sampling of the preview data." ]
           , pure $ printQErrorWithDetails qErr
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
@@ -388,7 +392,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
     CE.FIStaticNoAxis →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput static card." ]
+          [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput static card." ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -396,7 +400,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
     CE.FIStaticMissingAxis axis →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput static card." ]
+          [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput static card." ]
           , pure $ HH.p_
               [ HH.text "The selected axis was not present in the data." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
@@ -416,7 +420,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CE.FILabeledNoAxisError →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput labeled card." ]
+          [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput labeled card." ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -424,7 +428,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CE.FILabeledEmptyResourceError →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput labeled card." ]
+          [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput labeled card." ]
           , pure $ HH.p_
               [ HH.text "The selected resource was empty." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -441,7 +445,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
       in
         HH.div_
           $ join
-            [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput labeled card." ]
+            [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput labeled card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
             , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -458,7 +462,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
       in
         HH.div_
           $ join
-            [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput labeled card." ]
+            [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput labeled card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
             , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -467,7 +471,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CE.FILabeledNonUniqueLabelError label →
       HH.div_
         $ join
-          [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput labeled card." ]
+          [ pure $ errorTitle [ HH.text "An error occured when setting up the Forminput labeled card." ]
           , pure $ HH.p_
               [ HH.text "Labels must be unique. Please, use other axis." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
