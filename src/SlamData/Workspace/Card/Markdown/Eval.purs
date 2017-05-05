@@ -37,6 +37,7 @@ import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 import SqlSquared as Sql
+import Text.Parsing.Parser (parseErrorMessage)
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
@@ -70,7 +71,7 @@ evalMarkdown
 evalMarkdown str varMap = do
   CEM.CardEnv { path } ← ask
   case SDP.parseMd str of
-    Left e → CE.throw e
+    Left e → CE.throwMarkdownError (CE.MarkdownParseError {markdown: str, error: e})
     Right sd → do
       let sm = map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
       doc ← evalEmbeddedQueries sm path sd
@@ -151,7 +152,7 @@ evalEmbeddedQueries sm dir =
     let sql = unwrap $ SD.traverseTextBox (map \_ → Const unit) tb
     mresult ← A.head <$> runQuery sql
     result ←
-      maybe (CE.throw "No results") (pure ∘ extractSingletonObject) mresult
+      maybe (CE.throwMarkdownError CE.MarkdownNoTextBoxResults) (pure ∘ extractSingletonObject) mresult
     case tb, project result of
       (SD.PlainText _), (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
@@ -159,17 +160,17 @@ evalEmbeddedQueries sm dir =
         pure ∘ SD.Numeric $ pure a
       (SD.Time prec _), (EJSON.String time) →
         case SqlT.parseTime time of
-          Left _ → CE.throw $ "Incorrect time value: " ⊕ show time
+          Left error → CE.throwMarkdownError (CE.MarkdownInvalidTimeValue { time, error })
           Right r → pure ∘ SD.Time prec $ pure r
-      (SD.Date _), (EJSON.String d) →
-        case SqlT.parseDate d of
-          Left _ → CE.throw $ "Incorrect date value: " ⊕ show d
+      (SD.Date _), (EJSON.String date) →
+        case SqlT.parseDate date of
+          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateValue { date, error })
           Right r → pure ∘ SD.Date $ pure r
-      (SD.DateTime prec _), (EJSON.String dt) →
-        case SqlT.parseDateTime dt of
-          Left _ → CE.throw $ "Incorrect datetime value: " ⊕ show dt
+      (SD.DateTime prec _), (EJSON.String datetime) →
+        case SqlT.parseDateTime datetime of
+          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateTimeValue { datetime, error })
           Right r → pure ∘ SD.DateTime prec $ pure r
-      _, _ → CE.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
+      _, _ → CE.throwMarkdownError (CE.MarkdownTypeError (show result) (show tb))
 
   evalList
     ∷ String
@@ -191,7 +192,8 @@ evalEmbeddedQueries sm dir =
   runQuery code =
     let esql = Sql.parse code
     in case esql of
-      Left e → CE.throw "Error parsing sql query"
+      Left error →
+        CE.throwMarkdownError (CE.MarkdownSqlParseError { sql: code, error: parseErrorMessage error })
       Right sql → do
         {inputs} ← CE.liftQ $ Quasar.compile dir sql sm
         CEM.addSources inputs

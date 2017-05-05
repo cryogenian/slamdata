@@ -103,9 +103,6 @@ cardInput = ClassName "card-input"
 aceContainer ∷ ClassName
 aceContainer = ClassName "ace-container"
 
-cardFailures ∷ ClassName
-cardFailures = ClassName "card-failures"
-
 pageSize ∷ ClassName
 pageSize = ClassName "page-size"
 

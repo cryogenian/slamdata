@@ -43,6 +43,7 @@ import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Line.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
@@ -170,8 +171,27 @@ buildLineData r =
 
 lineOptions ∷ Axes → ModelR → Array LineSerie → DSL OptionI
 lineOptions axes r lineData = do
+  let
+    cols =
+      [ { label: D.jcursorLabel r.dimension, value: CCT.formatValueIx 0 }
+      , { label: D.jcursorLabel r.value, value: \x →
+           if isNothing r.secondValue ∨ x.seriesIndex `mod` 2 ≡ 0
+           then CCT.formatValueIx 1 x
+           else ""
+        }
+      ]
+    opts = A.catMaybes
+      [ r.secondValue <#> \dim → { label: D.jcursorLabel dim, value: \x →
+                                    if x.seriesIndex `mod` 2 ≡ 0
+                                    then ""
+                                    else CCT.formatValueIx 1 x
+                                 }
+      , r.size <#> \dim → { label: D.jcursorLabel dim, value: CCT.formatSymbolSize }
+      , r.series <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
+      ]
   E.tooltip do
-    if isJust r.size then E.triggerItem else E.triggerAxis
+    E.triggerItem
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
     E.textStyle $ E.fontSize 12
 
   E.colors colors

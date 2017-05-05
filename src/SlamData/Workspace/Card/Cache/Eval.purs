@@ -70,10 +70,10 @@ eval' tmp resource = do
         ∘ (Sql._relations .~ tableRelation filePath)
   outputResource ← CE.liftQ $
     QQ.fileQuery backendPath tmp sql SM.empty
-  checkResult ← QFS.messageIfFileNotFound outputResource CE.CacheErrorSavingFile
+  checkResult ← QFS.messageIfFileNotFound outputResource (CE.CacheErrorSavingFile outputResource)
   for_ (either (Just ∘ CE.CacheQuasarError) id checkResult)
     CE.throwCacheError
   when (tmp /= outputResource) $
-    CE.throwCacheError (CE.CacheResourceNotModified outputResource)
+    CE.throwCacheError CE.CacheResourceNotModified
   CEM.addCache outputResource
   pure (Port.Path outputResource)

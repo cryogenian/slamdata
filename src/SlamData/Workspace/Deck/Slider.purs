@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,7 +46,6 @@ import SlamData.Hint as Hint
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component.CSS as CardCSS
-import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Factory as Factory
 import SlamData.Workspace.Card.Next.Component as Next
@@ -334,7 +333,7 @@ renderMeta st card =
         DCS.ErrorCard error →
           HH.div
             [ HP.classes [ HH.ClassName "sd-card-error" ] ]
-            [ HH.slot' ChildSlot.cpError unit Error.errorCardComponent (CE.prettyPrintCardError error) absurd
+            [ HH.slot' ChildSlot.cpError unit Error.errorCardComponent error absurd
             ]
         DCS.NextActionCard input →
           HH.div

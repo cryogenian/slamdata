@@ -100,7 +100,7 @@ render state =
     , HH.hr_
     , row [ renderIsStacked state, renderIsSmooth state ]
     , HH.hr_
-    , row [ renderAxisLabelAngle state ]
+    , row [ renderAxisLabelAngle state, renderSize state ]
     ]
 
 
@@ -150,6 +150,22 @@ renderIsSmooth state =
         ]
     ]
 
+renderSize ∷ ST.State → HTML
+renderSize state =
+  HH.div
+    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    ]
+    [ HH.label
+        [ HP.classes [ B.controlLabel ] ]
+        [ HH.text "Size" ]
+    , HH.input
+        [ HP.classes [ B.formControl ]
+        , HP.value $ show state.size
+        , ARIA.label "Size"
+        , HE.onValueChange $ HE.input (\s → right ∘ Q.SetSize s)
+        ]
+    ]
+
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.Activate next →
@@ -163,6 +179,7 @@ cardEval = case _ of
         { axisLabelAngle: st.axisLabelAngle
         , isStacked: st.isStacked
         , isSmooth: st.isSmooth
+        , size: st.size
         , dimension: D.topDimension
         , value: D.topDimension
         , series: Nothing
@@ -174,7 +191,7 @@ cardEval = case _ of
   CC.Load m next → do
     _ ← H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     for_ (m ^? M._BuildArea ∘ _Just) \r →
-      H.modify _{ isStacked = r.isStacked, isSmooth = r.isSmooth }
+      H.modify _{ isStacked = r.isStacked, isSmooth = r.isSmooth, size = r.size }
     pure next
   CC.ReceiveInput _ _ next →
     pure next
@@ -196,6 +213,13 @@ raiseUpdate =
 
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
+  Q.SetSize str next → do
+    let fl = readFloat str
+    unless (isNaN fl)
+      $ H.modify _{ size = fl }
+    raiseUpdate
+    pure next
+
   Q.SetAxisLabelAngle str next → do
     let fl = readFloat str
     unless (isNaN fl) do

@@ -145,6 +145,8 @@ decode cturs js = do
         bo.smooth
       axisLabelAngle =
         Int.toNumber bo.axisLabelAngle
+      size =
+        10.0
 
       areaR =
         { dimension: _
@@ -153,6 +155,7 @@ decode cturs js = do
         , isStacked
         , isSmooth
         , axisLabelAngle
+        , size
         }
         <$> dimension
         <*> value
@@ -325,7 +328,7 @@ decode cturs js = do
       size =
         Nothing
       minSize =
-        2.0
+        10.0
       maxSize =
         20.0
       axisLabelAngle =

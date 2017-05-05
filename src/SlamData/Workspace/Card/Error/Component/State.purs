@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,22 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Error.Component.State
-  ( State
-  , initialState
-  , _message
-  ) where
+module SlamData.Workspace.Card.Error.Component.State where
 
-import Data.Lens (Lens', lens)
+import SlamData.Workspace.AccessType (AccessType(..))
+import SlamData.Workspace.Card.Error (CardError)
 
 type State =
-  { message ∷ String
+  { error ∷ CardError
+  , expanded ∷ Boolean
+  , accessType ∷ AccessType
   }
 
-initialState ∷ State
+initialState ∷ CardError → State
 initialState =
-  { message: ""
+  { error: _
+  , expanded: false
+  , accessType: Editable
   }
-
-_message ∷ Lens' State String
-_message = lens (_.message) (_ { message = _ })

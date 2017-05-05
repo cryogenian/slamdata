@@ -23,3 +23,4 @@ data Query a
   | SetAxisLabelAngle String a
   | ToggleStacked a
   | HandleDims Q.Message a
+  | SetSize String a

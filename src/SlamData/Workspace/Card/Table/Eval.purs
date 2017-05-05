@@ -41,7 +41,7 @@ eval
   → m Port.Out
 eval model port varMap =
   Port.extractResource varMap
-    # maybe (CE.throw "Expected a TaggedResource input") \resource → do
+    # maybe (CE.throwTableError CE.TableMissingResourceInputError) \resource → do
       rawTableState ← map (_ ^? _Just ∘ ES._Table ) get
       let
         defaultState =
@@ -63,14 +63,14 @@ eval model port varMap =
           size ←
             case rawTableState of
               Just t | t.resource ≡ resource → pure t.size
-              _ → CE.liftQ $ Quasar.count $ resource ^. Port._filePath
-          result ←
-            CE.liftQ $
-              Quasar.sample
-                (resource ^. Port._filePath)
-                ((page - 1) * pageSize)
-                pageSize
-          pure $ result × size
+              _ → Quasar.count (resource ^. Port._filePath) >>= case _ of
+                Left err → CE.throwTableError (CE.TableCountQuasarError err)
+                Right result → pure result
+          sampleResult ← Quasar.sample (resource ^. Port._filePath) ((page - 1) * pageSize) pageSize
+          case sampleResult of
+            Left err → CE.throwTableError (CE.TableSampleQuasarError err)
+            Right result →
+              pure $ result × size
         put $ Just $ ES.Table
           { resource
           , result: fst resultAndSize
