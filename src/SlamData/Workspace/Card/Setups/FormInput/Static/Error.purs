@@ -14,8 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Error.Component.Query where
+module SlamData.Workspace.Card.Setups.FormInput.Static.Error where
 
-data Query a
-  = Init a
-  | ToggleExpanded Boolean a
+import SlamData.Prelude
+
+data FormInputStaticError
+  = FIStaticNoAxis
+  | FIStaticMissingAxis String
+
+instance showFormInputStaticError ∷ Show FormInputStaticError where
+  show = case _ of
+    FIStaticNoAxis → "FIStaticNoAxis"
+    FIStaticMissingAxis axis → "(FIStaticMissingAxis " <> show axis <> ")"

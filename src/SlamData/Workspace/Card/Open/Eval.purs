@@ -33,7 +33,6 @@ import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquared as Sql
-import Utils.Path (FilePath)
 import Utils.SqlSquared (all)
 
 evalOpen
@@ -46,14 +45,14 @@ evalOpen
   → Port.DataMap
   → m Port.Out
 evalOpen model varMap = case model of
-  Nothing → noResource
+  Nothing → CE.throwOpenError CE.OpenNoResourceSelected
   Just (Open.Resource res) → do
-    filePath ← maybe noResource pure $ res ^? R._filePath
+    filePath ← maybe (CE.throwOpenError CE.OpenNoFileSelected) pure $ res ^? R._filePath
     checkPath filePath >>= case _ of
       Nothing → do
         CEM.addSource filePath
         pure (Port.resourceOut (Port.Path filePath))
-      Just err → CE.throw err
+      Just err → CE.throwOpenError err
   Just (Open.Variable (VM.Var var)) → do
     res ← CEM.temporaryOutputResource
     let
@@ -67,14 +66,8 @@ evalOpen model varMap = case model of
         fromMaybe Path.rootDir $ Path.parentDir res
 
     CE.liftQ $ QQ.viewQuery res sql varMap'
-    pure $ Port.resourceOut $ Port.View res (Sql.print $ sql) varMap
+    pure $ Port.resourceOut $ Port.View res (Sql.print sql) varMap
 
   where
-  noResource ∷ ∀ a. m a
-  noResource =
-    CE.throw "No resource is selected"
-
-  checkPath ∷ FilePath → m (Maybe String)
   checkPath filePath =
-    CE.liftQ $ QFS.messageIfFileNotFound filePath $
-      "File " ⊕ Path.printPath filePath ⊕ " doesn't exist"
+    CE.liftQ $ QFS.messageIfFileNotFound filePath $ CE.OpenFileNotFound (Path.printPath filePath)

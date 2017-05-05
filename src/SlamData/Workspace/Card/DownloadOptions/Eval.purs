@@ -40,16 +40,13 @@ eval { compress, options, targetName } resource = case targetName of
       , targetName: runFileName (fileName (resource ^. Port._filePath))
       , resource: resource ^. Port._filePath
       }
-  Just "" → required
+  Just "" → CE.throwDownloadOptionsError CE.DownloadOptionsFilenameRequired
   Just fn → do
     when (isLeft (D.validFilename fn)) do
-      CE.throw $ "Invalid target filename: " <> fn
+      CE.throwDownloadOptionsError (CE.DownloadOptionsFilenameInvalid fn)
     pure $ Port.DownloadOptions
       { compress
       , options
       , targetName: fn
       , resource: resource ^. Port._filePath
       }
-
-  where
-    required = CE.throw "Target filename required"

@@ -1,5 +1,5 @@
 {-
-Copyright 2017 SlamData, Inc.
+Copyright 2016 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Error.Component.Query where
+module SlamData.Workspace.Card.Open.Error where
 
-data Query a
-  = Init a
-  | ToggleExpanded Boolean a
+import SlamData.Prelude
+
+data OpenError
+  = OpenFileNotFound String
+  | OpenNoResourceSelected
+  | OpenNoFileSelected
+
+instance showMarkdownError ∷ Show OpenError where
+  show = case _ of
+    OpenFileNotFound filepath →
+      "(OpenFileNotFound " <> show filepath <> ")"
+    OpenNoResourceSelected →
+      "OpenNoResourceSelected"
+    OpenNoFileSelected →
+      "OpenNoFileSelected"

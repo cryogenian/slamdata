@@ -14,8 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Error.Component.Query where
+module SlamData.Workspace.Card.DownloadOptions.Error where
 
-data Query a
-  = Init a
-  | ToggleExpanded Boolean a
+import SlamData.Prelude
+
+data DownloadOptionsError
+  = DownloadOptionsFilenameRequired
+  | DownloadOptionsFilenameInvalid String
+
+instance showDownloadOptionsError ∷ Show DownloadOptionsError where
+  show = case _ of
+    DownloadOptionsFilenameRequired → "DownloadOptionsFilenameRequired"
+    DownloadOptionsFilenameInvalid fn → "(DownloadOptionsFilenameInvalid " <> show fn <> ")"

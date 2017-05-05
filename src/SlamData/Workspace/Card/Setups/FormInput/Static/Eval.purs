@@ -31,6 +31,7 @@ import SlamData.Workspace.Card.Setups.Behaviour as B
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.FormInput.Static.Model (Model, behaviour, initialState)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
+import Utils (showPrettyJCursor)
 
 eval
   ∷ ∀ m
@@ -45,9 +46,9 @@ eval m resource = do
   put (Just (CEM.Analysis { resource, records, axes }))
   case m <|> B.defaultModel behaviour m initialState{axes = axes} of
     Nothing →
-      CE.throw "Please select axis."
+      CE.throwFormInputStaticError CE.FIStaticNoAxis
     Just conf → case Arr.head records >>= flip Sem.getMaybeString conf.value of
       Nothing →
-        CE.throw $ show conf.value <> " axis is not presented in this resource"
+        CE.throwFormInputStaticError (CE.FIStaticMissingAxis (showPrettyJCursor conf.value))
       Just value →
         pure $ Port.CategoricalMetric { value, label: Nothing }

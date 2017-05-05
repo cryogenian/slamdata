@@ -50,6 +50,18 @@ data FormInputType
   | Time
   | Datetime
 
+instance showFormInputType ∷ Show FormInputType where
+  show = case _ of
+    Dropdown → "Dropdown"
+    Static → "Static"
+    Text → "Text"
+    Numeric → "Numeric"
+    Checkbox → "Checkbox"
+    Radio → "Radio"
+    Date → "Date"
+    Time → "Time"
+    Datetime → "Datetime"
+
 isLabeled ∷ FormInputType → Boolean
 isLabeled = case _ of
   Dropdown → true

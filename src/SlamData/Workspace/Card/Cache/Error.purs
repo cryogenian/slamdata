@@ -18,47 +18,25 @@ module SlamData.Workspace.Card.Cache.Error where
 
 import SlamData.Prelude
 
-import Data.Path.Pathy as Path
-import Quasar.Advanced.QuasarAF (QError, printQError)
-import Quasar.Types (FilePath)
+import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
 import Utils (hush)
+import Utils.Path (FilePath)
 
 data CacheError
   = CacheInvalidFilepath String
   | CacheQuasarError QError
-  | CacheErrorSavingFile
-  | CacheResourceNotModified FilePath
+  | CacheErrorSavingFile FilePath
+  | CacheResourceNotModified
 
 instance showCacheError ∷ Show CacheError where
   show = case _ of
     CacheInvalidFilepath fp → "(CacheInvalidFilepath " <> show fp <> ")"
-    CacheQuasarError qErr → "(CacheQuasarError " <> printQError qErr <> ")"
-    CacheErrorSavingFile → "CacheErrorSavingFile"
-    CacheResourceNotModified fp → "(CacheResourceNotModified " <> show fp <> ")"
+    CacheQuasarError qErr → "(CacheQuasarError " <> show qErr <> ")"
+    CacheErrorSavingFile fp → "(CacheErrorSavingFile " <> show fp <> ")"
+    CacheResourceNotModified → "CacheResourceNotModified"
 
 cacheToGlobalError ∷ CacheError → Maybe GE.GlobalError
 cacheToGlobalError = case _ of
   CacheQuasarError qErr → hush (GE.fromQError qErr)
   _ → Nothing
-
--- TODO(Christoph): Instead of just showing a String, render a pretty Error Card
--- for these errors
-cacheErrorMessage ∷ CacheError → String
-cacheErrorMessage = case _ of
-   CacheInvalidFilepath fp →
-     fp <> " is not a valid file path"
-   CacheQuasarError qe →
-     "Encountered a Quasar Error while verifying the cache result: "
-     <> printQError qe
-   CacheErrorSavingFile →
-     "Error saving file, please try another location"
-   CacheResourceNotModified outputResource →
-     -- TODO: this error message is pretty obscure. I think it occurs when a query
-     -- is like "SELECT * FROM t" and quasar does no work. I'm not sure what the
-     -- behaviour of Save should be in that case - perhaps instead of failing it
-     -- could create a view so that a resource will actually be created. Debateable
-     -- as to whether that is "right", but at least it means a resource will exist
-     -- in the expected location, and the rest of the deck can run as the Save
-     -- failing has not effect on the output. -gb
-     "Resource: " <> Path.printPath outputResource <> " hasn't been modified"

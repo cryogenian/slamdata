@@ -192,6 +192,7 @@ modelToEval = case _ of
   Model.Table model → Table model
   _ → Pass
 
+-- TODO(Christoph): Get rid of this monstrosity of an error message
 extractResourceVar ∷ ∀ m. MonadThrow CE.CardError m ⇒ Port.DataMap → m (String × Port.Resource)
 extractResourceVar dm = case SM.toUnfoldable (Port.filterResources dm) of
   _ : _ : _ → CE.throw "Multiple resources selected"

@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,10 +49,10 @@ eval m formInputType resource = do
   records × axes ← BCE.analyze resource =<< get
   put (Just (CEM.Analysis { resource, axes, records}))
   case m <|> B.defaultModel behaviour m initialState{axes = axes} of
-    Nothing → CE.throw "Please select axis"
+    Nothing → CE.throwFormInputLabeledError (CE.FILabeledNoAxisError formInputType)
     Just conf → do
       when (Arr.null records)
-        $ CE.throw "The resource is empty"
+        $ CE.throwFormInputLabeledError (CE.FILabeledEmptyResourceError formInputType)
       selectedValues × valueLabelMap × _ × _ ←
         Arr.foldM (foldFn conf) (Set.empty × Map.empty × 0 × 0) records
       pure
@@ -65,20 +65,20 @@ eval m formInputType resource = do
           }
   where
   foldFn conf acc@(selected × vlmap × keyCount × selectedCount) record = do
-    when (keyCount > FIT.maximumCountOfEntries formInputType)
-      $ CE.throw
-      $ "The "
-      ⊕ FIT.printFormInputType formInputType
-      ⊕ " form input can't take more than "
-      ⊕ show (FIT.maximumCountOfEntries formInputType)
-      ⊕ ". Please use 'limit' or 'group by'"
-    when (selectedCount > FIT.maximumCountOfSelectedValues formInputType)
-      $ CE.throw
-      $ "The "
-      ⊕ FIT.printFormInputType formInputType
-      ⊕ " form input can't have more than "
-      ⊕ show (FIT.maximumCountOfSelectedValues formInputType)
-      ⊕ " selected values. Please, use other axis"
+    when (keyCount > FIT.maximumCountOfEntries formInputType) $
+      CE.throwFormInputLabeledError
+        (CE.FILabeledTooManyEntries
+          { formInputType
+          , maximum: FIT.maximumCountOfEntries formInputType
+          , entryCount: keyCount
+          })
+    when (selectedCount > FIT.maximumCountOfSelectedValues formInputType) $
+      CE.throwFormInputLabeledError
+        (CE.FILabeledTooManySelected
+          { formInputType
+          , maximum: FIT.maximumCountOfEntries formInputType
+          , selectedCount
+          })
     newKeyCount × newVlmap ← case Sem.getSemantics record conf.value of
       Nothing →
         pure $ keyCount × vlmap
@@ -89,9 +89,8 @@ eval m formInputType resource = do
           Nothing →
             pure $ (keyCount + one) × Map.insert value mbNewLabel vlmap
           Just mbExistingLabel → do
-            when (mbExistingLabel ≠ mbNewLabel)
-              $ CE.throw
-              $ "Labels must be unique. Please, use other axis."
+            when (mbExistingLabel ≠ mbNewLabel) $
+              CE.throwFormInputLabeledError (CE.FILabeledNonUniqueLabelError formInputType mbExistingLabel)
             pure $ keyCount × vlmap
     newSelCount × newSelected ←
       pure $ case conf.selected >>= Sem.getSemantics record of
