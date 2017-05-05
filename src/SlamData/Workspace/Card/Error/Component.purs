@@ -58,7 +58,10 @@ errorCardComponent =
     }
 
 render ∷ State → HTML
-render st = prettyPrintCardError st st.error
+render st =
+  HH.div
+    [ HP.class_ (H.ClassName "sd-error-container") ]
+    [ prettyPrintCardError st st.error ]
 
 eval ∷ Query ~> DSL
 eval = case _ of
