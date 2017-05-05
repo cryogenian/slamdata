@@ -27,8 +27,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
+import SlamData.Render.Common as R
 import SlamData.Render.CSS as Rc
-import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
@@ -60,11 +60,9 @@ render state =
         , HP.value state.searchString
         ]
     , HH.button
-        [ HP.title "Clear search string"
-        , ARIA.label "Clear search string"
-        , HE.onClick $ HE.input_ (right ∘ UpdateSearch "")
+        [ HE.onClick $ HE.input_ (right ∘ UpdateSearch "")
         ]
-        [ I.trashCanSm ]
+        [ R.clearFieldIcon "Clear search string" ]
     ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
