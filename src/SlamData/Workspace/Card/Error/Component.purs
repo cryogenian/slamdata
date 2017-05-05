@@ -50,8 +50,8 @@ errorCardComponent =
     { initialState: initialState
     , render
     , eval
-    -- TODO: check whether the card needs to be able to respond to input changes
-    -- it may be unnecessary, as I think the error card disappears between runs -gb
+    -- The input of this card is never modified after it is created, we only
+    -- use the input for the initial state.
     , receiver: const Nothing
     , initializer: Just (H.action Init)
     , finalizer: Nothing
