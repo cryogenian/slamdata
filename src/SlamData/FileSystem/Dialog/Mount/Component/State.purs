@@ -32,18 +32,17 @@ import Utils.Path (DirPath)
 
 type State =
   { new ∷ Boolean
-  , parent ∷ DirPath
-  , name ∷ String
+  , parent ∷ Maybe DirPath
+  , name ∷ Maybe String
   , message ∷ Maybe String
   , saving ∷ Boolean
   , settings ∷ Maybe MountSettings
   }
 
-type Input =
-  { parent ∷ DirPath
-  , name ∷ String
-  , settings ∷ Maybe MountSettings
-  }
+data Input
+  = New { parent ∷ DirPath }
+  | Edit { parent ∷ Maybe DirPath, name ∷ Maybe String, settings ∷  MountSettings }
+  | Root
 
 data MountSettings
   = MongoDB MongoDB.State
@@ -62,13 +61,13 @@ initialSettings = case _ of
   MS.SparkHDFS → SparkHDFS SparkHDFS.initialState
   MS.SparkLocal → SparkLocal SparkLocal.initialState
 
-_new ∷ Lens' State Boolean
-_new = lens _.new (_ { new = _ })
+_new ∷ Lens' State (Maybe DirPath)
+_new = lens _.parent (_ { parent = _ })
 
-_parent ∷ Lens' State DirPath
+_parent ∷ Lens' State (Maybe DirPath)
 _parent = lens _.parent (_ { parent = _ })
 
-_name ∷ forall a. Lens' { name ∷ String | a } String
+_name ∷ forall a. Lens' { name ∷ Maybe String | a } (Maybe String)
 _name = lens _.name (_ { name = _ })
 
 _message ∷ Lens' State (Maybe String)
@@ -81,14 +80,31 @@ _settings ∷ Lens' State (Maybe MountSettings)
 _settings = lens _.settings _{settings = _}
 
 initialState ∷ Input → State
-initialState { parent, name, settings } =
-  { new: isNothing settings
-  , parent
-  , settings
-  , name
-  , message: Nothing
-  , saving: false
-  }
+initialState = case _ of
+  New { parent } →
+    { new: true
+    , parent: Just parent
+    , settings: Nothing
+    , name: Just ""
+    , message: Nothing
+    , saving: false
+    }
+  Edit { parent, name, settings } →
+    { new: false
+    , parent: parent
+    , settings: Just settings
+    , name: name
+    , message: Nothing
+    , saving: false
+    }
+  Root →
+    { new: true
+    , parent: Nothing
+    , settings: Nothing
+    , name: Nothing
+    , message: Nothing
+    , saving: false
+    }
 
 scheme ∷ MountSettings → MS.Scheme
 scheme = case _ of
@@ -105,8 +121,8 @@ canSave ∷ State → Boolean
 canSave st
   = isNothing st.message
   && isJust st.settings
-  && (not st.new || st.name /= "")
+  && (maybe true (_ /= "") st.name)
 
 validate ∷ State → Maybe String
-validate { new, name, settings } = either Just (const Nothing) $ runExcept do
-  when (new && name == "") $ throwError "Please enter a mount name"
+validate { name } = either Just (const Nothing) $ runExcept do
+  when (maybe false (eq "") name) $ throwError "Please enter a mount name"

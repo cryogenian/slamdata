@@ -12,6 +12,12 @@ const path = require("path");
 const exec = require("child_process").exec;
 const webpack = require("webpack-stream");
 const { injectIconsIntoHTML, createIconPureScript } = require("./script/icons");
+const file = require("gulp-file")
+const inject = require("gulp-inject")
+const packageInfo = require("./package.json")
+const rename = require("gulp-rename")
+const vinylPaths = require("vinyl-paths")
+const del = require("del")
 
 // Coordinate icon attributions through a mutable map because I'm not
 // gulp-savvy enough to handle this. --nf
@@ -198,3 +204,63 @@ gulp.task("inject-icons", () => injectIconsIntoHTML(iconAttributions));
 gulp.task("icons", ["inject-icons"], () => createIconPureScript(iconAttributions));
 
 gulp.task("full", [ "add-headers", "trim-whitespace" ]);
+
+gulp.task("version-css", () => {
+  return gulp.src("./public/css/main.css")
+    .pipe(vinylPaths(del))
+    .pipe(rename((path) => {
+      path.basename += "-" + packageInfo.version;
+    }))
+    .pipe(gulp.dest("./public/css/"));
+})
+
+gulp.task("version-js", () => {
+  return gulp.src(["./public/js/workspace.js", "./public/js/filesystem.js"])
+    .pipe(vinylPaths(del))
+    .pipe(rename((path) => {
+      path.basename += "-" + packageInfo.version;
+    }))
+    .pipe(gulp.dest("./public/js/"));
+})
+
+gulp.task("version-files", ["version-css", "version-js"])
+
+gulp.task("version-inject", () => {
+  const styles = file("style-embed", "<link rel=\"stylesheet\" href=\"css/main-" + packageInfo.version + ".css\">", { src: true })
+  const workspaceJS = file("workspace-embed", "<script type=\"text/javascript\" src=\"js/workspace-" + packageInfo.version + ".js\"></script>", { src: true })
+  const filesystemJS = file("filesystem-embed", "<script type=\"text/javascript\" src=\"js/filesystem-" + packageInfo.version + ".js\"></script>", { src: true })
+
+  return gulp.src("./public/**/*.html")
+    .pipe(inject(styles, {
+      starttag: "<!-- styles -->",
+      endtag: "<!-- /styles -->",
+      removeTags: false,
+      transform: (filePath, file) => {
+        console.log(filePath);
+        return file.contents.toString("utf8")
+      }
+    }))
+    .pipe(inject(filesystemJS, {
+      starttag: "<!-- filesystem-js -->",
+      endtag: "<!-- /filesystem-js -->",
+      removeTags: false,
+      transform: (filePath, file) => {
+        console.log(filePath);
+        return file.contents.toString("utf8")
+      }
+    }))
+    .pipe(inject(workspaceJS, {
+      starttag: "<!-- workspace-js -->",
+      endtag: "<!-- /workspace-js -->",
+      removeTags: false,
+      transform: (filePath, file) => {
+        console.log(filePath);
+        return file.contents.toString("utf8")
+      }
+    }))
+    .pipe(gulp.dest('./public'))
+    .on("error", () => console.log("what"))
+    .on("finish", () => console.log("done"))
+})
+
+gulp.task("versionify", ["version-files", "version-inject"])

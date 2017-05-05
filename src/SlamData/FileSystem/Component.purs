@@ -23,6 +23,7 @@ module SlamData.FileSystem.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Rec.Class (tailRecM, Step(Done, Loop))
 import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
@@ -37,7 +38,7 @@ import Data.Foldable as F
 import Data.Lens ((.~), preview)
 import Data.MediaType (MediaType(..))
 import Data.MediaType.Common (textCSV, applicationJSON)
-import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir)
+import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir, printPath)
 import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
@@ -79,6 +80,7 @@ import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
+import SlamData.FileSystem.Resource (Resource)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (newSalt)
@@ -101,6 +103,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 
+import Utils (finally)
 import Utils.DOM as D
 import Utils.Path (DirPath, getNameStr)
 
@@ -225,8 +228,11 @@ eval = case _ of
   SetSalt salt next → do
     H.modify $ State._salt .~ salt
     pure next
-  SetIsMount isMount next → do
-    H.modify $ State._isMount .~ isMount
+  CheckIsMount path next → do
+    checkIsMount path
+    pure next
+  CheckIsUnconfigured next → do
+    checkIsUnconfigured
     pure next
   SetVersion version next → do
     H.modify $ State._version .~ Just version
@@ -246,8 +252,8 @@ eval = case _ of
     configure $ R.Database path
     pure next
   MakeMount next → do
-    path ← H.gets _.path
-    showDialog $ Dialog.Mount path "" Nothing
+    parent ← H.gets _.path
+    showDialog $ Dialog.Mount $ Mount.New { parent }
     pure next
   MakeFolder next → do
     result ← runExceptT do
@@ -258,9 +264,9 @@ eval = case _ of
         dirRes = R.Directory dirPath
         dirItem = PhantomItem dirRes
         hiddenFile = dirPath </> file (Config.folderMark)
+        cleanupItem = void $ H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Filter (_ ≠ dirItem)
       _ ← H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Add dirItem
-      ExceptT $ API.save hiddenFile jsonEmptyObject
-      _ ← H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Filter (_ ≠ dirItem)
+      finally cleanupItem $ ExceptT $ API.save hiddenFile jsonEmptyObject
       pure dirRes
     case result of
       Left err → case GE.fromQError err of
@@ -273,23 +279,31 @@ eval = case _ of
         void $ H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item dirRes
     pure next
   MakeWorkspace next → do
-    path ← H.gets _.path
-    let
-      newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
-    name ← API.getNewName path newWorkspaceName
-    case name of
-      Left err →
-        case GE.fromQError err of
-          Left msg →
-            -- This error isn't strictly true as we're not actually creating the
-            -- workspace here, but saying there was a problem "creating a name for the
-            -- workspace" would be a little strange
-            showDialog $ Dialog.Error
-              $ "There was a problem creating the workspace: " ⊕ msg
-          Right ge →
-            GE.raiseGlobalError ge
-      Right name' → do
-        H.liftEff $ setLocation $ mkWorkspaceURL (path </> dir name') New
+    state ← H.get
+    isMounted >>= if _
+      then do
+        let
+          newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
+        name ← API.getNewName state.path newWorkspaceName
+        case name of
+          Left err →
+            case GE.fromQError err of
+              Left msg →
+                -- This error isn't strictly true as we're not actually creating the
+                -- workspace here, but saying there was a problem "creating a name for the
+                -- workspace" would be a little strange
+                showDialog $ Dialog.Error
+                  $ "There was a problem creating the workspace: " ⊕ msg
+              Right ge →
+                GE.raiseGlobalError ge
+          Right name' → do
+            H.liftEff $ setLocation $ mkWorkspaceURL (state.path </> dir name') New
+       else
+         showDialog
+           $ Dialog.Error
+           $ "There was a problem creating the workspace: Path "
+           ⊕ printPath state.path
+           ⊕ " is not inside a mount."
     pure next
   UploadFile el next → do
     mbInput ← H.liftEff $ D.querySelector "input" el
@@ -347,10 +361,20 @@ eval = case _ of
       isCurrentMount ← case m of
         R.Database path' → (\p → path' ≡ (p </> dir "")) <$> H.gets _.path
         _ → pure false
-      unless isCurrentMount do
-        _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount m)
-        dismissMountHint
-        resort
+      if isCurrentMount
+        then
+          H.liftEff Browser.reload
+        else do
+          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount m)
+          dismissMountHint
+          resort
+          checkIsMount =<< H.gets _.path
+          checkIsUnconfigured
+    pure next
+  HandleDialog DialogMessage.MountDelete next → do
+    mount ← H.query' CS.cpDialog unit $ H.request Dialog.SaveMount
+    for_ (join mount) (remove ∘ R.Mount)
+    H.liftEff Browser.reload
     pure next
   HandleDialog (DialogMessage.ExploreFile fp initialName) next → do
     { path } ← H.get
@@ -427,35 +451,8 @@ handleItemMessage = case _ of
     showDialog $ Dialog.Rename res
     flip getDirectories rootDir \x →
       void $ H.query' CS.cpDialog unit $ H.action $ Dialog.AddDirsToRename x
-  Item.Remove res → do
-    -- Replace actual item with phantom
-    _ ← H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
-    _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ PhantomItem res
-    -- Save order of items during deletion (or phantom will be on top of list)
-    resort
-    -- Try to delete
-    mbTrashFolder ← H.lift $ API.delete res
-    -- Remove phantom resource after we have response from server
-    _ ← H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
-    case mbTrashFolder of
-      Left err → do
-        -- Error occured: put item back and show dialog
-        void $ H.query' CS.cpListing unit $ H.action $ Listing.Add (Item res)
-        case GE.fromQError err of
-          Left m →
-            showDialog $ Dialog.Error m
-          Right ge →
-            GE.raiseGlobalError ge
-      Right mbRes →
-        -- Item has been deleted: probably add trash folder
-        for_ mbRes \res' →
-          void $ H.query' CS.cpListing unit $ H.action $ Listing.Add (Item res')
-
-    listing ← fromMaybe [] <$> (H.query' CS.cpListing unit $ H.request Listing.Get)
-    path ← H.gets _.path
-    presentMountHint listing path
-
-    resort
+  Item.Remove res →
+    remove res
   Item.Share res → do
     path ← H.gets _.path
     loc ← map (_ ⊕ "/") $ H.liftEff locationString
@@ -477,6 +474,62 @@ handleItemMessage = case _ of
   Item.Download res →
     download res
 
+checkIsMount ∷ DirPath → DSL Unit
+checkIsMount path = do
+  isMount ← isRight <$> API.mountInfo (Left path)
+  H.modify $ State._isMount .~ isMount
+
+isMounted ∷ DSL Boolean
+isMounted = do
+  path ← H.gets _.path
+  tailRecM go path
+  where
+  go ∷ DirPath → DSL (Step DirPath Boolean)
+  go path = do
+    isMount ← isRight <$> API.mountInfo (Left path)
+    pure
+      $ if isMount
+          then Done true
+          else maybe (Done false) Loop (parentDir path)
+
+checkIsUnconfigured ∷ DSL Unit
+checkIsUnconfigured = do
+  isMount ← isRight <$> API.mountInfo (Left rootDir)
+  isEmpty ← either (const false) Array.null <$> API.children rootDir
+  H.modify $ State._isUnconfigured .~ (not isMount ∧ isEmpty)
+
+remove ∷ Resource → DSL Unit
+remove res = do
+  -- Replace actual item with phantom
+  _ ← H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
+  _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ PhantomItem res
+  -- Save order of items during deletion (or phantom will be on top of list)
+  resort
+  -- Try to delete
+  mbTrashFolder ← H.lift $ API.delete res
+  -- Remove phantom resource after we have response from server
+  _ ← H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
+  case mbTrashFolder of
+    Left err → do
+      -- Error occured: put item back and show dialog
+      void $ H.query' CS.cpListing unit $ H.action $ Listing.Add (Item res)
+      case GE.fromQError err of
+        Left m →
+          showDialog $ Dialog.Error m
+        Right ge →
+          GE.raiseGlobalError ge
+    Right mbRes →
+      -- Item has been deleted: probably add trash folder
+      for_ mbRes \res' →
+        void $ H.query' CS.cpListing unit $ H.action $ Listing.Add (Item res')
+
+  listing ← fromMaybe [] <$> (H.query' CS.cpListing unit $ H.request Listing.Get)
+  path ← H.gets _.path
+  presentMountHint listing path
+
+  resort
+  checkIsMount path
+  checkIsUnconfigured
 
 dismissMountHint ∷ DSL Unit
 dismissMountHint = do
@@ -577,15 +630,21 @@ configure m =
     R.Database path, Left err
       | path /= rootDir → raiseError err
       | otherwise →
-          -- We need to allow a non-existant root mount to be configured to
-          -- allow for the case where Quasar has not yet had any mounts set
-          -- up.
-          showDialog $ Dialog.Mount rootDir "" Nothing
-    _, Right config →
+          showDialog $ Dialog.Mount Mount.Root
+    R.View path, Right config →
       showDialog $ Dialog.Mount
-        (fromMaybe rootDir (either parentDir parentDir anyPath))
-        (getNameStr anyPath)
-        (Just (fromConfig config))
+        $ Mount.Edit
+          { parent: either parentDir parentDir anyPath
+          , name: Just $ getNameStr anyPath
+          , settings: fromConfig config
+          }
+    R.Database path, Right config →
+      showDialog $ Dialog.Mount
+        $ Mount.Edit
+          { parent: if path ≡ rootDir then Nothing else either parentDir parentDir anyPath
+          , name: if path ≡ rootDir then Nothing else Just $ getNameStr anyPath
+          , settings: fromConfig config
+          }
   where
     anyPath =
       R.mountPath m

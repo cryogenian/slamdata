@@ -22,3 +22,4 @@ data Message
   = Dismiss
   | MountSave
   | ExploreFile UP.FilePath String
+  | MountDelete

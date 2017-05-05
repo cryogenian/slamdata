@@ -33,6 +33,7 @@ type State =
   , presentMountHint :: Boolean
   , version :: Maybe String
   , isMount :: Boolean
+  , isUnconfigured :: Boolean
   , showHiddenFiles :: Boolean
   , presentIntroVideo :: Boolean
   }
@@ -55,6 +56,9 @@ _path = lens _.path _{path = _}
 _isMount :: Lens' State Boolean
 _isMount = lens _.isMount _{isMount = _}
 
+_isUnconfigured :: Lens' State Boolean
+_isUnconfigured = lens _.isUnconfigured _{isUnconfigured = _}
+
 _showHiddenFiles :: Lens' State Boolean
 _showHiddenFiles = lens _.showHiddenFiles _{showHiddenFiles = _}
 
@@ -69,6 +73,7 @@ initialState =
   , sort: Asc
   , version: Nothing
   , isMount: false
+  , isUnconfigured: false
   , showHiddenFiles: false
   , presentIntroVideo: false
   }

@@ -44,23 +44,39 @@ import SlamData.Render.CSS as Rc
 
 render ∷ State → H.ComponentHTML Query
 render state =
-  modalDialog
-  [ modalHeader "Download"
-  , modalBody
-      $ HH.form
-          [ HE.onSubmit $ HE.input PreventDefault
-          , HP.classes [ Rc.dialogDownload ]
-          ]
-      [ resField state
-      , Rd.fldName state.options (either id id state.targetName) TargetTyped
-      , options state
-      , message state
-      ]
-  , modalFooter
-      [ btnCancel state
-      , btnDownload state
-      ]
-  ]
+  HH.form
+    [ HE.onSubmit $ HE.input (PreventDefaultAndNewTab url) ]
+    [ modalDialog
+        [ modalHeader "Download"
+        , modalBody
+            $ HH.div
+                [ HP.classes [ Rc.dialogDownload ] ]
+                [ resField state
+                , Rd.fldName (D.shouldCompress state) state.options (either id id state.targetName) TargetTyped
+                , options state
+                , message state
+                ]
+        , modalFooter
+            [ btnDownload state
+            , btnCancel state
+            ]
+        ]
+    ]
+  where
+  headers =
+    Global.encodeURIComponent
+    $ show
+    $ reqHeadersToJSON
+    $ append state.authHeaders
+    $ D.toHeaders state
+    $ Just
+    $ either id id state.targetName <> D.extension (D.shouldCompress state) state.options
+
+  url =
+    (encodeURI $ printPath Config.data_ ⊕ resourcePath state.source)
+    ⊕ "?request-headers="
+    ⊕ headers
+
 
 resField ∷ State → H.ComponentHTML Query
 resField state =
@@ -72,9 +88,6 @@ resField state =
         ]
     ]
 
-compressed ∷ State → Boolean
-compressed state = not isFile state.source || state.compress
-
 chkCompress ∷ State → H.ComponentHTML Query
 chkCompress state =
   HH.div
@@ -84,7 +97,7 @@ chkCompress state =
       , HH.input
           [ HP.type_ HP.InputCheckbox
           , HP.enabled $ isFile state.source
-          , HP.checked $ compressed state
+          , HP.checked $ D.shouldCompress state
           , HE.onValueChange (HE.input_ ToggleCompress)
           ]
       ]
@@ -120,42 +133,28 @@ message state =
 
 btnCancel ∷ State → H.ComponentHTML Query
 btnCancel state =
-  HH.button [ HP.classes [ B.btn ]
-           , HE.onClick (HE.input_ RaiseDismiss)
-           , ARIA.label "Cancel download"
-           , HP.title "Cancel download"
-           ]
-  [ HH.text "Cancel" ]
+  HH.button
+    [ HP.classes [ B.btn ]
+    , HP.type_ HP.ButtonButton
+    , HE.onClick (HE.input_ RaiseDismiss)
+    , ARIA.label "Cancel download"
+    , HP.title "Cancel download"
+    ]
+    [ HH.text "Cancel" ]
 
 btnDownload ∷ State → H.ComponentHTML Query
 btnDownload state =
-  let
-    headers =
-      Global.encodeURIComponent
-      $ show
-      $ reqHeadersToJSON
-      $ append state.authHeaders
-      $ D.toHeaders state
-      $ Just
-      $ either id id state.targetName <> D.extension false state.options
-
-    url =
-      (encodeURI $ printPath Config.data_ ⊕ resourcePath state.source)
-      ⊕ "?request-headers="
-      ⊕ headers
-
-    disabled = isJust $ state.error
+  let disabled = isJust $ state.error
   in HH.button
          [ HP.classes $ [ B.btn, B.btnPrimary ]
            ⊕ if disabled
               then [ B.disabled ]
               else [ ]
          , HP.disabled disabled
-         , HE.onClick $ HE.input (NewTab url)
          , ARIA.label "Proceed download"
          , HP.title "Proceed download"
          ]
-     [ HH.text "Download" ]
+         [ HH.text "Download" ]
 
 optionsCSV ∷ D.CSVOptions → H.ComponentHTML Query
 optionsCSV = Rd.optionsCSV (\lens v → ModifyCSVOpts (lens .~ v))

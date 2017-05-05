@@ -47,7 +47,8 @@ data Query a
   | SetPath DirPath a
   | SetSort Sort a
   | SetSalt Salt a
-  | SetIsMount Boolean a
+  | CheckIsMount DirPath a
+  | CheckIsUnconfigured a
   | Configure a
   | ShowHiddenFiles a
   | HideHiddenFiles a

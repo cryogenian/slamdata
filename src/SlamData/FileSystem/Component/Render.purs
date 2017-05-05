@@ -19,6 +19,7 @@ module SlamData.FileSystem.Component.Render where
 import SlamData.Prelude
 
 import Data.Lens ((^.))
+import Data.Path.Pathy (rootDir)
 
 import Halogen.HTML.Core (HTML)
 import Halogen.HTML.Events as E
@@ -31,7 +32,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Common.Sort (Sort(..))
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Query (Query(..))
-import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _isMount, _sort)
+import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _sort)
 import SlamData.Hint as Hint
 import SlamData.Render.Icon as I
 
@@ -76,7 +77,7 @@ toolbar state =
   where
   configure ∷ Array (HTML p (Query Unit))
   configure = do
-    guard $ state ^. _isMount
+    guard $ state.isMount ∨ (state.path ≡ rootDir ∧ state.isUnconfigured)
     pure $ toolItem Configure "Configure mount" I.cog
 
   showHide ∷ HTML p (Query Unit)
