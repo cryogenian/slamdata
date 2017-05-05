@@ -367,23 +367,18 @@ tableErrorMessage { accessType, expanded } err =
   renderDetails = case _ of
     CE.TableMissingResourceInputError →
       HH.div_
-        $ join
-          [ pure $ errorTitle [ HH.text "Expected a TaggedResource input." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
-          ]
+        [ errorTitle [ HH.text "The preview table card requires data as an input." ] ]
     CE.TableCountQuasarError qErr →
       HH.div_
         $ join
           [ pure $ errorTitle [ HH.text "A error occured when counting the preview data." ]
           , pure $ printQErrorWithDetails qErr
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CE.TableSampleQuasarError qErr →
       HH.div_
         $ join
           [ pure $ errorTitle [ HH.text "A error occured during sampling of the preview data." ]
           , pure $ printQErrorWithDetails qErr
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
 
 formInputStaticErrorMessage ∷ State → CE.FormInputStaticError → HTML
