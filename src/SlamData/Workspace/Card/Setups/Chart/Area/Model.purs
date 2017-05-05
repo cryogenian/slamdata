@@ -36,6 +36,7 @@ type ModelR =
   , isStacked ∷ Boolean
   , isSmooth ∷ Boolean
   , axisLabelAngle ∷ Number
+  , size ∷ Number
   }
 
 type Model = Maybe ModelR
@@ -51,6 +52,7 @@ eqR r1 r2 =
   ∧ r1.isSmooth ≡ r2.isSmooth
   ∧ r1.series ≡ r2.series
   ∧ r1.axisLabelAngle ≡ r2.axisLabelAngle
+  ∧ r1.size ≡ r2.size
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
@@ -66,6 +68,7 @@ genModel = do
     dimension ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
     value ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
     series ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    size ← arbitrary
     isStacked ← arbitrary
     isSmooth ← arbitrary
 
@@ -76,6 +79,7 @@ genModel = do
          , isSmooth
          , series
          , axisLabelAngle
+         , size
          }
 
 encode ∷ Model → J.Json
@@ -88,6 +92,7 @@ encode (Just r) =
   ~> "isSmooth" := r.isSmooth
   ~> "series" := r.series
   ~> "axisLabelAngle" := r.axisLabelAngle
+  ~> "size" := r.size
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ Model
@@ -111,6 +116,7 @@ decode js
     isStacked ← obj .? "isStacked"
     isSmooth ← obj .? "isSmooth"
     axisLabelAngle ← obj .? "axisLabelAngle"
+    size ← (obj .? "size" <|> pure 10.0)
 
     pure { dimension
          , value
@@ -118,6 +124,7 @@ decode js
          , isSmooth
          , series
          , axisLabelAngle
+         , size
          }
   decodeLegacyR ∷ J.JObject → String ⊹ ModelR
   decodeLegacyR obj = do
@@ -137,4 +144,5 @@ decode js
          , isSmooth
          , series
          , axisLabelAngle
+         , size: 10.0
          }

@@ -24,6 +24,7 @@ import SlamData.Prelude
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array ((!!))
 import Data.Array as A
+import Data.Int as Int
 import Data.Lens ((^?))
 import Data.List as L
 import Data.Map as M
@@ -119,11 +120,12 @@ areaOptions axes r areaData = do
       , { label: D.jcursorLabel r.value, value: CCT.formatValueIx 1 }
       ]
     opts = flip foldMap r.series \dim →
-      [ { label: D.jcursorLabel dim, value: _.seriesName } ]
+      [ { label: D.jcursorLabel dim, value: _.seriesName
+        } ]
 
   E.tooltip do
-    E.formatterAxis (CCT.tableFormatter (pure ∘ _.color) (cols <> opts))
-    E.triggerAxis
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
+    E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
@@ -208,12 +210,12 @@ areaOptions axes r areaData = do
           E.buildValues do
             E.addStringValue key
             E.addValue v
+          E.symbolSize $ Int.floor r.size
     for_ serie.name E.name
     for_ (colors !! ix) \color → do
       E.itemStyle $ E.normal $ E.color color
       E.areaStyle $ E.normal $ E.color $ getShadeColor color (if r.isStacked then 1.0 else 0.5)
     E.lineStyle $ E.normal $ E.width 2
     E.symbol ET.Circle
-    E.symbolSize 0
     E.smooth r.isSmooth
     when r.isStacked $ E.stack "stack"
