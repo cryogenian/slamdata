@@ -175,7 +175,7 @@ lineOptions axes r lineData = do
     cols =
       [ { label: D.jcursorLabel r.dimension, value: CCT.formatValueIx 0 }
       , { label: D.jcursorLabel r.value, value: \x →
-           if x.seriesIndex `mod` 2 ≡ 0
+           if isNothing r.secondValue ∨ x.seriesIndex `mod` 2 ≡ 0
            then CCT.formatValueIx 1 x
            else ""
         }
