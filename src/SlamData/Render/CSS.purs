@@ -248,8 +248,8 @@ formButton ∷ ClassName
 formButton = ClassName "sd-form-button"
 
 
--- Bootstrap-like
--- Would be nice to hae something that concats
+-- Bootstrap classnames
+-- (Would be nice to be able to append ClassNames https://github.com/slamdata/purescript-halogen/issues/451)
 
 formControl ∷ ClassName
 formControl = ClassName "form-control"

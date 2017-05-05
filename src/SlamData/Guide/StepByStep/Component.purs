@@ -81,10 +81,10 @@ render st =
         , HP.class_ $ HH.ClassName "sd-step-by-step-guide"
         ]
         $ Array.mapWithIndex renderStep st.steps
-        <>
-          (pure $ HH.div
+        <> [ HH.div
             [ HP.class_ $ HH.ClassName "sd-step-by-step-guide-btn-cage" ]
-            buttons)
+            buttons
+          ]
     ]
   where
   last ∷ Boolean
