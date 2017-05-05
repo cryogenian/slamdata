@@ -34,6 +34,7 @@ import SlamData.Monad (Slam)
 import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
+import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Error (CardError(..), cardToGlobalError)
 import SlamData.Workspace.Card.Error.Component.Query (Query(..))
@@ -94,6 +95,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     OpenCardError oce → openErrorMessage state oce
     TableCardError tce → tableErrorMessage state tce
     FormInputStaticCardError fise → formInputStaticErrorMessage state fise
+    FormInputLabeledCardError file → formInputLabeledErrorMessage state file
 
 collapsible ∷ String → HTML → Boolean → HTML
 collapsible title content expanded =
@@ -393,4 +395,75 @@ formInputStaticErrorMessage { accessType, expanded } err =
           , pure $ HH.p_
               [ HH.text "The selected axis was not present in the data." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          ]
+
+formInputLabeledErrorMessage ∷ State → CE.FormInputLabeledError → HTML
+formInputLabeledErrorMessage { accessType, expanded } err =
+  case accessType of
+    Editable → renderDetails err
+    ReadOnly →
+      HH.div_
+        [ HH.p_ [ HH.text "A problem occurred in the Forminput labeled card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
+        ]
+  where
+  renderDetails = case _ of
+    CE.FILabeledNoAxisError →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput labeled card." ]
+          , pure $ HH.p_
+              [ HH.text "No axis was selected" ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+          ]
+    CE.FILabeledEmptyResourceError →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput labeled card." ]
+          , pure $ HH.p_
+              [ HH.text "The selected resource was empty." ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+          ]
+    CE.FILabeledTooManyEntries { formInputType, maximum, entryCount } →
+      let
+        errorText =
+          "The " <> FIT.printFormInputType formInputType
+          <> " form input can't take more than "
+          <> show (FIT.maximumCountOfEntries formInputType)
+          <> "entries, but there were: "
+          <> show entryCount
+          <> ". Please use 'limit' or 'group by'"
+      in
+        HH.div_
+          $ join
+            [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput labeled card." ]
+            , pure $ HH.p_
+                [ HH.text errorText ]
+            , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+            ]
+    CE.FILabeledTooManySelected { formInputType, maximum, selectedCount } →
+      let
+        errorText =
+          "The " <> FIT.printFormInputType formInputType
+          <> " form input can't have more than "
+          <> show (FIT.maximumCountOfSelectedValues formInputType)
+          <> " selected values, but there were: "
+          <> show selectedCount
+          <> ". Please, use another axis"
+      in
+        HH.div_
+          $ join
+            [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput labeled card." ]
+            , pure $ HH.p_
+                [ HH.text errorText ]
+            , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+            ]
+    -- TODO: Use the label argument for a better error message
+    CE.FILabeledNonUniqueLabelError label →
+      HH.div_
+        $ join
+          [ pure $ HH.h1_ [ HH.text "An error occured when setting up the Forminput labeled card." ]
+          , pure $ HH.p_
+              [ HH.text "Labels must be unique. Please, use other axis." ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]

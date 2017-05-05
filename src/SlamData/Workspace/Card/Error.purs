@@ -23,6 +23,7 @@ module SlamData.Workspace.Card.Error
   , module COE
   , module CTE
   , module FISE
+  , module FILE
   ) where
 
 import SlamData.Prelude
@@ -34,6 +35,7 @@ import SlamData.Workspace.Card.DownloadOptions.Error as CDLOE
 import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.Open.Error as COE
 import SlamData.Workspace.Card.Query.Error as CQE
+import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as FILE
 import SlamData.Workspace.Card.Setups.FormInput.Static.Error as FISE
 import SlamData.Workspace.Card.Table.Error as CTE
 import Utils (hush)
@@ -48,6 +50,7 @@ data CardError
   | OpenCardError COE.OpenError
   | TableCardError CTE.TableError
   | FormInputStaticCardError FISE.FormInputStaticError
+  | FormInputLabeledCardError FILE.FormInputLabeledError
 
 instance showCardError ∷ Show CardError where
   show = case _ of
@@ -60,6 +63,7 @@ instance showCardError ∷ Show CardError where
     OpenCardError err → "(OpenCardError " <> show err <> ")"
     TableCardError err → "(TableCardError " <> show err <> ")"
     FormInputStaticCardError err → "(FormInputStaticCardError " <> show err <> ")"
+    FormInputLabeledCardError err → "(FormInputLabeledCardError " <> show err <> ")"
 
 quasarToCardError ∷ QError → CardError
 quasarToCardError = QuasarError
@@ -75,6 +79,7 @@ cardToGlobalError = case _ of
   OpenCardError _ → Nothing
   TableCardError err → CTE.tableToGlobalError err
   FormInputStaticCardError _ → Nothing
+  FormInputLabeledCardError _ → Nothing
 
 -- TODO(Christoph): use this warn constraint to track down unstructured error messages
 -- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
@@ -106,6 +111,9 @@ throwTableError = throwError ∘ TableCardError
 
 throwFormInputStaticError ∷ ∀ m a. MonadThrow CardError m ⇒ FISE.FormInputStaticError → m a
 throwFormInputStaticError = throwError ∘ FormInputStaticCardError
+
+throwFormInputLabeledError ∷ ∀ m a. MonadThrow CardError m ⇒ FILE.FormInputLabeledError → m a
+throwFormInputLabeledError = throwError ∘ FormInputLabeledCardError
 
 liftQ ∷ ∀ m a. MonadThrow CardError m ⇒ m (Either QError a) → m a
 liftQ = flip bind (either (throwError ∘ quasarToCardError) pure)
