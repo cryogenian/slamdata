@@ -153,13 +153,13 @@ renderIsSmooth state =
 renderSize ∷ ST.State → HTML
 renderSize state =
   HH.div
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    [ HP.classes [ CSS.axisLabelParam ]
     ]
     [ HH.label
-        [ HP.classes [ B.controlLabel ] ]
+        [ HP.classes [ Rc.controlLabel ] ]
         [ HH.text "Size" ]
     , HH.input
-        [ HP.classes [ B.formControl ]
+        [ HP.classes [ Rc.formControl ]
         , HP.value $ show state.size
         , ARIA.label "Size"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetSize s)

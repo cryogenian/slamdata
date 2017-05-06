@@ -45,24 +45,26 @@ label.sd-option span {
     }
   }
 
-  &:not(:disabled):hover {
-    background-color: #ddd;
-  }
+  &:not(:disabled) {
+    &:hover {
+      background-color: #ddd;
+    }
 
-  &:not(:disabled):active {
-    background-image: linear-gradient(to bottom, @shade-tint, transparent);
+    &:active {
+      background-image: linear-gradient(to bottom, @shade-tint, transparent);
+    }
   }
 
   .sd-icon {
-    top: 2px;
-    margin-left: 1px;
+    top: 0.2rem;
+    margin-left: 0.1rem;
     color: #444;
   }
 }
 
 .sd-form-button-group {
-  button+button {
-    border-left: 0px;
+  button + button {
+    border-left: 0;
   }
 }
 
@@ -104,8 +106,8 @@ label.sd-option span {
 
   .sd-dismiss-button {
     position: absolute;
-    height: 34px;
-    width: 34px;
+    height: 3.4rem;
+    width: 3.4rem;
     right: 0;
     text-align: center;
 
@@ -117,13 +119,13 @@ label.sd-option span {
 
 .sd-select-input {
   position: relative;
-  top: -6px;
+  top: -0.6rem;
 
   .list-group {
     position: absolute;
-    top: 30px;
+    top: 3rem;
     right: 0;
-    width: 240px;
+    width: 24rem;
   }
 }
 
@@ -133,16 +135,16 @@ label.sd-option span {
   overflow: hidden;
   white-space: nowrap;
   text-indent: 100%;
-  width: 1rem;
-  height: 1rem;
-  background-size: 1rem 1rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  background-size: 1.6rem 1.6rem;
   vertical-align: middle;
 }
 
 .sd-clear-field-icon {
-  background-image: url(../img/remove.svg);
+  background-image: url("../img/remove.svg");
 }
 
 .sd-busy-field-icon {
-  background-image: url(../img/spin.svg);
+  background-image: url("../img/spin.svg");
 }

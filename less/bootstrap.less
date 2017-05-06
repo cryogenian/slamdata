@@ -45,7 +45,7 @@
 @font-family-monospace:   Menlo, Monaco, Consolas, "Courier New", monospace;
 @font-family-base:        @font-family-sans-serif;
 
-@font-size-base:          14px;
+@font-size-base:          1.4rem;
 @font-size-large:         ceil((@font-size-base * 1.25)); // ~18px
 @font-size-small:         ceil((@font-size-base * 0.85)); // ~12px
 
@@ -71,24 +71,24 @@
 //
 //## Define common padding and border radius sizes and more. Values based on 14px text and 1.428 line-height (~20px to start).
 
-@padding-base-vertical:     6px;
-@padding-base-horizontal:   12px;
+@padding-base-vertical:     0.6rem;
+@padding-base-horizontal:   1.2rem;
 
-@padding-large-vertical:    10px;
-@padding-large-horizontal:  16px;
+@padding-large-vertical:    1rem;
+@padding-large-horizontal:  1.6rem;
 
-@padding-small-vertical:    5px;
-@padding-small-horizontal:  10px;
+@padding-small-vertical:    0.5rem;
+@padding-small-horizontal:  1rem;
 
-@padding-xs-vertical:       1px;
-@padding-xs-horizontal:     5px;
+@padding-xs-vertical:       0.1rem;
+@padding-xs-horizontal:     0.5rem;
 
 @line-height-large:         1.3333333; // extra decimals for Win 8.1 Chrome
 @line-height-small:         1.5;
 
-@border-radius-base:        4px;
-@border-radius-large:       6px;
-@border-radius-small:       3px;
+@border-radius-base:        0.4rem;
+@border-radius-large:       0.6rem;
+@border-radius-small:       0.3rem;
 
 //** Global color for active items (e.g., navs or dropdowns).
 @component-active-color:    #fff;
@@ -96,16 +96,16 @@
 @component-active-bg:       @brand-primary;
 
 //** Width of the `border` for generating carets that indicate dropdowns.
-@caret-width-base:          4px;
+@caret-width-base:          0.4rem;
 //** Carets increase slightly in size for larger components.
-@caret-width-large:         5px;
+@caret-width-large:         0.5rem;
 
 //== Navs
 //
 //##
 
 //=== Shared nav styles
-@nav-link-padding:                          10px 15px;
+@nav-link-padding:                          1rem 1.5rem;
 @nav-link-hover-bg:                         @gray-lighter;
 
 @nav-disabled-link-color:                   @gray-light;
@@ -125,8 +125,8 @@
 //##
 
 @panel-bg:                    #fff;
-@panel-body-padding:          15px;
-@panel-heading-padding:       10px 15px;
+@panel-body-padding:          1.5rem;
+@panel-heading-padding:       1rem 1.5rem;
 @panel-footer-padding:        @panel-heading-padding;
 @panel-border-radius:         @border-radius-base;
 
@@ -163,9 +163,9 @@
 //## Customizes the `.table` component with basic values, each used across all table variations.
 
 //** Padding for `<th>`s and `<td>`s.
-@table-cell-padding:            8px;
+@table-cell-padding:            0.8rem;
 //** Padding for cells in `.table-condensed`.
-@table-condensed-cell-padding:  5px;
+@table-condensed-cell-padding:  0.5rem;
 
 //** Default background color used for all tables.
 @table-bg:                      transparent;
@@ -253,7 +253,7 @@
 @input-height-small:             (floor(@font-size-small * @line-height-small) + (@padding-small-vertical * 2) + 2);
 
 //** `.form-group` margin
-@form-group-margin-bottom:       15px;
+@form-group-margin-bottom:       1.5rem;
 
 @legend-color:                   @gray-dark;
 @legend-border-color:            #e5e5e5;
@@ -290,7 +290,7 @@
 //
 //## Define alert colors, border radius, and padding.
 
-@alert-padding:               10px 12px;  // 15px;
+@alert-padding:               1rem 1.2rem;  // 1,5rem;
 @alert-border-radius:         @border-radius-base;
 @alert-link-font-weight:      bold;
 
@@ -314,8 +314,8 @@
 //
 //##
 
-@breadcrumb-padding-vertical:   8px;
-@breadcrumb-padding-horizontal: 15px;
+@breadcrumb-padding-vertical:   0.8rem;
+@breadcrumb-padding-horizontal: 1.5rem;
 //** Breadcrumb background color
 @breadcrumb-bg:                 #f5f5f5;
 //** Breadcrumb text color
@@ -403,7 +403,7 @@
 //##
 
 //** Horizontal offset for forms and lists.
-@component-offset-horizontal: 180px;
+@component-offset-horizontal: 18rem;
 //** Text muted color
 @text-muted:                  @gray-light;
 //** Abbreviations and acronyms border color
@@ -510,7 +510,7 @@
   color: @input-color;
   text-align: center;
   background-color: @input-group-addon-bg;
-  border: 1px solid @input-group-addon-border-color;
+  border: 0.1rem solid @input-group-addon-border-color;
   border-radius: @input-border-radius;
 
   // Sizing
@@ -574,7 +574,7 @@
   > .btn {
     position: relative;
     + .btn {
-      margin-left: -1px;
+      margin-left: -0.1rem;
     }
     // Bring the "active" button to the front
     &:hover,
@@ -584,18 +584,18 @@
     }
   }
 
-  // Negative margin to only have a 1px border between the two
+  // Negative margin to only have a 0.1rem border between the two
   &:first-child {
     > .btn,
     > .btn-group {
-      margin-right: -1px;
+      margin-right: -0.1rem;
     }
   }
   &:last-child {
     > .btn,
     > .btn-group {
       z-index: 2;
-      margin-left: -1px;
+      margin-left: -0.1rem;
     }
   }
 }
@@ -676,17 +676,17 @@
 
 // Give the tabs something to sit on
 .nav-tabs {
-  border-bottom: 1px solid @nav-tabs-border-color;
+  border-bottom: 0.1rem solid @nav-tabs-border-color;
   > li {
     float: left;
     // Make the list-items overlay the bottom border
-    margin-bottom: -1px;
+    margin-bottom: -0.1rem;
 
     // Actual tabs (as links)
     > a {
-      margin-right: 2px;
+      margin-right: 0.2rem;
       line-height: @line-height-base;
-      border: 1px solid transparent;
+      border: 0.1rem solid transparent;
       border-radius: @border-radius-base @border-radius-base 0 0;
       &:hover {
         border-color: @nav-tabs-link-hover-border-color @nav-tabs-link-hover-border-color @nav-tabs-border-color;
@@ -700,7 +700,7 @@
       &:focus {
         color: @nav-tabs-active-link-hover-color;
         background-color: @nav-tabs-active-link-hover-bg;
-        border: 1px solid @nav-tabs-active-link-hover-border-color;
+        border: 0.1rem solid @nav-tabs-active-link-hover-border-color;
         border-bottom-color: transparent;
         cursor: default;
       }
@@ -714,7 +714,7 @@
   > li {
     float: none;
     + li {
-      margin-top: 2px;
+      margin-top: 0.2rem;
       margin-left: 0; // no need for this gap between nav items
     }
   }
@@ -729,9 +729,9 @@
 .panel {
   margin-bottom: @line-height-computed;
   background-color: @panel-bg;
-  border: 1px solid transparent;
+  border: 0.1rem solid transparent;
   border-radius: @panel-border-radius;
-  box-shadow: 0 1px 1px rgba(0,0,0,.05);
+  box-shadow: 0 0.1rem 0.1rem rgba(0,0,0,.05);
 }
 
 // Panel contents
@@ -743,7 +743,7 @@
 // Optional heading
 .panel-heading {
   padding: @panel-heading-padding;
-  border-bottom: 1px solid transparent;
+  border-bottom: 0.1rem solid transparent;
   border-top-left-radius: @panel-border-radius - 1;
   border-top-right-radius: @panel-border-radius - 1;
 
@@ -772,7 +772,7 @@
 .panel-footer {
   padding: @panel-footer-padding;
   background-color: @panel-footer-bg;
-  border-top: 1px solid @panel-inner-border;
+  border-top: 0.1rem solid @panel-inner-border;
   border-bottom-radius: @panel-border-radius - 1;
 }
 
@@ -788,7 +788,7 @@
     margin-bottom: 0;
 
     .list-group-item {
-      border-width: 1px 0;
+      border-width: 0.1rem 0;
       border-radius: 0;
     }
 
@@ -892,7 +892,7 @@
   > .panel-body + .table-responsive,
   > .table + .panel-body,
   > .table-responsive + .panel-body {
-    border-top: 1px solid @table-border-color;
+    border-top: 0.1rem solid @table-border-color;
   }
   > .table > tbody:first-child > tr:first-child th,
   > .table > tbody:first-child > tr:first-child td {
@@ -955,7 +955,7 @@
     border-radius: @panel-border-radius;
 
     + .panel {
-      margin-top: 5px;
+      margin-top: 0.5rem;
     }
   }
 
@@ -964,14 +964,14 @@
 
     + .panel-collapse > .panel-body,
     + .panel-collapse > .list-group {
-      border-top: 1px solid @panel-inner-border;
+      border-top: 0.1rem solid @panel-inner-border;
     }
   }
 
   .panel-footer {
     border-top: 0;
     + .panel-collapse .panel-body {
-      border-bottom: 1px solid @panel-inner-border;
+      border-bottom: 0.1rem solid @panel-inner-border;
     }
   }
 }
@@ -1045,14 +1045,14 @@ th {
         padding: @table-cell-padding;
         line-height: @line-height-base;
         vertical-align: top;
-        border-top: 1px solid @table-border-color;
+        border-top: 0.1rem solid @table-border-color;
       }
     }
   }
   // Bottom align for column headings
   > thead > tr > th {
     vertical-align: bottom;
-    border-bottom: 2px solid @table-border-color;
+    border-bottom: 0.2rem solid @table-border-color;
   }
   // Remove top border from thead by default
   > caption + thead,
@@ -1067,7 +1067,7 @@ th {
   }
   // Account for multiple tbody instances
   > tbody + tbody {
-    border-top: 2px solid @table-border-color;
+    border-top: 0.2rem solid @table-border-color;
   }
 
   // Nesting
@@ -1098,21 +1098,21 @@ th {
 // Add borders all around the table and between all the columns.
 
 .table-bordered {
-  border: 1px solid @table-border-color;
+  border: 0.1rem solid @table-border-color;
   > thead,
   > tbody,
   > tfoot {
     > tr {
       > th,
       > td {
-        border: 1px solid @table-border-color;
+        border: 0.1rem solid @table-border-color;
       }
     }
   }
   > thead > tr {
     > th,
     > td {
-      border-bottom-width: 2px;
+      border-bottom-width: 0.2rem;
     }
   }
 }
@@ -1189,7 +1189,7 @@ table {
     margin-bottom: (@line-height-computed * 0.75);
     overflow-y: hidden;
     -ms-overflow-style: -ms-autohiding-scrollbar;
-    border: 1px solid @table-border-color;
+    border: 0.1rem solid @table-border-color;
 
     // Tighten up spacing
     > .table {
@@ -1280,7 +1280,7 @@ table {
 // Specific dropdowns
 .nav-tabs .dropdown-menu {
   // make dropdown border overlap tab border
-  margin-top: -1px;
+  margin-top: -0.1rem;
   // Remove the top rounded corners here since there is a hard edge above the menu
   border-top-left-radius: 0;
   border-top-right-radius: 0;
@@ -1314,13 +1314,13 @@ legend {
   line-height: inherit;
   color: @legend-color;
   border: 0;
-  border-bottom: 1px solid @legend-border-color;
+  border-bottom: 0.1rem solid @legend-border-color;
 }
 
 label {
   display: inline-block;
   max-width: 100%; // Force IE8 to wrap long content (see https://github.com/twbs/bootstrap/issues/13141)
-  margin-bottom: 5px;
+  margin-bottom: 0.5rem;
   font-weight: bold;
 }
 
@@ -1339,8 +1339,8 @@ input[type="search"] {
 // Position radios and checkboxes better
 input[type="radio"],
 input[type="checkbox"] {
-  margin: 4px 0 0;
-  margin-top: 1px \9; // IE8-9
+  margin: 0.4rem 0 0;
+  margin-top: 0.1rem \9; // IE8-9
   line-height: normal;
 }
 
@@ -1409,9 +1409,9 @@ output {
   color: @input-color;
   background-color: @input-bg;
   background-image: none; // Reset unusual Firefox-on-Android default style; see https://github.com/necolas/normalize.css/issues/214
-  border: 1px solid @input-border;
+  border: 0.1rem solid @input-border;
   border-radius: @input-border-radius; // Note: This has no effect on <select>s in some browsers, due to the limited stylability of <select>s in CSS.
-  box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+  box-shadow: inset 0 0.1rem 0.1rem rgba(0,0,0,.075);
   transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
 
   // Customize the `:focus` state to imitate native WebKit styles.
@@ -1511,12 +1511,12 @@ input[type="search"] {
 .checkbox {
   position: relative;
   display: block;
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
 
   label {
     min-height: @line-height-computed; // Ensure the input doesn't jump when there is no text
-    padding-left: 20px;
+    padding-left: 2rem;
     margin-bottom: 0;
     font-weight: normal;
     cursor: pointer;
@@ -1527,13 +1527,13 @@ input[type="search"] {
 .checkbox input[type="checkbox"],
 .checkbox-inline input[type="checkbox"] {
   position: absolute;
-  margin-left: -20px;
-  margin-top: 4px \9;
+  margin-left: -2rem;
+  margin-top: 0.4rem \9;
 }
 
 .radio + .radio,
 .checkbox + .checkbox {
-  margin-top: -5px; // Move up sibling radios or checkboxes for tighter spacing
+  margin-top: -0.5rem; // Move up sibling radios or checkboxes for tighter spacing
 }
 
 // Radios and checkboxes on same line
@@ -1541,7 +1541,7 @@ input[type="search"] {
 .checkbox-inline {
   position: relative;
   display: inline-block;
-  padding-left: 20px;
+  padding-left: 2rem;
   margin-bottom: 0;
   vertical-align: middle;
   font-weight: normal;
@@ -1550,7 +1550,7 @@ input[type="search"] {
 .radio-inline + .radio-inline,
 .checkbox-inline + .checkbox-inline {
   margin-top: 0;
-  margin-left: 10px; // space out consecutive inline controls
+  margin-left: 1rem; // space out consecutive inline controls
 }
 
 // Apply same disabled cursor tweak as for inputs
@@ -1742,8 +1742,8 @@ input[type="checkbox"] {
 
 .help-block {
   display: block; // account for any element using help-block
-  margin-top: 5px;
-  margin-bottom: 10px;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
   color: lighten(@text-color, 25%); // lighten the text some for contrast
 }
 
@@ -1852,10 +1852,10 @@ input[type="checkbox"] {
   // Set the border and box shadow on specific inputs to match
   .form-control {
     border-color: @border-color;
-    box-shadow: inset 0 1px 1px rgba(0,0,0,.075); // Redeclare so transitions work
+    box-shadow: inset 0 0.1rem 0.1rem rgba(0,0,0,.075); // Redeclare so transitions work
     &:focus {
       border-color: darken(@border-color, 10%);
-      @shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 6px lighten(@border-color, 20%);
+      @shadow: inset 0 0.1rem 0.1rem rgba(0,0,0,.075), 0 0 0.6rem lighten(@border-color, 20%);
       box-shadow: @shadow;
     }
   }
@@ -1889,7 +1889,7 @@ input[type="checkbox"] {
   &:focus {
     border-color: @color;
     outline: 0;
-    box-shadow: ~"inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px @{color-rgba}";
+    box-shadow: ~"inset 0 0.1rem 0.1rem rgba(0,0,0,.075), 0 0 0.8rem @{color-rgba}";
   }
 }
 
@@ -2036,8 +2036,8 @@ input[type="checkbox"] {
   // WebKit-specific. Other browsers will keep their default outline style.
   // (Initially tried to also force default via `outline: initial`,
   // but that seems to erroneously remove the outline in Firefox altogether.)
-  outline: 5px auto -webkit-focus-ring-color;
-  outline-offset: -2px;
+  outline: 0.5rem auto -webkit-focus-ring-color;
+  outline-offset: -0.2rem;
 }
 
 // Panels
@@ -2099,7 +2099,7 @@ input[type="checkbox"] {
 // Dividers (basically an hr) within dropdowns and nav lists
 
 .nav-divider(@color: #e5e5e5) {
-  height: 1px;
+  height: 0.1rem;
   margin: ((@line-height-computed / 2) - 1) 0;
   overflow: hidden;
   background-color: @color;
@@ -2119,7 +2119,7 @@ input[type="checkbox"] {
   // Body reset
 
   html {
-    font-size: 10px;
+    font-size: 1rem;
     -webkit-tap-highlight-color: rgba(0,0,0,0);
     box-sizing: border-box;
   }
@@ -2183,7 +2183,7 @@ input[type="checkbox"] {
     margin-top:    @line-height-computed;
     margin-bottom: @line-height-computed;
     border: 0;
-    border-top: 1px solid @hr-border;
+    border-top: 0.1rem solid @hr-border;
   }
 
 
@@ -2193,9 +2193,9 @@ input[type="checkbox"] {
 
   .sr-only {
     position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
+    width: 0.1rem;
+    height: 0.1rem;
+    margin: -0.1rem;
     padding: 0;
     overflow: hidden;
     clip: rect(0,0,0,0);
@@ -2377,7 +2377,7 @@ input[type="checkbox"] {
   .page-header {
     padding-bottom: ((@line-height-computed / 2) - 1);
     margin: (@line-height-computed * 2) 0 @line-height-computed;
-    border-bottom: 1px solid @page-header-border-color;
+    border-bottom: 0.1rem solid @page-header-border-color;
   }
 
 
@@ -2406,12 +2406,12 @@ input[type="checkbox"] {
   // Inline turns list items into inline-block
   .list-inline {
     .list-unstyled();
-    margin-left: -5px;
+    margin-left: -0.5rem;
 
     > li {
       display: inline-block;
-      padding-left: 5px;
-      padding-right: 5px;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
     }
   }
 
@@ -2464,7 +2464,7 @@ input[type="checkbox"] {
   // Add data-* attribute to help out our tooltip plugin, per https://github.com/twbs/bootstrap/issues/5257
   abbr[data-original-title] {
     cursor: help;
-    border-bottom: 1px dotted @abbr-border-color;
+    border-bottom: 0.1rem dotted @abbr-border-color;
   }
   .initialism {
     font-size: 90%;
@@ -2476,7 +2476,7 @@ input[type="checkbox"] {
     padding: (@line-height-computed / 2) @line-height-computed;
     margin: 0 0 @line-height-computed;
     font-size: @blockquote-font-size;
-    border-left: 5px solid @blockquote-border-color;
+    border-left: 0.5rem solid @blockquote-border-color;
 
     p,
     ul,
@@ -2507,9 +2507,9 @@ input[type="checkbox"] {
   // Heads up: `blockquote.pull-right` has been deprecated as of v3.1.0.
   .blockquote-reverse,
   blockquote.pull-right {
-    padding-right: 15px;
+    padding-right: 1,5rem;
     padding-left: 0;
-    border-right: 5px solid @blockquote-border-color;
+    border-right: 0.5rem solid @blockquote-border-color;
     border-left: 0;
     text-align: right;
 
@@ -2547,7 +2547,7 @@ input[type="checkbox"] {
     touch-action: manipulation;
     cursor: pointer;
     background-image: none; // Reset unusual Firefox-on-Android default style; see https://github.com/necolas/normalize.css/issues/214
-    border: 1px solid transparent;
+    border: 0.1rem solid transparent;
     white-space: nowrap;
     .button-size(@padding-base-vertical; @padding-base-horizontal; @font-size-base; @line-height-base; @btn-border-radius-base);
     user-select: none;
@@ -2572,7 +2572,7 @@ input[type="checkbox"] {
     &.active {
       outline: 0;
       background-image: none;
-      box-shadow: inset 0 3px 5px rgba(0,0,0,.125);
+      box-shadow: inset 0 0.3rem 0.5rem rgba(0,0,0,.125);
     }
 
     &.disabled,
@@ -2685,7 +2685,7 @@ input[type="checkbox"] {
 
   // Vertically space out multiple block buttons
   .btn-block + .btn-block {
-    margin-top: 5px;
+    margin-top: 0.5rem;
   }
 
   // Specificity overrides
@@ -2726,13 +2726,13 @@ input[type="checkbox"] {
     .btn + .btn-group,
     .btn-group + .btn,
     .btn-group + .btn-group {
-      margin-left: -1px;
+      margin-left: -0.1rem;
     }
   }
 
   // Optional: Group multiple button groups together for a toolbar
   .btn-toolbar {
-    margin-left: -5px; // Offset the first child's margin
+    margin-left: -0.5rem; // Offset the first child's margin
     &:extend(.clearfix all);
 
     .btn,
@@ -2743,7 +2743,7 @@ input[type="checkbox"] {
     > .btn,
     > .btn-group,
     > .input-group {
-      margin-left: 5px;
+      margin-left: 0.5rem;
     }
   }
 
@@ -2806,18 +2806,18 @@ input[type="checkbox"] {
 
   // Give the line between buttons some depth
   .btn-group > .btn + .dropdown-toggle {
-    padding-left: 8px;
-    padding-right: 8px;
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
   }
   .btn-group > .btn-lg + .dropdown-toggle {
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left: 1,2rem;
+    padding-right: 1,2rem;
   }
 
   // The clickable button for toggling the menu
   // Remove the gradient and set the same inset shadow as the :active state
   .btn-group.open .dropdown-toggle {
-    box-shadow: inset 0 3px 5px rgba(0,0,0,.125);
+    box-shadow: inset 0 0.3rem 0.5rem rgba(0,0,0,.125);
 
     // Show no shadow for `.btn-link` since it has no other button styles.
     &.btn-link {
@@ -2866,7 +2866,7 @@ input[type="checkbox"] {
     > .btn + .btn-group,
     > .btn-group + .btn,
     > .btn-group + .btn-group {
-      margin-top: -1px;
+      margin-top: -0.1rem;
       margin-left: 0;
     }
   }
@@ -2957,7 +2957,7 @@ input[type="checkbox"] {
   .alert {
     padding: @alert-padding;
     margin-bottom: @line-height-computed;
-    border: 1px solid transparent;
+    border: 0.1rem solid transparent;
     border-radius: @alert-border-radius;
 
     // Headings for larger alerts
@@ -2979,7 +2979,7 @@ input[type="checkbox"] {
     }
 
     > p + p {
-      margin-top: 5px;
+      margin-top: 0.5rem;
     }
   }
 
@@ -2989,20 +2989,20 @@ input[type="checkbox"] {
 
   .alert-dismissible {
     //padding-right: (@alert-padding + 20);
-    padding-right: 32px;
+    padding-right: 3.2rem;
 
     // Adjust close link position
     .close {
       position: relative;
-      top: -2px;
-      right: -21px;
+      top: -0.2rem;
+      right: -2.1rem;
       color: inherit;
     }
 
     // this override seems a bit off since it doesn't cover all
     &.alert-danger, &.alert-info {
       margin-bottom: 0;
-      margin-top: 10px;
+      margin-top: 1rem;
       border-radius: 0;
       height: 100%;
     }
@@ -3045,7 +3045,7 @@ input[type="checkbox"] {
 
       + li:before {
         content: "@{breadcrumb-separator}\00a0"; // Unicode space added since inline-block means non-collapsing white-space
-        padding: 0 5px;
+        padding: 0 0.5rem;
         color: @breadcrumb-color;
       }
     }
@@ -3065,7 +3065,7 @@ input[type="checkbox"] {
     display: inline-block;
     width: 0;
     height: 0;
-    margin-left: 2px;
+    margin-left: 0.2rem;
     vertical-align: middle;
     border-top:   @caret-width-base dashed;
     border-top:   @caret-width-base solid ~"\9"; // IE8
@@ -3084,13 +3084,13 @@ input[type="checkbox"] {
     z-index: 100600;
 
     li {
-      width: 210px;
+      width: 21rem;
 
       .pull-right {
         color: #aaa;
         font-size: 80%;
         position: relative;
-        top: 4px;
+        top: 0.4rem;
       }
     }
   }
@@ -3108,17 +3108,17 @@ input[type="checkbox"] {
     z-index: 1000;
     display: none; // none by default, but block on "open" of the menu
     float: left;
-    min-width: 160px;
-    padding: 5px 0;
-    margin: 2px 0 0; // override default ul
+    min-width: 16rem;
+    padding: 0.5rem 0;
+    margin: 0.2rem 0 0; // override default ul
     list-style: none;
     font-size: @font-size-base;
     text-align: left; // Ensures proper alignment if parent has it changed (e.g., modal footer)
     background-color: @dropdown-bg;
-    border: 1px solid @dropdown-fallback-border; // IE8 fallback
-    border: 1px solid @dropdown-border;
+    border: 0.1rem solid @dropdown-fallback-border; // IE8 fallback
+    border: 0.1rem solid @dropdown-border;
     border-radius: @border-radius-base;
-    box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    box-shadow: 0 0.6rem 1.2rem rgba(0,0,0,.175);
     background-clip: padding-box;
 
     // Aligns the dropdown menu to right
@@ -3137,7 +3137,7 @@ input[type="checkbox"] {
     // Links within the dropdown menu
     > li > a {
       display: block;
-      padding: 3px 20px;
+      padding: 0.3rem 2rem;
       clear: both;
       font-weight: normal;
       line-height: @line-height-base;
@@ -3224,7 +3224,7 @@ input[type="checkbox"] {
   // Dropdown section headers
   .dropdown-header {
     display: block;
-    padding: 3px 20px;
+    padding: 0.3rem 2rem;
     font-size: @font-size-small;
     line-height: @line-height-base;
     color: @dropdown-header-color;
@@ -3265,7 +3265,7 @@ input[type="checkbox"] {
     .dropdown-menu {
       top: auto;
       bottom: 100%;
-      margin-bottom: 2px;
+      margin-bottom: 0.2rem;
     }
   }
 
