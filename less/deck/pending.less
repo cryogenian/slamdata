@@ -5,11 +5,12 @@
   text-align: center;
   top: 50%;
   width: 100%;
-  margin-top: -32px;
+  margin-top: -3.2rem;
+
   i {
     display: block;
-    width: 32px;
-    height: 32px;
+    width: 3.2rem;
+    height: 3.2rem;
     background: url(../img/spin.gif);
     margin: 0 auto 0.5rem;
   }
@@ -17,16 +18,11 @@
 
 .sd-pending-overlay {
   position: absolute;
+  z-index: 1000;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000;
-
-  > div {
-    display: none;
-  }
-
   background-color: rgba(255,255,255,.8);
 
   > div {

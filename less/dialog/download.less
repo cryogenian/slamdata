@@ -1,158 +1,159 @@
-.dialog-download, .download-configuration {
-    min-width: 700px;
+.dialog-download,
+.download-configuration {
+  min-width: 70rem;
 
-    .form-group:last-of-type {
-        margin-bottom: 0;
+  .form-group:last-of-type {
+    margin-bottom: 0;
+  }
+
+  input[type=radio] {
+      margin-right: 1rem;
+  }
+
+  input[type=text] {
+    width: 6.4rem;
+  }
+
+  label {
+    line-height: 3.4rem;
+    width: 100%;
+    margin-bottom: 0;
+
+    input, select {
+      font-weight: normal;
     }
 
-    input[type=radio] {
-        margin-right: 10px;
+    > span:first-child {
+      width: 10rem;
+      display: block;
+      float: left;
     }
 
-    input[type=text] {
-      width: 4rem;
+    input.form-control {
+      width: ~"calc(100% - 10rem)";
     }
 
+    select.form-control {
+      width: auto;
+    }
+  }
+
+  .download-source {
+    label input.form-control {
+     width: ~"calc(100% - 100px - 33px)";
+     float: left;
+    }
+
+    ul.file-list-group {
+      width: 46.8rem;
+      left: 11.5rem;
+      margin-top: -0.5rem;
+    }
+  }
+
+  .download-target {
     label {
-        line-height: 34px;
-        width: 100%;
-        margin-bottom: 0;
+      position: relative;
+    }
 
-        input, select {
-            font-weight: normal;
+    input {
+      background: transparent;
+    }
+
+    .download-target-box {
+      position: absolute;
+      top: 0;
+      left: 11.3rem;
+      font-weight: normal;
+
+      > span {
+        &:first-child {
+          color: transparent;
         }
 
-        > span:first-child {
-            width: 100px;
-            display: block;
-            float: left;
+        &:last-child {
+          opacity: 0.5;
+        }
+      }
+    }
+  }
+
+  .download-csv-delimiters {
+    list-style: none;
+    padding: 0;
+    margin-top: 1rem;
+
+    li {
+      float: left;
+      display: block;
+      width: 50%;
+      margin: 0.5rem 0;
+
+      span {
+        width: 8rem;
+      }
+
+      input {
+        width: 4rem;
+      }
+    }
+  }
+
+  .download-array-mode {
+    > label {
+      width: 25%;
+      float: left;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      float: left;
+      width: 75%;
+
+      li {
+        display: block;
+
+        label {
+          cursor: pointer;
+          display: inline;
         }
 
         input.form-control {
-            width: ~"calc(100% - 100px)";
+          margin-left: 1rem;
+          width: 4em;
+          display: inline-block;
         }
+      }
+    }
+  }
 
-        select.form-control {
-            width: auto;
-        }
+  .download-json-options {
+    > div {
+      margin: 1rem 0;
     }
 
-    .download-source {
-        label input.form-control {
-           width: ~"calc(100% - 100px - 33px)";
-           float: left;
-        }
-
-        ul.file-list-group {
-            width: 468px;
-            left: 115px;
-            margin-top: -5px;
-        }
+    > div > label {
+      width: 8.5rem;
+      float: left;
     }
 
-    .download-target {
+    ul {
+      list-style: none;
+      padding: 0;
+      float: left;
+      margin-bottom: 0;
+
+      li {
         label {
-            position: relative;
+          cursor: pointer;
+          display: inline;
         }
-
-        input {
-            background: transparent;
-        }
-
-        .download-target-box {
-            position: absolute;
-            top: 0px;
-            left: 113px;
-            font-weight: normal;
-
-            > span {
-              &:first-child {
-                color: transparent;
-              }
-
-              &:last-child {
-                opacity: 0.5;
-              }
-            }
-        }
+      }
     }
+  }
 
-    .download-csv-delimiters {
-        list-style: none;
-        padding: 0;
-        margin-top: 10px;
-
-        li {
-            float: left;
-            display: block;
-            width: 50%;
-            margin: 5px 0;
-
-            span {
-                width: 8rem;
-            }
-
-            input {
-                width: 4rem;
-            }
-        }
-    }
-
-    .download-array-mode {
-        > label {
-            width: 25%;
-            float: left;
-        }
-
-        ul {
-            list-style: none;
-            padding: 0;
-            float: left;
-            width: 75%;
-
-            li {
-                display: block;
-
-                label {
-                    cursor: pointer;
-                    display: inline;
-                }
-
-                input.form-control {
-                    margin-left: 10px;
-                    width: 4em;
-                    display: inline-block;
-                }
-            }
-        }
-    }
-
-    .download-json-options {
-        > div {
-          margin: 1rem 0;
-        }
-
-        > div > label {
-            width: 8.5rem;
-            float: left;
-        }
-
-        ul {
-            list-style: none;
-            padding: 0;
-            float: left;
-            margin-bottom: 0px;
-
-            li {
-                label {
-                    cursor: pointer;
-                    display: inline;
-                }
-            }
-        }
-    }
-
-    .alert {
-        height: 42px;
-    }
+  .alert {
+    height: 4.2rem;
+  }
 }

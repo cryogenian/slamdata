@@ -15,7 +15,7 @@
     width: 100%;
     height: 100%;
     z-index: 30;
-    box-shadow: inset 0px 0px 8px 0px rgba(0, 0, 0, 0.25);
+    box-shadow: inset 0 0 0.8rem 0 rgba(0, 0, 0, 0.25);
     pointer-events: none;
   }
 }
@@ -39,35 +39,35 @@
 
   &.sd-draftboard-edge-top {
     bottom: auto;
-    height: 10px;
+    height: 1rem;
     cursor: ns-resize;
   }
 
   &.sd-draftboard-edge-left {
     right: auto;
-    width: 10px;
+    width: 1rem;
     cursor: ew-resize;
   }
 
   &.sd-draftboard-edge-right {
     left: auto;
-    width: 10px;
+    width: 1rem;
     cursor: ew-resize;
   }
 
   &.sd-draftboard-edge-bottom {
     top: auto;
-    height: 10px;
+    height: 1rem;
     cursor: ns-resize;
   }
 }
 
 
 .sd-draftboard-edge-mid {
-  width: 10px;
-  height: 10px;
-  margin-top: -5px;
-  margin-left: -5px;
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.5rem;
+  margin-left: -0.5rem;
 
   &,
   &::before {
@@ -77,20 +77,20 @@
   }
 
   &::before {
-    border-style: solid;
     content: "";
+    border-style: solid;
   }
 
   .sd-draftboard-edge-left &,
   .sd-draftboard-edge-right & {
-    height: 20px;
-    margin-top: -10px;
+    height: 2rem;
+    margin-top: -1rem;
   }
 
   .sd-draftboard-edge-top &,
   .sd-draftboard-edge-bottom & {
-    width: 20px;
-    margin-left: -10px;
+    width: 2rem;
+    margin-left: -1rem;
   }
 
   .sd-draftboard-edge-top & {
@@ -110,41 +110,41 @@
   }
 
   .sd-draftboard-edge-top &::before {
-    border-width: 4px 3px 0 3px;
+    border-width: 0.4rem 0.3rem 0 0.3rem;
     border-color: #888 transparent transparent transparent;
-    margin-top: -2px;
-    margin-left: -4px;
+    margin-top: -0.2rem;
+    margin-left: -0.4rem;
   }
 
   .sd-draftboard-edge-left &::before {
-    border-width: 3px 0 3px 4px;
+    border-width: 0.3rem 0 0.3rem 0.4rem;
     border-color: transparent transparent transparent #888;
-    margin-top: -4px;
-    margin-left: -2px;
+    margin-top: -0.4rem;
+    margin-left: -0.2rem;
   }
 
   .sd-draftboard-edge-right &::before {
-    border-width: 3px 4px 3px 0;
+    border-width: 0.3rem 0.4rem 03rem 0;
     border-color: transparent #888 transparent transparent;
-    margin-top: -4px;
-    margin-left: -2px;
+    margin-top: -0.4rem;
+    margin-left: -0.2rem;
   }
 
   .sd-draftboard-edge-bottom &::before {
-    border-width: 0 3px 4px 3px;
+    border-width: 0 0.3rem 0.4rem 0.3rem;
     border-color: transparent transparent #888 transparent;
-    margin-top: -2px;
-    margin-left: -4px;
+    margin-top: -0.2rem;
+    margin-left: -0.4rem;
   }
 }
 
 
 .sd-draftboard-root {
   position: absolute;
-  top: 5px;
-  left: 5px;
-  right: 5px;
-  bottom: 5px;
+  top: 0.5rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
   z-index: 1;
   pointer-events: none;
 }
@@ -164,12 +164,12 @@
 
   &.horizontal {
     width: 0;
-    border-left-width: 1px;
+    border-left-width: 0.1rem;
   }
 
   &.vertical {
     height: 0;
-    border-top-width: 1px;
+    border-top-width: 0.1rem;
   }
 }
 
@@ -230,12 +230,12 @@
 
 .sd-draftboard-cell-content {
   position: absolute;
-  top: 5px;
-  left: 5px;
-  right: 5px;
-  bottom: 5px;
+  top: 0.5rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
   background: #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  box-shadow: 0 0.1rem 4px rgba(0,0,0,.2);
   pointer-events: auto;
 }
 
@@ -279,11 +279,11 @@
   }
 
   &.sizing.horizontal {
-    border-left-width: 1px;
+    border-left-width: 0.1rem;
   }
 
   &.sizing.vertical {
-    border-top-width: 1px;
+    border-top-width: 0.1rem;
   }
 }
 
@@ -292,7 +292,7 @@
   position: absolute;
   width: 0;
   height: 0;
-  border: 3px dotted transparent;
+  border: 0.3rem dotted transparent;
 
   &::before {
     content: " ";
@@ -309,7 +309,7 @@
   .vertical & {
     left: 50%;
     margin-left: -1px;
-    border-left-width: 1px;
+    border-left-width: 0.1rem;
   }
 
   .vertical.lt & {
@@ -318,9 +318,9 @@
 
   .vertical.lt &::before {
     top: 0;
-    left: -4px;
-    width: 1px;
-    border-width: 0 3px 7px 3px;
+    left: -0.4rem;
+    width: 0.1rem;
+    border-width: 0 0.3rem 0.7rem 0.3rem;
     border-bottom-color: #337ab7;
   }
 
@@ -329,17 +329,17 @@
   }
 
   .vertical.gt &::before {
-    bottom: 1px;
-    left: -4px;
-    width: 1px;
-    border-width: 7px 3px 0 3px;
+    bottom: 0.1rem;
+    left: -0.4rem;
+    width: 0.1rem;
+    border-width: 0.7rem 0.3rem 0 0.3rem;
     border-top-color: #337ab7;
   }
 
   .horizontal & {
     top: 50%;
     margin-top: -1px;
-    border-top-width: 1px;
+    border-top-width: 0.1rem;
   }
 
   .horizontal.lt & {
@@ -348,9 +348,9 @@
 
   .horizontal.lt &::before {
     left: 0;
-    top: -4px;
-    height: 1px;
-    border-width: 3px 7px 3px 0;
+    top: -0.4rem;
+    height: 0.1rem;
+    border-width: 0.3rem 0.7rem 0.3rem 0;
     border-right-color: #337ab7;
   }
 
@@ -359,10 +359,10 @@
   }
 
   .horizontal.gt &::before {
-    right: 1px;
-    top: -4px;
-    height: 1px;
-    border-width: 3px 0 3px 7px;
+    right: 0.1rem;
+    top: -0.4rem;
+    height: 0.1rem;
+    border-width: 0.3rem 0 0.3rem 0.7rem;
     border-left-color: #337ab7;
   }
 }
@@ -389,7 +389,7 @@
     width: @grid-size * 2;
     height: @grid-size * 2;
     text-align: center;
-    font-size: 1.5rem;
+    font-size: 2.4rem;
     color: #aaa;
 
     .sd-draftboard-cell:only-child & {
@@ -401,17 +401,17 @@
 
 .sd-draftboard-moving-icon {
   position: absolute;
-  background: rgba(0,0,0,.2);
+  background: rgba(0, 0, 0, 0.2);
   cursor: grabbing;
-  border-radius: 4px;
+  border-radius: 0.4rem;
   pointer-events: auto;
   z-index: 9;
 
   &.floating {
-    width: 10rem;
-    height: 6rem;
-    margin-top: -3rem;
-    margin-left: -5rem;
+    width: 16rem;
+    height: 9.6rem;
+    margin-top: -4.8rem;
+    margin-left: -8rem;
     z-index: 9999;
     transition: none;
   }
@@ -420,10 +420,10 @@
     &::before {
       content: "";
       position: absolute;
-      top: 5px;
-      left: 5px;
-      right: 5px;
-      bottom: 5px;
+      top: 0.5rem;
+      left: 0.5rem;
+      right: 0.5rem;
+      bottom: 0.5rem;
       background-color: rgba(20,120,255,.4);
     }
 

@@ -1,11 +1,12 @@
 @import "common";
 
+
 .sd-action-list {
   display: flex;
   flex-direction: column;
   justify-content: space-around;
 
-  @spacing: 0.5px;
+  @spacing: 0.5;
   @size: @grid-size * 4;
 
   width: 100%;
@@ -91,7 +92,7 @@
   position: absolute;
   top: 0;
   left: 50%;
-  transform: translate(-50%,0);
+  transform: translate(-50%, 0);
   z-index: 999999;
 }
 
@@ -111,9 +112,9 @@ form.sd-action-filter {
     height: 2rem;
     box-sizing: border-box;
     margin: 0.8rem 0;
-    padding: 8px 1.6rem 8px 1.7rem;
-    border: 1px solid #ccc;
-    box-shadow: inset 2px 3px 6px -3px @shade-tint;
+    padding: 0.8rem 1.6rem 0.8rem 1.7rem;
+    border: 0.1rem solid #ccc;
+    box-shadow: inset 0.2rem 0.3rem 0.6rem -0.3rem @shade-tint;
   }
 
   button {
@@ -122,7 +123,7 @@ form.sd-action-filter {
     opacity: 0.7;
     width: 1.8rem;
     margin: 0.5rem 0;
-    border: 1px solid #ccc;
+    border: 0.1rem solid #ccc;
     padding: 0;
     background: transparent;
     border: 0;
@@ -142,7 +143,7 @@ form.sd-action-filter {
     bottom: 0;
     height: 100%;
     margin: auto;
-    padding: 0 7px;
+    padding: 0 0.7rem;
     opacity: 0.5;
     font-size: 1.125em;
   }
@@ -172,6 +173,6 @@ form.sd-action-filter {
     width: 100%;
     text-align: center;
     line-height: 2rem;
-    opacity: .6;
+    opacity: 0.6;
   }
 }
