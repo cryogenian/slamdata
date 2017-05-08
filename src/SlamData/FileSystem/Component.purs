@@ -372,8 +372,8 @@ eval = case _ of
           checkIsUnconfigured
     pure next
   HandleDialog DialogMessage.MountDelete next → do
-    mount ← H.query' CS.cpDialog unit $ H.request Dialog.SaveMount
-    for_ (join mount) (remove ∘ R.Mount)
+    mount ← R.Mount ∘ R.Database <$> H.gets _.path
+    remove mount
     H.liftEff Browser.reload
     pure next
   HandleDialog (DialogMessage.ExploreFile fp initialName) next → do
