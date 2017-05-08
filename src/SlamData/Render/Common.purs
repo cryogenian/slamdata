@@ -49,7 +49,10 @@ clearFieldIcon label =
     , HP.title label
     , ARIA.label label
     ]
-    [ HH.text label ]
+    [ HH.span
+        [ HP.class_ B.srOnly ]
+        [ HH.text label ]
+    ]
 
 busyFieldIcon ∷ ∀ f p. String → HTML p (f Unit)
 busyFieldIcon label =
