@@ -91,7 +91,11 @@ logo mbVersion =
           , ARIA.label "Browse root folder"
           , HP.title "Browse root folder"
           ]
-          [ HH.img [ HP.src "img/logo.svg" ] ]
+          [ HH.img
+            [ HP.src "img/logo.svg"
+            , HP.alt "SlamData"
+            ]
+          ]
       ]
     ⊕ foldMap (pure ∘ HH.div_ ∘ pure ∘ HH.text) mbVersion
 

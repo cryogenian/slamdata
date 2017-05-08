@@ -50,7 +50,7 @@ clearFieldIcon label =
     , ARIA.label label
     ]
     [ HH.span
-        [ HP.class_ B.srOnly ]
+        [ HP.class_ Rc.srOnly ]
         [ HH.text label ]
     ]
 
