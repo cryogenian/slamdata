@@ -1,7 +1,7 @@
 .file-system-item {
   justify-content: space-between;
   align-items: center;
-  min-height: 2em;
+  border-top: 0.1rem solid rgba(0, 0, 0, 0.125);
 
   &, .item-toolbar {
     display: flex;
@@ -13,6 +13,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+
+    > a {
+      display: block;
+      padding: 0.6em 0;
+    }
   }
 
   .item-toolbar {
