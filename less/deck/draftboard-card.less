@@ -22,6 +22,8 @@
 
 
 .sd-draftboard-edge {
+  @draftboard-size: 1.6rem;
+
   background: transparent;
   cursor: pointer;
   padding: 0;
@@ -37,27 +39,28 @@
     background: rgba(0, 0, 0, 0.06);
   }
 
+
   &.sd-draftboard-edge-top {
     bottom: auto;
-    height: 1rem;
+    height: @draftboard-size;
     cursor: ns-resize;
   }
 
   &.sd-draftboard-edge-left {
     right: auto;
-    width: 1rem;
+    width: @draftboard-size;
     cursor: ew-resize;
   }
 
   &.sd-draftboard-edge-right {
     left: auto;
-    width: 1rem;
+    width: @draftboard-size;
     cursor: ew-resize;
   }
 
   &.sd-draftboard-edge-bottom {
     top: auto;
-    height: 1rem;
+    height: @draftboard-size;
     cursor: ns-resize;
   }
 }
@@ -159,7 +162,7 @@
   pointer-events: none;
 
   &.invalid {
-    border-color: red;
+    border-color: #f00;
   }
 
   &.horizontal {
@@ -176,16 +179,16 @@
 
 .sd-draftboard-guide-label {
   position: absolute;
-  background: rgba(230,230,230,.9);
+  background: rgba(230, 230, 230, 0.9);
   color: #666;
-  font-size: 11px;
+  font-size: 1.1rem;
   width: 3em;
   height: 2em;
   margin: 0;
   padding: 0;
   line-height: 2em;
   text-align: center;
-  transition: .1s ease-out all;
+  transition: 0.1s ease-out all;
   top: 0;
   left: 0;
 
@@ -199,7 +202,7 @@
 
   .horizontal &.trailing {
     left: -3em;
-    margin-left: -1px;
+    margin-left: -0.1rem;
   }
 
   .vertical &.leading {
@@ -208,7 +211,7 @@
 
   .vertical &.trailing {
     top: -2em;
-    margin-top: -1px
+    margin-top: -0.1rem;
   }
 }
 
@@ -235,7 +238,7 @@
   right: 0.5rem;
   bottom: 0.5rem;
   background: #fff;
-  box-shadow: 0 0.1rem 4px rgba(0,0,0,.2);
+  box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.2);
   pointer-events: auto;
 }
 
@@ -256,18 +259,18 @@
   }
 
   &.invalid {
-    border-color: red;
+    border-color: #f00;
   }
 
   &.horizontal {
-    width: 10px;
-    margin-left: -5px;
+    width: 1rem;
+    margin-left: -0.5rem;
     cursor: ew-resize;
   }
 
   &.vertical {
-    height: 10px;
-    margin-top: -5px;
+    height: 1rem;
+    margin-top: -0.5rem;
     cursor: ns-resize;
   }
 
@@ -308,7 +311,7 @@
 
   .vertical & {
     left: 50%;
-    margin-left: -1px;
+    margin-left: -0.1rem;
     border-left-width: 0.1rem;
   }
 
@@ -338,7 +341,7 @@
 
   .horizontal & {
     top: 50%;
-    margin-top: -1px;
+    margin-top: -0.1rem;
     border-top-width: 0.1rem;
   }
 
@@ -420,11 +423,11 @@
     &::before {
       content: "";
       position: absolute;
-      top: 0.5rem;
-      left: 0.5rem;
-      right: 0.5rem;
-      bottom: 0.5rem;
-      background-color: rgba(20,120,255,.4);
+      top: 0.8rem;
+      left: 0.8rem;
+      right: 0.8rem;
+      bottom: 0.8rem;
+      background-color: rgba(20, 120, 255, 0.4);
     }
 
     &.horizontal.side-a::before {
