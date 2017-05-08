@@ -16,12 +16,12 @@ limitations under the License.
 
 module SlamData.Workspace.Card.CardType.ChartType
   ( ChartType(..)
-  , parseChartType
-  , printChartType
-  , chartName
-  , chartLightIconSrc
-  , chartDarkIconSrc
-  , allChartTypes
+  , parse
+  , print
+  , name
+  , lightIconSrc
+  , darkIconSrc
+  , all
   ) where
 
 
@@ -51,8 +51,8 @@ data ChartType
   | Candlestick
   | Parallel
 
-allChartTypes ∷ Array ChartType
-allChartTypes =
+all ∷ Array ChartType
+all =
   [ PivotTable
   , Pie
   , Line
@@ -72,8 +72,8 @@ allChartTypes =
   , Metric
   ]
 
-parseChartType ∷ String → String ⊹ ChartType
-parseChartType = case _ of
+parse ∷ String → String ⊹ ChartType
+parse = case _ of
   "pie" → pure Pie
   "line" → pure Line
   "bar" → pure Bar
@@ -93,8 +93,8 @@ parseChartType = case _ of
   "parallels" → pure Parallel
   _ → Left "incorrect chartType"
 
-printChartType ∷ ChartType → String
-printChartType = case _ of
+print ∷ ChartType → String
+print = case _ of
   Pie → "pie"
   Line → "line"
   Bar → "bar"
@@ -113,8 +113,8 @@ printChartType = case _ of
   Candlestick → "candlestick"
   Parallel → "parallels"
 
-chartName ∷ ChartType → String
-chartName = case _ of
+name ∷ ChartType → String
+name = case _ of
   Pie → "Pie"
   Line → "Line"
   Bar → "Bar"
@@ -138,17 +138,17 @@ derive instance eqChartType ∷ Eq ChartType
 derive instance ordChartType ∷ Ord ChartType
 
 instance encodeJsonChartType ∷ EncodeJson ChartType where
-  encodeJson = fromString ∘ printChartType
+  encodeJson = fromString ∘ print
 
 instance decodeJsonChartType ∷ DecodeJson ChartType where
-  decodeJson json = decodeJson json >>= parseChartType
+  decodeJson json = decodeJson json >>= parse
 
 instance arbitraryChartType ∷ SC.Arbitrary ChartType where
-  arbitrary = Gen.allInArray allChartTypes
+  arbitrary = Gen.allInArray all
 
 
-chartLightIconSrc ∷ ChartType → String
-chartLightIconSrc = case _ of
+lightIconSrc ∷ ChartType → String
+lightIconSrc = case _ of
   Pie → "img/pie.svg"
   Line → "img/line.svg"
   Bar → "img/bar.svg"
@@ -167,8 +167,8 @@ chartLightIconSrc = case _ of
   Candlestick → "img/candlestick.svg"
   Parallel → "img/parallel.svg"
 
-chartDarkIconSrc ∷ ChartType → String
-chartDarkIconSrc = case _ of
+darkIconSrc ∷ ChartType → String
+darkIconSrc = case _ of
   Pie → "img/pie-black.svg"
   Line → "img/line-black.svg"
   Bar → "img/bar-black.svg"

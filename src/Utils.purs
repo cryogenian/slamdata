@@ -37,9 +37,10 @@ stringToNumber s =
   n = readFloat s
 
 stringToBoolean ∷ String → Maybe Boolean
-stringToBoolean "true" = Just true
-stringToBoolean "false" = Just false
-stringToBoolean _ = Nothing
+stringToBoolean = case _ of
+  "true" → Just true
+  "false" → Just false
+  _ → Nothing
 
 stringToInt ∷ String → Maybe Int
 stringToInt = map Int.floor ∘ stringToNumber

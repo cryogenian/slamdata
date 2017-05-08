@@ -21,7 +21,9 @@ import SlamData.Prelude
 import Data.Argonaut (encodeJson, decodeJson)
 
 import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..))
-import SlamData.Workspace.Card.CardType.ChartType (allChartTypes)
+import SlamData.Workspace.Card.CardType.ChartType as ChT
+import SlamData.Workspace.Card.CardType.FormInputType as FiT
+import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 
 import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
 import Test.StrongCheck.Arbitrary (class Arbitrary)
@@ -43,7 +45,9 @@ instance arbitraryArbCardType ∷ Arbitrary ArbCardType where
         , Markdown
         , Table
         ]
-      ⊕ map ChartOptions allChartTypes
+      ⊕ map ChartOptions ChT.all
+      ⊕ map SetupFormInput FiT.all
+      ⊕ map SetupGeoChart GcT.all
 
 
 check ∷ forall eff. SC eff Unit

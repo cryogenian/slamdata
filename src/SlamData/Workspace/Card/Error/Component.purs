@@ -451,7 +451,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CE.FILabeledTooManyEntries { formInputType, maximum, entryCount } →
       let
         errorText =
-          "The " <> FIT.printFormInputType formInputType
+          "The " <> FIT.print formInputType
           <> " form input can't take more than "
           <> show (FIT.maximumCountOfEntries formInputType)
           <> "entries, but there were: "
@@ -468,7 +468,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CE.FILabeledTooManySelected { formInputType, maximum, selectedCount } →
       let
         errorText =
-          "The " <> FIT.printFormInputType formInputType
+          "The " <> FIT.print formInputType
           <> " form input can't have more than "
           <> show (FIT.maximumCountOfSelectedValues formInputType)
           <> " selected values, but there were: "

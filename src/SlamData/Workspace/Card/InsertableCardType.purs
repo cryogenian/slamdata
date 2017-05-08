@@ -39,15 +39,18 @@ data InsertableCardType
   | SetupVariablesCard
   | ShowChartCard
   | ShowFormCard
+  | ShowGeoChartCard
   | ShowDownloadCard
   | ShowMarkdownCard
   | TableCard
   | TroubleshootCard
   | TabsCard
   | StructureEditorCard
+  | SetupGeoChartCard
 
 data InsertableCardIOType
   = Chart
+  | GeoChart
   | Form
   | Data
   | Download
@@ -68,10 +71,12 @@ inputs =
   , QueryCard × [ None, Data, Variables ]
   , SearchCard × [ Data ]
   , SetupChartCard × [ Data ]
+  , SetupGeoChartCard × [ Data ]
   , SetupDownloadCard × [ Data ]
   , SetupFormCard × [ Data ]
   , SetupMarkdownCard × [ None, Variables ]
   , SetupVariablesCard × [ None ]
+  , ShowGeoChartCard × [ GeoChart ]
   , ShowChartCard × [ Chart ]
   , ShowFormCard × [ Form ]
   , ShowDownloadCard × [ Download ]
@@ -114,8 +119,7 @@ cardsToExcludeFromPaths =
   ]
 
 contains ∷ ∀ a. (Eq a) ⇒ a → Array a → Boolean
-contains x =
-  isJust ∘ Array.elemIndex x
+contains x = isJust ∘ Array.elemIndex x
 
 takesInput ∷ InsertableCardIOType → InsertableCardType → Boolean
 takesInput io card = Foldable.elem card $ cardsThatTakeInput io
@@ -126,7 +130,10 @@ inputsFor card =
 
 outputFor ∷ InsertableCardType → Maybe InsertableCardIOType
 outputFor card =
-  Utils.singletonValue Nothing (const Nothing) (map snd $ Array.filter (eq card ∘ fst) outputs)
+  Utils.singletonValue
+    Nothing
+    (const Nothing)
+    (map snd $ Array.filter (eq card ∘ fst) outputs)
 
 cardsThatOutput ∷ InsertableCardIOType → Array InsertableCardType
 cardsThatOutput io =
@@ -219,6 +226,7 @@ printIOType ∷ InsertableCardIOType → String
 printIOType = case _ of
   Form → "a form"
   Chart → "a chart"
+  GeoChart → "geo chart"
   Data → "data"
   Download → "a download"
   Markdown → "markdown"
@@ -270,11 +278,13 @@ toCardType = case _ of
   QueryCard → Just $ CardType.Ace CardType.SQLMode
   SearchCard → Just CardType.Search
   SetupChartCard → Nothing
+  SetupGeoChartCard → Nothing
   SetupFormCard → Nothing
   SetupDownloadCard → Just CardType.DownloadOptions
   SetupMarkdownCard → Just $ CardType.Ace CardType.MarkdownMode
   SetupVariablesCard → Just $ CardType.Variables
   ShowChartCard → Just CardType.Chart
+  ShowGeoChartCard → Just CardType.GeoChart
   ShowFormCard → Just CardType.FormInput
   ShowDownloadCard → Just CardType.Download
   ShowMarkdownCard → Just CardType.Markdown
@@ -298,25 +308,23 @@ aAn s =
   vowels = [ "a", "e", "i", "o", "u" ]
 
 reason ∷ InsertableCardIOType → CardType → String
-reason io card =
-  fold
-    [ aAn $ CardType.cardName card
-    , " "
-    , show $ CardType.cardName card
-    , " card can't "
-    , actual
-    , " because it needs "
-    , expected
-    , action
-    , "."
-    ]
+reason io card = fold
+  [ aAn $ CardType.cardName card
+  , " "
+  , show $ CardType.cardName card
+  , " card can't "
+  , actual
+  , " because it needs "
+  , expected
+  , action
+  , "."
+  ]
   where
   ictCardType =
     fromCardType card
-  actual =
-    case io of
-      None → "be the first card in a deck"
-      _ → "follow a card which outputs " <> printIOType io
+  actual = case io of
+    None → "be the first card in a deck"
+    _ → "follow a card which outputs " <> printIOType io
   expected =
     eitherOr $ map printIOType $ inputsFor ictCardType
   action =
@@ -330,11 +338,13 @@ printAction = case _ of
   QueryCard → Nothing
   SearchCard → Just "search"
   SetupChartCard → Just "set up a chart for"
+  SetupGeoChartCard → Just "set up geo chart for"
   SetupFormCard → Just "set up a form for"
   SetupDownloadCard → Just "setup a download for"
   SetupMarkdownCard → Nothing
   SetupVariablesCard → Nothing
   ShowChartCard → Just "show"
+  ShowGeoChartCard → Just "show"
   ShowFormCard → Just "show"
   ShowDownloadCard → Just "show"
   ShowMarkdownCard → Just "show"
@@ -344,26 +354,28 @@ printAction = case _ of
   StructureEditorCard → Nothing
 
 fromCardType ∷ CardType → InsertableCardType
-fromCardType =
-  case _ of
-    CardType.Cache → CacheCard
-    CardType.Draftboard → DraftboardCard
-    CardType.Open → OpenCard
-    CardType.Ace CardType.SQLMode → QueryCard
-    CardType.Search → SearchCard
-    CardType.ChartOptions _ → SetupChartCard
-    CardType.DownloadOptions → SetupDownloadCard
-    CardType.Ace CardType.MarkdownMode → SetupMarkdownCard
-    CardType.Variables → SetupVariablesCard
-    CardType.Chart → ShowChartCard
-    CardType.Download → ShowDownloadCard
-    CardType.Markdown → ShowMarkdownCard
-    CardType.Table → TableCard
-    CardType.Troubleshoot → TroubleshootCard
-    CardType.SetupFormInput _ → SetupFormCard
-    CardType.FormInput → ShowFormCard
-    CardType.Tabs → TabsCard
-    CardType.StructureEditor → StructureEditorCard
+fromCardType = case _ of
+  CardType.Cache → CacheCard
+  CardType.Draftboard → DraftboardCard
+  CardType.Open → OpenCard
+  CardType.Ace CardType.SQLMode → QueryCard
+  CardType.Search → SearchCard
+  CardType.ChartOptions _ → SetupChartCard
+  CardType.SetupGeoChart _ → SetupGeoChartCard
+  CardType.GeoChart → ShowGeoChartCard
+  CardType.DownloadOptions → SetupDownloadCard
+  CardType.Ace CardType.MarkdownMode → SetupMarkdownCard
+  CardType.Variables → SetupVariablesCard
+  CardType.Chart → ShowChartCard
+  CardType.Download → ShowDownloadCard
+  CardType.Markdown → ShowMarkdownCard
+  CardType.Table → TableCard
+  CardType.Troubleshoot → TroubleshootCard
+  CardType.SetupFormInput _ → SetupFormCard
+  CardType.FormInput → ShowFormCard
+  CardType.Tabs → TabsCard
+  CardType.StructureEditor → StructureEditorCard
+
 
 all ∷ Array InsertableCardType
 all =
@@ -375,6 +387,8 @@ all =
   , ShowChartCard
   , SetupFormCard
   , ShowFormCard
+  , SetupGeoChartCard
+  , ShowGeoChartCard
   , SetupMarkdownCard
   , ShowMarkdownCard
   , DraftboardCard

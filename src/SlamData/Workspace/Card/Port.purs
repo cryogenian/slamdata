@@ -25,6 +25,7 @@ module SlamData.Workspace.Card.Port
   , PivotTablePort
   , SetupLabeledFormInputPort
   , SetupTextLikeFormInputPort
+  , GeoChartPort
   , tagPort
   , emptyOut
   , terminalOut
@@ -122,6 +123,8 @@ type SetupTextLikeFormInputPort =
   , formInputType ∷ FormInputType
   }
 
+type GeoChartPort = Unit
+
 data Port
   = Initial
   | Terminal
@@ -136,6 +139,7 @@ data Port
   | ValueMetric MetricPort
   | CategoricalMetric MetricPort
   | PivotTable PivotTablePort
+  | GeoChart GeoChartPort
 
 tagPort ∷ Port → String
 tagPort  = case _ of
@@ -152,6 +156,7 @@ tagPort  = case _ of
   ValueMetric _ → "ValueMetric"
   CategoricalMetric _ → "CategoricalMetric"
   PivotTable _ → "PivotTable"
+  GeoChart _ → "GeoChart"
 
 filterResources ∷ DataMap → SM.StrMap Resource
 filterResources = SM.fold go SM.empty
