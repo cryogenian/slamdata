@@ -18,27 +18,40 @@
       padding: 0;
 
       div.download-type-selector {
+        display: flex;
+        flex-flow: column nowrap;
         position: absolute;
         left: 0;
-        width: 6rem;
+        overflow-y: auto;
         height: 100%;
+        padding: 1rem;
         background-color: #f0f0f0;
+
+        > * {
+          @m: 0.5rem;
+
+          &:not(:first-child) {
+            margin-top: @m;
+          }
+
+          &:not(:last-child) {
+            margin-bottom: @m;
+          }
+        }
 
         img {
           width: 3.2rem;
           height: 3.2rem;
-          padding: 0.6rem;
+          padding: 0.5rem;
           background-color: #aaa;
           cursor: pointer;
-          margin-left: 1.6rem;
-          margin-top: 0.8rem;
-          left: 50%;
 
           &.active, &:hover {
             background-color: #337ab7;
           }
         }
       }
+
       .download-configuration {
         width: ~"calc(100% - 6rem - 1.2rem)";
         position: absolute;
