@@ -38,7 +38,7 @@
     right: -@grid-size;
     bottom: -@grid-size;
     z-index: 10;
-    box-shadow: 0 0 1px rgba(0,0,0,.4), 0 0 8px rgba(0,0,0,.2);
+    box-shadow: 0 0 0.1rem rgba(0, 0, 0, 0.4), 0 0 0.8rem rgba(0, 0, 0, 0.2);
 
     > .sd-deck-frame {
       display: block;
@@ -120,7 +120,7 @@
 }
 
 .sd-card {
-  background: white;
+  background: #fff;
   position: absolute;
   height: 100%;
   width: 100%;
@@ -167,14 +167,14 @@
   margin-top: -50%;
   display: block;
   height: @grid-size * 4;
-  background: url(../img/gripper.svg) repeat-y center;
+  background: url("../img/gripper.svg") repeat-y center;
 }
 
 .sd-flip-deck {
   height: @grid-size;
   width: @grid-size;
   background-size: 66.66%;
-  background-image: url(../img/deck-flip.svg);
+  background-image: url("../img/deck-flip.svg");
   background-repeat: no-repeat;
   background-position: center center;
   background-color: transparent;
@@ -203,7 +203,7 @@
   left: 50%;
   margin: 0 0 0 -(@grid-size * 2);
   border: none;
-  background: url(../img/gripper.svg) repeat-x center
+  background: url("../img/gripper.svg") repeat-x center;
 }
 
 button.sd-zoom-deck {
@@ -249,7 +249,7 @@ button.sd-zoom-deck {
   width: 2.8rem;
   height: 2.8rem;
   top: -0.4rem;
-  background-image: url(../img/delete-deck-white.svg);
+  background-image: url("../img/delete-deck-white.svg");
   background-size: 100% 100%;
 }
 
@@ -274,9 +274,9 @@ button.sd-zoom-deck {
 
 .sd-focus-deck-frame-hint {
   position: absolute;
-  top: ~"calc(0.5rem + 2px)";
-  left: ~"calc(1.5rem + 1px)";
-  width: ~"calc(50% - (1.6rem + 1px))";;
+  top: ~"calc(0.5rem + 0.2rem)";
+  left: ~"calc(1.5rem + 1rem)";
+  width: ~"calc(50% - (1.6rem + 0.1rem))";
   z-index: 9999;
 }
 

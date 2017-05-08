@@ -32,7 +32,7 @@ body {
 }
 
 
-[aria-hidden = "true"]:not(.sd-icon) {
+[aria-hidden="true"]:not(.sd-icon) {
   display: none !important;
 }
 
@@ -124,7 +124,7 @@ select.form-control, input.form-control, button.form-control {
   z-index: -100500;
 
   &.in {
-      z-index: 100500;
+    z-index: 100500;
   }
 }
 
@@ -134,7 +134,7 @@ ol.breadcrumb {
   margin-top: 1.2rem;
 
   > li + li::before {
-      padding-right: 0.1rem;
+    padding-right: 0.1rem;
   }
 }
 
@@ -151,7 +151,7 @@ ol.breadcrumb {
     color: #337ab7;
 
     &:hover {
-      color: #23527c
+      color: #23527c;
     }
   }
 }
@@ -169,7 +169,7 @@ ol.breadcrumb {
     float: left;
 
     .fade {
-       display: none;
+      display: none;
     }
 
     .fade.in {
@@ -328,7 +328,7 @@ div.chart-card-editor {
 }
 
 .readonly-highlight {
-  background-color: blue;
+  background-color: #00f;
   opacity: 0.2;
   position: absolute;
 }
@@ -354,7 +354,7 @@ div.chart-card-editor {
 
 .sql-mount-add-var-pair-button {
   position: relative;
-  left: ~"calc(100% - 4rem)"
+  left: ~"calc(100% - 4rem)";
 }
 
 .sql-mount-form {
@@ -367,15 +367,8 @@ div.chart-card-editor {
   > label {
     display: block;
     margin-top: 1.4rem;
-    font-weight: normal;
+    font-weight: 400;
     font-size: 1.6rem;
-  }
-}
-
-button {
-  img.glyph-image {
-    width: 4.8rem;
-    margin-top: -1.8rem;
   }
 }
 
@@ -392,6 +385,11 @@ button {
 
 button {
   .noselect;
+
+  img.glyph-image {
+    width: 4.8rem;
+    margin-top: -1.8rem;
+  }
 }
 
 

@@ -74,6 +74,7 @@
     "purs-loader": "^2.4.2",
     "rimraf": "^2.4.3",
     "selenium-webdriver": "2.53.2",
+    "stylelint": "^7.10.1",
     "vinyl-paths": "^2.1.0",
     "webpack": "^2.3.2",
     "webpack-stream": "^2.1.0"
