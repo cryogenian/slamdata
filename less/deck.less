@@ -140,6 +140,20 @@
   border: none;
   opacity: 0;
   pointer-events: none;
+
+  &::after {
+    display: block;
+    content: " ";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 6.4rem;
+    width: 100%;
+    margin: auto;
+    background: url("../img/gripper.svg") repeat-y 50%;
+  }
 }
 
 .sd-focused > .sd-deck > .sd-card-slider > .sd-card {
@@ -159,15 +173,6 @@
 .sd-card-gripper-last {
   float: right;
   margin-right: -@grid-size;
-}
-
-.sd-card-gripper::after, .sd-card-gripper-last::after {
-  content: " ";
-  top: 50%;
-  margin-top: -50%;
-  display: block;
-  height: @grid-size * 4;
-  background: url("../img/gripper.svg") repeat-y center;
 }
 
 .sd-flip-deck {
