@@ -87,11 +87,20 @@
 
           display: flex;
           flex: 0 1 auto;
-          flex-flow: row wrap;
+          flex-flow: column nowrap;
           position: relative;
           padding-top: @pad * 0.5;
           padding-bottom: @pad * 0.5;
           margin: 0 (@pad * -1);
+
+          .sd-size-xxlarge & {
+            flex-flow: row wrap;
+
+            > li {
+              flex-basis: 50%;
+              width: auto;
+            }
+          }
 
           &::after {
             display: block;
@@ -108,8 +117,9 @@
           // TODO check if this needs to also affect the dialog
           > li {
             display: flex;
-            flex: 0 1 50%;
+            flex: 0 1 auto;
             float: none;
+            width: 100%;
             padding: (@pad * 0.5) @pad;
 
             > label {
@@ -124,17 +134,6 @@
                 padding-right: @pad;
                 line-height: 1.4;
               }
-            }
-          }
-
-          // TODO this isn't the right way to do this because it's dependent
-          // on parent size
-          @media screen and (max-width: 44em) {
-            flex-flow: column nowrap;
-
-            > li {
-              flex-basis: auto;
-              width: 100%;
             }
           }
         }
