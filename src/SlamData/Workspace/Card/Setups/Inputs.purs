@@ -153,7 +153,7 @@ pickerInput conf (Select { options, value }) =
               , HE.onClick (HE.input_ (conf.query (Choose Nothing)))
               , HP.disabled isDisabled
               ]
-              [ HH.text "×" ]
+              [ I.closeSm ]
           else
             HH.text ""
       ]
@@ -268,7 +268,7 @@ dimensionButton opts =
             , HE.onClick opts.onDismiss
             , HP.disabled opts.disabled
             ]
-            [ HH.text "×"]
+            [ I.closeSm ]
           ) )
         ⊕ [ if opts.configurable && not (D.isStatic value)
             then

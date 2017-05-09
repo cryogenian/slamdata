@@ -23,8 +23,13 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
+<<<<<<< HEAD
 
 import SlamData.Render.CSS as Rc
+=======
+import SlamData.Render.Icon as I
+import Halogen.Themes.Bootstrap3 as B
+>>>>>>> 41e7f3dfd9dfe7f791fd87108a27ecfa7335cd0f
 
 type DialogOptions s p i =
   { onDismiss ∷ H.Action i
@@ -49,7 +54,7 @@ pickerDialog opts =
             , ARIA.label "Dismiss"
             , HE.onClick $ HE.input_ opts.onDismiss
             ]
-            [ HH.text "×"]
+            [ I.closeSm ]
         ]
     , HH.div
         [ HP.classes [ HH.ClassName "sd-picker-dialog-content" ] ]
