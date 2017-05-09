@@ -89,10 +89,10 @@
     }
 
     > .sd-deck > .sd-card-slider {
-      top: @grid-size + 0.5rem;
+      top: @grid-size;
       left: @grid-size;
       right: @grid-size;
-      height: ~"calc(100% - 4.5rem)";
+      height: ~"calc(100% - 4rem)";
     }
   }
 }
@@ -212,18 +212,18 @@
 }
 
 button.sd-zoom-deck {
+  float: left;
   height: @grid-size;
   width: @grid-size;
-  background-color: transparent;
-  float: left;
-  border: none;
   margin: 0;
+  border: none;
+  background-color: transparent;
+  font-size: 1.6rem;
 
   .sd-icon {
     position: relative;
     top: -0.1rem;
     left: -0.6rem;
-    font-size: 1.3rem;
   }
 }
 
