@@ -17,28 +17,30 @@ limitations under the License.
 module SlamData.Workspace.Card.Markdown.Error where
 
 import SlamData.Prelude
+import Data.List.NonEmpty as NEL
 
 data MarkdownError
-  = MarkdownParseError {markdown ∷ String, error ∷ String}
-  | MarkdownSqlParseError {sql ∷ String, error ∷ String}
-  | MarkdownNoTextBoxResults
-  | MarkdownInvalidTimeValue {time ∷ String, error ∷ String}
-  | MarkdownInvalidDateValue {date ∷ String, error ∷ String}
-  | MarkdownInvalidDateTimeValue {datetime ∷ String, error ∷ String}
-  | MarkdownTypeError String String
+  = MarkdownParseError { markdown ∷ String, error ∷ String }
+  | MarkdownSqlParseError { field ∷ Maybe String, sql ∷ String, error ∷ String }
+  | MarkdownNoTextBoxResults { field ∷ String, sql ∷ String }
+  | MarkdownInvalidTimeValue { field ∷ String, time ∷ String, error ∷ String }
+  | MarkdownInvalidDateValue { field ∷ String, date ∷ String, error ∷ String }
+  | MarkdownInvalidDateTimeValue { field ∷ String, datetime ∷ String, error ∷ String }
+  | MarkdownTypeError { field ∷ String, actual ∷ String, expected ∷ NEL.NonEmptyList String }
 
 instance showMarkdownError ∷ Show MarkdownError where
   show = case _ of
     MarkdownParseError {markdown, error} →
       "(MarkdownParseError { markdown: " <> show markdown <> ", error: " <> show error <> " })"
-    MarkdownSqlParseError {sql, error} →
-      "(MarkdownSqlParseError { sql: " <> show sql <> ", error: " <> show error <> " })"
-    MarkdownNoTextBoxResults → "MarkdownNoTextBoxResults"
-    MarkdownInvalidTimeValue {time, error} →
-      "(MarkdownInvalidTimeValue { time: " <> show time <> ", error: " <> show error <> " })"
-    MarkdownInvalidDateValue {date, error} →
-      "(MarkdownInvalidDateValue { date: " <> show date <> ", error: " <> show error <> " })"
-    MarkdownInvalidDateTimeValue {datetime, error} →
-      "(MarkdownInvalidDateTimeValue { datetime: " <> show datetime <> ", error: " <> show error <> " })"
-    MarkdownTypeError t1 t2 →
-      "(MarkdownTypeError " <> show t1 <> " " <> show t2 <> ")"
+    MarkdownSqlParseError {field, sql, error} →
+      "(MarkdownSqlParseError { field: " <> show field <> ", sql: " <> show sql <> ", error: " <> show error <> " })"
+    MarkdownNoTextBoxResults {field, sql} →
+      "(MarkdownNoTextBoxResults { field: " <> show field <> ", sql: " <> show sql <> " })"
+    MarkdownInvalidTimeValue {field, time, error} →
+      "(MarkdownInvalidTimeValue { field: " <> show field <> ", time: " <> show time <> ", error: " <> show error <> " })"
+    MarkdownInvalidDateValue {field, date, error} →
+      "(MarkdownInvalidDateValue { field: " <> show field <> ", date: " <> show date <> ", error: " <> show error <> " })"
+    MarkdownInvalidDateTimeValue {field, datetime, error} →
+      "(MarkdownInvalidDateTimeValue { field: " <> show field <> ", datetime: " <> show datetime <> ", error: " <> show error <> " })"
+    MarkdownTypeError {field, actual, expected} →
+      "(MarkdownTypeError { field: " <> show field <> ", actual: " <> show actual <> ", expected: " <> show expected <> " })"
