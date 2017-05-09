@@ -36,6 +36,7 @@ type State =
   , name ∷ Maybe String
   , message ∷ Maybe String
   , saving ∷ Boolean
+  , unMounting ∷ Boolean
   , settings ∷ Maybe MountSettings
   }
 
@@ -76,6 +77,9 @@ _message = lens _.message (_ { message = _ })
 _saving ∷ Lens' State Boolean
 _saving = lens _.saving (_ { saving = _ })
 
+_unMounting ∷ Lens' State Boolean
+_unMounting = lens _.unMounting (_ { unMounting = _ })
+
 _settings ∷ Lens' State (Maybe MountSettings)
 _settings = lens _.settings _{settings = _}
 
@@ -88,6 +92,7 @@ initialState = case _ of
     , name: Just ""
     , message: Nothing
     , saving: false
+    , unMounting: false
     }
   Edit { parent, name, settings } →
     { new: false
@@ -96,6 +101,7 @@ initialState = case _ of
     , name: name
     , message: Nothing
     , saving: false
+    , unMounting: false
     }
   Root →
     { new: true
@@ -104,6 +110,7 @@ initialState = case _ of
     , name: Nothing
     , message: Nothing
     , saving: false
+    , unMounting: false
     }
 
 scheme ∷ MountSettings → MS.Scheme

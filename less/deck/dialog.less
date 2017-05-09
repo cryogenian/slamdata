@@ -67,8 +67,34 @@
       content: " ➜ ";
     }
 
-    &:not(:last-child) {
+    .deck-dialog-cardpath-card:not(:last-child) {
       margin-right: 0.4rem;
+    }
+
+    .deck-dialog-footer {
+      flex: 0 0 auto;
+      padding: 1.6rem;
+
+      .btn:not(.btn-careful) {
+        margin-left: 1.6rem;
+        float: right;
+      }
+      .alert-danger {
+        margin-bottom: 1.6em;
+      }
+      button > img {
+        height: 1em;
+      }
+    }
+
+    .deck-dialog-footer.share {
+      margin-top: 0;
+    }
+
+    textarea {
+      resize: none;
+      height: 16rem;
+      min-height: 6rem;
     }
   }
 

@@ -78,8 +78,8 @@ render state@{ name, new, parent } =
                 <> maybe [] (pure ∘ settings) state.settings
                 <> maybe [] (pure ∘ errorMessage) state.message
         , modalFooter
-            $ (guard (not new ∧ isNothing parent) $> btnDelete)
-            <> [ progressSpinner state, btnMount state, btnCancel ]
+            $ (guard (not new ∧ isNothing parent) $> btnDelete state)
+            <> [ btnMount state, btnCancel state ]
         ]
       ]
   where
@@ -137,35 +137,55 @@ errorMessage msg =
     [ HP.classes [ Rc.alert, Rc.alertDanger ] ]
     [ HH.text msg ]
 
-btnCancel ∷ HTML
-btnCancel =
+btnCancel ∷ MCS.State -> HTML
+btnCancel state@{ unMounting, saving } =
   HH.button
     [ HP.classes [Rc.btn]
+    , HP.enabled $ not saving && not unMounting
     , HE.onClick (HE.input_ RaiseDismiss)
     ]
     [ HH.text "Cancel" ]
 
-btnDelete ∷ HTML
-btnDelete =
+btnDelete ∷ MCS.State -> HTML
+btnDelete state@{ unMounting, saving } =
   HH.button
-    [ HP.classes [Rc.btn, HH.ClassName "btn-careful" ]
+    [ HP.classes
+        $ fold
+          [ [ Rc.btn, HH.ClassName "btn-careful" ]
+          , guard unMounting $> HH.ClassName "btn-loading"
+          ]
     , HE.onClick (HE.input_ RaiseMountDelete)
+    , HP.type_ HP.ButtonButton
+    , HP.enabled $ not saving && not unMounting
     ]
-    [ HH.text "Unmount" ]
+    $ fold
+      [ guard unMounting *> progressSpinner "Unmounting"
+      , pure $ HH.text "Unmount"
+      ]
 
 btnMount ∷ MCS.State → HTML
-btnMount state@{ new, saving } =
+btnMount state@{ new, saving, unMounting } =
   HH.button
-    [ HP.classes [Rc.btn, Rc.btnPrimary]
-    , HP.enabled (not saving && MCS.canSave state)
+    [ HP.classes
+        $ fold
+          [ [ Rc.btn, Rc.btnPrimary ]
+          , guard saving $> HH.ClassName "btn-loading"
+          ]
+    , HP.enabled $ not saving && not unMounting && MCS.canSave state
     ]
-    [ HH.text text ]
+    $ fold
+      [ guard saving *> progressSpinner loadingText
+      , pure $ HH.text text
+      ]
   where
   text = if new then "Mount" else "Save changes"
+  loadingText = if new then "Mounting" else "Saving changes"
 
-progressSpinner ∷ MCS.State → HTML
-progressSpinner { saving } =
-  HH.img [ HP.src "img/spin.gif", HP.class_ $ Rc.mountProgressSpinner saving ]
+progressSpinner ∷ String → Array HTML
+progressSpinner alt =
+  [ HH.img [ HP.src "img/spin.gif", HP.alt alt ]
+  , HH.text " "
+  ]
 
 eval ∷ Query ~> DSL
 eval (ModifyState f next) = H.modify f *> validateInput $> next
@@ -182,7 +202,6 @@ eval (Save k) = do
   { new, parent, name } ← H.get
   let name' = fromMaybe "" name
   let parent' = fromMaybe rootDir parent
-  H.modify (MCS._saving .~ true)
   newName ←
     if new then Api.getNewName parent' name' else pure (pure name')
   case newName of
@@ -201,14 +220,14 @@ eval (Save k) = do
       pure $ k mount
 eval (PreventDefaultAndNotifySave ev next) = do
   H.liftEff (DOM.preventDefault ev)
-  notifySave
+  H.modify (MCS._saving .~ true)
+  H.raise Message.MountSave
   pure next
 eval (Validate next) = validateInput $> next
-eval (RaiseMountDelete next) = H.raise Message.MountDelete $> next
-
-notifySave ∷ DSL Unit
-notifySave =
-  H.raise Message.MountSave
+eval (RaiseMountDelete next) = do
+  H.raise Message.MountDelete
+  H.modify (MCS._unMounting .~ true)
+  pure next
 
 handleQError ∷ Api.QError → DSL Unit
 handleQError err =
