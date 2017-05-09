@@ -44,6 +44,7 @@ import SlamData.Workspace.Card.Error (CardError(..), cardToGlobalError)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Error.Component.Query (Query(..))
 import SlamData.Workspace.Card.Error.Component.State (State, initialState)
+import Text.Parsing.Parser (parseErrorMessage)
 import Utils (prettyJson)
 
 type DSL = H.ComponentDSL State Query Void Slam
@@ -119,6 +120,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     TableCardError tce → tableErrorMessage state tce
     FormInputStaticCardError fise → formInputStaticErrorMessage state fise
     FormInputLabeledCardError file → formInputLabeledErrorMessage state file
+    SearchCardError sce → searchErrorMessage state sce
 
 collapsible ∷ String → HTML → Boolean → HTML
 collapsible title content expanded =
@@ -508,6 +510,38 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           , pure $ HH.p_
               [ HH.text "Labels must be unique. Please, use other axis." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+          ]
+
+searchErrorMessage ∷ State → CE.SearchError → HTML
+searchErrorMessage { accessType, expanded } err =
+  case accessType of
+    Editable → renderDetails err
+    ReadOnly →
+      HH.div_
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Search <> " card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
+        ]
+  where
+  renderDetails = case _ of
+    CE.SearchQueryParseError { query, error } →
+      HH.div_
+        $ join
+          [ pure $ errorTitle [ HH.text $ "Failed to parse the query when setting up the " <> cardName Search <> " card." ]
+          , pure $ HH.p_
+              [ HH.text "Failed with the following parse error: "
+              , HH.code_ [HH.text (parseErrorMessage error)]
+              ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and correct your query to fix this error." ]
+          ]
+    CE.SearchQueryCompilationError error →
+      HH.div_
+        $ join
+          [ pure $ errorTitle [ HH.text $ "Failed to compile the query when setting up the " <> cardName Search <> " card." ]
+          , pure $ HH.p_
+              [ HH.text "Failed with the following compilation error: "
+              , printQErrorWithDetails error
+              ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and correct your query to fix this error." ]
           ]
 
 -- | Renders a list of things with a separator and a final connective.
