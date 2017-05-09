@@ -20,6 +20,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
+import SlamData.Render.Icon as I
 
 data Arrow
   = RightArrow
@@ -52,7 +53,7 @@ render arrow className dismissQuery text =
                 , HE.onClick (HE.input_ dismissQuery)
                 , ARIA.label "Dismiss"
                 ]
-                [ HH.text "×" ]
+                [ I.closeSm ]
             ]
         ]
     ]

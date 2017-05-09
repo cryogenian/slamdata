@@ -40,6 +40,7 @@ import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Render.Icon as I
 import Utils.DOM as DOM
 
 render ∷ CardOptions → State → DraftboardHTML
@@ -207,7 +208,7 @@ renderCell opts st { cursor, value, rect } =
                     , ARIA.label "Delete cell"
                     , HE.onClick (HE.input_ (right ∘ DeleteCell cursor))
                     ]
-                    [ HH.text "×"]
+                    [ I.closeSm ]
                 ]
             ]
     ]
