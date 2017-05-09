@@ -17,13 +17,14 @@ limitations under the License.
 module SlamData.Workspace.Card.Error
   ( module SlamData.Workspace.Card.Error
   , module CCE
-  , module CQE
   , module CDLOE
   , module CMDE
   , module COE
+  , module CQE
+  , module CSE
   , module CTE
-  , module FISE
   , module FILE
+  , module FISE
   ) where
 
 import SlamData.Prelude
@@ -35,6 +36,7 @@ import SlamData.Workspace.Card.DownloadOptions.Error as CDLOE
 import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.Open.Error as COE
 import SlamData.Workspace.Card.Query.Error as CQE
+import SlamData.Workspace.Card.Search.Error as CSE
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as FILE
 import SlamData.Workspace.Card.Setups.FormInput.Static.Error as FISE
 import SlamData.Workspace.Card.Table.Error as CTE
@@ -44,26 +46,28 @@ data CardError
   = QuasarError QError
   | StringlyTypedError String
   | CacheCardError CCE.CacheError
-  | QueryCardError CQE.QueryError
   | DownloadOptionsCardError CDLOE.DownloadOptionsError
+  | FormInputLabeledCardError FILE.FormInputLabeledError
+  | FormInputStaticCardError FISE.FormInputStaticError
   | MarkdownCardError CMDE.MarkdownError
   | OpenCardError COE.OpenError
+  | QueryCardError CQE.QueryError
+  | SearchCardError CSE.SearchError
   | TableCardError CTE.TableError
-  | FormInputStaticCardError FISE.FormInputStaticError
-  | FormInputLabeledCardError FILE.FormInputLabeledError
 
 instance showCardError ∷ Show CardError where
   show = case _ of
     QuasarError err → "(QuasarError " <> show err <> ")"
     StringlyTypedError err → "(StringlyTypedError " <> err <> ")"
     CacheCardError err → "(CacheCardError " <> show err <> ")"
-    QueryCardError err → "(QueryCardError " <> show err <> ")"
     DownloadOptionsCardError err → "(DownloadOptionsCardError " <> show err <> ")"
+    FormInputLabeledCardError err → "(FormInputLabeledCardError " <> show err <> ")"
+    FormInputStaticCardError err → "(FormInputStaticCardError " <> show err <> ")"
     MarkdownCardError err → "(MarkdownCardError " <> show err <> ")"
     OpenCardError err → "(OpenCardError " <> show err <> ")"
+    QueryCardError err → "(QueryCardError " <> show err <> ")"
+    SearchCardError err → "(SearchCardError " <> show err <> ")"
     TableCardError err → "(TableCardError " <> show err <> ")"
-    FormInputStaticCardError err → "(FormInputStaticCardError " <> show err <> ")"
-    FormInputLabeledCardError err → "(FormInputLabeledCardError " <> show err <> ")"
 
 quasarToCardError ∷ QError → CardError
 quasarToCardError = QuasarError
@@ -73,13 +77,14 @@ cardToGlobalError = case _ of
   QuasarError qError → hush (GE.fromQError qError)
   StringlyTypedError err → Nothing
   CacheCardError err → CCE.cacheToGlobalError err
-  QueryCardError err → CQE.queryToGlobalError err
   DownloadOptionsCardError _ → Nothing
+  FormInputLabeledCardError _ → Nothing
+  FormInputStaticCardError _ → Nothing
   MarkdownCardError _ → Nothing
   OpenCardError _ → Nothing
+  QueryCardError err → CQE.queryToGlobalError err
+  SearchCardError err → CSE.searchToGlobalError err
   TableCardError err → CTE.tableToGlobalError err
-  FormInputStaticCardError _ → Nothing
-  FormInputLabeledCardError _ → Nothing
 
 -- TODO(Christoph): use this warn constraint to track down unstructured error messages
 -- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
@@ -114,6 +119,9 @@ throwFormInputStaticError = throwError ∘ FormInputStaticCardError
 
 throwFormInputLabeledError ∷ ∀ m a. MonadThrow CardError m ⇒ FILE.FormInputLabeledError → m a
 throwFormInputLabeledError = throwError ∘ FormInputLabeledCardError
+
+throwSearchError ∷ ∀ m a. MonadThrow CardError m ⇒ CSE.SearchError → m a
+throwSearchError = throwError ∘ SearchCardError
 
 liftQ ∷ ∀ m a. MonadThrow CardError m ⇒ m (Either QError a) → m a
 liftQ = flip bind (either (throwError ∘ quasarToCardError) pure)
