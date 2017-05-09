@@ -23,6 +23,10 @@ module SlamData.Workspace.Card.Error.Component
 import SlamData.Prelude
 
 import Data.Argonaut as J
+import Data.Foldable (intercalate)
+import Data.List ((:))
+import Data.List as L
+import Data.List.NonEmpty as NEL
 import Data.Path.Pathy as Path
 import Halogen as H
 import Halogen.HTML as HH
@@ -36,8 +40,8 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..), cardName)
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
-import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Error (CardError(..), cardToGlobalError)
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Error.Component.Query (Query(..))
 import SlamData.Workspace.Card.Error.Component.State (State, initialState)
 import Utils (prettyJson)
@@ -228,76 +232,90 @@ markdownErrorMessage { accessType, expanded } err =
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
-  -- TODO: explain which field for all these cases? -gb
   renderDetails = case _ of
     CE.MarkdownParseError {markdown, error} →
       HH.div_
         $ join
           [ pure $ errorTitle [ HH.text "Parsing the provided Markdown failed." ]
-          , pure $ HH.p_
-              [ HH.text "We encountered the following parse error: "
-              , HH.code_ [ HH.text error ]
+          , pure $ HH.p_ [ HH.code_ [ HH.text error ] ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          ]
+    CE.MarkdownSqlParseError {field, sql, error} →
+      case field of
+        Nothing →
+          HH.div_
+            $ join
+              [ pure $ errorTitle [ HH.text "Parsing a SQL² query embedded in Markdown failed." ]
+              , pure $ HH.p_ [ HH.text "The query:" ]
+              , pure $ HH.pre_ [ HH.text sql ]
+              , pure $ HH.p_ [ HH.text "Failed to parse with the following error:" ]
+              , pure $ HH.pre_ [ HH.text error ]
+              , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
               ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
-          ]
-    CE.MarkdownSqlParseError {sql, error} →
-      HH.div_
-        $ join
-          [ pure $ errorTitle [ HH.text "Parsing SQL embedded inside Markdown failed." ]
-          , pure $ renderParseError error sql
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
-          ]
-    CE.MarkdownNoTextBoxResults →
-      HH.div_
-        $ join
-          [ pure $ errorTitle [ HH.text "A text box field did not return any results." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
-          ]
-    CE.MarkdownInvalidTimeValue { time, error } →
-      HH.div_
-        $ join
-          [ pure $ errorTitle [ HH.text "An invalid time value was provided." ]
-          , pure $ renderParseError error time
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
-          ]
-    CE.MarkdownInvalidDateValue { date, error } →
-      HH.div_
-        $ join
-          [ pure $ errorTitle [ HH.text "An invalid date value was provided." ]
-          , pure $ renderParseError error date
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
-          ]
-    CE.MarkdownInvalidDateTimeValue { datetime, error } →
-      HH.div_
-        $ join
-          [ pure $ errorTitle [ HH.text "An invalid timestamp value was provided." ]
-          , pure $ renderParseError error datetime
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
-          ]
-    CE.MarkdownTypeError t1 t2 →
-      HH.div_
-        $ join
-          [ pure $ errorTitle [ HH.text $ "A type mismatch occurred when populating a field in the " <> cardName (Ace MarkdownMode) <> " card." ]
-          , pure $ HH.p_
-              [ HH.text "We encountered the following type:"
-              , HH.br_
-              , HH.code_ [ HH.text t1 ]
-              , HH.text " where we expected:"
-              , HH.br_
-              , HH.code_ [ HH.text t2 ]
+        Just fieldName →
+          HH.div_
+            $ join
+              [ pure $ errorTitle [ HH.text "There was a problem populating a field based on a SQL² query." ]
+              , pure $ HH.p_
+                  [ HH.text "The field "
+                  , HH.code_ [ HH.text fieldName ]
+                  , HH.text " has the query:"
+                  ]
+              , pure $ HH.pre_ [ HH.text sql ]
+              , pure $ HH.p_ [ HH.text "Which failed to parse with the following error:" ]
+              , pure $ HH.pre_ [ HH.text error ]
+              , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
               ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+    CE.MarkdownNoTextBoxResults { field, sql } →
+      HH.div_
+        $ join
+          [ pure $ errorTitle [ HH.text "There was a problem populating a field based on a SQL² query." ]
+          , pure $ HH.p_
+              [ HH.text "The field "
+              , HH.code_ [ HH.text field ]
+              , HH.text " has the query:"
+              ]
+          , pure $ HH.pre_ [ HH.text sql ]
+          , pure $ HH.p_ [ HH.text "Which returned no results." ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
+          ]
+    CE.MarkdownInvalidTimeValue { field, time, error } →
+      renderParseValueError field "time" error time
+    CE.MarkdownInvalidDateValue { field, date, error } →
+      renderParseValueError field "date" error date
+    CE.MarkdownInvalidDateTimeValue { field, datetime, error } →
+      renderParseValueError field "timestamp" error datetime
+    CE.MarkdownTypeError { field, actual, expected } →
+      HH.div_
+        $ join
+          [ pure $ errorTitle [ HH.text "There was a problem populating a field based on a SQL² query." ]
+          , pure $ HH.p_
+              [ HH.text "The query for field "
+              , HH.code_ [ HH.text field ]
+              , HH.text " returned a value of type "
+              , HH.code_ [ HH.text actual ]
+              , HH.text " but a "
+              , HH.span_ $ renderList [HH.text ", "] [HH.text " or "] $ map (\ty -> [ HH.code_ [ HH.text ty ] ]) expected
+              , HH.text " value was expected."
+              ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
           ]
     where
-      renderParseError error value =
-        HH.p_
-          [ HH.text "We encountered the following error:"
-          , HH.br_
-          , HH.code_ [ HH.text error ]
-          , HH.text " when trying to parse:"
-          , HH.br_
-          , HH.code_ [ HH.text value ]
-          ]
+      renderParseValueError field ty error value =
+        HH.div_
+          $ join
+            [ pure $ errorTitle [ HH.text "There was a problem populating a field based on a SQL² query." ]
+            , pure $
+                HH.p_
+                  [ HH.text ("Parsing a " <> ty <> " value for the field ")
+                  , HH.code_ [ HH.text field ]
+                  , HH.text " failed with error:"
+                  ]
+            , pure $ HH.pre_ [ HH.text error ]
+            , pure $ HH.p_ [ HH.text "When trying to parse the query result value:" ]
+            , pure $ HH.pre_ [ HH.text value ]
+            , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
+            ]
 
 downloadOptionsErrorMessage ∷ State → CE.DownloadOptionsError → HTML
 downloadOptionsErrorMessage { accessType, expanded } err =
@@ -491,3 +509,13 @@ formInputLabeledErrorMessage { accessType, expanded } err =
               [ HH.text "Labels must be unique. Please, use other axis." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]
+
+-- | Renders a list of things with a separator and a final connective.
+-- | For example, a list of strings with the separator `","` and the
+-- | connective `" or "``: `a, b, c, or d`. The separator is dropped when there
+-- | are only two entries; `a or b`.
+renderList ∷ ∀ m. Monoid m ⇒ m → m → NEL.NonEmptyList m → m
+renderList sep connective xs = case NEL.init xs of
+  L.Nil → NEL.head xs
+  x : L.Nil → x <> connective <> NEL.last xs
+  init → intercalate sep init <> sep <> connective <> NEL.last xs

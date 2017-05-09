@@ -21,9 +21,13 @@ import SlamData.Prelude
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Writer.Class (class MonadTell)
 import Data.Array as A
+import Data.HugeNum as HN
 import Data.Identity (Identity)
+import Data.Int as Int
 import Data.Json.Extended as EJSON
 import Data.List as L
+import Data.List.NonEmpty as NEL
+import Data.NonEmpty ((:|))
 import Data.String as S
 import Data.StrMap as SM
 import Matryoshka (project, transAna)
@@ -37,12 +41,12 @@ import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 import SqlSquared as Sql
-import Text.Parsing.Parser (parseErrorMessage)
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 import Text.Markdown.SlamDown.Parser as SDP
 import Text.Markdown.SlamDown.Traverse as SDT
+import Text.Parsing.Parser (parseErrorMessage)
 import Utils.Path (DirPath)
 
 evalMarkdownForm
@@ -113,7 +117,7 @@ evalEmbeddedQueries sm dir =
     → m Port.VarMapValue
   evalCode mid code
     | languageIsSql mid =
-        Port.VarMapValue ∘ transAna Sql.Literal ∘ extractCodeValue <$> runQuery code
+        Port.VarMapValue ∘ transAna Sql.Literal ∘ extractCodeValue <$> runQuery Nothing code
     | otherwise =
         pure $ Port.VarMapValue $ Sql.null
 
@@ -137,46 +141,64 @@ evalEmbeddedQueries sm dir =
 
   evalValue
     ∷ String
+    → String
     → m Port.VarMapValue
-  evalValue code = do
+  evalValue field code = do
     maybe
       (Port.VarMapValue Sql.null)
       (Port.VarMapValue ∘ transAna Sql.Literal ∘ extractSingletonObject)
       ∘ A.head
-      <$> runQuery code
+      <$> runQuery (Just field) code
 
   evalTextBox
-    ∷ SD.TextBox (Const String)
+    ∷ String
+    → SD.TextBox (Const String)
     → m (SD.TextBox Identity)
-  evalTextBox tb = do
+  evalTextBox field tb = do
     let sql = unwrap $ SD.traverseTextBox (map \_ → Const unit) tb
-    mresult ← A.head <$> runQuery sql
+    mresult ← A.head <$> runQuery (Just field) sql
     result ←
-      maybe (CE.throwMarkdownError CE.MarkdownNoTextBoxResults) (pure ∘ extractSingletonObject) mresult
+      maybe (CE.throwMarkdownError (CE.MarkdownNoTextBoxResults { field, sql })) (pure ∘ extractSingletonObject) mresult
     case tb, project result of
       (SD.PlainText _), (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
       (SD.Numeric _), (EJSON.Decimal a) →
         pure ∘ SD.Numeric $ pure a
+      (SD.Numeric _), (EJSON.Integer a) →
+        pure ∘ SD.Numeric $ pure (HN.fromNumber (Int.toNumber a))
       (SD.Time prec _), (EJSON.String time) →
         case SqlT.parseTime time of
-          Left error → CE.throwMarkdownError (CE.MarkdownInvalidTimeValue { time, error })
+          Left error → CE.throwMarkdownError (CE.MarkdownInvalidTimeValue { field, time, error })
           Right r → pure ∘ SD.Time prec $ pure r
       (SD.Date _), (EJSON.String date) →
         case SqlT.parseDate date of
-          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateValue { date, error })
+          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateValue { field, date, error })
           Right r → pure ∘ SD.Date $ pure r
       (SD.DateTime prec _), (EJSON.String datetime) →
         case SqlT.parseDateTime datetime of
-          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateTimeValue { datetime, error })
+          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateTimeValue { field, datetime, error })
           Right r → pure ∘ SD.DateTime prec $ pure r
-      _, _ → CE.throwMarkdownError (CE.MarkdownTypeError (show result) (show tb))
+      _, _ →
+        CE.throwMarkdownError (CE.MarkdownTypeError { field, actual: typeOf result, expected: typesOfField tb })
+
+  -- TODO: use `Meta` when we have it to better determine types. -gb
+  typeOf :: EJSON.EJson -> String
+  typeOf = show ∘ EJSON.getType
+
+  typesOfField :: ∀ a. SD.TextBox a -> NEL.NonEmptyList String
+  typesOfField = case _ of
+    SD.PlainText _ → pure "String"
+    SD.Numeric _ → NEL.NonEmptyList $ "Number" :| L.fromFoldable ["Integer", "Nugget"]
+    SD.Date _ → pure "Date"
+    SD.Time _ _ → pure "Time"
+    SD.DateTime _ _ → pure "Timestamp"
 
   evalList
     ∷ String
+    → String
     → m (L.List Port.VarMapValue)
-  evalList code = do
-    jitems ← map extractSingletonObject <$> runQuery code
+  evalList field code = do
+    jitems ← map extractSingletonObject <$> runQuery (Just field) code
     let limit = 500
     pure ∘ L.fromFoldable
       $ if A.length jitems > limit
@@ -187,13 +209,14 @@ evalEmbeddedQueries sm dir =
           map (Port.VarMapValue ∘ transAna Sql.Literal) jitems
 
   runQuery
-    ∷ String
+    ∷ Maybe String
+    → String
     → m (Array EJSON.EJson)
-  runQuery code =
+  runQuery field code =
     let esql = Sql.parse code
     in case esql of
       Left error →
-        CE.throwMarkdownError (CE.MarkdownSqlParseError { sql: code, error: parseErrorMessage error })
+        CE.throwMarkdownError (CE.MarkdownSqlParseError { field, sql: code, error: parseErrorMessage error })
       Right sql → do
         {inputs} ← CE.liftQ $ Quasar.compile dir sql sm
         CEM.addSources inputs
