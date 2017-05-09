@@ -192,15 +192,6 @@ renderCell opts st { cursor, value, rect } =
                     , HP.title "Insert deck"
                     , ARIA.label "Insert deck"
                     , HE.onClick (HE.input_ (right ∘ AddDeck cursor))
-                    , HC.style do
-                        let
-                          size = Math.min 140.0 (Math.min rect.width rect.height)
-                        C.top (C.pct 50.0)
-                        C.left (C.pct 50.0)
-                        C.marginTop (C.px (size / -2.0))
-                        C.marginLeft (C.px (size / -2.0))
-                        C.width (C.px size)
-                        C.height (C.px size)
                     ]
                     [ I.addCircle ]
                 , HH.button
