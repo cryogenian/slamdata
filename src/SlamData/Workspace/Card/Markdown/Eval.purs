@@ -188,7 +188,7 @@ evalEmbeddedQueries sm dir =
   typesOfField :: ∀ a. SD.TextBox a -> NEL.NonEmptyList String
   typesOfField = case _ of
     SD.PlainText _ → pure "String"
-    SD.Numeric _ → NEL.NonEmptyList $ "Number" :| L.fromFoldable ["Integer", "Nugget"]
+    SD.Numeric _ → NEL.NonEmptyList $ "Number" :| pure "Integer"
     SD.Date _ → pure "Date"
     SD.Time _ _ → pure "Time"
     SD.DateTime _ _ → pure "Timestamp"
