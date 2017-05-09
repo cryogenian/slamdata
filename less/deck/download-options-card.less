@@ -15,8 +15,9 @@
     &-maximum-lod.download-card-editor {
       display: flex;
       flex-flow: row nowrap;
+      justify-content: stetch;
       position: relative;
-      height: 100%;
+      min-height: 100%;
       width: 100%;
       padding: 0;
 
@@ -55,31 +56,14 @@
       }
 
       .download-configuration {
+        @pad: 1.2rem;
+
         flex: 1 1 auto;
+        overflow: auto;
         min-width: 0;
         padding: 1.2rem;
 
-        .download-json-options {
-          width: 100%;
-
-          > div {
-            padding-bottom: 1.2rem;
-            border-bottom: 0.1rem solid #ccc;
-          }
-
-          > div + div {
-            padding-top: 1.2rem;
-          }
-
-          li {
-            float: none;
-            width: auto;
-          }
-        }
-
-        .download-csv-delimiters {
-          @pad: 1.2rem;
-
+        .download-json-options, .download-csv-delimiters {
           display: flex;
           flex: 0 1 auto;
           flex-flow: column nowrap;
@@ -90,11 +74,6 @@
 
           .sd-size-xxlarge & {
             flex-flow: row wrap;
-
-            > li {
-              flex-basis: 50%;
-              width: auto;
-            }
           }
 
           &::after {
@@ -108,29 +87,38 @@
             background-color: #ccc;
             background-clip: content-box;
           }
+        }
+
+        .download-json-options > div, .download-csv-delimiters > li {
+          .sd-size-xxlarge & {
+            flex-basis: 50%;
+            width: auto;
+          }
 
           // TODO check if this needs to also affect the dialog
-          > li {
-            display: flex;
-            flex: 0 1 auto;
-            float: none;
-            width: 100%;
-            padding: (@pad * 0.5) @pad;
+          display: flex;
+          flex: 0 1 auto;
+          float: none;
+          width: 100%;
+          padding: (@pad * 0.5) @pad;
+          line-height: 1.4;
+        }
 
-            > label {
-              display: flex;
-              align-items: center;
+        .download-csv-delimiters > li > label {
+          display: flex;
+          align-items: center;
+        }
 
-              > span, input {
-                flex: 1 1 50%;
-              }
+        .download-json-options > div > label,
+        .download-json-options > div > ul,
+        .download-csv-delimiters > li > label > input,
+        .download-csv-delimiters > li > label > span {
+          flex: 1 1 50%;
+        }
 
-              > span {
-                padding-right: @pad;
-                line-height: 1.4;
-              }
-            }
-          }
+        .download-json-options > div > ul,
+        .download-csv-delimiters > li > label > span {
+          padding-right: @pad;
         }
       }
     }
