@@ -22,7 +22,7 @@
 
 
 .sd-draftboard-edge {
-  @draftboard-size: 1.6rem;
+  @draftboard-size: 1rem;
 
   background: transparent;
   cursor: pointer;
@@ -82,6 +82,7 @@
   &::before {
     content: "";
     border-style: solid;
+    border-color: transparent;
   }
 
   .sd-draftboard-edge-left &,
@@ -114,28 +115,28 @@
 
   .sd-draftboard-edge-top &::before {
     border-width: 0.4rem 0.3rem 0 0.3rem;
-    border-color: #888 transparent transparent transparent;
+    border-top-color: #888;
     margin-top: -0.2rem;
     margin-left: -0.4rem;
   }
 
   .sd-draftboard-edge-left &::before {
     border-width: 0.3rem 0 0.3rem 0.4rem;
-    border-color: transparent transparent transparent #888;
+    border-left-color: #888;
     margin-top: -0.4rem;
     margin-left: -0.2rem;
   }
 
   .sd-draftboard-edge-right &::before {
-    border-width: 0.3rem 0.4rem 03rem 0;
-    border-color: transparent #888 transparent transparent;
+    border-width: 0.3rem 0.4rem 0.3rem 0;
+    border-right-color: #888;
     margin-top: -0.4rem;
     margin-left: -0.2rem;
   }
 
   .sd-draftboard-edge-bottom &::before {
     border-width: 0 0.3rem 0.4rem 0.3rem;
-    border-color: transparent transparent #888 transparent;
+    border-bottom-color: #888;
     margin-top: -0.2rem;
     margin-left: -0.4rem;
   }
@@ -303,6 +304,7 @@
     width: 0;
     height: 0;
     border-style: solid;
+    border-color: transparent;
   }
 
   .eq & {
