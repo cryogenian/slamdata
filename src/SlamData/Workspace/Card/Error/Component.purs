@@ -38,7 +38,7 @@ import SlamData.Monad (Slam)
 import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
-import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..), cardName)
+import SlamData.Workspace.Card.CardType (AceMode(..), CardType(..), ChartType(..), cardName)
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Error (CardError(..), cardToGlobalError)
 import SlamData.Workspace.Card.Error as CE
@@ -117,6 +117,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     MarkdownCardError mde → markdownErrorMessage state mde
     DownloadOptionsCardError dloe → downloadOptionsErrorMessage state dloe
     OpenCardError oce → openErrorMessage state oce
+    PivotTableCardError pte → pivotTableErrorMessage state pte
     TableCardError tce → tableErrorMessage state tce
     FormInputStaticCardError fise → formInputStaticErrorMessage state fise
     FormInputLabeledCardError file → formInputLabeledErrorMessage state file
@@ -544,6 +545,36 @@ searchErrorMessage { accessType, expanded } err =
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and correct your query to fix this error." ]
           ]
 
+pivotTableErrorMessage ∷ State → CE.PivotTableError → HTML
+pivotTableErrorMessage { accessType, expanded } err =
+  case accessType of
+    Editable → renderDetails err
+    ReadOnly →
+      HH.div_
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (ChartOptions PivotTable) <> " card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
+        ]
+  where
+  renderDetails = case _ of
+    CE.PivotTableNoColumnSelectedError →
+      HH.div_
+        $ join
+          [ pure $ errorTitle [ HH.text $ "Encountered an error when setting up the " <> cardName (ChartOptions PivotTable) <> " card." ]
+          , pure $ HH.p_
+              [ HH.text "No column was selected to be displayed."
+              ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select a column to fix this error." ]
+          ]
+    CE.PivotTableQuasarError error →
+      HH.div_
+        $ join
+          [ pure $ errorTitle [ HH.text $ "An error occurred in the " <> cardName (ChartOptions PivotTable) <> " card." ]
+          , pure $ HH.p_
+              [ HH.text "The Quasar Analytics engine returned the following error:"
+              , printQErrorWithDetails error
+              ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          ]
 -- | Renders a list of things with a separator and a final connective.
 -- | For example, a list of strings with the separator `","` and the
 -- | connective `" or "``: `a, b, c, or d`. The separator is dropped when there
