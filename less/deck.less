@@ -33,10 +33,12 @@
   }
 
   &.sd-focused {
-    top: -@grid-size;
-    left: -@grid-size;
-    right: -@grid-size;
-    bottom: -@grid-size;
+    @huh-tb: 0.3rem;
+    @huh-lr: 0rem;
+    top: (@grid-size * -1) + @huh-tb;
+    bottom: (@grid-size * -1) - @huh-tb;
+    left: (@grid-size * -1) + @huh-lr;
+    right: (@grid-size * -1) - @huh-lr;
     z-index: 10;
     box-shadow: 0 0 0.1rem rgba(0, 0, 0, 0.4), 0 0 0.8rem rgba(0, 0, 0, 0.2);
 
@@ -176,17 +178,18 @@
 }
 
 .sd-flip-deck {
+  display: block;
+  float: right;
   height: @grid-size;
   width: @grid-size;
+  margin: 0;
+  padding: 0;
+  border: none;
   background-size: 66.66%;
   background-image: url("../img/deck-flip.svg");
   background-repeat: no-repeat;
   background-position: center center;
   background-color: transparent;
-  float: right;
-  border: none;
-  margin: 0;
-  display: block;
 }
 
 .sd-deck-name {
@@ -216,14 +219,13 @@ button.sd-zoom-deck {
   height: @grid-size;
   width: @grid-size;
   margin: 0;
+  padding: 0;
   border: none;
   background-color: transparent;
   font-size: 1.5rem;
 
   .sd-icon {
     position: relative;
-    top: -0.1rem;
-    left: -0.6rem;
   }
 }
 
