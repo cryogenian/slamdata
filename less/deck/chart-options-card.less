@@ -39,7 +39,21 @@
   }
 
   .row {
-    margin: 0;
+    @p: 0.6rem;
+
+    display: flex;
+    margin:0 (@p * -1);
+
+    .sd-size-xxlarge & {
+      > * {
+        flex-basis: 50%;
+      }
+    }
+
+    > * {
+      flex: 0 1 auto;
+      padding: @p;
+    }
   }
 
   form.chart-configure-form, div.chart-configure-form {
@@ -50,7 +64,7 @@
     vertical-align: top;
     border: 0.2rem solid #ddd;
     left: 0.5rem;
-    height: 7.2rem;
+    height: 16.4rem;
     margin: 0.6rem -0.1rem 0 -0.1rem;
 
     .sd-picker-input {
