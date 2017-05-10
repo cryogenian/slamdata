@@ -33,12 +33,11 @@
   }
 
   &.sd-focused {
-    @huh-tb: 0.3rem;
-    @huh-lr: 0rem;
+    @huh-tb: 0.2659rem;
     top: (@grid-size * -1) + @huh-tb;
     bottom: (@grid-size * -1) - @huh-tb;
-    left: (@grid-size * -1) + @huh-lr;
-    right: (@grid-size * -1) - @huh-lr;
+    left: @grid-size * -1;
+    right: @grid-size * -1;
     z-index: 10;
     box-shadow: 0 0 0.1rem rgba(0, 0, 0, 0.4), 0 0 0.8rem rgba(0, 0, 0, 0.2);
 
