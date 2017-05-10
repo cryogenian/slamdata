@@ -3,12 +3,19 @@ module SlamData.Workspace.Card.Setups.Geo.Heatmap.Model where
 import SlamData.Prelude
 
 import Data.Argonaut as J
-import Data.Argonaut ((~>), (:=))
+import Data.Argonaut ((~>), (:=), (.?))
+import Data.Newtype (un)
 
+import SlamData.Workspace.Card.Setups.Dimension as D
+
+import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
 type ModelR =
-  {
+  { lat ∷ D.LabeledJCursor
+  , lng ∷ D.LabeledJCursor
+  , intensity ∷ D.LabeledJCursor
   }
 
 type Model = Maybe ModelR
@@ -17,18 +24,37 @@ initialModel ∷ Model
 initialModel = Nothing
 
 eqR ∷ ModelR → ModelR → Boolean
-eqR _ _ = true
+eqR r1 r2 =
+  r1.lat ≡ r2.lat
+  && r1.lng ≡ r2.lng
+  && r1.intensity ≡ r2.intensity
 
 eqModel ∷ Model → Model → Boolean
-eqModel _ _ = true
+eqModel Nothing Nothing = true
+eqModel (Just r1) (Just r2) = eqR r1 r2
+eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
-genModel = pure $ Just { }
+genModel = do
+  isNothing ← arbitrary
+  if isNothing
+    then pure Nothing
+    else map Just do
+    lat ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    lng ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    intensity ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    pure { lat
+         , lng
+         , intensity
+         }
 
 encode ∷ Model → J.Json
 encode Nothing = J.jsonNull
 encode (Just r) =
-  "configType" := "marker"
+  "configType" := "geo-heatmap"
+  ~> "lat" := r.lat
+  ~> "lng" := r.lng
+  ~> "intensity" := r.intensity
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ Model
@@ -38,4 +64,18 @@ decode js
   where
   decode' ∷ J.Json → String ⊹ ModelR
   decode' js' = do
-    pure {}
+    obj ← J.decodeJson js'
+    configType ← obj .? "configType"
+    unless (configType ≡ "geo-heatmap")
+      $ throwError "This config is not geo heatmap"
+    decodeR obj
+
+  decodeR ∷ J.JObject → String ⊹ ModelR
+  decodeR obj = do
+    lat ← obj .? "lat"
+    lng ← obj .? "lng"
+    intensity ← obj .? "intensity"
+    pure { lat
+         , lng
+         , intensity
+         }

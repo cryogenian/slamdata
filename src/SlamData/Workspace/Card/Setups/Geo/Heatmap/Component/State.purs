@@ -1,9 +1,8 @@
 module SlamData.Workspace.Card.Setups.Geo.Heatmap.Component.State where
 
-type State =
-  {
-  }
+import SlamData.Prelude
+
+type State = Unit
 
 initialState ∷ State
-initialState =
-  { }
+initialState = unit

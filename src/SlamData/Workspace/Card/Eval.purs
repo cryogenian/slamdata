@@ -88,7 +88,7 @@ runCard
   → Port.DataMap
   → m (CEM.CardResult CE.CardError Port.Out)
 runCard env state trans input varMap =
-  CEM.runCardEvalM env state (evalCard trans input varMap ∷ CEM.CardEval CE.CardError Port.Out)
+  CEM.runCardEvalM env state $ evalCard trans input varMap -
 
 evalCard
   ∷ ∀ m
@@ -146,8 +146,8 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   SetupTime model, _ → tapResource (SetupTime.eval model) varMap
   SetupDatetime model, _ → tapResource (SetupDatetime.eval model) varMap
   SetupStatic model, _ → tapResource (SetupStatic.eval model) varMap
-  SetupGeoMarker model, _ → SetupGeoMarker.eval model varMap
-  SetupGeoHeatmap model, _ → SetupGeoHeatmap.eval model varMap
+  SetupGeoMarker model, _ → SetupGeoMarker.eval model =<< extractResource varMap
+  SetupGeoHeatmap model, _ → SetupGeoHeatmap.eval model =<< extractResource varMap
   FormInput (FormInput.Labeled model), Port.SetupLabeledFormInput lp →
     FormInput.evalLabeled model lp =<< extractResource varMap
   FormInput (FormInput.TextLike model), Port.SetupTextLikeFormInput tlp →
@@ -212,5 +212,11 @@ extractResourceVar dm = case SM.toUnfoldable (Port.filterResources dm) of
 extractResource ∷ ∀ m. MonadThrow CE.CardError m ⇒ Port.DataMap → m (Port.Resource)
 extractResource = map snd ∘ extractResourceVar
 
-tapResource ∷ ∀ m. MonadThrow CE.CardError m ⇒ (Port.Resource → m Port.Port) → Port.DataMap → m Port.Out
-tapResource f dm = map (_ × dm) (f =<< extractResource dm)
+tapResource
+  ∷ ∀ m
+  . MonadThrow CE.CardError m
+  ⇒ (Port.Resource → m Port.Port)
+  → Port.DataMap
+  → m Port.Out
+tapResource f dm =
+  map (_ × dm) (f =<< extractResource dm)

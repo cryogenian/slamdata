@@ -92,6 +92,15 @@ _scatterOrdinate = T.packProjection $ at "scatterOrdinate"
 _scatterSize ∷ T.Projection
 _scatterSize = T.packProjection $ at "scatterSize"
 
+_lat ∷ T.Projection
+_lat = T.packProjection $ at "lat"
+
+_lng ∷ T.Projection
+_lng = T.packProjection $ at "lng"
+
+_intensity ∷ T.Projection
+_intensity = T.packProjection $ at "intensity"
+
 -- Encode integer indices of List LabeledJCursor as Strings
 _dimIx ∷ Int → T.Projection
 _dimIx i = T.packProjection $ at (show i)

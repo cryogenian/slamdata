@@ -1,4 +1,6 @@
 module SlamData.Workspace.Card.Setups.Geo.Marker.Component.Query where
 
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
+
 data Query a
-  = Init a
+  = HandleDims Q.Message a

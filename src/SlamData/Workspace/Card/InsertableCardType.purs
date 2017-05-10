@@ -267,6 +267,7 @@ fromPort = case _ of
   Port.Variables → Variables
   Port.ValueMetric _ → Chart
   Port.CategoricalMetric _ → Form
+  Port.GeoChart _ → GeoChart
   Port.Terminal → Terminal
   _ → None
 

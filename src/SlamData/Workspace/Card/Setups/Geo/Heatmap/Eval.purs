@@ -1,25 +1,37 @@
 module SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval
   ( eval
-  , module M
+  , module SlamData.Workspace.Card.Setups.Geo.Heatmap.Model
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Writer.Class (class MonadTell)
-import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Error as CE
-import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Geo.Marker.Model as M
+import Data.List as L
 
-eval
-  ∷ ∀ m
-  . MonadThrow CE.CardError m
-  ⇒ MonadTell CEM.CardLog m
-  ⇒ MonadAsk CEM.CardEnv m
-  ⇒ QuasarDSL m
-  ⇒ M.Model
-  → Port.DataMap
-  → m Port.Out
-eval model varMap =
-  pure $ Port.portOut Port.Terminal
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis (Axes)
+import SlamData.Workspace.Card.Setups.Geo.Heatmap.Model (ModelR, Model)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+
+import SqlSquared as Sql
+
+eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildGeoHeatmap
+
+buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
+buildProjections r = L.fromFoldable
+  [ r.lat # SCC.jcursorPrj # Sql.as "lat"
+  , r.lng # SCC.jcursorPrj # Sql.as "lng"
+  , r.intensity # SCC.jcursorPrj # Sql.as "intensity"
+  ]
+
+buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy r =
+  SCC.groupBy $ L.fromFoldable
+    [ r.lat # SCC.jcursorSql
+    , r.lng # SCC.jcursorSql
+    ]
+
+buildGeoHeatmap ∷ ModelR → Axes → Port.Port
+buildGeoHeatmap m axes =
+  Port.GeoChart unit
