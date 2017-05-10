@@ -4,10 +4,14 @@ module SlamData.Workspace.Card.Geo.Component
 
 import SlamData.Prelude
 
+import Data.Int as Int
+
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.Leaflet as HL
+
+import Leaflet.Core as LC
 
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
@@ -43,7 +47,8 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    pure $ k $ Card.Geo $ Just unit
+    st ← H.get
+    pure $ k $ Card.Geo $ Just st
   CC.Load _ next → do
     pure next
   CC.ReceiveInput _ _ next → do
@@ -53,6 +58,12 @@ cardEval = case _ of
   CC.ReceiveState _ next →
     pure next
   CC.ReceiveDimensions dims reply → do
+    _ ←
+      H.query unit $ H.action
+      $ HL.SetDimension
+        { height: Just $ Int.floor dims.height
+        , width: Just $ Int.floor dims.width
+        }
     pure $ reply
       if dims.width < 576.0 ∨ dims.height < 416.0
       then Low
@@ -60,5 +71,12 @@ cardEval = case _ of
 
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
-  Q.HandleMessage (HL.Initialized leaf) next →
+  Q.HandleMessage (HL.Initialized leaf) next → do
+    st ← H.get
+    tiles ← LC.tileLayer st.osmURI
+    _ ← H.query unit $ H.action $ HL.AddLayers [ LC.tileToLayer tiles ]
+    zoom ← H.liftAff $ LC.mkZoom st.zoom
+    _ ← H.query unit $ H.action $ HL.SetZoom zoom
+    latLng ← H.liftAff $ LC.mkLatLng st.view.lat st.view.lng
+    _ ← H.query unit $ H.action $ HL.SetView latLng
     pure next

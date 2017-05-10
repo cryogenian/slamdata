@@ -83,6 +83,7 @@
     "echarts": "^3.5.4",
     "fs": "^0.0.2",
     "jsrsasign": "^5.0.5",
+    "leaflet": "^1.0.3",
     "minimatch": "^3.0.0"
   }
 }

@@ -88,7 +88,8 @@ runCard
   → Port.DataMap
   → m (CEM.CardResult CE.CardError Port.Out)
 runCard env state trans input varMap =
-  CEM.runCardEvalM env state $ evalCard trans input varMap -
+  CEM.runCardEvalM env state (evalCard trans input varMap ∷ CEM.CardEval CE.CardError Port.Out)
+
 
 evalCard
   ∷ ∀ m

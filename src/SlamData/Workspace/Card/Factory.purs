@@ -63,6 +63,7 @@ import SlamData.Workspace.Card.Setups.FormInput.Text.Component (textSetupCompone
 import SlamData.Workspace.Card.Setups.FormInput.Time.Component (timeSetupComponent)
 import SlamData.Workspace.Card.Setups.Geo.Marker.Component as GeoMarker
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Component as GeoHeatmap
+import SlamData.Workspace.Card.Geo.Component as Geo
 import SlamData.Workspace.Card.StructureEditor.Component as StructureEditor
 import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Tabs.Component (tabsComponent)
@@ -115,4 +116,4 @@ cardComponent = case _ of
   CT.StructureEditor → StructureEditor.component
   CT.SetupGeoChart GcT.Marker → GeoMarker.component
   CT.SetupGeoChart GcT.Heatmap → GeoHeatmap.component
-  CT.GeoChart → GeoMarker.component
+  CT.GeoChart → Geo.component
