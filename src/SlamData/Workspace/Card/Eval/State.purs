@@ -20,6 +20,7 @@ module SlamData.Workspace.Card.Eval.State
   , AnalysisR
   , AutoSelectR
   , TableR
+  , PivotTableR
   , _Analysis
   , _Axes
   , _Records
@@ -28,6 +29,7 @@ module SlamData.Workspace.Card.Eval.State
   , _AutoSelect
   , _ActiveTab
   , _Table
+  , _PivotTable
   , _ChartOptions
   ) where
 
@@ -41,8 +43,9 @@ import Data.Set as Set
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
+import SlamData.Workspace.Card.Chart.PivotTableRenderer.Common (PTree)
 import SlamData.Workspace.Card.Model as CM
-import SlamData.Workspace.Card.Port (Resource)
+import SlamData.Workspace.Card.Port (Resource, PivotTablePort)
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
@@ -65,11 +68,23 @@ type TableR =
   , size ∷ Int
   }
 
+type PivotTableR =
+  { resource ∷ Resource
+  , result ∷ Array Json
+  , buckets ∷ PTree Json Json
+  , pageIndex ∷ Int
+  , pageSize ∷ Int
+  , pageCount ∷ Int
+  , count ∷ Int
+  , options ∷ PivotTablePort
+  }
+
 data EvalState
   = Analysis AnalysisR
   | AutoSelect AutoSelectR
   | ActiveTab Int
   | Table TableR
+  | PivotTable PivotTableR
   | ChartOptions (DSL OptionI)
 
 initialEvalState ∷ CM.AnyCardModel → Maybe EvalState
@@ -116,6 +131,11 @@ _ActiveTab = prism' ActiveTab case _ of
 _Table ∷ Prism' EvalState TableR
 _Table = prism' Table case _ of
   Table r → Just r
+  _ → Nothing
+
+_PivotTable ∷ Prism' EvalState PivotTableR
+_PivotTable = prism' PivotTable case _ of
+  PivotTable r → Just r
   _ → Nothing
 
 _ChartOptions ∷ Prism' EvalState (DSL OptionI)
