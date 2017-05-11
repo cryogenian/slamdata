@@ -4,7 +4,8 @@ module SlamData.Workspace.Card.Geo.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.State (class MonadState, modify, get)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.State (class MonadState, put, get)
 import Data.Argonaut (Json)
 import Data.Lens ((^.))
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -18,6 +19,7 @@ eval
   ∷ ∀ m
   . MonadState CEM.CardState m
   ⇒ MonadThrow CE.CardError m
+  ⇒ MonadAff _ m
   ⇒ QuasarDSL m
   ⇒ Port.GeoChartPort
   → Port.Resource
@@ -26,14 +28,14 @@ eval gcPort resource = do
   let path = resource ^. Port._filePath
   results ← CE.liftQ $ QQ.all path
   let build = \leaf → gcPort.build leaf results
-  modify case _ of
-    Just (ES.Geo st) → Just $ ES.Geo $ st
-      { build = build
-      , layers = case st.leaflet of
-          Nothing → st.layers
-          Just l → build l
-      }
-    _ → Just $ ES.Geo { leaflet: Nothing, build, layers: [ ] }
+  evalState ← get
+  case evalState of
+    Just (ES.Geo st) → do
+      layers ← case st.leaflet of
+        Nothing → pure st.layers
+        Just l → liftAff $ build l
+      put $ Just $ ES.Geo { build, layers, leaflet: st.leaflet }
+    _ → put $ Just $ ES.Geo { leaflet: Nothing, build, layers: [ ] }
   get >>= traceAnyA
 --  case gcPort.gcType of
 --    Heatmap → evalHeatmap results

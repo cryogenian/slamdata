@@ -5,7 +5,7 @@ module SlamData.Workspace.Card.Geo.Component
 import SlamData.Prelude
 
 import Data.Int as Int
-import Data.Lens (_Just, (?~), (^?), (%~))
+import Data.Lens (_Just, (?~), (^?))
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -95,8 +95,9 @@ setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
   Q.HandleMessage (HL.Initialized leaf) next → do
     sync
+
     H.raise $ CC.stateAlter
-      $ ( _Just ∘ ES._Geo %~ \r → r{ layers = r.build leaf } )
-      ∘ ( _Just ∘ ES._Leaflet ?~ leaf )
+      $ ( _Just ∘ ES._Leaflet ?~ leaf )
+
     H.raise $ CC.modelUpdate
     pure next
