@@ -92,7 +92,8 @@
       top: @grid-size;
       left: @grid-size;
       right: @grid-size;
-      height: ~"calc(100% - 4rem)";
+      // Less, you are the worst
+      height: calc(100% ~"-" (@grid-size * 2));
     }
   }
 }
