@@ -33,12 +33,10 @@
   }
 
   &.sd-focused {
-    @huh: 0.2659rem;  // Fudger for a rounding issue w/ Chrome in particular
-
-    top: (@grid-size * -1) + @huh;
-    bottom: (@grid-size * -1) - @huh;
-    left: @grid-size * -1;
-    right: @grid-size * -1;
+    top: -@grid-size;
+    bottom: -@grid-size;
+    left: -@grid-size;
+    right: -@grid-size;
     z-index: 10;
     box-shadow: 0 0 0.1rem rgba(0, 0, 0, 0.4), 0 0 0.8rem rgba(0, 0, 0, 0.2);
 
@@ -57,8 +55,8 @@
 
     > .sd-deck {
       z-index: 12;
-      top: @grid-size + 0.5rem;
-      bottom: @grid-size + 1rem;
+      top: @grid-size;
+      bottom: @grid-size;
 
       > .sd-card-slider {
         left: @grid-size;
