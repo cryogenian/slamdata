@@ -32,7 +32,7 @@ import DOM.Node.ParentNode as Pn
 import DOM.Node.Types as Dt
 
 import CSS.Geometry (marginTop)
-import CSS.Size (px)
+import CSS.Size (rem)
 import CSS.String (fromString)
 import CSS.Stylesheet (CSS, (?), keyframesFromTo)
 import CSS.Animation (animation, iterationCount, normalAnimationDirection, forwards)
@@ -126,17 +126,19 @@ render sel state =
     Dragging Up _ _ → "sd-header-gripper-dragging-up"
 
 
+-- TODO: using a `transform: translateY(...)` from `100%` to `0` is
+-- better in basically all ways and doesn't involve hardcoding values
 maxMargin ∷ Number
-maxMargin = 70.0
+maxMargin = 7.0
 
 animationDuration ∷ Number
 animationDuration = 0.5
 
 renderStyles ∷ String → State → CSS
 renderStyles sel Closed = do
-  (fromString sel) ? (marginTop $ px (-maxMargin))
+  (fromString sel) ? (marginTop $ rem (-maxMargin))
 renderStyles sel Opened = do
-  (fromString sel) ? (marginTop $ px zero)
+  (fromString sel) ? (marginTop $ rem zero)
 renderStyles sel (Opening startPos) = do
   let
     marginTo = zero
@@ -149,13 +151,13 @@ renderStyles sel (Closing startPos) = do
   mkAnimation sel marginFrom marginTo
 renderStyles sel (Dragging _ start current) = do
   (fromString sel) ? do
-    marginTop $ px (-maxMargin + current - start)
+    marginTop $ rem (-maxMargin + current - start)
 
 mkAnimation ∷ String → Number → Number → CSS
 mkAnimation sel marginFrom marginTo = do
   let
-    marginFromStyle = marginTop $ px marginFrom
-    marginToStyle = marginTop $ px marginTo
+    marginFromStyle = marginTop $ rem marginFrom
+    marginToStyle = marginTop $ rem marginTo
   (fromString sel) ? do
     keyframesFromTo "header-gripper-margin" marginFromStyle marginToStyle
     animation
