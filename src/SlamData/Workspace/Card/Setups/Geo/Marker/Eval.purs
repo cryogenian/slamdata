@@ -14,6 +14,9 @@ import Data.StrMap as Sm
 import Data.String as S
 import Data.Foldable as F
 import Data.Int as Int
+import Data.Path.Pathy (currentDir, file, dir, (</>), (<.>))
+import Data.URI as URI
+import Data.URI (URIRef)
 
 import Leaflet.Core as LC
 
@@ -87,6 +90,15 @@ decodeItem = decodeJson >=> \obj → do
        , dims
        }
 
+iconConf ∷ { iconUrl ∷ URIRef, iconSize ∷ LC.Point }
+iconConf =
+  { iconUrl: Right $ URI.RelativeRef
+      (URI.RelativePart Nothing $ Just $ Right $ currentDir </> dir "img" </> file "marker" <.> "svg")
+      Nothing
+      Nothing
+  , iconSize: 40 × 40
+  }
+
 buildMarker ∷ ModelR → Axes → Port.Port
 buildMarker r _ =
   Port.GeoChart { build }
@@ -147,22 +159,29 @@ buildMarker r _ =
       sizeDistance = r.maxSize - r.minSize
       distance = maxSize - minSize
       mkRadius size
-        | distance ≡ 0.0 = minSize
+        | distance ≡ 0.0 = r.minSize
+        | isNothing r.size = r.minSize
         | otherwise = r.maxSize - sizeDistance / distance * (maxSize - size)
-      foldFn acc item@{lat, lng} = do
-        cm ←
-          LC.circleMarker
-          {lat, lng}
-          { radius: mkRadius item.size
-          , color: unsafePartial fromJust $ Sm.lookup item.series series
-          }
-        pure $ A.cons (LC.circleMarkerToLayer cm) acc
+      foldFn icon acc item@{lat, lng} = do
+        layer
+          ← if isNothing r.series && isNothing r.size
+            then map LC.markerToLayer $ LC.marker {lat, lng} >>= LC.setIcon icon
+            else
+              map LC.circleMarkerToLayer
+              $ LC.circleMarker
+                  {lat, lng}
+                  { radius: mkRadius item.size
+                  , color: unsafePartial fromJust $ Sm.lookup item.series series
+                  }
+        pure $ A.cons layer acc
 
     zoom ← LC.mkZoom zoomInt
 
     view ← LC.mkLatLng avgLat avgLng
 
-    layers ← A.foldRecM foldFn [ ] items
+    icon ← LC.icon iconConf
+
+    layers ← A.foldRecM (foldFn icon) [ ] items
 
     _ ← LC.setZoom zoom leaf
     LC.once "zoomend" (const $ void $ LC.setView view leaf) $ LC.mapToEvented leaf
