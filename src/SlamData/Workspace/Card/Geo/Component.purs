@@ -5,6 +5,7 @@ module SlamData.Workspace.Card.Geo.Component
 import SlamData.Prelude
 
 import Data.Int as Int
+import Data.Lens (_Just, (?~), (^?), (%~))
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -20,8 +21,8 @@ import SlamData.Workspace.Card.Geo.Component.State as ST
 import SlamData.Workspace.Card.Geo.Component.Query as Q
 import SlamData.Workspace.Card.Geo.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
---import SlamData.Workspace.Card.Port (Port(..))
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
@@ -49,13 +50,23 @@ cardEval = case _ of
   CC.Save k → do
     st ← H.get
     pure $ k $ Card.Geo $ Just st
-  CC.Load _ next → do
+  CC.Load model next → do
+    case model of
+      Card.Geo (Just r) → do
+        H.modify _{ zoom = r.zoom
+                  , view = r.view
+                  , osmURI = r.osmURI
+                  }
+        sync
+      _ → pure unit
     pure next
   CC.ReceiveInput _ _ next → do
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
-  CC.ReceiveState _ next →
+  CC.ReceiveState evalState next → do
+    for_ (evalState ^? ES._Layers) \layers →
+      H.query unit $ H.action $ HL.AddLayers layers
     pure next
   CC.ReceiveDimensions dims reply → do
     _ ←
@@ -69,14 +80,23 @@ cardEval = case _ of
       then Low
       else High
 
+sync ∷ DSL Unit
+sync = do
+  st ← H.get
+  zoom ← H.liftAff $ LC.mkZoom st.zoom
+  _ ← H.query unit $ H.action $ HL.SetZoom zoom
+  latLng ← H.liftAff $ LC.mkLatLng st.view.lat st.view.lng
+  _ ← H.query unit $ H.action $ HL.SetView latLng
+  tiles ← LC.tileLayer st.osmURI
+  _ ← H.query unit $ H.action $ HL.AddLayers [ LC.tileToLayer tiles ]
+  pure unit
+
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
   Q.HandleMessage (HL.Initialized leaf) next → do
-    st ← H.get
-    tiles ← LC.tileLayer st.osmURI
-    _ ← H.query unit $ H.action $ HL.AddLayers [ LC.tileToLayer tiles ]
-    zoom ← H.liftAff $ LC.mkZoom st.zoom
-    _ ← H.query unit $ H.action $ HL.SetZoom zoom
-    latLng ← H.liftAff $ LC.mkLatLng st.view.lat st.view.lng
-    _ ← H.query unit $ H.action $ HL.SetView latLng
+    sync
+    H.raise $ CC.stateAlter
+      $ ( _Just ∘ ES._Geo %~ \r → r{ layers = r.build leaf } )
+      ∘ ( _Just ∘ ES._Leaflet ?~ leaf )
+    H.raise $ CC.modelUpdate
     pure next

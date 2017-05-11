@@ -20,6 +20,7 @@ module SlamData.Workspace.Card.Eval.State
   , AnalysisR
   , AutoSelectR
   , TableR
+  , GeoR
   , _Analysis
   , _Axes
   , _Records
@@ -29,18 +30,27 @@ module SlamData.Workspace.Card.Eval.State
   , _ActiveTab
   , _Table
   , _ChartOptions
+  , _Geo
+  , _Leaflet
+  , _BuildLeaflet
+  , _Layers
   ) where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff (Aff)
+
 import Data.Argonaut (Json)
 import Data.Array as Array
-import Data.Lens (Prism', prism', Traversal', wander)
+import Data.Lens (Prism', prism', Traversal', wander, lens)
 import Data.Set as Set
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
+import Leaflet.Core as LC
+
+import SlamData.Effects (SlamDataEffects)
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Port (Resource)
 import SlamData.Workspace.Card.Setups.Axis (Axes)
@@ -65,16 +75,24 @@ type TableR =
   , size ∷ Int
   }
 
+type GeoR =
+  { leaflet ∷ Maybe LC.Leaflet
+  , build ∷ LC.Leaflet → Aff SlamDataEffects (Array LC.Layer)
+  , layers ∷ Array LC.Layer
+  }
+
 data EvalState
   = Analysis AnalysisR
   | AutoSelect AutoSelectR
   | ActiveTab Int
   | Table TableR
   | ChartOptions (DSL OptionI)
+  | Geo GeoR
 
 initialEvalState ∷ CM.AnyCardModel → Maybe EvalState
 initialEvalState = case _ of
   CM.Tabs { tabs } → ActiveTab <$> (guard (Array.length tabs > 0) $> 0)
+  CM.Geo _ → Just $ Geo { leaflet: Nothing, build: const $ pure [ ], layers: [ ] }
   _ → Nothing
 
 _Analysis ∷ Prism' EvalState AnalysisR
@@ -127,3 +145,17 @@ _ResourceSize ∷ Traversal' EvalState Int
 _ResourceSize = wander \f s → case s of
   Table r@{ size } → Table ∘ r { size = _ } <$> f size
   _ → pure s
+
+_Geo ∷ Prism' EvalState GeoR
+_Geo = prism' Geo case _ of
+  Geo r → Just r
+  _ → Nothing
+
+_Leaflet ∷ Traversal' EvalState (Maybe LC.Leaflet)
+_Leaflet = _Geo ∘ lens _.leaflet _{ leaflet = _ }
+
+_BuildLeaflet ∷ Traversal' EvalState (LC.Leaflet → Aff SlamDataEffects (Array LC.Layer))
+_BuildLeaflet = _Geo ∘ lens _.build _{ build = _ }
+
+_Layers ∷ Traversal' EvalState (Array LC.Layer)
+_Layers = _Geo ∘ lens _.layers _{ layers = _ }

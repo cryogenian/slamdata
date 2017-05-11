@@ -52,6 +52,8 @@ module SlamData.Workspace.Card.Port
 
 import SlamData.Prelude
 
+import Control.Monad.Aff (Aff)
+
 import Data.Argonaut (JCursor, Json)
 import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
 import Data.List as List
@@ -63,6 +65,9 @@ import Data.Path.Pathy as Path
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
+import Leaflet.Core as LC
+
+import SlamData.Effects (SlamDataEffects)
 import SlamData.Download.Model (DownloadOptions)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
@@ -123,7 +128,9 @@ type SetupTextLikeFormInputPort =
   , formInputType ∷ FormInputType
   }
 
-type GeoChartPort = Unit
+type GeoChartPort =
+  { build ∷ LC.Leaflet → Array Json → Aff SlamDataEffects (Array LC.Layer)
+  }
 
 data Port
   = Initial

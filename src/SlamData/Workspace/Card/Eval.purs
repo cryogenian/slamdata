@@ -111,7 +111,7 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   Table m, _ → Table.eval m port varMap
   Chart, Port.ChartInstructions { options } → tapResource (Chart.eval options) varMap
   Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
-  GeoChart, _ → Geo.eval varMap
+  GeoChart, Port.GeoChart m → tapResource (Geo.eval m) varMap
   Composite, _ → Port.varMapOut <$> Common.evalComposite
   Terminal, _ → pure Port.terminalOut
   Query sql, _ → Query.evalQuery sql varMap

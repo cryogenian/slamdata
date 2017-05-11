@@ -4,8 +4,10 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
+import Data.Path.Pathy as Pt
 import Data.URI (URIRef)
 import Data.URI as URI
+import Global (encodeURIComponent, decodeURIComponent)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -32,6 +34,63 @@ eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
 eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
+
+-- | OSMURI is a template that can have "{" and "}".
+-- | This is invalid URI and we need to handle it somehow
+onURIRef ∷ (String → String) → URIRef → URIRef
+onURIRef f = case _ of
+  Left uri → Left $ onURI f uri
+  Right ref → Right $ onRef f ref
+  where
+  onURI fn (URI.URI mbScheme hPart mQuery mFragment) = URI.URI
+    (onScheme fn <$> mbScheme)
+    (onHPart fn hPart)
+    (onQuery fn <$> mQuery)
+    (onFragment fn <$> mFragment)
+
+  onRef fn (URI.RelativeRef rPart mQuery mFragment) = URI.RelativeRef
+    (onRPart fn rPart)
+    (onQuery fn <$> mQuery)
+    (onFragment fn <$> mFragment)
+
+  onScheme fn (URI.URIScheme s) = URI.URIScheme $ fn s
+
+  onHPart fn (URI.HierarchicalPart mAuthority mURIPathAbs) = URI.HierarchicalPart
+    (onAuthority fn <$> mAuthority)
+    (onURIPathAbs fn <$> mURIPathAbs)
+
+  onQuery fn (URI.Query lst) = URI.Query $ onPair fn <$> lst
+
+  onPair fn (k × mv) = fn k × map fn mv
+
+  onFragment fn s = fn s
+
+  onRPart fn (URI.RelativePart mAuthority mURIPathRel) = URI.RelativePart
+    (onAuthority fn <$> mAuthority)
+    (onURIPathRel fn <$> mURIPathRel)
+
+  onAuthority fn (URI.Authority mUserInfo hosts) = URI.Authority
+    (onUserInfo fn <$> mUserInfo)
+    (onHostPair fn <$> hosts)
+
+  onHostPair fn (host × mport) =
+    onHost fn host × mport
+
+  onURIPathAbs fn p = bimap (onPath fn) (onPath fn) p
+
+  onURIPathRel fn p = bimap (onPath fn) (onPath fn) p
+
+  onPath ∷ ∀ a b c. (String → String) → Pt.Path a b c → Pt.Path a b c
+  onPath fn = Pt.refine (Pt.FileName ∘ fn ∘ Pt.runFileName) (Pt.DirName ∘ fn ∘ Pt.runDirName)
+
+  onUserInfo fn s = fn s
+
+  onHost fn = case _ of
+    URI.IPv6Address s → URI.IPv6Address $ fn s
+    URI.IPv4Address s → URI.IPv4Address $ fn s
+    URI.NameAddress s → URI.NameAddress $ fn s
+
+
 
 genModel ∷ Gen.Gen Model
 genModel = do
@@ -60,7 +119,7 @@ encode ∷ Model → J.Json
 encode Nothing = J.jsonNull
 encode (Just r) =
   "configType" := "show-geo-chart"
-  ~> "osmURI" := URI.printURIRef r.osmURI
+  ~> "osmURI" := (URI.printURIRef $ onURIRef encodeURIComponent r.osmURI)
   ~> "viewLat" := r.view.lat
   ~> "viewLng" := r.view.lng
   ~> "zoom" := r.zoom
@@ -78,10 +137,10 @@ decode js
     unless (configType ≡ "show-geo-chart")
       $ throwError "This is not show geo chart model"
     osmURIStr ← obj .? "osmURI"
-    osmURI ← lmap show $ URI.runParseURIRef osmURIStr
+    osmURI ← map (onURIRef decodeURIComponent) $ lmap show $ URI.runParseURIRef $ osmURIStr
     zoom ← obj .? "zoom"
     lat ← obj .? "viewLat"
-    lng ← obj .? "lng"
+    lng ← obj .? "viewLng"
     pure { osmURI
          , zoom
          , view: { lat, lng }

@@ -1,24 +1,42 @@
 module SlamData.Workspace.Card.Geo.Eval
   ( eval
-  , module M
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Writer.Class (class MonadTell)
+import Control.Monad.State (class MonadState, modify, get)
+import Data.Argonaut (Json)
+import Data.Lens ((^.))
 import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Geo.Marker.Model as M
 
 eval
   ∷ ∀ m
-  . MonadThrow CE.CardError m
-  ⇒ MonadTell CEM.CardLog m
-  ⇒ MonadAsk CEM.CardEnv m
+  . MonadState CEM.CardState m
+  ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
-  ⇒ Port.DataMap
-  → m Port.Out
-eval varMap =
-  pure $ Port.portOut Port.Terminal
+  ⇒ Port.GeoChartPort
+  → Port.Resource
+  → m Port.Port
+eval gcPort resource = do
+  let path = resource ^. Port._filePath
+  results ← CE.liftQ $ QQ.all path
+  let build = \leaf → gcPort.build leaf results
+  modify case _ of
+    Just (ES.Geo st) → Just $ ES.Geo $ st
+      { build = build
+      , layers = case st.leaflet of
+          Nothing → st.layers
+          Just l → build l
+      }
+    _ → Just $ ES.Geo { leaflet: Nothing, build, layers: [ ] }
+  get >>= traceAnyA
+--  case gcPort.gcType of
+--    Heatmap → evalHeatmap results
+--    Marker → evalMarker results
+--  put $ Just $ ES.ChartOptions (buildOptions results)
+  pure $ Port.ResourceKey Port.defaultResourceVar

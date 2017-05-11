@@ -34,4 +34,4 @@ buildGroupBy r =
 
 buildGeoHeatmap ∷ ModelR → Axes → Port.Port
 buildGeoHeatmap m axes =
-  Port.GeoChart unit
+  Port.GeoChart { build: \leaf records → pure [ ] }

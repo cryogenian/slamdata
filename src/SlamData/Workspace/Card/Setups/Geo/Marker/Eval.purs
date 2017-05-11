@@ -46,4 +46,4 @@ buildGroupBy r =
 
 buildMarker ∷ ModelR → Axes → Port.Port
 buildMarker r _ =
-  Port.GeoChart unit
+  Port.GeoChart { build: \leaf records → pure [ ] }
