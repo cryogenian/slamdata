@@ -1,5 +1,5 @@
 .sd-card-table {
-  @pagination-height: @grid-size * 2.5;
+  @pagination-height: @grid-size * 2.25;
 
   overflow: hidden !important;
 
@@ -32,12 +32,13 @@
   .sd-pagination {
     .noselect;
 
+    display: flex;
+    align-items: center;
     position: absolute;
     bottom: 0.1rem;
     height: @pagination-height;
     border-top: 0.1rem solid #ddd;
     width: 100%;
-    padding: 0 0.8rem;
 
     div {
       display: inline-block;
