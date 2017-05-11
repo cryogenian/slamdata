@@ -12,12 +12,16 @@ import Data.List as L
 import Data.StrMap as SM
 import Data.Set as Set
 
+import Global (readFloat, isNaN)
+
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
+import Halogen.Themes.Bootstrap3 as B
 
-
+import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.GeoChartType as GcT
@@ -112,12 +116,14 @@ package = P.onPrism (M._SetupGeoMarker ∘ _Just)
       foldl foldFn prepared flds
 
   save ∷ TP.DimensionMap → GM.ModelR → GM.Model
-  save dm _ =
+  save dm mr =
     { lat: _
     , lng: _
     , size
     , series
     , dims
+    , minSize: mr.minSize
+    , maxSize: mr.maxSize
     }
     <$> lat
     <*> lng
@@ -162,6 +168,38 @@ render state =
     [ HP.classes [ CSS.chartEditor ] ]
     [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
+    , HH.hr_
+    , row [ renderMinSize state, renderMaxSize state ]
+    ]
+
+renderMinSize ∷ ST.State → HTML
+renderMinSize state =
+  HH.div
+    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    ]
+    [ HH.label
+        [ HP.classes [ B.controlLabel ] ]
+        [ HH.text "Minimum size" ]
+    , HH.input
+        [ HP.classes [ B.formControl ]
+        , HP.value $ show $ state.minSize
+        , ARIA.label "Min size"
+        , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMinSymbolSize s)
+        ]
+    ]
+
+renderMaxSize ∷ ST.State → HTML
+renderMaxSize state =
+  HH.div
+    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    ]
+    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Maximum size" ]
+    , HH.input
+        [ HP.classes [ B.formControl ]
+        , HP.value $ show $ state.maxSize
+        , ARIA.label "Max size"
+        , HE.onValueChange$ HE.input (\s → right ∘ Q.SetMaxSymbolSize s)
+        ]
     ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
@@ -171,6 +209,7 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
+    st ← H.get
     let
       inp = M.SetupGeoMarker $ Just
         { lat: D.topDimension
@@ -178,6 +217,8 @@ cardEval = case _ of
         , series: Nothing
         , size: Nothing
         , dims: [ ]
+        , minSize: st.minSize
+        , maxSize: st.maxSize
         }
     out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
     pure $ k case join out of
@@ -206,4 +247,22 @@ setupEval = case _ of
   Q.HandleDims q next → do
     case q of
       DQ.Update _ → H.raise CC.modelUpdate
+    pure next
+  Q.SetMinSymbolSize str next → do
+    let fl = readFloat str
+    unless (isNaN fl) do
+      H.modify \st →
+        st{ minSize = fl
+          , maxSize = if st.maxSize > fl then st.maxSize else fl
+          }
+      H.raise CC.modelUpdate
+    pure next
+  Q.SetMaxSymbolSize str next → do
+    let fl = readFloat str
+    unless (isNaN fl) do
+      H.modify \st →
+        st{ maxSize = fl
+          , minSize = if st.minSize < fl then st.minSize else fl
+          }
+      H.raise CC.modelUpdate
     pure next

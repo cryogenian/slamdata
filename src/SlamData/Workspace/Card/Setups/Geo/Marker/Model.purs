@@ -18,6 +18,8 @@ type ModelR =
   , size ∷ Maybe D.LabeledJCursor
   , series ∷ Maybe D.LabeledJCursor
   , dims ∷ Array D.LabeledJCursor
+  , minSize ∷ Number
+  , maxSize ∷ Number
   }
 
 type Model = Maybe ModelR
@@ -32,6 +34,8 @@ eqR r1 r2 =
   && r1.series ≡ r2.series
   && r1.dims ≡ r2.dims
   && r1.size ≡ r2.size
+  && r1.minSize ≡ r2.minSize
+  && r1.maxSize ≡ r2.maxSize
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
@@ -49,11 +53,15 @@ genModel = do
     lng ←  map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
     series ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     size ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    minSize ← arbitrary
+    maxSize ← arbitrary
     pure { lat
          , lng
          , series
          , dims
          , size
+         , minSize
+         , maxSize
          }
 
 encode ∷ Model → J.Json
@@ -65,6 +73,8 @@ encode (Just r) =
   ~> "lng" := r.lng
   ~> "series" := r.series
   ~> "size" := r.size
+  ~> "minSize" := r.minSize
+  ~> "maxSize" := r.maxSize
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ Model
@@ -87,9 +97,13 @@ decode js
     lng ← obj .? "lng"
     series ← obj .? "series"
     size ← obj .? "size"
+    minSize ← obj .? "minSize"
+    maxSize ← obj .? "maxSize"
     pure { lat
          , lng
          , series
          , dims
          , size
+         , minSize
+         , maxSize
          }

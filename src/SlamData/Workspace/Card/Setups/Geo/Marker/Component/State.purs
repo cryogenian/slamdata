@@ -1,8 +1,12 @@
 module SlamData.Workspace.Card.Setups.Geo.Marker.Component.State where
 
-import SlamData.Prelude
-
-type State = Unit
+type State =
+  { minSize ∷ Number
+  , maxSize ∷ Number
+  }
 
 initialState ∷ State
-initialState = unit
+initialState =
+  { minSize: 10.0
+  , maxSize: 50.0
+  }

@@ -4,3 +4,5 @@ import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
 
 data Query a
   = HandleDims Q.Message a
+  | SetMaxSymbolSize String a
+  | SetMinSymbolSize String a

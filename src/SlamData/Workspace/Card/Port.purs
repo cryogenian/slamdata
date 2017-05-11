@@ -130,8 +130,6 @@ type SetupTextLikeFormInputPort =
 
 type GeoChartPort =
   { build ∷ LC.Leaflet → Array Json → Aff SlamDataEffects (Array LC.Layer)
-  , view ∷ LC.LatLng
-  , zoom ∷ LC.Zoom
   }
 
 data Port
