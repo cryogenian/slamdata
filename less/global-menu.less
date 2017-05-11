@@ -49,7 +49,7 @@
         position: relative;
         font-size: 0.1rem;
         color: transparent;
-        width: 2.5rem;
+        width: 4rem;
 
         &:hover::before {
           background-color: before;
@@ -61,44 +61,49 @@
           color: transparent;
         }
 
-        &::before {
-          font-size: 1rem;
+        &::before, &::after {
+          @s: 2.4rem;
+
           display: block;
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          width: @s;
+          height: @s;
+          line-height: @s;
+          margin: auto;
+          font-size: 1.6rem;
+          text-align: center;
+        }
+
+        &::before {
           content: "";
-          width: 1.5rem;
-          height: 1.5rem;
-          border-radius: 0.75rem;
+          border-radius: 50%;
           background-color: rgb(210, 210, 210);
           overflow: hidden;
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          text-align: center;
           color: #333;
         }
 
         &::after {
           content: "?";
-          position: absolute;
           padding-left: 0.05rem;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
           color: #333;
-          font-size: 1rem;
           z-index: 9999;
         }
       }
 
       > ul {
         position: absolute;
-        float: left;
         z-index: 800;
         right: -0.1rem;
-        list-style-type: none;
-        padding: 0;
         top: 100%;
+        max-width: 100vw;
+        padding: 0;
+        background: #fff;
+        box-shadow: 0.1rem 0.2rem 0.5rem 0 rgba(0, 0, 0, 0.05);
+        list-style-type: none;
 
         > li {
           position: relative;
@@ -106,16 +111,15 @@
 
           > a {
             display: flex;
-            background: #fff;
+            min-width: 100%;
+            padding: 1.2rem 2.4rem;
             border-color: rgb(210, 210, 210);
             border-style: solid;
-            border-width: 0 0.1rem 0 0.1rem;
-            box-shadow: 0.1rem 0.2rem 0.5rem 0 rgba(0, 0, 0, 0.05);
+            border-width: 0 0.1rem;
             color: #3f3f3f;
-            min-width: 100%;
-            padding: 0.9rem 1.125rem;
             white-space: nowrap;
             text-align: right;
+            cursor: pointer;
 
             > span {
               width: 100%;
@@ -141,9 +145,8 @@
   a {
     display: inline-block;
     cursor: default;
-    font-size: 0.9rem;
+    font-size: 1.6rem;
     line-height: 4rem;
-    font-size: 1rem;
     text-decoration: none;
   }
 }
