@@ -49,7 +49,7 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    pure $ k $ Card.Geo $ Just st
+    pure $ k $ Card.Geo $ Just { osmURI: st.osmURI, view: st.view, zoom: st.zoom }
   CC.Load model next → do
     case model of
       Card.Geo (Just r) → do
@@ -65,8 +65,11 @@ cardEval = case _ of
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
-    for_ (evalState ^? ES._Layers) \layers →
-      H.query unit $ H.action $ HL.AddLayers layers
+    for_ (evalState ^? ES._Layers) \layers → do
+      st ← H.get
+      _ ← H.query unit $ H.action $ HL.RemoveLayers st.layers
+      _ ← H.query unit $ H.action $ HL.AddLayers layers
+      H.modify _{layers = layers}
     pure next
   CC.ReceiveDimensions dims reply → do
     _ ←

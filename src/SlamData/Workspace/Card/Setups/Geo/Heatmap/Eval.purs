@@ -64,7 +64,7 @@ buildGeoHeatmap m axes =
   Port.GeoChart { build }
   where
   mkItems ∷ Array Json → Array Item
-  mkItems = spy ∘ foldMap (foldMap A.singleton ∘ decodeItem)
+  mkItems = foldMap (foldMap A.singleton ∘ decodeItem)
 
   maxIntensity ∷ Array Item → Number
   maxIntensity = fromMaybe one ∘ map _.i ∘ A.head ∘ A.sortBy (\a b → compare b.i a.i)
@@ -105,9 +105,9 @@ buildGeoHeatmap m axes =
       lngDiff = maxLng - minLng
       avgLat = mkAvgLat items
       avgLng = mkAvgLng items
-      zoomLat = spy $ 360.0 / latDiff
-      zoomLng = spy $ 360.0 / lngDiff
-      zoomInt = spy $ min (Int.floor zoomLat) (Int.floor zoomLng)
+      zoomLat = 360.0 / latDiff
+      zoomLng = 360.0 / lngDiff
+      zoomInt = min (Int.floor zoomLat) (Int.floor zoomLng)
 
     zoom ← LC.mkZoom zoomInt
     view ← LC.mkLatLng avgLat avgLng
@@ -116,6 +116,5 @@ buildGeoHeatmap m axes =
 
     _ ← LC.setZoom zoom leaf
 
-    traceAnyA view
     _ ← LH.mkHeatmap LH.defaultOptions{maxIntensity = maxIntensity items} items heatmap leaf
     pure [ heatmap ]

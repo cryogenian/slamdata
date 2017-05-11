@@ -2,14 +2,17 @@ module SlamData.Workspace.Card.Geo.Component.State where
 
 import SlamData.Prelude
 
-import Data.Path.Pathy ((</>), (<.>), file, currentDir, rootDir, dir)
+import Data.Path.Pathy ((</>), (<.>), file, rootDir, dir)
 import Data.URI (URIRef)
 import Data.URI as URI
+
+import Leaflet.Core as LC
 
 type State =
   { osmURI ∷ URIRef
   , zoom ∷ Int
   , view ∷ { lat ∷ Number, lng ∷ Number }
+  , layers ∷ Array LC.Layer
   }
 
 initialState ∷ State
@@ -24,4 +27,5 @@ initialState =
       Nothing
   , zoom: zero
   , view: { lat: zero, lng: zero }
+  , layers: [ ]
   }
