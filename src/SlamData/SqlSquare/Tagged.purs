@@ -41,13 +41,22 @@ derive instance newtypeParseError ∷ Newtype ParseError _
 instance showParseError ∷ Show ParseError where
   show (ParseError msg) = "(ParseError " <> show msg <> ")"
 
+dateFormat :: String
+dateFormat = "YYYY-MM-DD"
+
+timeFormat :: String
+timeFormat = "HH:mm:ss"
+
+dateTimeFormat :: String
+dateTimeFormat = "YYYY-MM-DDTHH:mm:ssZ"
+
 -- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
 -- connector issue that cannot represent dates distinct from datetimes.
 fixupDate ∷ String → String
 fixupDate = Str.take 10
 
 parseTime ∷ String → ParseError ⊹ DT.Time
-parseTime = bimap ParseError DT.time ∘ Fd.unformatDateTime "HH:mm:ss" ∘ tweak
+parseTime = bimap ParseError DT.time ∘ Fd.unformatDateTime timeFormat ∘ tweak
   where
   tweak ∷ String → String
   tweak s
@@ -56,10 +65,10 @@ parseTime = bimap ParseError DT.time ∘ Fd.unformatDateTime "HH:mm:ss" ∘ twea
     | otherwise = s
 
 parseDate ∷ String → ParseError ⊹ DT.Date
-parseDate = bimap ParseError DT.date ∘ Fd.unformatDateTime "YYYY-MM-DD" ∘ fixupDate
+parseDate = bimap ParseError DT.date ∘ Fd.unformatDateTime dateFormat ∘ fixupDate
 
 parseDateTime ∷ String → ParseError ⊹ DT.DateTime
-parseDateTime = lmap ParseError ∘ Fd.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ" ∘ tweak
+parseDateTime = lmap ParseError ∘ Fd.unformatDateTime dateTimeFormat ∘ tweak
   where
   -- The `datetime-local` HTML picker omits the `Z` from the format, so if it's
   -- missing from the input, add it.
@@ -70,18 +79,21 @@ parseDateTime = lmap ParseError ∘ Fd.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ" �
 
 dateSql ∷ String → Either ParseError Sql
 dateSql s = do
-  _ ← parseDate s
-  pure $ Sql.invokeFunction "DATE" $ pure $ Sql.string s
+  d ← parseDate s
+  s' ← lmap ParseError $ Fd.formatDateTime dateFormat (DT.DateTime d bottom)
+  pure $ Sql.invokeFunction "DATE" $ pure $ Sql.string s'
 
 timeSql ∷ String → Either ParseError Sql
 timeSql s = do
-  _ ← parseTime s
-  pure $ Sql.invokeFunction "TIME" $ pure $ Sql.string s
+  t ← parseTime s
+  s' ← lmap ParseError $ Fd.formatDateTime timeFormat (DT.DateTime bottom t)
+  pure $ Sql.invokeFunction "TIME" $ pure $ Sql.string s'
 
 datetimeSql ∷ String → Either ParseError Sql
 datetimeSql s = do
-  _ ← parseDateTime s
-  pure $ Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string s
+  dt ← parseDateTime s
+  s' ← lmap ParseError $ Fd.formatDateTime dateTimeFormat dt
+  pure $ Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string s'
 
 intervalSql ∷ String → Either ParseError Sql
 intervalSql s = do
