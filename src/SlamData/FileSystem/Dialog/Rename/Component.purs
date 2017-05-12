@@ -174,7 +174,10 @@ render dialog =
       , modalFooter
           [ HH.button
               [ HP.type_ HP.ButtonButton
-              , HP.classes [ Rc.btn ]
+              , HP.classes
+                [ Rc.btn
+                , Rc.btnDefault
+                ]
               , HE.onClick (HE.input_ RaiseDismiss)
               ]
               [ HH.text "Cancel" ]

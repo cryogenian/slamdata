@@ -92,7 +92,7 @@ propList _props state = propListTable propRows
     where
     part :: Lens' (Tuple String String) String -> H.HTML p (SettingsQuery s)
     part lens = HH.td_ [ input state (_props <<< ix index <<< lens) classes ]
-    classes = [ HP.classes [Rc.formControl, Rc.inputSm] ]
+    classes = [ HP.classes [Rc.formControl] ]
 
 -- | A labelled section within the form.
 label ∷ ∀ p i. String → Array (H.HTML p i) → H.HTML p i

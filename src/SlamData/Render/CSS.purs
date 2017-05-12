@@ -263,9 +263,6 @@ inputGroup = ClassName "input-group"
 inputGroupBtn ∷ ClassName
 inputGroupBtn = ClassName "input-group-btn"
 
-inputSm ∷ ClassName
-inputSm = ClassName "input-sm"
-
 controlLabel ∷ ClassName
 controlLabel = ClassName "control-label"
 

@@ -77,7 +77,7 @@ render state =
           <> state.availableProps
       updateFnKey = MCS.updatePropAt ix ∘ flip Tuple value
       updateFnVal = MCS.updatePropAt ix ∘ Tuple key
-      classes = [ Rc.formControl, Rc.inputSm ]
+      classes = [ Rc.formControl ]
     in
     HH.tr_
       [ HH.td_
