@@ -30,6 +30,9 @@ selected = ClassName "selected"
 phantom ∷ ClassName
 phantom = ClassName "phantom"
 
+phantomSpinner ∷ ClassName
+phantomSpinner = ClassName "phantom-spinner"
+
 itemIcon ∷ ClassName
 itemIcon = ClassName "item-icon"
 

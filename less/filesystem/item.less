@@ -13,11 +13,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-
-    > a {
-      display: block;
-      padding: 0.6em 0;
-    }
   }
 
   .item-toolbar {
@@ -26,5 +21,22 @@
     min-width: 0;
     padding: 0;
     margin: 0;
+  }
+
+  &.phantom > .item-content,
+  .item-content > a {
+    display: block;
+    padding: 1.2rem 0;
+  }
+
+  &.phantom > .item-content {
+    display: flex;
+    align-items: center;
+  }
+
+  .phantom-spinner {
+    height: 1em;
+    width: 1em;
+    margin-right: 0.5em;
   }
 }

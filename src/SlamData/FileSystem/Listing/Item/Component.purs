@@ -92,7 +92,10 @@ render state = case state.item of
       [ HH.div
           [ HP.classes [ CSS.itemContent ] ]
           [ HH.span_
-              [ HH.img [ HP.src "img/spin.gif" ]
+              [ HH.img
+                [ HP.class_ CSS.phantomSpinner
+                , HP.src "img/spin.gif"
+                ]
               , HH.text $ itemName state
               ]
           ]
