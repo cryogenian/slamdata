@@ -26,6 +26,7 @@ module SlamData.Workspace.Card.Error
   , module CTE
   , module FILE
   , module FISE
+  , module CVE
   ) where
 
 import SlamData.Prelude
@@ -42,6 +43,7 @@ import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPT
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as FILE
 import SlamData.Workspace.Card.Setups.FormInput.Static.Error as FISE
 import SlamData.Workspace.Card.Table.Error as CTE
+import SlamData.Workspace.Card.Variables.Error as CVE
 import Utils (hush)
 
 data CardError
@@ -57,6 +59,7 @@ data CardError
   | QueryCardError CQE.QueryError
   | SearchCardError CSE.SearchError
   | TableCardError CTE.TableError
+  | VariablesCardError CVE.VariablesError
 
 instance showCardError ∷ Show CardError where
   show = case _ of
@@ -72,6 +75,7 @@ instance showCardError ∷ Show CardError where
     QueryCardError err → "(QueryCardError " <> show err <> ")"
     SearchCardError err → "(SearchCardError " <> show err <> ")"
     TableCardError err → "(TableCardError " <> show err <> ")"
+    VariablesCardError err → "(VariablesCardError " <> show err <> ")"
 
 quasarToCardError ∷ QError → CardError
 quasarToCardError = QuasarError
@@ -90,6 +94,7 @@ cardToGlobalError = case _ of
   QueryCardError err → CQE.queryToGlobalError err
   SearchCardError err → CSE.searchToGlobalError err
   TableCardError err → CTE.tableToGlobalError err
+  VariablesCardError _ → Nothing
 
 -- TODO(Christoph): use this warn constraint to track down unstructured error messages
 -- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
@@ -130,6 +135,9 @@ throwFormInputLabeledError = throwError ∘ FormInputLabeledCardError
 
 throwSearchError ∷ ∀ m a. MonadThrow CardError m ⇒ CSE.SearchError → m a
 throwSearchError = throwError ∘ SearchCardError
+
+throwVariablesError ∷ ∀ m a. MonadThrow CardError m ⇒ CVE.VariablesError → m a
+throwVariablesError = throwError ∘ VariablesCardError
 
 liftQ ∷ ∀ m a. MonadThrow CardError m ⇒ m (Either QError a) → m a
 liftQ = flip bind (either (throwError ∘ quasarToCardError) pure)
