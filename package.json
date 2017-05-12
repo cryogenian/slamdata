@@ -20,7 +20,7 @@
     "bundle:watch": "webpack --progress --config webpack.config.dev.js --watch",
     "build:dev-pulp": "pulp --watch build",
     "build:icons": "gulp icons",
-    "build:less": "lessc less/main.less public/css/main.css --autoprefix=\"> 2%, last 1 versions, Firefox ESR, not Explorer < 11\"",
+    "build:less": "lessc less/main.less public/css/main.css --autoprefix=\"> 2%, last 1 versions, Firefox ESR, Explorer >= 11\"",
     "build:lite": "gulp bundle",
     "build:prod": "npm run lint:crlf && npm run build:less && npm run build:icons && npm run build:psa && gulp bundle",
     "build:psa": "pulp build -I test/src -- --censor-lib --strict --stash",
