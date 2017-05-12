@@ -40,7 +40,7 @@ import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Mount as API
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 type Query = SettingsQuery MCS.State
 
@@ -58,21 +58,21 @@ comp initialState =
 render ∷ MCS.State → HTML
 render state =
   HH.div
-    [ HP.class_ Rc.mountMarkLogic ]
+    [ HP.class_ CN.mountMarkLogic ]
     [ MCR.section "Server" [ MCR.host state MCS._host' ]
     , MCR.section "Authentication"
         [ HH.div
-            [ HP.class_ Rc.mountUserInfo ]
+            [ HP.class_ CN.mountUserInfo ]
             [ MCR.label "Username" [ MCR.input state MCS._user [] ]
             , MCR.label "Password" [ MCR.input state MCS._password [ HP.type_ HP.InputPassword ] ]
             ]
         ]
     , MCR.section "Root"
         [ HH.div
-            [ HP.classes [Rc.formGroup, Rc.mountPath] ]
+            [ HP.classes [CN.formGroup, CN.mountPath] ]
             [ MCR.label "Database" [ MCR.input state MCS._path [] ] ]
         , HH.div
-            [ HP.class_ Rc.mountFormat ]
+            [ HP.class_ CN.mountFormat ]
             [ HH.label_ [ HH.span_ [ HH.text "Format" ] ]
             , formatRadio "XML" XML
             , formatRadio "JSON" JSON

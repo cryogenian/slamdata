@@ -26,7 +26,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
 import SlamData.Download.Model as D
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 optionsCSV
   :: forall f
@@ -36,7 +36,7 @@ optionsCSV
 optionsCSV func opts =
   HH.div_
     [ HH.ul
-      [ HP.classes [ Rc.downloadCSVDelimiters ]]
+      [ HP.classes [ CN.downloadCSVDelimiters ]]
       [ field D._rowDelimiter "Row delimiter"
       , field D._colDelimiter "Column delimiter"
       , field D._quoteChar "Quote character"
@@ -50,7 +50,7 @@ optionsCSV func opts =
       [ HH.label_
           [ HH.span_ [ HH.text label ]
           , HH.input
-              [ HP.classes [ Rc.formControl ]
+              [ HP.classes [ CN.formControl ]
               , HP.value (opts ^. lens)
               , HE.onValueInput $ HE.input (func lens)
               ]
@@ -64,7 +64,7 @@ optionsJSON
   -> H.ComponentHTML f
 optionsJSON func opts =
   HH.div
-    [ HP.classes [ Rc.downloadJSONOptions ] ]
+    [ HP.classes [ CN.downloadJSONOptions ] ]
     [ multivalues, precision ]
   where
   multivalues :: H.ComponentHTML f
@@ -113,7 +113,7 @@ fldName
   → H.ComponentHTML q
 fldName compressed options tgtValue query =
   HH.div
-    [ HP.classes [ Rc.formGroup, Rc.downloadTarget ] ]
+    [ HP.classes [ CN.formGroup, CN.downloadTarget ] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Target name" ]
         , HH.input
@@ -122,7 +122,7 @@ fldName compressed options tgtValue query =
             , HE.onValueInput (HE.input query)
             ]
         , HH.div
-            [ HP.classes [ Rc.downloadTargetBox ] ]
+            [ HP.classes [ CN.downloadTargetBox ] ]
             [ HH.span_ [ HH.text tgtValue ]
             , HH.span_ [ HH.text (D.extension compressed options) ]
             ]

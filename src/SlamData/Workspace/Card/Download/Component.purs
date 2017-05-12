@@ -36,7 +36,7 @@ import Quasar.Paths as Paths
 import SlamData.Download.Model as D
 import SlamData.Quasar (reqHeadersToJSON, encodeURI)
 import SlamData.Quasar.Auth as API
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
@@ -66,8 +66,8 @@ render state =
     [ HH.a
         [ HP.classes
           [ CSS.formButton
-          , Rc.btn
-          , Rc.btnDefault
+          , CN.btn
+          , CN.btnDefault
           ]
         , HP.href state.url
         , ARIA.label $ fullDownloadString state

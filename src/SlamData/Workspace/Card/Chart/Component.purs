@@ -32,7 +32,7 @@ import Halogen.ECharts as HEC
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
-import SlamData.Render.CSS as RC
+import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType, chartDarkIconSrc)
@@ -73,7 +73,7 @@ renderEchart state = foldMap pure $ chart <$> state.theme
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ RC.chartOutput, HH.ClassName "card-input-maximum-lod" ] ]
+    [ HP.classes [ CN.chartOutput, HH.ClassName "card-input-maximum-lod" ] ]
     case state.chartType of
       Just ChT.Metric →
         [ HH.slot' cpMetric unit Metric.comp state.dimensions absurd ]

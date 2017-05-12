@@ -31,7 +31,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 type Step =
   { imageUri ∷ String
@@ -106,19 +106,19 @@ render st =
     if last
       then
         [ HH.button
-            [ HP.classes [ Rc.btn, Rc.btnPrimary ]
+            [ HP.classes [ CN.btn, CN.btnPrimary ]
             , HE.onClick (HE.input_ Dismiss)
             ]
             [ HH.text "Get started!" ]
         ]
       else
         [ HH.button
-            [ HP.classes [ Rc.btn, Rc.btnDefault ]
+            [ HP.classes [ CN.btn, CN.btnDefault ]
             , HE.onClick (HE.input_ Dismiss)
             ]
             [ HH.text "Skip" ]
         , HH.button
-            [ HP.classes [ Rc.btn, Rc.btnPrimary ]
+            [ HP.classes [ CN.btn, CN.btnPrimary ]
             , HE.onClick (HE.input_ Next)
             ]
             [ HH.text "Next" ]

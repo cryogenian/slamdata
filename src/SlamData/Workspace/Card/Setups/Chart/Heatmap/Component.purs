@@ -31,7 +31,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Form.Select as S
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -120,9 +120,9 @@ renderMinVal state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Minimum value" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Minimum value" ]
     , HH.input
-        [ HP.classes [ Rc.formControl ]
+        [ HP.classes [ CN.formControl ]
         , HP.value $ show $ state.minValue
         , ARIA.label "Minimum value"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMinValue s)
@@ -134,9 +134,9 @@ renderMaxVal state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Maximum value" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Maximum value" ]
     , HH.input
-        [ HP.classes [ Rc.formControl ]
+        [ HP.classes [ CN.formControl ]
         , HP.value $ show $ state.maxValue
         , ARIA.label "Maximum value"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMaxValue s)
@@ -149,7 +149,7 @@ renderIsReversedScheme state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ]
         [ HH.input
             [ HP.type_ HP.InputCheckbox
             , HP.checked state.isColorSchemeReversed
@@ -165,7 +165,7 @@ renderColorScheme state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Color scheme" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Color scheme" ]
     , BCI.selectInput
         (BCI.dropdown (Just "Color scheme") (\l → right ∘ Q.SelectColorScheme l))
         (S.trySelect' state.colorScheme colorSchemeSelect)

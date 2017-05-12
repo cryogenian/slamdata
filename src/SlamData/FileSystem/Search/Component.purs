@@ -33,7 +33,7 @@ import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigg
 
 import SlamData.Config as Config
 import SlamData.Monad (Slam)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (busyFieldIcon, clearFieldIcon)
 import SlamData.Render.Icon as I
 import SlamData.FileSystem.Search.Component.CSS as CSS
@@ -123,7 +123,7 @@ render state =
           [ HP.classes searchClasses ]
           [ I.searchSm
           , HH.input
-              [ HP.classes [ Rc.formControl ]
+              [ HP.classes [ CN.formControl ]
               , HP.value state.value
               , HE.onFocus (HE.input_ (Focus true))
               , HE.onBlur (HE.input_ (Focus false))
@@ -163,11 +163,11 @@ render state =
   where
   searchClasses ∷ Array HH.ClassName
   searchClasses =
-    [ Rc.inputGroup
+    [ CN.inputGroup
     , CSS.searchInput
     ]
     ⊕ A.catMaybes
-        [ if not state.valid then Just Rc.hasError else Nothing
+        [ if not state.valid then Just CN.hasError else Nothing
         , if state.value ≡ "" then Just CSS.searchEmpty else Nothing
         ]
 

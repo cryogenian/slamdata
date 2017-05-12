@@ -22,7 +22,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Render.Icon as I
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 render ∷ ∀ p i . H.Action i → H.HTML p i
 render dismiss =
@@ -43,7 +43,7 @@ render dismiss =
             , HH.div
                 [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
                 [ HH.button
-                    [ HP.classes [ Rc.btn ]
+                    [ HP.classes [ CN.btn ]
                     , HE.onClick (HE.input_ dismiss)
                     ]
                     [ HH.text "Done" ]

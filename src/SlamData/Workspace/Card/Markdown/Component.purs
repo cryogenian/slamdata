@@ -32,7 +32,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-import SlamData.Render.CSS as CSS
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
@@ -72,7 +72,7 @@ render formName st =
     Nothing → HH.div_ []
     Just browserFeatures → do
       HH.div
-        [ HP.class_ CSS.form ]
+        [ HP.class_ CN.form ]
         [ HH.slot
             unit
             (SD.slamDownComponent { formName, browserFeatures })

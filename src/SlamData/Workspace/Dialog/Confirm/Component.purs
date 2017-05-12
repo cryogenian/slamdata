@@ -28,7 +28,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 type State =
   { title ∷ String
@@ -61,12 +61,12 @@ render state =
         ]
     , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         [ HH.button
-            [ HP.classes [ Rc.btn ]
+            [ HP.classes [ CN.btn ]
             , HE.onClick (HE.input_ $ Raise (Confirm false))
             ]
             [ HH.text state.cancel ]
         , HH.button
-            [ HP.classes [ Rc.btn, Rc.btnPrimary ]
+            [ HP.classes [ CN.btn, CN.btnPrimary ]
             , HE.onClick (HE.input_ $ Raise (Confirm true))
             ]
             [ HH.text state.confirm

@@ -30,7 +30,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -100,9 +100,9 @@ renderMinSize state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Min size" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Min size" ]
     , HH.input
-        [ HP.classes [ Rc.formControl ]
+        [ HP.classes [ CN.formControl ]
         , HP.value $ show $ state.minSize
         , ARIA.label "Min size"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMinSymbolSize s)
@@ -114,9 +114,9 @@ renderMaxSize state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Max size" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Max size" ]
     , HH.input
-        [ HP.classes [ Rc.formControl ]
+        [ HP.classes [ CN.formControl ]
         , HP.value $ show $ state.maxSize
         , ARIA.label "Max size"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMaxSymbolSize s)

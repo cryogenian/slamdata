@@ -42,7 +42,7 @@ import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as API
 import SlamData.Render.Common (formGroup)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 import Utils.Path (DirPath, dropWorkspaceExt)
 import Utils.DOM as DOM
@@ -163,7 +163,7 @@ render dialog =
       [ modalHeader "Move/rename"
       , modalBody
         $ HH.div
-            [ HP.classes [ Rc.renameDialogForm ]
+            [ HP.classes [ CN.renameDialogForm ]
             , HE.onClick \e → Just $ StopPropagation (DOM.toEvent e) $ H.action $ SetShowList false
             ]
             [ nameInput
@@ -175,14 +175,14 @@ render dialog =
           [ HH.button
               [ HP.type_ HP.ButtonButton
               , HP.classes
-                [ Rc.btn
-                , Rc.btnDefault
+                [ CN.btn
+                , CN.btnDefault
                 ]
               , HE.onClick (HE.input_ RaiseDismiss)
               ]
               [ HH.text "Cancel" ]
           , HH.button
-              [ HP.classes [ Rc.btn, Rc.btnPrimary ]
+              [ HP.classes [ CN.btn, CN.btnPrimary ]
               , HP.disabled $ isJust $ dialog.error
               ]
               [ HH.text "Rename" ]
@@ -192,7 +192,7 @@ render dialog =
   where
   nameInput ∷ HTML
   nameInput =
-    formGroup [ HH.input [ HP.classes [ Rc.formControl ]
+    formGroup [ HH.input [ HP.classes [ CN.formControl ]
                         , HP.value (dialog.name)
                         , HP.placeholder "New name"
                         , HE.onValueInput (HE.input NameTyped)
@@ -202,45 +202,45 @@ render dialog =
   dirDropdownField ∷ HTML
   dirDropdownField =
     HH.div
-      [ HP.classes [ Rc.inputGroup, HH.ClassName "file-list-field" ] ]
+      [ HP.classes [ CN.inputGroup, HH.ClassName "file-list-field" ] ]
       [ HH.input
           [ HP.type_ HP.InputText
-          , HP.classes [ Rc.formControl ]
+          , HP.classes [ CN.formControl ]
           , HP.placeholder "New directory"
           , HE.onValueInput (HE.input DirTyped)
           , HP.value $ dialog ^. _typedDir
           ]
       , HH.span
-          [ HP.classes [ Rc.inputGroupBtn ] ]
+          [ HP.classes [ CN.inputGroupBtn ] ]
           [ HH.button
               [ HP.type_ HP.ButtonButton
-              , HP.classes [ Rc.btn, Rc.btnDefault ]
+              , HP.classes [ CN.btn, CN.btnDefault ]
               , HE.onClick \e →
                    Just $ StopPropagation (DOM.toEvent e) $ H.action $ ToggleShowList
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
               ]
-              [ HH.span [ HP.classes [ Rc.caret ] ] [ ] ]
+              [ HH.span [ HP.classes [ CN.caret ] ] [ ] ]
           ]
       ]
   dirDropdownList ∷ HTML
   dirDropdownList =
     HH.ul
-      ([ HP.classes  [ Rc.listGroup, Rc.fileListGroup ] ]
+      ([ HP.classes  [ CN.listGroup, CN.fileListGroup ] ]
        <> if dialog.showList then [] else [ ARIA.hidden "true" ])
     $ renameItem <$> dialog.dirs
 
   errorMessage ∷ HTML
   errorMessage =
     HH.div
-      ([ HP.classes $ [ Rc.alert, Rc.alertDanger ] ]
+      ([ HP.classes $ [ CN.alert, CN.alertDanger ] ]
        <> if isJust dialog.error then [] else [ ARIA.hidden "true" ])
       $ maybe [ ] (pure <<< HH.text) (dialog.error)
 
   renameItem ∷ R.Resource → HTML
   renameItem res =
     HH.button
-      [ HP.classes ([ Rc.listGroupItem ] <> (guard (R.isHidden res) $> ItemCSS.itemHidden))
+      [ HP.classes ([ CN.listGroupItem ] <> (guard (R.isHidden res) $> ItemCSS.itemHidden))
       , HE.onClick (HE.input_ (DirClicked res))
       , HP.type_ HP.ButtonButton
       ]

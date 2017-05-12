@@ -30,7 +30,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Form.Select (Select(..), stringVal, class OptionVal)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
@@ -137,7 +137,7 @@ pickerInput conf (Select { options, value }) =
    HH.div [ HP.classes [ HH.ClassName "sd-picker-input" ] ]
      [ HH.button
          ([ HP.classes
-            $ [ Rc.formControl, HH.ClassName "sd-picker-main-button" ]
+            $ [ CN.formControl, HH.ClassName "sd-picker-main-button" ]
             ⊕ ( HH.ClassName "default" <$ guard isDefault )
           , HP.disabled isDisabled
           , ARIA.label (fromMaybe "" conf.ariaLabel)
@@ -173,7 +173,7 @@ selectInput conf (Select { options, value }) =
     renderedOptions = map renderOption options
   in
     HH.select
-      [ HP.classes [ Rc.formControl ]
+      [ HP.classes [ CN.formControl ]
       , HP.disabled isDisabled
       , HE.onSelectedIndexChange \ix →
           case defaultWhen, ix of

@@ -30,7 +30,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 import Global (readFloat, isNaN)
 
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -105,9 +105,9 @@ renderMaxSize state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Max node size" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Max node size" ]
     , HH.input
-        [ HP.classes [ Rc.formControl ]
+        [ HP.classes [ CN.formControl ]
         , HP.value $ show $ state.maxSize
         , ARIA.label "Max node size"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMaxNodeSize s)
@@ -119,9 +119,9 @@ renderMinSize state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Min node size" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Min node size" ]
     , HH.input
-        [ HP.classes [ Rc.formControl ]
+        [ HP.classes [ CN.formControl ]
         , HP.value $ show $ state.minSize
         , ARIA.label "Min node size"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetMinNodeSize s)
@@ -133,7 +133,7 @@ renderCircular state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ]
         [ HH.input
             [ HP.type_ HP.InputCheckbox
             , HP.checked state.circular

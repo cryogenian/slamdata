@@ -36,7 +36,7 @@ import DOM.Classy.Element (toElement)
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.Monad (Slam)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 
 import Utils.DOM as DOM
@@ -72,20 +72,20 @@ render url =
         $ HH.form
             [ HE.onSubmit (HE.input PreventDefault) ]
             [ HH.div
-                [ HP.classes [ Rc.inputGroup ]
+                [ HP.classes [ CN.inputGroup ]
                 , HE.onClick $ HE.input (SelectElement ∘ DOM.toEvent)
                 ]
                 [ HH.input
-                    [ HP.classes [ Rc.formControl ]
+                    [ HP.classes [ CN.formControl ]
                     , HP.value url
                     , HP.readOnly true
                     , HP.title "Sharing URL"
                     , ARIA.label "Sharing URL"
                     ]
                 , HH.span
-                    [ HP.classes [ Rc.inputGroupBtn ] ]
+                    [ HP.classes [ CN.inputGroupBtn ] ]
                     [ HH.button
-                        [ HP.classes [ Rc.btn, Rc.btnDefault ]
+                        [ HP.classes [ CN.btn, CN.btnDefault ]
                         , HE.onClick (HE.input_ Cancel)
                         , HP.ref copyButtonRef
                         , HP.id_ "copy-button"
@@ -97,7 +97,7 @@ render url =
     , modalFooter
         [ HH.button
             [ HP.id_ "copy-button"
-            , HP.classes [ Rc.btn, Rc.btnDefault ]
+            , HP.classes [ CN.btn, CN.btnDefault ]
             , HE.onClick (HE.input_ Cancel)
             ]
             [ HH.text "Dismiss" ]

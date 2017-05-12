@@ -34,7 +34,7 @@ import Halogen.HTML.Properties as HP
 
 import Quasar.Advanced.Types as QT
 import SlamData.Monad (Slam)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Quasar.Security as Q
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Dialog.Share.Model (ShareResume(..), sharingActions, SharingInput)
@@ -181,11 +181,11 @@ render state =
   renderLoading =
     [ HH.div
         [ HP.classes $
-            [ Rc.alert
-            , Rc.alertInfo
+            [ CN.alert
+            , CN.alertInfo
             , HH.ClassName "share-loading"
             ]
-            ⊕ (guard (not state.loading) $> Rc.hidden)
+            ⊕ (guard (not state.loading) $> CN.hidden)
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
         , HH.text "Loading"
@@ -196,22 +196,22 @@ render state =
   renderTokenSecret token =
     [ HH.form
         [ HE.onSubmit (HE.input PreventDefault)
-        , HP.classes $ guard state.loading $> Rc.hidden
+        , HP.classes $ guard state.loading $> CN.hidden
         ]
         [ HH.div
-            [ HP.classes [ Rc.inputGroup ]
+            [ HP.classes [ CN.inputGroup ]
             , HE.onClick (HE.input SelectElement ∘ DOM.toEvent)
             ]
             [ HH.input
-                [ HP.classes [ Rc.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HP.value token
                 , HP.readOnly true
                 , HP.title "Token secret"
                 ]
             , HH.span
-                [ HP.classes [ Rc.inputGroupBtn ] ]
+                [ HP.classes [ CN.inputGroupBtn ] ]
                 [ HH.button
-                    [ HP.classes [ Rc.btn, Rc.btnDefault ]
+                    [ HP.classes [ CN.btn, CN.btnDefault ]
                     , HP.ref copyButtonRef
                     ]
                     [ I.copySm ]
@@ -233,11 +233,11 @@ render state =
   renderSubjectForm ∷ Array HTML
   renderSubjectForm =
     [ HH.div
-        [ HP.classes $ guard (isJust state.tokenSecret ∨ state.loading) $> Rc.hidden ]
+        [ HP.classes $ guard (isJust state.tokenSecret ∨ state.loading) $> CN.hidden ]
         [ HH.label_
             [ HH.text "Subject type"
             , HH.select
-                [ HP.classes [ Rc.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HE.onValueChange (HE.input (ChangeSubjectType ∘ readSubjectType))
                 , HP.disabled state.submitting
                 ]
@@ -257,12 +257,12 @@ render state =
             ]
         , HH.label
             [ HP.classes
-                $ (guard (state.subjectType ≠ User) $> Rc.hidden)
-                ⊕ (guard (state.error ≡ Just Validation) $> Rc.hasError)
+                $ (guard (state.subjectType ≠ User) $> CN.hidden)
+                ⊕ (guard (state.error ≡ Just Validation) $> CN.hasError)
             ]
             [ HH.text "User email"
             , HH.input
-                [ HP.classes [ Rc.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HP.value state.email
                 , HE.onValueInput $ HE.input ChangeEmail
                 , HP.placeholder "User email"
@@ -271,10 +271,10 @@ render state =
                 ]
             ]
         , HH.label
-            [ HP.classes $ guard (state.subjectType ≠ Group) $> Rc.hidden ]
+            [ HP.classes $ guard (state.subjectType ≠ Group) $> CN.hidden ]
             [ HH.text "Group path"
             , HH.select
-                [ HP.classes [ Rc.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HE.onValueChange $ HE.input ChangeGroup
                 , HP.disabled $ Arr.null state.groups ∨ state.submitting
                 ]
@@ -291,11 +291,11 @@ render state =
                   map renderOption state.groups
             ]
         , HH.label
-            [ HP.classes $ guard (state.subjectType ≠ Token) $> Rc.hidden
+            [ HP.classes $ guard (state.subjectType ≠ Token) $> CN.hidden
             ]
             [ HH.text "Token name"
             , HH.input
-                [ HP.classes [ Rc.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HP.type_ HP.InputText
                 , HP.placeholder "Token name"
                 , HP.value state.tokenName
@@ -306,7 +306,7 @@ render state =
         , HH.label_
             [ HH.text "Permission"
             , HH.select
-                [ HP.classes [ Rc.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HE.onValueChange (HE.input (ChangeShareResume ∘ readShareResume))
                 , HP.disabled state.submitting
                 ]
@@ -320,11 +320,11 @@ render state =
             ]
         , HH.div
             [ HP.classes
-                $ [ Rc.alert, Rc.alertDanger ]
+                $ [ CN.alert, CN.alertDanger ]
                 ⊕ (if state.showError
                       ∧ (state.error ≡ Just Connection ∨ state.error ≡ Just GroupList)
                       then [ ]
-                      else [ Rc.hidden ])
+                      else [ CN.hidden ])
             ]
             [ HH.text
                 if state.error ≡ Just Connection
@@ -337,8 +337,8 @@ render state =
             ]
         , HH.div
             [ HP.classes
-                $ [ Rc.alert, Rc.alertInfo ]
-                ⊕ (if state.showError ∧ state.error ≡ Just Validation then [ ] else [ Rc.hidden ])
+                $ [ CN.alert, CN.alertInfo ]
+                ⊕ (if state.showError ∧ state.error ≡ Just Validation then [ ] else [ CN.hidden ])
             ]
             [ HH.text "Please check if user email is correct" ]
         ]
@@ -350,8 +350,8 @@ render state =
         [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         $ [ HH.button
               [ HP.classes
-                  $ [ Rc.btn, Rc.btnDefault ]
-                  ⊕ (guard state.loading $> Rc.hidden)
+                  $ [ CN.btn, CN.btnDefault ]
+                  ⊕ (guard state.loading $> CN.hidden)
               , HP.type_ HP.ButtonButton
               , HE.onClick $ HE.input_ Cancel
               , HP.disabled state.submitting
@@ -365,9 +365,9 @@ render state =
   renderShare =
     [ HH.button
         [ HP.classes
-            $ [ Rc.btn, Rc.btnPrimary ]
-            ⊕ (guard state.loading $> Rc.hidden)
-            ⊕ (guard (isJust state.error && state.showError) $> Rc.hasError)
+            $ [ CN.btn, CN.btnPrimary ]
+            ⊕ (guard state.loading $> CN.hidden)
+            ⊕ (guard (isJust state.error && state.showError) $> CN.hasError)
         , HP.disabled $
             state.submitting
             ∨ ((state.email ≡ "" ∨ state.error ≡ Just Validation)

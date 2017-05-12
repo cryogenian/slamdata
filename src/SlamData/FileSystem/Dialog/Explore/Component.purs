@@ -31,7 +31,7 @@ import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.Monad (Slam)
 import SlamData.Render.Common (formGroup)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 import Utils.Path as UP
 
@@ -75,7 +75,7 @@ render state =
           ]
         , formGroup
             [ HH.input
-                [ HP.classes [ Rc.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HP.value state.workspaceName
                 , HP.placeholder "New workspace name"
                 , ARIA.label "New workspace name"
@@ -85,13 +85,13 @@ render state =
           ]
     , modalFooter
       [ HH.button
-          [ HP.classes [ Rc.btn ]
+          [ HP.classes [ CN.btn ]
           , HE.onClick (HE.input_ RaiseDismiss)
           , HP.type_ HP.ButtonButton
           ]
           [ HH.text "Cancel" ]
       , HH.button
-          [ HP.classes [ Rc.btn, Rc.btnPrimary ]
+          [ HP.classes [ CN.btn, CN.btnPrimary ]
           , HP.disabled $ state.workspaceName == ""
           , HE.onClick (HE.input_ (TryExplore state.filePath state.workspaceName))
           , HP.type_ HP.ButtonButton

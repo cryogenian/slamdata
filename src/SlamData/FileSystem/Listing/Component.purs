@@ -29,7 +29,7 @@ import Halogen.HTML.Properties as HP
 import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item (Item)
 import SlamData.FileSystem.Listing.Item.Component as Item
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 type State =
   { items ∷ Array Item
@@ -90,7 +90,7 @@ component =
 render ∷ State → HTML
 render state@{ items } =
   HH.div
-    [ HP.classes [ Rc.listGroup, Rc.results ] ]
+    [ HP.classes [ CN.listGroup, CN.results ] ]
     $ zipItems (install state) items
 
 eval ∷ Query ~> DSL

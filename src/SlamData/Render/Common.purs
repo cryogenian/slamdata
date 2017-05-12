@@ -24,23 +24,23 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 row ∷ ∀ p f. Array (HTML p f) → HTML p f
 row = HH.div [ HP.class_ $ H.ClassName "row" ]
 
 content ∷ ∀ p f. Array (HTML p f) → HTML p f
-content = HH.div [ HP.class_ Rc.content ]
+content = HH.div [ HP.class_ CN.content ]
 
 fadeWhen ∷ Boolean → Array ClassName
-fadeWhen true = [ Rc.fade ]
-fadeWhen false = [ Rc.fade, Rc.in_ ]
+fadeWhen true = [ CN.fade ]
+fadeWhen false = [ CN.fade, CN.in_ ]
 
 classedDiv ∷ ∀ f p. ClassName → Array (HTML p (f Unit)) → HTML p (f Unit)
 classedDiv cls = HH.div [ HP.classes [ cls ] ]
 
 formGroup ∷ ∀ f p. Array (HTML p (f Unit)) → HTML p (f Unit)
-formGroup = classedDiv Rc.formGroup
+formGroup = classedDiv CN.formGroup
 
 clearFieldIcon ∷ ∀ f p. String → HTML p (f Unit)
 clearFieldIcon label =
@@ -50,7 +50,7 @@ clearFieldIcon label =
     , ARIA.label label
     ]
     [ HH.span
-        [ HP.class_ Rc.srOnly ]
+        [ HP.class_ CN.srOnly ]
         [ HH.text label ]
     ]
 

@@ -30,7 +30,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -109,9 +109,9 @@ renderAxisLabelAngle state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Label angle" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Label angle" ]
     , HH.input
-        [ HP.classes [ Rc.formControl ]
+        [ HP.classes [ CN.formControl ]
         , HP.value $ show $ state.axisLabelAngle
         , ARIA.label "Axis label angle"
         , HE.onValueChange $ HE.input \l → right ∘ Q.SetAxisLabelAngle l
@@ -123,7 +123,7 @@ renderIsStacked state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ]
         [ HH.input
             [ HP.type_ HP.InputCheckbox
             , HP.checked state.isStacked
@@ -139,7 +139,7 @@ renderIsSmooth state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ]
         [ HH.input
             [ HP.type_ HP.InputCheckbox
             , HP.checked state.isSmooth
@@ -156,10 +156,10 @@ renderSize state =
     [ HP.classes [ CSS.axisLabelParam ]
     ]
     [ HH.label
-        [ HP.classes [ Rc.controlLabel ] ]
+        [ HP.classes [ CN.controlLabel ] ]
         [ HH.text "Size" ]
     , HH.input
-        [ HP.classes [ Rc.formControl ]
+        [ HP.classes [ CN.formControl ]
         , HP.value $ show state.size
         , ARIA.label "Size"
         , HE.onValueChange $ HE.input (\s → right ∘ Q.SetSize s)

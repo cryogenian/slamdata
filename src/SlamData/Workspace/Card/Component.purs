@@ -44,7 +44,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.CardType (CardType(..))
@@ -135,7 +135,7 @@ makeCardComponent cardType component options =
           ]
         _, Low →
           [ HH.fieldset
-              [ HP.classes $ CardType.cardClasses cardType <> [ Rc.hidden ]
+              [ HP.classes $ CardType.cardClasses cardType <> [ CN.hidden ]
               , HP.disabled disabled
               ]
               [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]

@@ -25,7 +25,7 @@ import Halogen.HTML.Properties as HP
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Monad (Slam)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 data Query a
   = SetMessage String a
@@ -55,11 +55,11 @@ nonModalRender ∷ String → H.ComponentHTML Query
 nonModalRender message =
   HH.div [ HP.classes [ HH.ClassName "deck-dialog-error" ] ]
     [ HH.h4_ [ HH.text "Error" ]
-    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-body", Rc.alert, Rc.alertDanger ] ]
+    , HH.div [ HP.classes [ HH.ClassName "deck-dialog-body", CN.alert, CN.alertDanger ] ]
         [ HH.text message ]
     , HH.div [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         [ HH.button
-            [ HP.classes [ Rc.btn ]
+            [ HP.classes [ CN.btn ]
             , HE.onClick (HE.input_ (Raise Dismiss))
             ]
             [ HH.text "Dismiss" ]
@@ -72,11 +72,11 @@ render message =
     [ modalHeader "Error"
     , modalBody
         $ HH.div
-            [ HP.classes [ Rc.alert, Rc.alertDanger ] ]
+            [ HP.classes [ CN.alert, CN.alertDanger ] ]
             [ HH.text message ]
     , modalFooter
         [ HH.button
-            [ HP.classes [ Rc.btn ]
+            [ HP.classes [ CN.btn ]
             , HE.onClick (HE.input_ (Raise Dismiss))
             ]
             [ HH.text "Dismiss" ]

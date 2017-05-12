@@ -30,7 +30,7 @@ import Halogen.HTML.Events as HE
 import SlamData.Common.Align (alignSelect)
 import SlamData.Common.Sort (sortSelect)
 import SlamData.Form.Select as S
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -104,7 +104,7 @@ renderOrder state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Order" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Order" ]
     , BCI.selectInput
         (BCI.dropdown Nothing (\l → right ∘ Q.SelectOrder l))
         (S.trySelect' state.order sortSelect)
@@ -115,7 +115,7 @@ renderAlign state =
   HH.div
     [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ Rc.controlLabel ] ] [ HH.text "Alignment" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Alignment" ]
     , BCI.selectInput
         (BCI.dropdown Nothing (\l → right ∘ Q.SelectAlign l))
         (S.trySelect' state.align alignSelect)
