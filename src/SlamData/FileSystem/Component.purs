@@ -376,21 +376,6 @@ eval = case _ of
     remove mount
     H.liftEff Browser.reload
     pure next
-  HandleDialog (DialogMessage.ExploreFile fp initialName) next → do
-    { path } ← H.get
-    let newWorkspaceName = initialName ⊕ "." ⊕ Config.workspaceExtension
-    name ← API.getNewName path newWorkspaceName
-    case name of
-      Left err →
-        case GE.fromQError err of
-          Left msg →
-            showDialog $ Dialog.Error
-            $ "There was a problem creating the workspace: " ⊕ msg
-          Right ge →
-            GE.raiseGlobalError ge
-      Right name' →
-        H.liftEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
-    pure next
   HandleNotifications NC.ExpandGlobalMenu next → do
     gripperState ← queryHeaderGripper $ H.request Gripper.GetState
     when (gripperState ≠ Just Gripper.Opened) do
@@ -437,8 +422,19 @@ handleItemMessage = case _ of
   Item.Open res → do
     { sort, salt, path } ← H.get
     loc ← H.liftEff locationString
-    for_ (preview R._filePath res) \fp →
-      showDialog $ Dialog.Explore fp
+    for_ (preview R._filePath res) \fp → do
+      let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
+      name ← API.getNewName path newWorkspaceName
+      case name of
+        Left err →
+          case GE.fromQError err of
+            Left msg →
+              showDialog $ Dialog.Error
+              $ "There was a problem creating the workspace: " ⊕ msg
+            Right ge →
+              GE.raiseGlobalError ge
+        Right name' →
+          H.liftEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
     for_ (preview R._dirPath res) \dp →
       H.liftEff $ setLocation $ browseURL Nothing sort salt dp
     for_ (preview R._Workspace res) \wp →
