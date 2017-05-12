@@ -14,29 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Cache.Error where
+module SlamData.Workspace.Card.Search.Error where
 
 import SlamData.Prelude
 
 import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
+import Text.Parsing.Parser (ParseError)
 import Utils (hush)
-import Utils.Path (FilePath)
 
-data CacheError
-  = CacheInvalidFilepath String
-  | CacheQuasarError QError
-  | CacheErrorSavingFile FilePath
-  | CacheResourceNotModified
+data SearchError
+  = SearchQueryParseError { query ∷ String, error ∷ ParseError }
+  | SearchQueryCompilationError QError
 
-instance showCacheError ∷ Show CacheError where
+instance showSearchError ∷ Show SearchError where
   show = case _ of
-    CacheInvalidFilepath fp → "(CacheInvalidFilepath " <> show fp <> ")"
-    CacheQuasarError qErr → "(CacheQuasarError " <> show qErr <> ")"
-    CacheErrorSavingFile fp → "(CacheErrorSavingFile " <> show fp <> ")"
-    CacheResourceNotModified → "CacheResourceNotModified"
+    SearchQueryParseError { query, error } →
+      "(SearchQueryParseError { query: " <> show query <> ", error: " <> show error <> " })"
+    SearchQueryCompilationError error →
+      "(SearchQueryCompilationError " <> show error <> ")"
 
-cacheToGlobalError ∷ CacheError → Maybe GE.GlobalError
-cacheToGlobalError = case _ of
-  CacheQuasarError qErr → hush (GE.fromQError qErr)
+searchToGlobalError ∷ SearchError → Maybe GE.GlobalError
+searchToGlobalError = case _ of
+  SearchQueryCompilationError error → hush (GE.fromQError error)
   _ → Nothing

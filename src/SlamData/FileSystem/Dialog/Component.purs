@@ -19,28 +19,22 @@ module SlamData.FileSystem.Dialog.Component where
 import SlamData.Prelude
 
 import Data.Array (singleton)
-
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
 import Network.HTTP.RequestHeader (RequestHeader)
-
 import SlamData.Dialog.Error.Component as Error
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Dialog.Download.Component as Download
-import SlamData.FileSystem.Dialog.Explore.Component as Explore
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
-import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Resource (Resource, Mount)
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Deck.Component.CSS as CSS
-
-import Utils.Path (FilePath)
 
 data Dialog
   = Error String
@@ -48,7 +42,6 @@ data Dialog
   | Rename Resource
   | Mount Mount.Input
   | Download Resource (Array RequestHeader)
-  | Explore FilePath
 
 type State = Maybe Dialog
 
@@ -66,10 +59,9 @@ type ChildQuery
   ⨁ Rename.Query
   ⨁ Download.Query
   ⨁ Mount.Query
-  ⨁ Explore.Query
   ⨁ Const Void
 
-type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Void
+type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Void
 
 component ∷ H.Component HH.HTML Query Unit Message Slam
 component =
@@ -107,8 +99,6 @@ render state =
       HH.slot' CP.cp4 unit Download.component { resource, headers } (HE.input HandleChild)
     Mount input →
       HH.slot' CP.cp5 unit Mount.component input (HE.input HandleChild)
-    Explore fp →
-      HH.slot' CP.cp6 unit Explore.component fp (HE.input HandleChild)
 
 eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 eval = case _ of

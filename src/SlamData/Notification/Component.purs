@@ -44,6 +44,7 @@ import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
 import SlamData.Notification as N
+import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(Editable, ReadOnly))
 
@@ -200,7 +201,7 @@ render st =
                   , HP.type_ HP.ButtonButton
                   , HE.onClick (HE.input_ Dismiss)
                   ]
-                  [ HH.text "×" ]
+                  [ I.closeSm ]
               ]
           ]
       ]

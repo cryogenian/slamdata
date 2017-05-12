@@ -14,29 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Cache.Error where
+
+module SlamData.Workspace.Card.Setups.Chart.PivotTable.Error where
 
 import SlamData.Prelude
 
 import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
 import Utils (hush)
-import Utils.Path (FilePath)
 
-data CacheError
-  = CacheInvalidFilepath String
-  | CacheQuasarError QError
-  | CacheErrorSavingFile FilePath
-  | CacheResourceNotModified
+data PivotTableError
+  = PivotTableNoColumnSelectedError
+  | PivotTableQuasarError QError
 
-instance showCacheError ∷ Show CacheError where
+instance showPivotTableError ∷ Show PivotTableError where
   show = case _ of
-    CacheInvalidFilepath fp → "(CacheInvalidFilepath " <> show fp <> ")"
-    CacheQuasarError qErr → "(CacheQuasarError " <> show qErr <> ")"
-    CacheErrorSavingFile fp → "(CacheErrorSavingFile " <> show fp <> ")"
-    CacheResourceNotModified → "CacheResourceNotModified"
+    PivotTableNoColumnSelectedError → "PivotTableNoColumnSelectedError"
+    PivotTableQuasarError qErr → "(PivotTableQuasarError " <> show qErr <> ")"
 
-cacheToGlobalError ∷ CacheError → Maybe GE.GlobalError
-cacheToGlobalError = case _ of
-  CacheQuasarError qErr → hush (GE.fromQError qErr)
+pivotTableToGlobalError ∷ PivotTableError → Maybe GE.GlobalError
+pivotTableToGlobalError = case _ of
+  PivotTableQuasarError qErr → hush (GE.fromQError qErr)
   _ → Nothing
