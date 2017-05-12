@@ -281,23 +281,9 @@ eval = case _ of
   MakeWorkspace next → do
     state ← H.get
     isMounted >>= if _
-      then do
-        let
-          newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
-        name ← API.getNewName state.path newWorkspaceName
-        case name of
-          Left err →
-            case GE.fromQError err of
-              Left msg →
-                -- This error isn't strictly true as we're not actually creating the
-                -- workspace here, but saying there was a problem "creating a name for the
-                -- workspace" would be a little strange
-                showDialog $ Dialog.Error
-                  $ "There was a problem creating the workspace: " ⊕ msg
-              Right ge →
-                GE.raiseGlobalError ge
-          Right name' → do
-            H.liftEff $ setLocation $ mkWorkspaceURL (state.path </> dir name') New
+       then
+         createWorkspace state.path \mkUrl →
+           H.liftEff $ setLocation $ mkUrl New
        else
          showDialog
            $ Dialog.Error
@@ -422,19 +408,9 @@ handleItemMessage = case _ of
   Item.Open res → do
     { sort, salt, path } ← H.get
     loc ← H.liftEff locationString
-    for_ (preview R._filePath res) \fp → do
-      let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
-      name ← API.getNewName path newWorkspaceName
-      case name of
-        Left err →
-          case GE.fromQError err of
-            Left msg →
-              showDialog $ Dialog.Error
-              $ "There was a problem creating the workspace: " ⊕ msg
-            Right ge →
-              GE.raiseGlobalError ge
-        Right name' →
-          H.liftEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
+    for_ (preview R._filePath res) \fp →
+      createWorkspace path \mkUrl →
+        H.liftEff $ setLocation $ mkUrl $ Exploring fp
     for_ (preview R._dirPath res) \dp →
       H.liftEff $ setLocation $ browseURL Nothing sort salt dp
     for_ (preview R._Workspace res) \wp →
@@ -453,18 +429,8 @@ handleItemMessage = case _ of
     path ← H.gets _.path
     loc ← map (_ ⊕ "/") $ H.liftEff locationString
     for_ (preview R._filePath res) \fp → do
-      let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
-      name ← API.getNewName path newWorkspaceName
-      case name of
-        Left err →
-          case GE.fromQError err of
-            Left m →
-              showDialog $ Dialog.Error
-                $ "There was a problem creating the workspace: " ⊕ m
-            Right ge →
-              GE.raiseGlobalError ge
-        Right name' → do
-          showDialog (Dialog.Share $ append loc $  mkWorkspaceURL (path </> dir name') $ Exploring fp)
+      createWorkspace path \mkUrl →
+        showDialog $ Dialog.Share $ append loc $ mkUrl $ Exploring fp
     for_ (preview R._Workspace res) \wp → do
       showDialog (Dialog.Share $ append loc $ mkWorkspaceURL wp (Load ReadOnly))
   Item.Download res →
@@ -699,3 +665,21 @@ queryHeaderGripper =
 queryGlobalMenu ∷ ∀ a. GlobalMenu.Query a → DSL (Maybe a)
 queryGlobalMenu =
    H.query' CS.cpHeader unit ∘ Header.QueryGlobalMenu ∘ liftCoyoneda
+
+createWorkspace ∷ ∀ a. DirPath → ((Action → String) → DSL a) → DSL Unit
+createWorkspace path action = do
+  let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
+  name ← API.getNewName path newWorkspaceName
+  case name of
+    Left err →
+      case GE.fromQError err of
+        Left msg →
+          -- This error isn't strictly true as we're not actually creating the
+          -- workspace here, but saying there was a problem "creating a name for the
+          -- workspace" would be a little strange
+          showDialog $ Dialog.Error
+            $ "There was a problem creating the workspace: " ⊕ msg
+        Right ge →
+          GE.raiseGlobalError ge
+    Right name' →
+      void $ action (mkWorkspaceURL (path </> dir name'))
