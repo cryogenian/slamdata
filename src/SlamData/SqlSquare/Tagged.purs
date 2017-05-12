@@ -32,12 +32,6 @@ import SqlSquared as Sql
 
 import Utils (stringToNumber, stringToBoolean)
 
-tweak ∷ String → String
-tweak s
-  | Str.length s ≡ 19 = s <> "Z"
-  | Str.charAt 10 s ≡ Just ' ' = tweak (Str.take 10 s <> "T" <> Str.drop 11 s)
-  | otherwise = s
-
 -- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
 -- connector issue that cannot represent dates distinct from datetimes.
 fixupDate ∷ String → String
@@ -45,12 +39,25 @@ fixupDate = Str.take 10
 
 parseTime ∷ String → String ⊹ DT.Time
 parseTime = map DT.time ∘ Fd.unformatDateTime "HH:mm:ss" ∘ tweak
+  where
+  tweak ∷ String → String
+  tweak s
+    | Str.length s ≡ 19 = s <> "Z"
+    | Str.charAt 10 s ≡ Just ' ' = tweak (Str.take 10 s <> "T" <> Str.drop 11 s)
+    | otherwise = s
 
 parseDate ∷ String → String ⊹ DT.Date
 parseDate = map DT.date ∘ Fd.unformatDateTime "YYYY-MM-DD" ∘ fixupDate
 
 parseDateTime ∷ String → String ⊹ DT.DateTime
-parseDateTime = Fd.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ"
+parseDateTime = Fd.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ" ∘ tweak
+  where
+  -- The `datetime-local` HTML picker omits the `Z` from the format, so if it's
+  -- missing from the input, add it.
+  tweak ∷ String → String
+  tweak s
+    | Str.length s ≡ 19 = s <> "Z"
+    | otherwise = s
 
 dateSql ∷ String → Maybe Sql
 dateSql s = do
