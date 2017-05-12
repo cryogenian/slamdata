@@ -77,11 +77,6 @@ editWorkspace name =
   Feature.click (XPath.anywhere $ XPaths.selectFile name)
     *> Feature.click (XPath.anywhere $ XPaths.editWorkspace name)
 
-exploreFile ∷ String → SlamFeature Unit
-exploreFile name = do
-  Feature.provideFieldValue (XPath.anywhere $ XPath.anyWithExactAriaLabel "New workspace name") name
-  Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Explore file"
-
 hideHiddenFiles ∷ SlamFeature Unit
 hideHiddenFiles =
   Feature.click $ XPath.anywhere $ XPaths.hideHiddenFiles
