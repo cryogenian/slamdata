@@ -18,6 +18,7 @@ module SlamData.Workspace.Card.Error
   ( module SlamData.Workspace.Card.Error
   , module CCE
   , module CDLOE
+  , module CHE
   , module CMDE
   , module COE
   , module CQE
@@ -32,6 +33,7 @@ import SlamData.Prelude
 import Quasar.Error (QError)
 import SlamData.GlobalError as GE
 import SlamData.Workspace.Card.Cache.Error as CCE
+import SlamData.Workspace.Card.Chart.Error as CHE
 import SlamData.Workspace.Card.DownloadOptions.Error as CDLOE
 import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.Open.Error as COE
@@ -46,6 +48,7 @@ data CardError
   = QuasarError QError
   | StringlyTypedError String
   | CacheCardError CCE.CacheError
+  | ChartCardError CHE.ChartError
   | DownloadOptionsCardError CDLOE.DownloadOptionsError
   | FormInputLabeledCardError FILE.FormInputLabeledError
   | FormInputStaticCardError FISE.FormInputStaticError
@@ -60,6 +63,7 @@ instance showCardError ∷ Show CardError where
     QuasarError err → "(QuasarError " <> show err <> ")"
     StringlyTypedError err → "(StringlyTypedError " <> err <> ")"
     CacheCardError err → "(CacheCardError " <> show err <> ")"
+    ChartCardError err → "(ChartCardError " <> show err <> ")"
     DownloadOptionsCardError err → "(DownloadOptionsCardError " <> show err <> ")"
     FormInputLabeledCardError err → "(FormInputLabeledCardError " <> show err <> ")"
     FormInputStaticCardError err → "(FormInputStaticCardError " <> show err <> ")"
@@ -77,6 +81,7 @@ cardToGlobalError = case _ of
   QuasarError qError → hush (GE.fromQError qError)
   StringlyTypedError err → Nothing
   CacheCardError err → CCE.cacheToGlobalError err
+  ChartCardError err → CHE.chartToGlobalError err
   DownloadOptionsCardError _ → Nothing
   FormInputLabeledCardError _ → Nothing
   FormInputStaticCardError _ → Nothing
@@ -113,6 +118,9 @@ throwOpenError = throwError ∘ OpenCardError
 
 throwTableError ∷ ∀ m a. MonadThrow CardError m ⇒ CTE.TableError → m a
 throwTableError = throwError ∘ TableCardError
+
+throwChartError ∷ ∀ m a. MonadThrow CardError m ⇒ CHE.ChartError → m a
+throwChartError = throwError ∘ ChartCardError
 
 throwFormInputStaticError ∷ ∀ m a. MonadThrow CardError m ⇒ FISE.FormInputStaticError → m a
 throwFormInputStaticError = throwError ∘ FormInputStaticCardError

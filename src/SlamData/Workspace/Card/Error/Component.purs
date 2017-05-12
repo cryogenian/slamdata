@@ -109,6 +109,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
       HH.div_
         [ errorTitle [ HH.text err ] ]
     CacheCardError cce → cacheErrorMessage state cce
+    ChartCardError cce → chartErrorMessage state cce
     QueryCardError qce → queryErrorMessage state qce
     MarkdownCardError mde → markdownErrorMessage state mde
     DownloadOptionsCardError dloe → downloadOptionsErrorMessage state dloe
@@ -376,13 +377,40 @@ tableErrorMessage { accessType, expanded } err =
     CE.TableCountQuasarError qErr →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "A error occured when counting the preview data." ]
+          [ pure $ errorTitle [ HH.text "An error occured when counting the preview data." ]
           , pure $ printQErrorWithDetails qErr
           ]
     CE.TableSampleQuasarError qErr →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "A error occured during sampling of the preview data." ]
+          [ pure $ errorTitle [ HH.text "An error occured during sampling of the preview data." ]
+          , pure $ printQErrorWithDetails qErr
+          ]
+
+chartErrorMessage ∷ State → CE.ChartError → HTML
+chartErrorMessage { accessType, expanded } err =
+  case accessType of
+    Editable → renderDetails err
+    ReadOnly →
+      HH.div_
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Chart <> " card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
+        ]
+  where
+  renderDetails = case _ of
+    CE.ChartMissingResourceInputError →
+      HH.div_
+        [ errorTitle [ HH.text $ "The " <> cardName Chart <> " card requires data as an input." ] ]
+    CE.ChartCountQuasarError qErr →
+      HH.div_
+        $ join
+          [ pure $ errorTitle [ HH.text "An error occured when counting the chart data." ]
+          , pure $ printQErrorWithDetails qErr
+          ]
+    CE.ChartSampleQuasarError qErr →
+      HH.div_
+        $ join
+          [ pure $ errorTitle [ HH.text "An error occured during sampling of the chart data." ]
           , pure $ printQErrorWithDetails qErr
           ]
 

@@ -55,7 +55,7 @@ eval
   → m Port.Out
 eval model port varMap = do
   Port.extractResource varMap
-    # maybe (CE.throwTableError CE.TableMissingResourceInputError) \resource → do
+    # maybe (CE.throwChartError CE.ChartMissingResourceInputError) \resource → do
       prevState ← preview (_Just ∘ ES._PivotTable) <$> get
       let
         state =
@@ -138,7 +138,7 @@ runCount
   → m Int
 runCount resource =
   Quasar.count (resource ^. Port._filePath) >>= case _ of
-    Left err → CE.throwTableError (CE.TableCountQuasarError err)
+    Left err → CE.throwChartError (CE.ChartCountQuasarError err)
     Right result → pure result
 
 runQuery
@@ -151,7 +151,7 @@ runQuery
   → m (Array J.Json)
 runQuery resource pageSize pageIndex =
   Quasar.sample (resource ^. Port._filePath) (pageIndex * pageSize) pageSize >>= case _ of
-    Left err → CE.throwTableError (CE.TableSampleQuasarError err)
+    Left err → CE.throwChartError (CE.ChartSampleQuasarError err)
     Right result → pure result
 
 runAll
@@ -162,5 +162,5 @@ runAll
   → m (Array J.Json)
 runAll resource =
   Quasar.all (resource ^. Port._filePath) >>= case _ of
-    Left err → CE.throwTableError (CE.TableSampleQuasarError err)
+    Left err → CE.throwChartError (CE.ChartSampleQuasarError err)
     Right result → pure result
