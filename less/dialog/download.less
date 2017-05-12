@@ -15,7 +15,7 @@
   }
 
   label {
-    line-height: 3.4rem;
+    line-height: 1.4rem;
     width: 100%;
     margin-bottom: 0;
 
@@ -54,6 +54,7 @@
   .download-target {
     label {
       position: relative;
+      line-height: 3.4rem;
     }
 
     input {
@@ -81,21 +82,36 @@
   .download-csv-delimiters {
     list-style: none;
     padding: 0;
-    margin-top: 1rem;
+    margin-top: 1.2rem;
+
+    &, label {
+      display: flex;
+      flex-flow: row wrap;
+    }
+
+    label {
+      align-items: center;
+      padding: 0.6rem 1.2rem;
+
+      > span, > input {
+        flex: 0 1 50%;
+        min-width: 0;
+      }
+
+      > span {
+        padding-right: 0.6rem;
+      }
+
+      > input {
+        width: auto;
+      }
+    }
 
     li {
-      float: left;
-      display: block;
+      display: flex;
+      flex: 0 1 50%;
       width: 50%;
-      margin: 0.5rem 0;
-
-      span {
-        width: 8rem;
-      }
-
-      input {
-        width: 4rem;
-      }
+      margin: 0.6rem 0;
     }
   }
 
@@ -112,14 +128,20 @@
       width: 75%;
 
       li {
-        display: block;
+        display: flex;
+        flex-flow: row wrap;
+        align-items: center;
+
+        label, input {
+          flex: 1 1 50%
+        }
 
         label {
           cursor: pointer;
           display: inline;
         }
 
-        input.form-control {
+        input {
           margin-left: 1rem;
           width: 4em;
           display: inline-block;
@@ -130,15 +152,18 @@
 
   .download-json-options {
     > div {
+      display: flex;
+      flex-flow: row wrap;
       margin: 1rem 0;
     }
 
     > div > label {
-      width: 8.5rem;
-      float: left;
+      flex: 0 1 15.6rem;
+      line-height: 1.4;
     }
 
     ul {
+      flex: 1 1 auto;
       list-style: none;
       padding: 0;
       float: left;
