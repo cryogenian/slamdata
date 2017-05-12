@@ -21,6 +21,7 @@ module SlamData.Workspace.Card.Error
   , module CMDE
   , module COE
   , module CQE
+  , module CPT
   , module CSE
   , module CTE
   , module FILE
@@ -37,6 +38,7 @@ import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.Open.Error as COE
 import SlamData.Workspace.Card.Query.Error as CQE
 import SlamData.Workspace.Card.Search.Error as CSE
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPT
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as FILE
 import SlamData.Workspace.Card.Setups.FormInput.Static.Error as FISE
 import SlamData.Workspace.Card.Table.Error as CTE
@@ -51,6 +53,7 @@ data CardError
   | FormInputStaticCardError FISE.FormInputStaticError
   | MarkdownCardError CMDE.MarkdownError
   | OpenCardError COE.OpenError
+  | PivotTableCardError CPT.PivotTableError
   | QueryCardError CQE.QueryError
   | SearchCardError CSE.SearchError
   | TableCardError CTE.TableError
@@ -65,6 +68,7 @@ instance showCardError ∷ Show CardError where
     FormInputStaticCardError err → "(FormInputStaticCardError " <> show err <> ")"
     MarkdownCardError err → "(MarkdownCardError " <> show err <> ")"
     OpenCardError err → "(OpenCardError " <> show err <> ")"
+    PivotTableCardError err → "(PivotTableCardError " <> show err <> ")"
     QueryCardError err → "(QueryCardError " <> show err <> ")"
     SearchCardError err → "(SearchCardError " <> show err <> ")"
     TableCardError err → "(TableCardError " <> show err <> ")"
@@ -82,6 +86,7 @@ cardToGlobalError = case _ of
   FormInputStaticCardError _ → Nothing
   MarkdownCardError _ → Nothing
   OpenCardError _ → Nothing
+  PivotTableCardError err → CPT.pivotTableToGlobalError err
   QueryCardError err → CQE.queryToGlobalError err
   SearchCardError err → CSE.searchToGlobalError err
   TableCardError err → CTE.tableToGlobalError err
@@ -110,6 +115,9 @@ throwMarkdownError = throwError ∘ MarkdownCardError
 
 throwOpenError ∷ ∀ m a. MonadThrow CardError m ⇒ COE.OpenError → m a
 throwOpenError = throwError ∘ OpenCardError
+
+throwPivotTableError ∷ ∀ m a. MonadThrow CardError m ⇒ CPT.PivotTableError → m a
+throwPivotTableError = throwError ∘ PivotTableCardError
 
 throwTableError ∷ ∀ m a. MonadThrow CardError m ⇒ CTE.TableError → m a
 throwTableError = throwError ∘ TableCardError

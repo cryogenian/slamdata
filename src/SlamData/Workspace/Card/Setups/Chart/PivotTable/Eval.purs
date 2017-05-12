@@ -65,7 +65,10 @@ eval options varMap resource = do
     case state of
       Just (CEM.Analysis { axes: ax, resource: resource' })
         | resource' ≡ resource → pure ax
-      _ → buildAxes <$> CE.liftQ (QQ.sample filePath 0 300)
+      _ → do
+        QQ.sample filePath 0 300 >>= case _ of
+          Right sample → pure (buildAxes sample)
+          Left err → CE.throwPivotTableError (CE.PivotTableQuasarError err)
   let
     state' = { axes, records: [], resource }
     view = Port.View r (Sql.print $ snd query) varMap
@@ -73,8 +76,10 @@ eval options varMap resource = do
     backendPath = fromMaybe Path.rootDir (Path.parentDir r)
   put (Just (CEM.Analysis state'))
   when (Array.null options.columns) do
-    CE.throw "Please select a column to display"
-  CE.liftQ $ QQ.viewQuery r (snd query) SM.empty
+    CE.throwPivotTableError CE.PivotTableNoColumnSelectedError
+  QQ.viewQuery r (snd query) SM.empty >>= case _ of
+    Right result → pure result
+    Left err → CE.throwPivotTableError (CE.PivotTableQuasarError err)
   pure output
 
 mkSql ∷ PTM.Model → FilePath → Port.PivotTablePort × Sql
