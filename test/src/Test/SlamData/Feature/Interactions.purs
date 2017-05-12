@@ -79,7 +79,6 @@ import Test.SlamData.Feature.Interactions.FileSystem
        , downloadFileAsCSV
        , downloadFileAsJSON
        , editWorkspace
-       , exploreFile
        , hideHiddenFiles
        , mountTestDatabase
        , moveFile
