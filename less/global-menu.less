@@ -29,14 +29,14 @@
       }
 
       & > div, & > div > a, & > a {
-        display: block;
+        display: flex;
         height: 100%;
+        justify-content: stretch;
+        align-items: center;
       }
 
       & > div > a, & > a {
-        padding-top: 0.9rem;
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
+        padding: 0.6rem;
       }
 
       & > a:not(:only-child) {
@@ -112,7 +112,7 @@
           > a {
             display: flex;
             min-width: 100%;
-            padding: 1.2rem 2.4rem;
+            padding: 0.6rem 1.2rem;
             border-color: rgb(210, 210, 210);
             border-style: solid;
             border-width: 0 0.1rem;

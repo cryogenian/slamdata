@@ -156,7 +156,8 @@ update = do
       $ Menu.Set
           { chosen: Nothing
           , submenus: case eProviders of
-              Right (Just providers) →
+              _ ->
+              -- Right (Just providers) →
                 let
                   makeSubmenuItem provider =
                     { label: "Sign in with " ⊕ provider.displayName
@@ -165,11 +166,11 @@ update = do
                     }
                 in
                   [ { label: "🔓 Sign in"
-                    , submenu: makeSubmenuItem <$> providers
+                    , submenu: makeSubmenuItem <$> mempty -- providers
                     }
                   ]
                 ⊕ helpMenu
-              _ → helpMenu
+              -- _ → helpMenu
           }
 
 helpMenu ∷ Array (Menu.MenuItem AuthenticateOrPresentHelp)
