@@ -5,11 +5,20 @@ module SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Ref (readRef)
+
+import Data.Array ((!!))
 import Data.Array as A
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Foldable as F
 import Data.Int as Int
 import Data.List as L
+
+import Graphics.Canvas as G
+
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.VDom.DOM.StringRenderer as VDS
 
 import Leaflet.Core as LC
 import Leaflet.Plugin.Heatmap as LH
@@ -22,8 +31,11 @@ import SlamData.Workspace.Card.Setups.Geo.Heatmap.Model (ModelR, Model)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import SqlSquared as Sql
+
+import Unsafe.Coerce (unsafeCoerce)
 
 eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildGeoHeatmap
@@ -108,13 +120,52 @@ buildGeoHeatmap m axes =
       zoomLat = 360.0 / latDiff
       zoomLng = 360.0 / lngDiff
       zoomInt = min (Int.floor zoomLat) (Int.floor zoomLng)
+      maxI = maxIntensity items
+      asNumArray = unsafeCoerce
+      onClickHandler cvsRef e = do
+        mcnv ← readRef cvsRef
+        for_ mcnv \cnvs → do
+          mbPt ← LC.eventContainerPoint e
+          for_ mbPt \(ex × ey) → do
+            width ← G.getCanvasWidth cnvs
+            height ← G.getCanvasHeight cnvs
+            ctx ← G.getContext2D cnvs
+            imgData ← G.getImageData ctx 0.0 0.0 width height
+            mll ← LC.eventLatLng e
+            for mll \ll → do
+              let
+                intArr = asNumArray $ G.imageDataBuffer imgData
+                redIx = (ey * Int.floor width + ey) * 4
+                alpha = Int.toNumber $ fromMaybe zero $ intArr !! (redIx + 3)
+
+              let
+                content = VDS.render absurd $ unwrap
+                  $ HH.table
+                    [ HP.class_ $ HH.ClassName "sd-chart-tooltip-table" ]
+                    [ HH.tr_ [ HH.td_ [ HH.text $ D.jcursorLabel m.lat ]
+                             , HH.td_ [ HH.text $ show $ LC.degreesToNumber ll.lat ]
+                             ]
+                    , HH.tr_ [ HH.td_ [ HH.text $ D.jcursorLabel m.lng ]
+                             , HH.td_ [ HH.text $ show $ LC.degreesToNumber ll.lng ]
+                             ]
+                    , HH.tr_ [ HH.td_ [ HH.text $ D.jcursorLabel m.intensity ]
+                             , HH.td_ [ HH.text $ show $ alpha * maxI / 256.0 ]
+                             ]
+                    ]
+              popup ← LC.popup { minHeight: 32 }
+              _ ← LC.setLatLng ll popup
+              _ ← LC.setContent content popup
+              _ ← LC.openOn leaf popup
+              pure unit
+
 
     zoom ← LC.mkZoom zoomInt
     view ← LC.mkLatLng avgLat avgLng
-
     LC.once "zoomend" (const $ void $ LC.setView view leaf) $ LC.mapToEvented leaf
+    cvs ← LH.mkHeatmap LH.defaultOptions{maxIntensity = maxI} items heatmap leaf
+    LC.on "click" (onClickHandler cvs) $ LC.mapToEvented leaf
 
     _ ← LC.setZoom zoom leaf
 
-    _ ← LH.mkHeatmap LH.defaultOptions{maxIntensity = maxIntensity items} items heatmap leaf
+
     pure [ heatmap ]

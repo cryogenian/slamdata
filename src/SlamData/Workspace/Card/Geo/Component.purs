@@ -74,7 +74,7 @@ cardEval = case _ of
   CC.ReceiveDimensions dims reply → do
     _ ←
       H.query unit $ H.action
-      $ HL.SetDimension
+      $ HL.SetDimension $ spy
         { height: Just $ Int.floor dims.height
         , width: Just $ Int.floor dims.width
         }
@@ -98,9 +98,7 @@ setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
   Q.HandleMessage (HL.Initialized leaf) next → do
     sync
-
     H.raise $ CC.stateAlter
       $ ( _Just ∘ ES._Leaflet ?~ leaf )
-
     H.raise $ CC.modelUpdate
     pure next

@@ -38,7 +38,8 @@ import SlamData.Monad (Slam)
 import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
-import SlamData.Workspace.Card.CardType (AceMode(..), CardType(..), ChartType(..), cardName)
+import SlamData.Workspace.Card.CardType (AceMode(..), CardType(..), cardName)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Error (CardError(..), cardToGlobalError)
 import SlamData.Workspace.Card.Error as CE

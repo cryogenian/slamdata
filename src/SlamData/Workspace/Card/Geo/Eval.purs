@@ -36,7 +36,6 @@ eval gcPort resource = do
         Just l → liftAff $ build l
       put $ Just $ ES.Geo { build, layers, leaflet: st.leaflet }
     _ → put $ Just $ ES.Geo { leaflet: Nothing, build, layers: [ ] }
-  get >>= traceAnyA
 --  case gcPort.gcType of
 --    Heatmap → evalHeatmap results
 --    Marker → evalMarker results

@@ -37,6 +37,6 @@ isAdvanced
   <$> QF.serverInfo
 
 enableAnalytics ∷ ∀ eff. Aff (dom ∷ DOM, ajax ∷ AX.AJAX | eff) Unit
-enableAnalytics = apathize $ unlessM isAdvanced (liftEff _enableAnalytics)
+enableAnalytics = pure unit --apathize $ unlessM isAdvanced (liftEff _enableAnalytics)
 
 foreign import _enableAnalytics ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
