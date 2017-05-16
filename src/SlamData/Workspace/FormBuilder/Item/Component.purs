@@ -126,8 +126,8 @@ render model =
       _ →
           HH.input
             $ fieldType
-            <> [ HP.value (fromMaybe "" model.defaultValue)
-               , HE.onValueInput (HE.input UpdateDefaultValue)
+            <> [ HP.value (maybe "" (State.sanitiseValueForForm model.fieldType) model.defaultValue)
+               , HE.onValueInput (HE.input UpdateDefaultValue ∘ State.sanitiseValueFromForm model.fieldType)
                , ARIA.label lbl
                , HP.placeholder lbl
                ]

@@ -22,7 +22,6 @@ import Data.Array as A
 import Data.Int as Int
 import Data.Formatter.DateTime as Fd
 import Data.DateTime as DT
-import Data.String as Str
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Data.String.Regex.Unsafe as URX
@@ -50,50 +49,29 @@ timeFormat = "HH:mm:ss"
 dateTimeFormat :: String
 dateTimeFormat = "YYYY-MM-DDTHH:mm:ssZ"
 
--- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
--- connector issue that cannot represent dates distinct from datetimes.
-fixupDate ∷ String → String
-fixupDate = Str.take 10
-
 parseTime ∷ String → ParseError ⊹ DT.Time
-parseTime = bimap ParseError DT.time ∘ Fd.unformatDateTime timeFormat ∘ tweak
-  where
-  tweak ∷ String → String
-  tweak s
-    | Str.length s ≡ 19 = s <> "Z"
-    | Str.charAt 10 s ≡ Just ' ' = tweak (Str.take 10 s <> "T" <> Str.drop 11 s)
-    | otherwise = s
+parseTime = bimap ParseError DT.time ∘ Fd.unformatDateTime timeFormat
 
 parseDate ∷ String → ParseError ⊹ DT.Date
-parseDate = bimap ParseError DT.date ∘ Fd.unformatDateTime dateFormat ∘ fixupDate
+parseDate = bimap ParseError DT.date ∘ Fd.unformatDateTime dateFormat
 
 parseDateTime ∷ String → ParseError ⊹ DT.DateTime
-parseDateTime = lmap ParseError ∘ Fd.unformatDateTime dateTimeFormat ∘ tweak
-  where
-  -- The `datetime-local` HTML picker omits the `Z` from the format, so if it's
-  -- missing from the input, add it.
-  tweak ∷ String → String
-  tweak s
-    | Str.length s ≡ 19 = s <> "Z"
-    | otherwise = s
+parseDateTime = lmap ParseError ∘ Fd.unformatDateTime dateTimeFormat
 
 dateSql ∷ String → Either ParseError Sql
 dateSql s = do
-  d ← parseDate s
-  s' ← lmap ParseError $ Fd.formatDateTime dateFormat (DT.DateTime d bottom)
-  pure $ Sql.invokeFunction "DATE" $ pure $ Sql.string s'
+  _ ← parseDate s
+  pure $ Sql.invokeFunction "DATE" $ pure $ Sql.string s
 
 timeSql ∷ String → Either ParseError Sql
 timeSql s = do
-  t ← parseTime s
-  s' ← lmap ParseError $ Fd.formatDateTime timeFormat (DT.DateTime bottom t)
-  pure $ Sql.invokeFunction "TIME" $ pure $ Sql.string s'
+  _ ← parseTime s
+  pure $ Sql.invokeFunction "TIME" $ pure $ Sql.string s
 
 datetimeSql ∷ String → Either ParseError Sql
 datetimeSql s = do
-  dt ← parseDateTime s
-  s' ← lmap ParseError $ Fd.formatDateTime dateTimeFormat dt
-  pure $ Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string s'
+  _ ← parseDateTime s
+  pure $ Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string s
 
 intervalSql ∷ String → Either ParseError Sql
 intervalSql s = do
@@ -130,6 +108,5 @@ boolSql s =
 
 allSqls ∷ String → Array Sql
 allSqls s =
-  -- TODO: check whether we do want to ignore potential errors here? -gb
   A.mapMaybe (\f → hush (f s))
     [ dateSql, timeSql, datetimeSql, intervalSql, numSql, intSql, boolSql ]

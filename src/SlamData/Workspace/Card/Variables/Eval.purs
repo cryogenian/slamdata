@@ -22,13 +22,14 @@ import Data.Map as Map
 import Data.StrMap as SM
 import Data.Validation.Semigroup (V)
 import Data.Validation.Semigroup as V
+import SlamData.SqlSquared.Tagged (ParseError)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Variables.Model (Model)
+import SlamData.Workspace.FormBuilder.Item.Component.State (sanitiseValueFromForm)
 import SlamData.Workspace.FormBuilder.Item.Model as FB
-import SlamData.SqlSquared.Tagged (ParseError)
 
 eval
   ∷ ∀ m
@@ -71,7 +72,11 @@ buildVarMap cardId urlVarMaps model =
           either
             (accumError ∘ toError name)
             (\v → map (SM.insert (unwrap name) v) acc)
-            (FB.defaultValueToVarMapValue fieldType value)
+            -- TODO: sanitiseValueFromForm can be removed at some point in the
+            -- future, but for now ommitting it may cause some glitches with
+            -- existing workspaces (will start complaining about incorrect
+            -- format, but editing the value will fix it) -gb
+            (FB.defaultValueToVarMapValue fieldType (sanitiseValueFromForm fieldType value))
 
         accumError ∷ CE.VError -> V CE.VariablesError Port.VarMap
         accumError err = acc <* V.invalid (CE.VariablesError (pure err))
