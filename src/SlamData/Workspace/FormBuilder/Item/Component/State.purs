@@ -16,23 +16,13 @@ limitations under the License.
 
 module SlamData.Workspace.FormBuilder.Item.Component.State
   ( State
-  , _model
   , initialState
   , module SlamData.Workspace.FormBuilder.Item.Model
   ) where
 
-import Data.Lens (Lens', lens)
-
 import SlamData.Workspace.FormBuilder.Item.Model
 
-type State =
-  { model ∷ Model
-  }
-
-_model ∷ Lens' State Model
-_model = lens _.model _ { model = _ }
+type State = Model
 
 initialState ∷ State
-initialState =
-  { model: initialModel
-  }
+initialState = initialModel

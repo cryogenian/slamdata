@@ -87,7 +87,7 @@ _FieldTypeDisplayName = Lens.prism inj proj
     inj NumericFieldType = "Numeric"
     inj ObjectIdFieldType = "Object ID"
     inj ArrayFieldType = "Array"
-    inj ObjectFieldType = "Object"
+    inj ObjectFieldType = "Map"
     inj SqlExprFieldType = "SQL² Expression"
     inj SqlIdentifierFieldType = "SQL² Identifier"
 
@@ -100,7 +100,7 @@ _FieldTypeDisplayName = Lens.prism inj proj
     proj "Numeric" = Right NumericFieldType
     proj "Object ID" = Right ObjectIdFieldType
     proj "Array" = Right ArrayFieldType
-    proj "Object" = Right ObjectFieldType
+    proj "Map" = Right ObjectFieldType
     proj "SQL² Identifier" = Right SqlIdentifierFieldType
     proj "SQL² Expression" = Right SqlExprFieldType
     proj t = Left t

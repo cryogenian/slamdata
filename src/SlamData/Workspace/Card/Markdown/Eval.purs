@@ -168,15 +168,15 @@ evalEmbeddedQueries sm dir =
         pure ∘ SD.Numeric $ pure (HN.fromNumber (Int.toNumber a))
       (SD.Time prec _), (EJSON.String time) →
         case SqlT.parseTime time of
-          Left error → CE.throwMarkdownError (CE.MarkdownInvalidTimeValue { field, time, error })
+          Left error → CE.throwMarkdownError (CE.MarkdownInvalidTimeValue { field, time, error: unwrap error })
           Right r → pure ∘ SD.Time prec $ pure r
       (SD.Date _), (EJSON.String date) →
         case SqlT.parseDate date of
-          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateValue { field, date, error })
+          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateValue { field, date, error: unwrap error })
           Right r → pure ∘ SD.Date $ pure r
       (SD.DateTime prec _), (EJSON.String datetime) →
         case SqlT.parseDateTime datetime of
-          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateTimeValue { field, datetime, error })
+          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateTimeValue { field, datetime, error: unwrap error })
           Right r → pure ∘ SD.DateTime prec $ pure r
       _, _ →
         CE.throwMarkdownError (CE.MarkdownTypeError { field, actual: typeOf result, expected: typesOfField tb })

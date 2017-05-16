@@ -31,8 +31,8 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import DOM.HTML.Indexed.StepValue (StepValue(..))
-import Data.Lens ((^?), (.~), (?~))
-import SlamData.Workspace.FormBuilder.Item.Component.State (Model, State)
+import Data.Lens ((^?))
+import SlamData.Workspace.FormBuilder.Item.Component.State (FieldName(..), Model, State)
 import SlamData.Workspace.FormBuilder.Item.Component.State as State
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
 
@@ -63,7 +63,7 @@ component =
 render
   ∷ State
   → HTML
-render { model } =
+render model =
   HH.tr_
     [ HH.td_ [ nameField ]
     , HH.td_ [ typeField ]
@@ -77,14 +77,14 @@ render { model } =
       [ HP.type_ HP.InputText
       , HP.title "Field Name"
       , ARIA.label "Variable name"
-      , HP.value model.name
+      , HP.value (unwrap model.name)
       , HE.onValueInput (HE.input UpdateName)
       , HP.placeholder "Variable name"
       ]
 
-  quotedName ∷ String → String
-  quotedName "" = ""
-  quotedName s = "\"" <> s <> "\""
+  quotedName ∷ FieldName → String
+  quotedName (FieldName "") = ""
+  quotedName (FieldName s) = "\"" <> s <> "\""
 
   typeField ∷ HTML
   typeField =
@@ -121,7 +121,7 @@ render { model } =
                   <> (quotedName model.name)
                   <> " variable is \"true\""
               ]
-          , HH.span_ [ HH.text model.name ]
+          , HH.span_ [ HH.text (unwrap model.name) ]
           ]
       _ →
           HH.input
@@ -136,7 +136,7 @@ render { model } =
     lbl ∷ String
     lbl
       = "Default value"
-      <> if model.name /= "" then " for " <> (quotedName model.name) <> " variable" else ""
+      <> if model.name /= (FieldName "") then " for " <> (quotedName model.name) <> " variable" else ""
     inputType =
       fieldTypeToInputType model.fieldType
 
@@ -167,20 +167,20 @@ render { model } =
 eval ∷ ∀ m. Query ~> DSL m
 eval = case _ of
   UpdateName str next → do
-    H.modify $ State._model ∘ State._name .~ str
+    H.modify $ _ { name = FieldName str }
     H.raise $ NameChanged str
     pure next
   UpdateFieldType str next → do
     for_ (str ^? _FieldTypeDisplayName) \ty → do
-      H.modify $ State._model ∘ State._fieldType .~ ty
+      H.modify $ _ { fieldType = ty }
     H.raise $ FieldTypeChanged str
     pure next
   UpdateDefaultValue str next → do
-    H.modify $ State._model ∘ State._defaultValue ?~ str
+    H.modify $ _ { defaultValue = Just str }
     H.raise $ DefaultValueChanged str
     pure next
   SetModel m next → do
-    H.modify $ State._model .~ m
+    H.put m
     pure next
   GetModel k →
-    k ∘ Lens.view State._model <$> H.get
+    k <$> H.get
