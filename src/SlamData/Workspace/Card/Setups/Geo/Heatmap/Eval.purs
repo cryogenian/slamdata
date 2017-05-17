@@ -168,4 +168,4 @@ buildGeoHeatmap m axes =
     _ ← LC.setZoom zoom leaf
 
 
-    pure [ heatmap ]
+    pure $ [ heatmap ] × [ ]

@@ -129,7 +129,7 @@ type SetupTextLikeFormInputPort =
   }
 
 type GeoChartPort =
-  { build ∷ LC.Leaflet → Array Json → Aff SlamDataEffects (Array LC.Layer)
+  { build ∷ LC.Leaflet → Array Json → Aff SlamDataEffects (Array LC.Layer × Array LC.Control)
   }
 
 data Port

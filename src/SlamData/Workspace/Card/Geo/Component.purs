@@ -65,16 +65,19 @@ cardEval = case _ of
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
+    st ← H.get
     for_ (evalState ^? ES._Layers) \layers → do
-      st ← H.get
       _ ← H.query unit $ H.action $ HL.RemoveLayers st.layers
       _ ← H.query unit $ H.action $ HL.AddLayers layers
       H.modify _{layers = layers}
+    for_ (evalState ^? ES._Controls) \controls → do
+      H.liftEff $ for_ st.controls LC.remove
+      H.modify _{controls = controls}
     pure next
   CC.ReceiveDimensions dims reply → do
     _ ←
       H.query unit $ H.action
-      $ HL.SetDimension $ spy
+      $ HL.SetDimension
         { height: Just $ Int.floor dims.height
         , width: Just $ Int.floor dims.width
         }

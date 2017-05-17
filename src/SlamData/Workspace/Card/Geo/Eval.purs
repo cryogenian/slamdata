@@ -6,7 +6,6 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.State (class MonadState, put, get)
-import Data.Argonaut (Json)
 import Data.Lens ((^.))
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
@@ -14,12 +13,13 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Effects (SlamDataEffects)
 
 eval
   ∷ ∀ m
   . MonadState CEM.CardState m
   ⇒ MonadThrow CE.CardError m
-  ⇒ MonadAff _ m
+  ⇒ MonadAff SlamDataEffects m
   ⇒ QuasarDSL m
   ⇒ Port.GeoChartPort
   → Port.Resource
@@ -31,13 +31,9 @@ eval gcPort resource = do
   evalState ← get
   case evalState of
     Just (ES.Geo st) → do
-      layers ← case st.leaflet of
-        Nothing → pure st.layers
+      layers × controls ← case st.leaflet of
+        Nothing → pure $ st.layers × st.controls
         Just l → liftAff $ build l
-      put $ Just $ ES.Geo { build, layers, leaflet: st.leaflet }
-    _ → put $ Just $ ES.Geo { leaflet: Nothing, build, layers: [ ] }
---  case gcPort.gcType of
---    Heatmap → evalHeatmap results
---    Marker → evalMarker results
---  put $ Just $ ES.ChartOptions (buildOptions results)
+      put $ Just $ ES.Geo { build, layers, controls, leaflet: st.leaflet }
+    _ → put $ Just $ ES.Geo { leaflet: Nothing, build, layers: [ ], controls: [ ] }
   pure $ Port.ResourceKey Port.defaultResourceVar

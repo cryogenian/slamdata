@@ -7,6 +7,9 @@ import SlamData.Prelude
 
 import Color as C
 
+import CSS as CSS
+
+import Data.Array ((!!))
 import Data.Array as A
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.List as L
@@ -17,6 +20,11 @@ import Data.Int as Int
 import Data.Path.Pathy (currentDir, file, dir, (</>), (<.>))
 import Data.URI as URI
 import Data.URI (URIRef)
+
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.CSS as HC
+import Halogen.VDom.DOM.StringRenderer as VDS
 
 import Leaflet.Core as LC
 
@@ -29,6 +37,7 @@ import SlamData.Workspace.Card.Setups.Geo.Marker.Model (ModelR, Model)
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import SqlSquared as Sql
 
@@ -93,7 +102,9 @@ decodeItem = decodeJson >=> \obj → do
 iconConf ∷ { iconUrl ∷ URIRef, iconSize ∷ LC.Point }
 iconConf =
   { iconUrl: Right $ URI.RelativeRef
-      (URI.RelativePart Nothing $ Just $ Right $ currentDir </> dir "img" </> file "marker" <.> "svg")
+      (URI.RelativePart Nothing $ Just $ Right
+       $ currentDir </> dir "img" </> file "marker" <.> "svg"
+      )
       Nothing
       Nothing
   , iconSize: 40 × 40
@@ -162,7 +173,9 @@ buildMarker r _ =
         | distance ≡ 0.0 = r.minSize
         | isNothing r.size = r.minSize
         | otherwise = r.maxSize - sizeDistance / distance * (maxSize - size)
-      foldFn icon acc item@{lat, lng} = do
+      foldFn icon {layers, overlays} item@{lat, lng} = do
+        let
+          color s = unsafePartial fromJust $ Sm.lookup s series
         layer
           ← if isNothing r.series && isNothing r.size
             then map LC.markerToLayer $ LC.marker {lat, lng} >>= LC.setIcon icon
@@ -171,19 +184,64 @@ buildMarker r _ =
               $ LC.circleMarker
                   {lat, lng}
                   { radius: mkRadius item.size
-                  , color: unsafePartial fromJust $ Sm.lookup item.series series
+                  , color: color item.series
                   }
-        pure $ A.cons layer acc
 
+        let
+          mkTableRow mbDim strVal = flip foldMap mbDim \dim →
+            [ HH.tr_ [ HH.td_ [ HH.text $ D.jcursorLabel dim ]
+                     , HH.td_ [ HH.text strVal ]
+                     ]
+            ]
+
+          content = VDS.render absurd $ unwrap
+            $ HH.table [ HP.class_ $ HH.ClassName "sd-chart-tooltip-table" ]
+            $ mkTableRow (Just r.lat) (show $ LC.degreesToNumber lat )
+            ⊕ mkTableRow (Just r.lng) (show $ LC.degreesToNumber lng )
+            ⊕ mkTableRow r.size (show item.size)
+            ⊕ mkTableRow r.series item.series
+            ⊕ (fold $ enumerate item.dims <#> \(ix × dim) →
+                mkTableRow (r.dims !! ix) (show dim))
+
+          alterFunction Nothing = Just [ layer ]
+          alterFunction (Just a) = Just $ A.cons layer a
+
+          mkKey s =
+            VDS.render absurd ∘ unwrap
+            $ HH.table [ HP.class_ $ HH.ClassName "sd-chart-geo-layers-control" ]
+              [ HH.tr_ [ HH.td_ [ HH.span [ HP.class_ $ HH.ClassName "sd-chart-tooltip-color"
+                                          , HC.style $ CSS.backgroundColor $ color s
+                                          ] [ ]
+                                ]
+                       , HH.td_ [ HH.text item.series ]
+                       ]
+              ]
+
+
+        _ ← LC.bindPopup content layer
+
+        pure { layers: A.cons layer layers
+             , overlays: Sm.alter alterFunction (mkKey item.series) overlays
+             }
     zoom ← LC.mkZoom zoomInt
 
     view ← LC.mkLatLng avgLat avgLng
 
     icon ← LC.icon iconConf
 
-    layers ← A.foldRecM (foldFn icon) [ ] items
+    {layers, overlays} ←
+      A.foldRecM (foldFn icon) {layers: [ ], overlays: Sm.empty } items
+
+    layGroups ← for overlays LC.layerGroup
+
+    control ← LC.layers Sm.empty layGroups { collapsed: false }
+    _ ← LC.addTo leaf control
 
     _ ← LC.setZoom zoom leaf
     LC.once "zoomend" (const $ void $ LC.setView view leaf) $ LC.mapToEvented leaf
+    let
+      toSend
+        | Sm.isEmpty layGroups = layers
+        | otherwise = Sm.values $ map LC.groupToLayer layGroups
 
-    pure layers
+    pure $ toSend × [ control ]

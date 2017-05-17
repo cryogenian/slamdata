@@ -13,6 +13,7 @@ type State =
   , zoom ∷ Int
   , view ∷ { lat ∷ Number, lng ∷ Number }
   , layers ∷ Array LC.Layer
+  , controls ∷ Array LC.Control
   }
 
 initialState ∷ State
@@ -28,4 +29,5 @@ initialState =
   , zoom: zero
   , view: { lat: zero, lng: zero }
   , layers: [ ]
+  , controls: [ ]
   }

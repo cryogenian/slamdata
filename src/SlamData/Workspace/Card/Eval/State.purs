@@ -34,6 +34,7 @@ module SlamData.Workspace.Card.Eval.State
   , _Leaflet
   , _BuildLeaflet
   , _Layers
+  , _Controls
   ) where
 
 import SlamData.Prelude
@@ -77,8 +78,9 @@ type TableR =
 
 type GeoR =
   { leaflet ∷ Maybe LC.Leaflet
-  , build ∷ LC.Leaflet → Aff SlamDataEffects (Array LC.Layer)
+  , build ∷ LC.Leaflet → Aff SlamDataEffects (Array LC.Layer × Array LC.Control)
   , layers ∷ Array LC.Layer
+  , controls ∷ Array LC.Control
   }
 
 data EvalState
@@ -92,7 +94,8 @@ data EvalState
 initialEvalState ∷ CM.AnyCardModel → Maybe EvalState
 initialEvalState = case _ of
   CM.Tabs { tabs } → ActiveTab <$> (guard (Array.length tabs > 0) $> 0)
-  CM.Geo _ → Just $ Geo { leaflet: Nothing, build: const $ pure [ ], layers: [ ] }
+  CM.Geo _ →
+    Just $ Geo { leaflet: Nothing, build: const $ pure $ [ ] × [ ] , layers: [ ], controls: [ ] }
   _ → Nothing
 
 _Analysis ∷ Prism' EvalState AnalysisR
@@ -154,8 +157,12 @@ _Geo = prism' Geo case _ of
 _Leaflet ∷ Traversal' EvalState (Maybe LC.Leaflet)
 _Leaflet = _Geo ∘ lens _.leaflet _{ leaflet = _ }
 
-_BuildLeaflet ∷ Traversal' EvalState (LC.Leaflet → Aff SlamDataEffects (Array LC.Layer))
+_BuildLeaflet
+  ∷ Traversal' EvalState (LC.Leaflet → Aff SlamDataEffects (Array LC.Layer × Array LC.Control))
 _BuildLeaflet = _Geo ∘ lens _.build _{ build = _ }
 
 _Layers ∷ Traversal' EvalState (Array LC.Layer)
 _Layers = _Geo ∘ lens _.layers _{ layers = _ }
+
+_Controls ∷ Traversal' EvalState (Array LC.Control)
+_Controls = _Geo ∘ lens _.controls _{ controls = _ }
