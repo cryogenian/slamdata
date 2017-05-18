@@ -272,7 +272,8 @@ eval = case _ of
       Left err → case GE.fromQError err of
         Left msg →
           showDialog $ Dialog.Error
-            $ "There was a problem creating the directory: " ⊕ msg
+            $ "You can only create files or folders in data sources."
+            ⊕ "Please mount a data source, and then create your file or location inside the mounted data source."
         Right ge →
           GE.raiseGlobalError ge
       Right dirRes →
