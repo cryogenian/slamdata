@@ -32,7 +32,7 @@
     "purescript-ejson": "^9.0.0",
     "purescript-fixed-points": "^4.0.0",
     "purescript-fork": "^2.0.0",
-    "purescript-formatters": "^1.0.0",
+    "purescript-formatters": "^1.0.1",
     "purescript-freeap": "^3.0.1",
     "purescript-functors": "^2.0.0",
     "purescript-generics": "^4.0.0",

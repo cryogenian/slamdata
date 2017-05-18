@@ -18,7 +18,7 @@ runArbModel (ArbModel m) = m
 
 instance arbitraryArbModel ∷ SCA.Arbitrary ArbModel where
   arbitrary = do
-    name ← SCA.arbitrary
+    name ← Item.FieldName <$> SCA.arbitrary
     fieldType ← FT.runArbFieldType <$> SCA.arbitrary
     defaultValue ← SCA.arbitrary
     pure $ ArbModel { name, fieldType, defaultValue }

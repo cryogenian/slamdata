@@ -22,6 +22,7 @@ module SlamData.Workspace.Card.Error.Component
 
 import SlamData.Prelude
 
+import Data.Array as A
 import Data.Argonaut as J
 import Data.Foldable (intercalate)
 import Data.List ((:))
@@ -113,6 +114,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
       HH.div_
         [ errorTitle [ HH.text err ] ]
     CacheCardError cce → cacheErrorMessage state cce
+    ChartCardError cce → chartErrorMessage state cce
     QueryCardError qce → queryErrorMessage state qce
     MarkdownCardError mde → markdownErrorMessage state mde
     DownloadOptionsCardError dloe → downloadOptionsErrorMessage state dloe
@@ -122,6 +124,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     FormInputStaticCardError fise → formInputStaticErrorMessage state fise
     FormInputLabeledCardError file → formInputLabeledErrorMessage state file
     SearchCardError sce → searchErrorMessage state sce
+    VariablesCardError vce → variablesErrorMessage state vce
 
 collapsible ∷ String → HTML → Boolean → HTML
 collapsible title content expanded =
@@ -395,13 +398,40 @@ tableErrorMessage { accessType, expanded } err =
     CE.TableCountQuasarError qErr →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "A error occured when counting the preview data." ]
+          [ pure $ errorTitle [ HH.text "An error occured when counting the preview data." ]
           , pure $ printQErrorWithDetails qErr
           ]
     CE.TableSampleQuasarError qErr →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text "A error occured during sampling of the preview data." ]
+          [ pure $ errorTitle [ HH.text "An error occured during sampling of the preview data." ]
+          , pure $ printQErrorWithDetails qErr
+          ]
+
+chartErrorMessage ∷ State → CE.ChartError → HTML
+chartErrorMessage { accessType, expanded } err =
+  case accessType of
+    Editable → renderDetails err
+    ReadOnly →
+      HH.div_
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Chart <> " card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
+        ]
+  where
+  renderDetails = case _ of
+    CE.ChartMissingResourceInputError →
+      HH.div_
+        [ errorTitle [ HH.text $ "The " <> cardName Chart <> " card requires data as an input." ] ]
+    CE.ChartCountQuasarError qErr →
+      HH.div_
+        $ join
+          [ pure $ errorTitle [ HH.text "An error occured when counting the chart data." ]
+          , pure $ printQErrorWithDetails qErr
+          ]
+    CE.ChartSampleQuasarError qErr →
+      HH.div_
+        $ join
+          [ pure $ errorTitle [ HH.text "An error occured during sampling of the chart data." ]
           , pure $ printQErrorWithDetails qErr
           ]
 
@@ -575,6 +605,60 @@ pivotTableErrorMessage { accessType, expanded } err =
               ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
+
+variablesErrorMessage ∷ State → CE.VariablesError → HTML
+variablesErrorMessage { accessType, expanded } err =
+  case accessType of
+    Editable → renderDetails err
+    ReadOnly →
+      HH.div_
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Variables <> " card, please notify the author of this workspace." ]
+        , collapsible "Error details" (renderDetails err) expanded
+        ]
+  where
+  renderDetails (CE.VariablesError nel)
+    | L.null (NEL.tail nel) =
+        HH.div_
+          [ errorTitle [ HH.text $ "There was a problem in the configuration of the " <> cardName Variables <> " card." ]
+          , renderError (NEL.head nel)
+          ]
+    | otherwise =
+        HH.div_
+          [ errorTitle [ HH.text $ "There were multiple problems in the configuration of the " <> cardName Variables <> " card." ]
+          , HH.ul_ $ map (\msg → HH.li_ [ renderError msg ]) (A.fromFoldable nel)
+          ]
+  renderError = case _ of
+    CE.DefaultValueError fieldName err' →
+      HH.div_
+        [ HH.p_
+            [ HH.text "The default value for the variable "
+            , HH.code_ [ HH.text (show (unwrap fieldName)) ]
+            , HH.text " failed to parse:"
+            ]
+        , HH.pre_ [ HH.text (unwrap err') ]
+        ]
+    CE.URLValueError fieldName err' →
+      HH.div_
+        [ HH.p_
+            [ HH.text "The URL-specified value for the variable "
+            , HH.code_ [ HH.text (show (unwrap fieldName)) ]
+            , HH.text " failed to parse:"
+            ]
+        , HH.pre_ [ HH.text (unwrap err') ]
+        ]
+    CE.DuplicateVariableError fieldName →
+      HH.p_
+        [ HH.text "A variable named "
+        , HH.code_ [ HH.text (show (unwrap fieldName)) ]
+        , HH.text " was specified more than once."
+        ]
+    CE.InvalidVariableNameError fieldName →
+      HH.p_
+        [ HH.text "Invalid variable name "
+        , HH.code_ [ HH.text (show (unwrap fieldName)) ]
+        , HH.text "."
+        ]
+
 -- | Renders a list of things with a separator and a final connective.
 -- | For example, a list of strings with the separator `","` and the
 -- | connective `" or "``: `a, b, c, or d`. The separator is dropped when there
