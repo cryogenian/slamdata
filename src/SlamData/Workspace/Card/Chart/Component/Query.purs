@@ -16,4 +16,9 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Chart.Component.Query where
 
-data Query a = Init a | RaiseUpdate a
+import SlamData.Prelude
+import SlamData.Workspace.Card.Eval.State (EvalState)
+
+data Query a
+  = Init a
+  | RaiseUpdate (Maybe (Maybe EvalState → Maybe EvalState)) a

@@ -32,6 +32,9 @@ import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Eval as Chart
+import SlamData.Workspace.Card.Chart.Model as ChartModel
+import SlamData.Workspace.Card.Chart.PivotTableRenderer.Eval as PivotTable
+import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTM
 import SlamData.Workspace.Card.DownloadOptions.Eval as DOptions
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as Common
@@ -104,6 +107,8 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   _, Port.CardError err → throwError err
   Pass, _ → pure (port × varMap)
   Table m, _ → Table.eval m port varMap
+  PivotTable m, Port.PivotTable p → PivotTable.eval m p varMap
+  Chart, Port.PivotTable p → PivotTable.eval PTM.initialModel p varMap
   Chart, Port.ChartInstructions { options } → tapResource (Chart.eval options) varMap
   Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
   Composite, _ → Port.varMapOut <$> Common.evalComposite
@@ -177,7 +182,8 @@ modelToEval = case _ of
   Model.BuildPunchCard model → BuildPunchCard model
   Model.BuildCandlestick model → BuildCandlestick model
   Model.BuildParallel model → BuildParallel model
-  Model.Chart _ → Chart
+  Model.Chart (Just (ChartModel.PivotTableRenderer model)) → PivotTable model
+  Model.Chart Nothing → Chart
   Model.SetupDropdown model → SetupDropdown model
   Model.SetupStatic model → SetupStatic model
   Model.SetupText model → SetupText model
