@@ -21,6 +21,8 @@ module SlamData.Workspace.FormBuilder.Item.Model
   , genModel
   , encode
   , decode
+  , sanitiseValueFromForm
+  , sanitiseValueForForm
   , EqModel(..)
   , runEqModel
   , defaultValueToVarMapValue
@@ -34,6 +36,7 @@ import Data.Argonaut as J
 import Data.Json.Extended.Signature as EJS
 import Data.Json.Extended.Type as EJT
 import Data.Lens (preview)
+import Data.String as Str
 import SlamData.SqlSquared.Tagged as SqlT
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
@@ -99,6 +102,30 @@ decode =
     fieldType ← obj .? "fieldType"
     defaultValue ← obj .? "defaultValue"
     pure { name, fieldType, defaultValue }
+
+-- | This takes the HTML-produced form values and tweaks the date/time values
+-- | to match the acceptable `YYYY-MM-DDTHH:mm:ssZ` / `YYYY-MM-DD` / `HH:mm:ss`
+-- | forms.
+sanitiseValueFromForm ∷ FieldType → String → String
+sanitiseValueFromForm ty s = case ty of
+  DateTimeFieldType
+    | Str.charAt 10 s ≡ Just ' ' →
+        sanitiseValueFromForm ty (Str.take 10 s <> "T" <> Str.drop 11 s)
+    | Str.length s ≡ 19 → s <> "Z"
+  DateFieldType → Str.take 10 s
+  TimeFieldType
+    | Str.length s == 5 → s <> ":00"
+    | otherwise → Str.take 8 s
+  _ → s
+
+-- | This takes values produced by `sanitiseValueFromForm` and formats them back
+-- | into values acceptable for populating HTML forms.
+sanitiseValueForForm ∷ FieldType → String → String
+sanitiseValueForForm ty s = case ty of
+  DateTimeFieldType → Str.take 19 s
+  DateFieldType → Str.take 10 s
+  TimeFieldType → Str.take 8 s
+  _ → s
 
 defaultValueToVarMapValue
   ∷ FieldType
