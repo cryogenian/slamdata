@@ -41,7 +41,7 @@ import Halogen.HTML.Properties (IProp())
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
-import SlamData.Render.CSS as ClassNames
+import SlamData.Render.ClassName as CN
 import SlamData.Hint as Hint
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CardId
@@ -68,7 +68,7 @@ import Utils.DOM as DOM
 render ∷ DeckOptions → (DeckOptions → DeckComponent) → State → Boolean → DeckHTML
 render opts deckComponent st visible =
   HH.div
-    [ HP.classes ([ ClassNames.cardSlider ] ⊕ (guard (not visible) $> ClassNames.invisible))
+    [ HP.classes ([ CN.cardSlider ] ⊕ (guard (not visible) $> CN.invisible))
     , HE.onTransitionEnd $ HE.input_ DCQ.StopSliderTransition
     , style do
         cardSliderTransformCSS (DCS.activeCardIndex st) st.sliderTranslateX
@@ -282,15 +282,15 @@ renderCard opts deckComponent st activeIndex index card =
     Right cd → renderDef opts deckComponent st (index ≡ activeIndex) cd
 
   classes =
-    [ ClassNames.card
+    [ CN.card
     , HH.ClassName case st.fadeTransition of
         DCS.FadeIn   → "sd-fade-in"
         DCS.FadeOut  → "sd-fade-out"
         DCS.FadeNone → "sd-fade-none"
     ]
-      ⊕ (guard (not $ isClick st.sliderTranslateX) $> ClassNames.cardSliding)
-      ⊕ (guard (cardSelected st card) $> ClassNames.cardActive)
-      ⊕ (guard (cardPending st card) $> ClassNames.pending)
+      ⊕ (guard (not $ isClick st.sliderTranslateX) $> CN.cardSliding)
+      ⊕ (guard (cardSelected st card) $> CN.cardActive)
+      ⊕ (guard (cardPending st card) $> CN.pending)
 
   renderHint =
     Hint.render

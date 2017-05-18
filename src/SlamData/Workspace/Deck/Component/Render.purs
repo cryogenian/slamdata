@@ -29,7 +29,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
-import SlamData.Render.CSS as RCSS
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Component.CSS as CCSS
@@ -171,7 +171,7 @@ backside =
         [ HH.div
             [ HP.class_ CCSS.deckCard ]
             [ HH.div
-                [ HP.class_ RCSS.deckBackSide ]
+                [ HP.class_ CN.deckBackSide ]
                 [ HH.slot' cpActionFilter unit ActionFilter.component
                     "Filter deck and card actions"
                     (HE.input HandleBackFilter)

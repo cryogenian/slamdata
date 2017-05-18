@@ -8,23 +8,24 @@
 
 .sd-miller-column {
   display: inline-block;
-  width: 250px;
+  width: 25rem;
   height: 100%;
   vertical-align: top;
-  box-sizing: border-box;
-  border: 1px solid #ddd;
+  border: 0.1rem solid #ddd;
 
   > div {
     height: 100%;
   }
 
   .sd-miller-column-selection {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+    align-items: center;
     position: relative;
-    height: ~"calc(2.25rem + 3px)";
-    border-bottom: 3px solid #ddd;
+    border-bottom: 0.3rem solid #ddd;
     width: 100%;
-    padding: 0 6px;
-    line-height: 2.25rem;
+    padding: 1rem 0.6rem;
 
     .sd-miller-column-selection-label {
       opacity: 0.5;
@@ -37,17 +38,14 @@
 
     &.selected {
       cursor: pointer;
-      font-weight: bold;
-      padding-right: 25px;
+      font-weight: 700;
 
       .sd-clear-field-icon {
-        position: absolute;
-        top: 50%;
-        margin-top: -0.5rem;
-        right: 6px;
+        flex: 0 0 auto;
       }
 
       .sd-miller-column-selection-label {
+        flex: 0 1 auto;
         opacity: 1;
       }
     }
@@ -58,52 +56,53 @@
     padding: 0;
     margin: 0;
     width: 100%;
-    height: ~"calc(100% - 2.25rem - 2rem - 3px)";
+    height: ~"calc(100% - 2.25rem - 2.3rem - 0.3rem)";
     overflow: auto;
   }
 
   li {
     display: block;
-    padding: 0 6px;
+    padding: 1.2rem 0.6rem;
     cursor: pointer;
-    position: relative;
-    box-sizing: border-box;
     z-index: 1;
-    height: 2.25rem;
-    line-height: 2.25rem;
-  }
-
-  li:hover {
-    background: #eee;
-  }
-
-  li.selected {
-    background: #ddd;
-    z-index: 2;
-  }
-
-  li.sd-miller-column-loading {
-
-    cursor: auto;
+    line-height: 1;
 
     &:hover {
-      background: transparent;
+      background: #eee;
     }
 
-    span {
-      display: block;
-      text-align: center;
+    + li {
+      margin-top: -0.1rem;
+      border-top: 0.1rem solid #ddd;
+    }
 
-      &::before {
-        content: '';
+    &.selected {
+      background: #ddd;
+      z-index: 2;
+    }
+
+    &.sd-miller-column-loading {
+      cursor: auto;
+
+      &:hover {
+        background: transparent;
+      }
+
+      span {
         display: block;
-        background-image: url(../img/spin.gif);
-        background-position: center center;
-        background-repeat: no-repeat;
-        background-size: 24px 24px;
-        width: 24px;
-        height: 24px;
-        margin: 12px auto -2px;
+        text-align: center;
+
+        &::before {
+          display: block;
+          content: "";
+          width: 2.4rem;
+          height: 2.4rem;
+          margin: 1.2rem auto 0.4rem;
+          background-image: url("../img/spin.gif");
+          background-position: center center;
+          background-repeat: no-repeat;
+          background-size: contain;
+        }
       }
     }
   }
@@ -114,37 +113,35 @@
     color: #fff;
   }
 
-  li + li {
-    margin-top: -1px;
-    border-top: 1px solid #ddd;
-  }
-
   + .sd-miller-column {
-    margin-left: -1px;
+    margin-left: -0.1rem;
   }
 }
 
 .sd-miller-column-item-inner {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: space-between;
+  align-items: center;
   position: relative;
 
   .sd-icon--chevron-right-sm {
-    position: absolute;
-    z-index: 1;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    margin: auto;
+    flex: 0 0 auto;
     font-size: 0.75em;
     vertical-align: text-top;
   }
 
   span {
     display: block;
+    flex: 0 1 auto;
     position: relative;
-    width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+
+    > .sd-icon {
+      margin-right: 0.375em;
+    }
   }
 }
 
@@ -153,26 +150,33 @@
 
   .sd-action-filter-icon {
     position: absolute;
-    left: 6px;
-    line-height: 2rem;
+    left: 0.6rem;
+    top: 0;
     opacity: 0.5;
+    bottom: 0;
+    margin: auto;
+    height: 1em;
+    line-height: 0;
   }
 
   .sd-form-input {
     margin: 0;
     border: 0;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 0.1rem solid #ddd;
     width: 100%;
-    padding: 0px 26px 0px 24px;
+    padding: 0 2.6rem 0 2.4rem;
   }
 
   button {
     position: absolute;
-    right: 0px;
+    top: 0;
+    bottom: 0;
+    right: 0;
     border: 0;
+    margin: auto;
+    padding: 0 0.6rem;
     background: 0;
-    line-height: 2rem;
-    padding: 0 6px;
+    line-height: 0;
     transition: opacity 0.25s ease-out;
 
     &:disabled {

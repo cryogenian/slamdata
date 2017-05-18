@@ -1,148 +1,177 @@
 @import "common";
 
+
 .sd-card-chart-options, .sd-form-input-setup {
+  .sd-axes-selector {
+    padding: 0;
+  }
 
-    .sd-axes-selector {
-        padding: 0;
+  > div {
+    height: 100%;
+  }
+
+  .loading-message.alert.alert-info {
+    height: 100%;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .sd-dimension-picker,
+  .sd-action-select {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #fff;
+    z-index: 10;
+  }
+
+  hr {
+    margin-top: 1.6rem;
+    margin-bottom: 1.6rem;
+    clear: both;
+  }
+
+  p {
+    margin-left: 0.8rem;
+    margin-right: 0.8rem;
+  }
+
+  .row {
+    @p: 0.6rem;
+
+    display: flex;
+    max-width: 100%;
+    margin:0 (@p * -1);
+
+    .sd-size-xxlarge & {
+      > * {
+        flex-basis: 50%;
+      }
     }
 
-    > div {
+    > * {
+      flex: 0 1 auto;
+      padding: @p;
+    }
+  }
+
+  form.chart-configure-form, div.chart-configure-form {
+    display: inline-block;
+    padding: 0;
+    background: transparent;
+    position: relative;
+    vertical-align: top;
+    border: 0.2rem solid #ddd;
+    left: 0.5rem;
+    height: 16.4rem;
+    margin: 0.6rem -0.1rem 0 -0.1rem;
+
+    .sd-picker-input {
+      height: 100%;
+
+      .sd-picker-main-button {
         height: 100%;
+        text-align: center;
+
+        p {
+          font-weight: 700;
+        }
+      }
     }
 
-    .loading-message.alert.alert-info {
-        height: 100%;
-        margin-top: 0;
-        margin-bottom: 0;
+    .sd-dimension-button-disabled {
+      *, & {
+        background-color: #f8f8f8;
+        border-color: #ddd;
+        color: #aaa;
+      }
     }
 
-    .sd-dimension-picker,
-    .sd-action-select {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: #fff;
-        z-index: 10;
+    .sd-size-xsmall & {
+      width: 100%;
     }
 
-    hr {
-        margin-top: 1rem;
-        margin-bottom: 1rem;
-        clear: both;
+    .sd-size-small & {
+      width: 100%;
     }
 
-    p {
-        margin-left: .5rem;
-        margin-right: .5rem;
+    .sd-size-medium & {
+      width: 50%;
     }
 
-    .row {
-        margin: 0;
-
-        .col-xs-6 {
-            padding: .5rem;
-        }
-    }
-    form.chart-configure-form, div.chart-configure-form {
-        padding: 0;
-        display: inline-block;
-        background: transparent;
-        position: relative;
-        vertical-align: top;
-        border: 2px solid #ddd;
-        left: 5px;
-        height: 10rem;
-        margin: 6px -1px 0 -1px;
-        .sd-picker-input {
-            height: 100%;
-            .sd-picker-main-button {
-                height: 100%;
-                text-align: center;
-                p {
-                    font-weight: bold;
-                }
-            }
-        }
-        .sd-dimension-button-disabled {
-            *, & {
-                background-color: #f8f8f8;
-                border-color: #ddd;
-                color: #aaa;
-            }
-        }
-
-        .sd-size-xsmall & {
-            width: 100%;
-        }
-        .sd-size-small & {
-            width: 100%;
-        }
-        .sd-size-medium & {
-            width: 50%;
-        }
-        .sd-size-large & {
-            width: 33.33333%;
-        }
-        .sd-size-xlarge & {
-            width: 25%;
-        }
-        .sd-size-xxlarge & {
-            width: 20%;
-        }
-        button.sd-dismiss-button {
-            position: absolute;
-            top: 0;
-            right: 0;
-            color: #aaa;
-            background: transparent;
-
-        }
-    }
-    form.chart-configure-input {
-        width: 100%;
-        label {
-            width: 120px;
-            display: inline-block;
-        }
-        input {
-            width: ~"calc(100% - 120px)";
-            display: inline-block;
-        }
+    .sd-size-large & {
+      width: 33.33333%;
     }
 
-    form.chart-optional-markers {
-        label {
-            margin-bottom: 0;
-            margin-right: 4pt;
-        }
-        input[type=checkbox] {
-            margin: 0;
-            vertical-align: middle;
-        }
+    .sd-size-xlarge & {
+      width: 25%;
     }
-    form.axis-label-param {
-        width: 50%;
-        label {
-            width: 150px;
-            display: inline-block;
-        }
-        input, select {
-            width: ~"calc(100% - 150px)";
-            display: inline-block;
-            &[type=checkbox], &[type=radio] {
-                width: auto
-            }
-        }
+
+    .sd-size-xxlarge & {
+      width: 20%;
     }
-    label > input[type=checkbox] {
-        margin-right: .5rem;
+
+    button.sd-dismiss-button {
+      position: absolute;
+      top: 0;
+      right: 0.4rem;
+      color: #aaa;
+      background: transparent;
     }
+  }
+
+  form.chart-configure-input {
+    width: 100%;
+
+    label {
+      display: inline-block;
+      width: 12rem;
+    }
+
+    input {
+      width: ~"calc(100% - 12rem)";
+      display: inline-block;
+    }
+  }
+
+  form.chart-optional-markers {
+    label {
+      margin-bottom: 0;
+      margin-right: 0.4rem;
+    }
+    input[type="checkbox"] {
+      margin: 0;
+      vertical-align: middle;
+    }
+  }
+
+  form.axis-label-param {
+    width: 50%;
+
+    label {
+      width: 15rem;
+      display: inline-block;
+    }
+
+    input, select {
+      width: ~"calc(100% - 15rem)";
+      display: inline-block;
+
+      &[type="checkbox"], &[type="radio"] {
+        width: auto;
+      }
+    }
+  }
+
+  label > input[type="checkbox"] {
+    margin-right: 0.8rem;
+  }
 }
 
 .sd-published {
-   .sd-card-chart-options, .sd-form-input-setup {
-     pointer-events: none;
-   }
+  .sd-card-chart-options, .sd-form-input-setup {
+    pointer-events: none;
+  }
 }

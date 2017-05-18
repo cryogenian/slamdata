@@ -29,7 +29,6 @@ import Data.Path.Pathy (rootDir, runDirName, dirName, parentDir)
 
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Common.Sort (Sort)
 import SlamData.FileSystem.Routing (browseURL)
@@ -77,7 +76,7 @@ type Input =
 render ∷ ∀ q i. Input → HH.HTML q i
 render { path, sort, salt } =
   HH.ol
-    [ HP.classes [ B.breadcrumb, B.colXs7 ] ]
+    [ HP.classes [ HH.ClassName "breadcrumb" ] ]
     $ foldl (\views model → view model <> views) [ ] r.breadcrumbs
   where
   r = mkBreadcrumbs path sort salt

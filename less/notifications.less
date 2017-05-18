@@ -1,20 +1,20 @@
 @keyframes fade-out {
-  from {
+  0% {
     opacity: 1;
     transform: translate(0, 5.5rem);
   }
-  to {
+  100% {
     opacity: 0;
     transform: translate(0, 0);
   }
 }
 
 @keyframes fade-in {
-  from {
+  0% {
     opacity: 0;
     transform: translate(0, 0);
   }
-  to {
+  100% {
     opacity: 1;
     transform: translate(0, 5.5rem);
   }
@@ -38,11 +38,9 @@
 .sd-notification {
   display: table;
   position: relative;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.125);
-  border-top: 3px solid transparent;
-  border-left: 1px solid #cccccc;
-  border-right: 1px solid #cccccc;
-  border-bottom: 1px solid #cccccc;
+  box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.125);
+  border: 0.1rem solid #ccc;
+  border-top: 0.3rem solid transparent;
   margin-left: auto;
   right: 2rem;
 
@@ -51,7 +49,7 @@
   }
 
   &.warning {
-    border-top-color: orange;
+    border-top-color: #ffa500;
   }
 
   &.error {
@@ -77,7 +75,7 @@
 .sd-notification-text {
   display: table-cell;
   width: 20rem;
-  padding: .5rem 0 .5rem .75rem;
+  padding: 0.5rem 0 0.5rem 0.75rem;
   background: #fff;
   vertical-align: top;
 }
@@ -92,18 +90,19 @@
   border: none;
   background: transparent;
   margin: 0;
-  padding: 0 .75rem 0 .75rem;
+  padding: 0 0.75rem;
+  font-size: 1.5rem;
   color: #aaa;
 }
 
 .sd-notification-detail {
-  border-top: 1px solid #ebebeb;
-  margin-top: .5rem;
-  padding-top: .5rem;
-  font-size: .6rem;
+  border-top: 0.1rem solid #ebebeb;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  font-size: 0.6rem;
 
   p {
-    margin: .25rem 0 0 0;
+    margin: 0.25rem 0 0 0;
     padding: 0;
   }
 
@@ -116,7 +115,7 @@
   }
 
   > p:last-child {
-    margin-bottom: .25rem;
+    margin-bottom: 0.25rem;
   }
 }
 
@@ -130,8 +129,8 @@
 
 .sd-notifications-list {
   text-align: center;
+
   ul {
-    display: block;
     text-align: left;
     margin-right: 1.25rem;
   }

@@ -31,7 +31,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
-import SlamData.Render.CSS as ClassNames
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Deck.Common (DeckHTML)
 import SlamData.Workspace.Deck.Component.Query (Query(StartSliding))
 import SlamData.Workspace.Deck.Component.State (DisplayCard, eqDisplayCard)
@@ -63,8 +63,8 @@ gripperLabel = case _ of
 
 gripperClassName ∷ GripperDef → ClassName
 gripperClassName = case _ of
-  Previous _ → ClassNames.cardGripper
-  Next _ → ClassNames.cardGripperLast
+  Previous _ → CN.cardGripper
+  Next _ → CN.cardGripperLast
 
 renderGrippers ∷ Boolean → Boolean → GripperDef × GripperDef → Array DeckHTML
 renderGrippers isActiveCard isGrabbed =

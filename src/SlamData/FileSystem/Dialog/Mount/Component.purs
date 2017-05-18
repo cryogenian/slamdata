@@ -30,7 +30,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Dialog.Component.Message (Message)
@@ -49,7 +48,7 @@ import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component as SparkLocal
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as Api
-import SlamData.Render.CSS as RC
+import SlamData.Render.ClassName as CN
 
 import Utils.DOM as DOM
 
@@ -73,7 +72,7 @@ render state@{ name, new, parent } =
         [ modalHeader "Mount"
         , modalBody
             $ HH.div
-                [ HP.class_ RC.dialogMount ]
+                [ HP.class_ CN.dialogMount ]
                 $ maybe [] (pure ∘ fldName) state.name
                 <> (pure $ selScheme state)
                 <> maybe [] (pure ∘ settings) state.settings
@@ -102,11 +101,11 @@ render state@{ name, new, parent } =
 fldName ∷ String → HTML
 fldName name =
   HH.div
-    [ HP.classes [B.formGroup, RC.mountName] ]
+    [ HP.classes [CN.formGroup, CN.mountName] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Name" ]
         , HH.input
-            [ HP.class_ B.formControl
+            [ HP.class_ CN.formControl
             , HE.onValueInput $ HE.input (ModifyState ∘ set MCS._name ∘ Just)
             , HP.value name
             ]
@@ -116,11 +115,11 @@ fldName name =
 selScheme ∷ MCS.State → HTML
 selScheme state =
   HH.div
-    [ HP.class_ B.formGroup ]
+    [ HP.class_ CN.formGroup ]
     [ HH.label_
         [ HH.span_ [ HH.text "Mount type" ]
         , HH.select
-            [ HP.class_ B.formControl
+            [ HP.class_ CN.formControl
             , HE.onValueChange (HE.input SelectScheme ∘ MS.schemeFromString)
             ]
             $ [ HH.option_ [] ] <> schemeOptions state.settings
@@ -135,13 +134,13 @@ selScheme state =
 errorMessage ∷ String → HTML
 errorMessage msg =
   HH.div
-    [ HP.classes [ B.alert, B.alertDanger ] ]
+    [ HP.classes [ CN.alert, CN.alertDanger ] ]
     [ HH.text msg ]
 
 btnCancel ∷ MCS.State -> HTML
 btnCancel state@{ unMounting, saving } =
   HH.button
-    [ HP.classes [B.btn]
+    [ HP.classes [CN.btn]
     , HP.enabled $ not saving && not unMounting
     , HE.onClick (HE.input_ RaiseDismiss)
     ]
@@ -152,7 +151,7 @@ btnDelete state@{ unMounting, saving } =
   HH.button
     [ HP.classes
         $ fold
-          [ [ B.btn, HH.ClassName "btn-careful" ]
+          [ [ CN.btn, HH.ClassName "btn-careful" ]
           , guard unMounting $> HH.ClassName "btn-loading"
           ]
     , HE.onClick (HE.input_ RaiseMountDelete)
@@ -169,7 +168,7 @@ btnMount state@{ new, saving, unMounting } =
   HH.button
     [ HP.classes
         $ fold
-          [ [ B.btn, B.btnPrimary ]
+          [ [ CN.btn, CN.btnPrimary ]
           , guard saving $> HH.ClassName "btn-loading"
           ]
     , HP.enabled $ not saving && not unMounting && MCS.canSave state

@@ -1,126 +1,141 @@
 @import "deck/common";
 
 nav {
-    position: fixed;
-    top: 0;
-    z-index: 600;
-    width: 100%;
-    &.workspace-nav {
-        border-bottom: 1px #ccc solid;
-    }
+  background: #262626;
+  position: fixed;
+  max-height: 7rem;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 600;
+  width: 100%;
 
-    .header {
-        background: #262626;
-        position: relative;
-        z-index: 999999;
-        height: 70px;
+  &.workspace-nav {
+    border-bottom: 0.1rem #ccc solid;
+  }
 
-        .nav-icon {
-            width: 80px;
-            text-align: center;
-            vertical-align: middle;
-            display: inline-block;
-            padding-top: 10px;
-            a {
-                font-size: 22px;
-                color: #fff;
-                display: block;
-                &:hover {
-                    opacity: 1;
-                }
-            }
-        }
+  .header {
+    background: #262626;
+    position: relative;
+    z-index: 999999;
+    height: 7rem;
 
-        .nav-logo {
-            img {
-                /* fix for IE */
-                width: 140px;
-                height: 60px;
-            }
-            height: 70px;
-            padding-left: 24px;
-            margin-left: -5px;
-            display: inline-block;
-            vertical-align: middle;
-            div {
-                display: inline-block;
-                color: white;
-                font-size: 28px;
-                padding-top: 12px;
-                padding-left: 6px;
-                vertical-align: middle;
-            }
-        }
+    height: 7rem;
 
-        .workspace-name, .search {
-            display: inline-block;
-            margin-left: 24px;
-            vertical-align: middle;
-            width: ~"calc(100% - 250px - 230px)";
-            max-width: 800px;
-        }
+    .nav-icon {
+      width: 8rem;
+      text-align: center;
+      vertical-align: middle;
+      display: inline-block;
+      padding-top: 1rem;
 
-        .workspace-name {
-            width: ~"calc(100% - 320px)";
-            max-width: 1000px;
-            display: inline-block;
-            color: #f0f0f0;
-            font-size: 28px;
-            padding-top: 10px;
-            &:hover {
-                color: #fff;
-            }
-
-            input {
-                padding: 0;
-                width: 100%;
-                outline: none;
-                background: none;
-                border: none;
-                line-height: 100%;
-            }
-        }
-    }
-
-    .header-menu {
+      a {
+        font-size: 2.2rem;
+        color: #fff;
         display: block;
-        border-top: 1px solid #fff;
-        line-height: 40px;
-        list-style: none;
-        padding: 0;
-        > li {
-            float: left;
-            > a {
-                color: #9d9d9d;
-                display: block;
-                padding: 0 15px;
-                &:hover {
-                    color: #fff;
-                    text-decoration: none;
-                }
-            }
-        }
 
-        ul.dropdown-menu {
-            margin-top: -1px;
-            border-top-left-radius: 0;
-            border-top-right-radius: 0;
+        &:hover {
+          opacity: 1;
         }
+      }
     }
+
+    .nav-logo {
+      height: 7rem;
+      padding-left: 2.4rem;
+      margin-left: -0.5rem;
+      display: inline-block;
+      vertical-align: middle;
+
+      img {
+        /* fix for IE */
+        width: 14rem;
+        height: 6rem;
+      }
+
+      div {
+        display: inline-block;
+        color: #fff;
+        font-size: 2.8rem;
+        padding-top: 1.2rem;
+        padding-left: 0.6rem;
+        vertical-align: middle;
+      }
+    }
+
+    .workspace-name, .search {
+      display: inline-block;
+      margin-left: 2.4rem;
+      vertical-align: middle;
+      width: ~"calc(100% - 25rem - 23rem)";
+      max-width: 80rem;
+    }
+
+    .workspace-name {
+      width: ~"calc(100% - 320)";
+      max-width: 100rem;
+      display: inline-block;
+      color: #f0f0f0;
+      font-size: 2.8rem;
+      padding-top: 1rem;
+
+      &:hover {
+        color: #fff;
+      }
+
+      input {
+        padding: 0;
+        width: 100%;
+        outline: none;
+        background: none;
+        border: none;
+        line-height: 100%;
+      }
+    }
+  }
+
+  .header-menu {
+    display: block;
+    border-top: 0.1rem solid #fff;
+    line-height: 4rem;
+    list-style: none;
+    padding: 0;
+
+    > li {
+      float: left;
+
+      > a {
+        color: #9d9d9d;
+        display: block;
+        padding: 0 1.5rem;
+
+        &:hover {
+          color: #fff;
+          text-decoration: none;
+        }
+      }
+    }
+
+    ul.dropdown-menu {
+      margin-top: -0.1rem;
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+    }
+  }
 }
 
 .header-gripper {
-    width: @grid-size;
-    height: @grid-size;
-    z-index: 999999;
-    position: relative;
-    margin-left: auto;
-    margin-right: auto;
-    color: white;
-    text-align: center;
-    background: url(../img/gripper.svg) no-repeat center;
-    background-color: white;
-    transition: box-shadow 0.333s, background-color 0.333s;
+  width: @grid-size;
+  height: @grid-size;
+  z-index: 999999;
+  position: relative;
+  margin-left: auto;
+  margin-right: auto;
+  color: #fff;
+  text-align: center;
+  background: url("../img/gripper.svg") no-repeat center;
+  background-color: #fff;
+  transition: box-shadow 0.333s, background-color 0.333s;
 }
 
 .sd-header-gripper-opening,
@@ -129,5 +144,5 @@ nav {
 .sd-header-gripper-dragging-up,
 .sd-header-gripper-closing {
   background-color: #262626;
-    box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 0.8rem rgba(0, 0, 0, 0.35);
 }

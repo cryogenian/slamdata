@@ -30,13 +30,13 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import DOM.HTML.Types (readHTMLElement)
 import DOM.Classy.Element (toElement)
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.Monad (Slam)
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 
 import Utils.DOM as DOM
@@ -72,20 +72,20 @@ render url =
         $ HH.form
             [ HE.onSubmit (HE.input PreventDefault) ]
             [ HH.div
-                [ HP.classes [ B.inputGroup ]
+                [ HP.classes [ CN.inputGroup ]
                 , HE.onClick $ HE.input (SelectElement ∘ DOM.toEvent)
                 ]
                 [ HH.input
-                    [ HP.classes [ B.formControl ]
+                    [ HP.classes [ CN.formControl ]
                     , HP.value url
                     , HP.readOnly true
                     , HP.title "Sharing URL"
                     , ARIA.label "Sharing URL"
                     ]
                 , HH.span
-                    [ HP.classes [ B.inputGroupBtn ] ]
+                    [ HP.classes [ CN.inputGroupBtn ] ]
                     [ HH.button
-                        [ HP.classes [ B.btn, B.btnDefault ]
+                        [ HP.classes [ CN.btn, CN.btnDefault ]
                         , HE.onClick (HE.input_ Cancel)
                         , HP.ref copyButtonRef
                         , HP.id_ "copy-button"
@@ -97,7 +97,7 @@ render url =
     , modalFooter
         [ HH.button
             [ HP.id_ "copy-button"
-            , HP.classes [ B.btn, B.btnDefault ]
+            , HP.classes [ CN.btn, CN.btnDefault ]
             , HE.onClick (HE.input_ Cancel)
             ]
             [ HH.text "Dismiss" ]

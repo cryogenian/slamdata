@@ -33,9 +33,9 @@ import Halogen.Component.Utils (sendAfter)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupLabeledFormInputPort)
@@ -103,7 +103,7 @@ render state =
 renderDropdown ∷ State → Array HTML
 renderDropdown state =
   [ HH.select
-      [ HP.classes [ B.formControl ]
+      [ HP.classes [ CN.formControl ]
       , HE.onSelectedIndexChange \ix →
           H.action ∘ ItemSelected ∘ fst <$> Arr.index options ix
       ]
@@ -130,7 +130,7 @@ renderCheckbox state =
   renderOneInput ∷ Sem.Semantics × Maybe String → HTML
   renderOneInput (sem × label) =
     HH.div
-      [ HP.classes [ B.checkbox ] ]
+      [ HP.classes [ CN.checkbox ] ]
       [ HH.label_
         [ HH.input
             [ HP.type_ HP.InputCheckbox
@@ -153,7 +153,7 @@ renderRadio state =
   renderOneInput ∷ Sem.Semantics × Maybe String → HTML
   renderOneInput (sem × label) =
     HH.div
-      [ HP.classes [ B.radio ]  ]
+      [ HP.classes [ CN.radio ]  ]
       [ HH.label_
           [ HH.input
             [ HP.type_ HP.InputRadio

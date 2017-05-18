@@ -31,10 +31,10 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Form.Select as S
+import SlamData.Render.ClassName as CN
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
@@ -98,10 +98,10 @@ renderName state =
     [ HP.classes [ HH.ClassName "chart-configure-input" ]
     , HE.onSubmit $ HE.input \e → right ∘ Q.PreventDefault e
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Name" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Name" ]
     , HH.input
         [ HP.type_ HP.InputText
-        , HP.classes [ B.formControl ]
+        , HP.classes [ CN.formControl ]
         , HP.placeholder "Form input label"
         , ARIA.label "Form input label"
         , HE.onValueInput $ HE.input \str → right ∘ Q.UpdateName str
