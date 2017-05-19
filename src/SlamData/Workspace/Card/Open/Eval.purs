@@ -65,7 +65,7 @@ evalOpen model varMap = case model of
         case SM.lookup var varMap of
           Just (Right v) → do
             -- If the var is an ident, use `SELECT * FROM :ident`
-            -- If the var is an literal, use `SELECT :literal AS varName`
+            -- If the var is an literal, use `SELECT :literal AS literal`
             -- If the var is any other expr, use it directly
             case unwrapParens (unwrap v) of
               Sql.Ident _ →
@@ -73,11 +73,9 @@ evalOpen model varMap = case model of
                   $ all
                   ∘ (Sql._relations ?~ Sql.VariRelation { vari: var, alias: Nothing })
               Sql.Literal _ →
-                Sql.buildSelect
-                  $ Sql._projections .~ pure (Sql.projection (unwrap v) # Sql.as var)
+                selectVarAsVar var v
               Sql.SetLiteral _ →
-                Sql.buildSelect
-                  $ Sql._projections .~ pure (Sql.projection (unwrap v) # Sql.as var)
+                selectVarAsVar var v
               _ →
                 unwrap v
           _ →
@@ -92,6 +90,12 @@ evalOpen model varMap = case model of
     pure $ Port.resourceOut $ Port.View res (Sql.print sql) varMap
 
   where
+
+  selectVarAsVar ∷ String → VM.VarMapValue → Sql.Sql
+  selectVarAsVar var v =
+    Sql.buildSelect
+      $ Sql._projections .~ pure (Sql.projection (unwrap v) # Sql.as var)
+
   unwrapParens ∷ Sql.Sql → Sql.SqlF EJ.EJsonF (Mu (Sql.SqlF EJ.EJsonF))
   unwrapParens expr =
     case M.project expr of
