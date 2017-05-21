@@ -14,6 +14,7 @@ limitations under the License.
 module SlamData.GlobalMenu.Component
   ( component
   , Query(..)
+  , MenuOpen(..)
   , Message(..)
   , AuthenticateOrPresentHelp(..)
   , State
@@ -51,6 +52,7 @@ import SlamData.Quasar as Api
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Auth.Authentication (AuthenticationError, toNotificationOptions)
 import SlamData.Quasar.Auth.Store as AuthStore
+import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Eval.Persistence as Persistence
 
@@ -63,10 +65,18 @@ data Query a
   = DismissSubmenu a
   | HandleGlobalError GlobalError a
   | HandleMenuMessage (Menu.Message AuthenticateOrPresentHelp) a
+  | ToggleMenu MenuOpen a
   | Init a
+
+data MenuOpen
+ = SignInMenu
+ | HelpMenu
+
+derive instance eqMenuOpen ∷ Eq MenuOpen
 
 type State =
   { loggedIn ∷ Boolean
+  , menuOpen ∷ Maybe MenuOpen
   }
 
 data Message =
@@ -78,7 +88,7 @@ type DSL = H.ParentDSL State Query (Menu.Query AuthenticateOrPresentHelp) Unit M
 component ∷ H.Component HH.HTML Query Unit Message Slam
 component =
   H.lifecycleParentComponent
-    { initialState: \_ → { loggedIn: false }
+    { initialState: \_ → { loggedIn: false, menuOpen: Nothing }
     , render
     , eval
     , initializer: Just (H.action Init)
@@ -90,27 +100,41 @@ render ∷ State → HTML
 render state =
   HH.div
     [ HP.classes $ [ HH.ClassName "sd-global-menu" ] ]
-    [ HH.slot unit Menu.component helpMenu $ HE.input HandleMenuMessage
-    ]
+    $ helpMenu state.menuOpen
 
 eval ∷ Query ~> DSL
-eval (Init next) = do
-  { bus } ← H.lift Wiring.expose
-  H.subscribe $ busEventSource (flip HandleGlobalError ES.Listening) bus.globalError
-  update
-  pure next
-eval (DismissSubmenu next) = do
-  _ ← H.query unit $ H.action $ Menu.DismissSubmenu
-  pure next
-eval (HandleGlobalError error next) = case error of
-  GlobalError.Unauthorized _ → update $> next
-  _ → pure next
-eval (HandleMenuMessage (Menu.Selected a) next) = do
-  case a of
-    Authenticate providerR → authenticate providerR
-    PresentHelp uri → presentHelp uri
-    PresentAttribution → H.raise PresentAttributionsDialog
-  pure next
+eval = case _ of
+  Init next → do
+    { bus } ← H.lift Wiring.expose
+    H.subscribe $ busEventSource (flip HandleGlobalError ES.Listening) bus.globalError
+    update
+    pure next
+
+  DismissSubmenu next → do
+    _ ← H.query unit $ H.action $ Menu.DismissSubmenu
+    pure next
+
+  HandleGlobalError error next →
+    case error of
+      GlobalError.Unauthorized _ → update $> next
+      _ → pure next
+
+  HandleMenuMessage (Menu.Selected a) next → do
+    case a of
+      Authenticate providerR → authenticate providerR
+      PresentHelp uri → presentHelp uri
+      PresentAttribution → H.raise PresentAttributionsDialog
+    pure next
+
+  ToggleMenu which next → do
+    menuOpen ← H.gets _.menuOpen
+    let
+      m = case menuOpen, which of
+        Just HelpMenu, HelpMenu → Nothing
+        Just SignInMenu, SignInMenu → Nothing
+        _, _ → Just which
+    H.modify _{ menuOpen = m }
+    pure next
 
 update ∷ DSL Unit
 update = do
@@ -144,14 +168,15 @@ update = do
                 ]
               }
             ]
-            ⊕ helpMenu
         }
     H.modify _{ loggedIn = true }
 
   retrieveProvidersAndUpdateMenu ∷ DSL Unit
   retrieveProvidersAndUpdateMenu = void do
     eProviders ← Api.retrieveAuthProviders
-    H.query unit
+    pure unit
+
+    {- H.query unit
       $ H.action
       $ Menu.Set
           { chosen: Nothing
@@ -169,49 +194,69 @@ update = do
                     , submenu: makeSubmenuItem <$> mempty -- providers
                     }
                   ]
-                ⊕ helpMenu
+                ⊕
               -- _ → helpMenu
           }
+                -}
 
-helpMenu ∷ Array (Menu.MenuItem AuthenticateOrPresentHelp)
-helpMenu =
-  [ { label: "Help"
-    , submenu:
-      [ { label: "User guide"
-        , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/users-guide.html"
-        }
-      , { label: "Administrator guide"
-        , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/administration-guide.html"
-        }
-      , { label: "Developer guide"
-        , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/developers-guide.html"
-        }
-      , { label: "Helpful tips"
-        , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/helpful-tips.html"
-        }
-      , { label: "SQL² reference"
-        , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/sql-squared-reference.html"
-        }
-      , { label: "SlamDown reference"
-        , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/slamdown-reference.html"
-        }
-      , { label: "Troubleshooting FAQ"
-        , shortcutLabel: Nothing
-        , value: PresentHelp "http://docs.slamdata.com/en/v4.2/troubleshooting-faq.html"
-        }
-      , { label: "Attributions"
-        , shortcutLabel: Nothing
-        , value: PresentAttribution
-        }
-      ]
-    }
-  ]
+helpMenu :: forall a. Maybe MenuOpen → Array (H.HTML a Query)
+helpMenu whichMenu =
+  let
+    container = HH.ClassName "menu-container"
+
+    -- wraps stuff in an li > a
+    item attrs children =
+      HH.li [ HP.classes $ HH.ClassName <$> [ "menu-item", "submenu-item" ] ]
+        [ HH.a
+          ([ HP.classes $ HH.ClassName <$> [ "menu-item-link", "submenu-item-link" ] ] <> attrs)
+          children
+        ]
+  in
+    [ HH.div
+        [ HP.classes [ container, HH.ClassName "sign-in-menu-container" ] ]
+        [ HH.button
+            [ HP.class_ $ HH.ClassName "sign-in-menu-button "
+            , HE.onClick $ HE.input_ $ ToggleMenu SignInMenu
+            ]
+            [ I.unlockSm, HH.text "Sign in" ]
+        ]
+    , HH.div
+        [ HP.classes [ container, HH.ClassName "help-menu-container" ] ] $
+        [ HH.button
+          [ HP.class_ $ HH.ClassName "help-menu-button"
+          , HE.onClick $ HE.input_ $ ToggleMenu HelpMenu
+          ]
+          [ I.helpSm, HH.text "Help" ]
+        ] <>
+          if whichMenu == Just HelpMenu then
+            [ HH.ul
+              [ HP.class_ $ HH.ClassName "submenu" ]
+              [ item
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/users-guide.html" ]
+                  [ HH.text "User guide" ]
+              , item
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/administration-guide.html" ]
+                  [ HH.text "Administrator guide" ]
+              , item
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/developers-guide.html" ]
+                  [ HH.text "Developer guide" ]
+              , item
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/helpful-tips.html" ]
+                  [ HH.text "Helpful tips" ]
+              , item
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/sql-squared-reference.html" ]
+                  [ HH.text "SQL² reference" ]
+              , item
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/slamdown-reference.html" ]
+                  [ HH.text "SlamDown reference" ]
+              , item
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/troubleshooting-faq.html" ]
+                  [ HH.text "Troubleshooting FAQ" ]
+              ]
+            ]
+          else
+            []
+    ]
 
 authenticate ∷ Maybe ProviderR → DSL Unit
 authenticate = maybe logOut logIn

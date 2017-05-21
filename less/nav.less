@@ -1,26 +1,29 @@
 @import "deck/common";
 
 nav {
-  background: #262626;
   position: fixed;
-  max-height: 7rem;
   top: 0;
   left: 0;
   right: 0;
   z-index: 600;
+  max-height: 7rem;
   width: 100%;
+  color: #fff;
+  background: #262626;
 
   &.workspace-nav {
     border-bottom: 0.1rem #ccc solid;
   }
 
   .header {
-    background: #262626;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: stretch;
     position: relative;
     z-index: 999999;
-    height: 7rem;
-
-    height: 7rem;
+    padding: 0 2.4rem;
+    min-height: 7rem;
+    background: #262626;
 
     .nav-icon {
       width: 8rem;
@@ -41,11 +44,8 @@ nav {
     }
 
     .nav-logo {
-      height: 7rem;
-      padding-left: 2.4rem;
+      flex: 1 1 auto;
       margin-left: -0.5rem;
-      display: inline-block;
-      vertical-align: middle;
 
       img {
         /* fix for IE */
@@ -125,16 +125,18 @@ nav {
 }
 
 .header-gripper {
+  position: absolute;
+  z-index: 999999;
+  top: 100%;
+  left: 0;
+  right: 0;
   width: @grid-size;
   height: @grid-size;
-  z-index: 999999;
-  position: relative;
-  margin-left: auto;
-  margin-right: auto;
-  color: #fff;
-  text-align: center;
+  margin: auto;
   background: url("../img/gripper.svg") no-repeat center;
   background-color: #fff;
+  color: #fff;
+  text-align: center;
   transition: box-shadow 0.333s, background-color 0.333s;
 }
 
