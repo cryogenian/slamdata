@@ -34,7 +34,6 @@ import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Menu.Component as Menu
 import Halogen.Query.EventSource as ES
 import Halogen.HTML.Events as HE
 
@@ -116,7 +115,7 @@ eval = case _ of
     pure next
 
   DismissSubmenu next → do
-    _ ← H.query unit $ H.action $ Menu.DismissSubmenu
+    H.modify _{ menuOpen = Nothing }
     pure next
 
   HandleGlobalError error next →
