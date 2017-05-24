@@ -39,11 +39,11 @@ focused = ClassName "sd-focused"
 unfocused ∷ ClassName
 unfocused = ClassName "sd-unfocused"
 
-zoomDeck ∷ ClassName
-zoomDeck = ClassName "sd-zoom-deck"
+zoomDeckBtn ∷ ClassName
+zoomDeckBtn = ClassName "sd-zoom-deck-btn"
 
-flipDeck ∷ ClassName
-flipDeck = ClassName "sd-flip-deck"
+flipDeckBtn ∷ ClassName
+flipDeckBtn = ClassName "sd-flip-deck-btn"
 
 grabDeck ∷ ClassName
 grabDeck = ClassName "sd-grab-deck"

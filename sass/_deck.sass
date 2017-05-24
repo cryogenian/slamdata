@@ -1,0 +1,273 @@
+@import deck/indicator
+
+
+.sd-workspace > div > .sd-deck-container
+  top: 0
+  left: 0
+
+
+.sd-deck-container
+  position: absolute
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+
+  &, .sd-deck-frame
+    background: $body-bg
+
+  .sd-deck-frame
+    @extend .noselect
+
+    position: absolute
+    top: 0
+    left: 0
+    right: 0
+    bottom: 0
+    display: none
+    z-index: 2
+
+    > *
+      opacity: 0
+      pointer-events: none
+      transition: 0.2s ease-out opacity
+
+  &.sd-focused
+    top: -$grid-size
+    bottom: -$grid-size
+    left: -$grid-size
+    right: -$grid-size
+    z-index: 10
+    box-shadow: 0 0 0.1rem rgba(0, 0, 0, 0.4), 0 0 0.8rem rgba(0, 0, 0, 0.2)
+
+    > .sd-deck-frame
+      display: block
+      z-index: 12
+
+      > *
+        opacity: 1
+        pointer-events: auto
+
+      > .sd-deck-name
+        pointer-events: none
+
+    > .sd-deck
+      z-index: 12
+      top: $grid-size
+      bottom: $grid-size
+
+      > .sd-card-slider
+        left: $grid-size
+        right: $grid-size
+
+
+.sd-deck-level-1
+  pointer-events: none
+
+  > .sd-deck-container
+    top: 0
+    left: 0
+    right: 0
+    bottom: 0
+    background: transparent
+
+    > .sd-deck-frame
+      display: block
+      background: transparent
+
+    > .sd-deck
+      top: 0
+      bottom: 0
+      left: 0
+      right: 0
+
+    > .sd-deck > .sd-card-slider
+      top: $grid-size
+      left: $grid-size
+      right: $grid-size
+
+      height: calc(100% -($grid-size * 2))
+
+
+.sd-deck
+  position: absolute
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+  overflow: hidden
+  z-index: 2
+  pointer-events: none
+
+  > *
+    pointer-events: auto
+
+
+.sd-card-slider
+  position: absolute
+  height: 100%
+  left: 0
+  right: 0
+
+
+.sd-card
+  position: absolute
+  //height: 100%
+  height: calc(100% - 4.8rem)  // ?
+  width: 100%
+
+  > div
+    height: 100%
+
+  &, &-gripper, &-gripper-last
+    background-color: $body-bg
+
+  &-gripper
+    float: left
+    margin-left: -$grid-size
+
+  &-gripper-last
+    float: right
+    margin-right: -$grid-size
+
+  &-gripper, &-gripper-last
+    display: block
+    position: relative
+    width: $grid-size
+    height: 100%
+    padding-left: 0.3rem
+    padding-right: 0.3rem
+    border: none
+    opacity: 0
+    color: $gripper-dots-color
+    pointer-events: none
+    transition: color 200ms ease-out
+
+    &:hover
+      color: $gripper-dots-hover-color
+
+.sd-focused > .sd-deck > .sd-card-slider > .sd-card
+  > .sd-card-gripper,
+  > .sd-card-gripper-last
+    transition: 0.2s ease-out opacity
+    opacity: 1
+    pointer-events: auto
+
+
+.sd-flip-deck-btn, .sd-zoom-deck-btn
+  height: $grid-size
+  width: $grid-size
+  margin: 0
+  padding: 0
+  border: none
+  background-color: transparent
+  font-size: 1.5rem
+
+  .sd-icon
+    position: relative
+
+
+.sd-zoom-deck-btn
+  float: left
+
+
+.sd-flip-deck-btn
+  float: right
+
+
+.sd-deck-name
+  float: left
+  line-height: 1.5
+  font-size: 1.1rem
+  margin-left: 0.125rem
+  width: calc(50% - (0.125rem - (1.5rem * 3)))
+  overflow: hidden
+  white-space: nowrap
+  text-overflow: ellipsis
+
+
+.sd-deck-card
+  height: 100%
+  position: relative
+
+  > div, fieldset
+    position: absolute
+    overflow: auto
+    width: 100%
+    height: 100%
+    //padding: $padding-base-vertical
+    border: none
+
+  > .sd-card-draftboard,
+  > .sd-card-tabs
+    overflow: visible
+
+
+.action-icon
+  position: relative
+  display: inline-block
+
+
+.action-icon.delete-deck-icon
+  width: 2.8rem
+  height: 2.8rem
+  top: -0.4rem
+  background-image: url("../img/delete-deck-white.svg")
+  background-size: 100% 100%
+
+
+.sd-access-next-card-hint
+  position: absolute
+  top: 50%
+  right: $grid-size
+  padding-left: $grid-size
+  transform: translate(0, -50%)
+  margin-top: -0.4rem
+  z-index: 1000
+  width: 20rem
+
+
+.sd-focus-deck-hint
+  position: absolute
+  top: 0.8rem
+  left: 50%
+  transform: translate(-50%, 0)
+  z-index: 9999
+
+
+.sd-focus-deck-frame-hint
+  position: absolute
+  top: 0.5rem + 0.2rem
+  left: 1.5rem + 1rem
+  width: calc(50% - (1.6rem + 0.1rem))
+  z-index: 9999
+
+
+@import deck/card
+@import deck/ace-card
+@import deck/variables-card
+@import deck/cache-card
+@import deck/download-card
+@import deck/markdown-card
+@import deck/next-card
+@import deck/open-card
+@import deck/save-card
+@import deck/search-card
+@import deck/table-card
+@import deck/draftboard-card
+@import deck/dialog
+@import deck/chart-options-card
+@import deck/pending-card
+@import deck/download-options-card
+@import deck/download-card
+@import deck/card-minimum-lod
+@import deck/share
+@import deck/unshare
+@import deck/pending
+@import deck/chart
+@import deck/pivot-options-card
+@import deck/pivot-table-card
+@import deck/form-input
+@import deck/tabs-card
+@import deck/structure-editor
+@import deck/error-card

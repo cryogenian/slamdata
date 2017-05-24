@@ -1,0 +1,202 @@
+.sd-pivot-options
+  position: absolute
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+  overflow: hidden !important
+
+  .sd-picker-dialog
+    position: absolute
+    top: 0
+    left: 0
+    right: 0
+    bottom: 0
+    background: #fff
+    z-index: 10
+
+  .sd-place-value-picker
+    position: absolute
+    top: 50%
+    width: 100%
+    margin-top: -5rem
+
+.sd-pivot-options-corner
+  position: absolute
+  top: 0
+  left: 0
+  width: 25%
+  height: 25%
+  background: #fafafa
+
+  span
+    position: absolute
+    line-height: 3.2rem
+    text-align: center
+    text-transform: uppercase
+    color: #888
+
+    &:nth-child(1)
+      bottom: 0
+      width: 100%
+
+    &:nth-child(2)
+      transform: rotate(-90deg)
+      right: -1.6rem
+      top: 50%
+      margin-top: -1.6rem
+
+.sd-pivot-options-dims
+  position: absolute
+  top: 25%
+  left: 0
+  bottom: 0
+  width: 25%
+
+.sd-pivot-options-dim
+  width: 100%
+  background: #fff
+  position: relative
+
+  &.ordering
+    z-index: 10
+    pointer-events: none
+    opacity: 0.9
+
+    .sd-pivot-options-dim-inner
+      height: calc(100% + 0.2rem)
+      border-bottom: 0.2rem solid #ccc
+      border-top: 0.2rem solid #ccc
+      box-shadow: 0 0 0.8rem rgba(0, 0, 0, 0.2)
+
+    &::before
+      content: ""
+      position: absolute
+      top: 0
+      left: 0
+      right: 0
+      bottom: 0
+      z-index: -1
+      background: #eee
+      border-top: 0.2rem solid #ddd
+      box-shadow: inset 0 0 0.8rem rgba(0, 0, 0, 0.1)
+
+  &.ordering-over
+    .sd-pivot-options-dim-inner
+      background: #fafafa
+
+.sd-pivot-options-dim-inner
+  position: relative
+  width: 100%
+  height: 100%
+  background: #fff
+  border-top: 0.2rem solid #ddd
+
+.sd-pivot-options-cols
+  position: absolute
+  top: 0
+  left: 25%
+  right: 0
+  height: 25%
+
+.sd-pivot-options-col
+  height: 100%
+  float: left
+  position: relative
+
+  &.ordering
+    z-index: 10
+    opacity: 0.9
+    pointer-events: none
+
+    .sd-pivot-options-col-inner
+      width: calc(100% + 0.2rem)
+      border-right: 0.2rem solid #ccc
+      border-left: 0.2rem solid #ccc
+      box-shadow: 0 0 0.8rem rgba(0, 0, 0, 0.2)
+
+    &::before
+      content: ""
+      position: absolute
+      top: 0
+      left: 0
+      right: 0
+      bottom: 0
+      z-index: -1
+      background: #eee
+      border-left: 0.2rem solid #ddd
+      box-shadow: inset 0 0 0.8rem rgba(0, 0, 0, 0.1)
+
+  &.ordering-over
+    .sd-pivot-options-col-inner
+      background: #fafafa
+
+.sd-pivot-options-col-inner
+  position: relative
+  width: 100%
+  height: 100%
+  background: #fff
+  border-left: 0.2rem solid #ddd
+
+.sd-pivot-options-col-value
+  width: 100%
+  height: 100%
+  position: relative
+
+.sd-pivot-options-preview
+  position: absolute
+  top: 25%
+  left: 25%
+  right: 0
+  bottom: 0
+  border-top: 0.2rem solid #ddd
+  border-left: 0.2rem solid #ddd
+
+.sd-pivot-options-plus
+  position: absolute
+  top: 25%
+  left: 25%
+  width: 50%
+  height: 50%
+  margin: 0
+  padding: 0
+  border: none
+  background: transparent
+
+  &::before, &::after
+    position: absolute
+    top: 50%
+    left: 50%
+    content: ""
+    background: #337ab7
+
+  &::before
+    width: 4.8rem
+    height: 0.8rem
+    margin-top: -0.4rem
+    margin-left: -2.4rem
+
+  &::after
+    width: 0.8rem
+    height: 4.8rem
+    margin-top: -2.4rem
+    margin-left: -0.4rem
+
+.sd-pivot-options-label
+  width: 100%
+  height: 100%
+  padding: 0
+  margin: 0
+  background: none
+  border: none
+  overflow: ellipsis
+  font-weight: 700
+  font-size: 1.6rem
+  white-space: nowrap
+
+.sd-published
+  .sd-pivot-options
+    pointer-events: none
+
+  .sd-pivot-options-plus
+    display: none

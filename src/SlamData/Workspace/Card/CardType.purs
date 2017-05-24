@@ -17,12 +17,9 @@ limitations under the License.
 module SlamData.Workspace.Card.CardType
   ( CardType(..)
   , AceMode(..)
+  , cardIcon
   , cardName
   , cardClasses
-  , cardIconDarkImg
-  , cardIconDarkSrc
-  , cardIconLightImg
-  , cardIconLightSrc
   , aceCardName
   , aceCardClasses
   , aceMode
@@ -35,25 +32,10 @@ import SlamData.Prelude
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson)
 import Data.String as Str
-
 import Halogen.HTML as H
-import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
-
-import SlamData.Config as Config
-import SlamData.Workspace.Card.CardType.ChartType
-  ( ChartType(..)
-  , printChartType
-  , parseChartType
-  , chartName
-  )
-import SlamData.Workspace.Card.CardType.FormInputType
-  ( FormInputType(..)
-  , printFormInputType
-  , parseFormInputType
-  , formInputName
-  )
-
+import SlamData.Render.Icon as I
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), printChartType, parseChartType, chartName)
+import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..), printFormInputType, parseFormInputType, formInputName)
 import Test.StrongCheck.Arbitrary as SC
 
 data CardType
@@ -170,111 +152,96 @@ cardName = case _ of
   Tabs → "Setup Tabs"
   StructureEditor → "Structure Viewer"
 
-cardIcon ∷ CardType → String
-cardIcon = case _ of
+cardIcon ∷ CardType → I.IconHTML
+cardIcon = I.IconHTML ∘ case _ of
   Ace MarkdownMode →
-    "setupMarkdown"
+    I.cardsSetupMarkdown
   Ace SQLMode →
-    "query"
+    I.cardsQuery
   Search →
-    "search"
+    I.cardsSearch
   ChartOptions chty →
     case chty of
       Pie →
-        "buildChart/pie"
+        I.buildChartPie
       Line →
-        "buildChart/line"
+        I.buildChartLine
       Bar →
-        "buildChart/bar"
+        I.buildChartBar
       Area →
-        "buildChart/area"
+        I.buildChartArea
       Scatter →
-        "buildChart/scatter"
+        I.buildChartScatter
       Radar →
-        "buildChart/radar"
+        I.buildChartRadar
       Funnel →
-        "buildChart/funnel"
+        I.buildChartFunnel
       Graph →
-        "buildChart/graph"
+        I.buildChartGraph
       Heatmap →
-        "buildChart/heatmap"
+        I.buildChartHeatmap
       Sankey →
-        "buildChart/sankey"
+        I.buildChartSankey
       Gauge →
-        "buildChart/gauge"
+        I.buildChartGauge
       Boxplot →
-        "buildChart/boxplot"
+        I.buildChartBoxplot
       Metric →
-        "buildChart/metric"
+        I.buildChartMetric
       PivotTable →
-        "buildChart/pivot-table"
+        I.buildChartPivotTable
       PunchCard →
-        "buildChart/punch-card"
+        I.buildChartPunchCard
       Candlestick →
-        "buildChart/candlestick"
+        I.buildChartCandlestick
       Parallel →
-        "buildChart/parallel"
-  SetupFormInput fity → case fity of
-    Dropdown →
-      "setupFormInput/dropdown"
-    Static →
-      "setupFormInput/static"
-    Text →
-      "setupFormInput/text"
-    Numeric →
-      "setupFormInput/numeric"
-    Checkbox →
-      "setupFormInput/checkbox"
-    Radio →
-      "setupFormInput/radio"
-    Date →
-      "setupFormInput/date"
-    Time →
-      "setupFormInput/time"
-    Datetime →
-      "setupFormInput/datetime"
+        I.buildChartParallel
+  SetupFormInput fity →
+    case fity of
+      Dropdown →
+        I.cardsSetupFormInputDropdown
+      Static →
+        I.cardsSetupFormInputStatic
+      Text →
+        I.cardsSetupFormInputText
+      Numeric →
+        I.cardsSetupFormInputNumeric
+      Checkbox →
+        I.cardsSetupFormInputCheckbox
+      Radio →
+        I.cardsSetupFormInputRadio
+      Date →
+        I.cardsSetupFormInputDate
+      Time →
+        I.cardsSetupFormInputTime
+      Datetime →
+        I.cardsSetupFormInputDatetime
   Download →
-    "showDownload"
+    I.cardsShowDownload
   Variables →
-    "setupVariables"
+    I.cardsSetupVariables
   Troubleshoot →
-    "troubleshoot"
+    I.cardsTroubleshoot
   Chart →
-    "showChart"
+    I.cardsShowChart
   FormInput →
-    "showFormInput"
+    I.cardsShowFormInput
   Markdown →
-    "showMarkdown"
+    I.cardsShowMarkdown
   Table →
-    "table"
+    I.cardsTable
   Cache →
-    "cache"
+    I.cardsCache
   Open →
-    "open"
+    I.cardsOpen
   DownloadOptions →
-    "setupDownload"
+    I.cardsSetupDownload
   Draftboard →
-    "dashboard"
+    I.cardsDashboard
   Tabs →
-    "tabs"
+    I.cardsTabs
   StructureEditor →
-    "structureEditor"
-
-cardIconDarkSrc ∷ CardType → String
-cardIconDarkSrc cardType =
-  Config.darkIconsPath <> "/" <> cardIcon cardType <> ".svg"
-
-cardIconDarkImg ∷ ∀ a b. CardType → H.HTML a b
-cardIconDarkImg cardType =
-  HH.img [ HP.src $ cardIconDarkSrc cardType ]
-
-cardIconLightSrc ∷ CardType → String
-cardIconLightSrc cardType =
-  Config.lightIconsPath <> "/" <> cardIcon cardType <> ".svg"
-
-cardIconLightImg ∷ ∀ a b. CardType → H.HTML a b
-cardIconLightImg cardType =
-  HH.img [ HP.src $ cardIconLightSrc cardType ]
+    I.cardsStructureEditor
 
 -- Used to disable inputs, buttons and selects as well as a whitelist for
 -- localstorage card persistence. Interactability available to consumers may be

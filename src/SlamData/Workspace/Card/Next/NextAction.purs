@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Array as A
 
 import SlamData.ActionList.Action as Action
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType, allChartTypes)
@@ -49,7 +50,7 @@ chartSubmenu
 chartSubmenu mkAction =
   Action.mkDrill
     { name: "Setup Chart"
-    , iconSrc: "img/cardsLight/setupChart.svg"
+    , icon: Just $ I.IconHTML I.cardsSetupChart
     , description: "Select Setup Chart card category"
     , children: map mkAction allChartTypes
     }
@@ -68,7 +69,7 @@ formInputSubmenu
 formInputSubmenu mkAction =
   Action.mkDrill
     { name: "Setup Form"
-    , iconSrc: "img/cardsLight/setupFormInput.svg"
+    , icon: Just $ I.IconHTML I.cardsSetupFormInput
     , description: "Select Setup Form card category"
     , children: map mkAction allFormInputTypes
     }
@@ -85,7 +86,7 @@ toAction ∷ NextAction → Action.Action NextAction
 toAction na =
   Action.mkDo
     { name: CT.cardName cardType
-    , iconSrc: CT.cardIconLightSrc cardType
+    , icon: Just $ CT.cardIcon cardType
     , highlighted: isInsert na
     , disabled: false
     , description: description na

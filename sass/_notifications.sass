@@ -1,0 +1,114 @@
+@keyframes fade-out
+  0%
+    opacity: 1
+    transform: translate(0, 5.5rem)
+
+  100%
+    opacity: 0
+    transform: translate(0, 0)
+
+@keyframes fade-in
+  0%
+    opacity: 0
+    transform: translate(0, 0)
+
+  100%
+    opacity: 1
+    transform: translate(0, 5.5rem)
+
+.sd-notifications
+  position: fixed
+  top: -5rem
+  left: 0
+  right: 0
+  height: 0
+  z-index: 100000000
+
+.sd-notification-spacer
+  width: 100%
+  height: 0
+  position: absolute
+
+.sd-notification
+  display: table
+  position: relative
+  box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.125)
+  border: 0.1rem solid #ccc
+  border-top: 0.3rem solid transparent
+  margin-left: auto
+  right: 2rem
+
+  &.info
+    border-top-color: $brand-info
+
+  &.warning
+    border-top-color: $brand-warning
+
+  &.error
+    border-top-color: $brand-danger
+
+  &.current
+    animation-name: fade-in
+    animation-duration: 0.4s
+    transform: translate(0, 5.5rem)
+    opacity: 1
+
+  &.dismissed
+    animation-name: fade-out
+    animation-duration: 0.4s
+    transform: translate(0, 0)
+    opacity: 0
+    pointer-events: none
+
+.sd-notification-text
+  display: table-cell
+  width: 20rem
+  padding: 0.5rem 0 0.5rem 0.75rem
+  background: $body-bg
+  vertical-align: top
+
+.sd-notification-buttons
+  display: table-cell
+  background: $body-bg
+  vertical-align: top
+
+.sd-notification-dismiss
+  border: none
+  background: transparent
+  margin: 0
+  padding: 0 0.75rem
+  font-size: 1.5rem
+  color: #aaa
+
+.sd-notification-detail
+  border-top: 0.1rem solid #ebebeb
+  margin-top: 0.5rem
+  padding-top: 0.5rem
+  font-size: 0.6rem
+
+  p
+    margin: 0.25rem 0 0 0
+    padding: 0
+
+  button
+    margin-left: 0
+
+  button:not(:last-child)
+    margin-right: 0.5rem
+
+  > p:last-child
+    margin-bottom: 0.25rem
+
+.sd-notification-toggle-detail
+  margin: 0
+  padding: 0
+  background: transparent
+  border: none
+  color: #aaa
+
+.sd-notifications-list
+  text-align: center
+
+  ul
+    text-align: left
+    margin-right: 1.25rem

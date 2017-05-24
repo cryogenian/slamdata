@@ -91,13 +91,12 @@ render state = case state.item of
       [ HP.classes [ CSS.fileSystemItem, CSS.phantom ] ]
       [ HH.div
           [ HP.classes [ CSS.itemContent ] ]
-          [ HH.span_
-              [ HH.img
-                [ HP.class_ CSS.phantomSpinner
-                , HP.src "img/spin.gif"
-                ]
-              , HH.text $ itemName state
-              ]
+          [ HH.span
+              [ HP.class_ CSS.phantomSpinner ]
+              [ I.spinner ]
+          , HH.span
+              [ HP.class_ CSS.phantomLabel ]
+              [ HH.text $ itemName state ]
           ]
       ]
 

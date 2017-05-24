@@ -41,8 +41,9 @@ import Halogen.HTML.Properties (IProp())
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
-import SlamData.Render.ClassName as CN
 import SlamData.Hint as Hint
+import SlamData.Render.ClassName as CN
+import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component.CSS as CardCSS
@@ -368,7 +369,7 @@ loadingPanel =
   HH.div
     [ HP.classes [ HH.ClassName "sd-pending-overlay" ] ]
     [ HH.div_
-        [ HH.i_ []
+        [ I.spinner
         , HH.span_ [ HH.text "Please wait while this card is evaluated" ]
         ]
   ]

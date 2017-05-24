@@ -1,0 +1,161 @@
+.sd-action-list
+  $spacing: 0.5
+  $size: $grid-size * 4
+  display: flex
+  flex-direction: column
+  justify-content: space-around
+  width: 100%
+  height: 100%
+
+  &.with-filter
+    height: calc(100% - 4.4rem)
+
+  .alert
+    // BS
+    display: table-cell
+    margin: 0
+    text-align: center
+    vertical-align: middle
+
+  ul
+    flex: 1 1 auto
+    list-style: none
+    overflow: hidden
+    margin: 0.1rem
+    padding: 0
+
+    li
+      float: left
+      margin: 0
+      padding: 0
+      position: relative
+      border: 0.1rem solid transparent
+      vertical-align: top
+
+      button
+        display: block
+        position: relative
+        width: 100%
+        height: 100%
+        padding: 0
+        margin: 0
+        border: none
+        background: $action-list-disabled-bg
+        color: $action-list-btn-color
+        text-align: center
+        transition-property: background-color, color, opacity
+        transition-duration: 200ms
+        transition-timing-function: ease-out
+
+        .sd-icon > svg
+          height: 100%
+          width: 100%
+
+        p
+          padding: 0
+          margin: 0
+          overflow: hidden
+          text-overflow: ellipsis
+          white-space: nowrap
+          max-height: 100%
+
+        &:not(.sd-button-warning):not(:disabled)
+          background: $action-list-active-bg
+
+        &:disabled
+          background: $action-list-disabled-bg
+
+        &:not(:disabled)
+          &:hover
+            opacity: 0.8
+
+
+.sd-add-card-guide
+  width: 29rem
+  min-height: 4rem
+  padding-top: 0.5rem
+  padding-bottom: 1rem
+  margin-left: auto
+  margin-right: auto
+  position: absolute
+  top: 0
+  left: 50%
+  transform: translate(-50%, 0)
+  z-index: 999999
+
+
+form.sd-action-filter
+  flex: 0 0 auto
+  width: 100%
+
+  div
+    padding: 0 $grid-size
+    margin: auto
+    max-width: 48rem
+    position: relative
+
+  .sd-form input
+    width: 100%
+    height: 2.8rem
+    margin: 0.8rem 0
+    padding: 0 2.4rem 0 2.5rem
+    border: 0.1rem solid $input-border
+    box-shadow: inset 0.2rem 0.3rem 0.6rem -0.3rem $shade-tint
+
+    //&:focus
+    //  border-color: $input-border-focus
+
+  button
+    position: absolute
+    z-index: 2
+    top: 0.4rem
+    right: 2.5rem
+    opacity: 0.7
+    width: 1.8rem
+    height: 2.6rem
+    margin: 0.5rem 0
+    border: 0
+    padding: 0
+    background: transparent
+    line-height: 0
+    transition: opacity ease-out 0.25s
+
+    &:active, &:hover:active
+      background-color: $brand-primary
+
+    &:disabled
+      opacity: 0
+
+  .sd-action-filter-icon
+    display: flex
+    justify-content: center
+    align-items: center
+    position: absolute
+    z-index: 2
+    top: 0
+    bottom: 0
+    height: 100%
+    margin: auto
+    padding: 0 $padding-base-vertical
+    opacity: 0.5
+    font-size: 1.25em
+
+
+.sd-action-select
+  ul li button
+    background: $action-list-active-bg
+
+    &:not(.sd-button-warning):not(:disabled)
+      background: darken($action-list-active-bg, 20%)
+
+  .sd-picker-dialog-toolbar
+    border-top-color: transparent
+
+  .no-options
+    position: absolute
+    top: 50%
+    margin-top: -1rem
+    width: 100%
+    text-align: center
+    line-height: 2rem
+    opacity: 0.6

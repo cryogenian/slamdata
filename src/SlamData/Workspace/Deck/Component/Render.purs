@@ -208,12 +208,12 @@ deckIndicator st =
 flipButton ∷ DeckHTML
 flipButton =
   HH.button
-    [ HP.classes [ CSS.flipDeck ]
+    [ HP.classes [ CSS.flipDeckBtn ]
     , HE.onClick (HE.input_ FlipDeck)
     , ARIA.label "Flip deck"
     , HP.title "Flip deck"
     ]
-    []
+    [ I.flipDeck ]
 
 moveGripper ∷ DeckHTML
 moveGripper =
@@ -228,7 +228,7 @@ moveGripper =
 zoomInButton ∷ DeckHTML
 zoomInButton =
   HH.button
-     [ HP.classes [ CSS.zoomDeck ]
+     [ HP.classes [ CSS.zoomDeckBtn ]
      , ARIA.label "Zoom in"
      , HP.title "Zoom in"
      , HE.onClick (HE.input_ ZoomIn)
@@ -238,7 +238,7 @@ zoomInButton =
 zoomOutButton ∷ DeckHTML
 zoomOutButton =
   HH.button
-   [ HP.classes [ CSS.zoomDeck ]
+   [ HP.classes [ CSS.zoomDeckBtn ]
    , ARIA.label "Zoom out"
    , HP.title "Zoom out"
    , HE.onClick (HE.input_ ZoomOut)

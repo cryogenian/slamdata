@@ -49,6 +49,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query.EventSource as ES
 
 import SlamData.Monad (Slam)
+import SlamData.Render.Common (gripperDotsPattern)
 import SlamData.Wiring as Wiring
 
 import Unsafe.Coerce (unsafeCoerce)
@@ -107,7 +108,9 @@ render sel state =
           $ StartDragging (Int.toNumber $ DEM.clientY e)
     , ARIA.label $ label state
     ]
-    [ CSS.stylesheet $ renderStyles sel state ]
+    [ CSS.stylesheet $ renderStyles sel state
+    , gripperDotsPattern "header" 10 10
+    ]
   where
   label ∷ State → String
   label = case _ of

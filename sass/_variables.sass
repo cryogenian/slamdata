@@ -1,0 +1,105 @@
+// SlamData Sass variables -- some get piped into Bootstrap
+
+// old deck common vars
+$grid-size: 2.4rem !default
+$shade-tint: rgba(0, 0, 0, 0.1) !default
+
+$color-readonly: #00f !default
+$link-color: $brand-primary !default
+$btn-primary-bg: $brand-primary !default
+
+// A light theme is consider to be a theme with a luma above 255/2.
+// We'll use this to derive other values
+$is-light-theme: luma($body-bg) > 127.5
+
+// Basically wraps a switch statement and partially applies the theme
+// boolean
+@function brighten($color, $light, $dark)
+  @return if($is-light-theme, darken($color, $light), lighten($color, $dark))
+
+// used for separators & borders
+$color-separator: brighten($body-bg, 15%, 20%) !default
+
+
+$panel-bg: $body-bg !default
+$panel-inner-border: $color-separator !default
+$panel-default-border: $color-separator !default
+$panel-footer-bg: brighten($body-bg, 10%, 10%) !default
+$panel-default-heading-bg: brighten($body-bg, 10%, 10%) !default
+
+$table-bg: $body-bg !default
+$table-bg-accent: brighten($body-bg, 3.75%, 5%) !default
+$table-border-color: $color-separator !default
+
+$btn-default-color: $text-color !default
+$btn-default-bg: $body-bg !default
+$btn-default-border: $color-separator !default
+
+$input-bg: $body-bg !default
+$input-bg-disabled: brighten($input-bg, 3.75%, 5%) !default
+$input-border-focus: $brand-primary !default
+$input-border: $color-separator !default
+$input-color: $text-color !default
+
+$legend-border-color: $color-separator !default
+
+$pagination-border: $color-separator !default
+$pagination-hover-border: $pagination-border !default
+$pagination-active-border: $pagination-border !default
+$pagination-desabled-border: $pagination-border !default
+
+$list-group-border: $color-separator !default
+
+$modal-border-color: $color-separator !default
+
+$nav-tabs-border-color: $color-separator !default
+$nav-tabs-active-link-hover-border-color: $color-separator !default
+$nav-tabs-active-link-hover-color: $brand-primary !default
+$nav-tabs-active-link-hover-bg: brighten($body-bg, 10%, 15%) !default
+
+$thumbnail-border: $color-separator !default
+
+$pre-border-color: $color-separator !default
+
+$hr-border: $color-separator !default
+
+// Action List
+$action-list-btn-color: #fff !default
+$action-list-active-bg: $brand-primary !default
+$action-list-disabled-bg: brighten($body-bg, 20%, 5%) !default
+
+// Global menu
+$background-color-global-menu: #262626 !default
+$color-global-menu: #fff !default
+
+// Grippers
+$gripper-dots-color: $color-separator !default
+$gripper-dots-hover-color: brighten($color-separator, 3.75%, 5%) !default
+
+// Indicators
+$indicator-color: brighten($body-bg, 10%, 15%)
+
+// Toolbar with icons on the filesystem
+$filesystem-toolbar-color: $brand-primary !default
+$filesystem-toolbar-hover-color: $brand-primary !default
+
+// Download Card
+$download-card-sidebar-bg: brighten($body-bg, 3.75%, 5%) !default
+$download-card-sidebar-type-active-bg: $brand-primary !default
+$download-card-sidebar-type-inactive-bg: brighten($body-bg, 10%, 15%) !default
+
+// Error Card
+$error-card-bg: brighten($body-bg, 3.75%, 5%) !default
+
+// Tabs Card
+$tabs-card-header-bg: brighten($body-bg, 12.5%, 5%) !default
+$tabs-card-header-active-bg: brighten($body-bg, 5%, 10%) !default
+$tabs-card-add-btn-color: $brand-primary !default
+$tabs-card-add-btn-bg: brighten($body-bg, 15%, 15%) !default
+$tabs-card-add-btn-active-bg: brighten($body-bg, 20%, 20%) !default
+
+// Miller Columns
+$miller-column-border-color: $color-separator !default
+$miller-column-item-selected-bg: brighten($body-bg, 10%, 15%)
+$miller-column-item-hover-bg: brighten($body-bg, 3.75%, 5%) !default
+

@@ -23,6 +23,7 @@ module SlamData.Workspace.Card.Pending.Component
 import SlamData.Prelude
 
 import SlamData.Monad (Slam)
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Pending.Component.Query (Query, initiality)
 import SlamData.Workspace.Card.Pending.Component.State (State, initialState)
 
@@ -44,7 +45,7 @@ pendingCardComponent =
 render ∷ State → HTML
 render st =
   HH.div_
-    [ HH.i_ []
+    [ I.spinner
     , HH.span_ [ HH.text st.message ]
     ]
 

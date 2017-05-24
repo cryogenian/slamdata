@@ -1,0 +1,412 @@
+.sd-card-draftboard,
+.sd-draftboard-edge
+  position: absolute
+  width: 100%
+  height: 100%
+
+.sd-card-draftboard
+  background: #ccc
+
+  .sd-board-inset-shadow
+    position: fixed
+    top: 0
+    left: 0
+    width: 100%
+    height: 100%
+    z-index: 30
+    box-shadow: inset 0 0 0.8rem 0 rgba(0, 0, 0, 0.25)
+    pointer-events: none
+
+.sd-draftboard-edge
+  $draftboard-size: 1rem
+
+  background: transparent
+  cursor: pointer
+  padding: 0
+  margin: 0
+  border: 0
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+  outline: none
+
+  &:hover
+    background: rgba(0, 0, 0, 0.06)
+
+  &.sd-draftboard-edge-top
+    bottom: auto
+    height: $draftboard-size
+    cursor: ns-resize
+
+  &.sd-draftboard-edge-left
+    right: auto
+    width: $draftboard-size
+    cursor: ew-resize
+
+  &.sd-draftboard-edge-right
+    left: auto
+    width: $draftboard-size
+    cursor: ew-resize
+
+  &.sd-draftboard-edge-bottom
+    top: auto
+    height: $draftboard-size
+    cursor: ns-resize
+
+.sd-draftboard-edge-mid
+  width: 1rem
+  height: 1rem
+  margin-top: -0.5rem
+  margin-left: -0.5rem
+
+  &,
+  &::before
+    position: absolute
+    top: 50%
+    left: 50%
+
+  &::before
+    content: ""
+    border-style: solid
+    border-color: transparent
+
+  .sd-draftboard-edge-left &,
+  .sd-draftboard-edge-right &
+    height: 2rem
+    margin-top: -1rem
+
+  .sd-draftboard-edge-top &,
+  .sd-draftboard-edge-bottom &
+    width: 2rem
+    margin-left: -1rem
+
+  .sd-draftboard-edge-top &
+    cursor: s-resize
+
+  .sd-draftboard-edge-left &
+    cursor: e-resize
+
+  .sd-draftboard-edge-right &
+    cursor: w-resize
+
+  .sd-draftboard-edge-bottom &
+    cursor: n-resize
+
+  .sd-draftboard-edge-top &::before
+    border-width: 0.4rem 0.3rem 0 0.3rem
+    border-top-color: #888
+    margin-top: -0.2rem
+    margin-left: -0.4rem
+
+  .sd-draftboard-edge-left &::before
+    border-width: 0.3rem 0 0.3rem 0.4rem
+    border-left-color: #888
+    margin-top: -0.4rem
+    margin-left: -0.2rem
+
+  .sd-draftboard-edge-right &::before
+    border-width: 0.3rem 0.4rem 0.3rem 0
+    border-right-color: #888
+    margin-top: -0.4rem
+    margin-left: -0.2rem
+
+  .sd-draftboard-edge-bottom &::before
+    border-width: 0 0.3rem 0.4rem 0.3rem
+    border-bottom-color: #888
+    margin-top: -0.2rem
+    margin-left: -0.4rem
+
+.sd-draftboard-root
+  position: absolute
+  top: 0.5rem
+  left: 0.5rem
+  right: 0.5rem
+  bottom: 0.5rem
+  z-index: 1
+  pointer-events: none
+
+.sd-draftboard-guide
+  position: absolute
+  z-index: 10
+  border-style: dotted
+  border-color: #337ab7
+  border-width: 0
+  pointer-events: none
+
+  &.invalid
+    border-color: #f00
+
+  &.horizontal
+    width: 0
+    border-left-width: 0.1rem
+
+  &.vertical
+    height: 0
+    border-top-width: 0.1rem
+
+.sd-draftboard-guide-label
+  position: absolute
+  background: rgba(230, 230, 230, 0.9)
+  color: #666
+  font-size: 1.1rem
+  width: 3em
+  height: 2em
+  margin: 0
+  padding: 0
+  line-height: 2em
+  text-align: center
+  transition: 0.1s ease-out all
+  top: 0
+  left: 0
+
+  .invalid &
+    display: none
+
+  .horizontal &.leading
+    left: 0
+
+  .horizontal &.trailing
+    left: -3em
+    margin-left: -0.1rem
+
+  .vertical &.leading
+    top: 0
+
+  .vertical &.trailing
+    top: -2em
+    margin-top: -0.1rem
+
+.sd-draftboard-cell
+  position: absolute
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+  pointer-events: none
+
+  .splitting &,
+  .sizing &
+    pointer-events: auto
+
+.sd-draftboard-cell-content
+  position: absolute
+  top: 0.5rem
+  left: 0.5rem
+  right: 0.5rem
+  bottom: 0.5rem
+  background: #fff
+  box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.2)
+  pointer-events: auto
+
+.sd-draftboard-split-edge
+  position: absolute
+  z-index: 5
+  background: transparent
+  padding: 0
+  margin: 0
+  border-color: #337ab7
+  border-style: solid
+  border-width: 0
+  outline: none
+  pointer-events: auto
+
+  .splitting &
+    display: none
+
+  &.invalid
+    border-color: #f00
+
+  &.horizontal
+    width: 1rem
+    margin-left: -0.5rem
+    cursor: ew-resize
+
+  &.vertical
+    height: 1rem
+    margin-top: -0.5rem
+    cursor: ns-resize
+
+  &.sizing
+    margin: 0
+    width: 0
+    height: 0
+    pointer-events: none
+
+  &.sizing.horizontal
+    border-left-width: 0.1rem
+
+  &.sizing.vertical
+    border-top-width: 0.1rem
+
+.sd-draftboard-split-edge-loc
+  position: absolute
+  width: 0
+  height: 0
+  border: 0.3rem dotted transparent
+
+  &::before
+    content: " "
+    position: absolute
+    width: 0
+    height: 0
+    border-style: solid
+    border-color: transparent
+
+  .eq &
+    display: none
+
+  .vertical &
+    left: 50%
+    margin-left: -0.1rem
+    border-left-width: 0.1rem
+
+  .vertical.lt &
+    top: 0
+
+  .vertical.lt &::before
+    top: 0
+    left: -0.4rem
+    width: 0.1rem
+    border-width: 0 0.3rem 0.7rem 0.3rem
+    border-bottom-color: #337ab7
+
+  .vertical.gt &
+    bottom: 0
+
+  .vertical.gt &::before
+    bottom: 0.1rem
+    left: -0.4rem
+    width: 0.1rem
+    border-width: 0.7rem 0.3rem 0 0.3rem
+    border-top-color: #337ab7
+
+  .horizontal &
+    top: 50%
+    margin-top: -0.1rem
+    border-top-width: 0.1rem
+
+  .horizontal.lt &
+    left: 0
+
+  .horizontal.lt &::before
+    left: 0
+    top: -0.4rem
+    height: 0.1rem
+    border-width: 0.3rem 0.7rem 0.3rem 0
+    border-right-color: #337ab7
+
+  .horizontal.gt &
+    right: 0
+
+  .horizontal.gt &::before
+    right: 0.1rem
+    top: -0.4rem
+    height: 0.1rem
+    border-width: 0.3rem 0 0.3rem 0.7rem
+    border-left-color: #337ab7
+
+.sd-draftboard-cell-empty
+  button
+    background: none
+    padding: none
+    margin: none
+    border: none
+
+  .insert-cell, .delete-cell
+    position: absolute
+    height: 100%
+    width: 100%
+
+  .insert-cell
+    font-size: 4.5rem
+    color: #337ab7
+    max-width: 1.25em
+    max-height: 1.25em
+    padding: 0
+
+    &, > .sd-icon, > .sd-icon > svg
+      position: absolute
+      top: 0
+      bottom: 0
+      left: 0
+      right: 0
+      margin: auto
+
+    > .sd-icon
+      width: 80%
+      height: 80%
+
+      > svg
+        object-fit: scale-down
+        width: 100%
+        height: 100%
+
+  .delete-cell
+    top: 0
+    right: 0
+    max-width: $grid-size * 2
+    max-height: $grid-size * 2
+    text-align: center
+    font-size: 1.4rem
+    color: #aaa
+
+    .sd-draftboard-cell:only-child &
+      display: none
+
+.sd-draftboard-moving-icon
+  position: absolute
+  background: rgba(0, 0, 0, 0.2)
+  cursor: grabbing
+  border-radius: 0.4rem
+  pointer-events: auto
+  z-index: 9
+
+  &.floating
+    width: 16rem
+    height: 9.6rem
+    margin-top: -4.8rem
+    margin-left: -8rem
+    z-index: 9999
+    transition: none
+
+  &.group
+    &::before
+      content: ""
+      position: absolute
+      top: 0.8rem
+      left: 0.8rem
+      right: 0.8rem
+      bottom: 0.8rem
+      background-color: rgba(20, 120, 255, 0.4)
+
+    &.horizontal.side-a::before
+      right: 50%
+
+    &.horizontal.side-b::before
+      left: 50%
+
+    &.vertical.side-a::before
+      bottom: 50%
+
+    &.vertical.side-b::before
+      top: 50%
+
+.sd-deck-level-2
+  .sd-card-draftboard
+    background: #fff
+
+  .sd-draftboard-edge,
+  .sd-draftboard-split-edge,
+  .sd-draftboard-cell.empty
+    display: none
+
+  .sd-draftboard-root,
+  .sd-draftboard-cell-content
+    top: 0
+    left: 0
+    right: 0
+    bottom: 0
+
+  .sd-draftboard-cell-content
+    box-shadow: none

@@ -32,6 +32,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Common (gripperDotsPattern)
 import SlamData.Workspace.Deck.Common (DeckHTML)
 import SlamData.Workspace.Deck.Component.Query (Query(StartSliding))
 import SlamData.Workspace.Deck.Component.State (DisplayCard, eqDisplayCard)
@@ -68,10 +69,10 @@ gripperClassName = case _ of
 
 renderGrippers ∷ Boolean → Boolean → GripperDef × GripperDef → Array DeckHTML
 renderGrippers isActiveCard isGrabbed =
-  bifoldMap renderSingleton renderSingleton
+  bifoldMap (renderSingleton "grip-a" ) (renderSingleton "grip-b")
   where
-  render ∷ GripperDef → DeckHTML
-  render gripperDef =
+  render ∷ String → GripperDef → DeckHTML
+  render i gripperDef =
     HH.button
       ([ HP.classes [ gripperClassName gripperDef ]
        , HE.onMouseDown $ HE.input (StartSliding gripperDef)
@@ -80,7 +81,7 @@ renderGrippers isActiveCard isGrabbed =
        ]
        ⊕ (guard (isActiveCard) $> ARIA.label (gripperLabel gripperDef))
       )
-      []
+      [ gripperDotsPattern i 10 106 ]
 
-  renderSingleton ∷ GripperDef → Array DeckHTML
-  renderSingleton = Array.singleton ∘ render
+  renderSingleton ∷ String → GripperDef → Array DeckHTML
+  renderSingleton i = Array.singleton ∘ render i

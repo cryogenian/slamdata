@@ -18,6 +18,8 @@ module SlamData.Render.Common where
 
 import SlamData.Prelude
 
+import Data.Generic (gShow)
+
 import Halogen as H
 import Halogen.HTML.Core (HTML, ClassName)
 import Halogen.HTML as HH
@@ -25,6 +27,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Icon as I
 
 row ∷ ∀ p f. Array (HTML p f) → HTML p f
 row = HH.div [ HP.class_ $ H.ClassName "row" ]
@@ -49,7 +52,8 @@ clearFieldIcon label =
     , HP.title label
     , ARIA.label label
     ]
-    [ HH.span
+    [ I.removeSm
+    , HH.span
         [ HP.class_ CN.srOnly ]
         [ HH.text label ]
     ]
@@ -62,3 +66,43 @@ busyFieldIcon label =
     , ARIA.label label
     ]
     [ HH.text label ]
+
+svgElem ∷ ∀ r p i. HH.ElemName → Array (HP.IProp r i) → Array (HTML p i) → HTML p i
+svgElem =
+  HH.elementNS (HH.Namespace "http://www.w3.org/2000/svg")
+
+gripperDotsPattern ∷ ∀ p i. String → Int → Int → HTML p i
+gripperDotsPattern i w h =
+  let
+    w' = gShow w
+    h' = gShow h
+    gdpid = "gripper-dots-pattern-" <> i
+    attr' = HH.AttrName >>> HP.attr
+  in
+    svgElem (HH.ElemName "svg")
+      [ attr' "width" w'
+      , attr' "height" h'
+      ]
+      [ svgElem (HH.ElemName "defs") []
+          [ svgElem (HH.ElemName "pattern")
+              [ attr' "id" gdpid
+              , attr' "height" "5"
+              , attr' "width" "5"
+              , attr' "x" "0"
+              , attr' "y" "0"
+              , attr' "patternUnits" "userSpaceOnUse"
+              ]
+              [ svgElem (HH.ElemName "circle")
+                  [ attr' "cx" "2"
+                  , attr' "cy" "2"
+                  , attr' "r" "1.25"
+                  , attr' "fill" "currentColor"
+                  ] []
+              ]
+          ]
+      , svgElem (HH.ElemName "rect")
+          [ attr' "width" w'
+          , attr' "height" h'
+          , attr' "fill" $ "url(\"#" <> gdpid <> "\")"
+          ] []
+      ]
