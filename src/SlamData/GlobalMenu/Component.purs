@@ -250,6 +250,7 @@ eval = case _ of
     pure next
 
   PresentAttribution next → do
+    H.modify _{ menuOpen = Nothing }
     H.raise PresentAttributionsDialog
     pure next
 
