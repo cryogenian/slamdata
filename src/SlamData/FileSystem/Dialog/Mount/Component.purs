@@ -142,6 +142,7 @@ btnCancel state@{ unMounting, saving } =
   HH.button
     [ HP.classes [CN.btn]
     , HP.enabled $ not saving && not unMounting
+    , HP.type_ HP.ButtonButton
     , HE.onClick (HE.input_ RaiseDismiss)
     ]
     [ HH.text "Cancel" ]
