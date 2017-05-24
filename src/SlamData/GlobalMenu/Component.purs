@@ -127,10 +127,10 @@ render state =
     sitem provider =
       HH.li [ submenuItem ]
         [ HH.button
-          [ HP.classes $ HH.ClassName <$> [ "menu-item-button", "submenu-item-button" ]
-          , HE.onClick $ stopProp $ Authenticate $ pure provider
-          ]
-          [ HH.text $ "Sign in with " <> provider.displayName ]
+            [ HP.classes $ HH.ClassName <$> [ "menu-item-button", "submenu-item-button" ]
+            , HE.onClick $ stopProp $ Authenticate $ pure provider
+            ]
+            [ HH.text $ "Sign in with " <> provider.displayName ]
         ]
 
     -- wraps stuff in `li > a`
@@ -165,13 +165,13 @@ render state =
 
         _, Just _ →
           [ HH.div
-            [ HP.classes [ container, HH.ClassName "sign-in-menu-container" ] ] $
-            [ HH.button
-                [ HP.class_ $ HH.ClassName "sign-in-menu-button "
-                , HE.onClick $ stopProp $ SignOut -- Authenticate Nothing
-                ]
-                [ I.unlockSm, HH.text "Sign out" ]
-            ]
+              [ HP.classes [ container, HH.ClassName "sign-in-menu-container" ] ] $
+              [ HH.button
+                  [ HP.class_ $ HH.ClassName "sign-in-menu-button "
+                  , HE.onClick $ stopProp $ SignOut -- Authenticate Nothing
+                  ]
+                  [ I.unlockSm, HH.text "Sign out" ]
+              ]
           ]
 
         _, _ →
@@ -181,11 +181,11 @@ render state =
       HH.div
         [ HP.classes $ [ container, HH.ClassName "help-menu-container" ] ] $
         [ HH.button
-          [ HP.classes $ [ HH.ClassName "help-menu-button" ]
-              <> if state.menuOpen == Just HelpMenu then [ active ] else []
-          , HE.onClick $ stopProp $ ToggleMenu HelpMenu
-          ]
-          [ I.helpSm, HH.text "Help" ]
+            [ HP.classes $ [ HH.ClassName "help-menu-button" ]
+                <> if state.menuOpen == Just HelpMenu then [ active ] else []
+            , HE.onClick $ stopProp $ ToggleMenu HelpMenu
+            ]
+            [ I.helpSm, HH.text "Help" ]
         ] <>
           if state.menuOpen == Just HelpMenu then
             [ submenu
@@ -212,11 +212,11 @@ render state =
                   [ HH.text "Troubleshooting FAQ" ]
               , HH.li [ submenuItem ]
                   [ HH.button
-                    [ HP.classes $ HH.ClassName <$>
-                        [ "menu-item-button", "submenu-item-button" ]
-                    , HE.onClick $ stopProp $ PresentAttribution
-                    ]
-                    [ HH.text $ "Attribution" ]
+                      [ HP.classes $ HH.ClassName <$>
+                          [ "menu-item-button", "submenu-item-button" ]
+                      , HE.onClick $ stopProp $ PresentAttribution
+                      ]
+                      [ HH.text $ "Attribution" ]
                   ]
               ]
             ]
