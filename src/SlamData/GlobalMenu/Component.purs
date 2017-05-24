@@ -162,7 +162,6 @@ render state =
               else
                 []
           ]
-
         _, Just _ →
           [ HH.div
               [ HP.classes [ container, HH.ClassName "sign-in-menu-container" ] ] $
@@ -173,7 +172,6 @@ render state =
                   [ I.unlockSm, HH.text "Sign out" ]
               ]
           ]
-
         _, _ →
           []
 
@@ -233,35 +231,28 @@ eval = case _ of
   Authenticate providerR next → do
     authenticate providerR
     pure next
-
   DismissSubmenu next → do
     H.modify _{ menuOpen = Nothing }
     pure next
-
   HandleGlobalError error next →
     case error of
       GlobalError.Unauthorized _ → update $> next
       _ → pure next
-
   Init next → do
     { bus } ← H.lift Wiring.expose
     H.subscribe $ busEventSource (flip HandleGlobalError ES.Listening) bus.globalError
     update
     pure next
-
   PresentAttribution next → do
     H.modify _{ menuOpen = Nothing }
     H.raise PresentAttributionsDialog
     pure next
-
   SignOut next → do
     H.modify _{ email = Nothing }
     eval $ Authenticate Nothing next
-
   StopPropagation e q → do
     H.liftEff $ DEE.stopPropagation e
     eval q
-
   ToggleMenu which next → do
     menuOpen ← H.gets _.menuOpen
     let
