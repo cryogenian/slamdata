@@ -115,6 +115,9 @@ render state =
     container ∷ HH.ClassName
     container = HH.ClassName "menu-container"
 
+    active ∷ HH.ClassName
+    active = HH.ClassName "active"
+
     submenuItem =
       HP.classes $ HH.ClassName <$> [ "menu-item", "submenu-item" ]
 
@@ -146,9 +149,10 @@ render state =
       case state.providers, state.email of
         Just ps, _ →
           [ HH.div
-            [ HP.classes [ container, HH.ClassName "sign-in-menu-container" ] ] $
+            [ HP.classes $ [ container, HH.ClassName "sign-in-menu-container" ] ] $
             [ HH.button
-                [ HP.class_ $ HH.ClassName "sign-in-menu-button "
+                [ HP.classes $ [ HH.ClassName "sign-in-menu-button " ]
+                  <> if state.menuOpen == Just SignInMenu then [ active ] else []
                 , HE.onClick $ stopProp $ ToggleMenu SignInMenu
                 ]
                 [ I.lockSm, HH.text "Sign in" ]
@@ -175,9 +179,10 @@ render state =
 
     helpMenu =
       HH.div
-        [ HP.classes [ container, HH.ClassName "help-menu-container" ] ] $
+        [ HP.classes $ [ container, HH.ClassName "help-menu-container" ] ] $
         [ HH.button
-          [ HP.class_ $ HH.ClassName "help-menu-button"
+          [ HP.classes $ [ HH.ClassName "help-menu-button" ]
+              <> if state.menuOpen == Just HelpMenu then [ active ] else []
           , HE.onClick $ stopProp $ ToggleMenu HelpMenu
           ]
           [ I.helpSm, HH.text "Help" ]
