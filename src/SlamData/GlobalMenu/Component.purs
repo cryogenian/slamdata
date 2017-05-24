@@ -249,7 +249,7 @@ eval = case _ of
     H.modify _{ email = Nothing }
     eval $ Authenticate Nothing next
   StopPropagation e q → do
-    H.liftEff $ DEE.stopPropagation e
+    H.liftEff $ DOM.stopPropagation e
     eval q
   ToggleMenu which next → do
     menuOpen ← H.gets _.menuOpen
