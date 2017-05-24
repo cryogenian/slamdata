@@ -23,8 +23,6 @@ module SlamData.GlobalMenu.Component
 
 import SlamData.Prelude
 
-import DOM.Event.Event as DEE
-
 import Control.UI.Browser as Browser
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
