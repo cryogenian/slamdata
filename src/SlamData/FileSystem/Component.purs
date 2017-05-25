@@ -73,6 +73,7 @@ import SlamData.FileSystem.Dialog.Component.Message as DialogMessage
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
+import SlamData.FileSystem.Dialog.Mount.Module.Component.State as Module
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
@@ -590,11 +591,19 @@ configure ∷ R.Mount → DSL Unit
 configure m =
   API.mountInfo anyPath >>= case m, _ of
     R.View path, Left err → raiseError err
+    R.Module path, Left err → raiseError err
     R.Database path, Left err
       | path /= rootDir → raiseError err
       | otherwise →
           showDialog $ Dialog.Mount Mount.Root
     R.View path, Right config →
+      showDialog $ Dialog.Mount
+        $ Mount.Edit
+          { parent: either parentDir parentDir anyPath
+          , name: Just $ getNameStr anyPath
+          , settings: fromConfig config
+          }
+    R.Module path, Right config →
       showDialog $ Dialog.Mount
         $ Mount.Edit
           { parent: either parentDir parentDir anyPath
@@ -614,6 +623,7 @@ configure m =
 
     fromConfig = case _ of
       QM.ViewConfig config → Mount.SQL2 (SQL2.stateFromViewInfo config)
+      QM.ModuleConfig config → Mount.Module (Module.fromConfig config)
       QM.MongoDBConfig config → Mount.MongoDB (MongoDB.fromConfig config)
       QM.CouchbaseConfig config → Mount.Couchbase (Couchbase.fromConfig config)
       QM.MarkLogicConfig config → Mount.MarkLogic (MarkLogic.fromConfig config)

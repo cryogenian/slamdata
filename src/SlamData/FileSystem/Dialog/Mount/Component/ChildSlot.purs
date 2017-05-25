@@ -22,6 +22,7 @@ import Halogen.Component.ChildPath as CP
 
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
+import SlamData.FileSystem.Dialog.Mount.Module.Component as Module
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component as SparkLocal
@@ -34,10 +35,12 @@ type ChildQuery
   ⨁ MarkLogic.Query
   ⨁ Spark.Query
   ⨁ SparkLocal.Query
+  ⨁ Module.Query
   ⨁ Const Void
 
 type ChildSlot
   = Unit
+  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -62,3 +65,6 @@ cpSpark = CP.cp5
 
 cpSparkLocal ∷ CP.ChildPath SparkLocal.Query ChildQuery Unit ChildSlot
 cpSparkLocal = CP.cp6
+
+cpModule ∷ CP.ChildPath Module.Query ChildQuery Unit ChildSlot
+cpModule = CP.cp7

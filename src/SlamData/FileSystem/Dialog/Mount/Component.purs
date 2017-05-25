@@ -40,6 +40,7 @@ import SlamData.FileSystem.Dialog.Mount.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Mount.Component.State as MCS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
+import SlamData.FileSystem.Dialog.Mount.Module.Component as Module
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
@@ -89,6 +90,8 @@ render state@{ name, new, parent } =
       HH.slot' CS.cpMongoDB unit (MongoDB.comp initialState) unit (HE.input_ Validate)
     MCS.SQL2 initialState →
       HH.slot' CS.cpSQL unit (SQL2.comp initialState) unit (HE.input_ Validate)
+    MCS.Module initialState →
+      HH.slot' CS.cpModule unit (Module.comp initialState) unit (HE.input_ Validate)
     MCS.Couchbase initialState →
       HH.slot' CS.cpCouchbase unit (Couchbase.comp initialState) unit (HE.input_ Validate)
     MCS.MarkLogic initialState →
@@ -259,6 +262,7 @@ querySettings q = (map MCS.scheme <$> H.gets _.settings) >>= \s →
   case s of
     Just MS.MongoDB → H.query' CS.cpMongoDB unit q
     Just MS.SQL2 → H.query' CS.cpSQL unit q
+    Just MS.Module → H.query' CS.cpModule unit q
     Just MS.Couchbase → H.query' CS.cpCouchbase unit q
     Just MS.MarkLogic → H.query' CS.cpMarkLogic unit q
     Just MS.SparkHDFS → H.query' CS.cpSpark unit q

@@ -142,6 +142,8 @@ iconForResource = case _ of
   R.Directory _ → I.folderSm
   R.Mount (R.Database _) → I.database
   R.Mount (R.View _) → I.file
+  -- TODO: Different icon
+  R.Mount (R.Module _) → I.database
 
 evalOpen ∷ Query ~> DSL
 evalOpen = case _ of

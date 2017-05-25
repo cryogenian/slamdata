@@ -68,7 +68,7 @@ evalSearch queryText resource = do
     sql = Search.queryToSql fields query filePath
     backendPath = fromMaybe Path.rootDir $ Path.parentDir filePath
 
-  compileResult ← QQ.compile backendPath sql SM.empty
+  compileResult ← QQ.compile backendPath (Sql.Query mempty sql) SM.empty
 
   case compileResult of
     Left err →
@@ -78,7 +78,7 @@ evalSearch queryText resource = do
       CEM.addSources inputs
 
   _ ← CE.liftQ do
-    _ ← QQ.viewQuery outputResource sql SM.empty
+    _ ← QQ.viewQuery outputResource (Sql.Query mempty sql) SM.empty
     QFS.messageIfFileNotFound
       outputResource
       "Error making search temporary resource"

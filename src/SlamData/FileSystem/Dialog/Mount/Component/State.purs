@@ -23,9 +23,10 @@ import Data.Lens (Lens', lens)
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
+import SlamData.FileSystem.Dialog.Mount.Module.Component.State as Module
+import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
-import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 
 import Utils.Path (DirPath)
@@ -48,6 +49,7 @@ data Input
 data MountSettings
   = MongoDB MongoDB.State
   | SQL2 SQL2.State
+  | Module Module.State
   | Couchbase Couchbase.State
   | MarkLogic MarkLogic.State
   | SparkHDFS SparkHDFS.State
@@ -57,6 +59,7 @@ initialSettings ∷ MS.Scheme → MountSettings
 initialSettings = case _ of
   MS.MongoDB → MongoDB MongoDB.initialState
   MS.SQL2 → SQL2 SQL2.initialState
+  MS.Module → Module Module.initialState
   MS.Couchbase → Couchbase Couchbase.initialState
   MS.MarkLogic → MarkLogic MarkLogic.initialState
   MS.SparkHDFS → SparkHDFS SparkHDFS.initialState
@@ -117,6 +120,7 @@ scheme ∷ MountSettings → MS.Scheme
 scheme = case _ of
   MongoDB _ → MS.MongoDB
   SQL2 _ → MS.SQL2
+  Module _ → MS.Module
   Couchbase _ → MS.Couchbase
   MarkLogic _ → MS.MarkLogic
   SparkHDFS _ → MS.SparkHDFS

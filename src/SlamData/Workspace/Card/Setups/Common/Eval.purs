@@ -111,10 +111,10 @@ chartSetupEval buildSql buildPort m resource = do
 
       { inputs } ←
         CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
-          QQ.compile backendPath sql SM.empty
+          QQ.compile backendPath (Sql.Query mempty sql) SM.empty
 
       _ ← CE.liftQ do
-        _ ← QQ.viewQuery outputResource sql SM.empty
+        _ ← QQ.viewQuery outputResource (Sql.Query mempty sql) SM.empty
         QFS.messageIfFileNotFound
           outputResource
           "Error making search temporary resource"

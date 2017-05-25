@@ -77,12 +77,12 @@ eval sql r = do
 
   { inputs } ←
     CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
-      QQ.compile backendPath sql SM.empty
+      QQ.compile backendPath (Sql.Query mempty sql) SM.empty
 
   validateResources inputs
   CEM.addSources inputs
   _ ← CE.liftQ do
-    _ ← QQ.viewQuery resource sql SM.empty
+    _ ← QQ.viewQuery resource (Sql.Query mempty sql) SM.empty
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   let
     varMap =

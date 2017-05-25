@@ -21,6 +21,7 @@ import SlamData.Prelude
 data Scheme
   = MongoDB
   | SQL2
+  | Module
   | Couchbase
   | MarkLogic
   | SparkHDFS
@@ -33,6 +34,7 @@ derive instance ordScheme ∷ Ord Scheme
 schemeToString :: Scheme -> String
 schemeToString MongoDB = "MongoDB"
 schemeToString SQL2 = "SQL²"
+schemeToString Module = "SQL² Module"
 schemeToString Couchbase = "Couchbase"
 schemeToString MarkLogic = "MarkLogic"
 schemeToString SparkHDFS = "HDFS on Spark"
@@ -41,6 +43,7 @@ schemeToString SparkLocal = "Local on Spark"
 schemeFromString :: String -> Maybe Scheme
 schemeFromString "MongoDB" = Just MongoDB
 schemeFromString "SQL²" = Just SQL2
+schemeFromString "SQL² Module" = Just Module
 schemeFromString "Couchbase" = Just Couchbase
 schemeFromString "MarkLogic" = Just MarkLogic
 schemeFromString "HDFS on Spark" = Just SparkHDFS
@@ -51,6 +54,7 @@ schemes :: Array Scheme
 schemes =
   [ MongoDB
   , SQL2
+  , Module
   , Couchbase
   , MarkLogic
   , SparkHDFS

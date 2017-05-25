@@ -213,7 +213,7 @@ evalEmbeddedQueries sm dir =
     → String
     → m (Array EJSON.EJson)
   runQuery field code =
-    let esql = Sql.parse code
+    let esql = Sql.parseQuery code
     in case esql of
       Left error →
         CE.throwMarkdownError (CE.MarkdownSqlParseError { field, sql: code, error: parseErrorMessage error })

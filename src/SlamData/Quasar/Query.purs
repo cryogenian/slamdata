@@ -22,6 +22,8 @@ module SlamData.Quasar.Query
   , query
   , viewQuery
   , viewQuery'
+  , mountModule
+  , mountModule'
   , all
   , sample
   , count
@@ -54,7 +56,7 @@ import Quasar.Types (DirPath, FilePath, CompileResultR)
 
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 
-import SqlSquared (Sql, print)
+import SqlSquared (SqlModule, printModule, SqlQuery, printQuery, Sql, print)
 import SqlSquared as Sql
 
 import Utils.SqlSquared (tableRelation)
@@ -64,11 +66,11 @@ compile
   ∷ ∀ m
   . QuasarDSL m
   ⇒ DirPath
-  → Sql
+  → SqlQuery
   → SM.StrMap String
   → m (Either QError CompileResultR)
 compile backendPath sql varMap =
-  compile' backendPath (print sql) varMap
+  compile' backendPath (printQuery sql) varMap
 
 compile'
   ∷ ∀ m
@@ -84,29 +86,29 @@ query
   ∷ ∀ m
   . QuasarDSL m
   ⇒ DirPath
-  → Sql
+  → SqlQuery
   → m (Either QError JS.JArray)
 query path sql =
-  liftQuasar $ QF.readQuery Readable path (print sql) SM.empty Nothing
+  liftQuasar $ QF.readQuery Readable path (printQuery sql) SM.empty Nothing
 
 queryEJson
   ∷ ∀ m
   . QuasarDSL m
   ⇒ DirPath
-  → Sql
+  → SqlQuery
   → m (Either QError (Array EJS.EJson))
 queryEJson path sql =
-  liftQuasar $ QF.readQueryEJson path (print sql) SM.empty Nothing
+  liftQuasar $ QF.readQueryEJson path (printQuery sql) SM.empty Nothing
 
 queryEJsonVM
   ∷ ∀ m
   . QuasarDSL m
   ⇒ DirPath
-  → Sql
+  → SqlQuery
   → SM.StrMap String
   → m (Either QError (Array EJS.EJson))
 queryEJsonVM path sql vm =
-  liftQuasar $ QF.readQueryEJson path (print sql) vm Nothing
+  liftQuasar $ QF.readQueryEJson path (printQuery sql) vm Nothing
 
 -- | Runs a query creating a view mount for the query.
 viewQuery
@@ -114,10 +116,10 @@ viewQuery
   . QuasarDSL m
   ⇒ Monad m
   ⇒ FilePath
-  → Sql
+  → SqlQuery
   → SM.StrMap String
   → m (Either QError Unit)
-viewQuery dest sql vars = viewQuery' dest (print sql) vars
+viewQuery dest sql vars = viewQuery' dest (printQuery sql) vars
 
 -- | Runs a query creating a view mount for the query.
 viewQuery'
@@ -136,17 +138,37 @@ viewQuery' dest sql vars = do
       , vars
       })
 
+mountModule
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ Monad m
+  ⇒ DirPath
+  → SqlModule
+  → m (Either QError Unit)
+mountModule dest sql = mountModule' dest (printModule sql)
+
+mountModule'
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ Monad m
+  ⇒ DirPath
+  → String
+  → m (Either QError Unit)
+mountModule' dest sql = do
+  _ ← liftQuasar $ QF.deleteMount (Left dest)
+  liftQuasar $ QF.updateMount (Left dest) (QM.ModuleConfig { "module": sql })
+
 fileQuery
   ∷ ∀ m
   . QuasarDSL m
   ⇒ DirPath
   → FilePath
-  → Sql
+  → SqlQuery
   → SM.StrMap String
   → m (Either QError FilePath)
 fileQuery backendPath dest sql vars =
   liftQuasar $ map _.out <$>
-    QF.writeQuery backendPath dest (print sql) vars
+    QF.writeQuery backendPath dest (printQuery sql) vars
 
 
 all

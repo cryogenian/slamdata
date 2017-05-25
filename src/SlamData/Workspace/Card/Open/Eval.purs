@@ -86,7 +86,7 @@ evalOpen model varMap = case model of
         map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
       backendPath =
         fromMaybe Path.rootDir $ Path.parentDir res
-    CE.liftQ $ QQ.viewQuery res sql varMap'
+    CE.liftQ $ QQ.viewQuery res (Sql.Query mempty sql) varMap'
     pure $ Port.resourceOut $ Port.View res (Sql.print sql) varMap
 
   where

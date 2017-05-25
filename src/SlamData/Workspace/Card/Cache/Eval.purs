@@ -69,7 +69,7 @@ eval' tmp resource = do
         $ all
         ∘ (Sql._relations .~ tableRelation filePath)
   outputResource ← CE.liftQ $
-    QQ.fileQuery backendPath tmp sql SM.empty
+    QQ.fileQuery backendPath tmp (Sql.Query mempty sql) SM.empty
   checkResult ← QFS.messageIfFileNotFound outputResource (CE.CacheErrorSavingFile outputResource)
   for_ (either (Just ∘ CE.CacheQuasarError) id checkResult)
     CE.throwCacheError

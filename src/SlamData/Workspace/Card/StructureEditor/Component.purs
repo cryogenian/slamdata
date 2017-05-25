@@ -138,7 +138,7 @@ fetchData res = do
           Sql.binop Sql.Limit
             (Sql.buildSelect $ SU.all ∘ (Sql._relations .~ (SU.tableRelation path <#> SU.asRel "row")))
             (Sql.int 1000)
-      either (const []) id <$> QQ.queryEJson resourcePath sql
+      either (const []) id <$> QQ.queryEJson resourcePath (Sql.Query mempty sql)
     _ → pure []
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
