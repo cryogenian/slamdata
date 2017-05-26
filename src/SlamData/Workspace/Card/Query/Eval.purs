@@ -44,15 +44,16 @@ evalQuery
   ⇒ String
   → Port.DataMap
   → m Port.Out
-evalQuery sql varMap = do
+evalQuery sqlInput varMap = do
   resource ← CEM.temporaryOutputResource
   let
     varMap' = Sql.print ∘ unwrap <$> Port.flattenResources varMap
     backendPath = fromMaybe Path.rootDir (Path.parentDir resource)
-  { inputs } ← QQ.compile' backendPath sql varMap' >>= queryError CE.QueryCompileError
+  sql ← queryError CE.QueryParseError $ Sql.parseQuery sqlInput
+  { inputs } ← QQ.compile backendPath sql varMap' >>= queryError CE.QueryCompileError
   validateResources inputs
   CEM.addSources inputs
-  QQ.viewQuery' resource sql varMap' >>= queryError CE.QueryRetrieveResultError
+  QQ.viewQuery resource sql varMap' >>= queryError CE.QueryRetrieveResultError
   QQ.liftQuasar (QF.fileMetadata resource) >>= queryError CE.QueryRetrieveResultError
   pure $ Port.resourceOut $ Port.View resource sql varMap
 

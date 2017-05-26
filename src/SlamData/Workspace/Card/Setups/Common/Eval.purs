@@ -119,7 +119,7 @@ chartSetupEval buildSql buildPort m resource = do
           outputResource
           "Error making search temporary resource"
       let
-        view = Port.View outputResource (Sql.print sql) SM.empty
+        view = Port.View outputResource (Sql.Query mempty sql) SM.empty
         port = buildPort r axes
       pure (port × SM.singleton Port.defaultResourceVar (Left view))
 

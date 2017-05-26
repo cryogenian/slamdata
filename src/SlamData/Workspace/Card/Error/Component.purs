@@ -168,6 +168,12 @@ queryErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle [ HH.text "An error occurred when retrieving the query result." ]
           , renderMore qErr
           ]
+    -- TODO: add details
+    CE.QueryParseError pErr →
+      HH.div_
+        $ join
+          [ pure $ errorTitle $ [ HH.text "An error occured while parsing the query." ]
+          ]
   renderMore = case _ of
     QA.ErrorMessage {title, message, raw} →
       pure $ HH.div_

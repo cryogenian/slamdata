@@ -58,7 +58,7 @@ eval
 eval options varMap resource = do
   let
     filePath = resource ^. Port._filePath
-    query = mkSql options filePath
+    port × sql = mkSql options filePath
   r ← CEM.temporaryOutputResource
   state ← get
   axes ←
@@ -71,13 +71,13 @@ eval options varMap resource = do
           Left err → CE.throwPivotTableError (CE.PivotTableQuasarError err)
   let
     state' = { axes, records: [], resource }
-    view = Port.View r (Sql.print $ snd query) varMap
-    output = Port.PivotTable (fst query) × SM.singleton Port.defaultResourceVar (Left view)
+    view = Port.View r (Sql.Query mempty sql) varMap
+    output = Port.PivotTable port × SM.singleton Port.defaultResourceVar (Left view)
     backendPath = fromMaybe Path.rootDir (Path.parentDir r)
   put (Just (CEM.Analysis state'))
   when (Array.null options.columns) do
     CE.throwPivotTableError CE.PivotTableNoColumnSelectedError
-  QQ.viewQuery r (Sql.Query mempty (snd query)) SM.empty >>= case _ of
+  QQ.viewQuery r (Sql.Query mempty sql) SM.empty >>= case _ of
     Right result → pure result
     Left err → CE.throwPivotTableError (CE.PivotTableQuasarError err)
   pure output

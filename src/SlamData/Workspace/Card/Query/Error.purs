@@ -20,19 +20,23 @@ import SlamData.Prelude
 
 import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
+import Text.Parsing.Parser as P
 import Utils (hush)
 
 data QueryError
   = QueryCompileError QError
   -- ???: It's not entirely clear how this arises, the QueryCompileError case seems to catch the test cases we tried -gb
   | QueryRetrieveResultError QError
+  | QueryParseError P.ParseError
 
 instance showQueryError ∷ Show QueryError where
   show = case _ of
     QueryCompileError qe → "(QueryCompileError " <> show qe <> ")"
     QueryRetrieveResultError qe → "(QueryRetrieveResultError " <> show qe <> ")"
+    QueryParseError pe → "(QueryParseError " <> show pe <> ")"
 
 queryToGlobalError ∷ QueryError → Maybe GE.GlobalError
 queryToGlobalError = case _ of
   QueryCompileError qErr → hush (GE.fromQError qErr)
   QueryRetrieveResultError qErr → hush (GE.fromQError qErr)
+  QueryParseError pe → Nothing

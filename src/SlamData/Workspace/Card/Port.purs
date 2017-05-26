@@ -77,7 +77,7 @@ import Utils.Path as PU
 
 data Resource
   = Path PU.FilePath
-  | View PU.FilePath String DataMap
+  | View PU.FilePath Sql.SqlQuery DataMap
 
 derive instance eqResource ∷ Eq Resource
 

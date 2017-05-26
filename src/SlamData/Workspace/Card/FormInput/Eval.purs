@@ -46,7 +46,7 @@ import SlamData.Workspace.Card.FormInput.Model (Model(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SqlSquared (Sql)
+import SqlSquared (SqlQuery)
 import SqlSquared as Sql
 import Utils (stringToNumber)
 import Utils.SqlSquared (all, asRel, tableRelation)
@@ -66,7 +66,7 @@ eval
   ⇒ MonadState CEM.CardState m
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
-  ⇒ Sql
+  ⇒ SqlQuery
   → Port.Resource
   → m Port.Out
 eval sql r = do
@@ -77,17 +77,17 @@ eval sql r = do
 
   { inputs } ←
     CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
-      QQ.compile backendPath (Sql.Query mempty sql) SM.empty
+      QQ.compile backendPath sql SM.empty
 
   validateResources inputs
   CEM.addSources inputs
   _ ← CE.liftQ do
-    _ ← QQ.viewQuery resource (Sql.Query mempty sql) SM.empty
+    _ ← QQ.viewQuery resource sql SM.empty
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   let
     varMap =
       SM.fromFoldable
-        [ Port.defaultResourceVar × Left (Port.View resource (Sql.print sql) SM.empty)
+        [ Port.defaultResourceVar × Left (Port.View resource sql SM.empty)
         ]
   pure (Port.ResourceKey Port.defaultResourceVar × varMap)
 
@@ -149,7 +149,7 @@ evalLabeled m p r = do
 
   put $ Just $ CEM.AutoSelect {lastUsedResource: r, autoSelect: selected}
 
-  eval sql r
+  eval (Sql.Query mempty sql) r
 
 evalTextLike
   ∷ ∀ m
@@ -185,4 +185,4 @@ evalTextLike m p r = do
                         ( QQ.jcursorToSql p.cursor ))
                     selection ))
 
-  eval sql r
+  eval (Sql.Query mempty sql) r
