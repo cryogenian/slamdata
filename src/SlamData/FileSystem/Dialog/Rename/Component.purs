@@ -175,7 +175,7 @@ render dialog =
           [ HH.button
               [ HP.type_ HP.ButtonButton
               , HP.classes [ CN.btn, CN.btnPrimary ]
-              , HP.disabled $ isJust $ dialog.error
+              , HP.disabled $ isJust dialog.error
               ]
               [ HH.text "Rename" ]
           , HH.button
@@ -327,7 +327,6 @@ eval (Init next) = do
   state <- H.get
   dirItemClicked $ R.parent $ state.initial
   pure next
-
 
 dirItemClicked ∷ R.Resource → DSL Unit
 dirItemClicked res = do

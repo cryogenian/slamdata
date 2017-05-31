@@ -190,7 +190,6 @@ progressSpinner alt =
 
 eval ∷ Query ~> DSL
 eval (ModifyState f next) = H.modify f *> validateInput $> next
-
 eval (SelectScheme newScheme next) = do
   currentScheme ← map MCS.scheme <$> H.gets _.settings
   when (currentScheme /= newScheme) do
