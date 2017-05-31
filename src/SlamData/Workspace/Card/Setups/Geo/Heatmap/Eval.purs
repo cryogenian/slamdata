@@ -23,7 +23,7 @@ import Halogen.VDom.DOM.StringRenderer as VDS
 import Leaflet.Core as LC
 import Leaflet.Plugin.Heatmap as LH
 
-import Math ((%))
+import Math ((%), log)
 
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
@@ -119,7 +119,7 @@ buildGeoHeatmap m axes =
       avgLng = mkAvgLng items
       zoomLat = 360.0 / latDiff
       zoomLng = 360.0 / lngDiff
-      zoomInt = min (Int.floor zoomLat) (Int.floor zoomLng)
+      zoomInt = Int.ceil $ (log $ min zoomLat zoomLng) / log 2.0
       maxI = maxIntensity items
       asNumArray = unsafeCoerce
       onClickHandler cvsRef e = do
@@ -161,11 +161,10 @@ buildGeoHeatmap m axes =
 
     zoom ← LC.mkZoom zoomInt
     view ← LC.mkLatLng avgLat avgLng
-    LC.once "zoomend" (const $ void $ LC.setView view leaf) $ LC.mapToEvented leaf
+    _ ← LC.setZoom zoom leaf
+    _ ← LC.setView view leaf
     cvs ← LH.mkHeatmap LH.defaultOptions{maxIntensity = maxI} items heatmap leaf
     LC.on "click" (onClickHandler cvs) $ LC.mapToEvented leaf
-
-    _ ← LC.setZoom zoom leaf
 
 
     pure $ [ heatmap ] × [ ]

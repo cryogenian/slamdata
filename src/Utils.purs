@@ -28,6 +28,9 @@ import Data.String as S
 import Global (readFloat, isNaN, isFinite)
 import SqlSquared.Signature.Ident (printIdent)
 
+
+foreign import debugTime ∷ ∀ a. String → (Unit → a) → a
+
 stringToNumber ∷ String → Maybe Number
 stringToNumber s =
   if isNaN n || not isFinite n

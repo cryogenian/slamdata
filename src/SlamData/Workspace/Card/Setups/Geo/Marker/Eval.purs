@@ -28,7 +28,7 @@ import Halogen.VDom.DOM.StringRenderer as VDS
 
 import Leaflet.Core as LC
 
-import Math ((%))
+import Math ((%), log)
 
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
@@ -115,7 +115,7 @@ buildMarker r _ =
   Port.GeoChart { build }
   where
   mkItems ∷ Array Json → Array Item
-  mkItems = foldMap (foldMap A.singleton ∘ decodeItem)
+  mkItems = foldMap $ foldMap A.singleton ∘ decodeItem
 
   mkMaxLat ∷ Array Item → Number
   mkMaxLat = fromMaybe zero ∘ A.head ∘ A.reverse ∘ A.sort ∘ map (LC.degreesToNumber ∘ _.lat)
@@ -163,7 +163,7 @@ buildMarker r _ =
       avgLng = mkAvgLng items
       zoomLat = 360.0 / latDiff
       zoomLng = 360.0 / lngDiff
-      zoomInt = min (Int.floor zoomLat) (Int.floor zoomLng)
+      zoomInt = Int.ceil $ (log $ min zoomLat zoomLng) / log 2.0
       series = mkSeries items
       minSize = mkMinSize items
       maxSize = mkMaxSize items
@@ -177,7 +177,8 @@ buildMarker r _ =
         let
           color s = unsafePartial fromJust $ Sm.lookup s series
         layer
-          ← if isNothing r.series && isNothing r.size
+         -- Renderer is too slow for png/svg icons :(
+          ← if isNothing r.series && isNothing r.size && A.length items < 1001
             then map LC.markerToLayer $ LC.marker {lat, lng} >>= LC.setIcon icon
             else
               map LC.circleMarkerToLayer
@@ -234,14 +235,19 @@ buildMarker r _ =
 
     layGroups ← for overlays LC.layerGroup
 
-    control ← LC.layers Sm.empty layGroups { collapsed: false }
-    _ ← LC.addTo leaf control
+    control ← case r.series of
+      Nothing → pure [ ]
+      Just _ → do
+        c ← LC.layers Sm.empty layGroups { collapsed: false }
+        _ ← LC.addTo leaf c
+        pure [ c ]
+
 
     _ ← LC.setZoom zoom leaf
-    LC.once "zoomend" (const $ void $ LC.setView view leaf) $ LC.mapToEvented leaf
+    _ ← LC.setView view leaf
     let
       toSend
         | Sm.isEmpty layGroups = layers
         | otherwise = Sm.values $ map LC.groupToLayer layGroups
 
-    pure $ toSend × [ control ]
+    pure $ toSend × control
