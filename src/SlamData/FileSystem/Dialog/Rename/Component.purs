@@ -174,18 +174,19 @@ render dialog =
       , modalFooter
           [ HH.button
               [ HP.type_ HP.ButtonButton
+              , HP.classes [ CN.btn, CN.btnPrimary ]
+              , HP.disabled $ isJust $ dialog.error
+              ]
+              [ HH.text "Rename" ]
+          , HH.button
+              [ HP.type_ HP.ButtonButton
               , HP.classes
                 [ CN.btn
                 , CN.btnDefault
                 ]
-              , HE.onClick (HE.input_ RaiseDismiss)
+              , HE.onClick $ HE.input_ RaiseDismiss
               ]
               [ HH.text "Cancel" ]
-          , HH.button
-              [ HP.classes [ CN.btn, CN.btnPrimary ]
-              , HP.disabled $ isJust $ dialog.error
-              ]
-              [ HH.text "Rename" ]
           ]
       ]
     ]
@@ -326,6 +327,7 @@ eval (Init next) = do
   state <- H.get
   dirItemClicked $ R.parent $ state.initial
   pure next
+
 
 dirItemClicked ∷ R.Resource → DSL Unit
 dirItemClicked res = do

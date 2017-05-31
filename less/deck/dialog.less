@@ -41,6 +41,7 @@
     padding: 1.6rem;
     margin: 0;
   }
+
   .deck-dialog-body {
     flex: 1 1 auto;
     position: relative;
@@ -99,13 +100,15 @@
   }
 
   .deck-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
     flex: 0 0 auto;
     padding: 1.6rem;
 
-    .btn:not(.btn-careful) {
+    .btn:not(.btn-careful):not(:first-of-type) {
       margin-left: 1.6rem;
-      float: right;
     }
+
     .alert-danger {
       margin-bottom: 1em;
     }

@@ -84,7 +84,7 @@ render state@{ name, new, parent } =
       ]
   where
   settings ∷ MCS.MountSettings → HTML
-  settings ss = case ss of
+  settings = case _ of
     MCS.MongoDB initialState →
       HH.slot' CS.cpMongoDB unit (MongoDB.comp initialState) unit (HE.input_ Validate)
     MCS.SQL2 initialState →
@@ -140,7 +140,7 @@ errorMessage msg =
 btnCancel ∷ MCS.State -> HTML
 btnCancel state@{ unMounting, saving } =
   HH.button
-    [ HP.classes [CN.btn]
+    [ HP.classes [ CN.btn, CN.btnDefault ]
     , HP.enabled $ not saving && not unMounting
     , HP.type_ HP.ButtonButton
     , HE.onClick (HE.input_ RaiseDismiss)
@@ -190,6 +190,7 @@ progressSpinner alt =
 
 eval ∷ Query ~> DSL
 eval (ModifyState f next) = H.modify f *> validateInput $> next
+
 eval (SelectScheme newScheme next) = do
   currentScheme ← map MCS.scheme <$> H.gets _.settings
   when (currentScheme /= newScheme) do
