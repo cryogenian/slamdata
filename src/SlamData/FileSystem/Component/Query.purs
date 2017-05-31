@@ -29,6 +29,7 @@ import DOM.HTML.Types (HTMLElement)
 import SlamData.Common.Sort (Sort)
 import SlamData.FileSystem.Listing.Item (Item)
 import SlamData.FileSystem.Routing.Salt (Salt)
+import SlamData.Header.Component as Header
 import SlamData.GlobalError (GlobalError)
 import SlamData.GlobalMenu.Bus (SignInMessage)
 import SlamData.License (LicenseProblem)
@@ -73,6 +74,7 @@ data Query a
   | HandleSignInMessage SignInMessage a
   | HandleSearch Search.Message a
   | HandleLicenseProblem LicenseProblem a
+  | HandleHeader Header.Message a
   | SetLoading Boolean a
   | SetIsSearching Boolean a
   | AddListings (Array Item) a

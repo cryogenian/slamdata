@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -29,22 +29,19 @@ import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Eff.Ref as Ref
 import Control.UI.Browser as Browser
-
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
-
 import OIDC.Crypt as Crypt
-
 import Quasar.Advanced.Types (ProviderR)
-
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.GlobalError (GlobalError)
 import SlamData.GlobalError as GlobalError
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
+import SlamData.AdminUI.Component as AdminUI
 import SlamData.Monad (Slam)
 import SlamData.Quasar as Api
 import SlamData.Quasar.Auth as Auth
@@ -53,7 +50,6 @@ import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Eval.Card as EvalCard
 import SlamData.Workspace.Eval.Persistence as Persistence
-
 import Utils.DOM as DOM
 
 data AuthenticateOrPresentHelp
@@ -67,6 +63,7 @@ data Query a
   | SignOut a
   | StopPropagation DOM.Event (Query a)
   | ToggleMenu MenuOpen a
+  | AdminUIClicked a
 
 data MenuOpen
  = SignInMenu
@@ -81,15 +78,19 @@ type State =
   , providers ∷ Maybe (Array ProviderR)
   }
 
-data Message =
-  PresentAttributionsDialog
+type ChildQuery = AdminUI.Query ⨁ Const Void
+type ChildSlot = Unit ⊹ Void
 
-type HTML = H.ComponentHTML Query
-type DSL = H.ComponentDSL State Query Message Slam
+data Message
+  = PresentAttributionsDialog
+  | OpenAdminUI
+
+type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
+type DSL = H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 
 component ∷ H.Component HH.HTML Query Unit Message Slam
 component =
-  H.lifecycleComponent
+  H.lifecycleParentComponent
     { initialState: \_ →
       { email: Nothing
       , loggedIn: false
@@ -141,6 +142,17 @@ render state =
     userInfo =
       flip foldMap state.email \e →
         [ HH.div [ HP.class_ $ HH.ClassName "user-info" ] [ HH.text e ] ]
+
+    adminMenu =
+      [ HH.div
+          [ HP.classes [ container, HH.ClassName "sign-in-menu-container" ] ] $
+          [ HH.button
+              [ HP.class_ $ HH.ClassName "sign-in-menu-button "
+              , HE.onClick $ stopProp $ AdminUIClicked
+              ]
+              [ I.wrenchesCrossed, HH.text "Settings" ]
+          ]
+      ]
 
     signInMenu =
       case state.providers, state.email of
@@ -221,7 +233,7 @@ render state =
   in
     HH.div
       [ HP.classes $ [ HH.ClassName "sd-global-menu" ] ] $
-      userInfo <> signInMenu <> [ helpMenu ]
+      adminMenu <> userInfo <> signInMenu <> [ helpMenu ]
 
 eval ∷ Query ~> DSL
 eval = case _ of
@@ -259,6 +271,9 @@ eval = case _ of
         Just SignInMenu, SignInMenu → Nothing
         _, _ → Just which
     H.modify _{ menuOpen = m }
+    pure next
+  AdminUIClicked next → do
+    H.raise OpenAdminUI
     pure next
 
 update ∷ DSL Unit

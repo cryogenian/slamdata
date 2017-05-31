@@ -21,6 +21,7 @@ import DOM.Event.Types (MouseEvent)
 import Halogen as H
 import Quasar.Advanced.Types (ProviderR)
 import SlamData.GlobalMenu.Bus (SignInMessage)
+import SlamData.Header.Component as Header
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Notification as N
 import SlamData.Wiring as Wiring
@@ -39,7 +40,9 @@ data Query a
   | PresentStepByStepGuide GuideType (H.SubscribeStatus → a)
   | Resize (H.SubscribeStatus → a)
   | SignIn ProviderR a
+  | HandleDialog Dialog.Message a
   | HandleGuideMessage GuideType Guide.Message a
+  | HandleHeader Header.Message a
   | HandleNotification N.Action a
   | HandleSignInMessage SignInMessage a
   | HandleWorkspace Wiring.WorkspaceMessage a

@@ -27,14 +27,11 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Ref (readRef)
 import Control.Monad.Fork (fork)
 import Control.UI.Browser as Browser
-
 import DOM.Classy.Event (currentTarget, target) as DOM
 import DOM.Classy.Node (toNode) as DOM
-
 import Data.Coyoneda (liftCoyoneda)
 import Data.List as List
 import Data.Time.Duration (Milliseconds(..))
-
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
@@ -42,7 +39,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
-
+import SlamData.AdminUI.Component as AdminUI
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
@@ -68,7 +65,7 @@ import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Class (navigate, Routes(..))
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck, cpGuide, cpHeader, cpNotify, cpDialog)
+import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpAdminUI, cpDeck, cpDialog, cpGuide, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (Query(..))
 import SlamData.Workspace.Component.State (State, initialState)
 import SlamData.Workspace.Deck.Common as DeckCommon
@@ -113,6 +110,7 @@ render accessType state =
     , cardGuide
     , flipGuide
     , dialogSlot
+    , adminUISlot
     ]
   where
   renderError err =
@@ -148,12 +146,15 @@ render accessType state =
   dialogSlot =
     HH.slot' cpDialog unit Dialog.component unit (HE.input HandleDialog)
 
+  adminUISlot =
+    HH.slot' cpAdminUI unit AdminUI.component unit absurd
+
   notifications =
     HH.slot' cpNotify unit (NC.component (NC.renderModeFromAccessType accessType)) unit (HE.input HandleNotification)
 
   header =
     if AT.isEditable accessType
-      then HH.slot' cpHeader unit Header.component unit absurd
+      then HH.slot' cpHeader unit Header.component unit (HE.input HandleHeader)
       else HH.text ""
 
   deck =
@@ -236,6 +237,9 @@ eval = case _ of
     H.liftAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
     either signInFailure (const $ signInSuccess) =<< (H.liftAff $ takeVar idToken)
     pure next
+  HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next →
+    traceAny "hello" \_ → H.query' cpAdminUI unit (H.action AdminUI.Open) $> next
+  HandleHeader _ next → pure next
   HandleGuideMessage slot Guide.Dismissed next → do
     case slot of
       CardGuide → do

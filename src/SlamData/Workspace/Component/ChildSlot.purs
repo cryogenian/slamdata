@@ -19,6 +19,7 @@ module SlamData.Workspace.Component.ChildSlot where
 import SlamData.Prelude
 
 import Halogen.Component.ChildPath as CP
+import SlamData.AdminUI.Component as AdminUI
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Header.Component as Header
 import SlamData.Notification.Component as Notify
@@ -33,9 +34,10 @@ type ChildQuery
   ⨁ Notify.Query
   ⨁ Guide.Query
   ⨁ Dialog.Query
+  ⨁ AdminUI.Query
   ⨁ Const Void
 
-type ChildSlot = DeckId ⊹ Unit ⊹ Unit ⊹ GuideType ⊹ Unit ⊹ Void
+type ChildSlot = DeckId ⊹ Unit ⊹ Unit ⊹ GuideType ⊹ Unit ⊹ Unit ⊹ Void
 
 cpDeck ∷ CP.ChildPath DCQ.Query ChildQuery DeckId ChildSlot
 cpDeck = CP.cp1
@@ -51,3 +53,6 @@ cpGuide = CP.cp4
 
 cpDialog ∷ CP.ChildPath Dialog.Query ChildQuery Unit ChildSlot
 cpDialog = CP.cp5
+
+cpAdminUI ∷ CP.ChildPath AdminUI.Query ChildQuery Unit ChildSlot
+cpAdminUI = CP.cp6

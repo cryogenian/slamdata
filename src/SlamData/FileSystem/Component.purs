@@ -54,6 +54,7 @@ import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
 import Quasar.Data (QData(..))
 import Quasar.Mount as QM
+import SlamData.AdminUI.Component as AdminUI
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
@@ -127,7 +128,7 @@ render state@{ version, sort, salt, path } =
     [ HP.classes [ FileSystemClassNames.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
     ]
-    $ [ HH.slot' CS.cpHeader unit Header.component unit absurd
+    $ [ HH.slot' CS.cpHeader unit Header.component unit $ HE.input HandleHeader
       , content
           [ HH.slot' CS.cpSearch unit Search.component unit $ HE.input HandleSearch
           , HH.div_
@@ -140,6 +141,7 @@ render state@{ version, sort, salt, path } =
       , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
     , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
           $ HE.input HandleNotifications
+      , HH.slot' CS.cpAdminUI unit AdminUI.component unit absurd
       ]
     ⊕ (guard state.presentIntroVideo $> renderIntroVideo)
     ⊕ (guard state.presentIntroVideo $> renderIntroVideoBackdrop)
@@ -382,6 +384,11 @@ eval = case _ of
     mount ← R.Mount ∘ R.Database <$> H.gets _.path
     remove mount
     H.liftEff Browser.reload
+    pure next
+  HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next → do
+    _ ← H.query' CS.cpAdminUI unit (H.action AdminUI.Open)
+    pure next
+  HandleHeader _ next →
     pure next
   HandleNotifications NC.ExpandGlobalMenu next → do
     gripperState ← queryHeaderGripper $ H.request Gripper.GetState

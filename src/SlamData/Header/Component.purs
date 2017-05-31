@@ -42,10 +42,13 @@ type State =
 
 data Query a
   = HandleGripper Gripper.Message a
+  | HandleGlobalMenu GlobalMenu.Message a
   | QueryGripper (Coyoneda Gripper.Query a)
   | QueryGlobalMenu (Coyoneda GlobalMenu.Query a)
-  | ToggleAttributions a
   | Dismiss a
+
+data Message
+  = GlobalMenuMessage GlobalMenu.Message
 
 type ChildQuery = Gripper.Query ⨁ GlobalMenu.Query ⨁ Const Void
 
@@ -53,7 +56,7 @@ type ChildSlot = Unit ⊹ Unit ⊹ Void
 
 type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 
-component ∷ H.Component HH.HTML Query Unit Void Slam
+component ∷ H.Component HH.HTML Query Unit Message Slam
 component = H.parentComponent
   { initialState: const { open: false, attributions: false }
   , render
@@ -69,13 +72,13 @@ render { open, attributions } =
         , HH.ClassName if open then "open" else "closed" ]
         ]
     [ if attributions
-        then Attribution.render ToggleAttributions
+        then Attribution.render (HandleGlobalMenu GlobalMenu.PresentAttributionsDialog)
         else HH.text ""
     , HH.div_
         [ HH.div_
             [ HH.div [ HP.classes [ CN.header ] ]
                 [ logo CV.shortVersion
-                , HH.slot' CP.cp2 unit GlobalMenu.component unit (HE.input_ ToggleAttributions)
+                , HH.slot' CP.cp2 unit GlobalMenu.component unit (HE.input HandleGlobalMenu)
                 , HH.slot' CP.cp1 unit (Gripper.component "nav") unit $ HE.input HandleGripper
                 ]
             ]
@@ -99,12 +102,19 @@ logo mbVersion =
       ]
     ⊕ foldMap (pure ∘ HH.div_ ∘ pure ∘ HH.text) mbVersion
 
-eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Void Slam
+eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 eval = case _ of
   HandleGripper (Gripper.Notify st) next → do
     case st of
       Gripper.Closed → H.put { open: false, attributions: false }
       _ → H.modify _ { open = true }
+    pure next
+  HandleGlobalMenu msg next → do
+    case msg of
+      GlobalMenu.PresentAttributionsDialog →
+        H.modify (\s → s { attributions = not s.attributions })
+      GlobalMenu.OpenAdminUI →
+        H.raise (GlobalMenuMessage GlobalMenu.OpenAdminUI)
     pure next
   QueryGripper iq → do
     iq # Coyoneda.unCoyoneda \k q -> do
@@ -121,5 +131,3 @@ eval = case _ of
   Dismiss next → do
     _ ← H.query' CP.cp2 unit $ H.action GlobalMenu.DismissSubmenu
     pure next
-  ToggleAttributions next →
-    H.modify (\s → s { attributions = not s.attributions }) $> next
