@@ -16,7 +16,6 @@ import Leaflet.Core as LC
 
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 import SlamData.Workspace.Card.Geo.Component.State as ST
 import SlamData.Workspace.Card.Geo.Component.Query as Q
 import SlamData.Workspace.Card.Geo.Component.ChildSlot as CS
@@ -29,7 +28,7 @@ type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
 component ∷ CC.CardOptions → CC.CardComponent
 component =
-  CC.makeCardComponent (CT.SetupGeoChart GcT.Marker) $ H.parentComponent
+  CC.makeCardComponent (CT.GeoChart) $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , receiver: const Nothing

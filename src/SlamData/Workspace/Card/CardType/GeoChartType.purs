@@ -53,5 +53,5 @@ lightIconSrc = case _ of
 
 darkIconSrc ∷ GeoChartType → String
 darkIconSrc = case _ of
-  Marker → "img/geo/marker.svg"
-  Heatmap → "img/geo/heatmap.svg"
+  Marker → "img/geo/marker-black.svg"
+  Heatmap → "img/geo/heatmap-black.svg"

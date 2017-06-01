@@ -56,21 +56,19 @@
      transform="translate(0,-796.36216)">
     <g
        id="g4688"
-       transform="matrix(1.34375,0,0,1.3473686,-44,-276.63124)"
-       style="fill:#337ab7;fill-opacity:1">
+       transform="matrix(1.1874914,0,0,1.1789475,-19.998399,-142.50704)"
+       style="fill:#ffffff;fill-opacity:1">
       <path
-         style="opacity:0.98000004;fill:#337ab7;fill-opacity:1;stroke:none;stroke-width:0.80699998;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         d="M 128,0 C 80.503187,0 41.751409,38.608354 42,86.232422 42.25334,134.76628 126.27539,256 126.27539,256 126.27539,256 213.93023,145.08717 214,86.232422 214.05645,38.607738 175.49681,0 128,0 Z"
+         style="opacity:0.98000004;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.80699998;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         d="M 128,0 C 80.503187,0 41.751409,38.608354 42,86.232422 42.25334,134.76628 126.27539,256 126.27539,256 126.27539,256 213.93023,145.08717 214,86.232422 214.05645,38.607738 175.49681,0 128,0 Z m 0,22 a 64,64 0 0 1 64,64 64,64 0 0 1 -64,64 64,64 0 0 1 -64,-64 64,64 0 0 1 64,-64 z"
          transform="matrix(0.74418605,0,0,0.7421874,32.744186,796.36218)"
          id="path4684"
-         inkscape:connector-curvature="0"
-         sodipodi:nodetypes="sscss" />
+         inkscape:connector-curvature="0" />
     </g>
-    <circle
+    <path
        style="opacity:0.98000004;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.80699998;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       id="path4695"
-       cx="128"
-       cy="882.36218"
-       r="64" />
+       d="m 132,988.3622 a 96,31.999977 0 0 0 -96,32 96,31.999977 0 0 0 96,32 96,31.999977 0 0 0 96,-32 96,31.999977 0 0 0 -96,-32 z m 0,7.99999 a 72,23.999983 0 0 1 72,24.00001 72,23.999983 0 0 1 -72,24 72,23.999983 0 0 1 -72,-24 72,23.999983 0 0 1 72,-24.00001 z"
+       id="path4145"
+       inkscape:connector-curvature="0" />
   </g>
 </svg>
