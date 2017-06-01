@@ -31,7 +31,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
-import SlamData.Render.CSS as CSS
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.Cache.Component.Query (Query(..))
 import SlamData.Workspace.Card.Cache.Component.State (State, _confirmedPath, _pathString, initialState)
 import SlamData.Workspace.Card.CardType as CT
@@ -57,7 +57,7 @@ cacheCardComponent =
 render ∷ State → CacheHTML
 render state =
   HH.div
-    [ HP.class_ CSS.form ]
+    [ HP.class_ CN.form ]
     [ HH.input
         [ HP.type_ HP.InputText
         , HP.placeholder "Cache file destination"

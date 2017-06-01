@@ -28,8 +28,8 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
@@ -116,9 +116,9 @@ renderFormatter state =
   HH.div
     [ HP.classes [ HH.ClassName "chart-configure-input" ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Value formatter" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Value formatter" ]
     , HH.input
-        $ [ HP.classes [ B.formControl ] ]
+        $ [ HP.classes [ CN.formControl ] ]
         ⊕ foldMap (pure ∘ HP.value) state.formatter
         ⊕ [ ARIA.label "Value formatter" ]
         ⊕ [ HE.onValueInput $ HE.input (\s → right ∘ Q.SetFormatter s) ]
@@ -129,9 +129,9 @@ renderLabel state =
   HH.div
     [ HP.classes [ HH.ClassName "chart-configure-input" ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Label" ]
     , HH.input
-        $ [ HP.classes [ B.formControl ] ]
+        $ [ HP.classes [ CN.formControl ] ]
         ⊕ foldMap (pure ∘ HP.value) state.label
         ⊕ [ ARIA.label "Label" ]
         ⊕ [ HE.onValueInput $ HE.input (\s → right ∘ Q.SetLabel s) ]

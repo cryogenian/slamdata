@@ -1,33 +1,37 @@
 .save-card-button {
-    width: 100px;
-    button {
-        width: 100%;
-    }
+  width: 10rem;
+
+  button {
+    width: 100%;
+  }
 }
 
 .sd-card-save {
-    .sd-form {
-        padding-left: 1rem;
-        padding-right: 1rem;
-        position: absolute;
-        top: 50%;
-        margin-top: -24px;
-        width: 100%;
-        text-align: center;
-        input {
-            width: ~"calc(100% - 60px)";
-            max-width: 600px;
-            display: inline-block;
-            height: 32px;
-            border: 1px #ccc solid;
-            padding-left: 8px;
-            padding-right: 8px;
-        }
-        button {
-            width: 60px;
-            display: inline-block;
-            border-left: 0;
-        }
+  .sd-form {
+    @pad: 1.6rem;
 
+    position: absolute;
+    top: 50%;
+    margin-top: -2.4rem;
+    padding-left: @pad;
+    padding-right: @pad;
+    width: 100%;
+    text-align: center;
+
+    input {
+      display: inline-block;
+      width: ~"calc(100% - 6rem)";
+      max-width: 60rem;
+      height: 3.2rem;
+      padding-left: 0.8rem;
+      padding-right: 0.8rem;
+      border: 0.1rem #ccc solid;
     }
+
+    button {
+      width: 6rem;
+      display: inline-block;
+      border-left: 0;
+    }
+  }
 }

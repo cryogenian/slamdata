@@ -32,6 +32,8 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.HTML.CSS as HC
 import Math as Math
+
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Draftboard.Component.Common (DraftboardHTML, rootRef)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..))
@@ -40,7 +42,6 @@ import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Render.Icon as I
 import Utils.DOM as DOM
 
 render ∷ CardOptions → State → DraftboardHTML
@@ -191,17 +192,8 @@ renderCell opts st { cursor, value, rect } =
                     , HP.title "Insert deck"
                     , ARIA.label "Insert deck"
                     , HE.onClick (HE.input_ (right ∘ AddDeck cursor))
-                    , HC.style do
-                        let
-                          size = Math.min 140.0 (Math.min rect.width rect.height)
-                        C.top (C.pct 50.0)
-                        C.left (C.pct 50.0)
-                        C.marginTop (C.px (size / -2.0))
-                        C.marginLeft (C.px (size / -2.0))
-                        C.width (C.px size)
-                        C.height (C.px size)
                     ]
-                    [ HH.span_ [] ]
+                    [ I.addCircle ]
                 , HH.button
                     [ HP.classes [ HH.ClassName "delete-cell" ]
                     , HP.title "Delete cell"

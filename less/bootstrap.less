@@ -1,0 +1,3357 @@
+//
+// Variables
+// --------------------------------------------------
+
+//== Colors
+//
+//## Gray and brand colors for use across Bootstrap.
+
+@gray-base:              #000;
+@gray-darker:            lighten(@gray-base, 13.5%); // #222
+@gray-dark:              lighten(@gray-base, 20%);   // #333
+@gray:                   lighten(@gray-base, 33.5%); // #555
+@gray-light:             lighten(@gray-base, 46.7%); // #777
+@gray-lighter:           lighten(@gray-base, 93.5%); // #eee
+
+@brand-primary:         darken(#428bca, 6.5%); // #337ab7
+@brand-success:         #5cb85c;
+@brand-info:            #5bc0de;
+@brand-warning:         #f0ad4e;
+@brand-danger:          #d9534f;
+
+//== Scaffolding
+//
+//## Settings for some of the most global styles.
+
+//** Background color for `<body>`.
+@body-bg:               #fff;
+//** Global text color on `<body>`.
+@text-color:            @gray-dark;
+
+//** Global textual link color.
+@link-color:            @brand-primary;
+//** Link hover color set via `darken()` function.
+@link-hover-color:      darken(@link-color, 15%);
+//** Link hover decoration.
+@link-hover-decoration: underline;
+
+//== Typography
+//
+//## Font, line-height, and color for body text, headings, and more.
+
+@font-family-sans-serif:  "Ubuntu", "Helvetica Neue", Helvetica, Arial, sans-serif;
+@font-family-serif:       Georgia, "Times New Roman", Times, serif;
+//** Default monospace fonts for `<code>`, `<kbd>`, and `<pre>`.
+@font-family-monospace:   Menlo, Monaco, Consolas, "Courier New", monospace;
+@font-family-base:        @font-family-sans-serif;
+
+@font-size-base:          1.4rem;
+@font-size-large:         ceil((@font-size-base * 12.5)) / 10; // ~18px
+@font-size-small:         ceil((@font-size-base * 8.5)) / 10; // ~12px
+
+@font-size-h1:            floor((@font-size-base * 26)) / 10; // ~36px
+@font-size-h2:            floor((@font-size-base * 21.5) / 10); // ~30px
+@font-size-h3:            ceil((@font-size-base * 17)) / 10; // ~24px
+@font-size-h4:            ceil((@font-size-base * 12.5)) / 10; // ~18px
+@font-size-h5:            @font-size-base;
+@font-size-h6:            ceil((@font-size-base * 8.5)) / 10; // ~12px
+
+//** Unit-less `line-height` for use in components like buttons.
+@line-height-base:        1.428571429; // 20/14
+//** Computed "line-height" (`font-size` * `line-height`) for use with `margin`, `padding`, etc.
+@line-height-computed:    floor((@font-size-base * @line-height-base)); // ~20px
+
+//** By default, this inherits from the `<body>`.
+@headings-font-family:    inherit;
+@headings-font-weight:    500;
+@headings-line-height:    1.1;
+@headings-color:          inherit;
+
+//== Components
+//
+//## Define common padding and border radius sizes and more. Values based on 14px text and 1.428 line-height (~20px to start).
+
+@padding-base-vertical:     0.6rem;
+@padding-base-horizontal:   1.2rem;
+
+@padding-large-vertical:    1rem;
+@padding-large-horizontal:  1.6rem;
+
+@padding-small-vertical:    0.5rem;
+@padding-small-horizontal:  1rem;
+
+@padding-xs-vertical:       0.1rem;
+@padding-xs-horizontal:     0.5rem;
+
+@line-height-large:         1.3333333; // extra decimals for Win 8.1 Chrome
+@line-height-small:         1.5;
+
+@border-radius-base:        0.4rem;
+@border-radius-large:       0.6rem;
+@border-radius-small:       0.3rem;
+
+//** Global color for active items (e.g., navs or dropdowns).
+@component-active-color:    #fff;
+//** Global background color for active items (e.g., navs or dropdowns).
+@component-active-bg:       @brand-primary;
+
+//** Width of the `border` for generating carets that indicate dropdowns.
+@caret-width-base:          0.4rem;
+//** Carets increase slightly in size for larger components.
+@caret-width-large:         0.5rem;
+
+//== Navs
+//
+//##
+
+//=== Shared nav styles
+@nav-link-padding:                          1rem 1.5rem;
+@nav-link-hover-bg:                         @gray-lighter;
+
+@nav-disabled-link-color:                   @gray-light;
+@nav-disabled-link-hover-color:             @gray-light;
+
+//== Tabs
+@nav-tabs-border-color:                     #ddd;
+
+@nav-tabs-link-hover-border-color:          @gray-lighter;
+
+@nav-tabs-active-link-hover-bg:             @body-bg;
+@nav-tabs-active-link-hover-color:          @gray;
+@nav-tabs-active-link-hover-border-color:   #ddd;
+
+//== Panels
+//
+//##
+
+@panel-bg:                    #fff;
+@panel-body-padding:          1.5rem;
+@panel-heading-padding:       1rem 1.5rem;
+@panel-footer-padding:        @panel-heading-padding;
+@panel-border-radius:         @border-radius-base;
+
+//** Border color for elements within panels
+@panel-inner-border:          #ddd;
+@panel-footer-bg:             #f5f5f5;
+
+@panel-default-text:          @gray-dark;
+@panel-default-border:        #ddd;
+@panel-default-heading-bg:    #f5f5f5;
+
+@panel-primary-text:          #fff;
+@panel-primary-border:        @brand-primary;
+@panel-primary-heading-bg:    @brand-primary;
+
+@panel-success-text:          @state-success-text;
+@panel-success-border:        @state-success-border;
+@panel-success-heading-bg:    @state-success-bg;
+
+@panel-info-text:             @state-info-text;
+@panel-info-border:           @state-info-border;
+@panel-info-heading-bg:       @state-info-bg;
+
+@panel-warning-text:          @state-warning-text;
+@panel-warning-border:        @state-warning-border;
+@panel-warning-heading-bg:    @state-warning-bg;
+
+@panel-danger-text:           @state-danger-text;
+@panel-danger-border:         @state-danger-border;
+@panel-danger-heading-bg:     @state-danger-bg;
+
+//== Tables
+//
+//## Customizes the `.table` component with basic values, each used across all table variations.
+
+//** Padding for `<th>`s and `<td>`s.
+@table-cell-padding:            0.8rem;
+//** Padding for cells in `.table-condensed`.
+@table-condensed-cell-padding:  0.5rem;
+
+//** Default background color used for all tables.
+@table-bg:                      transparent;
+//** Background color used for `.table-striped`.
+@table-bg-accent:               #f9f9f9;
+//** Background color used for `.table-hover`.
+@table-bg-hover:                #f5f5f5;
+@table-bg-active:               @table-bg-hover;
+
+//** Border color for table and cell borders.
+@table-border-color:            #ddd;
+
+//== Buttons
+//
+//## For each of Bootstrap's buttons, define text, background and border color.
+
+@btn-font-weight:                normal;
+
+@btn-default-color:              #333;
+@btn-default-bg:                 #fff;
+@btn-default-border:             #ccc;
+
+@btn-primary-color:              #fff;
+@btn-primary-bg:                 @brand-primary;
+@btn-primary-border:             darken(@btn-primary-bg, 5%);
+
+@btn-success-color:              #fff;
+@btn-success-bg:                 @brand-success;
+@btn-success-border:             darken(@btn-success-bg, 5%);
+
+@btn-info-color:                 #fff;
+@btn-info-bg:                    @brand-info;
+@btn-info-border:                darken(@btn-info-bg, 5%);
+
+@btn-warning-color:              #fff;
+@btn-warning-bg:                 @brand-warning;
+@btn-warning-border:             darken(@btn-warning-bg, 5%);
+
+@btn-danger-color:               #fff;
+@btn-danger-bg:                  @brand-danger;
+@btn-danger-border:              darken(@btn-danger-bg, 5%);
+
+@btn-link-disabled-color:        @gray-light;
+
+// Allows for customizing button radius independently from global border radius
+@btn-border-radius-base:         @border-radius-base;
+@btn-border-radius-large:        @border-radius-large;
+@btn-border-radius-small:        @border-radius-small;
+
+
+//== Forms
+//
+//##
+
+//** `<input>` background color
+@input-bg:                       #fff;
+//** `<input disabled>` background color
+@input-bg-disabled:              @gray-lighter;
+
+//** Text color for `<input>`s
+@input-color:                    @gray;
+//** `<input>` border color
+@input-border:                   #ccc;
+
+// TODO: Rename `@input-border-radius` to `@input-border-radius-base` in v4
+//** Default `.form-control` border radius
+// This has no effect on `<select>`s in some browsers, due to the limited stylability of `<select>`s in CSS.
+@input-border-radius:            @border-radius-base;
+//** Large `.form-control` border radius
+@input-border-radius-large:      @border-radius-large;
+//** Small `.form-control` border radius
+@input-border-radius-small:      @border-radius-small;
+
+//** Border color for inputs on focus
+@input-border-focus:             #66afe9;
+
+//** Placeholder text color
+@input-color-placeholder:        #999;
+
+//** Default `.form-control` height
+@input-height-base:              (@line-height-computed + (@padding-base-vertical * 2) + 0.2);
+//** Large `.form-control` height
+@input-height-large:             (ceil(@font-size-large * @line-height-large) + (@padding-large-vertical * 2) + 0.2);
+//** Small `.form-control` height
+@input-height-small:             (floor(@font-size-small * @line-height-small) + (@padding-small-vertical * 2) + 0.2);
+
+//** `.form-group` margin
+@form-group-margin-bottom:       1.5rem;
+
+@legend-color:                   @gray-dark;
+@legend-border-color:            #e5e5e5;
+
+//** Background color for textual input addons
+@input-group-addon-bg:           @gray-lighter;
+//** Border color for textual input addons
+@input-group-addon-border-color: @input-border;
+
+//** Disabled cursor for form controls and buttons.
+@cursor-disabled:                not-allowed;
+
+//== Form states and alerts
+//
+//## Define colors for form feedback states and, by default, alerts.
+
+@state-success-text:             #3c763d;
+@state-success-bg:               #dff0d8;
+@state-success-border:           darken(spin(@state-success-bg, -10), 5%);
+
+@state-info-text:                #31708f;
+@state-info-bg:                  #d9edf7;
+@state-info-border:              darken(spin(@state-info-bg, -10), 7%);
+
+@state-warning-text:             #8a6d3b;
+@state-warning-bg:               #fcf8e3;
+@state-warning-border:           darken(spin(@state-warning-bg, -10), 5%);
+
+@state-danger-text:              #a94442;
+@state-danger-bg:                #f2dede;
+@state-danger-border:            darken(spin(@state-danger-bg, -10), 5%);
+
+//== Alerts
+//
+//## Define alert colors, border radius, and padding.
+
+@alert-padding:               1rem 1.2rem;  // 1,5rem;
+@alert-border-radius:         @border-radius-base;
+@alert-link-font-weight:      bold;
+
+@alert-success-bg:            @state-success-bg;
+@alert-success-text:          @state-success-text;
+@alert-success-border:        @state-success-border;
+
+@alert-info-bg:               @state-info-bg;
+@alert-info-text:             @state-info-text;
+@alert-info-border:           @state-info-border;
+
+@alert-warning-bg:            @state-warning-bg;
+@alert-warning-text:          @state-warning-text;
+@alert-warning-border:        @state-warning-border;
+
+@alert-danger-bg:             @state-danger-bg;
+@alert-danger-text:           @state-danger-text;
+@alert-danger-border:         @state-danger-border;
+
+//== Breadcrumbs
+//
+//##
+
+@breadcrumb-padding-vertical:   0.8rem;
+@breadcrumb-padding-horizontal: 1.5rem;
+//** Breadcrumb background color
+@breadcrumb-bg:                 #f5f5f5;
+//** Breadcrumb text color
+@breadcrumb-color:              #ccc;
+//** Text color of current page in the breadcrumb
+@breadcrumb-active-color:       @gray-light;
+//** Textual separator for between breadcrumb elements
+@breadcrumb-separator:          "/";
+
+//== Dropdowns
+//
+//## Dropdown menu container and contents.
+
+//** Background for the dropdown menu.
+@dropdown-bg:                    #fff;
+//** Dropdown menu `border-color`.
+@dropdown-border:                rgba(0,0,0,.15);
+//** Dropdown menu `border-color` **for IE8**.
+@dropdown-fallback-border:       #ccc;
+//** Divider color for between dropdown items.
+@dropdown-divider-bg:            #e5e5e5;
+
+//** Dropdown link text color.
+@dropdown-link-color:            @gray-dark;
+//** Hover color for dropdown links.
+@dropdown-link-hover-color:      darken(@gray-dark, 5%);
+//** Hover background for dropdown links.
+@dropdown-link-hover-bg:         #f5f5f5;
+
+//** Active dropdown menu item text color.
+@dropdown-link-active-color:     @component-active-color;
+//** Active dropdown menu item background color.
+@dropdown-link-active-bg:        @component-active-bg;
+
+//** Disabled dropdown menu item background color.
+@dropdown-link-disabled-color:   @gray-light;
+
+//** Text color for headers within dropdown menus.
+@dropdown-header-color:          @gray-light;
+
+//** Deprecated `@dropdown-caret-color` as of v3.1.0
+@dropdown-caret-color:           #000;
+
+
+//== Media queries breakpoints
+//
+//## Define the breakpoints at which your layout will change, adapting to different screen sizes.
+
+// Extra small screen / phone
+//** Deprecated `@screen-xs` as of v3.0.1
+@screen-xs:                  480px;
+//** Deprecated `@screen-xs-min` as of v3.2.0
+@screen-xs-min:              @screen-xs;
+//** Deprecated `@screen-phone` as of v3.0.1
+@screen-phone:               @screen-xs-min;
+
+// Small screen / tablet
+//** Deprecated `@screen-sm` as of v3.0.1
+@screen-sm:                  768px;
+@screen-sm-min:              @screen-sm;
+//** Deprecated `@screen-tablet` as of v3.0.1
+@screen-tablet:              @screen-sm-min;
+
+// Medium screen / desktop
+//** Deprecated `@screen-md` as of v3.0.1
+@screen-md:                  992px;
+@screen-md-min:              @screen-md;
+//** Deprecated `@screen-desktop` as of v3.0.1
+@screen-desktop:             @screen-md-min;
+
+// Large screen / wide desktop
+//** Deprecated `@screen-lg` as of v3.0.1
+@screen-lg:                  1200px;
+@screen-lg-min:              @screen-lg;
+//** Deprecated `@screen-lg-desktop` as of v3.0.1
+@screen-lg-desktop:          @screen-lg-min;
+
+// So media queries don't overlap when required, provide a maximum
+@screen-xs-max:              (@screen-sm-min - 1);
+@screen-sm-max:              (@screen-md-min - 1);
+@screen-md-max:              (@screen-lg-min - 1);
+
+//== Type
+//
+//##
+
+//** Horizontal offset for forms and lists.
+@component-offset-horizontal: 18rem;
+//** Text muted color
+@text-muted:                  @gray-light;
+//** Abbreviations and acronyms border color
+@abbr-border-color:           @gray-light;
+//** Headings small color
+@headings-small-color:        @gray-light;
+//** Blockquote small color
+@blockquote-small-color:      @gray-light;
+//** Blockquote font size
+@blockquote-font-size:        (@font-size-base * 1.25);
+//** Blockquote border color
+@blockquote-border-color:     @gray-lighter;
+//** Page header border color
+@page-header-border-color:    @gray-lighter;
+//** Width of horizontal description list titles
+@dl-horizontal-offset:        @component-offset-horizontal;
+//** Point at which .dl-horizontal becomes horizontal
+@dl-horizontal-breakpoint:    @screen-sm-min;
+//** Horizontal line color.
+@hr-border:                   @gray-lighter;
+
+
+//
+// Input groups
+// --------------------------------------------------
+
+// Base styles
+// -------------------------
+.input-group {
+  position: relative; // For dropdowns
+  display: table;
+  border-collapse: separate; // prevent input groups from inheriting border styles from table cells when placed within a table
+
+  // Undo padding and float of grid classes
+  &[class*="col-"] {
+    float: none;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .form-control {
+    // Ensure that the input is always above the *appended* addon button for
+    // proper border colors.
+    position: relative;
+    z-index: 2;
+
+    // IE9 fubars the placeholder attribute in text inputs and the arrows on
+    // select elements in input groups. To fix it, we float the input. Details:
+    // https://github.com/twbs/bootstrap/issues/11561#issuecomment-28936855
+    float: left;
+
+    width: 100%;
+    margin-bottom: 0;
+
+    &:focus {
+      z-index: 3;
+    }
+  }
+}
+
+// Sizing options
+//
+// Remix the default form control sizing classes into new ones for easier
+// manipulation.
+
+.input-group-lg > .form-control,
+.input-group-lg > .input-group-addon,
+.input-group-lg > .input-group-btn > .btn {
+  .input-lg();
+}
+.input-group-sm > .form-control,
+.input-group-sm > .input-group-addon,
+.input-group-sm > .input-group-btn > .btn {
+  .input-sm();
+}
+
+
+// Display as table-cell
+// -------------------------
+.input-group-addon,
+.input-group-btn,
+.input-group .form-control {
+  display: table-cell;
+
+  &:not(:first-child):not(:last-child) {
+    border-radius: 0;
+  }
+}
+// Addon and addon wrapper for buttons
+.input-group-addon,
+.input-group-btn {
+  width: 1%;
+  white-space: nowrap;
+  vertical-align: middle; // Match the inputs
+}
+
+// Text input groups
+// -------------------------
+.input-group-addon {
+  padding: @padding-base-vertical @padding-base-horizontal;
+  font-size: @font-size-base;
+  font-weight: normal;
+  line-height: 1;
+  color: @input-color;
+  text-align: center;
+  background-color: @input-group-addon-bg;
+  border: 0.1rem solid @input-group-addon-border-color;
+  border-radius: @input-border-radius;
+
+  // Sizing
+  &.input-sm {
+    padding: @padding-small-vertical @padding-small-horizontal;
+    font-size: @font-size-small;
+    border-radius: @input-border-radius-small;
+  }
+  &.input-lg {
+    padding: @padding-large-vertical @padding-large-horizontal;
+    font-size: @font-size-large;
+    border-radius: @input-border-radius-large;
+  }
+
+  // Nuke default margins from checkboxes and radios to vertically center within.
+  input[type="radio"],
+  input[type="checkbox"] {
+    margin-top: 0;
+  }
+}
+
+// Reset rounded corners
+.input-group .form-control:first-child,
+.input-group-addon:first-child,
+.input-group-btn:first-child > .btn,
+.input-group-btn:first-child > .btn-group > .btn,
+.input-group-btn:first-child > .dropdown-toggle,
+.input-group-btn:last-child > .btn:not(:last-child):not(.dropdown-toggle),
+.input-group-btn:last-child > .btn-group:not(:last-child) > .btn {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.input-group-addon:first-child {
+  border-right: 0;
+}
+.input-group .form-control:last-child,
+.input-group-addon:last-child,
+.input-group-btn:last-child > .btn,
+.input-group-btn:last-child > .btn-group > .btn,
+.input-group-btn:last-child > .dropdown-toggle,
+.input-group-btn:first-child > .btn:not(:first-child),
+.input-group-btn:first-child > .btn-group:not(:first-child) > .btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.input-group-addon:last-child {
+  border-left: 0;
+}
+
+// Button input groups
+// -------------------------
+.input-group-btn {
+  position: relative;
+  // Jankily prevent input button groups from wrapping with `white-space` and
+  // `font-size` in combination with `inline-block` on buttons.
+  font-size: 0;
+  white-space: nowrap;
+
+  // Negative margin for spacing, position for bringing hovered/focused/actived
+  // element above the siblings.
+  > .btn {
+    position: relative;
+    + .btn {
+      margin-left: -0.1rem;
+    }
+    // Bring the "active" button to the front
+    &:hover,
+    &:focus,
+    &:active {
+      z-index: 2;
+    }
+  }
+
+  // Negative margin to only have a 0.1rem border between the two
+  &:first-child {
+    > .btn,
+    > .btn-group {
+      margin-right: -0.1rem;
+    }
+  }
+  &:last-child {
+    > .btn,
+    > .btn-group {
+      z-index: 2;
+      margin-left: -0.1rem;
+    }
+  }
+}
+
+//
+// Navs
+// --------------------------------------------------
+
+
+// Base class
+// --------------------------------------------------
+
+.nav {
+  margin-bottom: 0;
+  padding-left: 0; // Override default ul/ol
+  list-style: none;
+  &:extend(.clearfix all);
+
+  > li {
+    position: relative;
+    display: block;
+
+    > a {
+      position: relative;
+      display: block;
+      padding: @nav-link-padding;
+      &:hover,
+      &:focus {
+        text-decoration: none;
+        background-color: @nav-link-hover-bg;
+      }
+    }
+
+    // Disabled state sets text to gray and nukes hover/tab effects
+    &.disabled > a {
+      color: @nav-disabled-link-color;
+
+      &:hover,
+      &:focus {
+        color: @nav-disabled-link-hover-color;
+        text-decoration: none;
+        background-color: transparent;
+        cursor: @cursor-disabled;
+      }
+    }
+  }
+
+  // Open dropdowns
+  .open > a {
+    &,
+    &:hover,
+    &:focus {
+      background-color: @nav-link-hover-bg;
+      border-color: @link-color;
+    }
+  }
+
+  // Nav dividers (deprecated with v3.0.1)
+  //
+  // This should have been removed in v3 with the dropping of `.nav-list`, but
+  // we missed it. We don't currently support this anywhere, but in the interest
+  // of maintaining backward compatibility in case you use it, it's deprecated.
+  .nav-divider {
+    .nav-divider();
+  }
+
+  // Prevent IE8 from misplacing imgs
+  //
+  // See https://github.com/h5bp/html5-boilerplate/issues/984#issuecomment-3985989
+  > li > a > img {
+    max-width: none;
+  }
+}
+
+
+// Tabs
+// -------------------------
+
+// Give the tabs something to sit on
+.nav-tabs {
+  border-bottom: 0.1rem solid @nav-tabs-border-color;
+  > li {
+    float: left;
+    // Make the list-items overlay the bottom border
+    margin-bottom: -0.1rem;
+
+    // Actual tabs (as links)
+    > a {
+      margin-right: 0.2rem;
+      line-height: @line-height-base;
+      border: 0.1rem solid transparent;
+      border-radius: @border-radius-base @border-radius-base 0 0;
+      &:hover {
+        border-color: @nav-tabs-link-hover-border-color @nav-tabs-link-hover-border-color @nav-tabs-border-color;
+      }
+    }
+
+    // Active state, and its :hover to override normal :hover
+    &.active > a {
+      &,
+      &:hover,
+      &:focus {
+        color: @nav-tabs-active-link-hover-color;
+        background-color: @nav-tabs-active-link-hover-bg;
+        border: 0.1rem solid @nav-tabs-active-link-hover-border-color;
+        border-bottom-color: transparent;
+        cursor: default;
+      }
+    }
+  }
+}
+
+
+// Stacked pills
+.nav-stacked {
+  > li {
+    float: none;
+    + li {
+      margin-top: 0.2rem;
+      margin-left: 0; // no need for this gap between nav items
+    }
+  }
+}
+
+//
+// Panels
+// --------------------------------------------------
+
+
+// Base class
+.panel {
+  margin-bottom: @line-height-computed;
+  background-color: @panel-bg;
+  border: 0.1rem solid transparent;
+  border-radius: @panel-border-radius;
+  box-shadow: 0 0.1rem 0.1rem rgba(0,0,0,.05);
+}
+
+// Panel contents
+.panel-body {
+  padding: @panel-body-padding;
+  &:extend(.clearfix all);
+}
+
+// Optional heading
+.panel-heading {
+  padding: @panel-heading-padding;
+  border-bottom: 0.1rem solid transparent;
+  border-top-left-radius: @panel-border-radius - 1;
+  border-top-right-radius: @panel-border-radius - 1;
+
+  > .dropdown .dropdown-toggle {
+    color: inherit;
+  }
+}
+
+// Within heading, strip any `h*` tag of its default margins for spacing.
+.panel-title {
+  margin-top: 0;
+  margin-bottom: 0;
+  font-size: ceil((@font-size-base * 1.125));
+  color: inherit;
+
+  > a,
+  > small,
+  > .small,
+  > small > a,
+  > .small > a {
+    color: inherit;
+  }
+}
+
+// Optional footer (stays gray in every modifier class)
+.panel-footer {
+  padding: @panel-footer-padding;
+  background-color: @panel-footer-bg;
+  border-top: 0.1rem solid @panel-inner-border;
+  border-bottom-radius: @panel-border-radius - 1;
+}
+
+
+// List groups in panels
+//
+// By default, space out list group content from panel headings to account for
+// any kind of custom content between the two.
+
+.panel {
+  > .list-group,
+  > .panel-collapse > .list-group {
+    margin-bottom: 0;
+
+    .list-group-item {
+      border-width: 0.1rem 0;
+      border-radius: 0;
+    }
+
+    // Add border top radius for first one
+    &:first-child {
+      .list-group-item:first-child {
+        border-top: 0;
+        border-top-left-radius: @panel-border-radius - 1;
+        border-top-right-radius: @panel-border-radius - 1;
+      }
+    }
+
+    // Add border bottom radius for last one
+    &:last-child {
+      .list-group-item:last-child {
+        border-bottom: 0;
+        border-bottom-left-radius: @panel-border-radius - 1;
+        border-bottom-right-radius: @panel-border-radius - 1;
+      }
+    }
+  }
+  > .panel-heading + .panel-collapse > .list-group {
+    .list-group-item:first-child {
+      border-top-radius: 0;
+    }
+  }
+}
+// Collapse space between when there's no additional content.
+.panel-heading + .list-group {
+  .list-group-item:first-child {
+    border-top-width: 0;
+  }
+}
+.list-group + .panel-footer {
+  border-top-width: 0;
+}
+
+// Tables in panels
+//
+// Place a non-bordered `.table` within a panel (not within a `.panel-body`) and
+// watch it go full width.
+
+.panel {
+  > .table,
+  > .table-responsive > .table,
+  > .panel-collapse > .table {
+    margin-bottom: 0;
+
+    caption {
+      padding-left: @panel-body-padding;
+      padding-right: @panel-body-padding;
+    }
+  }
+  // Add border top radius for first one
+  > .table:first-child,
+  > .table-responsive:first-child > .table:first-child {
+    border-top-left-radius: @panel-border-radius - 1;
+    border-top-right-radius: @panel-border-radius - 1;
+
+    > thead:first-child,
+    > tbody:first-child {
+      > tr:first-child {
+        border-top-left-radius: (@panel-border-radius - 1);
+        border-top-right-radius: (@panel-border-radius - 1);
+
+        td:first-child,
+        th:first-child {
+          border-top-left-radius: (@panel-border-radius - 1);
+        }
+        td:last-child,
+        th:last-child {
+          border-top-right-radius: (@panel-border-radius - 1);
+        }
+      }
+    }
+  }
+  // Add border bottom radius for last one
+  > .table:last-child,
+  > .table-responsive:last-child > .table:last-child {
+    border-bottom-left-radius: @panel-border-radius - 1;
+    border-bottom-right-radius: @panel-border-radius - 1;
+
+    > tbody:last-child,
+    > tfoot:last-child {
+      > tr:last-child {
+        border-bottom-left-radius: (@panel-border-radius - 1);
+        border-bottom-right-radius: (@panel-border-radius - 1);
+
+        td:first-child,
+        th:first-child {
+          border-bottom-left-radius: (@panel-border-radius - 1);
+        }
+        td:last-child,
+        th:last-child {
+          border-bottom-right-radius: (@panel-border-radius - 1);
+        }
+      }
+    }
+  }
+  > .panel-body + .table,
+  > .panel-body + .table-responsive,
+  > .table + .panel-body,
+  > .table-responsive + .panel-body {
+    border-top: 0.1rem solid @table-border-color;
+  }
+  > .table > tbody:first-child > tr:first-child th,
+  > .table > tbody:first-child > tr:first-child td {
+    border-top: 0;
+  }
+  > .table-bordered,
+  > .table-responsive > .table-bordered {
+    border: 0;
+    > thead,
+    > tbody,
+    > tfoot {
+      > tr {
+        > th:first-child,
+        > td:first-child {
+          border-left: 0;
+        }
+        > th:last-child,
+        > td:last-child {
+          border-right: 0;
+        }
+      }
+    }
+    > thead,
+    > tbody {
+      > tr:first-child {
+        > td,
+        > th {
+          border-bottom: 0;
+        }
+      }
+    }
+    > tbody,
+    > tfoot {
+      > tr:last-child {
+        > td,
+        > th {
+          border-bottom: 0;
+        }
+      }
+    }
+  }
+  > .table-responsive {
+    border: 0;
+    margin-bottom: 0;
+  }
+}
+
+
+// Collapsible panels (aka, accordion)
+//
+// Wrap a series of panels in `.panel-group` to turn them into an accordion with
+// the help of our collapse JavaScript plugin.
+
+.panel-group {
+  margin-bottom: @line-height-computed;
+
+  // Tighten up margin so it's only between panels
+  .panel {
+    margin-bottom: 0;
+    border-radius: @panel-border-radius;
+
+    + .panel {
+      margin-top: 0.5rem;
+    }
+  }
+
+  .panel-heading {
+    border-bottom: 0;
+
+    + .panel-collapse > .panel-body,
+    + .panel-collapse > .list-group {
+      border-top: 0.1rem solid @panel-inner-border;
+    }
+  }
+
+  .panel-footer {
+    border-top: 0;
+    + .panel-collapse .panel-body {
+      border-bottom: 0.1rem solid @panel-inner-border;
+    }
+  }
+}
+
+
+// Contextual variations
+.panel-default {
+  .panel-variant(@panel-default-border; @panel-default-text; @panel-default-heading-bg; @panel-default-border);
+}
+.panel-primary {
+  .panel-variant(@panel-primary-border; @panel-primary-text; @panel-primary-heading-bg; @panel-primary-border);
+}
+.panel-success {
+  .panel-variant(@panel-success-border; @panel-success-text; @panel-success-heading-bg; @panel-success-border);
+}
+.panel-info {
+  .panel-variant(@panel-info-border; @panel-info-text; @panel-info-heading-bg; @panel-info-border);
+}
+.panel-warning {
+  .panel-variant(@panel-warning-border; @panel-warning-text; @panel-warning-heading-bg; @panel-warning-border);
+}
+.panel-danger {
+  .panel-variant(@panel-danger-border; @panel-danger-text; @panel-danger-heading-bg; @panel-danger-border);
+}
+
+// Tabbable tabs
+// -------------------------
+
+// Hide tabbable panes to start, show them when `.active`
+.tab-content {
+  > .tab-pane {
+    display: none;
+  }
+  > .active {
+    display: block;
+  }
+}
+
+//
+// Tables
+// --------------------------------------------------
+
+
+table {
+  background-color: @table-bg;
+}
+caption {
+  padding-top: @table-cell-padding;
+  padding-bottom: @table-cell-padding;
+  color: @text-muted;
+  text-align: left;
+}
+th {
+  text-align: left;
+}
+
+
+// Baseline styles
+
+.table {
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: @line-height-computed;
+  // Cells
+  > thead,
+  > tbody,
+  > tfoot {
+    > tr {
+      > th,
+      > td {
+        padding: @table-cell-padding;
+        line-height: @line-height-base;
+        vertical-align: top;
+        border-top: 0.1rem solid @table-border-color;
+      }
+    }
+  }
+  // Bottom align for column headings
+  > thead > tr > th {
+    vertical-align: bottom;
+    border-bottom: 0.2rem solid @table-border-color;
+  }
+  // Remove top border from thead by default
+  > caption + thead,
+  > colgroup + thead,
+  > thead:first-child {
+    > tr:first-child {
+      > th,
+      > td {
+        border-top: 0;
+      }
+    }
+  }
+  // Account for multiple tbody instances
+  > tbody + tbody {
+    border-top: 0.2rem solid @table-border-color;
+  }
+
+  // Nesting
+  .table {
+    background-color: @body-bg;
+  }
+}
+
+
+// Condensed table w/ half padding
+
+.table-condensed {
+  > thead,
+  > tbody,
+  > tfoot {
+    > tr {
+      > th,
+      > td {
+        padding: @table-condensed-cell-padding;
+      }
+    }
+  }
+}
+
+
+// Bordered version
+//
+// Add borders all around the table and between all the columns.
+
+.table-bordered {
+  border: 0.1rem solid @table-border-color;
+  > thead,
+  > tbody,
+  > tfoot {
+    > tr {
+      > th,
+      > td {
+        border: 0.1rem solid @table-border-color;
+      }
+    }
+  }
+  > thead > tr {
+    > th,
+    > td {
+      border-bottom-width: 0.2rem;
+    }
+  }
+}
+
+
+// Zebra-striping
+//
+// Default zebra-stripe styles (alternating gray and transparent backgrounds)
+
+.table-striped {
+  > tbody > tr:nth-of-type(odd) {
+    background-color: @table-bg-accent;
+  }
+}
+
+
+// Hover effect
+//
+// Placed here since it has to come after the potential zebra striping
+
+.table-hover {
+  > tbody > tr:hover {
+    background-color: @table-bg-hover;
+  }
+}
+
+
+// Table cell sizing
+//
+// Reset default table behavior
+
+table col[class*="col-"] {
+  position: static; // Prevent border hiding in Firefox and IE9-11 (see https://github.com/twbs/bootstrap/issues/11623)
+  float: none;
+  display: table-column;
+}
+table {
+  td,
+  th {
+    &[class*="col-"] {
+      position: static; // Prevent border hiding in Firefox and IE9-11 (see https://github.com/twbs/bootstrap/issues/11623)
+      float: none;
+      display: table-cell;
+    }
+  }
+}
+
+
+// Table backgrounds
+//
+// Exact selectors below required to override `.table-striped` and prevent
+// inheritance to nested tables.
+
+// Generate the contextual variants
+.table-row-variant(active; @table-bg-active);
+.table-row-variant(success; @state-success-bg);
+.table-row-variant(info; @state-info-bg);
+.table-row-variant(warning; @state-warning-bg);
+.table-row-variant(danger; @state-danger-bg);
+
+
+// Responsive tables
+//
+// Wrap your tables in `.table-responsive` and we'll make them mobile friendly
+// by enabling horizontal scrolling. Only applies <768px. Everything above that
+// will display normally.
+
+.table-responsive {
+  overflow-x: auto;
+  min-height: 0.01%; // Workaround for IE9 bug (see https://github.com/twbs/bootstrap/issues/14837)
+
+  @media screen and (max-width: @screen-xs-max) {
+    width: 100%;
+    margin-bottom: (@line-height-computed * 0.75);
+    overflow-y: hidden;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+    border: 0.1rem solid @table-border-color;
+
+    // Tighten up spacing
+    > .table {
+      margin-bottom: 0;
+
+      // Ensure the content doesn't wrap
+      > thead,
+      > tbody,
+      > tfoot {
+        > tr {
+          > th,
+          > td {
+            white-space: nowrap;
+          }
+        }
+      }
+    }
+
+    // Special overrides for the bordered tables
+    > .table-bordered {
+      border: 0;
+
+      // Nuke the appropriate borders so that the parent can handle them
+      > thead,
+      > tbody,
+      > tfoot {
+        > tr {
+          > th:first-child,
+          > td:first-child {
+            border-left: 0;
+          }
+          > th:last-child,
+          > td:last-child {
+            border-right: 0;
+          }
+        }
+      }
+
+      // Only nuke the last row's bottom-border in `tbody` and `tfoot` since
+      // chances are there will be only one `tr` in a `thead` and that would
+      // remove the border altogether.
+      > tbody,
+      > tfoot {
+        > tr:last-child {
+          > th,
+          > td {
+            border-bottom: 0;
+          }
+        }
+      }
+
+    }
+  }
+}
+
+// Tables
+
+.table-row-variant(@state; @background) {
+  // Exact selectors below required to override `.table-striped` and prevent
+  // inheritance to nested tables.
+  .table > thead > tr,
+  .table > tbody > tr,
+  .table > tfoot > tr {
+    > td.@{state},
+    > th.@{state},
+    &.@{state} > td,
+    &.@{state} > th {
+      background-color: @background;
+    }
+  }
+
+  // Hover states for `.table-hover`
+  // Note: this is not available for cells or rows within `thead` or `tfoot`.
+  .table-hover > tbody > tr {
+    > td.@{state}:hover,
+    > th.@{state}:hover,
+    &.@{state}:hover > td,
+    &:hover > .@{state},
+    &.@{state}:hover > th {
+      background-color: darken(@background, 5%);
+    }
+  }
+}
+
+// Dropdowns
+// -------------------------
+
+// Specific dropdowns
+.nav-tabs .dropdown-menu {
+  // make dropdown border overlap tab border
+  margin-top: -0.1rem;
+  // Remove the top rounded corners here since there is a hard edge above the menu
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+//
+// Forms
+// --------------------------------------------------
+
+
+// Normalize non-controls
+//
+// Restyle and baseline non-control form elements.
+
+fieldset {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  // Chrome and Firefox set a `min-width: min-content;` on fieldsets,
+  // so we reset that to ensure it behaves more like a standard block element.
+  // See https://github.com/twbs/bootstrap/issues/12359.
+  min-width: 0;
+}
+
+legend {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin-bottom: @line-height-computed;
+  font-size: (@font-size-base * 1.5);
+  line-height: inherit;
+  color: @legend-color;
+  border: 0;
+  border-bottom: 0.1rem solid @legend-border-color;
+}
+
+label {
+  display: inline-block;
+  max-width: 100%; // Force IE8 to wrap long content (see https://github.com/twbs/bootstrap/issues/13141)
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+
+// Normalize form controls
+//
+// While most of our form styles require extra classes, some basic normalization
+// is required to ensure optimum display with or without those classes to better
+// address browser inconsistencies.
+
+// Override content-box in Normalize (* isn't specific enough)
+input[type="search"] {
+  box-sizing: border-box;
+}
+
+// Position radios and checkboxes better
+input[type="radio"],
+input[type="checkbox"] {
+  margin: 0.4rem 0 0;
+  margin-top: 0.1rem \9; // IE8-9
+  line-height: normal;
+}
+
+input[type="file"] {
+  display: block;
+}
+
+// Make range inputs behave like textual form controls
+input[type="range"] {
+  display: block;
+  width: 100%;
+}
+
+// Make multiple select elements height not fixed
+select[multiple],
+select[size] {
+  height: auto;
+}
+
+// Focus for file, radio, and checkbox
+input[type="file"]:focus,
+input[type="radio"]:focus,
+input[type="checkbox"]:focus {
+  .tab-focus();
+}
+
+// Adjust output element
+output {
+  display: block;
+  padding-top: (@padding-base-vertical + 1);
+  font-size: @font-size-base;
+  line-height: @line-height-base;
+  color: @input-color;
+}
+
+
+// Common form controls
+//
+// Shared size and type resets for form controls. Apply `.form-control` to any
+// of the following form controls:
+//
+// select
+// textarea
+// input[type="text"]
+// input[type="password"]
+// input[type="datetime"]
+// input[type="datetime-local"]
+// input[type="date"]
+// input[type="month"]
+// input[type="time"]
+// input[type="week"]
+// input[type="number"]
+// input[type="email"]
+// input[type="url"]
+// input[type="search"]
+// input[type="tel"]
+// input[type="color"]
+
+.form-control {
+  display: block;
+  width: 100%;
+  height: @input-height-base; // Make inputs at least the height of their button counterpart (base line-height + padding + border)
+  padding: @padding-base-vertical @padding-base-horizontal;
+  font-size: @font-size-base;
+  line-height: @line-height-base;
+  color: @input-color;
+  background-color: @input-bg;
+  background-image: none; // Reset unusual Firefox-on-Android default style; see https://github.com/necolas/normalize.css/issues/214
+  border: 0.1rem solid @input-border;
+  border-radius: @input-border-radius; // Note: This has no effect on <select>s in some browsers, due to the limited stylability of <select>s in CSS.
+  box-shadow: inset 0 0.1rem 0.1rem rgba(0,0,0,.075);
+  transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+
+  // Customize the `:focus` state to imitate native WebKit styles.
+  .form-control-focus();
+
+  // Placeholder
+  .placeholder();
+
+  // Unstyle the caret on `<select>`s in IE10+.
+  &::-ms-expand {
+    border: 0;
+    background-color: transparent;
+  }
+
+  // Disabled and read-only inputs
+  //
+  // HTML5 says that controls under a fieldset > legend:first-child won't be
+  // disabled if the fieldset is disabled. Due to implementation difficulty, we
+  // don't honor that edge case; we style them as disabled anyway.
+  &[disabled],
+  &[readonly],
+  fieldset[disabled] & {
+    background-color: @input-bg-disabled;
+    opacity: 1; // iOS fix for unreadable disabled content; see https://github.com/twbs/bootstrap/issues/11655
+  }
+
+  &[disabled],
+  fieldset[disabled] & {
+    cursor: @cursor-disabled;
+  }
+
+  // Reset height for `textarea`s
+  textarea& {
+    height: auto;
+  }
+}
+
+
+// Search inputs in iOS
+//
+// This overrides the extra rounded corners on search inputs in iOS so that our
+// `.form-control` class can properly style them. Note that this cannot simply
+// be added to `.form-control` as it's not specific enough. For details, see
+// https://github.com/twbs/bootstrap/issues/11586.
+
+input[type="search"] {
+  -webkit-appearance: none;
+}
+
+
+// Special styles for iOS temporal inputs
+//
+// In Mobile Safari, setting `display: block` on temporal inputs causes the
+// text within the input to become vertically misaligned. As a workaround, we
+// set a pixel line-height that matches the given height of the input, but only
+// for Safari. See https://bugs.webkit.org/show_bug.cgi?id=139848
+//
+// Note that as of 9.3, iOS doesn't support `week`.
+
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"] {
+    &.form-control {
+      line-height: @input-height-base;
+    }
+
+    &.input-sm,
+    .input-group-sm & {
+      line-height: @input-height-small;
+    }
+
+    &.input-lg,
+    .input-group-lg & {
+      line-height: @input-height-large;
+    }
+  }
+}
+
+
+// Form groups
+//
+// Designed to help with the organization and spacing of vertical forms. For
+// horizontal forms, use the predefined grid classes.
+
+.form-group {
+  margin-bottom: @form-group-margin-bottom;
+}
+
+
+// Checkboxes and radios
+//
+// Indent the labels to position radios/checkboxes as hanging controls.
+
+.radio,
+.checkbox {
+  position: relative;
+  display: block;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+
+  label {
+    min-height: @line-height-computed; // Ensure the input doesn't jump when there is no text
+    padding-left: 2rem;
+    margin-bottom: 0;
+    font-weight: normal;
+    cursor: pointer;
+  }
+}
+.radio input[type="radio"],
+.radio-inline input[type="radio"],
+.checkbox input[type="checkbox"],
+.checkbox-inline input[type="checkbox"] {
+  position: absolute;
+  margin-left: -2rem;
+  margin-top: 0.4rem \9;
+}
+
+.radio + .radio,
+.checkbox + .checkbox {
+  margin-top: -0.5rem; // Move up sibling radios or checkboxes for tighter spacing
+}
+
+// Radios and checkboxes on same line
+.radio-inline,
+.checkbox-inline {
+  position: relative;
+  display: inline-block;
+  padding-left: 2rem;
+  margin-bottom: 0;
+  vertical-align: middle;
+  font-weight: normal;
+  cursor: pointer;
+}
+.radio-inline + .radio-inline,
+.checkbox-inline + .checkbox-inline {
+  margin-top: 0;
+  margin-left: 1rem; // space out consecutive inline controls
+}
+
+// Apply same disabled cursor tweak as for inputs
+// Some special care is needed because <label>s don't inherit their parent's `cursor`.
+//
+// Note: Neither radios nor checkboxes can be readonly.
+input[type="radio"],
+input[type="checkbox"] {
+  &[disabled],
+  &.disabled,
+  fieldset[disabled] & {
+    cursor: @cursor-disabled;
+  }
+}
+// These classes are used directly on <label>s
+.radio-inline,
+.checkbox-inline {
+  &.disabled,
+  fieldset[disabled] & {
+    cursor: @cursor-disabled;
+  }
+}
+// These classes are used on elements with <label> descendants
+.radio,
+.checkbox {
+  &.disabled,
+  fieldset[disabled] & {
+    label {
+      cursor: @cursor-disabled;
+    }
+  }
+}
+
+
+// Static form control text
+//
+// Apply class to a `p` element to make any string of text align with labels in
+// a horizontal form layout.
+
+.form-control-static {
+  // Size it appropriately next to real form controls
+  padding-top: (@padding-base-vertical + 1);
+  padding-bottom: (@padding-base-vertical + 1);
+  // Remove default margin from `p`
+  margin-bottom: 0;
+  min-height: (@line-height-computed + @font-size-base);
+
+  &.input-lg,
+  &.input-sm {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+
+// Form control sizing
+//
+// Build on `.form-control` with modifier classes to decrease or increase the
+// height and font-size of form controls.
+//
+// The `.form-group-* form-control` variations are sadly duplicated to avoid the
+// issue documented in https://github.com/twbs/bootstrap/issues/15074.
+
+.input-sm {
+  .input-size(@input-height-small; @padding-small-vertical; @padding-small-horizontal; @font-size-small; @line-height-small; @input-border-radius-small);
+}
+.form-group-sm {
+  .form-control {
+    height: @input-height-small;
+    padding: @padding-small-vertical @padding-small-horizontal;
+    font-size: @font-size-small;
+    line-height: @line-height-small;
+    border-radius: @input-border-radius-small;
+  }
+  select.form-control {
+    height: @input-height-small;
+    line-height: @input-height-small;
+  }
+  textarea.form-control,
+  select[multiple].form-control {
+    height: auto;
+  }
+  .form-control-static {
+    height: @input-height-small;
+    min-height: (@line-height-computed + @font-size-small);
+    padding: (@padding-small-vertical + 1) @padding-small-horizontal;
+    font-size: @font-size-small;
+    line-height: @line-height-small;
+  }
+}
+
+.input-lg {
+  .input-size(@input-height-large; @padding-large-vertical; @padding-large-horizontal; @font-size-large; @line-height-large; @input-border-radius-large);
+}
+.form-group-lg {
+  .form-control {
+    height: @input-height-large;
+    padding: @padding-large-vertical @padding-large-horizontal;
+    font-size: @font-size-large;
+    line-height: @line-height-large;
+    border-radius: @input-border-radius-large;
+  }
+  select.form-control {
+    height: @input-height-large;
+    line-height: @input-height-large;
+  }
+  textarea.form-control,
+  select[multiple].form-control {
+    height: auto;
+  }
+  .form-control-static {
+    height: @input-height-large;
+    min-height: (@line-height-computed + @font-size-large);
+    padding: (@padding-large-vertical + 1) @padding-large-horizontal;
+    font-size: @font-size-large;
+    line-height: @line-height-large;
+  }
+}
+
+
+// Form control feedback states
+//
+// Apply contextual and semantic states to individual form controls.
+
+.has-feedback {
+  // Enable absolute positioning
+  position: relative;
+
+  // Ensure icons don't overlap text
+  .form-control {
+    padding-right: (@input-height-base * 1.25);
+  }
+}
+// Feedback icon (requires .glyphicon classes)
+.form-control-feedback {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2; // Ensure icon is above input groups
+  display: block;
+  width: @input-height-base;
+  height: @input-height-base;
+  line-height: @input-height-base;
+  text-align: center;
+  pointer-events: none;
+}
+.input-lg + .form-control-feedback,
+.input-group-lg + .form-control-feedback,
+.form-group-lg .form-control + .form-control-feedback {
+  width: @input-height-large;
+  height: @input-height-large;
+  line-height: @input-height-large;
+}
+.input-sm + .form-control-feedback,
+.input-group-sm + .form-control-feedback,
+.form-group-sm .form-control + .form-control-feedback {
+  width: @input-height-small;
+  height: @input-height-small;
+  line-height: @input-height-small;
+}
+
+// Feedback states
+.has-success {
+  .form-control-validation(@state-success-text; @state-success-text; @state-success-bg);
+}
+.has-warning {
+  .form-control-validation(@state-warning-text; @state-warning-text; @state-warning-bg);
+}
+.has-error {
+  .form-control-validation(@state-danger-text; @state-danger-text; @state-danger-bg);
+}
+
+// Reposition feedback icon if input has visible label above
+.has-feedback label {
+
+  & ~ .form-control-feedback {
+    top: (@line-height-computed + 5); // Height of the `label` and its margin
+  }
+  &.sr-only ~ .form-control-feedback {
+    top: 0;
+  }
+}
+
+
+// Help text
+//
+// Apply to any element you wish to create light text for placement immediately
+// below a form control. Use for general help, formatting, or instructional text.
+
+.help-block {
+  display: block; // account for any element using help-block
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  color: lighten(@text-color, 25%); // lighten the text some for contrast
+}
+
+
+// Inline forms
+//
+// Make forms appear inline(-block) by adding the `.form-inline` class. Inline
+// forms begin stacked on extra small (mobile) devices and then go inline when
+// viewports reach <768px.
+//
+// Requires wrapping inputs and labels with `.form-group` for proper display of
+// default HTML form controls and our custom form controls (e.g., input groups).
+//
+// Heads up! This is mixin-ed into `.navbar-form` in navbars.less.
+
+.form-inline {
+
+  // Kick in the inline
+  @media (min-width: @screen-sm-min) {
+    // Inline-block all the things for "inline"
+    .form-group {
+      display: inline-block;
+      margin-bottom: 0;
+      vertical-align: middle;
+    }
+
+    // In navbar-form, allow folks to *not* use `.form-group`
+    .form-control {
+      display: inline-block;
+      width: auto; // Prevent labels from stacking above inputs in `.form-group`
+      vertical-align: middle;
+    }
+
+    // Make static controls behave like regular ones
+    .form-control-static {
+      display: inline-block;
+    }
+
+    .input-group {
+      display: inline-table;
+      vertical-align: middle;
+
+      .input-group-addon,
+      .input-group-btn,
+      .form-control {
+        width: auto;
+      }
+    }
+
+    // Input groups need that 100% width though
+    .input-group > .form-control {
+      width: 100%;
+    }
+
+    .control-label {
+      margin-bottom: 0;
+      vertical-align: middle;
+    }
+
+    // Remove default margin on radios/checkboxes that were used for stacking, and
+    // then undo the floating of radios and checkboxes to match.
+    .radio,
+    .checkbox {
+      display: inline-block;
+      margin-top: 0;
+      margin-bottom: 0;
+      vertical-align: middle;
+
+      label {
+        padding-left: 0;
+      }
+    }
+    .radio input[type="radio"],
+    .checkbox input[type="checkbox"] {
+      position: relative;
+      margin-left: 0;
+    }
+
+    // Re-override the feedback icon.
+    .has-feedback .form-control-feedback {
+      top: 0;
+    }
+  }
+}
+
+
+// Form validation states
+//
+// Used in forms.less to generate the form validation CSS for warnings, errors,
+// and successes.
+
+.form-control-validation(@text-color: #555; @border-color: #ccc; @background-color: #f5f5f5) {
+  // Color the label and help text
+  .help-block,
+  .control-label,
+  .radio,
+  .checkbox,
+  .radio-inline,
+  .checkbox-inline,
+  &.radio label,
+  &.checkbox label,
+  &.radio-inline label,
+  &.checkbox-inline label  {
+    color: @text-color;
+  }
+  // Set the border and box shadow on specific inputs to match
+  .form-control {
+    border-color: @border-color;
+    box-shadow: inset 0 0.1rem 0.1rem rgba(0,0,0,.075); // Redeclare so transitions work
+    &:focus {
+      border-color: darken(@border-color, 10%);
+      @shadow: inset 0 0.1rem 0.1rem rgba(0,0,0,.075), 0 0 0.6rem lighten(@border-color, 20%);
+      box-shadow: @shadow;
+    }
+  }
+  // Set validation states also for addons
+  .input-group-addon {
+    color: @text-color;
+    border-color: @border-color;
+    background-color: @background-color;
+  }
+  // Optional feedback icon
+  .form-control-feedback {
+    color: @text-color;
+  }
+}
+
+
+// Form control focus state
+//
+// Generate a customized focus state and for any input with the specified color,
+// which defaults to the `@input-border-focus` variable.
+//
+// We highly encourage you to not customize the default value, but instead use
+// this to tweak colors on an as-needed basis. This aesthetic change is based on
+// WebKit's default styles, but applicable to a wider range of browsers. Its
+// usability and accessibility should be taken into account with any change.
+//
+// Example usage: change the default blue border and shadow to white for better
+// contrast against a dark gray background.
+.form-control-focus(@color: @input-border-focus) {
+  @color-rgba: rgba(red(@color), green(@color), blue(@color), .6);
+  &:focus {
+    border-color: @color;
+    outline: 0;
+    box-shadow: ~"inset 0 0.1rem 0.1rem rgba(0,0,0,.075), 0 0 0.8rem @{color-rgba}";
+  }
+}
+
+// Form control sizing
+//
+// Relative text size, padding, and border-radii changes for form controls. For
+// horizontal sizing, wrap controls in the predefined grid classes. `<select>`
+// element gets special love because it's special, and that's a fact!
+.input-size(@input-height; @padding-vertical; @padding-horizontal; @font-size; @line-height; @border-radius) {
+  height: @input-height;
+  padding: @padding-vertical @padding-horizontal;
+  font-size: @font-size;
+  line-height: @line-height;
+  border-radius: @border-radius;
+
+  select& {
+    height: @input-height;
+    line-height: @input-height;
+  }
+
+  textarea&,
+  select[multiple]& {
+    height: auto;
+  }
+}
+
+// Button variants
+//
+// Easily pump out default styles, as well as :hover, :focus, :active,
+// and disabled options for all buttons
+
+.button-variant(@color; @background; @border) {
+  color: @color;
+  background-color: @background;
+  border-color: @border;
+
+  &:focus,
+  &.focus {
+    color: @color;
+    background-color: darken(@background, 10%);
+    border-color: darken(@border, 25%);
+  }
+  &:hover {
+    color: @color;
+    background-color: darken(@background, 10%);
+    border-color: darken(@border, 12%);
+  }
+  &:active,
+  &.active,
+  .open > .dropdown-toggle& {
+    color: @color;
+    background-color: darken(@background, 10%);
+    border-color: darken(@border, 12%);
+
+    &:hover,
+    &:focus,
+    &.focus {
+      color: @color;
+      background-color: darken(@background, 17%);
+      border-color: darken(@border, 25%);
+    }
+  }
+  &:active,
+  &.active,
+  .open > .dropdown-toggle& {
+    background-image: none;
+  }
+  &.disabled,
+  &[disabled],
+  fieldset[disabled] & {
+    &:hover,
+    &:focus,
+    &.focus {
+      background-color: @background;
+      border-color: @border;
+    }
+  }
+
+  .badge {
+    color: @background;
+    background-color: @color;
+  }
+}
+
+// Alerts
+
+.alert-variant(@background; @border; @text-color) {
+  background-color: @background;
+  border-color: @border;
+  color: @text-color;
+
+  hr {
+    border-top-color: darken(@border, 5%);
+  }
+  .alert-link {
+    color: darken(@text-color, 10%);
+  }
+}
+
+// Button sizes
+.button-size(@padding-vertical; @padding-horizontal; @font-size; @line-height; @border-radius) {
+  padding: @padding-vertical @padding-horizontal;
+  font-size: @font-size;
+  line-height: @line-height;
+  border-radius: @border-radius;
+}
+// Placeholder text
+.placeholder(@color: @input-color-placeholder) {
+  // Firefox
+  &::-moz-placeholder {
+    color: @color;
+    opacity: 1; // Override Firefox's unusual default opacity; see https://github.com/twbs/bootstrap/pull/11526
+  }
+  &:-ms-input-placeholder { color: @color; } // Internet Explorer 10+
+  &::-webkit-input-placeholder  { color: @color; } // Safari and Chrome
+}
+
+// Clearfix
+//
+// For modern browsers
+// 1. The space content is one way to avoid an Opera bug when the
+//    contenteditable attribute is included anywhere else in the document.
+//    Otherwise it causes space to appear at the top and bottom of elements
+//    that are clearfixed.
+// 2. The use of `table` rather than `block` is only necessary if using
+//    `:before` to contain the top-margins of child elements.
+//
+// Source: http://nicolasgallagher.com/micro-clearfix-hack/
+
+.clearfix() {
+  &::before,
+  &::after {
+    content: " "; // 1
+    display: table; // 2
+  }
+  &:after {
+    clear: both;
+  }
+}
+
+// WebKit-style focus
+
+.tab-focus() {
+  // WebKit-specific. Other browsers will keep their default outline style.
+  // (Initially tried to also force default via `outline: initial`,
+  // but that seems to erroneously remove the outline in Firefox altogether.)
+  outline: 0.5rem auto -webkit-focus-ring-color;
+  outline-offset: -0.2rem;
+}
+
+// Panels
+
+.panel-variant(@border; @heading-text-color; @heading-bg-color; @heading-border) {
+  border-color: @border;
+
+  & > .panel-heading {
+    color: @heading-text-color;
+    background-color: @heading-bg-color;
+    border-color: @heading-border;
+
+    + .panel-collapse > .panel-body {
+      border-top-color: @border;
+    }
+    .badge {
+      color: @heading-bg-color;
+      background-color: @heading-text-color;
+    }
+  }
+  & > .panel-footer {
+    + .panel-collapse > .panel-body {
+      border-bottom-color: @border;
+    }
+  }
+}
+
+// Typography
+
+.text-emphasis-variant(@color) {
+  color: @color;
+  a&:hover,
+  a&:focus {
+    color: darken(@color, 10%);
+  }
+}
+
+// Text overflow
+// Requires inline-block or block for proper styling
+
+.text-overflow() {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Contextual backgrounds
+
+.bg-variant(@color) {
+  background-color: @color;
+  a&:hover,
+  a&:focus {
+    background-color: darken(@color, 10%);
+  }
+}
+
+// Horizontal dividers
+//
+// Dividers (basically an hr) within dropdowns and nav lists
+
+.nav-divider(@color: #e5e5e5) {
+  height: 0.1rem;
+  margin: ((@line-height-computed / 2) - 1) 0;
+  overflow: hidden;
+  background-color: @color;
+}
+
+//
+// Scaffolding
+// --------------------------------------------------
+
+*,
+  *::before,
+  *::after {
+    box-sizing: inherit;
+  }
+
+
+  // Body reset
+
+  html {
+    font-size: 1rem;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: @font-family-base;
+    font-size: @font-size-base;
+    line-height: @line-height-base;
+    color: @text-color;
+    background-color: @body-bg;
+  }
+
+  // Reset fonts for relevant elements
+  input,
+  button,
+  select,
+  textarea {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+
+  // Links
+
+  a {
+    color: @link-color;
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+      color: @link-hover-color;
+      text-decoration: @link-hover-decoration;
+    }
+
+    &:focus {
+      .tab-focus();
+    }
+  }
+
+
+  // Figures
+  //
+  // We reset this here because previously Normalize had no `figure` margins. This
+  // ensures we don't break anyone's use of the element.
+
+  figure {
+    margin: 0;
+  }
+
+
+  // Images
+
+  img {
+    vertical-align: middle;
+  }
+
+  // Horizontal rules
+
+  hr {
+    margin-top:    @line-height-computed;
+    margin-bottom: @line-height-computed;
+    border: 0;
+    border-top: 0.1rem solid @hr-border;
+  }
+
+
+  // Only display content to screen readers
+  //
+  // See: http://a11yproject.com/posts/how-to-hide-content
+
+  .sr-only {
+    position: absolute;
+    width: 0.1rem;
+    height: 0.1rem;
+    margin: -0.1rem;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    border: 0;
+  }
+
+  // Use in conjunction with .sr-only to only display content when it's focused.
+  // Useful for "Skip to main content" links; see http://www.w3.org/TR/2013/NOTE-WCAG20-TECHS-20130905/G1
+  // Credit: HTML5 Boilerplate
+
+  .sr-only-focusable {
+    &:active,
+    &:focus {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0;
+      overflow: visible;
+      clip: auto;
+    }
+  }
+
+
+  // iOS "clickable elements" fix for role="button"
+  //
+  // Fixes "clickability" issue (and more generally, the firing of events such as focus as well)
+  // for traditionally non-focusable elements with role="button"
+  // see https://developer.mozilla.org/en-US/docs/Web/Events/click#Safari_Mobile
+
+  [role="button"] {
+    cursor: pointer;
+  }
+  //
+  // Typography
+  // --------------------------------------------------
+
+
+  // Headings
+  // -------------------------
+
+  h1, h2, h3, h4, h5, h6,
+  .h1, .h2, .h3, .h4, .h5, .h6 {
+    font-family: @headings-font-family;
+    font-weight: @headings-font-weight;
+    line-height: @headings-line-height;
+    color: @headings-color;
+
+    small,
+    .small {
+      font-weight: normal;
+      line-height: 1;
+      color: @headings-small-color;
+    }
+  }
+
+  h1, .h1,
+  h2, .h2,
+  h3, .h3 {
+    margin-top: @line-height-computed;
+    margin-bottom: (@line-height-computed / 2);
+
+    small,
+    .small {
+      font-size: 65%;
+    }
+  }
+  h4, .h4,
+  h5, .h5,
+  h6, .h6 {
+    margin-top: (@line-height-computed / 2);
+    margin-bottom: (@line-height-computed / 2);
+
+    small,
+    .small {
+      font-size: 75%;
+    }
+  }
+
+  h1, .h1 { font-size: @font-size-h1; }
+  h2, .h2 { font-size: @font-size-h2; }
+  h3, .h3 { font-size: @font-size-h3; }
+  h4, .h4 { font-size: @font-size-h4; }
+  h5, .h5 { font-size: @font-size-h5; }
+  h6, .h6 { font-size: @font-size-h6; }
+
+
+  // Body text
+  // -------------------------
+
+  p {
+    margin: 0 0 (@line-height-computed / 2);
+  }
+
+  .lead {
+    margin-bottom: @line-height-computed;
+    font-size: floor((@font-size-base * 1.15));
+    font-weight: 300;
+    line-height: 1.4;
+
+    @media (min-width: @screen-sm-min) {
+      font-size: (@font-size-base * 1.5);
+    }
+  }
+
+
+  // Emphasis & misc
+  // -------------------------
+
+  // Ex: (12px small font / 14px base font) * 100% = about 85%
+  small,
+  .small {
+    font-size: floor((100% * @font-size-small / @font-size-base) / 10);
+  }
+
+  mark,
+  .mark {
+    background-color: @state-warning-bg;
+    padding: .2em;
+  }
+
+  // Alignment
+  .text-left           { text-align: left; }
+  .text-right          { text-align: right; }
+  .text-center         { text-align: center; }
+  .text-justify        { text-align: justify; }
+  .text-nowrap         { white-space: nowrap; }
+
+  // Transformation
+  .text-lowercase      { text-transform: lowercase; }
+  .text-uppercase      { text-transform: uppercase; }
+  .text-capitalize     { text-transform: capitalize; }
+
+  // Contextual colors
+  .text-muted {
+    color: @text-muted;
+  }
+  .text-primary {
+    .text-emphasis-variant(@brand-primary);
+  }
+  .text-success {
+    .text-emphasis-variant(@state-success-text);
+  }
+  .text-info {
+    .text-emphasis-variant(@state-info-text);
+  }
+  .text-warning {
+    .text-emphasis-variant(@state-warning-text);
+  }
+  .text-danger {
+    .text-emphasis-variant(@state-danger-text);
+  }
+
+  // Contextual backgrounds
+  // For now we'll leave these alongside the text classes until v4 when we can
+  // safely shift things around (per SemVer rules).
+  .bg-primary {
+    // Given the contrast here, this is the only class to have its color inverted
+    // automatically.
+    color: #fff;
+    .bg-variant(@brand-primary);
+  }
+  .bg-success {
+    .bg-variant(@state-success-bg);
+  }
+  .bg-info {
+    .bg-variant(@state-info-bg);
+  }
+  .bg-warning {
+    .bg-variant(@state-warning-bg);
+  }
+  .bg-danger {
+    .bg-variant(@state-danger-bg);
+  }
+
+
+  // Page header
+  // -------------------------
+
+  .page-header {
+    padding-bottom: ((@line-height-computed / 2) - 1);
+    margin: (@line-height-computed * 2) 0 @line-height-computed;
+    border-bottom: 0.1rem solid @page-header-border-color;
+  }
+
+
+  // Lists
+  // -------------------------
+
+  // Unordered and Ordered lists
+  ul,
+  ol {
+    margin-top: 0;
+    margin-bottom: (@line-height-computed / 2);
+    ul,
+    ol {
+      margin-bottom: 0;
+    }
+  }
+
+  // List options
+
+  // Unstyled keeps list items block level, just removes default browser padding and list-style
+  .list-unstyled {
+    padding-left: 0;
+    list-style: none;
+  }
+
+  // Inline turns list items into inline-block
+  .list-inline {
+    .list-unstyled();
+    margin-left: -0.5rem;
+
+    > li {
+      display: inline-block;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+  }
+
+  // Description Lists
+  dl {
+    margin-top: 0; // Remove browser default
+    margin-bottom: @line-height-computed;
+  }
+  dt,
+  dd {
+    line-height: @line-height-base;
+  }
+  dt {
+    font-weight: bold;
+  }
+  dd {
+    margin-left: 0; // Undo browser default
+  }
+
+  // Horizontal description lists
+  //
+  // Defaults to being stacked without any of the below styles applied, until the
+  // grid breakpoint is reached (default of ~768px).
+
+  .dl-horizontal {
+    dd {
+      &:extend(.clearfix all); // Clear the floated `dt` if an empty `dd` is present
+    }
+
+    @media (min-width: @dl-horizontal-breakpoint) {
+      dt {
+        float: left;
+        width: (@dl-horizontal-offset - 20);
+        clear: left;
+        text-align: right;
+        .text-overflow();
+      }
+      dd {
+        margin-left: @dl-horizontal-offset;
+      }
+    }
+  }
+
+
+  // Misc
+  // -------------------------
+
+  // Abbreviations and acronyms
+  abbr[title],
+  // Add data-* attribute to help out our tooltip plugin, per https://github.com/twbs/bootstrap/issues/5257
+  abbr[data-original-title] {
+    cursor: help;
+    border-bottom: 0.1rem dotted @abbr-border-color;
+  }
+  .initialism {
+    font-size: 90%;
+    .text-uppercase();
+  }
+
+  // Blockquotes
+  blockquote {
+    padding: (@line-height-computed / 2) @line-height-computed;
+    margin: 0 0 @line-height-computed;
+    font-size: @blockquote-font-size;
+    border-left: 0.5rem solid @blockquote-border-color;
+
+    p,
+    ul,
+    ol {
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    // Note: Deprecated small and .small as of v3.1.0
+    // Context: https://github.com/twbs/bootstrap/issues/11660
+    footer,
+    small,
+    .small {
+      display: block;
+      font-size: 80%; // back to default font-size
+      line-height: @line-height-base;
+      color: @blockquote-small-color;
+
+      &::before {
+        content: '\2014 \00A0'; // em dash, nbsp
+      }
+    }
+  }
+
+  // Opposite alignment of blockquote
+  //
+  // Heads up: `blockquote.pull-right` has been deprecated as of v3.1.0.
+  .blockquote-reverse,
+  blockquote.pull-right {
+    padding-right: 1,5rem;
+    padding-left: 0;
+    border-right: 0.5rem solid @blockquote-border-color;
+    border-left: 0;
+    text-align: right;
+
+    // Account for citation
+    footer,
+    small,
+    .small {
+      &::before { content: ''; }
+      &::after {
+        content: '\00A0 \2014'; // nbsp, em dash
+      }
+    }
+  }
+
+  // Addresses
+  address {
+    margin-bottom: @line-height-computed;
+    font-style: normal;
+    line-height: @line-height-base;
+  }
+  //
+  // Buttons
+  // --------------------------------------------------
+
+
+  // Base styles
+  // --------------------------------------------------
+
+  .btn {
+    display: inline-block;
+    margin-bottom: 0; // For input.btn
+    font-weight: @btn-font-weight;
+    text-align: center;
+    vertical-align: middle;
+    touch-action: manipulation;
+    cursor: pointer;
+    background-image: none; // Reset unusual Firefox-on-Android default style; see https://github.com/necolas/normalize.css/issues/214
+    border: 0.1rem solid transparent;
+    white-space: nowrap;
+    .button-size(@padding-base-vertical; @padding-base-horizontal; @font-size-base; @line-height-base; @btn-border-radius-base);
+    user-select: none;
+
+    &,
+    &:active,
+    &.active {
+      &:focus,
+      &.focus {
+        .tab-focus();
+      }
+    }
+
+    &:hover,
+    &:focus,
+    &.focus {
+      color: @btn-default-color;
+      text-decoration: none;
+    }
+
+    &:active,
+    &.active {
+      outline: 0;
+      background-image: none;
+      box-shadow: inset 0 0.3rem 0.5rem rgba(0,0,0,.125);
+    }
+
+    &.disabled,
+    &[disabled],
+    fieldset[disabled] & {
+      cursor: @cursor-disabled;
+      opacity: .65;
+      box-shadow: none;
+    }
+
+    a& {
+      &.disabled,
+      fieldset[disabled] & {
+        pointer-events: none; // Future-proof disabling of clicks on `<a>` elements
+      }
+    }
+  }
+
+
+  // Alternate buttons
+  // --------------------------------------------------
+
+  .btn-default {
+    .button-variant(@btn-default-color; @btn-default-bg; @btn-default-border);
+  }
+  .btn-primary {
+    .button-variant(@btn-primary-color; @btn-primary-bg; @btn-primary-border);
+  }
+  // Success appears as green
+  .btn-success {
+    .button-variant(@btn-success-color; @btn-success-bg; @btn-success-border);
+  }
+  // Info appears as blue-green
+  .btn-info {
+    .button-variant(@btn-info-color; @btn-info-bg; @btn-info-border);
+  }
+  // Warning appears as orange
+  .btn-warning {
+    .button-variant(@btn-warning-color; @btn-warning-bg; @btn-warning-border);
+  }
+  // Danger and error appear as red
+  .btn-danger {
+    .button-variant(@btn-danger-color; @btn-danger-bg; @btn-danger-border);
+  }
+
+
+  // Link buttons
+  // -------------------------
+
+  // Make a button look and behave like a link
+  .btn-link {
+    color: @link-color;
+    font-weight: normal;
+    border-radius: 0;
+
+    &,
+    &:active,
+    &.active,
+    &[disabled],
+    fieldset[disabled] & {
+      background-color: transparent;
+      box-shadow: none;
+    }
+    &,
+    &:hover,
+    &:focus,
+    &:active {
+      border-color: transparent;
+    }
+    &:hover,
+    &:focus {
+      color: @link-hover-color;
+      text-decoration: @link-hover-decoration;
+      background-color: transparent;
+    }
+    &[disabled],
+    fieldset[disabled] & {
+      &:hover,
+      &:focus {
+        color: @btn-link-disabled-color;
+        text-decoration: none;
+      }
+    }
+  }
+
+
+  // Button Sizes
+  // --------------------------------------------------
+
+  .btn-lg {
+    // line-height: ensure even-numbered height of button next to large input
+    .button-size(@padding-large-vertical; @padding-large-horizontal; @font-size-large; @line-height-large; @btn-border-radius-large);
+  }
+  .btn-sm {
+    // line-height: ensure proper height of button next to small input
+    .button-size(@padding-small-vertical; @padding-small-horizontal; @font-size-small; @line-height-small; @btn-border-radius-small);
+  }
+  .btn-xs {
+    .button-size(@padding-xs-vertical; @padding-xs-horizontal; @font-size-small; @line-height-small; @btn-border-radius-small);
+  }
+
+
+  // Block button
+  // --------------------------------------------------
+
+  .btn-block {
+    display: block;
+    width: 100%;
+  }
+
+  // Vertically space out multiple block buttons
+  .btn-block + .btn-block {
+    margin-top: 0.5rem;
+  }
+
+  // Specificity overrides
+  input[type="submit"],
+  input[type="reset"],
+  input[type="button"] {
+    &.btn-block {
+      width: 100%;
+    }
+  }
+
+  //
+  // Button groups
+  // --------------------------------------------------
+
+  // Make the div behave like a button
+  .btn-group,
+  .btn-group-vertical {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle; // match .btn alignment given font-size hack above
+    > .btn {
+      position: relative;
+      float: left;
+      // Bring the "active" button to the front
+      &:hover,
+      &:focus,
+      &:active,
+      &.active {
+        z-index: 2;
+      }
+    }
+  }
+
+  // Prevent double borders when buttons are next to each other
+  .btn-group {
+    .btn + .btn,
+    .btn + .btn-group,
+    .btn-group + .btn,
+    .btn-group + .btn-group {
+      margin-left: -0.1rem;
+    }
+  }
+
+  // Optional: Group multiple button groups together for a toolbar
+  .btn-toolbar {
+    margin-left: -0.5rem; // Offset the first child's margin
+    &:extend(.clearfix all);
+
+    .btn,
+    .btn-group,
+    .input-group {
+      float: left;
+    }
+    > .btn,
+    > .btn-group,
+    > .input-group {
+      margin-left: 0.5rem;
+    }
+  }
+
+  .btn-group > .btn:not(:first-child):not(:last-child):not(.dropdown-toggle) {
+    border-radius: 0;
+  }
+
+  // Set corners individual because sometimes a single button can be in a .btn-group and we need :first-child and :last-child to both match
+  .btn-group > .btn:first-child {
+    margin-left: 0;
+    &:not(:last-child):not(.dropdown-toggle) {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+  // Need .dropdown-toggle since :last-child doesn't apply, given that a .dropdown-menu is used immediately after it
+  .btn-group > .btn:last-child:not(:first-child),
+  .btn-group > .dropdown-toggle:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  // Custom edits for including btn-groups within btn-groups (useful for including dropdown buttons within a btn-group)
+  .btn-group > .btn-group {
+    float: left;
+  }
+  .btn-group > .btn-group:not(:first-child):not(:last-child) > .btn {
+    border-radius: 0;
+  }
+  .btn-group > .btn-group:first-child:not(:last-child) {
+    > .btn:last-child,
+    > .dropdown-toggle {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+  .btn-group > .btn-group:last-child:not(:first-child) > .btn:first-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  // On active and open, don't show outline
+  .btn-group .dropdown-toggle:active,
+  .btn-group.open .dropdown-toggle {
+    outline: 0;
+  }
+
+
+  // Sizing
+  //
+  // Remix the default button sizing classes into new ones for easier manipulation.
+
+  .btn-group-xs > .btn { &:extend(.btn-xs); }
+  .btn-group-sm > .btn { &:extend(.btn-sm); }
+  .btn-group-lg > .btn { &:extend(.btn-lg); }
+
+
+  // Split button dropdowns
+  // ----------------------
+
+  // Give the line between buttons some depth
+  .btn-group > .btn + .dropdown-toggle {
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
+  }
+  .btn-group > .btn-lg + .dropdown-toggle {
+    padding-left: 1,2rem;
+    padding-right: 1,2rem;
+  }
+
+  // The clickable button for toggling the menu
+  // Remove the gradient and set the same inset shadow as the :active state
+  .btn-group.open .dropdown-toggle {
+    box-shadow: inset 0 0.3rem 0.5rem rgba(0,0,0,.125);
+
+    // Show no shadow for `.btn-link` since it has no other button styles.
+    &.btn-link {
+      box-shadow: none;
+    }
+  }
+
+
+  // Reposition the caret
+  .btn .caret {
+    margin-left: 0;
+  }
+  // Carets in other button sizes
+  .btn-lg .caret {
+    border-width: @caret-width-large @caret-width-large 0;
+    border-bottom-width: 0;
+  }
+  // Upside down carets for .dropup
+  .dropup .btn-lg .caret {
+    border-width: 0 @caret-width-large @caret-width-large;
+  }
+
+
+  // Vertical button groups
+  // ----------------------
+
+  .btn-group-vertical {
+    > .btn,
+    > .btn-group,
+    > .btn-group > .btn {
+      display: block;
+      float: none;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    // Clear floats so dropdown menus can be properly placed
+    > .btn-group {
+      &:extend(.clearfix all);
+      > .btn {
+        float: none;
+      }
+    }
+
+    > .btn + .btn,
+    > .btn + .btn-group,
+    > .btn-group + .btn,
+    > .btn-group + .btn-group {
+      margin-top: -0.1rem;
+      margin-left: 0;
+    }
+  }
+
+  .btn-group-vertical > .btn {
+    &:not(:first-child):not(:last-child) {
+      border-radius: 0;
+    }
+    &:first-child:not(:last-child) {
+      border-radius: @btn-border-radius-base @btn-border-radius-base 0 0;
+    }
+    &:last-child:not(:first-child) {
+      border-radius: 0 0 @btn-border-radius-base @btn-border-radius-base;
+    }
+  }
+  .btn-group-vertical > .btn-group:not(:first-child):not(:last-child) > .btn {
+    border-radius: 0;
+  }
+  .btn-group-vertical > .btn-group:first-child:not(:last-child) {
+    > .btn:last-child,
+    > .dropdown-toggle {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+  .btn-group-vertical > .btn-group:last-child:not(:first-child) > .btn:first-child {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+
+  // Justified button groups
+  // ----------------------
+
+  .btn-group-justified {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    > .btn,
+    > .btn-group {
+      float: none;
+      display: table-cell;
+      width: 1%;
+    }
+    > .btn-group .btn {
+      width: 100%;
+    }
+
+    > .btn-group .dropdown-menu {
+      left: auto;
+    }
+  }
+
+
+  // Checkbox and radio options
+  //
+  // In order to support the browser's form validation feedback, powered by the
+  // `required` attribute, we have to "hide" the inputs via `clip`. We cannot use
+  // `display: none;` or `visibility: hidden;` as that also hides the popover.
+  // Simply visually hiding the inputs via `opacity` would leave them clickable in
+  // certain cases which is prevented by using `clip` and `pointer-events`.
+  // This way, we ensure a DOM element is visible to position the popover from.
+  //
+  // See https://github.com/twbs/bootstrap/pull/12794 and
+  // https://github.com/twbs/bootstrap/pull/14559 for more information.
+
+  [data-toggle="buttons"] {
+    > .btn,
+    > .btn-group > .btn {
+      input[type="radio"],
+      input[type="checkbox"] {
+        position: absolute;
+        clip: rect(0,0,0,0);
+        pointer-events: none;
+      }
+    }
+  }
+
+  //
+  // Alerts
+  // --------------------------------------------------
+
+
+  // Base styles
+  // -------------------------
+
+  .alert {
+    padding: @alert-padding;
+    margin-bottom: @line-height-computed;
+    border: 0.1rem solid transparent;
+    border-radius: @alert-border-radius;
+
+    // Headings for larger alerts
+    h4 {
+      margin-top: 0;
+      // Specified for the h4 to prevent conflicts of changing @headings-color
+      color: inherit;
+    }
+
+    // Provide class for links that match alerts
+    .alert-link {
+      font-weight: @alert-link-font-weight;
+    }
+
+    // Improve alignment and spacing of inner content
+    > p,
+    > ul {
+      margin-bottom: 0;
+    }
+
+    > p + p {
+      margin-top: 0.5rem;
+    }
+  }
+
+  // Dismissible alerts
+  //
+  // Expand the right padding and account for the close button's positioning.
+
+  .alert-dismissible {
+    //padding-right: (@alert-padding + 20);
+    padding-right: 3.2rem;
+
+    // Adjust close link position
+    .close {
+      position: relative;
+      top: -0.2rem;
+      right: -2.1rem;
+      color: inherit;
+    }
+
+    // this override seems a bit off since it doesn't cover all
+    &.alert-danger, &.alert-info {
+      margin-bottom: 0;
+      margin-top: 1rem;
+      border-radius: 0;
+      height: 100%;
+    }
+  }
+
+  // Alternate styles
+  //
+  // Generate contextual modifier classes for colorizing the alert.
+
+  .alert-success {
+    .alert-variant(@alert-success-bg; @alert-success-border; @alert-success-text);
+  }
+
+  .alert-info {
+    .alert-variant(@alert-info-bg; @alert-info-border; @alert-info-text);
+  }
+
+  .alert-warning {
+    .alert-variant(@alert-warning-bg; @alert-warning-border; @alert-warning-text);
+  }
+
+  .alert-danger {
+    .alert-variant(@alert-danger-bg; @alert-danger-border; @alert-danger-text);
+  }
+
+  //
+  // Breadcrumbs
+  // --------------------------------------------------
+
+
+  .breadcrumb {
+    padding: @breadcrumb-padding-vertical @breadcrumb-padding-horizontal;
+    margin-bottom: @line-height-computed;
+    list-style: none;
+    background-color: @breadcrumb-bg;
+    border-radius: @border-radius-base;
+
+    > li {
+      display: inline-block;
+
+      + li:before {
+        content: "@{breadcrumb-separator}\00a0"; // Unicode space added since inline-block means non-collapsing white-space
+        padding: 0 0.5rem;
+        color: @breadcrumb-color;
+      }
+    }
+
+    > .active {
+      color: @breadcrumb-active-color;
+    }
+  }
+
+  //
+  // Dropdown menus
+  // --------------------------------------------------
+
+
+  // Dropdown arrow/caret
+  .caret {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: 0.2rem;
+    vertical-align: middle;
+    border-top:   @caret-width-base dashed;
+    border-top:   @caret-width-base solid ~"\9"; // IE8
+    border-right: @caret-width-base solid transparent;
+    border-left:  @caret-width-base solid transparent;
+  }
+
+  // The dropdown wrapper (div)
+  .dropup,
+  .dropdown {
+    position: relative;
+  }
+
+  // Overwritter
+  .dropdown.open .dropdown-menu {
+    z-index: 100600;
+
+    li {
+      width: 21rem;
+
+      .pull-right {
+        color: #aaa;
+        font-size: 80%;
+        position: relative;
+        top: 0.4rem;
+      }
+    }
+  }
+
+  // Prevent the focus on the dropdown toggle when closing dropdowns
+  .dropdown-toggle:focus {
+    outline: 0;
+  }
+
+  // The dropdown menu (ul)
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    display: none; // none by default, but block on "open" of the menu
+    float: left;
+    min-width: 16rem;
+    padding: 0.5rem 0;
+    margin: 0.2rem 0 0; // override default ul
+    list-style: none;
+    font-size: @font-size-base;
+    text-align: left; // Ensures proper alignment if parent has it changed (e.g., modal footer)
+    background-color: @dropdown-bg;
+    border: 0.1rem solid @dropdown-fallback-border; // IE8 fallback
+    border: 0.1rem solid @dropdown-border;
+    border-radius: @border-radius-base;
+    box-shadow: 0 0.6rem 1.2rem rgba(0,0,0,.175);
+    background-clip: padding-box;
+
+    // Aligns the dropdown menu to right
+    //
+    // Deprecated as of 3.1.0 in favor of `.dropdown-menu-[dir]`
+    &.pull-right {
+      right: 0;
+      left: auto;
+    }
+
+    // Dividers (basically an hr) within the dropdown
+    .divider {
+      .nav-divider(@dropdown-divider-bg);
+    }
+
+    // Links within the dropdown menu
+    > li > a {
+      display: block;
+      padding: 0.3rem 2rem;
+      clear: both;
+      font-weight: normal;
+      line-height: @line-height-base;
+      color: @dropdown-link-color;
+      white-space: nowrap; // prevent links from randomly breaking onto new lines
+    }
+  }
+
+  // Hover/Focus state
+  .dropdown-menu > li > a {
+    &:hover,
+    &:focus {
+      text-decoration: none;
+      color: @dropdown-link-hover-color;
+      background-color: @dropdown-link-hover-bg;
+    }
+  }
+
+  // Active state
+  .dropdown-menu > .active > a {
+    &,
+    &:hover,
+    &:focus {
+      color: @dropdown-link-active-color;
+      text-decoration: none;
+      outline: 0;
+      background-color: @dropdown-link-active-bg;
+    }
+  }
+
+  // Disabled state
+  //
+  // Gray out text and ensure the hover/focus state remains gray
+
+  .dropdown-menu > .disabled > a {
+    &,
+    &:hover,
+    &:focus {
+      color: @dropdown-link-disabled-color;
+    }
+
+    // Nuke hover/focus effects
+    &:hover,
+    &:focus {
+      text-decoration: none;
+      background-color: transparent;
+      background-image: none; // Remove CSS gradient
+      cursor: @cursor-disabled;
+    }
+  }
+
+  // Open state for the dropdown
+  .open {
+    // Show the menu
+    > .dropdown-menu {
+      display: block;
+    }
+
+    // Remove the outline when :focus is triggered
+    > a {
+      outline: 0;
+    }
+  }
+
+  // Menu positioning
+  //
+  // Add extra class to `.dropdown-menu` to flip the alignment of the dropdown
+  // menu with the parent.
+  .dropdown-menu-right {
+    left: auto; // Reset the default from `.dropdown-menu`
+    right: 0;
+  }
+  // With v3, we enabled auto-flipping if you have a dropdown within a right
+  // aligned nav component. To enable the undoing of that, we provide an override
+  // to restore the default dropdown menu alignment.
+  //
+  // This is only for left-aligning a dropdown menu within a `.navbar-right` or
+  // `.pull-right` nav component.
+  .dropdown-menu-left {
+    left: 0;
+    right: auto;
+  }
+
+  // Dropdown section headers
+  .dropdown-header {
+    display: block;
+    padding: 0.3rem 2rem;
+    font-size: @font-size-small;
+    line-height: @line-height-base;
+    color: @dropdown-header-color;
+    white-space: nowrap; // as with > li > a
+  }
+
+  // Backdrop to catch body clicks on mobile, etc.
+  .dropdown-backdrop {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    z-index: 990;
+  }
+
+  // Right aligned dropdowns
+  .pull-right > .dropdown-menu {
+    right: 0;
+    left: auto;
+  }
+
+  // Allow for dropdowns to go bottom up (aka, dropup-menu)
+  //
+  // Just add .dropup after the standard .dropdown class and you're set, bro.
+  // TODO: abstract this so that the navbar fixed styles are not placed here?
+
+  .dropup,
+  .navbar-fixed-bottom .dropdown {
+    // Reverse the caret
+    .caret {
+      border-top: 0;
+      border-bottom: @caret-width-base dashed;
+      border-bottom: @caret-width-base solid ~"\9"; // IE8
+      content: "";
+    }
+    // Different positioning for bottom up menu
+    .dropdown-menu {
+      top: auto;
+      bottom: 100%;
+      margin-bottom: 0.2rem;
+    }
+  }
+
+
+  // Component alignment
+  //
+  // Reiterate per navbar.less and the modified component alignment there.
+
+  //@media (min-width: @grid-float-breakpoint) {
+    //  .navbar-right {
+      //    .dropdown-menu {
+        //      .dropdown-menu-right();
+      //    }
+      //    // Necessary for overrides of the default right aligned menu.
+      //    // Will remove come v4 in all likelihood.
+      //    .dropdown-menu-left {
+        //      .dropdown-menu-left();
+      //    }
+    //  }
+  //}
+
+  //
+  // Utility classes
+  // --------------------------------------------------
+
+
+  // Floats
+  // -------------------------
+
+  .clearfix {
+    .clearfix();
+  }
+  .pull-right {
+    float: right !important;
+  }
+  .pull-left {
+    float: left !important;
+  }
+
+
+  // Hide from screenreaders and browsers
+  //
+  // Credit: HTML5 Boilerplate
+
+  .hidden {
+    display: none !important;
+  }
+
+
+  // For Affix plugin
+  // -------------------------
+
+  .affix {
+    position: fixed;
+  }
+
+  //
+  // Component animations
+  // --------------------------------------------------
+
+  // Heads up!
+  //
+  // We don't use the `.opacity()` mixin here since it causes a bug with text
+  // fields in IE7-8. Source: https://github.com/twbs/bootstrap/pull/3552.
+
+  .fade {
+    opacity: 0;
+    transition: opacity .15s linear;
+  &.in {
+    opacity: 1;
+  }
+}
+
+.collapse {
+  display: none;
+
+  &.in      { display: block; }
+  tr&.in    { display: table-row; }
+  tbody&.in { display: table-row-group; }
+}
+
+.collapsing {
+  position: relative;
+  height: 0;
+  overflow: hidden;
+  transition-property: height, visibility;
+  transition-duration: .35s;
+  transition-timing-function: ease;
+}

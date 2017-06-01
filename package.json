@@ -5,7 +5,7 @@
     "type": "git",
     "url": "https://github.com/slamdata/slamdata"
   },
-  "version": "v4.2.0-qa-prerelease-5",
+  "version": "v4.2.1",
   "contributors": [
     "Maxim Zimaliev <zimaliev@yandex.ru>",
     "Gary Burgess <gary@slamdata.com>",
@@ -20,7 +20,7 @@
     "bundle:watch": "webpack --progress --config webpack.config.dev.js --watch",
     "build:dev-pulp": "pulp --watch build",
     "build:icons": "gulp icons",
-    "build:less": "lessc less/main.less public/css/main.css --autoprefix=\"> 1%, last 1 versions, Firefox ESR, not Explorer < 11\"",
+    "build:less": "lessc less/main.less public/css/main.css --autoprefix=\"> 2%, last 1 versions, Firefox ESR, Explorer >= 11\"",
     "build:lite": "gulp bundle",
     "build:prod": "npm run lint:crlf && npm run build:less && npm run build:icons && npm run build:psa && gulp bundle",
     "build:psa": "pulp build -I test/src -- --censor-lib --strict --stash",
@@ -74,6 +74,7 @@
     "purs-loader": "^2.4.2",
     "rimraf": "^2.4.3",
     "selenium-webdriver": "2.53.2",
+    "stylelint": "^7.10.1",
     "vinyl-paths": "^2.1.0",
     "webpack": "^2.3.2",
     "webpack-stream": "^2.1.0"

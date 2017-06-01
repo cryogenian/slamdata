@@ -20,11 +20,8 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Array as Array
-import Data.Foldable as F
 import Data.Int as Int
 import Data.Lens ((^.), (^?))
-import Data.List (List, (:))
-import Data.List as List
 
 import DOM.Event.Event (preventDefault)
 import DOM.Event.Types (Event)
@@ -35,50 +32,42 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Query as QQ
 import SlamData.Render.CSS.New as CSS
 import SlamData.Render.Icon as I
+import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
+import SlamData.Workspace.Card.Chart.PivotTableRenderer.Common (PTree, foldTree, sizeOfRow, topField)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..), ColumnDimension)
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
 import SlamData.Workspace.Card.Setups.Transform as T
 
 import Global (readFloat)
-import Utils (hush, showPrettyNumber, showFormattedNumber)
-
-type Input =
-  { port ∷ Port.PivotTablePort
-  , resource ∷ Port.Resource
-  }
+import Utils (showPrettyNumber, showFormattedNumber)
 
 type State =
-  { input ∷ Maybe Input
-  , count ∷ Int
-  , pageCount ∷ Int
+  { pageCount ∷ Int
   , pageIndex ∷ Int
   , pageSize ∷ Int
-  , rawRecords ∷ Maybe (Array J.Json)
-  , records ∷ Maybe (PTree J.Json J.Json)
+  , buckets ∷ Maybe (PTree J.Json J.Json)
   , customPage ∷ Maybe String
   , loading ∷ Boolean
+  , port ∷ Maybe Port.PivotTablePort
   }
 
 initialState ∷ State
 initialState =
-  { input: Nothing
-  , count: 0
-  , pageCount: 0
+  { pageCount: 0
   , pageIndex: 0
   , pageSize: PTRM.initialModel.pageSize
-  , rawRecords: Nothing
-  , records: Nothing
+  , buckets: Nothing
   , customPage: Nothing
   , loading: false
+  , port: Nothing
   }
 
 data Query a
-  = Update Port.PivotTablePort Port.Resource a
+  = Update ES.PivotTableR a
   | Load PTRM.Model a
   | Save (PTRM.Model → a)
   | StepPage PageStep a
@@ -88,6 +77,7 @@ data Query a
 
 data Message
   = ModelUpdated
+  | StateUpdated (ES.PivotTableR → ES.PivotTableR)
 
 data PageStep
   = First
@@ -109,13 +99,13 @@ component =
 
 render ∷ State → HTML
 render st =
-  case st.input of
-    Just { port } →
+  case st.port of
+    Just port →
       HH.div
         [ HP.classes [ HH.ClassName "sd-pivot-table" ] ]
         [ HH.div
             [ HP.classes [ HH.ClassName "sd-pivot-table-content" ] ]
-            [ maybe (HH.text "") (renderTable port.dimensions port.columns) st.records ]
+            [ maybe (HH.text "") (renderTable port.dimensions port.columns) st.buckets ]
         , HH.div
             [ HP.classes
                 [ HH.ClassName "sd-pagination"
@@ -134,7 +124,7 @@ render st =
     _ → HH.text ""
   where
   renderTable dims cols tree =
-    if st.count ≡ 0
+    if st.pageCount ≡ 0
       then
         HH.div
           [ HP.classes [ HH.ClassName "no-results" ] ]
@@ -261,15 +251,15 @@ render st =
 
 eval ∷ Query ~> DSL
 eval = case _ of
-  Update port resource next → do
-    st ← H.get
-    let input = { port, resource }
-    if fromMaybe false (eq resource ∘ _.resource <$> st.input)
-      then
-        H.modify _ { input = Just input }
-      else do
-        H.modify _ { input = Just input, pageIndex = 0, count = 0, pageCount = 0 }
-        ifSimpleQuery pageQuery loadTree input
+  Update es next → do
+    H.modify _
+      { buckets = Just es.buckets
+      , pageIndex = es.pageIndex
+      , pageCount = es.pageCount
+      , pageSize = es.pageSize
+      , loading = false
+      , port = Just es.options
+      }
     pure next
   StepPage step next → do
     st ← H.get
@@ -279,8 +269,8 @@ eval = case _ of
         Prev  → st.pageIndex - 1
         Next  → st.pageIndex + 1
         Last  → st.pageCount - 1
-    H.modify _ { pageIndex = pageIndex }
-    for_ st.input (ifSimpleQuery pageQuery pageTree)
+    H.raise $ StateUpdated _ { pageIndex = pageIndex }
+    H.modify _ { loading = true }
     pure next
   SetCustomPage page next → do
     H.modify _ { customPage = Just page }
@@ -291,18 +281,14 @@ eval = case _ of
     for_ st.customPage \page → do
       let
         pageIndex = clamp 0 (st.pageCount - 1) (Int.floor (readFloat page) - 1)
-      H.modify _
-        { pageIndex = pageIndex
-        , customPage = Nothing
-        }
-      for st.input (ifSimpleQuery pageQuery pageTree)
+      H.raise $ StateUpdated _ { pageIndex = pageIndex }
+      H.modify _ { customPage = Nothing, loading = true }
     pure next
   ChangePageSize size next → do
     st ← H.get
     let
       pageSize  = Int.floor (readFloat size)
-    H.modify _ { pageSize = pageSize }
-    for_ st.input (ifSimpleQuery pageQuery pageTree)
+    H.modify _ { pageSize = pageSize, loading = true }
     H.raise ModelUpdated
     pure next
   Load model next → do
@@ -311,161 +297,6 @@ eval = case _ of
   Save k → do
     { pageSize } ← H.get
     pure $ k { pageSize }
-
-ifSimpleQuery
-  ∷ (Input → DSL Unit)
-  → (Input → DSL Unit)
-  → Input
-  → DSL Unit
-ifSimpleQuery f g p =
-  if p.port.isSimpleQuery then f p else g p
-
-pageQuery ∷ Input → DSL Unit
-pageQuery input = do
-  st ← H.get
-  let
-    filePath = input.resource ^. Port._filePath
-    offset = st.pageIndex * st.pageSize
-    limit = st.pageSize
-  H.modify _ { loading = true }
-  if st.count ≡ 0
-    then do
-      count ← either (const 0) id <$> QQ.count filePath
-      H.modify _
-        { count = count
-        , pageCount = calcPageCount count st.pageSize
-        }
-    else do
-      H.modify _
-        { pageCount = calcPageCount st.count st.pageSize
-        }
-  records ← QQ.sample filePath offset limit
-  H.modify _ { loading = false }
-  for_ records \recs →
-    H.modify _ { records = Just (buildTree mempty Bucket Grouped recs) }
-
-pageTree ∷ Input → DSL Unit
-pageTree input = do
-  st ← H.get
-  for_ st.rawRecords \records → do
-    let
-      dims = List.fromFoldable $ J.cursorGet ∘ topField ∘ fst <$> input.port.dimensions
-      tree = buildTree dims Bucket Grouped records
-      pages = pagedTree st.pageSize (sizeOfRow input.port.columns) tree
-      pageCount = Array.length (snd pages)
-      pageIndex = clamp 0 (pageCount - 1) st.pageIndex
-    H.modify _
-      { records = Array.index (snd pages) pageIndex
-      , count = fst pages
-      , pageCount = pageCount
-      , pageIndex = pageIndex
-      }
-
-loadTree ∷ Input → DSL Unit
-loadTree input = do
-  let filePath = input.resource ^. Port._filePath
-  H.modify _ { loading = true }
-  records ← QQ.all filePath
-  H.modify _
-    { loading = false
-    , rawRecords = hush records
-    }
-  pageTree input
-
-calcPageCount ∷ Int → Int → Int
-calcPageCount count size =
-  Int.ceil (Int.toNumber count / Int.toNumber size)
-
-sizeOfRow ∷ Array (String × ColumnDimension) → J.Json → Int
-sizeOfRow columns row =
-  fromMaybe 1
-    (F.maximum
-      (Array.mapMaybe
-        case _ of
-          c × (D.Dimension _ (D.Projection (Just _) _)) → Just 1
-          c × _ → J.foldJsonArray 1 Array.length <$> J.cursorGet (topField c) row
-        columns))
-
-topField ∷ String → J.JCursor
-topField c = J.JField c J.JCursorTop
-
-data PTree k a
-  = Bucket (Array a)
-  | Grouped (Array (k × PTree k a))
-
-foldTree
-  ∷ ∀ k a r
-  . (Array a → r)
-  → (Array (k × r) → r)
-  → PTree k a
-  → r
-foldTree f g (Bucket a) = f a
-foldTree f g (Grouped as) = g (map (foldTree f g) <$> as)
-
-buildTree
-  ∷ ∀ k a r
-  . Eq k
-  ⇒ List (a → Maybe k)
-  → (Array a → r)
-  → (Array (k × r) → r)
-  → Array a
-  → r
-buildTree List.Nil f g as = f as
-buildTree (k : ks) f g as =
-  g (fin (foldl go { key: Nothing, group: [], acc: [] } as))
-  where
-  go res@{ key: mbKey, group, acc } a =
-    case mbKey, k a of
-      Just key, Just key' | key == key' →
-        { key: mbKey, group: Array.snoc group a, acc }
-      _, Just key' →
-        { key: Just key', group: [a], acc: fin res }
-      _, Nothing →
-        res
-  fin { key, group, acc } =
-    case key of
-      Just key' →
-        Array.snoc acc (key' × (buildTree ks f g group))
-      Nothing →
-        acc
-
-pagedTree
-  ∷ ∀ k a
-  . Int
-  → (a → Int)
-  → PTree k a
-  → Int × Array (PTree k a)
-pagedTree page sizeOf tree =
-  case tree of
-    Bucket as → map Bucket <$> chunked page sizeOf as
-    Grouped gs → map Grouped <$> chunked page (sizeOf' ∘ snd) gs
-  where
-  sizeOf' (Bucket as) = F.sum (sizeOf <$> as)
-  sizeOf' (Grouped gs) = F.sum (sizeOf' ∘ snd <$> gs)
-
-chunked
-  ∷ ∀ b
-  . Int
-  → (b → Int)
-  → Array b
-  → Int × Array (Array b)
-chunked page sizeOf arr = res.total × Array.snoc res.chunks res.chunk
-  where
-  res =
-    foldl go { total: 0, size: 0, chunk: [], chunks: []} arr
-
-  go { total, size, chunk, chunks } a =
-    let
-      s2 = sizeOf a
-      t2 = total + s2
-    in
-      case size + s2, chunk of
-        size', [] | size' > page →
-          { total: t2, size: 0, chunk, chunks: Array.snoc chunks [a] }
-        size', _  | size' > page →
-          { total: t2, size: s2, chunk: [a], chunks: Array.snoc chunks chunk }
-        size', _ →
-          { total: t2, size: size', chunk: Array.snoc chunk a, chunks }
 
 foldJsonArray'
   ∷ ∀ a

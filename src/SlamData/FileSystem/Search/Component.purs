@@ -29,12 +29,12 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger, DebounceTrigger)
 
 import SlamData.Config as Config
 import SlamData.Monad (Slam)
-import SlamData.Render.Common as RC
+import SlamData.Render.ClassName as CN
+import SlamData.Render.Common (busyFieldIcon, clearFieldIcon)
 import SlamData.Render.Icon as I
 import SlamData.FileSystem.Search.Component.CSS as CSS
 
@@ -116,57 +116,58 @@ component = H.component
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ CSS.search ] ]
-    [ HH.form
-        [ HE.onSubmit (HE.input_ TrySubmit)]
-        [ HH.div
-            [ HP.classes searchClasses ]
-            [ I.searchSm
-            , HH.input
-                [ HP.classes [ B.formControl ]
-                , HP.value state.value
-                , HE.onFocus (HE.input_ (Focus true))
-                , HE.onBlur (HE.input_ (Focus false))
-                , HE.onValueInput (HE.input Typed)
-                , HP.title "File search field"
-                , ARIA.label "File search field"
-                ]
-            , HH.span
-                [ HP.class_
-                    if state.focused
-                      then CSS.searchPathActive
-                      else CSS.searchPath
-                ]
-                [ HH.span
-                    [ HP.class_ CSS.searchPathBody ]
-                    [ HH.text state.value ]
-                , HH.span
-                    [ HP.class_
-                        if state.value ≡ ""
+  [ HP.classes [ CSS.search ] ]
+  [ HH.form
+      [ HE.onSubmit (HE.input_ TrySubmit)]
+      [ HH.div
+          [ HP.classes searchClasses ]
+          [ I.searchSm
+          , HH.input
+              [ HP.classes [ CN.formControl ]
+              , HP.value state.value
+              , HE.onFocus (HE.input_ (Focus true))
+              , HE.onBlur (HE.input_ (Focus false))
+              , HE.onValueInput (HE.input Typed)
+              , HP.title "File search field"
+              , ARIA.label "File search field"
+              ]
+          , HH.span
+              [ HP.class_
+                  if state.focused
+                    then CSS.searchPathActive
+                    else CSS.searchPath
+              ]
+              [ HH.span
+                  [ HP.class_ CSS.searchPathBody ]
+                  [ HH.text state.value ]
+              , HH.span
+                  [ HP.class_
+                      if state.value ≡ ""
                         then CSS.searchAffixEmpty
                         else CSS.searchAffix
-                    ]
-                    [ HH.text $ "path:" ⊕ printPath (state.path) ]
-                ]
-            , HH.button
-                [ HP.class_ CSS.searchClearButton
-                , HE.onClick \e → Just $ PreventDefault (mouseEventToEvent e) $ H.action Clear
-                ]
-                [ if state.loading
-                    then RC.busyFieldIcon "Search in progress"
-                    else RC.clearFieldIcon "Clear search"
-                ]
+                  ]
+                  [ HH.text $ "path:" ⊕ printPath (state.path) ]
+              ]
+          , HH.button
+              [ HP.class_ CSS.searchClearButton
+              , HE.onClick \e →
+                  Just $ PreventDefault (mouseEventToEvent e) $ H.action Clear
+              ]
+              [ if state.loading
+                  then busyFieldIcon "Search in progress"
+                  else clearFieldIcon "Clear search"
+              ]
             ]
         ]
     ]
   where
   searchClasses ∷ Array HH.ClassName
   searchClasses =
-    [ B.inputGroup
+    [ CN.inputGroup
     , CSS.searchInput
     ]
     ⊕ A.catMaybes
-        [ if not state.valid then Just B.hasError else Nothing
+        [ if not state.valid then Just CN.hasError else Nothing
         , if state.value ≡ "" then Just CSS.searchEmpty else Nothing
         ]
 

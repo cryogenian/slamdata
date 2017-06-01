@@ -1,11 +1,7 @@
 .sd-card-open {
-
-  > div, > div > div { height: 100%; }
-
-  .sd-miller-column-item-inner .sd-icon {
-    margin-right: 8px;
+  > div, > div > div {
+    height: 100%;
   }
-
 }
 
 .sd-unfocused > .sd-deck > .sd-card-slider > .sd-card > div > .sd-deck-card > .sd-card-open > div > div > .sd-miller-columns .sd-miller-column {
@@ -17,14 +13,13 @@
   }
 }
 
-.sd-published .sd-card-open {
-  pointer-events: none;
-}
+.sd-published {
+  .sd-card-open {
+    pointer-events: none;
+  }
 
-.sd-published .sd-miller-column-filter {
-  display: none;
-}
-
-.sd-published .sd-card-open .sd-miller-columns .sd-clear-field-icon {
-  display: none;
+  .sd-miller-column-filter,
+  .sd-card-open .sd-miller-columns .sd-clear-field-icon {
+    display: none;
+  }
 }

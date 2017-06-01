@@ -21,8 +21,13 @@ module SlamData.Workspace.Card.Open.Eval
 import SlamData.Prelude
 
 import Control.Monad.Writer.Class (class MonadTell)
-import Data.Lens ((^?), (?~))
+import Data.Functor.Mu (Mu)
+import Data.Json.Extended as EJ
+import Data.Lens ((^?), (?~), (.~))
+import Data.List as L
 import Data.Path.Pathy as Path
+import Data.StrMap as SM
+import Matryoshka as M
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.FS as QFS
@@ -57,17 +62,45 @@ evalOpen model varMap = case model of
     res ← CEM.temporaryOutputResource
     let
       sql =
-        Sql.buildSelect
-          $ all
-          ∘ (Sql._relations ?~ Sql.VariRelation { vari: var, alias: Nothing })
+        case SM.lookup var varMap of
+          Just (Right v) → do
+            -- If the var is an ident, use `SELECT * FROM :ident`
+            -- If the var is an literal, use `SELECT :literal AS literal`
+            -- If the var is any other expr, use it directly
+            case unwrapParens (unwrap v) of
+              Sql.Ident _ →
+                Sql.buildSelect
+                  $ all
+                  ∘ (Sql._relations ?~ Sql.VariRelation { vari: var, alias: Nothing })
+              Sql.Literal _ →
+                selectVarAsVar var v
+              Sql.SetLiteral _ →
+                selectVarAsVar var v
+              _ →
+                unwrap v
+          _ →
+            -- This case should be impossible - if we selected a var in the
+            -- card, the var should exist during eval
+            Sql.set L.Nil
       varMap' =
         map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
       backendPath =
         fromMaybe Path.rootDir $ Path.parentDir res
-
     CE.liftQ $ QQ.viewQuery res sql varMap'
     pure $ Port.resourceOut $ Port.View res (Sql.print sql) varMap
 
   where
+
+  selectVarAsVar ∷ String → VM.VarMapValue → Sql.Sql
+  selectVarAsVar var v =
+    Sql.buildSelect
+      $ Sql._projections .~ pure (Sql.projection (unwrap v) # Sql.as var)
+
+  unwrapParens ∷ Sql.Sql → Sql.SqlF EJ.EJsonF (Mu (Sql.SqlF EJ.EJsonF))
+  unwrapParens expr =
+    case M.project expr of
+      Sql.Parens expr' → unwrapParens expr'
+      expr' → expr'
+
   checkPath filePath =
     CE.liftQ $ QFS.messageIfFileNotFound filePath $ CE.OpenFileNotFound (Path.printPath filePath)

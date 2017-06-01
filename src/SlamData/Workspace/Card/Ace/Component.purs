@@ -43,7 +43,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.Monad (Slam)
 import SlamData.Notification as N
 import SlamData.Prelude
-import SlamData.Render.CSS as CSS
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AccessType
@@ -162,7 +162,7 @@ aceSetup mode editor = do
 render ∷ CT.AceMode → State → HTML
 render mode state =
   HH.div
-    [ HP.classes [ CSS.cardInput, CSS.aceContainer ] ]
+    [ HP.classes [ CN.cardInput, CN.aceContainer ] ]
     [ HH.div [ HP.class_ (HH.ClassName "sd-ace-inset-shadow") ] []
     , HH.div
         [ HP.class_ (HH.ClassName "sd-ace-toolbar") ]

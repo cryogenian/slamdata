@@ -32,7 +32,7 @@ import SlamData.Config.Version as CV
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Header.Attribution as Attribution
 import SlamData.Header.Gripper.Component as Gripper
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Monad (Slam)
 
 type State =
@@ -73,7 +73,7 @@ render { open, attributions } =
         else HH.text ""
     , HH.div_
         [ HH.div_
-            [ HH.div [ HP.classes [ Rc.header ] ]
+            [ HH.div [ HP.classes [ CN.header ] ]
                 [ logo CV.shortVersion
                 , HH.slot' CP.cp2 unit GlobalMenu.component unit (HE.input_ ToggleAttributions)
                 , HH.slot' CP.cp1 unit (Gripper.component "nav") unit $ HE.input HandleGripper
@@ -85,13 +85,17 @@ render { open, attributions } =
 logo ∷ Maybe String → HTML
 logo mbVersion =
   HH.div
-    [ HP.class_ Rc.navLogo ]
+    [ HP.class_ CN.navLogo ]
     $ [ HH.a
           [ HP.href Config.slamDataHome
           , ARIA.label "Browse root folder"
           , HP.title "Browse root folder"
           ]
-          [ HH.img [ HP.src "img/logo.svg" ] ]
+          [ HH.img
+            [ HP.src "img/logo.svg"
+            , HP.alt "SlamData"
+            ]
+          ]
       ]
     ⊕ foldMap (pure ∘ HH.div_ ∘ pure ∘ HH.text) mbVersion
 

@@ -30,7 +30,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import SlamData.Render.CSS as RC
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
 import SlamData.Workspace.FormBuilder.Item.Component as Item
@@ -107,7 +107,7 @@ render state = renderTable state.items
       if L.length items > 0
         then
           HH.table
-            [ HP.classes [ HH.ClassName "form-builder", RC.form ] ]
+            [ HP.classes [ HH.ClassName "form-builder", CN.form ] ]
             [ HH.thead_
                 [ HH.tr_
                     [ HH.th_ [ HH.text "Name" ]

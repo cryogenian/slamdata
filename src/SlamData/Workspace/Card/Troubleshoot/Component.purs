@@ -23,8 +23,8 @@ import Data.StrMap as SM
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
@@ -52,8 +52,8 @@ render { varMap } =
   HH.table
     [ HP.classes
         [ HH.ClassName "form-builder"
-        , B.table
-        , B.tableStriped
+        , CN.table
+        , CN.tableStriped
         ]
     ]
     [ HH.thead_

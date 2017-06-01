@@ -29,30 +29,30 @@
 }
 
 .sd-card-chart {
-    > div, > div > div  {
-        height: 100%;
-        width: 100%;
-        padding: 0;
-    }
-}
-
-.chart-output, .chart-output > div {
+  > div, > div > div  {
     height: 100%;
     width: 100%;
     padding: 0;
+  }
+}
+
+.chart-output, .chart-output > div {
+  height: 100%;
+  width: 100%;
+  padding: 0;
 }
 
 [_echarts_instance_] {
   position: absolute;
   top: 50%;
   left: 0;
-  transform: translate(0,-50%);
+  transform: translate(0, -50%);
 }
 
 .sd-chart-tooltip-table {
   td, th {
-    padding: 0 3px;
-    border-bottom: 1px solid rgba(255,255,255,.2);
+    padding: 0 0.3rem;
+    border-bottom: 0.1rem solid rgba(255, 255, 255, 0.2);
   }
   tr:last-child {
     td, th {
@@ -60,13 +60,13 @@
     }
   }
   & + & {
-    margin-top: 6px;
+    margin-top: 0.6rem;
   }
 }
 
 .sd-chart-tooltip-color {
   display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 10px;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 1rem;
 }

@@ -22,7 +22,6 @@ import Data.Array as A
 import Data.Int as Int
 import Data.Formatter.DateTime as Fd
 import Data.DateTime as DT
-import Data.String as Str
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Data.String.Regex.Unsafe as URX
@@ -30,80 +29,84 @@ import Data.String.Regex.Unsafe as URX
 import SqlSquared (Sql)
 import SqlSquared as Sql
 
-import Utils (stringToNumber, stringToBoolean)
+import Utils (hush, stringToNumber, stringToBoolean)
 
--- Truncate value to only include YYYY-MM-DD part, in case of Quasar mongo
--- connector issue that cannot represent dates distinct from datetimes.
-fixupDate ∷ String → String
-fixupDate = Str.take 10
+newtype ParseError = ParseError String
 
-parseTime ∷ String → String ⊹ DT.Time
-parseTime = map DT.time ∘ Fd.unformatDateTime "HH:mm:ss" ∘ tweak
-  where
-  tweak ∷ String → String
-  tweak s
-    | Str.length s ≡ 19 = s <> "Z"
-    | Str.charAt 10 s ≡ Just ' ' = tweak (Str.take 10 s <> "T" <> Str.drop 11 s)
-    | otherwise = s
+derive newtype instance eqParseError ∷ Eq ParseError
+derive newtype instance ordParseError ∷ Ord ParseError
+derive instance newtypeParseError ∷ Newtype ParseError _
 
-parseDate ∷ String → String ⊹ DT.Date
-parseDate = map DT.date ∘ Fd.unformatDateTime "YYYY-MM-DD" ∘ fixupDate
+instance showParseError ∷ Show ParseError where
+  show (ParseError msg) = "(ParseError " <> show msg <> ")"
 
-parseDateTime ∷ String → String ⊹ DT.DateTime
-parseDateTime = Fd.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ" ∘ tweak
-  where
-  -- The `datetime-local` HTML picker omits the `Z` from the format, so if it's
-  -- missing from the input, add it.
-  tweak ∷ String → String
-  tweak s
-    | Str.length s ≡ 19 = s <> "Z"
-    | otherwise = s
+dateFormat :: String
+dateFormat = "YYYY-MM-DD"
 
-dateSql ∷ String → Maybe Sql
+timeFormat :: String
+timeFormat = "HH:mm:ss"
+
+dateTimeFormat :: String
+dateTimeFormat = "YYYY-MM-DDTHH:mm:ssZ"
+
+parseTime ∷ String → ParseError ⊹ DT.Time
+parseTime = bimap ParseError DT.time ∘ Fd.unformatDateTime timeFormat
+
+parseDate ∷ String → ParseError ⊹ DT.Date
+parseDate = bimap ParseError DT.date ∘ Fd.unformatDateTime dateFormat
+
+parseDateTime ∷ String → ParseError ⊹ DT.DateTime
+parseDateTime = lmap ParseError ∘ Fd.unformatDateTime dateTimeFormat
+
+dateSql ∷ String → Either ParseError Sql
 dateSql s = do
-  guard $ isRight $ parseDate s
+  _ ← parseDate s
   pure $ Sql.invokeFunction "DATE" $ pure $ Sql.string s
 
-timeSql ∷ String → Maybe Sql
+timeSql ∷ String → Either ParseError Sql
 timeSql s = do
-  guard $ isRight $ parseTime s
+  _ ← parseTime s
   pure $ Sql.invokeFunction "TIME" $ pure $ Sql.string s
 
-datetimeSql ∷ String → Maybe Sql
+datetimeSql ∷ String → Either ParseError Sql
 datetimeSql s = do
-  guard $ isRight $ parseDateTime s
+  _ ← parseDateTime s
   pure $ Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string s
 
-intervalSql ∷ String → Maybe Sql
+intervalSql ∷ String → Either ParseError Sql
 intervalSql s = do
-  guard $ RX.test rgx s
-  pure $ Sql.invokeFunction "INTERVAL" $ pure $ Sql.string s
+  if RX.test rgx s
+    then pure $ Sql.invokeFunction "INTERVAL" $ pure $ Sql.string s
+    else Left (ParseError ("Failed to parse interval from " <> show s))
   where
   rgx =
     URX.unsafeRegex
       "P((([0-9]*\\.?[0-9]*)Y)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)W)?(([0-9]*\\.?[0-9]*)D)?)?(T(([0-9]*\\.?[0-9]*)H)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)S)?)?"
       RXF.noFlags
 
-oidSql ∷ String → Sql
+oidSql ∷ String → Either ParseError Sql
 oidSql =
-  Sql.invokeFunction "OID" ∘ pure ∘ Sql.string
+  pure ∘ Sql.invokeFunction "OID" ∘ pure ∘ Sql.string
 
-numSql ∷ String → Maybe Sql
-numSql s = do
- num ← stringToNumber s
- pure $ Sql.num num
+numSql ∷ String → Either ParseError Sql
+numSql s =
+ case stringToNumber s of
+  Nothing → Left (ParseError ("Failed to parse number from " <> show s))
+  Just num → pure $ Sql.num num
 
-intSql ∷ String → Maybe Sql
-intSql s = do
-  int ← Int.fromString s
-  pure $ Sql.int int
+intSql ∷ String → Either ParseError Sql
+intSql s =
+ case Int.fromString s of
+  Nothing → Left (ParseError ("Failed to parse integer from " <> show s))
+  Just int → pure $ Sql.int int
 
-boolSql ∷ String → Maybe Sql
-boolSql s = do
-  bool ← stringToBoolean s
-  pure $ Sql.bool bool
+boolSql ∷ String → Either ParseError Sql
+boolSql s =
+  case stringToBoolean s of
+    Nothing → Left (ParseError ("Failed to parse boolean from " <> show s))
+    Just bool → pure $ Sql.bool bool
 
 allSqls ∷ String → Array Sql
 allSqls s =
-  A.mapMaybe (\f → f s)
+  A.mapMaybe (\f → hush (f s))
     [ dateSql, timeSql, datetimeSql, intervalSql, numSql, intSql, boolSql ]

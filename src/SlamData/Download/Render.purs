@@ -24,10 +24,9 @@ import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Download.Model as D
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 optionsCSV
   :: forall f
@@ -37,7 +36,7 @@ optionsCSV
 optionsCSV func opts =
   HH.div_
     [ HH.ul
-      [ HP.classes [ Rc.downloadCSVDelimiters, B.clearfix ]]
+      [ HP.classes [ CN.downloadCSVDelimiters ]]
       [ field D._rowDelimiter "Row delimiter"
       , field D._colDelimiter "Column delimiter"
       , field D._quoteChar "Quote character"
@@ -51,7 +50,7 @@ optionsCSV func opts =
       [ HH.label_
           [ HH.span_ [ HH.text label ]
           , HH.input
-              [ HP.classes [ B.formControl ]
+              [ HP.classes [ CN.formControl ]
               , HP.value (opts ^. lens)
               , HE.onValueInput $ HE.input (func lens)
               ]
@@ -65,13 +64,12 @@ optionsJSON
   -> H.ComponentHTML f
 optionsJSON func opts =
   HH.div
-    [ HP.classes [ Rc.downloadJSONOptions ] ]
+    [ HP.classes [ CN.downloadJSONOptions ] ]
     [ multivalues, precision ]
   where
   multivalues :: H.ComponentHTML f
   multivalues =
-    HH.div
-      [ HP.classes [ B.clearfix ] ]
+    HH.div_
       [ HH.label_ [ HH.text "Multiple values" ]
       , HH.ul_
           [ radio "multivalues" D._multivalues D.ArrayWrapped "Wrap values in arrays"
@@ -81,8 +79,7 @@ optionsJSON func opts =
 
   precision :: H.ComponentHTML f
   precision =
-    HH.div
-      [ HP.classes [ B.clearfix ] ]
+    HH.div_
       [ HH.label_ [ HH.text "Precision" ]
       , HH.ul_
           [ radio "precision" D._precision D.Readable "Readable"
@@ -116,16 +113,16 @@ fldName
   → H.ComponentHTML q
 fldName compressed options tgtValue query =
   HH.div
-    [ HP.classes [ B.formGroup, Rc.downloadTarget ] ]
+    [ HP.classes [ CN.formGroup, CN.downloadTarget ] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Target name" ]
         , HH.input
-            [ HP.classes [ B.formControl ]
+            [ HP.classes [ H.ClassName "form-control" ]
             , HP.value tgtValue
             , HE.onValueInput (HE.input query)
             ]
         , HH.div
-            [ HP.classes [ Rc.downloadTargetBox ] ]
+            [ HP.classes [ CN.downloadTargetBox ] ]
             [ HH.span_ [ HH.text tgtValue ]
             , HH.span_ [ HH.text (D.extension compressed options) ]
             ]

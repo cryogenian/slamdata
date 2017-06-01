@@ -21,15 +21,10 @@ import SlamData.Prelude
 import Data.Lens (Lens', lens, (%~), (.~))
 
 import Halogen as H
-import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
-
-import CSS.Geometry (marginBottom)
-import CSS.Size (px)
 
 import DOM.Event.Types (MouseEvent, mouseEventToEvent)
 import DOM.Event.Event (preventDefault)
@@ -93,15 +88,15 @@ render state = case state.item of
   Item _ → itemView state false false
   PhantomItem _ →
     HH.div
-      [ HP.classes [ B.listGroupItem, CSS.phantom ] ]
+      [ HP.classes [ CSS.fileSystemItem, CSS.phantom ] ]
       [ HH.div
-          [ HP.class_ B.row ]
-          [ HH.div
-              [ HP.classes [ B.colXs8, CSS.itemContent ] ]
-              [ HH.span_
-                  [ HH.img [ HP.src "img/spin.gif" ]
-                  , HH.text $ itemName state
-                  ]
+          [ HP.classes [ CSS.itemContent ] ]
+          [ HH.span_
+              [ HH.img
+                [ HP.class_ CSS.phantomSpinner
+                , HP.src "img/spin.gif"
+                ]
+              , HH.text $ itemName state
               ]
           ]
       ]
@@ -163,27 +158,24 @@ itemView state@{ item } selected presentActions | otherwise =
     , ARIA.label label
     ]
     [ HH.div
-        [ HP.class_ B.row ]
-        [ HH.div
-            [ HP.classes [ B.colXs8, CSS.itemContent ] ]
-            [ HH.a
-                [ HE.onClick $ HE.input $ HandleAction (Open (itemResource item)) ]
-                [ HH.span [ HP.class_ $ CSS.itemIcon ]
-                  [ icon $ itemResource item ]
-                , HH.text $ itemName state
-                ]
+        [ HP.classes [ CSS.itemContent ] ]
+        [ HH.a
+            [ HE.onClick $ HE.input $ HandleAction (Open (itemResource item)) ]
+            [ HH.span [ HP.class_ $ CSS.itemIcon ]
+              [ icon $ itemResource item ]
+            , HH.text $ itemName state
             ]
-        , HH.div
-            [ HP.classes $ [ B.colXs4, CSS.itemToolbar ] ⊕ (guard selected $> CSS.selected) ]
-            [ itemActions presentActions item ]
         ]
+      , HH.ul
+        [ HP.classes $ [ CSS.itemToolbar ] ⊕ (guard selected $> CSS.selected) ]
+        $ itemActions presentActions item
     ]
   where
   itemClasses ∷ Array HH.ClassName
   itemClasses =
-    [ B.listGroupItem ]
-    ⊕ (guard selected $> B.listGroupItemInfo)
-    ⊕ (if itemIsHidden item && presentHiddenItem state then [ CSS.itemHidden ] else [ ])
+    [ CSS.fileSystemItem ]
+    <> (guard selected $> HH.ClassName "list-group-item-info")
+    <> (if itemIsHidden item && presentHiddenItem state then [ CSS.itemHidden ] else [ ])
 
   label ∷ String
   label | selected  = "Deselect " <> itemName state
@@ -197,14 +189,10 @@ itemView state@{ item } selected presentActions | otherwise =
     Mount (Database _) → I.databaseSm
     Mount (View _) → I.documentSm
 
-itemActions ∷ Boolean → Item → HTML
-itemActions presentActions item | not presentActions = HH.text ""
+itemActions ∷ Boolean → Item → Array HTML
+itemActions presentActions item | not presentActions = pure $ HH.text ""
 itemActions presentActions item | otherwise =
-  HH.ul
-    [ HP.classes [ B.listInline, B.pullRight ]
-    , HCSS.style $ marginBottom (px zero)
-    ]
-    (edit ⊕ conf ⊕ common ⊕ share)
+  edit <> conf <> common <> share
   where
   r ∷ Resource
   r = itemResource item

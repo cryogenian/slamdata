@@ -1,9 +1,10 @@
 .search .search-input {
-  @left-pad: 28px;
+  @left-pad: 2.8rem;
 
   width: 100%;
   border-radius: 0;
   position: relative;
+
   input, button {
     border-radius: 0;
     z-input: 1;
@@ -44,7 +45,7 @@
       margin-left: 0;
     }
     .search-affix {
-      margin-left: 6px;
+      margin-left: 0.6rem;
     }
     &-active {
       .search-affix, .search-affix-empty {
@@ -57,39 +58,38 @@
         margin-left: 0;
       }
       .search-affix {
-        margin-left: 6px;
+        margin-left: 0.6rem;
       }
     }
     &, &-active {
       left: 0;
       z-index: 0;
       width: 100%;
-      background-color: white;
-      padding: 6px @left-pad;
+      padding: 0.6rem @left-pad;
       position: relative;
-      line-height: 34px;
+      line-height: 3.4rem;
     }
   }
 
 
   &.input-group {
     span.input-group-btn {
-      width: 34px;
+      width: 3.4rem;
     }
   }
 
   .btn {
-    width: 40px;
-    height: 34px;
+    width: 4rem;
+    height: 3.4rem;
     padding: 0;
   }
 
   .search-clear-button {
     position: absolute;
-    right: 0px;
+    right: 0;
     border: 0;
     background: transparent;
-    height: 34px;
+    height: 3.4rem;
     z-index: 3;
     transition: opacity ease-out 0.25s;
   }

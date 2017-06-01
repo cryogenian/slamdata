@@ -27,7 +27,6 @@ import Halogen.HTML as H
 import Halogen.HTML.Properties as P
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action)
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Common.Sort (Sort(..))
 import SlamData.FileSystem.Component.CSS as CSS
@@ -47,7 +46,7 @@ sorting state =
       Desc → { icon: I.chevronDownSm, label: "Sort files by name ascending" }
   in
     H.div
-      [ P.classes [ B.colXs4, CSS.toolbarSort ] ]
+      [ P.classes [ CSS.toolbarSort ] ]
       [ H.a
         [ E.onClick \e → Just $ PreventDefault (DOM.toEvent e) $ action $ Resort ]
         [ H.text "Name"
@@ -62,16 +61,15 @@ sorting state =
 toolbar ∷ ∀ p. State → HTML p (Query Unit)
 toolbar state =
   H.div
-    [ P.classes [ B.colXs5, CSS.toolbarMenu ] ]
-    $ ( guard state.presentMountHint $>
+    [ P.classes [ CSS.toolbarMenu ] ]
+    $ ( guard state.isUnconfigured $>
         Hint.render
-          Hint.RightArrow
+          Hint.LeftArrow
           (H.ClassName "sd-mount-guide")
-          DismissMountHint
+          Nothing
           "To begin exploring data, please press the Mount button"
       )
-    <> [ H.ul
-         [ P.classes [ B.listInline, B.pullRight ] ]
+    <> [ H.ul_
          $ configure <> [ mount, workspace, folder, showHide, download, file ]
        ]
   where

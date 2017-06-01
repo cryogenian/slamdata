@@ -1,134 +1,124 @@
 .sd-global-menu {
-    vertical-align: middle;
-    height: 100%;
-    float: right;
-    > ul {
-        list-style-type: none;
-        float: right;
-        margin-right: ~"calc(21px - 0.5rem)";
-        position: relative;
-        z-index: 800;
-        height: 100%;
-        > li {
-            display: block;
-            height: 100%;
-            float: left;
-            position: relative;
-            a {
-                color: rgb(210,210,210);
-                &:hover {
-                    color: white;
-                }
-                &:not(:only-child) {
-                    color: white;
-                }
-            }
-            & > div, & > div > a, & > a {
-              display: block;
-              height: 100%;
-            }
-            & > div > a, & > a {
-              padding-top: 0.9rem;
-              padding-left: 0.5rem;
-              padding-right: 0.5rem;
-            }
-            & > a:not(:only-child) {
-              background-color: rgb(17, 90, 223);
-              color: white;
-            }
-            &:last-of-type > div > a, &:last-of-type > a {
-              font-size: 1px;
-              color: transparent;
-              position: relative;
-              width: 2.5rem;
-              &:hover::before {
-                background-color: before;
-                color: transparent;
-              }
-              &:not(:only-child)::before {
-                background-color: white;
-                color: transparent;
-              }
-              &::before {
-                font-size: 1rem;
-                display: block;
-                content: "";
-                width: 1.5rem;
-                height: 1.5rem;
-                border-radius: 0.75rem;
-                background-color: rgb(210,210,210);
-                overflow: hidden;
-                position: absolute;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%);
-                text-align: center;
-                color: #333;
-              }
-              &::after {
-                content: "?";
-                position: absolute;
-                padding-left: 0.05rem;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%);
-                color: #333;
-                font-size: 1rem;
-                z-index: 9999;
-              }
-}
-            > ul {
-                right: -1px;
-                list-style-type: none;
-                padding: 0;
-                position: absolute;
-                top: 100%;
-                z-index: 800;
-                float: left;
-                > li {
-                    position: relative;
-                    width: 100%;
-                    > a {
-                        display: -ms-flex;
-                        display: -webkit-flex;
-                        display: flex;
-                        -moz-box-shadow: 1px 2px 5px 0px rgba(0,0,0,0.05);
-                        -webkit-box-shadow: 1px 2px 5px 0px rgba(0,0,0,0.05);
-                        background: white;
-                        border-color: rgba(210,210,210,1);
-                        border-style: solid;
-                        border-width: 0 1px 0 1px;
-                        box-shadow: 1px 2px 5px 0px rgba(0,0,0,0.05);
-                        color: #3F3F3F;
-                        min-width: 100%;
-                        padding: 0.9rem 1.125rem;
-                        white-space: nowrap;
-                        text-align: right;
-                        > span {
-                            width: 100%;
-                            text-align: right;
-                        }
-                        &:hover {
-                            background-color: rgba(240,240,240,1);
-                            color: black;
-                        }
-                    }
-                    &:last-child > a {
-                        border-radius: 0 0 0.25rem 0.25rem;
-                        border-width: 0 1px 1px 1px;
-                        padding-bottom: 1rem;
-                    }
-                }
-            }
-        }
-    }
-    a {
-        display: inline-block;
-        cursor: default;
-        font-size: 0.9rem;
-        line-height: 40px;
-        font-size: 1rem;
-        text-decoration: none;
-    }
-}
+  display: flex;
+  flex: 0 0 auto;
+  flex-flow: row nowrap;
+  align-items: stretch;
+  position: relative;
+  font-size: 1.6rem;
 
+  .menu-container {
+    display: flex;
+    position: relative;
+    align-content: center;
+  }
+
+  .submenu {
+    display: flex;
+    flex-flow: column wrap;
+    list-style: none;
+    position: absolute;
+    z-index: 1;
+    top: 100%;
+    right: 0;
+    max-width: 100vw;
+    max-height: 100vh;
+    padding: 0;
+    border: 0.1rem solid rgb(210, 210, 210);
+    border-top: none;
+    background: #fff;
+    box-shadow: 0.1rem 0.2rem 0.5rem 0 rgba(0, 0, 0, 0.05);
+  }
+
+  .submenu-item {
+    white-space: nowrap;
+
+    &:not(:first-child) {
+      border-top: 0.1rem solid rgb(210, 210, 210);
+    }
+  }
+
+  .submenu-item-link, .submenu-item-button {
+    display: block;
+    width: 100%;
+    padding: 1.2rem 2.4rem;
+    border: 0;
+    background: none;
+    color: #337ab7;
+    text-align: right;
+    cursor: pointer;
+
+    &:hover, &:focus {
+      background-color: rgb(240, 240, 240);
+      color: #23527c;
+      text-decoration: none;
+    }
+
+    &:active {
+      background-color: rgb(17, 90, 223);
+      color: #fff;
+    }
+  }
+
+  .submenu-item-button {
+    appearance: none;
+
+    &::-moz-focus-inner {
+      border: none;
+    }
+  }
+
+  .sign-in, .help {
+    &-menu-button {
+      appearance: none;
+      border: none;
+      background: none;
+      padding: 0 2.4rem;
+      font-size: 1.2rem;
+
+      &:hover, &.active {
+        background-color: rgb(17, 90, 223);
+      }
+
+      &:focus {
+        outline: none;
+      }
+
+      &::-moz-focus-inner {
+        border: none;
+      }
+
+      .sd-icon {
+        display: block;
+        font-size: 2.2rem;
+      }
+    }
+  }
+
+  // needs a little adjustment to match the other
+  .help-menu-button .sd-icon {
+    position: relative;
+    bottom: -0.5rem;
+    margin-top: -0.4rem;
+    font-size: 2.6rem;
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding: 0 1.8rem 0 1.2rem;
+
+    &::after {
+      display: block;
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      margin: auto;
+      width: 0.1rem;
+      height: calc(100% ~"-" 2.4rem);
+      background-color: hsla(0, 0%, 100%, 0.2);
+    }
+  }
+}

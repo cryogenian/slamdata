@@ -20,6 +20,7 @@ import SlamData.Prelude
 
 import Quasar.Types (SQL)
 
+import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PivotTable
 import SlamData.Workspace.Card.DownloadOptions.Component.State as Download
 import SlamData.Workspace.Card.FormInput.Model as FormInput
 import SlamData.Workspace.Card.Markdown.Model as Markdown
@@ -44,10 +45,10 @@ import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as BuildScatter
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model as SetupLabeled
 import SlamData.Workspace.Card.Setups.FormInput.Static.Model as SetupStatic
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as SetupTextLike
-import SlamData.Workspace.Card.Setups.Geo.Marker.Model as SetupGeoMarker
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Model as SetupGeoHeatmap
-import SlamData.Workspace.Card.Variables.Model as Variables
+import SlamData.Workspace.Card.Setups.Geo.Marker.Model as SetupGeoMarker
 import SlamData.Workspace.Card.Table.Model as Table
+import SlamData.Workspace.Card.Variables.Model as Variables
 
 data Eval
   = Pass
@@ -94,6 +95,7 @@ data Eval
   | SetupGeoHeatmap SetupGeoHeatmap.Model
   | FormInput FormInput.Model
   | Table Table.Model
+  | PivotTable PivotTable.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -141,3 +143,4 @@ tagEval = case _ of
   SetupGeoHeatmap _ → "SetupGeoHeatmap"
   FormInput _ → "FormInput"
   Table _ → "Table"
+  PivotTable _ → "PivotTable"

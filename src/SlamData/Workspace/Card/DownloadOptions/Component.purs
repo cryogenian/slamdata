@@ -24,11 +24,10 @@ import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Download.Model as DL
 import SlamData.Download.Render as DLR
-import SlamData.Render.CSS as RC
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.DownloadOptions.Component.Query (Query(..))
@@ -54,12 +53,12 @@ render state =
   case state.source of
     Nothing →
       HH.div
-        [ HP.classes [ B.alert, B.alertDanger ] ]
+        [ HP.classes [ CN.alert, CN.alertDanger ] ]
         [ HH.text "The current input cannot be downloaded" ]
     Just _ →
       HH.div
         [ HP.classes
-            [ RC.downloadCardEditor
+            [ CN.downloadCardEditor
             , HH.ClassName "card-input-maximum-lod"
             ]
         ]
@@ -70,7 +69,7 @@ render state =
 renderDownloadConfiguration ∷ State → HTML
 renderDownloadConfiguration state =
   HH.div
-    [ HP.classes [ RC.downloadConfiguration ] ]
+    [ HP.classes [ CN.downloadConfiguration ] ]
     [ DLR.fldName false state.options (fromMaybe "" state.targetName) (\s → right ∘ TargetTyped s)
     , either optionsCSV optionsJSON state.options
     ]
@@ -84,7 +83,7 @@ optionsJSON = DLR.optionsJSON (\lens v → right ∘ (ModifyJSONOpts (lens .~ v)
 compress ∷ State → HTML
 compress state =
   HH.div
-    [ HP.classes [ B.formGroup ] ]
+    [ HP.classes [ CN.formGroup ] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Compress" ]
         , HH.input
@@ -102,16 +101,16 @@ compress state =
 renderDownloadTypeSelector ∷ State → HTML
 renderDownloadTypeSelector state =
   HH.div
-    [ HP.classes [ RC.downloadTypeSelector ] ]
+    [ HP.classes [ CN.downloadTypeSelector ] ]
     [ HH.img
         [ HP.src "img/csv.svg"
-        , HP.classes (guard (isLeft state.options) $> B.active)
+        , HP.classes (guard (isLeft state.options) $> CN.active)
         , HP.title "Comma separated values"
         , HE.onClick (HE.input_ (right ∘ SetOutput DL.CSV))
         ]
     , HH.img
         [ HP.src "img/json.svg"
-        , HP.classes (guard (isRight state.options) $> B.active)
+        , HP.classes (guard (isRight state.options) $> CN.active)
         , HP.title "JSON"
         , HE.onClick (HE.input_ (right ∘ SetOutput DL.JSON))
         ]

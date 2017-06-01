@@ -30,7 +30,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Mount as QM
 
@@ -41,7 +40,7 @@ import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as MCS
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Quasar.Mount as API
 import SlamData.Quasar.Error as QE
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 type Query = SettingsQuery MCS.State
 
@@ -57,12 +56,12 @@ comp initialState =
 render ∷ MCS.State → H.ComponentHTML Query
 render state =
   HH.div
-    [ HP.class_ Rc.mountSpark ]
+    [ HP.class_ CN.mountSpark ]
     [ MCR.section "Spark Server" [ MCR.host state MCS._sparkHost ]
     , MCR.section "HDFS Server" [ MCR.host state MCS._hdfsHost ]
     , MCR.section "Root"
         [ HH.div
-            [ HP.class_ Rc.mountPath ]
+            [ HP.class_ CN.mountPath ]
             [ MCR.label "Path" [ MCR.input state MCS._path [] ] ]
         ]
     , MCR.section "Advanced Settings"
@@ -78,7 +77,7 @@ render state =
           <> state.availableProps
       updateFnKey = MCS.updatePropAt ix ∘ flip Tuple value
       updateFnVal = MCS.updatePropAt ix ∘ Tuple key
-      classes = [ B.formControl, B.inputSm ]
+      classes = [ CN.formControl ]
     in
     HH.tr_
       [ HH.td_

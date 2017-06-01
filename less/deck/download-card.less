@@ -1,12 +1,14 @@
+@include "common";
+
 .sd-card-download {
   position: relative;
   height: 100%;
 
   > div {
-    position: absolute;
-    top: 50%;
-    margin-top: -@grid-size;
-    width: 100%;
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: calc(100% ~"-" @grid-size);
+    height: calc(100% ~"-" @grid-size);
   }
 }

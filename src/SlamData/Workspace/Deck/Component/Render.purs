@@ -29,7 +29,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
-import SlamData.Render.CSS as RCSS
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Component.CSS as CCSS
@@ -103,7 +103,7 @@ renderDeck opts deckComponent st =
     Hint.render
       Hint.DownArrow
       (HH.ClassName "sd-focus-deck-hint")
-      DCQ.DismissFocusDeckHint
+      (Just DCQ.DismissFocusDeckHint)
       "This Deck is wrapped in a Dashboard Card and unfocused. To do more with this Deck focus it by clicking or tapping on it."
 
   renderFocusDeckFrameHint ∷ DeckHTML
@@ -111,7 +111,7 @@ renderDeck opts deckComponent st =
     Hint.render
       Hint.UpArrow
       (HH.ClassName "sd-focus-deck-frame-hint")
-      DCQ.DismissFocusDeckFrameHint
+      (Just DCQ.DismissFocusDeckFrameHint)
       "This Deck is focused. To do more with the containing Deck focus it by clicking or tapping on the empty space in this Deck Frame."
 
   renderBackside visible =
@@ -171,7 +171,7 @@ backside =
         [ HH.div
             [ HP.class_ CCSS.deckCard ]
             [ HH.div
-                [ HP.class_ RCSS.deckBackSide ]
+                [ HP.class_ CN.deckBackSide ]
                 [ HH.slot' cpActionFilter unit ActionFilter.component
                     "Filter deck and card actions"
                     (HE.input HandleBackFilter)
