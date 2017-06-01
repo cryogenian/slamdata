@@ -152,7 +152,7 @@ btnDelete state@{ unMounting, saving } =
   HH.button
     [ HP.classes
         $ fold
-          [ [ CN.btn, HH.ClassName "btn-careful" ]
+          [ [ CN.btn, CN.btnDefault, HH.ClassName "btn-careful" ]
           , guard unMounting $> HH.ClassName "btn-loading"
           ]
     , HE.onClick (HE.input_ RaiseMountDelete)
