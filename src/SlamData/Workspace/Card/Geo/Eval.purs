@@ -46,10 +46,8 @@ eval gcPort resource = do
   let build = \leaf → gcPort.build leaf results
   evalState ← get
   case evalState of
-    Just (ES.Geo st) → do
-      layers × controls ← case st.leaflet of
-        Nothing → pure $ st.layers × st.controls
-        Just l → liftAff $ build l
+    Just (ES.Geo st) → for_ st.leaflet \l → do
+      layers × controls ← liftAff $ build l
       put $ Just $ ES.Geo { build, layers, controls, leaflet: st.leaflet }
     _ → put $ Just $ ES.Geo { leaflet: Nothing, build, layers: [ ], controls: [ ] }
   pure $ Port.ResourceKey Port.defaultResourceVar

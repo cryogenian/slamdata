@@ -29,7 +29,7 @@ import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 
 type ModelR =
-  { osmURI ∷ URIRef
+  { osmURI ∷ URIRef -- | Open Street Map tile layer URI
   , view ∷ { lat ∷ Number, lng ∷ Number }
   , zoom ∷ Int
   }
@@ -51,8 +51,9 @@ eqModel Nothing Nothing = true
 eqModel (Just r1) (Just r2) = eqR r1 r2
 eqModel _ _ = false
 
--- | OSMURI is a template that can have "{" and "}".
--- | This is invalid URI and we need to handle it somehow
+
+-- Applies the given function to every `String` in `Either URI RelativeRef`.
+-- This is needed here to encode and decode `OSMURIRef`s as they are templates containing `{` and `}`.
 onURIRef ∷ (String → String) → URIRef → URIRef
 onURIRef f = case _ of
   Left uri → Left $ onURI f uri
