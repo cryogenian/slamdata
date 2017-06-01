@@ -19,6 +19,8 @@ module SlamData.FileSystem.Dialog.Mount.Component.State where
 import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as P
 
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
@@ -35,6 +37,7 @@ type State =
   , parent ∷ Maybe DirPath
   , name ∷ Maybe String
   , message ∷ Maybe String
+  , originalName :: Maybe String
   , saving ∷ Boolean
   , unMounting ∷ Boolean
   , settings ∷ Maybe MountSettings
@@ -71,6 +74,9 @@ _parent = lens _.parent (_ { parent = _ })
 _name ∷ forall a. Lens' { name ∷ Maybe String | a } (Maybe String)
 _name = lens _.name (_ { name = _ })
 
+_originalName ∷ forall a. Lens' { originalName ∷ Maybe String | a } (Maybe String)
+_originalName = lens _.originalName (_ { originalName = _ })
+
 _message ∷ Lens' State (Maybe String)
 _message = lens _.message (_ { message = _ })
 
@@ -91,6 +97,7 @@ initialState = case _ of
     , settings: Nothing
     , name: Just ""
     , message: Nothing
+    , originalName: Nothing
     , saving: false
     , unMounting: false
     }
@@ -100,6 +107,7 @@ initialState = case _ of
     , settings: Just settings
     , name: name
     , message: Nothing
+    , originalName: name
     , saving: false
     , unMounting: false
     }
@@ -109,6 +117,7 @@ initialState = case _ of
     , settings: Nothing
     , name: Nothing
     , message: Nothing
+    , originalName: Nothing
     , saving: false
     , unMounting: false
     }
@@ -133,3 +142,6 @@ canSave st
 validate ∷ State → Maybe String
 validate { name } = either Just (const Nothing) $ runExcept do
   when (maybe false (eq "") name) $ throwError "Please enter a mount name"
+
+originalPath ∷ State → Maybe DirPath
+originalPath st = (</>) <$> st.parent <*> (P.dir <$> st.originalName)

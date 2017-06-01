@@ -15,7 +15,7 @@ limitations under the License.
 -}
 module SlamData.Hint where
 
-import Prelude
+import SlamData.Prelude
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -24,16 +24,18 @@ import SlamData.Render.Icon as I
 
 data Arrow
   = RightArrow
+  | LeftArrow
   | UpArrow
   | DownArrow
 
 arrowClassName ∷ Arrow → HH.ClassName
 arrowClassName = case _ of
   RightArrow → HH.ClassName "sd-hint-right-arrow"
+  LeftArrow → HH.ClassName "sd-hint-left-arrow"
   UpArrow → HH.ClassName "sd-hint-up-arrow"
   DownArrow → HH.ClassName "sd-hint-down-arrow"
 
-render ∷ ∀ f a. Arrow → HH.ClassName → (Unit → f Unit) → String → HH.HTML a (f Unit)
+render ∷ ∀ f a. Arrow → HH.ClassName → Maybe (Unit → f Unit) → String → HH.HTML a (f Unit)
 render arrow className dismissQuery text =
   HH.div
     [ HP.classes [ HH.ClassName "sd-hint", className ] ]
@@ -46,14 +48,18 @@ render arrow className dismissQuery text =
         [ HH.div
             [ HP.class_ $ HH.ClassName "sd-notification-text" ]
             [ HH.text text ]
-        , HH.div
-            [ HP.class_ $ HH.ClassName "sd-notification-buttons" ]
-            [ HH.button
-                [ HP.classes [ HH.ClassName "sd-notification-dismiss" ]
-                , HE.onClick (HE.input_ dismissQuery)
-                , ARIA.label "Dismiss"
-                ]
-                [ I.closeSm ]
-            ]
+        , maybe (HH.text "") renderDismissButton dismissQuery
         ]
+    ]
+
+renderDismissButton ∷ ∀ f a. (Unit → f Unit) → HH.HTML a (f Unit)
+renderDismissButton dismissQuery =
+  HH.div
+    [ HP.class_ $ HH.ClassName "sd-notification-buttons" ]
+    [ HH.button
+        [ HP.classes [ HH.ClassName "sd-notification-dismiss" ]
+        , HE.onClick (HE.input_ dismissQuery)
+        , ARIA.label "Dismiss"
+        ]
+        [ I.closeSm ]
     ]

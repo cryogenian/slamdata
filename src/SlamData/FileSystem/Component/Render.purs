@@ -62,11 +62,11 @@ toolbar ∷ ∀ p. State → HTML p (Query Unit)
 toolbar state =
   H.div
     [ P.classes [ CSS.toolbarMenu ] ]
-    $ ( guard state.presentMountHint $>
+    $ ( guard state.isUnconfigured $>
         Hint.render
-          Hint.RightArrow
+          Hint.LeftArrow
           (H.ClassName "sd-mount-guide")
-          DismissMountHint
+          Nothing
           "To begin exploring data, please press the Mount button"
       )
     <> [ H.ul_

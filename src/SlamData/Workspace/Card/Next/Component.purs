@@ -73,7 +73,7 @@ render state =
         Hint.render
           Hint.DownArrow
           (HH.ClassName "sd-add-card-guide")
-          (DismissAddCardHint)
+          (Just DismissAddCardHint)
           (addCardHintText state.input))
     ⊕ [ HH.slot' CS.cpActionFilter unit
           ActionFilter.component

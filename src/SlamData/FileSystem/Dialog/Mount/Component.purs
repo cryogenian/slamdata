@@ -45,6 +45,7 @@ import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component as SparkLocal
+import SlamData.FileSystem.Resource as Resource
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as Api
@@ -220,9 +221,10 @@ eval (Save k) = do
       H.modify (MCS._saving .~ false)
       pure $ k mount
 eval (PreventDefaultAndNotifySave ev next) = do
+  state ← H.get
   H.liftEff (DOM.preventDefault ev)
   H.modify (MCS._saving .~ true)
-  H.raise Message.MountSave
+  H.raise $ Message.MountSave $ Resource.Database <$> MCS.originalPath state
   pure next
 eval (Validate next) = validateInput $> next
 eval (RaiseMountDelete next) = do

@@ -338,25 +338,34 @@ eval = case _ of
         pure next
   HandleDialog DialogMessage.Dismiss next →
     pure next
-  HandleDialog DialogMessage.MountSave next → do
-    mount ←
+  HandleDialog (DialogMessage.MountSave originalMount) next → do
+    mbMbMount ←
       H.query' CS.cpDialog unit $ H.request Dialog.SaveMount
-    for_ (join mount) \m → do
+    for_ (join mbMbMount) \newPath → do
       hideDialog
-      -- check if we just edited the mount for the current directory, as if
-      -- so, we don't want to add an item to the list for it
-      isCurrentMount ← case m of
-        R.Database path' → (\p → path' ≡ (p </> dir "")) <$> H.gets _.path
-        _ → pure false
-      if isCurrentMount
-        then
+      path ← H.gets _.path
+      case originalMount of
+        -- Refresh if mount is current directory
+        -- path </> dir "" is equal to path
+        Nothing | R.Database path ≡ newPath || (R.Database $ path </> dir "") ≡ newPath →
           H.liftEff Browser.reload
-        else do
-          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount m)
-          dismissMountHint
-          resort
-          checkIsMount =<< H.gets _.path
-          checkIsUnconfigured
+        -- Add new item to list
+        Nothing →
+          void $ H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
+        -- Rename current mount at path
+        Just oldPath@(R.Database p) | path ≡ p && oldPath /= newPath → do
+          handleItemMessage (Item.Open $ R.Mount newPath)
+          void $ API.delete (R.Mount oldPath)
+        -- Rename mount in listing
+        Just oldPath | oldPath /= newPath → do
+          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Remove $ Item (R.Mount oldPath)
+          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
+          void $ API.delete (R.Mount oldPath)
+        Just oldPath → do
+          pure unit
+    resort
+    checkIsMount =<< H.gets _.path
+    checkIsUnconfigured
     pure next
   HandleDialog DialogMessage.MountDelete next → do
     mount ← R.Mount ∘ R.Database <$> H.gets _.path
