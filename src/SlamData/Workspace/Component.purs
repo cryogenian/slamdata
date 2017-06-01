@@ -238,7 +238,7 @@ eval = case _ of
     either signInFailure (const $ signInSuccess) =<< (H.liftAff $ takeVar idToken)
     pure next
   HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next →
-    traceAny "hello" \_ → H.query' cpAdminUI unit (H.action AdminUI.Open) $> next
+    H.query' cpAdminUI unit (H.action AdminUI.Open) $> next
   HandleHeader _ next → pure next
   HandleGuideMessage slot Guide.Dismissed next → do
     case slot of
