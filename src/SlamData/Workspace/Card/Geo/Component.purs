@@ -38,6 +38,7 @@ import SlamData.Workspace.Card.Geo.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.Card.Port as Port
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
@@ -75,7 +76,11 @@ cardEval = case _ of
         sync
       _ → pure unit
     pure next
-  CC.ReceiveInput _ _ next → do
+  CC.ReceiveInput i o next → do
+    for_ (i ^? Port._osmURI) \uri → do
+      traceAnyA "OSM URI"
+      H.modify _{ osmURI = uri }
+      sync
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
@@ -104,11 +109,13 @@ cardEval = case _ of
 sync ∷ DSL Unit
 sync = do
   st ← H.get
+  for_ st.tileLayer \l → H.query unit $ H.action $ HL.RemoveLayers [ l ]
   zoom ← H.liftAff $ LC.mkZoom st.zoom
   _ ← H.query unit $ H.action $ HL.SetZoom zoom
   latLng ← H.liftAff $ LC.mkLatLng st.view.lat st.view.lng
   _ ← H.query unit $ H.action $ HL.SetView latLng
   tiles ← LC.tileLayer st.osmURI
+  H.modify _{ tileLayer = Just $ LC.tileToLayer tiles }
   _ ← H.query unit $ H.action $ HL.AddLayers [ LC.tileToLayer tiles ]
   pure unit
 

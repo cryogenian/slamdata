@@ -30,6 +30,7 @@ type State =
   , view ∷ { lat ∷ Number, lng ∷ Number }
   , layers ∷ Array LC.Layer
   , controls ∷ Array LC.Control
+  , tileLayer ∷  Maybe LC.Layer
   }
 
 initialState ∷ State
@@ -46,4 +47,5 @@ initialState =
   , view: { lat: zero, lng: zero }
   , layers: [ ]
   , controls: [ ]
+  , tileLayer: Nothing
   }

@@ -21,8 +21,13 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Newtype (un)
+import Data.URI as URI
+import Data.URI (URIRef)
+
+import Global (encodeURIComponent, decodeURIComponent)
 
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Geo.Model (onURIRef)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -32,6 +37,7 @@ type ModelR =
   { lat ∷ D.LabeledJCursor
   , lng ∷ D.LabeledJCursor
   , intensity ∷ D.LabeledJCursor
+  , osmURI ∷ URIRef
   }
 
 type Model = Maybe ModelR
@@ -44,6 +50,7 @@ eqR r1 r2 =
   r1.lat ≡ r2.lat
   && r1.lng ≡ r2.lng
   && r1.intensity ≡ r2.intensity
+  && r1.osmURI ≡ r2.osmURI
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
@@ -59,10 +66,20 @@ genModel = do
     lat ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
     lng ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
     intensity ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
-    pure { lat
-         , lng
-         , intensity
-         }
+    scheme ← arbitrary
+    address ← arbitrary
+    pure
+      { osmURI: Left $ URI.URI
+        (map URI.URIScheme scheme)
+        (URI.HierarchicalPart
+         (Just $ URI.Authority Nothing [(URI.NameAddress address) × Nothing ])
+         Nothing)
+        Nothing
+        Nothing
+      , intensity
+      , lat
+      , lng
+      }
 
 encode ∷ Model → J.Json
 encode Nothing = J.jsonNull
@@ -71,6 +88,7 @@ encode (Just r) =
   ~> "lat" := r.lat
   ~> "lng" := r.lng
   ~> "intensity" := r.intensity
+  ~> "osmURI" := (URI.printURIRef $ onURIRef encodeURIComponent r.osmURI)
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ Model
@@ -91,7 +109,10 @@ decode js
     lat ← obj .? "lat"
     lng ← obj .? "lng"
     intensity ← obj .? "intensity"
+    osmURIStr ← obj .? "osmURI"
+    osmURI ← map (onURIRef decodeURIComponent) $ lmap show $ URI.runParseURIRef osmURIStr
     pure { lat
          , lng
          , intensity
+         , osmURI
          }

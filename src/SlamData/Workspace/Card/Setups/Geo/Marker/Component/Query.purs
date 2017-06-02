@@ -22,3 +22,4 @@ data Query a
   = HandleDims Q.Message a
   | SetMaxSymbolSize String a
   | SetMinSymbolSize String a
+  | SetOsmURI String a

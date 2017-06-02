@@ -88,8 +88,8 @@ decodeItem = decodeJson >=> \obj → do
   pure { lat, lng, i }
 
 buildGeoHeatmap ∷ ModelR → Axes → Port.Port
-buildGeoHeatmap m axes =
-  Port.GeoChart { build }
+buildGeoHeatmap m@{osmURI} axes =
+  Port.GeoChart { build, osmURI }
   where
   mkItems ∷ Array Json → Array Item
   mkItems = foldMap (foldMap A.singleton ∘ decodeItem)

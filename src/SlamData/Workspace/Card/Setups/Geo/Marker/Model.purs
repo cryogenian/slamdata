@@ -21,8 +21,13 @@ import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Newtype (un)
+import Data.URI as URI
+import Data.URI (URIRef)
+
+import Global (encodeURIComponent, decodeURIComponent)
 
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Geo.Model (onURIRef)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
@@ -36,6 +41,7 @@ type ModelR =
   , dims ∷ Array D.LabeledJCursor
   , minSize ∷ Number
   , maxSize ∷ Number
+  , osmURI ∷ URIRef
   }
 
 type Model = Maybe ModelR
@@ -52,6 +58,7 @@ eqR r1 r2 =
   && r1.size ≡ r2.size
   && r1.minSize ≡ r2.minSize
   && r1.maxSize ≡ r2.maxSize
+  && r1.osmURI ≡ r2.osmURI
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
@@ -71,7 +78,17 @@ genModel = do
     size ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     minSize ← arbitrary
     maxSize ← arbitrary
-    pure { lat
+    intensity ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
+    scheme ← arbitrary
+    address ← arbitrary
+    pure { osmURI: Left $ URI.URI
+           (map URI.URIScheme scheme)
+           (URI.HierarchicalPart
+            (Just $ URI.Authority Nothing [(URI.NameAddress address) × Nothing ])
+            Nothing)
+           Nothing
+           Nothing
+         ,lat
          , lng
          , series
          , dims
@@ -91,6 +108,7 @@ encode (Just r) =
   ~> "size" := r.size
   ~> "minSize" := r.minSize
   ~> "maxSize" := r.maxSize
+  ~> "osmURI" := (URI.printURIRef $ onURIRef encodeURIComponent r.osmURI)
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ Model
@@ -115,6 +133,8 @@ decode js
     size ← obj .? "size"
     minSize ← obj .? "minSize"
     maxSize ← obj .? "maxSize"
+    osmURIStr ← obj .? "osmURI"
+    osmURI ← map (onURIRef decodeURIComponent) $ lmap show $ URI.runParseURIRef osmURIStr
     pure { lat
          , lng
          , series
@@ -122,4 +142,5 @@ decode js
          , size
          , minSize
          , maxSize
+         , osmURI
          }

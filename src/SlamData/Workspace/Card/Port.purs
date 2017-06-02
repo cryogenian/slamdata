@@ -46,7 +46,9 @@ module SlamData.Workspace.Card.Port
   , _Metric
   , _ChartInstructions
   , _PivotTable
+  , _GeoChartPort
   , _filePath
+  , _osmURI
   , module SlamData.Workspace.Card.Port.VarMap
   ) where
 
@@ -61,6 +63,7 @@ import Data.Map as Map
 import Data.Set as Set
 import Data.StrMap as SM
 import Data.Path.Pathy as Path
+import Data.URI (URIRef)
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
@@ -130,6 +133,7 @@ type SetupTextLikeFormInputPort =
 
 type GeoChartPort =
   { build ∷ LC.Leaflet → Array Json → Aff SlamDataEffects (Array LC.Layer × Array LC.Control)
+  , osmURI ∷ URIRef
   }
 
 data Port
@@ -254,3 +258,11 @@ _filePath = lens get set
 
     set (Path _) fp = Path fp
     set (View _ a b) fp = View fp a b
+
+_GeoChartPort ∷ Prism' Port GeoChartPort
+_GeoChartPort = prism' GeoChart case _ of
+  GeoChart u → Just u
+  _ → Nothing
+
+_osmURI ∷ Traversal' Port URIRef
+_osmURI = _GeoChartPort ∘ lens _.osmURI _{ osmURI = _ }

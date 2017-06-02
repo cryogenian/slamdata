@@ -18,7 +18,24 @@ module SlamData.Workspace.Card.Setups.Geo.Heatmap.Component.State where
 
 import SlamData.Prelude
 
-type State = Unit
+import Data.Path.Pathy ((</>), (<.>), file, rootDir, dir)
+import Data.URI (URIRef)
+import Data.URI as URI
+
+type State =
+  { osmURIString ∷ String
+  , osmURI ∷ URIRef
+  }
 
 initialState ∷ State
-initialState = unit
+initialState =
+  { osmURIString: "http://{s}.tile.osm.org/{z}/{x}/{y}.png"
+  , osmURI:
+      Left $ URI.URI
+      (Just $ URI.URIScheme "http")
+      (URI.HierarchicalPart
+       (Just $ URI.Authority Nothing [(URI.NameAddress "{s}.tile.osm.org") × Nothing])
+       (Just $ Right $ rootDir </> dir "{z}" </> dir "{x}" </> file "{y}" <.> "png"))
+      Nothing
+      Nothing
+  }

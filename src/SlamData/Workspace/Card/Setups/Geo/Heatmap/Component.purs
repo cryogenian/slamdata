@@ -21,12 +21,22 @@ module SlamData.Workspace.Card.Setups.Geo.Heatmap.Component
 import SlamData.Prelude
 
 import Data.Lens ((^?), _Just)
+import Data.String.Regex as RX
+import Data.String.Regex.Flags as RXF
+import Data.String.Regex.Unsafe as URX
+import Data.URI (runParseURIRef, printURIRef)
+
+import Global (decodeURIComponent)
 
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 
+import SlamData.Workspace.Card.Geo.Model (onURIRef)
+import SlamData.Render.ClassName as CN
+import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
@@ -80,6 +90,20 @@ render state =
     ]
     [ HH.slot' CS.cpDims unit (DM.component package) unit
         $ HE.input \l → right ∘ Q.HandleDims l
+    , HH.hr_
+    , row [ renderOsmURI state ]
+    ]
+
+renderOsmURI ∷ ST.State → HTML
+renderOsmURI state =
+  HH.div [ HP.classes [ CSS.axisLabelParam ] ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Open Street Map URI" ]
+    , HH.input
+        [ HP.classes [ CN.formControl ]
+        , HP.value state.osmURIString
+        , ARIA.label "Open Street Map URI"
+        , HE.onValueInput $ HE.input \s → right ∘ Q.SetOsmURI s
+        ]
     ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
@@ -89,11 +113,15 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
+    st ← H.get
+    traceAnyA "st"
+    traceAnyA st
     let
       inp = M.SetupGeoHeatmap $ Just
         { lat: D.topDimension
         , lng: D.topDimension
         , intensity: D.topDimension
+        , osmURI: st.osmURI
         }
     out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
     pure $ k case join out of
@@ -101,8 +129,12 @@ cardEval = case _ of
       Just a → a
   CC.Load m next → do
     _ ← H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    for_ (m ^? M._SetupGeoHeatmap ∘ _Just) \r →
+      H.modify _{ osmURI = r.osmURI
+                , osmURIString = printURIRef r.osmURI
+                }
     pure next
-  CC.ReceiveInput _ _ next →
+  CC.ReceiveInput i _ next → do
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
@@ -122,4 +154,19 @@ setupEval = case _ of
   Q.HandleDims q next → do
     case q of
       DQ.Update _ → H.raise CC.modelUpdate
+    pure next
+  Q.SetOsmURI s next → do
+    let
+      oRx = URX.unsafeRegex "{" RXF.global
+      cRx = URX.unsafeRegex "}" RXF.global
+      replaced = RX.replace oRx "%7B" $ RX.replace cRx "%7D" s
+    H.modify $  case runParseURIRef replaced of
+      Left e → \st →
+        st{ osmURIString = printURIRef st.osmURI
+          }
+      Right uri →
+        _{ osmURI = onURIRef decodeURIComponent uri
+         , osmURIString = s
+         }
+    H.raise CC.modelUpdate
     pure next

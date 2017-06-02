@@ -127,8 +127,8 @@ iconConf =
   }
 
 buildMarker ∷ ModelR → Axes → Port.Port
-buildMarker r _ =
-  Port.GeoChart { build }
+buildMarker r@{ osmURI } _ =
+  Port.GeoChart { build, osmURI }
   where
   mkItems ∷ Array Json → Array Item
   mkItems = foldMap $ foldMap A.singleton ∘ decodeItem

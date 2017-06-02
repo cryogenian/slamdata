@@ -26,9 +26,13 @@ import Data.Lens (_Just, (^?), (?~), (^.), (.~))
 import Data.List ((:))
 import Data.List as L
 import Data.StrMap as SM
+import Data.String.Regex as RX
+import Data.String.Regex.Flags as RXF
+import Data.String.Regex.Unsafe as URX
 import Data.Set as Set
+import Data.URI (runParseURIRef, printURIRef)
 
-import Global (readFloat, isNaN)
+import Global (readFloat, isNaN, decodeURIComponent)
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -38,6 +42,8 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Render.Common (row)
+import SlamData.Workspace.Card.Geo.Model (onURIRef)
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.GeoChartType as GcT
@@ -100,7 +106,8 @@ package = P.onPrism (M._SetupGeoMarker ∘ _Just)
 
       seriify ∷ SM.StrMap (Set.Set JCursor) → SM.StrMap (Set.Set JCursor)
       seriify =
-        TP.unpackProjection PP._series ?~ (latLngFilter $ axes.category <> axes.date <> axes.datetime <> axes.time)
+        TP.unpackProjection PP._series
+        ?~ (latLngFilter $ axes.category <> axes.date <> axes.datetime <> axes.time)
 
       sizify ∷ SM.StrMap (Set.Set JCursor) → SM.StrMap (Set.Set JCursor)
       sizify =
@@ -109,7 +116,6 @@ package = P.onPrism (M._SetupGeoMarker ∘ _Just)
       prepared ∷ SM.StrMap (Set.Set JCursor)
       prepared =
         SM.empty # lattify ∘ longify ∘ seriify ∘ sizify
-
 
       flds ∷ L.List TP.Projection
       flds = map PP._dimIx $ L.range 0 $ L.length $ dm ^. PP._dims
@@ -140,6 +146,7 @@ package = P.onPrism (M._SetupGeoMarker ∘ _Just)
     , dims
     , minSize: mr.minSize
     , maxSize: mr.maxSize
+    , osmURI: mr.osmURI
     }
     <$> lat
     <*> lng
@@ -186,6 +193,8 @@ render state =
         $ HE.input \l → right ∘ Q.HandleDims l
     , HH.hr_
     , row [ renderMinSize state, renderMaxSize state ]
+    , HH.hr_
+    , row [ renderOsmURI state ]
     ]
 
 renderMinSize ∷ ST.State → HTML
@@ -218,6 +227,18 @@ renderMaxSize state =
         ]
     ]
 
+renderOsmURI ∷ ST.State → HTML
+renderOsmURI state =
+  HH.div [ HP.classes [ CSS.axisLabelParam ] ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Open Street Map URI" ]
+    , HH.input
+        [ HP.classes [ CN.formControl ]
+        , HP.value state.osmURIString
+        , ARIA.label "Open Street Map URI"
+        , HE.onValueInput $ HE.input \s → right ∘ Q.SetOsmURI s
+        ]
+    ]
+
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.Activate next →
@@ -235,6 +256,7 @@ cardEval = case _ of
         , dims: [ ]
         , minSize: st.minSize
         , maxSize: st.maxSize
+        , osmURI: st.osmURI
         }
     out ← H.query' CS.cpDims unit $ H.request $ DQ.Save inp
     pure $ k case join out of
@@ -242,6 +264,10 @@ cardEval = case _ of
       Just a → a
   CC.Load m next → do
     _ ← H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
+    for_ (m ^? M._SetupGeoMarker ∘ _Just) \r →
+      H.modify _{ osmURI = r.osmURI
+                , osmURIString = printURIRef r.osmURI
+                }
     pure next
   CC.ReceiveInput _ _ next →
     pure next
@@ -281,4 +307,19 @@ setupEval = case _ of
           , minSize = if st.minSize < fl then st.minSize else fl
           }
       H.raise CC.modelUpdate
+    pure next
+  Q.SetOsmURI s next → do
+    let
+      oRx = URX.unsafeRegex "{" RXF.global
+      cRx = URX.unsafeRegex "}" RXF.global
+      replaced = RX.replace oRx "%7B" $ RX.replace cRx "%7D" s
+    H.modify $  case runParseURIRef replaced of
+      Left e → \st →
+        st{ osmURIString = printURIRef st.osmURI
+          }
+      Right uri →
+        _{ osmURI = onURIRef decodeURIComponent uri
+         , osmURIString = s
+         }
+    H.raise CC.modelUpdate
     pure next
