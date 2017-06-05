@@ -18,6 +18,7 @@ module SlamData.AdminUI.Component
   , TabIndex(..)
   , MySettingsState(..)
   , DatabaseState(..)
+  , ServerState(..)
   , PostgresCon(..)
   ) where
 
@@ -38,6 +39,8 @@ data Query a
   | Close a
   | SetActive TabIndex a
   | SetMySettings MySettingsState a
+  | SetDatabase DatabaseState a
+  | SetServer ServerState a
 
 data TabIndex
   = MySettings
@@ -53,7 +56,8 @@ instance showTabIndex ∷ Show TabIndex where
   show = tabTitle
 
 allTabs ∷ List TabIndex
-allTabs = List.fromFoldable [MySettings, Database, Server, Authentication, Users, Group]
+allTabs =
+  List.fromFoldable [MySettings, Database, Server, Authentication, Users, Group]
 
 tabTitle ∷ TabIndex → String
 tabTitle = case _ of
@@ -67,7 +71,7 @@ tabTitle = case _ of
 type State =
   { open ∷ Boolean
   , active ∷ TabIndex
-  , formState ∷ { mySettings ∷ MySettingsState, database ∷ DatabaseState }
+  , formState ∷ { mySettings ∷ MySettingsState, database ∷ DatabaseState, server ∷ ServerState }
   }
 
 newtype MySettingsState = MySettingsState
@@ -75,6 +79,7 @@ newtype MySettingsState = MySettingsState
   , isolateArtifacts ∷ Boolean
   , isolateArtifactsDirectory ∷ String
   }
+
 defaultMySettingsState ∷ MySettingsState
 defaultMySettingsState =
   MySettingsState
@@ -83,12 +88,48 @@ defaultMySettingsState =
     , isolateArtifactsDirectory: ""
     }
 
--- TODO(Christoph): Do properly
-type PostgresCon = String
+type PostgresCon =
+  { server ∷ String
+  , port ∷ Int
+  , username ∷ String
+  , password ∷ String
+  , database ∷ String
+  , custom ∷ Tuple String String
+  }
 
-data DatabaseState = InternalStorage String | ExternalStorage PostgresCon
+defaultPostgresCon ∷ PostgresCon
+defaultPostgresCon =
+  { server: "localhost"
+  , port: 1234
+  , username: ""
+  , password: ""
+  , database: ""
+  , custom: Tuple "" ""
+  }
+
+
+newtype DatabaseState = DatabaseState
+  { isExternal ∷ Boolean
+  , databaseFile ∷ String
+  , postgresCon ∷ PostgresCon
+  }
+
 defaultDatabaseState ∷ DatabaseState
-defaultDatabaseState = InternalStorage "ohai"
+defaultDatabaseState =
+  DatabaseState
+    { isExternal: false
+    , databaseFile: ""
+    , postgresCon: defaultPostgresCon
+    }
+
+newtype ServerState = ServerState
+  { port ∷ Int
+  , logFileLocation ∷ String
+  , enableCustomSSL ∷ Boolean
+  }
+
+defaultServerState ∷ ServerState
+defaultServerState = ServerState { port: 27012, logFileLocation: "", enableCustomSSL: false }
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Void Slam
@@ -102,6 +143,7 @@ component =
        , formState:
           { mySettings: defaultMySettingsState
           , database: defaultDatabaseState
+          , server: defaultServerState
           }
        }
     , render
@@ -137,7 +179,7 @@ tabHeader active =
           [ pure $ HE.onClick $ HE.input_ $ SetActive t
           , guard (t == active) $> HP.class_ (H.ClassName "active-tab")
           ])
-        [ HH.span_ [ HH.text (tabTitle t) ] ]
+        [ HH.text (tabTitle t) ]
 
 tabBody ∷ State → HTML
 tabBody state =
@@ -148,9 +190,16 @@ tabBody state =
         pure $ HH.div
           [ HP.class_ (HH.ClassName "my-settings") ]
           (renderMySettingsForm state.formState.mySettings)
-      _ → [HH.text "Not implemented"]
-      -- Database → ?x
-      -- Server → ?x
+      Database →
+        pure $ HH.div
+          [ HP.class_ (HH.ClassName "database") ]
+          (renderDatabaseForm state.formState.database)
+      Server →
+        pure $ HH.div
+          [ HP.class_ (HH.ClassName "server") ]
+          (renderServerForm state.formState.server)
+      _ →
+        [HH.text "Not implemented"]
       -- Authentication → ?x
       -- Users → ?x
       -- Group → ?x
@@ -216,6 +265,139 @@ renderMySettingsForm (MySettingsState state) =
         ]
     ]
 
+renderDatabaseForm ∷ DatabaseState → Array HTML
+renderDatabaseForm (DatabaseState state) =
+  [ HH.fieldset_
+    [ HH.legend
+        [ HP.class_ (HH.ClassName "checkbox") ]
+        [ HH.label_
+            [ HH.input
+                [ HP.checked (not state.isExternal)
+                , HE.onChecked (HE.input_ (SetDatabase (DatabaseState (state {isExternal = false}) )))
+                , HP.type_ HP.InputCheckbox
+                ]
+            , HH.text "Store SlamData metadata inside internal database in the local file system of the server"
+            ]
+        ]
+    , HH.fieldset
+        [ HP.class_ (HH.ClassName "internal-storage")
+        , HP.disabled state.isExternal
+        ]
+        [ HH.input
+            [ HP.classes [ HH.ClassName "form-control" ]
+            , HP.value state.databaseFile
+            ]
+        ]
+      , HH.legend
+          [ HP.class_ (HH.ClassName "checkbox") ]
+          [ HH.label_
+              [ HH.input
+                [ HP.checked state.isExternal
+                , HE.onChecked (HE.input_ (SetDatabase (DatabaseState (state {isExternal = true}) )))
+                , HP.type_ HP.InputCheckbox
+                ]
+              , HH.text "Store SlamData metadata inside external PostgreSQL"
+              ]
+          ]
+      , HH.fieldset
+          [ HP.class_ (HH.ClassName "external-storage")
+          , HP.disabled (not state.isExternal)
+          ]
+          [ HH.div
+              [ HP.class_ (HH.ClassName "form-group") ]
+              [ HH.label [ HP.for "Server" ] [ HH.text "Server" ]
+              , HH.input
+                  [ HP.classes [ HH.ClassName "form-control" ]
+                  , HP.id_ "Server"
+                  , HP.value state.postgresCon.server
+                  ]
+              ]
+          , HH.div
+              [ HP.class_ (HH.ClassName "form-group") ]
+              [ HH.label [ HP.for "Port" ] [ HH.text "Port" ]
+              , HH.input
+                  [ HP.classes [ HH.ClassName "form-control" ]
+                  , HP.id_ "Port"
+                  , HP.value (show state.postgresCon.port)
+                  ]
+              ]
+          , HH.div
+              [ HP.class_ (HH.ClassName "form-group") ]
+              [ HH.label
+                  [ HP.for "Username" ]
+                  [ HH.text "Username"
+                  , HH.input
+                      [ HP.classes [ HH.ClassName "form-control" ]
+                      , HP.id_ "Username"
+                      , HP.value state.postgresCon.username
+                      ]
+                  ]
+              , HH.label
+                  [ HP.for "Password" ]
+                  [ HH.text "Password"
+                  , HH.input
+                      [ HP.classes [ HH.ClassName "form-control" ]
+                      , HP.id_ "Password"
+                      , HP.value state.postgresCon.password
+                      ]
+                  ]
+              ]
+          , HH.div
+              [ HP.class_ (HH.ClassName "form-group") ]
+              [ HH.label [ HP.for "Database" ] [HH.text "Database"]
+              , HH.input
+                  [ HP.classes [ HH.ClassName "form-control" ]
+                  , HP.id_ "Database"
+                  , HP.value state.postgresCon.database
+                  ]
+              ]
+          , HH.div
+              [ HP.class_ (HH.ClassName "form-group") ]
+              [ HH.label [ HP.for "Custom" ] [HH.text "Custom"]
+              , HH.input
+                  [ HP.classes [ HH.ClassName "form-control" ]
+                  , HP.value (fst state.postgresCon.custom)
+                  ]
+              , HH.input
+                  [ HP.classes [ HH.ClassName "form-control" ]
+                  , HP.value (snd state.postgresCon.custom)
+                  ]
+              ]
+          ]
+      ]
+  ]
+
+renderServerForm ∷ ServerState → Array HTML
+renderServerForm (ServerState state) =
+  [ HH.fieldset_
+        [ HH.legend_ [ HH.text "Port" ]
+        , HH.input
+            [ HP.class_ (HH.ClassName "form-control") ]
+        , HH.p_ [ HH.text "Changing the port will restart the server and reload the browser to the new port. If there are any errors in changing to the new port, however, you may have to use the browser back button."
+                ]
+        ]
+  , HH.fieldset_
+        [ HH.legend_ [HH.text "Location of log file in the SlamData file system"]
+        , HH.input
+            [ HP.class_ (HH.ClassName "form-control") ]
+        ]
+  , HH.fieldset_
+        [ HH.legend
+            [ HP.class_ (HH.ClassName "checkbox") ]
+            [ HH.label_
+              [ HH.input
+                [ HP.checked state.enableCustomSSL
+                , HE.onChecked (HE.input_ (SetServer (ServerState (state {enableCustomSSL = not state.enableCustomSSL}))))
+                , HP.type_ HP.InputCheckbox
+                ]
+              , HH.text "Enable Custom SSL"
+              ]
+            ]
+        , HH.textarea [HP.class_ (HH.ClassName "form-control"), HP.disabled (not state.enableCustomSSL)]
+        ]
+  ]
+
+
 eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
@@ -231,4 +413,10 @@ eval = case _ of
     pure next
   SetMySettings new next → do
     H.modify (_ { formState { mySettings = new } })
+    pure next
+  SetDatabase new next → do
+    H.modify (_ { formState { database = new } })
+    pure next
+  SetServer new next → do
+    H.modify (_ { formState { server = new } })
     pure next
