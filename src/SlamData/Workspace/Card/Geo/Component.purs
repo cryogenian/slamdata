@@ -78,7 +78,6 @@ cardEval = case _ of
     pure next
   CC.ReceiveInput i o next → do
     for_ (i ^? Port._osmURI) \uri → do
-      traceAnyA "OSM URI"
       H.modify _{ osmURI = uri }
       sync
     pure next
@@ -95,11 +94,12 @@ cardEval = case _ of
       H.modify _{controls = controls}
     pure next
   CC.ReceiveDimensions dims reply → do
+    let padding = 16
     _ ←
       H.query unit $ H.action
       $ HL.SetDimension
-        { height: Just $ Int.floor dims.height
-        , width: Just $ Int.floor dims.width
+        { height: Just $ Int.floor dims.height - padding
+        , width: Just $ Int.floor dims.width - padding
         }
     pure $ reply
       if dims.width < 576.0 ∨ dims.height < 416.0

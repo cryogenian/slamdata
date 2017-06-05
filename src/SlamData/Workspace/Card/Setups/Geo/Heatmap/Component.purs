@@ -114,8 +114,7 @@ cardEval = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    traceAnyA "st"
-    traceAnyA st
+
     let
       inp = M.SetupGeoHeatmap $ Just
         { lat: D.topDimension
