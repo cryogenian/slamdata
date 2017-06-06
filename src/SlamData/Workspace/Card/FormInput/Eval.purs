@@ -49,9 +49,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SqlSquared (SqlQuery)
 import SqlSquared as Sql
 import Utils (stringToNumber)
-import Utils.Path as PU
 import Utils.SqlSquared (all, asRel, tableRelation)
-
 
 -- | I removed additional variable from this (It used to be `QueryExpr`)
 -- | not sure that this is right decision, but it's just part of sql expression
@@ -71,14 +69,9 @@ eval
   → Port.Resource
   → m Port.Out
 eval sql r = do
-  CEM.CardEnv env ← ask
   tmpPath × resource ← CEM.temporaryOutputResource
-  let
-    backendPath =
-      fromMaybe Path.rootDir
-        $ map (PU.anyToAbs env.path)
-        $ PU.anyParentDir (Port.filePath r)
-
+  backendPath ←
+    fromMaybe Path.rootDir ∘ Path.parentDir <$> CEM.anyTemporaryPath (Port.filePath r)
   { inputs } ←
     CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
       QQ.compile backendPath sql SM.empty

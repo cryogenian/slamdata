@@ -188,3 +188,6 @@ getDir ap = either getDir' getDir' ap
 
 rootFile ∷ FilePath
 rootFile = rootDir </> file ""
+
+tmpDir ∷ RelDirPath
+tmpDir = P.dir ".tmp"

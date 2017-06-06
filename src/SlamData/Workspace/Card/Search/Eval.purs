@@ -35,7 +35,6 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SqlSquared as Sql
 import Text.SlamSearch as SS
-import Utils.Path as PU
 
 evalSearch
   ∷ ∀ m
@@ -50,9 +49,8 @@ evalSearch
   → m Port.Out
 evalSearch queryText resource = do
   CEM.CardEnv env ← ask
-  let
-    filePath = PU.anyToAbs env.path $ Port.filePath resource
-    queryText' = if queryText ≡ "" then "*" else queryText
+  filePath ← CEM.anyTemporaryPath $ Port.filePath resource
+  let queryText' = if queryText ≡ "" then "*" else queryText
   query ← case SS.mkQuery queryText' of
     Left pe → CE.throwSearchError (CE.SearchQueryParseError { query: queryText, error: pe })
     Right q → pure q

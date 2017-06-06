@@ -56,11 +56,9 @@ eval
   → Port.Resource
   → m Port.Out
 eval options varMap resource = do
-  CEM.CardEnv env ← ask
-  let
-    -- TODO: Handle relative
-    filePath = PU.anyToAbs env.path $ Port.filePath resource
-    port × sql = mkSql options filePath
+  filePath ← CEM.anyTemporaryPath $ Port.filePath resource
+  -- TODO: Handle relative
+  let port × sql = mkSql options filePath
   tmpPath × r ← CEM.temporaryOutputResource
   state ← get
   axes ←

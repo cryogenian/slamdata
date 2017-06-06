@@ -63,17 +63,13 @@ eval'
   → Port.Resource
   → m Port.Resource
 eval' tmp resource = do
-  CEM.CardEnv env ← ask
   let
     anyPath = Port.filePath resource
-    backendPath =
-      fromMaybe Path.rootDir
-        $ map (PU.anyToAbs env.path)
-        $ PU.anyParentDir anyPath
     sql =
       Sql.buildSelect
         $ all
         ∘ (Sql._relations .~ tableRelation anyPath)
+  backendPath ← fromMaybe Path.rootDir ∘ Path.parentDir <$> CEM.anyTemporaryPath anyPath
   outputResource ← CE.liftQ $
     QQ.fileQuery backendPath tmp (Sql.Query mempty sql) SM.empty
   checkResult ← QFS.messageIfFileNotFound outputResource (CE.CacheErrorSavingFile outputResource)

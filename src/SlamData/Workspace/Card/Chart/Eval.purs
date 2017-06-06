@@ -30,7 +30,6 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
-import Utils.Path as PU
 
 eval
   ∷ ∀ m
@@ -42,7 +41,7 @@ eval
   → Port.Resource
   → m Port.Port
 eval buildOptions resource = do
-  CEM.CardEnv env ← ask
-  results ← CE.liftQ $ QQ.all $ PU.anyToAbs env.path $ Port.filePath resource
+  path ← CEM.anyTemporaryPath $ Port.filePath resource
+  results ← CE.liftQ $ QQ.all path
   put $ Just $ ES.ChartOptions (buildOptions results)
   pure $ Port.ResourceKey Port.defaultResourceVar

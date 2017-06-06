@@ -22,7 +22,7 @@ module SlamData.Workspace.Card.Download.Component
 import SlamData.Prelude
 
 import Data.Lens ((^?))
-import Data.Path.Pathy (printPath)
+import Data.Path.Pathy (printPath, (</>))
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -120,7 +120,7 @@ handleDownloadPort opts = do
   { path } ← Wiring.expose
   let
     ext = D.extension opts.compress opts.options
-    downloadPath = PU.anyToAbs path opts.resource
+    downloadPath = PU.anyToAbs (path </> PU.tmpDir) opts.resource
     url hs =
       (encodeURI (printPath Paths.data_ ⊕ printPath downloadPath))
       ⊕ headersPart hs

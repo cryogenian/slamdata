@@ -28,6 +28,7 @@ module SlamData.Workspace.Card.Eval.Monad
   , addCaches
   , additionalSources
   , temporaryOutputResource
+  , anyTemporaryPath
   , localUrlVarMap
   , runCardEvalM
   , module SlamData.Workspace.Card.Eval.State
@@ -57,7 +58,7 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Eval.State (EvalState(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
-import Utils.Path (DirPath, FilePath, RelFilePath)
+import Utils.Path (DirPath, AnyFilePath, FilePath, RelFilePath, tmpDir)
 
 type CardEval = CardEvalM SlamDataEffects
 
@@ -156,7 +157,14 @@ temporaryOutputResource ∷ ∀ m. MonadAsk CardEnv m ⇒ m (FilePath × RelFile
 temporaryOutputResource = do
   CardEnv { cardId, path } ← ask
   let res = Path.file ("out" ⊕ CID.toString cardId)
-  pure $ path </> Path.dir ".tmp" </> res × Path.currentDir </> res
+  pure $ path </> tmpDir </> res × Path.currentDir </> res
+
+anyTemporaryPath ∷ ∀ m. MonadAsk CardEnv m ⇒ AnyFilePath → m FilePath
+anyTemporaryPath = case _ of
+  Left p → pure p
+  Right r → do
+    CardEnv { path } ← ask
+    pure $ path </> tmpDir </> r
 
 localUrlVarMap ∷ ∀ m. MonadAsk CardEnv m ⇒ m Port.URLVarMap
 localUrlVarMap = do

@@ -102,10 +102,9 @@ chartSetupEval buildSql buildPort m resource = do
   case m of
     Nothing → CE.throw "Incorrect chart setup model"
     Just r → do
-      CEM.CardEnv env ← ask
+      filePath ← CEM.anyTemporaryPath $ Port.filePath resource
       let
         -- TODO: Handle relative
-        filePath = PU.anyToAbs env.path $ Port.filePath resource
         backendPath = fromMaybe Path.rootDir $ Path.parentDir filePath
         sql = buildSql r filePath
 
@@ -137,8 +136,8 @@ analyze resource = case _ of
   Just (CEM.Analysis st) | resource ≡ st.resource →
     pure (st.records × st.axes)
   _ → do
-    CEM.CardEnv env ← ask
-    records ← CE.liftQ (QQ.sample (PU.anyToAbs env.path $ Port.filePath resource) 0 300)
+    filePath ← CEM.anyTemporaryPath $ Port.filePath resource
+    records ← CE.liftQ (QQ.sample filePath 0 300)
     let axes = buildAxes (unwrapValue <$> records)
     pure (records × axes)
   where

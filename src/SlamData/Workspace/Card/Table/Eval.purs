@@ -29,7 +29,6 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Table.Model as M
-import Utils.Path as PU
 
 eval
   ∷ ∀ m
@@ -62,8 +61,7 @@ eval model port varMap =
 
       unless (samePageAndResource rawTableState resource model) do
         resultAndSize ← do
-          CEM.CardEnv env ← ask
-          let filePath = PU.anyToAbs env.path $ Port.filePath resource
+          filePath ← CEM.anyTemporaryPath $ Port.filePath resource
           size ←
             case rawTableState of
               Just t | t.resource ≡ resource → pure t.size
