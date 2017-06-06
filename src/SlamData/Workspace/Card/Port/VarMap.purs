@@ -59,17 +59,16 @@ newtype VarMapValue = VarMapValue Sql
 _VarMapValue ∷ Iso' VarMapValue Sql
 _VarMapValue = _Newtype
 
-
 derive instance newtypeVarMapValue ∷ Newtype VarMapValue _
 
 derive newtype instance eqVarMapValue ∷ Eq VarMapValue
 derive newtype instance ordVarMapValue ∷ Ord VarMapValue
+
 instance showVarMapValue ∷ Show VarMapValue where
   show (VarMapValue sql) = "(VarMapValue " ⊕ Sql.print sql ⊕ ")"
 
 instance encodeJsonVarMapValue ∷ EncodeJson VarMapValue where
   encodeJson = Sql.encodeJson ∘ unwrap
-
 
 instance decodeJsonVarMapValue :: DecodeJson VarMapValue where
   decodeJson json =

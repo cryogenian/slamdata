@@ -78,6 +78,7 @@ import Utils.Path as PU
 data Resource
   = Path PU.FilePath
   | View PU.FilePath Sql.SqlQuery DataMap
+  | Process PU.FilePath Sql.SqlModule DataMap
 
 derive instance eqResource ∷ Eq Resource
 
@@ -239,6 +240,8 @@ _filePath = lens get set
   where
     get (Path fp) = fp
     get (View fp _ _) = fp
+    get (Process fp _ _) = fp
 
     set (Path _) fp = Path fp
     set (View _ a b) fp = View fp a b
+    set (Process _ a b) fp = Process fp a b
