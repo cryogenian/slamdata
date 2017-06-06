@@ -18,9 +18,9 @@ module SlamData.Workspace.Card.DownloadOptions.Component.State where
 
 import SlamData.Prelude
 
+import Control.Monad.Throw (note)
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Lens (Lens', lens)
-import Data.Path.Pathy as Pathy
 
 import SlamData.Download.Model as D
 
@@ -30,7 +30,7 @@ type State =
   { compress ∷ Boolean
   , options ∷ Either D.CSVOptions D.JSONOptions
   , targetName ∷ Maybe String
-  , source ∷ Maybe PU.FilePath
+  , source ∷ Maybe PU.AnyFilePath
   }
 
 eqState ∷ State → State → Boolean
@@ -56,7 +56,7 @@ encode s
    = "compress" := s.compress
   ~> "options" := s.options
   ~> "targetName" := s.targetName
-  ~> "source" := (Pathy.printPath <$> s.source)
+  ~> "source" := (PU.printAnyFilePath <$> s.source)
   ~> jsonEmptyObject
 
 decode :: Json → Either String State
@@ -64,7 +64,7 @@ decode = decodeJson >=> \obj → do
   compress ← obj .? "compress"
   options ← obj .? "options"
   targetName ← obj .? "targetName" <|> pure Nothing
-  source ← traverse parsePath =<< obj .? "source"
+  source ← traverse (note "Invalid file path" ∘ PU.parseAnyFilePath) =<< obj .? "source"
   pure { compress, options, targetName, source }
 
 parsePath ∷ String → Either String PU.FilePath

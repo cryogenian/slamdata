@@ -24,7 +24,7 @@ import SlamData.Prelude
 import Control.Monad.State (class MonadState, get, put)
 import Data.Argonaut as J
 import Data.Array as Array
-import Data.Lens ((^.), (.~), (?~), (<>~))
+import Data.Lens ((.~), (?~), (<>~))
 import Data.List ((:))
 import Data.List as L
 import Data.Map as Map
@@ -43,7 +43,7 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 import SqlSquared (Sql)
 import SqlSquared as Sql
-import Utils.Path (FilePath)
+import Utils.Path as PU
 
 eval
   ∷ ∀ m
@@ -56,10 +56,12 @@ eval
   → Port.Resource
   → m Port.Out
 eval options varMap resource = do
+  CEM.CardEnv env ← ask
   let
-    filePath = resource ^. Port._filePath
+    -- TODO: Handle relative
+    filePath = PU.anyToAbs env.path $ Port.filePath resource
     port × sql = mkSql options filePath
-  r ← CEM.temporaryOutputResource
+  tmpPath × r ← CEM.temporaryOutputResource
   state ← get
   axes ←
     case state of
@@ -73,16 +75,16 @@ eval options varMap resource = do
     state' = { axes, records: [], resource }
     view = Port.View r (Sql.Query mempty sql) varMap
     output = Port.PivotTable port × SM.singleton Port.defaultResourceVar (Left view)
-    backendPath = fromMaybe Path.rootDir (Path.parentDir r)
+    backendPath = fromMaybe Path.rootDir (Path.parentDir tmpPath)
   put (Just (CEM.Analysis state'))
   when (Array.null options.columns) do
     CE.throwPivotTableError CE.PivotTableNoColumnSelectedError
-  QQ.viewQuery r (Sql.Query mempty sql) SM.empty >>= case _ of
+  QQ.viewQuery tmpPath (Sql.Query mempty sql) SM.empty >>= case _ of
     Right result → pure result
     Left err → CE.throwPivotTableError (CE.PivotTableQuasarError err)
   pure output
 
-mkSql ∷ PTM.Model → FilePath → Port.PivotTablePort × Sql
+mkSql ∷ PTM.Model → PU.FilePath → Port.PivotTablePort × Sql
 mkSql options resource =
   let
     isSimple = PTM.isSimple options

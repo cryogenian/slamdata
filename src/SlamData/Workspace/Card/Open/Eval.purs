@@ -59,7 +59,7 @@ evalOpen model varMap = case model of
         pure (Port.resourceOut (Port.Path filePath))
       Just err → CE.throwOpenError err
   Just (Open.Variable (VM.Var var)) → do
-    res ← CEM.temporaryOutputResource
+    tmpPath × res ← CEM.temporaryOutputResource
     let
       sql =
         case SM.lookup var varMap of
@@ -85,8 +85,8 @@ evalOpen model varMap = case model of
       varMap' =
         map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
       backendPath =
-        fromMaybe Path.rootDir $ Path.parentDir res
-    CE.liftQ $ QQ.viewQuery res (Sql.Query mempty sql) varMap'
+        fromMaybe Path.rootDir $ Path.parentDir tmpPath
+    CE.liftQ $ QQ.viewQuery tmpPath (Sql.Query mempty sql) varMap'
     pure $ Port.resourceOut $ Port.View res (Sql.Query mempty sql) varMap
 
   where

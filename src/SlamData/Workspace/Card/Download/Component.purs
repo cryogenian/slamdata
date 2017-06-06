@@ -38,6 +38,7 @@ import SlamData.Quasar (reqHeadersToJSON, encodeURI)
 import SlamData.Quasar.Auth as API
 import SlamData.Render.ClassName as CN
 import SlamData.Render.CSS.New as CSS
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Download.Component.Query (Query)
@@ -47,6 +48,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails as LOD
 
 import Utils.DOM (Font(Font), getTextWidthPure)
+import Utils.Path as PU
 
 type HTML = CC.InnerCardHTML Query
 type DSL = CC.InnerCardDSL State Query
@@ -115,20 +117,20 @@ evalCard = case _ of
 
 handleDownloadPort ∷ Port.DownloadPort → DSL Unit
 handleDownloadPort opts = do
+  { path } ← Wiring.expose
+  let
+    ext = D.extension opts.compress opts.options
+    downloadPath = PU.anyToAbs path opts.resource
+    url hs =
+      (encodeURI (printPath Paths.data_ ⊕ printPath downloadPath))
+      ⊕ headersPart hs
+    headersPart hs =
+      "?request-headers="
+        ⊕ (Global.encodeURIComponent
+            $ show
+            $ reqHeadersToJSON
+            $ append hs
+            $ D.toHeaders opts
+            $ Just (opts.targetName ⊕ ext))
   hs ← H.lift API.authHeaders
   H.modify (_ { url = url hs, fileName = opts.targetName ⊕ ext })
-  where
-  ext = D.extension opts.compress opts.options
-
-  url hs =
-    (encodeURI (printPath Paths.data_ ⊕ printPath opts.resource))
-    ⊕ headersPart hs
-
-  headersPart hs =
-    "?request-headers="
-      ⊕ (Global.encodeURIComponent
-           $ show
-           $ reqHeadersToJSON
-           $ append hs
-           $ D.toHeaders opts
-           $ Just (opts.targetName ⊕ ext))

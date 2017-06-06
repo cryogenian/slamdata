@@ -34,7 +34,7 @@ module SlamData.Workspace.Card.Port
   , defaultResourceVar
   , filterResources
   , extractResource
-  , extractFilePath
+  , extractAnyFilePath
   , flattenResources
   , resourceToVarMapValue
   , _Initial
@@ -45,19 +45,20 @@ module SlamData.Workspace.Card.Port
   , _Metric
   , _ChartInstructions
   , _PivotTable
-  , _filePath
+  , _absFilePath
+  , _relFilePath
+  , filePath
   , module SlamData.Workspace.Card.Port.VarMap
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor, Json)
-import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
+import Data.Lens (Prism', prism', Traversal', wander)
 import Data.List as List
 import Data.Map as Map
 import Data.Set as Set
 import Data.StrMap as SM
-import Data.Path.Pathy as Path
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
@@ -77,8 +78,8 @@ import Utils.Path as PU
 
 data Resource
   = Path PU.FilePath
-  | View PU.FilePath Sql.SqlQuery DataMap
-  | Process PU.FilePath Sql.SqlModule DataMap
+  | View PU.RelFilePath Sql.SqlQuery DataMap
+  | Process PU.RelFilePath Sql.SqlModule DataMap
 
 derive instance eqResource ∷ Eq Resource
 
@@ -87,7 +88,7 @@ type DataMap = SM.StrMap (Either Resource VarMapValue)
 type Out = Port × DataMap
 
 type DownloadPort =
-  { resource ∷ PU.FilePath
+  { resource ∷ PU.AnyFilePath
   , compress ∷ Boolean
   , options ∷ DownloadOptions
   , targetName ∷ String
@@ -163,8 +164,8 @@ filterResources = SM.fold go SM.empty
 extractResource ∷ DataMap → Maybe Resource
 extractResource = map snd ∘ List.head ∘ SM.toUnfoldable ∘ filterResources
 
-extractFilePath ∷ DataMap → Maybe PU.FilePath
-extractFilePath = map (view _filePath) ∘ extractResource
+extractAnyFilePath ∷ DataMap → Maybe PU.AnyFilePath
+extractAnyFilePath = map filePath ∘ extractResource
 
 flattenResources ∷ DataMap → VarMap
 flattenResources = map go
@@ -174,7 +175,7 @@ flattenResources = map go
 
 resourceToVarMapValue ∷ Resource → VarMapValue
 resourceToVarMapValue r =
-  VarMapValue $ Sql.ident $ Path.printPath $ r ^. _filePath
+  VarMapValue $ Sql.ident $ PU.printAnyFilePath $ filePath r
 
 defaultResourceVar ∷ String
 defaultResourceVar = "results"
@@ -235,13 +236,19 @@ _PivotTable = prism' PivotTable case _ of
   PivotTable u → Just u
   _ → Nothing
 
-_filePath ∷ Lens' Resource PU.FilePath
-_filePath = lens get set
-  where
-    get (Path fp) = fp
-    get (View fp _ _) = fp
-    get (Process fp _ _) = fp
+_absFilePath ∷ Traversal' Resource PU.FilePath
+_absFilePath = wander \f s → case s of
+  Path fp → Path <$> f fp
+  _ → pure s
 
-    set (Path _) fp = Path fp
-    set (View _ a b) fp = View fp a b
-    set (Process _ a b) fp = Process fp a b
+_relFilePath ∷ Traversal' Resource PU.RelFilePath
+_relFilePath = wander \f s → case s of
+  View fp a b → (\fp' → View fp' a b) <$> f fp
+  Process fp a b → (\fp' → Process fp' a b) <$> f fp
+  _ → pure s
+
+filePath ∷ Resource → Either PU.FilePath PU.RelFilePath
+filePath = case _ of
+  Path fp → Left fp
+  View fp _ _ → Right fp
+  Process fp _ _ → Right fp

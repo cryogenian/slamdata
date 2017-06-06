@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Table.Eval
 import SlamData.Prelude
 
 import Control.Monad.State (class MonadState, put, get)
-import Data.Lens ((^.), (^?), _Just)
+import Data.Lens ((^?), _Just)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.Error as CE
@@ -29,10 +29,12 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Table.Model as M
+import Utils.Path as PU
 
 eval
   ∷ ∀ m
   . MonadState CEM.CardState m
+  ⇒ MonadAsk CEM.CardEnv m
   ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
   ⇒ M.Model
@@ -60,13 +62,15 @@ eval model port varMap =
 
       unless (samePageAndResource rawTableState resource model) do
         resultAndSize ← do
+          CEM.CardEnv env ← ask
+          let filePath = PU.anyToAbs env.path $ Port.filePath resource
           size ←
             case rawTableState of
               Just t | t.resource ≡ resource → pure t.size
-              _ → Quasar.count (resource ^. Port._filePath) >>= case _ of
+              _ → Quasar.count filePath >>= case _ of
                 Left err → CE.throwTableError (CE.TableCountQuasarError err)
                 Right result → pure result
-          sampleResult ← Quasar.sample (resource ^. Port._filePath) ((page - 1) * pageSize) pageSize
+          sampleResult ← Quasar.sample filePath ((page - 1) * pageSize) pageSize
           case sampleResult of
             Left err → CE.throwTableError (CE.TableSampleQuasarError err)
             Right result →

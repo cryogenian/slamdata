@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Cache.Eval where
 import SlamData.Prelude
 
 import Control.Monad.Writer.Class (class MonadTell)
-import Data.Lens ((^.), (.~))
+import Data.Lens ((.~))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 import Quasar.Types (FilePath)
@@ -45,7 +45,8 @@ eval
 eval mfp resource =
   Port.resourceOut <$> case mfp of
     Nothing → do
-      tmp ← CEM.temporaryOutputResource
+      CEM.CardEnv env ← ask
+      tmp ← fst <$> CEM.temporaryOutputResource
       eval' tmp resource
     Just pt →
       case PU.parseAnyPath pt of
@@ -56,18 +57,23 @@ eval'
   ∷ ∀ m
   . MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
+  ⇒ MonadAsk CEM.CardEnv m
   ⇒ QuasarDSL m
   ⇒ FilePath
   → Port.Resource
   → m Port.Resource
 eval' tmp resource = do
+  CEM.CardEnv env ← ask
   let
-    filePath = resource ^. Port._filePath
-    backendPath = fromMaybe Path.rootDir $ Path.parentDir filePath
+    anyPath = Port.filePath resource
+    backendPath =
+      fromMaybe Path.rootDir
+        $ map (PU.anyToAbs env.path)
+        $ PU.anyParentDir anyPath
     sql =
       Sql.buildSelect
         $ all
-        ∘ (Sql._relations .~ tableRelation filePath)
+        ∘ (Sql._relations .~ tableRelation anyPath)
   outputResource ← CE.liftQ $
     QQ.fileQuery backendPath tmp (Sql.Query mempty sql) SM.empty
   checkResult ← QFS.messageIfFileNotFound outputResource (CE.CacheErrorSavingFile outputResource)

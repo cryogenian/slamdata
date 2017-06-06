@@ -38,7 +38,7 @@ buildBasicSql
 buildBasicSql buildProjections buildGroupBy r path =
   Sql.buildSelect
     $ ( Sql._projections .~ buildProjections r )
-    ∘ ( Sql._relations .~ tableRelation path)
+    ∘ ( Sql._relations .~ tableRelation (Left path))
     ∘ ( Sql._groupBy .~ groups )
     ∘ ( Sql._orderBy .~ orders )
   where

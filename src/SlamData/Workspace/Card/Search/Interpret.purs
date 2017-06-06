@@ -54,7 +54,7 @@ queryToSql fields searchQuery path =
   Sql.buildSelect
     $ (Sql._isDistinct .~ isDistinct searchQuery)
     ∘ (Sql._projections .~ projections fields)
-    ∘ (Sql._relations .~ tableRelation path)
+    ∘ (Sql._relations .~ tableRelation (Left path))
     ∘ (Sql._filter ?~ filter fields searchQuery)
 
 isDistinct ∷ SS.SearchQuery → Boolean

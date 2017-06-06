@@ -130,7 +130,7 @@ evalCard = case _ of
       _ → pure unit
     pure next
   CC.ReceiveInput _ varMap next → do
-    H.modify (_ { source = Port.extractFilePath varMap })
+    H.modify (_ { source = Port.extractAnyFilePath varMap })
     pure next
   CC.ReceiveOutput _ _ next →
     pure next

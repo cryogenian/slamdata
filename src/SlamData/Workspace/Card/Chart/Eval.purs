@@ -22,7 +22,6 @@ import SlamData.Prelude
 
 import Control.Monad.State (class MonadState, put)
 import Data.Argonaut (Json)
-import Data.Lens ((^.))
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -31,17 +30,19 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
+import Utils.Path as PU
 
 eval
   ∷ ∀ m
   . MonadState CEM.CardState m
   ⇒ MonadThrow CE.CardError m
+  ⇒ MonadAsk CEM.CardEnv m
   ⇒ QuasarDSL m
   ⇒ (Array Json → DSL OptionI)
   → Port.Resource
   → m Port.Port
 eval buildOptions resource = do
-  let path = resource ^. Port._filePath
-  results ← CE.liftQ $ QQ.all path
+  CEM.CardEnv env ← ask
+  results ← CE.liftQ $ QQ.all $ PU.anyToAbs env.path $ Port.filePath resource
   put $ Just $ ES.ChartOptions (buildOptions results)
   pure $ Port.ResourceKey Port.defaultResourceVar

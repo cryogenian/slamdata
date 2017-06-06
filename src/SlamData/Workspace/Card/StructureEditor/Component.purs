@@ -23,7 +23,7 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Future as Future
 import Data.Json.Extended (EJson)
-import Data.Lens ((.~), view)
+import Data.Lens ((.~))
 import Data.List as L
 import Data.Path.Pathy as Path
 import Halogen as H
@@ -50,6 +50,7 @@ import SlamData.Workspace.LevelOfDetails as LOD
 import SlamData.Workspace.MillerColumns.Column.BasicFilter (mkFilter)
 import SlamData.Workspace.MillerColumns.Component as MC
 import SqlSquared as Sql
+import Utils.Path as PU
 import Utils.SqlSquared as SU
 
 type DSL = CC.InnerCardParentDSL S.State Query CS.ChildQuery CS.ChildSlot
@@ -130,13 +131,16 @@ load path { requestId, filter } =
 
 fetchData ∷ Port.Resource → DSL (Array EJson)
 fetchData res = do
-  let path = view Port._filePath res
-  case fst <$> Path.peel path of
+  { path } ← Wiring.expose
+  let
+    filePath = Port.filePath res
+    absPath = PU.anyToAbs path filePath
+  case fst <$> Path.peel absPath of
     Just resourcePath → do
       let
         sql =
           Sql.binop Sql.Limit
-            (Sql.buildSelect $ SU.all ∘ (Sql._relations .~ (SU.tableRelation path <#> SU.asRel "row")))
+            (Sql.buildSelect $ SU.all ∘ (Sql._relations .~ (SU.tableRelation filePath <#> SU.asRel "row")))
             (Sql.int 1000)
       either (const []) id <$> QQ.queryEJson resourcePath (Sql.Query mempty sql)
     _ → pure []

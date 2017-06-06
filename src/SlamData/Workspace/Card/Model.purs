@@ -22,7 +22,6 @@ import Data.Argonaut as J
 import Data.Array as Array
 import Data.Lens (Traversal', wander, Prism', prism')
 import Data.List as L
-import Data.Path.Pathy (fileName, runFileName)
 import Data.Rational ((%))
 import Data.StrMap as StrMap
 
@@ -76,6 +75,7 @@ import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
+import Utils.Path as PU
 
 data AnyCardModel
   = Ace CT.AceMode Ace.Model
@@ -419,7 +419,7 @@ cardModelOfType (port × varMap) = case _ of
   CT.Troubleshoot → Troubleshoot
   CT.Cache → Cache Nothing
   CT.Open → Open Nothing
-  CT.DownloadOptions → DownloadOptions $ DLO.initialState { targetName = runFileName ∘ fileName <$> Port.extractFilePath varMap }
+  CT.DownloadOptions → DownloadOptions $ DLO.initialState { targetName = PU.printAnyFilePath <$> Port.extractAnyFilePath varMap }
   CT.Draftboard → Draftboard DB.emptyModel
   CT.Tabs → Tabs Tabs.initialModel
   CT.StructureEditor → StructureEditor StructureEditor.initialModel

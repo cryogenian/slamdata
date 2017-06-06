@@ -34,7 +34,6 @@ import Data.Array as A
 import Data.Foreign (Foreign, toForeign)
 import Data.Foreign.Index (readProp)
 import Data.Function (on)
-import Data.Lens ((^.))
 import Data.Map as M
 import Data.NonEmpty as NE
 import Data.Path.Pathy as Path
@@ -61,6 +60,7 @@ analysisEval
   ∷ ∀ m p
   . MonadState CEM.CardState m
   ⇒ MonadThrow CE.CardError m
+  ⇒ MonadAsk CEM.CardEnv m
   ⇒ QuasarDSL m
   ⇒ (Axes → p → Array J.Json → Port.Port)
   → Maybe p
@@ -102,21 +102,23 @@ chartSetupEval buildSql buildPort m resource = do
   case m of
     Nothing → CE.throw "Incorrect chart setup model"
     Just r → do
+      CEM.CardEnv env ← ask
       let
-        path = resource ^. Port._filePath
-        backendPath = fromMaybe Path.rootDir $ Path.parentDir path
-        sql = buildSql r path
+        -- TODO: Handle relative
+        filePath = PU.anyToAbs env.path $ Port.filePath resource
+        backendPath = fromMaybe Path.rootDir $ Path.parentDir filePath
+        sql = buildSql r filePath
 
-      outputResource ← CEM.temporaryOutputResource
+      tmpPath × outputResource ← CEM.temporaryOutputResource
 
       { inputs } ←
         CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
           QQ.compile backendPath (Sql.Query mempty sql) SM.empty
 
       _ ← CE.liftQ do
-        _ ← QQ.viewQuery outputResource (Sql.Query mempty sql) SM.empty
+        _ ← QQ.viewQuery tmpPath (Sql.Query mempty sql) SM.empty
         QFS.messageIfFileNotFound
-          outputResource
+          tmpPath
           "Error making search temporary resource"
       let
         view = Port.View outputResource (Sql.Query mempty sql) SM.empty
@@ -126,6 +128,7 @@ chartSetupEval buildSql buildPort m resource = do
 analyze
   ∷ ∀ m
   . MonadThrow CE.CardError m
+  ⇒ MonadAsk CEM.CardEnv m
   ⇒ QuasarDSL m
   ⇒ Port.Resource
   → CEM.CardState
@@ -134,7 +137,8 @@ analyze resource = case _ of
   Just (CEM.Analysis st) | resource ≡ st.resource →
     pure (st.records × st.axes)
   _ → do
-    records ← CE.liftQ (QQ.sample (resource ^. Port._filePath) 0 300)
+    CEM.CardEnv env ← ask
+    records ← CE.liftQ (QQ.sample (PU.anyToAbs env.path $ Port.filePath resource) 0 300)
     let axes = buildAxes (unwrapValue <$> records)
     pure (records × axes)
   where

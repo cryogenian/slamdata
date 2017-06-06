@@ -25,7 +25,7 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
-import Data.Lens ((^.), preview, (?~), (.~))
+import Data.Lens (preview, (?~), (.~))
 import Data.List as L
 import Data.Map as Map
 import Data.Path.Pathy as Path
@@ -49,6 +49,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SqlSquared (SqlQuery)
 import SqlSquared as Sql
 import Utils (stringToNumber)
+import Utils.Path as PU
 import Utils.SqlSquared (all, asRel, tableRelation)
 
 
@@ -70,10 +71,13 @@ eval
   → Port.Resource
   → m Port.Out
 eval sql r = do
-  resource ← CEM.temporaryOutputResource
+  CEM.CardEnv env ← ask
+  tmpPath × resource ← CEM.temporaryOutputResource
   let
     backendPath =
-      fromMaybe Path.rootDir (Path.parentDir (r ^. Port._filePath))
+      fromMaybe Path.rootDir
+        $ map (PU.anyToAbs env.path)
+        $ PU.anyParentDir (Port.filePath r)
 
   { inputs } ←
     CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
@@ -82,8 +86,8 @@ eval sql r = do
   validateResources inputs
   CEM.addSources inputs
   _ ← CE.liftQ do
-    _ ← QQ.viewQuery resource sql SM.empty
-    QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
+    _ ← QQ.viewQuery tmpPath sql SM.empty
+    QFS.messageIfFileNotFound tmpPath "Requested collection doesn't exist"
   let
     varMap =
       SM.fromFoldable
@@ -138,7 +142,7 @@ evalLabeled m p r = do
       Sql.buildSelect
         $ all
         ∘ (Sql._relations
-            .~ (tableRelation (r ^. Port._filePath) <#> asRel "res"))
+            .~ (tableRelation (Port.filePath r) <#> asRel "res"))
         ∘ (Sql._filter
              ?~ ( Sql.binop Sql.In
                     ( Sql.binop Sql.FieldDeref
@@ -177,7 +181,7 @@ evalTextLike m p r = do
       Sql.buildSelect
         $ all
         ∘ (Sql._relations
-            .~ ( tableRelation (r ^. Port._filePath) <#> asRel "res"))
+            .~ ( tableRelation (Port.filePath r) <#> asRel "res"))
         ∘ (Sql._filter
              ?~ ( Sql.binop Sql.Eq
                     ( Sql.binop Sql.FieldDeref

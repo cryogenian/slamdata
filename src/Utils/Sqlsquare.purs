@@ -22,11 +22,11 @@ import Data.Lens ((.~))
 
 import SqlSquared as Sql
 
-import Utils.Path (FilePath)
+import Utils.Path (AnyFilePath)
 
-tableRelation ∷ FilePath → Maybe (Sql.Relation Sql.Sql)
-tableRelation file =
-  Just $ Sql.TableRelation { alias: Nothing, path: Left file }
+tableRelation ∷ AnyFilePath → Maybe (Sql.Relation Sql.Sql)
+tableRelation path =
+  Just $ Sql.TableRelation { alias: Nothing, path }
 
 all ∷ Sql.SelectR Sql.Sql → Sql.SelectR Sql.Sql
 all =

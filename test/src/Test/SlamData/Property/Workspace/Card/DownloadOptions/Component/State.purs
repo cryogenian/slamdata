@@ -10,7 +10,7 @@ import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
 import SlamData.Workspace.Card.DownloadOptions.Component.State as M
 
-import Test.Property.Utils.Path (runArbFilePath)
+import Test.Property.Utils.Path (runArbAnyFilePath)
 import Test.SlamData.Property.Download.Model (runArbCSVOptions, runArbJSONOptions)
 import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
 import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
@@ -25,7 +25,7 @@ instance arbitraryArbState :: Arbitrary ArbState where
     r <- { compress: _, options: _, source: _, targetName: _ }
          <$> arbitrary
          <*> (map (bimap runArbCSVOptions runArbJSONOptions) arbitrary)
-         <*> (map (map runArbFilePath) arbitrary)
+         <*> (map (map runArbAnyFilePath) arbitrary)
          <*> arbitrary
     pure $ ArbState r
 

@@ -205,7 +205,7 @@ count file = runExceptT do
                $ Sql.projection
                    (Sql.invokeFunction "COUNT" $ L.singleton $ Sql.splice Nothing)
                    #  Sql.as "total"))
-      ∘ (Sql._relations .~ tableRelation file)
+      ∘ (Sql._relations .~ tableRelation (Left file))
   result ← ExceptT $ liftQuasar $
     QF.readQuery Readable backendPath (print sql) SM.empty Nothing
   pure $ fromMaybe 0 (readTotal result)

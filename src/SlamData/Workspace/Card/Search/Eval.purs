@@ -22,7 +22,6 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Writer.Class (class MonadTell)
-import Data.Lens ((^.))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 import SlamData.Effects (SlamDataEffects)
@@ -36,6 +35,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SqlSquared as Sql
 import Text.SlamSearch as SS
+import Utils.Path as PU
 
 evalSearch
   ∷ ∀ m
@@ -49,8 +49,9 @@ evalSearch
   → Port.Resource
   → m Port.Out
 evalSearch queryText resource = do
+  CEM.CardEnv env ← ask
   let
-    filePath = resource ^. Port._filePath
+    filePath = PU.anyToAbs env.path $ Port.filePath resource
     queryText' = if queryText ≡ "" then "*" else queryText
   query ← case SS.mkQuery queryText' of
     Left pe → CE.throwSearchError (CE.SearchQueryParseError { query: queryText, error: pe })
@@ -62,9 +63,10 @@ evalSearch queryText resource = do
       ("Input resource " ⊕ Path.printPath filePath ⊕ " doesn't exist")
     QQ.fields filePath
 
-  outputResource ← CEM.temporaryOutputResource
+  tmpPath × outputResource ← CEM.temporaryOutputResource
 
   let
+    -- TODO: handle relative
     sql = Sql.Query mempty $ Search.queryToSql fields query filePath
     backendPath = fromMaybe Path.rootDir $ Path.parentDir filePath
 
@@ -78,9 +80,9 @@ evalSearch queryText resource = do
       CEM.addSources inputs
 
   _ ← CE.liftQ do
-    _ ← QQ.viewQuery outputResource sql SM.empty
+    _ ← QQ.viewQuery tmpPath sql SM.empty
     QFS.messageIfFileNotFound
-      outputResource
+      tmpPath
       "Error making search temporary resource"
 
   pure $ Port.resourceOut $ Port.View outputResource sql SM.empty

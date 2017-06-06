@@ -57,7 +57,7 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Eval.State (EvalState(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
-import Utils.Path (DirPath, FilePath)
+import Utils.Path (DirPath, FilePath, RelFilePath)
 
 type CardEval = CardEvalM SlamDataEffects
 
@@ -152,12 +152,11 @@ addCaches fps = tell (foldMap (Set.singleton ∘ Cache) fps)
 additionalSources ∷ ∀ f m. Foldable f ⇒ MonadTell (Set AdditionalSource) m ⇒ f AdditionalSource → m Unit
 additionalSources = tell ∘ foldMap Set.singleton
 
-temporaryOutputResource ∷ ∀ m. MonadAsk CardEnv m ⇒ m FilePath
+temporaryOutputResource ∷ ∀ m. MonadAsk CardEnv m ⇒ m (FilePath × RelFilePath)
 temporaryOutputResource = do
-  CardEnv { path, cardId } ← ask
-  pure $ path
-    </> Path.dir ".tmp"
-    </> Path.file ("out" ⊕ CID.toString cardId)
+  CardEnv { cardId, path } ← ask
+  let res = Path.file ("out" ⊕ CID.toString cardId)
+  pure $ path </> Path.dir ".tmp" </> res × Path.currentDir </> res
 
 localUrlVarMap ∷ ∀ m. MonadAsk CardEnv m ⇒ m Port.URLVarMap
 localUrlVarMap = do
