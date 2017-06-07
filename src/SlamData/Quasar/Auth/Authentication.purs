@@ -354,7 +354,7 @@ verify providerR unhashedNonce idToken =
 verifyWithJwk ∷ ∀ eff. ProviderR → UnhashedNonce → IdToken → JSONWebKey → Eff (AuthEffects eff) (Either Error Boolean)
 verifyWithJwk providerR unhashedNonce idToken jwk = do
   OIDCCrypt.verifyIdToken
-      (Seconds 1.0)
+      (Seconds 10.0)
       idToken
       providerR.openIDConfiguration.issuer
       providerR.clientId

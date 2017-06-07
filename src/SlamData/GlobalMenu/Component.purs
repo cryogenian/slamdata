@@ -294,7 +294,6 @@ authenticate = maybe logOut logIn
   logOut ∷ DSL Unit
   logOut = do
     AuthStore.removeIdToken keySuffix
-    AuthStore.removeUnhashedNonce keySuffix
     AuthStore.removeProvider keySuffix
     update
 
