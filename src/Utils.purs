@@ -29,7 +29,7 @@ import Global (readFloat, isNaN, isFinite)
 import SqlSquared.Signature.Ident (printIdent)
 
 
-foreign import debugTime ∷ ∀ a. String → (Unit → a) → a
+foreign import debugTime ∷ ∀ a. Warn "debug time is used in production" ⇒ String → (Unit → a) → a
 
 stringToNumber ∷ String → Maybe Number
 stringToNumber s =

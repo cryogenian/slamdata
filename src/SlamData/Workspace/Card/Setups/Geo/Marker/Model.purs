@@ -20,6 +20,9 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
+import Data.Char.Gen (genAlpha)
+import Data.String.Gen (genString)
+import Data.String as Str
 import Data.Newtype (un)
 import Data.URI as URI
 import Data.URI (URIRef)
@@ -32,7 +35,6 @@ import SlamData.Workspace.Card.Geo.Model (onURIRef)
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
-import Test.StrongCheck.Data.String (alphaString)
 
 type ModelR =
   { lat ∷ D.LabeledJCursor
@@ -80,8 +82,8 @@ genModel = do
     minSize ← arbitrary
     maxSize ← arbitrary
     intensity ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
-    scheme ← alphaString
-    address ← alphaString
+    scheme ← Str.toLower ∘ append "a" <$> genString genAlpha
+    address ← Str.toLower ∘ append "a" <$> genString genAlpha
     pure { osmURI: Left $ URI.URI
            (Just $ URI.URIScheme scheme)
            (URI.HierarchicalPart

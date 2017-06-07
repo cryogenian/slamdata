@@ -20,6 +20,9 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
+import Data.Char.Gen (genAlpha)
+import Data.String.Gen (genString)
+import Data.String as Str
 import Data.Path.Pathy as Pt
 import Data.URI (URIRef)
 import Data.URI as URI
@@ -27,7 +30,6 @@ import Global (encodeURIComponent, decodeURIComponent)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
-import Test.StrongCheck.Data.String (alphaString)
 
 type ModelR =
   { osmURI ∷ URIRef -- | Open Street Map tile layer URI
@@ -116,8 +118,8 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    scheme ← alphaString
-    address ← alphaString
+    scheme ← Str.toLower ∘ append "a" <$> genString genAlpha
+    address ← Str.toLower ∘ append "a" <$> genString genAlpha
     zoom ← arbitrary
     lat ← arbitrary
     lng ← arbitrary
