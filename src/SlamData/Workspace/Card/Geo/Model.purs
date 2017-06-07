@@ -20,9 +20,8 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
-import Data.Char.Gen (genAlpha)
+import Data.Char.Gen (genAlphaLowercase)
 import Data.String.Gen (genString)
-import Data.String as Str
 import Data.Path.Pathy as Pt
 import Data.URI (URIRef)
 import Data.URI as URI
@@ -118,8 +117,8 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    scheme ← Str.toLower ∘ append "a" <$> genString genAlpha
-    address ← Str.toLower ∘ append "a" <$> genString genAlpha
+    scheme ← append "a" <$> genString genAlphaLowercase
+    address ← append "a" <$> genString genAlphaLowercase
     zoom ← arbitrary
     lat ← arbitrary
     lng ← arbitrary

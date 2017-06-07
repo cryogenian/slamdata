@@ -20,9 +20,8 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
-import Data.Char.Gen (genAlpha)
+import Data.Char.Gen (genAlphaLowercase)
 import Data.String.Gen (genString)
-import Data.String as Str
 import Data.Newtype (un)
 import Data.URI as URI
 import Data.URI (URIRef)
@@ -69,8 +68,8 @@ genModel = do
     lat ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
     lng ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
     intensity ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
-    scheme ← Str.toLower ∘ append "a" <$> genString genAlpha
-    address ← Str.toLower ∘ append "a" <$> genString genAlpha
+    scheme ← append "a" <$> genString genAlphaLowercase
+    address ← append "a" <$> genString genAlphaLowercase
     pure
       { osmURI: Left $ URI.URI
         (Just $ URI.URIScheme $ scheme)
