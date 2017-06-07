@@ -35,18 +35,18 @@ import Quasar.Advanced.Types as QAT
 
 import SlamData.Config as Config
 
-isTrial ∷ ∀ eff. Aff (ajax ∷ AX.AJAX | eff) Boolean
-isTrial =
+isAdvanced ∷ ∀ eff. Aff (ajax ∷ AX.AJAX | eff) Boolean
+isAdvanced =
   flip runReaderT { basePath: Config.baseUrl, idToken: Nothing, permissions: [] }
     $ QA.eval
-    $ either (const false) (isTrial' ∘ _.type)
+    $ either (const false) (isAdvanced' ∘ _.type)
     <$> QAF.licenseInfo
   where
-  isTrial' ∷ QAT.LicenseType → Boolean
-  isTrial' =
+  isAdvanced' ∷ QAT.LicenseType → Boolean
+  isAdvanced' =
     case _ of
-      QAT.AdvancedTrial → true
-      QAT.Advanced → false
+      QAT.Advanced → true
+      QAT.AdvancedTrial → false
   
 getEmail ∷ ∀ eff. Aff (ajax ∷ AX.AJAX | eff) (Maybe String)
 getEmail =
@@ -57,7 +57,7 @@ getEmail =
 
 enableAnalytics ∷ ∀ eff. Aff (dom ∷ DOM, ajax ∷ AX.AJAX | eff) Unit
 enableAnalytics =
-  apathize $ whenM isTrial do
+  apathize $ unlessM isAdvanced do
     liftEff $ _enableAnalytics
     getEmail >>= maybe (pure unit) (liftEff ∘ _identify)
 

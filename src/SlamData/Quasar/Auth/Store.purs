@@ -38,6 +38,10 @@ storeKeyString ∷ ∀ m. (LS.LocalStorageDSL m) ⇒ String → OIDCT.KeyString 
 storeKeyString keySuffix =
   LS.persist (LSK.keyStringLocalStorageKey keySuffix)
 
+storeSignedOutBefore ∷ ∀ m. (LS.LocalStorageDSL m) ⇒ m Unit
+storeSignedOutBefore =
+  LS.persist LSK.signedOutBefore true
+
 storeUnhashedNonce ∷ ∀ m. (LS.LocalStorageDSL m) ⇒ String → OIDCT.UnhashedNonce → m Unit
 storeUnhashedNonce keySuffix =
   LS.persist (LSK.nonceLocalStorageKey keySuffix)

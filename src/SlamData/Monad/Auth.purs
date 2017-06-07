@@ -17,23 +17,22 @@ limitations under the License.
 module SlamData.Monad.Auth where
 
 import SlamData.Prelude
-import Data.Foldable as Foldable
-import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
 import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
-import Quasar.Error (QError(..), UnauthorizedDetails(..))
-import SlamData.AuthenticationMode (AuthenticationMode, AllowedAuthenticationModes)
 import SlamData.AuthenticationMode as AuthenticationMode
-import SlamData.Effects (SlamDataEffects)
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LSK
-import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Error as QError
+import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.AVar (AVar)
+import Quasar.Error (QError(..), UnauthorizedDetails(..))
+import SlamData.AuthenticationMode (AuthenticationMode, AllowedAuthenticationModes)
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Aff (runQuasarF)
 import Utils (passover, singletonValue)
 
 getIdTokenSilently ∷ AllowedAuthenticationModes → Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
@@ -57,10 +56,7 @@ getIdTokenSilently interactionlessSignIn idTokenRequestBus =
 
   signedOutBefore ∷ Aff SlamDataEffects Boolean
   signedOutBefore =
-    Foldable.or
-      <$> traverse 
-            authModeSignedOutBefore
-            [ AuthenticationMode.ChosenProvider, AuthenticationMode.AllProviders ]
+    isRight <$> LS.retrieve LSK.signedOutBefore
   
   authModeSignedOutBefore ∷ AuthenticationMode.AuthenticationMode → Aff SlamDataEffects Boolean
   authModeSignedOutBefore =
