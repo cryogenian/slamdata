@@ -48,7 +48,7 @@ data TabIndex
   | Server
   | Authentication
   | Users
-  | Group
+  | Groups
 
 derive instance eqTabIndex ∷ Eq TabIndex
 derive instance ordTabIndex ∷ Ord TabIndex
@@ -57,7 +57,7 @@ instance showTabIndex ∷ Show TabIndex where
 
 allTabs ∷ List TabIndex
 allTabs =
-  List.fromFoldable [MySettings, Database, Server, Authentication, Users, Group]
+  List.fromFoldable [MySettings, Database, Server, Authentication, Users, Groups]
 
 tabTitle ∷ TabIndex → String
 tabTitle = case _ of
@@ -66,7 +66,7 @@ tabTitle = case _ of
   Server → "Server"
   Authentication → "Authentication"
   Users → "Users"
-  Group → "Group"
+  Groups → "Groups"
 
 type State =
   { open ∷ Boolean
@@ -267,7 +267,8 @@ renderMySettingsForm (MySettingsState state) =
 
 renderDatabaseForm ∷ DatabaseState → Array HTML
 renderDatabaseForm (DatabaseState state) =
-  [ HH.fieldset_
+  [ HH.fieldset
+    [ HP.class_ (HH.ClassName "database-form-wrapper")]
     [ HH.legend
         [ HP.class_ (HH.ClassName "checkbox") ]
         [ HH.label_
@@ -396,7 +397,6 @@ renderServerForm (ServerState state) =
         , HH.textarea [HP.class_ (HH.ClassName "form-control"), HP.disabled (not state.enableCustomSSL)]
         ]
   ]
-
 
 eval ∷ Query ~> DSL
 eval = case _ of

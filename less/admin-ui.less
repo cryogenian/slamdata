@@ -93,11 +93,15 @@
 }
 
 .sd-admin-ui > .tab-body > .database {
-  > fieldset {
-    margin-top: 1rem;
+  .database-form-wrapper {
+    margin-top: 0;
   }
   fieldset {
     margin-top: 3rem;
+
+    &:first-child {
+      margin-top: 1rem;
+    }
   }
 }
 
