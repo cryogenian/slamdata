@@ -19,6 +19,7 @@ module SlamData.AdminUI.Component
   , MySettingsState(..)
   , DatabaseState(..)
   , ServerState(..)
+  , GroupsState(..)
   , PostgresCon(..)
   ) where
 
@@ -41,6 +42,7 @@ data Query a
   | SetMySettings MySettingsState a
   | SetDatabase DatabaseState a
   | SetServer ServerState a
+  | SetGroups GroupsState a
 
 data TabIndex
   = MySettings
@@ -71,7 +73,12 @@ tabTitle = case _ of
 type State =
   { open ∷ Boolean
   , active ∷ TabIndex
-  , formState ∷ { mySettings ∷ MySettingsState, database ∷ DatabaseState, server ∷ ServerState }
+  , formState ∷
+      { mySettings ∷ MySettingsState
+      , database ∷ DatabaseState
+      , server ∷ ServerState
+      , groups ∷ GroupsState
+      }
   }
 
 newtype MySettingsState = MySettingsState
@@ -131,6 +138,11 @@ newtype ServerState = ServerState
 defaultServerState ∷ ServerState
 defaultServerState = ServerState { port: 27012, logFileLocation: "", enableCustomSSL: false }
 
+newtype GroupsState = GroupsState Unit
+
+defaultGroupsState ∷ GroupsState
+defaultGroupsState = GroupsState unit
+
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Void Slam
 
@@ -144,6 +156,7 @@ component =
           { mySettings: defaultMySettingsState
           , database: defaultDatabaseState
           , server: defaultServerState
+          , groups: defaultGroupsState
           }
        }
     , render
@@ -198,11 +211,14 @@ tabBody state =
         pure $ HH.div
           [ HP.class_ (HH.ClassName "server") ]
           (renderServerForm state.formState.server)
+      Groups →
+        pure $ HH.div
+          [ HP.class_ (HH.ClassName "groups") ]
+          (renderGroupsForm state.formState.groups)
       _ →
         [HH.text "Not implemented"]
       -- Authentication → ?x
       -- Users → ?x
-      -- Group → ?x
 
 -- TODO(Christoph): Talk to Kyle
 themes ∷ Array String
@@ -398,6 +414,9 @@ renderServerForm (ServerState state) =
         ]
   ]
 
+renderGroupsForm ∷ GroupsState → Array HTML
+renderGroupsForm (GroupsState _) = []
+
 eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
@@ -419,4 +438,7 @@ eval = case _ of
     pure next
   SetServer new next → do
     H.modify (_ { formState { server = new } })
+    pure next
+  SetGroups new next → do
+    H.modify (_ { formState { groups = new } })
     pure next
