@@ -64,10 +64,10 @@ toolbar state =
     [ P.classes [ CSS.toolbarMenu ] ]
     $ ( guard state.isUnconfigured $>
         Hint.render
-          Hint.LeftArrow
-          (H.ClassName "sd-mount-guide")
+          Hint.RightArrow
+          (H.ClassName "sd-mount-hint")
           Nothing
-          "To begin exploring data, please press the Mount button"
+          "Mount a database to begin exploring data"
       )
     <> [ H.ul_
          $ configure <> [ mount, workspace, folder, showHide, download, file ]
