@@ -23,13 +23,18 @@ module SlamData.FileSystem.Component
 
 import SlamData.Prelude
 
+import CSS as CSS
+
+import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Rec.Class (tailRecM, Step(Done, Loop))
 import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
 
-import CSS as CSS
+import DOM.Event.Event as DEE
 
 import Data.Argonaut (jsonParser, jsonEmptyObject)
 import Data.Array as Array
@@ -43,17 +48,16 @@ import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 
-import DOM.Event.Event as DEE
-
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
-import Halogen.HTML.Core as HC
 import Halogen.HTML.CSS as HCSS
+import Halogen.HTML.Core as HC
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 
+import Quasar.Advanced.QuasarAF as QA
 import Quasar.Data (QData(..))
 import Quasar.Mount as QM
 
@@ -92,9 +96,11 @@ import SlamData.Header.Gripper.Component as Gripper
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LSK
 import SlamData.Monad (Slam)
+import SlamData.Notification as Notification
 import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
+import SlamData.Quasar.Class (liftQuasar)
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo) as API
@@ -195,6 +201,15 @@ eval = case _ of
       (H.modify $ State._presentIntroVideo .~ true)
     H.subscribe $ busEventSource (flip HandleError ES.Listening) w.bus.globalError
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) w.auth.signIn
+    H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) w.bus.licenseProblems
+    daysRemaining ← map _.daysRemaining <$> liftQuasar QA.licenseInfo
+    case daysRemaining of
+      Right i | i <= 30 && i < 0 → void $ H.liftAff do
+        trigger ← AVar.makeVar
+        Bus.write (daysRemainingNotification trigger i) w.bus.notify
+        Aff.forkAff $ AVar.takeVar trigger *> (H.liftEff $ Browser.newTab "https://slamdata.com/contact-us/")
+      _ →
+        pure unit
     pure next
   Transition page next → do
     H.modify
@@ -379,7 +394,8 @@ eval = case _ of
       _ ← queryHeaderGripper $ H.action Gripper.StopDragging
       pure unit
     pure next
-  HandleNotifications _ next →
+  HandleNotifications (NC.Fulfill trigger) next → do
+    H.liftAff $ AVar.putVar trigger unit
     pure next
   HandleSearch m next → do
     salt ← H.liftEff newSalt
@@ -390,6 +406,9 @@ eval = case _ of
       Search.Submit → do
         H.query' CS.cpSearch unit $ H.request Search.GetValue
     H.liftEff $ setLocation $ browseURL value st.sort salt st.path
+    pure next
+  HandleLicenseProblem problem next → do
+    _ ← H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.LicenseProblem problem
     pure next
   SetLoading bool next → do
     _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetLoading bool
@@ -623,6 +642,7 @@ configure m =
 
     fromConfig = case _ of
       QM.ViewConfig config → Mount.SQL2 (SQL2.stateFromViewInfo config)
+      QM.ModuleConfig config → Mount.SQL2 SQL2.initialState
       QM.MongoDBConfig config → Mount.MongoDB (MongoDB.fromConfig config)
       QM.CouchbaseConfig config → Mount.Couchbase (Couchbase.fromConfig config)
       QM.MarkLogicConfig config → Mount.MarkLogic (MarkLogic.fromConfig config)
@@ -693,3 +713,16 @@ createWorkspace path action = do
           GE.raiseGlobalError ge
     Right name' →
       void $ action (mkWorkspaceURL (path </> dir name'))
+
+daysRemainingNotification ∷ AVar.AVar Unit → Int → Notification.NotificationOptions
+daysRemainingNotification avar i =
+  { notification: Notification.Info $ show i <> " Licensed days remaining."
+  , detail: Nothing
+  , actionOptions:
+      Just $ Notification.ActionOptions
+        { message: "Please get in touch renew your License."
+        , actionMessage: "Contact SlamData"
+        , action: Notification.Fulfill avar
+        }
+  , timeout: Nothing
+  }

@@ -20,21 +20,11 @@ module SlamData.Workspace.Component
   ) where
 
 import SlamData.Prelude
-
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (makeVar, peekVar, takeVar, putVar)
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Eff.Ref (readRef)
-import Control.Monad.Fork (fork)
 import Control.UI.Browser as Browser
-import Data.Coyoneda (liftCoyoneda)
 import Data.List as List
-import Data.Time.Duration (Milliseconds(..))
-import DOM.Classy.Event (currentTarget, target) as DOM
-import DOM.Classy.Node (toNode) as DOM
 import Halogen as H
-import Halogen.Component.Utils (busEventSource)
-import Halogen.Component.Utils.Throttled (throttledEventSource_)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -42,14 +32,12 @@ import Halogen.Query.EventSource as ES
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
-import SlamData.GlobalMenu.Bus (SignInMessage(..))
 import SlamData.GlobalMenu.Component as GlobalMenu
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Header.Component as Header
 import SlamData.Header.Gripper.Component as Gripper
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LSK
-import SlamData.Monad (Slam)
 import SlamData.Notification.Component as NC
 import SlamData.Quasar as Quasar
 import SlamData.Quasar.Auth.Authentication as Authentication
@@ -61,20 +49,31 @@ import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Table.Model as JT
-import SlamData.Workspace.Class (navigate, Routes(..))
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck, cpGuide, cpHeader, cpNotify, cpDialog)
-import SlamData.Workspace.Component.Query (Query(..))
-import SlamData.Workspace.Component.State (State, initialState)
 import SlamData.Workspace.Deck.Common as DeckCommon
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Eval.Deck as ED
 import SlamData.Workspace.Eval.Persistence as P
 import SlamData.Workspace.Eval.Traverse as ET
-import SlamData.Workspace.Guide (GuideType(..))
 import SlamData.Workspace.Guide as GuideData
-import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.StateMode as StateMode
+import Control.Monad.Aff.AVar (makeVar, peekVar, takeVar, putVar)
+import Control.Monad.Eff.Ref (readRef)
+import Control.Monad.Fork (fork)
+import DOM.Classy.Event (currentTarget, target) as DOM
+import DOM.Classy.Node (toNode) as DOM
+import Data.Coyoneda (liftCoyoneda)
+import Data.Time.Duration (Milliseconds(..))
+import Halogen.Component.Utils (busEventSource)
+import Halogen.Component.Utils.Throttled (throttledEventSource_)
+import SlamData.GlobalMenu.Bus (SignInMessage(..))
+import SlamData.Monad (Slam)
+import SlamData.Workspace.Class (navigate, Routes(..))
+import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck, cpGuide, cpHeader, cpNotify, cpDialog)
+import SlamData.Workspace.Component.Query (Query(..))
+import SlamData.Workspace.Component.State (State, initialState)
+import SlamData.Workspace.Guide (GuideType(..))
+import SlamData.Workspace.StateMode (StateMode(..))
 import Utils (endSentence)
 import Utils.DOM (onResize, nodeEq)
 
@@ -171,6 +170,7 @@ eval = case _ of
     H.subscribe $ busEventSource (H.request ∘ PresentStepByStepGuide) bus.stepByStep
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) auth.signIn
     H.subscribe $ busEventSource (flip HandleWorkspace ES.Listening) bus.workspace
+    H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) bus.licenseProblems
     H.subscribe $ throttledEventSource_ (Milliseconds 100.0) onResize (H.request Resize)
     pure next
   PresentStepByStepGuide guideType reply → do
@@ -245,6 +245,8 @@ eval = case _ of
     pure next
   HandleWorkspace (Wiring.ShowDialog dlg) next →
     H.query' cpDialog unit (H.action (Dialog.Show dlg)) $> next
+  HandleLicenseProblem problem next →
+    H.query' cpDialog unit (H.action (Dialog.Show $ Dialog.LicenseProblem problem)) $> next
   HandleDialog msg next →
     handleDialog msg $> next
 

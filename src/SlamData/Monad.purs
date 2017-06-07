@@ -31,20 +31,25 @@ import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
 import Control.Parallel (parallel, sequential)
 import Control.UI.Browser (locationObject)
 
+import DOM.HTML.Location (setHash)
+
 import Data.Argonaut as Argonaut
 import Data.Array as Array
+import Data.Exists as Exists
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
-import Data.Exists as Exists
-
-import DOM.HTML.Location (setHash)
 
 import OIDC.Crypt.Types as OIDC
 
 import Quasar.Advanced.QuasarAF as QA
+import Quasar.Advanced.Types as QAT
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
+import SlamData.License as License
+import SlamData.LocalStorage as LS
+import SlamData.LocalStorage.Class (class LocalStorageDSL)
+import SlamData.Monad.Auth (getIdTokenSilently)
 import SlamData.Monad.ForkF as FF
 import SlamData.Notification as N
 import SlamData.Quasar.Aff (runQuasarF)
@@ -56,9 +61,6 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
 import SlamData.Workspace.Deck.DeckId as DeckId
 import SlamData.Workspace.Routing as Routing
-import SlamData.Monad.Auth (getIdTokenSilently)
-import SlamData.LocalStorage as LS
-import SlamData.LocalStorage.Class (class LocalStorageDSL)
 
 import Utils (hush)
 
@@ -177,7 +179,13 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
       Bus.write no bus.notify
       pure a
     Halt err a → do
-      Bus.write (GE.toNotificationOptions err) bus.notify
+      case err of
+        GE.PaymentRequired →
+          map _.status <$> runQuasarF Nothing QA.licenseInfo
+            >>= case _ of
+              Right QAT.LicenseExpired → Bus.write License.Expired bus.licenseProblems 
+              _ → Bus.write License.Invalid bus.licenseProblems 
+        _ -> Bus.write (GE.toNotificationOptions err) bus.notify
       pure a
     Par (SlamA p) →
       sequential $ retractFreeAp $ hoistFreeAp (parallel <<< runSlam wiring) p

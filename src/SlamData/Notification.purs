@@ -29,11 +29,8 @@ module SlamData.Notification
   ) where
 
 import SlamData.Prelude
-
 import Control.Monad.Aff.AVar (AVar)
-
 import Data.Time.Duration (Milliseconds)
-
 import Halogen.Query (HalogenM)
 
 data Notification
