@@ -27,6 +27,7 @@ import Global (encodeURIComponent, decodeURIComponent)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
+import Test.StrongCheck.Data.String (alphaString)
 
 type ModelR =
   { osmURI ∷ URIRef -- | Open Street Map tile layer URI
@@ -115,14 +116,14 @@ genModel = do
   if isNothing
     then pure Nothing
     else map Just do
-    scheme ← arbitrary
-    address ← arbitrary
+    scheme ← alphaString
+    address ← alphaString
     zoom ← arbitrary
     lat ← arbitrary
     lng ← arbitrary
     pure
       { osmURI: Left $ URI.URI
-        (map URI.URIScheme scheme)
+        (Just $ URI.URIScheme scheme)
         (URI.HierarchicalPart
          (Just $ URI.Authority Nothing [(URI.NameAddress address) × Nothing ])
          Nothing)

@@ -26,8 +26,8 @@ import Data.Lens (_Just, (?~), (^?))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.Leaflet as HL
 
+import Leaflet.Halogen as HL
 import Leaflet.Core as LC
 
 import SlamData.Workspace.Card.Component as CC
@@ -55,7 +55,7 @@ component =
 render ∷ ST.State → HTML
 render state =
   HH.div_
-    [ HH.slot unit (HL.leaflet unit) unit $ HE.input \l → right ∘ Q.HandleMessage l ]
+    [ HH.slot unit HL.leaflet unit $ HE.input \l → right ∘ Q.HandleMessage l ]
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
