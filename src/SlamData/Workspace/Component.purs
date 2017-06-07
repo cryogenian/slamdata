@@ -78,9 +78,8 @@ import SlamData.Workspace.Guide (GuideType(..))
 import SlamData.Workspace.Guide as GuideData
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.StateMode as StateMode
-
 import Utils (endSentence)
-import Utils.DOM (onResize, nodeEq)
+import Utils.DOM (nodeEq, onResize)
 
 type WorkspaceHTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 type WorkspaceDSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam

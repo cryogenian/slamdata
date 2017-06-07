@@ -46,5 +46,4 @@ data Query a
   | HandleNotification N.Action a
   | HandleSignInMessage SignInMessage a
   | HandleWorkspace Wiring.WorkspaceMessage a
-  | HandleDialog Dialog.Message a
   | HandleLicenseProblem LicenseProblem a
