@@ -31,6 +31,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.FormInputType as FiT
 import SlamData.Workspace.Card.Chart.Eval as Chart
 import SlamData.Workspace.Card.Chart.Model as ChartModel
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Eval as PivotTable
@@ -71,6 +72,9 @@ import SlamData.Workspace.Card.Setups.FormInput.Numeric.Eval as SetupNumeric
 import SlamData.Workspace.Card.Setups.FormInput.Static.Eval as SetupStatic
 import SlamData.Workspace.Card.Setups.FormInput.Text.Eval as SetupText
 import SlamData.Workspace.Card.Setups.FormInput.Time.Eval as SetupTime
+import SlamData.Workspace.Card.Setups.Geo.Marker.Eval as SetupGeoMarker
+import SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval as SetupGeoHeatmap
+import SlamData.Workspace.Card.Geo.Eval as Geo
 import SlamData.Workspace.Card.Table.Eval as Table
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 
@@ -88,6 +92,7 @@ runCard
   → m (CEM.CardResult CE.CardError Port.Out)
 runCard env state trans input varMap =
   CEM.runCardEvalM env state (evalCard trans input varMap ∷ CEM.CardEval CE.CardError Port.Out)
+
 
 evalCard
   ∷ ∀ m
@@ -111,6 +116,7 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   Chart, Port.PivotTable p → PivotTable.eval PTM.initialModel p varMap
   Chart, Port.ChartInstructions { options } → tapResource (Chart.eval options) varMap
   Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
+  GeoChart, Port.GeoChart m → tapResource (Geo.eval m) varMap
   Composite, _ → Port.varMapOut <$> Common.evalComposite
   Terminal, _ → pure Port.terminalOut
   Query sql, _ → Query.evalQuery sql varMap
@@ -137,15 +143,17 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   BuildPunchCard model, _ → BuildPunchCard.eval model =<< extractResource varMap
   BuildCandlestick model, _ → BuildCandlestick.eval model =<< extractResource varMap
   BuildParallel model, _ → BuildParallel.eval model =<< extractResource varMap
-  SetupCheckbox model, _ → tapResource (SetupLabeled.eval model CT.Checkbox) varMap
-  SetupRadio model, _ → tapResource (SetupLabeled.eval model CT.Radio) varMap
-  SetupDropdown model, _ → tapResource (SetupLabeled.eval model CT.Dropdown) varMap
+  SetupCheckbox model, _ → tapResource (SetupLabeled.eval model FiT.Checkbox) varMap
+  SetupRadio model, _ → tapResource (SetupLabeled.eval model FiT.Radio) varMap
+  SetupDropdown model, _ → tapResource (SetupLabeled.eval model FiT.Dropdown) varMap
   SetupText model, _ → tapResource (SetupText.eval model) varMap
   SetupNumeric model, _ → tapResource (SetupNumeric.eval model) varMap
   SetupDate model, _ → tapResource (SetupDate.eval model) varMap
   SetupTime model, _ → tapResource (SetupTime.eval model) varMap
   SetupDatetime model, _ → tapResource (SetupDatetime.eval model) varMap
   SetupStatic model, _ → tapResource (SetupStatic.eval model) varMap
+  SetupGeoMarker model, _ → SetupGeoMarker.eval model =<< extractResource varMap
+  SetupGeoHeatmap model, _ → SetupGeoHeatmap.eval model =<< extractResource varMap
   FormInput (FormInput.Labeled model), Port.SetupLabeledFormInput lp →
     FormInput.evalLabeled model lp =<< extractResource varMap
   FormInput (FormInput.TextLike model), Port.SetupTextLikeFormInput tlp →
@@ -196,6 +204,9 @@ modelToEval = case _ of
   Model.FormInput model → FormInput model
   Model.Tabs _ → Terminal
   Model.Table model → Table model
+  Model.SetupGeoMarker model → SetupGeoMarker model
+  Model.SetupGeoHeatmap model → SetupGeoHeatmap model
+  Model.Geo model → GeoChart
   _ → Pass
 
 -- TODO(Christoph): Get rid of this monstrosity of an error message
@@ -208,5 +219,11 @@ extractResourceVar dm = case SM.toUnfoldable (Port.filterResources dm) of
 extractResource ∷ ∀ m. MonadThrow CE.CardError m ⇒ Port.DataMap → m (Port.Resource)
 extractResource = map snd ∘ extractResourceVar
 
-tapResource ∷ ∀ m. MonadThrow CE.CardError m ⇒ (Port.Resource → m Port.Port) → Port.DataMap → m Port.Out
-tapResource f dm = map (_ × dm) (f =<< extractResource dm)
+tapResource
+  ∷ ∀ m
+  . MonadThrow CE.CardError m
+  ⇒ (Port.Resource → m Port.Port)
+  → Port.DataMap
+  → m Port.Out
+tapResource f dm =
+  map (_ × dm) (f =<< extractResource dm)

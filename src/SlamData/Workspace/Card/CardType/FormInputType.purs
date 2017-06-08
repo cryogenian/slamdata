@@ -16,12 +16,12 @@ limitations under the License.
 
 module SlamData.Workspace.Card.CardType.FormInputType
   ( FormInputType(..)
-  , parseFormInputType
-  , printFormInputType
-  , formInputName
-  , formInputLightIconSrc
-  , formInputDarkIconSrc
-  , allFormInputTypes
+  , parse
+  , print
+  , name
+  , lightIconSrc
+  , darkIconSrc
+  , all
   , maximumCountOfEntries
   , maximumCountOfSelectedValues
   , isLabeled
@@ -83,8 +83,8 @@ isStatic = case _ of
   Static → true
   _ → false
 
-allFormInputTypes ∷ Array FormInputType
-allFormInputTypes =
+all ∷ Array FormInputType
+all =
   [ Dropdown
   , Static
   , Text
@@ -96,8 +96,8 @@ allFormInputTypes =
   , Datetime
   ]
 
-parseFormInputType ∷ String → String ⊹ FormInputType
-parseFormInputType = case _ of
+parse ∷ String → String ⊹ FormInputType
+parse = case _ of
   "dropdown" → pure Dropdown
   "static" → pure Static
   "text" → pure Text
@@ -109,8 +109,8 @@ parseFormInputType = case _ of
   "datetime" → pure Datetime
   _ → Left "incorrect formInputType"
 
-printFormInputType ∷ FormInputType → String
-printFormInputType = case _ of
+print ∷ FormInputType → String
+print = case _ of
   Dropdown → "dropdown"
   Static → "static"
   Text → "text"
@@ -121,8 +121,8 @@ printFormInputType = case _ of
   Time → "time"
   Datetime → "datetime"
 
-formInputName ∷ FormInputType → String
-formInputName = case _ of
+name ∷ FormInputType → String
+name = case _ of
   Dropdown → "Dropdown"
   Static → "Static Text"
   Text → "Text Input"
@@ -137,16 +137,16 @@ derive instance eqFormInputType ∷ Eq FormInputType
 derive instance ordFormInputType ∷ Ord FormInputType
 
 instance encodeJsonFormInputType ∷ EncodeJson FormInputType where
-  encodeJson = fromString ∘ printFormInputType
+  encodeJson = fromString ∘ print
 
 instance decodeJsonFormInputType ∷ DecodeJson FormInputType where
-  decodeJson = decodeJson >=> parseFormInputType
+  decodeJson = decodeJson >=> parse
 
 instance arbitraryFormInputType ∷ SC.Arbitrary FormInputType where
-  arbitrary = Gen.allInArray allFormInputTypes
+  arbitrary = Gen.allInArray all
 
-formInputLightIconSrc ∷ FormInputType → String
-formInputLightIconSrc = case _ of
+lightIconSrc ∷ FormInputType → String
+lightIconSrc = case _ of
   Dropdown → "img/formInputs/light/dropdown.svg"
   Static → "img/formInputs/light/static.svg"
   Text → "img/formInputs/light/text.svg"
@@ -157,8 +157,8 @@ formInputLightIconSrc = case _ of
   Time → "img/formInputs/light/time.svg"
   Datetime → "img/formInputs/light/datetime.svg"
 
-formInputDarkIconSrc ∷ FormInputType → String
-formInputDarkIconSrc = case _ of
+darkIconSrc ∷ FormInputType → String
+darkIconSrc = case _ of
   Dropdown → "img/formInputs/dark/dropdown.svg"
   Static → "img/formInputs/dark/static.svg"
   Text → "img/formInputs/dark/text.svg"

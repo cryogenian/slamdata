@@ -87,7 +87,6 @@ package = P.onPrism (M._BuildParallel ∘ _Just)
       foldFn ∷ SM.StrMap (Set.Set JCursor) → TP.Projection → SM.StrMap (Set.Set JCursor)
       foldFn acc fld =
         let
-
           indices ∷ L.List Int
           indices = maybe L.Nil (flip sub one ⋙ L.range zero) $ PP.mbDimIx fld
 
@@ -154,7 +153,6 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    st ← H.get
     let
       inp = M.BuildParallel $ Just
         { series: D.topDimension

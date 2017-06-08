@@ -74,3 +74,12 @@ _size = lens _.size _{ size = _ }
 
 _color ∷ ∀ a b r. Lens { color ∷ a | r } { color ∷ b | r } a b
 _color = lens _.color _{ color = _ }
+
+_lat ∷ ∀ a b r. Lens { lat ∷ a | r } { lat ∷ b | r } a b
+_lat = lens _.lat _{ lat = _ }
+
+_lng ∷ ∀ a b r. Lens { lng ∷ a | r } { lng ∷ b | r } a b
+_lng = lens _.lng _{ lng = _ }
+
+_intensity ∷ ∀ a b r. Lens { intensity ∷ a | r } { intensity ∷ b | r } a b
+_intensity = lens _.intensity _{ intensity = _ }

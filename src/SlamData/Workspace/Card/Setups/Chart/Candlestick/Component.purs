@@ -116,7 +116,6 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    st ← H.get
     let
       inp = M.BuildCandlestick $ Just
         { dimension: D.topDimension
