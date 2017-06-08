@@ -73,6 +73,8 @@ import SlamData.Workspace.Card.Setups.FormInput.Time.Model as SetupTime
 import SlamData.Workspace.Card.StructureEditor.Model as StructureEditor
 import SlamData.Workspace.Card.Setups.Geo.Marker.Model as SetupGeoMarker
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Model as SetupGeoHeatmap
+import SlamData.Workspace.Card.Setups.Viz.Model as SetupViz
+import SlamData.Workspace.Card.Viz.Model as Viz
 import SlamData.Workspace.Card.Geo.Model as Geo
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Tabs.Model as Tabs
@@ -126,6 +128,8 @@ data AnyCardModel
   | Tabs Tabs.Model
   | StructureEditor StructureEditor.Model
   | Geo Geo.Model
+  | SetupViz SetupViz.Model
+  | Viz Viz.Model
 
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
   arbitrary =
@@ -171,6 +175,8 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , SetupGeoMarker <$> SetupGeoMarker.genModel
       , SetupGeoHeatmap <$> SetupGeoHeatmap.genModel
       , Geo <$> Geo.genModel
+      , SetupViz <$> SetupViz.genModel
+      , Viz <$> Viz.genModel
       ]
 
 updateCardModel ∷ AnyCardModel → AnyCardModel → AnyCardModel
@@ -229,9 +235,9 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
     SetupGeoMarker x, SetupGeoMarker y → SetupGeoMarker.eqModel x y
     SetupGeoHeatmap x, SetupGeoHeatmap y → SetupGeoHeatmap.eqModel x y
     Geo x, Geo y → Geo.eqModel x y
+    SetupViz x, SetupViz y → SetupViz.eqModel x y
+    Viz x, Viz y → Viz.eqModel x y
     _, _ → false
-
-
 
 instance encodeJsonCardModel ∷ J.EncodeJson AnyCardModel where
   encodeJson = encode
@@ -285,6 +291,8 @@ modelCardType = case _ of
   StructureEditor _ → CT.StructureEditor
   SetupGeoMarker _ → CT.SetupGeoChart GcT.Marker
   SetupGeoHeatmap _ → CT.SetupGeoChart GcT.Heatmap
+  SetupViz _ → CT.SetupViz
+  Viz _ → CT.Viz
 
 encode ∷ AnyCardModel → J.Json
 encode card =
@@ -345,6 +353,8 @@ encodeCardModel = case _ of
   StructureEditor model → StructureEditor.encode model
   SetupGeoMarker model → SetupGeoMarker.encode model
   SetupGeoHeatmap model → SetupGeoHeatmap.encode model
+  SetupViz model → SetupViz.encode model
+  Viz model → Viz.encode model
 
 decodeCardModel
   ∷ CT.CardType
@@ -395,6 +405,8 @@ decodeCardModel = case _ of
   CT.SetupGeoChart GcT.Marker → map SetupGeoMarker ∘ SetupGeoMarker.decode
   CT.SetupGeoChart GcT.Heatmap → map SetupGeoHeatmap ∘ SetupGeoHeatmap.decode
   CT.GeoChart → map Geo ∘ Geo.decode
+  CT.SetupViz → map SetupViz ∘ SetupViz.decode
+  CT.Viz → map Viz ∘ Viz.decode
   where
     -- For backwards compat
     decodeOpen j =
@@ -447,6 +459,8 @@ cardModelOfType (port × varMap) = case _ of
   CT.SetupGeoChart GcT.Marker → SetupGeoMarker SetupGeoMarker.initialModel
   CT.SetupGeoChart GcT.Heatmap → SetupGeoHeatmap SetupGeoHeatmap.initialModel
   CT.GeoChart → Geo Geo.initialModel
+  CT.SetupViz → SetupViz SetupViz.initialModel
+  CT.Viz → Viz Viz.initialModel
 
 singletonDraftboard ∷ DeckId → AnyCardModel
 singletonDraftboard deckId =

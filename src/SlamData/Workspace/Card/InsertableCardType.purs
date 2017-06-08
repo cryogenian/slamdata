@@ -47,6 +47,8 @@ data InsertableCardType
   | TabsCard
   | StructureEditorCard
   | SetupGeoChartCard
+  | SetupVizCard
+  | VizCard
 
 data InsertableCardIOType
   = Chart
@@ -57,6 +59,7 @@ data InsertableCardIOType
   | Markdown
   | Variables
   | Terminal
+  | Viz
   | None
 
 derive instance eqInsertableCardType ∷ Eq InsertableCardType
@@ -85,6 +88,8 @@ inputs =
   , TroubleshootCard × [ Chart, Form, Data, Download, Markdown, Variables ]
   , TabsCard × [ None ]
   , StructureEditorCard × [ Data ]
+  , SetupVizCard × [ Data ]
+  , VizCard × [ Viz ]
   ]
 
 -- Cards only have one output type, treat this as a Map or turn it into one.
@@ -107,6 +112,8 @@ outputs =
   , TableCard × Data
   , TroubleshootCard × Variables
   , StructureEditorCard × Data
+  , SetupVizCard × Viz
+  , VizCard × Data
   ]
 
 cardsToExcludeFromPaths ∷ Array InsertableCardType
@@ -232,6 +239,7 @@ printIOType = case _ of
   Markdown → "markdown"
   None → "to be the first card in a deck"
   Variables → "variables"
+  Viz → "a visualization"
   Terminal → "nothing"
 
 
@@ -243,6 +251,7 @@ printIOType' = case _ of
   Download → Just "the download"
   Markdown → Just "the markdown"
   Variables → Just "the variables"
+  Viz → Just "the visualization"
   _ → Nothing
 
 eitherOr ∷ Array String → String
@@ -293,6 +302,8 @@ toCardType = case _ of
   TroubleshootCard → Just CardType.Troubleshoot
   TabsCard → Just CardType.Tabs
   StructureEditorCard → Just CardType.StructureEditor
+  SetupVizCard → Just CardType.SetupViz
+  VizCard → Just CardType.Viz
 
 print ∷ InsertableCardType → String
 print = case _ of
@@ -352,6 +363,8 @@ printAction = case _ of
   TableCard → Just "tabulate"
   TroubleshootCard → Just "troubleshoot"
   TabsCard → Nothing
+  SetupVizCard → Just "set up a visualization for"
+  VizCard → Just "show"
   StructureEditorCard → Nothing
 
 fromCardType ∷ CardType → InsertableCardType
@@ -376,6 +389,8 @@ fromCardType = case _ of
   CardType.FormInput → ShowFormCard
   CardType.Tabs → TabsCard
   CardType.StructureEditor → StructureEditorCard
+  CardType.SetupViz → SetupVizCard
+  CardType.Viz → VizCard
 
 
 all ∷ Array InsertableCardType
@@ -400,4 +415,6 @@ all =
   , SetupVariablesCard
   , TroubleshootCard
   , StructureEditorCard
+  , SetupVizCard
+  , VizCard
   ]

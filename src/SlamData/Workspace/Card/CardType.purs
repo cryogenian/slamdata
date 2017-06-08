@@ -65,6 +65,8 @@ data CardType
   | StructureEditor
   | SetupGeoChart GcT.GeoChartType
   | GeoChart
+  | SetupViz
+  | Viz
 
 derive instance eqCardType ∷ Eq CardType
 derive instance ordCardType ∷ Ord CardType
@@ -107,6 +109,8 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     Tabs → "tabs"
     StructureEditor → "structure-editor"
     GeoChart → "geo-chart"
+    SetupViz → "setup-viz"
+    Viz → "viz"
 
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
@@ -148,6 +152,8 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "tabs" → pure Tabs
       "structure-editor" → pure StructureEditor
       "geo-chart" → pure GeoChart
+      "setup-viz" → pure SetupViz
+      "viz" → pure Viz
       _ → Left "This is not basic card type"
 
 cardName ∷ CardType → String
@@ -171,6 +177,8 @@ cardName = case _ of
   Draftboard → "Setup Dashboard"
   Tabs → "Setup Tabs"
   StructureEditor → "Structure Viewer"
+  SetupViz → "Setup Viz"
+  Viz → "Show Viz"
 
 cardIcon ∷ CardType → String
 cardIcon = case _ of
@@ -268,6 +276,10 @@ cardIcon = case _ of
     "structureEditor"
   GeoChart →
     "geoChart"
+  SetupViz →
+    "setupViz"
+  Viz →
+    "viz"
 
 
 cardIconDarkSrc ∷ CardType → String
@@ -310,6 +322,8 @@ consumerInteractable = case _ of
   Draftboard → true
   Tabs → true
   StructureEditor → false
+  SetupViz → false
+  Viz → true
 
 cardClasses ∷ CardType → Array H.ClassName
 cardClasses = case _ of
@@ -332,6 +346,8 @@ cardClasses = case _ of
   Draftboard → [ H.ClassName "sd-card-draftboard" ]
   Tabs → [ H.ClassName "sd-card-tabs" ]
   StructureEditor → [ H.ClassName "sd-structure-editor" ]
+  SetupViz → [ H.ClassName "sd-setup-viz" ]
+  Viz → [ H.ClassName "sd-viz" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Setup Markdown"
