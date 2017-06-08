@@ -8,14 +8,12 @@ exports.isFirefox = function () {
   typeof InstallTrigger !== 'undefined';
 };
 
-exports.debugTime = function() {
-    return function(msg) {
-        return function(thunk) {
-            var start = (new Date()).getTime();
-            var result = thunk();
-            var end = (new Date()).getTime();
-            console.log(msg + ": " + (end - start));
-            return result;
-        };
+exports.debugTime_ = function(msg) {
+    return function(thunk) {
+        var start = (new Date()).getTime();
+        var result = thunk();
+        var end = (new Date()).getTime();
+        console.log(msg + ": " + (end - start));
+        return result;
     };
 };

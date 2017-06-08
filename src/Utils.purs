@@ -14,7 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Utils where
+module Utils
+  ( debugTime
+  , stringToNumber
+  , stringToBoolean
+  , stringToInt
+  , singletonValue'
+  , singletonValue
+  , passover
+  , replicate
+  , chunksOf
+  , hush
+  , hush'
+  , rightBool
+  , parenthesize
+  , removeLastCharIfPeriod
+  , endSentence
+  , lowercaseFirstChar
+  , words
+  , showPrettyNumber
+  , showFormattedNumber
+  , showPrettyJCursor
+  , showJCursorTip
+  , prettyJson
+  , isFirefox
+  , finally
+  )where
 
 import SlamData.Prelude
 
@@ -29,7 +54,11 @@ import Global (readFloat, isNaN, isFinite)
 import SqlSquared.Signature.Ident (printIdent)
 
 
-foreign import debugTime ∷ ∀ a. Warn "debug time is used in production" ⇒ String → (Unit → a) → a
+foreign import debugTime_ ∷ ∀ a. String → (Unit → a) → a
+
+debugTime ∷ ∀ a. Warn "debug time is used in production" ⇒ String → (Unit → a) → a
+debugTime = debugTime_
+
 
 stringToNumber ∷ String → Maybe Number
 stringToNumber s =
