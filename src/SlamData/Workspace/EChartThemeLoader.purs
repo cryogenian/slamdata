@@ -34,7 +34,9 @@ import Utils (hush)
 
 load ∷ ∀ e. Aff (dom ∷ DOM, ajax ∷ Ajax.AJAX|e) (Maybe Theme)
 load = runMaybeT $ do
-  themeOrURL <- (MaybeT $ liftEff $ loadFromLocation) <|> (MaybeT $ liftEff $ loadFromForeign)
+  themeOrURL ← (MaybeT $ liftEff $ loadFromLocation) <|> (MaybeT $ liftEff $ loadFromForeign)
+  traceAnyA "load"
+  traceAnyA themeOrURL
   either pure (MaybeT ∘ fetchThemeFromURL) themeOrURL
 
 loadFromLocation ∷ ∀ e. Eff (dom ∷ DOM|e) (Maybe (Either Theme Ajax.URL))
@@ -54,8 +56,9 @@ fetchThemeFromURL uri = do
   pure $ (FromObject ∘ toForeign) <$> (toObject res)
 
 readThemeOrURIFromLocation ∷ String → Maybe (Either Theme Ajax.URL)
-readThemeOrURIFromLocation location = case asURI location of
+readThemeOrURIFromLocation location = case spy $ asURI location of
   Just (URI.URI _ _ (Just (URI.Query list)) _) → do
+    traceAnyA list
     str ← findMap isECharThemeQueryParam list
     case asBuiltInTheme str of
       Just theme → pure $ Left theme

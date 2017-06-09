@@ -146,7 +146,6 @@ instance decodeJsonChartType ∷ DecodeJson ChartType where
 instance arbitraryChartType ∷ SC.Arbitrary ChartType where
   arbitrary = Gen.allInArray all
 
-
 lightIconSrc ∷ ChartType → String
 lightIconSrc = case _ of
   Pie → "img/pie.svg"

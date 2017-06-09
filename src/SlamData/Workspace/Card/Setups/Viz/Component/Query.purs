@@ -1,3 +1,6 @@
 module SlamData.Workspace.Card.Setups.Viz.Component.Query where
 
-data Query a = Empty a
+import SlamData.Workspace.Card.Setups.Viz.VizTypePicker as VT
+
+data Query a
+  = HandlePicker VT.Message a
