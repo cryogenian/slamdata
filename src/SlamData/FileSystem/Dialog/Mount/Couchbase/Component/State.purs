@@ -27,15 +27,15 @@ module SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State
 
 import SlamData.Prelude
 
-import Data.Number as Num
-import Data.String as Str
 import Data.Lens (Lens', lens)
+import Data.Number as Num
 import Data.Time.Duration (Seconds(..))
 import Data.URI.Host as URI
 import Data.Validation.Semigroup as V
 import Global as Global
 import Quasar.Mount.Couchbase (Config)
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
+import Utils (showPrettyNumber)
 
 data Field = Host | BucketName | Password | DocType | QueryTimeout
 
@@ -68,11 +68,8 @@ fromConfig { host, bucketName, password, docTypeKey, queryTimeout } =
   , bucketName
   , password
   , docTypeKey
-  , queryTimeout: dropTrailingZero <<< show <<< unwrap <$> queryTimeout
+  , queryTimeout: showPrettyNumber <<< unwrap <$> queryTimeout
   }
-  where
-    dropTrailingZero ∷ String → String
-    dropTrailingZero n = fromMaybe n $ Str.stripSuffix (Str.Pattern ".0") n
 
 toConfig ∷ State → V.V (MCS.ValidationError Field) Config
 toConfig st = do
