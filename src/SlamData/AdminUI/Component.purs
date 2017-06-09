@@ -21,18 +21,28 @@ module SlamData.AdminUI.Component
   , ServerState(..)
   , GroupsState(..)
   , PostgresCon(..)
+  , Group(..)
+  , GroupPath
   ) where
 
 import SlamData.Prelude
 
+import Control.Comonad.Cofree (mkCofree)
 import Data.Array as Array
 import Data.List (List)
-import Data.List as List
+import Data.List as L
 import Halogen as H
+import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Monad (Slam)
+import SlamData.Render.Icon as I
+import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
+import SlamData.Workspace.MillerColumns.Column.Component as MCC
+import SlamData.Workspace.MillerColumns.Component as Miller
+import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
+import SlamData.Workspace.MillerColumns.TreeData as MCTree
 
 data Query a
   = Init a
@@ -43,6 +53,7 @@ data Query a
   | SetDatabase DatabaseState a
   | SetServer ServerState a
   | SetGroups GroupsState a
+  | HandleColumns (Miller.Message Group GroupPath) a
 
 data TabIndex
   = MySettings
@@ -59,7 +70,7 @@ instance showTabIndex ∷ Show TabIndex where
 
 allTabs ∷ List TabIndex
 allTabs =
-  List.fromFoldable [MySettings, Database, Server, Authentication, Users, Groups]
+  L.fromFoldable [MySettings, Database, Server, Authentication, Users, Groups]
 
 tabTitle ∷ TabIndex → String
 tabTitle = case _ of
@@ -138,17 +149,32 @@ newtype ServerState = ServerState
 defaultServerState ∷ ServerState
 defaultServerState = ServerState { port: 27012, logFileLocation: "", enableCustomSSL: false }
 
-newtype GroupsState = GroupsState Unit
+newtype GroupsState = GroupsState { tree ∷ MCTree.Tree Group }
+derive instance newtypeGroupsState ∷ Newtype GroupsState _
 
 defaultGroupsState ∷ GroupsState
-defaultGroupsState = GroupsState unit
+defaultGroupsState = GroupsState { tree: mkCofree (Group { path: empty, name: "" }) L.Nil }
 
-type HTML = H.ComponentHTML Query
-type DSL = H.ComponentDSL State Query Void Slam
+cpGroups = CP.cp1
+
+newtype Group = Group { path ∷ List String, name ∷ String }
+derive instance eqGroup ∷ Eq Group
+derive instance ordGroup ∷ Ord Group
+derive instance newtypeGroup ∷ Newtype Group _
+
+type GroupPath = L.List String
+
+type MillerQuery = Miller.Query Group GroupPath Void
+
+type ChildQuery = MillerQuery ⨁ Const Void
+type ChildSlot = Unit ⊹ Void
+
+type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
+type DSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
 
 component ∷ H.Component HH.HTML Query Unit Void Slam
 component =
-  H.lifecycleComponent
+  H.lifecycleParentComponent
     { initialState: \_ →
        { open: false
        , active: MySettings
@@ -361,8 +387,7 @@ renderDatabaseForm (DatabaseState state) =
               ]
           , HH.div
               [ HP.class_ (HH.ClassName "form-group") ]
-              [ HH.label [ HP.for "Database" ] [HH.text "Database"]
-              , HH.input
+              [ HH.label [ HP.for "Database" ] [HH.text "Database"] , HH.input
                   [ HP.classes [ HH.ClassName "form-control" ]
                   , HP.id_ "Database"
                   , HP.value state.postgresCon.database
@@ -415,7 +440,44 @@ renderServerForm (ServerState state) =
   ]
 
 renderGroupsForm ∷ GroupsState → Array HTML
-renderGroupsForm (GroupsState _) = []
+renderGroupsForm (GroupsState _) =
+  [ HH.slot' cpGroups unit (Miller.component columnOptions) columnState (HE.input (either HandleColumns absurd)) ]
+  where
+    -- columnState ∷ ColumnsData Group GroupPath
+    -- columnState = lmap (_.path ∘ unwrap) (MCTree.initialStateFromTree (MCTree.constructTree go root elements))
+    --   where
+    --     go = ?x
+    --     root = ?y
+    --     elements = ?z
+    columnState ∷ ColumnsData Group GroupPath
+    columnState = Tuple L.Nil L.Nil
+
+    columnOptions ∷ Miller.ColumnOptions Group GroupPath Void
+    columnOptions =
+      Miller.ColumnOptions
+        { renderColumn: MCC.component
+        , renderItem: MCI.component { label: _.name ∘ unwrap, render: renderItem }
+        , label: _.name ∘ unwrap
+        , isLeaf: const false
+        , id: _.path ∘ unwrap
+        }
+    renderItem ∷ Group → MCI.BasicItemHTML
+    renderItem (Group {name}) =
+      HH.div
+        [ HP.classes
+            [ HH.ClassName "sd-miller-column-item-inner"
+            , HH.ClassName "sd-miller-column-item-node"
+            ]
+        ]
+        [ HH.span_ [ HH.text name]
+        , I.chevronRightSm
+        ]
+    -- { renderColumn ∷ ColumnOptions a i o → i → ColumnComponent a i o
+    -- , renderItem ∷ i → a → ItemComponent a o
+    -- , label ∷ a → String
+    -- , isLeaf ∷ i → Boolean
+    -- , id ∷ a → i
+    -- }
 
 eval ∷ Query ~> DSL
 eval = case _ of
@@ -442,3 +504,12 @@ eval = case _ of
   SetGroups new next → do
     H.modify (_ { formState { groups = new } })
     pure next
+  HandleColumns columnMsg next → do
+    case columnMsg of
+      Miller.SelectionChanged _ _ _ →
+        pure next
+      Miller.LoadRequest req → do
+        GroupsState { tree } ← H.gets _.formState.groups
+        let res = MCTree.loadFromTree' (_.path ∘ unwrap) (_.name ∘ unwrap) tree req
+        _ ← H.query' cpGroups unit (H.action (Miller.FulfilLoadRequest res))
+        pure next
