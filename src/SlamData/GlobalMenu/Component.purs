@@ -48,8 +48,7 @@ import SlamData.GlobalMenu.Bus (SignInMessage(..))
 import SlamData.Monad (Slam)
 import SlamData.Quasar as Api
 import SlamData.Quasar.Auth as Auth
-import SlamData.Quasar.Auth.Authentication (AuthenticationError, toNotificationOptions)
-import SlamData.Quasar.Auth.Store as AuthStore
+import SlamData.Quasar.Auth.Authentication (AuthenticationError, toNotificationOptions, removeAuthenticationDetails)
 import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Eval.Card as EvalCard
@@ -293,9 +292,7 @@ authenticate = maybe logOut logIn
 
   logOut ∷ DSL Unit
   logOut = do
-    AuthStore.removeIdToken keySuffix
-    AuthStore.removeProvider keySuffix
-    AuthStore.storeSignedOutBefore
+    removeAuthenticationDetails keySuffix
     update
 
   logIn ∷ ProviderR → DSL Unit

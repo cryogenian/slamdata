@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Quasar.Auth.Authentication
   ( authentication
   , toNotificationOptions
+  , removeAuthenticationDetails
   , AuthEffects
   , EIdToken
   , AuthenticationError(..)
@@ -289,12 +290,18 @@ getIdToken message =
     -- Store provider and idToken for future local storage gets and reauthentications
     case eIdToken of
       Left _ →
-        AuthStore.removeProvider message.keySuffix
-          *> AuthStore.removeIdToken message.keySuffix
+        removeAuthenticationDetails message.keySuffix
       Right idToken →
         AuthStore.storeProvider message.keySuffix (QAT.Provider message.providerR)
           *> AuthStore.storeIdToken message.keySuffix (Right idToken)
     pure eIdToken
+
+removeAuthenticationDetails ∷ ∀ m. Apply m => LS.LocalStorageDSL m => String → m Unit
+removeAuthenticationDetails keySuffix =
+  AuthStore.removeProvider keySuffix
+    *> AuthStore.removeIdToken keySuffix
+    *> AuthStore.removeUnhashedNonce keySuffix
+    *> AuthStore.storeSignedOutBefore
 
 getIdTokenUsingLocalStorage ∷ ∀ eff. RequestIdTokenMessage → Aff (AuthEffects eff) (Maybe IdToken)
 getIdTokenUsingLocalStorage message = do
