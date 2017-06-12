@@ -57,7 +57,7 @@ getIdTokenSilently interactionlessSignIn idTokenRequestBus =
   signedOutBefore ∷ Aff SlamDataEffects Boolean
   signedOutBefore =
     isRight <$> LS.retrieve LSK.signedOutBefore
-  
+
   authModeSignedOutBefore ∷ AuthenticationMode.AuthenticationMode → Aff SlamDataEffects Boolean
   authModeSignedOutBefore =
     map isRight
