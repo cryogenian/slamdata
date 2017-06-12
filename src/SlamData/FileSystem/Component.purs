@@ -204,7 +204,7 @@ eval = case _ of
     H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) w.bus.licenseProblems
     daysRemaining ← map _.daysRemaining <$> liftQuasar QA.licenseInfo
     case daysRemaining of
-      Right i | i <= 30 && i < 0 → void $ H.liftAff do
+      Right i | i <= 30 && i > 0 → void $ H.liftAff do
         trigger ← AVar.makeVar
         Bus.write (daysRemainingNotification trigger i) w.bus.notify
         Aff.forkAff $ AVar.takeVar trigger *> (H.liftEff $ Browser.newTab "https://slamdata.com/contact-us/")
