@@ -53,7 +53,7 @@
     "purescript-parallel": "^3.0.0",
     "purescript-pathy": "^4.0.0",
     "purescript-profunctor-lenses": "^3.2.0",
-    "purescript-quasar": "6c5c623aa8c8a570b9d1cd9d7708da8efe0b43fb",
+    "purescript-quasar": "garyb/purescript-quasar#couchbase-connection-format",
     "purescript-rationals": "^3.1.1",
     "purescript-routing": "^5.1.0",
     "purescript-search": "^3.0.0",
