@@ -34,5 +34,5 @@ instance quasarDSLExceptT ∷ (Monad m, QuasarDSL m) ⇒ QuasarDSL (ExceptT e m)
 instance quasarDSLHalogenM ∷ (Monad m, QuasarDSL m) ⇒ QuasarDSL (HalogenM s f g p o m) where
   liftQuasar = lift ∘ liftQuasar
 
-class ParQuasarDSL m where
+class QuasarDSL m ⇐ ParQuasarDSL m where
   sequenceQuasar ∷ ∀ f a. Traversable f ⇒ f (QF.QuasarAFC a) → m (f a)

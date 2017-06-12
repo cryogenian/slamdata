@@ -45,8 +45,10 @@ import SlamData.Workspace.Card.Error (CardError(..), cardToGlobalError)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Error.Component.Query (Query(..))
 import SlamData.Workspace.Card.Error.Component.State (State, initialState)
+import SlamData.Workspace.Card.Port as Port
 import Text.Parsing.Parser (parseErrorMessage)
 import Utils (prettyJson)
+import Utils.Path as PU
 
 type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
@@ -113,6 +115,7 @@ prettyPrintCardError state ce = case cardToGlobalError ce of
     StringlyTypedError err →
       HH.div_
         [ errorTitle [ HH.text err ] ]
+    ResourceError rs → resourceErrorMessage rs
     CacheCardError cce → cacheErrorMessage state cce
     ChartCardError cce → chartErrorMessage state cce
     QueryCardError qce → queryErrorMessage state qce
@@ -144,6 +147,20 @@ collapsible title content expanded =
             [ HP.class_ (H.ClassName "sd-collapsible-error-content") ]
             [ content ]
       ]
+
+resourceErrorMessage ∷ L.List Port.Resource → HTML
+resourceErrorMessage rs =
+  HH.div_ $
+    [ errorTitle [ HH.text "An error occured when attempting to read a resource." ] ] <>
+      if L.null rs
+        then
+          [ HH.p_ [ HH.text "There are no available resources. Go back and select one to continue." ]
+          ]
+        else
+          [ HH.p_ [ HH.text "There are multiple available resources." ]
+          , HH.ul_ $ A.fromFoldable $ rs <#> \r →
+              HH.li_ [ HH.text $ PU.printAnyFilePath $ Port.filePath r ]
+          ]
 
 queryErrorMessage ∷ State → CE.QueryError → HTML
 queryErrorMessage { accessType, expanded } err =

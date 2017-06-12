@@ -31,7 +31,7 @@ module SlamData.Workspace.Card.Error
   ) where
 
 import SlamData.Prelude
-
+import Data.List as L
 import Quasar.Error (QError)
 import SlamData.GlobalError as GE
 import SlamData.Workspace.Card.Cache.Error as CCE
@@ -39,6 +39,7 @@ import SlamData.Workspace.Card.Chart.Error as CHE
 import SlamData.Workspace.Card.DownloadOptions.Error as CDLOE
 import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.Open.Error as COE
+import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Query.Error as CQE
 import SlamData.Workspace.Card.Search.Error as CSE
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPT
@@ -51,6 +52,7 @@ import Utils (hush)
 data CardError
   = QuasarError QError
   | StringlyTypedError String
+  | ResourceError (L.List VM.Resource)
   | CacheCardError CCE.CacheError
   | ChartCardError CHE.ChartError
   | DownloadOptionsCardError CDLOE.DownloadOptionsError
@@ -68,6 +70,7 @@ instance showCardError ∷ Show CardError where
   show = case _ of
     QuasarError err → "(QuasarError " <> show err <> ")"
     StringlyTypedError err → "(StringlyTypedError " <> err <> ")"
+    ResourceError err → "(ResourceError " <> show err <> ")"
     CacheCardError err → "(CacheCardError " <> show err <> ")"
     ChartCardError err → "(ChartCardError " <> show err <> ")"
     DownloadOptionsCardError err → "(DownloadOptionsCardError " <> show err <> ")"
@@ -88,6 +91,7 @@ cardToGlobalError ∷ CardError → Maybe GE.GlobalError
 cardToGlobalError = case _ of
   QuasarError qError → hush (GE.fromQError qError)
   StringlyTypedError err → Nothing
+  ResourceError err → Nothing
   CacheCardError err → CCE.cacheToGlobalError err
   ChartCardError err → CHE.chartToGlobalError err
   DownloadOptionsCardError _ → Nothing

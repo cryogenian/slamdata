@@ -170,7 +170,6 @@ fileQuery backendPath dest sql vars =
   liftQuasar $ map _.out <$>
     QF.writeQuery backendPath dest (printQuery sql) vars
 
-
 all
   ∷ ∀ m
   . QuasarDSL m

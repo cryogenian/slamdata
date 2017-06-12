@@ -27,7 +27,9 @@ import Data.Int as Int
 import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.List.NonEmpty as NEL
+import Data.Newtype (wrap)
 import Data.NonEmpty ((:|))
+import Data.Path.Pathy ((</>))
 import Data.String as S
 import Data.StrMap as SM
 import Matryoshka (project, transAna)
@@ -37,9 +39,11 @@ import SlamData.Quasar.Query as Quasar
 import SlamData.SqlSquared.Tagged as SqlT
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Eval.Process as Process
 import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquared as Sql
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE
@@ -47,20 +51,22 @@ import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 import Text.Markdown.SlamDown.Parser as SDP
 import Text.Markdown.SlamDown.Traverse as SDT
 import Text.Parsing.Parser (parseErrorMessage)
-import Utils.Path (DirPath)
+import Utils.Path (DirPath, tmpDir)
 
 evalMarkdownForm
   ∷ ∀ m
   . MonadEff SlamDataEffects m
+  ⇒ MonadAsk CEM.CardEnv m
   ⇒ Monad m
   ⇒ MD.Model
-  → SD.SlamDownP Port.VarMapValue
-  → Port.DataMap
+  → SD.SlamDownP MD.MarkdownExpr
+  → Port.VarMap
   → m Port.Out
 evalMarkdownForm model doc varMap = do
   let inputState = SDH.formStateFromDocument doc
+  cardId ← CEM.localCardId
   thisVarMap ← liftEff $ MDS.formStateToVarMap inputState model
-  pure (Port.Variables × map Right thisVarMap `SM.union` varMap)
+  pure (Port.Variables × map (NEL.singleton ∘ Tuple cardId) thisVarMap `SM.union` varMap)
 
 evalMarkdown
   ∷ ∀ m
@@ -70,15 +76,14 @@ evalMarkdown
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ String
-  → Port.DataMap
+  → Port.VarMap
   → m Port.Out
 evalMarkdown str varMap = do
   CEM.CardEnv { path } ← ask
   case SDP.parseMd str of
     Left e → CE.throwMarkdownError (CE.MarkdownParseError {markdown: str, error: e})
     Right sd → do
-      let sm = map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
-      doc ← evalEmbeddedQueries sm path sd
+      doc ← evalEmbeddedQueries varMap (path </> tmpDir) sd
       pure (Port.SlamDown doc × varMap)
 
 findFields
@@ -97,11 +102,11 @@ evalEmbeddedQueries
   ⇒ MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
-  ⇒ SM.StrMap String
+  ⇒ VM.VarMap
   → DirPath
-  → SD.SlamDownP Port.VarMapValue
-  → m (SD.SlamDownP Port.VarMapValue)
-evalEmbeddedQueries sm dir =
+  → SD.SlamDownP MD.MarkdownExpr
+  → m (SD.SlamDownP MD.MarkdownExpr)
+evalEmbeddedQueries varMap dir =
   SDE.eval
     { code: evalCode
     , textBox: evalTextBox
@@ -110,16 +115,18 @@ evalEmbeddedQueries sm dir =
     }
 
   where
+  urlVarMap ∷ VM.URLVarMap
+  urlVarMap = VM.toURLVarMap varMap
 
   evalCode
     ∷ Maybe SDE.LanguageId
     → String
-    → m Port.VarMapValue
+    → m MD.MarkdownExpr
   evalCode mid code
     | languageIsSql mid =
-        Port.VarMapValue ∘ transAna Sql.Literal ∘ extractCodeValue <$> runQuery Nothing code
+        wrap ∘ transAna Sql.Literal ∘ extractCodeValue <$> runQuery Nothing code
     | otherwise =
-        pure $ Port.VarMapValue $ Sql.null
+        pure $ wrap $ Sql.null
 
   extractCodeValue ∷ Array EJSON.EJson → EJSON.EJson
   extractCodeValue [ej] = extractSingletonObject ej
@@ -142,11 +149,11 @@ evalEmbeddedQueries sm dir =
   evalValue
     ∷ String
     → String
-    → m Port.VarMapValue
+    → m MD.MarkdownExpr
   evalValue field code = do
     maybe
-      (Port.VarMapValue Sql.null)
-      (Port.VarMapValue ∘ transAna Sql.Literal ∘ extractSingletonObject)
+      (wrap Sql.null)
+      (wrap ∘ transAna Sql.Literal ∘ extractSingletonObject)
       ∘ A.head
       <$> runQuery (Just field) code
 
@@ -196,28 +203,28 @@ evalEmbeddedQueries sm dir =
   evalList
     ∷ String
     → String
-    → m (L.List Port.VarMapValue)
+    → m (L.List MD.MarkdownExpr)
   evalList field code = do
     jitems ← map extractSingletonObject <$> runQuery (Just field) code
     let limit = 500
     pure ∘ L.fromFoldable
       $ if A.length jitems > limit
           then
-            ( map (Port.VarMapValue ∘ transAna Sql.Literal) $ A.take limit jitems )
-            ⊕ [ SD.stringValue $ "<" ⊕ show limit ⊕ "item limit reached>" ]
+            ( map (wrap ∘ transAna Sql.Literal) $ A.take limit jitems )
+            ⊕ [ wrap $ Sql.string $ "<" ⊕ show limit ⊕ "item limit reached>" ]
           else
-          map (Port.VarMapValue ∘ transAna Sql.Literal) jitems
+          map (wrap ∘ transAna Sql.Literal) jitems
 
   runQuery
     ∷ Maybe String
     → String
     → m (Array EJSON.EJson)
   runQuery field code =
-    let esql = Sql.parseQuery code
+    let esql = Process.elaborateQuery varMap <$> Sql.parseQuery code
     in case esql of
       Left error →
         CE.throwMarkdownError (CE.MarkdownSqlParseError { field, sql: code, error: parseErrorMessage error })
       Right sql → do
-        {inputs} ← CE.liftQ $ Quasar.compile dir sql sm
+        { inputs } ← CE.liftQ $ Quasar.compile dir sql urlVarMap
         CEM.addSources inputs
-        CE.liftQ $ Quasar.queryEJsonVM dir sql sm
+        CE.liftQ $ Quasar.queryEJsonVM dir sql urlVarMap

@@ -22,16 +22,14 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Writer.Class (class MonadTell)
-import Data.Path.Pathy as Path
-import Data.StrMap as SM
+import Control.Monad.Throw (rethrow)
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
-import SlamData.Quasar.FS as QFS
-import SlamData.Quasar.Query as QQ
+import SlamData.Quasar.Class (class ParQuasarDSL)
 import SlamData.Workspace.Card.Error as CE
-import SlamData.Workspace.Card.Eval.Common (validateResources)
+import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SqlSquared as Sql
 import Text.SlamSearch as SS
@@ -42,45 +40,26 @@ evalSearch
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ MonadThrow CE.CardError m
   ⇒ MonadTell CEM.CardLog m
-  ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
   ⇒ String
-  → Port.Resource
+  → Port.Port
   → m Port.Out
-evalSearch queryText resource = do
-  CEM.CardEnv env ← ask
-  filePath ← CEM.anyTemporaryPath $ Port.filePath resource
-  let queryText' = if queryText ≡ "" then "*" else queryText
-  query ← case SS.mkQuery queryText' of
-    Left pe → CE.throwSearchError (CE.SearchQueryParseError { query: queryText, error: pe })
-    Right q → pure q
-
-  fields ← CE.liftQ do
-    _ ← QFS.messageIfFileNotFound
-      filePath
-      ("Input resource " ⊕ Path.printPath filePath ⊕ " doesn't exist")
-    QQ.fields filePath
-
-  tmpPath × outputResource ← CEM.temporaryOutputResource
-
+evalSearch queryText port = do
   let
-    -- TODO: handle relative
-    sql = Sql.Query mempty $ Search.queryToSql fields query filePath
-    backendPath = fromMaybe Path.rootDir $ Path.parentDir filePath
+    queryText'
+      | queryText ≡ "" = "*"
+      | otherwise = queryText
+  CEM.CardEnv { cardId, varMap } ← ask
+  searchQuery ← case SS.mkQuery queryText' of
+    Left pe → CE.throwSearchError $ CE.SearchQueryParseError { query: queryText, error: pe }
+    Right q → pure q
+  resourceVar ← CEM.extractResourceVar port
+  let
+    sql = Search.searchSql resourceVar (VM.Var Search.defaultFilterVar)
+    filter = VM.Expr $ Search.filterSql mempty searchQuery
+    varMap' = VM.insert cardId (VM.Var Search.defaultFilterVar) filter varMap
+  resource ← CEC.localEvalResource (Sql.Query mempty sql) varMap >>= searchError CE.SearchQueryCompilationError
+  pure $ Port.resourceOut cardId resource varMap
 
-  compileResult ← QQ.compile backendPath sql SM.empty
-
-  case compileResult of
-    Left err →
-      CE.throwSearchError (CE.SearchQueryCompilationError err)
-    Right { inputs } → do
-      validateResources inputs
-      CEM.addSources inputs
-
-  _ ← CE.liftQ do
-    _ ← QQ.viewQuery tmpPath sql SM.empty
-    QFS.messageIfFileNotFound
-      tmpPath
-      "Error making search temporary resource"
-
-  pure $ Port.resourceOut $ Port.View outputResource sql SM.empty
+searchError ∷ ∀ e a m. MonadThrow CE.CardError m ⇒ (e → CE.SearchError) → Either e a → m a
+searchError f = rethrow ∘ lmap (CE.SearchCardError ∘ f)

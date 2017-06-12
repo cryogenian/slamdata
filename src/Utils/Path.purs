@@ -33,16 +33,11 @@ import Data.Path.Pathy as P
 import Data.String as S
 import Data.String.Regex as Rgx
 import Data.String.Regex.Flags as RXF
-import Data.Tuple (snd, fst)
-
+import Data.Tuple (Tuple, snd, fst)
 import Global as Global
-
 import Quasar.Types (AnyPath, DirPath, FilePath)
-
 import Partial.Unsafe (unsafePartial)
-
 import SlamData.Config as Config
-
 import Text.SlamSearch.Parser.Tokens (keyChars)
 
 type AnyFilePath = Either FilePath RelFilePath
@@ -191,3 +186,6 @@ rootFile = rootDir </> file ""
 
 tmpDir ∷ RelDirPath
 tmpDir = P.dir ".tmp"
+
+peelFile ∷ ∀ a s. P.Path a P.File s → Maybe (Tuple (P.Path a P.Dir s) P.FileName)
+peelFile path = unsafePartial (map fromRight <$> peel path)

@@ -28,8 +28,15 @@ module SlamData.Workspace.Card.Eval.Monad
   , addCaches
   , additionalSources
   , temporaryOutputResource
+  , temporaryOutputModule
   , anyTemporaryPath
   , localUrlVarMap
+  , localVarMap
+  , localCardId
+  , resourceOut
+  , extractResourcePair
+  , extractResourceVar
+  , extractResource
   , runCardEvalM
   , module SlamData.Workspace.Card.Eval.State
   , module SlamData.Workspace.Deck.AdditionalSource
@@ -45,20 +52,24 @@ import Control.Monad.Free (Free, liftF, resume)
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Writer.Class (class MonadTell, tell)
 import Control.Parallel.Class (parallel, sequential)
-import Data.List (List)
+import Data.List ((:))
+import Data.List as L
+import Data.List.NonEmpty as NL
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Path
 import Data.Set (Set)
 import Data.Set as Set
+import Data.StrMap as SM
 import Quasar.Advanced.QuasarAF as QA
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, liftQuasar)
 import SlamData.Workspace.Card.CardId as CID
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.State (EvalState(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
-import Utils.Path (DirPath, AnyFilePath, FilePath, RelFilePath, tmpDir)
+import Utils.Path (DirPath, RelDirPath, AnyFilePath, FilePath, RelFilePath, tmpDir)
 
 type CardEval = CardEvalM SlamDataEffects
 
@@ -74,14 +85,15 @@ type CardResult err a =
 
 type ChildOut =
   { namespace ∷ String
-  , varMap ∷ Port.DataMap
+  , varMap ∷ Port.VarMap
   }
 
 newtype CardEnv = CardEnv
   { path ∷ DirPath
   , cardId ∷ CID.CardId
+  , varMap ∷ Port.VarMap
   , urlVarMaps ∷ Map.Map CID.CardId Port.URLVarMap
-  , children ∷ List ChildOut
+  , children ∷ L.List ChildOut
   }
 
 data CardEvalF eff err a
@@ -159,6 +171,12 @@ temporaryOutputResource = do
   let res = Path.file ("out" ⊕ CID.toString cardId)
   pure $ path </> tmpDir </> res × Path.currentDir </> res
 
+temporaryOutputModule ∷ ∀ m. MonadAsk CardEnv m ⇒ m (DirPath × RelDirPath)
+temporaryOutputModule = do
+  CardEnv { cardId, path } ← ask
+  let res = Path.dir ("out" ⊕ CID.toString cardId)
+  pure $ path </> tmpDir </> res × Path.currentDir </> res
+
 anyTemporaryPath ∷ ∀ m. MonadAsk CardEnv m ⇒ AnyFilePath → m FilePath
 anyTemporaryPath = case _ of
   Left p → pure p
@@ -172,6 +190,40 @@ localUrlVarMap = do
   pure
     (fromMaybe mempty
       (Map.lookup cardId urlVarMaps))
+
+localVarMap ∷ ∀ m. MonadAsk CardEnv m ⇒ m Port.VarMap
+localVarMap = do
+  CardEnv { varMap } ← ask
+  pure varMap
+
+localCardId ∷ ∀ m. MonadAsk CardEnv m ⇒ m CID.CardId
+localCardId = do
+  CardEnv { cardId } ← ask
+  pure cardId
+
+resourceOut ∷ ∀ m. MonadAsk CardEnv m ⇒ Port.Resource → m Port.Out
+resourceOut res = do
+  CardEnv { cardId, varMap } ← ask
+  pure (Port.resourceOut cardId res varMap)
+
+extractResourcePair ∷ ∀ m. MonadThrow CE.CardError m ⇒ MonadAsk CardEnv m ⇒ Port.Port → m (Port.Var × Port.Resource)
+extractResourcePair port = do
+  varMap ← localVarMap
+  case port of
+    Port.ResourceKey key
+      | Just (Port.Resource r) ← map (snd ∘ NL.head) (SM.lookup key varMap) →
+      pure (Port.Var key × r)
+    _ →
+      case SM.toUnfoldable (Port.filterResources varMap) of
+        rs@(_ : _ : _) → throwError $ CE.ResourceError (snd <$> rs)
+        L.Nil → throwError $ CE.ResourceError L.Nil
+        r : L.Nil → pure (lmap Port.Var r)
+
+extractResource ∷ ∀ m. MonadThrow CE.CardError m ⇒ MonadAsk CardEnv m ⇒ Port.Port → m Port.Resource
+extractResource = map snd ∘ extractResourcePair
+
+extractResourceVar ∷ ∀ m. MonadThrow CE.CardError m ⇒ MonadAsk CardEnv m ⇒ Port.Port → m Port.Var
+extractResourceVar = map fst ∘ extractResourcePair
 
 runCardEvalM
   ∷ ∀ eff err f m a

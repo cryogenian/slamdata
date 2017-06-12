@@ -23,6 +23,7 @@ module Control.Monad.Throw
 import Prelude
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class (class MonadThrow, throwError)
+import Data.Either (Either, either)
 import Data.Maybe (Maybe, maybe)
 
 note ∷ ∀ m e a. MonadThrow e m ⇒ e → Maybe a → m a
@@ -30,4 +31,7 @@ note err = maybe (throwError err) pure
 
 noteError ∷ ∀ m a. MonadThrow Exn.Error m ⇒ String → Maybe a → m a
 noteError = note <<< Exn.error
+
+rethrow ∷ ∀ m e a. MonadThrow e m ⇒ Either e a → m a
+rethrow = either throwError pure
 
