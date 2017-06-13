@@ -1,7 +1,8 @@
 { "quasar":
     { "owner": "quasar-analytics"
     , "repo": "quasar"
-    , "tag": "v16.1.11"
+    , "tag": "v18.5.0"
+
     , "prefix": "quasar-web-assembly"
     }
 , "quasar-advanced":

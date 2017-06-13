@@ -25,6 +25,7 @@ import Data.Path.Pathy as P
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
+import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as SparkFTP
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
@@ -54,6 +55,7 @@ data MountSettings
   | Couchbase Couchbase.State
   | MarkLogic MarkLogic.State
   | SparkHDFS SparkHDFS.State
+  | SparkFTP SparkFTP.State
   | SparkLocal SparkLocal.State
 
 initialSettings ∷ MS.Scheme → MountSettings
@@ -62,6 +64,7 @@ initialSettings = case _ of
   MS.SQL2 → SQL2 SQL2.initialState
   MS.Couchbase → Couchbase Couchbase.initialState
   MS.MarkLogic → MarkLogic MarkLogic.initialState
+  MS.SparkFTP → SparkFTP SparkFTP.initialState
   MS.SparkHDFS → SparkHDFS SparkHDFS.initialState
   MS.SparkLocal → SparkLocal SparkLocal.initialState
 
@@ -128,6 +131,7 @@ scheme = case _ of
   SQL2 _ → MS.SQL2
   Couchbase _ → MS.Couchbase
   MarkLogic _ → MS.MarkLogic
+  SparkFTP _ → MS.SparkFTP
   SparkHDFS _ → MS.SparkHDFS
   SparkLocal _ → MS.SparkLocal
 
