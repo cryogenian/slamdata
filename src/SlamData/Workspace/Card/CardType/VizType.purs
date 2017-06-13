@@ -14,6 +14,9 @@ data InputType
   | Time
   | Datetime
 
+allInputTypes ∷ Array InputType
+allInputTypes = [ Text, Numeric, Date, Time, Datetime ]
+
 derive instance eqInputType ∷ Eq InputType
 derive instance ordInputType ∷ Ord InputType
 
@@ -22,12 +25,18 @@ data SelectType
   | Radio
   | Checkbox
 
+allSelectTypes ∷ Array SelectType
+allSelectTypes = [ Dropdown, Radio, Checkbox ]
+
 derive instance eqSelectType ∷ Eq SelectType
 derive instance ordSelectType ∷ Ord SelectType
 
 data GeoType
   = GeoMarker
   | GeoHeatmap
+
+allGeoTypes ∷ Array GeoType
+allGeoTypes = [ GeoMarker, GeoHeatmap ]
 
 derive instance eqGeoType ∷ Eq GeoType
 derive instance ordGeoType ∷ Ord GeoType
@@ -49,6 +58,25 @@ data ChartType
   | Candlestick
   | Parallel
 
+allChartTypes ∷ Array ChartType
+allChartTypes =
+  [ Pie
+  , Line
+  , Bar
+  , Area
+  , Scatter
+  , Radar
+  , Funnel
+  , Graph
+  , Heatmap
+  , Sankey
+  , Gauge
+  , Boxplot
+  , PunchCard
+  , Candlestick
+  , Parallel
+  ]
+
 derive instance eqChartType ∷ Eq ChartType
 derive instance ordChartType ∷ Ord ChartType
 
@@ -59,6 +87,9 @@ data VizType
   | Select SelectType
   | Geo GeoType
   | Chart ChartType
+
+miscVizTypes ∷ Array VizType
+miscVizTypes = [ Metric, PivotTable ]
 
 print ∷ VizType → String
 print = case _ of
@@ -127,34 +158,11 @@ parse = case _ of
 
 all ∷ Array VizType
 all =
-  [ Metric
-  , PivotTable
-  , Geo GeoMarker
-  , Geo GeoHeatmap
-  , Select Dropdown
-  , Select Radio
-  , Select Checkbox
-  , Input Text
-  , Input Numeric
-  , Input Date
-  , Input Datetime
-  , Input Time
-  , Chart Pie
-  , Chart Line
-  , Chart Bar
-  , Chart Area
-  , Chart Scatter
-  , Chart Radar
-  , Chart Funnel
-  , Chart Graph
-  , Chart Heatmap
-  , Chart Sankey
-  , Chart Gauge
-  , Chart Boxplot
-  , Chart PunchCard
-  , Chart Candlestick
-  , Chart Parallel
-  ]
+  miscVizTypes
+  <> map Geo allGeoTypes
+  <> map Input allInputTypes
+  <> map Select allSelectTypes
+  <> map Chart allChartTypes
 
 derive instance eqVizType ∷ Eq VizType
 derive instance ordVizType ∷ Ord VizType

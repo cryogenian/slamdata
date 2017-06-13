@@ -74,6 +74,7 @@ import SlamData.Workspace.Card.Setups.FormInput.Text.Eval as SetupText
 import SlamData.Workspace.Card.Setups.FormInput.Time.Eval as SetupTime
 import SlamData.Workspace.Card.Setups.Geo.Marker.Eval as SetupGeoMarker
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval as SetupGeoHeatmap
+import SlamData.Workspace.Card.Setups.Viz.Eval as SetupViz
 import SlamData.Workspace.Card.Geo.Eval as Geo
 import SlamData.Workspace.Card.Table.Eval as Table
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
@@ -139,6 +140,7 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   BuildFunnel model, _ → BuildFunnel.eval model =<< extractResource varMap
   BuildHeatmap model, _ → BuildHeatmap.eval model =<< extractResource varMap
   BuildBoxplot model, _ → BuildBoxplot.eval model =<< extractResource varMap
+  SetupViz model, _ → traceAny "???" \_ → SetupViz.eval model =<< extractResource varMap
   BuildPivotTable model, _ → BuildPivotTable.eval model varMap =<< extractResource varMap
   BuildPunchCard model, _ → BuildPunchCard.eval model =<< extractResource varMap
   BuildCandlestick model, _ → BuildCandlestick.eval model =<< extractResource varMap
@@ -160,6 +162,7 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
     FormInput.evalTextLike model tlp =<< extractResource varMap
   FormInput _, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
   DownloadOptions model, _ → tapResource (DOptions.eval model) varMap
+
   e, i → CE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
 modelToEval ∷ Model.AnyCardModel → Eval
@@ -207,6 +210,7 @@ modelToEval = case _ of
   Model.SetupGeoMarker model → SetupGeoMarker model
   Model.SetupGeoHeatmap model → SetupGeoHeatmap model
   Model.Geo model → GeoChart
+  Model.SetupViz model → SetupViz model
   _ → Pass
 
 -- TODO(Christoph): Get rid of this monstrosity of an error message

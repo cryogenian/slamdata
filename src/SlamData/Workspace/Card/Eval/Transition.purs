@@ -49,6 +49,7 @@ import SlamData.Workspace.Card.Setups.Geo.Heatmap.Model as SetupGeoHeatmap
 import SlamData.Workspace.Card.Setups.Geo.Marker.Model as SetupGeoMarker
 import SlamData.Workspace.Card.Table.Model as Table
 import SlamData.Workspace.Card.Variables.Model as Variables
+import SlamData.Workspace.Card.Setups.Viz.Model as SetupViz
 
 data Eval
   = Pass
@@ -96,6 +97,7 @@ data Eval
   | FormInput FormInput.Model
   | Table Table.Model
   | PivotTable PivotTable.Model
+  | SetupViz SetupViz.Model
 
 tagEval ∷ Eval → String
 tagEval = case _ of
@@ -144,3 +146,4 @@ tagEval = case _ of
   FormInput _ → "FormInput"
   Table _ → "Table"
   PivotTable _ → "PivotTable"
+  SetupViz _ → "SetupViz"

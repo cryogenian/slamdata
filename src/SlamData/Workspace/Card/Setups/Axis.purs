@@ -90,15 +90,30 @@ compareWithAxisType atype a b =
     DateTime →
       compare (mbASem >>= Sem.semanticsToDateTime) (mbBSem >>= Sem.semanticsToDateTime)
 
-type AxisTypeAnnotated a =
-  { value ∷ a
+type AxisTypeAnnotatedR a r =
+  ( value ∷ a
   , time ∷ a
   , category ∷ a
   , date ∷ a
   , datetime ∷ a
+  | r )
+
+type AxisTypeAnnotated a r =
+  Record (AxisTypeAnnotatedR a r)
+
+mapAxisTypeAnnotated ∷ ∀ a b. (a → b) →  AxisTypeAnnotated a () → AxisTypeAnnotated b ()
+mapAxisTypeAnnotated f ax =
+  { value: f ax.value
+  , time: f ax.time
+  , category: f ax.category
+  , date: f ax.date
+  , datetime: f ax.datetime
   }
 
-type Axes = AxisTypeAnnotated (Set.Set JCursor)
+type Axes = AxisTypeAnnotated (Set.Set JCursor) ()
+
+axesSizes ∷ Axes → AxisTypeAnnotated Int ()
+axesSizes = mapAxisTypeAnnotated Set.size
 
 axisType ∷ JCursor → Axes → AxisType
 axisType c axes
@@ -186,10 +201,10 @@ checkSemantics lst =
   semiLen ∷ Int
   semiLen = L.length lst / 2
 
-  counts ∷ AxisTypeAnnotated Int
+  counts ∷ AxisTypeAnnotated Int ()
   counts = foldl foldFn init lst
 
-  init ∷ AxisTypeAnnotated Int
+  init ∷ AxisTypeAnnotated Int ()
   init =
     { category: 0
     , time: 0
@@ -198,7 +213,7 @@ checkSemantics lst =
     , datetime: 0
     }
 
-  foldFn ∷ AxisTypeAnnotated Int → Maybe Sem.Semantics → AxisTypeAnnotated Int
+  foldFn ∷ AxisTypeAnnotated Int () → Maybe Sem.Semantics → AxisTypeAnnotated Int ()
   foldFn acc Nothing = acc
   foldFn acc (Just a)
     | Sem.isUsedAsNothing a =
