@@ -8,10 +8,10 @@
 
 .sd-miller-column {
   display: inline-block;
-  width: 25rem;
   height: 100%;
   vertical-align: top;
   border: 0.1rem solid #ddd;
+  position: relative;
 
   > div {
     height: 100%;
@@ -56,7 +56,8 @@
     padding: 0;
     margin: 0;
     width: 100%;
-    height: ~"calc(100% - 2.25rem - 2.3rem - 0.3rem)";
+    // TODO: use flex or something to avoid this nonsense
+    height: ~"calc(100% - 2.25rem - 2.3rem - 0.3rem - 2.5rem - 2px)";
     overflow: auto;
   }
 
@@ -114,8 +115,22 @@
   }
 
   + .sd-miller-column {
-    margin-left: -0.1rem;
+    margin-left: 5px;
   }
+}
+
+.sd-miller-column-resizer {
+  display: inline-block;
+  min-height: 100%;
+  vertical-align: top;
+  position: relative;
+  left: -5px;
+  width: 9px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 2;
+  // background: rgba(0, 0, 0, 0);
+  margin-right: -10px;
 }
 
 .sd-miller-column-item-inner {

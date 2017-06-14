@@ -26,6 +26,7 @@ import SlamData.Workspace.MillerColumns.Column.Options as Column
 type State a i =
   { cycle ∷ Int
   , columns ∷ ColumnsData a i
+  , widths ∷ L.List Column.ColumnWidth
   }
 
 modifyColumns
@@ -33,7 +34,8 @@ modifyColumns
   . (ColumnsData a i → ColumnsData a i)
   → State a i
   → State a i
-modifyColumns f st = { cycle: st.cycle, columns: f st.columns }
+modifyColumns f { cycle, columns, widths } =
+  { cycle, columns: f columns, widths }
 
 -- | The current state of the columns component - the `i` value is the root
 -- | path id, the list of `a`s is the items selected in each column. The list
@@ -78,3 +80,25 @@ columnPaths (Column.ColumnOptions colSpec) (root × selection) =
       case L.head paths of
         Just selPath | colSpec.isLeaf selPath → L.drop 1 cols
         _ → cols
+
+-- | Column widths are stored independently from the column data so that the UI
+-- | does not end up with column sizes jumping around when a parent is changed.
+-- | This function computes a width for a column, regardless of whether there is
+-- | a value stored for it in `widths`, by providing a default width as
+-- | necessary.
+columnWidth ∷ ∀ a i. State a i → Int → Column.ColumnWidth
+columnWidth { widths } ix =
+  fromMaybe Column.defaultColumnWidth (L.index widths ix)
+
+-- | "Fix" in the sense of making them fixed rather than computed, so that when
+-- | resizing a column there will be an entry in `widths` at the appropriate
+-- | index for the column that is resizing.
+fixColumnWidths
+  ∷ ∀ a i
+  . State a i
+  → State a i
+fixColumnWidths st@{ cycle, columns, widths } =
+  { cycle, columns, widths: foldr go L.Nil (L.mapWithIndex const (snd columns)) }
+  where
+    go ∷ Int → L.List Column.ColumnWidth → L.List Column.ColumnWidth
+    go ix = L.Cons (columnWidth st ix)

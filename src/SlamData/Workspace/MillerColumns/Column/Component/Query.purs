@@ -30,6 +30,7 @@ import Halogen.Component.Proxy (ProxyQ)
 
 import SlamData.Workspace.MillerColumns.Column.Component.Item as Item
 import SlamData.Workspace.MillerColumns.Column.Component.Request (LoadRequest, LoadResponse)
+import SlamData.Workspace.MillerColumns.Column.Component.ColumnWidth (ColumnWidth)
 
 data Query a i o b
   = Init b
@@ -40,9 +41,10 @@ data Query a i o b
   | UpdateFilter String b
   | HandleScroll Element b
   | HandleMessage i (Item.Message' a o) b
+  | HandleInput (ColumnWidth × Maybe a) b
   | FulfilLoadRequest (LoadResponse a) b
 
-type Query' a i o = ProxyQ (Query a i o) (Maybe a) (Message' a i o)
+type Query' a i o = ProxyQ (Query a i o) (ColumnWidth × Maybe a) (Message' a i o)
 
 data Message a i
   = Initialized

@@ -17,58 +17,59 @@ limitations under the License.
 module SlamData.Workspace.MillerColumns.Column.Component
   ( component
   , component'
-  , module SlamData.Workspace.MillerColumns.Column.Options
+  , module SlamData.Workspace.MillerColumns.Column.Component.ColumnWidth
   , module SlamData.Workspace.MillerColumns.Column.Component.Query
   , module SlamData.Workspace.MillerColumns.Column.Component.State
+  , module SlamData.Workspace.MillerColumns.Column.Options
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Fork.Class (fork)
-
+import CSS as CSS
 import Data.Array as A
 import Data.List as L
 import Data.Time.Duration (Milliseconds(..))
-
+import DOM.Classy.Element (scrollTop, scrollHeight, clientHeight) as DOM
 import DOM.Classy.Event (currentTarget) as DOM
 import DOM.Classy.Node (fromNode) as DOM
-import DOM.Classy.Element (scrollTop, scrollHeight, clientHeight) as DOM
-
 import Halogen as H
 import Halogen.Component.Proxy (proxyQI)
+import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger)
 import Halogen.HTML as HH
+import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
 import SlamData.Render.Icon as I
+import SlamData.Workspace.MillerColumns.Column.Component.ColumnWidth (ColumnWidth(..), defaultColumnWidth, minColumnWidth)
 import SlamData.Workspace.MillerColumns.Column.Component.Item as Item
 import SlamData.Workspace.MillerColumns.Column.Component.Query (Message(..), Message', Query(..), Query')
-import SlamData.Workspace.MillerColumns.Column.Component.State (ColumnState(..), State, initialState)
 import SlamData.Workspace.MillerColumns.Column.Component.Request as Req
+import SlamData.Workspace.MillerColumns.Column.Component.State (ColumnState(..), State, initialState)
 import SlamData.Workspace.MillerColumns.Column.Options (ColumnOptions(..))
-
-import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger)
 
 type HTML a i o = H.ParentHTML (Query a i o) (Item.Query a o) i Slam
 type DSL a i o = H.ParentDSL (State a i o) (Query a i o) (Item.Query a o) i (Message' a i o) Slam
 
 component
   ∷ ∀ a i o
-  . Ord i
+  . Eq a
+  ⇒ Ord i
   ⇒ ColumnOptions a i o
   → i
-  → H.Component HH.HTML (Query' a i o) (Maybe a) (Message' a i o) Slam
+  → H.Component HH.HTML (Query' a i o) (ColumnWidth × Maybe a) (Message' a i o) Slam
 component opts = proxyQI ∘ component' opts
 
 component'
   ∷ ∀ a i o
-  . Ord i
+  . Eq a
+  ⇒ Ord i
   ⇒ ColumnOptions a i o
   → i
-  → H.Component HH.HTML (Query a i o) (Maybe a) (Message' a i o) Slam
+  → H.Component HH.HTML (Query a i o) (ColumnWidth × Maybe a) (Message' a i o) Slam
 component' (ColumnOptions colSpec) colPath =
   H.lifecycleParentComponent
     { initialState
@@ -76,16 +77,19 @@ component' (ColumnOptions colSpec) colPath =
     , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
-    , receiver: HE.input SetSelection
+    , receiver: HE.input HandleInput
     }
   where
 
   render ∷ State a i o → HTML a i o
-  render { items, state, selected, filterText } =
+  render { items, state, selected, filterText, width } =
     let
       listItems = A.fromFoldable (renderItem selected <$> items)
     in
-      HH.div_
+      HH.div
+        [ HP.class_ (HH.ClassName "sd-miller-column-container")
+        , HCSS.style (CSS.width (CSS.px (unwrap width)))
+        ]
         [ HH.div
             [ HP.class_ (HH.ClassName "sd-miller-column-filter") ]
             [ HH.div
@@ -194,6 +198,11 @@ component' (ColumnOptions colSpec) colPath =
           H.raise $ Left $ Selected itemId a
         Right o → do
           H.raise $ Right o
+      pure next
+    HandleInput (newWidth × newSelected) next → do
+      { width, selected } ← H.get
+      when (width /= newWidth || selected /= newSelected) $
+        H.modify (_ { width = newWidth, selected = newSelected })
       pure next
     FulfilLoadRequest { requestId, items, nextOffset } next → do
       expectedId ← H.gets _.lastRequestId
