@@ -26,9 +26,11 @@ module SlamData.Notification
   , info
   , warn
   , error
+  , daysRemainingNotification
   ) where
 
 import SlamData.Prelude
+import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.AVar (AVar)
 import Data.Time.Duration (Milliseconds)
 import Halogen.Query (HalogenM)
@@ -116,3 +118,16 @@ error
   → Maybe ActionOptions
   → m Unit
 error = notify <<< Error
+
+daysRemainingNotification ∷ AVar.AVar Unit → Int → NotificationOptions
+daysRemainingNotification avar i =
+  { notification: Info $ show i <> " licensed days remaining."
+  , detail: Nothing
+  , actionOptions:
+      Just $ ActionOptions
+        { message: "Please get in touch to renew your license."
+        , actionMessage: "Contact SlamData"
+        , action: Fulfill avar
+        }
+  , timeout: Nothing
+  }

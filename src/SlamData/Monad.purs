@@ -20,6 +20,8 @@ import SlamData.Prelude
 
 import Control.Applicative.Free (FreeAp, hoistFreeAp, liftFreeAp, retractFreeAp)
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
@@ -29,8 +31,9 @@ import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Free (Free, liftF, foldFree)
 import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
 import Control.Parallel (parallel, sequential)
-import Control.UI.Browser (locationObject)
+import Control.UI.Browser (locationObject, newTab)
 
+import DOM (DOM)
 import DOM.HTML.Location (setHash)
 
 import Data.Argonaut as Argonaut
@@ -44,6 +47,7 @@ import OIDC.Crypt.Types as OIDC
 import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
 
+import SlamData.Workspace.AccessType as AT
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.License as License
@@ -55,7 +59,7 @@ import SlamData.Notification as N
 import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
 import SlamData.Quasar.Auth.Authentication as Auth
-import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
@@ -183,8 +187,8 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
         GE.PaymentRequired →
           map _.status <$> runQuasarF Nothing QA.licenseInfo
             >>= case _ of
-              Right QAT.LicenseExpired → Bus.write License.Expired bus.licenseProblems 
-              _ → Bus.write License.Invalid bus.licenseProblems 
+              Right QAT.LicenseExpired → Bus.write License.Expired bus.licenseProblems
+              _ → Bus.write License.Invalid bus.licenseProblems
         _ -> Bus.write (GE.toNotificationOptions err) bus.notify
       pure a
     Par (SlamA p) →
@@ -209,3 +213,25 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
     if Array.null auth.permissionTokenHashes
       then hush <$> getIdTokenSilently auth.allowedModes auth.requestToken
       else pure Nothing
+
+notifyDaysRemainingIfNeeded
+  ∷ ∀ m eff
+  . MonadAff (avar ∷ AVAR, dom ∷ DOM | eff) m
+  ⇒ MonadAsk Wiring m
+  ⇒ MonadFork Error m
+  ⇒ QuasarDSL m
+  ⇒ m Unit
+notifyDaysRemainingIfNeeded =
+  void $ fork do
+    { accessType, bus } ← Wiring.expose
+    daysRemaining ← map _.daysRemaining <$> liftQuasar QA.licenseInfo
+    case daysRemaining, accessType of
+      Right i, AT.Editable | i <= 30 && i > 0 →
+        void $ liftAff do
+          trigger ← AVar.makeVar
+          Bus.write (N.daysRemainingNotification trigger i) bus.notify
+          fork do
+            AVar.takeVar trigger
+            liftEff $ newTab "https://slamdata.com/contact-us/"
+      _, _ →
+        pure unit

@@ -98,6 +98,11 @@ render ∷ State → HTML
 render = case _ of
   Nothing ->
     HH.text ""
+  Just (LicenseProblem problem) ->
+    HH.div_
+      [ renderDialogBackdrop
+      , dialog $ LicenseProblem problem
+      ]
   Just s ->
     HH.div_
       [ renderDialogBackdrop
