@@ -62,7 +62,7 @@ toolbar ∷ ∀ p. State → HTML p (Query Unit)
 toolbar state =
   H.div
     [ P.classes [ CSS.toolbarMenu ] ]
-    $ ( guard state.isUnconfigured $>
+    $ ( guard (state.isUnconfigured && not state.presentIntroVideo) $>
         Hint.render
           Hint.RightArrow
           (H.ClassName "sd-mount-hint")

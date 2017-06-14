@@ -145,7 +145,7 @@ render state@{ version, sort, salt, path } =
           , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
           ]
       , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
-      , HH.slot' CS.cpNotify unit (NC.component $ NC.renderModeFromAccessType Editable) unit
+    , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
           $ HE.input HandleNotifications
       ]
     ⊕ (guard state.presentIntroVideo $> renderIntroVideo)
@@ -197,9 +197,9 @@ eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
     w ← H.lift Wiring.expose
-    whenM
-      (not <$> dismissedIntroVideoBefore)
-      (H.modify $ State._presentIntroVideo .~ true)
+    dismissedIntroVideoBefore >>= if _
+     then void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
+     else H.modify $ State._presentIntroVideo .~ true
     H.subscribe $ busEventSource (flip HandleError ES.Listening) w.bus.globalError
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) w.auth.signIn
     H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) w.bus.licenseProblems
@@ -409,6 +409,7 @@ eval = case _ of
     H.liftEff $ setLocation $ browseURL value st.sort salt st.path
     pure next
   HandleLicenseProblem problem next → do
+    _ ← H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Hidden
     _ ← H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.LicenseProblem problem
     pure next
   SetLoading bool next → do
@@ -532,6 +533,7 @@ dismissIntroVideo ∷ DSL Unit
 dismissIntroVideo = do
   LS.persist LSK.dismissedIntroVideoKey true
   H.modify $ State._presentIntroVideo .~ false
+  void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
 
 dismissedIntroVideoBefore ∷ DSL Boolean
 dismissedIntroVideoBefore =
