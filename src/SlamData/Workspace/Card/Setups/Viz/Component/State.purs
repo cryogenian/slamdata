@@ -1,6 +1,20 @@
 module SlamData.Workspace.Card.Setups.Viz.Component.State where
 
-type State = { }
+import SlamData.Prelude
+
+import SlamData.Workspace.Card.CardType.VizType as VT
+import SlamData.Workspace.Card.Setups.Axis as Ax
+
+type State =
+  { vizType ∷ VT.VizType
+  , vizTypePickerExpanded ∷ Boolean
+  , axes ∷ Maybe Ax.Axes
+  }
+
 
 initialState ∷ State
-initialState = { }
+initialState =
+  { vizType: VT.Chart VT.Pie
+  , vizTypePickerExpanded: false
+  , axes: Nothing
+  }

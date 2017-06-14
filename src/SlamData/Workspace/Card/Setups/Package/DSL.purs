@@ -103,7 +103,7 @@ optional l p = liftF $ T.OptionalField l p id
 
 addSource
   ∷ ∀ m a
-  . (T.AxisTypeAnnotated a → a)
+  . (T.AxisTypeAnnotated a () → a)
   → T.Field m
   → T.PackageM m (T.Field m)
 addSource prj fld = liftF $ T.Source fld (T.packAxesProjection prj) id
@@ -128,13 +128,13 @@ interpret axc pack =
     $ foldFree fieldF
     $ hoistFree indexify pack
 
-  allFields ∷ T.DimensionMap → T.AxisTypeAnnotated s → L.List T.Projection
+  allFields ∷ T.DimensionMap → T.AxisTypeAnnotated s () → L.List T.Projection
   allFields =
     const $ const $ L.reverse $ map (view T._projection) fields
 
   cursorMap
     ∷ T.DimensionMap
-    → T.AxisTypeAnnotated s
+    → T.AxisTypeAnnotated s ()
     → SM.StrMap s
   cursorMap dimMap axes =
     let

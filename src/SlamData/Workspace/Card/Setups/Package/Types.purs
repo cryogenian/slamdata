@@ -59,8 +59,8 @@ import SlamData.Workspace.Card.Setups.Dimension (LabeledJCursor) as D
 import Unsafe.Coerce (unsafeCoerce)
 
 type Package m s =
-  { allFields ∷ DimensionMap → Ax.AxisTypeAnnotated s → L.List Projection
-  , cursorMap ∷ DimensionMap → Ax.AxisTypeAnnotated s → SM.StrMap s
+  { allFields ∷ DimensionMap → Ax.AxisTypeAnnotated s () → L.List Projection
+  , cursorMap ∷ DimensionMap → Ax.AxisTypeAnnotated s () → SM.StrMap s
   , save ∷ DimensionMap → m → Maybe m
   , load ∷ Maybe m → DimensionMap → DimensionMap
   }
@@ -71,10 +71,10 @@ emptyDimMap = SM.empty
 
 data AxesProjection
 
-packAxesProjection ∷ ∀ s. (Ax.AxisTypeAnnotated s → s) → AxesProjection
+packAxesProjection ∷ ∀ s. (Ax.AxisTypeAnnotated s () → s) → AxesProjection
 packAxesProjection = unsafeCoerce
 
-unpackAxesProjection ∷ ∀ s. AxesProjection → Ax.AxisTypeAnnotated s → s
+unpackAxesProjection ∷ ∀ s. AxesProjection → Ax.AxisTypeAnnotated s () → s
 unpackAxesProjection = unsafeCoerce
 
 type ProjectionU m a b = At m a b ⇒ Lens' m (Maybe b)

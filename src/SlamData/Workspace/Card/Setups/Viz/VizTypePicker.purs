@@ -210,10 +210,10 @@ description = case _ of
 
 
 toAction ∷ Action → AA.Action Action
-toAction vt = traceAny vt \_ → traceAny (isSet vt) \_ →  AA.mkDo
+toAction vt = AA.mkDo
   { name: VT.name $ vizType vt
   , iconSrc: VT.lightIconSrc $ vizType vt
-  , highlighted: spy $ isSet $ spy vt
+  , highlighted: isSet vt
   , disabled: false
   , description: description vt
   , action: vt
@@ -235,6 +235,6 @@ eval = case _ of
         Explain vt → ExplainNotWorking vt
       pure next
   UpdateAxes axes next → do
-    traceAnyA "update axes"
+    traceAnyA "axes"
     _ ← H.query' cpList 0 $ H.action $ AL.UpdateActions $ map toAction $ axesActions axes
     pure next

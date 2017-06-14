@@ -211,4 +211,7 @@ name = case _ of
     Parallel → "Parallel"
 
 lightIconSrc ∷ VizType → String
-lightIconSrc vt = "img/viz/" <> print vt <> ".svg"
+lightIconSrc vt = "img/viz/light/" <> print vt <> ".svg"
+
+darkIconSrc ∷ VizType → String
+darkIconSrc vt = "img/viz/dark/" <> print vt <> ".svg"
