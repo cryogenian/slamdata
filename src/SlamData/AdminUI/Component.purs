@@ -21,28 +21,32 @@ module SlamData.AdminUI.Component
   , ServerState(..)
   , GroupsState(..)
   , PostgresCon(..)
-  , Group(..)
-  , GroupPath
+  , GroupItem(..)
+  , GroupIndex
   ) where
 
 import SlamData.Prelude
 
-import Control.Comonad.Cofree (mkCofree)
 import Data.Array as Array
 import Data.List (List)
 import Data.List as L
+import Data.Path.Pathy as Pathy
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Quasar.Advanced.QuasarAF as QA
 import SlamData.Monad (Slam)
+import SlamData.Quasar.Security (groupInfo)
 import SlamData.Render.Icon as I
 import SlamData.Workspace.MillerColumns.BasicItem.Component as MCI
 import SlamData.Workspace.MillerColumns.Column.Component as MCC
+import SlamData.Workspace.MillerColumns.Column.Component.Request as MCREQ
 import SlamData.Workspace.MillerColumns.Component as Miller
 import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
-import SlamData.Workspace.MillerColumns.TreeData as MCTree
+import Unsafe.Coerce (unsafeCoerce)
+import Utils.Path (rootFile)
 
 data Query a
   = Init a
@@ -53,7 +57,7 @@ data Query a
   | SetDatabase DatabaseState a
   | SetServer ServerState a
   | SetGroups GroupsState a
-  | HandleColumns (Miller.Message Group GroupPath) a
+  | HandleColumns (Miller.Message GroupItem GroupIndex) a
 
 data TabIndex
   = MySettings
@@ -149,22 +153,31 @@ newtype ServerState = ServerState
 defaultServerState ∷ ServerState
 defaultServerState = ServerState { port: 27012, logFileLocation: "", enableCustomSSL: false }
 
-newtype GroupsState = GroupsState { tree ∷ MCTree.Tree Group }
+newtype GroupsState = GroupsState { }
 derive instance newtypeGroupsState ∷ Newtype GroupsState _
 
 defaultGroupsState ∷ GroupsState
-defaultGroupsState = GroupsState { tree: mkCofree (Group { path: empty, name: "" }) L.Nil }
+defaultGroupsState = GroupsState { }
 
+cpGroups :: forall f1 g p1 q. CP.ChildPath f1 (Coproduct f1 g) p1 (Either p1 q)
 cpGroups = CP.cp1
 
-newtype Group = Group { path ∷ List String, name ∷ String }
-derive instance eqGroup ∷ Eq Group
-derive instance ordGroup ∷ Ord Group
-derive instance newtypeGroup ∷ Newtype Group _
+data GroupItem
+  = Group { path ∷ Pathy.AbsFile Pathy.Sandboxed, name ∷ String, isLeaf ∷ Boolean }
+  | User { path ∷ Pathy.AbsFile Pathy.Sandboxed, id ∷ QA.UserId, name ∷ String }
 
-type GroupPath = L.List String
+-- derive instance genericGroupItem ∷ Generic Group _
+derive instance eqGroupItem ∷ Eq GroupItem
+derive instance ordGroupItem ∷ Ord GroupItem
 
-type MillerQuery = Miller.Query Group GroupPath Void
+groupItemName ∷ GroupItem → String
+groupItemName = case _ of
+  Group { name } → name
+  User { name } → name
+
+type GroupIndex = (Pathy.AbsFile Pathy.Sandboxed ⊹ Tuple QA.UserId (Pathy.AbsFile Pathy.Sandboxed)) ⊹ Pathy.AbsFile Pathy.Sandboxed
+
+type MillerQuery = Miller.Query GroupItem GroupIndex Void
 
 type ChildQuery = MillerQuery ⨁ Const Void
 type ChildSlot = Unit ⊹ Void
@@ -443,41 +456,41 @@ renderGroupsForm ∷ GroupsState → Array HTML
 renderGroupsForm (GroupsState _) =
   [ HH.slot' cpGroups unit (Miller.component columnOptions) columnState (HE.input (either HandleColumns absurd)) ]
   where
-    -- columnState ∷ ColumnsData Group GroupPath
-    -- columnState = lmap (_.path ∘ unwrap) (MCTree.initialStateFromTree (MCTree.constructTree go root elements))
-    --   where
-    --     go = ?x
-    --     root = ?y
-    --     elements = ?z
-    columnState ∷ ColumnsData Group GroupPath
-    columnState = Tuple L.Nil L.Nil
+    columnState ∷ ColumnsData GroupItem GroupIndex
+    columnState = Right rootFile × L.Nil
 
-    columnOptions ∷ Miller.ColumnOptions Group GroupPath Void
+    columnOptions ∷ Miller.ColumnOptions GroupItem GroupIndex Void
     columnOptions =
       Miller.ColumnOptions
         { renderColumn: MCC.component
-        , renderItem: MCI.component { label: _.name ∘ unwrap, render: renderItem }
-        , label: _.name ∘ unwrap
-        , isLeaf: const false
-        , id: _.path ∘ unwrap
+        , renderItem: MCI.component { label: groupItemName , render: renderItem }
+        , label: groupItemName
+        , isLeaf: isLeft
+        , id: case _ of
+            Group { path, isLeaf } → if isLeaf then Left (Left path) else Right path
+            User { path, id } → Left (Right (id × path))
         }
-    renderItem ∷ Group → MCI.BasicItemHTML
-    renderItem (Group {name}) =
-      HH.div
-        [ HP.classes
-            [ HH.ClassName "sd-miller-column-item-inner"
-            , HH.ClassName "sd-miller-column-item-node"
-            ]
-        ]
-        [ HH.span_ [ HH.text name]
-        , I.chevronRightSm
-        ]
-    -- { renderColumn ∷ ColumnOptions a i o → i → ColumnComponent a i o
-    -- , renderItem ∷ i → a → ItemComponent a o
-    -- , label ∷ a → String
-    -- , isLeaf ∷ i → Boolean
-    -- , id ∷ a → i
-    -- }
+    renderItem ∷ GroupItem → MCI.BasicItemHTML
+    renderItem = case _ of
+      Group { name, isLeaf } →
+        HH.div
+          [ HP.classes
+              [ HH.ClassName "sd-miller-column-item-inner"
+              , HH.ClassName "sd-miller-column-item-node"
+              ]
+          ]
+          (fold
+          [ pure (HH.span_ [ HH.text name])
+          , guard (not isLeaf) $> I.chevronRightSm
+          ])
+      User { name } →
+        HH.div
+          [ HP.classes
+              [ HH.ClassName "sd-miller-column-item-inner"
+              , HH.ClassName "sd-miller-column-item-node"
+              ]
+          ]
+          [ HH.span_ [ HH.text name] ]
 
 eval ∷ Query ~> DSL
 eval = case _ of
@@ -508,8 +521,35 @@ eval = case _ of
     case columnMsg of
       Miller.SelectionChanged _ _ _ →
         pure next
-      Miller.LoadRequest req → do
-        GroupsState { tree } ← H.gets _.formState.groups
-        let res = MCTree.loadFromTree' (_.path ∘ unwrap) (_.name ∘ unwrap) tree req
-        _ ← H.query' cpGroups unit (H.action (Miller.FulfilLoadRequest res))
+      Miller.LoadRequest req@(path × _) → do
+        res ← load req
+        _ ← H.query' cpGroups unit (H.action (Miller.FulfilLoadRequest (path × res)))
         pure next
+
+load ∷ Tuple GroupIndex { requestId :: MCREQ.RequestId , filter :: String , offset :: Maybe Int } → DSL (MCREQ.LoadResponse GroupItem)
+load (Left _ × { requestId }) = pure (noResult requestId)
+load (Right path × { requestId }) =
+  groupInfo path >>= case _ of
+    Right { subGroups, members } → do
+      items ← traverse groupFromPath subGroups
+      let ms = map mkUserItem members
+      pure { requestId
+           , items: L.fromFoldable (ms <> items)
+           , nextOffset: Nothing
+           }
+    Left e → pure (noResult requestId)
+  where
+    mkUserItem ∷ QA.UserId → GroupItem
+    mkUserItem id = User { path, id, name: QA.runUserId id }
+
+    groupFromPath ∷ Pathy.AbsFile Pathy.Sandboxed → DSL GroupItem
+    groupFromPath p = do
+      groupInfo p >>= case _ of
+        Right { subGroups, members } →
+          pure (Group { path: p, name: Pathy.runFileName (Pathy.fileName p), isLeaf: Array.null subGroups && Array.null members })
+        Left e →
+          -- TODO(Christoph): Ahem
+          unsafeCoerce unit
+
+noResult ∷ MCREQ.RequestId → MCREQ.LoadResponse GroupItem
+noResult requestId = { requestId, items: L.Nil, nextOffset: Nothing }
