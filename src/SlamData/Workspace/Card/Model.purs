@@ -650,3 +650,8 @@ _SetupGeoHeatmap ∷ Prism' AnyCardModel SetupGeoHeatmap.Model
 _SetupGeoHeatmap = prism' SetupGeoHeatmap case _ of
   SetupGeoHeatmap a → Just a
   _ → Nothing
+
+_SetupViz ∷ Prism' AnyCardModel SetupViz.Model
+_SetupViz = prism' SetupViz case _ of
+  SetupViz a → Just a
+  _ → Nothing

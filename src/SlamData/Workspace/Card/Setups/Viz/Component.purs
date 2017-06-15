@@ -75,8 +75,20 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    pure $ k $ M.SetupViz Nothing
-  CC.Load m next →
+    st ← H.get
+    pure $ k $ M.SetupViz
+      { dimMaps: st.dimMaps
+      , vizType: st.vizType
+      }
+  CC.Load m next → do
+    for_ (m ^? M._SetupViz) \r → do
+      H.modify _
+        { dimMaps = r.dimMaps
+        , vizType = r.vizType
+        }
+      for_ (Map.lookup r.vizType r.dimMaps) \dimMap → do
+        void $ H.query' CS.cpDims unit $ H.action $ DQ.Load dimMap
+        H.raise CC.modelUpdate
     pure next
   CC.ReceiveInput _ _ next →
     pure next

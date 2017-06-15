@@ -11,11 +11,8 @@ import Control.Monad.Writer.Class (class MonadTell)
 import Data.StrMap as SM
 
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Viz.Model (Model, ModelR)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
+import SlamData.Workspace.Card.Setups.Viz.Model (Model)
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Quasar.Class (class QuasarDSL)
