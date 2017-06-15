@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Halogen.Component.ChildPath as CP
 
-import SlamData.AdminUI.Component as AdminUI
+import SlamData.AdminUI.Types as AdminUI
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Search.Component as Search

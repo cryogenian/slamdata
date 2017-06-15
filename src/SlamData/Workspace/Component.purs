@@ -40,6 +40,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import SlamData.AdminUI.Component as AdminUI
+import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
@@ -237,7 +238,7 @@ eval = case _ of
     either signInFailure (const $ signInSuccess) =<< (H.liftAff $ takeVar idToken)
     pure next
   HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next →
-    H.query' cpAdminUI unit (H.action AdminUI.Open) $> next
+    H.query' cpAdminUI unit (H.action AdminUI.Types.Open) $> next
   HandleHeader _ next → pure next
   HandleGuideMessage slot Guide.Dismissed next → do
     case slot of

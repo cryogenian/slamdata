@@ -19,7 +19,7 @@ module SlamData.Workspace.Component.ChildSlot where
 import SlamData.Prelude
 
 import Halogen.Component.ChildPath as CP
-import SlamData.AdminUI.Component as AdminUI
+import SlamData.AdminUI.Types as AdminUI
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Header.Component as Header
 import SlamData.Notification.Component as Notify

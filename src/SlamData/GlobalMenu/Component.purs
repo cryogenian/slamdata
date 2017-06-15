@@ -41,7 +41,7 @@ import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.GlobalError (GlobalError)
 import SlamData.GlobalError as GlobalError
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
-import SlamData.AdminUI.Component as AdminUI
+import SlamData.AdminUI.Types as AdminUI
 import SlamData.Monad (Slam)
 import SlamData.Quasar as Api
 import SlamData.Quasar.Auth as Auth

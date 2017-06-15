@@ -55,6 +55,7 @@ import Quasar.Advanced.Types as QAT
 import Quasar.Data (QData(..))
 import Quasar.Mount as QM
 import SlamData.AdminUI.Component as AdminUI
+import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
@@ -386,7 +387,7 @@ eval = case _ of
     H.liftEff Browser.reload
     pure next
   HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next → do
-    _ ← H.query' CS.cpAdminUI unit (H.action AdminUI.Open)
+    _ ← H.query' CS.cpAdminUI unit (H.action AdminUI.Types.Open)
     pure next
   HandleHeader _ next →
     pure next
