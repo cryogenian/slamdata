@@ -4,7 +4,7 @@ import SlamData.Prelude
 
 import Halogen.Component.ChildPath (ChildPath, cp1, cp2)
 
-import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
+import SlamData.Workspace.Card.Setups.DimMap.Component.Query as DQ
 import SlamData.Workspace.Card.Setups.Viz.VizTypePicker as VT
 
 type ChildSlot = Unit ⊹ Unit ⊹ Void

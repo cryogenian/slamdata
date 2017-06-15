@@ -71,10 +71,10 @@ emptyDimMap = SM.empty
 
 data AxesProjection
 
-packAxesProjection ∷ ∀ s. (Ax.AxisTypeAnnotated s () → s) → AxesProjection
+packAxesProjection ∷ ∀ s r. (Ax.AxisTypeAnnotated s r → s) → AxesProjection
 packAxesProjection = unsafeCoerce
 
-unpackAxesProjection ∷ ∀ s. AxesProjection → Ax.AxisTypeAnnotated s () → s
+unpackAxesProjection ∷ ∀ s r. AxesProjection → Ax.AxisTypeAnnotated s r → s
 unpackAxesProjection = unsafeCoerce
 
 type ProjectionU m a b = At m a b ⇒ Lens' m (Maybe b)
