@@ -103,6 +103,7 @@ renderButton state fld =
     , onLabelClick: const Nothing
     , disabled: ST.isDisabled fld state
     , dismissable: isJust $ ST.getSelected fld state
+    , labelless: ST.labelless fld
     } ]
 
 eval ∷ Q.Query ~> DSL

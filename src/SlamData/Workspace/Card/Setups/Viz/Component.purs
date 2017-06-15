@@ -98,7 +98,7 @@ setupEval = case _ of
     H.modify _{ vizTypePickerExpanded = false }
     st ← H.get
     case vt of
-      VT.SetVizType v | v ≠ st.vizType  → do
+      VT.SetVizType v → do
         for_ (Map.lookup v st.dimMaps) \dimMap →
           void $ H.query' CS.cpDims unit $ H.action $ DQ.Load dimMap
 

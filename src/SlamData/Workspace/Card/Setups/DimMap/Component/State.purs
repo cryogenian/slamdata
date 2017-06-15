@@ -155,3 +155,6 @@ deselect = _selected .~ Nothing
 
 getSelected ∷ T.Projection → State → Maybe D.LabeledJCursor
 getSelected fld state = state ^. _dimMap ∘ T.unpackProjection fld
+
+labelless ∷ T.Projection → Boolean
+labelless fld = (DMD.getDefaults fld).labelless

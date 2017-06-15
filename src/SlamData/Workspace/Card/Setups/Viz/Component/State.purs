@@ -132,10 +132,10 @@ packages =
   customMap = Map.fromFoldable
     [ VT.Geo VT.GeoMarker × geoMarkerPack
     ]
-  mapFromFree = Map.fromFoldable
-    [ VT.Input VT.Text × do
+  mapFromFree = Map.fromFoldable [
+    VT.Input VT.Text × do
     _ ←
-      field PP._value
+      field PP._formValue
       >>= addSource _.value
       >>= addSource _.category
       >>= addSource _.time
@@ -145,32 +145,110 @@ packages =
 
   , VT.Input VT.Numeric × do
     _ ←
-      field PP._value
+      field PP._formValue
       >>= addSource _.value
     pure unit
 
   , VT.Input VT.Date × do
     _ ←
-      field PP._value
+      field PP._formValue
       >>= addSource _.date
     pure unit
 
   , VT.Input VT.Time × do
     _ ←
-      field PP._value
+      field PP._formValue
       >>= addSource _.time
     pure unit
 
   , VT.Input VT.Datetime × do
     _ ←
-      field PP._value
+      field PP._formValue
       >>= addSource _.time
     pure unit
 
   , VT.Select VT.Dropdown × do
-    traceAnyA "TODO: free for select"
+    value ←
+      field PP._formValue
+      >>= addSource _.value
+      >>= addSource _.category
+      >>= addSource _.time
+      >>= addSource _.date
+      >>= addSource _.datetime
+
+    label ←
+      field PP._formLabel
+      >>= addSource _.category
+      >>= isFilteredBy value
+
+    selected ←
+      field PP._formSelected
+      >>= addSource _.category
+      >>= addSource _.value
+      >>= addSource _.date
+      >>= addSource _.time
+      >>= addSource _.datetime
+      >>= isFilteredBy value
+      >>= isFilteredBy label
+      >>= isActiveWhen value
+
     pure unit
-  , VT.Geo VT.GeoMarker × pure unit
+
+  , VT.Select VT.Radio × do
+    value ←
+      field PP._formValue
+      >>= addSource _.value
+      >>= addSource _.category
+      >>= addSource _.time
+      >>= addSource _.date
+      >>= addSource _.datetime
+
+    label ←
+      field PP._formLabel
+      >>= addSource _.category
+      >>= isFilteredBy value
+
+    selected ←
+      field PP._formSelected
+      >>= addSource _.category
+      >>= addSource _.value
+      >>= addSource _.date
+      >>= addSource _.time
+      >>= addSource _.datetime
+      >>= isFilteredBy value
+      >>= isFilteredBy label
+      >>= isActiveWhen value
+
+    pure unit
+
+
+  , VT.Select VT.Checkbox × do
+    value ←
+      field PP._formValue
+      >>= addSource _.value
+      >>= addSource _.category
+      >>= addSource _.time
+      >>= addSource _.date
+      >>= addSource _.datetime
+
+    label ←
+      field PP._formLabel
+      >>= addSource _.category
+      >>= isFilteredBy value
+
+    selected ←
+      field PP._formSelected
+      >>= addSource _.category
+      >>= addSource _.value
+      >>= addSource _.date
+      >>= addSource _.time
+      >>= addSource _.datetime
+      >>= isFilteredBy value
+      >>= isFilteredBy label
+      >>= isActiveWhen value
+
+    pure unit
+
   , VT.Geo VT.GeoHeatmap × do
     lat ←
       field PP._lat

@@ -123,3 +123,12 @@ _dims = lens get set
 
   set ∷ SM.StrMap a → L.List a → SM.StrMap a
   set sm lst = flip SM.union sm $ SM.fromFoldable $ flip L.mapWithIndex lst \i v → show i × v
+
+_formValue ∷ T.Projection
+_formValue = T.packProjection $ at "formValue"
+
+_formLabel ∷ T.Projection
+_formLabel = T.packProjection $ at "formLabel"
+
+_formSelected ∷ T.Projection
+_formSelected = T.packProjection $ at "formSelected"

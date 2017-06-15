@@ -37,6 +37,7 @@ type ProjectionDefaults =
   , value ∷ String
   , select ∷ String
   , deselectable ∷ Boolean
+  , labelless ∷ Boolean
   }
 
 jcursorProjection ∷ JCursor → D.Dimension Void JCursor
@@ -61,6 +62,7 @@ statics =
       , value: "Choose dimension"
       , select: "Choose dimension"
       , deselectable: true
+      , labelless: false
       }
   , Pr._high ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -68,6 +70,7 @@ statics =
       , value: "Choose high"
       , select: "Choose measure for high position"
       , deselectable: false
+      , labelless: false
       }
   , Pr._low ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -75,6 +78,7 @@ statics =
       , value: "Choose low"
       , select: "Choose measure for low position"
       , deselectable: false
+      , labelless: false
       }
   , Pr._open ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -82,6 +86,7 @@ statics =
       , value: "Choose open"
       , select: "Choose measure for open position"
       , deselectable: false
+      , labelless: false
       }
   , Pr._close ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -89,6 +94,7 @@ statics =
       , value: "Choose close"
       , select: "Choose measure for close position"
       , deselectable: false
+      , labelless: false
       }
   , Pr._parallel ×
       { dimension: jcursorProjection
@@ -96,6 +102,7 @@ statics =
       , value: "Choose parallel"
       , select: "Choose parallel"
       , deselectable: true
+      , labelless: false
       }
   , Pr._value ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -103,6 +110,7 @@ statics =
       , value: "Choose measure"
       , select: "Choose measure"
       , deselectable: false
+      , labelless: false
       }
   , Pr._series ×
       { dimension: jcursorProjection
@@ -110,6 +118,7 @@ statics =
       , value: "Choose series"
       , select: "Choose series"
       , deselectable: true
+      , labelless: false
       }
   , Pr._category ×
       { dimension: jcursorProjection
@@ -117,6 +126,7 @@ statics =
       , value: "Choose category"
       , select: "Choose category"
       , deselectable: true
+      , labelless: false
       }
   , Pr._stack ×
       { dimension: jcursorProjection
@@ -124,6 +134,7 @@ statics =
       , value: "Choose stack"
       , select: "Choose stack"
       , deselectable: true
+      , labelless: false
       }
   , Pr._source ×
       { dimension: jcursorProjection
@@ -131,6 +142,7 @@ statics =
       , value: "Choose source"
       , select: "Choose source"
       , deselectable: true
+      , labelless: false
       }
   , Pr._target ×
       { dimension: jcursorProjection
@@ -138,6 +150,7 @@ statics =
       , value: "Choose target"
       , select: "Choose target"
       , deselectable: true
+      , labelless: false
       }
   , Pr._abscissa ×
       { dimension: jcursorProjection
@@ -145,6 +158,7 @@ statics =
       , value: "Choose x-axis"
       , select: "Choose x-axis"
       , deselectable: true
+      , labelless: false
       }
   , Pr._ordinate ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -152,6 +166,7 @@ statics =
       , value: "Choose y-axis"
       , select: "Choose y-axis"
       , deselectable: false
+      , labelless: false
       }
   , Pr._secondValue ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -159,6 +174,7 @@ statics =
       , value: "Choose measure"
       , select: "Choose measure"
       , deselectable: false
+      , labelless: false
       }
   , Pr._donut ×
       { dimension: jcursorProjection
@@ -166,6 +182,7 @@ statics =
       , value: "Choose donut"
       , select: "Choose donut"
       , deselectable: true
+      , labelless: false
       }
   , Pr._multiple ×
       { dimension: jcursorProjection
@@ -173,6 +190,7 @@ statics =
       , value: "Choose multiple"
       , select: "Choose multiple"
       , deselectable: true
+      , labelless: false
       }
   , Pr._size ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -180,6 +198,7 @@ statics =
       , value: "Choose size"
       , select: "Choose size"
       , deselectable: false
+      , labelless: false
       }
   , Pr._color ×
       { dimension: jcursorProjection
@@ -187,6 +206,7 @@ statics =
       , value: "Choose color"
       , select: "Choose color"
       , deselectable: true
+      , labelless: false
       }
   , Pr._scatterOrdinate ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -194,6 +214,7 @@ statics =
       , value: "Choose y-axis"
       , select: "Choose y-axis"
       , deselectable: true
+      , labelless: false
       }
   , Pr._scatterSize ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -201,6 +222,7 @@ statics =
       , value: "Choose size"
       , select: "Choose size"
       , deselectable: true
+      , labelless: false
       }
   , Pr._lat ×
       { dimension: jcursorProjection
@@ -208,6 +230,7 @@ statics =
       , value: "Choose latitude"
       , select: "Choose latitude"
       , deselectable: true
+      , labelless: false
       }
   , Pr._lng ×
       { dimension: jcursorProjection
@@ -215,6 +238,7 @@ statics =
       , value: "Choose longitude"
       , select: "Choose longitude"
       , deselectable: true
+      , labelless: false
       }
   , Pr._intensity ×
       { dimension: D.projectionWithAggregation $ Just Ag.Sum
@@ -222,6 +246,31 @@ statics =
       , value: "Choose intensity"
       , select: "Choose intensity"
       , deselectable: false
+      , labelless: false
+      }
+  , Pr._formValue ×
+      { dimension: jcursorProjection
+      , label: "Form input value"
+      , value: "Choose form input"
+      , select: "Choose form input"
+      , deselectable: false
+      , labelless: false
+      }
+  , Pr._formLabel ×
+      { dimension: jcursorProjection
+      , label: "Form label"
+      , value: "Choose form label"
+      , select: "Choose form label"
+      , deselectable: true
+      , labelless: true
+      }
+  , Pr._formSelected ×
+      { dimension: jcursorProjection
+      , label: "Selected values"
+      , value: "Choose selected values"
+      , select: "Choose selected values"
+      , deselectable: true
+      , labelless: true
       }
   ]
 
@@ -232,6 +281,7 @@ dynamicMeasure prj =
   , value: "Choose measure"
   , select: "Choose measure"
   , deselectable: false
+  , labelless: false
   }
   where
   offset = map (add 1) ∘ Int.fromString =<< T.idReflection ^. T.unpackProjection prj
@@ -240,4 +290,7 @@ dynamicMeasure prj =
 isFlat ∷ T.Projection → Boolean
 isFlat prj = case T.idReflection ^. T.unpackProjection prj of
   Just "flatValue" → true
+  Just "formValue" → true
+  Just "formLabel" → true
+  Just "formSelected" → true
   _ → false
