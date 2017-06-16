@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Quasar.QuasarF (QError)
 import SlamData.GlobalError as GE
-import Utils (hush)
+import Utils (throwVariantError, hush)
 
 data ChartError
   = ChartMissingResourceInputError
@@ -38,3 +38,6 @@ chartToGlobalError = case _ of
   ChartCountQuasarError qErr → hush (GE.fromQError qErr)
   ChartSampleQuasarError qErr → hush (GE.fromQError qErr)
   _ → Nothing
+
+throwChartError ∷ forall v m a. MonadThrow (Variant (chart ∷ ChartError | v)) m ⇒ ChartError → m a
+throwChartError = throwVariantError (SProxy :: SProxy "chart")

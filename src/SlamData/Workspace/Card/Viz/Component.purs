@@ -13,9 +13,9 @@ import Halogen.HTML as HH
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Setups.Viz.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.Viz.Component.Query as Q
-import SlamData.Workspace.Card.Setups.Viz.Component.State as ST
+import SlamData.Workspace.Card.Viz.Component.ChildSlot as CS
+import SlamData.Workspace.Card.Viz.Component.Query as Q
+import SlamData.Workspace.Card.Viz.Component.State as ST
 import SlamData.Workspace.Card.Model as M
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
@@ -42,7 +42,7 @@ cardEval = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    pure $ k $ M.SetupViz Nothing
+    pure $ k $ M.Viz Nothing
   CC.Load m next →
     pure next
   CC.ReceiveInput _ _ next →

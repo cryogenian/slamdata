@@ -18,6 +18,7 @@ module SlamData.Workspace.Card.Setups.FormInput.Labeled.Error where
 
 import SlamData.Prelude
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
+import Utils (throwVariantError)
 
 data FormInputLabeledError
   = FILabeledNoAxisError FormInputType
@@ -52,3 +53,6 @@ instance showFormInputLabeledError ∷ Show FormInputLabeledError where
       <> " })"
     FILabeledNonUniqueLabelError fit label →
       "(FILabeledNonUniqueLabelError " <> show fit <> " " <> show label <> ")"
+
+throwFormInputLabeledError ∷ forall v m a. MonadThrow (Variant (formInputLabeled ∷ FormInputLabeledError | v)) m ⇒ FormInputLabeledError → m a
+throwFormInputLabeledError = throwVariantError (SProxy :: SProxy "formInputLabeled")

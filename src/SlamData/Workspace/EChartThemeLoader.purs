@@ -17,19 +17,21 @@ limitations under the License.
 module SlamData.Workspace.EChartThemeLoader (load) where
 
 import SlamData.Prelude
-import DOM.HTML.Location as Location
-import DOM.HTML.Window as Window
-import Data.URI as URI
-import Network.HTTP.Affjax as Ajax
+
+import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Aff (Aff)
 import DOM (DOM)
 import DOM.HTML (window)
+import DOM.HTML.Location as Location
+import DOM.HTML.Window as Window
+import Data.Argonaut (toObject)
 import Data.Foldable (findMap)
 import Data.Foreign (Foreign, toForeign, readString, tagOf)
-import Data.Argonaut (toObject)
-import ECharts.Theme (Theme(..), parseBuiltInTheme, builtInToTheme)
+import Data.URI as URI
+import ECharts.Theme (Theme)
+import ECharts.Theme as T
+import Network.HTTP.Affjax as Ajax
 import Utils (hush)
 
 load ∷ ∀ e. Aff (dom ∷ DOM, ajax ∷ Ajax.AJAX|e) (Maybe Theme)
@@ -51,7 +53,7 @@ foreign import windowEchartTheme ∷ ∀ e. Eff (dom ∷ DOM|e) Foreign
 fetchThemeFromURL ∷  ∀ e. Ajax.URL → Aff (ajax ∷ Ajax.AJAX | e) (Maybe Theme)
 fetchThemeFromURL uri = do
   res ← _.response <$> Ajax.get uri
-  pure $ (FromObject ∘ toForeign) <$> (toObject res)
+  pure $ (Right ∘ toForeign) <$> (toObject res)
 
 readThemeOrURIFromLocation ∷ String → Maybe (Either Theme Ajax.URL)
 readThemeOrURIFromLocation location = case asURI location of
@@ -63,14 +65,14 @@ readThemeOrURIFromLocation location = case asURI location of
   _ → empty
 
 isECharThemeQueryParam ∷ Tuple String (Maybe String) → Maybe String
-isECharThemeQueryParam (Tuple "echart_theme" value) = value
+isECharThemeQueryParam (Tuple "echartTheme" value) = value
 isECharThemeQueryParam _ = Nothing
 
 readThemeOrURLFromForeign ∷ Foreign → Maybe (Either Theme Ajax.URL)
 readThemeOrURLFromForeign a = (builtInTheme <|> objectTheme <#> Left) <|> (themeURL <#> Right)
   where
     builtInTheme = asString a >>= asBuiltInTheme
-    objectTheme = asObject a <#> FromObject
+    objectTheme = asObject a <#> Right
     themeURL = asString a >>= asURL
 
 asURI ∷ String → Maybe URI.URI
@@ -80,7 +82,14 @@ asURL ∷ String → Maybe Ajax.URL
 asURL str = URI.printURI <$> asURI str
 
 asBuiltInTheme ∷ String → Maybe Theme
-asBuiltInTheme str = hush $ builtInToTheme <$> parseBuiltInTheme str
+asBuiltInTheme = case _ of
+  "infographic" → Just T.infographic
+  "macarons" → Just T.macarons
+  "roma" → Just T.roma
+  "shine" → Just T.shine
+  "vintage" → Just T.vintage
+  "dark" → Just T.dark
+  _ -> Nothing
 
 asObject ∷ Foreign → Maybe Foreign
 asObject o = if tagOf o == "Object" then pure o else empty

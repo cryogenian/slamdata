@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.FormInput.Static.Error where
 
 import SlamData.Prelude
+import Utils (throwVariantError)
 
 data FormInputStaticError
   = FIStaticNoAxis
@@ -26,3 +27,6 @@ instance showFormInputStaticError ∷ Show FormInputStaticError where
   show = case _ of
     FIStaticNoAxis → "FIStaticNoAxis"
     FIStaticMissingAxis axis → "(FIStaticMissingAxis " <> show axis <> ")"
+
+throwFormInputStaticError ∷ forall v m a. MonadThrow (Variant (formInputStatic ∷ FormInputStaticError | v)) m ⇒ FormInputStaticError → m a
+throwFormInputStaticError = throwVariantError (SProxy :: SProxy "formInputStatic")

@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Quasar.QuasarF (QError)
 import SlamData.GlobalError as GE
-import Utils (hush)
+import Utils (throwVariantError, hush)
 
 data TableError
   = TableMissingResourceInputError
@@ -38,3 +38,6 @@ tableToGlobalError = case _ of
   TableCountQuasarError qErr → hush (GE.fromQError qErr)
   TableSampleQuasarError qErr → hush (GE.fromQError qErr)
   _ → Nothing
+
+throwTableError ∷ forall v m a. MonadThrow (Variant (table ∷ TableError | v)) m ⇒ TableError → m a
+throwTableError = throwVariantError (SProxy :: SProxy "table")

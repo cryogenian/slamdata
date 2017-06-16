@@ -55,7 +55,7 @@ import SqlSquared as Sql
 
 import Utils.Foldable (enumeratedFor_)
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval =
   BCE.chartSetupEval
     (\a b → setDistinct $ SCC.buildBasicSql buildProjections buildGroupBy a b) buildPort

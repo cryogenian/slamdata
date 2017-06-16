@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
-import Utils (hush)
+import Utils (throwVariantError, hush)
 import Utils.Path (FilePath)
 
 data CacheError
@@ -40,3 +40,6 @@ cacheToGlobalError ∷ CacheError → Maybe GE.GlobalError
 cacheToGlobalError = case _ of
   CacheQuasarError qErr → hush (GE.fromQError qErr)
   _ → Nothing
+
+throwCacheError ∷ forall v m a. MonadThrow (Variant (cache ∷ CacheError | v)) m ⇒ CacheError → m a
+throwCacheError = throwVariantError (SProxy :: SProxy "cache")

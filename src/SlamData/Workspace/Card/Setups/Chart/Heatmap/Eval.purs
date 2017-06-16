@@ -55,7 +55,7 @@ import SqlSquared as Sql
 
 import Utils.Foldable (enumeratedFor_)
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
 
 type HeatmapSeries =

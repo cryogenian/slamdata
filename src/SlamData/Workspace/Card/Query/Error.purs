@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
-import Utils (hush)
+import Utils (throwVariantError, hush)
 
 data QueryError
   = QueryCompileError QError
@@ -36,3 +36,6 @@ queryToGlobalError ∷ QueryError → Maybe GE.GlobalError
 queryToGlobalError = case _ of
   QueryCompileError qErr → hush (GE.fromQError qErr)
   QueryRetrieveResultError qErr → hush (GE.fromQError qErr)
+
+throwQueryError ∷ forall v m a. MonadThrow (Variant (query ∷ QueryError | v)) m ⇒ QueryError → m a
+throwQueryError = throwVariantError (SProxy :: SProxy "query")

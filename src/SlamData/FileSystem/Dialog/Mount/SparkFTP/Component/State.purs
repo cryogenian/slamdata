@@ -14,16 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State
+module SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State
   ( State
-  , Field(..)
   , initialState
   , _sparkHost
-  , _hdfsHost
+  , _ftpHost
   , updatePropAt
   , updateAvailableProps
   , fromConfig
   , toConfig
+  , Field (..)
   , module MCS
   ) where
 
@@ -36,17 +36,20 @@ import Data.StrMap as SM
 import Data.URI.Host (printHost) as URI
 import Data.URI.Path (printPath) as URI
 import Data.Validation.Semigroup as V
-import Quasar.Mount.SparkHDFS (Config)
+import Global as Global
+import Quasar.Mount.SparkFTP (Config, Credentials(..))
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
 
 data InputType = StringInput | NumberInput | IntInput
 
-data Field = SparkHost | HdfsHost | Path
+data Field = SparkHost | FTPHost | Path
 
 type State =
   { sparkHost ∷ MCS.MountHost
-  , hdfsHost ∷ MCS.MountHost
+  , ftpHost ∷ MCS.MountHost
   , path ∷ String
+  , user ∷ String
+  , password ∷ String
   , props ∷ Array MCS.MountProp
   , availableProps ∷ Array String
   }
@@ -76,8 +79,10 @@ propNames =
 initialState ∷ State
 initialState =
   { sparkHost: MCS.initialTuple
-  , hdfsHost: MCS.initialTuple
+  , ftpHost: MCS.initialTuple
   , path: ""
+  , user: ""
+  , password: ""
   , props: mempty
   , availableProps: propNames
   }
@@ -99,39 +104,43 @@ updatePropAt ix value st = updateAvailableProps $ st { props = props' }
 _sparkHost ∷ ∀ r a. Lens' { sparkHost ∷ a | r } a
 _sparkHost = lens _.sparkHost (_ { sparkHost = _ })
 
-_hdfsHost ∷ ∀ r a. Lens' { hdfsHost ∷ a | r } a
-_hdfsHost = lens _.hdfsHost (_ { hdfsHost = _ })
+_ftpHost ∷ ∀ r a. Lens' { ftpHost ∷ a | r } a
+_ftpHost = lens _.ftpHost (_ { ftpHost = _ })
 
 fromConfig ∷ Config → State
-fromConfig { sparkHost, hdfsHost, path, props } =
+fromConfig { sparkHost, ftpHost, path, credentials, props } =
   updateAvailableProps
     { sparkHost: bimap URI.printHost (maybe "" show) sparkHost
-    , hdfsHost: bimap URI.printHost (maybe "" show) hdfsHost
+    , ftpHost: bimap URI.printHost (maybe "" show) ftpHost
     , path: URI.printPath (Left path)
     , props: map (fromMaybe "") <$> SM.toUnfoldable props
     , availableProps: propNames
+    , user: Global.decodeURIComponent <<< _.user <<< unwrap $ credentials
+    , password: Global.decodeURIComponent <<< _.password <<< unwrap $ credentials
     }
 
 toConfig ∷ State → V.V (MCS.ValidationError Field) Config
-toConfig { sparkHost, hdfsHost, path, props } =
-  { sparkHost: _, hdfsHost: _, path: _, props: _ }
+toConfig { sparkHost, ftpHost, path, user, password, props } =
+  { sparkHost: _, ftpHost: _, path: _, credentials: _, props: _ }
     <$> sparkHost'
-    <*> hdfsHost'
+    <*> ftpHost'
     <*> path'
+    <*> credentials'
     <*> props'
   where
     sparkHost' = either (MCS.invalid SparkHost) pure do
       when (MCS.isEmpty (fst sparkHost)) $ Left "Please enter a Spark host"
       lmap ("Spark host: " <> _) $ MCS.parseHost sparkHost
-    hdfsHost' = either (MCS.invalid HdfsHost) pure do
-      when (MCS.isEmpty (fst hdfsHost)) $ Left "Please enter an HDFS host"
-      lmap ("HDFS host: " <> _) $ MCS.parseHost hdfsHost
+    ftpHost' = either (MCS.invalid FTPHost) pure do
+      when (MCS.isEmpty (fst ftpHost)) $ Left "Please enter an FTP host"
+      lmap ("FTP host: " <> _) $ MCS.parseHost ftpHost
     path' = either (MCS.invalid Path) pure do
       case MCS.nonEmptyString path of
         Nothing → pure P.rootDir
         Just p → do
           p' ← maybe (Left "Could not parse path") Right (MCS.parsePath' p)
           either pure (const (Left "Path must be a directory")) p'
+    credentials' = pure $ fromMaybe (Credentials { user: "anonymous", password: "a" }) (MCS.parseCredentials { user, password })
     props' = pure $ SM.fromFoldable $ Array.catMaybes $
       props <#> \(Tuple key value) →
         if key ≡ "" ∨ value ≡ "" then Nothing else Just (Tuple key (Just value))

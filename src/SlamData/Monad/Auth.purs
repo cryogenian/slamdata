@@ -16,36 +16,54 @@ limitations under the License.
 
 module SlamData.Monad.Auth where
 
-import Control.Monad.Aff (Aff)
+import SlamData.Prelude
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
 import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
-import SlamData.AuthenticationMode (AuthenticationMode, AllowedAuthenticationModes)
 import SlamData.AuthenticationMode as AuthenticationMode
-import SlamData.Effects (SlamDataEffects)
-import SlamData.Prelude
-import SlamData.Quasar.Aff (runQuasarF)
-import SlamData.Quasar.Auth.Authentication as Auth
-import SlamData.Quasar.Error (QError)
-import SlamData.Quasar.Error as QError
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LSK
+import SlamData.Quasar.Auth.Authentication as Auth
+import SlamData.Quasar.Error as QError
+import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.AVar (AVar)
+import Quasar.Error (QError(..), UnauthorizedDetails(..))
+import SlamData.AuthenticationMode (AuthenticationMode, AllowedAuthenticationModes)
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Aff (runQuasarF)
 import Utils (passover, singletonValue)
 
 getIdTokenSilently ∷ AllowedAuthenticationModes → Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
-getIdTokenSilently interactionlessSignIn idTokenRequestBus = do
+getIdTokenSilently interactionlessSignIn idTokenRequestBus =
+  -- Currently singleton provider from Quasar configuration if none chosen.
+  -- Eventually this will use all providers in Quasar configuration
   case interactionlessSignIn of
     AuthenticationMode.ChosenProviderAndAllProviders →
-      -- Currently singleton provider from Quasar configuration if none chosen.
-      -- Eventually this will use all providers in Quasar configuration
       either (const $ getWithSingletonProviderFromQuasar) (pure ∘ Right)
         =<< getWithProviderFromLocalStorage
     AuthenticationMode.ChosenProviderOnly →
-      getWithProviderFromLocalStorage
+      either
+        (const $ signedOutBefore >>= if _ then pure unauthorized else getWithSingletonProviderFromQuasar)
+        (pure ∘ Right)
+        =<< getWithProviderFromLocalStorage
   where
+
+  unauthorized ∷ Either QError Auth.EIdToken
+  unauthorized =
+    Left $ Unauthorized $ Just $ UnauthorizedDetails "Signed out"
+
+  signedOutBefore ∷ Aff SlamDataEffects Boolean
+  signedOutBefore =
+    isRight <$> LS.retrieve LSK.signedOutBefore
+
+  authModeSignedOutBefore ∷ AuthenticationMode.AuthenticationMode → Aff SlamDataEffects Boolean
+  authModeSignedOutBefore =
+    map isRight
+      ∘ LS.retrieve
+      ∘ LSK.nonceLocalStorageKey
+      ∘ AuthenticationMode.toKeySuffix
 
   getWithProviderFromLocalStorage ∷ Aff SlamDataEffects (Either QError Auth.EIdToken)
   getWithProviderFromLocalStorage =

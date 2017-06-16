@@ -16,7 +16,10 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State
   ( State
+  , Field(..)
   , initialState
+  , _bucketName
+  , _docTypeKey
   , fromConfig
   , toConfig
   , module MCS
@@ -24,43 +27,77 @@ module SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State
 
 import SlamData.Prelude
 
+import Data.Lens (Lens', lens)
+import Data.Number as Num
+import Data.Time.Duration (Seconds(..))
 import Data.URI.Host as URI
-
+import Data.Validation.Semigroup as V
 import Global as Global
-
 import Quasar.Mount.Couchbase (Config)
-
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
+import Utils (showPrettyNumber)
+
+data Field = Host | BucketName | Password | DocType | QueryTimeout
 
 type State =
   { host ∷ MCS.MountHost
-  , user ∷ String
+  , bucketName ∷ String
   , password ∷ String
+  , docTypeKey ∷ String
+  , queryTimeout ∷ Maybe String
   }
 
 initialState ∷ State
 initialState =
   { host: MCS.initialTuple
-  , user: ""
+  , bucketName: ""
   , password: ""
+  , docTypeKey: "type"
+  , queryTimeout: Nothing
   }
+
+_bucketName ∷ Lens' State String
+_bucketName = lens _.bucketName (_{bucketName = _})
+
+_docTypeKey ∷ Lens' State String
+_docTypeKey = lens _.docTypeKey (_{docTypeKey = _})
 
 fromConfig ∷ Config → State
-fromConfig { host, user, password } =
+fromConfig { host, bucketName, password, docTypeKey, queryTimeout } =
   { host: bimap URI.printHost (maybe "" show) host
-  , user: maybe "" Global.decodeURIComponent user
-  , password: maybe "" Global.decodeURIComponent password
+  , bucketName
+  , password
+  , docTypeKey
+  , queryTimeout: showPrettyNumber <<< unwrap <$> queryTimeout
   }
 
-toConfig ∷ State → Either String Config
-toConfig { host, user, password } = do
-  when (MCS.isEmpty (fst host)) $ Left "Please enter host"
-  host' ← lmap ("Host: " <> _) $ MCS.parseHost host
-  when (not MCS.isEmpty user || not MCS.isEmpty password) do
-    when (MCS.isEmpty user) $ Left "Please enter user name"
-    when (MCS.isEmpty password) $ Left "Please enter password"
-  pure
-    { host: host'
-    , user: Global.encodeURIComponent <$> MCS.nonEmptyString user
-    , password: Global.encodeURIComponent <$> MCS.nonEmptyString password
-    }
+toConfig ∷ State → V.V (MCS.ValidationError Field) Config
+toConfig st = do
+  { host: _, bucketName: _, password: _, docTypeKey: _, queryTimeout: _ }
+    <$> host
+    <*> bucketName
+    <*> password
+    <*> docTypeKey
+    <*> queryTimeout
+  where
+
+    host = either (MCS.invalid Host) pure do
+      when (MCS.isEmpty (fst st.host)) $ Left "Please enter a host"
+      lmap ("Host: " <> _) $ MCS.parseHost st.host
+
+    bucketName =
+      maybe (MCS.invalid BucketName "Please enter a bucket name") pure $
+        MCS.nonEmptyString st.bucketName
+
+    docTypeKey =
+      maybe (MCS.invalid DocType "Please enter a document type") pure $
+        MCS.nonEmptyString st.docTypeKey
+
+    password = pure (Global.encodeURIComponent st.password)
+
+    queryTimeout =
+      either (MCS.invalid QueryTimeout) pure $
+        for st.queryTimeout \s → do
+          n ← maybe (Left "Please enter a valid timeout in seconds") Right $ Num.fromString s
+          when (n < 0.0) $ Left "Please enter a timeout value greater than 0 seconds"
+          pure $ Seconds n

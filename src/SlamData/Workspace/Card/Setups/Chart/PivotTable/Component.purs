@@ -253,6 +253,7 @@ render st =
               , onLabelClick: const Nothing
               , disabled: false
               , dismissable: true
+              , labelless: false
               }
           ]
       ]

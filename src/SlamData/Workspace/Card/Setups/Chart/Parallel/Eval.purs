@@ -80,7 +80,7 @@ decodeItem = decodeJson >=> \obj → do
 
   pure { dims, series }
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildParallel
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)

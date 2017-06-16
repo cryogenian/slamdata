@@ -53,7 +53,7 @@ import SqlSquared as Sql
 
 import Unsafe.Coerce (unsafeCoerce)
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildGeoHeatmap
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)

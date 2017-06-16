@@ -8,14 +8,15 @@ import SlamData.Prelude
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
 
-import Data.Array as A
 import Data.StrMap as SM
 import Data.Map as M
+import Data.List as L
 
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Viz.Model (Model)
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Setups.Viz.Error as VE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Package.Types as T
@@ -25,9 +26,9 @@ import SlamData.Workspace.Card.Setups.Package.Projection as PP
 import Utils (nothing)
 
 eval
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (qerror ∷ CE.QError, setupViz ∷ VE.Error | v)) m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
@@ -37,112 +38,75 @@ eval
 eval m resource = do
   records × axes ← BCE.analyze resource =<< get
   put $ Just $ CEM.Analysis { resource, records, axes }
-  for_ modelErrors $ CE.throw
+  unless (L.null missingAxes) $ VE.throw $ VE.MissingAxesError missingAxes
 
   pure $ Port.portOut Port.Viz
   where
   dimMap ∷ T.DimensionMap
   dimMap = fromMaybe T.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  guardPrj ∷ T.Projection → Maybe Unit
-  guardPrj = nothing ∘ T.getProjection dimMap
+  guardPrj ∷ T.Projection → L.List T.Projection
+  guardPrj prj =
+    if T.hasProjection dimMap prj then L.Nil else L.singleton prj
 
-  composeErrors = A.catMaybes ⋙ \x → if A.null x then Nothing else Just $ A.intercalate ", " x
+  catValue ∷ L.List T.Projection
+  catValue = foldMap guardPrj [ PP._category, PP._value ]
 
-  modelErrors ∷ Maybe String
-  modelErrors = case m.vizType of
+  dimValue ∷ L.List T.Projection
+  dimValue = foldMap guardPrj [ PP._dimension, PP._value ]
+
+  sourceTarget ∷ L.List T.Projection
+  sourceTarget = foldMap guardPrj [ PP._source, PP._target ]
+
+  abscissaOrdinate ∷ L.List T.Projection
+  abscissaOrdinate = foldMap guardPrj [ PP._abscissa, PP._ordinate ]
+
+  latLng ∷ L.List T.Projection
+  latLng = foldMap guardPrj [ PP._lat, PP._lng ]
+
+  missingAxes ∷ L.List T.Projection
+  missingAxes = case m.vizType of
     VT.Metric →
-      guardPrj PP._value $> "Value axis is not selected"
+      guardPrj PP._value
     VT.PivotTable →
-      Nothing
+      L.Nil
     VT.Input _ →
-      guardPrj PP._formValue $> "Value axis is not selected"
+      guardPrj PP._formValue
     VT.Select _ →
-      guardPrj PP._formValue $> "Value axis is not selected"
+      guardPrj PP._formValue
     VT.Geo gt → case gt of
       VT.GeoHeatmap →
-        composeErrors
-        [ guardPrj PP._lat $> "Latitude is not selected"
-        , guardPrj PP._lng $> "Longitude is not selected"
-        , guardPrj PP._intensity $> "Intensity is not selected"
-        ]
+        latLng <> guardPrj PP._intensity
       VT.GeoMarker →
-        composeErrors
-        [ guardPrj PP._lat $> "Latitude is not selected"
-        , guardPrj PP._lng $> "Longitude is not selected"
-        , guardPrj PP._intensity $> "Intensity is not selected"
-        ]
+        latLng
     VT.Chart ct → case ct of
       VT.Pie →
-        composeErrors
-        [ guardPrj PP._category $> "Category axis is not selected"
-        , guardPrj PP._value $> "Measure axis is not selected"
-        ]
+        catValue
       VT.Line →
-        composeErrors
-        [ guardPrj PP._dimension $> "Dimension axis is not selected"
-        , guardPrj PP._value $> "Measure axis is not selected"
-        ]
+        dimValue
       VT.Bar →
-        composeErrors
-        [ guardPrj PP._category $> "Category axis is not selected"
-        , guardPrj PP._value $> "Measure axis is not selected"
-        ]
+        catValue
       VT.Area →
-        composeErrors
-        [ guardPrj PP._dimension $> "Dimension axis is not selected"
-        , guardPrj PP._value $> "Measure axis is not selected"
-        ]
+        dimValue
       VT.Scatter →
-        composeErrors
-        [ guardPrj PP._abscissa $> "X-Axis is not selected"
-        , guardPrj PP._ordinate $> "Y-Axis is not selected"
-        ]
+        abscissaOrdinate
       VT.Radar →
-        composeErrors
-        [ guardPrj PP._category $> "Category axis is not selected"
-        , guardPrj PP._value $> "Measure axis is not selected"
-        ]
+        catValue
       VT.Funnel →
-        composeErrors
-        [ guardPrj PP._category $> "Category axis is not selected"
-        , guardPrj PP._value $> "Measure axis is not selected"
-        ]
+        catValue
       VT.Graph →
-        composeErrors
-        [ guardPrj PP._source $> "Source axis is not selected"
-        , guardPrj PP._target $> "Target axis is not selected"
-        ]
+        sourceTarget
       VT.Heatmap →
-        composeErrors
-        [ guardPrj PP._abscissa $> "X-Axis is not selected"
-        , guardPrj PP._ordinate $> "Y-Axis is not selected"
-        , guardPrj PP._value $> "Measure axis is not selected"
-        ]
+        guardPrj PP._value <> abscissaOrdinate
       VT.Sankey →
-        composeErrors
-        [ guardPrj PP._abscissa $> "X-Axis is not selected"
-        , guardPrj PP._ordinate $> "Y-Axis is not selected"
-        ]
+        sourceTarget
       VT.Gauge →
-        guardPrj PP._value $> "Value axis is not selected"
+        guardPrj PP._value
       VT.Boxplot →
-        composeErrors
-        [ guardPrj PP._dimension $> "Dimension axis is not selected"
-        , guardPrj PP._value $> "Measure axis is not selected"
-        ]
+        dimValue
       VT.PunchCard →
-        composeErrors
-        [ guardPrj PP._abscissa $> "X-Axis is not selected"
-        , guardPrj PP._ordinate $> "Y-Axis is not selected"
-        ]
+        abscissaOrdinate
       VT.Candlestick →
-        composeErrors
-        [ guardPrj PP._dimension $> "Dimension axis is not selected"
-        , guardPrj PP._open $> "Open position axis is not selected"
-        , guardPrj PP._close $> "Close position axis is not selected"
-        , guardPrj PP._high $> "High position axis is not selected"
-        , guardPrj PP._low $> "Low position axis is not selected"
-        ]
+        foldMap guardPrj [ PP._dimension, PP._open, PP._close, PP._high, PP._low ]
       VT.Parallel →
-        guardPrj (PP._dimIx 1) $> "At least two axes must be selected for parallels chart"
+        guardPrj $ PP._dimIx 1

@@ -43,7 +43,8 @@ import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
-import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
+import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component as SparkFTP
+import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component as SparkLocal
 import SlamData.FileSystem.Resource as Resource
 import SlamData.GlobalError as GE
@@ -94,8 +95,10 @@ render state@{ name, new, parent } =
       HH.slot' CS.cpCouchbase unit (Couchbase.comp initialState) unit (HE.input_ Validate)
     MCS.MarkLogic initialState →
       HH.slot' CS.cpMarkLogic unit (MarkLogic.comp initialState) unit (HE.input_ Validate)
+    MCS.SparkFTP initialState →
+      HH.slot' CS.cpSparkFTP unit (SparkFTP.comp initialState) unit (HE.input_ Validate)
     MCS.SparkHDFS initialState →
-      HH.slot' CS.cpSpark unit (Spark.comp initialState) unit (HE.input_ Validate)
+      HH.slot' CS.cpSparkHDFS unit (SparkHDFS.comp initialState) unit (HE.input_ Validate)
     MCS.SparkLocal initialState ->
       HH.slot' CS.cpSparkLocal unit (SparkLocal.comp initialState) unit (HE.input_ Validate)
 
@@ -263,6 +266,7 @@ querySettings q = (map MCS.scheme <$> H.gets _.settings) >>= \s →
     Just MS.SQL2 → H.query' CS.cpSQL unit q
     Just MS.Couchbase → H.query' CS.cpCouchbase unit q
     Just MS.MarkLogic → H.query' CS.cpMarkLogic unit q
-    Just MS.SparkHDFS → H.query' CS.cpSpark unit q
+    Just MS.SparkFTP → H.query' CS.cpSparkFTP unit q
+    Just MS.SparkHDFS → H.query' CS.cpSparkHDFS unit q
     Just MS.SparkLocal → H.query' CS.cpSparkLocal unit q
     Nothing → pure Nothing

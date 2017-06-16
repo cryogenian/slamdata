@@ -50,7 +50,7 @@ import SlamData.Workspace.Card.Port as Port
 
 import SqlSquared as Sql
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
 
 type FunnelSeries =

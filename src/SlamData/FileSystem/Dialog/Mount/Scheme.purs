@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ data Scheme
   | Couchbase
   | MarkLogic
   | SparkHDFS
+  | SparkFTP
   | SparkLocal
 
 derive instance eqScheme ∷ Eq Scheme
@@ -36,6 +37,7 @@ schemeToString SQL2 = "SQL²"
 schemeToString Couchbase = "Couchbase"
 schemeToString MarkLogic = "MarkLogic"
 schemeToString SparkHDFS = "HDFS on Spark"
+schemeToString SparkFTP = "FTP on Spark"
 schemeToString SparkLocal = "Local on Spark"
 
 schemeFromString :: String -> Maybe Scheme
@@ -44,6 +46,7 @@ schemeFromString "SQL²" = Just SQL2
 schemeFromString "Couchbase" = Just Couchbase
 schemeFromString "MarkLogic" = Just MarkLogic
 schemeFromString "HDFS on Spark" = Just SparkHDFS
+schemeFromString "FTP on Spark" = Just SparkFTP
 schemeFromString "Local on Spark" = Just SparkLocal
 schemeFromString _ = Nothing
 
@@ -54,5 +57,6 @@ schemes =
   , Couchbase
   , MarkLogic
   , SparkHDFS
+  , SparkFTP
   , SparkLocal
   ]

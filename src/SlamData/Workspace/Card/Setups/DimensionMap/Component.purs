@@ -103,6 +103,7 @@ renderButton pack state fld =
     , onLabelClick: const Nothing
     , disabled: ST.isDisabled fld pack state
     , dismissable: isJust $ ST.getSelected fld state
+    , labelless: false
     } ]
 
 eval ∷ ST.Package → Q.Query ~> DSL
@@ -128,7 +129,7 @@ eval package = case _ of
       H.modify $ ST.clear fld
       H.raise $ Q.Update Nothing
       pure next
-    Q.Changed str next → do
+    Q.LabelChanged str next → do
       H.modify $ ST.setLabel fld str
       H.raise $ Q.Update Nothing
       pure next
