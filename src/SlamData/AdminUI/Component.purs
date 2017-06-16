@@ -26,6 +26,7 @@ import SlamData.AdminUI.Group as Group
 import SlamData.AdminUI.Types as AT
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Component as Miller
+import Utils.DOM as DOM
 
 component ∷ H.Component HH.HTML AT.Query Unit Void Slam
 component =
@@ -98,8 +99,8 @@ tabBody state =
           (Group.renderGroupsForm state.formState.groups)
       _ →
         [HH.text "Not implemented"]
-      -- Authentication → ?x
-      -- Users → ?x
+      -- AT.Authentication → ?x
+      -- AT.Users → ?x
 
 -- TODO(Christoph): Talk to Kyle
 themes ∷ Array String
@@ -134,12 +135,11 @@ renderMySettingsForm (AT.MySettingsState state) =
                 , HP.value state.isolateArtifactsDirectory
                 ]
             , HH.p_
-                [ HH.text $
-                  fold
-                  [ "If you choose this option, while you can still virtually locate decks anywhere inside the file system, "
-                  , "they will always be physically stored in the above location. This allows you to keep production systems "
-                  , "free of SlamData artifacts, while still centrally locating and backing them up."
-                  ]
+                [ HH.text $ fold
+                    [ "If you choose this option, while you can still virtually locate decks anywhere inside the file system, "
+                    , "they will always be physically stored in the above location. This allows you to keep production systems "
+                    , "free of SlamData artifacts, while still centrally locating and backing them up."
+                    ]
                 ]
             ]
         ]
@@ -327,5 +327,7 @@ eval = case _ of
         res ← Group.load req
         _ ← H.query' AT.cpGroups unit (H.action (Miller.FulfilLoadRequest (path × res)))
         pure next
-  AT.HandleColumnOrItem columnMsg next → do
-    pure next
+  AT.HandleColumnOrItem columnMsg next → case columnMsg of
+    AT.AddNewGroup { path, event, name } → do
+      H.liftEff (DOM.preventDefault event)
+      pure next

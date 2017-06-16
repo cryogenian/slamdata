@@ -23,6 +23,7 @@ import Halogen.Component.ChildPath as CP
 import Quasar.Advanced.Types as QA
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Component as Miller
+import Utils.DOM as DOM
 
 type MillerQuery = Miller.Query GroupItem GroupIndex GroupMessage
 
@@ -161,4 +162,10 @@ groupItemName = case _ of
 
 type GroupIndex = (Pathy.AbsFile Pathy.Sandboxed ⊹ Tuple QA.UserId (Pathy.AbsFile Pathy.Sandboxed)) ⊹ Pathy.AbsFile Pathy.Sandboxed
 
-data GroupMessage = ToBeDone
+prettyPrintGroupIndex ∷ GroupIndex → String
+prettyPrintGroupIndex = case _ of
+  Right s → Pathy.printPath s
+  Left (Left s) → Pathy.printPath s
+  Left (Right (uid × s)) → Pathy.printPath s <> " " <> QA.runUserId uid
+
+data GroupMessage = AddNewGroup { path ∷ GroupIndex, event ∷ DOM.Event, name ∷ String }

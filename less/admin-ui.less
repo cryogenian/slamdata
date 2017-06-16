@@ -58,6 +58,7 @@
   justify-content: space-between;
   margin-top: 2rem;
   width: 80%;
+  height: 80%;
   max-width: 80rem;
 
   legend {
@@ -111,6 +112,51 @@
 
     &:first-child {
       margin-top: 1rem;
+    }
+  }
+}
+
+
+.sd-admin-ui > .tab-body > .groups {
+
+  height: 100%;
+
+  .sd-structure-editor-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    > div {
+      height: auto;
+    }
+  }
+
+  .sd-admin-ui-group-input {
+    position: relative;
+    display: block;
+    float: right;
+    background: transparent;
+    padding: 1rem 1rem 1rem 4rem;
+    width: 100%;
+
+    border: none;
+    border-radius: 0;
+  }
+
+  .sd-admin-ui-group-input-label {
+    position: absolute;
+    text-align: left;
+    padding-left: 4.5rem;
+    pointer-events: none;
+    float: right;
+    padding: 0 1rem;
+
+    i {
+      width: 2rem;
+      position: absolute;
+      top: 0;
+      left: 0;
+      padding: 0.4rem 0 0 0.5rem;
+      font-size: 2rem;
     }
   }
 }

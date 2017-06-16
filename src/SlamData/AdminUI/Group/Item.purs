@@ -63,7 +63,7 @@ component' path item =
         [ HP.title label
         , HE.onClick $ HE.input_ Selected
         , ARIA.label ("Select " <> label)
-        , HP.classes $ (guard selected $> HH.ClassName "selected")
+        , HP.classes (guard selected $> HH.ClassName "selected")
         ]
         [ renderItem item ]
 

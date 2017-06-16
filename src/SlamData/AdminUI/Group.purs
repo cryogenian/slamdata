@@ -28,10 +28,11 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.HalogenM as HQ
 import Quasar.Advanced.Types as QA
-import SlamData.AdminUI.Types as AT
 import SlamData.AdminUI.Group.Item as GI
+import SlamData.AdminUI.Types as AT
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Security (groupInfo)
+import SlamData.Render.Icon as I
 import SlamData.Workspace.MillerColumns.Column.Component as MCC
 import SlamData.Workspace.MillerColumns.Column.Component.Request as MCREQ
 import SlamData.Workspace.MillerColumns.Component as Miller
@@ -50,11 +51,11 @@ component
   → H.Component HH.HTML (MCC.Query' AT.GroupItem AT.GroupIndex AT.GroupMessage) (Maybe AT.GroupItem) Message' Slam
 component opts = proxyQL ∘ component' opts
 
-data Query a = Raise Message' a
+data Query a = Raise Message' a | SetNewGroupText String a
 
 type Query' = Coproduct ColumnQuery Query
 
-type State = Maybe AT.GroupItem
+type State = { item ∷ Maybe AT.GroupItem, newGroupText ∷ String }
 
 type DSL = H.ParentDSL State Query' ColumnQuery Unit Message' Slam
 type HTML = H.ParentHTML Query' ColumnQuery Unit Slam
@@ -65,7 +66,7 @@ component'
   → H.Component HH.HTML Query' (Maybe AT.GroupItem) Message' Slam
 component' opts path =
   H.parentComponent
-    { initialState: id
+    { initialState: { item: _, newGroupText: "" }
     , render
     , eval
     , receiver: Just ∘ left ∘ H.action ∘ MCC.SetSelection
@@ -77,13 +78,22 @@ component' opts path =
 
   render ∷ State → HTML
   render st =
-    HH.div_
-      [ HH.div
-          [ HP.class_ (HH.ClassName "sd-structure-editor-column") ]
-          [ HH.slot unit column st (Just ∘ right ∘ H.action ∘ Raise)
-          , HH.div
-              [ HP.class_ (HH.ClassName "sd-admin-ui-group-item") ]
-              [ HH.text "Hello" ]
+    HH.div
+      [ HP.class_ (HH.ClassName "sd-structure-editor-column") ]
+      [ HH.slot unit column st.item (Just ∘ right ∘ H.action ∘ Raise)
+      , HH.form
+          [ HP.class_ (HH.ClassName "sd-admin-ui-group-form")
+          , HE.onSubmit (\event → Just $ right $ H.action $ Raise $ Right $ AT.AddNewGroup { path, event, name: st.newGroupText })
+          ]
+          [ HH.input
+              [ HP.class_ (HH.ClassName "sd-admin-ui-group-input")
+              , HP.value st.newGroupText
+              , HE.onValueInput $ \s → Just $ right $ H.action $ SetNewGroupText s
+              , HP.placeholder "Add Group"
+              ]
+          , HH.label
+              [ HP.class_ (HH.ClassName "sd-admin-ui-group-input-label") ]
+              [ I.addCircle ]
           ]
       ]
 
@@ -96,6 +106,9 @@ component' opts path =
 
   evalOuter ∷ Query ~> DSL
   evalOuter = case _ of
+    SetNewGroupText t next → do
+      H.modify (_ { newGroupText = t })
+      pure next
     Raise msg next → do
       H.raise msg
       pure next
