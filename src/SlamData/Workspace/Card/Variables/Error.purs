@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.List.NonEmpty as NEL
 import SlamData.SqlSquared.Tagged (ParseError)
 import SlamData.Workspace.FormBuilder.Item.Model (FieldName)
+import Utils (throwVariantError)
 
 data VError
   = DefaultValueError FieldName ParseError
@@ -41,3 +42,6 @@ derive newtype instance semigroupVariablesError ∷ Semigroup VariablesError
 
 instance showVariablesError ∷ Show VariablesError where
   show (VariablesError nel) = "(VariablesError " <> show nel <> ")"
+
+throwVariablesError ∷ forall v m a. MonadThrow (Variant (variables ∷ VariablesError | v)) m ⇒ VariablesError → m a
+throwVariablesError = throwVariantError (SProxy :: SProxy "variables")

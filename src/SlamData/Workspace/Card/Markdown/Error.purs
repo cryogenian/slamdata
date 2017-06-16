@@ -18,6 +18,7 @@ module SlamData.Workspace.Card.Markdown.Error where
 
 import SlamData.Prelude
 import Data.List.NonEmpty as NEL
+import Utils (throwVariantError)
 
 data MarkdownError
   = MarkdownParseError { markdown ∷ String, error ∷ String }
@@ -44,3 +45,6 @@ instance showMarkdownError ∷ Show MarkdownError where
       "(MarkdownInvalidDateTimeValue { field: " <> show field <> ", datetime: " <> show datetime <> ", error: " <> show error <> " })"
     MarkdownTypeError {field, actual, expected} →
       "(MarkdownTypeError { field: " <> show field <> ", actual: " <> show actual <> ", expected: " <> show expected <> " })"
+
+throwMarkdownError ∷ forall v m a. MonadThrow (Variant (markdown ∷ MarkdownError | v)) m ⇒ MarkdownError → m a
+throwMarkdownError = throwVariantError (SProxy :: SProxy "markdown")

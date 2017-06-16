@@ -18,6 +18,8 @@ module SlamData.Workspace.Card.DownloadOptions.Error where
 
 import SlamData.Prelude
 
+import Utils (throwVariantError)
+
 data DownloadOptionsError
   = DownloadOptionsFilenameRequired
   | DownloadOptionsFilenameInvalid String
@@ -26,3 +28,6 @@ instance showDownloadOptionsError ∷ Show DownloadOptionsError where
   show = case _ of
     DownloadOptionsFilenameRequired → "DownloadOptionsFilenameRequired"
     DownloadOptionsFilenameInvalid fn → "(DownloadOptionsFilenameInvalid " <> show fn <> ")"
+
+throwDownloadOptionsError ∷ forall v m a. MonadThrow (Variant (downloadOptions ∷ DownloadOptionsError | v)) m ⇒ DownloadOptionsError → m a
+throwDownloadOptionsError = throwVariantError (SProxy :: SProxy "downloadOptions")

@@ -22,12 +22,12 @@ import Data.Lens ((^.))
 import Data.Path.Pathy (runFileName, fileName)
 import SlamData.Download.Model as D
 import SlamData.Workspace.Card.DownloadOptions.Component.State as Download
-import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.DownloadOptions.Error (DownloadOptionsError(..), throwDownloadOptionsError)
 import SlamData.Workspace.Card.Port as Port
 
 eval
-  ∷ ∀ m
-  . MonadThrow CE.CardError m
+  ∷ ∀ m v
+  . MonadThrow (Variant (downloadOptions ∷ DownloadOptionsError | v)) m
   ⇒ Download.State
   → Port.Resource
   → m Port.Port
@@ -40,10 +40,10 @@ eval { compress, options, targetName } resource = case targetName of
       , targetName: runFileName (fileName (resource ^. Port._filePath))
       , resource: resource ^. Port._filePath
       }
-  Just "" → CE.throwDownloadOptionsError CE.DownloadOptionsFilenameRequired
+  Just "" → throwDownloadOptionsError DownloadOptionsFilenameRequired
   Just fn → do
     when (isLeft (D.validFilename fn)) do
-      CE.throwDownloadOptionsError (CE.DownloadOptionsFilenameInvalid fn)
+      throwDownloadOptionsError (DownloadOptionsFilenameInvalid fn)
     pure $ Port.DownloadOptions
       { compress
       , options

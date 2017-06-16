@@ -26,6 +26,7 @@ import Quasar.Types (FilePath)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
+import SlamData.Workspace.Card.Cache.Error (CacheError(..), throwCacheError)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
@@ -34,9 +35,9 @@ import Utils.Path as PU
 import Utils.SqlSquared (tableRelation, all)
 
 eval
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (cache ∷ CacheError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ Maybe String
@@ -50,11 +51,11 @@ eval mfp resource =
     Just pt →
       case PU.parseAnyPath pt of
         Just (Right fp) → eval' fp resource
-        _ → CE.throwCacheError (CE.CacheInvalidFilepath pt)
+        _ → throwCacheError (CacheInvalidFilepath pt)
 
 eval'
-  ∷ ∀ m
-  . MonadThrow CE.CardError m
+  ∷ ∀ m v
+  . MonadThrow (Variant (cache ∷ CacheError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ FilePath
@@ -70,10 +71,10 @@ eval' tmp resource = do
         ∘ (Sql._relations .~ tableRelation filePath)
   outputResource ← CE.liftQ $
     QQ.fileQuery backendPath tmp sql SM.empty
-  checkResult ← QFS.messageIfFileNotFound outputResource (CE.CacheErrorSavingFile outputResource)
-  for_ (either (Just ∘ CE.CacheQuasarError) id checkResult)
-    CE.throwCacheError
+  checkResult ← QFS.messageIfFileNotFound outputResource (CacheErrorSavingFile outputResource)
+  for_ (either (Just ∘ CacheQuasarError) id checkResult)
+    throwCacheError
   when (tmp /= outputResource) $
-    CE.throwCacheError CE.CacheResourceNotModified
+    throwCacheError CacheResourceNotModified
   CEM.addCache outputResource
   pure (Port.Path outputResource)

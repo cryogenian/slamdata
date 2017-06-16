@@ -157,7 +157,7 @@ tagPort  = case _ of
   Initial → "Initial"
   Terminal → "Terminal"
   Variables → "Variables"
-  CardError err → "CardError: " ⊕ show err
+  CardError err → "CardError: " ⊕ CE.showCardError err
   ResourceKey str → "ResourceKey: " ⊕ show str
   SetupLabeledFormInput _ → "SetupLabeledFormInput"
   SetupTextLikeFormInput _ → "SetupTextLikeFormInput"

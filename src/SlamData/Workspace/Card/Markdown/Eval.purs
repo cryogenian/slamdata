@@ -38,6 +38,7 @@ import SlamData.SqlSquared.Tagged as SqlT
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Markdown.Component.State as MDS
+import SlamData.Workspace.Card.Markdown.Error (MarkdownError(..), throwMarkdownError)
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 import SqlSquared as Sql
@@ -63,10 +64,10 @@ evalMarkdownForm model doc varMap = do
   pure (Port.Variables × map Right thisVarMap `SM.union` varMap)
 
 evalMarkdown
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadEff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (markdown ∷ MarkdownError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ String
@@ -75,7 +76,7 @@ evalMarkdown
 evalMarkdown str varMap = do
   CEM.CardEnv { path } ← ask
   case SDP.parseMd str of
-    Left e → CE.throwMarkdownError (CE.MarkdownParseError {markdown: str, error: e})
+    Left e → throwMarkdownError (MarkdownParseError {markdown: str, error: e})
     Right sd → do
       let sm = map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
       doc ← evalEmbeddedQueries sm path sd
@@ -92,9 +93,9 @@ findFields = SDT.everything (const mempty) extractField
   extractField _ = mempty
 
 evalEmbeddedQueries
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadEff SlamDataEffects m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (markdown ∷ MarkdownError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ SM.StrMap String
@@ -158,7 +159,7 @@ evalEmbeddedQueries sm dir =
     let sql = unwrap $ SD.traverseTextBox (map \_ → Const unit) tb
     mresult ← A.head <$> runQuery (Just field) sql
     result ←
-      maybe (CE.throwMarkdownError (CE.MarkdownNoTextBoxResults { field, sql })) (pure ∘ extractSingletonObject) mresult
+      maybe (throwMarkdownError (MarkdownNoTextBoxResults { field, sql })) (pure ∘ extractSingletonObject) mresult
     case tb, project result of
       (SD.PlainText _), (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
@@ -168,18 +169,18 @@ evalEmbeddedQueries sm dir =
         pure ∘ SD.Numeric $ pure (HN.fromNumber (Int.toNumber a))
       (SD.Time prec _), (EJSON.String time) →
         case SqlT.parseTime time of
-          Left error → CE.throwMarkdownError (CE.MarkdownInvalidTimeValue { field, time, error: unwrap error })
+          Left error → throwMarkdownError (MarkdownInvalidTimeValue { field, time, error: unwrap error })
           Right r → pure ∘ SD.Time prec $ pure r
       (SD.Date _), (EJSON.String date) →
         case SqlT.parseDate date of
-          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateValue { field, date, error: unwrap error })
+          Left error → throwMarkdownError (MarkdownInvalidDateValue { field, date, error: unwrap error })
           Right r → pure ∘ SD.Date $ pure r
       (SD.DateTime prec _), (EJSON.String datetime) →
         case SqlT.parseDateTime datetime of
-          Left error → CE.throwMarkdownError (CE.MarkdownInvalidDateTimeValue { field, datetime, error: unwrap error })
+          Left error → throwMarkdownError (MarkdownInvalidDateTimeValue { field, datetime, error: unwrap error })
           Right r → pure ∘ SD.DateTime prec $ pure r
       _, _ →
-        CE.throwMarkdownError (CE.MarkdownTypeError { field, actual: typeOf result, expected: typesOfField tb })
+        throwMarkdownError (MarkdownTypeError { field, actual: typeOf result, expected: typesOfField tb })
 
   -- TODO: use `Meta` when we have it to better determine types. -gb
   typeOf :: EJSON.EJson -> String
@@ -216,7 +217,7 @@ evalEmbeddedQueries sm dir =
     let esql = Sql.parse code
     in case esql of
       Left error →
-        CE.throwMarkdownError (CE.MarkdownSqlParseError { field, sql: code, error: parseErrorMessage error })
+        throwMarkdownError (MarkdownSqlParseError { field, sql: code, error: parseErrorMessage error })
       Right sql → do
         {inputs} ← CE.liftQ $ Quasar.compile dir sql sm
         CEM.addSources inputs
