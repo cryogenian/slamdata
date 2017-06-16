@@ -16,4 +16,6 @@ limitations under the License.
 
 module SlamData.License where
 
-data LicenseProblem = Invalid | Expired
+import Quasar.Advanced.Types (LicenseType)
+
+data LicenseProblem = Invalid | Expired LicenseType

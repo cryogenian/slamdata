@@ -184,11 +184,15 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
       pure a
     Halt err a → do
       case err of
-        GE.PaymentRequired →
-          map _.status <$> runQuasarF Nothing QA.licenseInfo
-            >>= case _ of
-              Right QAT.LicenseExpired → Bus.write License.Expired bus.licenseProblems
-              _ → Bus.write License.Invalid bus.licenseProblems
+        GE.PaymentRequired → do
+          runQuasarF Nothing QA.licenseInfo >>= case _ of
+            Right licenseInfo →
+              case licenseInfo.status of
+                QAT.LicenseExpired →
+                  Bus.write (License.Expired licenseInfo.type) bus.licenseProblems
+                _ → pure unit
+            Left _ ->
+              Bus.write License.Invalid bus.licenseProblems
         _ -> Bus.write (GE.toNotificationOptions err) bus.notify
       pure a
     Par (SlamA p) →

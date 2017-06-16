@@ -29,8 +29,10 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 import Network.HTTP.RequestHeader (RequestHeader)
 
+import Quasar.Advanced.Types as QAT
+
 import SlamData.Dialog.Error.Component as Error
-import SlamData.Dialog.Render (licenseExpired, licenseInvalid)
+import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
@@ -105,8 +107,10 @@ render state =
       HH.slot' CP.cp4 unit Download.component { resource, headers } (HE.input HandleChild)
     Mount input →
       HH.slot' CP.cp5 unit Mount.component input (HE.input HandleChild)
-    LicenseProblem License.Expired →
-      licenseExpired
+    LicenseProblem (License.Expired licenseType) →
+      case licenseType of
+        QAT.Advanced → advancedLicenseExpired
+        QAT.AdvancedTrial → advancedTrialLicenseExpired
     LicenseProblem License.Invalid →
       licenseInvalid
 
