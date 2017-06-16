@@ -278,6 +278,7 @@ fromPort = case _ of
   Port.CategoricalMetric _ → Form
   Port.GeoChart _ → GeoChart
   Port.Terminal → Terminal
+  Port.Viz → Viz
   _ → None
 
 toCardType ∷ InsertableCardType → Maybe CardType

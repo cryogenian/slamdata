@@ -91,7 +91,6 @@ package = P.onPrism (M._BuildHeatmap ∘ _Just) $ DS.interpret do
       >>= P.isActiveWhen ordinate
 
   pure unit
-
 heatmapBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 heatmapBuilderComponent =
   CC.makeCardComponent (CT.ChartOptions CHT.Heatmap) $ H.parentComponent

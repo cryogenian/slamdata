@@ -151,6 +151,7 @@ data Port
   | CategoricalMetric MetricPort
   | PivotTable PivotTablePort
   | GeoChart GeoChartPort
+  | Viz
 
 tagPort ∷ Port → String
 tagPort  = case _ of
@@ -168,6 +169,7 @@ tagPort  = case _ of
   CategoricalMetric _ → "CategoricalMetric"
   PivotTable _ → "PivotTable"
   GeoChart _ → "GeoChart"
+  Viz → "Viz"
 
 filterResources ∷ DataMap → SM.StrMap Resource
 filterResources = SM.fold go SM.empty

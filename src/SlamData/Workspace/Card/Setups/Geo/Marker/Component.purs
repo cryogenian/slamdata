@@ -136,7 +136,6 @@ package = P.onPrism (M._SetupGeoMarker ∘ _Just)
           acc # (TP.unpackProjection fld) ?~ (latLngFilter $ Set.difference axes.value cursorSet)
     in
       foldl foldFn prepared flds
-
   save ∷ TP.DimensionMap → GM.ModelR → GM.Model
   save dm mr =
     { lat: _

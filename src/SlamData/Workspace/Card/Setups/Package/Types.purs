@@ -18,6 +18,8 @@ module SlamData.Workspace.Card.Setups.Package.Types
   ( Package
   , DimensionMap
   , emptyDimMap
+  , getProjection
+  , hasProjection
   , AxesProjection
   , packAxesProjection
   , unpackAxesProjection
@@ -47,7 +49,7 @@ import SlamData.Prelude
 
 import Control.Monad.Free (Free)
 
-import Data.Lens (ALens', Lens', wander, lens)
+import Data.Lens (ALens', Lens', wander, lens, (^.))
 import Data.Lens.At (class At)
 import Data.Lens.Index (class Index)
 import Data.List as L
@@ -68,6 +70,13 @@ type Package m s =
 type DimensionMap = SM.StrMap D.LabeledJCursor
 emptyDimMap ∷ DimensionMap
 emptyDimMap = SM.empty
+
+getProjection ∷ DimensionMap → Projection → Maybe D.LabeledJCursor
+getProjection dimMap prj = dimMap ^. unpackProjection prj
+
+hasProjection ∷ DimensionMap → Projection → Boolean
+hasProjection dimMap prj = isJust $ getProjection dimMap prj
+
 
 data AxesProjection
 

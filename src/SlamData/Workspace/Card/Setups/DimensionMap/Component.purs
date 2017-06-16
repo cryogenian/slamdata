@@ -128,7 +128,7 @@ eval package = case _ of
       H.modify $ ST.clear fld
       H.raise $ Q.Update Nothing
       pure next
-    Q.LabelChanged str next → do
+    Q.Changed str next → do
       H.modify $ ST.setLabel fld str
       H.raise $ Q.Update Nothing
       pure next

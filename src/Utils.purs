@@ -39,6 +39,7 @@ module Utils
   , prettyJson
   , isFirefox
   , finally
+  , nothing
   )where
 
 import SlamData.Prelude
@@ -58,7 +59,6 @@ foreign import debugTime_ ∷ ∀ a. String → (Unit → a) → a
 
 debugTime ∷ ∀ a. Warn "debug time is used in production" ⇒ String → (Unit → a) → a
 debugTime = debugTime_
-
 
 stringToNumber ∷ String → Maybe Number
 stringToNumber s =
@@ -110,6 +110,16 @@ chunksOf = go []
     in if Array.length ch ≡ n
         then go (Array.snoc acc ch) n (Array.drop n as)
         else Array.snoc acc ch
+
+swap ∷ ∀ a b. Either a b → Either b a
+swap = case _ of
+  Left a → Right a
+  Right b → Left b
+
+nothing ∷ ∀ a. Maybe a → Maybe Unit
+nothing = case _ of
+  Just _ → Nothing
+  Nothing → Just unit
 
 hush ∷ ∀ a b. Either a b → Maybe b
 hush = either (\_ → Nothing) (Just)

@@ -68,8 +68,6 @@ package = P.onPrism (M._BuildGauge ∘ _Just) $ DS.interpret do
       >>= P.isFilteredBy parallel
 
   pure unit
-
-
 gaugeBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 gaugeBuilderComponent =
   CC.makeCardComponent (CT.ChartOptions CHT.Gauge) $ H.parentComponent

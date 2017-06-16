@@ -78,8 +78,6 @@ package = P.onPrism (M._BuildRadar ∘ _Just) $ DS.interpret do
       >>= P.isActiveWhen category
 
   pure unit
-
-
 radarBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 radarBuilderComponent =
   CC.makeCardComponent (CT.ChartOptions CHT.Radar) $ H.parentComponent

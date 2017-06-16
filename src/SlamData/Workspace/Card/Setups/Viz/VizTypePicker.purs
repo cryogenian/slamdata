@@ -235,6 +235,5 @@ eval = case _ of
         Explain vt → ExplainNotWorking vt
       pure next
   UpdateAxes axes next → do
-    traceAnyA "axes"
     _ ← H.query' cpList 0 $ H.action $ AL.UpdateActions $ map toAction $ axesActions axes
     pure next

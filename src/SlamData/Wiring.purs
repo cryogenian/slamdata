@@ -180,8 +180,6 @@ make path accessType vm permissionTokenHashes = liftAff do
   where
   makeEcharts = do
     theme ← EChartThemeLoader.load
-    traceAnyA "TR"
-    traceAnyA theme
     pure { theme }
   makeEval = do
     tick ← liftEff $ Ref.newRef 0
