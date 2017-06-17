@@ -1,4 +1,3 @@
-// TODO should these be colorized with theme?
 .indicator
   position: absolute
   bottom: 0.2rem
@@ -32,14 +31,14 @@
 
     &.focused
       &::before, &::after
-        background: #337ab7
+        background: $indicator-active-color
 
   .errored
     &::before
       background: $indicator-color
 
     &.focused::before
-      background: #d44
+      background: $brand-danger
 
   .available, .pending
     &:not(.running)
@@ -48,7 +47,7 @@
         border-radius: 1.2rem
 
       &.focused::before
-        background: #337ab7
+        background: $indicator-active-color
 
     &.running
       &::before
@@ -58,7 +57,16 @@
         font-size: 1rem
         line-height: 1rem
         background-size: 1rem
+        // TODO: umm, this system needs a revamp to work with IE, so well,
+        // they get old stuff
         background-image: url("../img/gray-spin.svg")
 
+        @supports(mask-image: url(#test))
+          background: $indicator-color
+          mask-image: url("../img/gray-spin.svg")
+          mask-size: 1rem
+          mask-position: 50% 50%
+
       &.focused::before
-        background-image: url("../img/blue-spin.svg")
+        @supports(mask-image: url(#test))
+          background: $indicator-active-color

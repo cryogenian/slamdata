@@ -1,5 +1,9 @@
 // SlamData Sass variables -- some get piped into Bootstrap
-
+$body-bg: #444
+$text-color: white
+$brand-primary: orange
+//$body-bg: white
+//$text-color: black
 // old deck common vars
 $grid-size: 2.4rem !default
 $shade-tint: rgba(0, 0, 0, 0.1) !default
@@ -10,7 +14,7 @@ $btn-primary-bg: $brand-primary !default
 
 // A light theme is consider to be a theme with a luma above 255/2.
 // We'll use this to derive other values
-$is-light-theme: luma($body-bg) > 127.5
+$is-light-theme: luma($body-bg) > 127.5 !default
 
 // Basically wraps a switch statement and partially applies the theme
 // boolean
@@ -64,10 +68,10 @@ $pre-border-color: $color-separator !default
 $hr-border: $color-separator !default
 
 // Action List
-$action-list-btn-color: if(luma($brand-primary) < 210, #fff, #000)
+$action-list-btn-color: if(luma($brand-primary) < 210, #fff, #000) !default
 $action-list-active-bg: $brand-primary !default
 $action-list-disabled-bg: brighten($body-bg, 20%, 5%) !default
-$action-list-disabled-color: $text-color
+$action-list-disabled-color: $text-color !default
 
 // Draftboard
 $draftboard-bg: if(luma($body-bg) > 20, darken($body-bg, 7.5%), lighten($body-bg, 5%))
@@ -86,7 +90,8 @@ $gripper-dots-color: $color-separator !default
 $gripper-dots-hover-color: brighten($color-separator, 3.75%, 5%) !default
 
 // Indicators
-$indicator-color: brighten($body-bg, 10%, 15%)
+$indicator-color: brighten($body-bg, 10%, 15%) !default
+$indicator-active-color: $brand-primary !default
 
 // Toolbar with icons on the filesystem
 $filesystem-toolbar-color: $brand-primary !default
@@ -100,15 +105,21 @@ $download-card-sidebar-type-inactive-bg: brighten($body-bg, 10%, 15%) !default
 // Error Card
 $error-card-bg: brighten($body-bg, 3.75%, 5%) !default
 
+// Miller Columns
+$miller-column-border-color: $color-separator !default
+$miller-column-item-selected-bg: brighten($body-bg, 10%, 15%)
+$miller-column-item-hover-bg: brighten($body-bg, 3.75%, 5%) !default
+
+// Pivot Card
+$pivot-card-border: $color-separator !default
+$pivot-card-outer-border: brighten($color-separator, 5%, 5%) !default
+$pivot-card-alt-bg: brighten($body-bg, -2.5%, 2.5%)
+$pivot-card-alt2-bg: brighten($color-separator, 5%, 5%)
+
 // Tabs Card
 $tabs-card-header-bg: brighten($body-bg, 12.5%, 5%) !default
 $tabs-card-header-active-bg: brighten($body-bg, 5%, 10%) !default
 $tabs-card-add-btn-color: $brand-primary !default
 $tabs-card-add-btn-bg: brighten($body-bg, 15%, 15%) !default
 $tabs-card-add-btn-active-bg: brighten($body-bg, 20%, 20%) !default
-
-// Miller Columns
-$miller-column-border-color: $color-separator !default
-$miller-column-item-selected-bg: brighten($body-bg, 10%, 15%)
-$miller-column-item-hover-bg: brighten($body-bg, 3.75%, 5%) !default
 
