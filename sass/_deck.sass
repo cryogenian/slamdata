@@ -82,11 +82,11 @@
       right: 0
 
     > .sd-deck > .sd-card-slider
+      $h: $grid-size * 2
       top: $grid-size
       left: $grid-size
       right: $grid-size
-
-      height: calc(100% -($grid-size * 2))
+      height: calc(100% - $h)
 
 
 .sd-deck
@@ -152,6 +152,23 @@
     transition: 0.2s ease-out opacity
     opacity: 1
     pointer-events: auto
+
+
+.sd-grab-deck
+  appearance: none
+  position: absolute
+  top: 0
+  left: 0
+  right: 0
+  height: $grid-size
+  width: $grid-size * 4
+  margin: 0 auto
+  border: none
+  background: none
+  color: $gripper-dots-color
+
+  &:hover
+    color: $gripper-dots-hover-color
 
 
 .sd-flip-deck-btn, .sd-zoom-deck-btn

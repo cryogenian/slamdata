@@ -33,7 +33,7 @@
   display: table
   position: relative
   box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.125)
-  border: 0.1rem solid #ccc
+  border: 0.1rem solid $color-separator
   border-top: 0.3rem solid transparent
   margin-left: auto
   right: 2rem
@@ -55,7 +55,7 @@
 
   &.dismissed
     animation-name: fade-out
-    animation-duration: 0.4s
+    animation-duration: 400ms
     transform: translate(0, 0)
     opacity: 0
     pointer-events: none
@@ -81,7 +81,7 @@
   color: #aaa
 
 .sd-notification-detail
-  border-top: 0.1rem solid #ebebeb
+  border-top: 0.1rem solid darken($body-bg, 2.5%)
   margin-top: 0.5rem
   padding-top: 0.5rem
   font-size: 0.6rem

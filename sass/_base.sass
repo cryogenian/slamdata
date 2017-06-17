@@ -16,18 +16,6 @@ body
     width: 100%
 
 
-\::-webkit-input-placeholder
-  color: #e0e0e0
-
-
-\::-moz-placeholder
-  color: #e0e0e0
-
-
-\:-ms-input-placeholder
-  color: #e0e0e0
-
-
 [aria-hidden="true"]:not(.sd-icon)
   display: none !important
 
@@ -71,10 +59,10 @@ button:focus
     background: $body-bg
 
     + button
-      border-top: 0.1rem solid #ccc
+      border-top: 0.1rem solid $color-separator
 
     &:hover
-      background-color: #ccc
+      background-color: $color-separator
 
 
 .item-icon
@@ -179,7 +167,7 @@ ol.breadcrumb
   span
     padding: 1rem
     display: block
-    color: #aaa
+    color: $color-separator
 
   button
     padding: 1rem
@@ -335,7 +323,7 @@ div.chart-card-editor
 
 .sql-mount-form
   .ace_editor
-    border: #ccc 0.1rem solid
+    border: 0.1rem solid $color-separator
     margin-top: $padding-base-vertical
     margin-bottom: 0.4rem
 

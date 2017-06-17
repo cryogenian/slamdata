@@ -4,7 +4,7 @@
 $grid-size: 2.4rem !default
 $shade-tint: rgba(0, 0, 0, 0.1) !default
 
-$color-readonly: #00f !default
+$color-readonly: #00f !default  // TODO: what even is this?
 $link-color: $brand-primary !default
 $btn-primary-bg: $brand-primary !default
 
@@ -64,13 +64,22 @@ $pre-border-color: $color-separator !default
 $hr-border: $color-separator !default
 
 // Action List
-$action-list-btn-color: #fff !default
+$action-list-btn-color: if(luma($brand-primary) < 210, #fff, #000)
 $action-list-active-bg: $brand-primary !default
 $action-list-disabled-bg: brighten($body-bg, 20%, 5%) !default
+$action-list-disabled-color: $text-color
+
+// Draftboard
+$draftboard-bg: if(luma($body-bg) > 20, darken($body-bg, 7.5%), lighten($body-bg, 5%))
+$draftboard-edge-color: if(luma($draftboard-bg) > 50, darken($draftboard-bg, 25%), lighten($draftboard-bg, 17.5%))
+$draftboard-cell-bg: $body-bg !default
+$draftboard-guide-color: $brand-primary !default
+$draftboard-insert-cell-color: $brand-primary !default
+$draftboard-moving-bg: transparentize($brand-primary, 0.6) !default
 
 // Global menu
-$background-color-global-menu: #262626 !default
-$color-global-menu: #fff !default
+$global-menu-bg: #262626 !default
+$global-menu-color: if(luma($global-menu-bg) > 127.5, #000, #fff) !default
 
 // Grippers
 $gripper-dots-color: $color-separator !default

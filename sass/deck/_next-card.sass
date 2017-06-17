@@ -41,7 +41,7 @@
         margin: 0
         border: none
         background: $action-list-disabled-bg
-        color: $action-list-btn-color
+        color: $action-list-disabled-color
         text-align: center
         transition-property: background-color, color, opacity
         transition-duration: 200ms
@@ -61,6 +61,7 @@
 
         &:not(.sd-button-warning):not(:disabled)
           background: $action-list-active-bg
+          color: $action-list-btn-color
 
         &:disabled
           background: $action-list-disabled-bg

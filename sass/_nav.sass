@@ -6,11 +6,11 @@
   z-index: 600
   max-height: 7rem
   width: 100%
-  background: $background-color-global-menu
-  color: $color-global-menu
+  background: $global-menu-bg
+  color: $global-menu-color
 
   &.workspace-nav
-    border-bottom: 0.1rem #ccc solid
+    border-bottom: 0.1rem $color-separator solid
 
   .header
     display: flex
@@ -53,6 +53,7 @@
         padding-left: $padding-base-vertical
         vertical-align: middle
 
+    // legacy stuff??
     .workspace-name, .search
       display: inline-block
       margin-left: 2.4rem
@@ -79,9 +80,10 @@
         border: none
         line-height: 100%
 
+  // legacy stuff??
   .header-menu
     display: block
-    border-top: 0.1rem solid #fff
+    border-top: 0.1rem solid $global-menu-color
     line-height: 4rem
     list-style: none
     padding: 0
@@ -129,9 +131,9 @@
 .sd-header-gripper-dragging-down,
 .sd-header-gripper-dragging-up,
 .sd-header-gripper-closing
-  color: $color-global-menu
-  background-color: $background-color-global-menu
+  color: $global-menu-color
+  background-color: $global-menu-bg
   box-shadow: 0 0.2rem $padding-base-vertical rgba(0, 0, 0, 0.35)
 
   &:hover
-    color: $color-global-menu
+    color: $global-menu-color

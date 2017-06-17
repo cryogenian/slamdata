@@ -4,8 +4,9 @@
   width: 100%
   height: 100%
 
+
 .sd-card-draftboard
-  background: #ccc
+  background: $draftboard-bg
 
   .sd-board-inset-shadow
     position: fixed
@@ -17,9 +18,9 @@
     box-shadow: inset 0 0 0.8rem 0 rgba(0, 0, 0, 0.25)
     pointer-events: none
 
+
 .sd-draftboard-edge
   $draftboard-size: 1rem
-
   background: transparent
   cursor: pointer
   padding: 0
@@ -53,6 +54,7 @@
     top: auto
     height: $draftboard-size
     cursor: ns-resize
+
 
 .sd-draftboard-edge-mid
   width: 1rem
@@ -95,27 +97,28 @@
 
   .sd-draftboard-edge-top &::before
     border-width: 0.4rem 0.3rem 0 0.3rem
-    border-top-color: #888
+    border-top-color: $draftboard-edge-color
     margin-top: -0.2rem
     margin-left: -0.4rem
 
   .sd-draftboard-edge-left &::before
     border-width: 0.3rem 0 0.3rem 0.4rem
-    border-left-color: #888
+    border-left-color: $draftboard-edge-color
     margin-top: -0.4rem
     margin-left: -0.2rem
 
   .sd-draftboard-edge-right &::before
     border-width: 0.3rem 0.4rem 0.3rem 0
-    border-right-color: #888
+    border-right-color: $draftboard-edge-color
     margin-top: -0.4rem
     margin-left: -0.2rem
 
   .sd-draftboard-edge-bottom &::before
     border-width: 0 0.3rem 0.4rem 0.3rem
-    border-bottom-color: #888
+    border-bottom-color: $draftboard-edge-color
     margin-top: -0.2rem
     margin-left: -0.4rem
+
 
 .sd-draftboard-root
   position: absolute
@@ -126,11 +129,12 @@
   z-index: 1
   pointer-events: none
 
+
 .sd-draftboard-guide
   position: absolute
   z-index: 10
   border-style: dotted
-  border-color: #337ab7
+  border-color: $draftboard-guide-color
   border-width: 0
   pointer-events: none
 
@@ -144,6 +148,7 @@
   &.vertical
     height: 0
     border-top-width: 0.1rem
+
 
 .sd-draftboard-guide-label
   position: absolute
@@ -177,6 +182,7 @@
     top: -2em
     margin-top: -0.1rem
 
+
 .sd-draftboard-cell
   position: absolute
   top: 0
@@ -189,15 +195,17 @@
   .sizing &
     pointer-events: auto
 
+
 .sd-draftboard-cell-content
   position: absolute
   top: 0.5rem
   left: 0.5rem
   right: 0.5rem
   bottom: 0.5rem
-  background: #fff
+  background: $draftboard-cell-bg
   box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.2)
   pointer-events: auto
+
 
 .sd-draftboard-split-edge
   position: absolute
@@ -205,7 +213,7 @@
   background: transparent
   padding: 0
   margin: 0
-  border-color: #337ab7
+  border-color: $draftboard-guide-color
   border-style: solid
   border-width: 0
   outline: none
@@ -239,6 +247,7 @@
   &.sizing.vertical
     border-top-width: 0.1rem
 
+
 .sd-draftboard-split-edge-loc
   position: absolute
   width: 0
@@ -269,7 +278,7 @@
     left: -0.4rem
     width: 0.1rem
     border-width: 0 0.3rem 0.7rem 0.3rem
-    border-bottom-color: #337ab7
+    border-bottom-color: $draftboard-guide-color
 
   .vertical.gt &
     bottom: 0
@@ -279,7 +288,7 @@
     left: -0.4rem
     width: 0.1rem
     border-width: 0.7rem 0.3rem 0 0.3rem
-    border-top-color: #337ab7
+    border-top-color: $draftboard-guide-color
 
   .horizontal &
     top: 50%
@@ -294,7 +303,7 @@
     top: -0.4rem
     height: 0.1rem
     border-width: 0.3rem 0.7rem 0.3rem 0
-    border-right-color: #337ab7
+    border-right-color: $draftboard-guide-color
 
   .horizontal.gt &
     right: 0
@@ -304,7 +313,8 @@
     top: -0.4rem
     height: 0.1rem
     border-width: 0.3rem 0 0.3rem 0.7rem
-    border-left-color: #337ab7
+    border-left-color: $draftboard-guide-color
+
 
 .sd-draftboard-cell-empty
   button
@@ -320,7 +330,7 @@
 
   .insert-cell
     font-size: 4.5rem
-    color: #337ab7
+    color: $draftboard-insert-cell-color
     max-width: 1.25em
     max-height: 1.25em
     padding: 0
@@ -349,10 +359,11 @@
     max-height: $grid-size * 2
     text-align: center
     font-size: 1.4rem
-    color: #aaa
+    color: transparentize($text-color, 0.2)
 
     .sd-draftboard-cell:only-child &
       display: none
+
 
 .sd-draftboard-moving-icon
   position: absolute
@@ -378,7 +389,7 @@
       left: 0.8rem
       right: 0.8rem
       bottom: 0.8rem
-      background-color: rgba(20, 120, 255, 0.4)
+      background-color: $draftboard-moving-bg
 
     &.horizontal.side-a::before
       right: 50%
@@ -392,9 +403,10 @@
     &.vertical.side-b::before
       top: 50%
 
+
 .sd-deck-level-2
   .sd-card-draftboard
-    background: #fff
+    background: $body-bg
 
   .sd-draftboard-edge,
   .sd-draftboard-split-edge,
