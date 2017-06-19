@@ -8,13 +8,15 @@
 
 .sd-miller-column {
   display: inline-block;
-  width: 25rem;
   height: 100%;
   vertical-align: top;
   border: 0.1rem solid #ddd;
+  position: relative;
 
-  > div {
+  .sd-miller-column-container {
     height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   .sd-miller-column-selection {
@@ -51,71 +53,84 @@
     }
   }
 
-  ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    width: 100%;
-    height: ~"calc(100% - 2.25rem - 2.3rem - 0.3rem)";
+  .sd-miller-column-items {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
     overflow: auto;
-  }
 
-  li {
-    display: block;
-    padding: 1.2rem 0.6rem;
-    cursor: pointer;
-    z-index: 1;
-    line-height: 1;
-
-    &:hover {
-      background: #eee;
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      width: 100%;
     }
 
-    + li {
-      margin-top: -0.1rem;
-      border-top: 0.1rem solid #ddd;
-    }
-
-    &.selected {
-      background: #ddd;
-      z-index: 2;
-    }
-
-    &.sd-miller-column-loading {
-      cursor: auto;
+    li {
+      display: block;
+      padding: 1.2rem 0.6rem;
+      cursor: pointer;
+      z-index: 1;
+      line-height: 1;
 
       &:hover {
-        background: transparent;
+        background: #eee;
       }
 
-      span {
-        display: block;
-        text-align: center;
+      + li {
+        margin-top: -0.1rem;
+        border-top: 0.1rem solid #ddd;
+      }
 
-        &::before {
+      &.selected {
+        background: #ddd;
+        z-index: 2;
+      }
+
+      &.sd-miller-column-loading {
+        cursor: auto;
+
+        &:hover {
+          background: transparent;
+        }
+
+        span {
           display: block;
-          content: "";
-          width: 2.4rem;
-          height: 2.4rem;
-          margin: 1.2rem auto 0.4rem;
-          background-image: url("../img/spin.gif");
-          background-position: center center;
-          background-repeat: no-repeat;
-          background-size: contain;
+          text-align: center;
+
+          &::before {
+            display: block;
+            content: "";
+            width: 2.4rem;
+            height: 2.4rem;
+            margin: 1.2rem auto 0.4rem;
+            background-image: url("../img/spin.gif");
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: contain;
+          }
         }
       }
     }
   }
+}
 
-  &:last-child li.selected {
-    background: #337ab7;
-    border-color: #337ab7;
-    color: #fff;
-  }
+.sd-miller-column-last .sd-miller-column-items li.selected {
+  background: #337ab7;
+  border-color: #337ab7;
+  color: #fff;
+}
 
-  + .sd-miller-column {
-    margin-left: -0.1rem;
-  }
+.sd-miller-column-resizer {
+  display: inline-block;
+  height: 100%;
+  vertical-align: top;
+  position: relative;
+  left: -5px;
+  width: 9px;
+  cursor: ew-resize;
+  margin-right: -10px;
+  z-index: 2;
 }
 
 .sd-miller-column-item-inner {

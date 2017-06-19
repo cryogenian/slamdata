@@ -14,19 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.MillerColumns.Column.Component.Item where
+module SlamData.Workspace.MillerColumns.Column.Component.ColumnWidth where
 
 import SlamData.Prelude
 
-import Halogen.Component.Proxy (ProxyQ)
+newtype ColumnWidth = ColumnWidth Number
 
-type Query a o = ProxyQ (Const Void) State (Message' a o)
+derive instance newtypeColumnWidth ∷ Newtype ColumnWidth _
+derive instance eqColumnWidth ∷ Eq ColumnWidth
+derive instance ordColumnWidth ∷ Ord ColumnWidth
 
-data Message a = RaisePopulate a
+defaultColumnWidth ∷ ColumnWidth
+defaultColumnWidth = ColumnWidth 250.0
 
-type Message' a o = Either (Message a) o
-
-data State = Selected | Deselected
-
-derive instance eqState ∷ Eq State
-derive instance ordState ∷ Ord State
+minColumnWidth ∷ ColumnWidth
+minColumnWidth = ColumnWidth 100.0
