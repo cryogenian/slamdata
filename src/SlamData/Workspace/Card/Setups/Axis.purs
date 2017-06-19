@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor(..), JObject, JArray, Json, insideOut, (:=), (.?), (~>), jsonEmptyObject)
 import Data.Array as A
 import Data.Foldable as F
+import Data.Lens (Lens', lens)
 import Data.List (List(..))
 import Data.List as L
 import Data.Map as M
@@ -100,6 +101,21 @@ type AxisTypeAnnotatedR a r =
 
 type AxisTypeAnnotated a r =
   Record (AxisTypeAnnotatedR a r)
+
+_value ∷ ∀ r a. Lens' { value ∷ a | r} a
+_value = lens _.value _{ value = _ }
+
+_time ∷ ∀ r a. Lens' { time ∷ a | r } a
+_time = lens _.time _{ time = _ }
+
+_date ∷ ∀ r a. Lens' { date ∷ a | r } a
+_date = lens _.date _{ date = _ }
+
+_datetime ∷ ∀ r a. Lens' { datetime ∷ a | r } a
+_datetime = lens _.datetime _{ datetime = _ }
+
+_category ∷ ∀ r a. Lens' { category ∷ a | r } a
+_category = lens _.category _{ category = _ }
 
 mapAxisTypeAnnotated ∷ ∀ a b. (a → b) →  AxisTypeAnnotated a () → AxisTypeAnnotated b ()
 mapAxisTypeAnnotated f ax =

@@ -182,7 +182,7 @@ name = case _ of
   PivotTable → "Pivot Table"
   Geo geo → case geo of
     GeoMarker → "Marker"
-    GeoHeatmap → "Heatmap"
+    GeoHeatmap → "Geo Heatmap"
   Select st → case st of
     Dropdown → "Dropdown"
     Radio → "Radio"

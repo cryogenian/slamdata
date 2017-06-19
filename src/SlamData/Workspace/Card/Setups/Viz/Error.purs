@@ -6,16 +6,22 @@ import Data.Foldable (intercalate)
 
 import Data.List as L
 import SlamData.Workspace.Card.Setups.Package.Types as T
+import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Package.Projection as P
 import Utils (throwVariantError)
 
-data Error
-  = MissingAxesError (L.List T.Projection)
+type Error =
+  { missingProjections ∷ L.List T.Projection
+  , vizType ∷ VT.VizType
+  }
 
-instance showSetupVizError ∷ Show Error where
-  show = case _ of
-    MissingAxesError prjs →
-      "(MissingAxesError " <> intercalate ", " (L.catMaybes $ map P.printProjection prjs) <> ")"
+showError ∷ Error → String
+showError { missingProjections, vizType } =
+  "(MissingAxesError { missingProjections: "
+  ⊕ (intercalate ", " (L.catMaybes $ map P.printProjection missingProjections))
+  ⊕ ", vizType: "
+  ⊕ VT.print vizType
+  ⊕ "}"
 
 throw
   ∷ ∀ v m a
@@ -23,5 +29,3 @@ throw
   ⇒ Error
   → m a
 throw = throwVariantError (SProxy ∷ SProxy "setupViz")
-
-_setupVizError = SProxy ∷ SProxy "setupViz"

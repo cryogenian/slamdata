@@ -20,6 +20,7 @@ import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.DimMap.Component as DM
+import SlamData.Workspace.Card.Setups.DimMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.DimMap.Component.Query as DQ
 
 import SlamData.Workspace.Card.Setups.Viz.Component.ChildSlot as CS
@@ -63,7 +64,7 @@ render state =
   picker =
     HH.slot' CS.cpPicker unit VT.component unit
       $ HE.input \e → right ∘ Q.HandlePicker e
-  dims = flip foldMap (Map.lookup state.vizType ST.packages) \package →
+  dims = flip foldMap (Map.lookup state.vizType DS.packages) \package →
     [ HH.slot' CS.cpDims unit DM.component package
       $ HE.input \e → right ∘ Q.HandleDims e
     ]

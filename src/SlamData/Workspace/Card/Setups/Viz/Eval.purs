@@ -8,7 +8,6 @@ import SlamData.Prelude
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
 
-import Data.StrMap as SM
 import Data.Map as M
 import Data.List as L
 
@@ -21,9 +20,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Package.Types as T
 import SlamData.Workspace.Card.CardType.VizType as VT
-import SlamData.Workspace.Card.Setups.Package.Projection as PP
-
-import Utils (nothing)
+import SlamData.Workspace.Card.Setups.DimMap.Component.State as DS
 
 eval
   ∷ ∀ m v
@@ -38,13 +35,22 @@ eval
 eval m resource = do
   records × axes ← BCE.analyze resource =<< get
   put $ Just $ CEM.Analysis { resource, records, axes }
-  unless (L.null missingAxes) $ VE.throw $ VE.MissingAxesError missingAxes
+  unless (L.null missingProjections) $ VE.throw $ { missingProjections, vizType }
 
   pure $ Port.portOut Port.Viz
   where
+  vizType ∷ VT.VizType
+  vizType = m.vizType
+
+  requiredProjections ∷ L.List T.Projection
+  requiredProjections = foldMap _.requiredFields $ M.lookup vizType DS.packages
+
+  missingProjections ∷ L.List T.Projection
+  missingProjections = L.filter (not ∘ T.hasProjection dimMap) requiredProjections
+
   dimMap ∷ T.DimensionMap
   dimMap = fromMaybe T.emptyDimMap $ M.lookup m.vizType m.dimMaps
-
+{-
   guardPrj ∷ T.Projection → L.List T.Projection
   guardPrj prj =
     if T.hasProjection dimMap prj then L.Nil else L.singleton prj
@@ -64,8 +70,8 @@ eval m resource = do
   latLng ∷ L.List T.Projection
   latLng = foldMap guardPrj [ PP._lat, PP._lng ]
 
-  missingAxes ∷ L.List T.Projection
-  missingAxes = case m.vizType of
+  missingProjections ∷ L.List T.Projection
+  missingProjections = case m.vizType of
     VT.Metric →
       guardPrj PP._value
     VT.PivotTable →
@@ -110,3 +116,4 @@ eval m resource = do
         foldMap guardPrj [ PP._dimension, PP._open, PP._close, PP._high, PP._low ]
       VT.Parallel →
         guardPrj $ PP._dimIx 1
+-}

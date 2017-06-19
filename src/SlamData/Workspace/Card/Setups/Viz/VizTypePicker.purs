@@ -4,6 +4,8 @@ import SlamData.Prelude
 
 import CSS as CSS
 
+import Data.Map as M
+
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.Component.ChildPath as CP
@@ -18,6 +20,8 @@ import SlamData.Monad (Slam)
 
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.DimMap.Component.State as DS
+import SlamData.Workspace.Card.Setups.DimMap.DSL as DSL
 
 type ChildSlot = Int ⊹ Unit ⊹ Void
 
@@ -30,99 +34,6 @@ data Action
 derive instance eqAction ∷ Eq Action
 derive instance ordAction ∷ Ord Action
 
-type Requirement =
-  Ax.AxisTypeAnnotated Int ( total ∷ Int, nonMeasure ∷ Int )
-
-requirement ∷ VT.VizType → Requirement
-requirement = case _ of
-  VT.Geo gt → case gt of
-    VT.GeoMarker →
-      def{ value = 2 }
-    VT.GeoHeatmap →
-      def{ value = 3 }
-  VT.PivotTable →
-    def
-  VT.Metric →
-    def{ total = 1 }
-  VT.Input it → case it of
-    VT.Text →
-      def{ category = 1 }
-    VT.Numeric →
-      def{ value = 1 }
-    VT.Date →
-      def{ date = 1 }
-    VT.Time →
-      def{ time = 1 }
-    VT.Datetime →
-      def{ datetime = 1 }
-  VT.Select _ →
-    def{ total = 1 }
-  VT.Chart ct → case ct of
-    VT.Pie →
-      def{ nonMeasure = 1
-         , value = 1
-         }
-    VT.Line →
-      def{ value = 1
-         , total = 2
-         }
-    VT.Bar →
-      def{ value = 1
-         , total = 2
-         }
-    VT.Area →
-      def{ value = 1
-         , total = 2
-         }
-    VT.Scatter →
-      def{ value = 3 }
-    VT.Radar →
-      def{ nonMeasure = 1
-         , value = 1
-         }
-    VT.Funnel →
-      def{ nonMeasure = 1
-         , value = 1
-         }
-    VT.Graph →
-      def{ category = 2 }
-    VT.Heatmap →
-      def{ total = 3
-         , value = 2
-         }
-    VT.Sankey →
-      def{ category = 2 }
-    VT.Gauge →
-      def{ value = 1
-         , nonMeasure = 1
-         }
-    VT.Boxplot →
-      def{ total = 2
-         , value = 1
-         }
-    VT.PunchCard →
-      def{ nonMeasure = 2
-         , value = 1
-         }
-    VT.Candlestick →
-      def{ value = 4
-         , total = 5
-         }
-    VT.Parallel →
-      def{ value = 2 }
-  where
-  -- `Int` here effectively is `Maybe Nat`
-  def ∷ Requirement
-  def =
-    { value: -1
-    , category: -1
-    , time: -1
-    , date: -1
-    , datetime: -1
-    , total: -1
-    , nonMeasure: -1
-    }
-
 fitsRequirement ∷ Ax.Axes → VT.VizType → Boolean
 fitsRequirement axes vt =
   sizes.value >= conf.value
@@ -133,7 +44,7 @@ fitsRequirement axes vt =
   ∧ total >= conf.total
   ∧ nonMeasure >= conf.nonMeasure
   where
-  conf = requirement vt
+  conf = maybe DSL.noneRequirements _.axesRequirements $ M.lookup vt DS.packages
   sizes = Ax.axesSizes axes
   nonMeasure = sizes.category + sizes.date + sizes.time + sizes.datetime
   total = nonMeasure + sizes.value

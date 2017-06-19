@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Error
 
 import SlamData.Prelude
 
-import Data.Variant (case_, on, default)
+import Data.Variant (case_, on)
 import SlamData.GlobalError as GE
 import SlamData.Quasar.Error (QError)
 import SlamData.Workspace.Card.Cache.Error as CCE
@@ -90,11 +90,11 @@ showCardError =
     # on _search (\err → "(SearchCardError " <> show err <> ")")
     # on _table (\err → "(TableCardError " <> show err <> ")")
     # on _variables (\err → "(VariablesCardError " <> show err <> ")")
-    # on _setupViz (\err → "(SetupVizError " <> show err <> ")")
+    # on _setupViz (\err → "(SetupVizError " <> SVE.showError err <> ")")
 
 cardToGlobalError ∷ CardError → Maybe GE.GlobalError
 cardToGlobalError =
-  default Nothing
+  case_
     # on _qerror (hush ∘ GE.fromQError)
     # on _stringly (const Nothing)
     # on _cache CCE.cacheToGlobalError
@@ -109,7 +109,7 @@ cardToGlobalError =
     # on _search CSE.searchToGlobalError
     # on _table CTE.tableToGlobalError
     # on _variables (const Nothing)
-
+    # on _setupViz (const Nothing)
 
 -- TODO(Christoph): use this warn constraint to track down unstructured error messages
 -- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a

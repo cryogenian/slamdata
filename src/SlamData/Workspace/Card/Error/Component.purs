@@ -30,11 +30,14 @@ import Data.List as L
 import Data.List.NonEmpty as NEL
 import Data.Path.Pathy as Path
 import Data.Variant (case_, on)
+
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+
 import Quasar.Advanced.QuasarAF as QA
+
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Render.Icon as I
@@ -44,6 +47,7 @@ import SlamData.Workspace.Card.Cache.Error as CCaE
 import SlamData.Workspace.Card.CardType (AceMode(..), CardType(..), cardName)
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Chart.Error as CChE
 import SlamData.Workspace.Card.DownloadOptions.Error as CDOE
 import SlamData.Workspace.Card.Error (CardError, cardToGlobalError)
@@ -57,9 +61,13 @@ import SlamData.Workspace.Card.Search.Error as CSE
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPTE
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as CFILE
 import SlamData.Workspace.Card.Setups.FormInput.Static.Error as CFISE
+import SlamData.Workspace.Card.Setups.Viz.Error as SVE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
+import SlamData.Workspace.Card.Setups.DimMap.Defaults as DD
+
 import Text.Parsing.Parser (parseErrorMessage)
+
 import Utils (prettyJson)
 
 type DSL = H.ComponentDSL State Query Void Slam
@@ -165,9 +173,36 @@ collapsible title content expanded =
             [ content ]
       ]
 
-setupVizErrorMessage ∷ State → _ → HTML
-setupVizErrorMessage state err =
-  HH.text "TROLOLO"
+setupVizErrorMessage ∷ State → SVE.Error → HTML
+setupVizErrorMessage { accessType, expanded } err@{ vizType, missingProjections } = case accessType of
+  Editable →
+    renderDetails
+  ReadOnly →
+    HH.div_
+      [ HH.p_
+          $ pure
+          $ HH.text
+          $ "A problem occured in the "
+          ⊕ cardName SetupViz
+          ⊕ " card, please notify the author of this workspace"
+      , collapsible "Error details" renderDetails expanded
+      ]
+  where
+  renderDetails =
+    HH.div_
+      [ errorTitle [ HH.text "An error occured during setting up the visualization" ]
+      , renderMore
+      ]
+  renderMore =
+    HH.div_
+      [ HH.text
+          $ "The "
+          ⊕ VT.name vizType
+          ⊕ " visualization need additional axes be selected: "
+      , HH.text
+          $ intercalate ", "
+          $ map (_.label ∘ DD.getDefaults) missingProjections
+      ]
 
 queryErrorMessage ∷ State → CQE.QueryError → HTML
 queryErrorMessage { accessType, expanded } err =
