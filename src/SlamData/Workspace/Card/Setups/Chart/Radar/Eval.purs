@@ -51,7 +51,7 @@ import SqlSquared as Sql
 
 import Utils.Array (enumerate)
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
 
 -- | One radar serie. Actually just data for echarts radar series

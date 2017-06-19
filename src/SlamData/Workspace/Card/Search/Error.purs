@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
 import Text.Parsing.Parser (ParseError)
-import Utils (hush)
+import Utils (throwVariantError, hush)
 
 data SearchError
   = SearchQueryParseError { query ∷ String, error ∷ ParseError }
@@ -38,3 +38,6 @@ searchToGlobalError ∷ SearchError → Maybe GE.GlobalError
 searchToGlobalError = case _ of
   SearchQueryCompilationError error → hush (GE.fromQError error)
   _ → Nothing
+
+throwSearchError ∷ forall v m a. MonadThrow (Variant (search ∷ SearchError | v)) m ⇒ SearchError → m a
+throwSearchError = throwVariantError (SProxy :: SProxy "search")

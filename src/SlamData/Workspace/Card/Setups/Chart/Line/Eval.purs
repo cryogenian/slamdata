@@ -51,7 +51,7 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SqlSquared as Sql
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildLine
 
 type LineSerie =

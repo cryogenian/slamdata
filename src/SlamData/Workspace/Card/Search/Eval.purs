@@ -33,15 +33,16 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Search.Error (SearchError(..), throwSearchError)
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SqlSquared as Sql
 import Text.SlamSearch as SS
 
 evalSearch
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadAff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (search ∷ SearchError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
@@ -53,7 +54,7 @@ evalSearch queryText resource = do
     filePath = resource ^. Port._filePath
     queryText' = if queryText ≡ "" then "*" else queryText
   query ← case SS.mkQuery queryText' of
-    Left pe → CE.throwSearchError (CE.SearchQueryParseError { query: queryText, error: pe })
+    Left pe → throwSearchError (SearchQueryParseError { query: queryText, error: pe })
     Right q → pure q
 
   fields ← CE.liftQ do
@@ -72,7 +73,7 @@ evalSearch queryText resource = do
 
   case compileResult of
     Left err →
-      CE.throwSearchError (CE.SearchQueryCompilationError err)
+      throwSearchError (SearchQueryCompilationError err)
     Right { inputs } → do
       validateResources inputs
       CEM.addSources inputs
