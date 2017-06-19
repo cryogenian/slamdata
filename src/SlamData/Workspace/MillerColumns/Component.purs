@@ -78,7 +78,10 @@ component opts@(Column.ColumnOptions colSpec) =
   renderColumn ∷ S.State a i → Int × Maybe a × i → Array (HTML a i o)
   renderColumn st@{ cycle } (ix × sel × colPath) =
     [ HH.div
-        [ HP.class_ (HH.ClassName "sd-miller-column")
+        [ HP.classes $ join
+            [ pure $ HH.ClassName "sd-miller-column"
+            , guard (ix == L.length (snd st.columns) - 1) $> HH.ClassName "sd-miller-column-last"
+            ]
         , ARIA.label "Column"
         ]
         [ HH.slot
