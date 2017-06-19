@@ -19,21 +19,16 @@ module SlamData.Analytics
   ) where
 
 import SlamData.Prelude
-
+import Network.HTTP.Affjax as AX
+import Quasar.Advanced.QuasarAF as QAF
+import Quasar.Advanced.QuasarAF.Interpreter.Aff as QA
+import Quasar.Advanced.Types as QAT
+import SlamData.Config as Config
 import Control.Monad.Aff (Aff, apathize)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Reader (runReaderT)
-
 import DOM (DOM)
-
-import Network.HTTP.Affjax as AX
-
-import Quasar.Advanced.QuasarAF as QAF
-import Quasar.Advanced.QuasarAF.Interpreter.Aff as QA
-import Quasar.Advanced.Types as QAT
-
-import SlamData.Config as Config
 
 isAdvanced ∷ ∀ eff. Aff (ajax ∷ AX.AJAX | eff) Boolean
 isAdvanced =
@@ -47,20 +42,20 @@ isAdvanced =
     case _ of
       QAT.Advanced → true
       QAT.AdvancedTrial → false
-  
-getEmail ∷ ∀ eff. Aff (ajax ∷ AX.AJAX | eff) (Maybe String)
-getEmail =
+
+getLicensee ∷ ∀ eff. Aff (ajax ∷ AX.AJAX | eff) (Maybe QAT.Licensee)
+getLicensee =
   flip runReaderT { basePath: Config.baseUrl, idToken: Nothing, permissions: [] }
     $ QA.eval
-    $ either (const Nothing) (Just ∘ _.email)
+    $ either (const Nothing) Just
     <$> QAF.licensee
 
 enableAnalytics ∷ ∀ eff. Aff (dom ∷ DOM, ajax ∷ AX.AJAX | eff) Unit
 enableAnalytics =
   apathize $ unlessM isAdvanced do
     liftEff $ _enableAnalytics
-    getEmail >>= maybe (pure unit) (liftEff ∘ _identify)
+    getLicensee >>= traverse_ (liftEff <<< _identify)
 
 foreign import _enableAnalytics ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
 
-foreign import _identify ∷ ∀ eff. String → Eff (dom ∷ DOM | eff) Unit
+foreign import _identify ∷ ∀ eff. QAT.Licensee → Eff (dom ∷ DOM | eff) Unit
