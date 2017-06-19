@@ -149,7 +149,7 @@ cpGroups :: forall f1 g p1 q. CP.ChildPath f1 (Coproduct f1 g) p1 (Either p1 q)
 cpGroups = CP.cp1
 
 data GroupItem
-  = Group { path ∷ Pathy.AbsFile Pathy.Sandboxed, name ∷ String, isLeaf ∷ Boolean }
+  = Group { path ∷ Pathy.AbsFile Pathy.Sandboxed, name ∷ String }
   | User { path ∷ Pathy.AbsFile Pathy.Sandboxed, id ∷ QA.UserId, name ∷ String }
 
 derive instance eqGroupItem ∷ Eq GroupItem
@@ -160,12 +160,11 @@ groupItemName = case _ of
   Group { name } → name
   User { name } → name
 
-type GroupIndex = (Pathy.AbsFile Pathy.Sandboxed ⊹ Tuple QA.UserId (Pathy.AbsFile Pathy.Sandboxed)) ⊹ Pathy.AbsFile Pathy.Sandboxed
+type GroupIndex = Tuple QA.UserId (Pathy.AbsFile Pathy.Sandboxed) ⊹ Pathy.AbsFile Pathy.Sandboxed
 
 prettyPrintGroupIndex ∷ GroupIndex → String
 prettyPrintGroupIndex = case _ of
   Right s → Pathy.printPath s
-  Left (Left s) → Pathy.printPath s
-  Left (Right (uid × s)) → Pathy.printPath s <> " " <> QA.runUserId uid
+  Left (uid × s) → Pathy.printPath s <> " " <> QA.runUserId uid
 
 data GroupMessage = AddNewGroup { path ∷ GroupIndex, event ∷ DOM.Event, name ∷ String }

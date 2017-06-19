@@ -128,8 +128,8 @@ renderGroupsForm (AT.GroupsState _) =
         , label: AT.groupItemName
         , isLeaf: isLeft
         , id: case _ of
-            AT.Group { path, isLeaf } → if isLeaf then Left (Left path) else Right path
-            AT.User { path, id } → Left (Right (id × path))
+            AT.Group { path } → Right path
+            AT.User { path, id } → Left (id × path)
         }
 
 load
@@ -157,7 +157,6 @@ load (Right path × { requestId }) =
           pure (AT.Group
             { path: p
             , name: Pathy.runFileName (Pathy.fileName p)
-            , isLeaf: Array.null subGroups && Array.null members
             })
         Left e →
           -- TODO(Christoph): Ahem
