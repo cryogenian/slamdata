@@ -94,11 +94,12 @@ columnWidth { widths } ix =
 -- | resizing a column there will be an entry in `widths` at the appropriate
 -- | index for the column that is resizing.
 fixColumnWidths
-  ∷ ∀ a i
-  . State a i
+  ∷ ∀ a i o
+  . Column.ColumnOptions a i o
   → State a i
-fixColumnWidths st@{ cycle, columns, widths } =
-  { cycle, columns, widths: foldr go L.Nil (L.mapWithIndex const (snd columns)) }
+  → State a i
+fixColumnWidths opts st@{ cycle, columns, widths } =
+  { cycle, columns, widths: foldr go L.Nil (L.mapWithIndex const (columnPaths opts columns)) }
   where
     go ∷ Int → L.List Column.ColumnWidth → L.List Column.ColumnWidth
     go ix = L.Cons (columnWidth st ix)

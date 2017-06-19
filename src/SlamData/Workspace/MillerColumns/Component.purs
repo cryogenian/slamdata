@@ -139,7 +139,7 @@ component opts@(Column.ColumnOptions colSpec) =
       pure next
     DragStart ix ev next → do
       H.liftEff $ DOM.preventDefault ev
-      H.modify S.fixColumnWidths
+      H.modify (S.fixColumnWidths opts)
       colWidth ← H.gets (flip S.columnWidth ix)
       H.subscribe $ Drag.dragEventSource ev \drag →
         Just (DragUpdate ix colWidth drag H.Listening)
