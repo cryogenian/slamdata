@@ -108,10 +108,13 @@ component' (ColumnOptions colSpec) colPath =
                 [ RC.clearFieldIcon "Clear filter" ]
             ]
         , renderSelected selected
-        , HH.ul
-            [ HE.onScroll \e -> H.action ∘ HandleScroll <$> DOM.fromNode (DOM.currentTarget e) ]
-            $ listItems
-            <> (guard (state == Loading) $> loadIndicator)
+        , HH.div
+            [ HP.class_ (HH.ClassName "sd-miller-column-items") ]
+            [ HH.ul
+                [ HE.onScroll \e -> H.action ∘ HandleScroll <$> DOM.fromNode (DOM.currentTarget e) ]
+                $ listItems
+                <> (guard (state == Loading) $> loadIndicator)
+            ]
         ]
 
   loadIndicator ∷ HTML a i o
