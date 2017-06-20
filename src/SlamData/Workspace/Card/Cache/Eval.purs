@@ -44,11 +44,12 @@ eval
   → Port.Resource
   → m Port.Out
 eval mfp resource =
-  CEM.resourceOut =<< case mfp of
-    Nothing → do
+  CEM.resourceOut =<< case mfp, resource of
+    _, Port.Process _ _ _ → pure resource
+    Nothing, _ → do
       tmp ← fst <$> CEM.temporaryOutputResource
       eval' tmp resource
-    Just pt →
+    Just pt, _ →
       case PU.parseAnyPath pt of
         Just (Right fp) → eval' fp resource
         _ → throwCacheError (CacheInvalidFilepath pt)
