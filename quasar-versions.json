@@ -8,7 +8,7 @@
 , "quasar-advanced":
     { "owner": "slamdata"
     , "repo": "quasar-advanced"
-    , "tag": "v0.8.2"
+    , "tag": "v0.8.4"
     , "prefix": "quasar-advanced-web"
     }
 }
