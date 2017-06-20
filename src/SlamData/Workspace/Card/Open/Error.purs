@@ -17,13 +17,14 @@ limitations under the License.
 module SlamData.Workspace.Card.Open.Error where
 
 import SlamData.Prelude
+import Utils (throwVariantError)
 
 data OpenError
   = OpenFileNotFound String
   | OpenNoResourceSelected
   | OpenNoFileSelected
 
-instance showMarkdownError ∷ Show OpenError where
+instance showOpenError ∷ Show OpenError where
   show = case _ of
     OpenFileNotFound filepath →
       "(OpenFileNotFound " <> show filepath <> ")"
@@ -31,3 +32,6 @@ instance showMarkdownError ∷ Show OpenError where
       "OpenNoResourceSelected"
     OpenNoFileSelected →
       "OpenNoFileSelected"
+
+throwOpenError ∷ forall v m a. MonadThrow (Variant (open ∷ OpenError | v)) m ⇒ OpenError → m a
+throwOpenError = throwVariantError (SProxy :: SProxy "open")

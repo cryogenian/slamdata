@@ -22,8 +22,8 @@ module SlamData.Workspace.Card.Common.EvalQuery
   , modelUpdate
   , modelUpdateSilently
   , stateUpdate
-  , stateAlter
   , shouldTriggerEval
+  , stateAlter
   ) where
 
 import SlamData.Prelude

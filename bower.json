@@ -28,7 +28,7 @@
     "purescript-datetime": "^3.0.0",
     "purescript-dom-classy": "^2.1.0",
     "purescript-dom": "^4.3.1",
-    "purescript-echarts": "^4.0.1",
+    "purescript-echarts": "^5.0.0",
     "purescript-ejson": "^9.0.0",
     "purescript-fixed-points": "^4.0.0",
     "purescript-fork": "^2.0.0",
@@ -38,7 +38,7 @@
     "purescript-generics": "^4.0.0",
     "purescript-halogen-bootstrap": "^6.0.0",
     "purescript-halogen-css": "^6.0.0",
-    "purescript-halogen-echarts": "^6.0.0",
+    "purescript-halogen-echarts": "^7.0.0",
     "purescript-halogen-vdom-string-renderer": "^0.2.0",
     "purescript-halogen": "^2.0.1",
     "purescript-js-timers": "^3.0.0",
@@ -53,7 +53,7 @@
     "purescript-parallel": "^3.0.0",
     "purescript-pathy": "^4.0.0",
     "purescript-profunctor-lenses": "^3.2.0",
-    "purescript-quasar": "^25.0.0",
+    "purescript-quasar": "^29.0.0",
     "purescript-rationals": "^3.1.1",
     "purescript-routing": "^5.1.0",
     "purescript-search": "^3.0.0",
@@ -61,7 +61,9 @@
     "purescript-these": "^3.0.0",
     "purescript-tuples": "^4.0.0",
     "purescript-type-equality": "^2.1.0",
-    "purescript-uri": "^3.0.1"
+    "purescript-uri": "^3.0.1",
+    "purescript-leafletjs-halogen": "^0.1.0",
+    "purescript-variant": "^1.1.0"
   },
   "devDependencies": {
     "purescript-chalky": "^2.0.0",

@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import Data.List (List(..))
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Column.Component.Query (Query)
 import SlamData.Workspace.MillerColumns.Column.Component.Request (RequestId(..), LoadRequest)
+import SlamData.Workspace.MillerColumns.Column.Component.ColumnWidth (ColumnWidth)
 
 import Halogen.Component.Utils.Debounced (DebounceTrigger(..))
 
@@ -45,16 +46,18 @@ type State a i o =
   , lastLoadRequest ∷ Maybe LoadRequest
   , lastRequestId ∷ RequestId
   , filterTrigger ∷ DebounceTrigger (Query a i o) Slam
+  , width ∷ ColumnWidth
   }
 
-initialState ∷ ∀ a i o. Maybe a → State a i o
-initialState =
+initialState ∷ ∀ a i o. ColumnWidth × Maybe a → State a i o
+initialState (width × selected) =
   { items: Nil
   , state: Loading
-  , selected: _
+  , selected
   , filterText: ""
   , nextOffset: Nothing
   , lastLoadRequest: Nothing
   , lastRequestId: RequestId 0
   , filterTrigger: DebounceTrigger (const (pure unit))
+  , width
   }

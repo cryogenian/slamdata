@@ -24,6 +24,7 @@ import SlamData.GlobalMenu.Bus (SignInMessage)
 import SlamData.Guide.StepByStep.Component as Guide
 import SlamData.Notification as N
 import SlamData.Wiring as Wiring
+import SlamData.License (LicenseProblem)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Guide (GuideType)
@@ -43,3 +44,4 @@ data Query a
   | HandleSignInMessage SignInMessage a
   | HandleWorkspace Wiring.WorkspaceMessage a
   | HandleDialog Dialog.Message a
+  | HandleLicenseProblem LicenseProblem a

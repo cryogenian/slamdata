@@ -296,7 +296,7 @@ renderCard opts deckComponent st activeIndex index card =
     Hint.render
       Hint.RightArrow
       (HH.ClassName "sd-access-next-card-hint")
-      DCQ.HideAccessNextActionCardHint
+      (Just DCQ.HideAccessNextActionCardHint)
       hintText
 
   insertableCardType ∷ Maybe ICT.InsertableCardType

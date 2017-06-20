@@ -36,3 +36,12 @@ instance quasarDSLHalogenM ∷ (Monad m, QuasarDSL m) ⇒ QuasarDSL (HalogenM s 
 
 class QuasarDSL m ⇐ ParQuasarDSL m where
   sequenceQuasar ∷ ∀ f a. Traversable f ⇒ f (QF.QuasarAFC a) → m (f a)
+
+instance parQuasarDSLMaybeT ∷ (Monad m, ParQuasarDSL m) ⇒ ParQuasarDSL (MaybeT m) where
+  sequenceQuasar = lift ∘ sequenceQuasar
+
+instance parQuasarDSLExceptT ∷ (Monad m, ParQuasarDSL m) ⇒ ParQuasarDSL (ExceptT e m) where
+  sequenceQuasar = lift ∘ sequenceQuasar
+
+instance parQuasarDSLHalogenM ∷ (Monad m, ParQuasarDSL m) ⇒ ParQuasarDSL (HalogenM s f g p o m) where
+  sequenceQuasar = lift ∘ sequenceQuasar

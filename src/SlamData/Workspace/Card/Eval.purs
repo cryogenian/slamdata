@@ -29,6 +29,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.FormInputType as FiT
 import SlamData.Workspace.Card.Chart.Eval as Chart
 import SlamData.Workspace.Card.Chart.Model as ChartModel
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Eval as PivotTable
@@ -69,6 +70,9 @@ import SlamData.Workspace.Card.Setups.FormInput.Numeric.Eval as SetupNumeric
 import SlamData.Workspace.Card.Setups.FormInput.Static.Eval as SetupStatic
 import SlamData.Workspace.Card.Setups.FormInput.Text.Eval as SetupText
 import SlamData.Workspace.Card.Setups.FormInput.Time.Eval as SetupTime
+import SlamData.Workspace.Card.Setups.Geo.Marker.Eval as SetupGeoMarker
+import SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval as SetupGeoHeatmap
+import SlamData.Workspace.Card.Geo.Eval as Geo
 import SlamData.Workspace.Card.Table.Eval as Table
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 
@@ -85,6 +89,7 @@ runCard
   → m (CEM.CardResult CE.CardError Port.Out)
 runCard env state trans input =
   CEM.runCardEvalM env state (evalCard trans input ∷ CEM.CardEval CE.CardError Port.Out)
+
 
 evalCard
   ∷ ∀ m
@@ -107,6 +112,7 @@ evalCard trans port = CEM.localVarMap >>= \varMap → case trans, port of
   Chart, Port.PivotTable p → PivotTable.eval PTM.initialModel p varMap
   Chart, Port.ChartInstructions { options } → tapResource (Chart.eval options) port
   Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
+  GeoChart, Port.GeoChart m → tapResource (Geo.eval m) port
   Composite, _ → Port.varMapOut <$> Common.evalComposite
   Terminal, _ → pure Port.terminalOut
   Query sql, _ → Query.evalQuery sql varMap
@@ -133,15 +139,17 @@ evalCard trans port = CEM.localVarMap >>= \varMap → case trans, port of
   BuildPunchCard model, _ → BuildPunchCard.eval model port
   BuildCandlestick model, _ → BuildCandlestick.eval model port
   BuildParallel model, _ → BuildParallel.eval model port
-  SetupCheckbox model, _ → tapResource (SetupLabeled.eval model CT.Checkbox) port
-  SetupRadio model, _ → tapResource (SetupLabeled.eval model CT.Radio) port
-  SetupDropdown model, _ → tapResource (SetupLabeled.eval model CT.Dropdown) port
+  SetupCheckbox model, _ → tapResource (SetupLabeled.eval model FiT.Checkbox) port
+  SetupRadio model, _ → tapResource (SetupLabeled.eval model FiT.Radio) port
+  SetupDropdown model, _ → tapResource (SetupLabeled.eval model FiT.Dropdown) port
   SetupText model, _ → tapResource (SetupText.eval model) port
   SetupNumeric model, _ → tapResource (SetupNumeric.eval model) port
   SetupDate model, _ → tapResource (SetupDate.eval model) port
   SetupTime model, _ → tapResource (SetupTime.eval model) port
   SetupDatetime model, _ → tapResource (SetupDatetime.eval model) port
   SetupStatic model, _ → tapResource (SetupStatic.eval model) port
+  SetupGeoMarker model, _ → SetupGeoMarker.eval model port
+  SetupGeoHeatmap model, _ → SetupGeoHeatmap.eval model port
   FormInput (FormInput.Labeled model), Port.SetupLabeledFormInput lp →
     FormInput.evalLabeled model lp =<< CEM.extractResource port
   FormInput (FormInput.TextLike model), Port.SetupTextLikeFormInput tlp →
@@ -192,6 +200,9 @@ modelToEval = case _ of
   Model.FormInput model → FormInput model
   Model.Tabs _ → Terminal
   Model.Table model → Table model
+  Model.SetupGeoMarker model → SetupGeoMarker model
+  Model.SetupGeoHeatmap model → SetupGeoHeatmap model
+  Model.Geo model → GeoChart
   _ → Pass
 
 tapResource

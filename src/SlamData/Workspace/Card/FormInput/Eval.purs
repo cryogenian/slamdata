@@ -28,17 +28,13 @@ import Control.Monad.Writer.Class (class MonadTell)
 import Data.Lens (preview, (?~), (.~))
 import Data.List as L
 import Data.Map as Map
-import Data.Path.Pathy as Path
 import Data.Set as Set
-import Data.StrMap as SM
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
-import SlamData.Quasar.Error as QE
-import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Error as CE
-import SlamData.Workspace.Card.Eval.Common (validateResources)
+import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as CES
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
@@ -57,10 +53,10 @@ import Utils.SqlSquared (all, asRel, tableRelation)
 -- | because it's kinda `"foo"` or `("foo", "bar", true)`
 -- | @cryogenian
 eval
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadAff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ MonadState CEM.CardState m
   ⇒ QuasarDSL m
@@ -68,20 +64,8 @@ eval
   ⇒ SqlQuery
   → Port.Resource
   → m Port.Out
-eval sql r = do
-  tmpPath × resource ← CEM.temporaryOutputResource
-  backendPath ←
-    fromMaybe Path.rootDir ∘ Path.parentDir <$> CEM.anyTemporaryPath (Port.filePath r)
-  { inputs } ←
-    CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
-      QQ.compile backendPath sql SM.empty
-
-  validateResources inputs
-  CEM.addSources inputs
-  _ ← CE.liftQ do
-    _ ← QQ.viewQuery tmpPath sql SM.empty
-    QFS.messageIfFileNotFound tmpPath "Requested collection doesn't exist"
-  CEM.resourceOut (Port.View resource sql SM.empty)
+eval sql r =
+  CEM.resourceOut =<< CE.liftQ <<< CEC.localEvalResource sql =<< CEM.localVarMap
 
 evalLabeled
   ∷ ∀ m

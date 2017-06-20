@@ -34,4 +34,3 @@ noteError = note <<< Exn.error
 
 rethrow ∷ ∀ m e a. MonadThrow e m ⇒ Either e a → m a
 rethrow = either throwError pure
-

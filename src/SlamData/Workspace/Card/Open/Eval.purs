@@ -14,9 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Open.Eval
-  ( evalOpen
-  ) where
+module SlamData.Workspace.Card.Open.Eval (evalOpen) where
 
 import SlamData.Prelude
 
@@ -30,6 +28,7 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.Process as Process
+import SlamData.Workspace.Card.Open.Error (OpenError(..), throwOpenError)
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
@@ -37,8 +36,8 @@ import SqlSquared as Sql
 import Utils.SqlSquared (all)
 
 evalOpen
-  ∷ ∀ m
-  . MonadThrow CE.CardError m
+  ∷ ∀ m v
+  . MonadThrow (Variant (open ∷ OpenError, qerror ∷ CE.QError, stringly ∷ String | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ QuasarDSL m
@@ -46,14 +45,14 @@ evalOpen
   → Port.VarMap
   → m Port.Out
 evalOpen model varMap = case model of
-  Nothing → CE.throwOpenError CE.OpenNoResourceSelected
+  Nothing → throwOpenError OpenNoResourceSelected
   Just (Open.Resource res) → do
-    filePath ← maybe (CE.throwOpenError CE.OpenNoFileSelected) pure $ res ^? R._filePath
+    filePath ← maybe (throwOpenError OpenNoFileSelected) pure $ res ^? R._filePath
     checkPath filePath >>= case _ of
       Nothing → do
         CEM.addSource filePath
         CEM.resourceOut (Port.Path filePath)
-      Just err → CE.throwOpenError err
+      Just err → throwOpenError err
   Just (Open.Variable (VM.Var var)) → do
     CEM.CardEnv { cardId } ← ask
     let
@@ -69,8 +68,9 @@ evalOpen model varMap = case model of
         CE.liftQ $ QQ.mountModule tmpPath sqlModule
         CEM.resourceOut $ Port.Process (res Path.</> Path.file fileName) sqlModule varMap
       Left sql →
-        throwError $ CE.StringlyTypedError "Expected SQL Module."
+        -- Should be impossible.
+        CE.throw "Expected SQL Module."
 
   where
   checkPath filePath =
-    CE.liftQ $ QFS.messageIfFileNotFound filePath $ CE.OpenFileNotFound (Path.printPath filePath)
+    CE.liftQ $ QFS.messageIfFileNotFound filePath $ OpenFileNotFound (Path.printPath filePath)

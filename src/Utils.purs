@@ -14,19 +14,61 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Utils where
+module Utils
+  ( throwVariantError
+  , debugTime
+  , stringToNumber
+  , stringToBoolean
+  , stringToInt
+  , singletonValue'
+  , singletonValue
+  , passover
+  , replicate
+  , chunksOf
+  , hush
+  , hush'
+  , rightBool
+  , parenthesize
+  , removeLastCharIfPeriod
+  , endSentence
+  , lowercaseFirstChar
+  , words
+  , showPrettyNumber
+  , showFormattedNumber
+  , showPrettyJCursor
+  , showJCursorTip
+  , prettyJson
+  , isFirefox
+  , finally
+  )where
 
 import SlamData.Prelude
 
 import Control.Monad.Except (Except)
-
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.String as S
+import Data.Symbol (class IsSymbol)
+import Data.Variant (inj)
 import Global (readFloat, isNaN, isFinite)
 import SqlSquared.Signature.Ident (printIdent)
+
+foreign import debugTime_ ∷ ∀ a. String → (Unit → a) → a
+
+debugTime ∷ ∀ a. Warn "debug time is used in production" ⇒ String → (Unit → a) → a
+debugTime = debugTime_
+
+throwVariantError
+  ∷ ∀ v1 v2 err sym m a
+  . MonadThrow (Variant v2) m
+  ⇒ RowCons sym err v1 v2
+  ⇒ IsSymbol sym
+  ⇒ SProxy sym
+  → err
+  → m a
+throwVariantError s = throwError <<< inj s
 
 stringToNumber ∷ String → Maybe Number
 stringToNumber s =
@@ -37,9 +79,10 @@ stringToNumber s =
   n = readFloat s
 
 stringToBoolean ∷ String → Maybe Boolean
-stringToBoolean "true" = Just true
-stringToBoolean "false" = Just false
-stringToBoolean _ = Nothing
+stringToBoolean = case _ of
+  "true" → Just true
+  "false" → Just false
+  _ → Nothing
 
 stringToInt ∷ String → Maybe Int
 stringToInt = map Int.floor ∘ stringToNumber

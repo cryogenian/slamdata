@@ -48,18 +48,16 @@ import Utils.Path (tmpDir, DirPath)
 validateResources
   ∷ ∀ m t
   . MonadAff SlamDataEffects m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
   ⇒ Traversable t
   ⇒ t FilePath
-  → m Unit
-validateResources fs = do
+  → m (Either CE.QError Unit)
+validateResources fs = runExceptT do
   res ← sequenceQuasar (map (\path → Tuple path <$> QF.fileMetadata path) fs)
   for_ res case _ of
     path × Left reason →
-      throwError
-        $ CE.quasarToCardError
-        $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
+      throwError $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
     _ →
       pure unit
 
@@ -68,7 +66,6 @@ localEvalResource
   . MonadAsk CEM.CardEnv m
   ⇒ MonadAff SlamDataEffects m
   ⇒ MonadTell CEM.CardLog m
-  ⇒ MonadThrow CE.CardError m
   ⇒ ParQuasarDSL m
   ⇒ Sql.SqlQuery
   → VM.VarMap
@@ -83,7 +80,7 @@ localEvalResource sql varMap = runExceptT do
         varMap' = VM.toURLVarMap varMap
         compilePath = fromMaybe Path.rootDir (Path.parentDir filePath)
       { inputs } ← ExceptT $ QQ.compile compilePath sql varMap'
-      lift $ validateResources inputs
+      ExceptT $ validateResources inputs
       lift $ CEM.addSources inputs
       ExceptT $ QQ.viewQuery filePath sql varMap'
       ExceptT $ QQ.liftQuasar $ QF.fileMetadata filePath

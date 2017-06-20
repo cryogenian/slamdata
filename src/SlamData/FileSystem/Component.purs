@@ -23,13 +23,16 @@ module SlamData.FileSystem.Component
 
 import SlamData.Prelude
 
+import CSS as CSS
+
+import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Rec.Class (tailRecM, Step(Done, Loop))
 import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
 
-import CSS as CSS
+import DOM.Event.Event as DEE
 
 import Data.Argonaut (jsonParser, jsonEmptyObject)
 import Data.Array as Array
@@ -43,17 +46,16 @@ import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 
-import DOM.Event.Event as DEE
-
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
-import Halogen.HTML.Core as HC
 import Halogen.HTML.CSS as HCSS
+import Halogen.HTML.Core as HC
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 
+import Quasar.Advanced.QuasarAF as QA
 import Quasar.Data (QData(..))
 import Quasar.Mount as QM
 
@@ -76,7 +78,8 @@ import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.Module.Component.State as Module
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
-import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
+import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as SparkFTP
+import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
@@ -93,9 +96,11 @@ import SlamData.Header.Gripper.Component as Gripper
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LSK
 import SlamData.Monad (Slam)
+import SlamData.Monad.License (notifyDaysRemainingIfNeeded)
 import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
+import SlamData.Quasar.Class (liftQuasar)
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo) as API
@@ -139,7 +144,7 @@ render state@{ version, sort, salt, path } =
           , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
           ]
       , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
-      , HH.slot' CS.cpNotify unit (NC.component $ NC.renderModeFromAccessType Editable) unit
+    , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
           $ HE.input HandleNotifications
       ]
     ⊕ (guard state.presentIntroVideo $> renderIntroVideo)
@@ -191,11 +196,14 @@ eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
     w ← H.lift Wiring.expose
-    whenM
-      (not <$> dismissedIntroVideoBefore)
-      (H.modify $ State._presentIntroVideo .~ true)
+    dismissedIntroVideoBefore >>= if _
+     then void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
+     else H.modify $ State._presentIntroVideo .~ true
     H.subscribe $ busEventSource (flip HandleError ES.Listening) w.bus.globalError
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) w.auth.signIn
+    H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) w.bus.licenseProblems
+    daysRemaining ← map _.daysRemaining <$> liftQuasar QA.licenseInfo
+    notifyDaysRemainingIfNeeded
     pure next
   Transition page next → do
     H.modify
@@ -339,25 +347,34 @@ eval = case _ of
         pure next
   HandleDialog DialogMessage.Dismiss next →
     pure next
-  HandleDialog DialogMessage.MountSave next → do
-    mount ←
+  HandleDialog (DialogMessage.MountSave originalMount) next → do
+    mbMbMount ←
       H.query' CS.cpDialog unit $ H.request Dialog.SaveMount
-    for_ (join mount) \m → do
+    for_ (join mbMbMount) \newPath → do
       hideDialog
-      -- check if we just edited the mount for the current directory, as if
-      -- so, we don't want to add an item to the list for it
-      isCurrentMount ← case m of
-        R.Database path' → (\p → path' ≡ (p </> dir "")) <$> H.gets _.path
-        _ → pure false
-      if isCurrentMount
-        then
+      path ← H.gets _.path
+      case originalMount of
+        -- Refresh if mount is current directory
+        -- path </> dir "" is equal to path
+        Nothing | R.Database path ≡ newPath || (R.Database $ path </> dir "") ≡ newPath →
           H.liftEff Browser.reload
-        else do
-          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount m)
-          dismissMountHint
-          resort
-          checkIsMount =<< H.gets _.path
-          checkIsUnconfigured
+        -- Add new item to list
+        Nothing →
+          void $ H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
+        -- Rename current mount at path
+        Just oldPath@(R.Database p) | path ≡ p && oldPath /= newPath → do
+          handleItemMessage (Item.Open $ R.Mount newPath)
+          void $ API.delete (R.Mount oldPath)
+        -- Rename mount in listing
+        Just oldPath | oldPath /= newPath → do
+          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Remove $ Item (R.Mount oldPath)
+          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
+          void $ API.delete (R.Mount oldPath)
+        Just oldPath → do
+          pure unit
+    resort
+    checkIsMount =<< H.gets _.path
+    checkIsUnconfigured
     pure next
   HandleDialog DialogMessage.MountDelete next → do
     mount ← R.Mount ∘ R.Database <$> H.gets _.path
@@ -371,7 +388,8 @@ eval = case _ of
       _ ← queryHeaderGripper $ H.action Gripper.StopDragging
       pure unit
     pure next
-  HandleNotifications _ next →
+  HandleNotifications (NC.Fulfill trigger) next → do
+    H.liftAff $ AVar.putVar trigger unit
     pure next
   HandleSearch m next → do
     salt ← H.liftEff newSalt
@@ -382,6 +400,10 @@ eval = case _ of
       Search.Submit → do
         H.query' CS.cpSearch unit $ H.request Search.GetValue
     H.liftEff $ setLocation $ browseURL value st.sort salt st.path
+    pure next
+  HandleLicenseProblem problem next → do
+    _ ← H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Hidden
+    _ ← H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.LicenseProblem problem
     pure next
   SetLoading bool next → do
     _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetLoading bool
@@ -504,6 +526,7 @@ dismissIntroVideo ∷ DSL Unit
 dismissIntroVideo = do
   LS.persist LSK.dismissedIntroVideoKey true
   H.modify $ State._presentIntroVideo .~ false
+  void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
 
 dismissedIntroVideoBefore ∷ DSL Boolean
 dismissedIntroVideoBefore =
@@ -627,7 +650,8 @@ configure m =
       QM.MongoDBConfig config → Mount.MongoDB (MongoDB.fromConfig config)
       QM.CouchbaseConfig config → Mount.Couchbase (Couchbase.fromConfig config)
       QM.MarkLogicConfig config → Mount.MarkLogic (MarkLogic.fromConfig config)
-      QM.SparkHDFSConfig config → Mount.SparkHDFS (Spark.fromConfig config)
+      QM.SparkFTPConfig config → Mount.SparkFTP (SparkFTP.fromConfig config)
+      QM.SparkHDFSConfig config → Mount.SparkHDFS (SparkHDFS.fromConfig config)
       QM.SparkLocalConfig config → Mount.SparkLocal (SparkLocal.fromConfig config)
 
     raiseError err = case GE.fromQError err of

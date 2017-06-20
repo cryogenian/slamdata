@@ -56,9 +56,9 @@ import Utils (hush')
 infixr 3 type M.Map as >>
 
 analysisEval
-  ∷ ∀ m p
+  ∷ ∀ m v p
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (stringly ∷ String, qerror ∷ CE.QError | v)) m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ QuasarDSL m
   ⇒ (Axes → p → Array J.Json → Port.Port)
@@ -73,9 +73,9 @@ analysisEval build model defaultModel resource = do
     Just ch → pure $ build axes ch records
     Nothing → CE.throw "Please select an axis."
 
-type ChartSetupEval p m =
+type ChartSetupEval p m v =
   MonadState CEM.CardState m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (stringly ∷ String, qerror ∷ CE.QError, resource ∷ CE.ResourceError | v)) m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ MonadTell CEM.CardLog m
   ⇒ MonadAff SlamDataEffects m
@@ -85,9 +85,9 @@ type ChartSetupEval p m =
   → m Port.Out
 
 chartSetupEval
-  ∷ ∀ m p
+  ∷ ∀ m v p
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (stringly ∷ String, qerror ∷ CE.QError, resource ∷ CE.ResourceError | v)) m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ MonadTell CEM.CardLog m
   ⇒ MonadAff SlamDataEffects m
@@ -112,8 +112,8 @@ chartSetupEval buildSql buildPort m port = do
       pure (port' × VM.insert cardId (VM.Var Port.defaultResourceVar) (VM.Resource resource') varMap)
 
 analyze
-  ∷ ∀ m
-  . MonadThrow CE.CardError m
+  ∷ ∀ m v
+  . MonadThrow (Variant (qerror ∷ CE.QError | v)) m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ QuasarDSL m
   ⇒ Port.Resource

@@ -14,28 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Table.Eval
-  ( eval
-  ) where
+module SlamData.Workspace.Card.Table.Eval (eval) where
 
 import SlamData.Prelude
 
 import Control.Monad.State (class MonadState, put, gets)
-import Control.Monad.Throw (rethrow)
 import Data.Lens ((^?), _Just)
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Table.Error (TableError(..), throwTableError)
 import SlamData.Workspace.Card.Table.Model as M
 
 eval
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadState CEM.CardState m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (table ∷ TableError, resource ∷ CE.ResourceError | v)) m
   ⇒ QuasarDSL m
   ⇒ M.Model
   → Port.Port
@@ -60,10 +58,10 @@ eval model port = do
     size ←
       case rawState of
         Just t | t.resource ≡ resource → pure t.size
-        _ → CEC.countResource resource >>= searchError CE.TableCountQuasarError
+        _ → CEC.countResource resource >>= searchError TableCountQuasarError
     result ←
       CEC.sampleResource path resource (Just { offset, limit: pageSize })
-        >>= searchError CE.TableSampleQuasarError
+        >>= searchError TableSampleQuasarError
     put $ Just $ ES.Table
       { resource
       , result
@@ -73,6 +71,7 @@ eval model port = do
       }
   pure $ port × varMap
 
+
   where
   samePageAndResource ∷ Maybe ES.TableR → Port.Resource → M.Model → Boolean
   samePageAndResource Nothing _ _ = false
@@ -81,5 +80,5 @@ eval model port = do
     ∧ Just t.page ≡ page
     ∧ Just t.pageSize ≡ pageSize
 
-searchError ∷ ∀ e a m. MonadThrow CE.CardError m ⇒ (e → CE.TableError) → Either e a → m a
-searchError f = rethrow ∘ lmap (CE.TableCardError ∘ f)
+searchError ∷ ∀ e a m v. MonadThrow (Variant (table ∷ TableError | v)) m ⇒ (e → TableError) → Either e a → m a
+searchError f = either (throwTableError ∘ f) pure

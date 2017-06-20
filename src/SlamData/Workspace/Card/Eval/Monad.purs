@@ -206,7 +206,12 @@ resourceOut res = do
   CardEnv { cardId, varMap } ← ask
   pure (Port.resourceOut cardId res varMap)
 
-extractResourcePair ∷ ∀ m. MonadThrow CE.CardError m ⇒ MonadAsk CardEnv m ⇒ Port.Port → m (Port.Var × Port.Resource)
+extractResourcePair
+  ∷ ∀ m v
+  . MonadThrow (Variant (resource ∷ CE.ResourceError | v)) m
+  ⇒ MonadAsk CardEnv m
+  ⇒ Port.Port
+  → m (Port.Var × Port.Resource)
 extractResourcePair port = do
   varMap ← localVarMap
   case port of
@@ -215,14 +220,24 @@ extractResourcePair port = do
       pure (Port.Var key × r)
     _ →
       case SM.toUnfoldable (Port.filterResources varMap) of
-        rs@(_ : _ : _) → throwError $ CE.ResourceError (snd <$> rs)
-        L.Nil → throwError $ CE.ResourceError L.Nil
+        rs@(_ : _ : _) → CE.throwResourceError $ CE.ResourceError (snd <$> rs)
+        L.Nil → CE.throwResourceError $ CE.ResourceError L.Nil
         r : L.Nil → pure (lmap Port.Var r)
 
-extractResource ∷ ∀ m. MonadThrow CE.CardError m ⇒ MonadAsk CardEnv m ⇒ Port.Port → m Port.Resource
+extractResource
+  ∷ ∀ m v
+  . MonadThrow (Variant (resource ∷ CE.ResourceError | v)) m
+  ⇒ MonadAsk CardEnv m
+  ⇒ Port.Port
+  → m Port.Resource
 extractResource = map snd ∘ extractResourcePair
 
-extractResourceVar ∷ ∀ m. MonadThrow CE.CardError m ⇒ MonadAsk CardEnv m ⇒ Port.Port → m Port.Var
+extractResourceVar
+  ∷ ∀ m v
+  . MonadThrow (Variant (resource ∷ CE.ResourceError | v)) m
+  ⇒ MonadAsk CardEnv m
+  ⇒ Port.Port
+  → m Port.Var
 extractResourceVar = map fst ∘ extractResourcePair
 
 runCardEvalM

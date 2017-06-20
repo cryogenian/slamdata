@@ -87,7 +87,7 @@ instance heytingAlgebraDetailsPresented :: HeytingAlgebra DetailsPresented where
       ∘ not
       ∘ detailsPresentedToBoolean
 
-data RenderMode = Notifications | ExpandableList Expanded
+data RenderMode = Notifications | ExpandableList Expanded | Hidden
 
 type State =
   { tick ∷ Int
@@ -176,6 +176,8 @@ render st =
       HH.div
         [ HP.class_ (HH.ClassName "sd-notifications-list") ]
         [ HH.ul_ $ renderListItem <$> all ]
+    Hidden →
+      HH.text ""
 
   where
   all =

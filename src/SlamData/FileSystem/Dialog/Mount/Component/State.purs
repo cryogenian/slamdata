@@ -19,12 +19,15 @@ module SlamData.FileSystem.Dialog.Mount.Component.State where
 import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as P
 
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.Module.Component.State as Module
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
+import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as SparkFTP
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
@@ -36,6 +39,7 @@ type State =
   , parent ∷ Maybe DirPath
   , name ∷ Maybe String
   , message ∷ Maybe String
+  , originalName :: Maybe String
   , saving ∷ Boolean
   , unMounting ∷ Boolean
   , settings ∷ Maybe MountSettings
@@ -53,6 +57,7 @@ data MountSettings
   | Couchbase Couchbase.State
   | MarkLogic MarkLogic.State
   | SparkHDFS SparkHDFS.State
+  | SparkFTP SparkFTP.State
   | SparkLocal SparkLocal.State
 
 initialSettings ∷ MS.Scheme → MountSettings
@@ -62,6 +67,7 @@ initialSettings = case _ of
   MS.Module → Module Module.initialState
   MS.Couchbase → Couchbase Couchbase.initialState
   MS.MarkLogic → MarkLogic MarkLogic.initialState
+  MS.SparkFTP → SparkFTP SparkFTP.initialState
   MS.SparkHDFS → SparkHDFS SparkHDFS.initialState
   MS.SparkLocal → SparkLocal SparkLocal.initialState
 
@@ -73,6 +79,9 @@ _parent = lens _.parent (_ { parent = _ })
 
 _name ∷ forall a. Lens' { name ∷ Maybe String | a } (Maybe String)
 _name = lens _.name (_ { name = _ })
+
+_originalName ∷ forall a. Lens' { originalName ∷ Maybe String | a } (Maybe String)
+_originalName = lens _.originalName (_ { originalName = _ })
 
 _message ∷ Lens' State (Maybe String)
 _message = lens _.message (_ { message = _ })
@@ -94,6 +103,7 @@ initialState = case _ of
     , settings: Nothing
     , name: Just ""
     , message: Nothing
+    , originalName: Nothing
     , saving: false
     , unMounting: false
     }
@@ -103,6 +113,7 @@ initialState = case _ of
     , settings: Just settings
     , name: name
     , message: Nothing
+    , originalName: name
     , saving: false
     , unMounting: false
     }
@@ -112,6 +123,7 @@ initialState = case _ of
     , settings: Nothing
     , name: Nothing
     , message: Nothing
+    , originalName: Nothing
     , saving: false
     , unMounting: false
     }
@@ -123,6 +135,7 @@ scheme = case _ of
   Module _ → MS.Module
   Couchbase _ → MS.Couchbase
   MarkLogic _ → MS.MarkLogic
+  SparkFTP _ → MS.SparkFTP
   SparkHDFS _ → MS.SparkHDFS
   SparkLocal _ → MS.SparkLocal
 
@@ -137,3 +150,6 @@ canSave st
 validate ∷ State → Maybe String
 validate { name } = either Just (const Nothing) $ runExcept do
   when (maybe false (eq "") name) $ throwError "Please enter a mount name"
+
+originalPath ∷ State → Maybe DirPath
+originalPath st = (</>) <$> st.parent <*> (P.dir <$> st.originalName)
