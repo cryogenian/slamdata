@@ -69,7 +69,7 @@
     "less-watch-compiler": "^1.4.2",
     "platform": "^1.3.0",
     "pulp": "^11.0.0",
-    "purescript": "^0.11.4",
+    "purescript": "^0.11.5",
     "purescript-psa": "^0.5.1",
     "purs-loader": "^2.4.2",
     "rimraf": "^2.4.3",
