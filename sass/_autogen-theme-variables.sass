@@ -1,5 +1,19 @@
-// SlamData Sass variables -- some get piped into Bootstrap
+// SlamData Sass variables -- some variable come from or override Bootstrap 3
+//
+// These are sane defaults lightening/darkening colors to build a theme that
+// generally looks alright. Import this file to get that ability by default,
+// otherwise all of these variables will need to have all these variables
+// accouted for (and the compiler will yell if you don't).
 
+@import contrast-luma
+
+
+// Most obvious variables that people will want to change
+$brand-primary: #337ab7 !default
+$text-color: #333 !default
+$body-bg: #fff !default
+
+// Variables from old Less theme
 $grid-size: 2.4rem !default
 $shade-tint: rgba(0, 0, 0, 0.1) !default
 
@@ -19,6 +33,9 @@ $is-light-theme: luma($body-bg) > 127.5 !default
 // used for separators & borders
 $color-separator: brighten($body-bg, 15%, 20%) !default
 
+
+// Bootstrap Overriding
+//---------------------------------------------------------------------------
 
 $panel-bg: $body-bg !default
 $panel-inner-border: $color-separator !default
@@ -61,6 +78,10 @@ $thumbnail-border: $color-separator !default
 $pre-border-color: $color-separator !default
 
 $hr-border: $color-separator !default
+
+
+// SlamData Components
+//---------------------------------------------------------------------------
 
 // Action List
 $action-list-btn-color: if(luma($brand-primary) < 210, #fff, #000) !default
