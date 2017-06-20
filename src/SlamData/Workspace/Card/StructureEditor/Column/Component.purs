@@ -69,11 +69,9 @@ component' opts path =
 
   render ∷ State → HTML
   render st =
-    HH.div_
-      [ HH.div
-          [ HP.class_ (HH.ClassName "sd-structure-editor-column") ]
-          [ HH.slot unit column st (Just ∘ right ∘ H.action ∘ Raise) ]
-      ]
+    HH.div
+      [ HP.class_ (HH.ClassName "sd-structure-editor-column") ]
+      [ HH.slot unit column st (Just ∘ right ∘ H.action ∘ Raise) ]
 
   eval ∷ Query' ~> DSL
   eval = coproduct evalInner evalOuter
