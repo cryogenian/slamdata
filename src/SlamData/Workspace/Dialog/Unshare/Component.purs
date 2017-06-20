@@ -23,6 +23,8 @@ import Control.Monad.Aff.AVar (makeVar, takeVar, putVar)
 import Control.Monad.Eff.Ref (newRef, modifyRef, readRef)
 import Control.Monad.Fork.Class (fork)
 import Control.UI.Browser (select)
+import DOM.Classy.Element (toElement)
+import DOM.HTML.Types (readHTMLElement)
 import Data.Array as Arr
 import Data.Foldable as F
 import Data.Foreign (toForeign)
@@ -30,17 +32,13 @@ import Data.Lens (Lens', lens, (.~), (%~), (?~))
 import Data.Lens.Index (ix)
 import Data.List as L
 import Data.Map as Map
-import Data.Path.Pathy as Pt
 import Data.Set as Set
 import Data.StrMap as SM
-import DOM.Classy.Element (toElement)
-import DOM.HTML.Types (readHTMLElement)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Elements.Keyed as HK
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import Quasar.Advanced.Types as QTA
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Security as Q
@@ -48,9 +46,9 @@ import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Dialog.Share.Model (ShareResume(..), printShareResume)
 import SlamData.Workspace.Dialog.Share.Model as Model
+import Utils (hush)
 import Utils.DOM as DOM
 import Utils.Foldable (chunkedParTraverse, splitList)
-import Utils.Path (parseFilePath)
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Message Slam
@@ -527,7 +525,7 @@ changePermissionResumeForGroup
   → Permission
   → DSL (Boolean × (Map.Map QTA.PermissionId QTA.ActionR))
 changePermissionResumeForGroup name sharingInput res perm =
-  case parseFilePath name of
+  case hush (QTA.parseGroupPath name) of
     Nothing → pure $ false × perm.actions
     Just groupPath → do
       leftPids ← deletePermission perm.actions
@@ -539,7 +537,7 @@ changePermissionResumeForGroup name sharingInput res perm =
           actions = Model.sharingActions sharingInput res
           shareRequest =
             { users: [ ]
-            , groups: [ Right groupPath ]
+            , groups: [ groupPath ]
             , actions
             }
         shareRes ← Q.sharePermission shareRequest
@@ -620,9 +618,9 @@ adjustPermissions prs sharingInput =
                 acc{users = SM.insert uid perm users}
               | otherwise = acc
           in res
-        QTA.GroupGranted pt →
+        QTA.GroupGranted groupPath →
           let
-            gid = either QTA.printRoot Pt.printPath pt
+            gid = QTA.printGroupPath groupPath
             res
               | subset sharingActionsEdit actionsSet =
                 acc{groups = SM.insert gid perm{resume = Edit} groups }
