@@ -61,11 +61,15 @@ clearFieldIcon label =
 busyFieldIcon ∷ ∀ f p. String → HTML p (f Unit)
 busyFieldIcon label =
   HH.span
-    [ HP.class_ (HH.ClassName "sd-busy-field-icon")
+    [ HP.class_ (HH.ClassName "sd-busy-field")
     , HP.title label
     , ARIA.label label
     ]
-    [ HH.text label ]
+    [ I.spinner
+    , HH.span
+        [ HP.class_ CN.srOnly ]
+        [ HH.text label ]
+    ]
 
 svgElem ∷ ∀ r p i. HH.ElemName → Array (HP.IProp r i) → Array (HTML p i) → HTML p i
 svgElem =

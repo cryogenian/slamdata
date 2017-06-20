@@ -69,8 +69,8 @@ $action-list-disabled-bg: brighten($body-bg, 20%, 5%) !default
 $action-list-disabled-color: $text-color !default
 
 // Draftboard
-$draftboard-bg: if(luma($body-bg) > 20, darken($body-bg, 7.5%), lighten($body-bg, 5%))
-$draftboard-edge-color: if(luma($draftboard-bg) > 50, darken($draftboard-bg, 25%), lighten($draftboard-bg, 17.5%))
+$draftboard-bg: if(luma($body-bg) > 20, darken($body-bg, 7.5%), lighten($body-bg, 5%)) !default
+$draftboard-edge-color: if(luma($draftboard-bg) > 50, darken($draftboard-bg, 25%), lighten($draftboard-bg, 17.5%)) !default
 $draftboard-cell-bg: $body-bg !default
 $draftboard-guide-color: $brand-primary !default
 $draftboard-insert-cell-color: $brand-primary !default
@@ -102,14 +102,14 @@ $error-card-bg: brighten($body-bg, 3.75%, 5%) !default
 
 // Miller Columns
 $miller-column-border-color: $color-separator !default
-$miller-column-item-selected-bg: brighten($body-bg, 10%, 15%)
+$miller-column-item-selected-bg: brighten($body-bg, 10%, 15%) !default
 $miller-column-item-hover-bg: brighten($body-bg, 3.75%, 5%) !default
 
 // Pivot Card
 $pivot-card-border: $color-separator !default
 $pivot-card-outer-border: brighten($color-separator, 5%, 5%) !default
-$pivot-card-alt-bg: brighten($body-bg, -2.5%, 2.5%)
-$pivot-card-alt2-bg: brighten($color-separator, 5%, 5%)
+$pivot-card-alt-bg: darkenen($body-bg, 2.5%) !default
+$pivot-card-alt2-bg: brighten($color-separator, 5%, 5%) !default
 
 // Tabs Card
 $tabs-card-header-bg: brighten($body-bg, 12.5%, 5%) !default

@@ -78,7 +78,7 @@ label.sd-option span
   height: $grid-size
   line-height: $grid-size
   text-align: center
-  color: #aaa
+  color: $color-separator
 
 
 .sd-discrete-button
@@ -96,7 +96,7 @@ label.sd-option span
 
   &.default
     button
-      color: #999
+      color: #999  // TODO
 
   .sd-dismiss-button
     position: absolute
@@ -111,25 +111,13 @@ label.sd-option span
 
 .sd-select-input
   position: relative
-  top: -$padding-base-vertical
+  top: $padding-base-vertical * -1
 
   .list-group
     position: absolute
     top: 3rem
     right: 0
     width: 24rem
-
-
-.sd-busy-field-icon
-  display: inline-block
-  overflow: hidden
-  white-space: nowrap
-  text-indent: 100%
-  width: 1.6rem
-  height: 1.6rem
-  background-size: 1.6rem 1.6rem
-  vertical-align: middle
-  background-image: url("../img/spin.svg")
 
 
 .form-control
