@@ -141,58 +141,86 @@
   margin-bottom: 1.6rem;
 }
 
-.license-dialog img {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: 1rem;
-}
+.license-dialog {
+  @sd-orange: #ff8600;
+  @bg: #161616;
+  pointer-events: all;
 
-.license-dialog .deck-dialog-footer {
-  text-align: center;
-}
+  p {
+    opacity: 0.7;
+    line-break: 1.4;
+  }
 
-.license-dialog .deck-dialog-footer .btn {
-  float: none !important;
-  width: 183px;
-}
+  img {
+    display: block;
+    width: 100%;
+    max-width: 16.6rem;
+    margin: 0.7rem auto 3.9rem;
+  }
 
-.license-dialog .deck-dialog-footer .btn:first-child {
-  margin: 0 !important;
-}
+  .deck-dialog-footer {
+    @m: 1.8rem;
+    display: flex;
+    flex-flow: row nowrap;
+    margin: 0 (@m * -1);
 
-.license-dialog .deck-dialog-footer {
-  margin-top: 0.4rem;
-}
+    .btn {
+      flex: 1 1 50%;
+      min-width: 0;
+      float: none !important;
 
-.license-dialog > div {
-  background-color: #151617;
-  color: white;
-  max-width: 445px !important;
-  min-width: 445px !important;
-  padding: 1.5rem;
-}
+      &:not(:first-child) {
+        margin-left: @m !important;
+      }
 
-.license-dialog p {
-  text-align: justify;
-}
+      &:not(:first-child) {
+        margin-right: @m !important;
+      }
+    }
+  }
 
-.license-dialog .btn {
-  background: transparent;
-  border: 1px solid #F5851E;
-  color: #F5851E;
-}
+  .deck-dialog-footer {
+    margin-top: 1.6rem;
+    margin-bottom: 0;
+  }
 
-.license-dialog .btn:active {
-  background: transparent;
-  border: 1px solid #F5851E;
-  color: #F5851E;
-}
+  > div {
+    background-color: @bg;
+    color: #fff;
+    max-width: 45rem !important;
+    min-width: auto !important;
+    padding: 1.6rem;
+  }
 
-.license-dialog h4 {
-  color: #F5851E;
-  font-size: 3.5rem;
-  padding-top: 0 !important;
-  padding-bottom: 0.5rem !important;
-  text-align: center;
+  .btn {
+    padding-top: 0.6em;
+    padding-bottom: 0.8em;
+    background: @sd-orange;
+    border: 0.1rem solid @sd-orange;
+    color: #fff;
+    text-shadow: 0 -0.1rem 0 darken(@sd-orange, 7.5%);
+    transition-property: background-color, border-color, color;
+    transition-duration: 200ms;
+    transition-timing-function: ease-out;
+
+    &:hover, &:active {
+      background-color: @sd-orange;
+      background-image: linear-gradient(to bottom, darken(@sd-orange, 5%), darken(@sd-orange, 2.5%));
+      color: #fff;
+    }
+
+    &:active {
+      border-color: #fff;
+    }
+  }
+
+  h4 {
+    color: #fff;
+    //color: @sd-orange;
+    font-size: 3.5rem;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0.3rem;
+    text-align: center;
+  }
 }
