@@ -11,15 +11,19 @@ import Data.Lens.Record (prop)
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Data.String.Regex.Unsafe as URX
+import Data.Newtype (under)
+import Data.Profunctor (lmap)
 
 import Global (decodeURIComponent, readFloat, isNaN)
 
 import Halogen as H
+import Halogen.Component as HC
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
+import Halogen.Component.Profunctor as HPR
 
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (ColorScheme(..), colorSchemeSelect)
 import SlamData.Form.Select (class OptionVal, Select(..), stringVal)
@@ -31,6 +35,8 @@ import SlamData.Workspace.Card.Setups.Viz.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Geo.Model (onURIRef)
 import SlamData.Render.ClassName as CN
+
+import Unsafe.Coerce (unsafeCoerce)
 
 class IsSymbol s ⇐ HasLabel s where
   label ∷ SProxy s → String
@@ -45,10 +51,6 @@ instance valHasLabel ∷ HasLabel "val" where
   label _ = "Value"
 instance axisLabelAngleHasLabel ∷ HasLabel "axisLabelAngle" where
   label _ = "Axis label angle"
-instance minValueHasLabel ∷ HasLabel "minValue" where
-  label _ = "Minimum value"
-instance maxValueHasLabel ∷ HasLabel "maxValue" where
-  label _ = "Maximum value"
 instance isColorSchemeReversedHasLabel ∷ HasLabel "isColorSchemeReversed" where
   label _ = "Reversed color scheme"
 instance optionalMarkersHasLabel ∷ HasLabel "optionalMarkers" where
@@ -75,6 +77,24 @@ derive instance functorToggleF ∷ Functor ToggleF
 data ChooseF val a = Choose val a
 derive instance functorChooseF ∷ Functor (ChooseF a)
 
+
+_size = SProxy ∷ SProxy "size"
+_uriString = SProxy ∷ SProxy "uriString"
+_uri = SProxy ∷ SProxy "uri"
+_min = SProxy ∷ SProxy "min"
+_max = SProxy ∷ SProxy "max"
+_isSmooth = SProxy ∷ SProxy "isSmooth"
+_isStacked = SProxy ∷ SProxy "isStacked"
+_osm = SProxy ∷ SProxy "osm"
+_axisLabelAngle = SProxy ∷ SProxy "axisLabelAngle"
+_val = SProxy ∷ SProxy "val"
+_isColorSchemeReversed = SProxy ∷ SProxy "isColorSchemeReversed"
+_colorScheme = SProxy ∷ SProxy "colorScheme"
+_optionalMarkers = SProxy ∷ SProxy "optionalMarkers"
+_order = SProxy ∷ SProxy "order"
+_align = SProxy ∷ SProxy "align"
+_circular = SProxy ∷ SProxy "circular"
+_formatter = SProxy ∷ SProxy "formatter"
 
 renderChoose
   ∷ ∀ r1 r2 s q1 q2 a
@@ -149,7 +169,7 @@ renderOsmURI proxy state =
     ]
   where
   lens ∷ Lens' (Record r2) String
-  lens = prop proxy ∘ prop (SProxy ∷ SProxy "uriString")
+  lens = prop proxy ∘ prop _uriString
 
 evalOsmURI
   ∷ ∀ r1 r2 s q m
@@ -175,10 +195,10 @@ evalOsmURI proxy = case _ of
     pure next
   where
   _osmURIString ∷ Lens' (Record r2) String
-  _osmURIString = prop proxy ∘ prop (SProxy ∷ SProxy "uriString")
+  _osmURIString = prop proxy ∘ prop _uriString
 
   _osmURI ∷ Lens' (Record r2) URIRef
-  _osmURI = prop proxy ∘ prop (SProxy ∷ SProxy "uri")
+  _osmURI = prop proxy ∘ prop _uri
 
 renderMinMax
   ∷ ∀ r1 r2 s q1 q2
@@ -217,10 +237,10 @@ renderMinMax proxy state =
   ]
   where
   _minSize ∷ Lens' (Record r2) Number
-  _minSize = prop proxy ∘ prop (SProxy ∷ SProxy "min")
+  _minSize = prop proxy ∘ prop _min
 
   _maxSize ∷ Lens' (Record r2) Number
-  _maxSize = prop proxy ∘ prop (SProxy ∷ SProxy "max")
+  _maxSize = prop proxy ∘ prop _max
 
 
 evalMinMax
@@ -251,10 +271,10 @@ evalMinMax proxy = case _ of
     pure next
   where
   _minSize ∷ Lens' (Record r2) Number
-  _minSize = prop (SProxy ∷ SProxy s) ∘ prop (SProxy ∷ SProxy "min")
+  _minSize = prop (SProxy ∷ SProxy s) ∘ prop _min
 
   _maxSize ∷ Lens' (Record r2) Number
-  _maxSize = prop (SProxy ∷ SProxy s) ∘ prop (SProxy ∷ SProxy "max")
+  _maxSize = prop (SProxy ∷ SProxy s) ∘ prop _max
 
 renderToggle
   ∷ ∀ r1 r2 s q1 q2
@@ -381,42 +401,35 @@ evalStr proxy = case _ of
     H.raise $ Updated st
     pure next
 
-type TstState = { isStacked ∷ Boolean, isSmooth ∷ Boolean }
-type TstQuery = VariantF ( isStacked ∷ FProxy ToggleF, isSmooth ∷ FProxy ToggleF )
 
-render ∷ TstState → H.ComponentHTML TstQuery
-render state =
-  HH.div_
-  [ renderToggle (SProxy ∷ SProxy "isSmooth") state
-  , renderToggle (SProxy ∷ SProxy "isStacked") state
-  ]
+type ResetF m r = VariantF ( reset ∷ FProxy (Tuple m) | r)
 
-tstEval ∷ TstQuery ~> H.ComponentDSL TstState TstQuery (Message TstState) Slam
-tstEval = case_
-  # on (SProxy ∷ SProxy "isSmooth") (evalToggle (SProxy ∷ SProxy "isSmooth"))
-  # on (SProxy ∷ SProxy "isStacked") (evalToggle (SProxy ∷ SProxy "isStacked"))
+_reset = SProxy ∷ SProxy "reset"
 
-geoHeatmap
-  ∷ H.Component
-      HH.HTML
-      (VariantF (osm ∷ FProxy SetF))
-      Unit
-      (Message {osm ∷ OsmURIState})
-      Slam
+evalReset
+  ∷ ∀ r1 r2 s q m
+  . ResetF (Record r2)
+  ~> H.ComponentDSL (Record r2) q (Message (Record r2)) m
+evalReset = case _ of
+  Tuple st next → do
+    H.put st
+    pure next
+
+type GeoHeatmapState = { osm ∷ OsmURIState }
+type GeoHeatmapF = ResetF GeoHeatmapState ( osm ∷ FProxy SetF )
+
+geoHeatmap ∷ H.Component HH.HTML GeoHeatmapF Unit (Message GeoHeatmapState) Slam
 geoHeatmap = H.component
   { initialState: const { osm: { uri: M.osmURI, uriString: printURIRef M.osmURI } }
-  , render: \state → row [ renderOsmURI (SProxy ∷ SProxy "osm") state ]
-  , eval: case_ # on (SProxy ∷ SProxy "osm") (evalOsmURI (SProxy ∷ SProxy "osm"))
+  , render: \state → row [ renderOsmURI _osm state ]
+  , eval: case_ # on _osm (evalOsmURI _osm)
   , receiver: const Nothing
   }
 
-geoMarker
-  ∷ H.Component
-      HH.HTML
-      (VariantF (osm ∷ FProxy SetF, size ∷ FProxy MinMaxF))
-      Unit
-      (Message {osm ∷ OsmURIState, size ∷ MinMaxState})
-      Slam
+type GeoMarkerF = VariantF ( osm ∷ FProxy SetF, size ∷ FProxy MinMaxF )
+type GeoMarkerState = { osm ∷ OsmURIState, size ∷ MinMaxState }
+
+geoMarker ∷ H.Component HH.HTML GeoMarkerF Unit (Message GeoMarkerState) Slam
 geoMarker = H.component
   { initialState: const { osm: { uri: M.osmURI
                                , uriString: printURIRef M.osmURI
@@ -427,31 +440,30 @@ geoMarker = H.component
                         }
   , render: \state → HH.div_
      [ HH.hr_
-     , renderMinMax (SProxy ∷ SProxy "size") state
+     , renderMinMax _size state
      , HH.hr_
-     , renderOsmURI (SProxy ∷ SProxy "osm") state
+     , renderOsmURI _osm state
      ]
   , eval: case_
-      # on (SProxy ∷ SProxy "size") (evalMinMax (SProxy ∷ SProxy "size"))
-      # on (SProxy ∷ SProxy "osm") (evalOsmURI (SProxy ∷ SProxy "osm"))
+      # on _size (evalMinMax _size)
+      # on _osm (evalOsmURI _osm)
   , receiver: const Nothing
   }
 
-area
-  ∷ H.Component
-      HH.HTML
-      ( VariantF ( isStacked ∷ FProxy ToggleF
-                 , isSmooth ∷ FProxy ToggleF
-                 , axisLabelAngle ∷ FProxy SetF
-                 , size ∷ FProxy SetF
-                 ) )
-      Unit
-      ( Message { isStacked ∷ Boolean
-                , isSmooth ∷ Boolean
-                , axisLabelAngle ∷ Number
-                , size ∷ Number
-                } )
-      Slam
+type AreaF = VariantF
+  ( isStacked ∷ FProxy ToggleF
+  , isSmooth ∷ FProxy ToggleF
+  , axisLabelAngle ∷ FProxy SetF
+  , size ∷ FProxy SetF
+  )
+type AreaState =
+  { isStacked ∷ Boolean
+  , isSmooth ∷ Boolean
+  , axisLabelAngle ∷ Number
+  , size ∷ Number
+  }
+
+area ∷ H.Component HH.HTML AreaF Unit (Message AreaState) Slam
 area = H.component
   { initialState: const { isStacked: false
                         , isSmooth: false
@@ -460,100 +472,85 @@ area = H.component
                         }
   , render: \state → HH.div_
     [ HH.hr_
-    , row [ renderToggle (SProxy ∷ SProxy "isStacked") state
-          , renderToggle (SProxy ∷ SProxy "isSmooth") state
+    , row [ renderToggle _isStacked state
+          , renderToggle _isSmooth state
           ]
     , HH.hr_
-    , row [ renderNum (SProxy ∷ SProxy "axisLabelAngle") state
-          , renderNum (SProxy ∷ SProxy "size") state
+    , row [ renderNum _axisLabelAngle state
+          , renderNum _size state
           ]
     ]
   , eval: case_
-    # on (SProxy ∷ SProxy "isStacked") (evalToggle (SProxy ∷ SProxy "isStacked"))
-    # on (SProxy ∷ SProxy "isSmooth") (evalToggle (SProxy ∷ SProxy "isSmooth"))
-    # on (SProxy ∷ SProxy "axisLabelAngle") (evalNum (SProxy ∷ SProxy "axisLabelAngle"))
-    # on (SProxy ∷ SProxy "size") (evalNum (SProxy ∷ SProxy "size"))
+    # on _isStacked (evalToggle _isStacked)
+    # on _isSmooth (evalToggle _isSmooth)
+    # on _axisLabelAngle (evalNum _axisLabelAngle)
+    # on _size (evalNum _size)
   , receiver: const Nothing
   }
 
-bar
-  ∷ H.Component
-      HH.HTML
-      (VariantF (axisLabelAngle ∷ FProxy SetF))
-      Unit
-      (Message {axisLabelAngle ∷ Number})
-      Slam
+type BarF = VariantF ( axisLabelAngle ∷ FProxy SetF )
+type BarState = { axisLabelAngle ∷ Number }
+
+bar ∷ H.Component HH.HTML BarF Unit (Message BarState) Slam
 bar = H.component
   { initialState: const { axisLabelAngle: 0.0 }
   , render: \state → HH.div_
     [ HH.hr_
-    , row [ renderNum (SProxy ∷ SProxy "axisLabelAngle") state ]
+    , row [ renderNum _axisLabelAngle state ]
     ]
   , eval: case_
-    # on (SProxy ∷ SProxy "axisLabelAngle") (evalNum (SProxy ∷ SProxy "axisLabelAngle"))
+    # on _axisLabelAngle (evalNum _axisLabelAngle)
   , receiver: const Nothing
   }
 
+type FunnelF = VariantF ( order ∷ FProxy (ChooseF Sort), align ∷ FProxy (ChooseF Align) )
+type FunnelState = { order ∷ Sort, align ∷ Align }
 
-funnel
-  ∷ H.Component
-      HH.HTML
-      (VariantF ( order ∷ FProxy (ChooseF Sort)
-                , align ∷ FProxy (ChooseF Align)
-                ))
-      Unit
-      (Message { order ∷ Sort
-               , align ∷ Align
-               })
-      Slam
+funnel ∷ H.Component HH.HTML FunnelF Unit (Message FunnelState) Slam
 funnel = H.component
   { initialState: const { order: Asc, align: LeftAlign }
   , render: \state → HH.div_
     [ HH.hr_
-    , row [ renderChoose (SProxy ∷ SProxy "order") sortSelect state
-          , renderChoose (SProxy ∷ SProxy "align") alignSelect state
+    , row [ renderChoose _order sortSelect state
+          , renderChoose _align alignSelect state
           ]
     ]
   , eval: case_
-    # on (SProxy ∷ SProxy "order") (evalChoose (SProxy ∷ SProxy "order"))
-    # on (SProxy ∷ SProxy "align") (evalChoose (SProxy ∷ SProxy "align"))
+    # on _order (evalChoose _order)
+    # on _align (evalChoose _align)
   , receiver: const Nothing
   }
 
-graph
-  ∷ H.Component
-      HH.HTML
-      ( VariantF ( size ∷ FProxy MinMaxF, circular ∷ FProxy ToggleF ) )
-      Unit
-      ( Message { size ∷ MinMaxState, circular ∷ Boolean } )
-      Slam
+type GraphF = VariantF ( size ∷ FProxy MinMaxF, circular ∷ FProxy ToggleF )
+type GraphState = { size ∷ MinMaxState, circular ∷ Boolean }
+
+graph ∷ H.Component HH.HTML GraphF Unit (Message GraphState) Slam
 graph = H.component
   { initialState: const { circular: false, size: { min: 10.0, max: 50.0 } }
   , render: \state → HH.div_
     [ HH.hr_
-    , row [ renderToggle (SProxy ∷ SProxy "circular") state ]
+    , row [ renderToggle _circular state ]
     , HH.hr_
-    , renderMinMax (SProxy ∷ SProxy "size") state
+    , renderMinMax _size state
     ]
   , eval: case_
-    # on (SProxy ∷ SProxy "circular") (evalToggle (SProxy ∷ SProxy "circular"))
-    # on (SProxy ∷ SProxy "size") (evalMinMax (SProxy ∷ SProxy "size"))
+    # on _circular (evalToggle _circular)
+    # on _size (evalMinMax _size)
   , receiver: const Nothing
   }
 
-heatmap
-  ∷ H.Component
-      HH.HTML
-      ( VariantF ( colorScheme ∷ FProxy (ChooseF ColorScheme)
-                 , isColorSchemeReversed ∷ FProxy ToggleF
-                 , val ∷ FProxy MinMaxF
-                 ) )
-      Unit
-      ( Message { colorScheme ∷ ColorScheme
-                , isColorSchemeReversed ∷ Boolean
-                , val ∷ { min ∷ Number, max ∷ Number }
-                } )
-      Slam
+type HeatmapF = VariantF
+  ( colorScheme ∷ FProxy (ChooseF ColorScheme)
+  , isColorSchemeReversed ∷ FProxy ToggleF
+  , val ∷ FProxy MinMaxF
+  )
+type HeatmapState =
+  { colorScheme ∷ ColorScheme
+  , isColorSchemeReversed ∷ Boolean
+  , val ∷ MinMaxState
+  }
+
+heatmap ∷ H.Component HH.HTML HeatmapF Unit (Message HeatmapState) Slam
 heatmap = H.component
   { initialState:const { colorScheme: RedToBlue
                        , isColorSchemeReversed: false
@@ -561,33 +558,31 @@ heatmap = H.component
                        }
   , render: \state → HH.div_
     [ HH.hr_
-    , row [ renderChoose (SProxy ∷ SProxy "colorScheme") colorSchemeSelect state
-          , renderToggle (SProxy ∷ SProxy "isColorSchemeReversed") state
+    , row [ renderChoose _colorScheme colorSchemeSelect state
+          , renderToggle _isColorSchemeReversed state
           ]
     , HH.hr_
-    , renderMinMax (SProxy ∷ SProxy "val") state
+    , renderMinMax _val state
     ]
   , eval: case_
-    # on (SProxy ∷ SProxy "val") (evalMinMax (SProxy ∷ SProxy "val"))
-    # on (SProxy ∷ SProxy "colorScheme") (evalChoose (SProxy ∷ SProxy "colorScheme"))
-    # on (SProxy ∷ SProxy "isColorSchemeReversed") (evalToggle (SProxy ∷ SProxy "isColorSchemeReversed"))
+    # on _val (evalMinMax _val)
+    # on _colorScheme (evalChoose _colorScheme)
+    # on _isColorSchemeReversed (evalToggle _isColorSchemeReversed)
   , receiver: const Nothing
   }
 
-line
-  ∷ H.Component
-      HH.HTML
-      ( VariantF ( optionalMarkers ∷ FProxy ToggleF
-                 , size ∷ FProxy MinMaxF
-                 , axisLabelAngle ∷ FProxy SetF
-                 ) )
-      Unit
-      ( Message { optionalMarkers ∷ Boolean
-                , size ∷ MinMaxState
-                , axisLabelAngle ∷ Number
-                } )
+type LineF = VariantF
+  ( optionalMarkers ∷ FProxy ToggleF
+  , size ∷ FProxy MinMaxF
+  , axisLabelAngle ∷ FProxy SetF
+  )
+type LineState =
+  { optionalMarkers ∷ Boolean
+  , size ∷ MinMaxState
+  , axisLabelAngle ∷ Number
+  }
 
-      Slam
+line ∷ H.Component HH.HTML LineF Unit (Message LineState) Slam
 line = H.component
   { initialState: const { optionalMarkers: false
                         , size: { min: 10.0, max: 50.0 }
@@ -595,32 +590,28 @@ line = H.component
                         }
   , render: \state → HH.div_
     [ HH.hr_
-    , row [ renderToggle (SProxy ∷ SProxy "optionalMarkers") state ]
+    , row [ renderToggle _optionalMarkers state ]
     , HH.hr_
-    , renderMinMax (SProxy ∷ SProxy "size") state
+    , renderMinMax _size state
     , HH.hr_
-    , row [ renderNum (SProxy ∷ SProxy "axisLabelAngle") state ]
+    , row [ renderNum _axisLabelAngle state ]
     ]
   , eval: case_
-    # on (SProxy ∷ SProxy "optionalMarkers") (evalToggle (SProxy ∷ SProxy "optionalMarkers"))
-    # on (SProxy ∷ SProxy "size") (evalMinMax (SProxy ∷ SProxy "size"))
-    # on (SProxy ∷ SProxy "axisLabelAngle") (evalNum (SProxy ∷ SProxy "axisLabelAngle"))
+    # on _optionalMarkers (evalToggle _optionalMarkers)
+    # on _size (evalMinMax _size)
+    # on _axisLabelAngle (evalNum _axisLabelAngle)
   , receiver: const Nothing
   }
 
+type MetricF = VariantF ( formatter ∷ FProxy SetF )
+type MetricState = { formatter ∷ String }
 
-metric
-  ∷ H.Component
-      HH.HTML
-      ( VariantF ( formatter ∷ FProxy SetF ) )
-      Unit
-      ( Message { formatter ∷ String } )
-      Slam
+metric ∷ H.Component HH.HTML MetricF Unit (Message MetricState) Slam
 metric = H.component
   { initialState: const { formatter: "" }
   , render: \state → HH.div_
     [ HH.hr_
-    , renderStr (SProxy ∷ SProxy "formatter") state
+    , renderStr _formatter state
     , HH.hr_
     , HH.div_
       [ HH.p_ [ HH.text "Value between \"{{\" and \"}}\" will be replaced by following rules" ]
@@ -651,44 +642,65 @@ metric = H.component
         ]
       ]
     ]
-  , eval: case_ # on (SProxy ∷ SProxy "formatter") (evalStr (SProxy ∷ SProxy "formatter"))
+  , eval: case_ # on _formatter (evalStr _formatter)
   , receiver: const Nothing
   }
 
-punchCard
-  ∷ H.Component
-      HH.HTML
-      ( VariantF ( size ∷ FProxy MinMaxF, circular ∷ FProxy ToggleF ) )
-      Unit
-      ( Message { size ∷ MinMaxState, circular ∷ Boolean } )
-      Slam
+type PunchCardF = VariantF ( size ∷ FProxy MinMaxF, circular ∷ FProxy ToggleF )
+type PunchCardState = { size ∷ MinMaxState, circular ∷ Boolean }
+
+punchCard ∷ H.Component HH.HTML PunchCardF Unit (Message PunchCardState) Slam
 punchCard = H.component
   { initialState: const { circular: false, size: { min: 10.0, max: 50.0 } }
   , render: \state → HH.div_
     [ HH.hr_
-    , row [ renderToggle (SProxy ∷ SProxy "circular") state ]
+    , row [ renderToggle _circular state ]
     , HH.hr_
-    , renderMinMax (SProxy ∷ SProxy "size") state
+    , renderMinMax _size state
     ]
   , eval: case_
-    # on (SProxy ∷ SProxy "circular") (evalToggle (SProxy ∷ SProxy "circular"))
-    # on (SProxy ∷ SProxy "size") (evalMinMax (SProxy ∷ SProxy "size"))
+    # on _circular (evalToggle _circular)
+    # on _size (evalMinMax _size)
   , receiver: const Nothing
   }
 
-scatter
-  ∷ H.Component
-      HH.HTML
-      ( VariantF ( size ∷ FProxy MinMaxF ) )
-      Unit
-      ( Message { size ∷ MinMaxState } )
-      Slam
+type ScatterF = VariantF ( size ∷ FProxy MinMaxF )
+type ScatterState = { size ∷ MinMaxState }
+
+scatter ∷ H.Component HH.HTML ScatterF Unit (Message ScatterState) Slam
 scatter = H.component
   { initialState: const { size: { min: 10.0, max: 50.0 } }
   , render: \state → HH.div_
     [ HH.hr_
-    , renderMinMax (SProxy ∷ SProxy "size") state
+    , renderMinMax _size state
     ]
-  , eval: case_ # on (SProxy ∷ SProxy "size") (evalMinMax (SProxy ∷ SProxy "size"))
+  , eval: case_ # on _size (evalMinMax _size)
   , receiver: const Nothing
   }
+
+_geoHeatmap = SProxy ∷ SProxy "geoHeatmap"
+_geoMarker = SProxy ∷ SProxy "geoMarker"
+_area = SProxy ∷ SProxy "area"
+_bar = SProxy ∷ SProxy "bar"
+_funnel = SProxy ∷ SProxy "funnel"
+_graph = SProxy ∷ SProxy "graph"
+_heatmap = SProxy ∷ SProxy "heatmap"
+_line = SProxy ∷ SProxy "line"
+_metric = SProxy ∷ SProxy "metric"
+_punchCard = SProxy ∷ SProxy "punchCard"
+_scatter = SProxy ∷ SProxy "scatter"
+_other = SProxy ∷ SProxy "other"
+
+type AuxState =
+  ( geoHeatmap ∷ GeoHeatmapState
+  , geoMarker ∷ GeoMarkerState
+  , area ∷ AreaState
+  , bar ∷ BarState
+  , funnel ∷ FunnelState
+  , graph ∷ GraphState
+  , heatmap ∷ HeatmapState
+  , line ∷ LineState
+  , metric ∷ MetricState
+  , punchCard ∷ PunchCardState
+  , scatter ∷ ScatterState
+  )
