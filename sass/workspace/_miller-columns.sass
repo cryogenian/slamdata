@@ -45,56 +45,81 @@
         flex: 0 1 auto
         opacity: 1
 
-  ul
-    list-style: none
-    padding: 0
-    margin: 0
-    width: 100%
-    height: calc(100% - 4.85rem)
+  .sd-miller-column-items
+    flex-grow: 1
+    flex-shrink: 1
+    flex-basis: 0
     overflow: auto
 
-  li
-    display: block
-    padding: $padding-base-horizontal $padding-base-vertical
-    cursor: pointer
-    z-index: 1
-    line-height: 1.15
-    transition: background-color 200ms ease-out
 
-    &:hover
-      background-color: $miller-column-item-hover-bg
+    ul
+      list-style: none
+      padding: 0
+      margin: 0
+      width: 100%
+      height: calc(100% - 4.85rem)
+      overflow: auto
 
-    + li
-      margin-top: -0.1rem
-      border-top: 0.1rem solid $miller-column-border-color
-
-    &.selected
-      background-color: $miller-column-item-selected-bg
-      z-index: 2
-
-    &.sd-miller-column-loading
-      cursor: auto
+    li
+      display: block
+      padding: $padding-base-horizontal $padding-base-vertical
+      cursor: pointer
+      z-index: 1
+      line-height: 1.15
+      transition: background-color 200ms ease-out
 
       &:hover
-        background: transparent
+        background-color: $miller-column-item-hover-bg
 
-      .sd-icon
-        display: block
-        font-size: 1.8em
-        margin: $padding-base-horizontal auto 0.4rem
-        text-align: center
+      + li
+        margin-top: -0.1rem
+        border-top: 0.1rem solid $miller-column-border-color
 
-      span
-        display: block
-        text-align: center
+      &.selected
+        background-color: $miller-column-item-selected-bg
+        z-index: 2
 
-  &:last-child li.selected
-    background: $brand-primary
-    border-color: $brand-primary
-    color: $action-list-btn-color
+      &.sd-miller-column-loading
+        cursor: auto
 
-  + .sd-miller-column
-    margin-left: -0.1rem
+        &:hover
+          background: transparent
+
+        .sd-icon
+          display: block
+          font-size: 1.8em
+          margin: $padding-base-horizontal auto 0.4rem
+          text-align: center
+
+        span
+          display: block
+          text-align: center
+
+    &:last-child li.selected
+      background: $brand-primary
+      border-color: $brand-primary
+      color: $action-list-btn-color
+
+    + .sd-miller-column
+      margin-left: -0.1rem
+
+
+.sd-miller-column-last .sd-miller-column-items li.selected
+  background: $miller-column-item-selected-bg
+  border-color: %miller-column-item-selected-bg
+  color: $action-list-btn-color
+
+
+.sd-miller-column-resizer
+  display: inline-block
+  height: 100%
+  vertical-align: top
+  position: relative
+  left: -0.5rem
+  width: 0.9rem
+  cursor: ew-resize
+  margin-right: -1rem
+  z-index: 2
 
 
 .sd-miller-column-item-inner

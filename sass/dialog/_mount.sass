@@ -54,7 +54,7 @@
             width: 4rem
 
           input.form-control
-            width: calc(100% - 7rem
+            width: calc(100% - 7rem)
 
         span
           visibility: hidden
@@ -106,6 +106,40 @@
 
     input[type="radio"]
       margin-right: 0.5rem
+
+  .mount-couchbase
+    .sd-cb-options
+      label
+        width: auto
+        span:nth-child(3)
+          display: inline-block
+          float: none
+          font-weight: normal
+
+
+      label:nth-child(2)
+        display:block
+        margin-left: 12rem
+        font-weight: normal
+        span
+          display: inline-block
+          float: none
+
+    label
+      span
+        width: 12rem
+
+      input
+        &.form-control
+          width: calc(100% - 12rem)
+
+        &[type=number]
+          width: 8rem
+          display: inline-block
+          margin-right: 0.5rem
+
+        &[type=checkbox]
+          margin-right: 0.5rem
 
   .alert
     min-height: 4.2rem
