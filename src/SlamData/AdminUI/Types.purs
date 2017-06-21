@@ -78,6 +78,7 @@ type State =
       { mySettings ∷ MySettingsState
       , database ∷ DatabaseState
       , server ∷ ServerState
+      , users ∷ UsersState
       , groups ∷ GroupsState
       }
   }
@@ -138,6 +139,15 @@ newtype ServerState = ServerState
 
 defaultServerState ∷ ServerState
 defaultServerState = ServerState { port: 27012, logFileLocation: "", enableCustomSSL: false }
+
+newtype UsersState = UsersState
+  { search ∷ String
+  , users ∷ L.List String
+  }
+derive instance newtypeUsersState ∷ Newtype UsersState _
+
+defaultUsersState ∷ UsersState
+defaultUsersState = UsersState { search: "", users: L.Nil }
 
 newtype GroupsState = GroupsState { }
 derive instance newtypeGroupsState ∷ Newtype GroupsState _

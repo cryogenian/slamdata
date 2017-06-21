@@ -25,6 +25,7 @@ import Halogen.HTML.Properties as HP
 import SlamData.AdminUI.Group as Group
 import SlamData.AdminUI.Types as AT
 import SlamData.Monad (Slam)
+import SlamData.Render.Common as R
 import SlamData.Workspace.MillerColumns.Component as Miller
 import Utils.DOM as DOM
 
@@ -38,6 +39,7 @@ component =
           { mySettings: AT.defaultMySettingsState
           , database: AT.defaultDatabaseState
           , server: AT.defaultServerState
+          , users: AT.defaultUsersState
           , groups: AT.defaultGroupsState
           }
        }
@@ -93,6 +95,10 @@ tabBody state =
         pure $ HH.div
           [ HP.class_ (HH.ClassName "server") ]
           (renderServerForm state.formState.server)
+      AT.Users →
+        pure $ HH.div
+          [ HP.class_ (HH.ClassName "users") ]
+          (renderUsersForm state.formState.users)
       AT.Groups →
         pure $ HH.div
           [ HP.class_ (HH.ClassName "groups") ]
@@ -292,6 +298,22 @@ renderServerForm (AT.ServerState state) =
             ]
         , HH.textarea [HP.class_ (HH.ClassName "form-control"), HP.disabled (not state.enableCustomSSL)]
         ]
+  ]
+
+renderUsersForm ∷ AT.UsersState → Array AT.HTML
+renderUsersForm (AT.UsersState state) =
+  [ HH.fieldset_
+      [ HH.input
+          [ HP.type_ HP.InputText
+          , HP.placeholder "Search string"
+            -- , HE.onValueInput $ HE.input \str → right ∘ UpdateSearch str
+          , HP.value state.search
+          ]
+      , HH.button
+          [ -- HE.onClick $ HE.input_ (right ∘ UpdateSearch "")
+          ]
+          [ R.clearFieldIcon "Clear search string" ]
+      ]
   ]
 
 eval ∷ AT.Query ~> AT.DSL
