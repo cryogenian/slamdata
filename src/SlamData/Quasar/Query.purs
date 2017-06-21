@@ -28,6 +28,7 @@ module SlamData.Quasar.Query
   , sample
   , count
   , fileQuery
+  , allFields
   , fields
   , jcursorToSql
   , module Quasar.Error

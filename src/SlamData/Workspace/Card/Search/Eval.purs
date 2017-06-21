@@ -21,9 +21,11 @@ module SlamData.Workspace.Card.Search.Eval
 import SlamData.Prelude
 
 import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class ParQuasarDSL)
+import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
@@ -31,6 +33,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Search.Error (SearchError(..), throwSearchError)
 import SlamData.Workspace.Card.Search.Interpret as Search
+import SlamData.Workspace.Card.Setups.Common.Eval (analyze)
 import SqlSquared as Sql
 import Text.SlamSearch as SS
 
@@ -38,7 +41,8 @@ evalSearch
   ∷ ∀ m v
   . MonadAff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow (Variant (search ∷ SearchError, resource ∷ CE.ResourceError | v)) m
+  ⇒ MonadState CEM.CardState m
+  ⇒ MonadThrow (Variant (search ∷ SearchError, qerror ∷ CE.QError, resource ∷ CE.ResourceError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ ParQuasarDSL m
   ⇒ String
@@ -53,13 +57,17 @@ evalSearch queryText port = do
   searchQuery ← case SS.mkQuery queryText' of
     Left pe → throwSearchError $ SearchQueryParseError { query: queryText, error: pe }
     Right q → pure q
-  resourceVar ← CEM.extractResourceVar port
+  resourceVar × resource ← CEM.extractResourcePair port
+  records × axes ← analyze resource =<< get
   let
+    state' = CEM.Analysis { resource, records, axes }
+    fields = QQ.allFields records
     sql = Search.searchSql resourceVar (VM.Var Search.defaultFilterVar)
-    filter = VM.Expr $ Search.filterSql mempty searchQuery
+    filter = VM.Expr $ Search.filterSql fields searchQuery
     varMap' = VM.insert cardId (VM.Var Search.defaultFilterVar) filter varMap
-  resource ← CEC.localEvalResource (Sql.Query mempty sql) varMap >>= searchError SearchQueryCompilationError
-  pure $ Port.resourceOut cardId resource varMap
+  put $ Just state'
+  resource' ← CEC.localEvalResource (Sql.Query mempty sql) varMap >>= searchError SearchQueryCompilationError
+  pure $ Port.resourceOut cardId resource' varMap
 
 searchError ∷ ∀ e a m v. MonadThrow (Variant (search ∷ SearchError | v)) m ⇒ (e → SearchError) → Either e a → m a
 searchError f = either (throwSearchError ∘ f) pure
