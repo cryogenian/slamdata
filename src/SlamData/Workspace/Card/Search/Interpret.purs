@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.Search.Interpret
   ( searchSql
   , defaultFilterVar
+  , defaultDistinctVar
   , filterSql
   , isDistinct
   ) where
@@ -26,7 +27,7 @@ import SlamData.Prelude
 import Data.Foldable as F
 import Data.Int as Int
 import Data.Json.Extended as Ej
-import Data.Lens ((?~))
+import Data.Lens ((?~), (.~))
 import Data.List ((:))
 import Data.List as L
 import Data.String as S
@@ -41,16 +42,24 @@ import SqlSquared as Sql
 import Text.SlamSearch.Types as SS
 import Utils.SqlSquared as SU
 
-defaultFilterVar ∷ String
-defaultFilterVar = "filter"
+defaultFilterVar ∷ VM.Var
+defaultFilterVar = VM.Var "filter"
 
--- TODO: Distinct?
-searchSql ∷ VM.Var → VM.Var → Sql
-searchSql (VM.Var vari) (VM.Var filterVar) =
-  Sql.buildSelect
-    $ (Sql._relations ?~ SU.variRelation vari)
-    ∘ (Sql._filter ?~ Sql.vari filterVar)
-    ∘ SU.all
+defaultDistinctVar ∷ VM.Var
+defaultDistinctVar = VM.Var "distinct"
+
+searchSql ∷ VM.Var → VM.Var → VM.Var → Sql
+searchSql (VM.Var vari) (VM.Var filterVar) (VM.Var distinctVar) =
+  Sql.switch
+    (pure (Sql.when (Sql.vari distinctVar) # Sql.then_ (select true)))
+    (Just (select false))
+  where
+  select distinct =
+    Sql.buildSelect
+      $ (Sql._relations ?~ SU.variRelation vari)
+      ∘ (Sql._filter ?~ Sql.vari filterVar)
+      ∘ (Sql._isDistinct .~ distinct)
+      ∘ SU.all
 
 isDistinct ∷ SS.SearchQuery → Boolean
 isDistinct = F.any isDistinctTerm

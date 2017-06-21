@@ -62,9 +62,13 @@ evalSearch queryText port = do
   let
     state' = CEM.Analysis { resource, records, axes }
     fields = QQ.allFields records
-    sql = Search.searchSql resourceVar (VM.Var Search.defaultFilterVar)
+    sql = Search.searchSql resourceVar Search.defaultFilterVar Search.defaultDistinctVar
     filter = VM.Expr $ Search.filterSql fields searchQuery
-    varMap' = VM.insert cardId (VM.Var Search.defaultFilterVar) filter varMap
+    isDistinct = VM.Expr $ Sql.bool $ Search.isDistinct searchQuery
+    varMap' =
+      varMap
+        # VM.insert cardId Search.defaultFilterVar filter
+        # VM.insert cardId Search.defaultDistinctVar isDistinct
   put $ Just state'
   resource' ← CEC.localEvalResource (Sql.Query mempty sql) varMap >>= searchError SearchQueryCompilationError
   pure $ Port.resourceOut cardId resource' varMap
