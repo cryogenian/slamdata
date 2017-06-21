@@ -75,7 +75,7 @@ cardEval = case _ of
     pure next
   CC.Deactivate next →
     pure next
-  CC.Save k → do
+    CC.Save k → do
     st ← H.get
     pure $ k $ M.SetupViz
       { dimMaps: st.dimMaps

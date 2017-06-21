@@ -219,7 +219,6 @@ setupEval = case _ of
       $ H.modify _{ size = fl }
     raiseUpdate
     pure next
-
   Q.SetAxisLabelAngle str next → do
     let fl = readFloat str
     unless (isNaN fl) do

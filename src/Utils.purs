@@ -51,8 +51,8 @@ import Data.Array as Array
 import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.String as S
-import Data.Symbol (class IsSymbol)
-import Data.Variant (inj)
+import Data.Symbol (class IsSymbol, SProxy)
+import Data.Variant (inj, prj)
 import Global (readFloat, isNaN, isFinite)
 import SqlSquared.Signature.Ident (printIdent)
 

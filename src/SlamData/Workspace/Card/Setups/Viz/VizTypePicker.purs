@@ -107,7 +107,7 @@ component = H.parentComponent
 render ∷ State → HTML
 render state =
   HH.div
-  [ HCSS.style $ CSS.width (CSS.pct 100.0) *> CSS.height (CSS.pct 100.0) ]
+  [ HCSS.style $ CSS.width (CSS.pct 100.0) *> CSS.height(CSS.pct 100.0) ]
   [ HH.slot' cpFilter unit ALF.component "Filter visualizations"
       $ HE.input HandleFilter
   , HH.slot' cpList 0 (AL.actionListComp AL.defaultConf [ ]) unit

@@ -3,23 +3,25 @@ module SlamData.Workspace.Card.Setups.Viz.Model where
 import SlamData.Prelude
 
 import Data.Array as A
+import Data.Path.Pathy ((</>), (<.>), file, rootDir, dir)
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Map as Map
 import Data.Newtype (un)
 import Data.StrMap as SM
+import Data.Foldable as F
 import Data.URI (URIRef)
 import Data.URI as URI
 import Data.Variant (inj, case_, on, default)
 
 import Global (encodeURIComponent, decodeURIComponent)
 
-import SlamData.Common.Align (Align)
-import SlamData.Common.Sort (Sort)
+import SlamData.Common.Align (Align(..))
+import SlamData.Common.Sort (Sort(..))
 import SlamData.Workspace.Card.Setups.Package.Types as T
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (ColorScheme)
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (ColorScheme(..))
 import SlamData.Workspace.Card.Geo.Model (onURIRef)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
@@ -28,6 +30,65 @@ import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
 type GeoHeatmap =
   { osmURI ∷ URIRef }
+
+formatter ∷ String
+formatter = ""
+
+osmURI ∷ URIRef
+osmURI =
+  Left $ URI.URI
+  (Just $ URI.URIScheme "http")
+  (URI.HierarchicalPart
+   (Just $ URI.Authority Nothing [(URI.NameAddress "{s}.tile.osm.org") × Nothing])
+   (Just $ Right $ rootDir </> dir "{z}" </> dir "{x}" </> file "{y}" <.> "png"))
+  Nothing
+  Nothing
+
+minSize ∷ Number
+minSize = 10.0
+
+maxSize ∷ Number
+maxSize = 50.0
+
+isSmooth ∷ Boolean
+isSmooth = false
+
+isStacked ∷ Boolean
+isStacked = false
+
+size ∷ Number
+size = 10.0
+
+axisLabelAngle ∷ Number
+axisLabelAngle = 0.0
+
+circular ∷ Boolean
+circular = false
+
+isColorSchemeReversed ∷ Boolean
+isColorSchemeReversed = false
+
+colorScheme ∷ ColorScheme
+colorScheme = RedToBlue
+
+order ∷ Sort
+order = Asc
+
+align ∷ Align
+align = LeftAlign
+
+minValue ∷ Number
+minValue = 1.0
+
+maxValue ∷ Number
+maxValue = 50.0
+
+optionalMarkers ∷ Boolean
+optionalMarkers = false
+
+initialGeoHeatmap ∷ GeoHeatmap
+initialGeoHeatmap =
+  { osmURI }
 
 eqGeoHeatmap ∷ GeoHeatmap → GeoHeatmap → Boolean
 eqGeoHeatmap r1 r2 =
@@ -52,6 +113,13 @@ type GeoMarker =
   { minSize ∷ Number
   , maxSize ∷ Number
   , osmURI ∷ URIRef
+  }
+
+initialGeoMarker ∷ GeoMarker
+initialGeoMarker =
+  { osmURI
+  , minSize
+  , maxSize
   }
 
 eqGeoMarker ∷ GeoMarker → GeoMarker → Boolean
@@ -86,6 +154,14 @@ type Area =
   , size ∷ Number
   }
 
+initialArea ∷ Area
+initialArea =
+  { isStacked
+  , isSmooth
+  , axisLabelAngle
+  , size
+  }
+
 eqArea ∷ Area → Area → Boolean
 eqArea r1 r2 =
   r1.isStacked ≡ r2.isStacked
@@ -113,9 +189,13 @@ decodeArea obj = do
        , axisLabelAngle
        , size
        }
-
 type Bar =
   { axisLabelAngle ∷ Number }
+
+
+initialBar ∷ Bar
+initialBar =
+  { axisLabelAngle }
 
 eqBar ∷ Bar → Bar → Boolean
 eqBar r1 r2 =
@@ -135,6 +215,12 @@ decodeBar obj = do
 type Funnel =
   { align ∷ Align
   , order ∷ Sort
+  }
+
+initialFunnel ∷ Funnel
+initialFunnel =
+  { order
+  , align
   }
 
 eqFunnel ∷ Funnel → Funnel → Boolean
@@ -159,6 +245,13 @@ type Graph =
   { circular ∷ Boolean
   , maxSize ∷ Number
   , minSize ∷ Number
+  }
+
+initialGraph ∷ Graph
+initialGraph =
+  { minSize
+  , maxSize
+  , circular
   }
 
 eqGraph ∷ Graph → Graph → Boolean
@@ -187,6 +280,14 @@ type Heatmap =
   , isColorSchemeReversed ∷ Boolean
   , minValue ∷ Number
   , maxValue ∷ Number
+  }
+
+initialHeatmap ∷ Heatmap
+initialHeatmap =
+  { minValue
+  , maxValue
+  , isColorSchemeReversed
+  , colorScheme
   }
 
 eqHeatmap ∷ Heatmap → Heatmap → Boolean
@@ -224,6 +325,14 @@ type Line =
   , optionalMarkers ∷ Boolean
   }
 
+initialLine ∷ Line
+initialLine =
+  { maxSize
+  , minSize
+  , axisLabelAngle
+  , optionalMarkers
+  }
+
 eqLine ∷ Line → Line → Boolean
 eqLine r1 r2 =
   r1.maxSize ≡ r2.maxSize
@@ -253,7 +362,11 @@ decodeLine obj = do
         }
 
 type Metric =
-  { formatter ∷ Maybe String }
+  { formatter ∷ String }
+
+initialMetric ∷ Metric
+initialMetric =
+  { formatter }
 
 eqMetric ∷ Metric → Metric → Boolean
 eqMetric r1 r2 =
@@ -273,6 +386,12 @@ decodeMetric obj = do
 type PunchCard =
   { minSize ∷ Number
   , maxSize ∷ Number
+  }
+
+initialPunchCard ∷ PunchCard
+initialPunchCard =
+  { minSize
+  , maxSize
   }
 
 eqPunchCard ∷ PunchCard → PunchCard → Boolean
@@ -296,6 +415,12 @@ decodePunchCard obj = do
 type Scatter =
   { minSize ∷ Number
   , maxSize ∷ Number
+  }
+
+initialScatter ∷ Scatter
+initialScatter =
+  { minSize
+  , maxSize
   }
 
 eqScatter ∷ Scatter → Scatter → Boolean
@@ -340,6 +465,21 @@ type Aux = Variant
   , other ∷ Unit
   )
 
+initialAuxMap ∷ Map.Map VT.VizType Aux
+initialAuxMap = Map.fromFoldable
+  [ VT.Geo VT.GeoHeatmap × inj _geoHeatmap initialGeoHeatmap
+  , VT.Geo VT.GeoMarker × inj _geoMarker initialGeoMarker
+  , VT.Chart VT.Area × inj _area initialArea
+  , VT.Chart VT.Bar × inj _bar initialBar
+  , VT.Chart VT.Funnel × inj _funnel initialFunnel
+  , VT.Chart VT.Graph × inj _graph initialGraph
+  , VT.Chart VT.Heatmap × inj _heatmap initialHeatmap
+  , VT.Chart VT.Line × inj _line initialLine
+  , VT.Metric × inj _metric initialMetric
+  , VT.Chart VT.PunchCard × inj _punchCard initialPunchCard
+  , VT.Chart VT.Scatter × inj _scatter initialScatter
+  ]
+
 _geoHeatmap = SProxy ∷ SProxy "geoHeatmap"
 _geoMarker = SProxy ∷ SProxy "geoMarker"
 _area = SProxy ∷ SProxy "area"
@@ -367,7 +507,6 @@ eqAux a = case_
   # on _punchCard (\r1 → on _punchCard (eqPunchCard r1) (default false) a)
   # on _scatter (\r1 → on _scatter (eqScatter r1) (default false) a)
   # on _other (const $ on _other (const true) (default false) a)
-
 
 encodeAux ∷ Aux → J.Json
 encodeAux = case_
@@ -405,21 +544,28 @@ decodeAux = J.decodeJson >=> \obj → do
 type Model =
   { dimMaps ∷ Map.Map VT.VizType T.DimensionMap
   , vizType ∷ VT.VizType
-  , aux ∷ Aux
+  , aux ∷ Map.Map VT.VizType Aux
   }
 
 initialModel ∷ Model
 initialModel =
   { dimMaps: Map.empty
   , vizType: VT.Chart VT.Pie
-  , aux: inj _other unit
+  , aux: Map.empty
   }
 
 eqModel ∷ Model → Model → Boolean
 eqModel r1 r2 =
   r1.dimMaps ≡ r2.dimMaps
+  ∧ eqVTMaps r1.aux r2.aux
   ∧ r1.vizType ≡ r2.vizType
-  ∧ eqAux r1.aux r2.aux
+  where
+  eqVTMaps vt1 vt2 =
+    F.and
+    $ A.zipWith (\(k1 × v1) (k2 × v2) → k1 ≡ k2 ∧ eqAux v1 v2)
+      (Map.toUnfoldable r1.aux)
+      (Map.toUnfoldable r2.aux)
+
 
 genModel ∷ Gen.Gen Model
 genModel = do
@@ -427,10 +573,12 @@ genModel = do
   vizTypes ← arbitrary
   pairs ← A.foldRecM foldMapFn [ ] vizTypes
   let dimMaps = Map.fromFoldable pairs
-  pure { vizType, dimMaps, aux: inj _other unit }
+  pure { vizType, dimMaps, aux: Map.empty } --TODO: gen aux
   where
   foldMapFn
-    ∷ Array (VT.VizType × T.DimensionMap) → VT.VizType → Gen.Gen (Array (VT.VizType × T.DimensionMap))
+    ∷ Array (VT.VizType × T.DimensionMap)
+    → VT.VizType
+    → Gen.Gen (Array (VT.VizType × T.DimensionMap))
   foldMapFn arr vt = do
     dm ← genDimMap
     pure $ A.cons (vt × dm) arr
@@ -452,12 +600,12 @@ encode ∷ Model → J.Json
 encode r =
   "vizType" := r.vizType
   ~> "dimMaps" := r.dimMaps
-  ~> "aux" := encodeAux r.aux
+  ~> "aux" := map encodeAux r.aux
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ Model
 decode = J.decodeJson >=> \obj → do
   vizType ← obj .? "vizType"
   dimMaps ← obj .? "dimMaps"
-  aux ← decodeAux =<< obj .? "aux"
+  aux ← traverse decodeAux =<< obj .? "aux"
   pure { vizType, dimMaps, aux }
