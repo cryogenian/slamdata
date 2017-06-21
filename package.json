@@ -16,8 +16,8 @@
   ],
   "scripts": {
     "all": "npm run clean:files && npm run lint:headers && npm run lint:whitespace ",
-    "bundle:dev": "webpack --progress --config webpack.config.dev.js",
-    "bundle:watch": "webpack --progress --config webpack.config.dev.js --watch",
+    "watch:bundle": "webpack --progress --config webpack.config.dev.js --watch",
+    "build:bundle": "webpack --progress --config webpack.config.dev.js",
     "build:dev-pulp": "pulp --watch build",
     "build:icons": "gulp icons",
     "build:less": "lessc less/main.less public/css/main.css --autoprefix=\"> 2%, last 1 versions, Firefox ESR, Explorer >= 11\"",
@@ -36,7 +36,7 @@
     "test": "gulp bundle-test && node test",
     "test:local": "npm run build:psa && webpack --progress --config webpack.config.dev.js && npm test",
     "test:property": "gulp bundle-property-tests && node tmp/js/property-tests",
-    "watch:less": "less-watch-compiler less/ public/css/ main.less",
+    "watch:less": "npm run build:less && less-watch-compiler less/ public/css/ main.less",
     "versionify": "gulp versionify"
   },
   "license": "Apache-2.0",
