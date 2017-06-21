@@ -30,7 +30,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Render.ClassName as CN
-import SlamData.Render.Common (gripperDotsPattern)
+import SlamData.Render.Common (gripperDeckMove)
 import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Component.CSS as CCSS
@@ -224,12 +224,7 @@ moveGripper { focused, name } =
     , ARIA.label "Grab deck"
     , HP.title "Grab deck"
     ]
-    -- Svg issue with ID references means only show on focus
-    -- Could also be solved with something like a unique id per deck
-    $ if focused then
-        [ gripperDotsPattern ("deck-grip-" <> name) 80 10 ]
-      else
-        []
+    [ gripperDeckMove ]
 
 zoomInButton ∷ DeckHTML
 zoomInButton =

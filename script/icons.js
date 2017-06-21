@@ -91,11 +91,20 @@ function injectIconsIntoHTML(iconAttribution) {
         }
       }))
 
+
+
   // inject symbols into html files
   return gulp.src("html/**/*.html")
     .pipe(inject(svgSymbols, {
       starttag: "<!-- icon-symbols -->",
       endtag: "<!-- /icon-symbols -->",
+      removeTags: true,
+      transform: (filePath, file) => file.contents.toString("utf8")
+    }))
+    // also add the grippers
+    .pipe(inject(gulp.src("html/gripper-symbols.svg"), {
+      starttag: "<!-- gripper-symbols -->",
+      endtag: "<!-- /gripper-symbols -->",
       removeTags: true,
       transform: (filePath, file) => file.contents.toString("utf8")
     }))
