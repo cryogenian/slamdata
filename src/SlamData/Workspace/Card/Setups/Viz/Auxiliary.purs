@@ -6,18 +6,18 @@ import Data.Array as Arr
 import Data.URI (URIRef, runParseURIRef, printURIRef)
 import Data.Symbol (class IsSymbol)
 import Data.Functor.Variant (FProxy, VariantF, inj, case_, on)
+import Data.Variant as V
 import Data.Lens ((^.), Lens', (.~), (%~))
 import Data.Lens.Record (prop)
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Data.String.Regex.Unsafe as URX
+import Data.Profunctor (dimap)
 import Data.Newtype (under)
-import Data.Profunctor (lmap)
 
 import Global (decodeURIComponent, readFloat, isNaN)
 
 import Halogen as H
-import Halogen.Component as HC
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -29,14 +29,11 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (ColorScheme(..), colorS
 import SlamData.Form.Select (class OptionVal, Select(..), stringVal)
 import SlamData.Common.Sort (sortSelect, Sort(..))
 import SlamData.Common.Align (alignSelect, Align(..))
-import SlamData.Monad (Slam)
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.Setups.Viz.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Geo.Model (onURIRef)
 import SlamData.Render.ClassName as CN
-
-import Unsafe.Coerce (unsafeCoerce)
 
 class IsSymbol s ⇐ HasLabel s where
   label ∷ SProxy s → String
@@ -65,8 +62,6 @@ instance circularHasLabel ∷ HasLabel "circular" where
   label _ = "Circular layout"
 instance colorSchemeHasLabel ∷ HasLabel "colorScheme" where
   label _ = "Color scheme"
-
-data Message m = Updated m
 
 data SetF a = Set String a
 derive instance functorSetF ∷ Functor SetF
@@ -131,12 +126,12 @@ evalChoose
   ⇒ IsSymbol s
   ⇒ SProxy s
   → ChooseF a
-  ~> H.ComponentDSL (Record r2) q (Message (Record r2)) m
+  ~> H.ComponentDSL (Record r2) q (Record r2) m
 evalChoose proxy = case _ of
   Choose a next → do
     H.modify $ prop proxy .~ a
     st ← H.get
-    H.raise $ Updated st
+    H.raise st
     pure next
 
 type OsmURIState =
@@ -177,7 +172,7 @@ evalOsmURI
   ⇒ IsSymbol s
   ⇒ SProxy s
   → SetF
-  ~> H.ComponentDSL (Record r2) q (Message (Record r2)) m
+  ~> H.ComponentDSL (Record r2) q (Record r2) m
 evalOsmURI proxy = case _ of
   Set s next → do
     let
@@ -191,7 +186,7 @@ evalOsmURI proxy = case _ of
         ( _osmURI .~ onURIRef decodeURIComponent uri )
         ∘ ( _osmURIString .~ s )
     st ← H.get
-    H.raise $ Updated st
+    H.raise st
     pure next
   where
   _osmURIString ∷ Lens' (Record r2) String
@@ -249,7 +244,7 @@ evalMinMax
   ⇒ IsSymbol s
   ⇒ SProxy s
   → MinMaxF
-  ~> H.ComponentDSL (Record r2) q (Message (Record r2)) m
+  ~> H.ComponentDSL (Record r2) q (Record r2) m
 evalMinMax proxy = case _ of
   Min str next → do
     let fl = readFloat str
@@ -258,7 +253,7 @@ evalMinMax proxy = case _ of
         # ( _minSize .~ fl )
         ∘ ( _maxSize .~ if (st ^. _maxSize) > fl then st ^. _maxSize else fl )
       st ← H.get
-      H.raise $ Updated st
+      H.raise st
     pure next
   Max str next → do
     let fl = readFloat str
@@ -267,7 +262,7 @@ evalMinMax proxy = case _ of
         # ( _maxSize .~ fl )
         ∘ ( _minSize .~ if (st ^. _minSize) < fl then st ^. _minSize else fl )
       st ← H.get
-      H.raise $ Updated st
+      H.raise st
     pure next
   where
   _minSize ∷ Lens' (Record r2) Number
@@ -308,12 +303,12 @@ evalToggle
   ⇒ IsSymbol s
   ⇒ SProxy s
   → ToggleF
-  ~> H.ComponentDSL (Record r2) q (Message (Record r2)) m
+  ~> H.ComponentDSL (Record r2) q (Record r2) m
 evalToggle _ = case _ of
   Toggle next → do
     H.modify $ _toggle %~ not
     st ← H.get
-    H.raise $ Updated st
+    H.raise st
     pure next
   where
   _toggle ∷ Lens' (Record r2) Boolean
@@ -377,14 +372,14 @@ evalNum
   ⇒ IsSymbol s
   ⇒ SProxy s
   → SetF
-  ~> H.ComponentDSL (Record r2) q (Message (Record r2)) m
+  ~> H.ComponentDSL (Record r2) q (Record r2) m
 evalNum proxy = case _ of
   Set str next → do
     let fl = readFloat str
     unless (isNaN fl)
       $ H.modify $ prop proxy .~ fl
     st ← H.get
-    H.raise $ Updated st
+    H.raise st
     pure next
 
 evalStr
@@ -393,12 +388,12 @@ evalStr
   ⇒ IsSymbol s
   ⇒ SProxy s
   → SetF
-  ~> H.ComponentDSL (Record r2) q (Message (Record r2)) m
+  ~> H.ComponentDSL (Record r2) q (Record r2) m
 evalStr proxy = case _ of
   Set str next → do
     H.modify $ prop proxy .~ str
     st ← H.get
-    H.raise $ Updated st
+    H.raise st
     pure next
 
 
@@ -407,29 +402,33 @@ type ResetF m r = VariantF ( reset ∷ FProxy (Tuple m) | r)
 _reset = SProxy ∷ SProxy "reset"
 
 evalReset
-  ∷ ∀ r1 r2 s q m
-  . ResetF (Record r2)
-  ~> H.ComponentDSL (Record r2) q (Message (Record r2)) m
+  ∷ ∀ s m q i
+  . Tuple s
+  ~> H.ComponentDSL s q i m
 evalReset = case _ of
   Tuple st next → do
     H.put st
     pure next
 
-type GeoHeatmapState = { osm ∷ OsmURIState }
-type GeoHeatmapF = ResetF GeoHeatmapState ( osm ∷ FProxy SetF )
+type AuxComponent a b m = H.Component HH.HTML (ResetF b a) (Maybe b) b m
 
-geoHeatmap ∷ H.Component HH.HTML GeoHeatmapF Unit (Message GeoHeatmapState) Slam
+type GeoHeatmapState = { osm ∷ OsmURIState }
+type GeoHeatmapF = ( osm ∷ FProxy SetF )
+
+geoHeatmap ∷ ∀ m. AuxComponent GeoHeatmapF GeoHeatmapState m
 geoHeatmap = H.component
   { initialState: const { osm: { uri: M.osmURI, uriString: printURIRef M.osmURI } }
   , render: \state → row [ renderOsmURI _osm state ]
-  , eval: case_ # on _osm (evalOsmURI _osm)
-  , receiver: const Nothing
+  , eval: case_
+    # on _osm (evalOsmURI _osm)
+    # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
-type GeoMarkerF = VariantF ( osm ∷ FProxy SetF, size ∷ FProxy MinMaxF )
 type GeoMarkerState = { osm ∷ OsmURIState, size ∷ MinMaxState }
+type GeoMarkerF = ( osm ∷ FProxy SetF, size ∷ FProxy MinMaxF )
 
-geoMarker ∷ H.Component HH.HTML GeoMarkerF Unit (Message GeoMarkerState) Slam
+geoMarker ∷ ∀ m. AuxComponent GeoMarkerF GeoMarkerState m
 geoMarker = H.component
   { initialState: const { osm: { uri: M.osmURI
                                , uriString: printURIRef M.osmURI
@@ -447,15 +446,10 @@ geoMarker = H.component
   , eval: case_
       # on _size (evalMinMax _size)
       # on _osm (evalOsmURI _osm)
-  , receiver: const Nothing
+      # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
-type AreaF = VariantF
-  ( isStacked ∷ FProxy ToggleF
-  , isSmooth ∷ FProxy ToggleF
-  , axisLabelAngle ∷ FProxy SetF
-  , size ∷ FProxy SetF
-  )
 type AreaState =
   { isStacked ∷ Boolean
   , isSmooth ∷ Boolean
@@ -463,7 +457,14 @@ type AreaState =
   , size ∷ Number
   }
 
-area ∷ H.Component HH.HTML AreaF Unit (Message AreaState) Slam
+type AreaF =
+  ( isStacked ∷ FProxy ToggleF
+  , isSmooth ∷ FProxy ToggleF
+  , axisLabelAngle ∷ FProxy SetF
+  , size ∷ FProxy SetF
+  )
+
+area ∷ ∀ m. AuxComponent AreaF AreaState m
 area = H.component
   { initialState: const { isStacked: false
                         , isSmooth: false
@@ -485,13 +486,14 @@ area = H.component
     # on _isSmooth (evalToggle _isSmooth)
     # on _axisLabelAngle (evalNum _axisLabelAngle)
     # on _size (evalNum _size)
-  , receiver: const Nothing
+    # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
-type BarF = VariantF ( axisLabelAngle ∷ FProxy SetF )
 type BarState = { axisLabelAngle ∷ Number }
+type BarF = ( axisLabelAngle ∷ FProxy SetF )
 
-bar ∷ H.Component HH.HTML BarF Unit (Message BarState) Slam
+bar ∷ ∀ m. AuxComponent BarF BarState m
 bar = H.component
   { initialState: const { axisLabelAngle: 0.0 }
   , render: \state → HH.div_
@@ -500,13 +502,14 @@ bar = H.component
     ]
   , eval: case_
     # on _axisLabelAngle (evalNum _axisLabelAngle)
-  , receiver: const Nothing
+    # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
-type FunnelF = VariantF ( order ∷ FProxy (ChooseF Sort), align ∷ FProxy (ChooseF Align) )
+type FunnelF = ( order ∷ FProxy (ChooseF Sort), align ∷ FProxy (ChooseF Align) )
 type FunnelState = { order ∷ Sort, align ∷ Align }
 
-funnel ∷ H.Component HH.HTML FunnelF Unit (Message FunnelState) Slam
+funnel ∷ ∀ m. AuxComponent FunnelF FunnelState m
 funnel = H.component
   { initialState: const { order: Asc, align: LeftAlign }
   , render: \state → HH.div_
@@ -518,13 +521,14 @@ funnel = H.component
   , eval: case_
     # on _order (evalChoose _order)
     # on _align (evalChoose _align)
-  , receiver: const Nothing
+    # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
-type GraphF = VariantF ( size ∷ FProxy MinMaxF, circular ∷ FProxy ToggleF )
+type GraphF = ( size ∷ FProxy MinMaxF, circular ∷ FProxy ToggleF )
 type GraphState = { size ∷ MinMaxState, circular ∷ Boolean }
 
-graph ∷ H.Component HH.HTML GraphF Unit (Message GraphState) Slam
+graph ∷ ∀ m. AuxComponent GraphF GraphState m
 graph = H.component
   { initialState: const { circular: false, size: { min: 10.0, max: 50.0 } }
   , render: \state → HH.div_
@@ -536,10 +540,11 @@ graph = H.component
   , eval: case_
     # on _circular (evalToggle _circular)
     # on _size (evalMinMax _size)
-  , receiver: const Nothing
+    # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
-type HeatmapF = VariantF
+type HeatmapF =
   ( colorScheme ∷ FProxy (ChooseF ColorScheme)
   , isColorSchemeReversed ∷ FProxy ToggleF
   , val ∷ FProxy MinMaxF
@@ -550,7 +555,7 @@ type HeatmapState =
   , val ∷ MinMaxState
   }
 
-heatmap ∷ H.Component HH.HTML HeatmapF Unit (Message HeatmapState) Slam
+heatmap ∷ ∀ m. AuxComponent HeatmapF HeatmapState m
 heatmap = H.component
   { initialState:const { colorScheme: RedToBlue
                        , isColorSchemeReversed: false
@@ -568,10 +573,11 @@ heatmap = H.component
     # on _val (evalMinMax _val)
     # on _colorScheme (evalChoose _colorScheme)
     # on _isColorSchemeReversed (evalToggle _isColorSchemeReversed)
-  , receiver: const Nothing
+    # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
-type LineF = VariantF
+type LineF =
   ( optionalMarkers ∷ FProxy ToggleF
   , size ∷ FProxy MinMaxF
   , axisLabelAngle ∷ FProxy SetF
@@ -582,7 +588,7 @@ type LineState =
   , axisLabelAngle ∷ Number
   }
 
-line ∷ H.Component HH.HTML LineF Unit (Message LineState) Slam
+line ∷ ∀ m. AuxComponent LineF LineState m
 line = H.component
   { initialState: const { optionalMarkers: false
                         , size: { min: 10.0, max: 50.0 }
@@ -600,13 +606,14 @@ line = H.component
     # on _optionalMarkers (evalToggle _optionalMarkers)
     # on _size (evalMinMax _size)
     # on _axisLabelAngle (evalNum _axisLabelAngle)
-  , receiver: const Nothing
+    # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
-type MetricF = VariantF ( formatter ∷ FProxy SetF )
+type MetricF = ( formatter ∷ FProxy SetF )
 type MetricState = { formatter ∷ String }
 
-metric ∷ H.Component HH.HTML MetricF Unit (Message MetricState) Slam
+metric ∷ ∀ m. AuxComponent MetricF MetricState m
 metric = H.component
   { initialState: const { formatter: "" }
   , render: \state → HH.div_
@@ -642,14 +649,14 @@ metric = H.component
         ]
       ]
     ]
-  , eval: case_ # on _formatter (evalStr _formatter)
-  , receiver: const Nothing
+  , eval: case_ # on _formatter (evalStr _formatter) # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
-type PunchCardF = VariantF ( size ∷ FProxy MinMaxF, circular ∷ FProxy ToggleF )
+type PunchCardF = ( size ∷ FProxy MinMaxF, circular ∷ FProxy ToggleF )
 type PunchCardState = { size ∷ MinMaxState, circular ∷ Boolean }
 
-punchCard ∷ H.Component HH.HTML PunchCardF Unit (Message PunchCardState) Slam
+punchCard ∷ ∀ m. AuxComponent PunchCardF PunchCardState m
 punchCard = H.component
   { initialState: const { circular: false, size: { min: 10.0, max: 50.0 } }
   , render: \state → HH.div_
@@ -661,21 +668,22 @@ punchCard = H.component
   , eval: case_
     # on _circular (evalToggle _circular)
     # on _size (evalMinMax _size)
-  , receiver: const Nothing
+    # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
-type ScatterF = VariantF ( size ∷ FProxy MinMaxF )
+type ScatterF = ( size ∷ FProxy MinMaxF )
 type ScatterState = { size ∷ MinMaxState }
 
-scatter ∷ H.Component HH.HTML ScatterF Unit (Message ScatterState) Slam
+scatter ∷ ∀ m. AuxComponent ScatterF ScatterState m
 scatter = H.component
   { initialState: const { size: { min: 10.0, max: 50.0 } }
   , render: \state → HH.div_
     [ HH.hr_
     , renderMinMax _size state
     ]
-  , eval: case_ # on _size (evalMinMax _size)
-  , receiver: const Nothing
+  , eval: case_ # on _size (evalMinMax _size) # on _reset evalReset
+  , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }
 
 _geoHeatmap = SProxy ∷ SProxy "geoHeatmap"
@@ -704,3 +712,14 @@ type AuxState =
   , punchCard ∷ PunchCardState
   , scatter ∷ ScatterState
   )
+
+injAux
+  ∷ ∀ q st m v1 v2 s
+  . RowCons s st v1 v2
+  ⇒ IsSymbol s
+  ⇒ SProxy s
+  → H.Component HH.HTML q (Maybe st) st m
+  → H.Component HH.HTML q (Variant v2) (Variant v2) m
+injAux proxy =
+  under HPR.ProComponent
+  $ dimap (V.prj proxy) (V.inj proxy)
