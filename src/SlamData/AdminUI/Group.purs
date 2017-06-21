@@ -18,7 +18,6 @@ module SlamData.AdminUI.Group where
 
 import SlamData.Prelude
 
-import Data.Array as Array
 import Data.List as L
 import Data.Path.Pathy as Pathy
 import Halogen as H
