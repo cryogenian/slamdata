@@ -106,7 +106,6 @@ tabBody state =
       _ →
         [HH.text "Not implemented"]
       -- AT.Authentication → ?x
-      -- AT.Users → ?x
 
 -- TODO(Christoph): Talk to Kyle
 themes ∷ Array String
@@ -273,38 +272,39 @@ renderDatabaseForm (AT.DatabaseState state) =
 renderServerForm ∷ AT.ServerState → Array AT.HTML
 renderServerForm (AT.ServerState state) =
   [ HH.fieldset_
-        [ HH.legend_ [ HH.text "Port" ]
-        , HH.input
-            [ HP.class_ (HH.ClassName "form-control") ]
-        , HH.p_ [ HH.text "Changing the port will restart the server and reload the browser to the new port. If there are any errors in changing to the new port, however, you may have to use the browser back button."
-                ]
-        ]
-  , HH.fieldset_
-        [ HH.legend_ [HH.text "Location of log file in the SlamData file system"]
-        , HH.input
-            [ HP.class_ (HH.ClassName "form-control") ]
-        ]
-  , HH.fieldset_
-        [ HH.legend
-            [ HP.class_ (HH.ClassName "checkbox") ]
-            [ HH.label_
-              [ HH.input
-                [ HP.checked state.enableCustomSSL
-                , HE.onChecked (HE.input_ (AT.SetServer (AT.ServerState (state {enableCustomSSL = not state.enableCustomSSL}))))
-                , HP.type_ HP.InputCheckbox
-                ]
-              , HH.text "Enable Custom SSL"
+      [ HH.legend_ [ HH.text "Port" ]
+      , HH.input
+          [ HP.class_ (HH.ClassName "form-control") ]
+      , HH.p_ [ HH.text "Changing the port will restart the server and reload the browser to the new port. If there are any errors in changing to the new port, however, you may have to use the browser back button."
               ]
+      ]
+  , HH.fieldset_
+      [ HH.legend_ [HH.text "Location of log file in the SlamData file system"]
+      , HH.input
+          [ HP.class_ (HH.ClassName "form-control") ]
+      ]
+  , HH.fieldset_
+      [ HH.legend
+          [ HP.class_ (HH.ClassName "checkbox") ]
+          [ HH.label_
+              [ HH.input
+                  [ HP.checked state.enableCustomSSL
+                  , HE.onChecked (HE.input_ (AT.SetServer (AT.ServerState (state {enableCustomSSL = not state.enableCustomSSL}))))
+                  , HP.type_ HP.InputCheckbox
+                  ]
+                , HH.text "Enable Custom SSL"
+                ]
             ]
-        , HH.textarea [HP.class_ (HH.ClassName "form-control"), HP.disabled (not state.enableCustomSSL)]
-        ]
+      , HH.textarea [HP.class_ (HH.ClassName "form-control"), HP.disabled (not state.enableCustomSSL)]
+      ]
   ]
 
 renderUsersForm ∷ AT.UsersState → Array AT.HTML
 renderUsersForm (AT.UsersState state) =
   [ HH.fieldset_
       [ HH.input
-          [ HP.type_ HP.InputText
+          [ HP.class_ (HH.ClassName "sd-form")
+          , HP.type_ HP.InputText
           , HP.placeholder "Search string"
             -- , HE.onValueInput $ HE.input \str → right ∘ UpdateSearch str
           , HP.value state.search
