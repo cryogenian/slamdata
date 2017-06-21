@@ -78,7 +78,7 @@ tabHeader active =
 
 tabBody ∷ AT.State → AT.HTML
 tabBody state =
-  HH.form
+  HH.div
     [HP.class_ $ HH.ClassName "tab-body"]
     case state.active of
       AT.MySettings →
