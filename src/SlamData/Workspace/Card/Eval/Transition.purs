@@ -45,6 +45,8 @@ import SlamData.Workspace.Card.Setups.Chart.Scatter.Model as BuildScatter
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model as SetupLabeled
 import SlamData.Workspace.Card.Setups.FormInput.Static.Model as SetupStatic
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as SetupTextLike
+import SlamData.Workspace.Card.Setups.Geo.Heatmap.Model as SetupGeoHeatmap
+import SlamData.Workspace.Card.Setups.Geo.Marker.Model as SetupGeoMarker
 import SlamData.Workspace.Card.Table.Model as Table
 import SlamData.Workspace.Card.Variables.Model as Variables
 
@@ -53,6 +55,7 @@ data Eval
   | Composite
   | Terminal
   | Chart
+  | GeoChart
   | Query SQL
   | Search String
   | Cache (Maybe String)
@@ -88,6 +91,8 @@ data Eval
   | SetupTime SetupTextLike.Model
   | SetupDatetime SetupTextLike.Model
   | SetupStatic SetupStatic.Model
+  | SetupGeoMarker SetupGeoMarker.Model
+  | SetupGeoHeatmap SetupGeoHeatmap.Model
   | FormInput FormInput.Model
   | Table Table.Model
   | PivotTable PivotTable.Model
@@ -98,6 +103,7 @@ tagEval = case _ of
   Composite → "Composite"
   Terminal → "Terminal"
   Chart → "Chart"
+  GeoChart → "GeoChart"
   Query str → "Query " <> show str
   Search str → "Search " <> show str
   Cache str → "Cache " <> show str
@@ -133,6 +139,8 @@ tagEval = case _ of
   SetupTime _ → "SetupTime"
   SetupDatetime _ → "SetupDatetime"
   SetupStatic _ → "SetupStatic"
+  SetupGeoMarker _ → "SetupGeoMarker"
+  SetupGeoHeatmap _ → "SetupGeoHeatmap"
   FormInput _ → "FormInput"
   Table _ → "Table"
   PivotTable _ → "PivotTable"

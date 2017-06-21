@@ -6,3 +6,9 @@ exports._enableAnalytics = function () {
   analytics.page();
   }}();
 };
+
+exports._identify = function (traits) {
+    return function () {
+      window.analytics.identity(traits["email"], traits);
+  };
+};

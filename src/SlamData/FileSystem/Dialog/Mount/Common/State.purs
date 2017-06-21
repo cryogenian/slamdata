@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.Int as Int
 import Data.Lens (Lens', lens)
+import Data.List.NonEmpty as NEL
 import Data.NonEmpty (NonEmpty(..))
 import Data.Path.Pathy (parsePath, rootDir, (</>))
 import Data.Profunctor.Strong (first, second)
@@ -28,10 +29,24 @@ import Data.String.Regex as Rx
 import Data.String.Regex.Flags as RXF
 import Data.URI (Host, Port) as URI
 import Data.URI.Host (parseHost) as URI
-
+import Data.Validation.Semigroup as V
+import Quasar.Mount.Common (Credentials(..))
 import Text.Parsing.StringParser (runParser)
-
 import Utils.Path as PU
+
+newtype ValidationError a = ValidationError (NEL.NonEmptyList (Tuple a String))
+
+derive instance newtypeValidationError ∷ Newtype (ValidationError a) _
+derive newtype instance eqValidationError ∷ Eq a ⇒ Eq (ValidationError a)
+derive newtype instance ordValidationError ∷ Ord a ⇒ Ord (ValidationError a)
+derive newtype instance semigroupValidationError ∷ Semigroup (ValidationError a)
+
+invalid ∷ forall a b. a → String → V.V (ValidationError a) b
+invalid a = V.invalid <<< ValidationError <<< pure <<< Tuple a
+
+-- TODO: One day all will be `V` and the world will be a better place, until then, there's this...
+vToE ∷ ∀ a b. V.V (ValidationError a) b → Either String b
+vToE = V.unV (Left <<< snd <<< NEL.head <<< unwrap) Right
 
 type MountHost = String × String
 
@@ -99,6 +114,12 @@ parseHost (Tuple host port) = do
         (Right <<< Just) $
         (Int.fromString p)
   pure $ Tuple host' port'
+
+parseCredentials ∷ { user ∷ String, password ∷ String } → Maybe Credentials
+parseCredentials { user, password } =
+  case nonEmptyString user, nonEmptyString password of
+    Nothing, Nothing → Nothing
+    u, p → Just (Credentials { user: fromMaybe "" u, password: fromMaybe "" p })
 
 processDynMap ∷ Array (String × String) → Array (String × String)
 processDynMap as =

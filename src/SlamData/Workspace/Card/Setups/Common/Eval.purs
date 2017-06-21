@@ -58,9 +58,9 @@ import Utils.Path as PU
 infixr 3 type M.Map as >>
 
 analysisEval
-  ∷ ∀ m p
+  ∷ ∀ m v p
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (stringly ∷ String, qerror ∷ CE.QError | v)) m
   ⇒ QuasarDSL m
   ⇒ (Axes → p → Array J.Json → Port.Port)
   → Maybe p
@@ -74,9 +74,9 @@ analysisEval build model defaultModel resource = do
     Just ch → pure $ build axes ch records
     Nothing → CE.throw "Please select an axis."
 
-type ChartSetupEval p m =
+type ChartSetupEval p m v =
   MonadState CEM.CardState m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (stringly ∷ String, qerror ∷ CE.QError | v)) m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
@@ -85,9 +85,9 @@ type ChartSetupEval p m =
   → m Port.Out
 
 chartSetupEval
-  ∷ ∀ m p
+  ∷ ∀ m v p
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (stringly ∷ String, qerror ∷ CE.QError | v)) m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
@@ -124,8 +124,8 @@ chartSetupEval buildSql buildPort m resource = do
       pure (port × SM.singleton Port.defaultResourceVar (Left view))
 
 analyze
-  ∷ ∀ m
-  . MonadThrow CE.CardError m
+  ∷ ∀ m v
+  . MonadThrow (Variant (qerror ∷ CE.QError | v)) m
   ⇒ QuasarDSL m
   ⇒ Port.Resource
   → CEM.CardState

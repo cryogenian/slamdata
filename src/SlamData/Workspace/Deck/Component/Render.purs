@@ -104,7 +104,7 @@ renderDeck opts deckComponent st =
     Hint.render
       Hint.DownArrow
       (HH.ClassName "sd-focus-deck-hint")
-      DCQ.DismissFocusDeckHint
+      (Just DCQ.DismissFocusDeckHint)
       "This Deck is wrapped in a Dashboard Card and unfocused. To do more with this Deck focus it by clicking or tapping on it."
 
   renderFocusDeckFrameHint ∷ DeckHTML
@@ -112,7 +112,7 @@ renderDeck opts deckComponent st =
     Hint.render
       Hint.UpArrow
       (HH.ClassName "sd-focus-deck-frame-hint")
-      DCQ.DismissFocusDeckFrameHint
+      (Just DCQ.DismissFocusDeckFrameHint)
       "This Deck is focused. To do more with the containing Deck focus it by clicking or tapping on the empty space in this Deck Frame."
 
   renderBackside visible =

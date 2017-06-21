@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import SlamData.Prelude
 import SlamData.Workspace.MillerColumns.Column.Component as Column
 import SlamData.Workspace.MillerColumns.Column.Component.Request (LoadRequest, LoadResponse)
 import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
+import Halogen.Component.Utils.Drag as Drag
+import DOM.Event.Types as DOM
 
 data Query a i o b
   = Populate (ColumnsData a i) b
@@ -28,6 +30,8 @@ data Query a i o b
   | HandleMessage Int i (Column.Message' a i o) b
   | Reload b
   | FulfilLoadRequest (i × LoadResponse a) b
+  | DragStart Int DOM.MouseEvent b
+  | DragUpdate Int Column.ColumnWidth Drag.DragEvent b
 
 data Message a i
   = SelectionChanged (ColumnsData a i) i (Maybe a)

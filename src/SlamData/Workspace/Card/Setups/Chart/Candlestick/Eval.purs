@@ -69,7 +69,7 @@ decodeItem = decodeJson >=> \obj → do
   parallel ← map Sem.maybeString $ obj .? "parallel"
   pure { dimension, high, low, open, close, parallel }
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildCandlestick
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)

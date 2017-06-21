@@ -37,14 +37,16 @@ type Message' = MCC.Message' ColumnItem ColumnPath Message
 component
   ∷ ColumnOptions
   → ColumnPath
-  → H.Component HH.HTML (MCC.Query' ColumnItem ColumnPath Message) (Maybe ColumnItem) Message' Slam
+  → H.Component HH.HTML (MCC.Query' ColumnItem ColumnPath Message) Input Message' Slam
 component opts = proxyQL ∘ component' opts
 
 data Query a = Raise Message' a
 
 type Query' = Coproduct ColumnQuery Query
 
-type State = Maybe ColumnItem
+type State = MCC.ColumnWidth × Maybe ColumnItem
+
+type Input = MCC.ColumnWidth × Maybe ColumnItem
 
 type DSL = H.ParentDSL State Query' ColumnQuery Unit Message' Slam
 type HTML = H.ParentHTML Query' ColumnQuery Unit Slam
@@ -52,17 +54,17 @@ type HTML = H.ParentHTML Query' ColumnQuery Unit Slam
 component'
   ∷ ColumnOptions
   → ColumnPath
-  → H.Component HH.HTML Query' (Maybe ColumnItem) Message' Slam
+  → H.Component HH.HTML Query' Input Message' Slam
 component' opts path =
   H.parentComponent
     { initialState: id
     , render
     , eval
-    , receiver: Just ∘ left ∘ H.action ∘ MCC.SetSelection
+    , receiver: Just ∘ left ∘ H.action ∘ MCC.HandleInput
     }
   where
 
-  column ∷ H.Component HH.HTML ColumnQuery (Maybe ColumnItem) Message' Slam
+  column ∷ H.Component HH.HTML ColumnQuery Input Message' Slam
   column = MCC.component' opts path
 
   render ∷ State → HTML

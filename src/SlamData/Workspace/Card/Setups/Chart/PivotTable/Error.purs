@@ -21,7 +21,7 @@ import SlamData.Prelude
 
 import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
-import Utils (hush)
+import Utils (throwVariantError, hush)
 
 data PivotTableError
   = PivotTableNoColumnSelectedError
@@ -36,3 +36,6 @@ pivotTableToGlobalError ∷ PivotTableError → Maybe GE.GlobalError
 pivotTableToGlobalError = case _ of
   PivotTableQuasarError qErr → hush (GE.fromQError qErr)
   _ → Nothing
+
+throwPivotTableError ∷ forall v m a. MonadThrow (Variant (pivotTable ∷ PivotTableError | v)) m ⇒ PivotTableError → m a
+throwPivotTableError = throwVariantError (SProxy :: SProxy "pivotTable")

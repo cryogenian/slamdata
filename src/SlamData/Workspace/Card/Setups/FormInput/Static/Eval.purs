@@ -29,14 +29,15 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Behaviour as B
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.FormInput.Static.Error (FormInputStaticError(..), throwFormInputStaticError)
 import SlamData.Workspace.Card.Setups.FormInput.Static.Model (Model, behaviour, initialState)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import Utils (showPrettyJCursor)
 
 eval
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (qerror ∷ CE.QError, formInputStatic ∷ FormInputStaticError | v)) m
   ⇒ QuasarDSL m
   ⇒ Model
   → Port.Resource
@@ -46,9 +47,9 @@ eval m resource = do
   put (Just (CEM.Analysis { resource, records, axes }))
   case m <|> B.defaultModel behaviour m initialState{axes = axes} of
     Nothing →
-      CE.throwFormInputStaticError CE.FIStaticNoAxis
+      throwFormInputStaticError FIStaticNoAxis
     Just conf → case Arr.head records >>= flip Sem.getMaybeString conf.value of
       Nothing →
-        CE.throwFormInputStaticError (CE.FIStaticMissingAxis (showPrettyJCursor conf.value))
+        throwFormInputStaticError (FIStaticMissingAxis (showPrettyJCursor conf.value))
       Just value →
         pure $ Port.CategoricalMetric { value, label: Nothing }

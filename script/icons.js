@@ -183,10 +183,10 @@ iconHelper s =
       , ARIA.hidden "true"
       ]
       [ svgElem "svg"
-        []
+        [ ]
         [ svgElem "use"
           [ xlinkAttr (H.AttrName "xlink:href") $ "#sd-icon--" <> s ]
-          []
+          [ ]
         ]
       ]
 

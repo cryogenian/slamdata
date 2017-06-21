@@ -23,22 +23,24 @@ module SlamData.Workspace.Dialog.Component
   ) where
 
 import SlamData.Prelude
-
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Quasar.Advanced.Types as QAT
 import SlamData.Dialog.Error.Component as Error
-import SlamData.Monad (Slam)
-import SlamData.Workspace.Deck.Options (DeckOptions)
+import SlamData.License as License
 import SlamData.Workspace.Dialog.Confirm.Component as Confirm
 import SlamData.Workspace.Dialog.Export.Component as Export
 import SlamData.Workspace.Dialog.Reason.Component as Reason
 import SlamData.Workspace.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Dialog.Share.Component as Share
-import SlamData.Workspace.Dialog.Types (Dialog(..))
 import SlamData.Workspace.Dialog.Unshare.Component as Unshare
+import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
+import SlamData.Monad (Slam)
+import SlamData.Workspace.Deck.Options (DeckOptions)
+import SlamData.Workspace.Dialog.Types (Dialog(..))
 
 type State = Maybe Dialog
 
@@ -97,6 +99,11 @@ render ∷ State → HTML
 render = case _ of
   Nothing ->
     HH.text ""
+  Just (LicenseProblem problem) ->
+    HH.div_
+      [ renderDialogBackdrop
+      , dialog $ LicenseProblem problem
+      ]
   Just s ->
     HH.div_
       [ renderDialogBackdrop
@@ -154,6 +161,14 @@ render = case _ of
         , cardPaths
         }
         \Reason.Dismiss → Just $ H.action $ Raise Dismissed
+
+    LicenseProblem (License.Expired licenseType) →
+      case licenseType of
+        QAT.Advanced → advancedLicenseExpired
+        QAT.AdvancedTrial → advancedTrialLicenseExpired
+
+    LicenseProblem License.Invalid →
+      licenseInvalid
 
 eval ∷ Query ~> DSL
 eval = case _ of

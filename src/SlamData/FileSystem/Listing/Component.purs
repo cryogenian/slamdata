@@ -66,6 +66,7 @@ data Query a
   | SetIsHidden Boolean a
   | Get (Array Item → a)
   | HandleItemAction ItemSlot Item.Message a
+  | Remove Item a
 
 data Message
   = Added (Array Item)
@@ -136,6 +137,8 @@ eval = case _ of
       _ →
         pure unit
     pure next
+  Remove item next → do
+    H.modify (_items %~ filter (not ∘ eq item)) $> next
 
 install ∷ State → Int → Item → HTML
 install { isSearching, isHidden } ix item =

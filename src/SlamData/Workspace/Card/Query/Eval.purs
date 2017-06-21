@@ -31,13 +31,14 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Query.Error (QueryError(..), throwQueryError)
 import SqlSquared as Sql
 
 evalQuery
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadAff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (query ∷ QueryError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
@@ -49,12 +50,12 @@ evalQuery sql varMap = do
   let
     varMap' = Sql.print ∘ unwrap <$> Port.flattenResources varMap
     backendPath = fromMaybe Path.rootDir (Path.parentDir resource)
-  { inputs } ← QQ.compile' backendPath sql varMap' >>= queryError CE.QueryCompileError
+  { inputs } ← QQ.compile' backendPath sql varMap' >>= queryError QueryCompileError
   validateResources inputs
   CEM.addSources inputs
-  QQ.viewQuery' resource sql varMap' >>= queryError CE.QueryRetrieveResultError
-  QQ.liftQuasar (QF.fileMetadata resource) >>= queryError CE.QueryRetrieveResultError
+  QQ.viewQuery' resource sql varMap' >>= queryError QueryRetrieveResultError
+  QQ.liftQuasar (QF.fileMetadata resource) >>= queryError QueryRetrieveResultError
   pure $ Port.resourceOut $ Port.View resource sql varMap
 
-queryError ∷ ∀ e a m. MonadThrow CE.CardError m ⇒ (e → CE.QueryError) → Either e a → m a
-queryError e = CE.liftQueryError ∘ lmap e
+queryError ∷ ∀ e a m v. MonadThrow (Variant (query ∷ QueryError | v)) m ⇒ (e → QueryError) → Either e a → m a
+queryError e = either throwQueryError pure ∘ lmap e

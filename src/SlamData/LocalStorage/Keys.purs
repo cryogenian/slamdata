@@ -77,6 +77,9 @@ nonceLocalStorageKey = LS.Key ∘ ("sd-auth-replay-" ⊕ _)
 providerLocalStorageKey ∷ String -> LS.Key QAT.Provider
 providerLocalStorageKey = LS.Key ∘ ("sd-auth-provider-" ⊕ _)
 
+signedOutBefore ∷ LS.Key Boolean
+signedOutBefore = LS.Key "sd-auth-signed-out-before"
+
 -- Autocomplete
 
 autoCompletePathsKey :: LS.Key (Array String)

@@ -202,6 +202,27 @@ statics =
       , select: "Choose size"
       , deselectable: true
       }
+  , Pr._lat ×
+      { dimension: jcursorProjection
+      , label: "Latitude"
+      , value: "Choose latitude"
+      , select: "Choose latitude"
+      , deselectable: true
+      }
+  , Pr._lng ×
+      { dimension: jcursorProjection
+      , label: "Longitude"
+      , value: "Choose longitude"
+      , select: "Choose longitude"
+      , deselectable: true
+      }
+  , Pr._intensity ×
+      { dimension: D.projectionWithAggregation $ Just Ag.Sum
+      , label: "Intensity"
+      , value: "Choose intensity"
+      , select: "Choose intensity"
+      , deselectable: false
+      }
   ]
 
 dynamicMeasure ∷ T.Projection → ProjectionDefaults

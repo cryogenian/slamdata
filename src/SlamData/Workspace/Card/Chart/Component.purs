@@ -35,7 +35,7 @@ import Halogen.HTML.Properties as HP
 import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType (ChartType, chartDarkIconSrc)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType, darkIconSrc)
 import SlamData.Workspace.Card.CardType.ChartType as ChT
 import SlamData.Workspace.Card.Chart.Component.ChildSlot (ChildQuery, ChildSlot, cpECharts, cpMetric, cpPivotTable)
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState)
@@ -83,7 +83,7 @@ render state =
 
 renderButton ∷ ChartType → Array HTML
 renderButton ct =
-  [ HH.img [ HP.src $ chartDarkIconSrc ct ]
+  [ HH.img [ HP.src $ darkIconSrc ct ]
   , HH.text "Zoom or resize"
   ]
 

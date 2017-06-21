@@ -24,8 +24,12 @@ import SlamData.ActionList.Action as Action
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType (ChartType, allChartTypes)
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType, allFormInputTypes)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType)
+import SlamData.Workspace.Card.CardType.ChartType as ChT
+import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
+import SlamData.Workspace.Card.CardType.FormInputType as FiT
+import SlamData.Workspace.Card.CardType.GeoChartType (GeoChartType)
+import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Port (Port)
@@ -44,6 +48,25 @@ pluckCardType ∷ NextAction → CardType
 pluckCardType (Insert ct) = ct
 pluckCardType (FindOutHowToInsert ct) = ct
 
+geoChartSubmenu
+  ∷ (GeoChartType → Action.Action NextAction)
+  → Action.Action NextAction
+geoChartSubmenu mkAction =
+  Action.mkDrill
+    { name: "Setup Geo Chart"
+    , icon: Just $ I.IconHTML I.cardsSetupGeoChart
+    , description: "Select Setup Geo Chart card category"
+    , children: map mkAction GcT.all
+    }
+
+insertGeoChartSubmenu ∷ Action.Action NextAction
+insertGeoChartSubmenu =
+  geoChartSubmenu $ toAction ∘ Insert ∘ CT.SetupGeoChart
+
+findOutHowToGeoChartSubmenu ∷ Action.Action NextAction
+findOutHowToGeoChartSubmenu =
+  geoChartSubmenu $ toAction ∘ FindOutHowToInsert ∘ CT.SetupGeoChart
+
 chartSubmenu
   ∷ (ChartType → Action.Action NextAction)
   → Action.Action NextAction
@@ -52,7 +75,7 @@ chartSubmenu mkAction =
     { name: "Setup Chart"
     , icon: Just $ I.IconHTML I.cardsSetupChart
     , description: "Select Setup Chart card category"
-    , children: map mkAction allChartTypes
+    , children: map mkAction ChT.all
     }
 
 insertChartSubmenu ∷ Action.Action NextAction
@@ -71,7 +94,7 @@ formInputSubmenu mkAction =
     { name: "Setup Form"
     , icon: Just $ I.IconHTML I.cardsSetupFormInput
     , description: "Select Setup Form card category"
-    , children: map mkAction allFormInputTypes
+    , children: map mkAction FiT.all
     }
 
 insertFormInputSubmenu ∷ Action.Action NextAction
@@ -104,12 +127,14 @@ insert ∷ InsertableCardType → Array (Action.Action NextAction)
 insert = case _ of
   ICT.SetupChartCard → A.singleton insertChartSubmenu
   ICT.SetupFormCard → A.singleton insertFormInputSubmenu
+  ICT.SetupGeoChartCard → A.singleton insertGeoChartSubmenu
   iCardType → foldMap (A.singleton ∘ toAction ∘ Insert) $ ICT.toCardType iCardType
 
 findOutHowToInsert ∷ InsertableCardType → Array (Action.Action NextAction)
 findOutHowToInsert = case _ of
   ICT.SetupChartCard → A.singleton findOutHowToChartSubmenu
   ICT.SetupFormCard → A.singleton findOutHowToFormInputSubmenu
+  ICT.SetupGeoChartCard → A.singleton findOutHowToGeoChartSubmenu
   iCardType → foldMap (A.singleton ∘ toAction ∘ FindOutHowToInsert) $ ICT.toCardType iCardType
 
 fromInsertableCard

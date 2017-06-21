@@ -23,6 +23,7 @@ import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Options (DeckOptions)
 import SlamData.Workspace.Dialog.Share.Model (SharingInput)
+import SlamData.License (LicenseProblem)
 
 data Dialog
   = Error DeckOptions String
@@ -33,3 +34,4 @@ data Dialog
   | Unshare DeckOptions SharingInput
   | Rename DeckOptions String
   | DeleteDeck DeckOptions
+  | LicenseProblem LicenseProblem

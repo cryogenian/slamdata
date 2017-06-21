@@ -102,7 +102,7 @@ decodeItem = decodeJson >=> \obj → do
        , parallel
        }
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval m =
   BCE.chartSetupEval
     (\md fp →
