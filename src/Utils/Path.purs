@@ -156,8 +156,10 @@ rootFile ∷ FilePath
 rootFile = rootDir </> file ""
 
 toPathList ∷ AnyPath → L.List AnyPath
-toPathList res =
-  (unfoldr \r → Tuple r <$> either go go r) res `L.snoc` Left rootDir
-  where
-  go ∷ ∀ b. Path Abs b Sandboxed → Maybe AnyPath
-  go = map (Left <<< fst) <<< peel
+toPathList res
+  | Left P.rootDir == res = L.singleton (Left rootDir)
+  | otherwise =
+    (unfoldr \r → Tuple r <$> either go go r) res `L.snoc` Left rootDir
+    where
+    go ∷ ∀ b. Path Abs b Sandboxed → Maybe AnyPath
+    go = map (Left <<< fst) <<< peel
