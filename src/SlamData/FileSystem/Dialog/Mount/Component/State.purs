@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Lens (Lens', lens)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
+import Data.String as String
 
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
@@ -145,7 +146,9 @@ canSave st
 
 validate ∷ State → Maybe String
 validate { name } = either Just (const Nothing) $ runExcept do
-  when (maybe false (eq "") name) $ throwError "Please enter a mount name"
+  for_ name \name' → do
+    when (name' ≡ "") $ throwError "Please enter a mount name"
+    when (String.contains (String.Pattern "/") name') $ throwError "Mount names cannot contain slashes"
 
 originalPath ∷ State → Maybe DirPath
 originalPath st = (</>) <$> st.parent <*> (P.dir <$> st.originalName)
