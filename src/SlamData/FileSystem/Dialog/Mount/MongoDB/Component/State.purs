@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State
   ( State
+  , Field(..)
   , initialState
   , processState
   , fromConfig
@@ -28,13 +29,14 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.NonEmpty (oneOf)
 import Data.StrMap as SM
-import Data.URI.Host as URI
-
+import Data.URI.Host (printHost) as URI
+import Data.URI.Path (printPath) as URI
+import Data.Validation.Semigroup as V
 import Global as Global
-
-import Quasar.Mount.MongoDB (Config)
-
+import Quasar.Mount.MongoDB as MDB
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
+
+data Field = Hosts | Auth
 
 type State =
   { hosts ∷ Array MCS.MountHost
@@ -59,27 +61,35 @@ processState s = s
   , props = MCS.processDynMap s.props
   }
 
-fromConfig ∷ Config → State
-fromConfig { hosts, path, user, password, props } =
+fromConfig ∷ MDB.Config → State
+fromConfig { hosts, auth, props } =
   processState
     { hosts: bimap URI.printHost (maybe "" show) <$> oneOf hosts
-    , path: ""
-    , user: maybe "" Global.decodeURIComponent user
-    , password: maybe "" Global.decodeURIComponent password
+    , path: maybe "" (URI.printPath <<< _.path <<< unwrap) auth
+    , user: maybe "" (Global.decodeURIComponent <<< _.user <<< unwrap <<< _.credentials <<< unwrap) auth
+    , password: maybe "" (Global.decodeURIComponent <<< _.password <<< unwrap <<< _.credentials <<< unwrap) auth
     , props: map (fromMaybe "") <$> SM.toUnfoldable props
     }
 
-toConfig ∷ State → Either String Config
-toConfig { hosts, path, user, password, props } = do
-  hosts' ← MCS.nonEmptyHosts =<< traverse MCS.parseHost (A.filter (not MCS.isEmptyTuple) hosts)
-  when (not MCS.isEmpty user || not MCS.isEmpty password) do
-    when (MCS.isEmpty user) $ Left "Please enter user name"
-    when (MCS.isEmpty password) $ Left "Please enter password"
-    when (MCS.isEmpty path) $ Left "Please enter authentication database name"
-  pure
-    { hosts: hosts'
-    , path: MCS.parsePath' =<< MCS.nonEmptyString path
-    , user: Global.encodeURIComponent <$> MCS.nonEmptyString user
-    , password: Global.encodeURIComponent <$> MCS.nonEmptyString password
-    , props: SM.fromFoldable $ map MCS.nonEmptyString <$> A.filter (not MCS.isEmptyTuple) props
-    }
+toConfig ∷ State → V.V (MCS.ValidationError Field) MDB.Config
+toConfig { hosts, path, user, password, props } =
+  { hosts: _, auth: _, props: _ } <$> hosts' <*> auth' <*> props'
+  where
+    hosts' = either (MCS.invalid Hosts) pure $
+      MCS.nonEmptyHosts =<< traverse MCS.parseHost (A.filter (not MCS.isEmptyTuple) hosts)
+    -- TODO: make better use of V, don't mash the fields into just "auth"
+    auth' = either (MCS.invalid Auth) pure $ do
+      let credentials = MCS.parseCredentials { user, password }
+      when (not MCS.isEmpty user || not MCS.isEmpty password) do
+        when (MCS.isEmpty user) $ Left "Please enter user name"
+        when (MCS.isEmpty password) $ Left "Please enter password"
+        when (MCS.isEmpty path) $ Left "Please enter authentication database name"
+      case MCS.nonEmptyString path, credentials of
+        Just p, Just c → do
+          path' ← maybe (Left "Please enter a valid path") pure (MCS.parsePath' p)
+          pure $ Just $ MDB.Auth { path: path', credentials: c }
+        _, _ →
+          -- The possible mixed cases ignored here will be caught by the `when`s above.
+          pure Nothing
+    props' = pure $ SM.fromFoldable $
+      map MCS.nonEmptyString <$> A.filter (not MCS.isEmptyTuple) props

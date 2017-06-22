@@ -22,6 +22,9 @@ module SlamData.Workspace.Card.Factory
 import SlamData.Workspace.Card.Ace.Component (aceComponent)
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.ChartType as ChT
+import SlamData.Workspace.Card.CardType.FormInputType as FiT
+import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 import SlamData.Workspace.Card.Chart.Component (chartComponent)
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component (CardComponent)
@@ -58,6 +61,9 @@ import SlamData.Workspace.Card.Setups.FormInput.Radio.Component (radioSetupCompo
 import SlamData.Workspace.Card.Setups.FormInput.Static.Component (staticSetupComponent)
 import SlamData.Workspace.Card.Setups.FormInput.Text.Component (textSetupComponent)
 import SlamData.Workspace.Card.Setups.FormInput.Time.Component (timeSetupComponent)
+import SlamData.Workspace.Card.Setups.Geo.Marker.Component as GeoMarker
+import SlamData.Workspace.Card.Setups.Geo.Heatmap.Component as GeoHeatmap
+import SlamData.Workspace.Card.Geo.Component as Geo
 import SlamData.Workspace.Card.StructureEditor.Component as StructureEditor
 import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Tabs.Component (tabsComponent)
@@ -66,46 +72,48 @@ import SlamData.Workspace.Card.Variables.Component (variablesComponent)
 
 
 cardComponent ∷ CT.CardType → CardOptions → CardComponent
-cardComponent =
-  case _ of
-    CT.Ace mode → aceComponent mode
-    CT.Search → searchComponent
-    CT.Chart → chartComponent
-    CT.Markdown → markdownComponent
-    CT.Table → tableComponent
-    CT.Download → downloadComponent
-    CT.Variables → variablesComponent
-    CT.Troubleshoot → troubleshootComponent
-    CT.Cache → cacheCardComponent
-    CT.Open → openComponent
-    CT.DownloadOptions → DOpts.component
-    CT.Draftboard → draftboardComponent
-    CT.ChartOptions CT.Metric → metricBuilderComponent
-    CT.ChartOptions CT.Sankey → sankeyBuilderComponent
-    CT.ChartOptions CT.Gauge → gaugeBuilderComponent
-    CT.ChartOptions CT.Graph → graphBuilderComponent
-    CT.ChartOptions CT.Pie → pieBuilderComponent
-    CT.ChartOptions CT.Bar → barBuilderComponent
-    CT.ChartOptions CT.Line → lineBuilderComponent
-    CT.ChartOptions CT.Area → areaBuilderComponent
-    CT.ChartOptions CT.Scatter → scatterBuilderComponent
-    CT.ChartOptions CT.Radar → radarBuilderComponent
-    CT.ChartOptions CT.PivotTable → pivotTableBuilderComponent
-    CT.ChartOptions CT.Funnel → funnelBuilderComponent
-    CT.ChartOptions CT.Boxplot → boxplotBuilderComponent
-    CT.ChartOptions CT.Heatmap → heatmapBuilderComponent
-    CT.ChartOptions CT.PunchCard → punchCardBuilderComponent
-    CT.ChartOptions CT.Candlestick → candlestickBuilderComponent
-    CT.ChartOptions CT.Parallel → parallelBuilderComponent
-    CT.SetupFormInput CT.Dropdown → dropdownSetupComponent
-    CT.SetupFormInput CT.Radio → radioSetupComponent
-    CT.SetupFormInput CT.Checkbox → checkboxSetupComponent
-    CT.SetupFormInput CT.Static → staticSetupComponent
-    CT.SetupFormInput CT.Text → textSetupComponent
-    CT.SetupFormInput CT.Numeric → numericSetupComponent
-    CT.SetupFormInput CT.Date → dateSetupComponent
-    CT.SetupFormInput CT.Time → timeSetupComponent
-    CT.SetupFormInput CT.Datetime → datetimeSetupComponent
-    CT.FormInput → formInputComponent
-    CT.Tabs → tabsComponent
-    CT.StructureEditor → StructureEditor.component
+cardComponent = case _ of
+  CT.Ace mode → aceComponent mode
+  CT.Search → searchComponent
+  CT.Chart → chartComponent
+  CT.Markdown → markdownComponent
+  CT.Table → tableComponent
+  CT.Download → downloadComponent
+  CT.Variables → variablesComponent
+  CT.Troubleshoot → troubleshootComponent
+  CT.Cache → cacheCardComponent
+  CT.Open → openComponent
+  CT.DownloadOptions → DOpts.component
+  CT.Draftboard → draftboardComponent
+  CT.ChartOptions ChT.Metric → metricBuilderComponent
+  CT.ChartOptions ChT.Sankey → sankeyBuilderComponent
+  CT.ChartOptions ChT.Gauge → gaugeBuilderComponent
+  CT.ChartOptions ChT.Graph → graphBuilderComponent
+  CT.ChartOptions ChT.Pie → pieBuilderComponent
+  CT.ChartOptions ChT.Bar → barBuilderComponent
+  CT.ChartOptions ChT.Line → lineBuilderComponent
+  CT.ChartOptions ChT.Area → areaBuilderComponent
+  CT.ChartOptions ChT.Scatter → scatterBuilderComponent
+  CT.ChartOptions ChT.Radar → radarBuilderComponent
+  CT.ChartOptions ChT.PivotTable → pivotTableBuilderComponent
+  CT.ChartOptions ChT.Funnel → funnelBuilderComponent
+  CT.ChartOptions ChT.Boxplot → boxplotBuilderComponent
+  CT.ChartOptions ChT.Heatmap → heatmapBuilderComponent
+  CT.ChartOptions ChT.PunchCard → punchCardBuilderComponent
+  CT.ChartOptions ChT.Candlestick → candlestickBuilderComponent
+  CT.ChartOptions ChT.Parallel → parallelBuilderComponent
+  CT.SetupFormInput FiT.Dropdown → dropdownSetupComponent
+  CT.SetupFormInput FiT.Radio → radioSetupComponent
+  CT.SetupFormInput FiT.Checkbox → checkboxSetupComponent
+  CT.SetupFormInput FiT.Static → staticSetupComponent
+  CT.SetupFormInput FiT.Text → textSetupComponent
+  CT.SetupFormInput FiT.Numeric → numericSetupComponent
+  CT.SetupFormInput FiT.Date → dateSetupComponent
+  CT.SetupFormInput FiT.Time → timeSetupComponent
+  CT.SetupFormInput FiT.Datetime → datetimeSetupComponent
+  CT.FormInput → formInputComponent
+  CT.Tabs → tabsComponent
+  CT.StructureEditor → StructureEditor.component
+  CT.SetupGeoChart GcT.Marker → GeoMarker.component
+  CT.SetupGeoChart GcT.Heatmap → GeoHeatmap.component
+  CT.GeoChart → Geo.component

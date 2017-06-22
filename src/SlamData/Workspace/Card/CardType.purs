@@ -27,8 +27,6 @@ module SlamData.Workspace.Card.CardType
   , aceCardClasses
   , aceMode
   , consumerInteractable
-  , module SlamData.Workspace.Card.CardType.FormInputType
-  , module SlamData.Workspace.Card.CardType.ChartType
   ) where
 
 import SlamData.Prelude
@@ -41,26 +39,17 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
 import SlamData.Config as Config
-import SlamData.Workspace.Card.CardType.ChartType
-  ( ChartType(..)
-  , printChartType
-  , parseChartType
-  , chartName
-  )
-import SlamData.Workspace.Card.CardType.FormInputType
-  ( FormInputType(..)
-  , printFormInputType
-  , parseFormInputType
-  , formInputName
-  )
+import SlamData.Workspace.Card.CardType.ChartType as ChT
+import SlamData.Workspace.Card.CardType.FormInputType as FiT
+import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 
 import Test.StrongCheck.Arbitrary as SC
 
 data CardType
   = Ace AceMode
   | Search
-  | ChartOptions ChartType
-  | SetupFormInput FormInputType
+  | ChartOptions ChT.ChartType
+  | SetupFormInput FiT.FormInputType
   | Chart
   | FormInput
   | Markdown
@@ -74,6 +63,8 @@ data CardType
   | Draftboard
   | Tabs
   | StructureEditor
+  | SetupGeoChart GcT.GeoChartType
+  | GeoChart
 
 derive instance eqCardType ∷ Eq CardType
 derive instance ordCardType ∷ Ord CardType
@@ -99,8 +90,9 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     Ace MarkdownMode → "ace-markdown"
     Ace SQLMode → "ace-sql"
     Search → "search"
-    ChartOptions chty → printChartType chty ⊕ "-options"
-    SetupFormInput fity → printFormInputType fity ⊕ "-setup"
+    ChartOptions chty → ChT.print chty ⊕ "-options"
+    SetupFormInput fity → FiT.print fity ⊕ "-setup"
+    SetupGeoChart gcty → GcT.print gcty ⊕ "-geo-setup"
     Chart → "chart"
     FormInput → "form-input"
     Markdown → "markdown"
@@ -114,21 +106,28 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     Draftboard → "draftboard"
     Tabs → "tabs"
     StructureEditor → "structure-editor"
+    GeoChart → "geo-chart"
+
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
     (decodeJson json >>= parseBasic)
     <|> (decodeJson json >>= parseChartOptions)
     <|> (decodeJson json >>= parseFormInputSetup)
+    <|> (decodeJson json >>= parseGeoChartSetup)
     where
+    parseGeoChartSetup name = do
+      let gcName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-geo-setup") name
+      gcty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ GcT.parse gcName
+      pure $ SetupGeoChart gcty
     parseFormInputSetup name = do
       let fiName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-setup") name
-      fity ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseFormInputType fiName
+      fity ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ FiT.parse fiName
       pure $ SetupFormInput fity
 
     parseChartOptions name = do
       let chartName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-options") name
-      chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ parseChartType chartName
+      chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ ChT.parse chartName
       pure $ ChartOptions chty
 
     parseBasic = case _ of
@@ -148,15 +147,18 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "draftboard" → pure Draftboard
       "tabs" → pure Tabs
       "structure-editor" → pure StructureEditor
+      "geo-chart" → pure GeoChart
       _ → Left "This is not basic card type"
 
 cardName ∷ CardType → String
 cardName = case _ of
   Ace at → aceCardName at
   Search → "Search"
-  ChartOptions chty → chartName chty
-  SetupFormInput fity → formInputName fity
+  ChartOptions chty → ChT.name chty
+  SetupFormInput fity → FiT.name fity
+  SetupGeoChart gcty → GcT.name gcty
   Chart → "Show Chart"
+  GeoChart → "Show Geo Chart"
   FormInput → "Show Form"
   Markdown → "Show Markdown"
   Table → "Preview Table"
@@ -180,59 +182,64 @@ cardIcon = case _ of
     "search"
   ChartOptions chty →
     case chty of
-      Pie →
+      ChT.Pie →
         "buildChart/pie"
-      Line →
+      ChT.Line →
         "buildChart/line"
-      Bar →
+      ChT.Bar →
         "buildChart/bar"
-      Area →
+      ChT.Area →
         "buildChart/area"
-      Scatter →
+      ChT.Scatter →
         "buildChart/scatter"
-      Radar →
+      ChT.Radar →
         "buildChart/radar"
-      Funnel →
+      ChT.Funnel →
         "buildChart/funnel"
-      Graph →
+      ChT.Graph →
         "buildChart/graph"
-      Heatmap →
+      ChT.Heatmap →
         "buildChart/heatmap"
-      Sankey →
+      ChT.Sankey →
         "buildChart/sankey"
-      Gauge →
+      ChT.Gauge →
         "buildChart/gauge"
-      Boxplot →
+      ChT.Boxplot →
         "buildChart/boxplot"
-      Metric →
+      ChT.Metric →
         "buildChart/metric"
-      PivotTable →
+      ChT.PivotTable →
         "buildChart/pivot-table"
-      PunchCard →
+      ChT.PunchCard →
         "buildChart/punch-card"
-      Candlestick →
+      ChT.Candlestick →
         "buildChart/candlestick"
-      Parallel →
+      ChT.Parallel →
         "buildChart/parallel"
   SetupFormInput fity → case fity of
-    Dropdown →
+    FiT.Dropdown →
       "setupFormInput/dropdown"
-    Static →
+    FiT.Static →
       "setupFormInput/static"
-    Text →
+    FiT.Text →
       "setupFormInput/text"
-    Numeric →
+    FiT.Numeric →
       "setupFormInput/numeric"
-    Checkbox →
+    FiT.Checkbox →
       "setupFormInput/checkbox"
-    Radio →
+    FiT.Radio →
       "setupFormInput/radio"
-    Date →
+    FiT.Date →
       "setupFormInput/date"
-    Time →
+    FiT.Time →
       "setupFormInput/time"
-    Datetime →
+    FiT.Datetime →
       "setupFormInput/datetime"
+  SetupGeoChart gcty → case gcty of
+    GcT.Marker →
+      "setupGeoChart/marker"
+    GcT.Heatmap →
+      "setupGeoChart/heatmap"
   Download →
     "showDownload"
   Variables →
@@ -259,6 +266,9 @@ cardIcon = case _ of
     "tabs"
   StructureEditor →
     "structureEditor"
+  GeoChart →
+    "geoChart"
+
 
 cardIconDarkSrc ∷ CardType → String
 cardIconDarkSrc cardType =
@@ -285,6 +295,8 @@ consumerInteractable = case _ of
   Search → true
   ChartOptions _ → false
   SetupFormInput _ → false
+  SetupGeoChart _ → false
+  GeoChart → true
   Chart → true
   FormInput → true
   Markdown → true
@@ -305,7 +317,9 @@ cardClasses = case _ of
   Search → [ H.ClassName "sd-card-search" ]
   ChartOptions _ → [ H.ClassName "sd-card-chart-options" ]
   SetupFormInput _ → [ H.ClassName "sd-form-input-setup" ]
+  SetupGeoChart _ → [ H.ClassName "sd-setup-geo-chart" ]
   Chart → [ H.ClassName "sd-card-chart" ]
+  GeoChart → [ H.ClassName "sd-card-geo-chart" ]
   FormInput → [ H.ClassName "sd-card-form-input" ]
   Markdown → [ H.ClassName "sd-card-markdown" ]
   Table → [ H.ClassName "sd-card-table" ]

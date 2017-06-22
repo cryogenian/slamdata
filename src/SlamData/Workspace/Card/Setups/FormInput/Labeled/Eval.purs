@@ -33,13 +33,14 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Behaviour as B
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error (FormInputLabeledError(..), throwFormInputLabeledError)
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model (Model, behaviour, initialState)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 eval
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (qerror ∷ CE.QError, formInputLabeled ∷ FormInputLabeledError | v)) m
   ⇒ QuasarDSL m
   ⇒ Model
   → FormInputType
@@ -49,10 +50,10 @@ eval m formInputType resource = do
   records × axes ← BCE.analyze resource =<< get
   put (Just (CEM.Analysis { resource, axes, records}))
   case m <|> B.defaultModel behaviour m initialState{axes = axes} of
-    Nothing → CE.throwFormInputLabeledError (CE.FILabeledNoAxisError formInputType)
+    Nothing → throwFormInputLabeledError (FILabeledNoAxisError formInputType)
     Just conf → do
       when (Arr.null records)
-        $ CE.throwFormInputLabeledError (CE.FILabeledEmptyResourceError formInputType)
+        $ throwFormInputLabeledError (FILabeledEmptyResourceError formInputType)
       selectedValues × valueLabelMap × _ × _ ←
         Arr.foldM (foldFn conf) (Set.empty × Map.empty × 0 × 0) records
       pure
@@ -66,15 +67,15 @@ eval m formInputType resource = do
   where
   foldFn conf acc@(selected × vlmap × keyCount × selectedCount) record = do
     when (keyCount > FIT.maximumCountOfEntries formInputType) $
-      CE.throwFormInputLabeledError
-        (CE.FILabeledTooManyEntries
+      throwFormInputLabeledError
+        (FILabeledTooManyEntries
           { formInputType
           , maximum: FIT.maximumCountOfEntries formInputType
           , entryCount: keyCount
           })
     when (selectedCount > FIT.maximumCountOfSelectedValues formInputType) $
-      CE.throwFormInputLabeledError
-        (CE.FILabeledTooManySelected
+      throwFormInputLabeledError
+        (FILabeledTooManySelected
           { formInputType
           , maximum: FIT.maximumCountOfEntries formInputType
           , selectedCount
@@ -90,7 +91,7 @@ eval m formInputType resource = do
             pure $ (keyCount + one) × Map.insert value mbNewLabel vlmap
           Just mbExistingLabel → do
             when (mbExistingLabel ≠ mbNewLabel) $
-              CE.throwFormInputLabeledError (CE.FILabeledNonUniqueLabelError formInputType mbExistingLabel)
+              throwFormInputLabeledError (FILabeledNonUniqueLabelError formInputType mbExistingLabel)
             pure $ keyCount × vlmap
     newSelCount × newSelected ←
       pure $ case conf.selected >>= Sem.getSemantics record of
