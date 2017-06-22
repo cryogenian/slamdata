@@ -6,6 +6,7 @@ import SlamData.Prelude
 
 import CSS as CSS
 
+import Data.Array as A
 import Data.Lens ((^?))
 import Data.Map as Map
 
@@ -14,6 +15,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Properties as HP
+import Halogen.Component.Proxy as HCP
 
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
@@ -27,6 +29,7 @@ import SlamData.Workspace.Card.Setups.Viz.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Viz.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Viz.Component.State as ST
 import SlamData.Workspace.Card.Setups.Viz.VizTypePicker as VT
+import SlamData.Workspace.Card.Setups.Viz.Auxiliary as Aux
 import SlamData.Workspace.Card.CardType.VizType as VCT
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
@@ -46,9 +49,10 @@ render ∷ ST.State → HTML
 render state =
   HH.div
   [ HCSS.style $ CSS.width (CSS.pct 100.0) *> CSS.height (CSS.pct 100.0) ]
-  if state.vizTypePickerExpanded
-    then [ picker ]
-    else [ button ] <> dims
+  $ ( if state.vizTypePickerExpanded
+      then [ picker ]
+      else [ button ] <> dims )
+  ⊕ aux
   where
   button =
     HH.button
@@ -68,6 +72,29 @@ render state =
     [ HH.slot' CS.cpDims unit DM.component package
       $ HE.input \e → right ∘ Q.HandleDims e
     ]
+  aux = foldMap A.singleton do
+    auxState ← Map.lookup state.vizType state.auxes
+    comp ← auxComponent
+    pure
+      $ HH.div_
+      $ A.singleton
+      $ HH.slot' CS.cpAux unit comp auxState
+      $ HE.input \e → right ∘ Q.HandleAux e
+
+  auxComponent = case spy state.vizType of
+    VCT.Geo VCT.GeoHeatmap → pure $ HCP.proxy $ Aux.injAux Aux._geoHeatmap Aux.geoHeatmap
+    VCT.Geo VCT.GeoMarker → pure $ HCP.proxy $ Aux.injAux Aux._geoMarker Aux.geoMarker
+    VCT.Metric → pure $ HCP.proxy $ Aux.injAux Aux._metric Aux.metric
+    VCT.Chart VCT.Area → pure $ HCP.proxy $ Aux.injAux Aux._area Aux.area
+    VCT.Chart VCT.Bar → pure $ HCP.proxy $ Aux.injAux Aux._bar Aux.bar
+    VCT.Chart VCT.Funnel → pure $ HCP.proxy $ Aux.injAux Aux._funnel Aux.funnel
+    VCT.Chart VCT.Graph → pure $ HCP.proxy $ Aux.injAux Aux._graph Aux.graph
+    VCT.Chart VCT.Heatmap → pure $ HCP.proxy $ Aux.injAux Aux._heatmap Aux.heatmap
+    VCT.Chart VCT.Line → pure $ HCP.proxy $ Aux.injAux Aux._line Aux.line
+    VCT.Chart VCT.PunchCard → pure $ HCP.proxy $ Aux.injAux Aux._punchCard Aux.punchCard
+    VCT.Chart VCT.Scatter → pure $ HCP.proxy $ Aux.injAux Aux._scatter Aux.scatter
+    _ → empty
+
 
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
@@ -75,11 +102,12 @@ cardEval = case _ of
     pure next
   CC.Deactivate next →
     pure next
-    CC.Save k → do
+  CC.Save k → do
     st ← H.get
     pure $ k $ M.SetupViz
       { dimMaps: st.dimMaps
       , vizType: st.vizType
+      , auxes: st.auxes
       }
   CC.Load m next → do
     for_ (m ^? M._SetupViz) \r → do
@@ -126,8 +154,13 @@ setupEval = case _ of
     H.raise CC.modelUpdate
     pure next
   Q.ToggleVizPicker next → do
-    H.modify _{ vizTypePickerExpanded = true }
-    state ← H.get
+    H.modify _{ vizTypePickerExpanded = true
+              , vizType = VCT.PivotTable
+              }
     for_ state.axes \axes →
       void $ H.query' CS.cpPicker unit $ H.action $ VT.UpdateAxes axes
+    pure next
+  Q.HandleAux auxState next → do
+    H.modify \st → st { auxes = Map.insert st.vizType auxState st.auxes }
+    H.raise CC.modelUpdate
     pure next

@@ -3,7 +3,9 @@ module SlamData.Workspace.Card.Setups.Viz.Auxiliary where
 import SlamData.Prelude
 
 import Data.Array as Arr
+import Data.URI as URI
 import Data.URI (URIRef, runParseURIRef, printURIRef)
+import Data.Path.Pathy ((</>), (<.>), file, rootDir, dir)
 import Data.Symbol (class IsSymbol)
 import Data.Functor.Variant (FProxy, VariantF, inj, case_, on)
 import Data.Variant as V
@@ -30,7 +32,6 @@ import SlamData.Form.Select (class OptionVal, Select(..), stringVal)
 import SlamData.Common.Sort (sortSelect, Sort(..))
 import SlamData.Common.Align (alignSelect, Align(..))
 import SlamData.Render.Common (row)
-import SlamData.Workspace.Card.Setups.Viz.Model as M
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Geo.Model (onURIRef)
 import SlamData.Render.ClassName as CN
@@ -410,15 +411,78 @@ evalReset = case _ of
     H.put st
     pure next
 
+formatter ∷ String
+formatter = ""
+
+osmURI ∷ URIRef
+osmURI =
+  Left $ URI.URI
+  (Just $ URI.URIScheme "http")
+  (URI.HierarchicalPart
+   (Just $ URI.Authority Nothing [(URI.NameAddress "{s}.tile.osm.org") × Nothing])
+   (Just $ Right $ rootDir </> dir "{z}" </> dir "{x}" </> file "{y}" <.> "png"))
+  Nothing
+  Nothing
+
+osm ∷ { uri ∷ URIRef, uriString ∷ String }
+osm = { uri: osmURI, uriString: printURIRef osmURI }
+
+minSize ∷ Number
+minSize = 10.0
+
+maxSize ∷ Number
+maxSize = 50.0
+
+isSmooth ∷ Boolean
+isSmooth = false
+
+isStacked ∷ Boolean
+isStacked = false
+
+size ∷ Number
+size = 10.0
+
+axisLabelAngle ∷ Number
+axisLabelAngle = 0.0
+
+circular ∷ Boolean
+circular = false
+
+isColorSchemeReversed ∷ Boolean
+isColorSchemeReversed = false
+
+colorScheme ∷ ColorScheme
+colorScheme = RedToBlue
+
+order ∷ Sort
+order = Asc
+
+align ∷ Align
+align = LeftAlign
+
+minValue ∷ Number
+minValue = 1.0
+
+maxValue ∷ Number
+maxValue = 50.0
+
+optionalMarkers ∷ Boolean
+optionalMarkers = false
+
+
 type AuxComponent a b m = H.Component HH.HTML (ResetF b a) (Maybe b) b m
 
 type GeoHeatmapState = { osm ∷ OsmURIState }
 type GeoHeatmapF = ( osm ∷ FProxy SetF )
+type GeoHeatmapQ = ResetF GeoHeatmapState GeoHeatmapF
+
+initialGeoHeatmap ∷ GeoHeatmapState
+initialGeoHeatmap =  { osm }
 
 geoHeatmap ∷ ∀ m. AuxComponent GeoHeatmapF GeoHeatmapState m
 geoHeatmap = H.component
-  { initialState: const { osm: { uri: M.osmURI, uriString: printURIRef M.osmURI } }
-  , render: \state → row [ renderOsmURI _osm state ]
+  { initialState: const initialGeoHeatmap
+  , render: \state → HH.div_ [ HH.hr_, row [ renderOsmURI _osm state ] ]
   , eval: case_
     # on _osm (evalOsmURI _osm)
     # on _reset evalReset
@@ -427,16 +491,19 @@ geoHeatmap = H.component
 
 type GeoMarkerState = { osm ∷ OsmURIState, size ∷ MinMaxState }
 type GeoMarkerF = ( osm ∷ FProxy SetF, size ∷ FProxy MinMaxF )
+type GeoMarkerQ = ResetF GeoMarkerState GeoMarkerF
+
+initialGeoMarker ∷ GeoMarkerState
+initialGeoMarker =
+   { osm
+   , size: { min: minSize
+           , max: maxSize
+           }
+   }
 
 geoMarker ∷ ∀ m. AuxComponent GeoMarkerF GeoMarkerState m
 geoMarker = H.component
-  { initialState: const { osm: { uri: M.osmURI
-                               , uriString: printURIRef M.osmURI
-                               }
-                        , size: { min: 10.0
-                                , max: 50.0
-                                }
-                        }
+  { initialState: const initialGeoMarker
   , render: \state → HH.div_
      [ HH.hr_
      , renderMinMax _size state
@@ -463,14 +530,19 @@ type AreaF =
   , axisLabelAngle ∷ FProxy SetF
   , size ∷ FProxy SetF
   )
+type AreaQ = ResetF AreaState AreaF
+
+initialArea ∷ AreaState
+initialArea =
+ { isStacked
+ , isSmooth
+ , size
+ , axisLabelAngle
+ }
 
 area ∷ ∀ m. AuxComponent AreaF AreaState m
 area = H.component
-  { initialState: const { isStacked: false
-                        , isSmooth: false
-                        , size: 10.0
-                        , axisLabelAngle: 0.0
-                        }
+  { initialState: const initialArea
   , render: \state → HH.div_
     [ HH.hr_
     , row [ renderToggle _isStacked state
@@ -492,10 +564,14 @@ area = H.component
 
 type BarState = { axisLabelAngle ∷ Number }
 type BarF = ( axisLabelAngle ∷ FProxy SetF )
+type BarQ = ResetF BarState BarF
+
+initialBar ∷ BarState
+initialBar = { axisLabelAngle }
 
 bar ∷ ∀ m. AuxComponent BarF BarState m
 bar = H.component
-  { initialState: const { axisLabelAngle: 0.0 }
+  { initialState: const initialBar
   , render: \state → HH.div_
     [ HH.hr_
     , row [ renderNum _axisLabelAngle state ]
@@ -508,10 +584,14 @@ bar = H.component
 
 type FunnelF = ( order ∷ FProxy (ChooseF Sort), align ∷ FProxy (ChooseF Align) )
 type FunnelState = { order ∷ Sort, align ∷ Align }
+type FunnelQ = ResetF FunnelState FunnelF
+
+initialFunnel ∷ FunnelState
+initialFunnel = { order, align }
 
 funnel ∷ ∀ m. AuxComponent FunnelF FunnelState m
 funnel = H.component
-  { initialState: const { order: Asc, align: LeftAlign }
+  { initialState: const initialFunnel
   , render: \state → HH.div_
     [ HH.hr_
     , row [ renderChoose _order sortSelect state
@@ -527,10 +607,14 @@ funnel = H.component
 
 type GraphF = ( size ∷ FProxy MinMaxF, circular ∷ FProxy ToggleF )
 type GraphState = { size ∷ MinMaxState, circular ∷ Boolean }
+type GraphQ = ResetF GraphState GraphF
+
+initialGraph ∷ GraphState
+initialGraph = { size: { min: minSize, max: maxSize }, circular }
 
 graph ∷ ∀ m. AuxComponent GraphF GraphState m
 graph = H.component
-  { initialState: const { circular: false, size: { min: 10.0, max: 50.0 } }
+  { initialState: const initialGraph
   , render: \state → HH.div_
     [ HH.hr_
     , row [ renderToggle _circular state ]
@@ -554,13 +638,18 @@ type HeatmapState =
   , isColorSchemeReversed ∷ Boolean
   , val ∷ MinMaxState
   }
+type HeatmapQ = ResetF HeatmapState HeatmapF
+
+initialHeatmap ∷ HeatmapState
+initialHeatmap =
+  { colorScheme
+  , isColorSchemeReversed
+  , val: { min: minValue, max: maxValue }
+  }
 
 heatmap ∷ ∀ m. AuxComponent HeatmapF HeatmapState m
 heatmap = H.component
-  { initialState:const { colorScheme: RedToBlue
-                       , isColorSchemeReversed: false
-                       , val: { min: 0.0, max: 50.0 }
-                       }
+  { initialState:const initialHeatmap
   , render: \state → HH.div_
     [ HH.hr_
     , row [ renderChoose _colorScheme colorSchemeSelect state
@@ -587,13 +676,18 @@ type LineState =
   , size ∷ MinMaxState
   , axisLabelAngle ∷ Number
   }
+type LineQ = ResetF LineState LineF
+
+initialLine ∷ LineState
+initialLine =
+  { optionalMarkers
+  , size: { min: minSize, max: maxSize }
+  , axisLabelAngle
+  }
 
 line ∷ ∀ m. AuxComponent LineF LineState m
 line = H.component
-  { initialState: const { optionalMarkers: false
-                        , size: { min: 10.0, max: 50.0 }
-                        , axisLabelAngle: 0.0
-                        }
+  { initialState: const initialLine
   , render: \state → HH.div_
     [ HH.hr_
     , row [ renderToggle _optionalMarkers state ]
@@ -612,10 +706,14 @@ line = H.component
 
 type MetricF = ( formatter ∷ FProxy SetF )
 type MetricState = { formatter ∷ String }
+type MetricQ = ResetF MetricState MetricF
+
+initialMetric ∷ MetricState
+initialMetric = { formatter }
 
 metric ∷ ∀ m. AuxComponent MetricF MetricState m
 metric = H.component
-  { initialState: const { formatter: "" }
+  { initialState: const initialMetric
   , render: \state → HH.div_
     [ HH.hr_
     , renderStr _formatter state
@@ -655,10 +753,14 @@ metric = H.component
 
 type PunchCardF = ( size ∷ FProxy MinMaxF, circular ∷ FProxy ToggleF )
 type PunchCardState = { size ∷ MinMaxState, circular ∷ Boolean }
+type PunchCardQ = ResetF PunchCardState PunchCardF
+
+initialPunchCard ∷ PunchCardState
+initialPunchCard = { size: { min: minSize, max: maxSize }, circular }
 
 punchCard ∷ ∀ m. AuxComponent PunchCardF PunchCardState m
 punchCard = H.component
-  { initialState: const { circular: false, size: { min: 10.0, max: 50.0 } }
+  { initialState: const initialPunchCard
   , render: \state → HH.div_
     [ HH.hr_
     , row [ renderToggle _circular state ]
@@ -674,10 +776,14 @@ punchCard = H.component
 
 type ScatterF = ( size ∷ FProxy MinMaxF )
 type ScatterState = { size ∷ MinMaxState }
+type ScatterQ = ResetF ScatterState ScatterF
+
+initialScatter ∷ ScatterState
+initialScatter = { size: { min: minSize, max: maxSize } }
 
 scatter ∷ ∀ m. AuxComponent ScatterF ScatterState m
 scatter = H.component
-  { initialState: const { size: { min: 10.0, max: 50.0 } }
+  { initialState: const initialScatter
   , render: \state → HH.div_
     [ HH.hr_
     , renderMinMax _size state
@@ -699,7 +805,7 @@ _punchCard = SProxy ∷ SProxy "punchCard"
 _scatter = SProxy ∷ SProxy "scatter"
 _other = SProxy ∷ SProxy "other"
 
-type AuxState =
+type State = Variant
   ( geoHeatmap ∷ GeoHeatmapState
   , geoMarker ∷ GeoMarkerState
   , area ∷ AreaState
@@ -711,6 +817,20 @@ type AuxState =
   , metric ∷ MetricState
   , punchCard ∷ PunchCardState
   , scatter ∷ ScatterState
+  )
+
+type Query = VariantF
+  ( geoHeatmap ∷ FProxy GeoHeatmapQ
+  , geoMarker ∷ FProxy GeoMarkerQ
+  , area ∷ FProxy AreaQ
+  , bar ∷ FProxy BarQ
+  , funnel ∷ FProxy FunnelQ
+  , graph ∷ FProxy GraphQ
+  , heatmap ∷ FProxy HeatmapQ
+  , line ∷ FProxy LineQ
+  , metric ∷ FProxy MetricQ
+  , punchCard ∷ FProxy PunchCardQ
+  , scatter ∷ FProxy ScatterQ
   )
 
 injAux
