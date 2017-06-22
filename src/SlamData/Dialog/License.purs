@@ -31,7 +31,7 @@ advancedLicenseExpired =
   H.div
     [ HP.classes [ H.ClassName "deck-dialog", H.ClassName "license-dialog" ] ]
     [ H.div_
-        [ H.img [ HP.src "img/features.png" ]
+        [ H.img [ HP.src "img/logo-center.svg" ]
         , DR.modalHeader "Your license has expired"
         , DR.modalBody
             $ H.div_
@@ -60,7 +60,7 @@ advancedTrialLicenseExpired =
   H.div
     [ HP.classes [ H.ClassName "deck-dialog", H.ClassName "license-dialog" ] ]
     [ H.div_
-        [ H.img [ HP.src "img/features.png" ]
+        [ H.img [ HP.src "img/logo-center.svg" ]
         , DR.modalHeader "Your trial has expired"
         , DR.modalBody
             $ H.div_
@@ -89,7 +89,7 @@ licenseInvalid =
   H.div
     [ HP.classes [ H.ClassName "deck-dialog", H.ClassName "license-dialog" ] ]
     [ H.div_
-        [ H.img [ HP.src "img/features.png" ]
+        [ H.img [ HP.src "img/logo-center.svg" ]
         , DR.modalHeader "Your license is invalid"
         , DR.modalBody
             $ H.div_

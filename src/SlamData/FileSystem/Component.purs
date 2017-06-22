@@ -22,18 +22,15 @@ module SlamData.FileSystem.Component
   ) where
 
 import SlamData.Prelude
-
 import CSS as CSS
-
 import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Fork (fork)
 import Control.Monad.Rec.Class (tailRecM, Step(Done, Loop))
 import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
-
 import DOM.Event.Event as DEE
-
 import Data.Argonaut (jsonParser, jsonEmptyObject)
 import Data.Array as Array
 import Data.Coyoneda (liftCoyoneda)
@@ -45,7 +42,6 @@ import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir, printPath)
 import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
-
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
@@ -54,11 +50,10 @@ import Halogen.HTML.Core as HC
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
-
 import Quasar.Advanced.QuasarAF as QA
+import Quasar.Advanced.Types as QAT
 import Quasar.Data (QData(..))
 import Quasar.Mount as QM
-
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
@@ -197,12 +192,20 @@ eval = case _ of
   Init next → do
     w ← H.lift Wiring.expose
     dismissedIntroVideoBefore >>= if _
-     then void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
-     else H.modify $ State._presentIntroVideo .~ true
+      then
+        void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
+      else
+        void $ fork $ liftQuasar QA.licenseInfo >>= case _ of
+          Right { status: QAT.LicenseValid } →
+            H.modify $ State._presentIntroVideo .~ true
+          Right { status: QAT.LicenseExpired } →
+            pure unit
+          Left _ →
+            liftQuasar QA.serverInfo >>= traverse_
+              (_.name >>> eq "Quasar-Advanced" >>> not >>> flip when (H.modify $ State._presentIntroVideo .~ true))
     H.subscribe $ busEventSource (flip HandleError ES.Listening) w.bus.globalError
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) w.auth.signIn
     H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) w.bus.licenseProblems
-    daysRemaining ← map _.daysRemaining <$> liftQuasar QA.licenseInfo
     notifyDaysRemainingIfNeeded
     pure next
   Transition page next → do
