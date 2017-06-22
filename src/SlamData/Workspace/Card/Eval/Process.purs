@@ -23,6 +23,31 @@ import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquared as Sql
 import Utils.Path as PU
 
+-- | Process elaboration is a transformation from a SQL^2 Query to a
+-- | SQL^2 Module based on a VarMap. The reason we do this is because a Query
+-- | might contain references to other Resources which may not refer to a
+-- | static path on disk, but to a Process/Function call. The goals of
+-- | elaboration are to:
+-- |
+-- | * Determine if a Query should be a Module. A Query should be a Module if
+-- |   it contains "true" parameterization. True parameterization occurs when
+-- |   the query contains references a URL VarMap binding or another Process.
+-- |   Even though a Query may reference something like `:resource`, it may not
+-- |   be truly parameterized if that variable refers to a static path. In such
+-- |   a case, the path is instead inlined and does not qualify as true
+-- |   parameterization.
+-- | * Dereference Processes as a SQL^2 import and a call to the specified
+-- |   function. We also alias these calls in a local temporary binding.
+-- | * Track variable hygiene. A card at the beginning of the stack may
+-- |   reference a URL variable, but that variable may be shadowed by a
+-- |   subsequent card. To the end user they have the same name, but we still
+-- |   must pass in both references when executing the query.
+-- | * Elaborate Function declarations in Query cards to take free variables
+-- |   as arguments. When a Query is turned into a Module, the "index" function
+-- |   must take all free variables and pass them to the functions since they
+-- |   can't just simply be templated. TODO: Can this be elided if all variables
+-- |   are renamed to be uniquely addressed?
+
 type Elaborate m a
   = MonadReader RewriteEnv m
   ⇒ MonadState RewriteState m
