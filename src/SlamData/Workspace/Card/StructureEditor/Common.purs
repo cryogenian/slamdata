@@ -31,7 +31,10 @@ import Data.List as L
 import Data.Map as M
 import Data.Newtype as N
 import Data.Ord (class Ord1)
+import Halogen as H
+import Halogen.HTML as HH
 import Matryoshka (class Corecursive, class Recursive, Algebra, CoalgebraM, anaM, cata, embed, project)
+import SlamData.Render.Icon as I
 import Test.StrongCheck as SC
 import Test.StrongCheck.Gen as SCG
 
@@ -174,8 +177,8 @@ rootColumn = all
 printCursor ∷ Cursor → String
 printCursor path = case unwrap (project path) of
   Left EJC.All → "*"
-  Left (EJC.AtKey k _) → "*." <> EJ.renderEJson k <> ""
-  Left (EJC.AtIndex i _) → "*[" <> show i <> "]"
+  Left (EJC.AtKey k _) → EJ.renderEJson k
+  Left (EJC.AtIndex i _) → show i
   Right (OfValue val _) → EJ.renderEJson val
 
 data ColumnItem = ColumnItem Cursor Weight
@@ -191,6 +194,13 @@ derive instance newtypeWeight ∷ Newtype Weight _
 
 columnItemLabel ∷ ColumnItem → String
 columnItemLabel (ColumnItem path _) = printCursor path
+
+columnItemIcon ∷ ∀ p i. ColumnItem → H.HTML p i
+columnItemIcon (ColumnItem path _) = case unwrap (project path) of
+  Left EJC.All → HH.text ""
+  Left (EJC.AtKey k _) → I.keySm
+  Left (EJC.AtIndex i _) → I.bracketsSm
+  Right (OfValue val _) → I.diamondSm
 
 columnItemPath ∷ ColumnItem → ColumnPath
 columnItemPath (ColumnItem path _) = path
