@@ -302,17 +302,20 @@ renderServerForm (AT.ServerState state) =
 renderUsersForm ∷ AT.UsersState → Array AT.HTML
 renderUsersForm (AT.UsersState state) =
   [ HH.fieldset_
-      [ HH.input
-          [ HP.class_ (HH.ClassName "sd-form")
-          , HP.type_ HP.InputText
-          , HP.placeholder "Search string"
-            -- , HE.onValueInput $ HE.input \str → right ∘ UpdateSearch str
-          , HP.value state.search
+      [ HH.label_
+          [ HH.text "Search"
+          , HH.input
+              [ HP.class_ (HH.ClassName "form-control")
+              , HP.type_ HP.InputText
+              , HP.placeholder "Search string"
+              , HE.onValueInput $ HE.input \str → AT.SetUsers (AT.UsersState (state {search = str}))
+              , HP.value state.search
+              ]
+          , HH.button
+              [ HE.onClick $ HE.input_ (AT.SetUsers (AT.UsersState (state {search = ""})))
+              ]
+              [ R.clearFieldIcon "Clear search string" ]
           ]
-      , HH.button
-          [ -- HE.onClick $ HE.input_ (right ∘ UpdateSearch "")
-          ]
-          [ R.clearFieldIcon "Clear search string" ]
       ]
   ]
 
@@ -337,6 +340,9 @@ eval = case _ of
     pure next
   AT.SetServer new next → do
     H.modify (_ { formState { server = new } })
+    pure next
+  AT.SetUsers new next → do
+    H.modify (_ { formState { users = new } })
     pure next
   AT.SetGroups new next → do
     H.modify (_ { formState { groups = new } })

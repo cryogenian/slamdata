@@ -41,6 +41,7 @@ data Query a
   | SetMySettings MySettingsState a
   | SetDatabase DatabaseState a
   | SetServer ServerState a
+  | SetUsers UsersState a
   | SetGroups GroupsState a
   | HandleColumns (Miller.Message GroupItem GroupIndex) a
   | HandleColumnOrItem GroupMessage a
@@ -115,7 +116,6 @@ defaultPostgresCon =
   , database: ""
   , custom: Tuple "" ""
   }
-
 
 newtype DatabaseState = DatabaseState
   { isExternal ∷ Boolean
