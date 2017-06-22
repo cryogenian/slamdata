@@ -79,10 +79,10 @@ localEvalResource sql varMap = runExceptT do
       let
         varMap' = VM.toURLVarMap varMap
         compilePath = fromMaybe Path.rootDir (Path.parentDir filePath)
-      { inputs } ← ExceptT $ QQ.compile compilePath sql varMap'
+      { inputs } ← ExceptT $ QQ.compile compilePath sqlQuery varMap'
       ExceptT $ validateResources inputs
       lift $ CEM.addSources inputs
-      ExceptT $ QQ.viewQuery filePath sql varMap'
+      ExceptT $ QQ.viewQuery filePath sqlQuery varMap'
       ExceptT $ QQ.liftQuasar $ QF.fileMetadata filePath
       pure $ VM.View relFilePath sqlQuery varMap
     Right sqlModule → do
@@ -185,7 +185,7 @@ readCount ∷ J.JArray → Maybe Int
 readCount =
   Int.fromNumber
     <=< J.toNumber
-    <=< SM.lookup "total"
+    <=< SM.lookup "count"
     <=< J.toObject
     <=< A.head
 

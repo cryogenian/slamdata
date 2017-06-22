@@ -6,7 +6,9 @@ module SlamData.Workspace.Card.Eval.Process
 
 import SlamData.Prelude
 import Control.Monad.State.Class (class MonadState)
+import Control.Monad.Writer.Class (class MonadWriter)
 import Control.Monad.RWS as RWS
+import Data.Foldable as F
 import Data.List as L
 import Data.List.NonEmpty as NL
 import Data.Map as Map
@@ -22,33 +24,39 @@ import SqlSquared as Sql
 import Utils.Path as PU
 
 type Elaborate m a
-  = MonadAsk RewriteEnv m
+  = MonadReader RewriteEnv m
   ⇒ MonadState RewriteState m
+  ⇒ MonadWriter RewriteLog m
   ⇒ a
 
 type VarMapValues =
   NL.NonEmptyList (CID.CardId × VM.VarMapValue)
+
+type RewriteLog = Set.Set String
 
 type RewriteState =
   { fresh ∷ Int
   , decls ∷ L.List (Sql.SqlDeclF Sql.Sql)
   , bindings ∷ L.List (String × Sql.Sql)
   , aliases ∷ Map.Map (CID.CardId × String) String
+  , freeVars ∷ Map.Map String (L.List String)
   , isProcess ∷ Boolean
   }
 
 type RewriteEnv =
   { varMap ∷ Port.VarMap
   , varScope ∷ Set.Set String
+  , shouldAlias ∷ Boolean
   }
 
 type RewriteM =
-  RWS.RWS RewriteEnv Unit RewriteState
+  RWS.RWS RewriteEnv RewriteLog RewriteState
 
 initialEnv ∷ VM.VarMap → RewriteEnv
 initialEnv varMap =
   { varMap
   , varScope: Set.empty
+  , shouldAlias: true
   }
 
 initialState ∷ RewriteState
@@ -57,6 +65,7 @@ initialState =
   , decls: mempty
   , bindings: mempty
   , aliases: mempty
+  , freeVars: mempty
   , isProcess: false
   }
 
@@ -71,6 +80,9 @@ elaborate currentSource varMap query =
       Path.FileName (processIdent currentSource) × res
 
   where
+  selfName ∷ String
+  selfName = processIdent currentSource
+
   go ∷ RewriteM (Either Sql.SqlQuery Sql.SqlModule)
   go = do
     Sql.Query decls sql ← elaborateQuery' query
@@ -79,7 +91,7 @@ elaborate currentSource varMap query =
     pure if st.isProcess
       then Right $ sqlModule
         (st.decls <> decls)
-        (processIdent currentSource)
+        selfName
         (uncurry VM.uniqueVarName ∘ snd <$> vars)
         st.bindings
         sql
@@ -104,27 +116,64 @@ elaborateQuery varMap query =
 
 elaborateQuery' ∷ ∀ m. Elaborate m (Sql.SqlQuery → m Sql.SqlQuery)
 elaborateQuery' (Sql.Query decls expr) =
-  -- TODO: elaborate decls
-  Sql.Query decls <$> elaborateExpr expr
+  Sql.Query
+    <$> traverse elaborateDecl decls
+    <*> elaborateExpr expr
+
+elaborateDecl ∷ ∀ m. Elaborate m (Sql.SqlDeclF Sql.Sql → m (Sql.SqlDeclF Sql.Sql))
+elaborateDecl = case _ of
+  Sql.Import a → pure $ Sql.Import a
+  Sql.FunctionDecl { ident, args, body } → do
+    body' × freeVars ←
+      RWS.listen $ RWS.local
+        (\env → env
+          { varScope = foldr Set.insert env.varScope args
+          , shouldAlias = false
+          })
+        (elaborateExpr body)
+    let
+      freeVars' = L.fromFoldable freeVars
+    if L.null freeVars'
+      then
+        pure $ Sql.FunctionDecl { ident, args, body: body' }
+      else do
+        addFreeVars ident freeVars'
+        pure $ Sql.FunctionDecl { ident, args: freeVars' <> args, body: body' }
 
 elaborateExpr ∷ ∀ m. Elaborate m (Sql.Sql → m Sql.Sql)
 elaborateExpr = cataM case _ of
   Sql.Vari vari → elaborateVar vari
+  Sql.InvokeFunction { name, args } → substInvoke name args
   Sql.Select sel@({ relations: Just (Sql.VariRelation { vari, alias }) }) →
     substSelect sel vari alias
   sql → pure $ embed sql
 
   where
-  substSelect ∷ Sql.SelectR Sql.Sql → String → Maybe String → m (Sql.Sql)
+  substSelect ∷ Sql.SelectR Sql.Sql → String → Maybe String → m Sql.Sql
   substSelect sel vari alias = do
     subst ← elaborateVar vari
+    { bindings } ← RWS.get
     relations ← case unwrap subst of
       Sql.Vari vari' →
         pure $ Just $ Sql.VariRelation { vari: vari', alias }
+      Sql.Ident i | not (F.any (eq i ∘ fst) bindings), Just path ← PU.parseAnyFilePath i →
+        pure $ Just $ Sql.TableRelation { path, alias }
       expr → do
         aliasName ← maybe tmpName pure alias
         pure $ Just $ Sql.ExprRelation { expr: embed expr, aliasName }
     pure $ embed $ Sql.Select sel { relations = relations }
+
+  substInvoke ∷ String → L.List Sql.Sql → m Sql.Sql
+  substInvoke name args = do
+    st ← RWS.get
+    { shouldAlias } ← ask
+    args' ← case Map.lookup name st.freeVars of
+      Just freeVars | shouldAlias → do
+        freeVars' ← traverse elaborateVar freeVars
+        pure (freeVars' <> args)
+      Just freeVars → pure (map Sql.vari freeVars <> args)
+      Nothing → pure args
+    pure $ embed $ Sql.InvokeFunction { name, args: args' }
 
 elaborateVar ∷ ∀ m. Elaborate m (String → m Sql.Sql)
 elaborateVar vari = do
@@ -138,7 +187,8 @@ elaborateVar vari = do
   default = pure $ Sql.vari vari
 
   substValue ∷ VarMapValues → m Sql.Sql
-  substValue vals | { head: source × value, tail } ← NL.uncons vals =
+  substValue vals | { head: source × value, tail } ← NL.uncons vals = do
+    RWS.tell $ Set.singleton vari
     case value of
       VM.Expr expr → substExpr (NL.length vals - 1) expr
       VM.Resource res → substResource source res
@@ -154,8 +204,12 @@ elaborateVar vari = do
     VM.Path filePath → pure $ sqlPath filePath
     VM.View filePath _ _ → pure $ sqlPath filePath
     VM.Process filePath _ localVarMap → do
-      activateProcess
-      substProcessVar source filePath localVarMap vari
+      { shouldAlias } ← ask
+      if shouldAlias
+        then do
+          activateProcess
+          substProcessVar source filePath localVarMap vari
+        else default
 
 substUnion ∷ ∀ m. Elaborate m (CID.CardId → String → Array VM.VarMapValue → m Sql.Sql)
 substUnion source vari vals = do
@@ -268,3 +322,6 @@ addProcessImport dir = RWS.modify \st → st { decls = L.Cons (Sql.Import (Path.
 
 activateProcess ∷ ∀ m. MonadState RewriteState m ⇒ m Unit
 activateProcess = RWS.modify _ { isProcess = true }
+
+addFreeVars ∷ ∀ m. MonadState RewriteState m ⇒ String → L.List String → m Unit
+addFreeVars key value = RWS.modify \st → st { freeVars = Map.insert key value st.freeVars }
