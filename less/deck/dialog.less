@@ -8,6 +8,7 @@
   z-index: 9000;
 }
 
+
 .deck-dialog {
   width: 100%;
   height: 100%;
@@ -17,6 +18,7 @@
   z-index: 9001;
   pointer-events: none;
 }
+
 
 .deck-dialog > div, .deck-dialog > form {
   display: flex !important;
@@ -41,6 +43,7 @@
     padding: 1.6rem;
     margin: 0;
   }
+
   .deck-dialog-body {
     flex: 1 1 auto;
     position: relative;
@@ -99,15 +102,26 @@
   }
 
   .deck-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
     flex: 0 0 auto;
     padding: 1.6rem;
 
     .btn:not(.btn-careful) {
       margin-left: 1.6rem;
-      float: right;
     }
+
+    .btn-careful {
+      margin-right: auto;
+    }
+
     .alert-danger {
       margin-bottom: 1em;
+    }
+
+    // primary actions should always be on the right
+    .btn-primary {
+      order: 1;
     }
   }
 
@@ -133,9 +147,11 @@
   }
 }
 
+
 .sd-dialog-loading {
   text-align: center;
 }
+
 
 .sd-dialog-loading > img {
   margin-bottom: 1.6rem;

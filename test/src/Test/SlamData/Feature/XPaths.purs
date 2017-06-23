@@ -11,7 +11,7 @@ playButton ∷ String
 playButton = XPath.anyWithExactAriaLabel "Play"
 
 renameButton ∷ String
-renameButton = XPath.anyWithExactText "Rename"
+renameButton = "button" `XPath.nodeWithExactText` "Rename"
 
 renameDeck ∷ String
 renameDeck = XPath.anyWithExactAriaLabel "Rename deck"

@@ -86,7 +86,7 @@ render state@{ name, new, parent } =
       ]
   where
   settings ∷ MCS.MountSettings → HTML
-  settings ss = case ss of
+  settings = case _ of
     MCS.MongoDB initialState →
       HH.slot' CS.cpMongoDB unit (MongoDB.comp initialState) unit (HE.input_ Validate)
     MCS.SQL2 initialState →
@@ -144,7 +144,7 @@ errorMessage msg =
 btnCancel ∷ MCS.State -> HTML
 btnCancel state@{ unMounting, saving } =
   HH.button
-    [ HP.classes [CN.btn]
+    [ HP.classes [ CN.btn, CN.btnDefault ]
     , HP.enabled $ not saving && not unMounting
     , HP.type_ HP.ButtonButton
     , HE.onClick (HE.input_ RaiseDismiss)
@@ -156,7 +156,7 @@ btnDelete state@{ unMounting, saving } =
   HH.button
     [ HP.classes
         $ fold
-          [ [ CN.btn, HH.ClassName "btn-careful" ]
+          [ [ CN.btn, CN.btnDefault, HH.ClassName "btn-careful" ]
           , guard unMounting $> HH.ClassName "btn-loading"
           ]
     , HE.onClick (HE.input_ RaiseMountDelete)
