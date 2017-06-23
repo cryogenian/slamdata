@@ -173,7 +173,7 @@ render dialog =
             ]
       , modalFooter
           [ HH.button
-              [ HP.type_ HP.ButtonButton
+              [ HP.type_ HP.ButtonSubmit
               , HP.classes [ CN.btn, CN.btnPrimary ]
               , HP.disabled $ isJust dialog.error
               ]
