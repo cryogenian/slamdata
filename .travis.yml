@@ -37,7 +37,7 @@ script:
   - npm run build:icons
   - npm run build:sass
   - npm run build:psa
-  - if test $TRAVIS_TAG; then npm run build:lite && npm run versionify; else npm run test:property && npm run build:lite && npm test; fi
+  - if test $TRAVIS_TAG; then npm run build:bundle-prod && npm run versionify; else npm run test:property && npm run build:bundle-prod && npm test; fi
 before_deploy:
 - mkdir -p slamdata
 - cp -r public slamdata/

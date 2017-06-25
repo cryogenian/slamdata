@@ -45,7 +45,7 @@ pickerDialog opts =
         [ HP.classes [ HH.ClassName "sd-picker-dialog-title" ] ]
         [ HH.h1_ opts.title
         , HH.button
-            [ HP.classes [ HH.ClassName "sd-dismiss-button" ]
+            [ HP.classes [ CN.btn, CN.btnDefault, HH.ClassName "sd-dismiss-button" ]
             , HP.title "Dismiss"
             , ARIA.label "Dismiss"
             , HE.onClick $ HE.input_ opts.onDismiss
