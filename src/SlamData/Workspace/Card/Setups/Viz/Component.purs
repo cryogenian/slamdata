@@ -81,7 +81,7 @@ render state =
       $ HH.slot' CS.cpAux unit comp auxState
       $ HE.input \e → right ∘ Q.HandleAux e
 
-  auxComponent = case spy state.vizType of
+  auxComponent = case state.vizType of
     VCT.Geo VCT.GeoHeatmap → pure $ HCP.proxy $ Aux.injAux Aux._geoHeatmap Aux.geoHeatmap
     VCT.Geo VCT.GeoMarker → pure $ HCP.proxy $ Aux.injAux Aux._geoMarker Aux.geoMarker
     VCT.Metric → pure $ HCP.proxy $ Aux.injAux Aux._metric Aux.metric
@@ -154,6 +154,7 @@ setupEval = case _ of
     H.raise CC.modelUpdate
     pure next
   Q.ToggleVizPicker next → do
+    state ← H.get
     H.modify _{ vizTypePickerExpanded = true
               , vizType = VCT.PivotTable
               }

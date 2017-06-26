@@ -120,7 +120,6 @@ infixr 5 either as ⊹
 infixr 5 coproduct as ⨁
 
 infixr 4 type Tuple as ×
-
 type As a = a → a
 
 type As1 f = f ~> f

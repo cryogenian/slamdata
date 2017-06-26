@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Area.Eval
   ( eval
+  , buildAreaData
+  , AreaSeries
   , module SlamData.Workspace.Card.Setups.Chart.Area.Model
   ) where
 

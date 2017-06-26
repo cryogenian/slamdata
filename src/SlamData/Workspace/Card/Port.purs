@@ -21,6 +21,7 @@ module SlamData.Workspace.Card.Port
   , Out
   , DownloadPort
   , MetricPort
+  , BuildMetricPort
   , ChartInstructionsPort
   , PivotTablePort
   , SetupLabeledFormInputPort
@@ -101,6 +102,9 @@ type DownloadPort =
   , targetName ∷ String
   }
 
+type BuildMetricPort =
+  Json → String ⊹ { value ∷ String, label ∷ Maybe String }
+
 type MetricPort =
   { label ∷ Maybe String
   , value ∷ String
@@ -148,6 +152,7 @@ data Port
   | ChartInstructions ChartInstructionsPort
   | DownloadOptions DownloadPort
   | ValueMetric MetricPort
+  | BuildMetric BuildMetricPort
   | CategoricalMetric MetricPort
   | PivotTable PivotTablePort
   | GeoChart GeoChartPort
@@ -169,6 +174,7 @@ tagPort  = case _ of
   CategoricalMetric _ → "CategoricalMetric"
   PivotTable _ → "PivotTable"
   GeoChart _ → "GeoChart"
+  BuildMetric _ → "BuildMetric"
   Viz → "Viz"
 
 filterResources ∷ DataMap → SM.StrMap Resource

@@ -16,6 +16,9 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Bar.Eval
   ( eval
+  , buildBarData
+  , BarStacks
+  , BarSeries
   , module SlamData.Workspace.Card.Setups.Chart.Bar.Model
   ) where
 

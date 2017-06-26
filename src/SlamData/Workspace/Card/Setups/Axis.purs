@@ -284,3 +284,19 @@ axisConfiguration = case _ of
   Date → {axisType: ET.Time, interval: Just 0 }
   DateTime → {axisType: ET.Time, interval: Just 0 }
   Category → {axisType: ET.Category, interval: Just 0 }
+
+
+isValue ∷ ∀ a m r. Eq a ⇒ F.Foldable m ⇒ a → AxisTypeAnnotated (m a) r → Boolean
+isValue a f = F.elem a $ f.value
+
+isCategory ∷ ∀ a m r. Eq a ⇒ F.Foldable m ⇒ a → AxisTypeAnnotated (m a) r → Boolean
+isCategory a f = F.elem a $ f.category
+
+isDate ∷ ∀ a m r. Eq a ⇒ F.Foldable m ⇒ a → AxisTypeAnnotated (m a) r → Boolean
+isDate a f = F.elem a $ f.date
+
+isTime ∷ ∀ a m r. Eq a ⇒ F.Foldable m ⇒ a → AxisTypeAnnotated (m a) r → Boolean
+isTime a f = F.elem a $ f.time
+
+isDatetime ∷ ∀ a m r. Eq a ⇒ F.Foldable m ⇒ a → AxisTypeAnnotated (m a) r → Boolean
+isDatetime a f = F.elem a $ f.datetime

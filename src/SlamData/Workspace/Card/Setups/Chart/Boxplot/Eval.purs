@@ -16,6 +16,10 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Boxplot.Eval
   ( eval
+  , buildBoxplotData
+  , OnOneBoxplot
+  , BoxplotSeries
+  , BoxplotItem
   , module SlamData.Workspace.Card.Setups.Chart.Boxplot.Model
   ) where
 

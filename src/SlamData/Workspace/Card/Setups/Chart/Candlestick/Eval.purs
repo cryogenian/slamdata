@@ -16,6 +16,10 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval
   ( eval
+  , buildKData
+  , OnOneGrid
+  , Series
+  , HLOC
   , module SlamData.Workspace.Card.Setups.Chart.Candlestick.Model
   ) where
 
