@@ -15,6 +15,7 @@ import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Data.String.Regex.Unsafe as URX
 import Data.Profunctor (dimap)
+import Data.Int as Int
 import Data.Newtype (under)
 
 import Global (decodeURIComponent, readFloat, isNaN)
@@ -35,6 +36,11 @@ import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Geo.Model (onURIRef)
 import SlamData.Render.ClassName as CN
+
+printNum ∷ Number → String
+printNum n = case Int.fromNumber n of
+  Nothing → show n
+  Just i → show i
 
 class IsSymbol s ⇐ HasLabel s where
   label ∷ SProxy s → String
@@ -214,7 +220,7 @@ renderMinMax proxy state =
         [ HH.text $ "Minimum " <> label proxy ]
     , HH.input
         [ HP.classes [ B.formControl ]
-        , HP.value $ show $ state ^. _minSize
+        , HP.value $ printNum $ state ^. _minSize
         , ARIA.label $  "Min " <> label proxy
         , HE.onValueInput \s → Just $ inj proxy $ H.action $ Min s
         ]
@@ -225,7 +231,7 @@ renderMinMax proxy state =
     [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text $ "Maximum " <> label proxy ]
     , HH.input
         [ HP.classes [ B.formControl ]
-        , HP.value $ show $ state ^. _maxSize
+        , HP.value $ printNum $ state ^. _maxSize
         , ARIA.label $ "Max " <> label proxy
         , HE.onValueInput \s → Just $ inj (SProxy ∷ SProxy s) $ H.action $ Max s
         ]
@@ -332,7 +338,7 @@ renderNum proxy state =
         [ HH.text $ label proxy ]
     , HH.input
         [ HP.classes [ CN.formControl ]
-        , HP.value $ show $ state ^. lens
+        , HP.value $ printNum $ state ^. lens
         , ARIA.label $ label proxy
         , HE.onValueInput \s → Just $ inj proxy $ H.action $ Set s
         ]

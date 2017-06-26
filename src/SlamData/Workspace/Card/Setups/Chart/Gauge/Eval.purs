@@ -16,6 +16,9 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Gauge.Eval
   ( eval
+  , buildData
+  , GaugeSerie
+  , GaugeItem
   , module SlamData.Workspace.Card.Setups.Chart.Gauge.Model
   ) where
 
@@ -88,12 +91,12 @@ buildGroupBy r =
 buildPort ∷ ModelR → Ax.Axes → Port.Port
 buildPort m _ =
   Port.ChartInstructions
-    { options: buildOptions m ∘ buildData m
+    { options: buildOptions m ∘ buildData
     , chartType: Gauge
     }
 
-buildData ∷ ModelR → Array Json → Array GaugeSerie
-buildData r =
+buildData ∷ Array Json → Array GaugeSerie
+buildData =
   foldMap (foldMap A.singleton ∘ decodeItem)
     >>> series
     >>> BCP.adjustRadialPositions

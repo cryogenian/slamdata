@@ -15,7 +15,9 @@ import Data.Array ((!!))
 import Data.Array as A
 import Data.String as Str
 import Data.Formatter.Number as FN
+import Data.Foldable as F
 import Data.Argonaut (decodeJson, (.?), Json)
+import Data.Foreign as FR
 import Data.Map as M
 import Data.List as L
 import Data.Variant (prj)
@@ -32,9 +34,11 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
+import SlamData.Common.Sort (Sort(..))
+import SlamData.Common.Align (Align(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Viz.Model (Model)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor)
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor, getColorScheme)
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Error as CE
@@ -55,13 +59,18 @@ import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Chart.Area.Eval as Area
 import SlamData.Workspace.Card.Setups.Chart.Bar.Eval as Bar
+import SlamData.Workspace.Card.Setups.Chart.Funnel.Eval as Funnel
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Eval as Boxplot
 import SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval as Candlestick
+import SlamData.Workspace.Card.Setups.Chart.Gauge.Eval as Gauge
+import SlamData.Workspace.Card.Setups.Chart.Graph.Eval as Graph
+import SlamData.Workspace.Card.Setups.Chart.Heatmap.Eval as Heatmap
 import SlamData.Workspace.Card.Setups.Viz.Auxiliary as Aux
 --import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 
 import SqlSquared as Sql
 
+import Utils (hush')
 import Utils.Foldable (enumeratedFor_)
 
 type VizEval m v =
@@ -102,6 +111,14 @@ eval m resource = do
       evalBoxplot m resource
     VT.Chart VT.Candlestick →
       evalCandlestick m resource
+    VT.Chart VT.Funnel →
+      evalFunnel m resource
+    VT.Chart VT.Gauge →
+      evalGauge m resource
+    VT.Chart VT.Graph →
+      evalGraph m resource
+    VT.Chart VT.Heatmap →
+      evalHeatmap m resource
     _ →
       CE.throw "not implemented here yet"
 
@@ -774,3 +791,432 @@ kOptions dimMap axes _ kData = do
         E.addValue close
         E.addValue low
         E.addValue high
+
+evalFunnel ∷ ∀ m v. VizEval m v
+evalFunnel m =
+  BCE.chartSetupEval buildSql buildPort
+  $ M.lookup m.vizType m.auxes >>= prj Aux._funnel
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ dimensionProjection PP._category dimMap "category"
+    , measureProjection PP._value dimMap "measure"
+    , dimensionProjection PP._series dimMap "series"
+    ]
+
+  buildGroupBy _ =
+    SCC.groupBy
+    $ sqlProjection PP._series dimMap
+    <|> sqlProjection PP._category dimMap
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options: funnelOptions dimMap axes r ∘ Funnel.buildData
+        -- TODO: this should be removed
+      , chartType: CT.Pie
+      }
+
+funnelOptions ∷ P.DimensionMap → Ax.Axes → Aux.FunnelState → Array Funnel.FunnelSeries → DSL OptionI
+funnelOptions dimMap axes r funnelData = do
+  let
+    mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
+      [ { label: D.jcursorLabel dim, value: axesPrj } ]
+
+    cols = A.fold
+      [ mkLabel PP._category _.name
+      , mkLabel PP._value $ CCT.formatForeign ∘ _.value
+      , mkLabel PP._series _.seriesName
+      ]
+
+  E.tooltip do
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
+    E.triggerItem
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+
+  E.legend do
+    E.items $ map ET.strItem legendNames
+    E.topBottom
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+
+  E.colors colors
+
+  BCP.rectangularTitles funnelData
+    $ maybe "" D.jcursorLabel $ P.getProjection dimMap PP._series
+  E.series series
+
+  where
+  legendNames ∷ Array String
+  legendNames =
+    A.fromFoldable
+      $ foldMap (_.items ⋙ M.keys ⋙ Set.fromFoldable) funnelData
+
+  series ∷ ∀ i. DSL (funnel ∷ ETP.I|i)
+  series = for_ funnelData \{x, y, w, h, items, name: serieName} → E.funnel do
+    traverse_ E.widthPct w
+    traverse_ E.heightPct h
+    for_ serieName E.name
+    case r.order of
+      Asc → E.ascending
+      Desc → E.descending
+    case r.align of
+      LeftAlign → E.funnelLeft
+      RightAlign → E.funnelRight
+      CenterAlign → E.funnelCenter
+    E.label do
+      E.normal do
+        E.textStyle $ E.fontFamily "Ubuntu, sans"
+        E.positionInside
+      E.emphasis do
+        E.textStyle $ E.fontFamily "Ubuntu, sans"
+        E.positionInside
+    E.buildItems $ for_ (asList $ M.toUnfoldable items) \(name × value) → E.addItem do
+      E.name name
+      E.value value
+    traverse_ (E.top ∘ ET.Percent) y
+    traverse_ (E.left ∘ ET.Percent) x
+
+evalGauge ∷ ∀ m v. VizEval m v
+evalGauge m =
+  BCE.chartSetupEval buildSql buildPort Nothing
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ measureProjection PP._value dimMap "measure"
+    , dimensionProjection PP._multiple dimMap "multiple"
+    , dimensionProjection PP._parallel dimMap "parallel"
+    ]
+
+  buildGroupBy _ =
+    SCC.groupBy
+    $ sqlProjection PP._parallel dimMap
+    <|> sqlProjection PP._multiple dimMap
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options: gaugeOptions dimMap axes r ∘ Gauge.buildData
+        -- TODO: this should be removed
+      , chartType: CT.Pie
+      }
+
+
+gaugeOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Gauge.GaugeSerie → DSL OptionI
+gaugeOptions dimMap axes _ series = do
+  let
+    mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
+      [ { label: D.jcursorLabel dim, value: axesPrj } ]
+
+    cols = A.fold
+      [ mkLabel PP._value $ CCT.formatForeign ∘ _.value
+      , mkLabel PP._parallel _.seriesName
+      , mkLabel PP._multiple _.name
+      ]
+
+  E.tooltip do
+    E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+
+  E.colors colors
+
+  E.series $ for_ series \serie → E.gauge do
+    for_ serie.name E.name
+    E.axisLine $ E.lineStyle $ E.setWidth $ E.pixels 10
+    E.splitLine $ E.length 20
+    traverse_ (E.buildGaugeRadius ∘ E.percents) serie.radius
+
+    E.buildCenter do
+      traverse_ (E.setX ∘ E.percents) serie.x
+      traverse_ (E.setY ∘ E.percents) serie.y
+
+    when (A.length serie.items > 1)
+      $ E.title E.hidden
+
+    E.detail do
+      traverse_ E.formatterString serie.name
+      when (A.length series < 2 ∧ A.length serie.items > 1) E.hidden
+      E.buildOffsetCenter do
+        E.setX $ E.percents zero
+        E.setY $ E.percents 65.0
+      E.textStyle do
+        E.fontSize 16
+        E.fontFamily "Ubuntu, sans"
+        for_ (A.head colors) E.color
+
+
+    if (A.length allValues > 1)
+      then do
+      for_ (F.minimum allValues) E.min
+      for_ (F.maximum allValues) E.max
+      else
+      for_ (A.head allValues) \v → do
+        E.min $ v / 2.0
+        E.max $ v * 1.5
+
+    E.buildItems
+      $ for_ serie.items \item → E.addItem do
+        E.value item.value
+        traverse_ E.name item.name
+
+  where
+  allValues ∷ Array Number
+  allValues = map _.value $ A.concatMap _.items series
+
+evalGraph ∷ ∀ m v. VizEval m v
+evalGraph m =
+  BCE.chartSetupEval buildSql buildPort
+  $ M.lookup m.vizType m.auxes >>= prj Aux._graph
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ dimensionProjection PP._source dimMap "source"
+    , dimensionProjection PP._target dimMap "target"
+    , measureProjection PP._size dimMap "size"
+    , dimensionProjection PP._color dimMap "color"
+    ]
+
+  buildGroupBy _ =
+    SCC.groupBy
+    $ sqlProjection PP._source dimMap
+    <|> sqlProjection PP._target dimMap
+    <|> sqlProjection PP._color dimMap
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options:
+          graphOptions dimMap axes r
+          ∘ Graph.buildGraphData { minSize: r.size.min, maxSize: r.size.max }
+        -- TODO: this should be removed
+      , chartType: CT.Pie
+      }
+
+graphOptions ∷ P.DimensionMap → Ax.Axes → Aux.GraphState → Graph.GraphData → DSL OptionI
+graphOptions dimMap axes r (links × nodes) = do
+  E.tooltip do
+    E.triggerItem
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+    E.formatterItem \{name, value, "data": item, dataType} →
+      if dataType ≡ "edge" then ""
+      else
+        let
+          mbVal = map show $ hush' $ FR.readNumber value
+          sourceLabel = P.getProjection dimMap PP._source # foldMap D.jcursorLabel
+          sourceTag
+            | sourceLabel ≠ "" = sourceLabel
+            | otherwise = "name"
+          measureLabel = P.getProjection dimMap PP._size # foldMap D.jcursorLabel
+          measureTag
+            | measureLabel ≠ "" = measureLabel
+            | otherwise = "value"
+        in
+         (sourceTag ⊕ ": " ⊕ name ⊕ "<br />")
+         ⊕ (foldMap (\x → measureTag ⊕ ": " ⊕ x) mbVal)
+
+  E.legend do
+    E.orient ET.Vertical
+    E.leftLeft
+    E.topTop
+    E.textStyle $ E.fontFamily "Ubuntu, sans"
+    E.items
+      $ map ET.strItem
+      $ A.nub
+      $ A.mapMaybe _.color links
+
+  E.colors colors
+
+  E.series $ E.graph do
+    if r.circular
+      then E.layoutCircular
+      else E.layoutForce
+
+    E.force do
+      E.edgeLength 120.0
+      E.layoutAnimation true
+
+
+    E.buildItems items
+    E.links $ links <#> \{source, target} → {source, target}
+
+    E.buildCategories
+      $ for_ (A.nub $ A.mapMaybe _.color links)
+      $ E.addCategory ∘ E.name
+
+    E.lineStyle $ E.normal $ E.colorSource
+
+  where
+  items ∷ DSL ETP.ItemsI
+  items = for_ nodes \node → E.addItem do
+    E.name node.name
+    E.itemStyle $ E.normal do
+      E.borderWidth 1
+    E.label do
+      E.normal E.hidden
+      E.emphasis E.hidden
+    for_ (P.getProjection dimMap PP._color)
+      $ const $ E.category node.category
+    for_ (P.getProjection dimMap PP._size) \_ → do
+      E.symbolSize $ Int.floor node.size
+      E.value node.value
+
+evalHeatmap ∷ ∀ m v. VizEval m v
+evalHeatmap m =
+  BCE.chartSetupEval buildSql buildPort
+  $ M.lookup m.vizType m.auxes >>= prj Aux._heatmap
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ dimensionProjection PP._abscissa dimMap "abscissa"
+    , dimensionProjection PP._ordinate dimMap "ordinate"
+    , measureProjection PP._value dimMap "measure"
+    , dimensionProjection PP._series dimMap "series"
+    ]
+
+  buildGroupBy _ =
+    SCC.groupBy
+    $ sqlProjection PP._series dimMap
+    <|> sqlProjection PP._abscissa dimMap
+    <|> sqlProjection PP._ordinate dimMap
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options: heatmapOptions dimMap axes r ∘ Heatmap.buildData
+      , chartType: CT.Pie
+      }
+
+heatmapOptions
+  ∷ P.DimensionMap → Ax.Axes → Aux.HeatmapState → Array Heatmap.HeatmapSeries → DSL OptionI
+heatmapOptions dimMap axes r heatmapData = do
+  E.tooltip do
+    E.triggerItem
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+    E.axisPointer do
+      E.crossAxisPointer
+      E.crossStyle do
+        E.color $ C.rgba 170 170 170 0.6
+        E.widthNum 0.2
+        E.solidLine
+    E.formatterItem \item →
+      let mkRow prj fmt = P.getProjection dimMap prj # foldMap \dim →
+            [ D.jcursorLabel dim × fmt ]
+      in CCT.tableRows $ A.fold
+        [ mkRow PP._abscissa $ CCT.formatAssocProp "abscissa" item
+        , mkRow PP._ordinate $ CCT.formatAssocProp "ordinate" item
+        , mkRow PP._value $ CCT.formatAssocProp "value" item
+        ]
+
+
+  E.animationEnabled false
+
+  BCP.rectangularTitles heatmapData
+    $ maybe "" D.jcursorLabel $ P.getProjection dimMap PP._series
+
+  BCP.rectangularGrids heatmapData
+
+  E.xAxes xAxes
+
+  E.yAxes yAxes
+
+  E.colors colors
+
+  E.visualMap $ E.continuous do
+    E.min r.val.min
+    E.max r.val.max
+    E.calculable true
+    E.orient ET.Horizontal
+    E.itemWidth 15.0
+    E.leftCenter
+    E.bottom $ ET.Percent zero
+    E.padding zero
+    E.inRange $ E.colors
+      if r.isColorSchemeReversed
+        then A.reverse $ getColorScheme r.colorScheme
+        else getColorScheme r.colorScheme
+
+  E.series series
+
+  where
+  xValues ∷ Heatmap.HeatmapSeries → Array String
+  xValues serie =
+    sortX $ A.fromFoldable $ Set.fromFoldable $ map fst $ M.keys serie.items
+
+  yValues ∷ Heatmap.HeatmapSeries → Array String
+  yValues serie =
+    sortY $ A.fromFoldable $ Set.fromFoldable $ map snd $ M.keys serie.items
+
+  series ∷ ∀ i. DSL (heatMap ∷ ETP.I|i)
+  series = enumeratedFor_ heatmapData \(ix × serie) → E.heatMap do
+    for_ serie.name E.name
+    E.xAxisIndex ix
+    E.yAxisIndex ix
+
+    E.buildItems
+      $ enumeratedFor_ (xValues serie)  \(xIx × abscissa) →
+          enumeratedFor_ (yValues serie) \(yIx × ordinate) →
+            for_ (M.lookup (abscissa × ordinate) serie.items) \value → E.addItem do
+              BCE.assoc { abscissa, ordinate, value }
+              E.buildValues do
+                E.addValue $ Int.toNumber xIx
+                E.addValue $ Int.toNumber yIx
+                E.addValue value
+
+  mkAxis ∷ ∀ i. Int → DSL (ETP.AxisI (gridIndex ∷ ETP.I|i))
+  mkAxis ix = do
+    E.axisType ET.Category
+    E.gridIndex ix
+    E.axisLabel do
+      E.textStyle do
+        E.fontFamily "Ubuntu, sans"
+    E.axisLine $ E.lineStyle do
+      E.width 1
+    E.splitLine $ E.lineStyle do
+      E.width 1
+    E.splitArea E.hidden
+
+  abscissaAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType
+    <$> (P.getProjection dimMap PP._abscissa >>= preview (D._value ∘ D._projection))
+    <*> pure axes
+  ordinateAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType
+    <$> (P.getProjection dimMap PP._ordinate >>= preview (D._value ∘ D._projection))
+    <*> pure axes
+
+  abscissaAxisCfg = Ax.axisConfiguration abscissaAxisType
+  ordinateAxisCfg = Ax.axisConfiguration ordinateAxisType
+
+  xAxes ∷ ∀ i. DSL (addXAxis ∷ ETP.I|i)
+  xAxes = enumeratedFor_ heatmapData \(ix × serie) → E.addXAxis do
+    mkAxis ix
+    E.items $ map ET.strItem $ xValues serie
+
+  yAxes ∷ ∀ i. DSL (addYAxis ∷ ETP.I|i)
+  yAxes = enumeratedFor_ heatmapData \(ix × serie) → E.addYAxis do
+    mkAxis ix
+    E.items $ map ET.strItem $ yValues serie
+
+  sortX ∷ Array String → Array String
+  sortX = A.sortBy $ Ax.compareWithAxisType abscissaAxisType
+
+  sortY ∷ Array String → Array String
+  sortY = A.sortBy $ Ax.compareWithAxisType ordinateAxisType

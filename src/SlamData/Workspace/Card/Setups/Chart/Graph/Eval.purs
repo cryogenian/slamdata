@@ -16,6 +16,10 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Graph.Eval
   ( eval
+  , buildGraphData
+  , GraphData
+  , Item
+  , Node
   , module SlamData.Workspace.Card.Setups.Chart.Graph.Model
   ) where
 
@@ -99,7 +103,7 @@ buildGraph m axes =
     , chartType: Graph
     }
 
-buildGraphData ∷ ModelR → JArray → GraphData
+buildGraphData ∷ ∀ r. {maxSize ∷ Number, minSize ∷ Number|r} → JArray → GraphData
 buildGraphData r jarr =
   let
     items ∷ Array Item

@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Funnel.Eval
   ( eval
+  , buildData
+  , FunnelSeries
   , module SlamData.Workspace.Card.Setups.Chart.Funnel.Model
   ) where
 
@@ -93,12 +95,12 @@ buildGroupBy r =
 buildPort ∷ ModelR → Axes → Port.Port
 buildPort m _ =
   Port.ChartInstructions
-    { options: buildOptions m ∘ buildData m
+    { options: buildOptions m ∘ buildData
     , chartType: Funnel
     }
 
-buildData ∷ ModelR → Array Json → Array FunnelSeries
-buildData r =
+buildData ∷ Array Json → Array FunnelSeries
+buildData =
   foldMap (foldMap A.singleton ∘ decodeItem)
     >>> series
     >>> BCP.adjustRectangularPositions

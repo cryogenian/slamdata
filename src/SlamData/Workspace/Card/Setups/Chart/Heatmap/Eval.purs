@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Heatmap.Eval
   ( eval
+  , buildData
+  , HeatmapSeries
   , module SlamData.Workspace.Card.Setups.Chart.Heatmap.Model
   ) where
 
@@ -105,12 +107,12 @@ buildGroupBy r =
 buildPort ∷ ModelR → Ax.Axes → Port.Port
 buildPort m axes =
   Port.ChartInstructions
-    { options: buildOptions axes m ∘ buildData m
+    { options: buildOptions axes m ∘ buildData
     , chartType: Heatmap
     }
 
-buildData ∷ ModelR → Array Json → Array HeatmapSeries
-buildData r =
+buildData ∷ Array Json → Array HeatmapSeries
+buildData =
   BCP.adjustRectangularPositions
   ∘ series
   ∘ foldMap (foldMap A.singleton ∘ decodeItem)
