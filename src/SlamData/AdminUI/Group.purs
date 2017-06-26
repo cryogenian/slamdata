@@ -47,39 +47,40 @@ type Message' = MCC.Message' AT.GroupItem AT.GroupIndex AT.GroupMessage
 component
   ∷ ColumnOptions
   → AT.GroupIndex
-  → H.Component HH.HTML (MCC.Query' AT.GroupItem AT.GroupIndex AT.GroupMessage) (Maybe AT.GroupItem) Message' Slam
+  → H.Component HH.HTML (MCC.Query' AT.GroupItem AT.GroupIndex AT.GroupMessage) Input Message' Slam
 component opts = proxyQL ∘ component' opts
 
 data Query a = Raise Message' a | SetNewGroupText String a
 
 type Query' = Coproduct ColumnQuery Query
 
-type State = { item ∷ Maybe AT.GroupItem, newGroupText ∷ String }
+type State = { item ∷ Maybe AT.GroupItem, newGroupText ∷ String, columnWidth ∷ MCC.ColumnWidth }
 
 type DSL = H.ParentDSL State Query' ColumnQuery Unit Message' Slam
 type HTML = H.ParentHTML Query' ColumnQuery Unit Slam
+type Input = MCC.ColumnWidth × Maybe AT.GroupItem
 
 component'
   ∷ ColumnOptions
   → AT.GroupIndex
-  → H.Component HH.HTML Query' (Maybe AT.GroupItem) Message' Slam
+  → H.Component HH.HTML Query' Input Message' Slam
 component' opts path =
   H.parentComponent
-    { initialState: { item: _, newGroupText: "" }
+    { initialState: \(columnWidth × item) → { item, newGroupText: "", columnWidth }
     , render
     , eval
-    , receiver: Just ∘ left ∘ H.action ∘ MCC.SetSelection
+    , receiver: Just ∘ left ∘ H.action ∘ MCC.HandleInput
     }
   where
 
-  column ∷ H.Component HH.HTML ColumnQuery (Maybe AT.GroupItem) Message' Slam
+  column ∷ H.Component HH.HTML ColumnQuery Input Message' Slam
   column = MCC.component' opts path
 
   render ∷ State → HTML
   render st =
     HH.div
-      [ HP.class_ (HH.ClassName "sd-structure-editor-column") ]
-      [ HH.slot unit column st.item (Just ∘ right ∘ H.action ∘ Raise)
+      [ HP.class_ (HH.ClassName "sd-admin-ui-column") ]
+      [ HH.slot unit column (st.columnWidth × st.item) (Just ∘ right ∘ H.action ∘ Raise)
       , HH.form
           [ HP.class_ (HH.ClassName "sd-admin-ui-group-form")
           , HE.onSubmit (\event → Just $ right $ H.action $ Raise $ Right $ AT.AddNewGroup { path, event, name: st.newGroupText })
