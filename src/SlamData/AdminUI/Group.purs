@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Array as Array
 import Data.List as L
 import Data.Path.Pathy as Pathy
+import Data.String as String
 import Halogen as H
 import Halogen.Component.Proxy (proxyQL)
 import Halogen.HTML as HH
@@ -38,6 +39,7 @@ import SlamData.Workspace.MillerColumns.Column.Component.Request as MCREQ
 import SlamData.Workspace.MillerColumns.Component as Miller
 import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
 import Unsafe.Coerce (unsafeCoerce)
+import Utils.DOM as DOM
 
 type ColumnOptions = MCC.ColumnOptions AT.GroupItem QA.GroupPath AT.GroupMessage
 type ColumnQuery = MCC.Query AT.GroupItem QA.GroupPath AT.GroupMessage
@@ -86,16 +88,26 @@ component' opts path =
           , HE.onSubmit (\event → Just $ right $ H.action $ Raise $ Right $ AT.AddNewGroup { path, event, name: st.newGroupText })
           ]
           [ HH.input
-              [ HP.class_ (HH.ClassName "sd-admin-ui-group-input")
+              [ HP.id_ labelId
+              , HP.class_ (HH.ClassName "sd-admin-ui-group-input")
               , HP.value st.newGroupText
               , HE.onValueInput $ \s → Just $ right $ H.action $ SetNewGroupText s
               , HP.placeholder "Add Group"
               ]
           , HH.label
-              [ HP.class_ (HH.ClassName "sd-admin-ui-group-input-label") ]
+              [ HP.classes (HH.ClassName <$> fold [pure "sd-admin-ui-group-input-label", guard (not inputIsEmpty) $> "active"])
+              , HP.for labelId
+              , HE.onClick (\event →
+                  if inputIsEmpty
+                  then Nothing
+                  else Just $ right $ H.action $ Raise $ Right $ AT.AddNewGroup { path, event: DOM.toEvent event, name: st.newGroupText })
+              ]
               [ I.addCircle ]
           ]
       ]
+      where
+        inputIsEmpty = String.null st.newGroupText
+        labelId = "admin-new-group" <> QA.printGroupPath path
 
   eval ∷ Query' ~> DSL
   eval = coproduct evalInner evalOuter

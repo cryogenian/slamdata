@@ -144,12 +144,17 @@
     position: absolute;
     text-align: left;
     padding-left: 4.5rem;
-    pointer-events: none;
     float: right;
     padding: 0 1rem;
+    color: lightgray;
+    cursor: text;
+
+    &.active {
+      color: green;
+      cursor: pointer;
+    }
 
     i {
-      width: 2rem;
       position: absolute;
       top: 0;
       left: 0;

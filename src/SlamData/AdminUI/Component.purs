@@ -18,13 +18,17 @@ module SlamData.AdminUI.Component
 import SlamData.Prelude
 
 import Data.Array as Array
+import Data.Newtype (over)
+import Data.Path.Pathy as Pathy
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Group as Group
 import SlamData.AdminUI.Types as AT
 import SlamData.Monad (Slam)
+import SlamData.Quasar.Security (createGroup)
 import SlamData.Render.Common as R
 import SlamData.Workspace.MillerColumns.Component as Miller
 import Utils.DOM as DOM
@@ -358,4 +362,10 @@ eval = case _ of
   AT.HandleColumnOrItem columnMsg next → case columnMsg of
     AT.AddNewGroup { path, event, name } → do
       H.liftEff (DOM.preventDefault event)
+      createGroup (over QA.GroupPath (_ Pathy.</> Pathy.dir name) path) >>= case _ of
+        Right _ →
+          H.query' AT.cpGroups unit (H.action Miller.Reload) $> unit
+        Left err →
+          -- TODO(Christoph): Handle this error
+          pure unit
       pure next
