@@ -47,7 +47,7 @@ groupInfo groupPath =
 createGroup
   ∷ ∀ m
   . QuasarDSL m
-  ⇒ QT.FilePath
+  ⇒ QF.GroupPath
   → m (Exn.Error ⊹ Unit)
 createGroup groupPath =
   liftQuasar $ lmap lowerQError

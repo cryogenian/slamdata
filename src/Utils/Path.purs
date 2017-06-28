@@ -152,9 +152,6 @@ getDir ap = either getDir' getDir' ap
   getDir' :: forall b. Path Abs b Sandboxed -> DirPath
   getDir' = maybe rootDir fst <<< peel
 
-rootFile ∷ FilePath
-rootFile = rootDir </> file ""
-
 toPathList ∷ AnyPath → L.List AnyPath
 toPathList res
   | Left P.rootDir == res = L.singleton (Left rootDir)
