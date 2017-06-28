@@ -18,6 +18,7 @@ module SlamData.AdminUI.Group where
 
 import SlamData.Prelude
 
+import Data.Array as Array
 import Data.List as L
 import Data.Path.Pathy as Pathy
 import Halogen as H
@@ -135,7 +136,7 @@ load
 load (path × { requestId }) =
   groupInfo path >>= case _ of
     Right { subGroups, members } → do
-      items ← traverse groupFromPath subGroups
+      items ← traverse groupFromPath (Array.filter (isDirectSubgroup path) subGroups)
       pure { requestId
            , items: L.fromFoldable items
            , nextOffset: Nothing
@@ -153,6 +154,14 @@ load (path × { requestId }) =
         Left e →
           -- TODO(Christoph): Ahem
           unsafeCoerce unit
+
+isDirectSubgroup ∷ QA.GroupPath → QA.GroupPath → Boolean
+isDirectSubgroup (QA.GroupPath parent) (QA.GroupPath child) =
+  case Pathy.peel child of
+    Nothing → -- Should never happen
+      false
+    Just (childPrefix × _) →
+      Pathy.identicalPath parent childPrefix
 
 noResult ∷ MCREQ.RequestId → MCREQ.LoadResponse AT.GroupItem
 noResult requestId = { requestId, items: L.Nil, nextOffset: Nothing }
