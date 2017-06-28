@@ -72,7 +72,7 @@ renderGrippers isActiveCard isGrabbed =
   where
   render ∷ GripperDef → Array DeckHTML
   render gripperDef =
-    if not (isAvailable gripperDef) || not isActiveCard then
+    if not isAvailable gripperDef || not isActiveCard then
       []
     else
       [ HH.button
