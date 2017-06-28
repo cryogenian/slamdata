@@ -18,6 +18,9 @@ module SlamData.AdminUI.Component
 import SlamData.Prelude
 
 import Data.Array as Array
+import Data.Lens ((.=))
+import Data.Lens.Iso.Newtype (_Newtype)
+import Data.Lens.Record (prop)
 import Data.Newtype (over)
 import Data.Path.Pathy as Pathy
 import Halogen as H
@@ -27,6 +30,8 @@ import Halogen.HTML.Properties as HP
 import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Group as Group
 import SlamData.AdminUI.Types as AT
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LK
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Security (createGroup)
 import SlamData.Render.Common as R
@@ -160,11 +165,8 @@ renderMySettingsForm (AT.MySettingsState state) =
             [ HH.select
                 [ HP.classes [ HH.ClassName "form-control" ]
                 , HP.id_ "ThemeSelection"
-                ]
-                (themes <#> \t → HH.option_ [HH.text t])
-            , HH.select
-                [ HP.classes [ HH.ClassName "form-control" ]
-                , HP.id_ "ThemeSpacing"
+                , HE.onValueChange (HE.input AT.DefaultThemeChanged)
+                , HP.value state.defaultTheme
                 ]
                 (themes <#> \t → HH.option_ [HH.text t])
             ]
@@ -180,7 +182,7 @@ renderDatabaseForm (AT.DatabaseState state) =
         [ HH.label_
             [ HH.input
                 [ HP.checked (not state.isExternal)
-                , HE.onChecked (HE.input_ (AT.SetDatabase (AT.DatabaseState (state {isExternal = false}) )))
+                , HE.onChecked (HE.input_ (AT.SetDatabase (AT.DatabaseState (state {isExternal = false}))))
                 , HP.type_ HP.InputCheckbox
                 ]
             , HH.text "Store SlamData metadata inside internal database in the local file system of the server"
@@ -200,7 +202,7 @@ renderDatabaseForm (AT.DatabaseState state) =
           [ HH.label_
               [ HH.input
                 [ HP.checked state.isExternal
-                , HE.onChecked (HE.input_ (AT.SetDatabase (AT.DatabaseState (state {isExternal = true}) )))
+                , HE.onChecked (HE.input_ (AT.SetDatabase (AT.DatabaseState (state {isExternal = true}))))
                 , HP.type_ HP.InputCheckbox
                 ]
               , HH.text "Store SlamData metadata inside external PostgreSQL"
@@ -323,9 +325,19 @@ renderUsersForm (AT.UsersState state) =
       ]
   ]
 
+setDefaultTheme ∷ String → AT.DSL Unit
+setDefaultTheme theme =
+  prop (SProxy ∷ SProxy "formState")
+    ∘ prop (SProxy ∷ SProxy "mySettings")
+    ∘ _Newtype
+    ∘ prop (SProxy ∷ SProxy "defaultTheme")
+    .= theme
+
 eval ∷ AT.Query ~> AT.DSL
 eval = case _ of
   AT.Init next → do
+    defaultTheme ← LS.retrieve LK.adminUIDefaultTheme
+    for_ defaultTheme setDefaultTheme
     pure next
   AT.Open next → do
     H.modify (_ { open = true })
@@ -338,6 +350,10 @@ eval = case _ of
     pure next
   AT.SetMySettings new next → do
     H.modify (_ { formState { mySettings = new } })
+    pure next
+  AT.DefaultThemeChanged newTheme next → do
+    LS.persist LK.adminUIDefaultTheme newTheme
+    setDefaultTheme newTheme
     pure next
   AT.SetDatabase new next → do
     H.modify (_ { formState { database = new } })

@@ -42,6 +42,7 @@ data Query a
   | SetServer ServerState a
   | SetUsers UsersState a
   | SetGroups GroupsState a
+  | DefaultThemeChanged String a
   | HandleColumns (Miller.Message GroupItem QA.GroupPath) a
   | HandleColumnOrItem GroupMessage a
 
@@ -87,7 +88,10 @@ newtype MySettingsState = MySettingsState
   { homeDirectory ∷ String
   , isolateArtifacts ∷ Boolean
   , isolateArtifactsDirectory ∷ String
+  , defaultTheme ∷ String
   }
+
+derive instance newtypeMySettingsState ∷ Newtype MySettingsState _
 
 defaultMySettingsState ∷ MySettingsState
 defaultMySettingsState =
@@ -95,6 +99,7 @@ defaultMySettingsState =
     { homeDirectory: ""
     , isolateArtifacts: false
     , isolateArtifactsDirectory: ""
+    , defaultTheme: "Dark"
     }
 
 type PostgresCon =
