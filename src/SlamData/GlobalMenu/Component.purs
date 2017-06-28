@@ -226,6 +226,7 @@ render state =
 eval ∷ Query ~> DSL
 eval = case _ of
   Authenticate providerR next → do
+    H.modify _{ menuOpen = Nothing }
     authenticate providerR
     pure next
   DismissSubmenu next → do
