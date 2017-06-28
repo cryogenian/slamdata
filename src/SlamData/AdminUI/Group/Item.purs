@@ -14,22 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.AdminUI.Group.Item where
+module SlamData.AdminUI.Group.Item (component) where
 
 import SlamData.Prelude
 
+import Data.Newtype (un)
+import Data.Path.Pathy as Pathy
 import Halogen as H
 import Halogen.Component.Proxy (proxy)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
+import Quasar.Advanced.QuasarAF as QA
 import SlamData.AdminUI.Types as AT
 import SlamData.Workspace.MillerColumns.Column.Component.Item as MCI
+import Utils.Path (nameOfFileOrDir)
 
 component
   ∷ ∀ m
-  . AT.GroupIndex
+  . QA.GroupPath
   → AT.GroupItem
   → H.Component HH.HTML (MCI.Query AT.GroupItem AT.GroupMessage) MCI.State (MCI.Message' AT.GroupItem AT.GroupMessage) m
 component i = proxy ∘ component' i
@@ -41,9 +45,15 @@ data Query a
 type HTML = H.ComponentHTML Query
 type DSL m = H.ComponentDSL Boolean Query (MCI.Message' AT.GroupItem AT.GroupMessage) m
 
+getGroupName ∷ AT.GroupItem → String
+getGroupName (AT.GroupItem { path: itemPath }) =
+  case Pathy.peel (un QA.GroupPath itemPath) of
+    Nothing → "/"
+    Just (_ × n) → nameOfFileOrDir n
+
 component'
   ∷ ∀ m
-  . AT.GroupIndex
+  . QA.GroupPath
   → AT.GroupItem
   → H.Component HH.HTML Query MCI.State (MCI.Message' AT.GroupItem AT.GroupMessage) m
 component' path item =
@@ -57,7 +67,7 @@ component' path item =
   render ∷ Boolean → HTML
   render selected =
     let
-      label = AT.groupItemName item
+      label = getGroupName item
     in
       HH.li
         [ HP.title label
@@ -88,5 +98,5 @@ renderItem ci =
         -- , HCSS.style $ CSS.width (CSS.pct (unwrap (columnItemWeight ci) * 100.0))
         ]
         []
-    , HH.div_ [ HH.text (AT.groupItemName ci) ]
+    , HH.div_ [ HH.text (getGroupName ci) ]
     ]

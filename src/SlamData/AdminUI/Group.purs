@@ -37,17 +37,16 @@ import SlamData.Workspace.MillerColumns.Column.Component.Request as MCREQ
 import SlamData.Workspace.MillerColumns.Component as Miller
 import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
 import Unsafe.Coerce (unsafeCoerce)
-import Utils.Path (rootFile)
 
-type ColumnOptions = MCC.ColumnOptions AT.GroupItem AT.GroupIndex AT.GroupMessage
-type ColumnQuery = MCC.Query AT.GroupItem AT.GroupIndex AT.GroupMessage
+type ColumnOptions = MCC.ColumnOptions AT.GroupItem QA.GroupPath AT.GroupMessage
+type ColumnQuery = MCC.Query AT.GroupItem QA.GroupPath AT.GroupMessage
 
-type Message' = MCC.Message' AT.GroupItem AT.GroupIndex AT.GroupMessage
+type Message' = MCC.Message' AT.GroupItem QA.GroupPath AT.GroupMessage
 
 component
   ∷ ColumnOptions
-  → AT.GroupIndex
-  → H.Component HH.HTML (MCC.Query' AT.GroupItem AT.GroupIndex AT.GroupMessage) Input Message' Slam
+  → QA.GroupPath
+  → H.Component HH.HTML (MCC.Query' AT.GroupItem QA.GroupPath AT.GroupMessage) Input Message' Slam
 component opts = proxyQL ∘ component' opts
 
 data Query a = Raise Message' a | SetNewGroupText String a
@@ -62,7 +61,7 @@ type Input = MCC.ColumnWidth × Maybe AT.GroupItem
 
 component'
   ∷ ColumnOptions
-  → AT.GroupIndex
+  → QA.GroupPath
   → H.Component HH.HTML Query' Input Message' Slam
 component' opts path =
   H.parentComponent
@@ -117,46 +116,39 @@ renderGroupsForm ∷ AT.GroupsState → Array AT.HTML
 renderGroupsForm (AT.GroupsState _) =
   [ HH.slot' AT.cpGroups unit (Miller.component columnOptions) columnState (HE.input (either AT.HandleColumns AT.HandleColumnOrItem)) ]
   where
-    columnState ∷ ColumnsData AT.GroupItem AT.GroupIndex
-    columnState = Right rootFile × L.Nil
+    columnState ∷ ColumnsData AT.GroupItem QA.GroupPath
+    columnState = QA.GroupPath (Pathy.rootDir) × L.Nil
 
-    columnOptions ∷ Miller.ColumnOptions AT.GroupItem AT.GroupIndex AT.GroupMessage
+    columnOptions ∷ Miller.ColumnOptions AT.GroupItem QA.GroupPath AT.GroupMessage
     columnOptions =
       Miller.ColumnOptions
         { renderColumn: component
         , renderItem: GI.component
         , label: AT.groupItemName
-        , isLeaf: isLeft
-        , id: case _ of
-            AT.Group { path } → Right path
-            AT.User { path, id } → Left (id × path)
+        , isLeaf: const false
+        , id: \(AT.GroupItem { path }) → path
         }
 
 load
-  ∷ Tuple AT.GroupIndex { requestId ∷ MCREQ.RequestId, filter ∷ String, offset ∷ Maybe Int }
+  ∷ Tuple QA.GroupPath { requestId ∷ MCREQ.RequestId, filter ∷ String, offset ∷ Maybe Int }
   → AT.DSL (MCREQ.LoadResponse AT.GroupItem)
-load (Left _ × { requestId }) = pure (noResult requestId)
-load (Right path × { requestId }) =
+load (path × { requestId }) =
   groupInfo path >>= case _ of
     Right { subGroups, members } → do
       items ← traverse groupFromPath subGroups
-      let ms = map mkUserItem members
       pure { requestId
-           , items: L.fromFoldable (ms <> items)
+           , items: L.fromFoldable items
            , nextOffset: Nothing
            }
     Left e → pure (noResult requestId)
   where
-    mkUserItem ∷ QA.UserId → AT.GroupItem
-    mkUserItem id = AT.User { path, id, name: QA.runUserId id }
-
-    groupFromPath ∷ Pathy.AbsFile Pathy.Sandboxed → AT.DSL AT.GroupItem
+    groupFromPath ∷ QA.GroupPath → AT.DSL AT.GroupItem
     groupFromPath p = do
       groupInfo p >>= case _ of
         Right { subGroups, members } →
-          pure (AT.Group
+          pure (AT.GroupItem
             { path: p
-            , name: Pathy.runFileName (Pathy.fileName p)
+            , name: QA.printGroupPath p
             })
         Left e →
           -- TODO(Christoph): Ahem

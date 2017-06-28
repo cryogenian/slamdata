@@ -17,7 +17,6 @@ import SlamData.Prelude
 
 import Data.List (List)
 import Data.List as L
-import Data.Path.Pathy as Pathy
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Quasar.Advanced.Types as QA
@@ -25,7 +24,7 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Component as Miller
 import Utils.DOM as DOM
 
-type MillerQuery = Miller.Query GroupItem GroupIndex GroupMessage
+type MillerQuery = Miller.Query GroupItem QA.GroupPath GroupMessage
 
 type ChildQuery = MillerQuery ⨁ Const Void
 type ChildSlot = Unit ⊹ Void
@@ -43,7 +42,7 @@ data Query a
   | SetServer ServerState a
   | SetUsers UsersState a
   | SetGroups GroupsState a
-  | HandleColumns (Miller.Message GroupItem GroupIndex) a
+  | HandleColumns (Miller.Message GroupItem QA.GroupPath) a
   | HandleColumnOrItem GroupMessage a
 
 data TabIndex
@@ -158,23 +157,13 @@ defaultGroupsState = GroupsState { }
 cpGroups :: forall f1 g p1 q. CP.ChildPath f1 (Coproduct f1 g) p1 (Either p1 q)
 cpGroups = CP.cp1
 
-data GroupItem
-  = Group { path ∷ Pathy.AbsFile Pathy.Sandboxed, name ∷ String }
-  | User { path ∷ Pathy.AbsFile Pathy.Sandboxed, id ∷ QA.UserId, name ∷ String }
+data GroupItem = GroupItem { path ∷ QA.GroupPath, name ∷ String }
 
 derive instance eqGroupItem ∷ Eq GroupItem
 derive instance ordGroupItem ∷ Ord GroupItem
 
 groupItemName ∷ GroupItem → String
 groupItemName = case _ of
-  Group { name } → name
-  User { name } → name
+  GroupItem { name } → name
 
-type GroupIndex = Tuple QA.UserId (Pathy.AbsFile Pathy.Sandboxed) ⊹ Pathy.AbsFile Pathy.Sandboxed
-
-prettyPrintGroupIndex ∷ GroupIndex → String
-prettyPrintGroupIndex = case _ of
-  Right s → Pathy.printPath s
-  Left (uid × s) → Pathy.printPath s <> " " <> QA.runUserId uid
-
-data GroupMessage = AddNewGroup { path ∷ GroupIndex, event ∷ DOM.Event, name ∷ String }
+data GroupMessage = AddNewGroup { path ∷ QA.GroupPath, event ∷ DOM.Event, name ∷ String }
