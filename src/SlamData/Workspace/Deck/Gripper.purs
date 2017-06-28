@@ -72,15 +72,15 @@ renderGrippers isActiveCard isGrabbed =
   where
   render ∷ GripperDef → Array DeckHTML
   render gripperDef =
-    if (not $ isAvailable gripperDef) || (not $ isActiveCard) then
+    if not (isAvailable gripperDef) || not isActiveCard then
       []
     else
       [ HH.button
           ([ HP.classes [ gripperClassName gripperDef ]
-           , HE.onMouseDown $ HE.input (StartSliding gripperDef)
-           , ARIA.grabbed $ show $ isGrabbed
+           , HE.onMouseDown $ HE.input $ StartSliding gripperDef
+           , ARIA.grabbed $ show isGrabbed
            ]
-           ⊕ (guard (isActiveCard) $> ARIA.label (gripperLabel gripperDef))
+           <> (guard isActiveCard $> ARIA.label (gripperLabel gripperDef))
           )
           []
       ]
