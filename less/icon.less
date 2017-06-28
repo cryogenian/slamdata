@@ -1,3 +1,9 @@
+@keyframes spini {
+  100% {
+    transform: rotate(1turn);
+  }
+}
+
 .sd-icon {
   > svg {
     width: 1em;
@@ -5,4 +11,8 @@
     vertical-align: text-bottom;
     fill: currentColor;
   }
+}
+
+.sd-icon--spinner {
+  animation: spini 1s infinite steps(8);
 }

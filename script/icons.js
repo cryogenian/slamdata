@@ -26,33 +26,38 @@ function injectIconsIntoHTML(iconAttribution) {
         run: ($, file) => {
           const name = changeCase.titleCase(path.parse(file.path).name)
           const svg = $("svg")
+
           // inject the title for accessibility
           svg.prepend(`<title>${name}</title>`)
 
-          const text = svg.find("text")
+          // Only chop up SVGs that aren't SlamData's
+          if (!file.path.includes("icons/slamdata/")) {
+            const text = svg.find("text")
 
-          // not the best check, but I'm assuming these are Noun Project
-          // files
-          if (text.length > 0) {
-            const vs = svg.attr("viewBox").match(/\d+/g)
+            // not the best check, but I'm assuming these are Noun Project
+            // files
+            if (text.length > 0) {
+              const vs = svg.attr("viewBox").match(/\d+/g)
 
-            if (vs.length === 4) {
-              // squaring up the viewbox based on smaller value
-              const size = Math.min(vs[2], vs[3])
-              svg.attr("viewBox", `0 0 ${size} ${size}`)
+              if (vs.length === 4) {
+                // squaring up the viewbox based on smaller value
+                const size = Math.min(vs[2], vs[3])
+                svg.attr("viewBox", `0 0 ${size} ${size}`)
+              }
+
+              // push icon into the attribution object
+              const a = text.map(function() {
+                return $(this).text()
+              }).get().join(" ")
+
+
+              iconAttribution[a] = a in iconAttribution
+                ? iconAttribution[a].concat(name)
+                : iconAttribution[a] = [name]
+
+              text.remove()
             }
-
-            // push icon into the attribution object
-            const a = text.map(function() {
-              return $(this).text()
-            }).get().join(" ")
-
-            iconAttribution[a] = a in iconAttribution
-              ? iconAttribution[a].concat(name)
-              : iconAttribution[a] = [name]
           }
-
-          text.remove()
 
           // these irrelevant attrs need to be removed
           const path_ = svg.find("path")
@@ -139,13 +144,15 @@ ${camelName} = iconHelper "${name}"`
     }, { exports: [], html: [] })
 
     const iconData = Object.keys(iconAttribution).reduce((acc, name) => {
-      const line = `Tuple ${JSON.stringify(name)} ${JSON.stringify(iconAttribution[name])}`
+      const line = `Tuple "${name}" ${JSON.stringify(iconAttribution[name])}`
       acc.push(line);
       return acc
     }, [])
 
     const pursData = `module SlamData.Render.Icon
-  ( ${exports.join("\n  , ")}
+  ( IconHTML(IconHTML)
+  , unIconHTML
+  , ${exports.join("\n  , ")}
   , attributions
   ) where
 
@@ -155,11 +162,19 @@ import Halogen.HTML as H
 import Halogen.HTML.Properties as P
 import Halogen.HTML.Properties.ARIA as ARIA
 
+newtype IconHTML = IconHTML (∀ p i. H.HTML p i)
+
+unIconHTML ∷ ∀ p i. IconHTML → H.HTML p i
+unIconHTML (IconHTML h) = h
+
 iconHelper ∷ ∀ p i. String → H.HTML p i
 iconHelper s =
   let
-    svgElem = H.elementNS $ H.Namespace "http://www.w3.org/2000/svg"
-    xlinkAttr = H.attrNS $ H.Namespace "http://www.w3.org/1999/xlink"
+    svgElem =
+      H.ElemName >>> H.elementNS (H.Namespace "http://www.w3.org/2000/svg")
+
+    xlinkAttr =
+      H.attrNS $ H.Namespace "http://www.w3.org/1999/xlink"
   in
     -- Oddly, I suppose do to namespacing, the CSS class on <svg> not
     -- picked up wrapping it seems to work though
@@ -167,18 +182,20 @@ iconHelper s =
       [ P.class_ $ H.ClassName $ "sd-icon sd-icon--" <> s
       , ARIA.hidden "true"
       ]
-      [ svgElem (H.ElemName "svg")
-        []
-        [ svgElem (H.ElemName "use")
+      [ svgElem "svg"
+        [ ]
+        [ svgElem "use"
           [ xlinkAttr (H.AttrName "xlink:href") $ "#sd-icon--" <> s ]
-          []
+          [ ]
         ]
       ]
 
 ${html.join("\n\n")}
 
 attributions ∷ Array (Tuple String (Array String))
-attributions = [ ${iconData.join(", ")} ]
+attributions =
+  [ ${iconData.join("\n  , ")}
+  ]
 `
 
     const path_ = path.join("src", "SlamData", "Render", "Icon.purs")
