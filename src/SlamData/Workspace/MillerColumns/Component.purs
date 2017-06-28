@@ -93,7 +93,7 @@ component opts@(Column.ColumnOptions colSpec) =
     , HH.button
         [ HP.class_ (HH.ClassName "sd-miller-column-resizer")
         , HP.type_ HP.ButtonButton
-        , HP.tabIndex -1  -- unless keyboard support is enabled
+        , HP.tabIndex $ -1  -- unless keyboard support is enabled
         , HE.onMouseDown (HE.input (DragStart ix))
         , ARIA.label "Resize column"
         ]
