@@ -159,6 +159,9 @@ component =
 render ∷ State → H.ComponentHTML Query
 render state =
   case state.copyVal, state.presentingAs of
+    _, _ ->
+      renderLoadingDialog "Publish deck"
+    {-
     Nothing, Publish →
       renderLoadingDialog "Publish deck"
     Nothing, Embed →
@@ -169,6 +172,7 @@ render state =
       renderPublishDialog state copyVal
     Just (Right copyVal), Embed →
       renderEmbedDialog state copyVal
+    -}
 
 renderLoadingDialog ∷ String → H.ComponentHTML Query
 renderLoadingDialog header =
@@ -179,8 +183,8 @@ renderLoadingDialog header =
         [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
         [ HH.div
             [ HP.class_ $ H.ClassName "sd-dialog-loading" ]
-            [ HH.img [ HP.src "img/spin.gif" ]
-            , HH.p_ [ HH.text "Loading..." ]
+            [ I.spinner
+            , HH.p_ [ HH.text "Loading…" ]
             ]
         ]
     , HH.div
