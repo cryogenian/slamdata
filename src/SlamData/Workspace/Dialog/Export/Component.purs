@@ -159,9 +159,6 @@ component =
 render ∷ State → H.ComponentHTML Query
 render state =
   case state.copyVal, state.presentingAs of
-    _, _ ->
-      renderLoadingDialog "Publish deck"
-    {-
     Nothing, Publish →
       renderLoadingDialog "Publish deck"
     Nothing, Embed →
@@ -172,7 +169,6 @@ render state =
       renderPublishDialog state copyVal
     Just (Right copyVal), Embed →
       renderEmbedDialog state copyVal
-    -}
 
 renderLoadingDialog ∷ String → H.ComponentHTML Query
 renderLoadingDialog header =

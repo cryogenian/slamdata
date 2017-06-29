@@ -166,7 +166,7 @@ btnDelete state@{ unMounting, saving } =
     ]
     $ fold
       [ guard unMounting *> progressSpinner "Unmounting"
-      , pure $ HH.text " Unmount"
+      , pure $ HH.text "Unmount"
       ]
 
 btnMount ∷ MCS.State → HTML
@@ -181,7 +181,7 @@ btnMount state@{ new, saving, unMounting } =
     ]
     $ fold
       [ guard saving *> progressSpinner loadingText
-      , pure $ HH.text $ " " <> text
+      , pure $ HH.text text
       ]
   where
   text = if new then "Mount" else "Save changes"
