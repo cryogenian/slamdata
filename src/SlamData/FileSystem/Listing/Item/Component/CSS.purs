@@ -30,11 +30,11 @@ selected = ClassName "selected"
 phantom ∷ ClassName
 phantom = ClassName "phantom"
 
-phantomSpinner ∷ ClassName
-phantomSpinner = ClassName "phantom-spinner"
-
 phantomLabel ∷ ClassName
 phantomLabel = ClassName "phantom-label"
+
+phantomSpinner ∷ ClassName
+phantomSpinner = ClassName "phantom-spinner"
 
 itemIcon ∷ ClassName
 itemIcon = ClassName "item-icon"

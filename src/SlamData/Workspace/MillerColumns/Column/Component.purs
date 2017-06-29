@@ -120,9 +120,9 @@ component' (ColumnOptions colSpec) colPath =
   loadIndicator ∷ HTML a i o
   loadIndicator =
     HH.li
-      [ HP.class_ (HH.ClassName "sd-miller-column-loading") ]
+      [ HP.class_ $ HH.ClassName "sd-miller-column-loading" ]
       [ I.spinner
-      , HH.span_ [ HH.text "Loading..." ]
+      , HH.span_ [ HH.text "Loading…" ]
       ]
 
   renderSelected ∷ Maybe a → HTML a i o

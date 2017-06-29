@@ -1,0 +1,28 @@
+.sd-card-pending > div,
+.sd-pending-overlay > div {
+  position: absolute;
+  height: auto;
+  text-align: center;
+  top: 50%;
+  width: 100%;
+  margin-top: -3.2rem;
+
+  .sd-icon {
+    display: block;
+    font-size: 2.8em;
+  }
+}
+
+.sd-pending-overlay {
+  position: absolute;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+
+  > div {
+    display: block;
+  }
+}
