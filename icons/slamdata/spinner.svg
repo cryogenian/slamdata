@@ -1,0 +1,12 @@
+<svg weight="32px" preserveAspectRatio="xMidYMid" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(50 43.5)">
+    <circle r="8" transform="translate(34)" opacity="0.1"/>
+    <circle r="8" transform="rotate(45) translate(34)" opacity="0.23"/>
+    <circle r="8" transform="rotate(90) translate(34)" opacity="0.36"/>
+    <circle r="8" transform="rotate(135) translate(34)" opacity="0.49"/>
+    <circle r="8" transform="rotate(180) translate(34)" opacity="0.61"/>
+    <circle r="8" transform="rotate(225) translate(34)" opacity="0.74"/>
+    <circle r="8" transform="rotate(-90) translate(34)" opacity="0.87"/>
+    <circle r="8" transform="rotate(-45) translate(34)"/>
+  </g>
+</svg>

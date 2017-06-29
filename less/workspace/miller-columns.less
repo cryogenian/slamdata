@@ -94,21 +94,16 @@
           background: transparent;
         }
 
+        .sd-icon {
+          display: block;
+          font-size: 1.8em;
+          margin: @padding-base-horizontal auto 0.4rem;
+          text-align: center;
+        }
+
         span {
           display: block;
           text-align: center;
-
-          &::before {
-            display: block;
-            content: "";
-            width: 2.4rem;
-            height: 2.4rem;
-            margin: 1.2rem auto 0.4rem;
-            background-image: url("../img/spin.gif");
-            background-position: center center;
-            background-repeat: no-repeat;
-            background-size: contain;
-          }
         }
       }
     }
@@ -121,7 +116,7 @@
   color: #fff;
 
   .sd-icon {
-    color: #fff;
+    color: inherit;
   }
 }
 

@@ -25,6 +25,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Icon as I
 
 row ∷ ∀ p f. Array (HTML p f) → HTML p f
 row = HH.div [ HP.class_ $ H.ClassName "row" ]
@@ -57,8 +58,12 @@ clearFieldIcon label =
 busyFieldIcon ∷ ∀ f p. String → HTML p (f Unit)
 busyFieldIcon label =
   HH.span
-    [ HP.class_ (HH.ClassName "sd-busy-field-icon")
+    [ HP.class_ (HH.ClassName "sd-busy-field")
     , HP.title label
     , ARIA.label label
     ]
-    [ HH.text label ]
+    [ I.spinner
+    , HH.span
+        [ HP.class_ CN.srOnly ]
+        [ HH.text label ]
+    ]

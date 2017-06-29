@@ -51,6 +51,7 @@ import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as Api
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Icon as I
 
 import Utils.DOM as DOM
 
@@ -188,8 +189,8 @@ btnMount state@{ new, saving, unMounting } =
 
 progressSpinner ∷ String → Array HTML
 progressSpinner alt =
-  [ HH.img [ HP.src "img/spin.gif", HP.alt alt ]
-  , HH.text " "
+  [ I.spinner
+  , HH.span [ HP.class_ CN.srOnly ] [ HH.text alt ]
   ]
 
 eval ∷ Query ~> DSL
