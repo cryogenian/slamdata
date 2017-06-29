@@ -171,4 +171,6 @@ groupItemName ∷ GroupItem → String
 groupItemName = case _ of
   GroupItem { name } → name
 
-data GroupMessage = AddNewGroup { path ∷ QA.GroupPath, event ∷ DOM.Event, name ∷ String }
+data GroupMessage
+  = AddNewGroup { path ∷ QA.GroupPath, event ∷ DOM.Event, name ∷ String }
+  | DeleteGroup { path ∷ QA.GroupPath }

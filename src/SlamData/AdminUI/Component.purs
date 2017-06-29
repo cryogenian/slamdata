@@ -22,6 +22,7 @@ import Data.Lens ((.=))
 import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Lens.Record (prop)
 import Data.Newtype (over)
+import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Halogen as H
 import Halogen.HTML as HH
@@ -33,7 +34,7 @@ import SlamData.AdminUI.Types as AT
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LK
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Security (createGroup)
+import SlamData.Quasar.Security (createGroup, deleteGroup)
 import SlamData.Render.Common as R
 import SlamData.Workspace.MillerColumns.Component as Miller
 import Utils.DOM as DOM
@@ -378,7 +379,15 @@ eval = case _ of
   AT.HandleColumnOrItem columnMsg next → case columnMsg of
     AT.AddNewGroup { path, event, name } → do
       H.liftEff (DOM.preventDefault event)
-      createGroup (over QA.GroupPath (_ Pathy.</> Pathy.dir name) path) >>= case _ of
+      createGroup (over QA.GroupPath (_ </> Pathy.dir name) path) >>= case _ of
+        Right _ →
+          H.query' AT.cpGroups unit (H.action Miller.Reload) $> unit
+        Left err →
+          -- TODO(Christoph): Handle this error
+          pure unit
+      pure next
+    AT.DeleteGroup { path } → do
+      deleteGroup path >>= case _ of
         Right _ →
           H.query' AT.cpGroups unit (H.action Miller.Reload) $> unit
         Left err →
