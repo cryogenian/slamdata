@@ -73,7 +73,16 @@
       border-bottom: 0.1rem solid #ddd;
 
       &:hover {
-        background: rgba(0, 0, 0, 0.2);
+        background: #eee;
+      }
+
+      + li {
+        margin-top: -0.1rem;
+        border-top: 0.1rem solid #ddd;
+        &:last-child {
+          margin-bottom: -0.1rem;
+          border-bottom: 0.1rem solid #ddd;
+        }
       }
 
       &.selected {
@@ -132,7 +141,7 @@
   justify-content: space-between;
   align-items: center;
   position: relative;
-  padding: 1rem 0.6rem;
+  padding: 1.2rem 0.6rem;
 
   .sd-icon--chevron-right-sm {
     flex: 0 0 auto;

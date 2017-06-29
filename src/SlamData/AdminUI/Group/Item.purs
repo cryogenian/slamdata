@@ -28,22 +28,30 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Quasar.Advanced.QuasarAF as QA
 import SlamData.AdminUI.Types as AT
+import SlamData.Monad (Slam)
+import SlamData.Render.Icon as I
 import SlamData.Workspace.MillerColumns.Column.Component.Item as MCI
+import SlamData.Workspace.MillerColumns.ItemMenu.Component as MCIM
 import Utils.Path (nameOfFileOrDir)
 
 component
-  ∷ ∀ m
-  . QA.GroupPath
+  ∷ QA.GroupPath
   → AT.GroupItem
-  → H.Component HH.HTML (MCI.Query AT.GroupItem AT.GroupMessage) MCI.State (MCI.Message' AT.GroupItem AT.GroupMessage) m
+  → H.Component HH.HTML (MCI.Query AT.GroupItem AT.GroupMessage) MCI.State (MCI.Message' AT.GroupItem AT.GroupMessage) Slam
 component i = proxy ∘ component' i
+
+data Action = Delete
 
 data Query a
   = UpdateState MCI.State a
+  | HandleSliderMessage (MCIM.Message Action) a
   | Selected a
 
-type HTML = H.ComponentHTML Query
-type DSL m = H.ComponentDSL Boolean Query (MCI.Message' AT.GroupItem AT.GroupMessage) m
+type ChildQuery = MCIM.Query Action
+type ChildSlot = Unit
+
+type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
+type DSL = H.ParentDSL Boolean Query ChildQuery ChildSlot (MCI.Message' AT.GroupItem AT.GroupMessage) Slam
 
 getGroupName ∷ AT.GroupItem → String
 getGroupName (AT.GroupItem { path: itemPath }) =
@@ -52,12 +60,11 @@ getGroupName (AT.GroupItem { path: itemPath }) =
     Just (_ × n) → nameOfFileOrDir n
 
 component'
-  ∷ ∀ m
-  . QA.GroupPath
+  ∷ QA.GroupPath
   → AT.GroupItem
-  → H.Component HH.HTML Query MCI.State (MCI.Message' AT.GroupItem AT.GroupMessage) m
+  → H.Component HH.HTML Query MCI.State (MCI.Message' AT.GroupItem AT.GroupMessage) Slam
 component' path item =
-  H.component
+  H.parentComponent
     { initialState: (_ == MCI.Selected)
     , render
     , eval
@@ -77,12 +84,15 @@ component' path item =
         ]
         [ renderItem item ]
 
-  eval ∷ Query ~> DSL m
+  eval ∷ Query ~> DSL
   eval = case _ of
     UpdateState state next → do
       let new = state == MCI.Selected
       old ← H.get
       when (old /= new) $ H.put new
+      pure next
+    HandleSliderMessage msg next → do
+      H.raise $ Right $ AT.DeleteGroup { path }
       pure next
     Selected next → do
       H.raise $ Left $ MCI.RaisePopulate item
@@ -91,12 +101,10 @@ component' path item =
 renderItem ∷ AT.GroupItem → HTML
 renderItem ci =
   HH.div
-    [ HP.class_ (H.ClassName "sd-structure-editor-item") ]
-    [ HH.div
-        [ HP.class_ (H.ClassName "sd-structure-editor-item-weight")
-          -- TODO(Christoph): Calculate some actual weights
-        -- , HCSS.style $ CSS.width (CSS.pct (unwrap (columnItemWeight ci) * 100.0))
-        ]
-        []
-    , HH.div_ [ HH.text (getGroupName ci) ]
+    [ HP.class_ (H.ClassName "sd-miller-column-item-inner") ]
+    [ HH.div_ [ HH.text (getGroupName ci) ]
+    , HH.slot unit slider unit (HE.input HandleSliderMessage)
     ]
+
+slider :: H.Component HH.HTML (MCIM.Query Action) Unit (MCIM.Message Action) Slam
+slider = MCIM.component (pure { icon: I.trashCanSm, label: "Delete Group", action: Delete })

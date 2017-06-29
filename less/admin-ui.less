@@ -163,3 +163,43 @@
     }
   }
 }
+
+.sd-miller-slider {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+
+  overflow: hidden;
+  transition: width 0.5s ease-in-out;
+}
+
+.sd-slider-button {
+  color: @brand-primary;
+  height: 100%;
+  font-size: 1.9rem;
+  background: rgba(0,0,0,0);
+  border-style: none;
+}
+
+.sd-slider-toggle {
+  color: @brand-primary;
+  height: 100%;
+  background: rgba(0,0,0,0);
+  border-style: none;
+  border-left: solid 0.1rem #ddd;
+  margin-bottom: -0.1rem;
+
+  &:hover {
+    border-color: #346392;
+    color: #346392;
+  }
+  &:active {
+    border-color: #27496d;
+    color: #27496d;
+  }
+}
