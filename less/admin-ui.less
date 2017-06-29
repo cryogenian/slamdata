@@ -191,15 +191,22 @@
   height: 100%;
   background: rgba(0,0,0,0);
   border-style: none;
-  border-left: solid 0.1rem #ddd;
-  margin-bottom: -0.1rem;
+  border-left: solid 0.1rem darken(white, 10%);
+  margin-bottom: 0.1rem;
 
   &:hover {
-    border-color: #346392;
-    color: #346392;
+    background: darken(white, 10%);
   }
-  &:active {
-    border-color: #27496d;
-    color: #27496d;
+
+}
+
+li.selected {
+  .sd-slider-toggle {
+    border-style: none;
+    border-left: solid 0.1rem darken(@brand-primary, 10%);
+
+    &:hover {
+      background: darken(@brand-primary, 10%);
+    }
   }
 }
