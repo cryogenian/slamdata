@@ -26,25 +26,23 @@ import Data.Lens ((^.))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 import SlamData.Effects (SlamDataEffects)
-import SlamData.GlobalError as GE
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
-import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Search.Error (SearchError(..), throwSearchError)
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SqlSquared as Sql
-import Text.Parsing.Parser as PP
 import Text.SlamSearch as SS
 
 evalSearch
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadAff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (search ∷ SearchError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
@@ -56,7 +54,7 @@ evalSearch queryText resource = do
     filePath = resource ^. Port._filePath
     queryText' = if queryText ≡ "" then "*" else queryText
   query ← case SS.mkQuery queryText' of
-    Left pe → CE.throw $ "Unable to parse query: " <> PP.parseErrorMessage pe
+    Left pe → throwSearchError (SearchQueryParseError { query: queryText, error: pe })
     Right q → pure q
 
   fields ← CE.liftQ do
@@ -75,9 +73,7 @@ evalSearch queryText resource = do
 
   case compileResult of
     Left err →
-      case GE.fromQError err of
-        Left msg → CE.throw $ "Error compiling query: " ⊕ msg
-        Right _ → CE.throw $ "Error compiling query: " ⊕ QE.printQError err
+      throwSearchError (SearchQueryCompilationError err)
     Right { inputs } → do
       validateResources inputs
       CEM.addSources inputs

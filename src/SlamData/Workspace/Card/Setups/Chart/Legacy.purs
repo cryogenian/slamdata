@@ -27,7 +27,8 @@ import Data.Int as Int
 import SlamData.Common.Align (Align(..))
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Form.Select as S
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..), printChartType)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
+import SlamData.Workspace.Card.CardType.ChartType as ChT
 import SlamData.Workspace.Card.Setups.Chart.Area.Model as Area
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as Bar
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model as Boxplot
@@ -120,7 +121,7 @@ decode cturs js = do
     Funnel → decodeFunnel cc bo
     Heatmap → decodeHeatmap cc bo
     Boxplot → decodeBoxplot cc bo
-    chty → throwError $ printChartType chty ⊕ " should be decoded already"
+    chty → throwError $ ChT.print chty ⊕ " should be decoded already"
 
   where
   decodeArea ∷ ChartConfiguration → BuildOptions → String ⊹ a
@@ -145,6 +146,8 @@ decode cturs js = do
         bo.smooth
       axisLabelAngle =
         Int.toNumber bo.axisLabelAngle
+      size =
+        10.0
 
       areaR =
         { dimension: _
@@ -153,6 +156,7 @@ decode cturs js = do
         , isStacked
         , isSmooth
         , axisLabelAngle
+        , size
         }
         <$> dimension
         <*> value
@@ -325,7 +329,7 @@ decode cturs js = do
       size =
         Nothing
       minSize =
-        2.0
+        10.0
       maxSize =
         20.0
       axisLabelAngle =

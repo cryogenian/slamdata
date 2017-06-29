@@ -26,7 +26,7 @@ import Data.JSDate (LOCALE)
 import ECharts.Types (ECHARTS)
 import Halogen.Aff (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
-
+import Graphics.Canvas (CANVAS)
 
 type SlamDataEffects = HalogenEffects SlamDataRawEffects
 
@@ -40,4 +40,5 @@ type SlamDataRawEffects =
   , now ∷ NOW
   , timer ∷ TIMER
   , locale ∷ LOCALE
+  , canvas ∷ CANVAS
   )

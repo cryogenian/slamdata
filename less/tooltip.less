@@ -3,29 +3,28 @@
 
   // Toolip label
   &::before {
-    transform: translateX(50%);
-    background-color: rgba(225,225,225,.8);
+    background-color: rgba(225, 225, 225, 0.8);
     color: #fff;
     content: attr(aria-label);
-    padding: 0 .5rem;
-    line-height: 1.5rem;
+    padding: 0.25em 0.5em;
+    line-height: 1;
     text-transform: none;
-    font-weight: normal;
+    font-weight: 400;
     white-space: nowrap;
-    font-size: 11px;
-    margin-bottom: 5px;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
   }
 
   // Tooltip arrow
   &::after {
-    transform: translateX(50%);
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 5px solid rgba(225,225,225,.8);
     content: " ";
+    width: 0;
+    margin-top: -0.1rem;
+    border-left: 0.5rem solid transparent;
+    border-right: 0.5rem solid transparent;
+    border-top: 0.5rem solid rgba(225, 225, 225, 0.8);
     font-size: 0;
     line-height: 0;
-    width: 0;
   }
 
   &.sd-tooltip-r {
@@ -42,6 +41,7 @@
     bottom: 100%;
     color: #666;
     opacity: 0;
+    transform: translateX(50%);
     pointer-events: none;
   }
 

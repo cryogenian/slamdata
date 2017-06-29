@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State
   ( State
+  , Field(..)
   , initialState
   , _sparkHost
   , _hdfsHost
@@ -30,15 +31,17 @@ import SlamData.Prelude
 
 import Data.Array as Array
 import Data.Lens (Lens', lens)
-import Data.URI.Path (printPath) as URI
-import Data.URI.Host (printHost) as URI
+import Data.Path.Pathy as P
 import Data.StrMap as SM
-
+import Data.URI.Host (printHost) as URI
+import Data.URI.Path (printPath) as URI
+import Data.Validation.Semigroup as V
 import Quasar.Mount.SparkHDFS (Config)
-
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
 
 data InputType = StringInput | NumberInput | IntInput
+
+data Field = SparkHost | HdfsHost | Path
 
 type State =
   { sparkHost ∷ MCS.MountHost
@@ -104,25 +107,31 @@ fromConfig { sparkHost, hdfsHost, path, props } =
   updateAvailableProps
     { sparkHost: bimap URI.printHost (maybe "" show) sparkHost
     , hdfsHost: bimap URI.printHost (maybe "" show) hdfsHost
-    , path: maybe "" URI.printPath path
+    , path: URI.printPath (Left path)
     , props: map (fromMaybe "") <$> SM.toUnfoldable props
     , availableProps: propNames
     }
 
-toConfig ∷ State → Either String Config
-toConfig { sparkHost, hdfsHost, path, props } = do
-  when (MCS.isEmpty (fst sparkHost)) $ Left "Please enter a Spark host"
-  sparkHost' ← lmap ("Spark host: " <> _) $ MCS.parseHost sparkHost
-  when (MCS.isEmpty (fst hdfsHost)) $ Left "Please enter an HDFS host"
-  hdfsHost' ← lmap ("HDFS host: " <> _) $ MCS.parseHost hdfsHost
-  let
-    path' = MCS.parsePath' =<< MCS.nonEmptyString path
-    props' = props <#> \(Tuple key value) →
-      if key ≡ "" ∨ value ≡ "" then Nothing else Just (Tuple key (Just value))
-  when (maybe false isRight path') $ Left "Path must be a directory"
-  pure
-    { sparkHost: sparkHost'
-    , hdfsHost: hdfsHost'
-    , path: path'
-    , props: SM.fromFoldable $ Array.catMaybes props'
-    }
+toConfig ∷ State → V.V (MCS.ValidationError Field) Config
+toConfig { sparkHost, hdfsHost, path, props } =
+  { sparkHost: _, hdfsHost: _, path: _, props: _ }
+    <$> sparkHost'
+    <*> hdfsHost'
+    <*> path'
+    <*> props'
+  where
+    sparkHost' = either (MCS.invalid SparkHost) pure do
+      when (MCS.isEmpty (fst sparkHost)) $ Left "Please enter a Spark host"
+      lmap ("Spark host: " <> _) $ MCS.parseHost sparkHost
+    hdfsHost' = either (MCS.invalid HdfsHost) pure do
+      when (MCS.isEmpty (fst hdfsHost)) $ Left "Please enter an HDFS host"
+      lmap ("HDFS host: " <> _) $ MCS.parseHost hdfsHost
+    path' = either (MCS.invalid Path) pure do
+      case MCS.nonEmptyString path of
+        Nothing → pure P.rootDir
+        Just p → do
+          p' ← maybe (Left "Could not parse path") Right (MCS.parsePath' p)
+          either pure (const (Left "Path must be a directory")) p'
+    props' = pure $ SM.fromFoldable $ Array.catMaybes $
+      props <#> \(Tuple key value) →
+        if key ≡ "" ∨ value ≡ "" then Nothing else Just (Tuple key (Just value))

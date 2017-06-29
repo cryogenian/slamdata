@@ -15,53 +15,122 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Error
-       ( module SlamData.Workspace.Card.Error
-       , module CCE
-       ) where
+  ( module SlamData.Workspace.Card.Error
+  , module SlamData.Quasar.Error
+  ) where
 
 import SlamData.Prelude
 
-import Quasar.Advanced.QuasarAF as QA
-import Quasar.Error (QError)
+import Data.Variant (case_, on)
 import SlamData.GlobalError as GE
+import SlamData.Quasar.Error (QError)
 import SlamData.Workspace.Card.Cache.Error as CCE
-import Utils (hush)
+import SlamData.Workspace.Card.Chart.Error as CHE
+import SlamData.Workspace.Card.DownloadOptions.Error as CDLOE
+import SlamData.Workspace.Card.Markdown.Error as CMDE
+import SlamData.Workspace.Card.Open.Error as COE
+import SlamData.Workspace.Card.Query.Error as CQE
+import SlamData.Workspace.Card.Search.Error as CSE
+import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPT
+import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as FILE
+import SlamData.Workspace.Card.Setups.FormInput.Static.Error as FISE
+import SlamData.Workspace.Card.Table.Error as CTE
+import SlamData.Workspace.Card.Variables.Error as CVE
+import Utils (throwVariantError, hush)
 
-data CardError
-  = QuasarError QError
-  | StringlyTypedError String
-  | CacheCardError CCE.CacheError
+type CardError = Variant
+  ( qerror ∷ QError
+  , stringly ∷ String
+  , cache ∷ CCE.CacheError
+  , chart ∷ CHE.ChartError
+  , downloadOptions ∷ CDLOE.DownloadOptionsError
+  , formInputLabeled ∷ FILE.FormInputLabeledError
+  , formInputStatic ∷ FISE.FormInputStaticError
+  , markdown ∷ CMDE.MarkdownError
+  , open ∷ COE.OpenError
+  , pivotTable ∷ CPT.PivotTableError
+  , query ∷ CQE.QueryError
+  , search ∷ CSE.SearchError
+  , table ∷ CTE.TableError
+  , variables ∷ CVE.VariablesError
+  )
 
-instance showCardError ∷ Show CardError where
-  show = case _ of
-    QuasarError err → "(QuasarError " <> show err <> ")"
-    StringlyTypedError err → "(StringlyTypedError " <> err <> ")"
-    CacheCardError err → "(CacheCardError " <> show err <> ")"
+_qerror = SProxy ∷ SProxy "qerror"
+_stringly = SProxy ∷ SProxy "stringly"
+_cache = SProxy ∷ SProxy "cache"
+_chart = SProxy ∷ SProxy "chart"
+_downloadOptions = SProxy ∷ SProxy "downloadOptions"
+_formInputLabeled = SProxy ∷ SProxy "formInputLabeled"
+_formInputStatic = SProxy ∷ SProxy "formInputStatic"
+_markdown = SProxy ∷ SProxy "markdown"
+_open = SProxy ∷ SProxy "open"
+_pivotTable = SProxy ∷ SProxy "pivotTable"
+_query = SProxy ∷ SProxy "query"
+_search = SProxy ∷ SProxy "search"
+_table = SProxy ∷ SProxy "table"
+_variables = SProxy ∷ SProxy "variables"
 
-prettyPrintCardError ∷ CardError → String
-prettyPrintCardError ce = case cardToGlobalError ce of
-  Just ge → GE.print ge
-  Nothing → case ce of
-    QuasarError qError → QA.printQError qError
-    StringlyTypedError err → err
-    CacheCardError cce → CCE.cacheErrorMessage cce
-
-quasarToCardError ∷ QError → CardError
-quasarToCardError = QuasarError
+showCardError ∷ CardError → String
+showCardError =
+  case_
+    # on _qerror (\err → "(QuasarError " <> show err <> ")")
+    # on _stringly (\err → "(StringlyTypedError " <> err <> ")")
+    # on _cache (\err → "(CacheCardError " <> show err <> ")")
+    # on _chart (\err → "(ChartCardError " <> show err <> ")")
+    # on _downloadOptions (\err → "(DownloadOptionsCardError " <> show err <> ")")
+    # on _formInputLabeled (\err → "(FormInputLabeledCardError " <> show err <> ")")
+    # on _formInputStatic (\err → "(FormInputStaticCardError " <> show err <> ")")
+    # on _markdown (\err → "(MarkdownCardError " <> show err <> ")")
+    # on _open (\err → "(OpenCardError " <> show err <> ")")
+    # on _pivotTable (\err → "(PivotTableCardError " <> show err <> ")")
+    # on _query (\err → "(QueryCardError " <> show err <> ")")
+    # on _search (\err → "(SearchCardError " <> show err <> ")")
+    # on _table (\err → "(TableCardError " <> show err <> ")")
+    # on _variables (\err → "(VariablesCardError " <> show err <> ")")
 
 cardToGlobalError ∷ CardError → Maybe GE.GlobalError
-cardToGlobalError = case _ of
-  QuasarError qError → hush (GE.fromQError qError)
-  StringlyTypedError err → Nothing
-  CacheCardError cce → CCE.cacheToGlobalError cce
+cardToGlobalError =
+  case_
+    # on _qerror (hush ∘ GE.fromQError)
+    # on _stringly (const Nothing)
+    # on _cache CCE.cacheToGlobalError
+    # on _chart CHE.chartToGlobalError
+    # on _downloadOptions (const Nothing)
+    # on _formInputLabeled (const Nothing)
+    # on _formInputStatic (const Nothing)
+    # on _markdown (const Nothing)
+    # on _open (const Nothing)
+    # on _pivotTable CPT.pivotTableToGlobalError
+    # on _query CQE.queryToGlobalError
+    # on _search CSE.searchToGlobalError
+    # on _table CTE.tableToGlobalError
+    # on _variables (const Nothing)
+
 
 -- TODO(Christoph): use this warn constraint to track down unstructured error messages
 -- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a
-throw ∷ ∀ m a. MonadThrow CardError m ⇒ String → m a
-throw = throwError ∘ StringlyTypedError
+throw
+  ∷ forall v m a
+  . MonadThrow (Variant (stringly ∷ String | v)) m
+  ⇒ String
+  → m a
+throw = throwVariantError (SProxy ∷ SProxy "stringly")
 
-throwCacheError ∷ ∀ m a. MonadThrow CardError m ⇒ CCE.CacheError → m a
-throwCacheError = throwError ∘ CacheCardError
+-- liftQueryError ∷ ∀ m a. MonadThrow CardError m ⇒ (Either CQE.QueryError a) → m a
+-- liftQueryError x = case lmap QueryCardError x of
+--   Left err → throwError err
+--   Right v → pure v
 
-liftQ ∷ ∀ m a. MonadThrow CardError m ⇒ m (Either QError a) → m a
-liftQ = flip bind (either (throwError ∘ quasarToCardError) pure)
+throwQError
+  ∷ forall v m a
+  . MonadThrow (Variant (qerror ∷ QError | v)) m
+  ⇒ QError
+  → m a
+throwQError = throwVariantError (SProxy ∷ SProxy "qerror")
+
+liftQ
+  ∷ ∀ m v a
+  . MonadThrow (Variant (qerror ∷ QError | v)) m
+  ⇒ m (Either QError a)
+  → m a
+liftQ = flip bind (either throwQError pure)

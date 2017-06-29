@@ -14,9 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Table.Eval
-  ( eval
-  ) where
+module SlamData.Workspace.Card.Table.Eval (eval) where
 
 import SlamData.Prelude
 
@@ -24,16 +22,16 @@ import Control.Monad.State (class MonadState, put, get)
 import Data.Lens ((^.), (^?), _Just)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
-import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Table.Error (TableError(..), throwTableError)
 import SlamData.Workspace.Card.Table.Model as M
 
 eval
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadState CEM.CardState m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (table ∷ TableError | v)) m
   ⇒ QuasarDSL m
   ⇒ M.Model
   → Port.Port
@@ -41,7 +39,7 @@ eval
   → m Port.Out
 eval model port varMap =
   Port.extractResource varMap
-    # maybe (CE.throw "Expected a TaggedResource input") \resource → do
+    # maybe (throwTableError TableMissingResourceInputError) \resource → do
       rawTableState ← map (_ ^? _Just ∘ ES._Table ) get
       let
         defaultState =
@@ -63,14 +61,14 @@ eval model port varMap =
           size ←
             case rawTableState of
               Just t | t.resource ≡ resource → pure t.size
-              _ → CE.liftQ $ Quasar.count $ resource ^. Port._filePath
-          result ←
-            CE.liftQ $
-              Quasar.sample
-                (resource ^. Port._filePath)
-                ((page - 1) * pageSize)
-                pageSize
-          pure $ result × size
+              _ → Quasar.count (resource ^. Port._filePath) >>= case _ of
+                Left err → throwTableError (TableCountQuasarError err)
+                Right result → pure result
+          sampleResult ← Quasar.sample (resource ^. Port._filePath) ((page - 1) * pageSize) pageSize
+          case sampleResult of
+            Left err → throwTableError (TableSampleQuasarError err)
+            Right result →
+              pure $ result × size
         put $ Just $ ES.Table
           { resource
           , result: fst resultAndSize

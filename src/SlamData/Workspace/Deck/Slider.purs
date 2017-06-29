@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,12 +41,12 @@ import Halogen.HTML.Properties (IProp())
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
-import SlamData.Render.CSS as ClassNames
+import SlamData.Render.ClassName as CN
+import SlamData.Render.Icon as I
 import SlamData.Hint as Hint
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component.CSS as CardCSS
-import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Factory as Factory
 import SlamData.Workspace.Card.Next.Component as Next
@@ -69,7 +69,7 @@ import Utils.DOM as DOM
 render ∷ DeckOptions → (DeckOptions → DeckComponent) → State → Boolean → DeckHTML
 render opts deckComponent st visible =
   HH.div
-    [ HP.classes ([ ClassNames.cardSlider ] ⊕ (guard (not visible) $> ClassNames.invisible))
+    [ HP.classes ([ CN.cardSlider ] ⊕ (guard (not visible) $> CN.invisible))
     , HE.onTransitionEnd $ HE.input_ DCQ.StopSliderTransition
     , style do
         cardSliderTransformCSS (DCS.activeCardIndex st) st.sliderTranslateX
@@ -283,21 +283,21 @@ renderCard opts deckComponent st activeIndex index card =
     Right cd → renderDef opts deckComponent st (index ≡ activeIndex) cd
 
   classes =
-    [ ClassNames.card
+    [ CN.card
     , HH.ClassName case st.fadeTransition of
         DCS.FadeIn   → "sd-fade-in"
         DCS.FadeOut  → "sd-fade-out"
         DCS.FadeNone → "sd-fade-none"
     ]
-      ⊕ (guard (not $ isClick st.sliderTranslateX) $> ClassNames.cardSliding)
-      ⊕ (guard (cardSelected st card) $> ClassNames.cardActive)
-      ⊕ (guard (cardPending st card) $> ClassNames.pending)
+      ⊕ (guard (not $ isClick st.sliderTranslateX) $> CN.cardSliding)
+      ⊕ (guard (cardSelected st card) $> CN.cardActive)
+      ⊕ (guard (cardPending st card) $> CN.pending)
 
   renderHint =
     Hint.render
       Hint.RightArrow
       (HH.ClassName "sd-access-next-card-hint")
-      DCQ.HideAccessNextActionCardHint
+      (Just DCQ.HideAccessNextActionCardHint)
       hintText
 
   insertableCardType ∷ Maybe ICT.InsertableCardType
@@ -334,7 +334,7 @@ renderMeta st card =
         DCS.ErrorCard error →
           HH.div
             [ HP.classes [ HH.ClassName "sd-card-error" ] ]
-            [ HH.slot' ChildSlot.cpError unit Error.errorCardComponent (CE.prettyPrintCardError error) absurd
+            [ HH.slot' ChildSlot.cpError unit Error.errorCardComponent error absurd
             ]
         DCS.NextActionCard input →
           HH.div
@@ -364,12 +364,13 @@ renderDef opts deckComponent st active { cardType, cardId } =
   in
     HH.slot' ChildSlot.cpCard cardId component { active } absurd
 
+
 loadingPanel ∷ DeckHTML
 loadingPanel =
   HH.div
     [ HP.classes [ HH.ClassName "sd-pending-overlay" ] ]
     [ HH.div_
-        [ HH.i_ []
+        [ I.spinner
         , HH.span_ [ HH.text "Please wait while this card is evaluated" ]
         ]
-  ]
+    ]

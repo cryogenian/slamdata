@@ -34,11 +34,11 @@
 
   &.sd-focused {
     top: -@grid-size;
+    bottom: -@grid-size;
     left: -@grid-size;
     right: -@grid-size;
-    bottom: -@grid-size;
     z-index: 10;
-    box-shadow: 0 0 1px rgba(0,0,0,.4), 0 0 8px rgba(0,0,0,.2);
+    box-shadow: 0 0 0.1rem rgba(0, 0, 0, 0.4), 0 0 0.8rem rgba(0, 0, 0, 0.2);
 
     > .sd-deck-frame {
       display: block;
@@ -92,7 +92,8 @@
       top: @grid-size;
       left: @grid-size;
       right: @grid-size;
-      height: ~"calc(100% - 3rem)";
+      // Less, you are the worst
+      height: calc(100% ~"-" (@grid-size * 2));
     }
   }
 }
@@ -120,7 +121,7 @@
 }
 
 .sd-card {
-  background: white;
+  background: #fff;
   position: absolute;
   height: 100%;
   width: 100%;
@@ -135,11 +136,25 @@
   background-color: #fff;
   width: @grid-size;
   height: 100%;
-  padding-left: 3px;
-  padding-right: 3px;
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
   border: none;
   opacity: 0;
   pointer-events: none;
+
+  &::after {
+    display: block;
+    content: " ";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 9.4rem;
+    width: 100%;
+    margin: auto;
+    background: url("../img/gripper.svg") repeat-y 50%;
+  }
 }
 
 .sd-focused > .sd-deck > .sd-card-slider > .sd-card {
@@ -161,33 +176,25 @@
   margin-right: -@grid-size;
 }
 
-.sd-card-gripper::after, .sd-card-gripper-last::after {
-  content: " ";
-  top: 50%;
-  margin-top: -50%;
-  display: block;
-  height: @grid-size * 4;
-  background: url(../img/gripper.svg) repeat-y center;
-}
-
 .sd-flip-deck {
+  display: block;
+  float: right;
   height: @grid-size;
   width: @grid-size;
+  margin: 0;
+  padding: 0;
+  border: none;
   background-size: 66.66%;
-  background-image: url(../img/deck-flip.svg);
+  background-image: url("../img/deck-flip.svg");
   background-repeat: no-repeat;
   background-position: center center;
   background-color: transparent;
-  float: right;
-  border: none;
-  margin: 0;
-  display: block;
 }
 
 .sd-deck-name {
   float: left;
-  line-height: @grid-size;
-  font-size: 0.75rem;
+  line-height: 1.5;
+  font-size: 1.1rem;
   margin-left: 0.125rem;
   width: ~"calc(50% - 0.125rem - (1.5rem * 3))";
   overflow: hidden;
@@ -203,20 +210,21 @@
   left: 50%;
   margin: 0 0 0 -(@grid-size * 2);
   border: none;
-  background: url(../img/gripper.svg) repeat-x center
+  background: url("../img/gripper.svg") repeat-x center;
 }
 
 button.sd-zoom-deck {
+  float: left;
   height: @grid-size;
   width: @grid-size;
-  background-color: transparent;
-  float: left;
-  border: none;
   margin: 0;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  font-size: 1.5rem;
 
   .sd-icon {
-    top: 2px;
-    left: -1px;
+    position: relative;
   }
 }
 
@@ -226,9 +234,10 @@ button.sd-zoom-deck {
 
   > div, fieldset {
     position: absolute;
+    overflow: auto;
     width: 100%;
     height: 100%;
-    overflow: auto;
+    padding: 0.6rem;
     border: none;
   }
 
@@ -244,10 +253,10 @@ button.sd-zoom-deck {
 }
 
 .action-icon.delete-deck-icon {
-  width: 28px;
-  height: 28px;
-  top: -4px;
-  background-image: url(../img/delete-deck-white.svg);
+  width: 2.8rem;
+  height: 2.8rem;
+  top: -0.4rem;
+  background-image: url("../img/delete-deck-white.svg");
   background-size: 100% 100%;
 }
 
@@ -257,14 +266,14 @@ button.sd-zoom-deck {
   right: @grid-size;
   padding-left: @grid-size;
   transform: translate(0, -50%);
-  margin-top: -4px;
+  margin-top: -0.4rem;
   z-index: 1000;
   width: 20rem;
 }
 
 .sd-focus-deck-hint {
   position: absolute;
-  top: .8rem;
+  top: 0.8rem;
   left: 50%;
   transform: translate(-50%, 0);
   z-index: 9999;
@@ -272,9 +281,9 @@ button.sd-zoom-deck {
 
 .sd-focus-deck-frame-hint {
   position: absolute;
-  top: ~"calc(0.5rem + 2px)";
-  left: ~"calc(1.5rem + 1px)";
-  width: ~"calc(50% - (1.5rem + 1px))";;
+  top: ~"calc(0.5rem + 0.2rem)";
+  left: ~"calc(1.5rem + 1rem)";
+  width: ~"calc(50% - (1.6rem + 0.1rem))";
   z-index: 9999;
 }
 
@@ -305,3 +314,4 @@ button.sd-zoom-deck {
 @import "deck/form-input.less";
 @import "deck/tabs-card.less";
 @import "deck/structure-editor.less";
+@import "deck/error-card.less";

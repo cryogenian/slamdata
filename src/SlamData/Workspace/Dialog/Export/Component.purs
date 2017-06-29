@@ -46,13 +46,12 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 import OIDC.Crypt as OIDC
 import Quasar.Advanced.Types as QTA
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
@@ -180,14 +179,14 @@ renderLoadingDialog header =
         [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
         [ HH.div
             [ HP.class_ $ H.ClassName "sd-dialog-loading" ]
-            [ HH.img [ HP.src "img/spin.gif" ]
-            , HH.p_ [ HH.text "Loading..." ]
+            [ I.spinner
+            , HH.p_ [ HH.text "Loading…" ]
             ]
         ]
     , HH.div
         [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         [ HH.button
-            [ HP.classes [ B.btn, B.btnPrimary ]
+            [ HP.classes [ CN.btn, CN.btnPrimary ]
             , HE.onClick (HE.input_ HandleCancel)
             , HP.type_ HP.ButtonButton
             ]
@@ -207,16 +206,16 @@ renderStyleURIInput state =
         (fold [ guard (isJust $ parseStyleURI state.styleURIString) $> HP.classes validInputClasses ])
         (fold
            [ pure $ HH.input
-               [ HP.classes [ B.formControl ]
+               [ HP.classes [ CN.formControl ]
                , HE.onValueInput (HE.input UpdateStyleURI)
                ]
            , guard (isJust $ parseStyleURI state.styleURIString) $> HH.span
-               [ HP.classes [ B.glyphicon, B.glyphiconOk, B.formControlFeedback ] ]
-               []
+               [ HP.classes [ CN.formControlFeedback ] ]
+               [ I.okSm ]
            ])
     ]
   where
-  validInputClasses = [ B.hasSuccess, B.hasFeedback ]
+  validInputClasses = [ CN.hasSuccess, CN.hasFeedback ]
 
 renderErrorDialog ∷ ParseError → H.ComponentHTML Query
 renderErrorDialog error =
@@ -231,7 +230,7 @@ renderErrorDialog error =
     , HH.div
         [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         [ HH.button
-          [ HP.classes [ B.btn, B.btnPrimary ]
+          [ HP.classes [ CN.btn, CN.btnPrimary ]
           , HE.onClick (HE.input_ HandleCancel)
           , HP.type_ HP.ButtonButton
           ]
@@ -259,9 +258,9 @@ renderPublishDialog state copyVal =
   where
   renderPublishUrl =
     HH.div
-      [ HP.classes [ B.inputGroup ] ]
+      [ HP.classes [ CN.inputGroup ] ]
       [ HH.input
-          [ HP.classes [ B.formControl ]
+          [ HP.classes [ CN.formControl ]
           , HP.value copyVal
           , HP.readOnly true
           , HP.disabled state.busyDoingTokenHTTP
@@ -270,9 +269,9 @@ renderPublishDialog state copyVal =
           , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
           ]
       , HH.span
-          [ HP.classes [ B.inputGroupBtn ] ]
+          [ HP.classes [ CN.inputGroupBtn ] ]
           [ HH.button
-            [ HP.classes [ B.btn, B.btnDefault ]
+            [ HP.classes [ CN.btn, CN.btnDefault ]
             , HE.onClick (HE.input_ HandleCancel)
             , HP.ref copyButtonRef
             , HP.id_ "copy-button"
@@ -288,19 +287,19 @@ renderPublishDialog state copyVal =
       [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
       $ fold
           [ guard state.noNetworkAccessToAdvancedError $> HH.div
-              [ HP.classes [ B.alert, B.alertDanger ] ]
+              [ HP.classes [ CN.alert, CN.alertDanger ] ]
               [ HH.text
                   $ "Couldn't share/unshare deck. "
                   ⊕ "Please check you network connection and try again"
               ]
           , pure $ HH.button
-              [ HP.classes [ B.btn, B.btnDefault ]
+              [ HP.classes [ CN.btn, CN.btnDefault ]
               , HE.onClick (HE.input_ HandleCancel)
               , HP.type_ HP.ButtonButton
               ]
               [ HH.text "Cancel" ]
           , guard state.isLoggedIn $> HH.button
-              [ HP.classes [ B.btn, B.btnInfo ]
+              [ HP.classes [ CN.btn, CN.btnInfo ]
               , HE.onClick (HE.input_ Revoke)
               , ARIA.label "Revoke access to this deck"
               , HP.title "Revoke access to this deck"
@@ -311,9 +310,9 @@ renderPublishDialog state copyVal =
           , pure $ HH.a
               (fold
                  [ pure $ HP.classes $ fold
-                     [ pure B.btn
-                     , pure B.btnPrimary
-                     , guard state.busyDoingTokenHTTP $> B.disabled
+                     [ pure CN.btn
+                     , pure CN.btnPrimary
+                     , guard state.busyDoingTokenHTTP $> CN.disabled
                      ]
                  , pure $ HP.target "_blank"
                  , guard (not state.busyDoingTokenHTTP) $> HP.href copyVal
@@ -349,9 +348,9 @@ renderEmbedDialog state copyVal =
         [ HH.form
           [ HE.onSubmit (HE.input PreventDefault) ]
           [ HH.div
-              [ HP.classes [ B.formGroup ] ]
+              [ HP.classes [ CN.formGroup ] ]
                 [ HH.textarea
-                  [ HP.classes [ B.formControl, Rc.embedBox ]
+                  [ HP.classes [ CN.formControl, CN.embedBox ]
                   , HP.readOnly true
                   , HP.value copyVal
                   , HE.onClick (HE.input (SelectElement ∘ DOM.toEvent))
@@ -359,14 +358,14 @@ renderEmbedDialog state copyVal =
                 , HH.button
                   [ HP.id_ "copy-button"
                   , HP.classes
-                      $ [ B.btn, B.btnDefault, B.btnXs ]
+                      $ [ CN.btn, CN.btnDefault, CN.btnXs ]
                       ⊕ [ HH.ClassName "textarea-copy-button" ]
                   , HP.ref copyButtonRef
                   , HP.type_ HP.ButtonButton
                   , HP.disabled state.busyDoingTokenHTTP
                   ]
                   [ I.copySm ]
-                , HH.div [ HP.classes [ B.checkbox ] ]
+                , HH.div [ HP.classes [ CN.checkbox ] ]
                   [ (if state.isLoggedIn then HH.label_ else HH.p_)
                     $ ((guard state.isLoggedIn)
                        $> HH.input
@@ -385,15 +384,15 @@ renderEmbedDialog state copyVal =
         [ HP.class_ $ HH.ClassName "deck-dialog-footer" ]
         $ [ HH.div
               [ HP.classes
-                  $ [ B.alert, B.alertDanger ]
-                  ⊕ (if state.noNetworkAccessToAdvancedError then [ ] else [ B.hidden ])
+                  $ [ CN.alert, CN.alertDanger ]
+                  ⊕ (if state.noNetworkAccessToAdvancedError then [ ] else [ CN.hidden ])
               ]
               [ HH.text
                   $ "Couldn't share/unshare deck. "
                   ⊕ "Please check you network connection and try again"
               ]
           , HH.button
-              [ HP.classes [ B.btn ]
+              [ HP.classes [ CN.btn ]
               , HE.onClick (HE.input_ HandleCancel)
               , HP.type_ HP.ButtonButton
               ]
@@ -401,7 +400,7 @@ renderEmbedDialog state copyVal =
           ]
         ⊕ ((guard state.isLoggedIn)
            $> HH.button
-                [ HP.classes [ B.btn, B.btnInfo ]
+                [ HP.classes [ CN.btn, CN.btnInfo ]
                 , HE.onClick (HE.input_ Revoke)
                 , HP.title "Revoke access to this deck"
                 , ARIA.label "Revoke access to this deck"

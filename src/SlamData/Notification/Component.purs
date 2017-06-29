@@ -44,6 +44,7 @@ import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
 import SlamData.Notification as N
+import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(Editable, ReadOnly))
 
@@ -86,7 +87,7 @@ instance heytingAlgebraDetailsPresented :: HeytingAlgebra DetailsPresented where
       ∘ not
       ∘ detailsPresentedToBoolean
 
-data RenderMode = Notifications | ExpandableList Expanded
+data RenderMode = Notifications | ExpandableList Expanded | Hidden
 
 type State =
   { tick ∷ Int
@@ -175,6 +176,8 @@ render st =
       HH.div
         [ HP.class_ (HH.ClassName "sd-notifications-list") ]
         [ HH.ul_ $ renderListItem <$> all ]
+    Hidden →
+      HH.text ""
 
   where
   all =
@@ -200,7 +203,7 @@ render st =
                   , HP.type_ HP.ButtonButton
                   , HE.onClick (HE.input_ Dismiss)
                   ]
-                  [ HH.text "×" ]
+                  [ I.closeSm ]
               ]
           ]
       ]

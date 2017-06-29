@@ -22,8 +22,7 @@ import Clipboard as C
 import Control.UI.Browser (select)
 import Data.Array as Arr
 import Data.Foreign (toForeign)
-import Data.Path.Pathy (rootDir, (</>), file)
-import Data.Path.Pathy as Pt
+import Data.Path.Pathy (rootDir)
 import Data.String as Str
 import DOM.Classy.Element (toElement)
 import DOM.HTML.Types (readHTMLElement)
@@ -31,14 +30,14 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
+
 import Quasar.Advanced.Types as QT
 import SlamData.Monad (Slam)
+import SlamData.Render.ClassName as CN
 import SlamData.Quasar.Security as Q
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Dialog.Share.Model (ShareResume(..), sharingActions, SharingInput)
 import Utils.DOM as DOM
-import Utils.Path (rootFile, FilePath)
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Message Slam
@@ -83,9 +82,8 @@ type State =
   { subjectType ∷ SubjectType
   , error ∷ Maybe ErrorType
   , email ∷ String
-    -- Actually should be Group from purescript-quasar
-  , groups ∷ Array FilePath
-  , groupSelected ∷ Maybe FilePath
+  , groups ∷ Array QT.GroupPath
+  , groupSelected ∷ Maybe QT.GroupPath
   , tokenName ∷ String
   , loading ∷ Boolean
   , showError ∷ Boolean
@@ -180,11 +178,11 @@ render state =
   renderLoading =
     [ HH.div
         [ HP.classes $
-            [ B.alert
-            , B.alertInfo
+            [ CN.alert
+            , CN.alertInfo
             , HH.ClassName "share-loading"
             ]
-            ⊕ (guard (not state.loading) $> B.hidden)
+            ⊕ (guard (not state.loading) $> CN.hidden)
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
         , HH.text "Loading"
@@ -195,22 +193,22 @@ render state =
   renderTokenSecret token =
     [ HH.form
         [ HE.onSubmit (HE.input PreventDefault)
-        , HP.classes $ guard state.loading $> B.hidden
+        , HP.classes $ guard state.loading $> CN.hidden
         ]
         [ HH.div
-            [ HP.classes [ B.inputGroup ]
+            [ HP.classes [ CN.inputGroup ]
             , HE.onClick (HE.input SelectElement ∘ DOM.toEvent)
             ]
             [ HH.input
-                [ HP.classes [ B.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HP.value token
                 , HP.readOnly true
                 , HP.title "Token secret"
                 ]
             , HH.span
-                [ HP.classes [ B.inputGroupBtn ] ]
+                [ HP.classes [ CN.inputGroupBtn ] ]
                 [ HH.button
-                    [ HP.classes [ B.btn, B.btnDefault ]
+                    [ HP.classes [ CN.btn, CN.btnDefault ]
                     , HP.ref copyButtonRef
                     ]
                     [ I.copySm ]
@@ -232,11 +230,11 @@ render state =
   renderSubjectForm ∷ Array HTML
   renderSubjectForm =
     [ HH.div
-        [ HP.classes $ guard (isJust state.tokenSecret ∨ state.loading) $> B.hidden ]
+        [ HP.classes $ guard (isJust state.tokenSecret ∨ state.loading) $> CN.hidden ]
         [ HH.label_
             [ HH.text "Subject type"
             , HH.select
-                [ HP.classes [ B.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HE.onValueChange (HE.input (ChangeSubjectType ∘ readSubjectType))
                 , HP.disabled state.submitting
                 ]
@@ -256,12 +254,12 @@ render state =
             ]
         , HH.label
             [ HP.classes
-                $ (guard (state.subjectType ≠ User) $> B.hidden)
-                ⊕ (guard (state.error ≡ Just Validation) $> B.hasError)
+                $ (guard (state.subjectType ≠ User) $> CN.hidden)
+                ⊕ (guard (state.error ≡ Just Validation) $> CN.hasError)
             ]
             [ HH.text "User email"
             , HH.input
-                [ HP.classes [ B.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HP.value state.email
                 , HE.onValueInput $ HE.input ChangeEmail
                 , HP.placeholder "User email"
@@ -270,10 +268,10 @@ render state =
                 ]
             ]
         , HH.label
-            [ HP.classes $ guard (state.subjectType ≠ Group) $> B.hidden ]
+            [ HP.classes $ guard (state.subjectType ≠ Group) $> CN.hidden ]
             [ HH.text "Group path"
             , HH.select
-                [ HP.classes [ B.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HE.onValueChange $ HE.input ChangeGroup
                 , HP.disabled $ Arr.null state.groups ∨ state.submitting
                 ]
@@ -281,20 +279,20 @@ render state =
                 -- because it's break context. OTOH, lambdas are not
                 -- so fancy as named func. cryogenian.
                 let
-                  renderOption ∷ FilePath → HTML
+                  renderOption ∷ QT.GroupPath → HTML
                   renderOption group =
                     HH.option
-                      [ HP.value $ Pt.printPath  group ]
-                      [ HH.text $ Pt.printPath  group ]
+                      [ HP.value $ QT.printGroupPath  group ]
+                      [ HH.text $ QT.printGroupPath  group ]
                 in
                   map renderOption state.groups
             ]
         , HH.label
-            [ HP.classes $ guard (state.subjectType ≠ Token) $> B.hidden
+            [ HP.classes $ guard (state.subjectType ≠ Token) $> CN.hidden
             ]
             [ HH.text "Token name"
             , HH.input
-                [ HP.classes [ B.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HP.type_ HP.InputText
                 , HP.placeholder "Token name"
                 , HP.value state.tokenName
@@ -305,7 +303,7 @@ render state =
         , HH.label_
             [ HH.text "Permission"
             , HH.select
-                [ HP.classes [ B.formControl ]
+                [ HP.classes [ CN.formControl ]
                 , HE.onValueChange (HE.input (ChangeShareResume ∘ readShareResume))
                 , HP.disabled state.submitting
                 ]
@@ -319,11 +317,11 @@ render state =
             ]
         , HH.div
             [ HP.classes
-                $ [ B.alert, B.alertDanger ]
+                $ [ CN.alert, CN.alertDanger ]
                 ⊕ (if state.showError
                       ∧ (state.error ≡ Just Connection ∨ state.error ≡ Just GroupList)
                       then [ ]
-                      else [ B.hidden ])
+                      else [ CN.hidden ])
             ]
             [ HH.text
                 if state.error ≡ Just Connection
@@ -336,8 +334,8 @@ render state =
             ]
         , HH.div
             [ HP.classes
-                $ [ B.alert, B.alertInfo ]
-                ⊕ (if state.showError ∧ state.error ≡ Just Validation then [ ] else [ B.hidden ])
+                $ [ CN.alert, CN.alertInfo ]
+                ⊕ (if state.showError ∧ state.error ≡ Just Validation then [ ] else [ CN.hidden ])
             ]
             [ HH.text "Please check if user email is correct" ]
         ]
@@ -349,8 +347,8 @@ render state =
         [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
         $ [ HH.button
               [ HP.classes
-                  $ [ B.btn, B.btnDefault ]
-                  ⊕ (guard state.loading $> B.hidden)
+                  $ [ CN.btn, CN.btnDefault ]
+                  ⊕ (guard state.loading $> CN.hidden)
               , HP.type_ HP.ButtonButton
               , HE.onClick $ HE.input_ Cancel
               , HP.disabled state.submitting
@@ -364,9 +362,9 @@ render state =
   renderShare =
     [ HH.button
         [ HP.classes
-            $ [ B.btn, B.btnPrimary ]
-            ⊕ (guard state.loading $> B.hidden)
-            ⊕ (guard (isJust state.error && state.showError) $> B.hasError)
+            $ [ CN.btn, CN.btnPrimary ]
+            ⊕ (guard state.loading $> CN.hidden)
+            ⊕ (guard (isJust state.error && state.showError) $> CN.hasError)
         , HP.disabled $
             state.submitting
             ∨ ((state.email ≡ "" ∨ state.error ≡ Just Validation)
@@ -382,7 +380,7 @@ render state =
 eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
-    Q.groupInfo (rootDir </> file "") >>= case _ of
+    Q.groupInfo (QT.GroupPath rootDir) >>= case _ of
       Left _ →
         H.modify _
           { error = Just GroupList
@@ -390,7 +388,7 @@ eval = case _ of
           , loading = false
           }
       Right grInfo → do
-        let groups = [ rootFile ] ⊕ grInfo.subGroups
+        let groups = [ QT.GroupPath rootDir ] ⊕ grInfo.subGroups
         H.modify _
           { groups = groups
           , loading = false
@@ -438,7 +436,7 @@ eval = case _ of
     pure next
   ChangeGroup grpString next → do
     groups ← H.gets _.groups
-    let group = Arr.find (eq grpString ∘ Pt.printPath) groups
+    let group = Arr.find (eq grpString ∘ QT.printGroupPath) groups
     H.modify _ { groupSelected = group }
     pure next
   ChangeTokenName str next →
@@ -482,7 +480,7 @@ sharePermission ∷ State → DSL Unit
 sharePermission state = do
   let
     users = if state.subjectType ≡ User then [ QT.UserId state.email ] else [ ]
-    groups = if state.subjectType ≡ Group then foldMap (pure ∘ Right) state.groupSelected else [ ]
+    groups = guard (state.subjectType == Group) *> Arr.fromFoldable state.groupSelected
     actions = sharingActions state.sharingInput state.shareResume
   Q.sharePermission { users, groups, actions } >>= case _ of
     Left _   → showConnectionError

@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,22 +23,22 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Writer.Class (class MonadTell)
 import Data.Path.Pathy as Path
+import Quasar.Advanced.QuasarAF as QF
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
-import SlamData.Quasar.Error as QE
-import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Query.Error (QueryError(..), throwQueryError)
 import SqlSquared as Sql
 
 evalQuery
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadAff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (query ∷ QueryError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
@@ -49,14 +49,13 @@ evalQuery sql varMap = do
   resource ← CEM.temporaryOutputResource
   let
     varMap' = Sql.print ∘ unwrap <$> Port.flattenResources varMap
-    backendPath =
-      fromMaybe Path.rootDir (Path.parentDir resource)
-  { inputs } ←
-    CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
-      QQ.compile' backendPath sql varMap'
+    backendPath = fromMaybe Path.rootDir (Path.parentDir resource)
+  { inputs } ← QQ.compile' backendPath sql varMap' >>= queryError QueryCompileError
   validateResources inputs
   CEM.addSources inputs
-  _ ← CE.liftQ do
-    _ ← QQ.viewQuery' resource sql varMap'
-    QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
+  QQ.viewQuery' resource sql varMap' >>= queryError QueryRetrieveResultError
+  QQ.liftQuasar (QF.fileMetadata resource) >>= queryError QueryRetrieveResultError
   pure $ Port.resourceOut $ Port.View resource sql varMap
+
+queryError ∷ ∀ e a m v. MonadThrow (Variant (query ∷ QueryError | v)) m ⇒ (e → QueryError) → Either e a → m a
+queryError e = either throwQueryError pure ∘ lmap e

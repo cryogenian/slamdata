@@ -29,9 +29,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
-
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType as CHT
@@ -101,18 +100,18 @@ render state =
     , HH.hr_
     , row [ renderIsStacked state, renderIsSmooth state ]
     , HH.hr_
-    , row [ renderAxisLabelAngle state ]
+    , row [ renderAxisLabelAngle state, renderSize state ]
     ]
 
 
 renderAxisLabelAngle ∷ ST.State → HTML
 renderAxisLabelAngle state =
   HH.div
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text "Label angle" ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ] [ HH.text "Label angle" ]
     , HH.input
-        [ HP.classes [ B.formControl ]
+        [ HP.classes [ CN.formControl ]
         , HP.value $ show $ state.axisLabelAngle
         , ARIA.label "Axis label angle"
         , HE.onValueChange $ HE.input \l → right ∘ Q.SetAxisLabelAngle l
@@ -122,9 +121,9 @@ renderAxisLabelAngle state =
 renderIsStacked ∷ ST.State → HTML
 renderIsStacked state =
   HH.div
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ]
         [ HH.input
             [ HP.type_ HP.InputCheckbox
             , HP.checked state.isStacked
@@ -138,9 +137,9 @@ renderIsStacked state =
 renderIsSmooth ∷ ST.State → HTML
 renderIsSmooth state =
   HH.div
-    [ HP.classes [ B.colXs6, CSS.axisLabelParam ]
+    [ HP.classes [ CSS.axisLabelParam ]
     ]
-    [ HH.label [ HP.classes [ B.controlLabel ] ]
+    [ HH.label [ HP.classes [ CN.controlLabel ] ]
         [ HH.input
             [ HP.type_ HP.InputCheckbox
             , HP.checked state.isSmooth
@@ -148,6 +147,22 @@ renderIsSmooth state =
             , HE.onChecked $ HE.input_ $ right ∘ Q.ToggleSmooth
             ]
         , HH.text "Smooth"
+        ]
+    ]
+
+renderSize ∷ ST.State → HTML
+renderSize state =
+  HH.div
+    [ HP.classes [ CSS.axisLabelParam ]
+    ]
+    [ HH.label
+        [ HP.classes [ CN.controlLabel ] ]
+        [ HH.text "Size" ]
+    , HH.input
+        [ HP.classes [ CN.formControl ]
+        , HP.value $ show state.size
+        , ARIA.label "Size"
+        , HE.onValueChange $ HE.input (\s → right ∘ Q.SetSize s)
         ]
     ]
 
@@ -164,6 +179,7 @@ cardEval = case _ of
         { axisLabelAngle: st.axisLabelAngle
         , isStacked: st.isStacked
         , isSmooth: st.isSmooth
+        , size: st.size
         , dimension: D.topDimension
         , value: D.topDimension
         , series: Nothing
@@ -175,7 +191,7 @@ cardEval = case _ of
   CC.Load m next → do
     _ ← H.query' CS.cpDims unit $ H.action $ DQ.Load $ Just m
     for_ (m ^? M._BuildArea ∘ _Just) \r →
-      H.modify _{ isStacked = r.isStacked, isSmooth = r.isSmooth }
+      H.modify _{ isStacked = r.isStacked, isSmooth = r.isSmooth, size = r.size }
     pure next
   CC.ReceiveInput _ _ next →
     pure next
@@ -197,6 +213,13 @@ raiseUpdate =
 
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
+  Q.SetSize str next → do
+    let fl = readFloat str
+    unless (isNaN fl)
+      $ H.modify _{ size = fl }
+    raiseUpdate
+    pure next
+
   Q.SetAxisLabelAngle str next → do
     let fl = readFloat str
     unless (isNaN fl) do

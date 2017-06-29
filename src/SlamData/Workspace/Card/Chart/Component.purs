@@ -22,7 +22,7 @@ import Data.Array as A
 import Data.Foreign as F
 import Data.Foreign.Index (readProp)
 import Data.Int (toNumber, floor)
-import Data.Lens ((^?))
+import Data.Lens ((^?), _Just)
 import Data.String as S
 
 import Global (readFloat, isNaN)
@@ -32,10 +32,10 @@ import Halogen.ECharts as HEC
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
-import SlamData.Render.CSS as RC
+import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType (ChartType, chartDarkIconSrc)
+import SlamData.Workspace.Card.CardType.ChartType (ChartType, darkIconSrc)
 import SlamData.Workspace.Card.CardType.ChartType as ChT
 import SlamData.Workspace.Card.Chart.Component.ChildSlot (ChildQuery, ChildSlot, cpECharts, cpMetric, cpPivotTable)
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState)
@@ -46,7 +46,7 @@ import SlamData.Workspace.Card.Chart.PivotTableRenderer.Component as Pivot
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port (Port(..), extractResource)
+import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.LevelOfDetails as LOD
 
 import Utils (hush')
@@ -73,7 +73,7 @@ renderEchart state = foldMap pure $ chart <$> state.theme
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ RC.chartOutput, HH.ClassName "card-input-maximum-lod" ] ]
+    [ HP.classes [ CN.chartOutput, HH.ClassName "card-input-maximum-lod" ] ]
     case state.chartType of
       Just ChT.Metric →
         [ HH.slot' cpMetric unit Metric.comp state.dimensions absurd ]
@@ -83,7 +83,7 @@ render state =
 
 renderButton ∷ ChartType → Array HTML
 renderButton ct =
-  [ HH.img [ HP.src $ chartDarkIconSrc ct ]
+  [ HH.img [ HP.src $ darkIconSrc ct ]
   , HH.text "Zoom or resize"
   ]
 
@@ -109,24 +109,27 @@ evalCard = case _ of
       _ →
         pure next
   CC.ReceiveInput input varMap next → do
-    case input, extractResource varMap of
-      ChartInstructions r, _ → void do
+    case input of
+      ChartInstructions r → void do
         H.modify (_ { chartType = Just r.chartType })
-      ValueMetric metric, _ → void do
+      ValueMetric metric → void do
         H.modify (_ { chartType = Just ChT.Metric })
         H.query' cpMetric unit $ H.action $ Metric.SetMetric metric
-      PivotTable port, Just resource → void do
+      PivotTable _ → void do
         H.modify (_ { chartType = Just ChT.PivotTable })
-        H.query' cpPivotTable unit $ H.action $ Pivot.Update port resource
-      _, _ →
+      _ →
         void $ H.query' cpECharts unit $ H.action HEC.Clear
     pure next
   CC.ReceiveOutput _ _ next →
     pure next
   CC.ReceiveState evalState next → do
-    for_ (evalState ^? ES._ChartOptions) \options → do
-      _ ← H.query' cpECharts unit $ H.action $ HEC.Reset options
-      H.query' cpECharts unit $ H.action HEC.Resize
+    case evalState of
+      ES.ChartOptions options → void do
+        _ ← H.query' cpECharts unit $ H.action $ HEC.Reset options
+        H.query' cpECharts unit $ H.action HEC.Resize
+      ES.PivotTable options → void do
+        H.query' cpPivotTable unit $ H.action $ Pivot.Update options
+      _ → pure unit
     pure next
   CC.ReceiveDimensions dims reply → do
     state ← H.get
@@ -175,10 +178,17 @@ evalComponent = case _ of
     { echarts } ← H.lift Wiring.expose
     H.modify _{ theme = Just echarts.theme }
     pure next
-  RaiseUpdate next → do
+  RaiseUpdate em next → do
+    for_ em (H.raise ∘ CC.stateAlter)
     H.raise CC.modelUpdate
     pure next
 
 handlePivotTableMessage ∷ Pivot.Message → Query Unit
 handlePivotTableMessage = case _ of
-  Pivot.ModelUpdated → H.action RaiseUpdate
+  Pivot.ModelUpdated → H.action $ RaiseUpdate Nothing
+  Pivot.StateUpdated f → H.action $ RaiseUpdate (Just (updateFn f))
+  where
+  updateFn ∷ (ES.PivotTableR → ES.PivotTableR) → Maybe ES.EvalState → Maybe ES.EvalState
+  updateFn f s = case s ^? _Just ∘ ES._PivotTable of
+    Just p  → Just $ ES.PivotTable (f p)
+    Nothing → s

@@ -73,7 +73,7 @@ decodeItem = decodeJson >=> \obj → do
   color ← map Sem.maybeString $ obj .? "color"
   pure { source, target, size, color }
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildGraph
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)

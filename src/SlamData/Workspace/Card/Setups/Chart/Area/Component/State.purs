@@ -22,6 +22,7 @@ type State =
   { isSmooth ∷ Boolean
   , isStacked ∷ Boolean
   , axisLabelAngle ∷ Number
+  , size ∷ Number
   }
 
 initialState ∷ State
@@ -29,6 +30,7 @@ initialState =
   { isSmooth: false
   , isStacked: false
   , axisLabelAngle: 0.0
+  , size: 10.0
   }
 
 _isSmooth ∷ Lens' State Boolean

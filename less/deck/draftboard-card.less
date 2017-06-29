@@ -1,7 +1,11 @@
-.sd-card-draftboard {
+.sd-card-draftboard,
+.sd-draftboard-edge {
   position: absolute;
   width: 100%;
   height: 100%;
+}
+
+.sd-card-draftboard {
   background: #ccc;
 
   .sd-board-inset-shadow {
@@ -11,82 +15,86 @@
     width: 100%;
     height: 100%;
     z-index: 30;
-    box-shadow: inset 0px 0px 8px 0px rgba(0, 0, 0, 0.25);
+    box-shadow: inset 0 0 0.8rem 0 rgba(0, 0, 0, 0.25);
     pointer-events: none;
   }
 }
 
+
 .sd-draftboard-edge {
+  @draftboard-size: 1rem;
+
   background: transparent;
   cursor: pointer;
   padding: 0;
   margin: 0;
   border: 0;
-  position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  width: 100%;
-  height: 100%;
   outline: none;
 
   &:hover {
-    background: rgba(0,0,0,.06);
+    background: rgba(0, 0, 0, 0.06);
   }
+
 
   &.sd-draftboard-edge-top {
     bottom: auto;
-    height: 10px;
+    height: @draftboard-size;
     cursor: ns-resize;
   }
 
   &.sd-draftboard-edge-left {
     right: auto;
-    width: 10px;
+    width: @draftboard-size;
     cursor: ew-resize;
   }
 
   &.sd-draftboard-edge-right {
     left: auto;
-    width: 10px;
+    width: @draftboard-size;
     cursor: ew-resize;
   }
 
   &.sd-draftboard-edge-bottom {
     top: auto;
-    height: 10px;
+    height: @draftboard-size;
     cursor: ns-resize;
   }
 }
 
-.sd-draftboard-edge-mid {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 10px;
-  height: 10px;
-  margin-top: -5px;
-  margin-left: -5px;
 
-  &:before {
+.sd-draftboard-edge-mid {
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.5rem;
+  margin-left: -0.5rem;
+
+  &,
+  &::before {
     position: absolute;
     top: 50%;
     left: 50%;
-    border-style: solid;
+  }
+
+  &::before {
     content: "";
+    border-style: solid;
+    border-color: transparent;
   }
 
   .sd-draftboard-edge-left &,
   .sd-draftboard-edge-right & {
-    height: 20px;
-    margin-top: -10px;
+    height: 2rem;
+    margin-top: -1rem;
   }
 
   .sd-draftboard-edge-top &,
   .sd-draftboard-edge-bottom & {
-    width: 20px;
-    margin-left: -10px;
+    width: 2rem;
+    margin-left: -1rem;
   }
 
   .sd-draftboard-edge-top & {
@@ -105,80 +113,83 @@
     cursor: n-resize;
   }
 
-  .sd-draftboard-edge-top &:before {
-    border-width: 4px 3px 0 3px;
-    border-color: #888 transparent transparent transparent;
-    margin-top: -2px;
-    margin-left: -4px;
+  .sd-draftboard-edge-top &::before {
+    border-width: 0.4rem 0.3rem 0 0.3rem;
+    border-top-color: #888;
+    margin-top: -0.2rem;
+    margin-left: -0.4rem;
   }
 
-  .sd-draftboard-edge-left &:before {
-    border-width: 3px 0 3px 4px;
-    border-color: transparent transparent transparent #888;
-    margin-top: -4px;
-    margin-left: -2px;
+  .sd-draftboard-edge-left &::before {
+    border-width: 0.3rem 0 0.3rem 0.4rem;
+    border-left-color: #888;
+    margin-top: -0.4rem;
+    margin-left: -0.2rem;
   }
 
-  .sd-draftboard-edge-right &:before {
-    border-width: 3px 4px 3px 0;
-    border-color: transparent #888 transparent transparent;
-    margin-top: -4px;
-    margin-left: -2px;
+  .sd-draftboard-edge-right &::before {
+    border-width: 0.3rem 0.4rem 0.3rem 0;
+    border-right-color: #888;
+    margin-top: -0.4rem;
+    margin-left: -0.2rem;
   }
 
-  .sd-draftboard-edge-bottom &:before {
-    border-width: 0 3px 4px 3px;
-    border-color: transparent transparent #888 transparent;
-    margin-top: -2px;
-    margin-left: -4px;
+  .sd-draftboard-edge-bottom &::before {
+    border-width: 0 0.3rem 0.4rem 0.3rem;
+    border-bottom-color: #888;
+    margin-top: -0.2rem;
+    margin-left: -0.4rem;
   }
 }
+
 
 .sd-draftboard-root {
   position: absolute;
-  top: 5px;
-  left: 5px;
-  right: 5px;
-  bottom: 5px;
+  top: 0.5rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
   z-index: 1;
   pointer-events: none;
 }
+
 
 .sd-draftboard-guide {
   position: absolute;
   z-index: 10;
   border-style: dotted;
-  border-color: blue;
+  border-color: #337ab7;
   border-width: 0;
   pointer-events: none;
 
   &.invalid {
-    border-color: red;
+    border-color: #f00;
   }
 
   &.horizontal {
     width: 0;
-    border-left-width: 1px;
+    border-left-width: 0.1rem;
   }
 
   &.vertical {
     height: 0;
-    border-top-width: 1px;
+    border-top-width: 0.1rem;
   }
 }
 
+
 .sd-draftboard-guide-label {
   position: absolute;
-  background: rgba(230,230,230,.9);
+  background: rgba(230, 230, 230, 0.9);
   color: #666;
-  font-size: 11px;
+  font-size: 1.1rem;
   width: 3em;
   height: 2em;
   margin: 0;
   padding: 0;
   line-height: 2em;
   text-align: center;
-  transition: .1s ease-out all;
+  transition: 0.1s ease-out all;
   top: 0;
   left: 0;
 
@@ -192,7 +203,7 @@
 
   .horizontal &.trailing {
     left: -3em;
-    margin-left: -1px;
+    margin-left: -0.1rem;
   }
 
   .vertical &.leading {
@@ -201,9 +212,10 @@
 
   .vertical &.trailing {
     top: -2em;
-    margin-top: -1px
+    margin-top: -0.1rem;
   }
 }
+
 
 .sd-draftboard-cell {
   position: absolute;
@@ -219,14 +231,15 @@
   }
 }
 
+
 .sd-draftboard-cell-content {
   position: absolute;
-  top: 5px;
-  left: 5px;
-  right: 5px;
-  bottom: 5px;
+  top: 0.5rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
   background: #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.2);
   pointer-events: auto;
 }
 
@@ -236,7 +249,7 @@
   background: transparent;
   padding: 0;
   margin: 0;
-  border-color: blue;
+  border-color: #337ab7;
   border-style: solid;
   border-width: 0;
   outline: none;
@@ -247,18 +260,18 @@
   }
 
   &.invalid {
-    border-color: red;
+    border-color: #f00;
   }
 
   &.horizontal {
-    width: 10px;
-    margin-left: -5px;
+    width: 1rem;
+    margin-left: -0.5rem;
     cursor: ew-resize;
   }
 
   &.vertical {
-    height: 10px;
-    margin-top: -5px;
+    height: 1rem;
+    margin-top: -0.5rem;
     cursor: ns-resize;
   }
 
@@ -270,28 +283,28 @@
   }
 
   &.sizing.horizontal {
-    border-left-width: 1px;
+    border-left-width: 0.1rem;
   }
 
   &.sizing.vertical {
-    border-top-width: 1px;
+    border-top-width: 0.1rem;
   }
 }
+
 
 .sd-draftboard-split-edge-loc {
   position: absolute;
   width: 0;
   height: 0;
-  border-color: blue;
-  border-style: dotted;
-  border-width: 0;
+  border: 0.3rem dotted transparent;
 
-  &:before {
+  &::before {
     content: " ";
     position: absolute;
     width: 0;
     height: 0;
     border-style: solid;
+    border-color: transparent;
   }
 
   .eq & {
@@ -300,64 +313,65 @@
 
   .vertical & {
     left: 50%;
-    margin-left: -1px;
-    border-left-width: 1px;
+    margin-left: -0.1rem;
+    border-left-width: 0.1rem;
   }
 
   .vertical.lt & {
     top: 0;
   }
 
-  .vertical.lt &:before {
+  .vertical.lt &::before {
     top: 0;
-    left: -4px;
-    width: 1px;
-    border-width: 0 3px 7px 3px;
-    border-color: transparent transparent blue transparent;
+    left: -0.4rem;
+    width: 0.1rem;
+    border-width: 0 0.3rem 0.7rem 0.3rem;
+    border-bottom-color: #337ab7;
   }
 
   .vertical.gt & {
     bottom: 0;
   }
 
-  .vertical.gt &:before {
-    bottom: 1px;
-    left: -4px;
-    width: 1px;
-    border-width: 7px 3px 0 3px;
-    border-color: blue transparent transparent transparent;
+  .vertical.gt &::before {
+    bottom: 0.1rem;
+    left: -0.4rem;
+    width: 0.1rem;
+    border-width: 0.7rem 0.3rem 0 0.3rem;
+    border-top-color: #337ab7;
   }
 
   .horizontal & {
     top: 50%;
-    margin-top: -1px;
-    border-top-width: 1px;
+    margin-top: -0.1rem;
+    border-top-width: 0.1rem;
   }
 
   .horizontal.lt & {
     left: 0;
   }
 
-  .horizontal.lt &:before {
+  .horizontal.lt &::before {
     left: 0;
-    top: -4px;
-    height: 1px;
-    border-width: 3px 7px 3px 0;
-    border-color: transparent blue transparent transparent;
+    top: -0.4rem;
+    height: 0.1rem;
+    border-width: 0.3rem 0.7rem 0.3rem 0;
+    border-right-color: #337ab7;
   }
 
   .horizontal.gt & {
     right: 0;
   }
 
-  .horizontal.gt &:before {
-    right: 1px;
-    top: -4px;
-    height: 1px;
-    border-width: 3px 0 3px 7px;
-    border-color: transparent transparent transparent blue;
+  .horizontal.gt &::before {
+    right: 0.1rem;
+    top: -0.4rem;
+    height: 0.1rem;
+    border-width: 0.3rem 0 0.3rem 0.7rem;
+    border-left-color: #337ab7;
   }
 }
+
 
 .sd-draftboard-cell-empty {
   button {
@@ -367,47 +381,48 @@
     border: none;
   }
 
-  .insert-cell {
+  .insert-cell, .delete-cell {
     position: absolute;
+    height: 100%;
+    width: 100%;
 
-    > span {
+  }
+
+  .insert-cell {
+    font-size: 4.5rem;
+    color: #337ab7;
+    max-width: 1.25em;
+    max-height: 1.25em;
+    padding: 0;
+
+    &, > .sd-icon, > .sd-icon > svg {
       position: absolute;
-      top: @grid-size;
-      left: @grid-size;
-      right: @grid-size;
-      bottom: @grid-size;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: auto;
+    }
 
-      &:before {
-        position: absolute;
-        top: 20%;
-        left: 45%;
-        height: 60%;
-        width: 10%;
-        content: "";
-        background: #337ab7;
-      }
+    > .sd-icon {
+      width: 80%;
+      height: 80%;
 
-      &:after {
-        position: absolute;
-        top: 45%;
-        left: 20%;
-        width: 60%;
-        height: 10%;
-        content: "";
-        background: #337ab7;
+      > svg {
+        object-fit: scale-down;
+        width: 100%;
+        height: 100%;
       }
     }
   }
 
   .delete-cell {
-    position: absolute;
     top: 0;
     right: 0;
-    width: @grid-size;
-    height: @grid-size;
-    line-height: @grid-size;
+    max-width: @grid-size * 2;
+    max-height: @grid-size * 2;
     text-align: center;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     color: #aaa;
 
     .sd-draftboard-cell:only-child & {
@@ -416,53 +431,53 @@
   }
 }
 
+
 .sd-draftboard-moving-icon {
   position: absolute;
-  background: rgba(0,0,0,.2);
+  background: rgba(0, 0, 0, 0.2);
   cursor: grabbing;
-  cursor: -webkit-grabbing;
-  cursor: -moz-grabbing;
-  border-radius: 4px;
+  border-radius: 0.4rem;
   pointer-events: auto;
   z-index: 9;
 
   &.floating {
-    width: 10rem;
-    height: 6rem;
-    margin-top: -3rem;
-    margin-left: -5rem;
+    width: 16rem;
+    height: 9.6rem;
+    margin-top: -4.8rem;
+    margin-left: -8rem;
     z-index: 9999;
     transition: none;
   }
 
   &.group {
-    &:before {
+    &::before {
       content: "";
       position: absolute;
-      top: 5px;
-      left: 5px;
-      right: 5px;
-      bottom: 5px;
-      background-color: rgba(20,120,255,.4);
+      top: 0.8rem;
+      left: 0.8rem;
+      right: 0.8rem;
+      bottom: 0.8rem;
+      background-color: rgba(20, 120, 255, 0.4);
     }
 
-    &.horizontal.side-a:before {
+    &.horizontal.side-a::before {
       right: 50%;
     }
 
-    &.horizontal.side-b:before {
+    &.horizontal.side-b::before {
       left: 50%;
     }
 
-    &.vertical.side-a:before {
+    &.vertical.side-a::before {
       bottom: 50%;
     }
 
-    &.vertical.side-b:before {
+    &.vertical.side-b::before {
       top: 50%;
     }
   }
 }
+
 
 .sd-deck-level-2 {
   .sd-card-draftboard {
@@ -470,11 +485,13 @@
   }
 
   .sd-draftboard-edge,
-  .sd-draftboard-split-edge {
+  .sd-draftboard-split-edge,
+  .sd-draftboard-cell.empty {
     display: none;
   }
 
-  .sd-draftboard-root {
+  .sd-draftboard-root,
+  .sd-draftboard-cell-content {
     top: 0;
     left: 0;
     right: 0;
@@ -482,14 +499,6 @@
   }
 
   .sd-draftboard-cell-content {
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
     box-shadow: none;
-  }
-
-  .sd-draftboard-cell.empty {
-    display: none;
   }
 }

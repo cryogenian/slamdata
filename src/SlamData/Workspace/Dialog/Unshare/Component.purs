@@ -23,6 +23,8 @@ import Control.Monad.Aff.AVar (makeVar, takeVar, putVar)
 import Control.Monad.Eff.Ref (newRef, modifyRef, readRef)
 import Control.Monad.Fork.Class (fork)
 import Control.UI.Browser (select)
+import DOM.Classy.Element (toElement)
+import DOM.HTML.Types (readHTMLElement)
 import Data.Array as Arr
 import Data.Foldable as F
 import Data.Foreign (toForeign)
@@ -30,26 +32,23 @@ import Data.Lens (Lens', lens, (.~), (%~), (?~))
 import Data.Lens.Index (ix)
 import Data.List as L
 import Data.Map as Map
-import Data.Path.Pathy as Pt
 import Data.Set as Set
 import Data.StrMap as SM
-import DOM.Classy.Element (toElement)
-import DOM.HTML.Types (readHTMLElement)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Elements.Keyed as HK
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 import Quasar.Advanced.Types as QTA
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Security as Q
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Dialog.Share.Model (ShareResume(..), printShareResume)
 import SlamData.Workspace.Dialog.Share.Model as Model
+import Utils (hush)
 import Utils.DOM as DOM
 import Utils.Foldable (chunkedParTraverse, splitList)
-import Utils.Path (parseFilePath)
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Message Slam
@@ -171,8 +170,8 @@ render state =
     [ HH.h4_ [ HH.text "Unshare deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.ClassName "share-loading" ]
-            ⊕ if state.loading then [ ] else [ B.hidden ]
+            $ [ CN.alert, CN.alertInfo, HH.ClassName "share-loading" ]
+            ⊕ if state.loading then [ ] else [ CN.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
         , HH.text "Loading"
@@ -183,7 +182,7 @@ render state =
             $ [ HH.ClassName "deck-dialog-body" ]
             ⊕ (if SM.isEmpty state.userPermissions
                   ∧ SM.isEmpty state.groupPermissions
-                  ∧ Arr.null state.tokenPermissions then [ B.hidden ] else [ ])
+                  ∧ Arr.null state.tokenPermissions then [ CN.hidden ] else [ ])
         ]
         [ HH.form
             [ HE.onSubmit $ HE.input PreventDefault ]
@@ -234,12 +233,12 @@ render state =
        HH.div
         [ HP.classes
             $ [ HH.ClassName "deck-dialog-footer share" ]
-            ⊕ (if state.loading then [ B.hidden ] else [ ])
+            ⊕ (if state.loading then [ CN.hidden ] else [ ])
         ]
         [ HH.div
             [ HP.classes
-                $ [ B.alert, B.alertDanger ]
-                ⊕ (if state.errored ∨ somethingErrored then [ ] else [ B.hidden ])
+                $ [ CN.alert, CN.alertDanger ]
+                ⊕ (if state.errored ∨ somethingErrored then [ ] else [ CN.hidden ])
             ]
             [ HH.text
                 $ if state.errored
@@ -255,7 +254,7 @@ render state =
         , HH.button
             [ HE.onClick (HE.input_ Done)
             , HP.type_ HP.ButtonButton
-            , HP.classes [ B.btn, B.btnDefault ]
+            , HP.classes [ CN.btn, CN.btnDefault ]
             , HP.disabled somethingHappening
             ]
             [ HH.text "Done" ]
@@ -269,9 +268,9 @@ renderUserOrGroup (name × perm) =
       [ HP.class_ $ HH.ClassName "sd-unshare-subject" ]
       [ HH.label_ [ HH.text name ]
       , HH.div
-          [ HP.classes $ if perm.state ≡ Just ModifyError then [ B.hasError ] else [ ] ]
+          [ HP.classes $ if perm.state ≡ Just ModifyError then [ CN.hasError ] else [ ] ]
           [ HH.select
-              [ HP.classes [ B.formControl ]
+              [ HP.classes [ CN.formControl ]
               , HE.onValueChange (HE.input (ChangePermissionResume name))
               , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
               ]
@@ -298,9 +297,9 @@ renderUserOrGroup (name × perm) =
               ]
           ]
       , HH.div
-          [ HP.classes $ if perm.state ≡ Just RevokeError then [ B.hasError ] else [ ] ]
+          [ HP.classes $ if perm.state ≡ Just RevokeError then [ CN.hasError ] else [ ] ]
           [ HH.button
-              [ HP.classes [ B.btn, B.btnPrimary ]
+              [ HP.classes [ CN.btn, CN.btnPrimary ]
               , HE.onClick (HE.input_ (Unshare name))
               , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
               ]
@@ -325,7 +324,7 @@ renderToken token =
     , HH.div
         [ HP.classes
             $ [ HH.ClassName "sd-url" ]
-            ⊕ if token.state ≡ Just ModifyError then [ B.hasError ] else [ ]
+            ⊕ if token.state ≡ Just ModifyError then [ CN.hasError ] else [ ]
         ]
         [ HH.input
             [ HP.readOnly true
@@ -335,7 +334,7 @@ renderToken token =
             , HP.disabled $ isJust token.state
         ]
         , HH.button
-            [ HP.classes [ B.btn, B.btnDefault ]
+            [ HP.classes [ CN.btn, CN.btnDefault ]
             , HP.title "Copy to clipboard"
             , HP.ref $ copyButtonRef token.tokenId
             , HP.disabled $ token.state ≡ Just Modifying ∨ token.state ≡ Just Unsharing
@@ -343,11 +342,11 @@ renderToken token =
             [ I.copySm ]
         ]
     , HH.div
-        [ HP.classes $ if token.state ≡ Just RevokeError then [ B.hasError ] else [ ] ]
+        [ HP.classes $ if token.state ≡ Just RevokeError then [ CN.hasError ] else [ ] ]
         [ HH.div
-            [ HP.class_ B.btnGroup ]
+            [ HP.class_ CN.btnGroup ]
             [ HH.button
-                [ HP.classes [ B.btn, B.btnPrimary ]
+                [ HP.classes [ CN.btn, CN.btnPrimary ]
                 , HE.onClick (HE.input_ (UnshareToken token.tokenId))
                 , HP.disabled $ token.state ≡ Just Modifying ∨ token.state ≡ Just Unsharing
                 ]
@@ -526,7 +525,7 @@ changePermissionResumeForGroup
   → Permission
   → DSL (Boolean × (Map.Map QTA.PermissionId QTA.ActionR))
 changePermissionResumeForGroup name sharingInput res perm =
-  case parseFilePath name of
+  case hush (QTA.parseGroupPath name) of
     Nothing → pure $ false × perm.actions
     Just groupPath → do
       leftPids ← deletePermission perm.actions
@@ -538,7 +537,7 @@ changePermissionResumeForGroup name sharingInput res perm =
           actions = Model.sharingActions sharingInput res
           shareRequest =
             { users: [ ]
-            , groups: [ Right groupPath ]
+            , groups: [ groupPath ]
             , actions
             }
         shareRes ← Q.sharePermission shareRequest
@@ -619,9 +618,9 @@ adjustPermissions prs sharingInput =
                 acc{users = SM.insert uid perm users}
               | otherwise = acc
           in res
-        QTA.GroupGranted pt →
+        QTA.GroupGranted groupPath →
           let
-            gid = either QTA.printRoot Pt.printPath pt
+            gid = QTA.printGroupPath groupPath
             res
               | subset sharingActionsEdit actionsSet =
                 acc{groups = SM.insert gid perm{resume = Edit} groups }

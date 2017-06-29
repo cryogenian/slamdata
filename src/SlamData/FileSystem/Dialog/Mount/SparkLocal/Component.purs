@@ -39,7 +39,7 @@ import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as MCS
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Quasar.Mount as API
 import SlamData.Quasar.Error as QE
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 type Query = SettingsQuery MCS.State
 
@@ -55,7 +55,7 @@ comp initialState =
 render ∷ MCS.State → H.ComponentHTML Query
 render state =
   HH.div
-    [ HP.class_ Rc.mountSpark ]
+    [ HP.class_ CN.mountSpark ]
     [ MCR.label "Path" [ MCR.input state _path [] ] ]
 
 eval ∷ Query ~> H.ComponentDSL MCS.State Query SettingsMessage Slam

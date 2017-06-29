@@ -33,9 +33,9 @@ import Halogen.Component.Utils (sendAfter)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Monad (Slam)
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupLabeledFormInputPort)
@@ -57,6 +57,14 @@ initialState =
   , label: Nothing
   , cursor: JCursorTop
   }
+
+optionList ∷ State → Array (Sem.Semantics × Maybe String)
+optionList state =
+  Arr.sortBy sortFn $ Map.toUnfoldable state.valueLabelMap
+  where
+  sortFn (a × al) (b × bl) =
+    compare al bl
+    ⊕ compare (Sem.printSemantics a) (Sem.printSemantics b)
 
 data Query a
   = Setup SetupLabeledFormInputPort a
@@ -95,15 +103,14 @@ render state =
 renderDropdown ∷ State → Array HTML
 renderDropdown state =
   [ HH.select
-      [ HP.classes [ B.formControl ]
+      [ HP.classes [ CN.formControl ]
       , HE.onSelectedIndexChange \ix →
-          H.action ∘ ItemSelected ∘ fst <$> Arr.index optionList ix
+          H.action ∘ ItemSelected ∘ fst <$> Arr.index options ix
       ]
-      $ map renderOption optionList
+      $ map renderOption options
   ]
   where
-  optionList ∷ Array (Sem.Semantics × Maybe String)
-  optionList = Map.toUnfoldable state.valueLabelMap
+  options = optionList state
 
   renderOption ∷ Sem.Semantics × Maybe String → HTML
   renderOption (sem × label) =
@@ -115,16 +122,15 @@ renderCheckbox ∷ State → Array HTML
 renderCheckbox state =
   [ HH.form
      [ HE.onSubmit (HE.input PreventDefault) ]
-     $ map renderOneInput optionList
+     $ map renderOneInput options
   ]
   where
-  optionList ∷ Array (Sem.Semantics × Maybe String)
-  optionList = Map.toUnfoldable state.valueLabelMap
+  options = optionList state
 
   renderOneInput ∷ Sem.Semantics × Maybe String → HTML
   renderOneInput (sem × label) =
     HH.div
-      [ HP.classes [ B.checkbox ] ]
+      [ HP.classes [ CN.checkbox ] ]
       [ HH.label_
         [ HH.input
             [ HP.type_ HP.InputCheckbox
@@ -139,16 +145,15 @@ renderRadio ∷ State → Array HTML
 renderRadio state =
   [ HH.form
      [ HE.onSubmit (HE.input PreventDefault) ]
-     $ map renderOneInput optionList
+     $ map renderOneInput options
   ]
   where
-  optionList ∷ Array (Sem.Semantics × Maybe String)
-  optionList = Map.toUnfoldable state.valueLabelMap
+  options = optionList state
 
   renderOneInput ∷ Sem.Semantics × Maybe String → HTML
   renderOneInput (sem × label) =
     HH.div
-      [ HP.classes [ B.radio ]  ]
+      [ HP.classes [ CN.radio ]  ]
       [ HH.label_
           [ HH.input
             [ HP.type_ HP.InputRadio

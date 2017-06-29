@@ -18,13 +18,14 @@ module SlamData.Workspace.Card.Setups.Dialog where
 
 import SlamData.Prelude
 
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
+
+import SlamData.Render.ClassName as CN
+import SlamData.Render.Icon as I
 
 type DialogOptions s p i =
   { onDismiss ∷ H.Action i
@@ -44,12 +45,12 @@ pickerDialog opts =
         [ HP.classes [ HH.ClassName "sd-picker-dialog-title" ] ]
         [ HH.h1_ opts.title
         , HH.button
-            [ HP.classes [ HH.ClassName "sd-dismiss-button" ]
+            [ HP.classes [ CN.btn, CN.btnDefault, HH.ClassName "sd-dismiss-button" ]
             , HP.title "Dismiss"
             , ARIA.label "Dismiss"
             , HE.onClick $ HE.input_ opts.onDismiss
             ]
-            [ HH.text "×"]
+            [ I.closeSm ]
         ]
     , HH.div
         [ HP.classes [ HH.ClassName "sd-picker-dialog-content" ] ]
@@ -57,13 +58,13 @@ pickerDialog opts =
     , HH.div
         [ HP.classes [ HH.ClassName "sd-picker-dialog-toolbar" ] ]
         [ HH.button
-            [ HP.classes [ B.btn, B.btnDefault ]
+            [ HP.classes [ CN.btn, CN.btnDefault ]
             , ARIA.label "Dismiss"
             , HE.onClick $ HE.input_ opts.onDismiss
             ]
             [ HH.text "Dismiss" ]
         , HH.button
-            ([ HP.classes [ B.btn, B.btnPrimary ]
+            ([ HP.classes [ CN.btn, CN.btnPrimary ]
             , ARIA.label ""
             ] <>
               case opts.selection of

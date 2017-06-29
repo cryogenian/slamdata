@@ -1,19 +1,19 @@
 @import "common";
 
-.sd-action-list {
 
+.sd-action-list {
   display: flex;
   flex-direction: column;
   justify-content: space-around;
 
-  @spacing: 0.5px;
+  @spacing: 0.5;
   @size: @grid-size * 4;
 
   width: 100%;
   height: 100%;
 
   &.with-filter {
-      height: ~"calc(100% - 3.6rem)";
+    height: ~"calc(100% - 4.4rem)";
   }
 
   .alert { // BS
@@ -27,7 +27,7 @@
     flex: 1 1 auto;
     list-style: none;
     overflow: hidden;
-    margin: 1px;
+    margin: 0.1rem;
     padding: 0;
 
     li {
@@ -35,7 +35,7 @@
       margin: 0;
       padding: 0;
       position: relative;
-      border: 1px solid transparent;
+      border: 0.1rem solid transparent;
       vertical-align: top;
 
       button {
@@ -74,7 +74,7 @@
 
         &:not(:disabled):hover {
           &:hover {
-              opacity: 0.8;
+            opacity: 0.8;
           }
         }
       }
@@ -92,44 +92,49 @@
   position: absolute;
   top: 0;
   left: 50%;
-  transform: translate(-50%,0);
+  transform: translate(-50%, 0);
   z-index: 999999;
 }
 
 form.sd-action-filter {
   flex: 0 0 auto;
   width: 100%;
+
   div {
     padding: 0 @grid-size;
     margin: auto;
-    max-width: 30rem;
+    max-width: 48rem;
     position: relative;
   }
-  input {
+
+  .sd-form input {
     width: 100%;
-    height: 2rem;
-    box-sizing: border-box;
+    height: 2.8rem;
     margin: 0.8rem 0;
-    padding: 8px 1.6rem 8px 1.7rem;
-    border: 1px solid #ccc;
-    box-shadow: inset 2px 3px 6px -3px @shade-tint;
+    padding: 0 2.4rem 0 2.5rem;
+    border: 0.1rem solid #ccc;
+    box-shadow: inset 0.2rem 0.3rem 0.6rem -0.3rem @shade-tint;
   }
+
   button {
     position: absolute;
-    right: 1.5rem;
+    top: 0.4rem;
+    right: 2.5rem;
     opacity: 0.7;
     width: 1.8rem;
-    height: 2rem;
-    margin: 0.8rem 0;
-    border: 1px solid #ccc;
+    height: 2.6rem;
+    margin: 0.5rem 0;
+    border: 0;
     padding: 0;
     background: transparent;
-    border: 0;
+    line-height: 0;
     transition: opacity ease-out 0.25s;
   }
+
   button:disabled {
     opacity: 0;
   }
+
   .sd-action-filter-icon {
     display: flex;
     justify-content: center;
@@ -139,7 +144,7 @@ form.sd-action-filter {
     bottom: 0;
     height: 100%;
     margin: auto;
-    padding: 0 7px;
+    padding: 0 0.6rem;
     opacity: 0.5;
     font-size: 1.125em;
   }
@@ -169,6 +174,6 @@ form.sd-action-filter {
     width: 100%;
     text-align: center;
     line-height: 2rem;
-    opacity: .6;
+    opacity: 0.6;
   }
 }

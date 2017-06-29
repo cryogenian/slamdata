@@ -5,7 +5,7 @@
     "type": "git",
     "url": "https://github.com/slamdata/slamdata"
   },
-  "version": "v4.2.0-qa-prerelease-2",
+  "version": "v4.2.2",
   "contributors": [
     "Maxim Zimaliev <zimaliev@yandex.ru>",
     "Gary Burgess <gary@slamdata.com>",
@@ -16,13 +16,13 @@
   ],
   "scripts": {
     "all": "npm run clean:files && npm run lint:headers && npm run lint:whitespace ",
-    "bundle:dev": "webpack --progress --config webpack.config.dev.js",
-    "bundle:watch": "webpack --progress --config webpack.config.dev.js --watch",
+    "watch:bundle": "webpack --progress --config webpack.config.dev.js --watch",
+    "build:bundle": "webpack --progress --config webpack.config.dev.js",
     "build:dev-pulp": "pulp --watch build",
     "build:icons": "gulp icons",
-    "build:less": "lessc less/main.less public/css/main.css --autoprefix=\"> 1%, last 1 versions, Firefox ESR, not Explorer < 11\"",
-    "build:lite": "gulp bundle",
-    "build:prod": "npm run lint:crlf && npm run build:less && npm run build:icons && npm run build:psa && gulp bundle",
+    "build:less": "lessc less/main.less public/css/main.css --autoprefix=\"> 2%, last 1 versions, Firefox ESR, Explorer >= 11\"",
+    "build:bundle-prod": "gulp bundle",
+    "build:prod": "npm run lint:crlf && npm run build:less && npm run build:icons && npm run build:psa && npm run build:bundle-prod",
     "build:psa": "pulp build -I test/src -- --censor-lib --strict --stash",
     "build:non-strict": "pulp build -I test/src -- --censor-lib --stash",
     "clean:files": "rimraf .pulp-cache output tmp public/js/file.js public/js/filesystem.js public/js/workspace.js public/js/auth_redirect.js public/css/main.css",
@@ -36,7 +36,7 @@
     "test": "gulp bundle-test && node test",
     "test:local": "npm run build:psa && webpack --progress --config webpack.config.dev.js && npm test",
     "test:property": "gulp bundle-property-tests && node tmp/js/property-tests",
-    "watch:less": "less-watch-compiler less/ public/css/ main.less",
+    "watch:less": "npm run build:less && less-watch-compiler less/ public/css/ main.less",
     "versionify": "gulp versionify"
   },
   "license": "Apache-2.0",
@@ -69,20 +69,22 @@
     "less-watch-compiler": "^1.4.2",
     "platform": "^1.3.0",
     "pulp": "^11.0.0",
-    "purescript": "^0.11.4",
+    "purescript": "^0.11.5",
     "purescript-psa": "^0.5.1",
     "purs-loader": "^2.4.2",
     "rimraf": "^2.4.3",
     "selenium-webdriver": "2.53.2",
+    "stylelint": "^7.10.1",
     "vinyl-paths": "^2.1.0",
     "webpack": "^2.3.2",
     "webpack-stream": "^2.1.0"
   },
   "dependencies": {
     "clipboard": "1.6.1",
-    "echarts": "^3.2.2",
+    "echarts": "^3.5.4",
     "fs": "^0.0.2",
     "jsrsasign": "^5.0.5",
+    "leaflet": "^1.0.3",
     "minimatch": "^3.0.0"
   }
 }

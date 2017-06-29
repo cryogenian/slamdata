@@ -1,56 +1,61 @@
 .sd-card-markdown {
-    padding: .5em;
+  padding: 0.5em;
 
-    h1, h2, h3 {
-      &:first-child {
-        margin-top: 0;
-      }
+  h1, h2, h3 {
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  .slamdown-formset {
+    margin-bottom: 1rem;
+
+    label {
+      margin-right: 1.5em;
+    }
+  }
+
+  span.slamdown-field {
+    > label {
+      margin-left: 1.5em;
     }
 
-    .slamdown-formset {
-      margin-bottom: 10px;
+    > input {
+      margin: 0 0.5em 0 1em;
+    }
+  }
+
+  span.slamdown-field:first-child {
+    overflow: hidden;
+
+    > label {
+      display: block;
+      float: left;
+      width: calc(10rem - 0.5em);
+      margin-left: 0;
+      padding-top: 0.7rem;
+      padding-right: 0.5em;
+    }
+
+    > input, select {
+      margin: 0;
+    }
+  }
+
+  ul.slamdown-radios, ul.slamdown-checkboxes {
+    margin: 0;
+    list-style: none;
+    padding: 0.5rem 0 0;
+
+    li {
+      display: inline;
+      margin-right: 1.5em;
 
       label {
-        margin-right: 1.5em;
+        margin-left: 0.5em;
+        position: relative;
+        top: -0.2rem;
       }
     }
-
-    span.slamdown-field {
-      > label {
-        margin-left: 1.5em;
-      }
-      > input {
-        margin: 0 0.5em 0 1em;
-      }
-    }
-
-    span.slamdown-field:first-child {
-      > label {
-        margin-left: 0;
-        display: block;
-        width: calc(100px - 0.5em);
-        padding-top: 7px;
-        padding-right: 0.5em;
-        float: left;
-      }
-      > input, select {
-        margin: 0;
-      }
-      overflow: hidden;
-    }
-
-    ul.slamdown-radios, ul.slamdown-checkboxes {
-      margin: 0;
-      list-style: none;
-      padding: 5px 0 0;
-      li {
-        display: inline;
-        margin-right: 1.5em;
-        label {
-          margin-left: 0.5em;
-          position: relative;
-          top: -2px;
-        }
-      }
-    }
+  }
 }

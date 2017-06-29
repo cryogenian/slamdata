@@ -22,15 +22,15 @@ module SlamData.FileSystem.Component
   ) where
 
 import SlamData.Prelude
-
+import CSS as CSS
+import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Fork (fork)
 import Control.Monad.Rec.Class (tailRecM, Step(Done, Loop))
 import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
-
-import CSS as CSS
-
+import DOM.Event.Event as DEE
 import Data.Argonaut (jsonParser, jsonEmptyObject)
 import Data.Array as Array
 import Data.Coyoneda (liftCoyoneda)
@@ -42,21 +42,18 @@ import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir, printPath)
 import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
-
-import DOM.Event.Event as DEE
-
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
-import Halogen.HTML.Core as HC
 import Halogen.HTML.CSS as HCSS
+import Halogen.HTML.Core as HC
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
-
+import Quasar.Advanced.QuasarAF as QA
+import Quasar.Advanced.Types as QAT
 import Quasar.Data (QData(..))
 import Quasar.Mount as QM
-
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
@@ -75,7 +72,8 @@ import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
-import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as Spark
+import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as SparkFTP
+import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
@@ -92,9 +90,11 @@ import SlamData.Header.Gripper.Component as Gripper
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LSK
 import SlamData.Monad (Slam)
+import SlamData.Monad.License (notifyDaysRemainingIfNeeded)
 import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
+import SlamData.Quasar.Class (liftQuasar)
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo) as API
@@ -138,7 +138,7 @@ render state@{ version, sort, salt, path } =
           , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
           ]
       , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
-      , HH.slot' CS.cpNotify unit (NC.component $ NC.renderModeFromAccessType Editable) unit
+    , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
           $ HE.input HandleNotifications
       ]
     ⊕ (guard state.presentIntroVideo $> renderIntroVideo)
@@ -190,11 +190,22 @@ eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
     w ← H.lift Wiring.expose
-    whenM
-      (not <$> dismissedIntroVideoBefore)
-      (H.modify $ State._presentIntroVideo .~ true)
+    dismissedIntroVideoBefore >>= if _
+      then
+        void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
+      else
+        void $ fork $ liftQuasar QA.licenseInfo >>= case _ of
+          Right { status: QAT.LicenseValid } →
+            H.modify $ State._presentIntroVideo .~ true
+          Right { status: QAT.LicenseExpired } →
+            pure unit
+          Left _ →
+            liftQuasar QA.serverInfo >>= traverse_
+              (_.name >>> eq "Quasar-Advanced" >>> not >>> flip when (H.modify $ State._presentIntroVideo .~ true))
     H.subscribe $ busEventSource (flip HandleError ES.Listening) w.bus.globalError
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) w.auth.signIn
+    H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) w.bus.licenseProblems
+    notifyDaysRemainingIfNeeded
     pure next
   Transition page next → do
     H.modify
@@ -272,7 +283,8 @@ eval = case _ of
       Left err → case GE.fromQError err of
         Left msg →
           showDialog $ Dialog.Error
-            $ "There was a problem creating the directory: " ⊕ msg
+            $ "You can only create files or folders in data sources."
+            ⊕ "Please mount a data source, and then create your file or location inside the mounted data source."
         Right ge →
           GE.raiseGlobalError ge
       Right dirRes →
@@ -281,23 +293,9 @@ eval = case _ of
   MakeWorkspace next → do
     state ← H.get
     isMounted >>= if _
-      then do
-        let
-          newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
-        name ← API.getNewName state.path newWorkspaceName
-        case name of
-          Left err →
-            case GE.fromQError err of
-              Left msg →
-                -- This error isn't strictly true as we're not actually creating the
-                -- workspace here, but saying there was a problem "creating a name for the
-                -- workspace" would be a little strange
-                showDialog $ Dialog.Error
-                  $ "There was a problem creating the workspace: " ⊕ msg
-              Right ge →
-                GE.raiseGlobalError ge
-          Right name' → do
-            H.liftEff $ setLocation $ mkWorkspaceURL (state.path </> dir name') New
+       then
+         createWorkspace state.path \mkUrl →
+           H.liftEff $ setLocation $ mkUrl New
        else
          showDialog
            $ Dialog.Error
@@ -351,45 +349,39 @@ eval = case _ of
         pure next
   HandleDialog DialogMessage.Dismiss next →
     pure next
-  HandleDialog DialogMessage.MountSave next → do
-    mount ←
+  HandleDialog (DialogMessage.MountSave originalMount) next → do
+    mbMbMount ←
       H.query' CS.cpDialog unit $ H.request Dialog.SaveMount
-    for_ (join mount) \m → do
+    for_ (join mbMbMount) \newPath → do
       hideDialog
-      -- check if we just edited the mount for the current directory, as if
-      -- so, we don't want to add an item to the list for it
-      isCurrentMount ← case m of
-        R.Database path' → (\p → path' ≡ (p </> dir "")) <$> H.gets _.path
-        _ → pure false
-      if isCurrentMount
-        then
+      path ← H.gets _.path
+      case originalMount of
+        -- Refresh if mount is current directory
+        -- path </> dir "" is equal to path
+        Nothing | R.Database path ≡ newPath || (R.Database $ path </> dir "") ≡ newPath →
           H.liftEff Browser.reload
-        else do
-          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount m)
-          dismissMountHint
-          resort
-          checkIsMount =<< H.gets _.path
-          checkIsUnconfigured
+        -- Add new item to list
+        Nothing →
+          void $ H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
+        -- Rename current mount at path
+        Just oldPath@(R.Database p) | path ≡ p && oldPath /= newPath → do
+          handleItemMessage (Item.Open $ R.Mount newPath)
+          void $ API.delete (R.Mount oldPath)
+        -- Rename mount in listing
+        Just oldPath | oldPath /= newPath → do
+          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Remove $ Item (R.Mount oldPath)
+          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
+          void $ API.delete (R.Mount oldPath)
+        Just oldPath → do
+          pure unit
+    resort
+    checkIsMount =<< H.gets _.path
+    checkIsUnconfigured
     pure next
   HandleDialog DialogMessage.MountDelete next → do
-    mount ← H.query' CS.cpDialog unit $ H.request Dialog.SaveMount
-    for_ (join mount) (remove ∘ R.Mount)
+    mount ← R.Mount ∘ R.Database <$> H.gets _.path
+    remove mount
     H.liftEff Browser.reload
-    pure next
-  HandleDialog (DialogMessage.ExploreFile fp initialName) next → do
-    { path } ← H.get
-    let newWorkspaceName = initialName ⊕ "." ⊕ Config.workspaceExtension
-    name ← API.getNewName path newWorkspaceName
-    case name of
-      Left err →
-        case GE.fromQError err of
-          Left msg →
-            showDialog $ Dialog.Error
-            $ "There was a problem creating the workspace: " ⊕ msg
-          Right ge →
-            GE.raiseGlobalError ge
-      Right name' →
-        H.liftEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
     pure next
   HandleNotifications NC.ExpandGlobalMenu next → do
     gripperState ← queryHeaderGripper $ H.request Gripper.GetState
@@ -398,7 +390,8 @@ eval = case _ of
       _ ← queryHeaderGripper $ H.action Gripper.StopDragging
       pure unit
     pure next
-  HandleNotifications _ next →
+  HandleNotifications (NC.Fulfill trigger) next → do
+    H.liftAff $ AVar.putVar trigger unit
     pure next
   HandleSearch m next → do
     salt ← H.liftEff newSalt
@@ -409,6 +402,10 @@ eval = case _ of
       Search.Submit → do
         H.query' CS.cpSearch unit $ H.request Search.GetValue
     H.liftEff $ setLocation $ browseURL value st.sort salt st.path
+    pure next
+  HandleLicenseProblem problem next → do
+    _ ← H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Hidden
+    _ ← H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.LicenseProblem problem
     pure next
   SetLoading bool next → do
     _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetLoading bool
@@ -438,7 +435,8 @@ handleItemMessage = case _ of
     { sort, salt, path } ← H.get
     loc ← H.liftEff locationString
     for_ (preview R._filePath res) \fp →
-      showDialog $ Dialog.Explore fp
+      createWorkspace path \mkUrl →
+        H.liftEff $ setLocation $ mkUrl $ Exploring fp
     for_ (preview R._dirPath res) \dp →
       H.liftEff $ setLocation $ browseURL Nothing sort salt dp
     for_ (preview R._Workspace res) \wp →
@@ -457,18 +455,8 @@ handleItemMessage = case _ of
     path ← H.gets _.path
     loc ← map (_ ⊕ "/") $ H.liftEff locationString
     for_ (preview R._filePath res) \fp → do
-      let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
-      name ← API.getNewName path newWorkspaceName
-      case name of
-        Left err →
-          case GE.fromQError err of
-            Left m →
-              showDialog $ Dialog.Error
-                $ "There was a problem creating the workspace: " ⊕ m
-            Right ge →
-              GE.raiseGlobalError ge
-        Right name' → do
-          showDialog (Dialog.Share $ append loc $  mkWorkspaceURL (path </> dir name') $ Exploring fp)
+      createWorkspace path \mkUrl →
+        showDialog $ Dialog.Share $ append loc $ mkUrl $ Exploring fp
     for_ (preview R._Workspace res) \wp → do
       showDialog (Dialog.Share $ append loc $ mkWorkspaceURL wp (Load ReadOnly))
   Item.Download res →
@@ -540,6 +528,7 @@ dismissIntroVideo ∷ DSL Unit
 dismissIntroVideo = do
   LS.persist LSK.dismissedIntroVideoKey true
   H.modify $ State._presentIntroVideo .~ false
+  void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
 
 dismissedIntroVideoBefore ∷ DSL Boolean
 dismissedIntroVideoBefore =
@@ -651,10 +640,12 @@ configure m =
 
     fromConfig = case _ of
       QM.ViewConfig config → Mount.SQL2 (SQL2.stateFromViewInfo config)
+      QM.ModuleConfig config → Mount.SQL2 SQL2.initialState
       QM.MongoDBConfig config → Mount.MongoDB (MongoDB.fromConfig config)
       QM.CouchbaseConfig config → Mount.Couchbase (Couchbase.fromConfig config)
       QM.MarkLogicConfig config → Mount.MarkLogic (MarkLogic.fromConfig config)
-      QM.SparkHDFSConfig config → Mount.SparkHDFS (Spark.fromConfig config)
+      QM.SparkFTPConfig config → Mount.SparkFTP (SparkFTP.fromConfig config)
+      QM.SparkHDFSConfig config → Mount.SparkHDFS (SparkHDFS.fromConfig config)
       QM.SparkLocalConfig config → Mount.SparkLocal (SparkLocal.fromConfig config)
 
     raiseError err = case GE.fromQError err of
@@ -703,3 +694,21 @@ queryHeaderGripper =
 queryGlobalMenu ∷ ∀ a. GlobalMenu.Query a → DSL (Maybe a)
 queryGlobalMenu =
    H.query' CS.cpHeader unit ∘ Header.QueryGlobalMenu ∘ liftCoyoneda
+
+createWorkspace ∷ ∀ a. DirPath → ((Action → String) → DSL a) → DSL Unit
+createWorkspace path action = do
+  let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
+  name ← API.getNewName path newWorkspaceName
+  case name of
+    Left err →
+      case GE.fromQError err of
+        Left msg →
+          -- This error isn't strictly true as we're not actually creating the
+          -- workspace here, but saying there was a problem "creating a name for the
+          -- workspace" would be a little strange
+          showDialog $ Dialog.Error
+            $ "There was a problem creating the workspace: " ⊕ msg
+        Right ge →
+          GE.raiseGlobalError ge
+    Right name' →
+      void $ action (mkWorkspaceURL (path </> dir name'))

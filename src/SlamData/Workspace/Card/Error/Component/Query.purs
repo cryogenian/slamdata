@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,14 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Error.Component.Query
-  ( Query(..)
-  , initiality
-  ) where
+module SlamData.Workspace.Card.Error.Component.Query where
 
-import SlamData.Prelude
-
-type Query = Const Void
-
-initiality ∷ ∀ f. Query ~> f
-initiality = absurd ∘ unwrap
+data Query a
+  = Init a
+  | ToggleExpanded Boolean a

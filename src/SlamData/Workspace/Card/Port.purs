@@ -25,6 +25,7 @@ module SlamData.Workspace.Card.Port
   , PivotTablePort
   , SetupLabeledFormInputPort
   , SetupTextLikeFormInputPort
+  , GeoChartPort
   , tagPort
   , emptyOut
   , terminalOut
@@ -45,11 +46,15 @@ module SlamData.Workspace.Card.Port
   , _Metric
   , _ChartInstructions
   , _PivotTable
+  , _GeoChartPort
   , _filePath
+  , _osmURI
   , module SlamData.Workspace.Card.Port.VarMap
   ) where
 
 import SlamData.Prelude
+
+import Control.Monad.Aff (Aff)
 
 import Data.Argonaut (JCursor, Json)
 import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
@@ -58,10 +63,14 @@ import Data.Map as Map
 import Data.Set as Set
 import Data.StrMap as SM
 import Data.Path.Pathy as Path
+import Data.URI (URIRef)
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
+import Leaflet.Core as LC
+
+import SlamData.Effects (SlamDataEffects)
 import SlamData.Download.Model (DownloadOptions)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
@@ -122,6 +131,11 @@ type SetupTextLikeFormInputPort =
   , formInputType ∷ FormInputType
   }
 
+type GeoChartPort =
+  { build ∷ LC.Leaflet → Array Json → Aff SlamDataEffects (Array LC.Layer × Array LC.Control)
+  , osmURI ∷ URIRef
+  }
+
 data Port
   = Initial
   | Terminal
@@ -136,13 +150,14 @@ data Port
   | ValueMetric MetricPort
   | CategoricalMetric MetricPort
   | PivotTable PivotTablePort
+  | GeoChart GeoChartPort
 
 tagPort ∷ Port → String
 tagPort  = case _ of
   Initial → "Initial"
   Terminal → "Terminal"
   Variables → "Variables"
-  CardError err → "CardError: " ⊕ show err
+  CardError err → "CardError: " ⊕ CE.showCardError err
   ResourceKey str → "ResourceKey: " ⊕ show str
   SetupLabeledFormInput _ → "SetupLabeledFormInput"
   SetupTextLikeFormInput _ → "SetupTextLikeFormInput"
@@ -152,6 +167,7 @@ tagPort  = case _ of
   ValueMetric _ → "ValueMetric"
   CategoricalMetric _ → "CategoricalMetric"
   PivotTable _ → "PivotTable"
+  GeoChart _ → "GeoChart"
 
 filterResources ∷ DataMap → SM.StrMap Resource
 filterResources = SM.fold go SM.empty
@@ -242,3 +258,11 @@ _filePath = lens get set
 
     set (Path _) fp = Path fp
     set (View _ a b) fp = View fp a b
+
+_GeoChartPort ∷ Prism' Port GeoChartPort
+_GeoChartPort = prism' GeoChart case _ of
+  GeoChart u → Just u
+  _ → Nothing
+
+_osmURI ∷ Traversal' Port URIRef
+_osmURI = _GeoChartPort ∘ lens _.osmURI _{ osmURI = _ }

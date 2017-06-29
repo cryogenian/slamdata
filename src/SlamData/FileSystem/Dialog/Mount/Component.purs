@@ -30,7 +30,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Dialog.Component.Message (Message)
@@ -44,12 +43,15 @@ import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
-import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as Spark
+import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component as SparkFTP
+import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component as SparkLocal
+import SlamData.FileSystem.Resource as Resource
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as Api
-import SlamData.Render.CSS as RC
+import SlamData.Render.ClassName as CN
+import SlamData.Render.Icon as I
 
 import Utils.DOM as DOM
 
@@ -73,19 +75,19 @@ render state@{ name, new, parent } =
         [ modalHeader "Mount"
         , modalBody
             $ HH.div
-                [ HP.class_ RC.dialogMount ]
+                [ HP.class_ CN.dialogMount ]
                 $ maybe [] (pure ∘ fldName) state.name
                 <> (pure $ selScheme state)
                 <> maybe [] (pure ∘ settings) state.settings
                 <> maybe [] (pure ∘ errorMessage) state.message
         , modalFooter
-            $ (guard (not new ∧ isNothing parent) $> btnDelete)
-            <> [ progressSpinner state, btnMount state, btnCancel ]
+            $ (guard (not new ∧ isNothing parent) $> btnDelete state)
+            <> [ btnMount state, btnCancel state ]
         ]
       ]
   where
   settings ∷ MCS.MountSettings → HTML
-  settings ss = case ss of
+  settings = case _ of
     MCS.MongoDB initialState →
       HH.slot' CS.cpMongoDB unit (MongoDB.comp initialState) unit (HE.input_ Validate)
     MCS.SQL2 initialState →
@@ -94,19 +96,21 @@ render state@{ name, new, parent } =
       HH.slot' CS.cpCouchbase unit (Couchbase.comp initialState) unit (HE.input_ Validate)
     MCS.MarkLogic initialState →
       HH.slot' CS.cpMarkLogic unit (MarkLogic.comp initialState) unit (HE.input_ Validate)
+    MCS.SparkFTP initialState →
+      HH.slot' CS.cpSparkFTP unit (SparkFTP.comp initialState) unit (HE.input_ Validate)
     MCS.SparkHDFS initialState →
-      HH.slot' CS.cpSpark unit (Spark.comp initialState) unit (HE.input_ Validate)
+      HH.slot' CS.cpSparkHDFS unit (SparkHDFS.comp initialState) unit (HE.input_ Validate)
     MCS.SparkLocal initialState ->
       HH.slot' CS.cpSparkLocal unit (SparkLocal.comp initialState) unit (HE.input_ Validate)
 
 fldName ∷ String → HTML
 fldName name =
   HH.div
-    [ HP.classes [B.formGroup, RC.mountName] ]
+    [ HP.classes [CN.formGroup, CN.mountName] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Name" ]
         , HH.input
-            [ HP.class_ B.formControl
+            [ HP.class_ CN.formControl
             , HE.onValueInput $ HE.input (ModifyState ∘ set MCS._name ∘ Just)
             , HP.value name
             ]
@@ -116,11 +120,11 @@ fldName name =
 selScheme ∷ MCS.State → HTML
 selScheme state =
   HH.div
-    [ HP.class_ B.formGroup ]
+    [ HP.class_ CN.formGroup ]
     [ HH.label_
         [ HH.span_ [ HH.text "Mount type" ]
         , HH.select
-            [ HP.class_ B.formControl
+            [ HP.class_ CN.formControl
             , HE.onValueChange (HE.input SelectScheme ∘ MS.schemeFromString)
             ]
             $ [ HH.option_ [] ] <> schemeOptions state.settings
@@ -135,38 +139,59 @@ selScheme state =
 errorMessage ∷ String → HTML
 errorMessage msg =
   HH.div
-    [ HP.classes [ B.alert, B.alertDanger ] ]
+    [ HP.classes [ CN.alert, CN.alertDanger ] ]
     [ HH.text msg ]
 
-btnCancel ∷ HTML
-btnCancel =
+btnCancel ∷ MCS.State -> HTML
+btnCancel state@{ unMounting, saving } =
   HH.button
-    [ HP.classes [B.btn]
+    [ HP.classes [ CN.btn, CN.btnDefault ]
+    , HP.enabled $ not saving && not unMounting
+    , HP.type_ HP.ButtonButton
     , HE.onClick (HE.input_ RaiseDismiss)
     ]
     [ HH.text "Cancel" ]
 
-btnDelete ∷ HTML
-btnDelete =
+btnDelete ∷ MCS.State -> HTML
+btnDelete state@{ unMounting, saving } =
   HH.button
-    [ HP.classes [B.btn, HH.ClassName "btn-careful" ]
+    [ HP.classes
+        $ fold
+          [ [ CN.btn, CN.btnDefault, HH.ClassName "btn-careful" ]
+          , guard unMounting $> HH.ClassName "btn-loading"
+          ]
     , HE.onClick (HE.input_ RaiseMountDelete)
+    , HP.type_ HP.ButtonButton
+    , HP.enabled $ not saving && not unMounting
     ]
-    [ HH.text "Unmount" ]
+    $ fold
+      [ guard unMounting *> progressSpinner "Unmounting"
+      , pure $ HH.text "Unmount"
+      ]
 
 btnMount ∷ MCS.State → HTML
-btnMount state@{ new, saving } =
+btnMount state@{ new, saving, unMounting } =
   HH.button
-    [ HP.classes [B.btn, B.btnPrimary]
-    , HP.enabled (not saving && MCS.canSave state)
+    [ HP.classes
+        $ fold
+          [ [ CN.btn, CN.btnPrimary ]
+          , guard saving $> HH.ClassName "btn-loading"
+          ]
+    , HP.enabled $ not saving && not unMounting && MCS.canSave state
     ]
-    [ HH.text text ]
+    $ fold
+      [ guard saving *> progressSpinner loadingText
+      , pure $ HH.text text
+      ]
   where
   text = if new then "Mount" else "Save changes"
+  loadingText = if new then "Mounting" else "Saving changes"
 
-progressSpinner ∷ MCS.State → HTML
-progressSpinner { saving } =
-  HH.img [ HP.src "img/spin.gif", HP.class_ (RC.mountProgressSpinner saving) ]
+progressSpinner ∷ String → Array HTML
+progressSpinner alt =
+  [ I.spinner
+  , HH.span [ HP.class_ CN.srOnly ] [ HH.text alt ]
+  ]
 
 eval ∷ Query ~> DSL
 eval (ModifyState f next) = H.modify f *> validateInput $> next
@@ -183,7 +208,6 @@ eval (Save k) = do
   { new, parent, name } ← H.get
   let name' = fromMaybe "" name
   let parent' = fromMaybe rootDir parent
-  H.modify (MCS._saving .~ true)
   newName ←
     if new then Api.getNewName parent' name' else pure (pure name')
   case newName of
@@ -201,15 +225,16 @@ eval (Save k) = do
       H.modify (MCS._saving .~ false)
       pure $ k mount
 eval (PreventDefaultAndNotifySave ev next) = do
+  state ← H.get
   H.liftEff (DOM.preventDefault ev)
-  notifySave
+  H.modify (MCS._saving .~ true)
+  H.raise $ Message.MountSave $ Resource.Database <$> MCS.originalPath state
   pure next
 eval (Validate next) = validateInput $> next
-eval (RaiseMountDelete next) = H.raise Message.MountDelete $> next
-
-notifySave ∷ DSL Unit
-notifySave =
-  H.raise Message.MountSave
+eval (RaiseMountDelete next) = do
+  H.raise Message.MountDelete
+  H.modify (MCS._unMounting .~ true)
+  pure next
 
 handleQError ∷ Api.QError → DSL Unit
 handleQError err =
@@ -242,6 +267,7 @@ querySettings q = (map MCS.scheme <$> H.gets _.settings) >>= \s →
     Just MS.SQL2 → H.query' CS.cpSQL unit q
     Just MS.Couchbase → H.query' CS.cpCouchbase unit q
     Just MS.MarkLogic → H.query' CS.cpMarkLogic unit q
-    Just MS.SparkHDFS → H.query' CS.cpSpark unit q
+    Just MS.SparkFTP → H.query' CS.cpSparkFTP unit q
+    Just MS.SparkHDFS → H.query' CS.cpSparkHDFS unit q
     Just MS.SparkLocal → H.query' CS.cpSparkLocal unit q
     Nothing → pure Nothing

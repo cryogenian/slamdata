@@ -37,6 +37,5 @@ test =
     Interact.addColumn "measureTwo"
     Interact.browseTestFolder
     Interact.accessFile "временный файл"
-    Interact.exploreFile "Explore временный файл"
     Expect.tableColumnsAre ["measureOne", "measureTwo"]
     successMsg "Successfully saved data source card output to file"

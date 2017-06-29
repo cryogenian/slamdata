@@ -1,9 +1,12 @@
 .sd-card-ace {
   height: 100%;
-  > div { height: 100%; }
+
+  > div {
+    height: 100%;
+  }
 
   .ace_scroller.ace_scroll-left {
-    box-shadow: 9px 0 8px -8px rgba(0, 0, 0, 0.25) inset;
+    box-shadow: 0.9rem 0 0.8rem -0.8rem rgba(0, 0, 0, 0.25) inset;
   }
 
   .ace_editor {
@@ -11,7 +14,7 @@
     top: 0;
     left: 0;
     right: 0;
-    bottom: 1.5rem;
+    bottom: 2.4rem;
   }
 
   .sd-ace-inset-shadow {
@@ -20,9 +23,9 @@
     top: 0;
     left: 0;
     right: 0;
-    bottom: 1.5rem;
+    bottom: 2.4rem;
     z-index: 10;
-    box-shadow: 0px 0px 8px 0px rgba(0, 0, 0, 0.25) inset;
+    box-shadow: 0 0 0.8rem 0 rgba(0, 0, 0, 0.25) inset;
     pointer-events: none;
   }
 
@@ -31,7 +34,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 1.5rem;
+    height: 2.4rem;
     background: #f5f5f5;
     z-index: 9;
     text-align: right;
@@ -39,15 +42,14 @@
 
   .sd-ace-toolbar button {
     border: none;
-    border-left: 1px solid #ddd;
+    border-left: 0.1rem solid #ddd;
     background: #ebebeb;
     margin: 0;
-    padding: 0 10px;
+    padding: 0 1rem;
     height: 100%;
-    line-height: 1.5em;
     text-align: center;
     display: inline-block;
-    font-size: .75rem;
+    font-size: 1.2rem;
     color: #666;
 
     &:active {
@@ -64,7 +66,7 @@
     }
 
     .sd-icon {
-      margin-right: 4px;
+      margin-right: 0.4rem;
     }
   }
 

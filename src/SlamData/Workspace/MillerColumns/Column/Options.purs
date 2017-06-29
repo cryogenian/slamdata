@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.MillerColumns.Column.Options where
+module SlamData.Workspace.MillerColumns.Column.Options
+  ( ColumnComponent
+  , ItemComponent
+  , ColumnOptions(..)
+  , module SlamData.Workspace.MillerColumns.Column.Component.ColumnWidth
+  ) where
 
 import SlamData.Prelude
 
@@ -22,11 +27,17 @@ import Halogen as H
 import Halogen.HTML as HH
 
 import SlamData.Monad (Slam)
+import SlamData.Workspace.MillerColumns.Column.Component.ColumnWidth (ColumnWidth, defaultColumnWidth)
 import SlamData.Workspace.MillerColumns.Column.Component.Query as Column
 import SlamData.Workspace.MillerColumns.Column.Component.Item as Item
 
 type ColumnComponent a i o =
-  H.Component HH.HTML (Column.Query' a i o) (Maybe a) (Column.Message' a i o) Slam
+  H.Component
+    HH.HTML
+    (Column.Query' a i o)
+    (ColumnWidth × Maybe a)
+    (Column.Message' a i o)
+    Slam
 
 type ItemComponent a o =
   H.Component HH.HTML (Item.Query a o) Item.State (Item.Message' a o) Slam

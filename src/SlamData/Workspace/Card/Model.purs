@@ -30,6 +30,7 @@ import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
+import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
@@ -70,6 +71,9 @@ import SlamData.Workspace.Card.Setups.FormInput.Text.Model as SetupText
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as SetupTextLike
 import SlamData.Workspace.Card.Setups.FormInput.Time.Model as SetupTime
 import SlamData.Workspace.Card.StructureEditor.Model as StructureEditor
+import SlamData.Workspace.Card.Setups.Geo.Marker.Model as SetupGeoMarker
+import SlamData.Workspace.Card.Setups.Geo.Heatmap.Model as SetupGeoHeatmap
+import SlamData.Workspace.Card.Geo.Model as Geo
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Tabs.Model as Tabs
 import SlamData.Workspace.Card.Variables.Model as Variables
@@ -116,9 +120,12 @@ data AnyCardModel
   | SetupTime SetupTime.Model
   | SetupDatetime SetupDatetime.Model
   | SetupStatic SetupStatic.Model
+  | SetupGeoMarker SetupGeoMarker.Model
+  | SetupGeoHeatmap SetupGeoHeatmap.Model
   | FormInput FormInput.Model
   | Tabs Tabs.Model
   | StructureEditor StructureEditor.Model
+  | Geo Geo.Model
 
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
   arbitrary =
@@ -161,6 +168,9 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , FormInput <$> FormInput.genModel
       , Tabs <$> Tabs.genModel
       , StructureEditor <$> StructureEditor.genModel
+      , SetupGeoMarker <$> SetupGeoMarker.genModel
+      , SetupGeoHeatmap <$> SetupGeoHeatmap.genModel
+      , Geo <$> Geo.genModel
       ]
 
 updateCardModel ∷ AnyCardModel → AnyCardModel → AnyCardModel
@@ -216,6 +226,9 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
     FormInput x, FormInput y → FormInput.eqModel x y
     Tabs x, Tabs y → Tabs.eqModel x y
     StructureEditor x, StructureEditor y → x == y
+    SetupGeoMarker x, SetupGeoMarker y → SetupGeoMarker.eqModel x y
+    SetupGeoHeatmap x, SetupGeoHeatmap y → SetupGeoHeatmap.eqModel x y
+    Geo x, Geo y → Geo.eqModel x y
     _, _ → false
 
 
@@ -248,6 +261,7 @@ modelCardType = case _ of
   BuildCandlestick _ → CT.ChartOptions Candlestick
   BuildParallel _ → CT.ChartOptions Parallel
   Chart _ → CT.Chart
+  Geo _ → CT.GeoChart
   Markdown _ → CT.Markdown
   Table _ → CT.Table
   Download → CT.Download
@@ -269,6 +283,8 @@ modelCardType = case _ of
   FormInput _ → CT.FormInput
   Tabs _ → CT.Tabs
   StructureEditor _ → CT.StructureEditor
+  SetupGeoMarker _ → CT.SetupGeoChart GcT.Marker
+  SetupGeoHeatmap _ → CT.SetupGeoChart GcT.Heatmap
 
 encode ∷ AnyCardModel → J.Json
 encode card =
@@ -288,6 +304,7 @@ encodeCardModel = case _ of
   Ace mode model → Ace.encode model
   Search txt → J.encodeJson txt
   Chart model → Chart.encode model
+  Geo model → Geo.encode model
   Markdown model → MD.encode model
   Table model → JT.encode model
   Download → J.jsonEmptyObject
@@ -326,6 +343,8 @@ encodeCardModel = case _ of
   FormInput model → FormInput.encode model
   Tabs model → Tabs.encode model
   StructureEditor model → StructureEditor.encode model
+  SetupGeoMarker model → SetupGeoMarker.encode model
+  SetupGeoHeatmap model → SetupGeoHeatmap.encode model
 
 decodeCardModel
   ∷ CT.CardType
@@ -373,7 +392,9 @@ decodeCardModel = case _ of
   CT.Draftboard → map Draftboard ∘ DB.decode
   CT.Tabs → map Tabs ∘ Tabs.decode
   CT.StructureEditor → map StructureEditor ∘ StructureEditor.decode
-
+  CT.SetupGeoChart GcT.Marker → map SetupGeoMarker ∘ SetupGeoMarker.decode
+  CT.SetupGeoChart GcT.Heatmap → map SetupGeoHeatmap ∘ SetupGeoHeatmap.decode
+  CT.GeoChart → map Geo ∘ Geo.decode
   where
     -- For backwards compat
     decodeOpen j =
@@ -423,6 +444,9 @@ cardModelOfType (port × varMap) = case _ of
   CT.Draftboard → Draftboard DB.emptyModel
   CT.Tabs → Tabs Tabs.initialModel
   CT.StructureEditor → StructureEditor StructureEditor.initialModel
+  CT.SetupGeoChart GcT.Marker → SetupGeoMarker SetupGeoMarker.initialModel
+  CT.SetupGeoChart GcT.Heatmap → SetupGeoHeatmap SetupGeoHeatmap.initialModel
+  CT.GeoChart → Geo Geo.initialModel
 
 singletonDraftboard ∷ DeckId → AnyCardModel
 singletonDraftboard deckId =
@@ -601,4 +625,14 @@ _BuildPunchCard = prism' BuildPunchCard case _ of
 _BuildParallel ∷ Prism' AnyCardModel BuildParallel.Model
 _BuildParallel = prism' BuildParallel case _ of
   BuildParallel a → Just a
+  _ → Nothing
+
+_SetupGeoMarker ∷ Prism' AnyCardModel SetupGeoMarker.Model
+_SetupGeoMarker = prism' SetupGeoMarker case _ of
+  SetupGeoMarker a → Just a
+  _ → Nothing
+
+_SetupGeoHeatmap ∷ Prism' AnyCardModel SetupGeoHeatmap.Model
+_SetupGeoHeatmap = prism' SetupGeoHeatmap case _ of
+  SetupGeoHeatmap a → Just a
   _ → Nothing

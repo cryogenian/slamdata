@@ -18,36 +18,33 @@ module SlamData.FileSystem.Dialog.Mount.MarkLogic.Component
   ( comp
   , Query
   , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
-  , module MCS
+  , module S
   ) where
 
 import SlamData.Prelude
 
 import Data.Path.Pathy (dir, (</>))
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Themes.Bootstrap3 as B
-
 import Quasar.Mount as QM
 import Quasar.Mount.MarkLogic (Format(..))
-
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
-import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MCS
+import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
+import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as S
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Mount as API
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
-type Query = SettingsQuery MCS.State
+type Query = SettingsQuery S.State
 
 type HTML = H.ComponentHTML Query
 
-comp ∷ MCS.State → H.Component HH.HTML Query Unit SettingsMessage Slam
+comp ∷ S.State → H.Component HH.HTML Query Unit SettingsMessage Slam
 comp initialState =
   H.component
     { initialState: const initialState
@@ -56,24 +53,24 @@ comp initialState =
     , receiver: const Nothing
     }
 
-render ∷ MCS.State → HTML
+render ∷ S.State → HTML
 render state =
   HH.div
-    [ HP.class_ Rc.mountMarkLogic ]
-    [ MCR.section "Server" [ MCR.host state MCS._host' ]
+    [ HP.class_ CN.mountMarkLogic ]
+    [ MCR.section "Server" [ MCR.host state S._host' ]
     , MCR.section "Authentication"
         [ HH.div
-            [ HP.class_ Rc.mountUserInfo ]
-            [ MCR.label "Username" [ MCR.input state MCS._user [] ]
-            , MCR.label "Password" [ MCR.input state MCS._password [ HP.type_ HP.InputPassword ] ]
+            [ HP.class_ CN.mountUserInfo ]
+            [ MCR.label "Username" [ MCR.input state S._user [] ]
+            , MCR.label "Password" [ MCR.input state S._password [ HP.type_ HP.InputPassword ] ]
             ]
         ]
     , MCR.section "Root"
         [ HH.div
-            [ HP.classes [B.formGroup, Rc.mountPath] ]
-            [ MCR.label "Database" [ MCR.input state MCS._path [] ] ]
+            [ HP.classes [CN.formGroup, CN.mountPath] ]
+            [ MCR.label "Database" [ MCR.input state S._path [] ] ]
         , HH.div
-            [ HP.class_ Rc.mountFormat ]
+            [ HP.class_ CN.mountFormat ]
             [ HH.label_ [ HH.span_ [ HH.text "Format" ] ]
             , formatRadio "XML" XML
             , formatRadio "JSON" JSON
@@ -94,18 +91,18 @@ render state =
       ]
 
 
-eval ∷ Query ~> H.ComponentDSL MCS.State Query SettingsMessage Slam
+eval ∷ Query ~> H.ComponentDSL S.State Query SettingsMessage Slam
 eval = case _ of
   ModifyState f next → do
     H.modify f
     H.raise Modified
     pure next
   Validate k →
-    k <<< either Just (const Nothing) <<< MCS.toConfig <$> H.get
+    k <<< either Just (const Nothing) <<< MCS.vToE <<< S.toConfig <$> H.get
   Submit parent name k →
     k <$> runExceptT do
       st ← lift H.get
-      config ← except $ lmap QE.msgToQError $ MCS.toConfig st
+      config ← except $ lmap QE.msgToQError $ MCS.vToE $ S.toConfig st
       let path = parent </> dir name
       ExceptT $ API.saveMount (Left path) (QM.MarkLogicConfig config)
       pure $ Database path

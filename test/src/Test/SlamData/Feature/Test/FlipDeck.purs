@@ -15,7 +15,7 @@ import Test.Feature.ActionSequence as Actions
 flipDeckScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
 flipDeckScenario =
   scenario
-    "Deck backside"
+    "Deck flipside"
     (Interact.createWorkspaceInTestFolder "Flipped deck")
     (Interact.deleteFileInTestFolder "Flipped deck.slam")
 
@@ -39,9 +39,9 @@ test = do
   flipDeckScenario "Flip deck" [] do
     mkDeckWithLastTable
     Interact.flipDeck
-    Expect.backsideMenuPresented
+    Expect.flipsideMenuPresented
     Interact.flipDeck
-    Expect.backsideMenuNotPresented
+    Expect.flipsideMenuNotPresented
     Expect.tableColumnsAre ["measureOne", "measureTwo"]
     successMsg "Ok, 'flip deck' button works"
 
@@ -49,11 +49,11 @@ test = do
   flipDeckScenario "Trash last card" [] do
     mkDeckWithLastTable
     Interact.flipDeck
-    Expect.backsideMenuPresented
+    Expect.flipsideMenuPresented
     Interact.trashActiveOrLastCard
     -- Note, user should see that last|active card has been deleted
     -- That's why we immediately flip deck after trashing
-    Expect.backsideMenuNotPresented
+    Expect.flipsideMenuNotPresented
     Expect.noTablesPresented
     successMsg "Successfuly deleted last|active card"
 
@@ -67,28 +67,28 @@ test = do
     warnMsg "https://github.com/slamdata/slamdata/issues/1077, we don't know if workspace has been saved already"
     later (Milliseconds 1000.0) $ pure unit
     Interact.flipDeck
-    Expect.backsideMenuPresented
+    Expect.flipsideMenuPresented
     Interact.publishDeck
     Interact.accessPublishingUrl
     Expect.textInDisplayMarkdownCard "Quarterly"
     Interact.launchSlamData
     successMsg "Successfully shared deck"
 
-  flipDeckScenario "Filter backside buttons" [] do
+  flipDeckScenario "Filter flipside buttons" [] do
     mkDeckWithLastTable
     Interact.flipDeck
-    Expect.backsideMenuPresented
+    Expect.flipsideMenuPresented
     Interact.filterDeckAndCardActions "delete c"
     Expect.onlyTrashActionPresented
     sequence $ Actions.sendBackspaces 8
-    Expect.backsideMenuPresented
+    Expect.flipsideMenuPresented
     sequence $ Actions.sendBackspaces 8
-    Expect.backsideMenuPresented
+    Expect.flipsideMenuPresented
     Interact.filterDeckAndCardActions "emb"
     Expect.onlyEmbedActionPresented
     sequence $ Actions.sendBackspaces 5
-    Expect.backsideMenuPresented
+    Expect.flipsideMenuPresented
     Interact.filterDeckAndCardActions "ub"
     Expect.onlyPublishActionPresented
     sequence $ Actions.sendBackspaces 5
-    successMsg "Successfully filtered backside actions"
+    successMsg "Successfully filtered flipside actions"

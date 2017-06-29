@@ -39,3 +39,4 @@ modalBody = classedDiv (H.ClassName "deck-dialog-body") <<< pure
 
 modalFooter :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
 modalFooter = classedDiv (H.ClassName "deck-dialog-footer")
+

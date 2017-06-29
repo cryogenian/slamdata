@@ -56,7 +56,7 @@ decodeItem = decodeJson >=> \obj → do
   weight ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "weight"
   pure { source, target, weight }
 
-eval ∷ ∀ m. BCE.ChartSetupEval ModelR m
+eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
 eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildSankey
 
 buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)

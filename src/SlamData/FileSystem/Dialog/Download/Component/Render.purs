@@ -26,7 +26,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import Global as Global
 
@@ -40,7 +39,7 @@ import SlamData.FileSystem.Dialog.Download.Component.State (State)
 import SlamData.Quasar (reqHeadersToJSON, encodeURI)
 import SlamData.FileSystem.Resource (resourcePath, isFile)
 import SlamData.Render.Common (fadeWhen)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.ClassName as CN
 
 render ∷ State → H.ComponentHTML Query
 render state =
@@ -50,7 +49,7 @@ render state =
         [ modalHeader "Download"
         , modalBody
             $ HH.div
-                [ HP.classes [ Rc.dialogDownload ] ]
+                [ HP.classes [ CN.dialogDownload ] ]
                 [ resField state
                 , Rd.fldName (D.shouldCompress state) state.options (either id id state.targetName) TargetTyped
                 , options state
@@ -81,7 +80,7 @@ render state =
 resField ∷ State → H.ComponentHTML Query
 resField state =
   HH.div
-    [ HP.classes [ B.formGroup, Rc.downloadSource, B.clearfix ] ]
+    [ HP.classes [ CN.formGroup, CN.downloadSource ] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Source" ]
         , HH.text (resourcePath state.source)
@@ -91,7 +90,7 @@ resField state =
 chkCompress ∷ State → H.ComponentHTML Query
 chkCompress state =
   HH.div
-    [ HP.classes [ B.formGroup ] ]
+    [ HP.classes [ CN.formGroup ] ]
     [ HH.label_
       [ HH.span_ [ HH.text "Compress" ]
       , HH.input
@@ -106,9 +105,9 @@ chkCompress state =
 options ∷ State → H.ComponentHTML Query
 options state =
   let opts = state.options
-      active = [ HP.class_ B.active ]
-  in HH.div [ HP.classes [ B.formGroup ] ]
-     [ HH.ul [ HP.classes [ B.nav, B.navTabs ] ]
+      active = [ HP.class_ CN.active ]
+  in HH.div [ HP.classes [ CN.formGroup ] ]
+     [ HH.ul [ HP.classes [ CN.nav, CN.navTabs ] ]
        [ HH.li (if isLeft opts then active else [ ])
          [ HH.a [ HE.onClick (HE.input_ $ SetOutput D.CSV)
                ]
@@ -126,7 +125,7 @@ options state =
 message ∷ State → H.ComponentHTML Query
 message state =
   let msg = state.error
-  in HH.div [ HP.classes $ [ B.alert, B.alertDanger, B.alertDismissable ]
+  in HH.div [ HP.classes $ [ CN.alert, CN.alertDanger, CN.alertDismissible ]
              ⊕ fadeWhen (isNothing msg)
            ]
      $ maybe [ ] (pure ∘ HH.text) msg
@@ -134,7 +133,7 @@ message state =
 btnCancel ∷ State → H.ComponentHTML Query
 btnCancel state =
   HH.button
-    [ HP.classes [ B.btn ]
+    [ HP.classes [ CN.btn, CN.btnDefault ]
     , HP.type_ HP.ButtonButton
     , HE.onClick (HE.input_ RaiseDismiss)
     , ARIA.label "Cancel download"
@@ -146,9 +145,9 @@ btnDownload ∷ State → H.ComponentHTML Query
 btnDownload state =
   let disabled = isJust $ state.error
   in HH.button
-         [ HP.classes $ [ B.btn, B.btnPrimary ]
+         [ HP.classes $ [ CN.btn, CN.btnPrimary ]
            ⊕ if disabled
-              then [ B.disabled ]
+              then [ CN.disabled ]
               else [ ]
          , HP.disabled disabled
          , ARIA.label "Proceed download"

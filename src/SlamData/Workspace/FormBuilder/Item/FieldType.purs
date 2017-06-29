@@ -79,7 +79,7 @@ _FieldTypeDisplayName ∷ Lens.Prism' String FieldType
 _FieldTypeDisplayName = Lens.prism inj proj
   where
     inj StringFieldType = "Text"
-    inj DateTimeFieldType = "DateTime"
+    inj DateTimeFieldType = "Timestamp"
     inj DateFieldType = "Date"
     inj TimeFieldType = "Time"
     inj IntervalFieldType = "Interval"
@@ -87,12 +87,12 @@ _FieldTypeDisplayName = Lens.prism inj proj
     inj NumericFieldType = "Numeric"
     inj ObjectIdFieldType = "Object ID"
     inj ArrayFieldType = "Array"
-    inj ObjectFieldType = "Object"
+    inj ObjectFieldType = "Map"
     inj SqlExprFieldType = "SQL² Expression"
     inj SqlIdentifierFieldType = "SQL² Identifier"
 
     proj "Text" = Right StringFieldType
-    proj "DateTime" = Right DateTimeFieldType
+    proj "Timestamp" = Right DateTimeFieldType
     proj "Date" = Right DateFieldType
     proj "Time" = Right TimeFieldType
     proj "Interval" = Right IntervalFieldType
@@ -100,7 +100,7 @@ _FieldTypeDisplayName = Lens.prism inj proj
     proj "Numeric" = Right NumericFieldType
     proj "Object ID" = Right ObjectIdFieldType
     proj "Array" = Right ArrayFieldType
-    proj "Object" = Right ObjectFieldType
+    proj "Map" = Right ObjectFieldType
     proj "SQL² Identifier" = Right SqlIdentifierFieldType
     proj "SQL² Expression" = Right SqlExprFieldType
     proj t = Left t

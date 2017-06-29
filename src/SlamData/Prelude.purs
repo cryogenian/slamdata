@@ -48,6 +48,7 @@ module SlamData.Prelude
   , module Data.Monoid
   , module Data.Traversable
   , module Data.Tuple
+  , module Data.Variant
   , module Data.Void
   , module Debug.Trace
   , module Partial.Unsafe
@@ -84,6 +85,7 @@ import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap, ala, alaF)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
+import Data.Variant (SProxy(..), Variant)
 import Data.Void (Void, absurd)
 
 import Debug.Trace (spy, trace, traceA, traceAny, traceAnyA, traceAnyM, traceShow, traceShowA, traceShowM)

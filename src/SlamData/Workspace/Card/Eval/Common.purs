@@ -35,9 +35,9 @@ import SlamData.Workspace.Card.Port as Port
 import SqlSquared as Sql
 
 validateResources
-  ∷ ∀ m t
+  ∷ ∀ m v t
   . MonadAff SlamDataEffects m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (qerror ∷ CE.QError | v)) m
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
   ⇒ Traversable t
@@ -47,7 +47,7 @@ validateResources fs = do
   res ← sequenceQuasar (map (\path → Tuple path <$> QF.fileMetadata path) fs)
   for_ res case _ of
     path × Left reason →
-      throwError $ CE.quasarToCardError $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
+      CE.throwQError $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason
     _ →
       pure unit
 

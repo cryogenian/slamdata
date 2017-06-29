@@ -18,11 +18,23 @@ module SlamData.FileSystem.Listing.Item.Component.CSS where
 
 import Halogen.HTML.Core (ClassName(..))
 
+fileSystemItem ∷ ClassName
+fileSystemItem = ClassName "file-system-item"
+
+fileSystemItemActions ∷ ClassName
+fileSystemItemActions = ClassName "file-system-item-actions"
+
 selected ∷ ClassName
 selected = ClassName "selected"
 
 phantom ∷ ClassName
 phantom = ClassName "phantom"
+
+phantomLabel ∷ ClassName
+phantomLabel = ClassName "phantom-label"
+
+phantomSpinner ∷ ClassName
+phantomSpinner = ClassName "phantom-spinner"
 
 itemIcon ∷ ClassName
 itemIcon = ClassName "item-icon"

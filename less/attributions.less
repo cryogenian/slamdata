@@ -1,26 +1,29 @@
 .sd-attributions {
+  // because this is in the menu, we need to override the white
+  color: rgb(51, 51, 51);
+
   .deck-dialog-body {
-    max-height: 200px;
+    max-height: 20rem;
+    max-height: 45vh;
     overflow: auto;
   }
 
   dt {
-    font-weight: bold;
-    font-size: .7rem;
-    margin-top: 1rem;
-  }
+    font-weight: 700;
+    font-size: 1.2rem;
 
-  dt:first-child {
-    margin-top: 0;
+    &:not(:first-of-type) {
+      margin-top: 1em;
+    }
   }
 
   dd {
-    font-size: .6rem;
     display: inline-block;
+    margin-right: 0.25em;
+    padding: 0.25em 0.5em;
+    border-radius: 0.25rem;
     background: #eee;
-    margin-right: 2px;
-    padding: 2px 5px;
-    border-radius: 2px;
     color: #444;
+    font-size: 1rem;
   }
 }

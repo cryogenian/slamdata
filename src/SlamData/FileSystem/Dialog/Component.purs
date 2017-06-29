@@ -29,18 +29,19 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 import Network.HTTP.RequestHeader (RequestHeader)
 
+import Quasar.Advanced.Types as QAT
+
 import SlamData.Dialog.Error.Component as Error
+import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
+import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Dialog.Download.Component as Download
-import SlamData.FileSystem.Dialog.Explore.Component as Explore
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
-import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Resource (Resource, Mount)
+import SlamData.License as License
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Deck.Component.CSS as CSS
-
-import Utils.Path (FilePath)
 
 data Dialog
   = Error String
@@ -48,7 +49,7 @@ data Dialog
   | Rename Resource
   | Mount Mount.Input
   | Download Resource (Array RequestHeader)
-  | Explore FilePath
+  | LicenseProblem License.LicenseProblem
 
 type State = Maybe Dialog
 
@@ -66,10 +67,9 @@ type ChildQuery
   ⨁ Rename.Query
   ⨁ Download.Query
   ⨁ Mount.Query
-  ⨁ Explore.Query
   ⨁ Const Void
 
-type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Void
+type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Void
 
 component ∷ H.Component HH.HTML Query Unit Message Slam
 component =
@@ -107,8 +107,12 @@ render state =
       HH.slot' CP.cp4 unit Download.component { resource, headers } (HE.input HandleChild)
     Mount input →
       HH.slot' CP.cp5 unit Mount.component input (HE.input HandleChild)
-    Explore fp →
-      HH.slot' CP.cp6 unit Explore.component fp (HE.input HandleChild)
+    LicenseProblem (License.Expired licenseType) →
+      case licenseType of
+        QAT.Advanced → advancedLicenseExpired
+        QAT.AdvancedTrial → advancedTrialLicenseExpired
+    LicenseProblem License.Invalid →
+      licenseInvalid
 
 eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 eval = case _ of

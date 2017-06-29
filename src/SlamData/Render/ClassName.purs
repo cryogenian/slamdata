@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Render.CSS where
+module SlamData.Render.ClassName where
 
 import Halogen.HTML.Core (ClassName(..))
 
@@ -102,9 +102,6 @@ cardInput = ClassName "card-input"
 
 aceContainer ∷ ClassName
 aceContainer = ClassName "ace-container"
-
-cardFailures ∷ ClassName
-cardFailures = ClassName "card-failures"
 
 pageSize ∷ ClassName
 pageSize = ClassName "page-size"
@@ -246,3 +243,127 @@ form = ClassName "sd-form"
 
 formButton ∷ ClassName
 formButton = ClassName "sd-form-button"
+
+
+-- Bootstrap classnames
+-- (Would be nice to be able to append ClassNames https://github.com/slamdata/purescript-halogen/issues/451)
+
+formControl ∷ ClassName
+formControl = ClassName "form-control"
+
+formControlFeedback ∷ ClassName
+formControlFeedback = ClassName "form-control-feedback"
+
+formGroup ∷ ClassName
+formGroup = ClassName "form-group"
+
+inputGroup ∷ ClassName
+inputGroup = ClassName "input-group"
+
+inputGroupBtn ∷ ClassName
+inputGroupBtn = ClassName "input-group-btn"
+
+controlLabel ∷ ClassName
+controlLabel = ClassName "control-label"
+
+checkbox ∷ ClassName
+checkbox = ClassName "checkbox"
+
+radio ∷ ClassName
+radio = ClassName "radio"
+
+hasError ∷ ClassName
+hasError = ClassName "has-error"
+
+hasFeedback ∷ ClassName
+hasFeedback = ClassName "has-feedback"
+
+hasSuccess ∷ ClassName
+hasSuccess = ClassName "has-success"
+
+btn ∷ ClassName
+btn = ClassName "btn"
+
+btnXs ∷ ClassName
+btnXs = ClassName "btn-xs"
+
+btnDefault ∷ ClassName
+btnDefault = ClassName "btn-default"
+
+btnPrimary ∷ ClassName
+btnPrimary = ClassName "btn-primary"
+
+btnInfo ∷ ClassName
+btnInfo = ClassName "btn-info"
+
+btnGroup ∷ ClassName
+btnGroup = ClassName "btn-group"
+
+listGroup ∷ ClassName
+listGroup = ClassName "list-group"
+
+listGroupItem ∷ ClassName
+listGroupItem = ClassName "list-group-item"
+
+alert ∷ ClassName
+alert = ClassName "alert"
+
+alertDismissible ∷ ClassName
+alertDismissible = ClassName "alert-dismissible"
+
+alertInfo ∷ ClassName
+alertInfo = ClassName "alert-info"
+
+alertDanger ∷ ClassName
+alertDanger = ClassName "alert-danger"
+
+alertWarning ∷ ClassName
+alertWarning = ClassName "alert-warning"
+
+table ∷ ClassName
+table = ClassName "table"
+
+tableBordered ∷ ClassName
+tableBordered = ClassName "table-bordered"
+
+tableStriped ∷ ClassName
+tableStriped = ClassName "table-striped"
+
+nav ∷ ClassName
+nav = ClassName "nav"
+
+navTabs ∷ ClassName
+navTabs = ClassName "nav-tabs"
+
+panel ∷ ClassName
+panel = ClassName "panel"
+
+panelDefault ∷ ClassName
+panelDefault = ClassName "panel-default"
+
+panelHeading ∷ ClassName
+panelHeading = ClassName "panel-heading"
+
+panelBody ∷ ClassName
+panelBody = ClassName "panel-body"
+
+active ∷ ClassName
+active = ClassName "active"
+
+hidden ∷ ClassName
+hidden = ClassName "hidden"
+
+disabled ∷ ClassName
+disabled = ClassName "disabled"
+
+caret ∷ ClassName
+caret = ClassName "caret"
+
+fade :: ClassName
+fade = ClassName "fade"
+
+in_ :: ClassName
+in_ = ClassName "in"
+
+srOnly ∷ ClassName
+srOnly = ClassName "hidden"

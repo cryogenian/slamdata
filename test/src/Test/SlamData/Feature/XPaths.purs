@@ -11,7 +11,7 @@ playButton ∷ String
 playButton = XPath.anyWithExactAriaLabel "Play"
 
 renameButton ∷ String
-renameButton = XPath.anyWithExactText "Rename"
+renameButton = "button" `XPath.nodeWithExactText` "Rename"
 
 renameDeck ∷ String
 renameDeck = XPath.anyWithExactAriaLabel "Rename deck"
@@ -377,3 +377,8 @@ enabledNextCardGripper =
 deck :: String
 deck =
   XPath.anyWithExactAriaLabel $ "Deck"
+
+followingLastPreviousCardGripper :: String -> String
+followingLastPreviousCardGripper = XPath.following lastPreviousCardGripperXPath
+  where
+  lastPreviousCardGripperXPath = XPath.last $ XPath.anywhere previousCardGripper

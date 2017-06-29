@@ -20,6 +20,8 @@ module SlamData.Workspace.Card.Eval.State
   , AnalysisR
   , AutoSelectR
   , TableR
+  , GeoR
+  , PivotTableR
   , _Analysis
   , _Axes
   , _Records
@@ -28,21 +30,34 @@ module SlamData.Workspace.Card.Eval.State
   , _AutoSelect
   , _ActiveTab
   , _Table
+  , _PivotTable
   , _ChartOptions
+  , _Geo
+  , _Leaflet
+  , _BuildLeaflet
+  , _Layers
+  , _Controls
   ) where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff (Aff)
+
 import Data.Argonaut (Json)
 import Data.Array as Array
-import Data.Lens (Prism', prism', Traversal', wander)
+import Data.Lens (Prism', prism', Traversal', wander, lens)
 import Data.Set as Set
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
+import Leaflet.Core as LC
+
+import SlamData.Effects (SlamDataEffects)
+
+import SlamData.Workspace.Card.Chart.PivotTableRenderer.Common (PTree)
 import SlamData.Workspace.Card.Model as CM
-import SlamData.Workspace.Card.Port (Resource)
+import SlamData.Workspace.Card.Port (Resource, PivotTablePort)
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
@@ -65,16 +80,39 @@ type TableR =
   , size ∷ Int
   }
 
+
+type GeoR =
+  { leaflet ∷ Maybe LC.Leaflet
+  , build ∷ LC.Leaflet → Aff SlamDataEffects (Array LC.Layer × Array LC.Control)
+  , layers ∷ Array LC.Layer
+  , controls ∷ Array LC.Control
+  }
+
+type PivotTableR =
+  { resource ∷ Resource
+  , result ∷ Array Json
+  , buckets ∷ PTree Json Json
+  , pageIndex ∷ Int
+  , pageSize ∷ Int
+  , pageCount ∷ Int
+  , count ∷ Int
+  , options ∷ PivotTablePort
+  }
+
 data EvalState
   = Analysis AnalysisR
   | AutoSelect AutoSelectR
   | ActiveTab Int
   | Table TableR
+  | PivotTable PivotTableR
   | ChartOptions (DSL OptionI)
+  | Geo GeoR
 
 initialEvalState ∷ CM.AnyCardModel → Maybe EvalState
 initialEvalState = case _ of
   CM.Tabs { tabs } → ActiveTab <$> (guard (Array.length tabs > 0) $> 0)
+  CM.Geo _ →
+    Just $ Geo { leaflet: Nothing, build: const $ pure $ [ ] × [ ] , layers: [ ], controls: [ ] }
   _ → Nothing
 
 _Analysis ∷ Prism' EvalState AnalysisR
@@ -118,6 +156,11 @@ _Table = prism' Table case _ of
   Table r → Just r
   _ → Nothing
 
+_PivotTable ∷ Prism' EvalState PivotTableR
+_PivotTable = prism' PivotTable case _ of
+  PivotTable r → Just r
+  _ → Nothing
+
 _ChartOptions ∷ Prism' EvalState (DSL OptionI)
 _ChartOptions = prism' ChartOptions case _ of
   ChartOptions r → Just r
@@ -127,3 +170,21 @@ _ResourceSize ∷ Traversal' EvalState Int
 _ResourceSize = wander \f s → case s of
   Table r@{ size } → Table ∘ r { size = _ } <$> f size
   _ → pure s
+
+_Geo ∷ Prism' EvalState GeoR
+_Geo = prism' Geo case _ of
+  Geo r → Just r
+  _ → Nothing
+
+_Leaflet ∷ Traversal' EvalState (Maybe LC.Leaflet)
+_Leaflet = _Geo ∘ lens _.leaflet _{ leaflet = _ }
+
+_BuildLeaflet
+  ∷ Traversal' EvalState (LC.Leaflet → Aff SlamDataEffects (Array LC.Layer × Array LC.Control))
+_BuildLeaflet = _Geo ∘ lens _.build _{ build = _ }
+
+_Layers ∷ Traversal' EvalState (Array LC.Layer)
+_Layers = _Geo ∘ lens _.layers _{ layers = _ }
+
+_Controls ∷ Traversal' EvalState (Array LC.Control)
+_Controls = _Geo ∘ lens _.controls _{ controls = _ }

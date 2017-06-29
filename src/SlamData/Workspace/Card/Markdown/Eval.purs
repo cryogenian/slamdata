@@ -21,9 +21,13 @@ import SlamData.Prelude
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Writer.Class (class MonadTell)
 import Data.Array as A
+import Data.HugeNum as HN
 import Data.Identity (Identity)
+import Data.Int as Int
 import Data.Json.Extended as EJSON
 import Data.List as L
+import Data.List.NonEmpty as NEL
+import Data.NonEmpty ((:|))
 import Data.String as S
 import Data.StrMap as SM
 import Matryoshka (project, transAna)
@@ -34,6 +38,7 @@ import SlamData.SqlSquared.Tagged as SqlT
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Markdown.Component.State as MDS
+import SlamData.Workspace.Card.Markdown.Error (MarkdownError(..), throwMarkdownError)
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 import SqlSquared as Sql
@@ -42,6 +47,7 @@ import Text.Markdown.SlamDown.Eval as SDE
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 import Text.Markdown.SlamDown.Parser as SDP
 import Text.Markdown.SlamDown.Traverse as SDT
+import Text.Parsing.Parser (parseErrorMessage)
 import Utils.Path (DirPath)
 
 evalMarkdownForm
@@ -58,10 +64,10 @@ evalMarkdownForm model doc varMap = do
   pure (Port.Variables × map Right thisVarMap `SM.union` varMap)
 
 evalMarkdown
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadEff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (markdown ∷ MarkdownError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ String
@@ -70,7 +76,7 @@ evalMarkdown
 evalMarkdown str varMap = do
   CEM.CardEnv { path } ← ask
   case SDP.parseMd str of
-    Left e → CE.throw e
+    Left e → throwMarkdownError (MarkdownParseError {markdown: str, error: e})
     Right sd → do
       let sm = map (Sql.print ∘ unwrap) $ Port.flattenResources varMap
       doc ← evalEmbeddedQueries sm path sd
@@ -87,9 +93,9 @@ findFields = SDT.everything (const mempty) extractField
   extractField _ = mempty
 
 evalEmbeddedQueries
-  ∷ ∀ m
+  ∷ ∀ m v
   . MonadEff SlamDataEffects m
-  ⇒ MonadThrow CE.CardError m
+  ⇒ MonadThrow (Variant (markdown ∷ MarkdownError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
   ⇒ SM.StrMap String
@@ -112,7 +118,7 @@ evalEmbeddedQueries sm dir =
     → m Port.VarMapValue
   evalCode mid code
     | languageIsSql mid =
-        Port.VarMapValue ∘ transAna Sql.Literal ∘ extractCodeValue <$> runQuery code
+        Port.VarMapValue ∘ transAna Sql.Literal ∘ extractCodeValue <$> runQuery Nothing code
     | otherwise =
         pure $ Port.VarMapValue $ Sql.null
 
@@ -136,46 +142,64 @@ evalEmbeddedQueries sm dir =
 
   evalValue
     ∷ String
+    → String
     → m Port.VarMapValue
-  evalValue code = do
+  evalValue field code = do
     maybe
       (Port.VarMapValue Sql.null)
       (Port.VarMapValue ∘ transAna Sql.Literal ∘ extractSingletonObject)
       ∘ A.head
-      <$> runQuery code
+      <$> runQuery (Just field) code
 
   evalTextBox
-    ∷ SD.TextBox (Const String)
+    ∷ String
+    → SD.TextBox (Const String)
     → m (SD.TextBox Identity)
-  evalTextBox tb = do
+  evalTextBox field tb = do
     let sql = unwrap $ SD.traverseTextBox (map \_ → Const unit) tb
-    mresult ← A.head <$> runQuery sql
+    mresult ← A.head <$> runQuery (Just field) sql
     result ←
-      maybe (CE.throw "No results") (pure ∘ extractSingletonObject) mresult
+      maybe (throwMarkdownError (MarkdownNoTextBoxResults { field, sql })) (pure ∘ extractSingletonObject) mresult
     case tb, project result of
       (SD.PlainText _), (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
       (SD.Numeric _), (EJSON.Decimal a) →
         pure ∘ SD.Numeric $ pure a
+      (SD.Numeric _), (EJSON.Integer a) →
+        pure ∘ SD.Numeric $ pure (HN.fromNumber (Int.toNumber a))
       (SD.Time prec _), (EJSON.String time) →
         case SqlT.parseTime time of
-          Left _ → CE.throw $ "Incorrect time value: " ⊕ show time
+          Left error → throwMarkdownError (MarkdownInvalidTimeValue { field, time, error: unwrap error })
           Right r → pure ∘ SD.Time prec $ pure r
-      (SD.Date _), (EJSON.String d) →
-        case SqlT.parseDate d of
-          Left _ → CE.throw $ "Incorrect date value: " ⊕ show d
+      (SD.Date _), (EJSON.String date) →
+        case SqlT.parseDate date of
+          Left error → throwMarkdownError (MarkdownInvalidDateValue { field, date, error: unwrap error })
           Right r → pure ∘ SD.Date $ pure r
-      (SD.DateTime prec _), (EJSON.String dt) →
-        case SqlT.parseDateTime dt of
-          Left _ → CE.throw $ "Incorrect datetime value: " ⊕ show dt
+      (SD.DateTime prec _), (EJSON.String datetime) →
+        case SqlT.parseDateTime datetime of
+          Left error → throwMarkdownError (MarkdownInvalidDateTimeValue { field, datetime, error: unwrap error })
           Right r → pure ∘ SD.DateTime prec $ pure r
-      _, _ → CE.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
+      _, _ →
+        throwMarkdownError (MarkdownTypeError { field, actual: typeOf result, expected: typesOfField tb })
+
+  -- TODO: use `Meta` when we have it to better determine types. -gb
+  typeOf :: EJSON.EJson -> String
+  typeOf = show ∘ EJSON.getType
+
+  typesOfField :: ∀ a. SD.TextBox a -> NEL.NonEmptyList String
+  typesOfField = case _ of
+    SD.PlainText _ → pure "String"
+    SD.Numeric _ → NEL.NonEmptyList $ "Number" :| pure "Integer"
+    SD.Date _ → pure "Date"
+    SD.Time _ _ → pure "Time"
+    SD.DateTime _ _ → pure "Timestamp"
 
   evalList
     ∷ String
+    → String
     → m (L.List Port.VarMapValue)
-  evalList code = do
-    jitems ← map extractSingletonObject <$> runQuery code
+  evalList field code = do
+    jitems ← map extractSingletonObject <$> runQuery (Just field) code
     let limit = 500
     pure ∘ L.fromFoldable
       $ if A.length jitems > limit
@@ -186,12 +210,14 @@ evalEmbeddedQueries sm dir =
           map (Port.VarMapValue ∘ transAna Sql.Literal) jitems
 
   runQuery
-    ∷ String
+    ∷ Maybe String
+    → String
     → m (Array EJSON.EJson)
-  runQuery code =
+  runQuery field code =
     let esql = Sql.parse code
     in case esql of
-      Left e → CE.throw "Error parsing sql query"
+      Left error →
+        throwMarkdownError (MarkdownSqlParseError { field, sql: code, error: parseErrorMessage error })
       Right sql → do
         {inputs} ← CE.liftQ $ Quasar.compile dir sql sm
         CEM.addSources inputs
