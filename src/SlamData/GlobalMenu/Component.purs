@@ -233,7 +233,7 @@ render state =
   in
     HH.div
       [ HP.classes $ [ HH.ClassName "sd-global-menu" ] ] $
-      adminMenu <> userInfo <> signInMenu <> [ helpMenu ]
+      userInfo <> signInMenu <> adminMenu <> [ helpMenu ]
 
 eval ∷ Query ~> DSL
 eval = case _ of
