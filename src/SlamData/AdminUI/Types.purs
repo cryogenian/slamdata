@@ -61,7 +61,8 @@ instance showTabIndex ∷ Show TabIndex where
 
 allTabs ∷ List TabIndex
 allTabs =
-  L.fromFoldable [MySettings, Database, Server, Authentication, Users, Groups]
+  -- L.fromFoldable [MySettings, Database, Server, Authentication, Users, Groups]
+  L.fromFoldable [Groups]
 
 tabTitle ∷ TabIndex → String
 tabTitle = case _ of
