@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Sankey.Eval
   ( eval
+  , buildSankeyData
+  , Item
   , module SlamData.Workspace.Card.Setups.Chart.Sankey.Model
   ) where
 

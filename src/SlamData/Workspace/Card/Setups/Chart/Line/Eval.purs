@@ -16,6 +16,9 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Line.Eval
   ( eval
+  , buildLineData
+  , LineSerie
+  , LineItem
   , module SlamData.Workspace.Card.Setups.Chart.Line.Model
   ) where
 
@@ -109,7 +112,11 @@ buildLine m axes =
     , chartType: Line
     }
 
-buildLineData ∷ ModelR → Array Json → Array LineSerie
+buildLineData
+  ∷ ∀ r
+  . { optionalMarkers ∷ Boolean, minSize ∷ Number, maxSize ∷ Number|r}
+  → Array Json
+  → Array LineSerie
 buildLineData r =
   foldMap (foldMap A.singleton ∘ decodeItem)
     >>> lineSeries

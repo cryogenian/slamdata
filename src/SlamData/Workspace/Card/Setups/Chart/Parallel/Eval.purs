@@ -32,6 +32,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Parallel.Eval
   ( eval
+  , buildPData
+  , Item
   , module SlamData.Workspace.Card.Setups.Chart.Parallel.Model
   ) where
 

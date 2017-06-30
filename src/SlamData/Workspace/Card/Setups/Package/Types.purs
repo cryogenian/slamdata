@@ -49,10 +49,12 @@ import SlamData.Prelude
 
 import Control.Monad.Free (Free)
 
+import Data.Int as Int
 import Data.Lens (ALens', Lens', wander, lens, (^.))
 import Data.Lens.At (class At)
 import Data.Lens.Index (class Index)
 import Data.List as L
+import Data.String as Str
 import Data.StrMap as SM
 
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -76,7 +78,6 @@ getProjection dimMap prj = dimMap ^. unpackProjection prj
 
 hasProjection ∷ DimensionMap → Projection → Boolean
 hasProjection dimMap prj = isJust $ getProjection dimMap prj
-
 
 data AxesProjection
 

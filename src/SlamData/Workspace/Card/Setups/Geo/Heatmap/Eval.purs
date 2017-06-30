@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval
   ( eval
+  , buildGeoHeatmap
+  , decodeItem
   , module SlamData.Workspace.Card.Setups.Geo.Heatmap.Model
   ) where
 

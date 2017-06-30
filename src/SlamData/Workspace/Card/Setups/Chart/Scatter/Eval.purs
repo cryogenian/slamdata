@@ -16,6 +16,10 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Scatter.Eval
   ( eval
+  , buildData
+  , ScatterSeries
+  , OnOneGrid
+  , ScatterItem
   , module SlamData.Workspace.Card.Setups.Chart.Scatter.Model
   ) where
 
@@ -129,7 +133,7 @@ buildPort m _ =
     , chartType: Scatter
     }
 
-buildData ∷ ModelR → Array Json → Array ScatterSeries
+buildData ∷ ∀ r. { minSize ∷ Number, maxSize ∷ Number|r } → Array Json → Array ScatterSeries
 buildData r =
   BCP.adjustRectangularPositions
   ∘ series

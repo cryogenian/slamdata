@@ -16,6 +16,9 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Radar.Eval
   ( eval
+  , buildData
+  , SeriesOnRadar
+  , RadarSerie
   , module SlamData.Workspace.Card.Setups.Chart.Radar.Model
   ) where
 
@@ -101,12 +104,12 @@ buildGroupBy r =
 buildPort ∷ ModelR → Axes → Port.Port
 buildPort m _ =
   Port.ChartInstructions
-    { options: buildOptions m ∘ buildData m
+    { options: buildOptions m ∘ buildData
     , chartType: Radar
     }
 
-buildData ∷ ModelR → Array Json → Array SeriesOnRadar
-buildData r =
+buildData ∷ Array Json → Array SeriesOnRadar
+buildData =
   foldMap (foldMap A.singleton ∘ decodeItem)
     >>> series
     >>> BCP.adjustRadialPositions

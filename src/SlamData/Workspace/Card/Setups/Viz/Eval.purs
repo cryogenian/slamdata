@@ -10,6 +10,9 @@ import Color as C
 import Control.Alternative (class Alternative)
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
+import Control.Monad.Eff.Ref (readRef)
+
+import CSS as CSS
 
 import Data.Array ((!!))
 import Data.Array as A
@@ -22,7 +25,7 @@ import Data.Map as M
 import Data.List as L
 import Data.Variant (prj)
 import Data.StrMap as SM
-import Data.Lens (preview)
+import Data.Lens (preview, (^.))
 import Data.Set as Set
 import Data.String.Regex as Rgx
 import Data.String.Regex.Flags as RXF
@@ -34,11 +37,23 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
+import Graphics.Canvas as G
+
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.CSS as HC
+import Halogen.VDom.DOM.StringRenderer as VDS
+
+import Leaflet.Core as LC
+import Leaflet.Plugin.Heatmap as LH
+
+import Math (log)
+
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Common.Align (Align(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Viz.Model (Model)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor, getColorScheme)
+import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor, getColorScheme, getTransparentColor)
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Error as CE
@@ -58,6 +73,8 @@ import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Chart.Area.Eval as Area
+import SlamData.Workspace.Card.Setups.Chart.PunchCard.Eval as PunchCard
+import SlamData.Workspace.Card.Setups.Chart.Radar.Eval as Radar
 import SlamData.Workspace.Card.Setups.Chart.Bar.Eval as Bar
 import SlamData.Workspace.Card.Setups.Chart.Funnel.Eval as Funnel
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Eval as Boxplot
@@ -65,12 +82,24 @@ import SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval as Candlestick
 import SlamData.Workspace.Card.Setups.Chart.Gauge.Eval as Gauge
 import SlamData.Workspace.Card.Setups.Chart.Graph.Eval as Graph
 import SlamData.Workspace.Card.Setups.Chart.Heatmap.Eval as Heatmap
+import SlamData.Workspace.Card.Setups.Chart.Line.Eval as Line
+import SlamData.Workspace.Card.Setups.Chart.Parallel.Eval as Parallel
+import SlamData.Workspace.Card.Setups.Chart.Pie.Eval as Pie
+import SlamData.Workspace.Card.Setups.Chart.Sankey.Eval as Sankey
+import SlamData.Workspace.Card.Setups.Chart.Scatter.Eval as Scatter
+import SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval as GeoHeatmap
+import SlamData.Workspace.Card.Setups.Geo.Marker.Eval as GeoMarker
 import SlamData.Workspace.Card.Setups.Viz.Auxiliary as Aux
 --import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 
 import SqlSquared as Sql
 
+import Partial.Unsafe (unsafePartial)
+
+import Unsafe.Coerce (unsafeCoerce)
+
 import Utils (hush')
+import Utils.Array (enumerate)
 import Utils.Foldable (enumeratedFor_)
 
 type VizEval m v =
@@ -119,8 +148,30 @@ eval m resource = do
       evalGraph m resource
     VT.Chart VT.Heatmap →
       evalHeatmap m resource
-    _ →
-      CE.throw "not implemented here yet"
+    VT.Chart VT.Line →
+      evalLine m resource
+    VT.Chart VT.Parallel →
+      evalParallel m resource
+    VT.Chart VT.Pie →
+      evalPie m resource
+    VT.Chart VT.PunchCard →
+      evalPunchCard m resource
+    VT.Chart VT.Radar →
+      evalRadar m resource
+    VT.Chart VT.Sankey →
+      evalSankey m resource
+    VT.Chart VT.Scatter →
+      evalScatter m resource
+    VT.Geo VT.GeoHeatmap →
+      evalGeoHeatmap m resource
+    VT.Geo VT.GeoMarker →
+      evalGeoMarker m resource
+    VT.Input it →
+      evalInput it m resource
+    VT.Select st →
+      evalSelect st m resource
+    VT.PivotTable →
+      CE.throw "TODO: handle pivot table"
 
   where
   vizType ∷ VT.VizType
@@ -154,49 +205,80 @@ eval m resource = do
   dimMap ∷ P.DimensionMap
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-evalMetric ∷ ∀ m v. VizEval m v
-evalMetric m =
-  BCE.chartSetupEval buildSql buildPort
-  $ M.lookup m.vizType m.auxes >>= prj Aux._metric
+evalInput ∷ ∀ m v. VT.InputType → VizEval m v
+evalInput it m resource =
+  pure $ port × SM.singleton Port.defaultResourceVar (Left resource)
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  -- We've already checked that this value is presented
+  projection = unsafePartial fromJust $ P.getProjection dimMap PP._formValue
 
-  buildPort ∷ { formatter ∷ String } → Ax.Axes → Port.Port
-  buildPort { formatter } _ =
-    Port.BuildMetric \json → do
-      obj ← decodeJson json
-      metricValue ← obj .? "value"
-      let value = reifyValue metricValue formatter
-      pure { value, label }
+  inputType = case it of
+    VT.Text → HP.InputText
+    VT.Numeric → HP.InputNumber
+    VT.Date → HP.InputDate
+    VT.Time → HP.InputTime
+    VT.Datetime → HP.InputDatetime
 
-  buildProjections ∷ ∀ a. a → L.List (Sql.Projection Sql.Sql)
-  buildProjections _ = pure $ case P.getProjection dimMap PP._value of
-    Nothing → SCC.nullPrj # Sql.as "value"
-    Just sv → sv # SCC.jcursorPrj # Sql.as "value" # SCC.applyTransform sv
+  port = Port.SetupInput { projection, inputType }
 
-  buildGroupBy ∷ ∀ a. a → Maybe (Sql.GroupBy Sql.Sql)
-  buildGroupBy = const Nothing
+evalSelect ∷ ∀ m v. VT.SelectType → VizEval m v
+evalSelect inputType m resource =
+  pure $ port × SM.singleton Port.defaultResourceVar (Left resource)
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  label ∷ Maybe String
-  label = map D.jcursorLabel $ P.getProjection dimMap PP._value
+  -- We've already checked that this value is presented
+  projection = unsafePartial fromJust $ P.getProjection dimMap PP._formValue
 
-  formatterRegex ∷ Rgx.Regex
-  formatterRegex =
-    unsafePartial fromRight $ Rgx.regex "{{[^}]+}}" RXF.noFlags
+  build records = do
+    when (A.null records)
+      $ CE.throw "TODO: replace with typed error"
+    selectedValues × valueLabelMap × _ × _ ←
+      A.foldM foldFn (Set.empty × M.empty × 0 × 0) records
+    pure { selectedValues, valueLabelMap }
 
-  reifyValue ∷ Number → String → String
-  reifyValue metricValue input = fromMaybe (show metricValue) do
-    matches ← Rgx.match formatterRegex input
-    firstMatch ← join $ A.head matches
-    woPrefix ← Str.stripPrefix (Str.Pattern "{{") firstMatch
-    formatString ← Str.stripSuffix (Str.Pattern "}}") woPrefix
-    formatter ← either (const Nothing) Just $ FN.parseFormatString formatString
-    let
-      formattedNumber = FN.format formatter metricValue
+  foldFn acc@(selected × vlmap × keyCount × selectedCount) record = do
+    when (keyCount > VT.maximumCountOfEntries inputType)
+      $ CE.throw "TODO: replace with typed error"
+    when (selectedCount > VT.maximumCountOfSelectedValues inputType)
+      $ CE.throw "TODO: replace with typed error"
+    newKeyCount × newVLmap ←
+      case Sem.getSemantics record
+           =<< preview (D._value ∘ D._projection)
+           =<< P.getProjection dimMap PP._formValue of
+        Nothing → pure $ keyCount × vlmap
+        Just value → do
+          let
+            mbNewLabel =
+              P.getProjection dimMap PP._formLabel
+              >>= preview (D._value ∘ D._projection)
+              >>= Sem.getMaybeString record
+          case M.lookup value vlmap of
+            Nothing →
+              pure $ (keyCount + 1) × M.insert value mbNewLabel vlmap
+            Just mbExistingLabel → do
+              unless (mbExistingLabel ≡ mbNewLabel)
+                $ CE.throw "TODO: replace with typed error"
+              pure $ keyCount × vlmap
+    newSelCount × newSelected ←
+      pure $ case P.getProjection dimMap PP._formSelected
+                  >>= preview (D._value ∘ D._projection)
+                  >>= Sem.getSemantics record of
+        Nothing → selectedCount × selected
+        Just value →
+          if Set.member value selected
+          then selectedCount × selected
+          else (selectedCount + 1) × Set.insert value selected
+    pure $ newSelected × newVLmap × newKeyCount × newSelCount
 
-    pure $ Rgx.replace formatterRegex formattedNumber input
+
+  port = Port.SetupSelect
+    { projection
+    , inputType
+    , build
+    }
 
 evalStaticForm ∷ ∀ m v. Array Json → VizEval m v
 evalStaticForm records m resource = do
@@ -1220,3 +1302,1099 @@ heatmapOptions dimMap axes r heatmapData = do
 
   sortY ∷ Array String → Array String
   sortY = A.sortBy $ Ax.compareWithAxisType ordinateAxisType
+
+evalLine ∷ ∀ m v. VizEval m v
+evalLine m =
+  BCE.chartSetupEval buildSql buildPort
+  $ M.lookup m.vizType m.auxes >>= prj Aux._line
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ dimensionProjection PP._dimension dimMap "category"
+    , measureProjection PP._value dimMap "measure"
+    , measureProjection PP._size dimMap "size"
+    , dimensionProjection PP._series dimMap "series"
+    ]
+
+  buildGroupBy _ =
+    SCC.groupBy
+    $ sqlProjection PP._series dimMap
+    <|> sqlProjection PP._dimension dimMap
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options:
+          lineOptions dimMap axes r
+          ∘ Line.buildLineData { optionalMarkers: r.optionalMarkers
+                               , minSize: r.size.min
+                               , maxSize: r.size.max
+                               }
+      , chartType: CT.Pie
+      }
+
+lineOptions
+  ∷ P.DimensionMap → Ax.Axes → Aux.LineState → Array Line.LineSerie → DSL OptionI
+lineOptions dimMap axes r lineData = do
+  let
+    mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
+      [ { label: D.jcursorLabel dim, value: axesPrj } ]
+    cols = A.fold
+      [ mkLabel PP._dimension $ CCT.formatValueIx 0
+      , mkLabel PP._value \x →
+          if P.hasProjection dimMap PP._secondValue ∨ x.seriesIndex `mod` 2 ≠ 0
+          then ""
+          else CCT.formatValueIx 1 x
+      , mkLabel PP._secondValue \x →
+          if x.seriesIndex `mod` 2 ≡ 0
+          then ""
+          else CCT.formatValueIx 1 x
+      , mkLabel PP._size CCT.formatSymbolSize
+      , mkLabel PP._series _.seriesName
+      ]
+  E.tooltip do
+    E.triggerItem
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
+    E.textStyle $ E.fontSize 12
+
+  E.colors colors
+  E.grid BCP.cartesian
+  E.series series
+
+  E.xAxis do
+    E.axisType xAxisConfig.axisType
+    case xAxisConfig.axisType of
+      ET.Category →
+        E.items $ map ET.strItem xValues
+      _ → pure unit
+    E.axisLabel do
+      E.rotate r.axisLabelAngle
+      traverse_ E.interval xAxisConfig.interval
+      E.textStyle do
+        E.fontFamily "Ubuntu, sans"
+
+  E.yAxes do
+    E.addYAxis yAxis
+    when needTwoAxes $ E.addYAxis yAxis
+
+  E.legend do
+    E.items $ map ET.strItem seriesNames
+    E.textStyle $ E.fontFamily "Ubuntu, sans"
+
+  where
+  xAxisType ∷ Ax.AxisType
+  xAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType
+    <$> (P.getProjection dimMap PP._dimension >>= preview (D._value ∘ D._projection))
+    <*> (pure axes)
+
+  xAxisConfig ∷ Ax.EChartsAxisConfiguration
+  xAxisConfig = Ax.axisConfiguration xAxisType
+
+  xSortFn ∷ String → String → Ordering
+  xSortFn = Ax.compareWithAxisType xAxisType
+
+  xValues ∷ Array String
+  xValues =
+    A.sortBy xSortFn
+      $ A.fromFoldable
+      $ foldMap (\x → Set.fromFoldable $ M.keys x.leftItems ⊕ M.keys x.rightItems)
+        lineData
+
+  seriesNames ∷ Array String
+  seriesNames = case P.getProjection dimMap PP._series of
+    Just _ → A.fromFoldable $ foldMap (_.name ⋙ foldMap Set.singleton) lineData
+    Nothing →
+      map D.jcursorLabel
+      $ A.catMaybes
+      $ [ P.getProjection dimMap PP._value
+        , P.getProjection dimMap PP._secondValue
+        ]
+
+  needTwoAxes ∷ Boolean
+  needTwoAxes = P.hasProjection dimMap PP._secondValue
+
+  series ∷ ∀ i. DSL (line ∷ ETP.I|i)
+  series = for_ lineData \lineSerie → do
+    E.line do
+      E.buildItems $ for_ xValues \key →
+        case M.lookup key lineSerie.leftItems of
+          Nothing → E.missingItem
+          Just {value, symbolSize} → E.addItem do
+            E.name key
+            E.buildValues do
+              E.addStringValue key
+              E.addValue value
+            E.symbolSize symbolSize
+      E.yAxisIndex 0
+      case P.getProjection dimMap PP._series of
+        Just _ →
+          for_ lineSerie.name E.name
+        Nothing →
+          for_ (P.getProjection dimMap PP._value) $ E.name ∘ D.jcursorLabel
+
+    when needTwoAxes $ E.line do
+      E.buildItems $ for_ xValues \key →
+        case M.lookup key lineSerie.rightItems of
+          Nothing → E.missingItem
+          Just {value, symbolSize} → E.addItem do
+            E.name key
+            E.buildValues do
+              E.addStringValue key
+              E.addValue value
+            E.symbolSize symbolSize
+      E.yAxisIndex 1
+      case P.getProjection dimMap PP._series of
+        Just _ →
+          for_ lineSerie.name E.name
+        Nothing →
+          for_ (P.getProjection dimMap PP._secondValue) $ E.name ∘ D.jcursorLabel
+
+  yAxis ∷ DSL ETP.YAxisI
+  yAxis = do
+    E.axisType ET.Value
+    E.axisLabel $ E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+
+evalParallel ∷ ∀ m v. VizEval m v
+evalParallel m =
+  BCE.chartSetupEval buildSql buildPort Nothing
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ =
+    L.fromFoldable
+    $ A.concat
+    $ [ dimensionProjection PP._series dimMap "series" ]
+    ⊕ ( A.mapWithIndex (\ix _ → measureProjection (PP._dimIx ix) dimMap $ "measure" ⊕ show ix)
+        $ A.fromFoldable $ dimMap ^. PP._dims
+      )
+
+--    ⊕ ( foldMap (\(ix × _) → measureProjection (PP._dimIx ix) dimMap $ "measure" ⊕ show ix)
+--    $ enumerate $ A.fromFoldable  (dimMap ^. PP._dims) )
+
+  buildGroupBy _ =
+    SCC.groupBy
+    $ sqlProjection PP._series dimMap
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options: pOptions dimMap axes r ∘ Parallel.buildPData
+        -- TODO: this should be removed
+      , chartType: CT.Pie
+      }
+
+
+pOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Parallel.Item → DSL OptionI
+pOptions dimMap _ _ pData = do
+  E.parallel do
+    E.left $ ET.Percent 5.0
+    E.right $ ET.Percent 18.0
+    E.bottom $ ET.Pixel 100
+
+  E.colors colors
+  E.series series
+
+  E.parallelAxes axes
+
+  when (A.length serieNames < 30) $ E.legend do
+    E.topBottom
+    E.textStyle $ E.fontFamily "Ubuntu, sans"
+    E.items $ map ET.strItem serieNames
+
+  where
+  serieNames = map _.series pData
+
+  series = for_ pData \serie → E.parallelSeries do
+    E.name serie.series
+    E.buildItems
+      $ E.addItem
+      $ E.buildValues
+      $ for_ serie.dims E.addValue
+
+  axes = enumeratedFor_ (dimMap ^. PP._dims) \(dimIx × dim) → E.addParallelAxis do
+    E.dim dimIx
+    E.name $ D.jcursorLabel dim
+
+evalPie ∷ ∀ m v. VizEval m v
+evalPie m =
+  BCE.chartSetupEval buildSql buildPort Nothing
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ dimensionProjection PP._category dimMap "category"
+    , measureProjection PP._value dimMap "measure"
+    , dimensionProjection PP._donut dimMap "donut"
+    , dimensionProjection PP._parallel dimMap "parallel"
+    ]
+
+  buildGroupBy r =
+    SCC.groupBy
+    $ sqlProjection PP._parallel dimMap
+    <|> sqlProjection PP._donut dimMap
+    <|> sqlProjection PP._category dimMap
+
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options: pieOptions dimMap axes r ∘ Pie.buildData
+        -- TODO: this should be removed
+      , chartType: CT.Pie
+      }
+
+
+pieOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Pie.OnePieSeries → DSL OptionI
+pieOptions dimMap axes _ pieData = do
+  let
+    mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
+      [ { label: D.jcursorLabel dim, value: axesPrj } ]
+
+    cols = A.concat
+      [ mkLabel PP._category $ CCT.formatAssocProp "key"
+      , mkLabel PP._value $ CCT.formatAssocProp "value"
+      , mkLabel PP._donut _.seriesName
+      ]
+
+  E.tooltip do
+    E.formatterItem (CCT.tableFormatter (Just ∘ _.color) cols ∘ pure)
+    E.textStyle $ E.fontSize 12
+    E.triggerItem
+
+  E.colors colors
+
+  E.legend do
+    E.textStyle do
+      E.fontSize 12
+      E.fontFamily "Ubuntu, sans"
+    E.items $ map ET.strItem legendNames
+    E.orient ET.Vertical
+    E.leftLeft
+
+  E.series series
+
+  BCP.radialTitles pieData
+    $ maybe "" D.jcursorLabel $ P.getProjection dimMap PP._parallel
+
+  where
+  itemNames ∷ Array String
+  itemNames =
+    A.fromFoldable
+      $ foldMap (_.series
+                 ⋙ foldMap (_.items
+                            ⋙ M.keys
+                            ⋙ Set.fromFoldable)
+                )
+        pieData
+
+  seriesNames ∷ Array String
+  seriesNames =
+    A.fromFoldable
+      $ foldMap (_.series ⋙ foldMap (_.name ⋙ Set.fromFoldable)) pieData
+
+  legendNames ∷ Array String
+  legendNames
+    | A.null seriesNames = itemNames
+    | otherwise = do
+      s ← seriesNames
+      i ← itemNames
+      pure $ s ⊕ ":" ⊕ i
+
+  series ∷ ∀ i. DSL (pie ∷ ETP.I|i)
+  series = for_ pieData \{x, y, radius: parallelR, series: ss} →
+    for_ ss \{radius, items, name} → E.pie do
+      E.label do
+        E.normal E.hidden
+        E.emphasis E.hidden
+
+      E.buildCenter do
+        traverse_ (E.setX ∘ E.percents) x
+        traverse_ (E.setY ∘ E.percents) y
+
+      for_ parallelR \pR →
+        for_ radius \{start, end} → E.buildRadius do
+          E.setStart $ E.percents $ start * pR
+          E.setEnd $ E.percents $ end * pR
+
+      for_ name E.name
+
+      E.buildItems $ for_ (asList $ M.toUnfoldable $ items) \(key × value) →
+        E.addItem do
+          E.value value
+          E.name $ foldMap (flip append ":") name ⊕ key
+          BCE.assoc { key, value }
+
+evalPunchCard ∷ ∀ m v. VizEval m v
+evalPunchCard m =
+  BCE.chartSetupEval buildSql buildPort
+  $ M.lookup m.vizType m.auxes >>= prj Aux._punchCard
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ dimensionProjection PP._abscissa dimMap "abscissa"
+    , dimensionProjection PP._ordinate dimMap "ordinate"
+    , measureProjection PP._value dimMap "measure"
+    ]
+
+  buildGroupBy r =
+    SCC.groupBy
+    $ sqlProjection PP._abscissa dimMap
+    <|> sqlProjection PP._ordinate dimMap
+
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options:
+          punchCardOptions dimMap axes r
+          ∘ PunchCard.buildData { minSize: r.size.min, maxSize: r.size.max }
+        -- TODO: this should be removed
+      , chartType: CT.Pie
+      }
+
+punchCardOptions
+  ∷ P.DimensionMap → Ax.Axes → Aux.PunchCardState → PunchCard.PunchCardData → DSL OptionI
+punchCardOptions dimMap axes r punchCardData = do
+  E.tooltip do
+    E.triggerItem
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+    E.formatterItemArrayValue \{value} →
+      let
+        xIx = (map Int.ceil ∘ hush' ∘ FR.readNumber) =<< value A.!! 0
+        yIx = (map Int.ceil ∘ hush' ∘ FR.readNumber) =<< value A.!! 1
+        val = CCT.formatForeign <$> value A.!! 2
+
+        abscissa = map D.jcursorLabel $ P.getProjection dimMap PP._abscissa
+        ordinate = map D.jcursorLabel $ P.getProjection dimMap PP._ordinate
+        val' = map D.jcursorLabel $ P.getProjection dimMap PP._value
+      in
+        CCT.tableRows $ A.catMaybes $ map bisequence
+          [ abscissa × (xIx >>= A.index abscissaValues)
+          , ordinate × (yIx >>= A.index ordinateValues)
+          , val' × val
+          ]
+
+
+  E.colors colors
+
+  when r.circular do
+    E.polar $ pure unit
+    E.angleAxis abscissaAxis
+    E.radiusAxis ordinateAxis
+
+  when (not r.circular) do
+    E.xAxis abscissaAxis
+    E.yAxis ordinateAxis
+
+    E.grid $ E.containLabel true
+
+
+  E.series series
+
+  where
+  abscissaAxis ∷ ∀ i. DSL (ETP.AxisI i)
+  abscissaAxis = do
+    E.axisType $ ET.Category
+    E.disabledBoundaryGap
+    E.splitLine do
+      E.shown
+      E.lineStyle do
+        E.dashedLine
+        E.color $ C.rgba 9 9 9 1.0
+    E.axisLine E.hidden
+    E.items $ map ET.strItem abscissaValues
+
+  ordinateAxis ∷ ∀ i. DSL (ETP.AxisI i)
+  ordinateAxis = do
+    E.axisType $ ET.Category
+    E.axisLine E.hidden
+    E.axisLabel $ E.margin $ margin + 2
+    E.items $ map ET.strItem ordinateValues
+
+  xAxisType ∷ Ax.AxisType
+  xAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType
+    <$> (P.getProjection dimMap PP._abscissa >>= preview (D._value ∘ D._projection))
+    <*> pure axes
+
+  yAxisType ∷ Ax.AxisType
+  yAxisType =
+    fromMaybe Ax.Category
+    $ Ax.axisType
+    <$> (P.getProjection dimMap PP._ordinate >>= preview (D._value ∘ D._projection))
+    <*> pure axes
+
+  abscissaValues ∷ Array String
+  abscissaValues =
+    A.sortBy (Ax.compareWithAxisType xAxisType)
+      $ A.fromFoldable
+      $ Set.fromFoldable
+      $ map fst
+      $ M.keys punchCardData
+
+  ordinateValues ∷ Array String
+  ordinateValues =
+    A.sortBy (Ax.compareWithAxisType yAxisType)
+      $ A.fromFoldable
+      $ Set.fromFoldable
+      $ map snd
+      $ M.keys punchCardData
+
+  margin ∷ Int
+  margin =
+    fromMaybe 6
+      $ F.maximum
+      $ foldMap (\((a × o) × (v × _)) → if Just a ≡ A.head abscissaValues then [v / 2] else [])
+      $ asList
+      $ M.toUnfoldable punchCardData
+
+  series = E.scatter do
+    if r.circular
+      then E.polarCoordinateSystem
+      else E.cartesianCoordinateSystem
+    E.buildItems
+      $ for_ (enumerate abscissaValues) \(xIx × abscissa) →
+          for_ (enumerate ordinateValues) \(yIx × ordinate) →
+            for_ (M.lookup (abscissa × ordinate) punchCardData) \(symbolSize × val) → E.addItem do
+              E.symbolSize symbolSize
+              E.buildValues do
+                E.addValue $ Int.toNumber xIx
+                E.addValue $ Int.toNumber yIx
+                E.addValue val
+
+evalRadar ∷ ∀ m v. VizEval m v
+evalRadar m =
+  BCE.chartSetupEval buildSql buildPort Nothing
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ dimensionProjection PP._category dimMap "category"
+    , measureProjection PP._value dimMap "measure"
+    , dimensionProjection PP._multiple dimMap "multiple"
+    , dimensionProjection PP._parallel dimMap "parallel"
+    ]
+
+  buildGroupBy _ =
+    SCC.groupBy
+    $ sqlProjection PP._parallel dimMap
+    <|> sqlProjection PP._multiple dimMap
+    <|> sqlProjection PP._category dimMap
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options: radarOptions dimMap axes r ∘ Radar.buildData
+        -- TODO: this should be removed
+      , chartType: CT.Pie
+      }
+
+radarOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Radar.SeriesOnRadar → DSL OptionI
+radarOptions dimMap axes _ radarData = do
+  E.tooltip do
+    E.triggerItem
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+
+  E.legend do
+    E.items $ map ET.strItem serieNames
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+    E.orient ET.Vertical
+    E.leftLeft
+
+  E.colors colors
+
+  E.radars
+    $ traverse_ E.radar radars
+
+  E.series
+    $ traverse_ E.radarSeries series
+
+  BCP.radialTitles radarData
+    $ maybe "" D.jcursorLabel
+    $ P.getProjection dimMap PP._parallel
+
+  where
+  serieNames ∷ Array String
+  serieNames =
+    A.fromFoldable
+      $ foldMap (_.series
+                 ⋙ foldMap (_.name ⋙ Set.fromFoldable))
+        radarData
+
+  series ∷ Array (DSL ETP.RadarSeriesI)
+  series = (enumerate radarData) <#> \(ix × {series: ss }) → do
+    E.radarIndex $ Int.toNumber ix
+    E.symbol ET.Circle
+    let
+      allKeys = foldMap (Set.fromFoldable ∘ M.keys ∘ _.items) ss
+    E.buildItems $ for_ ss \serie → E.addItem do
+      for_ serie.name E.name
+      E.buildValues $ for_ allKeys \k →
+        case M.lookup k serie.items of
+          Nothing → E.missingValue
+          Just val → E.addValue val
+
+  minVal ∷ Maybe Number
+  minVal =
+    F.minimum
+      $ map (fromMaybe zero
+             ∘ F.minimum
+             ∘ map (fromMaybe zero
+                    ∘ F.minimum
+                    ∘ M.values
+                    ∘ _.items)
+             ∘ _.series
+            )
+      radarData
+
+  maxVal ∷ Maybe Number
+  maxVal =
+    F.maximum
+      $ map (fromMaybe zero
+             ∘ F.maximum
+             ∘ map (fromMaybe zero
+                    ∘ F.maximum
+                    ∘ M.values
+                    ∘ _.items)
+             ∘ _.series
+            )
+      radarData
+
+  radars ∷ Array (DSL ETP.RadarI)
+  radars = radarData <#> \{name, series: ss, x, y, radius} → do
+    let
+      allKeys = foldMap (Set.fromFoldable ∘ M.keys ∘ _.items) ss
+
+    E.indicators $ for_ allKeys \k → E.indicator do
+      E.name k
+      for_ minVal E.min
+      for_ maxVal E.max
+
+    E.nameGap 10.0
+
+    E.buildCenter do
+      traverse_ (E.setX ∘ E.percents) x
+      traverse_ (E.setY ∘ E.percents) y
+
+    traverse_
+      (E.singleValueRadius
+       ∘ ET.SingleValueRadius
+       ∘ ET.Percent) radius
+
+evalSankey ∷ ∀ m v. VizEval m v
+evalSankey m =
+  BCE.chartSetupEval buildSql buildPort Nothing
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ dimensionProjection PP._source dimMap "source"
+    , dimensionProjection PP._target dimMap "target"
+    , dimensionProjection PP._value dimMap "weight"
+    ]
+
+  buildGroupBy r =
+    SCC.groupBy
+    $ sqlProjection PP._source dimMap
+    <|> sqlProjection PP._target dimMap
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options: sankeyOptions dimMap axes r ∘ Sankey.buildSankeyData
+        -- TODO: this should be removed
+      , chartType: CT.Pie
+      }
+
+sankeyOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Sankey.Item → DSL OptionI
+sankeyOptions dimMap axes r sankeyData = do
+  let
+    mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
+      [ { label: D.jcursorLabel dim, value: axesPrj } ]
+
+    cols = A.fold
+      [ mkLabel PP._source $ CCT.formatDataProp "source"
+      , mkLabel PP._target $ CCT.formatDataProp "target"
+      , mkLabel PP._value $ CCT.formatDataProp "value"
+      ]
+
+  E.tooltip do
+    E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
+    E.triggerItem
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+
+  E.colors colors
+
+  E.series $ E.sankey do
+    E.buildItems items
+    E.buildLinks links
+
+    E.lineStyle $ E.normal $ E.curveness 0.3
+  where
+  links ∷ DSL ETP.LinksI
+  links = for_ sankeyData \item → E.addLink do
+    E.sourceName item.source
+    E.targetName item.target
+    E.value item.weight
+
+  items ∷ DSL ETP.ItemsI
+  items =
+    for_
+      (A.nub $ (_.source <$> sankeyData) ⊕ (_.target <$> sankeyData))
+      (E.addItem ∘ E.name)
+
+evalScatter ∷ ∀ m v. VizEval m v
+evalScatter m =
+  BCE.chartSetupEval buildSql buildPort
+  $ M.lookup m.vizType m.auxes >>= prj Aux._scatter
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ dimensionProjection PP._abscissa dimMap "abscissa"
+    , measureProjection PP._scatterOrdinate dimMap "ordinate"
+    , measureProjection PP._scatterSize dimMap "size"
+    , dimensionProjection PP._parallel dimMap "parallel"
+    , dimensionProjection PP._series dimMap "series"
+    ]
+
+  buildGroupBy _ =
+    SCC.groupBy
+    $ sqlProjection PP._parallel dimMap
+    <|> sqlProjection PP._series dimMap
+    <|> sqlProjection PP._abscissa dimMap
+
+  buildPort r axes =
+    Port.ChartInstructions
+      { options:
+          scatterOptions dimMap axes r
+          ∘ Scatter.buildData { minSize: r.size.min
+                              , maxSize: r.size.max
+                              }
+      , chartType: CT.Pie
+      }
+
+scatterOptions
+  ∷ P.DimensionMap → Ax.Axes → Aux.ScatterState → Array Scatter.ScatterSeries → DSL OptionI
+scatterOptions dimMap axes r scatterData = do
+  let
+    mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
+      [ { label: D.jcursorLabel dim, value: axesPrj } ]
+    cols = A.fold
+      [ mkLabel PP._abscissa $ CCT.formatValueIx 0
+      , mkLabel PP._scatterOrdinate $ CCT.formatValueIx 1
+      , mkLabel PP._scatterSize $ CCT.formatValueIx 2
+      , mkLabel PP._series _.seriesName
+      ]
+
+  E.tooltip do
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
+    E.triggerItem
+    E.textStyle do
+      E.fontFamily "Ubuntu, sans"
+      E.fontSize 12
+    E.axisPointer do
+      E.crossAxisPointer
+      E.crossStyle do
+        E.color $ C.rgba 170 170 170 0.6
+        E.widthNum 0.2
+        E.solidLine
+  E.colors colors
+
+  BCP.rectangularGrids scatterData
+  BCP.rectangularTitles scatterData
+    $ maybe "" D.jcursorLabel
+    $ P.getProjection dimMap PP._parallel
+
+  E.grid BCP.cartesian
+  E.xAxes $ valueAxes E.addXAxis
+  E.yAxes $ valueAxes E.addYAxis
+
+  E.legend do
+    E.topBottom
+    E.textStyle $ E.fontFamily "Ubuntu, sans"
+    E.items $ map ET.strItem seriesNames
+
+  E.series series
+
+  where
+  valueAxes ∷ ∀ i a. (DSL (ETP.AxisI (gridIndex ∷ ETP.I|i)) → DSL a) → DSL a
+  valueAxes addAxis = enumeratedFor_ scatterData \(ix × _) → addAxis do
+    E.gridIndex ix
+    E.axisType ET.Value
+    E.axisLabel $ E.textStyle $ E.fontFamily "Ubuntu, sans"
+    E.axisLine $ E.lineStyle do
+      E.color $ C.rgba 184 184 184 1.0
+      E.width 1
+    E.splitLine $ E.lineStyle do
+      E.color $ C.rgba 204 204 204 0.2
+      E.width 1
+
+  seriesNames ∷ Array String
+  seriesNames =
+    A.fromFoldable
+    $ foldMap (_.series ⋙ foldMap (_.name ⋙ Set.fromFoldable)) scatterData
+
+  series ∷ ∀ i. DSL (scatter ∷ ETP.I|i)
+  series = enumeratedFor_ scatterData \(gridIx × onOneGrid) →
+    enumeratedFor_ onOneGrid.series \(ix × serie) → E.scatter do
+      E.xAxisIndex gridIx
+      E.yAxisIndex gridIx
+      for_ serie.name E.name
+      for_ (A.index colors $ mod ix $ A.length colors) \color → do
+        E.itemStyle $ E.normal $ E.color $ getTransparentColor color 0.5
+      E.symbol ET.Circle
+      E.buildItems $ for_ serie.items \item → E.addItem do
+        E.buildValues do
+          E.addValue item.x
+          E.addValue item.y
+          E.addValue item.r
+        when (P.hasProjection dimMap PP._scatterSize) $ E.symbolSize item.size
+
+
+evalGeoHeatmap ∷ ∀ m v. VizEval m v
+evalGeoHeatmap m =
+  BCE.chartSetupEval buildSql buildPort aux
+  where
+  aux = M.lookup m.vizType m.auxes >>= prj Aux._geoHeatmap
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    [ dimensionProjection PP._lat dimMap "lat"
+    , dimensionProjection PP._lng dimMap "lng"
+    , dimensionProjection PP._intensity dimMap "intensity"
+    ]
+
+  buildGroupBy _ =
+    SCC.groupBy
+    $ sqlProjection PP._lat dimMap
+    <|> sqlProjection PP._lng dimMap
+
+  buildPort r axes =
+    Port.GeoChart { build, osmURI: maybe Aux.osmURI _.osm.uri aux }
+
+  mkItems = foldMap (foldMap A.singleton ∘ GeoHeatmap.decodeItem)
+
+  maxIntensity = fromMaybe one ∘ map _.i ∘ A.head ∘ A.sortBy (\a b → compare b.i a.i)
+
+  mkMaxLat = fromMaybe zero ∘ A.head ∘ A.reverse ∘ A.sort ∘ map (LC.degreesToNumber ∘ _.lat)
+
+  mkMaxLng = fromMaybe zero ∘ A.head ∘ A.reverse ∘ A.sort ∘ map (LC.degreesToNumber ∘ _.lng)
+
+  mkMinLat = fromMaybe zero ∘ A.head ∘ A.sort ∘ map (LC.degreesToNumber ∘ _.lat)
+
+  mkMinLng = fromMaybe zero ∘ A.head ∘ A.sort ∘ map (LC.degreesToNumber ∘ _.lng)
+
+  mkAvgLat items =
+    F.sum lats / (Int.toNumber $ A.length lats)
+    where
+    lats = map (LC.degreesToNumber ∘ _.lat) items
+
+  mkAvgLng items =
+    F.sum lngs / (Int.toNumber $ A.length lngs)
+    where
+    lngs = map (LC.degreesToNumber ∘ _.lng) items
+
+  build leaf records = do
+    heatmap ← LC.layer
+    let
+      items = mkItems records
+      minLng = mkMinLng items
+      maxLng = mkMaxLng items
+      minLat = mkMinLat items
+      maxLat = mkMaxLat items
+      latDiff = maxLat - minLat
+      lngDiff = maxLng - minLng
+      avgLat = mkAvgLat items
+      avgLng = mkAvgLng items
+      zoomLat = 360.0 / latDiff
+      zoomLng = 360.0 / lngDiff
+      zoomInt = Int.ceil $ (log $ min zoomLat zoomLng) / log 2.0
+      maxI = maxIntensity items
+      asNumArray = unsafeCoerce
+      onClickHandler cvsRef e = do
+        mcnv ← readRef cvsRef
+        for_ mcnv \cnvs → do
+          mbPt ← LC.eventContainerPoint e
+          for_ mbPt \(ex × ey) → do
+            width ← G.getCanvasWidth cnvs
+            height ← G.getCanvasHeight cnvs
+            ctx ← G.getContext2D cnvs
+            imgData ← G.getImageData ctx 0.0 0.0 width height
+            mll ← LC.eventLatLng e
+            for mll \ll → do
+              let
+                intArr = asNumArray $ G.imageDataBuffer imgData
+                redIx = (ey * Int.floor width + ey) * 4
+                alpha = Int.toNumber $ fromMaybe zero $ intArr !! (redIx + 3)
+
+              let
+                content = VDS.render absurd $ unwrap
+                  $ HH.table
+                    [ HP.class_ $ HH.ClassName "sd-chart-tooltip-table" ]
+                    [ HH.tr_ [ HH.td_
+                               [ HH.text
+                                 $ maybe "" D.jcursorLabel
+                                 $ P.getProjection dimMap PP._lat ]
+                             , HH.td_ [ HH.text $ show $ LC.degreesToNumber ll.lat ]
+                             ]
+                    , HH.tr_ [ HH.td_
+                               [ HH.text
+                                 $ maybe "" D.jcursorLabel
+                                 $ P.getProjection dimMap PP._lng ]
+                             , HH.td_ [ HH.text $ show $ LC.degreesToNumber ll.lng ]
+                             ]
+                    , HH.tr_ [ HH.td_
+                               [ HH.text
+                                 $ maybe "" D.jcursorLabel
+                                 $ P.getProjection dimMap PP._intensity ]
+                             , HH.td_ [ HH.text $ show $ alpha * maxI / 256.0 ]
+                             ]
+                    ]
+              popup ← LC.popup { minHeight: 32 }
+              _ ← LC.setLatLng ll popup
+              _ ← LC.setContent content popup
+              _ ← LC.openOn leaf popup
+              pure unit
+
+
+    zoom ← LC.mkZoom zoomInt
+    view ← LC.mkLatLng avgLat avgLng
+    _ ← LC.setZoom zoom leaf
+    _ ← LC.setView view leaf
+    cvs ← LH.mkHeatmap LH.defaultOptions{maxIntensity = maxI} items heatmap leaf
+    LC.on "click" (onClickHandler cvs) $ LC.mapToEvented leaf
+
+
+    pure $ [ heatmap ] × [ ]
+
+evalGeoMarker ∷ ∀ m v. VizEval m v
+evalGeoMarker r =
+  BCE.chartSetupEval buildSql buildPort aux'
+  where
+  aux' = M.lookup r.vizType r.auxes >>= prj Aux._geoMarker
+
+  aux = fromMaybe { osm: Aux.osm, size: { min: Aux.minSize, max: Aux.maxSize } } aux'
+
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup r.vizType r.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildProjections _ = L.fromFoldable $ A.concat
+    $ [ dimensionProjection PP._lat dimMap "lat"
+      , dimensionProjection PP._lng dimMap "lng"
+      , dimensionProjection PP._series dimMap "series"
+      ]
+    ⊕ ( A.mapWithIndex (\ix _ → measureProjection (PP._dimIx ix) dimMap $ "measure" ⊕ show ix)
+        $ A.fromFoldable $ dimMap ^. PP._dims
+      )
+
+  buildGroupBy _ =
+    SCC.groupBy
+    $ sqlProjection PP._lat dimMap
+    <|> sqlProjection PP._lng dimMap
+    <|> sqlProjection PP._series dimMap
+
+  buildPort _ axes =
+    Port.GeoChart { build, osmURI: aux.osm.uri }
+
+  mkItems = foldMap $ foldMap A.singleton ∘ GeoMarker.decodeItem
+
+  mkMaxLat = fromMaybe zero ∘ A.head ∘ A.reverse ∘ A.sort ∘ map (LC.degreesToNumber ∘ _.lat)
+
+  mkMaxLng = fromMaybe zero ∘ A.head ∘ A.reverse ∘ A.sort ∘ map (LC.degreesToNumber ∘ _.lng)
+
+  mkMinLat = fromMaybe zero ∘ A.head ∘ A.sort ∘ map (LC.degreesToNumber ∘ _.lat)
+
+  mkMinLng = fromMaybe zero ∘ A.head ∘ A.sort ∘ map (LC.degreesToNumber ∘ _.lng)
+
+  mkAvgLat items =
+    F.sum lats / (Int.toNumber $ A.length lats)
+    where
+    lats = map (LC.degreesToNumber ∘ _.lat) items
+
+  mkAvgLng items =
+    F.sum lngs / (Int.toNumber $ A.length lngs)
+    where
+    lngs = map (LC.degreesToNumber ∘ _.lng) items
+
+  mkMinSize = fromMaybe zero ∘ A.head ∘ A.sort ∘ map _.size
+
+  mkMaxSize = fromMaybe one ∘ A.head ∘ A.reverse ∘ A.sort ∘ map _.size
+
+  mkSeries items = SM.fromFoldable $ A.zip (A.sort $ A.nub $ map _.series items) colors
+
+  build leaf records = do
+    let
+      items = mkItems records
+      minLng = mkMinLng items
+      maxLng = mkMaxLng items
+      minLat = mkMinLat items
+      maxLat = mkMaxLat items
+      latDiff = maxLat - minLat
+      lngDiff = maxLng - minLng
+      avgLat = mkAvgLat items
+      avgLng = mkAvgLng items
+      zoomLat = 360.0 / latDiff
+      zoomLng = 360.0 / lngDiff
+      zoomInt = Int.ceil $ (log $ min zoomLat zoomLng) / log 2.0
+      series = mkSeries items
+      minSize = mkMinSize items
+      maxSize = mkMaxSize items
+      sizeDistance = aux.size.max - aux.size.min
+      distance = maxSize - minSize
+      mkRadius size
+        | distance ≡ 0.0 = aux.size.min
+        | not $ P.hasProjection dimMap PP._size = aux.size.max
+        | otherwise = aux.size.max - sizeDistance / distance * (maxSize - size)
+      foldFn icon {layers, overlays} item@{lat, lng} = do
+        let
+          color s = unsafePartial fromJust $ SM.lookup s series
+        layer
+         -- Renderer is too slow for png/svg icons :(
+          ← if P.hasProjection dimMap PP._size
+               ∨ P.hasProjection dimMap PP._series
+               ∨ A.length items < 1001
+            then
+              map LC.circleMarkerToLayer
+              $ LC.circleMarker
+                { lat, lng }
+                { radius: mkRadius item.size
+                , color: color item.series
+                }
+            else
+              map LC.markerToLayer
+                $ LC.marker { lat, lng }
+              >>= LC.setIcon icon
+
+        let
+          mkTableRow mbDim strVal = flip foldMap mbDim \dim →
+            [ HH.tr_ [ HH.td_ [ HH.text $ D.jcursorLabel dim ]
+                     , HH.td_ [ HH.text strVal ]
+                     ]
+            ]
+
+          content = VDS.render absurd $ unwrap
+            $ HH.table [ HP.class_ $ HH.ClassName "sd-chart-tooltip-table" ]
+            $ mkTableRow (P.getProjection dimMap PP._lat) (show $ LC.degreesToNumber lat )
+            ⊕ mkTableRow (P.getProjection dimMap PP._lng) (show $ LC.degreesToNumber lng )
+            ⊕ mkTableRow (P.getProjection dimMap PP._size) (show item.size)
+            ⊕ mkTableRow (P.getProjection dimMap PP._series) item.series
+            ⊕ (fold $ enumerate item.dims <#> \(ix × dim) →
+                mkTableRow (P.getProjection dimMap $ PP._dimIx ix) (show dim))
+
+          alterFunction Nothing = Just [ layer ]
+          alterFunction (Just a) = Just $ A.cons layer a
+
+          mkKey s =
+            VDS.render absurd ∘ unwrap
+            $ HH.table [ HP.class_ $ HH.ClassName "sd-chart-geo-layers-control" ]
+              [ HH.tr_ [ HH.td_ [ HH.span [ HP.class_ $ HH.ClassName "sd-chart-tooltip-color"
+                                          , HC.style $ CSS.backgroundColor $ color s
+                                          ] [ ]
+                                ]
+                       , HH.td_ [ HH.text item.series ]
+                       ]
+              ]
+
+
+        _ ← LC.bindPopup content layer
+
+        pure { layers: A.cons layer layers
+             , overlays: SM.alter alterFunction (mkKey item.series) overlays
+             }
+    zoom ← LC.mkZoom zoomInt
+
+    view ← LC.mkLatLng avgLat avgLng
+
+    icon ← LC.icon GeoMarker.iconConf
+
+    {layers, overlays} ←
+      A.foldRecM (foldFn icon) {layers: [ ], overlays: SM.empty } items
+
+    layGroups ← for overlays LC.layerGroup
+
+    control ←
+      if P.hasProjection dimMap PP._series
+      then do
+        c ← LC.layers SM.empty layGroups { collapsed: false }
+        _ ← LC.addTo leaf c
+        pure [ c ]
+      else pure [ ]
+
+    _ ← LC.setZoom zoom leaf
+    _ ← LC.setView view leaf
+    let
+      toSend
+        | SM.isEmpty layGroups = layers
+        | otherwise = SM.values $ map LC.groupToLayer layGroups
+
+    pure $ toSend × control
+
+evalMetric ∷ ∀ m v. VizEval m v
+evalMetric m =
+  BCE.chartSetupEval buildSql buildPort
+  $ M.lookup m.vizType m.auxes >>= prj Aux._metric
+  where
+  dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
+
+  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+
+  buildPort ∷ { formatter ∷ String } → Ax.Axes → Port.Port
+  buildPort { formatter } _ =
+    Port.BuildMetric \json → do
+      obj ← decodeJson json
+      metricValue ← obj .? "value"
+      let value = reifyValue metricValue formatter
+      pure { value, label }
+
+  buildProjections ∷ ∀ a. a → L.List (Sql.Projection Sql.Sql)
+  buildProjections _ = pure $ case P.getProjection dimMap PP._value of
+    Nothing → SCC.nullPrj # Sql.as "value"
+    Just sv → sv # SCC.jcursorPrj # Sql.as "value" # SCC.applyTransform sv
+
+  buildGroupBy ∷ ∀ a. a → Maybe (Sql.GroupBy Sql.Sql)
+  buildGroupBy = const Nothing
+
+  label ∷ Maybe String
+  label = map D.jcursorLabel $ P.getProjection dimMap PP._value
+
+  formatterRegex ∷ Rgx.Regex
+  formatterRegex =
+    unsafePartial fromRight $ Rgx.regex "{{[^}]+}}" RXF.noFlags
+
+  reifyValue ∷ Number → String → String
+  reifyValue metricValue input = fromMaybe (show metricValue) do
+    matches ← Rgx.match formatterRegex input
+    firstMatch ← join $ A.head matches
+    woPrefix ← Str.stripPrefix (Str.Pattern "{{") firstMatch
+    formatString ← Str.stripSuffix (Str.Pattern "}}") woPrefix
+    formatter ← either (const Nothing) Just $ FN.parseFormatString formatString
+    let
+      formattedNumber = FN.format formatter metricValue
+
+    pure $ Rgx.replace formatterRegex formattedNumber input

@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.PunchCard.Eval
   ( eval
+  , buildData
+  , PunchCardData
   , module SlamData.Workspace.Card.Setups.Chart.PunchCard.Model
   ) where
 
@@ -97,7 +99,7 @@ buildPort m axes =
     , chartType: PunchCard
     }
 
-buildData ∷ ModelR → Array Json → PunchCardData
+buildData ∷ ∀ r. { minSize ∷ Number, maxSize ∷ Number|r } → Array Json → PunchCardData
 buildData r records = M.fromFoldable $ map addSymbolSize <$> items
 
   where

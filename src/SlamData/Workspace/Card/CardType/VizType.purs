@@ -25,6 +25,14 @@ data SelectType
   | Radio
   | Checkbox
 
+maximumCountOfEntries ∷ SelectType → Int
+maximumCountOfEntries _ = 1000
+
+maximumCountOfSelectedValues ∷ SelectType → Int
+maximumCountOfSelectedValues = case _ of
+  Checkbox → top
+  _ → 1
+
 allSelectTypes ∷ Array SelectType
 allSelectTypes = [ Dropdown, Radio, Checkbox ]
 

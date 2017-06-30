@@ -27,6 +27,8 @@ module SlamData.Workspace.Card.Port
   , SetupLabeledFormInputPort
   , SetupTextLikeFormInputPort
   , GeoChartPort
+  , SetupInputPort
+  , SetupSelectPort
   , tagPort
   , emptyOut
   , terminalOut
@@ -69,6 +71,8 @@ import Data.URI (URIRef)
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
+import Halogen.HTML.Properties as HP
+
 import Leaflet.Core as LC
 
 import SlamData.Effects (SlamDataEffects)
@@ -78,6 +82,8 @@ import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
+import SlamData.Workspace.Card.CardType.VizType (SelectType)
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), emptyVarMap, _VarMapValue)
 
 import SqlSquared as Sql
@@ -129,6 +135,20 @@ type SetupLabeledFormInputPort =
   , formInputType ∷ FormInputType
   }
 
+type SetupInputPort =
+  { projection ∷ D.LabeledJCursor
+  , inputType ∷ HP.InputType
+  }
+
+type SetupSelectPort =
+  { projection ∷ D.LabeledJCursor
+  , inputType ∷ SelectType
+  , build ∷ Array Json → CE.CardError ⊹
+      { valueLabelMap ∷ Map.Map Sem.Semantics (Maybe String)
+      , selectedValues ∷ Set.Set Sem.Semantics
+      }
+  }
+
 type SetupTextLikeFormInputPort =
   { name ∷ String
   , cursor ∷ JCursor
@@ -148,6 +168,8 @@ data Port
   | ResourceKey String
   | SetupLabeledFormInput SetupLabeledFormInputPort
   | SetupTextLikeFormInput SetupTextLikeFormInputPort
+  | SetupInput SetupInputPort
+  | SetupSelect SetupSelectPort
   | SlamDown (SD.SlamDownP VarMapValue)
   | ChartInstructions ChartInstructionsPort
   | DownloadOptions DownloadPort
@@ -175,6 +197,8 @@ tagPort  = case _ of
   PivotTable _ → "PivotTable"
   GeoChart _ → "GeoChart"
   BuildMetric _ → "BuildMetric"
+  SetupInput _ → "SetupInput"
+  SetupSelect _ → "SetupSelect"
   Viz → "Viz"
 
 filterResources ∷ DataMap → SM.StrMap Resource

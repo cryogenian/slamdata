@@ -16,6 +16,9 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Pie.Eval
   ( eval
+  , buildData
+  , OnePieSeries
+  , DonutSeries
   , module SlamData.Workspace.Card.Setups.Chart.Pie.Model
   ) where
 
@@ -98,12 +101,12 @@ buildGroupBy r =
 buildPort ∷ ModelR → Axes → Port.Port
 buildPort m _ =
   Port.ChartInstructions
-    { options: buildOptions m ∘ buildData m
+    { options: buildOptions m ∘ buildData
     , chartType: Pie
     }
 
-buildData ∷ ModelR → Array Json → Array OnePieSeries
-buildData r =
+buildData ∷ Array Json → Array OnePieSeries
+buildData =
   foldMap (foldMap A.singleton ∘ decodeItem)
     >>> onePies
     >>> adjustPositions

@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Geo.Marker.Eval
   ( eval
+  , decodeItem
+  , iconConf
   , module SlamData.Workspace.Card.Setups.Geo.Marker.Model
   ) where
 
