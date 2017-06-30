@@ -75,7 +75,7 @@ import Leaflet.Core as LC
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Download.Model (DownloadOptions)
 import SlamData.Workspace.Card.Error as CE
---import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Setups.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.CardType.VizType (SelectType)
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -116,10 +116,9 @@ type BuildChartPort =
 
 
 type PivotTablePort =
-  { --dimensions ∷ Array (String × PTM.GroupByDimension)
---  , columns ∷ Array (String × PTM.ColumnDimension)
---  ,
-  isSimpleQuery ∷ Boolean
+  { dimensions ∷ Array (String × PTM.GroupByDimension)
+  , columns ∷ Array (String × PTM.ColumnDimension)
+  , isSimpleQuery ∷ Boolean
   }
 
 type SetupInputPort =

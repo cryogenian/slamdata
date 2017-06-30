@@ -61,6 +61,7 @@ data CardType
   | SetupViz
   | Viz
   | Metric
+  | PivotTable
 
 derive instance eqCardType ∷ Eq CardType
 derive instance ordCardType ∷ Ord CardType
@@ -103,6 +104,7 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     SetupViz → "setup-viz"
     Viz → "viz"
     Metric → "metric"
+    PivotTable → "pivot-table"
 
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
@@ -147,6 +149,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "setup-viz" → pure SetupViz
       "viz" → pure Viz
       "metric" → pure Metric
+      "pivot-table" → pure PivotTable
       _ → Left "This is not basic card type"
 
 cardName ∷ CardType → String
@@ -169,7 +172,8 @@ cardName = case _ of
   StructureEditor → "Structure Viewer"
   SetupViz → "Setup Viz"
   Viz → "Show Viz"
-  Metric → "Show Metric"
+  Metric → "Metric"
+  PivotTable → "Pivot Table"
 
 cardIcon ∷ CardType → String
 cardIcon = case _ of
@@ -213,6 +217,8 @@ cardIcon = case _ of
     "viz"
   Metric →
     "metric"
+  PivotTable →
+    "pivot-table"
 
 
 cardIconDarkSrc ∷ CardType → String
@@ -255,6 +261,7 @@ consumerInteractable = case _ of
   SetupViz → false
   Viz → true
   Metric → true
+  PivotTable → true
 
 cardClasses ∷ CardType → Array H.ClassName
 cardClasses = case _ of
@@ -277,6 +284,7 @@ cardClasses = case _ of
   SetupViz → [ H.ClassName "sd-setup-viz" ]
   Viz → [ H.ClassName "sd-viz" ]
   Metric → [ H.ClassName "sd-metric" ]
+  PivotTable → [ H.ClassName "sd-pivot-table" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Setup Markdown"

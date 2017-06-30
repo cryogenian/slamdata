@@ -28,12 +28,6 @@ type ChildQuery = MR.Query ⨁ PR.Query ⨁ HEC.EChartsQuery ⨁ Const Void
 
 type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Void
 
-cpMetric
-  ∷ CP.ChildPath
-      MR.Query ChildQuery
-      Unit ChildSlot
-cpMetric = CP.cp1
-
 cpPivotTable
   ∷ CP.ChildPath
       PR.Query ChildQuery

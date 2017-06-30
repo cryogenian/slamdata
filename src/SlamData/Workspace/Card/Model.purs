@@ -46,6 +46,7 @@ import SlamData.Workspace.Card.Tabs.Model as Tabs
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Viz.Model as Viz
 import SlamData.Workspace.Card.Metric.Model as Metric
+import SlamData.Workspace.Card.PivotTable.Model as PivotTable
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -70,6 +71,7 @@ data AnyCardModel
   | SetupViz SetupViz.Model
   | Viz Viz.Model
   | Metric Metric.Model
+  | PivotTable PivotTable.Model
 
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
   arbitrary =
@@ -91,6 +93,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , SetupViz <$> SetupViz.genModel
       , Viz <$> Viz.genModel
       , Metric <$> Metric.genModel
+      , PivotTable <$> PivotTable.genModel
       ]
 
 updateCardModel ∷ AnyCardModel → AnyCardModel → AnyCardModel
@@ -125,6 +128,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
     SetupViz x, SetupViz y → SetupViz.eqModel x y
     Viz x, Viz y → Viz.eqModel x y
     Metric x, Metric y → Metric.eqModel x y
+    PivotTable x, PivotTable y → PivotTable.eqModel x y
     _, _ → false
 
 instance encodeJsonCardModel ∷ J.EncodeJson AnyCardModel where
@@ -154,6 +158,7 @@ modelCardType = case _ of
   SetupViz _ → CT.SetupViz
   Viz _ → CT.Viz
   Metric _ → CT.Metric
+  PivotTable _ → CT.PivotTable
 
 encode ∷ AnyCardModel → J.Json
 encode card =
@@ -189,6 +194,7 @@ encodeCardModel = case _ of
   SetupViz model → SetupViz.encode model
   Viz model → Viz.encode model
   Metric model → Metric.encode model
+  PivotTable model → PivotTable.encode model
 
 decodeCardModel
   ∷ CT.CardType
@@ -214,6 +220,7 @@ decodeCardModel = case _ of
   CT.SetupViz → map SetupViz ∘ SetupViz.decode
   CT.Viz → map Viz ∘ Viz.decode
   CT.Metric → map Metric ∘ Metric.decode
+  CT.PivotTable → map PivotTable ∘ PivotTable.decode
   where
     -- For backwards compat
     decodeOpen j =
@@ -244,6 +251,7 @@ cardModelOfType (port × varMap) = case _ of
   CT.SetupViz → SetupViz SetupViz.initialModel
   CT.Viz → Viz Viz.initialModel
   CT.Metric → Metric Metric.initialModel
+  CT.PivotTable → PivotTable PivotTable.initialModel
 
 singletonDraftboard ∷ DeckId → AnyCardModel
 singletonDraftboard deckId =
