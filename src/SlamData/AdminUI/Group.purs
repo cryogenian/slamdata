@@ -93,7 +93,7 @@ component' opts path =
               [ HP.id_ labelId
               , HP.class_ (HH.ClassName "sd-admin-ui-group-input")
               , HP.value st.newGroupText
-              , HE.onValueInput $ \s → Just $ right $ H.action $ SetNewGroupText s
+              , HE.onValueInput \s → Just $ right $ H.action $ SetNewGroupText s
               , HP.placeholder "Add Group"
               ]
           , HH.label
