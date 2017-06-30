@@ -17,6 +17,7 @@ module SlamData.AdminUI.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Exception as Exception
 import Data.Array as Array
 import Data.Lens ((.=))
 import Data.Lens.Iso.Newtype (_Newtype)
@@ -34,6 +35,7 @@ import SlamData.AdminUI.Types as AT
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LK
 import SlamData.Monad (Slam)
+import SlamData.Notification as Notification
 import SlamData.Quasar.Security (createGroup, deleteGroup)
 import SlamData.Render.Common as R
 import SlamData.Workspace.MillerColumns.Component as Miller
@@ -117,7 +119,6 @@ tabBody state =
         [HH.text "Not implemented"]
       -- AT.Authentication → ?x
 
--- TODO(Christoph): Talk to Kyle
 themes ∷ Array String
 themes = ["Dark", "Light"]
 
@@ -382,15 +383,24 @@ eval = case _ of
       createGroup (over QA.GroupPath (_ </> Pathy.dir name) path) >>= case _ of
         Right _ →
           H.query' AT.cpGroups unit (H.action Miller.Reload) $> unit
-        Left err →
-          -- TODO(Christoph): Handle this error
+        Left err → do
+          Notification.error
+            ("Failed to add the group " <> name <> " at " <> QA.printGroupPath path)
+            (Just (Notification.Details (Exception.message err)))
+            Nothing
+            Nothing
+          pure unit
           pure unit
       pure next
     AT.DeleteGroup { path } → do
       deleteGroup path >>= case _ of
         Right _ →
           H.query' AT.cpGroups unit (H.action Miller.Reload) $> unit
-        Left err →
-          -- TODO(Christoph): Handle this error
+        Left err → do
+          Notification.error
+            ("Failed to delete the group at " <> QA.printGroupPath path)
+            (Just (Notification.Details (Exception.message err)))
+            Nothing
+            Nothing
           pure unit
       pure next
