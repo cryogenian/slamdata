@@ -60,6 +60,7 @@ data CardType
   | GeoChart
   | SetupViz
   | Viz
+  | Metric
 
 derive instance eqCardType ∷ Eq CardType
 derive instance ordCardType ∷ Ord CardType
@@ -101,6 +102,7 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     GeoChart → "geo-chart"
     SetupViz → "setup-viz"
     Viz → "viz"
+    Metric → "metric"
 
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
@@ -144,6 +146,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "geo-chart" → pure GeoChart
       "setup-viz" → pure SetupViz
       "viz" → pure Viz
+      "metric" → pure Metric
       _ → Left "This is not basic card type"
 
 cardName ∷ CardType → String
@@ -166,6 +169,7 @@ cardName = case _ of
   StructureEditor → "Structure Viewer"
   SetupViz → "Setup Viz"
   Viz → "Show Viz"
+  Metric → "Show Metric"
 
 cardIcon ∷ CardType → String
 cardIcon = case _ of
@@ -207,6 +211,8 @@ cardIcon = case _ of
     "setupViz"
   Viz →
     "viz"
+  Metric →
+    "metric"
 
 
 cardIconDarkSrc ∷ CardType → String
@@ -248,6 +254,7 @@ consumerInteractable = case _ of
   StructureEditor → false
   SetupViz → false
   Viz → true
+  Metric → true
 
 cardClasses ∷ CardType → Array H.ClassName
 cardClasses = case _ of
@@ -269,6 +276,7 @@ cardClasses = case _ of
   StructureEditor → [ H.ClassName "sd-structure-editor" ]
   SetupViz → [ H.ClassName "sd-setup-viz" ]
   Viz → [ H.ClassName "sd-viz" ]
+  Metric → [ H.ClassName "sd-metric" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Setup Markdown"

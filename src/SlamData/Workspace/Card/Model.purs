@@ -45,6 +45,7 @@ import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Tabs.Model as Tabs
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Viz.Model as Viz
+import SlamData.Workspace.Card.Metric.Model as Metric
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -68,6 +69,7 @@ data AnyCardModel
   | Geo Geo.Model
   | SetupViz SetupViz.Model
   | Viz Viz.Model
+  | Metric Metric.Model
 
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
   arbitrary =
@@ -88,6 +90,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , Geo <$> Geo.genModel
       , SetupViz <$> SetupViz.genModel
       , Viz <$> Viz.genModel
+      , Metric <$> Metric.genModel
       ]
 
 updateCardModel ∷ AnyCardModel → AnyCardModel → AnyCardModel
@@ -121,6 +124,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
     Geo x, Geo y → Geo.eqModel x y
     SetupViz x, SetupViz y → SetupViz.eqModel x y
     Viz x, Viz y → Viz.eqModel x y
+    Metric x, Metric y → Metric.eqModel x y
     _, _ → false
 
 instance encodeJsonCardModel ∷ J.EncodeJson AnyCardModel where
@@ -149,6 +153,7 @@ modelCardType = case _ of
   StructureEditor _ → CT.StructureEditor
   SetupViz _ → CT.SetupViz
   Viz _ → CT.Viz
+  Metric _ → CT.Metric
 
 encode ∷ AnyCardModel → J.Json
 encode card =
@@ -183,6 +188,7 @@ encodeCardModel = case _ of
   StructureEditor model → StructureEditor.encode model
   SetupViz model → SetupViz.encode model
   Viz model → Viz.encode model
+  Metric model → Metric.encode model
 
 decodeCardModel
   ∷ CT.CardType
@@ -207,6 +213,7 @@ decodeCardModel = case _ of
   CT.GeoChart → map Geo ∘ Geo.decode
   CT.SetupViz → map SetupViz ∘ SetupViz.decode
   CT.Viz → map Viz ∘ Viz.decode
+  CT.Metric → map Metric ∘ Metric.decode
   where
     -- For backwards compat
     decodeOpen j =
@@ -236,6 +243,7 @@ cardModelOfType (port × varMap) = case _ of
   CT.GeoChart → Geo Geo.initialModel
   CT.SetupViz → SetupViz SetupViz.initialModel
   CT.Viz → Viz Viz.initialModel
+  CT.Metric → Metric Metric.initialModel
 
 singletonDraftboard ∷ DeckId → AnyCardModel
 singletonDraftboard deckId =
