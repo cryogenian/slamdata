@@ -2,23 +2,27 @@ module SlamData.Workspace.Card.Setups.Viz.Auxiliary where
 
 import SlamData.Prelude
 
+import Data.Argonaut ((:=), (.?), (~>), decodeJson)
+import Data.Argonaut as J
 import Data.Array as Arr
-import Data.URI as URI
-import Data.URI (URIRef, runParseURIRef, printURIRef)
-import Data.Path.Pathy ((</>), (<.>), file, rootDir, dir)
-import Data.Symbol (class IsSymbol)
+import Data.Char.Gen (genAlphaLowercase)
 import Data.Functor.Variant (FProxy, VariantF, inj, case_, on)
-import Data.Variant as V
+import Data.Int as Int
 import Data.Lens ((^.), Lens', (.~), (%~))
 import Data.Lens.Record (prop)
+import Data.Newtype (under)
+import Data.Path.Pathy ((</>), (<.>), file, rootDir, dir)
+import Data.Profunctor (dimap)
+import Data.String.Gen (genString)
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Data.String.Regex.Unsafe as URX
-import Data.Profunctor (dimap)
-import Data.Int as Int
-import Data.Newtype (under)
+import Data.Symbol (class IsSymbol)
+import Data.URI (URIRef, runParseURIRef, printURIRef)
+import Data.URI as URI
+import Data.Variant as V
 
-import Global (decodeURIComponent, readFloat, isNaN)
+import Global (decodeURIComponent, readFloat, isNaN, encodeURIComponent)
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -35,6 +39,10 @@ import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Geo.Model (onURIRef)
 import SlamData.Render.ClassName as CN
+
+import Test.StrongCheck.Arbitrary (arbitrary)
+import Test.StrongCheck.Gen as Gen
+import Test.StrongCheck.Data.Argonaut (ArbJCursor(..))
 
 printNum ∷ Number → String
 printNum n = case Int.fromNumber n of
@@ -432,6 +440,26 @@ osmURI =
 osm ∷ { uri ∷ URIRef, uriString ∷ String }
 osm = { uri: osmURI, uriString: printURIRef osmURI }
 
+genOsm ∷ Gen.Gen { uri ∷ URIRef, uriString ∷ String }
+genOsm = do
+  scheme ← append "a" <$> genString genAlphaLowercase
+  address ← append "a" <$> genString genAlphaLowercase
+  let
+    uri =
+      Left $ URI.URI
+      (Just $ URI.URIScheme $ scheme)
+      (URI.HierarchicalPart
+       (Just $ URI.Authority Nothing [(URI.NameAddress address) × Nothing ])
+       Nothing)
+      Nothing
+      Nothing
+    uriString = URI.printURIRef uri
+  pure { uri, uriString }
+
+genMinMax ∷ Gen.Gen { min ∷ Number, max ∷ Number }
+genMinMax = do
+  { min: _, max: _ } <$> arbitrary <*> arbitrary
+
 minSize ∷ Number
 minSize = 10.0
 
@@ -474,7 +502,6 @@ maxValue = 50.0
 optionalMarkers ∷ Boolean
 optionalMarkers = false
 
-
 type AuxComponent a b m = H.Component HH.HTML (ResetF b a) (Maybe b) b m
 
 type GeoHeatmapState = { osm ∷ OsmURIState }
@@ -483,6 +510,32 @@ type GeoHeatmapQ = ResetF GeoHeatmapState GeoHeatmapF
 
 initialGeoHeatmap ∷ GeoHeatmapState
 initialGeoHeatmap =  { osm }
+
+genGeoHeatmap ∷ ∀ r. Gen.Gen (Variant (geoHeatmap ∷ GeoHeatmapState|r))
+genGeoHeatmap = map (V.inj _geoHeatmap ∘ { osm: _ }) genOsm
+
+encodeGeoHeatmap ∷ GeoHeatmapState → J.Json
+encodeGeoHeatmap r =
+  "tag" := "geo-heatmap"
+  ~> "osmStr" := (URI.printURIRef $ onURIRef encodeURIComponent r.osm.uri)
+  ~> J.jsonEmptyObject
+
+eqGeoHeatmap ∷ ∀ r. GeoHeatmapState → V.Variant (geoHeatmap ∷ GeoHeatmapState|r) → Boolean
+eqGeoHeatmap r1 = V.default false
+  # V.on _geoHeatmap \r2 →
+      r1.osm.uri ≡ r2.osm.uri
+      ∧ r1.osm.uriString ≡ r2.osm.uriString
+
+decodeGeoHeatmap ∷ J.Json → String ⊹ State
+decodeGeoHeatmap r = map (V.inj _geoHeatmap) $ decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "geo-heatmap") $ Left "This is not geo heatmap"
+  osmStr ← obj .? "osmStr"
+  osmURI ←
+    map (onURIRef decodeURIComponent)
+    $ lmap (\x → show x <> ":" <> osmStr)
+    $ URI.runParseURIRef osmStr
+  pure { osm: { uri: osmURI, uriString: osmStr } }
 
 geoHeatmap ∷ ∀ m. AuxComponent GeoHeatmapF GeoHeatmapState m
 geoHeatmap = H.component
@@ -505,6 +558,44 @@ initialGeoMarker =
            , max: maxSize
            }
    }
+
+genGeoMarker ∷ ∀ r. Gen.Gen (Variant (geoMarker ∷ GeoMarkerState|r))
+genGeoMarker = map (V.inj _geoMarker) do
+  osm ← genOsm
+  size ← genMinMax
+  pure { osm, size }
+
+eqGeoMarker ∷ ∀ r. GeoMarkerState → Variant (geoMarker ∷ GeoMarkerState|r) → Boolean
+eqGeoMarker r1 = V.default false
+  # V.on _geoMarker \r2 →
+      r1.osm.uri ≡ r2.osm.uri
+      ∧ r1.osm.uriString ≡ r2.osm.uriString
+      ∧ r1.size.min ≡ r2.size.min
+      ∧ r1.size.max ≡ r2.size.max
+
+encodeGeoMarker ∷ GeoMarkerState → J.Json
+encodeGeoMarker r =
+  "tag" := "geo-marker"
+  ~> "osmStr" := (URI.printURIRef $ onURIRef encodeURIComponent r.osm.uri)
+  ~> "minSize" := r.size.min
+  ~> "maxSize" := r.size.max
+  ~> J.jsonEmptyObject
+
+decodeGeoMarker ∷ J.Json → String ⊹ State
+decodeGeoMarker r = map (V.inj _geoMarker) $ decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "geo-marker")
+    $ Left "This is not geo marker"
+  minSize ← obj .? "minSize"
+  maxSize ← obj .? "maxSize"
+  osmStr ← obj .? "osmStr"
+  osmURI ←
+    map (onURIRef decodeURIComponent)
+    $ lmap (\x → show x <> ":" <> osmStr)
+    $ URI.runParseURIRef osmStr
+  pure { size: { min: minSize, max: maxSize }
+       , osm: { uri: osmURI, uriString: osmStr }
+       }
 
 geoMarker ∷ ∀ m. AuxComponent GeoMarkerF GeoMarkerState m
 geoMarker = H.component
@@ -545,6 +636,50 @@ initialArea =
  , axisLabelAngle
  }
 
+genArea ∷ ∀ r. Gen.Gen (Variant (area ∷ AreaState|r))
+genArea = map (V.inj _area) do
+  isStacked ← arbitrary
+  isSmooth ← arbitrary
+  size ← arbitrary
+  axisLabelAngle ← arbitrary
+  pure { isStacked
+       , isSmooth
+       , size
+       , axisLabelAngle
+       }
+
+eqArea ∷ ∀ r. AreaState → Variant (area ∷ AreaState|r) → Boolean
+eqArea r1 = V.default false
+  # V.on _area \r2 →
+      r1.isStacked ≡ r2.isStacked
+      ∧ r1.isSmooth ≡ r2.isSmooth
+      ∧ r1.size ≡ r2.size
+      ∧ r1.axisLabelAngle ≡ r2.axisLabelAngle
+
+encodeArea ∷ AreaState → J.Json
+encodeArea r =
+  "tag" := "area"
+  ~> "isStacked" := r.isStacked
+  ~> "isSmooth" := r.isSmooth
+  ~> "size" := r.size
+  ~> "axisLabelAngle" := r.axisLabelAngle
+  ~> J.jsonEmptyObject
+
+
+decodeArea ∷ J.Json → String ⊹ State
+decodeArea r = map (V.inj _area) $ decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "area") $ Left "This is not area"
+  isStacked ← obj .? "isStacked"
+  isSmooth ← obj .? "isSmooth"
+  size ← obj .? "size"
+  axisLabelAngle ← obj .? "axisLabelAngle"
+  pure { isStacked
+       , isSmooth
+       , size
+       , axisLabelAngle
+       }
+
 area ∷ ∀ m. AuxComponent AreaF AreaState m
 area = H.component
   { initialState: const initialArea
@@ -574,6 +709,27 @@ type BarQ = ResetF BarState BarF
 initialBar ∷ BarState
 initialBar = { axisLabelAngle }
 
+genBar ∷ ∀ r. Gen.Gen (Variant (bar ∷ BarState|r))
+genBar = map (V.inj _bar ∘ { axisLabelAngle: _ }) arbitrary
+
+eqBar ∷ ∀ r. BarState → Variant (bar ∷ BarState|r) → Boolean
+eqBar r1 = V.default false
+  # V.on _bar \r2 →
+      r1.axisLabelAngle ≡ r2.axisLabelAngle
+
+encodeBar ∷ BarState → J.Json
+encodeBar r =
+  "tag" := "bar"
+  ~> "axisLabelAngle" := r.axisLabelAngle
+  ~> J.jsonEmptyObject
+
+decodeBar ∷ J.Json → String ⊹ State
+decodeBar r = map (V.inj _bar) $ decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "bar") $ Left "This is not bar"
+  axisLabelAngle ← obj .? "axisLabelAngle"
+  pure { axisLabelAngle }
+
 bar ∷ ∀ m. AuxComponent BarF BarState m
 bar = H.component
   { initialState: const initialBar
@@ -593,6 +749,33 @@ type FunnelQ = ResetF FunnelState FunnelF
 
 initialFunnel ∷ FunnelState
 initialFunnel = { order, align }
+
+genFunnel ∷ ∀ r. Gen.Gen (Variant (funnel ∷ FunnelState|r))
+genFunnel = map (V.inj _funnel) do
+  order ← arbitrary
+  align ← arbitrary
+  pure { order, align }
+
+eqFunnel ∷ ∀ r. FunnelState → Variant (funnel ∷ FunnelState|r) → Boolean
+eqFunnel r1 = V.default false
+  # V.on _funnel \r2 →
+      r1.order ≡ r2.order
+      ∧ r1.align ≡ r2.align
+
+encodeFunnel ∷ FunnelState → J.Json
+encodeFunnel r =
+  "tag" := "funnel"
+  ~> "order" := r.order
+  ~> "align" := r.align
+  ~> J.jsonEmptyObject
+
+decodeFunnel ∷ J.Json → String ⊹ State
+decodeFunnel r = map (V.inj _funnel) $ decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "funnel") $ Left "This is not a funnel"
+  order ← obj .? "order"
+  align ← obj .? "align"
+  pure { order, align }
 
 funnel ∷ ∀ m. AuxComponent FunnelF FunnelState m
 funnel = H.component
@@ -616,6 +799,38 @@ type GraphQ = ResetF GraphState GraphF
 
 initialGraph ∷ GraphState
 initialGraph = { size: { min: minSize, max: maxSize }, circular }
+
+genGraph ∷ ∀ r. Gen.Gen (Variant (graph ∷ GraphState|r))
+genGraph = map (V.inj _graph) do
+  size ← genMinMax
+  circular ← arbitrary
+  pure { size, circular }
+
+eqGraph ∷ ∀ r. GraphState → Variant (graph ∷ GraphState|r) → Boolean
+eqGraph r1 = V.default false
+  # V.on _graph \r2 →
+      r1.size.min ≡ r2.size.min
+      ∧ r1.size.max ≡ r2.size.max
+      ∧ r1.circular ≡ r2.circular
+
+encodeGraph ∷ GraphState → J.Json
+encodeGraph r =
+  "tag" := "graph"
+  ~> "minSize" := r.size.min
+  ~> "maxSize" := r.size.max
+  ~> "circular" := r.circular
+  ~> J.jsonEmptyObject
+
+decodeGraph ∷ J.Json → String ⊹ State
+decodeGraph r = map (V.inj _graph) $ decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "graph") $ Left "This is not a graph"
+  minSize ← obj .? "minSize"
+  maxSize ← obj .? "maxSize"
+  circular ← obj .? "circular"
+  pure { size: { min: minSize, max: maxSize }
+       , circular
+       }
 
 graph ∷ ∀ m. AuxComponent GraphF GraphState m
 graph = H.component
@@ -652,13 +867,52 @@ initialHeatmap =
   , val: { min: minValue, max: maxValue }
   }
 
+genHeatmap ∷ ∀ r. Gen.Gen (Variant (heatmap ∷ HeatmapState|r))
+genHeatmap = map (V.inj _heatmap) do
+  colorScheme ← arbitrary
+  val ← genMinMax
+  isColorSchemeReversed ← arbitrary
+  pure { colorScheme, val, isColorSchemeReversed }
+
+eqHeatmap ∷ ∀ r. HeatmapState → Variant (heatmap ∷ HeatmapState|r) → Boolean
+eqHeatmap r1 = V.default false
+  # V.on _heatmap \r2 →
+      r1.colorScheme ≡ r2.colorScheme
+      ∧ r1.isColorSchemeReversed ≡ r2.isColorSchemeReversed
+      ∧ r1.val.min ≡ r2.val.min
+      ∧ r1.val.max ≡ r2.val.max
+
+encodeHeatmap ∷ HeatmapState → J.Json
+encodeHeatmap r =
+  "tag" := "heatmap"
+  ~> "colorScheme" := r.colorScheme
+  ~> "isColorSchemeReversed" := r.isColorSchemeReversed
+  ~> "minVal" := r.val.min
+  ~> "maxVal" := r.val.max
+  ~> J.jsonEmptyObject
+
+decodeHeatmap ∷ J.Json → String ⊹ State
+decodeHeatmap r = map (V.inj _heatmap) $ decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "heatmap") $ Left "This is not a heatmap"
+  colorScheme ← obj .? "colorScheme"
+  isColorSchemeReversed ← obj .? "isColorSchemeReversed"
+  minVal ← obj .? "minVal"
+  maxVal ← obj .? "maxVal"
+  pure { colorScheme
+       , isColorSchemeReversed
+       , val: { min: minVal, max: maxVal }
+       }
+
 heatmap ∷ ∀ m. AuxComponent HeatmapF HeatmapState m
 heatmap = H.component
   { initialState:const initialHeatmap
   , render: \state → HH.div_
     [ HH.hr_
-    , row [ renderChoose _colorScheme ?colorSchemeSelect state
-          , renderToggle _isColorSchemeReversed state
+    , row [
+        --renderChoose _colorScheme ?colorSchemeSelect state
+--          ,
+          renderToggle _isColorSchemeReversed state
           ]
     , HH.hr_
     , renderMinMax _val state
@@ -690,6 +944,46 @@ initialLine =
   , axisLabelAngle
   }
 
+genLine ∷ ∀ r. Gen.Gen (Variant (line ∷ LineState|r))
+genLine = map (V.inj _line) do
+  optionalMarkers ← arbitrary
+  size ← genMinMax
+  axisLabelAngle ← arbitrary
+  pure { optionalMarkers
+       , size
+       , axisLabelAngle
+       }
+
+eqLine ∷ ∀ r. LineState → Variant (line ∷ LineState|r) → Boolean
+eqLine r1 = V.default false
+  # V.on _line \r2 →
+      r1.optionalMarkers ≡ r2.optionalMarkers
+      ∧ r1.size.min ≡ r2.size.min
+      ∧ r1.size.max ≡ r2.size.max
+      ∧ r1.axisLabelAngle ≡ r2.axisLabelAngle
+
+encodeLine ∷ LineState → J.Json
+encodeLine r =
+  "tag" := "line"
+  ~> "optionalMarkers" := r.optionalMarkers
+  ~> "minSize" := r.size.min
+  ~> "maxSize" := r.size.max
+  ~> "axisLabelAngle" := r.axisLabelAngle
+  ~> J.jsonEmptyObject
+
+decodeLine ∷ J.Json → String ⊹ State
+decodeLine r = map (V.inj _line) $ decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "line") $ Left "This is not a line"
+  optionalMarkers ← obj .? "optionalMarkers"
+  minSize ← obj .? "minSize"
+  maxSize ← obj .? "maxSize"
+  axisLabelAngle ← obj .? "axisLabelAngle"
+  pure { optionalMarkers
+       , axisLabelAngle
+       , size: { min: minSize, max: maxSize }
+       }
+
 line ∷ ∀ m. AuxComponent LineF LineState m
 line = H.component
   { initialState: const initialLine
@@ -715,6 +1009,27 @@ type MetricQ = ResetF MetricState MetricF
 
 initialMetric ∷ MetricState
 initialMetric = { formatter }
+
+genMetric ∷ ∀ r. Gen.Gen (Variant (metric ∷ MetricState|r))
+genMetric = map (V.inj _metric ∘ { formatter: _ }) arbitrary
+
+eqMetric ∷ ∀ r. MetricState → Variant (metric ∷ MetricState|r) → Boolean
+eqMetric r1 = V.default false
+  # V.on _metric \r2 →
+      r1.formatter ≡ r2.formatter
+
+encodeMetric ∷ MetricState → J.Json
+encodeMetric r =
+  "tag" := "metric"
+  ~> "formatter" := r.formatter
+  ~> J.jsonEmptyObject
+
+decodeMetric ∷ J.Json → String ⊹ State
+decodeMetric r = map (V.inj _metric) $ decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "metric") $ Left "This is not a metric"
+  formatter ← obj .? "formatter"
+  pure { formatter }
 
 metric ∷ ∀ m. AuxComponent MetricF MetricState m
 metric = H.component
@@ -763,6 +1078,38 @@ type PunchCardQ = ResetF PunchCardState PunchCardF
 initialPunchCard ∷ PunchCardState
 initialPunchCard = { size: { min: minSize, max: maxSize }, circular }
 
+genPunchCard ∷ ∀ r. Gen.Gen (Variant (punchCard ∷ PunchCardState|r))
+genPunchCard = map (V.inj _punchCard) do
+  size ← genMinMax
+  circular ← arbitrary
+  pure { size, circular }
+
+eqPunchCard ∷ ∀ r. PunchCardState → Variant (punchCard ∷ PunchCardState|r) → Boolean
+eqPunchCard r1 = V.default false
+  # V.on _punchCard \r2 →
+      r1.size.min ≡ r2.size.min
+      ∧ r1.size.max ≡ r2.size.max
+      ∧ r1.circular ≡ r2.circular
+
+encodePunchCard ∷ PunchCardState → J.Json
+encodePunchCard r =
+  "tag" := "punch-card"
+  ~> "minSize" := r.size.min
+  ~> "maxSize" := r.size.max
+  ~> "circular" := r.circular
+  ~> J.jsonEmptyObject
+
+decodePunchCard ∷ J.Json → String ⊹ State
+decodePunchCard r = map (V.inj _punchCard) $ decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "punch-card") $ Left "This is not a punch card"
+  minSize ← obj .? "minSize"
+  maxSize ← obj .? "maxSize"
+  circular ← obj .? "circular"
+  pure { size: { min: minSize, max: maxSize }
+       , circular
+       }
+
 punchCard ∷ ∀ m. AuxComponent PunchCardF PunchCardState m
 punchCard = H.component
   { initialState: const initialPunchCard
@@ -785,6 +1132,28 @@ type ScatterQ = ResetF ScatterState ScatterF
 
 initialScatter ∷ ScatterState
 initialScatter = { size: { min: minSize, max: maxSize } }
+
+genScatter ∷ ∀ r. Gen.Gen (Variant (scatter ∷ ScatterState|r))
+genScatter = map (V.inj _scatter ∘ { size: _ }) genMinMax
+
+eqScatter ∷ ∀ r. ScatterState → Variant (scatter ∷ ScatterState|r) → Boolean
+eqScatter r1 = V.default false
+  # V.on _scatter \r2 →
+      r1.size.min ≡ r2.size.min
+      ∧ r1.size.max ≡ r2.size.max
+
+encodeScatter ∷ ScatterState → J.Json
+encodeScatter r =
+  "tag" := "scatter"
+  ~> "minSize" := r.size.min
+  ~> "maxSize" := r.size.max
+  ~> J.jsonEmptyObject
+
+decodeScatter ∷ J.Json → String ⊹ State
+decodeScatter r = map (V.inj _scatter) $ decodeJson r >>= \obj → do
+  minSize ← obj .? "minSize"
+  maxSize ← obj .? "maxSize"
+  pure { size: { min: minSize, max: maxSize } }
 
 scatter ∷ ∀ m. AuxComponent ScatterF ScatterState m
 scatter = H.component
@@ -810,6 +1179,7 @@ _punchCard = SProxy ∷ SProxy "punchCard"
 _scatter = SProxy ∷ SProxy "scatter"
 _other = SProxy ∷ SProxy "other"
 
+
 type State = Variant
   ( geoHeatmap ∷ GeoHeatmapState
   , geoMarker ∷ GeoMarkerState
@@ -823,6 +1193,63 @@ type State = Variant
   , punchCard ∷ PunchCardState
   , scatter ∷ ScatterState
   )
+
+genState ∷ Gen.Gen State
+genState = Gen.oneOf genGeoHeatmap
+  [ genGeoMarker
+  , genArea
+  , genBar
+  , genFunnel
+  , genGraph
+  , genHeatmap
+  , genLine
+  , genMetric
+  , genPunchCard
+  , genScatter
+  ]
+
+eqState ∷ State → State → Boolean
+eqState st = V.case_
+  # V.on _geoHeatmap (flip eqGeoHeatmap st)
+  # V.on _geoMarker (flip eqGeoMarker st)
+  # V.on _area (flip eqArea st)
+  # V.on _bar (flip eqBar st)
+  # V.on _funnel (flip eqFunnel st)
+  # V.on _graph (flip eqGraph st)
+  # V.on _heatmap (flip eqHeatmap st)
+  # V.on _line (flip eqLine st)
+  # V.on _metric (flip eqMetric st)
+  # V.on _punchCard (flip eqPunchCard st)
+  # V.on _scatter (flip eqScatter st)
+
+encodeState ∷ State → J.Json
+encodeState = V.case_
+  # V.on _geoHeatmap encodeGeoHeatmap
+  # V.on _geoMarker encodeGeoMarker
+  # V.on _area encodeArea
+  # V.on _bar encodeBar
+  # V.on _funnel encodeFunnel
+  # V.on _graph encodeGraph
+  # V.on _heatmap encodeHeatmap
+  # V.on _line encodeLine
+  # V.on _metric encodeMetric
+  # V.on _punchCard encodePunchCard
+  # V.on _scatter encodeScatter
+
+decodeState ∷ J.Json → String ⊹ State
+decodeState j =
+  decodeGeoHeatmap j
+  <|> decodeGeoMarker j
+  <|> decodeArea j
+  <|> decodeBar j
+  <|> decodeFunnel j
+  <|> decodeGraph j
+  <|> decodeHeatmap j
+  <|> decodeLine j
+  <|> decodeMetric j
+  <|> decodePunchCard j
+  <|> decodeScatter j
+  <|> (Left "invalide auxiliary state")
 
 type Query = VariantF
   ( geoHeatmap ∷ FProxy GeoHeatmapQ
