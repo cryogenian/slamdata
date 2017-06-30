@@ -18,6 +18,7 @@ module SlamData.AdminUI.Group where
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Exception as Exception
 import Data.Array as Array
 import Data.List as L
 import Data.Path.Pathy as Pathy
@@ -32,13 +33,13 @@ import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Group.Item as GI
 import SlamData.AdminUI.Types as AT
 import SlamData.Monad (Slam)
+import SlamData.Notification as Notification
 import SlamData.Quasar.Security (groupInfo)
 import SlamData.Render.Icon as I
 import SlamData.Workspace.MillerColumns.Column.Component as MCC
 import SlamData.Workspace.MillerColumns.Column.Component.Request as MCREQ
 import SlamData.Workspace.MillerColumns.Component as Miller
 import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
-import Unsafe.Coerce (unsafeCoerce)
 import Utils.DOM as DOM
 import Utils.Path as PU
 
@@ -154,22 +155,23 @@ load (path × { requestId }) =
     Right { subGroups, members } → do
       items ← traverse groupFromPath (Array.filter (isDirectSubgroup path) subGroups)
       pure { requestId
-           , items: L.fromFoldable items
+           , items: L.fromFoldable (Array.catMaybes items)
            , nextOffset: Nothing
            }
     Left e → pure (noResult requestId)
   where
-    groupFromPath ∷ QA.GroupPath → AT.DSL AT.GroupItem
+    groupFromPath ∷ QA.GroupPath → AT.DSL (Maybe AT.GroupItem)
     groupFromPath p = do
       groupInfo p >>= case _ of
         Right { subGroups, members } →
-          pure (AT.GroupItem
-            { path: p
-            , name: QA.printGroupPath p
-            })
-        Left e →
-          -- TODO(Christoph): Ahem
-          unsafeCoerce unit
+          pure (Just (AT.GroupItem { path: p, name: QA.printGroupPath p}))
+        Left err → do
+          Notification.error
+            ("Failed to fetch subgroups for " <> QA.printGroupPath p)
+            (Just (Notification.Details (Exception.message err)))
+            Nothing
+            Nothing
+          pure Nothing
 
 isDirectSubgroup ∷ QA.GroupPath → QA.GroupPath → Boolean
 isDirectSubgroup (QA.GroupPath parent) (QA.GroupPath child) =
