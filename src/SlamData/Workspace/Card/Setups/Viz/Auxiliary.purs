@@ -28,7 +28,6 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Profunctor as HPR
 
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (ColorScheme(..), colorSchemeSelect)
 import SlamData.Form.Select (class OptionVal, Select(..), stringVal)
 import SlamData.Common.Sort (sortSelect, Sort(..))
 import SlamData.Common.Align (alignSelect, Align(..))
@@ -457,8 +456,8 @@ circular = false
 isColorSchemeReversed ∷ Boolean
 isColorSchemeReversed = false
 
-colorScheme ∷ ColorScheme
-colorScheme = RedToBlue
+colorScheme ∷ String -- ColorScheme
+colorScheme = "" --RedToBlue
 
 order ∷ Sort
 order = Asc
@@ -635,12 +634,12 @@ graph = H.component
   }
 
 type HeatmapF =
-  ( colorScheme ∷ FProxy (ChooseF ColorScheme)
+  ( colorScheme ∷ FProxy (ChooseF String) --ColorScheme)
   , isColorSchemeReversed ∷ FProxy ToggleF
   , val ∷ FProxy MinMaxF
   )
 type HeatmapState =
-  { colorScheme ∷ ColorScheme
+  { colorScheme ∷ String --ColorScheme
   , isColorSchemeReversed ∷ Boolean
   , val ∷ MinMaxState
   }
@@ -658,7 +657,7 @@ heatmap = H.component
   { initialState:const initialHeatmap
   , render: \state → HH.div_
     [ HH.hr_
-    , row [ renderChoose _colorScheme colorSchemeSelect state
+    , row [ renderChoose _colorScheme ?colorSchemeSelect state
           , renderToggle _isColorSchemeReversed state
           ]
     , HH.hr_

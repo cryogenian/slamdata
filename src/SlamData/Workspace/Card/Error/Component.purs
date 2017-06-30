@@ -56,9 +56,7 @@ import SlamData.Workspace.Card.Markdown.Error as CME
 import SlamData.Workspace.Card.Open.Error as COE
 import SlamData.Workspace.Card.Query.Error as CQE
 import SlamData.Workspace.Card.Search.Error as CSE
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPTE
-import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as CFILE
-import SlamData.Workspace.Card.Setups.FormInput.Static.Error as CFISE
+--import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPTE
 import SlamData.Workspace.Card.Setups.Viz.Error as SVE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
@@ -132,11 +130,11 @@ prettyPrintCardError state ce =
         # on CE._cache (cacheErrorMessage state)
         # on CE._chart (chartErrorMessage state)
         # on CE._downloadOptions (downloadOptionsErrorMessage state)
-        # on CE._formInputLabeled (formInputLabeledErrorMessage state)
-        # on CE._formInputStatic (formInputStaticErrorMessage state)
+--        # on CE._formInputLabeled (formInputLabeledErrorMessage state)
+--        # on CE._formInputStatic (formInputStaticErrorMessage state)
         # on CE._markdown (markdownErrorMessage state)
         # on CE._open (openErrorMessage state)
-        # on CE._pivotTable (pivotTableErrorMessage state)
+--        # on CE._pivotTable (pivotTableErrorMessage state)
         # on CE._query (queryErrorMessage state)
         # on CE._search (searchErrorMessage state)
         # on CE._table (tableErrorMessage state)
@@ -491,7 +489,7 @@ chartErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle [ HH.text "An error occured during sampling of the chart data." ]
           , pure $ printQErrorWithDetails qErr
           ]
-
+{-
 formInputStaticErrorMessage ∷ State → CFISE.FormInputStaticError → HTML
 formInputStaticErrorMessage { accessType, expanded } err =
   case accessType of
@@ -531,7 +529,8 @@ formInputStaticErrorMessage { accessType, expanded } err =
               [ HH.text "The selected axis was not present in the data." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
-
+-}
+{-
 formInputLabeledErrorMessage ∷ State → CFILE.FormInputLabeledError → HTML
 formInputLabeledErrorMessage { accessType, expanded } err =
   case accessType of
@@ -611,7 +610,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
               [ HH.text "Labels must be unique. Please, use other axis." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]
-
+-}
 searchErrorMessage ∷ State → CSE.SearchError → HTML
 searchErrorMessage { accessType, expanded } err =
   case accessType of
@@ -643,7 +642,7 @@ searchErrorMessage { accessType, expanded } err =
               ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and correct your query to fix this error." ]
           ]
-
+{-
 pivotTableErrorMessage ∷ State → CPTE.PivotTableError → HTML
 pivotTableErrorMessage { accessType, expanded } err =
   case accessType of
@@ -681,7 +680,7 @@ pivotTableErrorMessage { accessType, expanded } err =
               ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
-
+-}
 variablesErrorMessage ∷ State → CVE.VariablesError → HTML
 variablesErrorMessage { accessType, expanded } err =
   case accessType of

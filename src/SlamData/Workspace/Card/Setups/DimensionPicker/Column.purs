@@ -23,11 +23,11 @@ import Control.Comonad.Cofree as CF
 import Data.Argonaut as J
 import Data.List as L
 
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
+--import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (unfoldJCursor)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Node (discriminateNodes)
 import SlamData.Workspace.MillerColumns.TreeData (constructTree)
-
+{-
 type ColumnNode = Either Column Column
 
 groupColumns ∷ L.List Column → CF.Cofree L.List ColumnNode
@@ -50,3 +50,4 @@ showColumn _ All = "*"
 
 flattenColumns ∷ ColumnNode → Column
 flattenColumns = either id id
+-}

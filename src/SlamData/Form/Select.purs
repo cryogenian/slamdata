@@ -39,6 +39,9 @@ instance optionValMaybe ∷ (OptionVal a) ⇒ OptionVal (Maybe a) where
   stringVal Nothing = "None"
   stringVal (Just a) = stringVal a
 
+instance optionValString ∷ OptionVal String where
+  stringVal = id
+
 -- | `options` for available variants
 -- | `value` for selected item
 type SelectR a =

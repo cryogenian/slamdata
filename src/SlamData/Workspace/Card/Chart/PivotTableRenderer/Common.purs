@@ -23,7 +23,7 @@ import Data.Foldable as F
 import Data.Int as Int
 import Data.List (List, (:))
 import Data.List as List
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (ColumnDimension)
+--import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (ColumnDimension)
 import SlamData.Workspace.Card.Setups.Dimension as D
 
 topField ∷ String → J.JCursor
@@ -33,7 +33,7 @@ calcPageCount ∷ Int → Int → Int
 calcPageCount count size =
   Int.ceil (Int.toNumber count / Int.toNumber size)
 
-sizeOfRow ∷ Array (String × ColumnDimension) → J.Json → Int
+sizeOfRow ∷ Array (String × _) → J.Json → Int
 sizeOfRow columns row =
   fromMaybe 1
     (F.maximum

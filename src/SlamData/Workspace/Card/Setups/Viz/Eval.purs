@@ -49,44 +49,23 @@ import Leaflet.Plugin.Heatmap as LH
 
 import Math (log)
 
-import SlamData.Common.Sort (Sort(..))
 import SlamData.Common.Align (Align(..))
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Viz.Model (Model)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor, getColorScheme, getTransparentColor)
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Error as CE
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Viz.Error as VE
-import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Common.Sort (Sort(..))
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.Setups.Package.Types as P
 import SlamData.Workspace.Card.CardType.VizType as VT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.DimMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Package.Projection as PP
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
+import SlamData.Workspace.Card.Setups.Package.Types as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Chart.Area.Eval as Area
-import SlamData.Workspace.Card.Setups.Chart.PunchCard.Eval as PunchCard
-import SlamData.Workspace.Card.Setups.Chart.Radar.Eval as Radar
-import SlamData.Workspace.Card.Setups.Chart.Bar.Eval as Bar
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Eval as Funnel
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Eval as Boxplot
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval as Candlestick
-import SlamData.Workspace.Card.Setups.Chart.Gauge.Eval as Gauge
-import SlamData.Workspace.Card.Setups.Chart.Graph.Eval as Graph
-import SlamData.Workspace.Card.Setups.Chart.Heatmap.Eval as Heatmap
-import SlamData.Workspace.Card.Setups.Chart.Line.Eval as Line
-import SlamData.Workspace.Card.Setups.Chart.Parallel.Eval as Parallel
-import SlamData.Workspace.Card.Setups.Chart.Pie.Eval as Pie
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Eval as Sankey
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Eval as Scatter
-import SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval as GeoHeatmap
-import SlamData.Workspace.Card.Setups.Geo.Marker.Eval as GeoMarker
 import SlamData.Workspace.Card.Setups.Viz.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Viz.Error as VE
+import SlamData.Workspace.Card.Setups.Viz.Model (Model)
 
 import SqlSquared as Sql
 
@@ -294,7 +273,7 @@ evalArea m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ measureProjection PP._value dimMap "measure"
@@ -303,13 +282,13 @@ evalArea m =
     ]
 
   buildGroupBy r =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._series dimMap
     <|> sqlProjection PP._dimension dimMap
 
 
   buildPort r axes =
-    Port.BuildChart $ areaOptions dimMap axes r ∘ Area.buildAreaData
+    Port.BuildChart $ areaOptions dimMap axes r ∘ ?buildAreaData
 
 evalBar ∷ ∀ m v. VizEval m v
 evalBar m =
@@ -318,7 +297,7 @@ evalBar m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ measureProjection PP._value dimMap "measure"
@@ -328,13 +307,13 @@ evalBar m =
     ]
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._parallel dimMap
     <|> sqlProjection PP._stack dimMap
     <|> sqlProjection PP._category dimMap
 
   buildPort r axes =
-    Port.BuildChart $ barOptions dimMap axes r ∘ Bar.buildBarData
+    Port.BuildChart $ barOptions dimMap axes r ∘ ?buildBarData
 
 sqlProjection
   ∷ ∀ m
@@ -344,7 +323,7 @@ sqlProjection
   → m Sql.Sql
 sqlProjection projection dimMap =
   P.getProjection dimMap projection
-  <#> SCC.jcursorSql
+  <#> ?jcursorSql
   # maybe empty pure
 
 
@@ -357,7 +336,7 @@ dimensionProjection
   → m (Sql.Projection Sql.Sql)
 dimensionProjection projection dimMap label =
   P.getProjection dimMap projection
-  # maybe SCC.nullPrj SCC.jcursorPrj
+  # maybe ?nullPrj ?jcursorPrj
   # Sql.as label
   # pure
 
@@ -369,23 +348,23 @@ measureProjection
   → String
   → m (Sql.Projection Sql.Sql)
 measureProjection projection dimMap label = pure case P.getProjection dimMap projection of
-  Nothing → SCC.nullPrj # Sql.as label
-  Just sv → sv # SCC.jcursorPrj # Sql.as label # SCC.applyTransform sv
+  Nothing → ?nullPrj # Sql.as label
+  Just sv → sv # ?jcursorPrj # Sql.as label # ?applyTransform sv
 
-areaOptions ∷ P.DimensionMap → Ax.Axes → Aux.AreaState → Array Area.AreaSeries → DSL OptionI
+areaOptions ∷ P.DimensionMap → Ax.Axes → Aux.AreaState → _ → DSL OptionI
 areaOptions dimMap axes r areaData = do
   let
     mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
       [ { label: D.jcursorLabel dim, value: axesPrj } ]
 
     cols = A.fold
-      [ mkLabel PP._dimension $ CCT.formatValueIx 0
-      , mkLabel PP._value $ CCT.formatValueIx 1
+      [ mkLabel PP._dimension $ ?formatValueIx 0
+      , mkLabel PP._value $ ?formatValueIx 1
       , mkLabel PP._series _.seriesName
       ]
 
   E.tooltip do
-    E.formatterItem $ CCT.tableFormatter (pure ∘ _.color) cols ∘ pure
+    E.formatterItem $ ?tableFormatter (pure ∘ _.color) cols ∘ pure
     E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
@@ -426,9 +405,9 @@ areaOptions dimMap axes r areaData = do
       E.textStyle do
         E.fontFamily "Ubuntu, sans"
 
-  E.colors colors
+  E.colors ?colors
 
-  E.grid BCP.cartesian
+  E.grid ?cartesian
 
   E.legend do
     E.textStyle $ E.fontFamily "Ubuntu, sans"
@@ -474,34 +453,34 @@ areaOptions dimMap axes r areaData = do
             E.addValue v
           E.symbolSize $ Int.floor r.size
     for_ serie.name E.name
-    for_ (colors !! ix) \color → do
+    for_ (?colors !! ix) \color → do
       E.itemStyle $ E.normal $ E.color color
-      E.areaStyle $ E.normal $ E.color $ getShadeColor color (if r.isStacked then 1.0 else 0.5)
+      E.areaStyle $ E.normal $ E.color $ ?getShadeColor color (if r.isStacked then 1.0 else 0.5)
     E.lineStyle $ E.normal $ E.width 2
     E.symbol ET.Circle
     E.smooth r.isSmooth
     when r.isStacked $ E.stack "stack"
 
-barOptions ∷ P.DimensionMap → Ax.Axes → Aux.BarState → Array Bar.BarStacks → DSL OptionI
+barOptions ∷ P.DimensionMap → Ax.Axes → Aux.BarState → _  → DSL OptionI
 barOptions dimMap axes r barData = do
   let
     mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
       [ { label: D.jcursorLabel dim, value: axesPrj } ]
 
     cols = A.fold
-      [ mkLabel PP._category $ CCT.formatValueIx 0
-      , mkLabel PP._value $ CCT.formatValueIx 1
-      , mkLabel PP._stack $ CCT.formatNameIx 0
-      , mkLabel PP._parallel $ CCT.formatNameIx
+      [ mkLabel PP._category $ ?formatValueIx 0
+      , mkLabel PP._value $ ?formatValueIx 1
+      , mkLabel PP._stack $ ?formatNameIx 0
+      , mkLabel PP._parallel $ ?formatNameIx
           if P.hasProjection dimMap PP._stack then 1 else 0
       ]
 
   E.tooltip do
-    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
+    E.formatterItem (?tableFormatter (pure ∘ _.color) cols ∘ pure)
     E.textStyle $ E.fontSize 12
     E.triggerItem
 
-  E.colors colors
+  E.colors ?colors
 
   E.xAxis do
     E.axisType ET.Category
@@ -529,7 +508,7 @@ barOptions dimMap axes r barData = do
     E.leftLeft
     E.topBottom
 
-  E.grid BCP.cartesian
+  E.grid ?cartesian
 
   E.series series
 
@@ -598,7 +577,7 @@ evalBoxplot m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._value dimMap "measure"
@@ -611,9 +590,9 @@ evalBoxplot m =
 
 
   buildPort r axes =
-    Port.BuildChart $ boxplotOptions dimMap axes r ∘ Boxplot.buildBoxplotData
+    Port.BuildChart $ boxplotOptions dimMap axes r ∘ ?buildBoxplotData
 
-boxplotOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Boxplot.OnOneBoxplot → DSL OptionI
+boxplotOptions ∷ P.DimensionMap → Ax.Axes → Void → _ → DSL OptionI
 boxplotOptions dimMap axes r boxplotData = do
   E.tooltip do
     E.triggerItem
@@ -621,10 +600,10 @@ boxplotOptions dimMap axes r boxplotData = do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
 
-  BCP.rectangularTitles boxplotData
+  ?rectangularTitles boxplotData
     $ maybe "" D.jcursorLabel $ P.getProjection dimMap PP._parallel
 
-  BCP.rectangularGrids boxplotData
+  ?rectangularGrids boxplotData
 
 
   E.legend do
@@ -662,17 +641,17 @@ boxplotOptions dimMap axes r boxplotData = do
         $ fromMaybe (C.rgba 0 0 0 0.5)
         $ serie.name
         >>= flip A.elemIndex serieNames
-        >>= (colors !! _)
+        >>= (?colors !! _)
 
     E.tooltip $ E.formatterItem \item →
-      CCT.tableRows $ A.fold
+      ?tableRows $ A.fold
       [ flip foldMap (P.getProjection dimMap PP._dimension) \dim →
          [ D.jcursorLabel dim × item.name ]
-      , [ "Upper" × CCT.formatNumberValueIx 4 item ]
-      , [ "Q3" × CCT.formatNumberValueIx 3 item ]
-      , [ "Median" × CCT.formatNumberValueIx 2 item ]
-      , [ "Q1" × CCT.formatNumberValueIx 1 item ]
-      , [ "Lower" × CCT.formatNumberValueIx 0 item ]
+      , [ "Upper" × ?formatNumberValueIx 4 item ]
+      , [ "Q3" × ?formatNumberValueIx 3 item ]
+      , [ "Median" × ?formatNumberValueIx 2 item ]
+      , [ "Q1" × ?formatNumberValueIx 1 item ]
+      , [ "Lower" × ?formatNumberValueIx 0 item ]
       ]
 
     E.buildItems
@@ -699,11 +678,11 @@ boxplotOptions dimMap axes r boxplotData = do
       $ fromMaybe (C.rgba 0 0 0 0.5)
       $ serie.name
       >>= flip A.elemIndex serieNames
-      >>= (colors !! _)
+      >>= (?colors !! _)
 
     E.tooltip $ E.formatterItem\param →
       param.name ⊕ "<br/>"
-      ⊕ CCT.formatNumberValueIx 0 param
+      ⊕ ?formatNumberValueIx 0 param
 
     E.buildItems
       $ enumeratedFor_ serie.items \(ox × (outliers × _)) →
@@ -768,7 +747,7 @@ evalCandlestick m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._dimension dimMap "dimension"
@@ -780,14 +759,14 @@ evalCandlestick m =
     ]
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._parallel dimMap
     <|> sqlProjection PP._dimension dimMap
 
   buildPort r axes =
-    Port.BuildChart $ kOptions dimMap axes r ∘ Candlestick.buildKData
+    Port.BuildChart $ kOptions dimMap axes r ∘ ?buildKData
 
-kOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Candlestick.OnOneGrid → DSL OptionI
+kOptions ∷ P.DimensionMap → Ax.Axes → Void → _ → DSL OptionI
 kOptions dimMap axes _ kData = do
   E.tooltip do
     E.triggerItem
@@ -799,27 +778,27 @@ kOptions dimMap axes _ kData = do
             P.getProjection dimMap prj
             # foldMap \dim →
             [ D.jcursorLabel dim × f ]
-      in CCT.tableRows $ A.fold
+      in ?tableRows $ A.fold
           [ mkRow PP._dimension fmt.name
-          , mkRow PP._open $ CCT.formatValueIx 0 fmt
-          , mkRow PP._close $ CCT.formatValueIx 1 fmt
-          , mkRow PP._low $ CCT.formatValueIx 2 fmt
-          , mkRow PP._high $ CCT.formatValueIx 2 fmt
+          , mkRow PP._open $ ?formatValueIx 0 fmt
+          , mkRow PP._close $ ?formatValueIx 1 fmt
+          , mkRow PP._low $ ?formatValueIx 2 fmt
+          , mkRow PP._high $ ?formatValueIx 2 fmt
           ]
 
 
-  BCP.rectangularTitles kData
+  ?rectangularTitles kData
     $ maybe "" D.jcursorLabel $ P.getProjection dimMap PP._parallel
-  BCP.rectangularGrids kData
+  ?rectangularGrids kData
 
-  E.colors colors
+  E.colors ?colors
 
   E.xAxes xAxes
   E.yAxes yAxes
   E.series series
 
   where
-  xValues ∷ Candlestick.OnOneGrid → Array String
+  xValues ∷ _ → Array String
   xValues  = sortX ∘ foldMap A.singleton ∘ M.keys ∘ _.items
 
   xAxisType ∷ Ax.AxisType
@@ -860,7 +839,7 @@ evalFunnel m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._category dimMap "category"
@@ -869,14 +848,14 @@ evalFunnel m =
     ]
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._series dimMap
     <|> sqlProjection PP._category dimMap
 
   buildPort r axes =
-    Port.BuildChart $ funnelOptions dimMap axes r ∘ Funnel.buildData
+    Port.BuildChart $ funnelOptions dimMap axes r ∘ ?buildData
 
-funnelOptions ∷ P.DimensionMap → Ax.Axes → Aux.FunnelState → Array Funnel.FunnelSeries → DSL OptionI
+funnelOptions ∷ P.DimensionMap → Ax.Axes → Aux.FunnelState → _ → DSL OptionI
 funnelOptions dimMap axes r funnelData = do
   let
     mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
@@ -884,12 +863,12 @@ funnelOptions dimMap axes r funnelData = do
 
     cols = A.fold
       [ mkLabel PP._category _.name
-      , mkLabel PP._value $ CCT.formatForeign ∘ _.value
+      , mkLabel PP._value $ ?formatForeign ∘ _.value
       , mkLabel PP._series _.seriesName
       ]
 
   E.tooltip do
-    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
+    E.formatterItem (?tableFormatter (pure ∘ _.color) cols ∘ pure)
     E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
@@ -901,9 +880,9 @@ funnelOptions dimMap axes r funnelData = do
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
 
-  E.colors colors
+  E.colors ?colors
 
-  BCP.rectangularTitles funnelData
+  ?rectangularTitles funnelData
     $ maybe "" D.jcursorLabel $ P.getProjection dimMap PP._series
   E.series series
 
@@ -944,7 +923,7 @@ evalGauge m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ measureProjection PP._value dimMap "measure"
@@ -953,32 +932,32 @@ evalGauge m =
     ]
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._parallel dimMap
     <|> sqlProjection PP._multiple dimMap
 
   buildPort r axes =
-    Port.BuildChart $ gaugeOptions dimMap axes r ∘ Gauge.buildData
+    Port.BuildChart $ gaugeOptions dimMap axes r ∘ ?buildData
 
-gaugeOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Gauge.GaugeSerie → DSL OptionI
+gaugeOptions ∷ P.DimensionMap → Ax.Axes → Void → _ → DSL OptionI
 gaugeOptions dimMap axes _ series = do
   let
     mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
       [ { label: D.jcursorLabel dim, value: axesPrj } ]
 
     cols = A.fold
-      [ mkLabel PP._value $ CCT.formatForeign ∘ _.value
+      [ mkLabel PP._value $ ?formatForeign ∘ _.value
       , mkLabel PP._parallel _.seriesName
       , mkLabel PP._multiple _.name
       ]
 
   E.tooltip do
-    E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
+    E.formatterItem (?tableFormatter (const Nothing) cols ∘ pure)
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
 
-  E.colors colors
+  E.colors ?colors
 
   E.series $ for_ series \serie → E.gauge do
     for_ serie.name E.name
@@ -1002,7 +981,7 @@ gaugeOptions dimMap axes _ series = do
       E.textStyle do
         E.fontSize 16
         E.fontFamily "Ubuntu, sans"
-        for_ (A.head colors) E.color
+        for_ (A.head ?colors) E.color
 
 
     if (A.length allValues > 1)
@@ -1030,7 +1009,7 @@ evalGraph m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._source dimMap "source"
@@ -1040,7 +1019,7 @@ evalGraph m =
     ]
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._source dimMap
     <|> sqlProjection PP._target dimMap
     <|> sqlProjection PP._color dimMap
@@ -1048,9 +1027,9 @@ evalGraph m =
   buildPort r axes =
     Port.BuildChart
       $ graphOptions dimMap axes r
-      ∘ Graph.buildGraphData { minSize: r.size.min, maxSize: r.size.max }
+      ∘ ?buildGraphData { minSize: r.size.min, maxSize: r.size.max }
 
-graphOptions ∷ P.DimensionMap → Ax.Axes → Aux.GraphState → Graph.GraphData → DSL OptionI
+graphOptions ∷ P.DimensionMap → Ax.Axes → Aux.GraphState → _ → DSL OptionI
 graphOptions dimMap axes r (links × nodes) = do
   E.tooltip do
     E.triggerItem
@@ -1084,7 +1063,7 @@ graphOptions dimMap axes r (links × nodes) = do
       $ A.nub
       $ A.mapMaybe _.color links
 
-  E.colors colors
+  E.colors ?colors
 
   E.series $ E.graph do
     if r.circular
@@ -1127,7 +1106,7 @@ evalHeatmap m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._abscissa dimMap "abscissa"
@@ -1137,16 +1116,16 @@ evalHeatmap m =
     ]
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._series dimMap
     <|> sqlProjection PP._abscissa dimMap
     <|> sqlProjection PP._ordinate dimMap
 
   buildPort r axes =
-    Port.BuildChart $ heatmapOptions dimMap axes r ∘ Heatmap.buildData
+    Port.BuildChart $ heatmapOptions dimMap axes r ∘ ?buildData
 
 heatmapOptions
-  ∷ P.DimensionMap → Ax.Axes → Aux.HeatmapState → Array Heatmap.HeatmapSeries → DSL OptionI
+  ∷ P.DimensionMap → Ax.Axes → Aux.HeatmapState → _ → DSL OptionI
 heatmapOptions dimMap axes r heatmapData = do
   E.tooltip do
     E.triggerItem
@@ -1162,25 +1141,25 @@ heatmapOptions dimMap axes r heatmapData = do
     E.formatterItem \item →
       let mkRow prj fmt = P.getProjection dimMap prj # foldMap \dim →
             [ D.jcursorLabel dim × fmt ]
-      in CCT.tableRows $ A.fold
-        [ mkRow PP._abscissa $ CCT.formatAssocProp "abscissa" item
-        , mkRow PP._ordinate $ CCT.formatAssocProp "ordinate" item
-        , mkRow PP._value $ CCT.formatAssocProp "value" item
+      in ?tableRows $ A.fold
+        [ mkRow PP._abscissa $ ?formatAssocProp "abscissa" item
+        , mkRow PP._ordinate $ ?formatAssocProp "ordinate" item
+        , mkRow PP._value $ ?formatAssocProp "value" item
         ]
 
 
   E.animationEnabled false
 
-  BCP.rectangularTitles heatmapData
+  ?rectangularTitles heatmapData
     $ maybe "" D.jcursorLabel $ P.getProjection dimMap PP._series
 
-  BCP.rectangularGrids heatmapData
+  ?rectangularGrids heatmapData
 
   E.xAxes xAxes
 
   E.yAxes yAxes
 
-  E.colors colors
+  E.colors ?colors
 
   E.visualMap $ E.continuous do
     E.min r.val.min
@@ -1193,17 +1172,17 @@ heatmapOptions dimMap axes r heatmapData = do
     E.padding zero
     E.inRange $ E.colors
       if r.isColorSchemeReversed
-        then A.reverse $ getColorScheme r.colorScheme
-        else getColorScheme r.colorScheme
+        then A.reverse $ ?getColorScheme r.colorScheme
+        else ?getColorScheme r.colorScheme
 
   E.series series
 
   where
-  xValues ∷ Heatmap.HeatmapSeries → Array String
+  xValues ∷ _ → Array String
   xValues serie =
     sortX $ A.fromFoldable $ Set.fromFoldable $ map fst $ M.keys serie.items
 
-  yValues ∷ Heatmap.HeatmapSeries → Array String
+  yValues ∷ _ → Array String
   yValues serie =
     sortY $ A.fromFoldable $ Set.fromFoldable $ map snd $ M.keys serie.items
 
@@ -1273,7 +1252,7 @@ evalLine m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._dimension dimMap "category"
@@ -1283,44 +1262,44 @@ evalLine m =
     ]
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._series dimMap
     <|> sqlProjection PP._dimension dimMap
 
   buildPort r axes =
     Port.BuildChart
       $ lineOptions dimMap axes r
-      ∘ Line.buildLineData { optionalMarkers: r.optionalMarkers
+      ∘ ?buildLineData { optionalMarkers: r.optionalMarkers
                            , minSize: r.size.min
                            , maxSize: r.size.max
                            }
 
 lineOptions
-  ∷ P.DimensionMap → Ax.Axes → Aux.LineState → Array Line.LineSerie → DSL OptionI
+  ∷ P.DimensionMap → Ax.Axes → Aux.LineState → _ → DSL OptionI
 lineOptions dimMap axes r lineData = do
   let
     mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
       [ { label: D.jcursorLabel dim, value: axesPrj } ]
     cols = A.fold
-      [ mkLabel PP._dimension $ CCT.formatValueIx 0
+      [ mkLabel PP._dimension $ ?formatValueIx 0
       , mkLabel PP._value \x →
           if P.hasProjection dimMap PP._secondValue ∨ x.seriesIndex `mod` 2 ≠ 0
           then ""
-          else CCT.formatValueIx 1 x
+          else ?formatValueIx 1 x
       , mkLabel PP._secondValue \x →
           if x.seriesIndex `mod` 2 ≡ 0
           then ""
-          else CCT.formatValueIx 1 x
-      , mkLabel PP._size CCT.formatSymbolSize
+          else ?formatValueIx 1 x
+      , mkLabel PP._size ?formatSymbolSize
       , mkLabel PP._series _.seriesName
       ]
   E.tooltip do
     E.triggerItem
-    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
+    E.formatterItem (?tableFormatter (pure ∘ _.color) cols ∘ pure)
     E.textStyle $ E.fontSize 12
 
-  E.colors colors
-  E.grid BCP.cartesian
+  E.colors ?colors
+  E.grid ?cartesian
   E.series series
 
   E.xAxis do
@@ -1425,7 +1404,7 @@ evalParallel m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ =
     L.fromFoldable
@@ -1439,20 +1418,20 @@ evalParallel m =
 --    $ enumerate $ A.fromFoldable  (dimMap ^. PP._dims) )
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._series dimMap
 
   buildPort r axes =
-    Port.BuildChart $ pOptions dimMap axes r ∘ Parallel.buildPData
+    Port.BuildChart $ pOptions dimMap axes r ∘ ?buildPData
 
-pOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Parallel.Item → DSL OptionI
+pOptions ∷ P.DimensionMap → Ax.Axes → Void → _ → DSL OptionI
 pOptions dimMap _ _ pData = do
   E.parallel do
     E.left $ ET.Percent 5.0
     E.right $ ET.Percent 18.0
     E.bottom $ ET.Pixel 100
 
-  E.colors colors
+  E.colors ?colors
   E.series series
 
   E.parallelAxes axes
@@ -1482,7 +1461,7 @@ evalPie m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._category dimMap "category"
@@ -1492,34 +1471,34 @@ evalPie m =
     ]
 
   buildGroupBy r =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._parallel dimMap
     <|> sqlProjection PP._donut dimMap
     <|> sqlProjection PP._category dimMap
 
 
   buildPort r axes =
-    Port.BuildChart $ pieOptions dimMap axes r ∘ Pie.buildData
+    Port.BuildChart $ pieOptions dimMap axes r ∘ ?buildData
 
 
-pieOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Pie.OnePieSeries → DSL OptionI
+pieOptions ∷ P.DimensionMap → Ax.Axes → Void → _ → DSL OptionI
 pieOptions dimMap axes _ pieData = do
   let
     mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
       [ { label: D.jcursorLabel dim, value: axesPrj } ]
 
     cols = A.concat
-      [ mkLabel PP._category $ CCT.formatAssocProp "key"
-      , mkLabel PP._value $ CCT.formatAssocProp "value"
+      [ mkLabel PP._category $ ?formatAssocProp "key"
+      , mkLabel PP._value $ ?formatAssocProp "value"
       , mkLabel PP._donut _.seriesName
       ]
 
   E.tooltip do
-    E.formatterItem (CCT.tableFormatter (Just ∘ _.color) cols ∘ pure)
+    E.formatterItem (?tableFormatter (Just ∘ _.color) cols ∘ pure)
     E.textStyle $ E.fontSize 12
     E.triggerItem
 
-  E.colors colors
+  E.colors ?colors
 
   E.legend do
     E.textStyle do
@@ -1531,7 +1510,7 @@ pieOptions dimMap axes _ pieData = do
 
   E.series series
 
-  BCP.radialTitles pieData
+  ?radialTitles pieData
     $ maybe "" D.jcursorLabel $ P.getProjection dimMap PP._parallel
 
   where
@@ -1589,7 +1568,7 @@ evalPunchCard m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._abscissa dimMap "abscissa"
@@ -1598,7 +1577,7 @@ evalPunchCard m =
     ]
 
   buildGroupBy r =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._abscissa dimMap
     <|> sqlProjection PP._ordinate dimMap
 
@@ -1606,10 +1585,10 @@ evalPunchCard m =
   buildPort r axes =
     Port.BuildChart
       $ punchCardOptions dimMap axes r
-      ∘ PunchCard.buildData { minSize: r.size.min, maxSize: r.size.max }
+      ∘ ?buildData { minSize: r.size.min, maxSize: r.size.max }
 
 punchCardOptions
-  ∷ P.DimensionMap → Ax.Axes → Aux.PunchCardState → PunchCard.PunchCardData → DSL OptionI
+  ∷ P.DimensionMap → Ax.Axes → Aux.PunchCardState → _ → DSL OptionI
 punchCardOptions dimMap axes r punchCardData = do
   E.tooltip do
     E.triggerItem
@@ -1620,20 +1599,20 @@ punchCardOptions dimMap axes r punchCardData = do
       let
         xIx = (map Int.ceil ∘ hush' ∘ FR.readNumber) =<< value A.!! 0
         yIx = (map Int.ceil ∘ hush' ∘ FR.readNumber) =<< value A.!! 1
-        val = CCT.formatForeign <$> value A.!! 2
+        val = ?formatForeign <$> value A.!! 2
 
         abscissa = map D.jcursorLabel $ P.getProjection dimMap PP._abscissa
         ordinate = map D.jcursorLabel $ P.getProjection dimMap PP._ordinate
         val' = map D.jcursorLabel $ P.getProjection dimMap PP._value
       in
-        CCT.tableRows $ A.catMaybes $ map bisequence
+        ?tableRows $ A.catMaybes $ map bisequence
           [ abscissa × (xIx >>= A.index abscissaValues)
           , ordinate × (yIx >>= A.index ordinateValues)
           , val' × val
           ]
 
 
-  E.colors colors
+  E.colors ?colors
 
   when r.circular do
     E.polar $ pure unit
@@ -1727,7 +1706,7 @@ evalRadar m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._category dimMap "category"
@@ -1737,15 +1716,15 @@ evalRadar m =
     ]
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._parallel dimMap
     <|> sqlProjection PP._multiple dimMap
     <|> sqlProjection PP._category dimMap
 
   buildPort r axes =
-    Port.BuildChart $ radarOptions dimMap axes r ∘ Radar.buildData
+    Port.BuildChart $ radarOptions dimMap axes r ∘ ?buildData
 
-radarOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Radar.SeriesOnRadar → DSL OptionI
+radarOptions ∷ P.DimensionMap → Ax.Axes → Void → _ → DSL OptionI
 radarOptions dimMap axes _ radarData = do
   E.tooltip do
     E.triggerItem
@@ -1761,7 +1740,7 @@ radarOptions dimMap axes _ radarData = do
     E.orient ET.Vertical
     E.leftLeft
 
-  E.colors colors
+  E.colors ?colors
 
   E.radars
     $ traverse_ E.radar radars
@@ -1769,7 +1748,7 @@ radarOptions dimMap axes _ radarData = do
   E.series
     $ traverse_ E.radarSeries series
 
-  BCP.radialTitles radarData
+  ?radialTitles radarData
     $ maybe "" D.jcursorLabel
     $ P.getProjection dimMap PP._parallel
 
@@ -1847,7 +1826,7 @@ evalSankey m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._source dimMap "source"
@@ -1856,33 +1835,33 @@ evalSankey m =
     ]
 
   buildGroupBy r =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._source dimMap
     <|> sqlProjection PP._target dimMap
 
   buildPort r axes =
-    Port.BuildChart $ sankeyOptions dimMap axes r ∘ Sankey.buildSankeyData
+    Port.BuildChart $ sankeyOptions dimMap axes r ∘ ?buildSankeyData
 
-sankeyOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Sankey.Item → DSL OptionI
+sankeyOptions ∷ P.DimensionMap → Ax.Axes → Void → _ → DSL OptionI
 sankeyOptions dimMap axes r sankeyData = do
   let
     mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
       [ { label: D.jcursorLabel dim, value: axesPrj } ]
 
     cols = A.fold
-      [ mkLabel PP._source $ CCT.formatDataProp "source"
-      , mkLabel PP._target $ CCT.formatDataProp "target"
-      , mkLabel PP._value $ CCT.formatDataProp "value"
+      [ mkLabel PP._source $ ?formatDataProp "source"
+      , mkLabel PP._target $ ?formatDataProp "target"
+      , mkLabel PP._value $ ?formatDataProp "value"
       ]
 
   E.tooltip do
-    E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
+    E.formatterItem (?tableFormatter (const Nothing) cols ∘ pure)
     E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
       E.fontSize 12
 
-  E.colors colors
+  E.colors ?colors
 
   E.series $ E.sankey do
     E.buildItems items
@@ -1909,7 +1888,7 @@ evalScatter m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._abscissa dimMap "abscissa"
@@ -1920,7 +1899,7 @@ evalScatter m =
     ]
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._parallel dimMap
     <|> sqlProjection PP._series dimMap
     <|> sqlProjection PP._abscissa dimMap
@@ -1928,24 +1907,24 @@ evalScatter m =
   buildPort r axes =
     Port.BuildChart
       $ scatterOptions dimMap axes r
-      ∘ Scatter.buildData { minSize: r.size.min
+      ∘ ?buildData { minSize: r.size.min
                           , maxSize: r.size.max
                           }
 scatterOptions
-  ∷ P.DimensionMap → Ax.Axes → Aux.ScatterState → Array Scatter.ScatterSeries → DSL OptionI
+  ∷ P.DimensionMap → Ax.Axes → Aux.ScatterState → _ → DSL OptionI
 scatterOptions dimMap axes r scatterData = do
   let
     mkLabel dimPrj axesPrj = flip foldMap (P.getProjection dimMap dimPrj) \dim →
       [ { label: D.jcursorLabel dim, value: axesPrj } ]
     cols = A.fold
-      [ mkLabel PP._abscissa $ CCT.formatValueIx 0
-      , mkLabel PP._scatterOrdinate $ CCT.formatValueIx 1
-      , mkLabel PP._scatterSize $ CCT.formatValueIx 2
+      [ mkLabel PP._abscissa $ ?formatValueIx 0
+      , mkLabel PP._scatterOrdinate $ ?formatValueIx 1
+      , mkLabel PP._scatterSize $ ?formatValueIx 2
       , mkLabel PP._series _.seriesName
       ]
 
   E.tooltip do
-    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
+    E.formatterItem (?tableFormatter (pure ∘ _.color) cols ∘ pure)
     E.triggerItem
     E.textStyle do
       E.fontFamily "Ubuntu, sans"
@@ -1956,14 +1935,14 @@ scatterOptions dimMap axes r scatterData = do
         E.color $ C.rgba 170 170 170 0.6
         E.widthNum 0.2
         E.solidLine
-  E.colors colors
+  E.colors ?colors
 
-  BCP.rectangularGrids scatterData
-  BCP.rectangularTitles scatterData
+  ?rectangularGrids scatterData
+  ?rectangularTitles scatterData
     $ maybe "" D.jcursorLabel
     $ P.getProjection dimMap PP._parallel
 
-  E.grid BCP.cartesian
+  E.grid ?cartesian
   E.xAxes $ valueAxes E.addXAxis
   E.yAxes $ valueAxes E.addYAxis
 
@@ -1998,8 +1977,8 @@ scatterOptions dimMap axes r scatterData = do
       E.xAxisIndex gridIx
       E.yAxisIndex gridIx
       for_ serie.name E.name
-      for_ (A.index colors $ mod ix $ A.length colors) \color → do
-        E.itemStyle $ E.normal $ E.color $ getTransparentColor color 0.5
+      for_ (A.index ?colors $ mod ix $ A.length ?colors) \color → do
+        E.itemStyle $ E.normal $ E.color $ ?getTransparentColor color 0.5
       E.symbol ET.Circle
       E.buildItems $ for_ serie.items \item → E.addItem do
         E.buildValues do
@@ -2016,7 +1995,7 @@ evalGeoHeatmap m =
   aux = M.lookup m.vizType m.auxes >>= prj Aux._geoHeatmap
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     [ dimensionProjection PP._lat dimMap "lat"
@@ -2025,14 +2004,14 @@ evalGeoHeatmap m =
     ]
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._lat dimMap
     <|> sqlProjection PP._lng dimMap
 
   buildPort r axes =
     Port.GeoChart { build, osmURI: maybe Aux.osmURI _.osm.uri aux }
 
-  mkItems = foldMap (foldMap A.singleton ∘ GeoHeatmap.decodeItem)
+  mkItems = foldMap (foldMap A.singleton ∘ ?decodeItem)
 
   maxIntensity = fromMaybe one ∘ map _.i ∘ A.head ∘ A.sortBy (\a b → compare b.i a.i)
 
@@ -2137,7 +2116,7 @@ evalGeoMarker r =
 
   dimMap = fromMaybe P.emptyDimMap $ M.lookup r.vizType r.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildProjections _ = L.fromFoldable $ A.concat
     $ [ dimensionProjection PP._lat dimMap "lat"
@@ -2149,7 +2128,7 @@ evalGeoMarker r =
       )
 
   buildGroupBy _ =
-    SCC.groupBy
+    ?groupBy
     $ sqlProjection PP._lat dimMap
     <|> sqlProjection PP._lng dimMap
     <|> sqlProjection PP._series dimMap
@@ -2157,7 +2136,7 @@ evalGeoMarker r =
   buildPort _ axes =
     Port.GeoChart { build, osmURI: aux.osm.uri }
 
-  mkItems = foldMap $ foldMap A.singleton ∘ GeoMarker.decodeItem
+  mkItems = foldMap $ foldMap A.singleton ∘ ?decodeItem
 
   mkMaxLat = fromMaybe zero ∘ A.head ∘ A.reverse ∘ A.sort ∘ map (LC.degreesToNumber ∘ _.lat)
 
@@ -2181,7 +2160,7 @@ evalGeoMarker r =
 
   mkMaxSize = fromMaybe one ∘ A.head ∘ A.reverse ∘ A.sort ∘ map _.size
 
-  mkSeries items = SM.fromFoldable $ A.zip (A.sort $ A.nub $ map _.series items) colors
+  mkSeries items = SM.fromFoldable $ A.zip (A.sort $ A.nub $ map _.series items) ?colors
 
   build leaf records = do
     let
@@ -2266,7 +2245,7 @@ evalGeoMarker r =
 
     view ← LC.mkLatLng avgLat avgLng
 
-    icon ← LC.icon GeoMarker.iconConf
+    icon ← LC.icon ?iconConf
 
     {layers, overlays} ←
       A.foldRecM (foldFn icon) {layers: [ ], overlays: SM.empty } items
@@ -2297,7 +2276,7 @@ evalMetric m =
   where
   dimMap = fromMaybe P.emptyDimMap $ M.lookup m.vizType m.dimMaps
 
-  buildSql = SCC.buildBasicSql buildProjections buildGroupBy
+  buildSql = ?buildBasicSql buildProjections buildGroupBy
 
   buildPort ∷ { formatter ∷ String } → Ax.Axes → Port.Port
   buildPort { formatter } _ =
@@ -2309,8 +2288,8 @@ evalMetric m =
 
   buildProjections ∷ ∀ a. a → L.List (Sql.Projection Sql.Sql)
   buildProjections _ = pure $ case P.getProjection dimMap PP._value of
-    Nothing → SCC.nullPrj # Sql.as "value"
-    Just sv → sv # SCC.jcursorPrj # Sql.as "value" # SCC.applyTransform sv
+    Nothing → ?nullPrj # Sql.as "value"
+    Just sv → sv # ?jcursorPrj # Sql.as "value" # ?applyTransform sv
 
   buildGroupBy ∷ ∀ a. a → Maybe (Sql.GroupBy Sql.Sql)
   buildGroupBy = const Nothing

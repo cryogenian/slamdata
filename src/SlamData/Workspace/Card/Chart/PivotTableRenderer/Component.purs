@@ -39,7 +39,7 @@ import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Common (PTree, foldTree, sizeOfRow, topField)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
+--import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
 import SlamData.Workspace.Card.Setups.Transform as T
 
 import Global (readFloat)
@@ -143,9 +143,11 @@ render st =
     _ → default
 
   columnHeading default col = case col ^? D._value ∘ D._projection of
-    Just All → "*"
-    Just _   → default
-    Nothing  → ""
+    -- "TODO"
+    _ → default
+--    Just All → "*"
+--    Just _   → default
+--    Nothing  → ""
 
   renderRows cols =
     map HH.tr_ ∘ foldTree (renderLeaves cols) renderHeadings
@@ -163,11 +165,12 @@ render st =
           in HH.td_ [ HH.text (fromMaybe "" text) ]
 
   renderValue = case _, _ of
-    0, D.Static _ → renderJson
-    0, D.Projection (Just T.Count) _ → J.foldJsonNumber "" showFormattedNumber
-    0, D.Projection _ (Column _) → foldJsonArray' renderJson (maybe "" renderJson ∘ flip Array.index 0)
-    i, D.Projection _ _ → foldJsonArray' (const "") (maybe "" renderJson ∘ flip Array.index i)
-    _, _ → const ""
+    _, _ → renderJson
+--    0, D.Static _ → renderJson
+--    0, D.Projection (Just T.Count) _ → J.foldJsonNumber "" showFormattedNumber
+--    0, D.Projection _ (Column _) → foldJsonArray' renderJson (maybe "" renderJson ∘ flip Array.index 0)
+--    i, D.Projection _ _ → foldJsonArray' (const "") (maybe "" renderJson ∘ flip Array.index i)
+--    _, _ → const ""
 
   jsonNumbers =
     Array.mapMaybe (J.foldJsonNumber Nothing Just)

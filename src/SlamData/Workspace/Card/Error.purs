@@ -31,9 +31,7 @@ import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.Open.Error as COE
 import SlamData.Workspace.Card.Query.Error as CQE
 import SlamData.Workspace.Card.Search.Error as CSE
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPT
-import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as FILE
-import SlamData.Workspace.Card.Setups.FormInput.Static.Error as FISE
+--import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPT
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
 import SlamData.Workspace.Card.Setups.Viz.Error as SVE
@@ -45,11 +43,11 @@ type CardError = Variant
   , cache ∷ CCE.CacheError
   , chart ∷ CHE.ChartError
   , downloadOptions ∷ CDLOE.DownloadOptionsError
-  , formInputLabeled ∷ FILE.FormInputLabeledError
-  , formInputStatic ∷ FISE.FormInputStaticError
+--  , formInputLabeled ∷ FILE.FormInputLabeledError
+--  , formInputStatic ∷ FISE.FormInputStaticError
   , markdown ∷ CMDE.MarkdownError
   , open ∷ COE.OpenError
-  , pivotTable ∷ CPT.PivotTableError
+--  , pivotTable ∷ CPT.PivotTableError
   , query ∷ CQE.QueryError
   , search ∷ CSE.SearchError
   , table ∷ CTE.TableError
@@ -81,11 +79,9 @@ showCardError =
     # on _cache (\err → "(CacheCardError " <> show err <> ")")
     # on _chart (\err → "(ChartCardError " <> show err <> ")")
     # on _downloadOptions (\err → "(DownloadOptionsCardError " <> show err <> ")")
-    # on _formInputLabeled (\err → "(FormInputLabeledCardError " <> show err <> ")")
-    # on _formInputStatic (\err → "(FormInputStaticCardError " <> show err <> ")")
     # on _markdown (\err → "(MarkdownCardError " <> show err <> ")")
     # on _open (\err → "(OpenCardError " <> show err <> ")")
-    # on _pivotTable (\err → "(PivotTableCardError " <> show err <> ")")
+--    # on _pivotTable (\err → "(PivotTableCardError " <> show err <> ")")
     # on _query (\err → "(QueryCardError " <> show err <> ")")
     # on _search (\err → "(SearchCardError " <> show err <> ")")
     # on _table (\err → "(TableCardError " <> show err <> ")")
@@ -100,11 +96,9 @@ cardToGlobalError =
     # on _cache CCE.cacheToGlobalError
     # on _chart CHE.chartToGlobalError
     # on _downloadOptions (const Nothing)
-    # on _formInputLabeled (const Nothing)
-    # on _formInputStatic (const Nothing)
     # on _markdown (const Nothing)
     # on _open (const Nothing)
-    # on _pivotTable CPT.pivotTableToGlobalError
+--    # on _pivotTable CPT.pivotTableToGlobalError
     # on _query CQE.queryToGlobalError
     # on _search CSE.searchToGlobalError
     # on _table CTE.tableToGlobalError
