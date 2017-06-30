@@ -32,24 +32,18 @@ module SlamData.Workspace.Card.CardType
 import SlamData.Prelude
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson)
-import Data.String as Str
 
 import Halogen.HTML as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
 import SlamData.Config as Config
-import SlamData.Workspace.Card.CardType.ChartType as ChT
-import SlamData.Workspace.Card.CardType.FormInputType as FiT
-import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 
 import Test.StrongCheck.Arbitrary as SC
 
 data CardType
   = Ace AceMode
   | Search
-  | ChartOptions ChT.ChartType
-  | SetupFormInput FiT.FormInputType
   | Chart
   | FormInput
   | Markdown
@@ -63,7 +57,6 @@ data CardType
   | Draftboard
   | Tabs
   | StructureEditor
-  | SetupGeoChart GcT.GeoChartType
   | GeoChart
   | SetupViz
   | Viz
@@ -92,9 +85,6 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
     Ace MarkdownMode → "ace-markdown"
     Ace SQLMode → "ace-sql"
     Search → "search"
-    ChartOptions chty → ChT.print chty ⊕ "-options"
-    SetupFormInput fity → FiT.print fity ⊕ "-setup"
-    SetupGeoChart gcty → GcT.print gcty ⊕ "-geo-setup"
     Chart → "chart"
     FormInput → "form-input"
     Markdown → "markdown"
@@ -116,11 +106,11 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
     (decodeJson json >>= parseBasic)
-    <|> (decodeJson json >>= parseChartOptions)
-    <|> (decodeJson json >>= parseFormInputSetup)
-    <|> (decodeJson json >>= parseGeoChartSetup)
+--    <|> (decodeJson json >>= parseChartOptions)
+--    <|> (decodeJson json >>= parseFormInputSetup)
+--    <|> (decodeJson json >>= parseGeoChartSetup)
     where
-    parseGeoChartSetup name = do
+{-    parseGeoChartSetup name = do
       let gcName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-geo-setup") name
       gcty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ GcT.parse gcName
       pure $ SetupGeoChart gcty
@@ -133,7 +123,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       let chartName = fromMaybe "" $ Str.stripSuffix (Str.Pattern "-options") name
       chty ← lmap (const $ "unknown card type '" ⊕ name ⊕ "'") $ ChT.parse chartName
       pure $ ChartOptions chty
-
+-}
     parseBasic = case _ of
       "ace-markdown" → pure $ Ace MarkdownMode
       "ace-sql" → pure $ Ace SQLMode
@@ -160,9 +150,6 @@ cardName ∷ CardType → String
 cardName = case _ of
   Ace at → aceCardName at
   Search → "Search"
-  ChartOptions chty → ChT.name chty
-  SetupFormInput fity → FiT.name fity
-  SetupGeoChart gcty → GcT.name gcty
   Chart → "Show Chart"
   GeoChart → "Show Geo Chart"
   FormInput → "Show Form"
@@ -188,66 +175,6 @@ cardIcon = case _ of
     "query"
   Search →
     "search"
-  ChartOptions chty →
-    case chty of
-      ChT.Pie →
-        "buildChart/pie"
-      ChT.Line →
-        "buildChart/line"
-      ChT.Bar →
-        "buildChart/bar"
-      ChT.Area →
-        "buildChart/area"
-      ChT.Scatter →
-        "buildChart/scatter"
-      ChT.Radar →
-        "buildChart/radar"
-      ChT.Funnel →
-        "buildChart/funnel"
-      ChT.Graph →
-        "buildChart/graph"
-      ChT.Heatmap →
-        "buildChart/heatmap"
-      ChT.Sankey →
-        "buildChart/sankey"
-      ChT.Gauge →
-        "buildChart/gauge"
-      ChT.Boxplot →
-        "buildChart/boxplot"
-      ChT.Metric →
-        "buildChart/metric"
-      ChT.PivotTable →
-        "buildChart/pivot-table"
-      ChT.PunchCard →
-        "buildChart/punch-card"
-      ChT.Candlestick →
-        "buildChart/candlestick"
-      ChT.Parallel →
-        "buildChart/parallel"
-  SetupFormInput fity → case fity of
-    FiT.Dropdown →
-      "setupFormInput/dropdown"
-    FiT.Static →
-      "setupFormInput/static"
-    FiT.Text →
-      "setupFormInput/text"
-    FiT.Numeric →
-      "setupFormInput/numeric"
-    FiT.Checkbox →
-      "setupFormInput/checkbox"
-    FiT.Radio →
-      "setupFormInput/radio"
-    FiT.Date →
-      "setupFormInput/date"
-    FiT.Time →
-      "setupFormInput/time"
-    FiT.Datetime →
-      "setupFormInput/datetime"
-  SetupGeoChart gcty → case gcty of
-    GcT.Marker →
-      "setupGeoChart/marker"
-    GcT.Heatmap →
-      "setupGeoChart/heatmap"
   Download →
     "showDownload"
   Variables →
@@ -305,9 +232,6 @@ consumerInteractable ∷ CardType → Boolean
 consumerInteractable = case _ of
   Ace _ → false
   Search → true
-  ChartOptions _ → false
-  SetupFormInput _ → false
-  SetupGeoChart _ → false
   GeoChart → true
   Chart → true
   FormInput → true
@@ -329,9 +253,6 @@ cardClasses ∷ CardType → Array H.ClassName
 cardClasses = case _ of
   Ace at → [ H.ClassName "sd-card-ace" ] <> aceCardClasses at
   Search → [ H.ClassName "sd-card-search" ]
-  ChartOptions _ → [ H.ClassName "sd-card-chart-options" ]
-  SetupFormInput _ → [ H.ClassName "sd-form-input-setup" ]
-  SetupGeoChart _ → [ H.ClassName "sd-setup-geo-chart" ]
   Chart → [ H.ClassName "sd-card-chart" ]
   GeoChart → [ H.ClassName "sd-card-geo-chart" ]
   FormInput → [ H.ClassName "sd-card-form-input" ]

@@ -45,8 +45,6 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Cache.Error as CCaE
 import SlamData.Workspace.Card.CardType (AceMode(..), CardType(..), cardName)
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Chart.Error as CChE
 import SlamData.Workspace.Card.DownloadOptions.Error as CDOE
@@ -500,7 +498,11 @@ formInputStaticErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (SetupFormInput FIT.Static) <> " card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text
+                  $ "A problem occurred in the "
+                  <> VT.name VT.Metric
+                  <> " card, please notify the author of this workspace."
+                ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -508,7 +510,11 @@ formInputStaticErrorMessage { accessType, expanded } err =
     CFISE.FIStaticNoAxis →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput FIT.Static) <> " card." ]
+          [ pure $ errorTitle [ HH.text
+                                $ "An error occured when setting up the "
+                                <> VT.name VT.Metric
+                                <> " card."
+                              ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -516,7 +522,11 @@ formInputStaticErrorMessage { accessType, expanded } err =
     CFISE.FIStaticMissingAxis axis →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput FIT.Static) <> " card." ]
+          [ pure $ errorTitle [ HH.text
+                                $ "An error occured when setting up the "
+                                <> VT.name VT.Metric
+                                <> " card."
+                              ]
           , pure $ HH.p_
               [ HH.text "The selected axis was not present in the data." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
@@ -531,7 +541,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
         fit = extractType err
       in
         HH.div_
-          [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (SetupFormInput fit) <> " card, please notify the author of this workspace." ]
+          [ HH.p_ [ HH.text $ "A problem occurred in the " <> "TODO" <> " card, please notify the author of this workspace." ]
           , collapsible "Error details" (renderDetails err) expanded
           ]
   where
@@ -545,7 +555,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CFILE.FILabeledNoAxisError fit →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput fit) <> " card." ]
+          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> "TODO" <> " card." ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -553,7 +563,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CFILE.FILabeledEmptyResourceError fit →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput fit) <> " card." ]
+          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> "TODO" <> " card." ]
           , pure $ HH.p_
               [ HH.text "The selected resource was empty." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -561,16 +571,16 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CFILE.FILabeledTooManyEntries { formInputType, maximum, entryCount } →
       let
         errorText =
-          "The " <> FIT.print formInputType
+          "The " <> "TODO"
           <> " form input can't take more than "
-          <> show (FIT.maximumCountOfEntries formInputType)
+          <> "TODO"
           <> "entries, but there were: "
           <> show entryCount
           <> ". Please use 'limit' or 'group by'"
       in
         HH.div_
           $ join
-            [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput formInputType) <> " card." ]
+            [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> "TODO" <> " card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
             , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -578,16 +588,16 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CFILE.FILabeledTooManySelected { formInputType, maximum, selectedCount } →
       let
         errorText =
-          "The " <> FIT.print formInputType
+          "The " <> "TODO"
           <> " form input can't have more than "
-          <> show (FIT.maximumCountOfSelectedValues formInputType)
+          <> "TODO"
           <> " selected values, but there were: "
           <> show selectedCount
           <> ". Please, use another axis"
       in
         HH.div_
           $ join
-            [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput formInputType) <> " card." ]
+            [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> "TODO" <> " card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
             , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -596,7 +606,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CFILE.FILabeledNonUniqueLabelError fit label →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput fit) <> " card." ]
+          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> "TODO" <> " card." ]
           , pure $ HH.p_
               [ HH.text "Labels must be unique. Please, use other axis." ]
           , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
@@ -640,7 +650,11 @@ pivotTableErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (ChartOptions PivotTable) <> " card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text
+                  $ "A problem occurred in the "
+                  <> VT.name VT.PivotTable
+                  <> " card, please notify the author of this workspace."
+                ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -648,7 +662,10 @@ pivotTableErrorMessage { accessType, expanded } err =
     CPTE.PivotTableNoColumnSelectedError →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "Encountered an error when setting up the " <> cardName (ChartOptions PivotTable) <> " card." ]
+          [ pure $ errorTitle [ HH.text
+                                $ "Encountered an error when setting up the "
+                                <> VT.name VT.PivotTable
+                                <> " card." ]
           , pure $ HH.p_
               [ HH.text "No column was selected to be displayed."
               ]
@@ -657,7 +674,7 @@ pivotTableErrorMessage { accessType, expanded } err =
     CPTE.PivotTableQuasarError error →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occurred in the " <> cardName (ChartOptions PivotTable) <> " card." ]
+          [ pure $ errorTitle [ HH.text $ "An error occurred in the " <> VT.name VT.PivotTable <> " card." ]
           , pure $ HH.p_
               [ HH.text "The Quasar Analytics engine returned the following error:"
               , printQErrorWithDetails error

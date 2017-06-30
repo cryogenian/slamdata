@@ -62,9 +62,6 @@ import SlamData.Workspace.Card.Setups.Viz.Error as VE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Setups.Package.Types as P
-import SlamData.Workspace.Card.CardType.ChartType as CT
---import SlamData.Workspace.Card.Setups.Transform as T
---import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.DimMap.Component.State as DS
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -90,11 +87,8 @@ import SlamData.Workspace.Card.Setups.Chart.Scatter.Eval as Scatter
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval as GeoHeatmap
 import SlamData.Workspace.Card.Setups.Geo.Marker.Eval as GeoMarker
 import SlamData.Workspace.Card.Setups.Viz.Auxiliary as Aux
---import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 
 import SqlSquared as Sql
-
-import Partial.Unsafe (unsafePartial)
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -315,11 +309,8 @@ evalArea m =
 
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: areaOptions dimMap axes r ∘ Area.buildAreaData
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
+    Port.BuildChart $ areaOptions dimMap axes r ∘ Area.buildAreaData
+
 evalBar ∷ ∀ m v. VizEval m v
 evalBar m =
   BCE.chartSetupEval buildSql buildPort
@@ -343,12 +334,7 @@ evalBar m =
     <|> sqlProjection PP._category dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: barOptions dimMap axes r ∘ Bar.buildBarData
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
-
+    Port.BuildChart $ barOptions dimMap axes r ∘ Bar.buildBarData
 
 sqlProjection
   ∷ ∀ m
@@ -625,11 +611,7 @@ evalBoxplot m =
 
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: boxplotOptions dimMap axes r ∘ Boxplot.buildBoxplotData
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
+    Port.BuildChart $ boxplotOptions dimMap axes r ∘ Boxplot.buildBoxplotData
 
 boxplotOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Boxplot.OnOneBoxplot → DSL OptionI
 boxplotOptions dimMap axes r boxplotData = do
@@ -803,11 +785,8 @@ evalCandlestick m =
     <|> sqlProjection PP._dimension dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: kOptions dimMap axes r ∘ Candlestick.buildKData
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
+    Port.BuildChart $ kOptions dimMap axes r ∘ Candlestick.buildKData
+
 kOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Candlestick.OnOneGrid → DSL OptionI
 kOptions dimMap axes _ kData = do
   E.tooltip do
@@ -895,11 +874,7 @@ evalFunnel m =
     <|> sqlProjection PP._category dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: funnelOptions dimMap axes r ∘ Funnel.buildData
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
+    Port.BuildChart $ funnelOptions dimMap axes r ∘ Funnel.buildData
 
 funnelOptions ∷ P.DimensionMap → Ax.Axes → Aux.FunnelState → Array Funnel.FunnelSeries → DSL OptionI
 funnelOptions dimMap axes r funnelData = do
@@ -983,12 +958,7 @@ evalGauge m =
     <|> sqlProjection PP._multiple dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: gaugeOptions dimMap axes r ∘ Gauge.buildData
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
-
+    Port.BuildChart $ gaugeOptions dimMap axes r ∘ Gauge.buildData
 
 gaugeOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Gauge.GaugeSerie → DSL OptionI
 gaugeOptions dimMap axes _ series = do
@@ -1076,13 +1046,9 @@ evalGraph m =
     <|> sqlProjection PP._color dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options:
-          graphOptions dimMap axes r
-          ∘ Graph.buildGraphData { minSize: r.size.min, maxSize: r.size.max }
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
+    Port.BuildChart
+      $ graphOptions dimMap axes r
+      ∘ Graph.buildGraphData { minSize: r.size.min, maxSize: r.size.max }
 
 graphOptions ∷ P.DimensionMap → Ax.Axes → Aux.GraphState → Graph.GraphData → DSL OptionI
 graphOptions dimMap axes r (links × nodes) = do
@@ -1177,10 +1143,7 @@ evalHeatmap m =
     <|> sqlProjection PP._ordinate dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: heatmapOptions dimMap axes r ∘ Heatmap.buildData
-      , chartType: CT.Pie
-      }
+    Port.BuildChart $ heatmapOptions dimMap axes r ∘ Heatmap.buildData
 
 heatmapOptions
   ∷ P.DimensionMap → Ax.Axes → Aux.HeatmapState → Array Heatmap.HeatmapSeries → DSL OptionI
@@ -1325,15 +1288,12 @@ evalLine m =
     <|> sqlProjection PP._dimension dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options:
-          lineOptions dimMap axes r
-          ∘ Line.buildLineData { optionalMarkers: r.optionalMarkers
-                               , minSize: r.size.min
-                               , maxSize: r.size.max
-                               }
-      , chartType: CT.Pie
-      }
+    Port.BuildChart
+      $ lineOptions dimMap axes r
+      ∘ Line.buildLineData { optionalMarkers: r.optionalMarkers
+                           , minSize: r.size.min
+                           , maxSize: r.size.max
+                           }
 
 lineOptions
   ∷ P.DimensionMap → Ax.Axes → Aux.LineState → Array Line.LineSerie → DSL OptionI
@@ -1483,12 +1443,7 @@ evalParallel m =
     $ sqlProjection PP._series dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: pOptions dimMap axes r ∘ Parallel.buildPData
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
-
+    Port.BuildChart $ pOptions dimMap axes r ∘ Parallel.buildPData
 
 pOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Parallel.Item → DSL OptionI
 pOptions dimMap _ _ pData = do
@@ -1544,11 +1499,7 @@ evalPie m =
 
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: pieOptions dimMap axes r ∘ Pie.buildData
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
+    Port.BuildChart $ pieOptions dimMap axes r ∘ Pie.buildData
 
 
 pieOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Pie.OnePieSeries → DSL OptionI
@@ -1653,13 +1604,9 @@ evalPunchCard m =
 
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options:
-          punchCardOptions dimMap axes r
-          ∘ PunchCard.buildData { minSize: r.size.min, maxSize: r.size.max }
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
+    Port.BuildChart
+      $ punchCardOptions dimMap axes r
+      ∘ PunchCard.buildData { minSize: r.size.min, maxSize: r.size.max }
 
 punchCardOptions
   ∷ P.DimensionMap → Ax.Axes → Aux.PunchCardState → PunchCard.PunchCardData → DSL OptionI
@@ -1796,11 +1743,7 @@ evalRadar m =
     <|> sqlProjection PP._category dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: radarOptions dimMap axes r ∘ Radar.buildData
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
+    Port.BuildChart $ radarOptions dimMap axes r ∘ Radar.buildData
 
 radarOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Radar.SeriesOnRadar → DSL OptionI
 radarOptions dimMap axes _ radarData = do
@@ -1918,11 +1861,7 @@ evalSankey m =
     <|> sqlProjection PP._target dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options: sankeyOptions dimMap axes r ∘ Sankey.buildSankeyData
-        -- TODO: this should be removed
-      , chartType: CT.Pie
-      }
+    Port.BuildChart $ sankeyOptions dimMap axes r ∘ Sankey.buildSankeyData
 
 sankeyOptions ∷ P.DimensionMap → Ax.Axes → Void → Array Sankey.Item → DSL OptionI
 sankeyOptions dimMap axes r sankeyData = do
@@ -1987,15 +1926,11 @@ evalScatter m =
     <|> sqlProjection PP._abscissa dimMap
 
   buildPort r axes =
-    Port.ChartInstructions
-      { options:
-          scatterOptions dimMap axes r
-          ∘ Scatter.buildData { minSize: r.size.min
-                              , maxSize: r.size.max
-                              }
-      , chartType: CT.Pie
-      }
-
+    Port.BuildChart
+      $ scatterOptions dimMap axes r
+      ∘ Scatter.buildData { minSize: r.size.min
+                          , maxSize: r.size.max
+                          }
 scatterOptions
   ∷ P.DimensionMap → Ax.Axes → Aux.ScatterState → Array Scatter.ScatterSeries → DSL OptionI
 scatterOptions dimMap axes r scatterData = do

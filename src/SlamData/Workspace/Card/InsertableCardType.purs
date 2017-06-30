@@ -32,8 +32,6 @@ data InsertableCardType
   | OpenCard
   | QueryCard
   | SearchCard
-  | SetupChartCard
-  | SetupFormCard
   | SetupDownloadCard
   | SetupMarkdownCard
   | SetupVariablesCard
@@ -46,7 +44,6 @@ data InsertableCardType
   | TroubleshootCard
   | TabsCard
   | StructureEditorCard
-  | SetupGeoChartCard
   | SetupVizCard
   | VizCard
 
@@ -73,13 +70,9 @@ inputs =
   , OpenCard × [ None, Variables ]
   , QueryCard × [ None, Data, Variables ]
   , SearchCard × [ Data ]
-  , SetupChartCard × [ Data ]
-  , SetupGeoChartCard × [ Data ]
   , SetupDownloadCard × [ Data ]
-  , SetupFormCard × [ Data ]
   , SetupMarkdownCard × [ None, Variables ]
   , SetupVariablesCard × [ None ]
-  , ShowGeoChartCard × [ GeoChart ]
   , ShowChartCard × [ Chart ]
   , ShowFormCard × [ Form ]
   , ShowDownloadCard × [ Download ]
@@ -100,12 +93,9 @@ outputs =
   , OpenCard × Data
   , QueryCard × Data
   , SearchCard × Data
-  , SetupChartCard × Chart
-  , SetupFormCard × Form
   , SetupDownloadCard × Download
   , SetupMarkdownCard × Markdown
   , SetupVariablesCard × Variables
-  , ShowChartCard × Data
   , ShowFormCard × Data
   , ShowDownloadCard × Download
   , ShowMarkdownCard × Variables
@@ -269,12 +259,12 @@ fromPort = case _ of
   Port.ResourceKey _ → Data
   Port.DownloadOptions _ → Download
   Port.SlamDown _ → Markdown
-  Port.ChartInstructions _ → Chart
+  Port.BuildChart _ → Chart
   Port.PivotTable _ → Chart
-  Port.SetupLabeledFormInput _ → Form
-  Port.SetupTextLikeFormInput _ → Form
+  Port.SetupInput _ → Form
+  Port.SetupSelect _ → Form
   Port.Variables → Variables
-  Port.ValueMetric _ → Chart
+  Port.BuildMetric _ → Chart
   Port.CategoricalMetric _ → Form
   Port.GeoChart _ → GeoChart
   Port.Terminal → Terminal
@@ -288,9 +278,6 @@ toCardType = case _ of
   OpenCard → Just CardType.Open
   QueryCard → Just $ CardType.Ace CardType.SQLMode
   SearchCard → Just CardType.Search
-  SetupChartCard → Nothing
-  SetupGeoChartCard → Nothing
-  SetupFormCard → Nothing
   SetupDownloadCard → Just CardType.DownloadOptions
   SetupMarkdownCard → Just $ CardType.Ace CardType.MarkdownMode
   SetupVariablesCard → Just $ CardType.Variables
@@ -308,8 +295,6 @@ toCardType = case _ of
 
 print ∷ InsertableCardType → String
 print = case _ of
-  SetupChartCard → "Setup Chart"
-  SetupFormCard → "Setup Form"
   a → foldMap CardType.cardName $ toCardType a
 
 aAn ∷ String → String
@@ -350,9 +335,6 @@ printAction = case _ of
   OpenCard → Nothing
   QueryCard → Nothing
   SearchCard → Just "search"
-  SetupChartCard → Just "set up a chart for"
-  SetupGeoChartCard → Just "set up geo chart for"
-  SetupFormCard → Just "set up a form for"
   SetupDownloadCard → Just "setup a download for"
   SetupMarkdownCard → Nothing
   SetupVariablesCard → Nothing
@@ -375,8 +357,6 @@ fromCardType = case _ of
   CardType.Open → OpenCard
   CardType.Ace CardType.SQLMode → QueryCard
   CardType.Search → SearchCard
-  CardType.ChartOptions _ → SetupChartCard
-  CardType.SetupGeoChart _ → SetupGeoChartCard
   CardType.GeoChart → ShowGeoChartCard
   CardType.DownloadOptions → SetupDownloadCard
   CardType.Ace CardType.MarkdownMode → SetupMarkdownCard
@@ -386,7 +366,6 @@ fromCardType = case _ of
   CardType.Markdown → ShowMarkdownCard
   CardType.Table → TableCard
   CardType.Troubleshoot → TroubleshootCard
-  CardType.SetupFormInput _ → SetupFormCard
   CardType.FormInput → ShowFormCard
   CardType.Tabs → TabsCard
   CardType.StructureEditor → StructureEditorCard
@@ -400,11 +379,8 @@ all =
   , QueryCard
   , SearchCard
   , TableCard
-  , SetupChartCard
   , ShowChartCard
-  , SetupFormCard
   , ShowFormCard
-  , SetupGeoChartCard
   , ShowGeoChartCard
   , SetupMarkdownCard
   , ShowMarkdownCard

@@ -20,15 +20,13 @@ module SlamData.Workspace.Card.Port
   , DataMap
   , Out
   , DownloadPort
-  , MetricPort
   , BuildMetricPort
-  , ChartInstructionsPort
   , PivotTablePort
-  , SetupLabeledFormInputPort
-  , SetupTextLikeFormInputPort
   , GeoChartPort
   , SetupInputPort
   , SetupSelectPort
+  , BuildChartPort
+  , MetricPort
   , tagPort
   , emptyOut
   , terminalOut
@@ -47,7 +45,6 @@ module SlamData.Workspace.Card.Port
   , _SlamDown
   , _DownloadOptions
   , _Metric
-  , _ChartInstructions
   , _PivotTable
   , _GeoChartPort
   , _filePath
@@ -59,7 +56,7 @@ import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
 
-import Data.Argonaut (JCursor, Json)
+import Data.Argonaut (Json)
 import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
 import Data.List as List
 import Data.Map as Map
@@ -80,8 +77,6 @@ import SlamData.Download.Model (DownloadOptions)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.CardType.ChartType (ChartType)
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.CardType.VizType (SelectType)
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), emptyVarMap, _VarMapValue)
@@ -108,31 +103,22 @@ type DownloadPort =
   , targetName ∷ String
   }
 
-type BuildMetricPort =
-  Json → String ⊹ { value ∷ String, label ∷ Maybe String }
-
 type MetricPort =
   { label ∷ Maybe String
   , value ∷ String
   }
 
-type ChartInstructionsPort =
-  { options ∷ Array Json → DSL OptionI
-  , chartType ∷ ChartType
-  }
+type BuildMetricPort =
+  Json → String ⊹ { value ∷ String, label ∷ Maybe String }
+
+type BuildChartPort =
+  Array Json → DSL OptionI
+
 
 type PivotTablePort =
   { dimensions ∷ Array (String × PTM.GroupByDimension)
   , columns ∷ Array (String × PTM.ColumnDimension)
   , isSimpleQuery ∷ Boolean
-  }
-
-type SetupLabeledFormInputPort =
-  { name ∷ String
-  , valueLabelMap ∷ Map.Map Sem.Semantics (Maybe String)
-  , cursor ∷ JCursor
-  , selectedValues ∷ Set.Set Sem.Semantics
-  , formInputType ∷ FormInputType
   }
 
 type SetupInputPort =
@@ -149,12 +135,6 @@ type SetupSelectPort =
       }
   }
 
-type SetupTextLikeFormInputPort =
-  { name ∷ String
-  , cursor ∷ JCursor
-  , formInputType ∷ FormInputType
-  }
-
 type GeoChartPort =
   { build ∷ LC.Leaflet → Array Json → Aff SlamDataEffects (Array LC.Layer × Array LC.Control)
   , osmURI ∷ URIRef
@@ -166,14 +146,11 @@ data Port
   | Variables
   | CardError CE.CardError
   | ResourceKey String
-  | SetupLabeledFormInput SetupLabeledFormInputPort
-  | SetupTextLikeFormInput SetupTextLikeFormInputPort
   | SetupInput SetupInputPort
   | SetupSelect SetupSelectPort
   | SlamDown (SD.SlamDownP VarMapValue)
-  | ChartInstructions ChartInstructionsPort
+  | BuildChart BuildChartPort
   | DownloadOptions DownloadPort
-  | ValueMetric MetricPort
   | BuildMetric BuildMetricPort
   | CategoricalMetric MetricPort
   | PivotTable PivotTablePort
@@ -187,12 +164,9 @@ tagPort  = case _ of
   Variables → "Variables"
   CardError err → "CardError: " ⊕ CE.showCardError err
   ResourceKey str → "ResourceKey: " ⊕ show str
-  SetupLabeledFormInput _ → "SetupLabeledFormInput"
-  SetupTextLikeFormInput _ → "SetupTextLikeFormInput"
   SlamDown sd → "SlamDown: " ⊕ show sd
-  ChartInstructions _ → "ChartInstructions"
+  BuildChart _ → "BuildChart"
   DownloadOptions _ → "DownloadOptions"
-  ValueMetric _ → "ValueMetric"
   CategoricalMetric _ → "CategoricalMetric"
   PivotTable _ → "PivotTable"
   GeoChart _ → "GeoChart"
@@ -266,14 +240,8 @@ _DownloadOptions = prism' DownloadOptions $ case _ of
   DownloadOptions p' → Just p'
   _ → Nothing
 
-_ChartInstructions ∷ Traversal' Port (Array Json → DSL OptionI)
-_ChartInstructions = wander \f s → case s of
-  ChartInstructions o → ChartInstructions ∘ o{options = _} <$> f o.options
-  _ → pure s
-
 _Metric ∷ Traversal' Port MetricPort
 _Metric = wander \f s → case s of
-  ValueMetric m → map ValueMetric $ f m
   CategoricalMetric m → map CategoricalMetric $ f m
   _ → pure s
 
