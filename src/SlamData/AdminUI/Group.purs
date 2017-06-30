@@ -40,6 +40,7 @@ import SlamData.Workspace.MillerColumns.Component as Miller
 import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
 import Unsafe.Coerce (unsafeCoerce)
 import Utils.DOM as DOM
+import Utils.Path as PU
 
 type ColumnOptions = MCC.ColumnOptions AT.GroupItem QA.GroupPath AT.GroupMessage
 type ColumnQuery = MCC.Query AT.GroupItem QA.GroupPath AT.GroupMessage
@@ -137,7 +138,10 @@ renderGroupsForm (AT.GroupsState _) =
       Miller.ColumnOptions
         { renderColumn: component
         , renderItem: GI.component
-        , label: AT.groupItemName
+        , label: \(AT.GroupItem { path: QA.GroupPath gp }) →
+            case Pathy.peel gp of
+              Nothing → "/"
+              Just (_ × suffix) → PU.nameOfFileOrDir suffix
         , isLeaf: const false
         , id: \(AT.GroupItem { path }) → path
         }
