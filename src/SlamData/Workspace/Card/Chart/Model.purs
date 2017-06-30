@@ -17,55 +17,27 @@ limitations under the License.
 module SlamData.Workspace.Card.Chart.Model where
 
 import SlamData.Prelude
-import Data.Argonaut (Json, class EncodeJson, class DecodeJson, encodeJson, decodeJson, (~>), (:=), isNull, jsonNull, (.?), jsonEmptyObject)
-import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
+import Data.Argonaut (Json, decodeJson, (~>), (:=), (.?), jsonEmptyObject)
 import Test.StrongCheck.Gen as Gen
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
 
-data ChartModel
-  = PivotTableRenderer PTRM.Model
-
-type Model = Maybe ChartModel
+type Model = Unit
 
 eqModel ∷ Model → Model → Boolean
 eqModel = eq
 
 genModel ∷ Gen.Gen Model
-genModel =
-  arbitrary >>= if _
-    then pure Nothing
-    else Just ∘ PivotTableRenderer <$> PTRM.genModel
+genModel = pure unit
 
 emptyModel ∷ Model
-emptyModel = Nothing
+emptyModel = unit
 
 encode ∷ Model → Json
-encode Nothing = jsonNull
-encode (Just r) = encodeJson r
+encode _ =
+  "tag" := "chart"
+  ~> jsonEmptyObject
 
-decode ∷ Json → Either String Model
-decode js
-  | isNull js = pure Nothing
-  -- Backwards compatability has the model as an empty object rather than null,
-  -- so we have to fallback to a successful Nothing if there's a parse error.
-  | otherwise = (Just <$> decodeJson js) <|> pure Nothing
-
-derive instance eqChartModel ∷ Eq ChartModel
-
-instance arbitraryChartModel ∷ Arbitrary ChartModel where
-  arbitrary = PivotTableRenderer <$> PTRM.genModel
-
-instance encodeJsonChartModel ∷ EncodeJson ChartModel where
-  encodeJson (PivotTableRenderer m1) =
-    "renderer" := "pivot"
-    ~> "state" := PTRM.encode m1
-    ~> jsonEmptyObject
-
-instance decodeJsonChartModel ∷ DecodeJson ChartModel where
-  decodeJson json = do
-    obj ← decodeJson json
-    renderer ← obj .? "renderer"
-    state ← obj .? "state"
-    case renderer of
-      "pivot" → PivotTableRenderer <$> PTRM.decode state
-      _       → Left "Not a valid chart renderer"
+decode ∷ Json → String ⊹ Model
+decode = decodeJson >=> \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "chart") $ Left "This is not a chart model"
+  pure unit

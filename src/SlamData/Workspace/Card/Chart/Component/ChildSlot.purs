@@ -21,21 +21,12 @@ import SlamData.Prelude
 import Halogen.Component.ChildPath as CP
 import Halogen.ECharts as HEC
 
-import SlamData.Workspace.Card.Chart.MetricRenderer.Component as MR
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Component as PR
+type ChildQuery = HEC.EChartsQuery ⨁ Const Void
 
-type ChildQuery = MR.Query ⨁ PR.Query ⨁ HEC.EChartsQuery ⨁ Const Void
-
-type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Void
-
-cpPivotTable
-  ∷ CP.ChildPath
-      PR.Query ChildQuery
-      Unit ChildSlot
-cpPivotTable = CP.cp2
+type ChildSlot = Unit ⊹ Void
 
 cpECharts
   ∷ CP.ChildPath
       HEC.EChartsQuery ChildQuery
       Unit ChildSlot
-cpECharts = CP.cp3
+cpECharts = CP.cp1

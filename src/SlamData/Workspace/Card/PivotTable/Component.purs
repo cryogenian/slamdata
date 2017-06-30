@@ -257,6 +257,7 @@ eval = case _ of
     H.raise $ CC.stateAlter case _ of
       Just (ES.PivotTable es) → Just $ ES.PivotTable es{ pageIndex = pageIndex }
       _ → Nothing
+    H.raise CC.modelUpdate
     H.modify _ { loading = true }
     pure next
   SetCustomPage page next → do
@@ -271,6 +272,7 @@ eval = case _ of
       H.raise $ CC.stateAlter case _ of
         Just (ES.PivotTable es) → Just $ ES.PivotTable es{ pageIndex = pageIndex }
         _ → Nothing
+      H.raise CC.modelUpdate
       H.modify _ { customPage = Nothing, loading = true }
     pure next
   ChangePageSize size next → do
