@@ -36,27 +36,23 @@ import SlamData.Prelude
 
 import Data.Argonaut as JS
 import Data.Array as Arr
+import Data.HugeInt as HI
 import Data.Int as Int
+import Data.Json.Extended as EJS
 import Data.Lens ((.~))
 import Data.List as L
-import Data.Json.Extended as EJS
 import Data.Path.Pathy as P
 import Data.Set as Set
 import Data.StrMap as SM
-
 import Matryoshka (Coalgebra, ana, project, embed)
-
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (JSONMode(..))
 import Quasar.Error (QError)
 import Quasar.Mount as QM
 import Quasar.Types (DirPath, FilePath, CompileResultR)
-
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
-
 import SqlSquared (Sql, print)
 import SqlSquared as Sql
-
 import Utils.SqlSquared (tableRelation)
 
 -- | Compiles a query.
@@ -201,7 +197,7 @@ data UnfoldableJC = JC JS.JCursor | S String | I Int
 jcCoalgebra ∷ Coalgebra (Sql.SqlF EJS.EJsonF) UnfoldableJC
 jcCoalgebra = case _ of
   S s → Sql.Ident s
-  I i → Sql.Literal (EJS.Integer i)
+  I i → Sql.Literal (EJS.Integer (HI.fromInt i))
   JC cursor → case cursor of
     JS.JCursorTop → Sql.Splice Nothing
     JS.JIndex i c → Sql.Binop { op: Sql.IndexDeref, lhs: JC c, rhs: I i }

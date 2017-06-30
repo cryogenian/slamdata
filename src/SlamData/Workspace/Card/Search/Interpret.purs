@@ -21,6 +21,7 @@ module SlamData.Workspace.Card.Search.Interpret
 import SlamData.Prelude
 
 import Data.Foldable as F
+import Data.HugeInt as HI
 import Data.Int as Int
 import Data.Json.Extended as Ej
 import Data.Lens ((.~), (?~))
@@ -30,20 +31,13 @@ import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Data.String.Regex.Unsafe as URX
-
-import Text.SlamSearch.Types as SS
-
 import Matryoshka (Algebra, embed, cata, Transform, transAna, ana, Coalgebra)
-
 import Quasar.Types (FilePath)
-
 import SlamData.SqlSquared.Tagged as SqlT
-
 import SqlSquared (Sql, SqlF(..))
 import SqlSquared as Sql
-
+import Text.SlamSearch.Types as SS
 import Utils.SqlSquared (tableRelation)
-
 
 queryToSql
   ∷ L.List Sql
@@ -149,7 +143,7 @@ labelToFieldF ∷ Coalgebra (SqlF Ej.EJsonF) (L.List String)
 labelToFieldF = case _ of
   L.Nil → Sql.Splice Nothing
   hd : L.Nil → case labelInt hd of
-    Just i → Sql.Literal $ Ej.Integer i
+    Just i → Sql.Literal $ Ej.Integer (HI.fromInt i)
     Nothing → Sql.Ident hd
   hd : tl → case labelInt hd of
     Just i → Sql.Binop { op: Sql.IndexDeref,  lhs: tl, rhs: pure hd }
