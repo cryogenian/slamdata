@@ -87,7 +87,7 @@ component' opts path =
       [ HH.slot unit column (st.columnWidth × st.item) (Just ∘ right ∘ H.action ∘ Raise)
       , HH.form
           [ HP.class_ (HH.ClassName "sd-admin-ui-group-form")
-          , HE.onSubmit (\event → Just $ right $ H.action $ Raise $ Right $ AT.AddNewGroup { path, event, name: st.newGroupText })
+          , HE.onSubmit (\event → addNewGroup { path, event, name: st.newGroupText })
           ]
           [ HH.input
               [ HP.id_ labelId
@@ -102,12 +102,13 @@ component' opts path =
               , HE.onClick (\event →
                   if inputIsEmpty
                   then Nothing
-                  else Just $ right $ H.action $ Raise $ Right $ AT.AddNewGroup { path, event: DOM.toEvent event, name: st.newGroupText })
+                  else addNewGroup { path, event: DOM.toEvent event, name: st.newGroupText })
               ]
               [ I.addCircle ]
           ]
       ]
       where
+        addNewGroup = Just ∘ right ∘ H.action ∘ Raise ∘ Right ∘ AT.AddNewGroup
         inputIsEmpty = String.null st.newGroupText
         labelId = "admin-new-group" <> QA.printGroupPath path
 
