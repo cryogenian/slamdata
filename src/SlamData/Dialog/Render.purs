@@ -27,7 +27,6 @@ modalDialog :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
 modalDialog =
   -- I think we don't need stopPropagation and preventDefault anymore
   classedDiv CN.dialog
-    -- [ classedDiv CN.dialog children ]
 
 modalHeader :: forall f p. String -> H.HTML p (f Unit)
 modalHeader message =

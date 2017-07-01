@@ -89,7 +89,6 @@ component =
 render ∷ State → H.ParentHTML Query ChildQuery ChildSlot Slam
 render state =
     HH.div
-    --[ HP.class_ CN.dialogContainer ]
         [ HP.classes $
             [ CN.dialogContainer ] <> (guard (isNothing state) $> CSS.invisible)
         , HE.onClick $ HE.input BackdropDismiss
