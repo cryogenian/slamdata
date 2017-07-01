@@ -1,32 +1,21 @@
-.deck-dialog-backdrop, .deck-dialog {
+.dialog-container:not(.invisible) {
+  display: flex;
+  flex-flow: column nowrap;
   position: fixed;
+  z-index: 9000;
+  overflow: auto;
   top: 0;
   right: 0;
   bottom: 0;
   left: 0;
   width: 100%;
   min-height: 100%;
-}
-
-
-.deck-dialog-backdrop {
-  position: fixed;
-  z-index: 9000;
+  padding: 1rem;
   background: rgba(0, 0, 0, 0.625);
 }
 
 
-.deck-dialog {
-  display: flex;
-  flex-flow: column nowrap;
-  z-index: 9001;
-  overflow: auto;
-  padding: 1rem;
-  pointer-events: none;
-}
-
-
-.deck-dialog > div, .deck-dialog > form {
+.dialog-container > .dialog, .dialog-container > form {
   flex: 0 0 auto;
   position: relative;
   z-index: 9001;
@@ -37,8 +26,6 @@
   margin: auto;
   padding: 1rem;
   background: #fff;
-  overflow-y: auto;
-  pointer-events: auto;
 
   h4 {
     flex: 0 0 auto;
