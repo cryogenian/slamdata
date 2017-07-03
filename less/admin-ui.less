@@ -179,20 +179,22 @@
 }
 
 .sd-slider-button {
-  color: @brand-primary;
   height: 100%;
   font-size: 1.9rem;
   background: rgba(0,0,0,0);
   border-style: none;
+
+  &:hover {
+    background: darken(white, 10%);
+  }
 }
 
 .sd-slider-toggle {
-  color: @brand-primary;
   height: 100%;
   background: rgba(0,0,0,0);
   border-style: none;
   border-left: solid 0.1rem darken(white, 10%);
-  margin-bottom: 0.1rem;
+  margin-bottom: 0.2rem;
 
   &:hover {
     background: darken(white, 10%);
@@ -203,8 +205,21 @@
 li.selected {
   .sd-slider-toggle {
     border-style: none;
-    border-left: solid 0.1rem darken(@brand-primary, 10%);
+    border-left: solid 0.1rem darken(#ddd, 10%);
+  }
+  .sd-slider-toggle, .sd-slider-button {
+    &:hover {
+      background: darken(#ddd, 10%);
+    }
+  }
+}
 
+.sd-miller-column-last .sd-miller-column-items li.selected {
+  .sd-slider-toggle {
+    border-style: none;
+    border-left: solid 0.1rem darken(@brand-primary, 10%);
+  }
+  .sd-slider-toggle, .sd-slider-button {
     &:hover {
       background: darken(@brand-primary, 10%);
     }
