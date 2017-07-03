@@ -72,9 +72,6 @@ render state =
     ]
     [ tabHeader state.active
     , tabBody state
-    , HH.button
-        [ HE.onClick (HE.input_ AT.Close) ]
-        [ HH.text "Close" ]
     ]
 
 tabHeader ∷ AT.TabIndex → AT.HTML
@@ -94,7 +91,18 @@ tabBody ∷ AT.State → AT.HTML
 tabBody state =
   HH.div
     [HP.class_ $ HH.ClassName "tab-body"]
-    case state.active of
+    (activeTab <> [closeButton])
+  where
+    closeButton =
+      HH.div
+        [ HP.class_ (HH.ClassName "sd-admin-ui-close") ]
+        [ HH.button
+            [ HE.onClick (HE.input_ AT.Close)
+            , HP.classes (H.ClassName <$> ["btn", "btn-primary"])
+            ]
+            [ HH.text "Confirm" ]
+        ]
+    activeTab = case state.active of
       AT.MySettings →
         pure $ HH.div
           [ HP.class_ (HH.ClassName "my-settings") ]

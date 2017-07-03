@@ -7,7 +7,7 @@
   z-index: 10;
   background-color: white;
 
-  padding-top: 4rem;
+  padding-top: 10.5rem;
 
   display: flex;
   flex-direction: column;
@@ -55,7 +55,6 @@
 .sd-admin-ui > .tab-body {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   margin-top: 2rem;
   width: 80%;
   height: 80%;
@@ -119,7 +118,8 @@
 
 .sd-admin-ui > .tab-body > .groups {
 
-  height: 100%;
+  height: inherit;
+  flex-grow: 10;
 
   .sd-admin-ui-column {
     display: flex;
@@ -209,4 +209,9 @@ li.selected {
       background: darken(@brand-primary, 10%);
     }
   }
+}
+
+.sd-admin-ui-close {
+  margin-top: 1rem;
+  align-self: flex-end;
 }
