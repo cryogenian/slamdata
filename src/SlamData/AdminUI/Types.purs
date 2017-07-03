@@ -115,7 +115,7 @@ type PostgresCon =
 defaultPostgresCon ∷ PostgresCon
 defaultPostgresCon =
   { server: "localhost"
-  , port: 1234
+  , port: 5432
   , username: ""
   , password: ""
   , database: ""
