@@ -22,6 +22,7 @@ module SlamData.FileSystem.Component
   ) where
 
 import SlamData.Prelude
+
 import CSS as CSS
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Fork (fork)
@@ -104,7 +105,6 @@ import SlamData.Render.Common (content, row)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
-
 import Utils (finally)
 import Utils.DOM as D
 import Utils.Path (DirPath, getNameStr)
@@ -142,7 +142,7 @@ render state@{ version, sort, salt, path } =
       , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
     , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
           $ HE.input HandleNotifications
-      , HH.slot' CS.cpAdminUI unit AdminUI.component unit absurd
+      , HH.slot' CS.cpAdminUI unit AdminUI.component unit $ HE.input HandleAdminUI
       ]
     ⊕ (guard state.presentIntroVideo $> renderIntroVideo)
     ⊕ (guard state.presentIntroVideo $> renderIntroVideoBackdrop)
@@ -430,6 +430,10 @@ eval = case _ of
   HandleSignInMessage message next → do
     when (message ≡ GlobalMenu.SignInSuccess) (H.liftEff Browser.reload)
     pure next
+  HandleAdminUI message next → case message of
+    AdminUI.Types.Closed → do
+      _ ← queryHeaderGripper $ H.action $ Gripper.Close
+      pure next
 
 handleItemMessage ∷ Item.Message → DSL Unit
 handleItemMessage = case _ of

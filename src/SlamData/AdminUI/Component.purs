@@ -41,7 +41,7 @@ import SlamData.Render.Common as R
 import SlamData.Workspace.MillerColumns.Component as Miller
 import Utils.DOM as DOM
 
-component ∷ H.Component HH.HTML AT.Query Unit Void Slam
+component ∷ H.Component HH.HTML AT.Query Unit AT.Message Slam
 component =
   H.lifecycleParentComponent
     { initialState: \_ →
@@ -354,6 +354,7 @@ eval = case _ of
     pure next
   AT.Close next → do
     H.modify (_ { open = false })
+    H.raise AT.Closed
     pure next
   AT.SetActive ix next → do
     H.modify (_ { active = ix })

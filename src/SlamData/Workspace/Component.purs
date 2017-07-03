@@ -147,7 +147,7 @@ render accessType state =
     HH.slot' cpDialog unit Dialog.component unit (HE.input HandleDialog)
 
   adminUISlot =
-    HH.slot' cpAdminUI unit AdminUI.component unit absurd
+    HH.slot' cpAdminUI unit AdminUI.component unit (HE.input HandleAdminUI)
 
   notifications =
     HH.slot' cpNotify unit (NC.component (NC.renderModeFromAccessType accessType)) unit (HE.input HandleNotification)
@@ -240,6 +240,9 @@ eval = case _ of
   HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next →
     H.query' cpAdminUI unit (H.action AdminUI.Types.Open) $> next
   HandleHeader _ next → pure next
+  HandleAdminUI msg next → case msg of
+    AdminUI.Types.Closed →
+      queryHeaderGripper (H.action Gripper.Close) $> next
   HandleGuideMessage slot Guide.Dismissed next → do
     case slot of
       CardGuide → do

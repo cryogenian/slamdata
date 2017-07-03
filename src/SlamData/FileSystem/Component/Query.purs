@@ -18,22 +18,20 @@ module SlamData.FileSystem.Component.Query where
 
 import SlamData.Prelude
 
-import SlamData.FileSystem.Dialog.Component.Message as Dialog
-import SlamData.FileSystem.Listing.Component as Listing
-import SlamData.FileSystem.Search.Component as Search
-import SlamData.Notification.Component as Notification
-
 import DOM.Event.Types (Event)
 import DOM.HTML.Types (HTMLElement)
-
+import SlamData.AdminUI.Types as AdminUI
 import SlamData.Common.Sort (Sort)
+import SlamData.FileSystem.Dialog.Component.Message as Dialog
+import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item)
 import SlamData.FileSystem.Routing.Salt (Salt)
-import SlamData.Header.Component as Header
+import SlamData.FileSystem.Search.Component as Search
 import SlamData.GlobalError (GlobalError)
 import SlamData.GlobalMenu.Bus (SignInMessage)
+import SlamData.Header.Component as Header
 import SlamData.License (LicenseProblem)
-
+import SlamData.Notification.Component as Notification
 import Utils.Path (DirPath)
 
 type PageTransition =
@@ -75,6 +73,7 @@ data Query a
   | HandleSearch Search.Message a
   | HandleLicenseProblem LicenseProblem a
   | HandleHeader Header.Message a
+  | HandleAdminUI AdminUI.Message a
   | SetLoading Boolean a
   | SetIsSearching Boolean a
   | AddListings (Array Item) a

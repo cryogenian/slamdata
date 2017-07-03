@@ -29,8 +29,10 @@ type MillerQuery = Miller.Query GroupItem QA.GroupPath GroupMessage
 type ChildQuery = MillerQuery ⨁ Const Void
 type ChildSlot = Unit ⊹ Void
 
+data Message = Closed
+
 type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
-type DSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
+type DSL = H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 
 data Query a
   = Init a
