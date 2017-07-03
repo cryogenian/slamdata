@@ -20,14 +20,15 @@ import Data.List as L
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Quasar.Advanced.Types as QA
+import SlamData.AdminUI.Dialog.Component as Dialog
 import SlamData.Monad (Slam)
 import SlamData.Workspace.MillerColumns.Component as Miller
 import Utils.DOM as DOM
 
 type MillerQuery = Miller.Query GroupItem QA.GroupPath GroupMessage
 
-type ChildQuery = MillerQuery ⨁ Const Void
-type ChildSlot = Unit ⊹ Void
+type ChildQuery = MillerQuery ⨁ Dialog.Query ⨁ Const Void
+type ChildSlot = Unit ⊹ Dialog.Dialog ⊹ Void
 
 data Message = Closed
 
@@ -47,6 +48,7 @@ data Query a
   | DefaultThemeChanged String a
   | HandleColumns (Miller.Message GroupItem QA.GroupPath) a
   | HandleColumnOrItem GroupMessage a
+  | HandleDialog Dialog.Message a
 
 data TabIndex
   = MySettings
@@ -85,6 +87,7 @@ type State =
       , users ∷ UsersState
       , groups ∷ GroupsState
       }
+  , dialog ∷ Maybe Dialog.Dialog
   }
 
 newtype MySettingsState = MySettingsState
@@ -162,8 +165,11 @@ derive instance newtypeGroupsState ∷ Newtype GroupsState _
 defaultGroupsState ∷ GroupsState
 defaultGroupsState = GroupsState { }
 
-cpGroups :: forall f1 g p1 q. CP.ChildPath f1 (Coproduct f1 g) p1 (Either p1 q)
+cpGroups ∷ CP.ChildPath MillerQuery ChildQuery Unit ChildSlot
 cpGroups = CP.cp1
+
+cpDialog ∷ CP.ChildPath Dialog.Query ChildQuery Dialog.Dialog ChildSlot
+cpDialog = CP.cp2
 
 data GroupItem = GroupItem { path ∷ QA.GroupPath, name ∷ String }
 

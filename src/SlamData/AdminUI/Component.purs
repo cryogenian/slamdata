@@ -30,6 +30,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Quasar.Advanced.Types as QA
+import SlamData.AdminUI.Dialog.Component as Dialog
 import SlamData.AdminUI.Group as Group
 import SlamData.AdminUI.Types as AT
 import SlamData.LocalStorage.Class as LS
@@ -54,6 +55,7 @@ component =
           , users: AT.defaultUsersState
           , groups: AT.defaultGroupsState
           }
+      , dialog: Nothing
        }
     , render
     , eval
@@ -70,9 +72,14 @@ render state =
         , guard (not state.open) $> H.ClassName "hidden"
         ]
     ]
-    [ tabHeader state.active
-    , tabBody state
-    ]
+    $ join
+      [ maybe [] dialog state.dialog
+      , pure $ tabHeader state.active
+      , pure $ tabBody state
+      ]
+  where
+  dialog dlg =
+    [ HH.slot' AT.cpDialog dlg (Dialog.component dlg) unit (HE.input AT.HandleDialog) ]
 
 tabHeader ∷ AT.TabIndex → AT.HTML
 tabHeader active =
@@ -402,14 +409,21 @@ eval = case _ of
           pure unit
       pure next
     AT.DeleteGroup { path } → do
-      deleteGroup path >>= case _ of
-        Right _ →
-          H.query' AT.cpGroups unit (H.action Miller.Reload) $> unit
-        Left err → do
-          Notification.error
-            ("Failed to delete the group at " <> QA.printGroupPath path)
-            (Just (Notification.Details (Exception.message err)))
-            Nothing
-            Nothing
-          pure unit
+      H.modify (_ { dialog = Just (Dialog.ConfirmDeletion path) })
       pure next
+  AT.HandleDialog msg next → do
+    case msg of
+      Dialog.Confirm (Dialog.ConfirmDeletion path) → do
+        deleteGroup path >>= case _ of
+          Right _ →
+            H.query' AT.cpGroups unit (H.action Miller.Reload) $> unit
+          Left err → do
+            Notification.error
+              ("Failed to delete the group at " <> QA.printGroupPath path)
+              (Just (Notification.Details (Exception.message err)))
+              Nothing
+              Nothing
+            pure unit
+      Dialog.Dismiss → pure unit
+    H.modify (_ { dialog = Nothing })
+    pure next
