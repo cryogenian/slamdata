@@ -100,7 +100,7 @@ tabBody state =
             [ HE.onClick (HE.input_ AT.Close)
             , HP.classes (H.ClassName <$> ["btn", "btn-primary"])
             ]
-            [ HH.text "Confirm" ]
+            [ HH.text "Dismiss Settings" ]
         ]
     activeTab = case state.active of
       AT.MySettings →
