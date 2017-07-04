@@ -150,7 +150,7 @@ render state =
               [ HP.class_ $ HH.ClassName "sign-in-menu-button "
               , HE.onClick $ stopProp $ AdminUIClicked
               ]
-              [ I.wrenchesCrossed, HH.text "Settings" ]
+              [ I.settingsCog, HH.text "Settings" ]
           ]
       ]
 
