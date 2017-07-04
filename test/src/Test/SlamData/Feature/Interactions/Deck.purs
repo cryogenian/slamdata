@@ -12,7 +12,6 @@ import Data.Time.Duration (Milliseconds(..))
 import Selenium.Monad (get, getCurrentUrl, refresh)
 
 import Test.Feature as Feature
-import Test.Feature.Log (successMsg)
 import Test.SlamData.Feature.Monad (SlamFeature, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
 
@@ -105,13 +104,9 @@ insertVariablesCardInLastDeck =
 
 nameDeck ∷ String → SlamFeature Unit
 nameDeck name = do
-  successMsg "flip"
   flipDeck
-  successMsg "rename"
   Feature.click $ XPath.anywhere XPaths.renameDeck
-  successMsg "provide field"
   Feature.provideFieldValue (XPath.anywhere $ XPath.nodeWithExactAriaLabel "input" "Deck name") name
-  successMsg "save"
   Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Save"
 
 publishDeck ∷ SlamFeature Unit

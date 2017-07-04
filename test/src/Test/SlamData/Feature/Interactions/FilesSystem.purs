@@ -7,7 +7,6 @@ import Data.Map as Map
 import Selenium.Monad (tryRepeatedlyTo)
 
 import Test.Feature as Feature
-import Test.Feature.Log (successMsg)
 import Test.SlamData.Feature.Interactions.Deck (nameDeck)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -44,9 +43,7 @@ createWorkspaceInTestFolder ∷ String → SlamFeature Unit
 createWorkspaceInTestFolder name = do
   browseTestFolder
   createWorkspace
-  successMsg "pre name"
   nameDeck name
-  successMsg "post name"
   browseTestFolder
   renameFile "Untitled Workspace" name
   editWorkspace $ name <> ".slam"
