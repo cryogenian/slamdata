@@ -68,22 +68,16 @@
 
     li {
       display: block;
-      padding: 1.2rem 0.6rem;
       cursor: pointer;
       z-index: 1;
-      line-height: 1;
+      border-bottom: 0.1rem solid #ddd;
 
       &:hover {
-        background: #eee;
-      }
-
-      + li {
-        margin-top: -0.1rem;
-        border-top: 0.1rem solid #ddd;
+        background: rgba(0, 0, 0, 0.2);
       }
 
       &.selected {
-        background: #ddd;
+        background: rgba(0, 0, 0, 0.1);
         z-index: 2;
       }
 
@@ -138,6 +132,7 @@
   justify-content: space-between;
   align-items: center;
   position: relative;
+  padding: 1rem 0.6rem;
 
   .sd-icon--chevron-right-sm {
     flex: 0 0 auto;
