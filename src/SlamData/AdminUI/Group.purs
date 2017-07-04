@@ -41,6 +41,26 @@ import SlamData.Workspace.MillerColumns.Component.State (ColumnsData)
 import Utils.DOM as DOM
 import Utils.Path as PU
 
+renderGroupsForm ∷ AT.GroupsState → Array AT.HTML
+renderGroupsForm (AT.GroupsState _) =
+  [ HH.slot' AT.cpGroups unit (Miller.component columnOptions) columnState (HE.input (either AT.HandleColumns AT.HandleColumnOrItem)) ]
+  where
+    columnState ∷ ColumnsData AT.GroupItem QA.GroupPath
+    columnState = QA.GroupPath (Pathy.rootDir) × L.Nil
+
+    columnOptions ∷ Miller.ColumnOptions AT.GroupItem QA.GroupPath AT.GroupMessage
+    columnOptions =
+      Miller.ColumnOptions
+        { renderColumn: component
+        , renderItem: GI.component
+        , label: \(AT.GroupItem { path: QA.GroupPath gp }) →
+            case Pathy.peel gp of
+              Nothing → "/"
+              Just (_ × suffix) → PU.nameOfFileOrDir suffix
+        , isLeaf: const false
+        , id: \(AT.GroupItem { path }) → path
+        }
+
 type ColumnOptions = MCC.ColumnOptions AT.GroupItem QA.GroupPath AT.GroupMessage
 type ColumnQuery = MCC.Query AT.GroupItem QA.GroupPath AT.GroupMessage
 
@@ -125,26 +145,6 @@ component' opts path =
     Raise msg next → do
       H.raise msg
       pure next
-
-renderGroupsForm ∷ AT.GroupsState → Array AT.HTML
-renderGroupsForm (AT.GroupsState _) =
-  [ HH.slot' AT.cpGroups unit (Miller.component columnOptions) columnState (HE.input (either AT.HandleColumns AT.HandleColumnOrItem)) ]
-  where
-    columnState ∷ ColumnsData AT.GroupItem QA.GroupPath
-    columnState = QA.GroupPath (Pathy.rootDir) × L.Nil
-
-    columnOptions ∷ Miller.ColumnOptions AT.GroupItem QA.GroupPath AT.GroupMessage
-    columnOptions =
-      Miller.ColumnOptions
-        { renderColumn: component
-        , renderItem: GI.component
-        , label: \(AT.GroupItem { path: QA.GroupPath gp }) →
-            case Pathy.peel gp of
-              Nothing → "/"
-              Just (_ × suffix) → PU.nameOfFileOrDir suffix
-        , isLeaf: const false
-        , id: \(AT.GroupItem { path }) → path
-        }
 
 load
   ∷ Tuple QA.GroupPath { requestId ∷ MCREQ.RequestId, filter ∷ String, offset ∷ Maybe Int }
