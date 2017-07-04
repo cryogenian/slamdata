@@ -24,6 +24,8 @@ module SlamData.Workspace.Dialog.Component
 
 import SlamData.Prelude
 
+import DOM.Event.Types (MouseEvent)
+
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
@@ -46,11 +48,14 @@ import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Deck.Options (DeckOptions)
 import SlamData.Workspace.Dialog.Types (Dialog(..))
 
+import Utils.DOM as DOM
+
 type State = Maybe Dialog
 
 data Query a
   = Show Dialog a
   | Raise Message a
+  | BackdropDismiss MouseEvent a
 
 data Message
   = Dismissed
@@ -94,8 +99,8 @@ component =
 renderDialogContainer ∷ Array HTML → HTML
 renderDialogContainer =
   HH.div
-    [ HP.classes [ CN.dialogContainer ]
-    , HE.onClick $ HE.input_ $ Raise Dismissed
+    [ HP.class_ CN.dialogContainer
+    , HE.onClick $ HE.input BackdropDismiss
     ]
 
 render ∷ State → HTML
@@ -172,3 +177,8 @@ eval ∷ Query ~> DSL
 eval = case _ of
   Show dialog next → H.put (Just dialog) $> next
   Raise msg next → H.put Nothing *> H.raise msg $> next
+  BackdropDismiss me next → do
+    isDialog ← H.liftEff $ DOM.nodeEq (DOM.target me) (DOM.currentTarget me)
+    when isDialog do
+      H.put Nothing
+    pure next

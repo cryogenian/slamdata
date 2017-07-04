@@ -35,18 +35,31 @@ searchScenario =
 test ∷ SlamFeature Unit
 test = do
   searchScenario "Search for a city" [] do
+    successMsg "1"
     Interact.insertOpenCardInLastDeck
+    successMsg "2"
     Interact.selectFileForLastOpenCard "/test-mount/testDb/zips"
+    successMsg "3"
     Interact.accessNextCardInLastDeck
+    successMsg "4"
     Interact.insertSearchCardInLastDeck
+    successMsg "5"
     Interact.provideSearchStringInLastSearchCard "springfield"
+    successMsg "6"
     Interact.accessNextCardInLastDeck
+    successMsg "7"
     Interact.selectBuildChart
+    successMsg "8"
     Interact.insertPivotCard
+    successMsg "9"
     Interact.addColumn "city"
+    successMsg "10"
     Interact.addColumn "pop"
+    successMsg "11"
     Interact.accessNextCardInLastDeck
+    successMsg "12"
     Interact.insertChartCardInLastDeck
+    successMsg "13"
     Expect.cellsInTableColumnInLastCardToContain 25 "city" "SPRINGFIELD"
     successMsg "Successfully searched for a city"
 
