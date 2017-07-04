@@ -113,6 +113,7 @@ component' opts path =
               , HP.value st.newGroupText
               , HE.onValueInput \s → Just $ right $ H.action $ SetNewGroupText s
               , HP.placeholder "Add Group"
+              , HP.attr (HH.AttrName "size") "1"
               ]
           , HH.label
               [ HP.classes (HH.ClassName <$> fold [pure "sd-admin-ui-group-input-label", guard (not inputIsEmpty) $> "active"])
