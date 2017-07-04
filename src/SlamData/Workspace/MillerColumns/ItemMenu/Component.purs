@@ -63,6 +63,7 @@ component config =
           ]
           ([ HH.button
                [ HP.class_ (HH.ClassName "sd-slider-toggle")
+               , HP.title "Toggle menu"
                , HE.onClick $ Just ∘ StopPropagation (H.action (ToggleOpen (not open)))
                ]
                [ I.cog ]
@@ -71,6 +72,7 @@ component config =
             actions = Array.fromFoldable $ config <#> \ { icon, label, action} →
               HH.button
                 [ HP.class_ (HH.ClassName "sd-slider-button")
+                , HP.title label
                 , HE.onClick $ Just ∘ StopPropagation (H.action (RaiseAction action))
                 ]
                 [ bimap absurd (absurd ∘ un Const) icon ]
