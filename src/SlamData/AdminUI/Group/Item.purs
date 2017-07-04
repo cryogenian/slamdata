@@ -102,7 +102,7 @@ renderItem ∷ AT.GroupItem → HTML
 renderItem ci =
   HH.div
     [ HP.class_ (H.ClassName "sd-miller-column-item-inner") ]
-    [ HH.div_ [ HH.text (getGroupName ci) ]
+    [ HH.div [ HP.class_ (H.ClassName "sd-miller-column-item-label") ] [ HH.text (getGroupName ci) ]
     , HH.slot unit slider unit (HE.input HandleSliderMessage)
     ]
 

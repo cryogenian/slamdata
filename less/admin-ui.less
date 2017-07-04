@@ -132,7 +132,7 @@
     position: relative;
     display: block;
     float: right;
-    background: transparent;
+    background-color: transparent;
     padding: 1rem 1rem 1rem 4rem;
     width: 100%;
 
@@ -164,11 +164,24 @@
   }
 }
 
+.sd-miller-column-item-inner {
+  .sd-admin-ui & {
+    padding-right: 2.5rem;
+    background-color: inherit;
+  }
+}
+
+.sd-miller-column-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sd-miller-slider {
   display: flex;
   flex-direction: row;
   align-items: center;
 
+  background: inherit;
   position: absolute;
   right: 0;
   top: 0;
@@ -181,22 +194,22 @@
 .sd-slider-button {
   height: 100%;
   font-size: 1.9rem;
-  background: rgba(0,0,0,0);
+  background: transparent;
   border-style: none;
 
   &:hover {
-    background: darken(rgba(0, 0, 0, 0.2), 10%);
+    background: darken(#ddd, 10%);
   }
 }
 
 .sd-slider-toggle {
   height: 100%;
-  background: rgba(0,0,0,0);
+  background: transparent;
   border-style: none;
   border-left: solid 0.1rem darken(white, 10%);
 
   &:hover {
-    background: darken(rgba(0, 0, 0, 0.2), 10%);
+    background: darken(#ddd, 10%);
   }
 
 }
