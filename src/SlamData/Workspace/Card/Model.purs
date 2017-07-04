@@ -17,15 +17,16 @@ limitations under the License.
 module SlamData.Workspace.Card.Model where
 
 import SlamData.Prelude
+
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
 import Data.Array as Array
+import Data.Codec.Argonaut as CA
 import Data.Lens (Traversal', wander, Prism', prism')
 import Data.List as L
 import Data.Path.Pathy (fileName, runFileName)
 import Data.Rational ((%))
 import Data.StrMap as StrMap
-
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
@@ -38,6 +39,7 @@ import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.FormInput.Model as FormInput
+import SlamData.Workspace.Card.Geo.Model as Geo
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
@@ -70,10 +72,9 @@ import SlamData.Workspace.Card.Setups.FormInput.Static.Model as SetupStatic
 import SlamData.Workspace.Card.Setups.FormInput.Text.Model as SetupText
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as SetupTextLike
 import SlamData.Workspace.Card.Setups.FormInput.Time.Model as SetupTime
-import SlamData.Workspace.Card.StructureEditor.Model as StructureEditor
-import SlamData.Workspace.Card.Setups.Geo.Marker.Model as SetupGeoMarker
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Model as SetupGeoHeatmap
-import SlamData.Workspace.Card.Geo.Model as Geo
+import SlamData.Workspace.Card.Setups.Geo.Marker.Model as SetupGeoMarker
+import SlamData.Workspace.Card.StructureEditor.Model as StructureEditor
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Tabs.Model as Tabs
 import SlamData.Workspace.Card.Variables.Model as Variables
@@ -341,7 +342,7 @@ encodeCardModel = case _ of
   SetupDatetime model → SetupDatetime.encode model
   SetupStatic model → SetupStatic.encode model
   FormInput model → FormInput.encode model
-  Tabs model → Tabs.encode model
+  Tabs model → CA.encode Tabs.codec model
   StructureEditor model → StructureEditor.encode model
   SetupGeoMarker model → SetupGeoMarker.encode model
   SetupGeoHeatmap model → SetupGeoHeatmap.encode model
@@ -390,7 +391,7 @@ decodeCardModel = case _ of
   CT.Open → map Open ∘ decodeOpen
   CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
   CT.Draftboard → map Draftboard ∘ DB.decode
-  CT.Tabs → map Tabs ∘ Tabs.decode
+  CT.Tabs → map Tabs ∘ lmap CA.printJsonDecodeError ∘ CA.decode Tabs.codec
   CT.StructureEditor → map StructureEditor ∘ StructureEditor.decode
   CT.SetupGeoChart GcT.Marker → map SetupGeoMarker ∘ SetupGeoMarker.decode
   CT.SetupGeoChart GcT.Heatmap → map SetupGeoHeatmap ∘ SetupGeoHeatmap.decode

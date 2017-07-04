@@ -45,6 +45,7 @@ module SlamData.Prelude
   , module Data.Generic
   , module Data.Maybe
   , module Data.Newtype
+  , module Data.Profunctor
   , module Data.Monoid
   , module Data.Traversable
   , module Data.Tuple
@@ -83,6 +84,7 @@ import Data.List (List)
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe', fromJust)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap, ala, alaF)
+import Data.Profunctor (class Profunctor, dimap)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Variant (SProxy(..), Variant)

@@ -22,7 +22,7 @@ module SlamData.FileSystem.Component
   ) where
 
 import SlamData.Prelude
-import CSS as CSS
+
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Fork (fork)
 import Control.Monad.Rec.Class (tailRecM, Step(Done, Loop))
@@ -30,8 +30,8 @@ import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
-import DOM.Event.Event as DEE
-import Data.Argonaut (jsonParser, jsonEmptyObject)
+import CSS as CSS
+import Data.Argonaut as J
 import Data.Array as Array
 import Data.Coyoneda (liftCoyoneda)
 import Data.Foldable as F
@@ -42,11 +42,12 @@ import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir, printPath)
 import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
+import DOM.Event.Event as DEE
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
-import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Core as HC
+import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
@@ -58,9 +59,9 @@ import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
-import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.FileSystem.Component.ChildSlot as CS
+import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)
@@ -71,10 +72,10 @@ import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as SparkFTP
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
@@ -102,7 +103,6 @@ import SlamData.Render.Common (content, row)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
-
 import Utils (finally)
 import Utils.DOM as D
 import Utils.Path (DirPath, getNameStr)
@@ -277,7 +277,7 @@ eval = case _ of
         hiddenFile = dirPath </> file (Config.folderMark)
         cleanupItem = void $ H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Filter (_ ≠ dirItem)
       _ ← H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Add dirItem
-      finally cleanupItem $ ExceptT $ API.save hiddenFile jsonEmptyObject
+      finally cleanupItem $ ExceptT $ API.save hiddenFile J.jsonEmptyObject
       pure dirRes
     case result of
       Left err → case GE.fromQError err of
@@ -521,18 +521,18 @@ remove res = do
 
 dismissMountHint ∷ DSL Unit
 dismissMountHint = do
-  LS.persist LSK.dismissedMountHintKey true
+  LS.persist J.encodeJson LSK.dismissedMountHintKey true
   H.modify $ State._presentMountHint .~ false
 
 dismissIntroVideo ∷ DSL Unit
 dismissIntroVideo = do
-  LS.persist LSK.dismissedIntroVideoKey true
+  LS.persist J.encodeJson LSK.dismissedIntroVideoKey true
   H.modify $ State._presentIntroVideo .~ false
   void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
 
 dismissedIntroVideoBefore ∷ DSL Boolean
 dismissedIntroVideoBefore =
-  either (const false) id <$> LS.retrieve LSK.dismissedIntroVideoKey
+  either (const false) id <$> LS.retrieve J.decodeJson LSK.dismissedIntroVideoKey
 
 uploadFileSelected ∷ Cf.File → DSL Unit
 uploadFileSelected f = do
@@ -569,7 +569,7 @@ uploadFileSelected f = do
   isApplicationJSON ∷ String → Boolean
   isApplicationJSON content'
     -- Parse if content is small enough
-    | S.length content' < 1048576 = isRight $ jsonParser content'
+    | S.length content' < 1048576 = isRight $ J.jsonParser content'
     -- Or check if its first/last characters are [/]
     | otherwise =
         let trimmed = S.trim content'
@@ -599,7 +599,7 @@ presentMountHint xs path = do
   where
   dismissedBefore ∷ DSL (Either String Boolean)
   dismissedBefore =
-    LS.retrieve LSK.dismissedMountHintKey
+    LS.retrieve J.decodeJson LSK.dismissedMountHintKey
 
 dismissSignInSubmenu ∷ DSL Unit
 dismissSignInSubmenu =

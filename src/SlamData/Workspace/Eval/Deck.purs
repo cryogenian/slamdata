@@ -29,6 +29,7 @@ module SlamData.Workspace.Eval.Deck
   ) where
 
 import SlamData.Prelude
+
 import Control.Monad.Aff.Bus (BusRW)
 import Data.Array as Array
 import Data.Lens (Prism', prism')
@@ -36,7 +37,7 @@ import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Port (Out)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.DeckId (DeckId, toString)
-import SlamData.Workspace.Deck.Model (Deck, emptyDeck, encode, decode)
+import SlamData.Workspace.Deck.Model (Deck, emptyDeck, codec)
 
 data EvalMessage
   = Pending CardId

@@ -17,13 +17,14 @@ limitations under the License.
 module SlamData.Workspace.Card.Tabs.Model where
 
 import SlamData.Prelude
-import Data.Argonaut (Json, decodeJson, (~>), (:=), (.?), jsonEmptyObject)
+
+import Data.Codec.Argonaut as CA
+import SlamData.Workspace.Deck.DeckId as DID
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen (Gen)
-import SlamData.Workspace.Deck.DeckId (DeckId)
 
 type Model =
-  { tabs ∷ Array DeckId
+  { tabs ∷ Array DID.DeckId
   }
 
 initialModel ∷ Model
@@ -39,13 +40,6 @@ genModel = do
   tabs ← arbitrary
   pure { tabs }
 
-encode ∷ Model → Json
-encode m =
-  "tabs" := m.tabs
-  ~> jsonEmptyObject
-
-decode ∷ Json → Either String Model
-decode json = do
-  obj ← decodeJson json
-  tabs ← obj .? "tabs"
-  pure { tabs }
+codec ∷ CA.JsonCodec Model
+codec = CA.object "Tabs model" $ CA.record
+  # CA.recordProp (SProxy ∷ SProxy "tabs") (CA.array DID.codec)

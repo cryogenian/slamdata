@@ -27,6 +27,7 @@ import Control.Monad.Aff as Aff
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Exception as Exception
 import Control.UI.Browser as Browser
+import Data.Argonaut as J
 import Data.Array as Array
 import Data.Lens ((.~), _Left, _Just, is)
 import Data.List ((:))
@@ -111,10 +112,10 @@ eval opts = case _ of
       H.subscribe $ busEventSource (\msg → HandleError msg H.Listening) bus.globalError
     H.modify
       ∘ (DCS._focusDeckHintDismissed .~ _)
-      =<< (Utils.rightBool <$> LS.retrieve LSK.dismissedFocusDeckHintKey)
+      =<< (Utils.rightBool <$> LS.retrieve J.decodeJson LSK.dismissedFocusDeckHintKey)
     H.modify
       ∘ (DCS._focusDeckFrameHintDismissed .~ _)
-      =<< (Utils.rightBool <$> LS.retrieve LSK.dismissedFocusDeckFrameHintKey)
+      =<< (Utils.rightBool <$> LS.retrieve J.decodeJson LSK.dismissedFocusDeckFrameHintKey)
     updateCardSize
     loadDeck opts
     pure next
@@ -254,14 +255,14 @@ dismissFocusDeckHint = do
   wiring ← H.lift Wiring.expose
   H.liftAff $ Bus.write Wiring.DeckFocusHintDismissed wiring.bus.hintDismissals
   H.modify (DCS._focusDeckHintDismissed .~ true)
-  LS.persist LSK.dismissedFocusDeckHintKey true
+  LS.persist J.encodeJson LSK.dismissedFocusDeckHintKey true
 
 dismissFocusDeckFrameHint ∷ DeckDSL Unit
 dismissFocusDeckFrameHint = do
   wiring ← H.lift Wiring.expose
   H.liftAff $ Bus.write Wiring.DeckFrameFocusHintDismissed wiring.bus.hintDismissals
   H.modify (DCS._focusDeckFrameHintDismissed .~ true)
-  LS.persist LSK.dismissedFocusDeckFrameHintKey true
+  LS.persist J.encodeJson LSK.dismissedFocusDeckFrameHintKey true
 
 -- If an ActionList has the style display: none; then calculating its dimensions
 -- will give 0, 0. (This is Mapped to Nothing.)
@@ -438,7 +439,7 @@ getDismissedAccessNextActionCardHintBefore ∷ DeckDSL Boolean
 getDismissedAccessNextActionCardHintBefore =
   H.lift
     $ either (const $ false) id
-    <$> LS.retrieve LSK.dismissedAccessNextActionCardHintKey
+    <$> LS.retrieve J.decodeJson LSK.dismissedAccessNextActionCardHintKey
 
 presentAccessNextActionCardHintAfterDelay ∷ DeckDSL Unit
 presentAccessNextActionCardHintAfterDelay = void do
@@ -453,7 +454,7 @@ presentAccessNextActionCardHintAfterDelay = void do
 dismissAccessNextActionCardHint ∷ DeckDSL Unit
 dismissAccessNextActionCardHint = do
   H.modify (DCS._presentAccessNextActionCardHint .~ false)
-  LS.persist LSK.dismissedAccessNextActionCardHintKey true
+  LS.persist J.encodeJson LSK.dismissedAccessNextActionCardHintKey true
 
 handleNextAction ∷ DeckOptions → Next.Message → DeckDSL Unit
 handleNextAction opts = case _ of
@@ -594,4 +595,4 @@ shouldPresentFlipGuide ∷ DeckDSL Boolean
 shouldPresentFlipGuide =
   H.lift
     $ either (const true) not
-    <$> LS.retrieve LSK.dismissedFlipGuideKey
+    <$> LS.retrieve J.decodeJson LSK.dismissedFlipGuideKey

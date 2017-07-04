@@ -36,7 +36,6 @@ import Control.UI.Browser (locationObject, newTab)
 import DOM (DOM)
 import DOM.HTML.Location (setHash)
 
-import Data.Argonaut as Argonaut
 import Data.Array as Array
 import Data.Exists as Exists
 import Data.Path.Pathy ((</>))
@@ -134,14 +133,14 @@ instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
   navigate = SlamM ∘ liftF ∘ flip Navigate unit
 
 instance localStorageDSLSlamM :: LocalStorageDSL (SlamM eff) where
-  persist key value =
-    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Persist Argonaut.encodeJson key value unit
-  retrieve key =
-    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Retrieve Argonaut.decodeJson key id
+  persist encode key value =
+    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Persist encode key value unit
+  retrieve decode key =
+    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Retrieve decode key id
   remove key =
     SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Remove key unit
-  awaitChange key =
-    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.AwaitChange Argonaut.decodeJson key id
+  awaitChange decode key =
+    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.AwaitChange decode key id
 
 newtype SlamA eff a = SlamA (FreeAp (SlamM eff) a)
 

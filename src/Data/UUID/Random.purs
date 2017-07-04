@@ -19,19 +19,21 @@ module Data.UUID.Random
   , make
   , toString
   , fromString
+  , codec
   ) where
 
 import Prelude
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Random as Random
 import Control.MonadZero (guard)
-import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
 import Data.Array as Array
-import Data.Either (Either(..))
+import Data.Codec as C
+import Data.Codec.Argonaut as CA
+import Data.Either (note)
 import Data.Int as Int
-import Data.Traversable (sequence, traverse)
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Maybe (Maybe, fromJust)
 import Data.String as String
+import Data.Traversable (sequence, traverse)
 import Partial.Unsafe (unsafePartial)
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
@@ -101,12 +103,9 @@ instance arbitraryUUIDv4 ∷ SC.Arbitrary UUIDv4 where
   arbitrary =
     make' Gen.chooseInt
 
-instance encodeJson ∷ EncodeJson UUIDv4 where
-  encodeJson (UUIDv4 s _) = encodeJson s
-
-instance decodeJson ∷ DecodeJson UUIDv4 where
-  decodeJson json = do
-    s ← decodeJson json
-    case fromString s of
-      Just u  → Right u
-      Nothing → Left ("Invalid UUIDv4: " <> s)
+codec :: CA.JsonCodec UUIDv4
+codec =
+  C.mapCodec
+    (\s → note (CA.UnexpectedValue s) (fromString s))
+    (\(UUIDv4 s _) → s)
+    CA.string

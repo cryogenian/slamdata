@@ -27,14 +27,12 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Ref (readRef)
 import Control.Monad.Fork (fork)
 import Control.UI.Browser as Browser
-
-import DOM.Classy.Event (currentTarget, target) as DOM
-import DOM.Classy.Node (toNode) as DOM
-
+import Data.Argonaut as J
 import Data.Coyoneda (liftCoyoneda)
 import Data.List as List
 import Data.Time.Duration (Milliseconds(..))
-
+import DOM.Classy.Event (currentTarget, target) as DOM
+import DOM.Classy.Node (toNode) as DOM
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
@@ -42,7 +40,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
-
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
@@ -81,7 +78,6 @@ import SlamData.Workspace.Guide (GuideType(..))
 import SlamData.Workspace.Guide as GuideData
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.StateMode as StateMode
-
 import Utils (endSentence)
 import Utils.DOM (onResize, nodeEq)
 
@@ -239,10 +235,10 @@ eval = case _ of
   HandleGuideMessage slot Guide.Dismissed next → do
     case slot of
       CardGuide → do
-        LS.persist LSK.dismissedCardGuideKey true
+        LS.persist J.encodeJson LSK.dismissedCardGuideKey true
         void $ queryDeck $ H.action Deck.DismissedCardGuide
       FlipGuide → do
-        LS.persist LSK.dismissedFlipGuideKey true
+        LS.persist J.encodeJson LSK.dismissedFlipGuideKey true
     H.modify (_ { guide = Nothing })
     pure next
   HandleNotification msg next →
@@ -367,4 +363,4 @@ queryHeaderGripper =
 initialCardGuideStep ∷ WorkspaceDSL (Maybe Int)
 initialCardGuideStep =
   either (const $ Just 0) (if _ then Nothing else Just 0)
-    <$> LS.retrieve LSK.dismissedCardGuideKey
+    <$> LS.retrieve J.decodeJson LSK.dismissedCardGuideKey
