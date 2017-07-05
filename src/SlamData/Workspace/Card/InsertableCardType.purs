@@ -17,13 +17,17 @@ limitations under the License.
 module SlamData.Workspace.Card.InsertableCardType where
 
 import SlamData.Prelude
+
 import Data.Array as Array
 import Data.Foldable as Foldable
 import Data.String as String
-import SlamData.Workspace.Card.CardType as CardType
+import Data.Variant (case_, on)
+
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port (Port)
+
 import Utils as Utils
 
 data InsertableCardType
@@ -273,32 +277,32 @@ fromPort = case _ of
 
 toCardType ∷ InsertableCardType → Maybe CardType
 toCardType = case _ of
-  CacheCard → Just CardType.Cache
-  DraftboardCard → Just CardType.Draftboard
-  OpenCard → Just CardType.Open
-  QueryCard → Just $ CardType.Ace CardType.SQLMode
-  SearchCard → Just CardType.Search
+  CacheCard → Just CT.cache
+  DraftboardCard → Just CT.draftboard
+  OpenCard → Just CT.open
+  QueryCard → Just CT.aceSql
+  SearchCard → Just CT.search
   SetupChartCard → Nothing
   SetupGeoChartCard → Nothing
   SetupFormCard → Nothing
-  SetupDownloadCard → Just CardType.DownloadOptions
-  SetupMarkdownCard → Just $ CardType.Ace CardType.MarkdownMode
-  SetupVariablesCard → Just $ CardType.Variables
-  ShowChartCard → Just CardType.Chart
-  ShowGeoChartCard → Just CardType.GeoChart
-  ShowFormCard → Just CardType.FormInput
-  ShowDownloadCard → Just CardType.Download
-  ShowMarkdownCard → Just CardType.Markdown
-  TableCard → Just CardType.Table
-  TroubleshootCard → Just CardType.Troubleshoot
-  TabsCard → Just CardType.Tabs
-  StructureEditorCard → Just CardType.StructureEditor
+  SetupDownloadCard → Just CT.downloadOptions
+  SetupMarkdownCard → Just CT.aceMarkdown
+  SetupVariablesCard → Just CT.variables
+  ShowChartCard → Just CT.chart
+  ShowGeoChartCard → Just CT.geo
+  ShowFormCard → Just CT.form
+  ShowDownloadCard → Just CT.download
+  ShowMarkdownCard → Just CT.markdown
+  TableCard → Just CT.table
+  TroubleshootCard → Just CT.troubleshoot
+  TabsCard → Just CT.tabs
+  StructureEditorCard → Just CT.structureEditor
 
 print ∷ InsertableCardType → String
 print = case _ of
   SetupChartCard → "Setup Chart"
   SetupFormCard → "Setup Form"
-  a → foldMap CardType.cardName $ toCardType a
+  a → foldMap CT.name $ toCardType a
 
 aAn ∷ String → String
 aAn s =
@@ -310,9 +314,9 @@ aAn s =
 
 reason ∷ InsertableCardIOType → CardType → String
 reason io card = fold
-  [ aAn $ CardType.cardName card
+  [ aAn $ CT.name card
   , " "
-  , show $ CardType.cardName card
+  , show $ CT.name card
   , " card can't "
   , actual
   , " because it needs "
@@ -355,27 +359,82 @@ printAction = case _ of
   StructureEditorCard → Nothing
 
 fromCardType ∷ CardType → InsertableCardType
-fromCardType = case _ of
-  CardType.Cache → CacheCard
-  CardType.Draftboard → DraftboardCard
-  CardType.Open → OpenCard
-  CardType.Ace CardType.SQLMode → QueryCard
-  CardType.Search → SearchCard
-  CardType.ChartOptions _ → SetupChartCard
-  CardType.SetupGeoChart _ → SetupGeoChartCard
-  CardType.GeoChart → ShowGeoChartCard
-  CardType.DownloadOptions → SetupDownloadCard
-  CardType.Ace CardType.MarkdownMode → SetupMarkdownCard
-  CardType.Variables → SetupVariablesCard
-  CardType.Chart → ShowChartCard
-  CardType.Download → ShowDownloadCard
-  CardType.Markdown → ShowMarkdownCard
-  CardType.Table → TableCard
-  CardType.Troubleshoot → TroubleshootCard
-  CardType.SetupFormInput _ → SetupFormCard
-  CardType.FormInput → ShowFormCard
-  CardType.Tabs → TabsCard
-  CardType.StructureEditor → StructureEditorCard
+fromCardType = case_
+  # fromChart
+  # fromSimple
+  # fromAce
+  # fromInput
+  # fromSelect
+  # fromStatic
+  # fromGeo
+  where
+  fromChart ∷ ∀ r. (Variant r → InsertableCardType) → CT.Chart r → InsertableCardType
+  fromChart cb = cb
+    # on CT._pie setupChartThunk
+    # on CT._bar setupChartThunk
+    # on CT._line setupChartThunk
+    # on CT._area setupChartThunk
+    # on CT._scatter setupChartThunk
+    # on CT._radar setupChartThunk
+    # on CT._funnel setupChartThunk
+    # on CT._graph setupChartThunk
+    # on CT._heatmap setupChartThunk
+    # on CT._sankey setupChartThunk
+    # on CT._gauge setupChartThunk
+    # on CT._boxplot setupChartThunk
+    # on CT._metric setupChartThunk
+    # on CT._pivot setupChartThunk
+    # on CT._punchCard setupChartThunk
+    # on CT._candlestick setupChartThunk
+    # on CT._parallel setupChartThunk
+  setupChartThunk _ = SetupChartCard
+
+  fromSimple ∷ ∀ r. (Variant r → InsertableCardType) → CT.Simple r → InsertableCardType
+  fromSimple cb = cb
+    # on CT._cache (const CacheCard)
+    # on CT._draftboard (const DraftboardCard)
+    # on CT._open (const OpenCard)
+    # on CT._search (const SearchCard)
+    # on CT._geo (const ShowGeoChartCard)
+    # on CT._downloadOptions (const SetupDownloadCard)
+    # on CT._variables (const SetupVariablesCard)
+    # on CT._chart (const ShowChartCard)
+    # on CT._download (const ShowDownloadCard)
+    # on CT._markdown (const ShowMarkdownCard)
+    # on CT._table (const TableCard)
+    # on CT._troubleshoot (const TroubleshootCard)
+    # on CT._form (const ShowFormCard)
+    # on CT._tabs (const TabsCard)
+    # on CT._structureEditor (const StructureEditorCard)
+
+  fromAce ∷ ∀ r. (Variant r → InsertableCardType) → CT.Ace r → InsertableCardType
+  fromAce cb = cb
+    # on CT._aceSql (const QueryCard)
+    # on CT._aceMarkdown (const SetupMarkdownCard)
+
+  fromInput ∷ ∀ r. (Variant r → InsertableCardType) → CT.Input r → InsertableCardType
+  fromInput cb = cb
+    # on CT._text setupFormInputThunk
+    # on CT._numeric setupFormInputThunk
+    # on CT._date setupFormInputThunk
+    # on CT._time setupFormInputThunk
+    # on CT._datetime setupFormInputThunk
+  fromSelect ∷ ∀ r. (Variant r → InsertableCardType) → CT.Select r → InsertableCardType
+  fromSelect cb = cb
+    # on CT._dropdown setupFormInputThunk
+    # on CT._radio setupFormInputThunk
+    # on CT._checkbox setupFormInputThunk
+  fromStatic ∷ ∀ r. (Variant r → InsertableCardType) → CT.Static r → InsertableCardType
+  fromStatic cb = cb # on CT._static setupFormInputThunk
+
+  setupFormInputThunk _ = SetupFormCard
+
+  fromGeo ∷ ∀ r. (Variant r → InsertableCardType) → CT.Geo r → InsertableCardType
+  fromGeo cb = cb
+    # on CT._geoMarker setupGeoThunk
+    # on CT._geoHeatmap setupGeoThunk
+  setupGeoThunk _ = SetupGeoChartCard
+
 
 
 all ∷ Array InsertableCardType

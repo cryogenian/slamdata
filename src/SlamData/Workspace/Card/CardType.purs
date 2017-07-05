@@ -25,6 +25,7 @@ module SlamData.Workspace.Card.CardType
   , encode
   , decode
   , consumerInteractable
+  , eq_
   , module SlamData.Workspace.Card.CardType.Ace
   , module SlamData.Workspace.Card.CardType.Chart
   , module SlamData.Workspace.Card.CardType.Geo
@@ -54,17 +55,20 @@ import SlamData.Workspace.Card.CardType.Simple
   , _download, download
   , _variables, variables
   , _troubleshoot, troubleshoot
-  , _cache, cache
   , _open, open
   , _downloadOptions, downloadOptions
   , _tabs, tabs
   , _structureEditor, structureEditor
-  , _geo, geo )
+  , _cache, cache
+  , _draftboard, draftboard
+  , _geo, geo
+  , SimpleR, Simple)
 import SlamData.Workspace.Card.CardType.Simple as Sim
 import SlamData.Workspace.Card.CardType.Ace
   ( _aceMarkdown, aceMarkdown
   , _aceSql, aceSql
-  , mode)
+  , mode
+  , AceR, Ace)
 import SlamData.Workspace.Card.CardType.Ace as Ace
 import SlamData.Workspace.Card.CardType.Chart
   ( _pie, pie
@@ -83,40 +87,44 @@ import SlamData.Workspace.Card.CardType.Chart
   , _pivot, pivot
   , _punchCard, punchCard
   , _candlestick, candlestick
-  , _parallel, parallel )
+  , _parallel, parallel
+  , ChartR, Chart)
 import SlamData.Workspace.Card.CardType.Chart as Cht
 import SlamData.Workspace.Card.CardType.Geo
   ( _geoMarker, geoMarker
-  , _geoHeatmap, geoHeatmap )
+  , _geoHeatmap, geoHeatmap
+  , GeoR, Geo)
 import SlamData.Workspace.Card.CardType.Geo as Geo
 import SlamData.Workspace.Card.CardType.Static
-  ( _static, static )
+  ( _static, static
+  , StaticR, Static)
 import SlamData.Workspace.Card.CardType.Static as Sta
 import SlamData.Workspace.Card.CardType.Select
   ( _dropdown, dropdown
   , _radio, radio
-  , _checkbox, checkbox )
+  , _checkbox, checkbox
+  , SelectR, Select)
 import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.CardType.Input
   ( _text, text
   , _numeric, numeric
   , _date, date
   , _time, time
-  , _datetime, datetime )
+  , _datetime, datetime
+  , InputR, Input)
 import SlamData.Workspace.Card.CardType.Input as Inp
 
 import Utils (mapCase)
 
 type CardType =
   Variant
-  ( Sim.SimpleR
-    ( Ace.AceR
-      ( Cht.ChartR
-        ( Geo.GeoR
-          ( Sel.SelectR
-            ( Inp.InputR
-              ( Sta.StaticR () ) ) ) ) ) ) )
-
+  ( SimpleR
+    ( AceR
+      ( ChartR
+        ( GeoR
+          ( SelectR
+            ( InputR
+              ( StaticR () ) ) ) ) ) ) )
 
 eq_ ∷ CardType → CardType → Boolean
 eq_ = case2_

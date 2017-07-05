@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (encodeJson, decodeJson)
 
-import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..))
+import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..), eqCardType)
 import SlamData.Workspace.Card.CardType.ChartType as ChT
 import SlamData.Workspace.Card.CardType.FormInputType as FiT
 import SlamData.Workspace.Card.CardType.GeoChartType as GcT
@@ -54,4 +54,4 @@ check ∷ forall eff. SC eff Unit
 check = quickCheck $ runArbCardType ⋙ \ct →
   case decodeJson (encodeJson ct) of
     Left err → Failed $ "Decode failed: " <> err
-    Right ct' → ct == ct' <?> "CardType failed to decode as encoded value"
+    Right ct' → eqCardType ct ct' <?> "CardType failed to decode as encoded value"

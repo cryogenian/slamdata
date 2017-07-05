@@ -25,12 +25,10 @@ import Data.List as L
 import Data.Path.Pathy (fileName, runFileName)
 import Data.Rational ((%))
 import Data.StrMap as StrMap
+import Data.Variant (on, case_)
 
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
-import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
@@ -82,7 +80,7 @@ import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 data AnyCardModel
-  = Ace CT.AceMode Ace.Model
+  = Ace CT.CardType Ace.Model --?
   | Search String
   | Chart Chart.Model
   | Markdown MD.Model
@@ -130,7 +128,7 @@ data AnyCardModel
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
   arbitrary =
     Gen.oneOf (pure Download)
-      [ Ace <$> SC.arbitrary <*> Ace.genModel
+      [ Ace <$> Gen.allInArray [ CT.aceSql, CT.aceMarkdown ] <*> Ace.genModel
       , Search <$> SC.arbitrary
       , Chart <$> Chart.genModel
       , Markdown <$> MD.genModel
@@ -186,7 +184,7 @@ updateCardModel = case _, _ of
 
 instance eqAnyCardModel ∷ Eq AnyCardModel where
   eq = case _, _ of
-    Ace x1 y1, Ace x2 y2 → x1 ≡ x2 && Ace.eqModel y1 y2
+    Ace x1 y1, Ace x2 y2 → CT.eq_ x1 x2 && Ace.eqModel y1 y2
     Search s1, Search s2 → s1 ≡ s2
     Chart x, Chart y → Chart.eqModel x y
     Markdown x, Markdown y → x ≡ y
@@ -241,63 +239,63 @@ instance decodeJsonCardModel ∷ J.DecodeJson AnyCardModel where
 
 modelCardType ∷ AnyCardModel → CT.CardType
 modelCardType = case _ of
-  Ace mode _ → CT.Ace mode
-  Search _ → CT.Search
-  BuildMetric _ → CT.ChartOptions Metric
-  BuildSankey _ → CT.ChartOptions Sankey
-  BuildGauge _ → CT.ChartOptions Gauge
-  BuildGraph _ → CT.ChartOptions Graph
-  BuildPie _ → CT.ChartOptions Pie
-  BuildRadar _ → CT.ChartOptions Radar
-  BuildBar _ → CT.ChartOptions Bar
-  BuildLine _ → CT.ChartOptions Line
-  BuildArea _ → CT.ChartOptions Area
-  BuildScatter _ → CT.ChartOptions Scatter
-  BuildPivotTable _ → CT.ChartOptions PivotTable
-  BuildFunnel _ → CT.ChartOptions Funnel
-  BuildBoxplot _ → CT.ChartOptions Boxplot
-  BuildHeatmap _ → CT.ChartOptions Heatmap
-  BuildPunchCard _ → CT.ChartOptions PunchCard
-  BuildCandlestick _ → CT.ChartOptions Candlestick
-  BuildParallel _ → CT.ChartOptions Parallel
-  Chart _ → CT.Chart
-  Geo _ → CT.GeoChart
-  Markdown _ → CT.Markdown
-  Table _ → CT.Table
-  Download → CT.Download
-  Variables _ → CT.Variables
-  Troubleshoot → CT.Troubleshoot
-  Cache _ → CT.Cache
-  Open _ → CT.Open
-  DownloadOptions _ → CT.DownloadOptions
-  Draftboard _ → CT.Draftboard
-  SetupDropdown _ → CT.SetupFormInput Dropdown
-  SetupRadio _ → CT.SetupFormInput Radio
-  SetupCheckbox _ → CT.SetupFormInput Checkbox
-  SetupText _ → CT.SetupFormInput Text
-  SetupNumeric _ → CT.SetupFormInput Numeric
-  SetupDate _ → CT.SetupFormInput Date
-  SetupTime _ → CT.SetupFormInput Time
-  SetupDatetime _ → CT.SetupFormInput Datetime
-  SetupStatic _ → CT.SetupFormInput Static
-  FormInput _ → CT.FormInput
-  Tabs _ → CT.Tabs
-  StructureEditor _ → CT.StructureEditor
-  SetupGeoMarker _ → CT.SetupGeoChart GcT.Marker
-  SetupGeoHeatmap _ → CT.SetupGeoChart GcT.Heatmap
+  Ace mode _ → mode
+  Search _ → CT.search
+  BuildMetric _ → CT.metric
+  BuildSankey _ → CT.sankey
+  BuildGauge _ → CT.gauge
+  BuildGraph _ → CT.graph
+  BuildPie _ → CT.pie
+  BuildRadar _ → CT.radar
+  BuildBar _ → CT.bar
+  BuildLine _ → CT.line
+  BuildArea _ → CT.area
+  BuildScatter _ → CT.scatter
+  BuildPivotTable _ → CT.pivot
+  BuildFunnel _ → CT.funnel
+  BuildBoxplot _ → CT.boxplot
+  BuildHeatmap _ → CT.heatmap
+  BuildPunchCard _ → CT.punchCard
+  BuildCandlestick _ → CT.candlestick
+  BuildParallel _ → CT.parallel
+  Chart _ → CT.chart
+  Geo _ → CT.geo
+  Markdown _ → CT.markdown
+  Table _ → CT.table
+  Download → CT.download
+  Variables _ → CT.variables
+  Troubleshoot → CT.troubleshoot
+  Cache _ → CT.cache
+  Open _ → CT.open
+  DownloadOptions _ → CT.downloadOptions
+  Draftboard _ → CT.draftboard
+  SetupDropdown _ → CT.dropdown
+  SetupRadio _ → CT.radio
+  SetupCheckbox _ → CT.checkbox
+  SetupText _ → CT.text
+  SetupNumeric _ → CT.numeric
+  SetupDate _ → CT.date
+  SetupTime _ → CT.time
+  SetupDatetime _ → CT.datetime
+  SetupStatic _ → CT.static
+  FormInput _ → CT.form
+  Tabs _ → CT.tabs
+  StructureEditor _ → CT.structureEditor
+  SetupGeoMarker _ → CT.geoMarker
+  SetupGeoHeatmap _ → CT.geoHeatmap
 
 encode ∷ AnyCardModel → J.Json
 encode card =
-  "cardType" := modelCardType card
+  "cardType" := (CT.encode $ modelCardType card)
     ~> "model" := encodeCardModel card
     ~> J.jsonEmptyObject
 
 decode ∷ J.Json → Either String AnyCardModel
 decode js = do
   obj ← J.decodeJson js
-  cardType ← obj .? "cardType"
+  cardType ← CT.decode =<< obj .? "cardType"
   model ← obj .? "model"
-  decodeCardModel cardType model
+  decodeCardModel model cardType
 
 encodeCardModel ∷ AnyCardModel → J.Json
 encodeCardModel = case _ of
@@ -347,106 +345,110 @@ encodeCardModel = case _ of
   SetupGeoHeatmap model → SetupGeoHeatmap.encode model
 
 decodeCardModel
-  ∷ CT.CardType
-  → J.Json
-  → Either String AnyCardModel
-decodeCardModel = case _ of
-  CT.Ace mode → map (Ace mode) ∘ Ace.decode
-  CT.Search → map Search ∘ J.decodeJson
-  CT.ChartOptions Metric → map BuildMetric ∘ BuildMetric.decode
-  CT.ChartOptions Sankey → map BuildSankey ∘ BuildSankey.decode
-  CT.ChartOptions Gauge → map BuildGauge ∘ BuildGauge.decode
-  CT.ChartOptions Graph → map BuildGraph ∘ BuildGraph.decode
-  CT.ChartOptions Pie → map BuildPie ∘ BuildPie.decode
-  CT.ChartOptions Radar → map BuildRadar ∘ BuildRadar.decode
-  CT.ChartOptions Bar → map BuildBar ∘ BuildBar.decode
-  CT.ChartOptions Line → map BuildLine ∘ BuildLine.decode
-  CT.ChartOptions Area → map BuildArea ∘ BuildArea.decode
-  CT.ChartOptions Scatter → map BuildScatter ∘ BuildScatter.decode
-  CT.ChartOptions PivotTable → map BuildPivotTable ∘ BuildPivotTable.decode
-  CT.ChartOptions Funnel → map BuildFunnel ∘ BuildFunnel.decode
-  CT.ChartOptions Boxplot → map BuildBoxplot ∘ BuildBoxplot.decode
-  CT.ChartOptions Heatmap → map BuildHeatmap ∘ BuildHeatmap.decode
-  CT.ChartOptions PunchCard → map BuildPunchCard ∘ BuildPunchCard.decode
-  CT.ChartOptions Candlestick → map BuildCandlestick ∘ BuildCandlestick.decode
-  CT.ChartOptions Parallel → map BuildParallel ∘ BuildParallel.decode
-  CT.SetupFormInput Dropdown → map SetupDropdown ∘ SetupDropdown.decode
-  CT.SetupFormInput Radio → map SetupRadio ∘ SetupRadio.decode
-  CT.SetupFormInput Checkbox → map SetupCheckbox ∘ SetupCheckbox.decode
-  CT.SetupFormInput Text → map SetupText ∘ SetupText.decode
-  CT.SetupFormInput Numeric → map SetupNumeric ∘ SetupNumeric.decode
-  CT.SetupFormInput Date → map SetupDate ∘ SetupDate.decode
-  CT.SetupFormInput Time → map SetupTime ∘ SetupTime.decode
-  CT.SetupFormInput Datetime → map SetupDatetime ∘ SetupDatetime.decode
-  CT.SetupFormInput Static → map SetupStatic ∘ SetupStatic.decode
-  CT.FormInput → map FormInput ∘ FormInput.decode
-  CT.Chart → map Chart ∘ Chart.decode
-  CT.Markdown → map Markdown ∘ MD.decode
-  CT.Table → map Table ∘ JT.decode
-  CT.Download → const $ pure Download
-  CT.Variables → map Variables ∘ Variables.decode
-  CT.Troubleshoot → const $ pure Troubleshoot
-  CT.Cache → map Cache ∘ J.decodeJson
-  CT.Open → map Open ∘ decodeOpen
-  CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
-  CT.Draftboard → map Draftboard ∘ DB.decode
-  CT.Tabs → map Tabs ∘ Tabs.decode
-  CT.StructureEditor → map StructureEditor ∘ StructureEditor.decode
-  CT.SetupGeoChart GcT.Marker → map SetupGeoMarker ∘ SetupGeoMarker.decode
-  CT.SetupGeoChart GcT.Heatmap → map SetupGeoHeatmap ∘ SetupGeoHeatmap.decode
-  CT.GeoChart → map Geo ∘ Geo.decode
+  ∷ J.Json
+  → CT.CardType
+  → String ⊹ AnyCardModel
+decodeCardModel js = case_
+  # on CT._aceSql (const $ map (Ace CT.aceSql) $ Ace.decode js)
+  # on CT._aceMarkdown (const $ map (Ace CT.aceMarkdown) $ Ace.decode js)
+  # on CT._search (const $ map Search $ J.decodeJson js)
+  # on CT._metric (const $ map BuildMetric $ BuildMetric.decode js)
+  # on CT._sankey (const $ map BuildSankey $ BuildSankey.decode js)
+  # on CT._gauge (const $ map BuildGauge $ BuildGauge.decode js)
+  # on CT._graph (const $ map BuildGraph $ BuildGraph.decode js)
+  # on CT._pie (const $ map BuildPie $ BuildPie.decode js)
+  # on CT._radar (const $ map BuildRadar $ BuildRadar.decode js)
+  # on CT._bar (const $ map BuildBar $ BuildBar.decode js)
+  # on CT._line (const $ map BuildLine $ BuildLine.decode js)
+  # on CT._area (const $ map BuildArea $ BuildArea.decode js)
+  # on CT._scatter (const $ map BuildScatter $ BuildScatter.decode js)
+  # on CT._pivot (const $ map BuildPivotTable $ BuildPivotTable.decode js)
+  # on CT._funnel (const $ map BuildFunnel $ BuildFunnel.decode js)
+  # on CT._boxplot (const $ map BuildBoxplot $ BuildBoxplot.decode js)
+  # on CT._heatmap (const $ map BuildHeatmap $ BuildHeatmap.decode js)
+  # on CT._punchCard (const $ map BuildPunchCard $ BuildPunchCard.decode js)
+  # on CT._candlestick (const $ map BuildCandlestick $ BuildCandlestick.decode js)
+  # on CT._parallel (const $ map BuildParallel $ BuildParallel.decode js)
+  # on CT._dropdown (const $ map SetupDropdown $ SetupDropdown.decode js)
+  # on CT._radio (const $ map SetupRadio $ SetupRadio.decode js)
+  # on CT._checkbox (const $ map SetupCheckbox $ SetupCheckbox.decode js)
+  # on CT._text (const $ map SetupText $ SetupText.decode js)
+  # on CT._numeric (const $ map SetupNumeric $ SetupNumeric.decode js)
+  # on CT._date (const $ map SetupDate $ SetupDate.decode js)
+  # on CT._time (const $ map SetupTime $ SetupTime.decode js)
+  # on CT._datetime (const $ map SetupDatetime $ SetupDatetime.decode js)
+  # on CT._static (const $ map SetupStatic $ SetupStatic.decode js)
+  # on CT._form (const $ map FormInput $ FormInput.decode js)
+  # on CT._chart (const $ map Chart $ Chart.decode js)
+  # on CT._markdown (const $ map Markdown $ MD.decode js)
+  # on CT._table (const $ map Table $ JT.decode js)
+  # on CT._download (const $ pure Download)
+  # on CT._variables (const $ map Variables $ Variables.decode js)
+  # on CT._troubleshoot (const $ pure Troubleshoot)
+  # on CT._cache (const $ map Cache $ J.decodeJson js)
+  # on CT._open (const $ map Open $ decodeOpen js)
+  # on CT._downloadOptions (const $ map DownloadOptions $ DLO.decode js)
+  # on CT._draftboard (const $ map Draftboard $ DB.decode js)
+  # on CT._tabs (const $ map Tabs $ Tabs.decode js)
+  # on CT._structureEditor (const $ map StructureEditor $ StructureEditor.decode js)
+  # on CT._geoMarker (const $ map SetupGeoMarker $ SetupGeoMarker.decode js)
+  # on CT._geoHeatmap (const $ map SetupGeoHeatmap $ SetupGeoHeatmap.decode js)
+  # on CT._geo (const $ map Geo $ Geo.decode js)
   where
-    -- For backwards compat
-    decodeOpen j =
-      Open.decode j <|> (map Open.Resource <$> J.decodeJson j)
+  -- For backwards compat
+  decodeOpen j =
+    Open.decode j <|> (map Open.Resource <$> J.decodeJson j)
 
 cardModelOfType ∷ Port.Out → CT.CardType → AnyCardModel
-cardModelOfType (port × varMap) = case _ of
-  CT.Ace CT.SQLMode → Ace CT.SQLMode (Query.initialModel port)
-  CT.Ace mode → Ace mode Ace.emptyModel
-  CT.Search → Search ""
-  CT.ChartOptions Metric → BuildMetric BuildMetric.initialModel
-  CT.ChartOptions Sankey → BuildSankey BuildSankey.initialModel
-  CT.ChartOptions Gauge → BuildGauge BuildGauge.initialModel
-  CT.ChartOptions Graph → BuildGraph BuildGraph.initialModel
-  CT.ChartOptions Pie → BuildPie BuildPie.initialModel
-  CT.ChartOptions Radar → BuildRadar BuildRadar.initialModel
-  CT.ChartOptions Bar → BuildBar BuildBar.initialModel
-  CT.ChartOptions Line → BuildLine BuildLine.initialModel
-  CT.ChartOptions Area → BuildArea BuildArea.initialModel
-  CT.ChartOptions Scatter → BuildScatter BuildScatter.initialModel
-  CT.ChartOptions PivotTable → BuildPivotTable BuildPivotTable.initialModel
-  CT.ChartOptions Funnel → BuildFunnel BuildFunnel.initialModel
-  CT.ChartOptions Boxplot → BuildBoxplot BuildBoxplot.initialModel
-  CT.ChartOptions Heatmap → BuildHeatmap BuildHeatmap.initialModel
-  CT.ChartOptions PunchCard → BuildPunchCard BuildPunchCard.initialModel
-  CT.ChartOptions Candlestick → BuildCandlestick BuildCandlestick.initialModel
-  CT.ChartOptions Parallel → BuildParallel BuildParallel.initialModel
-  CT.SetupFormInput Dropdown → SetupDropdown SetupDropdown.initialModel
-  CT.SetupFormInput Radio → SetupRadio SetupRadio.initialModel
-  CT.SetupFormInput Checkbox → SetupCheckbox SetupCheckbox.initialModel
-  CT.SetupFormInput Text → SetupText SetupText.initialModel
-  CT.SetupFormInput Numeric → SetupNumeric SetupNumeric.initialModel
-  CT.SetupFormInput Date → SetupDate SetupDate.initialModel
-  CT.SetupFormInput Time → SetupTime SetupTime.initialModel
-  CT.SetupFormInput Datetime → SetupDatetime SetupDatetime.initialModel
-  CT.SetupFormInput Static → SetupStatic SetupStatic.initialModel
-  CT.FormInput → FormInput FormInput.initialModel
-  CT.Chart → Chart Chart.emptyModel
-  CT.Markdown → Markdown MD.emptyModel
-  CT.Table → Table JT.emptyModel
-  CT.Download → Download
-  CT.Variables → Variables Variables.emptyModel
-  CT.Troubleshoot → Troubleshoot
-  CT.Cache → Cache Nothing
-  CT.Open → Open Nothing
-  CT.DownloadOptions → DownloadOptions $ DLO.initialState { targetName = runFileName ∘ fileName <$> Port.extractFilePath varMap }
-  CT.Draftboard → Draftboard DB.emptyModel
-  CT.Tabs → Tabs Tabs.initialModel
-  CT.StructureEditor → StructureEditor StructureEditor.initialModel
-  CT.SetupGeoChart GcT.Marker → SetupGeoMarker SetupGeoMarker.initialModel
-  CT.SetupGeoChart GcT.Heatmap → SetupGeoHeatmap SetupGeoHeatmap.initialModel
-  CT.GeoChart → Geo Geo.initialModel
+cardModelOfType (port × varMap) = case_
+  # on CT._aceSql (const $ Ace CT.aceSql $ Query.initialModel port)
+  # on CT._aceMarkdown (const $ Ace CT.aceMarkdown Ace.emptyModel)
+  # on CT._search (const $ Search "")
+  # on CT._metric (const $ BuildMetric BuildMetric.initialModel)
+  # on CT._sankey (const $ BuildSankey BuildSankey.initialModel)
+  # on CT._gauge (const $ BuildGauge BuildGauge.initialModel)
+  # on CT._graph (const $ BuildGraph BuildGraph.initialModel)
+  # on CT._pie (const $ BuildPie BuildPie.initialModel)
+  # on CT._radar (const $ BuildRadar BuildRadar.initialModel)
+  # on CT._bar (const $ BuildBar BuildBar.initialModel)
+  # on CT._line (const $ BuildLine BuildLine.initialModel)
+  # on CT._area (const $ BuildArea BuildArea.initialModel)
+  # on CT._scatter (const $ BuildScatter BuildScatter.initialModel)
+  # on CT._pivot (const $ BuildPivotTable BuildPivotTable.initialModel)
+  # on CT._funnel (const $ BuildFunnel BuildFunnel.initialModel)
+  # on CT._boxplot (const $ BuildBoxplot BuildBoxplot.initialModel)
+  # on CT._heatmap (const $ BuildHeatmap BuildHeatmap.initialModel)
+  # on CT._punchCard (const $ BuildPunchCard BuildPunchCard.initialModel)
+  # on CT._candlestick (const $ BuildCandlestick BuildCandlestick.initialModel)
+  # on CT._parallel (const $ BuildParallel BuildParallel.initialModel)
+  # on CT._dropdown (const $ SetupDropdown SetupDropdown.initialModel)
+  # on CT._radio (const $ SetupRadio SetupRadio.initialModel)
+  # on CT._checkbox (const $ SetupCheckbox SetupCheckbox.initialModel)
+  # on CT._text (const $ SetupText SetupText.initialModel)
+  # on CT._numeric (const $ SetupNumeric SetupNumeric.initialModel)
+  # on CT._time (const $ SetupTime SetupTime.initialModel)
+  # on CT._date (const $ SetupDate SetupDate.initialModel)
+  # on CT._datetime (const $ SetupDatetime SetupDatetime.initialModel)
+  # on CT._static (const $ SetupStatic SetupStatic.initialModel)
+  # on CT._form (const $ FormInput FormInput.initialModel)
+  # on CT._chart (const $ Chart Chart.emptyModel)
+  # on CT._markdown (const $ Markdown MD.emptyModel)
+  # on CT._table (const $ Table JT.emptyModel)
+  # on CT._download (const Download)
+  # on CT._variables (const $ Variables Variables.emptyModel)
+  # on CT._troubleshoot (const Troubleshoot)
+  # on CT._cache (const $ Cache Nothing)
+  # on CT._open (const $ Open Nothing)
+  # on CT._downloadOptions
+      (const $ DownloadOptions $ DLO.initialState
+       { targetName = runFileName ∘ fileName <$> Port.extractFilePath varMap })
+  # on CT._draftboard (const $ Draftboard DB.emptyModel)
+  # on CT._tabs (const $ Tabs Tabs.initialModel)
+  # on CT._structureEditor (const $ StructureEditor StructureEditor.initialModel)
+  # on CT._geoMarker (const $ SetupGeoMarker SetupGeoMarker.initialModel)
+  # on CT._geoHeatmap (const $ SetupGeoHeatmap SetupGeoHeatmap.initialModel)
+  # on CT._geo (const $ Geo Geo.initialModel)
+
 
 singletonDraftboard ∷ DeckId → AnyCardModel
 singletonDraftboard deckId =
@@ -512,21 +514,12 @@ updatePointer old new = case _ of
     update (Just deckId) | deckId ≡ old = new
     update a = a
 
--- TODO: this should live somewhere else and actually, FormInputType
--- is LabeledInputType ⊹ TextLikeInputType ⊹ Static. They all are handled differently
 _SetupLabeledInput ∷ Traversal' AnyCardModel SetupLabeled.Model
 _SetupLabeledInput = wander \f s → case s of
   SetupDropdown m → map SetupDropdown $ f m
   SetupRadio m → map SetupRadio $ f m
   SetupCheckbox m → map SetupCheckbox $ f m
   _ → pure s
-
-setupLabeledFormInput ∷ FormInputType → SetupLabeled.Model → AnyCardModel
-setupLabeledFormInput fit m = case fit of
-  Dropdown → SetupDropdown m
-  Radio → SetupRadio m
-  Checkbox → SetupCheckbox m
-  _ → SetupDropdown m
 
 _SetupTextLikeInput ∷ Traversal' AnyCardModel SetupTextLike.Model
 _SetupTextLikeInput = wander \f s → case s of
@@ -536,16 +529,6 @@ _SetupTextLikeInput = wander \f s → case s of
   SetupTime m → map SetupTime $ f m
   SetupDatetime m → map SetupDatetime $ f m
   _ → pure s
-
-setupTextLikeInput ∷ FormInputType → SetupTextLike.Model → AnyCardModel
-setupTextLikeInput fit m = case fit of
-  Text → SetupText m
-  Numeric → SetupNumeric m
-  Date → SetupDate m
-  Time → SetupTime m
-  Datetime → SetupDatetime m
-  _ → SetupText m
-
 
 _BuildMetric ∷ Prism' AnyCardModel BuildMetric.Model
 _BuildMetric = prism' BuildMetric case _ of
