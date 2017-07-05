@@ -392,7 +392,7 @@ renderEmbedDialog state copyVal =
                   ⊕ "Please check you network connection and try again"
               ]
           , HH.button
-              [ HP.classes [ CN.btn ]
+              [ HP.classes [ CN.btn, CN.btnDefault ]
               , HE.onClick (HE.input_ HandleCancel)
               , HP.type_ HP.ButtonButton
               ]
