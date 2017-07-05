@@ -23,7 +23,9 @@ module SlamData.Workspace.FormBuilder.Component
   ) where
 
 import SlamData.Prelude
+
 import Data.Array as A
+import Data.BrowserFeatures (BrowserFeatures)
 import Data.List as L
 import Data.Unfoldable as U
 import Halogen as H
@@ -34,6 +36,7 @@ import SlamData.Render.ClassName as CN
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
 import SlamData.Workspace.FormBuilder.Item.Component as Item
+import Text.Markdown.SlamDown.Halogen.Component (defaultBrowserFeatures)
 
 -- | The query signature for the FormBuilder component
 data Query a
@@ -55,7 +58,8 @@ formBuilderComponent ∷ ∀ m. H.Component HH.HTML Query Unit Message m
 formBuilderComponent =
   H.parentComponent
     { initialState: const initialState
-    , render
+    -- TODO how far should we move untill we get BrowserFeatures?
+    , render: render defaultBrowserFeatures
     , eval
     , receiver: const Nothing
     }
@@ -99,8 +103,8 @@ addItemIfNecessary (ItemSlot i) = do
   { nextId } ← H.get
   when (i == nextId - 1) $ H.modify addItem
 
-render ∷ ∀ m. State → HTML m
-render state = renderTable state.items
+render ∷ ∀ m. BrowserFeatures → State → HTML m
+render browserFeatures state = renderTable state.items
   where
     renderTable ∷ L.List ItemId → HTML m
     renderTable items =
@@ -124,4 +128,4 @@ render state = renderTable state.items
     renderItem ∷ ItemId → HTML m
     renderItem itemId =
       let slotId = ItemSlot itemId
-      in HH.slot slotId Item.component unit (HE.input (HandleItem slotId))
+      in HH.slot slotId (Item.component browserFeatures) unit (HE.input (HandleItem slotId))

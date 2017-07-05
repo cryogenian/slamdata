@@ -65,7 +65,7 @@ allFieldTypes =
   , DateTimeFieldType
   , DateFieldType
   , TimeFieldType
-  , IntervalFieldType
+  , IntervalFieldType -- TODO check which format do we want to use
   , BooleanFieldType
   , NumericFieldType
   , ObjectIdFieldType

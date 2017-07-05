@@ -62,6 +62,7 @@
     "purescript-tuples": "^4.0.0",
     "purescript-type-equality": "^2.1.0",
     "purescript-uri": "^3.0.1",
+    "purescript-halogen-datepicker": "git://github.com/safareli/purescript-halogen-datepicker.git#init",
     "purescript-leafletjs-halogen": "^0.1.0",
     "purescript-variant": "^1.1.0"
   },
