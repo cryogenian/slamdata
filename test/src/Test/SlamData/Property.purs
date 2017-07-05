@@ -28,7 +28,6 @@ import Test.SlamData.Property.Workspace.Card.CardType as Test.SlamData.Property.
 import Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State as Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State
 import Test.SlamData.Property.Workspace.Card.Markdown.Model as Test.SlamData.Property.Workspace.Card.Markdown.Model
 import Test.SlamData.Property.Workspace.Card.Model as Test.SlamData.Property.Workspace.Card.Model
-import Test.SlamData.Property.Workspace.Card.Table.Model as Test.SlamData.Property.Workspace.Card.Table.Model
 import Test.SlamData.Property.Workspace.FormBuilder.Item.Model as Test.SlamData.Property.Workspace.FormBuilder.Item.Model
 import Test.SlamData.Property.Workspace.FormBuilder.Model as Test.SlamData.Property.Workspace.FormBuilder.Model
 
@@ -56,9 +55,6 @@ main = do
 
   log "Check SlamData.Workspace.Card.DownloadOptions.Component.State..."
   Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State.check
-
-  log "Check SlamData.Workspace.Card.Table.Model..."
-  Test.SlamData.Property.Workspace.Card.Table.Model.check
 
   log "Check SlamData.Workspace.Card.Markdown.Model..."
   Test.SlamData.Property.Workspace.Card.Markdown.Model.check

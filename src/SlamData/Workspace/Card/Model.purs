@@ -307,7 +307,7 @@ encodeCardModel = case _ of
   Chart model → Chart.encode model
   Geo model → Geo.encode model
   Markdown model → MD.encode model
-  Table model → JT.encode model
+  Table model → CA.encode JT.codec model
   Download → J.jsonEmptyObject
   Variables model → Variables.encode model
   Troubleshoot → J.jsonEmptyObject
@@ -383,7 +383,7 @@ decodeCardModel = case _ of
   CT.FormInput → map FormInput ∘ FormInput.decode
   CT.Chart → map Chart ∘ Chart.decode
   CT.Markdown → map Markdown ∘ MD.decode
-  CT.Table → map Table ∘ JT.decode
+  CT.Table → map Table ∘ decodec JT.codec
   CT.Download → const $ pure Download
   CT.Variables → map Variables ∘ Variables.decode
   CT.Troubleshoot → const $ pure Troubleshoot
@@ -391,7 +391,7 @@ decodeCardModel = case _ of
   CT.Open → map Open ∘ decodeOpen
   CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
   CT.Draftboard → map Draftboard ∘ DB.decode
-  CT.Tabs → map Tabs ∘ lmap CA.printJsonDecodeError ∘ CA.decode Tabs.codec
+  CT.Tabs → map Tabs ∘ decodec Tabs.codec
   CT.StructureEditor → map StructureEditor ∘ StructureEditor.decode
   CT.SetupGeoChart GcT.Marker → map SetupGeoMarker ∘ SetupGeoMarker.decode
   CT.SetupGeoChart GcT.Heatmap → map SetupGeoHeatmap ∘ SetupGeoHeatmap.decode
@@ -400,6 +400,10 @@ decodeCardModel = case _ of
     -- For backwards compat
     decodeOpen j =
       Open.decode j <|> (map Open.Resource <$> J.decodeJson j)
+    -- Temporary until we use codecs everywhere
+    decodec ∷ ∀ a. CA.JsonCodec a → J.Json → Either String a
+    decodec codec =
+      lmap CA.printJsonDecodeError ∘ CA.decode codec
 
 cardModelOfType ∷ Port.Out → CT.CardType → AnyCardModel
 cardModelOfType (port × varMap) = case _ of
