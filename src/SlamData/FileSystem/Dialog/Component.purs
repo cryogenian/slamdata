@@ -20,6 +20,8 @@ import SlamData.Prelude
 
 import Data.Array (singleton)
 
+import DOM.Event.Types (MouseEvent)
+
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
@@ -41,7 +43,10 @@ import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.FileSystem.Resource (Resource, Mount)
 import SlamData.License as License
 import SlamData.Monad (Slam)
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Deck.Component.CSS as CSS
+
+import Utils.DOM as DOM
 
 data Dialog
   = Error String
@@ -55,6 +60,7 @@ type State = Maybe Dialog
 
 data Query a
   = Show Dialog a
+  | BackdropDismiss MouseEvent a
   | RaiseDismiss a
   | QueryRename (Rename.Query Unit) a
   | SaveMount (Maybe Mount → a)
@@ -82,19 +88,13 @@ component =
 
 render ∷ State → H.ParentHTML Query ChildQuery ChildSlot Slam
 render state =
-  HH.div_
-    [ HH.div
-        [ HP.classes $ [ HH.ClassName "deck-dialog-backdrop" ] ⊕ (guard (isNothing state) $> CSS.invisible)
-        , HE.onMouseDown (HE.input_ RaiseDismiss)
+    HH.div
+        [ HP.classes $
+            [ CN.dialogContainer ] <> (guard (isNothing state) $> CSS.invisible)
+        , HE.onClick $ HE.input BackdropDismiss
         , ARIA.hidden $ show $ isNothing state
         ]
-        []
-    , HH.div
-        [ HP.classes $ [] ⊕ (guard (isNothing state) $> CSS.invisible)
-        , ARIA.hidden $ show $ isNothing state
-        ]
-        $ maybe [] (singleton <<< dialog) state
-    ]
+        $ maybe [] (singleton ∘ dialog) state
   where
   dialog = case _ of
     Error str →
@@ -123,6 +123,11 @@ eval = case _ of
     map (reply ∘ join) $ H.query' CP.cp5 unit $ H.request Mount.Save
   Show d next → do
     H.put (Just d)
+    pure next
+  BackdropDismiss me next → do
+    isDialog ← H.liftEff $ DOM.nodeEq (DOM.target me) (DOM.currentTarget me)
+    when isDialog do
+      H.put Nothing
     pure next
   RaiseDismiss next → do
     H.put Nothing

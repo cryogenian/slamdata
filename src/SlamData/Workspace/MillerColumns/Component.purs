@@ -30,7 +30,7 @@ import Data.List as L
 import Data.Profunctor.Strong (second)
 import DOM (DOM)
 import DOM.Classy.Event (preventDefault) as DOM
-import DOM.Classy.HTMLElement (offsetHeight, scrollHeight, setScrollTop) as DOM
+import DOM.Classy.HTMLElement (offsetWidth, scrollWidth, setScrollLeft) as DOM
 import DOM.HTML.Types (HTMLElement)
 import Halogen as H
 import Halogen.Component.Proxy (queryQ)
@@ -157,8 +157,8 @@ component opts@(Column.ColumnOptions colSpec) =
 
 scrollToRight ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Unit
 scrollToRight el = do
-  maxScroll ← (-) <$> DOM.scrollHeight el <*> DOM.offsetHeight el
-  DOM.setScrollTop maxScroll el
+  maxScroll ← (-) <$> DOM.scrollWidth el <*> DOM.offsetWidth el
+  DOM.setScrollLeft maxScroll el
 
 containerRef ∷ H.RefLabel
 containerRef = H.RefLabel "container"

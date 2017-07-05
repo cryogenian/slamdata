@@ -47,7 +47,7 @@ render st =
   HH.div_
     [ I.spinner
     , HH.span_ [ HH.text st.message ]
-    ]
+]
 
 eval ∷ Query ~> DSL
 eval = initiality

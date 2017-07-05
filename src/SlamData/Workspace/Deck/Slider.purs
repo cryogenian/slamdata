@@ -364,6 +364,7 @@ renderDef opts deckComponent st active { cardType, cardId } =
   in
     HH.slot' ChildSlot.cpCard cardId component { active } absurd
 
+
 loadingPanel ∷ DeckHTML
 loadingPanel =
   HH.div
@@ -372,4 +373,4 @@ loadingPanel =
         [ I.spinner
         , HH.span_ [ HH.text "Please wait while this card is evaluated" ]
         ]
-  ]
+    ]

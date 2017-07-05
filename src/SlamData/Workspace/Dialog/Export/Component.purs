@@ -179,8 +179,8 @@ renderLoadingDialog header =
         [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
         [ HH.div
             [ HP.class_ $ H.ClassName "sd-dialog-loading" ]
-            [ HH.img [ HP.src "img/spin.gif" ]
-            , HH.p_ [ HH.text "Loading..." ]
+            [ I.spinner
+            , HH.p_ [ HH.text "Loading…" ]
             ]
         ]
     , HH.div
@@ -392,7 +392,7 @@ renderEmbedDialog state copyVal =
                   ⊕ "Please check you network connection and try again"
               ]
           , HH.button
-              [ HP.classes [ CN.btn ]
+              [ HP.classes [ CN.btn, CN.btnDefault ]
               , HE.onClick (HE.input_ HandleCancel)
               , HP.type_ HP.ButtonButton
               ]

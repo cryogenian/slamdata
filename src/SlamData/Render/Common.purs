@@ -81,7 +81,6 @@ busyFieldIcon label =
         [ HH.text label ]
     ]
 
-
 svgElem ∷ ∀ r p i. HH.ElemName → Array (HP.IProp r i) → Array (HTML p i) → HTML p i
 svgElem =
   HH.elementNS (HH.Namespace "http://www.w3.org/2000/svg")

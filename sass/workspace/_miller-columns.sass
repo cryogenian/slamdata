@@ -14,8 +14,10 @@
   border: 0.1rem solid $miller-column-border-color
   transition: border-color 200ms ease-out 100ms
 
-  > div
+  .sd-miller-column-container
+    display: flex
     height: 100%
+    flex-direction: column
 
   .sd-miller-column-selection
     display: flex
@@ -52,13 +54,11 @@
     flex-basis: 0
     overflow: auto
 
-
     ul
       list-style: none
       padding: 0
       margin: 0
       width: 100%
-      height: calc(100% - 4.85rem)
       overflow: auto
 
     li
@@ -110,7 +110,7 @@
 
 .sd-miller-column-last .sd-miller-column-items li.selected
   background: $miller-column-item-selected-bg
-  border-color: %miller-column-item-selected-bg
+  border-color: $miller-column-item-selected-bg
   color: $action-list-btn-color
 
 
@@ -140,6 +140,7 @@
   justify-content: space-between
   align-items: center
   position: relative
+  padding: 1rem 0.6rem
 
   .sd-icon--chevron-right-sm
     flex: 0 0 auto
