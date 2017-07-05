@@ -38,7 +38,19 @@ data BackAction
   | Share
   | Unshare
 
-derive instance eqBackAction ∷ Eq BackAction
+instance eqBackAction ∷ Eq BackAction where
+  eq Trash Trash = true
+  eq Rename Rename = true
+  eq Embed Embed = true
+  eq Publish Publish = true
+  eq DeleteDeck DeleteDeck = true
+  eq Mirror Mirror = true
+  eq Wrap Wrap = true
+  eq (WrapChoice c1) (WrapChoice c2) = CT.eqCardType c1 c2
+  eq Unwrap Unwrap = true
+  eq Share Share = true
+  eq Unshare Unshare = true
+  eq _ _ = false
 
 type BackSideOptions =
   { deckId ∷ DeckId

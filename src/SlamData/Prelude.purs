@@ -43,6 +43,7 @@ module SlamData.Prelude
   , module Data.Functor
   , module Data.Functor.Coproduct
   , module Data.Generic
+  , module Data.HeytingAlgebra
   , module Data.Maybe
   , module Data.Newtype
   , module Data.Monoid
@@ -79,6 +80,7 @@ import Data.Foldable (class Foldable, traverse_, for_, foldMap, foldl, foldr, fo
 import Data.Functor (($>), (<$))
 import Data.Functor.Coproduct (Coproduct, coproduct, left, right)
 import Data.Generic (class Generic)
+import Data.HeytingAlgebra (tt, ff)
 import Data.List (List)
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe', fromJust)
 import Data.Monoid (class Monoid, mempty)

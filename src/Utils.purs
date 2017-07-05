@@ -40,6 +40,7 @@ module Utils
   , prettyJson
   , isFirefox
   , finally
+  , mapCase
   )where
 
 import SlamData.Prelude
@@ -55,13 +56,31 @@ import Data.Variant (inj)
 import Global (readFloat, isNaN, isFinite)
 import SqlSquared.Signature.Ident (printIdent)
 
+import Unsafe.Coerce (unsafeCoerce)
+
 foreign import debugTime_ ∷ ∀ a. String → (Unit → a) → a
 
 debugTime ∷ ∀ a. Warn "debug time is used in production" ⇒ String → (Unit → a) → a
 debugTime = debugTime_
 
-throwVariantError :: forall v0 err sym m a v. MonadThrow (Variant v) m => RowCons sym err v0 v => IsSymbol sym => SProxy sym -> err -> m a
-throwVariantError s = throwError <<< inj s
+throwVariantError
+  ∷ ∀ v0 err sym m a v
+  . MonadThrow (Variant v) m
+  ⇒ RowCons sym err v0 v
+  ⇒ IsSymbol sym
+  ⇒ SProxy sym
+  → err
+  → m a
+throwVariantError s = throwError ∘ inj s
+
+mapCase
+  ∷ ∀ r rr a b
+  . ( a → b )
+  → ( (Variant r → a) → Variant rr → a )
+  → ( Variant r → b )
+  → Variant rr
+  → b
+mapCase fn vfn cb = fn ∘ vfn (unsafeCoerce cb)
 
 stringToNumber ∷ String → Maybe Number
 stringToNumber s =

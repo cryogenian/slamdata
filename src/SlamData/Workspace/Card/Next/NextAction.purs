@@ -37,7 +37,13 @@ data NextAction
   = Insert CardType
   | FindOutHowToInsert CardType
 
-derive instance eqNextAction ∷ Eq NextAction
+
+instance eqNextAction ∷ Eq NextAction where
+  eq (Insert c1) (Insert c2) = CT.eqCardType c1 c2
+  eq (FindOutHowToInsert c1) (FindOutHowToInsert c2) = CT.eqCardType c1 c2
+  eq _ _ = false
+
+--derive instance eqNextAction ∷ Eq NextAction
 
 isInsert ∷ NextAction → Boolean
 isInsert (Insert _) = true

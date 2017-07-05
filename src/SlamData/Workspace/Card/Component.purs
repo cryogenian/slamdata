@@ -30,8 +30,6 @@ module SlamData.Workspace.Card.Component
 
 import SlamData.Prelude
 
-import Data.Foldable (elem)
-
 import Data.Lens ((.~))
 
 import DOM.HTML.HTMLElement (getBoundingClientRect)
@@ -107,9 +105,9 @@ makeCardComponent cardType component options =
     icon = HH.img [ HP.src $ CardType.cardIconDarkSrc cardType ]
 
     cardLabel ∷ Array (CardHTML f)
-    cardLabel
-      | cardType `elem` [ Draftboard ] = []
-      | otherwise =
+    cardLabel = case cardType of
+      Draftboard → [ ]
+      _ →
           [ HH.div
               [ HP.classes [CSS.cardHeader]
               ]
