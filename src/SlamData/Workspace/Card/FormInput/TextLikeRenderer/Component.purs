@@ -18,23 +18,36 @@ module SlamData.Workspace.Card.FormInput.TextLikeRenderer.Component where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor(..))
-import Data.Time.Duration (Milliseconds(..))
-
 import DOM.Classy.Event as DOM
 import DOM.Event.Types (Event)
-
+import Data.Argonaut (JCursor(..))
+import Data.BrowserFeatures (BrowserFeatures)
+import Data.BrowserFeatures.InputType as IT
+import Data.DateTime as DT
+import Data.Either (hush)
+import Data.Either.Nested (Either3)
+import Data.Formatter.DateTime as FD
+import Data.Functor.Coproduct.Nested (Coproduct3)
+import Data.Time.Duration (Milliseconds(..))
 import Halogen as H
+import Halogen.Component.ChildPath as CP
 import Halogen.Component.Utils (sendAfter)
+import Halogen.Datepicker.Component.Date as DatePicker
+import Halogen.Datepicker.Component.DateTime as DateTimePicker
+import Halogen.Datepicker.Component.Time as TimePicker
+import Halogen.Datepicker.Component.Types (PickerMessage(..), setValue, value)
+import Halogen.Datepicker.Format.Date as DatePickerF
+import Halogen.Datepicker.Format.DateTime as DateTimePickerF
+import Halogen.Datepicker.Format.Time as TimePickerF
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
+import Text.Markdown.SlamDown.Halogen.Component (defaultBrowserFeatures)
 
 type State =
   { label ∷ Maybe String
@@ -61,35 +74,144 @@ data Query a
 
 data Message = Updated
 
-type DSL = H.ComponentDSL State Query Message Slam
-type HTML = H.ComponentHTML Query
+type ChildQuery = Coproduct3 DatePicker.Query TimePicker.Query DateTimePicker.Query
+type Slot = Either3 Unit Unit Unit
+
+cpDatePicker ∷ CP.ChildPath DatePicker.Query ChildQuery Unit Slot
+cpDatePicker = CP.cp1
+
+cpTimePicker ∷ CP.ChildPath TimePicker.Query ChildQuery Unit Slot
+cpTimePicker = CP.cp2
+
+cpDateTimePicker ∷ CP.ChildPath DateTimePicker.Query ChildQuery Unit Slot
+cpDateTimePicker = CP.cp3
+
+type DSL = H.ParentDSL State Query ChildQuery Slot Message Slam
+type HTML m = H.ParentHTML Query ChildQuery Slot m
 
 comp ∷ H.Component HH.HTML Query Unit Message Slam
 comp =
-  H.component
+  H.parentComponent
     { initialState: const initialState
-    , render
-    , eval
+    -- TODO how far should we move untill we get BrowserFeatures?
+    , render: render defaultBrowserFeatures
+    , eval: eval defaultBrowserFeatures
     , receiver: const Nothing
     }
 
-render ∷ State → HTML
-render state =
+-- TODO this is copyed from SlamData.Workspace.FormBuilder.Item.Component wher shuold we move them.
+dateTimePickerFormat ∷ DateTimePickerF.Format
+dateTimePickerFormat = unsafePartial fromRight
+  $ DateTimePickerF.fromString dateTimeStringFormat
+
+datePickerFormat ∷ DatePickerF.Format
+datePickerFormat = unsafePartial fromRight
+  $ DatePickerF.fromString dateStringFormat
+
+timePickerFormat ∷ TimePickerF.Format
+timePickerFormat = unsafePartial fromRight
+  $ TimePickerF.fromString timeStringFormat
+
+dateTimeStringFormat ∷ String
+dateTimeStringFormat = dateStringFormat <> timeStringFormat
+
+dateStringFormat ∷ String
+dateStringFormat = "YYYY-MMMM-DD"
+
+timeStringFormat ∷ String
+timeStringFormat = "HH:mm:ss"
+
+formatDateTime ∷ DT.DateTime → Maybe String
+formatDateTime x = hush $ FD.formatDateTime timeStringFormat x
+
+formatDate ∷ DT.Date → Maybe String
+formatDate x = hush $ FD.formatDateTime dateStringFormat $ DT.DateTime x bottom
+
+formatTime ∷ DT.Time → Maybe String
+formatTime x = hush $ FD.formatDateTime timeStringFormat $ DT.DateTime bottom x
+
+unformatDateTime ∷ String → Maybe DT.DateTime
+unformatDateTime x = hush $ FD.unformatDateTime timeStringFormat x
+
+unformatDate ∷ String → Maybe DT.Date
+unformatDate x = map DT.date $ hush $ FD.unformatDateTime dateStringFormat x
+
+unformatTime ∷ String → Maybe DT.Time
+unformatTime x = map DT.time $ hush $ FD.unformatDateTime timeStringFormat x
+
+orEmpty ∷ Maybe String → String
+orEmpty = maybe "" id
+
+
+render ∷ ∀ m
+  . BrowserFeatures
+  → State
+  → HTML m
+render {inputTypeSupported} state =
   HH.form
     [ HE.onSubmit (HE.input PreventDefault) ]
     $ foldMap (\n → [ HH.h3_  [ HH.text n ] ]) state.label
-    ⊕ [ HH.input
-          [ HP.classes [ CN.formControl ]
-          , HP.value state.value
-          , HP.type_ $ inputTypeFromFIT state.formInputType
-          , HE.onValueInput $ HE.input ValueChanged
-          ]
+    ⊕ [
+      case state.formInputType of
+        Datetime | not inputTypeSupported IT.DateTimeLocal →
+          HH.slot'
+            cpDateTimePicker
+            unit
+            (DateTimePicker.picker dateTimePickerFormat)
+            unit
+            $ HE.input
+            $ \(NotifyChange n) →
+              ValueChanged $ orEmpty $ value n >>= formatDateTime
+        Date | not inputTypeSupported IT.Date →
+          HH.slot'
+            cpDatePicker
+            unit
+            (DatePicker.picker datePickerFormat)
+            unit
+            $ HE.input
+            $ \(NotifyChange n) →
+              ValueChanged $ orEmpty $ value n >>= formatDate
+        Time | not inputTypeSupported IT.Time →
+          HH.slot'
+            cpTimePicker
+            unit
+            (TimePicker.picker timePickerFormat)
+            unit
+            $ HE.input
+            $ \(NotifyChange n) →
+              ValueChanged $ orEmpty $ value n >>= formatTime
+        _ →
+          HH.input
+            [ HP.classes [ CN.formControl ]
+            , HP.value state.value
+            , HP.type_ $ inputTypeFromFIT state.formInputType
+            , HE.onValueInput $ HE.input ValueChanged
+            ]
       ]
 
-eval ∷ Query ~> DSL
-eval = case _ of
+propagateChange :: BrowserFeatures → DSL Unit
+propagateChange {inputTypeSupported} = do
+  s ← H.get
+  void case s.formInputType of
+    Datetime | not inputTypeSupported IT.DateTimeLocal →
+      H.query' cpDateTimePicker unit
+      $ setValue
+      $ Right <$> unformatDateTime s.value
+    Date | not inputTypeSupported IT.Date →
+      H.query' cpDatePicker unit
+      $ setValue
+      $ Right <$> unformatDate s.value
+    Time | not inputTypeSupported IT.Time →
+      H.query' cpTimePicker unit
+      $ setValue
+      $ Right <$> unformatTime s.value
+    _ -> pure (Just unit)
+
+eval ∷ BrowserFeatures → Query ~> DSL
+eval browserFeatures = case _ of
   ValueChanged s next → do
     H.modify _{ value = s }
+    propagateChange browserFeatures
     H.raise Updated
     pure next
   Setup p next → do
@@ -120,6 +242,7 @@ eval = case _ of
       , formInputType = m.formInputType
       , cursor = m.cursor
       }
+    propagateChange browserFeatures
     pure next
   PreventDefault ev next → do
     H.liftEff $ DOM.preventDefault ev
