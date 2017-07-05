@@ -221,7 +221,7 @@ evalEmbeddedQueries varMap dir =
     → String
     → m (Array EJSON.EJson)
   runQuery field code =
-    let esql = Process.elaborateQuery varMap <$> Sql.parseQuery code
+    let esql = Process.elaborateQuery dir varMap <$> Sql.parseQuery code
     in case esql of
       Left error →
         throwMarkdownError (MarkdownSqlParseError { field, sql: code, error: parseErrorMessage error })

@@ -5,17 +5,17 @@ module SlamData.Workspace.Card.Eval.Process
   ) where
 
 import SlamData.Prelude
+import Control.Monad.RWS as RWS
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Writer.Class (class MonadWriter)
-import Control.Monad.RWS as RWS
 import Data.Foldable as F
 import Data.List as L
 import Data.List.NonEmpty as NL
 import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.Set as Set
-import Data.String as String
 import Data.StrMap as SM
+import Data.String as String
 import Matryoshka (cataM, embed)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port as Port
@@ -69,7 +69,8 @@ type RewriteState =
   }
 
 type RewriteEnv =
-  { varMap ∷ Port.VarMap
+  { path ∷ PU.DirPath
+  , varMap ∷ Port.VarMap
   , varScope ∷ Set.Set String
   , shouldAlias ∷ Boolean
   }
@@ -77,9 +78,10 @@ type RewriteEnv =
 type RewriteM =
   RWS.RWS RewriteEnv RewriteLog RewriteState
 
-initialEnv ∷ VM.VarMap → RewriteEnv
-initialEnv varMap =
-  { varMap
+initialEnv ∷ PU.DirPath → VM.VarMap → RewriteEnv
+initialEnv path varMap =
+  { path
+  , varMap
   , varScope: Set.empty
   , shouldAlias: true
   }
@@ -95,12 +97,13 @@ initialState =
   }
 
 elaborate
-  ∷ CID.CardId
+  ∷ PU.DirPath
+  → CID.CardId
   → VM.VarMap
   → Sql.SqlQuery
   → Path.FileName × Either Sql.SqlQuery Sql.SqlModule
-elaborate currentSource varMap query =
-  case RWS.runRWS go (initialEnv varMap) initialState of
+elaborate path currentSource varMap query =
+  case RWS.runRWS go (initialEnv path varMap) initialState of
     RWS.RWSResult st res _ →
       Path.FileName (processIdent currentSource) × res
 
@@ -123,11 +126,12 @@ elaborate currentSource varMap query =
       else Left $ Sql.Query decls sql
 
 elaborateQuery
-  ∷ VM.VarMap
+  ∷ PU.DirPath
+  → VM.VarMap
   → Sql.SqlQuery
   → Sql.SqlQuery
-elaborateQuery varMap query =
-  case RWS.runRWS go (initialEnv varMap) initialState of
+elaborateQuery path varMap query =
+  case RWS.runRWS go (initialEnv path varMap) initialState of
     RWS.RWSResult _ res _ → res
 
   where
@@ -227,13 +231,14 @@ elaborateVar vari = do
   substResource ∷ CID.CardId → VM.Resource → m Sql.Sql
   substResource source = case _ of
     VM.Path filePath → pure $ sqlPath filePath
-    VM.View filePath _ _ → pure $ sqlPath filePath
+    VM.View filePath _ _ → sqlPath <$> absPath filePath
     VM.Process filePath _ localVarMap → do
       { shouldAlias } ← ask
       if shouldAlias
         then do
+          absPath' ← absPath filePath
           activateProcess
-          substProcessVar source filePath localVarMap vari
+          substProcessVar source absPath' localVarMap vari
         else default
 
 substUnion ∷ ∀ m. Elaborate m (CID.CardId → String → Array VM.VarMapValue → m Sql.Sql)
@@ -255,14 +260,15 @@ substUnion source vari vals = do
   substResource ∷ VM.Resource → m Sql.Sql
   substResource = case _ of
     VM.Path filePath → pure $ sqlPath filePath
-    VM.View filePath _ _ → pure $ sqlPath filePath
+    VM.View filePath _ _ → sqlPath <$> absPath filePath
     VM.Process filePath _ localVarMap → do
       activateProcess
       -- TODO: Maybe this should be indexed instead of unique?
       tmp ← tmpName
-      substProcessVar source filePath localVarMap tmp
+      absPath' ← absPath filePath
+      substProcessVar source absPath' localVarMap tmp
 
-substProcessVar ∷ ∀ m. Elaborate m (CID.CardId → PU.RelFilePath → VM.VarMap → String → m Sql.Sql)
+substProcessVar ∷ ∀ m. Elaborate m (CID.CardId → PU.FilePath → VM.VarMap → String → m Sql.Sql)
 substProcessVar source filePath localVarMap vari = do
   { aliases } ← RWS.get
   maybe genAlias (pure ∘ Sql.ident) $
@@ -310,8 +316,13 @@ processIdent cid =
     (String.Replacement "")
     (CID.toString cid)
 
-sqlPath ∷ ∀ a b. Path.Path a b Path.Sandboxed → Sql.Sql
-sqlPath = embed ∘ Sql.Ident ∘ Path.printPath
+sqlPath ∷ ∀ a b c. Path.Path a b c → Sql.Sql
+sqlPath = embed ∘ Sql.Ident ∘ Path.unsafePrintPath
+
+absPath ∷ ∀ m. Elaborate m (PU.RelFilePath → m PU.FilePath)
+absPath p = do
+  { path } ← ask
+  pure (path Path.</> p)
 
 sqlModule
   ∷ L.List (Sql.SqlDeclF Sql.Sql)
@@ -342,8 +353,8 @@ addAlias source old sql = do
     }
   pure tmp
 
-addProcessImport ∷ ∀ m. MonadState RewriteState m ⇒ PU.RelDirPath → m Unit
-addProcessImport dir = RWS.modify \st → st { decls = L.Cons (Sql.Import (Path.printPath dir)) st.decls }
+addProcessImport ∷ ∀ m a b c. MonadState RewriteState m ⇒ Path.Path a b c → m Unit
+addProcessImport dir = RWS.modify \st → st { decls = L.Cons (Sql.Import (Path.unsafePrintPath dir)) st.decls }
 
 activateProcess ∷ ∀ m. MonadState RewriteState m ⇒ m Unit
 activateProcess = RWS.modify _ { isProcess = true }

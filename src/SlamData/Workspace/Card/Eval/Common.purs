@@ -71,24 +71,26 @@ localEvalResource
   → VM.VarMap
   → m (Either QE.QError VM.Resource)
 localEvalResource sql varMap = runExceptT do
-  CEM.CardEnv { cardId } ← ask
-  let Path.FileName fileName × result = Process.elaborate cardId varMap sql
+  CEM.CardEnv { cardId, path, readOnly } ← ask
+  let Path.FileName fileName × result = Process.elaborate (path Path.</> tmpDir) cardId varMap sql
   case result of
     Left sqlQuery → do
       filePath × relFilePath ← lift $ CEM.temporaryOutputResource
-      let
-        varMap' = VM.toURLVarMap varMap
-        compilePath = fromMaybe Path.rootDir (Path.parentDir filePath)
-      { inputs } ← ExceptT $ QQ.compile compilePath sqlQuery varMap'
-      ExceptT $ validateResources inputs
-      lift $ CEM.addSources inputs
-      ExceptT $ QQ.viewQuery filePath sqlQuery varMap'
-      ExceptT $ QQ.liftQuasar $ QF.fileMetadata filePath
+      unless readOnly do
+        let
+          varMap' = VM.toURLVarMap varMap
+          compilePath = fromMaybe Path.rootDir (Path.parentDir filePath)
+        { inputs } ← ExceptT $ QQ.compile compilePath sqlQuery varMap'
+        ExceptT $ validateResources inputs
+        lift $ CEM.addSources inputs
+        ExceptT $ QQ.viewQuery filePath sqlQuery varMap'
+        ExceptT $ QQ.liftQuasar $ QF.fileMetadata filePath
       pure $ VM.View relFilePath sqlQuery varMap
     Right sqlModule → do
       dirPath × relDirPath ← lift $ CEM.temporaryOutputModule
       -- TODO: Attempt a compile (currently unsupported by backend)
-      ExceptT $ QQ.mountModule dirPath sqlModule
+      unless readOnly do
+        ExceptT $ QQ.mountModule dirPath sqlModule
       pure $ VM.Process (relDirPath Path.</> Path.file fileName) sqlModule varMap
 
 sampleResource'
@@ -134,7 +136,7 @@ runElaboratedQuery'
   → VM.VarMap
   → m (Either QE.QError J.JArray)
 runElaboratedQuery' mode path query varMap =
-  let query' = Process.elaborateQuery varMap query
+  let query' = Process.elaborateQuery (path </> tmpDir) varMap query
   in liftQuasar $ QF.readQuery Readable (path </> tmpDir) (Sql.printQuery query') (VM.toURLVarMap varMap) Nothing
 
 runElaboratedQuery

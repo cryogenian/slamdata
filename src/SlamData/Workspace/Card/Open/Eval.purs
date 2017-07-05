@@ -34,6 +34,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquared as Sql
 import Utils.SqlSquared (all)
+import Utils.Path (tmpDir)
 
 evalOpen
   ∷ ∀ m v
@@ -54,14 +55,14 @@ evalOpen model varMap = case model of
         CEM.resourceOut (Port.Path filePath)
       Just err → throwOpenError err
   Just (Open.Variable (VM.Var var)) → do
-    CEM.CardEnv { cardId } ← ask
+    CEM.CardEnv { cardId, path } ← ask
     let
       body =
         Sql.buildSelect
           $ all
           ∘ (Sql._relations ?~ Sql.VariRelation { vari: var, alias: Nothing })
       sqlQuery = Sql.Query mempty body
-      Path.FileName fileName × sqlResult = Process.elaborate cardId varMap sqlQuery
+      Path.FileName fileName × sqlResult = Process.elaborate (path Path.</> tmpDir) cardId varMap sqlQuery
     case sqlResult of
       Right sqlModule → do
         tmpPath × res ← CEM.temporaryOutputModule

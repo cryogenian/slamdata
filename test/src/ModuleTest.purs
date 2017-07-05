@@ -58,7 +58,7 @@ runCard varMap step =
       Path.dir ("out" <> CID.toString step.source) Path.</>
       Path.file (Process.processIdent step.source)
   in
-    case Process.elaborate step.source varMap step.query of
+    case Process.elaborate Path.rootDir step.source varMap step.query of
       fileName × Right m → Sql.printModule m × VM.insert step.source (VM.Var "resource") (VM.Resource $ VM.Process fpath m varMap) varMap
       fileName × Left q  → Sql.printQuery q × VM.insert step.source (VM.Var "resource") (VM.Resource $ Port.View fpath q varMap) varMap
 

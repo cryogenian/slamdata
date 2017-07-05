@@ -24,10 +24,10 @@ import Data.Array as Array
 import Data.Lens (preview, _Just)
 import Data.List as List
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.Chart.Error (ChartError(..), throwChartError)
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Common (PTree(..), topField, buildTree, pagedTree, sizeOfRow, calcPageCount)
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as M
+import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
@@ -141,8 +141,7 @@ runCount
   ⇒ Port.Resource
   → m Int
 runCount resource = do
-  path ← CEM.anyTemporaryPath $ Port.filePath resource
-  Quasar.count path >>= case _ of
+  CEC.countResource resource >>= case _ of
     Left err → throwChartError (ChartCountQuasarError err)
     Right result → pure result
 
@@ -155,9 +154,9 @@ runQuery
   → Int
   → Int
   → m (Array J.Json)
-runQuery resource pageSize pageIndex = do
-  path ← CEM.anyTemporaryPath $ Port.filePath resource
-  Quasar.sample path (pageIndex * pageSize) pageSize >>= case _ of
+runQuery resource limit offset = do
+  CEM.CardEnv { path } ← ask
+  CEC.sampleResource path resource (Just { limit, offset }) >>= case _ of
     Left err → throwChartError (ChartSampleQuasarError err)
     Right result → pure result
 
@@ -169,7 +168,7 @@ runAll
   ⇒ Port.Resource
   → m (Array J.Json)
 runAll resource = do
-  path ← CEM.anyTemporaryPath $ Port.filePath resource
-  Quasar.all path >>= case _ of
+  CEM.CardEnv { path } ← ask
+  CEC.sampleResource path resource Nothing >>= case _ of
     Left err → throwChartError (ChartSampleQuasarError err)
     Right result → pure result

@@ -94,6 +94,7 @@ newtype CardEnv = CardEnv
   , varMap ∷ Port.VarMap
   , urlVarMaps ∷ Map.Map CID.CardId Port.URLVarMap
   , children ∷ L.List ChildOut
+  , readOnly ∷ Boolean
   }
 
 data CardEvalF eff err a

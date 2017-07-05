@@ -25,8 +25,8 @@ import Data.Argonaut (Json)
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
@@ -41,7 +41,7 @@ eval
   → Port.Resource
   → m Port.Port
 eval buildOptions resource = do
-  path ← CEM.anyTemporaryPath $ Port.filePath resource
-  results ← CE.liftQ $ QQ.all path
+  CEM.CardEnv { path } ← ask
+  results ← CE.liftQ $ CEC.sampleResource path resource Nothing
   put $ Just $ ES.ChartOptions (buildOptions results)
   pure $ Port.ResourceKey Port.defaultResourceVar

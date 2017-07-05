@@ -74,7 +74,7 @@ inputs =
   , SetupGeoChartCard × [ Data, Process ]
   , SetupDownloadCard × [ Data, Process ]
   , SetupFormCard × [ Data, Process ]
-  , SetupMarkdownCard × [ None, Variables ]
+  , SetupMarkdownCard × [ None, Data, Process, Variables ]
   , SetupVariablesCard × [ None ]
   , ShowGeoChartCard × [ GeoChart ]
   , ShowChartCard × [ Chart ]
