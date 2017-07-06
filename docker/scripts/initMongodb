@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+set -euo pipefail # STRICT MODE
+IFS=$'\n\t'       # http://redsymbol.net/articles/unofficial-bash-strict-mode/
+
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+echo "${GREEN}sconfiguring mongodb...${NC}"
+
+mongo --eval "db.stats()"  # do a simple harmless command of some sort
+
+RESULT=$?   # returns 0 if mongo eval succeeds
+
+if [ $RESULT -ne 0 ]; then
+    echo "${GREEN}smongodb not running...${NC}"
+    exit 1
+else
+    echo "${GREEN}smongodb running...${NC}"
+    echo "${GREEN}sadding dump data...${NC}"
+    mongorestore --host localhost -d testDb --port 27017 --drop /tmp/mongodump/
+    echo "${GREEN}sdata added.${NC}"
+    echo "mongodb running, creating db and users..."
+    mongo testDb --eval 'db.dropUser("mongo", {w: "majority", wtimeout: 5000})'
+    mongo testDb --eval 'db.createUser({"user": "mongo", "pwd": "mongo", "roles": [ "dbOwner" ]})'
+fi

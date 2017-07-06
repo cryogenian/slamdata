@@ -38,7 +38,8 @@ import Test.SlamData.Feature.Interactions.Chart
        ) as Chart
 
 import Test.SlamData.Feature.Interactions.Deck
-       ( accessNextCardInLastDeck
+       ( accessNextCardInFirstDeck
+       , accessNextCardInLastDeck
        , accessPreviousCardInLastDeck
        , accessPublishingUrl
        , accessWorkspaceWithModifiedURL
@@ -50,13 +51,16 @@ import Test.SlamData.Feature.Interactions.Deck
        , insertChartCardInLastDeck
        , insertChartOptionsCardInLastDeck
        , insertDisplayMarkdownCardInLastDeck
+       , insertMdCardInFirstDeck
        , insertMdCardInLastDeck
        , insertOpenCardInLastDeck
        , insertPivotCard
+       , insertQueryCardInFirstDeck
        , insertQueryCardInLastDeck
        , insertSearchCardInLastDeck
        , insertTableCardInLastDeck
        , insertTroubleshootCardInLastDeck
+       , insertVariablesCardInFirstDeck
        , insertVariablesCardInLastDeck
        , nameDeck
        , publishDeck
@@ -86,6 +90,8 @@ import Test.SlamData.Feature.Interactions.FileSystem
        , provideFileSearchString
        , renameFile
        , selectFile
+       , setupCouchbase
+       , setupMarklogic
        , shareFile
        , showHiddenFiles
        , uploadFile

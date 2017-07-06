@@ -1,0 +1,68 @@
+version: '2'
+services:
+# couchbase
+  couchbase:
+    container_name: couchbase
+    image: couchbase/server:enterprise-4.6.2
+    ports:
+      - "8091-8094:8091-8094"
+      - "11210:11210"
+  slamdata_cb:
+    container_name: slamdata_cb
+    build:
+      context: ./Dockerfiles/Slamdata/
+      dockerfile: Slamdata-Dockerfile
+      args:
+        - SDPORT=63175
+        - ENV=cb
+    volumes:
+      - ../public:/opt/slamdata/public
+    mem_limit: 2048m
+    ports:
+      - "63175:63175"
+    links:
+      - couchbase:couchbase
+# mongo
+  mongo:
+    container_name: mongo
+    image: mongo:3.4
+    command: ["mongod", "--smallfiles"]
+    ports:
+      - "27017:27017"
+  slamdata_md:
+    container_name: slamdata_md
+    build:
+      context: ./Dockerfiles/Slamdata/
+      dockerfile: Slamdata-Dockerfile
+      args:
+        - SDPORT=63176
+        - ENV=md
+    volumes:
+      - ../public:/opt/slamdata/public
+    ports:
+      - "63176:63176"
+    links:
+      - mongo:mongo
+# marklogic
+  marklogic:
+    container_name: marklogic
+    build:
+      context: ./Dockerfiles/Marklogic/
+      dockerfile: MarkLogic-Dockerfile
+    ports:
+      - "8000-8002:8000-8002"
+  slamdata_ml:
+    container_name: slamdata_ml
+    build:
+      context: ./Dockerfiles/Slamdata/
+      dockerfile: Slamdata-Dockerfile
+      args:
+        - SDPORT=63177
+        - ENV=ml
+    volumes:
+      - ../public:/opt/slamdata/public
+    mem_limit: 2048m
+    ports:
+      - "63177:63177"
+    links:
+      - marklogic:marklogic

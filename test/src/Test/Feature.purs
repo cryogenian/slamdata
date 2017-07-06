@@ -694,7 +694,6 @@ selectFromDropdownElement ∷ ∀ eff o. String → Element → Feature eff o Un
 selectFromDropdownElement text element = do
   clickEl element
   typeString text
-  pressEnter
 
 dragAndDropElement ∷ ∀ eff o. Element → Location → Feature eff o Unit
 dragAndDropElement from =
@@ -781,6 +780,7 @@ expectPresentedVisualElements properties xPath =
 -- Utilities
 logCurrentScreen ∷ ∀ eff o. Feature eff o Unit
 logCurrentScreen =
+  -- traceAnyA  "screenshot" -- hide screenshots
   saveScreenshot path *> logScreenshot path
   where
   path = "current.png"
