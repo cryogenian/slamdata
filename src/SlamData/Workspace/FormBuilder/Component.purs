@@ -25,18 +25,17 @@ module SlamData.Workspace.FormBuilder.Component
 import SlamData.Prelude
 
 import Data.Array as A
-import Data.BrowserFeatures (BrowserFeatures)
 import Data.List as L
 import Data.Unfoldable as U
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
 import SlamData.Workspace.FormBuilder.Item.Component as Item
-import Text.Markdown.SlamDown.Halogen.Component (defaultBrowserFeatures)
 
 -- | The query signature for the FormBuilder component
 data Query a
@@ -51,20 +50,19 @@ newtype ItemSlot = ItemSlot ItemId
 derive newtype instance eqItemSlot ∷ Eq ItemSlot
 derive newtype instance ordItemSlot ∷ Ord ItemSlot
 
-type DSL m = H.ParentDSL State Query Item.Query ItemSlot Message m
-type HTML m = H.ParentHTML Query Item.Query ItemSlot m
+type DSL = H.ParentDSL State Query Item.Query ItemSlot Message Slam
+type HTML = H.ParentHTML Query Item.Query ItemSlot Slam
 
-formBuilderComponent ∷ ∀ m. H.Component HH.HTML Query Unit Message m
+formBuilderComponent ∷ H.Component HH.HTML Query Unit Message Slam
 formBuilderComponent =
   H.parentComponent
     { initialState: const initialState
-    -- TODO how far should we move untill we get BrowserFeatures?
-    , render: render defaultBrowserFeatures
+    , render
     , eval
     , receiver: const Nothing
     }
 
-eval ∷ ∀ m. Query ~> DSL m
+eval ∷ Query ~> DSL
 eval = case _ of
   GetItems k → do
     { items } ← H.get
@@ -77,7 +75,7 @@ eval = case _ of
     accessType ← H.gets _.accessType
     H.put $ emptyState { accessType = accessType }
     let numExtra = if AT.isEditable accessType then 1 else 0
-    _ ← U.replicateA (L.length items + numExtra) (H.modify addItem) ∷ DSL m (L.List Unit)
+    _ ← U.replicateA (L.length items + numExtra) (H.modify addItem) ∷ DSL (L.List Unit)
 
     let
       stepItem i m =
@@ -98,15 +96,15 @@ eval = case _ of
     H.modify (_ { accessType = accessType })
     pure next
 
-addItemIfNecessary ∷ ∀ m. ItemSlot → DSL m Unit
+addItemIfNecessary ∷ ItemSlot → DSL Unit
 addItemIfNecessary (ItemSlot i) = do
   { nextId } ← H.get
   when (i == nextId - 1) $ H.modify addItem
 
-render ∷ ∀ m. BrowserFeatures → State → HTML m
-render browserFeatures state = renderTable state.items
+render ∷ State → HTML
+render state = renderTable state.items
   where
-    renderTable ∷ L.List ItemId → HTML m
+    renderTable ∷ L.List ItemId → HTML
     renderTable items =
       if L.length items > 0
         then
@@ -125,7 +123,7 @@ render browserFeatures state = renderTable state.items
           HH.text "No variables."
 
 
-    renderItem ∷ ItemId → HTML m
+    renderItem ∷ ItemId → HTML
     renderItem itemId =
       let slotId = ItemSlot itemId
-      in HH.slot slotId (Item.component browserFeatures) unit (HE.input (HandleItem slotId))
+      in HH.slot slotId Item.component unit (HE.input (HandleItem slotId))

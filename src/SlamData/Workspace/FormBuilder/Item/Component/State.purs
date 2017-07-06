@@ -17,12 +17,42 @@ limitations under the License.
 module SlamData.Workspace.FormBuilder.Item.Component.State
   ( State
   , initialState
+  , putModel
+  , getModel
   , module SlamData.Workspace.FormBuilder.Item.Model
   ) where
 
 import SlamData.Workspace.FormBuilder.Item.Model
 
-type State = Model
+import Data.BrowserFeatures.InputType (InputType)
+import Data.Maybe (Maybe)
+import Text.Markdown.SlamDown.Halogen.Component (defaultBrowserFeatures)
+
+type State =
+  { name ∷ FieldName
+  , fieldType ∷ FieldType
+  , defaultValue ∷ Maybe String
+  , inputTypeSupported ∷ InputType → Boolean
+  }
+
+putModel :: Model → State → State
+putModel m s = s
+  { name = m.name
+  , fieldType = m.fieldType
+  , defaultValue = m.defaultValue
+  }
+
+getModel :: State → Model
+getModel s =
+  { name: s.name
+  , fieldType: s.fieldType
+  , defaultValue: s.defaultValue
+  }
 
 initialState ∷ State
-initialState = initialModel
+initialState =
+  { name: initialModel.name
+  , fieldType: initialModel.fieldType
+  , defaultValue: initialModel.defaultValue
+  , inputTypeSupported: defaultBrowserFeatures.inputTypeSupported
+  }

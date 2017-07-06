@@ -21,7 +21,7 @@ import SlamData.Prelude
 import DOM.Classy.Event as DOM
 import DOM.Event.Types (Event)
 import Data.Argonaut (JCursor(..))
-import Data.BrowserFeatures (BrowserFeatures)
+import Data.BrowserFeatures.InputType (InputType)
 import Data.BrowserFeatures.InputType as IT
 import Data.DateTime as DT
 import Data.Either (hush)
@@ -44,6 +44,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
@@ -53,6 +54,7 @@ type State =
   { label ∷ Maybe String
   , value ∷ String
   , formInputType ∷ FormInputType
+  , inputTypeSupported ∷ InputType → Boolean
   , cursor ∷ JCursor
   }
 
@@ -62,6 +64,7 @@ initialState =
   , value: ""
   , formInputType: Text
   , cursor: JCursorTop
+  , inputTypeSupported: defaultBrowserFeatures.inputTypeSupported
   }
 
 data Query a
@@ -71,6 +74,7 @@ data Query a
   | Load M.Model a
   | PreventDefault Event a
   | RaiseUpdated a
+  | Init a
 
 data Message = Updated
 
@@ -91,12 +95,13 @@ type HTML m = H.ParentHTML Query ChildQuery Slot m
 
 comp ∷ H.Component HH.HTML Query Unit Message Slam
 comp =
-  H.parentComponent
+  H.lifecycleParentComponent
     { initialState: const initialState
-    -- TODO how far should we move untill we get BrowserFeatures?
-    , render: render defaultBrowserFeatures
-    , eval: eval defaultBrowserFeatures
+    , render
+    , eval
     , receiver: const Nothing
+    , initializer: Just (H.action Init)
+    , finalizer: Nothing
     }
 
 -- TODO this is copyed from SlamData.Workspace.FormBuilder.Item.Component wher shuold we move them.
@@ -144,16 +149,15 @@ orEmpty = maybe "" id
 
 
 render ∷ ∀ m
-  . BrowserFeatures
-  → State
+  . State
   → HTML m
-render {inputTypeSupported} state =
+render state =
   HH.form
     [ HE.onSubmit (HE.input PreventDefault) ]
     $ foldMap (\n → [ HH.h3_  [ HH.text n ] ]) state.label
     ⊕ [
       case state.formInputType of
-        Datetime | not inputTypeSupported IT.DateTimeLocal →
+        Datetime | not state.inputTypeSupported IT.DateTimeLocal →
           HH.slot'
             cpDateTimePicker
             unit
@@ -162,7 +166,7 @@ render {inputTypeSupported} state =
             $ HE.input
             $ \(NotifyChange n) →
               ValueChanged $ orEmpty $ value n >>= formatDateTime
-        Date | not inputTypeSupported IT.Date →
+        Date | not state.inputTypeSupported IT.Date →
           HH.slot'
             cpDatePicker
             unit
@@ -171,7 +175,7 @@ render {inputTypeSupported} state =
             $ HE.input
             $ \(NotifyChange n) →
               ValueChanged $ orEmpty $ value n >>= formatDate
-        Time | not inputTypeSupported IT.Time →
+        Time | not state.inputTypeSupported IT.Time →
           HH.slot'
             cpTimePicker
             unit
@@ -189,29 +193,33 @@ render {inputTypeSupported} state =
             ]
       ]
 
-propagateChange :: BrowserFeatures → DSL Unit
-propagateChange {inputTypeSupported} = do
+propagateChange :: DSL Unit
+propagateChange = do
   s ← H.get
   void case s.formInputType of
-    Datetime | not inputTypeSupported IT.DateTimeLocal →
+    Datetime | not s.inputTypeSupported IT.DateTimeLocal →
       H.query' cpDateTimePicker unit
       $ setValue
       $ Right <$> unformatDateTime s.value
-    Date | not inputTypeSupported IT.Date →
+    Date | not s.inputTypeSupported IT.Date →
       H.query' cpDatePicker unit
       $ setValue
       $ Right <$> unformatDate s.value
-    Time | not inputTypeSupported IT.Time →
+    Time | not s.inputTypeSupported IT.Time →
       H.query' cpTimePicker unit
       $ setValue
       $ Right <$> unformatTime s.value
     _ -> pure (Just unit)
 
-eval ∷ BrowserFeatures → Query ~> DSL
-eval browserFeatures = case _ of
+eval ∷ Query ~> DSL
+eval = case _ of
+  Init next → do
+    w ← H.lift Wiring.expose
+    H.modify _{inputTypeSupported = w.browserFeatures.inputTypeSupported}
+    pure next
   ValueChanged s next → do
     H.modify _{ value = s }
-    propagateChange browserFeatures
+    propagateChange
     H.raise Updated
     pure next
   Setup p next → do
@@ -242,7 +250,7 @@ eval browserFeatures = case _ of
       , formInputType = m.formInputType
       , cursor = m.cursor
       }
-    propagateChange browserFeatures
+    propagateChange
     pure next
   PreventDefault ev next → do
     H.liftEff $ DOM.preventDefault ev

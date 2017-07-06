@@ -25,7 +25,6 @@ import SlamData.Prelude
 
 import DOM.HTML.Indexed as DI
 import DOM.HTML.Indexed.StepValue (StepValue(..))
-import Data.BrowserFeatures (BrowserFeatures)
 import Data.BrowserFeatures.InputType as IT
 import Data.DateTime as DT
 import Data.Either (hush)
@@ -48,7 +47,9 @@ import Halogen.HTML.Core as HC
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import SlamData.Workspace.FormBuilder.Item.Component.State (FieldName(..), Model, State)
+import SlamData.Monad (Slam)
+import SlamData.Wiring as Wiring
+import SlamData.Workspace.FormBuilder.Item.Component.State (FieldName(..), Model, State, getModel, putModel)
 import SlamData.Workspace.FormBuilder.Item.Component.State as State
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
 
@@ -58,6 +59,7 @@ data Query a
   | UpdateDefaultValue String a
   | SetModel Model a
   | GetModel (Model → a)
+  | Init a
 
 data Message
   = NameChanged String
@@ -78,15 +80,17 @@ cpDateTimePicker = CP.cp3
 
 
 type HTML m = H.ParentHTML Query ChildQuery Slot m
-type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
+type DSL = H.ParentDSL State Query ChildQuery Slot Message Slam
 
-component ∷ ∀ m. BrowserFeatures → H.Component HH.HTML Query Unit Message m
-component browserFeatures =
-  H.parentComponent
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component =
+  H.lifecycleParentComponent
     { initialState: const State.initialState
-    , render: render browserFeatures -- TODO pass `BrowserFeatures` as argument
-    , eval: eval browserFeatures -- TODO pass `BrowserFeatures` as argument to component
+    , render
+    , eval
     , receiver: const Nothing
+    , initializer: Just (H.action Init)
+    , finalizer: Nothing
     }
 
 dateTimePickerFormat ∷ DateTimePickerF.Format
@@ -132,10 +136,9 @@ orEmpty ∷ Maybe String → String
 orEmpty = maybe "" id
 
 render ∷ ∀ m
-  . BrowserFeatures
-  → State
+  . State
   → HTML m
-render {inputTypeSupported} model =
+render state =
   HH.tr_
     [ HH.td_ [ nameField ]
     , HH.td_ [ typeField ]
@@ -149,7 +152,7 @@ render {inputTypeSupported} model =
       [ HP.type_ HP.InputText
       , HP.title "Field Name"
       , ARIA.label "Variable name"
-      , HP.value (unwrap model.name)
+      , HP.value (unwrap state.name)
       , HE.onValueInput (HE.input UpdateName)
       , HP.placeholder "Variable name"
       ]
@@ -162,7 +165,7 @@ render {inputTypeSupported} model =
   typeField =
     HH.select
       [ HE.onValueChange (HE.input UpdateFieldType)
-      , ARIA.label $ "Type of " <> (quotedName model.name) <> " variable"
+      , ARIA.label $ "Type of " <> (quotedName state.name) <> " variable"
       ]
       (typeOption <$> allFieldTypes)
 
@@ -171,12 +174,12 @@ render {inputTypeSupported} model =
     → HTML m
   typeOption ty =
     HH.option
-    [ HP.selected $ ty == model.fieldType ]
+    [ HP.selected $ ty == state.fieldType ]
     [ HH.text $ Lens.review _FieldTypeDisplayName ty ]
   defaultField ∷ HTML m
   defaultField =
-    case model.fieldType of
-      DateTimeFieldType | not inputTypeSupported IT.DateTimeLocal →
+    case state.fieldType of
+      DateTimeFieldType | not state.inputTypeSupported IT.DateTimeLocal →
         HH.slot'
           cpDateTimePicker
           unit
@@ -185,7 +188,7 @@ render {inputTypeSupported} model =
           $ HE.input
           $ \(NotifyChange n) →
             UpdateDefaultValue $ orEmpty $ value n >>= formatDateTime
-      DateFieldType | not inputTypeSupported IT.Date →
+      DateFieldType | not state.inputTypeSupported IT.Date →
         HH.slot'
           cpDatePicker
           unit
@@ -194,7 +197,7 @@ render {inputTypeSupported} model =
           $ HE.input
           $ \(NotifyChange n) →
             UpdateDefaultValue $ orEmpty $ value n >>= formatDate
-      TimeFieldType | not inputTypeSupported IT.Time →
+      TimeFieldType | not state.inputTypeSupported IT.Time →
         HH.slot'
           cpTimePicker
           unit
@@ -211,21 +214,21 @@ render {inputTypeSupported} model =
               , HP.checked
                   $ fromMaybe false
                   $ Lens.preview _StringBoolean
-                  =<< model.defaultValue
+                  =<< state.defaultValue
               , HE.onChecked
                   $ HE.input (UpdateDefaultValue ∘ Lens.review _StringBoolean)
               , ARIA.label
                   $ "Default value of "
-                  <> (quotedName model.name)
+                  <> (quotedName state.name)
                   <> " variable is \"true\""
               ]
-          , HH.span_ [ HH.text (unwrap model.name) ]
+          , HH.span_ [ HH.text (unwrap state.name) ]
           ]
       _ →
           HH.input
             $ fieldType
-            <> [ HP.value (maybe "" (State.sanitiseValueForForm model.fieldType) model.defaultValue)
-               , HE.onValueInput (HE.input UpdateDefaultValue ∘ State.sanitiseValueFromForm model.fieldType)
+            <> [ HP.value (maybe "" (State.sanitiseValueForForm state.fieldType) state.defaultValue)
+               , HE.onValueInput (HE.input UpdateDefaultValue ∘ State.sanitiseValueFromForm state.fieldType)
                , ARIA.label lbl
                , HP.placeholder lbl
                ]
@@ -234,12 +237,12 @@ render {inputTypeSupported} model =
     lbl ∷ String
     lbl
       = "Default value"
-      <> if model.name /= (FieldName "") then " for " <> (quotedName model.name) <> " variable" else ""
+      <> if state.name /= (FieldName "") then " for " <> (quotedName state.name) <> " variable" else ""
     inputType =
-      fieldTypeToInputType model.fieldType
+      fieldTypeToInputType state.fieldType
 
     fieldType ∷ ∀ i. Array (HP.IProp DI.HTMLinput i)
-    fieldType = case model.fieldType of
+    fieldType = case state.fieldType of
       DateTimeFieldType →
         [ HP.type_ inputType
         , secondsStep
@@ -262,8 +265,12 @@ render {inputTypeSupported} model =
         pre "false" = Right false
         pre str = Left str
 
-eval ∷ ∀ m. BrowserFeatures → Query ~> DSL m
-eval {inputTypeSupported} = case _ of
+eval ∷ Query ~> DSL
+eval = case _ of
+  Init next → do
+    w ← H.lift Wiring.expose
+    H.modify _{inputTypeSupported = w.browserFeatures.inputTypeSupported}
+    pure next
   UpdateName str next → do
     H.modify $ _ { name = FieldName str }
     H.raise $ NameChanged str
@@ -278,21 +285,22 @@ eval {inputTypeSupported} = case _ of
     H.raise $ DefaultValueChanged str
     pure next
   SetModel m next → do
-    H.put m
+    s ← H.get
+    H.modify $ putModel m
     void case m.fieldType of
-      DateTimeFieldType | not inputTypeSupported IT.DateTimeLocal →
+      DateTimeFieldType | not s.inputTypeSupported IT.DateTimeLocal →
         H.query' cpDateTimePicker unit
         $ setValue
         $ m.defaultValue >>= unformatDateTime <#> Right
-      DateFieldType | not inputTypeSupported IT.Date →
+      DateFieldType | not s.inputTypeSupported IT.Date →
         H.query' cpDatePicker unit
         $ setValue
         $ m.defaultValue >>= unformatDate <#> Right
-      TimeFieldType | not inputTypeSupported IT.Time →
+      TimeFieldType | not s.inputTypeSupported IT.Time →
         H.query' cpTimePicker unit
         $ setValue
         $ m.defaultValue >>= unformatTime <#> Right
       _ -> pure (Just unit)
     pure next
   GetModel k →
-    k <$> H.get
+    k <$> H.gets getModel
