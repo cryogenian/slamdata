@@ -1,14 +1,3 @@
-@keyframes icon-spinner-fade {
-  0% {
-    transform: scale(1.5);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0.1;
-  }
-}
-
 .sd-icon {
   display: inline-block;
 
@@ -18,42 +7,5 @@
     vertical-align: text-bottom;
     fill: currentColor;
     pointer-events: none;
-  }
-}
-
-.sd-icon--spinner {
-  g > {
-    g > circle {
-      animation: 1s linear 0s infinite normal none icon-spinner-fade;
-    }
-
-    // when migrating to Sass, use a @for loop
-    g:nth-child(1) > circle {
-      animation-delay: -0.87s;
-    }
-
-    g:nth-child(2) > circle {
-      animation-delay: -0.75s;
-    }
-
-    g:nth-child(3) > circle {
-      animation-delay: -0.625s;
-    }
-
-    g:nth-child(4) > circle {
-      animation-delay: -0.5s;
-    }
-
-    g:nth-child(5) > circle {
-      animation-delay: -0.375s;
-    }
-
-    g:nth-child(6) > circle {
-      animation-delay: -0.25s;
-    }
-
-    g:nth-child(7) > circle {
-      animation-delay: -0.125s;
-    }
   }
 }
