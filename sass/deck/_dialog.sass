@@ -14,7 +14,7 @@
   background: rgba(0, 0, 0, 0.625)
 
 
-.deck-dialog > div, .deck-dialog > form
+.dialog-container > .dialog, .dialog-container > form
   flex: 0 0 auto
   position: relative
   z-index: 9001
@@ -25,7 +25,7 @@
   max-width: 100%
   margin: auto
   padding: 1rem
-  background: #fff
+  background: $modal-content-bg
 
   h4
     flex: 0 0 auto
@@ -118,11 +118,16 @@
     font-size: 2.8rem
 
 
-.license-dialog
+.dialog-container .dialog.license-dialog
   $sd-orange: #ff8600
   $bg: #161616
   $col: #fff
-  pointer-events: all
+  max-width: 39rem
+  width: auto
+  min-width: auto
+  padding: $padding-base-horizontal
+  background-color: $bg
+  color: $col
 
   p
     opacity: 0.7
@@ -154,13 +159,6 @@
   .deck-dialog-footer
     margin-top: 1.6rem
     margin-bottom: 0
-
-  > div
-    background-color: $bg
-    color: $col
-    max-width: 45rem !important
-    min-width: auto !important
-    padding: $padding-base-horizontal
 
   .btn
     padding-top: 0.6em
