@@ -122,10 +122,10 @@
   $sd-orange: #ff8600
   $bg: #161616
   $col: #fff
-  max-width: 39rem
+  max-width: 38.6rem
   width: auto
   min-width: auto
-  padding: $padding-base-horizontal
+  padding: $padding-base-horizontal * 2
   background-color: $bg
   color: $col
 
@@ -140,25 +140,27 @@
     margin: 0.7rem auto 3.9rem
 
   .deck-dialog-footer
-    $m: 1.8rem
+    $m: $padding-base-horizontal
     display: flex
     flex-flow: row nowrap
     margin: 0 ($m * -1)
 
     .btn
       flex: 1 1 50%
-      min-width: 0
       float: none !important
+      min-width: 0
+      margin: 0 !important
 
       &:not(:first-child)
         margin-left: $m !important
 
-      &:not(:first-child)
+      &:not(:last-child)
         margin-right: $m !important
 
   .deck-dialog-footer
     margin-top: 1.6rem
     margin-bottom: 0
+    padding-bottom: 0
 
   .btn
     padding-top: 0.6em
@@ -182,8 +184,9 @@
   h4
     color: $col
     font-size: 3.5rem
-    padding-top: 0 !important
-    padding-bottom: 0 !important
+    padding-top: 0
+    padding-left: 0
+    padding-right: 0
     margin-bottom: 0.3rem
     text-align: center
 
