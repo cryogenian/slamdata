@@ -54,19 +54,19 @@ _options ∷ ∀ a r. Lens' {options ∷ a|r} a
 _options = lens (_.options) (_{options = _})
 
 codec ∷ CA.JsonCodec State
-codec = legacyCodec >~> CA.object "Download options model"
+codec = migrationCodec >~> CA.object "Download options model"
   (CA.record
     # CA.recordProp (SProxy ∷ SProxy "compress") CA.boolean
     # CA.recordProp (SProxy ∷ SProxy "options") (CA.either D.codecCSVOptions D.codecJSONOptions)
     # CA.recordProp (SProxy ∷ SProxy "targetName") (CA.maybe CA.string)
     # CA.recordProp (SProxy ∷ SProxy "source") (CA.maybe codecFilePath))
-
--- added in 4.something
-legacyCodec ∷ CA.JsonCodec J.Json
-legacyCodec = CAM.addDefaultField "targetName" nothingJson
   where
-  nothingJson ∷ J.Json
-  nothingJson = CA.encode (CA.maybe CA.json) Nothing
+    -- added in 4.something
+    migrationCodec ∷ CA.JsonCodec J.Json
+    migrationCodec = CAM.addDefaultField "targetName" nothingJson
+      where
+      nothingJson ∷ J.Json
+      nothingJson = CA.encode (CA.maybe CA.json) Nothing
 
 codecFilePath ∷ CA.JsonCodec PU.FilePath
 codecFilePath = C.basicCodec dec enc <~< CA.string

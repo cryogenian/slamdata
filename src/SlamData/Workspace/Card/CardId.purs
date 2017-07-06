@@ -61,17 +61,17 @@ instance showCardId ∷ Show CardId where
 instance arbitraryDeckId ∷ SC.Arbitrary CardId where
   arbitrary = CardId <$> SC.arbitrary
 
-legacyCodec ∷ CA.JsonCodec J.Json
-legacyCodec = C.basicCodec (\j -> pure $ either (const j) go (C.decode CA.int j)) id
-  where
-    go ∷ Int -> J.Json
-    go i =
-      let
-        str = String.take 12 (show i)
-        len = String.length str
-        block = if len < 12 then replicate (12 - len) "0" <> str else str
-      in
-        J.fromString ("00000000-0000-4000-8000-" <> block)
-
 codec ∷ CA.JsonCodec CardId
-codec = dimap (\(CardId uuid) → uuid) CardId UUID.codec <~< legacyCodec
+codec = dimap (\(CardId uuid) → uuid) CardId UUID.codec <~< migrationCodec
+  where
+    migrationCodec ∷ CA.JsonCodec J.Json
+    migrationCodec = C.basicCodec (\j -> pure $ either (const j) go (C.decode CA.int j)) id
+      where
+        go ∷ Int -> J.Json
+        go i =
+          let
+            str = String.take 12 (show i)
+            len = String.length str
+            block = if len < 12 then replicate (12 - len) "0" <> str else str
+          in
+            J.fromString ("00000000-0000-4000-8000-" <> block)
