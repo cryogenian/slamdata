@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Eval.Persistence where
 
-import SlamData.Prelude
+import SlamData.Prelude hiding (note)
 
 import Control.Monad.Aff.AVar (AVar, modifyVar, killVar, peekVar, putVar)
 import Control.Monad.Aff.Bus as Bus

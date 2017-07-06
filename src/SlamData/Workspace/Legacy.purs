@@ -48,6 +48,7 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.Model (Deck, emptyDeck) as Current
 import SlamData.Workspace.Model (Workspace, decode) as Current
+import Utils (decodec)
 import Utils.Path (DirPath)
 
 type Workspace =
@@ -71,9 +72,6 @@ data WorkspaceStatus = Legacy | Current
 isLegacy ∷ WorkspaceStatus → Boolean
 isLegacy Legacy = true
 isLegacy _ = false
-
-decodec ∷ ∀ a. CA.JsonCodec a → Json → Either String a
-decodec codec = lmap CA.printJsonDecodeError <<< CA.decode codec
 
 decodeWorkspace ∷ Json → Either String Workspace
 decodeWorkspace = decodeJson >=> \obj → do

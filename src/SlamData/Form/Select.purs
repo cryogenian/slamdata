@@ -24,7 +24,6 @@ import Data.Argonaut (class DecodeJson, class EncodeJson, JCursor, decodeJson, j
 import Data.Array as Arr
 import Data.Array (filter, length, head, (!!), elemIndex)
 import Data.Lens (Lens', lens, view, (^.), (?~), (.~))
-import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Monoid.Conj (Conj(..))
 import Data.Set as Set
 import Test.StrongCheck.Arbitrary as SC

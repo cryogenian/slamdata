@@ -29,7 +29,7 @@ import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Free (Free, liftF, foldFree)
-import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
+import Control.Monad.Rec.Class (tailRecM, Step(..))
 import Control.Parallel (parallel, sequential)
 import Control.UI.Browser (locationObject, newTab)
 
@@ -64,8 +64,6 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
 import SlamData.Workspace.Deck.DeckId as DeckId
 import SlamData.Workspace.Routing as Routing
-
-import Utils (hush)
 
 type Slam = SlamM SlamDataEffects
 

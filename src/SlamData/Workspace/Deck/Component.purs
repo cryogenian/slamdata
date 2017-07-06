@@ -200,7 +200,7 @@ eval opts = case _ of
     pure next
   GetActiveCard k → do
     active ← H.gets DCS.activeCard
-    pure (k (Utils.hush ∘ map _.cardId =<< active))
+    pure (k (hush ∘ map _.cardId =<< active))
   HandleEval msg next →
     handleEval opts msg $> next
   HandleMessage msg next → do
@@ -312,7 +312,7 @@ handleBackSide opts = case _ of
           active = DCS.activeCard st
           activeIx = DCS.activeCardIndex st
         switchToFrontside
-        for_ (join $ Utils.hush <$> active) \{ cardId } → do
+        for_ (join $ hush <$> active) \{ cardId } → do
           when (activeIx > 0) do
             H.modify _ { activeCardIndex = Just (activeIx - 1) }
             updateActiveState opts
@@ -344,7 +344,7 @@ handleBackSide opts = case _ of
           then H.lift $ Common.deleteDeck opts
           else Wiring.showDialog (Dialog.DeleteDeck opts)
       Back.Mirror → do
-        let mirrorCard = (Utils.hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
+        let mirrorCard = (hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
         deck ← H.lift $ P.getDeck opts.deckId
         case deck >>= _.parent, mirrorCard <#> _.cardId of
           Just parentId, Just cardId | not (L.null opts.displayCursor) → do
@@ -406,8 +406,8 @@ updateBackSide ∷ DeckOptions → DeckDSL Unit
 updateBackSide { deckId, displayCursor } = do
   st ← H.get
   let
-    ty = join (Utils.hush <$> DCS.activeCard st)
-    tys = Array.mapMaybe Utils.hush st.displayCards
+    ty = join (hush <$> DCS.activeCard st)
+    tys = Array.mapMaybe hush st.displayCards
   void ∘ H.query' cpBackSide unit ∘ H.action ∘ ActionList.UpdateActions
     =<< getUpdatedBackActions { deckId, displayCursor } ty tys
 

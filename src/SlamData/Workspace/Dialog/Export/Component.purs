@@ -62,7 +62,7 @@ import SlamData.Workspace.Deck.DeckPath (deckPath')
 import SlamData.Workspace.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
 import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL)
 import Text.Parsing.StringParser (ParseError)
-import Utils (hush, prettyJson)
+import Utils (prettyJson)
 import Utils.DOM as DOM
 import Utils.Path as UP
 

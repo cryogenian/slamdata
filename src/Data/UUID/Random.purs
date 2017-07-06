@@ -23,9 +23,11 @@ module Data.UUID.Random
   ) where
 
 import Prelude
+
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Random as Random
 import Control.MonadZero (guard)
+import Data.Argonaut as J
 import Data.Array as Array
 import Data.Codec as C
 import Data.Codec.Argonaut as CA
@@ -106,6 +108,6 @@ instance arbitraryUUIDv4 ∷ SC.Arbitrary UUIDv4 where
 codec :: CA.JsonCodec UUIDv4
 codec =
   C.mapCodec
-    (\s → note (CA.UnexpectedValue s) (fromString s))
+    (\s → note (CA.UnexpectedValue (J.fromString s)) (fromString s))
     (\(UUIDv4 s _) → s)
     CA.string

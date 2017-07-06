@@ -133,7 +133,7 @@ name = case _ of
   Candlestick → "Candlestick"
   Parallel → "Parallel"
 
-derive instance genericChartType ∷ Generic ChartType
+derive instance genericChartType ∷ Generic ChartType _
 derive instance eqChartType ∷ Eq ChartType
 derive instance ordChartType ∷ Ord ChartType
 

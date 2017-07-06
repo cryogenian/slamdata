@@ -81,6 +81,7 @@ import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
+import Utils (decodec)
 
 data AnyCardModel
   = Ace CT.AceMode Ace.Model
@@ -313,7 +314,7 @@ encodeCardModel = case _ of
   Troubleshoot → J.jsonEmptyObject
   Cache model → J.encodeJson model
   Open res → Open.encode res
-  DownloadOptions model → DLO.encode model
+  DownloadOptions model → CA.encode DLO.codec model
   Draftboard model → DB.encode model
   BuildMetric model → BuildMetric.encode model
   BuildSankey model → BuildSankey.encode model
@@ -389,7 +390,7 @@ decodeCardModel = case _ of
   CT.Troubleshoot → const $ pure Troubleshoot
   CT.Cache → map Cache ∘ J.decodeJson
   CT.Open → map Open ∘ decodeOpen
-  CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
+  CT.DownloadOptions → map DownloadOptions ∘ decodec DLO.codec
   CT.Draftboard → map Draftboard ∘ DB.decode
   CT.Tabs → map Tabs ∘ decodec Tabs.codec
   CT.StructureEditor → map StructureEditor ∘ StructureEditor.decode
@@ -400,10 +401,6 @@ decodeCardModel = case _ of
     -- For backwards compat
     decodeOpen j =
       Open.decode j <|> (map Open.Resource <$> J.decodeJson j)
-    -- Temporary until we use codecs everywhere
-    decodec ∷ ∀ a. CA.JsonCodec a → J.Json → Either String a
-    decodec codec =
-      lmap CA.printJsonDecodeError ∘ CA.decode codec
 
 cardModelOfType ∷ Port.Out → CT.CardType → AnyCardModel
 cardModelOfType (port × varMap) = case _ of
