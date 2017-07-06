@@ -1,18 +1,17 @@
-<?xml version="1.0"?>
-<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
  <g>
   <title>Layer 1</title>
-  <polygon fill="#333333" id="svg_1" points="30.14285393574528,482.971435546875 30.14285393574528,4 1,4 1,512 510.999986410141,512 510.999986410141,482.971435546875 "/>
-  <g stroke="null" id="svg_2">
-   <circle stroke="null" id="svg_3" r="27.076923" cy="90.076923" cx="447.517253"/>
-   <circle stroke="null" id="svg_4" r="37.076923" cy="117.153847" cx="333.586215"/>
-   <circle stroke="null" id="svg_5" r="27.076923" cy="198.384617" cx="419.034493"/>
-   <circle stroke="null" id="svg_6" r="37.076923" cy="293.153849" cx="376.310354"/>
-   <circle stroke="null" id="svg_7" r="27.076923" cy="211.923079" cx="290.862076"/>
-   <circle stroke="null" id="svg_8" r="47.076923" cy="320.230772" cx="262.379316"/>
-   <circle stroke="null" id="svg_9" r="27.076923" cy="252.538464" cx="176.931038"/>
-   <circle stroke="null" id="svg_10" r="37.076923" cy="387.92308" cx="191.172418"/>
-   <circle stroke="null" id="svg_11" r="27.076923" cy="347.307695" cx="91.482759"/>
+  <polygon id="svg_1" points="30.1428539 482.971436 30.1428539 4 1 4 1 512 510.999986 512 510.999986 482.971436" fill="#333"/>
+  <g id="svg_2" stroke="null">
+   <circle id="svg_3" cx="447.517253" cy="90.076923" r="27.076923"/>
+   <circle id="svg_4" cx="333.586215" cy="117.153847" r="37.076923"/>
+   <circle id="svg_5" cx="419.034493" cy="198.384617" r="27.076923"/>
+   <circle id="svg_6" cx="376.310354" cy="293.153849" r="37.076923"/>
+   <circle id="svg_7" cx="290.862076" cy="211.923079" r="27.076923"/>
+   <circle id="svg_8" cx="262.379316" cy="320.230772" r="47.076923"/>
+   <circle id="svg_9" cx="176.931038" cy="252.538464" r="27.076923"/>
+   <circle id="svg_10" cx="191.172418" cy="387.92308" r="37.076923"/>
+   <circle id="svg_11" cx="91.482759" cy="347.307695" r="27.076923"/>
   </g>
  </g>
 </svg>

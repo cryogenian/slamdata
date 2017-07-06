@@ -1,0 +1,80 @@
+.sd-workspace
+  position: absolute
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+
+  .sd-nav
+    z-index: 1
+
+  .sd-nav.open
+    z-index: 99999
+
+
+body.sd-workspace-page.sd-embedded
+  background: transparent
+
+  // override the background for an embedded deck when the root card is a board
+  .sd-workspace.sd-published > div > .sd-deck-container > .sd-deck > .sd-card-slider > .sd-card > div > .sd-deck-card > div.sd-card-draftboard
+    background: none
+
+
+.sd-workspace.sd-published
+  .sd-card-header,
+  .sd-draftboard-edge,
+  .sd-draftboard-split-edge,
+  .sd-draftboard-cell.empty
+    display: none
+
+  > .sd-pending-overlay
+    background-color: $body-bg
+
+  .sd-deck-container.sd-focused
+    box-shadow: none
+    top: 0
+    left: 0
+    right: 0
+    bottom: 0
+
+  .sd-deck-level-1 > .sd-deck-container
+    > .sd-deck > .sd-card-slider
+      height: auto
+
+      > .sd-card > div > .sd-deck-card
+        // set the background colour for a published deck when the root card is a board
+        > div.sd-card-draftboard
+          background: #eee  // TODO: what is this?
+
+        // set the background colour for any other card  specific selector)
+        > div
+          background: $body-bg
+
+    > .sd-deck-frame
+      display: none
+
+    .sd-deck
+      top: 0
+      left: 0
+      right: 0
+      bottom: 0
+
+    .sd-card-slider
+      top: 0
+      left: 0
+      right: 0
+      bottom: 0
+
+      > .sd-card
+        background: none
+
+
+.sd-workspace-error
+  pointer-events: auto
+  text-align: center
+
+  h1
+    font-size: 1.6rem
+
+
+@import workspace/miller-columns
