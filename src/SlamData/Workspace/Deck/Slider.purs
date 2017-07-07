@@ -37,6 +37,7 @@ import Halogen as H
 import Halogen.HTML.CSS (style)
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
+import Halogen.HTML.Elements.Keyed as HK
 import Halogen.HTML.Properties (IProp())
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
@@ -255,27 +256,30 @@ renderCard
   → DCS.DisplayCard
   → DeckHTML
 renderCard opts deckComponent st activeIndex index card =
-  HH.div
+  -- We need to key these elements, as DOM reinsertion can cause the
+  -- the Card component measurements to report 0x0 in certain cases
+  -- when initializing.
+  HK.div
     [ HP.classes classes
     , style $ cardPositionCSS index
     ]
     if opts.accessType == AT.ReadOnly
     then
-      [ HH.div (cardProperties st card) [ cardComponent ]
-      , loadingPanel
+      [ "card" × HH.div (cardProperties st card) [ cardComponent ]
+      , "loading" × loadingPanel
       ]
     else
       Gripper.renderGrippers
         (cardSelected st card)
         (isJust st.initialSliderX)
         (Gripper.gripperDefsForCard st.displayCards card)
-        ⊕ [ HH.div
+        ⊕ [ "card" × HH.div
               (cardProperties st card)
-              $ fold
+              (fold
                  [ pure cardComponent
                  , guard (st.presentAccessNextActionCardHint && isLastCard) $> renderHint
-                 ]
-          , loadingPanel
+                 ])
+          , "loading" × loadingPanel
           ]
   where
   cardComponent = case card of
