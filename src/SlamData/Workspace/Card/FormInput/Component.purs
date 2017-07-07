@@ -20,13 +20,13 @@ import SlamData.Prelude
 
 import Data.Int (floor)
 import Data.Lens ((^?))
+import Data.Variant (case_, on)
 
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Chart.MetricRenderer.Component as Metric
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State (_AutoSelect)
@@ -40,12 +40,14 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
+import Utils (expandVariant)
+
 type DSL = CC.InnerCardParentDSL State Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Query CS.ChildQuery CS.ChildSlot
 
 formInputComponent ∷ CC.CardOptions → CC.CardComponent
 formInputComponent =
-  CC.makeCardComponent CT.FormInput $ H.parentComponent
+  CC.makeCardComponent CT.form $ H.parentComponent
     { render
     , eval: evalCard ⨁ evalComponent
     , initialState: const initialState
@@ -55,16 +57,20 @@ formInputComponent =
 render ∷ State → HTML
 render state =
   HH.div_
-    $ flip foldMap state.formInputType \fit →
-        if FIT.isLabeled fit
-          then labeled
-          else if FIT.isTextLike fit
-                 then textLike
-                 else metric
+    $ flip foldMap state.formInputType ( case_
+      # on CT._static metric
+      # on CT._numeric textLike
+      # on CT._date textLike
+      # on CT._datetime textLike
+      # on CT._time textLike
+      # on CT._text textLike
+      # on CT._dropdown labeled
+      # on CT._checkbox labeled
+      # on CT._radio labeled )
   where
-  textLike = [ HH.slot' CS.cpTextLike unit TextLike.comp unit $ HE.input_ $ right ∘ RaiseUpdate ]
-  labeled = [ HH.slot' CS.cpLabeled unit Labeled.comp unit $ HE.input_ $ right ∘ RaiseUpdate ]
-  metric = [ HH.slot' CS.cpMetric unit Metric.comp state.dimensions absurd ]
+  textLike _ = [ HH.slot' CS.cpTextLike unit TextLike.comp unit $ HE.input_ $ right ∘ RaiseUpdate ]
+  labeled _ = [ HH.slot' CS.cpLabeled unit Labeled.comp unit $ HE.input_ $ right ∘ RaiseUpdate ]
+  metric _ = [ HH.slot' CS.cpMetric unit Metric.comp state.dimensions absurd ]
 
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
@@ -87,30 +93,30 @@ evalCard = case _ of
   CC.Load model next → do
     case model of
       Card.FormInput (M.TextLike r) → do
-        H.modify _{ formInputType = Just r.formInputType }
+        H.modify _{ formInputType = Just $ expandVariant r.formInputType }
         _ ← H.query' CS.cpTextLike unit $ H.action $ TextLike.Load r
         pure next
       Card.FormInput (M.Labeled r) → do
-        H.modify _{ formInputType = Just r.formInputType }
+        H.modify _{ formInputType = Just $ expandVariant r.formInputType }
         _ ← H.query' CS.cpLabeled unit $ H.action $ Labeled.Load r
         pure next
       Card.FormInput M.Static → do
-        H.modify _{ formInputType = Just FIT.Static }
+        H.modify _{ formInputType = Just CT.static }
         pure next
       _ →
         pure next
   CC.ReceiveInput input _ next → do
     case input of
       SetupTextLikeFormInput p → do
-        H.modify _{ formInputType = Just p.formInputType }
+        H.modify _{ formInputType = Just $ expandVariant p.formInputType }
         _ ← H.query' CS.cpTextLike unit $ H.action $ TextLike.Setup p
         pure next
       SetupLabeledFormInput p → do
-        H.modify _{ formInputType = Just p.formInputType }
+        H.modify _{ formInputType = Just $ expandVariant p.formInputType }
         _ ← H.query' CS.cpLabeled unit $ H.action $ Labeled.Setup p
         pure next
       CategoricalMetric metric → do
-        H.modify _{ formInputType = Just FIT.Static }
+        H.modify _{ formInputType = Just CT.static }
         _ ← H.query' CS.cpMetric unit $ H.action $ Metric.SetMetric metric
         pure next
       _ →

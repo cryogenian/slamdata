@@ -46,7 +46,7 @@ instance eqBackAction ∷ Eq BackAction where
   eq DeleteDeck DeleteDeck = true
   eq Mirror Mirror = true
   eq Wrap Wrap = true
-  eq (WrapChoice c1) (WrapChoice c2) = CT.eqCardType c1 c2
+  eq (WrapChoice c1) (WrapChoice c2) = CT.eq_ c1 c2
   eq Unwrap Unwrap = true
   eq Share Share = true
   eq Unshare Unshare = true
@@ -88,8 +88,8 @@ toActionListAction unwrappable activeCard cardDefs action =
       , iconSrc
       , description
       , children: toActionListAction unwrappable activeCard cardDefs <$>
-          [ WrapChoice CT.Draftboard
-          , WrapChoice CT.Tabs
+          [ WrapChoice CT.draftboard
+          , WrapChoice CT.tabs
           ]
       }
     _ → Action.mkDo
@@ -112,7 +112,7 @@ toActionListAction unwrappable activeCard cardDefs action =
     Wrap → "img/cardAndDeckActions/wrapDeck.svg"
     Unwrap → "img/cardAndDeckActions/unwrapDeck.svg"
     DeleteDeck → "img/cardAndDeckActions/deleteDeck.svg"
-    WrapChoice cty → CT.cardIconLightSrc cty
+    WrapChoice cty → CT.lightIconSrc cty
 
   name = case action of
     Trash → "Delete card"
@@ -125,7 +125,7 @@ toActionListAction unwrappable activeCard cardDefs action =
     Wrap → "Wrap"
     Unwrap → "Collapse"
     Unshare → "Unshare deck"
-    WrapChoice cty → CT.cardName cty
+    WrapChoice cty → CT.name cty
 
   description = name
 

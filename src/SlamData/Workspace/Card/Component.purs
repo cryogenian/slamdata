@@ -45,8 +45,7 @@ import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AccessType
-import SlamData.Workspace.Card.CardType (CardType(..))
-import SlamData.Workspace.Card.CardType as CardType
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Common.EvalQuery as EQ
 import SlamData.Workspace.Card.Component.CSS as CSS
@@ -75,7 +74,7 @@ cardRef = H.RefLabel "card"
 -- | a render function.
 makeCardComponent
   ∷ ∀ f
-  . CardType
+  . CT.CardType
   → InnerCardComponent f
   → CardOptions
   → CardComponent
@@ -96,25 +95,25 @@ makeCardComponent cardType component options =
   render st =
     HH.div
       [ HP.classes $ [ CSS.deckCard ]
-      , ARIA.label $ (CardType.cardName cardType) ⊕ " card"
+      , ARIA.label $ (CT.name cardType) ⊕ " card"
       , HP.ref cardRef
       ]
       $ fold [cardLabel, card]
     where
     icon ∷ CardHTML f
-    icon = HH.img [ HP.src $ CardType.cardIconDarkSrc cardType ]
+    icon = HH.img [ HP.src $ CT.darkIconSrc cardType ]
 
     cardLabel ∷ Array (CardHTML f)
-    cardLabel = case cardType of
-      Draftboard → [ ]
-      _ →
+    cardLabel
+      | CT.eq_ cardType CT.draftboard = [ ]
+      | otherwise =
           [ HH.div
               [ HP.classes [CSS.cardHeader]
               ]
               [ HH.div
                   [ HP.class_ CSS.cardName ]
                   [ icon
-                  , HH.p_ [ HH.text $ CardType.cardName cardType ]
+                  , HH.p_ [ HH.text $ CT.name cardType ]
                   ]
               ]
           ]
@@ -126,14 +125,14 @@ makeCardComponent cardType component options =
           []
         _, High →
           [ HH.fieldset
-              [ HP.classes $ CardType.cardClasses cardType
+              [ HP.classes $ CT.cardClasses cardType
               , HP.disabled disabled
               ]
               [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
           ]
         _, Low →
           [ HH.fieldset
-              [ HP.classes $ CardType.cardClasses cardType <> [ CN.hidden ]
+              [ HP.classes $ CT.cardClasses cardType <> [ CN.hidden ]
               , HP.disabled disabled
               ]
               [ HH.slot unit component unit (HE.input CQ.HandleCardMessage) ]
@@ -152,7 +151,7 @@ makeCardComponent cardType component options =
 
     disabled ∷ Boolean
     disabled =
-      (not $ CardType.consumerInteractable cardType)
+      (not $ CT.consumerInteractable cardType)
         ∧ (AccessType.isReadOnly st.accessType)
 
   eval ∷ CQ.CardQuery ~> CardDSL f

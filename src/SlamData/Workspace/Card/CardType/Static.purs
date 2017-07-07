@@ -13,6 +13,9 @@ _static = SProxy ∷ SProxy "static"
 type StaticR r = (static ∷ Unit|r)
 type Static r = Variant (StaticR r)
 
+all ∷ ∀ r. Array (Static r)
+all = [ static ]
+
 static ∷ ∀ r. Variant (static ∷ Unit|r)
 static = inj _static unit
 

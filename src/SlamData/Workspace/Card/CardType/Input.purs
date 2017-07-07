@@ -24,6 +24,15 @@ type InputR r =
 
 type Input r = Variant (InputR r)
 
+all ∷ ∀ r. Array (Input r)
+all =
+  [ text
+  , numeric
+  , date
+  , time
+  , datetime
+  ]
+
 text ∷ ∀ r. Variant (text ∷ Unit|r)
 text = inj _text unit
 

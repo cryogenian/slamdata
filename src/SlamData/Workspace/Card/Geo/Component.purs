@@ -45,7 +45,7 @@ type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
 component ∷ CC.CardOptions → CC.CardComponent
 component =
-  CC.makeCardComponent (CT.GeoChart) $ H.parentComponent
+  CC.makeCardComponent CT.geo $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , receiver: const Nothing

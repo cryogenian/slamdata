@@ -26,6 +26,7 @@ module SlamData.Workspace.Card.CardType
   , decode
   , consumerInteractable
   , eq_
+  , all
   , module SlamData.Workspace.Card.CardType.Ace
   , module SlamData.Workspace.Card.CardType.Chart
   , module SlamData.Workspace.Card.CardType.Geo
@@ -114,7 +115,7 @@ import SlamData.Workspace.Card.CardType.Input
   , InputR, Input)
 import SlamData.Workspace.Card.CardType.Input as Inp
 
-import Utils (mapCase)
+import Utils (mapCase, case2_)
 
 type CardType =
   Variant
@@ -126,6 +127,10 @@ type CardType =
             ( InputR
               ( StaticR () ) ) ) ) ) ) )
 
+all ∷ Array CardType
+all =
+  Sim.all ⊕ Ace.all ⊕ Cht.all ⊕ Geo.all ⊕ Sel.all ⊕ Inp.all ⊕ Sta.all
+
 eq_ ∷ CardType → CardType → Boolean
 eq_ = case2_
   # Ace.eq_
@@ -135,9 +140,6 @@ eq_ = case2_
   # Sta.eq_
   # Sel.eq_
   # Inp.eq_
-  where
-  case2_ ∷ ∀ a. Variant () → Variant () → a
-  case2_ _ = case_
 
 print ∷ CardType → String
 print = case_

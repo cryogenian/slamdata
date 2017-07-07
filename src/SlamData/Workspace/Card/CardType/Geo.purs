@@ -18,6 +18,9 @@ type GeoR r =
 
 type Geo r = Variant (GeoR r)
 
+all ∷ ∀ r. Array (Geo r)
+all = [ geoMarker, geoHeatmap ]
+
 geoMarker ∷ ∀ r. Variant (geoMarker ∷ Unit|r)
 geoMarker = inj _geoMarker unit
 

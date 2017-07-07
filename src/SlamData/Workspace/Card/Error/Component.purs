@@ -41,9 +41,8 @@ import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Cache.Error as CCaE
-import SlamData.Workspace.Card.CardType (AceMode(..), CardType(..), cardName)
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(..))
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.Chart.Error as CChE
 import SlamData.Workspace.Card.DownloadOptions.Error as CDOE
 import SlamData.Workspace.Card.Error (CardError, cardToGlobalError)
@@ -60,7 +59,7 @@ import SlamData.Workspace.Card.Setups.FormInput.Static.Error as CFISE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
 import Text.Parsing.Parser (parseErrorMessage)
-import Utils (prettyJson)
+import Utils (prettyJson, expandVariant)
 
 type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
@@ -170,7 +169,7 @@ queryErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (Ace SQLMode) <> " card, please notify the author of this workspace." ]
+        [ HH.p_ [ HH.text $ "A problem occurred in the " <> CT.name CT.aceSql <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -204,7 +203,11 @@ cacheErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Cache <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text
+            $ "A problem occurred in the "
+            <> CT.name CT.cache
+            <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -212,20 +215,27 @@ cacheErrorMessage { accessType, expanded } err =
     CCaE.CacheInvalidFilepath fp →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "There is a problem in the configuration of the " <> cardName Cache <> " card." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "There is a problem in the configuration of the "
+              <> CT.name CT.cache
+              <> " card." ]
           , pure $ HH.p_
               [ HH.text "The provided path "
               , HH.code_ [ HH.text fp ]
               , HH.text " is not a valid location to store the cache result."
               ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CCaE.CacheQuasarError qe →
       HH.div_
         $ join
           [ pure $ errorTitle [ HH.text "Caching the result of a query failed." ]
-          , pure $ HH.p_ [ HH.text "The Quasar analytics engine returned an error while verifying the cache result." ]
-          , guard (accessType == Editable) $> collapsible "Quasar error details" (printQErrorDetails qe) expanded
+          , pure $ HH.p_
+            [ HH.text "The Quasar analytics engine returned an error while verifying the cache result." ]
+          , guard (accessType == Editable)
+            $> collapsible "Quasar error details" (printQErrorDetails qe) expanded
           ]
     CCaE.CacheErrorSavingFile fp →
       HH.div_
@@ -236,15 +246,19 @@ cacheErrorMessage { accessType, expanded } err =
               , HH.code_ [ HH.text (Path.printPath fp) ]
               , HH.text " could not be written to."
               ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and provide an alternative path to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_
+            [ HH.text "Go back to the previous card and provide an alternative path to fix this error." ]
           ]
     CCaE.CacheResourceNotModified →
       HH.div_
         $ join
           [ pure $ errorTitle [ HH.text "Caching the result of a query failed." ]
-          , pure $ HH.p_ [ HH.text "Caching can only be applied to queries that perform at least one transformation on an existing data set." ]
+          , pure $ HH.p_
+            [ HH.text "Caching can only be applied to queries that perform at least one transformation on an existing data set." ]
           -- TODO: only show this solution when there are no following cards?
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and delete it to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and delete it to fix this error." ]
           ]
 
 markdownErrorMessage ∷ State → CME.MarkdownError → HTML
@@ -253,7 +267,11 @@ markdownErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (Ace MarkdownMode) <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text
+            $ "A problem occurred in the "
+            <> CT.name CT.aceMarkdown
+            <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -263,7 +281,8 @@ markdownErrorMessage { accessType, expanded } err =
         $ join
           [ pure $ errorTitle [ HH.text "Parsing the provided Markdown failed." ]
           , pure $ HH.p_ [ HH.code_ [ HH.text error ] ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CME.MarkdownSqlParseError {field, sql, error} →
       case field of
@@ -275,7 +294,8 @@ markdownErrorMessage { accessType, expanded } err =
               , pure $ HH.pre_ [ HH.text sql ]
               , pure $ HH.p_ [ HH.text "Failed to parse with the following error:" ]
               , pure $ HH.pre_ [ HH.text error ]
-              , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
+              , guard (accessType == Editable)
+                $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
               ]
         Just fieldName →
           HH.div_
@@ -289,7 +309,8 @@ markdownErrorMessage { accessType, expanded } err =
               , pure $ HH.pre_ [ HH.text sql ]
               , pure $ HH.p_ [ HH.text "Which failed to parse with the following error:" ]
               , pure $ HH.pre_ [ HH.text error ]
-              , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
+              , guard (accessType == Editable)
+                $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
               ]
     CME.MarkdownNoTextBoxResults { field, sql } →
       HH.div_
@@ -302,7 +323,8 @@ markdownErrorMessage { accessType, expanded } err =
               ]
           , pure $ HH.pre_ [ HH.text sql ]
           , pure $ HH.p_ [ HH.text "Which returned no results." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
           ]
     CME.MarkdownInvalidTimeValue { field, time, error } →
       renderParseValueError field "time" error time
@@ -323,7 +345,8 @@ markdownErrorMessage { accessType, expanded } err =
               , HH.span_ $ renderList [HH.text ", "] [HH.text " or "] $ map (\ty -> [ HH.code_ [ HH.text ty ] ]) expected
               , HH.text " value was expected."
               ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
           ]
     where
       renderParseValueError field ty error value =
@@ -339,7 +362,8 @@ markdownErrorMessage { accessType, expanded } err =
             , pure $ HH.pre_ [ HH.text error ]
             , pure $ HH.p_ [ HH.text "When trying to parse the query result value:" ]
             , pure $ HH.pre_ [ HH.text value ]
-            , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
+            , guard (accessType == Editable)
+              $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
             ]
 
 downloadOptionsErrorMessage ∷ State → CDOE.DownloadOptionsError → HTML
@@ -348,7 +372,10 @@ downloadOptionsErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName DownloadOptions <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text $ "A problem occurred in the "
+            <> CT.name CT.downloadOptions <>
+            " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -356,16 +383,26 @@ downloadOptionsErrorMessage { accessType, expanded } err =
     CDOE.DownloadOptionsFilenameRequired →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "No filename was provided in the " <> cardName DownloadOptions <> " card." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "No filename was provided in the "
+              <> CT.name CT.downloadOptions
+              <> " card." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
     CDOE.DownloadOptionsFilenameInvalid fn →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "The filename provided in the " <> cardName DownloadOptions <> " card is invalid." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "The filename provided in the "
+              <> CT.name CT.downloadOptions
+              <> " card is invalid." ]
           , pure $ HH.p_
               [ HH.code_ [ HH.text fn ], HH.text " is not a valid filepath." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
 
 openErrorMessage ∷ State → COE.OpenError → HTML
@@ -374,7 +411,11 @@ openErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Open <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text
+            $ "A problem occurred in the "
+            <> CT.name CT.open
+            <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -382,22 +423,37 @@ openErrorMessage { accessType, expanded } err =
     COE.OpenFileNotFound fp →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "A file that was selected in the " <> cardName Open <> " card could not be found." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "A file that was selected in the "
+              <> CT.name CT.open
+              <> " card could not be found." ]
           , pure $ HH.p_
               [ HH.code_ [ HH.text fp ], HH.text " does not exist." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and make a new selection to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and make a new selection to fix this error." ]
           ]
     COE.OpenNoResourceSelected →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "No resource was selected in the " <> cardName Open <> " card." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select either a file or a variable to fix this error." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "No resource was selected in the "
+              <> CT.name CT.open
+              <> " card." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and select either a file or a variable to fix this error." ]
           ]
     COE.OpenNoFileSelected →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "The resource selected in the " <> cardName Open <> " card is of an invalid type" ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select a file or variable to fix this error." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "The resource selected in the "
+              <> CT.name CT.open
+              <> " card is of an invalid type" ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and select a file or variable to fix this error." ]
           ]
 
 tableErrorMessage ∷ State → CTE.TableError → HTML
@@ -406,14 +462,21 @@ tableErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Table <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text $ "A problem occurred in the "
+            <> CT.name CT.table
+            <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
   renderDetails = case _ of
     CTE.TableMissingResourceInputError →
       HH.div_
-        [ errorTitle [ HH.text $ "The " <> cardName Table <> " card requires data as an input." ] ]
+        [ errorTitle
+          [ HH.text
+            $ "The "
+            <> CT.name CT.table
+            <> " card requires data as an input." ] ]
     CTE.TableCountQuasarError qErr →
       HH.div_
         $ join
@@ -433,14 +496,20 @@ chartErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Chart <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text
+            $ "A problem occurred in the "
+            <> CT.name CT.chart
+            <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
   renderDetails = case _ of
     CChE.ChartMissingResourceInputError →
       HH.div_
-        [ errorTitle [ HH.text $ "The " <> cardName Chart <> " card requires data as an input." ] ]
+        [ errorTitle
+          [ HH.text
+            $ "The " <> CT.name CT.chart <> " card requires data as an input." ] ]
     CChE.ChartCountQuasarError qErr →
       HH.div_
         $ join
@@ -460,7 +529,11 @@ formInputStaticErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (SetupFormInput FIT.Static) <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text
+            $ "A problem occurred in the "
+            <> CT.name CT.static
+            <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -468,18 +541,28 @@ formInputStaticErrorMessage { accessType, expanded } err =
     CFISE.FIStaticNoAxis →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput FIT.Static) <> " card." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "An error occured when setting up the "
+              <> CT.name CT.static
+              <> " card." ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]
     CFISE.FIStaticMissingAxis axis →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput FIT.Static) <> " card." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "An error occured when setting up the "
+              <> CT.name CT.static
+              <> " card." ]
           , pure $ HH.p_
               [ HH.text "The selected axis was not present in the data." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
 
 formInputLabeledErrorMessage ∷ State → CFILE.FormInputLabeledError → HTML
@@ -491,7 +574,11 @@ formInputLabeledErrorMessage { accessType, expanded } err =
         fit = extractType err
       in
         HH.div_
-          [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (SetupFormInput fit) <> " card, please notify the author of this workspace." ]
+          [ HH.p_
+            [ HH.text
+              $ "A problem occurred in the "
+              <> CT.name (expandVariant fit)
+              <> " card, please notify the author of this workspace." ]
           , collapsible "Error details" (renderDetails err) expanded
           ]
   where
@@ -505,61 +592,86 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CFILE.FILabeledNoAxisError fit →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput fit) <> " card." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "An error occured when setting up the "
+              <> CT.name (expandVariant fit)
+              <> " card." ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]
     CFILE.FILabeledEmptyResourceError fit →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput fit) <> " card." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "An error occured when setting up the "
+              <> CT.name (expandVariant fit)
+              <> " card." ]
           , pure $ HH.p_
               [ HH.text "The selected resource was empty." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]
     CFILE.FILabeledTooManyEntries { formInputType, maximum, entryCount } →
       let
         errorText =
-          "The " <> FIT.print formInputType
+          "The " <> Sel.print case_ (expandVariant formInputType)
           <> " form input can't take more than "
-          <> show (FIT.maximumCountOfEntries formInputType)
+          <> show (Sel.maximumCountOfEntries formInputType)
           <> "entries, but there were: "
           <> show entryCount
           <> ". Please use 'limit' or 'group by'"
       in
         HH.div_
           $ join
-            [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput formInputType) <> " card." ]
+            [ pure $ errorTitle
+              [ HH.text
+                $ "An error occured when setting up the "
+                <> CT.name (expandVariant formInputType)
+                <> " card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
-            , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+            , guard (accessType == Editable)
+              $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
             ]
     CFILE.FILabeledTooManySelected { formInputType, maximum, selectedCount } →
       let
         errorText =
-          "The " <> FIT.print formInputType
+          "The " <> Sel.print case_ formInputType
           <> " form input can't have more than "
-          <> show (FIT.maximumCountOfSelectedValues formInputType)
+          <> show (Sel.maximumCountOfSelectedValues formInputType)
           <> " selected values, but there were: "
           <> show selectedCount
           <> ". Please, use another axis"
       in
         HH.div_
           $ join
-            [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput formInputType) <> " card." ]
+            [ pure $ errorTitle
+              [ HH.text
+                $ "An error occured when setting up the "
+                <> CT.name (expandVariant formInputType)
+                <> " card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
-            , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+            , guard (accessType == Editable)
+              $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
             ]
     -- TODO: Use the label argument for a better error message
     CFILE.FILabeledNonUniqueLabelError fit label →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occured when setting up the " <> cardName (SetupFormInput fit) <> " card." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "An error occured when setting up the "
+              <> CT.name (expandVariant fit)
+              <> " card." ]
           , pure $ HH.p_
               [ HH.text "Labels must be unique. Please, use other axis." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]
 
 searchErrorMessage ∷ State → CSE.SearchError → HTML
@@ -568,7 +680,11 @@ searchErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Search <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text
+            $ "A problem occurred in the "
+            <> CT.name CT.search
+            <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -576,22 +692,32 @@ searchErrorMessage { accessType, expanded } err =
     CSE.SearchQueryParseError { query, error } →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "Failed to parse the query when setting up the " <> cardName Search <> " card." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "Failed to parse the query when setting up the "
+              <> CT.name CT.search
+              <> " card." ]
           , pure $ HH.p_
               [ HH.text "Failed with the following parse error: "
               , HH.code_ [HH.text (parseErrorMessage error)]
               ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and correct your query to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and correct your query to fix this error." ]
           ]
     CSE.SearchQueryCompilationError error →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "Failed to compile the query when setting up the " <> cardName Search <> " card." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "Failed to compile the query when setting up the "
+              <> CT.name CT.search
+              <> " card." ]
           , pure $ HH.p_
               [ HH.text "Failed with the following compilation error: "
               , printQErrorWithDetails error
               ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and correct your query to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and correct your query to fix this error." ]
           ]
 
 pivotTableErrorMessage ∷ State → CPTE.PivotTableError → HTML
@@ -600,7 +726,11 @@ pivotTableErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName (ChartOptions PivotTable) <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text
+            $ "A problem occurred in the "
+            <> CT.name CT.pivot
+            <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -608,21 +738,31 @@ pivotTableErrorMessage { accessType, expanded } err =
     CPTE.PivotTableNoColumnSelectedError →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "Encountered an error when setting up the " <> cardName (ChartOptions PivotTable) <> " card." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "Encountered an error when setting up the "
+              <> CT.name CT.pivot
+              <> " card." ]
           , pure $ HH.p_
               [ HH.text "No column was selected to be displayed."
               ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select a column to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card and select a column to fix this error." ]
           ]
     CPTE.PivotTableQuasarError error →
       HH.div_
         $ join
-          [ pure $ errorTitle [ HH.text $ "An error occurred in the " <> cardName (ChartOptions PivotTable) <> " card." ]
+          [ pure $ errorTitle
+            [ HH.text
+              $ "An error occurred in the "
+              <> CT.name CT.pivot
+              <> " card." ]
           , pure $ HH.p_
               [ HH.text "The Quasar Analytics engine returned the following error:"
               , printQErrorWithDetails error
               ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
+          , guard (accessType == Editable)
+            $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
 
 variablesErrorMessage ∷ State → CVE.VariablesError → HTML
@@ -631,19 +771,31 @@ variablesErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> cardName Variables <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text
+            $ "A problem occurred in the "
+            <> CT.name CT.variables
+            <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
   renderDetails (CVE.VariablesError nel)
     | L.null (NEL.tail nel) =
         HH.div_
-          [ errorTitle [ HH.text $ "There was a problem in the configuration of the " <> cardName Variables <> " card." ]
+          [ errorTitle
+            [ HH.text
+              $ "There was a problem in the configuration of the "
+              <> CT.name CT.variables
+              <> " card." ]
           , renderError (NEL.head nel)
           ]
     | otherwise =
         HH.div_
-          [ errorTitle [ HH.text $ "There were multiple problems in the configuration of the " <> cardName Variables <> " card." ]
+          [ errorTitle
+            [ HH.text
+              $ "There were multiple problems in the configuration of the "
+              <> CT.name CT.variables
+              <> " card." ]
           , HH.ul_ $ map (\msg → HH.li_ [ renderError msg ]) (A.fromFoldable nel)
           ]
   renderError = case _ of

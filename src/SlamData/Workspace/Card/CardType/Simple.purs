@@ -90,6 +90,25 @@ type SimpleR r =
 
 type Simple r = Variant (SimpleR r)
 
+all ∷ ∀ r. Array (Simple r)
+all =
+  [ search
+  , chart
+  , form
+  , markdown
+  , table
+  , download
+  , variables
+  , troubleshoot
+  , cache
+  , open
+  , downloadOptions
+  , draftboard
+  , tabs
+  , structureEditor
+  , geo
+  ]
+
 eq_ ∷ ∀ r rr. (Variant r → Variant rr → Boolean) → Simple r → Simple rr → Boolean
 eq_ cb r = cb (unsafeCoerce r)
   # on _search (on _search tt ff r)

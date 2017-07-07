@@ -48,6 +48,27 @@ type ChartR r =
 
 type Chart r = Variant (ChartR r)
 
+all ∷ ∀ r. Array (Chart r)
+all =
+  [ pie
+  , line
+  , bar
+  , area
+  , scatter
+  , radar
+  , funnel
+  , graph
+  , heatmap
+  , sankey
+  , gauge
+  , boxplot
+  , metric
+  , pivot
+  , punchCard
+  , candlestick
+  , parallel
+  ]
+
 pie ∷ ∀ r. Variant (pie ∷ Unit|r)
 pie = inj _pie unit
 

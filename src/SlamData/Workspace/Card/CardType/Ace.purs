@@ -25,6 +25,9 @@ type AceR r =
 
 type Ace r = Variant (AceR r)
 
+all ∷ ∀ r. Array (Ace r)
+all = [ aceMarkdown, aceSql ]
+
 name ∷ ∀ r. (Variant r → String) → Ace r → String
 name cb = cb
   # on _aceMarkdown (const "Setup Markdown")

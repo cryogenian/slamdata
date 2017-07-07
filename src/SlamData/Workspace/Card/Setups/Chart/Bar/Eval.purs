@@ -34,7 +34,7 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Bar))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -102,7 +102,7 @@ buildBar ∷ ModelR → Axes → Port.Port
 buildBar m axes =
   Port.ChartInstructions
     { options: barOptions axes m ∘ buildBarData
-    , chartType: Bar
+    , chartType: CT.bar
     }
 
 buildBarData ∷ Array Json → Array BarStacks

@@ -28,7 +28,6 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Events as HE
 
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as M
@@ -84,7 +83,7 @@ package = P.onPrism (M._BuildBoxplot ∘ _Just) $ DS.interpret do
 
 boxplotBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 boxplotBuilderComponent =
-  CC.makeCardComponent (CT.ChartOptions CHT.Boxplot) $ H.parentComponent
+  CC.makeCardComponent CT.boxplot $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , receiver: const Nothing

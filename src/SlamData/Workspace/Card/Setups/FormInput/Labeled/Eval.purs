@@ -26,8 +26,7 @@ import Data.Array as Arr
 import Data.Map as Map
 import Data.Set as Set
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
@@ -43,7 +42,7 @@ eval
   ⇒ MonadThrow (Variant (qerror ∷ CE.QError, formInputLabeled ∷ FormInputLabeledError | v)) m
   ⇒ QuasarDSL m
   ⇒ Model
-  → FormInputType
+  → Sel.Select ()
   → Port.Resource
   → m Port.Port
 eval m formInputType resource = do
@@ -66,18 +65,18 @@ eval m formInputType resource = do
           }
   where
   foldFn conf acc@(selected × vlmap × keyCount × selectedCount) record = do
-    when (keyCount > FIT.maximumCountOfEntries formInputType) $
+    when (keyCount > Sel.maximumCountOfEntries formInputType) $
       throwFormInputLabeledError
         (FILabeledTooManyEntries
           { formInputType
-          , maximum: FIT.maximumCountOfEntries formInputType
+          , maximum: Sel.maximumCountOfEntries formInputType
           , entryCount: keyCount
           })
-    when (selectedCount > FIT.maximumCountOfSelectedValues formInputType) $
+    when (selectedCount > Sel.maximumCountOfSelectedValues formInputType) $
       throwFormInputLabeledError
         (FILabeledTooManySelected
           { formInputType
-          , maximum: FIT.maximumCountOfEntries formInputType
+          , maximum: Sel.maximumCountOfEntries formInputType
           , selectedCount
           })
     newKeyCount × newVlmap ← case Sem.getSemantics record conf.value of

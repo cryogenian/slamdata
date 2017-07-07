@@ -26,6 +26,7 @@ import Quasar.FS as QFS
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring.Cache as Cache
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Setups.Chart.Gauge.Model as BuildGauge
 import SlamData.Workspace.Card.Setups.Chart.Graph.Model as BuildGraph
 import SlamData.Workspace.Card.Setups.Chart.Legacy as ChartLegacy
@@ -100,8 +101,8 @@ decodeCard js = do
         <|> BuildGraph <$> BuildGraph.decode modelJS
         <|> ChartLegacy.decode legacyConf modelJS
       else do
-        cardType ← obj .? "cardType"
-        Card.decodeCardModel cardType modelJS
+        cardType ← CT.decode =<< obj .? "cardType"
+        Card.decodeCardModel modelJS cardType
   pure { cardId, model }
   where
   legacyConf =

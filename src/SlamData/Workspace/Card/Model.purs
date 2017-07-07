@@ -29,6 +29,7 @@ import Data.Variant (on, case_)
 
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.Ace as CTA
 import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
@@ -36,6 +37,7 @@ import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
 import SlamData.Workspace.Card.FormInput.Model as FormInput
+import SlamData.Workspace.Card.Geo.Model as Geo
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
@@ -68,10 +70,9 @@ import SlamData.Workspace.Card.Setups.FormInput.Static.Model as SetupStatic
 import SlamData.Workspace.Card.Setups.FormInput.Text.Model as SetupText
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as SetupTextLike
 import SlamData.Workspace.Card.Setups.FormInput.Time.Model as SetupTime
-import SlamData.Workspace.Card.StructureEditor.Model as StructureEditor
-import SlamData.Workspace.Card.Setups.Geo.Marker.Model as SetupGeoMarker
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Model as SetupGeoHeatmap
-import SlamData.Workspace.Card.Geo.Model as Geo
+import SlamData.Workspace.Card.Setups.Geo.Marker.Model as SetupGeoMarker
+import SlamData.Workspace.Card.StructureEditor.Model as StructureEditor
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Tabs.Model as Tabs
 import SlamData.Workspace.Card.Variables.Model as Variables
@@ -79,8 +80,10 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
+import Utils (expandVariant)
+
 data AnyCardModel
-  = Ace CT.CardType Ace.Model --?
+  = Ace (CT.Ace ()) Ace.Model
   | Search String
   | Chart Chart.Model
   | Markdown MD.Model
@@ -128,7 +131,7 @@ data AnyCardModel
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
   arbitrary =
     Gen.oneOf (pure Download)
-      [ Ace <$> Gen.allInArray [ CT.aceSql, CT.aceMarkdown ] <*> Ace.genModel
+      [ Ace <$> Gen.allInArray CTA.all <*> Ace.genModel
       , Search <$> SC.arbitrary
       , Chart <$> Chart.genModel
       , Markdown <$> MD.genModel
@@ -184,7 +187,7 @@ updateCardModel = case _, _ of
 
 instance eqAnyCardModel ∷ Eq AnyCardModel where
   eq = case _, _ of
-    Ace x1 y1, Ace x2 y2 → CT.eq_ x1 x2 && Ace.eqModel y1 y2
+    Ace x1 y1, Ace x2 y2 → CT.eq_ (expandVariant x1) (expandVariant x2) && Ace.eqModel y1 y2
     Search s1, Search s2 → s1 ≡ s2
     Chart x, Chart y → Chart.eqModel x y
     Markdown x, Markdown y → x ≡ y
@@ -239,7 +242,7 @@ instance decodeJsonCardModel ∷ J.DecodeJson AnyCardModel where
 
 modelCardType ∷ AnyCardModel → CT.CardType
 modelCardType = case _ of
-  Ace mode _ → mode
+  Ace mode _ → expandVariant mode
   Search _ → CT.search
   BuildMetric _ → CT.metric
   BuildSankey _ → CT.sankey
@@ -619,3 +622,19 @@ _SetupGeoHeatmap ∷ Prism' AnyCardModel SetupGeoHeatmap.Model
 _SetupGeoHeatmap = prism' SetupGeoHeatmap case _ of
   SetupGeoHeatmap a → Just a
   _ → Nothing
+
+setupSelect ∷ CT.Select () → SetupLabeled.Model → AnyCardModel
+setupSelect fit m = case_
+  # on CT._dropdown (const $ SetupDropdown m)
+  # on CT._radio (const $ SetupRadio m)
+  # on CT._checkbox (const $ SetupCheckbox m)
+  $ fit
+
+setupInput ∷ CT.Input () → SetupTextLike.Model → AnyCardModel
+setupInput fit m = case_
+  # on CT._text (const $ SetupText m)
+  # on CT._numeric (const $ SetupNumeric m)
+  # on CT._date (const $ SetupDate m)
+  # on CT._time (const $ SetupTime m)
+  # on CT._datetime (const $ SetupDatetime m)
+  $ fit

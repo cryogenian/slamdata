@@ -48,7 +48,7 @@ import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Parallel))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
@@ -101,7 +101,7 @@ buildParallel ∷ ModelR → Axes → Port.Port
 buildParallel m axes =
   Port.ChartInstructions
     { options: pOptions axes m ∘ buildPData
-    , chartType: Parallel
+    , chartType: CT.parallel
     }
 
 buildPData ∷ JArray → Array Item

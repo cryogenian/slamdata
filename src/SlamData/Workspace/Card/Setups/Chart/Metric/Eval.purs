@@ -29,6 +29,7 @@ import Data.Lens ((^?), _Just)
 import Data.String as Str
 import Data.String.Regex as Rgx
 import Data.String.Regex.Flags as RXF
+
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM

@@ -33,7 +33,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as M
@@ -131,7 +130,7 @@ package = P.onPrism (M._BuildParallel ∘ _Just)
 
 parallelBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 parallelBuilderComponent =
-  CC.makeCardComponent (CT.ChartOptions CHT.Parallel) $ H.parentComponent
+  CC.makeCardComponent CT.parallel $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , initialState: const ST.initialState

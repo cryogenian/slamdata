@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Chart.Component.State where
 import SlamData.Prelude
 import ECharts.Theme (Theme)
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType)
+import SlamData.Workspace.Card.CardType as CT
 
 -- We shouldn't render ECharts before we determine what theme should be used,
 -- because it doesn't allow to change theme, after chart is initialized.
@@ -27,7 +27,7 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 -- * `Nothing` means theme is not initialized,
 -- * `Just Nothing` means there is no custom theme.
 type State =
-  { chartType ∷ Maybe ChartType
+  { chartType ∷ Maybe (CT.Chart ())
   , theme ∷ Maybe (Maybe Theme)
   , dimensions ∷ { width ∷ Int, height ∷ Int }
   }

@@ -40,7 +40,7 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Boxplot))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (Model, ModelR)
@@ -138,7 +138,7 @@ buildBoxplot ∷ ModelR → Axes → Port.Port
 buildBoxplot m axes =
   Port.ChartInstructions
     { options: boxplotOptions m axes ∘ buildBoxplotData
-    , chartType: Boxplot
+    , chartType: CT.boxplot
     }
 
 buildBoxplotData ∷ JArray → Array OnOneBoxplot

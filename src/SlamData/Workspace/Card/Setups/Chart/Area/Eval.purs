@@ -36,18 +36,18 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, ModelR)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Area))
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 import SqlSquared as Sql
 
@@ -95,7 +95,7 @@ buildArea ∷ ModelR → Ax.Axes → Port.Port
 buildArea m axes =
   Port.ChartInstructions
     { options: areaOptions axes m ∘ buildAreaData
-    , chartType: Area
+    , chartType: CT.area
     }
 
 buildAreaData ∷ Array Json → Array AreaSeries

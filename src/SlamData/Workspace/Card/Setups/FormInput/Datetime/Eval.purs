@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Control.Monad.State (class MonadState)
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType.Input as Inp
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
@@ -35,4 +35,4 @@ eval
   ⇒ Model
   → Port.Resource
   → m Port.Port
-eval = TL.eval _.datetime FIT.Datetime
+eval = TL.eval _.datetime Inp.datetime

@@ -2,7 +2,7 @@ module SlamData.Workspace.Card.CardType.Select where
 
 import SlamData.Prelude
 
-import Data.Variant (inj, on)
+import Data.Variant (inj, on, case_)
 
 import Halogen.HTML as H
 
@@ -19,6 +19,9 @@ type SelectR r =
   | r)
 
 type Select r = Variant (SelectR r)
+
+all ∷ ∀ r. Array (Select r)
+all = [ dropdown, checkbox, radio ]
 
 dropdown ∷ ∀ r. Variant (dropdown ∷ Unit|r)
 dropdown = inj _dropdown unit
@@ -67,3 +70,15 @@ cardClasses cb = cb
   # on _checkbox clss
   where
   clss _ = [ H.ClassName "sd-form-input-setup" ]
+
+maximumCountOfEntries ∷ Select () → Int
+maximumCountOfEntries = case_
+  # on _dropdown (const 1000)
+  # on _radio (const 1000)
+  # on _checkbox (const 1000)
+
+maximumCountOfSelectedValues ∷ Select () → Int
+maximumCountOfSelectedValues = case_
+  # on _dropdown (const 1)
+  # on _radio (const 1)
+  # on _checkbox (const top)

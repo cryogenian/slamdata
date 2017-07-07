@@ -35,7 +35,7 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types as ET
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Graph))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
@@ -96,7 +96,7 @@ buildGraph ∷ ModelR → Axes → Port.Port
 buildGraph m axes =
   Port.ChartInstructions
     { options: graphOptions axes m ∘ buildGraphData m
-    , chartType: Graph
+    , chartType: CT.graph
     }
 
 buildGraphData ∷ ModelR → JArray → GraphData

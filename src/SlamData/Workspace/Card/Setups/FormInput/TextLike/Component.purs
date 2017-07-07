@@ -37,8 +37,7 @@ import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType.Input as Inp
 import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.CSS as CSS
@@ -50,17 +49,19 @@ import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.State as ST
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component.Query as Q
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Model as M
 
+import Utils (expandVariant)
+
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
 
 
 textLikeSetupComponent
-  ∷ FIT.FormInputType
+  ∷ Inp.Input ()
   → (Ax.Axes → Set.Set JCursor)
   → CC.CardOptions
   → CC.CardComponent
 textLikeSetupComponent fit projection =
-  CC.makeCardComponent (CT.SetupFormInput fit) $ H.parentComponent
+  CC.makeCardComponent (expandVariant fit) $ H.parentComponent
     { render
     , eval: (cardEval fit projection) ⨁ (setupEval projection)
     , receiver: const Nothing
@@ -120,7 +121,7 @@ renderValue state =
         state.value
     ]
 
-cardEval ∷ FIT.FormInputType → (Ax.Axes → Set.Set JCursor) → CC.CardEvalQuery ~> DSL
+cardEval ∷ Inp.Input () → (Ax.Axes → Set.Set JCursor) → CC.CardEvalQuery ~> DSL
 cardEval fit proj = case _ of
   CC.Activate next →
     pure next
@@ -128,7 +129,7 @@ cardEval fit proj = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    pure $ k $ Card.setupTextLikeInput fit $ (M.behaviour proj).save st
+    pure $ k $ Card.setupInput fit $ (M.behaviour proj).save st
   CC.Load m next → do
     H.modify $ (M.behaviour proj).load $ join $ preview Card._SetupTextLikeInput m
     pure next

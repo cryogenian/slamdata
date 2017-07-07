@@ -34,9 +34,8 @@ import SlamData.Form.Select as S
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
@@ -47,15 +46,17 @@ import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.State as ST
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component.Query as Q
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Model as M
 
+import Utils (expandVariant)
+
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery Unit
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
 
 labeledSetupComponent
-  ∷ FIT.FormInputType
+  ∷ Sel.Select ()
   → CC.CardOptions
   → CC.CardComponent
 labeledSetupComponent fit =
-  CC.makeCardComponent (CT.SetupFormInput fit) $ H.parentComponent
+  CC.makeCardComponent (expandVariant fit) $ H.parentComponent
     { render
     , eval: (cardEval fit) ⨁ setupEval
     , receiver: const Nothing
@@ -142,7 +143,7 @@ renderValue state =
         state.value
     ]
 
-cardEval ∷ FIT.FormInputType → CC.CardEvalQuery ~> DSL
+cardEval ∷ Sel.Select () → CC.CardEvalQuery ~> DSL
 cardEval fi = case _ of
   CC.Activate next →
     pure next
@@ -150,7 +151,7 @@ cardEval fi = case _ of
     pure next
   CC.Save k → do
     st ← H.get
-    pure $ k $ Card.setupLabeledFormInput fi $ M.behaviour.save st
+    pure $ k $ Card.setupSelect fi $ M.behaviour.save st
   CC.Load m next → do
     H.modify $ M.behaviour.load $ join $ preview Card._SetupLabeledInput m
     pure next

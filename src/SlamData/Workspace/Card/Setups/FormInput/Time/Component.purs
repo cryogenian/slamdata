@@ -18,10 +18,10 @@ module SlamData.Workspace.Card.Setups.FormInput.Time.Component
   ( timeSetupComponent
   ) where
 
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component (textLikeSetupComponent)
 
 timeSetupComponent ∷ CC.CardOptions → CC.CardComponent
 timeSetupComponent =
-  textLikeSetupComponent FIT.Time _.time
+  textLikeSetupComponent CT.time _.time

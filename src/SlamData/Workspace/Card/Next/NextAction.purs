@@ -23,12 +23,11 @@ import Data.Array as A
 import SlamData.ActionList.Action as Action
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType (ChartType)
-import SlamData.Workspace.Card.CardType.ChartType as ChT
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
-import SlamData.Workspace.Card.CardType.FormInputType as FiT
-import SlamData.Workspace.Card.CardType.GeoChartType (GeoChartType)
-import SlamData.Workspace.Card.CardType.GeoChartType as GcT
+import SlamData.Workspace.Card.CardType.Chart as Cht
+import SlamData.Workspace.Card.CardType.Select as Sel
+import SlamData.Workspace.Card.CardType.Input as Inp
+import SlamData.Workspace.Card.CardType.Static as Sta
+import SlamData.Workspace.Card.CardType.Geo as Geo
 import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Port (Port)
@@ -39,8 +38,8 @@ data NextAction
 
 
 instance eqNextAction ∷ Eq NextAction where
-  eq (Insert c1) (Insert c2) = CT.eqCardType c1 c2
-  eq (FindOutHowToInsert c1) (FindOutHowToInsert c2) = CT.eqCardType c1 c2
+  eq (Insert c1) (Insert c2) = CT.eq_ c1 c2
+  eq (FindOutHowToInsert c1) (FindOutHowToInsert c2) = CT.eq_ c1 c2
   eq _ _ = false
 
 --derive instance eqNextAction ∷ Eq NextAction
@@ -54,67 +53,70 @@ pluckCardType (Insert ct) = ct
 pluckCardType (FindOutHowToInsert ct) = ct
 
 geoChartSubmenu
-  ∷ (GeoChartType → Action.Action NextAction)
+  ∷ ∀ r
+  . (CT.Geo r → Action.Action NextAction)
   → Action.Action NextAction
 geoChartSubmenu mkAction =
   Action.mkDrill
     { name: "Setup Geo Chart"
     , iconSrc: "img/cardsLight/setupGeoChart.svg"
     , description: "Select Setup Geo Chart card category"
-    , children: map mkAction GcT.all
+    , children: map mkAction Geo.all
     }
 
 insertGeoChartSubmenu ∷ Action.Action NextAction
 insertGeoChartSubmenu =
-  geoChartSubmenu $ toAction ∘ Insert ∘ CT.SetupGeoChart
+  geoChartSubmenu $ toAction ∘ Insert
 
 findOutHowToGeoChartSubmenu ∷ Action.Action NextAction
 findOutHowToGeoChartSubmenu =
-  geoChartSubmenu $ toAction ∘ FindOutHowToInsert ∘ CT.SetupGeoChart
+  geoChartSubmenu $ toAction ∘ FindOutHowToInsert
 
 chartSubmenu
-  ∷ (ChartType → Action.Action NextAction)
+  ∷ ∀ r
+  . (CT.Chart r → Action.Action NextAction)
   → Action.Action NextAction
 chartSubmenu mkAction =
   Action.mkDrill
     { name: "Setup Chart"
     , iconSrc: "img/cardsLight/setupChart.svg"
     , description: "Select Setup Chart card category"
-    , children: map mkAction ChT.all
+    , children: map mkAction Cht.all
     }
 
 insertChartSubmenu ∷ Action.Action NextAction
 insertChartSubmenu =
-  chartSubmenu $ toAction ∘ Insert ∘ CT.ChartOptions
+  chartSubmenu $ toAction ∘ Insert
 
 findOutHowToChartSubmenu ∷ Action.Action NextAction
 findOutHowToChartSubmenu =
-  chartSubmenu $ toAction ∘ FindOutHowToInsert ∘ CT.ChartOptions
+  chartSubmenu $ toAction ∘ FindOutHowToInsert
 
 formInputSubmenu
-  ∷ (FormInputType → Action.Action NextAction)
+  ∷ ∀ r
+  . (Variant (CT.StaticR (CT.SelectR (CT.InputR r))) → Action.Action NextAction)
   → Action.Action NextAction
 formInputSubmenu mkAction =
   Action.mkDrill
     { name: "Setup Form"
     , iconSrc: "img/cardsLight/setupFormInput.svg"
     , description: "Select Setup Form card category"
-    , children: map mkAction FiT.all
+    , children: map mkAction $ Sta.all ⊕ Inp.all ⊕ Sel.all
     }
 
 insertFormInputSubmenu ∷ Action.Action NextAction
 insertFormInputSubmenu =
-  formInputSubmenu $ toAction ∘ Insert ∘ CT.SetupFormInput
+  formInputSubmenu $ toAction ∘ Insert
 
 findOutHowToFormInputSubmenu ∷ Action.Action NextAction
 findOutHowToFormInputSubmenu =
-  formInputSubmenu $ toAction ∘ FindOutHowToInsert ∘ CT.SetupFormInput
+  formInputSubmenu $ toAction ∘ FindOutHowToInsert
 
 toAction ∷ NextAction → Action.Action NextAction
 toAction na =
   Action.mkDo
-    { name: CT.cardName cardType
-    , iconSrc: CT.cardIconLightSrc cardType
+    { name: CT.name cardType
+    , iconSrc: CT.lightIconSrc cardType
     , highlighted: isInsert na
     , disabled: false
     , description: description na
@@ -125,8 +127,8 @@ toAction na =
 
 description ∷ NextAction → String
 description = case _ of
-  Insert cty → "Insert a " ⊕ CT.cardName cty ⊕ " card"
-  FindOutHowToInsert cty → "Find out how to insert a " ⊕ CT.cardName cty ⊕ " card"
+  Insert cty → "Insert a " ⊕ CT.name cty ⊕ " card"
+  FindOutHowToInsert cty → "Find out how to insert a " ⊕ CT.name cty ⊕ " card"
 
 insert ∷ InsertableCardType → Array (Action.Action NextAction)
 insert = case _ of

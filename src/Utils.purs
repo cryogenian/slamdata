@@ -41,6 +41,8 @@ module Utils
   , isFirefox
   , finally
   , mapCase
+  , expandVariant
+  , case2_
   )where
 
 import SlamData.Prelude
@@ -52,7 +54,7 @@ import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.String as S
 import Data.Symbol (class IsSymbol)
-import Data.Variant (inj)
+import Data.Variant (inj, case_)
 import Global (readFloat, isNaN, isFinite)
 import SqlSquared.Signature.Ident (printIdent)
 
@@ -81,6 +83,17 @@ mapCase
   → Variant rr
   → b
 mapCase fn vfn cb = fn ∘ vfn (unsafeCoerce cb)
+
+-- That's safe actually
+expandVariant
+  ∷ ∀ r rr out
+  . Union r rr out
+  ⇒ Variant r
+  → Variant out
+expandVariant = unsafeCoerce
+
+case2_ ∷ ∀ a. Variant () → Variant () → a
+case2_ _ = case_
 
 stringToNumber ∷ String → Maybe Number
 stringToNumber s =

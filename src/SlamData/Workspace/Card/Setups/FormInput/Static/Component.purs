@@ -37,7 +37,6 @@ import SlamData.Form.Select as S
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
 import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
@@ -53,7 +52,7 @@ type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery Unit
 
 staticSetupComponent ∷ CC.CardOptions → CC.CardComponent
 staticSetupComponent =
-  CC.makeCardComponent (CT.SetupFormInput FIT.Static) $ H.parentComponent
+  CC.makeCardComponent CT.static $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , receiver: const Nothing
