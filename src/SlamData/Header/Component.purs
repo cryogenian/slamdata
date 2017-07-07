@@ -97,6 +97,8 @@ logo mbVersion =
           [ HH.img
             [ HP.src "img/logo.svg"
             , HP.alt "SlamData"
+            , HP.width 158
+            , HP.height 60
             ]
           ]
       ]

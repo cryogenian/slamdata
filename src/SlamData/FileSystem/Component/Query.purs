@@ -63,6 +63,7 @@ data Query a
   | DismissSignInSubmenu a
   | DismissMountHint a
   | DismissIntroVideo a
+  | DismissIntroVideoBackdrop MouseEvent a
   | Init a
   | PreventDefault Event (Query a)
   | HandleError GlobalError a

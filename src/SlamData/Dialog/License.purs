@@ -26,10 +26,14 @@ import SlamData.Dialog.Render as DR
 
 data LaunchedBy = App | Other
 
+licenseDialogClasses ∷ Array H.ClassName
+licenseDialogClasses =
+  [ CN.dialog, H.ClassName "license-dialog" ]
+
 advancedLicenseExpired ∷ ∀ f p. H.HTML p (f Unit)
 advancedLicenseExpired =
   H.div
-    [ HP.classes [ H.ClassName "deck-dialog", H.ClassName "license-dialog" ] ]
+    [ HP.classes licenseDialogClasses ]
     [ H.div_
         [ H.img [ HP.src "img/logo-center.svg" ]
         , DR.modalHeader "Your license has expired"
@@ -58,7 +62,7 @@ advancedLicenseExpired =
 advancedTrialLicenseExpired ∷ ∀ f p. H.HTML p (f Unit)
 advancedTrialLicenseExpired =
   H.div
-    [ HP.classes [ H.ClassName "deck-dialog", H.ClassName "license-dialog" ] ]
+    [ HP.classes licenseDialogClasses ]
     [ H.div_
         [ H.img [ HP.src "img/logo-center.svg" ]
         , DR.modalHeader "Your trial has expired"
@@ -87,7 +91,7 @@ advancedTrialLicenseExpired =
 licenseInvalid ∷ ∀ f p. H.HTML p (f Unit)
 licenseInvalid =
   H.div
-    [ HP.classes [ H.ClassName "deck-dialog", H.ClassName "license-dialog" ] ]
+    [ HP.classes licenseDialogClasses ]
     [ H.div_
         [ H.img [ HP.src "img/logo-center.svg" ]
         , DR.modalHeader "Your license is invalid"

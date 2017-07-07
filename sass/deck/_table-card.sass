@@ -1,0 +1,55 @@
+.sd-card-table
+  $pagination-height: $grid-size * 2.25
+
+  overflow: hidden !important
+
+  table
+    width: 100%
+
+  th, td
+    padding: 0.8rem
+    border-bottom: 0.1rem solid $color-separator
+
+  tr:last-child td
+    border-bottom: none
+
+  th
+    border-bottom-width: 0.2rem
+
+  .sd-card-table-content
+    position: absolute
+    top: 0
+    left: 0
+    right: 0
+    bottom: $pagination-height
+    overflow: auto
+
+  .sd-pagination
+    @extend .noselect
+
+    display: flex
+    align-items: center
+    position: absolute
+    bottom: 0.1rem
+    height: $pagination-height
+    border-top: 0.1rem solid $color-separator
+    width: 100%
+
+    div
+      display: inline-block
+
+      + div
+        margin-left: 1.2rem
+
+    input[type="number"]
+      width: 5.6rem
+
+    select
+      width: 8rem
+
+    input[type="number"], select
+      margin: 0.8rem 0.4rem
+
+    .sd-icon
+      font-size: 1.2em
+      top: 0

@@ -16,6 +16,7 @@ const file = require("gulp-file")
 const inject = require("gulp-inject")
 const packageInfo = require("./package.json")
 const rename = require("gulp-rename")
+const { sass } = require("./script/sass")
 const vinylPaths = require("vinyl-paths")
 const del = require("del")
 
@@ -202,6 +203,8 @@ gulp.task("bundle-property-tests",
 
 gulp.task("inject-icons", () => injectIconsIntoHTML(iconAttributions));
 gulp.task("icons", ["inject-icons"], () => createIconPureScript(iconAttributions));
+
+gulp.task("sass", () => sass)
 
 gulp.task("full", [ "add-headers", "trim-whitespace" ]);
 

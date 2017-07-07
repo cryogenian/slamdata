@@ -19,18 +19,15 @@ module SlamData.ActionList.Action where
 import SlamData.Prelude
 
 import Data.Array as A
-import Data.Int as Int
 import Data.Foldable as F
-import Data.String.LineWrapping as LineWrapping
-import Data.String.LineWrapping (WrappedLine, MeasuredWord)
 import Data.Identity (Identity)
-
+import Data.Int as Int
+import Data.String.LineWrapping (WrappedLine, MeasuredWord)
+import Data.String.LineWrapping as LineWrapping
 import Halogen.HTML as HH
-
 import Math as Math
-
 import RectanglePacking (Dimensions, mostRatioFittingRectangle, goldenRatio)
-
+import SlamData.Render.Icon as I
 import Utils as Utils
 import Utils.DOM as DOMUtils
 
@@ -59,7 +56,7 @@ data Presentation
 
 
 type InputAndActionR r =
-  { iconSrc ∷ String
+  { icon ∷ Maybe I.IconHTML
   , description ∷ String
   | r }
 
@@ -70,7 +67,7 @@ type DrillMixin a =
   ( children ∷ Array (Action a) )
 
 type ActionR r =
-  InputAndActionR (words ∷ Array MeasuredWord |r)
+  InputAndActionR (words ∷ Array MeasuredWord | r)
 
 type DoR a =
   ActionR (DoMixin a)
@@ -79,7 +76,7 @@ type DrillR a =
   ActionR (DrillMixin a)
 
 type MkR r =
-  InputAndActionR (name ∷ String |r)
+  InputAndActionR (name ∷ String | r)
 
 type MkDoR a =
   MkR (DoMixin a)
@@ -107,42 +104,24 @@ type ActionListConf a =
 
 
 mkDo ∷ ∀ a. MkDoR a → Action a
-mkDo {name, iconSrc, description, highlighted, disabled, action} =
-  Do { words: wordify name
-             , iconSrc
-             , description
-             , highlighted
-             , disabled
-             , action
-             }
+mkDo {name, icon, description, highlighted, disabled, action} =
+  Do
+    { words: wordify name
+    , icon
+    , description
+    , highlighted
+    , disabled
+    , action
+    }
 
 mkDrill ∷ ∀ a. MkDrillR a → Action a
-mkDrill {name, iconSrc, description, children} =
-  Drill { words: wordify name
-                , iconSrc
-                , description
-                , children
-                }
-
-eqActionR ∷ ∀ r rr. ActionR r → ActionR rr → Boolean
-eqActionR ar1 ar2 =
-  (F.and $ A.zipWith eq ar1.words ar2.words)
-  ∧ ar1.iconSrc ≡ ar2.iconSrc
-  ∧ ar1.description ≡ ar2.description
-
-instance eqAction ∷ Eq a ⇒ Eq (Action a) where
-  eq GoBack GoBack =
-    true
-  eq (Do di1) (Do di2) =
-    eqActionR di1 di2
-    ∧ di1.action ≡ di2.action
-    ∧ di1.highlighted ≡ di2.highlighted
-    ∧ di1.disabled ≡ di2.disabled
-  eq (Drill di1) (Drill di2) =
-    eqActionR di1 di2
-    ∧ di1.children ≡ di2.children
-  eq _ _ =
-    false
+mkDrill {name, icon, description, children} =
+  Drill
+    { words: wordify name
+    , icon
+    , description
+    , children
+    }
 
 wordify ∷ String → Array MeasuredWord
 wordify =
@@ -210,14 +189,14 @@ pluckActionDescription = case _ of
   GoBack →
     "Go back"
 
-pluckActionIconSrc ∷ ∀ a. Action a → String
-pluckActionIconSrc = case _ of
-  Do {iconSrc} →
-    iconSrc
-  Drill {iconSrc} →
-    iconSrc
+pluckActionIcon ∷ ∀ a. Action a → Maybe I.IconHTML
+pluckActionIcon = case _ of
+  Do {icon} →
+    icon
+  Drill {icon} →
+    icon
   GoBack →
-    "/img/go-back.svg"
+    Just $ I.IconHTML I.goBack
 
 actionNameWords ∷ ∀ a. Action a → Array MeasuredWord
 actionNameWords = case _ of
@@ -242,11 +221,19 @@ calculateLines maxWidth =
     , width: LineWrapping.lineWidth spaceWidth wrappedLine
     }
 
+pluckAction ∷ ∀ a. Action a → Maybe a
+pluckAction = case _ of
+  Do {action} →
+    Just action
+  _ →
+    Nothing
+
 pluckDrillActions ∷ ∀ a. Action a → Maybe (Array (Action a))
 pluckDrillActions = case _ of
-  Drill {children} → Just children
-  _ → Nothing
-
+  Drill {children} →
+    Just children
+  _ →
+    Nothing
 
 -- Firefox doesn't seem to be able to handle pixel metrics with decimal
 -- precisons higher than one. Without applying this function actionlists
@@ -374,7 +361,7 @@ defaultConf boundingDimensions as =
 
     buttons = buttonConfs <#> \conf → conf
       { presentation =
-        if pluckActionIconSrc conf.action ≡ ""
+        if isNothing $ pluckActionIcon conf.action
           then TextOnly
           else presentation
       }

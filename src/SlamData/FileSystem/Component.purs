@@ -47,7 +47,6 @@ import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
-import Halogen.HTML.Core as HC
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
@@ -102,11 +101,12 @@ import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo) as API
 import SlamData.Render.Common (content, row)
+import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 import Utils (finally)
-import Utils.DOM as D
+import Utils.DOM as DOM
 import Utils.Path (DirPath, getNameStr)
 
 type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
@@ -140,27 +140,21 @@ render state@{ version, sort, salt, path } =
           , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
           ]
       , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
-    , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
+      , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
           $ HE.input HandleNotifications
       , HH.slot' CS.cpAdminUI unit AdminUI.component unit $ HE.input HandleAdminUI
       ]
-    ⊕ (guard state.presentIntroVideo $> renderIntroVideo)
-    ⊕ (guard state.presentIntroVideo $> renderIntroVideoBackdrop)
-
-renderIntroVideoBackdrop ∷ HTML
-renderIntroVideoBackdrop =
-  HH.div
-    [ HP.class_ (HH.ClassName "deck-dialog-backdrop")
-    , HE.onMouseDown $ HE.input_ DismissIntroVideo
-    ]
-    []
+    <> (guard state.presentIntroVideo $> renderIntroVideo)
 
 renderIntroVideo ∷ HTML
 renderIntroVideo =
   HH.div
-    [ HP.class_ $ HC.ClassName "deck-dialog" ]
+    [ HP.class_ CN.dialogContainer
+    , HE.onClick $ HE.input DismissIntroVideoBackdrop
+    ]
     [ HH.div
-        [ HCSS.style do
+        [ HP.class_ CN.dialog
+        , HCSS.style do
              CSS.paddingLeft CSS.nil
              CSS.paddingRight CSS.nil
         ]
@@ -307,7 +301,7 @@ eval = case _ of
            ⊕ " is not inside a mount."
     pure next
   UploadFile el next → do
-    mbInput ← H.liftEff $ D.querySelector "input" el
+    mbInput ← H.liftEff $ DOM.querySelector "input" el
     for_ mbInput \input →
       void $ H.liftEff $ Be.raiseEvent "click" input
     pure next
@@ -334,7 +328,11 @@ eval = case _ of
   DismissIntroVideo next → do
     dismissIntroVideo
     pure next
-
+  DismissIntroVideoBackdrop me next → do
+    isDialog ← H.liftEff $ DOM.nodeEq (DOM.target me) (DOM.currentTarget me)
+    when isDialog do
+      dismissIntroVideo
+    pure next
   HandleError ge next → do
     showDialog $ Dialog.Error $ GE.print ge
     pure next

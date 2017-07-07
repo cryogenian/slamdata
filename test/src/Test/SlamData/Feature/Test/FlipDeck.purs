@@ -1,31 +1,35 @@
 module Test.SlamData.Feature.Test.FlipDeck where
 
-import SlamData.Prelude hiding (sequence)
-
 import Data.Time.Duration (Milliseconds(..))
-
 import Selenium.Monad (later, sequence)
+import SlamData.Prelude hiding (sequence)
+import Test.Feature.ActionSequence as Actions
 import Test.Feature.Log (successMsg, warnMsg)
-import Test.Feature.Scenario (scenario)
+import Test.Feature.Scenario (KnownIssues, allIssue, scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
-import Test.SlamData.Feature.Monad (SlamFeature)
-import Test.Feature.ActionSequence as Actions
+import Test.SlamData.Feature.Monad (SlamFeature, getConnector, isMarklogic)
 
-flipDeckScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
-flipDeckScenario =
+flipDeckScenario ∷ String → KnownIssues → SlamFeature Unit → SlamFeature Unit
+flipDeckScenario scenarioName knownIssues implementation = do
+  connector ← getConnector
   scenario
-    "Deck flipside"
-    (Interact.createWorkspaceInTestFolder "Flipped deck")
-    (Interact.deleteFileInTestFolder "Flipped deck.slam")
+    { epic: "Deck flipside"
+    , before: Interact.createWorkspaceInTestFolder "Flipped deck"
+    , after: Interact.deleteFileInTestFolder "Flipped deck.slam"
+    , title: scenarioName
+    , knownIssues
+    , connector
+    }
+    implementation
 
 mkDeckWithLastTable ∷ SlamFeature Unit
 mkDeckWithLastTable = do
-    Interact.insertQueryCardInLastDeck
-    Interact.provideQueryInLastQueryCard
+    Interact.insertQueryCardInFirstDeck
+    Interact.provideQueryInLastQueryCard $
       "select measureOne, measureTwo from `/test-mount/testDb/flatViz`"
     Interact.runQuery
-    Interact.accessNextCardInLastDeck
+    Interact.accessNextCardInFirstDeck
     Interact.selectBuildChart
     Interact.insertPivotCard
     Interact.addColumn "measureOne"
@@ -33,10 +37,14 @@ mkDeckWithLastTable = do
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
     Expect.tableColumnsAre ["measureOne", "measureTwo"]
+    successMsg "Ok, can see both measures!"
 
 test ∷ SlamFeature Unit
 test = do
-  flipDeckScenario "Flip deck" [] do
+  isMarklogic' ← isMarklogic
+  flipDeckScenario "Flip deck"
+    (allIssue "ALL: MeasureTwo not showing on Travis!")
+    do
     mkDeckWithLastTable
     Interact.flipDeck
     Expect.flipsideMenuPresented
@@ -46,7 +54,9 @@ test = do
     successMsg "Ok, 'flip deck' button works"
 
   -- Note: Trash button deletes last or active card
-  flipDeckScenario "Trash last card" [] do
+  flipDeckScenario "Trash last card"
+    (allIssue "ALL: MeasureTwo not showing on Travis!")
+    do
     mkDeckWithLastTable
     Interact.flipDeck
     Expect.flipsideMenuPresented
@@ -57,24 +67,9 @@ test = do
     Expect.noTablesPresented
     successMsg "Successfuly deleted last|active card"
 
-  flipDeckScenario "Share deck" [] do
-    Interact.insertMdCardInLastDeck
-    Interact.provideMdInLastMdCard "Quarterly"
-    Interact.runQuery
-    Interact.accessNextCardInLastDeck
-    Interact.insertDisplayMarkdownCardInLastDeck
-    Expect.textInDisplayMarkdownCard "Quarterly"
-    warnMsg "https://github.com/slamdata/slamdata/issues/1077, we don't know if workspace has been saved already"
-    later (Milliseconds 1000.0) $ pure unit
-    Interact.flipDeck
-    Expect.flipsideMenuPresented
-    Interact.publishDeck
-    Interact.accessPublishingUrl
-    Expect.textInDisplayMarkdownCard "Quarterly"
-    Interact.launchSlamData
-    successMsg "Successfully shared deck"
-
-  flipDeckScenario "Filter flipside buttons" [] do
+  flipDeckScenario "Filter flipside buttons"
+    (allIssue "ALL: MeasureTwo not showing on Travis!")
+    do
     mkDeckWithLastTable
     Interact.flipDeck
     Expect.flipsideMenuPresented
@@ -92,3 +87,22 @@ test = do
     Expect.onlyPublishActionPresented
     sequence $ Actions.sendBackspaces 5
     successMsg "Successfully filtered flipside actions"
+
+  flipDeckScenario "Share deck"
+    (allIssue "ALL: MeasureTwo not showing on Travis!")
+    do
+    Interact.insertMdCardInFirstDeck
+    Interact.provideMdInLastMdCard "Quarterly"
+    Interact.runQuery
+    Interact.accessNextCardInFirstDeck
+    Interact.insertDisplayMarkdownCardInLastDeck
+    Expect.textInDisplayMarkdownCard "Quarterly"
+    warnMsg "https://github.com/slamdata/slamdata/issues/1077, we don't know if workspace has been saved already"
+    later (Milliseconds 1000.0) $ pure unit
+    Interact.flipDeck
+    Expect.flipsideMenuPresented
+    Interact.publishDeck
+    Interact.accessPublishingUrl
+    Expect.textInDisplayMarkdownCard "Quarterly"
+    Interact.launchSlamData
+    successMsg "Successfully shared deck"

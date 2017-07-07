@@ -25,6 +25,10 @@ accessNextCardInLastDeck =
     (XPath.last $ XPath.anywhere $ XPaths.enabledNextCardGripper)
     (XPath.last $ XPath.anywhere $ XPaths.previousCardGripper)
 
+accessNextCardInFirstDeck ∷ SlamFeature Unit
+accessNextCardInFirstDeck =
+  Feature.click $ XPath.anywhere $ XPaths.nextCardGripper
+
 accessPreviousCardInLastDeck ∷ SlamFeature Unit
 accessPreviousCardInLastDeck =
   Feature.dragAndDrop
@@ -68,7 +72,11 @@ insertChartOptionsCardInLastDeck =
 
 insertDisplayMarkdownCardInLastDeck ∷ SlamFeature Unit
 insertDisplayMarkdownCardInLastDeck =
-  Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertDisplayMarkdownCard
+  Feature.click $ XPath.anywhere $ XPaths.insertDisplayMarkdownCard
+
+insertMdCardInFirstDeck ∷ SlamFeature Unit
+insertMdCardInFirstDeck =
+  Feature.click $ XPath.anywhere $ XPaths.insertMdCard
 
 insertMdCardInLastDeck ∷ SlamFeature Unit
 insertMdCardInLastDeck =
@@ -76,7 +84,7 @@ insertMdCardInLastDeck =
 
 insertOpenCardInLastDeck ∷ SlamFeature Unit
 insertOpenCardInLastDeck =
-  Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertOpenCard
+  Feature.click $ XPath.anywhere $ XPaths.insertOpenCard
 
 insertPivotCard ∷ SlamFeature Unit
 insertPivotCard =
@@ -85,6 +93,10 @@ insertPivotCard =
 insertQueryCardInLastDeck ∷ SlamFeature Unit
 insertQueryCardInLastDeck =
   Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertQueryCard
+
+insertQueryCardInFirstDeck ∷ SlamFeature Unit
+insertQueryCardInFirstDeck =
+  Feature.click $ XPath.anywhere $ XPaths.insertQueryCard
 
 insertSearchCardInLastDeck ∷ SlamFeature Unit
 insertSearchCardInLastDeck =
@@ -97,6 +109,10 @@ insertTableCardInLastDeck =
 insertTroubleshootCardInLastDeck ∷ SlamFeature Unit
 insertTroubleshootCardInLastDeck =
   Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertTroubleshootCard
+
+insertVariablesCardInFirstDeck ∷ SlamFeature Unit
+insertVariablesCardInFirstDeck =
+  Feature.click $ XPath.anywhere $ XPaths.insertVariablesCard
 
 insertVariablesCardInLastDeck ∷ SlamFeature Unit
 insertVariablesCardInLastDeck =

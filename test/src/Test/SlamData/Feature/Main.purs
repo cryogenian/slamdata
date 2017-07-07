@@ -2,7 +2,7 @@ module Test.SlamData.Feature.Main where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff, launchAff, runAff, apathize, attempt)
+import Control.Monad.Aff (Aff, runAff, apathize, attempt)
 import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, AVAR)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Aff.Reattempt (reattempt)
@@ -10,17 +10,13 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console as Ec
 import Control.Monad.Eff.Exception (EXCEPTION, Error, message)
-import Control.Monad.Eff.Ref (REF, newRef, modifyRef, readRef)
+import Control.Monad.Eff.Ref (REF, newRef, readRef)
 import Control.Monad.Reader.Trans (runReaderT)
-
-import Data.Array as Arr
+import DOM (DOM)
 import Data.Int as Int
 import Data.Posix.Signal (Signal(SIGTERM))
 import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
-
-import DOM (DOM)
-
 import Node.ChildProcess as CP
 import Node.FS (FS)
 import Node.FS.Aff (mkdir, unlink)
@@ -28,29 +24,25 @@ import Node.Path (resolve)
 import Node.Process as Process
 import Node.Rimraf (rimraf)
 import Node.Stream (Readable, Duplex, pipe, onClose)
-
-import Quasar.Spawn.Util.Process (spawnQuasar, spawnQuasarInit)
-import Quasar.Spawn.Util.Starter (expectStdOut, starter)
-
+import Quasar.Spawn.Util.Starter (starter)
 import Selenium (quit)
 import Selenium.Browser (Browser(..), browserCapabilities)
 import Selenium.Builder (withCapabilities, build)
 import Selenium.Monad (setWindowSize)
 import Selenium.Types (SELENIUM)
-
 import Test.Feature.Log as Log
 import Test.Feature.Monad (FeatureEffects)
-import Test.Feature.Scenario (scenario)
+import Test.Feature.Scenario (KnownIssues, noIssues, scenario)
 import Test.SlamData.Feature.Config (Config)
 import Test.SlamData.Feature.Effects (SlamFeatureEffects)
 import Test.SlamData.Feature.Interactions as Interact
-import Test.SlamData.Feature.Monad (SlamFeature)
+import Test.SlamData.Feature.Monad (Connector(..), SlamFeature, getConnector)
+import Test.SlamData.Feature.Test.CacheCard as Cache
 import Test.SlamData.Feature.Test.File as File
 import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
+import Test.SlamData.Feature.Test.FlipDeck as FlipDeck
 import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
-import Test.SlamData.Feature.Test.CacheCard as Cache
-import Test.SlamData.Feature.Test.FlipDeck as FlipDeck
 import Text.Chalky (green, yellow, gray, red)
 
 foreign import getConfig ∷ ∀ e. Eff (fs ∷ FS|e) Config
@@ -69,23 +61,44 @@ type Effects =
     , selenium ∷ SELENIUM
     ))
 
+setupScenario
+  ∷ SlamFeature Unit
+    → String
+    → KnownIssues
+    → SlamFeature Unit
+    → SlamFeature Unit
+setupScenario after scenarioName knownIssues implementation = do
+  connector <- getConnector
+  scenario
+    { epic: "Setup"
+    , before: (pure unit)
+    , after: after
+    , title: scenarioName
+    , knownIssues
+    , connector
+    }
+    implementation
 
 tests ∷ SlamFeature Unit
 tests = do
-  let setupScenario = scenario "Setup" (pure unit)
-  setupScenario (pure unit) "Launch SlamData" [] do
+  setupScenario (pure unit) "Launch SlamData" noIssues do
     Interact.launchSlamData
     Log.successMsg "Ok, launched SlamData"
 
-  setupScenario (pure unit) "Mount test database" [] do
+  setupScenario (pure unit) "Mount test database" noIssues do
+    connector ← getConnector
     Interact.skipGuide
     Interact.mountTestDatabase
+    case connector of
+      Couchbase → Interact.setupCouchbase
+      Marklogic → Interact.setupMarklogic
+      _ → pure unit
     Log.successMsg "Ok, mounted test database"
 
   setupScenario
     (Interact.deleteFileInTestFolder "Untitled Workspace.slam")
     "Skip guides and dismiss hints"
-    []
+    noIssues
     do
       Interact.browseTestFolder
       Interact.createWorkspace
@@ -160,35 +173,11 @@ startProc name command args check
   $ liftEff
   $ CP.spawn command args CP.defaultSpawnOptions
 
-mongoArgs ∷ Config → Array String
-mongoArgs config =
-  [ "--port", show config.mongodb.port
-  , "--dbpath", "tmp/data"
-  ]
-
-mongoConnectionString ∷ Config → String
-mongoConnectionString config =
-  "mongodb://"
-  ⊕ config.mongodb.host
-  ⊕ ":" ⊕ show config.mongodb.port
-  ⊕ "/" ⊕ config.database.name
-
 cleanMkDir ∷ String → Aff Effects Unit
 cleanMkDir path = do
   let p = resolve [path] ""
   rimraf p
   mkdir p
-
-restoreDatabase ∷ Config → Aff Effects Unit
-restoreDatabase rawConfig = do
-  var ← makeVar
-  liftEff $ CP.exec
-    rawConfig.restoreCmd
-    CP.defaultExecOptions
-    (void <<< launchAff <<< putVar var)
-  res ← takeVar var
-  traverse_ throwError res.error
-
 
 main ∷ Eff Effects Unit
 main = do
@@ -205,32 +194,6 @@ main = do
     cleanMkDir "tmp/test"
     cleanMkDir "tmp/test/image"
     cleanMkDir "tmp/test/downloads"
-    copyFile
-      "test/quasar-config.json"
-      "tmp/test/quasar-config.json"
-
-    spawnQuasarInit
-      (resolve ["tmp", rawConfig.quasar.config] "")
-      (resolve [rawConfig.quasar.jar] "")
-
-    mongo ←
-      startProc
-        "MongoDB"
-        "mongod"
-        (mongoArgs rawConfig)
-        (expectStdOut "waiting for connections on port")
-    liftEff $ modifyRef procs (Arr.cons mongo)
-
-    quasar ←
-      spawnQuasar
-        (resolve ["tmp", rawConfig.quasar.config] "")
-        (resolve [rawConfig.quasar.jar] "")
-        ("-C " <> resolve ["public"] "")
-    liftEff $ modifyRef procs (Arr.cons quasar)
-
-    log $ gray "Restoring database"
-    restoreDatabase rawConfig
-    log $ gray "Database restored"
 
     log $ yellow "Starting tests"
     testResults
