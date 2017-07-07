@@ -62,7 +62,7 @@ runCard varMap step =
       fileName × Right m → Sql.printModule m × VM.insert step.source (VM.Var "resource") (VM.Resource $ VM.Process fpath m varMap) varMap
       fileName × Left q  → Sql.printQuery q × VM.insert step.source (VM.Var "resource") (VM.Resource $ Port.View fpath q varMap) varMap
 
-main ∷ Eff _ Unit
+main ∷ Eff (console ∷ Console.CONSOLE) Unit
 main = do
   let
     vm1 = SM.fromFoldable
@@ -80,6 +80,4 @@ main = do
   Console.log q2
   Console.log ""
   Console.log q3
-  Console.log ""
-  traceAnyA (VM.toURLVarMap vm4)
   Console.log ""
