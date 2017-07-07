@@ -37,6 +37,16 @@ print cb = cb
   # on _geoMarker (const "marker")
   # on _geoHeatmap (const "heatmap")
 
+encode ∷ ∀ r. (Variant r → String) → Geo r → String
+encode cb = cb
+  # on _geoMarker (const "marker-geo-setup")
+  # on _geoHeatmap (const "heatmap-geo-setup")
+
+icon ∷ ∀ r. (Variant r → String) → Geo r → String
+icon cb = cb
+  # on _geoMarker (const "setupGeoChart/marker")
+  # on _geoHeatmap (const "setupGeoChart/heatmap")
+
 name ∷ ∀ r. (Variant r → String) → Geo r → String
 name cb = cb
   # on _geoMarker (const "Marker")

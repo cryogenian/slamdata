@@ -44,6 +44,18 @@ print cb = cb
   # on _checkbox (const "checkbox")
   # on _radio (const "radio")
 
+encode ∷ ∀ r. (Variant r → String) → Select r → String
+encode cb = cb
+  # on _dropdown (const "dropdown-setup")
+  # on _checkbox (const "checkbox-setup")
+  # on _radio (const "radio-setup")
+
+icon ∷ ∀ r. (Variant r → String) → Select r → String
+icon cb = cb
+  # on _dropdown (const "setupFormInput/dropdown")
+  # on _checkbox (const "setupFormInput/checkbox")
+  # on _radio (const "setupFormInput/radio")
+
 name ∷ ∀ r. (Variant r → String) → Select r → String
 name cb = cb
   # on _dropdown (const "Dropdown")

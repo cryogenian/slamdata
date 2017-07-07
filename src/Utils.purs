@@ -40,7 +40,6 @@ module Utils
   , prettyJson
   , isFirefox
   , finally
-  , mapCase
   , expandVariant
   , case2_
   )where
@@ -74,15 +73,6 @@ throwVariantError
   → err
   → m a
 throwVariantError s = throwError ∘ inj s
-
-mapCase
-  ∷ ∀ r rr a b
-  . ( a → b )
-  → ( (Variant r → a) → Variant rr → a )
-  → ( Variant r → b )
-  → Variant rr
-  → b
-mapCase fn vfn cb = fn ∘ vfn (unsafeCoerce cb)
 
 -- That's safe actually
 expandVariant

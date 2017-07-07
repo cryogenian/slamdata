@@ -115,7 +115,7 @@ import SlamData.Workspace.Card.CardType.Input
   , InputR, Input)
 import SlamData.Workspace.Card.CardType.Input as Inp
 
-import Utils (mapCase, case2_)
+import Utils (case2_)
 
 type CardType =
   Variant
@@ -152,7 +152,9 @@ print = case_
   # Inp.print
 
 encode ∷ CardType → J.Json
-encode = J.encodeJson ∘ print
+encode r =
+  J.encodeJson
+  $ (case_ # Sim.print # Ace.print # Cht.encode # Sel.encode # Geo.encode # Sta.encode # Inp.encode $ r)
 
 parse ∷ String → String ⊹ CardType
 parse s =
@@ -163,6 +165,7 @@ parse s =
   <|> parseStatic s
   <|> parseGeo s
   <|> Ace.parse s
+  <|> (Left $  "unknow card type '" ⊕ s ⊕ "'")
   where
   parseChart n =
     lmap (\_ → "unknown card type '" ⊕ n ⊕ "'")
@@ -201,14 +204,9 @@ name ∷ CardType → String
 name = case_ # Sim.name # Sel.name # Cht.name # Inp.name # Geo.name # Sta.name # Ace.name
 
 icon ∷ CardType → String
-icon = case_
-  # Sim.print
-  # mapCase ("setupChart/" ⊕ _) Cht.print
-  # mapCase ("setupForm/" ⊕ _) Sel.print
-  # mapCase ("setupForm/" ⊕ _) Inp.print
-  # mapCase ("setupForm/" ⊕ _) Sta.print
-  # mapCase ("stupGeoChart/" ⊕ _) Geo.print
-  # Ace.print
+icon =
+  case_ # Sim.icon # Ace.icon # Cht.icon # Sel.icon # Inp.icon # Sta.icon # Geo.icon
+
 
 darkIconSrc ∷ CardType → String
 darkIconSrc s =

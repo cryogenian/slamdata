@@ -160,6 +160,47 @@ print cb = cb
   # on _candlestick (const "candlestick")
   # on _parallel (const "parallel")
 
+encode ∷ ∀ r. (Variant r → String) → Chart r → String
+encode cb = cb
+  # on _pie (const "pie-options")
+  # on _line (const "line-options")
+  # on _bar (const "bar-options")
+  # on _area (const "area-options")
+  # on _scatter (const "scatter-options")
+  # on _radar (const "radar-options")
+  # on _funnel (const "funnel-options")
+  # on _graph (const "graph-options")
+  # on _heatmap (const "heatmap-options")
+  # on _sankey (const "sankey-options")
+  # on _gauge (const "gauge-options")
+  # on _boxplot (const "boxplot-options")
+  # on _metric (const "metric-options")
+  # on _pivot (const "pivot-options")
+  # on _punchCard (const "punch-card-options")
+  # on _candlestick (const "candlestick-options")
+  # on _parallel (const "parallel-options")
+
+icon ∷ ∀ r. (Variant r → String) → Chart r → String
+icon cb = cb
+  # on _pie (const "buildChart/pie")
+  # on _line (const "buildChart/line")
+  # on _bar (const "buildChart/bar")
+  # on _area (const "buildChart/area")
+  # on _scatter (const "buildChart/scatter")
+  # on _radar (const "buildChart/radar")
+  # on _funnel (const "buildChart/funnel")
+  # on _graph (const "buildChart/graph")
+  # on _heatmap (const "buildChart/heatmap")
+  # on _sankey (const "buildChart/sankey")
+  # on _gauge (const "buildChart/gauge")
+  # on _boxplot (const "buildChart/boxplot")
+  # on _metric (const "buildChart/metric")
+  # on _pivot (const "buildChart/pivot")
+  # on _punchCard (const "buildChart/punch-card")
+  # on _candlestick (const "buildChart/candlestick")
+  # on _parallel (const "buildChart/parallel")
+
+
 parse ∷ ∀ r. String → String ⊹ Chart r
 parse = case _ of
   "pie" → Right pie

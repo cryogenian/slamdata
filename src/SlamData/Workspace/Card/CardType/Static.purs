@@ -25,6 +25,12 @@ eq_ cb r = cb (unsafeCoerce r) # on _static (on _static tt ff r)
 print ∷ ∀ r. (Variant r → String) → Static r → String
 print cb = cb # on _static (const "static")
 
+encode ∷ ∀ r. (Variant r → String) → Static r → String
+encode cb = cb # on _static (const "static-setup")
+
+icon ∷ ∀ r. (Variant r → String) → Static r → String
+icon cb = cb # on _static (const "setupFormInput/static")
+
 name ∷ ∀ r. (Variant r → String) → Static r → String
 name cb = cb # on _static (const "Static Text")
 

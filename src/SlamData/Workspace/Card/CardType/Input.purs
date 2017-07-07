@@ -64,6 +64,22 @@ print cb = cb
   # on _time (const "time")
   # on _datetime (const "datetime")
 
+encode ∷ ∀ r. (Variant r → String) → Input r → String
+encode cb = cb
+  # on _text (const "text-setup")
+  # on _numeric (const "numeric-setup")
+  # on _date (const "date-setup")
+  # on _time (const "time-setup")
+  # on _datetime (const "datetime-setup")
+
+icon ∷ ∀ r. (Variant r → String) → Input r → String
+icon cb = cb
+  # on _text (const "setupFormInput/text")
+  # on _numeric (const "setupFormInput/numeric")
+  # on _date (const "setupFormInput/date")
+  # on _time (const "setupFormInput/time")
+  # on _datetime (const "setupFormInput/datetime")
+
 name ∷ ∀ r. (Variant r → String) → Input r → String
 name cb = cb
   # on _text (const "Text Input")

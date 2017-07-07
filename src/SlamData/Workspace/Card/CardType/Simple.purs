@@ -146,7 +146,6 @@ print cb = cb
   # on _tabs (const "tabs")
   # on _geo (const "geo-chart")
 
-
 parse ∷ ∀ r. String → String ⊹ Simple r
 parse = case _ of
   "search" → pure search
