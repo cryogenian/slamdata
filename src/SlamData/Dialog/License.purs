@@ -34,28 +34,26 @@ advancedLicenseExpired ∷ ∀ f p. H.HTML p (f Unit)
 advancedLicenseExpired =
   H.div
     [ HP.classes licenseDialogClasses ]
-    [ H.div_
-        [ H.img [ HP.src "img/logo-center.svg" ]
-        , DR.modalHeader "Your license has expired"
-        , DR.modalBody
-            $ H.div_
-                [ H.p_
-                    [ H.text "Thanks for using SlamData Advanced!" ]
-                , H.p_
-                    [ H.text "Get in touch with us today to purchase SlamData Advanced or an extended trial period with raining for your team, configuration and optimization assistance and support ith queries, sharing and distribution." ]
-              ]
-        , DR.modalFooter
-            [ H.a
-                [ HP.classes [ CN.btn, CN.btnPrimary ]
-                , HP.href "https://slamdata.com/contact-us/"
-                ]
-                [ H.text "Contact SlamData" ]
-            , H.a
-                [ HP.classes [ CN.btn, CN.btnDefault ]
-                , HP.href "https://slamdata.com/slamdata-jump-start/"
-                ]
-                [ H.text "Request training" ]
+    [ H.img [ HP.src "img/logo-center.svg" ]
+    , DR.modalHeader "Your license has expired"
+    , DR.modalBody
+        $ H.div_
+            [ H.p_
+                [ H.text "Thanks for using SlamData Advanced!" ]
+            , H.p_
+                [ H.text "Get in touch with us today to purchase SlamData Advanced or an extended trial period with raining for your team, configuration and optimization assistance and support ith queries, sharing and distribution." ]
+          ]
+    , DR.modalFooter
+        [ H.a
+            [ HP.classes [ CN.btn, CN.btnPrimary ]
+            , HP.href "https://slamdata.com/contact-us/"
             ]
+            [ H.text "Contact SlamData" ]
+        , H.a
+            [ HP.classes [ CN.btn, CN.btnDefault ]
+            , HP.href "https://slamdata.com/slamdata-jump-start/"
+            ]
+            [ H.text "Request training" ]
         ]
   ]
 
