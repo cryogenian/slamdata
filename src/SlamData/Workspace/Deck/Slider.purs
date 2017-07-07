@@ -69,15 +69,16 @@ import Utils.DOM as DOM
 
 render ∷ DeckOptions → (DeckOptions → DeckComponent) → State → Boolean → DeckHTML
 render opts deckComponent st visible =
-  HH.div
+  HH.div sliderProps (Array.mapWithIndex maybeRenderCard st.displayCards)
+
+  where
+  sliderProps =
     [ HP.classes ([ CN.cardSlider ] ⊕ (guard (not visible) $> CN.invisible))
-    , HE.onTransitionEnd $ HE.input_ DCQ.StopSliderTransition
     , style do
         cardSliderTransformCSS (DCS.activeCardIndex st) st.sliderTranslateX
         cardSliderTransitionCSS st.sliderTransition
-    ]
-    (Array.mapWithIndex maybeRenderCard st.displayCards)
-  where
+    ] <> (guard st.sliderTransition $> HE.onTransitionEnd (HE.input_ DCQ.StopSliderTransition))
+
   activeIndex =
     DCS.activeCardIndex st
 
@@ -363,11 +364,15 @@ renderDef opts deckComponent st active { cardType, cardId } =
       , displayCursor: opts.deckId : opts.displayCursor
       , cardId
       }
+    cardInput =
+      { active
+      , width: st.cardDimensions.width
+      , height: st.cardDimensions.height
+      }
     component =
       Factory.cardComponent cardType cardOpts
   in
-    HH.slot' ChildSlot.cpCard cardId component { active } absurd
-
+    HH.slot' ChildSlot.cpCard cardId component cardInput absurd
 
 loadingPanel ∷ DeckHTML
 loadingPanel =
