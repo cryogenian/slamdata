@@ -1,4 +1,4 @@
-// .Picker-input.Picker-input is same as .Picker-input but with specifisity 2 instead of 1
+// .Picker-input.Picker-input.Picker-input is same as .Picker-input but with specifisity 3 instead of 1
 // see more https://csswizardry.com/2014/07/hacks-for-dealing-with-specificity/#safely-increasing-specificity
 
 .Picker {
@@ -7,7 +7,7 @@
   margin: 0;
 }
 
-.Picker--invalid .Picker-input.Picker-input {
+.Picker--invalid .Picker-input.Picker-input.Picker-input {
   border: 1px solid red;
   outline-color: red;
 }
@@ -26,14 +26,43 @@
   margin-left: 0.5ch;
 }
 
-.Picker-input.Picker-input[placeholder="MM"]{
-  width: 4em;
+.Picker-input.Picker-input.Picker-input.Picker-input--length-1 {
+  width: 1.2em;
 }
 
-.Picker-input.Picker-input {
+.Picker-input.Picker-input.Picker-input.Picker-input--length-2 {
+  width: 2.4em;
+}
+
+.Picker-input.Picker-input.Picker-input.Picker-input--length-3 {
+  width: 3.6em;
+}
+
+.Picker-input.Picker-input.Picker-input.Picker-input--length-4 {
+  width: 4.8em;
+}
+
+.Picker-input.Picker-input.Picker-input.Picker-input--length-5 {
+  width: 6.0em;
+}
+
+.Picker-input.Picker-input.Picker-input.Picker-input--length-6 {
+  width: 1.2em;
+}
+
+.Picker-input.Picker-input.Picker-input.Picker-input--length-7 {
+  width: 2.4em;
+}
+
+.Picker-input.Picker-input.Picker-input[placeholder="MM"]{
+  width: 2.7em;
+}
+
+.Picker-input.Picker-input.Picker-input {
   border: 1px solid hsl(0, 0%, 85%);
   margin: 0;
   box-sizing: content-box;
+  width: auto;
 }
 
 .Picker-input--invalid {
