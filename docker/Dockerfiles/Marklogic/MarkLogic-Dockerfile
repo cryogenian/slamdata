@@ -1,0 +1,62 @@
+FROM patrickmcelwee/marklogic-dependencies:8-latest
+
+# Preparing enviroments
+ENV ML_VERSION="8.0-5.8"
+ENV ML_DEV_URL="https://developer.marklogic.com"
+ENV ML_DEV_LOGIN="${ML_DEV_URL}/login"
+ENV ML_DEV_GET_TOKEN="${ML_DEV_URL}/get-download-url"
+ENV ML_DEV_COOKIES=".ml-dev-cookies"
+ENV ML_ASSET_PATH="/download/binaries/8.0/MarkLogic-RHEL6-${ML_VERSION}.x86_64.rpm"
+ENV ML_DOWNLOAD_EMAIL="quasarci@slamdata.com"
+ENV ML_DOWNLOAD_PASSWORD="quasarci"
+ENV ML_DIR="/tmp"
+ENV ML_RPM_SHA1="$ML_DIR/MarkLogic.rpm.sha1"
+ENV ML_RPM_PATH="$ML_DIR/MarkLogic.rpm"
+ENV ML_IMG_NAME="marklogic:${ML_VERSION}"
+ENV ML_CNT_NAME="ml8"
+ENV MLCP_URL="http://developer.marklogic.com/download/binaries/mlcp/mlcp-9.0.1-bin.zip"
+ENV MLCP_VERSION="9.0.1"
+
+ENV JDK_URL http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz
+ENV JDK_VER jdk1.8.0_131
+
+RUN rpm --rebuilddb; yum install -y yum-plugin-ovl unzip wget curl
+
+WORKDIR /
+RUN wget -q --wait=10 ${MLCP_URL} -O /opt/mlcp.zip
+
+#Unzip the MLCP archive
+RUN unzip -o /opt/mlcp.zip -d /opt && rm /opt/mlcp.zip
+
+# Install Java
+WORKDIR /tmp
+RUN wget -q --no-cookies --no-check-certificate --header "Cookie: oraclelicense=accept-securebackup-cookie" ${JDK_URL}
+RUN mkdir -p /usr/java
+WORKDIR /usr/java
+RUN tar zxf /tmp/jdk-*.tar.gz && rm /tmp/jdk-*.tar.gz
+RUN alternatives --install /usr/bin/java java /usr/java/${JDK_VER}/bin/java 1
+RUN alternatives --install /usr/bin/jar jar /usr/java/${JDK_VER}/bin/jar 1
+RUN alternatives --install /usr/bin/javac javac /usr/java/${JDK_VER}/bin/javac 1
+RUN alternatives --install /usr/bin/jps jps /usr/java/${JDK_VER}/bin/jps 1
+RUN echo JAVA_HOME=/usr/java/${JDK_VER} >> /etc/environment
+
+ADD MarkLogic.rpm.sha1 $ML_RPM_SHA1
+
+RUN curl -X POST --data "email=${ML_DOWNLOAD_EMAIL}&password=${ML_DOWNLOAD_PASSWORD}" -c $ML_DEV_COOKIES $ML_DEV_LOGIN
+RUN curl -X POST --data "download=$ML_ASSET_PATH" -b $ML_DEV_COOKIES $ML_DEV_GET_TOKEN > /tmp/json
+RUN cat /tmp/json | cut -f 3 -d: | cut -c2- | rev | cut -c3- | rev > /tmp/url
+RUN wget -q --wait=10 "${ML_DEV_URL}$(cat /tmp/url)" -O $ML_RPM_PATH
+RUN cd /tmp && sha1sum --status -c $ML_RPM_SHA1
+RUN yum -y localinstall $ML_RPM_PATH
+
+
+#Add enviroment variables
+ENV MLCP /opt/mlcp-$MLCP_VERSION/bin
+ENV PATH $MLCP:$JAVA_HOME:$JAVA_HOME/bin:$PATH
+
+RUN rm -rf /tmp/url /tmp/json /tmp/MarkLogic*
+
+EXPOSE 7997 7998 7999 8000 8001 8002 8040 8041 8042
+
+# Define default command (which avoids immediate shutdown)
+CMD /opt/MarkLogic/bin/MarkLogic && tail -f /dev/null

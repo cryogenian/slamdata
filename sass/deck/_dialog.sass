@@ -1,0 +1,193 @@
+.dialog-container:not(.invisible)
+  display: flex
+  flex-flow: column nowrap
+  position: fixed
+  z-index: 9000
+  overflow: auto
+  top: 0
+  right: 0
+  bottom: 0
+  left: 0
+  width: 100%
+  min-height: 100%
+  padding: 1rem
+  background: rgba(0, 0, 0, 0.625)
+
+
+.dialog-container > .dialog, .dialog-container > form
+  flex: 0 0 auto
+  position: relative
+  z-index: 9001
+  box-shadow: 0 1.9rem 3.8rem rgba(0, 0, 0, 0.4), 0 1.5rem 1.2rem rgba(0, 0, 0, 0.4)
+  min-height: 0
+  min-width: 45%
+  width: min-content
+  max-width: 100%
+  margin: auto
+  padding: 1rem
+  background: $modal-content-bg
+
+  h4
+    flex: 0 0 auto
+    line-height: 2
+    padding: $padding-base-horizontal
+    margin: 0
+
+  .deck-dialog-body
+    position: relative;
+    min-height: 4rem;
+
+    form
+      .textarea-copy-button
+        position: absolute
+        top: 0
+        right: 0
+
+  .deck-dialog-cardpath-card
+    display: inline-block
+    font-size: 1.28rem
+    white-space: nowrap
+
+    &:not(:first-child)::before
+      content: " ➜ "
+
+    .deck-dialog-cardpath-card:not(:last-child)
+      margin-right: 0.4rem
+
+    .deck-dialog-footer
+      flex: 0 0 auto
+      padding: 1.6rem
+
+      .btn:not(.btn-careful)
+        margin-left: $padding-base-horizontal
+        float: right
+
+      .alert-danger
+        margin-bottom: $padding-base-horizontal
+
+    .deck-dialog-footer.share
+      margin-top: 0
+
+    .btn > .sd-icon
+      margin-right: 0.8rem
+
+    textarea
+      resize: none
+      height: 16rem
+      min-height: 6rem
+
+  .deck-dialog-footer
+    flex: 0 0 auto
+    padding: $padding-base-horizontal
+
+    &.share
+      margin-top: 0
+
+    .btn:not(.btn-careful)
+      margin-left: $padding-base-horizontal
+      float: right
+
+      .sd-icon
+        margin-right: 0.8rem
+
+    .btn-careful
+      margin-right: auto
+
+    .alert-danger
+      margin-bottom: $padding-base-horizontal
+
+  textarea
+    resize: none
+    height: 16rem
+    min-height: 6rem
+
+  video
+    max-width: 100%
+    width: 100%
+    border-bottom: 0.1rem solid $color-separator
+    border-top: 0.1rem solid $color-separator
+
+  .container-fluid
+    padding: 0
+
+
+.sd-dialog-loading
+  text-align: center
+
+  > .sd-icon
+    font-size: 2.8rem
+
+
+.dialog-container .dialog.license-dialog
+  $sd-orange: #ff8600
+  $bg: #161616
+  $col: #fff
+  max-width: 38.6rem
+  width: auto
+  min-width: auto
+  padding: $padding-base-horizontal * 2
+  background-color: $bg
+  color: $col
+
+  p
+    opacity: 0.7
+    line-height: 1.4
+
+  img
+    display: block
+    width: 100%
+    max-width: 16.6rem
+    margin: 0.7rem auto 3.9rem
+
+  .deck-dialog-footer
+    $m: $padding-base-horizontal
+    display: flex
+    flex-flow: row nowrap
+    margin: 0 ($m * -1)
+
+    .btn
+      flex: 1 1 50%
+      float: none !important
+      min-width: 0
+      margin: 0 !important
+
+      &:not(:first-child)
+        margin-left: $m !important
+
+      &:not(:last-child)
+        margin-right: $m !important
+
+  .deck-dialog-footer
+    margin-top: 1.6rem
+    margin-bottom: 0
+    padding-bottom: 0
+
+  .btn
+    padding-top: 0.6em
+    padding-bottom: 0.8em
+    background: $sd-orange
+    border: 0.1rem solid $sd-orange
+    color: $col
+    text-shadow: 0 -0.1rem 0 darken($sd-orange, 7.5%)
+    transition-property: background-color, border-color, color
+    transition-duration: 200ms
+    transition-timing-function: ease-out
+
+    &:hover, &:active
+      background-color: $sd-orange
+      background-image: linear-gradient(to bottom, darken($sd-orange, 5%), darken($sd-orange, 2.5%))
+      color: $col
+
+    &:active
+      border-color: $col
+
+  h4
+    color: $col
+    font-size: 3.5rem
+    padding-top: 0
+    padding-left: 0
+    padding-right: 0
+    margin-bottom: 0.3rem
+    text-align: center
+
+

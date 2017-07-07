@@ -1,0 +1,97 @@
+.sd-card-form-input
+  $p: $padding-base-vertical
+  padding-left: $p
+  padding-right: $p
+
+
+.sd-dimension-button
+  display: flex
+  flex-flow: column nowrap
+  width: 100%
+  height: 100%
+  position: relative
+
+
+.sd-dimension-button-label
+  flex: 0 0 4.2rem
+  z-index: 2
+  top: 0
+  left: 0
+  right: 0
+  height: 4.2rem
+  border-bottom: 0.1rem solid $input-border
+
+  input
+    width: 100%
+    height: 100%
+    border: 0
+    margin: 0
+    padding: 0 1rem
+    text-align: center
+    font-size: 1.2
+    line-height: 3.8rem
+    font-weight: 700
+
+
+.sd-dimension-button-toolbar
+  position: absolute
+  top: 4.6rem
+  left: 0
+  right: 0
+  z-index: 2
+
+  .sd-dismiss-button
+    position: absolute
+    top: 0
+    right: 0
+
+  .sd-configure-button
+    position: absolute
+    top: 0
+    left: 0
+
+    i
+      position: relative
+      top: -0.1rem
+
+
+.sd-dimension-button-display
+  flex: 1 1 auto
+  width: 100%
+  z-index: 1
+  border: 0
+  background: transparent
+
+
+.sd-dimension-button-transform
+  display: block
+  text-align: center
+  font-size: 1.1rem
+  color: $color-separator
+
+
+.sd-dimension-button-value
+  display: block
+  width: 100%
+  text-align: center
+  white-space: nowrap
+  text-overflow: ellipsis
+  overflow: hidden
+
+
+.sd-place-value-picker
+  text-align: center
+
+  label
+    line-height: 3.2rem
+
+  .place-value
+    font-size: 2.4rem
+    color: $color-separator
+
+    b
+      color: if($is-light-theme, darken($text-color, 10%), lighten($text-color, 10%))
+
+  input[type="range"]
+    width: 80%
+    margin: auto

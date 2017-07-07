@@ -31,6 +31,26 @@ import Test.SlamData.Feature.Effects (SlamFeatureEffects)
 
 type SlamFeature = Feature (SlamFeatureEffects ()) (config :: Config)
 
+data Connector = Couchbase | Mongo | Marklogic
+
+getConnector ∷ SlamFeature Connector
+getConnector = do
+  config <- getConfig
+  case config.database.host of
+    "couchbase" → pure Couchbase
+    "marklogic" → pure Marklogic
+    _ → pure Mongo
+
+isMarklogic :: SlamFeature  Boolean
+isMarklogic = getConnector <#> case _ of
+      Marklogic → true
+      _ → false
+
+isCouchbase :: SlamFeature  Boolean
+isCouchbase = getConnector <#> case _ of
+      Couchbase → true
+      _ → false
+
 getConfig :: SlamFeature Config
 getConfig = _.config <$> ask
 
