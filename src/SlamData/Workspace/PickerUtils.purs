@@ -20,9 +20,11 @@ module SlamData.Workspace.PickerUtils
   , timePickerFormat
   , formatDate
   , formatDateTime
+  , formatDateTimeZ
   , formatTime
   , unformatDate
   , unformatDateTime
+  , unformatDateTimeZ
   , unformatTime
   ) where
 
@@ -66,6 +68,9 @@ timeStringFormat' = "HH:mm:ss"
 formatDateTime ∷ DT.DateTime → Maybe String
 formatDateTime x = hush $ FD.formatDateTime dateTimeStringFormat x
 
+formatDateTimeZ ∷ DT.DateTime → Maybe String
+formatDateTimeZ x = hush $ FD.formatDateTime (dateTimeStringFormat <> "Z") x
+
 formatDate ∷ DT.Date → Maybe String
 formatDate x = hush $ FD.formatDateTime dateStringFormat $ DT.DateTime x bottom
 
@@ -74,6 +79,9 @@ formatTime x = hush $ FD.formatDateTime timeStringFormat $ DT.DateTime bottom x
 
 unformatDateTime ∷ String → Maybe DT.DateTime
 unformatDateTime x = hush $ FD.unformatDateTime dateTimeStringFormat x
+
+unformatDateTimeZ ∷ String → Maybe DT.DateTime
+unformatDateTimeZ x = hush $ FD.unformatDateTime (dateTimeStringFormat <> "Z") x
 
 unformatDate ∷ String → Maybe DT.Date
 unformatDate x = hush $ map DT.date $ FD.unformatDateTime dateStringFormat x

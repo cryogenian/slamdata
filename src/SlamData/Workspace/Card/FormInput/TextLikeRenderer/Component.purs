@@ -42,7 +42,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
-import SlamData.Workspace.PickerUtils (datePickerFormat, dateTimePickerFormat, formatDate, formatDateTime, formatTime, timePickerFormat, unformatDate, unformatDateTime, unformatTime)
+import SlamData.Workspace.PickerUtils (datePickerFormat, dateTimePickerFormat, formatDate, formatDateTimeZ, formatTime, timePickerFormat, unformatDate, unformatDateTimeZ, unformatTime)
 import Text.Markdown.SlamDown.Halogen.Component (defaultBrowserFeatures)
 
 type State =
@@ -117,7 +117,7 @@ render state =
             unit
             $ HE.input
             $ \(NotifyChange n) →
-              ValueChanged $ fromMaybe "" $ value n >>= formatDateTime
+              ValueChanged $ fromMaybe "" $ value n >>= formatDateTimeZ
         Date | not state.inputTypeSupported IT.Date →
           HH.slot'
             cpDatePicker
@@ -188,7 +188,7 @@ eval = case _ of
       Datetime | not s.inputTypeSupported IT.DateTimeLocal →
         H.query' cpDateTimePicker unit
         $ setValue
-        $ Right <$> unformatDateTime s.value
+        $ Right <$> unformatDateTimeZ s.value
       Date | not s.inputTypeSupported IT.Date →
         H.query' cpDatePicker unit
         $ setValue
@@ -211,5 +211,5 @@ inputTypeFromFIT = case _ of
   Numeric → HP.InputNumber
   Date → HP.InputDate
   Time → HP.InputTime
-  Datetime → HP.InputDatetime
+  Datetime → HP.InputDatetimeLocal
   _ → HP.InputText
