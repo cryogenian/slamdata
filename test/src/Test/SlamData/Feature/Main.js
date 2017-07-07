@@ -1,4 +1,5 @@
 var fs = require("fs");
+
 exports.getConfig = function() {
     return require("./config.js");
 };

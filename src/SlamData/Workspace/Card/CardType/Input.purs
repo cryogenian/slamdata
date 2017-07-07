@@ -1,3 +1,19 @@
+{-
+Copyright 2017 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Card.CardType.Input where
 
 import SlamData.Prelude
@@ -5,6 +21,8 @@ import SlamData.Prelude
 import Data.Variant (inj, on)
 
 import Halogen.HTML as H
+
+import SlamData.Render.Icon as I
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -72,13 +90,13 @@ encode cb = cb
   # on _time (const "time-setup")
   # on _datetime (const "datetime-setup")
 
-icon ∷ ∀ r. (Variant r → String) → Input r → String
+icon ∷ ∀ r. (Variant r → I.IconHTML) → Input r → I.IconHTML
 icon cb = cb
-  # on _text (const "setupFormInput/text")
-  # on _numeric (const "setupFormInput/numeric")
-  # on _date (const "setupFormInput/date")
-  # on _time (const "setupFormInput/time")
-  # on _datetime (const "setupFormInput/datetime")
+  # on _text (const $ I.IconHTML I.cardsSetupFormInputText)
+  # on _numeric (const $ I.IconHTML I.cardsSetupFormInputNumeric)
+  # on _date (const $ I.IconHTML I.cardsSetupFormInputDate)
+  # on _time (const $ I.IconHTML I.cardsSetupFormInputTime)
+  # on _datetime (const $ I.IconHTML I.cardsSetupFormInputDatetime)
 
 name ∷ ∀ r. (Variant r → String) → Input r → String
 name cb = cb

@@ -27,11 +27,6 @@ import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Setups.Chart.Gauge.Model as BuildGauge
-import SlamData.Workspace.Card.Setups.Chart.Graph.Model as BuildGraph
-import SlamData.Workspace.Card.Setups.Chart.Legacy as ChartLegacy
-import SlamData.Workspace.Card.Setups.Chart.Metric.Model as BuildMetric
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Model as BuildSankey
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.DeckId as DID
@@ -44,7 +39,7 @@ import Data.Path.Pathy ((</>))
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Card.Model (AnyCardModel(..))
+import SlamData.Workspace.Card.Model (AnyCardModel)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck, emptyDeck) as Current
 import Utils.Path (DirPath)
@@ -90,32 +85,10 @@ decodeCard ∷ Json → Either String Card
 decodeCard js = do
   obj ← decodeJson js
   cardId ← obj .? "cardId"
-  cardTypeStr ← obj .? "cardType"
+  cardType ← CT.decode =<< (obj .? "cardType")
   modelJS ← obj .? "model"
-  model ←
-    if cardTypeStr ≡ "chart-options"
-      then
-        BuildMetric <$> BuildMetric.decode modelJS
-        <|> BuildSankey <$> BuildSankey.decode modelJS
-        <|> BuildGauge <$> BuildGauge.decode modelJS
-        <|> BuildGraph <$> BuildGraph.decode modelJS
-        <|> ChartLegacy.decode legacyConf modelJS
-      else do
-        cardType ← CT.decode =<< obj .? "cardType"
-        Card.decodeCardModel modelJS cardType
+  model ← Card.decodeCardModel modelJS cardType
   pure { cardId, model }
-  where
-  legacyConf =
-    { pie: BuildPie
-    , line: BuildLine
-    , bar: BuildBar
-    , area: BuildArea
-    , scatter: BuildScatter
-    , radar: BuildRadar
-    , funnel: BuildFunnel
-    , heatmap: BuildHeatmap
-    , boxplot: BuildBoxplot
-    }
 
 loadGraph
   ∷ ∀ f m

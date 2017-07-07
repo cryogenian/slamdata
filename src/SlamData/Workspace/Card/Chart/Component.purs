@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.LevelOfDetails as LOD
 
-import Utils (hush', expandVariant)
+import Utils (hush')
 
 type HTML = CC.InnerCardParentHTML Query ChildQuery ChildSlot
 type DSL = CC.InnerCardParentDSL State Query ChildQuery ChildSlot
@@ -79,12 +79,6 @@ render state =
       # on CT._pivot
         (const [ HH.slot' cpPivotTable unit Pivot.component unit (Just ∘ right <$> handlePivotTableMessage) ]) )
 
-
-renderButton ∷ CT.Chart () → Array HTML
-renderButton ct =
-  [ HH.img [ HP.src $ CT.darkIconSrc $ expandVariant ct ]
-  , HH.text "Zoom or resize"
-  ]
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of

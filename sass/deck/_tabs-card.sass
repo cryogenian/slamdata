@@ -1,0 +1,123 @@
+.sd-card-tabs
+  position: relative
+
+
+.sd-tab-container
+  position: absolute
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+
+
+.sd-tab-header
+  position: absolute
+  top: 0
+  left: 0
+  right: 0
+  height: 3.2rem
+  background: $tabs-card-header-bg
+
+
+.sd-tab-add-btn
+  float: left
+  width: 4.8rem
+  height: 3.2rem
+  text-align: center
+  line-height: 3.2rem
+  border: none
+  background: none
+  padding: 0
+  margin: 0
+  font-size: 2.4rem
+  color: $tabs-card-add-btn-color
+  background: $tabs-card-add-btn-bg
+
+  &:active
+    background: $tabs-card-add-btn-active-bg
+
+
+.sd-tab-set
+  list-style-type: none
+  width: calc(100% - 4.8rem)
+  height: 3.2rem
+  float: left
+  margin: 0
+  padding: 0
+
+  li
+    float: left
+    margin: 0
+    position: relative
+
+    button
+      margin: 0
+      padding: 0 1.6rem
+      border: none
+      border-right: 0.1rem solid $color-separator
+      width: 100%
+      height: 3.2rem
+      line-height: 3.2rem
+      text-align: center
+      text-overflow: ellipsis
+      overflow: hidden
+      white-space: nowrap
+      background: $tabs-card-header-bg
+      font-size: 1.2rem
+      position: relative
+
+  li.active
+    button
+      background: $tabs-card-header-active-bg
+
+  li.ordering
+    z-index: 100
+    pointer-events: none
+    background: $color-separator
+    box-shadow: inset 0 0.1rem 0.2rem rgba(0, 0, 0, 0.3)
+
+    button
+      box-shadow: 0 0.2rem 0.4rem rgba(0, 0, 0, 0.3)
+      opacity: 0.8
+
+  li.ordering-over
+    button
+      background: $tabs-card-header-bg
+      opacity: 0.6
+
+
+.sd-tab-body
+  position: absolute
+  top: 3.2rem
+  left: 0
+  right: 0
+  bottom: 0
+  border-top: 0.1rem solid $color-separator
+
+
+.sd-tab-slot
+  visibility: hidden
+  position: absolute
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+  z-index: 1
+
+  &.active
+    visibility: visible
+    z-index: 2
+
+
+.sd-published
+  .sd-tab-button
+    display: none
+
+  .sd-tab-add-btn
+    display: none
+
+  .sd-tab-set
+    width: 100%
+
+    li:last-child button
+      border-right: none

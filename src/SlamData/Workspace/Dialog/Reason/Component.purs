@@ -73,7 +73,7 @@ render state =
   , HH.div
       [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
       [ HH.button
-          [ HP.classes [ CN.btn ]
+          [ HP.classes [ CN.btn, CN.btnDefault ]
           , HE.onClick (HE.input_ (Raise Dismiss))
           ]
           [ HH.text "Dismiss" ]

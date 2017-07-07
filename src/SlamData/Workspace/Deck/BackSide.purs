@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.List (List)
 
 import SlamData.ActionList.Action as Action
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Deck.Component.State (CardDef)
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -85,7 +86,7 @@ toActionListAction unwrappable activeCard cardDefs action =
   case action of
     Wrap → Action.mkDrill
       { name
-      , iconSrc
+      , icon
       , description
       , children: toActionListAction unwrappable activeCard cardDefs <$>
           [ WrapChoice CT.draftboard
@@ -94,26 +95,39 @@ toActionListAction unwrappable activeCard cardDefs action =
       }
     _ → Action.mkDo
       { name
-      , iconSrc
+      , icon
       , description
       , highlighted
       , disabled
       , action
       }
   where
-  iconSrc = case action of
-    Trash → "img/cardAndDeckActions/deleteCard.svg"
-    Rename → "img/cardAndDeckActions/renameDeck.svg"
-    Share → "img/cardAndDeckActions/shareDeck.svg"
-    Unshare → "img/cardAndDeckActions/unshareDeck.svg"
-    Embed → "img/cardAndDeckActions/embedDeck.svg"
-    Publish → "img/cardAndDeckActions/publishDeck.svg"
-    Mirror → "img/cardAndDeckActions/mirrorDeck.svg"
-    Wrap → "img/cardAndDeckActions/wrapDeck.svg"
-    Unwrap → "img/cardAndDeckActions/unwrapDeck.svg"
-    DeleteDeck → "img/cardAndDeckActions/deleteDeck.svg"
-    WrapChoice cty → CT.lightIconSrc cty
+  icon ∷ Maybe I.IconHTML
+  icon = pure $ case action of
+    Trash →
+      I.IconHTML I.cardAndDeckActionsDeleteCard
+    Rename →
+      I.IconHTML I.cardAndDeckActionsRenameDeck
+    Share →
+      I.IconHTML I.cardAndDeckActionsShareDeck
+    Unshare →
+      I.IconHTML I.cardAndDeckActionsUnshareDeck
+    Embed →
+      I.IconHTML I.cardAndDeckActionsEmbedDeck
+    Publish →
+      I.IconHTML I.cardAndDeckActionsPublishDeck
+    Mirror →
+      I.IconHTML I.cardAndDeckActionsMirrorDeck
+    Wrap →
+      I.IconHTML I.cardAndDeckActionsWrapDeck
+    Unwrap →
+      I.IconHTML I.cardAndDeckActionsUnwrapDeck
+    DeleteDeck →
+      I.IconHTML I.cardAndDeckActionsDeleteDeck
+    WrapChoice cty →
+      CT.icon cty
 
+  name ∷ String
   name = case action of
     Trash → "Delete card"
     Rename → "Rename deck"

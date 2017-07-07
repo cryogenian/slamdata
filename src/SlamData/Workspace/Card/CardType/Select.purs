@@ -1,3 +1,19 @@
+{-
+Copyright 2017 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Card.CardType.Select where
 
 import SlamData.Prelude
@@ -5,6 +21,8 @@ import SlamData.Prelude
 import Data.Variant (inj, on, case_)
 
 import Halogen.HTML as H
+
+import SlamData.Render.Icon as I
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -50,11 +68,11 @@ encode cb = cb
   # on _checkbox (const "checkbox-setup")
   # on _radio (const "radio-setup")
 
-icon ∷ ∀ r. (Variant r → String) → Select r → String
+icon ∷ ∀ r. (Variant r → I.IconHTML) → Select r → I.IconHTML
 icon cb = cb
-  # on _dropdown (const "setupFormInput/dropdown")
-  # on _checkbox (const "setupFormInput/checkbox")
-  # on _radio (const "setupFormInput/radio")
+  # on _dropdown (const $ I.IconHTML I.cardsSetupFormInputDropdown)
+  # on _checkbox (const $ I.IconHTML I.cardsSetupFormInputCheckbox)
+  # on _radio (const $ I.IconHTML I.cardsSetupFormInputRadio)
 
 name ∷ ∀ r. (Variant r → String) → Select r → String
 name cb = cb

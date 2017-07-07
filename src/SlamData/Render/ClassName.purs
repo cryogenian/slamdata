@@ -244,6 +244,12 @@ form = ClassName "sd-form"
 formButton ∷ ClassName
 formButton = ClassName "sd-form-button"
 
+dialog ∷ ClassName
+dialog = ClassName "dialog"
+
+dialogContainer ∷ ClassName
+dialogContainer = ClassName "dialog-container"
+
 
 -- Bootstrap classnames
 -- (Would be nice to be able to append ClassNames https://github.com/slamdata/purescript-halogen/issues/451)

@@ -1,0 +1,34 @@
+/*
+ * Calculate Luma
+ *
+ * Luma measures a colors percieved brightness
+ * by the human eye.
+ * http://en.wikipedia.org/wiki/YIQ
+
+@function luma($color)
+  $r: red($color)
+  $g: green($color)
+  $b: blue($color)
+  @return 0.299 * $r + 0.587 * $g + 0.114 * $b
+
+
+/*
+ * Contrast Color w/ Luma
+ *
+ * Calculate the contrast based on the luma
+ * value of the color, as per W3C.
+ * http://www.w3.org/TR/AERT#color-contrast
+@function contrast-color($color, $dark: #000, $light: #fff, $threshold: 130)
+  @return if(luma($color) < $threshold, $light, $dark)
+
+
+//-------------------------------------------------------------------
+
+
+@function contrast-ratio($color1, $color2)
+  $lum1: luma($color1) + 0.05
+  $lum2: luma($color2) + 0.05
+  $ratio: $lum1 / $lum2
+  @if $lum1 < $lum2
+    $ratio: 1 / $ratio
+  @return $ratio

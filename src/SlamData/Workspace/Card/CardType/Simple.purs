@@ -1,3 +1,19 @@
+{-
+Copyright 2017 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Card.CardType.Simple where
 
 import SlamData.Prelude
@@ -5,6 +21,8 @@ import SlamData.Prelude
 import Data.Variant (inj, on)
 
 import Halogen.HTML as H
+
+import SlamData.Render.Icon as I
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -183,23 +201,23 @@ name cb = cb
   # on _tabs (const "Setup Tabs")
   # on _structureEditor (const "Structure Editor")
 
-icon ∷ ∀ r. (Variant r → String) → Simple r → String
+icon ∷ ∀ r. (Variant r → I.IconHTML) → Simple r → I.IconHTML
 icon cb = cb
-  # on _search (const "search")
-  # on _download (const "showDownload")
-  # on _variables (const "setupVariables")
-  # on _troubleshoot (const "troubleshoot")
-  # on _chart (const "showChart")
-  # on _form (const "showFormInput")
-  # on _markdown (const "showMarkdown")
-  # on _table (const "table")
-  # on _cache (const "cache")
-  # on _open (const "open")
-  # on _downloadOptions (const "downloadOptions")
-  # on _draftboard (const "dashboard")
-  # on _tabs (const "tabs")
-  # on _structureEditor (const "structureEditor")
-  # on _geo (const "geoChart")
+  # on _search (const $ I.IconHTML I.cardsSearch)
+  # on _download (const $ I.IconHTML I.cardsShowDownload)
+  # on _variables (const $ I.IconHTML I.cardsSetupVariables)
+  # on _troubleshoot (const $ I.IconHTML I.cardsTroubleshoot)
+  # on _chart (const $ I.IconHTML I.cardsShowChart)
+  # on _form (const $ I.IconHTML I.cardsShowFormInput)
+  # on _markdown (const $ I.IconHTML I.cardsShowMarkdown)
+  # on _table (const $ I.IconHTML I.cardsTable)
+  # on _cache (const $ I.IconHTML I.cardsCache)
+  # on _open (const $ I.IconHTML I.cardsOpen)
+  # on _downloadOptions (const $ I.IconHTML I.cardsSetupDownload)
+  # on _draftboard (const $ I.IconHTML I.cardsDashboard)
+  # on _tabs (const $ I.IconHTML I.cardsTabs)
+  # on _structureEditor (const $ I.IconHTML I.cardsStructureEditor)
+  # on _geo (const $ I.IconHTML I.cardsGeoChart)
 
 cardClasses ∷ ∀ r. (Variant r → Array H.ClassName) → Simple r → Array H.ClassName
 cardClasses cb = cb

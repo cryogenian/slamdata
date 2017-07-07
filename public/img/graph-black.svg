@@ -1,128 +1,21 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   width="512"
-   height="512">
-  <g>
-    <circle
-       style="fill:#333333;fill-opacity:1"
-       id="path4168"
-       cx="278.77966"
-       cy="296.13559"
-       r="92.203392" />
-    <circle
-       style="fill:#333333;fill-opacity:1"
-       id="path4170"
-       cx="114.98305"
-       cy="373.15256"
-       r="49.898304" />
-    <circle
-       style="fill:#333333;fill-opacity:1"
-       id="path4172"
-       cx="417.62711"
-       cy="417.62711"
-       r="33.627117" />
-    <circle
-       style="fill:#333333;fill-opacity:1"
-       id="path4174"
-       cx="158.37288"
-       cy="145.35593"
-       r="43.389832" />
-    <circle
-       style="fill:#333333;fill-opacity:1"
-       id="path4176"
-       cx="316.74576"
-       cy="95.457626"
-       r="32.542374" />
-    <circle
-       style="fill:#333333;fill-opacity:1"
-       id="path4178"
-       cx="74.847458"
-       cy="57.491524"
-       r="29.288136" />
-    <circle
-       style="fill:#333333;fill-opacity:1"
-       id="path4180"
-       cx="468.61017"
-       cy="349.28815"
-       r="19.525423" />
-    <circle
-       style="fill:#333333;fill-opacity:1"
-       id="path4182"
-       cx="210.44067"
-       cy="462.10168"
-       r="23.864407" />
-    <circle
-       style="fill:#333333;fill-opacity:1"
-       id="path4184"
-       cx="441.49152"
-       cy="218.03391"
-       r="35.796612" />
-    <rect
-       style="fill:#333333;fill-opacity:1"
-       id="rect4207"
-       width="26.033897"
-       height="104.13559"
-       x="26.913984"
-       y="239.76898"
-       transform="matrix(0.80269254,-0.59639306,0.59639306,0.80269254,0,0)" />
-    <rect
-       style="fill:#333333;fill-opacity:1"
-       id="rect4207-4"
-       width="26.033897"
-       height="104.13559"
-       x="-67.867439"
-       y="472.82718"
-       transform="matrix(0.63877528,-0.76939336,0.76939336,0.63877528,0,0)" />
-    <rect
-       style="fill:#333333;fill-opacity:1"
-       id="rect4207-6"
-       width="26.033897"
-       height="104.13559"
-       x="-399.83987"
-       y="-5.2506361"
-       transform="matrix(-0.38758595,-0.92183357,0.92183357,-0.38758595,0,0)" />
-    <rect
-       style="fill:#333333;fill-opacity:1"
-       id="rect4207-9"
-       width="26.033897"
-       height="104.13559"
-       x="379.25781"
-       y="-282.46582"
-       transform="matrix(0.44838975,0.89383815,-0.89383815,0.44838975,0,0)" />
-    <rect
-       style="fill:#333333;fill-opacity:0.50196081"
-       id="rect4207-5"
-       width="22.762363"
-       height="93.707253"
-       x="6.2988791"
-       y="115.3349"
-       transform="matrix(0.05447599,-0.99851508,0.68963215,0.72415986,0,0)" />
-    <rect
-       style="fill:#333333;fill-opacity:0.50196081"
-       id="rect4207-5-9"
-       width="34.024372"
-       height="140.51636"
-       x="-365.06281"
-       y="-160.13791"
-       transform="matrix(-0.96303968,-0.26935956,0.96550946,-0.26036796,0,0)" />
-    <rect
-       style="fill:#333333;fill-opacity:0.50196081"
-       id="rect4207-5-91"
-       width="22.762363"
-       height="93.707253"
-       x="-243.78989"
-       y="216.88268"
-       transform="matrix(0.05447599,-0.99851508,0.68963215,0.72415986,0,0)" />
-    <rect
-       style="fill:#333333;fill-opacity:0.50196081"
-       id="rect4207-5-91-9"
-       width="22.762363"
-       height="93.707253"
-       x="-814.73718"
-       y="-668.93787"
-       ry="11.713407"
-       transform="matrix(-0.98610246,0.1661383,0.55503094,-0.8318297,0,0)" />
-  </g>
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+ <g fill="#333">
+  <circle id="path4168" cx="278.77966" cy="296.13559" r="92.203392"/>
+  <circle id="path4170" cx="114.98305" cy="373.15256" r="49.898304"/>
+  <circle id="path4172" cx="417.62711" cy="417.62711" r="33.627117"/>
+  <circle id="path4174" cx="158.37288" cy="145.35593" r="43.389832"/>
+  <circle id="path4176" cx="316.74576" cy="95.457626" r="32.542374"/>
+  <circle id="path4178" cx="74.847458" cy="57.491524" r="29.288136"/>
+  <circle id="path4180" cx="468.61017" cy="349.28815" r="19.525423"/>
+  <circle id="path4182" cx="210.44067" cy="462.10168" r="23.864407"/>
+  <circle id="path4184" cx="441.49152" cy="218.03391" r="35.796612"/>
+  <rect id="rect4207" transform="matrix(.80269254 -.59639306 .59639306 .80269254 0 0)" x="26.913984" y="239.76898" width="26.033897" height="104.13559"/>
+  <rect id="rect4207-4" transform="matrix(.63877528 -.76939336 .76939336 .63877528 0 0)" x="-67.867439" y="472.82718" width="26.033897" height="104.13559"/>
+  <rect id="rect4207-6" transform="matrix(-.38758595 -.92183357 .92183357 -.38758595 0 0)" x="-399.83987" y="-5.2506361" width="26.033897" height="104.13559"/>
+  <rect id="rect4207-9" transform="matrix(.44838975 .89383815 -.89383815 .44838975 0 0)" x="379.25781" y="-282.46582" width="26.033897" height="104.13559"/>
+  <rect id="rect4207-5" transform="matrix(.05447599 -.99851508 .68963215 .72415986 0 0)" x="6.2988791" y="115.3349" width="22.762363" height="93.707253" fill-opacity=".50196081"/>
+  <rect id="rect4207-5-9" transform="matrix(-.96303968 -.26935956 .96550946 -.26036796 0 0)" x="-365.06281" y="-160.13791" width="34.024372" height="140.51636" fill-opacity=".50196081"/>
+  <rect id="rect4207-5-91" transform="matrix(.05447599 -.99851508 .68963215 .72415986 0 0)" x="-243.78989" y="216.88268" width="22.762363" height="93.707253" fill-opacity=".50196081"/>
+  <rect id="rect4207-5-91-9" transform="matrix(-.98610246 .1661383 .55503094 -.8318297 0 0)" x="-814.73718" y="-668.93787" width="22.762363" height="93.707253" ry="11.713407" fill-opacity=".50196081"/>
+ </g>
 </svg>

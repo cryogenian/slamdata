@@ -1,0 +1,17 @@
+FROM java:8u111-jre
+
+ENV QUASAR_VERSION="18.8.6"
+ARG SDPORT
+ARG ENV
+
+RUN mkdir -p /opt/slamdata
+RUN mkdir -p /root/.config/quasar
+COPY quasar-config-$ENV.json /root/.config/quasar/quasar-config.json
+
+RUN wget -q -O /opt/quasar-web-assembly.jar https://github.com/quasar-analytics/quasar/releases/download/v${QUASAR_VERSION}/quasar-web-assembly-${QUASAR_VERSION}.jar
+RUN java -jar /opt/quasar-web-assembly.jar initUpdateMetaStore
+
+EXPOSE $SDPORT
+
+# Define default command (which avoids immediate shutdown)
+CMD java -jar /opt/quasar-web-assembly.jar -C /opt/slamdata/public

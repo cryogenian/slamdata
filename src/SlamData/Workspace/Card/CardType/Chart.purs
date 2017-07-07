@@ -1,3 +1,19 @@
+{-
+Copyright 2017 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Card.CardType.Chart where
 
 import SlamData.Prelude
@@ -5,6 +21,8 @@ import SlamData.Prelude
 import Data.Variant (inj, on)
 
 import Halogen.HTML as H
+
+import SlamData.Render.Icon as I
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -180,25 +198,25 @@ encode cb = cb
   # on _candlestick (const "candlestick-options")
   # on _parallel (const "parallel-options")
 
-icon ∷ ∀ r. (Variant r → String) → Chart r → String
+icon ∷ ∀ r. (Variant r → I.IconHTML) → Chart r → I.IconHTML
 icon cb = cb
-  # on _pie (const "buildChart/pie")
-  # on _line (const "buildChart/line")
-  # on _bar (const "buildChart/bar")
-  # on _area (const "buildChart/area")
-  # on _scatter (const "buildChart/scatter")
-  # on _radar (const "buildChart/radar")
-  # on _funnel (const "buildChart/funnel")
-  # on _graph (const "buildChart/graph")
-  # on _heatmap (const "buildChart/heatmap")
-  # on _sankey (const "buildChart/sankey")
-  # on _gauge (const "buildChart/gauge")
-  # on _boxplot (const "buildChart/boxplot")
-  # on _metric (const "buildChart/metric")
-  # on _pivot (const "buildChart/pivot")
-  # on _punchCard (const "buildChart/punch-card")
-  # on _candlestick (const "buildChart/candlestick")
-  # on _parallel (const "buildChart/parallel")
+  # on _pie (const $ I.IconHTML I.buildChartPie)
+  # on _line (const $ I.IconHTML I.buildChartLine)
+  # on _bar (const $ I.IconHTML I.buildChartBar)
+  # on _area (const $ I.IconHTML I.buildChartArea)
+  # on _scatter (const $ I.IconHTML I.buildChartScatter)
+  # on _radar (const $ I.IconHTML I.buildChartRadar)
+  # on _funnel (const $ I.IconHTML I.buildChartFunnel)
+  # on _graph (const $ I.IconHTML I.buildChartGraph)
+  # on _heatmap (const $ I.IconHTML I.buildChartHeatmap)
+  # on _sankey (const $ I.IconHTML I.buildChartSankey)
+  # on _gauge (const $ I.IconHTML I.buildChartGauge)
+  # on _boxplot (const $ I.IconHTML I.buildChartBoxplot)
+  # on _metric (const $ I.IconHTML I.buildChartMetric)
+  # on _pivot (const $ I.IconHTML I.buildChartPivotTable)
+  # on _punchCard (const $ I.IconHTML I.buildChartPunchCard)
+  # on _candlestick (const $ I.IconHTML I.buildChartCandlestick)
+  # on _parallel (const $ I.IconHTML I.buildChartParallel)
 
 
 parse ∷ ∀ r. String → String ⊹ Chart r

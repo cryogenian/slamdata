@@ -18,10 +18,7 @@ module SlamData.Workspace.Card.CardType
   ( CardType
   , name
   , cardClasses
-  , darkIconImg
-  , darkIconSrc
-  , lightIconImg
-  , lightIconSrc
+  , icon
   , encode
   , decode
   , consumerInteractable
@@ -43,10 +40,8 @@ import Data.String as Str
 import Data.Variant (case_)
 
 import Halogen.HTML as H
-import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 
-import SlamData.Config as Config
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType.Simple
   ( _search, search
   , _chart, chart
@@ -203,26 +198,9 @@ decode = J.decodeJson >=> parse
 name ∷ CardType → String
 name = case_ # Sim.name # Sel.name # Cht.name # Inp.name # Geo.name # Sta.name # Ace.name
 
-icon ∷ CardType → String
+icon ∷ CardType → I.IconHTML
 icon =
   case_ # Sim.icon # Ace.icon # Cht.icon # Sel.icon # Inp.icon # Sta.icon # Geo.icon
-
-
-darkIconSrc ∷ CardType → String
-darkIconSrc s =
-  Config.darkIconsPath ⊕ "/" ⊕ icon s ⊕ ".svg"
-
-darkIconImg ∷ ∀ a b. CardType → H.HTML a b
-darkIconImg s =
-  HH.img [ HP.src $ darkIconSrc s ]
-
-lightIconSrc ∷ CardType → String
-lightIconSrc s =
-  Config.lightIconsPath ⊕ "/" ⊕ icon s ⊕ ".svg"
-
-lightIconImg ∷ ∀ a b. CardType → H.HTML a b
-lightIconImg s =
-  HH.img [ HP.src $ lightIconSrc s ]
 
 consumerInteractable ∷ CardType → Boolean
 consumerInteractable = case_

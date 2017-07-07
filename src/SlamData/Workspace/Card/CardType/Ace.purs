@@ -1,3 +1,19 @@
+{-
+Copyright 2017 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Card.CardType.Ace where
 
 import SlamData.Prelude
@@ -6,6 +22,8 @@ import Data.Variant (inj, on)
 
 import Halogen.HTML as H
 import Halogen.HTML as HH
+
+import SlamData.Render.Icon as I
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -59,10 +77,10 @@ parse = case _ of
   "ace-sql" → Right aceSql
   _ → Left "this is not ace card"
 
-icon ∷ ∀ r. (Variant r → String) → Ace r → String
+icon ∷ ∀ r. (Variant r → I.IconHTML) → Ace r → I.IconHTML
 icon cb = cb
-  # on _aceMarkdown (const "setupMarkdown")
-  # on _aceSql (const "query")
+  # on _aceMarkdown (const $ I.IconHTML I.cardsSetupMarkdown)
+  # on _aceSql (const $ I.IconHTML I.cardsQuery)
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Ace r → Boolean
 consumerInteractable cb = cb

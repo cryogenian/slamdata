@@ -27,29 +27,25 @@ module SlamData.ActionList.Component
 import SlamData.Prelude
 
 import CSS as CSS
-
 import Data.Array as Array
 import Data.Foldable as Foldable
 import Data.String as String
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
 import RectanglePacking (Dimensions, maybeNotZero, domRectToDimensions)
-
-import SlamData.Monad (Slam)
 import SlamData.ActionList.Action as A
-import SlamData.ActionList.Component.State as ST
-import SlamData.ActionList.Component.Query as Q
 import SlamData.ActionList.Component.Message as M
-
+import SlamData.ActionList.Component.Query as Q
+import SlamData.ActionList.Component.State as ST
+import SlamData.Monad (Slam)
+import SlamData.Render.Icon as I
+import Utils.CSS as CSSUtils
 import Utils.DOM (DOMRect)
 import Utils.DOM as DOMUtils
-import Utils.CSS as CSSUtils
 
 type HTML a = H.ComponentHTML (Q.Query a)
 type DSL a = H.ComponentDSL (ST.State a) (Q.Query a) (M.Message a) Slam
@@ -88,7 +84,6 @@ render mkConf state =
     [ HH.ul
         [ HP.ref elementRef ]
         $ renderButtons (String.toLower state.filterString) conf
-
     ]
   where
   conf =
@@ -153,12 +148,14 @@ renderButton filterString { presentation, metrics, action, lines } =
   where
   renderIcon ∷ HTML a
   renderIcon =
-    HH.img
-      [ HP.src $ A.pluckActionIconSrc action
-      , HCSS.style
-          $ CSS.width (CSS.px metrics.iconDimensions.width)
+    HH.span
+      [ HCSS.style
+          $ CSS.display CSS.block
+          *> CSS.width (CSS.px metrics.iconDimensions.width)
           *> CSS.height (CSS.px metrics.iconDimensions.height)
           *> CSS.marginBottom (CSS.px metrics.iconMarginPx)
+          *> CSS.marginLeft (CSS.fromString "auto")
+          *> CSS.marginRight (CSS.fromString "auto")
           -- Stops icon only presentations from being cut off in short wide
           -- buttons.
           *> (if (A.isIconOnly presentation)
@@ -169,6 +166,7 @@ renderButton filterString { presentation, metrics, action, lines } =
                 else
                   CSS.position CSS.relative)
       ]
+      (A.pluckActionIcon action # maybe [ ] (I.unIconHTML >>> pure))
 
   renderName ∷ HTML a
   renderName =
@@ -213,25 +211,22 @@ renderButton filterString { presentation, metrics, action, lines } =
 
 updateActions ∷ ∀ a. Eq a ⇒ Array (A.Action a) → ST.State a → ST.State a
 updateActions newActions state =
-  case activeDrill of
+  case state.activeDrill of
     Nothing →
       state
         { actions = newActions }
     Just drill →
       state
         { previousActions = newActions
-        , actions = fromMaybe [] $ A.pluckDrillActions =<< newActiveDrill
+        , actions = newActiveDrill >>= A.pluckDrillActions # fromMaybe []
         }
   where
-  activeDrill ∷ Maybe (A.Action a)
-  activeDrill =
-    Foldable.find
-      (maybe false (eq state.actions) ∘ A.pluckDrillActions)
-      state.previousActions
-
   newActiveDrill ∷ Maybe (A.Action a)
   newActiveDrill =
-    Foldable.find (eq activeDrill ∘ Just) newActions
+    state.activeDrill >>= A.pluckAction >>= \activeAction →
+      Foldable.find
+        (A.pluckAction >>> eq (Just activeAction))
+        state.previousActions
 
 getBoundingDOMRect ∷ ∀ a. DSL a (Maybe DOMRect)
 getBoundingDOMRect =
@@ -252,11 +247,13 @@ eval =
         A.Drill {children} →
           H.modify _
             { actions = A.GoBack `Array.cons` children
+            , activeDrill = Just action
             , previousActions = st.actions
             }
         A.GoBack →
           H.modify _
             { actions = st.previousActions
+            , activeDrill = Nothing
             , previousActions = [ ]
             }
       pure next

@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Array as A
 
 import SlamData.ActionList.Action as Action
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.Chart as Cht
@@ -59,7 +60,7 @@ geoChartSubmenu
 geoChartSubmenu mkAction =
   Action.mkDrill
     { name: "Setup Geo Chart"
-    , iconSrc: "img/cardsLight/setupGeoChart.svg"
+    , icon: Just $ I.IconHTML I.cardsSetupGeoChart
     , description: "Select Setup Geo Chart card category"
     , children: map mkAction Geo.all
     }
@@ -79,7 +80,7 @@ chartSubmenu
 chartSubmenu mkAction =
   Action.mkDrill
     { name: "Setup Chart"
-    , iconSrc: "img/cardsLight/setupChart.svg"
+    , icon: Just $ I.IconHTML I.cardsSetupChart
     , description: "Select Setup Chart card category"
     , children: map mkAction Cht.all
     }
@@ -99,7 +100,7 @@ formInputSubmenu
 formInputSubmenu mkAction =
   Action.mkDrill
     { name: "Setup Form"
-    , iconSrc: "img/cardsLight/setupFormInput.svg"
+    , icon: Just $ I.IconHTML I.cardsSetupFormInput
     , description: "Select Setup Form card category"
     , children: map mkAction $ Sta.all ⊕ Inp.all ⊕ Sel.all
     }
@@ -116,7 +117,7 @@ toAction ∷ NextAction → Action.Action NextAction
 toAction na =
   Action.mkDo
     { name: CT.name cardType
-    , iconSrc: CT.lightIconSrc cardType
+    , icon: Just $ CT.icon cardType
     , highlighted: isInsert na
     , disabled: false
     , description: description na

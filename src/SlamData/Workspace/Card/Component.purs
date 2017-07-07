@@ -43,6 +43,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.CardType as CT
@@ -101,7 +102,7 @@ makeCardComponent cardType component options =
       $ fold [cardLabel, card]
     where
     icon ∷ CardHTML f
-    icon = HH.img [ HP.src $ CT.darkIconSrc cardType ]
+    icon = CT.icon cardType # I.unIconHTML
 
     cardLabel ∷ Array (CardHTML f)
     cardLabel

@@ -1,0 +1,123 @@
+input
+  transition-property: background-color, border-color, color
+  transition-duration: 200ms
+  transition-timing-function: ease-out
+
+
+.sd-form input[type="text"],
+.sd-form input[type="number"],
+.sd-form input[type="date"],
+.sd-form input[type="time"],
+.sd-form input[type="datetime-local"],
+.sd-form select,
+.sd-form-input
+  position: relative
+  height: 3.2rem
+  line-height: 3.2rem
+  box-sizing: border-box
+  margin: 0.5rem 0
+  padding: 0 0.75rem
+  border: 0.1rem solid $input-border
+  box-shadow: inset 0.2rem 0.3rem $padding-base-vertical -0.3rem $shade-tint
+  background: $body-bg
+  color: $text-color
+
+  &:focus
+    z-index: 1
+    border-color: $input-border-focus
+
+
+label.sd-option span
+  margin-left: 0.5rem
+
+
+.sd-form button,
+.sd-form-button
+  color: $text-color
+  height: 3.2rem
+  // stupid value here keeps line height consistent between <button> and <a>
+  // without breaking form alignment.
+  line-height: calc(2.5rem - 0.1rem)
+  text-decoration: none
+  display: inline-block
+  min-width: 2.5rem
+  margin: 0.5rem 0
+  border: 0.1rem solid $color-separator
+  padding: 0 0.5rem
+  background: $input-bg
+  background-image: linear-gradient(to top, $shade-tint, transparent)
+
+  &:disabled
+    opacity: 0.8
+
+  &:not(:disabled)
+    &:hover
+      background-color: $input-border
+
+    &:active
+      background-image: linear-gradient(to bottom, $shade-tint, transparent)
+
+  .sd-icon
+    top: 0.2rem
+    margin-left: 0.1rem
+    color: $text-color
+
+
+.sd-form-button-group
+  button + button
+    border-left: 0
+
+
+.sd-dismiss-button,
+.sd-discrete-button
+  background: none
+  padding: none
+  margin: none
+  border: none
+  height: $grid-size
+  line-height: $grid-size
+  text-align: center
+  color: $color-separator
+
+
+.sd-discrete-button
+  font-size: inherit
+
+
+.sd-picker-input
+  position: relative
+
+  .form-control
+    border-radius: 0
+
+  button
+    text-align: left
+
+  &.default
+    button
+      color: #999  // TODO
+
+  .sd-dismiss-button
+    position: absolute
+    height: 3.4rem
+    width: 3.4rem
+    right: 0
+    text-align: center
+
+    &[disabled]
+      display: none
+
+
+.sd-select-input
+  position: relative
+  top: $padding-base-vertical * -1
+
+  .list-group
+    position: absolute
+    top: 3rem
+    right: 0
+    width: 24rem
+
+
+.form-control
+  transition: border-color 200ms ease-out

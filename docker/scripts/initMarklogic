@@ -1,0 +1,77 @@
+##!/usr/bin/env bash
+set -euo pipefail # STRICT MODE
+IFS=$'\n\t'       # http://redsymbol.net/articles/unofficial-bash-strict-mode/
+
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+DOCKERID=$(docker ps -q -f name=marklogic)
+
+ML_USERNAME="marklogic"
+ML_PASSWORD="marklogic"
+
+MLHOSTNAME=$1
+ADMIN_PORT=$2
+MANAGE_PORT=$3
+URILEX_DISABLED=$4
+ML_ADMIN_PREFIX="http://${MLHOSTNAME}:${ADMIN_PORT}/admin/v1"
+ML_MANAGE_PREFIX="http://${MLHOSTNAME}:${MANAGE_PORT}/manage/v2"
+ML_PREFIX="http://${MLHOSTNAME}:${MANAGE_PORT}"
+
+
+echo -e "${GREEN}setting up marklogic with the license info...${NC}"
+curl -d "" ${ML_ADMIN_PREFIX}/init
+printf "\n\n"
+
+# Allow the server to restart
+sleep 5
+
+# Add the admin user
+echo -e "${GREEN}setting up marklogic with admin user...${NC}"
+curl -d "admin-username=${ML_USERNAME}&admin-password=${ML_PASSWORD}" ${ML_ADMIN_PREFIX}/instance-admin
+
+# Disable the URI lexicon, if requested.
+if [[ "${URILEX_DISABLED:-enabled}" == "disabled" ]]; then
+    sleep 5
+    curl -X PUT --anyauth -u "${ML_USERNAME}:${ML_PASSWORD}" -H "Content-Type: application/json" \
+         -d '{"uri-lexicon" : false}' \
+         ${ML_MANAGE_PREFIX}/databases/Documents/properties
+fi
+
+# Create a tesDb database.
+echo -e "${GREEN}marklogic create testDb...${NC}"
+curl --anyauth -u "${ML_USERNAME}:${ML_PASSWORD}" -H "Content-type: application/json" \
+     -d '{"database-name":"testDb"}'  ${ML_MANAGE_PREFIX}/databases
+printf "\n\n"
+
+sleep 5
+
+# Create Forest and attach it to database.
+echo -e "${GREEN}marklogic create Forest...${NC}"
+
+# When within Travis you need to 
+MLHOSTNAMES=`curl --anyauth --user $ML_USERNAME:$ML_PASSWORD -X GET \
+-i -H "Content-type: application/json" $ML_MANAGE_PREFIX/hosts | grep "<nameref>" | sed s/\<nameref\>// | sed s/\<.nameref\>// | tr -s ' ' '#' | sed s/#//`
+
+curl --anyauth --user $ML_USERNAME:$ML_PASSWORD -X POST \
+     -d '{"forest-name":"testDb", "host": "'"$MLHOSTNAMES"'", "database": "testDb"}' \
+     -i -H "Content-type: application/json" ${ML_MANAGE_PREFIX}/forests
+
+sleep 5
+
+# upload the zip test data to database
+echo -e "${GREEN}marklogic dump test data zip...${NC}"
+docker exec -it marklogic mlcp.sh import -host ${MLHOSTNAME} -port 8000 -username ${ML_USERNAME} \
+       -password ${ML_PASSWORD} -input_file_path /tmp/marklogic.zip -database testDb -input_compressed true \
+       -output_uri_replace "/tmp/marklogic.zip/marklogic,'/testDb'"
+printf "\n\n"
+
+
+# Uploading a single file and adding a collection name to it, just incase it is needed in future
+# echo -e "${GREEN}marklogic dump olympics...${NC}"
+# docker exec -it marklogic mlcp.sh import -host ${MLHOSTNAME} -port 8000 -username ${ML_USERNAME} \
+#        -password ${ML_PASSWORD} -input_file_path /tmp/dump/olympics.json \
+#        -input_file_type delimited_json  -output_uri_prefix "/olympics/" \
+#        -output_collections "olympics" -database testDb -uri_id _id \
+#        -output_uri_suffix ".json"
+# printf "\n\n"
