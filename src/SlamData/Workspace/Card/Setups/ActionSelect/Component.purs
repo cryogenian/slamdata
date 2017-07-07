@@ -16,15 +16,19 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.ActionSelect.Component where
 
 import SlamData.Prelude
+
 import Data.Array as Array
+
 import Halogen as H
 import Halogen.Component.Proxy as HCP
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Component.ChildPath (cp1, cp2)
+
 import SlamData.Monad (Slam)
 import SlamData.ActionList.Component as ALC
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Setups.Dialog as CSD
 
 data Query s a
@@ -43,7 +47,7 @@ data Message s
 
 type OptionComponent s = HCP.ProxyComponent (Const Void) (Maybe s) (Maybe s) Slam
 
-type Label = { text ∷ String, icon ∷ Maybe String }
+type Label = { text ∷ String, icon ∷ Maybe I.IconHTML }
 
 type State' s r =
   { options ∷ Array s
@@ -190,7 +194,7 @@ mkAction selection toLabel action =
     ALC.mkDo
       { name: label.text
       , description: label.text
-      , iconSrc: fromMaybe "" label.icon
+      , icon: label.icon
       , highlighted: selection ≡ Just action
       , disabled: false
       , action: Just action

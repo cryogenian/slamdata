@@ -1,0 +1,52 @@
+.sd-unshare-subject
+  display: flex
+  flex-direction: row
+
+  *
+    flex: 0 0 auto
+
+  *:not(:last-child)
+    margin-right: 1rem
+
+  .form-control
+    width: auto
+
+    input
+      width: auto
+
+  label, span
+    flex: 1 1 auto
+    text-overflow: ellipsis
+    white-space: nowrap
+    overflow: hidden
+    vertical-align: middle
+    display: inline-block
+    line-height: 1.42857143
+    padding-top: $padding-base-vertical
+    padding-bottom: $padding-base-vertical
+
+  .sd-unshare-subject-access-type
+    flex: 0 0 auto
+
+  .sd-url
+    input
+      flex: 1 1 auto
+      display: inline-block
+      vertical-align: middle
+      background-color: #eee
+      padding: $padding-base-vertical $padding-base-horizontal
+      box-shadow: 0
+      margin-right: 0
+      border: 0.1rem solid $color-separator
+      line-height: 1.42857143
+      font-size: 1.4rem
+      border-top-left-radius: 0.4rem
+      border-bottom-left-radius: 0.4rem
+
+    button
+      margin-right: 0
+      border-top-right-radius: 0.4rem
+      border-bottom-right-radius: 0.4rem
+      border-top-left-radius: 0
+      border-bottom-left-radius: 0
+      margin-left: -0.1rem

@@ -1,0 +1,21 @@
+@keyframes icon-spin
+  0%
+    transform: rotate(0turn)
+
+  100%
+    transform: rotate(1turn)
+
+
+.sd-icon
+  display: inline-block
+
+  > svg
+    width: 1em
+    height: 1em
+    vertical-align: text-bottom
+    fill: currentColor
+    pointer-events: none
+
+
+.sd-icon--spinner
+  animation: 1s steps(8) 0s infinite normal none icon-spin

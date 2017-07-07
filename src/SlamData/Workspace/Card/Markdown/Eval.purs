@@ -21,9 +21,8 @@ import SlamData.Prelude
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Writer.Class (class MonadTell)
 import Data.Array as A
-import Data.HugeNum as HN
+import Data.HugeInt as HI
 import Data.Identity (Identity)
-import Data.Int as Int
 import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.List.NonEmpty as NEL
@@ -173,7 +172,7 @@ evalEmbeddedQueries varMap dir =
       (SD.Numeric _), (EJSON.Decimal a) →
         pure ∘ SD.Numeric $ pure a
       (SD.Numeric _), (EJSON.Integer a) →
-        pure ∘ SD.Numeric $ pure (HN.fromNumber (Int.toNumber a))
+        pure ∘ SD.Numeric $ pure (HI.toHugeNum a)
       (SD.Time prec _), (EJSON.String time) →
         case SqlT.parseTime time of
           Left error → throwMarkdownError (MarkdownInvalidTimeValue { field, time, error: unwrap error })

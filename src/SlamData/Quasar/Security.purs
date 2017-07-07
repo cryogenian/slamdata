@@ -22,7 +22,6 @@ import Control.Monad.Eff.Exception as Exn
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Error (lowerQError)
-import Quasar.Types as QT
 import Quasar.Advanced.Types as QTA
 
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
@@ -39,7 +38,7 @@ sharePermission req = do
 groupInfo
   ∷ ∀ m
   . QuasarDSL m
-  ⇒ QT.FilePath
+  ⇒ QF.GroupPath
   → m (Exn.Error ⊹ QTA.GroupInfoR)
 groupInfo groupPath =
   liftQuasar $ lmap lowerQError

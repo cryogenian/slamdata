@@ -1,0 +1,53 @@
+.toolbar-sort
+  padding-top: 1.4rem
+  padding-bottom: 1rem
+  cursor: pointer
+
+  .sd-icon
+    margin-left: 1rem
+    font-size: 0.5em
+
+
+.toolbar-menu
+  justify-content: flex-end
+  width: 100%
+
+  &, > ul
+    display: flex
+    flex-flow: row wrap
+
+  > ul
+    list-style: none
+    margin: 0
+    padding: 0
+
+  input[type="file"]
+    @extend .sr-only
+
+  button, label
+    padding: 0 0.75rem
+    cursor: pointer
+    color: $filesystem-toolbar-color
+
+    &:hover, &:focus
+      color: $filesystem-toolbar-hover-color
+
+  .sd-icon
+    font-size: 2rem
+    line-height: 4rem
+    position: relative
+    overflow: hidden
+
+
+.sd-mount-guide
+  position: absolute
+  right: 14.8rem
+  top: -0.2rem
+  z-index: 1000
+  width: 28.8rem
+
+
+.sd-mount-hint
+  z-index: 1000
+  margin-right: 1rem
+  width: 28.8rem

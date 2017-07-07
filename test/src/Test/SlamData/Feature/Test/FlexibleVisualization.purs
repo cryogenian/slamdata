@@ -18,27 +18,36 @@ module Test.SlamData.Feature.Test.FlexibleVisualation where
 
 import SlamData.Prelude
 
-import Data.String as S
 import Data.StrMap as SM
-
+import Data.String as S
+import Selenium.Monad (script, tryRepeatedlyTo)
 import Test.Feature.Log (successMsg)
-import Test.Feature.Scenario (scenario)
+import Test.Feature.Scenario (KnownIssues, noIssues, scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
-import Test.SlamData.Feature.Monad (SlamFeature)
+import Test.SlamData.Feature.Monad (SlamFeature, getConnector)
 
-import Selenium.Monad (script, tryRepeatedlyTo)
-
-variablesChartScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
-variablesChartScenario =
+variablesChartScenario ∷ String → KnownIssues → SlamFeature Unit → SlamFeature Unit
+variablesChartScenario scenarioName knownIssues implementation = do
+  connector ← getConnector
   scenario
-    "Flexible Visualization"
-    (Interact.createWorkspaceInTestFolder "Flexible Visualization")
-    (Interact.deleteFileInTestFolder "Flexible Visualization.slam")
+    { epic: "Flexible Visualization"
+    , before: Interact.createWorkspaceInTestFolder "Flexible Visualization"
+    , after: Interact.deleteFileInTestFolder "Flexible Visualization.slam"
+    , title: scenarioName
+    , knownIssues
+    , connector
+    }
+    implementation
 
 test ∷ SlamFeature Unit
 test =
-  variablesChartScenario "Make embeddable patients-city charts" [] do
+  variablesChartScenario "Make embeddable patients-city charts"
+  (noIssues
+     { marklogic = Just "https://github.com/quasar-analytics/quasar/issues/2341"
+     , couchbase = Just "https://github.com/quasar-analytics/quasar/issues/2403"
+      })
+  do
     _ ← tryRepeatedlyTo $ script """
       var run = function() {
         var __init = echarts.init;
@@ -54,11 +63,11 @@ test =
       };
       run();
     """
-    Interact.insertVariablesCardInLastDeck
+    Interact.insertVariablesCardInFirstDeck
     successMsg "Inserted Variables Card"
     Interact.provideApiVariableBindingsForVariablesCard "state" "Text" "CO"
     successMsg "Provided variables; Will access next card"
-    Interact.accessNextCardInLastDeck
+    Interact.accessNextCardInFirstDeck
     successMsg "Accessed next card, will insert Troubleshoot card"
     Interact.insertTroubleshootCardInLastDeck
     Expect.troubleshootCardPresented
@@ -87,7 +96,6 @@ test =
     Interact.accessNextCardInLastDeck
     successMsg "Will insert chart options card"
     Interact.insertChartCardInLastDeck
-
 
     Expect.lastEChart chart_CO
     Interact.accessPreviousCardInLastDeck

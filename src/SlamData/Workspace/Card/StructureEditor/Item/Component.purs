@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.StructureEditor.Item.Component where
 import SlamData.Prelude
 
 import CSS as CSS
-
 import Halogen as H
 import Halogen.Component.Proxy (proxy)
 import Halogen.HTML as HH
@@ -27,8 +26,7 @@ import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
-import SlamData.Workspace.Card.StructureEditor.Common (ColumnItem, ColumnPath, columnItemLabel, columnItemWeight)
+import SlamData.Workspace.Card.StructureEditor.Common (ColumnItem, ColumnPath, columnItemLabel, columnItemWeight, columnItemIcon)
 import SlamData.Workspace.Card.StructureEditor.Message (Message)
 import SlamData.Workspace.MillerColumns.Column.Component.Item as MCI
 
@@ -86,11 +84,20 @@ component' path item =
 renderItem ∷ ColumnItem → HTML
 renderItem ci =
   HH.div
-    [ HP.class_ (H.ClassName "sd-structure-editor-item") ]
+    [ HP.classes
+        [ H.ClassName "sd-structure-editor-item"
+        , H.ClassName "sd-miller-column-item-inner"
+        ]
+    ]
     [ HH.div
         [ HP.class_ (H.ClassName "sd-structure-editor-item-weight")
         , HCSS.style $ CSS.width (CSS.pct (unwrap (columnItemWeight ci) * 100.0))
         ]
         []
-    , HH.div_ [ HH.text (columnItemLabel ci) ]
+    , HH.div_
+        [ HH.span_
+            [ columnItemIcon ci
+            , HH.text (columnItemLabel ci)
+            ]
+        ]
     ]

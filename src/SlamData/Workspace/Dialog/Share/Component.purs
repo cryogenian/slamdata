@@ -22,8 +22,7 @@ import Clipboard as C
 import Control.UI.Browser (select)
 import Data.Array as Arr
 import Data.Foreign (toForeign)
-import Data.Path.Pathy (rootDir, (</>), file)
-import Data.Path.Pathy as Pt
+import Data.Path.Pathy (rootDir)
 import Data.String as Str
 import DOM.Classy.Element (toElement)
 import DOM.HTML.Types (readHTMLElement)
@@ -39,7 +38,6 @@ import SlamData.Quasar.Security as Q
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Dialog.Share.Model (ShareResume(..), sharingActions, SharingInput)
 import Utils.DOM as DOM
-import Utils.Path (rootFile, FilePath)
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Message Slam
@@ -84,9 +82,8 @@ type State =
   { subjectType ∷ SubjectType
   , error ∷ Maybe ErrorType
   , email ∷ String
-    -- Actually should be Group from purescript-quasar
-  , groups ∷ Array FilePath
-  , groupSelected ∷ Maybe FilePath
+  , groups ∷ Array QT.GroupPath
+  , groupSelected ∷ Maybe QT.GroupPath
   , tokenName ∷ String
   , loading ∷ Boolean
   , showError ∷ Boolean
@@ -282,11 +279,11 @@ render state =
                 -- because it's break context. OTOH, lambdas are not
                 -- so fancy as named func. cryogenian.
                 let
-                  renderOption ∷ FilePath → HTML
+                  renderOption ∷ QT.GroupPath → HTML
                   renderOption group =
                     HH.option
-                      [ HP.value $ Pt.printPath  group ]
-                      [ HH.text $ Pt.printPath  group ]
+                      [ HP.value $ QT.printGroupPath  group ]
+                      [ HH.text $ QT.printGroupPath  group ]
                 in
                   map renderOption state.groups
             ]
@@ -383,7 +380,7 @@ render state =
 eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
-    Q.groupInfo (rootDir </> file "") >>= case _ of
+    Q.groupInfo (QT.GroupPath rootDir) >>= case _ of
       Left _ →
         H.modify _
           { error = Just GroupList
@@ -391,7 +388,7 @@ eval = case _ of
           , loading = false
           }
       Right grInfo → do
-        let groups = [ rootFile ] ⊕ grInfo.subGroups
+        let groups = [ QT.GroupPath rootDir ] ⊕ grInfo.subGroups
         H.modify _
           { groups = groups
           , loading = false
@@ -439,7 +436,7 @@ eval = case _ of
     pure next
   ChangeGroup grpString next → do
     groups ← H.gets _.groups
-    let group = Arr.find (eq grpString ∘ Pt.printPath) groups
+    let group = Arr.find (eq grpString ∘ QT.printGroupPath) groups
     H.modify _ { groupSelected = group }
     pure next
   ChangeTokenName str next →
@@ -483,7 +480,7 @@ sharePermission ∷ State → DSL Unit
 sharePermission state = do
   let
     users = if state.subjectType ≡ User then [ QT.UserId state.email ] else [ ]
-    groups = if state.subjectType ≡ Group then foldMap (pure ∘ Right) state.groupSelected else [ ]
+    groups = guard (state.subjectType == Group) *> Arr.fromFoldable state.groupSelected
     actions = sharingActions state.sharingInput state.shareResume
   Q.sharePermission { users, groups, actions } >>= case _ of
     Left _   → showConnectionError

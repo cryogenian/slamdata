@@ -25,6 +25,7 @@ module SlamData.Workspace.Card.Search.Interpret
 import SlamData.Prelude
 
 import Data.Foldable as F
+import Data.HugeInt as HI
 import Data.Int as Int
 import Data.Json.Extended as Ej
 import Data.Lens ((?~), (.~))
@@ -153,7 +154,7 @@ labelToFieldF ∷ Coalgebra (SqlF Ej.EJsonF) (L.List String)
 labelToFieldF = case _ of
   L.Nil → Sql.Splice Nothing
   hd : L.Nil → case labelInt hd of
-    Just i → Sql.Literal $ Ej.Integer i
+    Just i → Sql.Literal $ Ej.Integer (HI.fromInt i)
     Nothing → Sql.Ident hd
   hd : tl → case labelInt hd of
     Just i → Sql.Binop { op: Sql.IndexDeref,  lhs: tl, rhs: pure hd }
