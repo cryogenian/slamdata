@@ -145,24 +145,6 @@ render state =
             ]
       ]
 
-propagateChange :: DSL Unit
-propagateChange = do
-  s ← H.get
-  void case s.formInputType of
-    Datetime | not s.inputTypeSupported IT.DateTimeLocal →
-      H.query' cpDateTimePicker unit
-      $ setValue
-      $ Right <$> unformatDateTime s.value
-    Date | not s.inputTypeSupported IT.Date →
-      H.query' cpDatePicker unit
-      $ setValue
-      $ Right <$> unformatDate s.value
-    Time | not s.inputTypeSupported IT.Time →
-      H.query' cpTimePicker unit
-      $ setValue
-      $ Right <$> unformatTime s.value
-    _ -> pure (Just unit)
-
 eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
@@ -171,7 +153,6 @@ eval = case _ of
     pure next
   ValueChanged s next → do
     H.modify _{ value = s }
-    propagateChange
     H.raise Updated
     pure next
   Setup p next → do
@@ -202,7 +183,21 @@ eval = case _ of
       , formInputType = m.formInputType
       , cursor = m.cursor
       }
-    propagateChange
+    s ← H.get
+    void case s.formInputType of
+      Datetime | not s.inputTypeSupported IT.DateTimeLocal →
+        H.query' cpDateTimePicker unit
+        $ setValue
+        $ Right <$> unformatDateTime s.value
+      Date | not s.inputTypeSupported IT.Date →
+        H.query' cpDatePicker unit
+        $ setValue
+        $ Right <$> unformatDate s.value
+      Time | not s.inputTypeSupported IT.Time →
+        H.query' cpTimePicker unit
+        $ setValue
+        $ Right <$> unformatTime s.value
+      _ -> pure (Just unit)
     pure next
   PreventDefault ev next → do
     H.liftEff $ DOM.preventDefault ev
