@@ -77,7 +77,12 @@ renderDeck opts deckComponent st =
           , HH.div
               [ HP.class_ CSS.deck
               ]
-              [ Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
+              [ HH.div
+                  [ HP.class_ $ HH.ClassName "sd-card-sizer"
+                  , HP.ref Common.sizerRef
+                  ]
+                  []
+              , Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
               , renderBackside $ DCS.isFlipSide st.displayMode
               ]
           ]
@@ -132,8 +137,7 @@ deckClasses st =
 
 deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp (onMouseDown ∷ DOM.MouseEvent | r) (Query Unit))
 deckProperties opts =
-  [ HP.ref Common.sizerRef ]
-  <> (guard (L.length opts.displayCursor <= 1) $> HE.onMouseDown (HE.input Focus))
+  guard (L.length opts.displayCursor <= 1) $> HE.onMouseDown (HE.input Focus)
 
 renderName ∷ String → DeckHTML
 renderName name =
