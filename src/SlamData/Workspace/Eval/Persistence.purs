@@ -148,24 +148,26 @@ getRootDeckId =
 
 saveCardsLocally ∷ ∀ f m. Persist f m (Deck.Id → Map CID.CardId AnyCardModel → m Unit)
 saveCardsLocally =
-  LS.persist (J.encodeJson <<< adaptCards) ∘ LSK.cardsLocalStorageKey
+  LS.persist (J.encodeJson ∘ cardMapToJson) ∘ LSK.cardsLocalStorageKey
 
 getLocallyStoredCards ∷ ∀ f m. Persist f m (Deck.Id → m (Map CID.CardId AnyCardModel))
 getLocallyStoredCards deckId =
   either (const Map.empty) id
-    <$> (LS.retrieve (adaptCardsJ <=< J.decodeJson) $ LSK.cardsLocalStorageKey deckId)
+    <$> (LS.retrieve (cardMapFromJson <=< J.decodeJson) $ LSK.cardsLocalStorageKey deckId)
 
-adaptCards ∷ Map CID.CardId AnyCardModel → Map J.Json AnyCardModel
-adaptCards =
+cardMapToJson ∷ Map CID.CardId AnyCardModel → Map J.Json AnyCardModel
+cardMapToJson =
   Map.fromFoldable
-    <<< map (lmap (CA.encode CID.codec))
-    <<< (Map.toUnfoldable ∷ ∀ k v. Map k v → Array (Tuple k v))
+    ∘ map (lmap (CA.encode CID.codec))
+    ∘ asArray
+    ∘ Map.toUnfoldable
 
-adaptCardsJ ∷ Map J.Json AnyCardModel → Either String (Map CID.CardId AnyCardModel)
-adaptCardsJ =
+cardMapFromJson ∷ Map J.Json AnyCardModel → Either String (Map CID.CardId AnyCardModel)
+cardMapFromJson =
   map Map.fromFoldable
-    <<< traverse (bitraverse (lmap CA.printJsonDecodeError <<< CA.decode CID.codec) pure)
-    <<< (Map.toUnfoldable ∷ ∀ k v. Map k v → Array (Tuple k v))
+    ∘ traverse (bitraverse (lmap CA.printJsonDecodeError <<< CA.decode CID.codec) pure)
+    ∘ asArray
+    ∘ Map.toUnfoldable
 
 putDeck ∷ ∀ m. PersistEnv m (Deck.Id → Deck.Model → m Unit)
 putDeck deckId deck = do
