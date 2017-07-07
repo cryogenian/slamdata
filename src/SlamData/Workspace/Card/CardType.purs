@@ -17,12 +17,9 @@ limitations under the License.
 module SlamData.Workspace.Card.CardType
   ( CardType(..)
   , AceMode(..)
+  , cardIcon
   , cardName
   , cardClasses
-  , cardIconDarkImg
-  , cardIconDarkSrc
-  , cardIconLightImg
-  , cardIconLightSrc
   , aceCardName
   , aceCardClasses
   , aceMode
@@ -35,10 +32,8 @@ import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson
 import Data.String as Str
 
 import Halogen.HTML as H
-import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 
-import SlamData.Config as Config
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType.ChartType as ChT
 import SlamData.Workspace.Card.CardType.FormInputType as FiT
 import SlamData.Workspace.Card.CardType.GeoChartType as GcT
@@ -172,119 +167,102 @@ cardName = case _ of
   Tabs → "Setup Tabs"
   StructureEditor → "Structure Viewer"
 
-cardIcon ∷ CardType → String
-cardIcon = case _ of
+cardIcon ∷ CardType → I.IconHTML
+cardIcon = I.IconHTML ∘ case _ of
   Ace MarkdownMode →
-    "setupMarkdown"
+    I.cardsSetupMarkdown
   Ace SQLMode →
-    "query"
+    I.cardsQuery
   Search →
-    "search"
+    I.cardsSearch
   ChartOptions chty →
     case chty of
       ChT.Pie →
-        "buildChart/pie"
+        I.buildChartPie
       ChT.Line →
-        "buildChart/line"
+        I.buildChartLine
       ChT.Bar →
-        "buildChart/bar"
+        I.buildChartBar
       ChT.Area →
-        "buildChart/area"
+        I.buildChartArea
       ChT.Scatter →
-        "buildChart/scatter"
+        I.buildChartScatter
       ChT.Radar →
-        "buildChart/radar"
+        I.buildChartRadar
       ChT.Funnel →
-        "buildChart/funnel"
+        I.buildChartFunnel
       ChT.Graph →
-        "buildChart/graph"
+        I.buildChartGraph
       ChT.Heatmap →
-        "buildChart/heatmap"
+        I.buildChartHeatmap
       ChT.Sankey →
-        "buildChart/sankey"
+        I.buildChartSankey
       ChT.Gauge →
-        "buildChart/gauge"
+        I.buildChartGauge
       ChT.Boxplot →
-        "buildChart/boxplot"
+        I.buildChartBoxplot
       ChT.Metric →
-        "buildChart/metric"
+        I.buildChartMetric
       ChT.PivotTable →
-        "buildChart/pivot-table"
+        I.buildChartPivotTable
       ChT.PunchCard →
-        "buildChart/punch-card"
+        I.buildChartPunchCard
       ChT.Candlestick →
-        "buildChart/candlestick"
+        I.buildChartCandlestick
       ChT.Parallel →
-        "buildChart/parallel"
+        I.buildChartParallel
   SetupFormInput fity → case fity of
     FiT.Dropdown →
-      "setupFormInput/dropdown"
+      I.cardsSetupFormInputDropdown
     FiT.Static →
-      "setupFormInput/static"
+      I.cardsSetupFormInputStatic
     FiT.Text →
-      "setupFormInput/text"
+      I.cardsSetupFormInputText
     FiT.Numeric →
-      "setupFormInput/numeric"
+      I.cardsSetupFormInputNumeric
     FiT.Checkbox →
-      "setupFormInput/checkbox"
+      I.cardsSetupFormInputCheckbox
     FiT.Radio →
-      "setupFormInput/radio"
+      I.cardsSetupFormInputRadio
     FiT.Date →
-      "setupFormInput/date"
+      I.cardsSetupFormInputDate
     FiT.Time →
-      "setupFormInput/time"
+      I.cardsSetupFormInputTime
     FiT.Datetime →
-      "setupFormInput/datetime"
+      I.cardsSetupFormInputDatetime
   SetupGeoChart gcty → case gcty of
     GcT.Marker →
-      "setupGeoChart/marker"
+      I.cardsSetupGeoChartMarker
     GcT.Heatmap →
-      "setupGeoChart/heatmap"
+      I.cardsSetupGeoChartHeatmap
   Download →
-    "showDownload"
+    I.cardsShowDownload
   Variables →
-    "setupVariables"
+    I.cardsSetupVariables
   Troubleshoot →
-    "troubleshoot"
+    I.cardsTroubleshoot
   Chart →
-    "showChart"
+    I.cardsShowChart
   FormInput →
-    "showFormInput"
+    I.cardsShowFormInput
   Markdown →
-    "showMarkdown"
+    I.cardsShowMarkdown
   Table →
-    "table"
+    I.cardsTable
   Cache →
-    "cache"
+    I.cardsCache
   Open →
-    "open"
+    I.cardsOpen
   DownloadOptions →
-    "setupDownload"
+    I.cardsSetupDownload
   Draftboard →
-    "dashboard"
+    I.cardsDashboard
   Tabs →
-    "tabs"
+    I.cardsTabs
   StructureEditor →
-    "structureEditor"
+    I.cardsStructureEditor
   GeoChart →
-    "geoChart"
-
-
-cardIconDarkSrc ∷ CardType → String
-cardIconDarkSrc cardType =
-  Config.darkIconsPath <> "/" <> cardIcon cardType <> ".svg"
-
-cardIconDarkImg ∷ ∀ a b. CardType → H.HTML a b
-cardIconDarkImg cardType =
-  HH.img [ HP.src $ cardIconDarkSrc cardType ]
-
-cardIconLightSrc ∷ CardType → String
-cardIconLightSrc cardType =
-  Config.lightIconsPath <> "/" <> cardIcon cardType <> ".svg"
-
-cardIconLightImg ∷ ∀ a b. CardType → H.HTML a b
-cardIconLightImg cardType =
-  HH.img [ HP.src $ cardIconLightSrc cardType ]
+    I.cardsGeoChart
 
 -- Used to disable inputs, buttons and selects as well as a whitelist for
 -- localstorage card persistence. Interactability available to consumers may be

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail # STRICT MODE
+IFS=$'\n\t'       # http://redsymbol.net/articles/unofficial-bash-strict-mode/
+
+CONTAINER=$1
+if [[ $CONTAINER == "quasar_spark_local_test" ]]
+then
+    echo "$CONTAINER: not starting a container for spark_local_test..."
+else
+  cd $TRAVIS_BUILD_DIR
+  docker-compose -f ./docker/docker-compose.yml up -d $CONTAINER
+  sleep 5
+fi

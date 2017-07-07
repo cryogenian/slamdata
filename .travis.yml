@@ -4,8 +4,22 @@ dist: trusty
 jdk:
   - oraclejdk8
 
+services:
+  - docker
+
+addons:
+  apt:
+    sources:
+      - google-chrome
+    packages:
+      - google-chrome-stable
+
 before_install:
-  - mkdir -p $HOME/bin
+  - export CHROME_BIN=chromium-browser
+  - export DISPLAY=:99.0
+  - sh -e /etc/init.d/xvfb start
+  - if [ -f ${CACHE_FILE_SLAMDATA} ]; then gunzip -c ${CACHE_FILE_SLAMDATA} | docker load; fi
+
 install:
   - sudo apt-get update
   - sudo apt-get install imagemagick
@@ -13,31 +27,43 @@ install:
   - convert -version
   - java -version
 
-
-  - wget -N https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.6.tgz -P $HOME/bin/
-  - tar -zxvf $HOME/bin/mongodb-linux-x86_64-3.0.6.tgz
-  - mkdir -p $HOME/bin/mongodb
-  - cp -R -n mongodb-linux-x86_64-3.0.6/* $HOME/bin/mongodb
-  - export PATH=$HOME/bin/mongodb/bin:$PATH
-
-  - wget -N https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -P $HOME/bin/
-  - sudo dpkg -i $HOME/bin/google-chrome-stable_current_amd64.deb
-
   - nvm install stable
   - nvm use stable
-  - npm install bower gulp -g
-  - npm install
+  - npm install -g bower
+  - npm install -g gulp
+
+  - npm i
   - bower install
-before_script:
-  - "export DISPLAY=:99.0"
-  - "sh -e /etc/init.d/xvfb start"
-script:
+
+  - npm link gulp
+
   - gulp add-headers trim-whitespace replace-crlf
   - if [[ $(git diff --shortstat 2> /dev/null | tail -n1) != "" ]]; then git status && echo -e "\033[31m\n^ CRLF/header/whitespace related problems found\033[0m\n" && exit 1; fi
   - npm run build:icons
-  - npm run build:less
+  - npm run build:sass
   - npm run build:psa
-  - if test $TRAVIS_TAG; then npm run build:bundle-prod && npm run versionify; else npm run test:property && npm run build:bundle-prod && npm test; fi
+
+  - npm run docker:$CONNECTOR_HOST
+  - if [ ! -f ${CACHE_FILE_SLAMDATA} ]; then cd ./docker/ && docker save docker_slamdata_$ABV | gzip > ${CACHE_FILE_SLAMDATA}; fi
+
+script:
+  - if test $TRAVIS_TAG; then npm run build:bundle-prod && npm run versionify; else npm run build:bundle-prod && npm run test:property && npm test; fi
+
+env:
+  matrix:
+    - CONNECTOR_TYPE=MongoDB CONNECTOR_PORT=27017 CONNECTOR_HOST=mongo QUASAR_PORT=63176 ABV=md
+    - CONNECTOR_TYPE=Marklogic CONNECTOR_PORT=8000 CONNECTOR_HOST=marklogic QUASAR_PORT=63177 ABV=ml
+    - CONNECTOR_TYPE=Couchbase CONNECTOR_PORT=11210 CONNECTOR_HOST=couchbase QUASAR_PORT=63175 ABV=cb
+  global:
+    - CACHE_DIR=$HOME/.cache/docker
+    - CACHE_FILE_SLAMDATA=$CACHE_DIR/slamdata.tar.gz
+
+cache:
+  directories:
+  - $CACHE_DIR
+  - bower_components
+  - node_modules
+
 before_deploy:
 - mkdir -p slamdata
 - cp -r public slamdata/

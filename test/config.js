@@ -1,19 +1,21 @@
+var env = require("./src/Test/SlamData/Feature/Env.js");
+var databaseName = "testDb";
+var databaseHost = env.getEnv("CONNECTOR_HOST")();
+var databasePort = env.getEnv("CONNECTOR_PORT")();
+var databaseType = env.getEnv("CONNECTOR_TYPE")();
+var quasarPort = env.getEnv("QUASAR_PORT")();
+
+
 module.exports = {
-  mongodb: {
-    host: "localhost",
-    port: 63174
-  },
-  restoreCmd: "mongorestore --host 127.0.0.1 -d testDb --port 63174 --drop test/dump/demo",
   selenium: {
-    waitTime: 30000
+    waitTime: databaseType == "couchbase" ? 50000 : 30000
   },
-  slamdataUrl: "http://localhost:63175",
-  quasar: {
-    jar: "jars/quasar.jar",
-    config: "test/quasar-config.json"
-  },
+  slamdataUrl: "http://localhost:" + quasarPort,
   database: {
-    name: "testDb"
+    name: databaseName,
+    type: databaseType,
+    host: databaseHost,
+    port: databasePort
   },
   upload: {
     filePaths: ["./test/line-delimited.json", "./test/array-wrapped.json"]

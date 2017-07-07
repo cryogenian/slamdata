@@ -24,6 +24,7 @@ import SlamData.ActionList.Action (Action)
 type State a =
   { actions ∷ Array (Action a)
   , previousActions ∷ Array (Action a)
+  , activeDrill ∷ Maybe (Action a)
   , filterString ∷ String
   , boundingDimensions ∷ Maybe Dimensions
   }
@@ -31,7 +32,8 @@ type State a =
 initialState ∷ ∀ a. Array (Action a) → State a
 initialState actions =
   { actions
-  , previousActions: [ ]
+  , previousActions: mempty
+  , activeDrill: Nothing
   , filterString: ""
   , boundingDimensions: Nothing
   }

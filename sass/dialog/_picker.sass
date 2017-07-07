@@ -1,0 +1,49 @@
+.sd-picker-dialog
+  display: flex
+  flex-flow: column nowrap
+  position: relative
+
+
+.sd-picker-dialog-content
+  flex: 1 1 auto
+  min-height: 0
+  overflow: auto
+
+  .sd-miller-column
+    border-bottom: none
+
+
+.sd-picker-dialog-title, .sd-picker-dialog-toolbar
+  display: flex
+  align-items: center
+  flex: 0 0 auto
+
+
+.sd-picker-dialog-title
+  justify-content: space-between
+  height: 4.8rem
+
+  h1
+    font-size: 1.9rem
+    padding: 0
+    margin: 0
+
+  //.sd-dismiss-button
+
+
+.sd-picker-dialog-toolbar
+  justify-content: flex-end
+  padding: $padding-base-vertical 0
+  min-height: 4.8rem
+  text-align: right
+  border-top: 0.1rem solid #ddd
+
+  button
+    $m: $padding-base-vertical
+    vertical-align: baseline
+
+    &:not(:first-child)
+      margin-left: $m
+
+    &:not(:last-child)
+      margin-right: $m

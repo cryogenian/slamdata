@@ -23,12 +23,17 @@ module SlamData.Workspace.Dialog.Component
   ) where
 
 import SlamData.Prelude
+
+import DOM.Event.Types (MouseEvent)
+
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+
 import Quasar.Advanced.Types as QAT
+
 import SlamData.Dialog.Error.Component as Error
 import SlamData.License as License
 import SlamData.Workspace.Dialog.Confirm.Component as Confirm
@@ -39,14 +44,18 @@ import SlamData.Workspace.Dialog.Share.Component as Share
 import SlamData.Workspace.Dialog.Unshare.Component as Unshare
 import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
 import SlamData.Monad (Slam)
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Deck.Options (DeckOptions)
 import SlamData.Workspace.Dialog.Types (Dialog(..))
+
+import Utils.DOM as DOM
 
 type State = Maybe Dialog
 
 data Query a
   = Show Dialog a
   | Raise Message a
+  | BackdropDismiss MouseEvent a
 
 data Message
   = Dismissed
@@ -87,28 +96,22 @@ component =
     , receiver: const Nothing
     }
 
-renderDialogBackdrop ∷ HTML
-renderDialogBackdrop =
+renderDialogContainer ∷ Array HTML → HTML
+renderDialogContainer =
   HH.div
-    [ HP.classes $ [ HH.ClassName "deck-dialog-backdrop" ]
-    , HE.onClick $ HE.input_ $ Raise Dismissed
+    [ HP.class_ CN.dialogContainer
+    , HE.onClick $ HE.input BackdropDismiss
     ]
-    [ ]
 
 render ∷ State → HTML
 render = case _ of
-  Nothing ->
+  Nothing →
     HH.text ""
-  Just (LicenseProblem problem) ->
-    HH.div_
-      [ renderDialogBackdrop
-      , dialog $ LicenseProblem problem
-      ]
-  Just s ->
-    HH.div_
-      [ renderDialogBackdrop
-      , HH.div [ HP.classes [ HH.ClassName "deck-dialog" ] ] [ dialog s ]
-      ]
+  Just (LicenseProblem problem) →
+    renderDialogContainer [ dialog $ LicenseProblem problem ]
+  Just s →
+    renderDialogContainer
+      [ HH.div [ HP.class_ CN.dialog ] [ dialog s ] ]
   where
   dialog dlg = case dlg of
     Rename opts name →
@@ -174,3 +177,8 @@ eval ∷ Query ~> DSL
 eval = case _ of
   Show dialog next → H.put (Just dialog) $> next
   Raise msg next → H.put Nothing *> H.raise msg $> next
+  BackdropDismiss me next → do
+    isDialog ← H.liftEff $ DOM.nodeEq (DOM.target me) (DOM.currentTarget me)
+    when isDialog do
+      H.put Nothing
+    pure next

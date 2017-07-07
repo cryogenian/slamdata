@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+
+set -euo pipefail # STRICT MODE
+IFS_S=$'\n\t'     # http://redsymbol.net/articles/unofficial-bash-strict-mode/
+IFS=$IFS_S
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+SCRIPTS_DIR=$(dirname "$0")
+
+##########################################
+# methods to intialize various databases
+#
+init_slamdata() {
+    # add data to mongo
+    echo -e "${GREEN}Container '${1}' is running Slamdata & Quasar on http://localhost:${2}${NC}"
+}
+
+init_metastore() {
+  # a restart of the container is needed here due to
+  # http://askubuntu.com/questions/308054/how-to-create-s-pgsql-5432
+  echo -e "${GREEN}configuring metastore...${NC}"
+  docker restart metastore
+  docker cp $SCRIPTS_DIR/initPostgresql metastore:/tmp/initPostgresql
+  docker exec metastore /tmp/initPostgresql metastore
+}
+
+init_postgresql() {
+  # a restart of the container is needed here due to
+  # http://askubuntu.com/questions/308054/how-to-create-s-pgsql-5432
+  echo -e "${GREEN}configuring postgresql...${NC}"
+  docker restart postgresql
+  docker cp $SCRIPTS_DIR/initPostgresql postgresql:/tmp/initPostgresql
+  docker exec postgresql /tmp/initPostgresql quasar-test
+}
+
+init_couchbase() {
+  echo -e "${GREEN}configuring couchbase...${NC}"
+  docker cp $SCRIPTS_DIR/initCouchbase couchbase:/tmp/initCouchbase
+  docker cp $SCRIPTS_DIR/dumps/couchbase.zip couchbase:/tmp/
+  echo -e "${GREEN}files uploaded  :)${NC}"
+  docker exec couchbase /tmp/initCouchbase
+}
+
+init_mongo() {
+    # add data to mongo
+    echo -e "${GREEN}configuring mongo...${NC}"
+    docker cp $SCRIPTS_DIR/dumps/mongo/ mongo:/tmp/mongodump
+    docker cp $SCRIPTS_DIR/initMongodb mongo:/tmp/initMongodb
+    echo -e "${GREEN}files uploaded :)${NC}"
+    docker exec mongo /tmp/initMongodb
+}
+
+init_marklogic() {
+  # marklogic init script is ran from outside
+  # the container due to this curl issue
+  # curl: symbol lookup error: /lib64/libldap-2.4.so.2
+  echo -e "${GREEN}configuring marklogic...${NC}"
+  docker cp $SCRIPTS_DIR/dumps/marklogic.zip marklogic:/tmp/
+  echo -e "${GREEN}files uploaded :)${NC}"
+  $SCRIPTS_DIR/initMarklogic $1 $2 $3 $4
+}
+
+##########################################
+# parse arguments and run various
+# database configuration scripts
+#
+apply_configuration() {
+  CONTAINER=$1
+  if [[ $CONTAINER == "slamdata_cb"     ]]; then init_slamdata $CONTAINER 63175;               fi
+  if [[ $CONTAINER == "slamdata_md"     ]]; then init_slamdata $CONTAINER 63176;               fi
+  if [[ $CONTAINER == "slamdata_ml"     ]]; then init_slamdata $CONTAINER 63177;               fi
+  if [[ $CONTAINER == "mongo"           ]]; then init_mongo;                                   fi
+  if [[ $CONTAINER == "couchbase"       ]]; then init_couchbase;                               fi
+  if [[ $CONTAINER == "marklogic"       ]]; then init_marklogic $DOCKERIP 8001 8002 disabled;  fi
+  if [[ $CONTAINER == "postgresql"      ]]; then init_postgresql;                              fi
+  if [[ $CONTAINER == "metastore"       ]]; then init_metastore;                               fi
+}
+
+configure_containers() {
+  for CONTAINER in $1
+    do
+      apply_configuration $CONTAINER
+  done
+}
+
+
+##########################################
+# attach our shell to docker
+# this allows us to run docker commands
+#
+enable_docker_env() {
+    if [[ "$(command -v docker-machine)" && "$(docker-machine ls | grep default)" ]]
+    then
+        DOCKERIP=$(docker-machine ip default)
+        echo -e "${GREEN}found docker-machine, adding it to env and using $DOCKERIP as your docker IP...${NC}"
+        eval "$(docker-machine env --shell sh/bash default)"
+    elif [[ "$(command -v docker)" ]]
+    then
+        DOCKERIP=localhost
+        echo -e "We found docker in your path, but we are unsure of your docker host, we'll assume your docker IP is $DOCKERIP."
+        echo -e "You may need to set up your own docker host, either by using Docker Toolbox or Docker for Mac or something else."
+        echo -e "If you usually reach your docker containers via $DOCKERIP, things should work just fine."
+    else
+        echo -e "${RED}We can't find Docker on your system, please install it before running: $0${NC}"
+        exit 1
+    fi
+}
+
+find_containers() {
+  CONTAINERS=$(docker ps --filter "name=" | awk '{if(NR>1) print $NF}' | grep "")
+}
+
+configure_all_live_containers() {
+  if [[ ${TRAVIS:-} ]]
+  then
+    echo -e "${GREEN}in a travis environment, docker is in our path...${NC}"
+  else
+    echo -e "local environment, looking for docker..."
+    find_containers
+    configure_containers "$CONTAINERS"
+  fi
+}
+
+create_database() {
+  docker-compose -f $(dirname $0)/../docker-compose.yml up -d $1
+}
+
+usage() {
+cat << EOF
+Usage: $0 [-h] [-a] [-c CONTAINER-NAME]
+Create and configure mongo, couchbase, marklogic, and postgresql containers
+for integration tests with Quasar.
+
+  -h                   help (also trigged with no parameters): display this help and exit
+  -a                   configure all currently running containers
+  -c CONTAINER-NAME    configure running container named CONTAINER-NAME
+  -u con1[,con2...${NC}]    use docker-compose up to create and configure a quoted list of CONTAINER-NAMES
+EOF
+}
+
+# if no args are passed in print usage
+[ $# -eq 0 ] && usage
+
+# command line parsing logic
+while getopts ":hac:u:" opt; do
+  case $opt in
+    a)
+      echo -e "${GREEN}configuring all containers...${NC}" >&2
+      enable_docker_env
+      configure_all_live_containers
+      ;;
+    c)
+      echo -e "${GREEN}$OPTARG is being configured...${NC}" >&2
+      enable_docker_env
+      if [[ $OPTARG =~ "spark" ]]
+      then
+        echo -e "${GREEN}Will not make a container for spark*: $OPTARG ${NC}"
+      else
+        apply_configuration $OPTARG
+      fi
+      ;;
+    u)
+      echo -e "${GREEN}bringing up the following containers: $OPTARG ${NC}" >&2
+      enable_docker_env
+      set -f
+      IFS=,
+      CONTAINERS=($OPTARG)
+      set +f
+      IFS=$IFS_S
+      for CONTAINER in "${CONTAINERS[@]}"
+      do
+        create_database $CONTAINER
+        sleep 5
+        apply_configuration $CONTAINER
+      done
+      ;;
+    \?)
+      echo -e "${RED}Invalid option: -$OPTARG ${NC}" >&2
+      exit 1
+      ;;
+    :)
+      echo -e "${RED}Option -$OPTARG requires an argument.${NC}" >&2
+      exit 1
+      ;;
+    h | *)
+      usage
+      exit 1
+      ;;
+  esac
+done

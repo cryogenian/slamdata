@@ -17,19 +17,31 @@ module Test.SlamData.Feature.Test.File where
 
 import SlamData.Prelude
 
+import Data.Time.Duration (Milliseconds(..))
+import Selenium.Monad (later)
 import Test.Feature.Log (successMsg)
-import Test.Feature.Scenario (scenario)
+import Test.Feature.Scenario (KnownIssues, noIssues, scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
-import Test.SlamData.Feature.Monad (SlamFeature)
+import Test.SlamData.Feature.Monad (SlamFeature, getConnector)
 
 fileScenario
   ∷ SlamFeature Unit
    → String
-   → Array String
+   → KnownIssues
    → SlamFeature Unit
    → SlamFeature Unit
-fileScenario = scenario "File" (Interact.browseRootFolder)
+fileScenario after scenarioName knownIssues implementation = do
+  connector <- getConnector
+  scenario
+    { epic: "File"
+    , before: (pure unit)
+    , after: after
+    , title: scenarioName
+    , knownIssues
+    , connector
+    }
+    implementation
 
 defaultAfterFile ∷ SlamFeature Unit
 defaultAfterFile = Interact.browseRootFolder
@@ -54,8 +66,8 @@ afterAccessSharingUrl =
 
 test ∷ SlamFeature Unit
 test = do
-  fileScenario afterRename "Rename a folder" [] do
-    Interact.browseTestFolder
+  connector ← getConnector
+  fileScenario afterRename "Rename a folder" noIssues do
     Interact.createFolder
     Interact.renameFile "Untitled Folder" "Patients"
     Expect.file "Patients"
@@ -65,8 +77,7 @@ test = do
     Expect.file "Ϡ⨁⟶≣ΜϞ"
     successMsg "Successfully renamed a folder"
 
-  fileScenario afterMove "Move a folder" [] do
-    Interact.browseTestFolder
+  fileScenario afterMove "Move a folder" noIssues do
     Interact.createFolder
     Interact.renameFile "Untitled Folder" "Medical data"
     Interact.createFolder
@@ -78,8 +89,7 @@ test = do
     Expect.file "Untitled Folder"
     successMsg "Successfully moved a folder"
 
-  fileScenario defaultAfterFile "Delete a folder" [] do
-    Interact.browseTestFolder
+  fileScenario defaultAfterFile "Delete a folder" noIssues do
     Interact.createFolder
     Interact.deleteFile "Untitled Folder"
     Expect.noFile "Untitled Folder"
@@ -90,37 +100,41 @@ test = do
     Expect.noFile ".trash"
     successMsg "Successfully deleted a folder"
 
-  fileScenario defaultAfterFile "Navigate back using breadcrumbs" [] do
+  fileScenario defaultAfterFile "Navigate back using breadcrumbs" noIssues do
     Interact.browseTestFolder
     Interact.accessBreadcrumb "test-mount"
     Interact.accessBreadcrumb "Home"
     Expect.file "test-mount"
     successMsg "Successfully navigated back using breadcrumbs"
 
-  fileScenario afterUpload "Upload a file" [] do
+  fileScenario afterUpload "Upload a file"
+    (noIssues
+      { couchbase = Just "CB: need to make issue for file not uploading" })
+    do
     Interact.browseTestFolder
     Interact.uploadFile "test/array-wrapped.json"
-    Interact.browseRootFolder
+    later (Milliseconds 10000.0) $ pure unit
     Interact.browseTestFolder
     Expect.file "array-wrapped.json"
     successMsg "Successfully uploaded file"
 
-  fileScenario defaultAfterFile "Search for a file" [] do
+  fileScenario defaultAfterFile "Search for a file"
+    (noIssues { couchbase = Just "CB: https://github.com/quasar-analytics/quasar/issues/2396" })
+    do
+    Interact.browseTestFolder
     Interact.provideFileSearchString "smallZ"
     Expect.fileSearchString "+smallZ"
     Expect.file "/test-mount/testDb/smallZips"
     Expect.numberOfFiles 1
     successMsg "Succesfully searched for a file"
 
-  fileScenario defaultAfterFile "Access sharing URL for a file" [] do
+  fileScenario defaultAfterFile "Access sharing URL for a file" noIssues do
     Interact.browseTestFolder
     Interact.shareFile "smallZips"
     Interact.accessSharingUrl
     Expect.tableColumnsAre ["city", "loc", "pop", "state"]
     successMsg "Successfully accessed sharing URL for a file"
-    Interact.launchSlamData
-
--- TODO: figure out how to move downloaded by chrome files to specific folders
+    -- TODO: figure out how to move downloaded by chrome files to specific folders
 -- and omit prompt
 --  fileScenario defaultAfterFile "Download file as CSV" [] do
 --    Interact.browseTestFolder

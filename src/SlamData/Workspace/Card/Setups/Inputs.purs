@@ -256,6 +256,7 @@ dimensionButton opts =
             , HE.onValueInput opts.onLabelChange
             , HE.onClick opts.onLabelClick
             , HP.placeholder defaultLabel
+            , HP.class_ CN.formControl
             ]
         ]
     , HH.div

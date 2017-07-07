@@ -17,22 +17,18 @@ limitations under the License.
 module Test.SlamData.Feature.Config where
 
 type Config =
-  { mongodb ∷
-      { host ∷ String
-      , port ∷ Int
-      }
-  , restoreCmd ∷ String
+  { restoreCmd ∷ String
   , selenium ∷
       { jar ∷ String
       , waitTime ∷ Int
       }
   , slamdataUrl ∷ String
-  , quasar ∷
-      { jar ∷ String
-      , config ∷ String
-      }
   , database ∷
-      { name ∷ String }
+      { name ∷ String
+      , type ∷ String
+      , host ∷ String
+      , port ∷ String
+      }
   , upload ∷
       { filePaths ∷ Array String }
   , download ∷
