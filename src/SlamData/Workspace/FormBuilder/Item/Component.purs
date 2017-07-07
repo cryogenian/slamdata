@@ -26,10 +26,7 @@ import SlamData.Prelude
 import DOM.HTML.Indexed as DI
 import DOM.HTML.Indexed.StepValue (StepValue(..))
 import Data.BrowserFeatures.InputType as IT
-import Data.DateTime as DT
-import Data.Either (hush)
 import Data.Either.Nested (Either3)
-import Data.Formatter.DateTime as FD
 import Data.Functor.Coproduct.Nested (Coproduct3)
 import Data.Lens ((^?))
 import Data.Lens as Lens
@@ -39,9 +36,6 @@ import Halogen.Datepicker.Component.Date as DatePicker
 import Halogen.Datepicker.Component.DateTime as DateTimePicker
 import Halogen.Datepicker.Component.Time as TimePicker
 import Halogen.Datepicker.Component.Types (PickerMessage(..), setValue, value)
-import Halogen.Datepicker.Format.Date as DatePickerF
-import Halogen.Datepicker.Format.DateTime as DateTimePickerF
-import Halogen.Datepicker.Format.Time as TimePickerF
 import Halogen.HTML as HH
 import Halogen.HTML.Core as HC
 import Halogen.HTML.Events as HE
@@ -52,6 +46,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.FormBuilder.Item.Component.State (FieldName(..), Model, State, getModel, putModel)
 import SlamData.Workspace.FormBuilder.Item.Component.State as State
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
+import SlamData.Workspace.PickerUtils
 
 data Query a
   = UpdateName String a
@@ -93,47 +88,6 @@ component =
     , finalizer: Nothing
     }
 
-dateTimePickerFormat ∷ DateTimePickerF.Format
-dateTimePickerFormat = unsafePartial fromRight
-  $ DateTimePickerF.fromString dateTimeStringFormat
-
-datePickerFormat ∷ DatePickerF.Format
-datePickerFormat = unsafePartial fromRight
-  $ DatePickerF.fromString dateStringFormat
-
-timePickerFormat ∷ TimePickerF.Format
-timePickerFormat = unsafePartial fromRight
-  $ TimePickerF.fromString timeStringFormat
-
-dateTimeStringFormat ∷ String
-dateTimeStringFormat = dateStringFormat <> timeStringFormat
-
-dateStringFormat ∷ String
-dateStringFormat = "YYYY-MMMM-DD"
-
-timeStringFormat ∷ String
-timeStringFormat = "HH:mm:ss"
-
-formatDateTime ∷ DT.DateTime → Maybe String
-formatDateTime x = hush $ FD.formatDateTime timeStringFormat x
-
-formatDate ∷ DT.Date → Maybe String
-formatDate x = hush $ FD.formatDateTime dateStringFormat $ DT.DateTime x bottom
-
-formatTime ∷ DT.Time → Maybe String
-formatTime x = hush $ FD.formatDateTime timeStringFormat $ DT.DateTime bottom x
-
-unformatDateTime ∷ String → Maybe DT.DateTime
-unformatDateTime x = hush $ FD.unformatDateTime timeStringFormat x
-
-unformatDate ∷ String → Maybe DT.Date
-unformatDate x = map DT.date $ hush $ FD.unformatDateTime dateStringFormat x
-
-unformatTime ∷ String → Maybe DT.Time
-unformatTime x = map DT.time $ hush $ FD.unformatDateTime timeStringFormat x
-
-orEmpty ∷ Maybe String → String
-orEmpty = maybe "" id
 
 render ∷ ∀ m
   . State
@@ -187,7 +141,7 @@ render state =
           unit
           $ HE.input
           $ \(NotifyChange n) →
-            UpdateDefaultValue $ orEmpty $ value n >>= formatDateTime
+            UpdateDefaultValue $ fromMaybe "" $ value n >>= formatDateTime
       DateFieldType | not state.inputTypeSupported IT.Date →
         HH.slot'
           cpDatePicker
@@ -196,7 +150,7 @@ render state =
           unit
           $ HE.input
           $ \(NotifyChange n) →
-            UpdateDefaultValue $ orEmpty $ value n >>= formatDate
+            UpdateDefaultValue $ fromMaybe "" $ value n >>= formatDate
       TimeFieldType | not state.inputTypeSupported IT.Time →
         HH.slot'
           cpTimePicker
@@ -205,7 +159,7 @@ render state =
           unit
           $ HE.input
           $ \(NotifyChange n) →
-            UpdateDefaultValue $ orEmpty $ value n >>= formatTime
+            UpdateDefaultValue $ fromMaybe "" $ value n >>= formatTime
       BooleanFieldType →
         HH.label
           [ HP.class_ (HH.ClassName "sd-option") ]

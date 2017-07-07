@@ -23,10 +23,7 @@ import DOM.Event.Types (Event)
 import Data.Argonaut (JCursor(..))
 import Data.BrowserFeatures.InputType (InputType)
 import Data.BrowserFeatures.InputType as IT
-import Data.DateTime as DT
-import Data.Either (hush)
 import Data.Either.Nested (Either3)
-import Data.Formatter.DateTime as FD
 import Data.Functor.Coproduct.Nested (Coproduct3)
 import Data.Time.Duration (Milliseconds(..))
 import Halogen as H
@@ -36,9 +33,6 @@ import Halogen.Datepicker.Component.Date as DatePicker
 import Halogen.Datepicker.Component.DateTime as DateTimePicker
 import Halogen.Datepicker.Component.Time as TimePicker
 import Halogen.Datepicker.Component.Types (PickerMessage(..), setValue, value)
-import Halogen.Datepicker.Format.Date as DatePickerF
-import Halogen.Datepicker.Format.DateTime as DateTimePickerF
-import Halogen.Datepicker.Format.Time as TimePickerF
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -48,6 +42,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
+import SlamData.Workspace.PickerUtils
 import Text.Markdown.SlamDown.Halogen.Component (defaultBrowserFeatures)
 
 type State =
@@ -104,49 +99,6 @@ comp =
     , finalizer: Nothing
     }
 
--- TODO this is copyed from SlamData.Workspace.FormBuilder.Item.Component wher shuold we move them.
-dateTimePickerFormat ∷ DateTimePickerF.Format
-dateTimePickerFormat = unsafePartial fromRight
-  $ DateTimePickerF.fromString dateTimeStringFormat
-
-datePickerFormat ∷ DatePickerF.Format
-datePickerFormat = unsafePartial fromRight
-  $ DatePickerF.fromString dateStringFormat
-
-timePickerFormat ∷ TimePickerF.Format
-timePickerFormat = unsafePartial fromRight
-  $ TimePickerF.fromString timeStringFormat
-
-dateTimeStringFormat ∷ String
-dateTimeStringFormat = dateStringFormat <> timeStringFormat
-
-dateStringFormat ∷ String
-dateStringFormat = "YYYY-MMMM-DD"
-
-timeStringFormat ∷ String
-timeStringFormat = "HH:mm:ss"
-
-formatDateTime ∷ DT.DateTime → Maybe String
-formatDateTime x = hush $ FD.formatDateTime timeStringFormat x
-
-formatDate ∷ DT.Date → Maybe String
-formatDate x = hush $ FD.formatDateTime dateStringFormat $ DT.DateTime x bottom
-
-formatTime ∷ DT.Time → Maybe String
-formatTime x = hush $ FD.formatDateTime timeStringFormat $ DT.DateTime bottom x
-
-unformatDateTime ∷ String → Maybe DT.DateTime
-unformatDateTime x = hush $ FD.unformatDateTime timeStringFormat x
-
-unformatDate ∷ String → Maybe DT.Date
-unformatDate x = map DT.date $ hush $ FD.unformatDateTime dateStringFormat x
-
-unformatTime ∷ String → Maybe DT.Time
-unformatTime x = map DT.time $ hush $ FD.unformatDateTime timeStringFormat x
-
-orEmpty ∷ Maybe String → String
-orEmpty = maybe "" id
-
 
 render ∷ ∀ m
   . State
@@ -165,7 +117,7 @@ render state =
             unit
             $ HE.input
             $ \(NotifyChange n) →
-              ValueChanged $ orEmpty $ value n >>= formatDateTime
+              ValueChanged $ fromMaybe "" $ value n >>= formatDateTime
         Date | not state.inputTypeSupported IT.Date →
           HH.slot'
             cpDatePicker
@@ -174,7 +126,7 @@ render state =
             unit
             $ HE.input
             $ \(NotifyChange n) →
-              ValueChanged $ orEmpty $ value n >>= formatDate
+              ValueChanged $ fromMaybe "" $ value n >>= formatDate
         Time | not state.inputTypeSupported IT.Time →
           HH.slot'
             cpTimePicker
@@ -183,7 +135,7 @@ render state =
             unit
             $ HE.input
             $ \(NotifyChange n) →
-              ValueChanged $ orEmpty $ value n >>= formatTime
+              ValueChanged $ fromMaybe "" $ value n >>= formatTime
         _ →
           HH.input
             [ HP.classes [ CN.formControl ]
