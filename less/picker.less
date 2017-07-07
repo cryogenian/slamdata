@@ -1,0 +1,46 @@
+// .Picker-input.Picker-input is same as .Picker-input but with specifisity 2 instead of 1
+// see more https://csswizardry.com/2014/07/hacks-for-dealing-with-specificity/#safely-increasing-specificity
+
+.Picker {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.Picker--invalid .Picker-input.Picker-input {
+  border: 1px solid red;
+  outline-color: red;
+}
+
+.Picker-component {
+  display: inline-block;
+}
+
+.Picker .Picker {
+  margin: 0;
+  display: inline-block;
+}
+
+.Picker-component + .Picker-component,
+.Picker .Picker + .Picker {
+  margin-left: 0.5ch;
+}
+
+.Picker-input.Picker-input[placeholder="MM"]{
+  width: 4em;
+}
+
+.Picker-input.Picker-input {
+  border: 1px solid hsl(0, 0%, 85%);
+  margin: 0;
+  box-sizing: content-box;
+}
+
+.Picker-input--invalid {
+  color: red;
+  outline-color: red;
+}
+
+.Picker-placeholder {
+  white-space: pre;
+}
