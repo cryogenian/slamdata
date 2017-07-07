@@ -37,27 +37,34 @@ import Halogen.Datepicker.Format.Time as TimePickerF
 
 dateTimePickerFormat ∷ DateTimePickerF.Format
 dateTimePickerFormat = unsafePartial fromRight
-  $ DateTimePickerF.fromString dateTimeStringFormat
+  $ DateTimePickerF.fromString "YYYY-MMMM-DD HH:mm:ss"
 
 datePickerFormat ∷ DatePickerF.Format
 datePickerFormat = unsafePartial fromRight
-  $ DatePickerF.fromString dateStringFormat
+  $ DatePickerF.fromString "YYYY-MMMM-DD"
 
 timePickerFormat ∷ TimePickerF.Format
 timePickerFormat = unsafePartial fromRight
-  $ TimePickerF.fromString timeStringFormat
+  $ TimePickerF.fromString "HH:mm:ss"
 
 dateTimeStringFormat ∷ String
-dateTimeStringFormat = dateStringFormat <> " " <> timeStringFormat
+dateTimeStringFormat = dateStringFormat' <> "T" <> timeStringFormat'
 
 dateStringFormat ∷ String
-dateStringFormat = "YYYY-MMMM-DD"
+dateStringFormat = dateStringFormat' <> "T" <> timeStringFormat' <> "Z"
 
 timeStringFormat ∷ String
-timeStringFormat = "HH:mm:ss"
+timeStringFormat = timeStringFormat' <> ".SSS"
+
+dateStringFormat' ∷ String
+dateStringFormat' = "YYYY-MM-DD"
+
+timeStringFormat' ∷ String
+timeStringFormat' = "HH:mm:ss"
+
 
 formatDateTime ∷ DT.DateTime → Maybe String
-formatDateTime x = hush $ FD.formatDateTime timeStringFormat x
+formatDateTime x = hush $ FD.formatDateTime dateTimeStringFormat x
 
 formatDate ∷ DT.Date → Maybe String
 formatDate x = hush $ FD.formatDateTime dateStringFormat $ DT.DateTime x bottom
@@ -66,7 +73,7 @@ formatTime ∷ DT.Time → Maybe String
 formatTime x = hush $ FD.formatDateTime timeStringFormat $ DT.DateTime bottom x
 
 unformatDateTime ∷ String → Maybe DT.DateTime
-unformatDateTime x = hush $ FD.unformatDateTime timeStringFormat x
+unformatDateTime x = hush $ FD.unformatDateTime dateTimeStringFormat x
 
 unformatDate ∷ String → Maybe DT.Date
 unformatDate x = hush $ map DT.date $ FD.unformatDateTime dateStringFormat x
