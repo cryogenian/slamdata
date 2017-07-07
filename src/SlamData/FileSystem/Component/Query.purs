@@ -18,7 +18,7 @@ module SlamData.FileSystem.Component.Query where
 
 import SlamData.Prelude
 
-import DOM.Event.Types (Event)
+import DOM.Event.Types (Event, MouseEvent)
 import DOM.HTML.Types (HTMLElement)
 import SlamData.AdminUI.Types as AdminUI
 import SlamData.Common.Sort (Sort)
