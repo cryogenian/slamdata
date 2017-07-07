@@ -74,7 +74,8 @@ renderGrippers isActiveCard isGrabbed =
   render ∷ GripperDef → Array DeckHTML
   render gripperDef =
     if not isAvailable gripperDef || not isActiveCard then
-      []
+      -- Do not remove this, w/o `HH.text ""` some cards initial sizes are determined incorrectly
+      [ HH.text "" ]
     else
       [ HH.button
           ([ HP.classes [ gripperClassName gripperDef ]

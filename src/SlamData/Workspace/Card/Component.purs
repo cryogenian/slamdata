@@ -30,10 +30,7 @@ module SlamData.Workspace.Card.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (delay)
-
 import Data.Foldable (elem)
-import Data.Time.Duration (Milliseconds(..))
 
 import Data.Lens ((.~))
 
@@ -240,14 +237,9 @@ makeCardComponent cardType component options =
     st ← H.get
     H.getHTMLElementRef cardRef >>= traverse_ \el → do
       { width, height } ← H.liftEff (getBoundingClientRect el)
-      if width ≡ 0.0 ∧ height ≡ 0.0
-        then do
-        H.liftAff $ delay $ Milliseconds 200.0
-        updateDimensions
-        else do
-        mbLod ← H.query unit $ left $ H.request (EQ.ReceiveDimensions { width, height })
-        for_ mbLod \lod → when (st.levelOfDetails ≠ lod) do
-          H.modify _ { levelOfDetails = lod }
+      mbLod ← H.query unit $ left $ H.request (EQ.ReceiveDimensions { width, height })
+      for_ mbLod \lod → when (st.levelOfDetails ≠ lod)
+        $ H.modify _ { levelOfDetails = lod }
 
 queryInnerCard ∷ ∀ f. H.Action EQ.CardEvalQuery → CardDSL f Unit
 queryInnerCard q =
