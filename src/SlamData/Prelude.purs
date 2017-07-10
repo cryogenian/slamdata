@@ -21,6 +21,7 @@ module SlamData.Prelude
   , type (⨁), type (⊹), type (×)
   , As, As1
   , asList, asArray
+  , expandVariant, case2_
   , module Prelude
   , module Control.Alt
   , module Control.Apply
@@ -87,12 +88,14 @@ import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap, ala, alaF)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
-import Data.Variant (SProxy(..), Variant)
+import Data.Variant (SProxy(..), Variant, case_)
 import Data.Void (Void, absurd)
 
 import Debug.Trace (spy, trace, traceA, traceAny, traceAnyA, traceAnyM, traceShow, traceShowA, traceShowM)
 
 import Partial.Unsafe (unsafePartial)
+
+import Unsafe.Coerce (unsafeCoerce)
 
 flipCompose ∷ ∀ a b c d. Semigroupoid a ⇒ a b c → a c d → a b d
 flipCompose = flip compose
@@ -129,3 +132,14 @@ type As1 f = f ~> f
 
 asList = id ∷ As1 List
 asArray = id ∷ As1 Array
+
+-- That's safe actually
+expandVariant
+  ∷ ∀ r rr out
+  . Union r rr out
+  ⇒ Variant r
+  → Variant out
+expandVariant = unsafeCoerce
+
+case2_ ∷ ∀ a. Variant () → Variant () → a
+case2_ _ = case_

@@ -45,10 +45,13 @@ geoMarker = inj _geoMarker unit
 geoHeatmap ∷ ∀ r. Variant (geoHeatmap ∷ Unit|r)
 geoHeatmap = inj _geoHeatmap unit
 
-eq_ ∷ ∀ r rr. (Variant r → Variant rr → Boolean) → Geo r → Geo rr → Boolean
-eq_ cb r = cb (unsafeCoerce r)
+eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Geo r → Geo rr → b
+eq_ cb r = cb (contractGeo r)
   # on _geoMarker (on _geoMarker tt ff r)
   # on _geoHeatmap (on _geoHeatmap tt ff r)
+  where
+  contractGeo ∷ ∀ ω. Geo ω → Variant ω
+  contractGeo = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Geo r → String
 print cb = cb
@@ -74,7 +77,7 @@ parse ∷ ∀ r. String → String ⊹ Geo r
 parse = case _ of
   "marker" → Right geoMarker
   "heatmap" → Right geoHeatmap
-  _ → Left "this is not geo chart card type"
+  ty → Left $ ty ⊕ " is unknown geo chart card type"
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Geo r → Boolean
 consumerInteractable cb = cb

@@ -138,8 +138,8 @@ candlestick = inj _candlestick unit
 parallel ∷ ∀ r. Variant (parallel ∷ Unit|r)
 parallel = inj _parallel unit
 
-eq_ ∷ ∀ r rr. (Variant r → Variant rr → Boolean) → Chart r → Chart rr → Boolean
-eq_ cb r = cb (unsafeCoerce r)
+eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Chart r → Chart rr → b
+eq_ cb r = cb (contractChart r)
   # on _pie (on _pie tt ff r)
   # on _line (on _line tt ff r)
   # on _bar (on _bar tt ff r)
@@ -157,6 +157,9 @@ eq_ cb r = cb (unsafeCoerce r)
   # on _punchCard (on _punchCard tt ff r)
   # on _candlestick (on _candlestick tt ff r)
   # on _parallel (on _parallel tt ff r)
+  where
+  contractChart ∷ ∀ ω. Chart ω → Variant ω
+  contractChart = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Chart r → String
 print cb = cb
@@ -238,7 +241,7 @@ parse = case _ of
   "punch-card" → Right punchCard
   "candlestick" → Right candlestick
   "parallel" → Right parallel
-  _ → Left "this is not chart type"
+  ty → Left $ ty ⊕ " is unknown chart type"
 
 name ∷ ∀ r. (Variant r → String) → Chart r → String
 name cb = cb

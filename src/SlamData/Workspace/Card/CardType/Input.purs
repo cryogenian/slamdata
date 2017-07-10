@@ -66,13 +66,16 @@ time = inj _time unit
 datetime ∷ ∀ r. Variant (datetime ∷ Unit|r)
 datetime = inj _datetime unit
 
-eq_ ∷ ∀ r rr. (Variant r → Variant rr → Boolean) → Input r → Input rr → Boolean
-eq_ cb r = cb (unsafeCoerce r)
+eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Input r → Input rr → b
+eq_ cb r = cb (contractInput r)
   # on _text (on _text tt ff r)
   # on _numeric (on _numeric tt ff r)
   # on _date (on _date tt ff r)
   # on _time (on _time tt ff r)
   # on _datetime (on _datetime tt ff r)
+  where
+  contractInput ∷ ∀ ω. Input ω → Variant ω
+  contractInput = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Input r → String
 print cb = cb
@@ -113,7 +116,7 @@ parse = case _ of
   "date" → Right date
   "time" → Right time
   "datetime" → Right datetime
-  _ → Left "this is not input card type"
+  ty → Left $ ty ⊕ " is unknown input card type"
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Input r → Boolean
 consumerInteractable cb = cb

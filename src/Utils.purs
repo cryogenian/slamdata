@@ -40,8 +40,6 @@ module Utils
   , prettyJson
   , isFirefox
   , finally
-  , expandVariant
-  , case2_
   )where
 
 import SlamData.Prelude
@@ -53,11 +51,9 @@ import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.String as S
 import Data.Symbol (class IsSymbol)
-import Data.Variant (inj, case_)
+import Data.Variant (inj)
 import Global (readFloat, isNaN, isFinite)
 import SqlSquared.Signature.Ident (printIdent)
-
-import Unsafe.Coerce (unsafeCoerce)
 
 foreign import debugTime_ ∷ ∀ a. String → (Unit → a) → a
 
@@ -73,17 +69,6 @@ throwVariantError
   → err
   → m a
 throwVariantError s = throwError ∘ inj s
-
--- That's safe actually
-expandVariant
-  ∷ ∀ r rr out
-  . Union r rr out
-  ⇒ Variant r
-  → Variant out
-expandVariant = unsafeCoerce
-
-case2_ ∷ ∀ a. Variant () → Variant () → a
-case2_ _ = case_
 
 stringToNumber ∷ String → Maybe Number
 stringToNumber s =

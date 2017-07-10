@@ -25,7 +25,7 @@ import Data.List as L
 import Data.Path.Pathy (fileName, runFileName)
 import Data.Rational ((%))
 import Data.StrMap as StrMap
-import Data.Variant (on, case_)
+import Data.Variant (on)
 
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.CardType as CT
@@ -79,8 +79,6 @@ import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
-
-import Utils (expandVariant)
 
 data AnyCardModel
   = Ace (CT.Ace ()) Ace.Model

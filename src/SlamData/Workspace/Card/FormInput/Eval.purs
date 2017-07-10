@@ -32,7 +32,7 @@ import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
-import Data.Variant (case_, on)
+import Data.Variant (on)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
@@ -54,7 +54,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SqlSquared (Sql)
 import SqlSquared as Sql
 
-import Utils (stringToNumber, case2_)
+import Utils (stringToNumber)
 import Utils.SqlSquared (all, asRel, tableRelation)
 
 

@@ -61,10 +61,13 @@ mode cb = cb
   # on _aceMarkdown (const "ace/mode/markdown")
   # on _aceSql (const "ace/mode/sql")
 
-eq_ ∷ ∀ r rr. (Variant r → Variant rr → Boolean) → Ace r → Ace rr → Boolean
-eq_ cb r = cb (unsafeCoerce r)
+eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Ace r → Ace rr → b
+eq_ cb r = cb (contractAce r)
   # on _aceMarkdown (on _aceMarkdown tt ff r)
   # on _aceSql (on _aceSql tt ff r)
+  where
+  contractAce ∷ ∀ ω. Ace ω → Variant ω
+  contractAce = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Ace r → String
 print cb = cb
@@ -75,7 +78,7 @@ parse ∷ ∀ r. String → String ⊹ Ace r
 parse = case _ of
   "ace-markdown" → Right aceMarkdown
   "ace-sql" → Right aceSql
-  _ → Left "this is not ace card"
+  ty → Left $ ty ⊕ " is unknown ace type"
 
 icon ∷ ∀ r. (Variant r → I.IconHTML) → Ace r → I.IconHTML
 icon cb = cb

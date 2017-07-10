@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.Setups.FormInput.Labeled.Error where
 
 import SlamData.Prelude
 
-import Data.Variant (case_)
-
 import SlamData.Workspace.Card.CardType.Select (Select, print)
 
 import Utils (throwVariantError)

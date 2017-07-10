@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.CardType.Select where
 
 import SlamData.Prelude
 
-import Data.Variant (inj, on, case_)
+import Data.Variant (inj, on)
 
 import Halogen.HTML as H
 
@@ -50,11 +50,14 @@ checkbox = inj _checkbox unit
 radio ∷ ∀ r. Variant (radio ∷ Unit|r)
 radio = inj _radio unit
 
-eq_ ∷ ∀ r rr. (Variant r → Variant rr → Boolean) → Select r → Select rr → Boolean
-eq_ cb r = cb (unsafeCoerce r)
+eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Select r → Select rr → b
+eq_ cb r = cb (contractSelect r)
   # on _dropdown (on _dropdown tt ff r)
   # on _checkbox (on _checkbox tt ff r)
   # on _radio (on _radio tt ff r)
+  where
+  contractSelect ∷ ∀ ω. Select ω → Variant ω
+  contractSelect = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Select r → String
 print cb = cb
@@ -85,7 +88,7 @@ parse = case _ of
   "dropdown" → Right dropdown
   "checkbox" → Right checkbox
   "radio" → Right radio
-  _ → Left "this is not select card type"
+  ty → Left $ ty ⊕ " is unknown select card type"
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Select r → Boolean
 consumerInteractable cb = cb

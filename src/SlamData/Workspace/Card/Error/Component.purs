@@ -29,12 +29,15 @@ import Data.List ((:))
 import Data.List as L
 import Data.List.NonEmpty as NEL
 import Data.Path.Pathy as Path
-import Data.Variant (case_, on)
+import Data.Variant (on)
+
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+
 import Quasar.Advanced.QuasarAF as QA
+
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Render.Icon as I
@@ -58,8 +61,10 @@ import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as CFILE
 import SlamData.Workspace.Card.Setups.FormInput.Static.Error as CFISE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
+
 import Text.Parsing.Parser (parseErrorMessage)
-import Utils (prettyJson, expandVariant)
+
+import Utils (prettyJson)
 
 type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query

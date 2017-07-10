@@ -24,7 +24,7 @@ import Data.List as List
 import Data.Map as Map
 import Data.Set as Set
 import Data.Time.Duration (Milliseconds(..))
-import Data.Variant (case_, on)
+import Data.Variant (on)
 
 import DOM.Classy.Event as DOM
 import DOM.Event.Types (Event)
@@ -41,8 +41,6 @@ import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupLabeledFormInputPort)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
-import Utils (case2_)
 
 type State =
   { formInputType ∷ Sel.Select ()
