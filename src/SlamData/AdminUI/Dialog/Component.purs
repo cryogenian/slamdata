@@ -50,26 +50,24 @@ component dlg =
 
   render ∷ Unit → H.ComponentHTML Query
   render _ =
-    HH.div_
-      [ HH.div
-          [ HP.classes [HH.ClassName "deck-dialog-backdrop"]
-          , HE.onMouseDown $ HE.input_ (Raise Dismiss)
-          ]
-          []
-      , modalDialog
+    HH.div
+      [ HP.classes [ CN.dialogContainer ]
+      , HE.onClick (HE.input_ (Raise Dismiss))
+      ]
+      [ modalDialog
           [ modalHeader (headerMessage dlg)
           , modalBody (renderDialog dlg)
           , modalFooter
               [ HH.button
-                  [ HP.classes [ CN.btn ]
-                  , HE.onClick (HE.input_ (Raise Dismiss))
-                  ]
-                  [ HH.text (dismissMessage dlg) ]
-              , HH.button
                   [ HP.classes [ CN.btn, CN.btnPrimary ]
                   , HE.onClick (HE.input_ (Raise (Confirm dlg)))
                   ]
                   [ HH.text (confirmMessage dlg) ]
+              , HH.button
+                  [ HP.classes [ CN.btn ]
+                  , HE.onClick (HE.input_ (Raise Dismiss))
+                  ]
+                  [ HH.text (dismissMessage dlg) ]
               ]
           ]
       ]
