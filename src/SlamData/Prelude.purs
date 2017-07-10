@@ -48,6 +48,7 @@ module SlamData.Prelude
   , module Data.Maybe
   , module Data.Newtype
   , module Data.Monoid
+  , module Data.Symbol
   , module Data.Traversable
   , module Data.Tuple
   , module Data.Variant
@@ -89,6 +90,7 @@ import Data.Newtype (class Newtype, unwrap, ala, alaF)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Variant (SProxy(..), Variant, case_)
+import Data.Symbol (class IsSymbol)
 import Data.Void (Void, absurd)
 
 import Debug.Trace (spy, trace, traceA, traceAny, traceAnyA, traceAnyM, traceShow, traceShowA, traceShowM)
