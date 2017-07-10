@@ -19,6 +19,8 @@ module SlamData.Header.Component where
 import Data.Coyoneda (Coyoneda)
 import Data.Coyoneda as Coyoneda
 
+import DOM.Event.Types (MouseEvent)
+
 import SlamData.Prelude
 import Halogen as H
 import Halogen.Query.HalogenM as HQ
@@ -35,6 +37,8 @@ import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Render.ClassName as CN
 import SlamData.Monad (Slam)
 
+import Utils.DOM as DOM
+
 type State =
   { open ∷ Boolean
   , attributions ∷ Boolean
@@ -45,6 +49,7 @@ data Query a
   | QueryGripper (Coyoneda Gripper.Query a)
   | QueryGlobalMenu (Coyoneda GlobalMenu.Query a)
   | ToggleAttributions a
+  | BackdropDismiss MouseEvent a
   | Dismiss a
 
 type ChildQuery = Gripper.Query ⨁ GlobalMenu.Query ⨁ Const Void
@@ -69,7 +74,7 @@ render { open, attributions } =
         , HH.ClassName if open then "open" else "closed" ]
         ]
     [ if attributions
-        then Attribution.render ToggleAttributions
+        then Attribution.render BackdropDismiss ToggleAttributions
         else HH.text ""
     , HH.div_
         [ HH.div_
@@ -120,6 +125,9 @@ eval = case _ of
       case result of
         Nothing -> HQ.halt "Inner component query failed (this should be impossible)"
         Just a -> pure (k a)
+  BackdropDismiss me next → do
+    isDialog ← H.liftEff $ DOM.nodeEq (DOM.target me) (DOM.currentTarget me)
+    H.modify (if isDialog then _{ attributions = false } else id) $> next
   Dismiss next → do
     _ ← H.query' CP.cp2 unit $ H.action GlobalMenu.DismissSubmenu
     pure next

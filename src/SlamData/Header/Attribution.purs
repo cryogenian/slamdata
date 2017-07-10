@@ -16,38 +16,38 @@ limitations under the License.
 
 module SlamData.Header.Attribution where
 
+
 import SlamData.Prelude
+
+import DOM.Event.Types (MouseEvent)
+
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+
 import SlamData.Render.Icon as I
 import SlamData.Render.ClassName as CN
 
-render ∷ ∀ p i . H.Action i → H.HTML p i
-render dismiss =
+render ∷ ∀ p i . (MouseEvent → H.Action i) → H.Action i → H.HTML p i
+render backdropDismiss dismiss =
   HH.div
-    [ HP.classes [ HH.ClassName "sd-attributions" ] ]
+    [ HP.classes [ HH.ClassName "sd-attributions", CN.dialogContainer ]
+    , HE.onClick $ HE.input backdropDismiss
+    ]
     [ HH.div
-        [ HP.classes [ HH.ClassName "deck-dialog-backdrop" ]
-        , HE.onMouseDown (HE.input_ dismiss)
-        ]
-        []
-    , HH.div
-        [ HP.classes [ HH.ClassName "deck-dialog" ] ]
-        [ HH.div_
-            [ HH.h4_ [ HH.text "Attributions"]
-            , HH.div
-                [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
-                [ attributions ]
-            , HH.div
-                [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
-                [ HH.button
-                    [ HP.classes [ CN.btn, CN.btnDefault ]
-                    , HE.onClick (HE.input_ dismiss)
-                    ]
-                    [ HH.text "Done" ]
+        [ HP.classes [ CN.dialog ] ]
+        [ HH.h4_ [ HH.text "Attributions"]
+        , HH.div
+            [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
+            [ attributions ]
+        , HH.div
+            [ HP.classes [ HH.ClassName "deck-dialog-footer" ] ]
+            [ HH.button
+                [ HP.classes [ CN.btn, CN.btnDefault ]
+                , HE.onClick (HE.input_ dismiss)
                 ]
+                [ HH.text "Done" ]
             ]
         ]
     ]
