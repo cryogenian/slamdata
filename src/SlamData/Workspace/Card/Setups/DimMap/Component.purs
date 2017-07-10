@@ -27,10 +27,10 @@ import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.DimMap.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.DimMap.Component.Query as Q
 import SlamData.Workspace.Card.Setups.DimMap.Component.State as ST
---import SlamData.Workspace.Card.Setups.DimMap.Defaults as DMD
+import SlamData.Workspace.Card.Setups.DimMap.Package as DP
+import SlamData.Workspace.Card.Setups.DimMap.Projection as Pr
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor as DJ
-import SlamData.Workspace.Card.Setups.Package.DSL as T
 import SlamData.Workspace.Card.Setups.Inputs as I
 import SlamData.Workspace.Card.Setups.Transform as Tr
 import Utils (showJCursorTip)
@@ -38,7 +38,7 @@ import Utils (showJCursorTip)
 type HTML = H.ParentHTML Q.Query CS.ChildQuery CS.ChildSlot Slam
 type DSL = H.ParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot Q.Message Slam
 
-component ∷ H.Component HH.HTML Q.Query ST.Package Q.Message Slam
+component ∷ H.Component HH.HTML Q.Query DP.Package Q.Message Slam
 component =
   H.parentComponent
     { initialState: ST.initialState
@@ -62,7 +62,7 @@ renderSelection state = case state ^. ST._selected of
       , selection: (\a → a × a) <$> ST.getTransform tp state
       , title: "Choose transformation"
       , toLabel: \t -> { text: Tr.prettyPrintTransform t, icon: Nothing }
-      , deselectable: (DMD.getDefaults tp).deselectable
+      , deselectable: Pr.isDeselectable tp
       , toSelection: const Nothing
       }
       (HE.input \m → Q.OnField tp ∘ Q.HandleTransformPicker m)
@@ -83,7 +83,7 @@ renderSelection state = case state ^. ST._selected of
         unit
         (HE.input \m → Q.OnField pf ∘ Q.HandleDPMessage m)
 
-renderButton ∷ ST.State → T.Projection → HTML
+renderButton ∷ ST.State → Pr.Projection → HTML
 renderButton state fld =
   HH.div [ HP.classes [ HH.ClassName "chart-configure-form" ] ]
   [ I.dimensionButton
