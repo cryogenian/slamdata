@@ -42,6 +42,8 @@ type CardState =
   , bus ∷ Maybe (BusRW Card.EvalMessage)
   , levelOfDetails ∷ LevelOfDetails
   , accessType ∷ AccessType
+  , width ∷ Number
+  , height ∷ Number
   }
 
 initialState ∷ Input → CardState
@@ -50,6 +52,8 @@ initialState input =
   , bus: Nothing
   , levelOfDetails: High
   , accessType: ReadOnly
+  , width: input.width
+  , height: input.height
   }
 
 _accessType ∷ Lens' CardState AccessType

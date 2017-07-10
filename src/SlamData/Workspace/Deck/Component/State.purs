@@ -139,6 +139,7 @@ type State =
   , focused ∷ Boolean
   , finalized ∷ Boolean
   , responsiveSize ∷ ResponsiveSize
+  , cardDimensions ∷ { width ∷ Number, height ∷ Number }
   , fadeTransition ∷ Fade
   , providers ∷ Array ProviderR
   , focusDeckHintDismissed ∷ Boolean
@@ -163,6 +164,7 @@ initialState =
   , focused: false
   , finalized: false
   , responsiveSize: XLarge
+  , cardDimensions: { width: 0.0, height: 0.0 }
   , fadeTransition: FadeNone
   , providers: mempty
   , focusDeckHintDismissed: true
