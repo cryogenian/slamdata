@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Data.Array as Array
 import Data.Foldable as Foldable
 import Data.String as String
-import Data.Variant (case_, on)
+import Data.Variant (on)
 
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port

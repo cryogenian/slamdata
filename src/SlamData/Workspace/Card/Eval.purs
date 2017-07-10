@@ -28,7 +28,7 @@ import Control.Monad.Writer.Class (class MonadTell)
 
 import Data.StrMap as SM
 import Data.List ((:))
-import Data.Variant (on, case_)
+import Data.Variant (on)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)

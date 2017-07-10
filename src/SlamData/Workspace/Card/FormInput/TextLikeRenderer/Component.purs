@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor(..))
 import Data.Time.Duration (Milliseconds(..))
-import Data.Variant (case_, on)
+import Data.Variant (on)
 
 import DOM.Classy.Event as DOM
 import DOM.Event.Types (Event)

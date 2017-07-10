@@ -22,7 +22,6 @@ import Data.Argonaut ((:=), (.?), (~>))
 import Data.Argonaut as J
 import Data.Array as Arr
 import Data.Set as Set
-import Data.Variant (case_)
 
 import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.Setups.Semantics as Sem
@@ -30,8 +29,6 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Data.Argonaut (runArbJCursor)
 import Test.StrongCheck.Arbitrary (arbitrary)
-
-import Utils (case2_)
 
 type Model =
   { formInputType ∷ Sel.Select ()

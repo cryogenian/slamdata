@@ -32,7 +32,6 @@ import Control.Monad.Aff.AVar (makeVar, takeVar)
 import Data.Array as Array
 import Data.String as Str
 import Data.StrMap as SM
-import Data.Variant (case_)
 
 import Halogen as H
 import Halogen.Component.Utils (affEventSource)
@@ -57,7 +56,6 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import SqlSquared as Sql
 
-import Utils (expandVariant)
 import Utils.Ace (getRangeRecs, readOnly)
 
 type DSL = CC.InnerCardParentDSL State Query AC.AceQuery Unit

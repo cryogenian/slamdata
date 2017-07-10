@@ -127,8 +127,8 @@ all =
   , geo
   ]
 
-eq_ ∷ ∀ r rr. (Variant r → Variant rr → Boolean) → Simple r → Simple rr → Boolean
-eq_ cb r = cb (unsafeCoerce r)
+eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Simple r → Simple rr → b
+eq_ cb r = cb (contractSimple r)
   # on _search (on _search tt ff r)
   # on _chart (on _chart tt ff r)
   # on _form (on _form tt ff r)
@@ -144,6 +144,9 @@ eq_ cb r = cb (unsafeCoerce r)
   # on _tabs (on _tabs tt ff r)
   # on _structureEditor (on _structureEditor tt ff r)
   # on _geo (on _geo tt ff r)
+  where
+  contractSimple ∷ ∀ ω. Simple ω → Variant ω
+  contractSimple = unsafeCoerce
 
 
 print ∷ ∀ r. (Variant r → String) → Simple r → String
@@ -181,7 +184,7 @@ parse = case _ of
   "tabs" → pure tabs
   "structure-editor" → pure structureEditor
   "geo-chart" → pure geo
-  _ → Left "This is not basic card type"
+  ty → Left $ ty ⊕ " is unknown basic card type"
 
 name ∷ ∀ r. (Variant r → String) → Simple r → String
 name cb = cb

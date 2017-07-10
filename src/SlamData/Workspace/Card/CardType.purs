@@ -37,80 +37,24 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.String as Str
-import Data.Variant (case_)
 
 import Halogen.HTML as H
 
 import SlamData.Render.Icon as I
-import SlamData.Workspace.Card.CardType.Simple
-  ( _search, search
-  , _chart, chart
-  , _form, form
-  , _markdown, markdown
-  , _table, table
-  , _download, download
-  , _variables, variables
-  , _troubleshoot, troubleshoot
-  , _open, open
-  , _downloadOptions, downloadOptions
-  , _tabs, tabs
-  , _structureEditor, structureEditor
-  , _cache, cache
-  , _draftboard, draftboard
-  , _geo, geo
-  , SimpleR, Simple)
+import SlamData.Workspace.Card.CardType.Simple ( _search, search, _chart, chart, _form, form, _markdown, markdown, _table, table, _download, download, _variables, variables, _troubleshoot, troubleshoot, _open, open, _downloadOptions, downloadOptions, _tabs, tabs, _structureEditor, structureEditor, _cache, cache, _draftboard, draftboard, _geo, geo, SimpleR, Simple)
 import SlamData.Workspace.Card.CardType.Simple as Sim
-import SlamData.Workspace.Card.CardType.Ace
-  ( _aceMarkdown, aceMarkdown
-  , _aceSql, aceSql
-  , mode
-  , AceR, Ace)
+import SlamData.Workspace.Card.CardType.Ace ( _aceMarkdown, aceMarkdown, _aceSql, aceSql, mode, AceR, Ace)
 import SlamData.Workspace.Card.CardType.Ace as Ace
-import SlamData.Workspace.Card.CardType.Chart
-  ( _pie, pie
-  , _line, line
-  , _bar, bar
-  , _area, area
-  , _scatter, scatter
-  , _radar, radar
-  , _funnel, funnel
-  , _graph, graph
-  , _heatmap, heatmap
-  , _sankey, sankey
-  , _gauge, gauge
-  , _boxplot, boxplot
-  , _metric, metric
-  , _pivot, pivot
-  , _punchCard, punchCard
-  , _candlestick, candlestick
-  , _parallel, parallel
-  , ChartR, Chart)
+import SlamData.Workspace.Card.CardType.Chart ( _pie, pie, _line, line, _bar, bar, _area, area, _scatter, scatter, _radar, radar, _funnel, funnel, _graph, graph, _heatmap, heatmap, _sankey, sankey, _gauge, gauge, _boxplot, boxplot, _metric, metric, _pivot, pivot, _punchCard, punchCard, _candlestick, candlestick, _parallel, parallel, ChartR, Chart)
 import SlamData.Workspace.Card.CardType.Chart as Cht
-import SlamData.Workspace.Card.CardType.Geo
-  ( _geoMarker, geoMarker
-  , _geoHeatmap, geoHeatmap
-  , GeoR, Geo)
+import SlamData.Workspace.Card.CardType.Geo ( _geoMarker, geoMarker, _geoHeatmap, geoHeatmap, GeoR, Geo)
 import SlamData.Workspace.Card.CardType.Geo as Geo
-import SlamData.Workspace.Card.CardType.Static
-  ( _static, static
-  , StaticR, Static)
+import SlamData.Workspace.Card.CardType.Static ( _static, static, StaticR, Static)
 import SlamData.Workspace.Card.CardType.Static as Sta
-import SlamData.Workspace.Card.CardType.Select
-  ( _dropdown, dropdown
-  , _radio, radio
-  , _checkbox, checkbox
-  , SelectR, Select)
+import SlamData.Workspace.Card.CardType.Select ( _dropdown, dropdown, _radio, radio, _checkbox, checkbox, SelectR, Select)
 import SlamData.Workspace.Card.CardType.Select as Sel
-import SlamData.Workspace.Card.CardType.Input
-  ( _text, text
-  , _numeric, numeric
-  , _date, date
-  , _time, time
-  , _datetime, datetime
-  , InputR, Input)
+import SlamData.Workspace.Card.CardType.Input ( _text, text, _numeric, numeric, _date, date, _time, time, _datetime, datetime, InputR, Input)
 import SlamData.Workspace.Card.CardType.Input as Inp
-
-import Utils (case2_)
 
 type CardType =
   Variant
@@ -126,7 +70,7 @@ all ∷ Array CardType
 all =
   Sim.all ⊕ Ace.all ⊕ Cht.all ⊕ Geo.all ⊕ Sel.all ⊕ Inp.all ⊕ Sta.all
 
-eq_ ∷ CardType → CardType → Boolean
+eq_ ∷ ∀ b. HeytingAlgebra b ⇒ CardType → CardType → b
 eq_ = case2_
   # Ace.eq_
   # Sim.eq_

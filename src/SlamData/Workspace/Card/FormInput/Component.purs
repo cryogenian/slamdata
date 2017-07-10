@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Int (floor)
 import Data.Lens ((^?))
-import Data.Variant (case_, on)
+import Data.Variant (on)
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -39,8 +39,6 @@ import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Component as TextLike
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-
-import Utils (expandVariant)
 
 type DSL = CC.InnerCardParentDSL State Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Query CS.ChildQuery CS.ChildSlot

@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Factory
 
 import SlamData.Prelude
 
-import Data.Variant (case_, on)
+import Data.Variant (on)
 
 import SlamData.Workspace.Card.Ace.Component (aceComponent)
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)

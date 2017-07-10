@@ -21,14 +21,11 @@ import SlamData.Prelude
 import Data.Argonaut ((:=), (.?), (~>))
 import Data.Argonaut as J
 import Data.Argonaut.JCursor.Gen (genJCursor)
-import Data.Variant (case_)
 
 import SlamData.Workspace.Card.CardType.Input as Inp
 
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Arbitrary (arbitrary)
-
-import Utils (case2_)
 
 type Model =
   { formInputType ∷ Inp.Input ()
