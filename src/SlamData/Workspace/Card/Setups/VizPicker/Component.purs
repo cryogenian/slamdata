@@ -4,8 +4,6 @@ import SlamData.Prelude
 
 import CSS as CSS
 
---import Data.Map as M
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.Component.ChildPath as CP
@@ -21,10 +19,8 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Axis as Ax
---import SlamData.Workspace.Card.Setups.DimMap.Component.State as DS
---import SlamData.Workspace.Card.Setups.DimMap.DSL as DSL
-
-import Utils (expandVariant)
+import SlamData.Workspace.Card.Setups.DimMap.Package as DP
+import SlamData.Workspace.Card.Setups.DimMap.DSL as DSL
 
 type ChildSlot = Unit ⊹ Unit ⊹ Void
 
@@ -34,11 +30,9 @@ data Action
   = Set VT.VizType
   | Explain VT.VizType
 
-
 fitsRequirement ∷ Ax.Axes → VT.VizType → Boolean
 fitsRequirement axes vt =
-  true
-{-  sizes.value >= conf.value
+  sizes.value >= conf.value
   ∧ sizes.category >= conf.category
   ∧ sizes.date >= conf.date
   ∧ sizes.time >= conf.time
@@ -46,12 +40,10 @@ fitsRequirement axes vt =
   ∧ total >= conf.total
   ∧ nonMeasure >= conf.nonMeasure
   where
-  conf = maybe DSL.noneRequirements _.axesRequirements $ M.lookup vt DS.packages
+  conf = maybe DSL.noneRequirements _.axesRequirements $ DP.lookup vt
   sizes = Ax.axesSizes axes
   nonMeasure = sizes.category + sizes.date + sizes.time + sizes.datetime
   total = nonMeasure + sizes.value
--}
-
 
 axesActions ∷ Ax.Axes → Array Action
 axesActions axes =
