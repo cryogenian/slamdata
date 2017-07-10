@@ -152,10 +152,9 @@ eval opts = case _ of
       else navigateToDeck opts.cursor
     pure next
   StartSliding gDef mouseEvent next → do
-    H.getHTMLElementRef Common.sizerRef >>= traverse_ \el → do
-      width ← getBoundingClientWidth el
-      Slider.startSliding mouseEvent gDef width
-      preloadCard gDef
+    { cardDimensions } ← H.get
+    Slider.startSliding mouseEvent gDef cardDimensions.width
+    preloadCard gDef
     pure next
   StopSlidingAndSnap mouseEvent next → do
     st ← H.get
@@ -241,9 +240,6 @@ eval opts = case _ of
   DismissFocusDeckFrameHint next → do
     dismissFocusDeckFrameHint
     pure next
-  where
-  getBoundingClientWidth =
-    H.liftEff ∘ map _.width ∘ getBoundingClientRect
 
 nextActionCardIsActive ∷ DeckDSL Boolean
 nextActionCardIsActive = do
@@ -572,10 +568,13 @@ updateCardSize ∷ DeckDSL Unit
 updateCardSize =
   H.getHTMLElementRef Common.sizerRef >>= traverse_ \el → void do
     { width, height } ← H.liftEff $ getBoundingClientRect el
-    H.modify $ DCS._responsiveSize .~ breakpoint width
+    H.modify _
+      { cardDimensions = { width, height }
+      , responsiveSize = breakpoint width
+      }
     _ ← queryNextActionList $ H.action ActionList.CalculateBoundingRect
     _ ← queryBacksideActionList $ H.action ActionList.CalculateBoundingRect
-    H.queryAll' cpCard $ H.action CQ.UpdateDimensions
+    pure unit
   where
   breakpoint w
     | w < 240.0 = DCS.XSmall

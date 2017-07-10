@@ -33,6 +33,7 @@ import DOM.Event.MouseEvent as ME
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.CSS (style)
+import Halogen.HTML.Elements.Keyed as HK
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties (IProp())
 import Halogen.HTML.Properties as HP
@@ -62,15 +63,16 @@ import Utils.DOM as DOM
 
 render ∷ DeckOptions → (DeckOptions → DeckComponent) → State → Boolean → DeckHTML
 render opts deckComponent st visible =
-  HH.div
+  HH.div sliderProps (Array.mapWithIndex maybeRenderCard st.displayCards)
+
+  where
+  sliderProps =
     [ HP.classes ([ CN.cardSlider ] ⊕ (guard (not visible) $> CN.invisible))
-    , HE.onTransitionEnd $ HE.input_ DCQ.StopSliderTransition
     , style do
         cardSliderTransformCSS (DCS.activeCardIndex st) st.sliderTranslateX
         cardSliderTransitionCSS st.sliderTransition
-    ]
-    (Array.mapWithIndex maybeRenderCard st.displayCards)
-  where
+    ] <> (guard st.sliderTransition $> HE.onTransitionEnd (HE.input_ DCQ.StopSliderTransition))
+
   activeIndex =
     DCS.activeCardIndex st
 
@@ -249,27 +251,30 @@ renderCard
   → DCS.DisplayCard
   → DeckHTML
 renderCard opts deckComponent st activeIndex index card =
-  HH.div
+  -- We need to key these elements, as DOM reinsertion can cause the
+  -- the Card component measurements to report 0x0 in certain cases
+  -- when initializing.
+  HK.div
     [ HP.classes classes
     , style $ cardPositionCSS index
     ]
     if opts.accessType == AT.ReadOnly
     then
-      [ HH.div (cardProperties st card) [ cardComponent ]
-      , loadingPanel
+      [ "card" × HH.div (cardProperties st card) [ cardComponent ]
+      , "loading" × loadingPanel
       ]
     else
       Gripper.renderGrippers
         (cardSelected st card)
         (isJust st.initialSliderX)
         (Gripper.gripperDefsForCard st.displayCards card)
-        ⊕ [ HH.div
+        ⊕ [ "card" × HH.div
               (cardProperties st card)
-              $ fold
+              (fold
                  [ pure cardComponent
                  , guard (st.presentAccessNextActionCardHint && isLastCard) $> renderHint
-                 ]
-          , loadingPanel
+                 ])
+          , "loading" × loadingPanel
           ]
   where
   cardComponent = case card of
@@ -353,11 +358,15 @@ renderDef opts deckComponent st active { cardType, cardId } =
       , displayCursor: opts.deckId : opts.displayCursor
       , cardId
       }
+    cardInput =
+      { active
+      , width: st.cardDimensions.width
+      , height: st.cardDimensions.height
+      }
     component =
       Factory.cardComponent cardType cardOpts
   in
-    HH.slot' ChildSlot.cpCard cardId component { active } absurd
-
+    HH.slot' ChildSlot.cpCard cardId component cardInput absurd
 
 loadingPanel ∷ DeckHTML
 loadingPanel =
