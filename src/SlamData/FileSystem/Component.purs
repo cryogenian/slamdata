@@ -345,6 +345,10 @@ eval = case _ of
         presentMountHint items path
         resort
         pure next
+  HandleDialog (DialogMessage.ResourceDelete res) next → do
+    remove res
+    hideDialog
+    pure next
   HandleDialog DialogMessage.Dismiss next →
     pure next
   HandleDialog (DialogMessage.MountSave originalMount) next → do
@@ -448,7 +452,7 @@ handleItemMessage = case _ of
     flip getDirectories rootDir \x →
       void $ H.query' CS.cpDialog unit $ H.action $ Dialog.AddDirsToRename x
   Item.Remove res →
-    remove res
+    showDialog $ Dialog.Remove res
   Item.Share res → do
     path ← H.gets _.path
     loc ← map (_ ⊕ "/") $ H.liftEff locationString
