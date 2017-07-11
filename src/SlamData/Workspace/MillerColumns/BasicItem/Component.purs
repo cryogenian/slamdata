@@ -77,7 +77,10 @@ component' ispec path item =
         [ HP.title label
         , HE.onClick $ HE.input_ Selected
         , ARIA.label ("Select " <> label)
-        , HP.classes $ (guard selected $> HH.ClassName "selected")
+        , HP.classes $ join
+            [ pure (HH.ClassName "sd-miller-column-item")
+            , guard selected $> HH.ClassName "selected"
+            ]
         ]
         [ absurd ∘ unwrap <$> ispec.render item ]
 
