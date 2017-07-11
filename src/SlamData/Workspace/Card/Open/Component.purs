@@ -208,7 +208,12 @@ columnsComponent ∷ MC.MillerColumnsComponent AnyItem' AnyPath' Void
 columnsComponent =
   MC.component $ MC.ColumnOptions
     { renderColumn: MCC.component
-    , renderItem: MCI.component { label: itemName, render: renderItem }
+    , renderItem:
+        MCI.component
+          { label: itemName
+          , render: renderItem
+          , isActionable: isLeaf (isRight ∘ R.getPath)
+          }
     , label: itemName
     , isLeaf: isLeaf isRight
     , id: map R.getPath

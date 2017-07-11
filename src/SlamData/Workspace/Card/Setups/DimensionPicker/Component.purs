@@ -76,7 +76,7 @@ pickerOptionsToColumnOptions ∷ ∀ s. Ord s ⇒ PickerOptions s → MCI.BasicC
 pickerOptionsToColumnOptions { label, render, isSelectable } =
   MC.ColumnOptions
     { renderColumn: MCC.component
-    , renderItem: MCI.component { render, label }
+    , renderItem: MCI.component { render, label, isActionable: isSelectable }
     , label
     , id
     , isLeaf: isSelectable
