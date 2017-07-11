@@ -204,7 +204,9 @@ gulp.task("bundle-property-tests",
 gulp.task("inject-icons", () => injectIconsIntoHTML(iconAttributions));
 gulp.task("icons", ["inject-icons"], () => createIconPureScript(iconAttributions));
 
-gulp.task("sass", () => sass)
+gulp.task("sass", () => sass());
+
+gulp.task("watch-sass", ["sass"], () => gulp.watch("./sass/**/*.sass", ["sass"]));
 
 gulp.task("full", [ "add-headers", "trim-whitespace" ]);
 
