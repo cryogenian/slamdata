@@ -26,9 +26,14 @@ module SlamData.Render.Common
   , gripperGlobalNavNub
   , gripperDeckNavigation
   , gripperDeckMove
+  , spinner
   ) where
 
 import SlamData.Prelude
+
+import Data.Array as Array
+import Data.Int (toNumber)
+import Data.String as String
 
 import Halogen as H
 import Halogen.HTML.Core (HTML, ClassName)
@@ -75,7 +80,7 @@ busyFieldIcon label =
     , HP.title label
     , ARIA.label label
     ]
-    [ I.spinner
+    [ spinner
     , HH.span
         [ HP.class_ CN.srOnly ]
         [ HH.text label ]
@@ -119,3 +124,47 @@ gripperDeckNavigation = gripperHelper "deck-navigation" $ ViewBox 0 0 10 100
 
 gripperDeckMove ∷ ∀ p i. H.HTML p i
 gripperDeckMove = gripperHelper "deck-move" $ ViewBox 0 0 80 10
+
+spinner ∷  ∀ p i. H.HTML p i
+spinner =
+  let
+    circles = Array.range 0 7
+    lcircles = toNumber $ Array.length circles
+    animDur = 1.0  -- second
+    deg x = show $ toNumber x * (360.0 / lcircles)
+
+    anStyle i =
+      String.joinWith ";"
+        [ "-webkit-animation-duration:" <> d <> "s"
+        , "animation-duration:" <> d <> "s"
+        , "-webkit-animation-delay:" <> t <> "s"
+        , "animation-delay:" <> t <> "s"
+        ]
+      where
+      t = show $ (toNumber i - (lcircles - 1.0)) / lcircles * animDur
+      d = show animDur
+
+    circle i =
+      svgElem (HH.ElemName "g")
+        [ HP.attr (HH.AttrName "transform") $ "rotate(" <> deg i <> ") translate(34 0)" ]
+        [ svgElem (HH.ElemName "circle")
+            [ HP.attr (HH.AttrName "cx") "0"
+            , HP.attr (HH.AttrName "cy") "0"
+            , HP.attr (HH.AttrName "r") "6"
+            , HP.attr (HH.AttrName "style") $ anStyle i
+            ]
+            [ ]
+        ]
+  in
+    HH.div
+      [ HP.class_ $ HH.ClassName "sd-spinner" ]
+      [ svgElem (HH.ElemName "svg")
+          [ HP.attr (HH.AttrName "viewBox") "0 0 100 100"
+          , HP.attr (HH.AttrName "preserveAspectRatio") "xMidYMid"
+          ]
+          [ svgElem (HH.ElemName "g")
+              [ HP.attr (HH.AttrName "transform") "translate(50 50)" ]
+              $ map circle circles
+          ]
+      ]
+

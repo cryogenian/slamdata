@@ -19,10 +19,12 @@ module SlamData.Workspace.Dialog.Export.Component where
 import SlamData.Prelude
 
 import Clipboard as C
+
 import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Fork (fork)
 import Control.UI.Browser (select, getHref)
+
 import Data.Argonaut (encodeJson)
 import Data.Foldable as F
 import Data.Foreign (toForeign)
@@ -39,19 +41,25 @@ import Data.URI as URI
 import Data.URI.Types.AbsoluteURI as AbsoluteURI
 import Data.URI.Types.HierarchicalPart as HierarchicalPart
 import Data.URI.Types.URI as URIT
+
 import DOM.Classy.Element (toElement)
 import DOM.HTML.Types (readHTMLElement)
+
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
+
 import OIDC.Crypt as OIDC
+
 import Quasar.Advanced.Types as QTA
+
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Common as RC
 import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
@@ -61,7 +69,9 @@ import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.DeckPath (deckPath')
 import SlamData.Workspace.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
 import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL)
+
 import Text.Parsing.StringParser (ParseError)
+
 import Utils (hush, prettyJson)
 import Utils.DOM as DOM
 import Utils.Path as UP
@@ -179,7 +189,7 @@ renderLoadingDialog header =
         [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
         [ HH.div
             [ HP.class_ $ H.ClassName "sd-dialog-loading" ]
-            [ I.spinner
+            [ RC.spinner
             , HH.p_ [ HH.text "Loading…" ]
             ]
         ]

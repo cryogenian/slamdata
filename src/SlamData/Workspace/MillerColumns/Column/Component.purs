@@ -26,13 +26,17 @@ module SlamData.Workspace.MillerColumns.Column.Component
 import SlamData.Prelude
 
 import Control.Monad.Fork.Class (fork)
+
 import CSS as CSS
+
 import Data.Array as A
 import Data.List as L
 import Data.Time.Duration (Milliseconds(..))
+
 import DOM.Classy.Element (scrollTop, scrollHeight, clientHeight) as DOM
 import DOM.Classy.Event (currentTarget) as DOM
 import DOM.Classy.Node (fromNode) as DOM
+
 import Halogen as H
 import Halogen.Component.Proxy (proxyQI)
 import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger)
@@ -41,6 +45,7 @@ import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
+
 import SlamData.Monad (Slam)
 import SlamData.Render.Common as RC
 import SlamData.Render.Icon as I
@@ -121,7 +126,7 @@ component' (ColumnOptions colSpec) colPath =
   loadIndicator =
     HH.li
       [ HP.class_ $ HH.ClassName "sd-miller-column-loading" ]
-      [ I.spinner
+      [ RC.spinner
       , HH.span_ [ HH.text "Loading…" ]
       ]
 

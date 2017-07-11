@@ -1,0 +1,15 @@
+@keyframes spinner-spin-fade
+  0%
+    opacity: 1
+    transform: scale(1.375)
+
+  100%
+    opacity: 0.1
+    transform: scale(1)
+
+
+.sd-spinner
+  @extend .sd-icon
+
+  > svg circle
+    animation: 1s linear 0s infinite normal forwards spinner-spin-fade
