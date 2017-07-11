@@ -72,6 +72,9 @@ maxValue = 50.0
 optionalMarkers ∷ Boolean
 optionalMarkers = false
 
+formatter ∷ String
+formatter = ""
+
 osmURI ∷ URIRef
 osmURI =
   Left $ URI.URI

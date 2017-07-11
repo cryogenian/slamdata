@@ -16,9 +16,8 @@ import Halogen as H
 import SlamData.Form.Select (class OptionVal)
 import SlamData.Workspace.Card.Geo.Model (onURIRef)
 import SlamData.Workspace.Card.Setups.Auxiliary.Algebra as Alg
-import SlamData.Workspace.Card.Setups.Auxiliary.Proxy (class HasLabel, _uri, _string, _min, _max, label)
+import SlamData.Workspace.Card.Setups.Auxiliary.Proxy (_uri, _string, _min, _max)
 import SlamData.Workspace.Card.Setups.Auxiliary.Piece as P
-import SlamData.Workspace.Card.Setups.CSS as CSS
 
 osmURI
   ∷ ∀ r1 r2 s q m

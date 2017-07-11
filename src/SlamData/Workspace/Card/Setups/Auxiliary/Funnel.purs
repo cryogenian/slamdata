@@ -58,8 +58,8 @@ decode r = J.decodeJson r >>= \obj → do
   align ← obj .? "align"
   pure { order, align }
 
-funnel ∷ ∀ m. AuxComponent QueryR State m
-funnel = H.component
+component ∷ ∀ m. AuxComponent QueryR State m
+component = H.component
   { initialState: const initial
   , render: \state → HH.div_
     [ HH.hr_
