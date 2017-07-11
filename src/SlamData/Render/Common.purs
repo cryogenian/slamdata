@@ -34,13 +34,11 @@ import SlamData.Prelude
 import Data.Array as Array
 import Data.Int (toNumber)
 import Data.String as String
-
 import Halogen as H
 import Halogen.HTML.Core (HTML, ClassName)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 

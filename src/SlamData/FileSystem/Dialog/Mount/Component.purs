@@ -25,12 +25,10 @@ import SlamData.Prelude
 import Data.Argonaut (jsonParser, decodeJson, (.?))
 import Data.Lens (set, (.~), (?~))
 import Data.Path.Pathy (rootDir)
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Dialog.Component.Message (Message)
 import SlamData.FileSystem.Dialog.Component.Message as Message
@@ -52,7 +50,6 @@ import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as Api
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Common as RC
-
 import Utils.DOM as DOM
 
 type DSL = H.ParentDSL MCS.State Query CS.ChildQuery CS.ChildSlot Message Slam
