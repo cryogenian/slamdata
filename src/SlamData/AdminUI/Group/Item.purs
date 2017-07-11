@@ -78,9 +78,12 @@ component' path item =
     in
       HH.li
         [ HP.title label
+        , HP.classes $ join
+            [ pure (HH.ClassName "sd-miller-column-item")
+            , guard selected $> HH.ClassName "selected"
+            ]
         , HE.onClick $ HE.input_ Selected
         , ARIA.label ("Select " <> label)
-        , HP.classes (guard selected $> HH.ClassName "selected")
         ]
         [ renderItem item ]
 
@@ -102,7 +105,7 @@ renderItem ∷ AT.GroupItem → HTML
 renderItem ci =
   HH.div
     [ HP.class_ (H.ClassName "sd-miller-column-item-inner") ]
-    [ HH.div [ HP.class_ (H.ClassName "sd-miller-column-item-label") ] [ HH.text (getGroupName ci) ]
+    [ HH.div [ HP.class_ (H.ClassName "sd-admin-ui-group-label") ] [ HH.text (getGroupName ci) ]
     , HH.slot unit slider unit (HE.input HandleSliderMessage)
     ]
 
