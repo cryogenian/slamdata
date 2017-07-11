@@ -138,13 +138,6 @@ deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp (onMouseDown ∷ DOM.M
 deckProperties opts =
   guard (L.length opts.displayCursor <= 1) $> HE.onMouseDown (HE.input Focus)
 
-renderName ∷ String → DeckHTML
-renderName name =
-  HH.div
-    [ HP.class_ CSS.deckName ]
-    [ HH.text name ]
-
-
 frameElements ∷ DeckOptions → DCS.State → Array DeckHTML
 frameElements { accessType, displayCursor } st
   | accessType ≡ AT.ReadOnly = mempty
@@ -153,15 +146,12 @@ frameElements { accessType, displayCursor } st
 
 rootFrameElements ∷ DCS.State → Array DeckHTML
 rootFrameElements st =
-  [ deckFrameControls st
-  , renderName st.name
-  ]
+  [ deckFrameControls st ]
 
 childFrameElements ∷ DCS.State → Array DeckHTML
 childFrameElements st =
   [ deckFrameControls st
   , moveGripper st
-  , renderName st.name
   ]
 
 backside ∷ DeckHTML
@@ -194,6 +184,7 @@ deckFrameControls st =
       , zoomOutButton
       ]
   , deckIndicator st
+  , renderName st.name
   ]
 
 deckIndicator ∷ DCS.State → DeckHTML
@@ -217,6 +208,15 @@ deckIndicator st =
 
   renderCircle ix card =
     HH.i [ HP.classes $ classes ix card ] [ HH.text "" ]
+
+renderName ∷ String → DeckHTML
+renderName name =
+  if name == "" then
+    HH.text ""
+  else
+    HH.div
+      [ HP.class_ CSS.deckName ]
+      [ HH.text name ]
 
 flipButton ∷ DeckHTML
 flipButton =

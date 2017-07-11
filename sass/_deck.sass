@@ -76,6 +76,11 @@
       display: block
       background: transparent
 
+      > .sd-deck-frame-controls
+        // room for the menu
+        left: $grid-size
+        width: calc(100% - #{$grid-size})
+
     > .sd-deck
       top: 0
       bottom: 0
@@ -94,8 +99,9 @@
 .sd-deck-frame-controls
   display: flex
   flex-flow: row nowrap
+  align-items: center
   position: absolute
-  bottom: 0
+  top: 0
   left: 0
   right: 0
   width: 100%
@@ -117,7 +123,7 @@
         bottom: 0
         left: 0
         margin: auto
-        height: calc(100% - 1rem)
+        height: $grid-size - 1rem
         width: 0.1rem
         background-color: $color-separator
 
@@ -147,6 +153,22 @@
 
     .sd-zoom-deck-btn
       font-size: 1.6rem
+
+  .sd-deck-name
+    flex: 0 0 auto
+    overflow: hidden
+    padding: 0 $padding-base-horizontal
+    line-height: 1.8
+    font-size: 1.1rem
+    text-align: right
+    text-overflow: ellipsis
+    white-space: nowrap
+
+    &:last-child
+      padding-right: 0
+
+    &:empty
+      display: none
 
 
 .sd-deck
@@ -234,16 +256,6 @@
 
   &:hover
     color: $gripper-hover-color
-
-
-.sd-deck-name
-  overflow: hidden
-  width: calc(50% - (1.5rem * 3))
-  padding: 0 $grid-size
-  line-height: 1.8
-  font-size: 1.1rem
-  white-space: nowrap
-  text-overflow: ellipsis
 
 
 .sd-deck-card
