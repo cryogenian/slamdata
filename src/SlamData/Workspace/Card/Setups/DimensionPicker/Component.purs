@@ -76,7 +76,7 @@ pickerOptionsToColumnOptions ∷ ∀ s. Ord s ⇒ PickerOptions s → MCI.BasicC
 pickerOptionsToColumnOptions { label, render, isSelectable } =
   MC.ColumnOptions
     { renderColumn: MCC.component
-    , renderItem: MCI.component { render, label }
+    , renderItem: MCI.component { render, label, isActionable: isSelectable }
     , label
     , id
     , isLeaf: isSelectable
@@ -88,15 +88,8 @@ labelNode f = either f f
 renderNode ∷ ∀ s. (s → String) → Either s s → MCI.BasicItemHTML
 renderNode f node =
   HH.div
-    [ HP.classes
-        [ HH.ClassName "sd-miller-column-item-inner"
-        , either
-            (const $ HH.ClassName "sd-miller-column-item-node")
-            (const $ HH.ClassName "sd-miller-column-item-leaf")
-            node
-        ]
-    ]
-    [ HH.span_ [ HH.text (either f f node) ] ]
+    [ HP.class_ (HH.ClassName "sd-miller-column-item-inner") ]
+    [ HH.text (either f f node) ]
 
 isLeafPath ∷ ∀ a. Either a a → Boolean
 isLeafPath = isRight
