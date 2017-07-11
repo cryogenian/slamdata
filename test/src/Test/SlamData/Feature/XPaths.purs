@@ -181,6 +181,10 @@ moveFile ∷ String → String
 moveFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Move / rename"
 
+confirmRemoval ∷ String
+confirmRemoval =
+  "button" `XPath.nodeWithExactText` "Delete"
+
 oneErrorMessage ∷ String
 oneErrorMessage =
   XPath.anyWithText "1 error during evaluation."
