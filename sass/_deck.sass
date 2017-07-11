@@ -56,7 +56,8 @@
       top: $grid-size
       bottom: $grid-size
 
-      > .sd-card-slider
+      > .sd-card-slider,
+      > .sd-card-sizer
         left: $grid-size
         right: $grid-size
 
@@ -81,11 +82,13 @@
       left: 0
       right: 0
 
-    > .sd-deck > .sd-card-slider
+    > .sd-deck > .sd-card-slider,
+    > .sd-deck > .sd-card-sizer
+      $g: $grid-size * 2
       top: $grid-size
       left: $grid-size
       right: $grid-size
-      height: 100%
+      height: calc(100% - #{$g})
 
 
 .sd-deck
@@ -102,17 +105,17 @@
     pointer-events: auto
 
 
-.sd-card-slider
+.sd-card-slider,
+.sd-card-sizer
   position: absolute
   height: 100%
   left: 0
   right: 0
 
-
 .sd-card
   $g: $grid-size * 2
   position: absolute
-  height: calc(100% - #{$g})
+  height: 100%
   width: 100%
 
   > div

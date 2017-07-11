@@ -28,6 +28,8 @@ import SlamData.Workspace.Eval.Card as Card
 
 type Input =
   { active ∷ Boolean
+  , width ∷ Number
+  , height ∷ Number
   }
 
 data CardQuery a
