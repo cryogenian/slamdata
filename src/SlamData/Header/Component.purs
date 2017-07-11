@@ -127,7 +127,9 @@ eval = case _ of
         Just a -> pure (k a)
   BackdropDismiss me next → do
     isDialog ← H.liftEff $ DOM.nodeEq (DOM.target me) (DOM.currentTarget me)
-    H.modify (if isDialog then _{ attributions = false } else id) $> next
+    when isDialog do
+      H.modify _ { attributions = false }
+    pure next
   Dismiss next → do
     _ ← H.query' CP.cp2 unit $ H.action GlobalMenu.DismissSubmenu
     pure next
