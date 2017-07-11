@@ -18,9 +18,9 @@ module SlamData.Workspace.Card.Setups.FormInput.Radio.Component
   ( radioSetupComponent
   ) where
 
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component (labeledSetupComponent)
 
 radioSetupComponent ∷ CC.CardOptions → CC.CardComponent
-radioSetupComponent = labeledSetupComponent FIT.Radio
+radioSetupComponent = labeledSetupComponent CT.radio

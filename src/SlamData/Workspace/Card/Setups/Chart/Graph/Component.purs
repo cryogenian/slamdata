@@ -33,7 +33,6 @@ import Global (readFloat, isNaN)
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as M
@@ -79,7 +78,7 @@ package = P.onPrism (M._BuildGraph ∘ _Just) $ DS.interpret do
 
 graphBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 graphBuilderComponent =
-  CC.makeCardComponent (CT.ChartOptions CHT.Graph) $ H.parentComponent
+  CC.makeCardComponent CT.graph $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , receiver: const Nothing

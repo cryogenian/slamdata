@@ -33,7 +33,6 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as M
@@ -76,7 +75,7 @@ package = P.onPrism (M._BuildPunchCard ∘ _Just) $ DS.interpret do
 
 punchCardBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 punchCardBuilderComponent =
-  CC.makeCardComponent (CT.ChartOptions CHT.PunchCard) $ H.parentComponent
+  CC.makeCardComponent CT.punchCard $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , initialState: const ST.initialState

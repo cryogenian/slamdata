@@ -32,7 +32,7 @@ import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Candlestick))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -93,7 +93,7 @@ buildCandlestick ∷ ModelR → Axes → Port.Port
 buildCandlestick m axes =
   Port.ChartInstructions
     { options: kOptions axes m ∘ buildKData
-    , chartType: Candlestick
+    , chartType: CT.candlestick
     }
 
 type HLOC a =

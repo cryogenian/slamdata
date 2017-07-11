@@ -40,7 +40,7 @@ type HTML = CC.InnerCardHTML Query
 
 troubleshootComponent ∷ CC.CardOptions → CC.CardComponent
 troubleshootComponent =
-  CC.makeCardComponent CT.Troubleshoot $ H.component
+  CC.makeCardComponent CT.troubleshoot $ H.component
     { render: render
     , eval: evalCard ⨁ (absurd ∘ unwrap)
     , initialState: const initialState

@@ -19,12 +19,13 @@ module SlamData.Workspace.Card.Factory
   ( cardComponent
   ) where
 
+import SlamData.Prelude
+
+import Data.Variant (on)
+
 import SlamData.Workspace.Card.Ace.Component (aceComponent)
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType as ChT
-import SlamData.Workspace.Card.CardType.FormInputType as FiT
-import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 import SlamData.Workspace.Card.Chart.Component (chartComponent)
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component (CardComponent)
@@ -72,48 +73,49 @@ import SlamData.Workspace.Card.Variables.Component (variablesComponent)
 
 
 cardComponent ∷ CT.CardType → CardOptions → CardComponent
-cardComponent = case _ of
-  CT.Ace mode → aceComponent mode
-  CT.Search → searchComponent
-  CT.Chart → chartComponent
-  CT.Markdown → markdownComponent
-  CT.Table → tableComponent
-  CT.Download → downloadComponent
-  CT.Variables → variablesComponent
-  CT.Troubleshoot → troubleshootComponent
-  CT.Cache → cacheCardComponent
-  CT.Open → openComponent
-  CT.DownloadOptions → DOpts.component
-  CT.Draftboard → draftboardComponent
-  CT.ChartOptions ChT.Metric → metricBuilderComponent
-  CT.ChartOptions ChT.Sankey → sankeyBuilderComponent
-  CT.ChartOptions ChT.Gauge → gaugeBuilderComponent
-  CT.ChartOptions ChT.Graph → graphBuilderComponent
-  CT.ChartOptions ChT.Pie → pieBuilderComponent
-  CT.ChartOptions ChT.Bar → barBuilderComponent
-  CT.ChartOptions ChT.Line → lineBuilderComponent
-  CT.ChartOptions ChT.Area → areaBuilderComponent
-  CT.ChartOptions ChT.Scatter → scatterBuilderComponent
-  CT.ChartOptions ChT.Radar → radarBuilderComponent
-  CT.ChartOptions ChT.PivotTable → pivotTableBuilderComponent
-  CT.ChartOptions ChT.Funnel → funnelBuilderComponent
-  CT.ChartOptions ChT.Boxplot → boxplotBuilderComponent
-  CT.ChartOptions ChT.Heatmap → heatmapBuilderComponent
-  CT.ChartOptions ChT.PunchCard → punchCardBuilderComponent
-  CT.ChartOptions ChT.Candlestick → candlestickBuilderComponent
-  CT.ChartOptions ChT.Parallel → parallelBuilderComponent
-  CT.SetupFormInput FiT.Dropdown → dropdownSetupComponent
-  CT.SetupFormInput FiT.Radio → radioSetupComponent
-  CT.SetupFormInput FiT.Checkbox → checkboxSetupComponent
-  CT.SetupFormInput FiT.Static → staticSetupComponent
-  CT.SetupFormInput FiT.Text → textSetupComponent
-  CT.SetupFormInput FiT.Numeric → numericSetupComponent
-  CT.SetupFormInput FiT.Date → dateSetupComponent
-  CT.SetupFormInput FiT.Time → timeSetupComponent
-  CT.SetupFormInput FiT.Datetime → datetimeSetupComponent
-  CT.FormInput → formInputComponent
-  CT.Tabs → tabsComponent
-  CT.StructureEditor → StructureEditor.component
-  CT.SetupGeoChart GcT.Marker → GeoMarker.component
-  CT.SetupGeoChart GcT.Heatmap → GeoHeatmap.component
-  CT.GeoChart → Geo.component
+cardComponent = case_
+  # on CT._aceSql (const $ aceComponent CT.aceSql)
+  # on CT._aceMarkdown (const $ aceComponent CT.aceMarkdown)
+  # on CT._search (const searchComponent)
+  # on CT._chart (const chartComponent)
+  # on CT._markdown (const markdownComponent)
+  # on CT._table (const tableComponent)
+  # on CT._download (const downloadComponent)
+  # on CT._variables (const variablesComponent)
+  # on CT._troubleshoot (const troubleshootComponent)
+  # on CT._cache (const cacheCardComponent)
+  # on CT._open (const openComponent)
+  # on CT._downloadOptions (const DOpts.component)
+  # on CT._draftboard (const draftboardComponent)
+  # on CT._metric (const metricBuilderComponent)
+  # on CT._sankey (const sankeyBuilderComponent)
+  # on CT._gauge (const gaugeBuilderComponent)
+  # on CT._graph (const graphBuilderComponent)
+  # on CT._pie (const pieBuilderComponent)
+  # on CT._bar (const barBuilderComponent)
+  # on CT._line (const lineBuilderComponent)
+  # on CT._area (const areaBuilderComponent)
+  # on CT._scatter (const scatterBuilderComponent)
+  # on CT._radar (const radarBuilderComponent)
+  # on CT._pivot (const pivotTableBuilderComponent)
+  # on CT._funnel (const funnelBuilderComponent)
+  # on CT._boxplot (const boxplotBuilderComponent)
+  # on CT._heatmap (const heatmapBuilderComponent)
+  # on CT._punchCard (const punchCardBuilderComponent)
+  # on CT._candlestick (const candlestickBuilderComponent)
+  # on CT._parallel (const parallelBuilderComponent)
+  # on CT._dropdown (const dropdownSetupComponent)
+  # on CT._radio (const radioSetupComponent)
+  # on CT._checkbox (const checkboxSetupComponent)
+  # on CT._numeric (const numericSetupComponent)
+  # on CT._date (const dateSetupComponent)
+  # on CT._time (const timeSetupComponent)
+  # on CT._datetime (const datetimeSetupComponent)
+  # on CT._text (const textSetupComponent)
+  # on CT._form (const formInputComponent)
+  # on CT._tabs (const tabsComponent)
+  # on CT._structureEditor (const StructureEditor.component)
+  # on CT._geoMarker (const GeoMarker.component)
+  # on CT._geoHeatmap (const GeoHeatmap.component)
+  # on CT._geo (const Geo.component)
+  # on CT._static (const staticSetupComponent)

@@ -27,17 +27,22 @@ import Control.Monad.Aff as Aff
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Exception as Exception
 import Control.UI.Browser as Browser
+
 import Data.Array as Array
 import Data.Lens ((.~), _Left, _Just, is)
 import Data.List ((:))
 import Data.List as L
 import Data.Set as Set
 import Data.Time.Duration (Milliseconds(..))
+import Data.Variant (default, on)
+
 import DOM.HTML.HTMLElement (getBoundingClientRect)
+
 import Halogen as H
 import Halogen.Component.Utils (sendAfter, busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Config as Config
@@ -349,9 +354,10 @@ handleBackSide opts = case _ of
             parentId ← H.lift $ P.wrapAndMirrorDeck cardId opts.deckId
             navigateToDeck (parentId L.: opts.cursor)
           _, _ → pure unit
-      Back.WrapChoice CT.Draftboard → wrapDeck Card.singletonDraftboard
-      Back.WrapChoice CT.Tabs → wrapDeck Card.singletonTabs
-      Back.WrapChoice _ → pure unit
+      Back.WrapChoice ct → default (pure unit)
+        # on CT._tabs (const $ wrapDeck Card.singletonTabs)
+        # on CT._draftboard (const $ wrapDeck Card.singletonDraftboard)
+        $ ct
       Back.Wrap → pure unit
       Back.Unwrap → do
         deck ← H.lift $ P.getDeck opts.deckId

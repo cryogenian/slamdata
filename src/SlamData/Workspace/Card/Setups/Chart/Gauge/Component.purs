@@ -28,7 +28,6 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Events as HE
 
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as M
@@ -72,7 +71,7 @@ package = P.onPrism (M._BuildGauge ∘ _Just) $ DS.interpret do
 
 gaugeBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 gaugeBuilderComponent =
-  CC.makeCardComponent (CT.ChartOptions CHT.Gauge) $ H.parentComponent
+  CC.makeCardComponent CT.gauge $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , receiver: const Nothing

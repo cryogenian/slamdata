@@ -28,7 +28,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType as CHT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as M
@@ -81,7 +80,7 @@ package = P.onPrism (M._BuildPie ∘ _Just) $ DS.interpret do
 
 pieBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 pieBuilderComponent =
-  CC.makeCardComponent (CT.ChartOptions CHT.Pie) $ H.parentComponent
+  CC.makeCardComponent CT.pie $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , initialState: const ST.initialState

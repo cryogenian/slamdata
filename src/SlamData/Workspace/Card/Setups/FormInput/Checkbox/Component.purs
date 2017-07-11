@@ -18,9 +18,9 @@ module SlamData.Workspace.Card.Setups.FormInput.Checkbox.Component
   ( checkboxSetupComponent
   ) where
 
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component (labeledSetupComponent)
 
 checkboxSetupComponent ∷ CC.CardOptions → CC.CardComponent
-checkboxSetupComponent = labeledSetupComponent FIT.Checkbox
+checkboxSetupComponent = labeledSetupComponent CT.checkbox

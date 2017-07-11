@@ -21,6 +21,7 @@ module SlamData.Prelude
   , type (⨁), type (⊹), type (×)
   , As, As1
   , asList, asArray
+  , expandVariant, case2_
   , module Prelude
   , module Control.Alt
   , module Control.Apply
@@ -43,6 +44,7 @@ module SlamData.Prelude
   , module Data.Functor
   , module Data.Functor.Coproduct
   , module Data.Generic
+  , module Data.HeytingAlgebra
   , module Data.Maybe
   , module Data.Newtype
   , module Data.Monoid
@@ -79,18 +81,21 @@ import Data.Foldable (class Foldable, traverse_, for_, foldMap, foldl, foldr, fo
 import Data.Functor (($>), (<$))
 import Data.Functor.Coproduct (Coproduct, coproduct, left, right)
 import Data.Generic (class Generic)
+import Data.HeytingAlgebra (tt, ff)
 import Data.List (List)
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe', fromJust)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap, ala, alaF)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
-import Data.Variant (SProxy(..), Variant)
+import Data.Variant (SProxy(..), Variant, case_)
 import Data.Void (Void, absurd)
 
 import Debug.Trace (spy, trace, traceA, traceAny, traceAnyA, traceAnyM, traceShow, traceShowA, traceShowM)
 
 import Partial.Unsafe (unsafePartial)
+
+import Unsafe.Coerce (unsafeCoerce)
 
 flipCompose ∷ ∀ a b c d. Semigroupoid a ⇒ a b c → a c d → a b d
 flipCompose = flip compose
@@ -127,3 +132,14 @@ type As1 f = f ~> f
 
 asList = id ∷ As1 List
 asArray = id ∷ As1 Array
+
+-- That's safe actually
+expandVariant
+  ∷ ∀ r rr out
+  . Union r rr out
+  ⇒ Variant r
+  → Variant out
+expandVariant = unsafeCoerce
+
+case2_ ∷ ∀ a. Variant () → Variant () → a
+case2_ _ = case_

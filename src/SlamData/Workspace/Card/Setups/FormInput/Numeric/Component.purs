@@ -18,10 +18,10 @@ module SlamData.Workspace.Card.Setups.FormInput.Numeric.Component
   ( numericSetupComponent
   ) where
 
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component (textLikeSetupComponent)
 
 numericSetupComponent ∷ CC.CardOptions → CC.CardComponent
 numericSetupComponent =
-  textLikeSetupComponent FIT.Numeric _.value
+  textLikeSetupComponent CT.numeric _.value

@@ -46,7 +46,6 @@ import SlamData.Workspace.Card.Geo.Model (onURIRef)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Setups.Geo.Marker.Component.State as ST
 import SlamData.Workspace.Card.Setups.Geo.Marker.Component.Query as Q
@@ -178,7 +177,7 @@ package = P.onPrism (M._SetupGeoMarker ∘ _Just)
 
 component ∷ CC.CardOptions → CC.CardComponent
 component =
-  CC.makeCardComponent (CT.SetupGeoChart GcT.Marker) $ H.parentComponent
+  CC.makeCardComponent CT.geoMarker $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , receiver: const Nothing

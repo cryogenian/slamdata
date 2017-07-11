@@ -41,7 +41,7 @@ import ECharts.Types.Phantom as ETP
 
 import Global (infinity)
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(PunchCard))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
@@ -94,7 +94,7 @@ buildPort ∷ ModelR → Ax.Axes → Port.Port
 buildPort m axes =
   Port.ChartInstructions
     { options: buildOptions axes m ∘ buildData m
-    , chartType: PunchCard
+    , chartType: CT.punchCard
     }
 
 buildData ∷ ModelR → Array Json → PunchCardData

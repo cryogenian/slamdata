@@ -60,8 +60,15 @@ foreign import debugTime_ ∷ ∀ a. String → (Unit → a) → a
 debugTime ∷ ∀ a. Warn "debug time is used in production" ⇒ String → (Unit → a) → a
 debugTime = debugTime_
 
-throwVariantError :: forall v0 err sym m a v. MonadThrow (Variant v) m => RowCons sym err v0 v => IsSymbol sym => SProxy sym -> err -> m a
-throwVariantError s = throwError <<< inj s
+throwVariantError
+  ∷ ∀ v0 err sym m a v
+  . MonadThrow (Variant v) m
+  ⇒ RowCons sym err v0 v
+  ⇒ IsSymbol sym
+  ⇒ SProxy sym
+  → err
+  → m a
+throwVariantError s = throwError ∘ inj s
 
 stringToNumber ∷ String → Maybe Number
 stringToNumber s =

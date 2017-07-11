@@ -40,7 +40,6 @@ import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.Setups.CSS as CSS
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.GeoChartType as GcT
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Component.State as ST
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Component.ChildSlot as CS
@@ -76,7 +75,7 @@ package = P.onPrism (M._SetupGeoHeatmap ∘ _Just) $ DS.interpret do
 
 component ∷ CC.CardOptions → CC.CardComponent
 component =
-  CC.makeCardComponent (CT.SetupGeoChart GcT.Heatmap) $ H.parentComponent
+  CC.makeCardComponent CT.geoHeatmap $ H.parentComponent
     { render
     , eval: cardEval ⨁ setupEval
     , receiver: const Nothing

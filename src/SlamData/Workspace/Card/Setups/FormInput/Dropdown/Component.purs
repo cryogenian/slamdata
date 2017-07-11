@@ -18,9 +18,9 @@ module SlamData.Workspace.Card.Setups.FormInput.Dropdown.Component
   ( dropdownSetupComponent
   ) where
 
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component (labeledSetupComponent)
 
 dropdownSetupComponent ∷ CC.CardOptions → CC.CardComponent
-dropdownSetupComponent = labeledSetupComponent FIT.Dropdown
+dropdownSetupComponent = labeledSetupComponent CT.dropdown

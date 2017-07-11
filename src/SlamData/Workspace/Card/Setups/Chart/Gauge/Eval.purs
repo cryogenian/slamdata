@@ -30,7 +30,7 @@ import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types.Phantom (OptionI)
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Gauge))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
@@ -89,7 +89,7 @@ buildPort ∷ ModelR → Ax.Axes → Port.Port
 buildPort m _ =
   Port.ChartInstructions
     { options: buildOptions m ∘ buildData m
-    , chartType: Gauge
+    , chartType: CT.gauge
     }
 
 buildData ∷ ModelR → Array Json → Array GaugeSerie

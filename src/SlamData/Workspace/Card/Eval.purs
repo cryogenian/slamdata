@@ -25,13 +25,15 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Writer.Class (class MonadTell)
+
 import Data.StrMap as SM
 import Data.List ((:))
+import Data.Variant (on)
+
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.FormInputType as FiT
 import SlamData.Workspace.Card.Chart.Eval as Chart
 import SlamData.Workspace.Card.Chart.Model as ChartModel
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Eval as PivotTable
@@ -143,9 +145,9 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   BuildPunchCard model, _ → BuildPunchCard.eval model =<< extractResource varMap
   BuildCandlestick model, _ → BuildCandlestick.eval model =<< extractResource varMap
   BuildParallel model, _ → BuildParallel.eval model =<< extractResource varMap
-  SetupCheckbox model, _ → tapResource (SetupLabeled.eval model FiT.Checkbox) varMap
-  SetupRadio model, _ → tapResource (SetupLabeled.eval model FiT.Radio) varMap
-  SetupDropdown model, _ → tapResource (SetupLabeled.eval model FiT.Dropdown) varMap
+  SetupCheckbox model, _ → tapResource (SetupLabeled.eval model CT.checkbox) varMap
+  SetupRadio model, _ → tapResource (SetupLabeled.eval model CT.radio) varMap
+  SetupDropdown model, _ → tapResource (SetupLabeled.eval model CT.dropdown) varMap
   SetupText model, _ → tapResource (SetupText.eval model) varMap
   SetupNumeric model, _ → tapResource (SetupNumeric.eval model) varMap
   SetupDate model, _ → tapResource (SetupDate.eval model) varMap
@@ -164,8 +166,10 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
 
 modelToEval ∷ Model.AnyCardModel → Eval
 modelToEval = case _ of
-  Model.Ace CT.SQLMode model → Query model.text
-  Model.Ace CT.MarkdownMode model → Markdown model.text
+  Model.Ace aceT model → case_
+    # on CT._aceSql (const $ Query model.text)
+    # on CT._aceMarkdown (const $ Markdown model.text)
+    $ aceT
   Model.Markdown model → MarkdownForm model
   Model.Search txt → Search txt
   Model.Cache fp → Cache fp

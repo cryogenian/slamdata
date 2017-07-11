@@ -24,6 +24,7 @@ import Data.List as List
 import Data.Map as Map
 import Data.Set as Set
 import Data.Time.Duration (Milliseconds(..))
+import Data.Variant (on)
 
 import DOM.Classy.Event as DOM
 import DOM.Event.Types (Event)
@@ -36,13 +37,13 @@ import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
+import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupLabeledFormInputPort)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
 type State =
-  { formInputType ∷ FormInputType
+  { formInputType ∷ Sel.Select ()
   , selected ∷ Set.Set Sem.Semantics
   , valueLabelMap ∷ Map.Map Sem.Semantics (Maybe String)
   , label ∷ Maybe String
@@ -51,7 +52,7 @@ type State =
 
 initialState ∷ State
 initialState =
-  { formInputType: Dropdown
+  { formInputType: Sel.dropdown
   , selected: Set.empty
   , valueLabelMap: Map.empty
   , label: Nothing
@@ -94,11 +95,11 @@ render state =
   HH.form
     [ HE.onSubmit (HE.input PreventDefault) ]
     $ foldMap (\n → [ HH.h3_ [ HH.text n ] ]) state.label
-    ⊕ case state.formInputType of
-      Dropdown → renderDropdown state
-      Checkbox → renderCheckbox state
-      Radio → renderRadio state
-      _ → [ ]
+    ⊕ ( case_
+        # on Sel._dropdown ( const $ renderDropdown state )
+        # on Sel._checkbox ( const $ renderCheckbox state )
+        # on Sel._radio ( const $ renderRadio state )
+        $ state.formInputType )
 
 renderDropdown ∷ State → Array HTML
 renderDropdown state =
@@ -172,7 +173,7 @@ eval = case _ of
       selectedFromConf
         -- If this is checkbox and selected values field is empty then
         -- there is no sense in setting default value (and it's actually empty :) )
-        | Set.isEmpty conf.selectedValues ∧ conf.formInputType ≠ Checkbox =
+        | Set.isEmpty conf.selectedValues ∧ (not $ Sel.eq_ case2_ conf.formInputType Sel.checkbox) =
             foldMap Set.singleton $ List.head $ Map.keys conf.valueLabelMap
         | otherwise =
             conf.selectedValues
@@ -200,23 +201,23 @@ eval = case _ of
     pure next
   ItemSelected sem next → do
     st ← H.get
-    case st.formInputType of
-      Checkbox → do
+    if (Sel.eq_ case2_ st.formInputType Sel.checkbox)
+      then do
         let
           selected =
             if Set.member sem st.selected
               then Set.delete sem st.selected
               else Set.insert sem st.selected
         H.modify _{ selected = selected }
-      _ → H.modify _{ selected = Set.singleton sem }
+      else H.modify _{ selected = Set.singleton sem }
     H.raise Updated
     pure next
   SetSelected set next → do
     st ← H.get
     let
-      selected = case st.formInputType of
-        Checkbox → set
-        _ → Set.fromFoldable $ List.head $ List.fromFoldable set
+      selected
+        | Sel.eq_ case2_ st.formInputType Sel.checkbox = set
+        | otherwise = Set.fromFoldable $ List.head $ List.fromFoldable set
     when (selected ≠ st.selected)
       $ H.modify _{ selected = selected }
     pure next

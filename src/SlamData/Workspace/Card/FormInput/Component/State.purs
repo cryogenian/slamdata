@@ -20,11 +20,11 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor(..))
 
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
+import SlamData.Workspace.Card.CardType as CT
 
 type State =
   { dimensions ∷ { width ∷ Int, height ∷ Int }
-  , formInputType ∷ Maybe FormInputType
+  , formInputType ∷ Maybe (Variant (CT.StaticR (CT.SelectR (CT.InputR ()))))
   , cursor ∷ JCursor
   }
 

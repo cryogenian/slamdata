@@ -33,20 +33,20 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Common.Sort (Sort(..))
 import SlamData.Common.Align (Align(..))
+import SlamData.Common.Sort (Sort(..))
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (Model, ModelR)
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Funnel))
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Port as Port
 
 import SqlSquared as Sql
 
@@ -94,7 +94,7 @@ buildPort ∷ ModelR → Axes → Port.Port
 buildPort m _ =
   Port.ChartInstructions
     { options: buildOptions m ∘ buildData m
-    , chartType: Funnel
+    , chartType: CT.funnel
     }
 
 buildData ∷ ModelR → Array Json → Array FunnelSeries

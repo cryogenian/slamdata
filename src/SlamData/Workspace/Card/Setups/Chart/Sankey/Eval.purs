@@ -30,7 +30,7 @@ import ECharts.Commands as E
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Sankey))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
@@ -77,7 +77,7 @@ buildSankey ∷ ModelR → Axes → Port.Port
 buildSankey m _ =
   Port.ChartInstructions
     { options: sankeyOptions m ∘ buildSankeyData
-    , chartType: Sankey
+    , chartType: CT.sankey
     }
 
 buildSankeyData ∷ JArray → Array Item

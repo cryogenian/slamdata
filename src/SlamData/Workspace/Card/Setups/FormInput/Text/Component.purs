@@ -20,13 +20,13 @@ module SlamData.Workspace.Card.Setups.FormInput.Text.Component
 
 import SlamData.Prelude
 
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component (textLikeSetupComponent)
 
 textSetupComponent ∷ CC.CardOptions → CC.CardComponent
 textSetupComponent =
-  textLikeSetupComponent FIT.Text \ax →
+  textLikeSetupComponent CT.text \ax →
       ax.value
       ⊕ ax.category
       ⊕ ax.time

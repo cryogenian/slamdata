@@ -20,6 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (JCursor(..))
 import Data.Time.Duration (Milliseconds(..))
+import Data.Variant (on)
 
 import DOM.Classy.Event as DOM
 import DOM.Event.Types (Event)
@@ -32,14 +33,14 @@ import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
 
 type State =
   { label ∷ Maybe String
   , value ∷ String
-  , formInputType ∷ FormInputType
+  , formInputType ∷ CT.Input ()
   , cursor ∷ JCursor
   }
 
@@ -47,7 +48,7 @@ initialState ∷ State
 initialState =
   { label: Nothing
   , value: ""
-  , formInputType: Text
+  , formInputType: CT.text
   , cursor: JCursorTop
   }
 
@@ -128,10 +129,10 @@ eval = case _ of
     H.raise Updated
     pure next
 
-inputTypeFromFIT ∷ FormInputType → HP.InputType
-inputTypeFromFIT = case _ of
-  Numeric → HP.InputNumber
-  Date → HP.InputDate
-  Time → HP.InputTime
-  Datetime → HP.InputDatetime
-  _ → HP.InputText
+inputTypeFromFIT ∷ CT.Input () → HP.InputType
+inputTypeFromFIT = case_
+  # on CT._numeric (const $ HP.InputNumber)
+  # on CT._date (const $ HP.InputDate)
+  # on CT._time (const $ HP.InputTime)
+  # on CT._datetime (const $ HP.InputDatetime)
+  # on CT._text (const $ HP.InputText)

@@ -59,7 +59,7 @@ render state =
   [ HH.h4_
       [ HH.text
         $ "Couldn't insert a "
-        <> CardType.cardName state.attemptedCardType
+        <> CardType.name state.attemptedCardType
         <> " card into this deck"
       ]
   , HH.div
@@ -86,7 +86,7 @@ render state =
       i →
         [ HH.text
             $ "To be able to insert a "
-            <> show (CardType.cardName state.attemptedCardType)
+            <> show (CardType.name state.attemptedCardType)
             <> " card here you can add " <> setsOfCardsText i <> " first:"
         ]
 

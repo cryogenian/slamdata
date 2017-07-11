@@ -22,33 +22,33 @@ import Data.Argonaut ((:=), (.?), (~>))
 import Data.Argonaut as J
 import Data.Argonaut.JCursor.Gen (genJCursor)
 
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
+import SlamData.Workspace.Card.CardType.Input as Inp
 
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.Arbitrary (arbitrary)
 
 type Model =
-  { formInputType ∷ FormInputType
+  { formInputType ∷ Inp.Input ()
   , value ∷ String
   , cursor ∷ J.JCursor
   }
 
 initialModel ∷ Model
 initialModel =
-  { formInputType: Text
+  { formInputType: Inp.text
   , value: ""
   , cursor: J.JCursorTop
   }
 
 eqModel ∷ Model → Model → Boolean
 eqModel r1 r2 =
-  r1.formInputType ≡ r2.formInputType
+  Inp.eq_ case2_  r1.formInputType r2.formInputType
   ∧ r1.value ≡ r2.value
   ∧ r1.cursor ≡ r2.cursor
 
 genModel ∷ Gen.Gen Model
 genModel = do
-  formInputType ← arbitrary
+  formInputType ← Gen.allInArray Inp.all
   cursor ← genJCursor
   value ← arbitrary
   pure { cursor
@@ -59,13 +59,13 @@ genModel = do
 encode ∷ Model → J.Json
 encode r =
   "value" := r.value
-  ~> "formInputType" := r.formInputType
+  ~> "formInputType" := Inp.print case_ r.formInputType
   ~> "cursor" := r.cursor
   ~> J.jsonEmptyObject
 
 decode ∷ J.JObject → String ⊹ Model
 decode obj = do
-  formInputType ← obj .? "formInputType"
+  formInputType ← Inp.parse =<< obj .? "formInputType"
   cursor ← obj .? "cursor"
   value ← obj .? "value"
   pure { formInputType

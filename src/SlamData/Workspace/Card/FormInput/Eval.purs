@@ -25,18 +25,22 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
+
 import Data.Lens ((^.), preview, (?~), (.~))
 import Data.List as L
 import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
+import Data.Variant (on)
+
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.CardType.FormInputType as FIT
+import SlamData.Workspace.Card.CardType.Select as Sel
+import SlamData.Workspace.Card.CardType.Input as Inp
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
@@ -46,8 +50,10 @@ import SlamData.Workspace.Card.FormInput.Model (Model(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Semantics as Sem
+
 import SqlSquared (Sql)
 import SqlSquared as Sql
+
 import Utils (stringToNumber)
 import Utils.SqlSquared (all, asRel, tableRelation)
 
@@ -122,7 +128,7 @@ evalLabeled m p r = do
       | lastUsedResource ≡ Just r =
           m.selected
       -- new resource and checkbox: empty selection
-      | p.formInputType ≡ FIT.Checkbox =
+      | Sel.eq_ case2_ p.formInputType Sel.checkbox =
           Set.empty
       -- default selection is empty, new resource this is not checkbox: take first value
       | Set.isEmpty p.selectedValues =
@@ -167,12 +173,13 @@ evalTextLike
 evalTextLike m p r = do
   cardState ← get
   let
-    selection = case p.formInputType of
-      FIT.Numeric → maybe Sql.null Sql.num $ stringToNumber m.value
-      FIT.Time → Sql.invokeFunction "TIME" $ pure $ Sql.string m.value
-      FIT.Date → Sql.invokeFunction "DATE" $ pure $ Sql.string m.value
-      FIT.Datetime → Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string m.value
-      _ → Sql.string m.value
+    selection = case_
+      # on Inp._numeric (const $ maybe Sql.null Sql.num $ stringToNumber m.value)
+      # on Inp._time (const $ Sql.invokeFunction "TIME" $ pure $ Sql.string m.value)
+      # on Inp._date (const $ Sql.invokeFunction "DATE" $ pure $ Sql.string m.value)
+      # on Inp._datetime (const $ Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string m.value)
+      # on Inp._text (const $ Sql.string m.value)
+
     sql =
       Sql.buildSelect
         $ all
@@ -183,6 +190,6 @@ evalTextLike m p r = do
                     ( Sql.binop Sql.FieldDeref
                         ( Sql.ident "res" )
                         ( QQ.jcursorToSql p.cursor ))
-                    selection ))
+                    $ selection p.formInputType ))
 
   eval sql r

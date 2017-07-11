@@ -39,7 +39,7 @@ import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
-import SlamData.Workspace.Card.CardType.ChartType (ChartType(Scatter))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getTransparentColor)
@@ -126,7 +126,7 @@ buildPort ∷ ModelR → Axes → Port.Port
 buildPort m _ =
   Port.ChartInstructions
     { options: buildOptions m ∘ buildData m
-    , chartType: Scatter
+    , chartType: CT.scatter
     }
 
 buildData ∷ ModelR → Array Json → Array ScatterSeries

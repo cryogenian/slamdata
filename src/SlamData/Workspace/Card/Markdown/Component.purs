@@ -51,7 +51,7 @@ type DSL = CC.InnerCardParentDSL State Query MarkdownQuery Unit
 
 markdownComponent ∷ CC.CardOptions → CC.CardComponent
 markdownComponent options =
-  CC.makeCardComponent CT.Markdown (H.lifecycleParentComponent
+  CC.makeCardComponent CT.markdown (H.lifecycleParentComponent
     { render: render uniqueCardId
     , eval: evalCard ⨁ evalComponent
     , initialState: const initialState

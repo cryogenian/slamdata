@@ -73,10 +73,9 @@ import Leaflet.Core as LC
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Download.Model (DownloadOptions)
 import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.CardType.ChartType (ChartType)
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), emptyVarMap, _VarMapValue)
 
 import SqlSquared as Sql
@@ -108,7 +107,7 @@ type MetricPort =
 
 type ChartInstructionsPort =
   { options ∷ Array Json → DSL OptionI
-  , chartType ∷ ChartType
+  , chartType ∷ CT.Chart ()
   }
 
 type PivotTablePort =
@@ -122,13 +121,13 @@ type SetupLabeledFormInputPort =
   , valueLabelMap ∷ Map.Map Sem.Semantics (Maybe String)
   , cursor ∷ JCursor
   , selectedValues ∷ Set.Set Sem.Semantics
-  , formInputType ∷ FormInputType
+  , formInputType ∷ CT.Select ()
   }
 
 type SetupTextLikeFormInputPort =
   { name ∷ String
   , cursor ∷ JCursor
-  , formInputType ∷ FormInputType
+  , formInputType ∷ CT.Input ()
   }
 
 type GeoChartPort =

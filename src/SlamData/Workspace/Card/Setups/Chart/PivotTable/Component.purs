@@ -36,25 +36,24 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.HTML.CSS as HC
 
-import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.State (_Axes)
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
-import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
-import SlamData.Workspace.Card.Setups.DimensionPicker.Column (flattenColumns, showColumn)
-import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
+import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.ChildSlot as PCS
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query (Query(..), ForDimension(..))
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.State as PS
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionPicker.Column (flattenColumns, showColumn)
+import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
+import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (flattenJCursors)
 import SlamData.Workspace.Card.Setups.Inputs as I
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Numeric as N
 import SlamData.Workspace.Card.Setups.Transform.Place.Component as TPC
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType as CHT
-import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Eval.State (_Axes)
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils (showPrettyJCursor, showJCursorTip)
@@ -66,7 +65,7 @@ type HTML = CC.InnerCardParentHTML Query PCS.ChildQuery PCS.ChildSlot
 
 pivotTableBuilderComponent ∷ CC.CardOptions → CC.CardComponent
 pivotTableBuilderComponent =
-  CC.makeCardComponent (CT.ChartOptions CHT.PivotTable) $ H.parentComponent
+  CC.makeCardComponent CT.pivot $ H.parentComponent
     { render
     , eval: coproduct evalCard evalOptions
     , initialState: const PS.initialState
