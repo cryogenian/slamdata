@@ -187,11 +187,11 @@ rootFile = rootDir </> file ""
 tmpDir ∷ RelDirPath
 tmpDir = P.dir ".tmp"
 
+parentDir ∷ P.RelDir Unsandboxed
+parentDir = P.parentDir' P.currentDir
+
 peelFile ∷ ∀ a s. P.Path a P.File s → Maybe (Tuple (P.Path a P.Dir s) P.FileName)
 peelFile path = unsafePartial (map fromRight <$> peel path)
 
 absToRelative ∷ ∀ a s. P.Path P.Abs a s → P.Path P.Rel a s
 absToRelative p = unsafePartial $ fromJust $ P.relativeTo p P.rootDir
-
-siblingPath ∷ ∀ b c. P.Path P.Rel b c → P.Path P.Rel b P.Unsandboxed
-siblingPath p = P.parentDir' P.currentDir </> P.unsandbox p

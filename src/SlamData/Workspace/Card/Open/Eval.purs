@@ -18,30 +18,31 @@ module SlamData.Workspace.Card.Open.Eval (evalOpen) where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Writer.Class (class MonadTell)
 import Data.Lens ((^?), (?~))
 import Data.Path.Pathy as Path
 import SlamData.FileSystem.Resource as R
-import SlamData.Quasar.Class (class QuasarDSL)
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Class (class ParQuasarDSL)
 import SlamData.Quasar.FS as QFS
-import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Eval.Process as Process
 import SlamData.Workspace.Card.Open.Error (OpenError(..), throwOpenError)
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquared as Sql
 import Utils.SqlSquared (all)
-import Utils.Path (tmpDir)
 
 evalOpen
   ∷ ∀ m v
   . MonadThrow (Variant (open ∷ OpenError, qerror ∷ CE.QError, stringly ∷ String | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ QuasarDSL m
+  ⇒ MonadAff SlamDataEffects m
+  ⇒ ParQuasarDSL m
   ⇒ Open.Model
   → Port.VarMap
   → m Port.Out
@@ -61,16 +62,7 @@ evalOpen model varMap = case model of
         Sql.buildSelect
           $ all
           ∘ (Sql._relations ?~ Sql.VariRelation { vari: var, alias: Nothing })
-      sqlQuery = Sql.Query mempty body
-      Path.FileName fileName × sqlResult = Process.elaborate (path Path.</> tmpDir) cardId varMap sqlQuery
-    case sqlResult of
-      Right sqlModule → do
-        tmpPath × res ← CEM.temporaryOutputModule
-        CE.liftQ $ QQ.mountModule tmpPath sqlModule
-        CEM.resourceOut $ Port.Process (res Path.</> Path.file fileName) sqlModule varMap
-      Left sql →
-        -- Should be impossible.
-        CE.throw "Expected SQL Module."
+    CEM.resourceOut =<< CE.liftQ (CEC.localEvalResource (Sql.Query mempty body) varMap)
 
   where
   checkPath filePath =

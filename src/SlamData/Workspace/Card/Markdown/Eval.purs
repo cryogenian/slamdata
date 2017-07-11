@@ -28,7 +28,7 @@ import Data.List as L
 import Data.List.NonEmpty as NEL
 import Data.Newtype (wrap)
 import Data.NonEmpty ((:|))
-import Data.Path.Pathy ((</>))
+import Data.Path.Pathy ((</>), unsandbox, currentDir)
 import Data.String as S
 import Data.StrMap as SM
 import Matryoshka (project, transAna)
@@ -83,7 +83,7 @@ evalMarkdown str varMap = do
   case SDP.parseMd str of
     Left e → throwMarkdownError (MarkdownParseError {markdown: str, error: e})
     Right sd → do
-      doc ← evalEmbeddedQueries varMap (path </> tmpDir) sd
+      doc ← evalEmbeddedQueries varMap path sd
       pure (Port.SlamDown doc × varMap)
 
 findFields
@@ -220,7 +220,7 @@ evalEmbeddedQueries varMap dir =
     → String
     → m (Array EJSON.EJson)
   runQuery field code =
-    let esql = Process.elaborateQuery dir varMap <$> Sql.parseQuery code
+    let esql = Process.elaborateQuery (unsandbox (currentDir </> tmpDir)) varMap <$> Sql.parseQuery code
     in case esql of
       Left error →
         throwMarkdownError (MarkdownSqlParseError { field, sql: code, error: parseErrorMessage error })

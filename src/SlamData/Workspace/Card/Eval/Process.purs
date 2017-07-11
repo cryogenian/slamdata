@@ -18,6 +18,7 @@ module SlamData.Workspace.Card.Eval.Process
   ( elaborate
   , elaborateQuery
   , processIdent
+  , ImportBaseDir
   ) where
 
 import SlamData.Prelude
@@ -75,6 +76,8 @@ type VarMapValues =
 
 type RewriteLog = Set.Set String
 
+type ImportBaseDir = Path.RelDir Path.Unsandboxed
+
 type RewriteState =
   { fresh ∷ Int
   , decls ∷ L.List (Sql.SqlDeclF Sql.Sql)
@@ -85,7 +88,7 @@ type RewriteState =
   }
 
 type RewriteEnv =
-  { path ∷ PU.DirPath
+  { path ∷ ImportBaseDir
   , varMap ∷ Port.VarMap
   , varScope ∷ Set.Set String
   , shouldAlias ∷ Boolean
@@ -94,7 +97,7 @@ type RewriteEnv =
 type RewriteM =
   RWS.RWS RewriteEnv RewriteLog RewriteState
 
-initialEnv ∷ PU.DirPath → VM.VarMap → RewriteEnv
+initialEnv ∷ ImportBaseDir → VM.VarMap → RewriteEnv
 initialEnv path varMap =
   { path
   , varMap
@@ -113,7 +116,7 @@ initialState =
   }
 
 elaborate
-  ∷ PU.DirPath
+  ∷ ImportBaseDir
   → CID.CardId
   → VM.VarMap
   → Sql.SqlQuery
@@ -142,7 +145,7 @@ elaborate path currentSource varMap query =
       else Left $ Sql.Query decls sql
 
 elaborateQuery
-  ∷ PU.DirPath
+  ∷ ImportBaseDir
   → VM.VarMap
   → Sql.SqlQuery
   → Sql.SqlQuery
@@ -247,13 +250,14 @@ elaborateVar vari = do
   substResource ∷ CID.CardId → VM.Resource → m Sql.Sql
   substResource source = case _ of
     VM.Path filePath → pure $ sqlPath filePath
-    VM.View filePath _ _ → pure $ sqlPath (PU.siblingPath filePath)
+    VM.View filePath _ _ → sqlPath <$> basePath filePath
     VM.Process filePath _ localVarMap → do
       { shouldAlias } ← ask
       if shouldAlias
         then do
           activateProcess
-          substProcessVar source (PU.siblingPath filePath) localVarMap vari
+          filePath' ← basePath filePath
+          substProcessVar source filePath' localVarMap vari
         else default
 
 substUnion ∷ ∀ m. Elaborate m (CID.CardId → String → Array VM.VarMapValue → m Sql.Sql)
@@ -275,12 +279,13 @@ substUnion source vari vals = do
   substResource ∷ VM.Resource → m Sql.Sql
   substResource = case _ of
     VM.Path filePath → pure $ sqlPath filePath
-    VM.View filePath _ _ → pure $ sqlPath (PU.siblingPath filePath)
+    VM.View filePath _ _ → sqlPath <$> basePath filePath
     VM.Process filePath _ localVarMap → do
       activateProcess
+      filePath' ← basePath filePath
       -- TODO: Maybe this should be indexed instead of unique?
       tmp ← tmpName
-      substProcessVar source (PU.siblingPath filePath) localVarMap tmp
+      substProcessVar source filePath' localVarMap tmp
 
 substProcessVar ∷ ∀ m a c. Elaborate m (CID.CardId → Path.Path a Path.File c → VM.VarMap → String → m Sql.Sql)
 substProcessVar source filePath localVarMap vari = do
@@ -332,6 +337,11 @@ processIdent cid =
 
 sqlPath ∷ ∀ a b c. Path.Path a b c → Sql.Sql
 sqlPath = embed ∘ Sql.Ident ∘ Path.unsafePrintPath
+
+basePath ∷ ∀ m b c. Elaborate m (Path.Path Path.Rel b c → m (Path.Path Path.Rel b Path.Unsandboxed))
+basePath p = do
+  { path } ← ask
+  pure (path Path.</> Path.unsandbox p)
 
 sqlModule
   ∷ L.List (Sql.SqlDeclF Sql.Sql)
