@@ -1,0 +1,144 @@
+.dialog-download,
+.download-configuration
+  min-width: 70rem
+
+  .form-group:last-of-type
+    margin-bottom: 0
+
+  input[type="radio"]
+    margin-right: 1rem
+
+  input[type="text"]
+    width: 6.4rem
+
+  label
+    line-height: 1.4rem
+    width: 100%
+    margin-bottom: 0
+
+    input, select
+      font-weight: 400
+
+    > span:first-child
+      width: 10rem
+      display: block
+      float: left
+
+    input.form-control
+      width: calc(100% - 10rem)
+
+    select.form-control
+      width: auto
+
+  .download-source
+    label input.form-control
+      float: left
+      width: calc(100% - 6.7rem)
+
+    ul.file-list-group
+      width: 46.8rem
+      left: 11.5rem
+      margin-top: -0.5rem
+
+  .download-target
+    label
+      position: relative
+      line-height: 3.4rem
+
+    input
+      background: transparent
+
+    .download-target-box
+      position: absolute
+      top: 0
+      left: 11.3rem
+      font-weight: 400
+
+      > span
+        &:first-child
+          color: transparent
+
+        &:last-child
+          opacity: 0.5
+
+  .download-csv-delimiters
+    list-style: none
+    padding: 0
+    margin-top: $padding-base-horizontal
+
+    &, label
+      display: flex
+      flex-flow: row wrap
+
+    label
+      align-items: center
+      padding: $padding-base-vertical $padding-base-horizontal
+
+      > span, > input
+        flex: 0 1 50%
+        min-width: 0
+
+      > span
+        padding-right: $padding-base-vertical
+
+      > input
+        width: auto
+
+    li
+      display: flex
+      flex: 0 1 50%
+      width: 50%
+      margin: $padding-base-vertical 0
+
+  .download-array-mode
+    > label
+      width: 25%
+      float: left
+
+    ul
+      list-style: none
+      padding: 0
+      float: left
+      width: 75%
+
+      li
+        display: flex
+        flex-flow: row wrap
+        align-items: center
+
+        label, input
+          flex: 1 1 50%
+
+        label
+          cursor: pointer
+          display: inline
+
+        input
+          margin-left: 1rem
+          width: 4em
+          display: inline-block
+
+  .download-json-options
+    > div
+      display: flex
+      flex-flow: row wrap
+      margin: 1rem 0
+
+    > div > label
+      flex: 0 1 15.6rem
+      line-height: 1.4
+
+    ul
+      flex: 1 1 auto
+      list-style: none
+      padding: 0
+      float: left
+      margin-bottom: 0
+
+      li
+        label
+          cursor: pointer
+          display: inline
+
+  .alert
+    height: 4.2rem

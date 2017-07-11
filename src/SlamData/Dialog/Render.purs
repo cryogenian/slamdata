@@ -20,15 +20,13 @@ import SlamData.Prelude
 
 import Halogen.HTML as H
 
+import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (classedDiv)
 
 modalDialog :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
-modalDialog children =
+modalDialog =
   -- I think we don't need stopPropagation and preventDefault anymore
-  (classedDiv $ H.ClassName "deck-dialog")
-  [ H.div_
-    children
-  ]
+  classedDiv CN.dialog
 
 modalHeader :: forall f p. String -> H.HTML p (f Unit)
 modalHeader message =
@@ -39,4 +37,3 @@ modalBody = classedDiv (H.ClassName "deck-dialog-body") <<< pure
 
 modalFooter :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
 modalFooter = classedDiv (H.ClassName "deck-dialog-footer")
-

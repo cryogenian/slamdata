@@ -1,0 +1,47 @@
+// Main entry point for Sass.
+
+@import normalize
+@import bootstrap-variables
+@import bootstrap
+@import bootstrap-overloads
+@import base
+@import form
+@import button
+@import icon
+@import gripper
+@import global-menu
+@import menu
+@import nav
+@import deck
+@import dialog/download
+@import dialog/embed
+@import dialog/mount
+@import dialog/picker
+@import dialog/rename
+@import filesystem
+@import form-builder
+@import guide
+@import hint
+@import notifications
+@import workspace
+@import tooltip
+@import attributions
+@import picker
+
+
+// ERRORS
+// Safe guard that these colors have enough contrast, otherwise this theme sucks
+
+$ratio: contrast-ratio($text-color, $body-bg)
+@if $ratio < 2.2
+  @error "Not enough contrast between text and body colors (#{$text-color}, #{$body-bg}, #{$ratio})"
+
+
+$ratio: contrast-ratio($brand-primary, $body-bg)
+@if $ratio < 2.2
+  @error "Not enough contrast between primary and body colors (#{$brand-primary}, #{$body-bg}, #{$ratio})"
+
+
+$ratio: contrast-ratio($input-color, $input-bg)
+@if $ratio < 2.2
+  @error "Not enough contrast between input foreground and background colors (#{$input-color}, #{$input-bg}, #{$ratio})"

@@ -3,32 +3,38 @@ module Test.SlamData.Feature.Test.CacheCard where
 import SlamData.Prelude
 
 import Test.Feature.Log (successMsg)
-import Test.Feature.Scenario (scenario)
+import Test.Feature.Scenario (KnownIssues, noIssues, scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
-import Test.SlamData.Feature.Monad (SlamFeature)
+import Test.SlamData.Feature.Monad (SlamFeature, getConnector)
 
 
-cacheCardScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
-cacheCardScenario =
+cacheCardScenario ∷ String → KnownIssues → SlamFeature Unit → SlamFeature Unit
+cacheCardScenario scenarioName knownIssues implementation = do
+  connector ← getConnector
   scenario
-    "Caching data source card output"
-    (Interact.createWorkspaceInTestFolder "Cache card")
-    (Interact.deleteFileInTestFolder "Cache card.slam"
-     ≫ Interact.deleteFileInTestFolder "временный файл"
-    )
+    { epic: "Caching data source card output"
+    , before: Interact.createWorkspaceInTestFolder "Cache card"
+    , after: (Interact.deleteFileInTestFolder "Cache card.slam"
+      ≫ Interact.deleteFileInTestFolder "временный файл")
+    , title: scenarioName
+    , knownIssues
+    , connector
+    }
+    implementation
 
 test ∷ SlamFeature Unit
 test =
-  cacheCardScenario "Cache card output to file" [] do
-    Interact.insertQueryCardInLastDeck
+  cacheCardScenario "Cache card output to file"
+  (noIssues { marklogic = Just "https://github.com/quasar-analytics/quasar/issues/2348" }) do
+    Interact.insertQueryCardInFirstDeck
     Interact.provideQueryInLastQueryCard
-      "SELECT measureOne, measureTwo from `/test-mount/testDb/flatViz`"
+        "SELECT measureOne, measureTwo from `/test-mount/testDb/flatViz`"
     Interact.runQuery
-    Interact.accessNextCardInLastDeck
+    Interact.accessNextCardInFirstDeck
     Interact.insertCacheCardInLastDeck
     Interact.provideSaveDestinationInLastCacheCard
-      "/test-mount/testDb/временный файл"
+        "/test-mount/testDb/временный файл"
     Interact.doSaveInLastCacheCard
     Interact.accessNextCardInLastDeck
     Interact.selectBuildChart

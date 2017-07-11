@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -euo pipefail # STRICT MODE
+IFS=$'\n\t'       # http://redsymbol.net/articles/unofficial-bash-strict-mode/
+
+GREEN='\033[0;32m'
+NC='\033[0m'
+USER_PASS="couchbase"
+CB='http://couchbase:couchbase@127.0.0.1'
+
+sleep 10
+
+# doing this as suggested here by Dan Douglass on 22/Jan/16 12:13PM
+# https://issues.couchbase.com/browse/MB-16233
+echo -e "${GREEN}setting up couchbase memory quota...${NC}"
+curl -v -s -X POST $CB:8091/pools/default -d 'memoryQuota=512'
+printf "\n\n"
+
+sleep 1
+
+echo -e "${GREEN}setting up couchbase services...${NC}"
+curl -v $CB:8091/node/controller/setupServices -d services=kv%2Cn1ql%2Cindex%2Cfts
+printf "\n\n"
+
+sleep 1
+
+echo -e "${GREEN}setting up couchbase web console with username and password...${NC}"
+curl -v $CB:8091/settings/web -d port=8091 -d username=${USER_PASS} -d password=${USER_PASS}
+printf "\n\n"
+
+sleep 1
+
+echo -e "${GREEN}setting up couchbase pools...${NC}"
+curl -v -X POST $CB:8091/pools/default -d 'indexMemoryQuota=2048'
+printf "\n\n"
+
+sleep 1
+
+echo -e "${GREEN}setting up couchbase testDb bucket...${NC}"
+curl -X POST -u ${USER_PASS}:${USER_PASS} -d 'name=testDb' -d 'authType=sasl' -d 'saslPassword=couchbase' -d 'ramQuotaMB=100' 127.0.0.1:8091/pools/default/buckets
+echo -e "${GREEN}setting up couchbase default bucket...${NC}"
+curl -X POST -u ${USER_PASS}:${USER_PASS} -d 'name=default' -d 'authType=sasl' -d 'ramQuotaMB=100' 127.0.0.1:8091/pools/default/buckets
+printf "\n\n"
+
+sleep 1
+
+echo -e "${GREEN}setting up bulk dump of data to bucket...${NC}"
+cbdocloader -n 127.0.0.1:8091 -u ${USER_PASS} -p ${USER_PASS} -b testDb -s 100 /tmp/couchbase.zip
+printf "\n\n"
+
+sleep 1
+
+echo -e "${GREEN}setting up couchbase indexes...${NC}"
+curl -v $CB:8091/settings/indexes -d 'storageMode=memory_optimized'
+printf "\n\n"
+
+sleep 10
+
+echo -e "${GREEN}Indexing testDb...${NC}"
+curl -v $CB:8093/query/service -d 'statement=CREATE PRIMARY INDEX `type-index` ON `testDb`;'
+printf "\n\n"
+
+sleep 1
+
+echo "${GREEN}setting up couchbase index on testDb...${NC}"
+curl -v $CB:8093/query/service -d 'statement=CREATE INDEX `testdb_type_idx` ON `testDb`(type)'
+printf "\n\n"
+
+echo -e "${GREEN}couchbase configuration done!${NC}"
+printf "\n\n"

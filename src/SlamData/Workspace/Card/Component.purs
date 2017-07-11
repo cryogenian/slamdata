@@ -34,8 +34,6 @@ import Data.Foldable (elem)
 
 import Data.Lens ((.~))
 
-import DOM.HTML.HTMLElement (getBoundingClientRect)
-
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
@@ -45,6 +43,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.CardType (CardType(..))
@@ -104,7 +103,7 @@ makeCardComponent cardType component options =
       $ fold [cardLabel, card]
     where
     icon ∷ CardHTML f
-    icon = HH.img [ HP.src $ CardType.cardIconDarkSrc cardType ]
+    icon = CardType.cardIcon cardType # I.unIconHTML
 
     cardLabel ∷ Array (CardHTML f)
     cardLabel
@@ -194,6 +193,9 @@ makeCardComponent cardType component options =
           H.modify _ { status = CS.Inactive }
           queryInnerCard EQ.Deactivate
         _ → pure unit
+      when (st.width ≠ input.width || st.height ≠ input.height) do
+        H.modify _ { width = input.width, height = input.height }
+        updateDimensions
       pure next
     CQ.HandleEvalMessage msg next → do
       case msg of
@@ -233,12 +235,10 @@ makeCardComponent cardType component options =
 
   updateDimensions ∷ CardDSL f Unit
   updateDimensions = do
-    st ← H.get
-    H.getHTMLElementRef cardRef >>= traverse_ \el → do
-      { width, height } ← H.liftEff (getBoundingClientRect el)
-      mbLod ← H.query unit $ left $ H.request (EQ.ReceiveDimensions { width, height })
-      for_ mbLod \lod → when (st.levelOfDetails ≠ lod) do
-        H.modify _ { levelOfDetails = lod }
+    { width, height, levelOfDetails } ← H.get
+    mbLod ← H.query unit $ left $ H.request (EQ.ReceiveDimensions { width, height })
+    for_ mbLod \lod → when (levelOfDetails ≠ lod) do
+      H.modify _ { levelOfDetails = lod }
 
 queryInnerCard ∷ ∀ f. H.Action EQ.CardEvalQuery → CardDSL f Unit
 queryInnerCard q =

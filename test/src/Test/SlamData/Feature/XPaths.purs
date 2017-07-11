@@ -26,17 +26,9 @@ uploadFile =
 selectADestinationFolder ∷ String
 selectADestinationFolder = XPath.anyWithExactAriaLabel "Select a destination folder"
 
-fileFromInitialFileList ∷ String
-fileFromInitialFileList =
-  XPath.anyWithExactText Data.fileFromInitialFileList
-
 initialFileList ∷ Array String
 initialFileList =
   map XPath.anyWithExactText Data.initialFileList
-
-initialFileListInOrder ∷ String
-initialFileListInOrder =
-  XPath.inOrder $ map XPath.anyWithExactText Data.initialFileList
 
 eChart ∷ String → String
 eChart string =
@@ -189,6 +181,10 @@ moveFile ∷ String → String
 moveFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Move / rename"
 
+confirmRemoval ∷ String
+confirmRemoval =
+  "button" `XPath.nodeWithExactText` "Delete"
+
 oneErrorMessage ∷ String
 oneErrorMessage =
   XPath.anyWithText "1 error during evaluation."
@@ -219,6 +215,9 @@ accessConfigureMount = XPath.anyWithExactAriaLabel "Configure mount"
 mountName ∷ String
 mountName = "input" `XPath.withLabelWithExactText` "Name"
 
+mountBucketname ∷ String
+mountBucketname = "input" `XPath.withLabelWithExactText` "Bucket name"
+
 mountType ∷ String
 mountType = "select" `XPath.withLabelWithExactText` "Mount type"
 
@@ -230,6 +229,12 @@ mountHost = "input" `XPath.withLabelWithExactText` "Host"
 
 mountDatabase ∷ String
 mountDatabase = "input" `XPath.withLabelWithExactText` "Database"
+
+mountUsername ∷ String
+mountUsername = "input" `XPath.withLabelWithExactText` "Username"
+
+mountPassword ∷ String
+mountPassword = "input" `XPath.withLabelWithExactText` "Password"
 
 mountButton ∷ String
 mountButton = "button" `XPath.nodeWithExactText` "Mount"

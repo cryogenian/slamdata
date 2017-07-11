@@ -30,6 +30,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Common (gripperDeckMove)
 import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Component.CSS as CCSS
@@ -76,7 +77,12 @@ renderDeck opts deckComponent st =
           , HH.div
               [ HP.class_ CSS.deck
               ]
-              [ Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
+              [ HH.div
+                  [ HP.class_ $ HH.ClassName "sd-card-sizer"
+                  , HP.ref Common.sizerRef
+                  ]
+                  []
+              , Slider.render opts deckComponent st $ DCS.isFrontSide st.displayMode
               , renderBackside $ DCS.isFlipSide st.displayMode
               ]
           ]
@@ -131,8 +137,7 @@ deckClasses st =
 
 deckProperties ∷ ∀ r. DeckOptions → Array (HP.IProp (onMouseDown ∷ DOM.MouseEvent | r) (Query Unit))
 deckProperties opts =
-  [ HP.ref Common.sizerRef ]
-  <> (guard (L.length opts.displayCursor <= 1) $> HE.onMouseDown (HE.input Focus))
+  guard (L.length opts.displayCursor <= 1) $> HE.onMouseDown (HE.input Focus)
 
 renderName ∷ String → DeckHTML
 renderName name =
@@ -158,7 +163,7 @@ childFrameElements ∷ DCS.State → Array DeckHTML
 childFrameElements st =
   [ zoomInButton
   , flipButton
-  , moveGripper
+  , moveGripper st
   , deckIndicator st
   , renderName st.name
   ]
@@ -208,27 +213,27 @@ deckIndicator st =
 flipButton ∷ DeckHTML
 flipButton =
   HH.button
-    [ HP.classes [ CSS.flipDeck ]
+    [ HP.classes [ CSS.flipDeckBtn ]
     , HE.onClick (HE.input_ FlipDeck)
     , ARIA.label "Flip deck"
     , HP.title "Flip deck"
     ]
-    []
+    [ I.flipDeck ]
 
-moveGripper ∷ DeckHTML
-moveGripper =
+moveGripper ∷ DCS.State → DeckHTML
+moveGripper { focused, name } =
   HH.button
     [ HP.classes [ CSS.grabDeck ]
     , HE.onMouseDown (HE.input HandleGrab)
     , ARIA.label "Grab deck"
     , HP.title "Grab deck"
     ]
-    []
+    [ gripperDeckMove ]
 
 zoomInButton ∷ DeckHTML
 zoomInButton =
   HH.button
-     [ HP.classes [ CSS.zoomDeck ]
+     [ HP.classes [ CSS.zoomDeckBtn ]
      , ARIA.label "Zoom in"
      , HP.title "Zoom in"
      , HE.onClick (HE.input_ ZoomIn)
@@ -238,7 +243,7 @@ zoomInButton =
 zoomOutButton ∷ DeckHTML
 zoomOutButton =
   HH.button
-   [ HP.classes [ CSS.zoomDeck ]
+   [ HP.classes [ CSS.zoomDeckBtn ]
    , ARIA.label "Zoom out"
    , HP.title "Zoom out"
    , HE.onClick (HE.input_ ZoomOut)

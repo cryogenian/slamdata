@@ -1,0 +1,145 @@
+.dialog-mount
+  .panel
+    margin: 0
+
+    + .panel
+      margin: 1rem 0 0
+
+  .panel-body
+    padding: 1rem 1.5rem
+
+    .ace_editor
+      margin: -1rem -1.5rem
+
+  .panel-heading
+    padding: 0.5rem 1rem
+
+  .form-group
+    margin-bottom: 1rem
+
+  label
+    line-height: 3.4rem
+    width: 100%
+    margin-bottom: 0
+
+    input, select
+      font-weight: 400
+
+    span
+      display: block
+      float: left
+      width: 10rem
+
+    input.form-control
+      width: calc(100% - 10rem)
+
+    select.form-control
+      width: auto
+
+  .mount-userinfo
+    label + label
+      padding-top: 1rem
+
+  .mount-host-list
+    .mount-host
+      label
+        &:nth-child(1)
+          width: 70%
+
+        &:nth-child(2)
+          width: 30%
+
+          span
+            margin-left: 3rem
+            width: 4rem
+
+          input.form-control
+            width: calc(100% - 7rem)
+
+        span
+          visibility: hidden
+
+      + .mount-host
+        margin-top: 0.5rem
+
+    .mount-host:first-child label span
+      visibility: visible
+
+  .mount-props
+    label
+      float: left
+      width: auto
+
+    table
+      margin-bottom: 0
+
+      .form-control
+        width: 100%
+        border: none
+
+      th
+        width: 50%
+        border-bottom-width: 0.1rem
+
+      td
+        padding: 0
+
+        table
+          width: 100%
+
+          td
+            width: 50%
+
+  .mount-props-scrollbox
+    max-height: 20rem
+    overflow: auto
+
+  .mount-format
+    clear: both
+
+    label
+      width: 10rem
+      float: left
+
+      span
+        width: auto
+
+    input[type="radio"]
+      margin-right: 0.5rem
+
+  .mount-couchbase
+    .sd-cb-options
+      label
+        width: auto
+        span:nth-child(3)
+          display: inline-block
+          float: none
+          font-weight: normal
+
+
+      label:nth-child(2)
+        display:block
+        margin-left: 12rem
+        font-weight: normal
+        span
+          display: inline-block
+          float: none
+
+    label
+      span
+        width: 12rem
+
+      input
+        &.form-control
+          width: calc(100% - 12rem)
+
+        &[type=number]
+          width: 8rem
+          display: inline-block
+          margin-right: 0.5rem
+
+        &[type=checkbox]
+          margin-right: 0.5rem
+
+  .alert
+    min-height: 4.2rem
