@@ -64,9 +64,12 @@ component' path item =
     in
       HH.li
         [ HP.title label
+        , HP.classes $ join
+            [ pure (HH.ClassName "sd-miller-column-item")
+            , guard selected $> HH.ClassName "selected"
+            ]
         , HE.onClick $ HE.input_ Selected
         , ARIA.label ("Select " <> label)
-        , HP.classes $ (guard selected $> HH.ClassName "selected")
         ]
         [ renderItem item ]
 

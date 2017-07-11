@@ -93,24 +93,15 @@ handleMessage = either handleSelection absurd
 
 renderItem ∷ AnyItem' → MCI.BasicItemHTML
 renderItem r =
-  let
-    leaf ∷ Boolean
-    leaf = isLeaf (isRight ∘ R.getPath) r
-  in
-    HH.div
-      [ HP.classes
-          [ HH.ClassName "sd-miller-column-item-inner"
-          , HH.ClassName $ if leaf
-              then "sd-miller-column-item-leaf"
-              else "sd-miller-column-item-node"
-          ]
-      ] $ join
-      [ pure $ HH.span_
-          [ itemGlyph r
-          , HH.text (itemName r)
-          ]
-      , guard (not leaf) $> I.chevronRightSm
-      ]
+  HH.div
+    [ HP.class_ (HH.ClassName "sd-miller-column-item-inner") ]
+    $ join
+        [ pure $ HH.span_
+            [ itemGlyph r
+            , HH.text (itemName r)
+            ]
+        , guard (not isActionable r) $> I.chevronRightSm
+        ]
 
 isLeaf ∷ ∀ a. (a → Boolean) → AnyItem a → Boolean
 isLeaf f = case _ of
@@ -118,6 +109,9 @@ isLeaf f = case _ of
   Variables → false
   Variable _ → true
   Resource r → f r
+
+isActionable ∷ AnyItem' → Boolean
+isActionable = isLeaf (isRight ∘ R.getPath)
 
 itemName ∷ AnyItem' → String
 itemName = case _ of
@@ -212,7 +206,7 @@ columnsComponent =
         MCI.component
           { label: itemName
           , render: renderItem
-          , isActionable: isLeaf (isRight ∘ R.getPath)
+          , isActionable
           }
     , label: itemName
     , isLeaf: isLeaf isRight
