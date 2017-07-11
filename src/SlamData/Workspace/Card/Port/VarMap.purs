@@ -30,17 +30,20 @@ module SlamData.Workspace.Card.Port.VarMap
   , markIndex
   , isResource
   , union
+  , downloadUrl
   ) where
 
 import SlamData.Prelude
+import Data.Argonaut.Decode (class DecodeJson)
+import Data.Argonaut.Encode (class EncodeJson)
 import Data.Array as A
 import Data.List as L
 import Data.List.NonEmpty as NL
 import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
-import Data.Argonaut.Decode (class DecodeJson)
-import Data.Argonaut.Encode (class EncodeJson)
+import Data.URI as URI
+import Quasar.Paths as Paths
 import SlamData.Workspace.Card.CardId as CID
 import SqlSquared (Sql)
 import SqlSquared as Sql
@@ -175,3 +178,23 @@ union source namespace childMap intoMap = SM.fold foldFn intoMap childMap
       t3 = t1 <> t2
     in
       NL.appendFoldable (pure (c3 × h3)) t3
+
+downloadUrl ∷ Maybe String → Path.AbsDir Path.Sandboxed → Resource → URI.AbsoluteURI
+downloadUrl headers context r =
+  URI.AbsoluteURI Nothing
+    (URI.HierarchicalPart Nothing (Just (Right path)))
+    (URI.Query <$> query')
+  where
+  path = Path.rootDir Path.</> case r of
+    Path p → Paths.data_ Path.</> PU.absToRelative p
+    View p _ _ → Paths.data_ Path.</> (PU.absToRelative context Path.</> PU.tmpDir Path.</> p)
+    Process p _ _ → Paths.invoke Path.</> (PU.absToRelative context Path.</> PU.tmpDir Path.</> p)
+
+  query = case r of
+    Process _ _ vm
+      | not (SM.isEmpty vm)
+      → Just (map Just <$> SM.toUnfoldable (toURLVarMap vm))
+    _ → Nothing
+
+  query' =
+    query <> (pure ∘ Tuple "request-headers" ∘ Just <$> headers)

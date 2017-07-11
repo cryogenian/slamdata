@@ -38,7 +38,7 @@ eval { compress, options, targetName } resource = case targetName of
       { compress
       , options
       , targetName: runFileName (PU.anyFileName (Port.filePath resource))
-      , resource: Port.filePath resource
+      , resource
       }
   Just "" → throwDownloadOptionsError DownloadOptionsFilenameRequired
   Just fn → do
@@ -48,5 +48,5 @@ eval { compress, options, targetName } resource = case targetName of
       { compress
       , options
       , targetName: fn
-      , resource: Port.filePath resource
+      , resource
       }

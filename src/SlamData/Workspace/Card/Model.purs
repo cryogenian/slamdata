@@ -22,6 +22,7 @@ import Data.Argonaut as J
 import Data.Array as Array
 import Data.Lens (Traversal', wander, Prism', prism')
 import Data.List as L
+import Data.Path.Pathy as Path
 import Data.Rational ((%))
 import Data.StrMap as StrMap
 
@@ -440,7 +441,7 @@ cardModelOfType (port × varMap) = case _ of
   CT.Troubleshoot → Troubleshoot
   CT.Cache → Cache Nothing
   CT.Open → Open Nothing
-  CT.DownloadOptions → DownloadOptions $ DLO.initialState { targetName = PU.printAnyFilePath <$> Port.extractAnyFilePath varMap }
+  CT.DownloadOptions → DownloadOptions $ DLO.initialState { targetName = Path.runFileName ∘ PU.anyFileName <$> Port.extractAnyFilePath varMap }
   CT.Draftboard → Draftboard DB.emptyModel
   CT.Tabs → Tabs Tabs.initialModel
   CT.StructureEditor → StructureEditor StructureEditor.initialModel

@@ -85,7 +85,7 @@ import Utils.Path as PU
 type Out = Port × VarMap
 
 type DownloadPort =
-  { resource ∷ PU.AnyFilePath
+  { resource ∷ VM.Resource
   , compress ∷ Boolean
   , options ∷ DownloadOptions
   , targetName ∷ String

@@ -27,7 +27,7 @@ import Data.Array (intersect, null, (:))
 import Data.Bitraversable (bitraverse)
 import Data.Char as Ch
 import Data.Either (Either(..), either, fromRight)
-import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe, fromJust)
 import Data.Path.Pathy (Sandboxed, Unsandboxed, Abs, Path, File, Rel, Dir, DirName(..), FileName(..), peel, rootDir, (</>), file, canonicalize, printPath, parseAbsDir, parseAbsFile, dir, relativeTo, renameDir)
 import Data.Path.Pathy as P
 import Data.String as S
@@ -189,3 +189,9 @@ tmpDir = P.dir ".tmp"
 
 peelFile ∷ ∀ a s. P.Path a P.File s → Maybe (Tuple (P.Path a P.Dir s) P.FileName)
 peelFile path = unsafePartial (map fromRight <$> peel path)
+
+absToRelative ∷ ∀ a s. P.Path P.Abs a s → P.Path P.Rel a s
+absToRelative p = unsafePartial $ fromJust $ P.relativeTo p P.rootDir
+
+siblingPath ∷ ∀ b c. P.Path P.Rel b c → P.Path P.Rel b P.Unsandboxed
+siblingPath p = P.parentDir' P.currentDir </> P.unsandbox p

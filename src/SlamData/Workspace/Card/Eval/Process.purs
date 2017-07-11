@@ -247,14 +247,13 @@ elaborateVar vari = do
   substResource ∷ CID.CardId → VM.Resource → m Sql.Sql
   substResource source = case _ of
     VM.Path filePath → pure $ sqlPath filePath
-    VM.View filePath _ _ → sqlPath <$> absPath filePath
+    VM.View filePath _ _ → pure $ sqlPath (PU.siblingPath filePath)
     VM.Process filePath _ localVarMap → do
       { shouldAlias } ← ask
       if shouldAlias
         then do
-          absPath' ← absPath filePath
           activateProcess
-          substProcessVar source absPath' localVarMap vari
+          substProcessVar source (PU.siblingPath filePath) localVarMap vari
         else default
 
 substUnion ∷ ∀ m. Elaborate m (CID.CardId → String → Array VM.VarMapValue → m Sql.Sql)
@@ -276,15 +275,14 @@ substUnion source vari vals = do
   substResource ∷ VM.Resource → m Sql.Sql
   substResource = case _ of
     VM.Path filePath → pure $ sqlPath filePath
-    VM.View filePath _ _ → sqlPath <$> absPath filePath
+    VM.View filePath _ _ → pure $ sqlPath (PU.siblingPath filePath)
     VM.Process filePath _ localVarMap → do
       activateProcess
       -- TODO: Maybe this should be indexed instead of unique?
       tmp ← tmpName
-      absPath' ← absPath filePath
-      substProcessVar source absPath' localVarMap tmp
+      substProcessVar source (PU.siblingPath filePath) localVarMap tmp
 
-substProcessVar ∷ ∀ m. Elaborate m (CID.CardId → PU.FilePath → VM.VarMap → String → m Sql.Sql)
+substProcessVar ∷ ∀ m a c. Elaborate m (CID.CardId → Path.Path a Path.File c → VM.VarMap → String → m Sql.Sql)
 substProcessVar source filePath localVarMap vari = do
   { aliases } ← RWS.get
   maybe genAlias (pure ∘ Sql.ident) $
@@ -334,11 +332,6 @@ processIdent cid =
 
 sqlPath ∷ ∀ a b c. Path.Path a b c → Sql.Sql
 sqlPath = embed ∘ Sql.Ident ∘ Path.unsafePrintPath
-
-absPath ∷ ∀ m. Elaborate m (PU.RelFilePath → m PU.FilePath)
-absPath p = do
-  { path } ← ask
-  pure (path Path.</> p)
 
 sqlModule
   ∷ L.List (Sql.SqlDeclF Sql.Sql)
