@@ -22,7 +22,6 @@ module SlamData.Workspace.Deck.Component.Render
 import SlamData.Prelude
 import Data.Array as A
 import Data.List as L
-
 import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -145,6 +144,7 @@ renderName name =
     [ HP.class_ CSS.deckName ]
     [ HH.text name ]
 
+
 frameElements ∷ DeckOptions → DCS.State → Array DeckHTML
 frameElements { accessType, displayCursor } st
   | accessType ≡ AT.ReadOnly = mempty
@@ -153,18 +153,14 @@ frameElements { accessType, displayCursor } st
 
 rootFrameElements ∷ DCS.State → Array DeckHTML
 rootFrameElements st =
-  [ zoomOutButton
-  , flipButton
-  , deckIndicator st
+  [ deckFrameControls st
   , renderName st.name
   ]
 
 childFrameElements ∷ DCS.State → Array DeckHTML
 childFrameElements st =
-  [ zoomInButton
-  , flipButton
+  [ deckFrameControls st
   , moveGripper st
-  , deckIndicator st
   , renderName st.name
   ]
 
@@ -187,6 +183,18 @@ backside =
             ]
         ]
     ]
+
+deckFrameControls ∷ DCS.State → DeckHTML
+deckFrameControls st =
+  HH.div
+  [ HP.class_ CSS.deckFrameControls ]
+  [ HH.div
+      [ HP.class_ CSS.deckFrameActions ]
+      [ flipButton
+      , zoomOutButton
+      ]
+  , deckIndicator st
+  ]
 
 deckIndicator ∷ DCS.State → DeckHTML
 deckIndicator st =
@@ -213,7 +221,7 @@ deckIndicator st =
 flipButton ∷ DeckHTML
 flipButton =
   HH.button
-    [ HP.classes [ CSS.flipDeckBtn ]
+  [ HP.classes [ CSS.flipDeckBtn ]
     , HE.onClick (HE.input_ FlipDeck)
     , ARIA.label "Flip deck"
     , HP.title "Flip deck"

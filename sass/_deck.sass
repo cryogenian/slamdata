@@ -91,6 +91,64 @@
       height: calc(100% - #{$g})
 
 
+.sd-deck-frame-controls
+  display: flex
+  flex-flow: row nowrap
+  position: absolute
+  bottom: 0
+  left: 0
+  right: 0
+  width: 100%
+  height: $grid-size
+  padding: 0 $padding-base-vertical
+
+  > *
+    position: relative
+
+    &:not(:first-of-type)
+      padding-left: $padding-base-vertical
+
+      // separator
+      &::before
+        display: block
+        content: ""
+        position: absolute
+        top: 0
+        bottom: 0
+        left: 0
+        margin: auto
+        height: calc(100% - 1rem)
+        width: 0.1rem
+        background-color: $color-separator
+
+    &:not(:last-of-type)
+      padding-right: $padding-base-vertical
+
+
+  .sd-deck-frame-actions
+    display: flex
+    flex: 0 0 auto
+
+    > button
+      height: 100%
+      width: 1em
+      margin: 0
+      padding: 0
+      border: none
+      background: none
+      font-size: 1.5rem
+
+      // same as .indicator dots
+      &:not(:first-of-type)
+        margin-left: 0.4rem
+
+      &:not(:last-of-type)
+        margin-right: 0.4rem
+
+    .sd-zoom-deck-btn
+      font-size: 1.6rem
+
+
 .sd-deck
   position: absolute
   top: 0
@@ -111,6 +169,7 @@
   height: 100%
   left: 0
   right: 0
+
 
 .sd-card
   $g: $grid-size * 2
@@ -143,10 +202,14 @@
     color: $gripper-color
     font-size: 2.4rem
     pointer-events: none
+    cursor: grab
     transition: color 200ms ease-out
 
     &:hover
       color: $gripper-hover-color
+
+    &:active
+      cursor: grabbing
 
 .sd-focused > .sd-deck > .sd-card-slider > .sd-card
   > .sd-card-gripper,
@@ -173,34 +236,12 @@
     color: $gripper-hover-color
 
 
-.sd-flip-deck-btn, .sd-zoom-deck-btn
-  height: $grid-size
-  width: $grid-size
-  margin: 0
-  padding: 0
-  border: none
-  background-color: transparent
-  font-size: 1.5rem
-
-  .sd-icon
-    position: relative
-
-
-.sd-zoom-deck-btn
-  float: left
-
-
-.sd-flip-deck-btn
-  float: right
-
-
 .sd-deck-name
-  float: left
-  line-height: 1.5
-  font-size: 1.1rem
-  margin-left: 0.125rem
-  width: calc(50% - (0.125rem - (1.5rem * 3)))
   overflow: hidden
+  width: calc(50% - (1.5rem * 3))
+  padding: 0 $grid-size
+  line-height: 1.8
+  font-size: 1.1rem
   white-space: nowrap
   text-overflow: ellipsis
 
