@@ -59,19 +59,31 @@
       width: 100%
       overflow: auto
 
+    // To have the desired border behaviour between the items we have:
+    //  - each item has a border top & bottom
+    //  - each item has a -1px margin on the bottom, so the border is "shared"
+    //  - the items are position: relative so that z-indexing works
+    //  - the selected item has z-index: 2 so it shows both border, as these
+    //    borders are recoloured
+    //  - the top item has its top border removed to prevent a double-border
+    //    appearing at the top of the column
     .sd-miller-column-item
       display: block
       cursor: pointer
       z-index: 1
       line-height: 1.15
       transition: background-color 200ms ease-out
+      border: 0.1rem solid $miller-column-border-color
+      border-left: 0
+      border-right: 0
+      margin-bottom: -0.1rem
+      position: relative
+
+      &:first-child
+        border-top: 0
 
       &:hover
         background-color: $miller-column-item-hover-bg
-
-      + .sd-miller-column-item
-        margin-top: -0.1rem
-        border-top: 0.1rem solid $miller-column-border-color
 
       &.selected
         background-color: $miller-column-item-selected-bg
